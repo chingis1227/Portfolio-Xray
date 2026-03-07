@@ -37,16 +37,45 @@ def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
     return _load_yaml(path)
 
 
+def load_blocks_universe(config_path: str | Path | None = None) -> dict[str, list[str]] | None:
+    """
+    Load blocks_universe.yml from the same directory as config (or project root if config_path not set).
+    Returns { block_name: [ticker, ...] } or None if file does not exist.
+    Used to resolve which block each config ticker belongs to; unknown tickers then fail validation.
+    """
+    if config_path is None:
+        base = Path(__file__).resolve().parent.parent
+    else:
+        base = Path(config_path).resolve().parent
+    path = base / "blocks_universe.yml"
+    if not path.is_file():
+        return None
+    data = _load_yaml(path)
+    if not data or not isinstance(data, dict):
+        return None
+    out = {}
+    for key, val in data.items():
+        if isinstance(val, list):
+            out[str(key)] = [str(t) for t in val]
+    return out if out else None
+
+
 def load_validated_config(config_path: str | Path | None = None) -> PortfolioConfig:
     """
     Load config from config.yml and validate it.
+    If blocks_universe.yml exists next to config, tickers from config are validated against it:
+    each ticker must appear in exactly one block; blocks for this run are derived from the universe.
+    If a ticker is not in any block, ConfigValidationError is raised with a clear message.
     If client_profile is set, missing target/risk_budget fields are filled from that profile (midpoints).
     Returns a strongly-typed PortfolioConfig object.
     Raises ConfigValidationError if validation fails.
     """
     raw = load_config(config_path)
     raw = apply_profile_to_config(raw)
-    return validate_config(raw)
+    blocks_universe = load_blocks_universe(
+        config_path if config_path is not None else Path(__file__).resolve().parent.parent / "config.yml"
+    )
+    return validate_config(raw, blocks_universe=blocks_universe)
 
 
 def load_assets_metadata(assets_path: str | Path | None = None) -> dict[str, dict[str, Any]]:

@@ -348,10 +348,16 @@ Wide index equity ETF as the base carrier of the market risk premium. Core candi
 
 **Satellites** (all other Growth instruments):
 
-- **Quality / Dividend Equity** — Equity with a focus on quality, sustainable profitability, and dividend profile; a more “defensive” form of equity risk within Growth.
+- **Quality / Dividend Equity** — Equity with a focus on quality, sustainable profitability, and dividend profile as a more "defensive" form of equity risk within Growth.
+- **Defensive Sector Equity (Staples/Utilities/Healthcare)** — Sector "defensive" stocks with more stable demand and cash flows, which typically fall less in recessions but remain equity beta; utilities are additionally sensitive to rates.
+- **Cyclical Sector Equity (Discretionary/Financials/Industrials/Energy)** — Sector cyclical stocks that amplify portfolio sensitivity to economic growth, credit cycle, and commodity prices; in risk-off and credit stress they often underperform the market.
+- **US Size Tilts (Mid/Small)** — Mid/small-cap tilts as an equity-premium enhancer and "internal" diversifier within the US; typically higher volatility and deeper drawdowns in tightening/recessions.
+- **Regional / ex-US Equity (Diversifiers)** — Regional and ex-US exposures adding currency and country cycle, reducing dependence on the US and a single market; in global liquidity shocks correlations still rise, but over the horizon they help through rotation of regional leadership.
 - **High Growth / Thematic** — High-beta segments and thematic exposures that amplify upside at the cost of tail risk.
-- **Credit Beta (High Yield + EM Debt)** — High-yield bonds and EM debt as equity-like credit: in credit cycle deterioration they behave similarly to equities and can amplify drawdowns.
+- **Credit Beta (High Yield + EM Debt + Preferred)** — Credit as equity-like risk: in credit cycle deterioration it behaves like equities, spreads widen, drawdowns deepen.
 - **Crypto / Optionality** — Limited optionality within Growth (asymmetry, but high volatility and tail risk).
+- **Real Assets Equity (REIT / Infrastructure Equity)** — Public "real assets" equity (REITs, infrastructure) giving exposure to nominal cash flows (rent, tariffs, contracts) and potentially benefiting from moderate inflation via revenue growth. This is equity-like risk, sensitive to rates, funding cost, and credit cycle, so in tightening and liquidity stress it often falls with the market.
+- **Real Assets Equity (Commodity-linked equity: miners/E&P)** — Equity in extractive and upstream oil & gas companies providing operational leverage to commodity prices. This is not a commodity hedge but equity with dual beta: to the market (risk-off) and to the commodity cycle (supply/demand, CAPEX, OPEC, geopolitics). In liquidity crises it can sell off like equity even when commodities hold; in commodity supercycles it can outperform the physical commodity.
 
 **Risk limits within Growth (RC)**  
 High Yield risk within Growth is limited via risk contribution:

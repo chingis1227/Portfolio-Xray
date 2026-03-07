@@ -1,0 +1,129 @@
+# Base: tickers by block. One ticker = one block (no overlaps).
+# When you list tickers in config.yml, the system looks them up here to know
+# which block each belongs to. If a ticker is not in any block, validation fails.
+#
+# Block names: Growth, Growth_HY, Duration, Inflation, Liquidity, Tail
+
+Growth:
+  # Broad Equity (Core Index)
+  - SPY
+  - VOO
+  - VTI
+  - VT
+  # Quality / Dividend Equity
+  - SCHD
+  - VYM
+  - DGRO
+  - QUAL
+  - USMV
+  - VTV
+  - IWD
+  # Regional / ex-US Equity
+  - VXUS
+  - URTH
+  - VGK
+  - EWJ
+  - BBJP
+  - MCHI
+  - ASHR
+  - AAXJ
+  - AIA
+  - GMF
+  - VWO
+  - EEM
+  - SCZ
+  # US size tilts (mid/small)
+  - IWR
+  - VO
+  - VTWO
+  # High Growth / Thematic
+  - QQQ
+  - QQQM
+  - VGT
+  - SMH
+  - PHO
+  - ICLN
+  - GRID
+  - BATT
+  - ARKX
+  - ARKG
+  - METV
+  - SKYY
+  - ROBO
+  - CIBR
+  # Defensive Sector Equity
+  - VDC
+  - XLU
+  - VHT
+  - XLV
+  # Cyclical Sector Equity
+  - XLY
+  - VFH
+  - XLF
+  - ITA
+  - PPA
+  - ARMY
+  - WDEF
+  - PAVE
+  - IGF
+  - XLE
+  - VDE
+  # Crypto / Optionality
+  - ETHE
+  # Real Assets Equity (REIT / miners / E&P)
+  - VNQ
+  - VNQI
+  - GDX
+  - COPX
+  - XOP
+  - URA
+
+# Credit Beta (High Yield + EM Debt + preferred)
+Growth_HY:
+  - HYG
+  - JNK
+  - EMB
+  - HYEM
+  - ELD
+  - PFF
+
+Duration:
+  # Long Duration Sovereigns
+  - TLT
+  # Intermediate Duration (Aggregate)
+  - BND
+  - AGG
+  - IGOV
+  # Investment Grade
+  - LQD
+  - IEAC
+  - VECP
+
+Inflation:
+  # CPI Protection (TIPS)
+  - TIP
+  - SCHP
+  - WIP
+  # Monetary Hedge (Gold)
+  - GLD
+  - GLDM
+  # Resource Shock (Commodities / Industrial Metals)
+  - DBC
+  - DBA
+  - GSG
+  - UNG
+  - USO
+  - DBB
+  - CPER
+  - SLV
+  - PPLT
+  - PLTM
+  - PALL
+  - SPPP
+
+Liquidity:
+  # Cash-like (T-Bills / ultra-short)
+  - BIL
+  - SHV
+
+Tail: []

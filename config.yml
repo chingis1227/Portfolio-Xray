@@ -37,23 +37,13 @@ beta_local_mapping: {}
 # =============================================================================
 # SECTION 3: PORTFOLIO TICKERS AND WEIGHTS
 # =============================================================================
-# tickers: list of instruments (you set this). Can be kept in sync with blocks (union of Growth + Duration + Inflation).
-# blocks: role mapping. Fill tickers per block; N, Nc, Ns and k_block are derived from this for feasibility/optimization.
-# weights: do not set by hand. Produced by optimization; export and save here after optimization (or leave filled for backward compatibility).
+# tickers: list of instruments in this portfolio (you set this). If blocks_universe.yml exists,
+#   each ticker must appear there in exactly one block; blocks for the run are derived automatically.
+#   If a ticker is not in blocks_universe.yml, validation fails with a clear message.
+# blocks: optional. If blocks_universe.yml is absent, you can set block lists here; otherwise ignored.
+# weights: do not set by hand. Produced by optimization; export and save here after optimization.
 
-tickers:
-  - VOO
-  - QQQ
-  - GLD
-  - BND
-  - VT
-
-# Growth_HY: sub-block of Growth (High Yield); RC_vol(HY) ≤ 10% × RC_vol(Growth) per feasibility spec.
-blocks:
-  Growth: []
-  Growth_HY: [JNK, HYG]
-  Duration: []
-  Inflation: []
+tickers: [VOO, VT, QQQ, SMH, VGK, BBJP, VWO, VDC, ARMY, ITA, CIBR, ROBO, SCHD, COPX, URA, SLV, GLD, SCHP, BIL, BND]
 
 weights:
   VOO: 0.1
@@ -69,7 +59,7 @@ weights:
 # If set, missing target/risk_budget fields are filled from config/client_profiles.yml (midpoints). You can override manually.
 # Reminder: 1 Ultra Conservative  2 Conservative  3 Balanced  4 Growth  5 Aggressive (see Config UI for full table).
 
-client_profile: Balanced
+client_profile: Conservative
 
 # allow_leverage, allow_short_selling: на выбор true / false.
 # Поля в процентах (ниже) можно вводить в процентах (например 15%) или десятичной дробью (0.15):
@@ -80,9 +70,9 @@ client_profile: Balanced
 allow_leverage: false
 allow_short_selling: false
 min_acceptable_return: null
-target_nominal_return_annual: 0.1
-target_vol_annual: 0.15
-target_max_drawdown_pct: -0.3
+target_nominal_return_annual: 0.045
+target_vol_annual: 0.055               
+target_max_drawdown_pct: -0.15
 horizon_years: 10.0
 
 # =============================================================================

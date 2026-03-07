@@ -433,6 +433,56 @@ STRESS_BLOCK_NAMES = ("Growth", "Duration", "Inflation", "Liquidity", "Tail")  #
 GROWTH_HY_KEY = "Growth_HY"  # sub-block of Growth (High Yield); RC_vol(HY) ≤ 10% × RC_vol(Growth)
 GROWTH_EM_DEBT_KEY = "Growth_EM_debt"  # sub-block of Growth (EM Debt); RC_vol(EM Debt) ≤ 10% × RC_vol(Growth)
 
+def _build_ticker_to_block_from_universe(blocks_universe: dict[str, list[str]]) -> dict[str, str]:
+    """
+    Build ticker -> block_name from blocks_universe. Raises if a ticker appears in more than one block.
+    """
+    ticker_to_block: dict[str, str] = {}
+    for block_name, tickers in blocks_universe.items():
+        if not isinstance(tickers, list):
+            continue
+        for t in tickers:
+            t = str(t).strip()
+            if not t:
+                continue
+            if t in ticker_to_block:
+                raise ConfigValidationError(
+                    f"blocks_universe.yml: ticker '{t}' appears in both '{ticker_to_block[t]}' and '{block_name}'. "
+                    "One ticker must belong to exactly one block."
+                )
+            ticker_to_block[t] = block_name
+    return ticker_to_block
+
+
+def _effective_blocks_from_universe(
+    config_tickers: list[str],
+    blocks_universe: dict[str, list[str]],
+) -> dict[str, list[str]]:
+    """
+    Resolve blocks for config_tickers using blocks_universe. Each config ticker must appear
+    in exactly one block in the universe. Returns normalized blocks dict containing only
+    the given tickers. Raises ConfigValidationError if any ticker is not in any block.
+    """
+    ticker_to_block = _build_ticker_to_block_from_universe(blocks_universe)
+    unknown = [t for t in config_tickers if t not in ticker_to_block]
+    if unknown:
+        raise ConfigValidationError(
+            f"Ticker(s) not found in blocks_universe.yml (no block assigned): {', '.join(unknown)}. "
+            "Add them to a block in blocks_universe.yml or remove them from config tickers."
+        )
+    # Build effective blocks: only blocks that have at least one of our tickers
+    effective: dict[str, list[str]] = {b: [] for b in BLOCK_NAMES}
+    effective[GROWTH_HY_KEY] = []
+    effective[GROWTH_EM_DEBT_KEY] = []
+    effective["Liquidity"] = []
+    effective["Tail"] = []
+    for t in config_tickers:
+        block = ticker_to_block[t]
+        if block not in effective:
+            effective[block] = []
+        effective[block].append(t)
+    return _normalize_blocks(effective)
+
 
 def _normalize_blocks(blocks: dict[str, Any] | None) -> dict[str, list[str]]:
     """Return blocks with Growth, Duration, Inflation, optional Growth_HY, Growth_EM_debt, Liquidity, Tail; default empty lists if missing."""
@@ -620,9 +670,13 @@ def _identify_pending_fields(cfg: dict[str, Any]) -> list[str]:
     return pending
 
 
-def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
+def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] | None = None) -> PortfolioConfig:
     """
     Validate config dict and return PortfolioConfig object.
+    
+    If blocks_universe is provided (from blocks_universe.yml), each ticker in config must
+    appear in exactly one block there; effective blocks are derived from the universe.
+    If any config ticker is not in the universe, ConfigValidationError is raised.
     
     Supports canonical config keys: base_benchmark_ticker, risk_free_source,
     beta_local_mapping (mapped to benchmark_base_ticker, rf_source, local_benchmark_map).
@@ -644,7 +698,8 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
     _validate_percents(cfg)
     _validate_nonnegative(cfg)
     _validate_mappings(cfg)
-    _validate_blocks(cfg)
+    if not blocks_universe:
+        _validate_blocks(cfg)
     _validate_tickers_weights(cfg)
     _validate_rc_block_targets(cfg)
     _validate_windows(cfg)
@@ -653,6 +708,12 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
     _validate_cash_policy(cfg)
     _validate_portfolio_value(cfg)
     _validate_alpha_shift_params(cfg)
+    
+    # Resolve blocks: from universe (for config tickers) or from config
+    if blocks_universe:
+        blocks_final = _effective_blocks_from_universe(list(cfg["tickers"]), blocks_universe)
+    else:
+        blocks_final = _normalize_blocks(cfg.get("blocks"))
     
     pending = _identify_pending_fields(cfg)
     rc_raw = cfg.get("rc_block_targets")
@@ -668,7 +729,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
         cash_policy=cfg.get("cash_policy", "allowed_for_scaling"),
         client_profile=cfg.get("client_profile"),
         tickers=list(cfg["tickers"]),
-        blocks=_normalize_blocks(cfg.get("blocks")),
+        blocks=blocks_final,
         weights=dict(cfg.get("weights") or {}),
         benchmark_base_ticker=cfg["benchmark_base_ticker"],
         rf_source=cfg.get("rf_source"),

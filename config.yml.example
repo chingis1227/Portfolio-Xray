@@ -40,25 +40,21 @@ beta_local_mapping: {}
 # =============================================================================
 # SECTION 3: PORTFOLIO TICKERS AND WEIGHTS
 # =============================================================================
-# tickers: list of instruments (you set this). Can be kept in sync with blocks (union of Growth + Duration + Inflation).
-# blocks: role mapping. Fill tickers per block; N, Nc, Ns and k_block are derived from this for feasibility/optimization.
+# tickers: list of instruments in this portfolio (you set this). If blocks_universe.yml exists
+#   in the project root, each ticker must appear there in exactly one block; blocks are then
+#   derived automatically. If a ticker is not in blocks_universe.yml, validation fails.
+# blocks: optional. Only used when blocks_universe.yml is absent; then fill tickers per block here.
 # weights: do not set by hand. Produced by optimization; export and save here after optimization.
 
-tickers:
-  - VOO
-  - QQQ
-  - GLD
-  - BND
-  - VT
+# tickers: list (horizontal or vertical). Example horizontal: [VOO, QQQ, GLD, BND, VT]
+tickers: [VOO, QQQ, GLD, BND, VT]
 
-# Growth_HY: sub-block of Growth (High Yield); RC_vol(HY) ≤ 10% × RC_vol(Growth).
-# Growth_EM_debt: sub-block of Growth (EM Debt); RC_vol(EM Debt) ≤ 10% × RC_vol(Growth). Core = e.g. VOO, VT, VTI (growth_core_candidates).
-blocks:
-  Growth: []
-  Growth_HY: [JNK, HYG]
-  # Growth_EM_debt: []   # optional; EM bond ETFs
-  Duration: []
-  Inflation: []
+# Uncomment and fill when not using blocks_universe.yml:
+# blocks:
+#   Growth: []
+#   Growth_HY: [JNK, HYG]
+#   Duration: []
+#   Inflation: []
 
 weights: {}
 
