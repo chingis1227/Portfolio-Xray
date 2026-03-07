@@ -107,6 +107,7 @@ def export_run_metadata(
     analysis_end: str,
     run_timestamp: str | None = None,
     portfolio_metrics_summary: dict[str, Any] | None = None,
+    stress_report: dict[str, Any] | None = None,
 ) -> Path:
     """
     Export run metadata to JSON including:
@@ -143,6 +144,16 @@ def export_run_metadata(
         },
     }
     
+    if stress_report:
+        metadata["stress_test"] = {
+            "status": stress_report.get("status"),
+            "fail_reason_code": stress_report.get("fail_reason_code"),
+            "warning_code": stress_report.get("warning_code"),
+            "worst_scenario_loss_pct": stress_report.get("worst_scenario_loss_pct"),
+            "failed_scenario": stress_report.get("failed_scenario"),
+            "failed_test": stress_report.get("failed_test"),
+        }
+    
     # Add target comparison if target was specified and portfolio metrics available
     if portfolio_config.target_nominal_return_annual is not None and portfolio_metrics_summary:
         realized_cagr = portfolio_metrics_summary.get("cagr")
@@ -175,4 +186,24 @@ def export_correlation_matrix_csv(
     suffix = "3y" if window_months == 36 else "5y" if window_months == 60 else "10y"
     path = output_dir / f"correlation_matrix_{suffix}.csv"
     corr_matrix.round(REPORT_DECIMALS).to_csv(path)
+    return path
+
+
+def export_stress_report(stress_report: dict, output_dir: Path) -> Path:
+    """
+    Export stress test report to JSON. Per docs/docs/stress_testing_spec.md.
+    """
+    path = output_dir / "stress_report.json"
+    # Ensure serializable (round floats, no numpy)
+    def _round_obj(obj: Any) -> Any:
+        if isinstance(obj, dict):
+            return {k: _round_obj(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_round_obj(x) for x in obj]
+        if isinstance(obj, (int, float)) and obj is not None and not isinstance(obj, bool):
+            return round(obj, 4) if isinstance(obj, float) else obj
+        return obj
+    out = _round_obj(stress_report)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(out, f, indent=2, ensure_ascii=False, default=str)
     return path

@@ -9,9 +9,17 @@
 # =============================================================================
 # investor_currency: на выбор — USD (доллар), EUR (евро), JPY (йена), CHF (франк).
 
-investor_currency: USD
+investor_currency: EUR
 initial_investable_amount: 1000
-liquidity_need: 0
+liquidity_need: 600
+
+# ---------- Liquidity (life floor): amount = liquidity_need_months × monthly_expenses; if no portfolio_value, initial_investable_amount is used ----------
+liquidity_need_months: 2
+monthly_expenses: 300
+portfolio_value: null
+
+# ---------- Cash policy: allowed_for_scaling | required_floor | prohibited ----------
+cash_policy: allowed_for_scaling
 
 # =============================================================================
 # SECTION 2: RISK-FREE AND BENCHMARK (drives excess-return metrics, beta, MAR)
@@ -21,14 +29,17 @@ liquidity_need: 0
 # base_benchmark_ticker: used for Beta_base, downside beta, stress analysis.
 # beta_local_mapping: optional override { ticker: local_benchmark_ticker } for Beta_local.
 
-risk_free_source: FRED:DTB3
-cash_proxy_ticker: BIL
-base_benchmark_ticker: SPY
+risk_free_source: ECB:€STR
+cash_proxy_ticker: PEU
+base_benchmark_ticker: VGK
 beta_local_mapping: {}
 
 # =============================================================================
 # SECTION 3: PORTFOLIO TICKERS AND WEIGHTS
 # =============================================================================
+# tickers: list of instruments (you set this). Can be kept in sync with blocks (union of Growth + Duration + Inflation).
+# blocks: role mapping. Fill tickers per block; N, Nc, Ns and k_block are derived from this for feasibility/optimization.
+# weights: do not set by hand. Produced by optimization; export and save here after optimization (or leave filled for backward compatibility).
 
 tickers:
   - VOO
@@ -36,6 +47,13 @@ tickers:
   - GLD
   - BND
   - VT
+
+# Growth_HY: sub-block of Growth (High Yield); RC_vol(HY) ≤ 10% × RC_vol(Growth) per feasibility spec.
+blocks:
+  Growth: []
+  Growth_HY: [JNK, HYG]
+  Duration: []
+  Inflation: []
 
 weights:
   VOO: 0.1
@@ -47,6 +65,12 @@ weights:
 # =============================================================================
 # SECTION 4: PORTFOLIO ASSUMPTIONS AND TARGETS
 # =============================================================================
+# client_profile: optional. Values — ultra_conservative | conservative | balanced | growth | aggressive.
+# If set, missing target/risk_budget fields are filled from config/client_profiles.yml (midpoints). You can override manually.
+# Reminder: 1 Ultra Conservative  2 Conservative  3 Balanced  4 Growth  5 Aggressive (see Config UI for full table).
+
+client_profile: Balanced
+
 # allow_leverage, allow_short_selling: на выбор true / false.
 # Поля в процентах (ниже) можно вводить в процентах (например 15%) или десятичной дробью (0.15):
 #   min_acceptable_return, target_nominal_return_annual, target_vol_annual,
@@ -64,13 +88,20 @@ horizon_years: 10.0
 # =============================================================================
 # SECTION 5: OPTIMIZATION CONSTRAINTS (for current or future portfolio construction)
 # =============================================================================
-# В процентах: можно вводить как 15%, так и 0.15. null допустим до ввода значений.
-# rc_block_targets: { block_name: target_share } или null.
+# В процентах: можно вводить как 15%, так и 0.15.
+# rc_block_targets: from client_profile or set manually (Growth, Duration, Inflation); sum = 1.0.
+# If rc_asset_cap_pct or max_single_security_weight_pct or min_single_security_weight_pct is null or 0,
+# values are taken from docs/docs/feasibility_constraints_spec.md (formulas by N, Nc, Ns, RB).
 
 rc_asset_cap_pct: null
 rc_block_targets: null
 max_single_security_weight_pct: null
 min_single_security_weight_pct: null
+
+N_rc: 3
+growth_core_candidates: ["VOO", "VT"]
+# Donor (Shift Mode): proportional or equal — you can set equal.
+donor_shift_mode: proportional
 
 # =============================================================================
 # SECTION 6: ANALYSIS SETTINGS

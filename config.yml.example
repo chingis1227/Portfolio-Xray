@@ -12,9 +12,25 @@ investor_currency: USD
 initial_investable_amount: 1000
 liquidity_need: 0
 
+# ---------- Liquidity (life floor): liquidity_amount = liquidity_need_months × monthly_expenses ----------
+# Months of expenses to cover (0 = life floor off). Any non-negative number, including decimal (e.g. 2, 2.5).
+liquidity_need_months: 0
+# Monthly expenses in investor_currency. Used only if liquidity_need_months > 0.
+monthly_expenses: 0
+# Current portfolio market value in investor_currency. If null or not set, initial_investable_amount is used.
+portfolio_value: null
+
+# ---------- Cash policy (choose one) ----------
+# allowed_for_scaling (default) | required_floor | prohibited
+# - allowed_for_scaling: floor may be 0; cash can be used for vol scaling toward target_vol_annual.
+# - required_floor: cash at least liquidity floor; vol-scaling cash allowed.
+# - prohibited: no cash; TargetVol only via RiskPortfolio restructuring.
+cash_policy: allowed_for_scaling
+
 # =============================================================================
 # SECTION 2: RISK-FREE AND BENCHMARK
 # =============================================================================
+# cash_proxy_ticker: from investor_currency (e.g. BIL for USD, PEU for EUR). Set explicitly or by default.
 
 risk_free_source: FRED:DTB3
 cash_proxy_ticker: BIL
@@ -24,6 +40,9 @@ beta_local_mapping: {}
 # =============================================================================
 # SECTION 3: PORTFOLIO TICKERS AND WEIGHTS
 # =============================================================================
+# tickers: list of instruments (you set this). Can be kept in sync with blocks (union of Growth + Duration + Inflation).
+# blocks: role mapping. Fill tickers per block; N, Nc, Ns and k_block are derived from this for feasibility/optimization.
+# weights: do not set by hand. Produced by optimization; export and save here after optimization.
 
 tickers:
   - VOO
@@ -32,16 +51,40 @@ tickers:
   - BND
   - VT
 
-weights:
-  VOO: 0.1
-  QQQ: 0.2
-  GLD: 0.3
-  BND: 0.2
-  VT: 0.2
+# Growth_HY: sub-block of Growth (High Yield); RC_vol(HY) ≤ 10% × RC_vol(Growth).
+# Growth_EM_debt: sub-block of Growth (EM Debt); RC_vol(EM Debt) ≤ 10% × RC_vol(Growth). Core = e.g. VOO, VT, VTI (growth_core_candidates).
+blocks:
+  Growth: []
+  Growth_HY: [JNK, HYG]
+  # Growth_EM_debt: []   # optional; EM bond ETFs
+  Duration: []
+  Inflation: []
+
+weights: {}
+
+# ---------- Duration / Inflation block selection (docs/docs/optimization_duration_spec.md, optimization_inflation_spec.md) ----------
+# Role tickers are user-provided; at least one per block. Used for candidate scoring (no mean-variance inside D/I).
+# duration_roles: optional; if omitted, Duration universe = blocks.Duration only (no role labels).
+duration_roles:
+  duration_int_ticker: IEF    # intermediate treasuries (null to omit)
+  duration_long_ticker: TLT  # long treasuries (null to omit)
+  duration_ig_ticker: LQD    # investment grade (null to omit)
+
+# inflation_mechanisms: optional; if omitted, Inflation universe = blocks.Inflation, no TIPS/GOLD/COMM floors.
+inflation_mechanisms:
+  tips_ticker: TIP   # CPI protection (null to omit)
+  gold_ticker: GLD   # monetary hedge (null to omit)
+  comm_ticker: PDBC  # commodities / resource shock (null to omit)
 
 # =============================================================================
 # SECTION 4: PORTFOLIO ASSUMPTIONS AND TARGETS
 # =============================================================================
+# client_profile: optional. ultra_conservative | conservative | balanced | growth | aggressive.
+# If set, missing target/rc_block_targets are filled from config/client_profiles.yml. Override manually as needed.
+# Reminder: 1 Ultra Conservative  2 Conservative  3 Balanced  4 Growth  5 Aggressive (full table in Config UI).
+
+client_profile: null
+
 # allow_leverage, allow_short_selling: на выбор true / false.
 # Поля в процентах — можно вводить в процентах (15%) или десятичной дробью (0.15):
 #   min_acceptable_return, target_nominal_return_annual, target_vol_annual,
@@ -59,13 +102,23 @@ horizon_years: 10.0
 # =============================================================================
 # SECTION 5: OPTIMIZATION CONSTRAINTS
 # =============================================================================
-# В процентах: можно вводить как 15%, так и 0.15. null допустим до ввода значений.
-# rc_block_targets: { "Growth": 0.6, "Duration": 0.3 } или null.
+# rc_block_targets: from client_profile or set manually (Growth, Duration, Inflation); sum = 1.0.
+# If rc_asset_cap_pct or max_single_security_weight_pct or min_single_security_weight_pct is null or 0,
+# values are taken from docs/docs/feasibility_constraints_spec.md (formulas by N, Nc, Ns, RB).
 
-rc_asset_cap_pct: null   # to be provided later by user
+rc_asset_cap_pct: null
 rc_block_targets: null
-max_single_security_weight_pct: null   # to be provided later by user
-min_single_security_weight_pct: null   # to be provided later by user
+# Stress test: Top3 RC sum cap (default 0.70 = 70%). See docs/docs/stress_testing_spec.md.
+stress_top3_rc_sum_cap_pct: 0.70
+max_single_security_weight_pct: null
+min_single_security_weight_pct: null
+
+# Alpha-shift (when cash_policy = prohibited and vol > target_vol_annual): top N_rc donors by RC_vol.
+N_rc: 3
+# Recipient order for weight shift: first VOO, else VT, else lowest-vol in Duration/Inflation.
+growth_core_candidates: ["VOO", "VT"]
+# Donor (Shift Mode): proportional or equal — you can set equal.
+donor_shift_mode: proportional
 
 # =============================================================================
 # SECTION 6: ANALYSIS SETTINGS

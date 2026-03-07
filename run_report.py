@@ -62,6 +62,7 @@ from src.io_export import (
     export_rc_vol_csv,
     export_run_metadata,
     export_correlation_matrix_csv,
+    export_stress_report,
     save_inputs,
 )
 from src.metrics_asset import asset_metrics_one_window
@@ -70,6 +71,12 @@ from src.portfolio_dynamic import portfolio_returns_nan_safe, dynamic_weights_ma
 from src.resample import to_month_end
 from src.returns import simple_returns, log_returns, simple_returns_df, log_returns_df
 from src.risk_contrib import rc_vol_window, cov_matrix_monthly
+from src.stress import run_stress
+from src.stress_factors import (
+    build_factor_matrix_monthly,
+    estimate_betas_monthly,
+    portfolio_factor_betas,
+)
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger
 from src.windows import get_analysis_end, slice_window
 
@@ -137,6 +144,14 @@ def main() -> None:
     # Log pending config items
     if cfg.pending_fields:
         logger.info(f"Поля конфигурации, ожидающие ввода пользователя: {cfg.pending_fields}")
+    
+    # Weights are produced by optimization (option B); config must have them before running the report
+    if not cfg.weights:
+        logger.error(
+            "Portfolio weights are not set. Weights are produced by optimization (constraints + client metrics). "
+            "Run the optimization step first and export weights to config, or provide weights in config.yml for backward compatibility."
+        )
+        raise SystemExit(1)
     
     assets_meta = load_assets_metadata()
     
@@ -464,7 +479,43 @@ def main() -> None:
         export_correlation_matrix_csv(corr_matrix, wm, output_dir)
 
     # =========================================================================
-    # STEP 10: Export run metadata
+    # STEP 10: Stress testing (per docs/docs/stress_testing_spec.md)
+    # =========================================================================
+    
+    beta_window_months = 36
+    analysis_end_ts = pd.Timestamp(analysis_end_str)
+    beta_start = (analysis_end_ts - pd.DateOffset(months=beta_window_months)).strftime("%Y-%m-%d")
+    try:
+        factor_monthly = build_factor_matrix_monthly(beta_start, analysis_end_str)
+        asset_returns_for_beta = monthly_returns[[t for t in tickers if t in monthly_returns.columns]].copy()
+        asset_betas_df = estimate_betas_monthly(
+            asset_returns_for_beta,
+            factor_monthly,
+            min_observations=24,
+        )
+        portfolio_betas_dict = portfolio_factor_betas(weights, asset_betas_df)
+    except Exception as e:
+        logger.warning(f"Stress factor/beta setup failed: {e}; stress report may use block fallback only.")
+        asset_betas_df = pd.DataFrame()
+        portfolio_betas_dict = {}
+
+    stress_top3_cap = getattr(cfg, "stress_top3_rc_sum_cap_pct", 0.70) or 0.70
+    stress_report = run_stress(
+        tickers=tickers,
+        weights=weights,
+        blocks=cfg.blocks,
+        monthly_returns=monthly_returns,
+        asset_betas=asset_betas_df,
+        portfolio_betas=portfolio_betas_dict,
+        target_max_drawdown_pct=cfg.target_max_drawdown_pct,
+        rc_asset_cap_pct=cfg.rc_asset_cap_pct,
+        stress_top3_rc_sum_cap_pct=stress_top3_cap,
+    )
+    export_stress_report(stress_report, output_dir)
+    logger.info(f"Stress status: {stress_report.get('status', 'N/A')}")
+
+    # =========================================================================
+    # STEP 11: Export run metadata
     # =========================================================================
     
     derived_assumptions = build_derived_assumptions(
@@ -483,13 +534,14 @@ def main() -> None:
         analysis_end_str,
         run_timestamp,
         portfolio_metrics_summary,
+        stress_report=stress_report,
     )
 
     # Cleanup old cache versions (keep last 3)
     cleanup_old_cache(keep_versions=3)
 
     # =========================================================================
-    # STEP 11: Print summary
+    # STEP 12: Print summary
     # =========================================================================
     
     print("\nDone. Outputs in", output_dir)
@@ -497,6 +549,7 @@ def main() -> None:
     print("  portfolio_metrics_3y.csv, _5y.csv, _10y.csv")
     print("  rc_vol_3y.csv, _5y.csv, _10y.csv")
     print("  correlation_matrix_3y.csv, _5y.csv, _10y.csv")
+    print("  stress_report.json")
     print("  run_metadata.json")
     print("  inputs/ (monthly_prices, monthly_returns, rf, benchmark, cash, fx)")
     

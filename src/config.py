@@ -14,6 +14,7 @@ from typing import Any
 
 import yaml
 
+from src.client_profiles import apply_profile_to_config
 from src.config_schema import (
     ConfigValidationError,
     PortfolioConfig,
@@ -39,11 +40,12 @@ def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
 def load_validated_config(config_path: str | Path | None = None) -> PortfolioConfig:
     """
     Load config from config.yml and validate it.
-    
+    If client_profile is set, missing target/risk_budget fields are filled from that profile (midpoints).
     Returns a strongly-typed PortfolioConfig object.
     Raises ConfigValidationError if validation fails.
     """
     raw = load_config(config_path)
+    raw = apply_profile_to_config(raw)
     return validate_config(raw)
 
 

@@ -1,15 +1,20 @@
 {
   "run_info": {
-    "timestamp": "2026-03-07T11:02:57.547576",
+    "timestamp": "2026-03-07T15:17:32.488282",
     "analysis_end_date": "2026-02-28"
   },
   "resolved_config": {
-    "investor_currency": "USD",
+    "investor_currency": "EUR",
     "initial_investable_amount": 1000,
-    "liquidity_need": 0,
-    "risk_free_source": "FRED:DTB3",
-    "cash_proxy_ticker": "BIL",
-    "base_benchmark_ticker": "SPY",
+    "liquidity_need": 600,
+    "liquidity_need_months": 2.0,
+    "monthly_expenses": 300,
+    "portfolio_value": null,
+    "cash_policy": "allowed_for_scaling",
+    "client_profile": "Balanced",
+    "risk_free_source": "ECB:€STR",
+    "cash_proxy_ticker": "PEU",
+    "base_benchmark_ticker": "VGK",
     "beta_local_mapping": {},
     "tickers": [
       "VOO",
@@ -18,6 +23,17 @@
       "BND",
       "VT"
     ],
+    "blocks": {
+      "Growth": [],
+      "Duration": [],
+      "Inflation": [],
+      "Growth_HY": [
+        "JNK",
+        "HYG"
+      ],
+      "Liquidity": [],
+      "Tail": []
+    },
     "weights": {
       "VOO": 0.1,
       "QQQ": 0.2,
@@ -28,14 +44,25 @@
     "allow_leverage": false,
     "allow_short_selling": false,
     "min_acceptable_return": null,
-    "target_nominal_return_annual": 0.1,
-    "target_vol_annual": 0.15,
-    "target_max_drawdown_pct": -0.3,
+    "target_nominal_return_annual": 0.06,
+    "target_vol_annual": 0.085,
+    "target_max_drawdown_pct": -0.2,
     "horizon_years": 10.0,
     "rc_asset_cap_pct": null,
-    "rc_block_targets": null,
+    "rc_block_targets": {
+      "Growth": 0.5,
+      "Duration": 0.38888888888888884,
+      "Inflation": 0.11111111111111112
+    },
+    "stress_top3_rc_sum_cap_pct": 0.7,
     "max_single_security_weight_pct": null,
     "min_single_security_weight_pct": null,
+    "N_rc": 3,
+    "growth_core_candidates": [
+      "VOO",
+      "VT"
+    ],
+    "donor_shift_mode": "proportional",
     "windows_months": [
       36,
       60,
@@ -45,19 +72,19 @@
     "output_dir": "output"
   },
   "active_assumptions": {
-    "investor_currency": "USD",
+    "investor_currency": "EUR",
     "initial_investable_amount": 1000,
-    "rf_source": "FRED:DTB3",
-    "cash_proxy_ticker": "BIL",
-    "benchmark_base_ticker": "SPY",
+    "rf_source": "ECB:€STR",
+    "cash_proxy_ticker": "PEU",
+    "benchmark_base_ticker": "VGK",
     "min_acceptable_return": null,
-    "target_nominal_return_annual": 0.1,
+    "target_nominal_return_annual": 0.06,
     "allow_leverage": false,
     "allow_short_selling": false
   },
   "derived_assumptions": {
-    "resolved_cash_proxy_ticker": "BIL",
-    "resolved_rf_source": "FRED:DTB3",
+    "resolved_cash_proxy_ticker": "PEU",
+    "resolved_rf_source": "ECB:€STR",
     "resolved_local_benchmark_map": {
       "VOO": "SPY",
       "QQQ": "SPY",
@@ -80,28 +107,59 @@
     "description": "Constraints/reference inputs for current or future portfolio construction. rc_asset_cap_pct, max_single_security_weight_pct, min_single_security_weight_pct will receive final numeric values later from the user; the system already supports them as config fields and passes them through all relevant layers.",
     "fields": {
       "rc_asset_cap_pct": null,
-      "rc_block_targets": null,
+      "rc_block_targets": {
+        "Growth": 0.5,
+        "Duration": 0.38888888888888884,
+        "Inflation": 0.11111111111111112
+      },
+      "stress_top3_rc_sum_cap_pct": 0.7,
+      "blocks": {
+        "Growth": [],
+        "Duration": [],
+        "Inflation": [],
+        "Growth_HY": [
+          "JNK",
+          "HYG"
+        ],
+        "Liquidity": [],
+        "Tail": []
+      },
       "max_single_security_weight_pct": null,
       "min_single_security_weight_pct": null,
-      "target_vol_annual": 0.15,
-      "target_max_drawdown_pct": -0.3,
+      "target_vol_annual": 0.085,
+      "target_max_drawdown_pct": -0.2,
       "horizon_years": 10.0,
-      "liquidity_need": 0
+      "liquidity_need": 600,
+      "liquidity_need_months": 2.0,
+      "monthly_expenses": 300,
+      "portfolio_value": null,
+      "cash_policy": "allowed_for_scaling",
+      "N_rc": 3,
+      "growth_core_candidates": [
+        "VOO",
+        "VT"
+      ],
+      "donor_shift_mode": "proportional"
     }
   },
   "pending_user_input": {
     "description": "Config items that still need final user values (to be provided later by user)",
     "fields": {
       "rc_asset_cap_pct": null,
-      "rc_block_targets": null,
       "max_single_security_weight_pct": null,
       "min_single_security_weight_pct": null
     }
   },
+  "stress_test": {
+    "status": "FAIL_STRESS",
+    "worst_scenario_loss_pct": -0.212,
+    "failed_scenario": "equity_shock",
+    "failed_test": "Loss"
+  },
   "target_comparison": {
-    "target_nominal_return_annual": 0.1,
-    "realized_cagr": 0.13546960742534364,
-    "difference": 0.035469607425343636,
+    "target_nominal_return_annual": 0.06,
+    "realized_cagr": 0.11234574761614713,
+    "difference": 0.05234574761614713,
     "target_achieved": "True"
   }
 }

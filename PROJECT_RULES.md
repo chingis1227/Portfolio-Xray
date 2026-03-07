@@ -1,6 +1,8 @@
 # Project Rules — Portfolio Metrics Standard
 
-Always follow metrics_specification.md for all metric definitions, estimators, frequency, FX, and windowing. Do not invent formulas.
+Always follow metrics_specification.md for all metric definitions, estimators, frequency, FX, and windowing. Do not invent formulas. For stress testing (scenarios, Loss/Role/RC tests, factor and historical validation), use **docs/docs/stress_testing_spec.md** as the source of truth.
+
+**Portfolio weights** are the output of optimization (constraints + client metrics), not user input. Do not require or encourage manual weight entry in config; weights are exported after optimization and can be saved to config.
 
 ## Frequency standard
 

@@ -30,6 +30,71 @@ A key assumption for honest risk assessment is that **correlations within the Gr
 
 This means that multiple equity ETFs inside the Growth block do **not** meaningfully diversify tail risk during crises, because they tend to fall together. Their purpose is different: they may diversify **sources of return over time** (different factors, styles, or segments), but they should never be treated as protection against extreme downside events.
 
+
+## 1.1 Core System Rules
+
+**One instrument = one home.**  
+Each ETF or instrument belongs to exactly one block: Growth, Duration, Inflation, Liquidity, or Tail.  
+Reassigning an instrument to a different block is only possible by changing the inputs and rebuilding the system.
+
+**No manual weight adjustments.**  
+Final portfolio weights are **produced by optimization** (constraints, client metrics, optimization specs); they must not be set by hand in config. After optimization runs, weights can be exported and saved (e.g. to config for the next run). Any change to the portfolio must be implemented through changes in the input parameters (mandate, risk budget, caps, asset universe, cash_policy) followed by a full system rebuild. The **only permitted exception** is applying a PM view (tilt) via the protocol defined in **docs/docs/view_after_optimization_spec.md** ("Add My View After Optimization"): the system executes the requested tilt deterministically, may auto-shrink the tilt if gates fail, and always reports the outcome; manual editing of final weights remains prohibited.
+
+**Optimization by roles, not by regimes.**  
+Market regimes are not predicted or optimized for.  
+They are used only as a diagnostic judge through stress testing, hedge degradation checks, and risk budget calibration.
+
+**Mandate has absolute priority.**  
+TargetVol and Max Drawdown (optionally ES/CVaR) are hard constraints.  
+They cannot be overridden by optimization, covariance estimates, or backtest results.
+
+**Risk budget defines the architecture.**  
+The distribution of risk between Growth, Duration, and Inflation is determined at the risk budget level.  
+Optimization within blocks cannot alter the predefined block risk shares.
+
+**Risk budget and RC are calculated only on RiskPortfolio.**  
+Risk budgeting and RC_vol calculations are performed only on:
+
+RiskPortfolio = Growth + Duration + Inflation
+
+Liquidity (BIL / short T-bills) and Tail overlays are excluded from the risk budget and must not dilute RC signals.
+
+**RC_vol cap has absolute priority.**  
+When constraints conflict, RC_vol caps override weight caps.  
+If a weight cap allows the current allocation but the RC cap is violated, the weight must be reduced until the RC constraint is satisfied.
+
+**No “risk diversification optimization” inside Growth.**  
+Under stress conditions, correlations within the Growth block should be treated as approximately 1.  
+Different Growth instruments diversify sources of return over time but do not meaningfully reduce tail risk.
+
+**Duration is a conditional hedge.**  
+If real yields rise significantly or the correlation corr(Growth, Duration) becomes persistently positive, the defensive function of Duration is considered degraded.  
+In such cases, the standard “Growth ranges for MaxDD” lose validity and the defensive architecture must be rebuilt, typically through adjustments to Duration, Inflation exposure, and liquidity.
+
+**Liquidity has two separate functions and must not be mixed.**
+
+Life Liquidity Floor  
+A minimum structural cash buffer designed to cover financial obligations and avoid forced selling during drawdowns.
+
+Vol-Scaling Cash  
+Technical cash used only to reduce portfolio volatility toward TargetVol when the cash policy allows it.
+
+**Leverage (prohibited by default).**  
+The base policy of the system assumes no leverage.  
+If current volatility is below TargetVol, risk is not increased through leverage; instead, vol-scaling cash is reduced or eliminated.  
+Leverage may only be enabled as a separate mandate regime with explicit limits, activation rules, and additional Stress Judge validation.
+
+**If cash is prohibited, risk reduction occurs through RiskPortfolio restructuring.**  
+In this case, the adjustment process is deterministic: assets with the highest RC_vol (top RC donors) are reduced, and weight is transferred to a predefined recipient (VOO/VT or the lowest-volatility assets within Duration and Inflation) until TargetVol is satisfied while respecting minimum weight constraints.
+
+**Tail overlay is not a return driver.**  
+Tail positions are distribution insurance.  
+They are maintained at small weights, expected to have negative carry in normal environments, and are held purely for convexity during crisis events.
+
+**MaxDD honesty rule.**  
+If the investor cannot psychologically tolerate the declared Max Drawdown, the mandate itself is invalid.  
+In such a case, the portfolio will fail during the first severe stress event regardless of how attractive the model appears statistically.
+
 ## 2. Rule Hierarchy
 
 When rules conflict, the system always applies them **from top to bottom**.  
@@ -93,6 +158,8 @@ Purpose: enforce structural constraints related to:
 
 Rule: weight caps and minimum weights are applied **only after RC caps are satisfied** and must never cause RC constraints to be violated.
 
+Specific formulas and achievement tests for these constraints are set in **docs/docs/feasibility_constraints_spec.md** (no duplication here).
+
 ---
 
 ### 2.6 Optimization
@@ -105,6 +172,13 @@ Rule: optimization is an **execution tool**, not a decision authority. It cannot
 - modify block risk budgets,
 - override the Stress Judge verdict,
 - violate RC caps or weight caps/minimums.
+
+---
+
+### 2.7 Data Policy, NaN, Young ETFs and Dynamic Backtest
+
+For **data policy**, handling of **NaN**, treatment of **young ETFs**, the **dynamic NaN-safe backtest** (within-block equal redistribution, RC-gated fallback to cash), and **baseline vs full** reporting, see **docs/data_policy_nan_young_etfs.md**.  
+That document is the source of truth for: no rewriting of history, join policy (inner for cov/RC, outer for single-asset charts), inclusion from first full monthly point, and mandatory report items (inception dates, NaN policy, comparison period).
 
 ---
 
@@ -265,29 +339,32 @@ For this reason, Growth assets are **not treated as sources of portfolio hedging
 
 ---
 
-**Structure and sub-blocks**
+**Composition and sub-blocks (all instruments belong only here)**
 
-All instruments that primarily express **equity-like risk** belong to the Growth block.
-
-These include the following subcategories:
+Within the Growth block, all instruments are classified as follows. **Core** is the only non-satellite sub-block; everything else are **Satellites**.
 
 **Broad Equity (Core Index)**  
-Broad market equity ETFs representing the core equity risk premium of the market.
+Wide index equity ETF as the base carrier of the market risk premium. Core candidates include, for example, **VOO**, **VT**, **VTI** (and any other broad market index ETF designated as Core in config).
 
-**Quality / Dividend Equity**  
-Equity strategies emphasizing quality companies, stable profitability, and dividend characteristics.  
-These exposures represent a relatively more defensive form of equity risk within the Growth block.
+**Satellites** (all other Growth instruments):
 
-**High Growth / Thematic Equity**  
-High-beta segments or thematic exposures that amplify upside potential, typically at the cost of increased volatility and tail risk.
+- **Quality / Dividend Equity** — Equity with a focus on quality, sustainable profitability, and dividend profile; a more “defensive” form of equity risk within Growth.
+- **High Growth / Thematic** — High-beta segments and thematic exposures that amplify upside at the cost of tail risk.
+- **Credit Beta (High Yield + EM Debt)** — High-yield bonds and EM debt as equity-like credit: in credit cycle deterioration they behave similarly to equities and can amplify drawdowns.
+- **Crypto / Optionality** — Limited optionality within Growth (asymmetry, but high volatility and tail risk).
 
-**Credit Beta (High Yield)**  
-High-yield bonds are treated as **equity-like credit exposure**.  
-During credit cycle deterioration, high-yield bonds tend to behave similarly to equities and can amplify portfolio drawdowns.
+**Risk limits within Growth (RC)**  
+High Yield risk within Growth is limited via risk contribution:
 
-**Crypto / Optionality**  
-A limited allocation to crypto assets may be included as **optionality within the Growth block**.  
-This exposure introduces asymmetric upside potential but also extremely high volatility and tail risk.
+- **RC_vol(HY) ≤ 10% × RC_vol(Growth block)**  
+  (sum of RC_vol over all High Yield assets in the Growth block must not exceed 10% of the total RC_vol of the Growth block.)
+
+The same cap applies to **EM Debt** within Growth:
+
+- **RC_vol(EM Debt) ≤ 10% × RC_vol(Growth block)**  
+  (sum of RC_vol over all EM Debt assets in the Growth block must not exceed 10% of the total RC_vol of the Growth block.)
+
+See **docs/docs/feasibility_constraints_spec.md** for definitions of Growth_HY and Growth_EM_debt sub-blocks and formulas.
 
 ---
 
@@ -299,6 +376,9 @@ Because correlations between Growth assets tend to converge during crises, multi
 
 Instead, diversification within Growth primarily provides **diversification of return sources over time** (different factors, styles, or sectors), rather than protection during systemic market stress.
 
+**Growth optimization rule.** The objective and constraints for optimizing weights within the Growth block are defined in **docs/docs/optimization_growth_spec.md**. In short: maximize expected return of the Growth block; Growth risk budget is fixed; optimization must not target "risk diversification" within Growth, because in stress intra-Growth correlations tend to 1.
+
+---
 
 ### 5.2 Duration
 
@@ -351,6 +431,10 @@ In such cases, the defensive architecture must be re-evaluated, potentially invo
 - increased structural liquidity,
 - or the introduction of additional overlays.
 
+**Duration block selection rule.** The objective and procedure for choosing the internal composition of the Duration block (candidate scoring by downside hedge and worst-Growth-month performance, no mean-variance) are defined in **docs/docs/optimization_duration_spec.md**.
+
+---
+
 ### 5.3 Inflation
 
 **Purpose of the Inflation block**
@@ -386,6 +470,8 @@ Gold always belongs to the Inflation block and serves as a monetary hedge during
 **Resource Shock Protection (Broad Commodities / Industrial Metals)**  
 Commodity exposure protects the portfolio in scenarios involving resource shortages, supply shocks, or rising commodity-driven inflation.
 
+**Inflation block selection rule.** The objective and procedure for choosing the internal composition of the Inflation block (candidate scoring by Type1/Type2 stress windows and tail filter, no mean-variance) are defined in **docs/docs/optimization_inflation_spec.md**.
+
 ---
 
 **Key construction rule**
@@ -399,6 +485,7 @@ This is because the block represents **three distinct protection mechanisms**:
 - resource shock protection (commodities / metals)
 
 These mechanisms are **not interchangeable** and each provides protection under different types of inflationary stress.
+
 
 ### 5.4 Liquidity
 
@@ -435,15 +522,234 @@ As a result:
 - both **risk budgeting and RC_vol calculations are performed only on the RiskPortfolio**, defined as:
 
 Growth + Duration + Inflation
-
 These calculations are performed **before any cash allocation is added to the portfolio**.
+
+---
+
+**Liquidity Structure: Life Liquidity vs Technical Cash**
+
+The Liquidity block can serve two distinct purposes that must be clearly separated in the system:
+
+1) **Life Liquidity (Liquidity Floor)**  
+2) **Volatility Scaling Cash (Technical Cash)**
+
+These functions serve different objectives and must not be confused.
+
+---
+
+**Life Liquidity (Liquidity Floor)**
+
+Life Liquidity represents a **structural reserve of cash-like assets** intended to cover living expenses or external obligations.
+
+The goal is to ensure that the investor **does not become a forced seller of risky assets during drawdowns or market crises**.
+
+Key characteristics:
+
+- The liquidity floor is determined by **real financial needs**, not portfolio optimization.
+- It represents a **minimum structural allocation to cash-like instruments**.
+- This allocation is independent from portfolio volatility management.
+
+Typical inputs may include:
+
+- number of months of expenses to cover,
+- estimated monthly expenses,
+- current portfolio value.
+
+(Config: liquidity_need_months, monthly_expenses, portfolio_value; if portfolio_value is not set, initial_investable_amount is used.)
+
+If no life-liquidity requirement exists, the liquidity floor may be set to zero.
+
+---
+
+**Volatility Scaling Cash (Technical Cash)**
+
+In addition to life liquidity, cash may be used as a **technical tool to control total portfolio volatility**.
+
+This function exists only when allowed by the portfolio's **cash policy**.
+
+In this case:
+
+- the system may temporarily allocate a portion of the portfolio to cash-like instruments,
+- the objective is to reduce total portfolio volatility toward **TargetVol**,
+- this cash allocation is purely **risk-management driven**, not related to living expenses.
+
+---
+
+**Cash Policy**
+
+The behavior of liquidity in the system is controlled by a configurable **cash policy**.
+
+The cash policy determines whether cash is:
+
+- mandatory as a structural floor,
+- allowed as a volatility management tool,
+- or completely prohibited.
+
+Typical policy modes include:
+
+- **required_floor**  
+  The portfolio must maintain at least the life-liquidity floor.  
+  Additional cash may be used for volatility scaling.
+
+- **allowed_for_scaling**  
+  The life-liquidity floor may be zero.  
+  Cash can still be used for volatility scaling if needed.
+
+- **prohibited**  
+  Cash allocations are not allowed.  
+  Portfolio volatility must be controlled **only by restructuring the RiskPortfolio** (Growth, Duration, Inflation).
+
+---
+
+**Portfolio Construction Order**
+
+Liquidity is applied **after** the RiskPortfolio is constructed.
+
+The sequence is therefore:
+
+1. Construct the RiskPortfolio using the blocks:
+   Growth + Duration + Inflation.
+
+2. Compute portfolio risk metrics (volatility, RC_vol, etc.) using only the RiskPortfolio.
+
+3. Apply liquidity rules according to the cash policy.
+
+4. If cash is used, the final portfolio becomes a combination of:
+
+RiskPortfolio + Liquidity
+
+This ordering ensures that **cash does not distort risk budgeting or risk contribution calculations**.
 
 ### 5.5 Tail Overlay
 
-## 6. Risk Budget Rules
-## 7. RC_vol and Weight Cap Rules
-## 8. Feasibility Layer
-## 9. Policy Profiles
-## 10. Stress Testing Rules
-## 11. Stress Pass/Fail Criteria
-## 12. Required Output
+The Tail overlay represents **distribution insurance rather than a source of return**.  
+It is added on top of the core portfolio blocks and is designed to protect against rare but destructive events when correlations between risk assets approach 1 and traditional hedges stop functioning.
+
+The typical allocation to the Tail overlay is **0.5–2% of the portfolio**.  
+It is **excluded from the risk budget** and is not treated as a driver of expected portfolio return.
+
+Typical instruments include **long volatility strategies**, as well as **protective puts or put spreads**.
+
+The economics of the Tail overlay are interpreted as an **insurance premium**:  
+under normal market conditions it usually generates negative carry, but during panic phases it provides **convexity** and helps reduce the depth of portfolio drawdowns.
+
+## 6. Sanity Check vs Policy Portfolio
+
+The system distinguishes between the **Policy Portfolio** and a set of **baseline diagnostic portfolios**.
+
+The **Policy Portfolio** is the only portfolio that is intended for implementation and rebalancing.  
+It is constructed according to the full system architecture: mandate constraints, block roles, risk budgeting across blocks, risk concentration limits, structural constraints, and optimization used strictly as an execution tool.
+
+Alongside the Policy Portfolio, the system constructs a set of **baseline reference portfolios** built on the same universe of risk assets. These baseline portfolios are not intended for investment and are used exclusively for diagnostic comparison.
+
+Typical baseline constructions include:
+
+- an **equal-weight portfolio**, where all risk assets receive the same capital allocation,
+- a **risk-parity portfolio**, where risk contributions are balanced across assets.
+
+These baseline portfolios serve as neutral reference points. Their purpose is to provide transparency regarding what the chosen architecture of the Policy Portfolio adds in terms of performance, risk structure, and stress resilience.
+
+The system therefore evaluates the Policy Portfolio relative to these baselines across key dimensions such as return characteristics, volatility behavior, drawdown profile, stress-test outcomes, and concentration of risk across assets and blocks.
+
+This comparison ensures that the structural decisions embedded in the Policy Portfolio are intentional and that any additional complexity introduced by the architecture is justified by improved robustness or return characteristics.
+
+
+## 7. Risk Budget Orientation
+
+Risk budgeting defines the **strategic distribution of risk across the core portfolio blocks**.
+
+Only blocks that represent active sources of portfolio risk participate in the risk budget.  
+These blocks are typically:
+
+- Growth
+- Duration
+- Inflation
+
+Liquidity and Tail overlays are not considered active risk sources and therefore do not participate in risk budgeting.
+
+The purpose of the risk budget is to define the **architectural balance of risk** within the portfolio.  
+It determines which block is expected to carry the primary exposure to market risk and which blocks are responsible for stabilizing the system under adverse conditions.
+
+Different investor profiles imply different orientations of the risk budget.  
+More conservative profiles allocate a larger share of risk to defensive blocks, while more growth-oriented profiles concentrate risk more heavily in the Growth block.
+
+These orientations represent **strategic profiles**, not deterministic allocations.  
+They serve as starting frameworks for portfolio construction and must always be validated through stress testing and structural risk analysis.
+
+
+## 8. Max Drawdown Interpretation
+
+Maximum drawdown represents the **upper bound of acceptable portfolio pain**, but it cannot be mechanically translated into a fixed allocation to the Growth block.
+
+Tables linking drawdown targets directly to equity exposure should therefore be interpreted only as **initial hypotheses**, not as deterministic rules.
+
+The actual drawdown behavior of a portfolio depends primarily on the effectiveness of its defensive architecture.  
+Several structural factors determine the true drawdown profile, including:
+
+- the current correlation structure between the portfolio blocks,
+- whether the Duration block is functioning as a genuine hedge,
+- the quality and composition of the Inflation block,
+- the size and role of Liquidity and Tail overlays.
+
+If defensive blocks degrade or lose their hedging properties—for example due to rising real yields or structural correlation shifts—the previously assumed relationship between Growth exposure and drawdown risk may no longer hold.
+
+In such situations, the appropriate response is not to rely on static allocation ranges but to **rebuild the defensive architecture** of the portfolio.
+
+
+## 9. Stress Testing Framework
+
+Stress testing is a central validation tool of the system.  
+Its purpose is to evaluate whether the portfolio architecture remains functional under severe but plausible adverse conditions.
+
+The portfolio must be evaluated across a set of predefined stress environments that represent different forms of systemic pressure on financial markets.
+
+These stress environments include shocks to equity markets, credit markets, interest rates, inflation dynamics, and market liquidity conditions.
+
+The goal of stress testing is not to forecast future events but to verify that the portfolio structure can survive a range of adverse scenarios without violating mandate constraints or losing its internal defensive logic.
+
+Stress testing therefore functions as a **structural judge of portfolio robustness**, not as a predictive model.
+
+
+## 10. Stress Validation Logic
+
+A portfolio configuration is considered to pass the stress framework only if several conditions are simultaneously satisfied.
+
+First, the simulated portfolio loss must remain within the limits defined by the mandate.  
+If a stress scenario implies losses beyond the maximum acceptable drawdown threshold, the configuration must be considered invalid.
+
+Second, the defensive blocks of the portfolio must perform their intended roles.  
+In environments where Growth assets suffer significant declines, at least one defensive mechanism must provide stabilization.
+
+Third, the portfolio must avoid excessive concentration of risk.  
+Stress environments often cause correlations between risk assets to increase, and the system therefore verifies that risk concentration does not become dominated by a small number of positions.
+
+Failure of any of these conditions indicates that the portfolio architecture is not sufficiently robust and must be reconsidered.
+
+
+## 11. Factor Exposure Diagnostics
+
+In addition to scenario-based stress tests, the system evaluates the portfolio's sensitivity to key macro-financial factors.
+
+These factor diagnostics help identify whether the portfolio has unintended exposures to major market drivers such as equity markets, real interest rates, inflation shocks, credit spreads, or currency movements.
+
+Factor analysis does not automatically invalidate a portfolio configuration.  
+However, extreme or unintended sensitivities may indicate structural weaknesses that require further review.
+
+Where explicit limits for factor exposures are defined by policy, violations must trigger a stress warning or failure condition depending on severity.
+
+
+## 12. Stress Evaluation Outcome
+
+The stress testing process produces a clear evaluation of the portfolio's structural robustness.
+
+The result of the stress evaluation can fall into one of several categories:
+
+- **Pass**, indicating that the portfolio satisfies mandate limits, defensive roles remain functional, and risk concentration remains acceptable.
+- **Pass with warning**, indicating that the portfolio remains within mandate limits but exhibits structural sensitivities that require monitoring or manual review.
+- **Fail**, indicating that the portfolio violates one or more critical constraints and must be restructured before implementation.
+
+When the **View After Optimization** protocol (docs/docs/view_after_optimization_spec.md) is used, stress failure must be reported with a **specific scenario code**, not a generic "Fail": **FAIL_STRESS_DURATION**, **FAIL_STRESS_INFLATION**, **FAIL_STRESS_LIQUIDITY**, or (if applicable) **FAIL_STRESS_TAIL**, so that the tilt outcome and broken gate are auditable.
+
+The final stress report documents the most severe scenario losses, the dominant contributors to portfolio risk, and the key sources of vulnerability observed during the stress analysis.
+
+This reporting ensures that portfolio decisions remain transparent and that the structural consequences of the chosen architecture are fully understood.

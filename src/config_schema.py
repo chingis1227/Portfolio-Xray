@@ -14,6 +14,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from src.client_profiles import normalize_rc_block_targets
+
 
 class ConfigValidationError(Exception):
     """Raised when config validation fails."""
@@ -33,8 +35,15 @@ class PortfolioConfig:
     initial_investable_amount: float
     liquidity_need: float
     
+    # Liquidity (life floor + cash policy)
+    liquidity_need_months: float
+    monthly_expenses: float
+    portfolio_value: float | None
+    cash_policy: str
+    
     # Portfolio composition
     tickers: list[str]
+    blocks: dict[str, list[str]]  # Growth, Duration, Inflation -> list of tickers; from this N, Nc, Ns, k_block are derived
     weights: dict[str, float]
     
     # Benchmark and risk-free
@@ -52,11 +61,17 @@ class PortfolioConfig:
     target_max_drawdown_pct: float | None
     horizon_years: float | None
     
+    # Client profile (optional): ultra_conservative | conservative | balanced | growth | aggressive
+    client_profile: str | None
     # Optimization constraints (may be pending user input)
     rc_asset_cap_pct: float | None
     rc_block_targets: dict[str, float] | None
+    stress_top3_rc_sum_cap_pct: float | None  # Top3 RC sum limit in stress (default 0.70)
     max_single_security_weight_pct: float | None
     min_single_security_weight_pct: float | None
+    N_rc: int
+    growth_core_candidates: list[str]
+    donor_shift_mode: str
     
     # Analysis settings
     windows_months: list[int]
@@ -76,11 +91,17 @@ class PortfolioConfig:
             "investor_currency": self.investor_currency,
             "initial_investable_amount": self.initial_investable_amount,
             "liquidity_need": self.liquidity_need,
+            "liquidity_need_months": self.liquidity_need_months,
+            "monthly_expenses": self.monthly_expenses,
+            "portfolio_value": self.portfolio_value,
+            "cash_policy": self.cash_policy,
+            "client_profile": self.client_profile,
             "risk_free_source": self.rf_source,
             "cash_proxy_ticker": self.cash_proxy_ticker,
             "base_benchmark_ticker": self.benchmark_base_ticker,
             "beta_local_mapping": self.local_benchmark_map,
             "tickers": self.tickers,
+            "blocks": self.blocks,
             "weights": self.weights,
             "allow_leverage": self.allow_leverage,
             "allow_short_selling": self.allow_short_selling,
@@ -91,8 +112,12 @@ class PortfolioConfig:
             "horizon_years": self.horizon_years,
             "rc_asset_cap_pct": self.rc_asset_cap_pct,
             "rc_block_targets": self.rc_block_targets,
+            "stress_top3_rc_sum_cap_pct": self.stress_top3_rc_sum_cap_pct,
             "max_single_security_weight_pct": self.max_single_security_weight_pct,
             "min_single_security_weight_pct": self.min_single_security_weight_pct,
+            "N_rc": self.N_rc,
+            "growth_core_candidates": self.growth_core_candidates,
+            "donor_shift_mode": self.donor_shift_mode,
             "windows_months": self.windows_months,
             "coverage_threshold": self.coverage_threshold,
             "output_dir": self.output_dir,
@@ -121,23 +146,32 @@ class PortfolioConfig:
         return {
             "rc_asset_cap_pct": self.rc_asset_cap_pct,
             "rc_block_targets": self.rc_block_targets,
+            "stress_top3_rc_sum_cap_pct": self.stress_top3_rc_sum_cap_pct,
+            "blocks": self.blocks,
             "max_single_security_weight_pct": self.max_single_security_weight_pct,
             "min_single_security_weight_pct": self.min_single_security_weight_pct,
             "target_vol_annual": self.target_vol_annual,
             "target_max_drawdown_pct": self.target_max_drawdown_pct,
             "horizon_years": self.horizon_years,
             "liquidity_need": self.liquidity_need,
+            "liquidity_need_months": self.liquidity_need_months,
+            "monthly_expenses": self.monthly_expenses,
+            "portfolio_value": self.portfolio_value,
+            "cash_policy": self.cash_policy,
+            "N_rc": self.N_rc,
+            "growth_core_candidates": self.growth_core_candidates,
+            "donor_shift_mode": self.donor_shift_mode,
         }
 
 
 REQUIRED_FIELDS = [
     "investor_currency",
     "tickers",
-    "weights",
     "benchmark_base_ticker",
     "windows_months",
     "output_dir",
 ]
+# Weights are optional: produced by optimization and exported (see Portfolio Construction Policy).
 
 BOOLEAN_FIELDS = [
     "allow_leverage",
@@ -150,6 +184,7 @@ PERCENT_FIELDS = [
     "target_vol_annual",
     "target_max_drawdown_pct",
     "rc_asset_cap_pct",
+    "stress_top3_rc_sum_cap_pct",
     "max_single_security_weight_pct",
     "min_single_security_weight_pct",
     "coverage_threshold",
@@ -158,8 +193,13 @@ PERCENT_FIELDS = [
 NONNEGATIVE_FIELDS = [
     "initial_investable_amount",
     "liquidity_need",
+    "monthly_expenses",
     "coverage_threshold",
 ]
+
+# portfolio_value validated separately (optional, non-negative when set)
+CASH_POLICY_VALUES = ("required_floor", "allowed_for_scaling", "prohibited")
+DONOR_SHIFT_MODES = ("proportional", "equal")
 
 NUMERIC_FIELDS = [
     "horizon_years",
@@ -169,6 +209,7 @@ MAPPING_FIELDS = [
     "weights",
     "local_benchmark_map",
     "rc_block_targets",
+    "blocks",
 ]
 
 # These constraint fields may be null until the user provides final numeric values.
@@ -186,6 +227,8 @@ CONFIG_KEY_ALIASES = [
     ("base_benchmark_ticker", "benchmark_base_ticker"),
     ("risk_free_source", "rf_source"),
     ("beta_local_mapping", "local_benchmark_map"),
+    ("max_single_asset_weight_pct", "max_single_security_weight_pct"),
+    ("min_single_asset_weight_pct", "min_single_security_weight_pct"),
 ]
 
 
@@ -385,6 +428,63 @@ def _validate_tickers_weights(cfg: dict[str, Any]) -> None:
             )
 
 
+BLOCK_NAMES = ("Growth", "Duration", "Inflation")
+STRESS_BLOCK_NAMES = ("Growth", "Duration", "Inflation", "Liquidity", "Tail")  # for stress report; Growth_HY, Growth_EM_debt → Growth
+GROWTH_HY_KEY = "Growth_HY"  # sub-block of Growth (High Yield); RC_vol(HY) ≤ 10% × RC_vol(Growth)
+GROWTH_EM_DEBT_KEY = "Growth_EM_debt"  # sub-block of Growth (EM Debt); RC_vol(EM Debt) ≤ 10% × RC_vol(Growth)
+
+
+def _normalize_blocks(blocks: dict[str, Any] | None) -> dict[str, list[str]]:
+    """Return blocks with Growth, Duration, Inflation, optional Growth_HY, Growth_EM_debt, Liquidity, Tail; default empty lists if missing."""
+    default = {b: [] for b in BLOCK_NAMES}
+    default[GROWTH_HY_KEY] = []
+    default[GROWTH_EM_DEBT_KEY] = []
+    for b in ("Liquidity", "Tail"):
+        default[b] = []
+    if blocks is None:
+        return default
+    out = {b: list(blocks.get(b, [])) for b in BLOCK_NAMES}
+    out[GROWTH_HY_KEY] = list(blocks.get(GROWTH_HY_KEY, []))
+    out[GROWTH_EM_DEBT_KEY] = list(blocks.get(GROWTH_EM_DEBT_KEY, []))
+    out["Liquidity"] = list(blocks.get("Liquidity", []))
+    out["Tail"] = list(blocks.get("Tail", []))
+    return out
+
+
+def _validate_blocks(cfg: dict[str, Any]) -> None:
+    """Validate blocks: optional; must have Growth, Duration, Inflation as lists; Growth_HY, Growth_EM_debt, Liquidity, Tail optional lists."""
+    blocks = cfg.get("blocks")
+    if blocks is None:
+        return
+    for key in BLOCK_NAMES:
+        if key not in blocks:
+            raise ConfigValidationError(
+                f"Config field 'blocks' must contain keys {list(BLOCK_NAMES)}, missing '{key}'"
+            )
+        val = blocks[key]
+        if not isinstance(val, list):
+            raise ConfigValidationError(
+                f"Config field 'blocks[\"{key}\"]' must be a list of tickers, got {type(val).__name__}"
+            )
+        for t in val:
+            if not isinstance(t, str):
+                raise ConfigValidationError(
+                    f"Config field 'blocks[\"{key}\"]' must contain strings (tickers), got {type(t).__name__}"
+                )
+    for key in (GROWTH_HY_KEY, GROWTH_EM_DEBT_KEY, "Liquidity", "Tail"):
+        val = blocks.get(key)
+        if val is not None:
+            if not isinstance(val, list):
+                raise ConfigValidationError(
+                    f"Config field 'blocks[\"{key}\"]' must be a list of tickers, got {type(val).__name__}"
+                )
+            for t in val:
+                if not isinstance(t, str):
+                    raise ConfigValidationError(
+                        f"Config field 'blocks[\"{key}\"]' must contain strings (tickers), got {type(t).__name__}"
+                    )
+
+
 def _validate_rc_block_targets(cfg: dict[str, Any]) -> None:
     """Validate rc_block_targets structure if provided."""
     rc_targets = cfg.get("rc_block_targets")
@@ -435,6 +535,82 @@ def _validate_horizon_years(cfg: dict[str, Any]) -> None:
         )
 
 
+def _validate_liquidity_need_months(cfg: dict[str, Any]) -> None:
+    """Validate liquidity_need_months: any non-negative number (int or float)."""
+    val = cfg.get("liquidity_need_months", 0)
+    if val is None:
+        return
+    if not isinstance(val, (int, float)):
+        raise ConfigValidationError(
+            f"Config field 'liquidity_need_months' must be a number, got {type(val).__name__}: {val}"
+        )
+    try:
+        v = float(val)
+    except (TypeError, ValueError):
+        raise ConfigValidationError(
+            f"Config field 'liquidity_need_months' must be a number, got {val!r}"
+        ) from None
+    if v < 0 or not (v == v):  # reject NaN
+        raise ConfigValidationError(
+            f"Config field 'liquidity_need_months' must be non-negative, got {val}"
+        )
+
+
+def _validate_cash_policy(cfg: dict[str, Any]) -> None:
+    """Validate cash_policy is one of required_floor, allowed_for_scaling, prohibited."""
+    val = cfg.get("cash_policy", "allowed_for_scaling")
+    if val is None:
+        return
+    if not isinstance(val, str):
+        raise ConfigValidationError(
+            f"Config field 'cash_policy' must be a string, got {type(val).__name__}: {val}"
+        )
+    if val not in CASH_POLICY_VALUES:
+        raise ConfigValidationError(
+            f"Config field 'cash_policy' must be one of {CASH_POLICY_VALUES}, got {val!r}"
+        )
+
+
+def _validate_portfolio_value(cfg: dict[str, Any]) -> None:
+    """Validate portfolio_value optional, non-negative when set."""
+    val = cfg.get("portfolio_value")
+    if val is None:
+        return
+    if not isinstance(val, (int, float)):
+        raise ConfigValidationError(
+            f"Config field 'portfolio_value' must be numeric, got {type(val).__name__}: {val}"
+        )
+    if val < 0:
+        raise ConfigValidationError(
+            f"Config field 'portfolio_value' must be non-negative, got {val}"
+        )
+
+
+def _validate_alpha_shift_params(cfg: dict[str, Any]) -> None:
+    """Validate N_rc, growth_core_candidates, donor_shift_mode."""
+    n_rc = cfg.get("N_rc", 3)
+    if n_rc is not None:
+        if not isinstance(n_rc, int) or n_rc < 1:
+            raise ConfigValidationError(
+                f"Config field 'N_rc' must be a positive integer, got {n_rc}"
+            )
+    candidates = cfg.get("growth_core_candidates", ["VOO", "VT", "VTI"])
+    if candidates is not None:
+        if not isinstance(candidates, list):
+            raise ConfigValidationError(
+                f"Config field 'growth_core_candidates' must be a list of tickers, got {type(candidates).__name__}"
+            )
+        if not all(isinstance(t, str) and t for t in candidates):
+            raise ConfigValidationError(
+                "Config field 'growth_core_candidates' must be a list of non-empty strings (tickers)"
+            )
+    mode = cfg.get("donor_shift_mode", "proportional")
+    if mode is not None and mode not in DONOR_SHIFT_MODES:
+        raise ConfigValidationError(
+            f"Config field 'donor_shift_mode' must be one of {DONOR_SHIFT_MODES}, got {mode!r}"
+        )
+
+
 def _identify_pending_fields(cfg: dict[str, Any]) -> list[str]:
     """Identify which constraint fields are still pending user input (null/None)."""
     pending = []
@@ -468,19 +644,32 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
     _validate_percents(cfg)
     _validate_nonnegative(cfg)
     _validate_mappings(cfg)
+    _validate_blocks(cfg)
     _validate_tickers_weights(cfg)
     _validate_rc_block_targets(cfg)
     _validate_windows(cfg)
     _validate_horizon_years(cfg)
+    _validate_liquidity_need_months(cfg)
+    _validate_cash_policy(cfg)
+    _validate_portfolio_value(cfg)
+    _validate_alpha_shift_params(cfg)
     
     pending = _identify_pending_fields(cfg)
-    
+    rc_raw = cfg.get("rc_block_targets")
+    rc_normalized = normalize_rc_block_targets(rc_raw) if rc_raw else None
+
     return PortfolioConfig(
         investor_currency=cfg["investor_currency"],
         initial_investable_amount=cfg.get("initial_investable_amount", 1000),
         liquidity_need=cfg.get("liquidity_need", 0),
+        liquidity_need_months=float(cfg.get("liquidity_need_months", 0)),
+        monthly_expenses=cfg.get("monthly_expenses", 0.0),
+        portfolio_value=cfg.get("portfolio_value"),
+        cash_policy=cfg.get("cash_policy", "allowed_for_scaling"),
+        client_profile=cfg.get("client_profile"),
         tickers=list(cfg["tickers"]),
-        weights=dict(cfg["weights"]),
+        blocks=_normalize_blocks(cfg.get("blocks")),
+        weights=dict(cfg.get("weights") or {}),
         benchmark_base_ticker=cfg["benchmark_base_ticker"],
         rf_source=cfg.get("rf_source"),
         cash_proxy_ticker=cfg.get("cash_proxy_ticker"),
@@ -493,9 +682,13 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
         target_max_drawdown_pct=cfg.get("target_max_drawdown_pct"),
         horizon_years=cfg.get("horizon_years"),
         rc_asset_cap_pct=cfg.get("rc_asset_cap_pct"),
-        rc_block_targets=cfg.get("rc_block_targets"),
+        rc_block_targets=rc_normalized,
+        stress_top3_rc_sum_cap_pct=cfg.get("stress_top3_rc_sum_cap_pct", 0.70),
         max_single_security_weight_pct=cfg.get("max_single_security_weight_pct"),
         min_single_security_weight_pct=cfg.get("min_single_security_weight_pct"),
+        N_rc=cfg.get("N_rc", 3),
+        growth_core_candidates=list(cfg.get("growth_core_candidates", ["VOO", "VT", "VTI"])),
+        donor_shift_mode=cfg.get("donor_shift_mode", "proportional"),
         windows_months=list(cfg["windows_months"]),
         coverage_threshold=cfg.get("coverage_threshold", 0.90),
         output_dir=cfg["output_dir"],

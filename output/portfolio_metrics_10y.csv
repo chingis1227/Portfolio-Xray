@@ -1,2 +1,2 @@
 window_months,cagr,vol_annual,sharpe,sortino,beta_portfolio,treynor,max_drawdown,ttr_months,recovered
-120,0.135,0.1,1.104,1.916,0.568,0.195,-0.198,,False
+120,0.112,0.092,,,0.167,,-0.088,,False

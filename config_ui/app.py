@@ -13,13 +13,18 @@ import os
 import sys
 from pathlib import Path
 
+# Ensure project root is on path for src.client_profiles
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from flask import Flask, render_template, request, jsonify, send_file
 import yaml
 
+from src.client_profiles import apply_profile_to_config
+
 app = Flask(__name__)
 
-# Path to main config
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = PROJECT_ROOT / "config.yml"
 
 # Default values (aligned with config_schema; UI form uses benchmark_base_ticker, rf_source)
@@ -27,6 +32,11 @@ DEFAULTS = {
     "investor_currency": "USD",
     "initial_investable_amount": 1000,
     "liquidity_need": 0,
+    "liquidity_need_months": 0,
+    "monthly_expenses": 0,
+    "portfolio_value": None,
+    "cash_policy": "allowed_for_scaling",
+    "client_profile": None,
     "risk_free_source": None,
     "cash_proxy_ticker": None,
     "benchmark_base_ticker": "SPY",
@@ -42,6 +52,10 @@ DEFAULTS = {
     "rc_block_targets": None,
     "max_single_security_weight_pct": None,
     "min_single_security_weight_pct": None,
+    "N_rc": 3,
+    "growth_core_candidates": ["VOO", "VT", "VTI"],
+    "donor_shift_mode": "proportional",
+    "blocks": {"Growth": [], "Growth_HY": ["JNK", "HYG"], "Growth_EM_debt": [], "Duration": [], "Inflation": []},
     "windows_months": [36, 60, 120],
     "coverage_threshold": 0.90,
     "output_dir": "output",
@@ -64,6 +78,16 @@ def _normalize_loaded_config(raw: dict) -> dict:
         out["rf_source"] = out["risk_free_source"]
     if out.get("local_benchmark_map") is None and out.get("beta_local_mapping") is not None:
         out["local_benchmark_map"] = out["beta_local_mapping"]
+    if out.get("max_single_security_weight_pct") is None and out.get("max_single_asset_weight_pct") is not None:
+        out["max_single_security_weight_pct"] = out["max_single_asset_weight_pct"]
+    if out.get("min_single_security_weight_pct") is None and out.get("min_single_asset_weight_pct") is not None:
+        out["min_single_security_weight_pct"] = out["min_single_asset_weight_pct"]
+    if "blocks" not in out or not isinstance(out.get("blocks"), dict):
+        out["blocks"] = {"Growth": [], "Growth_HY": [], "Growth_EM_debt": [], "Duration": [], "Inflation": []}
+    if out["blocks"].get("Growth_HY") is None:
+        out["blocks"]["Growth_HY"] = []
+    if out["blocks"].get("Growth_EM_debt") is None:
+        out["blocks"]["Growth_EM_debt"] = []
     return out
 
 
@@ -74,6 +98,39 @@ def load_current_config() -> dict:
             raw = yaml.safe_load(f) or {}
             return _normalize_loaded_config(raw)
     return {}
+
+
+def load_client_profiles_reminder() -> list[dict]:
+    """Load client_profiles.yml and return a short list for the reminder table (name, metrics, block ranges)."""
+    path = PROJECT_ROOT / "config" / "client_profiles.yml"
+    if not path.is_file():
+        return []
+    with open(path, encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    profiles = data.get("profiles") or {}
+    out = []
+    for pid, p in profiles.items():
+        if not isinstance(p, dict):
+            continue
+        rb = p.get("risk_budget") or {}
+        def _r(spec, key="min_pct", key2="max_pct"):
+            if not isinstance(spec, dict):
+                return "—"
+            a, b = spec.get(key), spec.get(key2)
+            if a is not None and b is not None:
+                return f"{a}–{b}%"
+            return "—"
+        out.append({
+            "id": pid,
+            "name": p.get("name", pid.replace("_", " ").title()),
+            "return_range": _r(p.get("target_return_annual")),
+            "vol_range": _r(p.get("target_vol_annual")),
+            "max_dd": str(p.get("max_drawdown_pct", "—")),
+            "growth_range": _r(rb.get("Growth")),
+            "duration_range": _r(rb.get("Duration")),
+            "inflation_range": _r(rb.get("Inflation")),
+        })
+    return out
 
 
 def parse_percent(val: str | None) -> float | None:
@@ -104,7 +161,8 @@ def parse_int(val: str | None) -> int | None:
 def index():
     """Main config form page."""
     current = load_current_config()
-    
+    # Apply profile defaults (target return, vol, max_dd, rc_block_targets) so form shows profile midpoints
+    current = apply_profile_to_config(current)
     # Merge with defaults
     config = {**DEFAULTS, **current}
     
@@ -118,18 +176,28 @@ def index():
         w = weights.get(t, 0)
         ticker_weights.append({"ticker": t, "weight": w})
     
+    client_profiles_reminder = load_client_profiles_reminder()
     return render_template(
         "config_form.html",
         config=config,
         ticker_weights=ticker_weights,
         currency_benchmarks=CURRENCY_BENCHMARKS,
+        client_profiles_reminder=client_profiles_reminder,
     )
+
+
+def _parse_growth_core_candidates(val: str | None) -> list[str]:
+    """Parse comma-separated tickers to list."""
+    if not val or not val.strip():
+        return ["VOO", "VT"]
+    return [t.strip().upper() for t in val.split(",") if t.strip()]
 
 
 @app.route("/generate", methods=["POST"])
 def generate_config():
     """Generate config.yml from form data."""
     data = request.form
+    current = load_current_config()
     
     # Parse tickers and weights
     tickers = []
@@ -151,9 +219,16 @@ def generate_config():
         "investor_currency": data.get("investor_currency", "USD"),
         "initial_investable_amount": parse_float(data.get("initial_investable_amount")) or 1000,
         "liquidity_need": parse_float(data.get("liquidity_need")) or 0,
+        "liquidity_need_months": (parse_float(data.get("liquidity_need_months")) or 0),
+        "monthly_expenses": parse_float(data.get("monthly_expenses")) if data.get("monthly_expenses") not in (None, "") else 0,
+        "portfolio_value": parse_float(data.get("portfolio_value")) if data.get("portfolio_value") not in (None, "") else None,
+        "cash_policy": data.get("cash_policy", "allowed_for_scaling") or "allowed_for_scaling",
+        "client_profile": data.get("client_profile") or None,
         "tickers": tickers,
         "weights": weights,
         "benchmark_base_ticker": data.get("benchmark_base_ticker", "SPY"),
+        "risk_free_source": data.get("risk_free_source") or current.get("risk_free_source") or current.get("rf_source"),
+        "cash_proxy_ticker": data.get("cash_proxy_ticker") or current.get("cash_proxy_ticker"),
         "allow_leverage": data.get("allow_leverage") == "true",
         "allow_short_selling": data.get("allow_short_selling") == "true",
         "min_acceptable_return": parse_percent(data.get("min_acceptable_return")),
@@ -164,10 +239,14 @@ def generate_config():
         "rc_asset_cap_pct": parse_percent(data.get("rc_asset_cap_pct")),
         "max_single_security_weight_pct": parse_percent(data.get("max_single_security_weight_pct")),
         "min_single_security_weight_pct": parse_percent(data.get("min_single_security_weight_pct")),
+        "N_rc": parse_int(data.get("N_rc")) if data.get("N_rc") not in (None, "") else 3,
+        "growth_core_candidates": _parse_growth_core_candidates(data.get("growth_core_candidates")),
+        "donor_shift_mode": data.get("donor_shift_mode", "proportional") or "proportional",
         "windows_months": [36, 60, 120],
         "coverage_threshold": parse_percent(data.get("coverage_threshold")) or 0.90,
         "output_dir": data.get("output_dir", "output"),
     }
+    config["blocks"] = current.get("blocks") or {"Growth": [], "Duration": [], "Inflation": []}
     
     # Generate YAML content
     yaml_content = generate_yaml_with_comments(config)
@@ -206,7 +285,15 @@ def generate_yaml_with_comments(config: dict) -> str:
     lines.append("")
     lines.append(f"investor_currency: {config['investor_currency']}")
     lines.append(f"initial_investable_amount: {config['initial_investable_amount']}")
-    lines.append(f"liquidity_need: {config['liquidity_need']}")
+    lines.append(f"liquidity_need: {config.get('liquidity_need', 0)}")
+    lines.append("")
+    lines.append("# ---------- Liquidity (life floor); target_vol_annual used for vol scaling ----------")
+    lines.append(f"liquidity_need_months: {config.get('liquidity_need_months', 0)}")
+    lines.append(f"monthly_expenses: {config.get('monthly_expenses', 0)}")
+    pv = config.get("portfolio_value")
+    lines.append(f"portfolio_value: {pv if pv is not None else 'null'}")
+    lines.append("# cash_policy: allowed_for_scaling | required_floor | prohibited")
+    lines.append(f"cash_policy: {config.get('cash_policy', 'allowed_for_scaling')}")
     lines.append("")
     
     lines.append("# =============================================================================")
@@ -216,22 +303,36 @@ def generate_yaml_with_comments(config: dict) -> str:
     lines.append("tickers:")
     for t in config["tickers"]:
         lines.append(f"  - {t}")
+    blocks = config.get("blocks") or {"Growth": [], "Growth_HY": [], "Growth_EM_debt": [], "Duration": [], "Inflation": []}
+    lines.append("blocks:")
+    for block_name in ("Growth", "Growth_HY", "Growth_EM_debt", "Duration", "Inflation"):
+        tickers_in_block = blocks.get(block_name, [])
+        lines.append(f"  {block_name}: {tickers_in_block}")
     lines.append("")
-    lines.append("weights:")
-    for t, w in config["weights"].items():
-        lines.append(f"  {t}: {w}")
+    if config.get("weights"):
+        lines.append("weights:")
+        for t, w in config["weights"].items():
+            lines.append(f"  {t}: {w}")
+    else:
+        lines.append("weights: {}")
     lines.append("")
     
     lines.append("# =============================================================================")
-    lines.append("# SECTION 3: BENCHMARK AND RISK-FREE")
+    lines.append("# SECTION 3: BENCHMARK AND RISK-FREE (cash_proxy_ticker from currency if not set)")
     lines.append("# =============================================================================")
     lines.append("")
-    lines.append(f"benchmark_base_ticker: {config['benchmark_base_ticker']}")
+    if config.get("risk_free_source"):
+        lines.append(f"risk_free_source: {config['risk_free_source']}")
+    if config.get("cash_proxy_ticker"):
+        lines.append(f"cash_proxy_ticker: {config['cash_proxy_ticker']}")
+    lines.append(f"base_benchmark_ticker: {config['benchmark_base_ticker']}")
     lines.append("")
     
     lines.append("# =============================================================================")
     lines.append("# SECTION 4: PORTFOLIO ASSUMPTIONS AND TARGETS")
     lines.append("# =============================================================================")
+    lines.append("# client_profile: optional. ultra_conservative | conservative | balanced | growth | aggressive")
+    lines.append(f"client_profile: {config.get('client_profile') if config.get('client_profile') else 'null'}")
     lines.append("")
     lines.append(f"allow_leverage: {str(config['allow_leverage']).lower()}")
     lines.append(f"allow_short_selling: {str(config['allow_short_selling']).lower()}")
@@ -250,6 +351,11 @@ def generate_yaml_with_comments(config: dict) -> str:
     lines.append("rc_block_targets: null")
     lines.append(f"max_single_security_weight_pct: {config['max_single_security_weight_pct'] if config['max_single_security_weight_pct'] is not None else 'null'}")
     lines.append(f"min_single_security_weight_pct: {config['min_single_security_weight_pct'] if config['min_single_security_weight_pct'] is not None else 'null'}")
+    lines.append("")
+    lines.append("# Alpha-shift (when cash_policy = prohibited and vol > target_vol_annual)")
+    lines.append(f"N_rc: {config.get('N_rc', 3)}")
+    lines.append(f"growth_core_candidates: {config.get('growth_core_candidates', ['VOO', 'VT'])}")
+    lines.append(f"donor_shift_mode: {config.get('donor_shift_mode', 'proportional')}")
     lines.append("")
     
     lines.append("# =============================================================================")
