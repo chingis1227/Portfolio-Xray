@@ -1,0 +1,5 @@
+# Asset metadata overrides (e.g. currency)
+# Key: ticker symbol. Value: { currency: "EUR" } etc.
+# If not listed, currency is inferred from yfinance when possible.
+
+# All current tickers (VOO, QQQ, GLD, BND, VT) are USD; no overrides needed.

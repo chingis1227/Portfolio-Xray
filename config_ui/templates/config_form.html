@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Config UI</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #00d4ff;
+            font-size: 2.5rem;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .card h2 {
+            color: #00d4ff;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card h2::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: #00d4ff;
+            border-radius: 2px;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.2);
+        }
+        
+        input::placeholder {
+            color: #666;
+        }
+        
+        .toggle-group {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 10px 16px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+        }
+        
+        .toggle:hover {
+            border-color: #00d4ff;
+        }
+        
+        .toggle.active {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00d4ff;
+        }
+        
+        .toggle input {
+            display: none;
+        }
+        
+        .toggle-indicator {
+            width: 40px;
+            height: 22px;
+            background: #444;
+            border-radius: 11px;
+            position: relative;
+            transition: background 0.3s;
+        }
+        
+        .toggle-indicator::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: #fff;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+        }
+        
+        .toggle.active .toggle-indicator {
+            background: #00d4ff;
+        }
+        
+        .toggle.active .toggle-indicator::after {
+            transform: translateX(18px);
+        }
+        
+        /* Tickers section */
+        .ticker-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .ticker-row input:first-child {
+            flex: 2;
+        }
+        
+        .ticker-row input:last-of-type {
+            flex: 1;
+        }
+        
+        .btn-remove {
+            background: #ff4757;
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: background 0.3s;
+        }
+        
+        .btn-remove:hover {
+            background: #ff6b7a;
+        }
+        
+        .btn-add {
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px dashed #00d4ff;
+            color: #00d4ff;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            width: 100%;
+            transition: all 0.3s;
+        }
+        
+        .btn-add:hover {
+            background: rgba(0, 212, 255, 0.3);
+        }
+        
+        /* Buttons */
+        .actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 16px 40px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            color: #000;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Preview modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: #1a1a2e;
+            border-radius: 16px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h3 {
+            color: #00d4ff;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .yaml-preview {
+            background: #0d0d1a;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            color: #a0e0a0;
+        }
+        
+        .modal-footer {
+            padding: 20px 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+        
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #00d4ff;
+            color: #000;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 2000;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        /* Help text */
+        .help-text {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .weight-sum {
+            text-align: right;
+            padding: 10px;
+            color: #00d4ff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Portfolio Config UI</h1>
+        
+        <form id="configForm">
+            <div class="grid">
+                <!-- Column 1 -->
+                <div>
+                    <!-- Core Settings -->
+                    <div class="card">
+                        <h2>Core Settings</h2>
+                        
+                        <div class="form-group">
+                            <label>Investor Currency</label>
+                            <select name="investor_currency" id="investorCurrency">
+                                <option value="USD" {{ 'selected' if config.investor_currency == 'USD' }}>USD (US Dollar)</option>
+                                <option value="EUR" {{ 'selected' if config.investor_currency == 'EUR' }}>EUR (Euro)</option>
+                                <option value="JPY" {{ 'selected' if config.investor_currency == 'JPY' }}>JPY (Japanese Yen)</option>
+                                <option value="CHF" {{ 'selected' if config.investor_currency == 'CHF' }}>CHF (Swiss Franc)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Initial Investable Amount</label>
+                            <input type="number" name="initial_investable_amount" 
+                                   value="{{ config.initial_investable_amount }}" placeholder="1000">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Liquidity Need</label>
+                            <input type="number" name="liquidity_need" 
+                                   value="{{ config.liquidity_need }}" placeholder="0">
+                            <div class="help-text">Amount that may be required for withdrawals</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Base Benchmark Ticker</label>
+                            <select name="benchmark_base_ticker" id="benchmarkTicker">
+                                <option value="SPY" {{ 'selected' if config.benchmark_base_ticker == 'SPY' }}>SPY (S&P 500)</option>
+                                <option value="VGK" {{ 'selected' if config.benchmark_base_ticker == 'VGK' }}>VGK (Europe)</option>
+                                <option value="EWJ" {{ 'selected' if config.benchmark_base_ticker == 'EWJ' }}>EWJ (Japan)</option>
+                                <option value="EWL" {{ 'selected' if config.benchmark_base_ticker == 'EWL' }}>EWL (Switzerland)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Portfolio Tickers -->
+                    <div class="card" style="margin-top: 20px;">
+                        <h2>Portfolio Tickers & Weights</h2>
+                        
+                        <div id="tickersContainer">
+                            {% for tw in ticker_weights %}
+                            <div class="ticker-row">
+                                <input type="text" name="ticker[]" value="{{ tw.ticker }}" placeholder="Ticker (e.g., VOO)">
+                                <input type="text" name="weight[]" value="{{ (tw.weight * 100)|round(1) }}%" placeholder="Weight (e.g., 20%)">
+                                <button type="button" class="btn-remove" onclick="removeTickerRow(this)">×</button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="weight-sum" id="weightSum">Total: 0%</div>
+                        
+                        <button type="button" class="btn-add" onclick="addTickerRow()">+ Add Ticker</button>
+                    </div>
+                </div>
+                
+                <!-- Column 2 -->
+                <div>
+                    <!-- Constraints -->
+                    <div class="card">
+                        <h2>Constraints</h2>
+                        
+                        <div class="form-group">
+                            <label>Allow Leverage</label>
+                            <div class="toggle-group">
+                                <div class="toggle {{ 'active' if not config.allow_leverage }}" onclick="toggleOption(this, 'allow_leverage', 'false')">
+                                    <input type="radio" name="allow_leverage" value="false" {{ 'checked' if not config.allow_leverage }}>
+                                    <span>No</span>
+                                </div>
+                                <div class="toggle {{ 'active' if config.allow_leverage }}" onclick="toggleOption(this, 'allow_leverage', 'true')">
+                                    <input type="radio" name="allow_leverage" value="true" {{ 'checked' if config.allow_leverage }}>
+                                    <span>Yes</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Allow Short Selling</label>
+                            <div class="toggle-group">
+                                <div class="toggle {{ 'active' if not config.allow_short_selling }}" onclick="toggleOption(this, 'allow_short_selling', 'false')">
+                                    <input type="radio" name="allow_short_selling" value="false" {{ 'checked' if not config.allow_short_selling }}>
+                                    <span>No</span>
+                                </div>
+                                <div class="toggle {{ 'active' if config.allow_short_selling }}" onclick="toggleOption(this, 'allow_short_selling', 'true')">
+                                    <input type="radio" name="allow_short_selling" value="true" {{ 'checked' if config.allow_short_selling }}>
+                                    <span>Yes</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Targets -->
+                    <div class="card" style="margin-top: 20px;">
+                        <h2>Risk & Return Targets</h2>
+                        
+                        <div class="form-group">
+                            <label>Target Annual Return</label>
+                            <input type="text" name="target_nominal_return_annual" 
+                                   value="{{ (config.target_nominal_return_annual * 100)|round(1) ~ '%' if config.target_nominal_return_annual else '' }}"
+                                   placeholder="e.g., 8% or 0.08">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Minimum Acceptable Return (MAR)</label>
+                            <input type="text" name="min_acceptable_return"
+                                   value="{{ (config.min_acceptable_return * 100)|round(1) ~ '%' if config.min_acceptable_return else '' }}"
+                                   placeholder="e.g., 2% or 0.02">
+                            <div class="help-text">Used for Sortino ratio. Leave empty for risk-free rate</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Target Annual Volatility</label>
+                            <input type="text" name="target_vol_annual"
+                                   value="{{ (config.target_vol_annual * 100)|round(1) ~ '%' if config.target_vol_annual else '' }}"
+                                   placeholder="e.g., 15% or 0.15">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Target Max Drawdown</label>
+                            <input type="text" name="target_max_drawdown_pct"
+                                   value="{{ (config.target_max_drawdown_pct * 100)|round(1) ~ '%' if config.target_max_drawdown_pct else '' }}"
+                                   placeholder="e.g., -20% or -0.20">
+                            <div class="help-text">Must be negative!</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Investment Horizon (years)</label>
+                            <input type="number" step="0.5" name="horizon_years"
+                                   value="{{ config.horizon_years if config.horizon_years else '' }}"
+                                   placeholder="e.g., 10">
+                        </div>
+                    </div>
+                    
+                    <!-- Weight Constraints -->
+                    <div class="card" style="margin-top: 20px;">
+                        <h2>Weight Constraints</h2>
+                        
+                        <div class="form-group">
+                            <label>Max Single Security Weight</label>
+                            <input type="text" name="max_single_security_weight_pct"
+                                   value="{{ (config.max_single_security_weight_pct * 100)|round(1) ~ '%' if config.max_single_security_weight_pct else '' }}"
+                                   placeholder="e.g., 40%">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Min Single Security Weight</label>
+                            <input type="text" name="min_single_security_weight_pct"
+                                   value="{{ (config.min_single_security_weight_pct * 100)|round(1) ~ '%' if config.min_single_security_weight_pct else '' }}"
+                                   placeholder="e.g., 2%">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Max RC per Asset</label>
+                            <input type="text" name="rc_asset_cap_pct"
+                                   value="{{ (config.rc_asset_cap_pct * 100)|round(1) ~ '%' if config.rc_asset_cap_pct else '' }}"
+                                   placeholder="e.g., 25%">
+                            <div class="help-text">Max risk contribution per asset</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button type="button" class="btn btn-secondary" onclick="previewConfig()">Preview YAML</button>
+                <button type="button" class="btn btn-primary" onclick="generateAndSave()">Save config.yml</button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Preview Modal -->
+    <div class="modal" id="previewModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>config.yml Preview</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <pre class="yaml-preview" id="yamlPreview"></pre>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="copyToClipboard()">Copy to Clipboard</button>
+                <button class="btn btn-primary" onclick="saveFromModal()">Save to File</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        let currentYaml = '';
+        
+        // Toggle option buttons
+        function toggleOption(elem, name, value) {
+            const group = elem.parentElement;
+            group.querySelectorAll('.toggle').forEach(t => t.classList.remove('active'));
+            elem.classList.add('active');
+            elem.querySelector('input').checked = true;
+        }
+        
+        // Add ticker row
+        function addTickerRow() {
+            const container = document.getElementById('tickersContainer');
+            const row = document.createElement('div');
+            row.className = 'ticker-row';
+            row.innerHTML = `
+                <input type="text" name="ticker[]" placeholder="Ticker (e.g., VOO)">
+                <input type="text" name="weight[]" placeholder="Weight (e.g., 20%)">
+                <button type="button" class="btn-remove" onclick="removeTickerRow(this)">×</button>
+            `;
+            container.appendChild(row);
+            updateWeightSum();
+        }
+        
+        // Remove ticker row
+        function removeTickerRow(btn) {
+            btn.parentElement.remove();
+            updateWeightSum();
+        }
+        
+        // Update weight sum
+        function updateWeightSum() {
+            const weights = document.querySelectorAll('input[name="weight[]"]');
+            let sum = 0;
+            weights.forEach(w => {
+                let val = w.value.trim();
+                if (val.endsWith('%')) {
+                    sum += parseFloat(val) || 0;
+                } else if (val) {
+                    sum += (parseFloat(val) || 0) * 100;
+                }
+            });
+            document.getElementById('weightSum').textContent = `Total: ${sum.toFixed(1)}%`;
+        }
+        
+        // Listen for weight changes
+        document.addEventListener('input', function(e) {
+            if (e.target.name === 'weight[]') {
+                updateWeightSum();
+            }
+        });
+        
+        // Update benchmark when currency changes
+        document.getElementById('investorCurrency').addEventListener('change', function() {
+            const benchmarks = {{ currency_benchmarks | tojson }};
+            const benchmark = benchmarks[this.value];
+            if (benchmark) {
+                document.getElementById('benchmarkTicker').value = benchmark;
+            }
+        });
+        
+        // Preview config
+        async function previewConfig() {
+            const formData = new FormData(document.getElementById('configForm'));
+            
+            const response = await fetch('/generate', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                currentYaml = result.yaml;
+                document.getElementById('yamlPreview').textContent = result.yaml;
+                document.getElementById('previewModal').classList.add('show');
+            }
+        }
+        
+        // Close modal
+        function closeModal() {
+            document.getElementById('previewModal').classList.remove('show');
+        }
+        
+        // Copy to clipboard
+        function copyToClipboard() {
+            navigator.clipboard.writeText(currentYaml);
+            showToast('Copied to clipboard!');
+        }
+        
+        // Save from modal
+        async function saveFromModal() {
+            await saveConfig(currentYaml);
+            closeModal();
+        }
+        
+        // Generate and save directly
+        async function generateAndSave() {
+            const formData = new FormData(document.getElementById('configForm'));
+            
+            const response = await fetch('/generate', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                await saveConfig(result.yaml);
+            }
+        }
+        
+        // Save config
+        async function saveConfig(yaml) {
+            const response = await fetch('/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({yaml: yaml})
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast('Saved to config.yml!');
+            }
+        }
+        
+        // Show toast
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+        
+        // Initial weight sum
+        updateWeightSum();
+        
+        // Close modal on escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal();
+        });
+        
+        // Close modal on backdrop click
+        document.getElementById('previewModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+{
+  "run_info": {
+    "timestamp": "2026-03-07T11:02:57.547576",
+    "analysis_end_date": "2026-02-28"
+  },
+  "resolved_config": {
+    "investor_currency": "USD",
+    "initial_investable_amount": 1000,
+    "liquidity_need": 0,
+    "risk_free_source": "FRED:DTB3",
+    "cash_proxy_ticker": "BIL",
+    "base_benchmark_ticker": "SPY",
+    "beta_local_mapping": {},
+    "tickers": [
+      "VOO",
+      "QQQ",
+      "GLD",
+      "BND",
+      "VT"
+    ],
+    "weights": {
+      "VOO": 0.1,
+      "QQQ": 0.2,
+      "GLD": 0.3,
+      "BND": 0.2,
+      "VT": 0.2
+    },
+    "allow_leverage": false,
+    "allow_short_selling": false,
+    "min_acceptable_return": null,
+    "target_nominal_return_annual": 0.1,
+    "target_vol_annual": 0.15,
+    "target_max_drawdown_pct": -0.3,
+    "horizon_years": 10.0,
+    "rc_asset_cap_pct": null,
+    "rc_block_targets": null,
+    "max_single_security_weight_pct": null,
+    "min_single_security_weight_pct": null,
+    "windows_months": [
+      36,
+      60,
+      120
+    ],
+    "coverage_threshold": 0.9,
+    "output_dir": "output"
+  },
+  "active_assumptions": {
+    "investor_currency": "USD",
+    "initial_investable_amount": 1000,
+    "rf_source": "FRED:DTB3",
+    "cash_proxy_ticker": "BIL",
+    "benchmark_base_ticker": "SPY",
+    "min_acceptable_return": null,
+    "target_nominal_return_annual": 0.1,
+    "allow_leverage": false,
+    "allow_short_selling": false
+  },
+  "derived_assumptions": {
+    "resolved_cash_proxy_ticker": "BIL",
+    "resolved_rf_source": "FRED:DTB3",
+    "resolved_local_benchmark_map": {
+      "VOO": "SPY",
+      "QQQ": "SPY",
+      "GLD": "SPY",
+      "BND": "BND",
+      "VT": "SPY"
+    },
+    "analysis_end_date": "2026-02-28",
+    "windows_months": [
+      36,
+      60,
+      120
+    ],
+    "total_weight_sum": 1.0,
+    "weight_to_cash": 0,
+    "mar_source": "rf_monthly",
+    "mar_annual_value": null
+  },
+  "future_constraint_fields": {
+    "description": "Constraints/reference inputs for current or future portfolio construction. rc_asset_cap_pct, max_single_security_weight_pct, min_single_security_weight_pct will receive final numeric values later from the user; the system already supports them as config fields and passes them through all relevant layers.",
+    "fields": {
+      "rc_asset_cap_pct": null,
+      "rc_block_targets": null,
+      "max_single_security_weight_pct": null,
+      "min_single_security_weight_pct": null,
+      "target_vol_annual": 0.15,
+      "target_max_drawdown_pct": -0.3,
+      "horizon_years": 10.0,
+      "liquidity_need": 0
+    }
+  },
+  "pending_user_input": {
+    "description": "Config items that still need final user values (to be provided later by user)",
+    "fields": {
+      "rc_asset_cap_pct": null,
+      "rc_block_targets": null,
+      "max_single_security_weight_pct": null,
+      "min_single_security_weight_pct": null
+    }
+  },
+  "target_comparison": {
+    "target_nominal_return_annual": 0.1,
+    "realized_cagr": 0.13546960742534364,
+    "difference": 0.035469607425343636,
+    "target_achieved": "True"
+  }
+}

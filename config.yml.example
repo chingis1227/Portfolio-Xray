@@ -1,0 +1,76 @@
+# =============================================================================
+# Portfolio Metrics Standard — Example Configuration
+# Copy to config.yml and adjust. All portfolio assumptions are controlled here.
+# =============================================================================
+
+# =============================================================================
+# SECTION 1: CORE SETTINGS
+# =============================================================================
+# investor_currency: на выбор — USD (доллар), EUR (евро), JPY (йена), CHF (франк).
+
+investor_currency: USD
+initial_investable_amount: 1000
+liquidity_need: 0
+
+# =============================================================================
+# SECTION 2: RISK-FREE AND BENCHMARK
+# =============================================================================
+
+risk_free_source: FRED:DTB3
+cash_proxy_ticker: BIL
+base_benchmark_ticker: SPY
+beta_local_mapping: {}
+
+# =============================================================================
+# SECTION 3: PORTFOLIO TICKERS AND WEIGHTS
+# =============================================================================
+
+tickers:
+  - VOO
+  - QQQ
+  - GLD
+  - BND
+  - VT
+
+weights:
+  VOO: 0.1
+  QQQ: 0.2
+  GLD: 0.3
+  BND: 0.2
+  VT: 0.2
+
+# =============================================================================
+# SECTION 4: PORTFOLIO ASSUMPTIONS AND TARGETS
+# =============================================================================
+# allow_leverage, allow_short_selling: на выбор true / false.
+# Поля в процентах — можно вводить в процентах (15%) или десятичной дробью (0.15):
+#   min_acceptable_return, target_nominal_return_annual, target_vol_annual,
+#   target_max_drawdown_pct. null допустим.
+# horizon_years: число лет (10, 3, 0.5 и т.д.); null допустим.
+
+allow_leverage: false
+allow_short_selling: false
+min_acceptable_return: null
+target_nominal_return_annual: 0.1
+target_vol_annual: 0.15
+target_max_drawdown_pct: -0.3
+horizon_years: 10.0
+
+# =============================================================================
+# SECTION 5: OPTIMIZATION CONSTRAINTS
+# =============================================================================
+# В процентах: можно вводить как 15%, так и 0.15. null допустим до ввода значений.
+# rc_block_targets: { "Growth": 0.6, "Duration": 0.3 } или null.
+
+rc_asset_cap_pct: null   # to be provided later by user
+rc_block_targets: null
+max_single_security_weight_pct: null   # to be provided later by user
+min_single_security_weight_pct: null   # to be provided later by user
+
+# =============================================================================
+# SECTION 6: ANALYSIS SETTINGS
+# =============================================================================
+
+windows_months: [36, 60, 120]
+coverage_threshold: 0.9
+output_dir: output
