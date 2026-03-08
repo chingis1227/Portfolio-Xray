@@ -10,10 +10,11 @@ logger = logging.getLogger("portfolio_metrics")
 
 
 def setup_logging(level: int = logging.INFO) -> None:
-    """Configure logging for portfolio metrics with console handler."""
-    handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
-    logger.addHandler(handler)
+    """Configure logging for portfolio metrics with console handler. Avoids duplicate handlers on repeated calls."""
+    if not any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+        logger.addHandler(handler)
     logger.setLevel(level)
 
 
@@ -45,6 +46,38 @@ def warn_skipped_asset(ticker: str, reason: str) -> None:
 def info_data_summary(ticker: str, available_months: int, start_date: str, end_date: str) -> None:
     """Log info about available data range."""
     logger.info(f"{ticker}: {available_months} мес. данных ({start_date} — {end_date})")
+
+
+def coverage_ratio(
+    series: pd.Series,
+    analysis_end: pd.Timestamp,
+    window_months: int,
+) -> float:
+    """Fraction of non-NaN observations in the window ending at analysis_end. Returns 0 if window empty."""
+    from src.windows import slice_window
+
+    try:
+        sl = slice_window(series, analysis_end, window_months)
+    except Exception:
+        return 0.0
+    if len(sl) == 0:
+        return 0.0
+    return float(sl.notna().sum() / len(sl))
+
+
+def tickers_meeting_coverage(
+    monthly_returns: pd.DataFrame,
+    analysis_end: pd.Timestamp,
+    window_months: int,
+    coverage_threshold: float,
+) -> list[str]:
+    """Return list of tickers for which coverage (share of non-NaN in window) >= coverage_threshold."""
+    eligible = []
+    for t in monthly_returns.columns:
+        r = monthly_returns[t]
+        if coverage_ratio(r, analysis_end, window_months) >= coverage_threshold:
+            eligible.append(t)
+    return eligible
 
 
 def ensure_month_end_index(series_or_df: pd.Series | pd.DataFrame) -> pd.Series | pd.DataFrame:

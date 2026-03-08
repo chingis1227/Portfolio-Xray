@@ -22,7 +22,8 @@ from flask import Flask, render_template, request, jsonify, send_file
 import yaml
 
 from src.client_profiles import apply_profile_to_config
-from src.config import WEIGHTS_FILENAME
+from src.config import WEIGHTS_FILENAME, load_blocks_universe
+from src.config_schema import ConfigValidationError, validate_config
 
 app = Flask(__name__)
 
@@ -267,13 +268,25 @@ def generate_config():
 
 @app.route("/save", methods=["POST"])
 def save_config():
-    """Save config to config.yml file."""
+    """Save config to config.yml file. Validates with same rules as run_report/run_optimization."""
     data = request.json
     yaml_content = data.get("yaml", "")
-    
+
+    try:
+        parsed = yaml.safe_load(yaml_content) or {}
+    except yaml.YAMLError as e:
+        return jsonify({"success": False, "error": f"Неверный YAML: {e}"})
+
+    parsed = apply_profile_to_config(parsed)
+    blocks_universe = load_blocks_universe(config_path=CONFIG_PATH)
+    try:
+        validate_config(parsed, blocks_universe=blocks_universe)
+    except ConfigValidationError as e:
+        return jsonify({"success": False, "error": str(e)})
+
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         f.write(yaml_content)
-    
+
     return jsonify({"success": True, "path": str(CONFIG_PATH)})
 
 

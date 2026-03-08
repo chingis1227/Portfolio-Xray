@@ -22,39 +22,16 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.cache import (
-    compute_daily_cache_key,
-    compute_monthly_cache_key,
-    get_daily_cache_path,
-    get_monthly_cache_path,
-    cache_exists,
-    save_cache_meta,
-    save_daily_prices,
-    load_daily_prices,
-    save_monthly_data,
-    load_monthly_data,
-    get_last_completed_month,
-    get_current_date,
-    cleanup_old_cache,
-    clear_all_cache,
-)
+from src.cache import cleanup_old_cache, clear_all_cache
 from src.config import (
     load_validated_config,
     load_assets_metadata,
-    get_asset_currency,
     resolve_cash_and_rf,
     resolve_local_benchmarks,
     get_mar_from_config,
 )
 from src.config_schema import ConfigValidationError, PortfolioConfig
-from src.data_ecb import fetch_estr
-from src.data_fred import (
-    fetch_fred_series,
-    annual_percent_to_monthly_effective,
-    resample_rf_to_month_end,
-)
-from src.data_yf import download_all, infer_currency_from_ticker
-from src.fx import convert_prices_to_investor_currency, get_fx_series_usd_per_unit
+from src.data_loader import load_monthly_data_shared, MonthlyDataResult
 from src.io_export import (
     ensure_output_dir,
     export_asset_metrics_csv,
@@ -67,18 +44,16 @@ from src.io_export import (
 )
 from src.metrics_asset import asset_metrics_one_window
 from src.metrics_portfolio import portfolio_metrics_one_window
-from src.portfolio_dynamic import portfolio_returns_nan_safe, dynamic_weights_matrix
-from src.resample import to_month_end
-from src.returns import simple_returns, log_returns, simple_returns_df, log_returns_df
-from src.risk_contrib import rc_vol_window, cov_matrix_monthly
+from src.portfolio_dynamic import portfolio_returns_nan_safe
+from src.risk_contrib import rc_vol_window
 from src.stress import run_stress
 from src.stress_factors import (
     build_factor_matrix_monthly,
     estimate_betas_monthly,
     portfolio_factor_betas,
 )
-from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger
-from src.windows import get_analysis_end, slice_window
+from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
+from src.windows import slice_window
 
 
 def parse_args() -> argparse.Namespace:
@@ -111,6 +86,9 @@ def build_derived_assumptions(
     Build dictionary of derived assumptions used in the run.
     These are values computed from config (not directly specified).
     """
+    # Liquidity life floor amount = liquidity_need_months * monthly_expenses (single source of truth)
+    liquidity_need_amount = cfg.liquidity_need_months * (cfg.monthly_expenses or 0)
+
     return {
         "resolved_cash_proxy_ticker": cash_proxy_ticker,
         "resolved_rf_source": rf_source,
@@ -121,6 +99,8 @@ def build_derived_assumptions(
         "weight_to_cash": max(0, 1.0 - sum(cfg.weights.values())),
         "mar_source": "rf_monthly" if cfg.min_acceptable_return is None else "config",
         "mar_annual_value": cfg.min_acceptable_return,
+        "liquidity_need": liquidity_need_amount,
+        "liquidity_life_floor_amount": liquidity_need_amount,
     }
 
 
@@ -188,169 +168,43 @@ def main() -> None:
         logger.info(f"Целевая доходность: {cfg.target_nominal_return_annual:.2%}")
 
     # =========================================================================
-    # STEP 3: Download data (with caching)
+    # STEP 3: Download data (with caching) — shared loader
     # =========================================================================
-    
-    # All tickers to download: assets + benchmark + cash + all local benchmark proxies
-    all_tickers = list(set(
-        tickers + [benchmark_base_ticker, cash_proxy_ticker] + list(local_benchmark_map.values())
-    ))
-    currency_by_ticker = {}
-    for t in all_tickers:
-        currency_by_ticker[t] = get_asset_currency(t, assets_meta, infer_currency_from_ticker(t))
-
-    # Date range: enough for longest window (e.g. 120 months + 24 buffer)
-    max_window = max(windows_months)
-    end_date = datetime.now()
-    start_date = datetime(end_date.year - (max_window // 12) - 2, end_date.month, 1)
-    start_str = start_date.strftime("%Y-%m-%d")
-    end_str = end_date.strftime("%Y-%m-%d")
-
-    # --- Cache keys ---
-    current_date = get_current_date()
-    data_month = get_last_completed_month()
-    
-    daily_cache_key = compute_daily_cache_key(
-        tickers=all_tickers,
-        start_date=start_str,
-        end_date=end_str,
-        data_date=current_date,
-    )
-    daily_cache_path = get_daily_cache_path(daily_cache_key)
-    
-    monthly_cache_key = compute_monthly_cache_key(
+    data = load_monthly_data_shared(
         tickers=tickers,
-        investor_currency=investor_currency,
-        benchmark=benchmark_base_ticker,
-        cash_proxy=cash_proxy_ticker,
+        benchmark_base_ticker=benchmark_base_ticker,
+        cash_proxy_ticker=cash_proxy_ticker,
         rf_source=rf_source,
+        investor_currency=investor_currency,
         windows_months=windows_months,
-        data_month=data_month,
+        assets_meta=assets_meta,
+        no_cache=args.no_cache,
+        local_benchmark_map=local_benchmark_map,
     )
-    monthly_cache_path = get_monthly_cache_path(monthly_cache_key)
-    
-    logger.info(f"Ключ дневного кеша: {daily_cache_key}")
-    logger.info(f"Ключ месячного кеша: {monthly_cache_key} (месяц данных: {data_month})")
+    monthly_prices = data.monthly_prices
+    monthly_returns = data.monthly_returns
+    monthly_log_returns = data.monthly_log_returns
+    rf_monthly = data.rf_monthly
+    benchmark_returns = data.benchmark_returns
+    cash_returns = data.cash_returns
+    fx_series_used = data.fx_series_used
+    analysis_end = data.analysis_end
+    analysis_end_str = data.analysis_end_str
+    daily_cache_key = data.daily_cache_key
+    monthly_cache_key = data.monthly_cache_key
 
-    # --- Try to load monthly cache (fastest path) ---
-    monthly_data = None
-    if not args.no_cache and cache_exists(monthly_cache_path):
-        logger.info("Найден месячный кеш, загружаю...")
-        monthly_data = load_monthly_data(monthly_cache_path)
+    # =========================================================================
+    # STEP 4: Compute portfolio returns (NaN-safe dynamic)
+    # =========================================================================
     
-    if monthly_data is not None:
-        monthly_prices = monthly_data["monthly_prices"]
-        monthly_returns = monthly_data["monthly_returns"]
-        monthly_log_returns = monthly_data["monthly_log_returns"]
-        rf_monthly = monthly_data["rf_monthly"]
-        benchmark_returns = monthly_data["benchmark_returns"]
-        cash_returns = monthly_data["cash_returns"]
-        fx_series_used = monthly_data["fx_series"] or {}
+    # Ensure cash_returns is aligned to monthly index so common_idx is non-empty (avoid empty portfolio returns)
+    if cash_returns.empty or len(cash_returns.index) == 0:
+        logger.warning(
+            f"Нет данных по cash proxy ({cash_proxy_ticker}); для расчёта портфеля используется нулевая доходность кэша."
+        )
+        cash_returns = pd.Series(0.0, index=monthly_returns.index)
     else:
-        # --- Try to load daily cache ---
-        daily = None
-        if not args.no_cache and cache_exists(daily_cache_path):
-            logger.info("Найден дневной кеш, загружаю...")
-            daily = load_daily_prices(daily_cache_path)
-        
-        if daily is None:
-            logger.info("Загружаю данные из Yahoo Finance...")
-            daily_raw = download_all(all_tickers, start_str, end_str, currency_by_ticker)
-            daily = {t: df for t, df in daily_raw.items() if not df.empty and "Close" in df.columns}
-            
-            # Save daily cache
-            save_cache_meta(daily_cache_path, {
-                "tickers": all_tickers,
-                "start": start_str,
-                "end": end_str,
-                "data_date": current_date,
-            })
-            save_daily_prices(daily_cache_path, daily)
-        
-        # Prices as dict of Series (Close)
-        prices_daily = {t: df["Close"] for t, df in daily.items()}
-
-        # Convert to investor currency (only asset + benchmark + cash we use)
-        used_tickers = list(set(tickers + [benchmark_base_ticker, cash_proxy_ticker]))
-        prices_daily_sub = {t: prices_daily[t] for t in used_tickers if t in prices_daily}
-        fx_cache: dict[str, pd.Series | None] = {}
-        prices_inv = convert_prices_to_investor_currency(
-            prices_daily_sub,
-            currency_by_ticker,
-            investor_currency,
-            start_str,
-            end_str,
-            fx_cache=fx_cache,
-            ffill_fx=True,
-        )
-        fx_series_used = {k: v for k, v in fx_cache.items() if v is not None}
-
-        # Resample to month-end
-        monthly_prices = pd.DataFrame({t: to_month_end(s) for t, s in prices_inv.items()})
-        monthly_prices = monthly_prices.dropna(how="all")
-
-        # Monthly returns (simple and log)
-        monthly_returns = simple_returns_df(monthly_prices)
-        monthly_log_returns = log_returns_df(monthly_prices)
-
-        # Risk-free: FRED (USD) or ECB €STR (EUR) -> monthly effective at month-end
-        logger.info(f"Загружаю risk-free rate из {rf_source}...")
-        if rf_source.startswith("FRED:"):
-            series_id = rf_source.split(":", 1)[1]
-            rf_annual = fetch_fred_series(series_id, start_str, end_str)
-            rf_monthly = annual_percent_to_monthly_effective(rf_annual)
-            rf_monthly = resample_rf_to_month_end(rf_monthly)
-        elif rf_source.startswith("ECB:") and "€STR" in rf_source:
-            rf_annual = fetch_estr(start_str, end_str)
-            rf_monthly = annual_percent_to_monthly_effective(rf_annual)
-            rf_monthly = resample_rf_to_month_end(rf_monthly)
-        else:
-            raise ValueError(f"Unsupported rf_source: {rf_source!r}. Use FRED:DTB3 or ECB:€STR.")
-
-        benchmark_returns = monthly_returns.get(benchmark_base_ticker)
-        if benchmark_returns is None:
-            benchmark_returns = pd.Series(dtype=float)
-        else:
-            benchmark_returns = benchmark_returns.dropna()
-        cash_returns = monthly_returns.get(cash_proxy_ticker)
-        if cash_returns is None:
-            cash_returns = pd.Series(dtype=float)
-        else:
-            cash_returns = cash_returns.dropna()
-
-        # Save monthly cache
-        save_cache_meta(monthly_cache_path, {
-            "tickers": tickers,
-            "investor_currency": investor_currency,
-            "benchmark": benchmark_base_ticker,
-            "cash_proxy": cash_proxy_ticker,
-            "rf_source": rf_source,
-            "windows_months": windows_months,
-            "data_month": data_month,
-        })
-        save_monthly_data(
-            monthly_cache_path,
-            monthly_prices,
-            monthly_returns,
-            monthly_log_returns,
-            rf_monthly,
-            benchmark_returns,
-            cash_returns,
-            fx_series_used,
-        )
-
-    # =========================================================================
-    # STEP 4: Compute analysis period
-    # =========================================================================
-    
-    # analysis_end = last month-end strictly before today
-    today_ts = pd.Timestamp(datetime.now().date())
-    analysis_end = get_analysis_end(monthly_prices.index, today_ts)
-    analysis_end_str = analysis_end.strftime("%Y-%m-%d")
-
-    # =========================================================================
-    # STEP 5: Compute portfolio returns (NaN-safe dynamic)
-    # =========================================================================
+        cash_returns = cash_returns.reindex(monthly_returns.index).fillna(0.0)
     
     asset_returns_df = monthly_returns[[t for t in tickers if t in monthly_returns.columns]].copy()
     target_weights = {t: weights.get(t, 0.0) for t in tickers}
@@ -359,7 +213,7 @@ def main() -> None:
     )
 
     # =========================================================================
-    # STEP 6: Persist inputs (for reproducibility)
+    # STEP 5: Persist inputs (for reproducibility)
     # =========================================================================
     
     save_inputs(
@@ -390,9 +244,12 @@ def main() -> None:
     logger.info("=" * 50)
 
     # =========================================================================
-    # STEP 7: Compute asset metrics per window
+    # STEP 6: Compute asset metrics per window
     # =========================================================================
     
+    coverage_threshold = getattr(cfg, "coverage_threshold", 0.90) or 0.90
+    analysis_end_ts = pd.Timestamp(analysis_end_str)
+
     asset_metrics_all: list[list[dict]] = []
     for wm in windows_months:
         rows = []
@@ -402,7 +259,13 @@ def main() -> None:
             if r_simple is None or r_log is None:
                 warn_skipped_asset(ticker, "нет данных о доходностях")
                 continue
-            
+            if coverage_ratio(r_simple, analysis_end_ts, wm) < coverage_threshold:
+                warn_skipped_asset(
+                    ticker,
+                    "coverage в окне %d мес. < %.0f%%" % (wm, coverage_threshold * 100),
+                )
+                continue
+
             # Get local benchmark returns for Beta_local
             local_bench_ticker = local_benchmark_map.get(ticker)
             local_bench_returns = None
@@ -430,7 +293,7 @@ def main() -> None:
         export_asset_metrics_csv(rows, wm, output_dir)
 
     # =========================================================================
-    # STEP 8: Compute portfolio metrics per window
+    # STEP 7: Compute portfolio metrics per window
     # =========================================================================
     
     portfolio_metrics_list = []
@@ -453,7 +316,7 @@ def main() -> None:
         portfolio_metrics_summary = longest_window_metrics
 
     # =========================================================================
-    # STEP 9: Compute RC_vol and correlation matrix per window
+    # STEP 8: Compute RC_vol and correlation matrix per window
     # =========================================================================
     
     asset_cols = [t for t in tickers if t in monthly_returns.columns]
@@ -479,7 +342,7 @@ def main() -> None:
         export_correlation_matrix_csv(corr_matrix, wm, output_dir)
 
     # =========================================================================
-    # STEP 10: Stress testing (per docs/docs/stress_testing_spec.md)
+    # STEP 9: Stress testing (per docs/docs/stress_testing_spec.md)
     # =========================================================================
     
     beta_window_months = 36
@@ -515,7 +378,7 @@ def main() -> None:
     logger.info(f"Stress status: {stress_report.get('status', 'N/A')}")
 
     # =========================================================================
-    # STEP 11: Export run metadata
+    # STEP 10: Export run metadata
     # =========================================================================
     
     derived_assumptions = build_derived_assumptions(
@@ -541,7 +404,7 @@ def main() -> None:
     cleanup_old_cache(keep_versions=3)
 
     # =========================================================================
-    # STEP 12: Print summary
+    # STEP 11: Print summary
     # =========================================================================
     
     print("\nDone. Outputs in", output_dir)
@@ -563,7 +426,19 @@ def main() -> None:
             diff = realized - target
             status = "[OK] достигнута" if diff >= 0 else "[X] не достигнута"
             print(f"\nЦелевая доходность: {target:.2%}, реализованная: {realized:.2%} ({status})")
-    
+
+    # Guardrails: Max DD and Stress Judge
+    if portfolio_metrics_summary and cfg.target_max_drawdown_pct is not None:
+        max_dd_limit = abs(cfg.target_max_drawdown_pct)
+        realized_mdd = portfolio_metrics_summary.get("max_drawdown")
+        if realized_mdd is not None and not (realized_mdd != realized_mdd):
+            mdd_ok = realized_mdd >= -max_dd_limit
+            print(f"\nMax DD: {'PASS' if mdd_ok else 'FAIL'} (цель: -{max_dd_limit:.1%}, реализовано: {realized_mdd:.1%})")
+    if stress_report:
+        st = stress_report.get("status", "N/A")
+        reason = stress_report.get("fail_reason_code") or stress_report.get("skip_reason") or ""
+        print(f"Stress Judge: {st}" + (f" ({reason})" if reason else ""))
+
     print(f"\nКеш сохранён в cache/ (дневной: {daily_cache_key}, месячный: {monthly_cache_key})")
 
 

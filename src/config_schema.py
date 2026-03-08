@@ -84,8 +84,10 @@ class PortfolioConfig:
     def get_resolved_config(self) -> dict[str, Any]:
         """
         Return all config values as a dictionary for export.
-        Uses canonical names (risk_free_source, base_benchmark_ticker, beta_local_mapping)
-        so that run_metadata.json matches config.yml naming.
+        Uses canonical names for user-facing output (run_metadata.json, config.yml):
+        - risk_free_source (internal: rf_source)
+        - base_benchmark_ticker (internal: benchmark_base_ticker)
+        - beta_local_mapping (internal: local_benchmark_map)
         """
         return {
             "investor_currency": self.investor_currency,
@@ -221,8 +223,13 @@ PENDING_USER_INPUT_FIELDS = [
     "min_single_security_weight_pct",
 ]
 
-# Canonical config keys (config.yml) mapped to internal schema keys.
-# These allow user-facing names while keeping internal names stable.
+# -----------------------------------------------------------------------------
+# Naming convention (canonical vs internal):
+# - config.yml and run_metadata.json export: use canonical names for users.
+# - Code and PortfolioConfig attributes: use internal names.
+# Example: base_benchmark_ticker (canonical) <-> benchmark_base_ticker (internal).
+# Both spellings are accepted in config.yml; internal name is the single source in code.
+# -----------------------------------------------------------------------------
 CONFIG_KEY_ALIASES = [
     ("base_benchmark_ticker", "benchmark_base_ticker"),
     ("risk_free_source", "rf_source"),

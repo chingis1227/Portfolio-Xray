@@ -34,6 +34,7 @@ cash_policy: allowed_for_scaling
 
 risk_free_source: FRED:DTB3
 cash_proxy_ticker: BIL
+# Base benchmark for Beta_base and stress (canonical name: base_benchmark_ticker; in code: benchmark_base_ticker)
 base_benchmark_ticker: SPY
 beta_local_mapping: {}
 

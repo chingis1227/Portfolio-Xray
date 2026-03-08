@@ -340,6 +340,10 @@
             transform: translateY(0);
             opacity: 1;
         }
+        .toast.error {
+            background: #c62828;
+            color: #fff;
+        }
         
         /* Help text */
         .help-text {
@@ -778,15 +782,21 @@
             const result = await response.json();
             if (result.success) {
                 showToast('Saved to config.yml!');
+            } else {
+                showToast(result.error || 'Validation failed', true);
             }
         }
         
-        // Show toast
-        function showToast(message) {
+        // Show toast (optional isError for validation errors)
+        function showToast(message, isError) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
+            toast.classList.toggle('error', !!isError);
             toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.classList.remove('error');
+            }, isError ? 6000 : 3000);
         }
         
         // Initial weight sum

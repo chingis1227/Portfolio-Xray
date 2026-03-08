@@ -26,7 +26,7 @@ cash_policy: allowed_for_scaling
 # =============================================================================
 # risk_free_source: used for excess-return metrics; default by currency if omitted.
 # cash_proxy_ticker: used for NaN-safe portfolio logic and temporary capital.
-# base_benchmark_ticker: used for Beta_base, downside beta, stress analysis.
+# base_benchmark_ticker (canonical name in config; in code: benchmark_base_ticker): Beta_base, stress.
 # beta_local_mapping: optional override { ticker: local_benchmark_ticker } for Beta_local.
 
 risk_free_source: FRED:DTB3
@@ -77,11 +77,12 @@ horizon_years: 10.0
 # If rc_asset_cap_pct or max_single_security_weight_pct or min_single_security_weight_pct is null or 0,
 # values are taken from docs/docs/feasibility_constraints_spec.md (formulas by N, Nc, Ns, RB).
 
-rc_asset_cap_pct:
+rc_asset_cap_pct: 0.28
+# Duration = 10% (single-asset block BND: achievable RC at most rc_asset_cap); remainder 8.92% -> Inflation only so Growth stays 70.27% (less pressure on BBJP)
 rc_block_targets:
-  Growth: 0.7027027027027027
-  Duration: 0.18918918918918917
-  Inflation: 0.10810810810810811
+  Growth: 0.7027
+  Duration: 0.10
+  Inflation: 0.1973
 max_single_security_weight_pct:
 min_single_security_weight_pct:
 

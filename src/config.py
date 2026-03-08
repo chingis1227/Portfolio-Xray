@@ -145,8 +145,9 @@ def load_validated_config(config_path: str | Path | None = None) -> PortfolioCon
     Returns a strongly-typed PortfolioConfig object.
     Raises ConfigValidationError if validation fails.
     """
-    path = Path(config_path) if config_path is not None else Path(__file__).resolve().parent.parent / "config.yml"
-    raw = load_config(config_path)
+    path = (Path(config_path).resolve() if config_path is not None
+            else Path(__file__).resolve().parent.parent / "config.yml")
+    raw = load_config(path)
     raw = apply_profile_to_config(raw)
     if raw.get("client_profile") and get_profile_defaults(raw["client_profile"]):
         _sync_profile_fields_to_config_file(path, raw)
@@ -155,7 +156,7 @@ def load_validated_config(config_path: str | Path | None = None) -> PortfolioCon
         file_weights = load_weights_file(config_path=path)
         if file_weights:
             raw["weights"] = file_weights
-    blocks_universe = load_blocks_universe(config_path if config_path is not None else path)
+    blocks_universe = load_blocks_universe(config_path=path)
     return validate_config(raw, blocks_universe=blocks_universe)
 
 
@@ -252,7 +253,7 @@ def resolve_cash_and_rf(cfg: dict[str, Any] | PortfolioConfig) -> tuple[str, str
     else:
         currency = (cfg.get("investor_currency") or "USD").upper()
         cash = cfg.get("cash_proxy_ticker")
-        rf = cfg.get("rf_source")
+        rf = cfg.get("rf_source") or cfg.get("risk_free_source")
     
     default_cash, default_rf = DEFAULT_CASH_AND_RF.get(currency, ("", ""))
     cash = cash or default_cash

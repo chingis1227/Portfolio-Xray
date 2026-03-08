@@ -144,11 +144,13 @@ def build_factor_matrix(
         "usd": usd,
         "commodity": cmd,
     })
-    # Inner join to common dates
     df = df.dropna(how="all")
-    for c in df.columns:
-        df = df[df[c].notna()] if df[c].notna().sum() < len(df) * 0.5 else df
-    # Prefer inner join across all
+    # Optionally drop columns with very low fill (< 50% non-null) so inner join keeps more dates
+    min_fill_ratio = 0.5
+    cols_to_drop = [c for c in df.columns if df[c].notna().sum() < len(df) * min_fill_ratio]
+    if cols_to_drop:
+        df = df.drop(columns=cols_to_drop)
+    # Single explicit inner join: common index (dates) where all factors have values
     df = df.dropna()
     return df
 

@@ -221,13 +221,26 @@ def run_risk_budget_optimization(
     if not cols:
         return {}, f"FAIL_DATA: no risk tickers with returns (missing: {risk_tickers})"
 
-    ret = returns_df[cols].dropna(how="all")
-    if len(ret) < 24:
-        return {}, f"FAIL_DATA: insufficient history ({len(ret)} months)"
-
-    # Use last window_months
-    ret = ret.iloc[-window_months:]
+    # Full mode: inner join — only months where all (available) risk tickers have data; drop columns with no data
+    ret = returns_df[cols].iloc[-window_months:]
     ret = ret.dropna(axis=1, how="all")
+    ret = ret.dropna(how="any")
+    MIN_FULL_JOIN_MONTHS = 11  # minimum months where all risk tickers have data (Full NaN-safe; young tickers)
+    if len(ret) < MIN_FULL_JOIN_MONTHS:
+        # Try longer lookback (young ticker may have shorter history)
+        lookback = min(returns_df.shape[0], max(window_months * 2, 120))
+        ret = returns_df[cols].iloc[-lookback:]
+        ret = ret.dropna(axis=1, how="all")
+        ret = ret.dropna(how="any")
+        if len(ret) >= MIN_FULL_JOIN_MONTHS:
+            ret = ret.iloc[-min(window_months, len(ret)):]
+        else:
+            return {}, (
+                f"FAIL_DATA: insufficient history after inner join ({len(ret)} months). "
+                f"Need at least {MIN_FULL_JOIN_MONTHS} months where every risk ticker has data."
+            )
+    else:
+        ret = ret.iloc[-min(window_months, len(ret)):]  # use up to window_months of full overlap
     cols = list(ret.columns)
     if not cols:
         return {}, "FAIL_DATA: no assets with returns in window"
@@ -422,6 +435,13 @@ def run_risk_budget_optimization(
     viol_idx = [i for i in range(n) if pc[i] > rc_cap_per_asset[i]]
     if viol_idx:
         viol_tickers = [cols[i] for i in viol_idx]
+        import logging
+        _log = logging.getLogger(__name__)
+        for i in viol_idx:
+            _log.warning(
+                "RC_vol: %s = %.3f (%.1f%%), cap = %.3f (%.1f%%)",
+                cols[i], float(pc[i]), float(pc[i]) * 100, float(rc_cap_per_asset[i]), float(rc_cap_per_asset[i]) * 100,
+            )
         if used_fallback:
             return {}, (
                 f"FAIL_RC_CAP: After fallback, per-asset RC cap still violated by {viol_tickers}. "

@@ -74,6 +74,7 @@ def compute_monthly_cache_key(
     rf_source: str,
     windows_months: list[int],
     data_month: str,
+    extra_tickers: list[str] | None = None,
 ) -> str:
     """
     Compute cache key for monthly data.
@@ -87,9 +88,11 @@ def compute_monthly_cache_key(
         rf_source: Risk-free rate source
         windows_months: Analysis windows
         data_month: Last completed month YYYY-MM
+        extra_tickers: Optional (e.g. local benchmark tickers) so cache differs when they change
     """
+    all_tickers = sorted(tickers) + sorted(extra_tickers or [])
     payload = {
-        "tickers": sorted(tickers),
+        "tickers": all_tickers,
         "investor_currency": investor_currency,
         "benchmark": benchmark,
         "cash_proxy": cash_proxy,

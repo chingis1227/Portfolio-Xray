@@ -12,7 +12,11 @@ import numpy as np
 import pandas as pd
 
 from src.config_schema import GROWTH_EM_DEBT_KEY, GROWTH_HY_KEY, STRESS_BLOCK_NAMES
-from src.risk_contrib import percentage_contributions_variance, cov_matrix_monthly
+from src.risk_contrib import (
+    cov_matrix_monthly,
+    percentage_contributions_variance,
+    resolve_rc_asset_cap,
+)
 
 # Scenario ids and shock vectors (shock_eq, shock_rr, shock_credit, shock_inf, shock_usd, shock_cmd)
 SCENARIOS = {
@@ -140,15 +144,6 @@ def _ticker_to_stress_block(blocks: dict[str, list[str]], tickers: list[str] | N
     return out
 
 
-def _resolve_rc_asset_cap(rc_asset_cap_pct: float | None, n_assets: int) -> float:
-    """From feasibility_constraints_spec: if N < 4 then 0.40 else min(0.25, max(0.10, 1.5/N))."""
-    if rc_asset_cap_pct is not None and rc_asset_cap_pct > 0:
-        return float(rc_asset_cap_pct)
-    if n_assets < 4:
-        return 0.40
-    return min(0.25, max(0.10, 1.5 / n_assets))
-
-
 def _scenario_return_per_asset(
     shock: dict[str, float],
     betas: pd.DataFrame,
@@ -249,7 +244,7 @@ def run_stress(
         + list(blocks.get(GROWTH_EM_DEBT_KEY, []))
     )
     n_assets = len([t for t in tickers if t in weights and weights.get(t, 0) > 0])
-    rc_cap = _resolve_rc_asset_cap(rc_asset_cap_pct, max(n_assets, 1))
+    rc_cap = resolve_rc_asset_cap(rc_asset_cap_pct, max(n_assets, 1), rb_growth=None)
     max_dd_limit = abs(target_max_drawdown_pct) if target_max_drawdown_pct is not None else 0.25
 
     # Base covariance (RiskPortfolio assets only)

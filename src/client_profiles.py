@@ -117,5 +117,10 @@ def apply_profile_to_config(raw: dict[str, Any]) -> dict[str, Any]:
     if "target_max_drawdown_pct" in defaults:
         result["target_max_drawdown_pct"] = defaults["target_max_drawdown_pct"]
     if "rc_block_targets" in defaults:
-        result["rc_block_targets"] = dict(defaults["rc_block_targets"])
+        # Keep manual rc_block_targets from config (e.g. Duration=10% for single-asset block)
+        raw_rbt = raw.get("rc_block_targets")
+        if not raw_rbt or not isinstance(raw_rbt, dict) or len(raw_rbt) < 3:
+            result["rc_block_targets"] = dict(defaults["rc_block_targets"])
+        else:
+            result["rc_block_targets"] = dict(raw_rbt)
     return result

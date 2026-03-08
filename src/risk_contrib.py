@@ -3,6 +3,8 @@ RC_vol: percentage contribution to portfolio variance. Per metrics_specification
 - Σ_window from monthly simple returns in window (ddof=1).
 - For each month t: σ²_t = w_t' Σ w_t, m_t = Σ w_t, PC_{i,t} = (w_{i,t} * m_{i,t}) / σ²_t. PC sums to 1.
 - RC_window_i = mean_t(PC_{i,t}). Do not use contribution to volatility or correlations.
+
+Also: resolve_rc_asset_cap() — shared per-asset RC cap from docs/docs/feasibility_constraints_spec.md.
 """
 from __future__ import annotations
 
@@ -10,6 +12,29 @@ import numpy as np
 import pandas as pd
 
 DDOF = 1
+
+
+def resolve_rc_asset_cap(
+    rc_asset_cap_pct: float | None,
+    n_assets: int,
+    rb_growth: float | None = None,
+) -> float:
+    """
+    Per-asset RC cap from feasibility_constraints_spec.
+
+    If rc_asset_cap_pct is set and > 0, use it; else: N < 4 → 0.40, else min(0.25, max(0.10, 1.5/N)).
+    If rb_growth is not None and >= 0.90 (Equity-Only), cap = max(cap, 0.15).
+    Used by optimization (with rb_growth) and stress (rb_growth=None).
+    """
+    if rc_asset_cap_pct is not None and rc_asset_cap_pct > 0:
+        base = float(rc_asset_cap_pct)
+    elif n_assets < 4:
+        base = 0.40
+    else:
+        base = min(0.25, max(0.10, 1.5 / n_assets))
+    if rb_growth is not None and rb_growth >= 0.90:
+        base = max(base, 0.15)
+    return base
 
 
 def cov_matrix_monthly(returns_df: pd.DataFrame, ddof: int = DDOF) -> pd.DataFrame:
