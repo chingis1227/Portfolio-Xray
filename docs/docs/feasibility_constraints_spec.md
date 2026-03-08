@@ -28,6 +28,8 @@ else:
     rc_asset_cap = min(0.25, max(0.10, 1.5 / N))
 ```
 
+**Single-asset block:** The per-asset RC cap applies to every asset. If a block has only one asset, that block’s achievable RC is at most **rc_asset_cap** (so the block’s target is effectively **min(RB_block, rc_asset_cap)**). The shortfall (RB_block − min(RB_block, rc_asset_cap)) is **redistributed** to the other two blocks in proportion to their target RB shares, and the effective risk budget targets are renormalized to sum to 1. No exception to the global RC cap is made for single-asset blocks.
+
 ---
 
 ## 2. Risk Budget achievability (by RC)
