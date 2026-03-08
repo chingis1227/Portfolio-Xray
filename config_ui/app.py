@@ -22,6 +22,7 @@ from flask import Flask, render_template, request, jsonify, send_file
 import yaml
 
 from src.client_profiles import apply_profile_to_config
+from src.config import WEIGHTS_FILENAME
 
 app = Flask(__name__)
 
@@ -92,11 +93,18 @@ def _normalize_loaded_config(raw: dict) -> dict:
 
 
 def load_current_config() -> dict:
-    """Load current config.yml if exists. Supports canonical keys (base_benchmark_ticker, etc.)."""
+    """Load current config.yml if exists. If config has no weights, load from portfolio_weights.yml."""
     if CONFIG_PATH.exists():
         with open(CONFIG_PATH, encoding="utf-8") as f:
             raw = yaml.safe_load(f) or {}
-            return _normalize_loaded_config(raw)
+        if not raw.get("weights"):
+            weights_path = PROJECT_ROOT / WEIGHTS_FILENAME
+            if weights_path.is_file():
+                with open(weights_path, encoding="utf-8") as wf:
+                    file_weights = yaml.safe_load(wf) or {}
+                if isinstance(file_weights, dict):
+                    raw["weights"] = {k: v for k, v in file_weights.items() if isinstance(v, (int, float))}
+        return _normalize_loaded_config(raw)
     return {}
 
 

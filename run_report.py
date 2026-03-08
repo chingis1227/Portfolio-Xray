@@ -145,11 +145,11 @@ def main() -> None:
     if cfg.pending_fields:
         logger.info(f"Поля конфигурации, ожидающие ввода пользователя: {cfg.pending_fields}")
     
-    # Weights are produced by optimization (option B); config must have them before running the report
+    # Weights are produced by optimization; loaded from portfolio_weights.yml when not in config
     if not cfg.weights:
         logger.error(
             "Portfolio weights are not set. Weights are produced by optimization (constraints + client metrics). "
-            "Run the optimization step first and export weights to config, or provide weights in config.yml for backward compatibility."
+            "Run the optimization step first: python run_optimization.py (writes portfolio_weights.yml)."
         )
         raise SystemExit(1)
     

@@ -14,7 +14,15 @@ from typing import Any
 
 import yaml
 
-from src.client_profiles import apply_profile_to_config
+from src.client_profiles import apply_profile_to_config, get_profile_defaults
+
+# Keys written back to config.yml when profile is applied (so file stays in sync with client_profile)
+_PROFILE_SYNC_KEYS = (
+    "target_nominal_return_annual",
+    "target_vol_annual",
+    "target_max_drawdown_pct",
+    "rc_block_targets",
+)
 from src.config_schema import (
     ConfigValidationError,
     PortfolioConfig,
@@ -35,6 +43,40 @@ def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
     if not path.is_file():
         raise FileNotFoundError(f"Config not found: {path}")
     return _load_yaml(path)
+
+
+WEIGHTS_FILENAME = "portfolio_weights.yml"
+
+
+def _weights_file_path(config_path: str | Path | None) -> Path:
+    """Path to portfolio_weights.yml: same directory as config.yml."""
+    if config_path is None:
+        base = Path(__file__).resolve().parent.parent
+    else:
+        base = Path(config_path).resolve().parent
+    return base / WEIGHTS_FILENAME
+
+
+def load_weights_file(weights_path: str | Path | None = None, config_path: str | Path | None = None) -> dict[str, float]:
+    """
+    Load portfolio weights from portfolio_weights.yml.
+    Used when config.yml has no weights (weights are produced by optimization).
+    Returns { ticker: weight } or {} if file missing or empty.
+    """
+    if weights_path is not None:
+        path = Path(weights_path)
+    else:
+        path = _weights_file_path(config_path)
+    if not path.is_file():
+        return {}
+    data = _load_yaml(path)
+    if not data or not isinstance(data, dict):
+        return {}
+    out = {}
+    for k, v in data.items():
+        if isinstance(v, (int, float)) and k and isinstance(k, str):
+            out[str(k)] = float(v)
+    return out
 
 
 def load_blocks_universe(config_path: str | Path | None = None) -> dict[str, list[str]] | None:
@@ -60,21 +102,60 @@ def load_blocks_universe(config_path: str | Path | None = None) -> dict[str, lis
     return out if out else None
 
 
+def _sync_profile_fields_to_config_file(path: Path, merged: dict[str, Any]) -> None:
+    """
+    Write profile-derived fields back to config.yml so the file matches the selected profile.
+    Uses ruamel.yaml to preserve comments and structure.
+    """
+    try:
+        from ruamel.yaml import YAML
+    except ImportError:
+        return
+    path = Path(path)
+    if not path.is_file():
+        return
+    yaml_rt = YAML()
+    yaml_rt.preserve_quotes = True
+    yaml_rt.width = 4096
+    with open(path, encoding="utf-8") as f:
+        data = yaml_rt.load(f)
+    if data is None:
+        return
+    changed = False
+    for key in _PROFILE_SYNC_KEYS:
+        if key not in merged:
+            continue
+        val = merged[key]
+        if data.get(key) != val:
+            data[key] = val
+            changed = True
+    if changed:
+        with open(path, "w", encoding="utf-8") as f:
+            yaml_rt.dump(data, f)
+
+
 def load_validated_config(config_path: str | Path | None = None) -> PortfolioConfig:
     """
     Load config from config.yml and validate it.
     If blocks_universe.yml exists next to config, tickers from config are validated against it:
     each ticker must appear in exactly one block; blocks for this run are derived from the universe.
     If a ticker is not in any block, ConfigValidationError is raised with a clear message.
-    If client_profile is set, missing target/risk_budget fields are filled from that profile (midpoints).
+    If client_profile is set, target/risk_budget fields are filled from that profile (midpoints)
+    and written back to config.yml so the file stays in sync (comments preserved).
     Returns a strongly-typed PortfolioConfig object.
     Raises ConfigValidationError if validation fails.
     """
+    path = Path(config_path) if config_path is not None else Path(__file__).resolve().parent.parent / "config.yml"
     raw = load_config(config_path)
     raw = apply_profile_to_config(raw)
-    blocks_universe = load_blocks_universe(
-        config_path if config_path is not None else Path(__file__).resolve().parent.parent / "config.yml"
-    )
+    if raw.get("client_profile") and get_profile_defaults(raw["client_profile"]):
+        _sync_profile_fields_to_config_file(path, raw)
+    # If config has no weights, load from portfolio_weights.yml (output of optimization)
+    if not raw.get("weights"):
+        file_weights = load_weights_file(config_path=path)
+        if file_weights:
+            raw["weights"] = file_weights
+    blocks_universe = load_blocks_universe(config_path if config_path is not None else path)
     return validate_config(raw, blocks_universe=blocks_universe)
 
 

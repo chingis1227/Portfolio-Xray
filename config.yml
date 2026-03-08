@@ -9,14 +9,14 @@
 # =============================================================================
 # investor_currency: на выбор — USD (доллар), EUR (евро), JPY (йена), CHF (франк).
 
-investor_currency: EUR
+investor_currency: USD
 initial_investable_amount: 1000
-liquidity_need: 600
+liquidity_need: 0
 
 # ---------- Liquidity (life floor): amount = liquidity_need_months × monthly_expenses; if no portfolio_value, initial_investable_amount is used ----------
-liquidity_need_months: 2
-monthly_expenses: 300
-portfolio_value: null
+liquidity_need_months: 0
+monthly_expenses: 0
+portfolio_value:
 
 # ---------- Cash policy: allowed_for_scaling | required_floor | prohibited ----------
 cash_policy: allowed_for_scaling
@@ -29,9 +29,9 @@ cash_policy: allowed_for_scaling
 # base_benchmark_ticker: used for Beta_base, downside beta, stress analysis.
 # beta_local_mapping: optional override { ticker: local_benchmark_ticker } for Beta_local.
 
-risk_free_source: ECB:€STR
-cash_proxy_ticker: PEU
-base_benchmark_ticker: VGK
+risk_free_source: FRED:DTB3
+cash_proxy_ticker: BIL
+base_benchmark_ticker: SPY
 beta_local_mapping: {}
 
 # =============================================================================
@@ -41,16 +41,10 @@ beta_local_mapping: {}
 #   each ticker must appear there in exactly one block; blocks for the run are derived automatically.
 #   If a ticker is not in blocks_universe.yml, validation fails with a clear message.
 # blocks: optional. If blocks_universe.yml is absent, you can set block lists here; otherwise ignored.
-# weights: do not set by hand. Produced by optimization; export and save here after optimization.
+# Weights are not set here. They are produced by optimization and stored in portfolio_weights.yml
+# (in the same directory as config.yml). Run optimization first, then run report.
 
-tickers: [VOO, VT, QQQ, SMH, VGK, BBJP, VWO, VDC, ARMY, ITA, CIBR, ROBO, SCHD, COPX, URA, SLV, GLD, SCHP, BIL, BND]
-
-weights:
-  VOO: 0.1
-  QQQ: 0.2
-  GLD: 0.3
-  BND: 0.2
-  VT: 0.2
+tickers: [VOO, VT, QQQ, SMH, VGK, BBJP, VWO, VDC, ARMY.PA, ITA, CIBR, ROBO, SCHD, COPX, URA, SLV, GLD, SCHP, BIL, BND]
 
 # =============================================================================
 # SECTION 4: PORTFOLIO ASSUMPTIONS AND TARGETS
@@ -59,7 +53,7 @@ weights:
 # If set, missing target/risk_budget fields are filled from config/client_profiles.yml (midpoints). You can override manually.
 # Reminder: 1 Ultra Conservative  2 Conservative  3 Balanced  4 Growth  5 Aggressive (see Config UI for full table).
 
-client_profile: Conservative
+client_profile: Growth
 
 # allow_leverage, allow_short_selling: на выбор true / false.
 # Поля в процентах (ниже) можно вводить в процентах (например 15%) или десятичной дробью (0.15):
@@ -69,10 +63,10 @@ client_profile: Conservative
 
 allow_leverage: false
 allow_short_selling: false
-min_acceptable_return: null
-target_nominal_return_annual: 0.045
-target_vol_annual: 0.055               
-target_max_drawdown_pct: -0.15
+min_acceptable_return:
+target_nominal_return_annual: 0.085
+target_vol_annual: 0.12
+target_max_drawdown_pct: -0.275
 horizon_years: 10.0
 
 # =============================================================================
@@ -83,13 +77,16 @@ horizon_years: 10.0
 # If rc_asset_cap_pct or max_single_security_weight_pct or min_single_security_weight_pct is null or 0,
 # values are taken from docs/docs/feasibility_constraints_spec.md (formulas by N, Nc, Ns, RB).
 
-rc_asset_cap_pct: null
-rc_block_targets: null
-max_single_security_weight_pct: null
-min_single_security_weight_pct: null
+rc_asset_cap_pct:
+rc_block_targets:
+  Growth: 0.7027027027027027
+  Duration: 0.18918918918918917
+  Inflation: 0.10810810810810811
+max_single_security_weight_pct:
+min_single_security_weight_pct:
 
 N_rc: 3
-growth_core_candidates: ["VOO", "VT"]
+growth_core_candidates: ["VOO", "VT", "SPY", "VTI"]
 # Donor (Shift Mode): proportional or equal — you can set equal.
 donor_shift_mode: proportional
 
