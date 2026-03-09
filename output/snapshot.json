@@ -1,0 +1,201 @@
+{
+  "timestamp": "2026-03-08T22:40:59.992823",
+  "analysis_end": "2026-02-28",
+  "final_weights_total": {
+    "VOO": 0.016,
+    "VT": 0.098,
+    "QQQ": 0.01,
+    "SMH": 0.045,
+    "VGK": 0.01,
+    "BBJP": 0.01,
+    "VWO": 0.01,
+    "VDC": 0.01,
+    "ARMY.PA": 0.01,
+    "ITA": 0.011,
+    "CIBR": 0.01,
+    "ROBO": 0.023,
+    "SCHD": 0.036,
+    "COPX": 0.057,
+    "URA": 0.01,
+    "BND": 0.4,
+    "SLV": 0.038,
+    "GLD": 0.037,
+    "SCHP": 0.158
+  },
+  "final_weights_risk_portfolio": {
+    "VOO": 0.016,
+    "VT": 0.098,
+    "QQQ": 0.01,
+    "SMH": 0.045,
+    "VGK": 0.01,
+    "BBJP": 0.01,
+    "VWO": 0.01,
+    "VDC": 0.01,
+    "ARMY.PA": 0.01,
+    "ITA": 0.011,
+    "CIBR": 0.01,
+    "ROBO": 0.023,
+    "SCHD": 0.036,
+    "COPX": 0.057,
+    "URA": 0.01,
+    "BND": 0.4,
+    "SLV": 0.038,
+    "GLD": 0.037,
+    "SCHP": 0.158
+  },
+  "block_weights": {
+    "Growth": 0.366,
+    "Duration": 0.4,
+    "Inflation": 0.233,
+    "Liquidity": 0.0,
+    "Tail": 0.0
+  },
+  "RC_asset": [
+    {
+      "ticker": "BND",
+      "rc_pct": 0.224
+    },
+    {
+      "ticker": "COPX",
+      "rc_pct": 0.147
+    },
+    {
+      "ticker": "VT",
+      "rc_pct": 0.132
+    },
+    {
+      "ticker": "SMH",
+      "rc_pct": 0.108
+    },
+    {
+      "ticker": "SCHP",
+      "rc_pct": 0.082
+    }
+  ],
+  "RC_block": [
+    {
+      "block": "Growth",
+      "rc_pct": 0.599
+    },
+    {
+      "block": "Duration",
+      "rc_pct": 0.224
+    },
+    {
+      "block": "Inflation",
+      "rc_pct": 0.177
+    }
+  ],
+  "constraints_status": {
+    "target_vol": "PASS",
+    "max_dd": "PASS",
+    "rb_corridor": "FAIL",
+    "rc_caps": "NOT_CHECKED",
+    "weight_caps": "NOT_CHECKED"
+  },
+  "stress_suite_results": {
+    "overall": "FAIL_STRESS",
+    "fail_reason_code": "FAIL_ROLE_EQUITY_SHOCK",
+    "scenarios": [
+      {
+        "scenario_id": "equity_shock",
+        "portfolio_pnl_pct": -0.1146,
+        "pnl_by_block_pct": {
+          "Growth": -0.1088,
+          "Duration": -0.0021,
+          "Inflation": -0.0037,
+          "Liquidity": 0.0,
+          "Tail": 0.0
+        },
+        "violations": [
+          "role"
+        ],
+        "pass": false
+      },
+      {
+        "scenario_id": "credit_shock",
+        "portfolio_pnl_pct": 0.3316,
+        "pnl_by_block_pct": {
+          "Growth": -0.9906,
+          "Duration": -0.932,
+          "Inflation": 2.2542,
+          "Liquidity": 0.0,
+          "Tail": 0.0
+        },
+        "violations": [],
+        "pass": true
+      },
+      {
+        "scenario_id": "rates_shock",
+        "portfolio_pnl_pct": -0.0733,
+        "pnl_by_block_pct": {
+          "Growth": -0.0078,
+          "Duration": -0.0471,
+          "Inflation": -0.0184,
+          "Liquidity": 0.0,
+          "Tail": 0.0
+        },
+        "violations": [],
+        "pass": true
+      },
+      {
+        "scenario_id": "inflation_stagflation",
+        "portfolio_pnl_pct": -0.0321,
+        "pnl_by_block_pct": {
+          "Growth": -0.03,
+          "Duration": -0.0127,
+          "Inflation": 0.0106,
+          "Liquidity": 0.0,
+          "Tail": 0.0
+        },
+        "violations": [],
+        "pass": true
+      },
+      {
+        "scenario_id": "liquidity_shock",
+        "portfolio_pnl_pct": 0.1986,
+        "pnl_by_block_pct": {
+          "Growth": -0.7905,
+          "Duration": -0.6999,
+          "Inflation": 1.689,
+          "Liquidity": 0.0,
+          "Tail": 0.0
+        },
+        "violations": [],
+        "pass": true
+      }
+    ],
+    "historical": [
+      {
+        "episode": "2008",
+        "max_dd": null,
+        "pass": null
+      },
+      {
+        "episode": "2020",
+        "max_dd": NaN,
+        "pass": false
+      },
+      {
+        "episode": "2022",
+        "max_dd": NaN,
+        "pass": false
+      }
+    ],
+    "portfolio_params": {
+      "cagr": 0.095,
+      "vol_annual": 0.087,
+      "max_drawdown": -0.181,
+      "sharpe": 0.834,
+      "beta_base": 0.489,
+      "factor_betas": {
+        "beta_eq": 0.2762,
+        "beta_rr": -3.6614,
+        "beta_inf": -2.2626,
+        "beta_credit": 8.9973,
+        "beta_usd": -0.4716,
+        "beta_cmd": 0.1738
+      }
+    }
+  }
+}

@@ -8,6 +8,8 @@ Output: final weights are written to portfolio_weights.yml. Use --write-config t
 from __future__ import annotations
 
 import argparse
+import subprocess
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -24,6 +26,7 @@ from src.optimization import (
     portfolio_vol_annual,
 )
 from src.risk_contrib import cov_matrix_monthly
+from src.snapshot import build_snapshot, print_snapshot, save_snapshot
 from src.stress import run_stress
 from src.utils import setup_logging, logger, tickers_meeting_coverage
 
@@ -301,6 +304,38 @@ def main() -> None:
     with open(weights_path, "w", encoding="utf-8") as f:
         yaml.dump(rounded, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
     print("Веса записаны в %s." % weights_path.name)
+
+    # Final snapshot (one object, same print and save)
+    cash_proxy = cfg.cash_proxy_ticker or "BIL"
+    snapshot = build_snapshot(
+        final_weights_total=final_weights,
+        blocks=cfg.blocks,
+        cash_proxy_ticker=cash_proxy,
+        analysis_end=analysis_end_str,
+        stress_report=stress_report,
+        final_weights_risk_portfolio=weights_risk,
+        monthly_returns=monthly_returns,
+        window_months=window_months,
+        target_vol_annual=target_vol,
+        current_vol_annual=current_vol,
+        max_dd_ok=max_dd_ok,
+        rc_block_targets=cfg.rc_block_targets,
+        rc_caps_ok=True,
+        min_single_security_weight_pct=cfg.min_single_security_weight_pct,
+        max_single_security_weight_pct=cfg.max_single_security_weight_pct,
+    )
+    print_snapshot(snapshot)
+    out_dir = Path(cfg.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    save_snapshot(snapshot, out_dir)
+    print("Snapshot сохранён в %s" % (out_dir / "snapshot.json"))
+
+    # Полный отчёт (все CSV и четыре snapshot: assets, 3y, 5y, 10y) — run_report подхватит веса из portfolio_weights.yml
+    report_cmd = [sys.executable, "run_report.py"]
+    if args.no_cache:
+        report_cmd.append("--no-cache")
+    project_root = Path(__file__).resolve().parent
+    subprocess.run(report_cmd, cwd=project_root, check=True)
 
     if args.write_config:
         config_path = Path(__file__).resolve().parent / "config.yml"

@@ -42,8 +42,27 @@ from src.io_export import (
     export_stress_report,
     save_inputs,
 )
+from src.snapshot import (
+    build_snapshot,
+    build_snapshot_assets,
+    build_snapshot_for_window,
+    print_snapshot,
+    save_snapshot,
+    write_report_html,
+    write_report_txt,
+)
 from src.metrics_asset import asset_metrics_one_window
 from src.metrics_portfolio import portfolio_metrics_one_window
+from src.portfolio_analytics import (
+    drawdown_structure,
+    effective_equity_exposure,
+    es_historical,
+    rolling_sharpe,
+    rolling_sortino,
+    rolling_summary,
+    rolling_vol_annual,
+    var_historical,
+)
 from src.portfolio_dynamic import portfolio_returns_nan_safe
 from src.risk_contrib import rc_vol_window
 from src.stress import run_stress
@@ -309,6 +328,20 @@ def main() -> None:
         portfolio_metrics_list.append(pm)
     export_portfolio_metrics_csv(portfolio_metrics_list, output_dir)
     
+    # Map window_months to human-readable keys for snapshot (3y/5y/10y)
+    portfolio_windows: dict[str, dict] = {}
+    for pm in portfolio_metrics_list:
+        wm = pm.get("window_months", 0)
+        if wm == 36:
+            key = "3y"
+        elif wm == 60:
+            key = "5y"
+        elif wm == 120:
+            key = "10y"
+        else:
+            key = f"{int(wm)}m" if isinstance(wm, (int, float)) else "unknown"
+        portfolio_windows[key] = pm
+
     # Get longest window portfolio metrics for target comparison
     portfolio_metrics_summary = None
     if portfolio_metrics_list:
@@ -320,6 +353,10 @@ def main() -> None:
     # =========================================================================
     
     asset_cols = [t for t in tickers if t in monthly_returns.columns]
+    rc_for_snapshot = None
+    rc_by_window: dict[str, pd.Series] = {}
+    rc_csv_by_window: dict[str, str] = {}
+    corr_csv_by_window: dict[str, str] = {}
     for wm in windows_months:
         if not asset_cols:
             logger.warning(f"RC_vol: нет активов для расчёта")
@@ -334,12 +371,23 @@ def main() -> None:
         
         # RC_vol
         rc = rc_vol_window(returns_slice, weights_slice, ddof=1)
+        if wm == 60:
+            rc_for_snapshot = rc
         suffix = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
-        export_rc_vol_csv(rc, output_dir / f"rc_vol_{suffix}.csv")
+        rc_filename = f"rc_vol_{suffix}.csv"
+        export_rc_vol_csv(rc, output_dir / rc_filename)
+        # Store per-window RC for snapshot windows section
+        if wm in (36, 60, 120):
+            key = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
+            rc_by_window[key] = rc
+            rc_csv_by_window[key] = rc_filename
         
         # Correlation matrix
         corr_matrix = returns_slice.corr()
         export_correlation_matrix_csv(corr_matrix, wm, output_dir)
+        if wm in (36, 60, 120):
+            key = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
+            corr_csv_by_window[key] = f"correlation_matrix_{suffix}.csv"
 
     # =========================================================================
     # STEP 9: Stress testing (per docs/docs/stress_testing_spec.md)
@@ -378,6 +426,64 @@ def main() -> None:
     logger.info(f"Stress status: {stress_report.get('status', 'N/A')}")
 
     # =========================================================================
+    # STEP 9b: Portfolio analytics per window (rolling Sharpe/Sortino, drawdown, VaR/ES, EEE)
+    # =========================================================================
+    analytics_by_window: dict[str, dict] = {}
+    for wm in windows_months:
+        suffix = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
+        ret_slice = slice_window(portfolio_returns, analysis_end, wm).dropna()
+        rf_slice = slice_window(rf_monthly, analysis_end, wm).reindex(ret_slice.index).fillna(0)
+        bench_slice = slice_window(benchmark_returns, analysis_end, wm).reindex(ret_slice.index).dropna()
+        if len(ret_slice) < 24:
+            continue
+        # Rolling 36m and 12m
+        rs36 = rolling_sharpe(ret_slice, rf_slice, 36)
+        rs12 = rolling_sharpe(ret_slice, rf_slice, 12)
+        rsort36 = rolling_sortino(ret_slice, rf_slice, 36, mar=mar_monthly)
+        rsort12 = rolling_sortino(ret_slice, rf_slice, 12, mar=mar_monthly)
+        rvol = rolling_vol_annual(ret_slice, 12)
+        # Export rolling series to CSV
+        rs36.round(3).to_csv(output_dir / f"rolling_sharpe_36m_{suffix}.csv", header=True)
+        rs12.round(3).to_csv(output_dir / f"rolling_sharpe_12m_{suffix}.csv", header=True)
+        rsort36.round(3).to_csv(output_dir / f"rolling_sortino_36m_{suffix}.csv", header=True)
+        rsort12.round(3).to_csv(output_dir / f"rolling_sortino_12m_{suffix}.csv", header=True)
+        rvol.round(3).to_csv(output_dir / f"rolling_vol_12m_{suffix}.csv", header=True)
+        # Drawdown structure
+        dd_struct = drawdown_structure(ret_slice)
+        import json as _json
+        with open(output_dir / f"drawdown_structure_{suffix}.json", "w", encoding="utf-8") as _f:
+            _json.dump(dd_struct, _f, indent=2, default=str)
+        # VaR / ES 95% and 99%
+        var_95 = var_historical(ret_slice, 0.95)
+        var_99 = var_historical(ret_slice, 0.99)
+        es_95 = es_historical(ret_slice, 0.95)
+        es_99 = es_historical(ret_slice, 0.99)
+        pd.DataFrame([{"var_95": var_95, "var_99": var_99, "es_95": es_95, "es_99": es_99}]).round(3).to_csv(
+            output_dir / f"var_es_{suffix}.csv", index=False
+        )
+        # EEE (crisis beta * 100%)
+        eee = effective_equity_exposure(ret_slice, bench_slice, 0.10) if len(bench_slice.dropna()) >= 12 else None
+        pd.DataFrame([{"eee_10pct": eee}]).round(3).to_csv(output_dir / f"eee_{suffix}.csv", index=False)
+        # Vol-of-vol
+        vol_of_vol = float(rvol.std()) if len(rvol.dropna()) >= 2 else None
+        rel_vol_of_vol = float(rvol.std() / rvol.mean()) if len(rvol.dropna()) >= 2 and rvol.mean() and rvol.mean() != 0 else None
+        analytics_by_window[suffix] = {
+            "rolling_sharpe_36m": rolling_summary(rs36),
+            "rolling_sharpe_12m": rolling_summary(rs12),
+            "rolling_sortino_36m": rolling_summary(rsort36),
+            "rolling_sortino_12m": rolling_summary(rsort12),
+            "rolling_vol_12m": rolling_summary(rvol),
+            "vol_of_vol": round(vol_of_vol, 3) if vol_of_vol is not None else None,
+            "rel_vol_of_vol": round(rel_vol_of_vol, 3) if rel_vol_of_vol is not None else None,
+            "drawdown_structure": dd_struct,
+            "var_95": round(var_95, 3),
+            "var_99": round(var_99, 3),
+            "es_95": round(es_95, 3),
+            "es_99": round(es_99, 3),
+            "eee_10pct": eee,
+        }
+
+    # =========================================================================
     # STEP 10: Export run metadata
     # =========================================================================
     
@@ -400,6 +506,105 @@ def main() -> None:
         stress_report=stress_report,
     )
 
+    # Snapshots: one for assets, three by window (3y / 5y / 10y)
+    snapshot_window = 60 if 60 in windows_months else (windows_months[0] if windows_months else 60)
+    max_dd_ok = None
+    if portfolio_metrics_summary and cfg.target_max_drawdown_pct is not None:
+        realized_mdd = portfolio_metrics_summary.get("max_drawdown")
+        if realized_mdd is not None and not (realized_mdd != realized_mdd):
+            max_dd_ok = realized_mdd >= -abs(cfg.target_max_drawdown_pct)
+    snapshot = build_snapshot(
+        final_weights_total=weights,
+        blocks=cfg.blocks,
+        cash_proxy_ticker=cash_proxy_ticker,
+        analysis_end=analysis_end_str,
+        stress_report=stress_report,
+        final_weights_risk_portfolio=None,
+        rc_series=rc_for_snapshot,
+        monthly_returns=monthly_returns,
+        window_months=snapshot_window,
+        target_vol_annual=cfg.target_vol_annual,
+        current_vol_annual=portfolio_metrics_summary.get("vol_annual") if portfolio_metrics_summary else None,
+        max_dd_ok=max_dd_ok,
+        rc_block_targets=cfg.rc_block_targets,
+        rc_caps_ok=None,
+        min_single_security_weight_pct=cfg.min_single_security_weight_pct,
+        max_single_security_weight_pct=cfg.max_single_security_weight_pct,
+        portfolio_metrics_summary=portfolio_metrics_summary,
+        run_timestamp=run_timestamp,
+        portfolio_windows=portfolio_windows,
+        rc_by_window=rc_by_window,
+        rc_csv_by_window=rc_csv_by_window,
+        corr_csv_by_window=corr_csv_by_window,
+    )
+    print_snapshot(snapshot)
+    constraints_status = snapshot.get("constraints_status", {})
+
+    # 1) Snapshot for assets only (per-asset metrics by window, not in portfolio)
+    asset_metrics_by_window: dict[str, list] = {}
+    for i, wm in enumerate(windows_months):
+        key = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
+        if i < len(asset_metrics_all):
+            asset_metrics_by_window[key] = asset_metrics_all[i]
+    snapshot_assets = build_snapshot_assets(asset_metrics_by_window, run_timestamp)
+    save_snapshot(snapshot_assets, output_dir / "snapshot_assets.json")
+    logger.info("Snapshot активов: %s", output_dir / "snapshot_assets.json")
+
+    # 2) Three snapshots by window (3y, 5y, 10y)
+    for label in ("3y", "5y", "10y"):
+        if label not in portfolio_windows:
+            continue
+        pm = portfolio_windows[label]
+        rc_series_w = rc_by_window.get(label)
+        rc_csv_w = rc_csv_by_window.get(label)
+        corr_csv_w = corr_csv_by_window.get(label)
+        stress_params = {
+            "cagr": round(pm.get("cagr"), 3) if pm.get("cagr") is not None else None,
+            "vol_annual": round(pm.get("vol_annual"), 3) if pm.get("vol_annual") is not None else None,
+            "max_drawdown": round(pm.get("max_drawdown"), 3) if pm.get("max_drawdown") is not None else None,
+            "sharpe": round(pm.get("sharpe"), 3) if pm.get("sharpe") is not None else None,
+            "beta_base": round(pm.get("beta_portfolio"), 3) if pm.get("beta_portfolio") is not None else None,
+        }
+        snap_w = build_snapshot_for_window(
+            window_label=label,
+            window_months=pm.get("window_months", 36 if label == "3y" else 60 if label == "5y" else 120),
+            final_weights_total=weights,
+            blocks=cfg.blocks,
+            cash_proxy_ticker=cash_proxy_ticker,
+            analysis_end=analysis_end_str,
+            stress_report=stress_report,
+            final_weights_risk_portfolio=None,
+            rc_series=rc_series_w,
+            portfolio_metrics=pm,
+            rc_vol_csv=rc_csv_w,
+            correlation_matrix_csv=corr_csv_w,
+            constraints_status=constraints_status,
+            run_timestamp=run_timestamp,
+            stress_portfolio_params=stress_params,
+            analytics=analytics_by_window.get(label),
+        )
+        save_snapshot(snap_w, output_dir / f"snapshot_{label}.json")
+        logger.info("Snapshot %s: %s", label, output_dir / f"snapshot_{label}.json")
+
+    # Index of snapshot files
+    save_snapshot(
+        {
+            "timestamp": run_timestamp,
+            "snapshots": {
+                "assets": "snapshot_assets.json",
+                "3y": "snapshot_3y.json",
+                "5y": "snapshot_5y.json",
+                "10y": "snapshot_10y.json",
+            },
+        },
+        output_dir / "snapshot_index.json",
+    )
+
+    # Text and HTML reports aggregating all snapshots
+    write_report_txt(str(output_dir))
+    html_path = write_report_html(str(output_dir))
+    logger.info("HTML report: %s", html_path)
+
     # Cleanup old cache versions (keep last 3)
     cleanup_old_cache(keep_versions=3)
 
@@ -412,8 +617,12 @@ def main() -> None:
     print("  portfolio_metrics_3y.csv, _5y.csv, _10y.csv")
     print("  rc_vol_3y.csv, _5y.csv, _10y.csv")
     print("  correlation_matrix_3y.csv, _5y.csv, _10y.csv")
+    print("  rolling_sharpe_36m_3y/5y/10y.csv, rolling_sortino_36m_3y/5y/10y.csv, rolling_vol_12m_3y/5y/10y.csv")
+    print("  drawdown_structure_3y/5y/10y.json, var_es_3y/5y/10y.csv, eee_3y/5y/10y.csv")
     print("  stress_report.json")
     print("  run_metadata.json")
+    print("  snapshot_assets.json, snapshot_3y.json, snapshot_5y.json, snapshot_10y.json, snapshot_index.json")
+    print("  report.txt, report.html (open in browser; Print -> Save as PDF)")
     print("  inputs/ (monthly_prices, monthly_returns, rf, benchmark, cash, fx)")
     
     if cfg.pending_fields:
