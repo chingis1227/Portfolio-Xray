@@ -23,6 +23,8 @@ RISK_BUDGET_BLOCKS = ("Growth", "Duration", "Inflation")
 GROWTH_SUB_BLOCKS = (GROWTH_HY_KEY, GROWTH_EM_DEBT_KEY)
 MIN_WEIGHT_DEFAULT = 0.01
 HY_EM_RC_CAP_FRACTION = 0.10  # RC_vol(HY) and RC_vol(EM_debt) <= 10% of RC_vol(Growth)
+# RB corridor: realized block RC must be within target ± this (hard constraint)
+RB_CORRIDOR_PP = 0.05
 
 
 def get_risk_portfolio_tickers(blocks: dict[str, list[str]]) -> list[str]:
@@ -630,3 +632,52 @@ def portfolio_vol_annual(weights: dict[str, float], cov_df: pd.DataFrame) -> flo
     cov = cov_df.reindex(index=tickers, columns=tickers).fillna(0).values
     var = variance_p(w, cov)
     return float(np.sqrt(var * 12)) if var > 0 else 0.0
+
+
+def rc_by_block_from_weights(
+    weights_risk: dict[str, float],
+    cov_df: pd.DataFrame,
+    blocks: dict[str, list[str]],
+) -> dict[str, float]:
+    """
+    Compute actual RC share by block (Growth, Duration, Inflation) from RiskPortfolio weights.
+    Returns dict with keys Growth, Duration, Inflation; values sum to 1.
+    """
+    ticker_to_block = ticker_to_block_map(blocks)
+    cols = [t for t in weights_risk if t in cov_df.columns and t in cov_df.index and weights_risk.get(t, 0) > 0]
+    if not cols:
+        return {}
+    w = np.array([weights_risk[t] for t in cols])
+    cov = cov_df.reindex(index=cols, columns=cols).fillna(0).values
+    pc = _pc_from_w(w, cov)
+    out: dict[str, float] = {}
+    for b in RISK_BUDGET_BLOCKS:
+        out[b] = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == b)
+    total = sum(out.values())
+    if total <= 0:
+        return {b: 0.0 for b in RISK_BUDGET_BLOCKS}
+    return {b: float(out[b] / total) for b in RISK_BUDGET_BLOCKS}
+
+
+def check_rb_corridor(
+    actual_rc_block: dict[str, float],
+    rc_block_targets: dict[str, float],
+    corridor_pp: float = RB_CORRIDOR_PP,
+) -> tuple[bool, list[str]]:
+    """
+    Check if realized block RC is within target ± corridor_pp (hard constraint).
+    Returns (ok, list of violation messages).
+    """
+    violations: list[str] = []
+    for b in RISK_BUDGET_BLOCKS:
+        target = rc_block_targets.get(b)
+        actual = actual_rc_block.get(b)
+        if target is None or actual is None:
+            continue
+        lo = target - corridor_pp
+        hi = target + corridor_pp
+        if actual < lo - 1e-9 or actual > hi + 1e-9:
+            violations.append(
+                f"RB corridor: {b} actual={actual:.3f} outside [{lo:.3f}, {hi:.3f}] (target={target:.3f} ± {corridor_pp})"
+            )
+    return len(violations) == 0, violations

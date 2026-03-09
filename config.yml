@@ -11,9 +11,9 @@
 
 investor_currency: USD
 initial_investable_amount: 1000
-liquidity_need: 0
+# liquidity_need is derived (liquidity_need_months * monthly_expenses); do not set manually for portfolio logic
 
-# ---------- Liquidity (life floor): amount = liquidity_need_months × monthly_expenses; if no portfolio_value, initial_investable_amount is used ----------
+# ---------- Liquidity (life floor): liquidity_need_total = liquidity_need_months × monthly_expenses; liquidity_floor_pct = that / portfolio_value (or initial_investable_amount) ----------
 liquidity_need_months: 0
 monthly_expenses: 0
 portfolio_value:

@@ -108,6 +108,7 @@ def export_run_metadata(
     run_timestamp: str | None = None,
     portfolio_metrics_summary: dict[str, Any] | None = None,
     stress_report: dict[str, Any] | None = None,
+    portfolio_valid: bool | None = None,
 ) -> Path:
     """
     Export run metadata to JSON including:
@@ -116,6 +117,7 @@ def export_run_metadata(
     - Pending config items (still need final user values)
     - Run timestamp and analysis period info
     - Comparison with targets (if specified)
+    - portfolio_valid: False when MaxDD or Stress Judge fails (gatekeeper)
     
     Returns path to exported file.
     """
@@ -143,6 +145,8 @@ def export_run_metadata(
             "fields": portfolio_config.get_pending_config_items(),
         },
     }
+    if portfolio_valid is not None:
+        metadata["portfolio_valid"] = portfolio_valid
     
     if stress_report:
         metadata["stress_test"] = {

@@ -1,6 +1,11 @@
 """
 Final optimization/report snapshot: one object, same print and save.
 Used by run_optimization.py and run_report.py.
+
+Constraint roles (aligned with portfolio_construction_policy):
+  - Hard (gatekeeper): Max DD, Stress Judge, RB corridor ±5pp. Failure prevents weight export / invalidates portfolio.
+  - Soft/diagnostic: Baseline coverage, RC caps snapshot, weight caps snapshot (reported in constraints_status).
+  - Report-only: target_nominal_return_annual (comparison with realized CAGR only; not an optimization constraint).
 """
 from __future__ import annotations
 

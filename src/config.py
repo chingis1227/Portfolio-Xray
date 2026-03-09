@@ -14,7 +14,7 @@ from typing import Any
 
 import yaml
 
-from src.client_profiles import apply_profile_to_config, get_profile_defaults
+from src.client_profiles import apply_profile_to_config, get_profile_defaults, normalize_rc_block_targets
 
 # Keys written back to config.yml when profile is applied (so file stays in sync with client_profile)
 _PROFILE_SYNC_KEYS = (
@@ -318,3 +318,22 @@ def get_target_return_from_config(cfg: PortfolioConfig) -> float | None:
     Get target nominal annual return from config for comparison with realized CAGR.
     """
     return cfg.target_nominal_return_annual
+
+
+def apply_profile_override(cfg: PortfolioConfig, profile_id: str) -> None:
+    """
+    Apply profile defaults to an already-loaded PortfolioConfig (e.g. from --profile CLI).
+    Single source of truth: do not re-read config file. Mutates cfg in place.
+    """
+    defaults = get_profile_defaults(profile_id)
+    if not defaults:
+        return
+    if "target_nominal_return_annual" in defaults:
+        cfg.target_nominal_return_annual = defaults["target_nominal_return_annual"]
+    if "target_vol_annual" in defaults:
+        cfg.target_vol_annual = defaults["target_vol_annual"]
+    if "target_max_drawdown_pct" in defaults:
+        cfg.target_max_drawdown_pct = defaults["target_max_drawdown_pct"]
+    if "rc_block_targets" in defaults:
+        cfg.rc_block_targets = normalize_rc_block_targets(dict(defaults["rc_block_targets"]))
+    cfg.client_profile = profile_id

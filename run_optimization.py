@@ -15,8 +15,13 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from src.config import load_validated_config, load_assets_metadata, resolve_cash_and_rf, WEIGHTS_FILENAME
-from src.client_profiles import get_profile_defaults
+from src.config import (
+    load_validated_config,
+    load_assets_metadata,
+    resolve_cash_and_rf,
+    WEIGHTS_FILENAME,
+    apply_profile_override,
+)
 from src.config_schema import ConfigValidationError
 from src.data_loader import load_monthly_data_shared
 from src.optimization import (
@@ -24,25 +29,14 @@ from src.optimization import (
     run_risk_budget_optimization,
     proliquidity,
     portfolio_vol_annual,
+    rc_by_block_from_weights,
+    check_rb_corridor,
 )
 from src.risk_contrib import cov_matrix_monthly
 from src.snapshot import build_snapshot, print_snapshot, save_snapshot
 from src.stress import run_stress
 from src.utils import setup_logging, logger, tickers_meeting_coverage
-
-
-def get_client_profile_from_config_file() -> str | None:
-    """Read client_profile directly from config.yml so we always use the latest value from disk."""
-    config_path = Path(__file__).resolve().parent / "config.yml"
-    if not config_path.is_file():
-        return None
-    try:
-        with open(config_path, encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
-        profile = data.get("client_profile")
-        return profile.strip() if isinstance(profile, str) and profile else None
-    except Exception:
-        return None
+from src.block_selection import apply_block_selection
 
 
 def parse_args() -> argparse.Namespace:
@@ -81,32 +75,18 @@ def main() -> None:
         logger.error(f"Ошибка конфигурации: {e}")
         raise SystemExit(1)
 
-    # Apply profile: from --profile CLI, or from config.yml on disk (so we always see latest client_profile)
-    # If config.yml has explicit rc_block_targets (manual override), keep them; else use profile.
-    config_path = Path(__file__).resolve().parent / "config.yml"
-    raw_rc_from_file = None
-    if config_path.is_file():
-        try:
-            with open(config_path, encoding="utf-8") as f:
-                raw_data = yaml.safe_load(f) or {}
-            rbt = raw_data.get("rc_block_targets")
-            if rbt and isinstance(rbt, dict) and len(rbt) >= 3:
-                raw_rc_from_file = {k: float(v) for k, v in rbt.items() if isinstance(v, (int, float))}
-                if raw_rc_from_file and abs(sum(raw_rc_from_file.values()) - 1.0) < 0.01:
-                    cfg.rc_block_targets = raw_rc_from_file
-        except Exception:
-            pass
-    profile_source = (get_client_profile_from_config_file() or cfg.client_profile or args.profile or "").strip()
-    profile_display = profile_source or "—"
-    if profile_source and raw_rc_from_file is None:
-        defaults = get_profile_defaults(profile_source)
-        if defaults:
-            if defaults.get("target_vol_annual") is not None:
-                cfg.target_vol_annual = defaults["target_vol_annual"]
-            if defaults.get("rc_block_targets") is not None:
-                cfg.rc_block_targets = dict(defaults["rc_block_targets"])
-    if profile_source or cfg.rc_block_targets:
-        logger.info("Профиль %s: target_vol=%.2f%%, rc_block_targets=%s", profile_display, (cfg.target_vol_annual or 0) * 100, cfg.rc_block_targets)
+    # Single source of truth for profile: config is already applied in load_validated_config.
+    # CLI --profile overrides once (no second read of config file).
+    if args.profile:
+        apply_profile_override(cfg, args.profile.strip())
+    profile_display = (cfg.client_profile or args.profile or "—").strip() or "—"
+    if cfg.rc_block_targets:
+        logger.info(
+            "Профиль %s: target_vol=%.2f%%, rc_block_targets=%s",
+            profile_display,
+            (cfg.target_vol_annual or 0) * 100,
+            cfg.rc_block_targets,
+        )
 
     if not cfg.rc_block_targets:
         logger.error(
@@ -125,10 +105,13 @@ def main() -> None:
     window_months = cfg.windows_months[0] if cfg.windows_months else 60
     coverage_threshold = getattr(cfg, "coverage_threshold", 0.90) or 0.90
 
+    # Block selection: Duration/Inflation candidate selection and mix (hook; currently pass-through)
+    blocks_for_optimization = apply_block_selection(cfg.blocks, config=cfg, monthly_returns=monthly_returns)
+
     # --- Full (policy_portfolio_full): all tickers, NaN-safe inner join in window; this is what we allocate ---
     weights_risk, status = run_risk_budget_optimization(
         monthly_returns,
-        cfg.blocks,
+        blocks_for_optimization,
         cfg.rc_block_targets,
         cfg.growth_core_candidates,
         rc_asset_cap_pct=cfg.rc_asset_cap_pct,
@@ -147,6 +130,15 @@ def main() -> None:
     cols = [t for t in weights_risk if t in monthly_returns.columns]
     ret_slice = monthly_returns[cols].iloc[-window_months:].dropna(how="any")
     cov_df = cov_matrix_monthly(ret_slice, ddof=1)
+    # RB corridor (hard constraint): realized block RC must be within target ± 5 pp
+    actual_rc_block = rc_by_block_from_weights(weights_risk, cov_df, blocks_for_optimization)
+    if actual_rc_block and cfg.rc_block_targets:
+        rb_ok, rb_violations = check_rb_corridor(actual_rc_block, cfg.rc_block_targets)
+        if not rb_ok:
+            for v in rb_violations:
+                logger.error(v)
+            logger.error("Портфель вне RB-коридора (target ± 5 pp). Веса не записаны.")
+            raise SystemExit(1)
     current_vol = portfolio_vol_annual(weights_risk, cov_df)
 
     # ProLiquidity (with Alpha Shift when cash prohibited and vol > target)
@@ -167,7 +159,7 @@ def main() -> None:
         cov_df=cov_df,
         n_rc=cfg.N_rc,
         donor_shift_mode=cfg.donor_shift_mode,
-        blocks=cfg.blocks,
+        blocks=blocks_for_optimization,
         growth_core_candidates=cfg.growth_core_candidates,
     )
     if proliquidity_error:
@@ -259,6 +251,17 @@ def main() -> None:
     else:
         print("  Stress Judge: не выполнен (нет данных/факторов)")
     print("")
+
+    # Gatekeepers: if MaxDD fail or Stress FAIL_STRESS, portfolio is invalid — do not write weights or run report
+    portfolio_valid = True
+    if max_dd_ok is False:
+        portfolio_valid = False
+        logger.error("Max DD: FAIL — портфель вне целевой просадки. Веса не записаны, отчёт не запущен.")
+    if stress_status == "FAIL_STRESS":
+        portfolio_valid = False
+        logger.error("Stress Judge: FAIL_STRESS — %s. Веса не записаны, отчёт не запущен.", stress_fail_reason or "—")
+    if not portfolio_valid:
+        raise SystemExit(1)
 
     # --- Baseline (sanity_check_baseline): diagnostic only, never used for allocation ---
     baseline_tickers = set(

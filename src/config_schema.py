@@ -33,9 +33,10 @@ class PortfolioConfig:
     # Core settings
     investor_currency: str
     initial_investable_amount: float
+    # Derived: liquidity_need_total = liquidity_need_months * monthly_expenses (single source: months + expenses)
     liquidity_need: float
     
-    # Liquidity (life floor + cash policy)
+    # Liquidity (life floor): single source of truth for portfolio logic
     liquidity_need_months: float
     monthly_expenses: float
     portfolio_value: float | None
@@ -56,6 +57,7 @@ class PortfolioConfig:
     allow_leverage: bool
     allow_short_selling: bool
     min_acceptable_return: float | None
+    # Report-only: comparison target (target vs realized CAGR); not an optimization constraint
     target_nominal_return_annual: float | None
     target_vol_annual: float | None
     target_max_drawdown_pct: float | None
@@ -729,9 +731,9 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
     return PortfolioConfig(
         investor_currency=cfg["investor_currency"],
         initial_investable_amount=cfg.get("initial_investable_amount", 1000),
-        liquidity_need=cfg.get("liquidity_need", 0),
+        liquidity_need=float(cfg.get("liquidity_need_months", 0)) * float(cfg.get("monthly_expenses", 0) or 0),
         liquidity_need_months=float(cfg.get("liquidity_need_months", 0)),
-        monthly_expenses=cfg.get("monthly_expenses", 0.0),
+        monthly_expenses=float(cfg.get("monthly_expenses", 0) or 0),
         portfolio_value=cfg.get("portfolio_value"),
         cash_policy=cfg.get("cash_policy", "allowed_for_scaling"),
         client_profile=cfg.get("client_profile"),

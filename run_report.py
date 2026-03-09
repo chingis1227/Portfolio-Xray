@@ -17,6 +17,7 @@ CLI options:
 from __future__ import annotations
 
 import argparse
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -64,7 +65,7 @@ from src.portfolio_analytics import (
     var_historical,
 )
 from src.portfolio_dynamic import portfolio_returns_nan_safe
-from src.risk_contrib import rc_vol_window
+from src.risk_contrib import cov_matrix_monthly, rc_vol_window
 from src.stress import run_stress
 from src.stress_factors import (
     build_factor_matrix_monthly,
@@ -227,8 +228,20 @@ def main() -> None:
     
     asset_returns_df = monthly_returns[[t for t in tickers if t in monthly_returns.columns]].copy()
     target_weights = {t: weights.get(t, 0.0) for t in tickers}
+    # Optional: within-block redistribution + RC-gated fallback (data_policy_nan_young_etfs.md)
+    cov_df_nan_safe = None
+    if cfg.blocks and cfg.rc_block_targets and asset_returns_df.shape[0] >= 2:
+        ret_inner = asset_returns_df.dropna(how="all").iloc[-720:]  # up to 60y for cov
+        if ret_inner.shape[0] >= 2:
+            cov_df_nan_safe = cov_matrix_monthly(ret_inner, ddof=1)
     portfolio_returns, weights_used = portfolio_returns_nan_safe(
-        asset_returns_df, target_weights, cash_returns
+        asset_returns_df,
+        target_weights,
+        cash_returns,
+        blocks=cfg.blocks,
+        rc_block_targets=cfg.rc_block_targets,
+        rc_asset_cap_pct=cfg.rc_asset_cap_pct,
+        cov_df=cov_df_nan_safe,
     )
 
     # =========================================================================
@@ -496,6 +509,16 @@ def main() -> None:
         windows_months,
     )
     
+    # Gatekeepers: portfolio_valid = False if MaxDD fail or Stress FAIL_STRESS (report-only run still exports, but metadata marks invalid)
+    portfolio_valid = True
+    if stress_report.get("status") == "FAIL_STRESS":
+        portfolio_valid = False
+    if portfolio_metrics_summary and cfg.target_max_drawdown_pct is not None:
+        realized_mdd = portfolio_metrics_summary.get("max_drawdown")
+        if realized_mdd is not None and not (realized_mdd != realized_mdd):
+            if realized_mdd < -abs(cfg.target_max_drawdown_pct):
+                portfolio_valid = False
+    
     export_run_metadata(
         output_dir,
         cfg,
@@ -504,6 +527,7 @@ def main() -> None:
         run_timestamp,
         portfolio_metrics_summary,
         stress_report=stress_report,
+        portfolio_valid=portfolio_valid,
     )
 
     # Snapshots: one for assets, three by window (3y / 5y / 10y)
@@ -649,6 +673,9 @@ def main() -> None:
         print(f"Stress Judge: {st}" + (f" ({reason})" if reason else ""))
 
     print(f"\nКеш сохранён в cache/ (дневной: {daily_cache_key}, месячный: {monthly_cache_key})")
+    
+    if not portfolio_valid:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
