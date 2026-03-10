@@ -79,7 +79,8 @@ Growth:
   - XOP
   - URA
 
-# Credit Beta (High Yield + EM Debt + preferred)
+# Credit Beta (High Yield + EM Debt + preferred).
+# Сейчас все тикеры этой категории считаются одной группой (Growth_HY); отдельный подблок Growth_EM_debt не используется.
 Growth_HY:
   - HYG
   - JNK

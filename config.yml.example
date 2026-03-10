@@ -118,6 +118,8 @@ N_rc: 3
 growth_core_candidates: ["VOO", "VT"]
 # Donor (Shift Mode): proportional or equal — you can set equal.
 donor_shift_mode: proportional
+# RC post-processing: strict = do not write weights if RC caps unresolved; permissive = write but flag violation
+rc_policy_mode: strict
 
 # =============================================================================
 # SECTION 6: ANALYSIS SETTINGS

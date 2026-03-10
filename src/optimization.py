@@ -482,6 +482,129 @@ def run_risk_budget_optimization(
     return w_dict, status_msg
 
 
+RC_POSTPROCESS_MAX_ITER = 200
+RC_POSTPROCESS_STEP_PCT = 0.005
+
+
+def enforce_rc_caps_postprocess(
+    weights_risk: dict[str, float],
+    cov_df: pd.DataFrame,
+    blocks: dict[str, list[str]],
+    growth_core_candidates: list[str],
+    rc_asset_cap: float,
+    min_weight: float,
+    max_single_security_weight_pct: float | None,
+    rb_growth: float,
+    risk_tickers: list[str],
+    max_iterations: int = RC_POSTPROCESS_MAX_ITER,
+    step_pct: float = RC_POSTPROCESS_STEP_PCT,
+) -> tuple[dict[str, float], bool, dict]:
+    """
+    RC post-processing fallback: iteratively reduce weight from assets above RC cap
+    and reallocate to recipient bucket (core equity then lowest-vol Duration/Inflation).
+    Respects min_weight, weight caps, no leverage/short.
+    Returns (adjusted_weights, success, diagnostics).
+    """
+    cols = [
+        t for t in risk_tickers
+        if t in weights_risk and t in cov_df.columns and t in cov_df.index and weights_risk.get(t, 0) > 0
+    ]
+    if not cols:
+        return dict(weights_risk), True, {}
+    n = len(cols)
+    ticker_to_block = ticker_to_block_map(blocks)
+    bounds = build_bounds(
+        cols, ticker_to_block, growth_core_candidates, n, min_weight,
+        max_single_security_weight_pct=max_single_security_weight_pct,
+        rb_growth=rb_growth,
+    )
+    cov = cov_df.reindex(index=cols, columns=cols).fillna(0).values
+    w = np.array([weights_risk[t] for t in cols], dtype=float)
+
+    vol_per = np.sqrt(np.maximum(np.diag(cov), 1e-20))
+    hedge = [t for t in cols if ticker_to_block.get(t) in ("Duration", "Inflation")]
+    hedge_vol = [(t, vol_per[cols.index(t)]) for t in hedge]
+    hedge_vol.sort(key=lambda x: (x[1], x[0]))
+    recipient_order = [t for t in ("VOO", "VT", "VTI") if t in cols]
+    recipient_order += [t for t, _ in hedge_vol]
+    if not recipient_order:
+        return dict(weights_risk), False, {"reason": "no_recipient"}
+
+    for it in range(max_iterations):
+        var_p = variance_p(w, cov)
+        if var_p <= 1e-16:
+            break
+        pc = (w * (cov @ w)) / var_p
+        violators = [i for i in range(n) if pc[i] > rc_asset_cap + 1e-9]
+        if not violators:
+            s = float(w.sum())
+            if s > 1e-12:
+                w = w / s
+            out = {t: float(w[j]) for j, t in enumerate(cols)}
+            for t in risk_tickers:
+                if t not in out:
+                    out[t] = 0.0
+            return out, True, {"iterations": it, "rc_cap": rc_asset_cap}
+
+        violators.sort(key=lambda i: (-pc[i], cols[i]))
+        donor_idx = violators[0]
+        lo, hi = bounds[donor_idx]
+        delta_max = float(w[donor_idx] - lo)
+        if delta_max <= 1e-9:
+            out = {t: float(w[j]) for j, t in enumerate(cols)}
+            for t in risk_tickers:
+                if t not in out:
+                    out[t] = 0.0
+            return out, False, {
+                "iterations": it,
+                "remaining_violators": [cols[i] for i in violators],
+                "reason": "donor_at_min",
+            }
+        delta = min(step_pct, delta_max)
+
+        total_recipient_space = 0.0
+        for rec_ticker in recipient_order:
+            j = cols.index(rec_ticker)
+            rec_hi = bounds[j][1]
+            total_recipient_space += max(0.0, rec_hi - w[j])
+        transfer = min(delta, total_recipient_space)
+        if transfer <= 1e-12:
+            out = {t: float(w[j]) for j, t in enumerate(cols)}
+            for t in risk_tickers:
+                if t not in out:
+                    out[t] = 0.0
+            return out, False, {"iterations": it, "reason": "recipient_caps_full"}
+
+        w[donor_idx] -= transfer
+        remaining = transfer
+        for rec_ticker in recipient_order:
+            if remaining <= 1e-12:
+                break
+            j = cols.index(rec_ticker)
+            rec_hi = bounds[j][1]
+            space = max(0.0, rec_hi - w[j])
+            if space <= 1e-12:
+                continue
+            add = min(remaining, space)
+            w[j] += add
+            remaining -= add
+        w = np.clip(w, [b[0] for b in bounds], [b[1] for b in bounds])
+        # Keep sum=1 (no renormalize so we do not push weights over caps)
+
+    var_p = variance_p(w, cov)
+    pc = (w * (cov @ w)) / var_p if var_p > 1e-16 else np.ones(n) / n
+    violators = [i for i in range(n) if pc[i] > rc_asset_cap + 1e-9]
+    out = {t: float(w[j]) for j, t in enumerate(cols)}
+    for t in risk_tickers:
+        if t not in out:
+            out[t] = 0.0
+    return out, False, {
+        "iterations": max_iterations,
+        "remaining_violators": [cols[i] for i in violators],
+        "reason": "max_iterations",
+    }
+
+
 def _alpha_shift_to_target_vol(
     weights_risk: dict[str, float],
     cov_df: pd.DataFrame,

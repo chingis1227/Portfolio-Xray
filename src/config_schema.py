@@ -102,7 +102,9 @@ class PortfolioConfig:
 
     # Liquidity floor from profile or explicit config; used by ProLiquidity when set (else derived from liquidity_need_months * monthly_expenses / portfolio_value)
     liquidity_floor_pct: float | None = None
-    
+    # RC post-processing: "strict" = do not write weights if RC caps unresolved; "permissive" = write but flag violation
+    rc_policy_mode: str = "strict"
+
     def get_resolved_config(self) -> dict[str, Any]:
         """
         Return all config values as a dictionary for export.
@@ -142,6 +144,7 @@ class PortfolioConfig:
             "N_rc": self.N_rc,
             "growth_core_candidates": self.growth_core_candidates,
             "donor_shift_mode": self.donor_shift_mode,
+            "rc_policy_mode": self.rc_policy_mode,
             "windows_months": self.windows_months,
             "coverage_threshold": self.coverage_threshold,
             "output_dir": self.output_dir,
@@ -197,6 +200,7 @@ class PortfolioConfig:
             "N_rc": self.N_rc,
             "growth_core_candidates": self.growth_core_candidates,
             "donor_shift_mode": self.donor_shift_mode,
+            "rc_policy_mode": self.rc_policy_mode,
         }
 
 
@@ -256,6 +260,7 @@ NONNEGATIVE_FIELDS = [
 # portfolio_value validated separately (optional, non-negative when set)
 CASH_POLICY_VALUES = ("required_floor", "allowed_for_scaling", "prohibited")
 DONOR_SHIFT_MODES = ("proportional", "equal")
+RC_POLICY_MODES = ("strict", "permissive")
 BACKTEST_MODES = ("dynamic_nan_safe", "simple")
 
 NUMERIC_FIELDS = [
@@ -842,6 +847,15 @@ def _validate_alpha_shift_params(cfg: dict[str, Any]) -> None:
         )
 
 
+def _validate_rc_policy_mode(cfg: dict[str, Any]) -> None:
+    """Validate rc_policy_mode (strict | permissive)."""
+    mode = cfg.get("rc_policy_mode", "strict")
+    if mode is not None and mode not in RC_POLICY_MODES:
+        raise ConfigValidationError(
+            f"Config field 'rc_policy_mode' must be one of {RC_POLICY_MODES}, got {mode!r}"
+        )
+
+
 def _identify_pending_fields(cfg: dict[str, Any]) -> list[str]:
     """Identify which constraint fields are still pending user input (null/None)."""
     pending = []
@@ -898,6 +912,7 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
     _validate_cash_policy(cfg)
     _validate_portfolio_value(cfg)
     _validate_alpha_shift_params(cfg)
+    _validate_rc_policy_mode(cfg)
     _validate_backtest_mode(cfg)
     _validate_robustness_policy(cfg)
     _validate_optimization_windows(cfg)
@@ -945,6 +960,7 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         N_rc=cfg.get("N_rc", 3),
         growth_core_candidates=list(cfg.get("growth_core_candidates", ["VOO", "VT", "VTI"])),
         donor_shift_mode=cfg.get("donor_shift_mode", "proportional"),
+        rc_policy_mode=cfg.get("rc_policy_mode", "strict"),
         duration_int_ticker=cfg.get("duration_int_ticker"),
         duration_long_ticker=cfg.get("duration_long_ticker"),
         duration_ig_ticker=cfg.get("duration_ig_ticker"),

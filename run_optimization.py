@@ -28,6 +28,7 @@ from src.data_loader import load_monthly_data_shared
 from src.optimization import (
     get_risk_portfolio_tickers,
     run_risk_budget_optimization,
+    enforce_rc_caps_postprocess,
     proliquidity,
     portfolio_vol_annual,
     rc_by_block_from_weights,
@@ -63,8 +64,12 @@ STATUS_APPROVED = "APPROVED"
 STATUS_CANDIDATE_RB_BREACH = "CANDIDATE_RB_BREACH"
 STATUS_OK_FALLBACK = "OK_FALLBACK"
 STATUS_FAIL_DATA = "FAIL_DATA"
+STATUS_FAIL_MAX_DD = "FAIL_MAX_DD"
+STATUS_FAIL_RC = "FAIL_RC"
 
 VIOL_RB_BREACH = "RB_BREACH"
+VIOL_MAX_DD_GATE = "MAX_DD_GATE"
+VIOL_RC_VIOLATION = "RC_VIOLATION"
 VIOL_RC_ASSET_CAP = "VIOL_RC_ASSET_CAP"
 VIOL_FAIL_STRESS = "FAIL_STRESS"
 VIOL_MAX_DD_BREACH = "MAX_DD_BREACH"
@@ -111,6 +116,16 @@ def _build_next_actions(
     if VIOL_MAX_DD_BREACH in codes:
         actions.append(
             "Realized max drawdown exceeds mandate; consider reducing risk (target_vol, growth share) or liquidity."
+        )
+    if VIOL_MAX_DD_GATE in codes:
+        actions.append(
+            "MaxDD gate (strict): stress or realized drawdown exceeds mandate; weights not written. "
+            "Adjust target_max_drawdown_pct, rc_block_targets, or universe and re-run."
+        )
+    if VIOL_RC_VIOLATION in codes:
+        actions.append(
+            "RC post-processing could not satisfy RC caps (strict mode: weights not written; permissive: violation flagged). "
+            "Relax rc_asset_cap_pct, add assets, or set rc_policy_mode: permissive to write weights with violation."
         )
     return actions
 
@@ -198,11 +213,13 @@ def main() -> None:
         logger.error("Block selection FAIL_DATA: %s", block_result.get("reason", ""))
         raise SystemExit(1)
     if block_result.get("status") == "FAIL_FEASIBILITY":
-        logger.error("Block selection FAIL_FEASIBILITY: %s", block_result.get("reason", ""))
-        raise SystemExit(1)
+        logger.warning(
+            "Block selection FAIL_FEASIBILITY: %s — продолжаем с блоками как есть (без internal weights).",
+            block_result.get("reason", ""),
+        )
     blocks_for_optimization = block_result.get("blocks", cfg.blocks)
-    duration_internal_weights = block_result.get("duration_internal_weights")
-    inflation_internal_weights = block_result.get("inflation_internal_weights")
+    duration_internal_weights = block_result.get("duration_internal_weights") if block_result.get("status") == "OK" else None
+    inflation_internal_weights = block_result.get("inflation_internal_weights") if block_result.get("status") == "OK" else None
     if duration_internal_weights:
         logger.info("Duration block selection: internal_weights=%s", duration_internal_weights)
     if inflation_internal_weights:
@@ -239,6 +256,63 @@ def main() -> None:
             min_effective_months,
         )
     cov_df = cov_matrix_monthly(ret_slice, ddof=1)
+    # --- RC post-processing (Option B): enforce RC caps iteratively; strict = no write if unresolved ---
+    risk_tickers_opt = get_risk_portfolio_tickers(blocks_for_optimization)
+    n_risk = len(cols_primary)
+    rb_growth = (cfg.rc_block_targets or {}).get("Growth", 1.0 / 3.0)
+    rc_cap_resolved = resolve_rc_asset_cap(cfg.rc_asset_cap_pct, max(n_risk, 1), rb_growth)
+    min_weight_rc = (
+        float(cfg.min_single_security_weight_pct)
+        if (cfg.min_single_security_weight_pct is not None and cfg.min_single_security_weight_pct > 0)
+        else 0.01
+    )
+    adjusted_risk, rc_postprocess_ok, rc_postprocess_diag = enforce_rc_caps_postprocess(
+        weights_risk,
+        cov_df,
+        blocks_for_optimization,
+        cfg.growth_core_candidates,
+        rc_cap_resolved,
+        min_weight_rc,
+        cfg.max_single_security_weight_pct,
+        rb_growth,
+        risk_tickers_opt,
+    )
+    rc_policy_mode = getattr(cfg, "rc_policy_mode", "strict")
+    if not rc_postprocess_ok and rc_policy_mode == "strict":
+        out_final = Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"))
+        out_final.mkdir(parents=True, exist_ok=True)
+        fail_violations = [{"code": VIOL_RC_VIOLATION, "details": rc_postprocess_diag}]
+        fail_result = {
+            "weights": {},
+            "status": STATUS_FAIL_RC,
+            "violations": fail_violations,
+            "rb_deltas_pp": {},
+            "rc_breaches": [],
+            "stress_summary": {},
+            "next_actions": _build_next_actions(fail_violations, {}, None),
+        }
+        run_result_path = out_final / "run_result.json"
+        with open(run_result_path, "w", encoding="utf-8") as f:
+            json.dump(fail_result, f, indent=2, default=str)
+        logger.error(
+            "RC post-processing could not satisfy RC caps (rc_policy_mode=strict). Weights not written. Diagnostics: %s",
+            rc_postprocess_diag,
+        )
+        print("")
+        print("--- RC gate (strict): веса НЕ записаны ---")
+        print("  RC caps не достигнуты после итеративного перераспределения.")
+        print("  См. %s (status=%s)." % (run_result_path, STATUS_FAIL_RC))
+        raise SystemExit(1)
+    weights_risk = adjusted_risk
+    rc_violation_after_postprocess = not rc_postprocess_ok
+    if rc_postprocess_ok:
+        logger.info("RC post-processing: все активы в пределах RC cap (%.2f%%)", rc_cap_resolved * 100)
+    elif rc_policy_mode == "permissive":
+        logger.warning(
+            "RC post-processing: нарушение RC cap сохранено (permissive). Диагностика: %s",
+            rc_postprocess_diag,
+        )
+
     mu_10y = ret_slice.mean()
     actual_rc_block = rc_by_block_from_weights(weights_risk, cov_df, blocks_for_optimization)
     if actual_rc_block and cfg.rc_block_targets:
@@ -417,12 +491,12 @@ def main() -> None:
     stress_fail_reason = stress_report.get("fail_reason_code") or stress_report.get("skip_reason")
 
     print("")
-    print("--- Guardrails (production: warning-only, weights always saved) ---")
+    print("--- Guardrails (MaxDD = strict gate when mandate set; Stress/RB/RC = warning) ---")
     if max_dd_limit is not None:
         if max_dd_ok is True:
             print("  Max DD: PASS (портфель в пределах целевой просадки)")
         elif max_dd_ok is False:
-            print("  Max DD: FAIL (реализованная просадка хуже целевой %.1f%%) — флаг нарушения" % (max_dd_limit * 100))
+            print("  Max DD: FAIL (реализованная просадка хуже целевой %.1f%%) — веса не будут записаны" % (max_dd_limit * 100))
         else:
             print("  Max DD: не проверен (недостаточно данных)")
     else:
@@ -461,15 +535,20 @@ def main() -> None:
                 "cap_pct": round(float(rc_cap) * 100.0, 2),
             })
 
-    # Status: APPROVED | CANDIDATE_RB_BREACH | OK_FALLBACK (FAIL_DATA already exited)
+    # Status: APPROVED | CANDIDATE_RB_BREACH | OK_FALLBACK (FAIL_DATA/FAIL_RC already exited)
     if not rb_ok:
         production_status = STATUS_CANDIDATE_RB_BREACH
-    elif "OK_FALLBACK" in status or rc_breaches:
+    elif "OK_FALLBACK" in status or rc_breaches or rc_violation_after_postprocess:
         production_status = STATUS_OK_FALLBACK
     else:
         production_status = STATUS_APPROVED
 
     violations = []
+    if rc_violation_after_postprocess:
+        violations.append({
+            "code": VIOL_RC_VIOLATION,
+            "details": rc_postprocess_diag,
+        })
     if not rb_ok:
         violations.append({"code": VIOL_RB_BREACH, "details": rb_deltas_pp})
     if rc_breaches:
@@ -489,6 +568,27 @@ def main() -> None:
             "details": {"target_max_drawdown_pct": cfg.target_max_drawdown_pct, "realized_exceeds_limit": True},
         })
 
+    # MaxDD gate (strict): if mandate is set and exceeded by stress-based or realized measure, do not write weights
+    stress_worst_pct = stress_report.get("worst_scenario_loss_pct")
+    stress_exceeds = (
+        max_dd_limit is not None
+        and stress_worst_pct is not None
+        and stress_worst_pct < -max_dd_limit
+    )
+    realized_exceeds = max_dd_ok is False
+    max_dd_gate_passed = True
+    if max_dd_limit is not None and (stress_exceeds or realized_exceeds):
+        max_dd_gate_passed = False
+        violations.append({
+            "code": VIOL_MAX_DD_GATE,
+            "details": {
+                "target_max_drawdown_pct": cfg.target_max_drawdown_pct,
+                "stress_worst_loss_pct": round(stress_worst_pct, 4) if stress_worst_pct is not None else None,
+                "stress_exceeds": stress_exceeds,
+                "realized_exceeds": realized_exceeds,
+            },
+        })
+
     stress_summary = {
         "status": stress_status,
         "fail_reason_code": stress_fail_reason,
@@ -497,8 +597,11 @@ def main() -> None:
     }
     next_actions = _build_next_actions(violations, rb_deltas_pp, stress_report)
 
+    if not max_dd_gate_passed:
+        production_status = STATUS_FAIL_MAX_DD
+
     run_result = {
-        "weights": rounded,
+        "weights": rounded if max_dd_gate_passed else {},
         "status": production_status,
         "violations": violations,
         "rb_deltas_pp": rb_deltas_pp,
@@ -546,19 +649,36 @@ def main() -> None:
         print("  Baseline не рассчитан (нет достаточного числа тикеров с coverage >= %.0f%%)." % (coverage_threshold * 100))
     print("")
 
-    # Write weights and snapshot to output_dir_final (ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ) — always (production: only FAIL_DATA stops)
     out_final = Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"))
     out_final.mkdir(parents=True, exist_ok=True)
-    weights_path = out_final / WEIGHTS_FILENAME
-    with open(weights_path, "w", encoding="utf-8") as f:
-        yaml.dump(rounded, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-    print("Веса записаны в %s." % weights_path)
-
-    # Persist production run result (status, violations, next_actions)
     run_result_path = out_final / "run_result.json"
     with open(run_result_path, "w", encoding="utf-8") as f:
         json.dump(run_result, f, indent=2, default=str)
     print("Результат прогона: %s (status=%s)" % (run_result_path, production_status))
+
+    if not max_dd_gate_passed:
+        logger.error(
+            "MaxDD gate: mandate exceeded (stress-based or realized). Weights not written. "
+            "Limit=%.1f%%; stress_worst=%s; realized_exceeds=%s.",
+            (max_dd_limit or 0) * 100,
+            round(stress_worst_pct * 100, 1) if stress_worst_pct is not None else "N/A",
+            realized_exceeds,
+        )
+        print("")
+        print("--- MaxDD gate (strict): веса НЕ записаны ---")
+        print("  Целевая просадка: %.1f%%" % ((max_dd_limit or 0) * 100))
+        if stress_exceeds and stress_worst_pct is not None:
+            print("  Худший стресс-сценарий: %.1f%% (превышение)" % (stress_worst_pct * 100))
+        if realized_exceeds:
+            print("  Реализованная просадка по истории превышает лимит.")
+        print("  См. %s (status=%s)." % (run_result_path, STATUS_FAIL_MAX_DD))
+        raise SystemExit(1)
+
+    # Write weights and snapshot (only when MaxDD gate passed)
+    weights_path = out_final / WEIGHTS_FILENAME
+    with open(weights_path, "w", encoding="utf-8") as f:
+        yaml.dump(rounded, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    print("Веса записаны в %s." % weights_path)
 
     # Final snapshot (one object, same print and save)
     cash_proxy = cfg.cash_proxy_ticker or "BIL"
