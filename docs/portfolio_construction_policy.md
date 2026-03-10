@@ -182,6 +182,18 @@ That document is the source of truth for: no rewriting of history, join policy (
 
 ---
 
+### Production workflow (implementation)
+
+In production runs, the pipeline **always produces and writes portfolio weights** unless a **fatal data/config error** (FAIL_DATA) occurs. The following are **quality checks and flags**, not hard stops:
+
+- **RB corridor (target ± 5 pp):** If realized block RC is outside the corridor, status is set to **CANDIDATE_RB_BREACH** and violation **RB_BREACH** is recorded with per-block deltas; weights are still written.
+- **Stress Judge:** If stress validation fails (FAIL_STRESS), a **FAIL_STRESS** violation is recorded with failed scenarios and suggested actions; weights are still written.
+- **RC_vol caps:** RC caps are enforced when the solver allows; if the solver uses a fallback and per-asset RC is violated, status is **OK_FALLBACK**, violation **VIOL_RC_ASSET_CAP** lists breached tickers and cap level; weights are still returned and written.
+
+The single output object (**run_result.json**) carries: weights, status (APPROVED | CANDIDATE_RB_BREACH | OK_FALLBACK | FAIL_DATA), violations, rb_deltas_pp, rc_breaches, stress_summary, and next_actions. **Code behaviour and this policy document are aligned** (single source of truth).
+
+---
+
 ### Decision Logic Summary
 
 The system follows the hierarchy:

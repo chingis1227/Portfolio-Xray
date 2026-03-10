@@ -2,9 +2,12 @@
 Final optimization/report snapshot: one object, same print and save.
 Used by run_optimization.py and run_report.py.
 
-Constraint roles (aligned with portfolio_construction_policy):
-  - Hard (gatekeeper): Max DD, Stress Judge, RB corridor ±5pp. Failure prevents weight export / invalidates portfolio.
-  - Soft/diagnostic: Baseline coverage, RC caps snapshot, weight caps snapshot (reported in constraints_status).
+Production workflow (single source of truth with run_result.json):
+  - Only hard stop: FAIL_DATA (invalid config, missing/NaN data, covariance not computable). Weights are always written otherwise.
+  - RB corridor ±5pp: quality check; sets APPROVED vs CANDIDATE_RB_BREACH; weights still written with RB_BREACH flag.
+  - Stress Judge: warning-only; weights written with FAIL_STRESS flag + suggested actions.
+  - RC caps: enforced when feasible; if violated (fallback), weights still returned with VIOL_RC_ASSET_CAP flag + breached tickers.
+  - Soft/diagnostic: Baseline coverage, constraints_status (rb_corridor, rc_caps, max_dd) for transparency.
   - Report-only: target_nominal_return_annual (comparison with realized CAGR only; not an optimization constraint).
 """
 from __future__ import annotations

@@ -152,6 +152,8 @@ def run_risk_budget_optimization(
     min_single_security_weight_pct: float | None = None,
     max_single_security_weight_pct: float | None = None,
     window_months: int = 60,
+    duration_internal_weights: dict[str, float] | None = None,
+    inflation_internal_weights: dict[str, float] | None = None,
 ) -> tuple[dict[str, float], str]:
     """
     Find RiskPortfolio weights satisfying risk budget (RC block shares) and feasibility.
@@ -328,6 +330,33 @@ def run_risk_budget_optimization(
             return float(pc[idx] - cap_i)
         return rc_cap
 
+    # Growth HY sub-limit: RC_vol(HY) <= 10% × RC_vol(Growth) — feasibility_constraints_spec §2b
+    def constraint_hy_sub(w: np.ndarray) -> float:
+        pc = _pc_from_w(w, cov)
+        rc_g = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Growth")
+        rc_hy = sum(pc[i] for i in hy_indices) if hy_indices else 0.0
+        return float(0.10 * rc_g - rc_hy)
+
+    # Growth EM Debt sub-limit: RC_vol(EM Debt) <= 10% × RC_vol(Growth) — feasibility_constraints_spec §2c
+    def constraint_em_debt_sub(w: np.ndarray) -> float:
+        pc = _pc_from_w(w, cov)
+        rc_g = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Growth")
+        rc_em = sum(pc[i] for i in em_debt_indices) if em_debt_indices else 0.0
+        return float(0.10 * rc_g - rc_em)
+
+    # Block-internal mix constraints (Duration/Inflation selection): w_t = internal[t] * W_block
+    def make_duration_internal_constraint(idx_t: int, internal_t: float, duration_indices: list[int]):
+        def fn(w: np.ndarray) -> float:
+            w_d = sum(w[i] for i in duration_indices)
+            return float(w[idx_t] - internal_t * w_d)
+        return fn
+
+    def make_inflation_internal_constraint(idx_t: int, internal_t: float, inflation_indices: list[int]):
+        def fn(w: np.ndarray) -> float:
+            w_i = sum(w[i] for i in inflation_indices)
+            return float(w[idx_t] - internal_t * w_i)
+        return fn
+
     constraints_core = [
         {"type": "eq", "fun": constraint_sum},
         {"type": "ineq", "fun": constraint_rb_growth_lower},
@@ -337,6 +366,32 @@ def run_risk_budget_optimization(
         {"type": "ineq", "fun": constraint_rb_inflation_lower},
         {"type": "ineq", "fun": constraint_rb_inflation_upper},
     ]
+    if hy_indices:
+        constraints_core.append({"type": "ineq", "fun": constraint_hy_sub})
+    if em_debt_indices:
+        constraints_core.append({"type": "ineq", "fun": constraint_em_debt_sub})
+
+    if duration_internal_weights and duration_in_cols:
+        # One equality per Duration ticker except last: w_t = internal[t] * W_d
+        dur_tickers = [cols[i] for i in duration_in_cols]
+        for k, idx in enumerate(duration_in_cols[:-1]):
+            t = cols[idx]
+            internal_t = duration_internal_weights.get(t)
+            if internal_t is not None:
+                constraints_core.append({
+                    "type": "eq",
+                    "fun": make_duration_internal_constraint(idx, internal_t, duration_in_cols),
+                })
+    if inflation_internal_weights and inflation_in_cols:
+        inf_tickers = [cols[i] for i in inflation_in_cols]
+        for k, idx in enumerate(inflation_in_cols[:-1]):
+            t = cols[idx]
+            internal_t = inflation_internal_weights.get(t)
+            if internal_t is not None:
+                constraints_core.append({
+                    "type": "eq",
+                    "fun": make_inflation_internal_constraint(idx, internal_t, inflation_in_cols),
+                })
 
     constraints_full = constraints_core + [
         {"type": "ineq", "fun": make_rc_cap(i)} for i in range(n)
@@ -354,7 +409,14 @@ def run_risk_budget_optimization(
     for b, target in (("Growth", rb_growth), ("Duration", rb_duration), ("Inflation", rb_inflation)):
         idx = [i for i, t in enumerate(cols) if ticker_to_block.get(t) == b]
         if idx:
-            x0[idx] = target / len(idx)
+            if b == "Duration" and duration_internal_weights:
+                for i in idx:
+                    x0[i] = target * duration_internal_weights.get(cols[i], 1.0 / len(idx))
+            elif b == "Inflation" and inflation_internal_weights:
+                for i in idx:
+                    x0[i] = target * inflation_internal_weights.get(cols[i], 1.0 / len(idx))
+            else:
+                x0[idx] = target / len(idx)
     if np.abs(x0.sum() - 1.0) > 1e-6:
         x0 = np.ones(n) / n
     x0 = np.clip(x0, min_weight, np.array([b[1] for b in bounds]) - 1e-6)
@@ -628,6 +690,7 @@ def check_rb_corridor(
     """
     Check if realized block RC is within target ± corridor_pp (hard constraint).
     Returns (ok, list of violation messages).
+    Used by run_optimization (production RB quality gate) and view_after_optimization (RB status).
     """
     violations: list[str] = []
     for b in RISK_BUDGET_BLOCKS:

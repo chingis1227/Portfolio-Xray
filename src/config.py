@@ -22,6 +22,7 @@ _PROFILE_SYNC_KEYS = (
     "target_vol_annual",
     "target_max_drawdown_pct",
     "rc_block_targets",
+    "liquidity_floor_pct",
 )
 from src.config_schema import (
     ConfigValidationError,

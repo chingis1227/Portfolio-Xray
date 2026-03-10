@@ -724,7 +724,9 @@ def main() -> None:
     print(f"\nКеш сохранён в cache/ (дневной: {daily_cache_key}, месячный: {monthly_cache_key})")
     
     if not portfolio_valid:
-        sys.exit(1)
+        logger.warning(
+            "Portfolio valid = False (e.g. MaxDD exceeds mandate). Report and files written; no exit (production workflow)."
+        )
 
 
 if __name__ == "__main__":

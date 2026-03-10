@@ -74,7 +74,7 @@ class PortfolioConfig:
     N_rc: int
     growth_core_candidates: list[str]
     donor_shift_mode: str
-    
+
     # Analysis settings
     windows_months: list[int]
     coverage_threshold: float
@@ -82,15 +82,26 @@ class PortfolioConfig:
     output_dir_final: str  # Weights, JSON, report (e.g. ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ)
     # Backtest mode: "dynamic_nan_safe" (default, policy-compliant) | "simple" (opt-in, no within-block/RC-gating)
     backtest_mode: str = "dynamic_nan_safe"
-    
+
     # Dual-horizon optimization robustness (10Y primary + 5Y secondary validation)
     optimization_windows_months: list[int] = field(default_factory=lambda: [120, 60])
     primary_window_months: int = 120
     secondary_window_months: int = 60
     robustness_policy: dict[str, Any] = field(default_factory=lambda: dict(DEFAULT_ROBUSTNESS_POLICY))
-    
+
     # Track pending fields
     pending_fields: list[str] = field(default_factory=list)
+
+    # Block selection (Duration/Inflation) — optional; per optimization_duration_spec / optimization_inflation_spec
+    duration_int_ticker: str | None = None   # e.g. IEF
+    duration_long_ticker: str | None = None  # e.g. TLT
+    duration_ig_ticker: str | None = None     # e.g. LQD
+    tips_ticker: str | None = None           # e.g. TIP
+    gold_ticker: str | None = None           # e.g. GLD
+    comm_ticker: str | None = None           # e.g. PDBC
+
+    # Liquidity floor from profile or explicit config; used by ProLiquidity when set (else derived from liquidity_need_months * monthly_expenses / portfolio_value)
+    liquidity_floor_pct: float | None = None
     
     def get_resolved_config(self) -> dict[str, Any]:
         """
@@ -139,6 +150,13 @@ class PortfolioConfig:
             "primary_window_months": self.primary_window_months,
             "secondary_window_months": self.secondary_window_months,
             "robustness_policy": self.robustness_policy,
+            "duration_int_ticker": self.duration_int_ticker,
+            "duration_long_ticker": self.duration_long_ticker,
+            "duration_ig_ticker": self.duration_ig_ticker,
+            "tips_ticker": self.tips_ticker,
+            "gold_ticker": self.gold_ticker,
+            "comm_ticker": self.comm_ticker,
+            "liquidity_floor_pct": self.liquidity_floor_pct,
         }
     
     def get_pending_config_items(self) -> dict[str, Any]:
@@ -371,13 +389,23 @@ def _parse_numeric_value(val: Any, field_name: str) -> float | None:
     """
     if val is None:
         return None
-    
+
     if isinstance(val, (int, float)):
         return float(val)
-    
+
     raise ConfigValidationError(
         f"Config field '{field_name}' must be numeric, got {type(val).__name__}: {val}"
     )
+
+
+def _parse_float_optional(val: Any) -> float | None:
+    """Return float(val) if val is present and numeric, else None. Used for optional decimals (e.g. liquidity_floor_pct)."""
+    if val is None:
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
 
 
 def _normalize_percent_fields(cfg: dict[str, Any]) -> dict[str, Any]:
@@ -917,6 +945,13 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         N_rc=cfg.get("N_rc", 3),
         growth_core_candidates=list(cfg.get("growth_core_candidates", ["VOO", "VT", "VTI"])),
         donor_shift_mode=cfg.get("donor_shift_mode", "proportional"),
+        duration_int_ticker=cfg.get("duration_int_ticker"),
+        duration_long_ticker=cfg.get("duration_long_ticker"),
+        duration_ig_ticker=cfg.get("duration_ig_ticker"),
+        tips_ticker=cfg.get("tips_ticker"),
+        gold_ticker=cfg.get("gold_ticker"),
+        comm_ticker=cfg.get("comm_ticker"),
+        liquidity_floor_pct=_parse_float_optional(cfg.get("liquidity_floor_pct")),
         windows_months=list(cfg["windows_months"]),
         coverage_threshold=cfg.get("coverage_threshold", 0.90),
         output_dir=cfg["output_dir"],

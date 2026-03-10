@@ -123,4 +123,6 @@ def apply_profile_to_config(raw: dict[str, Any]) -> dict[str, Any]:
             result["rc_block_targets"] = dict(defaults["rc_block_targets"])
         else:
             result["rc_block_targets"] = dict(raw_rbt)
+    if "liquidity_floor_pct" in defaults:
+        result["liquidity_floor_pct"] = defaults["liquidity_floor_pct"]
     return result

@@ -31,8 +31,11 @@ from src.optimization import (
     proliquidity,
     portfolio_vol_annual,
     rc_by_block_from_weights,
+    rc_by_asset_from_weights,
+    check_rb_corridor,
+    RB_CORRIDOR_PP,
 )
-from src.risk_contrib import cov_matrix_monthly
+from src.risk_contrib import cov_matrix_monthly, resolve_rc_asset_cap
 from src.robustness import (
     compute_robustness_diagnostics,
     compute_robustness_flags,
@@ -53,6 +56,63 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--write-config", action="store_true", help="Write optimized weights to config.yml")
     parser.add_argument("--profile", type=str, default=None, help="Override client_profile (e.g. Growth, conservative)")
     return parser.parse_args()
+
+
+# Production workflow: status and violation codes
+STATUS_APPROVED = "APPROVED"
+STATUS_CANDIDATE_RB_BREACH = "CANDIDATE_RB_BREACH"
+STATUS_OK_FALLBACK = "OK_FALLBACK"
+STATUS_FAIL_DATA = "FAIL_DATA"
+
+VIOL_RB_BREACH = "RB_BREACH"
+VIOL_RC_ASSET_CAP = "VIOL_RC_ASSET_CAP"
+VIOL_FAIL_STRESS = "FAIL_STRESS"
+VIOL_MAX_DD_BREACH = "MAX_DD_BREACH"
+
+
+def _rb_deltas_pp(actual_rc_block: dict, rc_block_targets: dict) -> dict[str, float]:
+    """Return per-block delta in percentage points: (actual - target) * 100."""
+    out = {}
+    for b in ("Growth", "Duration", "Inflation"):
+        t = rc_block_targets.get(b)
+        a = actual_rc_block.get(b)
+        if t is not None and a is not None:
+            out[b] = round((a - t) * 100.0, 2)
+    return out
+
+
+def _build_next_actions(
+    violations: list,
+    rb_deltas_pp: dict,
+    stress_report: dict | None,
+) -> list[str]:
+    """Deterministic recommendations when violations occur."""
+    actions = []
+    codes = {v["code"] for v in violations}
+    if VIOL_RB_BREACH in codes:
+        actions.append(
+            "Re-run with wider corridor (e.g., 7pp) OR relax secondary caps (weight caps) minimally."
+        )
+        actions.append(
+            "If still RB_BREACH: increase k_block (add instruments) in the offending block(s)."
+        )
+        if rb_deltas_pp.get("Growth"):
+            actions.append(
+                "If Growth capacity constraints prevent W_growth: add satellites or relax max_weight_sat/core caps."
+            )
+    if VIOL_RC_ASSET_CAP in codes:
+        actions.append(
+            "Consider adding assets to dilute RC or relax rc_asset_cap; review breached tickers."
+        )
+    if VIOL_FAIL_STRESS in codes and stress_report:
+        actions.append(
+            "Consider: increase liquidity, shorten duration, reduce high growth/HY exposure."
+        )
+    if VIOL_MAX_DD_BREACH in codes:
+        actions.append(
+            "Realized max drawdown exceeds mandate; consider reducing risk (target_vol, growth share) or liquidity."
+        )
+    return actions
 
 
 def load_monthly_returns(cfg, args) -> tuple[pd.DataFrame, str, pd.Timestamp]:
@@ -126,8 +186,27 @@ def main() -> None:
             min_effective_months,
         )
 
-    # Block selection: Duration/Inflation candidate selection and mix (hook; currently pass-through)
-    blocks_for_optimization = apply_block_selection(cfg.blocks, config=cfg, monthly_returns=monthly_returns)
+    # Block selection: Duration/Inflation candidate selection (per optimization_duration_spec, optimization_inflation_spec)
+    block_result = apply_block_selection(
+        cfg.blocks,
+        config=cfg,
+        monthly_returns=monthly_returns,
+        window_months=window_months,
+        rc_block_targets=cfg.rc_block_targets,
+    )
+    if block_result.get("status") == "FAIL_DATA":
+        logger.error("Block selection FAIL_DATA: %s", block_result.get("reason", ""))
+        raise SystemExit(1)
+    if block_result.get("status") == "FAIL_FEASIBILITY":
+        logger.error("Block selection FAIL_FEASIBILITY: %s", block_result.get("reason", ""))
+        raise SystemExit(1)
+    blocks_for_optimization = block_result.get("blocks", cfg.blocks)
+    duration_internal_weights = block_result.get("duration_internal_weights")
+    inflation_internal_weights = block_result.get("inflation_internal_weights")
+    if duration_internal_weights:
+        logger.info("Duration block selection: internal_weights=%s", duration_internal_weights)
+    if inflation_internal_weights:
+        logger.info("Inflation block selection: internal_weights=%s", inflation_internal_weights)
 
     # --- A) Primary optimization (10Y by default): this is the final portfolio ---
     weights_risk, status = run_risk_budget_optimization(
@@ -139,6 +218,8 @@ def main() -> None:
         min_single_security_weight_pct=cfg.min_single_security_weight_pct,
         max_single_security_weight_pct=cfg.max_single_security_weight_pct,
         window_months=window_months,
+        duration_internal_weights=duration_internal_weights,
+        inflation_internal_weights=inflation_internal_weights,
     )
 
     if not weights_risk:
@@ -180,6 +261,8 @@ def main() -> None:
             min_single_security_weight_pct=cfg.min_single_security_weight_pct,
             max_single_security_weight_pct=cfg.max_single_security_weight_pct,
             window_months=secondary_window_months,
+            duration_internal_weights=duration_internal_weights,
+            inflation_internal_weights=inflation_internal_weights,
         )
         cols_5y = [t for t in (weights_5y_risk or weights_risk) if t in monthly_returns.columns]
         ret_5y = monthly_returns[cols_5y].iloc[-secondary_window_months:].dropna(how="any")
@@ -239,10 +322,14 @@ def main() -> None:
             logger.warning("Secondary optimization succeeded but effective 5Y sample < 2 months; robustness report skipped.")
 
     # ProLiquidity (with Alpha Shift when cash prohibited and vol > target)
-    # Liquidity life floor amount = liquidity_need_months * monthly_expenses (single source of truth)
+    # Liquidity floor: from profile/config (liquidity_floor_pct) when set, else derived from liquidity_need_months * monthly_expenses / portfolio_value
     pv = cfg.portfolio_value if cfg.portfolio_value is not None and cfg.portfolio_value > 0 else cfg.initial_investable_amount
     liquidity_amount = cfg.liquidity_need_months * (cfg.monthly_expenses or 0)
-    liquidity_floor_pct = max(0.0, min(1.0, liquidity_amount / pv)) if pv > 0 else 0.0
+    liquidity_floor_pct = getattr(cfg, "liquidity_floor_pct", None)
+    if liquidity_floor_pct is None:
+        liquidity_floor_pct = max(0.0, min(1.0, liquidity_amount / pv)) if pv > 0 else 0.0
+    else:
+        liquidity_floor_pct = max(0.0, min(1.0, float(liquidity_floor_pct)))
 
     target_vol = cfg.target_vol_annual if cfg.target_vol_annual is not None and cfg.target_vol_annual > 0 else 0.12
     cash_proxy = cfg.cash_proxy_ticker or "BIL"
@@ -330,12 +417,12 @@ def main() -> None:
     stress_fail_reason = stress_report.get("fail_reason_code") or stress_report.get("skip_reason")
 
     print("")
-    print("--- Guardrails (mandate) ---")
+    print("--- Guardrails (production: warning-only, weights always saved) ---")
     if max_dd_limit is not None:
         if max_dd_ok is True:
             print("  Max DD: PASS (портфель в пределах целевой просадки)")
         elif max_dd_ok is False:
-            print("  Max DD: FAIL (реализованная просадка хуже целевой %.1f%%)" % (max_dd_limit * 100))
+            print("  Max DD: FAIL (реализованная просадка хуже целевой %.1f%%) — флаг нарушения" % (max_dd_limit * 100))
         else:
             print("  Max DD: не проверен (недостаточно данных)")
     else:
@@ -344,21 +431,81 @@ def main() -> None:
         if stress_status == "PASS":
             print("  Stress Judge: PASS")
         else:
-            print("  Stress Judge: %s (%s)" % (stress_status, stress_fail_reason or "—"))
+            print("  Stress Judge: %s (%s) — предупреждение" % (stress_status, stress_fail_reason or "—"))
     else:
         print("  Stress Judge: не выполнен (нет данных/факторов)")
     print("")
 
-    # Gatekeepers: если MaxDD fail — считаем портфель недопустимым и не пишем веса / не запускаем отчёт.
-    # Stress FAIL_STRESS теперь носит диагностический характер и не блокирует запись весов.
-    portfolio_valid = True
-    if max_dd_ok is False:
-        portfolio_valid = False
-        logger.error("Max DD: FAIL — портфель вне целевой просадки. Веса не записаны, отчёт не запущен.")
+    # --- Production workflow: RB corridor (quality gate), RC breaches, stress (warning-only). Only FAIL_DATA stops. ---
+    rb_corridor_pp = getattr(cfg, "rb_corridor_pp", None)
+    if rb_corridor_pp is None:
+        rb_corridor_pp = RB_CORRIDOR_PP
+    rb_ok, rb_violations_msgs = check_rb_corridor(
+        actual_rc_block or {},
+        cfg.rc_block_targets or {},
+        corridor_pp=float(rb_corridor_pp),
+    )
+    rb_deltas_pp = _rb_deltas_pp(actual_rc_block or {}, cfg.rc_block_targets or {})
+
+    # RC breaches: per-asset RC vs cap (from RiskPortfolio weights and cov)
+    rc_breaches = []
+    n_risk = len([t for t in weights_risk if weights_risk.get(t, 0) > 0 and t in cov_df.columns and t in cov_df.index])
+    rb_growth = (cfg.rc_block_targets or {}).get("Growth", 1.0 / 3.0)
+    rc_cap = resolve_rc_asset_cap(cfg.rc_asset_cap_pct, max(n_risk, 1), rb_growth)
+    rc_by_asset = rc_by_asset_from_weights(weights_risk, cov_df)
+    for t, rc_share in (rc_by_asset or {}).items():
+        if rc_share > rc_cap + 1e-9:
+            rc_breaches.append({
+                "ticker": t,
+                "rc_pct": round(float(rc_share) * 100.0, 2),
+                "cap_pct": round(float(rc_cap) * 100.0, 2),
+            })
+
+    # Status: APPROVED | CANDIDATE_RB_BREACH | OK_FALLBACK (FAIL_DATA already exited)
+    if not rb_ok:
+        production_status = STATUS_CANDIDATE_RB_BREACH
+    elif "OK_FALLBACK" in status or rc_breaches:
+        production_status = STATUS_OK_FALLBACK
+    else:
+        production_status = STATUS_APPROVED
+
+    violations = []
+    if not rb_ok:
+        violations.append({"code": VIOL_RB_BREACH, "details": rb_deltas_pp})
+    if rc_breaches:
+        violations.append({"code": VIOL_RC_ASSET_CAP, "details": rc_breaches})
     if stress_status == "FAIL_STRESS":
-        logger.warning("Stress Judge: FAIL_STRESS — %s. Портфель требует ручного анализа, но веса будут записаны.", stress_fail_reason or "—")
-    if not portfolio_valid:
-        raise SystemExit(1)
+        violations.append({
+            "code": VIOL_FAIL_STRESS,
+            "details": {
+                "fail_reason_code": stress_fail_reason,
+                "worst_scenario_loss_pct": stress_report.get("worst_scenario_loss_pct"),
+                "failed_scenario": stress_report.get("failed_scenario"),
+            },
+        })
+    if max_dd_ok is False:
+        violations.append({
+            "code": VIOL_MAX_DD_BREACH,
+            "details": {"target_max_drawdown_pct": cfg.target_max_drawdown_pct, "realized_exceeds_limit": True},
+        })
+
+    stress_summary = {
+        "status": stress_status,
+        "fail_reason_code": stress_fail_reason,
+        "worst_scenario_loss_pct": stress_report.get("worst_scenario_loss_pct"),
+        "failed_scenario": stress_report.get("failed_scenario"),
+    }
+    next_actions = _build_next_actions(violations, rb_deltas_pp, stress_report)
+
+    run_result = {
+        "weights": rounded,
+        "status": production_status,
+        "violations": violations,
+        "rb_deltas_pp": rb_deltas_pp,
+        "rc_breaches": rc_breaches,
+        "stress_summary": stress_summary,
+        "next_actions": next_actions,
+    }
 
     # --- Baseline (sanity_check_baseline): diagnostic only, never used for allocation ---
     baseline_tickers = set(
@@ -399,13 +546,19 @@ def main() -> None:
         print("  Baseline не рассчитан (нет достаточного числа тикеров с coverage >= %.0f%%)." % (coverage_threshold * 100))
     print("")
 
-    # Write weights and snapshot to output_dir_final (ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ)
+    # Write weights and snapshot to output_dir_final (ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ) — always (production: only FAIL_DATA stops)
     out_final = Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"))
     out_final.mkdir(parents=True, exist_ok=True)
     weights_path = out_final / WEIGHTS_FILENAME
     with open(weights_path, "w", encoding="utf-8") as f:
         yaml.dump(rounded, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
     print("Веса записаны в %s." % weights_path)
+
+    # Persist production run result (status, violations, next_actions)
+    run_result_path = out_final / "run_result.json"
+    with open(run_result_path, "w", encoding="utf-8") as f:
+        json.dump(run_result, f, indent=2, default=str)
+    print("Результат прогона: %s (status=%s)" % (run_result_path, production_status))
 
     # Final snapshot (one object, same print and save)
     cash_proxy = cfg.cash_proxy_ticker or "BIL"
@@ -422,7 +575,7 @@ def main() -> None:
         current_vol_annual=current_vol,
         max_dd_ok=max_dd_ok,
         rc_block_targets=cfg.rc_block_targets,
-        rc_caps_ok=True,
+        rc_caps_ok=len(rc_breaches) == 0,
         min_single_security_weight_pct=cfg.min_single_security_weight_pct,
         max_single_security_weight_pct=cfg.max_single_security_weight_pct,
     )
