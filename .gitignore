@@ -20,3 +20,10 @@ cache/
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated results (weights, snapshots, CSV)
+output/
+results_csv/
+результаты/
+ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ/
+portfolio_weights.yml

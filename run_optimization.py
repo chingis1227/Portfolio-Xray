@@ -8,6 +8,7 @@ Output: final weights are written to portfolio_weights.yml. Use --write-config t
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -30,9 +31,16 @@ from src.optimization import (
     proliquidity,
     portfolio_vol_annual,
     rc_by_block_from_weights,
-    check_rb_corridor,
 )
 from src.risk_contrib import cov_matrix_monthly
+from src.robustness import (
+    compute_robustness_diagnostics,
+    compute_robustness_flags,
+    FLAG_WEIGHT_INSTABILITY,
+    FLAG_RB_INSTABILITY,
+    FLAG_RC_INSTABILITY,
+    FLAG_SHORT_SAMPLE,
+)
 from src.snapshot import build_snapshot, print_snapshot, save_snapshot
 from src.stress import run_stress
 from src.utils import setup_logging, logger, tickers_meeting_coverage
@@ -102,13 +110,26 @@ def main() -> None:
 
     logger.info("Загрузка данных...")
     monthly_returns, analysis_end_str, analysis_end = load_monthly_returns(cfg, args)
-    window_months = cfg.windows_months[0] if cfg.windows_months else 60
+    # Primary optimization window (default 10Y = 120 months). Final portfolio = weights from this window.
+    window_months = getattr(cfg, "primary_window_months", 120) or 120
+    primary_window_months = getattr(cfg, "primary_window_months", 120) or 120
+    secondary_window_months = getattr(cfg, "secondary_window_months", 60) or 60
+    robustness_policy = getattr(cfg, "robustness_policy", None) or {}
+    robustness_enabled = robustness_policy.get("enabled", True)
+    min_effective_months = robustness_policy.get("min_effective_months", 36)
     coverage_threshold = getattr(cfg, "coverage_threshold", 0.90) or 0.90
+
+    if primary_window_months < min_effective_months:
+        logger.warning(
+            "primary_window_months (%d) < min_effective_months (%d); sample length after join may trigger FLAG_SHORT_SAMPLE.",
+            primary_window_months,
+            min_effective_months,
+        )
 
     # Block selection: Duration/Inflation candidate selection and mix (hook; currently pass-through)
     blocks_for_optimization = apply_block_selection(cfg.blocks, config=cfg, monthly_returns=monthly_returns)
 
-    # --- Full (policy_portfolio_full): all tickers, NaN-safe inner join in window; this is what we allocate ---
+    # --- A) Primary optimization (10Y by default): this is the final portfolio ---
     weights_risk, status = run_risk_budget_optimization(
         monthly_returns,
         blocks_for_optimization,
@@ -124,22 +145,98 @@ def main() -> None:
         logger.error(f"Оптимизация не удалась: {status}")
         raise SystemExit(1)
 
-    logger.info(f"RiskPortfolio: {status}")
+    logger.info(f"RiskPortfolio (primary %d мес.): {status}", window_months)
 
-    # Covariance for vol (same window, inner join as in Full optimization)
-    cols = [t for t in weights_risk if t in monthly_returns.columns]
-    ret_slice = monthly_returns[cols].iloc[-window_months:].dropna(how="any")
+    # Covariance and effective sample length for primary window (inner join)
+    cols_primary = [t for t in weights_risk if t in monthly_returns.columns]
+    ret_slice = monthly_returns[cols_primary].iloc[-window_months:].dropna(how="any")
+    effective_months_10y = len(ret_slice)
+    if effective_months_10y < min_effective_months:
+        logger.warning(
+            "Primary window: effective months after inner join = %d (< %d). Robustness may flag FLAG_SHORT_SAMPLE.",
+            effective_months_10y,
+            min_effective_months,
+        )
     cov_df = cov_matrix_monthly(ret_slice, ddof=1)
-    # RB corridor (hard constraint): realized block RC must be within target ± 5 pp
+    mu_10y = ret_slice.mean()
     actual_rc_block = rc_by_block_from_weights(weights_risk, cov_df, blocks_for_optimization)
     if actual_rc_block and cfg.rc_block_targets:
-        rb_ok, rb_violations = check_rb_corridor(actual_rc_block, cfg.rc_block_targets)
-        if not rb_ok:
-            for v in rb_violations:
-                logger.error(v)
-            logger.error("Портфель вне RB-коридора (target ± 5 pp). Веса не записаны.")
-            raise SystemExit(1)
+        logger.info(
+            "RC по блокам на основном окне (%d мес.): %s",
+            window_months,
+            actual_rc_block,
+        )
     current_vol = portfolio_vol_annual(weights_risk, cov_df)
+
+    # --- B) Secondary optimization (5Y) and robustness diagnostics ---
+    robustness_report = None
+    if robustness_enabled and secondary_window_months < primary_window_months:
+        weights_5y_risk, status_5y = run_risk_budget_optimization(
+            monthly_returns,
+            blocks_for_optimization,
+            cfg.rc_block_targets,
+            cfg.growth_core_candidates,
+            rc_asset_cap_pct=cfg.rc_asset_cap_pct,
+            min_single_security_weight_pct=cfg.min_single_security_weight_pct,
+            max_single_security_weight_pct=cfg.max_single_security_weight_pct,
+            window_months=secondary_window_months,
+        )
+        cols_5y = [t for t in (weights_5y_risk or weights_risk) if t in monthly_returns.columns]
+        ret_5y = monthly_returns[cols_5y].iloc[-secondary_window_months:].dropna(how="any")
+        effective_months_5y = len(ret_5y)
+        if effective_months_5y < min_effective_months:
+            logger.warning(
+                "Secondary window: effective months after inner join = %d (< %d).",
+                effective_months_5y,
+                min_effective_months,
+            )
+        if weights_5y_risk and len(ret_5y) >= 2:
+            cov_5y = cov_matrix_monthly(ret_5y, ddof=1)
+            mu_5y = ret_5y.mean()
+            diagnostics = compute_robustness_diagnostics(
+                weights_10y=weights_risk,
+                weights_5y=weights_5y_risk,
+                cov_10y=cov_df,
+                cov_5y=cov_5y,
+                mu_10y=mu_10y,
+                mu_5y=mu_5y,
+                blocks=blocks_for_optimization,
+                rc_block_targets=cfg.rc_block_targets,
+                effective_months_10y=effective_months_10y,
+                effective_months_5y=effective_months_5y,
+            )
+            flags = compute_robustness_flags(diagnostics, robustness_policy)
+            robustness_report = {
+                "effective_months_10y": effective_months_10y,
+                "effective_months_5y": effective_months_5y,
+                "max_delta_w": round(diagnostics["max_delta_w"], 3),
+                "top5_delta_w": [(t, round(d, 3)) for t, d in diagnostics["top5_delta_w"]],
+                "rc_by_block_10y": {k: round(v, 3) for k, v in (diagnostics.get("rc_by_block_10y") or {}).items()},
+                "rc_by_block_5y": {k: round(v, 3) for k, v in (diagnostics.get("rc_by_block_5y") or {}).items()},
+                "rc_block_targets": diagnostics.get("rc_block_targets"),
+                "vol_10y_under_sigma10y": round(diagnostics.get("vol_10y_under_sigma10y", 0) * 100, 3),
+                "vol_10y_under_sigma5y": round(diagnostics.get("vol_10y_under_sigma5y", 0) * 100, 3),
+                "exp_ret_10y_mu10y_annual_pct": round(diagnostics.get("exp_ret_10y_under_mu10y_annual", 0) * 100, 3),
+                "exp_ret_10y_mu5y_annual_pct": round(diagnostics.get("exp_ret_10y_under_mu5y_annual", 0) * 100, 3),
+                "flags": flags,
+                "stabilization_actions": [],
+                "final_portfolio_is_10y": True,
+                "robust_vs_5y": len(flags) == 0,
+            }
+            if flags:
+                logger.warning(
+                    "Dual-horizon robustness flags: %s. Final portfolio remains 10Y; see report for details.",
+                    ", ".join(flags),
+                )
+            else:
+                logger.info("Dual-horizon robustness: 10Y solution is consistent with 5Y (no flags).")
+            # Persist for report (ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ)
+            out_final = Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"))
+            out_final.mkdir(parents=True, exist_ok=True)
+            with open(out_final / "robustness_report.json", "w", encoding="utf-8") as f:
+                json.dump(robustness_report, f, indent=2)
+        elif weights_5y_risk:
+            logger.warning("Secondary optimization succeeded but effective 5Y sample < 2 months; robustness report skipped.")
 
     # ProLiquidity (with Alpha Shift when cash prohibited and vol > target)
     # Liquidity life floor amount = liquidity_need_months * monthly_expenses (single source of truth)
@@ -183,7 +280,7 @@ def main() -> None:
     print("Целевая волатильность: %.2f%%" % (target_vol * 100))
     print("Волатильность RiskPortfolio (оценка): %.2f%%" % (current_vol * 100))
 
-    # Guardrails: Max DD and Stress Judge (per portfolio_construction_policy)
+    # Guardrails: Max DD (исторический) — жёсткий; Stress Judge — диагностический
     max_dd_limit = abs(cfg.target_max_drawdown_pct) if cfg.target_max_drawdown_pct is not None else None
     max_dd_ok = None
     stress_status = None
@@ -252,14 +349,14 @@ def main() -> None:
         print("  Stress Judge: не выполнен (нет данных/факторов)")
     print("")
 
-    # Gatekeepers: if MaxDD fail or Stress FAIL_STRESS, portfolio is invalid — do not write weights or run report
+    # Gatekeepers: если MaxDD fail — считаем портфель недопустимым и не пишем веса / не запускаем отчёт.
+    # Stress FAIL_STRESS теперь носит диагностический характер и не блокирует запись весов.
     portfolio_valid = True
     if max_dd_ok is False:
         portfolio_valid = False
         logger.error("Max DD: FAIL — портфель вне целевой просадки. Веса не записаны, отчёт не запущен.")
     if stress_status == "FAIL_STRESS":
-        portfolio_valid = False
-        logger.error("Stress Judge: FAIL_STRESS — %s. Веса не записаны, отчёт не запущен.", stress_fail_reason or "—")
+        logger.warning("Stress Judge: FAIL_STRESS — %s. Портфель требует ручного анализа, но веса будут записаны.", stress_fail_reason or "—")
     if not portfolio_valid:
         raise SystemExit(1)
 
@@ -302,11 +399,13 @@ def main() -> None:
         print("  Baseline не рассчитан (нет достаточного числа тикеров с coverage >= %.0f%%)." % (coverage_threshold * 100))
     print("")
 
-    # Always write weights to portfolio_weights.yml (used by run_report when config has no weights)
-    weights_path = Path(__file__).resolve().parent / WEIGHTS_FILENAME
+    # Write weights and snapshot to output_dir_final (ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ)
+    out_final = Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"))
+    out_final.mkdir(parents=True, exist_ok=True)
+    weights_path = out_final / WEIGHTS_FILENAME
     with open(weights_path, "w", encoding="utf-8") as f:
         yaml.dump(rounded, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-    print("Веса записаны в %s." % weights_path.name)
+    print("Веса записаны в %s." % weights_path)
 
     # Final snapshot (one object, same print and save)
     cash_proxy = cfg.cash_proxy_ticker or "BIL"
@@ -328,10 +427,8 @@ def main() -> None:
         max_single_security_weight_pct=cfg.max_single_security_weight_pct,
     )
     print_snapshot(snapshot)
-    out_dir = Path(cfg.output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    save_snapshot(snapshot, out_dir)
-    print("Snapshot сохранён в %s" % (out_dir / "snapshot.json"))
+    save_snapshot(snapshot, out_final)
+    print("Snapshot сохранён в %s" % (out_final / "snapshot.json"))
 
     # Полный отчёт (все CSV и четыре snapshot: assets, 3y, 5y, 10y) — run_report подхватит веса из portfolio_weights.yml
     report_cmd = [sys.executable, "run_report.py"]

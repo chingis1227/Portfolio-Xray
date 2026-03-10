@@ -245,6 +245,39 @@
             background: rgba(255, 255, 255, 0.2);
         }
         
+        .btn-accent {
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            color: #000;
+        }
+        
+        .btn-accent:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .output-pre {
+            background: #0d0d1a;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            line-height: 1.5;
+            color: #a0e0a0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .output-pre.error {
+            color: #ff6b6b;
+        }
+        
         /* Preview modal */
         .modal {
             display: none;
@@ -636,6 +669,8 @@
             <div class="actions">
                 <button type="button" class="btn btn-secondary" onclick="previewConfig()">Preview YAML</button>
                 <button type="button" class="btn btn-primary" onclick="generateAndSave()">Save config.yml</button>
+                <button type="button" class="btn btn-secondary" onclick="runOptimization()" id="btnRunOpt">Run optimization</button>
+                <button type="button" class="btn btn-accent" onclick="saveAndRunOptimization()" id="btnSaveRun">Save and run optimization</button>
             </div>
         </form>
     </div>
@@ -653,6 +688,24 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="copyToClipboard()">Copy to Clipboard</button>
                 <button class="btn btn-primary" onclick="saveFromModal()">Save to File</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Optimization output modal -->
+    <div class="modal" id="optimizationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="optimizationModalTitle">Optimization</h3>
+                <button class="modal-close" onclick="closeOptimizationModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="optimizationStatus" class="help-text"></p>
+                <pre class="output-pre" id="optimizationOutput"></pre>
+                <pre class="output-pre error" id="optimizationStderr" style="display:none;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeOptimizationModal()">Close</button>
             </div>
         </div>
     </div>
@@ -771,7 +824,7 @@
             }
         }
         
-        // Save config
+        // Save config (returns true if saved successfully)
         async function saveConfig(yaml) {
             const response = await fetch('/save', {
                 method: 'POST',
@@ -782,9 +835,84 @@
             const result = await response.json();
             if (result.success) {
                 showToast('Saved to config.yml!');
+                return true;
             } else {
                 showToast(result.error || 'Validation failed', true);
+                return false;
             }
+        }
+        
+        function closeOptimizationModal() {
+            document.getElementById('optimizationModal').classList.remove('show');
+        }
+        
+        async function runOptimization() {
+            const modal = document.getElementById('optimizationModal');
+            const titleEl = document.getElementById('optimizationModalTitle');
+            const statusEl = document.getElementById('optimizationStatus');
+            const outputEl = document.getElementById('optimizationOutput');
+            const stderrEl = document.getElementById('optimizationStderr');
+            const btnRun = document.getElementById('btnRunOpt');
+            const btnSaveRun = document.getElementById('btnSaveRun');
+            
+            titleEl.textContent = 'Running optimization…';
+            statusEl.textContent = 'Running run_optimization.py (this may take a minute).';
+            outputEl.textContent = '';
+            outputEl.classList.remove('error');
+            stderrEl.style.display = 'none';
+            stderrEl.textContent = '';
+            btnRun.disabled = true;
+            btnSaveRun.disabled = true;
+            modal.classList.add('show');
+            
+            try {
+                const response = await fetch('/run-optimization', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.error) {
+                    titleEl.textContent = 'Optimization error';
+                    statusEl.textContent = result.error;
+                    outputEl.textContent = result.stdout || '(no output)';
+                    if (result.stderr) {
+                        stderrEl.textContent = result.stderr;
+                        stderrEl.style.display = 'block';
+                    }
+                    outputEl.classList.add('error');
+                } else {
+                    titleEl.textContent = result.success ? 'Optimization completed' : 'Optimization failed';
+                    statusEl.textContent = result.success
+                        ? 'Weights written to portfolio_weights.yml. You can run the report next.'
+                        : 'Exit code: ' + result.exit_code;
+                    outputEl.textContent = result.stdout || '(no output)';
+                    if (result.stderr) {
+                        stderrEl.textContent = result.stderr;
+                        stderrEl.style.display = 'block';
+                    }
+                    if (!result.success) outputEl.classList.add('error');
+                    if (result.success) showToast('Optimization finished successfully.');
+                }
+            } catch (err) {
+                titleEl.textContent = 'Request failed';
+                statusEl.textContent = err.message || 'Network or server error.';
+                outputEl.textContent = String(err);
+                outputEl.classList.add('error');
+            }
+            
+            btnRun.disabled = false;
+            btnSaveRun.disabled = false;
+        }
+        
+        async function saveAndRunOptimization() {
+            const formData = new FormData(document.getElementById('configForm'));
+            const response = await fetch('/generate', { method: 'POST', body: formData });
+            const result = await response.json();
+            if (!result.success) {
+                showToast('Failed to generate config', true);
+                return;
+            }
+            const saved = await saveConfig(result.yaml);
+            if (!saved) return;
+            await runOptimization();
         }
         
         // Show toast (optional isError for validation errors)
@@ -802,9 +930,12 @@
         // Initial weight sum
         updateWeightSum();
         
-        // Close modal on escape
+        // Close modals on escape
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeModal();
+            if (e.key === 'Escape') {
+                closeModal();
+                closeOptimizationModal();
+            }
         });
         
         // Close modal on backdrop click

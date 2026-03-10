@@ -78,7 +78,16 @@ class PortfolioConfig:
     # Analysis settings
     windows_months: list[int]
     coverage_threshold: float
-    output_dir: str
+    output_dir: str  # CSV only (e.g. results_csv)
+    output_dir_final: str  # Weights, JSON, report (e.g. ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ)
+    # Backtest mode: "dynamic_nan_safe" (default, policy-compliant) | "simple" (opt-in, no within-block/RC-gating)
+    backtest_mode: str = "dynamic_nan_safe"
+    
+    # Dual-horizon optimization robustness (10Y primary + 5Y secondary validation)
+    optimization_windows_months: list[int] = field(default_factory=lambda: [120, 60])
+    primary_window_months: int = 120
+    secondary_window_months: int = 60
+    robustness_policy: dict[str, Any] = field(default_factory=lambda: dict(DEFAULT_ROBUSTNESS_POLICY))
     
     # Track pending fields
     pending_fields: list[str] = field(default_factory=list)
@@ -125,6 +134,11 @@ class PortfolioConfig:
             "windows_months": self.windows_months,
             "coverage_threshold": self.coverage_threshold,
             "output_dir": self.output_dir,
+            "output_dir_final": self.output_dir_final,
+            "optimization_windows_months": self.optimization_windows_months,
+            "primary_window_months": self.primary_window_months,
+            "secondary_window_months": self.secondary_window_months,
+            "robustness_policy": self.robustness_policy,
         }
     
     def get_pending_config_items(self) -> dict[str, Any]:
@@ -168,13 +182,33 @@ class PortfolioConfig:
         }
 
 
+# If optional fields (benchmark_base_ticker, windows_months, output_dir) are missing,
+# _inject_optional_defaults() fills them before validation so the pipeline always has a complete config.
 REQUIRED_FIELDS = [
     "investor_currency",
     "tickers",
-    "benchmark_base_ticker",
-    "windows_months",
-    "output_dir",
 ]
+# Default base benchmark by investor currency (portfolio_construction_policy / metrics_spec).
+DEFAULT_BENCHMARK_BY_CURRENCY: dict[str, str] = {
+    "USD": "SPY",
+    "EUR": "VGK",
+    "JPY": "EWJ",
+    "CHF": "EWL",
+}
+DEFAULT_WINDOWS_MONTHS = [36, 60, 120]
+DEFAULT_OUTPUT_DIR = "results_csv"
+DEFAULT_OUTPUT_DIR_FINAL = "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"
+# Dual-horizon: primary 10Y, secondary 5Y; robustness check does not replace 10Y by default
+DEFAULT_OPTIMIZATION_WINDOWS_MONTHS = [120, 60]
+DEFAULT_PRIMARY_WINDOW_MONTHS = 120
+DEFAULT_SECONDARY_WINDOW_MONTHS = 60
+DEFAULT_ROBUSTNESS_POLICY = {
+    "enabled": True,
+    "max_weight_change_allowed": 0.10,
+    "max_rc_block_dev_allowed": 0.05,
+    "max_asset_rc_dev_allowed": 0.05,
+    "min_effective_months": 36,
+}
 # Weights are optional: produced by optimization and exported (see Portfolio Construction Policy).
 
 BOOLEAN_FIELDS = [
@@ -204,6 +238,7 @@ NONNEGATIVE_FIELDS = [
 # portfolio_value validated separately (optional, non-negative when set)
 CASH_POLICY_VALUES = ("required_floor", "allowed_for_scaling", "prohibited")
 DONOR_SHIFT_MODES = ("proportional", "equal")
+BACKTEST_MODES = ("dynamic_nan_safe", "simple")
 
 NUMERIC_FIELDS = [
     "horizon_years",
@@ -252,6 +287,50 @@ def _normalize_config_keys(cfg: dict[str, Any]) -> dict[str, Any]:
         if canonical in result and result.get(internal) is None:
             result[internal] = result[canonical]
     return result
+
+
+def _inject_optional_defaults(cfg: dict[str, Any]) -> None:
+    """
+    Inject default values for optional config fields when they are missing.
+    If benchmark_base_ticker, windows_months, or output_dir are not provided,
+    the system inserts predefined defaults before validation and execution.
+    This keeps the user's config minimal while ensuring the pipeline always runs with a complete configuration.
+    Mutates cfg in place.
+    """
+    currency = (cfg.get("investor_currency") or "USD").upper()
+    if not cfg.get("benchmark_base_ticker"):
+        cfg["benchmark_base_ticker"] = DEFAULT_BENCHMARK_BY_CURRENCY.get(currency, "SPY")
+    if not cfg.get("windows_months"):
+        cfg["windows_months"] = list(DEFAULT_WINDOWS_MONTHS)
+    if not cfg.get("output_dir"):
+        cfg["output_dir"] = DEFAULT_OUTPUT_DIR
+    if not cfg.get("output_dir_final"):
+        cfg["output_dir_final"] = DEFAULT_OUTPUT_DIR_FINAL
+    if not cfg.get("optimization_windows_months"):
+        cfg["optimization_windows_months"] = list(DEFAULT_OPTIMIZATION_WINDOWS_MONTHS)
+    if cfg.get("primary_window_months") is None:
+        cfg["primary_window_months"] = DEFAULT_PRIMARY_WINDOW_MONTHS
+    if cfg.get("secondary_window_months") is None:
+        cfg["secondary_window_months"] = DEFAULT_SECONDARY_WINDOW_MONTHS
+    if not cfg.get("robustness_policy"):
+        cfg["robustness_policy"] = dict(DEFAULT_ROBUSTNESS_POLICY)
+    else:
+        # Merge with defaults so missing keys get defaults
+        rp = dict(DEFAULT_ROBUSTNESS_POLICY)
+        rp.update({k: v for k, v in cfg["robustness_policy"].items() if v is not None})
+        cfg["robustness_policy"] = rp
+    # Backtest mode default (production report uses dynamic NaN-safe by default)
+    raw = cfg.get("backtest_mode")
+    if not raw:
+        cfg["backtest_mode"] = "dynamic_nan_safe"
+    else:
+        # Legacy: map old values to new enums
+        if raw.strip().lower() in ("production", "simple"):
+            cfg["backtest_mode"] = "simple"
+        elif raw.strip().lower() in ("research", "dynamic_nan_safe"):
+            cfg["backtest_mode"] = "dynamic_nan_safe"
+        elif raw.strip().lower() not in ("dynamic_nan_safe", "simple"):
+            cfg["backtest_mode"] = "dynamic_nan_safe"
 
 
 def _parse_percent_value(val: Any, field_name: str) -> float | None:
@@ -630,6 +709,71 @@ def _validate_cash_policy(cfg: dict[str, Any]) -> None:
         )
 
 
+def _validate_robustness_policy(cfg: dict[str, Any]) -> None:
+    """Validate robustness_policy: enabled (bool), thresholds (numeric), min_effective_months (int)."""
+    rp = cfg.get("robustness_policy")
+    if not rp or not isinstance(rp, dict):
+        return
+    if "enabled" in rp and rp["enabled"] is not None and not isinstance(rp["enabled"], bool):
+        raise ConfigValidationError(
+            f"robustness_policy.enabled must be boolean, got {type(rp['enabled']).__name__}"
+        )
+    for key, default in [
+        ("max_weight_change_allowed", 0.10),
+        ("max_rc_block_dev_allowed", 0.05),
+        ("max_asset_rc_dev_allowed", 0.05),
+    ]:
+        val = rp.get(key)
+        if val is not None:
+            if not isinstance(val, (int, float)) or val < 0:
+                raise ConfigValidationError(
+                    f"robustness_policy.{key} must be non-negative number, got {val}"
+                )
+    if rp.get("min_effective_months") is not None:
+        v = rp["min_effective_months"]
+        if not isinstance(v, int) or v < 1:
+            raise ConfigValidationError(
+                f"robustness_policy.min_effective_months must be positive integer, got {v}"
+            )
+
+
+def _validate_optimization_windows(cfg: dict[str, Any]) -> None:
+    """Validate primary_window_months, secondary_window_months, optimization_windows_months."""
+    for key in ("primary_window_months", "secondary_window_months"):
+        val = cfg.get(key)
+        if val is not None:
+            if not isinstance(val, int) or val < 1:
+                raise ConfigValidationError(
+                    f"Config field '{key}' must be positive integer, got {val}"
+                )
+    ow = cfg.get("optimization_windows_months")
+    if ow is not None:
+        if not isinstance(ow, list):
+            raise ConfigValidationError(
+                "optimization_windows_months must be a list of integers"
+            )
+        for w in ow:
+            if not isinstance(w, int) or w <= 0:
+                raise ConfigValidationError(
+                    f"optimization_windows_months must contain positive integers, got {w}"
+                )
+
+
+def _validate_backtest_mode(cfg: dict[str, Any]) -> None:
+    """Validate backtest_mode is one of dynamic_nan_safe, simple."""
+    val = cfg.get("backtest_mode", "dynamic_nan_safe")
+    if val is None:
+        return
+    if not isinstance(val, str):
+        raise ConfigValidationError(
+            f"Config field 'backtest_mode' must be a string, got {type(val).__name__}: {val}"
+        )
+    if val.strip().lower() not in BACKTEST_MODES:
+        raise ConfigValidationError(
+            f"Config field 'backtest_mode' must be one of {BACKTEST_MODES}, got {val!r}"
+        )
+
+
 def _validate_portfolio_value(cfg: dict[str, Any]) -> None:
     """Validate portfolio_value optional, non-negative when set."""
     val = cfg.get("portfolio_value")
@@ -682,15 +826,22 @@ def _identify_pending_fields(cfg: dict[str, Any]) -> list[str]:
 def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] | None = None) -> PortfolioConfig:
     """
     Validate config dict and return PortfolioConfig object.
-    
+
+    Inject defaults: if optional parameters (benchmark_base_ticker, windows_months, output_dir)
+    are not provided, the system inserts predefined default values before validation and execution.
+    benchmark_base_ticker is set from investor_currency (USD->SPY, EUR->VGK, JPY->EWJ, CHF->EWL);
+    windows_months defaults to [36, 60, 120]; output_dir defaults to "output".
+    This ensures the pipeline always runs with a complete configuration while keeping the user's
+    config minimal and easy to maintain.
+
     If blocks_universe is provided (from blocks_universe.yml), each ticker in config must
     appear in exactly one block there; effective blocks are derived from the universe.
     If any config ticker is not in the universe, ConfigValidationError is raised.
-    
+
     Supports canonical config keys: base_benchmark_ticker, risk_free_source,
     beta_local_mapping (mapped to benchmark_base_ticker, rf_source, local_benchmark_map).
     Supports percent input in two formats: decimal 0.15 or string "15%".
-    
+
     Raises ConfigValidationError if validation fails.
     Allows pending user input fields (rc_asset_cap_pct, max_single_security_weight_pct,
     min_single_security_weight_pct) to be null; they are carried in config and
@@ -700,7 +851,9 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
     cfg = _normalize_config_keys(cfg)
     # Normalize percent fields ("15%" -> 0.15)
     cfg = _normalize_percent_fields(cfg)
-    
+    # Inject defaults for optional fields (benchmark_base_ticker from currency, windows_months, output_dir)
+    _inject_optional_defaults(cfg)
+
     # Then validate
     _validate_required(cfg)
     _validate_booleans(cfg)
@@ -717,7 +870,12 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
     _validate_cash_policy(cfg)
     _validate_portfolio_value(cfg)
     _validate_alpha_shift_params(cfg)
-    
+    _validate_backtest_mode(cfg)
+    _validate_robustness_policy(cfg)
+    _validate_optimization_windows(cfg)
+    _validate_robustness_policy(cfg)
+    _validate_optimization_windows(cfg)
+
     # Resolve blocks: from universe (for config tickers) or from config
     if blocks_universe:
         blocks_final = _effective_blocks_from_universe(list(cfg["tickers"]), blocks_universe)
@@ -762,5 +920,11 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         windows_months=list(cfg["windows_months"]),
         coverage_threshold=cfg.get("coverage_threshold", 0.90),
         output_dir=cfg["output_dir"],
+        output_dir_final=cfg.get("output_dir_final", DEFAULT_OUTPUT_DIR_FINAL),
+        backtest_mode=cfg.get("backtest_mode", "dynamic_nan_safe"),
+        optimization_windows_months=list(cfg.get("optimization_windows_months", DEFAULT_OPTIMIZATION_WINDOWS_MONTHS)),
+        primary_window_months=int(cfg.get("primary_window_months", DEFAULT_PRIMARY_WINDOW_MONTHS)),
+        secondary_window_months=int(cfg.get("secondary_window_months", DEFAULT_SECONDARY_WINDOW_MONTHS)),
+        robustness_policy=dict(cfg.get("robustness_policy", DEFAULT_ROBUSTNESS_POLICY)),
         pending_fields=pending,
     )

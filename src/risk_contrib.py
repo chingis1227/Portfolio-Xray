@@ -11,6 +11,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from policy_math.feasibility import resolve_rc_asset_cap as _policy_resolve_rc_asset_cap
+
 DDOF = 1
 
 
@@ -20,21 +22,16 @@ def resolve_rc_asset_cap(
     rb_growth: float | None = None,
 ) -> float:
     """
-    Per-asset RC cap from feasibility_constraints_spec.
+    Backwards-compatible wrapper around policy_math.feasibility.resolve_rc_asset_cap.
 
-    If rc_asset_cap_pct is set and > 0, use it; else: N < 4 → 0.40, else min(0.25, max(0.10, 1.5/N)).
-    If rb_growth is not None and >= 0.90 (Equity-Only), cap = max(cap, 0.15).
-    Used by optimization (with rb_growth) and stress (rb_growth=None).
+    - If rc_asset_cap_pct is set and > 0, it overrides the formula.
+    - Else the formula from feasibility_constraints_spec is used via the centralized policy module.
+    - Equity-Only mode (rb_growth >= 0.90) is signalled via equity_only=True.
     """
     if rc_asset_cap_pct is not None and rc_asset_cap_pct > 0:
-        base = float(rc_asset_cap_pct)
-    elif n_assets < 4:
-        base = 0.40
-    else:
-        base = min(0.25, max(0.10, 1.5 / n_assets))
-    if rb_growth is not None and rb_growth >= 0.90:
-        base = max(base, 0.15)
-    return base
+        return float(rc_asset_cap_pct)
+    equity_only = bool(rb_growth is not None and rb_growth >= 0.90)
+    return _policy_resolve_rc_asset_cap(n_assets=n_assets, equity_only=equity_only)
 
 
 def cov_matrix_monthly(returns_df: pd.DataFrame, ddof: int = DDOF) -> pd.DataFrame:

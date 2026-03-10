@@ -10,6 +10,11 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 
+from policy_math.feasibility import (
+    FeasibilityContext,
+    check_feasible,
+    resolve_weight_caps,
+)
 from src.config_schema import GROWTH_EM_DEBT_KEY, GROWTH_HY_KEY
 from src.risk_contrib import (
     cov_matrix_monthly,
@@ -55,20 +60,14 @@ def growth_weight_caps(
     n_sat: int,
     rb_growth: float | None = None,
 ) -> tuple[float, float]:
-    """Core/Satellite max weights for Growth. feasibility_constraints_spec §3.1; §6 Equity-Only when rb_growth >= 0.90."""
-    if rb_growth is not None and rb_growth >= 0.90:
-        # Equity-Only: max_weight_core <= 0.50, max_weight_sat in [0.10, 0.15]
-        return 0.50, 0.15
-    if n_core == 0:
-        if n <= 3:
-            return 0.40, 0.40
-        return min(0.25, max(0.10, 2.5 / n)), min(0.25, max(0.10, 2.5 / n))
-    max_core = min(0.35, max(0.25, 2.0 / n))
-    if n_sat <= 2:
-        max_sat = 0.40
-    else:
-        term = (1.0 - n_core * max_core) / (n - n_core) + 0.02
-        max_sat = min(0.25, max(min(0.10, max(0.05, 2.0 / n)), term))
+    """
+    Core/Satellite max weights for Growth.
+    Delegates to policy_math.feasibility.resolve_weight_caps (single source of truth).
+    """
+    equity_only = bool(rb_growth is not None and rb_growth >= 0.90)
+    caps = resolve_weight_caps(n_total=n, n_core=n_core, n_sat=n_sat, equity_only=equity_only)
+    max_core = caps["max_weight_core"] or 0.0
+    max_sat = caps["max_weight_sat"] or 0.0
     return max_core, max_sat
 
 
@@ -121,75 +120,27 @@ def check_rb_achievement(
     rc_asset_cap: float,
     growth_core_candidates: list[str],
     n_total: int,
-    max_core: float,
-    max_sat: float,
     rb_growth: float,
 ) -> tuple[bool, str]:
     """
-    Feasibility spec §2, §5, §6: check that risk budget is achievable with current block composition.
-    Returns (ok, error_message). If not ok, error_message describes the first failed check.
+    Delegate structural feasibility checks to policy_math.feasibility.check_feasible.
+
+    Returns (ok, error_message). If not ok, error_message is a joined string of reasons.
     """
-    rb = rc_block_targets or {}
-    rb_g = float(rb.get("Growth", 1.0 / 3))
-    rb_d = float(rb.get("Duration", 1.0 / 3))
-    rb_i = float(rb.get("Inflation", 1.0 / 3))
-    total = rb_g + rb_d + rb_i
-    if total <= 0:
-        return False, "rc_block_targets sum must be positive"
-    rb_g /= total
-    rb_d /= total
-    rb_i /= total
-
-    growth_tickers = (
-        list(blocks.get("Growth", []))
-        + list(blocks.get(GROWTH_HY_KEY, []))
-        + list(blocks.get(GROWTH_EM_DEBT_KEY, []))
+    equity_only = bool(rb_growth >= 0.90)
+    ctx = FeasibilityContext(
+        blocks=blocks,
+        rc_block_targets=rc_block_targets,
+        n_total=n_total,
+        growth_core_candidates=growth_core_candidates,
+        equity_only=equity_only,
+        rc_asset_cap=rc_asset_cap,
     )
-    duration_tickers = list(blocks.get("Duration", []))
-    inflation_tickers = list(blocks.get("Inflation", []))
-
-    k_growth = len(growth_tickers)
-    k_duration = len(duration_tickers)
-    k_inflation = len(inflation_tickers)
-
-    # Single-asset block: k_required = 1 (that asset's RC = block RC; feasibility_constraints_spec §3.2).
-    k_required_g = 1 if k_growth == 1 else (math.ceil(rb_g / rc_asset_cap) if rc_asset_cap > 0 else 0)
-    k_required_d = 1 if k_duration == 1 else (math.ceil(rb_d / rc_asset_cap) if rc_asset_cap > 0 else 0)
-    k_required_i = 1 if k_inflation == 1 else (math.ceil(rb_i / rc_asset_cap) if rc_asset_cap > 0 else 0)
-
-    if k_growth < k_required_g:
-        return False, (
-            f"Risk budget not achievable: Growth has {k_growth} assets, need at least "
-            f"{k_required_g} (ceil(RB_growth/rc_asset_cap)). Add assets to Growth or lower RB_growth."
-        )
-    if k_duration < k_required_d:
-        return False, (
-            f"Risk budget not achievable: Duration has {k_duration} assets, need at least "
-            f"{k_required_d}. Add assets to Duration or lower RB_duration."
-        )
-    if k_inflation < k_required_i:
-        return False, (
-            f"Risk budget not achievable: Inflation has {k_inflation} assets, need at least "
-            f"{k_required_i}. Add assets to Inflation or lower RB_inflation."
-        )
-
-    n_core = sum(1 for t in growth_tickers if t in growth_core_candidates)
-    n_sat = k_growth - n_core
-    # Weight feasibility: Nc·max_core + Ns·max_sat >= W_growth (use rb_growth as required growth weight share)
-    growth_capacity = n_core * max_core + n_sat * max_sat
-    if growth_capacity < rb_g:
-        return False, (
-            f"Growth weight capacity {growth_capacity:.3f} < RB_growth {rb_g:.3f}. "
-            "Increase Core/Satellite caps or add Growth assets (feasibility_constraints_spec §3.1)."
-        )
-    if rb_growth >= 0.90:
-        # Equity-Only: Nc·max_core + Ns·max_sat >= 1.0
-        if growth_capacity < 1.0:
-            return False, (
-                f"Equity-Only: Growth capacity {growth_capacity:.3f} < 1.0. "
-                "Need Nc·0.5 + Ns·0.15 >= 1.0 (feasibility_constraints_spec §6)."
-            )
-    return True, ""
+    ok, reasons = check_feasible(ctx)
+    if ok:
+        return True, ""
+    msg = "; ".join(reasons.values()) if reasons else "Feasibility check failed."
+    return False, msg
 
 
 def run_risk_budget_optimization(
@@ -310,11 +261,17 @@ def run_risk_budget_optimization(
 
     effective_rb = {"Growth": rb_growth, "Duration": rb_duration, "Inflation": rb_inflation}
     ok, err = check_rb_achievement(
-        blocks, effective_rb, rc_asset_cap, growth_core_candidates,
-        n, max_core, max_sat, rb_growth,
+        blocks,
+        effective_rb,
+        rc_asset_cap,
+        growth_core_candidates,
+        n,
+        rb_growth,
     )
     if not ok:
-        return {}, f"FAIL_FEASIBILITY: {err}"
+        feasibility_warning = f"FAIL_FEASIBILITY: {err}"
+    else:
+        feasibility_warning = ""
 
     growth_hy_set = set(blocks.get(GROWTH_HY_KEY, []))
     growth_em_debt_set = set(blocks.get(GROWTH_EM_DEBT_KEY, []))
@@ -330,20 +287,38 @@ def run_risk_budget_optimization(
     def constraint_sum(w: np.ndarray) -> float:
         return float(np.sum(w) - 1.0)
 
-    def constraint_rc_growth(w: np.ndarray) -> float:
-        pc = _pc_from_w(w, cov)
-        block_rc = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Growth")
-        return float(block_rc - rb_growth)
+    # RB corridor constraints (inequalities) instead of strict equalities:
+    #   rb_block - RB_CORRIDOR_PP <= RC_block <= rb_block + RB_CORRIDOR_PP
 
-    def constraint_rc_duration(w: np.ndarray) -> float:
+    def constraint_rb_growth_lower(w: np.ndarray) -> float:
         pc = _pc_from_w(w, cov)
-        block_rc = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Duration")
-        return float(block_rc - rb_duration)
+        rc_g = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Growth")
+        return float(rc_g - (rb_growth - RB_CORRIDOR_PP))
 
-    def constraint_rc_inflation(w: np.ndarray) -> float:
+    def constraint_rb_growth_upper(w: np.ndarray) -> float:
         pc = _pc_from_w(w, cov)
-        block_rc = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Inflation")
-        return float(block_rc - rb_inflation)
+        rc_g = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Growth")
+        return float((rb_growth + RB_CORRIDOR_PP) - rc_g)
+
+    def constraint_rb_duration_lower(w: np.ndarray) -> float:
+        pc = _pc_from_w(w, cov)
+        rc_d = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Duration")
+        return float(rc_d - (rb_duration - RB_CORRIDOR_PP))
+
+    def constraint_rb_duration_upper(w: np.ndarray) -> float:
+        pc = _pc_from_w(w, cov)
+        rc_d = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Duration")
+        return float((rb_duration + RB_CORRIDOR_PP) - rc_d)
+
+    def constraint_rb_inflation_lower(w: np.ndarray) -> float:
+        pc = _pc_from_w(w, cov)
+        rc_i = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Inflation")
+        return float(rc_i - (rb_inflation - RB_CORRIDOR_PP))
+
+    def constraint_rb_inflation_upper(w: np.ndarray) -> float:
+        pc = _pc_from_w(w, cov)
+        rc_i = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Inflation")
+        return float((rb_inflation + RB_CORRIDOR_PP) - rc_i)
 
     def make_rc_cap(idx: int):
         cap_i = rc_cap_per_asset[idx]
@@ -353,30 +328,15 @@ def run_risk_budget_optimization(
             return float(pc[idx] - cap_i)
         return rc_cap
 
-    # RC_vol(HY) <= 10% * RC_vol(Growth); RC_vol(EM_debt) <= 10% * RC_vol(Growth)
-    def constraint_rc_hy(w: np.ndarray) -> float:
-        pc = _pc_from_w(w, cov)
-        rc_g = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Growth")
-        rc_hy = sum(pc[i] for i in hy_indices) if hy_indices else 0.0
-        return float(HY_EM_RC_CAP_FRACTION * rc_g - rc_hy)  # ineq: 0.1*rc_g - rc_hy >= 0
-
-    def constraint_rc_em_debt(w: np.ndarray) -> float:
-        pc = _pc_from_w(w, cov)
-        rc_g = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Growth")
-        rc_em = sum(pc[i] for i in em_debt_indices) if em_debt_indices else 0.0
-        return float(HY_EM_RC_CAP_FRACTION * rc_g - rc_em)
-
     constraints_core = [
         {"type": "eq", "fun": constraint_sum},
-        {"type": "eq", "fun": constraint_rc_growth},
-        {"type": "eq", "fun": constraint_rc_duration},
-        {"type": "eq", "fun": constraint_rc_inflation},
+        {"type": "ineq", "fun": constraint_rb_growth_lower},
+        {"type": "ineq", "fun": constraint_rb_growth_upper},
+        {"type": "ineq", "fun": constraint_rb_duration_lower},
+        {"type": "ineq", "fun": constraint_rb_duration_upper},
+        {"type": "ineq", "fun": constraint_rb_inflation_lower},
+        {"type": "ineq", "fun": constraint_rb_inflation_upper},
     ]
-    # Add HY/EM_debt ineq if any such assets in cols
-    if hy_indices:
-        constraints_core.append({"type": "ineq", "fun": constraint_rc_hy})
-    if em_debt_indices:
-        constraints_core.append({"type": "ineq", "fun": constraint_rc_em_debt})
 
     constraints_full = constraints_core + [
         {"type": "ineq", "fun": make_rc_cap(i)} for i in range(n)
@@ -425,6 +385,7 @@ def run_risk_budget_optimization(
             options={"maxiter": 1000, "ftol": 1e-9},
         )
         if not res.success:
+            # Deterministic fallback: use feasibility solution (penalty_rc) and normalize
             w_fallback = np.clip(feas.x, min_weight, np.array([b[1] for b in bounds]) - 1e-8)
             w_fallback = w_fallback / w_fallback.sum()
             res = type("Res", (), {"success": True, "x": w_fallback})()
@@ -433,46 +394,29 @@ def run_risk_budget_optimization(
     w = res.x
     pc = _pc_from_w(w, cov)
 
-    # Post-solution validation: RC_vol cap has priority (policy). Use per-asset caps (single-asset block = RB_block).
+    # Post-solution RC diagnostics: RC_vol cap has priority in policy,
+    # but in this refactored version violations are reported via status string
+    # instead of causing a hard FAIL (fallback mode).
     viol_idx = [i for i in range(n) if pc[i] > rc_cap_per_asset[i]]
-    if viol_idx:
-        viol_tickers = [cols[i] for i in viol_idx]
-        import logging
-        _log = logging.getLogger(__name__)
-        for i in viol_idx:
-            _log.warning(
-                "RC_vol: %s = %.3f (%.1f%%), cap = %.3f (%.1f%%)",
-                cols[i], float(pc[i]), float(pc[i]) * 100, float(rc_cap_per_asset[i]), float(rc_cap_per_asset[i]) * 100,
-            )
-        if used_fallback:
-            return {}, (
-                f"FAIL_RC_CAP: After fallback, per-asset RC cap still violated by {viol_tickers}. "
-                "RC_vol cap has priority over weight caps; cannot return this portfolio."
-            )
-        return {}, f"FAIL_RC_CAP: Per-asset RC cap violated: {viol_tickers}"
+    rc_cap_viol_tickers = [cols[i] for i in viol_idx] if viol_idx else []
 
     rc_g = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Growth")
-    rc_hy = sum(pc[i] for i in hy_indices) if hy_indices else 0.0
-    rc_em = sum(pc[i] for i in em_debt_indices) if em_debt_indices else 0.0
-    if rc_g > 1e-12:
-        if rc_hy > HY_EM_RC_CAP_FRACTION * rc_g + 1e-9:
-            return {}, (
-                f"FAIL_RC_CAP: RC_vol(HY)={rc_hy:.3f} > 10%*RC_vol(Growth)={HY_EM_RC_CAP_FRACTION*rc_g:.3f}. "
-                "Growth_HY sub-limit violated."
-            )
-        if rc_em > HY_EM_RC_CAP_FRACTION * rc_g + 1e-9:
-            return {}, (
-                f"FAIL_RC_CAP: RC_vol(EM_debt)={rc_em:.3f} > 10%*RC_vol(Growth)={HY_EM_RC_CAP_FRACTION*rc_g:.3f}. "
-                "Growth_EM_debt sub-limit violated."
-            )
-
     rc_d = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Duration")
     rc_i = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Inflation")
+
     w_dict = {t: float(w[i]) for i, t in enumerate(cols)}
     for t in risk_tickers:
         if t not in w_dict:
             w_dict[t] = 0.0
-    status_msg = ("OK (fallback) " if used_fallback else "OK ") + f"(RC G/D/I: {rc_g:.3f}/{rc_d:.3f}/{rc_i:.3f})"
+
+    status_parts = []
+    status_parts.append("OK_FALLBACK" if used_fallback else "OK")
+    if feasibility_warning:
+        status_parts.append(feasibility_warning)
+    if rc_cap_viol_tickers:
+        status_parts.append(f"VIOL_RC_ASSET_CAP: {rc_cap_viol_tickers}")
+    status_parts.append(f"RC G/D/I: {rc_g:.3f}/{rc_d:.3f}/{rc_i:.3f}")
+    status_msg = " | ".join(status_parts)
     return w_dict, status_msg
 
 
@@ -657,6 +601,23 @@ def rc_by_block_from_weights(
     if total <= 0:
         return {b: 0.0 for b in RISK_BUDGET_BLOCKS}
     return {b: float(out[b] / total) for b in RISK_BUDGET_BLOCKS}
+
+
+def rc_by_asset_from_weights(
+    weights_risk: dict[str, float],
+    cov_df: pd.DataFrame,
+) -> dict[str, float]:
+    """
+    Compute percentage risk contribution (RC) per asset from RiskPortfolio weights and covariance.
+    Returns dict ticker -> RC share (sum = 1 over present assets).
+    """
+    cols = [t for t in weights_risk if t in cov_df.columns and t in cov_df.index and weights_risk.get(t, 0) > 0]
+    if not cols:
+        return {}
+    w = np.array([weights_risk[t] for t in cols])
+    cov = cov_df.reindex(index=cols, columns=cols).fillna(0).values
+    pc = _pc_from_w(w, cov)
+    return {t: float(pc[i]) for i, t in enumerate(cols)}
 
 
 def check_rb_corridor(

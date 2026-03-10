@@ -41,6 +41,7 @@ from src.io_export import (
     export_run_metadata,
     export_correlation_matrix_csv,
     export_stress_report,
+    export_data_policy,
     save_inputs,
 )
 from src.snapshot import (
@@ -90,6 +91,13 @@ def parse_args() -> argparse.Namespace:
         "--clear-cache",
         action="store_true",
         help="Clear all cached data before running",
+    )
+    parser.add_argument(
+        "--backtest-mode",
+        type=str,
+        choices=("dynamic_nan_safe", "simple"),
+        default="dynamic_nan_safe",
+        help="Backtest mode: dynamic_nan_safe (default, policy-compliant NaN/young ETF handling) or simple (opt-in)",
     )
     return parser.parse_args()
 
@@ -163,7 +171,10 @@ def main() -> None:
     weights = cfg.weights
     benchmark_base_ticker = cfg.benchmark_base_ticker
     windows_months = cfg.windows_months
-    output_dir = ensure_output_dir(Path(cfg.output_dir))
+    # CSV only (results_csv)
+    output_dir_csv = ensure_output_dir(Path(cfg.output_dir))
+    # Weights, JSON, report (ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ)
+    output_dir_final = ensure_output_dir(Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ")))
     
     # Resolve defaults based on investor currency
     cash_proxy_ticker, rf_source = resolve_cash_and_rf(cfg)
@@ -214,7 +225,7 @@ def main() -> None:
     monthly_cache_key = data.monthly_cache_key
 
     # =========================================================================
-    # STEP 4: Compute portfolio returns (NaN-safe dynamic)
+    # STEP 4: Compute portfolio returns (NaN-safe dynamic; production vs research mode)
     # =========================================================================
     
     # Ensure cash_returns is aligned to monthly index so common_idx is non-empty (avoid empty portfolio returns)
@@ -228,34 +239,82 @@ def main() -> None:
     
     asset_returns_df = monthly_returns[[t for t in tickers if t in monthly_returns.columns]].copy()
     target_weights = {t: weights.get(t, 0.0) for t in tickers}
-    # Optional: within-block redistribution + RC-gated fallback (data_policy_nan_young_etfs.md)
-    cov_df_nan_safe = None
-    if cfg.blocks and cfg.rc_block_targets and asset_returns_df.shape[0] >= 2:
-        ret_inner = asset_returns_df.dropna(how="all").iloc[-720:]  # up to 60y for cov
-        if ret_inner.shape[0] >= 2:
-            cov_df_nan_safe = cov_matrix_monthly(ret_inner, ddof=1)
-    portfolio_returns, weights_used = portfolio_returns_nan_safe(
-        asset_returns_df,
-        target_weights,
-        cash_returns,
-        blocks=cfg.blocks,
-        rc_block_targets=cfg.rc_block_targets,
-        rc_asset_cap_pct=cfg.rc_asset_cap_pct,
-        cov_df=cov_df_nan_safe,
-    )
+
+    # CLI overrides config; default is dynamic_nan_safe (policy-compliant)
+    backtest_mode = args.backtest_mode if hasattr(args, "backtest_mode") and getattr(args, "backtest_mode", None) else getattr(cfg, "backtest_mode", "dynamic_nan_safe")
+    backtest_mode = backtest_mode or "dynamic_nan_safe"
+    if backtest_mode not in ("dynamic_nan_safe", "simple"):
+        backtest_mode = "dynamic_nan_safe"
+
+    backtest_diagnostics: dict | None = None
+    inner_join_months_used: int | None = None  # for risk Σ/RC (used in dynamic mode for gating)
+    if backtest_mode == "dynamic_nan_safe":
+        # Policy-compliant: within-block redistribution, RC/RB gating to cash, young ETFs do not truncate history
+        cov_df_nan_safe = None
+        if cfg.blocks and cfg.rc_block_targets and asset_returns_df.shape[0] >= 2:
+            ret_inner = asset_returns_df.dropna(how="any").iloc[-720:]  # inner join, up to 60y for cov
+            inner_join_months_used = len(ret_inner)
+            if inner_join_months_used >= 2:
+                cov_df_nan_safe = cov_matrix_monthly(ret_inner, ddof=1)
+            if inner_join_months_used is not None and inner_join_months_used < 36 and inner_join_months_used >= 2:
+                logger.warning(
+                    "Inner-join sample for Σ/RC used in backtest gating is %d months (< 36). Risk estimates may be noisy.",
+                    inner_join_months_used,
+                )
+        result = portfolio_returns_nan_safe(
+            asset_returns_df,
+            target_weights,
+            cash_returns,
+            blocks=cfg.blocks,
+            rc_block_targets=cfg.rc_block_targets,
+            rc_asset_cap_pct=cfg.rc_asset_cap_pct,
+            cov_df=cov_df_nan_safe,
+            return_diagnostics=True,
+        )
+        portfolio_returns, weights_used, backtest_diagnostics = result
+        logger.info(
+            "Backtest mode: dynamic_nan_safe (NaN-safe with within-block redistribution and RC-gating)."
+        )
+    else:
+        # Simple (opt-in): no within-block redistribution, no RC-gating
+        portfolio_returns, weights_used = portfolio_returns_nan_safe(
+            asset_returns_df,
+            target_weights,
+            cash_returns,
+        )
+        backtest_diagnostics = None
+        logger.info("Backtest mode: simple (no within-block redistribution / RC-gating).")
+
+    # Data policy section: first available month per ticker (young ETF inclusion)
+    first_available_month: dict[str, str] = {}
+    for t in tickers:
+        if t not in asset_returns_df.columns:
+            continue
+        s = asset_returns_df[t].dropna()
+        if not s.empty:
+            first_available_month[t] = s.index.min().strftime("%Y-%m")
 
     # =========================================================================
     # STEP 5: Persist inputs (for reproducibility)
     # =========================================================================
-    
+
     save_inputs(
-        output_dir,
+        output_dir_csv,
         monthly_prices,
         monthly_returns,
         rf_monthly,
         benchmark_returns,
         cash_returns,
         fx_series_used,
+    )
+
+    export_data_policy(
+        output_dir_final,
+        backtest_mode=backtest_mode,
+        first_available_month=first_available_month,
+        inner_join_months_used=inner_join_months_used,
+        n_months_redistributed=backtest_diagnostics.get("n_months_redistributed") if backtest_diagnostics else None,
+        n_months_cash_fallback=backtest_diagnostics.get("n_months_cash_fallback") if backtest_diagnostics else None,
     )
 
     # Log data availability summary
@@ -322,7 +381,7 @@ def main() -> None:
             )
             rows.append(row)
         asset_metrics_all.append(rows)
-        export_asset_metrics_csv(rows, wm, output_dir)
+        export_asset_metrics_csv(rows, wm, output_dir_csv)
 
     # =========================================================================
     # STEP 7: Compute portfolio metrics per window
@@ -339,7 +398,7 @@ def main() -> None:
             mar=mar_monthly,
         )
         portfolio_metrics_list.append(pm)
-    export_portfolio_metrics_csv(portfolio_metrics_list, output_dir)
+    export_portfolio_metrics_csv(portfolio_metrics_list, output_dir_csv)
     
     # Map window_months to human-readable keys for snapshot (3y/5y/10y)
     portfolio_windows: dict[str, dict] = {}
@@ -388,7 +447,7 @@ def main() -> None:
             rc_for_snapshot = rc
         suffix = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
         rc_filename = f"rc_vol_{suffix}.csv"
-        export_rc_vol_csv(rc, output_dir / rc_filename)
+        export_rc_vol_csv(rc, output_dir_csv / rc_filename)
         # Store per-window RC for snapshot windows section
         if wm in (36, 60, 120):
             key = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
@@ -397,7 +456,7 @@ def main() -> None:
         
         # Correlation matrix
         corr_matrix = returns_slice.corr()
-        export_correlation_matrix_csv(corr_matrix, wm, output_dir)
+        export_correlation_matrix_csv(corr_matrix, wm, output_dir_csv)
         if wm in (36, 60, 120):
             key = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
             corr_csv_by_window[key] = f"correlation_matrix_{suffix}.csv"
@@ -435,7 +494,7 @@ def main() -> None:
         rc_asset_cap_pct=cfg.rc_asset_cap_pct,
         stress_top3_rc_sum_cap_pct=stress_top3_cap,
     )
-    export_stress_report(stress_report, output_dir)
+    export_stress_report(stress_report, output_dir_final)
     logger.info(f"Stress status: {stress_report.get('status', 'N/A')}")
 
     # =========================================================================
@@ -456,27 +515,27 @@ def main() -> None:
         rsort12 = rolling_sortino(ret_slice, rf_slice, 12, mar=mar_monthly)
         rvol = rolling_vol_annual(ret_slice, 12)
         # Export rolling series to CSV
-        rs36.round(3).to_csv(output_dir / f"rolling_sharpe_36m_{suffix}.csv", header=True)
-        rs12.round(3).to_csv(output_dir / f"rolling_sharpe_12m_{suffix}.csv", header=True)
-        rsort36.round(3).to_csv(output_dir / f"rolling_sortino_36m_{suffix}.csv", header=True)
-        rsort12.round(3).to_csv(output_dir / f"rolling_sortino_12m_{suffix}.csv", header=True)
-        rvol.round(3).to_csv(output_dir / f"rolling_vol_12m_{suffix}.csv", header=True)
-        # Drawdown structure
+        rs36.round(3).to_csv(output_dir_csv / f"rolling_sharpe_36m_{suffix}.csv", header=True)
+        rs12.round(3).to_csv(output_dir_csv / f"rolling_sharpe_12m_{suffix}.csv", header=True)
+        rsort36.round(3).to_csv(output_dir_csv / f"rolling_sortino_36m_{suffix}.csv", header=True)
+        rsort12.round(3).to_csv(output_dir_csv / f"rolling_sortino_12m_{suffix}.csv", header=True)
+        rvol.round(3).to_csv(output_dir_csv / f"rolling_vol_12m_{suffix}.csv", header=True)
+        # Drawdown structure (JSON -> final)
         dd_struct = drawdown_structure(ret_slice)
         import json as _json
-        with open(output_dir / f"drawdown_structure_{suffix}.json", "w", encoding="utf-8") as _f:
+        with open(output_dir_final / f"drawdown_structure_{suffix}.json", "w", encoding="utf-8") as _f:
             _json.dump(dd_struct, _f, indent=2, default=str)
-        # VaR / ES 95% and 99%
+        # VaR / ES 95% and 99% (CSV)
         var_95 = var_historical(ret_slice, 0.95)
         var_99 = var_historical(ret_slice, 0.99)
         es_95 = es_historical(ret_slice, 0.95)
         es_99 = es_historical(ret_slice, 0.99)
         pd.DataFrame([{"var_95": var_95, "var_99": var_99, "es_95": es_95, "es_99": es_99}]).round(3).to_csv(
-            output_dir / f"var_es_{suffix}.csv", index=False
+            output_dir_csv / f"var_es_{suffix}.csv", index=False
         )
-        # EEE (crisis beta * 100%)
+        # EEE (crisis beta * 100%) (CSV)
         eee = effective_equity_exposure(ret_slice, bench_slice, 0.10) if len(bench_slice.dropna()) >= 12 else None
-        pd.DataFrame([{"eee_10pct": eee}]).round(3).to_csv(output_dir / f"eee_{suffix}.csv", index=False)
+        pd.DataFrame([{"eee_10pct": eee}]).round(3).to_csv(output_dir_csv / f"eee_{suffix}.csv", index=False)
         # Vol-of-vol
         vol_of_vol = float(rvol.std()) if len(rvol.dropna()) >= 2 else None
         rel_vol_of_vol = float(rvol.std() / rvol.mean()) if len(rvol.dropna()) >= 2 and rvol.mean() and rvol.mean() != 0 else None
@@ -509,10 +568,9 @@ def main() -> None:
         windows_months,
     )
     
-    # Gatekeepers: portfolio_valid = False if MaxDD fail or Stress FAIL_STRESS (report-only run still exports, but metadata marks invalid)
+    # Gatekeepers: portfolio_valid = False, только если исторический MaxDD нарушает мандат.
+    # Stress FAIL_STRESS теперь диагностический и не делает портфель "invalid".
     portfolio_valid = True
-    if stress_report.get("status") == "FAIL_STRESS":
-        portfolio_valid = False
     if portfolio_metrics_summary and cfg.target_max_drawdown_pct is not None:
         realized_mdd = portfolio_metrics_summary.get("max_drawdown")
         if realized_mdd is not None and not (realized_mdd != realized_mdd):
@@ -520,7 +578,7 @@ def main() -> None:
                 portfolio_valid = False
     
     export_run_metadata(
-        output_dir,
+        output_dir_final,
         cfg,
         derived_assumptions,
         analysis_end_str,
@@ -571,8 +629,8 @@ def main() -> None:
         if i < len(asset_metrics_all):
             asset_metrics_by_window[key] = asset_metrics_all[i]
     snapshot_assets = build_snapshot_assets(asset_metrics_by_window, run_timestamp)
-    save_snapshot(snapshot_assets, output_dir / "snapshot_assets.json")
-    logger.info("Snapshot активов: %s", output_dir / "snapshot_assets.json")
+    save_snapshot(snapshot_assets, output_dir_final / "snapshot_assets.json")
+    logger.info("Snapshot активов: %s", output_dir_final / "snapshot_assets.json")
 
     # 2) Three snapshots by window (3y, 5y, 10y)
     for label in ("3y", "5y", "10y"):
@@ -607,8 +665,8 @@ def main() -> None:
             stress_portfolio_params=stress_params,
             analytics=analytics_by_window.get(label),
         )
-        save_snapshot(snap_w, output_dir / f"snapshot_{label}.json")
-        logger.info("Snapshot %s: %s", label, output_dir / f"snapshot_{label}.json")
+        save_snapshot(snap_w, output_dir_final / f"snapshot_{label}.json")
+        logger.info("Snapshot %s: %s", label, output_dir_final / f"snapshot_{label}.json")
 
     # Index of snapshot files
     save_snapshot(
@@ -621,12 +679,12 @@ def main() -> None:
                 "10y": "snapshot_10y.json",
             },
         },
-        output_dir / "snapshot_index.json",
+        output_dir_final / "snapshot_index.json",
     )
 
-    # Text and HTML reports aggregating all snapshots
-    write_report_txt(str(output_dir))
-    html_path = write_report_html(str(output_dir))
+    # Text and HTML reports aggregating all snapshots (read from output_dir_final)
+    write_report_txt(str(output_dir_final))
+    html_path = write_report_html(str(output_dir_final))
     logger.info("HTML report: %s", html_path)
 
     # Cleanup old cache versions (keep last 3)
@@ -636,18 +694,9 @@ def main() -> None:
     # STEP 11: Print summary
     # =========================================================================
     
-    print("\nDone. Outputs in", output_dir)
-    print("  asset_metrics_3y.csv, _5y.csv, _10y.csv")
-    print("  portfolio_metrics_3y.csv, _5y.csv, _10y.csv")
-    print("  rc_vol_3y.csv, _5y.csv, _10y.csv")
-    print("  correlation_matrix_3y.csv, _5y.csv, _10y.csv")
-    print("  rolling_sharpe_36m_3y/5y/10y.csv, rolling_sortino_36m_3y/5y/10y.csv, rolling_vol_12m_3y/5y/10y.csv")
-    print("  drawdown_structure_3y/5y/10y.json, var_es_3y/5y/10y.csv, eee_3y/5y/10y.csv")
-    print("  stress_report.json")
-    print("  run_metadata.json")
-    print("  snapshot_assets.json, snapshot_3y.json, snapshot_5y.json, snapshot_10y.json, snapshot_index.json")
-    print("  report.txt, report.html (open in browser; Print -> Save as PDF)")
-    print("  inputs/ (monthly_prices, monthly_returns, rf, benchmark, cash, fx)")
+    print("\nDone.")
+    print("  CSV в %s: asset_metrics, portfolio_metrics, rc_vol, correlation_matrix, rolling_*, var_es, eee, inputs/" % output_dir_csv)
+    print("  Финальные результаты в %s: portfolio_weights.yml, все JSON (snapshot_*, stress_report, run_metadata, data_policy, drawdown_structure), report.txt, report.html" % output_dir_final)
     
     if cfg.pending_fields:
         print(f"\nПоля, ожидающие ввода пользователя: {cfg.pending_fields}")

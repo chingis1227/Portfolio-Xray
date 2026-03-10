@@ -41,7 +41,7 @@ tickers: [VOO, VT, QQQ, SMH, VGK, BBJP, VWO, VDC, ARMY.PA, ITA, CIBR, ROBO, SCHD
 # If set, missing target/risk_budget fields are filled from config/client_profiles.yml (midpoints). You can override manually.
 # Reminder: 1 Ultra Conservative  2 Conservative  3 Balanced  4 Growth  5 Aggressive (see Config UI for full table).
 
-client_profile: Growth
+client_profile: Aggressive
 
 # allow_leverage, allow_short_selling: на выбор true / false.
 allow_leverage: false
@@ -49,3 +49,9 @@ allow_short_selling: false
 
 # horizon_years: число лет (например 10, 3, 0.5); null допустим.
 horizon_years: 10.0
+
+# CSV — только таблицы (results_csv)
+output_dir: results_csv
+# Финальные результаты: веса, все JSON, report
+output_dir_final: "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"
+

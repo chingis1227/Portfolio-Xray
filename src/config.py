@@ -121,9 +121,10 @@ def _sync_profile_fields_to_config_file(path: Path, merged: dict[str, Any]) -> N
         data = yaml_rt.load(f)
     if data is None:
         return
+    # Only update keys that already exist in the file, so a minimal client-facing config stays minimal.
     changed = False
     for key in _PROFILE_SYNC_KEYS:
-        if key not in merged:
+        if key not in merged or key not in data:
             continue
         val = merged[key]
         if data.get(key) != val:
@@ -151,9 +152,11 @@ def load_validated_config(config_path: str | Path | None = None) -> PortfolioCon
     raw = apply_profile_to_config(raw)
     if raw.get("client_profile") and get_profile_defaults(raw["client_profile"]):
         _sync_profile_fields_to_config_file(path, raw)
-    # If config has no weights, load from portfolio_weights.yml (output of optimization)
+    # If config has no weights, load from portfolio_weights.yml in output_dir_final (e.g. ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ)
     if not raw.get("weights"):
-        file_weights = load_weights_file(config_path=path)
+        output_dir_final = raw.get("output_dir_final") or "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"
+        weights_path = path.parent / output_dir_final / WEIGHTS_FILENAME
+        file_weights = load_weights_file(weights_path=weights_path)
         if file_weights:
             raw["weights"] = file_weights
     blocks_universe = load_blocks_universe(config_path=path)

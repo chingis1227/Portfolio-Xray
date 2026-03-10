@@ -539,10 +539,144 @@ def _format_assets_snapshot_text(data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _format_data_policy_text(data: dict[str, Any]) -> str:
+    """Format Data Policy / Backtest Mode section for text report."""
+    lines = [
+        "============================================================",
+        "DATA POLICY / BACKTEST MODE",
+        "============================================================",
+        "",
+        "backtest_mode: " + str(data.get("backtest_mode", "—")),
+        "join_policy (for cov/RC/β): " + str(data.get("join_policy_cov_rc", "inner join")),
+        "",
+    ]
+    inner = data.get("inner_join_months_used_for_risk")
+    if inner is not None:
+        lines.append("inner_join_months_used_for_risk (Σ/RC): " + str(inner))
+        if inner < 36:
+            lines.append("  (warning: < 36 months; risk estimates may be noisy)")
+        lines.append("")
+    n_redist = data.get("n_months_redistributed")
+    n_cash = data.get("n_months_cash_fallback")
+    if n_redist is not None:
+        lines.append("months with NaN redistribution (within-block): " + str(n_redist))
+    if n_cash is not None:
+        lines.append("months with excess weight to cash (RC/RB gating): " + str(n_cash))
+    if n_redist is not None or n_cash is not None:
+        lines.append("")
+    fam = data.get("first_available_month") or {}
+    if fam:
+        lines.append("first_available_month (per ticker, young ETF inclusion):")
+        for t in sorted(fam.keys()):
+            lines.append("  " + t + ": " + str(fam[t]))
+        lines.append("")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _format_robustness_text(data: dict[str, Any]) -> str:
+    """Format Dual-Horizon Robustness section for text report."""
+    lines = [
+        "============================================================",
+        "DUAL-HORIZON ROBUSTNESS (10Y primary + 5Y secondary validation)",
+        "============================================================",
+        "",
+    ]
+    eff_10 = data.get("effective_months_10y")
+    eff_5 = data.get("effective_months_5y")
+    if eff_10 is not None:
+        lines.append("effective_months_10y (after join): " + str(eff_10))
+    if eff_5 is not None:
+        lines.append("effective_months_5y (after join): " + str(eff_5))
+    lines.append("")
+    max_dw = data.get("max_delta_w")
+    if max_dw is not None:
+        lines.append("max |weight_5Y - weight_10Y|: " + str(round(max_dw, 3)))
+    top5 = data.get("top5_delta_w") or []
+    if top5:
+        lines.append("top 5 weight deltas (ticker, delta): " + ", ".join(f"{t}={d}" for t, d in top5))
+    lines.append("")
+    rc10 = data.get("rc_by_block_10y") or {}
+    rc5 = data.get("rc_by_block_5y") or {}
+    targets = data.get("rc_block_targets") or {}
+    if rc10 or rc5:
+        lines.append("RC by block:")
+        for b in ("Growth", "Duration", "Inflation"):
+            tgt = targets.get(b)
+            r10 = rc10.get(b)
+            r5 = rc5.get(b)
+            parts = [f"  {b}: 10Y={r10}, 5Y={r5}" if (r10 is not None or r5 is not None) else None]
+            if tgt is not None:
+                parts.append(f" (target={tgt})")
+            if parts:
+                lines.append("".join(p for p in parts if p) or f"  {b}: —")
+        lines.append("")
+    vol10 = data.get("vol_10y_under_sigma10y")
+    vol10_5 = data.get("vol_10y_under_sigma5y")
+    if vol10 is not None:
+        lines.append("Portfolio vol (10Y weights) under Σ_10Y: " + str(vol10) + "%")
+    if vol10_5 is not None:
+        lines.append("Portfolio vol (10Y weights) under Σ_5Y: " + str(vol10_5) + "%")
+    lines.append("")
+    flags = data.get("flags") or []
+    lines.append("Robustness flags: " + (", ".join(flags) if flags else "none (10Y solution consistent with 5Y)"))
+    actions = data.get("stabilization_actions") or []
+    if actions:
+        lines.append("Stabilization actions applied: " + ", ".join(actions))
+    lines.append("Final portfolio: " + ("10Y weights (primary)" if data.get("final_portfolio_is_10y", True) else "—"))
+    lines.append("Robust vs 5Y: " + ("yes" if data.get("robust_vs_5y", False) else "no" + (f" ({', '.join(flags)})" if flags else "")))
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _format_robustness_html(data: dict[str, Any]) -> str:
+    """Format Dual-Horizon Robustness section for HTML report."""
+    parts = [
+        '<section class="robustness-section" id="robustness">',
+        "<h2>Dual-Horizon Robustness (10Y primary + 5Y secondary validation)</h2>",
+    ]
+    eff_10 = data.get("effective_months_10y")
+    eff_5 = data.get("effective_months_5y")
+    parts.append("<p><strong>Effective sample length (after inner join):</strong> ")
+    parts.append(f"10Y = {eff_10} months, 5Y = {eff_5} months</p>")
+    max_dw = data.get("max_delta_w")
+    if max_dw is not None:
+        parts.append(f"<p><strong>Max |weight_5Y − weight_10Y|:</strong> {_fmt_val_html(max_dw)}</p>")
+    top5 = data.get("top5_delta_w") or []
+    if top5:
+        rows = "".join(f"<tr><td>{html.escape(str(t))}</td><td>{_fmt_val_html(d)}</td></tr>" for t, d in top5)
+        parts.append('<table><caption>Top 5 weight deltas</caption><thead><tr><th>Ticker</th><th>Delta</th></tr></thead><tbody>' + rows + "</tbody></table>")
+    rc10 = data.get("rc_by_block_10y") or {}
+    rc5 = data.get("rc_by_block_5y") or {}
+    targets = data.get("rc_block_targets") or {}
+    if rc10 or rc5:
+        rows = []
+        for b in ("Growth", "Duration", "Inflation"):
+            r10 = rc10.get(b)
+            r5 = rc5.get(b)
+            tgt = targets.get(b)
+            rows.append(f"<tr><td>{html.escape(b)}</td><td>{_fmt_val_html(r10)}</td><td>{_fmt_val_html(r5)}</td><td>{_fmt_val_html(tgt)}</td></tr>")
+        if rows:
+            parts.append('<table><caption>RC by block</caption><thead><tr><th>Block</th><th>10Y</th><th>5Y</th><th>Target</th></tr></thead><tbody>' + "".join(rows) + "</tbody></table>")
+    vol10 = data.get("vol_10y_under_sigma10y")
+    vol10_5 = data.get("vol_10y_under_sigma5y")
+    if vol10 is not None or vol10_5 is not None:
+        parts.append("<p><strong>Portfolio vol (10Y weights):</strong> under Σ_10Y = " + _fmt_val_html(vol10) + "%; under Σ_5Y = " + _fmt_val_html(vol10_5) + "%</p>")
+    flags = data.get("flags") or []
+    flag_class = "status-fail" if flags else "status-pass"
+    parts.append(f'<p><strong>Robustness flags:</strong> <span class="{flag_class}">' + (", ".join(html.escape(f) for f in flags) if flags else "none (10Y consistent with 5Y)") + "</span></p>")
+    if data.get("stabilization_actions"):
+        parts.append("<p><strong>Stabilization actions:</strong> " + html.escape(", ".join(data["stabilization_actions"])) + "</p>")
+    parts.append("<p><strong>Final portfolio:</strong> 10Y weights (primary). <strong>Robust vs 5Y:</strong> " + ("yes" if data.get("robust_vs_5y", False) else "no") + "</p>")
+    parts.append("</section>")
+    return "\n".join(parts)
+
+
 def write_report_txt(output_dir: str | Path) -> Path:
     """
     Load snapshot_3y, 5y, 10y and snapshot_assets from output_dir,
     format into a single text report, and write output_dir/report.txt.
+    Includes Data Policy / Backtest Mode section from data_policy.json when present.
     """
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -551,6 +685,22 @@ def write_report_txt(output_dir: str | Path) -> Path:
         "Generated from snapshot_3y.json, snapshot_5y.json, snapshot_10y.json, snapshot_assets.json",
         "",
     ]
+    data_policy_path = out / "data_policy.json"
+    if data_policy_path.exists():
+        try:
+            with open(data_policy_path, encoding="utf-8") as f:
+                data_policy = json.load(f)
+            report_lines.append(_format_data_policy_text(data_policy))
+        except Exception:
+            pass
+    robustness_path = out / "robustness_report.json"
+    if robustness_path.exists():
+        try:
+            with open(robustness_path, encoding="utf-8") as f:
+                robustness_data = json.load(f)
+            report_lines.append(_format_robustness_text(robustness_data))
+        except Exception:
+            pass
     for label, fname in [("3y", "snapshot_3y.json"), ("5y", "snapshot_5y.json"), ("10y", "snapshot_10y.json")]:
         path = out / fname
         if path.exists():
@@ -703,10 +853,40 @@ HTML_TAIL = """
 """
 
 
+def _format_data_policy_html(data: dict[str, Any]) -> str:
+    """Format Data Policy / Backtest Mode section for HTML report."""
+    parts = [
+        '<section class="data-policy-section" id="data-policy">',
+        "<h2>Data Policy / Backtest Mode</h2>",
+        "<table><caption>Backtest and join policy</caption><tbody>",
+        "<tr><td>backtest_mode</td><td>" + html.escape(str(data.get("backtest_mode", "—"))) + "</td></tr>",
+        "<tr><td>join_policy (cov/RC/β)</td><td>" + html.escape(str(data.get("join_policy_cov_rc", "inner join"))) + "</td></tr>",
+    ]
+    inner = data.get("inner_join_months_used_for_risk")
+    if inner is not None:
+        parts.append("<tr><td>inner_join_months_used_for_risk</td><td>" + html.escape(str(inner)) + (" (warning: &lt;36 months)" if inner < 36 else "") + "</td></tr>")
+    n_redist = data.get("n_months_redistributed")
+    n_cash = data.get("n_months_cash_fallback")
+    if n_redist is not None:
+        parts.append("<tr><td>months with NaN redistribution</td><td>" + html.escape(str(n_redist)) + "</td></tr>")
+    if n_cash is not None:
+        parts.append("<tr><td>months with excess to cash (RC/RB gating)</td><td>" + html.escape(str(n_cash)) + "</td></tr>")
+    parts.append("</tbody></table>")
+    fam = data.get("first_available_month") or {}
+    if fam:
+        parts.append("<p><strong>First available month (per ticker):</strong></p><table><thead><tr><th>Ticker</th><th>First month</th></tr></thead><tbody>")
+        for t in sorted(fam.keys()):
+            parts.append("<tr><td>" + html.escape(t) + "</td><td>" + html.escape(str(fam[t])) + "</td></tr>")
+        parts.append("</tbody></table>")
+    parts.append("</section>")
+    return "\n".join(parts)
+
+
 def write_report_html(output_dir: str | Path) -> Path:
     """
     Load snapshot_3y, 5y, 10y and snapshot_assets from output_dir,
     format into a single HTML report (board), and write output_dir/report.html.
+    Includes Data Policy / Backtest Mode section from data_policy.json when present.
     Open in browser; use Print → Save as PDF for PDF.
     """
     out = Path(output_dir)
@@ -714,7 +894,23 @@ def write_report_html(output_dir: str | Path) -> Path:
     chunks = [HTML_HEAD]
     chunks.append("<h1>Portfolio Snapshot Report</h1>")
     chunks.append('<p class="subtitle">Generated from snapshot_3y.json, snapshot_5y.json, snapshot_10y.json, snapshot_assets.json</p>')
-    chunks.append('<nav><a href="#win-3y">3Y</a> <a href="#win-5y">5Y</a> <a href="#win-10y">10Y</a> <a href="#assets">Assets</a></nav>')
+    chunks.append('<nav><a href="#data-policy">Data Policy</a> <a href="#robustness">Dual-Horizon</a> <a href="#win-3y">3Y</a> <a href="#win-5y">5Y</a> <a href="#win-10y">10Y</a> <a href="#assets">Assets</a></nav>')
+    data_policy_path = out / "data_policy.json"
+    if data_policy_path.exists():
+        try:
+            with open(data_policy_path, encoding="utf-8") as f:
+                data_policy = json.load(f)
+            chunks.append(_format_data_policy_html(data_policy))
+        except Exception:
+            pass
+    robustness_path = out / "robustness_report.json"
+    if robustness_path.exists():
+        try:
+            with open(robustness_path, encoding="utf-8") as f:
+                robustness_data = json.load(f)
+            chunks.append(_format_robustness_html(robustness_data))
+        except Exception:
+            pass
     for label, fname in [("3y", "snapshot_3y.json"), ("5y", "snapshot_5y.json"), ("10y", "snapshot_10y.json")]:
         path = out / fname
         if path.exists():

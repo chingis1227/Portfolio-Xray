@@ -6,6 +6,10 @@ Usage:
     python config_ui/app.py
 
 Then open http://localhost:5000 in browser.
+
+Flow: set parameters in the form → Save config.yml (writes to config.yml) →
+optionally Run optimization (runs run_optimization.py using current config).
+Same config file and same code as when running from the command line.
 """
 from __future__ import annotations
 
@@ -17,6 +21,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+import subprocess
 
 from flask import Flask, render_template, request, jsonify, send_file
 import yaml
@@ -288,6 +294,59 @@ def save_config():
         f.write(yaml_content)
 
     return jsonify({"success": True, "path": str(CONFIG_PATH)})
+
+
+# Timeout for optimization run (seconds)
+OPTIMIZATION_TIMEOUT = 600
+
+
+@app.route("/run-optimization", methods=["POST"])
+def run_optimization():
+    """
+    Run portfolio optimization using current config.yml.
+    Expects config to be already saved. Returns stdout/stderr and exit code.
+    """
+    run_script = PROJECT_ROOT / "run_optimization.py"
+    if not run_script.is_file():
+        return jsonify({
+            "success": False,
+            "error": "run_optimization.py not found in project root",
+            "stdout": "",
+            "stderr": "",
+            "exit_code": -1,
+        })
+
+    try:
+        result = subprocess.run(
+            [sys.executable, str(run_script)],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=OPTIMIZATION_TIMEOUT,
+            env={**os.environ},
+        )
+        return jsonify({
+            "success": result.returncode == 0,
+            "stdout": result.stdout or "",
+            "stderr": result.stderr or "",
+            "exit_code": result.returncode,
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            "success": False,
+            "error": f"Optimization timed out after {OPTIMIZATION_TIMEOUT} seconds",
+            "stdout": "",
+            "stderr": "",
+            "exit_code": -1,
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "stdout": "",
+            "stderr": "",
+            "exit_code": -1,
+        })
 
 
 def generate_yaml_with_comments(config: dict) -> str:

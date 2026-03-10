@@ -193,6 +193,32 @@ def export_correlation_matrix_csv(
     return path
 
 
+def export_data_policy(
+    output_dir: Path,
+    backtest_mode: str,
+    first_available_month: dict[str, str],
+    inner_join_months_used: int | None = None,
+    n_months_redistributed: int | None = None,
+    n_months_cash_fallback: int | None = None,
+) -> Path:
+    """
+    Export data policy / backtest mode section for reports.
+    Used by run_report to persist backtest_mode, join policy, per-ticker first month, and NaN/cash counts.
+    """
+    data = {
+        "backtest_mode": backtest_mode,
+        "join_policy_cov_rc": "inner join (intersection of dates across assets)",
+        "first_available_month": first_available_month,
+        "inner_join_months_used_for_risk": inner_join_months_used,
+        "n_months_redistributed": n_months_redistributed,
+        "n_months_cash_fallback": n_months_cash_fallback,
+    }
+    path = output_dir / "data_policy.json"
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return path
+
+
 def export_stress_report(stress_report: dict, output_dir: Path) -> Path:
     """
     Export stress test report to JSON. Per docs/docs/stress_testing_spec.md.

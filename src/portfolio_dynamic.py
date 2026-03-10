@@ -137,7 +137,8 @@ def portfolio_returns_nan_safe(
     rc_block_targets: dict[str, float] | None = None,
     rc_asset_cap_pct: float | None = None,
     cov_df: pd.DataFrame | None = None,
-) -> tuple[pd.Series, pd.DataFrame]:
+    return_diagnostics: bool = False,
+) -> tuple[pd.Series, pd.DataFrame] | tuple[pd.Series, pd.DataFrame, dict[str, Any]]:
     """
     NaN-safe portfolio returns.
 
@@ -147,7 +148,13 @@ def portfolio_returns_nan_safe(
     (and optionally rc_asset_cap_pct) are provided, RC-gated check: if violated, fall back to
     w_miss-to-cash for that month.
 
-    Returns (portfolio_returns, weights_used DataFrame).
+    Young ETF rule: history is NOT truncated. At each t only assets with non-NaN return participate;
+    before a young ETF's first month it simply has NaN and gets no weight.
+
+    Returns (portfolio_returns, weights_used DataFrame). If return_diagnostics=True, returns
+    (portfolio_returns, weights_used, diagnostics) with diagnostics containing:
+      n_months_redistributed: months where within-block redistribution was applied
+      n_months_cash_fallback: months where RC/RB gating forced excess weight to cash
     """
     ticker_to_block = _ticker_to_block_map(blocks) if blocks else {}
     do_rc_check = bool(
@@ -156,19 +163,33 @@ def portfolio_returns_nan_safe(
     )
     risk_tickers = [t for b in RISK_BUDGET_BLOCKS for t in blocks.get(b, [])] if blocks else []
 
+    n_months_redistributed = 0
+    n_months_cash_fallback = 0
+
     w_df = pd.DataFrame(index=returns_df.index, columns=list(target_weights.keys()), dtype=float)
     common_idx = returns_df.index.intersection(cash_returns.index).sort_values()
     r_p = pd.Series(index=common_idx, dtype=float)
 
     for t in common_idx:
         row = returns_df.loc[t] if t in returns_df.index else pd.Series(dtype=float)
+        used_redist = False
+        used_fallback = False
         if blocks and risk_tickers:
             w_row = _weights_at_t_within_block_redist(row, target_weights, blocks)
+            # Detect if we actually redistributed (any block had missing weight given to others)
+            for _b in RISK_BUDGET_BLOCKS:
+                tickers_b = blocks.get(_b, [])
+                valid = [ticker for ticker in tickers_b if ticker in row.index and pd.notna(row.get(ticker)) and target_weights.get(ticker, 0) != 0]
+                missing = [ticker for ticker in tickers_b if target_weights.get(ticker, 0) and (ticker not in row.index or pd.isna(row.get(ticker)))]
+                if missing and valid:
+                    used_redist = True
+                    break
             if do_rc_check and cov_df is not None and rc_block_targets:
                 w_risk = {k: v for k, v in w_row.items() if k in risk_tickers and v > 0}
                 if not _rc_check_after_redist(
                     w_risk, cov_df, ticker_to_block, rc_block_targets, rc_asset_cap_pct
                 ):
+                    used_fallback = True
                     # Fallback: no redistribution, w_miss to cash
                     w_row = {}
                     for ticker in target_weights:
@@ -187,6 +208,10 @@ def portfolio_returns_nan_safe(
                     w_row[ticker] = target_weights.get(ticker, 0.0)
                 else:
                     w_row[ticker] = 0.0
+        if used_redist:
+            n_months_redistributed += 1
+        if used_fallback:
+            n_months_cash_fallback += 1
         for k in w_row:
             w_df.loc[t, k] = w_row[k]
         w_miss = 1.0 - sum(w_row.values())
@@ -199,4 +224,10 @@ def portfolio_returns_nan_safe(
         r_p.loc[t] = r_p_t
 
     w_df = w_df.fillna(0)
+    if return_diagnostics:
+        diagnostics: dict[str, Any] = {
+            "n_months_redistributed": n_months_redistributed,
+            "n_months_cash_fallback": n_months_cash_fallback,
+        }
+        return r_p.dropna(), w_df, diagnostics
     return r_p.dropna(), w_df

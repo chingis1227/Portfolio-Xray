@@ -30,11 +30,13 @@ cash_policy: allowed_for_scaling
 # =============================================================================
 # SECTION 2: RISK-FREE AND BENCHMARK
 # =============================================================================
+# Optional: if omitted, defaults are injected (base_benchmark_ticker from investor_currency;
+# risk_free_source and cash_proxy_ticker from currency in code).
 # cash_proxy_ticker: from investor_currency (e.g. BIL for USD, PEU for EUR). Set explicitly or by default.
+# base_benchmark_ticker: if missing, set from currency (USD->SPY, EUR->VGK, JPY->EWJ, CHF->EWL).
 
 risk_free_source: FRED:DTB3
 cash_proxy_ticker: BIL
-# Base benchmark for Beta_base and stress (canonical name: base_benchmark_ticker; in code: benchmark_base_ticker)
 base_benchmark_ticker: SPY
 beta_local_mapping: {}
 
@@ -120,7 +122,27 @@ donor_shift_mode: proportional
 # =============================================================================
 # SECTION 6: ANALYSIS SETTINGS
 # =============================================================================
+# output_dir: только CSV (по умолчанию results_csv).
+# output_dir_final: веса, все JSON, report (по умолчанию ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ).
 
 windows_months: [36, 60, 120]
 coverage_threshold: 0.9
-output_dir: output
+output_dir: results_csv
+output_dir_final: "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"
+
+# Dual-horizon optimization robustness (10Y primary + 5Y secondary validation)
+# Primary portfolio is always from primary_window_months; 5Y run is consistency check only.
+optimization_windows_months: [120, 60]
+primary_window_months: 120
+secondary_window_months: 60
+robustness_policy:
+  enabled: true
+  max_weight_change_allowed: 0.10   # 10pp absolute per asset vs 10Y solution
+  max_rc_block_dev_allowed: 0.05    # 5pp deviation in RC by block vs targets (5Y)
+  max_asset_rc_dev_allowed: 0.05    # 5pp RC deviation per asset vs 10Y RC
+  min_effective_months: 36          # if join leaves < 36 months, FLAG_SHORT_SAMPLE
+
+# Backtest mode (default: dynamic_nan_safe):
+# - dynamic_nan_safe: policy-compliant (within-block redistribution, RC/RB gating to cash, young ETFs do not truncate history)
+# - simple: opt-in simplified mode, no within-block redistribution or RC-gating
+backtest_mode: dynamic_nan_safe
