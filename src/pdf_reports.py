@@ -698,3 +698,25 @@ def try_rebuild_pdfs_after_variant(*, logger: Any = None) -> None:
 def try_rebuild_pdfs_only(*, logger: Any = None) -> None:
     """Rebuild PDFs only (comparison JSON must already exist)."""
     rebuild_all_pdfs(logger=logger)
+
+
+def try_rebuild_pdfs_after_main_report(*, logger: Any = None) -> None:
+    """
+    After Main portfolio report (run_report / optimization chain): refresh Policy vs EW vs RP
+    comparison from on-disk snapshots in output_dir_final + baseline folders, then rebuild PDFs.
+
+    Does not rerun Equal-Weight or Risk-Parity; only refreshes portfolio_comparison.* so the
+    triplet summary stays consistent when Policy/Main changed alone.
+    """
+    root = _ROOT
+    cv = root / "run_compare_variants.py"
+    if cv.is_file():
+        try:
+            subprocess.run([sys.executable, str(cv)], cwd=str(root), check=True)
+        except subprocess.CalledProcessError as e:
+            if logger:
+                logger.warning(
+                    "run_compare_variants.py exited %s; portfolio_comparison may be stale.",
+                    e.returncode,
+                )
+    rebuild_all_pdfs(logger=logger)

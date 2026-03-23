@@ -75,6 +75,7 @@ from src.stress_factors import (
 )
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
 from src.windows import slice_window
+from src.portfolio_commentary import write_portfolio_commentary
 
 
 def parse_args() -> argparse.Namespace:
@@ -673,6 +674,21 @@ def run_portfolio_report_for_weights(
     html_path = write_report_html(str(output_dir_final))
     logger.info("HTML report: %s", html_path)
 
+    # commentary.txt: always align with this run (summary/stress/CSV)
+    try:
+        cpath = write_portfolio_commentary(
+            output_dir_final,
+            output_dir_csv=output_dir_csv,
+            portfolio_metrics_10y=portfolio_metrics_summary,
+            stress_report=stress_report,
+            portfolio_valid=portfolio_valid,
+            analysis_end=analysis_end_str,
+        )
+        if cpath:
+            logger.info("commentary.txt: %s", cpath)
+    except Exception as e:
+        logger.warning("commentary.txt generation failed: %s", e)
+
     meta = {
         "stress_report": stress_report,
         "portfolio_valid": portfolio_valid,
@@ -727,7 +743,7 @@ def main() -> None:
         % output_dir_csv
     )
     print(
-        "  Финальные результаты в %s: portfolio_weights.yml, все JSON (snapshot_*, stress_report, run_metadata, data_policy, drawdown_structure), report.txt, report.html"
+        "  Финальные результаты в %s: portfolio_weights.yml, все JSON (snapshot_*, stress_report, run_metadata, data_policy, drawdown_structure), report.txt, report.html, commentary.txt"
         % output_dir_final
     )
 
@@ -766,9 +782,9 @@ def main() -> None:
         )
 
     try:
-        from src.pdf_reports import try_rebuild_pdfs_only
+        from src.pdf_reports import try_rebuild_pdfs_after_main_report
 
-        try_rebuild_pdfs_only(logger=logger)
+        try_rebuild_pdfs_after_main_report(logger=logger)
     except Exception as e:
         logger.warning("PDF suite rebuild skipped: %s", e)
 
