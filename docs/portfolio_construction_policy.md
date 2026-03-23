@@ -674,6 +674,39 @@ The system therefore evaluates the Policy Portfolio relative to these baselines 
 This comparison ensures that the structural decisions embedded in the Policy Portfolio are intentional and that any additional complexity introduced by the architecture is justified by improved robustness or return characteristics.
 
 
+### 6.1 Baseline Construction Rules (EW / RP)
+
+To keep the baseline comparison clean and interpretable, **Equal-Weight (EW)** and **Risk-Parity (RP)** must be treated as pure diagnostic references.
+
+- **EW baseline:** all eligible risk assets receive equal capital weights.
+- **RP baseline:** weights are selected to equalize **asset-level RC_vol** as closely as numerically feasible, under long-only and fully-invested conditions.
+
+For EW/RP baselines, the system must **not** apply Policy-portfolio construction logic, including:
+
+- block-role construction rules,
+- block risk-budget targets,
+- RC concentration caps from Policy construction,
+- Policy-specific weight caps or discretionary overlays,
+- hidden or ad-hoc filters introduced only for Policy optimization.
+
+EW/RP are therefore intentionally simple, so that any difference versus the Policy Portfolio can be attributed to architecture rather than to hidden implementation choices.
+
+
+### 6.2 Baseline Evaluation and Interpretation
+
+EW and RP must be evaluated with the **same data pipeline and validation framework** as the Policy Portfolio (same return definitions, windows, metrics, stress framework, and client-fit checks).
+
+Comparison should explicitly cover:
+
+- return characteristics (e.g., CAGR),
+- risk and downside profile (volatility, drawdown, downside/tail metrics),
+- stress-test status and fail reasons,
+- concentration/diversification of risk across assets and blocks.
+
+A baseline may pass one gate (for example, MaxDD gate) and fail another gate (for example, stress role checks).  
+This is expected and should be interpreted as a **multi-constraint diagnostic signal**, not as a logical inconsistency.
+
+
 ## 7. Risk Budget Orientation
 
 Risk budgeting defines the **strategic distribution of risk across the core portfolio blocks**.
