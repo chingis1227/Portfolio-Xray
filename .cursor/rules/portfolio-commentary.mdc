@@ -1,0 +1,38 @@
+---
+description: Enforce commentary.txt for portfolio results
+alwaysApply: true
+---
+
+For portfolio output files, maintain a nearby `commentary.txt` in the same directory.
+
+Scope:
+- `**/report.txt`
+- `**/summary.txt`
+- `**/ips_summary.txt`
+- `**/*comparison*.txt`
+- `**/run_result.json` (when used as primary result source)
+
+Requirements:
+1) Interpret only metrics present in source files; do not invent values.
+2) No buy/sell recommendations.
+3) No unsupported macro stories.
+4) Concise institutional tone.
+5) Required section order:
+   - Executive Summary
+   - Metric-by-Metric Interpretation
+   - Risk Structure
+   - Strengths
+   - Weaknesses
+   - Scenario Behavior
+   - Final Conclusion
+6) For each key metric, provide:
+   - one short sentence: what the metric shows
+   - one short sentence: what it implies for portfolio profile
+7) If `commentary.txt` exists, update it; otherwise create it.
+8) If multiple source files share one folder, keep separate source blocks inside one `commentary.txt` using `Source: <filename>`.
+
+Source-of-truth documents:
+- `metrics_specification.md` (or `docs/metrics_specification.md` if present)
+- `docs/portfolio_construction_policy.md`
+- `docs/data_policy_nan_young_etfs.md`
+- `docs/stress_testing_spec.md` (if present)
