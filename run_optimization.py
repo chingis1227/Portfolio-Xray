@@ -238,7 +238,7 @@ def main() -> None:
         rb_growth,
     )
     if not feas_ok:
-        out_final = Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"))
+        out_final = Path(getattr(cfg, "output_dir_final", "Результаты оптимизации"))
         out_final.mkdir(parents=True, exist_ok=True)
         fail_result = {
             "weights": {},
@@ -333,7 +333,7 @@ def main() -> None:
     )
     rc_policy_mode = getattr(cfg, "rc_policy_mode", "strict")
     if not rc_postprocess_ok and rc_policy_mode == "strict":
-        out_final = Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"))
+        out_final = Path(getattr(cfg, "output_dir_final", "Результаты оптимизации"))
         out_final.mkdir(parents=True, exist_ok=True)
         fail_violations = [{"code": VIOL_RC_VIOLATION, "details": rc_postprocess_diag}]
         fail_result = {
@@ -437,7 +437,7 @@ def main() -> None:
             }
             logger.info("Dual-horizon: 10Y vs 5Y comparison written to robustness_report.json")
             # Persist for report (ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ)
-            out_final = Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"))
+            out_final = Path(getattr(cfg, "output_dir_final", "Результаты оптимизации"))
             out_final.mkdir(parents=True, exist_ok=True)
             with open(out_final / "robustness_report.json", "w", encoding="utf-8") as f:
                 json.dump(robustness_report, f, indent=2)
@@ -710,7 +710,7 @@ def main() -> None:
         print("  Baseline не рассчитан (нет достаточного числа тикеров с coverage >= %.0f%%)." % (coverage_threshold * 100))
     print("")
 
-    out_final = Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"))
+    out_final = Path(getattr(cfg, "output_dir_final", "Результаты оптимизации"))
     out_final.mkdir(parents=True, exist_ok=True)
     run_result_path = out_final / "run_result.json"
     with open(run_result_path, "w", encoding="utf-8") as f:

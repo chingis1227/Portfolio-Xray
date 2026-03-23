@@ -5,8 +5,8 @@ Compare Policy vs Equal-Weight vs Risk-Parity portfolios in a single summary fil
 
 This script assumes that:
 - Policy portfolio report has been generated into output_dir_final (config.yml).
-- Equal-Weight baseline exists in subfolder "equal-weight portfolio".
-- Risk-Parity baseline exists in subfolder "risk parity portfolio".
+- Equal-Weight baseline exists in project root folder "equal-weight portfolio".
+- Risk-Parity baseline exists in project root folder "risk parity portfolio".
 
 It builds a machine-readable JSON and a concise TXT table with:
 - CAGR
@@ -99,11 +99,12 @@ def _load_variant_summary(root: Path, subdir: str | None, label: str) -> dict:
 def main() -> None:
     setup_logging()
     cfg = load_validated_config()
-    root = Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"))
+    root = Path(getattr(cfg, "output_dir_final", "Результаты оптимизации"))
+    project_root = Path(__file__).resolve().parent
 
     policy = _load_variant_summary(root, None, "Policy Portfolio")
-    eq = _load_variant_summary(root, "equal-weight portfolio", "Equal-Weight Portfolio")
-    rp = _load_variant_summary(root, "risk parity portfolio", "Risk Parity Portfolio")
+    eq = _load_variant_summary(project_root, "equal-weight portfolio", "Equal-Weight Portfolio")
+    rp = _load_variant_summary(project_root, "risk parity portfolio", "Risk Parity Portfolio")
 
     comparison = {
         "policy": policy,

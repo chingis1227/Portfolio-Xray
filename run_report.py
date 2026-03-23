@@ -695,7 +695,7 @@ def main() -> None:
         raise SystemExit(1)
 
     output_dir_csv = ensure_output_dir(Path(cfg.output_dir))
-    output_dir_final = ensure_output_dir(Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ")))
+    output_dir_final = ensure_output_dir(Path(getattr(cfg, "output_dir_final", "Результаты оптимизации")))
 
     portfolio_metrics_summary, meta = run_portfolio_report_for_weights(
         cfg,

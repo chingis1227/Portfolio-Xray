@@ -1,0 +1,21 @@
+{
+  "portfolio_type": "Risk Parity Portfolio",
+  "status": "OK",
+  "solver_status": "OK",
+  "max_rc_error": 1.6263035344840637e-05,
+  "metrics_10y": {
+    "window_months": 120,
+    "cagr": 0.11210595905924503,
+    "vol_annual": 0.09844021727281257,
+    "sharpe": 0.9095562757264404,
+    "sortino": 1.4711384659361555,
+    "beta_portfolio": 0.601975591074068,
+    "treynor": 0.14873845174453967,
+    "max_drawdown": -0.1874513685944672,
+    "ttr_months": NaN,
+    "recovered": false
+  },
+  "stress_status": "FAIL_STRESS",
+  "stress_fail_reason": "FAIL_ROLE_EQUITY_SHOCK",
+  "portfolio_valid": true
+}

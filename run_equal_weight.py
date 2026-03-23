@@ -81,8 +81,8 @@ def main() -> None:
         primary_window,
     )
 
-    out_root = Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"))
-    out_dir = out_root / "equal-weight portfolio"
+    # Baseline outputs are stored separately from main optimization results.
+    out_dir = Path(__file__).resolve().parent / "equal-weight portfolio"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Persist raw weights.json for the baseline.

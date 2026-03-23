@@ -1,0 +1,310 @@
+{
+  "timestamp": "2026-03-23T18:52:10.664421",
+  "analysis_end": "2026-02-28",
+  "window_label": "3y",
+  "window_months": 36,
+  "final_weights_total": {
+    "VOO": 0.068,
+    "VT": 0.054,
+    "QQQ": 0.052,
+    "SMH": 0.021,
+    "VGK": 0.046,
+    "BBJP": 0.043,
+    "VWO": 0.04,
+    "VDC": 0.059,
+    "ARMY.PA": 0.011,
+    "ITA": 0.028,
+    "CIBR": 0.038,
+    "ROBO": 0.049,
+    "SCHD": 0.052,
+    "COPX": 0.015,
+    "URA": 0.008,
+    "SLV": 0.054,
+    "GLD": 0.037,
+    "SCHP": 0.105,
+    "BIL": 0.115,
+    "BND": 0.104
+  },
+  "final_weights_risk_portfolio": {
+    "VOO": 0.077,
+    "VT": 0.062,
+    "QQQ": 0.058,
+    "SMH": 0.023,
+    "VGK": 0.052,
+    "BBJP": 0.048,
+    "VWO": 0.045,
+    "VDC": 0.066,
+    "ARMY.PA": 0.013,
+    "ITA": 0.032,
+    "CIBR": 0.043,
+    "ROBO": 0.055,
+    "SCHD": 0.059,
+    "COPX": 0.017,
+    "URA": 0.009,
+    "SLV": 0.061,
+    "GLD": 0.042,
+    "SCHP": 0.119,
+    "BND": 0.118
+  },
+  "block_weights": {
+    "Growth": 0.584,
+    "Duration": 0.104,
+    "Inflation": 0.197,
+    "Liquidity": 0.115,
+    "Tail": 0.0
+  },
+  "RC_asset": [
+    {
+      "ticker": "ROBO",
+      "rc_pct": 0.103
+    },
+    {
+      "ticker": "SLV",
+      "rc_pct": 0.101
+    },
+    {
+      "ticker": "VOO",
+      "rc_pct": 0.082
+    },
+    {
+      "ticker": "VT",
+      "rc_pct": 0.07
+    },
+    {
+      "ticker": "QQQ",
+      "rc_pct": 0.066
+    }
+  ],
+  "RC_block": [
+    {
+      "block": "Growth",
+      "rc_pct": 0.781
+    },
+    {
+      "block": "Duration",
+      "rc_pct": 0.054
+    },
+    {
+      "block": "Inflation",
+      "rc_pct": 0.166
+    },
+    {
+      "block": "Liquidity",
+      "rc_pct": -0.001
+    }
+  ],
+  "constraints_status": {
+    "target_vol": "PASS",
+    "max_dd": "PASS",
+    "rb_corridor": "FAIL",
+    "rc_caps": "NOT_CHECKED",
+    "weight_caps": "PASS"
+  },
+  "stress_suite_results": {
+    "overall": "FAIL_STRESS",
+    "fail_reason_code": "FAIL_ROLE_EQUITY_SHOCK",
+    "scenarios": [
+      {
+        "scenario_id": "equity_shock",
+        "portfolio_pnl_pct": -0.167,
+        "pnl_by_block_pct": {
+          "Growth": -0.1616,
+          "Duration": -0.0005,
+          "Inflation": -0.0044,
+          "Liquidity": -0.0004,
+          "Tail": 0.0
+        },
+        "violations": [
+          "role"
+        ],
+        "pass": false
+      },
+      {
+        "scenario_id": "credit_shock",
+        "portfolio_pnl_pct": 1.4334,
+        "pnl_by_block_pct": {
+          "Growth": -0.8741,
+          "Duration": -0.2424,
+          "Inflation": 2.5647,
+          "Liquidity": -0.0148,
+          "Tail": 0.0
+        },
+        "violations": [],
+        "pass": true
+      },
+      {
+        "scenario_id": "rates_shock",
+        "portfolio_pnl_pct": -0.0472,
+        "pnl_by_block_pct": {
+          "Growth": -0.0236,
+          "Duration": -0.0123,
+          "Inflation": -0.0115,
+          "Liquidity": 0.0002,
+          "Tail": 0.0
+        },
+        "violations": [],
+        "pass": true
+      },
+      {
+        "scenario_id": "inflation_stagflation",
+        "portfolio_pnl_pct": -0.0618,
+        "pnl_by_block_pct": {
+          "Growth": -0.0755,
+          "Duration": -0.0033,
+          "Inflation": 0.0174,
+          "Liquidity": -0.0004,
+          "Tail": 0.0
+        },
+        "violations": [],
+        "pass": true
+      },
+      {
+        "scenario_id": "liquidity_shock",
+        "portfolio_pnl_pct": 1.002,
+        "pnl_by_block_pct": {
+          "Growth": -0.7263,
+          "Duration": -0.1821,
+          "Inflation": 1.9216,
+          "Liquidity": -0.0112,
+          "Tail": 0.0
+        },
+        "violations": [],
+        "pass": true
+      }
+    ],
+    "historical": [
+      {
+        "episode": "2008",
+        "max_dd": null,
+        "pass": null
+      },
+      {
+        "episode": "2020",
+        "max_dd": NaN,
+        "pass": false
+      },
+      {
+        "episode": "2022",
+        "max_dd": NaN,
+        "pass": false
+      }
+    ],
+    "portfolio_params": {
+      "cagr": 0.187,
+      "vol_annual": 0.077,
+      "max_drawdown": -0.068,
+      "sharpe": 1.681,
+      "beta_base": 0.549
+    }
+  },
+  "metrics": {
+    "window_months": 36,
+    "cagr": 0.187,
+    "vol_annual": 0.077,
+    "sharpe": 1.681,
+    "sortino": 3.437,
+    "beta_portfolio": 0.549,
+    "treynor": 0.237,
+    "max_drawdown": -0.068,
+    "ttr_months": NaN,
+    "recovered": 0
+  },
+  "rc_vol_csv": "rc_vol_3y.csv",
+  "correlation_matrix_csv": "correlation_matrix_3y.csv",
+  "analytics": {
+    "rolling_sharpe_36m": {
+      "last": 1.681,
+      "mean": 1.681,
+      "p10": 1.681,
+      "p90": 1.681
+    },
+    "rolling_sharpe_12m": {
+      "last": 3.712,
+      "mean": 1.503,
+      "p10": 0.729,
+      "p90": 2.75
+    },
+    "rolling_sortino_36m": {
+      "last": 3.437,
+      "mean": 3.437,
+      "p10": 3.437,
+      "p90": 3.437
+    },
+    "rolling_sortino_12m": {
+      "last": 17.271,
+      "mean": 4.166,
+      "p10": 1.339,
+      "p90": 10.636
+    },
+    "rolling_vol_12m": {
+      "last": 0.06,
+      "mean": 0.08,
+      "p10": 0.061,
+      "p90": 0.104
+    },
+    "vol_of_vol": 0.018,
+    "rel_vol_of_vol": 0.225,
+    "drawdown_structure": {
+      "drawdowns": [
+        {
+          "depth": -0.005,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.068,
+          "length_months": 5,
+          "recovery_months": "2"
+        },
+        {
+          "depth": -0.018,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.012,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.023,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.009,
+          "length_months": 3,
+          "recovery_months": "2"
+        }
+      ],
+      "summary": {
+        "recovery_median_months": 1.0,
+        "recovery_p90_months": 2.0,
+        "pct_time_underwater": 0.278,
+        "longest_underwater_months": 4
+      },
+      "by_threshold": {
+        ">5%": {
+          "count": 1,
+          "recovery_median": 2.0,
+          "recovery_p90": 2.0
+        },
+        ">10%": {
+          "count": 0,
+          "recovery_median": null,
+          "recovery_p90": null
+        },
+        ">20%": {
+          "count": 0,
+          "recovery_median": null,
+          "recovery_p90": null
+        }
+      }
+    },
+    "var_95": -0.02,
+    "var_99": -0.032,
+    "es_95": -0.03,
+    "es_99": -0.037,
+    "eee_10pct": -20.29
+  }
+}

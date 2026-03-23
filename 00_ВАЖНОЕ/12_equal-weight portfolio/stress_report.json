@@ -1,0 +1,183 @@
+{
+  "status": "FAIL_STRESS",
+  "fail_reason_code": "FAIL_ROLE_EQUITY_SHOCK",
+  "warning_code": null,
+  "worst_scenario_loss_pct": -0.2415,
+  "failed_scenario": "equity_shock",
+  "failed_test": "Role",
+  "scenario_results": [
+    {
+      "scenario_id": "equity_shock",
+      "portfolio_pnl_pct": -0.2415,
+      "pnl_by_block_pct": {
+        "Growth": -0.2376,
+        "Duration": -0.0003,
+        "Inflation": -0.0035,
+        "Liquidity": -0.0002,
+        "Tail": 0.0
+      },
+      "top1_rc_asset": "COPX",
+      "top1_rc_pct": 0.1174,
+      "top3_rc_assets": [
+        "COPX",
+        "URA",
+        "ARMY.PA"
+      ],
+      "top3_rc_sum_pct": 0.3217,
+      "top3_loss_assets": [
+        "SMH",
+        "URA",
+        "QQQ"
+      ],
+      "loss_ok": true,
+      "role_ok": false,
+      "rc1_ok": false,
+      "rc3_ok": true,
+      "pass": false
+    },
+    {
+      "scenario_id": "credit_shock",
+      "portfolio_pnl_pct": 2.8821,
+      "pnl_by_block_pct": {
+        "Growth": 0.2931,
+        "Duration": -0.1164,
+        "Inflation": 2.7118,
+        "Liquidity": -0.0064,
+        "Tail": 0.0
+      },
+      "top1_rc_asset": "COPX",
+      "top1_rc_pct": 0.1174,
+      "top3_rc_assets": [
+        "COPX",
+        "URA",
+        "ARMY.PA"
+      ],
+      "top3_rc_sum_pct": 0.3217,
+      "top3_loss_assets": [
+        "COPX",
+        "SCHD",
+        "ROBO"
+      ],
+      "loss_ok": true,
+      "role_ok": true,
+      "rc1_ok": false,
+      "rc3_ok": true,
+      "pass": false
+    },
+    {
+      "scenario_id": "rates_shock",
+      "portfolio_pnl_pct": -0.0135,
+      "pnl_by_block_pct": {
+        "Growth": -0.0011,
+        "Duration": -0.0059,
+        "Inflation": -0.0066,
+        "Liquidity": 0.0001,
+        "Tail": 0.0
+      },
+      "top1_rc_asset": "COPX",
+      "top1_rc_pct": 0.1109,
+      "top3_rc_assets": [
+        "COPX",
+        "URA",
+        "ARMY.PA"
+      ],
+      "top3_rc_sum_pct": 0.2869,
+      "top3_loss_assets": [
+        "SCHD",
+        "VDC",
+        "BND"
+      ],
+      "loss_ok": true,
+      "role_ok": true,
+      "rc1_ok": false,
+      "rc3_ok": true,
+      "pass": false
+    },
+    {
+      "scenario_id": "inflation_stagflation",
+      "portfolio_pnl_pct": -0.0716,
+      "pnl_by_block_pct": {
+        "Growth": -0.0886,
+        "Duration": -0.0016,
+        "Inflation": 0.0187,
+        "Liquidity": -0.0002,
+        "Tail": 0.0
+      },
+      "top1_rc_asset": "COPX",
+      "top1_rc_pct": 0.1109,
+      "top3_rc_assets": [
+        "COPX",
+        "URA",
+        "ARMY.PA"
+      ],
+      "top3_rc_sum_pct": 0.2869,
+      "top3_loss_assets": [
+        "SMH",
+        "CIBR",
+        "QQQ"
+      ],
+      "loss_ok": true,
+      "role_ok": true,
+      "rc1_ok": false,
+      "rc3_ok": true,
+      "pass": false
+    },
+    {
+      "scenario_id": "liquidity_shock",
+      "portfolio_pnl_pct": 2.0559,
+      "pnl_by_block_pct": {
+        "Growth": 0.1159,
+        "Duration": -0.0874,
+        "Inflation": 2.0324,
+        "Liquidity": -0.0049,
+        "Tail": 0.0
+      },
+      "top1_rc_asset": "COPX",
+      "top1_rc_pct": 0.1183,
+      "top3_rc_assets": [
+        "COPX",
+        "URA",
+        "ARMY.PA"
+      ],
+      "top3_rc_sum_pct": 0.3248,
+      "top3_loss_assets": [
+        "COPX",
+        "SCHD",
+        "ROBO"
+      ],
+      "loss_ok": true,
+      "role_ok": true,
+      "rc1_ok": false,
+      "rc3_ok": true,
+      "pass": false
+    }
+  ],
+  "factor_betas": {
+    "beta_eq": 0.5537,
+    "beta_rr": -0.6754,
+    "beta_inf": 1.0922,
+    "beta_credit": 73.5625,
+    "beta_usd": -0.7656,
+    "beta_cmd": 0.21
+  },
+  "historical_results": [
+    {
+      "episode": "2008",
+      "max_dd": null,
+      "pass": null
+    },
+    {
+      "episode": "2020",
+      "max_dd": NaN,
+      "pass": false
+    },
+    {
+      "episode": "2022",
+      "max_dd": NaN,
+      "pass": false
+    }
+  ],
+  "rc_asset_cap_used": 0.1,
+  "stress_top3_rc_sum_cap": 0.7,
+  "max_dd_limit": 0.35
+}

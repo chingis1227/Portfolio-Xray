@@ -1,0 +1,107 @@
+{
+  "drawdowns": [
+    {
+      "depth": -0.004,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.004,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.017,
+      "length_months": 4,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.007,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.085,
+      "length_months": 15,
+      "recovery_months": "4"
+    },
+    {
+      "depth": -0.039,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.125,
+      "length_months": 6,
+      "recovery_months": "3"
+    },
+    {
+      "depth": -0.038,
+      "length_months": 3,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.028,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.012,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.187,
+      "length_months": 24,
+      "recovery_months": "15"
+    },
+    {
+      "depth": -0.018,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.012,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.023,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.009,
+      "length_months": 3,
+      "recovery_months": "2"
+    }
+  ],
+  "summary": {
+    "recovery_median_months": 1.0,
+    "recovery_p90_months": 3.5,
+    "pct_time_underwater": 0.492,
+    "longest_underwater_months": 23
+  },
+  "by_threshold": {
+    ">5%": {
+      "count": 3,
+      "recovery_median": 4.0,
+      "recovery_p90": 12.8
+    },
+    ">10%": {
+      "count": 2,
+      "recovery_median": 9.0,
+      "recovery_p90": 13.8
+    },
+    ">20%": {
+      "count": 0,
+      "recovery_median": null,
+      "recovery_p90": null
+    }
+  }
+}

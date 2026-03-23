@@ -1,0 +1,19 @@
+{
+  "portfolio_type": "Equal-Weight Portfolio",
+  "status": "OK",
+  "metrics_10y": {
+    "window_months": 120,
+    "cagr": 0.1495106250054854,
+    "vol_annual": 0.12502587913584456,
+    "sharpe": 1.0068119448891166,
+    "sortino": 1.722148496663423,
+    "beta_portfolio": 0.744707726682139,
+    "treynor": 0.1690294648815416,
+    "max_drawdown": -0.19932763222012606,
+    "ttr_months": NaN,
+    "recovered": false
+  },
+  "stress_status": "FAIL_STRESS",
+  "stress_fail_reason": "FAIL_ROLE_EQUITY_SHOCK",
+  "portfolio_valid": true
+}

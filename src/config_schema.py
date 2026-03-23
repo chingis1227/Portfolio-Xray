@@ -79,7 +79,7 @@ class PortfolioConfig:
     windows_months: list[int]
     coverage_threshold: float
     output_dir: str  # CSV only (e.g. results_csv)
-    output_dir_final: str  # Weights, JSON, report (e.g. ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ)
+    output_dir_final: str  # Weights, JSON, report (e.g. Результаты оптимизации)
     # Backtest mode: "dynamic_nan_safe" (default, policy-compliant) | "simple" (opt-in, no within-block/RC-gating)
     backtest_mode: str = "dynamic_nan_safe"
 
@@ -227,7 +227,7 @@ DEFAULT_BENCHMARK_BY_CURRENCY: dict[str, str] = {
 }
 DEFAULT_WINDOWS_MONTHS = [36, 60, 120]
 DEFAULT_OUTPUT_DIR = "results_csv"
-DEFAULT_OUTPUT_DIR_FINAL = "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"
+DEFAULT_OUTPUT_DIR_FINAL = "Результаты оптимизации"
 # Dual-horizon: primary 10Y, secondary 5Y; robustness check does not replace 10Y by default
 DEFAULT_OPTIMIZATION_WINDOWS_MONTHS = [120, 60]
 DEFAULT_PRIMARY_WINDOW_MONTHS = 120

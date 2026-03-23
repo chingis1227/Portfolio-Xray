@@ -1,0 +1,47 @@
+{
+  "effective_months_10y": 11,
+  "effective_months_5y": 11,
+  "max_delta_w": 0.25,
+  "top5_delta_w": [
+    [
+      "VOO",
+      0.25
+    ],
+    [
+      "URA",
+      0.105
+    ],
+    [
+      "COPX",
+      0.085
+    ],
+    [
+      "SMH",
+      0.055
+    ],
+    [
+      "SLV",
+      0.005
+    ]
+  ],
+  "rc_by_block_10y": {
+    "Growth": 0.839,
+    "Duration": 0.002,
+    "Inflation": 0.159
+  },
+  "rc_by_block_5y": {
+    "Growth": 0.899,
+    "Duration": 0.001,
+    "Inflation": 0.1
+  },
+  "rc_block_targets": {
+    "Growth": 0.9,
+    "Duration": 0.05,
+    "Inflation": 0.05
+  },
+  "vol_10y_under_sigma10y": 12.899,
+  "vol_10y_under_sigma5y": 12.899,
+  "exp_ret_10y_mu10y_annual_pct": 51.732,
+  "exp_ret_10y_mu5y_annual_pct": 51.732,
+  "final_portfolio_is_10y": true
+}

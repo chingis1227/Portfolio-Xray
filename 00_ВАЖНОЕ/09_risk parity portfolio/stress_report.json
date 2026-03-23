@@ -1,0 +1,183 @@
+{
+  "status": "FAIL_STRESS",
+  "fail_reason_code": "FAIL_ROLE_EQUITY_SHOCK",
+  "warning_code": null,
+  "worst_scenario_loss_pct": -0.167,
+  "failed_scenario": "equity_shock",
+  "failed_test": "Role",
+  "scenario_results": [
+    {
+      "scenario_id": "equity_shock",
+      "portfolio_pnl_pct": -0.167,
+      "pnl_by_block_pct": {
+        "Growth": -0.1616,
+        "Duration": -0.0005,
+        "Inflation": -0.0044,
+        "Liquidity": -0.0004,
+        "Tail": 0.0
+      },
+      "top1_rc_asset": "ROBO",
+      "top1_rc_pct": 0.0907,
+      "top3_rc_assets": [
+        "ROBO",
+        "VOO",
+        "QQQ"
+      ],
+      "top3_rc_sum_pct": 0.256,
+      "top3_loss_assets": [
+        "QQQ",
+        "VOO",
+        "SMH"
+      ],
+      "loss_ok": true,
+      "role_ok": false,
+      "rc1_ok": true,
+      "rc3_ok": true,
+      "pass": false
+    },
+    {
+      "scenario_id": "credit_shock",
+      "portfolio_pnl_pct": 1.4334,
+      "pnl_by_block_pct": {
+        "Growth": -0.8741,
+        "Duration": -0.2424,
+        "Inflation": 2.5647,
+        "Liquidity": -0.0148,
+        "Tail": 0.0
+      },
+      "top1_rc_asset": "ROBO",
+      "top1_rc_pct": 0.0907,
+      "top3_rc_assets": [
+        "ROBO",
+        "VOO",
+        "QQQ"
+      ],
+      "top3_rc_sum_pct": 0.256,
+      "top3_loss_assets": [
+        "SCHD",
+        "ROBO",
+        "VGK"
+      ],
+      "loss_ok": true,
+      "role_ok": true,
+      "rc1_ok": true,
+      "rc3_ok": true,
+      "pass": true
+    },
+    {
+      "scenario_id": "rates_shock",
+      "portfolio_pnl_pct": -0.0472,
+      "pnl_by_block_pct": {
+        "Growth": -0.0236,
+        "Duration": -0.0123,
+        "Inflation": -0.0115,
+        "Liquidity": 0.0002,
+        "Tail": 0.0
+      },
+      "top1_rc_asset": "ROBO",
+      "top1_rc_pct": 0.0922,
+      "top3_rc_assets": [
+        "ROBO",
+        "VOO",
+        "SLV"
+      ],
+      "top3_rc_sum_pct": 0.2651,
+      "top3_loss_assets": [
+        "SCHD",
+        "BND",
+        "SCHP"
+      ],
+      "loss_ok": true,
+      "role_ok": true,
+      "rc1_ok": true,
+      "rc3_ok": true,
+      "pass": true
+    },
+    {
+      "scenario_id": "inflation_stagflation",
+      "portfolio_pnl_pct": -0.0618,
+      "pnl_by_block_pct": {
+        "Growth": -0.0755,
+        "Duration": -0.0033,
+        "Inflation": 0.0174,
+        "Liquidity": -0.0004,
+        "Tail": 0.0
+      },
+      "top1_rc_asset": "ROBO",
+      "top1_rc_pct": 0.0922,
+      "top3_rc_assets": [
+        "ROBO",
+        "VOO",
+        "SLV"
+      ],
+      "top3_rc_sum_pct": 0.2651,
+      "top3_loss_assets": [
+        "QQQ",
+        "CIBR",
+        "VOO"
+      ],
+      "loss_ok": true,
+      "role_ok": true,
+      "rc1_ok": true,
+      "rc3_ok": true,
+      "pass": true
+    },
+    {
+      "scenario_id": "liquidity_shock",
+      "portfolio_pnl_pct": 1.002,
+      "pnl_by_block_pct": {
+        "Growth": -0.7263,
+        "Duration": -0.1821,
+        "Inflation": 1.9216,
+        "Liquidity": -0.0112,
+        "Tail": 0.0
+      },
+      "top1_rc_asset": "ROBO",
+      "top1_rc_pct": 0.0926,
+      "top3_rc_assets": [
+        "ROBO",
+        "VOO",
+        "QQQ"
+      ],
+      "top3_rc_sum_pct": 0.2617,
+      "top3_loss_assets": [
+        "SCHD",
+        "ROBO",
+        "VGK"
+      ],
+      "loss_ok": true,
+      "role_ok": true,
+      "rc1_ok": true,
+      "rc3_ok": true,
+      "pass": true
+    }
+  ],
+  "factor_betas": {
+    "beta_eq": 0.406,
+    "beta_rr": -2.3614,
+    "beta_inf": -0.2266,
+    "beta_credit": 36.8781,
+    "beta_usd": -0.5126,
+    "beta_cmd": 0.1338
+  },
+  "historical_results": [
+    {
+      "episode": "2008",
+      "max_dd": null,
+      "pass": null
+    },
+    {
+      "episode": "2020",
+      "max_dd": NaN,
+      "pass": false
+    },
+    {
+      "episode": "2022",
+      "max_dd": NaN,
+      "pass": false
+    }
+  ],
+  "rc_asset_cap_used": 0.1,
+  "stress_top3_rc_sum_cap": 0.7,
+  "max_dd_limit": 0.35
+}

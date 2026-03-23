@@ -1,0 +1,266 @@
+{
+  "run_info": {
+    "timestamp": "2026-03-23T18:51:34.557651",
+    "analysis_end_date": "2026-02-28"
+  },
+  "resolved_config": {
+    "investor_currency": "USD",
+    "initial_investable_amount": 1000,
+    "liquidity_need": 0.0,
+    "liquidity_need_months": 0.0,
+    "monthly_expenses": 0.0,
+    "portfolio_value": null,
+    "cash_policy": "allowed_for_scaling",
+    "client_profile": "Aggressive",
+    "risk_free_source": null,
+    "cash_proxy_ticker": null,
+    "base_benchmark_ticker": "SPY",
+    "beta_local_mapping": null,
+    "tickers": [
+      "VOO",
+      "VT",
+      "QQQ",
+      "SMH",
+      "VGK",
+      "BBJP",
+      "VWO",
+      "VDC",
+      "ARMY.PA",
+      "ITA",
+      "CIBR",
+      "ROBO",
+      "SCHD",
+      "COPX",
+      "URA",
+      "SLV",
+      "GLD",
+      "SCHP",
+      "BIL",
+      "BND"
+    ],
+    "blocks": {
+      "Growth": [
+        "VOO",
+        "VT",
+        "QQQ",
+        "SMH",
+        "VGK",
+        "BBJP",
+        "VWO",
+        "VDC",
+        "ARMY.PA",
+        "ITA",
+        "CIBR",
+        "ROBO",
+        "SCHD",
+        "COPX",
+        "URA"
+      ],
+      "Duration": [
+        "BND"
+      ],
+      "Inflation": [
+        "SLV",
+        "GLD",
+        "SCHP"
+      ],
+      "Growth_HY": [],
+      "Growth_EM_debt": [],
+      "Liquidity": [
+        "BIL"
+      ],
+      "Tail": []
+    },
+    "weights": {},
+    "allow_leverage": false,
+    "allow_short_selling": false,
+    "min_acceptable_return": null,
+    "target_nominal_return_annual": 0.12,
+    "target_vol_annual": 0.17,
+    "target_max_drawdown_pct": -0.35,
+    "horizon_years": 10.0,
+    "rc_asset_cap_pct": null,
+    "rc_block_targets": {
+      "Growth": 0.9,
+      "Duration": 0.05,
+      "Inflation": 0.05
+    },
+    "stress_top3_rc_sum_cap_pct": 0.7,
+    "max_single_security_weight_pct": null,
+    "min_single_security_weight_pct": 0.02,
+    "N_rc": 3,
+    "growth_core_candidates": [
+      "VOO",
+      "VT",
+      "VTI"
+    ],
+    "donor_shift_mode": "proportional",
+    "rc_policy_mode": "strict",
+    "strict_stress_gate": false,
+    "covariance_shrinkage": false,
+    "windows_months": [
+      36,
+      60,
+      120
+    ],
+    "coverage_threshold": 0.9,
+    "output_dir": "results_csv",
+    "output_dir_final": "Результаты оптимизации",
+    "optimization_windows_months": [
+      120,
+      60
+    ],
+    "primary_window_months": 120,
+    "secondary_window_months": 60,
+    "robustness_policy": {
+      "enabled": true,
+      "max_weight_change_allowed": 0.1,
+      "max_rc_block_dev_allowed": 0.05,
+      "max_asset_rc_dev_allowed": 0.05,
+      "min_effective_months": 36
+    },
+    "duration_int_ticker": null,
+    "duration_long_ticker": null,
+    "duration_ig_ticker": null,
+    "tips_ticker": null,
+    "gold_ticker": null,
+    "comm_ticker": null,
+    "liquidity_floor_pct": 0.025
+  },
+  "active_assumptions": {
+    "investor_currency": "USD",
+    "initial_investable_amount": 1000,
+    "rf_source": null,
+    "cash_proxy_ticker": null,
+    "benchmark_base_ticker": "SPY",
+    "min_acceptable_return": null,
+    "target_nominal_return_annual": 0.12,
+    "allow_leverage": false,
+    "allow_short_selling": false
+  },
+  "derived_assumptions": {
+    "resolved_cash_proxy_ticker": "BIL",
+    "resolved_rf_source": "FRED:DTB3",
+    "resolved_local_benchmark_map": {
+      "VOO": "SPY",
+      "VT": "SPY",
+      "QQQ": "SPY",
+      "SMH": "SPY",
+      "VGK": "VGK",
+      "BBJP": "SPY",
+      "VWO": "VWO",
+      "VDC": "SPY",
+      "ARMY.PA": "SPY",
+      "ITA": "SPY",
+      "CIBR": "SPY",
+      "ROBO": "SPY",
+      "SCHD": "SPY",
+      "COPX": "SPY",
+      "URA": "SPY",
+      "SLV": "SPY",
+      "GLD": "SPY",
+      "SCHP": "SPY",
+      "BIL": "BIL",
+      "BND": "BND"
+    },
+    "analysis_end_date": "2026-02-28",
+    "windows_months": [
+      36,
+      60,
+      120
+    ],
+    "total_weight_sum": 0,
+    "weight_to_cash": 1.0,
+    "mar_source": "rf_monthly",
+    "mar_annual_value": null,
+    "liquidity_need": 0.0,
+    "liquidity_life_floor_amount": 0.0
+  },
+  "future_constraint_fields": {
+    "description": "Constraints/reference inputs for current or future portfolio construction. rc_asset_cap_pct, max_single_security_weight_pct, min_single_security_weight_pct will receive final numeric values later from the user; the system already supports them as config fields and passes them through all relevant layers.",
+    "fields": {
+      "rc_asset_cap_pct": null,
+      "rc_block_targets": {
+        "Growth": 0.9,
+        "Duration": 0.05,
+        "Inflation": 0.05
+      },
+      "stress_top3_rc_sum_cap_pct": 0.7,
+      "blocks": {
+        "Growth": [
+          "VOO",
+          "VT",
+          "QQQ",
+          "SMH",
+          "VGK",
+          "BBJP",
+          "VWO",
+          "VDC",
+          "ARMY.PA",
+          "ITA",
+          "CIBR",
+          "ROBO",
+          "SCHD",
+          "COPX",
+          "URA"
+        ],
+        "Duration": [
+          "BND"
+        ],
+        "Inflation": [
+          "SLV",
+          "GLD",
+          "SCHP"
+        ],
+        "Growth_HY": [],
+        "Growth_EM_debt": [],
+        "Liquidity": [
+          "BIL"
+        ],
+        "Tail": []
+      },
+      "max_single_security_weight_pct": null,
+      "min_single_security_weight_pct": 0.02,
+      "target_vol_annual": 0.17,
+      "target_max_drawdown_pct": -0.35,
+      "horizon_years": 10.0,
+      "liquidity_need": 0.0,
+      "liquidity_need_months": 0.0,
+      "monthly_expenses": 0.0,
+      "portfolio_value": null,
+      "cash_policy": "allowed_for_scaling",
+      "N_rc": 3,
+      "growth_core_candidates": [
+        "VOO",
+        "VT",
+        "VTI"
+      ],
+      "donor_shift_mode": "proportional",
+      "rc_policy_mode": "strict",
+      "strict_stress_gate": false,
+      "covariance_shrinkage": false
+    }
+  },
+  "pending_user_input": {
+    "description": "Config items that still need final user values (to be provided later by user)",
+    "fields": {
+      "rc_asset_cap_pct": null,
+      "max_single_security_weight_pct": null
+    }
+  },
+  "portfolio_valid": true,
+  "stress_test": {
+    "status": "FAIL_STRESS",
+    "fail_reason_code": "FAIL_ROLE_EQUITY_SHOCK",
+    "warning_code": null,
+    "worst_scenario_loss_pct": -0.2415,
+    "failed_scenario": "equity_shock",
+    "failed_test": "Role"
+  },
+  "target_comparison": {
+    "target_nominal_return_annual": 0.12,
+    "realized_cagr": 0.1495106250054854,
+    "difference": 0.029510625005485402,
+    "target_achieved": "True"
+  }
+}

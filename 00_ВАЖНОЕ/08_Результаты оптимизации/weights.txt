@@ -1,0 +1,25 @@
+﻿Optimization Portfolio - final weights
+==================================================
+
+  VOO: weight=26.3%
+  VT: weight=1.9%
+  QQQ: weight=2.0%
+  SMH: weight=9.3%
+  VGK: weight=1.9%
+  BBJP: weight=2.0%
+  VWO: weight=2.0%
+  VDC: weight=2.0%
+  ARMY.PA: weight=1.9%
+  ITA: weight=13.5%
+  CIBR: weight=1.9%
+  ROBO: weight=2.0%
+  SCHD: weight=1.9%
+  COPX: weight=6.3%
+  URA: weight=4.4%
+  BND: weight=1.9%
+  SLV: weight=12.3%
+  GLD: weight=2.0%
+  SCHP: weight=1.9%
+  BIL: weight=2.5%
+
+Sum of weights: 99.9%

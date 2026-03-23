@@ -153,9 +153,9 @@ def load_validated_config(config_path: str | Path | None = None) -> PortfolioCon
     raw = apply_profile_to_config(raw)
     if raw.get("client_profile") and get_profile_defaults(raw["client_profile"]):
         _sync_profile_fields_to_config_file(path, raw)
-    # If config has no weights, load from portfolio_weights.yml in output_dir_final (e.g. ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ)
+    # If config has no weights, load from portfolio_weights.yml in output_dir_final (e.g. Результаты оптимизации)
     if not raw.get("weights"):
-        output_dir_final = raw.get("output_dir_final") or "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"
+        output_dir_final = raw.get("output_dir_final") or "Результаты оптимизации"
         weights_path = path.parent / output_dir_final / WEIGHTS_FILENAME
         file_weights = load_weights_file(weights_path=weights_path)
         if file_weights:

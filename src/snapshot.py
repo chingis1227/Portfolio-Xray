@@ -478,6 +478,18 @@ def _fmt_val(v: Any) -> str:
     return str(v)
 
 
+def _fmt_ratio(v: Any) -> str:
+    """Format fractional value as percentage for human-readable reports."""
+    if v is None:
+        return "—"
+    if isinstance(v, float) and v != v:
+        return "—"
+    try:
+        return f"{float(v):.1%}"
+    except Exception:
+        return _fmt_val(v)
+
+
 def _format_window_snapshot_text(label: str, data: dict[str, Any]) -> str:
     """Format one window snapshot (3y/5y/10y) as text."""
     lines = [
@@ -490,16 +502,16 @@ def _format_window_snapshot_text(label: str, data: dict[str, Any]) -> str:
     ]
     w_total = data.get("final_weights_total") or {}
     for t in sorted(w_total.keys(), key=lambda x: (-w_total.get(x, 0), x)):
-        lines.append(f"  {t}: {_fmt_val(w_total[t])}")
+        lines.append(f"  {t}: {_fmt_ratio(w_total[t])}")
     lines.extend(["", "--- block_weights ---"])
     for b, w in (data.get("block_weights") or {}).items():
-        lines.append(f"  {b}: {_fmt_val(w)}")
+        lines.append(f"  {b}: {_fmt_ratio(w)}")
     lines.extend(["", "--- RC_asset (top 5) ---"])
     for x in data.get("RC_asset") or []:
-        lines.append(f"  {x.get('ticker', '')}: {_fmt_val(x.get('rc_pct'))}")
+        lines.append(f"  {x.get('ticker', '')}: {_fmt_ratio(x.get('rc_pct'))}")
     lines.extend(["", "--- RC_block ---"])
     for x in data.get("RC_block") or []:
-        lines.append(f"  {x.get('block', '')}: {_fmt_val(x.get('rc_pct'))}")
+        lines.append(f"  {x.get('block', '')}: {_fmt_ratio(x.get('rc_pct'))}")
     lines.extend(["", "--- constraints_status ---"])
     for k, v in (data.get("constraints_status") or {}).items():
         lines.append(f"  {k}: {v}")
@@ -508,7 +520,10 @@ def _format_window_snapshot_text(label: str, data: dict[str, Any]) -> str:
         lines.extend(["", "--- metrics ---"])
         for k in ("cagr", "vol_annual", "sharpe", "sortino", "beta_portfolio", "treynor", "max_drawdown", "ttr_months"):
             if k in metrics:
-                lines.append(f"  {k}: {_fmt_val(metrics[k])}")
+                if k in ("cagr", "vol_annual", "max_drawdown"):
+                    lines.append(f"  {k}: {_fmt_ratio(metrics[k])}")
+                else:
+                    lines.append(f"  {k}: {_fmt_val(metrics[k])}")
     stress = data.get("stress_suite_results") or {}
     lines.extend(["", "--- stress ---"])
     lines.append(f"  overall: {stress.get('overall', '—')}")
@@ -517,7 +532,12 @@ def _format_window_snapshot_text(label: str, data: dict[str, Any]) -> str:
         lines.extend(["", "--- analytics (summary) ---"])
         for k in ("rolling_sharpe_36m", "rolling_sortino_36m", "var_95", "es_95", "eee_10pct"):
             if k in analytics:
-                lines.append(f"  {k}: {_fmt_val(analytics[k])}")
+                if k in ("var_95", "es_95"):
+                    lines.append(f"  {k}: {_fmt_ratio(analytics[k])}")
+                elif k == "eee_10pct":
+                    lines.append(f"  {k}: {_fmt_val(analytics[k])}%")
+                else:
+                    lines.append(f"  {k}: {_fmt_val(analytics[k])}")
     return "\n".join(lines)
 
 
@@ -540,7 +560,15 @@ def _format_assets_snapshot_text(data: dict[str, Any]) -> str:
             lines.append("ticker\t" + "\t".join(keys))
             for r in rows:
                 ticker = r.get("ticker", "")
-                vals = "\t".join(_fmt_val(r.get(k)) for k in keys)
+                vals = []
+                for k in keys:
+                    if k in ("cagr", "vol_annual", "max_drawdown"):
+                        vals.append(_fmt_ratio(r.get(k)))
+                    elif k in ("skewness", "kurtosis", "sharpe", "sortino", "beta_base", "beta_local", "treynor", "window_months", "ttr_months"):
+                        vals.append(_fmt_val(r.get(k)))
+                    else:
+                        vals.append(_fmt_val(r.get(k)))
+                vals = "\t".join(vals)
                 lines.append(f"{ticker}\t{vals}")
     return "\n".join(lines)
 
@@ -647,10 +675,10 @@ def _format_robustness_html(data: dict[str, Any]) -> str:
     parts.append(f"10Y = {eff_10} months, 5Y = {eff_5} months</p>")
     max_dw = data.get("max_delta_w")
     if max_dw is not None:
-        parts.append(f"<p><strong>Max |weight_5Y − weight_10Y|:</strong> {_fmt_val_html(max_dw)}</p>")
+        parts.append(f"<p><strong>Max |weight_5Y − weight_10Y|:</strong> {html.escape(_fmt_ratio(max_dw))}</p>")
     top5 = data.get("top5_delta_w") or []
     if top5:
-        rows = "".join(f"<tr><td>{html.escape(str(t))}</td><td>{_fmt_val_html(d)}</td></tr>" for t, d in top5)
+        rows = "".join(f"<tr><td>{html.escape(str(t))}</td><td>{html.escape(_fmt_ratio(d))}</td></tr>" for t, d in top5)
         parts.append('<table><caption>Top 5 weight deltas</caption><thead><tr><th>Ticker</th><th>Delta</th></tr></thead><tbody>' + rows + "</tbody></table>")
     rc10 = data.get("rc_by_block_10y") or {}
     rc5 = data.get("rc_by_block_5y") or {}
@@ -661,13 +689,13 @@ def _format_robustness_html(data: dict[str, Any]) -> str:
             r10 = rc10.get(b)
             r5 = rc5.get(b)
             tgt = targets.get(b)
-            rows.append(f"<tr><td>{html.escape(b)}</td><td>{_fmt_val_html(r10)}</td><td>{_fmt_val_html(r5)}</td><td>{_fmt_val_html(tgt)}</td></tr>")
+            rows.append(f"<tr><td>{html.escape(b)}</td><td>{html.escape(_fmt_ratio(r10))}</td><td>{html.escape(_fmt_ratio(r5))}</td><td>{html.escape(_fmt_ratio(tgt))}</td></tr>")
         if rows:
             parts.append('<table><caption>RC by block</caption><thead><tr><th>Block</th><th>10Y</th><th>5Y</th><th>Target</th></tr></thead><tbody>' + "".join(rows) + "</tbody></table>")
     vol10 = data.get("vol_10y_under_sigma10y")
     vol10_5 = data.get("vol_10y_under_sigma5y")
     if vol10 is not None or vol10_5 is not None:
-        parts.append("<p><strong>Portfolio vol (10Y weights):</strong> under Σ_10Y = " + _fmt_val_html(vol10) + "%; under Σ_5Y = " + _fmt_val_html(vol10_5) + "%</p>")
+        parts.append("<p><strong>Portfolio vol (10Y weights):</strong> under Σ_10Y = " + html.escape(_fmt_ratio(vol10)) + "; under Σ_5Y = " + html.escape(_fmt_ratio(vol10_5)) + "</p>")
     flags = data.get("flags") or []
     flag_class = "status-fail" if flags else "status-pass"
     parts.append(f'<p><strong>Robustness flags:</strong> <span class="{flag_class}">' + (", ".join(html.escape(f) for f in flags) if flags else "none (10Y consistent with 5Y)") + "</span></p>")
@@ -747,7 +775,7 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
     w_total = data.get("final_weights_total") or {}
     if w_total:
         rows = "".join(
-            f"<tr><td>{html.escape(t)}</td><td>{_fmt_val_html(w_total[t])}</td></tr>"
+            f"<tr><td>{html.escape(t)}</td><td>{html.escape(_fmt_ratio(w_total[t]))}</td></tr>"
             for t in sorted(w_total.keys(), key=lambda x: (-w_total.get(x, 0), x))
         )
         parts.append(
@@ -756,17 +784,17 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
     # Block weights
     block_weights = data.get("block_weights") or {}
     if block_weights:
-        rows = "".join(f"<tr><td>{html.escape(b)}</td><td>{_fmt_val_html(w)}</td></tr>" for b, w in block_weights.items())
+        rows = "".join(f"<tr><td>{html.escape(b)}</td><td>{html.escape(_fmt_ratio(w))}</td></tr>" for b, w in block_weights.items())
         parts.append('<table><caption>Block weights</caption><thead><tr><th>Block</th><th>Weight</th></tr></thead><tbody>' + rows + "</tbody></table>")
     # RC asset
     rc_asset = data.get("RC_asset") or []
     if rc_asset:
-        rows = "".join(f"<tr><td>{html.escape(str(x.get('ticker', '')))}</td><td>{_fmt_val_html(x.get('rc_pct'))}</td></tr>" for x in rc_asset)
+        rows = "".join(f"<tr><td>{html.escape(str(x.get('ticker', '')))}</td><td>{html.escape(_fmt_ratio(x.get('rc_pct')))}</td></tr>" for x in rc_asset)
         parts.append('<table><caption>RC by asset (top)</caption><thead><tr><th>Ticker</th><th>RC %</th></tr></thead><tbody>' + rows + "</tbody></table>")
     # RC block
     rc_block = data.get("RC_block") or []
     if rc_block:
-        rows = "".join(f"<tr><td>{html.escape(str(x.get('block', '')))}</td><td>{_fmt_val_html(x.get('rc_pct'))}</td></tr>" for x in rc_block)
+        rows = "".join(f"<tr><td>{html.escape(str(x.get('block', '')))}</td><td>{html.escape(_fmt_ratio(x.get('rc_pct')))}</td></tr>" for x in rc_block)
         parts.append('<table><caption>RC by block</caption><thead><tr><th>Block</th><th>RC %</th></tr></thead><tbody>' + rows + "</tbody></table>")
     # Constraints
     constraints = data.get("constraints_status") or {}
@@ -777,7 +805,11 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
     metrics = data.get("metrics") or {}
     if metrics:
         metric_keys = ("cagr", "vol_annual", "sharpe", "sortino", "beta_portfolio", "treynor", "max_drawdown", "ttr_months")
-        rows = "".join(f"<tr><td>{html.escape(k)}</td><td>{_fmt_val_html(metrics.get(k))}</td></tr>" for k in metric_keys if k in metrics)
+        def _fmt_metric_for_html(key: str, value: Any) -> str:
+            if key in ("cagr", "vol_annual", "max_drawdown"):
+                return html.escape(_fmt_ratio(value))
+            return _fmt_val_html(value)
+        rows = "".join(f"<tr><td>{html.escape(k)}</td><td>{_fmt_metric_for_html(k, metrics.get(k))}</td></tr>" for k in metric_keys if k in metrics)
         parts.append('<table><caption>Portfolio metrics</caption><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>' + rows + "</tbody></table>")
     # Stress
     stress = data.get("stress_suite_results") or {}
@@ -789,7 +821,12 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
         rows = []
         for k in ("rolling_sharpe_36m", "rolling_sortino_36m", "var_95", "es_95", "eee_10pct"):
             if k in analytics:
-                rows.append(f"<tr><td>{html.escape(k)}</td><td>{_fmt_val_html(analytics[k])}</td></tr>")
+                if k in ("var_95", "es_95"):
+                    rows.append(f"<tr><td>{html.escape(k)}</td><td>{html.escape(_fmt_ratio(analytics[k]))}</td></tr>")
+                elif k == "eee_10pct":
+                    rows.append(f"<tr><td>{html.escape(k)}</td><td>{_fmt_val_html(analytics[k])}%</td></tr>")
+                else:
+                    rows.append(f"<tr><td>{html.escape(k)}</td><td>{_fmt_val_html(analytics[k])}</td></tr>")
         if rows:
             parts.append('<table><caption>Analytics</caption><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>' + "".join(rows) + "</tbody></table>")
     parts.append("</section>")
@@ -811,7 +848,13 @@ def _format_assets_snapshot_html(data: dict[str, Any]) -> str:
         body_rows = []
         for r in rows_data:
             ticker = html.escape(str(r.get("ticker", "")))
-            cells = "".join(f"<td>{_fmt_val_html(r.get(k))}</td>" for k in keys)
+            formatted_cells = []
+            for k in keys:
+                if k in ("cagr", "vol_annual", "max_drawdown"):
+                    formatted_cells.append(f"<td>{html.escape(_fmt_ratio(r.get(k)))}</td>")
+                else:
+                    formatted_cells.append(f"<td>{_fmt_val_html(r.get(k))}</td>")
+            cells = "".join(formatted_cells)
             body_rows.append(f"<tr><td>{ticker}</td>{cells}</tr>")
         parts.append(
             f'<table class="assets-table"><caption>Window {html.escape(label)}</caption>'

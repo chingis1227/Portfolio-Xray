@@ -1,0 +1,25 @@
+Equal-Weight Portfolio — final weights
+==================================================
+
+  ARMY.PA: weight=5.0%
+  BBJP: weight=5.0%
+  BIL: weight=5.0%
+  BND: weight=5.0%
+  CIBR: weight=5.0%
+  COPX: weight=5.0%
+  GLD: weight=5.0%
+  ITA: weight=5.0%
+  QQQ: weight=5.0%
+  ROBO: weight=5.0%
+  SCHD: weight=5.0%
+  SCHP: weight=5.0%
+  SLV: weight=5.0%
+  SMH: weight=5.0%
+  URA: weight=5.0%
+  VDC: weight=5.0%
+  VGK: weight=5.0%
+  VOO: weight=5.0%
+  VT: weight=5.0%
+  VWO: weight=5.0%
+
+Sum of weights: 100.0%

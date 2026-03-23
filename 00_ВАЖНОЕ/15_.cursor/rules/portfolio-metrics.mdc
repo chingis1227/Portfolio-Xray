@@ -1,0 +1,159 @@
+---
+description: 
+alwaysApply: true
+---
+
+# Project Rules — Portfolio Metrics Standard
+
+Always follow metrics_specification.md for all metric definitions, estimators, frequency, FX, and windowing. Do not invent formulas.
+
+## Frequency standard
+
+- **All prices must be downloaded as Adj Close** (adjusted close). Download daily Adj Close via yfinance.
+- Convert prices to investor_currency BEFORE returns using spot FX tickers like EURUSD=X meaning "1 EUR in USD".
+- FX daily may be forward-filled to align calendars; asset returns must never be interpolated.
+- Resample to effective month-end: last available trading day of each month.
+
+## Date/window standard
+
+- **analysis_end** = last completed effective month-end (previous month-end) = last effective month-end strictly before today.
+- Windows are fixed-length ending at analysis_end: 36M, 60M, 120M.
+
+## Returns
+
+- Monthly simple return: **r_t = P_t / P_{t-1} - 1**
+- Monthly log return: **lr_t = ln(P_t / P_{t-1})**
+
+## FX conversion rules (must be implemented explicitly)
+
+- If asset_ccy=EUR and investor_ccy=USD: **P_USD = P_EUR * FX(EURUSD=X)**.
+- If asset_ccy=USD and investor_ccy=EUR: **P_EUR = P_USD / FX(EURUSD=X)**.
+- If investor_ccy != USD: convert via USD:
+  - **P_USD = P_asset * FX(asset_ccyUSD=X)** (e.g., JPYUSD=X).
+  - **P_investor = P_USD / FX(investor_ccyUSD=X)** (e.g., EURUSD=X).
+- If FX ticker not available in required orientation, use inverse pair and invert: **FX = 1 / FX_inverse**.
+
+## Estimators
+
+- Use sample estimators everywhere: **ddof=1** explicitly for std/var/cov.
+- For Beta_base and Beta_local always use sample estimators: **var(..., ddof=1)** and **cov(..., ddof=1)**. Do not rely on library defaults.
+
+## Alignment
+
+- For any excess-return metric, align dates via **inner join** across r_t, rf_t, and required benchmark series before computing.
+- For cov/corr/beta/RC_vol use inner join (synchronous observations only).
+
+## Risk-free
+
+- Default FRED:DTB3 (annual percent). Convert to monthly effective: **(1 + y/100) ** (1/12) - 1**.
+- Resample to month-end via last available value.
+- If investor currency != USD and rf source is not explicitly provided, **fail fast** (no guessing).
+
+## Benchmarks and Beta (two types)
+
+There are two types of beta — do not confuse them.
+
+### Beta_base (portfolio management)
+
+- Single base benchmark in investor currency for **unified market risk scale**:
+  - **USD**: S&P 500 (proxy: SPY or VOO)
+  - **EUR**: STOXX Europe 600 (proxy: VGK or EXSA.DE)
+  - **JPY**: Nikkei 225 (proxy: EWJ)
+  - **CHF**: Swiss Market Index SMI (proxy: EWL)
+- Computed on **monthly simple returns**, same dates, same window, same method for all assets.
+- Used for comparing assets and controlling total market exposure of portfolio.
+
+### Beta_local (diagnostic, per-asset only)
+
+- Computed for each asset individually to understand which "local market" the asset resembles.
+- **Not a portfolio metric** — diagnostic only.
+- Same calculation rules as Beta_base: monthly simple returns, one window, aligned dates, ddof=1.
+
+#### Local benchmark dictionary (proxies)
+
+**Equity by region:**
+| Asset class | Proxy ETF |
+|----|-----|
+| US equity | VOO (S&P 500) |
+| Europe equity | VGK |
+| UK equity | EWU |
+| Japan equity | EWJ |
+| EM equity | VWO |
+| China equity | MCHI |
+| Asia ex-Japan equity | AAXJ |
+| Canada equity | EWC |
+| Australia equity | EWA |
+| Global ex-US equity | VXUS |
+
+**Bonds:**
+| Asset class | Proxy ETF |
+|----|-----|
+| US Aggregate IG | BND (or AGG) |
+| US Treasuries 7–10Y | IEF |
+| US Long Treasuries | TLT |
+| US TIPS | TIP |
+| US High Yield | HYG (or JNK) |
+| US IG Corporates | LQD |
+| Short T-Bills / Cash proxy | BIL |
+
+**Commodities / real assets:**
+| Asset class | Proxy ETF |
+|----|-----|
+| Broad commodities | PDBC (or DBC) |
+| Industrial metals | DBB |
+| Energy | XLE |
+
+#### Hard special rules
+
+- **Crypto**: Beta_local = Beta_base, local benchmark = S&P 500 (proxy VOO).
+- **Gold**: Beta_local = Beta_base, local benchmark = S&P 500 (proxy VOO).
+
+## Metrics per asset per window
+
+- **CAGR**: computed from equity curve using monthly simple returns:
+  - Equity = cumprod(1 + r_simple)
+  - CAGR = (Equity_end / Equity_start) ** (12 / N_months) - 1
+- **Vol**: std(r_simple, ddof=1) monthly; annual = monthly * sqrt(12).
+- **Sharpe**: Sharpe = (mean(r_simple − rf_monthly) × 12) / (std(r_simple, ddof=1) × sqrt(12)). Volatility in the denominator is from raw returns (r_simple), not from excess returns.
+- **Sortino**: computed relative to MAR (Minimum Acceptable Return). By default MAR_monthly = rf_monthly; can be overridden by a custom MAR parameter. Downside = min(0, r_simple - MAR):
+  - dd_monthly = sqrt(mean(downside^2))
+  - dd_annual = dd_monthly * sqrt(12)
+  - Sortino = (mean(excess) * 12) / dd_annual
+- **Beta_base**: cov(r_asset, r_benchmark) / var(r_benchmark) with var(..., ddof=1) and cov(..., ddof=1) explicitly; same dates. See "Benchmarks and Beta" section for benchmark selection by investor currency.
+- **Beta_local**: same formula vs local proxy from dictionary above; same estimator rule (ddof=1 explicit). For Gold and Crypto: beta_local == beta_base.
+- **Treynor** (diagnostic): (mean(excess) * 12) / beta_base, where beta_base is computed on the same window/dates.
+- **Skew/Kurt**: compute on monthly log returns (diagnostic).
+- **Max Drawdown**: from monthly equity curve; dd = equity / cummax(equity) - 1.
+- **Time to recovery**: months from peak to first month equity >= prior peak; if not recovered: ttr=NaN, recovered=False.
+
+## Portfolio NaN-safe dynamic
+
+- At each month t:
+  - w_avail = w_target for assets with non-NaN return at t; do not renormalize.
+  - w_miss = 1 - sum(w_avail).
+  - **R_p,t = sum(w_avail_i * R_i,t) + w_miss * R_cash,t**.
+- Default cash proxy BIL for USD; if investor currency != USD, require explicit cash proxy.
+
+## RC_vol (percentage risk contribution)
+
+- **RC_vol** is defined as **percentage contribution to portfolio variance** (not to volatility; not via correlations).
+- For each month t in the window:
+  - **σ²_t = w_tᵀ Σ_window w_t** (portfolio variance at t).
+  - **PC_{i,t} = (w_{i,t} × (Σ_window w_t)_i) / σ²_t**.
+  - **RC_window_i = mean_t(PC_{i,t})** over the window.
+- **PC must sum to 1** across assets at each t.
+- Do not compute contribution to volatility or via correlations.
+
+## Output formatting (rounding)
+
+- **All reported numeric metrics must be rounded to 3 decimal places** at the final output stage only (before exporting CSV or printing).
+- Rounding applies **only at export/report stage**; do not round during intermediate calculations.
+- Use pandas **.round(3)** for DataFrames and Series at export. Do not round raw returns, covariance matrices, or intermediate values. Persist full precision internally; round only exported/report-facing results.
+
+## Correlation matrix output
+
+- Output full **correlation matrix** of portfolio assets for each window (3Y / 5Y / 10Y).
+- Correlation matrix must be computed on **the same aligned dates (inner join)** used for all correlation and covariance calculations.
+- Use **monthly simple returns** with **ddof=1** for consistency with all other estimators.
+- Export as CSV: **correlation_matrix_3y.csv**, **correlation_matrix_5y.csv**, **correlation_matrix_10y.csv**.
+- Round to 3 decimal places at export stage only.

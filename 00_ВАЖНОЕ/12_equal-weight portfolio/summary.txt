@@ -1,0 +1,7 @@
+Equal-Weight Portfolio
+==================================================
+
+CAGR: 14.951%, Vol: 12.503%, MaxDD: -19.933%, Sharpe: 1.007, Sortino: 1.722, Beta: 0.745, Corr_base: 0.000
+
+Stress: FAIL_STRESS (FAIL_ROLE_EQUITY_SHOCK)
+Client-fit (MaxDD gate): PASS

@@ -290,13 +290,13 @@ def export_baseline_weights_txt(
         if rc_map:
             rc = rc_map.get(t)
             if rc is not None:
-                lines.append(f"  {t}: weight={w:.3f}, RC_vol={rc:.3f}")
+                lines.append(f"  {t}: weight={w:.1%}, RC_vol={rc:.1%}")
             else:
-                lines.append(f"  {t}: weight={w:.3f}")
+                lines.append(f"  {t}: weight={w:.1%}")
         else:
-            lines.append(f"  {t}: weight={w:.3f}")
+            lines.append(f"  {t}: weight={w:.1%}")
     lines.append("")
-    lines.append(f"Sum of weights: {sum(weights.values()):.3f}")
+    lines.append(f"Sum of weights: {sum(weights.values()):.1%}")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     with open(output_dir / "weights.txt", "w", encoding="utf-8") as f:

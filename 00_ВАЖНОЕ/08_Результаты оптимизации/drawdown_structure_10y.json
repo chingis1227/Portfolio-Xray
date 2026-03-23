@@ -1,0 +1,122 @@
+{
+  "drawdowns": [
+    {
+      "depth": -0.011,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.011,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.017,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.008,
+      "length_months": 3,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.006,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.124,
+      "length_months": 15,
+      "recovery_months": "4"
+    },
+    {
+      "depth": -0.062,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.211,
+      "length_months": 7,
+      "recovery_months": "4"
+    },
+    {
+      "depth": -0.065,
+      "length_months": 3,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.009,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.004,
+      "length_months": 3,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.034,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.015,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.044,
+      "length_months": 3,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.21,
+      "length_months": 15,
+      "recovery_months": "9"
+    },
+    {
+      "depth": -0.078,
+      "length_months": 4,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.012,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.008,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.038,
+      "length_months": 6,
+      "recovery_months": "5"
+    }
+  ],
+  "summary": {
+    "recovery_median_months": 1.0,
+    "recovery_p90_months": 4.2,
+    "pct_time_underwater": 0.5,
+    "longest_underwater_months": 14
+  },
+  "by_threshold": {
+    ">5%": {
+      "count": 6,
+      "recovery_median": 2.5,
+      "recovery_p90": 6.5
+    },
+    ">10%": {
+      "count": 3,
+      "recovery_median": 4.0,
+      "recovery_p90": 8.0
+    },
+    ">20%": {
+      "count": 2,
+      "recovery_median": 6.5,
+      "recovery_p90": 8.5
+    }
+  }
+}
