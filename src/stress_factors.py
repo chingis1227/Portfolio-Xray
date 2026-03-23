@@ -1,6 +1,7 @@
 """
 Stress testing: factor data (FRED + Yahoo) and beta estimation.
-Includes weekly helpers and monthly estimators used in stress reporting windows (5Y/10Y).
+Primary stress-report factor betas use weekly returns/changes (see FACTOR_WEEKS_5Y / FACTOR_WEEKS_10Y).
+Monthly helpers remain for legacy / diagnostics only.
 Factors: equity (S&P/SPY), real rates (DFII10 Δ), inflation (T10YIE Δ), credit (BAMLH0A0HYM2 Δ), USD (DTWEXBGS), commodities (DBC/PDBC).
 """
 from __future__ import annotations
@@ -13,8 +14,10 @@ import pandas as pd
 from src.data_fred import fetch_fred_series
 from src.data_yf import fetch_daily
 
-# 156 weeks ≈ 3 years
-FACTOR_WEEKS = 156
+# Stress report: weekly regression windows ending at analysis_end (Friday week-ends after inner join)
+FACTOR_WEEKS_5Y = 260   # ~5 calendar years
+FACTOR_WEEKS_10Y = 520  # ~10 calendar years
+FACTOR_DOWNLOAD_BUFFER_WEEKS = 28  # extra history for factor/asset weekly alignment
 
 # FRED series (fallback when project series not used)
 FRED_EQUITY_LEVEL = "SP500"
@@ -236,6 +239,65 @@ def estimate_betas(
     df = pd.DataFrame(betas).T
     df = df.rename(columns={c: name_map.get(c, f"beta_{c}") for c in factor_cols})
     return df
+
+
+def compute_asset_factor_betas_weekly(
+    tickers: list[str],
+    analysis_end_str: str,
+    window_weeks: int,
+    *,
+    buffer_weeks: int = FACTOR_DOWNLOAD_BUFFER_WEEKS,
+    min_aligned_weeks: int | None = None,
+) -> pd.DataFrame:
+    """
+    Per-asset factor betas via OLS on weekly data (same estimators as estimate_betas).
+
+    - Downloads daily Adj Close (via fetch_daily / download_all), converts to week-end returns.
+    - Builds weekly factor matrix (build_factor_matrix).
+    - Takes the last ``window_weeks`` aligned week-end dates ending at/around analysis_end.
+
+    Returns empty DataFrame if insufficient aligned history.
+    """
+    from src.data_yf import download_all
+
+    tickers = [str(t).strip() for t in tickers if t and str(t).strip()]
+    if not tickers:
+        return pd.DataFrame()
+
+    wk = int(window_weeks)
+    if min_aligned_weeks is None:
+        min_aligned_weeks = max(52, min(104, wk // 4))
+
+    end_ts = pd.Timestamp(analysis_end_str)
+    end_dl = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    start_ts = end_ts - pd.DateOffset(weeks=wk + int(buffer_weeks))
+    start_dl = start_ts.strftime("%Y-%m-%d")
+
+    daily = download_all(tickers, start_dl, end_dl)
+    daily_prices: dict[str, pd.Series] = {}
+    for t in tickers:
+        df = daily.get(t)
+        if df is None or df.empty or "Close" not in df.columns:
+            continue
+        daily_prices[t] = df["Close"].copy()
+
+    asset_weekly = asset_weekly_returns_from_daily(daily_prices, start_dl, end_dl)
+    factors = build_factor_matrix(start_dl, end_dl)
+    if asset_weekly.empty or factors.empty:
+        return pd.DataFrame()
+
+    common = asset_weekly.index.intersection(factors.index).sort_values()
+    # Allow week-end label shortly after month-end analysis_end
+    common = common[common <= end_ts + pd.Timedelta(days=6)]
+    if len(common) > wk:
+        common = common[-wk:]
+
+    if len(common) < int(min_aligned_weeks):
+        return pd.DataFrame()
+
+    Y = asset_weekly.reindex(common)
+    X = factors.reindex(common)
+    return estimate_betas(Y, X)
 
 
 def _month_end(s: pd.Series) -> pd.Series:

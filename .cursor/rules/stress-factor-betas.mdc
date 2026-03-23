@@ -1,0 +1,15 @@
+---
+alwaysApply: true
+---
+
+# Stress factor betas (code + outputs)
+
+- **Source of truth for scenarios/tests/outputs:** `docs/docs/stress_testing_spec.md` (and mirror under `00_ВАЖНОЕ/13_docs/docs/` if present).
+
+- **Frequency:** portfolio factor betas in `stress_report.json` are estimated on **weekly** data (week-end / Friday alignment after inner join between factors and asset weekly returns). Daily prices use **Adj Close** via `src/data_yf.py` → weekly simple returns.
+
+- **Windows (single source in code):** `src/stress_factors.py` defines **`FACTOR_WEEKS_5Y = 260`** (~5Y) and **`FACTOR_WEEKS_10Y = 520`** (~10Y). Use **`compute_asset_factor_betas_weekly`** + **`portfolio_factor_betas`** in `run_optimization.py`, `run_report.py`, and `view_after_optimization.py`. There is **no** `FACTOR_WEEKS` / 156-week window — do not reintroduce it.
+
+- **JSON fields:** `factor_betas_5y` and `factor_betas_10y` are mandatory; **`factor_betas` duplicates `factor_betas_5y`** for backward compatibility only.
+
+- **Monthly** `build_factor_matrix_monthly` / `estimate_betas_monthly` remain only for legacy/diagnostics, **not** for the main stress-report factor beta pipeline.
