@@ -163,6 +163,13 @@ def main() -> None:
 
     print(f"Equal-Weight baseline report written to {out_dir}")
 
+    try:
+        from src.pdf_reports import try_rebuild_pdfs_after_variant
+
+        try_rebuild_pdfs_after_variant(logger=logger)
+    except Exception as e:
+        logger.warning("PDF suite rebuild skipped: %s", e)
+
 
 if __name__ == "__main__":
     main()

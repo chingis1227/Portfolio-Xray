@@ -10,7 +10,6 @@
     "BBJP": "2018-07",
     "VWO": "2014-04",
     "VDC": "2014-04",
-    "ARMY.PA": "2025-05",
     "ITA": "2014-04",
     "CIBR": "2015-08",
     "ROBO": "2014-04",
@@ -23,7 +22,7 @@
     "BIL": "2014-04",
     "BND": "2014-04"
   },
-  "inner_join_months_used_for_risk": 11,
-  "n_months_redistributed": 133,
-  "n_months_cash_fallback": 82
+  "inner_join_months_used_for_risk": 93,
+  "n_months_redistributed": 51,
+  "n_months_cash_fallback": 93
 }

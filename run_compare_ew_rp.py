@@ -27,7 +27,7 @@ from src.data_loader import load_monthly_data_shared
 from src.metrics_asset import time_to_recovery
 from src.portfolio_dynamic import portfolio_returns_nan_safe
 from src.risk_contrib import cov_matrix_monthly
-from src.utils import setup_logging
+from src.utils import logger, setup_logging
 from src.windows import slice_window
 
 
@@ -245,7 +245,7 @@ def main() -> None:
     setup_logging()
     cfg = load_validated_config()
     project_root = Path(__file__).resolve().parent
-    out_dir = Path(getattr(cfg, "output_dir_final", "Результаты оптимизации"))
+    out_dir = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
     out_dir.mkdir(parents=True, exist_ok=True)
 
     eq = _load_variant_payload(project_root, "equal-weight portfolio")
@@ -514,6 +514,13 @@ def main() -> None:
         f.write("\n".join(lines))
 
     print(f"Comparison written to {out_json} and {out_txt}")
+
+    try:
+        from src.pdf_reports import try_rebuild_pdfs_only
+
+        try_rebuild_pdfs_only(logger=logger)
+    except Exception as e:
+        logger.warning("PDF suite rebuild skipped: %s", e)
 
 
 if __name__ == "__main__":

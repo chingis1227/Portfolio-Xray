@@ -6,12 +6,12 @@
       "recovery_months": "1"
     },
     {
-      "depth": -0.005,
+      "depth": -0.006,
       "length_months": 2,
       "recovery_months": "1"
     },
     {
-      "depth": -0.016,
+      "depth": -0.017,
       "length_months": 3,
       "recovery_months": "2"
     },
@@ -26,17 +26,17 @@
       "recovery_months": "1"
     },
     {
-      "depth": -0.119,
+      "depth": -0.123,
       "length_months": 20,
       "recovery_months": "9"
     },
     {
-      "depth": -0.162,
+      "depth": -0.17,
       "length_months": 7,
       "recovery_months": "4"
     },
     {
-      "depth": -0.046,
+      "depth": -0.048,
       "length_months": 3,
       "recovery_months": "1"
     },
@@ -51,7 +51,7 @@
       "recovery_months": "1"
     },
     {
-      "depth": -0.026,
+      "depth": -0.027,
       "length_months": 2,
       "recovery_months": "1"
     },
@@ -61,17 +61,17 @@
       "recovery_months": "1"
     },
     {
-      "depth": -0.199,
+      "depth": -0.209,
       "length_months": 19,
       "recovery_months": "10"
     },
     {
-      "depth": -0.07,
+      "depth": -0.074,
       "length_months": 5,
       "recovery_months": "2"
     },
     {
-      "depth": -0.015,
+      "depth": -0.016,
       "length_months": 2,
       "recovery_months": "1"
     },
@@ -81,20 +81,15 @@
       "recovery_months": "1"
     },
     {
-      "depth": -0.032,
+      "depth": -0.033,
       "length_months": 6,
       "recovery_months": "5"
-    },
-    {
-      "depth": -0.005,
-      "length_months": 2,
-      "recovery_months": "1"
     }
   ],
   "summary": {
     "recovery_median_months": 1.0,
-    "recovery_p90_months": 6.2,
-    "pct_time_underwater": 0.558,
+    "recovery_p90_months": 6.6,
+    "pct_time_underwater": 0.55,
     "longest_underwater_months": 19
   },
   "by_threshold": {
@@ -109,9 +104,9 @@
       "recovery_p90": 9.8
     },
     ">20%": {
-      "count": 0,
-      "recovery_median": null,
-      "recovery_p90": null
+      "count": 1,
+      "recovery_median": 10.0,
+      "recovery_p90": 10.0
     }
   }
 }

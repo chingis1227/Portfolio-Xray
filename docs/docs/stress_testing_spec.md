@@ -92,6 +92,13 @@ The system must estimate and output:
 
 If factor limits are set in config and violated → FAIL_STRESS; if no limits → PASS_WITH_WARNING (manual approval).
 
+**Output windows (mandatory):**
+
+- **5Y window (60 monthly observations):** `factor_betas_5y`
+- **10Y window (120 monthly observations):** `factor_betas_10y`
+
+For backward compatibility, `factor_betas` may be present and should mirror `factor_betas_5y`.
+
 ---
 
 ## 9. Historical validation
@@ -126,7 +133,7 @@ If defensive blocks systematically behave “against role” → FAIL_STRESS; el
 - **Credit spread (HY):** FRED:BAMLH0A0HYM2; use Δ(spread).
 - **USD:** FRED:DTWEXBGS; use Δ or % change.
 
-Betas: weekly changes/returns, 156-week window. Use project series when available; FRED codes as fallback.
+Betas: monthly changes/returns for reporting outputs in §8 (`factor_betas_5y`, `factor_betas_10y`) with synchronized dates (inner join). Use project series when available; FRED codes as fallback.
 
 ---
 

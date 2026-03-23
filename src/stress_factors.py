@@ -1,6 +1,6 @@
 """
 Stress testing: factor data (FRED + Yahoo) and beta estimation.
-Per docs/docs/stress_testing_spec.md: 156-week window, weekly returns/changes.
+Includes weekly helpers and monthly estimators used in stress reporting windows (5Y/10Y).
 Factors: equity (S&P/SPY), real rates (DFII10 Δ), inflation (T10YIE Δ), credit (BAMLH0A0HYM2 Δ), USD (DTWEXBGS), commodities (DBC/PDBC).
 """
 from __future__ import annotations

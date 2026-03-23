@@ -105,7 +105,7 @@
     ],
     "coverage_threshold": 0.9,
     "output_dir": "results_csv",
-    "output_dir_final": "Результаты оптимизации",
+    "output_dir_final": "Main portfolio",
     "optimization_windows_months": [
       120,
       60

@@ -9,10 +9,13 @@ Provides:
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+_cfg_log = logging.getLogger(__name__)
 
 from src.client_profiles import apply_profile_to_config, get_profile_defaults, normalize_rc_block_targets
 
@@ -144,6 +147,8 @@ def load_validated_config(config_path: str | Path | None = None) -> PortfolioCon
     If a ticker is not in any block, ConfigValidationError is raised with a clear message.
     If client_profile is set, target/risk_budget fields are filled from that profile (midpoints)
     and written back to config.yml so the file stays in sync (comments preserved).
+    Used by optimization, run_report (policy portfolio), Equal-Weight and Risk-Parity baselines, and comparisons.
+    If portfolio_weights.yml is merged, its ticker set must exactly match config tickers or validation fails.
     Returns a strongly-typed PortfolioConfig object.
     Raises ConfigValidationError if validation fails.
     """
@@ -153,15 +158,30 @@ def load_validated_config(config_path: str | Path | None = None) -> PortfolioCon
     raw = apply_profile_to_config(raw)
     if raw.get("client_profile") and get_profile_defaults(raw["client_profile"]):
         _sync_profile_fields_to_config_file(path, raw)
-    # If config has no weights, load from portfolio_weights.yml in output_dir_final (e.g. Результаты оптимизации)
+    # If config has no weights, load from portfolio_weights.yml in output_dir_final (e.g. Main portfolio)
+    # but only when ticker universe exactly matches config.yml.
     if not raw.get("weights"):
-        output_dir_final = raw.get("output_dir_final") or "Результаты оптимизации"
+        output_dir_final = raw.get("output_dir_final") or "Main portfolio"
         weights_path = path.parent / output_dir_final / WEIGHTS_FILENAME
         file_weights = load_weights_file(weights_path=weights_path)
         if file_weights:
+            cfg_tickers = [str(t) for t in (raw.get("tickers") or []) if isinstance(t, str)]
+            cfg_tickers_set = set(cfg_tickers)
+            weights_tickers_set = set(file_weights.keys())
+            if cfg_tickers_set != weights_tickers_set:
+                missing_in_weights = sorted(cfg_tickers_set - weights_tickers_set)
+                stale_in_weights = sorted(weights_tickers_set - cfg_tickers_set)
+                raise ConfigValidationError(
+                    "portfolio_weights.yml не соответствует текущему config.yml по составу тикеров. "
+                    f"config_only={missing_in_weights}; weights_only={stale_in_weights}. "
+                    "Обновите/удалите portfolio_weights.yml, либо задайте актуальные weights прямо в config.yml."
+                )
             raw["weights"] = file_weights
     blocks_universe = load_blocks_universe(config_path=path)
-    return validate_config(raw, blocks_universe=blocks_universe)
+    portfolio_cfg = validate_config(raw, blocks_universe=blocks_universe)
+    _cfg_log.info("Config source: %s", path)
+    _cfg_log.info("Config tickers (%d): %s", len(portfolio_cfg.tickers), portfolio_cfg.tickers)
+    return portfolio_cfg
 
 
 def load_assets_metadata(assets_path: str | Path | None = None) -> dict[str, dict[str, Any]]:

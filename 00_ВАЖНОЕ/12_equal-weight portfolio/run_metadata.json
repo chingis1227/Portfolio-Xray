@@ -1,6 +1,6 @@
 {
   "run_info": {
-    "timestamp": "2026-03-23T18:51:34.557651",
+    "timestamp": "2026-03-23T23:03:46.968528",
     "analysis_end_date": "2026-02-28"
   },
   "resolved_config": {
@@ -25,7 +25,6 @@
       "BBJP",
       "VWO",
       "VDC",
-      "ARMY.PA",
       "ITA",
       "CIBR",
       "ROBO",
@@ -48,7 +47,6 @@
         "BBJP",
         "VWO",
         "VDC",
-        "ARMY.PA",
         "ITA",
         "CIBR",
         "ROBO",
@@ -71,7 +69,27 @@
       ],
       "Tail": []
     },
-    "weights": {},
+    "weights": {
+      "VOO": 0.268367,
+      "VT": 0.019388,
+      "QQQ": 0.020408,
+      "SMH": 0.094898,
+      "VGK": 0.019388,
+      "BBJP": 0.020408,
+      "VWO": 0.020408,
+      "VDC": 0.020408,
+      "ITA": 0.137755,
+      "CIBR": 0.019388,
+      "ROBO": 0.020408,
+      "SCHD": 0.019388,
+      "COPX": 0.064286,
+      "URA": 0.044898,
+      "BND": 0.019388,
+      "SLV": 0.12551,
+      "GLD": 0.020408,
+      "SCHP": 0.019388,
+      "BIL": 0.02551
+    },
     "allow_leverage": false,
     "allow_short_selling": false,
     "min_acceptable_return": null,
@@ -105,7 +123,7 @@
     ],
     "coverage_threshold": 0.9,
     "output_dir": "results_csv",
-    "output_dir_final": "Результаты оптимизации",
+    "output_dir_final": "Main portfolio",
     "optimization_windows_months": [
       120,
       60
@@ -150,7 +168,6 @@
       "BBJP": "SPY",
       "VWO": "VWO",
       "VDC": "SPY",
-      "ARMY.PA": "SPY",
       "ITA": "SPY",
       "CIBR": "SPY",
       "ROBO": "SPY",
@@ -169,8 +186,8 @@
       60,
       120
     ],
-    "total_weight_sum": 0,
-    "weight_to_cash": 1.0,
+    "total_weight_sum": 1.0,
+    "weight_to_cash": 0,
     "mar_source": "rf_monthly",
     "mar_annual_value": null,
     "liquidity_need": 0.0,
@@ -196,7 +213,6 @@
           "BBJP",
           "VWO",
           "VDC",
-          "ARMY.PA",
           "ITA",
           "CIBR",
           "ROBO",
@@ -251,16 +267,16 @@
   "portfolio_valid": true,
   "stress_test": {
     "status": "FAIL_STRESS",
-    "fail_reason_code": "FAIL_ROLE_EQUITY_SHOCK",
+    "fail_reason_code": "FAIL_RC_TOP1_EQUITY_SHOCK",
     "warning_code": null,
-    "worst_scenario_loss_pct": -0.2415,
+    "worst_scenario_loss_pct": -1.7861,
     "failed_scenario": "equity_shock",
-    "failed_test": "Role"
+    "failed_test": "RC_Top1"
   },
   "target_comparison": {
     "target_nominal_return_annual": 0.12,
-    "realized_cagr": 0.1495106250054854,
-    "difference": 0.029510625005485402,
+    "realized_cagr": 0.15198392852226195,
+    "difference": 0.03198392852226195,
     "target_achieved": "True"
   }
 }

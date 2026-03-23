@@ -1,52 +1,54 @@
-﻿# Equal-Weight Portfolio Commentary Report
+---
+title: "Equal-Weight Portfolio — Commentary"
+subtitle: "Commentary"
+date: "2026-03-23 23:38 Центральная Европа (зима)"
+documentclass: article
+geometry: margin=1in
+fontsize: 11pt
+---
+## Report scope / source context
+- **Variant folder:** `equal-weight portfolio`
+- **Basis:** post-run commentary (metrics interpreted as reported).
+- **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Cursor/equal-weight portfolio/commentary.txt`
+- **Generated:** 2026-03-23 23:38 Центральная Европа (зима)
 
-## Report Scope
+## Executive summary
+Equal-Weight baseline на окне 10Y (120 мес., analysis_end 2026-02-28) показывает доходность около 15.2% CAGR при годовой волатильности около 13.0% и исторической просадке около −20.9% (summary.txt / portfolio_metrics_10y.csv согласованы по порядку величин). Risk-adjusted картина умеренно сильная: Sharpe ≈0.99, Sortino ≈1.68; бета к базовому рынку ≈0.78 — портфель участвует в росте рынка, но не как «чистый рынок». Стресс-надсмотр: FAIL_STRESS с кодом FAIL_RC_TOP1_EQUITY_SHOCK — узкое место связано с концентрацией вклада в риск на отдельных активах в сценарии equity_shock, а не с лимитом MaxDD по клиентскому гейту (Client-fit по MaxDD: PASS в summary.txt). В snapshot_10y коридор риск-бюджета по блокам (rb_corridor) отмечен как FAIL при прохождении target_vol и max_dd — это отдельный сигнал качества соответствия целевым долям риска между блоками.
 
-- **Source:** `equal-weight portfolio/commentary.txt`
-- **Portfolio type:** **Equal-Weight**
-- **Commentary basis:** summary metrics and stress status from the source text
 
-## Executive Summary
+## Preamble
 
-- Equal-Weight portfolio shows a return-oriented profile with **CAGR 14.951%** and annual volatility **12.503%**.
-- Risk efficiency is solid (**Sharpe 1.007**, **Sortino 1.722**), while stress testing flags equity-shock vulnerability.
-- Historical drawdown gate is passed, but stress outcome remains a key portfolio constraint.
+Source: summary.txt, snapshot_10y.json, stress_report.json, results_csv/portfolio_metrics_10y.csv, results_csv/rc_vol_10y.csv
 
-## Core Metrics Interpretation
 
-| Metric | Value | Interpretation |
-|---|---:|---|
-| CAGR | 14.951% | Strong long-run capital growth profile |
-| Volatility | 12.503% | Moderate-to-high path variability |
-| Max Drawdown | -19.933% | Material drawdown tolerance required |
-| Sharpe | 1.007 | Good return per unit of total risk |
-| Sortino | 1.722 | Downside-adjusted efficiency stronger than total-vol view |
-| Beta | 0.745 | Market sensitivity below 1 |
-| Corr_base | 0.000 | No valid diversification inference from this field |
+## Metric-by-Metric Interpretation
+
+CAGR и волатильность задают профиль «умеренно-агрессивного» diversified basket: доходность выше типичной облигационной, волатильность — в диапазоне многоголового equity-микса без узкой ставки на один сектор в весах (равные доли по 19 риск-активам в конструкции EW). Max drawdown ≈−21% показывает глубину исторического стресс-пути; в связке с Sortino > Sharpe видно, что часть риска приходится на «хвост», но downside-эффективность относительно полной волатильности чуть лучше, чем по Sharpe alone. Бета <1 при сохранении двузначного CAGR указывает на то, что доходность в выборке обеспечена не только синхронным движением с базовым индексом.
+
+По данным snapshot_10y и rc_vol_10y доминирующий вклад в портфельную дисперсию дают циклические и тематические риск-активы: топ-5 по RC_vol включает COPX (~11.4%), URA (~9.3%), SMH (~8.4%), ROBO (~7.9%), ITA (~6.3%) — при формально равных весах это ожидаемо отражает разницу в собственной волатильности и корреляциях. Corr_base в summary.txt указан как 0.000 — это артефакт выгрузки summary, а не отсутствие связи с базой: для интерпретации корреляции к бенчмарку следует опираться на полные отчёты/snapshot, где beta и факторные чувствительности заполнены.
+
 
 ## Risk Structure
 
-- RC decomposition is not provided in this source, so block/asset risk concentration cannot be quantified here.
-- Beta below one and stress fail on equity shock indicate that equity drawdown remains the dominant stress driver.
+По snapshot_10y RC_vol по блокам сосредоточен в Growth (~89.4%), Duration ~1.1%, Inflation ~9.6%, ликвидность ~0% — фактически портфель по риску ведёт себя как growth-heavy конструкция при равных номинальных весах. Это согласуется со стресс-профилем: в equity_shock PnL портфеля около −18.7% с доминирующим вкладом блока Growth (~−18.8%); inflation_stagflation и rates_shock дают существенно меньший урон в таблице сценариев. Код FAIL_RC_TOP1_EQUITY_SHOCK указывает на нарушение лимита на долю риска топ-1 актива (в сценарии equity_shock top1_rc_asset = COPX, top1_rc_pct порядка 13% в stress_report.json) при прохождении прочих порогов по потере в ряде сценариев.
+
+Сценарий credit_shock в этом прогоне показывает экстремально глубокий PnL (порядка −178.6% в stress_report — как рассчитано движком стресса); его нужно читать вместе с флагами loss_ok/role_ok по сценарию: он подчёркивает чувствительность конструкции к кредитному стрессу в используемой спецификации, даже если equity_shock задан как failed_scenario в заголовке отчёта.
+
 
 ## Strengths
 
-- Strong long-term return with Sharpe above 1.
-- Sortino above Sharpe, indicating relatively controlled downside profile.
-- Historical MaxDD gate status is passed.
+Исторически сильный CAGR и положительный Sharpe/Sortino на 10Y при diversified EW-универсуме. Клиентский MaxDD-gate по данным summary пройден. Наглядная декомпозиция RC по активам и блокам доступна в snapshot_10y и rc_vol_10y — риск не «непрозрачен», он концентрирован в известных драйверах.
 
 ## Weaknesses
 
-- Stress test result is `FAIL_STRESS (FAIL_ROLE_EQUITY_SHOCK)`.
-- Volatility and drawdown depth remain significant for conservative mandates.
-- No RC/correlation structure in this source for full diversification diagnostics.
+FAIL_STRESS (RC top1 в equity_shock) и FAIL по rb_corridor в snapshot — структура риска не укладывается в заданные стресс- и бюджетные коридоры. Высокий вклад отдельных тикеров (COPX, URA, SMH) в RC_vol при EW-весах создаёт скрытую концентрацию по риску. credit_shock и liquidity_shock в stress_report помечены как не прошедшие по потере/RC в зависимости от сценария — узкие места не ограничиваются одним equity сценарием по всем критериям.
 
 ## Scenario Behavior
 
-- Portfolio profile is favorable in standard risk-premium regimes.
-- In acute equity-shock regimes, protection is insufficient per reported stress code.
+В условиях, близких к «нормальным» risk-on режимам, равные веса по широкому списку обеспечивают участие в нескольких факторных темах одновременно; реализованная доходность и Sortino это поддерживают. В резком equity_shock убыток концентрируется в Growth, а критика стресс-теста идёт через RC топ-1, т.е. через неравномерность вклада в дисперсию при шоке. inflation_stagflation и rates_shock дают более умеренный отрицательный или смешанный PnL относительно equity_shock в этом прогоне.
 
-## Conclusion / Key Takeaways
 
-- Equal-Weight portfolio delivers strong return characteristics with good risk-adjusted ratios.
-- Main trade-off is persistent equity-shock vulnerability despite acceptable historical drawdown behavior.
+## Final Conclusion
+
+EW-baseline здесь — это высокодоходный, по истории умеренно волатильный «корзинный» профиль с явной growth-доминацией по RC_vol при формальной демократии весов. Главный trade-off: обмен на исторический апсайд идёт через концентрацию риска в циклических/тематических именах и через провал стресс-гейта по RC_top1 в equity_shock, плюс системное несоответствие rb_corridor. Для decision-use нужно отдельно решать, приемлем ли такой профиль при действующих стресс- и RB-ограничениях, опираясь на те же числа в stress_report.json и snapshot_10y.
+

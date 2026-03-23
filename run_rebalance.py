@@ -45,7 +45,7 @@ def main() -> None:
         target_path = Path(args.target)
     else:
         cfg = load_config()
-        out_final = cfg.get("output_dir_final") or "Результаты оптимизации"
+        out_final = cfg.get("output_dir_final") or "Main portfolio"
         base = Path(__file__).resolve().parent
         target_path = base / out_final / WEIGHTS_FILENAME
     target_weights = _load_weights(target_path)

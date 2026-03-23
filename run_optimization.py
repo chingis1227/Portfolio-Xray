@@ -238,7 +238,7 @@ def main() -> None:
         rb_growth,
     )
     if not feas_ok:
-        out_final = Path(getattr(cfg, "output_dir_final", "Результаты оптимизации"))
+        out_final = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
         out_final.mkdir(parents=True, exist_ok=True)
         fail_result = {
             "weights": {},
@@ -333,7 +333,7 @@ def main() -> None:
     )
     rc_policy_mode = getattr(cfg, "rc_policy_mode", "strict")
     if not rc_postprocess_ok and rc_policy_mode == "strict":
-        out_final = Path(getattr(cfg, "output_dir_final", "Результаты оптимизации"))
+        out_final = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
         out_final.mkdir(parents=True, exist_ok=True)
         fail_violations = [{"code": VIOL_RC_VIOLATION, "details": rc_postprocess_diag}]
         fail_result = {
@@ -437,7 +437,7 @@ def main() -> None:
             }
             logger.info("Dual-horizon: 10Y vs 5Y comparison written to robustness_report.json")
             # Persist for report (ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ)
-            out_final = Path(getattr(cfg, "output_dir_final", "Результаты оптимизации"))
+            out_final = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
             out_final.mkdir(parents=True, exist_ok=True)
             with open(out_final / "robustness_report.json", "w", encoding="utf-8") as f:
                 json.dump(robustness_report, f, indent=2)
@@ -509,6 +509,8 @@ def main() -> None:
 
     asset_betas_df = pd.DataFrame()
     portfolio_betas_dict = {}
+    portfolio_betas_5y_dict = {}
+    portfolio_betas_10y_dict = {}
     try:
         from src.stress_factors import (
             build_factor_matrix_monthly,
@@ -516,11 +518,25 @@ def main() -> None:
             portfolio_factor_betas,
         )
 
-        beta_start = (analysis_end - pd.DateOffset(months=36)).strftime("%Y-%m-%d")
-        factor_monthly = build_factor_matrix_monthly(beta_start, analysis_end_str)
         asset_returns_beta = monthly_returns[[t for t in cfg.tickers if t in monthly_returns.columns]].copy()
-        asset_betas_df = estimate_betas_monthly(asset_returns_beta, factor_monthly, min_observations=24)
-        portfolio_betas_dict = portfolio_factor_betas(final_weights, asset_betas_df)
+
+        def _portfolio_betas_for_window(window_months: int) -> tuple[pd.DataFrame, dict]:
+            beta_start = (analysis_end - pd.DateOffset(months=window_months)).strftime("%Y-%m-%d")
+            factor_monthly = build_factor_matrix_monthly(beta_start, analysis_end_str)
+            asset_betas_win = estimate_betas_monthly(
+                asset_returns_beta,
+                factor_monthly,
+                min_observations=max(24, window_months // 2),
+            )
+            return asset_betas_win, portfolio_factor_betas(final_weights, asset_betas_win)
+
+        # Primary factor validation windows per stress spec: 5Y and 10Y.
+        asset_betas_5y_df, portfolio_betas_5y_dict = _portfolio_betas_for_window(60)
+        asset_betas_10y_df, portfolio_betas_10y_dict = _portfolio_betas_for_window(120)
+
+        # Keep run_stress input/backward compatibility on factor_betas using 5Y.
+        asset_betas_df = asset_betas_5y_df
+        portfolio_betas_dict = portfolio_betas_5y_dict
     except Exception as e:
         logger.warning("Не удалось построить факторы для Stress Judge: %s", e)
 
@@ -536,6 +552,11 @@ def main() -> None:
         rc_asset_cap_pct=cfg.rc_asset_cap_pct,
         stress_top3_rc_sum_cap_pct=stress_top3_cap,
     )
+    # Expose requested horizons explicitly in stress report.
+    stress_report["factor_betas_5y"] = {k: round(v, 4) for k, v in (portfolio_betas_5y_dict or {}).items()}
+    stress_report["factor_betas_10y"] = {k: round(v, 4) for k, v in (portfolio_betas_10y_dict or {}).items()}
+    # Keep legacy field aligned with 5Y window.
+    stress_report["factor_betas"] = dict(stress_report["factor_betas_5y"])
     stress_status = stress_report.get("status")
     stress_fail_reason = stress_report.get("fail_reason_code") or stress_report.get("skip_reason")
 
@@ -710,7 +731,7 @@ def main() -> None:
         print("  Baseline не рассчитан (нет достаточного числа тикеров с coverage >= %.0f%%)." % (coverage_threshold * 100))
     print("")
 
-    out_final = Path(getattr(cfg, "output_dir_final", "Результаты оптимизации"))
+    out_final = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
     out_final.mkdir(parents=True, exist_ok=True)
     run_result_path = out_final / "run_result.json"
     with open(run_result_path, "w", encoding="utf-8") as f:
@@ -795,6 +816,12 @@ def main() -> None:
         logger.warning("Report failed (exit %s). Weights and run_result were saved. %s", e.returncode, e)
         print("")
         print("Report failed, weights saved. See log for details.")
+        try:
+            from src.pdf_reports import try_rebuild_pdfs_only
+
+            try_rebuild_pdfs_only(logger=logger)
+        except Exception as ex:
+            logger.warning("PDF suite rebuild skipped: %s", ex)
 
     if args.write_config:
         config_path = Path(__file__).resolve().parent / "config.yml"

@@ -1,50 +1,37 @@
-﻿# Equal-Weight Portfolio Weights Report
+---
+title: "Equal-Weight — Weights"
+subtitle: "Weights"
+date: "2026-03-23 23:38 Центральная Европа (зима)"
+documentclass: article
+geometry: margin=1in
+fontsize: 11pt
+---
+## Report scope / source context
+- **Weights source:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Cursor/equal-weight portfolio/weights.json`
+- **Generated:** 2026-03-23 23:38 Центральная Европа (зима)
 
-## Report Scope
+## Weights
 
-- **Source:** `equal-weight portfolio/weights.txt`
-- **Portfolio type:** **Equal-Weight**
-- **Weighting scheme:** fixed equal allocation
+| Ticker | Weight |
+| --- | ---: |
+| **BBJP** | 5.26% |
+| **BIL** | 5.26% |
+| **BND** | 5.26% |
+| **CIBR** | 5.26% |
+| **COPX** | 5.26% |
+| **GLD** | 5.26% |
+| **ITA** | 5.26% |
+| **QQQ** | 5.26% |
+| **ROBO** | 5.26% |
+| **SCHD** | 5.26% |
+| **SCHP** | 5.26% |
+| **SLV** | 5.26% |
+| **SMH** | 5.26% |
+| **URA** | 5.26% |
+| **VDC** | 5.26% |
+| **VGK** | 5.26% |
+| **VOO** | 5.26% |
+| **VT** | 5.26% |
+| **VWO** | 5.26% |
 
-## Executive Summary
-
-- Portfolio is uniformly allocated across all listed assets.
-- Each asset carries **5.0%** weight, and total allocation sums to **100.0%**.
-
-## Allocation Table
-
-| Asset | Weight |
-|---|---:|
-| ARMY.PA | 5.0% |
-| BBJP | 5.0% |
-| BIL | 5.0% |
-| BND | 5.0% |
-| CIBR | 5.0% |
-| COPX | 5.0% |
-| GLD | 5.0% |
-| ITA | 5.0% |
-| QQQ | 5.0% |
-| ROBO | 5.0% |
-| SCHD | 5.0% |
-| SCHP | 5.0% |
-| SLV | 5.0% |
-| SMH | 5.0% |
-| URA | 5.0% |
-| VDC | 5.0% |
-| VGK | 5.0% |
-| VOO | 5.0% |
-| VT | 5.0% |
-| VWO | 5.0% |
-| **Sum** | **100.0%** |
-
-## Concentration Snapshot
-
-- **Top-5 concentration:** 25.0%
-- **Min weight:** 5.0%
-- **Max weight:** 5.0%
-- **Dispersion:** none (equal-weight construction)
-
-## Conclusion / Key Takeaways
-
-- Weight structure is fully symmetric with no single-name concentration bias.
-- Portfolio-level risk concentration may still emerge from covariance, even with equal capital weights.
+**Sum:** 100.00%

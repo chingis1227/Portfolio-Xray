@@ -125,12 +125,12 @@ rc_policy_mode: strict
 # SECTION 6: ANALYSIS SETTINGS
 # =============================================================================
 # output_dir: только CSV (по умолчанию results_csv).
-# output_dir_final: веса, все JSON, report (по умолчанию Результаты оптимизации).
+# output_dir_final: веса, все JSON, report (по умолчанию Main portfolio).
 
 windows_months: [36, 60, 120]
 coverage_threshold: 0.9
 output_dir: results_csv
-output_dir_final: "Результаты оптимизации"
+output_dir_final: "Main portfolio"
 
 # Dual-horizon optimization robustness (10Y primary + 5Y secondary validation)
 # Primary portfolio is always from primary_window_months; 5Y run is consistency check only.

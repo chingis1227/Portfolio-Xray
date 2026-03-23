@@ -99,7 +99,7 @@ def _load_variant_summary(root: Path, subdir: str | None, label: str) -> dict:
 def main() -> None:
     setup_logging()
     cfg = load_validated_config()
-    root = Path(getattr(cfg, "output_dir_final", "Результаты оптимизации"))
+    root = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
     project_root = Path(__file__).resolve().parent
 
     policy = _load_variant_summary(root, None, "Policy Portfolio")

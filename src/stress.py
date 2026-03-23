@@ -327,22 +327,75 @@ def run_stress(
     # Factor validation: output only (no limits for now)
     factor_betas = {k: round(v, 4) for k, v in portfolio_betas.items()}
 
-    # Historical validation (simplified: run portfolio through episodes, max DD)
+    # Historical validation: max DD + volatility spike + stress correlations
     historical_results = []
     for ep_id, start, end in HISTORICAL_EPISODES:
         try:
             sub = returns_sub.loc[start:end] if hasattr(returns_sub.index, "slice_indexer") else returns_sub
             if sub.empty or len(sub) < 2:
-                historical_results.append({"episode": ep_id, "max_dd": None, "pass": None})
+                historical_results.append({
+                    "episode": ep_id,
+                    "max_dd": None,
+                    "volatility_spike_ratio": None,
+                    "stress_correlations": {},
+                    "pass": None,
+                })
                 continue
-            eq = (1 + sub).cumprod()
-            dd = eq / eq.cummax() - 1
-            port_eq = (1 + sub.dot(w_vec)).cumprod()
+            port_ret = sub.dot(w_vec)
+            port_eq = (1 + port_ret).cumprod()
             port_dd = port_eq / port_eq.cummax() - 1
             max_dd = float(port_dd.min())
-            historical_results.append({"episode": ep_id, "max_dd": round(max_dd, 4), "pass": max_dd >= -max_dd_limit})
+            pass_dd = max_dd >= -max_dd_limit
+
+            # Volatility spike: episode volatility vs same-length window immediately before episode.
+            vol_ep = float(port_ret.std(ddof=1)) if len(port_ret) >= 2 else np.nan
+            episode_start_ts = pd.Timestamp(start)
+            pre = returns_sub.loc[returns_sub.index < episode_start_ts]
+            pre_len = min(len(pre), len(port_ret))
+            if pre_len >= 2 and np.isfinite(vol_ep):
+                pre_port_ret = pre.tail(pre_len).dot(w_vec)
+                vol_pre = float(pre_port_ret.std(ddof=1)) if len(pre_port_ret) >= 2 else np.nan
+                vol_spike = (vol_ep / vol_pre) if np.isfinite(vol_pre) and vol_pre > 0 else np.nan
+            else:
+                vol_spike = np.nan
+
+            # Stress correlations between key defensive/risk blocks over the episode.
+            block_series: dict[str, pd.Series] = {}
+            for block in STRESS_BLOCK_NAMES:
+                idx = [i for i, t in enumerate(asset_cols) if ticker_to_block.get(t) == block]
+                if not idx:
+                    continue
+                w_block = np.array([w_vec[i] for i in idx], dtype=float)
+                block_ret = sub.iloc[:, idx].dot(w_block)
+                if block_ret.notna().sum() >= 2:
+                    block_series[block] = block_ret
+            stress_corr: dict[str, float] = {}
+            if block_series:
+                block_df = pd.DataFrame(block_series).dropna(how="all")
+                pairs = [("Growth", "Duration"), ("Growth", "Inflation"), ("Duration", "Inflation")]
+                for b1, b2 in pairs:
+                    if b1 in block_df.columns and b2 in block_df.columns:
+                        pair_df = block_df[[b1, b2]].dropna()
+                        if len(pair_df) >= 2:
+                            c = float(pair_df[b1].corr(pair_df[b2]))
+                            if np.isfinite(c):
+                                stress_corr[f"{b1}_{b2}"] = round(c, 4)
+
+            historical_results.append({
+                "episode": ep_id,
+                "max_dd": round(max_dd, 4),
+                "volatility_spike_ratio": round(float(vol_spike), 4) if np.isfinite(vol_spike) else None,
+                "stress_correlations": stress_corr,
+                "pass": pass_dd,
+            })
         except Exception:
-            historical_results.append({"episode": ep_id, "max_dd": None, "pass": None})
+            historical_results.append({
+                "episode": ep_id,
+                "max_dd": None,
+                "volatility_spike_ratio": None,
+                "stress_correlations": {},
+                "pass": None,
+            })
 
     hist_fail = any(h.get("pass") is False for h in historical_results)
     if hist_fail and failed_test is None:

@@ -439,18 +439,27 @@ def run_portfolio_report_for_weights(
     # STEP 9: Stress testing (per docs/docs/stress_testing_spec.md)
     # =========================================================================
     
-    beta_window_months = 36
     analysis_end_ts = pd.Timestamp(analysis_end_str)
-    beta_start = (analysis_end_ts - pd.DateOffset(months=beta_window_months)).strftime("%Y-%m-%d")
+    portfolio_betas_5y_dict: dict[str, float] = {}
+    portfolio_betas_10y_dict: dict[str, float] = {}
     try:
-        factor_monthly = build_factor_matrix_monthly(beta_start, analysis_end_str)
         asset_returns_for_beta = monthly_returns[[t for t in tickers if t in monthly_returns.columns]].copy()
-        asset_betas_df = estimate_betas_monthly(
-            asset_returns_for_beta,
-            factor_monthly,
-            min_observations=24,
-        )
-        portfolio_betas_dict = portfolio_factor_betas(weights, asset_betas_df)
+
+        def _portfolio_betas_for_window(window_months: int) -> tuple[pd.DataFrame, dict[str, float]]:
+            beta_start = (analysis_end_ts - pd.DateOffset(months=window_months)).strftime("%Y-%m-%d")
+            factor_monthly = build_factor_matrix_monthly(beta_start, analysis_end_str)
+            asset_betas_win = estimate_betas_monthly(
+                asset_returns_for_beta,
+                factor_monthly,
+                min_observations=max(24, window_months // 2),
+            )
+            return asset_betas_win, portfolio_factor_betas(weights, asset_betas_win)
+
+        asset_betas_5y_df, portfolio_betas_5y_dict = _portfolio_betas_for_window(60)
+        _asset_betas_10y_df, portfolio_betas_10y_dict = _portfolio_betas_for_window(120)
+        # Keep stress engine input/backward compatibility aligned to 5Y betas.
+        asset_betas_df = asset_betas_5y_df
+        portfolio_betas_dict = portfolio_betas_5y_dict
     except Exception as e:
         logger.warning(f"Stress factor/beta setup failed: {e}; stress report may use block fallback only.")
         asset_betas_df = pd.DataFrame()
@@ -468,6 +477,9 @@ def run_portfolio_report_for_weights(
         rc_asset_cap_pct=cfg.rc_asset_cap_pct,
         stress_top3_rc_sum_cap_pct=stress_top3_cap,
     )
+    stress_report["factor_betas_5y"] = {k: round(v, 4) for k, v in (portfolio_betas_5y_dict or {}).items()}
+    stress_report["factor_betas_10y"] = {k: round(v, 4) for k, v in (portfolio_betas_10y_dict or {}).items()}
+    stress_report["factor_betas"] = dict(stress_report["factor_betas_5y"])
     export_stress_report(stress_report, output_dir_final)
     logger.info(f"Stress status: {stress_report.get('status', 'N/A')}")
 
@@ -695,7 +707,7 @@ def main() -> None:
         raise SystemExit(1)
 
     output_dir_csv = ensure_output_dir(Path(cfg.output_dir))
-    output_dir_final = ensure_output_dir(Path(getattr(cfg, "output_dir_final", "Результаты оптимизации")))
+    output_dir_final = ensure_output_dir(Path(getattr(cfg, "output_dir_final", "Main portfolio")))
 
     portfolio_metrics_summary, meta = run_portfolio_report_for_weights(
         cfg,
@@ -752,6 +764,13 @@ def main() -> None:
         logger.warning(
             "Portfolio valid = False (e.g. MaxDD exceeds mandate). Report and files written; no exit (production workflow)."
         )
+
+    try:
+        from src.pdf_reports import try_rebuild_pdfs_only
+
+        try_rebuild_pdfs_only(logger=logger)
+    except Exception as e:
+        logger.warning("PDF suite rebuild skipped: %s", e)
 
 
 if __name__ == "__main__":
