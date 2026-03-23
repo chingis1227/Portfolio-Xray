@@ -79,6 +79,8 @@ def get_profile_defaults(profile_id: str) -> dict[str, Any]:
                 out["rc_block_targets"] = {b: v / total for b, v in blocks.items()}
             else:
                 out["rc_block_targets"] = blocks
+    if "min_single_security_weight_pct" in prof and isinstance(prof["min_single_security_weight_pct"], (int, float)):
+        out["min_single_security_weight_pct"] = float(prof["min_single_security_weight_pct"])
     return out
 
 
@@ -125,4 +127,7 @@ def apply_profile_to_config(raw: dict[str, Any]) -> dict[str, Any]:
             result["rc_block_targets"] = dict(raw_rbt)
     if "liquidity_floor_pct" in defaults:
         result["liquidity_floor_pct"] = defaults["liquidity_floor_pct"]
+    # Apply min_single_security_weight_pct from profile only when config does not set it (reduce tiny positions for growth/aggressive)
+    if result.get("min_single_security_weight_pct") is None and "min_single_security_weight_pct" in defaults:
+        result["min_single_security_weight_pct"] = defaults["min_single_security_weight_pct"]
     return result

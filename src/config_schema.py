@@ -61,7 +61,7 @@ class PortfolioConfig:
     target_nominal_return_annual: float | None
     target_vol_annual: float | None
     target_max_drawdown_pct: float | None
-    horizon_years: float | None
+    horizon_years: float | None  # report-only; not used by optimizer
     
     # Client profile (optional): ultra_conservative | conservative | balanced | growth | aggressive
     client_profile: str | None
@@ -83,7 +83,7 @@ class PortfolioConfig:
     # Backtest mode: "dynamic_nan_safe" (default, policy-compliant) | "simple" (opt-in, no within-block/RC-gating)
     backtest_mode: str = "dynamic_nan_safe"
 
-    # Dual-horizon optimization robustness (10Y primary + 5Y secondary validation)
+    # Dual-horizon: primary/secondary are the source of truth; optimization_windows_months is derived when missing
     optimization_windows_months: list[int] = field(default_factory=lambda: [120, 60])
     primary_window_months: int = 120
     secondary_window_months: int = 60
@@ -104,6 +104,10 @@ class PortfolioConfig:
     liquidity_floor_pct: float | None = None
     # RC post-processing: "strict" = do not write weights if RC caps unresolved; "permissive" = write but flag violation
     rc_policy_mode: str = "strict"
+    # When True, do not write weights if Stress Judge returns FAIL_STRESS (production hard gate)
+    strict_stress_gate: bool = False
+    # When True, use Ledoit-Wolf shrinkage for covariance in optimization/RC (more stable weights)
+    covariance_shrinkage: bool = False
 
     def get_resolved_config(self) -> dict[str, Any]:
         """
@@ -145,6 +149,8 @@ class PortfolioConfig:
             "growth_core_candidates": self.growth_core_candidates,
             "donor_shift_mode": self.donor_shift_mode,
             "rc_policy_mode": self.rc_policy_mode,
+            "strict_stress_gate": self.strict_stress_gate,
+            "covariance_shrinkage": self.covariance_shrinkage,
             "windows_months": self.windows_months,
             "coverage_threshold": self.coverage_threshold,
             "output_dir": self.output_dir,
@@ -201,6 +207,8 @@ class PortfolioConfig:
             "growth_core_candidates": self.growth_core_candidates,
             "donor_shift_mode": self.donor_shift_mode,
             "rc_policy_mode": self.rc_policy_mode,
+            "strict_stress_gate": self.strict_stress_gate,
+            "covariance_shrinkage": self.covariance_shrinkage,
         }
 
 
@@ -236,6 +244,8 @@ DEFAULT_ROBUSTNESS_POLICY = {
 BOOLEAN_FIELDS = [
     "allow_leverage",
     "allow_short_selling",
+    "strict_stress_gate",
+    "covariance_shrinkage",
 ]
 
 PERCENT_FIELDS = [
@@ -329,12 +339,16 @@ def _inject_optional_defaults(cfg: dict[str, Any]) -> None:
         cfg["output_dir"] = DEFAULT_OUTPUT_DIR
     if not cfg.get("output_dir_final"):
         cfg["output_dir_final"] = DEFAULT_OUTPUT_DIR_FINAL
-    if not cfg.get("optimization_windows_months"):
-        cfg["optimization_windows_months"] = list(DEFAULT_OPTIMIZATION_WINDOWS_MONTHS)
     if cfg.get("primary_window_months") is None:
         cfg["primary_window_months"] = DEFAULT_PRIMARY_WINDOW_MONTHS
     if cfg.get("secondary_window_months") is None:
         cfg["secondary_window_months"] = DEFAULT_SECONDARY_WINDOW_MONTHS
+    # optimization_windows_months: optional; derived from primary/secondary when not set (for backward compatibility)
+    if not cfg.get("optimization_windows_months"):
+        cfg["optimization_windows_months"] = [
+            cfg.get("primary_window_months") or DEFAULT_PRIMARY_WINDOW_MONTHS,
+            cfg.get("secondary_window_months") or DEFAULT_SECONDARY_WINDOW_MONTHS,
+        ]
     if not cfg.get("robustness_policy"):
         cfg["robustness_policy"] = dict(DEFAULT_ROBUSTNESS_POLICY)
     else:
@@ -961,6 +975,8 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         growth_core_candidates=list(cfg.get("growth_core_candidates", ["VOO", "VT", "VTI"])),
         donor_shift_mode=cfg.get("donor_shift_mode", "proportional"),
         rc_policy_mode=cfg.get("rc_policy_mode", "strict"),
+        strict_stress_gate=bool(cfg.get("strict_stress_gate", False)),
+        covariance_shrinkage=bool(cfg.get("covariance_shrinkage", False)),
         duration_int_ticker=cfg.get("duration_int_ticker"),
         duration_long_ticker=cfg.get("duration_long_ticker"),
         duration_ig_ticker=cfg.get("duration_ig_ticker"),

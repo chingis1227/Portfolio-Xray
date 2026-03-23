@@ -17,8 +17,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-# Block names for risk budget (must match optimization.RISK_BUDGET_BLOCKS)
-RISK_BUDGET_BLOCKS = ("Growth", "Duration", "Inflation")
+from src.blocks import RISK_BUDGET_BLOCKS, get_ticker_to_block_for_rb
+
 RB_CORRIDOR_PP = 0.05
 
 
@@ -44,12 +44,8 @@ def dynamic_weights_matrix(
 
 
 def _ticker_to_block_map(blocks: dict[str, list[str]]) -> dict[str, str]:
-    """Map each ticker to its block name (Growth, Duration, Inflation)."""
-    m: dict[str, str] = {}
-    for b in RISK_BUDGET_BLOCKS:
-        for t in blocks.get(b, []):
-            m[t] = b
-    return m
+    """Map each ticker to its block name (Growth, Duration, Inflation). Delegates to blocks.get_ticker_to_block_for_rb."""
+    return get_ticker_to_block_for_rb(blocks)
 
 
 def _weights_at_t_within_block_redist(

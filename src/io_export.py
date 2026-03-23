@@ -237,3 +237,135 @@ def export_stress_report(stress_report: dict, output_dir: Path) -> Path:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=2, ensure_ascii=False, default=str)
     return path
+
+
+def _cfg_val(cfg: Any, key: str, default: Any = None) -> Any:
+    """Get config value from PortfolioConfig or dict."""
+    if hasattr(cfg, key):
+        return getattr(cfg, key, default)
+    if isinstance(cfg, dict):
+        return cfg.get(key, default)
+    return default
+
+
+def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path) -> Path:
+    """
+    Generate IPS summary with full run results: mandate, status, weights, RC by block,
+    stress summary, violations, and actions. Single reference for risk and execution.
+    """
+    target_vol = _cfg_val(cfg, "target_vol_annual")
+    target_vol_pct = round(float(target_vol) * 100, 1) if target_vol is not None else None
+    max_dd = _cfg_val(cfg, "target_max_drawdown_pct")
+    max_dd_pct = round(abs(float(max_dd)) * 100, 1) if max_dd is not None else None
+    horizon = _cfg_val(cfg, "horizon_years")
+    currency = _cfg_val(cfg, "investor_currency", "USD")
+    profile = _cfg_val(cfg, "client_profile") or "—"
+    status = run_result.get("status", "—")
+    next_actions = run_result.get("next_actions") or []
+    weights = run_result.get("weights") or {}
+    rb_deltas_pp = run_result.get("rb_deltas_pp") or {}
+    actual_rc_block = run_result.get("actual_rc_block") or {}
+    rc_block_targets = run_result.get("rc_block_targets") or {}
+    rc_breaches = run_result.get("rc_breaches") or []
+    stress_summary = run_result.get("stress_summary") or {}
+    violations = run_result.get("violations") or []
+
+    lines = [
+        "IPS Summary — Full Run Results",
+        "=" * 50,
+        "",
+        "1. Mandate parameters",
+        "-" * 30,
+        "  Target volatility (annual):  %s%%" % (target_vol_pct if target_vol_pct is not None else "—"),
+        "  Max drawdown limit:          %s%%" % (max_dd_pct if max_dd_pct is not None else "—"),
+        "  Horizon (years):             %s" % (horizon if horizon is not None else "—"),
+        "  Investor currency:           %s" % currency,
+        "  Client profile:              %s" % profile,
+        "",
+        "2. Run status: %s" % status,
+        "",
+        "3. Final portfolio weights",
+        "-" * 30,
+    ]
+    if weights:
+        for t in sorted(weights.keys(), key=lambda x: (-(weights.get(x) or 0), x)):
+            w = weights[t]
+            if isinstance(w, (int, float)):
+                lines.append("  %s: %.3f" % (t, float(w)))
+            else:
+                lines.append("  %s: %s" % (t, w))
+        lines.append("  (sum: %.3f)" % sum(weights.values()))
+    else:
+        lines.append("  (weights not written for this run)")
+    lines.append("")
+
+    lines.append("4. Risk contribution by block (actual | target)")
+    lines.append("-" * 30)
+    for block in ("Growth", "Duration", "Inflation"):
+        actual = actual_rc_block.get(block)
+        target = rc_block_targets.get(block)
+        delta_pp = rb_deltas_pp.get(block)
+        actual_str = "%.2f%%" % (float(actual) * 100) if actual is not None else "—"
+        target_str = "%.2f%%" % (float(target) * 100) if target is not None else "—"
+        delta_str = (" (%+.1f pp)" % delta_pp) if delta_pp is not None else ""
+        lines.append("  %s: %s | target %s%s" % (block, actual_str, target_str, delta_str))
+    lines.append("")
+
+    if rc_breaches:
+        lines.append("5. RC breaches (asset above cap)")
+        lines.append("-" * 30)
+        for b in rc_breaches:
+            ticker = b.get("ticker", "?")
+            rc_pct = b.get("rc_pct")
+            cap_pct = b.get("cap_pct")
+            lines.append("  %s: RC=%.2f%%, cap=%.2f%%" % (ticker, rc_pct or 0, cap_pct or 0))
+        lines.append("")
+    else:
+        lines.append("5. RC breaches: none")
+        lines.append("")
+
+    lines.append("6. Stress summary")
+    lines.append("-" * 30)
+    lines.append("  Status:              %s" % stress_summary.get("status", "—"))
+    lines.append("  Fail reason:         %s" % (stress_summary.get("fail_reason_code") or "—"))
+    worst = stress_summary.get("worst_scenario_loss_pct")
+    if worst is not None:
+        lines.append("  Worst scenario loss: %.2f%%" % (float(worst) * 100))
+    lines.append("  Failed scenario:     %s" % (stress_summary.get("failed_scenario") or "—"))
+    lines.append("")
+
+    if violations:
+        lines.append("7. Violations")
+        lines.append("-" * 30)
+        for v in violations:
+            code = v.get("code", "?")
+            details = v.get("details", "")
+            if isinstance(details, dict):
+                details = " | ".join("%s=%s" % (k, v) for k, v in details.items())
+            lines.append("  %s: %s" % (code, details))
+        lines.append("")
+    else:
+        lines.append("7. Violations: none")
+        lines.append("")
+
+    if next_actions:
+        lines.append("8. Next actions (this run)")
+        lines.append("-" * 30)
+        for a in next_actions:
+            lines.append("  - %s" % a)
+        lines.append("")
+
+    lines.append("9. Actions by status (reference)")
+    lines.append("-" * 30)
+    lines.append("  APPROVED             Use weights as target; safe to execute.")
+    lines.append("  CANDIDATE_RB_BREACH  Use with caution; consider re-run or accept and monitor.")
+    lines.append("  OK_FALLBACK          Check rc_breaches above; use if acceptable for mandate.")
+    lines.append("  FAIL_STRESS          If strict_stress_gate: weights not written. Review defensive blocks, liquidity.")
+    lines.append("  FAIL_MAX_DD          Weights not written. Adjust target_max_drawdown_pct or risk budget.")
+    lines.append("  FAIL_DATA/RC/FEAS    Weights not written. Follow next_actions above.")
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    return path

@@ -34,17 +34,11 @@ from src.optimization import (
     rc_by_block_from_weights,
     rc_by_asset_from_weights,
     check_rb_corridor,
+    check_rb_achievement,
     RB_CORRIDOR_PP,
 )
 from src.risk_contrib import cov_matrix_monthly, resolve_rc_asset_cap
-from src.robustness import (
-    compute_robustness_diagnostics,
-    compute_robustness_flags,
-    FLAG_WEIGHT_INSTABILITY,
-    FLAG_RB_INSTABILITY,
-    FLAG_RC_INSTABILITY,
-    FLAG_SHORT_SAMPLE,
-)
+from src.robustness import compute_robustness_diagnostics
 from src.snapshot import build_snapshot, print_snapshot, save_snapshot
 from src.stress import run_stress
 from src.utils import setup_logging, logger, tickers_meeting_coverage
@@ -65,7 +59,9 @@ STATUS_CANDIDATE_RB_BREACH = "CANDIDATE_RB_BREACH"
 STATUS_OK_FALLBACK = "OK_FALLBACK"
 STATUS_FAIL_DATA = "FAIL_DATA"
 STATUS_FAIL_MAX_DD = "FAIL_MAX_DD"
+STATUS_FAIL_STRESS = "FAIL_STRESS"
 STATUS_FAIL_RC = "FAIL_RC"
+STATUS_FAIL_FEASIBILITY = "FAIL_FEASIBILITY"
 
 VIOL_RB_BREACH = "RB_BREACH"
 VIOL_MAX_DD_GATE = "MAX_DD_GATE"
@@ -225,6 +221,65 @@ def main() -> None:
     if inflation_internal_weights:
         logger.info("Inflation block selection: internal_weights=%s", inflation_internal_weights)
 
+    # Feasibility check before optimization: if RB is structurally unachievable, do not run optimizer or write weights
+    risk_tickers_opt = get_risk_portfolio_tickers(blocks_for_optimization)
+    n_total = len(risk_tickers_opt)
+    rb_growth = (cfg.rc_block_targets or {}).get("Growth", 1.0 / 3.0)
+    rb_norm = sum((cfg.rc_block_targets or {}).get(b, 0.0) for b in ("Growth", "Duration", "Inflation")) or 1.0
+    if rb_norm > 0:
+        rb_growth = (cfg.rc_block_targets or {}).get("Growth", 1.0 / 3.0) / rb_norm
+    rc_cap_feas = resolve_rc_asset_cap(cfg.rc_asset_cap_pct, max(n_total, 1), rb_growth)
+    feas_ok, feas_err = check_rb_achievement(
+        blocks_for_optimization,
+        cfg.rc_block_targets or {},
+        rc_cap_feas,
+        cfg.growth_core_candidates,
+        n_total,
+        rb_growth,
+    )
+    if not feas_ok:
+        out_final = Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"))
+        out_final.mkdir(parents=True, exist_ok=True)
+        fail_result = {
+            "weights": {},
+            "status": STATUS_FAIL_FEASIBILITY,
+            "violations": [{"code": "FEASIBILITY", "details": feas_err}],
+            "rb_deltas_pp": {},
+            "rc_breaches": [],
+            "stress_summary": {},
+            "next_actions": [
+                "Add instruments to the offending block(s) or relax risk budget (rc_block_targets).",
+                "Check docs/docs/feasibility_constraints_spec.md for RB achievability rules.",
+            ],
+        }
+        if hasattr(cfg, "get_resolved_config"):
+            fail_result["resolved_config"] = cfg.get_resolved_config()
+        run_result_path = out_final / "run_result.json"
+        with open(run_result_path, "w", encoding="utf-8") as f:
+            json.dump(fail_result, f, indent=2, default=str)
+        logger.error("Feasibility check failed: %s. Weights not written.", feas_err)
+        print("")
+        print("--- Feasibility gate: веса НЕ записаны ---")
+        print("  %s" % feas_err)
+        print("  См. %s (status=%s)." % (run_result_path, STATUS_FAIL_FEASIBILITY))
+        raise SystemExit(1)
+
+    # Build primary window once (single slice for optimization, RC postprocess, ProLiquidity, vol)
+    cols_primary = [t for t in risk_tickers_opt if t in monthly_returns.columns]
+    ret_primary = monthly_returns[cols_primary].iloc[-window_months:].dropna(axis=1, how="all").dropna(how="any")
+    MIN_FULL_JOIN_MONTHS = 11
+    if len(ret_primary) < MIN_FULL_JOIN_MONTHS:
+        lookback = min(monthly_returns.shape[0], max(window_months * 2, 120))
+        ret_primary = monthly_returns[cols_primary].iloc[-lookback:].dropna(axis=1, how="all").dropna(how="any")
+        if len(ret_primary) >= MIN_FULL_JOIN_MONTHS:
+            ret_primary = ret_primary.iloc[-min(window_months, len(ret_primary)):]
+    cols_primary = list(ret_primary.columns)
+    if not cols_primary:
+        logger.error("FAIL_DATA: no risk tickers with returns in primary window")
+        raise SystemExit(1)
+    use_shrinkage = getattr(cfg, "covariance_shrinkage", False)
+    cov_df = cov_matrix_monthly(ret_primary, ddof=1, use_shrinkage=use_shrinkage)
+
     # --- A) Primary optimization (10Y by default): this is the final portfolio ---
     weights_risk, status = run_risk_budget_optimization(
         monthly_returns,
@@ -237,6 +292,8 @@ def main() -> None:
         window_months=window_months,
         duration_internal_weights=duration_internal_weights,
         inflation_internal_weights=inflation_internal_weights,
+        returns_window=ret_primary,
+        use_shrinkage=use_shrinkage,
     )
 
     if not weights_risk:
@@ -245,17 +302,14 @@ def main() -> None:
 
     logger.info(f"RiskPortfolio (primary %d мес.): {status}", window_months)
 
-    # Covariance and effective sample length for primary window (inner join)
-    cols_primary = [t for t in weights_risk if t in monthly_returns.columns]
-    ret_slice = monthly_returns[cols_primary].iloc[-window_months:].dropna(how="any")
-    effective_months_10y = len(ret_slice)
+    # Primary window already built above (ret_primary, cov_df)
+    effective_months_10y = len(ret_primary)
     if effective_months_10y < min_effective_months:
         logger.warning(
             "Primary window: effective months after inner join = %d (< %d). Robustness may flag FLAG_SHORT_SAMPLE.",
             effective_months_10y,
             min_effective_months,
         )
-    cov_df = cov_matrix_monthly(ret_slice, ddof=1)
     # --- RC post-processing (Option B): enforce RC caps iteratively; strict = no write if unresolved ---
     risk_tickers_opt = get_risk_portfolio_tickers(blocks_for_optimization)
     n_risk = len(cols_primary)
@@ -291,6 +345,10 @@ def main() -> None:
             "stress_summary": {},
             "next_actions": _build_next_actions(fail_violations, {}, None),
         }
+        try:
+            fail_result["resolved_config"] = cfg.get_resolved_config()
+        except Exception:
+            fail_result["resolved_config"] = None
         run_result_path = out_final / "run_result.json"
         with open(run_result_path, "w", encoding="utf-8") as f:
             json.dump(fail_result, f, indent=2, default=str)
@@ -313,7 +371,7 @@ def main() -> None:
             rc_postprocess_diag,
         )
 
-    mu_10y = ret_slice.mean()
+    mu_10y = ret_primary.mean()
     actual_rc_block = rc_by_block_from_weights(weights_risk, cov_df, blocks_for_optimization)
     if actual_rc_block and cfg.rc_block_targets:
         logger.info(
@@ -337,6 +395,7 @@ def main() -> None:
             window_months=secondary_window_months,
             duration_internal_weights=duration_internal_weights,
             inflation_internal_weights=inflation_internal_weights,
+            use_shrinkage=use_shrinkage,
         )
         cols_5y = [t for t in (weights_5y_risk or weights_risk) if t in monthly_returns.columns]
         ret_5y = monthly_returns[cols_5y].iloc[-secondary_window_months:].dropna(how="any")
@@ -348,7 +407,7 @@ def main() -> None:
                 min_effective_months,
             )
         if weights_5y_risk and len(ret_5y) >= 2:
-            cov_5y = cov_matrix_monthly(ret_5y, ddof=1)
+            cov_5y = cov_matrix_monthly(ret_5y, ddof=1, use_shrinkage=use_shrinkage)
             mu_5y = ret_5y.mean()
             diagnostics = compute_robustness_diagnostics(
                 weights_10y=weights_risk,
@@ -362,7 +421,6 @@ def main() -> None:
                 effective_months_10y=effective_months_10y,
                 effective_months_5y=effective_months_5y,
             )
-            flags = compute_robustness_flags(diagnostics, robustness_policy)
             robustness_report = {
                 "effective_months_10y": effective_months_10y,
                 "effective_months_5y": effective_months_5y,
@@ -375,18 +433,9 @@ def main() -> None:
                 "vol_10y_under_sigma5y": round(diagnostics.get("vol_10y_under_sigma5y", 0) * 100, 3),
                 "exp_ret_10y_mu10y_annual_pct": round(diagnostics.get("exp_ret_10y_under_mu10y_annual", 0) * 100, 3),
                 "exp_ret_10y_mu5y_annual_pct": round(diagnostics.get("exp_ret_10y_under_mu5y_annual", 0) * 100, 3),
-                "flags": flags,
-                "stabilization_actions": [],
                 "final_portfolio_is_10y": True,
-                "robust_vs_5y": len(flags) == 0,
             }
-            if flags:
-                logger.warning(
-                    "Dual-horizon robustness flags: %s. Final portfolio remains 10Y; see report for details.",
-                    ", ".join(flags),
-                )
-            else:
-                logger.info("Dual-horizon robustness: 10Y solution is consistent with 5Y (no flags).")
+            logger.info("Dual-horizon: 10Y vs 5Y comparison written to robustness_report.json")
             # Persist for report (ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ)
             out_final = Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ"))
             out_final.mkdir(parents=True, exist_ok=True)
@@ -599,16 +648,27 @@ def main() -> None:
 
     if not max_dd_gate_passed:
         production_status = STATUS_FAIL_MAX_DD
+    # strict_stress_gate: do not write weights when Stress Judge fails
+    strict_stress_gate = getattr(cfg, "strict_stress_gate", False)
+    if strict_stress_gate and stress_status == "FAIL_STRESS":
+        production_status = STATUS_FAIL_STRESS
 
+    write_weights_gate = max_dd_gate_passed and not (strict_stress_gate and stress_status == "FAIL_STRESS")
     run_result = {
-        "weights": rounded if max_dd_gate_passed else {},
+        "weights": rounded if write_weights_gate else {},
         "status": production_status,
         "violations": violations,
         "rb_deltas_pp": rb_deltas_pp,
         "rc_breaches": rc_breaches,
         "stress_summary": stress_summary,
         "next_actions": next_actions,
+        "actual_rc_block": {k: round(v, 4) for k, v in (actual_rc_block or {}).items()},
+        "rc_block_targets": cfg.rc_block_targets,
     }
+    try:
+        run_result["resolved_config"] = cfg.get_resolved_config()
+    except Exception:
+        run_result["resolved_config"] = None
 
     # --- Baseline (sanity_check_baseline): diagnostic only, never used for allocation ---
     baseline_tickers = set(
@@ -636,12 +696,13 @@ def main() -> None:
             min_single_security_weight_pct=cfg.min_single_security_weight_pct,
             max_single_security_weight_pct=cfg.max_single_security_weight_pct,
             window_months=window_months,
+            use_shrinkage=use_shrinkage,
         )
         if weights_baseline:
             cols_b = [t for t in weights_baseline if t in monthly_returns.columns]
             ret_b = monthly_returns[cols_b].iloc[-window_months:].dropna(how="any")
             if len(ret_b) >= 2:
-                cov_b = cov_matrix_monthly(ret_b, ddof=1)
+                cov_b = cov_matrix_monthly(ret_b, ddof=1, use_shrinkage=use_shrinkage)
                 vol_b = portfolio_vol_annual(weights_baseline, cov_b)
                 print("  Baseline: волатильность %.2f%% (для сравнения с Full: %.2f%%)" % (vol_b * 100, current_vol * 100))
         print("  Baseline используется только как диагностика; веса для покупки — только Full (выше).")
@@ -655,6 +716,9 @@ def main() -> None:
     with open(run_result_path, "w", encoding="utf-8") as f:
         json.dump(run_result, f, indent=2, default=str)
     print("Результат прогона: %s (status=%s)" % (run_result_path, production_status))
+
+    from src.io_export import generate_ips_summary
+    generate_ips_summary(cfg, run_result, out_final / "ips_summary.txt")
 
     if not max_dd_gate_passed:
         logger.error(
@@ -674,7 +738,19 @@ def main() -> None:
         print("  См. %s (status=%s)." % (run_result_path, STATUS_FAIL_MAX_DD))
         raise SystemExit(1)
 
-    # Write weights and snapshot (only when MaxDD gate passed)
+    if strict_stress_gate and stress_status == "FAIL_STRESS":
+        logger.error(
+            "Stress gate (strict_stress_gate=true): Stress Judge FAIL_STRESS. Weights not written. %s",
+            stress_fail_reason or "",
+        )
+        print("")
+        print("--- Stress gate (strict): веса НЕ записаны ---")
+        print("  Stress Judge: FAIL_STRESS (%s)" % (stress_fail_reason or "—"))
+        print("  Рекомендации: %s" % (next_actions[0] if next_actions else "усилить защитные блоки, ликвидность или снизить долю Growth."))
+        print("  См. %s (status=%s)." % (run_result_path, STATUS_FAIL_STRESS))
+        raise SystemExit(1)
+
+    # Write weights and snapshot (only when MaxDD and optional Stress gate passed)
     weights_path = out_final / WEIGHTS_FILENAME
     with open(weights_path, "w", encoding="utf-8") as f:
         yaml.dump(rounded, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
@@ -682,6 +758,10 @@ def main() -> None:
 
     # Final snapshot (one object, same print and save)
     cash_proxy = cfg.cash_proxy_ticker or "BIL"
+    try:
+        _resolved_config = cfg.get_resolved_config()
+    except Exception:
+        _resolved_config = None
     snapshot = build_snapshot(
         final_weights_total=final_weights,
         blocks=cfg.blocks,
@@ -698,17 +778,23 @@ def main() -> None:
         rc_caps_ok=len(rc_breaches) == 0,
         min_single_security_weight_pct=cfg.min_single_security_weight_pct,
         max_single_security_weight_pct=cfg.max_single_security_weight_pct,
+        resolved_config=_resolved_config,
     )
     print_snapshot(snapshot)
     save_snapshot(snapshot, out_final)
     print("Snapshot сохранён в %s" % (out_final / "snapshot.json"))
 
-    # Полный отчёт (все CSV и четыре snapshot: assets, 3y, 5y, 10y) — run_report подхватит веса из portfolio_weights.yml
+    # Full report (CSV and snapshots). Weights and run_result are already written; report must not block.
     report_cmd = [sys.executable, "run_report.py"]
     if args.no_cache:
         report_cmd.append("--no-cache")
     project_root = Path(__file__).resolve().parent
-    subprocess.run(report_cmd, cwd=project_root, check=True)
+    try:
+        subprocess.run(report_cmd, cwd=project_root, check=True)
+    except subprocess.CalledProcessError as e:
+        logger.warning("Report failed (exit %s). Weights and run_result were saved. %s", e.returncode, e)
+        print("")
+        print("Report failed, weights saved. See log for details.")
 
     if args.write_config:
         config_path = Path(__file__).resolve().parent / "config.yml"

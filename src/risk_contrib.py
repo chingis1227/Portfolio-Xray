@@ -34,8 +34,27 @@ def resolve_rc_asset_cap(
     return _policy_resolve_rc_asset_cap(n_assets=n_assets, equity_only=equity_only)
 
 
-def cov_matrix_monthly(returns_df: pd.DataFrame, ddof: int = DDOF) -> pd.DataFrame:
-    """Sample covariance matrix of monthly returns (columns = assets), ddof=1."""
+def cov_matrix_monthly(
+    returns_df: pd.DataFrame,
+    ddof: int = DDOF,
+    use_shrinkage: bool = False,
+) -> pd.DataFrame:
+    """
+    Covariance matrix of monthly returns (columns = assets).
+    When use_shrinkage=True, applies Ledoit-Wolf shrinkage to stabilize estimates.
+    """
+    if use_shrinkage:
+        try:
+            from sklearn.covariance import LedoitWolf
+            lw = LedoitWolf().fit(returns_df.values)
+            cov = pd.DataFrame(
+                lw.covariance_,
+                index=returns_df.columns,
+                columns=returns_df.columns,
+            )
+            return cov
+        except Exception:
+            return returns_df.cov(ddof=ddof)
     return returns_df.cov(ddof=ddof)
 
 

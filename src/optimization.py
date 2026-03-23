@@ -15,6 +15,7 @@ from policy_math.feasibility import (
     check_feasible,
     resolve_weight_caps,
 )
+from src.blocks import get_ticker_to_block_for_rb
 from src.config_schema import GROWTH_EM_DEBT_KEY, GROWTH_HY_KEY
 from src.risk_contrib import (
     cov_matrix_monthly,
@@ -43,15 +44,8 @@ def get_risk_portfolio_tickers(blocks: dict[str, list[str]]) -> list[str]:
 
 
 def ticker_to_block_map(blocks: dict[str, list[str]]) -> dict[str, str]:
-    """Return ticker -> block name for RiskPortfolio. Growth_HY and Growth_EM_debt map to 'Growth' for RC block."""
-    m = {}
-    for b in RISK_BUDGET_BLOCKS:
-        for t in blocks.get(b, []):
-            m[t] = b
-    for b in GROWTH_SUB_BLOCKS:
-        for t in blocks.get(b, []):
-            m[t] = "Growth"
-    return m
+    """Return ticker -> block name for RiskPortfolio. Alias for get_ticker_to_block_for_rb (blocks module)."""
+    return get_ticker_to_block_for_rb(blocks)
 
 
 def growth_weight_caps(
@@ -154,55 +148,69 @@ def run_risk_budget_optimization(
     window_months: int = 60,
     duration_internal_weights: dict[str, float] | None = None,
     inflation_internal_weights: dict[str, float] | None = None,
+    returns_window: pd.DataFrame | None = None,
+    use_shrinkage: bool = False,
 ) -> tuple[dict[str, float], str]:
     """
     Find RiskPortfolio weights satisfying risk budget (RC block shares) and feasibility.
     Objective: maximize expected return (Growth spec). Returns (weights_dict, status_message).
     RC_vol cap has priority over weight caps; if fallback solution violates RC cap, returns FAIL.
+    If returns_window is provided, it is used as the primary window (already sliced); otherwise
+    the window is taken from returns_df and window_months.
     """
     risk_tickers = get_risk_portfolio_tickers(blocks)
     if not risk_tickers:
         return {}, "FAIL: no RiskPortfolio tickers (Growth+Duration+Inflation+Growth_HY+Growth_EM_debt)"
 
     ticker_to_block = ticker_to_block_map(blocks)
-    # Use only tickers with data; others get zero weight
-    cols = [t for t in risk_tickers if t in returns_df.columns]
-    missing = set(risk_tickers) - set(cols)
-    if missing:
-        import logging
-        logging.getLogger(__name__).warning(
-            "Тикеры без данных (исключены из оптимизации, вес = 0): %s", sorted(missing)
-        )
-    if not cols:
-        return {}, f"FAIL_DATA: no risk tickers with returns (missing: {risk_tickers})"
-
-    # Full mode: inner join — only months where all (available) risk tickers have data; drop columns with no data
-    ret = returns_df[cols].iloc[-window_months:]
-    ret = ret.dropna(axis=1, how="all")
-    ret = ret.dropna(how="any")
     MIN_FULL_JOIN_MONTHS = 11  # minimum months where all risk tickers have data (Full NaN-safe; young tickers)
-    if len(ret) < MIN_FULL_JOIN_MONTHS:
-        # Try longer lookback (young ticker may have shorter history)
-        lookback = min(returns_df.shape[0], max(window_months * 2, 120))
-        ret = returns_df[cols].iloc[-lookback:]
-        ret = ret.dropna(axis=1, how="all")
-        ret = ret.dropna(how="any")
-        if len(ret) >= MIN_FULL_JOIN_MONTHS:
-            ret = ret.iloc[-min(window_months, len(ret)):]
-        else:
+
+    if returns_window is not None and not returns_window.empty:
+        ret = returns_window
+        cols = list(ret.columns)
+        if len(ret) < MIN_FULL_JOIN_MONTHS:
             return {}, (
-                f"FAIL_DATA: insufficient history after inner join ({len(ret)} months). "
-                f"Need at least {MIN_FULL_JOIN_MONTHS} months where every risk ticker has data."
+                f"FAIL_DATA: returns_window has only {len(ret)} months. "
+                f"Need at least {MIN_FULL_JOIN_MONTHS} months."
             )
     else:
-        ret = ret.iloc[-min(window_months, len(ret)):]  # use up to window_months of full overlap
-    cols = list(ret.columns)
+        # Use only tickers with data; others get zero weight
+        cols = [t for t in risk_tickers if t in returns_df.columns]
+        missing = set(risk_tickers) - set(cols)
+        if missing:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Тикеры без данных (исключены из оптимизации, вес = 0): %s", sorted(missing)
+            )
+        if not cols:
+            return {}, f"FAIL_DATA: no risk tickers with returns (missing: {risk_tickers})"
+
+        # Full mode: inner join — only months where all (available) risk tickers have data; drop columns with no data
+        ret = returns_df[cols].iloc[-window_months:]
+        ret = ret.dropna(axis=1, how="all")
+        ret = ret.dropna(how="any")
+        if len(ret) < MIN_FULL_JOIN_MONTHS:
+            # Try longer lookback (young ticker may have shorter history)
+            lookback = min(returns_df.shape[0], max(window_months * 2, 120))
+            ret = returns_df[cols].iloc[-lookback:]
+            ret = ret.dropna(axis=1, how="all")
+            ret = ret.dropna(how="any")
+            if len(ret) >= MIN_FULL_JOIN_MONTHS:
+                ret = ret.iloc[-min(window_months, len(ret)):]
+            else:
+                return {}, (
+                    f"FAIL_DATA: insufficient history after inner join ({len(ret)} months). "
+                    f"Need at least {MIN_FULL_JOIN_MONTHS} months where every risk ticker has data."
+                )
+        else:
+            ret = ret.iloc[-min(window_months, len(ret)):]  # use up to window_months of full overlap
+        cols = list(ret.columns)
     if not cols:
         return {}, "FAIL_DATA: no assets with returns in window"
 
     n = len(cols)
     mu = ret.mean().values
-    cov = cov_matrix_monthly(ret, ddof=1).values
+    cov = cov_matrix_monthly(ret, ddof=1, use_shrinkage=use_shrinkage).values
 
     rb = rc_block_targets or {}
     rb_growth = float(rb.get("Growth", 1.0 / 3))

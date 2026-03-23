@@ -132,75 +132,50 @@ def build_derived_assumptions(
     }
 
 
-def main() -> None:
-    args = parse_args()
-    setup_logging()
-    run_timestamp = datetime.now().isoformat()
-    
-    if args.clear_cache:
-        clear_all_cache()
-    
-    # =========================================================================
-    # STEP 1: Load and validate configuration
-    # =========================================================================
-    try:
-        cfg = load_validated_config()
-    except ConfigValidationError as e:
-        logger.error(f"Ошибка валидации конфигурации: {e}")
-        raise SystemExit(1)
-    
-    # Log pending config items
-    if cfg.pending_fields:
-        logger.info(f"Поля конфигурации, ожидающие ввода пользователя: {cfg.pending_fields}")
-    
-    # Weights are produced by optimization; loaded from portfolio_weights.yml when not in config
-    if not cfg.weights:
-        logger.error(
-            "Portfolio weights are not set. Weights are produced by optimization (constraints + client metrics). "
-            "Run the optimization step first: python run_optimization.py (writes portfolio_weights.yml)."
-        )
-        raise SystemExit(1)
-    
-    assets_meta = load_assets_metadata()
-    
-    # =========================================================================
-    # STEP 2: Extract config values (all from centralized config)
-    # =========================================================================
+def run_portfolio_report_for_weights(
+    cfg: PortfolioConfig,
+    weights: dict[str, float],
+    *,
+    run_timestamp: str,
+    output_dir_csv: Path,
+    output_dir_final: Path,
+    backtest_mode_override: str | None = None,
+    no_cache: bool = False,
+) -> tuple[dict | None, dict]:
+    """
+    Core metrics/stress/report pipeline, parameterized by explicit weights and output dirs.
+
+    Важно: эта функция не применяет никакой policy-логики к входным весам.
+    Для Equal-Weight и Risk-Parity веса должны быть построены как baseline-портфели
+    без block logic / risk budgets / RC caps / weight caps / discretionary overlays
+    и скрытых policy-фильтров.
+    """
     investor_currency = cfg.investor_currency
     tickers = cfg.tickers
-    weights = cfg.weights
     benchmark_base_ticker = cfg.benchmark_base_ticker
     windows_months = cfg.windows_months
-    # CSV only (results_csv)
-    output_dir_csv = ensure_output_dir(Path(cfg.output_dir))
-    # Weights, JSON, report (ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ)
-    output_dir_final = ensure_output_dir(Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ")))
-    
-    # Resolve defaults based on investor currency
+
+    assets_meta = load_assets_metadata()
+
     cash_proxy_ticker, rf_source = resolve_cash_and_rf(cfg)
-    
-    # Get MAR from config (None => use rf_monthly in calculations)
+
     mar_annual = get_mar_from_config(cfg)
     mar_monthly = mar_annual / 12 if mar_annual is not None else None
-    
-    # Resolve local benchmarks: built-in defaults + config overrides
+
     config_local_override = cfg.local_benchmark_map or {}
     local_benchmark_map = resolve_local_benchmarks(
         tickers, config_local_override, base_benchmark=benchmark_base_ticker
     )
-    
+
     logger.info(f"Валюта инвестора: {investor_currency}")
     logger.info(f"Базовый бенчмарк: {benchmark_base_ticker}")
     logger.info(f"Cash proxy: {cash_proxy_ticker}")
     logger.info(f"Risk-free source: {rf_source}")
     logger.info(f"Локальные бенчмарки: {local_benchmark_map}")
-    
+
     if cfg.target_nominal_return_annual is not None:
         logger.info(f"Целевая доходность: {cfg.target_nominal_return_annual:.2%}")
 
-    # =========================================================================
-    # STEP 3: Download data (with caching) — shared loader
-    # =========================================================================
     data = load_monthly_data_shared(
         tickers=tickers,
         benchmark_base_ticker=benchmark_base_ticker,
@@ -209,7 +184,7 @@ def main() -> None:
         investor_currency=investor_currency,
         windows_months=windows_months,
         assets_meta=assets_meta,
-        no_cache=args.no_cache,
+        no_cache=no_cache,
         local_benchmark_map=local_benchmark_map,
     )
     monthly_prices = data.monthly_prices
@@ -240,8 +215,7 @@ def main() -> None:
     asset_returns_df = monthly_returns[[t for t in tickers if t in monthly_returns.columns]].copy()
     target_weights = {t: weights.get(t, 0.0) for t in tickers}
 
-    # CLI overrides config; default is dynamic_nan_safe (policy-compliant)
-    backtest_mode = args.backtest_mode if hasattr(args, "backtest_mode") and getattr(args, "backtest_mode", None) else getattr(cfg, "backtest_mode", "dynamic_nan_safe")
+    backtest_mode = backtest_mode_override or getattr(cfg, "backtest_mode", "dynamic_nan_safe")
     backtest_mode = backtest_mode or "dynamic_nan_safe"
     if backtest_mode not in ("dynamic_nan_safe", "simple"):
         backtest_mode = "dynamic_nan_safe"
@@ -687,20 +661,67 @@ def main() -> None:
     html_path = write_report_html(str(output_dir_final))
     logger.info("HTML report: %s", html_path)
 
-    # Cleanup old cache versions (keep last 3)
+    meta = {
+        "stress_report": stress_report,
+        "portfolio_valid": portfolio_valid,
+        "daily_cache_key": daily_cache_key,
+        "monthly_cache_key": monthly_cache_key,
+    }
+    return portfolio_metrics_summary, meta
+
+
+def main() -> None:
+    args = parse_args()
+    setup_logging()
+    run_timestamp = datetime.now().isoformat()
+
+    if args.clear_cache:
+        clear_all_cache()
+
+    try:
+        cfg = load_validated_config()
+    except ConfigValidationError as e:
+        logger.error(f"Ошибка валидации конфигурации: {e}")
+        raise SystemExit(1)
+
+    if cfg.pending_fields:
+        logger.info(f"Поля конфигурации, ожидающие ввода пользователя: {cfg.pending_fields}")
+
+    if not cfg.weights:
+        logger.error(
+            "Portfolio weights are not set. Weights are produced by optimization (constraints + client metrics). "
+            "Run the optimization step first: python run_optimization.py (writes portfolio_weights.yml)."
+        )
+        raise SystemExit(1)
+
+    output_dir_csv = ensure_output_dir(Path(cfg.output_dir))
+    output_dir_final = ensure_output_dir(Path(getattr(cfg, "output_dir_final", "ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ")))
+
+    portfolio_metrics_summary, meta = run_portfolio_report_for_weights(
+        cfg,
+        cfg.weights,
+        run_timestamp=run_timestamp,
+        output_dir_csv=output_dir_csv,
+        output_dir_final=output_dir_final,
+        backtest_mode_override=args.backtest_mode,
+        no_cache=args.no_cache,
+    )
+
     cleanup_old_cache(keep_versions=3)
 
-    # =========================================================================
-    # STEP 11: Print summary
-    # =========================================================================
-    
     print("\nDone.")
-    print("  CSV в %s: asset_metrics, portfolio_metrics, rc_vol, correlation_matrix, rolling_*, var_es, eee, inputs/" % output_dir_csv)
-    print("  Финальные результаты в %s: portfolio_weights.yml, все JSON (snapshot_*, stress_report, run_metadata, data_policy, drawdown_structure), report.txt, report.html" % output_dir_final)
-    
+    print(
+        "  CSV в %s: asset_metrics, portfolio_metrics, rc_vol, correlation_matrix, rolling_*, var_es, eee, inputs/"
+        % output_dir_csv
+    )
+    print(
+        "  Финальные результаты в %s: portfolio_weights.yml, все JSON (snapshot_*, stress_report, run_metadata, data_policy, drawdown_structure), report.txt, report.html"
+        % output_dir_final
+    )
+
     if cfg.pending_fields:
         print(f"\nПоля, ожидающие ввода пользователя: {cfg.pending_fields}")
-    
+
     if cfg.target_nominal_return_annual is not None and portfolio_metrics_summary:
         realized = portfolio_metrics_summary.get("cagr")
         target = cfg.target_nominal_return_annual
@@ -709,21 +730,25 @@ def main() -> None:
             status = "[OK] достигнута" if diff >= 0 else "[X] не достигнута"
             print(f"\nЦелевая доходность: {target:.2%}, реализованная: {realized:.2%} ({status})")
 
-    # Guardrails: Max DD and Stress Judge
+    stress_report = meta["stress_report"]
     if portfolio_metrics_summary and cfg.target_max_drawdown_pct is not None:
         max_dd_limit = abs(cfg.target_max_drawdown_pct)
         realized_mdd = portfolio_metrics_summary.get("max_drawdown")
         if realized_mdd is not None and not (realized_mdd != realized_mdd):
             mdd_ok = realized_mdd >= -max_dd_limit
-            print(f"\nMax DD: {'PASS' if mdd_ok else 'FAIL'} (цель: -{max_dd_limit:.1%}, реализовано: {realized_mdd:.1%})")
+            print(
+                f"\nMax DD: {'PASS' if mdd_ok else 'FAIL'} (цель: -{max_dd_limit:.1%}, реализовано: {realized_mdd:.1%})"
+            )
     if stress_report:
         st = stress_report.get("status", "N/A")
         reason = stress_report.get("fail_reason_code") or stress_report.get("skip_reason") or ""
         print(f"Stress Judge: {st}" + (f" ({reason})" if reason else ""))
 
-    print(f"\nКеш сохранён в cache/ (дневной: {daily_cache_key}, месячный: {monthly_cache_key})")
-    
-    if not portfolio_valid:
+    print(
+        f"\nКеш сохранён в cache/ (дневной: {meta['daily_cache_key']}, месячный: {meta['monthly_cache_key']})"
+    )
+
+    if not meta["portfolio_valid"]:
         logger.warning(
             "Portfolio valid = False (e.g. MaxDD exceeds mandate). Report and files written; no exit (production workflow)."
         )

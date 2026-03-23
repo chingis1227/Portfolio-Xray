@@ -11,7 +11,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from src.config_schema import GROWTH_EM_DEBT_KEY, GROWTH_HY_KEY, STRESS_BLOCK_NAMES
+from src.blocks import STRESS_BLOCK_NAMES, get_ticker_to_block_for_stress
+from src.config_schema import GROWTH_EM_DEBT_KEY, GROWTH_HY_KEY
 from src.risk_contrib import (
     cov_matrix_monthly,
     percentage_contributions_variance,
@@ -128,20 +129,8 @@ def _build_warning_code(warning_reason: str | None) -> str | None:
 
 
 def _ticker_to_stress_block(blocks: dict[str, list[str]], tickers: list[str] | None = None) -> dict[str, str]:
-    """Map each ticker to one of Growth, Duration, Inflation, Liquidity, Tail. Growth_HY, Growth_EM_debt -> Growth. Unlisted tickers -> Growth."""
-    out = {}
-    for block_name in STRESS_BLOCK_NAMES:
-        for t in blocks.get(block_name, []):
-            out[t] = block_name
-    for t in blocks.get(GROWTH_HY_KEY, []):
-        out[t] = "Growth"
-    for t in blocks.get(GROWTH_EM_DEBT_KEY, []):
-        out[t] = "Growth"
-    if tickers:
-        for t in tickers:
-            if t not in out:
-                out[t] = "Growth"
-    return out
+    """Map each ticker to one of Growth, Duration, Inflation, Liquidity, Tail. Delegates to blocks.get_ticker_to_block_for_stress."""
+    return get_ticker_to_block_for_stress(blocks, tickers)
 
 
 def _scenario_return_per_asset(

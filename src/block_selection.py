@@ -269,7 +269,8 @@ def select_duration_block(
     ret = monthly_returns[cols].iloc[-window_months:].dropna(how="any")
     if len(ret) < 11:
         return {"status": "FAIL_DATA", "reason": "Insufficient months for feasibility check"}
-    cov = cov_matrix_monthly(ret, ddof=1).values
+    use_shrinkage = getattr(config, "covariance_shrinkage", False) if not isinstance(config, dict) else config.get("covariance_shrinkage", False)
+    cov = cov_matrix_monthly(ret, ddof=1, use_shrinkage=use_shrinkage).values
     n = len(cols)
     ticker_to_block = ticker_to_block_map(blocks)
     rb = rc_block_targets or {}
@@ -428,7 +429,8 @@ def select_inflation_block(
     ret = monthly_returns[cols].iloc[-window_months:].dropna(how="any")
     if len(ret) < 11:
         return {"status": "FAIL_DATA", "reason": "Insufficient months for Inflation feasibility check"}
-    cov = cov_matrix_monthly(ret, ddof=1).values
+    use_shrinkage = getattr(config, "covariance_shrinkage", False) if not isinstance(config, dict) else config.get("covariance_shrinkage", False)
+    cov = cov_matrix_monthly(ret, ddof=1, use_shrinkage=use_shrinkage).values
     n = len(cols)
     ticker_to_block = ticker_to_block_map(blocks)
     rb = rc_block_targets or {}

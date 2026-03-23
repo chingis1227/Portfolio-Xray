@@ -49,6 +49,8 @@ profiles:
     target_return_annual: { min_pct: 7, max_pct: 10, midpoint: 0.085 }
     target_vol_annual: { min_pct: 10, max_pct: 14, midpoint: 0.12 }
     target_max_drawdown_pct: -0.275
+    # min_single_security_weight_pct (decimal): 0.02 = 2% to reduce tiny positions
+    min_single_security_weight_pct: 0.02
     risk_budget:
       Growth:   { min_pct: 55, max_pct: 75, midpoint: 0.65 }
       Duration: { min_pct: 10, max_pct: 25, midpoint: 0.175 }
@@ -62,6 +64,8 @@ profiles:
     target_return_annual: { min_pct: 10, max_pct: 20, midpoint: 0.12 }
     target_vol_annual: { min_pct: 14, max_pct: 20, midpoint: 0.17 }
     target_max_drawdown_pct: -0.35
+    # min_single_security_weight_pct (decimal): 0.02 = 2% to reduce tiny positions
+    min_single_security_weight_pct: 0.02
     risk_budget:
       Growth:   { min_pct: 80, max_pct: 100, midpoint: 0.90 }
       Duration: { min_pct: 0, max_pct: 10, midpoint: 0.05 }

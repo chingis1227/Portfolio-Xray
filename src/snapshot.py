@@ -190,6 +190,7 @@ def build_snapshot(
     rc_by_window: dict[str, pd.Series] | None = None,
     rc_csv_by_window: dict[str, str] | None = None,
     corr_csv_by_window: dict[str, str] | None = None,
+    resolved_config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     Build the single final snapshot dict.
@@ -308,6 +309,8 @@ def build_snapshot(
     }
     if windows:
         snapshot["windows"] = windows
+    if resolved_config is not None:
+        snapshot["resolved_config"] = resolved_config
     return snapshot
 
 
