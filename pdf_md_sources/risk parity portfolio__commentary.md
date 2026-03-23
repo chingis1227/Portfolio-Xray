@@ -1,7 +1,7 @@
 ---
 title: "Risk-Parity Portfolio — Commentary"
 subtitle: "Commentary"
-date: "2026-03-23 23:38 Центральная Европа (зима)"
+date: "2026-03-24 00:08 Центральная Европа (зима)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
@@ -10,43 +10,45 @@ fontsize: 11pt
 - **Variant folder:** `risk parity portfolio`
 - **Basis:** post-run commentary (metrics interpreted as reported).
 - **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Cursor/risk parity portfolio/commentary.txt`
-- **Generated:** 2026-03-23 23:38 Центральная Европа (зима)
+- **Generated:** 2026-03-24 00:08 Центральная Европа (зима)
 
 ## Executive summary
-Risk-Parity baseline на 10Y (по summary.txt и portfolio_metrics_10y.csv) даёт около 11.2% CAGR при годовой волатильности около 9.8% и max drawdown около −18.7% — то есть более низкий апсайд относительно EW, но и более сжатый масштаб колебаний. Sharpe ≈0.91 и Sortino ≈1.47 описывают умеренную компенсацию за риск; бета ≈0.60 указывает на заметно более низкую рыночную чувствительность, чем у равных весов. Стресс-статус: FAIL_STRESS с причиной FAIL_ROLE_EQUITY_SHOCK и failed_scenario = equity_shock — провал идёт по role-based критерию в сценарии equity_shock (failed_test: Role в stress_report.json), при этом лимиты по RC_top1 в этом сценарии отмечены как выполненные. Клиентский MaxDD-gate в summary отмечен как PASS.
+Прогон относится к Risk-Parity baseline; конец выборки (analysis_end): 2026-02-28. На длинном окне (10Y в отчётном контуре) портфель показывает CAGR около 8.38%, годовую волатильность около 6.59%, максимальную просадку около -12.54%.
+Risk-adjusted: Sharpe ≈ 0.924, Sortino ≈ 1.531; чувствительность к базовому бенчмарку: Beta_base ≈ 0.387.
+Стресс-тест: FAIL_STRESS (FAIL_LOSS_CREDIT_SHOCK); худший сценарий по убытку: credit_shock (Loss); worst_scenario_loss_pct ≈ -37.96%.
+Клиентский MaxDD-gate (portfolio_valid): PASS.
 
 
 ## Preamble
 
-Source: summary.txt, stress_report.json, results_csv/portfolio_metrics_10y.csv, results_csv/rc_vol_10y.csv
+Source: summary.txt, stress_report.json, results_csv/portfolio_metrics_10y.csv, results_csv/rc_vol_10y.csv, report.txt
 
 
 ## Metric-by-Metric Interpretation
 
-Сочетание CAGR ~11% и vol ~10% задаёт профиль ближе к «risk-balanced», чем к агрессивному growth basket: доходность уступает EW-аналогу из сравнительных отчётов, но волатильность и бета ниже, что согласуется с целью RP выровнять вклады в дисперсию. Max drawdown ~−18.7% чуть мельче, чем типичный EW на том же универсуме в последних сравнениях — это согласуется с более равномерным распределением риска по активам.
-
-Sharpe ниже 1.0 говорит о том, что избыточная доходность относительно полной волатильности не выглядит «элитной», зато Sortino остаётся конкурентоспособным — хвостовой риск относительно сглажен. По stress_report.json в equity_shock PnL портфеля около −16.7%; топ-1 по RC в этом сценарии — ROBO (~9.1% вклада в дисперсию), топ-3 включают ROBO, VOO, QQQ с суммой top3_rc_sum_pct ~25.6%. Это конкретная структура риска, на которую опирается интерпретация role-теста.
+CAGR (8.38%) отражает среднегодовой темп роста по месячным простым доходностям на 10Y-окне в текущем прогоне. Волатильность (6.59%) — годовая из месячных доходностей; MaxDD (-12.54%) — по месячной equity-кривой. Sharpe (0.924) и Sortino (1.531) используют спецификацию проекта (знаменатель — vol сырой доходности для Sharpe). Beta_base (0.387) и Treynor (0.157) завязаны на базовый бенчмарк; Corr_base при наличии показывает синхронность с бенчмарком на том же окне.
 
 
 ## Risk Structure
 
-Файл rc_vol_10y.csv в этой папке показывает наибольшие доли RC_vol у ROBO (~9.7%), VOO (~9.5%), SLV (~8.7%), QQQ (~8.0%), VT (~7.7%) — риск не равномерен по именам, несмотря на RP-цель, из-за различий в волатильностях и корреляциях. В stress сценариях credit_shock, rates_shock, inflation_stagflation и liquidity_shock в текущем stress_report.json отмечены как pass=true, а провал сосредоточен в equity_shock через role_ok=false — т.е. профиль уязвим к нарушению ролевых ограничений при шоке акций, а не ко всем типам сценариев одинаково.
+Наибольшие доли RC_vol (вклад в дисперсию портфеля) на 10Y: GLD 6.1%, SLV 6.0%, URA 6.0%, VWO 5.9%, COPX 5.8%. Стресс: status=FAIL_STRESS, fail_reason_code=FAIL_LOSS_CREDIT_SHOCK. Провал в сценарии «credit_shock», тест «Loss».
 
 
 ## Strengths
 
-Ниже волатильность и бета, чем у EW на сопоставимом универсуме в типичных сравнениях; более мягкий исторический max DD в summary. Большинство именованных стресс-сценариев в stress_report для этого прогона проходят по pass, кроме связки equity_shock + Role. Явные топ-RC активы и сценарные PnL позволяют говорить о структуре риска предметно, без ссылок на «нехватку данных».
+MaxDD-gate PASS: реализованная просадка в допуске относительно target_max_drawdown_pct (см. run_metadata).
 
 ## Weaknesses
 
-FAIL_STRESS по equity_shock (Role) оставляет конструкцию вне стресс-комфорта при заданных role-критериях. CAGR и Sharpe ниже, чем у EW в сравнительных файлах — trade-off в пользу сглаживания риска ценой доходности. Если rc_vol_10y.csv содержит строки по тикерам, отсутствующим в текущем config, это сигнал пересобрать RP после синхронизации универсума (файл отражает последний прогон на диске).
+Стресс не пройден (FAIL_STRESS): FAIL_LOSS_CREDIT_SHOCK. Именованный сценарий сбоя: credit_shock; тип проверки: Loss.
 
 ## Scenario Behavior
 
-В спокойных и умеренно позитивных режимах RP исторически реализует умеренный рост с более низкой амплитудой колебаний (vol и beta из summary). В equity_shock сценарии убыток и структура вкладов по блокам (Growth ~−16.2%, прочие блоки малы) показывают доминирование equity-риска; именно здесь role-тест не пройден. В credit_shock и liquidity_shock отчёт фиксирует положительный PnL портфеля в этом прогоне — асимметрия между сценариями заметна и полезна для внутреннего разбора.
+Кратко по сценариям из stress_report.json: equity_shock: PnL≈-8.71%, pass=True; credit_shock: PnL≈-37.96%, pass=False; rates_shock: PnL≈-4.09%, pass=True; inflation_stagflation: PnL≈-4.68%, pass=True; liquidity_shock: PnL≈-32.28%, pass=True.
+Худший сценарный убыток портфеля (worst_scenario_loss_pct): ≈ -37.96%.
 
 
 ## Final Conclusion
 
-RP-baseline в данном прогоне выглядит как более «риск-сглаженный» вариант относительно EW: меньше волатильность и бета, глубже защита по max DD в summary, но ниже доходность и risk-adjusted метрики Sharpe. Цена этого профиля — провал стресс-гейта в equity_shock по ролевому критерию при том, что ряд других сценариев проходит. Управленчески важно различать «низкий риск по волатильности» и «приемлемость под полным стресс-набором» — здесь второе не выполнено для equity_shock/Role.
+Risk-Parity baseline: профиль доходности/риска на 10Y задаётся CAGR≈8.38% и vol≈6.59% при MaxDD≈-12.54%. Стресс FAIL_STRESS (FAIL_LOSS_CREDIT_SHOCK); клиентский gate PASS. Для сравнения вариантов используйте те же файлы в соседних папках (Equal-Weight / Risk Parity / Main portfolio) после синхронного прогона.
 

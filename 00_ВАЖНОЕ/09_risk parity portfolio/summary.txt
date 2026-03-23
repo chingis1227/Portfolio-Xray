@@ -1,7 +1,7 @@
 Risk Parity Portfolio
 ==================================================
 
-CAGR: 11.211%, Vol: 9.844%, MaxDD: -18.745%, Sharpe: 0.910, Sortino: 1.471, Beta: 0.602, Corr_base: 0.000
+CAGR: 8.375%, Vol: 6.587%, MaxDD: -12.535%, Sharpe: 0.924, Sortino: 1.531, Beta: 0.387, Corr_base: 0.000
 
-Stress: FAIL_STRESS (FAIL_ROLE_EQUITY_SHOCK)
+Stress: FAIL_STRESS (FAIL_LOSS_CREDIT_SHOCK)
 Client-fit (MaxDD gate): PASS

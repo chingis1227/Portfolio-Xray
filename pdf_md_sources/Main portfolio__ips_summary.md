@@ -1,14 +1,14 @@
 ---
 title: "IPS Summary — Policy Run"
 subtitle: "Main portfolio"
-date: "2026-03-23 23:38 Центральная Европа (зима)"
+date: "2026-03-24 00:08 Центральная Европа (зима)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
 ---
 ## Report scope / source context
 - **Source:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Cursor/Main portfolio/ips_summary.txt`
-- **Generated:** 2026-03-23 23:38 Центральная Европа (зима)
+- **Generated:** 2026-03-24 00:08 Центральная Европа (зима)
 
 ## Executive summary
 _See numbered sections below._

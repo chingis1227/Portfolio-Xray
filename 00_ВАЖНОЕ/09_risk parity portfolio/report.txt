@@ -8,14 +8,12 @@ DATA POLICY / BACKTEST MODE
 backtest_mode: dynamic_nan_safe
 join_policy (for cov/RC/β): inner join (intersection of dates across assets)
 
-inner_join_months_used_for_risk (Σ/RC): 11
-  (warning: < 36 months; risk estimates may be noisy)
+inner_join_months_used_for_risk (Σ/RC): 93
 
-months with NaN redistribution (within-block): 133
+months with NaN redistribution (within-block): 51
 months with excess weight to cash (RC/RB gating): 144
 
 first_available_month (per ticker, young ETF inclusion):
-  ARMY.PA: 2025-05
   BBJP: 2018-07
   BIL: 2014-04
   BND: 2014-04
@@ -43,46 +41,45 @@ WINDOW 3Y (analysis_end: 2026-02-28)
 ============================================================
 
 --- final_weights_total ---
-  BIL: 11.5%
-  SCHP: 10.5%
-  BND: 10.4%
-  VOO: 6.8%
-  VDC: 5.9%
-  SLV: 5.4%
-  VT: 5.4%
-  QQQ: 5.2%
-  SCHD: 5.2%
-  ROBO: 4.9%
-  VGK: 4.6%
-  BBJP: 4.3%
-  VWO: 4.0%
-  CIBR: 3.8%
-  GLD: 3.7%
-  ITA: 2.8%
-  SMH: 2.1%
+  BIL: 35.0%
+  BND: 10.5%
+  SCHP: 10.0%
+  GLD: 5.9%
+  VDC: 4.2%
+  BBJP: 3.3%
+  VWO: 3.1%
+  SCHD: 3.0%
+  CIBR: 2.8%
+  VOO: 2.7%
+  VT: 2.7%
+  QQQ: 2.5%
+  VGK: 2.5%
+  ITA: 2.4%
+  SLV: 2.4%
+  ROBO: 1.9%
+  URA: 1.9%
+  SMH: 1.8%
   COPX: 1.5%
-  ARMY.PA: 1.1%
-  URA: 0.8%
 
 --- block_weights ---
-  Growth: 58.4%
-  Duration: 10.4%
-  Inflation: 19.7%
-  Liquidity: 11.5%
+  Growth: 36.3%
+  Duration: 10.5%
+  Inflation: 18.3%
+  Liquidity: 35.0%
   Tail: 0.0%
 
 --- RC_asset (top 5) ---
-  ROBO: 10.3%
-  SLV: 10.1%
-  VOO: 8.2%
-  VT: 7.0%
-  QQQ: 6.6%
+  BND: 8.1%
+  GLD: 7.0%
+  SLV: 6.7%
+  URA: 6.0%
+  VDC: 5.9%
 
 --- RC_block ---
-  Growth: 78.1%
-  Duration: 5.4%
-  Inflation: 16.6%
-  Liquidity: -0.1%
+  Growth: 72.5%
+  Duration: 8.1%
+  Inflation: 19.6%
+  Liquidity: -0.2%
 
 --- constraints_status ---
   target_vol: PASS
@@ -92,70 +89,69 @@ WINDOW 3Y (analysis_end: 2026-02-28)
   weight_caps: PASS
 
 --- metrics ---
-  cagr: 18.7%
-  vol_annual: 7.7%
-  sharpe: 1.681
-  sortino: 3.437
-  beta_portfolio: 0.549
-  treynor: 0.237
-  max_drawdown: -6.8%
+  cagr: 14.7%
+  vol_annual: 5.3%
+  sharpe: 1.790
+  sortino: 3.852
+  beta_portfolio: 0.348
+  treynor: 0.271
+  max_drawdown: -3.7%
   ttr_months: —
 
 --- stress ---
   overall: FAIL_STRESS
 
 --- analytics (summary) ---
-  rolling_sharpe_36m: last: 1.681, mean: 1.681, p10: 1.681, p90: 1.681
-  rolling_sortino_36m: last: 3.437, mean: 3.437, p10: 3.437, p90: 3.437
-  var_95: -2.0%
-  es_95: -3.0%
-  eee_10pct: -20.290%
+  rolling_sharpe_36m: last: 1.790, mean: 1.790, p10: 1.790, p90: 1.790
+  rolling_sortino_36m: last: 3.852, mean: 3.852, p10: 3.852, p90: 3.852
+  var_95: -1.2%
+  es_95: -1.9%
+  eee_10pct: -32.873%
 
 ============================================================
 WINDOW 5Y (analysis_end: 2026-02-28)
 ============================================================
 
 --- final_weights_total ---
-  BIL: 11.5%
-  SCHP: 10.5%
-  BND: 10.4%
-  VOO: 6.8%
-  VDC: 5.9%
-  SLV: 5.4%
-  VT: 5.4%
-  QQQ: 5.2%
-  SCHD: 5.2%
-  ROBO: 4.9%
-  VGK: 4.6%
-  BBJP: 4.3%
-  VWO: 4.0%
-  CIBR: 3.8%
-  GLD: 3.7%
-  ITA: 2.8%
-  SMH: 2.1%
+  BIL: 35.0%
+  BND: 10.5%
+  SCHP: 10.0%
+  GLD: 5.9%
+  VDC: 4.2%
+  BBJP: 3.3%
+  VWO: 3.1%
+  SCHD: 3.0%
+  CIBR: 2.8%
+  VOO: 2.7%
+  VT: 2.7%
+  QQQ: 2.5%
+  VGK: 2.5%
+  ITA: 2.4%
+  SLV: 2.4%
+  ROBO: 1.9%
+  URA: 1.9%
+  SMH: 1.8%
   COPX: 1.5%
-  ARMY.PA: 1.1%
-  URA: 0.8%
 
 --- block_weights ---
-  Growth: 58.4%
-  Duration: 10.4%
-  Inflation: 19.7%
-  Liquidity: 11.5%
+  Growth: 36.3%
+  Duration: 10.5%
+  Inflation: 18.3%
+  Liquidity: 35.0%
   Tail: 0.0%
 
 --- RC_asset (top 5) ---
-  ROBO: 9.8%
-  VOO: 9.1%
-  QQQ: 8.0%
-  SLV: 8.0%
-  VT: 7.4%
+  BND: 7.7%
+  SCHP: 7.1%
+  GLD: 7.0%
+  SMH: 5.9%
+  BBJP: 5.8%
 
 --- RC_block ---
-  Growth: 79.0%
-  Duration: 5.2%
-  Inflation: 15.7%
-  Liquidity: 0.1%
+  Growth: 72.2%
+  Duration: 7.7%
+  Inflation: 19.4%
+  Liquidity: 0.7%
 
 --- constraints_status ---
   target_vol: PASS
@@ -165,70 +161,69 @@ WINDOW 5Y (analysis_end: 2026-02-28)
   weight_caps: PASS
 
 --- metrics ---
-  cagr: 10.7%
-  vol_annual: 10.0%
-  sharpe: 0.735
-  sortino: 1.154
-  beta_portfolio: 0.590
-  treynor: 0.125
-  max_drawdown: -18.7%
+  cagr: 8.7%
+  vol_annual: 6.9%
+  sharpe: 0.777
+  sortino: 1.238
+  beta_portfolio: 0.386
+  treynor: 0.138
+  max_drawdown: -12.5%
   ttr_months: —
 
 --- stress ---
   overall: FAIL_STRESS
 
 --- analytics (summary) ---
-  rolling_sharpe_36m: last: 1.681, mean: 0.570, p10: 0.142, p90: 1.386
-  rolling_sortino_36m: last: 3.437, mean: 1.035, p10: 0.210, p90: 2.696
-  var_95: -3.7%
-  es_95: -5.9%
-  eee_10pct: 110.745%
+  rolling_sharpe_36m: last: 1.790, mean: 0.587, p10: 0.131, p90: 1.446
+  rolling_sortino_36m: last: 3.852, mean: 1.088, p10: 0.193, p90: 2.916
+  var_95: -2.4%
+  es_95: -4.0%
+  eee_10pct: 84.694%
 
 ============================================================
 WINDOW 10Y (analysis_end: 2026-02-28)
 ============================================================
 
 --- final_weights_total ---
-  BIL: 11.5%
-  SCHP: 10.5%
-  BND: 10.4%
-  VOO: 6.8%
-  VDC: 5.9%
-  SLV: 5.4%
-  VT: 5.4%
-  QQQ: 5.2%
-  SCHD: 5.2%
-  ROBO: 4.9%
-  VGK: 4.6%
-  BBJP: 4.3%
-  VWO: 4.0%
-  CIBR: 3.8%
-  GLD: 3.7%
-  ITA: 2.8%
-  SMH: 2.1%
+  BIL: 35.0%
+  BND: 10.5%
+  SCHP: 10.0%
+  GLD: 5.9%
+  VDC: 4.2%
+  BBJP: 3.3%
+  VWO: 3.1%
+  SCHD: 3.0%
+  CIBR: 2.8%
+  VOO: 2.7%
+  VT: 2.7%
+  QQQ: 2.5%
+  VGK: 2.5%
+  ITA: 2.4%
+  SLV: 2.4%
+  ROBO: 1.9%
+  URA: 1.9%
+  SMH: 1.8%
   COPX: 1.5%
-  ARMY.PA: 1.1%
-  URA: 0.8%
 
 --- block_weights ---
-  Growth: 58.4%
-  Duration: 10.4%
-  Inflation: 19.7%
-  Liquidity: 11.5%
+  Growth: 36.3%
+  Duration: 10.5%
+  Inflation: 18.3%
+  Liquidity: 35.0%
   Tail: 0.0%
 
 --- RC_asset (top 5) ---
-  ROBO: 9.7%
-  VOO: 9.5%
-  SLV: 8.7%
-  QQQ: 8.0%
-  VT: 7.7%
+  GLD: 6.1%
+  SLV: 6.0%
+  URA: 6.0%
+  VWO: 5.9%
+  COPX: 5.8%
 
 --- RC_block ---
-  Growth: 82.4%
-  Duration: 3.2%
-  Inflation: 14.4%
-  Liquidity: 0.0%
+  Growth: 77.4%
+  Duration: 5.1%
+  Inflation: 17.4%
+  Liquidity: 0.2%
 
 --- constraints_status ---
   target_vol: PASS
@@ -238,24 +233,24 @@ WINDOW 10Y (analysis_end: 2026-02-28)
   weight_caps: PASS
 
 --- metrics ---
-  cagr: 11.2%
-  vol_annual: 9.8%
-  sharpe: 0.910
-  sortino: 1.471
-  beta_portfolio: 0.602
-  treynor: 0.149
-  max_drawdown: -18.7%
+  cagr: 8.4%
+  vol_annual: 6.6%
+  sharpe: 0.924
+  sortino: 1.531
+  beta_portfolio: 0.387
+  treynor: 0.157
+  max_drawdown: -12.5%
   ttr_months: —
 
 --- stress ---
   overall: FAIL_STRESS
 
 --- analytics (summary) ---
-  rolling_sharpe_36m: last: 1.681, mean: 0.672, p10: 0.190, p90: 1.128
-  rolling_sortino_36m: last: 3.437, mean: 1.107, p10: 0.278, p90: 1.912
-  var_95: -3.9%
-  es_95: -5.9%
-  eee_10pct: 74.197%
+  rolling_sharpe_36m: last: 1.790, mean: 0.683, p10: 0.181, p90: 1.176
+  rolling_sortino_36m: last: 3.852, mean: 1.159, p10: 0.267, p90: 2.092
+  var_95: -2.4%
+  es_95: -3.8%
+  eee_10pct: 51.336%
 
 ============================================================
 ASSETS (per-asset metrics by window, standalone)
@@ -266,7 +261,7 @@ ASSETS (per-asset metrics by window, standalone)
 ticker	window_months	cagr	vol_annual	sharpe	sortino	beta_base	beta_local	treynor	skewness	kurtosis	max_drawdown	ttr_months	recovered
 VOO	36.000	21.8%	11.5%	1.391	2.674	1.000	1.000	0.160	-0.263	-0.206	-8.3%	—	0.000
 VT	36.000	20.5%	10.7%	1.381	2.626	0.885	0.885	0.167	-0.193	-0.421	-9.7%	—	0.000
-QQQ	36.000	28.2%	15.0%	1.444	3.030	1.146	1.146	0.189	-0.129	-0.470	-10.1%	—	0.000
+QQQ	36.000	28.2%	15.0%	1.444	3.030	1.147	1.147	0.189	-0.129	-0.470	-10.1%	—	0.000
 SMH	36.000	51.0%	25.8%	1.570	3.906	1.622	1.622	0.250	0.104	-1.151	-18.6%	—	0.000
 VGK	36.000	18.5%	12.8%	1.044	1.798	0.634	1.000	0.211	-0.292	-0.692	-11.2%	—	0.000
 BBJP	36.000	22.2%	11.0%	1.482	2.843	0.550	0.550	0.296	-0.402	-0.319	-6.9%	—	0.000
@@ -281,8 +276,8 @@ URA	36.000	43.7%	37.6%	1.033	2.011	1.076	1.076	0.361	-0.007	-0.116	-27.2%	—	0.
 SLV	36.000	64.1%	29.0%	1.720	4.683	0.217	0.217	2.302	0.269	-0.712	-11.7%	—	0.000
 GLD	36.000	41.8%	14.5%	2.197	7.124	-0.173	-0.173	-1.846	0.327	-0.572	-7.2%	—	0.000
 SCHP	36.000	4.6%	4.4%	0.009	0.012	0.176	0.176	0.002	0.016	-0.621	-4.7%	—	0.000
-BIL	36.000	4.6%	0.3%	0.028	0.042	0.006	1.000	0.015	-2.873	11.736	-0.0%	—	0.000
-BND	36.000	5.0%	5.5%	0.092	0.135	0.269	1.000	0.019	0.171	0.112	-6.0%	—	0.000
+BIL	36.000	4.7%	0.2%	0.562	1.848	0.004	1.000	0.291	-0.112	-0.681	0.0%	—	0.000
+BND	36.000	5.1%	5.5%	0.111	0.165	0.267	1.000	0.023	0.159	0.068	-6.0%	—	0.000
 
 --- Window 5y ---
 
@@ -304,8 +299,8 @@ URA	60.000	30.5%	36.6%	0.820	1.475	1.088	1.088	0.276	-0.055	-0.491	-28.7%	—	0.
 SLV	60.000	28.1%	28.8%	0.890	1.807	0.389	0.389	0.659	0.309	-0.589	-36.0%	—	0.000
 GLD	60.000	24.5%	15.0%	1.326	3.065	0.122	0.122	1.635	0.273	-0.491	-15.9%	—	0.000
 SCHP	60.000	1.7%	6.1%	-0.240	-0.302	0.277	0.277	-0.053	-0.974	3.131	-13.8%	—	0.000
-BIL	60.000	3.2%	0.6%	-0.302	-0.933	0.005	1.000	-0.377	-0.578	-1.326	-0.1%	—	0.000
-BND	60.000	0.3%	6.3%	-0.436	-0.564	0.268	1.000	-0.103	-0.041	-0.043	-16.5%	—	0.000
+BIL	60.000	3.2%	0.6%	-0.211	-0.915	0.004	1.000	-0.289	-0.628	-1.226	-0.1%	—	0.000
+BND	60.000	0.4%	6.4%	-0.424	-0.551	0.267	1.000	-0.101	-0.045	-0.064	-16.5%	—	0.000
 
 --- Window 10y ---
 
@@ -326,5 +321,5 @@ URA	120.000	19.6%	35.6%	0.613	1.165	1.129	1.129	0.193	0.435	0.033	-47.8%	—	0.0
 SLV	120.000	19.6%	29.3%	0.679	1.324	0.526	0.526	0.378	0.443	0.455	-36.8%	—	0.000
 GLD	120.000	15.1%	14.4%	0.897	1.795	0.094	0.094	1.382	0.296	-0.239	-18.1%	—	0.000
 SCHP	120.000	2.9%	5.0%	0.164	0.220	0.176	0.176	0.046	-0.979	4.370	-13.8%	—	0.000
-BIL	120.000	2.1%	0.6%	-0.271	-0.979	-0.001	1.000	2.746	0.428	-1.260	-0.2%	—	0.000
-BND	120.000	2.0%	5.2%	-0.020	-0.027	0.151	1.000	-0.007	-0.170	0.785	-17.3%	—	0.000
+BIL	120.000	2.1%	0.6%	-0.219	-1.042	-0.001	1.000	1.456	0.407	-1.270	-0.2%	—	0.000
+BND	120.000	2.0%	5.2%	-0.013	-0.018	0.150	1.000	-0.005	-0.171	0.767	-17.3%	—	0.000

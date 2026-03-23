@@ -69,8 +69,9 @@ from src.portfolio_dynamic import portfolio_returns_nan_safe
 from src.risk_contrib import cov_matrix_monthly, rc_vol_window
 from src.stress import run_stress
 from src.stress_factors import (
-    build_factor_matrix_monthly,
-    estimate_betas_monthly,
+    FACTOR_WEEKS_10Y,
+    FACTOR_WEEKS_5Y,
+    compute_asset_factor_betas_weekly,
     portfolio_factor_betas,
 )
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
@@ -440,24 +441,23 @@ def run_portfolio_report_for_weights(
     # STEP 9: Stress testing (per docs/docs/stress_testing_spec.md)
     # =========================================================================
     
-    analysis_end_ts = pd.Timestamp(analysis_end_str)
     portfolio_betas_5y_dict: dict[str, float] = {}
     portfolio_betas_10y_dict: dict[str, float] = {}
     try:
-        asset_returns_for_beta = monthly_returns[[t for t in tickers if t in monthly_returns.columns]].copy()
+        beta_tickers = [t for t in tickers if weights.get(t, 0) > 0]
+        if not beta_tickers:
+            beta_tickers = list(tickers)
 
-        def _portfolio_betas_for_window(window_months: int) -> tuple[pd.DataFrame, dict[str, float]]:
-            beta_start = (analysis_end_ts - pd.DateOffset(months=window_months)).strftime("%Y-%m-%d")
-            factor_monthly = build_factor_matrix_monthly(beta_start, analysis_end_str)
-            asset_betas_win = estimate_betas_monthly(
-                asset_returns_for_beta,
-                factor_monthly,
-                min_observations=max(24, window_months // 2),
+        def _portfolio_betas_weekly(window_weeks: int) -> tuple[pd.DataFrame, dict[str, float]]:
+            asset_betas_win = compute_asset_factor_betas_weekly(
+                beta_tickers,
+                analysis_end_str,
+                window_weeks,
             )
             return asset_betas_win, portfolio_factor_betas(weights, asset_betas_win)
 
-        asset_betas_5y_df, portfolio_betas_5y_dict = _portfolio_betas_for_window(60)
-        _asset_betas_10y_df, portfolio_betas_10y_dict = _portfolio_betas_for_window(120)
+        asset_betas_5y_df, portfolio_betas_5y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_5Y)
+        _asset_betas_10y_df, portfolio_betas_10y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_10Y)
         # Keep stress engine input/backward compatibility aligned to 5Y betas.
         asset_betas_df = asset_betas_5y_df
         portfolio_betas_dict = portfolio_betas_5y_dict

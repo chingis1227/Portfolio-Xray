@@ -1,57 +1,67 @@
 {
   "drawdowns": [
     {
-      "depth": -0.028,
+      "depth": -0.002,
       "length_months": 2,
       "recovery_months": "1"
     },
     {
-      "depth": -0.012,
+      "depth": -0.016,
       "length_months": 2,
       "recovery_months": "1"
     },
     {
-      "depth": -0.187,
-      "length_months": 24,
-      "recovery_months": "15"
-    },
-    {
-      "depth": -0.018,
+      "depth": -0.008,
       "length_months": 2,
       "recovery_months": "1"
     },
     {
-      "depth": -0.012,
+      "depth": -0.125,
+      "length_months": 19,
+      "recovery_months": "10"
+    },
+    {
+      "depth": -0.037,
+      "length_months": 4,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.01,
       "length_months": 2,
       "recovery_months": "1"
     },
     {
-      "depth": -0.023,
+      "depth": -0.006,
       "length_months": 2,
       "recovery_months": "1"
     },
     {
-      "depth": -0.009,
-      "length_months": 3,
-      "recovery_months": "2"
+      "depth": -0.017,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.001,
+      "length_months": 2,
+      "recovery_months": "1"
     }
   ],
   "summary": {
     "recovery_median_months": 1.0,
-    "recovery_p90_months": 7.2,
-    "pct_time_underwater": 0.5,
-    "longest_underwater_months": 23
+    "recovery_p90_months": 2.8,
+    "pct_time_underwater": 0.467,
+    "longest_underwater_months": 18
   },
   "by_threshold": {
     ">5%": {
       "count": 1,
-      "recovery_median": 15.0,
-      "recovery_p90": 15.0
+      "recovery_median": 10.0,
+      "recovery_p90": 10.0
     },
     ">10%": {
       "count": 1,
-      "recovery_median": 15.0,
-      "recovery_p90": 15.0
+      "recovery_median": 10.0,
+      "recovery_p90": 10.0
     },
     ">20%": {
       "count": 0,

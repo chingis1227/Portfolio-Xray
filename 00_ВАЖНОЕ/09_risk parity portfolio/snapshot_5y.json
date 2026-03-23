@@ -1,96 +1,94 @@
 {
-  "timestamp": "2026-03-23T18:52:10.664421",
+  "timestamp": "2026-03-24T00:07:11.295639",
   "analysis_end": "2026-02-28",
   "window_label": "5y",
   "window_months": 60,
   "final_weights_total": {
-    "VOO": 0.068,
-    "VT": 0.054,
-    "QQQ": 0.052,
-    "SMH": 0.021,
-    "VGK": 0.046,
-    "BBJP": 0.043,
-    "VWO": 0.04,
-    "VDC": 0.059,
-    "ARMY.PA": 0.011,
-    "ITA": 0.028,
-    "CIBR": 0.038,
-    "ROBO": 0.049,
-    "SCHD": 0.052,
+    "VOO": 0.027,
+    "VT": 0.027,
+    "QQQ": 0.025,
+    "SMH": 0.018,
+    "VGK": 0.025,
+    "BBJP": 0.033,
+    "VWO": 0.031,
+    "VDC": 0.042,
+    "ITA": 0.024,
+    "CIBR": 0.028,
+    "ROBO": 0.019,
+    "SCHD": 0.03,
     "COPX": 0.015,
-    "URA": 0.008,
-    "SLV": 0.054,
-    "GLD": 0.037,
-    "SCHP": 0.105,
-    "BIL": 0.115,
-    "BND": 0.104
+    "URA": 0.019,
+    "SLV": 0.024,
+    "GLD": 0.059,
+    "SCHP": 0.1,
+    "BIL": 0.35,
+    "BND": 0.105
   },
   "final_weights_risk_portfolio": {
-    "VOO": 0.077,
-    "VT": 0.062,
-    "QQQ": 0.058,
-    "SMH": 0.023,
-    "VGK": 0.052,
-    "BBJP": 0.048,
-    "VWO": 0.045,
-    "VDC": 0.066,
-    "ARMY.PA": 0.013,
-    "ITA": 0.032,
+    "VOO": 0.042,
+    "VT": 0.041,
+    "QQQ": 0.038,
+    "SMH": 0.028,
+    "VGK": 0.039,
+    "BBJP": 0.051,
+    "VWO": 0.047,
+    "VDC": 0.065,
+    "ITA": 0.036,
     "CIBR": 0.043,
-    "ROBO": 0.055,
-    "SCHD": 0.059,
-    "COPX": 0.017,
-    "URA": 0.009,
-    "SLV": 0.061,
-    "GLD": 0.042,
-    "SCHP": 0.119,
-    "BND": 0.118
+    "ROBO": 0.03,
+    "SCHD": 0.046,
+    "COPX": 0.023,
+    "URA": 0.029,
+    "SLV": 0.037,
+    "GLD": 0.091,
+    "SCHP": 0.153,
+    "BND": 0.161
   },
   "block_weights": {
-    "Growth": 0.584,
-    "Duration": 0.104,
-    "Inflation": 0.197,
-    "Liquidity": 0.115,
+    "Growth": 0.363,
+    "Duration": 0.105,
+    "Inflation": 0.183,
+    "Liquidity": 0.35,
     "Tail": 0.0
   },
   "RC_asset": [
     {
-      "ticker": "ROBO",
-      "rc_pct": 0.098
+      "ticker": "BND",
+      "rc_pct": 0.077
     },
     {
-      "ticker": "VOO",
-      "rc_pct": 0.091
+      "ticker": "SCHP",
+      "rc_pct": 0.071
     },
     {
-      "ticker": "QQQ",
-      "rc_pct": 0.08
+      "ticker": "GLD",
+      "rc_pct": 0.07
     },
     {
-      "ticker": "SLV",
-      "rc_pct": 0.08
+      "ticker": "SMH",
+      "rc_pct": 0.059
     },
     {
-      "ticker": "VT",
-      "rc_pct": 0.074
+      "ticker": "BBJP",
+      "rc_pct": 0.058
     }
   ],
   "RC_block": [
     {
       "block": "Growth",
-      "rc_pct": 0.79
+      "rc_pct": 0.722
     },
     {
       "block": "Duration",
-      "rc_pct": 0.052
+      "rc_pct": 0.077
     },
     {
       "block": "Inflation",
-      "rc_pct": 0.157
+      "rc_pct": 0.194
     },
     {
       "block": "Liquidity",
-      "rc_pct": 0.001
+      "rc_pct": 0.007
     }
   ],
   "constraints_status": {
@@ -102,44 +100,44 @@
   },
   "stress_suite_results": {
     "overall": "FAIL_STRESS",
-    "fail_reason_code": "FAIL_ROLE_EQUITY_SHOCK",
+    "fail_reason_code": "FAIL_LOSS_CREDIT_SHOCK",
     "scenarios": [
       {
         "scenario_id": "equity_shock",
-        "portfolio_pnl_pct": -0.167,
+        "portfolio_pnl_pct": -0.0871,
         "pnl_by_block_pct": {
-          "Growth": -0.1616,
-          "Duration": -0.0005,
-          "Inflation": -0.0044,
-          "Liquidity": -0.0004,
-          "Tail": 0.0
-        },
-        "violations": [
-          "role"
-        ],
-        "pass": false
-      },
-      {
-        "scenario_id": "credit_shock",
-        "portfolio_pnl_pct": 1.4334,
-        "pnl_by_block_pct": {
-          "Growth": -0.8741,
-          "Duration": -0.2424,
-          "Inflation": 2.5647,
-          "Liquidity": -0.0148,
+          "Growth": -0.0877,
+          "Duration": -0.0011,
+          "Inflation": 0.0021,
+          "Liquidity": -0.0003,
           "Tail": 0.0
         },
         "violations": [],
         "pass": true
       },
       {
-        "scenario_id": "rates_shock",
-        "portfolio_pnl_pct": -0.0472,
+        "scenario_id": "credit_shock",
+        "portfolio_pnl_pct": -0.3796,
         "pnl_by_block_pct": {
-          "Growth": -0.0236,
-          "Duration": -0.0123,
-          "Inflation": -0.0115,
-          "Liquidity": 0.0002,
+          "Growth": -1.1987,
+          "Duration": -0.2329,
+          "Inflation": 1.1587,
+          "Liquidity": -0.1067,
+          "Tail": 0.0
+        },
+        "violations": [
+          "loss"
+        ],
+        "pass": false
+      },
+      {
+        "scenario_id": "rates_shock",
+        "portfolio_pnl_pct": -0.0409,
+        "pnl_by_block_pct": {
+          "Growth": -0.011,
+          "Duration": -0.0117,
+          "Inflation": -0.0189,
+          "Liquidity": 0.0007,
           "Tail": 0.0
         },
         "violations": [],
@@ -147,12 +145,12 @@
       },
       {
         "scenario_id": "inflation_stagflation",
-        "portfolio_pnl_pct": -0.0618,
+        "portfolio_pnl_pct": -0.0468,
         "pnl_by_block_pct": {
-          "Growth": -0.0755,
-          "Duration": -0.0033,
-          "Inflation": 0.0174,
-          "Liquidity": -0.0004,
+          "Growth": -0.0426,
+          "Duration": -0.0036,
+          "Inflation": 0.0008,
+          "Liquidity": -0.0015,
           "Tail": 0.0
         },
         "violations": [],
@@ -160,12 +158,12 @@
       },
       {
         "scenario_id": "liquidity_shock",
-        "portfolio_pnl_pct": 1.002,
+        "portfolio_pnl_pct": -0.3228,
         "pnl_by_block_pct": {
-          "Growth": -0.7263,
-          "Duration": -0.1821,
-          "Inflation": 1.9216,
-          "Liquidity": -0.0112,
+          "Growth": -0.9374,
+          "Duration": -0.1752,
+          "Inflation": 0.8699,
+          "Liquidity": -0.0802,
           "Tail": 0.0
         },
         "violations": [],
@@ -176,36 +174,50 @@
       {
         "episode": "2008",
         "max_dd": null,
+        "volatility_spike_ratio": null,
+        "stress_correlations": {},
         "pass": null
       },
       {
         "episode": "2020",
-        "max_dd": NaN,
-        "pass": false
+        "max_dd": -0.0519,
+        "volatility_spike_ratio": 7.475,
+        "stress_correlations": {
+          "Growth_Duration": 0.83,
+          "Growth_Inflation": 0.9961,
+          "Duration_Inflation": 0.8759
+        },
+        "pass": true
       },
       {
         "episode": "2022",
-        "max_dd": NaN,
-        "pass": false
+        "max_dd": -0.1254,
+        "volatility_spike_ratio": 1.4532,
+        "stress_correlations": {
+          "Growth_Duration": 0.6825,
+          "Growth_Inflation": 0.7547,
+          "Duration_Inflation": 0.5778
+        },
+        "pass": true
       }
     ],
     "portfolio_params": {
-      "cagr": 0.107,
-      "vol_annual": 0.1,
-      "max_drawdown": -0.187,
-      "sharpe": 0.735,
-      "beta_base": 0.59
+      "cagr": 0.087,
+      "vol_annual": 0.069,
+      "max_drawdown": -0.125,
+      "sharpe": 0.777,
+      "beta_base": 0.386
     }
   },
   "metrics": {
     "window_months": 60,
-    "cagr": 0.107,
-    "vol_annual": 0.1,
-    "sharpe": 0.735,
-    "sortino": 1.154,
-    "beta_portfolio": 0.59,
-    "treynor": 0.125,
-    "max_drawdown": -0.187,
+    "cagr": 0.087,
+    "vol_annual": 0.069,
+    "sharpe": 0.777,
+    "sortino": 1.238,
+    "beta_portfolio": 0.386,
+    "treynor": 0.138,
+    "max_drawdown": -0.125,
     "ttr_months": NaN,
     "recovered": 0
   },
@@ -213,91 +225,101 @@
   "correlation_matrix_csv": "correlation_matrix_5y.csv",
   "analytics": {
     "rolling_sharpe_36m": {
-      "last": 1.681,
-      "mean": 0.57,
-      "p10": 0.142,
-      "p90": 1.386
+      "last": 1.79,
+      "mean": 0.587,
+      "p10": 0.131,
+      "p90": 1.446
     },
     "rolling_sharpe_12m": {
-      "last": 3.712,
-      "mean": 0.71,
-      "p10": -0.718,
-      "p90": 2.05
+      "last": 3.949,
+      "mean": 0.77,
+      "p10": -0.704,
+      "p90": 2.225
     },
     "rolling_sortino_36m": {
-      "last": 3.437,
-      "mean": 1.035,
-      "p10": 0.21,
-      "p90": 2.696
+      "last": 3.852,
+      "mean": 1.088,
+      "p10": 0.193,
+      "p90": 2.916
     },
     "rolling_sortino_12m": {
-      "last": 17.271,
-      "mean": 2.124,
-      "p10": -0.888,
-      "p90": 4.905
+      "last": 33.712,
+      "mean": 3.157,
+      "p10": -0.864,
+      "p90": 5.451
     },
     "rolling_vol_12m": {
-      "last": 0.06,
-      "mean": 0.096,
-      "p10": 0.061,
-      "p90": 0.151
+      "last": 0.042,
+      "mean": 0.064,
+      "p10": 0.042,
+      "p90": 0.103
     },
-    "vol_of_vol": 0.034,
-    "rel_vol_of_vol": 0.351,
+    "vol_of_vol": 0.023,
+    "rel_vol_of_vol": 0.354,
     "drawdown_structure": {
       "drawdowns": [
         {
-          "depth": -0.028,
+          "depth": -0.002,
           "length_months": 2,
           "recovery_months": "1"
         },
         {
-          "depth": -0.012,
+          "depth": -0.016,
           "length_months": 2,
           "recovery_months": "1"
         },
         {
-          "depth": -0.187,
-          "length_months": 24,
-          "recovery_months": "15"
-        },
-        {
-          "depth": -0.018,
+          "depth": -0.008,
           "length_months": 2,
           "recovery_months": "1"
         },
         {
-          "depth": -0.012,
+          "depth": -0.125,
+          "length_months": 19,
+          "recovery_months": "10"
+        },
+        {
+          "depth": -0.037,
+          "length_months": 4,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.01,
           "length_months": 2,
           "recovery_months": "1"
         },
         {
-          "depth": -0.023,
+          "depth": -0.006,
           "length_months": 2,
           "recovery_months": "1"
         },
         {
-          "depth": -0.009,
-          "length_months": 3,
-          "recovery_months": "2"
+          "depth": -0.017,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.001,
+          "length_months": 2,
+          "recovery_months": "1"
         }
       ],
       "summary": {
         "recovery_median_months": 1.0,
-        "recovery_p90_months": 7.2,
-        "pct_time_underwater": 0.5,
-        "longest_underwater_months": 23
+        "recovery_p90_months": 2.8,
+        "pct_time_underwater": 0.467,
+        "longest_underwater_months": 18
       },
       "by_threshold": {
         ">5%": {
           "count": 1,
-          "recovery_median": 15.0,
-          "recovery_p90": 15.0
+          "recovery_median": 10.0,
+          "recovery_p90": 10.0
         },
         ">10%": {
           "count": 1,
-          "recovery_median": 15.0,
-          "recovery_p90": 15.0
+          "recovery_median": 10.0,
+          "recovery_p90": 10.0
         },
         ">20%": {
           "count": 0,
@@ -306,10 +328,10 @@
         }
       }
     },
-    "var_95": -0.037,
-    "var_99": -0.06,
-    "es_95": -0.059,
-    "es_99": -0.065,
-    "eee_10pct": 110.745
+    "var_95": -0.024,
+    "var_99": -0.041,
+    "es_95": -0.04,
+    "es_99": -0.046,
+    "eee_10pct": 84.694
   }
 }

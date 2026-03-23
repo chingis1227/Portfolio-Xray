@@ -1,6 +1,6 @@
 {
   "run_info": {
-    "timestamp": "2026-03-23T18:52:10.664421",
+    "timestamp": "2026-03-24T00:07:11.295639",
     "analysis_end_date": "2026-02-28"
   },
   "resolved_config": {
@@ -25,7 +25,6 @@
       "BBJP",
       "VWO",
       "VDC",
-      "ARMY.PA",
       "ITA",
       "CIBR",
       "ROBO",
@@ -48,7 +47,6 @@
         "BBJP",
         "VWO",
         "VDC",
-        "ARMY.PA",
         "ITA",
         "CIBR",
         "ROBO",
@@ -71,7 +69,27 @@
       ],
       "Tail": []
     },
-    "weights": {},
+    "weights": {
+      "VOO": 0.268367,
+      "VT": 0.019388,
+      "QQQ": 0.020408,
+      "SMH": 0.094898,
+      "VGK": 0.019388,
+      "BBJP": 0.020408,
+      "VWO": 0.020408,
+      "VDC": 0.020408,
+      "ITA": 0.137755,
+      "CIBR": 0.019388,
+      "ROBO": 0.020408,
+      "SCHD": 0.019388,
+      "COPX": 0.064286,
+      "URA": 0.044898,
+      "BND": 0.019388,
+      "SLV": 0.12551,
+      "GLD": 0.020408,
+      "SCHP": 0.019388,
+      "BIL": 0.02551
+    },
     "allow_leverage": false,
     "allow_short_selling": false,
     "min_acceptable_return": null,
@@ -150,7 +168,6 @@
       "BBJP": "SPY",
       "VWO": "VWO",
       "VDC": "SPY",
-      "ARMY.PA": "SPY",
       "ITA": "SPY",
       "CIBR": "SPY",
       "ROBO": "SPY",
@@ -169,8 +186,8 @@
       60,
       120
     ],
-    "total_weight_sum": 0,
-    "weight_to_cash": 1.0,
+    "total_weight_sum": 1.0,
+    "weight_to_cash": 0,
     "mar_source": "rf_monthly",
     "mar_annual_value": null,
     "liquidity_need": 0.0,
@@ -196,7 +213,6 @@
           "BBJP",
           "VWO",
           "VDC",
-          "ARMY.PA",
           "ITA",
           "CIBR",
           "ROBO",
@@ -251,16 +267,16 @@
   "portfolio_valid": true,
   "stress_test": {
     "status": "FAIL_STRESS",
-    "fail_reason_code": "FAIL_ROLE_EQUITY_SHOCK",
+    "fail_reason_code": "FAIL_LOSS_CREDIT_SHOCK",
     "warning_code": null,
-    "worst_scenario_loss_pct": -0.167,
-    "failed_scenario": "equity_shock",
-    "failed_test": "Role"
+    "worst_scenario_loss_pct": -0.3796,
+    "failed_scenario": "credit_shock",
+    "failed_test": "Loss"
   },
   "target_comparison": {
     "target_nominal_return_annual": 0.12,
-    "realized_cagr": 0.11210595905924503,
-    "difference": -0.007894040940754965,
+    "realized_cagr": 0.08375185728915868,
+    "difference": -0.03624814271084131,
     "target_achieved": "False"
   }
 }

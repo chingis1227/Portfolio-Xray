@@ -1,25 +1,24 @@
 Risk Parity Portfolio — final weights
 ==================================================
 
-  BIL: weight=11.5%, RC_vol=0.0%
-  SCHP: weight=10.5%, RC_vol=3.5%
-  BND: weight=10.4%, RC_vol=3.2%
-  VOO: weight=6.8%, RC_vol=9.5%
-  VDC: weight=5.9%, RC_vol=5.4%
-  VT: weight=5.4%, RC_vol=7.7%
-  SLV: weight=5.4%, RC_vol=8.7%
-  SCHD: weight=5.2%, RC_vol=6.6%
-  QQQ: weight=5.2%, RC_vol=8.0%
-  ROBO: weight=4.9%, RC_vol=9.7%
-  VGK: weight=4.6%, RC_vol=6.9%
-  BBJP: weight=4.3%, RC_vol=4.3%
-  VWO: weight=4.0%, RC_vol=5.1%
-  CIBR: weight=3.8%, RC_vol=5.1%
-  GLD: weight=3.7%, RC_vol=2.2%
-  ITA: weight=2.8%, RC_vol=4.3%
-  SMH: weight=2.1%, RC_vol=4.3%
-  COPX: weight=1.5%, RC_vol=4.0%
-  ARMY.PA: weight=1.1%, RC_vol=0.1%
-  URA: weight=0.8%, RC_vol=1.6%
+  BIL: weight=35.0%, RC_vol=5.3%
+  BND: weight=10.5%, RC_vol=5.3%
+  SCHP: weight=10.0%, RC_vol=5.3%
+  GLD: weight=5.9%, RC_vol=5.3%
+  VDC: weight=4.2%, RC_vol=5.3%
+  BBJP: weight=3.3%, RC_vol=5.3%
+  VWO: weight=3.1%, RC_vol=5.3%
+  SCHD: weight=3.0%, RC_vol=5.3%
+  CIBR: weight=2.8%, RC_vol=5.3%
+  VOO: weight=2.7%, RC_vol=5.3%
+  VT: weight=2.7%, RC_vol=5.3%
+  VGK: weight=2.5%, RC_vol=5.3%
+  QQQ: weight=2.5%, RC_vol=5.3%
+  SLV: weight=2.4%, RC_vol=5.3%
+  ITA: weight=2.4%, RC_vol=5.3%
+  ROBO: weight=1.9%, RC_vol=5.3%
+  URA: weight=1.9%, RC_vol=5.3%
+  SMH: weight=1.8%, RC_vol=5.3%
+  COPX: weight=1.5%, RC_vol=5.3%
 
 Sum of weights: 100.0%

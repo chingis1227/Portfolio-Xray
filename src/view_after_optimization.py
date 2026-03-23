@@ -220,17 +220,16 @@ def run_view_after_optimization(
     portfolio_betas_dict: dict[str, float] = {}
     try:
         from src.stress_factors import (
-            build_factor_matrix_monthly,
-            estimate_betas_monthly,
+            FACTOR_WEEKS_5Y,
+            compute_asset_factor_betas_weekly,
             portfolio_factor_betas,
         )
-        if monthly_returns.index.size >= 24:
-            end_str = str(monthly_returns.index.max())[:10]
-            start = (monthly_returns.index.max() - pd.DateOffset(months=36)).strftime("%Y-%m-%d")
-            factor_monthly = build_factor_matrix_monthly(start, end_str)
-            asset_ret = monthly_returns[[t for t in cols if t in monthly_returns.columns]].copy()
-            asset_betas_df = estimate_betas_monthly(asset_ret, factor_monthly, min_observations=24)
-            portfolio_betas_dict = portfolio_factor_betas(baseline_weights, asset_betas_df)
+        end_str = str(monthly_returns.index.max())[:10]
+        beta_tickers = [t for t in cols if baseline_weights.get(t, 0) > 0]
+        if not beta_tickers:
+            beta_tickers = list(cols)
+        asset_betas_df = compute_asset_factor_betas_weekly(beta_tickers, end_str, FACTOR_WEEKS_5Y)
+        portfolio_betas_dict = portfolio_factor_betas(baseline_weights, asset_betas_df)
     except Exception:
         pass
 

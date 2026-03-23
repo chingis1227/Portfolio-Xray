@@ -1,14 +1,14 @@
 ---
 title: "Equal-Weight — Weights"
 subtitle: "Weights"
-date: "2026-03-23 23:38 Центральная Европа (зима)"
+date: "2026-03-24 00:08 Центральная Европа (зима)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
 ---
 ## Report scope / source context
 - **Weights source:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Cursor/equal-weight portfolio/weights.json`
-- **Generated:** 2026-03-23 23:38 Центральная Европа (зима)
+- **Generated:** 2026-03-24 00:08 Центральная Европа (зима)
 
 ## Weights
 

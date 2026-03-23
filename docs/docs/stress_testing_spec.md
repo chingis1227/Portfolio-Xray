@@ -94,8 +94,8 @@ If factor limits are set in config and violated → FAIL_STRESS; if no limits �
 
 **Output windows (mandatory):**
 
-- **5Y window (60 monthly observations):** `factor_betas_5y`
-- **10Y window (120 monthly observations):** `factor_betas_10y`
+- **5Y window (~260 weekly observations, Friday week-ends after inner join):** `factor_betas_5y`
+- **10Y window (~520 weekly observations):** `factor_betas_10y`
 
 For backward compatibility, `factor_betas` may be present and should mirror `factor_betas_5y`.
 
@@ -133,7 +133,7 @@ If defensive blocks systematically behave “against role” → FAIL_STRESS; el
 - **Credit spread (HY):** FRED:BAMLH0A0HYM2; use Δ(spread).
 - **USD:** FRED:DTWEXBGS; use Δ or % change.
 
-Betas: monthly changes/returns for reporting outputs in §8 (`factor_betas_5y`, `factor_betas_10y`) with synchronized dates (inner join). Use project series when available; FRED codes as fallback.
+Betas: **weekly** changes/returns for reporting outputs in §8 (`factor_betas_5y`, `factor_betas_10y`), with synchronized week-end dates (inner join), ending at **analysis_end**. Windows: **260 weeks (5Y)** and **520 weeks (10Y)** (see `src/stress_factors.py`: `FACTOR_WEEKS_5Y`, `FACTOR_WEEKS_10Y`). Use project series when available; FRED codes as fallback.
 
 ---
 

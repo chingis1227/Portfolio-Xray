@@ -513,26 +513,27 @@ def main() -> None:
     portfolio_betas_10y_dict = {}
     try:
         from src.stress_factors import (
-            build_factor_matrix_monthly,
-            estimate_betas_monthly,
+            FACTOR_WEEKS_10Y,
+            FACTOR_WEEKS_5Y,
+            compute_asset_factor_betas_weekly,
             portfolio_factor_betas,
         )
 
-        asset_returns_beta = monthly_returns[[t for t in cfg.tickers if t in monthly_returns.columns]].copy()
+        beta_tickers = [t for t in cfg.tickers if final_weights.get(t, 0) > 0]
+        if not beta_tickers:
+            beta_tickers = list(cfg.tickers)
 
-        def _portfolio_betas_for_window(window_months: int) -> tuple[pd.DataFrame, dict]:
-            beta_start = (analysis_end - pd.DateOffset(months=window_months)).strftime("%Y-%m-%d")
-            factor_monthly = build_factor_matrix_monthly(beta_start, analysis_end_str)
-            asset_betas_win = estimate_betas_monthly(
-                asset_returns_beta,
-                factor_monthly,
-                min_observations=max(24, window_months // 2),
+        def _portfolio_betas_weekly(window_weeks: int) -> tuple[pd.DataFrame, dict]:
+            asset_betas_win = compute_asset_factor_betas_weekly(
+                beta_tickers,
+                analysis_end_str,
+                window_weeks,
             )
             return asset_betas_win, portfolio_factor_betas(final_weights, asset_betas_win)
 
-        # Primary factor validation windows per stress spec: 5Y and 10Y.
-        asset_betas_5y_df, portfolio_betas_5y_dict = _portfolio_betas_for_window(60)
-        asset_betas_10y_df, portfolio_betas_10y_dict = _portfolio_betas_for_window(120)
+        # Factor betas: weekly regression, ~5Y and ~10Y windows (see stress_factors.FACTOR_WEEKS_*).
+        asset_betas_5y_df, portfolio_betas_5y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_5Y)
+        _asset_betas_10y_df, portfolio_betas_10y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_10Y)
 
         # Keep run_stress input/backward compatibility on factor_betas using 5Y.
         asset_betas_df = asset_betas_5y_df

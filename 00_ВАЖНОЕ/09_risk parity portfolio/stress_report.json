@@ -1,62 +1,33 @@
 {
   "status": "FAIL_STRESS",
-  "fail_reason_code": "FAIL_ROLE_EQUITY_SHOCK",
+  "fail_reason_code": "FAIL_LOSS_CREDIT_SHOCK",
   "warning_code": null,
-  "worst_scenario_loss_pct": -0.167,
-  "failed_scenario": "equity_shock",
-  "failed_test": "Role",
+  "worst_scenario_loss_pct": -0.3796,
+  "failed_scenario": "credit_shock",
+  "failed_test": "Loss",
   "scenario_results": [
     {
       "scenario_id": "equity_shock",
-      "portfolio_pnl_pct": -0.167,
+      "portfolio_pnl_pct": -0.0871,
       "pnl_by_block_pct": {
-        "Growth": -0.1616,
-        "Duration": -0.0005,
-        "Inflation": -0.0044,
-        "Liquidity": -0.0004,
+        "Growth": -0.0877,
+        "Duration": -0.0011,
+        "Inflation": 0.0021,
+        "Liquidity": -0.0003,
         "Tail": 0.0
       },
-      "top1_rc_asset": "ROBO",
-      "top1_rc_pct": 0.0907,
+      "top1_rc_asset": "URA",
+      "top1_rc_pct": 0.0849,
       "top3_rc_assets": [
-        "ROBO",
-        "VOO",
-        "QQQ"
+        "URA",
+        "COPX",
+        "VDC"
       ],
-      "top3_rc_sum_pct": 0.256,
+      "top3_rc_sum_pct": 0.2269,
       "top3_loss_assets": [
         "QQQ",
-        "VOO",
+        "CIBR",
         "SMH"
-      ],
-      "loss_ok": true,
-      "role_ok": false,
-      "rc1_ok": true,
-      "rc3_ok": true,
-      "pass": false
-    },
-    {
-      "scenario_id": "credit_shock",
-      "portfolio_pnl_pct": 1.4334,
-      "pnl_by_block_pct": {
-        "Growth": -0.8741,
-        "Duration": -0.2424,
-        "Inflation": 2.5647,
-        "Liquidity": -0.0148,
-        "Tail": 0.0
-      },
-      "top1_rc_asset": "ROBO",
-      "top1_rc_pct": 0.0907,
-      "top3_rc_assets": [
-        "ROBO",
-        "VOO",
-        "QQQ"
-      ],
-      "top3_rc_sum_pct": 0.256,
-      "top3_loss_assets": [
-        "SCHD",
-        "ROBO",
-        "VGK"
       ],
       "loss_ok": true,
       "role_ok": true,
@@ -65,27 +36,56 @@
       "pass": true
     },
     {
-      "scenario_id": "rates_shock",
-      "portfolio_pnl_pct": -0.0472,
+      "scenario_id": "credit_shock",
+      "portfolio_pnl_pct": -0.3796,
       "pnl_by_block_pct": {
-        "Growth": -0.0236,
-        "Duration": -0.0123,
-        "Inflation": -0.0115,
-        "Liquidity": 0.0002,
+        "Growth": -1.1987,
+        "Duration": -0.2329,
+        "Inflation": 1.1587,
+        "Liquidity": -0.1067,
         "Tail": 0.0
       },
-      "top1_rc_asset": "ROBO",
-      "top1_rc_pct": 0.0922,
+      "top1_rc_asset": "URA",
+      "top1_rc_pct": 0.0849,
       "top3_rc_assets": [
+        "URA",
+        "COPX",
+        "VDC"
+      ],
+      "top3_rc_sum_pct": 0.2269,
+      "top3_loss_assets": [
         "ROBO",
-        "VOO",
+        "SCHD",
+        "BBJP"
+      ],
+      "loss_ok": false,
+      "role_ok": true,
+      "rc1_ok": true,
+      "rc3_ok": true,
+      "pass": false
+    },
+    {
+      "scenario_id": "rates_shock",
+      "portfolio_pnl_pct": -0.0409,
+      "pnl_by_block_pct": {
+        "Growth": -0.011,
+        "Duration": -0.0117,
+        "Inflation": -0.0189,
+        "Liquidity": 0.0007,
+        "Tail": 0.0
+      },
+      "top1_rc_asset": "BBJP",
+      "top1_rc_pct": 0.071,
+      "top3_rc_assets": [
+        "BBJP",
+        "GLD",
         "SLV"
       ],
-      "top3_rc_sum_pct": 0.2651,
+      "top3_rc_sum_pct": 0.1985,
       "top3_loss_assets": [
-        "SCHD",
+        "SCHP",
         "BND",
-        "SCHP"
+        "GLD"
       ],
       "loss_ok": true,
       "role_ok": true,
@@ -95,26 +95,26 @@
     },
     {
       "scenario_id": "inflation_stagflation",
-      "portfolio_pnl_pct": -0.0618,
+      "portfolio_pnl_pct": -0.0468,
       "pnl_by_block_pct": {
-        "Growth": -0.0755,
-        "Duration": -0.0033,
-        "Inflation": 0.0174,
-        "Liquidity": -0.0004,
+        "Growth": -0.0426,
+        "Duration": -0.0036,
+        "Inflation": 0.0008,
+        "Liquidity": -0.0015,
         "Tail": 0.0
       },
-      "top1_rc_asset": "ROBO",
-      "top1_rc_pct": 0.0922,
+      "top1_rc_asset": "BBJP",
+      "top1_rc_pct": 0.071,
       "top3_rc_assets": [
-        "ROBO",
-        "VOO",
+        "BBJP",
+        "GLD",
         "SLV"
       ],
-      "top3_rc_sum_pct": 0.2651,
+      "top3_rc_sum_pct": 0.1985,
       "top3_loss_assets": [
-        "QQQ",
         "CIBR",
-        "VOO"
+        "QQQ",
+        "SMH"
       ],
       "loss_ok": true,
       "role_ok": true,
@@ -124,26 +124,26 @@
     },
     {
       "scenario_id": "liquidity_shock",
-      "portfolio_pnl_pct": 1.002,
+      "portfolio_pnl_pct": -0.3228,
       "pnl_by_block_pct": {
-        "Growth": -0.7263,
-        "Duration": -0.1821,
-        "Inflation": 1.9216,
-        "Liquidity": -0.0112,
+        "Growth": -0.9374,
+        "Duration": -0.1752,
+        "Inflation": 0.8699,
+        "Liquidity": -0.0802,
         "Tail": 0.0
       },
-      "top1_rc_asset": "ROBO",
-      "top1_rc_pct": 0.0926,
+      "top1_rc_asset": "URA",
+      "top1_rc_pct": 0.0877,
       "top3_rc_assets": [
-        "ROBO",
-        "VOO",
-        "QQQ"
+        "URA",
+        "COPX",
+        "VDC"
       ],
-      "top3_rc_sum_pct": 0.2617,
+      "top3_rc_sum_pct": 0.2337,
       "top3_loss_assets": [
-        "SCHD",
         "ROBO",
-        "VGK"
+        "SCHD",
+        "BBJP"
       ],
       "loss_ok": true,
       "role_ok": true,
@@ -153,31 +153,61 @@
     }
   ],
   "factor_betas": {
-    "beta_eq": 0.406,
-    "beta_rr": -2.3614,
-    "beta_inf": -0.2266,
-    "beta_credit": 36.8781,
-    "beta_usd": -0.5126,
-    "beta_cmd": 0.1338
+    "beta_eq": 0.2179,
+    "beta_rr": -2.0449,
+    "beta_inf": -0.1181,
+    "beta_credit": -8.9444,
+    "beta_usd": -0.4084,
+    "beta_cmd": 0.0279
   },
   "historical_results": [
     {
       "episode": "2008",
       "max_dd": null,
+      "volatility_spike_ratio": null,
+      "stress_correlations": {},
       "pass": null
     },
     {
       "episode": "2020",
-      "max_dd": NaN,
-      "pass": false
+      "max_dd": -0.0519,
+      "volatility_spike_ratio": 7.475,
+      "stress_correlations": {
+        "Growth_Duration": 0.83,
+        "Growth_Inflation": 0.9961,
+        "Duration_Inflation": 0.8759
+      },
+      "pass": true
     },
     {
       "episode": "2022",
-      "max_dd": NaN,
-      "pass": false
+      "max_dd": -0.1254,
+      "volatility_spike_ratio": 1.4532,
+      "stress_correlations": {
+        "Growth_Duration": 0.6825,
+        "Growth_Inflation": 0.7547,
+        "Duration_Inflation": 0.5778
+      },
+      "pass": true
     }
   ],
   "rc_asset_cap_used": 0.1,
   "stress_top3_rc_sum_cap": 0.7,
-  "max_dd_limit": 0.35
+  "max_dd_limit": 0.35,
+  "factor_betas_5y": {
+    "beta_eq": 0.2179,
+    "beta_rr": -2.0449,
+    "beta_inf": -0.1181,
+    "beta_credit": -8.9444,
+    "beta_usd": -0.4084,
+    "beta_cmd": 0.0279
+  },
+  "factor_betas_10y": {
+    "beta_eq": 0.2478,
+    "beta_rr": -2.1513,
+    "beta_inf": -0.3832,
+    "beta_credit": -13.6541,
+    "beta_usd": -0.3414,
+    "beta_cmd": 0.0361
+  }
 }
