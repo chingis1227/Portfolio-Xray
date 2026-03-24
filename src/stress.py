@@ -79,6 +79,9 @@ HISTORICAL_EPISODES = [
     ("2022", "2021-11-01", "2022-10-31"),
 ]
 
+# Equity shock — defensive bundle S = sum(Duration, Inflation, Tail) PnL; decimals like pnl_by_block_pct (stress_testing_spec §6)
+EQUITY_DEFENSIVE_SUM_FAIL_BELOW = -0.01  # S < -0.01 → Role fail; −0.01 ≤ S < 0 → Role warn if Loss+RC pass
+
 # Scenario id -> suffix for fail_reason_code (e.g. equity_shock -> EQUITY_SHOCK)
 _SCENARIO_SUFFIX = {
     "equity_shock": "EQUITY_SHOCK",
@@ -287,7 +290,16 @@ def run_stress(
 
         # Tests
         loss_ok = portfolio_pnl_pct >= -max_dd_limit
-        role_ok = _role_test_ok(scenario_id, pnl_by_block)
+        equity_defensive_sum: float | None = None
+        role_equity_shock_severity: str | None = None
+        if scenario_id == "inflation_stagflation":
+            role_ok = pnl_by_block.get("Inflation", 0) > 0
+        elif scenario_id == "equity_shock":
+            equity_defensive_sum = _equity_defensive_sum(pnl_by_block)
+            role_equity_shock_severity = _equity_shock_role_severity(equity_defensive_sum)
+            role_ok = role_equity_shock_severity != "fail"
+        else:
+            role_ok = True
         rc1_ok = top1_rc_pct <= rc_cap
         rc3_ok = top3_rc_sum_pct <= stress_top3_rc_sum_cap_pct
         scenario_pass = loss_ok and role_ok and rc1_ok and rc3_ok
@@ -308,7 +320,7 @@ def run_stress(
         if portfolio_pnl_pct < worst_loss:
             worst_loss = portfolio_pnl_pct
 
-        scenario_results.append({
+        row: dict[str, Any] = {
             "scenario_id": scenario_id,
             "portfolio_pnl_pct": round(portfolio_pnl_pct, 4),
             "pnl_by_block_pct": {k: round(v, 4) for k, v in pnl_by_block.items()},
@@ -322,7 +334,11 @@ def run_stress(
             "rc1_ok": rc1_ok,
             "rc3_ok": rc3_ok,
             "pass": scenario_pass,
-        })
+        }
+        if equity_defensive_sum is not None:
+            row["defensive_pnl_sum"] = round(equity_defensive_sum, 4)
+            row["role_equity_shock_severity"] = role_equity_shock_severity
+        scenario_results.append(row)
 
     # Factor validation: output only (no limits for now)
     factor_betas = {k: round(v, 4) for k, v in portfolio_betas.items()}
@@ -418,7 +434,12 @@ def run_stress(
                     failed_test = "RC_Top3"
                 break
 
-    if all_scenario_pass and not hist_fail:
+    has_equity_role_warn = any(
+        s.get("scenario_id") == "equity_shock" and s.get("role_equity_shock_severity") == "warn"
+        for s in scenario_results
+    )
+
+    if all_scenario_pass and not hist_fail and not has_equity_role_warn:
         status = "PASS"
         fail_reason_code = None
         warning_code = None
@@ -426,10 +447,14 @@ def run_stress(
         status = "FAIL_STRESS"
         fail_reason_code = _build_fail_reason_code(failed_test, failed_scenario)
         warning_code = None
+    elif has_equity_role_warn:
+        status = "PASS_WITH_WARNING"
+        fail_reason_code = None
+        warning_code = _build_warning_code("ROLE_EQUITY_DEFENSIVE_WEAK")
     else:
         status = "PASS_WITH_WARNING"
         fail_reason_code = None
-        warning_code = _build_warning_code("HIST_BORDERLINE")  # or other reason when we have multiple warning types
+        warning_code = _build_warning_code("HIST_BORDERLINE")
 
     return {
         "status": status,
@@ -447,17 +472,27 @@ def run_stress(
     }
 
 
-def _role_test_ok(scenario_id: str, pnl_by_block: dict[str, float]) -> bool:
-    """Stagflation: PnL_Inflation > 0. Equity shock: not (PnL_Duration < 0 and PnL_Inflation < 0 and PnL_Tail <= 0)."""
-    if scenario_id == "inflation_stagflation":
-        return pnl_by_block.get("Inflation", 0) > 0
-    if scenario_id == "equity_shock":
-        dur = pnl_by_block.get("Duration", 0)
-        inf = pnl_by_block.get("Inflation", 0)
-        tail = pnl_by_block.get("Tail", 0)
-        if dur < 0 and inf < 0 and tail <= 0:
-            return False
-    return True
+def _equity_defensive_sum(pnl_by_block: dict[str, float]) -> float:
+    """S = PnL_Duration + PnL_Inflation + PnL_Tail (decimal fractions)."""
+    return (
+        float(pnl_by_block.get("Duration", 0.0))
+        + float(pnl_by_block.get("Inflation", 0.0))
+        + float(pnl_by_block.get("Tail", 0.0))
+    )
+
+
+def _equity_shock_role_severity(defensive_sum: float) -> str:
+    """
+    Equity shock Role grades (stress_testing_spec §6):
+    - ok: S >= 0
+    - warn: -0.01 <= S < 0 (suite PASS_WITH_WARNING if Loss+RC pass); includes mild band [-0.005, 0)
+    - fail: S < -0.01
+    """
+    if defensive_sum >= 0:
+        return "ok"
+    if defensive_sum < EQUITY_DEFENSIVE_SUM_FAIL_BELOW:
+        return "fail"
+    return "warn"
 
 
 def _empty_report(reason: str) -> dict[str, Any]:

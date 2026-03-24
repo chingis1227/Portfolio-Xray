@@ -4,15 +4,15 @@
 
 ---
 
-## 1. Pass criteria (all must hold)
+## 1. Pass criteria (per scenario)
 
-The portfolio **passes** a stress scenario only if **all** of the following hold:
+A scenario is treated as **passed** (`pass=true`) only if **all** of the following hold:
 
-- **Loss test:** Portfolio_PnL_% ≥ -MaxDD_limit (mandate; no separate stress_limit unless configured).
-- **Role test:** Defensive blocks satisfy minimal role rules (see §5).
-- **RC test:** Risk concentration in the scenario does not exceed limits (Top1_RC_%, Top3_RC_sum_%).
+- **Loss test:** Portfolio_PnL_% ≥ -MaxDD_limit (mandate; no separate stress_limit unless configured). Violation → **FAIL_STRESS**.
+- **RC test:** Top1_RC_% and Top3_RC_sum_% within caps (§7). Violation → **FAIL_STRESS**.
+- **Role test:** Rules in §6. For **equity shock**, a **severe** defensive breach fails the scenario (**FAIL_STRESS**); a **mild** breach still allows the scenario to pass if Loss and RC pass, but the suite may be **PASS_WITH_WARNING** (§12).
 
-**Failure of any one** → **FAIL_STRESS**.
+Other scenarios: **Stagflation** Role failure → **FAIL_STRESS** as before.
 
 ---
 
@@ -54,6 +54,7 @@ For each scenario the system must output:
 - **Top1_RC_asset**, **Top1_RC_%**
 - **Top3_RC_assets**, **Top3_RC_sum_%**
 - **Top3_loss_assets** (assets with largest loss contribution by PnL)
+- **equity_shock only:** `defensive_pnl_sum` = PnL_Duration + PnL_Inflation + PnL_Tail (decimal fractions, same units as `pnl_by_block_pct`); `role_equity_shock_severity` = `ok` | `warn` | `fail` (§6).
 
 ---
 
@@ -67,7 +68,12 @@ For each scenario the system must output:
 ## 6. Role test (minimal rules)
 
 - **Stagflation:** FAIL if PnL_Inflation ≤ 0 (inflation block must be positive in its regime).
-- **Equity shock:** FAIL if simultaneously PnL_Duration < 0 and PnL_Inflation < 0 and PnL_Tail ≤ 0 (no defensive offset).
+- **Equity shock:** Define **S** = PnL_Duration + PnL_Inflation + PnL_Tail (same decimal fraction units as block PnL in §4).
+  - **S ≥ 0:** defensive bundle is net supportive → Role **ok** (no suite warning from this rule).
+  - **−0.01 ≤ S < 0:** mild aggregate defensive drag (includes the illustrative band **−0.005 … 0**) → Role **warn**; scenario still **passes** if Loss and RC pass; suite status **PASS_WITH_WARNING** with **WARN_ROLE_EQUITY_DEFENSIVE_WEAK** (§12).
+  - **S < −0.01:** severe lack of aggregate protection → Role **fail** → scenario **fail** → **FAIL_STRESS** (Role), e.g. **FAIL_ROLE_EQUITY_SHOCK**.
+
+**Loss** and **Top1 / Top3 RC** limits remain **hard** gates: they do not soften when Role is only a warning.
 
 ---
 
@@ -142,7 +148,7 @@ Betas: **weekly** changes/returns for reporting outputs in §8 (`factor_betas_5y
 - **Status:** one of PASS | PASS_WITH_WARNING | FAIL_STRESS.
 - **fail_reason_code** (when FAIL_STRESS): specific code, e.g.  
   **FAIL_LOSS_EQUITY_SHOCK**, **FAIL_ROLE_STAGFLATION**, **FAIL_RC_TOP1_LIQUIDITY_SHOCK**, **FAIL_RC_TOP3_CREDIT_SHOCK**, **FAIL_BETA_REAL_RATES**, **FAIL_HIST_2022**.
-- **warning_code** (when PASS_WITH_WARNING): e.g. **WARN_HIST_BORDERLINE**, **WARN_BETA_NO_LIMITS**, **WARN_DATA_INSUFFICIENT**.
+- **warning_code** (when PASS_WITH_WARNING): e.g. **WARN_ROLE_EQUITY_DEFENSIVE_WEAK**, **WARN_HIST_BORDERLINE**, **WARN_BETA_NO_LIMITS**, **WARN_DATA_INSUFFICIENT**.
 - **Report must include:** worst scenario loss; failed scenario (if any); which test failed (Loss / Role / RC / Beta / Historical); Top1/Top3 RC and Top3 loss.
 
 When View After Optimization is used, stress failure must use specific codes: **FAIL_STRESS_DURATION**, **FAIL_STRESS_INFLATION**, **FAIL_STRESS_LIQUIDITY**, (optional) **FAIL_STRESS_TAIL**. The **fail_reason_code** above provides the detailed scenario/test code for audit.
