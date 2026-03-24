@@ -87,14 +87,15 @@ def fetch_inflation_surprise_weekly(start: str, end: str) -> pd.Series:
 
 
 def fetch_credit_spread_weekly(start: str, end: str) -> pd.Series:
-    """Weekly change in HY spread (FRED BAMLH0A0HYM2). In bps -> decimal (e.g. 0.01 = 100 bps)."""
+    """Weekly change in HY spread (FRED BAMLH0A0HYM2). Percent -> decimal (e.g. 4.0% -> 0.04)."""
     try:
         s = fetch_fred_series(FRED_HY_SPREAD, start, end)
         if s.empty or len(s) < 2:
             return pd.Series(dtype=float)
         w = _week_end(s)
-        # spread in bps; convert to decimal for regression (e.g. 400 bps = 0.04)
-        w_dec = w / 10000.0
+        # FRED series is in percent points; convert to decimal, then take weekly delta.
+        # Example: 4.0 (%) -> 0.04 (decimal spread level).
+        w_dec = w / 100.0
         return w_dec.diff().dropna()
     except Exception:
         return pd.Series(dtype=float)
@@ -338,7 +339,8 @@ def build_factor_matrix_monthly(
         cr = fetch_fred_series(FRED_HY_SPREAD, start, end)
         if not cr.empty:
             cr = _month_end(cr)
-            cr = (cr / 10000.0).diff().dropna()
+            # Keep units consistent with weekly pipeline: percent points -> decimal.
+            cr = (cr / 100.0).diff().dropna()
     except Exception:
         cr = pd.Series(dtype=float)
     try:
