@@ -25,6 +25,10 @@ RB target search order used by optimization:
 
 The RB corridor validator is applied to each tested target and still uses target ± 5 pp by default.
 
+`run_result.json` includes `rb_target_selection` with:
+- `stage`: `midpoint` | `range` | `expanded`
+- `target`: selected RC target for `Growth/Duration/Inflation`
+
 ---
 
 ## 2. Early exits (no optimization or no weights)

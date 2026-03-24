@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -124,6 +125,33 @@ def _build_next_actions(
             "Relax rc_asset_cap_pct, add assets, or set rc_policy_mode: permissive to write weights with violation."
         )
     return actions
+
+
+def _extract_rb_target_selection(status_text: str) -> dict | None:
+    """
+    Parse optimization status text and extract RB target selection metadata.
+    Expected markers in status: "RB_TARGET_SOURCE: <stage>" and
+    "RB_TARGET_USED: <growth>/<duration>/<inflation>".
+    """
+    if not status_text:
+        return None
+    source_match = re.search(r"RB_TARGET_SOURCE:\s*([A-Za-z_]+)", status_text)
+    used_match = re.search(
+        r"RB_TARGET_USED:\s*([0-9]*\.?[0-9]+)\/([0-9]*\.?[0-9]+)\/([0-9]*\.?[0-9]+)",
+        status_text,
+    )
+    if not source_match and not used_match:
+        return None
+    out: dict[str, object] = {}
+    if source_match:
+        out["stage"] = source_match.group(1).strip().lower()
+    if used_match:
+        out["target"] = {
+            "Growth": round(float(used_match.group(1)), 4),
+            "Duration": round(float(used_match.group(2)), 4),
+            "Inflation": round(float(used_match.group(3)), 4),
+        }
+    return out or None
 
 
 def load_monthly_returns(cfg, args) -> tuple[pd.DataFrame, str, pd.Timestamp]:
@@ -681,6 +709,7 @@ def main() -> None:
     run_result = {
         "weights": rounded if write_weights_gate else {},
         "status": production_status,
+        "rb_target_selection": _extract_rb_target_selection(status),
         "violations": violations,
         "rb_deltas_pp": rb_deltas_pp,
         "rc_breaches": rc_breaches,
