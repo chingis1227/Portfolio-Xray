@@ -128,4 +128,7 @@ Liquidity:
   - BIL
   - SHV
 
-Tail: []
+# Volatility / tail-risk proxies (long vol, short VIX futures exposure — high roll cost & decay).
+Tail:
+  - VIXY
+  - UVXY

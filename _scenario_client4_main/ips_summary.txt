@@ -1,0 +1,64 @@
+IPS Summary — Full Run Results
+==================================================
+
+1. Mandate parameters
+------------------------------
+  Target volatility (annual):  17.0%
+  Max drawdown limit:          40.0%
+  Horizon (years):             15.0
+  Investor currency:           USD
+  Client profile:              —
+
+2. Run status: OK_FALLBACK
+
+3. Final portfolio weights
+------------------------------
+  VOO: 0.572
+  TLT: 0.186
+  QQQ: 0.148
+  HYG: 0.020
+  SCHP: 0.020
+  VGK: 0.020
+  VT: 0.020
+  VIXY: 0.015
+  (sum: 1.001)
+
+4. Risk contribution by block (actual | target)
+------------------------------
+  Growth: 92.25% | target 90.00% (+2.2 pp)
+  Duration: 7.34% | target 5.00% (+2.3 pp)
+  Inflation: 0.42% | target 5.00% (-4.6 pp)
+
+5. RC breaches (asset above cap)
+------------------------------
+  VOO: RC=27.97%, cap=16.67%
+  SMH: RC=18.62%, cap=16.67%
+  ETHE: RC=27.93%, cap=16.67%
+
+6. Stress summary
+------------------------------
+  Status:              FAIL_STRESS
+  Fail reason:         FAIL_RC_TOP1_EQUITY_SHOCK
+  Worst scenario loss: -29.58%
+  Failed scenario:     equity_shock
+
+7. Violations
+------------------------------
+  RC_VIOLATION: iterations=200 | remaining_violators=['VOO', 'SMH', 'ETHE'] | reason=max_iterations
+  VIOL_RC_ASSET_CAP: [{'ticker': 'VOO', 'rc_pct': 27.97, 'cap_pct': 16.67}, {'ticker': 'SMH', 'rc_pct': 18.62, 'cap_pct': 16.67}, {'ticker': 'ETHE', 'rc_pct': 27.93, 'cap_pct': 16.67}]
+  FAIL_STRESS: fail_reason_code=FAIL_RC_TOP1_EQUITY_SHOCK | worst_scenario_loss_pct=-0.2958 | failed_scenario=equity_shock
+
+8. Next actions (this run)
+------------------------------
+  - Consider adding assets to dilute RC or relax rc_asset_cap; review breached tickers.
+  - Consider: increase liquidity, shorten duration, reduce high growth/HY exposure.
+  - RC post-processing could not satisfy RC caps (strict mode: weights not written; permissive: violation flagged). Relax rc_asset_cap_pct, add assets, or set rc_policy_mode: permissive to write weights with violation.
+
+9. Actions by status (reference)
+------------------------------
+  APPROVED             Use weights as target; safe to execute.
+  CANDIDATE_RB_BREACH  Use with caution; consider re-run or accept and monitor.
+  OK_FALLBACK          Check rc_breaches above; use if acceptable for mandate.
+  FAIL_STRESS          If strict_stress_gate: weights not written. Review defensive blocks, liquidity.
+  FAIL_MAX_DD          Weights not written. Adjust target_max_drawdown_pct or risk budget.
+  FAIL_DATA/RC/FEAS    Weights not written. Follow next_actions above.

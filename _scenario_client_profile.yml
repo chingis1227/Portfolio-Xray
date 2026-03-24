@@ -1,0 +1,57 @@
+# Сценарий: клиент 7–9% ном., 12Y, TargetVol 12–14%, MaxDD −30%, ликвидность 6 мес.,
+# RB Growth 70% / Duration 15% / Inflation 15%, cash floor + scaling, core VOO/VT, HY+крипто в универсуме.
+investor_currency: USD
+initial_investable_amount: 1000000
+liquidity_need_months: 6
+monthly_expenses: 5000
+portfolio_value:
+cash_policy: allowed_for_scaling
+
+tickers:
+  - VOO
+  - VT
+  - QQQ
+  - SMH
+  - VGK
+  - BBJP
+  - VWO
+  - VDC
+  - ITA
+  - CIBR
+  - ROBO
+  - SCHD
+  - COPX
+  - URA
+  - SLV
+  - GLD
+  - SCHP
+  - BIL
+  - BND
+  - HYG
+  - ETHE
+
+client_profile:
+
+target_nominal_return_annual: 0.08
+target_vol_annual: 0.13
+target_max_drawdown_pct: -0.30
+horizon_years: 12.0
+
+rc_block_targets:
+  Growth: 0.70
+  Duration: 0.15
+  Inflation: 0.15
+
+rc_block_target_ranges:
+  Growth: { min: 0.60, max: 0.80 }
+  Duration: { min: 0.10, max: 0.25 }
+  Inflation: { min: 0.10, max: 0.25 }
+
+growth_core_candidates: [VOO, VT]
+min_single_security_weight_pct: 0.02
+rc_policy_mode: permissive
+allow_leverage: false
+allow_short_selling: false
+
+output_dir: results_csv
+output_dir_final: "_scenario_client_main"

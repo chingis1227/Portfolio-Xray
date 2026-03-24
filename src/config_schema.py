@@ -103,6 +103,8 @@ class PortfolioConfig:
 
     # Liquidity floor from profile or explicit config; used by ProLiquidity when set (else derived from liquidity_need_months * monthly_expenses / portfolio_value)
     liquidity_floor_pct: float | None = None
+    # Reserve this fraction of total portfolio for Tail block tickers (e.g. VIXY) after ProLiquidity; non-Tail weights scaled by (1 - tail_target_weight_pct).
+    tail_target_weight_pct: float | None = None
     # RC post-processing: "strict" = do not write weights if RC caps unresolved; "permissive" = write but flag violation
     rc_policy_mode: str = "strict"
     # When True, do not write weights if Stress Judge returns FAIL_STRESS (production hard gate)
@@ -171,6 +173,7 @@ class PortfolioConfig:
             "gold_ticker": self.gold_ticker,
             "comm_ticker": self.comm_ticker,
             "liquidity_floor_pct": self.liquidity_floor_pct,
+            "tail_target_weight_pct": self.tail_target_weight_pct,
         }
     
     def get_pending_config_items(self) -> dict[str, Any]:
@@ -276,6 +279,7 @@ PERCENT_FIELDS = [
     "max_single_security_weight_pct",
     "min_single_security_weight_pct",
     "coverage_threshold",
+    "tail_target_weight_pct",
 ]
 
 NONNEGATIVE_FIELDS = [
@@ -813,6 +817,21 @@ def _validate_liquidity_need_months(cfg: dict[str, Any]) -> None:
         )
 
 
+def _validate_tail_target_weight_pct(cfg: dict[str, Any]) -> None:
+    v = cfg.get("tail_target_weight_pct")
+    if v is None:
+        return
+    if not isinstance(v, (int, float)):
+        raise ConfigValidationError(
+            f"Config field 'tail_target_weight_pct' must be numeric, got {type(v).__name__}"
+        )
+    x = float(v)
+    if x < 0 or x > 0.25:
+        raise ConfigValidationError(
+            f"Config field 'tail_target_weight_pct' must be between 0 and 0.25, got {x}"
+        )
+
+
 def _validate_cash_policy(cfg: dict[str, Any]) -> None:
     """Validate cash_policy is one of required_floor, allowed_for_scaling, prohibited."""
     val = cfg.get("cash_policy", "allowed_for_scaling")
@@ -997,6 +1016,7 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
     _validate_horizon_years(cfg)
     _validate_liquidity_need_months(cfg)
     _validate_cash_policy(cfg)
+    _validate_tail_target_weight_pct(cfg)
     _validate_portfolio_value(cfg)
     _validate_alpha_shift_params(cfg)
     _validate_rc_policy_mode(cfg)
@@ -1059,6 +1079,7 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         gold_ticker=cfg.get("gold_ticker"),
         comm_ticker=cfg.get("comm_ticker"),
         liquidity_floor_pct=_parse_float_optional(cfg.get("liquidity_floor_pct")),
+        tail_target_weight_pct=_parse_float_optional(cfg.get("tail_target_weight_pct")),
         windows_months=list(cfg["windows_months"]),
         coverage_threshold=cfg.get("coverage_threshold", 0.90),
         output_dir=cfg["output_dir"],

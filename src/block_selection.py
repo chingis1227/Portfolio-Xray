@@ -28,6 +28,27 @@ from src.optimization import (
 
 GROWTH_PROXY = "VOO"
 N_WORST_GROWTH = 12
+
+
+def _resolve_growth_proxy(monthly_returns: pd.DataFrame, config: Any) -> str | None:
+    """
+    Equity series for worst-Growth-month / stress-window scoring (duration & inflation selection).
+    Prefer VOO; if not in universe, use first growth_core_candidate with history, else VTI/VT.
+    """
+    if GROWTH_PROXY in monthly_returns.columns:
+        return GROWTH_PROXY
+    candidates = getattr(config, "growth_core_candidates", None)
+    if isinstance(config, dict) and candidates is None:
+        candidates = config.get("growth_core_candidates")
+    if not candidates:
+        candidates = ["VOO", "VT", "VTI"]
+    for t in candidates:
+        if t and str(t) in monthly_returns.columns:
+            return str(t)
+    for t in ("VT", "VTI"):
+        if t in monthly_returns.columns:
+            return t
+    return None
 ES95_BASELINE_TOL = 0.003
 BETA_DOWN_SOFT_PASS = 0.2
 
@@ -175,8 +196,9 @@ def select_duration_block(
     Returns dict with status "OK" | "FAIL_DATA" | "FAIL_FEASIBILITY", and on OK:
     selected_internal_weights, selected_candidate_name, diagnostics, selection_method.
     """
-    if GROWTH_PROXY not in monthly_returns.columns:
-        return {"status": "FAIL_DATA", "reason": "VOO data missing"}
+    growth_proxy = _resolve_growth_proxy(monthly_returns, config)
+    if growth_proxy is None:
+        return {"status": "FAIL_DATA", "reason": "Growth proxy data missing (add VOO or a growth_core_candidate with history)"}
 
     duration_uni = _get_duration_universe(config, blocks)
     if not duration_uni:
@@ -201,7 +223,7 @@ def select_duration_block(
         }
 
     candidates = _duration_candidates(duration_uni, int_t, long_t, ig_t)
-    r_voo = monthly_returns[GROWTH_PROXY].dropna()
+    r_voo = monthly_returns[growth_proxy].dropna()
     bad_months = r_voo < 0
     worst_12_idx = r_voo.nsmallest(N_WORST_GROWTH).index
 
@@ -331,8 +353,9 @@ def select_inflation_block(
     Select Inflation block internal weights per optimization_inflation_spec.
     duration_proxy_ticker: for Type1 months (prefer duration_int_ticker, else duration_long_ticker).
     """
-    if GROWTH_PROXY not in monthly_returns.columns:
-        return {"status": "FAIL_DATA", "reason": "VOO data missing"}
+    growth_proxy = _resolve_growth_proxy(monthly_returns, config)
+    if growth_proxy is None:
+        return {"status": "FAIL_DATA", "reason": "Growth proxy data missing (add VOO or a growth_core_candidate with history)"}
 
     inflation_uni = _get_inflation_universe(config, blocks)
     if not inflation_uni:
@@ -356,10 +379,10 @@ def select_inflation_block(
         }
 
     candidates = _inflation_candidates(inflation_uni, tips_t, gold_t, comm_t)
-    r_voo = monthly_returns[GROWTH_PROXY].dropna()
+    r_voo = monthly_returns[growth_proxy].dropna()
     worst_12_idx = r_voo.nsmallest(N_WORST_GROWTH).index
 
-    # Type1: VOO < 0 and duration_proxy < 0
+    # Type1: growth proxy < 0 and duration_proxy < 0
     type1_idx = None
     if duration_proxy_ticker and duration_proxy_ticker in monthly_returns.columns:
         r_dur = monthly_returns[duration_proxy_ticker].dropna()
@@ -367,7 +390,7 @@ def select_inflation_block(
         mask = (r_voo.reindex(common) < 0) & (r_dur.reindex(common) < 0)
         type1_idx = common[mask].index
 
-    # Type2: VOO < 0 and gold > 0
+    # Type2: growth proxy < 0 and gold > 0
     type2_idx = None
     if gold_t and gold_t in monthly_returns.columns:
         r_gold = monthly_returns[gold_t].dropna()

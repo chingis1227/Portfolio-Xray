@@ -53,6 +53,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-cache", action="store_true", help="Ignore cache, download fresh data")
     parser.add_argument("--write-config", action="store_true", help="Write optimized weights to config.yml")
     parser.add_argument("--profile", type=str, default=None, help="Override client_profile (e.g. Growth, conservative)")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to config YAML (default: config.yml in project root)",
+    )
+    parser.add_argument(
+        "--no-report",
+        action="store_true",
+        help="Skip run_report.py and PDF rebuild after optimization (scenario / isolated runs)",
+    )
     return parser.parse_args()
 
 
@@ -73,6 +84,39 @@ VIOL_RC_ASSET_CAP = "VIOL_RC_ASSET_CAP"
 VIOL_FAIL_STRESS = "FAIL_STRESS"
 VIOL_MAX_DD_BREACH = "MAX_DD_BREACH"
 WARN_MODEL_RISK_YOUNG_WEIGHT = "WARN_MODEL_RISK_YOUNG_WEIGHT"
+
+
+def _apply_tail_overlay(
+    final_weights: dict[str, float],
+    cfg,
+    blocks: dict[str, list[str]],
+) -> None:
+    """
+    After ProLiquidity: reserve tail_target_weight_pct for Tail-block tickers (e.g. VIXY);
+    scale all other weights proportionally so weights sum to 1.
+    """
+    tw = getattr(cfg, "tail_target_weight_pct", None)
+    if tw is None or float(tw) <= 0:
+        return
+    tail_tickers = [t for t in (blocks.get("Tail") or []) if t in cfg.tickers]
+    if not tail_tickers:
+        return
+    tw = float(min(max(float(tw), 0.0), 0.25))
+    others_sum = sum(w for t, w in final_weights.items() if t not in tail_tickers)
+    if others_sum <= 1e-15:
+        return
+    scale = (1.0 - tw) / others_sum
+    for t in list(final_weights.keys()):
+        if t not in tail_tickers:
+            final_weights[t] = final_weights.get(t, 0.0) * scale
+    share = tw / len(tail_tickers)
+    for t in tail_tickers:
+        final_weights[t] = share
+    logger.info(
+        "Tail overlay: target=%.2f%% split across %s",
+        tw * 100.0,
+        tail_tickers,
+    )
 
 
 def _rb_deltas_pp(actual_rc_block: dict, rc_block_targets: dict) -> dict[str, float]:
@@ -185,7 +229,8 @@ def main() -> None:
     setup_logging()
 
     try:
-        cfg = load_validated_config()
+        cfg_path = Path(args.config).resolve() if args.config else None
+        cfg = load_validated_config(cfg_path)
     except ConfigValidationError as e:
         logger.error(f"Ошибка конфигурации: {e}")
         raise SystemExit(1)
@@ -591,6 +636,8 @@ def main() -> None:
         logger.error("ProLiquidity: %s", proliquidity_error)
         raise SystemExit(1)
 
+    _apply_tail_overlay(final_weights, cfg, blocks_for_optimization)
+
     # Ensure all config tickers appear (zero if not in optimization)
     for t in cfg.tickers:
         if t not in final_weights:
@@ -944,22 +991,25 @@ def main() -> None:
     print("Snapshot сохранён в %s" % (out_final / "snapshot.json"))
 
     # Full report (CSV and snapshots). Weights and run_result are already written; report must not block.
-    report_cmd = [sys.executable, "run_report.py"]
-    if args.no_cache:
-        report_cmd.append("--no-cache")
     project_root = Path(__file__).resolve().parent
-    try:
-        subprocess.run(report_cmd, cwd=project_root, check=True)
-    except subprocess.CalledProcessError as e:
-        logger.warning("Report failed (exit %s). Weights and run_result were saved. %s", e.returncode, e)
-        print("")
-        print("Report failed, weights saved. See log for details.")
+    if not args.no_report:
+        report_cmd = [sys.executable, "run_report.py"]
+        if args.no_cache:
+            report_cmd.append("--no-cache")
         try:
-            from src.pdf_reports import try_rebuild_pdfs_only
+            subprocess.run(report_cmd, cwd=project_root, check=True)
+        except subprocess.CalledProcessError as e:
+            logger.warning("Report failed (exit %s). Weights and run_result were saved. %s", e.returncode, e)
+            print("")
+            print("Report failed, weights saved. See log for details.")
+            try:
+                from src.pdf_reports import try_rebuild_pdfs_only
 
-            try_rebuild_pdfs_only(logger=logger)
-        except Exception as ex:
-            logger.warning("PDF suite rebuild skipped: %s", ex)
+                try_rebuild_pdfs_only(logger=logger)
+            except Exception as ex:
+                logger.warning("PDF suite rebuild skipped: %s", ex)
+    else:
+        logger.info("Skipping run_report.py (--no-report).")
 
     if args.write_config:
         config_path = Path(__file__).resolve().parent / "config.yml"

@@ -1,0 +1,82 @@
+IPS Summary — Full Run Results
+==================================================
+
+1. Mandate parameters
+------------------------------
+  Target volatility (annual):  13.0%
+  Max drawdown limit:          30.0%
+  Horizon (years):             12.0
+  Investor currency:           USD
+  Client profile:              —
+
+2. Run status: CANDIDATE_RB_BREACH
+
+3. Final portfolio weights
+------------------------------
+  BND: 0.241
+  VOO: 0.146
+  BIL: 0.113
+  SLV: 0.101
+  SMH: 0.089
+  ETHE: 0.031
+  COPX: 0.030
+  BBJP: 0.018
+  CIBR: 0.018
+  GLD: 0.018
+  HYG: 0.018
+  ITA: 0.018
+  QQQ: 0.018
+  ROBO: 0.018
+  SCHD: 0.018
+  SCHP: 0.018
+  URA: 0.018
+  VDC: 0.018
+  VGK: 0.018
+  VT: 0.018
+  VWO: 0.018
+  (sum: 1.003)
+
+4. Risk contribution by block (actual | target)
+------------------------------
+  Growth: 75.36% | target 70.00% (+5.4 pp)
+  Duration: 7.35% | target 15.00% (-7.7 pp)
+  Inflation: 17.29% | target 15.00% (+2.3 pp)
+
+5. RC breaches (asset above cap)
+------------------------------
+  VOO: RC=16.32%, cap=10.00%
+  SMH: RC=15.57%, cap=10.00%
+  ETHE: RC=14.22%, cap=10.00%
+  SLV: RC=15.74%, cap=10.00%
+
+6. Stress summary
+------------------------------
+  Status:              FAIL_STRESS
+  Fail reason:         FAIL_RC_TOP1_EQUITY_SHOCK
+  Worst scenario loss: -19.64%
+  Failed scenario:     equity_shock
+
+7. Violations
+------------------------------
+  RC_VIOLATION: iterations=200 | remaining_violators=['VOO', 'SMH', 'ETHE', 'SLV'] | reason=max_iterations
+  RB_BREACH: Growth=5.36 | Duration=-7.65 | Inflation=2.29
+  VIOL_RC_ASSET_CAP: [{'ticker': 'VOO', 'rc_pct': 16.32, 'cap_pct': 10.0}, {'ticker': 'SMH', 'rc_pct': 15.57, 'cap_pct': 10.0}, {'ticker': 'ETHE', 'rc_pct': 14.22, 'cap_pct': 10.0}, {'ticker': 'SLV', 'rc_pct': 15.74, 'cap_pct': 10.0}]
+  FAIL_STRESS: fail_reason_code=FAIL_RC_TOP1_EQUITY_SHOCK | worst_scenario_loss_pct=-0.1964 | failed_scenario=equity_shock
+
+8. Next actions (this run)
+------------------------------
+  - Re-run with wider corridor (e.g., 7pp) OR relax secondary caps (weight caps) minimally.
+  - If still RB_BREACH: increase k_block (add instruments) in the offending block(s).
+  - If Growth capacity constraints prevent W_growth: add satellites or relax max_weight_sat/core caps.
+  - Consider adding assets to dilute RC or relax rc_asset_cap; review breached tickers.
+  - Consider: increase liquidity, shorten duration, reduce high growth/HY exposure.
+  - RC post-processing could not satisfy RC caps (strict mode: weights not written; permissive: violation flagged). Relax rc_asset_cap_pct, add assets, or set rc_policy_mode: permissive to write weights with violation.
+
+9. Actions by status (reference)
+------------------------------
+  APPROVED             Use weights as target; safe to execute.
+  CANDIDATE_RB_BREACH  Use with caution; consider re-run or accept and monitor.
+  OK_FALLBACK          Check rc_breaches above; use if acceptable for mandate.
+  FAIL_STRESS          If strict_stress_gate: weights not written. Review defensive blocks, liquidity.
+  FAIL_MAX_DD          Weights not written. Adjust target_max_drawdown_pct or risk budget.
+  FAIL_DATA/RC/FEAS    Weights not written. Follow next_actions above.

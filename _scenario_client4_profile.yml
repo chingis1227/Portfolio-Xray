@@ -1,0 +1,48 @@
+# Клиент 4: высокий риск + «страховка от краха»; 9–12% ном.; TargetVol 16–18%; MaxDD −40%;
+# горизонт 15+ лет; кэш почти нет; cash_policy prohibited; RB 90/5/5 (equity-heavy);
+# core VOO/VT + growth tilt; HY в Growth_HY; crypto до 5% (ETHE); tail VIXY 1.5%.
+investor_currency: USD
+initial_investable_amount: 1000000
+liquidity_need_months: 2
+monthly_expenses: 2500
+portfolio_value:
+cash_policy: prohibited
+
+target_nominal_return_annual: 0.105
+target_vol_annual: 0.17
+target_max_drawdown_pct: -0.40
+horizon_years: 15.0
+
+tickers:
+  - VOO
+  - VT
+  - QQQ
+  - SMH
+  - VGK
+  - HYG
+  - ETHE
+  - TLT
+  - SCHP
+  - VIXY
+
+client_profile:
+
+rc_block_targets:
+  Growth: 0.90
+  Duration: 0.05
+  Inflation: 0.05
+
+rc_block_target_ranges:
+  Growth: { min: 0.82, max: 0.95 }
+  Duration: { min: 0.02, max: 0.10 }
+  Inflation: { min: 0.02, max: 0.10 }
+
+growth_core_candidates: [VOO, VT]
+min_single_security_weight_pct: 0.02
+tail_target_weight_pct: 0.015
+rc_policy_mode: permissive
+allow_leverage: false
+allow_short_selling: false
+
+output_dir: results_csv
+output_dir_final: "_scenario_client4_main"
