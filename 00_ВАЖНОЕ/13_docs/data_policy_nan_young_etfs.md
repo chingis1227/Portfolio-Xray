@@ -99,3 +99,19 @@ To avoid decisions driven by a “nice” but regime-dependent segment:
 - **Inception dates** and **effective inclusion dates** (first full monthly point).
 - **NaN policy:** within_block_equal_rc_gated + fallback rules to cash proxy.
 - **Baseline vs full** metrics and the **comparison period** (after inception).
+
+---
+
+## 8. Risk-budget optimization: dual covariance for young ETFs (implementation)
+
+For **mean–variance / RC_vol inputs used by the policy optimizer** (primary and secondary windows), the pipeline may use a **dual covariance** so the estimation window is not collapsed to the shortest-listed history:
+
+- **Eligible** assets (default: ≥ 48 months of observations in the optimization window) form the **core** matrix via the usual synchronous sample on that core set only.
+- **Candidate** (default: 12–47 months) and **new** (< 12 months) assets get pairwise covariances from their available overlap with each peer, **shrunk** toward the **median covariance of the core block–block slice** (same Growth/Duration/Inflation role as in RB mapping). Shrinkage weight for “new” uses `new_shrinkage_alpha` (default 0.1); between candidate bounds it ramps linearly to 1.0 at eligibility.
+- **Weight cap:** candidate and new tickers are capped by `max_weight_candidate_or_new_pct` (default 2% each).
+- **Warning (not a hard fail):** if the **sum of optimized RiskPortfolio weights** of all candidate + new tickers exceeds `aggregate_candidate_new_warn_pct` (default 10%), `run_result.json` records `WARN_MODEL_RISK_YOUNG_WEIGHT`.
+- **Fallback:** if fewer than two eligible assets exist, optimization reverts to the legacy **full inner join** covariance on all risk tickers in the window.
+
+Configuration: `young_etf_optimization_policy` in `config.yml` (defaults injected by `config_schema`). Set `enabled: false` to restore the legacy inner-join-only optimizer covariance.
+
+**Note:** §2 above still applies to **generic** cov/corr/RC on a fixed panel (reports, correlation CSVs): those continue to use **inner join** unless a separate spec says otherwise. The dual matrix is specific to **optimization inputs** in `run_optimization.py`.

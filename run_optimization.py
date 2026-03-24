@@ -28,6 +28,7 @@ from src.config_schema import ConfigValidationError
 from src.data_loader import load_monthly_data_shared
 from src.optimization import (
     get_risk_portfolio_tickers,
+    ticker_to_block_map,
     run_risk_budget_optimization,
     enforce_rc_caps_postprocess,
     proliquidity,
@@ -39,6 +40,7 @@ from src.optimization import (
     RB_CORRIDOR_PP,
 )
 from src.risk_contrib import cov_matrix_monthly, resolve_rc_asset_cap
+from src.young_etfs_dual_cov import build_dual_covariance_and_mu, per_ticker_young_weight_caps
 from src.robustness import compute_robustness_diagnostics
 from src.snapshot import build_snapshot, print_snapshot, save_snapshot
 from src.stress import run_stress
@@ -70,6 +72,7 @@ VIOL_RC_VIOLATION = "RC_VIOLATION"
 VIOL_RC_ASSET_CAP = "VIOL_RC_ASSET_CAP"
 VIOL_FAIL_STRESS = "FAIL_STRESS"
 VIOL_MAX_DD_BREACH = "MAX_DD_BREACH"
+WARN_MODEL_RISK_YOUNG_WEIGHT = "WARN_MODEL_RISK_YOUNG_WEIGHT"
 
 
 def _rb_deltas_pp(actual_rc_block: dict, rc_block_targets: dict) -> dict[str, float]:
@@ -123,6 +126,11 @@ def _build_next_actions(
         actions.append(
             "RC post-processing could not satisfy RC caps (strict mode: weights not written; permissive: violation flagged). "
             "Relax rc_asset_cap_pct, add assets, or set rc_policy_mode: permissive to write weights with violation."
+        )
+    if WARN_MODEL_RISK_YOUNG_WEIGHT in codes:
+        actions.append(
+            "Суммарный вес candidate/new активов превышает порог young_etf_optimization_policy.aggregate_candidate_new_warn_pct: "
+            "повышенная неопределённость оценки риска; рассмотреть снижение доли молодых ETF или отключение dual-cov."
         )
     return actions
 
@@ -292,21 +300,55 @@ def main() -> None:
         print("  См. %s (status=%s)." % (run_result_path, STATUS_FAIL_FEASIBILITY))
         raise SystemExit(1)
 
-    # Build primary window once (single slice for optimization, RC postprocess, ProLiquidity, vol)
+    # Primary window: dual covariance (young ETFs) or legacy full inner join
     cols_primary = [t for t in risk_tickers_opt if t in monthly_returns.columns]
-    ret_primary = monthly_returns[cols_primary].iloc[-window_months:].dropna(axis=1, how="all").dropna(how="any")
-    MIN_FULL_JOIN_MONTHS = 11
-    if len(ret_primary) < MIN_FULL_JOIN_MONTHS:
-        lookback = min(monthly_returns.shape[0], max(window_months * 2, 120))
-        ret_primary = monthly_returns[cols_primary].iloc[-lookback:].dropna(axis=1, how="all").dropna(how="any")
-        if len(ret_primary) >= MIN_FULL_JOIN_MONTHS:
-            ret_primary = ret_primary.iloc[-min(window_months, len(ret_primary)):]
-    cols_primary = list(ret_primary.columns)
     if not cols_primary:
         logger.error("FAIL_DATA: no risk tickers with returns in primary window")
         raise SystemExit(1)
     use_shrinkage = getattr(cfg, "covariance_shrinkage", False)
-    cov_df = cov_matrix_monthly(ret_primary, ddof=1, use_shrinkage=use_shrinkage)
+    young_pol = getattr(cfg, "young_etf_optimization_policy", None) or {}
+    dual_enabled = bool(young_pol.get("enabled", True))
+    young_diagnostics: dict | None = None
+    per_ticker_young_caps: dict[str, float] | None = None
+    mu_series_primary: pd.Series | None = None
+    ret_primary: pd.DataFrame
+
+    if dual_enabled:
+        ticker_to_rb = ticker_to_block_map(blocks_for_optimization)
+        cov_df, mu_series_primary, young_diagnostics = build_dual_covariance_and_mu(
+            monthly_returns,
+            cols_primary,
+            ticker_to_rb,
+            window_months,
+            young_pol,
+            use_shrinkage_on_core=use_shrinkage,
+        )
+        cols_primary = list(cov_df.columns)
+        per_ticker_young_caps = per_ticker_young_weight_caps(
+            young_diagnostics["tickers"],
+            float(young_pol.get("max_weight_candidate_or_new_pct", 0.02)),
+        )
+        if not per_ticker_young_caps:
+            per_ticker_young_caps = None
+        ret_primary = monthly_returns[cols_primary].iloc[-window_months:]
+        logger.info(
+            "Young-ETF optimization: mode=%s, eligible=%s",
+            young_diagnostics.get("mode"),
+            young_diagnostics.get("eligible_tickers"),
+        )
+    else:
+        MIN_FULL_JOIN_MONTHS = 11
+        ret_primary = monthly_returns[cols_primary].iloc[-window_months:].dropna(axis=1, how="all").dropna(how="any")
+        if len(ret_primary) < MIN_FULL_JOIN_MONTHS:
+            lookback = min(monthly_returns.shape[0], max(window_months * 2, 120))
+            ret_primary = monthly_returns[cols_primary].iloc[-lookback:].dropna(axis=1, how="all").dropna(how="any")
+            if len(ret_primary) >= MIN_FULL_JOIN_MONTHS:
+                ret_primary = ret_primary.iloc[-min(window_months, len(ret_primary)):]
+        cols_primary = list(ret_primary.columns)
+        if not cols_primary:
+            logger.error("FAIL_DATA: no risk tickers with returns in primary window")
+            raise SystemExit(1)
+        cov_df = cov_matrix_monthly(ret_primary, ddof=1, use_shrinkage=use_shrinkage)
 
     # --- A) Primary optimization (10Y by default): this is the final portfolio ---
     weights_risk, status = run_risk_budget_optimization(
@@ -320,9 +362,12 @@ def main() -> None:
         window_months=window_months,
         duration_internal_weights=duration_internal_weights,
         inflation_internal_weights=inflation_internal_weights,
-        returns_window=ret_primary,
+        returns_window=None if dual_enabled else ret_primary,
         use_shrinkage=use_shrinkage,
         rb_target_ranges=getattr(cfg, "rc_block_target_ranges", None),
+        cov_precomputed=cov_df if dual_enabled else None,
+        mu_precomputed=mu_series_primary if dual_enabled else None,
+        per_ticker_max_weight=per_ticker_young_caps,
     )
 
     if not weights_risk:
@@ -332,10 +377,13 @@ def main() -> None:
     logger.info(f"RiskPortfolio (primary %d мес.): {status}", window_months)
 
     # Primary window already built above (ret_primary, cov_df)
-    effective_months_10y = len(ret_primary)
+    if dual_enabled and young_diagnostics:
+        effective_months_10y = int(young_diagnostics.get("core_effective_months", len(ret_primary)))
+    else:
+        effective_months_10y = len(ret_primary)
     if effective_months_10y < min_effective_months:
         logger.warning(
-            "Primary window: effective months after inner join = %d (< %d). Robustness may flag FLAG_SHORT_SAMPLE.",
+            "Primary window: effective months in risk core = %d (< %d). Robustness may flag FLAG_SHORT_SAMPLE.",
             effective_months_10y,
             min_effective_months,
         )
@@ -359,6 +407,7 @@ def main() -> None:
         cfg.max_single_security_weight_pct,
         rb_growth,
         risk_tickers_opt,
+        per_ticker_max_weight=per_ticker_young_caps,
     )
     rc_policy_mode = getattr(cfg, "rc_policy_mode", "strict")
     if not rc_postprocess_ok and rc_policy_mode == "strict":
@@ -400,7 +449,7 @@ def main() -> None:
             rc_postprocess_diag,
         )
 
-    mu_10y = ret_primary.mean()
+    mu_10y = mu_series_primary if dual_enabled and mu_series_primary is not None else ret_primary.mean()
     actual_rc_block = rc_by_block_from_weights(weights_risk, cov_df, blocks_for_optimization)
     if actual_rc_block and cfg.rc_block_targets:
         logger.info(
@@ -410,8 +459,36 @@ def main() -> None:
         )
     current_vol = portfolio_vol_annual(weights_risk, cov_df)
 
+    young_agg_warn_details: dict | None = None
+    if dual_enabled and young_diagnostics and weights_risk:
+        warn_pct_y = float(young_pol.get("aggregate_candidate_new_warn_pct", 0.10))
+        young_set = {
+            t for t, m in young_diagnostics["tickers"].items()
+            if m.get("bucket") in ("candidate", "new")
+        }
+        young_w_sum = sum(float(weights_risk.get(t, 0.0)) for t in young_set)
+        if young_w_sum > warn_pct_y + 1e-12:
+            young_agg_warn_details = {
+                "aggregate_weight": round(young_w_sum, 4),
+                "threshold": round(warn_pct_y, 4),
+                "tickers": sorted(young_set),
+            }
+
     # --- B) Secondary optimization (5Y) and robustness diagnostics ---
     robustness_report = None
+    cov_5y_pre: pd.DataFrame | None = None
+    mu_5y_pre: pd.Series | None = None
+    diag_5y: dict | None = None
+    if dual_enabled:
+        ticker_to_rb_5 = ticker_to_block_map(blocks_for_optimization)
+        cov_5y_pre, mu_5y_pre, diag_5y = build_dual_covariance_and_mu(
+            monthly_returns,
+            cols_primary,
+            ticker_to_rb_5,
+            secondary_window_months,
+            young_pol,
+            use_shrinkage_on_core=use_shrinkage,
+        )
     if robustness_enabled and secondary_window_months < primary_window_months:
         weights_5y_risk, status_5y = run_risk_budget_optimization(
             monthly_returns,
@@ -426,19 +503,30 @@ def main() -> None:
             inflation_internal_weights=inflation_internal_weights,
             use_shrinkage=use_shrinkage,
             rb_target_ranges=getattr(cfg, "rc_block_target_ranges", None),
+            cov_precomputed=cov_5y_pre if dual_enabled else None,
+            mu_precomputed=mu_5y_pre if dual_enabled else None,
+            per_ticker_max_weight=per_ticker_young_caps,
         )
         cols_5y = [t for t in (weights_5y_risk or weights_risk) if t in monthly_returns.columns]
         ret_5y = monthly_returns[cols_5y].iloc[-secondary_window_months:].dropna(how="any")
         effective_months_5y = len(ret_5y)
-        if effective_months_5y < min_effective_months:
+        if not dual_enabled and effective_months_5y < min_effective_months:
             logger.warning(
                 "Secondary window: effective months after inner join = %d (< %d).",
                 effective_months_5y,
                 min_effective_months,
             )
-        if weights_5y_risk and len(ret_5y) >= 2:
+        if dual_enabled and diag_5y is not None:
+            effective_months_5y = int(diag_5y.get("core_effective_months", 0))
+        cov_5y: pd.DataFrame | None = None
+        mu_5y: pd.Series | None = None
+        if weights_5y_risk and dual_enabled and cov_5y_pre is not None:
+            cov_5y = cov_5y_pre
+            mu_5y = mu_5y_pre
+        elif weights_5y_risk and len(ret_5y) >= 2:
             cov_5y = cov_matrix_monthly(ret_5y, ddof=1, use_shrinkage=use_shrinkage)
             mu_5y = ret_5y.mean()
+        if weights_5y_risk and cov_5y is not None and mu_5y is not None and len(mu_5y):
             diagnostics = compute_robustness_diagnostics(
                 weights_10y=weights_risk,
                 weights_5y=weights_5y_risk,
@@ -472,7 +560,7 @@ def main() -> None:
             with open(out_final / "robustness_report.json", "w", encoding="utf-8") as f:
                 json.dump(robustness_report, f, indent=2)
         elif weights_5y_risk:
-            logger.warning("Secondary optimization succeeded but effective 5Y sample < 2 months; robustness report skipped.")
+            logger.warning("Secondary optimization succeeded but 5Y robustness inputs missing; robustness report skipped.")
 
     # ProLiquidity (with Alpha Shift when cash prohibited and vol > target)
     # Liquidity floor: from profile/config (liquidity_floor_pct) when set, else derived from liquidity_need_months * monthly_expenses / portfolio_value
@@ -609,6 +697,15 @@ def main() -> None:
             print("  Stress Judge: %s (%s) — предупреждение" % (stress_status, stress_fail_reason or "—"))
     else:
         print("  Stress Judge: не выполнен (нет данных/факторов)")
+    if young_agg_warn_details:
+        print(
+            "  Young ETF (модельный риск): суммарный вес candidate/new %.2f%% > порога %.2f%% — см. run_result.json (%s)"
+            % (
+                young_agg_warn_details["aggregate_weight"] * 100,
+                young_agg_warn_details["threshold"] * 100,
+                WARN_MODEL_RISK_YOUNG_WEIGHT,
+            )
+        )
     print("")
 
     # --- Production workflow: RB corridor (quality gate), RC breaches, stress (warning-only). Only FAIL_DATA stops. ---
@@ -654,6 +751,11 @@ def main() -> None:
         violations.append({"code": VIOL_RB_BREACH, "details": rb_deltas_pp})
     if rc_breaches:
         violations.append({"code": VIOL_RC_ASSET_CAP, "details": rc_breaches})
+    if young_agg_warn_details:
+        violations.append({
+            "code": WARN_MODEL_RISK_YOUNG_WEIGHT,
+            "details": young_agg_warn_details,
+        })
     if stress_status == "FAIL_STRESS":
         violations.append({
             "code": VIOL_FAIL_STRESS,
@@ -717,6 +819,9 @@ def main() -> None:
         "next_actions": next_actions,
         "actual_rc_block": {k: round(v, 4) for k, v in (actual_rc_block or {}).items()},
         "rc_block_targets": cfg.rc_block_targets,
+        "young_etf_dual_cov_enabled": dual_enabled,
+        "young_etf_diagnostics": young_diagnostics,
+        "young_etf_aggregate_weight_warn": young_agg_warn_details,
     }
     try:
         run_result["resolved_config"] = cfg.get_resolved_config()

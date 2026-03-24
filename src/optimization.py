@@ -75,6 +75,7 @@ def build_bounds(
     min_weight: float,
     max_single_security_weight_pct: float | None = None,
     rb_growth: float | None = None,
+    per_ticker_max_weight: dict[str, float] | None = None,
 ) -> list[tuple[float, float]]:
     """Per-asset (low, high) weight bounds. Growth: Core/Satellite (or Equity-Only if rb_growth>=0.9); others: 0.40.
     If max_single_security_weight_pct is set, it caps all assets (override)."""
@@ -88,6 +89,7 @@ def build_bounds(
     if max_single_security_weight_pct is not None and max_single_security_weight_pct > 0:
         global_cap = float(max_single_security_weight_pct)
 
+    ptm = per_ticker_max_weight or {}
     bounds = []
     for t in tickers:
         block = ticker_to_block.get(t, "Growth")
@@ -97,6 +99,8 @@ def build_bounds(
             cap = 0.40
         if global_cap is not None:
             cap = min(cap, global_cap)
+        if t in ptm:
+            cap = min(cap, float(ptm[t]))
         bounds.append((min_weight, min(cap, 1.0)))
     return bounds
 
@@ -234,6 +238,9 @@ def run_risk_budget_optimization(
     use_shrinkage: bool = False,
     rb_target_ranges: dict[str, dict[str, float]] | None = None,
     rb_search_enabled: bool = True,
+    cov_precomputed: pd.DataFrame | None = None,
+    mu_precomputed: pd.Series | None = None,
+    per_ticker_max_weight: dict[str, float] | None = None,
 ) -> tuple[dict[str, float], str]:
     """
     Find RiskPortfolio weights satisfying risk budget (RC block shares) and feasibility.
@@ -241,6 +248,8 @@ def run_risk_budget_optimization(
     RC_vol cap has priority over weight caps; if fallback solution violates RC cap, returns FAIL.
     If returns_window is provided, it is used as the primary window (already sliced); otherwise
     the window is taken from returns_df and window_months.
+    If cov_precomputed and mu_precomputed are set, covariance and expected returns come from there
+    (dual-matrix / young-ETF path); inner join on returns_window is skipped.
     """
     if rb_search_enabled:
         base_target = _normalize_rb_target(rc_block_targets or {})
@@ -274,19 +283,31 @@ def run_risk_budget_optimization(
                 use_shrinkage=use_shrinkage,
                 rb_target_ranges=rb_target_ranges,
                 rb_search_enabled=False,
+                cov_precomputed=cov_precomputed,
+                mu_precomputed=mu_precomputed,
+                per_ticker_max_weight=per_ticker_max_weight,
             )
             if not w_try:
                 if "FAIL_DATA" in st_try and not best_weights:
                     best_status = st_try
                 continue
-            if returns_window is not None and not returns_window.empty:
+            if cov_precomputed is not None and mu_precomputed is not None and not cov_precomputed.empty:
+                cols_eval = [
+                    t for t in get_risk_portfolio_tickers(blocks)
+                    if t in cov_precomputed.index and t in cov_precomputed.columns
+                ]
+                cov_eval = cov_precomputed.reindex(index=cols_eval, columns=cols_eval)
+            elif returns_window is not None and not returns_window.empty:
                 ret_eval = returns_window
+                if ret_eval.empty:
+                    return w_try, st_try + f" | RB_TARGET_SOURCE: {stage}"
+                cov_eval = cov_matrix_monthly(ret_eval, ddof=1, use_shrinkage=use_shrinkage)
             else:
                 cols_eval = [t for t in get_risk_portfolio_tickers(blocks) if t in returns_df.columns]
                 ret_eval = returns_df[cols_eval].iloc[-window_months:].dropna(axis=1, how="all").dropna(how="any")
-            if ret_eval.empty:
-                return w_try, st_try + f" | RB_TARGET_SOURCE: {stage}"
-            cov_eval = cov_matrix_monthly(ret_eval, ddof=1, use_shrinkage=use_shrinkage)
+                if ret_eval.empty:
+                    return w_try, st_try + f" | RB_TARGET_SOURCE: {stage}"
+                cov_eval = cov_matrix_monthly(ret_eval, ddof=1, use_shrinkage=use_shrinkage)
             actual = rc_by_block_from_weights(w_try, cov_eval, blocks)
             rb_ok, _ = check_rb_corridor(actual, candidate_target, corridor_pp=RB_CORRIDOR_PP)
             st_final = (
@@ -307,7 +328,24 @@ def run_risk_budget_optimization(
     ticker_to_block = ticker_to_block_map(blocks)
     MIN_FULL_JOIN_MONTHS = 11  # minimum months where all risk tickers have data (Full NaN-safe; young tickers)
 
-    if returns_window is not None and not returns_window.empty:
+    use_precomputed_cov = (
+        cov_precomputed is not None
+        and mu_precomputed is not None
+        and not cov_precomputed.empty
+    )
+
+    if use_precomputed_cov:
+        cols = [
+            t for t in risk_tickers
+            if t in cov_precomputed.index and t in cov_precomputed.columns
+        ]
+        if not cols:
+            return {}, "FAIL_DATA: cov_precomputed missing overlap with RiskPortfolio tickers"
+        cols = [t for t in risk_tickers if t in cols]
+        n = len(cols)
+        cov = cov_precomputed.reindex(index=cols, columns=cols).fillna(0.0).values
+        mu = mu_precomputed.reindex(cols).fillna(0.0).values
+    elif returns_window is not None and not returns_window.empty:
         ret = returns_window
         cols = list(ret.columns)
         if len(ret) < MIN_FULL_JOIN_MONTHS:
@@ -350,9 +388,11 @@ def run_risk_budget_optimization(
     if not cols:
         return {}, "FAIL_DATA: no assets with returns in window"
 
-    n = len(cols)
-    mu = ret.mean().values
-    cov = cov_matrix_monthly(ret, ddof=1, use_shrinkage=use_shrinkage).values
+    if not use_precomputed_cov:
+        n = len(cols)
+        mu = ret.mean().values
+        cov = cov_matrix_monthly(ret, ddof=1, use_shrinkage=use_shrinkage).values
+    # else: n, mu, cov already set from cov_precomputed / mu_precomputed
 
     rb = rc_block_targets or {}
     rb_growth = float(rb.get("Growth", 1.0 / 3))
@@ -409,6 +449,7 @@ def run_risk_budget_optimization(
         cols, ticker_to_block, growth_core_candidates, n, min_weight,
         max_single_security_weight_pct=max_single_security_weight_pct,
         rb_growth=rb_growth,
+        per_ticker_max_weight=per_ticker_max_weight,
     )
 
     effective_rb = {"Growth": rb_growth, "Duration": rb_duration, "Inflation": rb_inflation}
@@ -648,6 +689,7 @@ def enforce_rc_caps_postprocess(
     risk_tickers: list[str],
     max_iterations: int = RC_POSTPROCESS_MAX_ITER,
     step_pct: float = RC_POSTPROCESS_STEP_PCT,
+    per_ticker_max_weight: dict[str, float] | None = None,
 ) -> tuple[dict[str, float], bool, dict]:
     """
     RC post-processing fallback: iteratively reduce weight from assets above RC cap
@@ -667,6 +709,7 @@ def enforce_rc_caps_postprocess(
         cols, ticker_to_block, growth_core_candidates, n, min_weight,
         max_single_security_weight_pct=max_single_security_weight_pct,
         rb_growth=rb_growth,
+        per_ticker_max_weight=per_ticker_max_weight,
     )
     cov = cov_df.reindex(index=cols, columns=cols).fillna(0).values
     w = np.array([weights_risk[t] for t in cols], dtype=float)

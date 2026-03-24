@@ -109,6 +109,8 @@ class PortfolioConfig:
     strict_stress_gate: bool = False
     # When True, use Ledoit-Wolf shrinkage for covariance in optimization/RC (more stable weights)
     covariance_shrinkage: bool = False
+    # Dual covariance + caps for short-history assets in optimization (optional merge in validate)
+    young_etf_optimization_policy: dict[str, Any] = field(default_factory=lambda: dict(DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY))
 
     def get_resolved_config(self) -> dict[str, Any]:
         """
@@ -153,6 +155,7 @@ class PortfolioConfig:
             "rc_policy_mode": self.rc_policy_mode,
             "strict_stress_gate": self.strict_stress_gate,
             "covariance_shrinkage": self.covariance_shrinkage,
+            "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
             "windows_months": self.windows_months,
             "coverage_threshold": self.coverage_threshold,
             "output_dir": self.output_dir,
@@ -212,6 +215,7 @@ class PortfolioConfig:
             "rc_policy_mode": self.rc_policy_mode,
             "strict_stress_gate": self.strict_stress_gate,
             "covariance_shrinkage": self.covariance_shrinkage,
+            "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
         }
 
 
@@ -241,6 +245,17 @@ DEFAULT_ROBUSTNESS_POLICY = {
     "max_rc_block_dev_allowed": 0.05,
     "max_asset_rc_dev_allowed": 0.05,
     "min_effective_months": 36,
+}
+# Young-ETF dual covariance + eligibility for risk-budget optimization (see docs/data_policy_nan_young_etfs.md)
+DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY = {
+    "enabled": True,
+    "eligible_months": 48,
+    "candidate_months_min": 12,
+    "new_shrinkage_alpha": 0.1,
+    "candidate_alpha_min": 0.1,
+    "candidate_alpha_at_eligible": 1.0,
+    "max_weight_candidate_or_new_pct": 0.02,
+    "aggregate_candidate_new_warn_pct": 0.10,
 }
 # Weights are optional: produced by optimization and exported (see Portfolio Construction Policy).
 
@@ -360,6 +375,12 @@ def _inject_optional_defaults(cfg: dict[str, Any]) -> None:
         rp = dict(DEFAULT_ROBUSTNESS_POLICY)
         rp.update({k: v for k, v in cfg["robustness_policy"].items() if v is not None})
         cfg["robustness_policy"] = rp
+    # Young-ETF optimization policy: merge user dict over defaults
+    ypol_base = dict(DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY)
+    ypol_user = cfg.get("young_etf_optimization_policy")
+    if isinstance(ypol_user, dict):
+        ypol_base.update({k: v for k, v in ypol_user.items() if v is not None})
+    cfg["young_etf_optimization_policy"] = ypol_base
     # Backtest mode default (production report uses dynamic NaN-safe by default)
     raw = cfg.get("backtest_mode")
     if not raw:
@@ -1030,6 +1051,7 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         rc_policy_mode=cfg.get("rc_policy_mode", "strict"),
         strict_stress_gate=bool(cfg.get("strict_stress_gate", False)),
         covariance_shrinkage=bool(cfg.get("covariance_shrinkage", False)),
+        young_etf_optimization_policy=dict(cfg.get("young_etf_optimization_policy") or DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY),
         duration_int_ticker=cfg.get("duration_int_ticker"),
         duration_long_ticker=cfg.get("duration_long_ticker"),
         duration_ig_ticker=cfg.get("duration_ig_ticker"),

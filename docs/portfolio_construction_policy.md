@@ -185,8 +185,8 @@ Rule: optimization is an **execution tool**, not a decision authority. It cannot
 
 ### 2.7 Data Policy, NaN, Young ETFs and Dynamic Backtest
 
-For **data policy**, handling of **NaN**, treatment of **young ETFs**, the **dynamic NaN-safe backtest** (within-block equal redistribution, RC-gated fallback to cash), and **baseline vs full** reporting, see **docs/data_policy_nan_young_etfs.md**.  
-That document is the source of truth for: no rewriting of history, join policy (inner for cov/RC, outer for single-asset charts), inclusion from first full monthly point, and mandatory report items (inception dates, NaN policy, comparison period).
+For **data policy**, handling of **NaN**, treatment of **young ETFs**, the **dynamic NaN-safe backtest** (within-block equal redistribution, RC-gated fallback to cash), and **baseline vs full** reporting, see **docs/data_policy_nan_young_etfs.md**.
+That document is the source of truth for: no rewriting of history, join policy (inner for cov/RC, outer for single-asset charts), inclusion from first full monthly point, mandatory report items (inception dates, NaN policy, comparison period), and **§8** (dual covariance / eligibility for risk-budget **optimization** via `young_etf_optimization_policy` in config).
 
 ---
 
