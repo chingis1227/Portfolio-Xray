@@ -68,6 +68,7 @@ class PortfolioConfig:
     # Optimization constraints (may be pending user input)
     rc_asset_cap_pct: float | None
     rc_block_targets: dict[str, float] | None
+    rc_block_target_ranges: dict[str, dict[str, float]] | None
     stress_top3_rc_sum_cap_pct: float | None  # Top3 RC sum limit in stress (default 0.70)
     max_single_security_weight_pct: float | None
     min_single_security_weight_pct: float | None
@@ -142,6 +143,7 @@ class PortfolioConfig:
             "horizon_years": self.horizon_years,
             "rc_asset_cap_pct": self.rc_asset_cap_pct,
             "rc_block_targets": self.rc_block_targets,
+            "rc_block_target_ranges": self.rc_block_target_ranges,
             "stress_top3_rc_sum_cap_pct": self.stress_top3_rc_sum_cap_pct,
             "max_single_security_weight_pct": self.max_single_security_weight_pct,
             "min_single_security_weight_pct": self.min_single_security_weight_pct,
@@ -191,6 +193,7 @@ class PortfolioConfig:
         return {
             "rc_asset_cap_pct": self.rc_asset_cap_pct,
             "rc_block_targets": self.rc_block_targets,
+            "rc_block_target_ranges": self.rc_block_target_ranges,
             "stress_top3_rc_sum_cap_pct": self.stress_top3_rc_sum_cap_pct,
             "blocks": self.blocks,
             "max_single_security_weight_pct": self.max_single_security_weight_pct,
@@ -281,6 +284,7 @@ MAPPING_FIELDS = [
     "weights",
     "local_benchmark_map",
     "rc_block_targets",
+    "rc_block_target_ranges",
     "blocks",
 ]
 
@@ -451,6 +455,18 @@ def _normalize_percent_fields(cfg: dict[str, Any]) -> dict[str, Any]:
                 target_pct, f"rc_block_targets['{block_name}']"
             )
         result["rc_block_targets"] = normalized_targets
+
+    # Handle rc_block_target_ranges dict: {Block: {min, max}} (supports percent format)
+    rc_ranges = result.get("rc_block_target_ranges")
+    if rc_ranges is not None and isinstance(rc_ranges, dict):
+        normalized_ranges: dict[str, dict[str, float]] = {}
+        for block_name, range_spec in rc_ranges.items():
+            if not isinstance(range_spec, dict):
+                continue
+            lo = _parse_percent_value(range_spec.get("min"), f"rc_block_target_ranges['{block_name}']['min']")
+            hi = _parse_percent_value(range_spec.get("max"), f"rc_block_target_ranges['{block_name}']['max']")
+            normalized_ranges[str(block_name)] = {"min": lo, "max": hi}
+        result["rc_block_target_ranges"] = normalized_ranges
     
     # Handle weights dict (also supports percent format)
     weights = result.get("weights")
@@ -690,6 +706,41 @@ def _validate_rc_block_targets(cfg: dict[str, Any]) -> None:
             )
 
 
+def _validate_rc_block_target_ranges(cfg: dict[str, Any]) -> None:
+    """Validate optional rc_block_target_ranges: {Block: {min, max}} in decimals."""
+    ranges = cfg.get("rc_block_target_ranges")
+    if ranges is None:
+        return
+    if not isinstance(ranges, dict):
+        raise ConfigValidationError("Config field 'rc_block_target_ranges' must be a dictionary")
+    for block in BLOCK_NAMES:
+        spec = ranges.get(block)
+        if spec is None:
+            continue
+        if not isinstance(spec, dict):
+            raise ConfigValidationError(
+                f"rc_block_target_ranges['{block}'] must be a dictionary with min/max"
+            )
+        lo = spec.get("min")
+        hi = spec.get("max")
+        if lo is None or hi is None:
+            raise ConfigValidationError(
+                f"rc_block_target_ranges['{block}'] must contain both 'min' and 'max'"
+            )
+        if not isinstance(lo, (int, float)) or not isinstance(hi, (int, float)):
+            raise ConfigValidationError(
+                f"rc_block_target_ranges['{block}']['min'/'max'] must be numeric"
+            )
+        if lo < 0 or hi < 0:
+            raise ConfigValidationError(
+                f"rc_block_target_ranges['{block}'] must be non-negative, got min={lo}, max={hi}"
+            )
+        if hi < lo:
+            raise ConfigValidationError(
+                f"rc_block_target_ranges['{block}'] has max < min ({hi} < {lo})"
+            )
+
+
 def _validate_windows(cfg: dict[str, Any]) -> None:
     """Validate windows_months field."""
     windows = cfg.get("windows_months", [])
@@ -920,6 +971,7 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         _validate_blocks(cfg)
     _validate_tickers_weights(cfg)
     _validate_rc_block_targets(cfg)
+    _validate_rc_block_target_ranges(cfg)
     _validate_windows(cfg)
     _validate_horizon_years(cfg)
     _validate_liquidity_need_months(cfg)
@@ -968,6 +1020,7 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         horizon_years=cfg.get("horizon_years"),
         rc_asset_cap_pct=cfg.get("rc_asset_cap_pct"),
         rc_block_targets=rc_normalized,
+        rc_block_target_ranges=cfg.get("rc_block_target_ranges"),
         stress_top3_rc_sum_cap_pct=cfg.get("stress_top3_rc_sum_cap_pct", 0.70),
         max_single_security_weight_pct=cfg.get("max_single_security_weight_pct"),
         min_single_security_weight_pct=cfg.get("min_single_security_weight_pct"),

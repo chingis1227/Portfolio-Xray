@@ -128,6 +128,14 @@ Cash-like instruments (BIL, short T-bills, or other liquidity buffers) are **exc
 
 Implication: optimization is **not allowed to alter the predefined risk budget shares of the blocks**. The architecture of risk allocation is fixed at this level.
 
+Operational target-selection order (when profile ranges are available):
+
+1. Use profile midpoint (`rc_block_targets`) as the first optimization target.  
+2. If no acceptable solution is found, search targets inside profile `min/max` ranges with the simplex condition `Growth + Duration + Inflation = 1`.  
+3. If still no acceptable solution is found, run an expanded fallback search with `min - 5 pp` and `max + 5 pp` (clipped to `[0, 1]`).
+
+The **RB corridor check remains unchanged**: for each tested target, realized RC must be within target ± corridor (default ±5 pp).
+
 ---
 
 ### 2.3 Stress Judge

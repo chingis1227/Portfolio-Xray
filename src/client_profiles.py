@@ -48,7 +48,8 @@ def get_profile_defaults(profile_id: str) -> dict[str, Any]:
     Return a flat dict of default values (midpoints) for the given profile.
     risk_budget midpoints are normalized to sum 1.0.
     Keys: target_nominal_return_annual, target_vol_annual, target_max_drawdown_pct,
-          rc_block_targets (dict Growth/Duration/Inflation), liquidity_floor_pct (hint only).
+          rc_block_targets (dict Growth/Duration/Inflation), rc_block_target_ranges,
+          liquidity_floor_pct (hint only).
     """
     profiles = load_profiles()
     pid = profile_id.strip().lower().replace(" ", "_")
@@ -79,6 +80,22 @@ def get_profile_defaults(profile_id: str) -> dict[str, Any]:
                 out["rc_block_targets"] = {b: v / total for b, v in blocks.items()}
             else:
                 out["rc_block_targets"] = blocks
+        ranges: dict[str, dict[str, float]] = {}
+        for b in RISK_BUDGET_BLOCKS:
+            spec = rb.get(b)
+            if not isinstance(spec, dict):
+                continue
+            lo_raw = spec.get("min_pct")
+            hi_raw = spec.get("max_pct")
+            if lo_raw is None or hi_raw is None:
+                continue
+            lo = float(lo_raw) / 100.0
+            hi = float(hi_raw) / 100.0
+            if hi < lo:
+                lo, hi = hi, lo
+            ranges[b] = {"min": lo, "max": hi}
+        if ranges:
+            out["rc_block_target_ranges"] = ranges
     if "min_single_security_weight_pct" in prof and isinstance(prof["min_single_security_weight_pct"], (int, float)):
         out["min_single_security_weight_pct"] = float(prof["min_single_security_weight_pct"])
     return out
@@ -125,6 +142,8 @@ def apply_profile_to_config(raw: dict[str, Any]) -> dict[str, Any]:
             result["rc_block_targets"] = dict(defaults["rc_block_targets"])
         else:
             result["rc_block_targets"] = dict(raw_rbt)
+    if "rc_block_target_ranges" in defaults:
+        result["rc_block_target_ranges"] = dict(defaults["rc_block_target_ranges"])
     if "liquidity_floor_pct" in defaults:
         result["liquidity_floor_pct"] = defaults["liquidity_floor_pct"]
     # Apply min_single_security_weight_pct from profile only when config does not set it (reduce tiny positions for growth/aggressive)

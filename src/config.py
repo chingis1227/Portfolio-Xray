@@ -25,6 +25,7 @@ _PROFILE_SYNC_KEYS = (
     "target_vol_annual",
     "target_max_drawdown_pct",
     "rc_block_targets",
+    "rc_block_target_ranges",
     "liquidity_floor_pct",
 )
 from src.config_schema import (
@@ -360,4 +361,6 @@ def apply_profile_override(cfg: PortfolioConfig, profile_id: str) -> None:
         cfg.target_max_drawdown_pct = defaults["target_max_drawdown_pct"]
     if "rc_block_targets" in defaults:
         cfg.rc_block_targets = normalize_rc_block_targets(dict(defaults["rc_block_targets"]))
+    if "rc_block_target_ranges" in defaults:
+        cfg.rc_block_target_ranges = dict(defaults["rc_block_target_ranges"])
     cfg.client_profile = profile_id

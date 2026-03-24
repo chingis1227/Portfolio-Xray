@@ -1,7 +1,9 @@
 # Client risk profiles — Risk budget (Pareto) templates.
 # Policy: risk budget only for Growth, Duration, Inflation; Liquidity excluded. Corridor ±5 p.p.
 # When client_profile is set in config, these midpoints are used as defaults; you can override manually.
-# Block ranges define allowed bounds per profile; normalization: if sum != 100%, other blocks scale proportionally to share the remainder.
+# Block ranges define allowed bounds per profile.
+# Optimization target order: midpoint -> in-range search (min/max) -> expanded fallback (min-5pp, max+5pp; clipped).
+# Normalization: if sum != 100%, other blocks scale proportionally to share the remainder.
 
 profiles:
   ultra_conservative:

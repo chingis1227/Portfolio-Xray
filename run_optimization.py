@@ -294,6 +294,7 @@ def main() -> None:
         inflation_internal_weights=inflation_internal_weights,
         returns_window=ret_primary,
         use_shrinkage=use_shrinkage,
+        rb_target_ranges=getattr(cfg, "rc_block_target_ranges", None),
     )
 
     if not weights_risk:
@@ -396,6 +397,7 @@ def main() -> None:
             duration_internal_weights=duration_internal_weights,
             inflation_internal_weights=inflation_internal_weights,
             use_shrinkage=use_shrinkage,
+            rb_target_ranges=getattr(cfg, "rc_block_target_ranges", None),
         )
         cols_5y = [t for t in (weights_5y_risk or weights_risk) if t in monthly_returns.columns]
         ret_5y = monthly_returns[cols_5y].iloc[-secondary_window_months:].dropna(how="any")
@@ -719,6 +721,7 @@ def main() -> None:
             max_single_security_weight_pct=cfg.max_single_security_weight_pct,
             window_months=window_months,
             use_shrinkage=use_shrinkage,
+            rb_target_ranges=getattr(cfg, "rc_block_target_ranges", None),
         )
         if weights_baseline:
             cols_b = [t for t in weights_baseline if t in monthly_returns.columns]

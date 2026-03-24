@@ -31,6 +31,8 @@ MIN_WEIGHT_DEFAULT = 0.01
 HY_EM_RC_CAP_FRACTION = 0.10  # RC_vol(HY) and RC_vol(EM_debt) <= 10% of RC_vol(Growth)
 # RB corridor: realized block RC must be within target ± this (hard constraint)
 RB_CORRIDOR_PP = 0.05
+RB_RANGE_EXPANSION_PP = 0.05
+RB_GRID_STEP_PP = 0.01
 
 
 def get_risk_portfolio_tickers(blocks: dict[str, list[str]]) -> list[str]:
@@ -137,6 +139,86 @@ def check_rb_achievement(
     return False, msg
 
 
+def _normalize_rb_target(target: dict[str, float]) -> dict[str, float]:
+    """Normalize Growth/Duration/Inflation target to sum=1."""
+    g = float(target.get("Growth", 0.0))
+    d = float(target.get("Duration", 0.0))
+    i = float(target.get("Inflation", 0.0))
+    s = g + d + i
+    if s <= 1e-12:
+        return {"Growth": 1.0 / 3, "Duration": 1.0 / 3, "Inflation": 1.0 / 3}
+    return {"Growth": g / s, "Duration": d / s, "Inflation": i / s}
+
+
+def _expanded_rb_ranges(
+    base_ranges: dict[str, dict[str, float]] | None,
+    expansion_pp: float = RB_RANGE_EXPANSION_PP,
+) -> dict[str, dict[str, float]] | None:
+    """Expand per-block min/max by +/- expansion_pp and clip to [0,1]."""
+    if not base_ranges:
+        return None
+    out: dict[str, dict[str, float]] = {}
+    for b in RISK_BUDGET_BLOCKS:
+        spec = base_ranges.get(b)
+        if not isinstance(spec, dict):
+            continue
+        lo = max(0.0, float(spec.get("min", 0.0)) - expansion_pp)
+        hi = min(1.0, float(spec.get("max", 1.0)) + expansion_pp)
+        if hi < lo:
+            lo, hi = hi, lo
+        out[b] = {"min": lo, "max": hi}
+    return out or None
+
+
+def _build_rb_candidates_from_ranges(
+    target_mid: dict[str, float],
+    target_ranges: dict[str, dict[str, float]] | None,
+    step_pp: float = RB_GRID_STEP_PP,
+) -> list[dict[str, float]]:
+    """
+    Build candidate RB targets inside min/max ranges with G+D+I=1.
+    Candidates are ordered by distance to midpoint target.
+    """
+    if not target_ranges:
+        return []
+    g_spec = target_ranges.get("Growth") or {}
+    d_spec = target_ranges.get("Duration") or {}
+    i_spec = target_ranges.get("Inflation") or {}
+    g_min, g_max = float(g_spec.get("min", 0.0)), float(g_spec.get("max", 1.0))
+    d_min, d_max = float(d_spec.get("min", 0.0)), float(d_spec.get("max", 1.0))
+    i_min, i_max = float(i_spec.get("min", 0.0)), float(i_spec.get("max", 1.0))
+    if g_max < g_min or d_max < d_min or i_max < i_min:
+        return []
+
+    vals_g = np.arange(g_min, g_max + step_pp / 2, step_pp)
+    vals_d = np.arange(d_min, d_max + step_pp / 2, step_pp)
+    out: list[dict[str, float]] = []
+    seen: set[tuple[float, float, float]] = set()
+    for g in vals_g:
+        for d in vals_d:
+            i = 1.0 - float(g) - float(d)
+            if i < i_min - 1e-9 or i > i_max + 1e-9:
+                continue
+            cand = _normalize_rb_target({"Growth": float(g), "Duration": float(d), "Inflation": float(i)})
+            key = (round(cand["Growth"], 6), round(cand["Duration"], 6), round(cand["Inflation"], 6))
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(cand)
+    if not out:
+        return []
+
+    def _distance(c: dict[str, float]) -> float:
+        return (
+            abs(c["Growth"] - target_mid["Growth"])
+            + abs(c["Duration"] - target_mid["Duration"])
+            + abs(c["Inflation"] - target_mid["Inflation"])
+        )
+
+    out.sort(key=_distance)
+    return out
+
+
 def run_risk_budget_optimization(
     returns_df: pd.DataFrame,
     blocks: dict[str, list[str]],
@@ -150,6 +232,8 @@ def run_risk_budget_optimization(
     inflation_internal_weights: dict[str, float] | None = None,
     returns_window: pd.DataFrame | None = None,
     use_shrinkage: bool = False,
+    rb_target_ranges: dict[str, dict[str, float]] | None = None,
+    rb_search_enabled: bool = True,
 ) -> tuple[dict[str, float], str]:
     """
     Find RiskPortfolio weights satisfying risk budget (RC block shares) and feasibility.
@@ -158,6 +242,64 @@ def run_risk_budget_optimization(
     If returns_window is provided, it is used as the primary window (already sliced); otherwise
     the window is taken from returns_df and window_months.
     """
+    if rb_search_enabled:
+        base_target = _normalize_rb_target(rc_block_targets or {})
+        candidates: list[tuple[str, dict[str, float]]] = [("midpoint", base_target)]
+        in_range = _build_rb_candidates_from_ranges(base_target, rb_target_ranges)
+        candidates.extend([("range", c) for c in in_range if c != base_target])
+        expanded_ranges = _expanded_rb_ranges(rb_target_ranges)
+        expanded = _build_rb_candidates_from_ranges(base_target, expanded_ranges)
+        existing = {(round(c["Growth"], 6), round(c["Duration"], 6), round(c["Inflation"], 6)) for _, c in candidates}
+        for c in expanded:
+            key = (round(c["Growth"], 6), round(c["Duration"], 6), round(c["Inflation"], 6))
+            if key not in existing:
+                candidates.append(("expanded", c))
+                existing.add(key)
+
+        best_weights: dict[str, float] = {}
+        best_status = "FAIL_DATA: no candidate succeeded"
+        for stage, candidate_target in candidates:
+            w_try, st_try = run_risk_budget_optimization(
+                returns_df,
+                blocks,
+                candidate_target,
+                growth_core_candidates,
+                rc_asset_cap_pct=rc_asset_cap_pct,
+                min_single_security_weight_pct=min_single_security_weight_pct,
+                max_single_security_weight_pct=max_single_security_weight_pct,
+                window_months=window_months,
+                duration_internal_weights=duration_internal_weights,
+                inflation_internal_weights=inflation_internal_weights,
+                returns_window=returns_window,
+                use_shrinkage=use_shrinkage,
+                rb_target_ranges=rb_target_ranges,
+                rb_search_enabled=False,
+            )
+            if not w_try:
+                if "FAIL_DATA" in st_try and not best_weights:
+                    best_status = st_try
+                continue
+            if returns_window is not None and not returns_window.empty:
+                ret_eval = returns_window
+            else:
+                cols_eval = [t for t in get_risk_portfolio_tickers(blocks) if t in returns_df.columns]
+                ret_eval = returns_df[cols_eval].iloc[-window_months:].dropna(axis=1, how="all").dropna(how="any")
+            if ret_eval.empty:
+                return w_try, st_try + f" | RB_TARGET_SOURCE: {stage}"
+            cov_eval = cov_matrix_monthly(ret_eval, ddof=1, use_shrinkage=use_shrinkage)
+            actual = rc_by_block_from_weights(w_try, cov_eval, blocks)
+            rb_ok, _ = check_rb_corridor(actual, candidate_target, corridor_pp=RB_CORRIDOR_PP)
+            st_final = (
+                st_try
+                + f" | RB_TARGET_SOURCE: {stage}"
+                + f" | RB_TARGET_USED: {candidate_target['Growth']:.3f}/{candidate_target['Duration']:.3f}/{candidate_target['Inflation']:.3f}"
+            )
+            if rb_ok:
+                return w_try, st_final
+            if not best_weights:
+                best_weights, best_status = w_try, st_final
+        return best_weights, best_status
+
     risk_tickers = get_risk_portfolio_tickers(blocks)
     if not risk_tickers:
         return {}, "FAIL: no RiskPortfolio tickers (Growth+Duration+Inflation+Growth_HY+Growth_EM_debt)"

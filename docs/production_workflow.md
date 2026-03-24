@@ -17,6 +17,14 @@ When `strict_stress_gate` is false (default), Stress Judge failure is only recor
 
 All other checks (RB corridor, RC caps, feasibility) either cause an early exit without optimization (FAIL_FEASIBILITY, FAIL_DATA, FAIL_RC) or are recorded as **violations** while weights **are still written**.
 
+RB target search order used by optimization:
+
+1. midpoint target from `rc_block_targets`;
+2. profile `min/max` range search (if `rc_block_target_ranges` is available);
+3. expanded range search (`min - 5 pp`, `max + 5 pp`, clipped to `[0, 1]`).
+
+The RB corridor validator is applied to each tested target and still uses target ± 5 pp by default.
+
 ---
 
 ## 2. Early exits (no optimization or no weights)
