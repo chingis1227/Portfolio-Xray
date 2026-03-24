@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-24T00:07:11.295639",
+  "timestamp": "2026-03-24T14:26:22.623024",
   "analysis_end": "2026-02-28",
   "window_label": "5y",
   "window_months": 60,
@@ -100,44 +100,44 @@
   },
   "stress_suite_results": {
     "overall": "FAIL_STRESS",
-    "fail_reason_code": "FAIL_LOSS_CREDIT_SHOCK",
+    "fail_reason_code": "FAIL_ROLE_EQUITY_SHOCK",
     "scenarios": [
       {
         "scenario_id": "equity_shock",
-        "portfolio_pnl_pct": -0.0871,
+        "portfolio_pnl_pct": -0.1076,
         "pnl_by_block_pct": {
-          "Growth": -0.0877,
+          "Growth": -0.1055,
           "Duration": -0.0011,
-          "Inflation": 0.0021,
-          "Liquidity": -0.0003,
+          "Inflation": -0.0009,
+          "Liquidity": -0.0001,
+          "Tail": 0.0
+        },
+        "violations": [
+          "role"
+        ],
+        "pass": false
+      },
+      {
+        "scenario_id": "credit_shock",
+        "portfolio_pnl_pct": -0.0374,
+        "pnl_by_block_pct": {
+          "Growth": -0.0428,
+          "Duration": -0.0014,
+          "Inflation": 0.0068,
+          "Liquidity": 0.0,
           "Tail": 0.0
         },
         "violations": [],
         "pass": true
       },
       {
-        "scenario_id": "credit_shock",
-        "portfolio_pnl_pct": -0.3796,
-        "pnl_by_block_pct": {
-          "Growth": -1.1987,
-          "Duration": -0.2329,
-          "Inflation": 1.1587,
-          "Liquidity": -0.1067,
-          "Tail": 0.0
-        },
-        "violations": [
-          "loss"
-        ],
-        "pass": false
-      },
-      {
         "scenario_id": "rates_shock",
-        "portfolio_pnl_pct": -0.0409,
+        "portfolio_pnl_pct": -0.0285,
         "pnl_by_block_pct": {
-          "Growth": -0.011,
-          "Duration": -0.0117,
-          "Inflation": -0.0189,
-          "Liquidity": 0.0007,
+          "Growth": -0.0009,
+          "Duration": -0.0121,
+          "Inflation": -0.0154,
+          "Liquidity": -0.0001,
           "Tail": 0.0
         },
         "violations": [],
@@ -145,12 +145,12 @@
       },
       {
         "scenario_id": "inflation_stagflation",
-        "portfolio_pnl_pct": -0.0468,
+        "portfolio_pnl_pct": -0.0495,
         "pnl_by_block_pct": {
-          "Growth": -0.0426,
+          "Growth": -0.0494,
           "Duration": -0.0036,
-          "Inflation": 0.0008,
-          "Liquidity": -0.0015,
+          "Inflation": 0.0037,
+          "Liquidity": -0.0002,
           "Tail": 0.0
         },
         "violations": [],
@@ -158,12 +158,12 @@
       },
       {
         "scenario_id": "liquidity_shock",
-        "portfolio_pnl_pct": -0.3228,
+        "portfolio_pnl_pct": -0.0751,
         "pnl_by_block_pct": {
-          "Growth": -0.9374,
-          "Duration": -0.1752,
-          "Inflation": 0.8699,
-          "Liquidity": -0.0802,
+          "Growth": -0.0783,
+          "Duration": -0.0015,
+          "Inflation": 0.0047,
+          "Liquidity": -0.0,
           "Tail": 0.0
         },
         "violations": [],

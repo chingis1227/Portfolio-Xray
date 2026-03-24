@@ -1,19 +1,19 @@
 {
   "status": "FAIL_STRESS",
-  "fail_reason_code": "FAIL_RC_TOP1_EQUITY_SHOCK",
+  "fail_reason_code": "FAIL_ROLE_EQUITY_SHOCK",
   "warning_code": null,
-  "worst_scenario_loss_pct": -1.7861,
+  "worst_scenario_loss_pct": -0.2271,
   "failed_scenario": "equity_shock",
-  "failed_test": "RC_Top1",
+  "failed_test": "Role",
   "scenario_results": [
     {
       "scenario_id": "equity_shock",
-      "portfolio_pnl_pct": -0.1871,
+      "portfolio_pnl_pct": -0.2271,
       "pnl_by_block_pct": {
-        "Growth": -0.1877,
+        "Growth": -0.2242,
         "Duration": -0.0006,
-        "Inflation": 0.0012,
-        "Liquidity": -0.0001,
+        "Inflation": -0.0023,
+        "Liquidity": -0.0,
         "Tail": 0.0
       },
       "top1_rc_asset": "COPX",
@@ -30,19 +30,19 @@
         "CIBR"
       ],
       "loss_ok": true,
-      "role_ok": true,
+      "role_ok": false,
       "rc1_ok": false,
       "rc3_ok": true,
       "pass": false
     },
     {
       "scenario_id": "credit_shock",
-      "portfolio_pnl_pct": -1.7861,
+      "portfolio_pnl_pct": -0.0847,
       "pnl_by_block_pct": {
-        "Growth": -3.0152,
-        "Duration": -0.117,
-        "Inflation": 1.3621,
-        "Liquidity": -0.0161,
+        "Growth": -0.0914,
+        "Duration": -0.0007,
+        "Inflation": 0.0074,
+        "Liquidity": 0.0,
         "Tail": 0.0
       },
       "top1_rc_asset": "COPX",
@@ -55,10 +55,10 @@
       "top3_rc_sum_pct": 0.3319,
       "top3_loss_assets": [
         "ROBO",
-        "COPX",
-        "URA"
+        "SMH",
+        "CIBR"
       ],
-      "loss_ok": false,
+      "loss_ok": true,
       "role_ok": true,
       "rc1_ok": false,
       "rc3_ok": true,
@@ -66,12 +66,12 @@
     },
     {
       "scenario_id": "rates_shock",
-      "portfolio_pnl_pct": -0.0377,
+      "portfolio_pnl_pct": -0.0142,
       "pnl_by_block_pct": {
-        "Growth": -0.019,
-        "Duration": -0.0059,
-        "Inflation": -0.0129,
-        "Liquidity": 0.0001,
+        "Growth": 0.0013,
+        "Duration": -0.0061,
+        "Inflation": -0.0094,
+        "Liquidity": -0.0,
         "Tail": 0.0
       },
       "top1_rc_asset": "COPX",
@@ -85,7 +85,7 @@
       "top3_loss_assets": [
         "SCHP",
         "BND",
-        "ROBO"
+        "VDC"
       ],
       "loss_ok": true,
       "role_ok": true,
@@ -95,12 +95,12 @@
     },
     {
       "scenario_id": "inflation_stagflation",
-      "portfolio_pnl_pct": -0.0861,
+      "portfolio_pnl_pct": -0.0929,
       "pnl_by_block_pct": {
-        "Growth": -0.0887,
+        "Growth": -0.0994,
         "Duration": -0.0018,
-        "Inflation": 0.0046,
-        "Liquidity": -0.0002,
+        "Inflation": 0.0084,
+        "Liquidity": -0.0,
         "Tail": 0.0
       },
       "top1_rc_asset": "COPX",
@@ -114,7 +114,7 @@
       "top3_loss_assets": [
         "SMH",
         "QQQ",
-        "CIBR"
+        "ROBO"
       ],
       "loss_ok": true,
       "role_ok": true,
@@ -124,12 +124,12 @@
     },
     {
       "scenario_id": "liquidity_shock",
-      "portfolio_pnl_pct": -1.4215,
+      "portfolio_pnl_pct": -0.1629,
       "pnl_by_block_pct": {
-        "Growth": -2.3435,
-        "Duration": -0.088,
-        "Inflation": 1.0221,
-        "Liquidity": -0.0121,
+        "Growth": -0.1667,
+        "Duration": -0.0008,
+        "Inflation": 0.0045,
+        "Liquidity": -0.0,
         "Tail": 0.0
       },
       "top1_rc_asset": "COPX",
@@ -141,11 +141,11 @@
       ],
       "top3_rc_sum_pct": 0.336,
       "top3_loss_assets": [
+        "SMH",
         "ROBO",
-        "COPX",
-        "URA"
+        "QQQ"
       ],
-      "loss_ok": false,
+      "loss_ok": true,
       "role_ok": true,
       "rc1_ok": false,
       "rc3_ok": true,
@@ -153,12 +153,12 @@
     }
   ],
   "factor_betas": {
-    "beta_eq": 0.4677,
-    "beta_rr": -1.8841,
-    "beta_inf": 0.5483,
-    "beta_credit": -43.484,
-    "beta_usd": -0.7845,
-    "beta_cmd": 0.0674
+    "beta_eq": 0.5678,
+    "beta_rr": -0.7082,
+    "beta_inf": 0.1,
+    "beta_credit": -0.6993,
+    "beta_usd": -0.8411,
+    "beta_cmd": 0.0969
   },
   "historical_results": [
     {
@@ -195,19 +195,19 @@
   "stress_top3_rc_sum_cap": 0.7,
   "max_dd_limit": 0.35,
   "factor_betas_5y": {
-    "beta_eq": 0.4677,
-    "beta_rr": -1.8841,
-    "beta_inf": 0.5483,
-    "beta_credit": -43.484,
-    "beta_usd": -0.7845,
-    "beta_cmd": 0.0674
+    "beta_eq": 0.5678,
+    "beta_rr": -0.7082,
+    "beta_inf": 0.1,
+    "beta_credit": -0.6993,
+    "beta_usd": -0.8411,
+    "beta_cmd": 0.0969
   },
   "factor_betas_10y": {
-    "beta_eq": 0.5406,
-    "beta_rr": -1.9746,
-    "beta_inf": 0.5969,
-    "beta_credit": -18.2138,
-    "beta_usd": -0.6605,
-    "beta_cmd": 0.0863
+    "beta_eq": 0.6216,
+    "beta_rr": -1.0906,
+    "beta_inf": 0.8296,
+    "beta_credit": -0.0892,
+    "beta_usd": -0.658,
+    "beta_cmd": 0.0731
   }
 }

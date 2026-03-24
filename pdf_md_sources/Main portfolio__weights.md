@@ -1,14 +1,14 @@
 ---
 title: "Main Portfolio — Optimized Weights"
 subtitle: "Weights"
-date: "2026-03-24 00:08 Центральная Европа (зима)"
+date: "2026-03-24 14:27 Центральная Европа (зима)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
 ---
 ## Report scope / source context
 - **Weights source:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Cursor/Main portfolio/portfolio_weights.yml`
-- **Generated:** 2026-03-24 00:08 Центральная Европа (зима)
+- **Generated:** 2026-03-24 14:27 Центральная Европа (зима)
 
 ## Weights
 

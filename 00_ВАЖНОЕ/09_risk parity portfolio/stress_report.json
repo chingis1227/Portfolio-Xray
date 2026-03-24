@@ -1,19 +1,19 @@
 {
   "status": "FAIL_STRESS",
-  "fail_reason_code": "FAIL_LOSS_CREDIT_SHOCK",
+  "fail_reason_code": "FAIL_ROLE_EQUITY_SHOCK",
   "warning_code": null,
-  "worst_scenario_loss_pct": -0.3796,
-  "failed_scenario": "credit_shock",
-  "failed_test": "Loss",
+  "worst_scenario_loss_pct": -0.1076,
+  "failed_scenario": "equity_shock",
+  "failed_test": "Role",
   "scenario_results": [
     {
       "scenario_id": "equity_shock",
-      "portfolio_pnl_pct": -0.0871,
+      "portfolio_pnl_pct": -0.1076,
       "pnl_by_block_pct": {
-        "Growth": -0.0877,
+        "Growth": -0.1055,
         "Duration": -0.0011,
-        "Inflation": 0.0021,
-        "Liquidity": -0.0003,
+        "Inflation": -0.0009,
+        "Liquidity": -0.0001,
         "Tail": 0.0
       },
       "top1_rc_asset": "URA",
@@ -30,19 +30,19 @@
         "SMH"
       ],
       "loss_ok": true,
-      "role_ok": true,
+      "role_ok": false,
       "rc1_ok": true,
       "rc3_ok": true,
-      "pass": true
+      "pass": false
     },
     {
       "scenario_id": "credit_shock",
-      "portfolio_pnl_pct": -0.3796,
+      "portfolio_pnl_pct": -0.0374,
       "pnl_by_block_pct": {
-        "Growth": -1.1987,
-        "Duration": -0.2329,
-        "Inflation": 1.1587,
-        "Liquidity": -0.1067,
+        "Growth": -0.0428,
+        "Duration": -0.0014,
+        "Inflation": 0.0068,
+        "Liquidity": 0.0,
         "Tail": 0.0
       },
       "top1_rc_asset": "URA",
@@ -54,24 +54,24 @@
       ],
       "top3_rc_sum_pct": 0.2269,
       "top3_loss_assets": [
+        "CIBR",
         "ROBO",
-        "SCHD",
         "BBJP"
       ],
-      "loss_ok": false,
+      "loss_ok": true,
       "role_ok": true,
       "rc1_ok": true,
       "rc3_ok": true,
-      "pass": false
+      "pass": true
     },
     {
       "scenario_id": "rates_shock",
-      "portfolio_pnl_pct": -0.0409,
+      "portfolio_pnl_pct": -0.0285,
       "pnl_by_block_pct": {
-        "Growth": -0.011,
-        "Duration": -0.0117,
-        "Inflation": -0.0189,
-        "Liquidity": 0.0007,
+        "Growth": -0.0009,
+        "Duration": -0.0121,
+        "Inflation": -0.0154,
+        "Liquidity": -0.0001,
         "Tail": 0.0
       },
       "top1_rc_asset": "BBJP",
@@ -95,12 +95,12 @@
     },
     {
       "scenario_id": "inflation_stagflation",
-      "portfolio_pnl_pct": -0.0468,
+      "portfolio_pnl_pct": -0.0495,
       "pnl_by_block_pct": {
-        "Growth": -0.0426,
+        "Growth": -0.0494,
         "Duration": -0.0036,
-        "Inflation": 0.0008,
-        "Liquidity": -0.0015,
+        "Inflation": 0.0037,
+        "Liquidity": -0.0002,
         "Tail": 0.0
       },
       "top1_rc_asset": "BBJP",
@@ -112,9 +112,9 @@
       ],
       "top3_rc_sum_pct": 0.1985,
       "top3_loss_assets": [
-        "CIBR",
         "QQQ",
-        "SMH"
+        "VOO",
+        "CIBR"
       ],
       "loss_ok": true,
       "role_ok": true,
@@ -124,12 +124,12 @@
     },
     {
       "scenario_id": "liquidity_shock",
-      "portfolio_pnl_pct": -0.3228,
+      "portfolio_pnl_pct": -0.0751,
       "pnl_by_block_pct": {
-        "Growth": -0.9374,
-        "Duration": -0.1752,
-        "Inflation": 0.8699,
-        "Liquidity": -0.0802,
+        "Growth": -0.0783,
+        "Duration": -0.0015,
+        "Inflation": 0.0047,
+        "Liquidity": -0.0,
         "Tail": 0.0
       },
       "top1_rc_asset": "URA",
@@ -141,9 +141,9 @@
       ],
       "top3_rc_sum_pct": 0.2337,
       "top3_loss_assets": [
-        "ROBO",
-        "SCHD",
-        "BBJP"
+        "CIBR",
+        "QQQ",
+        "SMH"
       ],
       "loss_ok": true,
       "role_ok": true,
@@ -153,12 +153,12 @@
     }
   ],
   "factor_betas": {
-    "beta_eq": 0.2179,
-    "beta_rr": -2.0449,
-    "beta_inf": -0.1181,
-    "beta_credit": -8.9444,
-    "beta_usd": -0.4084,
-    "beta_cmd": 0.0279
+    "beta_eq": 0.2691,
+    "beta_rr": -1.4272,
+    "beta_inf": -0.4713,
+    "beta_credit": -0.2622,
+    "beta_usd": -0.4177,
+    "beta_cmd": 0.0459
   },
   "historical_results": [
     {
@@ -195,19 +195,19 @@
   "stress_top3_rc_sum_cap": 0.7,
   "max_dd_limit": 0.35,
   "factor_betas_5y": {
-    "beta_eq": 0.2179,
-    "beta_rr": -2.0449,
-    "beta_inf": -0.1181,
-    "beta_credit": -8.9444,
-    "beta_usd": -0.4084,
-    "beta_cmd": 0.0279
+    "beta_eq": 0.2691,
+    "beta_rr": -1.4272,
+    "beta_inf": -0.4713,
+    "beta_credit": -0.2622,
+    "beta_usd": -0.4177,
+    "beta_cmd": 0.0459
   },
   "factor_betas_10y": {
-    "beta_eq": 0.2478,
-    "beta_rr": -2.1513,
-    "beta_inf": -0.3832,
-    "beta_credit": -13.6541,
-    "beta_usd": -0.3414,
-    "beta_cmd": 0.0361
+    "beta_eq": 0.2957,
+    "beta_rr": -1.7904,
+    "beta_inf": -0.1824,
+    "beta_credit": -0.0545,
+    "beta_usd": -0.3335,
+    "beta_cmd": 0.0346
   }
 }

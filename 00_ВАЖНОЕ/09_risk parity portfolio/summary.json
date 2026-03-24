@@ -16,6 +16,6 @@
     "recovered": false
   },
   "stress_status": "FAIL_STRESS",
-  "stress_fail_reason": "FAIL_LOSS_CREDIT_SHOCK",
+  "stress_fail_reason": "FAIL_ROLE_EQUITY_SHOCK",
   "portfolio_valid": true
 }

@@ -1,6 +1,6 @@
 {
   "run_info": {
-    "timestamp": "2026-03-23T23:03:46.968528",
+    "timestamp": "2026-03-24T14:21:35.282414",
     "analysis_end_date": "2026-02-28"
   },
   "resolved_config": {
@@ -267,11 +267,11 @@
   "portfolio_valid": true,
   "stress_test": {
     "status": "FAIL_STRESS",
-    "fail_reason_code": "FAIL_RC_TOP1_EQUITY_SHOCK",
+    "fail_reason_code": "FAIL_ROLE_EQUITY_SHOCK",
     "warning_code": null,
-    "worst_scenario_loss_pct": -1.7861,
+    "worst_scenario_loss_pct": -0.2271,
     "failed_scenario": "equity_shock",
-    "failed_test": "RC_Top1"
+    "failed_test": "Role"
   },
   "target_comparison": {
     "target_nominal_return_annual": 0.12,
