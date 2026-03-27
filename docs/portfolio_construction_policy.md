@@ -192,15 +192,16 @@ That document is the source of truth for: no rewriting of history, join policy (
 
 ### Production workflow (implementation)
 
-In production runs, the pipeline **always produces and writes portfolio weights** unless a **fatal data/config error** (FAIL_DATA) occurs. The following are **quality checks and flags**, not hard stops:
+In production runs, the pipeline **writes portfolio weights** when the **mandate historical max drawdown** check passes and there is no **FAIL_DATA / FAIL_FEASIBILITY / FAIL_RC** exit.
 
-- **RB corridor (target ± 5 pp):** If realized block RC is outside the corridor, status is set to **CANDIDATE_RB_BREACH** and violation **RB_BREACH** is recorded with per-block deltas; weights are still written.
-- **Stress Judge:** If stress validation fails (FAIL_STRESS), a **FAIL_STRESS** violation is recorded with failed scenarios and suggested actions; weights are still written.
-- **RC_vol caps:** RC caps are enforced when the solver allows; if the solver uses a fallback and per-asset RC is violated, status is **OK_FALLBACK**, violation **VIOL_RC_ASSET_CAP** lists breached tickers and cap level; weights are still returned and written.
+- **Mandate (blocking):** **FAIL_MANDATE** if realized portfolio max drawdown on the **full overlapping monthly history** exceeds `target_max_drawdown_pct`, or if that check is inconclusive (insufficient data). No weights written.
+- **RB corridor (target ± 5 pp):** If realized block RC is outside the corridor, status is set to **CANDIDATE_RB_BREACH** and violation **RB_BREACH** is recorded; weights are still written if the mandate passed.
+- **Stress diagnostics (non-blocking):** Scenario PnL, historical episodes (2008 / 2020 / 2022), Role/RC flags produce **`DIAG_*` codes** and **`DIAG_ATTENTION`** / **`DIAG_PASS`** statuses. They are recorded in **`stress_diagnostic_report`** and **`stress_summary`**; optional informational violation **`FAIL_STRESS`** with `note: diagnostic_only` may appear; **weights are still written** if the mandate passed.
+- **RC_vol caps:** RC caps are enforced when the solver allows; if the solver uses a fallback and per-asset RC is violated, status is **OK_FALLBACK**, violation **VIOL_RC_ASSET_CAP** lists breached tickers and cap level; weights are still returned and written when the mandate passed.
 
-The single output object (**run_result.json**) carries: weights, status (APPROVED | CANDIDATE_RB_BREACH | OK_FALLBACK | FAIL_DATA | FAIL_FEASIBILITY | FAIL_RC | FAIL_MAX_DD), violations, rb_deltas_pp, rc_breaches, stress_summary, next_actions, and resolved_config. **Code behaviour and this policy document are aligned** (single source of truth).
+The single output object (**run_result.json**) carries: weights, status (APPROVED | CANDIDATE_RB_BREACH | OK_FALLBACK | FAIL_DATA | FAIL_FEASIBILITY | FAIL_RC | **FAIL_MANDATE**), **mandate_check**, **stress_diagnostic_report**, violations, rb_deltas_pp, rc_breaches, stress_summary, next_actions, and resolved_config. **Code behaviour and this policy document are aligned** (single source of truth).
 
-For a concise reference on **what blocks writing weights** (only MaxDD) and **how to interpret each status** for execution, see **docs/production_workflow.md**.
+For a concise reference on **what blocks writing weights** and **how to interpret each status**, see **docs/production_workflow.md**.
 
 ---
 

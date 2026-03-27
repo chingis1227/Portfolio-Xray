@@ -1,18 +1,29 @@
 # Stress Testing Specification
 
-**Policy link.** This document is the source of truth for portfolio stress testing. It implements and extends **docs/portfolio_construction_policy.md** §§9–12 and aligns with **docs/docs/view_after_optimization_spec.md** for stress failure codes.
+**Policy link.** This document is the source of truth for **diagnostic** portfolio stress testing. It implements and extends **docs/portfolio_construction_policy.md** §§9–12. **Blocking** mandate max drawdown is defined in **docs/production_workflow.md** (full historical sample, **FAIL_MANDATE**).
+
+---
+
+## 0. Mandate vs diagnostic suite
+
+| Layer | What | Blocks weights? |
+|-------|------|-----------------|
+| **Mandate** | Realized portfolio max drawdown on **full overlapping monthly history** vs `target_max_drawdown_pct` | **Yes** → **FAIL_MANDATE** (`run_optimization.py`) |
+| **Stress suite** (`run_stress`) | Synthetic scenarios, historical **episodes** (2008 / 2020 / 2022), Role/RC in stress | **No** → **`DIAG_*` codes** and **DIAG_PASS** / **DIAG_PASS_WITH_WARNING** / **DIAG_ATTENTION** only |
+
+Scenario and episode checks below are **for PM reporting**; they do not replace the mandate gate.
 
 ---
 
 ## 1. Pass criteria (per scenario)
 
-A scenario is treated as **passed** (`pass=true`) only if **all** of the following hold:
+A scenario is treated as **passed** (`pass=true`) only if **all** of the following hold (diagnostic semantics; failure adds **DIAG_*** codes and may set suite status **DIAG_ATTENTION**):
 
-- **Loss test:** Portfolio_PnL_% ≥ -MaxDD_limit (mandate; no separate stress_limit unless configured). Violation → **FAIL_STRESS**.
-- **RC test:** Top1_RC_% and Top3_RC_sum_% within caps (§7). Violation → **FAIL_STRESS**.
-- **Role test:** Rules in §6. For **equity shock**, a **severe** defensive breach fails the scenario (**FAIL_STRESS**); a **mild** breach still allows the scenario to pass if Loss and RC pass, but the suite may be **PASS_WITH_WARNING** (§12).
+- **Loss test:** Portfolio_PnL_% ≥ -MaxDD_limit (reference limit; informational vs mandate). Violation → **DIAG_LOSS_***.
+- **RC test:** Top1_RC_% and Top3_RC_sum_% within caps (§7). Violation → **DIAG_RC_***.
+- **Role test:** Rules in §6. For **equity shock**, a **severe** defensive breach fails the scenario (**DIAG_ROLE_***); a **mild** breach still allows the scenario to pass if Loss and RC pass, but the suite may be **DIAG_PASS_WITH_WARNING** (§12).
 
-Other scenarios: **Stagflation** Role failure → **FAIL_STRESS** as before.
+Other scenarios: **Stagflation** Role failure → **DIAG_ROLE_*** as before.
 
 ---
 
@@ -58,10 +69,10 @@ For each scenario the system must output:
 
 ---
 
-## 5. Loss test
+## 5. Loss test (diagnostic)
 
 - **Criterion:** Portfolio_PnL_% ≥ -|MaxDD_limit| (e.g. ≥ -0.15 if MaxDD = -15%).
-- If violated → **FAIL_STRESS** (Loss).
+- If violated → **DIAG_LOSS_*** (diagnostic; does not block release).
 
 ---
 
@@ -71,9 +82,9 @@ For each scenario the system must output:
 - **Equity shock:** Define **S** = PnL_Duration + PnL_Inflation + PnL_Tail (same decimal fraction units as block PnL in §4).
   - **S ≥ 0:** defensive bundle is net supportive → Role **ok** (no suite warning from this rule).
   - **−0.01 ≤ S < 0:** mild aggregate defensive drag (includes the illustrative band **−0.005 … 0**) → Role **warn**; scenario still **passes** if Loss and RC pass; suite status **PASS_WITH_WARNING** with **WARN_ROLE_EQUITY_DEFENSIVE_WEAK** (§12).
-  - **S < −0.01:** severe lack of aggregate protection → Role **fail** → scenario **fail** → **FAIL_STRESS** (Role), e.g. **FAIL_ROLE_EQUITY_SHOCK**.
+  - **S < −0.01:** severe lack of aggregate protection → Role **fail** → scenario **fail** → **DIAG_ROLE_***, e.g. **DIAG_ROLE_EQUITY_SHOCK**.
 
-**Loss** and **Top1 / Top3 RC** limits remain **hard** gates: they do not soften when Role is only a warning.
+**Loss** and **Top1 / Top3 RC** (diagnostic) do not soften when Role is only a warning; failed checks add **DIAG_*** codes. They are **not** production hard gates (see §0).
 
 ---
 
@@ -96,7 +107,7 @@ The system must estimate and output:
 - β_credit (portfolio vs credit spread)
 - β_USD (portfolio vs DXY)
 
-If factor limits are set in config and violated → FAIL_STRESS; if no limits → PASS_WITH_WARNING (manual approval).
+If factor limits are set in config and violated → **DIAG_BETA_*** / **DIAG_ATTENTION**; if no limits → **DIAG_PASS_WITH_WARNING** (manual review). (Non-blocking.)
 
 **Output windows (mandatory):**
 
@@ -116,7 +127,7 @@ Run portfolio through episodes:
 - **2022:** 2021-11-01 → 2022-10-31  
 
 Output: max drawdown, volatility spike, correlations in stress.  
-If defensive blocks systematically behave “against role” → FAIL_STRESS; else PASS or PASS_WITH_WARNING.
+Episode DD vs limit adds **DIAG_HIST_*** when breached; else episode contributes to **DIAG_PASS**. (Non-blocking.)
 
 ---
 
@@ -143,12 +154,12 @@ Betas: **weekly** changes/returns for reporting outputs in §8 (`factor_betas_5y
 
 ---
 
-## 12. Final status and report
+## 12. Final status and report (diagnostic suite)
 
-- **Status:** one of PASS | PASS_WITH_WARNING | FAIL_STRESS.
-- **fail_reason_code** (when FAIL_STRESS): specific code, e.g.  
-  **FAIL_LOSS_EQUITY_SHOCK**, **FAIL_ROLE_STAGFLATION**, **FAIL_RC_TOP1_LIQUIDITY_SHOCK**, **FAIL_RC_TOP3_CREDIT_SHOCK**, **FAIL_BETA_REAL_RATES**, **FAIL_HIST_2022**.
-- **warning_code** (when PASS_WITH_WARNING): e.g. **WARN_ROLE_EQUITY_DEFENSIVE_WEAK**, **WARN_HIST_BORDERLINE**, **WARN_BETA_NO_LIMITS**, **WARN_DATA_INSUFFICIENT**.
-- **Report must include:** worst scenario loss; failed scenario (if any); which test failed (Loss / Role / RC / Beta / Historical); Top1/Top3 RC and Top3 loss.
+- **Status:** **DIAG_PASS** | **DIAG_PASS_WITH_WARNING** | **DIAG_ATTENTION** (legacy **PASS** / **PASS_WITH_WARNING** may appear in old JSON).
+- **primary_diagnostic_code** / **fail_reason_code** (when **DIAG_ATTENTION**): e.g. **DIAG_LOSS_EQUITY_SHOCK**, **DIAG_ROLE_STAGFLATION**, **DIAG_RC_TOP1_LIQUIDITY_SHOCK**, **DIAG_RC_TOP3_CREDIT_SHOCK**, **DIAG_BETA_REAL_RATES**, **DIAG_HIST_2022**.
+- **diagnostic_codes:** ordered list of all **DIAG_*** issues collected across scenarios and episodes.
+- **warning_code** (when **DIAG_PASS_WITH_WARNING**): e.g. **WARN_ROLE_EQUITY_DEFENSIVE_WEAK**, **WARN_HIST_BORDERLINE**, **WARN_BETA_NO_LIMITS**, **WARN_DATA_INSUFFICIENT**.
+- **Report must include:** worst scenario loss; failed scenario (if any); which test failed (Loss / Role / RC / Beta / Historical); Top1/Top3 RC and Top3 loss; per-episode **vol_annualized_episode**, **mean_monthly_return_by_block_pct** where computed.
 
-When View After Optimization is used, stress failure must use specific codes: **FAIL_STRESS_DURATION**, **FAIL_STRESS_INFLATION**, **FAIL_STRESS_LIQUIDITY**, (optional) **FAIL_STRESS_TAIL**. The **fail_reason_code** above provides the detailed scenario/test code for audit.
+View After Optimization no longer blocks on stress status; scenario tilt audit codes (**FAIL_STRESS_DURATION**, etc.) remain optional labels for documentation only.

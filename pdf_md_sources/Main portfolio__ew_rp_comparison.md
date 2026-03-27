@@ -1,15 +1,15 @@
 ---
 title: "Equal-Weight vs Risk-Parity — Comparison Report"
 subtitle: "Analytical comparison of baseline portfolios"
-date: "2026-03-24 14:27 Центральная Европа (зима)"
+date: "2026-03-28 00:24 Центральная Европа (зима)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
 ---
 ## Report scope / source context
 - **Primary data:** `ew_rp_comparison.json` (machine-readable comparison).
-- **Source file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Cursor/Main portfolio/ew_rp_comparison.json`
-- **Generated:** 2026-03-24 14:27 Центральная Европа (зима)
+- **Source file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/Main portfolio/ew_rp_comparison.json`
+- **Generated:** 2026-03-28 00:24 Центральная Европа (зима)
 - **Window:** 10y (`window_months=120`), **analysis_end** = 2026-02-28.
 - **Delta rule:** delta = equal_weight - risk_parity.
 
@@ -18,7 +18,7 @@ fontsize: 11pt
 - Дельта: **delta = equal_weight - risk_parity**.
 - Доходность: EW **15.20%** vs RP **8.40%** (Δ **6.80%**).
 - Риск: EW **13.00%** vs RP **6.60%**; max DD EW **-20.90%** vs RP **-12.50%**.
-- Стресс: EW **FAIL_STRESS** (FAIL_ROLE_EQUITY_SHOCK); RP **FAIL_STRESS** (FAIL_ROLE_EQUITY_SHOCK).
+- Стресс: EW **FAIL_STRESS** (FAIL_RC_TOP1_EQUITY_SHOCK); RP **PASS_WITH_WARNING** (None).
 
 ## Core metrics (10Y window)
 
@@ -121,9 +121,9 @@ fontsize: 11pt
 | **VWO** | — | 5.90% | — |
 
 ## Stress and validation flags
-- **EW:** stress **FAIL_STRESS**, reason `FAIL_ROLE_EQUITY_SHOCK`, portfolio_valid **True**.
-- **RP:** stress **FAIL_STRESS**, reason `FAIL_ROLE_EQUITY_SHOCK`, portfolio_valid **True**.
+- **EW:** stress **FAIL_STRESS**, reason `FAIL_RC_TOP1_EQUITY_SHOCK`, portfolio_valid **True**.
+- **RP:** stress **PASS_WITH_WARNING**, reason `None`, portfolio_valid **True**.
 
 ## Key takeaways
 - Сравнение построено на **одинаковом универсуме тикеров** и **одном окне**; интерпретация дельт — относительная (EW vs RP).
-- При **FAIL_STRESS** пояснения по сценариям см. `stress_report.json` в соответствующих папках прогонов.
+- При **DIAG_ATTENTION** и кодах **DIAG_*** пояснения по сценариям см. `stress_report.json` (диагностика, не блокирует выпуск).

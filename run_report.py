@@ -53,7 +53,7 @@ from src.snapshot import (
     write_report_html,
     write_report_txt,
 )
-from src.metrics_asset import asset_metrics_one_window
+from src.metrics_asset import asset_metrics_one_window, mandate_max_drawdown_full_history_check
 from src.metrics_portfolio import portfolio_metrics_one_window
 from src.portfolio_analytics import (
     drawdown_structure,
@@ -76,7 +76,7 @@ from src.stress_factors import (
 )
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
 from src.windows import slice_window
-from src.portfolio_commentary import write_portfolio_commentary
+from src.portfolio_commentary import write_portfolio_commentary, write_stress_commentary
 
 
 def parse_args() -> argparse.Namespace:
@@ -555,14 +555,17 @@ def run_portfolio_report_for_weights(
         windows_months,
     )
     
-    # Gatekeepers: portfolio_valid = False, только если исторический MaxDD нарушает мандат.
-    # Stress FAIL_STRESS теперь диагностический и не делает портфель "invalid".
+    # Gatekeepers: portfolio_valid = False только если MaxDD на полной пересекающейся истории нарушает мандат.
+    # Сценарный стресс (DIAG_*) не делает портфель invalid.
     portfolio_valid = True
-    if portfolio_metrics_summary and cfg.target_max_drawdown_pct is not None:
-        realized_mdd = portfolio_metrics_summary.get("max_drawdown")
-        if realized_mdd is not None and not (realized_mdd != realized_mdd):
-            if realized_mdd < -abs(cfg.target_max_drawdown_pct):
-                portfolio_valid = False
+    mandate_chk = mandate_max_drawdown_full_history_check(
+        monthly_returns,
+        weights,
+        abs(cfg.target_max_drawdown_pct) if cfg.target_max_drawdown_pct is not None else None,
+    )
+    if cfg.target_max_drawdown_pct is not None:
+        if mandate_chk.get("pass") is False or mandate_chk.get("pass") is None:
+            portfolio_valid = False
     
     export_run_metadata(
         output_dir_final,
@@ -577,11 +580,7 @@ def run_portfolio_report_for_weights(
 
     # Snapshots: one for assets, three by window (3y / 5y / 10y)
     snapshot_window = 60 if 60 in windows_months else (windows_months[0] if windows_months else 60)
-    max_dd_ok = None
-    if portfolio_metrics_summary and cfg.target_max_drawdown_pct is not None:
-        realized_mdd = portfolio_metrics_summary.get("max_drawdown")
-        if realized_mdd is not None and not (realized_mdd != realized_mdd):
-            max_dd_ok = realized_mdd >= -abs(cfg.target_max_drawdown_pct)
+    max_dd_ok = mandate_chk.get("pass") if cfg.target_max_drawdown_pct is not None else None
     snapshot = build_snapshot(
         final_weights_total=weights,
         blocks=cfg.blocks,
@@ -688,6 +687,17 @@ def run_portfolio_report_for_weights(
             logger.info("commentary.txt: %s", cpath)
     except Exception as e:
         logger.warning("commentary.txt generation failed: %s", e)
+
+    try:
+        spath = write_stress_commentary(
+            output_dir_final,
+            stress_report=stress_report,
+            analysis_end=analysis_end_str,
+        )
+        if spath:
+            logger.info("stress_commentary.txt: %s", spath)
+    except Exception as e:
+        logger.warning("stress_commentary.txt generation failed: %s", e)
 
     meta = {
         "stress_report": stress_report,

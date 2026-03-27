@@ -40,6 +40,7 @@ from src.optimization import (
     RB_CORRIDOR_PP,
 )
 from src.risk_contrib import cov_matrix_monthly, resolve_rc_asset_cap
+from src.metrics_asset import mandate_max_drawdown_full_history_check
 from src.young_etfs_dual_cov import build_dual_covariance_and_mu, per_ticker_young_weight_caps
 from src.robustness import compute_robustness_diagnostics
 from src.snapshot import build_snapshot, print_snapshot, save_snapshot
@@ -72,8 +73,9 @@ STATUS_APPROVED = "APPROVED"
 STATUS_CANDIDATE_RB_BREACH = "CANDIDATE_RB_BREACH"
 STATUS_OK_FALLBACK = "OK_FALLBACK"
 STATUS_FAIL_DATA = "FAIL_DATA"
-STATUS_FAIL_MAX_DD = "FAIL_MAX_DD"
-STATUS_FAIL_STRESS = "FAIL_STRESS"
+STATUS_FAIL_MAX_DD = "FAIL_MAX_DD"  # legacy alias; new runs use FAIL_MANDATE for historical MaxDD gate
+STATUS_FAIL_MANDATE = "FAIL_MANDATE"
+STATUS_FAIL_STRESS = "FAIL_STRESS"  # legacy; no longer blocks release
 STATUS_FAIL_RC = "FAIL_RC"
 STATUS_FAIL_FEASIBILITY = "FAIL_FEASIBILITY"
 
@@ -81,7 +83,8 @@ VIOL_RB_BREACH = "RB_BREACH"
 VIOL_MAX_DD_GATE = "MAX_DD_GATE"
 VIOL_RC_VIOLATION = "RC_VIOLATION"
 VIOL_RC_ASSET_CAP = "VIOL_RC_ASSET_CAP"
-VIOL_FAIL_STRESS = "FAIL_STRESS"
+VIOL_FAIL_STRESS = "FAIL_STRESS"  # legacy violation label; stress is diagnostic-only
+VIOL_FAIL_MANDATE = "FAIL_MANDATE"
 VIOL_MAX_DD_BREACH = "MAX_DD_BREACH"
 WARN_MODEL_RISK_YOUNG_WEIGHT = "WARN_MODEL_RISK_YOUNG_WEIGHT"
 
@@ -155,7 +158,11 @@ def _build_next_actions(
         )
     if VIOL_FAIL_STRESS in codes and stress_report:
         actions.append(
-            "Consider: increase liquidity, shorten duration, reduce high growth/HY exposure."
+            "Stress diagnostic (DIAG_*): review liquidity, duration, growth/HY — informational only."
+        )
+    if VIOL_FAIL_MANDATE in codes:
+        actions.append(
+            "Mandate: historical max drawdown exceeds client limit on full overlapping sample; reduce risk or adjust mandate."
         )
     if VIOL_MAX_DD_BREACH in codes:
         actions.append(
@@ -163,8 +170,8 @@ def _build_next_actions(
         )
     if VIOL_MAX_DD_GATE in codes:
         actions.append(
-            "MaxDD gate (strict): stress or realized drawdown exceeds mandate; weights not written. "
-            "Adjust target_max_drawdown_pct, rc_block_targets, or universe and re-run."
+            "MaxDD / mandate gate: historical drawdown exceeded limit; weights not written. "
+            "Adjust target_max_drawdown_pct, risk budget, or universe and re-run."
         )
     if VIOL_RC_VIOLATION in codes:
         actions.append(
@@ -655,22 +662,12 @@ def main() -> None:
     print("Целевая волатильность: %.2f%%" % (target_vol * 100))
     print("Волатильность RiskPortfolio (оценка): %.2f%%" % (current_vol * 100))
 
-    # Guardrails: Max DD (исторический) — жёсткий; Stress Judge — диагностический
+    # Mandate: full-history MaxDD (blocking). Stress suite: diagnostic only (DIAG_*).
     max_dd_limit = abs(cfg.target_max_drawdown_pct) if cfg.target_max_drawdown_pct is not None else None
-    max_dd_ok = None
+    mandate_check = mandate_max_drawdown_full_history_check(monthly_returns, final_weights, max_dd_limit)
+    max_dd_ok = mandate_check.get("pass")
     stress_status = None
     stress_fail_reason = None
-
-    cols_port = [t for t in final_weights if t in monthly_returns.columns and final_weights.get(t, 0) > 0]
-    if cols_port and max_dd_limit is not None:
-        from src.metrics_asset import max_drawdown
-
-        ret_slice = monthly_returns[cols_port].iloc[-window_months:]
-        w_vec = [final_weights[t] for t in cols_port]
-        port_ret = ret_slice.dot(w_vec).dropna()
-        if len(port_ret) >= 2:
-            mdd, _ = max_drawdown(port_ret)
-            max_dd_ok = mdd >= -max_dd_limit if mdd is not None and not (mdd != mdd) else None
 
     asset_betas_df = pd.DataFrame()
     portfolio_betas_dict = {}
@@ -727,23 +724,37 @@ def main() -> None:
     stress_fail_reason = stress_report.get("fail_reason_code") or stress_report.get("skip_reason")
 
     print("")
-    print("--- Guardrails (MaxDD = strict gate when mandate set; Stress/RB/RC = warning) ---")
+    print("--- Guardrails (мандат: MaxDD по полной истории; стресс: только диагностика) ---")
     if max_dd_limit is not None:
         if max_dd_ok is True:
-            print("  Max DD: PASS (портфель в пределах целевой просадки)")
+            print(
+                "  Мандат MaxDD: PASS (полная пересекающаяся история: %s мес., %s .. %s)"
+                % (
+                    mandate_check.get("months_used", 0),
+                    mandate_check.get("history_start") or "—",
+                    mandate_check.get("history_end") or "—",
+                )
+            )
         elif max_dd_ok is False:
-            print("  Max DD: FAIL (реализованная просадка хуже целевой %.1f%%) — веса не будут записаны" % (max_dd_limit * 100))
+            mddr = mandate_check.get("max_drawdown_realized")
+            print(
+                "  Мандат MaxDD: FAIL (реализованная просадка %.2f%% vs лимит %.1f%%) — веса не будут записаны"
+                % ((mddr or 0) * 100, max_dd_limit * 100)
+            )
         else:
-            print("  Max DD: не проверен (недостаточно данных)")
+            print("  Мандат MaxDD: не проверен (недостаточно пересекающихся данных)")
     else:
-        print("  Max DD: не задан (target_max_drawdown_pct отсутствует)")
+        print("  Мандат MaxDD: не задан (target_max_drawdown_pct отсутствует)")
     if stress_status is not None:
-        if stress_status == "PASS":
-            print("  Stress Judge: PASS")
+        if stress_status in ("DIAG_PASS", "PASS"):
+            print("  Стресс (диагностика): %s" % stress_status)
         else:
-            print("  Stress Judge: %s (%s) — предупреждение" % (stress_status, stress_fail_reason or "—"))
+            print(
+                "  Стресс (диагностика, не блокирует выпуск): %s (%s)"
+                % (stress_status, stress_fail_reason or stress_report.get("primary_diagnostic_code") or "—")
+            )
     else:
-        print("  Stress Judge: не выполнен (нет данных/факторов)")
+        print("  Стресс (диагностика): не выполнен (нет данных/факторов)")
     if young_agg_warn_details:
         print(
             "  Young ETF (модельный риск): суммарный вес candidate/new %.2f%% > порога %.2f%% — см. run_result.json (%s)"
@@ -803,66 +814,81 @@ def main() -> None:
             "code": WARN_MODEL_RISK_YOUNG_WEIGHT,
             "details": young_agg_warn_details,
         })
-    if stress_status == "FAIL_STRESS":
+    if stress_status == "DIAG_ATTENTION":
         violations.append({
             "code": VIOL_FAIL_STRESS,
             "details": {
-                "fail_reason_code": stress_fail_reason,
+                "note": "diagnostic_only",
+                "diagnostic_codes": stress_report.get("diagnostic_codes", []),
+                "primary_diagnostic_code": stress_report.get("primary_diagnostic_code"),
                 "worst_scenario_loss_pct": stress_report.get("worst_scenario_loss_pct"),
                 "failed_scenario": stress_report.get("failed_scenario"),
             },
         })
-    if max_dd_ok is False:
-        violations.append({
-            "code": VIOL_MAX_DD_BREACH,
-            "details": {"target_max_drawdown_pct": cfg.target_max_drawdown_pct, "realized_exceeds_limit": True},
-        })
 
-    # MaxDD gate (strict): if mandate is set and exceeded by stress-based or realized measure, do not write weights
+    mandate_gate_passed = True
+    if max_dd_limit is not None:
+        if max_dd_ok is False:
+            mandate_gate_passed = False
+            violations.append({
+                "code": VIOL_FAIL_MANDATE,
+                "details": {
+                    "target_max_drawdown_pct": cfg.target_max_drawdown_pct,
+                    "max_drawdown_realized": mandate_check.get("max_drawdown_realized"),
+                    "history_start": mandate_check.get("history_start"),
+                    "history_end": mandate_check.get("history_end"),
+                    "months_used": mandate_check.get("months_used"),
+                    "reason": "exceeds_limit",
+                },
+            })
+        elif max_dd_ok is None:
+            mandate_gate_passed = False
+            violations.append({
+                "code": VIOL_FAIL_MANDATE,
+                "details": {
+                    "target_max_drawdown_pct": cfg.target_max_drawdown_pct,
+                    "reason": "insufficient_overlapping_history",
+                    "months_used": mandate_check.get("months_used", 0),
+                },
+            })
+
     stress_worst_pct = stress_report.get("worst_scenario_loss_pct")
-    stress_exceeds = (
-        max_dd_limit is not None
-        and stress_worst_pct is not None
-        and stress_worst_pct < -max_dd_limit
-    )
-    realized_exceeds = max_dd_ok is False
-    max_dd_gate_passed = True
-    if max_dd_limit is not None and (stress_exceeds or realized_exceeds):
-        max_dd_gate_passed = False
-        violations.append({
-            "code": VIOL_MAX_DD_GATE,
-            "details": {
-                "target_max_drawdown_pct": cfg.target_max_drawdown_pct,
-                "stress_worst_loss_pct": round(stress_worst_pct, 4) if stress_worst_pct is not None else None,
-                "stress_exceeds": stress_exceeds,
-                "realized_exceeds": realized_exceeds,
-            },
-        })
-
     stress_summary = {
+        "mandate_historical_max_dd_pass": mandate_check.get("pass"),
+        "mandate_max_drawdown_realized": mandate_check.get("max_drawdown_realized"),
+        "mandate_history_start": mandate_check.get("history_start"),
+        "mandate_history_end": mandate_check.get("history_end"),
+        "mandate_months_used": mandate_check.get("months_used"),
+        "diagnostic_status": stress_status,
+        "diagnostic_codes": stress_report.get("diagnostic_codes", []),
+        "primary_diagnostic_code": stress_report.get("primary_diagnostic_code"),
         "status": stress_status,
         "fail_reason_code": stress_fail_reason,
-        "worst_scenario_loss_pct": stress_report.get("worst_scenario_loss_pct"),
+        "worst_scenario_loss_pct": stress_worst_pct,
         "failed_scenario": stress_report.get("failed_scenario"),
     }
     next_actions = _build_next_actions(violations, rb_deltas_pp, stress_report)
 
-    if not max_dd_gate_passed:
-        production_status = STATUS_FAIL_MAX_DD
-    # strict_stress_gate: do not write weights when Stress Judge fails
-    strict_stress_gate = getattr(cfg, "strict_stress_gate", False)
-    if strict_stress_gate and stress_status == "FAIL_STRESS":
-        production_status = STATUS_FAIL_STRESS
+    if not mandate_gate_passed:
+        production_status = STATUS_FAIL_MANDATE
 
-    write_weights_gate = max_dd_gate_passed and not (strict_stress_gate and stress_status == "FAIL_STRESS")
+    strict_stress_gate = getattr(cfg, "strict_stress_gate", False)
+    if strict_stress_gate:
+        logger.warning(
+            "strict_stress_gate is deprecated: stress is diagnostic-only (DIAG_*) and never blocks release."
+        )
+
+    write_weights_gate = mandate_gate_passed
     run_result = {
         "weights": rounded if write_weights_gate else {},
         "status": production_status,
+        "mandate_check": mandate_check,
         "rb_target_selection": _extract_rb_target_selection(status),
         "violations": violations,
         "rb_deltas_pp": rb_deltas_pp,
         "rc_breaches": rc_breaches,
         "stress_summary": stress_summary,
+        "stress_diagnostic_report": stress_report,
         "next_actions": next_actions,
         "actual_rc_block": {k: round(v, 4) for k, v in (actual_rc_block or {}).items()},
         "rc_block_targets": cfg.rc_block_targets,
@@ -926,37 +952,26 @@ def main() -> None:
     from src.io_export import generate_ips_summary
     generate_ips_summary(cfg, run_result, out_final / "ips_summary.txt")
 
-    if not max_dd_gate_passed:
+    if not mandate_gate_passed:
         logger.error(
-            "MaxDD gate: mandate exceeded (stress-based or realized). Weights not written. "
-            "Limit=%.1f%%; stress_worst=%s; realized_exceeds=%s.",
-            (max_dd_limit or 0) * 100,
-            round(stress_worst_pct * 100, 1) if stress_worst_pct is not None else "N/A",
-            realized_exceeds,
+            "Mandate gate: historical max drawdown check failed or inconclusive. Weights not written. mandate_check=%s",
+            mandate_check,
         )
         print("")
-        print("--- MaxDD gate (strict): веса НЕ записаны ---")
+        print("--- Мандат MaxDD: веса НЕ записаны (FAIL_MANDATE) ---")
         print("  Целевая просадка: %.1f%%" % ((max_dd_limit or 0) * 100))
-        if stress_exceeds and stress_worst_pct is not None:
-            print("  Худший стресс-сценарий: %.1f%% (превышение)" % (stress_worst_pct * 100))
-        if realized_exceeds:
-            print("  Реализованная просадка по истории превышает лимит.")
-        print("  См. %s (status=%s)." % (run_result_path, STATUS_FAIL_MAX_DD))
+        if mandate_check.get("max_drawdown_realized") is not None:
+            print("  Реализованная MaxDD на полной истории: %.2f%%" % (mandate_check["max_drawdown_realized"] * 100))
+        if mandate_check.get("history_start"):
+            print("  Период: %s .. %s (%s мес.)" % (
+                mandate_check.get("history_start"),
+                mandate_check.get("history_end"),
+                mandate_check.get("months_used"),
+            ))
+        print("  См. %s (status=%s)." % (run_result_path, STATUS_FAIL_MANDATE))
         raise SystemExit(1)
 
-    if strict_stress_gate and stress_status == "FAIL_STRESS":
-        logger.error(
-            "Stress gate (strict_stress_gate=true): Stress Judge FAIL_STRESS. Weights not written. %s",
-            stress_fail_reason or "",
-        )
-        print("")
-        print("--- Stress gate (strict): веса НЕ записаны ---")
-        print("  Stress Judge: FAIL_STRESS (%s)" % (stress_fail_reason or "—"))
-        print("  Рекомендации: %s" % (next_actions[0] if next_actions else "усилить защитные блоки, ликвидность или снизить долю Growth."))
-        print("  См. %s (status=%s)." % (run_result_path, STATUS_FAIL_STRESS))
-        raise SystemExit(1)
-
-    # Write weights and snapshot (only when MaxDD and optional Stress gate passed)
+    # Write weights and snapshot (only when mandate MaxDD gate passed)
     weights_path = out_final / WEIGHTS_FILENAME
     with open(weights_path, "w", encoding="utf-8") as f:
         yaml.dump(rounded, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
@@ -1003,9 +1018,9 @@ def main() -> None:
             print("")
             print("Report failed, weights saved. See log for details.")
             try:
-                from src.pdf_reports import try_rebuild_pdfs_only
+                from src.pdf_reports import try_rebuild_pdfs_after_main_report
 
-                try_rebuild_pdfs_only(logger=logger)
+                try_rebuild_pdfs_after_main_report(logger=logger)
             except Exception as ex:
                 logger.warning("PDF suite rebuild skipped: %s", ex)
     else:

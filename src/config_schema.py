@@ -107,7 +107,7 @@ class PortfolioConfig:
     tail_target_weight_pct: float | None = None
     # RC post-processing: "strict" = do not write weights if RC caps unresolved; "permissive" = write but flag violation
     rc_policy_mode: str = "strict"
-    # When True, do not write weights if Stress Judge returns FAIL_STRESS (production hard gate)
+    # Deprecated: stress is diagnostic-only (DIAG_*); ignored for blocking. Kept for config compatibility.
     strict_stress_gate: bool = False
     # When True, use Ledoit-Wolf shrinkage for covariance in optimization/RC (more stable weights)
     covariance_shrinkage: bool = False

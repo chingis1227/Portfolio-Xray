@@ -10,10 +10,9 @@ Weights are **not** written when any of the following holds:
 
 | Gate | Condition | Result |
 |------|-----------|--------|
-| **MaxDD** | Mandate `target_max_drawdown_pct` is set and either (a) worst stress scenario loss exceeds it, or (b) realized historical max drawdown on the primary window exceeds it | Weights are **not** written. `run_result.json` has `status: FAIL_MAX_DD`, empty `weights`, and `next_actions`. |
-| **Stress** | Config `strict_stress_gate: true` and Stress Judge returns **FAIL_STRESS** | Weights are **not** written. `run_result.json` has `status: FAIL_STRESS`, empty `weights`, and `next_actions`. |
+| **FAIL_MANDATE** | Mandate `target_max_drawdown_pct` is set and **realized portfolio max drawdown on the full overlapping monthly history** (all months where every held asset has a return) is **worse** than the limit, **or** the check is **inconclusive** (insufficient overlapping history) | Weights are **not** written. `run_result.json` has `status: FAIL_MANDATE`, `mandate_check` with period and depth, empty `weights`, and `next_actions`. |
 
-When `strict_stress_gate` is false (default), Stress Judge failure is only recorded as a violation and weights **are** still written.
+**Stress / scenarios:** Synthetic scenario losses (equity −40%, etc.), historical **episodes** (2008 / 2020 / 2022 windows), Role/RC concentration flags, and **`DIAG_*` codes** are **diagnostic only**. They **never** block weight release. Config `strict_stress_gate` is **deprecated** (logged warning only).
 
 All other checks (RB corridor, RC caps, feasibility) either cause an early exit without optimization (FAIL_FEASIBILITY, FAIL_DATA, FAIL_RC) or are recorded as **violations** while weights **are still written**.
 
@@ -38,31 +37,33 @@ The RB corridor validator is applied to each tested target and still uses target
 | **FAIL_DATA** | Invalid config, missing data, or insufficient history after inner join | No |
 | **FAIL_FEASIBILITY** | Structural RB achievability check fails (e.g. not enough instruments in a block to meet risk budget) | No |
 | **FAIL_RC** | RC post-processing cannot satisfy RC caps and `rc_policy_mode` is strict | No |
-| **FAIL_MAX_DD** | MaxDD gate failed (see above) | No |
-| **FAIL_STRESS** | `strict_stress_gate: true` and Stress Judge returned FAIL_STRESS | No |
+| **FAIL_MANDATE** | Historical max drawdown vs mandate failed or inconclusive (see §1) | No |
 
-In all these cases, `run_result.json` is written with the corresponding status, empty or no weights, and `next_actions` for remediation.
+**Legacy:** Older runs may show `FAIL_MAX_DD` / `FAIL_STRESS` in archived `run_result.json`; current `run_optimization.py` emits **`FAIL_MANDATE`** for the mandate gate and does **not** block on stress status.
+
+In all **blocking** cases, `run_result.json` is written with the corresponding status, empty or no weights, and `next_actions` for remediation.
 
 ---
 
 ## 3. Successful write with status and violations
 
-When the MaxDD gate passes, weights are always written. Status and violations indicate quality:
+When the **mandate** gate passes, weights are written. Status and violations indicate quality:
 
 | Status | Meaning | Use weights for execution? |
 |--------|---------|-----------------------------|
-| **APPROVED** | RB within corridor, no RC breach, no stress failure, no fallback | Yes. Safe to use as target weights. |
+| **APPROVED** | RB within corridor, no RC breach, no solver fallback | Yes. Safe to use as target weights. |
 | **CANDIDATE_RB_BREACH** | Realized block RC (Growth/Duration/Inflation) is outside target ± corridor (e.g. ±5 pp) | Use with caution. Consider re-running with wider corridor or more instruments; or accept and monitor. |
 | **OK_FALLBACK** | Solver used fallback and/or per-asset RC cap is violated (see `rc_breaches` in run_result) | Check `run_result.json` violations and `rc_breaches`. If acceptable for mandate, can use; otherwise re-run or relax constraints. |
 
-**Stress Judge:** If stress validation fails, a **FAIL_STRESS** violation is added to `run_result.violations` and `stress_summary` is set; weights are still written. The policy is to treat this as a signal to review architecture (e.g. liquidity, duration, growth share), not to block execution automatically.
+**Stress diagnostics:** If `stress_diagnostic_report.status == DIAG_ATTENTION`, a violation with code **`FAIL_STRESS`** may be listed with `details.note = diagnostic_only` — **informational**, not a block. Use `stress_summary.diagnostic_codes` and `stress_diagnostic_report` for PM review.
 
 ---
 
 ## 4. Summary
 
-- **Only MaxDD** is a hard gate: if it fails, weights are not written.
-- **FAIL_DATA, FAIL_FEASIBILITY, FAIL_RC** are early exits: no weights file.
-- **APPROVED / CANDIDATE_RB_BREACH / OK_FALLBACK** all mean weights were written; use status and `violations` to decide whether to use them for trading and whether to re-run.
+- **Only FAIL_MANDATE** (historical MaxDD on full overlapping sample vs limit) is the stress/mandate **hard** gate for `run_optimization.py`.
+- **FAIL_DATA, FAIL_FEASIBILITY, FAIL_RC** are other early exits: no weights file.
+- **APPROVED / CANDIDATE_RB_BREACH / OK_FALLBACK** mean weights were written; use status and `violations` to decide execution and re-runs.
+- **Scenario and episode stress** outputs are for **reports and PM diagnostics** only.
 
 See **portfolio_construction_policy.md** §2 (Rule hierarchy) and § Production workflow (implementation) for the full policy context.

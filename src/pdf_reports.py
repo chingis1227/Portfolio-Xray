@@ -298,7 +298,7 @@ def build_ew_rp_markdown(comp: dict[str, Any], *, source_json: Path) -> str:
     parts.append("\n## Key takeaways\n")
     parts.append(
         "- Сравнение построено на **одинаковом универсуме тикеров** и **одном окне**; интерпретация дельт — относительная (EW vs RP).\n"
-        "- При **FAIL_STRESS** пояснения по сценариям см. `stress_report.json` в соответствующих папках прогонов.\n"
+        "- При **DIAG_ATTENTION** и кодах **DIAG_*** пояснения по сценариям см. `stress_report.json` (диагностика, не блокирует выпуск).\n"
     )
     return "".join(parts)
 
@@ -480,7 +480,14 @@ def write_md_and_pdf(md_text: str, *, md_out: Path, pdf_out: Path, logger: Any =
         "fontsize=11pt",
     ]
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
         if logger:
             logger.info("PDF written: %s", pdf_out)
         return True
@@ -568,6 +575,35 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     _commentary_pair(eq_dir, "equal-weight_portfolio", "Equal-Weight Portfolio — Commentary")
     _commentary_pair(rp_dir, "risk_parity_portfolio", "Risk-Parity Portfolio — Commentary")
 
+    def _stress_commentary_pair(folder: Path, pdf_name_stem: str, title: str) -> None:
+        """pdf_name_stem e.g. equal-weight_portfolio or Main portfolio (matches existing PDF filenames)."""
+        spath = folder / "stress_commentary.txt"
+        if not spath.is_file():
+            results[f"{pdf_name_stem}_stress_commentary.pdf"] = False
+            return
+        md = build_commentary_report_md(
+            report_title=title,
+            source_bullets=[
+                f"**Folder:** `{folder.name}`",
+                "**Basis:** stress commentary (scenarios, RC, historical episodes).",
+            ],
+            commentary_path=spath,
+            commentary_text=spath.read_text(encoding="utf-8"),
+        )
+        out_name = f"{pdf_name_stem}_stress_commentary.pdf"
+        ok = write_md_and_pdf(
+            md,
+            md_out=_PDF_MD_SOURCES / f"{folder.name}__stress_commentary.md",
+            pdf_out=_PDF_OUT / out_name,
+            logger=logger,
+        )
+        results[out_name] = ok
+        if ok:
+            _copy_pdf_to_archive(_PDF_OUT / out_name, logger)
+
+    _stress_commentary_pair(eq_dir, "equal-weight_portfolio", "Equal-Weight Portfolio — Stress Commentary")
+    _stress_commentary_pair(rp_dir, "risk_parity_portfolio", "Risk-Parity Portfolio — Stress Commentary")
+
     mp_comm = out_final / "commentary.txt"
     if mp_comm.is_file():
         md = build_commentary_report_md(
@@ -590,6 +626,12 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
             _copy_pdf_to_archive(_PDF_OUT / "Main portfolio_commentary.pdf", logger)
     else:
         results["Main portfolio_commentary.pdf"] = False
+
+    _stress_commentary_pair(
+        out_final,
+        "Main portfolio",
+        "Main Portfolio — Stress Commentary (policy run)",
+    )
 
     # --- Weights ---
     for folder, slug, title in (

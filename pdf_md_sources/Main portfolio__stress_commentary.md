@@ -1,59 +1,75 @@
 ---
-title: "Main Portfolio ? Stress Commentary"
+title: "Main Portfolio — Stress Commentary (policy run)"
 subtitle: "Commentary"
-date: "2026-03-24 14:42 Центральная Европа (зима)"
+date: "2026-03-28 00:24 Центральная Европа (зима)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
 ---
 ## Report scope / source context
-- **Variant folder:** `Main portfolio`
-- **Basis:** full stress block interpretation from stress_report.json + historical validation diagnostics.
-- **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Cursor/Main portfolio/stress_commentary.txt`
-- **Generated:** 2026-03-24 14:42 Центральная Европа (зима)
+- **Folder:** `Main portfolio`
+- **Basis:** stress commentary (scenarios, RC, historical episodes).
+- **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/Main portfolio/stress_commentary.txt`
+- **Generated:** 2026-03-28 00:24 Центральная Европа (зима)
 
 ## Executive summary
-По Main portfolio стресс-блок имеет статус FAIL_STRESS с причиной FAIL_ROLE_EQUITY_SHOCK при худшем сценарном результате -101.64% (credit_shock). Портфель не проходит не только role-тест в equity_shock, но и loss-тест в credit и liquidity сценариях, а также системно нарушает Top1 RC cap (rc1_ok=false во всех пяти сценариях). Это указывает на структурно перегруженный риск-профиль с высокой концентрацией и недостаточным защитным контуром в критических режимах. Текущие factor-betas (особенно beta_credit) выглядят экстремально, что усиливает стресс-PnL и требует осторожной интерпретации качества факторной калибровки именно для этого прогона. Историческая валидация также слабая: 2020/2022 помечены pass=false при NaN по max_dd, а эпизод 2008 не заполнен.
+Прогон: основной портфель (Main portfolio); конец выборки (analysis_end): 2026-02-28. Итоговый статус стресс-набора в stress_report: DIAG_ATTENTION. Основной код (primary / fail_reason): DIAG_RC_TOP1_EQUITY_SHOCK. Список diagnostic_codes: DIAG_RC_TOP1_EQUITY_SHOCK, DIAG_RC_TOP1_CREDIT_SHOCK, DIAG_RC_TOP1_RATES_SHOCK, DIAG_RC_TOP1_INFLATION_STAGFLATION, DIAG_RC_TOP1_LIQUIDITY_SHOCK.
+По рабочему процессу проекта синтетические сценарии и исторические эпизоды в этом файле — диагностика для PM и не блокируют выпуск весов; блокирующий контур по максимальной просадке задаётся отдельно (mandate_check / IPS, полная пересекающаяся история).
+Предупреждение в отчёте: WARN_ROLE_EQUITY_DEFENSIVE_WEAK.
+Худший сценарный PnL портфеля (worst_scenario_loss_pct): -31.12%; именованный сценарий: equity_shock; поле failed_test: RC_Top1.
+
+
+## Preamble
+
+Source: stress_report.json (текущий прогон)
 
 
 ## Metric-by-Metric Interpretation
 
-Сценарные PnL показывают тяжелую уязвимость: equity -24.45%, credit -101.64%, rates -2.04%, stagflation -10.49%, liquidity -86.93%. Формально это означает прохождение только “мягких” сценариев rates/stagflation по loss, при явном breach в credit/liquidity и глубоком drawdown профиле в equity shock.
-
-По статусам тестов: equity_shock имеет role_ok=false и rc1_ok=false; credit/liquidity имеют loss_ok=false и rc1_ok=false; rates/stagflation проходят loss/role, но также проваливают rc1. Top3 RC остается в пределах лимита (rc3_ok=true), поэтому главный концентрационный дефект сосредоточен в первом риск-драйвере, а не в общей тройке лидеров.
-
-Факторные беты 5Y: beta_eq=0.5917, beta_rr=-1.0167, beta_inf=1.0804, beta_credit=-23.8586, beta_usd=-0.8550, beta_cmd=0.0899; 10Y: beta_eq=0.6280, beta_rr=-1.6861, beta_inf=0.7041, beta_credit=-40.7968, beta_usd=-0.6473, beta_cmd=0.1167. Масштаб beta_credit для данного прогона остается экстремальным и практически определяет разрушительный credit/liquidity стресс-результат, что повышает модельный риск интерпретации.
+Синтетические сценарии (stress_report.scenario_results): для каждого сценария ниже — PnL портфеля, итог pass, флаги loss_ok / role_ok / rc1_ok / rc3_ok и топ-1 вклад в риск (Top1 RC), как в JSON. pass=false при нарушении любого из тестов сценария.
+- equity_shock: PnL≈-31.12%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: URA (18.46%).
+- credit_shock: PnL≈-9.49%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: URA (18.46%).
+- rates_shock: PnL≈-0.05%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: COPX (16.02%).
+- inflation_stagflation: PnL≈-12.60%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: COPX (16.02%).
+- liquidity_shock: PnL≈-20.73%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: URA (18.56%).
+Коды по сценариям (уникально): DIAG_RC_TOP1_EQUITY_SHOCK, DIAG_RC_TOP1_CREDIT_SHOCK, DIAG_RC_TOP1_RATES_SHOCK, DIAG_RC_TOP1_INFLATION_STAGFLATION, DIAG_RC_TOP1_LIQUIDITY_SHOCK.
+Факторные беты портфеля (недельная оценка, см. спецификацию): 5Y≈{beta_cmd=0.1184, beta_credit=-0.4271, beta_eq=0.7756, beta_inf=0.6499, beta_rr=-0.0231, beta_usd=-0.7611}; 10Y≈{beta_cmd=0.0892, beta_credit=0.2900, beta_eq=0.8083, beta_inf=1.3395, beta_rr=-0.3423, beta_usd=-0.5711}.
 
 
 ## Risk Structure
 
-Stress RC демонстрирует устойчивый Top1 RC около 21.5-22.4% при cap=10%, Top3 RC около 49.6-51.3% при cap=70%. Следовательно, портфель чрезмерно концентрирован в первом источнике риска и не удовлетворяет базовому требованию к диверсификации risk contribution.
-
-По блокам в equity_shock наблюдается классический role-fail паттерн: Growth -24.28%, Duration -0.02%, Inflation -0.14%, Tail 0.00%. В credit/liquidity шоках отрицательный вклад Growth остается доминирующим (-254.88% и -201.79%), а позитив Inflation не компенсирует потери на уровне loss-гейта.
-
-Историческая валидация недостаточно надежна: для 2020 и 2022 max_dd = NaN, volatility_spike_ratio = null, pass=false; для 2008 данные отсутствуют. В таком виде historical layer не подтверждает устойчивость портфеля в кризисных эпизодах и должен рассматриваться как неполный контроль.
+rc_asset_cap_used=0.1000 (доля Top1 RC, контекст отчёта); stress_top3_rc_sum_cap=0.7000; max_dd_limit (эпизоды/контекст в отчёте)=35.00%
+По сценариям Top1 RC по сценариям (см. таблицу выше): equity_shock URA=18.5%, credit_shock URA=18.5%, rates_shock COPX=16.0%, inflation_stagflation COPX=16.0%, liquidity_shock URA=18.6%.
+Исторические эпизоды (historical_results):
+- 2008: max_dd≈н/д, pass=None, vol_annualized_episode≈н/д, diagnostic_code=—.
+- 2020: max_dd≈-11.59%, pass=True, vol_annualized_episode≈0.4443, diagnostic_code=—.
+- 2022: max_dd≈-22.45%, pass=True, vol_annualized_episode≈0.2020, diagnostic_code=—.
 
 
 ## Strengths
 
-- Top3 RC находится ниже заданного лимита (70%) во всех сценариях.
-- По rates/stagflation loss-тест формально проходит.
-- Блок Inflation дает положительный вклад в credit/liquidity шоках.
+Во всех синтетических сценариях loss_ok=true — глубина потерь в рамках порогов loss-теста.
+Во всех сценариях rc3_ok=true — суммарный Top3 RC не нарушает stress_top3_rc_sum_cap.
+Исторический эпизод 2020 помечен pass=true.
+Исторический эпизод 2022 помечен pass=true.
 
 ## Weaknesses
 
-- Множественные провалы: role fail (equity), loss fail (credit/liquidity), Top1 RC fail (во всех сценариях).
-- Экстремальная концентрация Top1 RC (около 2x выше cap).
-- Очень глубокие сценарные потери в credit и liquidity режимах.
-- Низкая надежность historical validation из-за NaN/null метрик.
-- Высокий модельный риск по факторной части (экстремальный beta_credit).
+DIAG_ATTENTION: зафиксированы диагностические коды (DIAG_RC_TOP1_EQUITY_SHOCK, DIAG_RC_TOP1_CREDIT_SHOCK, DIAG_RC_TOP1_RATES_SHOCK, DIAG_RC_TOP1_INFLATION_STAGFLATION, DIAG_RC_TOP1_LIQUIDITY_SHOCK); для PM имеет смысл разобрать scenario_results и historical_results.
+Во всех сценариях rc1_ok=false — концентрация Top1 RC выше порога rc_asset_cap_used.
+warning_code=WARN_ROLE_EQUITY_DEFENSIVE_WEAK (роль защитных блоков / прочее — см. stress_report).
+Эпизод 2008: max_dd н/д — интерпретация ограничена.
 
 ## Scenario Behavior
 
-Портфель устойчиво проваливает стресс-контур не из-за одного “плохого” сценария, а из-за комбинации трех классов нарушений: роль защиты, глубина потерь и концентрация Top1 RC. В equity shock структура защиты не формирует необходимый офсет, в credit/liquidity losses выходят за лимит, а RC-кап по первому активу нарушается во всех режимах. При этом rates/stagflation выглядят менее разрушительными, что подтверждает асимметричность уязвимостей и концентрацию проблемы в risk-on/credit стрессах. Текущая конфигурация больше похожа на перегруженный ростовой профиль, чем на сбалансированную policy-конструкцию с устойчивым кризисным поведением.
+equity_shock: PnL≈-31.12%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
+credit_shock: PnL≈-9.49%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
+rates_shock: PnL≈-0.05%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
+inflation_stagflation: PnL≈-12.60%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
+liquidity_shock: PnL≈-20.73%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
 
 
 ## Final Conclusion
 
-Main portfolio в текущем состоянии не готов к production-использованию по стресс-критериям: FAIL_STRESS подтверждается одновременно по нескольким независимым тестам. Самый важный bottleneck — сочетание экстремального Top1 RC и слабого defensive offset, что приводит к тяжелым провалам в credit/liquidity и role-fail в equity crash. До структурной разгрузки концентрации риска и усиления защитного контура попытки “косметических” корректировок, вероятно, не дадут устойчивого PASS-профиля. Приоритетная цель — перевести портфель из режима множественных hard-fail в режим ограниченного числа soft-warnings с контролируемой глубиной stress loss.
+основной портфель (Main portfolio): стресс-набор DIAG_ATTENTION (DIAG_RC_TOP1_EQUITY_SHOCK). Синтетические потери и RC-диагностика отражают текущий состав и Σ из прогона; решения по выпуску весов сверяйте с mandate_check и run_result, а этот файл используйте как сценарную справку для PM.
 

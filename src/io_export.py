@@ -151,6 +151,8 @@ def export_run_metadata(
     if stress_report:
         metadata["stress_test"] = {
             "status": stress_report.get("status"),
+            "diagnostic_codes": stress_report.get("diagnostic_codes"),
+            "primary_diagnostic_code": stress_report.get("primary_diagnostic_code"),
             "fail_reason_code": stress_report.get("fail_reason_code"),
             "warning_code": stress_report.get("warning_code"),
             "worst_scenario_loss_pct": stress_report.get("worst_scenario_loss_pct"),
@@ -269,6 +271,7 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     rc_breaches = run_result.get("rc_breaches") or []
     stress_summary = run_result.get("stress_summary") or {}
     violations = run_result.get("violations") or []
+    mandate_check = run_result.get("mandate_check") or {}
 
     lines = [
         "IPS Summary — Full Run Results",
@@ -282,7 +285,28 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
         "  Investor currency:           %s" % currency,
         "  Client profile:              %s" % profile,
         "",
-        "2. Run status: %s" % status,
+        "2. Mandate check (blocking)",
+        "-" * 30,
+        "  Run status:                  %s" % status,
+        "  Historical MaxDD pass:       %s"
+        % (
+            mandate_check.get("pass")
+            if mandate_check.get("pass") is not None
+            else ("N/A" if max_dd_pct is None else "NOT_CHECKED")
+        ),
+        "  Realized MaxDD (full hist.): %s"
+        % (
+            ("%.2f%%" % (float(mandate_check["max_drawdown_realized"]) * 100))
+            if mandate_check.get("max_drawdown_realized") is not None
+            else "—"
+        ),
+        "  History window:              %s .. %s (%s months)"
+        % (
+            mandate_check.get("history_start") or "—",
+            mandate_check.get("history_end") or "—",
+            mandate_check.get("months_used") or 0,
+        ),
+        "  Note: Only this historical MaxDD vs mandate can block weight release.",
         "",
         "3. Final portfolio weights",
         "-" * 30,
@@ -324,14 +348,20 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
         lines.append("5. RC breaches: none")
         lines.append("")
 
-    lines.append("6. Stress summary")
+    lines.append("6. Stress & scenario diagnostics (non-blocking for release)")
     lines.append("-" * 30)
-    lines.append("  Status:              %s" % stress_summary.get("status", "—"))
-    lines.append("  Fail reason:         %s" % (stress_summary.get("fail_reason_code") or "—"))
+    lines.append("  Diagnostic status:   %s" % stress_summary.get("diagnostic_status", stress_summary.get("status", "—")))
+    dcodes = stress_summary.get("diagnostic_codes") or []
+    if dcodes:
+        lines.append("  Diagnostic codes:    %s" % ", ".join(str(c) for c in dcodes))
+    lines.append(
+        "  Primary code:        %s" % (stress_summary.get("primary_diagnostic_code") or stress_summary.get("fail_reason_code") or "—")
+    )
     worst = stress_summary.get("worst_scenario_loss_pct")
     if worst is not None:
-        lines.append("  Worst scenario loss: %.2f%%" % (float(worst) * 100))
+        lines.append("  Worst scenario loss: %.2f%% (informational)" % (float(worst) * 100))
     lines.append("  Failed scenario:     %s" % (stress_summary.get("failed_scenario") or "—"))
+    lines.append("  Note: Synthetic shocks & episode checks do not block weights; review with PM.")
     lines.append("")
 
     if violations:
@@ -360,8 +390,8 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     lines.append("  APPROVED             Use weights as target; safe to execute.")
     lines.append("  CANDIDATE_RB_BREACH  Use with caution; consider re-run or accept and monitor.")
     lines.append("  OK_FALLBACK          Check rc_breaches above; use if acceptable for mandate.")
-    lines.append("  FAIL_STRESS          If strict_stress_gate: weights not written. Review defensive blocks, liquidity.")
-    lines.append("  FAIL_MAX_DD          Weights not written. Adjust target_max_drawdown_pct or risk budget.")
+    lines.append("  FAIL_MANDATE         Historical MaxDD vs mandate failed or history insufficient; weights not written.")
+    lines.append("  DIAG_* / FAIL_STRESS (violation)  Stress diagnostics only; does not block release (review PM).")
     lines.append("  FAIL_DATA/RC/FEAS    Weights not written. Follow next_actions above.")
 
     path = Path(output_path)

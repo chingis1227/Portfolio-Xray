@@ -43,6 +43,9 @@ tickers: [VOO, VT, QQQ, SMH, VGK, BBJP, VWO, VDC, ITA, CIBR, ROBO, SCHD, COPX, U
 
 client_profile: Aggressive
 
+# RC caps: strict = не записывать веса, если постобработка не уложилась в RC на актив; permissive = записать веса с флагом нарушения.
+rc_policy_mode: permissive
+
 # allow_leverage, allow_short_selling: на выбор true / false.
 allow_leverage: false
 allow_short_selling: false

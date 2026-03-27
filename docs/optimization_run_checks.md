@@ -111,7 +111,7 @@
    - `research` — полный NaN‑safe движок с within‑block перераспределением и RC‑gating (диагностический режим).
 
 5. **Production workflow: единственный жёсткий стоп — FAIL_DATA; RB/Stress/MaxDD/RC — флаги.**  
-   При наличии 10Y окна оптимизация и ProLiquidity выполняются на нём; 5Y — валидационный слой. **Единственный случай exit(1)** — FAIL_DATA (нет данных, ковариация не строится, неверный конфиг). RB corridor вне ±5 п.п. → status CANDIDATE_RB_BREACH, флаг RB_BREACH; Stress FAIL_STRESS и MaxDD сверх мандата → флаги в violations; веса и run_result.json всегда записываются. Результат Stress Judge и MaxDD — диагностика и поле next_actions в run_result.json.
+   При наличии 10Y окна оптимизация и ProLiquidity выполняются на нём; 5Y — валидационный слой. **exit(1)** при FAIL_DATA, FAIL_FEASIBILITY, FAIL_RC, **FAIL_MANDATE** (историческая MaxDD на полной пересекающейся истории vs мандат или недостаточно данных). RB corridor вне ±5 п.п. → CANDIDATE_RB_BREACH; стресс **DIAG_*** → информационные violations, веса записываются при прошедшем мандате.
 
 ---
 

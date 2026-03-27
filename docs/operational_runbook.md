@@ -14,7 +14,7 @@ Re-run `python run_optimization.py` (from project root) in these cases:
 | **Deviation** | Current or last-rebalance weights have drifted from target (e.g. max \|w_current − w_target\| > 2% or sum of \|Δw\| > 5%). Consider rebalancing and/or re-running optimization. |
 | **Universe change** | Any add/remove of tickers in config and/or blocks_universe → full re-run (see §2). |
 | **Profile / mandate change** | Change of client_profile or rc_block_targets, target_vol_annual, target_max_drawdown_pct → full re-run. |
-| **Stress failure** | Last run had status with FAIL_STRESS in violations → review and optionally re-run after adjusting liquidity, duration, or growth share. |
+| **Stress diagnostics** | `DIAG_ATTENTION` or `FAIL_STRESS` (informational) in violations → optional PM review; does not block release. Re-run only if you change architecture. |
 
 ---
 
@@ -35,11 +35,11 @@ After each run, check `output_dir_final/run_result.json` (e.g. `ФИНАЛЬНЫ
 |-------|--------|
 | **status** | APPROVED, CANDIDATE_RB_BREACH, OK_FALLBACK, or FAIL_* (see production_workflow.md). |
 | **weights** | Target weights (empty if status is FAIL_* and weights were not written). |
-| **violations** | List of { "code", "details" } (e.g. RB_BREACH, VIOL_RC_ASSET_CAP, FAIL_STRESS). |
+| **violations** | List of { "code", "details" } (e.g. RB_BREACH, VIOL_RC_ASSET_CAP; FAIL_STRESS may appear as diagnostic-only). |
 | **next_actions** | Suggested next steps when violations or failures occur. |
 | **resolved_config** | Merged config (profile + overrides) used for the run; for audit and reproducibility. |
 
-If **status** is FAIL_DATA, FAIL_FEASIBILITY, FAIL_RC, FAIL_MAX_DD, or FAIL_STRESS (when strict_stress_gate is used) → weights were not written; follow **next_actions** and fix config/data or mandate before using the system for allocation.
+If **status** is FAIL_DATA, FAIL_FEASIBILITY, FAIL_RC, or **FAIL_MANDATE** → weights were not written; follow **next_actions** and fix config/data or mandate before using the system for allocation.
 
 If **status** is APPROVED or CANDIDATE_RB_BREACH or OK_FALLBACK → weights were written to `portfolio_weights.yml`; use them as target weights, taking into account violations (e.g. RB breach or RC breach) as per your mandate.
 
@@ -63,7 +63,7 @@ Report CSV and other report outputs are produced by `run_report.py` (invoked aft
 1. **Проверить config.yml:** заданы `tickers`, `client_profile`, `investor_currency`. При необходимости задать `liquidity_need_months`, `monthly_expenses`, `portfolio_value` для расчёта ликвидного пола.
 2. **Запуск:** из корня проекта выполнить `python run_optimization.py` (при первой загрузке данных можно использовать `--no-cache`).
 3. **Проверка результата:** открыть `output_dir_final/run_result.json` и проверить поле **status**. При APPROVED, OK_FALLBACK или CANDIDATE_RB_BREACH веса записаны в `portfolio_weights.yml` и могут использоваться как целевые.
-4. **При нарушениях:** при RB_BREACH или FAIL_STRESS следовать **next_actions** в run_result.json. При включённом `strict_stress_gate: true` и FAIL_STRESS веса не записываются — скорректировать архитектуру (защитные блоки, ликвидность, долю Growth) и перезапустить.
+4. **При нарушениях:** при RB_BREACH следовать **next_actions**. При **FAIL_MANDATE** — историческая просадка на полной выборке не прошла лимит (или нет данных); скорректировать риск/мандат и перезапустить. Стресс **DIAG_*** не блокирует выпуск.
 
 ---
 

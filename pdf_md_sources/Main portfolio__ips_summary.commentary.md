@@ -1,7 +1,7 @@
 ---
 title: "IPS Summary — Commentary"
 subtitle: "Commentary"
-date: "2026-03-24 14:27 Центральная Европа (зима)"
+date: "2026-03-28 00:25 Центральная Европа (зима)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
@@ -9,8 +9,8 @@ fontsize: 11pt
 ## Report scope / source context
 - **Folder:** `Main portfolio`
 - **Basis:** commentary on IPS summary.
-- **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Cursor/Main portfolio/ips_summary.commentary.txt`
-- **Generated:** 2026-03-24 14:27 Центральная Европа (зима)
+- **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/Main portfolio/ips_summary.commentary.txt`
+- **Generated:** 2026-03-28 00:25 Центральная Европа (зима)
 
 ## Executive summary
 IPS-сводка отражает прогон со статусом FAIL_MAX_DD: оптимизация не выпустила финальные веса («weights not written»), поэтому документ описывает диагностику и нарушения, а не утверждённый к исполнению target allocation. Одновременно зафиксированы три класса проблем: RB_BREACH по фактическому RC блоков относительно целей (Growth 83.92% vs цель 90%; Duration 0.16% vs 5%; Inflation 15.92% vs 5%), FAIL_STRESS с fail_reason FAIL_ROLE_EQUITY_SHOCK и worst scenario loss −102.78% в equity_shock, и MAX_DD_GATE (stress_worst_loss_pct −102.78% при лимите просадки 35% — превышение по стресс-ветке; realized_exceeds=False в блоке нарушений). Мандат задаёт target vol 17%, max DD 35%, горизонт 10 лет, профиль Aggressive — т.е. формально допускает высокий риск, но жёсткий gate по MaxDD/stress всё равно блокирует выпуск весов.

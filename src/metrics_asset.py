@@ -4,6 +4,8 @@ All use monthly simple returns and ddof=1 unless stated. Aligned by inner join f
 """
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -138,6 +140,47 @@ def max_drawdown(monthly_simple_returns: pd.Series) -> tuple[float, pd.Timestamp
     mdd = float(dd.min())
     peak_date = cummax.idxmax() if not dd.empty else None
     return mdd, peak_date
+
+
+def mandate_max_drawdown_full_history_check(
+    monthly_returns: pd.DataFrame,
+    final_weights: dict[str, float],
+    max_dd_limit_frac: float | None,
+) -> dict[str, Any]:
+    """
+    Mandate gate: portfolio max drawdown on full overlapping monthly history
+    (rows where all held assets have returns). Used by run_optimization and run_report.
+    """
+    out: dict[str, Any] = {
+        "pass": None,
+        "max_drawdown_realized": None,
+        "limit_pct": None,
+        "history_start": None,
+        "history_end": None,
+        "months_used": 0,
+    }
+    if max_dd_limit_frac is None:
+        return out
+    cols = [t for t in final_weights if t in monthly_returns.columns and final_weights.get(t, 0) > 0]
+    if len(cols) < 1:
+        return out
+    ret_full = monthly_returns[cols].dropna(how="any")
+    if len(ret_full) < 2:
+        return out
+    w_series = pd.Series({t: float(final_weights[t]) for t in cols})
+    port_ret = ret_full.dot(w_series).dropna()
+    if len(port_ret) < 2:
+        return out
+    mdd, _ = max_drawdown(port_ret)
+    out["months_used"] = int(len(port_ret))
+    out["history_start"] = str(port_ret.index[0])
+    out["history_end"] = str(port_ret.index[-1])
+    out["limit_pct"] = float(max_dd_limit_frac)
+    if mdd is None or mdd != mdd:
+        return out
+    out["max_drawdown_realized"] = float(mdd)
+    out["pass"] = bool(mdd >= -float(max_dd_limit_frac))
+    return out
 
 
 def time_to_recovery(monthly_simple_returns: pd.Series) -> tuple[float | None, bool]:

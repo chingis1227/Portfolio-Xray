@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.portfolio_commentary import write_portfolio_commentary
+from src.portfolio_commentary import write_portfolio_commentary, write_stress_commentary
 
 
 def test_write_portfolio_commentary_creates_file(tmp_path: Path) -> None:
@@ -21,7 +21,9 @@ def test_write_portfolio_commentary_creates_file(tmp_path: Path) -> None:
     s.round(3).to_csv(csv_dir / "rc_vol_10y.csv", header=True)
 
     stress = {
-        "status": "FAIL_STRESS",
+        "status": "DIAG_ATTENTION",
+        "primary_diagnostic_code": "DIAG_RC_TOP1_EQUITY_SHOCK",
+        "diagnostic_codes": ["DIAG_RC_TOP1_EQUITY_SHOCK"],
         "fail_reason_code": "FAIL_X",
         "failed_scenario": "credit_shock",
         "failed_test": "Loss",
@@ -52,6 +54,51 @@ def test_write_portfolio_commentary_creates_file(tmp_path: Path) -> None:
     assert out.is_file()
     text = out.read_text(encoding="utf-8")
     assert "Executive Summary" in text
-    assert "FAIL_STRESS" in text
+    assert "DIAG_ATTENTION" in text or "диагностик" in text.lower()
     assert "credit_shock" in text
     assert "Risk-Parity baseline" in text or "Risk-Parity" in text
+
+
+def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
+    final = tmp_path / "Main portfolio"
+    final.mkdir(parents=True)
+    stress = {
+        "status": "DIAG_ATTENTION",
+        "primary_diagnostic_code": "DIAG_RC_TOP1_EQUITY_SHOCK",
+        "diagnostic_codes": ["DIAG_RC_TOP1_EQUITY_SHOCK"],
+        "fail_reason_code": "DIAG_RC_TOP1_EQUITY_SHOCK",
+        "warning_code": "WARN_ROLE_EQUITY_DEFENSIVE_WEAK",
+        "worst_scenario_loss_pct": -0.31,
+        "failed_scenario": "equity_shock",
+        "failed_test": "RC_Top1",
+        "rc_asset_cap_used": 0.1,
+        "stress_top3_rc_sum_cap": 0.7,
+        "max_dd_limit": 0.35,
+        "scenario_results": [
+            {
+                "scenario_id": "equity_shock",
+                "portfolio_pnl_pct": -0.31,
+                "pass": False,
+                "loss_ok": True,
+                "role_ok": True,
+                "rc1_ok": False,
+                "rc3_ok": True,
+                "top1_rc_asset": "URA",
+                "top1_rc_pct": 0.18,
+                "diagnostic_codes": ["DIAG_RC_TOP1_EQUITY_SHOCK"],
+            },
+        ],
+        "historical_results": [
+            {"episode": "2020", "max_dd": -0.1, "pass": True, "vol_annualized_episode": 0.4, "diagnostic_code": None},
+        ],
+        "factor_betas_5y": {"beta_eq": 0.77},
+        "factor_betas_10y": {"beta_eq": 0.81},
+    }
+    out = write_stress_commentary(final, stress_report=stress, analysis_end="2026-02-28")
+    assert out is not None and out.name == "stress_commentary.txt"
+    text = out.read_text(encoding="utf-8")
+    assert "Executive Summary" in text
+    assert "DIAG_ATTENTION" in text
+    assert "equity_shock" in text
+    assert "нестрессирующая" in text or "диагностик" in text.lower()
+    assert "URA" in text

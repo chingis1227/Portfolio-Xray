@@ -1,7 +1,8 @@
 """
 Portfolio stress testing per docs/docs/stress_testing_spec.md.
 Scenarios: Equity, Credit, Rates, Inflation/Stagflation, Liquidity.
-Loss test (MaxDD), Role test, RC test (Top1/Top3), factor validation, historical validation.
+Diagnostic suite: synthetic scenario PnL, Role/RC checks, historical episodes — non-blocking (DIAG_* codes).
+Mandate MaxDD on full history is enforced in run_optimization (FAIL_MANDATE), not here.
 """
 from __future__ import annotations
 
@@ -99,29 +100,33 @@ def _scenario_suffix(scenario_id: str, for_role: bool = False) -> str:
     return _SCENARIO_SUFFIX.get(scenario_id, scenario_id.upper().replace("-", "_"))
 
 
-def _build_fail_reason_code(failed_test: str | None, failed_scenario: str | None) -> str | None:
+def _build_diagnostic_code(failed_test: str | None, failed_scenario: str | None) -> str | None:
     """
-    Build fail_reason_code: FAIL_<TEST>_<SUFFIX>.
-    Examples: FAIL_LOSS_EQUITY_SHOCK, FAIL_ROLE_STAGFLATION, FAIL_RC_TOP1_LIQUIDITY_SHOCK,
-    FAIL_RC_TOP3_CREDIT_SHOCK, FAIL_BETA_REAL_RATES, FAIL_HIST_2022.
+    Non-blocking diagnostic codes for PM reports: DIAG_<TEST>_<SUFFIX>.
+    Examples: DIAG_LOSS_EQUITY_SHOCK, DIAG_ROLE_STAGFLATION, DIAG_RC_TOP1_LIQUIDITY_SHOCK,
+    DIAG_HIST_2022.
     """
     if not failed_test or not failed_scenario:
         return None
     if failed_test == "Historical":
-        return f"FAIL_HIST_{failed_scenario}"
+        return f"DIAG_HIST_{failed_scenario}"
     if failed_test == "Loss":
-        return f"FAIL_LOSS_{_scenario_suffix(failed_scenario, for_role=False)}"
+        return f"DIAG_LOSS_{_scenario_suffix(failed_scenario, for_role=False)}"
     if failed_test == "Role":
-        return f"FAIL_ROLE_{_scenario_suffix(failed_scenario, for_role=True)}"
+        return f"DIAG_ROLE_{_scenario_suffix(failed_scenario, for_role=True)}"
     if failed_test == "RC_Top1":
-        return f"FAIL_RC_TOP1_{_scenario_suffix(failed_scenario, for_role=False)}"
+        return f"DIAG_RC_TOP1_{_scenario_suffix(failed_scenario, for_role=False)}"
     if failed_test == "RC_Top3":
-        return f"FAIL_RC_TOP3_{_scenario_suffix(failed_scenario, for_role=False)}"
+        return f"DIAG_RC_TOP3_{_scenario_suffix(failed_scenario, for_role=False)}"
     if failed_test and failed_test.startswith("Beta"):
-        # FAIL_BETA_<FACTOR> e.g. FAIL_BETA_REAL_RATES
         factor = failed_scenario.replace("-", "_").upper() if failed_scenario else "UNKNOWN"
-        return f"FAIL_BETA_{factor}"
+        return f"DIAG_BETA_{factor}"
     return None
+
+
+def _build_fail_reason_code(failed_test: str | None, failed_scenario: str | None) -> str | None:
+    """Alias of _build_diagnostic_code (legacy field name fail_reason_code in JSON)."""
+    return _build_diagnostic_code(failed_test, failed_scenario)
 
 
 def _build_warning_code(warning_reason: str | None) -> str | None:
@@ -227,7 +232,7 @@ def run_stress(
     stress_top3_rc_sum_cap_pct: float,
 ) -> dict[str, Any]:
     """
-    Run full stress suite. Returns report dict with status, per-scenario results, factor betas, historical.
+    Run full diagnostic stress suite (non-blocking). Status is DIAG_PASS | DIAG_PASS_WITH_WARNING | DIAG_ATTENTION.
     """
     ticker_to_block = _ticker_to_stress_block(blocks, tickers)
     risk_on_tickers = (
@@ -253,8 +258,6 @@ def run_stress(
 
     scenario_results = []
     worst_loss = 0.0
-    failed_scenario: str | None = None
-    failed_test: str | None = None
 
     for scenario_id, params in SCENARIOS.items():
         shock = {k: v for k, v in params.items() if k.startswith("shock_") and isinstance(v, (int, float))}
@@ -304,18 +307,23 @@ def run_stress(
         rc3_ok = top3_rc_sum_pct <= stress_top3_rc_sum_cap_pct
         scenario_pass = loss_ok and role_ok and rc1_ok and rc3_ok
 
-        if not loss_ok and failed_test is None:
-            failed_test = "Loss"
-            failed_scenario = scenario_id
-        if not role_ok and failed_test is None:
-            failed_test = "Role"
-            failed_scenario = scenario_id
-        if not rc1_ok and failed_test is None:
-            failed_test = "RC_Top1"
-            failed_scenario = scenario_id
-        if not rc3_ok and failed_test is None:
-            failed_test = "RC_Top3"
-            failed_scenario = scenario_id
+        row_diags: list[str] = []
+        if not loss_ok:
+            c = _build_diagnostic_code("Loss", scenario_id)
+            if c:
+                row_diags.append(c)
+        if not role_ok:
+            c = _build_diagnostic_code("Role", scenario_id)
+            if c:
+                row_diags.append(c)
+        if not rc1_ok:
+            c = _build_diagnostic_code("RC_Top1", scenario_id)
+            if c:
+                row_diags.append(c)
+        if not rc3_ok:
+            c = _build_diagnostic_code("RC_Top3", scenario_id)
+            if c:
+                row_diags.append(c)
 
         if portfolio_pnl_pct < worst_loss:
             worst_loss = portfolio_pnl_pct
@@ -334,6 +342,7 @@ def run_stress(
             "rc1_ok": rc1_ok,
             "rc3_ok": rc3_ok,
             "pass": scenario_pass,
+            "diagnostic_codes": row_diags,
         }
         if equity_defensive_sum is not None:
             row["defensive_pnl_sum"] = round(equity_defensive_sum, 4)
@@ -352,9 +361,12 @@ def run_stress(
                 historical_results.append({
                     "episode": ep_id,
                     "max_dd": None,
+                    "vol_annualized_episode": None,
+                    "mean_monthly_return_by_block_pct": {},
                     "volatility_spike_ratio": None,
                     "stress_correlations": {},
                     "pass": None,
+                    "diagnostic_code": None,
                 })
                 continue
             port_ret = sub.dot(w_vec)
@@ -365,6 +377,24 @@ def run_stress(
 
             # Volatility spike: episode volatility vs same-length window immediately before episode.
             vol_ep = float(port_ret.std(ddof=1)) if len(port_ret) >= 2 else np.nan
+            vol_annualized_episode = round(float(vol_ep * np.sqrt(12)), 4) if np.isfinite(vol_ep) else None
+
+            mean_monthly_return_by_block_pct: dict[str, float | None] = {}
+            for block in STRESS_BLOCK_NAMES:
+                idx = [i for i, t in enumerate(asset_cols) if ticker_to_block.get(t) == block]
+                if not idx:
+                    mean_monthly_return_by_block_pct[block] = None
+                    continue
+                w_block = np.array([w_vec[i] for i in idx], dtype=float)
+                s_block = w_block.sum()
+                if s_block <= 1e-15:
+                    mean_monthly_return_by_block_pct[block] = None
+                    continue
+                w_block = w_block / s_block
+                block_ret = sub.iloc[:, idx].dot(w_block)
+                mean_monthly_return_by_block_pct[block] = (
+                    round(float(block_ret.mean()), 4) if block_ret.notna().any() else None
+                )
             episode_start_ts = pd.Timestamp(start)
             pre = returns_sub.loc[returns_sub.index < episode_start_ts]
             pre_len = min(len(pre), len(port_ret))
@@ -400,64 +430,99 @@ def run_stress(
             historical_results.append({
                 "episode": ep_id,
                 "max_dd": round(max_dd, 4),
+                "vol_annualized_episode": vol_annualized_episode,
+                "mean_monthly_return_by_block_pct": mean_monthly_return_by_block_pct,
                 "volatility_spike_ratio": round(float(vol_spike), 4) if np.isfinite(vol_spike) else None,
                 "stress_correlations": stress_corr,
                 "pass": pass_dd,
+                "diagnostic_code": _build_diagnostic_code("Historical", ep_id) if pass_dd is False else None,
             })
         except Exception:
             historical_results.append({
                 "episode": ep_id,
                 "max_dd": None,
+                "vol_annualized_episode": None,
+                "mean_monthly_return_by_block_pct": {},
                 "volatility_spike_ratio": None,
                 "stress_correlations": {},
                 "pass": None,
+                "diagnostic_code": None,
             })
 
-    hist_fail = any(h.get("pass") is False for h in historical_results)
-    if hist_fail and failed_test is None:
-        failed_test = "Historical"
-        failed_scenario = next((h["episode"] for h in historical_results if h.get("pass") is False), None)
+    diagnostic_codes: list[str] = []
+    seen_codes: set[str] = set()
 
-    all_scenario_pass = all(s["pass"] for s in scenario_results)
-    if not all_scenario_pass and failed_test is None:
-        failed_scenario = next((s["scenario_id"] for s in scenario_results if not s["pass"]), None)
-        failed_test = "Loss"
-        for s in scenario_results:
-            if not s["pass"]:
-                if not s["loss_ok"]:
-                    failed_test = "Loss"
-                elif not s["role_ok"]:
-                    failed_test = "Role"
-                elif not s["rc1_ok"]:
-                    failed_test = "RC_Top1"
-                elif not s["rc3_ok"]:
-                    failed_test = "RC_Top3"
-                break
+    def _push_diag(code: str | None) -> None:
+        if code and code not in seen_codes:
+            seen_codes.add(code)
+            diagnostic_codes.append(code)
+
+    for s in scenario_results:
+        for c in s.get("diagnostic_codes") or []:
+            _push_diag(c)
+    for h in historical_results:
+        if h.get("pass") is False:
+            _push_diag(h.get("diagnostic_code") or _build_diagnostic_code("Historical", str(h.get("episode", ""))))
 
     has_equity_role_warn = any(
         s.get("scenario_id") == "equity_shock" and s.get("role_equity_shock_severity") == "warn"
         for s in scenario_results
     )
+    hist_inconclusive = any(h.get("pass") is None and h.get("max_dd") is None for h in historical_results)
 
-    if all_scenario_pass and not hist_fail and not has_equity_role_warn:
-        status = "PASS"
-        fail_reason_code = None
-        warning_code = None
-    elif failed_test:
-        status = "FAIL_STRESS"
-        fail_reason_code = _build_fail_reason_code(failed_test, failed_scenario)
-        warning_code = None
+    primary_diagnostic_code = diagnostic_codes[0] if diagnostic_codes else None
+    failed_test: str | None = None
+    failed_scenario: str | None = None
+    if primary_diagnostic_code:
+        if primary_diagnostic_code.startswith("DIAG_HIST_"):
+            failed_test = "Historical"
+            failed_scenario = primary_diagnostic_code.replace("DIAG_HIST_", "", 1)
+        elif primary_diagnostic_code.startswith("DIAG_LOSS_"):
+            failed_test = "Loss"
+            failed_scenario = next(
+                (x["scenario_id"] for x in scenario_results if primary_diagnostic_code in (x.get("diagnostic_codes") or [])),
+                None,
+            )
+        elif primary_diagnostic_code.startswith("DIAG_ROLE_"):
+            failed_test = "Role"
+            failed_scenario = next(
+                (x["scenario_id"] for x in scenario_results if primary_diagnostic_code in (x.get("diagnostic_codes") or [])),
+                None,
+            )
+        elif primary_diagnostic_code.startswith("DIAG_RC_TOP1_"):
+            failed_test = "RC_Top1"
+            failed_scenario = next(
+                (x["scenario_id"] for x in scenario_results if primary_diagnostic_code in (x.get("diagnostic_codes") or [])),
+                None,
+            )
+        elif primary_diagnostic_code.startswith("DIAG_RC_TOP3_"):
+            failed_test = "RC_Top3"
+            failed_scenario = next(
+                (x["scenario_id"] for x in scenario_results if primary_diagnostic_code in (x.get("diagnostic_codes") or [])),
+                None,
+            )
+
+    if diagnostic_codes:
+        status = "DIAG_ATTENTION"
+        fail_reason_code = primary_diagnostic_code
+        warning_code = _build_warning_code("ROLE_EQUITY_DEFENSIVE_WEAK") if has_equity_role_warn else None
     elif has_equity_role_warn:
-        status = "PASS_WITH_WARNING"
+        status = "DIAG_PASS_WITH_WARNING"
         fail_reason_code = None
         warning_code = _build_warning_code("ROLE_EQUITY_DEFENSIVE_WEAK")
-    else:
-        status = "PASS_WITH_WARNING"
+    elif hist_inconclusive:
+        status = "DIAG_PASS_WITH_WARNING"
         fail_reason_code = None
         warning_code = _build_warning_code("HIST_BORDERLINE")
+    else:
+        status = "DIAG_PASS"
+        fail_reason_code = None
+        warning_code = None
 
     return {
         "status": status,
+        "diagnostic_codes": diagnostic_codes,
+        "primary_diagnostic_code": primary_diagnostic_code,
         "fail_reason_code": fail_reason_code,
         "warning_code": warning_code,
         "worst_scenario_loss_pct": round(worst_loss, 4),
@@ -497,7 +562,9 @@ def _equity_shock_role_severity(defensive_sum: float) -> str:
 
 def _empty_report(reason: str) -> dict[str, Any]:
     return {
-        "status": "PASS_WITH_WARNING",
+        "status": "DIAG_PASS_WITH_WARNING",
+        "diagnostic_codes": [],
+        "primary_diagnostic_code": None,
         "fail_reason_code": None,
         "warning_code": _build_warning_code("DATA_INSUFFICIENT"),
         "worst_scenario_loss_pct": None,

@@ -1,16 +1,16 @@
 ---
-title: "Equal-Weight Portfolio ? Stress Commentary"
+title: "Equal-Weight Portfolio — Stress Commentary"
 subtitle: "Commentary"
-date: "2026-03-24 14:42 Центральная Европа (зима)"
+date: "2026-03-28 00:24 Центральная Европа (зима)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
 ---
 ## Report scope / source context
-- **Variant folder:** `equal-weight portfolio`
-- **Basis:** full stress block interpretation from stress_report.json + historical validation diagnostics.
-- **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Cursor/equal-weight portfolio/stress_commentary.txt`
-- **Generated:** 2026-03-24 14:42 Центральная Европа (зима)
+- **Folder:** `equal-weight portfolio`
+- **Basis:** stress commentary (scenarios, RC, historical episodes).
+- **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/equal-weight portfolio/stress_commentary.txt`
+- **Generated:** 2026-03-28 00:24 Центральная Европа (зима)
 
 ## Executive summary
 По стресс-блоку Equal-Weight портфель имеет статус FAIL_STRESS с причиной FAIL_ROLE_EQUITY_SHOCK при худшем сценарном результате -22.71% (equity_shock). Потеря по лимиту просадки в каждом сценарии проходит (loss_ok=true), но стресс-профиль системно не проходит RC Top1 тест (rc1_ok=false во всех пяти обязательных сценариях). Это означает, что ключевой дефект конструкции связан с концентрацией риск-вклада в отдельных активах и недостаточным defensive offset в equity crash, а не с единичным выбросом одного шока. Роль-защита в equity_shock также нарушена: Duration и Inflation отрицательны, Tail не компенсирует. Исторические эпизоды 2020/2022 проходят, но 2008 остается без данных, что ограничивает полноту финальной стресс-валидации.

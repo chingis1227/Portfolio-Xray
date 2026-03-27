@@ -1,5 +1,5 @@
 """
-Auto-generate commentary.txt next to portfolio outputs (report/summary/stress/CSV).
+Auto-generate commentary.txt and stress_commentary.txt next to portfolio outputs.
 
 Called after each full metrics run so commentary stays aligned with summary, stress_report,
 and exported CSVs (per .cursor/rules/portfolio-commentary.mdc).
@@ -90,6 +90,238 @@ def _scenario_snippets(stress_report: dict[str, Any] | None) -> list[str]:
     return lines[:6]
 
 
+def _fmt_beta_dict(d: dict[str, Any] | None) -> str:
+    if not d:
+        return "н/д"
+    parts = []
+    for k in sorted(d.keys()):
+        parts.append(f"{k}={_fmt_float(d.get(k), 4)}")
+    return ", ".join(parts) if parts else "н/д"
+
+
+def write_stress_commentary(
+    output_dir_final: Path,
+    *,
+    stress_report: dict[str, Any] | None,
+    analysis_end: str | None = None,
+) -> Path | None:
+    """
+    Write stress_commentary.txt from stress_report.json only (same run).
+
+    Sections match portfolio-commentary rule order; numbers are not invented.
+    Clarifies that synthetic/historical stress here is PM diagnostics, not the blocking mandate gate.
+    """
+    output_dir_final = Path(output_dir_final)
+    label = _folder_portfolio_label(output_dir_final)
+    ae = analysis_end or "—"
+    st = stress_report or {}
+
+    lines: list[str] = [
+        "Source: stress_report.json (текущий прогон)",
+        "",
+        "Executive Summary",
+    ]
+
+    if not st:
+        lines.append(
+            f"По {label} объект stress_report пуст или не передан: сценарная и факторная диагностика недоступна. "
+            f"Конец выборки (analysis_end): {ae}."
+        )
+        lines.extend(
+            [
+                "",
+                "Metric-by-Metric Interpretation",
+                "Нет данных stress_report для разбора сценариев и бет.",
+                "",
+                "Risk Structure",
+                "н/д",
+                "",
+                "Strengths",
+                "н/д",
+                "",
+                "Weaknesses",
+                "Отсутствует stress_report — нельзя оценить стресс-профиль по проекту.",
+                "",
+                "Scenario Behavior",
+                "н/д",
+                "",
+                "Final Conclusion",
+                f"После появления stress_report.json перезапустите отчёт (run_report / прогон варианта), чтобы обновить stress_commentary.txt.",
+            ]
+        )
+        out_path = output_dir_final / "stress_commentary.txt"
+        out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return out_path
+
+    status = st.get("status", "N/A")
+    primary = st.get("primary_diagnostic_code") or st.get("fail_reason_code") or st.get("skip_reason") or "—"
+    warn = st.get("warning_code")
+    dcodes = st.get("diagnostic_codes") or []
+    dc_str = ", ".join(str(x) for x in dcodes) if dcodes else "—"
+    worst = st.get("worst_scenario_loss_pct")
+    fs = st.get("failed_scenario")
+    ft = st.get("failed_test")
+    cap1 = st.get("rc_asset_cap_used")
+    cap3 = st.get("stress_top3_rc_sum_cap")
+    mdd_lim = st.get("max_dd_limit")
+
+    exec_para = [
+        f"Прогон: {label}; конец выборки (analysis_end): {ae}. "
+        f"Итоговый статус стресс-набора в stress_report: {status}. "
+        f"Основной код (primary / fail_reason): {primary}. "
+        f"Список diagnostic_codes: {dc_str}.",
+        "По рабочему процессу проекта синтетические сценарии и исторические эпизоды в этом файле — "
+        "диагностика для PM и не блокируют выпуск весов; блокирующий контур по максимальной просадке "
+        "задаётся отдельно (mandate_check / IPS, полная пересекающаяся история).",
+    ]
+    if warn:
+        exec_para.append(f"Предупреждение в отчёте: {warn}.")
+    wl = (
+        f"Худший сценарный PnL портфеля (worst_scenario_loss_pct): {_fmt_pct(worst)}; "
+        f"именованный сценарий: {fs or '—'}; поле failed_test: {ft or '—'}."
+        if worst is not None
+        else f"Именованный сценарий (failed_scenario): {fs or '—'}; failed_test: {ft or '—'}."
+    )
+    exec_para.append(wl)
+    lines.extend(exec_para)
+    lines.append("")
+
+    lines.append("Metric-by-Metric Interpretation")
+    scen_rows = st.get("scenario_results") or []
+    if scen_rows:
+        lines.append(
+            "Синтетические сценарии (stress_report.scenario_results): для каждого сценария ниже — "
+            "PnL портфеля, итог pass, флаги loss_ok / role_ok / rc1_ok / rc3_ok и топ-1 вклад в риск (Top1 RC), "
+            "как в JSON. pass=false при нарушении любого из тестов сценария."
+        )
+        for row in scen_rows:
+            sid = row.get("scenario_id", "?")
+            pnl = row.get("portfolio_pnl_pct")
+            top1a = row.get("top1_rc_asset")
+            top1p = row.get("top1_rc_pct")
+            lines.append(
+                f"- {sid}: PnL≈{_fmt_pct(pnl)}, pass={row.get('pass')}, "
+                f"loss_ok={row.get('loss_ok')}, role_ok={row.get('role_ok')}, "
+                f"rc1_ok={row.get('rc1_ok')}, rc3_ok={row.get('rc3_ok')}; "
+                f"Top1 RC: {top1a} ({_fmt_pct(top1p, 2)})."
+            )
+        sdiag = []
+        for row in scen_rows:
+            for c in row.get("diagnostic_codes") or []:
+                if c not in sdiag:
+                    sdiag.append(c)
+        if sdiag:
+            lines.append(f"Коды по сценариям (уникально): {', '.join(str(x) for x in sdiag)}.")
+    else:
+        lines.append("Сценарные строки (scenario_results) в отчёте отсутствуют.")
+
+    fb5 = st.get("factor_betas_5y") or st.get("factor_betas") or {}
+    fb10 = st.get("factor_betas_10y") or {}
+    lines.append(
+        f"Факторные беты портфеля (недельная оценка, см. спецификацию): 5Y≈{{{_fmt_beta_dict(fb5 if isinstance(fb5, dict) else {})}}}; "
+        f"10Y≈{{{_fmt_beta_dict(fb10 if isinstance(fb10, dict) else {})}}}."
+    )
+    lines.append("")
+
+    lines.append("Risk Structure")
+    caps_line = []
+    if cap1 is not None:
+        caps_line.append(f"rc_asset_cap_used={_fmt_float(cap1, 4)} (доля Top1 RC, контекст отчёта)")
+    if cap3 is not None:
+        caps_line.append(f"stress_top3_rc_sum_cap={_fmt_float(cap3, 4)}")
+    if mdd_lim is not None:
+        caps_line.append(f"max_dd_limit (эпизоды/контекст в отчёте)={_fmt_pct(mdd_lim)}")
+    lines.append("; ".join(caps_line) if caps_line else "Лимиты в stress_report не заданы или н/д.")
+    if scen_rows:
+        triples = [(r.get("scenario_id"), r.get("top1_rc_asset"), r.get("top1_rc_pct")) for r in scen_rows]
+        tops = ", ".join(
+            f"{sid} {asset}={_fmt_pct(p, 1)}"
+            for sid, asset, p in triples
+            if p is not None and asset is not None
+        )
+        lines.append(
+            f"По сценариям Top1 RC по сценариям (см. таблицу выше): {tops}."
+        )
+    hist = st.get("historical_results") or []
+    if hist:
+        lines.append("Исторические эпизоды (historical_results):")
+        for h in hist:
+            ep = h.get("episode", "?")
+            mdd = h.get("max_dd")
+            vp = h.get("pass")
+            vole = h.get("vol_annualized_episode")
+            dcode = h.get("diagnostic_code")
+            lines.append(
+                f"- {ep}: max_dd≈{_fmt_pct(mdd)}, pass={vp}, vol_annualized_episode≈{_fmt_float(vole, 4) if vole is not None else 'н/д'}, "
+                f"diagnostic_code={dcode or '—'}."
+            )
+    else:
+        lines.append("Исторические эпизоды в JSON отсутствуют.")
+    lines.append("")
+
+    lines.append("Strengths")
+    str_lines: list[str] = []
+    if scen_rows:
+        if all(row.get("loss_ok") is True for row in scen_rows):
+            str_lines.append("Во всех синтетических сценариях loss_ok=true — глубина потерь в рамках порогов loss-теста.")
+        if all(row.get("rc3_ok") is True for row in scen_rows):
+            str_lines.append("Во всех сценариях rc3_ok=true — суммарный Top3 RC не нарушает stress_top3_rc_sum_cap.")
+        if any(row.get("pass") is True for row in scen_rows):
+            str_lines.append("Есть сценарии с pass=true.")
+    for h in hist:
+        if h.get("pass") is True:
+            str_lines.append(f"Исторический эпизод {h.get('episode')} помечен pass=true.")
+    if status in ("DIAG_PASS", "DIAG_PASS_WITH_WARNING", "PASS", "PASS_WITH_WARNING"):
+        str_lines.append(f"Статус набора {status} — без уровня DIAG_ATTENTION.")
+    if not str_lines:
+        str_lines.append("Явных «зелёных» флагов в JSON мало или они отсутствуют — см. Weaknesses.")
+    lines.extend(str_lines)
+    lines.append("")
+
+    lines.append("Weaknesses")
+    wk: list[str] = []
+    if status == "DIAG_ATTENTION":
+        wk.append(
+            f"DIAG_ATTENTION: зафиксированы диагностические коды ({dc_str}); для PM имеет смысл разобрать scenario_results и historical_results."
+        )
+    if scen_rows and all(row.get("rc1_ok") is False for row in scen_rows):
+        wk.append("Во всех сценариях rc1_ok=false — концентрация Top1 RC выше порога rc_asset_cap_used.")
+    if warn:
+        wk.append(f"warning_code={warn} (роль защитных блоков / прочее — см. stress_report).")
+    if hist:
+        for h in hist:
+            if h.get("max_dd") is None and h.get("episode"):
+                wk.append(f"Эпизод {h.get('episode')}: max_dd н/д — интерпретация ограничена.")
+    if not wk:
+        wk.append("Существенных отметок в JSON нет или профиль нейтрален относительно перечисленных проверок.")
+    lines.extend(wk)
+    lines.append("")
+
+    lines.append("Scenario Behavior")
+    if scen_rows:
+        for row in scen_rows:
+            sid = row.get("scenario_id")
+            pnl = row.get("portfolio_pnl_pct")
+            lines.append(
+                f"{sid}: PnL≈{_fmt_pct(pnl)}, итог pass={row.get('pass')} — "
+                f"см. loss/role/rc в Metric-by-Metric."
+            )
+    else:
+        lines.append("Нет scenario_results.")
+    lines.append("")
+
+    lines.append("Final Conclusion")
+    lines.append(
+        f"{label}: стресс-набор {status} ({primary}). "
+        f"Синтетические потери и RC-диагностика отражают текущий состав и Σ из прогона; "
+        f"решения по выпуску весов сверяйте с mandate_check и run_result, а этот файл используйте как сценарную справку для PM."
+    )
+
+    out_path = output_dir_final / "stress_commentary.txt"
+    out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return out_path
+
+
 def write_portfolio_commentary(
     output_dir_final: Path,
     *,
@@ -129,7 +361,12 @@ def write_portfolio_commentary(
     treynor = pm.get("treynor")
 
     stress_status = st.get("status", "N/A")
-    fail_reason = st.get("fail_reason_code") or st.get("skip_reason") or "—"
+    fail_reason = (
+        st.get("primary_diagnostic_code")
+        or st.get("fail_reason_code")
+        or st.get("skip_reason")
+        or "—"
+    )
     failed_scenario = st.get("failed_scenario")
     failed_test = st.get("failed_test")
     worst_loss = st.get("worst_scenario_loss_pct")
@@ -186,10 +423,16 @@ def write_portfolio_commentary(
     lines.append("")
 
     lines.append("Strengths")
-    if stress_status == "PASS" and client_gate == "PASS":
-        lines.append("Стресс в статусе PASS; MaxDD-gate PASS — сочетание исторической просадки и клиентского порога не конфликтует в этом прогоне.")
+    _stress_clear = stress_status in ("PASS", "DIAG_PASS", "DIAG_PASS_WITH_WARNING", "PASS_WITH_WARNING")
+    if _stress_clear and client_gate == "PASS":
+        lines.append(
+            "Диагностический стресс без критичных отметок (или только предупреждения); мандатный MaxDD-gate PASS — "
+            "сочетание исторической просадки и клиентского порога не конфликтует в этом прогоне."
+        )
     elif client_gate == "PASS":
-        lines.append("MaxDD-gate PASS: реализованная просадка в допуске относительно target_max_drawdown_pct (см. run_metadata).")
+        lines.append(
+            "Мандатный MaxDD-gate PASS: реализованная просадка на полной пересекающейся истории в допуске (см. run_metadata / mandate_check)."
+        )
     else:
         lines.append("Требуется внимание к клиентскому gate и/или стресс-статусу — см. ниже Weaknesses.")
     if sharpe is not None and float(sharpe) >= 1.0:
@@ -197,10 +440,10 @@ def write_portfolio_commentary(
     lines.append("")
 
     lines.append("Weaknesses")
-    if stress_status != "PASS":
+    if stress_status == "DIAG_ATTENTION":
         lines.append(
-            f"Стресс не пройден ({stress_status}): {fail_reason}. "
-            f"Именованный сценарий сбоя: {failed_scenario or '—'}; тип проверки: {failed_test or '—'}."
+            f"Стресс-диагностика: {stress_status} — {fail_reason}. "
+            f"(Не блокирует выпуск; именованный сценарий: {failed_scenario or '—'}; тест: {failed_test or '—'}.)"
         )
     if client_gate == "FAIL":
         lines.append("Клиентский MaxDD-gate FAIL — исторический MaxDD хуже мандата (см. run_metadata / snapshot).")

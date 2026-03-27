@@ -298,7 +298,7 @@ def run_view_after_optimization(
             key_metric_values["max_dd_limit"] = target_max_drawdown_pct
             continue
 
-        # Gate 2: stress
+        # Stress diagnostic (non-blocking): run for audit only
         tilted_stress = run_stress_fn(
             tickers=list(baseline_weights.keys()),
             weights=tilted_weights,
@@ -310,12 +310,8 @@ def run_view_after_optimization(
             rc_asset_cap_pct=rc_asset_cap_pct,
             stress_top3_rc_sum_cap_pct=stress_top3_rc_sum_cap_pct,
         )
-        if tilted_stress.get("status") != "PASS":
-            broken_gate = "stress"
-            stress_failure_code = _stress_failure_code(tilted_stress.get("failed_scenario"))
-            key_metric_values["stress_status"] = tilted_stress.get("status")
-            key_metric_values["failed_scenario"] = tilted_stress.get("failed_scenario")
-            continue
+        key_metric_values["stress_diagnostic_status"] = tilted_stress.get("status")
+        key_metric_values["stress_diagnostic_codes"] = tilted_stress.get("diagnostic_codes", [])
 
         # Gate 3: RC caps
         rc_tilted = rc_by_asset_from_weights(tilted_weights, cov_df)

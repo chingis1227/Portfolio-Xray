@@ -1,14 +1,14 @@
 ---
 title: "Risk-Parity — Weights"
 subtitle: "Weights"
-date: "2026-03-24 14:27 Центральная Европа (зима)"
+date: "2026-03-28 00:24 Центральная Европа (зима)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
 ---
 ## Report scope / source context
-- **Weights source:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Cursor/risk parity portfolio/weights.json`
-- **Generated:** 2026-03-24 14:27 Центральная Европа (зима)
+- **Weights source:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/risk parity portfolio/weights.json`
+- **Generated:** 2026-03-28 00:24 Центральная Европа (зима)
 
 ## Weights
 
