@@ -10,6 +10,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from src.data_fred import fetch_fred_series
 from src.data_yf import fetch_daily
@@ -240,6 +241,187 @@ def estimate_betas(
     df = pd.DataFrame(betas).T
     df = df.rename(columns={c: name_map.get(c, f"beta_{c}") for c in factor_cols})
     return df
+
+
+def _ols_with_inference(
+    y: np.ndarray,
+    X: np.ndarray,
+    *,
+    add_const: bool = True,
+    alpha: float = 0.05,
+) -> dict[str, Any] | None:
+    """
+    OLS with classical (non-HAC) inference.
+
+    Returns dict with params/se/t/p/ci, R^2, adj R^2, df_resid, n_obs.
+    """
+    if y.ndim != 1:
+        y = y.reshape(-1)
+    if add_const:
+        X = np.column_stack([np.ones(len(X)), X])
+    n, k = X.shape
+    if n <= k + 1:
+        return None
+
+    try:
+        beta, *_ = np.linalg.lstsq(X, y, rcond=None)
+    except Exception:
+        return None
+
+    y_hat = X @ beta
+    resid = y - y_hat
+    rss = float(np.dot(resid, resid))
+    tss = float(np.dot(y - float(np.mean(y)), y - float(np.mean(y))))
+    r2 = 1.0 - (rss / tss) if tss > 0 else float("nan")
+    df_resid = n - k
+    s2 = rss / df_resid if df_resid > 0 else float("nan")
+
+    try:
+        XtX_inv = np.linalg.inv(X.T @ X)
+    except Exception:
+        return None
+
+    cov_beta = s2 * XtX_inv
+    se = np.sqrt(np.maximum(np.diag(cov_beta), 0.0))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        tvals = beta / se
+
+    # Two-sided p-values under Student-t(df_resid)
+    pvals = 2.0 * stats.t.sf(np.abs(tvals), df=df_resid)
+    tcrit = float(stats.t.ppf(1.0 - alpha / 2.0, df=df_resid))
+    ci_low = beta - tcrit * se
+    ci_high = beta + tcrit * se
+
+    adj_r2 = float("nan")
+    if np.isfinite(r2) and n > 1 and df_resid > 0:
+        adj_r2 = 1.0 - (1.0 - r2) * (n - 1) / df_resid
+
+    return {
+        "n_obs": int(n),
+        "k": int(k),
+        "df_resid": int(df_resid),
+        "r2": float(r2),
+        "adj_r2": float(adj_r2),
+        "se_type": "classic_ols",
+        "ci_level": float(1.0 - alpha),
+        "params": beta.astype(float),
+        "se": se.astype(float),
+        "t": tvals.astype(float),
+        "p": pvals.astype(float),
+        "ci_low": ci_low.astype(float),
+        "ci_high": ci_high.astype(float),
+    }
+
+
+def portfolio_factor_regression_weekly(
+    weights: dict[str, float],
+    tickers: list[str],
+    analysis_end_str: str,
+    window_weeks: int,
+    *,
+    buffer_weeks: int = FACTOR_DOWNLOAD_BUFFER_WEEKS,
+    alpha: float = 0.05,
+) -> dict[str, Any]:
+    """
+    Portfolio-level factor regression (weekly) with inference.
+
+    This is separate from "portfolio betas = sum(w_i * beta_i)" and provides:
+    - betas, t-stats, p-values, CI
+    - R^2 / adj R^2
+    - n_obs
+    """
+    from src.data_yf import download_all
+
+    wk = int(window_weeks)
+    end_ts = pd.Timestamp(analysis_end_str)
+    end_dl = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    start_ts = end_ts - pd.DateOffset(weeks=wk + int(buffer_weeks))
+    start_dl = start_ts.strftime("%Y-%m-%d")
+
+    use = [t for t in tickers if float(weights.get(t, 0.0)) > 0]
+    if not use:
+        use = list(tickers)
+    use = [str(t).strip() for t in use if t and str(t).strip()]
+    if not use:
+        return {}
+
+    daily = download_all(use, start_dl, end_dl)
+    daily_prices: dict[str, pd.Series] = {}
+    for t in use:
+        df = daily.get(t)
+        if df is None or df.empty or "Close" not in df.columns:
+            continue
+        daily_prices[t] = df["Close"].copy()
+
+    asset_weekly = asset_weekly_returns_from_daily(daily_prices, start_dl, end_dl)
+    factors = build_factor_matrix(start_dl, end_dl)
+    if asset_weekly.empty or factors.empty:
+        return {}
+
+    # Align and take last wk weeks near analysis_end
+    common = asset_weekly.index.intersection(factors.index).sort_values()
+    common = common[common <= end_ts + pd.Timedelta(days=6)]
+    if len(common) > wk:
+        common = common[-wk:]
+    if len(common) < 10:
+        return {}
+
+    Y = asset_weekly.reindex(common)
+    Xdf = factors.reindex(common)
+    # Require full factor rows and portfolio return defined
+    Xdf = Xdf.dropna()
+    Y = Y.reindex(Xdf.index)
+    if Xdf.empty or len(Xdf) < 10:
+        return {}
+
+    # Portfolio weekly return as weighted sum across available tickers
+    w_vec = np.array([float(weights.get(t, 0.0)) for t in Y.columns], dtype=float)
+    y_port = (Y.values * w_vec.reshape(1, -1)).sum(axis=1)
+
+    # Drop NaNs (if any)
+    valid = ~(np.isnan(y_port) | np.isnan(Xdf.values).any(axis=1))
+    if valid.sum() < 10:
+        return {}
+
+    inf = _ols_with_inference(y_port[valid], Xdf.values[valid], add_const=True, alpha=alpha)
+    if not inf:
+        return {}
+
+    factor_cols = list(Xdf.columns)
+    # params[0] is intercept
+    params = inf["params"]
+    se = inf["se"]
+    tvals = inf["t"]
+    pvals = inf["p"]
+    ci_low = inf["ci_low"]
+    ci_high = inf["ci_high"]
+
+    name_map = {
+        "equity": "beta_eq",
+        "real_rates": "beta_rr",
+        "inflation": "beta_inf",
+        "credit": "beta_credit",
+        "usd": "beta_usd",
+        "commodity": "beta_cmd",
+    }
+    beta_keys = [name_map.get(c, f"beta_{c}") for c in factor_cols]
+
+    out: dict[str, Any] = {
+        "window_weeks": int(wk),
+        "n_obs": int(inf["n_obs"]),
+        "r2": float(inf["r2"]),
+        "adj_r2": float(inf["adj_r2"]),
+        "alpha": float(alpha),
+        "se_type": str(inf.get("se_type", "classic_ols")),
+        "ci_level": float(inf.get("ci_level", 0.95)),
+        "intercept": float(params[0]),
+        "betas": {k: float(v) for k, v in zip(beta_keys, params[1:])},
+        "t": {k: float(v) for k, v in zip(beta_keys, tvals[1:])},
+        "p": {k: float(v) for k, v in zip(beta_keys, pvals[1:])},
+        "ci_low": {k: float(v) for k, v in zip(beta_keys, ci_low[1:])},
+        "ci_high": {k: float(v) for k, v in zip(beta_keys, ci_high[1:])},
+    }
+    return out
 
 
 def compute_asset_factor_betas_weekly(

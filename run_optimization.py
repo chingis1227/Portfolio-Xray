@@ -807,6 +807,7 @@ def main() -> None:
             FACTOR_WEEKS_10Y,
             FACTOR_WEEKS_5Y,
             compute_asset_factor_betas_weekly,
+            portfolio_factor_regression_weekly,
             portfolio_factor_betas,
         )
 
@@ -852,6 +853,29 @@ def main() -> None:
     stress_report["factor_betas_10y"] = {k: round(v, 4) for k, v in (portfolio_betas_10y_dict or {}).items()}
     # Keep legacy field aligned with 5Y window.
     stress_report["factor_betas"] = dict(stress_report["factor_betas_5y"])
+    # Portfolio factor regression diagnostics (5Y/10Y): t/p/CI/R^2 on weekly data, same factor matrix definition.
+    stress_report["factor_regression_5y"] = {}
+    stress_report["factor_regression_10y"] = {}
+    try:
+        stress_report["factor_regression_5y"] = portfolio_factor_regression_weekly(
+            weights=final_weights,
+            tickers=cfg.tickers,
+            analysis_end_str=analysis_end_str,
+            window_weeks=FACTOR_WEEKS_5Y,
+        )
+    except Exception as e:
+        stress_report["factor_regression_5y_error"] = str(e)
+        logger.warning(f"Factor regression diagnostics (5Y) failed: {e}")
+    try:
+        stress_report["factor_regression_10y"] = portfolio_factor_regression_weekly(
+            weights=final_weights,
+            tickers=cfg.tickers,
+            analysis_end_str=analysis_end_str,
+            window_weeks=FACTOR_WEEKS_10Y,
+        )
+    except Exception as e:
+        stress_report["factor_regression_10y_error"] = str(e)
+        logger.warning(f"Factor regression diagnostics (10Y) failed: {e}")
     stress_status = stress_report.get("status")
     stress_fail_reason = stress_report.get("fail_reason_code") or stress_report.get("skip_reason")
 

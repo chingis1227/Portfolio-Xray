@@ -73,6 +73,7 @@ from src.stress_factors import (
     FACTOR_WEEKS_10Y,
     FACTOR_WEEKS_5Y,
     compute_asset_factor_betas_weekly,
+    portfolio_factor_regression_weekly,
     portfolio_factor_betas,
 )
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
@@ -495,6 +496,29 @@ def run_portfolio_report_for_weights(
     stress_report["factor_betas_5y"] = {k: round(v, 4) for k, v in (portfolio_betas_5y_dict or {}).items()}
     stress_report["factor_betas_10y"] = {k: round(v, 4) for k, v in (portfolio_betas_10y_dict or {}).items()}
     stress_report["factor_betas"] = dict(stress_report["factor_betas_5y"])
+    # Portfolio factor regression diagnostics (5Y/10Y): t/p/CI/R^2 on weekly data, same factor matrix definition.
+    stress_report["factor_regression_5y"] = {}
+    stress_report["factor_regression_10y"] = {}
+    try:
+        stress_report["factor_regression_5y"] = portfolio_factor_regression_weekly(
+            weights=weights,
+            tickers=tickers,
+            analysis_end_str=analysis_end_str,
+            window_weeks=FACTOR_WEEKS_5Y,
+        )
+    except Exception as e:
+        stress_report["factor_regression_5y_error"] = str(e)
+        logger.warning(f"Factor regression diagnostics (5Y) failed: {e}")
+    try:
+        stress_report["factor_regression_10y"] = portfolio_factor_regression_weekly(
+            weights=weights,
+            tickers=tickers,
+            analysis_end_str=analysis_end_str,
+            window_weeks=FACTOR_WEEKS_10Y,
+        )
+    except Exception as e:
+        stress_report["factor_regression_10y_error"] = str(e)
+        logger.warning(f"Factor regression diagnostics (10Y) failed: {e}")
     export_stress_report(stress_report, output_dir_final)
     logger.info(f"Stress status: {stress_report.get('status', 'N/A')}")
 
