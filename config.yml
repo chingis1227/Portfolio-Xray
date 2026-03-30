@@ -47,6 +47,15 @@ client_profile: Balanced
 rc_policy_mode: permissive
 # Сила штрафа в objective за превышение RC-cap (выше = сильнее давит концентрацию)
 rc_cap_penalty_lambda: 200
+# Двухэтапная оптимизация Main по умолчанию (run_optimization.py без --single-stage): см. docs/two_stage_optimization.md
+# risk_skeleton_concentration_lambda: 10   # этап 1 — концентрация RC по блокам (Herfindahl)
+# optimization_soft_vol_penalty_lambda: 0    # этап 2 — мягкий vol к target_vol_annual; 0 => в рантайме 12
+# optimization_soft_return_penalty_lambda: 0  # этап 2 — мягкий доход к target_nominal_return_annual; 0 => в рантайме 8
+# RC cap по активам: global = один cap из формулы по N; per_block_rb_k = cap из RB_block и k_block в каждом блоке (см. feasibility_constraints_spec §1b).
+# Явный rc_asset_cap_pct > 0 отменяет оба режима и задаёт один cap всем активам.
+rc_cap_mode: per_block_rb_k
+# Множитель при rc_cap_mode: per_block_rb_k (дефолт 1.25); при global не используется.
+rc_cap_rb_k_multiplier: 1.25
 
 # allow_leverage, allow_short_selling: на выбор true / false.
 allow_leverage: false

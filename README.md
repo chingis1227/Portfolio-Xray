@@ -8,9 +8,9 @@
 
 1. **Оптимизация**  
    ```bash
-   python run_optimization.py [--no-cache] [--write-config] [--profile Growth]
+   python run_optimization.py [--no-cache] [--write-config] [--profile Growth] [--single-stage]
    ```  
-   Читает `config.yml`, при необходимости — `config/client_profiles.yml` и `blocks_universe.yml`; загружает данные; выполняет block selection (Duration/Inflation), risk-budget оптимизацию и ProLiquidity. Пишет веса в **ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ/portfolio_weights.yml** и **run_result.json**. При срабатывании MaxDD gate веса не записываются, выход с ошибкой.
+   По умолчанию — **двухэтапная** RiskPortfolio-оптимизация (см. [docs/two_stage_optimization.md](docs/two_stage_optimization.md)). Флаг **`--single-stage`** — legacy одноэтапный прогон. Читает `config.yml`, при необходимости — `config/client_profiles.yml` и `blocks_universe.yml`; загружает данные; выполняет block selection (Duration/Inflation), risk-budget оптимизацию и ProLiquidity. Пишет веса в **ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ/portfolio_weights.yml** и **run_result.json**. При срабатывании MaxDD gate веса не записываются, выход с ошибкой.
 
 2. **Отчёт**  
    ```bash
@@ -39,6 +39,7 @@
 
 - **Политика и метрики**  
   - [Portfolio Construction Policy](docs/portfolio_construction_policy.md) — роли блоков, иерархия правил, mandate, risk budget, stress.  
+  - [Two-stage optimization](docs/two_stage_optimization.md) — каноническая двухэтапная RiskPortfolio-оптимизация (по умолчанию в `run_optimization.py`).  
   - [Metrics Specification](metrics_specification.md) — формулы метрик, окна, ddof=1, RC_vol, FX.  
   - [PROJECT_RULES.md](PROJECT_RULES.md) — стандарт частоты, дат, бенчмарков.
 
@@ -46,6 +47,7 @@
   - [Data policy, NaN, young ETFs](docs/data_policy_nan_young_etfs.md) — join policy, within-block redistribution, RC-gated fallback.
 
 - **Оптимизация и ограничения**  
+  - [Two-stage optimization](docs/two_stage_optimization.md) — этапы, конфиг, legacy `--single-stage`.  
   - [Optimization specs (оглавление)](docs/docs/README.md) — ссылки на спеки по блокам и ликвидности.  
   - [Feasibility constraints](docs/docs/feasibility_constraints_spec.md) — RC cap, weight caps, Growth HY/EM_debt.  
   - [Optimization run checks](docs/optimization_run_checks.md) — точки отказа, сеть, противоречия параметров.

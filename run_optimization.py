@@ -1,7 +1,12 @@
 """
 Run portfolio optimization (risk budget + ProLiquidity) and output weights.
 Uses config.yml; client_profile (e.g. Growth) supplies rc_block_targets.
-Run from project root: python run_optimization.py [--no-cache] [--write-config]
+
+**Primary RiskPortfolio (default):** two-stage optimization — see docs/two_stage_optimization.md
+(stage1: risk_skeleton + RB search; stage2: max_return from skeleton + soft IPS).
+Use ``--single-stage`` for the legacy single-pass optimizer.
+
+Run from project root: python run_optimization.py [--no-cache] [--write-config] [--single-stage]
 
 Output: final weights are written to portfolio_weights.yml. Use --write-config to also write them into config.yml (legacy).
 """
@@ -28,6 +33,9 @@ from src.config_schema import ConfigValidationError
 from src.data_loader import load_monthly_data_shared
 from policy_math.feasibility import DEFAULT_RC_CAP_RB_K_MULTIPLIER, RC_CAP_MODE_GLOBAL
 from src.optimization import (
+    DEFAULT_RISK_SKELETON_CONCENTRATION_LAMBDA,
+    OBJECTIVE_MODE_MAX_RETURN,
+    OBJECTIVE_MODE_RISK_SKELETON,
     get_risk_portfolio_tickers,
     ticker_to_block_map,
     run_risk_budget_optimization,
@@ -66,6 +74,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip run_report.py and PDF rebuild after optimization (scenario / isolated runs)",
     )
+    parser.add_argument(
+        "--single-stage",
+        action="store_true",
+        help="Legacy: one-pass RiskPortfolio (RB search + default max_return). Default is two-stage (see docs/two_stage_optimization.md).",
+    )
     return parser.parse_args()
 
 
@@ -88,6 +101,21 @@ VIOL_FAIL_STRESS = "FAIL_STRESS"  # legacy violation label; stress is diagnostic
 VIOL_FAIL_MANDATE = "FAIL_MANDATE"
 VIOL_MAX_DD_BREACH = "MAX_DD_BREACH"
 WARN_MODEL_RISK_YOUNG_WEIGHT = "WARN_MODEL_RISK_YOUNG_WEIGHT"
+
+# Stage-2 warm start: tracking penalty vs skeleton weights (same order of magnitude as research script)
+_TWO_STAGE_SKEL_TRACK_LAMBDA = 10.0
+
+
+def _parse_rb_target_used(status: str) -> dict[str, float] | None:
+    """Parse RB_TARGET_USED: g/d/i from optimization status (after RB search)."""
+    m = re.search(r"RB_TARGET_USED:\s*([\d.]+)/([\d.]+)/([\d.]+)", status)
+    if not m:
+        return None
+    g, d, i = float(m.group(1)), float(m.group(2)), float(m.group(3))
+    s = g + d + i
+    if s <= 1e-12:
+        return None
+    return {"Growth": g / s, "Duration": d / s, "Inflation": i / s}
 
 
 def _apply_tail_overlay(
@@ -407,27 +435,106 @@ def main() -> None:
         cov_df = cov_matrix_monthly(ret_primary, ddof=1, use_shrinkage=use_shrinkage)
 
     # --- A) Primary optimization (10Y by default): this is the final portfolio ---
-    weights_risk, status = run_risk_budget_optimization(
-        monthly_returns,
-        blocks_for_optimization,
-        cfg.rc_block_targets,
-        cfg.growth_core_candidates,
-        rc_asset_cap_pct=cfg.rc_asset_cap_pct,
-        min_single_security_weight_pct=cfg.min_single_security_weight_pct,
-        max_single_security_weight_pct=cfg.max_single_security_weight_pct,
-        window_months=window_months,
-        duration_internal_weights=duration_internal_weights,
-        inflation_internal_weights=inflation_internal_weights,
-        returns_window=None if dual_enabled else ret_primary,
-        use_shrinkage=use_shrinkage,
-        rb_target_ranges=getattr(cfg, "rc_block_target_ranges", None),
-        cov_precomputed=cov_df if dual_enabled else None,
-        mu_precomputed=mu_series_primary if dual_enabled else None,
-        per_ticker_max_weight=per_ticker_young_caps,
-        rc_cap_mode=getattr(cfg, "rc_cap_mode", RC_CAP_MODE_GLOBAL),
-        rc_cap_rb_k_multiplier=float(getattr(cfg, "rc_cap_rb_k_multiplier", DEFAULT_RC_CAP_RB_K_MULTIPLIER)),
-        rc_cap_penalty_lambda=float(getattr(cfg, "rc_cap_penalty_lambda", 25.0)),
-    )
+    rc_pen_lam = float(getattr(cfg, "rc_cap_penalty_lambda", 25.0))
+    skel_conc = float(getattr(cfg, "risk_skeleton_concentration_lambda", DEFAULT_RISK_SKELETON_CONCENTRATION_LAMBDA))
+    if skel_conc < 0:
+        skel_conc = 0.0
+
+    if not args.single_stage:
+        logger.info("Primary optimization: TWO-STAGE (risk_skeleton -> max_return + soft IPS)")
+        w_sk, st_sk = run_risk_budget_optimization(
+            monthly_returns,
+            blocks_for_optimization,
+            cfg.rc_block_targets,
+            cfg.growth_core_candidates,
+            rc_asset_cap_pct=cfg.rc_asset_cap_pct,
+            min_single_security_weight_pct=cfg.min_single_security_weight_pct,
+            max_single_security_weight_pct=cfg.max_single_security_weight_pct,
+            window_months=window_months,
+            duration_internal_weights=duration_internal_weights,
+            inflation_internal_weights=inflation_internal_weights,
+            returns_window=None if dual_enabled else ret_primary,
+            use_shrinkage=use_shrinkage,
+            rb_target_ranges=getattr(cfg, "rc_block_target_ranges", None),
+            cov_precomputed=cov_df if dual_enabled else None,
+            mu_precomputed=mu_series_primary if dual_enabled else None,
+            per_ticker_max_weight=per_ticker_young_caps,
+            rc_cap_mode=getattr(cfg, "rc_cap_mode", RC_CAP_MODE_GLOBAL),
+            rc_cap_rb_k_multiplier=float(getattr(cfg, "rc_cap_rb_k_multiplier", DEFAULT_RC_CAP_RB_K_MULTIPLIER)),
+            rc_cap_penalty_lambda=rc_pen_lam,
+            objective_mode=OBJECTIVE_MODE_RISK_SKELETON,
+            risk_skeleton_concentration_lambda=skel_conc,
+        )
+        if not w_sk:
+            logger.error("Two-stage stage1 (skeleton) failed: %s", st_sk)
+            raise SystemExit(1)
+        logger.info("Two-stage stage1: %s", st_sk)
+        rb_eff = _parse_rb_target_used(st_sk) or (cfg.rc_block_targets or {})
+        vol_lam = float(getattr(cfg, "optimization_soft_vol_penalty_lambda", 0.0) or 0.0)
+        ret_lam = float(getattr(cfg, "optimization_soft_return_penalty_lambda", 0.0) or 0.0)
+        if vol_lam <= 0:
+            vol_lam = 12.0
+        if ret_lam <= 0:
+            ret_lam = 8.0
+        tv = getattr(cfg, "target_vol_annual", None)
+        tr = getattr(cfg, "target_nominal_return_annual", None)
+        weights_risk, status = run_risk_budget_optimization(
+            monthly_returns,
+            blocks_for_optimization,
+            rb_eff,
+            cfg.growth_core_candidates,
+            rc_asset_cap_pct=cfg.rc_asset_cap_pct,
+            min_single_security_weight_pct=cfg.min_single_security_weight_pct,
+            max_single_security_weight_pct=cfg.max_single_security_weight_pct,
+            window_months=window_months,
+            duration_internal_weights=duration_internal_weights,
+            inflation_internal_weights=inflation_internal_weights,
+            returns_window=None if dual_enabled else ret_primary,
+            use_shrinkage=use_shrinkage,
+            rb_target_ranges=None,
+            rb_search_enabled=False,
+            cov_precomputed=cov_df if dual_enabled else None,
+            mu_precomputed=mu_series_primary if dual_enabled else None,
+            per_ticker_max_weight=per_ticker_young_caps,
+            rc_cap_mode=getattr(cfg, "rc_cap_mode", RC_CAP_MODE_GLOBAL),
+            rc_cap_rb_k_multiplier=float(getattr(cfg, "rc_cap_rb_k_multiplier", DEFAULT_RC_CAP_RB_K_MULTIPLIER)),
+            rc_cap_penalty_lambda=rc_pen_lam,
+            objective_mode=OBJECTIVE_MODE_MAX_RETURN,
+            warm_start_weights=w_sk,
+            skeleton_tracking_lambda=_TWO_STAGE_SKEL_TRACK_LAMBDA,
+            soft_target_vol_annual=float(tv) if tv is not None else None,
+            soft_vol_penalty_lambda=vol_lam,
+            soft_target_return_annual=float(tr) if tr is not None else None,
+            soft_return_penalty_lambda=ret_lam,
+            risk_skeleton_concentration_lambda=skel_conc,
+        )
+        if not weights_risk:
+            logger.error("Two-stage stage2 failed: %s", status)
+            raise SystemExit(1)
+        logger.info("Two-stage stage2: %s", status)
+    else:
+        logger.info("Primary optimization: SINGLE-STAGE (legacy: RB search + max_return)")
+        weights_risk, status = run_risk_budget_optimization(
+            monthly_returns,
+            blocks_for_optimization,
+            cfg.rc_block_targets,
+            cfg.growth_core_candidates,
+            rc_asset_cap_pct=cfg.rc_asset_cap_pct,
+            min_single_security_weight_pct=cfg.min_single_security_weight_pct,
+            max_single_security_weight_pct=cfg.max_single_security_weight_pct,
+            window_months=window_months,
+            duration_internal_weights=duration_internal_weights,
+            inflation_internal_weights=inflation_internal_weights,
+            returns_window=None if dual_enabled else ret_primary,
+            use_shrinkage=use_shrinkage,
+            rb_target_ranges=getattr(cfg, "rc_block_target_ranges", None),
+            cov_precomputed=cov_df if dual_enabled else None,
+            mu_precomputed=mu_series_primary if dual_enabled else None,
+            per_ticker_max_weight=per_ticker_young_caps,
+            rc_cap_mode=getattr(cfg, "rc_cap_mode", RC_CAP_MODE_GLOBAL),
+            rc_cap_rb_k_multiplier=float(getattr(cfg, "rc_cap_rb_k_multiplier", DEFAULT_RC_CAP_RB_K_MULTIPLIER)),
+            rc_cap_penalty_lambda=rc_pen_lam,
+        )
 
     if not weights_risk:
         logger.error(f"Оптимизация не удалась: {status}")

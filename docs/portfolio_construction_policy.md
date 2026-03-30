@@ -1,7 +1,5 @@
 # Portfolio Construction Policy
 
-# Portfolio Construction Policy
-
 ## 1. System Principle
 
 The system constructs portfolios based on the **roles of structural blocks**, not on attempts to predict or “optimize for” market regimes.
@@ -128,11 +126,13 @@ Cash-like instruments (BIL, short T-bills, or other liquidity buffers) are **exc
 
 Implication: optimization is **not allowed to alter the predefined risk budget shares of the blocks**. The architecture of risk allocation is fixed at this level.
 
-Operational target-selection order (when profile ranges are available):
+Operational target-selection order (when profile ranges are available) applies to **RB search** in the optimizer:
 
 1. Use profile midpoint (`rc_block_targets`) as the first optimization target.  
 2. If no acceptable solution is found, search targets inside profile `min/max` ranges with the simplex condition `Growth + Duration + Inflation = 1`.  
 3. If still no acceptable solution is found, run an expanded fallback search with `min - 5 pp` and `max + 5 pp` (clipped to `[0, 1]`).
+
+In the **default two-stage** RiskPortfolio run (`run_optimization.py` without `--single-stage`), this search runs in **stage 1** only (`risk_skeleton`). **Stage 2** fixes the **selected** triple (parsed from the optimizer status as `RB_TARGET_USED`) and does **not** re-run RB search. See **docs/two_stage_optimization.md**.
 
 The **RB corridor check remains unchanged**: for each tested target, realized RC must be within target ± corridor (default ±5 pp).
 
@@ -181,6 +181,15 @@ Rule: optimization is an **execution tool**, not a decision authority. It cannot
 - override the Stress Judge verdict,
 - ignore RC concentration controls or violate weight caps/minimums.
 
+**Default (canonical) RiskPortfolio optimization — two-stage:**
+
+1. **Stage 1 — `risk_skeleton`:** minimize RC-cap violations and a **Herfindahl-style concentration penalty** on **block** RC shares (`risk_skeleton_concentration_lambda` in config). **RB search** (§2.2 order) selects a concrete **Growth / Duration / Inflation** target triple; the chosen triple is recorded in the solver status as **`RB_TARGET_USED`**.
+2. **Stage 2 — `max_return`:** warm-start from stage-1 weights; **fixed** `RB_TARGET_USED` (no second RB search); maximize expected return subject to **soft** penalties toward `target_vol_annual` and `target_nominal_return_annual` (penalty strengths from `optimization_soft_*_lambda`; if unset/zero, runtime defaults apply — see **docs/two_stage_optimization.md**); **skeleton tracking** keeps the solution near stage-1 weights.
+
+**Legacy:** `run_optimization.py --single-stage` runs a **single** pass with default **`max_return`** and full RB search (previous behaviour).
+
+Full technical specification: **docs/two_stage_optimization.md**.
+
 ---
 
 ### 2.7 Data Policy, NaN, Young ETFs and Dynamic Backtest
@@ -199,7 +208,7 @@ In production runs, the pipeline **writes portfolio weights** when the **mandate
 - **Stress diagnostics (non-blocking):** Scenario PnL, historical episodes (2008 / 2020 / 2022), Role/RC flags produce **`DIAG_*` codes** and **`DIAG_ATTENTION`** / **`DIAG_PASS`** statuses. They are recorded in **`stress_diagnostic_report`** and **`stress_summary`**; optional informational violation **`FAIL_STRESS`** with `note: diagnostic_only` may appear; **weights are still written** if the mandate passed.
 - **RC_vol caps (penalty-first):** RC concentration is controlled by objective penalties and post-processing. Residual breaches are reported via **VIOL_RC_ASSET_CAP** (status may be **OK_FALLBACK**); weights are still returned/written when the mandate passed.
 
-The single output object (**run_result.json**) carries: weights, status (APPROVED | CANDIDATE_RB_BREACH | OK_FALLBACK | FAIL_DATA | FAIL_FEASIBILITY | FAIL_RC | **FAIL_MANDATE**), **mandate_check**, **stress_diagnostic_report**, violations, rb_deltas_pp, rc_breaches, stress_summary, next_actions, and resolved_config. **Code behaviour and this policy document are aligned** (single source of truth).
+The single output object (**run_result.json**) carries: weights, status (APPROVED | CANDIDATE_RB_BREACH | OK_FALLBACK | FAIL_DATA | FAIL_FEASIBILITY | FAIL_RC | **FAIL_MANDATE**), **mandate_check**, **stress_diagnostic_report**, violations, rb_deltas_pp, rc_breaches, stress_summary, next_actions, **rb_target_selection**, and resolved_config. **Code behaviour and this policy document are aligned** (single source of truth). Primary RiskPortfolio optimization defaults to **two-stage** (see §2.6 and **docs/two_stage_optimization.md**).
 
 For a concise reference on **what blocks writing weights** and **how to interpret each status**, see **docs/production_workflow.md**.
 

@@ -4,6 +4,7 @@ Each optimization domain has its own spec file. This keeps logic separate and ea
 
 | Spec | File | Description |
 |------|------|-------------|
+| **Two-stage RiskPortfolio (canonical)** | [../two_stage_optimization.md](../two_stage_optimization.md) | Default primary optimization in `run_optimization.py`: `risk_skeleton` + RB search → `max_return` + soft IPS; legacy `--single-stage` |
 | **ProLiquidity** | [optimization_proliquidity_spec.md](optimization_proliquidity_spec.md) | Liquidity: life floor, vol-scaling cash, cash policy, alpha-shift when prohibited |
 | **View After Optimization** | [view_after_optimization_spec.md](view_after_optimization_spec.md) | Protocol for applying PM views (HEDGE/TACTICAL) after optimization: gates, funding rules, execution, reporting |
 

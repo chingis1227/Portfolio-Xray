@@ -8,7 +8,7 @@ Refactor aligns implementation with the intended policy logic. Below: target arc
 
 - **Single application of client profile**: Profile is applied once in `load_validated_config()` (config load). CLI `--profile` applies via `apply_profile_override(cfg, profile_id)` without re-reading the config file. `target_vol_annual` and `rc_block_targets` are derived only once.
 - **Block selection hook**: `apply_block_selection(blocks, config, monthly_returns)` in `src/block_selection.py` runs before risk-budget optimization. Currently a pass-through; full Duration/Inflation candidate selection and mix logic belong here.
-- **Optimization flow**: Load config → (optional) apply_profile_override → load data → apply_block_selection → run_risk_budget_optimization → ProLiquidity → diagnostics (RC by block, RB corridor, stress, RC breaches) → always write weights + run_result.json (status APPROVED | CANDIDATE_RB_BREACH | OK_FALLBACK) unless FAIL_DATA; then run report.
+- **Optimization flow**: Load config → (optional) apply_profile_override → load data → apply_block_selection → **primary RiskPortfolio: default two-stage** (`risk_skeleton` + RB search, then `max_return` + soft IPS; see **docs/two_stage_optimization.md**; legacy `--single-stage` = one pass) → ProLiquidity → diagnostics (RC by block, RB corridor, stress, RC breaches) → write weights + run_result.json when gates allow; then run report.
 - **NaN-safe backtest**: Within-block equal redistribution first; then RC-gated (and optionally RB-gated) check; if violated, fallback to w_miss-to-cash for that month. Single liquidity framework: `liquidity_need_total = liquidity_need_months * monthly_expenses`, `liquidity_floor_pct = liquidity_need_total / portfolio_value`.
 
 ---
@@ -17,7 +17,7 @@ Refactor aligns implementation with the intended policy logic. Below: target arc
 
 | File | Changes |
 |------|--------|
-| **run_optimization.py** | Single `apply_profile_override(cfg, args.profile)`. Production workflow: RB corridor is quality gate (APPROVED vs CANDIDATE_RB_BREACH); Stress and MaxDD are warning-only; RC cap violations flagged but weights returned. Always write weights + run_result.json unless FAIL_DATA. Call to `apply_block_selection` before `run_risk_budget_optimization`. |
+| **run_optimization.py** | Single `apply_profile_override(cfg, args.profile)`. **Default two-stage** primary optimization (see **docs/two_stage_optimization.md**); `--single-stage` for legacy. RB corridor is quality gate (APPROVED vs CANDIDATE_RB_BREACH); stress diagnostics non-blocking; mandate MaxDD may block writes. Call to `apply_block_selection` before RiskPortfolio optimization. |
 | **run_report.py** | `portfolio_returns_nan_safe` called with `blocks`, `rc_block_targets`, `rc_asset_cap_pct`, `cov_df`. `portfolio_valid` from MaxDD written to run metadata; no exit(1) when invalid (production workflow). |
 | **src/config.py** | `apply_profile_override(cfg, profile_id)` added; imports `normalize_rc_block_targets`. |
 | **src/config_schema.py** | `liquidity_need` is derived (`liquidity_need_months * monthly_expenses`). Comment: `target_nominal_return_annual` is report-only (comparison with realized CAGR). |
@@ -50,7 +50,7 @@ Refactor aligns implementation with the intended policy logic. Below: target arc
 
 ## 5. Report-only (no constraint role)
 
-- **target_nominal_return_annual**: Used only for comparison with realized CAGR in metadata and reports. Not an optimization constraint.
+- **target_nominal_return_annual**: Report comparison vs realized CAGR; in the **default two-stage** run it also feeds the **soft** return penalty on stage 2 (not a hard mandate gate). See **docs/two_stage_optimization.md**.
 - **liquidity_need**: Derived from `liquidity_need_months * monthly_expenses`; not a standalone input. Portfolio logic uses months and monthly_expenses only.
 - **liquidity_floor_pct** in client profiles: Hint/report-only; can be mapped to the single liquidity framework later.
 

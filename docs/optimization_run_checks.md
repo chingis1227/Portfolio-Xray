@@ -41,6 +41,8 @@
 
 ### 1.4 Risk-budget оптимизация (`run_risk_budget_optimization`)
 
+По умолчанию **`run_optimization.py`** вызывает **двухэтапную** схему (stage1 `risk_skeleton` + RB search, stage2 `max_return` с warm start). Подробно: **docs/two_stage_optimization.md**. Флаг **`--single-stage`** — один проход как раньше (legacy).
+
 | Ситуация | Результат | Что делать |
 |----------|------------|------------|
 | Оптимизатор не сошёлся по ограничениям | Возвращается fallback (равные веса по блокам), status содержит "OK (fallback)" | Проверить rc_block_targets, ограничения по весам (min/max_single_security_weight_pct), rc_asset_cap_pct; при необходимости ослабить ограничения или добавить активы |

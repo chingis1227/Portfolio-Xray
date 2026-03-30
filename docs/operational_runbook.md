@@ -6,7 +6,7 @@ Short guide for **when to run optimization**, **how to handle universe and confi
 
 ## 1. When to re-run optimization
 
-Re-run `python run_optimization.py` (from project root) in these cases:
+Re-run `python run_optimization.py` (from project root; **default = two-stage** RiskPortfolio, see **docs/two_stage_optimization.md**; use `--single-stage` only for legacy parity) in these cases:
 
 | Trigger | Action |
 |--------|--------|

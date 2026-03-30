@@ -112,6 +112,11 @@ class PortfolioConfig:
     # RC_vol cap policy: "global" = feasibility §1 with N = RiskPortfolio size; "per_block_rb_k" = variant B (RB_block/k × multiplier)
     rc_cap_mode: str = "global"
     rc_cap_rb_k_multiplier: float = 1.25
+    # Two-stage stage2 (docs/two_stage_optimization.md): soft penalties for max_return vs target_vol / target return; 0 => runtime uses 12 / 8
+    optimization_soft_vol_penalty_lambda: float = 0.0
+    optimization_soft_return_penalty_lambda: float = 0.0
+    # Two-stage stage1: weight on Herfindahl(sum RC_vol^2) over blocks; 0 = RC-cap penalty only
+    risk_skeleton_concentration_lambda: float = 10.0
     # Deprecated: stress is diagnostic-only (DIAG_*); ignored for blocking. Kept for config compatibility.
     strict_stress_gate: bool = False
     # When True, use Ledoit-Wolf shrinkage for covariance in optimization/RC (more stable weights)
@@ -163,6 +168,9 @@ class PortfolioConfig:
             "rc_cap_penalty_lambda": self.rc_cap_penalty_lambda,
             "rc_cap_mode": self.rc_cap_mode,
             "rc_cap_rb_k_multiplier": self.rc_cap_rb_k_multiplier,
+            "optimization_soft_vol_penalty_lambda": self.optimization_soft_vol_penalty_lambda,
+            "optimization_soft_return_penalty_lambda": self.optimization_soft_return_penalty_lambda,
+            "risk_skeleton_concentration_lambda": self.risk_skeleton_concentration_lambda,
             "strict_stress_gate": self.strict_stress_gate,
             "covariance_shrinkage": self.covariance_shrinkage,
             "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
@@ -227,6 +235,9 @@ class PortfolioConfig:
             "rc_cap_penalty_lambda": self.rc_cap_penalty_lambda,
             "rc_cap_mode": self.rc_cap_mode,
             "rc_cap_rb_k_multiplier": self.rc_cap_rb_k_multiplier,
+            "optimization_soft_vol_penalty_lambda": self.optimization_soft_vol_penalty_lambda,
+            "optimization_soft_return_penalty_lambda": self.optimization_soft_return_penalty_lambda,
+            "risk_skeleton_concentration_lambda": self.risk_skeleton_concentration_lambda,
             "strict_stress_gate": self.strict_stress_gate,
             "covariance_shrinkage": self.covariance_shrinkage,
             "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
@@ -1003,6 +1014,36 @@ def _validate_rc_cap_mode(cfg: dict[str, Any]) -> None:
         )
 
 
+def _validate_risk_skeleton_concentration_lambda(cfg: dict[str, Any]) -> None:
+    v = cfg.get("risk_skeleton_concentration_lambda", 10.0)
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        raise ConfigValidationError(
+            f"Config field 'risk_skeleton_concentration_lambda' must be a non-negative number, got {v!r}"
+        ) from None
+    if f < 0:
+        raise ConfigValidationError(
+            f"Config field 'risk_skeleton_concentration_lambda' must be non-negative, got {f}"
+        )
+
+
+def _validate_optimization_soft_penalty_lambdas(cfg: dict[str, Any]) -> None:
+    """Optional soft IPS alignment lambdas (>= 0; 0 = do not use in optimizer unless caller passes explicitly)."""
+    for key in ("optimization_soft_vol_penalty_lambda", "optimization_soft_return_penalty_lambda"):
+        v = cfg.get(key, 0.0)
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            raise ConfigValidationError(
+                f"Config field {key!r} must be a non-negative number, got {v!r}"
+            ) from None
+        if f < 0:
+            raise ConfigValidationError(
+                f"Config field {key!r} must be non-negative, got {f}"
+            )
+
+
 def _identify_pending_fields(cfg: dict[str, Any]) -> list[str]:
     """Identify which constraint fields are still pending user input (null/None)."""
     pending = []
@@ -1063,6 +1104,8 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
     _validate_alpha_shift_params(cfg)
     _validate_rc_policy_mode(cfg)
     _validate_rc_cap_mode(cfg)
+    _validate_optimization_soft_penalty_lambdas(cfg)
+    _validate_risk_skeleton_concentration_lambda(cfg)
     _validate_backtest_mode(cfg)
     _validate_robustness_policy(cfg)
     _validate_optimization_windows(cfg)
@@ -1115,6 +1158,9 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         rc_cap_penalty_lambda=float(cfg.get("rc_cap_penalty_lambda", 25.0)),
         rc_cap_mode=cfg.get("rc_cap_mode", "global"),
         rc_cap_rb_k_multiplier=float(cfg.get("rc_cap_rb_k_multiplier", 1.25)),
+        optimization_soft_vol_penalty_lambda=float(cfg.get("optimization_soft_vol_penalty_lambda", 0.0)),
+        optimization_soft_return_penalty_lambda=float(cfg.get("optimization_soft_return_penalty_lambda", 0.0)),
+        risk_skeleton_concentration_lambda=float(cfg.get("risk_skeleton_concentration_lambda", 10.0)),
         strict_stress_gate=bool(cfg.get("strict_stress_gate", False)),
         covariance_shrinkage=bool(cfg.get("covariance_shrinkage", False)),
         young_etf_optimization_policy=dict(cfg.get("young_etf_optimization_policy") or DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY),

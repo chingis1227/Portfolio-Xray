@@ -39,6 +39,15 @@ RB_CORRIDOR_PP = 0.05
 RB_RANGE_EXPANSION_PP = 0.05
 RB_GRID_STEP_PP = 0.01
 RC_CAP_PENALTY_LAMBDA_DEFAULT = 25.0
+# Default weight for Herfindahl(sum RC_i^2) in risk_skeleton stage — spreads RC_vol when feasible
+DEFAULT_RISK_SKELETON_CONCENTRATION_LAMBDA = 10.0
+# Optimization objective modes (production Main default: two-stage risk_skeleton → max_return; see docs/two_stage_optimization.md)
+OBJECTIVE_MODE_MAX_RETURN = "max_return"
+# Equal RC_vol per asset: minimize sum_i (RC_i - 1/n)^2 (+ RC-cap penalty)
+OBJECTIVE_MODE_RISK_PARITY = "risk_parity"
+# Feasible skeleton: RC-cap penalty + minimize risk concentration (HHI on RC_vol shares)
+OBJECTIVE_MODE_RISK_SKELETON = "risk_skeleton"
+OBJECTIVE_MODES = (OBJECTIVE_MODE_MAX_RETURN, OBJECTIVE_MODE_RISK_PARITY, OBJECTIVE_MODE_RISK_SKELETON)
 
 
 def get_risk_portfolio_tickers(blocks: dict[str, list[str]]) -> list[str]:
@@ -257,11 +266,24 @@ def run_risk_budget_optimization(
     rc_cap_mode: str = RC_CAP_MODE_GLOBAL,
     rc_cap_rb_k_multiplier: float = DEFAULT_RC_CAP_RB_K_MULTIPLIER,
     rc_cap_penalty_lambda: float = RC_CAP_PENALTY_LAMBDA_DEFAULT,
+    objective_mode: str = OBJECTIVE_MODE_MAX_RETURN,
+    warm_start_weights: dict[str, float] | None = None,
+    skeleton_tracking_lambda: float = 0.0,
+    soft_target_vol_annual: float | None = None,
+    soft_vol_penalty_lambda: float = 0.0,
+    soft_target_return_annual: float | None = None,
+    soft_return_penalty_lambda: float = 0.0,
+    risk_skeleton_concentration_lambda: float = DEFAULT_RISK_SKELETON_CONCENTRATION_LAMBDA,
 ) -> tuple[dict[str, float], str]:
     """
     Find RiskPortfolio weights satisfying risk budget (RC block shares) and feasibility.
-    Objective: maximize expected return (Growth spec) with RC-cap penalty term.
+    Objective: maximize expected return (Growth spec) with RC-cap penalty term,
+    risk_parity: minimize sum_i (RC_i - 1/n)^2 + RC penalty;
+    risk_skeleton: RC penalty + lambda * sum_i RC_vol_i^2 (Herfindahl) to prefer least concentrated risk among feasible points.
     RC_vol cap control is penalty-first (soft objective), while structural constraints remain hard.
+    Optional warm_start_weights + skeleton_tracking_lambda tie a max_return stage to a prior skeleton.
+    Optional soft_* : when objective_mode=max_return and lambdas>0, add penalties
+    (sigma_annual - target_vol)^2 and (12*mu_monthly - target_return)^2 vs IPS/profile decimals.
     Returns (weights_dict, status_message).
     If returns_window is provided, it is used as the primary window (already sliced); otherwise
     the window is taken from returns_df and window_months.
@@ -306,6 +328,14 @@ def run_risk_budget_optimization(
                 rc_cap_mode=rc_cap_mode,
                 rc_cap_rb_k_multiplier=rc_cap_rb_k_multiplier,
                 rc_cap_penalty_lambda=rc_cap_penalty_lambda,
+                objective_mode=objective_mode,
+                warm_start_weights=warm_start_weights,
+                skeleton_tracking_lambda=skeleton_tracking_lambda,
+                soft_target_vol_annual=soft_target_vol_annual,
+                soft_vol_penalty_lambda=soft_vol_penalty_lambda,
+                soft_target_return_annual=soft_target_return_annual,
+                soft_return_penalty_lambda=soft_return_penalty_lambda,
+                risk_skeleton_concentration_lambda=risk_skeleton_concentration_lambda,
             )
             if not w_try:
                 if "FAIL_DATA" in st_try and not best_weights:
@@ -527,13 +557,61 @@ def run_risk_budget_optimization(
     em_debt_indices = [i for i, t in enumerate(cols) if t in growth_em_debt_set]
 
     penalty_lambda = float(rc_cap_penalty_lambda) if rc_cap_penalty_lambda > 0 else RC_CAP_PENALTY_LAMBDA_DEFAULT
+    obj_mode = objective_mode if objective_mode in OBJECTIVE_MODES else OBJECTIVE_MODE_MAX_RETURN
+    obj_mode_invalid = objective_mode not in OBJECTIVE_MODES
+    track_lam = float(skeleton_tracking_lambda) if skeleton_tracking_lambda > 0 else 0.0
+    w_ref_vec: np.ndarray | None = None
+    if track_lam > 0 and obj_mode == OBJECTIVE_MODE_MAX_RETURN and warm_start_weights:
+        w_ref_vec = np.array([float(warm_start_weights.get(t, 0.0)) for t in cols], dtype=float)
+        sr = float(w_ref_vec.sum())
+        if sr > 1e-12:
+            w_ref_vec = w_ref_vec / sr
+        else:
+            w_ref_vec = None
+
+    rc_cap_arr = np.array(rc_cap_per_asset, dtype=float)
+
+    stv = float(soft_target_vol_annual) if soft_target_vol_annual is not None else None
+    lam_sv = float(soft_vol_penalty_lambda) if soft_vol_penalty_lambda and soft_vol_penalty_lambda > 0 else 0.0
+    st_ret = float(soft_target_return_annual) if soft_target_return_annual is not None else None
+    lam_sr = float(soft_return_penalty_lambda) if soft_return_penalty_lambda and soft_return_penalty_lambda > 0 else 0.0
+    skel_conc_lam = (
+        float(risk_skeleton_concentration_lambda)
+        if risk_skeleton_concentration_lambda and risk_skeleton_concentration_lambda > 0
+        else 0.0
+    )
 
     def objective(w: np.ndarray) -> float:
         # RC cap as soft penalty (not hard inequality): encourages concentration control while preserving feasibility.
         pc = _pc_from_w(w, cov)
-        rc_viol = np.maximum(0.0, pc - np.array(rc_cap_per_asset, dtype=float))
+        rc_viol = np.maximum(0.0, pc - rc_cap_arr)
         rc_pen = float(np.sum(rc_viol * rc_viol))
-        return -float(np.dot(mu, w)) + penalty_lambda * rc_pen
+        base = penalty_lambda * rc_pen
+        if obj_mode == OBJECTIVE_MODE_RISK_PARITY:
+            target = 1.0 / float(n)
+            rp_dev = float(np.sum((pc - target) ** 2))
+            return rp_dev + base
+        if obj_mode == OBJECTIVE_MODE_RISK_SKELETON:
+            # Herfindahl on RC_vol: lower => less concentrated risk; min 1/n when equal RC
+            hhi_rc = float(np.sum(pc * pc))
+            return base + skel_conc_lam * hhi_rc
+        track = 0.0
+        if w_ref_vec is not None:
+            d = w - w_ref_vec
+            track = track_lam * float(np.dot(d, d))
+        soft_ips = 0.0
+        if lam_sv > 0 and stv is not None:
+            var_p = float(w @ cov @ w)
+            sigma_m = math.sqrt(max(var_p, 0.0))
+            sigma_ann = sigma_m * math.sqrt(12.0)
+            dv = sigma_ann - stv
+            soft_ips += lam_sv * (dv * dv)
+        if lam_sr > 0 and st_ret is not None:
+            mu_m = float(np.dot(mu, w))
+            ret_ann_lin = 12.0 * mu_m
+            dr = ret_ann_lin - st_ret
+            soft_ips += lam_sr * (dr * dr)
+        return -float(np.dot(mu, w)) + base + track + soft_ips
 
     def constraint_sum(w: np.ndarray) -> float:
         return float(np.sum(w) - 1.0)
@@ -645,6 +723,15 @@ def run_risk_budget_optimization(
         ri = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Inflation") - rb_inflation
         return s * s + rg * rg + rd * rd + ri * ri
 
+    bounds_hi = np.array([b[1] for b in bounds])
+    x0_from_warm: np.ndarray | None = None
+    if warm_start_weights:
+        xw = np.array([float(warm_start_weights.get(t, 0.0)) for t in cols], dtype=float)
+        xw = np.clip(xw, min_weight, bounds_hi - 1e-6)
+        sw = float(xw.sum())
+        if sw > 1e-12:
+            x0_from_warm = xw / sw
+
     x0 = np.zeros(n)
     for b, target in (("Growth", rb_growth), ("Duration", rb_duration), ("Inflation", rb_inflation)):
         idx = [i for i, t in enumerate(cols) if ticker_to_block.get(t) == b]
@@ -659,18 +746,20 @@ def run_risk_budget_optimization(
                 x0[idx] = target / len(idx)
     if np.abs(x0.sum() - 1.0) > 1e-6:
         x0 = np.ones(n) / n
-    x0 = np.clip(x0, min_weight, np.array([b[1] for b in bounds]) - 1e-6)
+    x0 = np.clip(x0, min_weight, bounds_hi - 1e-6)
     x0 = x0 / x0.sum()
 
     feas = minimize(penalty_rc, x0, method="L-BFGS-B", bounds=bounds, options={"maxiter": 300})
-    if feas.fun < 1e-6:
-        x0 = feas.x
+    if x0_from_warm is not None:
+        x0_slsqp = x0_from_warm.copy()
+    elif feas.fun < 1e-6:
+        x0_slsqp = feas.x
     else:
-        x0 = feas.x / feas.x.sum()
+        x0_slsqp = feas.x / feas.x.sum()
 
     res = minimize(
         objective,
-        x0.copy(),
+        x0_slsqp.copy(),
         method="SLSQP",
         bounds=bounds,
         constraints=constraints_full,
@@ -680,7 +769,7 @@ def run_risk_budget_optimization(
     if not res.success:
         res = minimize(
             objective,
-            x0.copy(),
+            x0_slsqp.copy(),
             method="SLSQP",
             bounds=bounds,
             constraints=constraints_core,
@@ -718,6 +807,19 @@ def run_risk_budget_optimization(
     if rc_cap_viol_tickers:
         status_parts.append(f"VIOL_RC_ASSET_CAP: {rc_cap_viol_tickers}")
     status_parts.append(f"RC_CAP_PENALTY_LAMBDA={penalty_lambda:.2f}")
+    status_parts.append(f"OBJECTIVE_MODE={obj_mode}")
+    if obj_mode_invalid:
+        status_parts.append(f"OBJECTIVE_MODE_INVALID: {objective_mode!r} -> max_return")
+    if warm_start_weights:
+        status_parts.append("WARM_START=on")
+    if track_lam > 0 and w_ref_vec is not None:
+        status_parts.append(f"SKEL_TRACK_LAMBDA={track_lam:.4g}")
+    if lam_sv > 0 and stv is not None:
+        status_parts.append(f"SOFT_VOL_TARGET={stv:.4f} LAMBDA={lam_sv:.4g}")
+    if lam_sr > 0 and st_ret is not None:
+        status_parts.append(f"SOFT_RET_TARGET={st_ret:.4f} LAMBDA={lam_sr:.4g}")
+    if obj_mode == OBJECTIVE_MODE_RISK_SKELETON:
+        status_parts.append(f"SKEL_HHI_LAMBDA={skel_conc_lam:.4g}")
     status_parts.append(f"RC G/D/I: {rc_g:.3f}/{rc_d:.3f}/{rc_i:.3f}")
     status_msg = " | ".join(status_parts)
     return w_dict, status_msg

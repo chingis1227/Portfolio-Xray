@@ -22,6 +22,8 @@ RB target search order used by optimization:
 2. profile `min/max` range search (if `rc_block_target_ranges` is available);
 3. expanded range search (`min - 5 pp`, `max + 5 pp`, clipped to `[0, 1]`).
 
+**Default `run_optimization.py` (two-stage):** this search runs in **stage 1** (`risk_skeleton`) only. **Stage 2** holds the **selected** triple fixed (see **docs/two_stage_optimization.md**). **`--single-stage`** uses the same search order once, in a single `max_return` pass.
+
 The RB corridor validator is applied to each tested target and still uses target ± 5 pp by default.
 
 `run_result.json` includes `rb_target_selection` with:
