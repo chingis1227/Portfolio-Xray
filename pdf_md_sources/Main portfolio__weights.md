@@ -1,37 +1,37 @@
 ---
 title: "Main Portfolio — Optimized Weights"
 subtitle: "Weights"
-date: "2026-03-28 00:24 Центральная Европа (зима)"
+date: "2026-03-31 00:27 Центральная Европа (лето)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
 ---
 ## Report scope / source context
 - **Weights source:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/Main portfolio/portfolio_weights.yml`
-- **Generated:** 2026-03-28 00:24 Центральная Европа (зима)
+- **Generated:** 2026-03-31 00:27 Центральная Европа (лето)
 
 ## Weights
 
 | Ticker | Weight |
 | --- | ---: |
-| **VOO** | 17.00% |
-| **QQQ** | 14.60% |
-| **SMH** | 10.70% |
-| **URA** | 9.70% |
-| **COPX** | 8.30% |
-| **ITA** | 6.80% |
-| **GLD** | 5.70% |
-| **SCHP** | 4.40% |
-| **BIL** | 2.90% |
-| **SLV** | 2.50% |
-| **BBJP** | 1.90% |
-| **BND** | 1.90% |
-| **CIBR** | 1.90% |
-| **ROBO** | 1.90% |
-| **SCHD** | 1.90% |
-| **VDC** | 1.90% |
-| **VGK** | 1.90% |
-| **VT** | 1.90% |
-| **VWO** | 1.90% |
+| **BND** | 36.00% |
+| **SCHP** | 12.70% |
+| **BIL** | 10.00% |
+| **GLD** | 5.90% |
+| **VOO** | 4.20% |
+| **VDC** | 3.80% |
+| **BBJP** | 2.90% |
+| **SCHD** | 2.70% |
+| **VWO** | 2.70% |
+| **CIBR** | 2.60% |
+| **SLV** | 2.30% |
+| **VT** | 2.30% |
+| **QQQ** | 2.10% |
+| **VGK** | 2.10% |
+| **ITA** | 2.00% |
+| **ROBO** | 1.60% |
+| **URA** | 1.50% |
+| **SMH** | 1.40% |
+| **COPX** | 1.00% |
 
-**Sum:** 99.70%
+**Sum:** 99.80%

@@ -102,3 +102,35 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
     assert "equity_shock" in text
     assert "нестрессирующая" in text or "диагностик" in text.lower()
     assert "URA" in text
+
+    # Regression + rolling blocks when present in stress_report
+    stress2 = {
+        **stress,
+        "factor_regression_5y": {
+            "n_obs": 100,
+            "r2": 0.9,
+            "adj_r2": 0.89,
+            "intercept": 0.001,
+            "se_type": "classic_ols",
+            "alpha": 0.05,
+            "ci_level": 0.95,
+            "betas": {"beta_eq": 0.5},
+            "t": {"beta_eq": 2.0},
+            "p": {"beta_eq": 0.01},
+            "ci_low": {"beta_eq": 0.1},
+            "ci_high": {"beta_eq": 0.9},
+        },
+        "factor_betas_rolling_windows_weeks": {"3y": 156},
+        "factor_betas_rolling_summary": {
+            "3y": {
+                "beta_eq": {"n_points": 10, "mean": 0.5, "median": 0.5, "p10": 0.4, "p90": 0.6},
+            }
+        },
+        "factor_betas_rolling_artifacts": {"plot_png_by_window": {"3y": "rolling_factor_betas_3y.png"}},
+    }
+    out2 = write_stress_commentary(final, stress_report=stress2, analysis_end="2026-02-28")
+    text2 = out2.read_text(encoding="utf-8")
+    assert "Портфельная факторная регрессия (5Y)" in text2
+    assert "R²=" in text2 or "R" in text2
+    assert "Скользящие окна" in text2
+    assert "rolling_factor_betas_3y.png" in text2

@@ -1,7 +1,7 @@
 ---
 title: "Equal-Weight vs Risk-Parity — Comparison Report"
 subtitle: "Analytical comparison of baseline portfolios"
-date: "2026-03-28 00:24 Центральная Европа (зима)"
+date: "2026-03-31 00:26 Центральная Европа (лето)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
@@ -9,7 +9,7 @@ fontsize: 11pt
 ## Report scope / source context
 - **Primary data:** `ew_rp_comparison.json` (machine-readable comparison).
 - **Source file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/Main portfolio/ew_rp_comparison.json`
-- **Generated:** 2026-03-28 00:24 Центральная Европа (зима)
+- **Generated:** 2026-03-31 00:26 Центральная Европа (лето)
 - **Window:** 10y (`window_months=120`), **analysis_end** = 2026-02-28.
 - **Delta rule:** delta = equal_weight - risk_parity.
 
@@ -18,7 +18,7 @@ fontsize: 11pt
 - Дельта: **delta = equal_weight - risk_parity**.
 - Доходность: EW **15.20%** vs RP **8.40%** (Δ **6.80%**).
 - Риск: EW **13.00%** vs RP **6.60%**; max DD EW **-20.90%** vs RP **-12.50%**.
-- Стресс: EW **FAIL_STRESS** (FAIL_RC_TOP1_EQUITY_SHOCK); RP **PASS_WITH_WARNING** (None).
+- Стресс: EW **DIAG_ATTENTION** (DIAG_RC_TOP1_EQUITY_SHOCK); RP **PASS_WITH_WARNING** (None).
 
 ## Core metrics (10Y window)
 
@@ -121,7 +121,7 @@ fontsize: 11pt
 | **VWO** | — | 5.90% | — |
 
 ## Stress and validation flags
-- **EW:** stress **FAIL_STRESS**, reason `FAIL_RC_TOP1_EQUITY_SHOCK`, portfolio_valid **True**.
+- **EW:** stress **DIAG_ATTENTION**, reason `DIAG_RC_TOP1_EQUITY_SHOCK`, portfolio_valid **True**.
 - **RP:** stress **PASS_WITH_WARNING**, reason `None`, portfolio_valid **True**.
 
 ## Key takeaways

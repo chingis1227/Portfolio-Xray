@@ -1,7 +1,7 @@
 ---
 title: "Main Portfolio — Stress Commentary (policy run)"
 subtitle: "Commentary"
-date: "2026-03-28 00:24 Центральная Европа (зима)"
+date: "2026-03-31 00:27 Центральная Европа (лето)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
@@ -10,13 +10,13 @@ fontsize: 11pt
 - **Folder:** `Main portfolio`
 - **Basis:** stress commentary (scenarios, RC, historical episodes).
 - **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/Main portfolio/stress_commentary.txt`
-- **Generated:** 2026-03-28 00:24 Центральная Европа (зима)
+- **Generated:** 2026-03-31 00:27 Центральная Европа (лето)
 
 ## Executive summary
-Прогон: основной портфель (Main portfolio); конец выборки (analysis_end): 2026-02-28. Итоговый статус стресс-набора в stress_report: DIAG_ATTENTION. Основной код (primary / fail_reason): DIAG_RC_TOP1_EQUITY_SHOCK. Список diagnostic_codes: DIAG_RC_TOP1_EQUITY_SHOCK, DIAG_RC_TOP1_CREDIT_SHOCK, DIAG_RC_TOP1_RATES_SHOCK, DIAG_RC_TOP1_INFLATION_STAGFLATION, DIAG_RC_TOP1_LIQUIDITY_SHOCK.
+Прогон: основной портфель (Main portfolio); конец выборки (analysis_end): 2026-02-28. Итоговый статус стресс-набора в stress_report: DIAG_PASS_WITH_WARNING. Основной код (primary / fail_reason): —. Список diagnostic_codes: —.
 По рабочему процессу проекта синтетические сценарии и исторические эпизоды в этом файле — диагностика для PM и не блокируют выпуск весов; блокирующий контур по максимальной просадке задаётся отдельно (mandate_check / IPS, полная пересекающаяся история).
 Предупреждение в отчёте: WARN_ROLE_EQUITY_DEFENSIVE_WEAK.
-Худший сценарный PnL портфеля (worst_scenario_loss_pct): -31.12%; именованный сценарий: equity_shock; поле failed_test: RC_Top1.
+Худший сценарный PnL портфеля (worst_scenario_loss_pct): -10.22%; именованный сценарий: —; поле failed_test: —.
 
 
 ## Preamble
@@ -27,49 +27,96 @@ Source: stress_report.json (текущий прогон)
 ## Metric-by-Metric Interpretation
 
 Синтетические сценарии (stress_report.scenario_results): для каждого сценария ниже — PnL портфеля, итог pass, флаги loss_ok / role_ok / rc1_ok / rc3_ok и топ-1 вклад в риск (Top1 RC), как в JSON. pass=false при нарушении любого из тестов сценария.
-- equity_shock: PnL≈-31.12%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: URA (18.46%).
-- credit_shock: PnL≈-9.49%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: URA (18.46%).
-- rates_shock: PnL≈-0.05%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: COPX (16.02%).
-- inflation_stagflation: PnL≈-12.60%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: COPX (16.02%).
-- liquidity_shock: PnL≈-20.73%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: URA (18.56%).
-Коды по сценариям (уникально): DIAG_RC_TOP1_EQUITY_SHOCK, DIAG_RC_TOP1_CREDIT_SHOCK, DIAG_RC_TOP1_RATES_SHOCK, DIAG_RC_TOP1_INFLATION_STAGFLATION, DIAG_RC_TOP1_LIQUIDITY_SHOCK.
-Факторные беты портфеля (недельная оценка, см. спецификацию): 5Y≈{beta_cmd=0.1184, beta_credit=-0.4271, beta_eq=0.7756, beta_inf=0.6499, beta_rr=-0.0231, beta_usd=-0.7611}; 10Y≈{beta_cmd=0.0892, beta_credit=0.2900, beta_eq=0.8083, beta_inf=1.3395, beta_rr=-0.3423, beta_usd=-0.5711}.
+- equity_shock: PnL≈-10.22%, pass=True, loss_ok=True, role_ok=True, rc1_ok=True, rc3_ok=True; Top1 RC: BND (12.46%).
+- credit_shock: PnL≈-3.62%, pass=True, loss_ok=True, role_ok=True, rc1_ok=True, rc3_ok=True; Top1 RC: BND (12.46%).
+- rates_shock: PnL≈-6.17%, pass=True, loss_ok=True, role_ok=True, rc1_ok=True, rc3_ok=True; Top1 RC: BND (18.06%).
+- inflation_stagflation: PnL≈-5.60%, pass=True, loss_ok=True, role_ok=True, rc1_ok=True, rc3_ok=True; Top1 RC: BND (18.06%).
+- liquidity_shock: PnL≈-7.18%, pass=True, loss_ok=True, role_ok=True, rc1_ok=True, rc3_ok=True; Top1 RC: BND (10.31%).
+Факторные беты портфеля (недельная оценка, см. спецификацию): 5Y≈{beta_cmd=0.0422, beta_credit=-0.2648, beta_eq=0.2550, beta_inf=-1.9778, beta_rr=-3.0783, beta_usd=-0.3780}; 10Y≈{beta_cmd=0.0301, beta_credit=-0.2073, beta_eq=0.2749, beta_inf=-1.5998, beta_rr=-3.5317, beta_usd=-0.3056}.
+Портфельная факторная регрессия (5Y), недельные ряды, OLS: n_obs=260, R²=0.9105, adj R²=0.9083, intercept=0.0010, se_type=classic_ols, alpha=0.05 (CI уровень 0.95).
+По факторам (β, t, p, 95% CI):
+- beta_eq: β=0.2550, t=19.987, p=<1e-6, CI=[0.2299; 0.2801]
+- beta_rr: β=-3.0783, t=-17.988, p=<1e-6, CI=[-3.4153; -2.7413]
+- beta_inf: β=-1.9778, t=-6.711, p=<1e-6, CI=[-2.5582; -1.3974]
+- beta_credit: β=-0.2648, t=-2.027, p=0.043706, CI=[-0.5221; -0.0075]
+- beta_usd: β=-0.3780, t=-11.707, p=<1e-6, CI=[-0.4416; -0.3144]
+- beta_cmd: β=0.0422, t=5.179, p=<1e-6, CI=[0.0261; 0.0582]
+
+Портфельная факторная регрессия (10Y), недельные ряды, OLS: n_obs=520, R²=0.9163, adj R²=0.9153, intercept=0.0008, se_type=classic_ols, alpha=0.05 (CI уровень 0.95).
+По факторам (β, t, p, 95% CI):
+- beta_eq: β=0.2729, t=30.462, p=<1e-6, CI=[0.2553; 0.2905]
+- beta_rr: β=-3.5355, t=-26.309, p=<1e-6, CI=[-3.7995; -3.2715]
+- beta_inf: β=-1.6091, t=-7.092, p=<1e-6, CI=[-2.0548; -1.1633]
+- beta_credit: β=-0.2210, t=-2.777, p=0.005694, CI=[-0.3773; -0.0646]
+- beta_usd: β=-0.2987, t=-13.400, p=<1e-6, CI=[-0.3425; -0.2549]
+- beta_cmd: β=0.0304, t=4.765, p=0.000002, CI=[0.0178; 0.0429]
+
+Скользящие окна (недель): 10y=520, 3y=156, 5y=260.
+Сводка скользящих β (по всей доступной истории в прогоне): mean, median, p10, p90:
+Окно 3y:
+  beta_eq: n=888, mean=0.2296, median=0.2410, p10=0.1351, p90=0.2852
+  beta_rr: n=888, mean=-2.9863, median=-3.0800, p10=-4.5041, p90=-1.5083
+  beta_inf: n=888, mean=-1.5796, median=-1.4778, p10=-2.3720, p90=-0.9214
+  beta_credit: n=888, mean=-0.1591, median=-0.1859, p10=-0.3280, p90=0.0147
+  beta_usd: n=888, mean=-0.2684, median=-0.2444, p10=-0.4008, p90=-0.1897
+  beta_cmd: n=888, mean=0.0321, median=0.0302, p10=0.0112, p90=0.0537
+
+Окно 5y:
+  beta_eq: n=784, mean=0.2323, median=0.2552, p10=0.1448, p90=0.2843
+  beta_rr: n=784, mean=-3.0210, median=-3.1254, p10=-4.3716, p90=-1.5059
+  beta_inf: n=784, mean=-1.5433, median=-1.4856, p10=-2.2215, p90=-1.0347
+  beta_credit: n=784, mean=-0.1750, median=-0.2265, p10=-0.3069, p90=0.0225
+  beta_usd: n=784, mean=-0.2634, median=-0.2470, p10=-0.3609, p90=-0.2053
+  beta_cmd: n=784, mean=0.0310, median=0.0329, p10=0.0150, p90=0.0478
+
+Окно 10y:
+  beta_eq: n=524, mean=0.2378, median=0.2648, p10=0.1702, p90=0.2716
+  beta_rr: n=524, mean=-3.0496, median=-3.4897, p10=-3.6523, p90=-1.9878
+  beta_inf: n=524, mean=-1.6418, median=-1.6902, p10=-1.8590, p90=-1.3691
+  beta_credit: n=524, mean=-0.1944, median=-0.2705, p10=-0.3323, p90=0.0117
+  beta_usd: n=524, mean=-0.2422, median=-0.2394, p10=-0.2727, p90=-0.2104
+  beta_cmd: n=524, mean=0.0314, median=0.0296, p10=0.0246, p90=0.0399
+
+Файлы графиков скользящих β (PNG, папка прогона): 10y→rolling_factor_betas_10y.png, 3y→rolling_factor_betas_3y.png, 5y→rolling_factor_betas_5y.png
+![Rolling factor betas — 3y](../Main portfolio/rolling_factor_betas_3y.png)
+![Rolling factor betas — 5y](../Main portfolio/rolling_factor_betas_5y.png)
+![Rolling factor betas — 10y](../Main portfolio/rolling_factor_betas_10y.png)
 
 
 ## Risk Structure
 
-rc_asset_cap_used=0.1000 (доля Top1 RC, контекст отчёта); stress_top3_rc_sum_cap=0.7000; max_dd_limit (эпизоды/контекст в отчёте)=35.00%
-По сценариям Top1 RC по сценариям (см. таблицу выше): equity_shock URA=18.5%, credit_shock URA=18.5%, rates_shock COPX=16.0%, inflation_stagflation COPX=16.0%, liquidity_shock URA=18.6%.
+rc_asset_cap_used=0.1000 (доля Top1 RC, контекст отчёта); stress_top3_rc_sum_cap=0.7000; max_dd_limit (эпизоды/контекст в отчёте)=20.00%
+По сценариям Top1 RC по сценариям (см. таблицу выше): equity_shock BND=12.5%, credit_shock BND=12.5%, rates_shock BND=18.1%, inflation_stagflation BND=18.1%, liquidity_shock BND=10.3%.
 Исторические эпизоды (historical_results):
 - 2008: max_dd≈н/д, pass=None, vol_annualized_episode≈н/д, diagnostic_code=—.
-- 2020: max_dd≈-11.59%, pass=True, vol_annualized_episode≈0.4443, diagnostic_code=—.
-- 2022: max_dd≈-22.45%, pass=True, vol_annualized_episode≈0.2020, diagnostic_code=—.
+- 2020: max_dd≈-5.16%, pass=True, vol_annualized_episode≈0.1919, diagnostic_code=—.
+- 2022: max_dd≈-15.72%, pass=True, vol_annualized_episode≈0.0961, diagnostic_code=—.
 
 
 ## Strengths
 
 Во всех синтетических сценариях loss_ok=true — глубина потерь в рамках порогов loss-теста.
 Во всех сценариях rc3_ok=true — суммарный Top3 RC не нарушает stress_top3_rc_sum_cap.
+Есть сценарии с pass=true.
 Исторический эпизод 2020 помечен pass=true.
 Исторический эпизод 2022 помечен pass=true.
+Статус набора DIAG_PASS_WITH_WARNING — без уровня DIAG_ATTENTION.
 
 ## Weaknesses
 
-DIAG_ATTENTION: зафиксированы диагностические коды (DIAG_RC_TOP1_EQUITY_SHOCK, DIAG_RC_TOP1_CREDIT_SHOCK, DIAG_RC_TOP1_RATES_SHOCK, DIAG_RC_TOP1_INFLATION_STAGFLATION, DIAG_RC_TOP1_LIQUIDITY_SHOCK); для PM имеет смысл разобрать scenario_results и historical_results.
-Во всех сценариях rc1_ok=false — концентрация Top1 RC выше порога rc_asset_cap_used.
 warning_code=WARN_ROLE_EQUITY_DEFENSIVE_WEAK (роль защитных блоков / прочее — см. stress_report).
 Эпизод 2008: max_dd н/д — интерпретация ограничена.
 
 ## Scenario Behavior
 
-equity_shock: PnL≈-31.12%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
-credit_shock: PnL≈-9.49%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
-rates_shock: PnL≈-0.05%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
-inflation_stagflation: PnL≈-12.60%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
-liquidity_shock: PnL≈-20.73%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
+equity_shock: PnL≈-10.22%, итог pass=True — см. loss/role/rc в Metric-by-Metric.
+credit_shock: PnL≈-3.62%, итог pass=True — см. loss/role/rc в Metric-by-Metric.
+rates_shock: PnL≈-6.17%, итог pass=True — см. loss/role/rc в Metric-by-Metric.
+inflation_stagflation: PnL≈-5.60%, итог pass=True — см. loss/role/rc в Metric-by-Metric.
+liquidity_shock: PnL≈-7.18%, итог pass=True — см. loss/role/rc в Metric-by-Metric.
 
 
 ## Final Conclusion
 
-основной портфель (Main portfolio): стресс-набор DIAG_ATTENTION (DIAG_RC_TOP1_EQUITY_SHOCK). Синтетические потери и RC-диагностика отражают текущий состав и Σ из прогона; решения по выпуску весов сверяйте с mandate_check и run_result, а этот файл используйте как сценарную справку для PM.
+основной портфель (Main portfolio): стресс-набор DIAG_PASS_WITH_WARNING (—). Синтетические потери и RC-диагностика отражают текущий состав и Σ из прогона; решения по выпуску весов сверяйте с mandate_check и run_result, а этот файл используйте как сценарную справку для PM.
 

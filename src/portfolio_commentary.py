@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 from pathlib import Path
 from typing import Any
 
@@ -97,6 +98,109 @@ def _fmt_beta_dict(d: dict[str, Any] | None) -> str:
     for k in sorted(d.keys()):
         parts.append(f"{k}={_fmt_float(d.get(k), 4)}")
     return ", ".join(parts) if parts else "н/д"
+
+
+_BETA_ROW_ORDER = (
+    "beta_eq",
+    "beta_rr",
+    "beta_inf",
+    "beta_credit",
+    "beta_usd",
+    "beta_cmd",
+)
+
+
+def _relpath_for_pdf_md_image(image_file: Path, output_dir_final: Path) -> str | None:
+    """Relative POSIX path from pdf_md_sources/ to image; for Pandoc when building stress_commentary PDF."""
+    try:
+        project_root = output_dir_final.resolve().parent
+        md_sources = project_root / "pdf_md_sources"
+        if not md_sources.is_dir():
+            return None
+        rel = os.path.relpath(image_file.resolve(), md_sources.resolve())
+        return Path(rel).as_posix()
+    except Exception:
+        return None
+
+
+def _fmt_p_value(x: Any) -> str:
+    if x is None:
+        return "н/д"
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return "н/д"
+    if v == 0.0 or (isinstance(v, float) and v < 1e-6):
+        return "<1e-6"
+    return _fmt_float(v, 6)
+
+
+def _append_factor_regression_block(lines: list[str], fr: Any, label: str) -> None:
+    if not isinstance(fr, dict) or not fr:
+        return
+    betas = fr.get("betas") or {}
+    t_d = fr.get("t") or {}
+    p_d = fr.get("p") or {}
+    lo = fr.get("ci_low") or {}
+    hi = fr.get("ci_high") or {}
+    lines.append(
+        f"Портфельная факторная регрессия ({label}), недельные ряды, OLS: "
+        f"n_obs={fr.get('n_obs', 'н/д')}, R²={_fmt_float(fr.get('r2'), 4)}, "
+        f"adj R²={_fmt_float(fr.get('adj_r2'), 4)}, intercept={_fmt_float(fr.get('intercept'), 4)}, "
+        f"se_type={fr.get('se_type', '—')}, alpha={fr.get('alpha', '—')} (CI уровень {fr.get('ci_level', '—')})."
+    )
+    lines.append("По факторам (β, t, p, 95% CI):")
+    for key in _BETA_ROW_ORDER:
+        if key not in betas and key not in t_d:
+            continue
+        lines.append(
+            f"- {key}: β={_fmt_float(betas.get(key), 4)}, t={_fmt_float(t_d.get(key), 3)}, "
+            f"p={_fmt_p_value(p_d.get(key))}, CI=[{_fmt_float(lo.get(key), 4)}; {_fmt_float(hi.get(key), 4)}]"
+        )
+    lines.append("")
+
+
+def _append_rolling_betas_block(lines: list[str], st: dict[str, Any], output_dir_final: Path) -> None:
+    rw = st.get("factor_betas_rolling_windows_weeks")
+    if isinstance(rw, dict) and rw:
+        lines.append(f"Скользящие окна (недель): {', '.join(f'{k}={v}' for k, v in sorted(rw.items()))}.")
+
+    summ = st.get("factor_betas_rolling_summary")
+    if isinstance(summ, dict) and summ:
+        lines.append("Сводка скользящих β (по всей доступной истории в прогоне): mean, median, p10, p90:")
+        for win in sorted(summ.keys(), key=lambda x: (len(str(x)), str(x))):
+            by_b = summ.get(win) or {}
+            if not isinstance(by_b, dict):
+                continue
+            lines.append(f"Окно {win}:")
+            for bkey in _BETA_ROW_ORDER:
+                row = by_b.get(bkey)
+                if not isinstance(row, dict):
+                    continue
+                lines.append(
+                    f"  {bkey}: n={row.get('n_points', '—')}, mean={_fmt_float(row.get('mean'), 4)}, "
+                    f"median={_fmt_float(row.get('median'), 4)}, p10={_fmt_float(row.get('p10'), 4)}, "
+                    f"p90={_fmt_float(row.get('p90'), 4)}"
+                )
+            lines.append("")
+    elif st.get("factor_betas_rolling_error"):
+        lines.append(f"Скользящие беты: ошибка расчёта — {st.get('factor_betas_rolling_error')}")
+
+    art = st.get("factor_betas_rolling_artifacts")
+    if isinstance(art, dict):
+        png_map = art.get("plot_png_by_window") or {}
+        if png_map:
+            lines.append("Файлы графиков скользящих β (PNG, папка прогона): " + ", ".join(f"{k}→{v}" for k, v in sorted(png_map.items())))
+
+    labels = ("3y", "5y", "10y")
+    for lbl in labels:
+        png = output_dir_final / f"rolling_factor_betas_{lbl}.png"
+        if not png.is_file():
+            continue
+        rel = _relpath_for_pdf_md_image(png, output_dir_final)
+        if rel:
+            lines.append(f"![Rolling factor betas — {lbl}]({rel})")
+    lines.append("")
 
 
 def write_stress_commentary(
@@ -221,6 +325,19 @@ def write_stress_commentary(
         f"Факторные беты портфеля (недельная оценка, см. спецификацию): 5Y≈{{{_fmt_beta_dict(fb5 if isinstance(fb5, dict) else {})}}}; "
         f"10Y≈{{{_fmt_beta_dict(fb10 if isinstance(fb10, dict) else {})}}}."
     )
+    fr5 = st.get("factor_regression_5y")
+    fr10 = st.get("factor_regression_10y")
+    if isinstance(fr5, dict) and fr5:
+        _append_factor_regression_block(lines, fr5, "5Y")
+    elif st.get("factor_regression_5y_error"):
+        lines.append(f"Регрессия факторов 5Y: не посчитана — {st.get('factor_regression_5y_error')}")
+        lines.append("")
+    if isinstance(fr10, dict) and fr10:
+        _append_factor_regression_block(lines, fr10, "10Y")
+    elif st.get("factor_regression_10y_error"):
+        lines.append(f"Регрессия факторов 10Y: не посчитана — {st.get('factor_regression_10y_error')}")
+        lines.append("")
+    _append_rolling_betas_block(lines, st, output_dir_final)
     lines.append("")
 
     lines.append("Risk Structure")

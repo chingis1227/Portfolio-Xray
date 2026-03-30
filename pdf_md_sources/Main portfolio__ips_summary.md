@@ -1,14 +1,14 @@
 ---
 title: "IPS Summary — Policy Run"
 subtitle: "Main portfolio"
-date: "2026-03-28 00:24 Центральная Европа (зима)"
+date: "2026-03-31 00:27 Центральная Европа (лето)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
 ---
 ## Report scope / source context
 - **Source:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/Main portfolio/ips_summary.txt`
-- **Generated:** 2026-03-28 00:24 Центральная Европа (зима)
+- **Generated:** 2026-03-31 00:27 Центральная Европа (лето)
 
 ## Executive summary
 _See numbered sections below._
@@ -17,73 +17,79 @@ _See numbered sections below._
 
 ### 1. Mandate parameters
 
-- Target volatility (annual):  17.0%
-- Max drawdown limit:          35.0%
+- Target volatility (annual):  8.5%
+- Max drawdown limit:          20.0%
 - Horizon (years):             10.0
 - Investor currency:           USD
-- Client profile:              Aggressive
+- Client profile:              Balanced
 
 ### 2. Mandate check (blocking)
 
-- Run status:                  OK_FALLBACK
+- Run status:                  CANDIDATE_RB_BREACH
 - Historical MaxDD pass:       True
-- Realized MaxDD (full hist.): -22.46%
+- Realized MaxDD (full hist.): -15.73%
 - History window:              2018-07-31 00:00:00 .. 2026-03-31 00:00:00 (93 months)
 - Note: Only this historical MaxDD vs mandate can block weight release.
 
 ### 3. Final portfolio weights
 
-- VOO: 0.170
-- QQQ: 0.146
-- SMH: 0.107
-- URA: 0.097
-- COPX: 0.083
-- ITA: 0.068
-- GLD: 0.057
-- SCHP: 0.044
-- BIL: 0.029
-- SLV: 0.025
-- BBJP: 0.019
-- BND: 0.019
-- CIBR: 0.019
-- ROBO: 0.019
-- SCHD: 0.019
-- VDC: 0.019
-- VGK: 0.019
-- VT: 0.019
-- VWO: 0.019
-- (sum: 0.997)
+- BND: 0.360
+- SCHP: 0.127
+- BIL: 0.100
+- GLD: 0.059
+- VOO: 0.042
+- VDC: 0.038
+- BBJP: 0.029
+- SCHD: 0.027
+- VWO: 0.027
+- CIBR: 0.026
+- SLV: 0.023
+- VT: 0.023
+- QQQ: 0.021
+- VGK: 0.021
+- ITA: 0.020
+- ROBO: 0.016
+- URA: 0.015
+- SMH: 0.014
+- COPX: 0.010
+- (sum: 0.998)
 
 ### 4. Risk contribution by block (actual | target)
 
-- Growth: 94.63% | target 90.00% (+4.6 pp)
-- Duration: 0.33% | target 5.00% (-4.7 pp)
-- Inflation: 5.04% | target 5.00% (+0.0 pp)
+- Growth: 62.18% | target 50.00% (+12.2 pp)
+- Duration: 19.42% | target 38.89% (-19.5 pp)
+- Inflation: 18.40% | target 11.11% (+7.3 pp)
 
 ### 5. RC breaches (asset above cap)
 
-- VOO: RC=15.31%, cap=15.00%
-- SMH: RC=15.30%, cap=15.00%
+- VOO: RC=7.58%, cap=4.46%
+- BBJP: RC=4.55%, cap=4.46%
+- VWO: RC=4.49%, cap=4.46%
+- VDC: RC=4.64%, cap=4.46%
+- SLV: RC=5.35%, cap=4.63%
+- GLD: RC=6.19%, cap=4.63%
+- SCHP: RC=6.86%, cap=4.63%
 
 ### 6. Stress & scenario diagnostics (non-blocking for release)
 
-- Diagnostic status:   DIAG_ATTENTION
-- Diagnostic codes:    DIAG_RC_TOP1_EQUITY_SHOCK, DIAG_RC_TOP1_CREDIT_SHOCK, DIAG_RC_TOP1_RATES_SHOCK, DIAG_RC_TOP1_INFLATION_STAGFLATION, DIAG_RC_TOP1_LIQUIDITY_SHOCK
-- Primary code:        DIAG_RC_TOP1_EQUITY_SHOCK
-- Worst scenario loss: -31.08% (informational)
-- Failed scenario:     equity_shock
+- Diagnostic status:   DIAG_PASS_WITH_WARNING
+- Primary code:        —
+- Worst scenario loss: -10.24% (informational)
+- Failed scenario:     —
 - Note: Synthetic shocks & episode checks do not block weights; review with PM.
 
 ### 7. Violations
 
-- RC_VIOLATION: iterations=200 | remaining_violators=['VOO', 'SMH'] | reason=max_iterations
-- VIOL_RC_ASSET_CAP: [{'ticker': 'VOO', 'rc_pct': 15.31, 'cap_pct': 15.0}, {'ticker': 'SMH', 'rc_pct': 15.3, 'cap_pct': 15.0}]
-- FAIL_STRESS: note=diagnostic_only | diagnostic_codes=['DIAG_RC_TOP1_EQUITY_SHOCK', 'DIAG_RC_TOP1_CREDIT_SHOCK', 'DIAG_RC_TOP1_RATES_SHOCK', 'DIAG_RC_TOP1_INFLATION_STAGFLATION', 'DIAG_RC_TOP1_LIQUIDITY_SHOCK'] | primary_diagnostic_code=DIAG_RC_TOP1_EQUITY_SHOCK | worst_scenario_loss_pct=-0.3108 | failed_scenario=equity_shock
+- RC_VIOLATION: iterations=200 | remaining_violators=['VOO', 'BBJP', 'VWO', 'VDC', 'SLV', 'GLD', 'SCHP'] | reason=max_iterations
+- RB_BREACH: Growth=12.18 | Duration=-19.46 | Inflation=7.28
+- VIOL_RC_ASSET_CAP: [{'ticker': 'VOO', 'rc_pct': 7.58, 'cap_pct': 4.46}, {'ticker': 'BBJP', 'rc_pct': 4.55, 'cap_pct': 4.46}, {'ticker': 'VWO', 'rc_pct': 4.49, 'cap_pct': 4.46}, {'ticker': 'VDC', 'rc_pct': 4.64, 'cap_pct': 4.46}, {'ticker': 'SLV', 'rc_pct': 5.35, 'cap_pct': 4.63}, {'ticker': 'GLD', 'rc_pct': 6.19, 'cap_pct': 4.63}, {'ticker': 'SCHP', 'rc_pct': 6.86, 'cap_pct': 4.63}]
 
 ### 8. Next actions (this run)
 
+- Re-run with wider corridor (e.g., 7pp) OR relax secondary caps (weight caps) minimally.
+- If still RB_BREACH: increase k_block (add instruments) in the offending block(s).
+- If Growth capacity constraints prevent W_growth: add satellites or relax max_weight_sat/core caps.
 - Consider adding assets to dilute RC or relax rc_asset_cap; review breached tickers.
-- Stress diagnostic (DIAG_*): review liquidity, duration, growth/HY — informational only.
 - RC post-processing could not satisfy RC caps (strict mode: weights not written; permissive: violation flagged). Relax rc_asset_cap_pct, add assets, or set rc_policy_mode: permissive to write weights with violation.
 
 ### 9. Actions by status (reference)

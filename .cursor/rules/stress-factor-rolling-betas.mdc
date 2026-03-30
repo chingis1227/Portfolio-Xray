@@ -24,6 +24,15 @@ Write **per variant output folder** (e.g. `Main portfolio/`, `equal-weight portf
 3. **HTML** — `rolling_factor_betas.html` (optional interactive)
 4. **PNG** — `rolling_factor_betas_3y.png`, `rolling_factor_betas_5y.png`, `rolling_factor_betas_10y.png` (under `output_dir_final`)
 
+## stress_commentary.txt and stress_commentary PDF
+
+`write_stress_commentary` (used by `run_report.py` and `run_optimization.py`) **must** embed, when present in `stress_report.json`:
+
+- **5Y and 10Y** portfolio factor regression: **β, t, p, 95% CI, R², adj R², n_obs** (same fields as `factor_regression_5y` / `factor_regression_10y`).
+- **Rolling 3Y/5Y/10Y** summary (`factor_betas_rolling_summary`): mean, median, p10, p90 per factor; artifact filenames; and **Markdown image links** to `rolling_factor_betas_{3y,5y,10y}.png` using paths **relative to `pdf_md_sources/`** so Pandoc can embed figures in `*_stress_commentary.pdf`.
+
+After optimization, **`stress_commentary.txt` is refreshed** together with `stress_report.json`. If `--no-report`, **`try_rebuild_pdfs_after_main_report`** still runs so PDFs track the new commentary.
+
 ## stress_report.json
 
 Must include (when computation succeeds):

@@ -1,7 +1,7 @@
 ---
 title: "Main Portfolio — Commentary (policy run)"
 subtitle: "Commentary"
-date: "2026-03-28 00:24 Центральная Европа (зима)"
+date: "2026-03-31 00:27 Центральная Европа (лето)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
@@ -10,12 +10,12 @@ fontsize: 11pt
 - **Output folder:** `Main portfolio`
 - **Basis:** policy portfolio commentary.
 - **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/Main portfolio/commentary.txt`
-- **Generated:** 2026-03-28 00:24 Центральная Европа (зима)
+- **Generated:** 2026-03-31 00:27 Центральная Европа (лето)
 
 ## Executive summary
-Прогон относится к основной портфель (Main portfolio); конец выборки (analysis_end): 2026-02-28. На длинном окне (10Y в отчётном контуре) портфель показывает CAGR около 18.98%, годовую волатильность около 15.30%, максимальную просадку около -22.39%.
-Risk-adjusted: Sharpe ≈ 1.076, Sortino ≈ 1.866; чувствительность к базовому бенчмарку: Beta_base ≈ 0.929.
-Стресс-тест: DIAG_ATTENTION (DIAG_RC_TOP1_EQUITY_SHOCK); худший сценарий по убытку: equity_shock (RC_Top1); worst_scenario_loss_pct ≈ -31.12%.
+Прогон относится к основной портфель (Main portfolio); конец выборки (analysis_end): 2026-02-28. На длинном окне (10Y в отчётном контуре) портфель показывает CAGR около 7.78%, годовую волатильность около 7.02%, максимальную просадку около -15.69%.
+Risk-adjusted: Sharpe ≈ 0.793, Sortino ≈ 1.266; чувствительность к базовому бенчмарку: Beta_base ≈ 0.396.
+Стресс-тест: DIAG_PASS_WITH_WARNING; worst_scenario_loss_pct ≈ -10.22%.
 Клиентский MaxDD-gate (portfolio_valid): PASS.
 
 
@@ -26,30 +26,25 @@ Source: summary.txt, stress_report.json, results_csv/portfolio_metrics_10y.csv, 
 
 ## Metric-by-Metric Interpretation
 
-CAGR (18.98%) отражает среднегодовой темп роста по месячным простым доходностям на 10Y-окне в текущем прогоне. Волатильность (15.30%) — годовая из месячных доходностей; MaxDD (-22.39%) — по месячной equity-кривой. Sharpe (1.076) и Sortino (1.866) используют спецификацию проекта (знаменатель — vol сырой доходности для Sharpe). Beta_base (0.929) и Treynor (0.177) завязаны на базовый бенчмарк; Corr_base при наличии показывает синхронность с бенчмарком на том же окне.
+CAGR (7.78%) отражает среднегодовой темп роста по месячным простым доходностям на 10Y-окне в текущем прогоне. Волатильность (7.02%) — годовая из месячных доходностей; MaxDD (-15.69%) — по месячной equity-кривой. Sharpe (0.793) и Sortino (1.266) используют спецификацию проекта (знаменатель — vol сырой доходности для Sharpe). Beta_base (0.396) и Treynor (0.140) завязаны на базовый бенчмарк; Corr_base при наличии показывает синхронность с бенчмарком на том же окне.
 
 
 ## Risk Structure
 
-Наибольшие доли RC_vol (вклад в дисперсию портфеля) на 10Y: URA 15.7%, SMH 15.1%, VOO 15.1%, COPX 15.0%, QQQ 14.8%. Стресс: status=DIAG_ATTENTION, fail_reason_code=DIAG_RC_TOP1_EQUITY_SHOCK. Провал в сценарии «equity_shock», тест «RC_Top1».
+Наибольшие доли RC_vol (вклад в дисперсию портфеля) на 10Y: BND 19.7%, VOO 7.6%, SCHP 7.1%, GLD 6.1%, SLV 5.3%. Стресс: status=DIAG_PASS_WITH_WARNING, fail_reason_code=—.
 
 
 ## Strengths
 
-Мандатный MaxDD-gate PASS: реализованная просадка на полной пересекающейся истории в допуске (см. run_metadata / mandate_check).
-Sharpe ≥ 1.0 (1.076) на выбранном окне — относительно сильная компенсация за риск по истории.
-
-## Weaknesses
-
-Стресс-диагностика: DIAG_ATTENTION — DIAG_RC_TOP1_EQUITY_SHOCK. (Не блокирует выпуск; именованный сценарий: equity_shock; тест: RC_Top1.)
+Диагностический стресс без критичных отметок (или только предупреждения); мандатный MaxDD-gate PASS — сочетание исторической просадки и клиентского порога не конфликтует в этом прогоне.
 
 ## Scenario Behavior
 
-Кратко по сценариям из stress_report.json: equity_shock: PnL≈-31.12%, pass=False; credit_shock: PnL≈-9.49%, pass=False; rates_shock: PnL≈-0.05%, pass=False; inflation_stagflation: PnL≈-12.60%, pass=False; liquidity_shock: PnL≈-20.73%, pass=False.
-Худший сценарный убыток портфеля (worst_scenario_loss_pct): ≈ -31.12%.
+Кратко по сценариям из stress_report.json: equity_shock: PnL≈-10.22%, pass=True; credit_shock: PnL≈-3.62%, pass=True; rates_shock: PnL≈-6.17%, pass=True; inflation_stagflation: PnL≈-5.60%, pass=True; liquidity_shock: PnL≈-7.18%, pass=True.
+Худший сценарный убыток портфеля (worst_scenario_loss_pct): ≈ -10.22%.
 
 
 ## Final Conclusion
 
-основной портфель (Main portfolio): профиль доходности/риска на 10Y задаётся CAGR≈18.98% и vol≈15.30% при MaxDD≈-22.39%. Стресс DIAG_ATTENTION (DIAG_RC_TOP1_EQUITY_SHOCK); клиентский gate PASS. Для сравнения вариантов используйте те же файлы в соседних папках (Equal-Weight / Risk Parity / Main portfolio) после синхронного прогона.
+основной портфель (Main portfolio): профиль доходности/риска на 10Y задаётся CAGR≈7.78% и vol≈7.02% при MaxDD≈-15.69%. Стресс DIAG_PASS_WITH_WARNING (—); клиентский gate PASS. Для сравнения вариантов используйте те же файлы в соседних папках (Equal-Weight / Risk Parity / Main portfolio) после синхронного прогона.
 

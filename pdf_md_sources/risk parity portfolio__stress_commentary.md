@@ -1,7 +1,7 @@
 ---
 title: "Risk-Parity Portfolio — Stress Commentary"
 subtitle: "Commentary"
-date: "2026-03-28 00:24 Центральная Европа (зима)"
+date: "2026-03-31 00:27 Центральная Европа (лето)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
@@ -10,7 +10,7 @@ fontsize: 11pt
 - **Folder:** `risk parity portfolio`
 - **Basis:** stress commentary (scenarios, RC, historical episodes).
 - **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/risk parity portfolio/stress_commentary.txt`
-- **Generated:** 2026-03-28 00:24 Центральная Европа (зима)
+- **Generated:** 2026-03-31 00:27 Центральная Европа (лето)
 
 ## Executive summary
 По стресс-блоку портфель Risk-Parity имеет статус FAIL_STRESS с причиной FAIL_ROLE_EQUITY_SHOCK при худшем сценарном результате -10.76% (equity_shock). Потеря по лимиту просадки проходит (loss_ok=true), а концентрация риска в стрессах контролируема (Top1 RC и Top3 RC в пределах капов), поэтому ключевой провал связан не с глубиной убытка и не с RC-капами, а с отказом защитной роли. В equity_shock одновременно отрицательны Duration (-0.11%) и Inflation (-0.09%), а Tail не дает положительного офсета (0.00%), что и активирует rule-based role fail. В остальных четырех обязательных сценариях pass=true, что указывает на локальную, а не тотальную поломку стресс-профиля. Исторические эпизоды 2020 и 2022 проходят, но эпизод 2008 остается без данных и снижает уверенность в полноте исторической валидации.

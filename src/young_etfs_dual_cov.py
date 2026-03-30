@@ -17,7 +17,19 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from src.risk_contrib import DDOF, cov_matrix_monthly
+from src.risk_contrib import DDOF, cov_matrix_monthly, cov_matrix_monthly_robust
+
+
+def _core_covariance(
+    ret: pd.DataFrame,
+    *,
+    use_shrinkage_on_core: bool,
+    use_robust_on_core: bool,
+) -> pd.DataFrame:
+    """Covariance on the eligible core window (sample / Ledoit–Wolf / MCD)."""
+    if use_robust_on_core:
+        return cov_matrix_monthly_robust(ret, ddof=DDOF)
+    return cov_matrix_monthly(ret, ddof=DDOF, use_shrinkage=use_shrinkage_on_core)
 
 
 def _history_months_in_window(s: pd.Series, window: int) -> int:
@@ -104,9 +116,13 @@ def build_dual_covariance_and_mu(
     window_months: int,
     policy: dict[str, Any],
     use_shrinkage_on_core: bool = False,
+    use_robust_on_core: bool = False,
 ) -> tuple[pd.DataFrame, pd.Series, dict[str, Any]]:
     """
     Build covariance matrix and mean monthly return vector for RiskPortfolio tickers.
+
+    If ``use_robust_on_core`` is True, the eligible core block uses MinCovDet (MCD);
+    ``use_shrinkage_on_core`` is then ignored for that core. Production default: both False.
 
     Returns:
       cov_df: square DataFrame indexed/columned by ``tickers`` (order preserved)
@@ -154,7 +170,11 @@ def build_dual_covariance_and_mu(
                 "tickers": per_ticker,
             }
             return cov_empty, mu_local, diagnostics_local
-        cov_sub = cov_matrix_monthly(ret, ddof=DDOF, use_shrinkage=use_shrinkage_on_core)
+        cov_sub = _core_covariance(
+            ret,
+            use_shrinkage_on_core=use_shrinkage_on_core,
+            use_robust_on_core=use_robust_on_core,
+        )
         cov_full = pd.DataFrame(0.0, index=tickers, columns=tickers)
         for ti in cov_sub.index:
             for tj in cov_sub.columns:
@@ -181,7 +201,11 @@ def build_dual_covariance_and_mu(
     if len(ret_core) < 2:
         return _fallback_inner_join("core_sample_too_short_after_join")
 
-    sigma_core = cov_matrix_monthly(ret_core, ddof=DDOF, use_shrinkage=use_shrinkage_on_core)
+    sigma_core = _core_covariance(
+        ret_core,
+        use_shrinkage_on_core=use_shrinkage_on_core,
+        use_robust_on_core=use_robust_on_core,
+    )
 
     elig_by_block: dict[str, list[str]] = {}
     for t in eligible:

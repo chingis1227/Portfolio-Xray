@@ -940,16 +940,26 @@ def main() -> None:
         stress_report["factor_betas_rolling_error"] = str(e)
         logger.warning(f"Rolling factor betas diagnostics failed: {e}")
 
-    # Always write stress_report.json here so rolling/ factor diagnostics exist even with --no-report;
-    # a subsequent run_report.py run overwrites the same file with the full pipeline.
+    # Always write stress_report.json + stress_commentary.txt here (incl. regression + rolling for PDF);
+    # run_report.py overwrites both when a full report runs afterward.
+    _stress_out = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
+    _stress_out.mkdir(parents=True, exist_ok=True)
     try:
-        _stress_out = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
-        _stress_out.mkdir(parents=True, exist_ok=True)
         from src.io_export import export_stress_report
 
         export_stress_report(stress_report, _stress_out)
     except Exception as e:
         logger.warning("export_stress_report after optimization failed: %s", e)
+    try:
+        from src.portfolio_commentary import write_stress_commentary
+
+        write_stress_commentary(
+            _stress_out,
+            stress_report=stress_report,
+            analysis_end=analysis_end_str,
+        )
+    except Exception as e:
+        logger.warning("write_stress_commentary after optimization failed: %s", e)
 
     stress_status = stress_report.get("status")
     stress_fail_reason = stress_report.get("fail_reason_code") or stress_report.get("skip_reason")
@@ -1259,6 +1269,12 @@ def main() -> None:
                 logger.warning("PDF suite rebuild skipped: %s", ex)
     else:
         logger.info("Skipping run_report.py (--no-report).")
+        try:
+            from src.pdf_reports import try_rebuild_pdfs_after_main_report
+
+            try_rebuild_pdfs_after_main_report(logger=logger)
+        except Exception as ex:
+            logger.warning("PDF suite rebuild after --no-report: %s", ex)
 
     if args.write_config:
         config_path = Path(__file__).resolve().parent / "config.yml"
