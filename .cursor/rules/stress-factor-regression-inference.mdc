@@ -12,6 +12,7 @@ When the project estimates **portfolio factor betas** for stress testing / repor
 - **confidence intervals** (default 95%)
 - **R²** and **adjusted R²**
 - **n_obs** (effective aligned observations)
+- **Multicollinearity:** `factor_multicollinearity` inside each `factor_regression_*` — Pearson corr matrix, all pairwise ρ, VIF by factor, cond(correlation matrix), `severity`, `assessment_ru` (see `docs/docs/stress_testing_spec.md` §8.1)
 
 ## Where it must appear
 

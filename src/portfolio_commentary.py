@@ -135,6 +135,50 @@ def _fmt_p_value(x: Any) -> str:
     return _fmt_float(v, 6)
 
 
+def _append_factor_multicollinearity_block(lines: list[str], mc: Any) -> None:
+    """Append factor multicollinearity (same rows as OLS regressors); from factor_multicollinearity in stress_report."""
+    if not isinstance(mc, dict) or not mc:
+        return
+    err = mc.get("error")
+    if err:
+        lines.append(f"Мультиколлинеарность факторов (диагностика): не посчитана — {err}")
+        lines.append("")
+        return
+    sev = mc.get("severity", "—")
+    mvif_str = "∞" if mc.get("max_vif_is_infinite") else _fmt_float(mc.get("max_vif"), 3)
+    mvf = mc.get("max_vif_factor")
+    fac_suffix = f" (фактор {mvf})" if mvf else ""
+    lines.append(
+        f"Мультиколлинеарность факторов (те же недели, что регрессия): оценка={sev}; "
+        f"cond(R)={mc.get('cond_correlation_matrix', 'н/д')}; "
+        f"max VIF={mvif_str}{fac_suffix}."
+    )
+    sp = mc.get("strongest_pair")
+    if isinstance(sp, dict) and sp.get("factor_i"):
+        lines.append(
+            f"Сильнейшая попарная корреляция: {sp.get('factor_i')} vs {sp.get('factor_j')}, ρ={_fmt_float(sp.get('rho'), 4)}."
+        )
+    lines.append(f"Интерпретация: {mc.get('assessment_ru', '—')}")
+    pairs = mc.get("pairwise_correlations") or []
+    if isinstance(pairs, list) and pairs:
+        lines.append("Все попарные ρ (|ρ| по убыванию):")
+        for row in pairs:
+            if not isinstance(row, dict):
+                continue
+            lines.append(
+                f"  {row.get('factor_i')} — {row.get('factor_j')}: ρ={_fmt_float(row.get('rho'), 4)}"
+            )
+    vif_bf = mc.get("vif_by_factor") or {}
+    if isinstance(vif_bf, dict) and vif_bf:
+        lines.append("VIF по факторам:")
+        for fname in sorted(vif_bf.keys()):
+            v = vif_bf[fname]
+            vs = "∞" if v is None else _fmt_float(v, 3)
+            lines.append(f"  {fname}: {vs}")
+    lines.append(f"Метод: {mc.get('method', '—')}; n_obs_f={mc.get('n_obs_factors', '—')}.")
+    lines.append("")
+
+
 def _append_factor_regression_block(lines: list[str], fr: Any, label: str) -> None:
     if not isinstance(fr, dict) or not fr:
         return
@@ -157,7 +201,11 @@ def _append_factor_regression_block(lines: list[str], fr: Any, label: str) -> No
             f"- {key}: β={_fmt_float(betas.get(key), 4)}, t={_fmt_float(t_d.get(key), 3)}, "
             f"p={_fmt_p_value(p_d.get(key))}, CI=[{_fmt_float(lo.get(key), 4)}; {_fmt_float(hi.get(key), 4)}]"
         )
-    lines.append("")
+    mc = fr.get("factor_multicollinearity")
+    if mc is not None:
+        _append_factor_multicollinearity_block(lines, mc)
+    else:
+        lines.append("")
 
 
 def _append_rolling_betas_block(lines: list[str], st: dict[str, Any], output_dir_final: Path) -> None:

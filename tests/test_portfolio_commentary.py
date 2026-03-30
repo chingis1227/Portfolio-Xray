@@ -119,6 +119,21 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
             "p": {"beta_eq": 0.01},
             "ci_low": {"beta_eq": 0.1},
             "ci_high": {"beta_eq": 0.9},
+            "factor_multicollinearity": {
+                "severity": "low",
+                "cond_correlation_matrix": 5.0,
+                "max_vif": 2.1,
+                "max_vif_factor": "equity",
+                "max_vif_is_infinite": False,
+                "strongest_pair": {"factor_i": "equity", "factor_j": "credit", "rho": -0.71},
+                "assessment_ru": "Низкая: тест.",
+                "pairwise_correlations": [
+                    {"factor_i": "equity", "factor_j": "credit", "rho": -0.71},
+                ],
+                "vif_by_factor": {"equity": 2.1, "credit": 1.5},
+                "method": "pearson_sample_corr_vif_raw_regressors",
+                "n_obs_factors": 100,
+            },
         },
         "factor_betas_rolling_windows_weeks": {"3y": 156},
         "factor_betas_rolling_summary": {
@@ -134,3 +149,6 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
     assert "R²=" in text2 or "R" in text2
     assert "Скользящие окна" in text2
     assert "rolling_factor_betas_3y.png" in text2
+    assert "Мультиколлинеарность факторов" in text2
+    assert "VIF по факторам:" in text2
+    assert "-0.7100" in text2

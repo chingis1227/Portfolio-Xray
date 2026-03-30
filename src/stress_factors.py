@@ -316,6 +316,162 @@ def _ols_with_inference(
     }
 
 
+def factor_multicollinearity_diagnostics(
+    X: np.ndarray,
+    factor_columns: list[str],
+    *,
+    corr_decimals: int = 4,
+    vif_decimals: int = 3,
+) -> dict[str, Any]:
+    """
+    Multicollinearity diagnostics on the **same** factor rows used in portfolio OLS.
+
+    - **correlation**: sample Pearson corr matrix of regressors (no intercept).
+    - **cond_correlation_matrix**: cond(R) = λ_max / λ_min (eigvalsh on R, min clipped at 1e-15).
+    - **vif**: classic VIF from auxiliary OLS of each column on all others (raw scale); meaningful when k >= 2.
+    - **severity**: low | moderate | high | unknown (see docs/stress_testing_spec.md thresholds).
+
+    Does not raise; returns ``error`` string on failure.
+    """
+    base: dict[str, Any] = {
+        "method": "pearson_sample_corr_vif_raw_regressors",
+    }
+    try:
+        Xa = np.asarray(X, dtype=float)
+        if Xa.ndim != 2:
+            return {**base, "error": "x_not_2d"}
+        n, k = Xa.shape
+        if n < 3 or k < 1:
+            return {**base, "error": "insufficient_shape"}
+        if not np.isfinite(Xa).all():
+            return {**base, "error": "non_finite_x"}
+        names = list(factor_columns)
+        if len(names) != k:
+            names = [f"f{i}" for i in range(k)]
+
+        R = np.corrcoef(Xa.T)
+        if not np.isfinite(R).all():
+            return {**base, "error": "corr_nan_constant_column"}
+
+        corr_nested: dict[str, dict[str, float]] = {}
+        for i, ni in enumerate(names):
+            corr_nested[ni] = {}
+            for j, nj in enumerate(names):
+                corr_nested[ni][nj] = round(float(R[i, j]), corr_decimals)
+
+        pairs: list[dict[str, Any]] = []
+        max_abs = -1.0
+        strongest: dict[str, Any] | None = None
+        for i in range(k):
+            for j in range(i + 1, k):
+                rho = float(R[i, j])
+                pairs.append(
+                    {
+                        "factor_i": names[i],
+                        "factor_j": names[j],
+                        "rho": round(rho, corr_decimals),
+                    }
+                )
+                if abs(rho) > max_abs:
+                    max_abs = abs(rho)
+                    strongest = {
+                        "factor_i": names[i],
+                        "factor_j": names[j],
+                        "rho": round(rho, corr_decimals),
+                    }
+        pairs.sort(key=lambda d: abs(float(d["rho"])), reverse=True)
+
+        ev = np.linalg.eigvalsh(R)
+        ev = np.clip(ev, 0.0, None)
+        lam_min = float(ev[0]) if len(ev) else float("nan")
+        lam_max = float(ev[-1]) if len(ev) else float("nan")
+        cond_r = float(lam_max / lam_min) if lam_min > 1e-15 else float("inf")
+
+        vif_map: dict[str, float | None] = {}
+        max_vif_finite = float("nan")
+        max_vif_name_finite: str | None = None
+        any_vif_infinite = False
+        first_inf_factor: str | None = None
+        if k >= 2:
+            for j in range(k):
+                y = Xa[:, j]
+                Xo = np.delete(Xa, j, axis=1)
+                Z = np.column_stack([np.ones(n), Xo])
+                beta, *_ = np.linalg.lstsq(Z, y, rcond=None)
+                resid = y - Z @ beta
+                ss_res = float(np.dot(resid, resid))
+                ym = y - float(np.mean(y))
+                ss_tot = float(np.dot(ym, ym))
+                r2_aux = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+                # Treat near-unity auxiliary R² as singular (duplicate / collinear columns).
+                if r2_aux >= 1.0 - 1e-10:
+                    vif_map[names[j]] = None
+                    any_vif_infinite = True
+                    if first_inf_factor is None:
+                        first_inf_factor = names[j]
+                else:
+                    vj = 1.0 / (1.0 - r2_aux)
+                    vif_map[names[j]] = round(float(vj), vif_decimals)
+                    if not np.isfinite(max_vif_finite) or vj > max_vif_finite:
+                        max_vif_finite = float(vj)
+                        max_vif_name_finite = names[j]
+
+        max_vif_is_infinite = any_vif_infinite
+        max_vif_out: float | None = None
+        max_vif_name: str | None = None
+        if max_vif_is_infinite:
+            max_vif_name = first_inf_factor
+        elif np.isfinite(max_vif_finite):
+            max_vif_out = round(float(max_vif_finite), vif_decimals)
+            max_vif_name = max_vif_name_finite
+
+        cond_r_out: float | None = round(float(cond_r), 3) if np.isfinite(cond_r) else None
+
+        # Severity (aligned with stress_testing_spec.md)
+        severity = "unknown"
+        assessment_ru = "н/д: не удалось классифицировать."
+        mv_for_rule = float("inf") if max_vif_is_infinite else float(max_vif_finite)
+        cr_for_rule = float(cond_r) if np.isfinite(cond_r) else float("inf")
+        if strongest is not None and (np.isfinite(mv_for_rule) or max_vif_is_infinite):
+            mr = abs(float(strongest["rho"]))
+            if max_vif_is_infinite or mv_for_rule >= 10 or cr_for_rule >= 80 or mr >= 0.95:
+                severity = "high"
+                assessment_ru = (
+                    "Высокая: сильная линейная связь между факторами — отдельные β и p-value "
+                    "интерпретировать осторожно даже при высоком R²."
+                )
+            elif mv_for_rule >= 5 or cr_for_rule >= 30 or mr >= 0.85:
+                severity = "moderate"
+                assessment_ru = (
+                    "Умеренная: заметная коллинеарность; β по отдельным факторам могут быть менее устойчивыми."
+                )
+            else:
+                severity = "low"
+                assessment_ru = (
+                    "Низкая: типичные VIF и cond(R); коллинеарность не доминирует, но попарные корреляции всё равно учитывать."
+                )
+
+        return {
+            **base,
+            "n_obs_factors": int(n),
+            "n_factors": int(k),
+            "correlation": corr_nested,
+            "pairwise_correlations": pairs,
+            "cond_correlation_matrix": cond_r_out,
+            "cond_correlation_matrix_singular": (not np.isfinite(cond_r)),
+            "corr_eigenvalues_min_max": [round(lam_min, 6), round(lam_max, 6)],
+            "vif_by_factor": vif_map,
+            "max_vif": max_vif_out,
+            "max_vif_is_infinite": bool(max_vif_is_infinite),
+            "max_vif_factor": max_vif_name,
+            "strongest_pair": strongest,
+            "severity": severity,
+            "assessment_ru": assessment_ru,
+        }
+    except Exception as ex:
+        return {**base, "error": str(ex)}
+
+
 def portfolio_factor_regression_weekly(
     weights: dict[str, float],
     tickers: list[str],
@@ -332,6 +488,7 @@ def portfolio_factor_regression_weekly(
     - betas, t-stats, p-values, CI
     - R^2 / adj R^2
     - n_obs
+    - ``factor_multicollinearity``: pairwise correlations, VIF, cond(R), severity (see stress spec §8.1)
     """
     from src.data_yf import download_all
 
@@ -411,6 +568,9 @@ def portfolio_factor_regression_weekly(
     }
     beta_keys = [name_map.get(c, f"beta_{c}") for c in factor_cols]
 
+    X_valid = Xdf.values[valid].astype(float)
+    mc = factor_multicollinearity_diagnostics(X_valid, factor_cols)
+
     out: dict[str, Any] = {
         "window_weeks": int(wk),
         "n_obs": int(inf["n_obs"]),
@@ -425,6 +585,7 @@ def portfolio_factor_regression_weekly(
         "p": {k: float(v) for k, v in zip(beta_keys, pvals[1:])},
         "ci_low": {k: float(v) for k, v in zip(beta_keys, ci_low[1:])},
         "ci_high": {k: float(v) for k, v in zip(beta_keys, ci_high[1:])},
+        "factor_multicollinearity": mc,
     }
     return out
 

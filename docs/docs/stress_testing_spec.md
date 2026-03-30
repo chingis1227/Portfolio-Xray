@@ -116,6 +116,30 @@ If factor limits are set in config and violated → **DIAG_BETA_*** / **DIAG_ATT
 
 For backward compatibility, `factor_betas` may be present and should mirror `factor_betas_5y`.
 
+### 8.1 Factor multicollinearity (`factor_regression_*` only)
+
+Portfolio weekly OLS in `factor_regression_5y` / `factor_regression_10y` must include **`factor_multicollinearity`** on the **same regressor rows** as the regression (after inner join and `valid` mask).
+
+| Output field | Meaning |
+|--------------|---------|
+| `correlation` | Nested Pearson correlation matrix of factor columns |
+| `pairwise_correlations` | All unordered pairs with `rho`, sorted by \|ρ\| descending |
+| `cond_correlation_matrix` | cond(R) = λ_max / λ_min (eigvalsh on R; λ_min clipped at 1e-15); `null` if singular |
+| `cond_correlation_matrix_singular` | Boolean if cond not finite |
+| `vif_by_factor` | Classical VIF via auxiliary OLS (raw-scale X); `null` for a factor if VIF infinite |
+| `max_vif`, `max_vif_factor`, `max_vif_is_infinite` | Summary |
+| `strongest_pair` | Pair with largest \|ρ\| |
+| `severity` | `low` \| `moderate` \| `high` \| `unknown` — see rules below |
+| `assessment_ru` | Short Russian sentence for reports |
+
+**Severity rules (fixed in code, `src/stress_factors.py`):**
+
+- **high** if `max_vif_is_infinite` **or** max VIF ≥ 10 **or** cond(R) ≥ 80 **or** max \|ρ\| among pairs ≥ 0.95  
+- else **moderate** if max VIF ≥ 5 **or** cond(R) ≥ 30 **or** max \|ρ\| ≥ 0.85  
+- else **low**
+
+**Note:** cond([1, X]) on raw units is **not** reported (misleading across scales); use **cond(correlation matrix)** and VIF.
+
 ---
 
 ## 9. Historical validation
