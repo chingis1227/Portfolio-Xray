@@ -1,0 +1,39 @@
+---
+description: Rolling portfolio factor betas (3Y/5Y/10Y) — mandatory artifacts each run
+alwaysApply: true
+---
+
+# Rolling factor betas — mandatory on every run
+
+Whenever a **portfolio stress/metrics** run produces `stress_report.json` (Main via `run_report.py` / `run_optimization.py`, Equal-Weight / Risk-Parity via `run_portfolio_report_for_weights`), the pipeline **must**:
+
+## Windows (single source)
+
+- **3Y** ≈ **156** weekly observations → `FACTOR_WEEKS_3Y` in `src/stress_factors.py`
+- **5Y** ≈ **260** weekly observations → `FACTOR_WEEKS_5Y`
+- **10Y** ≈ **520** weekly observations → `FACTOR_WEEKS_10Y`
+
+Each horizon is a **separate** rolling OLS time series (portfolio weekly return on weekly factor matrix); do not merge windows into one series.
+
+## Artifacts (always refresh on run)
+
+Write **per variant output folder** (e.g. `Main portfolio/`, `equal-weight portfolio/results_csv` + variant root for HTML/PNG):
+
+1. **CSV** — `rolling_factor_betas_3y.csv`, `rolling_factor_betas_5y.csv`, `rolling_factor_betas_10y.csv` (under `output_dir_csv` / variant `results_csv/`)
+2. **Summary CSV** — `rolling_factor_betas_summary.csv` (mean, median, p10, p90 per beta per window)
+3. **HTML** — `rolling_factor_betas.html` (optional interactive)
+4. **PNG** — `rolling_factor_betas_3y.png`, `rolling_factor_betas_5y.png`, `rolling_factor_betas_10y.png` (under `output_dir_final`)
+
+## stress_report.json
+
+Must include (when computation succeeds):
+
+- `factor_betas_rolling_windows_weeks` (maps labels **3y** / **5y** / **10y** to week counts)
+- `factor_betas_rolling_summary`
+- `factor_betas_rolling_artifacts` (paths or filenames for CSV summary, HTML, PNG map)
+
+On failure, set `factor_betas_rolling_error` (no silent omission of the block intent).
+
+## Optimization path
+
+`run_optimization.py` **must** call `export_stress_report` after building `stress_report` (including rolling block) so artifacts stay current even when `--no-report` skips `run_report.py`. A later full `run_report.py` may overwrite `stress_report.json` with the same logical content.

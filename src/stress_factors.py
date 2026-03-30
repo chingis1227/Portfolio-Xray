@@ -7,6 +7,8 @@ Factors: equity (S&P/SPY), real rates (DFII10 Δ), inflation (T10YIE Δ), credit
 from __future__ import annotations
 
 from typing import Any
+import json
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -16,6 +18,7 @@ from src.data_fred import fetch_fred_series
 from src.data_yf import fetch_daily
 
 # Stress report: weekly regression windows ending at analysis_end (Friday week-ends after inner join)
+FACTOR_WEEKS_3Y = 156   # ~3 calendar years (rolling diagnostics)
 FACTOR_WEEKS_5Y = 260   # ~5 calendar years
 FACTOR_WEEKS_10Y = 520  # ~10 calendar years
 FACTOR_DOWNLOAD_BUFFER_WEEKS = 28  # extra history for factor/asset weekly alignment
@@ -376,7 +379,9 @@ def portfolio_factor_regression_weekly(
 
     # Portfolio weekly return as weighted sum across available tickers
     w_vec = np.array([float(weights.get(t, 0.0)) for t in Y.columns], dtype=float)
-    y_port = (Y.values * w_vec.reshape(1, -1)).sum(axis=1)
+    # NaN returns for unavailable assets are treated as zero contribution.
+    # This avoids NaN*0 propagation for zero-weight assets.
+    y_port = (np.nan_to_num(Y.values, nan=0.0) * w_vec.reshape(1, -1)).sum(axis=1)
 
     # Drop NaNs (if any)
     valid = ~(np.isnan(y_port) | np.isnan(Xdf.values).any(axis=1))
@@ -616,3 +621,279 @@ def portfolio_factor_betas(
         b = asset_betas[col].fillna(0).values
         out[col] = float(np.dot(w, b))
     return out
+
+
+def _rolling_window_betas(
+    y: np.ndarray,
+    x_df: pd.DataFrame,
+    *,
+    window_weeks: int,
+) -> pd.DataFrame:
+    """Compute rolling OLS betas (with intercept, betas only returned)."""
+    if len(x_df) != len(y) or len(x_df) < int(window_weeks):
+        return pd.DataFrame()
+    cols = list(x_df.columns)
+    name_map = {
+        "equity": "beta_eq",
+        "real_rates": "beta_rr",
+        "inflation": "beta_inf",
+        "credit": "beta_credit",
+        "usd": "beta_usd",
+        "commodity": "beta_cmd",
+    }
+    out_rows: list[dict[str, float]] = []
+    out_idx: list[pd.Timestamp] = []
+    w = int(window_weeks)
+    for end_i in range(w - 1, len(x_df)):
+        start_i = end_i - w + 1
+        xx = x_df.iloc[start_i:end_i + 1]
+        yy = y[start_i:end_i + 1]
+        valid = ~(np.isnan(yy) | np.isnan(xx.values).any(axis=1))
+        if int(valid.sum()) < max(10, w // 3):
+            continue
+        try:
+            x_const = np.column_stack([np.ones(int(valid.sum())), xx.values[valid]])
+            b = np.linalg.lstsq(x_const, yy[valid], rcond=None)[0]
+        except Exception:
+            continue
+        row = {
+            name_map.get(c, f"beta_{c}"): float(v)
+            for c, v in zip(cols, b[1:])
+        }
+        out_rows.append(row)
+        out_idx.append(pd.Timestamp(x_df.index[end_i]))
+    if not out_rows:
+        return pd.DataFrame()
+    return pd.DataFrame(out_rows, index=pd.DatetimeIndex(out_idx, name="date")).sort_index()
+
+
+def compute_portfolio_rolling_factor_betas_weekly(
+    weights: dict[str, float],
+    tickers: list[str],
+    analysis_end_str: str,
+    rolling_windows_weeks: dict[str, int],
+    *,
+    years_back: int = 20,
+) -> dict[str, pd.DataFrame]:
+    """
+    Compute rolling portfolio factor betas on weekly data for multiple window sizes.
+
+    Returns dict[label -> DataFrame(index=date, columns beta_*)].
+    """
+    from src.data_yf import download_all
+
+    use = [t for t in tickers if float(weights.get(t, 0.0)) > 0]
+    if not use:
+        use = list(tickers)
+    use = [str(t).strip() for t in use if t and str(t).strip()]
+    if not use:
+        return {}
+
+    end_ts = pd.Timestamp(analysis_end_str)
+    end_dl = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    start_dl = (end_ts - pd.DateOffset(years=max(3, int(years_back)))).strftime("%Y-%m-%d")
+
+    daily = download_all(use, start_dl, end_dl)
+    daily_prices: dict[str, pd.Series] = {}
+    for t in use:
+        df = daily.get(t)
+        if df is None or df.empty or "Close" not in df.columns:
+            continue
+        daily_prices[t] = df["Close"].copy()
+
+    asset_weekly = asset_weekly_returns_from_daily(daily_prices, start_dl, end_dl)
+    factors = build_factor_matrix(start_dl, end_dl)
+    if asset_weekly.empty or factors.empty:
+        return {}
+
+    common = asset_weekly.index.intersection(factors.index).sort_values()
+    common = common[common <= end_ts + pd.Timedelta(days=6)]
+    if len(common) < 30:
+        return {}
+    y_df = asset_weekly.reindex(common)
+    x_df = factors.reindex(common).dropna()
+    y_df = y_df.reindex(x_df.index)
+
+    w_vec = np.array([float(weights.get(t, 0.0)) for t in y_df.columns], dtype=float)
+    # NaN returns for unavailable assets are treated as zero contribution.
+    y_port = (np.nan_to_num(y_df.values, nan=0.0) * w_vec.reshape(1, -1)).sum(axis=1)
+
+    valid = ~(np.isnan(y_port) | np.isnan(x_df.values).any(axis=1))
+    if int(valid.sum()) < 30:
+        return {}
+    x_use = x_df.loc[valid]
+    y_use = y_port[valid]
+
+    out: dict[str, pd.DataFrame] = {}
+    for label, weeks in (rolling_windows_weeks or {}).items():
+        df = _rolling_window_betas(y_use, x_use, window_weeks=int(weeks))
+        out[str(label)] = df
+    return out
+
+
+def rolling_beta_summary(rolling_betas: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """
+    Summary stats for rolling betas by window/beta:
+    mean, median, p10, p90, n_points.
+    """
+    rows: list[dict[str, Any]] = []
+    for label, df in (rolling_betas or {}).items():
+        if df is None or df.empty:
+            continue
+        for col in df.columns:
+            s = pd.to_numeric(df[col], errors="coerce").dropna()
+            if s.empty:
+                continue
+            rows.append(
+                {
+                    "window": str(label),
+                    "beta": str(col),
+                    "n_points": int(len(s)),
+                    "mean": float(s.mean()),
+                    "median": float(s.median()),
+                    "p10": float(s.quantile(0.10)),
+                    "p90": float(s.quantile(0.90)),
+                }
+            )
+    if not rows:
+        return pd.DataFrame(columns=["window", "beta", "n_points", "mean", "median", "p10", "p90"])
+    return pd.DataFrame(rows).sort_values(["window", "beta"]).reset_index(drop=True)
+
+
+def write_rolling_betas_plot_html(
+    rolling_betas: dict[str, pd.DataFrame],
+    output_path: str | Path,
+) -> Path:
+    """Write interactive Plotly HTML with one chart per beta, lines by rolling window."""
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    payload: dict[str, Any] = {}
+    beta_names: set[str] = set()
+    for label, df in (rolling_betas or {}).items():
+        if df is None or df.empty:
+            continue
+        beta_names.update(df.columns.tolist())
+        payload[str(label)] = {
+            "dates": [pd.Timestamp(x).strftime("%Y-%m-%d") for x in df.index],
+            "series": {c: [None if pd.isna(v) else float(v) for v in df[c].tolist()] for c in df.columns},
+        }
+
+    beta_list = sorted(beta_names)
+    html = f"""<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Rolling Factor Betas</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    body {{ font-family: Arial, sans-serif; margin: 16px; }}
+    .chart {{ width: 100%; height: 360px; margin-bottom: 24px; }}
+  </style>
+</head>
+<body>
+  <h2>Rolling factor betas (portfolio)</h2>
+  <p>Windows: {", ".join(sorted(payload.keys())) if payload else "n/a"}</p>
+  <div id="charts"></div>
+  <script>
+    const dataByWindow = {json.dumps(payload, ensure_ascii=False)};
+    const betaList = {json.dumps(beta_list, ensure_ascii=False)};
+    const windows = Object.keys(dataByWindow).sort();
+    const root = document.getElementById("charts");
+    betaList.forEach((beta) => {{
+      const id = "chart_" + beta;
+      const div = document.createElement("div");
+      div.className = "chart";
+      div.id = id;
+      root.appendChild(div);
+      const traces = [];
+      windows.forEach((w) => {{
+        const d = dataByWindow[w];
+        if (!d || !d.series || !(beta in d.series)) return;
+        traces.push({{
+          x: d.dates,
+          y: d.series[beta],
+          mode: "lines",
+          name: w
+        }});
+      }});
+      Plotly.newPlot(id, traces, {{
+        title: beta,
+        xaxis: {{ title: "Date" }},
+        yaxis: {{ title: "Beta" }},
+        legend: {{ orientation: "h" }}
+      }}, {{responsive: true}});
+    }});
+  </script>
+</body>
+</html>
+"""
+    out.write_text(html, encoding="utf-8")
+    return out
+
+
+def write_rolling_betas_plot_pngs(
+    rolling_betas: dict[str, pd.DataFrame],
+    output_dir: str | Path,
+    *,
+    prefix: str = "rolling_factor_betas",
+    dpi: int = 150,
+) -> dict[str, str]:
+    """
+    Save one PNG per rolling window (e.g. 3y, 5y, 10y): 2×3 subplots, one line per factor beta over time.
+    Returns mapping window_label -> filename (not full path).
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    beta_order = [
+        "beta_eq",
+        "beta_rr",
+        "beta_inf",
+        "beta_credit",
+        "beta_usd",
+        "beta_cmd",
+    ]
+    short_title = {
+        "beta_eq": "Equity",
+        "beta_rr": "Real rates",
+        "beta_inf": "Inflation",
+        "beta_credit": "Credit (HY)",
+        "beta_usd": "USD",
+        "beta_cmd": "Commodity",
+    }
+
+    saved: dict[str, str] = {}
+    for label, df in (rolling_betas or {}).items():
+        if df is None or df.empty:
+            continue
+        fig, axes = plt.subplots(2, 3, figsize=(14, 8))
+        fig.suptitle(f"Rolling factor betas — {label} window (weekly OLS)", fontsize=12)
+
+        for ax, col in zip(axes.flat, beta_order):
+            ax.set_title(short_title.get(col, col), fontsize=10)
+            ax.grid(True, alpha=0.3)
+            if col not in df.columns:
+                ax.text(0.5, 0.5, "n/a", ha="center", va="center", transform=ax.transAxes)
+                continue
+            s = pd.to_numeric(df[col], errors="coerce").dropna()
+            if s.empty:
+                ax.text(0.5, 0.5, "no data", ha="center", va="center", transform=ax.transAxes)
+                continue
+            ax.plot(s.index, s.values, color="C0", linewidth=0.9)
+            ax.tick_params(axis="x", rotation=25, labelsize=7)
+            ax.set_ylabel("β", fontsize=8)
+
+        plt.tight_layout()
+        fname = f"{prefix}_{label}.png"
+        path = out_dir / fname
+        fig.savefig(path, dpi=int(dpi), bbox_inches="tight")
+        plt.close(fig)
+        saved[str(label)] = fname
+
+    return saved

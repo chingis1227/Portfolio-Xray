@@ -805,10 +805,15 @@ def main() -> None:
     try:
         from src.stress_factors import (
             FACTOR_WEEKS_10Y,
+            FACTOR_WEEKS_3Y,
             FACTOR_WEEKS_5Y,
+            compute_portfolio_rolling_factor_betas_weekly,
             compute_asset_factor_betas_weekly,
             portfolio_factor_regression_weekly,
             portfolio_factor_betas,
+            rolling_beta_summary,
+            write_rolling_betas_plot_html,
+            write_rolling_betas_plot_pngs,
         )
 
         beta_tickers = [t for t in cfg.tickers if final_weights.get(t, 0) > 0]
@@ -876,6 +881,76 @@ def main() -> None:
     except Exception as e:
         stress_report["factor_regression_10y_error"] = str(e)
         logger.warning(f"Factor regression diagnostics (10Y) failed: {e}")
+    try:
+        rolling_windows = {"3y": FACTOR_WEEKS_3Y, "5y": FACTOR_WEEKS_5Y, "10y": FACTOR_WEEKS_10Y}
+        rb = compute_portfolio_rolling_factor_betas_weekly(
+            weights=final_weights,
+            tickers=cfg.tickers,
+            analysis_end_str=analysis_end_str,
+            rolling_windows_weeks=rolling_windows,
+        )
+        out_final_tmp = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
+        out_final_tmp.mkdir(parents=True, exist_ok=True)
+        out_csv_tmp = Path(getattr(cfg, "output_dir_csv", "results_csv"))
+        out_csv_tmp.mkdir(parents=True, exist_ok=True)
+
+        csv_paths: dict[str, str] = {}
+        for lbl, df_rb in rb.items():
+            if df_rb is None or df_rb.empty:
+                continue
+            p = out_csv_tmp / f"rolling_factor_betas_{lbl}.csv"
+            df_rb.round(4).to_csv(p, index=True)
+            csv_paths[lbl] = p.name
+
+        summary_df = rolling_beta_summary(rb)
+        summary_struct: dict[str, dict[str, dict[str, float | int]]] = {}
+        summary_csv_name = ""
+        if not summary_df.empty:
+            summary_csv = out_csv_tmp / "rolling_factor_betas_summary.csv"
+            summary_df.round(4).to_csv(summary_csv, index=False)
+            summary_csv_name = summary_csv.name
+            for _, row in summary_df.iterrows():
+                w = str(row["window"])
+                b = str(row["beta"])
+                summary_struct.setdefault(w, {})[b] = {
+                    "n_points": int(row["n_points"]),
+                    "mean": float(row["mean"]),
+                    "median": float(row["median"]),
+                    "p10": float(row["p10"]),
+                    "p90": float(row["p90"]),
+                }
+
+        plot_name = ""
+        plot_png_by_window: dict[str, str] = {}
+        if rb:
+            plot_path = out_final_tmp / "rolling_factor_betas.html"
+            write_rolling_betas_plot_html(rb, plot_path)
+            plot_name = plot_path.name
+            plot_png_by_window = write_rolling_betas_plot_pngs(rb, out_final_tmp)
+
+        stress_report["factor_betas_rolling_windows_weeks"] = rolling_windows
+        stress_report["factor_betas_rolling_summary"] = summary_struct
+        stress_report["factor_betas_rolling_artifacts"] = {
+            "csv_by_window": csv_paths,
+            "summary_csv": summary_csv_name,
+            "plot_html": plot_name,
+            "plot_png_by_window": plot_png_by_window,
+        }
+    except Exception as e:
+        stress_report["factor_betas_rolling_error"] = str(e)
+        logger.warning(f"Rolling factor betas diagnostics failed: {e}")
+
+    # Always write stress_report.json here so rolling/ factor diagnostics exist even with --no-report;
+    # a subsequent run_report.py run overwrites the same file with the full pipeline.
+    try:
+        _stress_out = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
+        _stress_out.mkdir(parents=True, exist_ok=True)
+        from src.io_export import export_stress_report
+
+        export_stress_report(stress_report, _stress_out)
+    except Exception as e:
+        logger.warning("export_stress_report after optimization failed: %s", e)
+
     stress_status = stress_report.get("status")
     stress_fail_reason = stress_report.get("fail_reason_code") or stress_report.get("skip_reason")
 

@@ -71,10 +71,15 @@ from src.risk_contrib import build_rc_cap_per_ticker, cov_matrix_monthly, rc_vol
 from src.stress import run_stress
 from src.stress_factors import (
     FACTOR_WEEKS_10Y,
+    FACTOR_WEEKS_3Y,
     FACTOR_WEEKS_5Y,
+    compute_portfolio_rolling_factor_betas_weekly,
     compute_asset_factor_betas_weekly,
     portfolio_factor_regression_weekly,
     portfolio_factor_betas,
+    rolling_beta_summary,
+    write_rolling_betas_plot_html,
+    write_rolling_betas_plot_pngs,
 )
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
 from src.windows import slice_window
@@ -519,6 +524,62 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["factor_regression_10y_error"] = str(e)
         logger.warning(f"Factor regression diagnostics (10Y) failed: {e}")
+
+    # Rolling beta stability (diagnostic): 3Y/5Y/10Y rolling weekly betas + summary stats.
+    try:
+        rolling_windows = {"3y": FACTOR_WEEKS_3Y, "5y": FACTOR_WEEKS_5Y, "10y": FACTOR_WEEKS_10Y}
+        rb = compute_portfolio_rolling_factor_betas_weekly(
+            weights=weights,
+            tickers=tickers,
+            analysis_end_str=analysis_end_str,
+            rolling_windows_weeks=rolling_windows,
+        )
+        # Save rolling beta time series CSV files
+        csv_paths: dict[str, str] = {}
+        for lbl, df_rb in rb.items():
+            if df_rb is None or df_rb.empty:
+                continue
+            p = output_dir_csv / f"rolling_factor_betas_{lbl}.csv"
+            df_rb.round(4).to_csv(p, index=True)
+            csv_paths[lbl] = p.name
+
+        summary_df = rolling_beta_summary(rb)
+        summary_csv_name = ""
+        summary_struct: dict[str, dict[str, dict[str, float | int]]] = {}
+        if not summary_df.empty:
+            summary_csv = output_dir_csv / "rolling_factor_betas_summary.csv"
+            summary_df.round(4).to_csv(summary_csv, index=False)
+            summary_csv_name = summary_csv.name
+            for _, row in summary_df.iterrows():
+                w = str(row["window"])
+                b = str(row["beta"])
+                summary_struct.setdefault(w, {})[b] = {
+                    "n_points": int(row["n_points"]),
+                    "mean": float(row["mean"]),
+                    "median": float(row["median"]),
+                    "p10": float(row["p10"]),
+                    "p90": float(row["p90"]),
+                }
+
+        plot_name = ""
+        plot_png_by_window: dict[str, str] = {}
+        if rb:
+            plot_path = output_dir_final / "rolling_factor_betas.html"
+            write_rolling_betas_plot_html(rb, plot_path)
+            plot_name = plot_path.name
+            plot_png_by_window = write_rolling_betas_plot_pngs(rb, output_dir_final)
+
+        stress_report["factor_betas_rolling_windows_weeks"] = rolling_windows
+        stress_report["factor_betas_rolling_summary"] = summary_struct
+        stress_report["factor_betas_rolling_artifacts"] = {
+            "csv_by_window": csv_paths,
+            "summary_csv": summary_csv_name,
+            "plot_html": plot_name,
+            "plot_png_by_window": plot_png_by_window,
+        }
+    except Exception as e:
+        stress_report["factor_betas_rolling_error"] = str(e)
+        logger.warning(f"Rolling factor betas diagnostics failed: {e}")
     export_stress_report(stress_report, output_dir_final)
     logger.info(f"Stress status: {stress_report.get('status', 'N/A')}")
 
