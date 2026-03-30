@@ -2,7 +2,7 @@
 
 This document defines **formulas and checks** for the Technical Feasibility Layer only. It is the single source of truth for derived caps and achievability tests. No duplication of these formulas appears in the Portfolio Construction Policy.
 
-**Config resolution:** If in `config.yml` the fields `rc_asset_cap_pct`, `max_single_security_weight_pct`, or `min_single_security_weight_pct` are **null** or **0**, the system uses the values given by the formulas below (from this spec). If a numeric value is set, that value is used as an override.
+**Config resolution:** If in `config.yml` the fields `rc_asset_cap_pct`, `max_single_security_weight_pct`, or `min_single_security_weight_pct` are **null** or **0**, the system uses the values given by the formulas below (from this spec). If `rc_asset_cap_pct` is set to a positive number, that value is used as a **global** RC override for every risk asset. Optional `rc_cap_mode: per_block_rb_k` selects **§1b** instead of **§1** when `rc_asset_cap_pct` is not set.
 
 ---
 
@@ -32,11 +32,24 @@ else:
 
 ---
 
+## 1b. Per-block RC cap (variant B: `rc_cap_mode: per_block_rb_k`)
+
+When `rc_cap_mode` is `per_block_rb_k` and `rc_asset_cap_pct` is null or zero, each main block (Growth including Growth_HY and Growth_EM_debt, Duration, Inflation) gets its own cap **rc_cap_b** from **RB_block** and **k_block** (asset count in that block):
+
+- If **k_block = 1:** `rc_cap_b = min(RB_block, 0.25)` (single-asset concentration roof).
+- If **k_block ≥ 2:** let `fair_b = RB_block / k_block`. Then  
+  `rc_cap_b = min(0.25, fair_b × rc_cap_rb_k_multiplier)` with **`rc_cap_rb_k_multiplier`** default **1.25** in config, and enforce `rc_cap_b ≥ fair_b`.
+- **Equity-Only** (RB_growth ≥ 0.90): for the **Growth** block only, `rc_cap_growth = max(rc_cap_growth, 0.15)` (same floor intent as §6.1).
+
+Every asset in block b uses **rc_cap_b** as its RC_vol cap (share of RiskPortfolio variance). **§2 / §5 achievability** uses **rc_cap_b** per block: `k_required_block = ceil(RB_block / rc_cap_b)`.
+
+---
+
 ## 2. Risk Budget achievability (by RC)
 
-For each block:
+For each block, let **rc_cap_block** be the per-asset RC cap applicable to that block (**§1** uses the same scalar for all blocks; **§1b** uses **rc_cap_b** per block; explicit `rc_asset_cap_pct` uses that scalar for all blocks).
 
-- **k_required_block** = ceil(RB_block / rc_asset_cap)
+- **k_required_block** = ceil(RB_block / rc_cap_block)
 
 **Check:** For each block, **k_block ≥ k_required_block**.
 
@@ -49,10 +62,10 @@ If not satisfied → RB is not achievable with the current block composition. Ei
 All of the following apply **only to the Growth block** and to risk measured on **RiskPortfolio** (Growth + Duration + Inflation) **before** adding BIL/cash.
 
 - **Where risk is measured:** RC_vol and risk budget are computed only on RiskPortfolio (Growth + Duration + Inflation), before any cash/BIL is added.
-- **Constraint priority:** RC_vol cap overrides weight cap. If a weight is within its cap but RC_vol is exceeded, the weight must be reduced until the RC cap is satisfied.
-- **Global RC cap (per asset)** for RiskPortfolio: see **§1** — if N < 4 then rc_asset_cap = 0.40, else rc_asset_cap = min(0.25, max(0.10, 1.5/N)).
+- **Constraint priority:** RC_vol concentration control overrides weight cap intent. In optimization, RC cap is penalty-first (soft objective term); violations are still diagnosed and optionally mitigated post-solve.
+- **RC cap (per asset)** for RiskPortfolio: **§1** (global by N), **§1b** (`rc_cap_mode: per_block_rb_k`), or explicit **`rc_asset_cap_pct`** override (same cap for all assets).
 - **Growth risk budget achievability (by RC):**  
-  Minimum number of assets in Growth: **k_growth ≥ ceil(RB_growth / rc_asset_cap)**.  
+  Minimum number of assets in Growth: **k_growth ≥ ceil(RB_growth / rc_cap_growth)** with **rc_cap_growth** from **§2**.  
   If not satisfied, RB_growth is not achievable with the current Growth composition (add assets or change RB).
 - **Weight caps inside Growth** (only Growth has Core/Satellite):  
   - Core (e.g. VOO, VT, VTI): max_weight_core = min(0.35, max(0.25, 2/N)).  
@@ -120,9 +133,11 @@ If there is **no** Core (Nc = 0):
 
 ## 5. Minimum number of assets for Risk Budget
 
-- k_growth   ≥ ceil(RB_growth   / rc_asset_cap)
-- k_duration ≥ ceil(RB_duration / rc_asset_cap)
-- k_inflation ≥ ceil(RB_inflation / rc_asset_cap)
+Use **rc_cap_block** as in **§2** (global §1 scalar, explicit override, or §1b per block):
+
+- k_growth   ≥ ceil(RB_growth   / rc_cap_growth)
+- k_duration ≥ ceil(RB_duration / rc_cap_duration)
+- k_inflation ≥ ceil(RB_inflation / rc_cap_inflation)
 
 *k* is the minimum number of assets in the block required to physically achieve the block’s risk budget.  
 `RB_growth + RB_duration + RB_inflation = 1.0`.

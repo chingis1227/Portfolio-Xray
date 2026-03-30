@@ -23,7 +23,8 @@ from src.optimization import (
     rc_by_block_from_weights,
     ticker_to_block_map,
 )
-from src.risk_contrib import cov_matrix_monthly, resolve_rc_asset_cap
+from policy_math.feasibility import DEFAULT_RC_CAP_RB_K_MULTIPLIER, RC_CAP_MODE_GLOBAL
+from src.risk_contrib import build_rc_cap_per_ticker, cov_matrix_monthly, resolve_rc_asset_cap
 
 # Delta menu: try in order when gates fail
 DELTA_MENU_PCT = [5.0, 2.0, 1.0]  # 5% → 2% → 1%
@@ -162,6 +163,8 @@ def run_view_after_optimization(
     target_vol_annual: float | None = None,
     target_max_drawdown_pct: float | None = None,
     rc_asset_cap_pct: float | None = None,
+    rc_cap_mode: str = RC_CAP_MODE_GLOBAL,
+    rc_cap_rb_k_multiplier: float = DEFAULT_RC_CAP_RB_K_MULTIPLIER,
     stress_top3_rc_sum_cap_pct: float = 0.70,
     rb_corridor_pp: float = 0.05,
     rb_deviation_threshold_pp: float = 0.02,
@@ -243,7 +246,14 @@ def run_view_after_optimization(
 
     rb_growth = rc_block_targets.get("Growth")
     n_assets = len([t for t in baseline_weights if baseline_weights.get(t, 0) > 0])
-    rc_cap = resolve_rc_asset_cap(rc_asset_cap_pct, max(n_assets, 1), rb_growth)
+    rc_cap_map = build_rc_cap_per_ticker(
+        blocks,
+        rc_block_targets,
+        rc_asset_cap_pct,
+        rc_cap_mode,
+        rc_cap_rb_k_multiplier,
+        max(n_assets, 1),
+    )
 
     execution_delta = 0.0
     tilted_weights: dict[str, float] = {}
@@ -309,6 +319,9 @@ def run_view_after_optimization(
             target_max_drawdown_pct=target_max_drawdown_pct,
             rc_asset_cap_pct=rc_asset_cap_pct,
             stress_top3_rc_sum_cap_pct=stress_top3_rc_sum_cap_pct,
+            rc_cap_mode=rc_cap_mode,
+            rc_cap_rb_k_multiplier=rc_cap_rb_k_multiplier,
+            rc_block_targets=rc_block_targets,
         )
         key_metric_values["stress_diagnostic_status"] = tilted_stress.get("status")
         key_metric_values["stress_diagnostic_codes"] = tilted_stress.get("diagnostic_codes", [])
@@ -316,9 +329,10 @@ def run_view_after_optimization(
         # Gate 3: RC caps
         rc_tilted = rc_by_asset_from_weights(tilted_weights, cov_df)
         for t, rc in rc_tilted.items():
-            if rc > rc_cap + 1e-9:
+            cap_t = float(rc_cap_map.get(t, resolve_rc_asset_cap(rc_asset_cap_pct, max(n_assets, 1), rb_growth)))
+            if rc > cap_t + 1e-9:
                 broken_gate = "RC"
-                key_metric_values["rc_breach"] = {t: rc, "cap": rc_cap}
+                key_metric_values["rc_breach"] = {t: rc, "cap": cap_t}
                 break
         else:
             pass  # no RC breach

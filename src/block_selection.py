@@ -13,13 +13,11 @@ import numpy as np
 import pandas as pd
 
 from policy_math.feasibility import (
-    FeasibilityContext,
-    check_feasible,
-    resolve_rc_asset_cap as _feasibility_rc_cap,
-    resolve_weight_caps,
+    DEFAULT_RC_CAP_RB_K_MULTIPLIER,
+    RC_CAP_MODE_GLOBAL,
 )
 from src.config_schema import GROWTH_EM_DEBT_KEY, GROWTH_HY_KEY
-from src.risk_contrib import cov_matrix_monthly
+from src.risk_contrib import build_rc_cap_per_ticker, cov_matrix_monthly
 from src.optimization import (
     RISK_BUDGET_BLOCKS,
     get_risk_portfolio_tickers,
@@ -28,6 +26,12 @@ from src.optimization import (
 
 GROWTH_PROXY = "VOO"
 N_WORST_GROWTH = 12
+
+
+def _cfg_get(config: Any, name: str, default: Any) -> Any:
+    if isinstance(config, dict):
+        return config.get(name, default)
+    return getattr(config, name, default)
 
 
 def _resolve_growth_proxy(monthly_returns: pd.DataFrame, config: Any) -> str | None:
@@ -162,11 +166,11 @@ def _check_portfolio_feasible(
     cols: list[str],
     cov: np.ndarray,
     ticker_to_block: dict[str, str],
-    rc_cap: float,
+    rc_cap: float | list[float],
     min_weight: float,
     bounds: list[tuple[float, float]],
 ) -> bool:
-    """True if w_dict satisfies per-asset RC <= rc_cap and weight bounds."""
+    """True if w_dict satisfies per-asset RC <= rc_cap (scalar or per-col list) and weight bounds."""
     w = np.array([w_dict.get(t, 0.0) for t in cols])
     if np.abs(w.sum() - 1.0) > 1e-6:
         return False
@@ -174,8 +178,14 @@ def _check_portfolio_feasible(
     if var_p <= 1e-16:
         return True
     pc = (w * (cov @ w)) / var_p
+    if isinstance(rc_cap, (int, float)):
+        caps = [float(rc_cap)] * len(cols)
+    else:
+        caps = [float(x) for x in rc_cap]
+        if len(caps) != len(cols):
+            return False
     for i, t in enumerate(cols):
-        if pc[i] > rc_cap + 1e-9:
+        if pc[i] > caps[i] + 1e-9:
             return False
         lo, hi = bounds[i]
         if w[i] < lo - 1e-9 or w[i] > hi + 1e-9:
@@ -303,7 +313,15 @@ def select_duration_block(
     if total_rb <= 0:
         total_rb = 1.0
     rb_g, rb_d, rb_i = rb_g / total_rb, rb_d / total_rb, rb_i / total_rb
-    rc_cap = _feasibility_rc_cap(n, equity_only=(rb_g >= 0.90))
+    cap_map = build_rc_cap_per_ticker(
+        blocks,
+        rc_block_targets,
+        _cfg_get(config, "rc_asset_cap_pct", None),
+        _cfg_get(config, "rc_cap_mode", RC_CAP_MODE_GLOBAL),
+        float(_cfg_get(config, "rc_cap_rb_k_multiplier", DEFAULT_RC_CAP_RB_K_MULTIPLIER)),
+        max(n, 1),
+    )
+    rc_cap_row = [float(cap_map.get(t, 0.25)) for t in cols]
     min_weight = 0.01
     growth_core = getattr(config, "growth_core_candidates", None) or config.get("growth_core_candidates", ["VOO", "VT", "VTI"])
     from src.optimization import build_bounds
@@ -323,7 +341,7 @@ def select_duration_block(
                 w_dict[t] = rb_i / len(inflation_tickers) if inflation_tickers else 0.0
             else:
                 w_dict[t] = 0.0
-        if _check_portfolio_feasible(w_dict, cols, cov, ticker_to_block, rc_cap, min_weight, bounds):
+        if _check_portfolio_feasible(w_dict, cols, cov, ticker_to_block, rc_cap_row, min_weight, bounds):
             return {
                 "status": "OK",
                 "selected_candidate_name": p["name"],
@@ -464,7 +482,15 @@ def select_inflation_block(
     if total_rb <= 0:
         total_rb = 1.0
     rb_g, rb_d, rb_i = rb_g / total_rb, rb_d / total_rb, rb_i / total_rb
-    rc_cap = _feasibility_rc_cap(n, equity_only=(rb_g >= 0.90))
+    cap_map = build_rc_cap_per_ticker(
+        blocks,
+        rc_block_targets,
+        _cfg_get(config, "rc_asset_cap_pct", None),
+        _cfg_get(config, "rc_cap_mode", RC_CAP_MODE_GLOBAL),
+        float(_cfg_get(config, "rc_cap_rb_k_multiplier", DEFAULT_RC_CAP_RB_K_MULTIPLIER)),
+        max(n, 1),
+    )
+    rc_cap_row = [float(cap_map.get(t, 0.25)) for t in cols]
     min_weight = 0.01
     growth_core = getattr(config, "growth_core_candidates", None) or config.get("growth_core_candidates", ["VOO", "VT", "VTI"])
     from src.optimization import build_bounds
@@ -484,7 +510,7 @@ def select_inflation_block(
                 w_dict[t] = rb_i * p["weights"].get(t, 0.0)
             else:
                 w_dict[t] = 0.0
-        if _check_portfolio_feasible(w_dict, cols, cov, ticker_to_block, rc_cap, min_weight, bounds):
+        if _check_portfolio_feasible(w_dict, cols, cov, ticker_to_block, rc_cap_row, min_weight, bounds):
             return {
                 "status": "OK",
                 "selected_candidate_name": p["name"],

@@ -21,6 +21,132 @@ from typing import Dict, List, Tuple
 
 DEFAULT_MIN_WEIGHT = 0.01
 
+# RC cap mode: "global" = §1 with N = total RiskPortfolio size; "per_block_rb_k" = variant B (RB_block/k_block × multiplier).
+RC_CAP_MODE_GLOBAL = "global"
+RC_CAP_MODE_PER_BLOCK_RB_K = "per_block_rb_k"
+DEFAULT_RC_CAP_RB_K_MULTIPLIER = 1.25
+
+
+def risk_portfolio_tickers_list(blocks: Dict[str, List[str]]) -> List[str]:
+    """Same universe as get_risk_portfolio_tickers (no src import)."""
+    out: List[str] = []
+    for b in ("Growth", "Duration", "Inflation"):
+        out.extend(blocks.get(b, []))
+    for b in ("Growth_HY", "Growth_EM_debt"):
+        out.extend(blocks.get(b, []))
+    return out
+
+
+def ticker_to_block_for_rb_local(blocks: Dict[str, List[str]]) -> Dict[str, str]:
+    """Mirror src.blocks.get_ticker_to_block_for_rb (Growth_HY / Growth_EM_debt → Growth)."""
+    out: Dict[str, str] = {}
+    for b in ("Growth", "Duration", "Inflation"):
+        for t in blocks.get(b, []):
+            out[t] = b
+    for b in ("Growth_HY", "Growth_EM_debt"):
+        for t in blocks.get(b, []):
+            out[t] = "Growth"
+    return out
+
+
+def count_k_block(blocks: Dict[str, List[str]], block_name: str) -> int:
+    if block_name == "Growth":
+        return (
+            len(blocks.get("Growth", []))
+            + len(blocks.get("Growth_HY", []))
+            + len(blocks.get("Growth_EM_debt", []))
+        )
+    return len(blocks.get(block_name, []))
+
+
+def resolve_rc_cap_block_rb_k(
+    rb_block: float,
+    k_block: int,
+    multiplier: float,
+    equity_only_growth: bool,
+) -> float:
+    """
+    Variant B: per-block RC cap from risk-budget share and block size.
+
+    cap = min(0.25, (RB_block / k_block) * multiplier), at least RB_block/k_block;
+    k==1: min(RB_block, 0.25) to avoid single-asset concentration overshoot.
+    Equity-Only Growth: floor max(cap, 0.15) per §6 spirit.
+    """
+    if k_block <= 0:
+        return 0.0
+    mult = float(multiplier) if multiplier > 0 else DEFAULT_RC_CAP_RB_K_MULTIPLIER
+    if k_block == 1:
+        return float(min(rb_block, 0.25))
+    fair = rb_block / k_block
+    cap = min(0.25, fair * mult)
+    cap = max(cap, fair)
+    if equity_only_growth:
+        cap = max(cap, 0.15)
+    return float(cap)
+
+
+def compute_rc_caps_by_block_from_targets(
+    blocks: Dict[str, List[str]],
+    rb_g: float,
+    rb_d: float,
+    rb_i: float,
+    multiplier: float,
+    equity_only: bool,
+) -> Dict[str, float]:
+    k_g = count_k_block(blocks, "Growth")
+    k_d = count_k_block(blocks, "Duration")
+    k_i = count_k_block(blocks, "Inflation")
+    return {
+        "Growth": resolve_rc_cap_block_rb_k(rb_g, k_g, multiplier, equity_only),
+        "Duration": resolve_rc_cap_block_rb_k(rb_d, k_d, multiplier, False),
+        "Inflation": resolve_rc_cap_block_rb_k(rb_i, k_i, multiplier, False),
+    }
+
+
+def build_rc_cap_per_ticker(
+    blocks: Dict[str, List[str]],
+    rc_block_targets: Dict[str, float] | None,
+    rc_asset_cap_pct: float | None,
+    rc_cap_mode: str,
+    rc_cap_rb_k_multiplier: float,
+    n_total_for_global: int,
+) -> Dict[str, float]:
+    """
+    Per-ticker RC_vol cap (share of RiskPortfolio variance) for diagnostics and enforcement.
+
+    - Explicit rc_asset_cap_pct > 0: that value for every risk ticker.
+    - per_block_rb_k: cap from RB_block/k_block × multiplier per main block (HY/EM → Growth).
+    - else: global §1 from n_total_for_global and RB_growth (equity-only floor).
+    """
+    tickers = risk_portfolio_tickers_list(blocks)
+    ttb = ticker_to_block_for_rb_local(blocks)
+    if not tickers:
+        return {}
+
+    if rc_asset_cap_pct is not None and rc_asset_cap_pct > 0:
+        c = float(rc_asset_cap_pct)
+        return {t: c for t in tickers}
+
+    rb = rc_block_targets or {}
+    rb_g = float(rb.get("Growth", 1.0 / 3))
+    rb_d = float(rb.get("Duration", 1.0 / 3))
+    rb_i = float(rb.get("Inflation", 1.0 / 3))
+    s = rb_g + rb_d + rb_i
+    if s <= 1e-12:
+        rb_g, rb_d, rb_i = 1.0 / 3, 1.0 / 3, 1.0 / 3
+    else:
+        rb_g, rb_d, rb_i = rb_g / s, rb_d / s, rb_i / s
+    equity_only = rb_g >= 0.90
+
+    if rc_cap_mode == RC_CAP_MODE_PER_BLOCK_RB_K:
+        caps_b = compute_rc_caps_by_block_from_targets(
+            blocks, rb_g, rb_d, rb_i, rc_cap_rb_k_multiplier, equity_only
+        )
+        return {t: caps_b[ttb[t]] for t in tickers if t in ttb}
+
+    scalar = resolve_rc_asset_cap(n_total_for_global, equity_only=equity_only)
+    return {t: scalar for t in tickers}
+
 
 def resolve_rc_asset_cap(n_assets: int, equity_only: bool = False) -> float:
     """
@@ -127,6 +253,9 @@ class FeasibilityContext:
     growth_core_candidates: List[str]
     equity_only: bool
     rc_asset_cap: float
+    rc_cap_mode: str = RC_CAP_MODE_GLOBAL
+    rc_cap_rb_k_multiplier: float = DEFAULT_RC_CAP_RB_K_MULTIPLIER
+    rc_asset_cap_pct: float | None = None
 
 
 def check_feasible(ctx: FeasibilityContext) -> Tuple[bool, Dict[str, str]]:
@@ -167,25 +296,41 @@ def check_feasible(ctx: FeasibilityContext) -> Tuple[bool, Dict[str, str]]:
     k_duration = len(duration_tickers)
     k_inflation = len(inflation_tickers)
 
+    # Per-block RC cap for achievability (explicit pct → global; per_block_rb_k → variant B; else §1 global)
+    if ctx.rc_asset_cap_pct is not None and ctx.rc_asset_cap_pct > 0:
+        cap_g = cap_d = cap_i = float(ctx.rc_asset_cap_pct)
+    elif ctx.rc_cap_mode == RC_CAP_MODE_PER_BLOCK_RB_K:
+        caps_b = compute_rc_caps_by_block_from_targets(
+            ctx.blocks,
+            rb_g,
+            rb_d,
+            rb_i,
+            ctx.rc_cap_rb_k_multiplier,
+            ctx.equity_only,
+        )
+        cap_g, cap_d, cap_i = caps_b["Growth"], caps_b["Duration"], caps_b["Inflation"]
+    else:
+        cap_g = cap_d = cap_i = ctx.rc_asset_cap
+
     # Risk budget achievability by RC (§2, §5)
-    k_req_g = required_k(rb_g, ctx.rc_asset_cap, k_single_asset=(k_growth == 1))
-    k_req_d = required_k(rb_d, ctx.rc_asset_cap, k_single_asset=(k_duration == 1))
-    k_req_i = required_k(rb_i, ctx.rc_asset_cap, k_single_asset=(k_inflation == 1))
+    k_req_g = required_k(rb_g, cap_g, k_single_asset=(k_growth == 1))
+    k_req_d = required_k(rb_d, cap_d, k_single_asset=(k_duration == 1))
+    k_req_i = required_k(rb_i, cap_i, k_single_asset=(k_inflation == 1))
 
     if k_growth < k_req_g:
         reasons["RB_GROWTH_K"] = (
             f"Risk budget not achievable: Growth has {k_growth} assets, need at least "
-            f"{k_req_g} (ceil(RB_growth/rc_asset_cap))."
+            f"{k_req_g} (ceil(RB_growth/rc_cap_growth={cap_g:.4f}))."
         )
     if k_duration < k_req_d:
         reasons["RB_DURATION_K"] = (
             f"Risk budget not achievable: Duration has {k_duration} assets, need at least "
-            f"{k_req_d} (ceil(RB_duration/rc_asset_cap))."
+            f"{k_req_d} (ceil(RB_duration/rc_cap_duration={cap_d:.4f}))."
         )
     if k_inflation < k_req_i:
         reasons["RB_INFLATION_K"] = (
             f"Risk budget not achievable: Inflation has {k_inflation} assets, need at least "
-            f"{k_req_i} (ceil(RB_inflation/rc_asset_cap))."
+            f"{k_req_i} (ceil(RB_inflation/rc_cap_inflation={cap_i:.4f}))."
         )
 
     # Growth Core/Satellite weight capacity (§3.1, §6)

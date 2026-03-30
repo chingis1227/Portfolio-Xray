@@ -11,7 +11,10 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from policy_math.feasibility import resolve_rc_asset_cap as _policy_resolve_rc_asset_cap
+from policy_math.feasibility import (
+    build_rc_cap_per_ticker as _build_rc_cap_per_ticker,
+    resolve_rc_asset_cap as _policy_resolve_rc_asset_cap,
+)
 
 DDOF = 1
 
@@ -32,6 +35,29 @@ def resolve_rc_asset_cap(
         return float(rc_asset_cap_pct)
     equity_only = bool(rb_growth is not None and rb_growth >= 0.90)
     return _policy_resolve_rc_asset_cap(n_assets=n_assets, equity_only=equity_only)
+
+
+def build_rc_cap_per_ticker(
+    blocks: dict,
+    rc_block_targets: dict | None,
+    rc_asset_cap_pct: float | None,
+    rc_cap_mode: str,
+    rc_cap_rb_k_multiplier: float,
+    n_total_for_global: int,
+) -> dict[str, float]:
+    """
+    Per-ticker RC_vol caps; delegates to policy_math (variant B when rc_cap_mode=per_block_rb_k).
+
+    For global §1 formula, n_total_for_global should match the same N used elsewhere (e.g. len(cols) in optimizer).
+    """
+    return _build_rc_cap_per_ticker(
+        blocks=blocks,
+        rc_block_targets=rc_block_targets,
+        rc_asset_cap_pct=rc_asset_cap_pct,
+        rc_cap_mode=rc_cap_mode,
+        rc_cap_rb_k_multiplier=rc_cap_rb_k_multiplier,
+        n_total_for_global=n_total_for_global,
+    )
 
 
 def cov_matrix_monthly(
@@ -56,6 +82,35 @@ def cov_matrix_monthly(
         except Exception:
             return returns_df.cov(ddof=ddof)
     return returns_df.cov(ddof=ddof)
+
+
+def cov_matrix_monthly_robust(
+    returns_df: pd.DataFrame,
+    ddof: int = DDOF,
+) -> pd.DataFrame:
+    """
+    Robust covariance via sklearn Minimum Covariance Determinant (MCD).
+
+    Intended for experiments / diagnostics; not the default policy pipeline.
+    Falls back to sample ``returns_df.cov(ddof=ddof)`` if MCD does not fit
+    (e.g. too few rows vs columns) or raises.
+    """
+    if returns_df.shape[1] == 0 or len(returns_df) < 2:
+        return returns_df.cov(ddof=ddof)
+    n, p = returns_df.shape
+    if n < p + 1:
+        return returns_df.cov(ddof=ddof)
+    try:
+        from sklearn.covariance import MinCovDet
+
+        mcd = MinCovDet(random_state=0).fit(returns_df.values.astype(float))
+        return pd.DataFrame(
+            mcd.covariance_,
+            index=returns_df.columns,
+            columns=returns_df.columns,
+        )
+    except Exception:
+        return returns_df.cov(ddof=ddof)
 
 
 def variance_p(w: np.ndarray, cov: np.ndarray) -> float:

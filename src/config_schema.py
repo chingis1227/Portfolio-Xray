@@ -107,6 +107,11 @@ class PortfolioConfig:
     tail_target_weight_pct: float | None = None
     # RC post-processing: "strict" = do not write weights if RC caps unresolved; "permissive" = write but flag violation
     rc_policy_mode: str = "strict"
+    # RC soft-control strength in optimizer objective (higher => stronger push against RC cap violations)
+    rc_cap_penalty_lambda: float = 25.0
+    # RC_vol cap policy: "global" = feasibility §1 with N = RiskPortfolio size; "per_block_rb_k" = variant B (RB_block/k × multiplier)
+    rc_cap_mode: str = "global"
+    rc_cap_rb_k_multiplier: float = 1.25
     # Deprecated: stress is diagnostic-only (DIAG_*); ignored for blocking. Kept for config compatibility.
     strict_stress_gate: bool = False
     # When True, use Ledoit-Wolf shrinkage for covariance in optimization/RC (more stable weights)
@@ -155,6 +160,9 @@ class PortfolioConfig:
             "growth_core_candidates": self.growth_core_candidates,
             "donor_shift_mode": self.donor_shift_mode,
             "rc_policy_mode": self.rc_policy_mode,
+            "rc_cap_penalty_lambda": self.rc_cap_penalty_lambda,
+            "rc_cap_mode": self.rc_cap_mode,
+            "rc_cap_rb_k_multiplier": self.rc_cap_rb_k_multiplier,
             "strict_stress_gate": self.strict_stress_gate,
             "covariance_shrinkage": self.covariance_shrinkage,
             "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
@@ -216,6 +224,9 @@ class PortfolioConfig:
             "growth_core_candidates": self.growth_core_candidates,
             "donor_shift_mode": self.donor_shift_mode,
             "rc_policy_mode": self.rc_policy_mode,
+            "rc_cap_penalty_lambda": self.rc_cap_penalty_lambda,
+            "rc_cap_mode": self.rc_cap_mode,
+            "rc_cap_rb_k_multiplier": self.rc_cap_rb_k_multiplier,
             "strict_stress_gate": self.strict_stress_gate,
             "covariance_shrinkage": self.covariance_shrinkage,
             "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
@@ -293,6 +304,7 @@ NONNEGATIVE_FIELDS = [
 CASH_POLICY_VALUES = ("required_floor", "allowed_for_scaling", "prohibited")
 DONOR_SHIFT_MODES = ("proportional", "equal")
 RC_POLICY_MODES = ("strict", "permissive")
+RC_CAP_MODES = ("global", "per_block_rb_k")
 BACKTEST_MODES = ("dynamic_nan_safe", "simple")
 
 NUMERIC_FIELDS = [
@@ -961,6 +973,36 @@ def _validate_rc_policy_mode(cfg: dict[str, Any]) -> None:
         )
 
 
+def _validate_rc_cap_mode(cfg: dict[str, Any]) -> None:
+    mode = cfg.get("rc_cap_mode", "global")
+    if mode is not None and mode not in RC_CAP_MODES:
+        raise ConfigValidationError(
+            f"Config field 'rc_cap_mode' must be one of {RC_CAP_MODES}, got {mode!r}"
+        )
+    m = cfg.get("rc_cap_rb_k_multiplier", 1.25)
+    try:
+        mf = float(m)
+    except (TypeError, ValueError):
+        raise ConfigValidationError(
+            f"Config field 'rc_cap_rb_k_multiplier' must be a positive number, got {m!r}"
+        ) from None
+    if mf <= 0:
+        raise ConfigValidationError(
+            f"Config field 'rc_cap_rb_k_multiplier' must be positive, got {mf}"
+        )
+    lam = cfg.get("rc_cap_penalty_lambda", 25.0)
+    try:
+        lf = float(lam)
+    except (TypeError, ValueError):
+        raise ConfigValidationError(
+            f"Config field 'rc_cap_penalty_lambda' must be a positive number, got {lam!r}"
+        ) from None
+    if lf <= 0:
+        raise ConfigValidationError(
+            f"Config field 'rc_cap_penalty_lambda' must be positive, got {lf}"
+        )
+
+
 def _identify_pending_fields(cfg: dict[str, Any]) -> list[str]:
     """Identify which constraint fields are still pending user input (null/None)."""
     pending = []
@@ -1020,6 +1062,7 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
     _validate_portfolio_value(cfg)
     _validate_alpha_shift_params(cfg)
     _validate_rc_policy_mode(cfg)
+    _validate_rc_cap_mode(cfg)
     _validate_backtest_mode(cfg)
     _validate_robustness_policy(cfg)
     _validate_optimization_windows(cfg)
@@ -1069,6 +1112,9 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         growth_core_candidates=list(cfg.get("growth_core_candidates", ["VOO", "VT", "VTI"])),
         donor_shift_mode=cfg.get("donor_shift_mode", "proportional"),
         rc_policy_mode=cfg.get("rc_policy_mode", "strict"),
+        rc_cap_penalty_lambda=float(cfg.get("rc_cap_penalty_lambda", 25.0)),
+        rc_cap_mode=cfg.get("rc_cap_mode", "global"),
+        rc_cap_rb_k_multiplier=float(cfg.get("rc_cap_rb_k_multiplier", 1.25)),
         strict_stress_gate=bool(cfg.get("strict_stress_gate", False)),
         covariance_shrinkage=bool(cfg.get("covariance_shrinkage", False)),
         young_etf_optimization_policy=dict(cfg.get("young_etf_optimization_policy") or DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY),

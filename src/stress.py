@@ -14,11 +14,43 @@ import pandas as pd
 
 from src.blocks import STRESS_BLOCK_NAMES, get_ticker_to_block_for_stress
 from src.config_schema import GROWTH_EM_DEBT_KEY, GROWTH_HY_KEY
+from policy_math.feasibility import (
+    DEFAULT_RC_CAP_RB_K_MULTIPLIER,
+    RC_CAP_MODE_GLOBAL,
+    RC_CAP_MODE_PER_BLOCK_RB_K,
+)
 from src.risk_contrib import (
+    build_rc_cap_per_ticker,
     cov_matrix_monthly,
     percentage_contributions_variance,
     resolve_rc_asset_cap,
 )
+
+
+def _rc_cap_for_ticker_stress(
+    ticker: str | None,
+    blocks: dict[str, list[str]],
+    rc_asset_cap_pct: float | None,
+    rc_cap_mode: str,
+    rc_cap_rb_k_multiplier: float,
+    rc_block_targets: dict[str, float] | None,
+    n_assets: int,
+) -> float:
+    if rc_asset_cap_pct is not None and rc_asset_cap_pct > 0:
+        return float(rc_asset_cap_pct)
+    if rc_cap_mode == RC_CAP_MODE_PER_BLOCK_RB_K and rc_block_targets:
+        cmap = build_rc_cap_per_ticker(
+            blocks,
+            rc_block_targets,
+            None,
+            rc_cap_mode,
+            rc_cap_rb_k_multiplier,
+            max(n_assets, 1),
+        )
+        if ticker and ticker in cmap:
+            return float(cmap[ticker])
+        return float(next(iter(cmap.values()), 0.25)) if cmap else 0.25
+    return resolve_rc_asset_cap(rc_asset_cap_pct, max(n_assets, 1), rb_growth=None)
 
 # Scenario ids and shock vectors (shock_eq, shock_rr, shock_credit, shock_inf, shock_usd, shock_cmd)
 SCENARIOS = {
@@ -230,6 +262,9 @@ def run_stress(
     target_max_drawdown_pct: float | None,
     rc_asset_cap_pct: float | None,
     stress_top3_rc_sum_cap_pct: float,
+    rc_cap_mode: str = RC_CAP_MODE_GLOBAL,
+    rc_cap_rb_k_multiplier: float = DEFAULT_RC_CAP_RB_K_MULTIPLIER,
+    rc_block_targets: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     """
     Run full diagnostic stress suite (non-blocking). Status is DIAG_PASS | DIAG_PASS_WITH_WARNING | DIAG_ATTENTION.
@@ -303,7 +338,16 @@ def run_stress(
             role_ok = role_equity_shock_severity != "fail"
         else:
             role_ok = True
-        rc1_ok = top1_rc_pct <= rc_cap
+        rc1_thr = _rc_cap_for_ticker_stress(
+            str(top1_asset) if top1_asset is not None else None,
+            blocks,
+            rc_asset_cap_pct,
+            rc_cap_mode,
+            rc_cap_rb_k_multiplier,
+            rc_block_targets,
+            n_assets,
+        )
+        rc1_ok = top1_rc_pct <= rc1_thr
         rc3_ok = top3_rc_sum_pct <= stress_top3_rc_sum_cap_pct
         scenario_pass = loss_ok and role_ok and rc1_ok and rc3_ok
 
@@ -341,6 +385,7 @@ def run_stress(
             "role_ok": role_ok,
             "rc1_ok": rc1_ok,
             "rc3_ok": rc3_ok,
+            "top1_rc_cap_threshold": round(rc1_thr, 4),
             "pass": scenario_pass,
             "diagnostic_codes": row_diags,
         }
@@ -532,6 +577,7 @@ def run_stress(
         "factor_betas": factor_betas,
         "historical_results": historical_results,
         "rc_asset_cap_used": rc_cap,
+        "rc_cap_mode": rc_cap_mode,
         "stress_top3_rc_sum_cap": stress_top3_rc_sum_cap_pct,
         "max_dd_limit": max_dd_limit,
     }

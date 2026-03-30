@@ -65,8 +65,9 @@ from src.portfolio_analytics import (
     rolling_vol_annual,
     var_historical,
 )
+from src.optimization import get_risk_portfolio_tickers
 from src.portfolio_dynamic import portfolio_returns_nan_safe
-from src.risk_contrib import cov_matrix_monthly, rc_vol_window
+from src.risk_contrib import build_rc_cap_per_ticker, cov_matrix_monthly, rc_vol_window
 from src.stress import run_stress
 from src.stress_factors import (
     FACTOR_WEEKS_10Y,
@@ -237,6 +238,15 @@ def run_portfolio_report_for_weights(
                     "Inner-join sample for Σ/RC used in backtest gating is %d months (< 36). Risk estimates may be noisy.",
                     inner_join_months_used,
                 )
+        _n_rb = max(len(get_risk_portfolio_tickers(cfg.blocks)), 1)
+        _rc_cap_map = build_rc_cap_per_ticker(
+            cfg.blocks,
+            cfg.rc_block_targets,
+            cfg.rc_asset_cap_pct,
+            getattr(cfg, "rc_cap_mode", "global"),
+            float(getattr(cfg, "rc_cap_rb_k_multiplier", 1.25)),
+            _n_rb,
+        )
         result = portfolio_returns_nan_safe(
             asset_returns_df,
             target_weights,
@@ -246,6 +256,7 @@ def run_portfolio_report_for_weights(
             rc_asset_cap_pct=cfg.rc_asset_cap_pct,
             cov_df=cov_df_nan_safe,
             return_diagnostics=True,
+            rc_cap_by_ticker=_rc_cap_map,
         )
         portfolio_returns, weights_used, backtest_diagnostics = result
         logger.info(
@@ -477,6 +488,9 @@ def run_portfolio_report_for_weights(
         target_max_drawdown_pct=cfg.target_max_drawdown_pct,
         rc_asset_cap_pct=cfg.rc_asset_cap_pct,
         stress_top3_rc_sum_cap_pct=stress_top3_cap,
+        rc_cap_mode=getattr(cfg, "rc_cap_mode", "global"),
+        rc_cap_rb_k_multiplier=float(getattr(cfg, "rc_cap_rb_k_multiplier", 1.25)),
+        rc_block_targets=cfg.rc_block_targets,
     )
     stress_report["factor_betas_5y"] = {k: round(v, 4) for k, v in (portfolio_betas_5y_dict or {}).items()}
     stress_report["factor_betas_10y"] = {k: round(v, 4) for k, v in (portfolio_betas_10y_dict or {}).items()}

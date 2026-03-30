@@ -89,6 +89,7 @@ def _rc_check_after_redist(
     ticker_to_block: dict[str, str],
     rc_block_targets: dict[str, float],
     rc_asset_cap_pct: float | None,
+    rc_cap_by_ticker: dict[str, float] | None = None,
 ) -> bool:
     """
     True if after redistribution: RC by block is within target ± RB_CORRIDOR_PP and no asset exceeds rc_asset_cap.
@@ -117,7 +118,12 @@ def _rc_check_after_redist(
         actual = rc_block[b] / total_rc
         if actual < target - RB_CORRIDOR_PP - 1e-9 or actual > target + RB_CORRIDOR_PP + 1e-9:
             return False
-    if rc_asset_cap_pct is not None and rc_asset_cap_pct > 0:
+    if rc_cap_by_ticker is not None:
+        for i, t in enumerate(cols):
+            cap_t = float(rc_cap_by_ticker.get(t, 1.0))
+            if pc[i] / total_rc > cap_t + 1e-9:
+                return False
+    elif rc_asset_cap_pct is not None and rc_asset_cap_pct > 0:
         for i, t in enumerate(cols):
             if pc[i] / total_rc > rc_asset_cap_pct + 1e-9:
                 return False
@@ -134,6 +140,7 @@ def portfolio_returns_nan_safe(
     rc_asset_cap_pct: float | None = None,
     cov_df: pd.DataFrame | None = None,
     return_diagnostics: bool = False,
+    rc_cap_by_ticker: dict[str, float] | None = None,
 ) -> tuple[pd.Series, pd.DataFrame] | tuple[pd.Series, pd.DataFrame, dict[str, Any]]:
     """
     NaN-safe portfolio returns.
@@ -183,7 +190,12 @@ def portfolio_returns_nan_safe(
             if do_rc_check and cov_df is not None and rc_block_targets:
                 w_risk = {k: v for k, v in w_row.items() if k in risk_tickers and v > 0}
                 if not _rc_check_after_redist(
-                    w_risk, cov_df, ticker_to_block, rc_block_targets, rc_asset_cap_pct
+                    w_risk,
+                    cov_df,
+                    ticker_to_block,
+                    rc_block_targets,
+                    rc_asset_cap_pct,
+                    rc_cap_by_ticker=rc_cap_by_ticker,
                 ):
                     used_fallback = True
                     # Fallback: no redistribution, w_miss to cash

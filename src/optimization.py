@@ -11,13 +11,18 @@ import pandas as pd
 from scipy.optimize import minimize
 
 from policy_math.feasibility import (
+    DEFAULT_RC_CAP_RB_K_MULTIPLIER,
     FeasibilityContext,
+    RC_CAP_MODE_GLOBAL,
+    RC_CAP_MODE_PER_BLOCK_RB_K,
     check_feasible,
+    compute_rc_caps_by_block_from_targets,
     resolve_weight_caps,
 )
 from src.blocks import get_ticker_to_block_for_rb
 from src.config_schema import GROWTH_EM_DEBT_KEY, GROWTH_HY_KEY
 from src.risk_contrib import (
+    build_rc_cap_per_ticker,
     cov_matrix_monthly,
     percentage_contributions_variance,
     resolve_rc_asset_cap,
@@ -33,6 +38,7 @@ HY_EM_RC_CAP_FRACTION = 0.10  # RC_vol(HY) and RC_vol(EM_debt) <= 10% of RC_vol(
 RB_CORRIDOR_PP = 0.05
 RB_RANGE_EXPANSION_PP = 0.05
 RB_GRID_STEP_PP = 0.01
+RC_CAP_PENALTY_LAMBDA_DEFAULT = 25.0
 
 
 def get_risk_portfolio_tickers(blocks: dict[str, list[str]]) -> list[str]:
@@ -121,6 +127,10 @@ def check_rb_achievement(
     growth_core_candidates: list[str],
     n_total: int,
     rb_growth: float,
+    *,
+    rc_cap_mode: str = RC_CAP_MODE_GLOBAL,
+    rc_cap_rb_k_multiplier: float = DEFAULT_RC_CAP_RB_K_MULTIPLIER,
+    rc_asset_cap_pct: float | None = None,
 ) -> tuple[bool, str]:
     """
     Delegate structural feasibility checks to policy_math.feasibility.check_feasible.
@@ -135,6 +145,9 @@ def check_rb_achievement(
         growth_core_candidates=growth_core_candidates,
         equity_only=equity_only,
         rc_asset_cap=rc_asset_cap,
+        rc_cap_mode=rc_cap_mode,
+        rc_cap_rb_k_multiplier=rc_cap_rb_k_multiplier,
+        rc_asset_cap_pct=rc_asset_cap_pct,
     )
     ok, reasons = check_feasible(ctx)
     if ok:
@@ -241,11 +254,15 @@ def run_risk_budget_optimization(
     cov_precomputed: pd.DataFrame | None = None,
     mu_precomputed: pd.Series | None = None,
     per_ticker_max_weight: dict[str, float] | None = None,
+    rc_cap_mode: str = RC_CAP_MODE_GLOBAL,
+    rc_cap_rb_k_multiplier: float = DEFAULT_RC_CAP_RB_K_MULTIPLIER,
+    rc_cap_penalty_lambda: float = RC_CAP_PENALTY_LAMBDA_DEFAULT,
 ) -> tuple[dict[str, float], str]:
     """
     Find RiskPortfolio weights satisfying risk budget (RC block shares) and feasibility.
-    Objective: maximize expected return (Growth spec). Returns (weights_dict, status_message).
-    RC_vol cap has priority over weight caps; if fallback solution violates RC cap, returns FAIL.
+    Objective: maximize expected return (Growth spec) with RC-cap penalty term.
+    RC_vol cap control is penalty-first (soft objective), while structural constraints remain hard.
+    Returns (weights_dict, status_message).
     If returns_window is provided, it is used as the primary window (already sliced); otherwise
     the window is taken from returns_df and window_months.
     If cov_precomputed and mu_precomputed are set, covariance and expected returns come from there
@@ -286,6 +303,9 @@ def run_risk_budget_optimization(
                 cov_precomputed=cov_precomputed,
                 mu_precomputed=mu_precomputed,
                 per_ticker_max_weight=per_ticker_max_weight,
+                rc_cap_mode=rc_cap_mode,
+                rc_cap_rb_k_multiplier=rc_cap_rb_k_multiplier,
+                rc_cap_penalty_lambda=rc_cap_penalty_lambda,
             )
             if not w_try:
                 if "FAIL_DATA" in st_try and not best_weights:
@@ -405,7 +425,33 @@ def run_risk_budget_optimization(
     rb_duration /= total_rb
     rb_inflation /= total_rb
 
-    rc_asset_cap = resolve_rc_asset_cap(rc_asset_cap_pct, n, rb_growth)
+    equity_only_rb = rb_growth >= 0.90
+    if rc_asset_cap_pct is not None and rc_asset_cap_pct > 0:
+        rc_scalar = float(rc_asset_cap_pct)
+        rc_caps_by_block = {"Growth": rc_scalar, "Duration": rc_scalar, "Inflation": rc_scalar}
+    elif rc_cap_mode == RC_CAP_MODE_PER_BLOCK_RB_K:
+        rc_caps_by_block = compute_rc_caps_by_block_from_targets(
+            blocks,
+            rb_growth,
+            rb_duration,
+            rb_inflation,
+            rc_cap_rb_k_multiplier,
+            equity_only_rb,
+        )
+    else:
+        rc_scalar = resolve_rc_asset_cap(rc_asset_cap_pct, n, rb_growth)
+        rc_caps_by_block = {"Growth": rc_scalar, "Duration": rc_scalar, "Inflation": rc_scalar}
+
+    rc_cap_map = build_rc_cap_per_ticker(
+        blocks,
+        {"Growth": rb_growth, "Duration": rb_duration, "Inflation": rb_inflation},
+        rc_asset_cap_pct,
+        rc_cap_mode,
+        rc_cap_rb_k_multiplier,
+        n,
+    )
+    rc_cap_per_asset = [float(rc_cap_map.get(t, rc_caps_by_block[ticker_to_block.get(t, "Growth")])) for t in cols]
+
     min_weight = float(min_single_security_weight_pct) if min_single_security_weight_pct is not None and min_single_security_weight_pct > 0 else MIN_WEIGHT_DEFAULT
 
     # Count assets per block in cols (feasibility: per-asset RC cap applies to every asset; single-asset block cannot exceed cap).
@@ -414,10 +460,15 @@ def run_risk_budget_optimization(
     growth_in_cols = [i for i, t in enumerate(cols) if ticker_to_block.get(t) == "Growth"]
     n_dur, n_infl, n_growth = len(duration_in_cols), len(inflation_in_cols), len(growth_in_cols)
 
-    # Effective RB: if a block has one asset, its max RC = rc_asset_cap (per-asset cap); redistribute shortfall to other blocks.
-    achievable_d = min(rb_duration, rc_asset_cap) if n_dur == 1 else rb_duration
-    achievable_i = min(rb_inflation, rc_asset_cap) if n_infl == 1 else rb_inflation
-    achievable_g = min(rb_growth, rc_asset_cap) if n_growth == 1 else rb_growth
+    cap_d_block, cap_i_block, cap_g_block = (
+        rc_caps_by_block["Duration"],
+        rc_caps_by_block["Inflation"],
+        rc_caps_by_block["Growth"],
+    )
+    # Effective RB: if a block has one asset, its max RC = that block's per-asset cap; redistribute shortfall to other blocks.
+    achievable_d = min(rb_duration, cap_d_block) if n_dur == 1 else rb_duration
+    achievable_i = min(rb_inflation, cap_i_block) if n_infl == 1 else rb_inflation
+    achievable_g = min(rb_growth, cap_g_block) if n_growth == 1 else rb_growth
     shortfall_d = rb_duration - achievable_d
     shortfall_i = rb_inflation - achievable_i
     shortfall_g = rb_growth - achievable_g
@@ -453,13 +504,17 @@ def run_risk_budget_optimization(
     )
 
     effective_rb = {"Growth": rb_growth, "Duration": rb_duration, "Inflation": rb_inflation}
+    rc_ctx_scalar = resolve_rc_asset_cap(rc_asset_cap_pct, n, rb_growth)
     ok, err = check_rb_achievement(
         blocks,
         effective_rb,
-        rc_asset_cap,
+        rc_ctx_scalar,
         growth_core_candidates,
         n,
         rb_growth,
+        rc_cap_mode=rc_cap_mode,
+        rc_cap_rb_k_multiplier=rc_cap_rb_k_multiplier,
+        rc_asset_cap_pct=rc_asset_cap_pct,
     )
     if not ok:
         feasibility_warning = f"FAIL_FEASIBILITY: {err}"
@@ -471,11 +526,14 @@ def run_risk_budget_optimization(
     hy_indices = [i for i, t in enumerate(cols) if t in growth_hy_set]
     em_debt_indices = [i for i, t in enumerate(cols) if t in growth_em_debt_set]
 
-    # Per-asset RC cap: strict global cap for every asset (feasibility spec §1); no exception for single-asset blocks.
-    rc_cap_per_asset = [rc_asset_cap] * n
+    penalty_lambda = float(rc_cap_penalty_lambda) if rc_cap_penalty_lambda > 0 else RC_CAP_PENALTY_LAMBDA_DEFAULT
 
     def objective(w: np.ndarray) -> float:
-        return -float(np.dot(mu, w))
+        # RC cap as soft penalty (not hard inequality): encourages concentration control while preserving feasibility.
+        pc = _pc_from_w(w, cov)
+        rc_viol = np.maximum(0.0, pc - np.array(rc_cap_per_asset, dtype=float))
+        rc_pen = float(np.sum(rc_viol * rc_viol))
+        return -float(np.dot(mu, w)) + penalty_lambda * rc_pen
 
     def constraint_sum(w: np.ndarray) -> float:
         return float(np.sum(w) - 1.0)
@@ -512,14 +570,6 @@ def run_risk_budget_optimization(
         pc = _pc_from_w(w, cov)
         rc_i = sum(pc[i] for i, t in enumerate(cols) if ticker_to_block.get(t) == "Inflation")
         return float((rb_inflation + RB_CORRIDOR_PP) - rc_i)
-
-    def make_rc_cap(idx: int):
-        cap_i = rc_cap_per_asset[idx]
-
-        def rc_cap(w: np.ndarray) -> float:
-            pc = _pc_from_w(w, cov)
-            return float(pc[idx] - cap_i)
-        return rc_cap
 
     # Growth HY sub-limit: RC_vol(HY) <= 10% × RC_vol(Growth) — feasibility_constraints_spec §2b
     def constraint_hy_sub(w: np.ndarray) -> float:
@@ -584,9 +634,8 @@ def run_risk_budget_optimization(
                     "fun": make_inflation_internal_constraint(idx, internal_t, inflation_in_cols),
                 })
 
-    constraints_full = constraints_core + [
-        {"type": "ineq", "fun": make_rc_cap(i)} for i in range(n)
-    ]
+    # RC cap is handled via objective penalty (soft); keep structural constraints hard.
+    constraints_full = constraints_core
 
     def penalty_rc(w: np.ndarray) -> float:
         s = float(np.sum(w) - 1.0)
@@ -668,6 +717,7 @@ def run_risk_budget_optimization(
         status_parts.append(feasibility_warning)
     if rc_cap_viol_tickers:
         status_parts.append(f"VIOL_RC_ASSET_CAP: {rc_cap_viol_tickers}")
+    status_parts.append(f"RC_CAP_PENALTY_LAMBDA={penalty_lambda:.2f}")
     status_parts.append(f"RC G/D/I: {rc_g:.3f}/{rc_d:.3f}/{rc_i:.3f}")
     status_msg = " | ".join(status_parts)
     return w_dict, status_msg
@@ -682,7 +732,7 @@ def enforce_rc_caps_postprocess(
     cov_df: pd.DataFrame,
     blocks: dict[str, list[str]],
     growth_core_candidates: list[str],
-    rc_asset_cap: float,
+    rc_asset_cap: float | list[float],
     min_weight: float,
     max_single_security_weight_pct: float | None,
     rb_growth: float,
@@ -690,11 +740,14 @@ def enforce_rc_caps_postprocess(
     max_iterations: int = RC_POSTPROCESS_MAX_ITER,
     step_pct: float = RC_POSTPROCESS_STEP_PCT,
     per_ticker_max_weight: dict[str, float] | None = None,
+    rc_cap_by_ticker: dict[str, float] | None = None,
 ) -> tuple[dict[str, float], bool, dict]:
     """
     RC post-processing fallback: iteratively reduce weight from assets above RC cap
     and reallocate to recipient bucket (core equity then lowest-vol Duration/Inflation).
     Respects min_weight, weight caps, no leverage/short.
+    rc_asset_cap: scalar (same cap for all) or list aligned with internal cols order.
+    If rc_cap_by_ticker is set, per-ticker caps override (lookup by cols[i]).
     Returns (adjusted_weights, success, diagnostics).
     """
     cols = [
@@ -714,6 +767,15 @@ def enforce_rc_caps_postprocess(
     cov = cov_df.reindex(index=cols, columns=cols).fillna(0).values
     w = np.array([weights_risk[t] for t in cols], dtype=float)
 
+    if rc_cap_by_ticker is not None:
+        cap_row = [float(rc_cap_by_ticker.get(t, 1.0)) for t in cols]
+    elif isinstance(rc_asset_cap, (int, float)):
+        cap_row = [float(rc_asset_cap)] * n
+    else:
+        cap_row = [float(x) for x in rc_asset_cap]
+        if len(cap_row) != n:
+            return dict(weights_risk), False, {"reason": "rc_cap_len_mismatch", "n": n, "caps": len(cap_row)}
+
     vol_per = np.sqrt(np.maximum(np.diag(cov), 1e-20))
     hedge = [t for t in cols if ticker_to_block.get(t) in ("Duration", "Inflation")]
     hedge_vol = [(t, vol_per[cols.index(t)]) for t in hedge]
@@ -728,7 +790,7 @@ def enforce_rc_caps_postprocess(
         if var_p <= 1e-16:
             break
         pc = (w * (cov @ w)) / var_p
-        violators = [i for i in range(n) if pc[i] > rc_asset_cap + 1e-9]
+        violators = [i for i in range(n) if pc[i] > cap_row[i] + 1e-9]
         if not violators:
             s = float(w.sum())
             if s > 1e-12:
@@ -737,7 +799,7 @@ def enforce_rc_caps_postprocess(
             for t in risk_tickers:
                 if t not in out:
                     out[t] = 0.0
-            return out, True, {"iterations": it, "rc_cap": rc_asset_cap}
+            return out, True, {"iterations": it, "rc_cap": cap_row}
 
         violators.sort(key=lambda i: (-pc[i], cols[i]))
         donor_idx = violators[0]
@@ -786,7 +848,7 @@ def enforce_rc_caps_postprocess(
 
     var_p = variance_p(w, cov)
     pc = (w * (cov @ w)) / var_p if var_p > 1e-16 else np.ones(n) / n
-    violators = [i for i in range(n) if pc[i] > rc_asset_cap + 1e-9]
+    violators = [i for i in range(n) if pc[i] > cap_row[i] + 1e-9]
     out = {t: float(w[j]) for j, t in enumerate(cols)}
     for t in risk_tickers:
         if t not in out:

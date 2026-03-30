@@ -150,9 +150,9 @@ Rule: if the portfolio **fails the stress validation**, the system must adjust t
 
 Purpose: limit **risk concentration** at the asset or sub-block level using risk contribution to portfolio volatility (RC_vol).
 
-Priority rule: **RC_vol caps override weight caps**.
+Priority rule: **RC_vol concentration control has priority over weight caps**.
 
-If a weight cap allows the current weight but the RC_vol cap is violated, the weight must be reduced until the RC constraint is satisfied.
+Implementation in optimizer is **penalty-first**: RC cap violations are penalized in the objective (soft control) while structural constraints remain hard. Post-processing and diagnostics still report/mitigate residual RC breaches.
 
 ---
 
@@ -164,7 +164,7 @@ Purpose: enforce structural constraints related to:
 - liquidity
 - implementability of the portfolio.
 
-Rule: weight caps and minimum weights are applied **only after RC caps are satisfied** and must never cause RC constraints to be violated.
+Rule: weight caps and minimum weights are applied with RC concentration control as a higher-priority objective; they must not intentionally increase RC concentration.
 
 Specific formulas and achievement tests for these constraints are set in **docs/docs/feasibility_constraints_spec.md** (no duplication here).
 
@@ -179,7 +179,7 @@ Rule: optimization is an **execution tool**, not a decision authority. It cannot
 - relax mandate guardrails,
 - modify block risk budgets,
 - override the Stress Judge verdict,
-- violate RC caps or weight caps/minimums.
+- ignore RC concentration controls or violate weight caps/minimums.
 
 ---
 
@@ -197,7 +197,7 @@ In production runs, the pipeline **writes portfolio weights** when the **mandate
 - **Mandate (blocking):** **FAIL_MANDATE** if realized portfolio max drawdown on the **full overlapping monthly history** exceeds `target_max_drawdown_pct`, or if that check is inconclusive (insufficient data). No weights written.
 - **RB corridor (target ± 5 pp):** If realized block RC is outside the corridor, status is set to **CANDIDATE_RB_BREACH** and violation **RB_BREACH** is recorded; weights are still written if the mandate passed.
 - **Stress diagnostics (non-blocking):** Scenario PnL, historical episodes (2008 / 2020 / 2022), Role/RC flags produce **`DIAG_*` codes** and **`DIAG_ATTENTION`** / **`DIAG_PASS`** statuses. They are recorded in **`stress_diagnostic_report`** and **`stress_summary`**; optional informational violation **`FAIL_STRESS`** with `note: diagnostic_only` may appear; **weights are still written** if the mandate passed.
-- **RC_vol caps:** RC caps are enforced when the solver allows; if the solver uses a fallback and per-asset RC is violated, status is **OK_FALLBACK**, violation **VIOL_RC_ASSET_CAP** lists breached tickers and cap level; weights are still returned and written when the mandate passed.
+- **RC_vol caps (penalty-first):** RC concentration is controlled by objective penalties and post-processing. Residual breaches are reported via **VIOL_RC_ASSET_CAP** (status may be **OK_FALLBACK**); weights are still returned/written when the mandate passed.
 
 The single output object (**run_result.json**) carries: weights, status (APPROVED | CANDIDATE_RB_BREACH | OK_FALLBACK | FAIL_DATA | FAIL_FEASIBILITY | FAIL_RC | **FAIL_MANDATE**), **mandate_check**, **stress_diagnostic_report**, violations, rb_deltas_pp, rc_breaches, stress_summary, next_actions, and resolved_config. **Code behaviour and this policy document are aligned** (single source of truth).
 
@@ -212,7 +212,7 @@ The system follows the hierarchy:
 1. **Mandate** defines the acceptable risk boundaries.  
 2. **Risk Budget** defines the architecture of risk allocation.  
 3. **Stress Judge** verifies the robustness of that architecture.  
-4. **RC Caps and Weight Caps** enforce concentration control.  
+4. **RC concentration controls (penalty-first) and Weight Caps** enforce concentration control.  
 5. **Optimization** selects the best feasible solution within those constraints.
 
 ## 3. Mandate Constraints

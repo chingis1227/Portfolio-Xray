@@ -26,6 +26,7 @@ from src.config import (
 )
 from src.config_schema import ConfigValidationError
 from src.data_loader import load_monthly_data_shared
+from policy_math.feasibility import DEFAULT_RC_CAP_RB_K_MULTIPLIER, RC_CAP_MODE_GLOBAL
 from src.optimization import (
     get_risk_portfolio_tickers,
     ticker_to_block_map,
@@ -39,7 +40,7 @@ from src.optimization import (
     check_rb_achievement,
     RB_CORRIDOR_PP,
 )
-from src.risk_contrib import cov_matrix_monthly, resolve_rc_asset_cap
+from src.risk_contrib import build_rc_cap_per_ticker, cov_matrix_monthly, resolve_rc_asset_cap
 from src.metrics_asset import mandate_max_drawdown_full_history_check
 from src.young_etfs_dual_cov import build_dual_covariance_and_mu, per_ticker_young_weight_caps
 from src.robustness import compute_robustness_diagnostics
@@ -324,6 +325,9 @@ def main() -> None:
         cfg.growth_core_candidates,
         n_total,
         rb_growth,
+        rc_cap_mode=getattr(cfg, "rc_cap_mode", RC_CAP_MODE_GLOBAL),
+        rc_cap_rb_k_multiplier=float(getattr(cfg, "rc_cap_rb_k_multiplier", DEFAULT_RC_CAP_RB_K_MULTIPLIER)),
+        rc_asset_cap_pct=cfg.rc_asset_cap_pct,
     )
     if not feas_ok:
         out_final = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
@@ -420,6 +424,9 @@ def main() -> None:
         cov_precomputed=cov_df if dual_enabled else None,
         mu_precomputed=mu_series_primary if dual_enabled else None,
         per_ticker_max_weight=per_ticker_young_caps,
+        rc_cap_mode=getattr(cfg, "rc_cap_mode", RC_CAP_MODE_GLOBAL),
+        rc_cap_rb_k_multiplier=float(getattr(cfg, "rc_cap_rb_k_multiplier", DEFAULT_RC_CAP_RB_K_MULTIPLIER)),
+        rc_cap_penalty_lambda=float(getattr(cfg, "rc_cap_penalty_lambda", 25.0)),
     )
 
     if not weights_risk:
@@ -444,6 +451,14 @@ def main() -> None:
     n_risk = len(cols_primary)
     rb_growth = (cfg.rc_block_targets or {}).get("Growth", 1.0 / 3.0)
     rc_cap_resolved = resolve_rc_asset_cap(cfg.rc_asset_cap_pct, max(n_risk, 1), rb_growth)
+    cap_by_ticker = build_rc_cap_per_ticker(
+        blocks_for_optimization,
+        cfg.rc_block_targets,
+        cfg.rc_asset_cap_pct,
+        getattr(cfg, "rc_cap_mode", RC_CAP_MODE_GLOBAL),
+        float(getattr(cfg, "rc_cap_rb_k_multiplier", DEFAULT_RC_CAP_RB_K_MULTIPLIER)),
+        max(n_risk, 1),
+    )
     min_weight_rc = (
         float(cfg.min_single_security_weight_pct)
         if (cfg.min_single_security_weight_pct is not None and cfg.min_single_security_weight_pct > 0)
@@ -460,6 +475,7 @@ def main() -> None:
         rb_growth,
         risk_tickers_opt,
         per_ticker_max_weight=per_ticker_young_caps,
+        rc_cap_by_ticker=cap_by_ticker,
     )
     rc_policy_mode = getattr(cfg, "rc_policy_mode", "strict")
     if not rc_postprocess_ok and rc_policy_mode == "strict":
@@ -494,7 +510,10 @@ def main() -> None:
     weights_risk = adjusted_risk
     rc_violation_after_postprocess = not rc_postprocess_ok
     if rc_postprocess_ok:
-        logger.info("RC post-processing: все активы в пределах RC cap (%.2f%%)", rc_cap_resolved * 100)
+        logger.info(
+            "RC post-processing: все активы в пределах RC cap (mode=%s)",
+            getattr(cfg, "rc_cap_mode", RC_CAP_MODE_GLOBAL),
+        )
     elif rc_policy_mode == "permissive":
         logger.warning(
             "RC post-processing: нарушение RC cap сохранено (permissive). Диагностика: %s",
@@ -558,6 +577,9 @@ def main() -> None:
             cov_precomputed=cov_5y_pre if dual_enabled else None,
             mu_precomputed=mu_5y_pre if dual_enabled else None,
             per_ticker_max_weight=per_ticker_young_caps,
+            rc_cap_mode=getattr(cfg, "rc_cap_mode", RC_CAP_MODE_GLOBAL),
+            rc_cap_rb_k_multiplier=float(getattr(cfg, "rc_cap_rb_k_multiplier", DEFAULT_RC_CAP_RB_K_MULTIPLIER)),
+            rc_cap_penalty_lambda=float(getattr(cfg, "rc_cap_penalty_lambda", 25.0)),
         )
         cols_5y = [t for t in (weights_5y_risk or weights_risk) if t in monthly_returns.columns]
         ret_5y = monthly_returns[cols_5y].iloc[-secondary_window_months:].dropna(how="any")
@@ -714,6 +736,9 @@ def main() -> None:
         target_max_drawdown_pct=cfg.target_max_drawdown_pct,
         rc_asset_cap_pct=cfg.rc_asset_cap_pct,
         stress_top3_rc_sum_cap_pct=stress_top3_cap,
+        rc_cap_mode=getattr(cfg, "rc_cap_mode", RC_CAP_MODE_GLOBAL),
+        rc_cap_rb_k_multiplier=float(getattr(cfg, "rc_cap_rb_k_multiplier", DEFAULT_RC_CAP_RB_K_MULTIPLIER)),
+        rc_block_targets=cfg.rc_block_targets,
     )
     # Expose requested horizons explicitly in stress report.
     stress_report["factor_betas_5y"] = {k: round(v, 4) for k, v in (portfolio_betas_5y_dict or {}).items()}
@@ -781,14 +806,14 @@ def main() -> None:
     rc_breaches = []
     n_risk = len([t for t in weights_risk if weights_risk.get(t, 0) > 0 and t in cov_df.columns and t in cov_df.index])
     rb_growth = (cfg.rc_block_targets or {}).get("Growth", 1.0 / 3.0)
-    rc_cap = resolve_rc_asset_cap(cfg.rc_asset_cap_pct, max(n_risk, 1), rb_growth)
     rc_by_asset = rc_by_asset_from_weights(weights_risk, cov_df)
     for t, rc_share in (rc_by_asset or {}).items():
-        if rc_share > rc_cap + 1e-9:
+        cap_t = float(cap_by_ticker.get(t, rc_cap_resolved))
+        if rc_share > cap_t + 1e-9:
             rc_breaches.append({
                 "ticker": t,
                 "rc_pct": round(float(rc_share) * 100.0, 2),
-                "cap_pct": round(float(rc_cap) * 100.0, 2),
+                "cap_pct": round(cap_t * 100.0, 2),
             })
 
     # Status: APPROVED | CANDIDATE_RB_BREACH | OK_FALLBACK (FAIL_DATA/FAIL_RC already exited)
@@ -929,6 +954,9 @@ def main() -> None:
             window_months=window_months,
             use_shrinkage=use_shrinkage,
             rb_target_ranges=getattr(cfg, "rc_block_target_ranges", None),
+            rc_cap_mode=getattr(cfg, "rc_cap_mode", RC_CAP_MODE_GLOBAL),
+            rc_cap_rb_k_multiplier=float(getattr(cfg, "rc_cap_rb_k_multiplier", DEFAULT_RC_CAP_RB_K_MULTIPLIER)),
+            rc_cap_penalty_lambda=float(getattr(cfg, "rc_cap_penalty_lambda", 25.0)),
         )
         if weights_baseline:
             cols_b = [t for t in weights_baseline if t in monthly_returns.columns]
