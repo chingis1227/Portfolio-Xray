@@ -140,6 +140,42 @@ Portfolio weekly OLS in `factor_regression_5y` / `factor_regression_10y` must in
 
 **Note:** cond([1, X]) on raw units is **not** reported (misleading across scales); use **cond(correlation matrix)** and VIF.
 
+### 8.2 Serial correlation of factor OLS residuals (`factor_regression_*`)
+
+Each of `factor_regression_5y` / `factor_regression_10y` must include **`serial_correlation_diagnostics`** computed on the **same** OLS residuals as the reported betas (portfolio weekly return ~ intercept + factors, time order preserved).
+
+| Field | Meaning |
+|-------|---------|
+| `durbin_watson` | Durbin–Watson statistic on the residual series (~2: little first-order serial correlation) |
+| `breusch_godfrey` | List of objects, one per lag order `p` in `FACTOR_REGRESSION_BG_LAGS` (`src/stress_factors.py`, default **1, 2, 4**): `lags`, `lm_statistic`, `df_chi2` (= p), `p_value`, `n_aux_observations`, `aux_r_squared` |
+| `method`, `h0`, `notes` | Fixed strings describing procedure |
+
+**Breusch–Godfrey:** auxiliary regression of \(\hat u_t\) on intercept, \(X_t\), and \(\hat u_{t-1},\ldots,\hat u_{t-p}\); **LM = T × R²_aux** of that regression; under **H₀** (no serial correlation through lag p), LM → **χ²(p)** (asymptotic).
+
+### 8.3 Robust (HAC / Newey–West) inference for factor betas
+
+Portfolio factor betas are **always** estimated via OLS (same as §8: y = weekly portfolio return, X = weekly factor matrix).
+However, when reporting **inference** (standard errors, t-statistics, p-values, confidence intervals), the project must use
+**HAC/Newey–West robust standard errors** on the same residual series:
+
+- Kernel: **Bartlett**
+- Max lags (weekly): `FACTOR_REGRESSION_HAC_LAGS = 4` (≈ 1 month)
+
+Output convention in each `factor_regression_5y` / `factor_regression_10y`:
+
+- Top-level beta fields (`betas`, classical `t`, `p`, `ci_low`, `ci_high`) correspond to **OLS with classic SE** (`se_type = "classic_ols"`).
+- Block `hac_inference`:
+  - `se_type`: `"hac_newey_west"`
+  - `kernel`: `"bartlett"`
+  - `max_lags`: integer (e.g. 4)
+  - `se`, `t`, `p`, `ci_low`, `ci_high`: arrays (intercept first, then same factor order as in `betas`).
+
+For reporting and decision rules:
+
+- **Point estimates (β)** are taken from OLS (`betas`).
+- **Significance, p-values and confidence intervals in stress reports and PDFs must be interpreted using `hac_inference`**;
+  classic OLS t/p are retained for diagnostics only.
+
 ---
 
 ## 9. Historical validation

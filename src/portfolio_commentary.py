@@ -179,6 +179,34 @@ def _append_factor_multicollinearity_block(lines: list[str], mc: Any) -> None:
     lines.append("")
 
 
+def _append_serial_correlation_block(lines: list[str], ser: Any) -> None:
+    """Durbin–Watson + Breusch–Godfrey on portfolio factor OLS residuals (same ordering as regression)."""
+    if not isinstance(ser, dict) or not ser:
+        return
+    if ser.get("error"):
+        lines.append(f"Автокорреляция остатков (DW / Breusch–Godfrey): не посчитана — {ser.get('error')}")
+        lines.append("")
+        return
+    dw = ser.get("durbin_watson")
+    lines.append(
+        f"Автокорреляция остатков факторной OLS: Durbin–Watson={_fmt_float(dw, 4) if dw is not None else 'н/д'} "
+        f"(≈2 — мало АК первого порядка; метод: {ser.get('method', '—')})."
+    )
+    bg = ser.get("breusch_godfrey") or []
+    if isinstance(bg, list) and bg:
+        lines.append("Breusch–Godfrey LM (H₀: нет АК до порядка p; LM ~ χ²(p)):")
+        for row in bg:
+            if not isinstance(row, dict):
+                continue
+            pv = row.get("p_value")
+            lines.append(
+                f"  lags={row.get('lags', '—')}: LM={_fmt_float(row.get('lm_statistic'), 4)}, "
+                f"df={row.get('df_chi2', '—')}, p={_fmt_p_value(pv)}, "
+                f"T_aux={row.get('n_aux_observations', '—')}, R²_aux={_fmt_float(row.get('aux_r_squared'), 4)}"
+            )
+    lines.append("")
+
+
 def _append_factor_regression_block(lines: list[str], fr: Any, label: str) -> None:
     if not isinstance(fr, dict) or not fr:
         return
@@ -193,7 +221,7 @@ def _append_factor_regression_block(lines: list[str], fr: Any, label: str) -> No
         f"adj R²={_fmt_float(fr.get('adj_r2'), 4)}, intercept={_fmt_float(fr.get('intercept'), 4)}, "
         f"se_type={fr.get('se_type', '—')}, alpha={fr.get('alpha', '—')} (CI уровень {fr.get('ci_level', '—')})."
     )
-    lines.append("По факторам (β, t, p, 95% CI):")
+    lines.append("По факторам (β, t, p, 95% CI) — классический OLS (se_type=classic_ols):")
     for key in _BETA_ROW_ORDER:
         if key not in betas and key not in t_d:
             continue
@@ -201,6 +229,37 @@ def _append_factor_regression_block(lines: list[str], fr: Any, label: str) -> No
             f"- {key}: β={_fmt_float(betas.get(key), 4)}, t={_fmt_float(t_d.get(key), 3)}, "
             f"p={_fmt_p_value(p_d.get(key))}, CI=[{_fmt_float(lo.get(key), 4)}; {_fmt_float(hi.get(key), 4)}]"
         )
+    # HAC / Newey–West inference (робастные SE)
+    hac = fr.get("hac_inference") or {}
+    if isinstance(hac, dict) and hac:
+        hac_se = hac.get("se")
+        hac_t = hac.get("t")
+        hac_p = hac.get("p")
+        hac_lo = hac.get("ci_low")
+        hac_hi = hac.get("ci_high")
+        lines.append(
+            f"HAC/Newey–West (robust) inference: se_type={hac.get('se_type', 'hac_newey_west')}, "
+            f"kernel={hac.get('kernel', 'bartlett')}, max_lags={hac.get('max_lags', '—')}."
+        )
+        if isinstance(hac_se, list) and isinstance(hac_t, list) and isinstance(hac_p, list):
+            # Индексы: 0 — intercept, 1.. — факторы в том же порядке, что и factor_cols / beta_keys.
+            lines.append("По факторам (HAC t, p, 95% CI):")
+            # построим мапу по beta_keys из позиций
+            for idx, key in enumerate(_BETA_ROW_ORDER, start=1):
+                pos = idx
+                if pos >= len(hac_t):
+                    continue
+                t_v = hac_t[pos]
+                p_v = hac_p[pos] if pos < len(hac_p) else None
+                lo_v = hac_lo[pos] if isinstance(hac_lo, list) and pos < len(hac_lo) else None
+                hi_v = hac_hi[pos] if isinstance(hac_hi, list) and pos < len(hac_hi) else None
+                lines.append(
+                    f"- {key}: t_HAC={_fmt_float(t_v, 3)}, p_HAC={_fmt_p_value(p_v)}, "
+                    f"CI_HAC=[{_fmt_float(lo_v, 4)}; {_fmt_float(hi_v, 4)}]"
+                )
+    ser = fr.get("serial_correlation_diagnostics")
+    if ser is not None:
+        _append_serial_correlation_block(lines, ser)
     mc = fr.get("factor_multicollinearity")
     if mc is not None:
         _append_factor_multicollinearity_block(lines, mc)

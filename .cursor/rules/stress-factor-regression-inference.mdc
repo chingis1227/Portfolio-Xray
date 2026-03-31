@@ -13,6 +13,8 @@ When the project estimates **portfolio factor betas** for stress testing / repor
 - **R²** and **adjusted R²**
 - **n_obs** (effective aligned observations)
 - **Multicollinearity:** `factor_multicollinearity` inside each `factor_regression_*` — Pearson corr matrix, all pairwise ρ, VIF by factor, cond(correlation matrix), `severity`, `assessment_ru` (see `docs/docs/stress_testing_spec.md` §8.1)
+- **Serial correlation (residuals):** `serial_correlation_diagnostics` — Durbin–Watson and Breusch–Godfrey LM for default lags (see stress spec §8.2)
+- **Heteroskedasticity-robust inference:** `hac_inference` — Newey–West (Bartlett) robust SE on the same OLS residuals, with `se_type="hac_newey_west"`, `kernel`, `max_lags`, and arrays for `se`, `t`, `p`, `ci_low`, `ci_high` (see stress spec §8.3). **All reported p-values and CI in stress commentary and PDFs must be based on this block.**
 
 ## Where it must appear
 

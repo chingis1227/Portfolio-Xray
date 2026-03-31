@@ -23,6 +23,11 @@ FACTOR_WEEKS_5Y = 260   # ~5 calendar years
 FACTOR_WEEKS_10Y = 520  # ~10 calendar years
 FACTOR_DOWNLOAD_BUFFER_WEEKS = 28  # extra history for factor/asset weekly alignment
 
+# Breusch–Godfrey LM: lag orders (weekly residuals; same auxiliary regression as in stress spec §8.2)
+FACTOR_REGRESSION_BG_LAGS: tuple[int, ...] = (1, 2, 4)
+# HAC / Newey–West: max lag for weekly factor regression residuals (≈ 1 календарный месяц)
+FACTOR_REGRESSION_HAC_LAGS: int = 4
+
 # FRED series (fallback when project series not used)
 FRED_EQUITY_LEVEL = "SP500"
 FRED_REAL_10Y = "DFII10"
@@ -316,6 +321,129 @@ def _ols_with_inference(
     }
 
 
+def durbin_watson_statistic(residuals: np.ndarray) -> float | None:
+    """Durbin–Watson for OLS residuals (time order as given). ~2 suggests little first-order serial correlation."""
+    u = np.asarray(residuals, dtype=float).ravel()
+    if u.size < 2:
+        return None
+    den = float(np.dot(u, u))
+    if den <= 1e-20:
+        return None
+    du = np.diff(u)
+    return float(np.dot(du, du) / den)
+
+
+def _breusch_godfrey_lm_single(
+    resid: np.ndarray,
+    X_factors: np.ndarray,
+    nlags: int,
+) -> dict[str, Any] | None:
+    """One BG LM statistic: regress u_t on [1, X_t, u_{t-1}..u_{t-p}]; LM = T * R²_aux ~ chi2(p)."""
+    u = np.asarray(resid, dtype=float).ravel()
+    Xf = np.asarray(X_factors, dtype=float)
+    n = u.size
+    p = int(nlags)
+    kf = Xf.shape[1]
+    if n <= p + kf + 2 or Xf.shape[0] != n:
+        return None
+    rows: list[np.ndarray] = []
+    for t in range(p, n):
+        lags = np.array([u[t - j] for j in range(1, p + 1)], dtype=float)
+        row = np.concatenate([[1.0], Xf[t].astype(float), lags])
+        rows.append(row)
+    Z = np.asarray(rows, dtype=float)
+    yy = u[p:]
+    gam, *_ = np.linalg.lstsq(Z, yy, rcond=None)
+    fit = Z @ gam
+    yyc = yy - float(np.mean(yy))
+    sst = float(np.dot(yyc, yyc))
+    sse = float(np.sum((yy - fit) ** 2))
+    r2 = 1.0 - sse / sst if sst > 1e-20 else 0.0
+    t_obs = int(Z.shape[0])
+    lm = float(t_obs * r2)
+    pv = float(1.0 - stats.chi2.cdf(lm, df=p))
+    return {
+        "lags": p,
+        "lm_statistic": round(lm, 4),
+        "df_chi2": p,
+        "p_value": float(pv),
+        "n_aux_observations": t_obs,
+        "aux_r_squared": round(float(r2), 6),
+    }
+
+
+def factor_regression_serial_diagnostics(
+    y: np.ndarray,
+    X_factors: np.ndarray,
+    *,
+    bg_lags: tuple[int, ...] = FACTOR_REGRESSION_BG_LAGS,
+) -> dict[str, Any]:
+    """
+    Serial-correlation diagnostics on **OLS residuals** of y ~ (const + X_factors).
+
+    - Durbin–Watson on the residual series (same ordering as weekly regression).
+    - Breusch–Godfrey LM for each ``p`` in ``bg_lags`` (chi-square with ``p`` df under H0).
+    """
+    base: dict[str, Any] = {
+        "method": "durbin_watson_breusch_godfrey_lm",
+        "h0": "no_autocorrelation_in_ols_residuals_up_to_lag_p",
+        "bg_lags_requested": list(bg_lags),
+    }
+    try:
+        yv = np.asarray(y, dtype=float).ravel()
+        Xf = np.asarray(X_factors, dtype=float)
+        if Xf.ndim != 2 or yv.size != Xf.shape[0] or yv.size < 5:
+            return {**base, "error": "bad_shape"}
+        if not np.isfinite(yv).all() or not np.isfinite(Xf).all():
+            return {**base, "error": "non_finite"}
+        n = yv.size
+        Z = np.column_stack([np.ones(n), Xf])
+        beta, *_ = np.linalg.lstsq(Z, yv, rcond=None)
+        resid = yv - Z @ beta
+        dw = durbin_watson_statistic(resid)
+        bg_rows: list[dict[str, Any]] = []
+        for p in bg_lags:
+            row = _breusch_godfrey_lm_single(resid, Xf, p)
+            if row:
+                bg_rows.append(row)
+        return {
+            **base,
+            "durbin_watson": round(float(dw), 4) if dw is not None else None,
+            "breusch_godfrey": bg_rows,
+            "notes": (
+                "BG: auxiliary regression u_t on intercept, X_t, u_{t-1}..u_{t-p}; "
+                "LM = T * R²_aux; asymptotic chi²(p) under H0. Same sample ordering as factor OLS."
+            ),
+        }
+    except Exception as ex:
+        return {**base, "error": str(ex)}
+
+
+def _newey_west_covariance(X: np.ndarray, resid: np.ndarray, max_lags: int) -> np.ndarray:
+    """
+    Newey–West / HAC covariance for OLS beta with Bartlett kernel.
+
+    X must include the intercept column; residuals from the same regression.
+    """
+    Z = np.asarray(X, dtype=float)
+    u = np.asarray(resid, dtype=float).ravel()
+    n, k = Z.shape
+    L = int(max_lags)
+    S = np.zeros((k, k), dtype=float)
+    for t in range(n):
+        S += (u[t] ** 2.0) * np.outer(Z[t], Z[t])
+    for ell in range(1, L + 1):
+        w = 1.0 - ell / float(L + 1)
+        G = np.zeros((k, k), dtype=float)
+        for t in range(ell, n):
+            G += u[t] * u[t - ell] * np.outer(Z[t], Z[t - ell])
+        S += w * (G + G.T)
+    XtX_inv = np.linalg.inv(Z.T @ Z)
+    cov = XtX_inv @ S @ XtX_inv
+    cov *= n / max(n - k, 1)
+    return cov
+
+
 def factor_multicollinearity_diagnostics(
     X: np.ndarray,
     factor_columns: list[str],
@@ -489,6 +617,7 @@ def portfolio_factor_regression_weekly(
     - R^2 / adj R^2
     - n_obs
     - ``factor_multicollinearity``: pairwise correlations, VIF, cond(R), severity (see stress spec §8.1)
+    - ``serial_correlation_diagnostics``: Durbin–Watson, Breusch–Godfrey LM (see stress spec §8.2)
     """
     from src.data_yf import download_all
 
@@ -545,7 +674,9 @@ def portfolio_factor_regression_weekly(
     if valid.sum() < 10:
         return {}
 
-    inf = _ols_with_inference(y_port[valid], Xdf.values[valid], add_const=True, alpha=alpha)
+    y_valid = y_port[valid].astype(float)
+    X_valid = Xdf.values[valid].astype(float)
+    inf = _ols_with_inference(y_valid, X_valid, add_const=True, alpha=alpha)
     if not inf:
         return {}
 
@@ -568,8 +699,21 @@ def portfolio_factor_regression_weekly(
     }
     beta_keys = [name_map.get(c, f"beta_{c}") for c in factor_cols]
 
-    X_valid = Xdf.values[valid].astype(float)
+    # Diagnostics on the same rows as OLS
     mc = factor_multicollinearity_diagnostics(X_valid, factor_cols)
+    ser = factor_regression_serial_diagnostics(y_valid, X_valid, bg_lags=FACTOR_REGRESSION_BG_LAGS)
+
+    # HAC / Newey–West inference (same params, different standard errors)
+    Z_full = np.column_stack([np.ones(len(X_valid)), X_valid])
+    cov_hac = _newey_west_covariance(Z_full, y_valid - Z_full @ inf["params"], max_lags=FACTOR_REGRESSION_HAC_LAGS)
+    se_hac = np.sqrt(np.maximum(np.diag(cov_hac), 0.0))
+    df_resid = int(inf.get("df_resid", max(len(y_valid) - Z_full.shape[1], 1)))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        t_hac = inf["params"] / se_hac
+    p_hac = 2.0 * stats.t.sf(np.abs(t_hac), df=df_resid)
+    tcrit_hac = float(stats.t.ppf(1.0 - alpha / 2.0, df=df_resid))
+    ci_low_hac = inf["params"] - tcrit_hac * se_hac
+    ci_high_hac = inf["params"] + tcrit_hac * se_hac
 
     out: dict[str, Any] = {
         "window_weeks": int(wk),
@@ -585,6 +729,17 @@ def portfolio_factor_regression_weekly(
         "p": {k: float(v) for k, v in zip(beta_keys, pvals[1:])},
         "ci_low": {k: float(v) for k, v in zip(beta_keys, ci_low[1:])},
         "ci_high": {k: float(v) for k, v in zip(beta_keys, ci_high[1:])},
+        "hac_inference": {
+            "se_type": "hac_newey_west",
+            "kernel": "bartlett",
+            "max_lags": int(FACTOR_REGRESSION_HAC_LAGS),
+            "se": se_hac.tolist(),
+            "t": t_hac.tolist(),
+            "p": p_hac.tolist(),
+            "ci_low": ci_low_hac.tolist(),
+            "ci_high": ci_high_hac.tolist(),
+        },
+        "serial_correlation_diagnostics": ser,
         "factor_multicollinearity": mc,
     }
     return out

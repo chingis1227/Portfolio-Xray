@@ -119,6 +119,13 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
             "p": {"beta_eq": 0.01},
             "ci_low": {"beta_eq": 0.1},
             "ci_high": {"beta_eq": 0.9},
+            "serial_correlation_diagnostics": {
+                "method": "durbin_watson_breusch_godfrey_lm",
+                "durbin_watson": 2.01,
+                "breusch_godfrey": [
+                    {"lags": 1, "lm_statistic": 0.5, "df_chi2": 1, "p_value": 0.5, "n_aux_observations": 99, "aux_r_squared": 0.01},
+                ],
+            },
             "factor_multicollinearity": {
                 "severity": "low",
                 "cond_correlation_matrix": 5.0,
@@ -152,3 +159,5 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
     assert "Мультиколлинеарность факторов" in text2
     assert "VIF по факторам:" in text2
     assert "-0.7100" in text2
+    assert "Durbin–Watson" in text2
+    assert "Breusch–Godfrey" in text2
