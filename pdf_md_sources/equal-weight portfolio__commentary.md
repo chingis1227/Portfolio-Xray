@@ -1,7 +1,7 @@
 ---
 title: "Equal-Weight Portfolio — Commentary"
 subtitle: "Commentary"
-date: "2026-03-31 00:26 Центральная Европа (лето)"
+date: "2026-03-31 14:49 Центральная Европа (лето)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
@@ -10,7 +10,7 @@ fontsize: 11pt
 - **Variant folder:** `equal-weight portfolio`
 - **Basis:** post-run commentary (metrics interpreted as reported).
 - **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/equal-weight portfolio/commentary.txt`
-- **Generated:** 2026-03-31 00:26 Центральная Европа (лето)
+- **Generated:** 2026-03-31 14:49 Центральная Европа (лето)
 
 ## Executive summary
 Прогон относится к Equal-Weight baseline; конец выборки (analysis_end): 2026-02-28. На длинном окне (10Y в отчётном контуре) портфель показывает CAGR около 15.20%, годовую волатильность около 12.98%, максимальную просадку около -20.94%.

@@ -1,7 +1,7 @@
 ---
 title: "Risk-Parity Portfolio — Commentary"
 subtitle: "Commentary"
-date: "2026-03-31 00:27 Центральная Европа (лето)"
+date: "2026-03-31 14:50 Центральная Европа (лето)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
@@ -10,7 +10,7 @@ fontsize: 11pt
 - **Variant folder:** `risk parity portfolio`
 - **Basis:** post-run commentary (metrics interpreted as reported).
 - **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/risk parity portfolio/commentary.txt`
-- **Generated:** 2026-03-31 00:27 Центральная Европа (лето)
+- **Generated:** 2026-03-31 14:50 Центральная Европа (лето)
 
 ## Executive summary
 Прогон относится к Risk-Parity baseline; конец выборки (analysis_end): 2026-02-28. На длинном окне (10Y в отчётном контуре) портфель показывает CAGR около 8.38%, годовую волатильность около 6.59%, максимальную просадку около -12.54%.

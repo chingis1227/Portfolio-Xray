@@ -75,6 +75,7 @@ from src.stress_factors import (
     FACTOR_WEEKS_5Y,
     compute_portfolio_rolling_factor_betas_weekly,
     compute_asset_factor_betas_weekly,
+    factor_oos_beta_shock_explainability,
     portfolio_factor_regression_weekly,
     portfolio_factor_betas,
     rolling_beta_summary,
@@ -580,6 +581,19 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["factor_betas_rolling_error"] = str(e)
         logger.warning(f"Rolling factor betas diagnostics failed: {e}")
+    # Out-of-sample explainability in historical episodes: beta × realized factor shocks.
+    try:
+        stress_report["factor_beta_shock_oos"] = factor_oos_beta_shock_explainability(
+            weights=weights,
+            tickers=tickers,
+            historical_results=stress_report.get("historical_results") or [],
+            factor_betas_5y=stress_report.get("factor_betas_5y") or {},
+            factor_betas_10y=stress_report.get("factor_betas_10y") or {},
+            rolling_window_weeks=FACTOR_WEEKS_3Y,
+        )
+    except Exception as e:
+        stress_report["factor_beta_shock_oos_error"] = str(e)
+        logger.warning(f"Factor beta×shock OOS diagnostics failed: {e}")
     export_stress_report(stress_report, output_dir_final)
     logger.info(f"Stress status: {stress_report.get('status', 'N/A')}")
 

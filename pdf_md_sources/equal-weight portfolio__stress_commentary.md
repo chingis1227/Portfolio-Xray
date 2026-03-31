@@ -1,7 +1,7 @@
 ---
 title: "Equal-Weight Portfolio — Stress Commentary"
 subtitle: "Commentary"
-date: "2026-03-31 00:27 Центральная Европа (лето)"
+date: "2026-03-31 14:50 Центральная Европа (лето)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
@@ -10,7 +10,7 @@ fontsize: 11pt
 - **Folder:** `equal-weight portfolio`
 - **Basis:** stress commentary (scenarios, RC, historical episodes).
 - **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/equal-weight portfolio/stress_commentary.txt`
-- **Generated:** 2026-03-31 00:27 Центральная Европа (лето)
+- **Generated:** 2026-03-31 14:50 Центральная Европа (лето)
 
 ## Executive summary
 Прогон: Equal-Weight baseline; конец выборки (analysis_end): 2026-02-28. Итоговый статус стресс-набора в stress_report: DIAG_ATTENTION. Основной код (primary / fail_reason): DIAG_RC_TOP1_EQUITY_SHOCK. Список diagnostic_codes: DIAG_RC_TOP1_EQUITY_SHOCK, DIAG_RC_TOP1_CREDIT_SHOCK, DIAG_RC_TOP1_RATES_SHOCK, DIAG_RC_TOP1_INFLATION_STAGFLATION, DIAG_RC_TOP1_LIQUIDITY_SHOCK.

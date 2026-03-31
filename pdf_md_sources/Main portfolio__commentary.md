@@ -1,7 +1,7 @@
 ---
 title: "Main Portfolio — Commentary (policy run)"
 subtitle: "Commentary"
-date: "2026-03-31 00:27 Центральная Европа (лето)"
+date: "2026-03-31 14:50 Центральная Европа (лето)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
@@ -10,7 +10,7 @@ fontsize: 11pt
 - **Output folder:** `Main portfolio`
 - **Basis:** policy portfolio commentary.
 - **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/Main portfolio/commentary.txt`
-- **Generated:** 2026-03-31 00:27 Центральная Европа (лето)
+- **Generated:** 2026-03-31 14:50 Центральная Европа (лето)
 
 ## Executive summary
 Прогон относится к основной портфель (Main portfolio); конец выборки (analysis_end): 2026-02-28. На длинном окне (10Y в отчётном контуре) портфель показывает CAGR около 7.78%, годовую волатильность около 7.02%, максимальную просадку около -15.69%.

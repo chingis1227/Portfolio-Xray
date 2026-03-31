@@ -176,6 +176,26 @@ For reporting and decision rules:
 - **Significance, p-values and confidence intervals in stress reports and PDFs must be interpreted using `hac_inference`**;
   classic OLS t/p are retained for diagnostics only.
 
+### 8.4 OOS episode explainability: β × realized factor shocks
+
+To verify that factor betas explain stress episodes out-of-sample (not only in-sample fit),
+`stress_report.json` should include `factor_beta_shock_oos` with per-episode diagnostics:
+
+- Uses the same episode windows as historical validation (`2008`, `2020`, `2022`).
+- Realized factor shock for episode = **sum of weekly factor series** over the episode window.
+- Model PnL variants:
+  - `pnl_model_5y` using `factor_betas_5y`
+  - `pnl_model_10y` using `factor_betas_10y`
+  - `pnl_model_roll3y_pre` using betas estimated on rolling 3Y window ending right before episode start
+- Real benchmark:
+  - `pnl_real_episode` from historical episode portfolio return
+- Error fields:
+  - `abs_error_5y`, `abs_error_10y`, `abs_error_roll3y_pre`
+- Summary:
+  - mean absolute error by method over episodes with available `pnl_real_episode`.
+
+This block is **diagnostic / non-blocking** and should be shown in stress commentary.
+
 ---
 
 ## 9. Historical validation

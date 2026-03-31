@@ -405,7 +405,10 @@ def run_stress(
             if sub.empty or len(sub) < 2:
                 historical_results.append({
                     "episode": ep_id,
+                    "episode_start": start,
+                    "episode_end": end,
                     "max_dd": None,
+                    "pnl_real_episode": None,
                     "vol_annualized_episode": None,
                     "mean_monthly_return_by_block_pct": {},
                     "volatility_spike_ratio": None,
@@ -418,6 +421,7 @@ def run_stress(
             port_eq = (1 + port_ret).cumprod()
             port_dd = port_eq / port_eq.cummax() - 1
             max_dd = float(port_dd.min())
+            pnl_real_episode = float(port_eq.iloc[-1] - 1.0) if len(port_eq) else None
             pass_dd = max_dd >= -max_dd_limit
 
             # Volatility spike: episode volatility vs same-length window immediately before episode.
@@ -474,7 +478,10 @@ def run_stress(
 
             historical_results.append({
                 "episode": ep_id,
+                "episode_start": start,
+                "episode_end": end,
                 "max_dd": round(max_dd, 4),
+                "pnl_real_episode": round(float(pnl_real_episode), 4) if pnl_real_episode is not None else None,
                 "vol_annualized_episode": vol_annualized_episode,
                 "mean_monthly_return_by_block_pct": mean_monthly_return_by_block_pct,
                 "volatility_spike_ratio": round(float(vol_spike), 4) if np.isfinite(vol_spike) else None,
@@ -485,7 +492,10 @@ def run_stress(
         except Exception:
             historical_results.append({
                 "episode": ep_id,
+                "episode_start": start,
+                "episode_end": end,
                 "max_dd": None,
+                "pnl_real_episode": None,
                 "vol_annualized_episode": None,
                 "mean_monthly_return_by_block_pct": {},
                 "volatility_spike_ratio": None,

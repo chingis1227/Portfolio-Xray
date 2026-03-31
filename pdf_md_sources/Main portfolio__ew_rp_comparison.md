@@ -1,7 +1,7 @@
 ---
 title: "Equal-Weight vs Risk-Parity — Comparison Report"
 subtitle: "Analytical comparison of baseline portfolios"
-date: "2026-03-31 00:26 Центральная Европа (лето)"
+date: "2026-03-31 14:49 Центральная Европа (лето)"
 documentclass: article
 geometry: margin=1in
 fontsize: 11pt
@@ -9,7 +9,7 @@ fontsize: 11pt
 ## Report scope / source context
 - **Primary data:** `ew_rp_comparison.json` (machine-readable comparison).
 - **Source file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/Main portfolio/ew_rp_comparison.json`
-- **Generated:** 2026-03-31 00:26 Центральная Европа (лето)
+- **Generated:** 2026-03-31 14:49 Центральная Европа (лето)
 - **Window:** 10y (`window_months=120`), **analysis_end** = 2026-02-28.
 - **Delta rule:** delta = equal_weight - risk_parity.
 

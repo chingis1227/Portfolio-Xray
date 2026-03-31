@@ -472,15 +472,36 @@ def write_stress_commentary(
         for h in hist:
             ep = h.get("episode", "?")
             mdd = h.get("max_dd")
+            pnl_real_ep = h.get("pnl_real_episode")
             vp = h.get("pass")
             vole = h.get("vol_annualized_episode")
             dcode = h.get("diagnostic_code")
             lines.append(
-                f"- {ep}: max_dd≈{_fmt_pct(mdd)}, pass={vp}, vol_annualized_episode≈{_fmt_float(vole, 4) if vole is not None else 'н/д'}, "
+                f"- {ep}: pnl_real_episode≈{_fmt_pct(pnl_real_ep)}, max_dd≈{_fmt_pct(mdd)}, pass={vp}, "
+                f"vol_annualized_episode≈{_fmt_float(vole, 4) if vole is not None else 'н/д'}, "
                 f"diagnostic_code={dcode or '—'}."
             )
     else:
         lines.append("Исторические эпизоды в JSON отсутствуют.")
+    oos = st.get("factor_beta_shock_oos")
+    if isinstance(oos, dict) and oos.get("episodes"):
+        lines.append("OOS объяснение эпизодов через β×shock (5Y/10Y/rolling-3Y pre):")
+        for e in oos.get("episodes") or []:
+            if not isinstance(e, dict):
+                continue
+            lines.append(
+                f"- {e.get('episode', '?')}: real={_fmt_pct(e.get('pnl_real_episode'))}, "
+                f"model_5y={_fmt_pct(e.get('pnl_model_5y'))}, model_10y={_fmt_pct(e.get('pnl_model_10y'))}, "
+                f"model_roll3y={_fmt_pct(e.get('pnl_model_roll3y_pre'))}; "
+                f"|err|: 5y={_fmt_pct(e.get('abs_error_5y'))}, 10y={_fmt_pct(e.get('abs_error_10y'))}, roll3y={_fmt_pct(e.get('abs_error_roll3y_pre'))}."
+            )
+        summ = oos.get("summary") or {}
+        if isinstance(summ, dict) and summ:
+            lines.append(
+                f"Средняя |ошибка| по эпизодам: 5Y={_fmt_pct(summ.get('mean_abs_error_5y'))}, "
+                f"10Y={_fmt_pct(summ.get('mean_abs_error_10y'))}, rolling-3Y={_fmt_pct(summ.get('mean_abs_error_roll3y_pre'))} "
+                f"(n={summ.get('n_episodes_with_real_pnl', '—')})."
+            )
     lines.append("")
 
     lines.append("Strengths")

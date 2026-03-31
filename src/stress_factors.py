@@ -28,6 +28,15 @@ FACTOR_REGRESSION_BG_LAGS: tuple[int, ...] = (1, 2, 4)
 # HAC / Newey–West: max lag for weekly factor regression residuals (≈ 1 календарный месяц)
 FACTOR_REGRESSION_HAC_LAGS: int = 4
 
+FACTOR_TO_BETA_KEY = {
+    "equity": "beta_eq",
+    "real_rates": "beta_rr",
+    "inflation": "beta_inf",
+    "credit": "beta_credit",
+    "usd": "beta_usd",
+    "commodity": "beta_cmd",
+}
+
 # FRED series (fallback when project series not used)
 FRED_EQUITY_LEVEL = "SP500"
 FRED_REAL_10Y = "DFII10"
@@ -689,15 +698,7 @@ def portfolio_factor_regression_weekly(
     ci_low = inf["ci_low"]
     ci_high = inf["ci_high"]
 
-    name_map = {
-        "equity": "beta_eq",
-        "real_rates": "beta_rr",
-        "inflation": "beta_inf",
-        "credit": "beta_credit",
-        "usd": "beta_usd",
-        "commodity": "beta_cmd",
-    }
-    beta_keys = [name_map.get(c, f"beta_{c}") for c in factor_cols]
+    beta_keys = [FACTOR_TO_BETA_KEY.get(c, f"beta_{c}") for c in factor_cols]
 
     # Diagnostics on the same rows as OLS
     mc = factor_multicollinearity_diagnostics(X_valid, factor_cols)
@@ -742,6 +743,120 @@ def portfolio_factor_regression_weekly(
         "serial_correlation_diagnostics": ser,
         "factor_multicollinearity": mc,
     }
+    return out
+
+
+def factor_oos_beta_shock_explainability(
+    *,
+    weights: dict[str, float],
+    tickers: list[str],
+    historical_results: list[dict[str, Any]],
+    factor_betas_5y: dict[str, float] | None,
+    factor_betas_10y: dict[str, float] | None,
+    rolling_window_weeks: int = FACTOR_WEEKS_3Y,
+) -> dict[str, Any]:
+    """
+    Out-of-sample explainability of episode PnL via beta × realized factor shock.
+
+    For each episode (expects episode_start / episode_end in historical_results):
+    - computes weekly factor shocks over the episode (sum of weekly factor series),
+    - computes model PnL for fixed 5Y/10Y betas and rolling-pre-episode betas,
+    - compares against pnl_real_episode when present.
+    """
+    out: dict[str, Any] = {
+        "method": "episode_beta_times_realized_factor_shock",
+        "rolling_pre_window_weeks": int(rolling_window_weeks),
+        "episodes": [],
+        "summary": {},
+    }
+    b5 = factor_betas_5y or {}
+    b10 = factor_betas_10y or {}
+    if not historical_results:
+        out["error"] = "historical_results_empty"
+        return out
+
+    def _model_pnl(beta_map: dict[str, float], shock: pd.Series) -> tuple[float, dict[str, float]]:
+        total = 0.0
+        contrib: dict[str, float] = {}
+        for fac_col, shock_v in shock.items():
+            bkey = FACTOR_TO_BETA_KEY.get(str(fac_col))
+            if not bkey:
+                continue
+            c = float(beta_map.get(bkey, 0.0)) * float(shock_v)
+            contrib[bkey] = c
+            total += c
+        return float(total), contrib
+
+    abs_err_5: list[float] = []
+    abs_err_10: list[float] = []
+    abs_err_r3: list[float] = []
+
+    for row in historical_results:
+        ep = str(row.get("episode", ""))
+        start = row.get("episode_start")
+        end = row.get("episode_end")
+        if not start or not end:
+            out["episodes"].append({
+                "episode": ep,
+                "error": "missing_episode_start_end",
+            })
+            continue
+        fac = build_factor_matrix(str(start), str(end))
+        if fac.empty:
+            out["episodes"].append({
+                "episode": ep,
+                "episode_start": start,
+                "episode_end": end,
+                "error": "empty_factor_matrix",
+            })
+            continue
+        shock = fac.sum()
+        pnl5, c5 = _model_pnl(b5, shock)
+        pnl10, c10 = _model_pnl(b10, shock)
+
+        pre_end = (pd.Timestamp(start) - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+        r3 = portfolio_factor_regression_weekly(
+            weights=weights,
+            tickers=tickers,
+            analysis_end_str=pre_end,
+            window_weeks=rolling_window_weeks,
+        )
+        b3 = r3.get("betas", {}) if isinstance(r3, dict) else {}
+        pnl3, c3 = _model_pnl(b3 if isinstance(b3, dict) else {}, shock)
+
+        pnl_real = row.get("pnl_real_episode")
+        if isinstance(pnl_real, (int, float)) and np.isfinite(pnl_real):
+            abs_err_5.append(abs(pnl5 - float(pnl_real)))
+            abs_err_10.append(abs(pnl10 - float(pnl_real)))
+            abs_err_r3.append(abs(pnl3 - float(pnl_real)))
+
+        out["episodes"].append({
+            "episode": ep,
+            "episode_start": str(start),
+            "episode_end": str(end),
+            "n_weeks_factors": int(len(fac)),
+            "pnl_real_episode": float(pnl_real) if isinstance(pnl_real, (int, float)) else None,
+            "pnl_model_5y": float(pnl5),
+            "pnl_model_10y": float(pnl10),
+            "pnl_model_roll3y_pre": float(pnl3),
+            "abs_error_5y": (abs(pnl5 - float(pnl_real)) if isinstance(pnl_real, (int, float)) else None),
+            "abs_error_10y": (abs(pnl10 - float(pnl_real)) if isinstance(pnl_real, (int, float)) else None),
+            "abs_error_roll3y_pre": (abs(pnl3 - float(pnl_real)) if isinstance(pnl_real, (int, float)) else None),
+            "factor_shock_sum": {k: float(v) for k, v in shock.items()},
+            "factor_contrib_5y": {k: float(v) for k, v in c5.items()},
+            "factor_contrib_10y": {k: float(v) for k, v in c10.items()},
+            "factor_contrib_roll3y_pre": {k: float(v) for k, v in c3.items()},
+            "roll3y_pre_analysis_end": pre_end,
+            "roll3y_pre_betas": {k: float(v) for k, v in (b3.items() if isinstance(b3, dict) else [])},
+        })
+
+    if abs_err_5 and abs_err_10 and abs_err_r3:
+        out["summary"] = {
+            "mean_abs_error_5y": float(np.mean(abs_err_5)),
+            "mean_abs_error_10y": float(np.mean(abs_err_10)),
+            "mean_abs_error_roll3y_pre": float(np.mean(abs_err_r3)),
+            "n_episodes_with_real_pnl": int(len(abs_err_5)),
+        }
     return out
 
 
