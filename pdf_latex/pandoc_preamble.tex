@@ -1,0 +1,123 @@
+% Executive PDF: titling, titlesec, enumitem, fancyhdr, [table]xcolor, setspace.
+% Reference: institutional Russian client memo (header title + page, KPI 2x3, footer metadata).
+
+\usepackage[table]{xcolor}
+\usepackage{setspace}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{etoolbox}
+\usepackage{titling}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+
+% ---- Palette (reference: navy title, light KPI fill, blue-gray lines) ----
+\definecolor{HeaderNavy}{HTML}{0C2340}
+\definecolor{BodyText}{HTML}{1A1D21}
+\definecolor{SubText}{HTML}{4A4F55}
+\definecolor{LineBlue}{HTML}{B8C4CE}
+\definecolor{KPIbg}{HTML}{EEF2F6}
+\definecolor{KPIframe}{HTML}{C5D3DE}
+
+% Header/footer: set in pdf_doc_meta: \PDFHeaderLeft, \PDFMetaFooter, \PDFDocDescriptor
+\providecommand{\PDFHeaderLeft}{}
+\providecommand{\PDFMetaFooter}{}
+\providecommand{\PDFDocDescriptor}{}
+
+% ---- KPI 2x3: large number + small label, light cell fill (reference layout) ----
+\newcommand{\KPIone}[2]{%
+  \fcolorbox{KPIframe!70}{KPIbg}{%
+    \begin{minipage}[c][1.0in][c]{0.29\textwidth}
+    \centering
+    \sffamily\bfseries\LARGE\color{HeaderNavy}#1\\[0.28em]
+    \sffamily\small\color{SubText}#2
+    \end{minipage}}%
+}
+\newcommand{\KPIBlockIIIRow}{%
+  \begin{center}
+  \sffamily
+  \vspace{0.35em}
+  \end{center}
+}
+
+% ---- Body: sans ----
+\AtBeginDocument{%
+  \renewcommand{\familydefault}{\sfdefault}%
+  \sffamily\color{BodyText}%
+  \setlength{\parindent}{0pt}%
+  \setlength{\parskip}{0.36em plus 0.1em minus 0.04em}%
+}
+\setlist{leftmargin=*, labelsep=0.45em, itemsep=0.2em, topsep=0.32em, parsep=0.08em, partopsep=0.1em}
+\setlist[enumerate,1]{itemsep=0.18em}
+\setlist[itemize,1]{itemsep=0.18em}
+
+% ---- Title block ----
+\setlength{\droptitle}{-0.1em}
+\pretitle{\begin{flushleft}\sffamily\color{HeaderNavy}\huge\bfseries}
+\posttitle{\par\end{flushleft}\vspace{0.3em}}
+\preauthor{}\postauthor{}
+\predate{\begin{flushleft}\sffamily\itshape\color{SubText}\small}
+\postdate{%
+  \end{flushleft}%
+  \vspace{0.6em}\par
+  \noindent{\color{LineBlue}\rule{\linewidth}{0.35pt}}\par
+  \nointerlineskip
+  \vspace{0.95em}\normalcolor
+}
+
+% ---- Sections: navy, thin line under \section ----
+\titleformat{\section}
+  {\sffamily\LARGE\bfseries\color{HeaderNavy}}
+  {}{0em}{}[\nointerlineskip\vspace{0.15em}\begingroup\color{LineBlue}\hrule height 0.25pt\egroup\vspace{0.45em}]
+\titleformat{\subsection}
+  {\sffamily\large\bfseries\color{HeaderNavy}}
+  {}{0em}{}
+\titleformat{\subsubsection}
+  {\sffamily\normalsize\bfseries\color{HeaderNavy}}
+  {}{0em}{}
+\titlespacing*{\section}{0pt}{1.1em}{0.4em}
+\titlespacing*{\subsection}{0pt}{0.8em}{0.35em}
+\titlespacing*{\subsubsection}{0pt}{0.55em}{0.22em}
+
+% ---- Tables: longtable ----
+\renewcommand{\arraystretch}{1.16}
+\setlength{\tabcolsep}{7.5pt}
+\AtBeginEnvironment{longtable}{%
+  \sffamily\small
+  \arrayrulecolor{LineBlue!80}%
+}
+
+% ---- Page style: top rule + header (title | page) + main text + foot rule + meta line ----
+\setlength{\headheight}{20pt}
+\setlength{\footskip}{40pt}
+\newcommand{\PreambleExecHRule}{%
+  \leavevmode\color{LineBlue}\hbox to \headwidth{\leaders\hrule height 0.35pt depth 0pt\hfil\kern0pt\relax}}
+\newcommand{\PreambleExecFRule}{%
+  \leavevmode\color{LineBlue}\hbox to \headwidth{\leaders\hrule height 0.35pt depth 0pt\hfil\kern0pt\relax}}
+
+\fancypagestyle{execf}{%
+  \fancyhf{}%
+  \renewcommand{\headrule}{{\PreambleExecHRule}}%
+  \renewcommand{\footrule}{{\vspace{3pt}\PreambleExecFRule}}%
+  \renewcommand{\headrulewidth}{0.35pt}%
+  \renewcommand{\footrulewidth}{0.35pt}%
+  \fancyhead[L]{\sffamily\small\color{SubText}\PDFHeaderLeft}%
+  \fancyhead[R]{\sffamily\small\color{SubText}Стр.~\thepage}%
+  \fancyfoot[C]{\sffamily\tiny\color{SubText!90}\ifx\PDFMetaFooter\empty\else\PDFMetaFooter\fi}%
+  \fancyfoot[R]{} \fancyfoot[L]{}%
+}
+
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \renewcommand{\headrule}{{\PreambleExecHRule}}%
+  \renewcommand{\footrule}{{\vspace{3pt}\PreambleExecFRule}}%
+  \renewcommand{\headrulewidth}{0.35pt}%
+  \renewcommand{\footrulewidth}{0.35pt}%
+  \fancyhead[L]{\sffamily\small\color{SubText}\PDFHeaderLeft}%
+  \fancyhead[R]{\sffamily\small\color{SubText}Стр.~\thepage}%
+  \fancyfoot[C]{\sffamily\tiny\color{SubText!90}\ifx\PDFMetaFooter\empty\else\PDFMetaFooter\fi}%
+  \fancyfoot[R]{} \fancyfoot[L]{}%
+}
+
+\pagestyle{execf}

@@ -1,37 +1,44 @@
 ---
-title: "Main Portfolio — Optimized Weights"
-subtitle: "Weights"
-date: "2026-03-31 14:50 Центральная Европа (лето)"
+title: "Состав портфеля: куда встаёт капитал"
+date: "Итоги анализа на 10-летнем окне, по состоянию на 2026-03-31"
 documentclass: article
-geometry: margin=1in
-fontsize: 11pt
+geometry: "left=18mm, right=18mm, top=24mm, bottom=20mm, head=20pt, foot=20pt, footskip=40pt"
+fontsize: 10pt
 ---
-## Report scope / source context
-- **Weights source:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/Main portfolio/portfolio_weights.yml`
-- **Generated:** 2026-03-31 14:50 Центральная Европа (лето)
 
-## Weights
+## Ключевой вывод
 
-| Ticker | Weight |
+**Крупнейшие позиции** по целевому весу: **BND** — 36.00%, **SCHP** — 12.70%, **BIL** — 10.00%, **GLD** — 6.20%, **VOO** — 4.10%. **Доли ниже** — ориентир для стратегии; **дата** относится к снимку (см. строку под заголовком), а не к сигналу сделки.
+
+## Ключевые показатели
+
+```{=latex}
+\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{7,00\%}{Доходность (CAGR)} & \KPIone{7,20\%}{Волатильность} & \KPIone{-15,60\%}{Макс. просадка}\\[0.55em] \KPIone{0,676}{Коэф. Шарпа} & \KPIone{1,047}{Коэф. Сортино} & \KPIone{0,401}{Чувствительность к рынку}\end{tabular}\end{center}
+```
+
+## Состав: все позиции
+
+
+| Инструмент | Целевой вес |
 | --- | ---: |
 | **BND** | 36.00% |
 | **SCHP** | 12.70% |
 | **BIL** | 10.00% |
-| **GLD** | 5.90% |
-| **VOO** | 4.20% |
-| **VDC** | 3.80% |
-| **BBJP** | 2.90% |
-| **SCHD** | 2.70% |
+| **GLD** | 6.20% |
+| **VOO** | 4.10% |
+| **VDC** | 3.90% |
+| **BBJP** | 3.00% |
+| **SCHD** | 2.80% |
 | **VWO** | 2.70% |
-| **CIBR** | 2.60% |
-| **SLV** | 2.30% |
+| **CIBR** | 2.50% |
+| **SLV** | 2.40% |
 | **VT** | 2.30% |
-| **QQQ** | 2.10% |
 | **VGK** | 2.10% |
 | **ITA** | 2.00% |
-| **ROBO** | 1.60% |
+| **QQQ** | 2.00% |
+| **ROBO** | 1.50% |
 | **URA** | 1.50% |
-| **SMH** | 1.40% |
-| **COPX** | 1.00% |
+| **SMH** | 1.30% |
+| **COPX** | 1.10% |
 
-**Sum:** 99.80%
+**Сумма долей — 100.10%**; при полном инвестировании ожидается **около 100%**.

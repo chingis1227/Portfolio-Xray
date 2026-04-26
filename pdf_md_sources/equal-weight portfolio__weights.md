@@ -1,18 +1,25 @@
 ---
-title: "Equal-Weight — Weights"
-subtitle: "Weights"
-date: "2026-03-31 14:50 Центральная Европа (лето)"
+title: "Целевые веса: equal-weight"
+date: "Итоги анализа на 10-летнем окне, по состоянию на 2026-02-28"
 documentclass: article
-geometry: margin=1in
-fontsize: 11pt
+geometry: "left=18mm, right=18mm, top=24mm, bottom=20mm, head=20pt, foot=20pt, footskip=40pt"
+fontsize: 10pt
 ---
-## Report scope / source context
-- **Weights source:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/equal-weight portfolio/weights.json`
-- **Generated:** 2026-03-31 14:50 Центральная Европа (лето)
 
-## Weights
+## Ключевой вывод
 
-| Ticker | Weight |
+**Крупнейшие позиции** по целевому весу: **BBJP** — 5.26%, **BIL** — 5.26%, **BND** — 5.26%, **CIBR** — 5.26%, **COPX** — 5.26%. **Доли ниже** — ориентир для стратегии; **дата** относится к снимку (см. строку под заголовком), а не к сигналу сделки.
+
+## Ключевые показатели
+
+```{=latex}
+\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{15,20\%}{Доходность (CAGR)} & \KPIone{13,00\%}{Волатильность} & \KPIone{-20,90\%}{Макс. просадка}\\[0.55em] \KPIone{0,991}{Коэф. Шарпа} & \KPIone{1,677}{Коэф. Сортино} & \KPIone{0,778}{Чувствительность к рынку}\end{tabular}\end{center}
+```
+
+## Состав: все позиции
+
+
+| Инструмент | Целевой вес |
 | --- | ---: |
 | **BBJP** | 5.26% |
 | **BIL** | 5.26% |
@@ -34,4 +41,4 @@ fontsize: 11pt
 | **VT** | 5.26% |
 | **VWO** | 5.26% |
 
-**Sum:** 100.00%
+**Сумма долей — 100.00%**; при полном инвестировании ожидается **около 100%**.

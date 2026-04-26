@@ -1,34 +1,32 @@
 ---
-title: "IPS Summary — Policy Run"
-subtitle: "Main portfolio"
-date: "2026-03-31 14:50 Центральная Европа (лето)"
+title: "Политика и портфель: сводка реализации (IPS)"
+date: "Итоги анализа на 10-летнем окне, по состоянию на 2026-03-31"
 documentclass: article
-geometry: margin=1in
-fontsize: 11pt
+geometry: "left=18mm, right=18mm, top=24mm, bottom=20mm, head=20pt, foot=20pt, footskip=40pt"
+fontsize: 10pt
 ---
-## Report scope / source context
-- **Source:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/Main portfolio/ips_summary.txt`
-- **Generated:** 2026-03-31 14:50 Центральная Европа (лето)
 
-## Executive summary
-_See numbered sections below._
+## Ключевой вывод
 
-## Detailed results
+*(Суть изложена в **нумерованных** пунктах ниже.)*
+
+## Реализация: по шагам плана
+
 
 ### 1. Mandate parameters
 
-- Target volatility (annual):  8.5%
-- Max drawdown limit:          20.0%
-- Horizon (years):             10.0
-- Investor currency:           USD
-- Client profile:              Balanced
+- Target volatility (annual): 8.5%
+- Max drawdown limit: 20.0%
+- Horizon (years): 10.0
+- Investor currency: USD
+- Client profile: Balanced
 
 ### 2. Mandate check (blocking)
 
-- Run status:                  CANDIDATE_RB_BREACH
-- Historical MaxDD pass:       True
-- Realized MaxDD (full hist.): -15.73%
-- History window:              2018-07-31 00:00:00 .. 2026-03-31 00:00:00 (93 months)
+- Run status: CANDIDATE_RB_BREACH
+- Historical MaxDD в норме по проверке: True
+- Realized MaxDD (full hist.): -15.63%
+- History window: 2018-07-31 00:00:00 .. 2026-04-30 00:00:00 (94 months)
 - Note: Only this historical MaxDD vs mandate can block weight release.
 
 ### 3. Final portfolio weights
@@ -36,53 +34,55 @@ _See numbered sections below._
 - BND: 0.360
 - SCHP: 0.127
 - BIL: 0.100
-- GLD: 0.059
-- VOO: 0.042
-- VDC: 0.038
-- BBJP: 0.029
-- SCHD: 0.027
+- GLD: 0.062
+- VOO: 0.041
+- VDC: 0.039
+- BBJP: 0.030
+- SCHD: 0.028
 - VWO: 0.027
-- CIBR: 0.026
-- SLV: 0.023
+- CIBR: 0.025
+- SLV: 0.024
 - VT: 0.023
-- QQQ: 0.021
 - VGK: 0.021
 - ITA: 0.020
-- ROBO: 0.016
+- QQQ: 0.020
+- ROBO: 0.015
 - URA: 0.015
-- SMH: 0.014
-- COPX: 0.010
-- (sum: 0.998)
+- SMH: 0.013
+- COPX: 0.011
+- (sum: 1.001)
 
 ### 4. Risk contribution by block (actual | target)
 
-- Growth: 62.18% | target 50.00% (+12.2 pp)
-- Duration: 19.42% | target 38.89% (-19.5 pp)
-- Inflation: 18.40% | target 11.11% (+7.3 pp)
+- Growth: 62.15% | target 50.00% (+12.2 pp)
+- Duration: 19.43% | target 38.89% (-19.5 pp)
+- Inflation: 18.42% | target 11.11% (+7.3 pp)
 
 ### 5. RC breaches (asset above cap)
 
-- VOO: RC=7.58%, cap=4.46%
-- BBJP: RC=4.55%, cap=4.46%
+- VOO: RC=7.65%, cap=4.46%
+- BBJP: RC=4.59%, cap=4.46%
 - VWO: RC=4.49%, cap=4.46%
-- VDC: RC=4.64%, cap=4.46%
-- SLV: RC=5.35%, cap=4.63%
-- GLD: RC=6.19%, cap=4.63%
-- SCHP: RC=6.86%, cap=4.63%
+- VDC: RC=4.68%, cap=4.46%
+- SLV: RC=5.33%, cap=4.63%
+- GLD: RC=6.23%, cap=4.63%
+- SCHP: RC=6.87%, cap=4.63%
 
 ### 6. Stress & scenario diagnostics (non-blocking for release)
 
-- Diagnostic status:   DIAG_PASS_WITH_WARNING
-- Primary code:        —
-- Worst scenario loss: -10.24% (informational)
-- Failed scenario:     —
+- Diagnostic status:
+- Diagnostic codes: сильный обвал на рынке акций
+- Primary code: сильный обвал на рынке акций
+- Worst scenario loss: -11.40% (informational)
+- Failed scenario: сильный обвал на рынке акций
 - Note: Synthetic shocks & episode checks do not block weights; review with PM.
 
 ### 7. Violations
 
 - RC_VIOLATION: iterations=200 | remaining_violators=['VOO', 'BBJP', 'VWO', 'VDC', 'SLV', 'GLD', 'SCHP'] | reason=max_iterations
-- RB_BREACH: Growth=12.18 | Duration=-19.46 | Inflation=7.28
-- VIOL_RC_ASSET_CAP: [{'ticker': 'VOO', 'rc_pct': 7.58, 'cap_pct': 4.46}, {'ticker': 'BBJP', 'rc_pct': 4.55, 'cap_pct': 4.46}, {'ticker': 'VWO', 'rc_pct': 4.49, 'cap_pct': 4.46}, {'ticker': 'VDC', 'rc_pct': 4.64, 'cap_pct': 4.46}, {'ticker': 'SLV', 'rc_pct': 5.35, 'cap_pct': 4.63}, {'ticker': 'GLD', 'rc_pct': 6.19, 'cap_pct': 4.63}, {'ticker': 'SCHP', 'rc_pct': 6.86, 'cap_pct': 4.63}]
+- RB_BREACH: Growth=12.15 | Duration=-19.46 | Inflation=7.31
+- VIOL_RC_ASSET_CAP: [{'ticker': 'VOO', 'rc_pct': 7.65, 'cap_pct': 4.46}, {'ticker': 'BBJP', 'rc_pct': 4.59, 'cap_pct': 4.46}, {'ticker': 'VWO', 'rc_pct': 4.49, 'cap_pct': 4.46}, {'ticker': 'VDC', 'rc_pct': 4.68, 'cap_pct': 4.46}, {'ticker': 'SLV', 'rc_pct': 5.33, 'cap_pct': 4.63}, {'ticker': 'GLD', 'rc_pct': 6.23, 'cap_pct': 4.63}, {'ticker': 'SCHP', 'rc_pct': 6.87, 'cap_pct': 4.63}]
+- : note=diagnostic_only | diagnostic_codes=[' сильный обвал на рынке акций'] | primary_diagnostic_code= сильный обвал на рынке акций | worst_scenario_loss_pct=-0.114 | failed_scenario=сильный обвал на рынке акций
 
 ### 8. Next actions (this run)
 
@@ -90,22 +90,20 @@ _See numbered sections below._
 - If still RB_BREACH: increase k_block (add instruments) in the offending block(s).
 - If Growth capacity constraints prevent W_growth: add satellites or relax max_weight_sat/core caps.
 - Consider adding assets to dilute RC or relax rc_asset_cap; review breached tickers.
+- Stress diagnostic (DIAG_*): review liquidity, duration, growth/HY — informational only.
 - RC post-processing could not satisfy RC caps (strict mode: weights not written; permissive: violation flagged). Relax rc_asset_cap_pct, add assets, or set rc_policy_mode: permissive to write weights with violation.
 
 ### 9. Actions by status (reference)
 
-APPROVED             Use weights as target; safe to execute.
+APPROVED Use weights as target; safe to execute.
 
-CANDIDATE_RB_BREACH  Use with caution; consider re-run or accept and monitor.
+CANDIDATE_RB_BREACH Use with caution; consider re-run or accept and monitor.
 
-OK_FALLBACK          Check rc_breaches above; use if acceptable for mandate.
+OK_FALLBACK Check rc_breaches above; use if acceptable for mandate.
 
-FAIL_MANDATE         Historical MaxDD vs mandate failed or history insufficient; weights not written.
+Historical MaxDD vs mandate failed or history insufficient; weights not written.
 
-DIAG_* / FAIL_STRESS (violation)  Stress diagnostics only; does not block release (review PM).
+DIAG_* / (violation) Stress diagnostics only; does not block release (review PM).
 
-FAIL_DATA/RC/FEAS    Weights not written. Follow next_actions above.
+/RC/FEAS Weights not written. Follow next_actions above.
 
-
-## Key takeaways
-- Сводка отражает **последний прогон оптимизации** по policy; при смене конфигурации перезапустите пайплайн.

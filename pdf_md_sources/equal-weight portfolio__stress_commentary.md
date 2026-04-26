@@ -1,75 +1,67 @@
 ---
-title: "Equal-Weight Portfolio — Stress Commentary"
-subtitle: "Commentary"
-date: "2026-03-31 14:50 Центральная Европа (лето)"
+title: "Стресс: как ведёт себя equal-weight"
+date: "Итоги анализа на 10-летнем окне, по состоянию на 2026-02-28"
 documentclass: article
-geometry: margin=1in
-fontsize: 11pt
+geometry: "left=18mm, right=18mm, top=24mm, bottom=20mm, head=20pt, foot=20pt, footskip=40pt"
+fontsize: 10pt
 ---
-## Report scope / source context
-- **Folder:** `equal-weight portfolio`
-- **Basis:** stress commentary (scenarios, RC, historical episodes).
-- **Commentary file:** `C:/Users/ShumeikoYe/OneDrive/Рабочий стол/Курсор Новый Изменения/equal-weight portfolio/stress_commentary.txt`
-- **Generated:** 2026-03-31 14:50 Центральная Европа (лето)
 
-## Executive summary
-Прогон: Equal-Weight baseline; конец выборки (analysis_end): 2026-02-28. Итоговый статус стресс-набора в stress_report: DIAG_ATTENTION. Основной код (primary / fail_reason): DIAG_RC_TOP1_EQUITY_SHOCK. Список diagnostic_codes: DIAG_RC_TOP1_EQUITY_SHOCK, DIAG_RC_TOP1_CREDIT_SHOCK, DIAG_RC_TOP1_RATES_SHOCK, DIAG_RC_TOP1_INFLATION_STAGFLATION, DIAG_RC_TOP1_LIQUIDITY_SHOCK.
+## Ключевой вывод
+
 По рабочему процессу проекта синтетические сценарии и исторические эпизоды в этом файле — диагностика для PM и не блокируют выпуск весов; блокирующий контур по максимальной просадке задаётся отдельно (mandate_check / IPS, полная пересекающаяся история).
-Предупреждение в отчёте: WARN_ROLE_EQUITY_DEFENSIVE_WEAK.
-Худший сценарный PnL портфеля (worst_scenario_loss_pct): -22.71%; именованный сценарий: equity_shock; поле failed_test: RC_Top1.
+Предупреждение в отчёте: WARN_ .
+Худший сценарный PnL портфеля (worst_scenario_loss_pct): -22.71%; именованный сценарий: сильный обвал на рынке акций; поле failed_test: RC_Top1.
 
 
-## Preamble
+## Ключевые показатели
 
-Source: stress_report.json (текущий прогон)
+```{=latex}
+\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{15,20\%}{Доходность (CAGR)} & \KPIone{13,00\%}{Волатильность} & \KPIone{-20,90\%}{Макс. просадка}\\[0.55em] \KPIone{0,991}{Коэф. Шарпа} & \KPIone{1,677}{Коэф. Сортино} & \KPIone{0,778}{Чувствительность к рынку}\end{tabular}\end{center}
+```
 
 
-## Metric-by-Metric Interpretation
+## Что это значит для инвестора
 
-Синтетические сценарии (stress_report.scenario_results): для каждого сценария ниже — PnL портфеля, итог pass, флаги loss_ok / role_ok / rc1_ok / rc3_ok и топ-1 вклад в риск (Top1 RC), как в JSON. pass=false при нарушении любого из тестов сценария.
-- equity_shock: PnL≈-22.71%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: COPX (12.97%).
-- credit_shock: PnL≈-8.47%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: COPX (12.97%).
-- rates_shock: PnL≈-1.42%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: COPX (11.86%).
-- inflation_stagflation: PnL≈-9.29%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: COPX (11.86%).
-- liquidity_shock: PnL≈-16.29%, pass=False, loss_ok=True, role_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: COPX (13.09%).
-Коды по сценариям (уникально): DIAG_RC_TOP1_EQUITY_SHOCK, DIAG_RC_TOP1_CREDIT_SHOCK, DIAG_RC_TOP1_RATES_SHOCK, DIAG_RC_TOP1_INFLATION_STAGFLATION, DIAG_RC_TOP1_LIQUIDITY_SHOCK.
+- сильный обвал на рынке акций: PnL≈-22.71%, в норме по проверке=False, loss_ok=True, =True, rc1_ok=False, rc3_ok=True; Top1 RC: COPX (12.97%).
+- стресс на рынке кредита: PnL≈-8.47%, в норме по проверке=False, loss_ok=True, =True, rc1_ok=False, rc3_ok=True; Top1 RC: COPX (12.97%).
+- rates_shock: PnL≈-1.42%, в норме по проверке=False, loss_ok=True, =True, rc1_ok=False, rc3_ok=True; Top1 RC: COPX (11.86%).
+- inflation_stagflation: PnL≈-9.29%, в норме по проверке=False, loss_ok=True, =True, rc1_ok=False, rc3_ok=True; Top1 RC: COPX (11.86%).
+- liquidity_shock: PnL≈-16.29%, в норме по проверке=False, loss_ok=True, =True, rc1_ok=False, rc3_ok=True; Top1 RC: COPX (13.09%).
+Коды по сценариям (уникально): сильный обвал на рынке акций, стресс на рынке кредита, , , .
 Факторные беты портфеля (недельная оценка, см. спецификацию): 5Y≈{beta_cmd=0.0969, beta_credit=-0.6993, beta_eq=0.5678, beta_inf=0.1000, beta_rr=-0.7082, beta_usd=-0.8411}; 10Y≈{beta_cmd=0.0731, beta_credit=-0.0892, beta_eq=0.6216, beta_inf=0.8296, beta_rr=-1.0906, beta_usd=-0.6580}.
 
-
-## Risk Structure
-
-rc_asset_cap_used=0.1000 (доля Top1 RC, контекст отчёта); stress_top3_rc_sum_cap=0.7000; max_dd_limit (эпизоды/контекст в отчёте)=35.00%
-По сценариям Top1 RC по сценариям (см. таблицу выше): equity_shock COPX=13.0%, credit_shock COPX=13.0%, rates_shock COPX=11.9%, inflation_stagflation COPX=11.9%, liquidity_shock COPX=13.1%.
-Исторические эпизоды (historical_results):
-- 2008: max_dd≈н/д, pass=None, vol_annualized_episode≈н/д, diagnostic_code=—.
-- 2020: max_dd≈-10.83%, pass=True, vol_annualized_episode≈0.3789, diagnostic_code=—.
-- 2022: max_dd≈-20.94%, pass=True, vol_annualized_episode≈0.1627, diagnostic_code=—.
-
-
-## Strengths
+**Сильные стороны.**
 
 Во всех синтетических сценариях loss_ok=true — глубина потерь в рамках порогов loss-теста.
 Во всех сценариях rc3_ok=true — суммарный Top3 RC не нарушает stress_top3_rc_sum_cap.
-Исторический эпизод 2020 помечен pass=true.
-Исторический эпизод 2022 помечен pass=true.
+Исторический эпизод 2020 помечен в норме по проверке=true.
+Исторический эпизод 2022 помечен в норме по проверке=true.
 
-## Weaknesses
+**Риски и ограничения.**
 
-DIAG_ATTENTION: зафиксированы диагностические коды (DIAG_RC_TOP1_EQUITY_SHOCK, DIAG_RC_TOP1_CREDIT_SHOCK, DIAG_RC_TOP1_RATES_SHOCK, DIAG_RC_TOP1_INFLATION_STAGFLATION, DIAG_RC_TOP1_LIQUIDITY_SHOCK); для PM имеет смысл разобрать scenario_results и historical_results.
+: зафиксированы диагностические коды ( сильный обвал на рынке акций, стресс на рынке кредита, , , ); для PM имеет смысл разобрать scenario_results и historical_results.
 Во всех сценариях rc1_ok=false — концентрация Top1 RC выше порога rc_asset_cap_used.
-warning_code=WARN_ROLE_EQUITY_DEFENSIVE_WEAK (роль защитных блоков / прочее — см. stress_report).
 Эпизод 2008: max_dd н/д — интерпретация ограничена.
 
-## Scenario Behavior
+## Структура риска
 
-equity_shock: PnL≈-22.71%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
-credit_shock: PnL≈-8.47%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
-rates_shock: PnL≈-1.42%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
-inflation_stagflation: PnL≈-9.29%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
-liquidity_shock: PnL≈-16.29%, итог pass=False — см. loss/role/rc в Metric-by-Metric.
+rc_asset_cap_used=0.1000 (доля Top1 RC, контекст отчёта); stress_top3_rc_sum_cap=0.7000; max_dd_limit (эпизоды/контекст в отчёте)=35.00%
+По сценариям Top1 RC по сценариям (см. таблицу выше): сильный обвал на рынке акций COPX=13.0%, стресс на рынке кредита COPX=13.0%, rates_shock COPX=11.9%, inflation_stagflation COPX=11.9%, liquidity_shock COPX=13.1%.
+Исторические эпизоды (historical_results):
+- 2008: max_dd≈н/д, в норме по проверке=None, vol_annualized_episode≈н/д, diagnostic_code=—.
+- 2020: max_dd≈-10.83%, в норме по проверке=True, vol_annualized_episode≈0.3789, diagnostic_code=—.
+- 2022: max_dd≈-20.94%, в норме по проверке=True, vol_annualized_episode≈0.1627, diagnostic_code=—.
+
+## Сценарный анализ
+
+сильный обвал на рынке акций: PnL≈-22.71%, итог в норме по проверке=False — см. loss/role/rc в Metric-by-Metric.
+стресс на рынке кредита: PnL≈-8.47%, итог в норме по проверке=False — см. loss/role/rc в Metric-by-Metric.
+rates_shock: PnL≈-1.42%, итог в норме по проверке=False — см. loss/role/rc в Metric-by-Metric.
+inflation_stagflation: PnL≈-9.29%, итог в норме по проверке=False — см. loss/role/rc в Metric-by-Metric.
+liquidity_shock: PnL≈-16.29%, итог в норме по проверке=False — см. loss/role/rc в Metric-by-Metric.
 
 
-## Final Conclusion
+## Итог
 
-Equal-Weight baseline: стресс-набор DIAG_ATTENTION (DIAG_RC_TOP1_EQUITY_SHOCK). Синтетические потери и RC-диагностика отражают текущий состав и Σ из прогона; решения по выпуску весов сверяйте с mandate_check и run_result, а этот файл используйте как сценарную справку для PM.
+Equal-Weight baseline: стресс-набор ( сильный обвал на рынке акций). Синтетические потери и RC-диагностика отражают текущий состав и Σ из прогона; решения по выпуску весов сверяйте с mandate_check и run_result, а этот файл используйте как сценарную справку для PM.
 
