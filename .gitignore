@@ -10,6 +10,7 @@ env/
 
 # Cache
 cache/
+pdf_latex/pandoc_doc_meta.tex
 
 # IDE
 .idea/

@@ -679,7 +679,13 @@ def _format_robustness_html(data: dict[str, Any]) -> str:
     top5 = data.get("top5_delta_w") or []
     if top5:
         rows = "".join(f"<tr><td>{html.escape(str(t))}</td><td>{html.escape(_fmt_ratio(d))}</td></tr>" for t, d in top5)
-        parts.append('<table><caption>Top 5 weight deltas</caption><thead><tr><th>Ticker</th><th>Delta</th></tr></thead><tbody>' + rows + "</tbody></table>")
+        parts.append(
+            _html_table_block(
+                '<table><caption>Top 5 weight deltas</caption><thead><tr><th>Ticker</th><th>Delta</th></tr></thead><tbody>'
+                + rows
+                + "</tbody></table>"
+            )
+        )
     rc10 = data.get("rc_by_block_10y") or {}
     rc5 = data.get("rc_by_block_5y") or {}
     targets = data.get("rc_block_targets") or {}
@@ -691,7 +697,13 @@ def _format_robustness_html(data: dict[str, Any]) -> str:
             tgt = targets.get(b)
             rows.append(f"<tr><td>{html.escape(b)}</td><td>{html.escape(_fmt_ratio(r10))}</td><td>{html.escape(_fmt_ratio(r5))}</td><td>{html.escape(_fmt_ratio(tgt))}</td></tr>")
         if rows:
-            parts.append('<table><caption>RC by block</caption><thead><tr><th>Block</th><th>10Y</th><th>5Y</th><th>Target</th></tr></thead><tbody>' + "".join(rows) + "</tbody></table>")
+            parts.append(
+                _html_table_block(
+                    '<table><caption>RC by block</caption><thead><tr><th>Block</th><th>10Y</th><th>5Y</th><th>Target</th></tr></thead><tbody>'
+                    + "".join(rows)
+                    + "</tbody></table>"
+                )
+            )
     vol10 = data.get("vol_10y_under_sigma10y")
     vol10_5 = data.get("vol_10y_under_sigma5y")
     if vol10 is not None or vol10_5 is not None:
@@ -779,28 +791,56 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
             for t in sorted(w_total.keys(), key=lambda x: (-w_total.get(x, 0), x))
         )
         parts.append(
-            '<table><caption>Final weights (total)</caption><thead><tr><th>Ticker</th><th>Weight</th></tr></thead><tbody>' + rows + "</tbody></table>"
+            _html_table_block(
+                '<table><caption>Final weights (total)</caption><thead><tr><th>Ticker</th><th>Weight</th></tr></thead><tbody>'
+                + rows
+                + "</tbody></table>"
+            )
         )
     # Block weights
     block_weights = data.get("block_weights") or {}
     if block_weights:
         rows = "".join(f"<tr><td>{html.escape(b)}</td><td>{html.escape(_fmt_ratio(w))}</td></tr>" for b, w in block_weights.items())
-        parts.append('<table><caption>Block weights</caption><thead><tr><th>Block</th><th>Weight</th></tr></thead><tbody>' + rows + "</tbody></table>")
+        parts.append(
+            _html_table_block(
+                '<table><caption>Block weights</caption><thead><tr><th>Block</th><th>Weight</th></tr></thead><tbody>'
+                + rows
+                + "</tbody></table>"
+            )
+        )
     # RC asset
     rc_asset = data.get("RC_asset") or []
     if rc_asset:
         rows = "".join(f"<tr><td>{html.escape(str(x.get('ticker', '')))}</td><td>{html.escape(_fmt_ratio(x.get('rc_pct')))}</td></tr>" for x in rc_asset)
-        parts.append('<table><caption>RC by asset (top)</caption><thead><tr><th>Ticker</th><th>RC %</th></tr></thead><tbody>' + rows + "</tbody></table>")
+        parts.append(
+            _html_table_block(
+                '<table><caption>RC by asset (top)</caption><thead><tr><th>Ticker</th><th>RC %</th></tr></thead><tbody>'
+                + rows
+                + "</tbody></table>"
+            )
+        )
     # RC block
     rc_block = data.get("RC_block") or []
     if rc_block:
         rows = "".join(f"<tr><td>{html.escape(str(x.get('block', '')))}</td><td>{html.escape(_fmt_ratio(x.get('rc_pct')))}</td></tr>" for x in rc_block)
-        parts.append('<table><caption>RC by block</caption><thead><tr><th>Block</th><th>RC %</th></tr></thead><tbody>' + rows + "</tbody></table>")
+        parts.append(
+            _html_table_block(
+                '<table><caption>RC by block</caption><thead><tr><th>Block</th><th>RC %</th></tr></thead><tbody>'
+                + rows
+                + "</tbody></table>"
+            )
+        )
     # Constraints
     constraints = data.get("constraints_status") or {}
     if constraints:
         rows = "".join(f"<tr><td>{html.escape(k)}</td><td class=\"status-{html.escape(v.lower())}\">{html.escape(v)}</td></tr>" for k, v in constraints.items())
-        parts.append('<table><caption>Constraints</caption><thead><tr><th>Constraint</th><th>Status</th></tr></thead><tbody>' + rows + "</tbody></table>")
+        parts.append(
+            _html_table_block(
+                '<table><caption>Constraints</caption><thead><tr><th>Constraint</th><th>Status</th></tr></thead><tbody>'
+                + rows
+                + "</tbody></table>"
+            )
+        )
     # Metrics
     metrics = data.get("metrics") or {}
     if metrics:
@@ -810,7 +850,13 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
                 return html.escape(_fmt_ratio(value))
             return _fmt_val_html(value)
         rows = "".join(f"<tr><td>{html.escape(k)}</td><td>{_fmt_metric_for_html(k, metrics.get(k))}</td></tr>" for k in metric_keys if k in metrics)
-        parts.append('<table><caption>Portfolio metrics</caption><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>' + rows + "</tbody></table>")
+        parts.append(
+            _html_table_block(
+                '<table><caption>Portfolio metrics</caption><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>'
+                + rows
+                + "</tbody></table>"
+            )
+        )
     # Stress
     stress = data.get("stress_suite_results") or {}
     overall = stress.get("overall", "—")
@@ -828,7 +874,13 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
                 else:
                     rows.append(f"<tr><td>{html.escape(k)}</td><td>{_fmt_val_html(analytics[k])}</td></tr>")
         if rows:
-            parts.append('<table><caption>Analytics</caption><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>' + "".join(rows) + "</tbody></table>")
+            parts.append(
+                _html_table_block(
+                    '<table><caption>Analytics</caption><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>'
+                    + "".join(rows)
+                    + "</tbody></table>"
+                )
+            )
     parts.append("</section>")
     return "\n".join(parts)
 
@@ -857,8 +909,10 @@ def _format_assets_snapshot_html(data: dict[str, Any]) -> str:
             cells = "".join(formatted_cells)
             body_rows.append(f"<tr><td>{ticker}</td>{cells}</tr>")
         parts.append(
-            f'<table class="assets-table"><caption>Window {html.escape(label)}</caption>'
-            f"<thead><tr>{header_cells}</tr></thead><tbody>{''.join(body_rows)}</tbody></table>"
+            _html_table_block(
+                f'<table class="assets-table"><caption>Window {html.escape(label)}</caption>'
+                f"<thead><tr>{header_cells}</tr></thead><tbody>{''.join(body_rows)}</tbody></table>"
+            )
         )
     parts.append("</section>")
     return "\n".join(parts)
@@ -870,36 +924,139 @@ HTML_HEAD = """<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Portfolio Snapshot Report</title>
+<!-- Aligned with DESIGN.md + config_ui/static/design.css: Inter/DM Sans, RUI tokens, flat, pill nav. -->
 <style>
-:root { --bg: #f8f9fa; --card: #fff; --border: #dee2e6; --text: #212529; --muted: #6c757d; --pass: #198754; --fail: #dc3545; }
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@9..40,400;500&family=Inter:ital,opsz,wght@0,14..32,400;500;600&display=swap");
+:root {
+  --rui-dark: #191c1f;
+  --rui-white: #ffffff;
+  --rui-surface: #f4f4f4;
+  --rui-border: #c9c9cd;
+  --rui-mid: #505a63;
+  --rui-muted: #8d969e;
+  --rui-blue: #376cd5;
+  --rui-blue-brand: #494fdf;
+  --rui-pass: #00a87e;
+  --rui-fail: #e23b4a;
+  --rui-warn: #ec7e00;
+  --rui-pass-bg: #e6f7f2;
+  --rui-fail-bg: #fdeced;
+  --rui-warn-bg: #fff3e6;
+  --font-d: "DM Sans", "Inter", system-ui, sans-serif;
+  --font-b: "Inter", system-ui, -apple-system, sans-serif;
+  --radius-card: 20px;
+  --radius-pill: 9999px;
+  --space-8: 8px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+}
 * { box-sizing: border-box; }
-body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1rem 2rem 2rem; line-height: 1.5; }
-h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
-.subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
-nav { margin-bottom: 1.5rem; }
-nav a { margin-right: 1rem; color: #0d6efd; text-decoration: none; }
-nav a:hover { text-decoration: underline; }
-section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 1.5rem; break-inside: avoid; }
-section h2 { font-size: 1.2rem; margin-top: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
-section h2 .meta { font-weight: normal; color: var(--muted); font-size: 0.9rem; }
-table { width: 100%; max-width: 32rem; border-collapse: collapse; margin-bottom: 1rem; }
-table caption { text-align: left; font-weight: 600; margin-bottom: 0.25rem; font-size: 0.9rem; }
-th, td { border: 1px solid var(--border); padding: 0.35rem 0.6rem; text-align: left; }
-th { background: var(--bg); font-weight: 600; }
-.status-pass { color: var(--pass); }
-.status-fail, [class^="status-fail"] { color: var(--fail); }
-.stress-overall { margin-bottom: 0.5rem; }
-.assets-table { max-width: none; }
-@media print { body { background: #fff; padding: 0.5rem; } section { break-inside: avoid; box-shadow: none; } nav { display: none; } }
+body { font-family: var(--font-b); font-size: 16px; line-height: 1.5; letter-spacing: 0.02em; background: var(--rui-white); color: var(--rui-dark); margin: 0; padding: var(--space-32) var(--space-16) 48px; -webkit-font-smoothing: antialiased; }
+.report-root { max-width: 1200px; margin: 0 auto; }
+.report-header { margin-bottom: var(--space-32); padding-bottom: var(--space-24); border-bottom: 1px solid var(--rui-border); }
+.report-header h1 { font-family: var(--font-d); font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 500; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 var(--space-8); color: var(--rui-dark); }
+.subtitle { color: var(--rui-mid); font-size: 0.95rem; margin: 0 0 var(--space-24); letter-spacing: 0.02em; line-height: 1.5; max-width: 48rem; }
+.report-nav { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: center; }
+.report-nav a {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-d);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--rui-dark);
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--rui-border);
+  background: var(--rui-white);
+  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+}
+.report-nav a:hover { border-color: var(--rui-dark); background: var(--rui-surface); opacity: 0.9; }
+section {
+  background: var(--rui-surface);
+  border: 1px solid var(--rui-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-24) var(--space-24);
+  margin-bottom: var(--space-24);
+  break-inside: avoid;
+  box-shadow: none;
+}
+section h2 { font-family: var(--font-d); font-size: 1.25rem; font-weight: 500; line-height: 1.3; margin: 0 0 var(--space-16); border-bottom: 1px solid var(--rui-border); padding-bottom: var(--space-8); letter-spacing: -0.01em; }
+section h2 .meta { font-weight: 400; color: var(--rui-mid); font-size: 0.88rem; }
+section p { margin: 0 0 0.75rem; color: var(--rui-dark); }
+section p:last-child { margin-bottom: 0; }
+section p strong { color: var(--rui-mid); font-weight: 600; }
+.table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: var(--space-16); }
+.table-wrap table { margin-bottom: 0; }
+table { width: 100%; max-width: 100%; border-collapse: collapse; margin-bottom: var(--space-16); font-size: 0.94rem; }
+section > table:last-child { margin-bottom: 0; }
+table caption { text-align: left; font-weight: 500; font-family: var(--font-d); margin: 0 0 var(--space-8); font-size: 0.9rem; color: var(--rui-dark); }
+th, td { border: 1px solid var(--rui-border); padding: 10px 12px; text-align: left; vertical-align: top; }
+th { background: var(--rui-white); font-weight: 500; color: var(--rui-dark); }
+tbody tr:nth-child(even) { background: rgba(25, 28, 31, 0.03); }
+.assets-table th, .assets-table td { font-size: 0.88rem; }
+.stress-overall { margin-bottom: 0.75rem; }
+.stress-overall strong { color: var(--rui-mid); }
+/* Status: text + optional pill in stress line */
+.stress-overall .status-pass, .stress-overall .status-fail, .stress-overall .status-diag_attention,
+.stress-overall [class^="status-"] {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: var(--font-d);
+}
+.stress-overall [class^="status-"] { background: var(--rui-surface); color: var(--rui-mid); }
+.stress-overall .status-pass { background: var(--rui-pass-bg); color: #006400; }
+.stress-overall .status-fail, .stress-overall [class^="status-fail"] { background: var(--rui-fail-bg); color: #8b0000; }
+.stress-overall .status-diag_attention { background: var(--rui-warn-bg); color: #b06a00; }
+/* Prose status pills (e.g. robustness flags) */
+.robustness-section p > span[class^="status-"] {
+  display: inline-block; margin-left: 6px; padding: 4px 12px; border-radius: var(--radius-pill);
+  font-size: 0.85rem; font-weight: 500; font-family: var(--font-d);
+  background: var(--rui-surface); color: var(--rui-mid);
+}
+.robustness-section p > span.status-pass { background: var(--rui-pass-bg); color: #006400; }
+.robustness-section p > span.status-fail, .robustness-section p > span[class^="status-fail"] { background: var(--rui-fail-bg); color: #8b0000; }
+.robustness-section p > span.status-diag_attention { background: var(--rui-warn-bg); color: #b06a00; }
+/* Table cells: constraint / generic status (no pill) */
+td.status-pass { color: var(--rui-pass); font-weight: 500; }
+td.status-fail, td[class^="status-fail"] { color: var(--rui-fail); font-weight: 500; }
+td.status-diag_attention { color: var(--rui-warn); font-weight: 500; }
+.data-policy-section table { max-width: 100%; }
+.table-wrap + .table-wrap, section > .table-wrap { margin-top: 0; }
+.data-policy-section .table-wrap, .robustness-section .table-wrap { margin-bottom: var(--space-16); }
+.data-policy-section .table-wrap:last-child, .robustness-section .table-wrap:last-child { margin-bottom: 0; }
+@media (max-width: 720px) {
+  body { padding: var(--space-24) 12px 40px; }
+  .report-header h1 { font-size: 1.5rem; }
+  section { padding: var(--space-16); }
+}
+@media print {
+  body { background: #fff; padding: 0.5rem; }
+  .report-nav { display: none; }
+  section { break-inside: avoid; }
+}
 </style>
 </head>
 <body>
+<div class="report-root">
 """
 
 HTML_TAIL = """
+</div>
 </body>
 </html>
 """
+
+
+def _html_table_block(table_html: str) -> str:
+    """Wrap a <table> in a scroll container (DESIGN.md — wide tables on small viewports)."""
+    return f'<div class="table-wrap">{table_html}</div>'
 
 
 def _format_data_policy_html(data: dict[str, Any]) -> str:
@@ -907,26 +1064,38 @@ def _format_data_policy_html(data: dict[str, Any]) -> str:
     parts = [
         '<section class="data-policy-section" id="data-policy">',
         "<h2>Data Policy / Backtest Mode</h2>",
-        "<table><caption>Backtest and join policy</caption><tbody>",
+    ]
+    trows: list[str] = [
         "<tr><td>backtest_mode</td><td>" + html.escape(str(data.get("backtest_mode", "—"))) + "</td></tr>",
         "<tr><td>join_policy (cov/RC/β)</td><td>" + html.escape(str(data.get("join_policy_cov_rc", "inner join"))) + "</td></tr>",
     ]
     inner = data.get("inner_join_months_used_for_risk")
     if inner is not None:
-        parts.append("<tr><td>inner_join_months_used_for_risk</td><td>" + html.escape(str(inner)) + (" (warning: &lt;36 months)" if inner < 36 else "") + "</td></tr>")
+        trows.append(
+            "<tr><td>inner_join_months_used_for_risk</td><td>"
+            + html.escape(str(inner))
+            + (" (warning: &lt;36 months)" if inner < 36 else "")
+            + "</td></tr>"
+        )
     n_redist = data.get("n_months_redistributed")
     n_cash = data.get("n_months_cash_fallback")
     if n_redist is not None:
-        parts.append("<tr><td>months with NaN redistribution</td><td>" + html.escape(str(n_redist)) + "</td></tr>")
+        trows.append("<tr><td>months with NaN redistribution</td><td>" + html.escape(str(n_redist)) + "</td></tr>")
     if n_cash is not None:
-        parts.append("<tr><td>months with excess to cash (RC/RB gating)</td><td>" + html.escape(str(n_cash)) + "</td></tr>")
-    parts.append("</tbody></table>")
+        trows.append(
+            "<tr><td>months with excess to cash (RC/RB gating)</td><td>" + html.escape(str(n_cash)) + "</td></tr>"
+        )
+    table1 = "<table><caption>Backtest and join policy</caption><tbody>" + "".join(trows) + "</tbody></table>"
+    parts.append(_html_table_block(table1))
     fam = data.get("first_available_month") or {}
     if fam:
-        parts.append("<p><strong>First available month (per ticker):</strong></p><table><thead><tr><th>Ticker</th><th>First month</th></tr></thead><tbody>")
+        fam_rows: list[str] = [
+            "<table><caption>First available month (per ticker)</caption><thead><tr><th>Ticker</th><th>First month</th></tr></thead><tbody>"
+        ]
         for t in sorted(fam.keys()):
-            parts.append("<tr><td>" + html.escape(t) + "</td><td>" + html.escape(str(fam[t])) + "</td></tr>")
-        parts.append("</tbody></table>")
+            fam_rows.append("<tr><td>" + html.escape(t) + "</td><td>" + html.escape(str(fam[t])) + "</td></tr>")
+        fam_rows.append("</tbody></table>")
+        parts.append(_html_table_block("".join(fam_rows)))
     parts.append("</section>")
     return "\n".join(parts)
 
@@ -941,9 +1110,22 @@ def write_report_html(output_dir: str | Path) -> Path:
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     chunks = [HTML_HEAD]
+    chunks.append("<header class=\"report-header\">")
     chunks.append("<h1>Portfolio Snapshot Report</h1>")
-    chunks.append('<p class="subtitle">Generated from snapshot_3y.json, snapshot_5y.json, snapshot_10y.json, snapshot_assets.json</p>')
-    chunks.append('<nav><a href="#data-policy">Data Policy</a> <a href="#robustness">Dual-Horizon</a> <a href="#win-3y">3Y</a> <a href="#win-5y">5Y</a> <a href="#win-10y">10Y</a> <a href="#assets">Assets</a></nav>')
+    chunks.append(
+        '<p class="subtitle">Generated from snapshot_3y.json, snapshot_5y.json, snapshot_10y.json, snapshot_assets.json</p>'
+    )
+    chunks.append(
+        '<nav class="report-nav" aria-label="Report sections">'
+        '<a href="#data-policy">Data Policy</a>'
+        '<a href="#robustness">Dual-Horizon</a>'
+        '<a href="#win-3y">3Y</a>'
+        '<a href="#win-5y">5Y</a>'
+        '<a href="#win-10y">10Y</a>'
+        '<a href="#assets">Assets</a>'
+        "</nav>"
+    )
+    chunks.append("</header>")
     data_policy_path = out / "data_policy.json"
     if data_policy_path.exists():
         try:

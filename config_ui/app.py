@@ -18,7 +18,8 @@ import sys
 from pathlib import Path
 
 # Ensure project root is on path for src.client_profiles
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CONFIG_UI_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = CONFIG_UI_DIR.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -31,7 +32,12 @@ from src.client_profiles import apply_profile_to_config
 from src.config import WEIGHTS_FILENAME, load_blocks_universe
 from src.config_schema import ConfigValidationError, validate_config
 
-app = Flask(__name__)
+# Static + templates: stable paths (see DESIGN.md — design.css in static/)
+app = Flask(
+    __name__,
+    static_folder=str(CONFIG_UI_DIR / "static"),
+    template_folder=str(CONFIG_UI_DIR / "templates"),
+)
 
 CONFIG_PATH = PROJECT_ROOT / "config.yml"
 

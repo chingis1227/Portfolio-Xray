@@ -1212,24 +1212,44 @@ def write_rolling_betas_plot_html(
 
     beta_list = sorted(beta_names)
     html = f"""<!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Rolling Factor Betas</title>
+  <!-- Styling per DESIGN.md (project root): Inter/DM Sans, RUI tokens, flat (no chart chrome shadows in layout). -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@9..40,500&family=Inter:ital,opsz,wght@0,14..32,400;500&display=swap" />
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
-    body {{ font-family: Arial, sans-serif; margin: 16px; }}
-    .chart {{ width: 100%; height: 360px; margin-bottom: 24px; }}
+    :root {{
+      --rui-dark: #191c1f; --rui-border: #c9c9cd; --rui-surface: #f4f4f4; --rui-white: #ffffff;
+      --rui-blue: #494fdf; --rui-mid: #505a63;
+    }}
+    body {{ font-family: "Inter", system-ui, sans-serif; color: var(--rui-dark); background: var(--rui-white); margin: 0; padding: 2rem 1.5rem; letter-spacing: 0.02em; line-height: 1.5; }}
+    h2 {{ font-family: "DM Sans", "Inter", sans-serif; font-size: 1.5rem; font-weight: 500; margin: 0 0 0.5rem; letter-spacing: -0.02em; }}
+    p.meta {{ color: var(--rui-mid); font-size: 0.9rem; margin: 0 0 1.5rem; }}
+    .chart {{ width: 100%; height: 360px; margin-bottom: 1.5rem; border: 1px solid var(--rui-border); border-radius: 20px; padding: 0.5rem; background: var(--rui-surface); box-shadow: none; }}
   </style>
 </head>
 <body>
   <h2>Rolling factor betas (portfolio)</h2>
-  <p>Windows: {", ".join(sorted(payload.keys())) if payload else "n/a"}</p>
+  <p class="meta">Windows: {", ".join(sorted(payload.keys())) if payload else "n/a"}</p>
   <div id="charts"></div>
   <script>
     const dataByWindow = {json.dumps(payload, ensure_ascii=False)};
     const betaList = {json.dumps(beta_list, ensure_ascii=False)};
     const windows = Object.keys(dataByWindow).sort();
+    const rui = {{ white: "#ffffff", dark: "#191c1f", border: "#c9c9cd", blue: "#494fdf", success: "#00a87e", warn: "#ec7e00" }};
+    const layoutBase = {{
+      font: {{ family: "Inter, system-ui, sans-serif", size: 13, color: rui.dark }},
+      title: {{ font: {{ family: "DM Sans, Inter, sans-serif", size: 16 }}, }},
+      paper_bgcolor: rui.white,
+      plot_bgcolor: "#f4f4f4",
+      xaxis: {{ gridcolor: rui.border, linecolor: rui.border, title: {{ standoff: 8 }} }},
+      yaxis: {{ gridcolor: rui.border, linecolor: rui.border }},
+      legend: {{ orientation: "h", bgcolor: "rgba(0,0,0,0)", font: {{ size: 12 }} }}
+    }};
+    const colorway = [rui.dark, rui.blue, rui.success, rui.warn, "#376cd5", "#e23b4a"];
     const root = document.getElementById("charts");
     betaList.forEach((beta) => {{
       const id = "chart_" + beta;
@@ -1248,12 +1268,13 @@ def write_rolling_betas_plot_html(
           name: w
         }});
       }});
-      Plotly.newPlot(id, traces, {{
+      const layout = Object.assign({{}}, layoutBase, {{
         title: beta,
-        xaxis: {{ title: "Date" }},
-        yaxis: {{ title: "Beta" }},
-        legend: {{ orientation: "h" }}
-      }}, {{responsive: true}});
+        xaxis: Object.assign({{}}, layoutBase.xaxis, {{ title: "Date" }}),
+        yaxis: Object.assign({{}}, layoutBase.yaxis, {{ title: "Beta" }}),
+        colorway: colorway
+      }});
+      Plotly.newPlot(id, traces, layout, {{ responsive: true, displayModeBar: true }});
     }});
   </script>
 </body>

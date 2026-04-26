@@ -1,0 +1,537 @@
+/* Portfolio UI — must match DESIGN.md (project root) */
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@9..40,400;500;600&family=Inter:ital,opsz,wght@0,14..32,400;500;600;700&display=swap");
+
+:root {
+  --rui-dark: #191c1f;
+  --rui-white: #ffffff;
+  --rui-surface: #f4f4f4;
+  --rui-blue: #494fdf;
+  --rui-blue-text: #376cd5;
+  --rui-border: #c9c9cd;
+  --rui-mid: #505a63;
+  --rui-muted: #8d969e;
+  --rui-danger: #e23b4a;
+  --rui-success: #00a87e;
+  --rui-warning: #ec7e00;
+  --font-display: "DM Sans", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+  --radius-card: 20px;
+  --radius-sm: 12px;
+  --radius-pill: 9999px;
+  --space-8: 8px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --focus-ring: 0 0 0 0.125rem rgba(73, 79, 223, 0.45);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: var(--rui-dark);
+  background: var(--rui-white);
+  min-height: 100vh;
+  padding: var(--space-32) var(--space-16);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-align: center;
+  color: var(--rui-dark);
+  margin-bottom: var(--space-32);
+}
+
+@media (min-width: 720px) {
+  h1 {
+    font-size: 2.5rem;
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-24);
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--rui-surface);
+  border-radius: var(--radius-card);
+  padding: var(--space-24);
+  border: 1px solid var(--rui-border);
+}
+
+/* Vertical rhythm: stacked cards in a column (see DESIGN.md spacing) */
+.card + .card {
+  margin-top: var(--space-24);
+}
+
+.card h2 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--rui-dark);
+  margin-bottom: var(--space-16);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card h2::before {
+  content: "";
+  width: 4px;
+  min-height: 1.5rem;
+  background: var(--rui-blue);
+  border-radius: 2px;
+}
+
+.form-group {
+  margin-bottom: var(--space-16);
+}
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--rui-mid);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--rui-border);
+  border-radius: var(--radius-sm);
+  background: var(--rui-white);
+  color: var(--rui-dark);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  transition: border-color 0.15s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--rui-blue);
+  box-shadow: var(--focus-ring);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--rui-muted);
+}
+
+.toggle-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--rui-white);
+  border: 1px solid var(--rui-border);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.toggle:hover {
+  border-color: var(--rui-dark);
+}
+
+.toggle.active {
+  background: var(--rui-surface);
+  border-color: var(--rui-dark);
+  border-width: 2px;
+  padding: 9px 15px;
+}
+
+.toggle input {
+  display: none;
+  width: auto;
+}
+
+.toggle-indicator {
+  width: 40px;
+  height: 22px;
+  background: var(--rui-border);
+  border-radius: 11px;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.toggle-indicator::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: var(--rui-white);
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+}
+
+.toggle.active .toggle-indicator {
+  background: var(--rui-blue);
+}
+
+.toggle.active .toggle-indicator::after {
+  transform: translateX(18px);
+}
+
+.ticker-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ticker-row input:first-child {
+  flex: 2;
+  min-width: 120px;
+}
+
+.ticker-row input:last-of-type {
+  flex: 1;
+  min-width: 80px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  padding: 14px 32px;
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background 0.15s, border-color 0.15s, color 0.15s;
+  text-decoration: none;
+  box-shadow: none;
+}
+
+.btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.btn:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--rui-dark);
+  color: var(--rui-white);
+  border-color: var(--rui-dark);
+}
+
+.btn-secondary {
+  background: var(--rui-surface);
+  color: #000000;
+  border-color: var(--rui-surface);
+}
+
+.btn-outlined {
+  background: transparent;
+  color: var(--rui-dark);
+  border: 2px solid var(--rui-dark);
+  padding: 12px 30px;
+}
+
+.btn-accent {
+  background: var(--rui-success);
+  color: var(--rui-white);
+  border-color: var(--rui-success);
+}
+
+.btn-remove {
+  background: var(--rui-danger);
+  color: var(--rui-white);
+  border: none;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: var(--radius-sm);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0;
+  font-family: var(--font-body);
+  box-shadow: none;
+}
+
+.btn-remove:hover {
+  opacity: 0.85;
+}
+
+.btn-remove:focus {
+  box-shadow: var(--focus-ring);
+}
+
+.btn-add {
+  background: var(--rui-white);
+  border: 2px dashed var(--rui-border);
+  color: var(--rui-blue);
+  padding: 12px;
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.btn-add:hover {
+  border-color: var(--rui-blue);
+  background: var(--rui-surface);
+}
+
+.btn-add:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-16);
+  margin-top: var(--space-32);
+  justify-content: center;
+}
+
+.output-pre {
+  background: var(--rui-surface);
+  border: 1px solid var(--rui-border);
+  padding: var(--space-16);
+  border-radius: var(--radius-sm);
+  font-family: "Consolas", "Fira Code", ui-monospace, monospace;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  color: var(--rui-mid);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.output-pre.error {
+  color: #8b0000;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(25, 28, 31, 0.55);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16);
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background: var(--rui-white);
+  border: 1px solid var(--rui-border);
+  border-radius: var(--radius-card);
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: none;
+}
+
+.modal-header {
+  padding: var(--space-16) var(--space-24);
+  border-bottom: 1px solid var(--rui-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.modal-header h3 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--rui-dark);
+}
+
+.modal-close {
+  background: var(--rui-surface);
+  color: var(--rui-mid);
+  border: 1px solid var(--rui-border);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: var(--font-body);
+}
+
+.modal-close:hover {
+  opacity: 0.85;
+}
+
+.modal-body {
+  padding: var(--space-24);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.yaml-preview {
+  background: var(--rui-surface);
+  border: 1px solid var(--rui-border);
+  padding: var(--space-16);
+  border-radius: var(--radius-sm);
+  font-family: "Consolas", "Fira Code", ui-monospace, monospace;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  color: var(--rui-mid);
+}
+
+.modal-footer {
+  padding: var(--space-16) var(--space-24);
+  border-top: 1px solid var(--rui-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-16);
+  justify-content: flex-end;
+}
+
+.toast {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: var(--rui-dark);
+  color: var(--rui-white);
+  padding: 14px 24px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: transform 0.2s, opacity 0.2s;
+  z-index: 2000;
+  box-shadow: none;
+  border: 1px solid var(--rui-dark);
+}
+
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.toast.error {
+  background: var(--rui-danger);
+  border-color: var(--rui-danger);
+  color: var(--rui-white);
+}
+
+.help-text {
+  font-size: 0.8rem;
+  color: var(--rui-muted);
+  margin-top: 4px;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+}
+
+.weight-sum {
+  text-align: right;
+  padding: 10px;
+  color: var(--rui-blue);
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.profile-table-wrap {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--rui-white);
+  border: 1px solid var(--rui-border);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  font-size: 0.85rem;
+  color: var(--rui-mid);
+}
+
+.profile-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-8);
+}
+
+.profile-table th,
+.profile-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--rui-border);
+}
+
+.profile-table thead tr {
+  border-bottom: 1px solid var(--rui-border);
+}
+
+.label-accent {
+  color: var(--rui-blue);
+  font-weight: 500;
+}
