@@ -26,19 +26,17 @@ cash_policy: allowed_for_scaling
 # =============================================================================
 # SECTION 2: PORTFOLIO TICKERS
 # =============================================================================
-# tickers: list of instruments in this portfolio (you set this). If blocks_universe.yml exists,
-#   each ticker must appear there in exactly one block; blocks for the run are derived automatically.
-#   If a ticker is not in blocks_universe.yml, validation fails with a clear message.
+# tickers: list of instruments in this portfolio (you set this). Cash proxy (e.g. BIL) is excluded from the risk optimization universe.
 # Weights are not set here. They are produced by optimization and stored in portfolio_weights.yml
 # (in the same directory as config.yml). Run optimization first, then run report.
 
-tickers: [VOO, VT, QQQ, SMH, VGK, BBJP, VWO, VDC, ITA, CIBR, ROBO, SCHD, COPX, URA, SLV, GLD, SCHP, BIL, BND]
+tickers: [VOO, VT, QQQ, VGK, BBJP, VWO, VDC, ITA, SCHD, COPX, URA, SLV, GLD, SCHP, BIL]
 
 # =============================================================================
 # SECTION 3: CLIENT PROFILE AND ASSUMPTIONS
 # =============================================================================
 # client_profile: optional. Values — ultra_conservative | conservative | balanced | growth | aggressive.
-# If set, missing target/risk_budget fields are filled from config/client_profiles.yml (midpoints). You can override manually.
+# If set, missing target fields are filled from config/client_profiles.yml (midpoints). You can override manually.
 # Reminder: 1 Ultra Conservative  2 Conservative  3 Balanced  4 Growth  5 Aggressive (see Config UI for full table).
 
 client_profile: Balanced
@@ -47,15 +45,9 @@ client_profile: Balanced
 rc_policy_mode: permissive
 # Сила штрафа в objective за превышение RC-cap (выше = сильнее давит концентрацию)
 rc_cap_penalty_lambda: 200
-# Двухэтапная оптимизация Main по умолчанию (run_optimization.py без --single-stage): см. docs/two_stage_optimization.md
-# risk_skeleton_concentration_lambda: 10   # этап 1 — концентрация RC по блокам (Herfindahl)
-# optimization_soft_vol_penalty_lambda: 0    # этап 2 — мягкий vol к target_vol_annual; 0 => в рантайме 12
-# optimization_soft_return_penalty_lambda: 0  # этап 2 — мягкий доход к target_nominal_return_annual; 0 => в рантайме 8
-# RC cap по активам: global = один cap из формулы по N; per_block_rb_k = cap из RB_block и k_block в каждом блоке (см. feasibility_constraints_spec §1b).
-# Явный rc_asset_cap_pct > 0 отменяет оба режима и задаёт один cap всем активам.
-rc_cap_mode: per_block_rb_k
-# Множитель при rc_cap_mode: per_block_rb_k (дефолт 1.25); при global не используется.
-rc_cap_rb_k_multiplier: 1.25
+# optimization_soft_vol_penalty_lambda: 0    # мягкий vol к target_vol_annual; 0 => в рантайме 12
+# optimization_soft_return_penalty_lambda: 0  # мягкий доход к target_nominal_return_annual; 0 => в рантайме 8
+# RC cap по активам: глобальная формула по N (feasibility §1); явный rc_asset_cap_pct > 0 задаёт один cap всем активам.
 
 # allow_leverage, allow_short_selling: на выбор true / false.
 allow_leverage: false

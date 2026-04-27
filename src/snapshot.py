@@ -4,10 +4,9 @@ Used by run_optimization.py and run_report.py.
 
 Production workflow (single source of truth with run_result.json):
   - Only hard stop: FAIL_DATA (invalid config, missing/NaN data, covariance not computable). Weights are always written otherwise.
-  - RB corridor ±5pp: quality check; sets APPROVED vs CANDIDATE_RB_BREACH; weights still written with RB_BREACH flag.
-  - Stress suite: diagnostic-only (DIAG_*); mandate MaxDD on full history blocks in run_optimization (FAIL_MANDATE).
+  - Stress suite: diagnostic-only (DIAG_*); mandate MaxDD on full overlapping history in run_optimization (FAIL_MANDATE).
   - RC caps: enforced when feasible; if violated (fallback), weights still returned with VIOL_RC_ASSET_CAP flag + breached tickers.
-  - Soft/diagnostic: Baseline coverage, constraints_status (rb_corridor, rc_caps, max_dd) for transparency.
+  - Soft/diagnostic: Baseline coverage, constraints_status (target_vol, max_dd, rc_caps, weight_caps) for transparency.
   - Report-only: target_nominal_return_annual (comparison with realized CAGR only; not an optimization constraint).
 """
 from __future__ import annotations
@@ -20,33 +19,11 @@ from typing import Any
 
 import pandas as pd
 
-from src.config_schema import STRESS_BLOCK_NAMES
 from src.risk_contrib import rc_vol_window
-from src.stress import _ticker_to_stress_block
 from src.windows import slice_window
 
-RB_CORRIDOR_DEFAULT_PP = 0.05  # target ± 5pp for RB corridor
 REPORT_DECIMALS = 3
 TOP_RC_N = 5
-
-
-def _ticker_to_display_block(blocks: dict[str, list[str]]) -> dict[str, str]:
-    """Map each ticker to one of Growth, Duration, Inflation, Liquidity, Tail."""
-    return _ticker_to_stress_block(blocks, None)
-
-
-def _block_weights_from_total(
-    weights_total: dict[str, float],
-    blocks: dict[str, list[str]],
-) -> dict[str, float]:
-    """Sum weights by display block (Growth, Duration, Inflation, Liquidity, Tail)."""
-    t2b = _ticker_to_display_block(blocks)
-    out = {b: 0.0 for b in STRESS_BLOCK_NAMES}
-    for t, w in weights_total.items():
-        b = t2b.get(t)
-        if b is not None:
-            out[b] = out.get(b, 0.0) + w
-    return {b: round(out[b], REPORT_DECIMALS) for b in STRESS_BLOCK_NAMES}
 
 
 def _rc_asset_top(rc_series: pd.Series, top_n: int = TOP_RC_N) -> list[dict[str, Any]]:
@@ -57,32 +34,13 @@ def _rc_asset_top(rc_series: pd.Series, top_n: int = TOP_RC_N) -> list[dict[str,
     return [{"ticker": str(t), "rc_pct": round(float(v), REPORT_DECIMALS)} for t, v in s.items()]
 
 
-def _rc_block_from_asset(
-    rc_series: pd.Series,
-    blocks: dict[str, list[str]],
-) -> list[dict[str, Any]]:
-    """Aggregate RC by display block (Growth = Growth + Growth_HY + Growth_EM_debt)."""
-    if rc_series is None or rc_series.empty:
-        return []
-    t2b = _ticker_to_display_block(blocks)
-    agg: dict[str, float] = {b: 0.0 for b in STRESS_BLOCK_NAMES}
-    for t, v in rc_series.items():
-        b = t2b.get(t)
-        if b is not None and not (v != v):
-            agg[b] = agg.get(b, 0.0) + float(v)
-    return [{"block": b, "rc_pct": round(agg[b], REPORT_DECIMALS)} for b in STRESS_BLOCK_NAMES if agg.get(b, 0) != 0]
-
-
 def _constraints_status(
     *,
     target_vol_annual: float | None,
     current_vol_annual: float | None,
     max_dd_ok: bool | None,
-    rc_block_targets: dict[str, float] | None,
-    actual_rc_block: dict[str, float] | None,
     rc_caps_ok: bool | None,
     weight_caps_ok: bool | None,
-    rb_corridor_pp: float = RB_CORRIDOR_DEFAULT_PP,
 ) -> dict[str, str]:
     """Build constraints_status dict (PASS / FAIL / NOT_CHECKED)."""
     status: dict[str, str] = {}
@@ -93,27 +51,6 @@ def _constraints_status(
         status["target_vol"] = "NOT_CHECKED"
 
     if max_dd_ok is True:
-        status["max_dd"] = "PASS"
-    elif max_dd_ok is False:
-        status["max_dd"] = "FAIL"
-    else:
-        status["max_dd"] = "NOT_CHECKED"
-
-    if rc_block_targets and actual_rc_block:
-        # RB corridor: actual within target ± rb_corridor_pp for Growth, Duration, Inflation
-        inside = True
-        for block in ("Growth", "Duration", "Inflation"):
-            target = rc_block_targets.get(block)
-            actual = actual_rc_block.get(block, 0.0)
-            if target is not None:
-                if abs(actual - target) > rb_corridor_pp:
-                    inside = False
-                    break
-        status["rb_corridor"] = "PASS" if inside else "FAIL"
-    else:
-        status["rb_corridor"] = "NOT_CHECKED"
-
-    if rc_caps_ok is True:
         status["rc_caps"] = "PASS"
     elif rc_caps_ok is False:
         status["rc_caps"] = "FAIL"
@@ -140,8 +77,6 @@ def _stress_suite_results_for_snapshot(stress_report: dict[str, Any], portfolio_
         violations = []
         if not s.get("loss_ok", True):
             violations.append("loss")
-        if not s.get("role_ok", True):
-            violations.append("role")
         if not s.get("rc1_ok", True):
             violations.append("rc_top1")
         if not s.get("rc3_ok", True):
@@ -149,7 +84,6 @@ def _stress_suite_results_for_snapshot(stress_report: dict[str, Any], portfolio_
         scenarios_out.append({
             "scenario_id": s.get("scenario_id"),
             "portfolio_pnl_pct": round(s.get("portfolio_pnl_pct", 0), 4),
-            "pnl_by_block_pct": {k: round(v, 4) for k, v in (s.get("pnl_by_block_pct") or {}).items()},
             "violations": violations,
             "pass": s.get("pass", True),
         })
@@ -165,7 +99,6 @@ def _stress_suite_results_for_snapshot(stress_report: dict[str, Any], portfolio_
 
 def build_snapshot(
     final_weights_total: dict[str, float],
-    blocks: dict[str, list[str]],
     cash_proxy_ticker: str,
     analysis_end: str,
     stress_report: dict[str, Any],
@@ -177,14 +110,12 @@ def build_snapshot(
     target_vol_annual: float | None = None,
     current_vol_annual: float | None = None,
     max_dd_ok: bool | None = None,
-    rc_block_targets: dict[str, float] | None = None,
     rc_caps_ok: bool | None = True,
     weight_caps_ok: bool | None = None,
     min_single_security_weight_pct: float | None = None,
     max_single_security_weight_pct: float | None = None,
     portfolio_metrics_summary: dict[str, Any] | None = None,
     run_timestamp: str | None = None,
-    rb_corridor_pp: float = RB_CORRIDOR_DEFAULT_PP,
     # Optional per-window portfolio metrics and RC/correlation outputs (3Y/5Y/10Y), per metrics_specification.md §11
     portfolio_windows: dict[str, dict[str, Any]] | None = None,
     rc_by_window: dict[str, pd.Series] | None = None,
@@ -229,8 +160,6 @@ def build_snapshot(
             rc_series = pd.Series(dtype=float)
 
     rc_asset_top = _rc_asset_top(rc_series) if rc_series is not None else []
-    rc_block_list = _rc_block_from_asset(rc_series, blocks) if rc_series is not None else []
-    actual_rc_block = {x["block"]: x["rc_pct"] for x in rc_block_list} if rc_block_list else None
 
     # Weight caps check (optional)
     if weight_caps_ok is None and (min_single_security_weight_pct is not None or max_single_security_weight_pct is not None):
@@ -248,11 +177,8 @@ def build_snapshot(
         target_vol_annual=target_vol_annual,
         current_vol_annual=current_vol_annual,
         max_dd_ok=max_dd_ok,
-        rc_block_targets=rc_block_targets,
-        actual_rc_block=actual_rc_block,
         rc_caps_ok=rc_caps_ok,
         weight_caps_ok=weight_caps_ok,
-        rb_corridor_pp=rb_corridor_pp,
     )
 
     portfolio_params = None
@@ -284,11 +210,6 @@ def build_snapshot(
                 "ttr_months": pm.get("ttr_months"),
                 "recovered": pm.get("recovered"),
             }
-            # Attach RC_vol by block summary if RC series for this window is available
-            if rc_by_window and label in rc_by_window:
-                rc_win = rc_by_window[label]
-                rc_blocks = _rc_block_from_asset(rc_win, blocks)
-                w_entry["RC_block"] = rc_blocks
             # Attach CSV filenames (relative to output_dir) for RC_vol and correlation matrix
             if rc_csv_by_window and label in rc_csv_by_window:
                 w_entry["rc_vol_csv"] = rc_csv_by_window[label]
@@ -301,9 +222,7 @@ def build_snapshot(
         "analysis_end": analysis_end,
         "final_weights_total": {t: round(w, REPORT_DECIMALS) for t, w in final_weights_total.items() if w > 0},
         "final_weights_risk_portfolio": risk_weights,
-        "block_weights": _block_weights_from_total(final_weights_total, blocks),
         "RC_asset": rc_asset_top,
-        "RC_block": rc_block_list,
         "constraints_status": constraints_status,
         "stress_suite_results": _stress_suite_results_for_snapshot(stress_report, portfolio_params),
     }
@@ -330,18 +249,9 @@ def print_snapshot(snapshot: dict[str, Any]) -> None:
     for t in sorted(snapshot.get("final_weights_risk_portfolio", {}).keys(), key=lambda x: (-snapshot["final_weights_risk_portfolio"].get(x, 0), x)):
         print(f"  {t}: {snapshot['final_weights_risk_portfolio'][t]:.3f}")
 
-    print("\n--- block_weights (Growth/Duration/Inflation/Liquidity/Tail) ---")
-    for b in STRESS_BLOCK_NAMES:
-        w = snapshot.get("block_weights", {}).get(b, 0)
-        print(f"  {b}: {w:.3f}")
-
     print("\n--- RC_asset (топ-%d доноров риска) ---" % TOP_RC_N)
     for x in snapshot.get("RC_asset", []):
         print(f"  {x.get('ticker', '')}: {x.get('rc_pct', 0):.3f}")
-
-    print("\n--- RC_block ---")
-    for x in snapshot.get("RC_block", []):
-        print(f"  {x.get('block', '')}: {x.get('rc_pct', 0):.3f}")
 
     print("\n--- constraints_status ---")
     for k, v in snapshot.get("constraints_status", {}).items():
@@ -405,7 +315,6 @@ def build_snapshot_for_window(
     window_label: str,
     window_months: int,
     final_weights_total: dict[str, float],
-    blocks: dict[str, list[str]],
     cash_proxy_ticker: str,
     analysis_end: str,
     stress_report: dict[str, Any],
@@ -434,7 +343,6 @@ def build_snapshot_for_window(
     else:
         risk_weights = {t: round(w, REPORT_DECIMALS) for t, w in final_weights_risk_portfolio.items() if w > 0}
     rc_asset_top = _rc_asset_top(rc_series) if rc_series is not None else []
-    rc_block_list = _rc_block_from_asset(rc_series, blocks) if rc_series is not None else []
     metrics = None
     if portfolio_metrics:
         metrics = {
@@ -449,9 +357,7 @@ def build_snapshot_for_window(
         "window_months": window_months,
         "final_weights_total": {t: round(w, REPORT_DECIMALS) for t, w in final_weights_total.items() if w > 0},
         "final_weights_risk_portfolio": risk_weights,
-        "block_weights": _block_weights_from_total(final_weights_total, blocks),
         "RC_asset": rc_asset_top,
-        "RC_block": rc_block_list,
         "constraints_status": constraints_status or {},
         "stress_suite_results": stress_section,
         "metrics": metrics,
@@ -503,15 +409,9 @@ def _format_window_snapshot_text(label: str, data: dict[str, Any]) -> str:
     w_total = data.get("final_weights_total") or {}
     for t in sorted(w_total.keys(), key=lambda x: (-w_total.get(x, 0), x)):
         lines.append(f"  {t}: {_fmt_ratio(w_total[t])}")
-    lines.extend(["", "--- block_weights ---"])
-    for b, w in (data.get("block_weights") or {}).items():
-        lines.append(f"  {b}: {_fmt_ratio(w)}")
     lines.extend(["", "--- RC_asset (top 5) ---"])
     for x in data.get("RC_asset") or []:
         lines.append(f"  {x.get('ticker', '')}: {_fmt_ratio(x.get('rc_pct'))}")
-    lines.extend(["", "--- RC_block ---"])
-    for x in data.get("RC_block") or []:
-        lines.append(f"  {x.get('block', '')}: {_fmt_ratio(x.get('rc_pct'))}")
     lines.extend(["", "--- constraints_status ---"])
     for k, v in (data.get("constraints_status") or {}).items():
         lines.append(f"  {k}: {v}")
@@ -593,9 +493,9 @@ def _format_data_policy_text(data: dict[str, Any]) -> str:
     n_redist = data.get("n_months_redistributed")
     n_cash = data.get("n_months_cash_fallback")
     if n_redist is not None:
-        lines.append("months with NaN redistribution (within-block): " + str(n_redist))
+        lines.append("months with NaN redistribution (among risk assets): " + str(n_redist))
     if n_cash is not None:
-        lines.append("months with excess weight to cash (RC/RB gating): " + str(n_cash))
+        lines.append("months with excess weight to cash (RC caps / gating): " + str(n_cash))
     if n_redist is not None or n_cash is not None:
         lines.append("")
     fam = data.get("first_available_month") or {}
@@ -630,21 +530,14 @@ def _format_robustness_text(data: dict[str, Any]) -> str:
     if top5:
         lines.append("top 5 weight deltas (ticker, delta): " + ", ".join(f"{t}={d}" for t, d in top5))
     lines.append("")
-    rc10 = data.get("rc_by_block_10y") or {}
-    rc5 = data.get("rc_by_block_5y") or {}
-    targets = data.get("rc_block_targets") or {}
-    if rc10 or rc5:
-        lines.append("RC by block:")
-        for b in ("Growth", "Duration", "Inflation"):
-            tgt = targets.get(b)
-            r10 = rc10.get(b)
-            r5 = rc5.get(b)
-            parts = [f"  {b}: 10Y={r10}, 5Y={r5}" if (r10 is not None or r5 is not None) else None]
-            if tgt is not None:
-                parts.append(f" (target={tgt})")
-            if parts:
-                lines.append("".join(p for p in parts if p) or f"  {b}: —")
-        lines.append("")
+    mrc = data.get("max_rc_asset_delta")
+    if mrc is not None:
+        lines.append("max |RC_asset(5Y) − RC_asset(10Y)|: " + str(round(float(mrc), 4)))
+    rc_deltas = data.get("rc_asset_deltas") or {}
+    if isinstance(rc_deltas, dict) and rc_deltas:
+        top_rc = sorted(rc_deltas.items(), key=lambda x: (-float(x[1] or 0), x[0]))[:5]
+        lines.append("top 5 per-asset RC deltas (ticker, |Δ|): " + ", ".join(f"{t}={round(float(d), 4)}" for t, d in top_rc))
+    lines.append("")
     vol10 = data.get("vol_10y_under_sigma10y")
     vol10_5 = data.get("vol_10y_under_sigma5y")
     if vol10 is not None:
@@ -686,24 +579,22 @@ def _format_robustness_html(data: dict[str, Any]) -> str:
                 + "</tbody></table>"
             )
         )
-    rc10 = data.get("rc_by_block_10y") or {}
-    rc5 = data.get("rc_by_block_5y") or {}
-    targets = data.get("rc_block_targets") or {}
-    if rc10 or rc5:
-        rows = []
-        for b in ("Growth", "Duration", "Inflation"):
-            r10 = rc10.get(b)
-            r5 = rc5.get(b)
-            tgt = targets.get(b)
-            rows.append(f"<tr><td>{html.escape(b)}</td><td>{html.escape(_fmt_ratio(r10))}</td><td>{html.escape(_fmt_ratio(r5))}</td><td>{html.escape(_fmt_ratio(tgt))}</td></tr>")
-        if rows:
-            parts.append(
-                _html_table_block(
-                    '<table><caption>RC by block</caption><thead><tr><th>Block</th><th>10Y</th><th>5Y</th><th>Target</th></tr></thead><tbody>'
-                    + "".join(rows)
-                    + "</tbody></table>"
-                )
+    mrc = data.get("max_rc_asset_delta")
+    if mrc is not None:
+        parts.append(f"<p><strong>Max |RC_asset(5Y) − RC_asset(10Y)|:</strong> {html.escape(_fmt_val(mrc))}</p>")
+    rc_deltas = data.get("rc_asset_deltas") or {}
+    if isinstance(rc_deltas, dict) and rc_deltas:
+        top_rc = sorted(rc_deltas.items(), key=lambda x: (-float(x[1] or 0), x[0]))[:5]
+        drows = "".join(
+            f"<tr><td>{html.escape(str(t))}</td><td>{html.escape(_fmt_val(d))}</td></tr>" for t, d in top_rc
+        )
+        parts.append(
+            _html_table_block(
+                '<table><caption>Top per-asset RC deltas (|5Y − 10Y|)</caption><thead><tr><th>Ticker</th><th>|Δ|</th></tr></thead><tbody>'
+                + drows
+                + "</tbody></table>"
             )
+        )
     vol10 = data.get("vol_10y_under_sigma10y")
     vol10_5 = data.get("vol_10y_under_sigma5y")
     if vol10 is not None or vol10_5 is not None:
@@ -797,17 +688,6 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
                 + "</tbody></table>"
             )
         )
-    # Block weights
-    block_weights = data.get("block_weights") or {}
-    if block_weights:
-        rows = "".join(f"<tr><td>{html.escape(b)}</td><td>{html.escape(_fmt_ratio(w))}</td></tr>" for b, w in block_weights.items())
-        parts.append(
-            _html_table_block(
-                '<table><caption>Block weights</caption><thead><tr><th>Block</th><th>Weight</th></tr></thead><tbody>'
-                + rows
-                + "</tbody></table>"
-            )
-        )
     # RC asset
     rc_asset = data.get("RC_asset") or []
     if rc_asset:
@@ -815,17 +695,6 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
         parts.append(
             _html_table_block(
                 '<table><caption>RC by asset (top)</caption><thead><tr><th>Ticker</th><th>RC %</th></tr></thead><tbody>'
-                + rows
-                + "</tbody></table>"
-            )
-        )
-    # RC block
-    rc_block = data.get("RC_block") or []
-    if rc_block:
-        rows = "".join(f"<tr><td>{html.escape(str(x.get('block', '')))}</td><td>{html.escape(_fmt_ratio(x.get('rc_pct')))}</td></tr>" for x in rc_block)
-        parts.append(
-            _html_table_block(
-                '<table><caption>RC by block</caption><thead><tr><th>Block</th><th>RC %</th></tr></thead><tbody>'
                 + rows
                 + "</tbody></table>"
             )

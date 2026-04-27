@@ -23,81 +23,61 @@ fontsize: 10pt
 
 ### 2. Mandate check (blocking)
 
-- Run status: CANDIDATE_RB_BREACH
+- Run status: OK_FALLBACK
 - Historical MaxDD в норме по проверке: True
-- Realized MaxDD (full hist.): -15.63%
+- Realized MaxDD (full hist.): -12.72%
 - History window: 2018-07-31 00:00:00 .. 2026-04-30 00:00:00 (94 months)
 - Note: Only this historical MaxDD vs mandate can block weight release.
 
 ### 3. Final portfolio weights
 
-- BND: 0.360
-- SCHP: 0.127
-- BIL: 0.100
-- GLD: 0.062
-- VOO: 0.041
-- VDC: 0.039
-- BBJP: 0.030
-- SCHD: 0.028
-- VWO: 0.027
-- CIBR: 0.025
-- SLV: 0.024
-- VT: 0.023
-- VGK: 0.021
-- ITA: 0.020
-- QQQ: 0.020
-- ROBO: 0.015
-- URA: 0.015
-- SMH: 0.013
-- COPX: 0.011
-- (sum: 1.001)
+- BIL: 0.256
+- GLD: 0.074
+- SCHP: 0.074
+- VDC: 0.074
+- BBJP: 0.064
+- VWO: 0.062
+- VOO: 0.061
+- SCHD: 0.060
+- VT: 0.055
+- VGK: 0.050
+- ITA: 0.046
+- SLV: 0.025
+- COPX: 0.007
+- QQQ: 0.007
+- URA: 0.007
+- (sum: 0.922)
 
-### 4. Risk contribution by block (actual | target)
+### 4. Per-asset RC vs cap (if any breaches)
 
-- Growth: 62.15% | target 50.00% (+12.2 pp)
-- Duration: 19.43% | target 38.89% (-19.5 pp)
-- Inflation: 18.42% | target 11.11% (+7.3 pp)
+- VOO: RC=10.66%, cap=10.00%
+- VT: RC=10.01%, cap=10.00%
+- VWO: RC=10.00%, cap=10.00%
+- SCHD: RC=10.01%, cap=10.00%
 
-### 5. RC breaches (asset above cap)
-
-- VOO: RC=7.65%, cap=4.46%
-- BBJP: RC=4.59%, cap=4.46%
-- VWO: RC=4.49%, cap=4.46%
-- VDC: RC=4.68%, cap=4.46%
-- SLV: RC=5.33%, cap=4.63%
-- GLD: RC=6.23%, cap=4.63%
-- SCHP: RC=6.87%, cap=4.63%
-
-### 6. Stress & scenario diagnostics (non-blocking for release)
+### 5. Stress & scenario diagnostics (non-blocking for release)
 
 - Diagnostic status:
-- Diagnostic codes: сильный обвал на рынке акций
+- Diagnostic codes: сильный обвал на рынке акций, стресс на рынке кредита, , ,
 - Primary code: сильный обвал на рынке акций
-- Worst scenario loss: -11.40% (informational)
+- Worst scenario loss: -14.00% (informational)
 - Failed scenario: сильный обвал на рынке акций
 - Note: Synthetic shocks & episode checks do not block weights; review with PM.
 
-### 7. Violations
+### 6. Violations
 
-- RC_VIOLATION: iterations=200 | remaining_violators=['VOO', 'BBJP', 'VWO', 'VDC', 'SLV', 'GLD', 'SCHP'] | reason=max_iterations
-- RB_BREACH: Growth=12.15 | Duration=-19.46 | Inflation=7.31
-- VIOL_RC_ASSET_CAP: [{'ticker': 'VOO', 'rc_pct': 7.65, 'cap_pct': 4.46}, {'ticker': 'BBJP', 'rc_pct': 4.59, 'cap_pct': 4.46}, {'ticker': 'VWO', 'rc_pct': 4.49, 'cap_pct': 4.46}, {'ticker': 'VDC', 'rc_pct': 4.68, 'cap_pct': 4.46}, {'ticker': 'SLV', 'rc_pct': 5.33, 'cap_pct': 4.63}, {'ticker': 'GLD', 'rc_pct': 6.23, 'cap_pct': 4.63}, {'ticker': 'SCHP', 'rc_pct': 6.87, 'cap_pct': 4.63}]
-- : note=diagnostic_only | diagnostic_codes=[' сильный обвал на рынке акций'] | primary_diagnostic_code= сильный обвал на рынке акций | worst_scenario_loss_pct=-0.114 | failed_scenario=сильный обвал на рынке акций
+- VIOL_RC_VIOLATION: iterations=200 | remaining_violators=['VOO', 'VT', 'VWO', 'SCHD'] | reason=max_iterations
+- VIOL_RC_ASSET_CAP: [{'ticker': 'VOO', 'rc_pct': 10.66, 'cap_pct': 10.0}, {'ticker': 'VT', 'rc_pct': 10.01, 'cap_pct': 10.0}, {'ticker': 'VWO', 'rc_pct': 10.0, 'cap_pct': 10.0}, {'ticker': 'SCHD', 'rc_pct': 10.01, 'cap_pct': 10.0}]
+- VIOL_ : note=diagnostic_only | diagnostic_codes=[' сильный обвал на рынке акций', ' стресс на рынке кредита', ' ', ' ', ' '] | primary_diagnostic_code= сильный обвал на рынке акций
 
-### 8. Next actions (this run)
+### 7. Next actions (this run)
 
-- Re-run with wider corridor (e.g., 7pp) OR relax secondary caps (weight caps) minimally.
-- If still RB_BREACH: increase k_block (add instruments) in the offending block(s).
-- If Growth capacity constraints prevent W_growth: add satellites or relax max_weight_sat/core caps.
 - Consider adding assets to dilute RC or relax rc_asset_cap; review breached tickers.
-- Stress diagnostic (DIAG_*): review liquidity, duration, growth/HY — informational only.
-- RC post-processing could not satisfy RC caps (strict mode: weights not written; permissive: violation flagged). Relax rc_asset_cap_pct, add assets, or set rc_policy_mode: permissive to write weights with violation.
+- Stress diagnostic (DIAG_*): informational only; review scenario loss and RC concentration.
 
-### 9. Actions by status (reference)
+### 8. Actions by status (reference)
 
 APPROVED Use weights as target; safe to execute.
-
-CANDIDATE_RB_BREACH Use with caution; consider re-run or accept and monitor.
 
 OK_FALLBACK Check rc_breaches above; use if acceptable for mandate.
 

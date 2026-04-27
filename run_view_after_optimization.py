@@ -64,19 +64,13 @@ def main() -> int:
     if args.asset not in cfg.tickers and args.asset not in baseline_weights:
         logger.warning("Тикер %s не в конфиге/весах; tilt всё равно будет применён к весам", args.asset)
 
-    # Optional baseline RB/stress from run_result.json
-    baseline_rb = None
     baseline_stress = None
     if args.run_result_file:
         p = Path(args.run_result_file)
         if p.is_file():
             with open(p, encoding="utf-8") as f:
                 data = json.load(f)
-            baseline_rb = data.get("rb_deltas_pp")  # run_result stores deltas; we need actual RB for report
             baseline_stress = data.get("stress_summary")
-    if baseline_rb is None and baseline_stress is None:
-        # We'll compute baseline_rb in run_view_after_optimization; baseline_stress can stay None and be computed
-        pass
 
     # Load monthly returns
     cash_proxy_ticker, rf_source = resolve_cash_and_rf(cfg)
@@ -102,17 +96,13 @@ def main() -> int:
         view_type=args.view_type,
         asset=args.asset,
         delta_choice_pct=float(args.delta),
-        blocks=cfg.blocks,
         monthly_returns=monthly_returns,
-        rc_block_targets=cfg.rc_block_targets or {},
-        baseline_rb=baseline_rb,
+        cash_proxy_ticker=cash_proxy_ticker,
         baseline_stress=baseline_stress,
         target_vol_annual=getattr(cfg, "target_vol_annual", None),
         target_max_drawdown_pct=getattr(cfg, "target_max_drawdown_pct", None),
         rc_asset_cap_pct=getattr(cfg, "rc_asset_cap_pct", None),
         stress_top3_rc_sum_cap_pct=getattr(cfg, "stress_top3_rc_sum_cap_pct", 0.70) or 0.70,
-        rb_corridor_pp=getattr(cfg, "rb_corridor_pp", 0.05) or 0.05,
-        rb_deviation_threshold_pp=0.02,
         min_single_security_weight_pct=getattr(cfg, "min_single_security_weight_pct", 1.0) or 1.0,
         max_single_security_weight_pct=getattr(cfg, "max_single_security_weight_pct", None),
     )

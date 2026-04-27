@@ -153,12 +153,12 @@
                                 <option value="growth" {{ 'selected' if config.get('client_profile') == 'growth' }}>4. Growth</option>
                                 <option value="aggressive" {{ 'selected' if config.get('client_profile') == 'aggressive' }}>5. Aggressive</option>
                             </select>
-                            <div class="help-text">If set, missing target/risk_budget fields are filled from config/client_profiles.yml (midpoints). You can override manually.</div>
+                            <div class="help-text">If set, missing target fields are filled from config/client_profiles.yml (midpoints). You can override manually.</div>
                         </div>
                         
                         {% if client_profiles_reminder %}
                         <div class="form-group profile-table-wrap">
-                            <label class="label-accent">Reminder: Client profiles (return, vol, max_dd, block ranges)</label>
+                            <label class="label-accent">Reminder: Client profiles (return, vol, max drawdown)</label>
                             <div>
                                 <table class="profile-table">
                                     <thead>
@@ -167,9 +167,6 @@
                                             <th>Return</th>
                                             <th>Vol</th>
                                             <th>MaxDD</th>
-                                            <th>Growth</th>
-                                            <th>Duration</th>
-                                            <th>Inflation</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -179,9 +176,6 @@
                                             <td>{{ p.return_range }}</td>
                                             <td>{{ p.vol_range }}</td>
                                             <td>{{ p.max_dd }}</td>
-                                            <td>{{ p.growth_range }}</td>
-                                            <td>{{ p.duration_range }}</td>
-                                            <td>{{ p.inflation_range }}</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>

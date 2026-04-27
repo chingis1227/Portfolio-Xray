@@ -4,17 +4,14 @@ RC_vol: percentage contribution to portfolio variance. Per metrics_specification
 - For each month t: σ²_t = w_t' Σ w_t, m_t = Σ w_t, PC_{i,t} = (w_{i,t} * m_{i,t}) / σ²_t. PC sums to 1.
 - RC_window_i = mean_t(PC_{i,t}). Do not use contribution to volatility or correlations.
 
-Also: resolve_rc_asset_cap() — shared per-asset RC cap from docs/docs/feasibility_constraints_spec.md.
+resolve_rc_asset_cap: global §1 cap from policy_math.feasibility (no block-based modes).
 """
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 
-from policy_math.feasibility import (
-    build_rc_cap_per_ticker as _build_rc_cap_per_ticker,
-    resolve_rc_asset_cap as _policy_resolve_rc_asset_cap,
-)
+from policy_math.feasibility import resolve_rc_asset_cap as _policy_resolve_rc_asset_cap
 
 DDOF = 1
 
@@ -22,42 +19,26 @@ DDOF = 1
 def resolve_rc_asset_cap(
     rc_asset_cap_pct: float | None,
     n_assets: int,
-    rb_growth: float | None = None,
 ) -> float:
     """
-    Backwards-compatible wrapper around policy_math.feasibility.resolve_rc_asset_cap.
+    Per-asset RC_vol cap (share of portfolio variance).
 
     - If rc_asset_cap_pct is set and > 0, it overrides the formula.
-    - Else the formula from feasibility_constraints_spec is used via the centralized policy module.
-    - Equity-Only mode (rb_growth >= 0.90) is signalled via equity_only=True.
+    - Else the formula from feasibility_constraints_spec §1 is used.
     """
     if rc_asset_cap_pct is not None and rc_asset_cap_pct > 0:
         return float(rc_asset_cap_pct)
-    equity_only = bool(rb_growth is not None and rb_growth >= 0.90)
-    return _policy_resolve_rc_asset_cap(n_assets=n_assets, equity_only=equity_only)
+    return _policy_resolve_rc_asset_cap(n_assets)
 
 
 def build_rc_cap_per_ticker(
-    blocks: dict,
-    rc_block_targets: dict | None,
+    risk_tickers: list[str],
     rc_asset_cap_pct: float | None,
-    rc_cap_mode: str,
-    rc_cap_rb_k_multiplier: float,
     n_total_for_global: int,
 ) -> dict[str, float]:
-    """
-    Per-ticker RC_vol caps; delegates to policy_math (variant B when rc_cap_mode=per_block_rb_k).
-
-    For global §1 formula, n_total_for_global should match the same N used elsewhere (e.g. len(cols) in optimizer).
-    """
-    return _build_rc_cap_per_ticker(
-        blocks=blocks,
-        rc_block_targets=rc_block_targets,
-        rc_asset_cap_pct=rc_asset_cap_pct,
-        rc_cap_mode=rc_cap_mode,
-        rc_cap_rb_k_multiplier=rc_cap_rb_k_multiplier,
-        n_total_for_global=n_total_for_global,
-    )
+    """Same scalar RC cap for every risk ticker (global §1)."""
+    cap = resolve_rc_asset_cap(rc_asset_cap_pct, max(n_total_for_global, 1))
+    return {t: cap for t in risk_tickers}
 
 
 def cov_matrix_monthly(
@@ -72,6 +53,7 @@ def cov_matrix_monthly(
     if use_shrinkage:
         try:
             from sklearn.covariance import LedoitWolf
+
             lw = LedoitWolf().fit(returns_df.values)
             cov = pd.DataFrame(
                 lw.covariance_,

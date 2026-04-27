@@ -87,50 +87,28 @@
       </div>
     </section>
 
-    <section class="dash-section" aria-labelledby="h-rcb">
-      <h2 id="h-rcb">RC по блокам (Growth / Duration / Inflation)</h2>
+    <section class="dash-section" aria-labelledby="h-rca-top">
+      <h2 id="h-rca-top">Вклад в риск по активам (топ из snapshot_10y)</h2>
       <div class="dash-table-wrap">
         <table class="dash-table">
           <thead>
             <tr>
-              <th>Блок</th>
-              <th class="num">Факт (RC %)</th>
-              <th class="num">Target (RC %)</th>
-              <th class="num">Δ RB, п.п.</th>
+              <th>Тикер</th>
+              <th class="num">RC (доля дисперсии)</th>
             </tr>
           </thead>
           <tbody>
-            {% for r in vm.rc_rows %}
+            {% for r in vm.rc_asset_rows %}
             <tr>
-              <td>{{ r.block }}</td>
-              <td class="num">{{ r.actual_pct }}</td>
-              <td class="num">{{ r.target_pct }}</td>
-              <td class="num">{{ r.delta_pp_fmt }}</td>
+              <td>{{ r.ticker }}</td>
+              <td class="num">{{ r.rc_pct_fmt }}</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
-      <p class="muted" style="margin-top: 10px">Target из конфига (rc_block_targets) или оценка из rb_deltas_pp.</p>
+      <p class="muted" style="margin-top: 10px">RC_vol — вклад инструмента в дисперсию портфеля на окне 10Y; см. metrics_specification.</p>
     </section>
-
-    {% if vm.block_weights %}
-    <section class="dash-section" aria-labelledby="h-bw">
-      <h2 id="h-bw">Доли по блокам (веса)</h2>
-      <div class="dash-table-wrap">
-        <table class="dash-table">
-          <tbody>
-            {% for k in vm.block_weights|sort %}
-            <tr>
-              <td>{{ k }}</td>
-              <td class="num">{{ (vm.block_weights[k] * 100)|round(1) }}%</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </section>
-    {% endif %}
 
     {% if vm.violation_lines %}
     <section class="dash-section" aria-labelledby="h-vi">

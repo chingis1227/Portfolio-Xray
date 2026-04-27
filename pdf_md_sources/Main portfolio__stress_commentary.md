@@ -9,46 +9,46 @@ fontsize: 10pt
 ## Ключевой вывод
 
 По рабочему процессу проекта синтетические сценарии и исторические эпизоды в этом файле — диагностика для PM и не блокируют выпуск весов; блокирующий контур по максимальной просадке задаётся отдельно (mandate_check / IPS, полная пересекающаяся история).
-Худший сценарный PnL портфеля (worst_scenario_loss_pct): -11.42%; именованный сценарий: сильный обвал на рынке акций; поле failed_test: Role.
+Худший сценарный PnL портфеля (worst_scenario_loss_pct): -13.94%; именованный сценарий: сильный обвал на рынке акций; поле failed_test: RC_Top1.
 
 
 ## Ключевые показатели
 
 ```{=latex}
-\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{7,00\%}{Доходность (CAGR)} & \KPIone{7,20\%}{Волатильность} & \KPIone{-15,60\%}{Макс. просадка}\\[0.55em] \KPIone{0,676}{Коэф. Шарпа} & \KPIone{1,047}{Коэф. Сортино} & \KPIone{0,401}{Чувствительность к рынку}\end{tabular}\end{center}
+\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{8,00\%}{Доходность (CAGR)} & \KPIone{7,70\%}{Волатильность} & \KPIone{-12,60\%}{Макс. просадка}\\[0.55em] \KPIone{0,759}{Коэф. Шарпа} & \KPIone{1,179}{Коэф. Сортино} & \KPIone{0,445}{Чувствительность к рынку}\end{tabular}\end{center}
 ```
 
 
 ## Что это значит для инвестора
 
-- сильный обвал на рынке акций: PnL≈-11.42%, в норме по проверке=False, loss_ok=True, =False, rc1_ok=True, rc3_ok=True; Top1 RC: BND (12.29%).
-- стресс на рынке кредита: PnL≈-3.41%, в норме по проверке=True, loss_ok=True, =True, rc1_ok=True, rc3_ok=True; Top1 RC: BND (12.29%).
-- rates_shock: PnL≈-6.47%, в норме по проверке=True, loss_ok=True, =True, rc1_ok=True, rc3_ok=True; Top1 RC: BND (17.95%).
-- inflation_stagflation: PnL≈-6.27%, в норме по проверке=True, loss_ok=True, =True, rc1_ok=True, rc3_ok=True; Top1 RC: BND (17.95%).
-- liquidity_shock: PnL≈-7.56%, в норме по проверке=True, loss_ok=True, =True, rc1_ok=True, rc3_ok=True; Top1 RC: BND (10.16%).
-Коды по сценариям (уникально): сильный обвал на рынке акций.
-Факторные беты портфеля (недельная оценка, см. спецификацию): 5Y≈{beta_cmd=0.0424, beta_credit=-0.1400, beta_eq=0.2857, beta_inf=-1.6700, beta_rr=-3.2370, beta_usd=-0.3654}; 10Y≈{beta_cmd=0.0287, beta_eq=0.2900, beta_inf=-1.4985, beta_rr=-3.5101, beta_usd=-0.3317}.
-Портфельная факторная регрессия (5Y), недельные ряды, OLS: n_obs=153, R²=0.8543, adj R²=0.8483, intercept=0.0013, se_type=classic_ols, alpha=0.05 (CI уровень 0.95).
+- сильный обвал на рынке акций: PnL≈-13.94%, в норме по проверке=False, loss_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: GLD (11.25%).
+- стресс на рынке кредита: PnL≈-5.33%, в норме по проверке=False, loss_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: GLD (11.25%).
+- rates_shock: PnL≈-2.72%, в норме по проверке=False, loss_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: BBJP (11.58%).
+- inflation_stagflation: PnL≈-7.02%, в норме по проверке=False, loss_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: BBJP (11.58%).
+- liquidity_shock: PnL≈-10.10%, в норме по проверке=False, loss_ok=True, rc1_ok=False, rc3_ok=True; Top1 RC: GLD (11.25%).
+Коды по сценариям (уникально): сильный обвал на рынке акций, стресс на рынке кредита, , , .
+Факторные беты портфеля (недельная оценка, см. спецификацию): 5Y≈{beta_cmd=0.0234, beta_credit=-0.4255, beta_eq=0.3214, beta_inf=0.4941, beta_rr=-1.2522, beta_usd=-0.5050}; 10Y≈{beta_cmd=0.0292, beta_eq=0.3602, beta_inf=0.3831, beta_rr=-1.1439, beta_usd=-0.4427}.
+Портфельная факторная регрессия (5Y), недельные ряды, OLS: n_obs=153, R²=0.7898, adj R²=0.7812, intercept=0.0013, se_type=classic_ols, alpha=0.05 (CI уровень 0.95).
 По факторам (β, t, p, 95% CI) — классический OLS (se_type=classic_ols):
-- beta_eq: β=0.2857, t=12.146, p=<1e-6, CI=[0.2392; 0.3322]
-- beta_rr: β=-3.2370, t=-10.477, p=<1e-6, CI=[-3.8476; -2.6264]
-- beta_inf: β=-1.6700, t=-2.369, p=0.019154, CI=[-3.0634; -0.2767]
-- beta_credit: β=-0.1400, t=-0.506, p=0.613613, CI=[-0.6866; 0.4067]
-- beta_usd: β=-0.3654, t=-7.289, p=<1e-6, CI=[-0.4644; -0.2663]
-- beta_cmd: β=0.0424, t=2.811, p=0.005620, CI=[0.0126; 0.0722]
+- beta_eq: β=0.3214, t=10.363, p=<1e-6, CI=[0.2601; 0.3827]
+- beta_rr: β=-1.2522, t=-3.074, p=0.002519, CI=[-2.0572; -0.4472]
+- beta_inf: β=0.4941, t=0.532, p=0.595813, CI=[-1.3428; 2.3311]
+- beta_credit: β=-0.4255, t=-1.167, p=0.245157, CI=[-1.1462; 0.2952]
+- beta_usd: β=-0.5050, t=-7.643, p=<1e-6, CI=[-0.6356; -0.3745]
+- beta_cmd: β=0.0234, t=1.174, p=0.242173, CI=[-0.0159; 0.0627]
 HAC/Newey–West (robust) inference: se_type=hac_newey_west, kernel=bartlett, max_lags=4.
 По факторам (HAC t, p, 95% CI):
-- beta_eq: t_HAC=9.890, p_HAC=<1e-6, CI_HAC=[0.2286; 0.3428]
-- beta_rr: t_HAC=-12.281, p_HAC=<1e-6, CI_HAC=[-3.7579; -2.7161]
-- beta_inf: t_HAC=-3.231, p_HAC=0.001526, CI_HAC=[-2.6917; -0.6484]
-- beta_credit: t_HAC=-0.548, p_HAC=0.584515, CI_HAC=[-0.6447; 0.3648]
-- beta_usd: t_HAC=-7.159, p_HAC=<1e-6, CI_HAC=[-0.4662; -0.2645]
-- beta_cmd: t_HAC=1.990, p_HAC=0.048480, CI_HAC=[0.0003; 0.0845]
-Автокорреляция остатков факторной OLS: Durbin–Watson=2.1084 (≈2 — мало АК первого порядка; метод: durbin_watson_breusch_godfrey_lm).
+- beta_eq: t_HAC=8.543, p_HAC=<1e-6, CI_HAC=[0.2470; 0.3957]
+- beta_rr: t_HAC=-3.441, p_HAC=0.000755, CI_HAC=[-1.9713; -0.5331]
+- beta_inf: t_HAC=0.706, p_HAC=0.481164, CI_HAC=[-0.8886; 1.8768]
+- beta_credit: t_HAC=-1.302, p_HAC=0.194939, CI_HAC=[-1.0714; 0.2204]
+- beta_usd: t_HAC=-7.954, p_HAC=<1e-6, CI_HAC=[-0.6305; -0.3796]
+- beta_cmd: t_HAC=0.867, p_HAC=0.387631, CI_HAC=[-0.0299; 0.0766]
+Автокорреляция остатков факторной OLS: Durbin–Watson=2.1252 (≈2 — мало АК первого порядка; метод: durbin_watson_breusch_godfrey_lm).
 Breusch–Godfrey LM (H₀: нет АК до порядка p; LM ~ χ²(p)):
- lags=1: LM=0.4859, df=1, p=0.485775, T_aux=152, R²_aux=0.0032
- lags=2: LM=1.7161, df=2, p=0.423993, T_aux=151, R²_aux=0.0114
- lags=4: LM=4.2352, df=4, p=0.375112, T_aux=149, R²_aux=0.0284
+ lags=1: LM=0.6642, df=1, p=0.415071, T_aux=152, R²_aux=0.0044
+ lags=2: LM=1.4619, df=2, p=0.481448, T_aux=151, R²_aux=0.0097
+ lags=4: LM=1.6436, df=4, p=0.800935, T_aux=149, R²_aux=0.0110
 
 Мультиколлинеарность факторов (те же недели, что регрессия): оценка=low; cond(R)=10.256; max VIF=2.794 (фактор credit).
 Сильнейшая попарная корреляция: equity vs credit, ρ=-0.7547.
@@ -78,25 +78,25 @@ VIF по факторам:
  usd: 1.200
 Метод: pearson_sample_corr_vif_raw_regressors; n_obs_f=153.
 
-Портфельная факторная регрессия (10Y), недельные ряды, OLS: n_obs=520, R²=0.9066, adj R²=0.9057, intercept=0.0007, se_type=classic_ols, alpha=0.05 (CI уровень 0.95).
+Портфельная факторная регрессия (10Y), недельные ряды, OLS: n_obs=520, R²=0.8981, adj R²=0.8971, intercept=0.0006, se_type=classic_ols, alpha=0.05 (CI уровень 0.95).
 По факторам (β, t, p, 95% CI) — классический OLS (se_type=classic_ols):
-- beta_eq: β=0.2890, t=41.177, p=<1e-6, CI=[0.2752; 0.3028]
-- beta_rr: β=-3.5103, t=-25.191, p=<1e-6, CI=[-3.7840; -3.2365]
-- beta_inf: β=-1.4955, t=-6.297, p=<1e-6, CI=[-1.9621; -1.0289]
-- beta_usd: β=-0.3262, t=-13.959, p=<1e-6, CI=[-0.3721; -0.2803]
-- beta_cmd: β=0.0290, t=4.416, p=0.000012, CI=[0.0161; 0.0420]
+- beta_eq: β=0.3582, t=42.782, p=<1e-6, CI=[0.3417; 0.3746]
+- beta_rr: β=-1.1442, t=-6.884, p=<1e-6, CI=[-1.4708; -0.8177]
+- beta_inf: β=0.3894, t=1.374, p=0.169938, CI=[-0.1672; 0.9460]
+- beta_usd: β=-0.4310, t=-15.460, p=<1e-6, CI=[-0.4857; -0.3762]
+- beta_cmd: β=0.0299, t=3.809, p=0.000157, CI=[0.0145; 0.0453]
 HAC/Newey–West (robust) inference: se_type=hac_newey_west, kernel=bartlett, max_lags=4.
 По факторам (HAC t, p, 95% CI):
-- beta_eq: t_HAC=30.191, p_HAC=<1e-6, CI_HAC=[0.2702; 0.3078]
-- beta_rr: t_HAC=-13.024, p_HAC=<1e-6, CI_HAC=[-4.0398; -2.9808]
-- beta_inf: t_HAC=-3.870, p_HAC=0.000123, CI_HAC=[-2.2548; -0.7363]
-- beta_credit: t_HAC=-12.122, p_HAC=<1e-6, CI_HAC=[-0.3791; -0.2733]
-- beta_usd: t_HAC=3.606, p_HAC=0.000342, CI_HAC=[0.0132; 0.0449]
-Автокорреляция остатков факторной OLS: Durbin–Watson=2.1172 (≈2 — мало АК первого порядка; метод: durbin_watson_breusch_godfrey_lm).
+- beta_eq: t_HAC=30.176, p_HAC=<1e-6, CI_HAC=[0.3349; 0.3815]
+- beta_rr: t_HAC=-4.643, p_HAC=0.000004, CI_HAC=[-1.6284; -0.6601]
+- beta_inf: t_HAC=1.160, p_HAC=0.246646, CI_HAC=[-0.2701; 1.0489]
+- beta_credit: t_HAC=-12.858, p_HAC=<1e-6, CI_HAC=[-0.4968; -0.3651]
+- beta_usd: t_HAC=2.829, p_HAC=0.004845, CI_HAC=[0.0091; 0.0506]
+Автокорреляция остатков факторной OLS: Durbin–Watson=2.0811 (≈2 — мало АК первого порядка; метод: durbin_watson_breusch_godfrey_lm).
 Breusch–Godfrey LM (H₀: нет АК до порядка p; LM ~ χ²(p)):
- lags=1: LM=1.8648, df=1, p=0.172069, T_aux=519, R²_aux=0.0036
- lags=2: LM=1.9286, df=2, p=0.381241, T_aux=518, R²_aux=0.0037
- lags=4: LM=6.3765, df=4, p=0.172741, T_aux=516, R²_aux=0.0124
+ lags=1: LM=0.9037, df=1, p=0.341798, T_aux=519, R²_aux=0.0017
+ lags=2: LM=1.0627, df=2, p=0.587817, T_aux=518, R²_aux=0.0021
+ lags=4: LM=1.5089, df=4, p=0.825056, T_aux=516, R²_aux=0.0029
 
 Мультиколлинеарность факторов (те же недели, что регрессия): оценка=low; cond(R)=5.401; max VIF=1.458 (фактор equity).
 Сильнейшая попарная корреляция: inflation vs commodity, ρ=0.4684.
@@ -123,25 +123,25 @@ VIF по факторам:
 Скользящие окна (недель): 10y=520, 3y=156, 5y=260.
 Сводка скользящих β (по всей доступной истории в прогоне): mean, median, p10, p90:
 Окно 3y:
- beta_eq: n=889, mean=0.2375, median=0.2487, p10=0.1356, p90=0.3047
- beta_rr: n=889, mean=-2.9411, median=-3.0171, p10=-4.4448, p90=-1.4983
- beta_inf: n=889, mean=-1.4535, median=-1.4437, p10=-2.0762, p90=-0.8832
- beta_usd: n=889, mean=-0.2827, median=-0.2573, p10=-0.4311, p90=-0.1989
- beta_cmd: n=889, mean=0.0367, median=0.0343, p10=0.0177, p90=0.0566
+ beta_eq: n=889, mean=0.3222, median=0.3361, p10=0.1964, p90=0.3907
+ beta_rr: n=889, mean=-0.8919, median=-0.9589, p10=-1.7704, p90=0.4606
+ beta_inf: n=889, mean=0.0040, median=0.0417, p10=-1.0400, p90=0.9464
+ beta_usd: n=889, mean=-0.3793, median=-0.3761, p10=-0.5261, p90=-0.2716
+ beta_cmd: n=889, mean=0.0400, median=0.0396, p10=0.0196, p90=0.0580
 
 Окно 5y:
- beta_eq: n=785, mean=0.2420, median=0.2661, p10=0.1409, p90=0.3056
- beta_rr: n=785, mean=-2.9640, median=-3.0394, p10=-4.2814, p90=-1.5326
- beta_inf: n=785, mean=-1.4216, median=-1.3795, p10=-2.0014, p90=-1.0084
- beta_usd: n=785, mean=-0.2796, median=-0.2593, p10=-0.3891, p90=-0.2131
- beta_cmd: n=785, mean=0.0358, median=0.0374, p10=0.0223, p90=0.0512
+ beta_eq: n=785, mean=0.3288, median=0.3492, p10=0.2079, p90=0.3885
+ beta_rr: n=785, mean=-0.8731, median=-1.0297, p10=-1.8074, p90=0.4622
+ beta_inf: n=785, mean=0.0059, median=0.0748, p10=-0.7591, p90=0.6478
+ beta_usd: n=785, mean=-0.3736, median=-0.3620, p10=-0.4927, p90=-0.2860
+ beta_cmd: n=785, mean=0.0402, median=0.0407, p10=0.0268, p90=0.0538
 
 Окно 10y:
- beta_eq: n=525, mean=0.2501, median=0.2855, p10=0.1672, p90=0.2895
- beta_rr: n=525, mean=-2.9909, median=-3.3818, p10=-3.5411, p90=-2.0245
- beta_inf: n=525, mean=-1.5180, median=-1.5209, p10=-1.6845, p90=-1.3783
- beta_usd: n=525, mean=-0.2586, median=-0.2491, p10=-0.3031, p90=-0.2222
- beta_cmd: n=525, mean=0.0362, median=0.0344, p10=0.0304, p90=0.0425
+ beta_eq: n=525, mean=0.3344, median=0.3601, p10=0.2462, p90=0.3801
+ beta_rr: n=525, mean=-0.8922, median=-1.0595, p10=-1.4772, p90=-0.0993
+ beta_inf: n=525, mean=-0.0540, median=-0.1376, p10=-0.4473, p90=0.3830
+ beta_usd: n=525, mean=-0.3482, median=-0.3505, p10=-0.3920, p90=-0.3087
+ beta_cmd: n=525, mean=0.0405, median=0.0385, p10=0.0347, p90=0.0489
 
 Файлы графиков скользящих β (PNG, папка прогона): 10y→rolling_factor_betas_10y.png, 3y→rolling_factor_betas_3y.png, 5y→rolling_factor_betas_5y.png
 ![Rolling factor betas — 3y](../Main portfolio/rolling_factor_betas_3y.png)
@@ -152,36 +152,36 @@ VIF по факторам:
 
 Во всех синтетических сценариях loss_ok=true — глубина потерь в рамках порогов loss-теста.
 Во всех сценариях rc3_ok=true — суммарный Top3 RC не нарушает stress_top3_rc_sum_cap.
-Есть сценарии с в норме по проверке=true.
 Исторический эпизод 2020 помечен в норме по проверке=true.
 Исторический эпизод 2022 помечен в норме по проверке=true.
 
 **Риски и ограничения.**
 
-: зафиксированы диагностические коды ( сильный обвал на рынке акций); для PM имеет смысл разобрать scenario_results и historical_results.
+: зафиксированы диагностические коды ( сильный обвал на рынке акций, стресс на рынке кредита, , , ); для PM имеет смысл разобрать scenario_results и historical_results.
+Во всех сценариях rc1_ok=false — концентрация Top1 RC выше порога rc_asset_cap_used.
 Эпизод 2008: max_dd н/д — интерпретация ограничена.
 
 ## Структура риска
 
 rc_asset_cap_used=0.1000 (доля Top1 RC, контекст отчёта); stress_top3_rc_sum_cap=0.7000; max_dd_limit (эпизоды/контекст в отчёте)=20.00%
-По сценариям Top1 RC по сценариям (см. таблицу выше): сильный обвал на рынке акций BND=12.3%, стресс на рынке кредита BND=12.3%, rates_shock BND=17.9%, inflation_stagflation BND=17.9%, liquidity_shock BND=10.2%.
+По сценариям Top1 RC по сценариям (см. таблицу выше): сильный обвал на рынке акций GLD=11.2%, стресс на рынке кредита GLD=11.2%, rates_shock BBJP=11.6%, inflation_stagflation BBJP=11.6%, liquidity_shock GLD=11.2%.
 Исторические эпизоды (historical_results):
 - 2008: pnl_real_episode≈н/д, max_dd≈н/д, в норме по проверке=None, vol_annualized_episode≈н/д, diagnostic_code=—.
-- 2020: pnl_real_episode≈-1.83%, max_dd≈-5.16%, в норме по проверке=True, vol_annualized_episode≈0.1917, diagnostic_code=—.
-- 2022: pnl_real_episode≈-13.35%, max_dd≈-15.62%, в норме по проверке=True, vol_annualized_episode≈0.0954, diagnostic_code=—.
+- 2020: pnl_real_episode≈-6.50%, max_dd≈-7.69%, в норме по проверке=True, vol_annualized_episode≈0.2460, diagnostic_code=—.
+- 2022: pnl_real_episode≈-9.26%, max_dd≈-13.67%, в норме по проверке=True, vol_annualized_episode≈0.1024, diagnostic_code=—.
 OOS объяснение эпизодов через β×shock (5Y/10Y/rolling-3Y pre):
-- 2008: real=н/д, model_5y=-16.80%, model_10y=-16.26%, model_roll3y=-9.30%; |err|: 5y=н/д, 10y=н/д, roll3y=н/д.
-- 2020: real=-1.83%, model_5y=-3.63%, model_10y=-3.11%, model_roll3y=-2.36%; |err|: 5y=1.80%, 10y=1.28%, roll3y=0.53%.
-- 2022: real=-13.35%, model_5y=-15.68%, model_10y=-16.38%, model_roll3y=-19.25%; |err|: 5y=2.33%, 10y=3.03%, roll3y=5.90%.
-Средняя |ошибка| по эпизодам: 5Y=2.07%, 10Y=2.16%, rolling-3Y=3.21% (n=2).
+- 2008: real=н/д, model_5y=-24.21%, model_10y=-25.69%, model_roll3y=-14.94%; |err|: 5y=н/д, 10y=н/д, roll3y=н/д.
+- 2020: real=-6.50%, model_5y=-5.72%, model_10y=-5.92%, model_roll3y=-4.92%; |err|: 5y=0.78%, 10y=0.58%, roll3y=1.58%.
+- 2022: real=-9.26%, model_5y=-13.06%, model_10y=-12.53%, model_roll3y=-14.09%; |err|: 5y=3.80%, 10y=3.27%, roll3y=4.83%.
+Средняя |ошибка| по эпизодам: 5Y=2.29%, 10Y=1.93%, rolling-3Y=3.21% (n=2).
 
 ## Сценарный анализ
 
-сильный обвал на рынке акций: PnL≈-11.42%, итог в норме по проверке=False — см. loss/role/rc в Metric-by-Metric.
-стресс на рынке кредита: PnL≈-3.41%, итог в норме по проверке=True — см. loss/role/rc в Metric-by-Metric.
-rates_shock: PnL≈-6.47%, итог в норме по проверке=True — см. loss/role/rc в Metric-by-Metric.
-inflation_stagflation: PnL≈-6.27%, итог в норме по проверке=True — см. loss/role/rc в Metric-by-Metric.
-liquidity_shock: PnL≈-7.56%, итог в норме по проверке=True — см. loss/role/rc в Metric-by-Metric.
+сильный обвал на рынке акций: PnL≈-13.94%, итог в норме по проверке=False — см. loss/role/rc в Metric-by-Metric.
+стресс на рынке кредита: PnL≈-5.33%, итог в норме по проверке=False — см. loss/role/rc в Metric-by-Metric.
+rates_shock: PnL≈-2.72%, итог в норме по проверке=False — см. loss/role/rc в Metric-by-Metric.
+inflation_stagflation: PnL≈-7.02%, итог в норме по проверке=False — см. loss/role/rc в Metric-by-Metric.
+liquidity_shock: PnL≈-10.10%, итог в норме по проверке=False — см. loss/role/rc в Metric-by-Metric.
 
 
 ## Итог

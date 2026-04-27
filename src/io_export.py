@@ -252,7 +252,7 @@ def _cfg_val(cfg: Any, key: str, default: Any = None) -> Any:
 
 def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path) -> Path:
     """
-    Generate IPS summary with full run results: mandate, status, weights, RC by block,
+    Generate IPS summary with full run results: mandate, status, weights, per-asset RC caps,
     stress summary, violations, and actions. Single reference for risk and execution.
     """
     target_vol = _cfg_val(cfg, "target_vol_annual")
@@ -265,14 +265,13 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     status = run_result.get("status", "—")
     next_actions = run_result.get("next_actions") or []
     weights = run_result.get("weights") or {}
-    rb_deltas_pp = run_result.get("rb_deltas_pp") or {}
-    actual_rc_block = run_result.get("actual_rc_block") or {}
-    rc_block_targets = run_result.get("rc_block_targets") or {}
     rc_breaches = run_result.get("rc_breaches") or []
     stress_summary = run_result.get("stress_summary") or {}
     violations = run_result.get("violations") or []
     mandate_check = run_result.get("mandate_check") or {}
 
+    rc_cap = _cfg_val(cfg, "rc_asset_cap_pct")
+    rc_cap_pct = round(float(rc_cap) * 100, 2) if rc_cap is not None else None
     lines = [
         "IPS Summary — Full Run Results",
         "=" * 50,
@@ -284,6 +283,8 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
         "  Horizon (years):             %s" % (horizon if horizon is not None else "—"),
         "  Investor currency:           %s" % currency,
         "  Client profile:              %s" % profile,
+        "  Construction:                single-stage max expected return; soft vol/return targets; per-asset RC cap %s%% (portfolio_construction_policy)."
+        % (rc_cap_pct if rc_cap_pct is not None else "—"),
         "",
         "2. Mandate check (blocking)",
         "-" * 30,
@@ -323,32 +324,19 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
         lines.append("  (weights not written for this run)")
     lines.append("")
 
-    lines.append("4. Risk contribution by block (actual | target)")
+    lines.append("4. Per-asset RC vs cap (if any breaches)")
     lines.append("-" * 30)
-    for block in ("Growth", "Duration", "Inflation"):
-        actual = actual_rc_block.get(block)
-        target = rc_block_targets.get(block)
-        delta_pp = rb_deltas_pp.get(block)
-        actual_str = "%.2f%%" % (float(actual) * 100) if actual is not None else "—"
-        target_str = "%.2f%%" % (float(target) * 100) if target is not None else "—"
-        delta_str = (" (%+.1f pp)" % delta_pp) if delta_pp is not None else ""
-        lines.append("  %s: %s | target %s%s" % (block, actual_str, target_str, delta_str))
-    lines.append("")
-
     if rc_breaches:
-        lines.append("5. RC breaches (asset above cap)")
-        lines.append("-" * 30)
         for b in rc_breaches:
             ticker = b.get("ticker", "?")
             rc_pct = b.get("rc_pct")
             cap_pct = b.get("cap_pct")
             lines.append("  %s: RC=%.2f%%, cap=%.2f%%" % (ticker, rc_pct or 0, cap_pct or 0))
-        lines.append("")
     else:
-        lines.append("5. RC breaches: none")
-        lines.append("")
+        lines.append("  (no per-asset RC cap breaches flagged in run_result)")
+    lines.append("")
 
-    lines.append("6. Stress & scenario diagnostics (non-blocking for release)")
+    lines.append("5. Stress & scenario diagnostics (non-blocking for release)")
     lines.append("-" * 30)
     lines.append("  Diagnostic status:   %s" % stress_summary.get("diagnostic_status", stress_summary.get("status", "—")))
     dcodes = stress_summary.get("diagnostic_codes") or []
@@ -365,7 +353,7 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     lines.append("")
 
     if violations:
-        lines.append("7. Violations")
+        lines.append("6. Violations")
         lines.append("-" * 30)
         for v in violations:
             code = v.get("code", "?")
@@ -375,20 +363,19 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
             lines.append("  %s: %s" % (code, details))
         lines.append("")
     else:
-        lines.append("7. Violations: none")
+        lines.append("6. Violations: none")
         lines.append("")
 
     if next_actions:
-        lines.append("8. Next actions (this run)")
+        lines.append("7. Next actions (this run)")
         lines.append("-" * 30)
         for a in next_actions:
             lines.append("  - %s" % a)
         lines.append("")
 
-    lines.append("9. Actions by status (reference)")
+    lines.append("8. Actions by status (reference)")
     lines.append("-" * 30)
     lines.append("  APPROVED             Use weights as target; safe to execute.")
-    lines.append("  CANDIDATE_RB_BREACH  Use with caution; consider re-run or accept and monitor.")
     lines.append("  OK_FALLBACK          Check rc_breaches above; use if acceptable for mandate.")
     lines.append("  FAIL_MANDATE         Historical MaxDD vs mandate failed or history insufficient; weights not written.")
     lines.append("  DIAG_* / FAIL_STRESS (violation)  Stress diagnostics only; does not block release (review PM).")

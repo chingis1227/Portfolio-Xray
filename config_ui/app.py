@@ -29,7 +29,7 @@ from flask import Flask, render_template, request, jsonify, send_file
 import yaml
 
 from src.client_profiles import apply_profile_to_config
-from src.config import WEIGHTS_FILENAME, load_blocks_universe
+from src.config import WEIGHTS_FILENAME
 from src.config_schema import ConfigValidationError, validate_config
 
 # Static + templates: stable paths (see DESIGN.md — design.css in static/)
@@ -63,13 +63,11 @@ DEFAULTS = {
     "target_max_drawdown_pct": None,
     "horizon_years": None,
     "rc_asset_cap_pct": None,
-    "rc_block_targets": None,
     "max_single_security_weight_pct": None,
     "min_single_security_weight_pct": None,
     "N_rc": 3,
     "growth_core_candidates": ["VOO", "VT", "VTI"],
     "donor_shift_mode": "proportional",
-    "blocks": {"Growth": [], "Growth_HY": ["JNK", "HYG"], "Growth_EM_debt": [], "Duration": [], "Inflation": []},
     "windows_months": [36, 60, 120],
     "coverage_threshold": 0.90,
     "output_dir": "output",
@@ -96,12 +94,6 @@ def _normalize_loaded_config(raw: dict) -> dict:
         out["max_single_security_weight_pct"] = out["max_single_asset_weight_pct"]
     if out.get("min_single_security_weight_pct") is None and out.get("min_single_asset_weight_pct") is not None:
         out["min_single_security_weight_pct"] = out["min_single_asset_weight_pct"]
-    if "blocks" not in out or not isinstance(out.get("blocks"), dict):
-        out["blocks"] = {"Growth": [], "Growth_HY": [], "Growth_EM_debt": [], "Duration": [], "Inflation": []}
-    if out["blocks"].get("Growth_HY") is None:
-        out["blocks"]["Growth_HY"] = []
-    if out["blocks"].get("Growth_EM_debt") is None:
-        out["blocks"]["Growth_EM_debt"] = []
     return out
 
 
@@ -122,7 +114,7 @@ def load_current_config() -> dict:
 
 
 def load_client_profiles_reminder() -> list[dict]:
-    """Load client_profiles.yml and return a short list for the reminder table (name, metrics, block ranges)."""
+    """Load client_profiles.yml and return a short list for the reminder table (name, target ranges)."""
     path = PROJECT_ROOT / "config" / "client_profiles.yml"
     if not path.is_file():
         return []
@@ -133,7 +125,7 @@ def load_client_profiles_reminder() -> list[dict]:
     for pid, p in profiles.items():
         if not isinstance(p, dict):
             continue
-        rb = p.get("risk_budget") or {}
+
         def _r(spec, key="min_pct", key2="max_pct"):
             if not isinstance(spec, dict):
                 return "—"
@@ -141,16 +133,16 @@ def load_client_profiles_reminder() -> list[dict]:
             if a is not None and b is not None:
                 return f"{a}–{b}%"
             return "—"
-        out.append({
-            "id": pid,
-            "name": p.get("name", pid.replace("_", " ").title()),
-            "return_range": _r(p.get("target_return_annual")),
-            "vol_range": _r(p.get("target_vol_annual")),
-            "max_dd": str(p.get("max_drawdown_pct", "—")),
-            "growth_range": _r(rb.get("Growth")),
-            "duration_range": _r(rb.get("Duration")),
-            "inflation_range": _r(rb.get("Inflation")),
-        })
+
+        out.append(
+            {
+                "id": pid,
+                "name": p.get("name", pid.replace("_", " ").title()),
+                "return_range": _r(p.get("target_return_annual")),
+                "vol_range": _r(p.get("target_vol_annual")),
+                "max_dd": str(p.get("max_drawdown_pct", "—")),
+            }
+        )
     return out
 
 
@@ -182,7 +174,7 @@ def parse_int(val: str | None) -> int | None:
 def index():
     """Main config form page."""
     current = load_current_config()
-    # Apply profile defaults (target return, vol, max_dd, rc_block_targets) so form shows profile midpoints
+    # Apply profile defaults (target return, vol, max_dd, etc.) so form shows profile midpoints
     current = apply_profile_to_config(current)
     # Merge with defaults
     config = {**DEFAULTS, **current}
@@ -267,8 +259,7 @@ def generate_config():
         "coverage_threshold": parse_percent(data.get("coverage_threshold")) or 0.90,
         "output_dir": data.get("output_dir", "output"),
     }
-    config["blocks"] = current.get("blocks") or {"Growth": [], "Duration": [], "Inflation": []}
-    
+
     # Generate YAML content
     yaml_content = generate_yaml_with_comments(config)
     
@@ -290,9 +281,8 @@ def save_config():
         return jsonify({"success": False, "error": f"Неверный YAML: {e}"})
 
     parsed = apply_profile_to_config(parsed)
-    blocks_universe = load_blocks_universe(config_path=CONFIG_PATH)
     try:
-        validate_config(parsed, blocks_universe=blocks_universe)
+        validate_config(parsed)
     except ConfigValidationError as e:
         return jsonify({"success": False, "error": str(e)})
 
@@ -389,11 +379,6 @@ def generate_yaml_with_comments(config: dict) -> str:
     lines.append("tickers:")
     for t in config["tickers"]:
         lines.append(f"  - {t}")
-    blocks = config.get("blocks") or {"Growth": [], "Growth_HY": [], "Growth_EM_debt": [], "Duration": [], "Inflation": []}
-    lines.append("blocks:")
-    for block_name in ("Growth", "Growth_HY", "Growth_EM_debt", "Duration", "Inflation"):
-        tickers_in_block = blocks.get(block_name, [])
-        lines.append(f"  {block_name}: {tickers_in_block}")
     lines.append("")
     if config.get("weights"):
         lines.append("weights:")
@@ -434,7 +419,6 @@ def generate_yaml_with_comments(config: dict) -> str:
     lines.append("# =============================================================================")
     lines.append("")
     lines.append(f"rc_asset_cap_pct: {config['rc_asset_cap_pct'] if config['rc_asset_cap_pct'] is not None else 'null'}")
-    lines.append("rc_block_targets: null")
     lines.append(f"max_single_security_weight_pct: {config['max_single_security_weight_pct'] if config['max_single_security_weight_pct'] is not None else 'null'}")
     lines.append(f"min_single_security_weight_pct: {config['min_single_security_weight_pct'] if config['min_single_security_weight_pct'] is not None else 'null'}")
     lines.append("")

@@ -1,15 +1,17 @@
 # Stress Testing Specification
 
-**Policy link.** This document is the source of truth for **diagnostic** portfolio stress testing. It implements and extends **docs/portfolio_construction_policy.md** §§9–12. **Blocking** mandate max drawdown is defined in **docs/production_workflow.md** (full historical sample, **FAIL_MANDATE**).
+**Policy link.** This document is the source of truth for **diagnostic** portfolio stress testing. **Blocking** mandate max drawdown is defined in **docs/production_workflow.md** (full historical sample, **FAIL_MANDATE**).
+
+> **2026-04 update:** Block-level **Role** tests (stagflation / equity-shock defensive bundle) are **removed** from `run_stress`. The suite keeps **Loss**, **RC Top1 / Top3**, historical episodes, and factor diagnostics.
 
 ---
 
 ## 0. Mandate vs diagnostic suite
 
-| Layer | What | Blocks weights? |
-|-------|------|-----------------|
+| Layer | What | Stops weight release? |
+|-------|------|------------------------|
 | **Mandate** | Realized portfolio max drawdown on **full overlapping monthly history** vs `target_max_drawdown_pct` | **Yes** → **FAIL_MANDATE** (`run_optimization.py`) |
-| **Stress suite** (`run_stress`) | Synthetic scenarios, historical **episodes** (2008 / 2020 / 2022), Role/RC in stress | **No** → **`DIAG_*` codes** and **DIAG_PASS** / **DIAG_PASS_WITH_WARNING** / **DIAG_ATTENTION** only |
+| **Stress suite** (`run_stress`) | Synthetic scenarios, historical **episodes** (2008 / 2020 / 2022), RC concentration in stress | **No** → **`DIAG_*` codes** and **DIAG_PASS** / **DIAG_PASS_WITH_WARNING** / **DIAG_ATTENTION** only |
 
 Scenario and episode checks below are **for PM reporting**; they do not replace the mandate gate.
 
@@ -21,9 +23,8 @@ A scenario is treated as **passed** (`pass=true`) only if **all** of the followi
 
 - **Loss test:** Portfolio_PnL_% ≥ -MaxDD_limit (reference limit; informational vs mandate). Violation → **DIAG_LOSS_***.
 - **RC test:** Top1_RC_% and Top3_RC_sum_% within caps (§7). Violation → **DIAG_RC_***.
-- **Role test:** Rules in §6. For **equity shock**, a **severe** defensive breach fails the scenario (**DIAG_ROLE_***); a **mild** breach still allows the scenario to pass if Loss and RC pass, but the suite may be **DIAG_PASS_WITH_WARNING** (§12).
 
-Other scenarios: **Stagflation** Role failure → **DIAG_ROLE_*** as before.
+(Legacy §6 **Role** / block-aggregate rules are **not** implemented in production `run_stress`; they are kept below **for archive only** — no **DIAG_ROLE_*** codes are emitted.)
 
 ---
 
@@ -33,39 +34,40 @@ Other scenarios: **Stagflation** Role failure → **DIAG_ROLE_*** as before.
 |---|---------------------|----------------------|
 | 1 | **Equity shock**    | Broad equity −40%. shock_eq = -0.40; others 0. |
 | 2 | **Credit shock**    | HY stress: shock_credit = +0.04 (+400 bps); optionally shock_eq = -0.10; others 0. |
-| 3 | **Rates shock**     | Real rates +200 bps: shock_real_rates = +0.02; others 0. |
-| 4 | **Inflation/Stagflation** | shock_cmd = +0.25, shock_eq = -0.20; optionally shock_real_rates = +0.005; others 0. |
+| 3 | **Rates shock**     | Real rates +200 bps: `shock_rr = +0.02`; others 0. |
+| 4 | **Inflation/Stagflation** | `shock_cmd = +0.25`, `shock_eq = -0.20`, `shock_rr = +0.005`; `shock_inf`/`shock_usd` = 0 unless extended. |
 | 5 | **Liquidity shock** | shock_eq = -0.25, shock_credit = +0.03 (+300 bps); RC uses stress covariance; others 0. |
 
 ---
 
-## 3. Scenario PnL (factor-based with block fallback)
+## 3. Scenario PnL (per-asset factors; no portfolio blocks)
 
-For each asset *i*:
+For each asset *i* in the risk universe (aligned monthly columns; cash proxy excluded from shock path where applicable):
 
 ```
-r_i(scenario) = β_eq_i * shock_eq + β_rr_i * shock_real_rates + β_cr_i * shock_credit
-                + β_inf_i * shock_infl + β_usd_i * shock_usd + β_cmd_i * shock_cmd
+r_i(scenario) = β_eq_i * shock_eq + β_rr_i * shock_rr + β_cr_i * shock_credit
+                + β_inf_i * shock_inf + β_usd_i * shock_usd + β_cmd_i * shock_cmd
 ```
 
-- **PnL_i** = w_i × r_i  
-- **PnL_block** = sum(PnL_i for i in block)  
-- **Portfolio_PnL** = sum(PnL_i)
+(mapping of shock keys to per-asset beta columns follows `src/stress.py` / asset beta frame: `beta_eq`, `beta_rr`, …)
 
-**Fallback when β is missing for an asset:** apply block-level shock: Growth → shock_eq; Duration → shock_real_rates (or duration proxy); Inflation → shock_cmd (e.g. Gold/commodities); Liquidity → 0; Tail → scenario-specific or block rule.
+- **PnL_i** = w_i × r_i (portfolio weights **w** on the same asset set used for the scenario).  
+- **Portfolio_PnL_%** = sum_i PnL_i.
+
+**Fallback when per-asset β is missing:** use **equity shock only** — `r_i = shock_eq` (see `_scenario_return_per_asset` in `src/stress.py`). There is **no** separate “block” shock layer for Growth/Duration/Inflation portfolio segments.
 
 ---
 
 ## 4. Required outputs per scenario
 
-For each scenario the system must output:
+For each scenario the production `run_stress` implementation outputs (see `scenario_results` in `stress_report.json`):
 
-- **Portfolio_PnL_%**
-- **PnL_by_block_%:** Growth, Duration, Inflation, Liquidity, Tail (Growth_HY and Growth_EM_debt aggregated into Growth)
-- **Top1_RC_asset**, **Top1_RC_%**
-- **Top3_RC_assets**, **Top3_RC_sum_%**
-- **Top3_loss_assets** (assets with largest loss contribution by PnL)
-- **equity_shock only:** `defensive_pnl_sum` = PnL_Duration + PnL_Inflation + PnL_Tail (decimal fractions, same units as `pnl_by_block_pct`); `role_equity_shock_severity` = `ok` | `warn` | `fail` (§6).
+- **portfolio_pnl_pct** (aggregate scenario loss / gain)
+- **top1_rc_asset**, **top1_rc_pct**, **top3_rc_assets**, **top3_rc_sum_pct** (RC_vol under base or stress covariance per scenario flags)
+- **top3_loss_assets** (tickers with largest negative PnL contribution in the scenario)
+- **loss_ok**, **rc1_ok**, **rc3_ok**, **pass**, **diagnostic_codes**
+
+**Legacy / archive:** older specs referred to **PnL_by_block_%**, **defensive_pnl_sum**, and **role_equity_shock_severity**; these are **not** produced by the current asset-level suite. Do not require them for compliance with this spec version.
 
 ---
 
@@ -76,15 +78,13 @@ For each scenario the system must output:
 
 ---
 
-## 6. Role test (minimal rules)
+## 6. Role test (archived — not in `run_stress`)
 
-- **Stagflation:** FAIL if PnL_Inflation ≤ 0 (inflation block must be positive in its regime).
-- **Equity shock:** Define **S** = PnL_Duration + PnL_Inflation + PnL_Tail (same decimal fraction units as block PnL in §4).
-  - **S ≥ 0:** defensive bundle is net supportive → Role **ok** (no suite warning from this rule).
-  - **−0.01 ≤ S < 0:** mild aggregate defensive drag (includes the illustrative band **−0.005 … 0**) → Role **warn**; scenario still **passes** if Loss and RC pass; suite status **PASS_WITH_WARNING** with **WARN_ROLE_EQUITY_DEFENSIVE_WEAK** (§12).
-  - **S < −0.01:** severe lack of aggregate protection → Role **fail** → scenario **fail** → **DIAG_ROLE_***, e.g. **DIAG_ROLE_EQUITY_SHOCK**.
+Historically the spec defined **Role** checks (stagflation “inflation block”, equity-shock “defensive bundle” **S**) using **aggregated PnL by portfolio block**. That layer depended on a **block map** on the portfolio.
 
-**Loss** and **Top1 / Top3 RC** (diagnostic) do not soften when Role is only a warning; failed checks add **DIAG_*** codes. They are **not** production hard gates (see §0).
+**Current code:** `src/stress.py` evaluates only **Loss** (portfolio PnL vs limit) and **RC Top1 / Top3** under stress covariance where enabled. **No** `DIAG_ROLE_*`, **no** `pnl_by_block_pct`, **no** `defensive_pnl_sum` in the reference implementation.
+
+If reintroducing block-level diagnostics, do so in a **separate** spec revision and keep this document’s **§1 / §7** as the binding minimum for the asset-level suite.
 
 ---
 
@@ -214,10 +214,10 @@ Episode DD vs limit adds **DIAG_HIST_*** when breached; else episode contributes
 ## 10. Stress covariance (for RC in stress)
 
 - **Base:** Σ_base from project returns (monthly, ddof=1).
-- **Stress:** For Equity / Credit / Liquidity scenarios:
-  - Within risk-on basket (Growth + Growth_HY + Growth_EM_debt + Crypto if any): set **corr = 0.90**.
-  - Between risk-on and defense (Duration, Inflation): keep base correlations; for Liquidity shock optionally raise to min(0.50, base+0.20).
-  - **Vol scaling:** equity/credit scenarios vol_mult = 1.25; liquidity shock vol_mult = 1.50.
+- **Stress:** For Equity / Credit / Liquidity scenarios (`stress_cov: true` in `src/stress.py`):
+  - **Risk-on set:** all portfolio risk tickers **except the cash proxy** (no Growth/Duration/Inflation block map): pairwise correlations within this set are set to **0.90**, then vol scaling is applied.
+  - Pairs involving at least one ticker **outside** that set keep the **base** correlation from Σ_base (see `_stress_covariance`).
+  - **Vol scaling:** equity/credit scenarios `vol_mult = 1.25`; liquidity shock `vol_mult = 1.50`.
 - RC is computed on **current portfolio weights** using Σ_stress.
 
 ---
@@ -237,9 +237,9 @@ Betas: **weekly** changes/returns for reporting outputs in §8 (`factor_betas_5y
 ## 12. Final status and report (diagnostic suite)
 
 - **Status:** **DIAG_PASS** | **DIAG_PASS_WITH_WARNING** | **DIAG_ATTENTION** (legacy **PASS** / **PASS_WITH_WARNING** may appear in old JSON).
-- **primary_diagnostic_code** / **fail_reason_code** (when **DIAG_ATTENTION**): e.g. **DIAG_LOSS_EQUITY_SHOCK**, **DIAG_ROLE_STAGFLATION**, **DIAG_RC_TOP1_LIQUIDITY_SHOCK**, **DIAG_RC_TOP3_CREDIT_SHOCK**, **DIAG_BETA_REAL_RATES**, **DIAG_HIST_2022**.
+- **primary_diagnostic_code** / **fail_reason_code** (when **DIAG_ATTENTION**): e.g. **DIAG_LOSS_EQUITY_SHOCK**, **DIAG_RC_TOP1_LIQUIDITY_SHOCK**, **DIAG_RC_TOP3_CREDIT_SHOCK**, **DIAG_HIST_2022** (prefix families depend on `_build_diagnostic_code` in `src/stress.py`).
 - **diagnostic_codes:** ordered list of all **DIAG_*** issues collected across scenarios and episodes.
-- **warning_code** (when **DIAG_PASS_WITH_WARNING**): e.g. **WARN_ROLE_EQUITY_DEFENSIVE_WEAK**, **WARN_HIST_BORDERLINE**, **WARN_BETA_NO_LIMITS**, **WARN_DATA_INSUFFICIENT**.
-- **Report must include:** worst scenario loss; failed scenario (if any); which test failed (Loss / Role / RC / Beta / Historical); Top1/Top3 RC and Top3 loss; per-episode **vol_annualized_episode**, **mean_monthly_return_by_block_pct** where computed.
+- **warning_code** (when **DIAG_PASS_WITH_WARNING**): e.g. **WARN_HIST_BORDERLINE**, **WARN_BETA_NO_LIMITS**, **WARN_DATA_INSUFFICIENT** (see stress module / commentary builders).
+- **Report must include:** worst scenario loss; failed scenario (if any); which test failed (**Loss** / **RC_Top1** / **RC_Top3** / **Historical**); Top1/Top3 RC and top loss names; per-episode **vol_annualized_episode**, **volatility_spike_ratio**, **max_dd**, **pnl_real_episode** where computed. **Block-aggregated** mean returns (**mean_monthly_return_by_block_pct**) are **not** part of the current `run_stress` contract.
 
 View After Optimization no longer blocks on stress status; scenario tilt audit codes (**FAIL_STRESS_DURATION**, etc.) remain optional labels for documentation only.

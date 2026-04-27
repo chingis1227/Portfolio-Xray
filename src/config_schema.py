@@ -14,9 +14,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.client_profiles import normalize_rc_block_targets
-
-
 class ConfigValidationError(Exception):
     """Raised when config validation fails."""
     pass
@@ -44,7 +41,6 @@ class PortfolioConfig:
     
     # Portfolio composition
     tickers: list[str]
-    blocks: dict[str, list[str]]  # Growth, Duration, Inflation -> list of tickers; from this N, Nc, Ns, k_block are derived
     weights: dict[str, float]
     
     # Benchmark and risk-free
@@ -67,8 +63,6 @@ class PortfolioConfig:
     client_profile: str | None
     # Optimization constraints (may be pending user input)
     rc_asset_cap_pct: float | None
-    rc_block_targets: dict[str, float] | None
-    rc_block_target_ranges: dict[str, dict[str, float]] | None
     stress_top3_rc_sum_cap_pct: float | None  # Top3 RC sum limit in stress (default 0.70)
     max_single_security_weight_pct: float | None
     min_single_security_weight_pct: float | None
@@ -93,14 +87,6 @@ class PortfolioConfig:
     # Track pending fields
     pending_fields: list[str] = field(default_factory=list)
 
-    # Block selection (Duration/Inflation) — optional; per optimization_duration_spec / optimization_inflation_spec
-    duration_int_ticker: str | None = None   # e.g. IEF
-    duration_long_ticker: str | None = None  # e.g. TLT
-    duration_ig_ticker: str | None = None     # e.g. LQD
-    tips_ticker: str | None = None           # e.g. TIP
-    gold_ticker: str | None = None           # e.g. GLD
-    comm_ticker: str | None = None           # e.g. PDBC
-
     # Liquidity floor from profile or explicit config; used by ProLiquidity when set (else derived from liquidity_need_months * monthly_expenses / portfolio_value)
     liquidity_floor_pct: float | None = None
     # Reserve this fraction of total portfolio for Tail block tickers (e.g. VIXY) after ProLiquidity; non-Tail weights scaled by (1 - tail_target_weight_pct).
@@ -109,14 +95,9 @@ class PortfolioConfig:
     rc_policy_mode: str = "strict"
     # RC soft-control strength in optimizer objective (higher => stronger push against RC cap violations)
     rc_cap_penalty_lambda: float = 25.0
-    # RC_vol cap policy: "global" = feasibility §1 with N = RiskPortfolio size; "per_block_rb_k" = variant B (RB_block/k × multiplier)
-    rc_cap_mode: str = "global"
-    rc_cap_rb_k_multiplier: float = 1.25
-    # Two-stage stage2 (docs/two_stage_optimization.md): soft penalties for max_return vs target_vol / target return; 0 => runtime uses 12 / 8
+    # Soft penalties for max_return vs target_vol / target return; 0 => runtime uses 12 / 8 in run_optimization
     optimization_soft_vol_penalty_lambda: float = 0.0
     optimization_soft_return_penalty_lambda: float = 0.0
-    # Two-stage stage1: weight on Herfindahl(sum RC_vol^2) over blocks; 0 = RC-cap penalty only
-    risk_skeleton_concentration_lambda: float = 10.0
     # Deprecated: stress is diagnostic-only (DIAG_*); ignored for blocking. Kept for config compatibility.
     strict_stress_gate: bool = False
     # When True, use Ledoit-Wolf shrinkage for covariance in optimization/RC (more stable weights)
@@ -146,7 +127,6 @@ class PortfolioConfig:
             "base_benchmark_ticker": self.benchmark_base_ticker,
             "beta_local_mapping": self.local_benchmark_map,
             "tickers": self.tickers,
-            "blocks": self.blocks,
             "weights": self.weights,
             "allow_leverage": self.allow_leverage,
             "allow_short_selling": self.allow_short_selling,
@@ -156,8 +136,6 @@ class PortfolioConfig:
             "target_max_drawdown_pct": self.target_max_drawdown_pct,
             "horizon_years": self.horizon_years,
             "rc_asset_cap_pct": self.rc_asset_cap_pct,
-            "rc_block_targets": self.rc_block_targets,
-            "rc_block_target_ranges": self.rc_block_target_ranges,
             "stress_top3_rc_sum_cap_pct": self.stress_top3_rc_sum_cap_pct,
             "max_single_security_weight_pct": self.max_single_security_weight_pct,
             "min_single_security_weight_pct": self.min_single_security_weight_pct,
@@ -166,11 +144,8 @@ class PortfolioConfig:
             "donor_shift_mode": self.donor_shift_mode,
             "rc_policy_mode": self.rc_policy_mode,
             "rc_cap_penalty_lambda": self.rc_cap_penalty_lambda,
-            "rc_cap_mode": self.rc_cap_mode,
-            "rc_cap_rb_k_multiplier": self.rc_cap_rb_k_multiplier,
             "optimization_soft_vol_penalty_lambda": self.optimization_soft_vol_penalty_lambda,
             "optimization_soft_return_penalty_lambda": self.optimization_soft_return_penalty_lambda,
-            "risk_skeleton_concentration_lambda": self.risk_skeleton_concentration_lambda,
             "strict_stress_gate": self.strict_stress_gate,
             "covariance_shrinkage": self.covariance_shrinkage,
             "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
@@ -182,12 +157,6 @@ class PortfolioConfig:
             "primary_window_months": self.primary_window_months,
             "secondary_window_months": self.secondary_window_months,
             "robustness_policy": self.robustness_policy,
-            "duration_int_ticker": self.duration_int_ticker,
-            "duration_long_ticker": self.duration_long_ticker,
-            "duration_ig_ticker": self.duration_ig_ticker,
-            "tips_ticker": self.tips_ticker,
-            "gold_ticker": self.gold_ticker,
-            "comm_ticker": self.comm_ticker,
             "liquidity_floor_pct": self.liquidity_floor_pct,
             "tail_target_weight_pct": self.tail_target_weight_pct,
         }
@@ -214,10 +183,7 @@ class PortfolioConfig:
         """Return fields reserved for future portfolio optimization."""
         return {
             "rc_asset_cap_pct": self.rc_asset_cap_pct,
-            "rc_block_targets": self.rc_block_targets,
-            "rc_block_target_ranges": self.rc_block_target_ranges,
             "stress_top3_rc_sum_cap_pct": self.stress_top3_rc_sum_cap_pct,
-            "blocks": self.blocks,
             "max_single_security_weight_pct": self.max_single_security_weight_pct,
             "min_single_security_weight_pct": self.min_single_security_weight_pct,
             "target_vol_annual": self.target_vol_annual,
@@ -233,11 +199,8 @@ class PortfolioConfig:
             "donor_shift_mode": self.donor_shift_mode,
             "rc_policy_mode": self.rc_policy_mode,
             "rc_cap_penalty_lambda": self.rc_cap_penalty_lambda,
-            "rc_cap_mode": self.rc_cap_mode,
-            "rc_cap_rb_k_multiplier": self.rc_cap_rb_k_multiplier,
             "optimization_soft_vol_penalty_lambda": self.optimization_soft_vol_penalty_lambda,
             "optimization_soft_return_penalty_lambda": self.optimization_soft_return_penalty_lambda,
-            "risk_skeleton_concentration_lambda": self.risk_skeleton_concentration_lambda,
             "strict_stress_gate": self.strict_stress_gate,
             "covariance_shrinkage": self.covariance_shrinkage,
             "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
@@ -267,11 +230,10 @@ DEFAULT_SECONDARY_WINDOW_MONTHS = 60
 DEFAULT_ROBUSTNESS_POLICY = {
     "enabled": True,
     "max_weight_change_allowed": 0.10,
-    "max_rc_block_dev_allowed": 0.05,
     "max_asset_rc_dev_allowed": 0.05,
     "min_effective_months": 36,
 }
-# Young-ETF dual covariance + eligibility for risk-budget optimization (see docs/data_policy_nan_young_etfs.md)
+# Young-ETF dual covariance + eligibility for optimization (see docs/data_policy_nan_young_etfs.md)
 DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY = {
     "enabled": True,
     "eligible_months": 48,
@@ -315,7 +277,6 @@ NONNEGATIVE_FIELDS = [
 CASH_POLICY_VALUES = ("required_floor", "allowed_for_scaling", "prohibited")
 DONOR_SHIFT_MODES = ("proportional", "equal")
 RC_POLICY_MODES = ("strict", "permissive")
-RC_CAP_MODES = ("global", "per_block_rb_k")
 BACKTEST_MODES = ("dynamic_nan_safe", "simple")
 
 NUMERIC_FIELDS = [
@@ -325,16 +286,12 @@ NUMERIC_FIELDS = [
 MAPPING_FIELDS = [
     "weights",
     "local_benchmark_map",
-    "rc_block_targets",
-    "rc_block_target_ranges",
-    "blocks",
 ]
 
 # These constraint fields may be null until the user provides final numeric values.
 # The system supports them in config and passes them through all layers; no refactor needed when values are set.
 PENDING_USER_INPUT_FIELDS = [
     "rc_asset_cap_pct",
-    "rc_block_targets",
     "max_single_security_weight_pct",
     "min_single_security_weight_pct",
 ]
@@ -401,6 +358,9 @@ def _inject_optional_defaults(cfg: dict[str, Any]) -> None:
         # Merge with defaults so missing keys get defaults
         rp = dict(DEFAULT_ROBUSTNESS_POLICY)
         rp.update({k: v for k, v in cfg["robustness_policy"].items() if v is not None})
+        legacy_rc = rp.pop("max_rc_block_dev_allowed", None)
+        if legacy_rc is not None and cfg["robustness_policy"].get("max_asset_rc_dev_allowed") is None:
+            rp["max_asset_rc_dev_allowed"] = legacy_rc
         cfg["robustness_policy"] = rp
     # Young-ETF optimization policy: merge user dict over defaults
     ypol_base = dict(DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY)
@@ -493,28 +453,6 @@ def _normalize_percent_fields(cfg: dict[str, Any]) -> dict[str, Any]:
     for f in NUMERIC_FIELDS:
         if f in result:
             result[f] = _parse_numeric_value(result[f], f)
-    
-    # Handle rc_block_targets dict separately
-    rc_targets = result.get("rc_block_targets")
-    if rc_targets is not None and isinstance(rc_targets, dict):
-        normalized_targets = {}
-        for block_name, target_pct in rc_targets.items():
-            normalized_targets[block_name] = _parse_percent_value(
-                target_pct, f"rc_block_targets['{block_name}']"
-            )
-        result["rc_block_targets"] = normalized_targets
-
-    # Handle rc_block_target_ranges dict: {Block: {min, max}} (supports percent format)
-    rc_ranges = result.get("rc_block_target_ranges")
-    if rc_ranges is not None and isinstance(rc_ranges, dict):
-        normalized_ranges: dict[str, dict[str, float]] = {}
-        for block_name, range_spec in rc_ranges.items():
-            if not isinstance(range_spec, dict):
-                continue
-            lo = _parse_percent_value(range_spec.get("min"), f"rc_block_target_ranges['{block_name}']['min']")
-            hi = _parse_percent_value(range_spec.get("max"), f"rc_block_target_ranges['{block_name}']['max']")
-            normalized_ranges[str(block_name)] = {"min": lo, "max": hi}
-        result["rc_block_target_ranges"] = normalized_ranges
     
     # Handle weights dict (also supports percent format)
     weights = result.get("weights")
@@ -627,168 +565,6 @@ def _validate_tickers_weights(cfg: dict[str, Any]) -> None:
             )
 
 
-BLOCK_NAMES = ("Growth", "Duration", "Inflation")
-STRESS_BLOCK_NAMES = ("Growth", "Duration", "Inflation", "Liquidity", "Tail")  # for stress report; Growth_HY, Growth_EM_debt → Growth
-GROWTH_HY_KEY = "Growth_HY"  # sub-block of Growth (High Yield); RC_vol(HY) ≤ 10% × RC_vol(Growth)
-GROWTH_EM_DEBT_KEY = "Growth_EM_debt"  # sub-block of Growth (EM Debt); RC_vol(EM Debt) ≤ 10% × RC_vol(Growth)
-
-def _build_ticker_to_block_from_universe(blocks_universe: dict[str, list[str]]) -> dict[str, str]:
-    """
-    Build ticker -> block_name from blocks_universe. Raises if a ticker appears in more than one block.
-    """
-    ticker_to_block: dict[str, str] = {}
-    for block_name, tickers in blocks_universe.items():
-        if not isinstance(tickers, list):
-            continue
-        for t in tickers:
-            t = str(t).strip()
-            if not t:
-                continue
-            if t in ticker_to_block:
-                raise ConfigValidationError(
-                    f"blocks_universe.yml: ticker '{t}' appears in both '{ticker_to_block[t]}' and '{block_name}'. "
-                    "One ticker must belong to exactly one block."
-                )
-            ticker_to_block[t] = block_name
-    return ticker_to_block
-
-
-def _effective_blocks_from_universe(
-    config_tickers: list[str],
-    blocks_universe: dict[str, list[str]],
-) -> dict[str, list[str]]:
-    """
-    Resolve blocks for config_tickers using blocks_universe. Each config ticker must appear
-    in exactly one block in the universe. Returns normalized blocks dict containing only
-    the given tickers. Raises ConfigValidationError if any ticker is not in any block.
-    """
-    ticker_to_block = _build_ticker_to_block_from_universe(blocks_universe)
-    unknown = [t for t in config_tickers if t not in ticker_to_block]
-    if unknown:
-        raise ConfigValidationError(
-            f"Ticker(s) not found in blocks_universe.yml (no block assigned): {', '.join(unknown)}. "
-            "Add them to a block in blocks_universe.yml or remove them from config tickers."
-        )
-    # Build effective blocks: only blocks that have at least one of our tickers
-    effective: dict[str, list[str]] = {b: [] for b in BLOCK_NAMES}
-    effective[GROWTH_HY_KEY] = []
-    effective[GROWTH_EM_DEBT_KEY] = []
-    effective["Liquidity"] = []
-    effective["Tail"] = []
-    for t in config_tickers:
-        block = ticker_to_block[t]
-        if block not in effective:
-            effective[block] = []
-        effective[block].append(t)
-    return _normalize_blocks(effective)
-
-
-def _normalize_blocks(blocks: dict[str, Any] | None) -> dict[str, list[str]]:
-    """Return blocks with Growth, Duration, Inflation, optional Growth_HY, Growth_EM_debt, Liquidity, Tail; default empty lists if missing."""
-    default = {b: [] for b in BLOCK_NAMES}
-    default[GROWTH_HY_KEY] = []
-    default[GROWTH_EM_DEBT_KEY] = []
-    for b in ("Liquidity", "Tail"):
-        default[b] = []
-    if blocks is None:
-        return default
-    out = {b: list(blocks.get(b, [])) for b in BLOCK_NAMES}
-    out[GROWTH_HY_KEY] = list(blocks.get(GROWTH_HY_KEY, []))
-    out[GROWTH_EM_DEBT_KEY] = list(blocks.get(GROWTH_EM_DEBT_KEY, []))
-    out["Liquidity"] = list(blocks.get("Liquidity", []))
-    out["Tail"] = list(blocks.get("Tail", []))
-    return out
-
-
-def _validate_blocks(cfg: dict[str, Any]) -> None:
-    """Validate blocks: optional; must have Growth, Duration, Inflation as lists; Growth_HY, Growth_EM_debt, Liquidity, Tail optional lists."""
-    blocks = cfg.get("blocks")
-    if blocks is None:
-        return
-    for key in BLOCK_NAMES:
-        if key not in blocks:
-            raise ConfigValidationError(
-                f"Config field 'blocks' must contain keys {list(BLOCK_NAMES)}, missing '{key}'"
-            )
-        val = blocks[key]
-        if not isinstance(val, list):
-            raise ConfigValidationError(
-                f"Config field 'blocks[\"{key}\"]' must be a list of tickers, got {type(val).__name__}"
-            )
-        for t in val:
-            if not isinstance(t, str):
-                raise ConfigValidationError(
-                    f"Config field 'blocks[\"{key}\"]' must contain strings (tickers), got {type(t).__name__}"
-                )
-    for key in (GROWTH_HY_KEY, GROWTH_EM_DEBT_KEY, "Liquidity", "Tail"):
-        val = blocks.get(key)
-        if val is not None:
-            if not isinstance(val, list):
-                raise ConfigValidationError(
-                    f"Config field 'blocks[\"{key}\"]' must be a list of tickers, got {type(val).__name__}"
-                )
-            for t in val:
-                if not isinstance(t, str):
-                    raise ConfigValidationError(
-                        f"Config field 'blocks[\"{key}\"]' must contain strings (tickers), got {type(t).__name__}"
-                    )
-
-
-def _validate_rc_block_targets(cfg: dict[str, Any]) -> None:
-    """Validate rc_block_targets structure if provided."""
-    rc_targets = cfg.get("rc_block_targets")
-    if rc_targets is None:
-        return
-    if not isinstance(rc_targets, dict):
-        raise ConfigValidationError(
-            f"Config field 'rc_block_targets' must be a dictionary"
-        )
-    for block_name, target_pct in rc_targets.items():
-        if not isinstance(target_pct, (int, float)):
-            raise ConfigValidationError(
-                f"rc_block_targets['{block_name}'] must be numeric, got {type(target_pct).__name__}"
-            )
-        if target_pct < 0:
-            raise ConfigValidationError(
-                f"rc_block_targets['{block_name}'] must be non-negative, got {target_pct}"
-            )
-
-
-def _validate_rc_block_target_ranges(cfg: dict[str, Any]) -> None:
-    """Validate optional rc_block_target_ranges: {Block: {min, max}} in decimals."""
-    ranges = cfg.get("rc_block_target_ranges")
-    if ranges is None:
-        return
-    if not isinstance(ranges, dict):
-        raise ConfigValidationError("Config field 'rc_block_target_ranges' must be a dictionary")
-    for block in BLOCK_NAMES:
-        spec = ranges.get(block)
-        if spec is None:
-            continue
-        if not isinstance(spec, dict):
-            raise ConfigValidationError(
-                f"rc_block_target_ranges['{block}'] must be a dictionary with min/max"
-            )
-        lo = spec.get("min")
-        hi = spec.get("max")
-        if lo is None or hi is None:
-            raise ConfigValidationError(
-                f"rc_block_target_ranges['{block}'] must contain both 'min' and 'max'"
-            )
-        if not isinstance(lo, (int, float)) or not isinstance(hi, (int, float)):
-            raise ConfigValidationError(
-                f"rc_block_target_ranges['{block}']['min'/'max'] must be numeric"
-            )
-        if lo < 0 or hi < 0:
-            raise ConfigValidationError(
-                f"rc_block_target_ranges['{block}'] must be non-negative, got min={lo}, max={hi}"
-            )
-        if hi < lo:
-            raise ConfigValidationError(
-                f"rc_block_target_ranges['{block}'] has max < min ({hi} < {lo})"
-            )
-
-
 def _validate_windows(cfg: dict[str, Any]) -> None:
     """Validate windows_months field."""
     windows = cfg.get("windows_months", [])
@@ -881,7 +657,6 @@ def _validate_robustness_policy(cfg: dict[str, Any]) -> None:
         )
     for key, default in [
         ("max_weight_change_allowed", 0.10),
-        ("max_rc_block_dev_allowed", 0.05),
         ("max_asset_rc_dev_allowed", 0.05),
     ]:
         val = rp.get(key)
@@ -984,23 +759,7 @@ def _validate_rc_policy_mode(cfg: dict[str, Any]) -> None:
         )
 
 
-def _validate_rc_cap_mode(cfg: dict[str, Any]) -> None:
-    mode = cfg.get("rc_cap_mode", "global")
-    if mode is not None and mode not in RC_CAP_MODES:
-        raise ConfigValidationError(
-            f"Config field 'rc_cap_mode' must be one of {RC_CAP_MODES}, got {mode!r}"
-        )
-    m = cfg.get("rc_cap_rb_k_multiplier", 1.25)
-    try:
-        mf = float(m)
-    except (TypeError, ValueError):
-        raise ConfigValidationError(
-            f"Config field 'rc_cap_rb_k_multiplier' must be a positive number, got {m!r}"
-        ) from None
-    if mf <= 0:
-        raise ConfigValidationError(
-            f"Config field 'rc_cap_rb_k_multiplier' must be positive, got {mf}"
-        )
+def _validate_rc_cap_penalty_lambda(cfg: dict[str, Any]) -> None:
     lam = cfg.get("rc_cap_penalty_lambda", 25.0)
     try:
         lf = float(lam)
@@ -1011,20 +770,6 @@ def _validate_rc_cap_mode(cfg: dict[str, Any]) -> None:
     if lf <= 0:
         raise ConfigValidationError(
             f"Config field 'rc_cap_penalty_lambda' must be positive, got {lf}"
-        )
-
-
-def _validate_risk_skeleton_concentration_lambda(cfg: dict[str, Any]) -> None:
-    v = cfg.get("risk_skeleton_concentration_lambda", 10.0)
-    try:
-        f = float(v)
-    except (TypeError, ValueError):
-        raise ConfigValidationError(
-            f"Config field 'risk_skeleton_concentration_lambda' must be a non-negative number, got {v!r}"
-        ) from None
-    if f < 0:
-        raise ConfigValidationError(
-            f"Config field 'risk_skeleton_concentration_lambda' must be non-negative, got {f}"
         )
 
 
@@ -1057,44 +802,25 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
     """
     Validate config dict and return PortfolioConfig object.
 
-    Inject defaults: if optional parameters (benchmark_base_ticker, windows_months, output_dir)
-    are not provided, the system inserts predefined default values before validation and execution.
-    benchmark_base_ticker is set from investor_currency (USD->SPY, EUR->VGK, JPY->EWJ, CHF->EWL);
-    windows_months defaults to [36, 60, 120]; output_dir defaults to "output".
-    This ensures the pipeline always runs with a complete configuration while keeping the user's
-    config minimal and easy to maintain.
-
-    If blocks_universe is provided (from blocks_universe.yml), each ticker in config must
-    appear in exactly one block there; effective blocks are derived from the universe.
-    If any config ticker is not in the universe, ConfigValidationError is raised.
+    ``blocks_universe`` is accepted for backward compatibility and ignored (no blocks_universe.yml).
 
     Supports canonical config keys: base_benchmark_ticker, risk_free_source,
     beta_local_mapping (mapped to benchmark_base_ticker, rf_source, local_benchmark_map).
     Supports percent input in two formats: decimal 0.15 or string "15%".
 
     Raises ConfigValidationError if validation fails.
-    Allows pending user input fields (rc_asset_cap_pct, max_single_security_weight_pct,
-    min_single_security_weight_pct) to be null; they are carried in config and
-    exported in metadata until the user provides final values.
     """
-    # Normalize canonical keys (base_benchmark_ticker -> benchmark_base_ticker, etc.)
+    del blocks_universe  # legacy parameter; ignored
     cfg = _normalize_config_keys(cfg)
-    # Normalize percent fields ("15%" -> 0.15)
     cfg = _normalize_percent_fields(cfg)
-    # Inject defaults for optional fields (benchmark_base_ticker from currency, windows_months, output_dir)
     _inject_optional_defaults(cfg)
 
-    # Then validate
     _validate_required(cfg)
     _validate_booleans(cfg)
     _validate_percents(cfg)
     _validate_nonnegative(cfg)
     _validate_mappings(cfg)
-    if not blocks_universe:
-        _validate_blocks(cfg)
     _validate_tickers_weights(cfg)
-    _validate_rc_block_targets(cfg)
-    _validate_rc_block_target_ranges(cfg)
     _validate_windows(cfg)
     _validate_horizon_years(cfg)
     _validate_liquidity_need_months(cfg)
@@ -1103,24 +829,13 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
     _validate_portfolio_value(cfg)
     _validate_alpha_shift_params(cfg)
     _validate_rc_policy_mode(cfg)
-    _validate_rc_cap_mode(cfg)
+    _validate_rc_cap_penalty_lambda(cfg)
     _validate_optimization_soft_penalty_lambdas(cfg)
-    _validate_risk_skeleton_concentration_lambda(cfg)
     _validate_backtest_mode(cfg)
     _validate_robustness_policy(cfg)
     _validate_optimization_windows(cfg)
-    _validate_robustness_policy(cfg)
-    _validate_optimization_windows(cfg)
 
-    # Resolve blocks: from universe (for config tickers) or from config
-    if blocks_universe:
-        blocks_final = _effective_blocks_from_universe(list(cfg["tickers"]), blocks_universe)
-    else:
-        blocks_final = _normalize_blocks(cfg.get("blocks"))
-    
     pending = _identify_pending_fields(cfg)
-    rc_raw = cfg.get("rc_block_targets")
-    rc_normalized = normalize_rc_block_targets(rc_raw) if rc_raw else None
 
     return PortfolioConfig(
         investor_currency=cfg["investor_currency"],
@@ -1132,7 +847,6 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         cash_policy=cfg.get("cash_policy", "allowed_for_scaling"),
         client_profile=cfg.get("client_profile"),
         tickers=list(cfg["tickers"]),
-        blocks=blocks_final,
         weights=dict(cfg.get("weights") or {}),
         benchmark_base_ticker=cfg["benchmark_base_ticker"],
         rf_source=cfg.get("rf_source"),
@@ -1146,8 +860,6 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         target_max_drawdown_pct=cfg.get("target_max_drawdown_pct"),
         horizon_years=cfg.get("horizon_years"),
         rc_asset_cap_pct=cfg.get("rc_asset_cap_pct"),
-        rc_block_targets=rc_normalized,
-        rc_block_target_ranges=cfg.get("rc_block_target_ranges"),
         stress_top3_rc_sum_cap_pct=cfg.get("stress_top3_rc_sum_cap_pct", 0.70),
         max_single_security_weight_pct=cfg.get("max_single_security_weight_pct"),
         min_single_security_weight_pct=cfg.get("min_single_security_weight_pct"),
@@ -1156,20 +868,11 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         donor_shift_mode=cfg.get("donor_shift_mode", "proportional"),
         rc_policy_mode=cfg.get("rc_policy_mode", "strict"),
         rc_cap_penalty_lambda=float(cfg.get("rc_cap_penalty_lambda", 25.0)),
-        rc_cap_mode=cfg.get("rc_cap_mode", "global"),
-        rc_cap_rb_k_multiplier=float(cfg.get("rc_cap_rb_k_multiplier", 1.25)),
         optimization_soft_vol_penalty_lambda=float(cfg.get("optimization_soft_vol_penalty_lambda", 0.0)),
         optimization_soft_return_penalty_lambda=float(cfg.get("optimization_soft_return_penalty_lambda", 0.0)),
-        risk_skeleton_concentration_lambda=float(cfg.get("risk_skeleton_concentration_lambda", 10.0)),
         strict_stress_gate=bool(cfg.get("strict_stress_gate", False)),
         covariance_shrinkage=bool(cfg.get("covariance_shrinkage", False)),
         young_etf_optimization_policy=dict(cfg.get("young_etf_optimization_policy") or DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY),
-        duration_int_ticker=cfg.get("duration_int_ticker"),
-        duration_long_ticker=cfg.get("duration_long_ticker"),
-        duration_ig_ticker=cfg.get("duration_ig_ticker"),
-        tips_ticker=cfg.get("tips_ticker"),
-        gold_ticker=cfg.get("gold_ticker"),
-        comm_ticker=cfg.get("comm_ticker"),
         liquidity_floor_pct=_parse_float_optional(cfg.get("liquidity_floor_pct")),
         tail_target_weight_pct=_parse_float_optional(cfg.get("tail_target_weight_pct")),
         windows_months=list(cfg["windows_months"]),

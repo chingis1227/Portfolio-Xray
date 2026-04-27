@@ -1,6 +1,6 @@
 # Portfolio Optimization — единая точка входа
 
-Система строит портфель по risk-budget (Growth / Duration / Inflation), применяет ProLiquidity и стресс-тесты. Веса выдаёт только оптимизатор; ручная правка весов в конфиге не допускается (исключение — протокол «View After Optimization»).
+Система строит портфель **одностадийной** оптимизацией (максимизация ожидаемой доходности при мягких целях по волатильности/доходности и **per-asset** RC cap), затем ProLiquidity и диагностический стресс. Веса выдаёт только оптимизатор; ручная правка весов в конфиге не допускается (исключение — протокол «View After Optimization»).
 
 ---
 
@@ -8,17 +8,17 @@
 
 1. **Оптимизация**  
    ```bash
-   python run_optimization.py [--no-cache] [--write-config] [--profile Growth]
+   python run_optimization.py [--no-cache] [--write-config]
    ```  
-   Читает `config.yml`, при необходимости — `config/client_profiles.yml` и `blocks_universe.yml`; загружает данные; выполняет block selection (Duration/Inflation), risk-budget оптимизацию и ProLiquidity. Пишет веса в **ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ/portfolio_weights.yml** и **run_result.json**. При срабатывании MaxDD gate веса не записываются, выход с ошибкой.
+   Читает `config.yml` и при необходимости **`../config/client_profiles.yml`** (путь относительно корня репозитория); загружает данные; один проход оптимизатора + ProLiquidity. Пишет **`portfolio_weights.yml`** и **`run_result.json`** в **`output_dir_final`** (по умолчанию **Main portfolio**). При провале мандата MaxDD — **FAIL_MANDATE**, веса не записываются.
 
 2. **Отчёт**  
    ```bash
    python run_report.py [--no-cache] [--clear-cache] [--backtest-mode dynamic_nan_safe]
    ```  
-   Берёт веса из конфига или из **ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ/portfolio_weights.yml**; считает метрики по окнам 3Y/5Y/10Y, RC_vol, стресс, отчёты. Пишет CSV в `results_csv/`, JSON и report в **ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ/**.
+   Берёт веса из конфига или из **`portfolio_weights.yml`**; метрики 3Y/5Y/10Y, RC_vol, стресс; CSV в `results_csv/`, отчёты в `output_dir_final`.
 
-**Порядок:** сначала `run_optimization.py`, затем `run_report.py`. Иначе отчёт будет без актуальных весов.
+**Порядок:** сначала `run_optimization.py`, затем `run_report.py`.
 
 ---
 
@@ -26,37 +26,30 @@
 
 | Файл | Назначение |
 |------|------------|
-| **config.yml** | Основные настройки: тикеры, валюта, профиль, ликвидность, cash_policy, target_vol, target_max_drawdown_pct, окна. Веса в конфиг не вводятся — они результат оптимизации. |
-| **config/client_profiles.yml** | Шаблоны риска по профилям (ultra_conservative … aggressive): rc_block_targets, target_vol_annual, target_max_drawdown_pct. При указании `client_profile` в config.yml недостающие поля подставляются из профиля. |
-| **blocks_universe.yml** | Привязка тикеров к блокам: Growth, Growth_HY, Duration, Inflation, Liquidity, Tail. Каждый тикер из config.tickers должен быть ровно в одном блоке. |
-| **assets.yml** | Метаданные активов (например валюта). Опционально. |
+| **config.yml** | Тикеры, валюта, профиль, ликвидность, cash_policy, target_vol, target_max_drawdown_pct, `rc_asset_cap_pct`, окна, `output_dir_final`. |
+| **config/client_profiles.yml** | Шаблоны профилей: vol, MaxDD, целевая доходность и др. **Блочный risk budget не используется.** |
+| **assets.yml** | Метаданные активов. Опционально. |
 
-Пример полного конфига: **config.yml.example**.
+Пример: **config.yml.example**. Файла **`blocks_universe.yml`** в текущей модели нет.
 
 ---
 
 ## Документация (источники истины)
 
-- **Политика и метрики**  
-  - [Portfolio Construction Policy](docs/portfolio_construction_policy.md) — роли блоков, иерархия правил, mandate, risk budget, stress.  
-  - [Metrics Specification](metrics_specification.md) — формулы метрик, окна, ddof=1, RC_vol, FX.  
-  - [PROJECT_RULES.md](PROJECT_RULES.md) — стандарт частоты, дат, бенчмарков.
+Пути ниже — от **корня репозитория** (папка с `run_optimization.py`):
 
-- **Данные и бэктест**  
-  - [Data policy, NaN, young ETFs](docs/data_policy_nan_young_etfs.md) — join policy, within-block redistribution, RC-gated fallback.
-
-- **Оптимизация и ограничения**  
-  - [Optimization specs (оглавление)](docs/docs/README.md) — ссылки на спеки по блокам и ликвидности.  
-  - [Feasibility constraints](docs/docs/feasibility_constraints_spec.md) — RC cap, weight caps, Growth HY/EM_debt.  
-  - [Optimization run checks](docs/optimization_run_checks.md) — точки отказа, сеть, противоречия параметров.
-
-- **Стресс и View After Optimization**  
-  - [Stress testing spec](docs/docs/stress_testing_spec.md) — сценарии, Loss/Role/RC, коды FAIL.  
-  - [View After Optimization](docs/docs/view_after_optimization_spec.md) — единственный разрешённый «тильт» после оптимизации.
+- [Portfolio Construction Policy](../docs/portfolio_construction_policy.md)  
+- [Metrics Specification](../metrics_specification.md)  
+- [Data policy, NaN, young ETFs](../docs/data_policy_nan_young_etfs.md)  
+- [Feasibility constraints](../docs/docs/feasibility_constraints_spec.md)  
+- [Optimization run checks](../docs/optimization_run_checks.md)  
+- [Stress testing spec](../docs/docs/stress_testing_spec.md)  
+- [Production workflow](../docs/production_workflow.md)  
+- [View After Optimization](../docs/docs/view_after_optimization_spec.md)  
 
 ---
 
 ## Дополнительно
 
-- **View After Optimization:** отдельный скрипт `run_view_after_optimization.py` (см. спеку выше).  
-- **MaxDD gate:** при заданном `target_max_drawdown_pct` превышение лимита по стрессу или реализованной просадке блокирует запись весов (см. run_result.json и статус FAIL_MAX_DD).
+- **View After Optimization:** `run_view_after_optimization.py`.  
+- **Мандат MaxDD:** только **реализованная** просадка на полной пересекающейся истории → **FAIL_MANDATE**; стресс **DIAG_*** не блокирует выпуск весов при успешном мандате.

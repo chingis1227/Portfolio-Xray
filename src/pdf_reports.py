@@ -566,20 +566,6 @@ def build_ew_rp_markdown(comp: dict[str, Any]) -> str:
             f"{_escape_md_cell(_fmt_scalar(delta_m.get(k), pct=pct))} |\n"
         )
 
-    eq_rb = ew.get("rc_block") or {}
-    rp_rb = rp.get("rc_block") or {}
-    d_rb = (comp.get("delta") or {}).get("rc_block") or {}
-    blocks = sorted(set(eq_rb.keys()) | set(rp_rb.keys()))
-    parts.append("\n## Структура риска по смысловым блокам\n\n")
-    parts.append("*(Показано, **какая часть «общего» риска** приходится на каждый сегмент, в смысле вклада в волатильность портфеля.)*\n\n")
-    parts.append("\n| Блок | Равные веса | Risk parity | Разница (EW − RP) |\n| --- | ---: | ---: | ---: |\n")
-    for b in blocks:
-        parts.append(
-            f"| **{b}** | {_escape_md_cell(_fmt_scalar(eq_rb.get(b), pct=True))} | "
-            f"{_escape_md_cell(_fmt_scalar(rp_rb.get(b), pct=True))} | "
-            f"{_escape_md_cell(_fmt_scalar(d_rb.get(b), pct=True))} |\n"
-        )
-
     top = comp.get("rc_vol_top5_asset") or {}
     eq5 = top.get("equal_weight") or {}
     rp5 = top.get("risk_parity") or {}

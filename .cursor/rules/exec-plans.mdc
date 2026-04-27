@@ -1,0 +1,18 @@
+---
+description: Use ExecPlans (per PLANS.md) for complex features and large refactors
+alwaysApply: true
+---
+
+# ExecPlans
+
+The repository root file **`PLANS.md`** is the source of truth for what an execution plan (ExecPlan) is and how to write and maintain it.
+
+For **non-trivial work** — in particular **complex features**, **significant refactors**, **multi-file architectural changes**, or **high-risk / ambiguous** tasks — you must:
+
+1. **Design first:** Draft or update an ExecPlan (living document) that follows `PLANS.md` _to the letter_ — self-contained, novice-guiding, with the required sections (including Progress, Surprises & Discoveries, Decision Log, Outcomes & Retrospective, and the rest of the skeleton in `PLANS.md`).
+
+2. **Implement from the plan:** Execute milestones in order, keep the ExecPlan updated at stopping points, and do not treat the plan as a one-off handoff — revise it as decisions and discoveries land.
+
+3. **If context is missing:** Re-read the full `PLANS.md` before authoring or changing an ExecPlan.
+
+**Small, localized fixes** (single obvious bug, typo, one-liner) do not require a separate ExecPlan unless the user asks for one.

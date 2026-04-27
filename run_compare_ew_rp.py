@@ -25,6 +25,7 @@ from src.config import (
 )
 from src.data_loader import load_monthly_data_shared
 from src.metrics_asset import time_to_recovery
+from src.optimization import get_risk_portfolio_tickers
 from src.portfolio_dynamic import portfolio_returns_nan_safe
 from src.risk_contrib import cov_matrix_monthly
 from src.utils import logger, setup_logging
@@ -149,13 +150,6 @@ def _load_variant_payload(project_root: Path, folder_name: str) -> dict[str, Any
     var_es = _read_one_row_csv(var_es_csv) if var_es_csv.exists() else {}
     eee = _read_one_row_csv(eee_csv) if eee_csv.exists() else {}
 
-    rc_block_items = snapshot.get("RC_block") or []
-    rc_block = {
-        str(x.get("block")): float(x.get("rc_pct"))
-        for x in rc_block_items
-        if x.get("block") is not None and x.get("rc_pct") is not None
-    }
-
     return {
         "label": summary.get("portfolio_type") or folder_name,
         "status": summary.get("status"),
@@ -168,7 +162,6 @@ def _load_variant_payload(project_root: Path, folder_name: str) -> dict[str, Any
         "metrics": summary.get("metrics_10y") or {},
         "analytics": snapshot.get("analytics") or {},
         "rc_asset": rc_asset,
-        "rc_block": rc_block,
         "var_es": var_es,
         "eee": eee,
     }
@@ -188,7 +181,8 @@ def _compute_extra_metrics(
     target_weights = {t: float(weights.get(t, 0.0)) for t in cfg.tickers}
 
     cov_df_nan_safe = None
-    if cfg.blocks and cfg.rc_block_targets and asset_returns_df.shape[0] >= 2:
+    risk_rt = get_risk_portfolio_tickers(cfg.tickers, cfg.cash_proxy_ticker)
+    if risk_rt and asset_returns_df.shape[0] >= 2:
         ret_inner = asset_returns_df.dropna(how="any").iloc[-720:]
         if len(ret_inner) >= 2:
             cov_df_nan_safe = cov_matrix_monthly(ret_inner, ddof=1)
@@ -197,8 +191,7 @@ def _compute_extra_metrics(
         asset_returns_df,
         target_weights,
         cash_returns.reindex(asset_returns_df.index).fillna(0.0),
-        blocks=cfg.blocks,
-        rc_block_targets=cfg.rc_block_targets,
+        risk_tickers=risk_rt,
         rc_asset_cap_pct=cfg.rc_asset_cap_pct,
         cov_df=cov_df_nan_safe,
         return_diagnostics=True,
@@ -333,12 +326,6 @@ def main() -> None:
         for t in all_tickers
     }
 
-    all_blocks = sorted(set(eq.get("rc_block", {}).keys()) | set(rp.get("rc_block", {}).keys()))
-    delta_rc_block = {
-        b: _round_scalar(_safe_delta(eq.get("rc_block", {}).get(b), rp.get("rc_block", {}).get(b)))
-        for b in all_blocks
-    }
-
     eq_analytics = eq.get("analytics") or {}
     rp_analytics = rp.get("analytics") or {}
 
@@ -383,7 +370,6 @@ def main() -> None:
             "portfolio_valid": eq.get("portfolio_valid"),
             "metrics": _round_dict(eq_flat),
             "rc_asset": _round_dict(eq.get("rc_asset") or {}),
-            "rc_block": _round_dict(eq.get("rc_block") or {}),
         },
         "risk_parity": {
             "label": rp.get("label"),
@@ -393,12 +379,10 @@ def main() -> None:
             "portfolio_valid": rp.get("portfolio_valid"),
             "metrics": _round_dict(rp_flat),
             "rc_asset": _round_dict(rp.get("rc_asset") or {}),
-            "rc_block": _round_dict(rp.get("rc_block") or {}),
         },
         "delta": {
             "metrics": delta_metrics,
             "rc_asset": delta_rc_asset,
-            "rc_block": delta_rc_block,
         },
         "rolling": {
             "sharpe_36m": {
@@ -472,18 +456,6 @@ def main() -> None:
             "Vol stability:",
             f"- vol_of_vol: EW={_fmt(eq_vol_stability.get('vol_of_vol'))} | RP={_fmt(rp_vol_stability.get('vol_of_vol'))} | Delta={_fmt(_safe_delta(eq_vol_stability.get('vol_of_vol'), rp_vol_stability.get('vol_of_vol')))}",
             f"- rel_vol_of_vol: EW={_fmt(eq_vol_stability.get('rel_vol_of_vol'))} | RP={_fmt(rp_vol_stability.get('rel_vol_of_vol'))} | Delta={_fmt(_safe_delta(eq_vol_stability.get('rel_vol_of_vol'), rp_vol_stability.get('rel_vol_of_vol')))}",
-            "",
-            "RC_vol по блокам (EW, RP, Delta):",
-        ]
-    )
-    for b in all_blocks:
-        ew_b = eq.get("rc_block", {}).get(b)
-        rp_b = rp.get("rc_block", {}).get(b)
-        d_b = delta_rc_block.get(b)
-        lines.append(f"- {b}: EW={_fmt(ew_b, pct=True)} | RP={_fmt(rp_b, pct=True)} | Delta={_fmt(d_b, pct=True)}")
-
-    lines.extend(
-        [
             "",
             "RC_vol по каждому активу (EW, RP, Delta):",
         ]

@@ -73,40 +73,6 @@ def _top_weights(weights: dict[str, Any], n: int = 12) -> list[tuple[str, float]
     return items[:n]
 
 
-def _rc_block_list_to_dict(rc_block: Any) -> dict[str, float]:
-    if not rc_block:
-        return {}
-    out: dict[str, float] = {}
-    if isinstance(rc_block, list):
-        for x in rc_block:
-            if isinstance(x, dict) and x.get("block") is not None:
-                out[str(x["block"])] = float(x.get("rc_pct", 0) or 0)
-    return out
-
-
-def _infer_targets(
-    actual: dict[str, float],
-    rb_deltas_pp: dict[str, Any] | None,
-) -> dict[str, float | None]:
-    """target RC ≈ actual − (delta_pp / 100) for Growth/Duration/Inflation."""
-    out: dict[str, float | None] = {}
-    if not rb_deltas_pp:
-        for b in ("Growth", "Duration", "Inflation"):
-            out[b] = None
-        return out
-    for b in ("Growth", "Duration", "Inflation"):
-        a = actual.get(b)
-        d = rb_deltas_pp.get(b)
-        if a is not None and d is not None:
-            try:
-                out[b] = float(a) - float(d) / 100.0
-            except (TypeError, ValueError):
-                out[b] = None
-        else:
-            out[b] = None
-    return out
-
-
 def build_view_model() -> dict[str, Any]:
     out: dict[str, Any] = {
         "project_root": str(PROJECT_ROOT),
@@ -135,58 +101,28 @@ def build_view_model() -> dict[str, Any]:
             snap = json.load(f)
 
     cfg = apply_profile_to_config(dict(_read_yaml_config()))
-    rc_targets_cfg = cfg.get("rc_block_targets")
-    if not isinstance(rc_targets_cfg, dict):
-        rc_targets_cfg = {}
 
     weights = run_result.get("weights") or {}
     status = str(run_result.get("status", "—"))
     mandate = run_result.get("mandate_check") or {}
     stress = run_result.get("stress_summary") or {}
-    rb_deltas = run_result.get("rb_deltas_pp") or {}
     violations = run_result.get("violations") or []
     rc_breaches = run_result.get("rc_breaches") or []
 
-    actual_rc = _rc_block_list_to_dict(snap.get("RC_block"))
-    if not actual_rc and isinstance(run_result.get("rc_by_block_10y"), dict):
-        actual_rc = {k: float(v) for k, v in run_result["rc_by_block_10y"].items()}
-
-    targets: dict[str, float | None] = {}
-    for b in ("Growth", "Duration", "Inflation"):
-        if b in rc_targets_cfg and rc_targets_cfg[b] is not None:
-            try:
-                targets[b] = float(rc_targets_cfg[b])
-            except (TypeError, ValueError):
-                targets[b] = None
-        else:
-            targets[b] = _infer_targets(actual_rc, rb_deltas).get(b)
-
-    rc_rows = []
-    for b in ("Growth", "Duration", "Inflation"):
-        ar = actual_rc.get(b)
-        tr = targets.get(b)
-        dpp = rb_deltas.get(b)
-        if isinstance(dpp, (int, float)):
-            dpp_fmt = f"{float(dpp):+.2f}"
-        else:
-            dpp_fmt = "—"
-        row = {
-            "block": b,
-            "actual": ar,
-            "target": tr,
-            "actual_pct": _fmt_pct(ar) if ar is not None else "—",
-            "target_pct": _fmt_pct(tr) if tr is not None else "—",
-            "delta_pp": dpp,
-            "delta_pp_fmt": dpp_fmt,
-        }
-        if tr is not None and ar is not None:
-            row["gap_pp"] = (ar - tr) * 100.0
-        else:
-            row["gap_pp"] = None
-        rc_rows.append(row)
+    rc_asset_rows: list[dict[str, Any]] = []
+    for x in snap.get("RC_asset") or []:
+        if not isinstance(x, dict):
+            continue
+        t = str(x.get("ticker") or "—")
+        rpct = x.get("rc_pct")
+        rc_asset_rows.append(
+            {
+                "ticker": t,
+                "rc_pct_fmt": _fmt_pct(rpct) if rpct is not None else "—",
+            }
+        )
 
     metrics = snap.get("metrics") or {}
-    block_weights = snap.get("block_weights") or {}
 
     v_lines = _summarize_violations(violations)
     tw = _top_weights(weights, 12)
@@ -208,11 +144,9 @@ def build_view_model() -> dict[str, Any]:
             "mandate_dd_limit_pct": _fmt_pct(mandate.get("limit_pct")),
             "stress": stress,
             "stress_worst_pct": _fmt_pct(stress.get("worst_scenario_loss_pct")),
-            "rb_deltas": rb_deltas,
             "violations": violations,
             "rc_breaches": rc_breaches[:16],
-            "rc_rows": rc_rows,
-            "block_weights": block_weights,
+            "rc_asset_rows": rc_asset_rows,
             "metrics_cagr": _fmt_pct(metrics.get("cagr")) if metrics.get("cagr") is not None else "—",
             "metrics_vol": _fmt_pct(metrics.get("vol_annual")) if metrics.get("vol_annual") is not None else "—",
             "metrics_mdd": _fmt_pct(metrics.get("max_drawdown")) if metrics.get("max_drawdown") is not None else "—",
@@ -238,7 +172,7 @@ def _summarize_violations(violations: list[Any]) -> list[str]:
             )
         elif code == "RB_BREACH" and isinstance(d, dict):
             parts = [f"{bk} {float(dv):+.1f} п.п." for bk, dv in d.items() if isinstance(dv, (int, float))]
-            lines.append("RB коридор: " + (", ".join(parts) if parts else str(d)))
+            lines.append("Профиль риска (отклонения, п.п.): " + (", ".join(parts) if parts else str(d)))
         elif code == "VIOL_RC_ASSET_CAP" and isinstance(d, list):
             for item in d[:6]:
                 if isinstance(item, dict) and "ticker" in item:

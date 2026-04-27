@@ -233,9 +233,9 @@ def run_portfolio_report_for_weights(
     backtest_diagnostics: dict | None = None
     inner_join_months_used: int | None = None  # for risk Σ/RC (used in dynamic mode for gating)
     if backtest_mode == "dynamic_nan_safe":
-        # Policy-compliant: within-block redistribution, RC/RB gating to cash, young ETFs do not truncate history
+        # Policy-compliant: global redistribution among risk tickers, optional RC-gating to cash
         cov_df_nan_safe = None
-        if cfg.blocks and cfg.rc_block_targets and asset_returns_df.shape[0] >= 2:
+        if asset_returns_df.shape[0] >= 2:
             ret_inner = asset_returns_df.dropna(how="any").iloc[-720:]  # inner join, up to 60y for cov
             inner_join_months_used = len(ret_inner)
             if inner_join_months_used >= 2:
@@ -245,21 +245,14 @@ def run_portfolio_report_for_weights(
                     "Inner-join sample for Σ/RC used in backtest gating is %d months (< 36). Risk estimates may be noisy.",
                     inner_join_months_used,
                 )
-        _n_rb = max(len(get_risk_portfolio_tickers(cfg.blocks)), 1)
-        _rc_cap_map = build_rc_cap_per_ticker(
-            cfg.blocks,
-            cfg.rc_block_targets,
-            cfg.rc_asset_cap_pct,
-            getattr(cfg, "rc_cap_mode", "global"),
-            float(getattr(cfg, "rc_cap_rb_k_multiplier", 1.25)),
-            _n_rb,
-        )
+        risk_rt = get_risk_portfolio_tickers(cfg.tickers, cfg.cash_proxy_ticker)
+        _n_rb = max(len(risk_rt), 1)
+        _rc_cap_map = build_rc_cap_per_ticker(risk_rt, cfg.rc_asset_cap_pct, _n_rb)
         result = portfolio_returns_nan_safe(
             asset_returns_df,
             target_weights,
             cash_returns,
-            blocks=cfg.blocks,
-            rc_block_targets=cfg.rc_block_targets,
+            risk_tickers=risk_rt,
             rc_asset_cap_pct=cfg.rc_asset_cap_pct,
             cov_df=cov_df_nan_safe,
             return_diagnostics=True,
@@ -267,7 +260,7 @@ def run_portfolio_report_for_weights(
         )
         portfolio_returns, weights_used, backtest_diagnostics = result
         logger.info(
-            "Backtest mode: dynamic_nan_safe (NaN-safe with within-block redistribution and RC-gating)."
+            "Backtest mode: dynamic_nan_safe (NaN-safe with global redistribution and RC-gating)."
         )
     else:
         # Simple (opt-in): no within-block redistribution, no RC-gating
@@ -488,16 +481,13 @@ def run_portfolio_report_for_weights(
     stress_report = run_stress(
         tickers=tickers,
         weights=weights,
-        blocks=cfg.blocks,
         monthly_returns=monthly_returns,
         asset_betas=asset_betas_df,
         portfolio_betas=portfolio_betas_dict,
         target_max_drawdown_pct=cfg.target_max_drawdown_pct,
         rc_asset_cap_pct=cfg.rc_asset_cap_pct,
         stress_top3_rc_sum_cap_pct=stress_top3_cap,
-        rc_cap_mode=getattr(cfg, "rc_cap_mode", "global"),
-        rc_cap_rb_k_multiplier=float(getattr(cfg, "rc_cap_rb_k_multiplier", 1.25)),
-        rc_block_targets=cfg.rc_block_targets,
+        cash_proxy_ticker=cash_proxy_ticker,
     )
     stress_report["factor_betas_5y"] = {k: round(v, 4) for k, v in (portfolio_betas_5y_dict or {}).items()}
     stress_report["factor_betas_10y"] = {k: round(v, 4) for k, v in (portfolio_betas_10y_dict or {}).items()}
@@ -696,7 +686,6 @@ def run_portfolio_report_for_weights(
     max_dd_ok = mandate_chk.get("pass") if cfg.target_max_drawdown_pct is not None else None
     snapshot = build_snapshot(
         final_weights_total=weights,
-        blocks=cfg.blocks,
         cash_proxy_ticker=cash_proxy_ticker,
         analysis_end=analysis_end_str,
         stress_report=stress_report,
@@ -707,7 +696,6 @@ def run_portfolio_report_for_weights(
         target_vol_annual=cfg.target_vol_annual,
         current_vol_annual=portfolio_metrics_summary.get("vol_annual") if portfolio_metrics_summary else None,
         max_dd_ok=max_dd_ok,
-        rc_block_targets=cfg.rc_block_targets,
         rc_caps_ok=None,
         min_single_security_weight_pct=cfg.min_single_security_weight_pct,
         max_single_security_weight_pct=cfg.max_single_security_weight_pct,
@@ -750,7 +738,6 @@ def run_portfolio_report_for_weights(
             window_label=label,
             window_months=pm.get("window_months", 36 if label == "3y" else 60 if label == "5y" else 120),
             final_weights_total=weights,
-            blocks=cfg.blocks,
             cash_proxy_ticker=cash_proxy_ticker,
             analysis_end=analysis_end_str,
             stress_report=stress_report,

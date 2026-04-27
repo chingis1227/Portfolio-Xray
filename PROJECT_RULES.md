@@ -1,6 +1,6 @@
 # Project Rules — Portfolio Metrics Standard
 
-Always follow metrics_specification.md for all metric definitions, estimators, frequency, FX, and windowing. Do not invent formulas. For stress testing (scenarios, Loss/Role/RC tests, factor and historical validation), use **docs/docs/stress_testing_spec.md** as the source of truth.
+Always follow metrics_specification.md for all metric definitions, estimators, frequency, FX, and windowing. Do not invent formulas. For stress testing (scenarios, Loss and RC concentration tests, factor and historical validation), use **docs/docs/stress_testing_spec.md** as the source of truth.
 
 **Stress factor betas** (outputs in `stress_report.json`): estimated on **weekly** aligned data (Friday week-ends). Regression windows ending at **`analysis_end`** are **`FACTOR_WEEKS_5Y = 260`** and **`FACTOR_WEEKS_10Y = 520`** in **`src/stress_factors.py`** (`compute_asset_factor_betas_weekly`). **`factor_betas`** duplicates **`factor_betas_5y`** for backward compatibility. Do not use a 156-week or monthly window for this pipeline unless the spec is explicitly changed.
 
@@ -156,7 +156,7 @@ There are two types of beta — do not confuse them.
 
 ### FOR PORTFOLIO WITH GIVEN WEIGHTS (windows 3Y / 5Y / 10Y monthly)
 
-• 10Y: base "structural" estimate and full cycle. Use as anchor for long-term conclusions (average return, base volatility, base correlations, base beta_base).
+• 10Y: primary long-horizon estimate and full cycle. Use as anchor for long-term conclusions (average return, base volatility, base correlations, base beta_base).
 
 • 5Y: test whether the structure is still valid in the current regime. If 5Y diverges strongly from 10Y, the regime likely changed and 10Y cannot be used without adjustments.
 
@@ -168,7 +168,7 @@ There are two types of beta — do not confuse them.
 
 – Volatility: monthly and annualized on simple returns
 
-– Correlation / Covariance / RC_vol: compute on the same simple returns (single base for risk budget and risk contributions)
+– Correlation / Covariance / RC_vol: compute on the same simple returns (single base for risk analytics and risk contributions)
 
 – Max Drawdown + Time to Recovery: computed on simple returns using the equity curve (peak-to-trough; recovery = period until equity ≥ peak)
 
@@ -229,7 +229,7 @@ MaxDD shows the depth of losses, while drawdown structure shows how long the por
 
 Compute MRC (marginal risk contribution) and CTR / RC_vol (component risk contribution) for each asset using the covariance matrix of simple returns.
 
-Additionally aggregate RC across structural blocks (Growth / Duration / Inflation) to monitor risk budgets.
+Portfolio construction does **not** use structural sector blocks (Growth / Duration / Inflation) or block-level risk budgets; monitor concentration using **per-asset** RC_vol and policy caps (see **docs/portfolio_construction_policy.md**).
 
 ### RETURN ATTRIBUTION
 
@@ -311,9 +311,9 @@ Purpose: evaluate distribution of future outcomes rather than predict markets.
 
 Method:
 
-Run 100,000 simulations using block bootstrap.
+Run 100,000 simulations using **block bootstrap** (resampling contiguous **time segments** of returns — statistical “blocks”, not portfolio sector buckets).
 
-Randomly construct future paths by stitching real historical return blocks (3–12 months) to preserve tails and regime persistence.
+Randomly construct future paths by stitching those historical segments (3–12 months) to preserve tails and regime persistence.
 
 Data:
 
@@ -367,7 +367,7 @@ Decompose portfolio ES by assets to identify tail-risk contributors and enforce 
 
 • Use rule:
 
-If ES deteriorates, validate against historical stress periods (2008 / 2020 / 2022) before changing risk budgets or weights.
+If ES deteriorates, validate against historical stress periods (2008 / 2020 / 2022) before changing risk limits, mandate, or target weights.
 
 ### EXPECTED RETURN
 

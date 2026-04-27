@@ -19,4 +19,4 @@ alwaysApply: true
 
 7. **Агент:** при «прогони только RP / EW / Main» или policy-optimize — по завершении **обязательно** убедиться, что PDF пересобраны (лог `PDF written` или явный запуск `rebuild_pdf_reports.py` с нужным флагом); не оставлять устаревшие PDF относительно последнего прогона.
 
-8. **Main optimization:** по умолчанию `run_optimization.py` — **двухэтапная** схема (см. `docs/two_stage_optimization.md`); для сопоставления со старыми прогонами — флаг `--single-stage`.
+8. **Main optimization:** `run_optimization.py` — **одностадийная** схема (max expected return + soft targets + RC caps + ProLiquidity); флага `--single-stage` нет.

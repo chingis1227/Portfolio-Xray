@@ -1,6 +1,6 @@
 # Data Policy, NaN and “Young” ETFs: Single Logic (No Rewriting of History)
 
-This document defines the data policy, handling of missing data (NaN), treatment of newly listed (“young”) ETFs, the dynamic NaN-safe backtest, and the baseline-vs-full comparison. It complements the general NaN-safe portfolio rule in **.cursor/rules/portfolio-metrics.mdc** by specifying within-block redistribution, RC-gated fallback, and reporting requirements.
+This document defines the data policy, handling of missing data (NaN), treatment of newly listed (“young”) ETFs, the dynamic NaN-safe backtest, and the baseline-vs-full comparison. It complements the general NaN-safe portfolio rule in **.cursor/rules/portfolio-metrics.mdc** by specifying **global** redistribution among risk tickers, RC-gated fallback, and reporting requirements.
 
 ---
 
@@ -33,34 +33,17 @@ This document defines the data policy, handling of missing data (NaN), treatment
 
 The portfolio is computed **period by period**. In each period *t*, only assets with an observed return participate.
 
-### NaN Policy: Equal Redistribute Within-Block + RC-Gated (Fallback to Cash)
+### NaN Policy: Equal Redistribute Among Risk Tickers + RC-Gated (Fallback to Cash)
 
-If an asset in block *X* has no return (NaN) in period *t*, it is temporarily excluded. Its target weight is **redistributed only within the same block *X*** in equal shares among the **available** assets of that block.
+Risk tickers are all portfolio names **except** the cash proxy (e.g. BIL). If a risk asset has no return (NaN) in period *t*, it is temporarily excluded. Its target weight is **redistributed in equal shares** among the **other risk tickers** that have a valid return in *t*.
 
-Then the following safeguards are mandatory:
+Then:
 
-1. Recompute **RC_vol** (and, if applicable, block weights relative to the RB corridor).
-2. If after redistribution:
-   - **RC_asset_cap** is violated, or  
-   - the block moves outside the **RB corridor** (when a corridor is defined),  
-   then the shortfall weight **w_miss** goes to the **cash proxy** (fallback), and must not increase risk.
-3. Always respect:
-   - **min_weight**
-   - **weight caps**
+1. Recompute **RC_vol** on the post-redistribution weights using the policy covariance window.
+2. If after redistribution **RC_asset_cap** would be violated, fall back to the simple rule: no redistribution — missing weight flows to **cash proxy** for that month.
+3. Always respect **min_weight** and **weight caps** where enforced by the optimizer / post-process.
 
-### Formal Rule for Period *t*
-
-- Let the missing weight in block *X* be **w_miss**.
-- Let there be **K** available assets in block *X*.
-- Then each available asset in the block receives an increment: **Δ = w_miss / K**.
-- Weights within the block are updated: **w_i' = w_i + Δ** (only for assets in block *X* with data).
-
-Then check:
-
-- If **RC_asset_cap** and the **RB corridor** are satisfied → use **w_i'**.
-- If not → transfer part of the weight to the cash proxy until constraints are satisfied.
-
-**Meaning:** missing weight is not spread across the whole portfolio; the role of the block is preserved, but redistribution must not break RC or the RB architecture.
+**Meaning:** NaN months do not rewrite history; redistribution is global across the risk sleeve, and RC caps still gate tail risk from “invented” concentration.
 
 ---
 
@@ -97,7 +80,7 @@ To avoid decisions driven by a “nice” but regime-dependent segment:
 
 - **Join policy:** inner for cov/RC; outer for single-asset charts.
 - **Inception dates** and **effective inclusion dates** (first full monthly point).
-- **NaN policy:** within_block_equal_rc_gated + fallback rules to cash proxy.
+- **NaN policy:** global_equal_among_risk_rc_gated + fallback rules to cash proxy.
 - **Baseline vs full** metrics and the **comparison period** (after inception).
 
 ---
@@ -107,7 +90,7 @@ To avoid decisions driven by a “nice” but regime-dependent segment:
 For **mean–variance / RC_vol inputs used by the policy optimizer** (primary and secondary windows), the pipeline may use a **dual covariance** so the estimation window is not collapsed to the shortest-listed history:
 
 - **Eligible** assets (default: ≥ 48 months of observations in the optimization window) form the **core** matrix via the usual synchronous sample on that core set only.
-- **Candidate** (default: 12–47 months) and **new** (< 12 months) assets get pairwise covariances from their available overlap with each peer, **shrunk** toward the **median covariance of the core block–block slice** (same Growth/Duration/Inflation role as in RB mapping). Shrinkage weight for “new” uses `new_shrinkage_alpha` (default 0.1); between candidate bounds it ramps linearly to 1.0 at eligibility.
+- **Candidate** (default: 12–47 months) and **new** (< 12 months) assets get pairwise covariances from their available overlap with each peer, **shrunk** toward the **median covariance of the eligible core slice** (single pooled “Risk” anchor for pairwise anchors). Shrinkage weight for “new” uses `new_shrinkage_alpha` (default 0.1); between candidate bounds it ramps linearly to 1.0 at eligibility.
 - **Weight cap:** candidate and new tickers are capped by `max_weight_candidate_or_new_pct` (default 2% each).
 - **Warning (not a hard fail):** if the **sum of optimized RiskPortfolio weights** of all candidate + new tickers exceeds `aggregate_candidate_new_warn_pct` (default 10%), `run_result.json` records `WARN_MODEL_RISK_YOUNG_WEIGHT`.
 - **Fallback:** if fewer than two eligible assets exist, optimization reverts to the legacy **full inner join** covariance on all risk tickers in the window.

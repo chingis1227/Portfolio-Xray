@@ -1,71 +1,40 @@
 # Production Workflow: What Blocks, What Does Not
 
-This document is the single source of truth for **what prevents writing portfolio weights** and **how to interpret run status** when using the system in production. It aligns with **portfolio_construction_policy.md** § Production workflow (implementation).
+Единый ориентир: **что мешает записать веса** и **как читать статус** после `run_optimization.py`. Согласовано с **`docs/portfolio_construction_policy.md`** (production workflow).
 
 ---
 
-## 1. Hard gate (weights NOT written)
+## 1. Жёсткие остановы (веса не записаны или прогон оборван)
 
-Weights are **not** written when any of the following holds:
+Типичные случаи (точный список см. в коде `run_optimization.py` и сообщениях лога):
 
-| Gate | Condition | Result |
-|------|-----------|--------|
-| **FAIL_MANDATE** | Mandate `target_max_drawdown_pct` is set and **realized portfolio max drawdown on the full overlapping monthly history** (all months where every held asset has a return) is **worse** than the limit, **or** the check is **inconclusive** (insufficient overlapping history) | Weights are **not** written. `run_result.json` has `status: FAIL_MANDATE`, `mandate_check` with period and depth, empty `weights`, and `next_actions`. |
+| Gate | Смысл |
+|------|--------|
+| **FAIL_MANDATE** | Задан `target_max_drawdown_pct` и **реализованная** max drawdown портфеля на **полной пересекающейся** месячной истории хуже лимита, либо проверка **невозможна** (мало данных). В `run_result.json`: `status`, `mandate_check`, пустые или нефинальные веса по политике прогона. |
+| **FAIL_DATA** | Невалидный конфиг, нет данных, не считается ковариация и т.п. |
+| **FAIL_RC** | Строгий режим постобработки RC: нельзя удовлетворить cap — веса не выпускаются (см. лог и `run_result.json`). |
 
-**Stress / scenarios:** Synthetic scenario losses (equity −40%, etc.), historical **episodes** (2008 / 2020 / 2022 windows), Role/RC concentration flags, and **`DIAG_*` codes** are **diagnostic only**. They **never** block weight release. Config `strict_stress_gate` is **deprecated** (logged warning only).
+**Стресс (`run_stress`):** синтетические сценарии, исторические окна 2008/2020/2022, коды **DIAG_*** — **только диагностика**. Они **не** отменяют запись весов при успешном прохождении мандата. Параметр `strict_stress_gate` **не используется как жёсткий стоп** (устаревшее имя может логироваться).
 
-All other checks (RB corridor, RC caps, feasibility) either cause an early exit without optimization (FAIL_FEASIBILITY, FAIL_DATA, FAIL_RC) or are recorded as **violations** while weights **are still written**.
-
-RB target search order used by optimization:
-
-1. midpoint target from `rc_block_targets`;
-2. profile `min/max` range search (if `rc_block_target_ranges` is available);
-3. expanded range search (`min - 5 pp`, `max + 5 pp`, clipped to `[0, 1]`).
-
-**Default `run_optimization.py` (two-stage):** this search runs in **stage 1** (`risk_skeleton`) only. **Stage 2** holds the **selected** triple fixed (see **docs/two_stage_optimization.md**). **`--single-stage`** uses the same search order once, in a single `max_return` pass.
-
-The RB corridor validator is applied to each tested target and still uses target ± 5 pp by default.
-
-`run_result.json` includes `rb_target_selection` with:
-- `stage`: `midpoint` | `range` | `expanded`
-- `target`: selected RC target for `Growth/Duration/Inflation`
+**Блочный risk budget и коридор RB по Growth/Duration/Inflation** в текущей версии **отсутствуют**; статусов вида **CANDIDATE_RB_BREACH** и полей **`rb_target_selection`** в новых прогонах **нет**.
 
 ---
 
-## 2. Early exits (no optimization or no weights)
+## 2. Успешная запись весов и статусы
 
-| Status | When | Weights written? |
-|--------|------|------------------|
-| **FAIL_DATA** | Invalid config, missing data, or insufficient history after inner join | No |
-| **FAIL_FEASIBILITY** | Structural RB achievability check fails (e.g. not enough instruments in a block to meet risk budget) | No |
-| **FAIL_RC** | RC post-processing cannot satisfy RC caps and `rc_policy_mode` is strict | No |
-| **FAIL_MANDATE** | Historical max drawdown vs mandate failed or inconclusive (see §1) | No |
+Когда мандат и прочие жёсткие проверки пройдены, веса записываются. В `run_result.json`:
 
-**Legacy:** Older runs may show `FAIL_MAX_DD` / `FAIL_STRESS` in archived `run_result.json`; current `run_optimization.py` emits **`FAIL_MANDATE`** for the mandate gate and does **not** block on stress status.
+| Status | Смысл |
+|--------|--------|
+| **APPROVED** | Нет fallback по оптимизатору, нет нарушений per-asset RC cap (`rc_breaches` пуст). |
+| **OK_FALLBACK** | Был fallback оптимизатора и/или зафиксированы нарушения RC cap — смотреть `violations` и `rc_breaches`. |
 
-In all **blocking** cases, `run_result.json` is written with the corresponding status, empty or no weights, and `next_actions` for remediation.
+Дополнительно в `violations` могут попасть диагностические записи по стрессу (**`FAIL_STRESS`** / флаг с `diagnostic_only`) — для PM, **не** как запрет на использование весов, если нет **FAIL_MANDATE**.
 
 ---
 
-## 3. Successful write with status and violations
+## 3. Кратко
 
-When the **mandate** gate passes, weights are written. Status and violations indicate quality:
-
-| Status | Meaning | Use weights for execution? |
-|--------|---------|-----------------------------|
-| **APPROVED** | RB within corridor, no RC breach, no solver fallback | Yes. Safe to use as target weights. |
-| **CANDIDATE_RB_BREACH** | Realized block RC (Growth/Duration/Inflation) is outside target ± corridor (e.g. ±5 pp) | Use with caution. Consider re-running with wider corridor or more instruments; or accept and monitor. |
-| **OK_FALLBACK** | Solver used fallback and/or per-asset RC cap is violated (see `rc_breaches` in run_result) | Check `run_result.json` violations and `rc_breaches`. If acceptable for mandate, can use; otherwise re-run or relax constraints. |
-
-**Stress diagnostics:** If `stress_diagnostic_report.status == DIAG_ATTENTION`, a violation with code **`FAIL_STRESS`** may be listed with `details.note = diagnostic_only` — **informational**, not a block. Use `stress_summary.diagnostic_codes` and `stress_diagnostic_report` for PM review.
-
----
-
-## 4. Summary
-
-- **Only FAIL_MANDATE** (historical MaxDD on full overlapping sample vs limit) is the stress/mandate **hard** gate for `run_optimization.py`.
-- **FAIL_DATA, FAIL_FEASIBILITY, FAIL_RC** are other early exits: no weights file.
-- **APPROVED / CANDIDATE_RB_BREACH / OK_FALLBACK** mean weights were written; use status and `violations` to decide execution and re-runs.
-- **Scenario and episode stress** outputs are for **reports and PM diagnostics** only.
-
-See **portfolio_construction_policy.md** §2 (Rule hierarchy) and § Production workflow (implementation) for the full policy context.
+- **Блокирует выпуск весов:** прежде всего **FAIL_MANDATE**, а также **FAIL_DATA**, **FAIL_RC** (strict) и аналогичные ошибки данных/конфига.
+- **Не блокирует:** сценарный стресс и коды **DIAG_***.
+- Подробности правил конструкции портфеля — **`docs/portfolio_construction_policy.md`**.

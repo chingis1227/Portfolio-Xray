@@ -17,15 +17,13 @@ import yaml
 
 _cfg_log = logging.getLogger(__name__)
 
-from src.client_profiles import apply_profile_to_config, get_profile_defaults, normalize_rc_block_targets
+from src.client_profiles import apply_profile_to_config, get_profile_defaults
 
 # Keys written back to config.yml when profile is applied (so file stays in sync with client_profile)
 _PROFILE_SYNC_KEYS = (
     "target_nominal_return_annual",
     "target_vol_annual",
     "target_max_drawdown_pct",
-    "rc_block_targets",
-    "rc_block_target_ranges",
     "liquidity_floor_pct",
 )
 from src.config_schema import (
@@ -84,29 +82,6 @@ def load_weights_file(weights_path: str | Path | None = None, config_path: str |
     return out
 
 
-def load_blocks_universe(config_path: str | Path | None = None) -> dict[str, list[str]] | None:
-    """
-    Load blocks_universe.yml from the same directory as config (or project root if config_path not set).
-    Returns { block_name: [ticker, ...] } or None if file does not exist.
-    Used to resolve which block each config ticker belongs to; unknown tickers then fail validation.
-    """
-    if config_path is None:
-        base = Path(__file__).resolve().parent.parent
-    else:
-        base = Path(config_path).resolve().parent
-    path = base / "blocks_universe.yml"
-    if not path.is_file():
-        return None
-    data = _load_yaml(path)
-    if not data or not isinstance(data, dict):
-        return None
-    out = {}
-    for key, val in data.items():
-        if isinstance(val, list):
-            out[str(key)] = [str(t) for t in val]
-    return out if out else None
-
-
 def _sync_profile_fields_to_config_file(path: Path, merged: dict[str, Any]) -> None:
     """
     Write profile-derived fields back to config.yml so the file matches the selected profile.
@@ -143,10 +118,7 @@ def _sync_profile_fields_to_config_file(path: Path, merged: dict[str, Any]) -> N
 def load_validated_config(config_path: str | Path | None = None) -> PortfolioConfig:
     """
     Load config from config.yml and validate it.
-    If blocks_universe.yml exists next to config, tickers from config are validated against it:
-    each ticker must appear in exactly one block; blocks for this run are derived from the universe.
-    If a ticker is not in any block, ConfigValidationError is raised with a clear message.
-    If client_profile is set, target/risk_budget fields are filled from that profile (midpoints)
+    If client_profile is set, target fields are filled from that profile (midpoints)
     and written back to config.yml so the file stays in sync (comments preserved).
     Used by optimization, run_report (policy portfolio), Equal-Weight and Risk-Parity baselines, and comparisons.
     If portfolio_weights.yml is merged, its ticker set must exactly match config tickers or validation fails.
@@ -178,8 +150,7 @@ def load_validated_config(config_path: str | Path | None = None) -> PortfolioCon
                     "Обновите/удалите portfolio_weights.yml, либо задайте актуальные weights прямо в config.yml."
                 )
             raw["weights"] = file_weights
-    blocks_universe = load_blocks_universe(config_path=path)
-    portfolio_cfg = validate_config(raw, blocks_universe=blocks_universe)
+    portfolio_cfg = validate_config(raw)
     _cfg_log.info("Config source: %s", path)
     _cfg_log.info("Config tickers (%d): %s", len(portfolio_cfg.tickers), portfolio_cfg.tickers)
     return portfolio_cfg
@@ -359,8 +330,8 @@ def apply_profile_override(cfg: PortfolioConfig, profile_id: str) -> None:
         cfg.target_vol_annual = defaults["target_vol_annual"]
     if "target_max_drawdown_pct" in defaults:
         cfg.target_max_drawdown_pct = defaults["target_max_drawdown_pct"]
-    if "rc_block_targets" in defaults:
-        cfg.rc_block_targets = normalize_rc_block_targets(dict(defaults["rc_block_targets"]))
-    if "rc_block_target_ranges" in defaults:
-        cfg.rc_block_target_ranges = dict(defaults["rc_block_target_ranges"])
+    if "liquidity_floor_pct" in defaults:
+        cfg.liquidity_floor_pct = defaults["liquidity_floor_pct"]
+    if cfg.min_single_security_weight_pct is None and "min_single_security_weight_pct" in defaults:
+        cfg.min_single_security_weight_pct = defaults["min_single_security_weight_pct"]
     cfg.client_profile = profile_id

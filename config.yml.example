@@ -43,43 +43,18 @@ beta_local_mapping: {}
 # =============================================================================
 # SECTION 3: PORTFOLIO TICKERS AND WEIGHTS
 # =============================================================================
-# tickers: list of instruments in this portfolio (you set this). If blocks_universe.yml exists
-#   in the project root, each ticker must appear there in exactly one block; blocks are then
-#   derived automatically. If a ticker is not in blocks_universe.yml, validation fails.
-# blocks: optional. Only used when blocks_universe.yml is absent; then fill tickers per block here.
+# tickers: list of instruments (cash proxy, e.g. BIL, is excluded from the risk optimization universe).
 # weights: do not set by hand. Produced by optimization; export and save here after optimization.
 
-# tickers: list (horizontal or vertical). Example horizontal: [VOO, QQQ, GLD, BND, VT]
 tickers: [VOO, QQQ, GLD, BND, VT]
 
-# Uncomment and fill when not using blocks_universe.yml:
-# blocks:
-#   Growth: []
-#   Growth_HY: [JNK, HYG]
-#   Duration: []
-#   Inflation: []
-
 weights: {}
-
-# ---------- Duration / Inflation block selection (docs/docs/optimization_duration_spec.md, optimization_inflation_spec.md) ----------
-# Role tickers are user-provided; at least one per block. Used for candidate scoring (no mean-variance inside D/I).
-# duration_roles: optional; if omitted, Duration universe = blocks.Duration only (no role labels).
-duration_roles:
-  duration_int_ticker: IEF    # intermediate treasuries (null to omit)
-  duration_long_ticker: TLT  # long treasuries (null to omit)
-  duration_ig_ticker: LQD    # investment grade (null to omit)
-
-# inflation_mechanisms: optional; if omitted, Inflation universe = blocks.Inflation, no TIPS/GOLD/COMM floors.
-inflation_mechanisms:
-  tips_ticker: TIP   # CPI protection (null to omit)
-  gold_ticker: GLD   # monetary hedge (null to omit)
-  comm_ticker: PDBC  # commodities / resource shock (null to omit)
 
 # =============================================================================
 # SECTION 4: PORTFOLIO ASSUMPTIONS AND TARGETS
 # =============================================================================
 # client_profile: optional. ultra_conservative | conservative | balanced | growth | aggressive.
-# If set, missing target/rc_block_targets are filled from config/client_profiles.yml. Override manually as needed.
+# If set, missing targets are filled from config/client_profiles.yml. Override manually as needed.
 # Reminder: 1 Ultra Conservative  2 Conservative  3 Balanced  4 Growth  5 Aggressive (full table in Config UI).
 
 client_profile: null
@@ -101,12 +76,10 @@ horizon_years: 10.0
 # =============================================================================
 # SECTION 5: OPTIMIZATION CONSTRAINTS
 # =============================================================================
-# rc_block_targets: from client_profile or set manually (Growth, Duration, Inflation); sum = 1.0.
 # If rc_asset_cap_pct or max_single_security_weight_pct or min_single_security_weight_pct is null or 0,
-# values are taken from docs/docs/feasibility_constraints_spec.md (formulas by N, Nc, Ns, RB).
+# values are taken from docs/docs/feasibility_constraints_spec.md (global RC cap formula by N).
 
 rc_asset_cap_pct: null
-rc_block_targets: null
 # Stress test: Top3 RC sum cap (default 0.70 = 70%). See docs/docs/stress_testing_spec.md.
 stress_top3_rc_sum_cap_pct: 0.70
 max_single_security_weight_pct: null
@@ -140,11 +113,10 @@ secondary_window_months: 60
 robustness_policy:
   enabled: true
   max_weight_change_allowed: 0.10   # 10pp absolute per asset vs 10Y solution
-  max_rc_block_dev_allowed: 0.05    # 5pp deviation in RC by block vs targets (5Y)
   max_asset_rc_dev_allowed: 0.05    # 5pp RC deviation per asset vs 10Y RC
   min_effective_months: 36          # if join leaves < 36 months, FLAG_SHORT_SAMPLE
 
 # Backtest mode (default: dynamic_nan_safe):
-# - dynamic_nan_safe: policy-compliant (within-block redistribution, RC/RB gating to cash, young ETFs do not truncate history)
-# - simple: opt-in simplified mode, no within-block redistribution or RC-gating
+# - dynamic_nan_safe: policy-compliant (global redistribution among risk tickers, RC-gated fallback to cash)
+# - simple: opt-in simplified mode, no redistribution / RC-gating
 backtest_mode: dynamic_nan_safe

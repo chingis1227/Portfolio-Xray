@@ -402,7 +402,7 @@ def write_stress_commentary(
     if scen_rows:
         lines.append(
             "Синтетические сценарии (stress_report.scenario_results): для каждого сценария ниже — "
-            "PnL портфеля, итог pass, флаги loss_ok / role_ok / rc1_ok / rc3_ok и топ-1 вклад в риск (Top1 RC), "
+            "PnL портфеля, итог pass, флаги loss_ok / rc1_ok / rc3_ok и топ-1 вклад в риск (Top1 RC), "
             "как в JSON. pass=false при нарушении любого из тестов сценария."
         )
         for row in scen_rows:
@@ -412,7 +412,7 @@ def write_stress_commentary(
             top1p = row.get("top1_rc_pct")
             lines.append(
                 f"- {sid}: PnL≈{_fmt_pct(pnl)}, pass={row.get('pass')}, "
-                f"loss_ok={row.get('loss_ok')}, role_ok={row.get('role_ok')}, "
+                f"loss_ok={row.get('loss_ok')}, "
                 f"rc1_ok={row.get('rc1_ok')}, rc3_ok={row.get('rc3_ok')}; "
                 f"Top1 RC: {top1a} ({_fmt_pct(top1p, 2)})."
             )
