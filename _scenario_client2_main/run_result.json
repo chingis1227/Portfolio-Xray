@@ -276,10 +276,6 @@
     "max_single_security_weight_pct": null,
     "min_single_security_weight_pct": 0.02,
     "N_rc": 3,
-    "growth_core_candidates": [
-      "VOO",
-      "VT"
-    ],
     "donor_shift_mode": "proportional",
     "rc_policy_mode": "permissive",
     "strict_stress_gate": false,

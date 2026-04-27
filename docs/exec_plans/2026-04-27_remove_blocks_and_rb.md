@@ -15,10 +15,12 @@ After this change, the portfolio system no longer assigns tickers to structural 
 - [x] M2 (частично): новый `docs/portfolio_construction_policy.md`, удалены `two_stage_optimization.md` и `optimization_*_spec.md`; обновлены `data_policy_nan_young_etfs.md`, cursor rules, `config.yml.example`, `config_ui/app.py`.
 - [x] M9: полный цикл Main + EW + RP (Balanced), `run_report` после Main; таблица — `_compare_post_remove_blocks/M9_post_run_2026-04-27.md`.
 - [x] M10: decision point зафиксирован в M9 markdown («замена архитектуры — отдельно»); численные выводы — в таблице M9.
+- [x] (2026-04-27) Стресс: синтетический `pass` только по **Portfolio PnL ≥ −MaxDD**; RC — диагностика (`rc_diagnostic_codes`, `rc_attention_codes`, `WARN_RC_SYNTHETIC_CONCENTRATION`); в JSON сценариев — `pnl_by_asset_pct`, `pnl_by_factor_pct`; исторический эпизод **dotcom** (2000-03-01 — 2002-10-31) в `HISTORICAL_EPISODES`; спека `stress_testing_spec.md` и комментарии синхронизированы.
+- [x] (2026-04-27) Удалены **tail overlay** (`tail_target_weight_pct`, `_apply_tail_overlay`), режим **HEDGE** во view-after; переименование оптимизатора **`run_max_return_optimization`** (вместо `run_risk_budget_optimization`); спека `view_after_optimization_spec.md` переписана под тактический тильт.
 
 ## Surprises & Discoveries
 
-- `run_risk_budget_optimization` уже принимал список `risk_tickers`; старый `run_optimization` передавал dict блоков — исправлено на список колонок.
+- Оптимизатор (`run_max_return_optimization`, ранее историческое имя `run_risk_budget_optimization`) принимает список `risk_tickers`; `run_optimization` передаёт список колонок, не dict блоков.
 - Тест `test_resampled_optimization_helpers` отвязан от `compare_resampled_optimization_main` (раньше были legacy импорты `block_selection` — скрипты переписаны).
 - `docs/docs/stress_testing_spec.md`: в §0–1 добавлено примечание, что Role-тесты сняты с production `run_stress`; §6 остаётся как архив.
 - Каталог `research/`: удалены все Python-скрипты и CSV/TXT артефакты блочных экспериментов; остался только `README.md`.

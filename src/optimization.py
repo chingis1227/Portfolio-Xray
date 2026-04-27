@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 
-from policy_math.feasibility import resolve_weight_caps
+from policy_math.feasibility import resolve_max_weight_per_asset_cap
 from src.risk_contrib import (
     build_rc_cap_per_ticker,
     cov_matrix_monthly,
@@ -40,22 +40,17 @@ def _build_bounds(
     cols: list[str],
     n: int,
     min_weight: float,
-    growth_core_candidates: list[str],
     max_single_security_weight_pct: float | None,
     per_ticker_max_weight: dict[str, float] | None,
 ) -> list[tuple[float, float]]:
-    n_core = sum(1 for t in cols if t in growth_core_candidates)
-    n_sat = len(cols) - n_core
-    caps = resolve_weight_caps(n_total=n, n_core=n_core, n_sat=n_sat, equity_only=False)
-    max_core = float(caps["max_weight_core"] or 0.0)
-    max_sat = float(caps["max_weight_sat"] or 0.0)
+    max_w = float(resolve_max_weight_per_asset_cap(n))
     global_cap: float | None = None
     if max_single_security_weight_pct is not None and max_single_security_weight_pct > 0:
         global_cap = float(max_single_security_weight_pct)
     ptm = per_ticker_max_weight or {}
     bounds: list[tuple[float, float]] = []
     for t in cols:
-        cap = max_core if t in growth_core_candidates else max_sat
+        cap = max_w
         if global_cap is not None:
             cap = min(cap, global_cap)
         if t in ptm:
@@ -72,10 +67,9 @@ def _pc_from_w(w: np.ndarray, cov: np.ndarray) -> np.ndarray:
     return (w * m) / var_p
 
 
-def run_risk_budget_optimization(
+def run_max_return_optimization(
     returns_df: pd.DataFrame,
     risk_tickers: list[str],
-    growth_core_candidates: list[str],
     rc_asset_cap_pct: float | None = None,
     min_single_security_weight_pct: float | None = None,
     max_single_security_weight_pct: float | None = None,
@@ -172,7 +166,7 @@ def run_risk_budget_optimization(
         else MIN_WEIGHT_DEFAULT
     )
     bounds = _build_bounds(
-        cols, n, min_weight, growth_core_candidates,
+        cols, n, min_weight,
         max_single_security_weight_pct, per_ticker_max_weight,
     )
 
@@ -311,7 +305,6 @@ RC_POSTPROCESS_STEP_PCT = 0.005
 def enforce_rc_caps_postprocess(
     weights_risk: dict[str, float],
     cov_df: pd.DataFrame,
-    growth_core_candidates: list[str],
     rc_asset_cap: float | list[float],
     min_weight: float,
     max_single_security_weight_pct: float | None,
@@ -332,7 +325,7 @@ def enforce_rc_caps_postprocess(
         return dict(weights_risk), True, {}
     n = len(cols)
     bounds = _build_bounds(
-        cols, n, min_weight, growth_core_candidates,
+        cols, n, min_weight,
         max_single_security_weight_pct, per_ticker_max_weight,
     )
     cov = cov_df.reindex(index=cols, columns=cols).fillna(0).values
@@ -433,7 +426,6 @@ def _alpha_shift_to_target_vol(
     target_vol_annual: float,
     n_rc: int,
     donor_shift_mode: str,
-    growth_core_candidates: list[str],
 ) -> tuple[dict[str, float], str | None]:
     tickers = [t for t in weights_risk if t in cov_df.columns and t in cov_df.index]
     if not tickers:
@@ -460,8 +452,6 @@ def _alpha_shift_to_target_vol(
     if recipient is None:
         vol_by_ticker = []
         for t in tickers:
-            if t in growth_core_candidates:
-                continue
             idx = tickers.index(t)
             vol_t = float(np.sqrt(cov[idx, idx] * 12)) if cov[idx, idx] > 0 else 0.0
             vol_by_ticker.append((t, vol_t))
@@ -534,21 +524,15 @@ def proliquidity(
     cov_df: pd.DataFrame | None = None,
     n_rc: int = 3,
     donor_shift_mode: str = "proportional",
-    growth_core_candidates: list[str] | None = None,
 ) -> tuple[dict[str, float], str | None]:
     if cash_policy == "prohibited":
-        if (
-            current_vol_annual > target_vol_annual
-            and cov_df is not None
-            and growth_core_candidates is not None
-        ):
+        if current_vol_annual > target_vol_annual and cov_df is not None:
             shifted, err = _alpha_shift_to_target_vol(
                 weights_risk,
                 cov_df,
                 target_vol_annual,
                 n_rc,
                 donor_shift_mode,
-                growth_core_candidates,
             )
             if err:
                 return shifted, err

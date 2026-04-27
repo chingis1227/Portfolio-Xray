@@ -35,7 +35,7 @@ There is **no** `risk_budget` or `rc_block_targets`.
 
 - RC_vol is **percentage contribution to portfolio variance** on the estimation window, computed as in `metrics_specification.md`.
 - **Per-asset cap:** either explicit `rc_asset_cap_pct` or the global formula in `docs/docs/feasibility_constraints_spec.md` §1 from the number of risk assets `N`.
-- **Post-processing:** iterative reduction of weights that violate RC caps may reallocate to liquid core names; `rc_policy_mode` strict vs permissive controls whether weights are written if violations remain.
+- **Post-processing:** iterative reduction of weights that violate RC caps may reallocate to preferred liquid names (e.g. VOO, VT, VTI when present); `rc_policy_mode` strict vs permissive controls whether weights are written if violations remain.
 
 ---
 
@@ -45,13 +45,11 @@ There is **no** `risk_budget` or `rc_block_targets`.
 - **Vol-scaling cash:** when `cash_policy` allows, cash rises so that estimated annual vol moves toward `target_vol_annual`.
 - **Cash prohibited:** alpha-shift toward target vol without cash (see `src/optimization.py`).
 
-**Tail overlay (optional):** `tail_target_weight_pct` reserved for tail ETFs listed in code (`VIXY`, `UVXY`, `SVXY`) if present in `tickers`.
-
 ---
 
 ## 5. Optimization engine
 
-- **Single stage:** `run_risk_budget_optimization` — `max_return` (default) or `risk_parity` for diagnostics.
+- **Single stage:** `run_max_return_optimization` — `max_return` (default) or `risk_parity` for diagnostics.
 - **Young / short-history ETFs:** optional dual covariance (`young_etf_optimization_policy`); no block-based thresholds.
 - **Covariance:** sample monthly covariance; optional Ledoit–Wolf shrinkage via `covariance_shrinkage`.
 
@@ -71,7 +69,7 @@ Synthetic scenarios, historical episodes, per-asset RC concentration checks — 
 
 ## 8. PM view after optimization
 
-Deterministic tilts per `docs/docs/view_after_optimization_spec.md` (updated): funding from **highest RC donors** among other names; gates: weights, vol, MaxDD, RC caps; stress diagnostic only.
+Deterministic **tactical** tilts per `docs/docs/view_after_optimization_spec.md`: funding from **highest RC donors** among other names; gates: weights, vol, MaxDD, RC caps; stress diagnostic only.
 
 ---
 
@@ -83,4 +81,4 @@ Structural RB achievability checks are **removed**. Feasibility reduces to **wei
 
 ## 10. No manual final weights
 
-Final weights come from optimization (+ ProLiquidity + optional tail overlay + RC post-process). PM tilts only through the view-after protocol.
+Final weights come from optimization (+ ProLiquidity + RC post-process). PM tilts only through the view-after protocol.

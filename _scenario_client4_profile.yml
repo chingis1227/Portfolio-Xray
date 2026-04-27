@@ -37,9 +37,7 @@ rc_block_target_ranges:
   Duration: { min: 0.02, max: 0.10 }
   Inflation: { min: 0.02, max: 0.10 }
 
-growth_core_candidates: [VOO, VT]
 min_single_security_weight_pct: 0.02
-tail_target_weight_pct: 0.015
 rc_policy_mode: permissive
 allow_leverage: false
 allow_short_selling: false

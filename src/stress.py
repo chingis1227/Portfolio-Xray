@@ -1,7 +1,13 @@
 """
 Portfolio stress testing per docs/docs/stress_testing_spec.md (asset-level suite).
-Synthetic scenarios, historical episodes, per-asset RC concentration — non-blocking (DIAG_* codes).
-Mandate MaxDD on full history is enforced in run_optimization (FAIL_MANDATE), not here.
+
+Synthetic scenarios are **factor shocks applied to the whole portfolio** (no Growth/Duration/Inflation
+blocks, no role tests). Outputs: portfolio PnL, per-asset PnL, optional per-factor portfolio PnL from
+betas, and RC concentration as **diagnostics only**.
+
+Synthetic **pass** = portfolio PnL vs client mandate max drawdown (same threshold as loss_ok).
+RC Top1/Top3 breaches do not fail the scenario or set DIAG_ATTENTION; they appear in rc_diagnostic_codes
+/ rc_attention_codes. Mandate MaxDD on full history is enforced in run_optimization (FAIL_MANDATE), not here.
 """
 from __future__ import annotations
 
@@ -71,6 +77,7 @@ SCENARIOS = {
 }
 
 HISTORICAL_EPISODES = [
+    ("dotcom", "2000-03-01", "2002-10-31"),
     ("2008", "2007-10-01", "2009-03-31"),
     ("2020", "2020-02-15", "2020-04-30"),
     ("2022", "2021-11-01", "2022-10-31"),
@@ -111,6 +118,47 @@ def _build_warning_code(warning_reason: str | None) -> str | None:
     if not warning_reason:
         return None
     return f"WARN_{warning_reason}"
+
+
+_SHOCK_TO_BETA = (
+    ("shock_eq", "beta_eq"),
+    ("shock_rr", "beta_rr"),
+    ("shock_credit", "beta_credit"),
+    ("shock_inf", "beta_inf"),
+    ("shock_usd", "beta_usd"),
+    ("shock_cmd", "beta_cmd"),
+)
+_BETA_TO_FACTOR_SHORT = {
+    "beta_eq": "eq",
+    "beta_rr": "rr",
+    "beta_credit": "credit",
+    "beta_inf": "inf",
+    "beta_usd": "usd",
+    "beta_cmd": "cmd",
+}
+
+
+def _portfolio_factor_pnl_pct(
+    shock: dict[str, float],
+    portfolio_betas: dict[str, float],
+) -> dict[str, float]:
+    """Portfolio-level PnL contribution per factor: shock_k * beta_port_k (linear factor map)."""
+    out: dict[str, float] = {}
+    for sk, bk in _SHOCK_TO_BETA:
+        if sk not in shock or bk not in portfolio_betas:
+            continue
+        try:
+            bpv = float(portfolio_betas[bk])
+            sv = float(shock[sk])
+        except (TypeError, ValueError):
+            continue
+        short = _BETA_TO_FACTOR_SHORT.get(bk)
+        if short is None:
+            continue
+        prod = round(sv * bpv, 4)
+        if prod != 0.0:
+            out[short] = prod
+    return out
 
 
 def _scenario_return_per_asset(
@@ -183,7 +231,11 @@ def run_stress(
 ) -> dict[str, Any]:
     """
     Diagnostic stress suite (non-blocking). Status: DIAG_PASS | DIAG_PASS_WITH_WARNING | DIAG_ATTENTION.
-    Tests: scenario loss vs mandate, per-asset RC top1 / top3 concentration.
+
+    Synthetic scenarios: factor shocks to the **whole portfolio**; **pass** = portfolio PnL ≥ −mandate MaxDD
+    (same as loss_ok). RC Top1/Top3 vs caps are reported but do not set scenario pass or DIAG_ATTENTION.
+
+    Historical episodes: same row fields; pass = episode max drawdown vs mandate (see spec).
     """
     cash_u = (cash_proxy_ticker or "").strip().upper()
     asset_cols = [t for t in tickers if t in monthly_returns.columns]
@@ -234,28 +286,35 @@ def run_stress(
         loss_ok = portfolio_pnl_pct >= -max_dd_limit
         rc1_ok = top1_rc_pct <= rc_cap + 1e-9
         rc3_ok = top3_rc_sum_pct <= stress_top3_rc_sum_cap_pct
-        scenario_pass = loss_ok and rc1_ok and rc3_ok
+        scenario_pass = loss_ok
 
-        row_diags: list[str] = []
+        loss_diags: list[str] = []
         if not loss_ok:
             c = _build_diagnostic_code("Loss", scenario_id)
             if c:
-                row_diags.append(c)
+                loss_diags.append(c)
+
+        rc_diags: list[str] = []
         if not rc1_ok:
             c = _build_diagnostic_code("RC_Top1", scenario_id)
             if c:
-                row_diags.append(c)
+                rc_diags.append(c)
         if not rc3_ok:
             c = _build_diagnostic_code("RC_Top3", scenario_id)
             if c:
-                row_diags.append(c)
+                rc_diags.append(c)
 
         if portfolio_pnl_pct < worst_loss:
             worst_loss = portfolio_pnl_pct
 
+        pnl_by_asset_pct = {str(asset_cols[i]): round(float(pnl_i[i]), 4) for i in range(len(asset_cols))}
+        pnl_by_factor_pct = _portfolio_factor_pnl_pct(shock, portfolio_betas)
+
         scenario_results.append({
             "scenario_id": scenario_id,
             "portfolio_pnl_pct": round(portfolio_pnl_pct, 4),
+            "pnl_by_asset_pct": pnl_by_asset_pct,
+            "pnl_by_factor_pct": pnl_by_factor_pct,
             "top1_rc_asset": top1_asset,
             "top1_rc_pct": round(top1_rc_pct, 4),
             "top3_rc_assets": top3_assets,
@@ -266,7 +325,8 @@ def run_stress(
             "rc3_ok": rc3_ok,
             "top1_rc_cap_threshold": round(rc_cap, 4),
             "pass": scenario_pass,
-            "diagnostic_codes": row_diags,
+            "diagnostic_codes": loss_diags,
+            "rc_diagnostic_codes": rc_diags,
         })
 
     factor_betas = {k: round(v, 4) for k, v in portfolio_betas.items()}
@@ -347,6 +407,14 @@ def run_stress(
         if h.get("pass") is False:
             _push_diag(h.get("diagnostic_code") or _build_diagnostic_code("Historical", str(h.get("episode", ""))))
 
+    rc_attention_codes: list[str] = []
+    seen_rc: set[str] = set()
+    for s in scenario_results:
+        for c in s.get("rc_diagnostic_codes") or []:
+            if c and c not in seen_rc:
+                seen_rc.add(c)
+                rc_attention_codes.append(c)
+
     hist_inconclusive = any(h.get("pass") is None and h.get("max_dd") is None for h in historical_results)
 
     primary_diagnostic_code = diagnostic_codes[0] if diagnostic_codes else None
@@ -362,18 +430,6 @@ def run_stress(
                 (x["scenario_id"] for x in scenario_results if primary_diagnostic_code in (x.get("diagnostic_codes") or [])),
                 None,
             )
-        elif primary_diagnostic_code.startswith("DIAG_RC_TOP1_"):
-            failed_test = "RC_Top1"
-            failed_scenario = next(
-                (x["scenario_id"] for x in scenario_results if primary_diagnostic_code in (x.get("diagnostic_codes") or [])),
-                None,
-            )
-        elif primary_diagnostic_code.startswith("DIAG_RC_TOP3_"):
-            failed_test = "RC_Top3"
-            failed_scenario = next(
-                (x["scenario_id"] for x in scenario_results if primary_diagnostic_code in (x.get("diagnostic_codes") or [])),
-                None,
-            )
 
     if diagnostic_codes:
         status = "DIAG_ATTENTION"
@@ -383,6 +439,10 @@ def run_stress(
         status = "DIAG_PASS_WITH_WARNING"
         fail_reason_code = None
         warning_code = _build_warning_code("HIST_BORDERLINE")
+    elif rc_attention_codes:
+        status = "DIAG_PASS_WITH_WARNING"
+        fail_reason_code = None
+        warning_code = _build_warning_code("RC_SYNTHETIC_CONCENTRATION")
     else:
         status = "DIAG_PASS"
         fail_reason_code = None
@@ -391,6 +451,7 @@ def run_stress(
     return {
         "status": status,
         "diagnostic_codes": diagnostic_codes,
+        "rc_attention_codes": rc_attention_codes,
         "primary_diagnostic_code": primary_diagnostic_code,
         "fail_reason_code": fail_reason_code,
         "warning_code": warning_code,
@@ -410,6 +471,7 @@ def _empty_report(reason: str) -> dict[str, Any]:
     return {
         "status": "DIAG_PASS_WITH_WARNING",
         "diagnostic_codes": [],
+        "rc_attention_codes": [],
         "primary_diagnostic_code": None,
         "fail_reason_code": None,
         "warning_code": _build_warning_code("DATA_INSUFFICIENT"),

@@ -31,7 +31,7 @@ from src.optimization import (
     portfolio_vol_annual,
     proliquidity,
     rc_by_asset_from_weights,
-    run_risk_budget_optimization,
+    run_max_return_optimization,
 )
 from src.risk_contrib import build_rc_cap_per_ticker, cov_matrix_monthly, resolve_rc_asset_cap
 from src.robustness import compute_robustness_diagnostics, compute_robustness_flags
@@ -39,8 +39,6 @@ from src.snapshot import build_snapshot, print_snapshot, save_snapshot
 from src.stress import run_stress
 from src.utils import logger, setup_logging, tickers_meeting_coverage
 from src.young_etfs_dual_cov import build_dual_covariance_and_mu, per_ticker_young_weight_caps
-
-TAIL_TICKERS_DEFAULT = ("VIXY", "UVXY", "SVXY")
 
 STATUS_APPROVED = "APPROVED"
 STATUS_OK_FALLBACK = "OK_FALLBACK"
@@ -81,27 +79,6 @@ def _build_next_actions(violations: list, stress_report: dict | None) -> list[st
             "Young ETF aggregate weight above warn threshold — consider lower share of candidate/new names or dual-cov settings."
         )
     return actions
-
-
-def _apply_tail_overlay(final_weights: dict[str, float], cfg) -> None:
-    tw = getattr(cfg, "tail_target_weight_pct", None)
-    if tw is None or float(tw) <= 0:
-        return
-    tail_tickers = [t for t in TAIL_TICKERS_DEFAULT if t in cfg.tickers]
-    if not tail_tickers:
-        return
-    tw = float(min(max(float(tw), 0.0), 0.25))
-    others_sum = sum(w for t, w in final_weights.items() if t not in tail_tickers)
-    if others_sum <= 1e-15:
-        return
-    scale = (1.0 - tw) / others_sum
-    for t in list(final_weights.keys()):
-        if t not in tail_tickers:
-            final_weights[t] = final_weights.get(t, 0.0) * scale
-    share = tw / len(tail_tickers)
-    for t in tail_tickers:
-        final_weights[t] = share
-    logger.info("Tail overlay: target=%.2f%% split across %s", tw * 100.0, tail_tickers)
 
 
 def load_monthly_returns(cfg, args) -> tuple[pd.DataFrame, str, pd.Timestamp]:
@@ -212,10 +189,9 @@ def main() -> None:
     tv = getattr(cfg, "target_vol_annual", None)
     tr = getattr(cfg, "target_nominal_return_annual", None)
 
-    weights_risk, status = run_risk_budget_optimization(
+    weights_risk, status = run_max_return_optimization(
         monthly_returns,
         cols_primary,
-        cfg.growth_core_candidates,
         rc_asset_cap_pct=cfg.rc_asset_cap_pct,
         min_single_security_weight_pct=cfg.min_single_security_weight_pct,
         max_single_security_weight_pct=cfg.max_single_security_weight_pct,
@@ -261,7 +237,6 @@ def main() -> None:
     adjusted_risk, rc_postprocess_ok, rc_postprocess_diag = enforce_rc_caps_postprocess(
         weights_risk,
         cov_df,
-        cfg.growth_core_candidates,
         rc_cap_resolved,
         min_weight_rc,
         cfg.max_single_security_weight_pct,
@@ -323,10 +298,9 @@ def main() -> None:
             use_shrinkage_on_core=use_shrinkage,
         )
     if robustness_enabled and secondary_window_months < window_months:
-        weights_5y_risk, status_5y = run_risk_budget_optimization(
+        weights_5y_risk, status_5y = run_max_return_optimization(
             monthly_returns,
             cols_primary,
-            cfg.growth_core_candidates,
             rc_asset_cap_pct=cfg.rc_asset_cap_pct,
             min_single_security_weight_pct=cfg.min_single_security_weight_pct,
             max_single_security_weight_pct=cfg.max_single_security_weight_pct,
@@ -406,13 +380,10 @@ def main() -> None:
         cov_df=cov_df,
         n_rc=cfg.N_rc,
         donor_shift_mode=cfg.donor_shift_mode,
-        growth_core_candidates=cfg.growth_core_candidates,
     )
     if proliquidity_error:
         logger.error("ProLiquidity: %s", proliquidity_error)
         raise SystemExit(1)
-
-    _apply_tail_overlay(final_weights, cfg)
 
     for t in cfg.tickers:
         if t not in final_weights:
@@ -695,10 +666,9 @@ def main() -> None:
     )
     risk_baseline = get_risk_portfolio_tickers([t for t in cfg.tickers if t in baseline_tickers], cfg.cash_proxy_ticker)
     if risk_baseline:
-        weights_baseline, status_baseline = run_risk_budget_optimization(
+        weights_baseline, status_baseline = run_max_return_optimization(
             monthly_returns,
             risk_baseline,
-            cfg.growth_core_candidates,
             rc_asset_cap_pct=cfg.rc_asset_cap_pct,
             min_single_security_weight_pct=cfg.min_single_security_weight_pct,
             max_single_security_weight_pct=cfg.max_single_security_weight_pct,

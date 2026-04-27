@@ -1,9 +1,9 @@
 """
-View After Optimization — tilt protocol (simplified, no risk-budget blocks).
+View After Optimization — tilt protocol (tactical only).
 
-PM chooses view_type (HEDGE | TACTICAL), asset X, delta. Funding sells from other
-positions in descending RC order. Gates: weight bounds, target vol, max DD, per-asset RC caps.
-Stress suite is diagnostic-only (run_stress). Auto-shrink: 5% → 2% → 1%.
+PM increases one asset by delta; funding sells from other positions in descending RC order.
+Gates: weight bounds, target vol, max DD, per-asset RC caps. Stress suite is diagnostic-only (run_stress).
+Auto-shrink: 5% → 2% → 1%.
 """
 from __future__ import annotations
 
@@ -18,7 +18,6 @@ from src.optimization import portfolio_vol_annual, rc_by_asset_from_weights
 from src.risk_contrib import build_rc_cap_per_ticker, cov_matrix_monthly, resolve_rc_asset_cap
 
 DELTA_MENU_PCT = [5.0, 2.0, 1.0]
-HEDGE_BENEFIT_NAV_MIN = 0.005
 
 
 def _get_donors_ordered(
@@ -68,7 +67,6 @@ def _compute_funding(
 
 def run_view_after_optimization(
     baseline_weights: dict[str, float],
-    view_type: str,
     asset: str,
     delta_choice_pct: float,
     monthly_returns: pd.DataFrame,
@@ -123,7 +121,6 @@ def run_view_after_optimization(
         return _report_rejected(
             baseline_weights,
             baseline_stress,
-            view_type,
             asset,
             delta_choice_pct,
             broken_gate="mandate",
@@ -233,32 +230,7 @@ def run_view_after_optimization(
             continue
 
         broken_gate = None
-
-        if view_type == "HEDGE":
-            base_worst = baseline_stress.get("worst_scenario_loss_pct")
-            tilt_worst = tilted_stress.get("worst_scenario_loss_pct")
-            if base_worst is not None and tilt_worst is not None:
-                if tilt_worst >= base_worst + HEDGE_BENEFIT_NAV_MIN:
-                    outcome_status = "TILT_ACCEPTED"
-                    key_metric_values["hedge_benefit_nav"] = tilt_worst - base_worst
-                else:
-                    outcome_status = "TILT_NO_BENEFIT"
-                    broken_gate = "benefit"
-                    key_metric_values["hedge_benefit_nav"] = tilt_worst - base_worst
-                    key_metric_values["hedge_benefit_required"] = HEDGE_BENEFIT_NAV_MIN
-            else:
-                base_pass = sum(1 for s in (baseline_stress.get("scenario_results") or []) if s.get("pass"))
-                tilt_pass = sum(1 for s in (tilted_stress.get("scenario_results") or []) if s.get("pass"))
-                if tilt_pass >= base_pass + 1:
-                    outcome_status = "TILT_ACCEPTED"
-                    key_metric_values["hedge_benefit_pass_count"] = tilt_pass - base_pass
-                else:
-                    outcome_status = "TILT_NO_BENEFIT"
-                    broken_gate = "benefit"
-                    key_metric_values["hedge_benefit_pass_count"] = tilt_pass - base_pass
-        else:
-            outcome_status = "TILT_ACCEPTED"
-
+        outcome_status = "TILT_ACCEPTED"
         break
     else:
         if not tilted_weights:
@@ -273,11 +245,10 @@ def run_view_after_optimization(
             "worst_scenario_loss_pct": baseline_stress.get("worst_scenario_loss_pct"),
             "scenario_results": baseline_stress.get("scenario_results"),
         } if baseline_stress else {},
-        "request": {"view_type": view_type, "asset": asset, "delta_choice": delta_choice_pct},
+        "request": {"asset": asset, "delta_choice": delta_choice_pct},
         "execution_delta": round(execution_delta, 4),
         "funding_contributions": 0.0,
         "funding_donors_sold": [{"ticker": t, "amount": a} for t, a in funding_donors_sold],
-        "donor_blocks": [],
         "outcome_status": outcome_status,
         "rb_status": rb_status,
         "stress_failure_code": stress_failure_code,
@@ -294,7 +265,6 @@ def run_view_after_optimization(
 def _report_rejected(
     baseline_weights: dict[str, float],
     baseline_stress: dict[str, Any] | None,
-    view_type: str,
     asset: str,
     delta_choice_pct: float,
     broken_gate: str,
@@ -303,11 +273,10 @@ def _report_rejected(
     return {
         "baseline_weights": {k: round(v, 6) for k, v in baseline_weights.items() if v > 0},
         "baseline_stress": (baseline_stress or {}) if baseline_stress else {},
-        "request": {"view_type": view_type, "asset": asset, "delta_choice": delta_choice_pct},
+        "request": {"asset": asset, "delta_choice": delta_choice_pct},
         "execution_delta": 0.0,
         "funding_contributions": 0.0,
         "funding_donors_sold": [],
-        "donor_blocks": [],
         "outcome_status": "TILT_REJECTED",
         "rb_status": "N_A",
         "stress_failure_code": None,

@@ -44,7 +44,6 @@ duration_ig_ticker: LQD
 tips_ticker: SCHP
 gold_ticker: GLD
 
-growth_core_candidates: [SCHD, USMV]
 min_single_security_weight_pct: 0.02
 rc_policy_mode: permissive
 allow_leverage: false

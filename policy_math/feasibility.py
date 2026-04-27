@@ -5,14 +5,10 @@ Centralized policy math for feasibility constraints (no block / risk-budget arch
 
 Single source of truth for:
 - per-asset RC caps (global §1 from docs/docs/feasibility_constraints_spec.md §1 only)
-- global max-weight caps when there is no Core (all assets treated uniformly)
+- uniform max weight per risk asset (§2 — same cap for every name in the risk universe)
 
 Formulas implement docs/docs/feasibility_constraints_spec.md where still applicable.
 """
-
-import math
-from typing import Dict
-
 
 DEFAULT_MIN_WEIGHT = 0.01
 
@@ -31,47 +27,16 @@ def resolve_rc_asset_cap(n_assets: int) -> float:
     return float(min(0.25, max(0.10, 1.5 / n_assets)))
 
 
-def resolve_weight_caps(
-    n_total: int,
-    n_core: int,
-    n_sat: int,
-    equity_only: bool = False,
-) -> Dict[str, float]:
+def resolve_max_weight_per_asset_cap(n_total: int) -> float:
     """
-    Max weights for portfolio construction without Growth/Duration/Inflation blocks.
+    Uniform upper bound on weight for each risk asset (feasibility_constraints_spec §2).
 
-    When n_core == 0 (no designated core list), uses §4 "No Core" global cap for every asset.
-    equity_only is retained for API compatibility but ignored (no equity-only RB mode).
+    - If N <= 0: 0.0
+    - If N <= 3: 0.40
+    - Else: min(0.25, max(0.10, 2.5 / N))
     """
-    del equity_only  # no longer used
     if n_total <= 0:
-        return {"max_weight_core": 0.0, "max_weight_sat": 0.0, "max_weight_all": 0.0}
-
-    if n_core == 0:
-        if n_total <= 3:
-            max_weight_all = 0.40
-        else:
-            max_weight_all = min(0.25, max(0.10, 2.5 / n_total))
-        return {
-            "max_weight_core": float(max_weight_all),
-            "max_weight_sat": float(max_weight_all),
-            "max_weight_all": float(max_weight_all),
-        }
-
-    max_core = min(0.35, max(0.25, 2.0 / n_total))
-    if n_sat <= 2:
-        max_sat = 0.40
-    else:
-        term = (1.0 - n_core * max_core) / (n_total - n_core) + 0.02
-        max_sat = min(
-            0.25,
-            max(
-                min(0.10, max(0.05, 2.0 / n_total)),
-                term,
-            ),
-        )
-    return {
-        "max_weight_core": float(max_core),
-        "max_weight_sat": float(max_sat),
-        "max_weight_all": None,
-    }
+        return 0.0
+    if n_total <= 3:
+        return 0.40
+    return float(min(0.25, max(0.10, 2.5 / n_total)))

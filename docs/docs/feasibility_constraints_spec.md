@@ -8,8 +8,6 @@ There is **no** risk-budget-by-block layer; achievability checks on Growth/Durat
 ## Notation
 
 - **N** — number of assets in the RiskPortfolio (excluding cash proxy, e.g. BIL).
-- **Nc** — number of assets tagged as growth “core” candidates (configuration only).
-- **Ns** = N − Nc (remaining names in the risk universe).
 - **min_weight** — minimum weight per held asset (from config or default 0.01 in code paths).
 
 ---
@@ -27,22 +25,28 @@ If `rc_asset_cap_pct` in `config.yml` is set to a **positive** number, it **over
 
 ---
 
-## 2. Weight caps (Core / Satellite naming only)
+## 2. Max weight per asset (uniform)
 
-Caps from `resolve_weight_caps` in `policy_math/feasibility.py`:
+Implemented as `resolve_max_weight_per_asset_cap(N)` in `policy_math/feasibility.py`. The same upper bound applies to **every** risk ticker (no core vs satellite split):
 
-- **Core** (tickers in `growth_core_candidates`):  
-  `max_weight_core = min(0.35, max(0.25, 2/N))`
-- **Satellite** (other risk names):  
-  if `Ns ≤ 2` then `max_weight_sat = 0.40`; else formula from policy implementation.
+```
+if N <= 0:
+    cap = 0.0
+elif N <= 3:
+    cap = 0.40
+else:
+    cap = min(0.25, max(0.10, 2.5 / N))
+```
 
-Optional **max_single_security_weight_pct** in config tightens both.
+Optional **max_single_security_weight_pct** in config tightens this cap for all names.
+
+**Edge case:** for **N = 4**, the formula yields **M = 0.25** and **4M = 1.0**, so long-only full investment with all weights ≤ M admits **only** the equal-weight portfolio (0.25 each). With **N = 3**, **M = 0.40** and **3M > 1**, so the feasible set has positive volume.
 
 ---
 
 ## 3. Invariant
 
-`sum_i max_weight_i ≥ 1.0` over the active risk universe (otherwise long-only full investment is impossible).
+With uniform cap **M**, feasibility requires **N × M ≥ 1.0** (otherwise long-only full investment is impossible).
 
 ---
 

@@ -67,7 +67,6 @@ class PortfolioConfig:
     max_single_security_weight_pct: float | None
     min_single_security_weight_pct: float | None
     N_rc: int
-    growth_core_candidates: list[str]
     donor_shift_mode: str
 
     # Analysis settings
@@ -75,7 +74,7 @@ class PortfolioConfig:
     coverage_threshold: float
     output_dir: str  # CSV only (e.g. results_csv)
     output_dir_final: str  # Weights, JSON, report (e.g. Main portfolio)
-    # Backtest mode: "dynamic_nan_safe" (default, policy-compliant) | "simple" (opt-in, no within-block/RC-gating)
+    # Backtest mode: "dynamic_nan_safe" (default, policy-compliant) | "simple" (opt-in, simplified NaN handling)
     backtest_mode: str = "dynamic_nan_safe"
 
     # Dual-horizon: primary/secondary are the source of truth; optimization_windows_months is derived when missing
@@ -89,8 +88,6 @@ class PortfolioConfig:
 
     # Liquidity floor from profile or explicit config; used by ProLiquidity when set (else derived from liquidity_need_months * monthly_expenses / portfolio_value)
     liquidity_floor_pct: float | None = None
-    # Reserve this fraction of total portfolio for Tail block tickers (e.g. VIXY) after ProLiquidity; non-Tail weights scaled by (1 - tail_target_weight_pct).
-    tail_target_weight_pct: float | None = None
     # RC post-processing: "strict" = do not write weights if RC caps unresolved; "permissive" = write but flag violation
     rc_policy_mode: str = "strict"
     # RC soft-control strength in optimizer objective (higher => stronger push against RC cap violations)
@@ -140,7 +137,6 @@ class PortfolioConfig:
             "max_single_security_weight_pct": self.max_single_security_weight_pct,
             "min_single_security_weight_pct": self.min_single_security_weight_pct,
             "N_rc": self.N_rc,
-            "growth_core_candidates": self.growth_core_candidates,
             "donor_shift_mode": self.donor_shift_mode,
             "rc_policy_mode": self.rc_policy_mode,
             "rc_cap_penalty_lambda": self.rc_cap_penalty_lambda,
@@ -158,7 +154,6 @@ class PortfolioConfig:
             "secondary_window_months": self.secondary_window_months,
             "robustness_policy": self.robustness_policy,
             "liquidity_floor_pct": self.liquidity_floor_pct,
-            "tail_target_weight_pct": self.tail_target_weight_pct,
         }
     
     def get_pending_config_items(self) -> dict[str, Any]:
@@ -195,7 +190,6 @@ class PortfolioConfig:
             "portfolio_value": self.portfolio_value,
             "cash_policy": self.cash_policy,
             "N_rc": self.N_rc,
-            "growth_core_candidates": self.growth_core_candidates,
             "donor_shift_mode": self.donor_shift_mode,
             "rc_policy_mode": self.rc_policy_mode,
             "rc_cap_penalty_lambda": self.rc_cap_penalty_lambda,
@@ -263,7 +257,6 @@ PERCENT_FIELDS = [
     "max_single_security_weight_pct",
     "min_single_security_weight_pct",
     "coverage_threshold",
-    "tail_target_weight_pct",
 ]
 
 NONNEGATIVE_FIELDS = [
@@ -616,21 +609,6 @@ def _validate_liquidity_need_months(cfg: dict[str, Any]) -> None:
         )
 
 
-def _validate_tail_target_weight_pct(cfg: dict[str, Any]) -> None:
-    v = cfg.get("tail_target_weight_pct")
-    if v is None:
-        return
-    if not isinstance(v, (int, float)):
-        raise ConfigValidationError(
-            f"Config field 'tail_target_weight_pct' must be numeric, got {type(v).__name__}"
-        )
-    x = float(v)
-    if x < 0 or x > 0.25:
-        raise ConfigValidationError(
-            f"Config field 'tail_target_weight_pct' must be between 0 and 0.25, got {x}"
-        )
-
-
 def _validate_cash_policy(cfg: dict[str, Any]) -> None:
     """Validate cash_policy is one of required_floor, allowed_for_scaling, prohibited."""
     val = cfg.get("cash_policy", "allowed_for_scaling")
@@ -726,22 +704,13 @@ def _validate_portfolio_value(cfg: dict[str, Any]) -> None:
 
 
 def _validate_alpha_shift_params(cfg: dict[str, Any]) -> None:
-    """Validate N_rc, growth_core_candidates, donor_shift_mode."""
+    """Validate N_rc and donor_shift_mode."""
+    cfg.pop("growth_core_candidates", None)
     n_rc = cfg.get("N_rc", 3)
     if n_rc is not None:
         if not isinstance(n_rc, int) or n_rc < 1:
             raise ConfigValidationError(
                 f"Config field 'N_rc' must be a positive integer, got {n_rc}"
-            )
-    candidates = cfg.get("growth_core_candidates", ["VOO", "VT", "VTI"])
-    if candidates is not None:
-        if not isinstance(candidates, list):
-            raise ConfigValidationError(
-                f"Config field 'growth_core_candidates' must be a list of tickers, got {type(candidates).__name__}"
-            )
-        if not all(isinstance(t, str) and t for t in candidates):
-            raise ConfigValidationError(
-                "Config field 'growth_core_candidates' must be a list of non-empty strings (tickers)"
             )
     mode = cfg.get("donor_shift_mode", "proportional")
     if mode is not None and mode not in DONOR_SHIFT_MODES:
@@ -825,7 +794,6 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
     _validate_horizon_years(cfg)
     _validate_liquidity_need_months(cfg)
     _validate_cash_policy(cfg)
-    _validate_tail_target_weight_pct(cfg)
     _validate_portfolio_value(cfg)
     _validate_alpha_shift_params(cfg)
     _validate_rc_policy_mode(cfg)
@@ -864,7 +832,6 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         max_single_security_weight_pct=cfg.get("max_single_security_weight_pct"),
         min_single_security_weight_pct=cfg.get("min_single_security_weight_pct"),
         N_rc=cfg.get("N_rc", 3),
-        growth_core_candidates=list(cfg.get("growth_core_candidates", ["VOO", "VT", "VTI"])),
         donor_shift_mode=cfg.get("donor_shift_mode", "proportional"),
         rc_policy_mode=cfg.get("rc_policy_mode", "strict"),
         rc_cap_penalty_lambda=float(cfg.get("rc_cap_penalty_lambda", 25.0)),
@@ -874,7 +841,6 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         covariance_shrinkage=bool(cfg.get("covariance_shrinkage", False)),
         young_etf_optimization_policy=dict(cfg.get("young_etf_optimization_policy") or DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY),
         liquidity_floor_pct=_parse_float_optional(cfg.get("liquidity_floor_pct")),
-        tail_target_weight_pct=_parse_float_optional(cfg.get("tail_target_weight_pct")),
         windows_months=list(cfg["windows_months"]),
         coverage_threshold=cfg.get("coverage_threshold", 0.90),
         output_dir=cfg["output_dir"],

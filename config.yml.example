@@ -87,8 +87,6 @@ min_single_security_weight_pct: null
 
 # Alpha-shift (when cash_policy = prohibited and vol > target_vol_annual): top N_rc donors by RC_vol.
 N_rc: 3
-# Recipient order for weight shift: first VOO, else VT, else lowest-vol in Duration/Inflation.
-growth_core_candidates: ["VOO", "VT"]
 # Donor (Shift Mode): proportional or equal — you can set equal.
 donor_shift_mode: proportional
 # RC post-processing: strict = do not write weights if RC caps unresolved; permissive = write but flag violation

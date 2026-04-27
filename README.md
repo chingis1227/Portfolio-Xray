@@ -10,7 +10,7 @@
    ```bash
    python run_optimization.py [--no-cache] [--write-config]
    ```  
-   Читает `config.yml` и при необходимости **`config/client_profiles.yml`**; подтягивает рыночные данные; считает ковариации и **один** проход оптимизатора (`run_risk_budget_optimization` — историческое имя функции); ProLiquidity; опционально dual-horizon (10Y + 5Y) для `robustness_report.json`. Пишет веса в **`portfolio_weights.yml`** и **`run_result.json`** в каталог **`output_dir_final`** (по умолчанию **Main portfolio**). При провале **мандата MaxDD** веса не записываются, выход с ошибкой (**FAIL_MANDATE**).
+   Читает `config.yml` и при необходимости **`config/client_profiles.yml`**; подтягивает рыночные данные; считает ковариации и **один** проход оптимизатора (`run_max_return_optimization`); ProLiquidity; опционально dual-horizon (10Y + 5Y) для `robustness_report.json`. Пишет веса в **`portfolio_weights.yml`** и **`run_result.json`** в каталог **`output_dir_final`** (по умолчанию **Main portfolio**). При провале **мандата MaxDD** веса не записываются, выход с ошибкой (**FAIL_MANDATE**).
 
 2. **Отчёт**  
    ```bash

@@ -2,7 +2,7 @@
 Resampled (bootstrap) оптимизация vs одна обычная на config.yml.
 
 На каждой репликации: bootstrap строк ret_primary с возвращением, заново
-cov_matrix_monthly(ret_boot), затем run_risk_budget_optimization с precomputed Σ.
+cov_matrix_monthly(ret_boot), затем run_max_return_optimization с precomputed Σ.
 Веса усредняются по успешным прогонам (до RC), затем один раз enforce_rc_caps_postprocess
 на той же Sigma, что и у baseline (cov_optim из обычного прогона).
 
@@ -27,7 +27,7 @@ from src.optimization import (
     enforce_rc_caps_postprocess,
     portfolio_vol_annual,
     rc_by_asset_from_weights,
-    run_risk_budget_optimization,
+    run_max_return_optimization,
 )
 from src.risk_contrib import build_rc_cap_per_ticker, cov_matrix_monthly, resolve_rc_asset_cap
 from src.utils import setup_logging, logger
@@ -124,10 +124,9 @@ def main() -> None:
         ret_boot = ret_primary.iloc[idx]
         cov_b = cov_matrix_monthly(ret_boot, ddof=1, use_shrinkage=False)
         mu_b = ret_boot.mean()
-        w_try, st = run_risk_budget_optimization(
+        w_try, st = run_max_return_optimization(
             monthly_returns,
             cols_primary,
-            cfg.growth_core_candidates,
             rc_asset_cap_pct=cfg.rc_asset_cap_pct,
             min_single_security_weight_pct=cfg.min_single_security_weight_pct,
             max_single_security_weight_pct=cfg.max_single_security_weight_pct,
@@ -166,7 +165,6 @@ def main() -> None:
     w_res_final, rc_ok_res, rc_diag_res = enforce_rc_caps_postprocess(
         w_avg_pre,
         cov_ref,
-        cfg.growth_core_candidates,
         rc_cap_resolved,
         min_weight_rc,
         cfg.max_single_security_weight_pct,

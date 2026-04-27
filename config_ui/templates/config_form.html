@@ -251,14 +251,7 @@
                         <div class="form-group">
                             <label>N_rc (donor; Shift Mode: proportional or equal)</label>
                             <input type="number" min="1" name="N_rc" value="{{ config.get('N_rc', 3) }}" placeholder="3">
-                            <div class="help-text">When cash_policy=prohibited and vol &gt; target: number of top RC_vol donors. Shift Mode below: you can choose equal (Yes).</div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Growth core candidates (comma-separated)</label>
-                            <input type="text" name="growth_core_candidates" 
-                                   value="{{ ', '.join(config.get('growth_core_candidates', ['VOO', 'VT'])) }}" placeholder="VOO, VT">
-                            <div class="help-text">Recipient order for weight shift: first VOO, else VT, else lowest-vol in hedge.</div>
+                            <div class="help-text">When cash_policy=prohibited and vol &gt; target: number of top RC_vol donors. Recipient preference: VOO, VT, VTI if present, else lowest single-name vol. Shift Mode below.</div>
                         </div>
                         
                         <div class="form-group">

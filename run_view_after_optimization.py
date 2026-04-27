@@ -5,8 +5,7 @@ Per docs/docs/view_after_optimization_spec.md. Baseline weights from portfolio_w
 (or config); optional baseline_rb/baseline_stress from run_result.json.
 
 Usage:
-  python run_view_after_optimization.py --view-type HEDGE --asset GLD --delta 5
-  python run_view_after_optimization.py --view-type TACTICAL --asset VOO --delta 2
+  python run_view_after_optimization.py --asset VOO --delta 2
 """
 from __future__ import annotations
 
@@ -29,8 +28,7 @@ from src.utils import setup_logging, logger
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="View After Optimization — apply tilt and report")
-    parser.add_argument("--view-type", choices=["HEDGE", "TACTICAL"], required=True, help="HEDGE or TACTICAL")
-    parser.add_argument("--asset", required=True, help="Ticker to increase (e.g. GLD, TIP)")
+    parser.add_argument("--asset", required=True, help="Ticker to increase (e.g. VOO, GLD)")
     parser.add_argument("--delta", type=float, default=5, choices=[1, 2, 5], help="Requested tilt size: 1, 2, or 5 pct")
     parser.add_argument("--weights-file", default=None, help="Path to baseline weights YAML (default: portfolio_weights.yml)")
     parser.add_argument("--run-result-file", default=None, help="Path to run_result.json for baseline RB/stress")
@@ -93,7 +91,6 @@ def main() -> int:
 
     report = run_view_after_optimization(
         baseline_weights=baseline_weights,
-        view_type=args.view_type,
         asset=args.asset,
         delta_choice_pct=float(args.delta),
         monthly_returns=monthly_returns,

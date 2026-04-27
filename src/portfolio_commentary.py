@@ -401,9 +401,9 @@ def write_stress_commentary(
     scen_rows = st.get("scenario_results") or []
     if scen_rows:
         lines.append(
-            "Синтетические сценарии (stress_report.scenario_results): для каждого сценария ниже — "
-            "PnL портфеля, итог pass, флаги loss_ok / rc1_ok / rc3_ok и топ-1 вклад в риск (Top1 RC), "
-            "как в JSON. pass=false при нарушении любого из тестов сценария."
+            "Синтетические сценарии (stress_report.scenario_results): факторные шоки к портфелю в целом; "
+            "pass = только мандатный порог по PnL портфеля (loss_ok); rc1_ok/rc3_ok — диагностика концентрации RC, "
+            "на pass не влияют. По активам и факторам см. pnl_by_asset_pct / pnl_by_factor_pct в JSON."
         )
         for row in scen_rows:
             sid = row.get("scenario_id", "?")
@@ -421,8 +421,11 @@ def write_stress_commentary(
             for c in row.get("diagnostic_codes") or []:
                 if c not in sdiag:
                     sdiag.append(c)
+            for c in row.get("rc_diagnostic_codes") or []:
+                if c not in sdiag:
+                    sdiag.append(c)
         if sdiag:
-            lines.append(f"Коды по сценариям (уникально): {', '.join(str(x) for x in sdiag)}.")
+            lines.append(f"Коды по сценариям (loss и при необходимости RC, уникально): {', '.join(str(x) for x in sdiag)}.")
     else:
         lines.append("Сценарные строки (scenario_results) в отчёте отсутствуют.")
 
@@ -512,7 +515,7 @@ def write_stress_commentary(
         if all(row.get("rc3_ok") is True for row in scen_rows):
             str_lines.append("Во всех сценариях rc3_ok=true — суммарный Top3 RC не нарушает stress_top3_rc_sum_cap.")
         if any(row.get("pass") is True for row in scen_rows):
-            str_lines.append("Есть сценарии с pass=true.")
+            str_lines.append("Есть сценарии с pass=true по мандатному PnL.")
     for h in hist:
         if h.get("pass") is True:
             str_lines.append(f"Исторический эпизод {h.get('episode')} помечен pass=true.")
@@ -532,7 +535,7 @@ def write_stress_commentary(
     if scen_rows and all(row.get("rc1_ok") is False for row in scen_rows):
         wk.append("Во всех сценариях rc1_ok=false — концентрация Top1 RC выше порога rc_asset_cap_used.")
     if warn:
-        wk.append(f"warning_code={warn} (роль защитных блоков / прочее — см. stress_report).")
+        wk.append(f"warning_code={warn} (см. stress_report; RC-синтетика или граничные исторические данные).")
     if hist:
         for h in hist:
             if h.get("max_dd") is None and h.get("episode"):
@@ -548,8 +551,8 @@ def write_stress_commentary(
             sid = row.get("scenario_id")
             pnl = row.get("portfolio_pnl_pct")
             lines.append(
-                f"{sid}: PnL≈{_fmt_pct(pnl)}, итог pass={row.get('pass')} — "
-                f"см. loss/role/rc в Metric-by-Metric."
+                f"{sid}: PnL≈{_fmt_pct(pnl)}, pass={row.get('pass')} (мандатный loss), "
+                f"rc1_ok/rc3_ok — в Metric-by-Metric."
             )
     else:
         lines.append("Нет scenario_results.")

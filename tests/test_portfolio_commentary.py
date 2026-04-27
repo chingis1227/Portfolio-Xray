@@ -22,14 +22,14 @@ def test_write_portfolio_commentary_creates_file(tmp_path: Path) -> None:
 
     stress = {
         "status": "DIAG_ATTENTION",
-        "primary_diagnostic_code": "DIAG_RC_TOP1_EQUITY_SHOCK",
-        "diagnostic_codes": ["DIAG_RC_TOP1_EQUITY_SHOCK"],
-        "fail_reason_code": "FAIL_X",
-        "failed_scenario": "credit_shock",
+        "primary_diagnostic_code": "DIAG_LOSS_EQUITY_SHOCK",
+        "diagnostic_codes": ["DIAG_LOSS_EQUITY_SHOCK"],
+        "fail_reason_code": "DIAG_LOSS_EQUITY_SHOCK",
+        "failed_scenario": "equity_shock",
         "failed_test": "Loss",
         "worst_scenario_loss_pct": -0.2,
         "scenario_results": [
-            {"scenario_id": "equity_shock", "portfolio_pnl_pct": -0.05, "pass": True},
+            {"scenario_id": "equity_shock", "portfolio_pnl_pct": -0.05, "pass": True, "loss_ok": True},
         ],
     }
     pm = {
@@ -55,7 +55,7 @@ def test_write_portfolio_commentary_creates_file(tmp_path: Path) -> None:
     text = out.read_text(encoding="utf-8")
     assert "Executive Summary" in text
     assert "DIAG_ATTENTION" in text or "диагностик" in text.lower()
-    assert "credit_shock" in text
+    assert "equity_shock" in text
     assert "Risk-Parity baseline" in text or "Risk-Parity" in text
 
 
@@ -64,13 +64,14 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
     final.mkdir(parents=True)
     stress = {
         "status": "DIAG_ATTENTION",
-        "primary_diagnostic_code": "DIAG_RC_TOP1_EQUITY_SHOCK",
-        "diagnostic_codes": ["DIAG_RC_TOP1_EQUITY_SHOCK"],
-        "fail_reason_code": "DIAG_RC_TOP1_EQUITY_SHOCK",
-        "warning_code": "WARN_ROLE_EQUITY_DEFENSIVE_WEAK",
+        "primary_diagnostic_code": "DIAG_LOSS_EQUITY_SHOCK",
+        "diagnostic_codes": ["DIAG_LOSS_EQUITY_SHOCK"],
+        "rc_attention_codes": ["DIAG_RC_TOP1_EQUITY_SHOCK"],
+        "fail_reason_code": "DIAG_LOSS_EQUITY_SHOCK",
+        "warning_code": None,
         "worst_scenario_loss_pct": -0.31,
         "failed_scenario": "equity_shock",
-        "failed_test": "RC_Top1",
+        "failed_test": "Loss",
         "rc_asset_cap_used": 0.1,
         "stress_top3_rc_sum_cap": 0.7,
         "max_dd_limit": 0.35,
@@ -79,13 +80,13 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
                 "scenario_id": "equity_shock",
                 "portfolio_pnl_pct": -0.31,
                 "pass": False,
-                "loss_ok": True,
-                "role_ok": True,
+                "loss_ok": False,
                 "rc1_ok": False,
                 "rc3_ok": True,
                 "top1_rc_asset": "URA",
                 "top1_rc_pct": 0.18,
-                "diagnostic_codes": ["DIAG_RC_TOP1_EQUITY_SHOCK"],
+                "diagnostic_codes": ["DIAG_LOSS_EQUITY_SHOCK"],
+                "rc_diagnostic_codes": ["DIAG_RC_TOP1_EQUITY_SHOCK"],
             },
         ],
         "historical_results": [

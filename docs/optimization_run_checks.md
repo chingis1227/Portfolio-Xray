@@ -32,7 +32,7 @@
 
 **Важно:** явного «туннеля» в коде нет; при firewall / блокировках регионов нужны VPN или прокси (`HTTP_PROXY` / `HTTPS_PROXY`), если библиотеки их подхватывают.
 
-### 1.4 Оптимизация (`run_risk_budget_optimization` в `run_optimization.py`)
+### 1.4 Оптимизация (`run_max_return_optimization` в `run_optimization.py`)
 
 Историческое имя функции; по смыслу это **одностадийная** максимизация ожидаемой доходности с штрафами за отклонение от целевой vol/return и **per-asset RC cap** (см. `docs/portfolio_construction_policy.md`, `docs/docs/feasibility_constraints_spec.md`).
 
@@ -46,7 +46,7 @@
 | Условие | Ошибка | Решение |
 |---------|--------|---------|
 | `cash_policy = prohibited`, волатильность выше целевой, alpha-shift не доводит vol до target | Сообщение ProLiquidity / `SystemExit` | Разрешить кэш (`allowed_for_scaling`), поднять `target_vol_annual`, добавить низковолатильные активы |
-| Пустой набор доноров для alpha-shift | Текст вида **Donor set empty for alpha shift** | Проверить `growth_core_candidates` и веса: нужны ликвидные доноры в риск-портфеле |
+| Пустой набор доноров для alpha-shift | Текст вида **Donor set empty for alpha shift** | Убедиться, что в риск-портфеле есть имена с положительным весом и ненулевым RC; при необходимости увеличить `N_rc` |
 
 ---
 

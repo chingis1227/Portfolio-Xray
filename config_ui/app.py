@@ -66,7 +66,6 @@ DEFAULTS = {
     "max_single_security_weight_pct": None,
     "min_single_security_weight_pct": None,
     "N_rc": 3,
-    "growth_core_candidates": ["VOO", "VT", "VTI"],
     "donor_shift_mode": "proportional",
     "windows_months": [36, 60, 120],
     "coverage_threshold": 0.90,
@@ -199,13 +198,6 @@ def index():
     )
 
 
-def _parse_growth_core_candidates(val: str | None) -> list[str]:
-    """Parse comma-separated tickers to list."""
-    if not val or not val.strip():
-        return ["VOO", "VT"]
-    return [t.strip().upper() for t in val.split(",") if t.strip()]
-
-
 @app.route("/generate", methods=["POST"])
 def generate_config():
     """Generate config.yml from form data."""
@@ -253,7 +245,6 @@ def generate_config():
         "max_single_security_weight_pct": parse_percent(data.get("max_single_security_weight_pct")),
         "min_single_security_weight_pct": parse_percent(data.get("min_single_security_weight_pct")),
         "N_rc": parse_int(data.get("N_rc")) if data.get("N_rc") not in (None, "") else 3,
-        "growth_core_candidates": _parse_growth_core_candidates(data.get("growth_core_candidates")),
         "donor_shift_mode": data.get("donor_shift_mode", "proportional") or "proportional",
         "windows_months": [36, 60, 120],
         "coverage_threshold": parse_percent(data.get("coverage_threshold")) or 0.90,
@@ -424,7 +415,6 @@ def generate_yaml_with_comments(config: dict) -> str:
     lines.append("")
     lines.append("# Alpha-shift (when cash_policy = prohibited and vol > target_vol_annual)")
     lines.append(f"N_rc: {config.get('N_rc', 3)}")
-    lines.append(f"growth_core_candidates: {config.get('growth_core_candidates', ['VOO', 'VT'])}")
     lines.append(f"donor_shift_mode: {config.get('donor_shift_mode', 'proportional')}")
     lines.append("")
     

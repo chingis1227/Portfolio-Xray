@@ -152,6 +152,7 @@ def export_run_metadata(
         metadata["stress_test"] = {
             "status": stress_report.get("status"),
             "diagnostic_codes": stress_report.get("diagnostic_codes"),
+            "rc_attention_codes": stress_report.get("rc_attention_codes"),
             "primary_diagnostic_code": stress_report.get("primary_diagnostic_code"),
             "fail_reason_code": stress_report.get("fail_reason_code"),
             "warning_code": stress_report.get("warning_code"),

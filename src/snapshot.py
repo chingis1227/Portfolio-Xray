@@ -74,17 +74,20 @@ def _stress_suite_results_for_snapshot(stress_report: dict[str, Any], portfolio_
 
     scenarios_out = []
     for s in stress_report.get("scenario_results", []):
+        # Mandate stress gate for synthetics: portfolio loss vs MaxDD only (RC is diagnostic).
         violations = []
         if not s.get("loss_ok", True):
             violations.append("loss")
+        rc_flags: list[str] = []
         if not s.get("rc1_ok", True):
-            violations.append("rc_top1")
+            rc_flags.append("rc_top1")
         if not s.get("rc3_ok", True):
-            violations.append("rc_top3")
+            rc_flags.append("rc_top3")
         scenarios_out.append({
             "scenario_id": s.get("scenario_id"),
             "portfolio_pnl_pct": round(s.get("portfolio_pnl_pct", 0), 4),
             "violations": violations,
+            "rc_flags": rc_flags,
             "pass": s.get("pass", True),
         })
 

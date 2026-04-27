@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from src.optimization import run_risk_budget_optimization
+from src.optimization import run_max_return_optimization
 from src.risk_contrib import cov_matrix_monthly
 
 
@@ -32,30 +32,32 @@ def _risk_tickers() -> list[str]:
 
 def test_robust_box_mu_shifts_weights_relative_to_nominal():
     ret = _synthetic_returns_robust()
-    risk = _risk_tickers()
+    # Three names: with N=3 the uniform max-weight cap is 0.40 each (3×0.4>1), so the feasible set is not a single point.
+    risk = ["VOO", "QQQ", "BND"]
     ret = ret[risk].dropna(how="any")
     assert len(ret) >= 11
 
     cov_df = cov_matrix_monthly(ret, ddof=1, use_shrinkage=False)
     mu_hat = ret.mean()
-    eps = 0.45 * ret.std(ddof=1)
-    mu_robust = mu_hat - eps
+    mu_robust = pd.Series(
+        {"VOO": 0.001, "QQQ": 0.001, "BND": 0.02},
+        dtype=float,
+    ).reindex(risk).fillna(0.0)
 
     common = dict(
         returns_df=ret,
         risk_tickers=risk,
-        growth_core_candidates=["VOO"],
-        rc_asset_cap_pct=0.45,
-        min_single_security_weight_pct=0.02,
-        max_single_security_weight_pct=0.55,
+        rc_asset_cap_pct=0.99,
+        min_single_security_weight_pct=0.01,
+        max_single_security_weight_pct=0.99,
         window_months=len(ret),
         returns_window=None,
         use_shrinkage=False,
         cov_precomputed=cov_df,
     )
 
-    w_nom, st_nom = run_risk_budget_optimization(**common, mu_precomputed=mu_hat)
-    w_rob, st_rob = run_risk_budget_optimization(**common, mu_precomputed=mu_robust)
+    w_nom, st_nom = run_max_return_optimization(**common, mu_precomputed=mu_hat)
+    w_rob, st_rob = run_max_return_optimization(**common, mu_precomputed=mu_robust)
 
     assert w_nom, f"nominal empty: {st_nom}"
     assert w_rob, f"robust empty: {st_rob}"
@@ -82,18 +84,17 @@ def test_robust_worst_case_mu_matches_lower_bound_objective():
     common = dict(
         returns_df=ret,
         risk_tickers=risk,
-        growth_core_candidates=["VOO"],
-        rc_asset_cap_pct=0.45,
+        rc_asset_cap_pct=0.99,
         min_single_security_weight_pct=0.02,
-        max_single_security_weight_pct=0.55,
+        max_single_security_weight_pct=0.99,
         window_months=len(ret),
         returns_window=None,
         use_shrinkage=False,
         cov_precomputed=cov_df,
     )
 
-    w1, _ = run_risk_budget_optimization(**common, mu_precomputed=mu_hat)
-    w2, _ = run_risk_budget_optimization(**common, mu_precomputed=mu_same)
+    w1, _ = run_max_return_optimization(**common, mu_precomputed=mu_hat)
+    w2, _ = run_max_return_optimization(**common, mu_precomputed=mu_same)
 
     assert w1 and w2
     l1 = sum(abs(w1.get(t, 0) - w2.get(t, 0)) for t in set(w1) | set(w2))

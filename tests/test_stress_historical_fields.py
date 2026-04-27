@@ -34,6 +34,7 @@ def test_historical_results_include_episode_bounds_and_pnl() -> None:
     )
     hist = out.get("historical_results") or []
     assert hist, "historical_results should not be empty"
+    assert len(hist) == 4, "HISTORICAL_EPISODES must include dotcom + 2008/2020/2022"
     for h in hist:
         assert "episode_start" in h
         assert "episode_end" in h

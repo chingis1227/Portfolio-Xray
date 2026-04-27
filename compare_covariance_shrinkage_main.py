@@ -25,7 +25,7 @@ from src.optimization import (
     get_risk_portfolio_tickers,
     portfolio_vol_annual,
     rc_by_asset_from_weights,
-    run_risk_budget_optimization,
+    run_max_return_optimization,
 )
 from src.risk_contrib import (
     build_rc_cap_per_ticker,
@@ -50,7 +50,7 @@ def _primary_optimization_branch(
     cov_mode: str = "sample",
 ) -> dict:
     """
-    Тот же путь cov + run_risk_budget_optimization + enforce_rc_caps, что в run_optimization.py.
+    Тот же путь cov + run_max_return_optimization + enforce_rc_caps, что в run_optimization.py.
 
     cov_mode: "sample" | "lw" | "robust" (MinCovDet на ядре dual или на full join).
     """
@@ -132,10 +132,9 @@ def _primary_optimization_branch(
     tv = getattr(cfg, "target_vol_annual", None)
     tr = getattr(cfg, "target_nominal_return_annual", None)
 
-    weights_risk, status = run_risk_budget_optimization(
+    weights_risk, status = run_max_return_optimization(
         monthly_returns,
         cols_primary,
-        cfg.growth_core_candidates,
         rc_asset_cap_pct=cfg.rc_asset_cap_pct,
         min_single_security_weight_pct=cfg.min_single_security_weight_pct,
         max_single_security_weight_pct=cfg.max_single_security_weight_pct,
@@ -167,7 +166,6 @@ def _primary_optimization_branch(
     adjusted, rc_ok, rc_diag = enforce_rc_caps_postprocess(
         weights_risk,
         cov_df,
-        cfg.growth_core_candidates,
         rc_cap_resolved,
         min_weight_rc,
         cfg.max_single_security_weight_pct,
