@@ -210,6 +210,31 @@ def _append_serial_correlation_section(lines: list[str], ser: Any) -> None:
     lines.append("")
 
 
+def _append_heteroskedasticity_section(lines: list[str], het: Any) -> None:
+    """Breusch-Pagan on portfolio factor OLS residuals (same rows as regression)."""
+    if not isinstance(het, dict) or not het:
+        return
+    lines.append("Breusch-Pagan heteroskedasticity")
+    if het.get("error"):
+        lines.append(f"Breusch-Pagan residual heteroskedasticity test: not computed - {het.get('error')}")
+        lines.append("")
+        return
+    bp = het.get("breusch_pagan") or {}
+    if isinstance(bp, dict) and bp:
+        lines.append(
+            "Breusch-Pagan (H0: homoskedastic OLS residuals; LM ~ chi-square(k_factors)): "
+            f"LM={_fmt_float(bp.get('lm_statistic'), 4)}, "
+            f"df={bp.get('df_chi2', 'n/a')}, p={_fmt_p_value(bp.get('p_value'))}, "
+            f"T_aux={bp.get('n_aux_observations', 'n/a')}, R2_aux={_fmt_float(bp.get('aux_r_squared'), 4)}."
+        )
+        lines.append(
+            f"F-form: F={_fmt_float(bp.get('f_statistic'), 4)}, "
+            f"df=({bp.get('f_df_num', 'n/a')}, {bp.get('f_df_den', 'n/a')}), "
+            f"p={_fmt_p_value(bp.get('f_p_value'))}."
+        )
+    lines.append("")
+
+
 def _append_factor_regression_section(lines: list[str], fr: Any, label: str) -> None:
     if not isinstance(fr, dict) or not fr:
         return
@@ -261,6 +286,9 @@ def _append_factor_regression_section(lines: list[str], fr: Any, label: str) -> 
                     f"- {key}: t_HAC={_fmt_float(t_v, 3)}, p_HAC={_fmt_p_value(p_v)}, "
                     f"CI_HAC=[{_fmt_float(lo_v, 4)}; {_fmt_float(hi_v, 4)}]"
                 )
+    het = fr.get("heteroskedasticity_diagnostics")
+    if het is not None:
+        _append_heteroskedasticity_section(lines, het)
     ser = fr.get("serial_correlation_diagnostics")
     if ser is not None:
         _append_serial_correlation_section(lines, ser)

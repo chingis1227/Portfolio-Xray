@@ -4,6 +4,8 @@ Always follow metrics_specification.md for all metric definitions, estimators, f
 
 **Stress factor betas** (outputs in `stress_report.json`): estimated on **weekly** aligned data (Friday week-ends). Regression windows ending at **`analysis_end`** are **`FACTOR_WEEKS_5Y = 260`** and **`FACTOR_WEEKS_10Y = 520`** in **`src/stress_factors.py`** (`compute_asset_factor_betas_weekly`). **`factor_betas`** duplicates **`factor_betas_5y`** for backward compatibility. Do not use a 156-week or monthly window for this pipeline unless the spec is explicitly changed.
 
+**Portfolio factor regression diagnostics** (`factor_regression_5y` / `factor_regression_10y` in `stress_report.json`) must use the same weekly OLS rows for multicollinearity, serial correlation, Breusch-Pagan heteroskedasticity, and HAC/Newey-West inference; these diagnostics are non-binding.
+
 **Portfolio weights** are the output of optimization (constraints + client metrics), not user input. Do not require or encourage manual weight entry in config; weights are exported after optimization and can be saved to config.
 
 ## Frequency standard

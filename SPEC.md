@@ -25,3 +25,4 @@ This file is a short index for product behavior and implementation specs. Do not
 - Optimized weights and run status are written under `output_dir_final`, usually `Main portfolio/`.
 - Tabular metric outputs are written under `output_dir`, usually `results_csv/`.
 - Reports and diagnostics must follow the definitions in the linked canonical specs.
+- `stress_report.json` factor regression diagnostics follow [docs/docs/stress_testing_spec.md](docs/docs/stress_testing_spec.md), including Breusch-Pagan heteroskedasticity checks for portfolio factor betas.

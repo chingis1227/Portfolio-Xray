@@ -130,6 +130,7 @@ Do not invent formulas if a spec exists.
 - Use sample estimators with `ddof=1` for std/var/cov.
 - Align series with inner joins for excess returns, beta, covariance, correlation, and RC_vol.
 - Round only at final export/report stage, not during calculations.
+- Factor regression diagnostics in `stress_report.json` include Breusch-Pagan heteroskedasticity checks on the same weekly OLS rows as reported betas.
 - `RC_vol` is diagnostic only, not an optimization constraint.
 - Scenario stress is diagnostic; mandate MaxDD can prevent weight release.
 - Default backtest mode is `dynamic_nan_safe`.

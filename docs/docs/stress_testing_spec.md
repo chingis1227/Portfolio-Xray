@@ -5,6 +5,7 @@
 > **2026-04-27 update:** Synthetic **pass** = **Loss (portfolio PnL vs mandate MaxDD)** only.
 > **2026-04-28 update:** **RC Top1 / Top3** (`top1_rc_pct`, `top3_rc_sum_pct`, tickers) remain on each scenario row as **numeric diagnostics only** вЂ” no `rc1_ok` / `rc3_ok`, no `rc_diagnostic_codes`, no `rc_attention_codes`, no suite status change for RC-only patterns. Historical episode contract unchanged (episode max DD vs mandate). **dotcom** episode is in the historical list (see В§9).
 > **2026-04-28 update:** Add **Recession severe** (`recession_severe`) as a hard-landing synthetic scenario. Its shock vector is calibrated from realized weekly factor moves in the existing **2008** and **2020** historical windows, selecting the episode with the worst model PnL for the current portfolio betas.
+> **2026-04-28 update:** Portfolio factor regressions include **Breusch-Pagan** heteroskedasticity diagnostics on the same OLS residuals/rows as the reported factor betas.
 
 ---
 
@@ -173,7 +174,18 @@ Each of `factor_regression_5y` / `factor_regression_10y` must include **`serial_
 
 **BreuschвЂ“Godfrey:** auxiliary regression of \(\hat u_t\) on intercept, \(X_t\), and \(\hat u_{t-1},\ldots,\hat u_{t-p}\); **LM = T Г— RВІ_aux** of that regression; under **Hв‚Ђ** (no serial correlation through lag p), LM в†’ **П‡ВІ(p)** (asymptotic).
 
-### 8.3 Robust (HAC / NeweyвЂ“West) inference for factor betas
+### 8.3 Heteroskedasticity of factor OLS residuals (`factor_regression_*`)
+
+Each of `factor_regression_5y` / `factor_regression_10y` must include **`heteroskedasticity_diagnostics`** computed on the **same** OLS residuals and factor rows as the reported betas.
+
+| Field | Meaning |
+|-------|---------|
+| `breusch_pagan` | Object with `lm_statistic`, `df_chi2` (= number of factor regressors), `p_value`, `n_aux_observations`, `aux_r_squared`, `f_statistic`, `f_df_num`, `f_df_den`, `f_p_value` |
+| `method`, `h0`, `auxiliary_regression`, `notes` | Fixed strings describing procedure |
+
+**Breusch-Pagan:** auxiliary regression of \(\hat u_t^2\) on intercept and factor regressors \(X_t\); **LM = T Г— RВІ_aux** of that regression; under **Hв‚Ђ** (homoskedastic residuals), LM в†’ **П‡ВІ(k)** where \(k\) is the number of factor regressors. This is diagnostic/non-binding; if heteroskedasticity is indicated, beta point estimates remain OLS, and inference should rely on the HAC/Newey-West section below.
+
+### 8.4 Robust (HAC / NeweyвЂ“West) inference for factor betas
 
 Portfolio factor betas are **always** estimated via OLS (same as В§8: y = weekly portfolio return, X = weekly factor matrix).
 However, when reporting **inference** (standard errors, t-statistics, p-values, confidence intervals), the project must use
@@ -197,7 +209,7 @@ For reporting and decision rules:
 - **Significance, p-values and confidence intervals in stress reports and PDFs must be interpreted using `hac_inference`**;
   classic OLS t/p are retained for diagnostics only.
 
-### 8.4 OOS episode explainability: ОІ Г— realized factor shocks
+### 8.5 OOS episode explainability: ОІ Г— realized factor shocks
 
 To verify that factor betas explain stress episodes out-of-sample (not only in-sample fit),
 `stress_report.json` should include `factor_beta_shock_oos` with per-episode diagnostics:

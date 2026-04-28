@@ -429,6 +429,80 @@ def factor_regression_serial_diagnostics(
         return {**base, "error": str(ex)}
 
 
+def factor_regression_heteroskedasticity_diagnostics(
+    y: np.ndarray,
+    X_factors: np.ndarray,
+) -> dict[str, Any]:
+    """
+    Breusch-Pagan heteroskedasticity diagnostic on OLS residuals.
+
+    Uses the same weekly rows as portfolio factor OLS: y ~ intercept + X_factors.
+    Auxiliary regression is u_hat^2 ~ intercept + X_factors.
+    """
+    base: dict[str, Any] = {
+        "method": "breusch_pagan_lm",
+        "h0": "homoskedastic_ols_residuals",
+        "auxiliary_regression": "squared_ols_residuals_on_intercept_and_factors",
+    }
+    try:
+        yv = np.asarray(y, dtype=float).ravel()
+        Xf = np.asarray(X_factors, dtype=float)
+        if Xf.ndim != 2 or yv.size != Xf.shape[0] or yv.size < 5:
+            return {**base, "error": "bad_shape"}
+        if not np.isfinite(yv).all() or not np.isfinite(Xf).all():
+            return {**base, "error": "non_finite"}
+        n, k_factors = Xf.shape
+        Z = np.column_stack([np.ones(n), Xf])
+        if n <= Z.shape[1] + 1:
+            return {**base, "error": "insufficient_observations"}
+
+        beta, *_ = np.linalg.lstsq(Z, yv, rcond=None)
+        resid = yv - Z @ beta
+        resid_sq = resid ** 2.0
+        centered = resid_sq - float(np.mean(resid_sq))
+        ss_tot = float(np.dot(centered, centered))
+        if ss_tot <= 1e-20:
+            return {**base, "error": "constant_squared_residuals"}
+
+        gamma, *_ = np.linalg.lstsq(Z, resid_sq, rcond=None)
+        fitted = Z @ gamma
+        ss_res = float(np.sum((resid_sq - fitted) ** 2.0))
+        r2_aux = max(0.0, min(1.0, 1.0 - ss_res / ss_tot))
+
+        lm = float(n * r2_aux)
+        df_chi2 = int(k_factors)
+        p_value = float(1.0 - stats.chi2.cdf(lm, df=df_chi2)) if df_chi2 > 0 else float("nan")
+
+        df_num = int(k_factors)
+        df_den = int(n - k_factors - 1)
+        f_stat: float | None = None
+        f_p_value: float | None = None
+        if df_num > 0 and df_den > 0 and r2_aux < 1.0:
+            f_stat = float((r2_aux / df_num) / ((1.0 - r2_aux) / df_den))
+            f_p_value = float(1.0 - stats.f.cdf(f_stat, df_num, df_den))
+
+        return {
+            **base,
+            "breusch_pagan": {
+                "lm_statistic": round(lm, 4),
+                "df_chi2": df_chi2,
+                "p_value": p_value,
+                "n_aux_observations": int(n),
+                "aux_r_squared": round(float(r2_aux), 6),
+                "f_statistic": round(float(f_stat), 4) if f_stat is not None else None,
+                "f_df_num": df_num,
+                "f_df_den": df_den,
+                "f_p_value": f_p_value,
+            },
+            "notes": (
+                "Breusch-Pagan: auxiliary regression u_hat^2 on intercept and factor regressors; "
+                "LM = T * R^2_aux; asymptotic chi-square(k_factors) under H0."
+            ),
+        }
+    except Exception as ex:
+        return {**base, "error": str(ex)}
+
+
 def _newey_west_covariance(X: np.ndarray, resid: np.ndarray, max_lags: int) -> np.ndarray:
     """
     Newey–West / HAC covariance for OLS beta with Bartlett kernel.
@@ -628,6 +702,7 @@ def portfolio_factor_regression_weekly(
     - n_obs
     - ``factor_multicollinearity``: pairwise correlations, VIF, cond(R), severity (see stress spec §8.1)
     - ``serial_correlation_diagnostics``: Durbin–Watson, Breusch–Godfrey LM (see stress spec §8.2)
+    - ``heteroskedasticity_diagnostics``: Breusch-Pagan LM/F test (see stress spec §8.3)
     """
     from src.data_yf import download_all
 
@@ -704,6 +779,7 @@ def portfolio_factor_regression_weekly(
     # Diagnostics on the same rows as OLS
     mc = factor_multicollinearity_diagnostics(X_valid, factor_cols)
     ser = factor_regression_serial_diagnostics(y_valid, X_valid, bg_lags=FACTOR_REGRESSION_BG_LAGS)
+    het = factor_regression_heteroskedasticity_diagnostics(y_valid, X_valid)
 
     # HAC / Newey–West inference (same params, different standard errors)
     Z_full = np.column_stack([np.ones(len(X_valid)), X_valid])
@@ -741,6 +817,7 @@ def portfolio_factor_regression_weekly(
             "ci_low": ci_low_hac.tolist(),
             "ci_high": ci_high_hac.tolist(),
         },
+        "heteroskedasticity_diagnostics": het,
         "serial_correlation_diagnostics": ser,
         "factor_multicollinearity": mc,
     }

@@ -115,6 +115,21 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
             "p": {"beta_eq": 0.01},
             "ci_low": {"beta_eq": 0.1},
             "ci_high": {"beta_eq": 0.9},
+            "heteroskedasticity_diagnostics": {
+                "method": "breusch_pagan_lm",
+                "h0": "homoskedastic_ols_residuals",
+                "breusch_pagan": {
+                    "lm_statistic": 1.2,
+                    "df_chi2": 2,
+                    "p_value": 0.55,
+                    "n_aux_observations": 100,
+                    "aux_r_squared": 0.012,
+                    "f_statistic": 0.59,
+                    "f_df_num": 2,
+                    "f_df_den": 97,
+                    "f_p_value": 0.56,
+                },
+            },
             "serial_correlation_diagnostics": {
                 "method": "durbin_watson_breusch_godfrey_lm",
                 "durbin_watson": 2.01,
@@ -157,3 +172,4 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
     assert "-0.7100" in text2
     assert "Durbin–Watson" in text2
     assert "Breusch–Godfrey" in text2
+    assert "Breusch-Pagan" in text2
