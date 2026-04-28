@@ -16,6 +16,7 @@ from scipy import stats
 
 from src.data_fred import fetch_fred_series
 from src.data_yf import fetch_daily
+from src.pandas_compat import MONTH_END_FREQ
 
 # Stress report: weekly regression windows ending at analysis_end (Friday week-ends after inner join)
 FACTOR_WEEKS_3Y = 156   # ~3 calendar years (rolling diagnostics)
@@ -920,7 +921,7 @@ def compute_asset_factor_betas_weekly(
 
 
 def _month_end(s: pd.Series) -> pd.Series:
-    return s.resample("ME").last().dropna()
+    return s.resample(MONTH_END_FREQ).last().dropna()
 
 
 def build_factor_matrix_monthly(

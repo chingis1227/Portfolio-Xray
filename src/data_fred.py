@@ -7,10 +7,7 @@ import os
 
 import pandas as pd
 
-try:
-    from pandas_datareader import get_data_fred
-except ImportError:
-    get_data_fred = None
+from src.pandas_compat import MONTH_END_FREQ
 
 
 def fetch_fred_series(
@@ -23,8 +20,13 @@ def fetch_fred_series(
     Fetch FRED series. If pandas_datareader is available, uses it; else optional API key for direct FRED call.
     Returns Series with DatetimeIndex and annual percent (e.g. DTB3).
     """
-    if get_data_fred is None:
-        raise ImportError("pandas_datareader is required for FRED. Install: pip install pandas-datareader")
+    try:
+        from pandas_datareader import get_data_fred
+    except Exception as ex:
+        raise ImportError(
+            "pandas_datareader is unavailable or incompatible in this environment. "
+            "Install a compatible pandas-datareader/pandas combination."
+        ) from ex
     key = api_key or os.environ.get("FRED_API_KEY")
     # pandas_datareader may use API key from env
     if key:
@@ -54,4 +56,4 @@ def resample_rf_to_month_end(rf_daily_or_irregular: pd.Series) -> pd.Series:
     """
     Resample to month-end: last available value in each month.
     """
-    return rf_daily_or_irregular.resample("ME").last().dropna()
+    return rf_daily_or_irregular.resample(MONTH_END_FREQ).last().dropna()

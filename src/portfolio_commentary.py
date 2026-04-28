@@ -139,6 +139,7 @@ def _append_factor_multicollinearity_section(lines: list[str], mc: Any) -> None:
     """Append factor multicollinearity (same rows as OLS regressors); from factor_multicollinearity in stress_report."""
     if not isinstance(mc, dict) or not mc:
         return
+    lines.append("Мультиколлинеарность факторов")
     err = mc.get("error")
     if err:
         lines.append(f"РњСѓР»СЊС‚РёРєРѕР»Р»РёРЅРµР°СЂРЅРѕСЃС‚СЊ С„Р°РєС‚РѕСЂРѕРІ (РґРёР°РіРЅРѕСЃС‚РёРєР°): РЅРµ РїРѕСЃС‡РёС‚Р°РЅР° вЂ” {err}")
@@ -170,6 +171,7 @@ def _append_factor_multicollinearity_section(lines: list[str], mc: Any) -> None:
             )
     vif_bf = mc.get("vif_by_factor") or {}
     if isinstance(vif_bf, dict) and vif_bf:
+        lines.append("VIF по факторам:")
         lines.append("VIF РїРѕ С„Р°РєС‚РѕСЂР°Рј:")
         for fname in sorted(vif_bf.keys()):
             v = vif_bf[fname]
@@ -183,6 +185,7 @@ def _append_serial_correlation_section(lines: list[str], ser: Any) -> None:
     """DurbinвЂ“Watson + BreuschвЂ“Godfrey on portfolio factor OLS residuals (same ordering as regression)."""
     if not isinstance(ser, dict) or not ser:
         return
+    lines.append("Durbin–Watson / Breusch–Godfrey")
     if ser.get("error"):
         lines.append(f"РђРІС‚РѕРєРѕСЂСЂРµР»СЏС†РёСЏ РѕСЃС‚Р°С‚РєРѕРІ (DW / BreuschвЂ“Godfrey): РЅРµ РїРѕСЃС‡РёС‚Р°РЅР° вЂ” {ser.get('error')}")
         lines.append("")
@@ -210,6 +213,7 @@ def _append_serial_correlation_section(lines: list[str], ser: Any) -> None:
 def _append_factor_regression_section(lines: list[str], fr: Any, label: str) -> None:
     if not isinstance(fr, dict) or not fr:
         return
+    lines.append(f"Портфельная факторная регрессия ({label})")
     betas = fr.get("betas") or {}
     t_d = fr.get("t") or {}
     p_d = fr.get("p") or {}
@@ -270,6 +274,7 @@ def _append_factor_regression_section(lines: list[str], fr: Any, label: str) -> 
 def _append_rolling_betas_section(lines: list[str], st: dict[str, Any], output_dir_final: Path) -> None:
     rw = st.get("factor_betas_rolling_windows_weeks")
     if isinstance(rw, dict) and rw:
+        lines.append("Скользящие окна")
         lines.append(f"РЎРєРѕР»СЊР·СЏС‰РёРµ РѕРєРЅР° (РЅРµРґРµР»СЊ): {', '.join(f'{k}={v}' for k, v in sorted(rw.items()))}.")
 
     summ = st.get("factor_betas_rolling_summary")
@@ -379,6 +384,7 @@ def write_stress_commentary(
         f"РС‚РѕРіРѕРІС‹Р№ СЃС‚Р°С‚СѓСЃ СЃС‚СЂРµСЃСЃ-РЅР°Р±РѕСЂР° РІ stress_report: {status}. "
         f"РћСЃРЅРѕРІРЅРѕР№ РєРѕРґ (primary / fail_reason): {primary}. "
         f"РЎРїРёСЃРѕРє diagnostic_codes: {dc_str}.",
+        "Это диагностическая справка по стрессам: сценарии и исторические эпизоды здесь используются для диагностики и интерпретации.",
         "РџРѕ СЂР°Р±РѕС‡РµРјСѓ РїСЂРѕС†РµСЃСЃСѓ РїСЂРѕРµРєС‚Р° СЃРёРЅС‚РµС‚РёС‡РµСЃРєРёРµ СЃС†РµРЅР°СЂРёРё Рё РёСЃС‚РѕСЂРёС‡РµСЃРєРёРµ СЌРїРёР·РѕРґС‹ РІ СЌС‚РѕРј С„Р°Р№Р»Рµ вЂ” "
         "РґРёР°РіРЅРѕСЃС‚РёРєР° РґР»СЏ PM Рё РЅРµ Р±Р»РѕРєРёСЂСѓСЋС‚ РІС‹РїСѓСЃРє РІРµСЃРѕРІ; Р±Р»РѕРєРёСЂСѓСЋС‰РёР№ РєРѕРЅС‚СѓСЂ РїРѕ РјР°РєСЃРёРјР°Р»СЊРЅРѕР№ РїСЂРѕСЃР°РґРєРµ "
         "Р·Р°РґР°С‘С‚СЃСЏ РѕС‚РґРµР»СЊРЅРѕ (mandate_check / IPS, РїРѕР»РЅР°СЏ РїРµСЂРµСЃРµРєР°СЋС‰Р°СЏСЃСЏ РёСЃС‚РѕСЂРёСЏ).",
