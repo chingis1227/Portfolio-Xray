@@ -51,6 +51,20 @@ For new complex tasks, large changes, or refactors, follow `PLANS.md` before imp
 - Keep ExecPlans as living documents: update `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` as work proceeds.
 - Small, localized fixes do not need a separate ExecPlan unless the user asks for one.
 
+## Done When
+
+A task is considered done only when all applicable conditions are true:
+
+- The requested behavior is implemented, removed, or intentionally left unchanged with a clear justification.
+- The result is verifiable: the final response includes exact changed file paths, a concise description of what changed, and concrete proof via command output, test results, UI state, or report snippets (descriptions like "it works" are not sufficient).
+- The change is contextualized: the previous behavior/state, the new behavior/state, and the reason the change matters are explicitly stated.
+- Validation was performed using the narrowest reliable check (unit test, CLI command, script, or reproducible manual check); failures were fixed and rerun, or any unverified part is explicitly reported with the reason and blocker.
+- No stale references remain to renamed or removed functions, configs, metrics, files, commands, outputs, or workflows.
+- Documentation is updated if the change affects behavior, logic, formulas, configs, workflows, outputs, interfaces, or agent instructions, with explicit mention of what was updated and how.
+- The relevant source-of-truth (specification, model, or design document) was checked before modifying logic, formulas, or data flow; any deviation is explicitly justified.
+- Generated outputs are not treated as source unless the task explicitly targets generated artifacts.
+- Any uncertainty, assumption, or unverified aspect is explicitly stated; no silent assumptions are allowed.
+
 ## Documentation Sync
 Documentation sync is a blocking part of the definition of done for every meaningful code change.
 
