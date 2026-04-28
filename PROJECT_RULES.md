@@ -3,6 +3,7 @@
 Always follow metrics_specification.md for all metric definitions, estimators, frequency, FX, and windowing. Do not invent formulas. For stress testing (scenarios, Loss and RC concentration tests, factor and historical validation), use **docs/docs/stress_testing_spec.md** as the source of truth.
 
 **Stress factor betas** (outputs in `stress_report.json`): estimated on **weekly** aligned data (Friday week-ends). Regression windows ending at **`analysis_end`** are **`FACTOR_WEEKS_5Y = 260`** and **`FACTOR_WEEKS_10Y = 520`** in **`src/stress_factors.py`** (`compute_asset_factor_betas_weekly`). **`factor_betas`** duplicates **`factor_betas_5y`** for backward compatibility. Do not use a 156-week or monthly window for this pipeline unless the spec is explicitly changed.
+Current analytics factor order is `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`, `oil`. `vix` and `oil` are week-end percent changes; `us_growth` is the first difference of FRED `WEI` after shifting its week-ending-Saturday timestamps back to Friday. Only the first six factors map into synthetic stress shock keys in `src/stress.py`; `vix`, `us_growth`, and `oil` are analytics-only in the current production contract.
 
 **Portfolio factor regression diagnostics** (`factor_regression_5y` / `factor_regression_10y` in `stress_report.json`) must use the same weekly OLS rows for multicollinearity, serial correlation, Breusch-Pagan heteroskedasticity, and HAC/Newey-West inference; these diagnostics are non-binding.
 

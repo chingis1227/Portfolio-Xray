@@ -14,6 +14,8 @@ from typing import Any
 
 import pandas as pd
 
+from src.stress_factors import BETA_ROW_ORDER
+
 
 def _folder_portfolio_label(output_dir_final: Path) -> str:
     name = output_dir_final.name.strip().lower()
@@ -100,14 +102,24 @@ def _fmt_beta_dict(d: dict[str, Any] | None) -> str:
     return ", ".join(parts) if parts else "РЅ/Рґ"
 
 
-_BETA_ROW_ORDER = (
-    "beta_eq",
-    "beta_rr",
-    "beta_inf",
-    "beta_credit",
-    "beta_usd",
-    "beta_cmd",
-)
+def _ordered_beta_keys(*maps: Any) -> list[str]:
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for key in BETA_ROW_ORDER:
+        if any(isinstance(m, dict) and key in m for m in maps):
+            ordered.append(key)
+            seen.add(key)
+    extra = sorted(
+        {
+            str(key)
+            for m in maps
+            if isinstance(m, dict)
+            for key in m.keys()
+            if str(key) not in seen
+        }
+    )
+    ordered.extend(extra)
+    return ordered
 
 
 def _relpath_for_pdf_md_image(image_file: Path, output_dir_final: Path) -> str | None:
@@ -244,6 +256,7 @@ def _append_factor_regression_section(lines: list[str], fr: Any, label: str) -> 
     p_d = fr.get("p") or {}
     lo = fr.get("ci_low") or {}
     hi = fr.get("ci_high") or {}
+    beta_order = _ordered_beta_keys(betas, t_d, p_d, lo, hi)
     lines.append(
         f"РџРѕСЂС‚С„РµР»СЊРЅР°СЏ С„Р°РєС‚РѕСЂРЅР°СЏ СЂРµРіСЂРµСЃСЃРёСЏ ({label}), РЅРµРґРµР»СЊРЅС‹Рµ СЂСЏРґС‹, OLS: "
         f"n_obs={fr.get('n_obs', 'РЅ/Рґ')}, RВІ={_fmt_float(fr.get('r2'), 4)}, "
@@ -251,7 +264,7 @@ def _append_factor_regression_section(lines: list[str], fr: Any, label: str) -> 
         f"se_type={fr.get('se_type', 'вЂ”')}, alpha={fr.get('alpha', 'вЂ”')} (CI СѓСЂРѕРІРµРЅСЊ {fr.get('ci_level', 'вЂ”')})."
     )
     lines.append("РџРѕ С„Р°РєС‚РѕСЂР°Рј (ОІ, t, p, 95% CI) вЂ” РєР»Р°СЃСЃРёС‡РµСЃРєРёР№ OLS (se_type=classic_ols):")
-    for key in _BETA_ROW_ORDER:
+    for key in beta_order:
         if key not in betas and key not in t_d:
             continue
         lines.append(
@@ -274,7 +287,7 @@ def _append_factor_regression_section(lines: list[str], fr: Any, label: str) -> 
             # РРЅРґРµРєСЃС‹: 0 вЂ” intercept, 1.. вЂ” С„Р°РєС‚РѕСЂС‹ РІ С‚РѕРј Р¶Рµ РїРѕСЂСЏРґРєРµ, С‡С‚Рѕ Рё factor_cols / beta_keys.
             lines.append("РџРѕ С„Р°РєС‚РѕСЂР°Рј (HAC t, p, 95% CI):")
             # РїРѕСЃС‚СЂРѕРёРј РјР°РїСѓ РїРѕ beta_keys РёР· РїРѕР·РёС†РёР№
-            for idx, key in enumerate(_BETA_ROW_ORDER, start=1):
+            for idx, key in enumerate(beta_order, start=1):
                 pos = idx
                 if pos >= len(hac_t):
                     continue
@@ -313,7 +326,7 @@ def _append_rolling_betas_section(lines: list[str], st: dict[str, Any], output_d
             if not isinstance(by_b, dict):
                 continue
             lines.append(f"РћРєРЅРѕ {win}:")
-            for bkey in _BETA_ROW_ORDER:
+            for bkey in _ordered_beta_keys(by_b):
                 row = by_b.get(bkey)
                 if not isinstance(row, dict):
                     continue

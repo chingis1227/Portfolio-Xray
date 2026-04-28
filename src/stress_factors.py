@@ -6,9 +6,10 @@ Factors: equity (S&P/SPY), real rates (DFII10 Δ), inflation (T10YIE Δ), credit
 """
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import dataclass
 import json
 from pathlib import Path
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -29,30 +30,43 @@ FACTOR_REGRESSION_BG_LAGS: tuple[int, ...] = (1, 2, 4)
 # HAC / Newey–West: max lag for weekly factor regression residuals (≈ 1 календарный месяц)
 FACTOR_REGRESSION_HAC_LAGS: int = 4
 
-FACTOR_TO_BETA_KEY = {
-    "equity": "beta_eq",
-    "real_rates": "beta_rr",
-    "inflation": "beta_inf",
-    "credit": "beta_credit",
-    "usd": "beta_usd",
-    "commodity": "beta_cmd",
-}
-
 # FRED series (fallback when project series not used)
 FRED_EQUITY_LEVEL = "SP500"
 FRED_REAL_10Y = "DFII10"
 FRED_BREAKEVEN_10Y = "T10YIE"
 FRED_HY_SPREAD = "BAMLH0A0HYM2"
 FRED_DXY = "DTWEXBGS"
+FRED_VIX = "VIXCLS"
+FRED_US_GROWTH = "WEI"
+FRED_WTI_OIL = "DCOILWTICO"
 
 # ETF proxies (preferred for equity/commodity when available)
 ETF_EQUITY = "SPY"
 ETF_COMMODITY = "DBC"
 
 
+@dataclass(frozen=True)
+class FactorDefinition:
+    column: str
+    beta_key: str
+    display_name: str
+    source_label: str
+    weekly_loader: Callable[[str, str], pd.Series]
+    monthly_loader: Callable[[str, str], pd.Series]
+    stress_participates: bool = True
+
+
 def _week_end(series: pd.Series) -> pd.Series:
     """Resample to week-end (Friday)."""
     return series.resample("W-FRI").last().dropna()
+
+
+def _shift_index_days(series: pd.Series, days: int) -> pd.Series:
+    if series.empty:
+        return series
+    out = series.copy()
+    out.index = pd.to_datetime(out.index).tz_localize(None) + pd.Timedelta(days=int(days))
+    return out.sort_index()
 
 
 def _weekly_return(prices: pd.Series) -> pd.Series:
@@ -61,14 +75,80 @@ def _weekly_return(prices: pd.Series) -> pd.Series:
     return w.pct_change().dropna()
 
 
-def fetch_equity_weekly(start: str, end: str) -> pd.Series:
-    """Weekly equity return: try SPY (Yahoo), else FRED SP500 level -> return."""
+def _month_end(s: pd.Series) -> pd.Series:
+    return s.resample(MONTH_END_FREQ).last().dropna()
+
+
+def _monthly_return(prices: pd.Series) -> pd.Series:
+    m = _month_end(prices)
+    return m.pct_change().dropna()
+
+
+def _fred_weekly_pct_change(series_id: str, start: str, end: str) -> pd.Series:
     try:
-        df = fetch_daily(ETF_EQUITY, start, end)
+        s = fetch_fred_series(series_id, start, end)
+        if s.empty or len(s) < 2:
+            return pd.Series(dtype=float)
+        return _week_end(s).pct_change().dropna()
+    except Exception:
+        return pd.Series(dtype=float)
+
+
+def _fred_monthly_pct_change(series_id: str, start: str, end: str) -> pd.Series:
+    try:
+        s = fetch_fred_series(series_id, start, end)
+        if s.empty or len(s) < 2:
+            return pd.Series(dtype=float)
+        return _month_end(s).pct_change().dropna()
+    except Exception:
+        return pd.Series(dtype=float)
+
+
+def _fred_weekly_decimal_diff(series_id: str, start: str, end: str) -> pd.Series:
+    try:
+        s = fetch_fred_series(series_id, start, end)
+        if s.empty or len(s) < 2:
+            return pd.Series(dtype=float)
+        return (_week_end(s) / 100.0).diff().dropna()
+    except Exception:
+        return pd.Series(dtype=float)
+
+
+def _fred_monthly_decimal_diff(series_id: str, start: str, end: str) -> pd.Series:
+    try:
+        s = fetch_fred_series(series_id, start, end)
+        if s.empty or len(s) < 2:
+            return pd.Series(dtype=float)
+        return (_month_end(s) / 100.0).diff().dropna()
+    except Exception:
+        return pd.Series(dtype=float)
+
+
+def _yahoo_weekly_return(ticker: str, start: str, end: str) -> pd.Series:
+    try:
+        df = fetch_daily(ticker, start, end)
         if not df.empty and "Close" in df.columns:
             return _weekly_return(df["Close"])
     except Exception:
         pass
+    return pd.Series(dtype=float)
+
+
+def _yahoo_monthly_return(ticker: str, start: str, end: str) -> pd.Series:
+    try:
+        df = fetch_daily(ticker, start, end)
+        if not df.empty and "Close" in df.columns:
+            return _monthly_return(df["Close"])
+    except Exception:
+        pass
+    return pd.Series(dtype=float)
+
+
+def fetch_equity_weekly(start: str, end: str) -> pd.Series:
+    """Weekly equity return: try SPY (Yahoo), else FRED SP500 level -> return."""
+    out = _yahoo_weekly_return(ETF_EQUITY, start, end)
+    if not out.empty:
+        return out
     try:
         s = fetch_fred_series(FRED_EQUITY_LEVEL, start, end)
         if not s.empty:
@@ -78,69 +158,158 @@ def fetch_equity_weekly(start: str, end: str) -> pd.Series:
     return pd.Series(dtype=float)
 
 
+def fetch_equity_monthly(start: str, end: str) -> pd.Series:
+    """Monthly equity return: try SPY (Yahoo), else FRED SP500 level -> return."""
+    out = _yahoo_monthly_return(ETF_EQUITY, start, end)
+    if not out.empty:
+        return out
+    try:
+        s = fetch_fred_series(FRED_EQUITY_LEVEL, start, end)
+        if not s.empty:
+            return _monthly_return(s)
+    except Exception:
+        pass
+    return pd.Series(dtype=float)
+
+
 def fetch_real_rates_weekly(start: str, end: str) -> pd.Series:
     """Weekly change in 10Y real yield (FRED DFII10). In decimal (e.g. 0.02 = 200 bps)."""
-    try:
-        s = fetch_fred_series(FRED_REAL_10Y, start, end)
-        if s.empty or len(s) < 2:
-            return pd.Series(dtype=float)
-        w = _week_end(s)
-        # FRED is in percent (e.g. 2.0 for 2%); convert to decimal for delta
-        w_dec = w / 100.0
-        return w_dec.diff().dropna()
-    except Exception:
-        return pd.Series(dtype=float)
+    return _fred_weekly_decimal_diff(FRED_REAL_10Y, start, end)
+
+
+def fetch_real_rates_monthly(start: str, end: str) -> pd.Series:
+    return _fred_monthly_decimal_diff(FRED_REAL_10Y, start, end)
 
 
 def fetch_inflation_surprise_weekly(start: str, end: str) -> pd.Series:
     """Weekly change in 10Y breakeven (FRED T10YIE) as inflation surprise proxy. Decimal."""
-    try:
-        s = fetch_fred_series(FRED_BREAKEVEN_10Y, start, end)
-        if s.empty or len(s) < 2:
-            return pd.Series(dtype=float)
-        w = _week_end(s)
-        w_dec = w / 100.0
-        return w_dec.diff().dropna()
-    except Exception:
-        return pd.Series(dtype=float)
+    return _fred_weekly_decimal_diff(FRED_BREAKEVEN_10Y, start, end)
+
+
+def fetch_inflation_surprise_monthly(start: str, end: str) -> pd.Series:
+    return _fred_monthly_decimal_diff(FRED_BREAKEVEN_10Y, start, end)
 
 
 def fetch_credit_spread_weekly(start: str, end: str) -> pd.Series:
     """Weekly change in HY spread (FRED BAMLH0A0HYM2). Percent -> decimal (e.g. 4.0% -> 0.04)."""
-    try:
-        s = fetch_fred_series(FRED_HY_SPREAD, start, end)
-        if s.empty or len(s) < 2:
-            return pd.Series(dtype=float)
-        w = _week_end(s)
-        # FRED series is in percent points; convert to decimal, then take weekly delta.
-        # Example: 4.0 (%) -> 0.04 (decimal spread level).
-        w_dec = w / 100.0
-        return w_dec.diff().dropna()
-    except Exception:
-        return pd.Series(dtype=float)
+    return _fred_weekly_decimal_diff(FRED_HY_SPREAD, start, end)
+
+
+def fetch_credit_spread_monthly(start: str, end: str) -> pd.Series:
+    return _fred_monthly_decimal_diff(FRED_HY_SPREAD, start, end)
 
 
 def fetch_usd_weekly(start: str, end: str) -> pd.Series:
     """Weekly % change in DXY (FRED DTWEXBGS)."""
-    try:
-        s = fetch_fred_series(FRED_DXY, start, end)
-        if s.empty or len(s) < 2:
-            return pd.Series(dtype=float)
-        w = _week_end(s)
-        return w.pct_change().dropna()
-    except Exception:
-        return pd.Series(dtype=float)
+    return _fred_weekly_pct_change(FRED_DXY, start, end)
+
+
+def fetch_usd_monthly(start: str, end: str) -> pd.Series:
+    return _fred_monthly_pct_change(FRED_DXY, start, end)
 
 
 def fetch_commodity_weekly(start: str, end: str) -> pd.Series:
     """Weekly commodity return (DBC ETF)."""
+    return _yahoo_weekly_return(ETF_COMMODITY, start, end)
+
+
+def fetch_commodity_monthly(start: str, end: str) -> pd.Series:
+    return _yahoo_monthly_return(ETF_COMMODITY, start, end)
+
+
+def fetch_vix_weekly(start: str, end: str) -> pd.Series:
+    """Weekly % change in VIX level (FRED VIXCLS)."""
+    return _fred_weekly_pct_change(FRED_VIX, start, end)
+
+
+def fetch_vix_monthly(start: str, end: str) -> pd.Series:
+    return _fred_monthly_pct_change(FRED_VIX, start, end)
+
+
+def fetch_us_growth_weekly(start: str, end: str) -> pd.Series:
+    """
+    Weekly change in WEI.
+
+    FRED WEI is week-ending Saturday. Shift to Friday before inner joins so it aligns
+    with the rest of the weekly factor matrix.
+    """
     try:
-        df = fetch_daily(ETF_COMMODITY, start, end)
-        if not df.empty and "Close" in df.columns:
-            return _weekly_return(df["Close"])
+        s = fetch_fred_series(FRED_US_GROWTH, start, end)
+        if s.empty or len(s) < 2:
+            return pd.Series(dtype=float)
+        return _shift_index_days(s, -1).diff().dropna()
     except Exception:
-        pass
-    return pd.Series(dtype=float)
+        return pd.Series(dtype=float)
+
+
+def fetch_us_growth_monthly(start: str, end: str) -> pd.Series:
+    try:
+        s = fetch_fred_series(FRED_US_GROWTH, start, end)
+        if s.empty or len(s) < 2:
+            return pd.Series(dtype=float)
+        return _month_end(_shift_index_days(s, -1)).diff().dropna()
+    except Exception:
+        return pd.Series(dtype=float)
+
+
+def fetch_oil_weekly(start: str, end: str) -> pd.Series:
+    """Weekly % change in WTI spot oil (FRED DCOILWTICO)."""
+    return _fred_weekly_pct_change(FRED_WTI_OIL, start, end)
+
+
+def fetch_oil_monthly(start: str, end: str) -> pd.Series:
+    return _fred_monthly_pct_change(FRED_WTI_OIL, start, end)
+
+
+FACTOR_DEFINITIONS: tuple[FactorDefinition, ...] = (
+    FactorDefinition("equity", "beta_eq", "Equity", "SPY or FRED:SP500", lambda start, end: fetch_equity_weekly(start, end), lambda start, end: fetch_equity_monthly(start, end), True),
+    FactorDefinition("real_rates", "beta_rr", "Real rates", "FRED:DFII10", lambda start, end: fetch_real_rates_weekly(start, end), lambda start, end: fetch_real_rates_monthly(start, end), True),
+    FactorDefinition("inflation", "beta_inf", "Inflation", "FRED:T10YIE", lambda start, end: fetch_inflation_surprise_weekly(start, end), lambda start, end: fetch_inflation_surprise_monthly(start, end), True),
+    FactorDefinition("credit", "beta_credit", "Credit (HY)", "FRED:BAMLH0A0HYM2", lambda start, end: fetch_credit_spread_weekly(start, end), lambda start, end: fetch_credit_spread_monthly(start, end), True),
+    FactorDefinition("usd", "beta_usd", "USD", "FRED:DTWEXBGS", lambda start, end: fetch_usd_weekly(start, end), lambda start, end: fetch_usd_monthly(start, end), True),
+    FactorDefinition("commodity", "beta_cmd", "Commodity", "DBC", lambda start, end: fetch_commodity_weekly(start, end), lambda start, end: fetch_commodity_monthly(start, end), True),
+    FactorDefinition("vix", "beta_vix", "VIX", "FRED:VIXCLS", lambda start, end: fetch_vix_weekly(start, end), lambda start, end: fetch_vix_monthly(start, end), False),
+    FactorDefinition("us_growth", "beta_us_growth", "US Growth (WEI)", "FRED:WEI", lambda start, end: fetch_us_growth_weekly(start, end), lambda start, end: fetch_us_growth_monthly(start, end), False),
+    FactorDefinition("oil", "beta_oil", "Oil (WTI)", "FRED:DCOILWTICO", lambda start, end: fetch_oil_weekly(start, end), lambda start, end: fetch_oil_monthly(start, end), False),
+)
+STRESS_FACTOR_DEFINITIONS: tuple[FactorDefinition, ...] = tuple(spec for spec in FACTOR_DEFINITIONS if spec.stress_participates)
+FACTOR_TO_BETA_KEY = {spec.column: spec.beta_key for spec in FACTOR_DEFINITIONS}
+BETA_ROW_ORDER: tuple[str, ...] = tuple(spec.beta_key for spec in FACTOR_DEFINITIONS)
+BETA_KEY_TO_DISPLAY_NAME = {spec.beta_key: spec.display_name for spec in FACTOR_DEFINITIONS}
+FACTOR_COLUMN_ORDER: tuple[str, ...] = tuple(spec.column for spec in FACTOR_DEFINITIONS)
+
+
+def get_factor_beta_row_order(*, stress_only: bool = False) -> tuple[str, ...]:
+    specs = STRESS_FACTOR_DEFINITIONS if stress_only else FACTOR_DEFINITIONS
+    return tuple(spec.beta_key for spec in specs)
+
+
+def get_factor_display_name(beta_key: str) -> str:
+    return BETA_KEY_TO_DISPLAY_NAME.get(beta_key, beta_key)
+
+
+def _build_factor_frame(start: str, end: str, *, monthly: bool) -> pd.DataFrame:
+    data: dict[str, pd.Series] = {}
+    for spec in FACTOR_DEFINITIONS:
+        loader = spec.monthly_loader if monthly else spec.weekly_loader
+        try:
+            series = loader(start, end)
+        except Exception:
+            series = pd.Series(dtype=float)
+        data[spec.column] = series if series is not None else pd.Series(dtype=float)
+
+    ordered_cols = [spec.column for spec in FACTOR_DEFINITIONS]
+    df = pd.DataFrame({col: data[col] for col in ordered_cols})
+    df = df.dropna(how="all")
+    if df.empty:
+        return df
+    if not monthly:
+        min_fill_ratio = 0.5
+        cols_to_drop = [c for c in ordered_cols if c in df.columns and df[c].notna().sum() < len(df) * min_fill_ratio]
+        if cols_to_drop:
+            df = df.drop(columns=cols_to_drop)
+        df = df.dropna()
+    return df
 
 
 def build_factor_matrix(
@@ -149,33 +318,11 @@ def build_factor_matrix(
 ) -> pd.DataFrame:
     """
     Build weekly factor series aligned to common index.
-    Columns: equity, real_rates, inflation, credit, usd, commodity.
+    Columns follow FACTOR_DEFINITIONS and currently include equity, real_rates,
+    inflation, credit, usd, commodity, vix, us_growth, and oil.
     Index: week-end dates. All in decimal (returns or changes).
     """
-    eq = fetch_equity_weekly(start, end)
-    rr = fetch_real_rates_weekly(start, end)
-    inf = fetch_inflation_surprise_weekly(start, end)
-    cr = fetch_credit_spread_weekly(start, end)
-    usd = fetch_usd_weekly(start, end)
-    cmd = fetch_commodity_weekly(start, end)
-
-    df = pd.DataFrame({
-        "equity": eq,
-        "real_rates": rr,
-        "inflation": inf,
-        "credit": cr,
-        "usd": usd,
-        "commodity": cmd,
-    })
-    df = df.dropna(how="all")
-    # Optionally drop columns with very low fill (< 50% non-null) so inner join keeps more dates
-    min_fill_ratio = 0.5
-    cols_to_drop = [c for c in df.columns if df[c].notna().sum() < len(df) * min_fill_ratio]
-    if cols_to_drop:
-        df = df.drop(columns=cols_to_drop)
-    # Single explicit inner join: common index (dates) where all factors have values
-    df = df.dropna()
-    return df
+    return _build_factor_frame(start, end, monthly=False)
 
 
 def asset_weekly_returns_from_daily(
@@ -207,10 +354,10 @@ def estimate_betas(
 ) -> pd.DataFrame:
     """
     Regress each asset's weekly return on factor columns. OLS, no constant (or with constant).
-    factor_returns columns: equity, real_rates, inflation, credit, usd, commodity.
-    Returns DataFrame: index = asset tickers, columns = beta_equity, beta_real_rates, ... beta_commodity.
+    factor_returns columns follow FACTOR_DEFINITIONS.
+    Returns DataFrame: index = asset tickers, columns = beta_* keys from FACTOR_TO_BETA_KEY.
     """
-    factor_cols = [c for c in ["equity", "real_rates", "inflation", "credit", "usd", "commodity"] if c in factor_returns.columns]
+    factor_cols = [c for c in FACTOR_COLUMN_ORDER if c in factor_returns.columns]
     if not factor_cols:
         return pd.DataFrame()
 
@@ -247,17 +394,8 @@ def estimate_betas(
 
     if not betas:
         return pd.DataFrame()
-    # Short names for stress scenario shocks: eq, rr, inf, credit, usd, cmd
-    name_map = {
-        "equity": "beta_eq",
-        "real_rates": "beta_rr",
-        "inflation": "beta_inf",
-        "credit": "beta_credit",
-        "usd": "beta_usd",
-        "commodity": "beta_cmd",
-    }
     df = pd.DataFrame(betas).T
-    df = df.rename(columns={c: name_map.get(c, f"beta_{c}") for c in factor_cols})
+    df = df.rename(columns={c: FACTOR_TO_BETA_KEY.get(c, f"beta_{c}") for c in factor_cols})
     return df
 
 
@@ -997,72 +1135,15 @@ def compute_asset_factor_betas_weekly(
     return estimate_betas(Y, X)
 
 
-def _month_end(s: pd.Series) -> pd.Series:
-    return s.resample(MONTH_END_FREQ).last().dropna()
-
-
 def build_factor_matrix_monthly(
     start: str,
     end: str,
 ) -> pd.DataFrame:
     """
     Build monthly factor series (month-end). For use when only monthly returns available.
-    Columns: equity, real_rates, inflation, credit, usd, commodity. Decimal.
+    Columns follow FACTOR_DEFINITIONS. Decimal.
     """
-    try:
-        df_eq = fetch_daily(ETF_EQUITY, start, end)
-        if not df_eq.empty and "Close" in df_eq.columns:
-            eq = _month_end(df_eq["Close"]).pct_change().dropna()
-        else:
-            eq = pd.Series(dtype=float)
-    except Exception:
-        eq = pd.Series(dtype=float)
-    try:
-        rr = fetch_fred_series(FRED_REAL_10Y, start, end)
-        if not rr.empty:
-            rr = _month_end(rr)
-            rr = (rr / 100.0).diff().dropna()
-    except Exception:
-        rr = pd.Series(dtype=float)
-    try:
-        inf = fetch_fred_series(FRED_BREAKEVEN_10Y, start, end)
-        if not inf.empty:
-            inf = _month_end(inf)
-            inf = (inf / 100.0).diff().dropna()
-    except Exception:
-        inf = pd.Series(dtype=float)
-    try:
-        cr = fetch_fred_series(FRED_HY_SPREAD, start, end)
-        if not cr.empty:
-            cr = _month_end(cr)
-            # Keep units consistent with weekly pipeline: percent points -> decimal.
-            cr = (cr / 100.0).diff().dropna()
-    except Exception:
-        cr = pd.Series(dtype=float)
-    try:
-        usd = fetch_fred_series(FRED_DXY, start, end)
-        if not usd.empty:
-            usd = _month_end(usd).pct_change().dropna()
-    except Exception:
-        usd = pd.Series(dtype=float)
-    try:
-        df_cmd = fetch_daily(ETF_COMMODITY, start, end)
-        if not df_cmd.empty and "Close" in df_cmd.columns:
-            cmd = _month_end(df_cmd["Close"]).pct_change().dropna()
-        else:
-            cmd = pd.Series(dtype=float)
-    except Exception:
-        cmd = pd.Series(dtype=float)
-
-    df = pd.DataFrame({
-        "equity": eq,
-        "real_rates": rr,
-        "inflation": inf,
-        "credit": cr,
-        "usd": usd,
-        "commodity": cmd,
-    })
-    return df.dropna(how="all")
+    return _build_factor_frame(start, end, monthly=True)
 
 
 def estimate_betas_monthly(
@@ -1073,7 +1154,7 @@ def estimate_betas_monthly(
     """
     Regress each asset monthly return on monthly factor changes. Same column naming as estimate_betas.
     """
-    factor_cols = [c for c in ["equity", "real_rates", "inflation", "credit", "usd", "commodity"] if c in factor_monthly.columns]
+    factor_cols = [c for c in FACTOR_COLUMN_ORDER if c in factor_monthly.columns]
     if not factor_cols:
         return pd.DataFrame()
 
@@ -1090,14 +1171,6 @@ def estimate_betas_monthly(
     Y = Y.loc[common]
     X = X.loc[common]
     X_const = np.column_stack([np.ones(len(X)), X.values])
-    name_map = {
-        "equity": "beta_eq",
-        "real_rates": "beta_rr",
-        "inflation": "beta_inf",
-        "credit": "beta_credit",
-        "usd": "beta_usd",
-        "commodity": "beta_cmd",
-    }
     betas = {}
     for ticker in Y.columns:
         y = Y[ticker].values
@@ -1113,7 +1186,7 @@ def estimate_betas_monthly(
     if not betas:
         return pd.DataFrame()
     df = pd.DataFrame(betas).T
-    df = df.rename(columns={c: name_map.get(c, f"beta_{c}") for c in factor_cols})
+    df = df.rename(columns={c: FACTOR_TO_BETA_KEY.get(c, f"beta_{c}") for c in factor_cols})
     return df
 
 
@@ -1142,14 +1215,6 @@ def _rolling_window_betas(
     if len(x_df) != len(y) or len(x_df) < int(window_weeks):
         return pd.DataFrame()
     cols = list(x_df.columns)
-    name_map = {
-        "equity": "beta_eq",
-        "real_rates": "beta_rr",
-        "inflation": "beta_inf",
-        "credit": "beta_credit",
-        "usd": "beta_usd",
-        "commodity": "beta_cmd",
-    }
     out_rows: list[dict[str, float]] = []
     out_idx: list[pd.Timestamp] = []
     w = int(window_weeks)
@@ -1166,7 +1231,7 @@ def _rolling_window_betas(
         except Exception:
             continue
         row = {
-            name_map.get(c, f"beta_{c}"): float(v)
+            FACTOR_TO_BETA_KEY.get(c, f"beta_{c}"): float(v)
             for c, v in zip(cols, b[1:])
         }
         out_rows.append(row)
@@ -1266,7 +1331,11 @@ def rolling_beta_summary(rolling_betas: dict[str, pd.DataFrame]) -> pd.DataFrame
             )
     if not rows:
         return pd.DataFrame(columns=["window", "beta", "n_points", "mean", "median", "p10", "p90"])
-    return pd.DataFrame(rows).sort_values(["window", "beta"]).reset_index(drop=True)
+    beta_rank = {beta_key: idx for idx, beta_key in enumerate(BETA_ROW_ORDER)}
+    out_df = pd.DataFrame(rows)
+    out_df["beta_rank"] = out_df["beta"].map(lambda beta: beta_rank.get(str(beta), len(beta_rank)))
+    out_df = out_df.sort_values(["window", "beta_rank", "beta"]).drop(columns=["beta_rank"]).reset_index(drop=True)
+    return out_df
 
 
 def write_rolling_betas_plot_html(
@@ -1288,7 +1357,9 @@ def write_rolling_betas_plot_html(
             "series": {c: [None if pd.isna(v) else float(v) for v in df[c].tolist()] for c in df.columns},
         }
 
-    beta_list = sorted(beta_names)
+    beta_list = [beta for beta in BETA_ROW_ORDER if beta in beta_names]
+    beta_list.extend(sorted(beta for beta in beta_names if beta not in beta_list))
+    beta_title_map = {beta: get_factor_display_name(beta) for beta in beta_list}
     html = f"""<!doctype html>
 <html lang="en">
 <head>
@@ -1316,6 +1387,7 @@ def write_rolling_betas_plot_html(
   <script>
     const dataByWindow = {json.dumps(payload, ensure_ascii=False)};
     const betaList = {json.dumps(beta_list, ensure_ascii=False)};
+    const betaTitleMap = {json.dumps(beta_title_map, ensure_ascii=False)};
     const windows = Object.keys(dataByWindow).sort();
     const rui = {{ white: "#ffffff", dark: "#191c1f", border: "#c9c9cd", blue: "#494fdf", success: "#00a87e", warn: "#ec7e00" }};
     const layoutBase = {{
@@ -1347,7 +1419,7 @@ def write_rolling_betas_plot_html(
         }});
       }});
       const layout = Object.assign({{}}, layoutBase, {{
-        title: beta,
+        title: betaTitleMap[beta] || beta,
         xaxis: Object.assign({{}}, layoutBase.xaxis, {{ title: "Date" }}),
         yaxis: Object.assign({{}}, layoutBase.yaxis, {{ title: "Beta" }}),
         colorway: colorway
@@ -1381,32 +1453,23 @@ def write_rolling_betas_plot_pngs(
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    beta_order = [
-        "beta_eq",
-        "beta_rr",
-        "beta_inf",
-        "beta_credit",
-        "beta_usd",
-        "beta_cmd",
-    ]
-    short_title = {
-        "beta_eq": "Equity",
-        "beta_rr": "Real rates",
-        "beta_inf": "Inflation",
-        "beta_credit": "Credit (HY)",
-        "beta_usd": "USD",
-        "beta_cmd": "Commodity",
-    }
-
     saved: dict[str, str] = {}
     for label, df in (rolling_betas or {}).items():
         if df is None or df.empty:
             continue
-        fig, axes = plt.subplots(2, 3, figsize=(14, 8))
+        beta_order = [beta for beta in BETA_ROW_ORDER if beta in df.columns]
+        beta_order.extend(sorted(beta for beta in df.columns if beta not in beta_order))
+        if not beta_order:
+            continue
+        n_plots = len(beta_order)
+        n_cols = int(np.ceil(np.sqrt(n_plots)))
+        n_rows = int(np.ceil(n_plots / n_cols))
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(max(12, 4 * n_cols), max(7, 3.2 * n_rows)))
+        axes_arr = np.atleast_1d(axes).reshape(-1)
         fig.suptitle(f"Rolling factor betas — {label} window (weekly OLS)", fontsize=12)
 
-        for ax, col in zip(axes.flat, beta_order):
-            ax.set_title(short_title.get(col, col), fontsize=10)
+        for ax, col in zip(axes_arr, beta_order):
+            ax.set_title(get_factor_display_name(col), fontsize=10)
             ax.grid(True, alpha=0.3)
             if col not in df.columns:
                 ax.text(0.5, 0.5, "n/a", ha="center", va="center", transform=ax.transAxes)
@@ -1418,6 +1481,9 @@ def write_rolling_betas_plot_pngs(
             ax.plot(s.index, s.values, color="C0", linewidth=0.9)
             ax.tick_params(axis="x", rotation=25, labelsize=7)
             ax.set_ylabel("β", fontsize=8)
+
+        for ax in axes_arr[n_plots:]:
+            ax.axis("off")
 
         plt.tight_layout()
         fname = f"{prefix}_{label}.png"

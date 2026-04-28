@@ -85,7 +85,7 @@ def test_pnl_by_factor_pct_uses_portfolio_betas() -> None:
     )
     tickers = ["AAA", "BBB"]
     weights = {"AAA": 0.5, "BBB": 0.5}
-    asset_betas = pd.DataFrame(columns=["beta_eq", "beta_rr", "beta_inf", "beta_credit", "beta_usd", "beta_cmd"])
+    asset_betas = pd.DataFrame(columns=["beta_eq", "beta_rr", "beta_inf", "beta_credit", "beta_usd", "beta_cmd", "beta_vix", "beta_us_growth", "beta_oil"])
     portfolio_betas = {
         "beta_eq": 1.0,
         "beta_rr": 0.0,
@@ -93,6 +93,9 @@ def test_pnl_by_factor_pct_uses_portfolio_betas() -> None:
         "beta_credit": 0.0,
         "beta_usd": 0.0,
         "beta_cmd": 0.0,
+        "beta_vix": 99.0,
+        "beta_us_growth": -99.0,
+        "beta_oil": 77.0,
     }
 
     out = run_stress(
@@ -107,6 +110,7 @@ def test_pnl_by_factor_pct_uses_portfolio_betas() -> None:
     eq = next((r for r in out["scenario_results"] if r["scenario_id"] == "equity_shock"), None)
     assert eq is not None
     assert eq.get("pnl_by_factor_pct", {}).get("eq") == round(-0.4 * 1.0, 4)
+    assert set(eq.get("pnl_by_factor_pct", {}).keys()) == {"eq"}
 
 
 def test_recession_severe_is_calibrated_from_worst_2008_2020_model_pnl() -> None:

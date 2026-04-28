@@ -17,6 +17,9 @@ def test_factor_oos_beta_shock_explainability_basic(monkeypatch) -> None:
             "credit": [0.01, 0.01, 0.00, 0.00],
             "usd": [0.02, -0.01, 0.00, 0.00],
             "commodity": [0.01, 0.00, 0.00, 0.00],
+            "vix": [0.03, 0.02, -0.01, 0.00],
+            "us_growth": [0.00, 0.01, 0.00, -0.01],
+            "oil": [0.04, -0.02, 0.01, 0.00],
         },
         index=idx,
     )
@@ -25,7 +28,18 @@ def test_factor_oos_beta_shock_explainability_basic(monkeypatch) -> None:
     monkeypatch.setattr(
         sf,
         "portfolio_factor_regression_weekly",
-        lambda **_kwargs: {"betas": {"beta_eq": 0.5, "beta_rr": -1.0, "beta_credit": -0.2, "beta_usd": -0.1, "beta_cmd": 0.1}},
+        lambda **_kwargs: {
+            "betas": {
+                "beta_eq": 0.5,
+                "beta_rr": -1.0,
+                "beta_credit": -0.2,
+                "beta_usd": -0.1,
+                "beta_cmd": 0.1,
+                "beta_vix": 0.3,
+                "beta_us_growth": 0.2,
+                "beta_oil": -0.4,
+            }
+        },
     )
 
     hist = [
@@ -40,8 +54,26 @@ def test_factor_oos_beta_shock_explainability_basic(monkeypatch) -> None:
         weights={"AAA": 1.0},
         tickers=["AAA"],
         historical_results=hist,
-        factor_betas_5y={"beta_eq": 0.4, "beta_rr": -1.1, "beta_credit": -0.3, "beta_usd": -0.2, "beta_cmd": 0.0},
-        factor_betas_10y={"beta_eq": 0.3, "beta_rr": -0.9, "beta_credit": -0.1, "beta_usd": -0.2, "beta_cmd": 0.1},
+        factor_betas_5y={
+            "beta_eq": 0.4,
+            "beta_rr": -1.1,
+            "beta_credit": -0.3,
+            "beta_usd": -0.2,
+            "beta_cmd": 0.0,
+            "beta_vix": 0.25,
+            "beta_us_growth": 0.05,
+            "beta_oil": -0.2,
+        },
+        factor_betas_10y={
+            "beta_eq": 0.3,
+            "beta_rr": -0.9,
+            "beta_credit": -0.1,
+            "beta_usd": -0.2,
+            "beta_cmd": 0.1,
+            "beta_vix": 0.15,
+            "beta_us_growth": 0.02,
+            "beta_oil": -0.1,
+        },
         rolling_window_weeks=sf.FACTOR_WEEKS_3Y,
     )
     assert out.get("method") == "episode_beta_times_realized_factor_shock"
@@ -51,5 +83,8 @@ def test_factor_oos_beta_shock_explainability_basic(monkeypatch) -> None:
     assert ep["pnl_real_episode"] == -0.03
     assert "pnl_model_5y" in ep and "pnl_model_10y" in ep and "pnl_model_roll3y_pre" in ep
     assert "abs_error_5y" in ep and "abs_error_roll3y_pre" in ep
+    assert "beta_vix" in ep["factor_contrib_5y"]
+    assert "beta_us_growth" in ep["factor_contrib_10y"]
+    assert "beta_oil" in ep["factor_contrib_roll3y_pre"]
     summary = out.get("summary") or {}
     assert "mean_abs_error_5y" in summary

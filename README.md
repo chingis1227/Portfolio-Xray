@@ -18,6 +18,7 @@
    ```
    Р‘РµСЂС‘С‚ РІРµСЃР° РёР· `config.yml` РёР»Рё РёР· **`portfolio_weights.yml`** РІ `output_dir_final`; СЃС‡РёС‚Р°РµС‚ РјРµС‚СЂРёРєРё РїРѕ РѕРєРЅР°Рј 3Y/5Y/10Y, RC_vol, СЃС‚СЂРµСЃСЃ, СЃРЅРёРјРєРё. РџРёС€РµС‚ CSV РІ `output_dir_csv` (С‡Р°СЃС‚Рѕ **`results_csv/`**), JSON Рё HTML/text РѕС‚С‡С‘С‚С‹ РІ **`output_dir_final`**.
    Factor regression outputs in `stress_report.json` include multicollinearity, serial correlation, Breusch-Pagan heteroskedasticity, and HAC/Newey-West inference diagnostics for 5Y/10Y weekly OLS windows.
+   Factor analytics in `stress_report.json` now use a nine-factor weekly registry: `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`, and `oil`. The three new analytics-only factors are sourced as FRED `VIXCLS`, FRED `WEI`, and FRED/EIA `DCOILWTICO`. Synthetic stress scenarios remain a six-shock diagnostic engine and do not emit `shock_vix`, `shock_us_growth`, or `shock_oil`.
 
 **РџРѕСЂСЏРґРѕРє:** СЃРЅР°С‡Р°Р»Р° `run_optimization.py`, Р·Р°С‚РµРј `run_report.py`. РРЅР°С‡Рµ РѕС‚С‡С‘С‚ Р±СѓРґРµС‚ Р±РµР· Р°РєС‚СѓР°Р»СЊРЅС‹С… РІРµСЃРѕРІ.
 

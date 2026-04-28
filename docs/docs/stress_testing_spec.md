@@ -6,6 +6,7 @@
 > **2026-04-28 update:** **RC Top1 / Top3** (`top1_rc_pct`, `top3_rc_sum_pct`, tickers) remain on each scenario row as **numeric diagnostics only** вЂ” no `rc1_ok` / `rc3_ok`, no `rc_diagnostic_codes`, no `rc_attention_codes`, no suite status change for RC-only patterns. Historical episode contract unchanged (episode max DD vs mandate). **dotcom** episode is in the historical list (see В§9).
 > **2026-04-28 update:** Add **Recession severe** (`recession_severe`) as a hard-landing synthetic scenario. Its shock vector is calibrated from realized weekly factor moves in the existing **2008** and **2020** historical windows, selecting the episode with the worst model PnL for the current portfolio betas.
 > **2026-04-28 update:** Portfolio factor regressions include **Breusch-Pagan** heteroskedasticity diagnostics on the same OLS residuals/rows as the reported factor betas.
+> **2026-04-28 update:** Factor analytics now use a **nine-factor** weekly registry (`equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`, `oil`). Synthetic stress scenarios and recession calibration remain a **six-shock** engine and only map the first six factors into `shock_*` keys.
 
 ---
 
@@ -45,7 +46,7 @@ Scenario and episode checks below are **for PM reporting**; they do not replace 
 
 ### 2.1 Recession severe calibration
 
-`recession_severe` is not hand-entered in normal production runs. The report path builds the same weekly factor matrix used by stress factor diagnostics (`equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`) from 2007-01-01 through `analysis_end` and passes it to `run_stress`.
+`recession_severe` is not hand-entered in normal production runs. The report path builds the same weekly factor matrix used by stress factor diagnostics from 2007-01-01 through `analysis_end` and passes it to `run_stress`. The analytics matrix now includes `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`, and `oil`, but `run_stress` maps only the six stress factors below into synthetic shock keys.
 
 For each calibration window (**2008** and **2020**, using the dates in `HISTORICAL_EPISODES`), the implementation sums weekly factor values over the window. The sums are mapped into shock keys:
 
@@ -55,6 +56,8 @@ For each calibration window (**2008** and **2020**, using the dates in `HISTORIC
 - `inflation` в†’ `shock_inf`
 - `usd` в†’ `shock_usd`
 - `commodity` в†’ `shock_cmd`
+
+Analytics-only factors `vix`, `us_growth`, and `oil` are intentionally excluded from the synthetic shock mapping in the current production contract.
 
 For each candidate vector, model PnL is:
 
@@ -128,6 +131,8 @@ The system must estimate and output:
 - ОІ_inflation (portfolio vs inflation surprise proxy)
 - ОІ_credit (portfolio vs credit spread)
 - ОІ_USD (portfolio vs DXY)
+
+The full current analytics registry is `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`, and `oil`. In report JSON these appear as `beta_eq`, `beta_rr`, `beta_inf`, `beta_credit`, `beta_usd`, `beta_cmd`, `beta_vix`, `beta_us_growth`, and `beta_oil`.
 
 If factor limits are set in config and violated в†’ **DIAG_BETA_*** / **DIAG_ATTENTION**; if no limits в†’ **DIAG_PASS_WITH_WARNING** (manual review). (Non-blocking.)
 
@@ -220,6 +225,7 @@ To verify that factor betas explain stress episodes out-of-sample (not only in-s
   - `pnl_model_5y` using `factor_betas_5y`
   - `pnl_model_10y` using `factor_betas_10y`
   - `pnl_model_roll3y_pre` using betas estimated on rolling 3Y window ending right before episode start
+- Factor contributions in this diagnostic follow the full analytics registry, so `beta_vix`, `beta_us_growth`, and `beta_oil` should appear when factor history and betas are available.
 - Real benchmark:
   - `pnl_real_episode` from historical episode portfolio return
 - Error fields:
@@ -262,6 +268,10 @@ Episode DD vs limit adds **DIAG_HIST_*** when breached; else episode contributes
 - **Inflation surprise:** FRED:T10YIE; use О”(T10YIE) as proxy.
 - **Credit spread (HY):** FRED:BAMLH0A0HYM2; use О”(spread).
 - **USD:** FRED:DTWEXBGS; use О” or % change.
+- **Commodity:** ETF proxy DBC; use weekly/month-end percent change.
+- **VIX:** FRED:VIXCLS; use weekly/month-end percent change.
+- **US growth proxy:** FRED:WEI; shift week-ending-Saturday timestamps to Friday, then use weekly/month-end first difference.
+- **Oil:** FRED:DCOILWTICO; use weekly/month-end percent change.
 
 Betas: **weekly** changes/returns for reporting outputs in В§8 (`factor_betas_5y`, `factor_betas_10y`), with synchronized week-end dates (inner join), ending at **analysis_end**. Windows: **260 weeks (5Y)** and **520 weeks (10Y)** (see `src/stress_factors.py`: `FACTOR_WEEKS_5Y`, `FACTOR_WEEKS_10Y`). Use project series when available; FRED codes as fallback.
 
