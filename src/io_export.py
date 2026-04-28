@@ -1,4 +1,4 @@
-"""
+﻿"""
 Export asset/portfolio metrics to CSV and persist all input series.
 All metric outputs are rounded to 3 decimal places at export only (Output Formatting Standard).
 
@@ -118,12 +118,12 @@ def export_run_metadata(
     - Run timestamp and analysis period info
     - Comparison with targets (if specified)
     - portfolio_valid: False when MaxDD or Stress Judge fails (gatekeeper)
-    
+
     Returns path to exported file.
     """
     if run_timestamp is None:
         run_timestamp = datetime.now().isoformat()
-    
+
     # Build metadata structure
     metadata = {
         "run_info": {
@@ -146,7 +146,7 @@ def export_run_metadata(
     }
     if portfolio_valid is not None:
         metadata["portfolio_valid"] = portfolio_valid
-    
+
     if stress_report:
         metadata["stress_test"] = {
             "status": stress_report.get("status"),
@@ -158,7 +158,7 @@ def export_run_metadata(
             "failed_scenario": stress_report.get("failed_scenario"),
             "failed_test": stress_report.get("failed_test"),
         }
-    
+
     # Add target comparison if target was specified and portfolio metrics available
     if portfolio_config.target_nominal_return_annual is not None and portfolio_metrics_summary:
         realized_cagr = portfolio_metrics_summary.get("cagr")
@@ -169,12 +169,12 @@ def export_run_metadata(
             "difference": (realized_cagr - target) if realized_cagr is not None else None,
             "target_achieved": (realized_cagr >= target) if realized_cagr is not None else None,
         }
-    
+
     # Export
     path = output_dir / "run_metadata.json"
     with open(path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2, ensure_ascii=False, default=str)
-    
+
     return path
 
 
@@ -260,8 +260,8 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     max_dd_pct = round(abs(float(max_dd)) * 100, 1) if max_dd is not None else None
     horizon = _cfg_val(cfg, "horizon_years")
     currency = _cfg_val(cfg, "investor_currency", "USD")
-    profile = _cfg_val(cfg, "client_profile") or "—"
-    status = run_result.get("status", "—")
+    profile = _cfg_val(cfg, "client_profile") or "вЂ”"
+    status = run_result.get("status", "вЂ”")
     next_actions = run_result.get("next_actions") or []
     weights = run_result.get("weights") or {}
     stress_summary = run_result.get("stress_summary") or {}
@@ -269,14 +269,14 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     mandate_check = run_result.get("mandate_check") or {}
 
     lines = [
-        "IPS Summary — Full Run Results",
+        "IPS Summary вЂ” Full Run Results",
         "=" * 50,
         "",
         "1. Mandate parameters",
         "-" * 30,
-        "  Target volatility (annual):  %s%%" % (target_vol_pct if target_vol_pct is not None else "—"),
-        "  Max drawdown limit:          %s%%" % (max_dd_pct if max_dd_pct is not None else "—"),
-        "  Horizon (years):             %s" % (horizon if horizon is not None else "—"),
+        "  Target volatility (annual):  %s%%" % (target_vol_pct if target_vol_pct is not None else "вЂ”"),
+        "  Max drawdown limit:          %s%%" % (max_dd_pct if max_dd_pct is not None else "вЂ”"),
+        "  Horizon (years):             %s" % (horizon if horizon is not None else "вЂ”"),
         "  Investor currency:           %s" % currency,
         "  Client profile:              %s" % profile,
         "  Construction:                single-stage max expected return; soft vol/return targets; RC_vol diagnostic-only (reports/stress).",
@@ -294,15 +294,15 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
         % (
             ("%.2f%%" % (float(mandate_check["max_drawdown_realized"]) * 100))
             if mandate_check.get("max_drawdown_realized") is not None
-            else "—"
+            else "вЂ”"
         ),
         "  History window:              %s .. %s (%s months)"
         % (
-            mandate_check.get("history_start") or "—",
-            mandate_check.get("history_end") or "—",
+            mandate_check.get("history_start") or "вЂ”",
+            mandate_check.get("history_end") or "вЂ”",
             mandate_check.get("months_used") or 0,
         ),
-        "  Note: Only this historical MaxDD vs mandate can block weight release.",
+        "  Note: Only this historical MaxDD vs mandate can prevent weight release.",
         "",
         "3. Final portfolio weights",
         "-" * 30,
@@ -326,18 +326,18 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
 
     lines.append("5. Stress & scenario diagnostics (non-blocking for release)")
     lines.append("-" * 30)
-    lines.append("  Diagnostic status:   %s" % stress_summary.get("diagnostic_status", stress_summary.get("status", "—")))
+    lines.append("  Diagnostic status:   %s" % stress_summary.get("diagnostic_status", stress_summary.get("status", "вЂ”")))
     dcodes = stress_summary.get("diagnostic_codes") or []
     if dcodes:
         lines.append("  Diagnostic codes:    %s" % ", ".join(str(c) for c in dcodes))
     lines.append(
-        "  Primary code:        %s" % (stress_summary.get("primary_diagnostic_code") or stress_summary.get("fail_reason_code") or "—")
+        "  Primary code:        %s" % (stress_summary.get("primary_diagnostic_code") or stress_summary.get("fail_reason_code") or "вЂ”")
     )
     worst = stress_summary.get("worst_scenario_loss_pct")
     if worst is not None:
         lines.append("  Worst scenario loss: %.2f%% (informational)" % (float(worst) * 100))
-    lines.append("  Failed scenario:     %s" % (stress_summary.get("failed_scenario") or "—"))
-    lines.append("  Note: Synthetic shocks & episode checks do not block weights; review with PM.")
+    lines.append("  Failed scenario:     %s" % (stress_summary.get("failed_scenario") or "вЂ”"))
+    lines.append("  Note: Synthetic shocks & episode checks do not prevent weights; review with PM.")
     lines.append("")
 
     if violations:
@@ -366,7 +366,7 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     lines.append("  APPROVED             Use weights as target; safe to execute.")
     lines.append("  OK_FALLBACK          Optimizer used a numerical fallback; review optimization_status if needed.")
     lines.append("  FAIL_MANDATE         Historical MaxDD vs mandate failed or history insufficient; weights not written.")
-    lines.append("  DIAG_* / FAIL_STRESS (violation)  Stress diagnostics only; does not block release (review PM).")
+    lines.append("  DIAG_* / FAIL_STRESS (violation)  Stress diagnostics only; does not prevent release (review PM).")
     lines.append("  FAIL_DATA            Weights not written. Follow next_actions above.")
 
     path = Path(output_path)

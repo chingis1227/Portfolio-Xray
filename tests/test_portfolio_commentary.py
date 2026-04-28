@@ -99,7 +99,7 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
     assert "нестрессирующая" in text or "диагностик" in text.lower()
     assert "URA" in text
 
-    # Regression + rolling blocks when present in stress_report
+    # Regression + rolling sections when present in stress_report
     stress2 = {
         **stress,
         "factor_regression_5y": {

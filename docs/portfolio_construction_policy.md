@@ -1,8 +1,8 @@
-# Portfolio Construction Policy (no structural blocks)
+# Portfolio Construction Policy
 
 ## 1. System principle
 
-Portfolios are built from a **single list of tickers** in `config.yml`. There are **no** Growth / Duration / Inflation blocks and **no** risk-budget targets between abstract sectors.
+Portfolios are built from a **single list of tickers** in `config.yml`.
 
 Optimization chooses weights that **maximize expected return** (sample mean of monthly simple returns on the primary window) subject to:
 
@@ -12,7 +12,7 @@ Optimization chooses weights that **maximize expected return** (sample mean of m
 - **liquidity floor** and **cash policy** via ProLiquidity (see below);
 - soft penalties vs **target_vol_annual** and **target_nominal_return_annual** (optimizer objective).
 
-Stress testing and factor diagnostics are **non-blocking** except where explicitly noted; the **mandate gate** on historical max drawdown can block writing weights.
+Stress testing and factor diagnostics are **non-binding** except where explicitly noted; the **mandate gate** on historical max drawdown can prevent writing weights.
 
 ---
 
@@ -25,10 +25,6 @@ Stress testing and factor diagnostics are **non-blocking** except where explicit
 - `target_nominal_return_annual` (soft objective / reporting; not a hard constraint)
 - `liquidity_floor_pct` (or derived from expenses × months / portfolio value)
 - optional `min_single_security_weight_pct`
-
-There is **no** `risk_budget` or `rc_block_targets`.
-
----
 
 ## 3. RC_vol (diagnostic only)
 
@@ -48,7 +44,7 @@ There is **no** `risk_budget` or `rc_block_targets`.
 ## 5. Optimization engine
 
 - **Single stage:** `run_max_return_optimization` — `max_return` (default) or `risk_parity` for diagnostics.
-- **Young / short-history ETFs:** optional dual covariance (`young_etf_optimization_policy`); no block-based thresholds.
+- **Young / short-history ETFs:** optional dual covariance (`young_etf_optimization_policy`).
 - **Covariance:** sample monthly covariance; optional Ledoit–Wolf shrinkage via `covariance_shrinkage`.
 
 ---
@@ -61,7 +57,7 @@ Dynamic backtest uses **global equal redistribution** among risk tickers for mis
 
 ## 7. Stress testing (diagnostic)
 
-Synthetic scenarios, historical episodes, RC Top1/Top3 as reported numbers — **DIAG_*** codes apply to **loss** and **historical** checks only; they do not block release. Mandate MaxDD is enforced in `run_optimization.py`. See `docs/docs/stress_testing_spec.md`.
+Synthetic scenarios, historical episodes, RC Top1/Top3 as reported numbers — **DIAG_*** codes apply to **loss** and **historical** checks only; they do not prevent release. Mandate MaxDD is enforced in `run_optimization.py`. See `docs/docs/stress_testing_spec.md`.
 
 ---
 
@@ -73,7 +69,7 @@ Deterministic **tactical** tilts per `docs/docs/view_after_optimization_spec.md`
 
 ## 9. Feasibility
 
-Structural RB achievability checks are **removed**. Feasibility reduces to **weight bounds** and data coverage.
+Feasibility is based on **weight bounds** and data coverage.
 
 ---
 

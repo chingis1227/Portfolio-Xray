@@ -5,8 +5,6 @@ Build Risk-Parity baseline portfolio and run full metrics / stress pipeline.
 
 Important policy note:
 - This script MUST NOT apply any policy construction logic:
-  - do not apply block logic
-  - do not apply risk budgets
   - do not apply RC caps
   - do not apply weight caps or max weight limits
   - do not apply discretionary overlays
@@ -187,4 +185,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -110,7 +110,6 @@ def main() -> int:
 
     status = report.get("outcome_status", "TILT_REJECTED")
     print("\nView After Optimization: %s" % status)
-    print("  RB status: %s" % report.get("rb_status"))
     if report.get("stress_failure_code"):
         print("  Stress: %s" % report.get("stress_failure_code"))
     if report.get("broken_gate"):

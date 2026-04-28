@@ -1,4 +1,4 @@
-"""Tests for OOS beta×shock episode explainability block."""
+"""Tests for OOS beta×shock episode explainability output."""
 from __future__ import annotations
 
 import pandas as pd

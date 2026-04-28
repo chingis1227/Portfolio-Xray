@@ -1,4 +1,4 @@
-"""
+﻿"""
 Final optimization/report snapshot: one object, same print and save.
 Used by run_optimization.py and run_report.py.
 
@@ -122,7 +122,7 @@ def build_snapshot(
     max_single_security_weight_pct: float | None = None,
     portfolio_metrics_summary: dict[str, Any] | None = None,
     run_timestamp: str | None = None,
-    # Optional per-window portfolio metrics and RC/correlation outputs (3Y/5Y/10Y), per metrics_specification.md §11
+    # Optional per-window portfolio metrics and RC/correlation outputs (3Y/5Y/10Y), per metrics_specification.md В§11
     portfolio_windows: dict[str, dict[str, Any]] | None = None,
     rc_by_window: dict[str, pd.Series] | None = None,
     rc_csv_by_window: dict[str, str] | None = None,
@@ -247,15 +247,15 @@ def print_snapshot(snapshot: dict[str, Any]) -> None:
     print("timestamp:", snapshot.get("timestamp", ""))
     print("analysis_end:", snapshot.get("analysis_end", ""))
 
-    print("\n--- final_weights_total (включая кэш и tail) ---")
+    print("\n--- final_weights_total (РІРєР»СЋС‡Р°СЏ РєСЌС€ Рё tail) ---")
     for t in sorted(snapshot.get("final_weights_total", {}).keys(), key=lambda x: (-snapshot["final_weights_total"].get(x, 0), x)):
         print(f"  {t}: {snapshot['final_weights_total'][t]:.3f}")
 
-    print("\n--- final_weights_risk_portfolio (без кэша) ---")
+    print("\n--- final_weights_risk_portfolio (Р±РµР· РєСЌС€Р°) ---")
     for t in sorted(snapshot.get("final_weights_risk_portfolio", {}).keys(), key=lambda x: (-snapshot["final_weights_risk_portfolio"].get(x, 0), x)):
         print(f"  {t}: {snapshot['final_weights_risk_portfolio'][t]:.3f}")
 
-    print("\n--- RC_asset (топ-%d доноров риска) ---" % TOP_RC_N)
+    print("\n--- RC_asset (С‚РѕРї-%d РґРѕРЅРѕСЂРѕРІ СЂРёСЃРєР°) ---" % TOP_RC_N)
     for x in snapshot.get("RC_asset", []):
         print(f"  {x.get('ticker', '')}: {x.get('rc_pct', 0):.3f}")
 
@@ -378,11 +378,11 @@ def build_snapshot_for_window(
 def _fmt_val(v: Any) -> str:
     """Format a value for text report (handle NaN, floats, dicts)."""
     if v is None:
-        return "—"
+        return "вЂ”"
     if isinstance(v, float) and v != v:  # NaN
-        return "—"
+        return "вЂ”"
     if isinstance(v, str) and v.upper() == "NAN":
-        return "—"
+        return "вЂ”"
     if isinstance(v, (int, float)):
         return f"{v:.3f}" if isinstance(v, float) else str(v)
     if isinstance(v, dict):
@@ -393,9 +393,9 @@ def _fmt_val(v: Any) -> str:
 def _fmt_ratio(v: Any) -> str:
     """Format fractional value as percentage for human-readable reports."""
     if v is None:
-        return "—"
+        return "вЂ”"
     if isinstance(v, float) and v != v:
-        return "—"
+        return "вЂ”"
     try:
         return f"{float(v):.1%}"
     except Exception:
@@ -432,7 +432,7 @@ def _format_window_snapshot_text(label: str, data: dict[str, Any]) -> str:
                     lines.append(f"  {k}: {_fmt_val(metrics[k])}")
     stress = data.get("stress_suite_results") or {}
     lines.extend(["", "--- stress ---"])
-    lines.append(f"  overall: {stress.get('overall', '—')}")
+    lines.append(f"  overall: {stress.get('overall', 'вЂ”')}")
     analytics = data.get("analytics") or {}
     if analytics:
         lines.extend(["", "--- analytics (summary) ---"])
@@ -486,13 +486,13 @@ def _format_data_policy_text(data: dict[str, Any]) -> str:
         "DATA POLICY / BACKTEST MODE",
         "============================================================",
         "",
-        "backtest_mode: " + str(data.get("backtest_mode", "—")),
-        "join_policy (for cov/RC/β): " + str(data.get("join_policy_cov_rc", "inner join")),
+        "backtest_mode: " + str(data.get("backtest_mode", "вЂ”")),
+        "join_policy (for cov/RC/ОІ): " + str(data.get("join_policy_cov_rc", "inner join")),
         "",
     ]
     inner = data.get("inner_join_months_used_for_risk")
     if inner is not None:
-        lines.append("inner_join_months_used_for_risk (Σ/RC): " + str(inner))
+        lines.append("inner_join_months_used_for_risk (ОЈ/RC): " + str(inner))
         if inner < 36:
             lines.append("  (warning: < 36 months; risk estimates may be noisy)")
         lines.append("")
@@ -538,25 +538,25 @@ def _format_robustness_text(data: dict[str, Any]) -> str:
     lines.append("")
     mrc = data.get("max_rc_asset_delta")
     if mrc is not None:
-        lines.append("max |RC_asset(5Y) − RC_asset(10Y)|: " + str(round(float(mrc), 4)))
+        lines.append("max |RC_asset(5Y) в€’ RC_asset(10Y)|: " + str(round(float(mrc), 4)))
     rc_deltas = data.get("rc_asset_deltas") or {}
     if isinstance(rc_deltas, dict) and rc_deltas:
         top_rc = sorted(rc_deltas.items(), key=lambda x: (-float(x[1] or 0), x[0]))[:5]
-        lines.append("top 5 per-asset RC deltas (ticker, |Δ|): " + ", ".join(f"{t}={round(float(d), 4)}" for t, d in top_rc))
+        lines.append("top 5 per-asset RC deltas (ticker, |О”|): " + ", ".join(f"{t}={round(float(d), 4)}" for t, d in top_rc))
     lines.append("")
     vol10 = data.get("vol_10y_under_sigma10y")
     vol10_5 = data.get("vol_10y_under_sigma5y")
     if vol10 is not None:
-        lines.append("Portfolio vol (10Y weights) under Σ_10Y: " + str(vol10) + "%")
+        lines.append("Portfolio vol (10Y weights) under ОЈ_10Y: " + str(vol10) + "%")
     if vol10_5 is not None:
-        lines.append("Portfolio vol (10Y weights) under Σ_5Y: " + str(vol10_5) + "%")
+        lines.append("Portfolio vol (10Y weights) under ОЈ_5Y: " + str(vol10_5) + "%")
     lines.append("")
     flags = data.get("flags") or []
     lines.append("Robustness flags: " + (", ".join(flags) if flags else "none (10Y solution consistent with 5Y)"))
     actions = data.get("stabilization_actions") or []
     if actions:
         lines.append("Stabilization actions applied: " + ", ".join(actions))
-    lines.append("Final portfolio: " + ("10Y weights (primary)" if data.get("final_portfolio_is_10y", True) else "—"))
+    lines.append("Final portfolio: " + ("10Y weights (primary)" if data.get("final_portfolio_is_10y", True) else "вЂ”"))
     lines.append("Robust vs 5Y: " + ("yes" if data.get("robust_vs_5y", False) else "no" + (f" ({', '.join(flags)})" if flags else "")))
     lines.append("")
     return "\n".join(lines)
@@ -574,12 +574,12 @@ def _format_robustness_html(data: dict[str, Any]) -> str:
     parts.append(f"10Y = {eff_10} months, 5Y = {eff_5} months</p>")
     max_dw = data.get("max_delta_w")
     if max_dw is not None:
-        parts.append(f"<p><strong>Max |weight_5Y − weight_10Y|:</strong> {html.escape(_fmt_ratio(max_dw))}</p>")
+        parts.append(f"<p><strong>Max |weight_5Y в€’ weight_10Y|:</strong> {html.escape(_fmt_ratio(max_dw))}</p>")
     top5 = data.get("top5_delta_w") or []
     if top5:
         rows = "".join(f"<tr><td>{html.escape(str(t))}</td><td>{html.escape(_fmt_ratio(d))}</td></tr>" for t, d in top5)
         parts.append(
-            _html_table_block(
+            _html_table_section(
                 '<table><caption>Top 5 weight deltas</caption><thead><tr><th>Ticker</th><th>Delta</th></tr></thead><tbody>'
                 + rows
                 + "</tbody></table>"
@@ -587,7 +587,7 @@ def _format_robustness_html(data: dict[str, Any]) -> str:
         )
     mrc = data.get("max_rc_asset_delta")
     if mrc is not None:
-        parts.append(f"<p><strong>Max |RC_asset(5Y) − RC_asset(10Y)|:</strong> {html.escape(_fmt_val(mrc))}</p>")
+        parts.append(f"<p><strong>Max |RC_asset(5Y) в€’ RC_asset(10Y)|:</strong> {html.escape(_fmt_val(mrc))}</p>")
     rc_deltas = data.get("rc_asset_deltas") or {}
     if isinstance(rc_deltas, dict) and rc_deltas:
         top_rc = sorted(rc_deltas.items(), key=lambda x: (-float(x[1] or 0), x[0]))[:5]
@@ -595,8 +595,8 @@ def _format_robustness_html(data: dict[str, Any]) -> str:
             f"<tr><td>{html.escape(str(t))}</td><td>{html.escape(_fmt_val(d))}</td></tr>" for t, d in top_rc
         )
         parts.append(
-            _html_table_block(
-                '<table><caption>Top per-asset RC deltas (|5Y − 10Y|)</caption><thead><tr><th>Ticker</th><th>|Δ|</th></tr></thead><tbody>'
+            _html_table_section(
+                '<table><caption>Top per-asset RC deltas (|5Y в€’ 10Y|)</caption><thead><tr><th>Ticker</th><th>|О”|</th></tr></thead><tbody>'
                 + drows
                 + "</tbody></table>"
             )
@@ -604,7 +604,7 @@ def _format_robustness_html(data: dict[str, Any]) -> str:
     vol10 = data.get("vol_10y_under_sigma10y")
     vol10_5 = data.get("vol_10y_under_sigma5y")
     if vol10 is not None or vol10_5 is not None:
-        parts.append("<p><strong>Portfolio vol (10Y weights):</strong> under Σ_10Y = " + html.escape(_fmt_ratio(vol10)) + "; under Σ_5Y = " + html.escape(_fmt_ratio(vol10_5)) + "</p>")
+        parts.append("<p><strong>Portfolio vol (10Y weights):</strong> under ОЈ_10Y = " + html.escape(_fmt_ratio(vol10)) + "; under ОЈ_5Y = " + html.escape(_fmt_ratio(vol10_5)) + "</p>")
     flags = data.get("flags") or []
     flag_class = "status-fail" if flags else "status-pass"
     parts.append(f'<p><strong>Robustness flags:</strong> <span class="{flag_class}">' + (", ".join(html.escape(f) for f in flags) if flags else "none (10Y consistent with 5Y)") + "</span></p>")
@@ -688,7 +688,7 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
             for t in sorted(w_total.keys(), key=lambda x: (-w_total.get(x, 0), x))
         )
         parts.append(
-            _html_table_block(
+            _html_table_section(
                 '<table><caption>Final weights (total)</caption><thead><tr><th>Ticker</th><th>Weight</th></tr></thead><tbody>'
                 + rows
                 + "</tbody></table>"
@@ -699,7 +699,7 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
     if rc_asset:
         rows = "".join(f"<tr><td>{html.escape(str(x.get('ticker', '')))}</td><td>{html.escape(_fmt_ratio(x.get('rc_pct')))}</td></tr>" for x in rc_asset)
         parts.append(
-            _html_table_block(
+            _html_table_section(
                 '<table><caption>RC by asset (top)</caption><thead><tr><th>Ticker</th><th>RC %</th></tr></thead><tbody>'
                 + rows
                 + "</tbody></table>"
@@ -710,7 +710,7 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
     if constraints:
         rows = "".join(f"<tr><td>{html.escape(k)}</td><td class=\"status-{html.escape(v.lower())}\">{html.escape(v)}</td></tr>" for k, v in constraints.items())
         parts.append(
-            _html_table_block(
+            _html_table_section(
                 '<table><caption>Constraints</caption><thead><tr><th>Constraint</th><th>Status</th></tr></thead><tbody>'
                 + rows
                 + "</tbody></table>"
@@ -726,7 +726,7 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
             return _fmt_val_html(value)
         rows = "".join(f"<tr><td>{html.escape(k)}</td><td>{_fmt_metric_for_html(k, metrics.get(k))}</td></tr>" for k in metric_keys if k in metrics)
         parts.append(
-            _html_table_block(
+            _html_table_section(
                 '<table><caption>Portfolio metrics</caption><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>'
                 + rows
                 + "</tbody></table>"
@@ -734,7 +734,7 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
         )
     # Stress
     stress = data.get("stress_suite_results") or {}
-    overall = stress.get("overall", "—")
+    overall = stress.get("overall", "вЂ”")
     parts.append(f'<p class="stress-overall"><strong>Stress:</strong> <span class="status-{html.escape(str(overall).lower())}">{_fmt_val_html(overall)}</span></p>')
     # Analytics summary
     analytics = data.get("analytics") or {}
@@ -750,7 +750,7 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
                     rows.append(f"<tr><td>{html.escape(k)}</td><td>{_fmt_val_html(analytics[k])}</td></tr>")
         if rows:
             parts.append(
-                _html_table_block(
+                _html_table_section(
                     '<table><caption>Analytics</caption><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>'
                     + "".join(rows)
                     + "</tbody></table>"
@@ -784,7 +784,7 @@ def _format_assets_snapshot_html(data: dict[str, Any]) -> str:
             cells = "".join(formatted_cells)
             body_rows.append(f"<tr><td>{ticker}</td>{cells}</tr>")
         parts.append(
-            _html_table_block(
+            _html_table_section(
                 f'<table class="assets-table"><caption>Window {html.escape(label)}</caption>'
                 f"<thead><tr>{header_cells}</tr></thead><tbody>{''.join(body_rows)}</tbody></table>"
             )
@@ -929,8 +929,8 @@ HTML_TAIL = """
 """
 
 
-def _html_table_block(table_html: str) -> str:
-    """Wrap a <table> in a scroll container (DESIGN.md — wide tables on small viewports)."""
+def _html_table_section(table_html: str) -> str:
+    """Wrap a <table> in a scroll container (DESIGN.md вЂ” wide tables on small viewports)."""
     return f'<div class="table-wrap">{table_html}</div>'
 
 
@@ -941,8 +941,8 @@ def _format_data_policy_html(data: dict[str, Any]) -> str:
         "<h2>Data Policy / Backtest Mode</h2>",
     ]
     trows: list[str] = [
-        "<tr><td>backtest_mode</td><td>" + html.escape(str(data.get("backtest_mode", "—"))) + "</td></tr>",
-        "<tr><td>join_policy (cov/RC/β)</td><td>" + html.escape(str(data.get("join_policy_cov_rc", "inner join"))) + "</td></tr>",
+        "<tr><td>backtest_mode</td><td>" + html.escape(str(data.get("backtest_mode", "вЂ”"))) + "</td></tr>",
+        "<tr><td>join_policy (cov/RC/ОІ)</td><td>" + html.escape(str(data.get("join_policy_cov_rc", "inner join"))) + "</td></tr>",
     ]
     inner = data.get("inner_join_months_used_for_risk")
     if inner is not None:
@@ -961,7 +961,7 @@ def _format_data_policy_html(data: dict[str, Any]) -> str:
             "<tr><td>months with excess to cash (RC/RB gating)</td><td>" + html.escape(str(n_cash)) + "</td></tr>"
         )
     table1 = "<table><caption>Backtest and join policy</caption><tbody>" + "".join(trows) + "</tbody></table>"
-    parts.append(_html_table_block(table1))
+    parts.append(_html_table_section(table1))
     fam = data.get("first_available_month") or {}
     if fam:
         fam_rows: list[str] = [
@@ -970,7 +970,7 @@ def _format_data_policy_html(data: dict[str, Any]) -> str:
         for t in sorted(fam.keys()):
             fam_rows.append("<tr><td>" + html.escape(t) + "</td><td>" + html.escape(str(fam[t])) + "</td></tr>")
         fam_rows.append("</tbody></table>")
-        parts.append(_html_table_block("".join(fam_rows)))
+        parts.append(_html_table_section("".join(fam_rows)))
     parts.append("</section>")
     return "\n".join(parts)
 
@@ -980,7 +980,7 @@ def write_report_html(output_dir: str | Path) -> Path:
     Load snapshot_3y, 5y, 10y and snapshot_assets from output_dir,
     format into a single HTML report (board), and write output_dir/report.html.
     Includes Data Policy / Backtest Mode section from data_policy.json when present.
-    Open in browser; use Print → Save as PDF for PDF.
+    Open in browser; use Print в†’ Save as PDF for PDF.
     """
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)

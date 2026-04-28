@@ -3,10 +3,6 @@
 Defines **formulas** for derived **weight** caps used by the optimizer.  
 **Per-asset RC_vol caps are not part of feasibility or optimization** (RC_vol remains a **reported diagnostic**; see `metrics_specification.md` and `docs/docs/stress_testing_spec.md`).
 
-There is **no** risk-budget-by-block layer; achievability checks on Growth/Duration/Inflation shares are **removed**.
-
----
-
 ## Notation
 
 - **N** — number of assets in the RiskPortfolio (excluding cash proxy, e.g. BIL).

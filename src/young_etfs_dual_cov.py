@@ -1,10 +1,10 @@
 """
-Dual covariance + per-asset mean returns for risk-budget optimization with young ETFs.
+Dual covariance + per-asset mean returns for optimization with young ETFs.
 
 When some RiskPortfolio assets have short history, a full inner join collapses the
 estimation window. This module builds:
 - a long-window covariance on eligible (sufficient history) assets only;
-- anchors from block-level medians of that core matrix;
+- a pooled median anchor from that core matrix;
 - pairwise sample cov on overlaps for young assets, shrunk toward the anchor;
 - PSD repair if needed.
 
@@ -78,21 +78,10 @@ def _pairwise_cov(s1: pd.Series, s2: pd.Series, ddof: int = DDOF) -> float:
     return float(df.iloc[:, 0].cov(df.iloc[:, 1], ddof=ddof))
 
 
-def _block_pair_median(
-    sigma: pd.DataFrame,
-    elig_by_block: dict[str, list[str]],
-    block_i: str,
-    block_j: str,
-) -> float:
-    rows = elig_by_block.get(block_i, [])
-    cols = elig_by_block.get(block_j, [])
+def _pooled_core_median(sigma: pd.DataFrame) -> float:
     vals: list[float] = []
-    for r in rows:
-        if r not in sigma.index:
-            continue
-        for c in cols:
-            if c not in sigma.columns:
-                continue
+    for r in sigma.index:
+        for c in sigma.columns:
             vals.append(float(sigma.loc[r, c]))
     if not vals:
         return float("nan")
@@ -112,7 +101,6 @@ def _repair_covariance_psd(cov: pd.DataFrame, eps: float = 1e-10) -> pd.DataFram
 def build_dual_covariance_and_mu(
     monthly_returns: pd.DataFrame,
     tickers: list[str],
-    ticker_to_block: dict[str, str],
     window_months: int,
     policy: dict[str, Any],
     use_shrinkage_on_core: bool = False,
@@ -121,7 +109,7 @@ def build_dual_covariance_and_mu(
     """
     Build covariance matrix and mean monthly return vector for RiskPortfolio tickers.
 
-    If ``use_robust_on_core`` is True, the eligible core block uses MinCovDet (MCD);
+    If ``use_robust_on_core`` is True, the eligible core set uses MinCovDet (MCD);
     ``use_shrinkage_on_core`` is then ignored for that core. Production default: both False.
 
     Returns:
@@ -207,10 +195,7 @@ def build_dual_covariance_and_mu(
         use_robust_on_core=use_robust_on_core,
     )
 
-    elig_by_block: dict[str, list[str]] = {}
-    for t in eligible:
-        b = ticker_to_block.get(t, "Growth")
-        elig_by_block.setdefault(b, []).append(t)
+    pooled_anchor = _pooled_core_median(sigma_core)
 
     n = len(tickers)
     cov_arr = np.zeros((n, n), dtype=float)
@@ -227,8 +212,6 @@ def build_dual_covariance_and_mu(
     for i, ti in enumerate(tickers):
         for j in range(i, n):
             tj = tickers[j]
-            bi = ticker_to_block.get(ti, "Growth")
-            bj = ticker_to_block.get(tj, "Growth")
             ai = float(per_ticker[ti]["shrinkage_alpha"])
             aj = float(per_ticker[tj]["shrinkage_alpha"])
             a_pair = _pair_alpha(ai, aj)
@@ -236,14 +219,13 @@ def build_dual_covariance_and_mu(
             if ti in eligible and tj in eligible:
                 c_ij = float(sigma_core.loc[ti, tj])
             else:
-                anchor = _block_pair_median(sigma_core, elig_by_block, bi, bj)
                 raw_ij = _pairwise_cov(win_slice[ti], win_slice[tj], ddof=DDOF)
-                if raw_ij == raw_ij and anchor == anchor:  # not NaN
-                    c_ij = a_pair * raw_ij + (1.0 - a_pair) * anchor
+                if raw_ij == raw_ij and pooled_anchor == pooled_anchor:  # not NaN
+                    c_ij = a_pair * raw_ij + (1.0 - a_pair) * pooled_anchor
                 elif raw_ij == raw_ij:
                     c_ij = raw_ij
-                elif anchor == anchor:
-                    c_ij = anchor
+                elif pooled_anchor == pooled_anchor:
+                    c_ij = pooled_anchor
                 else:
                     c_ij = 0.0
             cov_arr[i, j] = c_ij
@@ -256,7 +238,7 @@ def build_dual_covariance_and_mu(
     mu = mu.reindex(tickers).fillna(0.0)
 
     diagnostics = {
-        "mode": "dual_block_median_anchor",
+        "mode": "dual_core_median_anchor",
         "eligible_tickers": eligible,
         "core_effective_months": len(ret_core),
         "tickers": per_ticker,

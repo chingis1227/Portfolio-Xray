@@ -150,7 +150,6 @@ def run_view_after_optimization(
     tilted_weights: dict[str, float] = {}
     funding_donors_sold: list[tuple[str, float]] = []
     outcome_status = "TILT_REJECTED"
-    rb_status = "N_A"
     stress_failure_code: str | None = None
     broken_gate: str | None = "mandate"
     key_metric_values: dict[str, Any] = {}
@@ -233,7 +232,6 @@ def run_view_after_optimization(
         "funding_contributions": 0.0,
         "funding_donors_sold": [{"ticker": t, "amount": a} for t, a in funding_donors_sold],
         "outcome_status": outcome_status,
-        "rb_status": rb_status,
         "stress_failure_code": stress_failure_code,
         "broken_gate": broken_gate,
         "key_metric_values": key_metric_values,
@@ -261,7 +259,6 @@ def _report_rejected(
         "funding_contributions": 0.0,
         "funding_donors_sold": [],
         "outcome_status": "TILT_REJECTED",
-        "rb_status": "N_A",
         "stress_failure_code": None,
         "broken_gate": broken_gate,
         "key_metric_values": {"reason": reason},

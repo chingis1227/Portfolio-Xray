@@ -333,9 +333,6 @@ def _inject_optional_defaults(cfg: dict[str, Any]) -> None:
         # Merge with defaults so missing keys get defaults
         rp = dict(DEFAULT_ROBUSTNESS_POLICY)
         rp.update({k: v for k, v in cfg["robustness_policy"].items() if v is not None})
-        legacy_rc = rp.pop("max_rc_block_dev_allowed", None)
-        if legacy_rc is not None and cfg["robustness_policy"].get("max_asset_rc_dev_allowed") is None:
-            rp["max_asset_rc_dev_allowed"] = legacy_rc
         cfg["robustness_policy"] = rp
     # Young-ETF optimization policy: merge user dict over defaults
     ypol_base = dict(DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY)
@@ -697,7 +694,6 @@ def _validate_portfolio_value(cfg: dict[str, Any]) -> None:
 
 def _validate_alpha_shift_params(cfg: dict[str, Any]) -> None:
     """Validate N_rc and donor_shift_mode."""
-    cfg.pop("growth_core_candidates", None)
     n_rc = cfg.get("N_rc", 3)
     if n_rc is not None:
         if not isinstance(n_rc, int) or n_rc < 1:
@@ -736,11 +732,9 @@ def _identify_pending_fields(cfg: dict[str, Any]) -> list[str]:
     return pending
 
 
-def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] | None = None) -> PortfolioConfig:
+def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
     """
     Validate config dict and return PortfolioConfig object.
-
-    ``blocks_universe`` is accepted for backward compatibility and ignored (no blocks_universe.yml).
 
     Supports canonical config keys: base_benchmark_ticker, risk_free_source,
     beta_local_mapping (mapped to benchmark_base_ticker, rf_source, local_benchmark_map).
@@ -748,7 +742,6 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
 
     Raises ConfigValidationError if validation fails.
     """
-    del blocks_universe  # legacy parameter; ignored
     cfg = _normalize_config_keys(cfg)
     cfg = _normalize_percent_fields(cfg)
     _inject_optional_defaults(cfg)

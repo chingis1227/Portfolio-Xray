@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 """
-Portfolio variants (baseline constructions) outside the policy/block framework.
+Portfolio variants (baseline constructions) outside the policy framework.
 
 This module intentionally does NOT apply any policy logic to Equal-Weight and Risk-Parity:
 
-- no block logic
-- no risk budgets
 - no RC caps
 - no weight caps
 - no max weight limits
@@ -54,7 +52,7 @@ def _eligible_universe_from_returns(
     - Use the same tickers universe as config.tickers.
     - Exclude assets only if they fail the same minimum data / coverage checks
       as used elsewhere for portfolio analytics (simple window coverage filter).
-    - No block logic, no hidden filters.
+    - No hidden filters.
     """
     tickers = [t for t in cfg.tickers if t in monthly_returns.columns]
     coverage_threshold = getattr(cfg, "coverage_threshold", 0.90) or 0.90
@@ -86,7 +84,7 @@ def build_equal_weight_baseline(
 ) -> BaselineWeightsResult:
     """
     Equal-Weight Portfolio:
-    - Universe: same eligible tickers as main engine, but without any block/policy logic.
+    - Universe: same eligible tickers as main engine, but without policy logic.
     - If N eligible assets, each weight = 1/N.
     - Long-only, fully invested; no caps, no RC constraints, no overlays.
     """
@@ -130,7 +128,7 @@ def _risk_parity_solver(
     """
     Pure asset-level risk parity solver (equal percentage contribution to variance).
 
-    Long-only, fully invested; no block structure, no policy caps.
+    Long-only, fully invested; no policy caps.
     Solved via SLSQP by minimizing dispersion of variance risk contributions.
     """
     cols = [t for t in tickers if t in cov_df.columns and t in cov_df.index]
@@ -205,9 +203,9 @@ def build_risk_parity_baseline(
 ) -> BaselineWeightsResult:
     """
     Risk-Parity Portfolio:
-    - Universe: same eligible tickers as main engine (no block logic).
+    - Universe: same eligible tickers as main engine.
     - Objective: equalized asset-level RC_vol as defined in metrics_specification.md.
-    - Constraints: long-only, fully invested. No block budgets, no caps.
+    - Constraints: long-only, fully invested. No caps.
     - If solver is unstable/infeasible, returns best feasible approximation and marks status.
     """
     eligible, coverage = _eligible_universe_from_returns(

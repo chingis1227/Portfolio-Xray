@@ -46,8 +46,6 @@ def test_build_dual_covariance_symmetric_psd():
         },
         index=dates,
     )
-    blocks = {"Growth": ["VOO", "NEW1"], "Duration": ["BND"], "Inflation": ["GLD"]}
-    ticker_to_block = {"VOO": "Growth", "NEW1": "Growth", "BND": "Duration", "GLD": "Inflation"}
     policy = {
         "eligible_months": 48,
         "candidate_months_min": 12,
@@ -58,7 +56,7 @@ def test_build_dual_covariance_symmetric_psd():
         "aggregate_candidate_new_warn_pct": 0.10,
     }
     cov, mu, diag = build_dual_covariance_and_mu(
-        returns, ["VOO", "BND", "GLD", "NEW1"], ticker_to_block, window_months=60, policy=policy
+        returns, ["VOO", "BND", "GLD", "NEW1"], window_months=60, policy=policy
     )
     assert cov.shape == (4, 4)
     assert np.allclose(cov.values, cov.values.T, atol=1e-8)

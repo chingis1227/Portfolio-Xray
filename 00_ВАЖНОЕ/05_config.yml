@@ -1,5 +1,5 @@
-# =============================================================================
-# Portfolio Metrics Standard — Main Configuration (client-facing)
+﻿# =============================================================================
+# Portfolio Metrics Standard вЂ” Main Configuration (client-facing)
 # Set up a portfolio for a client by filling the fields below. Optional and
 # technical parameters are filled automatically (benchmark, risk-free rate,
 # analysis windows, optimization constraints from client profile, etc.).
@@ -8,12 +8,12 @@
 # =============================================================================
 # SECTION 1: CORE SETTINGS
 # =============================================================================
-# investor_currency: на выбор — USD (доллар), EUR (евро), JPY (йена), CHF (франк).
+# investor_currency: РЅР° РІС‹Р±РѕСЂ вЂ” USD (РґРѕР»Р»Р°СЂ), EUR (РµРІСЂРѕ), JPY (Р№РµРЅР°), CHF (С„СЂР°РЅРє).
 
 investor_currency: USD
 initial_investable_amount: 1000
 
-# ---------- Liquidity (life floor): liquidity_need_total = liquidity_need_months × monthly_expenses; liquidity_floor_pct = that / portfolio_value (or initial_investable_amount) ----------
+# ---------- Liquidity (life floor): liquidity_need_total = liquidity_need_months Г— monthly_expenses; liquidity_floor_pct = that / portfolio_value (or initial_investable_amount) ----------
 # liquidity_need is derived (liquidity_need_months * monthly_expenses); do not set manually for portfolio logic.
 liquidity_need_months: 0
 monthly_expenses: 0
@@ -26,9 +26,6 @@ cash_policy: allowed_for_scaling
 # =============================================================================
 # SECTION 2: PORTFOLIO TICKERS
 # =============================================================================
-# tickers: list of instruments in this portfolio (you set this). If blocks_universe.yml exists,
-#   each ticker must appear there in exactly one block; blocks for the run are derived automatically.
-#   If a ticker is not in blocks_universe.yml, validation fails with a clear message.
 # Weights are not set here. They are produced by optimization and stored in portfolio_weights.yml
 # (in the same directory as config.yml). Run optimization first, then run report.
 
@@ -37,21 +34,19 @@ tickers: [VOO, VT, QQQ, SMH, VGK, BBJP, VWO, VDC, ITA, CIBR, ROBO, SCHD, COPX, U
 # =============================================================================
 # SECTION 3: CLIENT PROFILE AND ASSUMPTIONS
 # =============================================================================
-# client_profile: optional. Values — ultra_conservative | conservative | balanced | growth | aggressive.
-# If set, missing target/risk_budget fields are filled from config/client_profiles.yml (midpoints). You can override manually.
+# client_profile: optional. Values вЂ” ultra_conservative | conservative | balanced | growth | aggressive.
 # Reminder: 1 Ultra Conservative  2 Conservative  3 Balanced  4 Growth  5 Aggressive (see Config UI for full table).
 
 client_profile: Aggressive
 
-# allow_leverage, allow_short_selling: на выбор true / false.
+# allow_leverage, allow_short_selling: РЅР° РІС‹Р±РѕСЂ true / false.
 allow_leverage: false
 allow_short_selling: false
 
-# horizon_years: число лет (например 10, 3, 0.5); null допустим.
+# horizon_years: С‡РёСЃР»Рѕ Р»РµС‚ (РЅР°РїСЂРёРјРµСЂ 10, 3, 0.5); null РґРѕРїСѓСЃС‚РёРј.
 horizon_years: 10.0
 
-# CSV — только таблицы (results_csv)
+# CSV вЂ” С‚РѕР»СЊРєРѕ С‚Р°Р±Р»РёС†С‹ (results_csv)
 output_dir: results_csv
-# Финальные результаты: веса, все JSON, report
+# Р¤РёРЅР°Р»СЊРЅС‹Рµ СЂРµР·СѓР»СЊС‚Р°С‚С‹: РІРµСЃР°, РІСЃРµ JSON, report
 output_dir_final: "Main portfolio"
-

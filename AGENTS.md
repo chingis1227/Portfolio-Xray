@@ -99,7 +99,7 @@ Do not invent formulas if a spec exists.
 - Align series with inner joins for excess returns, beta, covariance, correlation, and RC_vol.
 - Round only at final export/report stage, not during calculations.
 - `RC_vol` is diagnostic only, not an optimization constraint.
-- Scenario stress is diagnostic; mandate MaxDD can block weight release.
+- Scenario stress is diagnostic; mandate MaxDD can prevent weight release.
 - Default backtest mode is `dynamic_nan_safe`.
 - Do not manually require weights in `config.yml`; optimization writes `portfolio_weights.yml` / `run_result.json`.
 

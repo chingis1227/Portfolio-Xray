@@ -1,6 +1,6 @@
 """
 Portfolio optimization: max expected return with weight bounds, ProLiquidity.
-RC_vol is diagnostic-only (not enforced in the objective). No structural blocks or risk-budget targets.
+RC_vol is diagnostic-only and is not enforced in the objective.
 """
 from __future__ import annotations
 

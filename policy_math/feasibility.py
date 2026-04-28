@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 """
-Centralized policy math for feasibility constraints (no block / risk-budget architecture).
+Centralized policy math for feasibility constraints.
 
 Single source of truth for:
 - uniform max weight per risk asset (feasibility_constraints_spec §2 — same cap for every name)

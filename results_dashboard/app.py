@@ -1,5 +1,5 @@
-"""
-Results dashboard — key optimization / report metrics in the browser.
+﻿"""
+Results dashboard вЂ” key optimization / report metrics in the browser.
 
 Usage:
     pip install flask pyyaml
@@ -55,11 +55,11 @@ def _output_dir() -> Path:
 
 def _fmt_pct(x: Any, *, signed: bool = False, decimals: int = 2) -> str:
     if x is None:
-        return "—"
+        return "вЂ”"
     try:
         v = float(x) * 100.0
     except (TypeError, ValueError):
-        return "—"
+        return "вЂ”"
     if signed and v > 0:
         return f"+{v:.{decimals}f}%"
     return f"{v:.{decimals}f}%"
@@ -89,7 +89,7 @@ def build_view_model() -> dict[str, Any]:
     report_path = out_dir / "report.html"
 
     if not rr_path.is_file():
-        out["error"] = f"Нет {rr_path.name}. Сначала выполните оптимизацию и отчёт (run_optimization / run_report)."
+        out["error"] = f"РќРµС‚ {rr_path.name}. РЎРЅР°С‡Р°Р»Р° РІС‹РїРѕР»РЅРёС‚Рµ РѕРїС‚РёРјРёР·Р°С†РёСЋ Рё РѕС‚С‡С‘С‚ (run_optimization / run_report)."
         return out
 
     with open(rr_path, encoding="utf-8") as f:
@@ -103,7 +103,7 @@ def build_view_model() -> dict[str, Any]:
     cfg = apply_profile_to_config(dict(_read_yaml_config()))
 
     weights = run_result.get("weights") or {}
-    status = str(run_result.get("status", "—"))
+    status = str(run_result.get("status", "вЂ”"))
     mandate = run_result.get("mandate_check") or {}
     stress = run_result.get("stress_summary") or {}
     violations = run_result.get("violations") or []
@@ -113,12 +113,12 @@ def build_view_model() -> dict[str, Any]:
     for x in snap.get("RC_asset") or []:
         if not isinstance(x, dict):
             continue
-        t = str(x.get("ticker") or "—")
+        t = str(x.get("ticker") or "вЂ”")
         rpct = x.get("rc_pct")
         rc_asset_rows.append(
             {
                 "ticker": t,
-                "rc_pct_fmt": _fmt_pct(rpct) if rpct is not None else "—",
+                "rc_pct_fmt": _fmt_pct(rpct) if rpct is not None else "вЂ”",
             }
         )
 
@@ -138,7 +138,7 @@ def build_view_model() -> dict[str, Any]:
             "top_weights": tw,
             "max_weight": max_w,
             "violation_lines": v_lines,
-            "analysis_end": snap.get("analysis_end") or "—",
+            "analysis_end": snap.get("analysis_end") or "вЂ”",
             "mandate": mandate,
             "mandate_max_dd_pct": _fmt_pct(mandate.get("max_drawdown_realized")),
             "mandate_dd_limit_pct": _fmt_pct(mandate.get("limit_pct")),
@@ -147,10 +147,10 @@ def build_view_model() -> dict[str, Any]:
             "violations": violations,
             "rc_breaches": rc_breaches[:16],
             "rc_asset_rows": rc_asset_rows,
-            "metrics_cagr": _fmt_pct(metrics.get("cagr")) if metrics.get("cagr") is not None else "—",
-            "metrics_vol": _fmt_pct(metrics.get("vol_annual")) if metrics.get("vol_annual") is not None else "—",
-            "metrics_mdd": _fmt_pct(metrics.get("max_drawdown")) if metrics.get("max_drawdown") is not None else "—",
-            "metrics_sharpe": f"{float(metrics.get('sharpe')):.3f}" if metrics.get("sharpe") is not None else "—",
+            "metrics_cagr": _fmt_pct(metrics.get("cagr")) if metrics.get("cagr") is not None else "вЂ”",
+            "metrics_vol": _fmt_pct(metrics.get("vol_annual")) if metrics.get("vol_annual") is not None else "вЂ”",
+            "metrics_mdd": _fmt_pct(metrics.get("max_drawdown")) if metrics.get("max_drawdown") is not None else "вЂ”",
+            "metrics_sharpe": f"{float(metrics.get('sharpe')):.3f}" if metrics.get("sharpe") is not None else "вЂ”",
             "report_url": "/report" if report_path.is_file() else None,
         }
     )
@@ -167,16 +167,13 @@ def _summarize_violations(violations: list[Any]) -> list[str]:
         if code == "RC_VIOLATION" and isinstance(d, dict):
             viol = d.get("remaining_violators") or []
             lines.append(
-                f"RC post-process: {d.get('reason', '—')}; остались: {', '.join(str(t) for t in viol[:12])}"
-                f"{'…' if len(viol) > 12 else ''}"
+                f"RC post-process: {d.get('reason', 'вЂ”')}; РѕСЃС‚Р°Р»РёСЃСЊ: {', '.join(str(t) for t in viol[:12])}"
+                f"{'вЂ¦' if len(viol) > 12 else ''}"
             )
-        elif code == "RB_BREACH" and isinstance(d, dict):
-            parts = [f"{bk} {float(dv):+.1f} п.п." for bk, dv in d.items() if isinstance(dv, (int, float))]
-            lines.append("Профиль риска (отклонения, п.п.): " + (", ".join(parts) if parts else str(d)))
         elif code == "FAIL_STRESS" and isinstance(d, dict):
             lines.append(
-                f"Stress (диаг.): {d.get('primary_diagnostic_code', '—')}; "
-                f"сценарий: {d.get('failed_scenario', '—')}"
+                f"Stress (РґРёР°Рі.): {d.get('primary_diagnostic_code', 'вЂ”')}; "
+                f"СЃС†РµРЅР°СЂРёР№: {d.get('failed_scenario', 'вЂ”')}"
             )
         else:
             lines.append(f"{code}: {d}"[:180])
@@ -206,7 +203,7 @@ def report_html():
     out_dir = _output_dir()
     p = out_dir / "report.html"
     if not p.is_file():
-        return f"Нет {p}", 404
+        return f"РќРµС‚ {p}", 404
     return send_file(p, mimetype="text/html; charset=utf-8", max_age=0)
 
 

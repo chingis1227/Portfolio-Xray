@@ -81,7 +81,7 @@ To avoid decisions driven by a “nice” but regime-dependent segment:
 
 ---
 
-## 8. Risk-budget optimization: dual covariance for young ETFs (implementation)
+## 8. Dual covariance for young ETFs (implementation)
 
 For **mean–variance / RC_vol inputs used by the policy optimizer** (primary and secondary windows), the pipeline may use a **dual covariance** so the estimation window is not collapsed to the shortest-listed history:
 

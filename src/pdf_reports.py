@@ -1,12 +1,12 @@
-"""
-Rebuild investor-facing PDF reports from latest run outputs (Markdown → Pandoc → PDF).
+﻿"""
+Rebuild investor-facing PDF reports from latest run outputs (Markdown в†’ Pandoc в†’ PDF).
 
-Style target: institutional executive PDF — sans-serif, wide margins, navy/gray palette,
+Style target: institutional executive PDF вЂ” sans-serif, wide margins, navy/gray palette,
 subtle top/footer rules, footer label + page number, generous whitespace. Layout is driven by
 `pdf_latex/pandoc_preamble.tex` and per-build `pdf_latex/pandoc_doc_meta.tex` (see user style brief).
 
-Client-facing PDF Markdown: короткие, связные формулировки на русском, **без** имён файлов,
-внутренних кодов, «экспортного» тона; статусы и сценарии — бытовым языком.
+Client-facing PDF Markdown: РєРѕСЂРѕС‚РєРёРµ, СЃРІСЏР·РЅС‹Рµ С„РѕСЂРјСѓР»РёСЂРѕРІРєРё РЅР° СЂСѓСЃСЃРєРѕРј, **Р±РµР·** РёРјС‘РЅ С„Р°Р№Р»РѕРІ,
+РІРЅСѓС‚СЂРµРЅРЅРёС… РєРѕРґРѕРІ, В«СЌРєСЃРїРѕСЂС‚РЅРѕРіРѕВ» С‚РѕРЅР°; СЃС‚Р°С‚СѓСЃС‹ Рё СЃС†РµРЅР°СЂРёРё вЂ” Р±С‹С‚РѕРІС‹Рј СЏР·С‹РєРѕРј.
 
 Requires: pandoc and xelatex on PATH (or Pandoc under %LOCALAPPDATA%\\Pandoc on Windows).
 """
@@ -31,7 +31,7 @@ from src.config import load_validated_config
 _ROOT = Path(__file__).resolve().parent.parent
 _PDF_OUT = _ROOT / "pdf files"
 _PDF_MD_SOURCES = _ROOT / "pdf_md_sources"
-_OPTIONAL_ARCHIVE = _ROOT / "00_ВАЖНОЕ" / "11_pdf files"
+_OPTIONAL_ARCHIVE = _ROOT / "00_Р’РђР–РќРћР•" / "11_pdf files"
 _PDF_LATEX_DIR = _ROOT / "pdf_latex"
 _PANDOC_PREAMBLE = _PDF_LATEX_DIR / "pandoc_preamble.tex"
 _PANDOC_DOC_META = _PDF_LATEX_DIR / "pandoc_doc_meta.tex"
@@ -62,21 +62,21 @@ _METRIC_LABELS: dict[str, str] = {
     "ttr_months": "TTR (months)",
 }
 _METRIC_LABELS_RU: dict[str, str] = {
-    "cagr": "Доходность (CAGR)",
-    "vol_annual": "Волатильность (г/г)",
-    "max_drawdown": "Макс. просадка",
-    "sharpe": "Шарп",
-    "sortino": "Сортино",
-    "beta_portfolio": "Чувствительность к рынку",
-    "treynor": "Показатель на рыночный риск",
-    "corr_base": "Связь с широким рынком",
-    "downside_deviation_annual": "Ниж. откл. (г/г)",
-    "skewness": "Скв.",
-    "kurtosis": "Эксцесс",
+    "cagr": "Р”РѕС…РѕРґРЅРѕСЃС‚СЊ (CAGR)",
+    "vol_annual": "Р’РѕР»Р°С‚РёР»СЊРЅРѕСЃС‚СЊ (Рі/Рі)",
+    "max_drawdown": "РњР°РєСЃ. РїСЂРѕСЃР°РґРєР°",
+    "sharpe": "РЁР°СЂРї",
+    "sortino": "РЎРѕСЂС‚РёРЅРѕ",
+    "beta_portfolio": "Р§СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚СЊ Рє СЂС‹РЅРєСѓ",
+    "treynor": "РџРѕРєР°Р·Р°С‚РµР»СЊ РЅР° СЂС‹РЅРѕС‡РЅС‹Р№ СЂРёСЃРє",
+    "corr_base": "РЎРІСЏР·СЊ СЃ С€РёСЂРѕРєРёРј СЂС‹РЅРєРѕРј",
+    "downside_deviation_annual": "РќРёР¶. РѕС‚РєР». (Рі/Рі)",
+    "skewness": "РЎРєРІ.",
+    "kurtosis": "Р­РєСЃС†РµСЃСЃ",
     "es_95": "ES 95%",
     "es_99": "ES 99%",
     "eee_10pct": "EEE 10%",
-    "ttr_months": "TTR, мес.",
+    "ttr_months": "TTR, РјРµСЃ.",
 }
 
 _COMMENTARY_SECTIONS = (
@@ -89,30 +89,30 @@ _COMMENTARY_SECTIONS = (
     "Final Conclusion",
 )
 
-# PDF: якоря в commentary.txt (EN) -> видимый заголовок (RU, клиентский)
+# PDF: СЏРєРѕСЂСЏ РІ commentary.txt (EN) -> РІРёРґРёРјС‹Р№ Р·Р°РіРѕР»РѕРІРѕРє (RU, РєР»РёРµРЅС‚СЃРєРёР№)
 _COMMENTARY_PDF_ALIASES: dict[str, str] = {
-    "Metric-by-Metric Interpretation": "Что это значит для инвестора",
-    "Risk Structure": "Структура риска",
-    "Strengths": "Сильные стороны",
-    "Weaknesses": "Слабые стороны и риски",
-    "Scenario Behavior": "Сценарный анализ",
-    "Final Conclusion": "Итог",
+    "Metric-by-Metric Interpretation": "Р§С‚Рѕ СЌС‚Рѕ Р·РЅР°С‡РёС‚ РґР»СЏ РёРЅРІРµСЃС‚РѕСЂР°",
+    "Risk Structure": "РЎС‚СЂСѓРєС‚СѓСЂР° СЂРёСЃРєР°",
+    "Strengths": "РЎРёР»СЊРЅС‹Рµ СЃС‚РѕСЂРѕРЅС‹",
+    "Weaknesses": "РЎР»Р°Р±С‹Рµ СЃС‚РѕСЂРѕРЅС‹ Рё СЂРёСЃРєРё",
+    "Scenario Behavior": "РЎС†РµРЅР°СЂРЅС‹Р№ Р°РЅР°Р»РёР·",
+    "Final Conclusion": "РС‚РѕРі",
 }
 
-# Заголовок в шапке PDF (слева), по имени итогового файла
+# Р—Р°РіРѕР»РѕРІРѕРє РІ С€Р°РїРєРµ PDF (СЃР»РµРІР°), РїРѕ РёРјРµРЅРё РёС‚РѕРіРѕРІРѕРіРѕ С„Р°Р№Р»Р°
 _PDF_HEADER_LEFT: dict[str, str] = {
-    "Main portfolio_commentary": "Инвестиционный комментарий: основной портфель",
-    "Main portfolio_stress_commentary": "Стресс-анализ: основной портфель",
-    "Main portfolio_ew_rp_comparison": "Сравнение: equal-weight и risk parity",
-    "Main portfolio_weights": "Состав портфеля: целевые веса",
-    "Main portfolio_ips_summary": "Реализация политики: сводка (IPS)",
-    "Main portfolio_ips_summary_commentary": "Комментарий к сводке IPS",
-    "equal-weight_portfolio_commentary": "Комментарий: equal-weight",
-    "equal-weight_portfolio_stress_commentary": "Стресс-анализ: equal-weight",
-    "equal-weight_portfolio_weights": "Equal-weight: целевые веса",
-    "risk_parity_portfolio_commentary": "Комментарий: risk parity",
-    "risk_parity_portfolio_stress_commentary": "Стресс-анализ: risk parity",
-    "risk_parity_portfolio_weights": "Risk parity: целевые веса",
+    "Main portfolio_commentary": "РРЅРІРµСЃС‚РёС†РёРѕРЅРЅС‹Р№ РєРѕРјРјРµРЅС‚Р°СЂРёР№: РѕСЃРЅРѕРІРЅРѕР№ РїРѕСЂС‚С„РµР»СЊ",
+    "Main portfolio_stress_commentary": "РЎС‚СЂРµСЃСЃ-Р°РЅР°Р»РёР·: РѕСЃРЅРѕРІРЅРѕР№ РїРѕСЂС‚С„РµР»СЊ",
+    "Main portfolio_ew_rp_comparison": "РЎСЂР°РІРЅРµРЅРёРµ: equal-weight Рё risk parity",
+    "Main portfolio_weights": "РЎРѕСЃС‚Р°РІ РїРѕСЂС‚С„РµР»СЏ: С†РµР»РµРІС‹Рµ РІРµСЃР°",
+    "Main portfolio_ips_summary": "Р РµР°Р»РёР·Р°С†РёСЏ РїРѕР»РёС‚РёРєРё: СЃРІРѕРґРєР° (IPS)",
+    "Main portfolio_ips_summary_commentary": "РљРѕРјРјРµРЅС‚Р°СЂРёР№ Рє СЃРІРѕРґРєРµ IPS",
+    "equal-weight_portfolio_commentary": "РљРѕРјРјРµРЅС‚Р°СЂРёР№: equal-weight",
+    "equal-weight_portfolio_stress_commentary": "РЎС‚СЂРµСЃСЃ-Р°РЅР°Р»РёР·: equal-weight",
+    "equal-weight_portfolio_weights": "Equal-weight: С†РµР»РµРІС‹Рµ РІРµСЃР°",
+    "risk_parity_portfolio_commentary": "РљРѕРјРјРµРЅС‚Р°СЂРёР№: risk parity",
+    "risk_parity_portfolio_stress_commentary": "РЎС‚СЂРµСЃСЃ-Р°РЅР°Р»РёР·: risk parity",
+    "risk_parity_portfolio_weights": "Risk parity: С†РµР»РµРІС‹Рµ РІРµСЃР°",
 }
 
 
@@ -121,20 +121,20 @@ def _now_iso() -> str:
 
 
 def _russian_subtitle_line(
-    window_label: str | None, analysis_end: str | None, *, default_window_ru: str = "10-летнем"
+    window_label: str | None, analysis_end: str | None, *, default_window_ru: str = "10-Р»РµС‚РЅРµРј"
 ) -> str:
-    """Вторая строка титульного блока, как в эталоне: «итоги на N-летнем окне, по состоянию на …»."""
+    """Р’С‚РѕСЂР°СЏ СЃС‚СЂРѕРєР° С‚РёС‚СѓР»СЊРЅРѕРіРѕ Р±Р»РѕРєР°, РєР°Рє РІ СЌС‚Р°Р»РѕРЅРµ: В«РёС‚РѕРіРё РЅР° N-Р»РµС‚РЅРµРј РѕРєРЅРµ, РїРѕ СЃРѕСЃС‚РѕСЏРЅРёСЋ РЅР° вЂ¦В»."""
     wl = (window_label or "").strip().upper().replace(" ", "")
     if "10" in wl or "10Y" in wl or (window_label and "10" in str(window_label)):
-        win = "10-летнем"
+        win = "10-Р»РµС‚РЅРµРј"
     elif "5" in wl or (window_label and "5" in str(window_label)):
-        win = "5-летнем"
+        win = "5-Р»РµС‚РЅРµРј"
     elif "3" in wl or (window_label and "3" in str(window_label)):
-        win = "3-летнем"
+        win = "3-Р»РµС‚РЅРµРј"
     else:
         win = default_window_ru
     ae = (analysis_end or datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d")).strip()
-    return f"Итоги анализа на {win} окне, по состоянию на {ae}"
+    return f"РС‚РѕРіРё Р°РЅР°Р»РёР·Р° РЅР° {win} РѕРєРЅРµ, РїРѕ СЃРѕСЃС‚РѕСЏРЅРёСЋ РЅР° {ae}"
 
 
 def _line_dropped_for_client_pdf(line: str) -> bool:
@@ -142,7 +142,7 @@ def _line_dropped_for_client_pdf(line: str) -> bool:
     if not t:
         return False
     low = t.lower()
-    if re.match(r"^source\s*:", low) or t.startswith("Источник:") and re.search(r"[/\\]", t):
+    if re.match(r"^source\s*:", low) or t.startswith("РСЃС‚РѕС‡РЅРёРє:") and re.search(r"[/\\]", t):
         return True
     if any(
         x in low
@@ -161,7 +161,7 @@ def _line_dropped_for_client_pdf(line: str) -> bool:
     ):
         return True
     if re.search(
-        r"(?:[A-Za-z]:[\\/]|[/\\](?:Users|home|Użytkownicy)[/\\]|\\\\[^/\\]+\\).+\.(json|csv|txt|yml|md|parquet)\b",
+        r"(?:[A-Za-z]:[\\/]|[/\\](?:Users|home|UЕјytkownicy)[/\\]|\\\\[^/\\]+\\).+\.(json|csv|txt|yml|md|parquet)\b",
         t,
         re.I,
     ):
@@ -173,8 +173,8 @@ def _line_dropped_for_client_pdf(line: str) -> bool:
 
 def _executive_ru_sanitize(text: str) -> str:
     """
-    Клиентский исполненческий тон: убрать внутренние коды, пути, «системные» обозначения.
-    Не сохраняет дословно исход — только безопасный для PDF смысл.
+    РљР»РёРµРЅС‚СЃРєРёР№ РёСЃРїРѕР»РЅРµРЅС‡РµСЃРєРёР№ С‚РѕРЅ: СѓР±СЂР°С‚СЊ РІРЅСѓС‚СЂРµРЅРЅРёРµ РєРѕРґС‹, РїСѓС‚Рё, В«СЃРёСЃС‚РµРјРЅС‹РµВ» РѕР±РѕР·РЅР°С‡РµРЅРёСЏ.
+    РќРµ СЃРѕС…СЂР°РЅСЏРµС‚ РґРѕСЃР»РѕРІРЅРѕ РёСЃС…РѕРґ вЂ” С‚РѕР»СЊРєРѕ Р±РµР·РѕРїР°СЃРЅС‹Р№ РґР»СЏ PDF СЃРјС‹СЃР».
     """
     if not text:
         return text
@@ -186,26 +186,25 @@ def _executive_ru_sanitize(text: str) -> str:
     out = "\n".join(out_lines)
 
     repl_text = [
-        (r"equity\s*shock", "сильный обвал на рынке акций"),
-        (r"credit\s*shock", "стресс на рынке кредита"),
-        (r"EQUITY_SHOCK", "сильный обвал на рынке акций"),
-        (r"CREDIT_SHOCK", "стресс на рынке кредита"),
+        (r"equity\s*shock", "СЃРёР»СЊРЅС‹Р№ РѕР±РІР°Р» РЅР° СЂС‹РЅРєРµ Р°РєС†РёР№"),
+        (r"credit\s*shock", "СЃС‚СЂРµСЃСЃ РЅР° СЂС‹РЅРєРµ РєСЂРµРґРёС‚Р°"),
+        (r"EQUITY_SHOCK", "СЃРёР»СЊРЅС‹Р№ РѕР±РІР°Р» РЅР° СЂС‹РЅРєРµ Р°РєС†РёР№"),
+        (r"CREDIT_SHOCK", "СЃС‚СЂРµСЃСЃ РЅР° СЂС‹РЅРєРµ РєСЂРµРґРёС‚Р°"),
         (r"DIAG_[A-Z0-9_]+", " "),
-        (r"ROLE_[A-Z0-9_]+", " "),
         (r"FAIL_[A-Z0-9_]+", " "),
-        (r"\banalysis_end\b", "дата среза"),
+        (r"\banalysis_end\b", "РґР°С‚Р° СЃСЂРµР·Р°"),
         (r"\bportfolio_valid\b", " "),
         (r"\bfail_reason_code\b", " "),
-        (r"beta_base", "чувствительность к широкому рынку"),
-        (r"corr_base", "связь с рынком в целом"),
-        (r"Treynor", "оценка доходности с учётом чувствительности к рынку"),
-        (r"treynor", "оценка доходности с учётом чувствительности к рынку"),
+        (r"beta_base", "С‡СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚СЊ Рє С€РёСЂРѕРєРѕРјСѓ СЂС‹РЅРєСѓ"),
+        (r"corr_base", "СЃРІСЏР·СЊ СЃ СЂС‹РЅРєРѕРј РІ С†РµР»РѕРј"),
+        (r"Treynor", "РѕС†РµРЅРєР° РґРѕС…РѕРґРЅРѕСЃС‚Рё СЃ СѓС‡С‘С‚РѕРј С‡СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚Рё Рє СЂС‹РЅРєСѓ"),
+        (r"treynor", "РѕС†РµРЅРєР° РґРѕС…РѕРґРЅРѕСЃС‚Рё СЃ СѓС‡С‘С‚РѕРј С‡СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚Рё Рє СЂС‹РЅРєСѓ"),
         (r"\bDIAG\b", " "),
-        (r"policy\s*run", "расчёт по политике"),
+        (r"policy\s*run", "СЂР°СЃС‡С‘С‚ РїРѕ РїРѕР»РёС‚РёРєРµ"),
     ]
     for pat, to in repl_text:
         out = re.sub(pat, to, out, flags=re.IGNORECASE)
-    out = re.sub(r"\bPASS\b", "в норме по проверке", out, flags=re.IGNORECASE)
+    out = re.sub(r"\bPASS\b", "РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ", out, flags=re.IGNORECASE)
     out = re.sub(r"\bPreamble\b", "", out, flags=re.IGNORECASE)
     out = re.sub(r"[ \t]{2,}", " ", out)
     out = re.sub(r"\n{3,}", "\n\n", out)
@@ -213,27 +212,27 @@ def _executive_ru_sanitize(text: str) -> str:
 
 
 def _humanize_stress_status(val: Any) -> str:
-    """Короткие формулировки для лицевой стороны — без внутренних кодов движка."""
+    """РљРѕСЂРѕС‚РєРёРµ С„РѕСЂРјСѓР»РёСЂРѕРІРєРё РґР»СЏ Р»РёС†РµРІРѕР№ СЃС‚РѕСЂРѕРЅС‹ вЂ” Р±РµР· РІРЅСѓС‚СЂРµРЅРЅРёС… РєРѕРґРѕРІ РґРІРёР¶РєР°."""
     if val is None:
-        return "—"
+        return "вЂ”"
     s = str(val).strip()
-    if not s or s == "—":
-        return "—"
+    if not s or s == "вЂ”":
+        return "вЂ”"
     u = s.upper().replace(" ", "_")
     if u in ("PASS", "OK", "SUCCESS", "PASSED", "SUCCEEDED", "PORTFOLIO_VALID_PASS"):
-        return "В рамках согласованного профиля риска"
+        return "Р’ СЂР°РјРєР°С… СЃРѕРіР»Р°СЃРѕРІР°РЅРЅРѕРіРѕ РїСЂРѕС„РёР»СЏ СЂРёСЃРєР°"
     if u.startswith("FAIL") or "FAIL" in u:
-        return "Выходит за согласованные лимиты — нужен пересмотр состава"
+        return "Р’С‹С…РѕРґРёС‚ Р·Р° СЃРѕРіР»Р°СЃРѕРІР°РЅРЅС‹Рµ Р»РёРјРёС‚С‹ вЂ” РЅСѓР¶РµРЅ РїРµСЂРµСЃРјРѕС‚СЂ СЃРѕСЃС‚Р°РІР°"
     if "DIAG_ATTENTION" in u or ("ATTENTION" in u and "STRESS" in u):
-        return "Один рисковый аспект требует внимания"
-    if u.startswith("DIAG_") or u.startswith("ROLE_") or u.startswith("EQUITY_") or u.startswith("CREDIT_"):
-        return "—"
+        return "РћРґРёРЅ СЂРёСЃРєРѕРІС‹Р№ Р°СЃРїРµРєС‚ С‚СЂРµР±СѓРµС‚ РІРЅРёРјР°РЅРёСЏ"
+    if u.startswith("DIAG_") or u.startswith("EQUITY_") or u.startswith("CREDIT_"):
+        return "вЂ”"
     return _executive_ru_sanitize(s)
 
 
 def _looks_like_code_token(s: str) -> bool:
     t = s.strip()
-    if not t or t in ("—", "OK"):
+    if not t or t in ("вЂ”", "OK"):
         return False
     if re.match(r"^DIAG[_A-Z0-9]+$", t, re.I):
         return True
@@ -245,24 +244,24 @@ def _looks_like_code_token(s: str) -> bool:
 
 
 def _humanize_stress_detail(val: Any) -> str:
-    """Сырые причины-коды не печатаем; осмысленный текст — через санитайзер."""
+    """РЎС‹СЂС‹Рµ РїСЂРёС‡РёРЅС‹-РєРѕРґС‹ РЅРµ РїРµС‡Р°С‚Р°РµРј; РѕСЃРјС‹СЃР»РµРЅРЅС‹Р№ С‚РµРєСЃС‚ вЂ” С‡РµСЂРµР· СЃР°РЅРёС‚Р°Р№Р·РµСЂ."""
     if val is None:
-        return "—"
+        return "вЂ”"
     s = str(val).strip()
-    if not s or s == "—":
-        return "—"
+    if not s or s == "вЂ”":
+        return "вЂ”"
     if _looks_like_code_token(s):
-        return "—"
+        return "вЂ”"
     s2 = _executive_ru_sanitize(s)
-    if not s2 or s2 in ("—",) or _looks_like_code_token(s2):
-        return "—"
+    if not s2 or s2 in ("вЂ”",) or _looks_like_code_token(s2):
+        return "вЂ”"
     if len(s2) > 90:
-        return s2[:87].rstrip() + "…"
+        return s2[:87].rstrip() + "вЂ¦"
     return s2
 
 
 def _soft_sanitize_narrative_for_pdf(text: str) -> str:
-    """Текст для PDF: без внутренних ярлыков и сухой техники."""
+    """РўРµРєСЃС‚ РґР»СЏ PDF: Р±РµР· РІРЅСѓС‚СЂРµРЅРЅРёС… СЏСЂР»С‹РєРѕРІ Рё СЃСѓС…РѕР№ С‚РµС…РЅРёРєРё."""
     return _executive_ru_sanitize(text)
 
 
@@ -283,7 +282,7 @@ def _escape_latex_command_arg(s: str) -> str:
 
 
 def _pdf_descriptor_for_output(pdf_out: Path) -> str:
-    """Humanize PDF stem for footer: underscores → spaces, keep readable."""
+    """Humanize PDF stem for footer: underscores в†’ spaces, keep readable."""
     t = pdf_out.stem.replace("_", " ")
     t = t.replace("  ", " ").strip()
     return t if t else "Report"
@@ -291,11 +290,11 @@ def _pdf_descriptor_for_output(pdf_out: Path) -> str:
 
 def _default_meta_footer_ru() -> str:
     ts = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
-    return f"Подготовлено: {ts} | Формат: краткая справка | Язык: русский"
+    return f"РџРѕРґРіРѕС‚РѕРІР»РµРЅРѕ: {ts} | Р¤РѕСЂРјР°С‚: РєСЂР°С‚РєР°СЏ СЃРїСЂР°РІРєР° | РЇР·С‹Рє: СЂСѓСЃСЃРєРёР№"
 
 
 def _header_left_for_pdf(pdf_out: Path) -> str:
-    return _PDF_HEADER_LEFT.get(pdf_out.stem, "Портфельный отчёт")
+    return _PDF_HEADER_LEFT.get(pdf_out.stem, "РџРѕСЂС‚С„РµР»СЊРЅС‹Р№ РѕС‚С‡С‘С‚")
 
 
 def _write_pandoc_doc_meta_tex(pdf_out: Path) -> None:
@@ -395,10 +394,10 @@ def _escape_md_cell(s: str) -> str:
 
 def _fmt_scalar(v: Any, *, pct: bool = False) -> str:
     if v is None:
-        return "—"
+        return "вЂ”"
     try:
         if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
-            return "—"
+            return "вЂ”"
         f = float(v)
         if pct:
             return f"{f * 100:.2f}%"
@@ -423,7 +422,7 @@ def _read_snapshot_10y(folder: Path) -> dict[str, Any] | None:
 def _fmt_kpi_val_latex(m: dict[str, Any], key: str, *, pct: bool) -> str:
     v = m.get(key)
     if v is None or (isinstance(v, float) and (math.isnan(v) or math.isinf(v))):
-        return "—"
+        return "вЂ”"
     try:
         f = float(v)
         if pct:
@@ -431,21 +430,21 @@ def _fmt_kpi_val_latex(m: dict[str, Any], key: str, *, pct: bool) -> str:
             return t + r"\%"
         return f"{f:.3f}".replace(".", ",") if f >= 0 else f"{f:.3f}".replace(".", ",")
     except (TypeError, ValueError):
-        return "—"
+        return "вЂ”"
 
 
-def _kpi_block_latex_ru(m: dict[str, Any]) -> str:
-    """2×3 сетка KPI (LaTeX), как на эталоне."""
+def _kpi_panel_latex_ru(m: dict[str, Any]) -> str:
+    """2Г—3 СЃРµС‚РєР° KPI (LaTeX), РєР°Рє РЅР° СЌС‚Р°Р»РѕРЅРµ."""
     if not m:
         return ""
     mk = m
     pairs = [
-        (_fmt_kpi_val_latex(mk, "cagr", pct=True), "Доходность (CAGR)"),
-        (_fmt_kpi_val_latex(mk, "vol_annual", pct=True), "Волатильность"),
-        (_fmt_kpi_val_latex(mk, "max_drawdown", pct=True), "Макс. просадка"),
-        (_fmt_kpi_val_latex(mk, "sharpe", pct=False), "Коэф. Шарпа"),
-        (_fmt_kpi_val_latex(mk, "sortino", pct=False), "Коэф. Сортино"),
-        (_fmt_kpi_val_latex(mk, "beta_portfolio", pct=False), "Чувствительность к рынку"),
+        (_fmt_kpi_val_latex(mk, "cagr", pct=True), "Р”РѕС…РѕРґРЅРѕСЃС‚СЊ (CAGR)"),
+        (_fmt_kpi_val_latex(mk, "vol_annual", pct=True), "Р’РѕР»Р°С‚РёР»СЊРЅРѕСЃС‚СЊ"),
+        (_fmt_kpi_val_latex(mk, "max_drawdown", pct=True), "РњР°РєСЃ. РїСЂРѕСЃР°РґРєР°"),
+        (_fmt_kpi_val_latex(mk, "sharpe", pct=False), "РљРѕСЌС„. РЁР°СЂРїР°"),
+        (_fmt_kpi_val_latex(mk, "sortino", pct=False), "РљРѕСЌС„. РЎРѕСЂС‚РёРЅРѕ"),
+        (_fmt_kpi_val_latex(mk, "beta_portfolio", pct=False), "Р§СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚СЊ Рє СЂС‹РЅРєСѓ"),
     ]
     a1, a2, a3 = [r"\KPIone{" + x[0] + "}{" + _escape_latex_arg_for_kpi(x[1]) + "}" for x in pairs[:3]]
     b1, b2, b3 = [r"\KPIone{" + x[0] + "}{" + _escape_latex_arg_for_kpi(x[1]) + "}" for x in pairs[3:6]]
@@ -470,8 +469,8 @@ def _yaml_front_matter(
     analysis_end: str | None = None,
     window_label: str | None = None,
 ) -> str:
-    """H1: инсайт-заголовок; `date` в YAML — вторая строка, как в эталоне (подзаголовок-описание)."""
-    full_title = title if not subtitle else f"{title} — {subtitle}"
+    """H1: РёРЅСЃР°Р№С‚-Р·Р°РіРѕР»РѕРІРѕРє; `date` РІ YAML вЂ” РІС‚РѕСЂР°СЏ СЃС‚СЂРѕРєР°, РєР°Рє РІ СЌС‚Р°Р»РѕРЅРµ (РїРѕРґР·Р°РіРѕР»РѕРІРѕРє-РѕРїРёСЃР°РЅРёРµ)."""
+    full_title = title if not subtitle else f"{title} вЂ” {subtitle}"
     date_line = _russian_subtitle_line(window_label, analysis_end)
     lines = [
         "---",
@@ -513,19 +512,19 @@ _KPI_EW_RP_KEYS: tuple[str, ...] = (
 
 def _ew_rp_executive_takeaway(comp: dict[str, Any]) -> str:
     p = comp.get("period") or {}
-    ae = p.get("analysis_end") or "—"
-    wl = (p.get("window_label") or "—")
+    ae = p.get("analysis_end") or "вЂ”"
+    wl = (p.get("window_label") or "вЂ”")
     em = (comp.get("equal_weight") or {}).get("metrics") or {}
     rm = (comp.get("risk_parity") or {}).get("metrics") or {}
     dm = (comp.get("delta") or {}).get("metrics") or {}
     s_ew = _humanize_stress_status((comp.get("equal_weight") or {}).get("stress_status"))
     s_rp = _humanize_stress_status((comp.get("risk_parity") or {}).get("stress_status"))
     return (
-        f"На горизонте **{wl}** (оценка **{ae}**) равные веса обычно сильнее ориентированы на **ожидаемую доходность**, "
-        f"а **risk parity** сглаживает **вклад инструментов в общий риск**. "
-        f"По доходности равные веса **опережают** вариант с выравниванием риска на **{_fmt_scalar(dm.get('cagr'), pct=True)}**; "
-        f"**волатильность** — **{_fmt_scalar(em.get('vol_annual'), pct=True)}** у равных весов и **{_fmt_scalar(rm.get('vol_annual'), pct=True)}** у risk parity. "
-        f"По **стресс-проверке** равные веса: **{s_ew}**; risk parity: **{s_rp}**.\n"
+        f"РќР° РіРѕСЂРёР·РѕРЅС‚Рµ **{wl}** (РѕС†РµРЅРєР° **{ae}**) СЂР°РІРЅС‹Рµ РІРµСЃР° РѕР±С‹С‡РЅРѕ СЃРёР»СЊРЅРµРµ РѕСЂРёРµРЅС‚РёСЂРѕРІР°РЅС‹ РЅР° **РѕР¶РёРґР°РµРјСѓСЋ РґРѕС…РѕРґРЅРѕСЃС‚СЊ**, "
+        f"Р° **risk parity** СЃРіР»Р°Р¶РёРІР°РµС‚ **РІРєР»Р°Рґ РёРЅСЃС‚СЂСѓРјРµРЅС‚РѕРІ РІ РѕР±С‰РёР№ СЂРёСЃРє**. "
+        f"РџРѕ РґРѕС…РѕРґРЅРѕСЃС‚Рё СЂР°РІРЅС‹Рµ РІРµСЃР° **РѕРїРµСЂРµР¶Р°СЋС‚** РІР°СЂРёР°РЅС‚ СЃ РІС‹СЂР°РІРЅРёРІР°РЅРёРµРј СЂРёСЃРєР° РЅР° **{_fmt_scalar(dm.get('cagr'), pct=True)}**; "
+        f"**РІРѕР»Р°С‚РёР»СЊРЅРѕСЃС‚СЊ** вЂ” **{_fmt_scalar(em.get('vol_annual'), pct=True)}** Сѓ СЂР°РІРЅС‹С… РІРµСЃРѕРІ Рё **{_fmt_scalar(rm.get('vol_annual'), pct=True)}** Сѓ risk parity. "
+        f"РџРѕ **СЃС‚СЂРµСЃСЃ-РїСЂРѕРІРµСЂРєРµ** СЂР°РІРЅС‹Рµ РІРµСЃР°: **{s_ew}**; risk parity: **{s_rp}**.\n"
     )
 
 
@@ -542,20 +541,20 @@ def build_ew_rp_markdown(comp: dict[str, Any]) -> str:
     parts: list[str] = []
     parts.append(
         _yaml_front_matter(
-            "Сравнение: equal-weight и risk parity",
+            "РЎСЂР°РІРЅРµРЅРёРµ: equal-weight Рё risk parity",
             None,
             analysis_end=as_of,
             window_label=wlab,
         )
     )
-    parts.append("## Ключевой вывод\n\n")
+    parts.append("## РљР»СЋС‡РµРІРѕР№ РІС‹РІРѕРґ\n\n")
     parts.append(_ew_rp_executive_takeaway(comp) + "\n\n")
 
-    parts.append("## Ключевые показатели\n\n")
+    parts.append("## РљР»СЋС‡РµРІС‹Рµ РїРѕРєР°Р·Р°С‚РµР»Рё\n\n")
     parts.append(
-        "*Разница (последний столбец) — **насколько больше у равных весов**, чем у risk parity, в тех же единицах, что и метрика.*\n\n"
+        "*Р Р°Р·РЅРёС†Р° (РїРѕСЃР»РµРґРЅРёР№ СЃС‚РѕР»Р±РµС†) вЂ” **РЅР°СЃРєРѕР»СЊРєРѕ Р±РѕР»СЊС€Рµ Сѓ СЂР°РІРЅС‹С… РІРµСЃРѕРІ**, С‡РµРј Сѓ risk parity, РІ С‚РµС… Р¶Рµ РµРґРёРЅРёС†Р°С…, С‡С‚Рѕ Рё РјРµС‚СЂРёРєР°.*\n\n"
     )
-    parts.append("|  | Равные веса (EW) | Risk parity | Разница (EW − RP) |\n")
+    parts.append("|  | Р Р°РІРЅС‹Рµ РІРµСЃР° (EW) | Risk parity | Р Р°Р·РЅРёС†Р° (EW в€’ RP) |\n")
     parts.append("| --- | ---: | ---: | ---: |\n")
     for k in _KPI_EW_RP_KEYS:
         pct = k in _PCT_METRICS
@@ -572,8 +571,8 @@ def build_ew_rp_markdown(comp: dict[str, Any]) -> str:
     d5 = top.get("delta") or {}
     top_tickers = sorted(set(eq5.keys()) | set(rp5.keys()))
     if top_tickers:
-        parts.append("\n## Кто сильнее всего влияет на риск (топ позиций)\n\n")
-        parts.append("\n| Инструмент | Равные веса | Risk parity | Разница (EW − RP) |\n| --- | ---: | ---: | ---: |\n")
+        parts.append("\n## РљС‚Рѕ СЃРёР»СЊРЅРµРµ РІСЃРµРіРѕ РІР»РёСЏРµС‚ РЅР° СЂРёСЃРє (С‚РѕРї РїРѕР·РёС†РёР№)\n\n")
+        parts.append("\n| РРЅСЃС‚СЂСѓРјРµРЅС‚ | Р Р°РІРЅС‹Рµ РІРµСЃР° | Risk parity | Р Р°Р·РЅРёС†Р° (EW в€’ RP) |\n| --- | ---: | ---: | ---: |\n")
         for t in top_tickers:
             parts.append(
                 f"| **{t}** | {_escape_md_cell(_fmt_scalar(eq5.get(t), pct=True))} | "
@@ -585,23 +584,23 @@ def build_ew_rp_markdown(comp: dict[str, Any]) -> str:
     sr = _humanize_stress_status(rp.get("stress_status"))
     re_ew = _humanize_stress_detail(ew.get("stress_fail_reason"))
     re_rp = _humanize_stress_detail(rp.get("stress_fail_reason"))
-    parts.append("\n## Сценарный анализ (стресс, сравнение)\n\n")
+    parts.append("\n## РЎС†РµРЅР°СЂРЅС‹Р№ Р°РЅР°Р»РёР· (СЃС‚СЂРµСЃСЃ, СЃСЂР°РІРЅРµРЅРёРµ)\n\n")
     parts.append(
-        f"- **Равные веса (equal-weight):** {se}.\n"
+        f"- **Р Р°РІРЅС‹Рµ РІРµСЃР° (equal-weight):** {se}.\n"
         f"- **Risk parity:** {sr}.\n"
     )
     de, dr = re_ew.strip(), re_rp.strip()
-    if (de and de not in ("—",)) or (dr and dr not in ("—",)):
-        if de and dr and de not in ("—",) and dr not in ("—",):
+    if (de and de not in ("вЂ”",)) or (dr and dr not in ("вЂ”",)):
+        if de and dr and de not in ("вЂ”",) and dr not in ("вЂ”",):
             parts.append(
-                f"\n*Пояснения к сценарной проверке: **равные веса** — {de}; **risk parity** — {dr}.*\n"
+                f"\n*РџРѕСЏСЃРЅРµРЅРёСЏ Рє СЃС†РµРЅР°СЂРЅРѕР№ РїСЂРѕРІРµСЂРєРµ: **СЂР°РІРЅС‹Рµ РІРµСЃР°** вЂ” {de}; **risk parity** вЂ” {dr}.*\n"
             )
-        elif de and de not in ("—",):
-            parts.append(f"\n*Пояснение: **равные веса** — {de}.*\n")
-        elif dr and dr not in ("—",):
-            parts.append(f"\n*Пояснение: **risk parity** — {dr}.*\n")
+        elif de and de not in ("вЂ”",):
+            parts.append(f"\n*РџРѕСЏСЃРЅРµРЅРёРµ: **СЂР°РІРЅС‹Рµ РІРµСЃР°** вЂ” {de}.*\n")
+        elif dr and dr not in ("вЂ”",):
+            parts.append(f"\n*РџРѕСЏСЃРЅРµРЅРёРµ: **risk parity** вЂ” {dr}.*\n")
     parts.append(
-        "\n*Оба варианта посчитаны на **одном** наборе инструментов и **одной** истории; отличается только способ взвешивания.*\n"
+        "\n*РћР±Р° РІР°СЂРёР°РЅС‚Р° РїРѕСЃС‡РёС‚Р°РЅС‹ РЅР° **РѕРґРЅРѕРј** РЅР°Р±РѕСЂРµ РёРЅСЃС‚СЂСѓРјРµРЅС‚РѕРІ Рё **РѕРґРЅРѕР№** РёСЃС‚РѕСЂРёРё; РѕС‚Р»РёС‡Р°РµС‚СЃСЏ С‚РѕР»СЊРєРѕ СЃРїРѕСЃРѕР± РІР·РІРµС€РёРІР°РЅРёСЏ.*\n"
     )
     return "".join(parts)
 
@@ -673,7 +672,7 @@ def build_commentary_report_md(
     else:
         exec_body = _soft_sanitize_narrative_for_pdf(ex or pre)
 
-    parts.append("\n## Ключевой вывод\n\n")
+    parts.append("\n## РљР»СЋС‡РµРІРѕР№ РІС‹РІРѕРґ\n\n")
     if exec_body.strip():
         for para in [p.strip() for p in exec_body.split("\n\n") if p.strip()]:
             if para.startswith("- "):
@@ -682,14 +681,14 @@ def build_commentary_report_md(
                 parts.append(f"{para}\n\n")
     else:
         parts.append(
-            "*Самое главное ещё не вынесено: в начало рабочего комментария к прогону добавьте 3–5 предложений с **итогом** (первый блок по внутреннему шаблону комментария).*\n"
+            "*РЎР°РјРѕРµ РіР»Р°РІРЅРѕРµ РµС‰С‘ РЅРµ РІС‹РЅРµСЃРµРЅРѕ: РІ РЅР°С‡Р°Р»Рѕ СЂР°Р±РѕС‡РµРіРѕ РєРѕРјРјРµРЅС‚Р°СЂРёСЏ Рє РїСЂРѕРіРѕРЅСѓ РґРѕР±Р°РІСЊС‚Рµ 3вЂ“5 РїСЂРµРґР»РѕР¶РµРЅРёР№ СЃ **РёС‚РѕРіРѕРј** (РїРµСЂРІС‹Р№ Р±Р»РѕРє РїРѕ РІРЅСѓС‚СЂРµРЅРЅРµРјСѓ С€Р°Р±Р»РѕРЅСѓ РєРѕРјРјРµРЅС‚Р°СЂРёСЏ).*\n"
         )
 
     mets = (snap or {}).get("metrics") or {}
     if isinstance(mets, dict) and mets:
-        kpi = _kpi_block_latex_ru(mets)
+        kpi = _kpi_panel_latex_ru(mets)
         if kpi:
-            parts.append("\n## Ключевые показатели\n\n")
+            parts.append("\n## РљР»СЋС‡РµРІС‹Рµ РїРѕРєР°Р·Р°С‚РµР»Рё\n\n")
             parts.append(kpi + "\n")
 
     wimi_chunks: list[str] = []
@@ -698,12 +697,12 @@ def build_commentary_report_md(
         wimi_chunks.append(mmm)
     st = (smap.get("Strengths") or "").strip()
     if st:
-        wimi_chunks.append("**Сильные стороны.**\n\n" + st)
+        wimi_chunks.append("**РЎРёР»СЊРЅС‹Рµ СЃС‚РѕСЂРѕРЅС‹.**\n\n" + st)
     wk = (smap.get("Weaknesses") or "").strip()
     if wk:
-        wimi_chunks.append("**Риски и ограничения.**\n\n" + wk)
+        wimi_chunks.append("**Р РёСЃРєРё Рё РѕРіСЂР°РЅРёС‡РµРЅРёСЏ.**\n\n" + wk)
     if wimi_chunks:
-        parts.append("\n## Что это значит для инвестора\n\n")
+        parts.append("\n## Р§С‚Рѕ СЌС‚Рѕ Р·РЅР°С‡РёС‚ РґР»СЏ РёРЅРІРµСЃС‚РѕСЂР°\n\n")
         parts.append("\n\n".join(wimi_chunks) + "\n")
 
     for key in ("Risk Structure", "Scenario Behavior", "Final Conclusion"):
@@ -747,27 +746,27 @@ def build_weights_report_md(
     )
     items = sorted(weights.items(), key=lambda kv: (-kv[1], kv[0]))
     top = items[:5]
-    parts.append("\n## Ключевой вывод\n\n")
+    parts.append("\n## РљР»СЋС‡РµРІРѕР№ РІС‹РІРѕРґ\n\n")
     if top:
-        tlist = ", ".join(f"**{t}** — {_fmt_scalar(w, pct=True)}" for t, w in top)
+        tlist = ", ".join(f"**{t}** вЂ” {_fmt_scalar(w, pct=True)}" for t, w in top)
         parts.append(
-            f"**Крупнейшие позиции** по целевому весу: {tlist}. "
-            f"**Доли ниже** — ориентир для стратегии; **дата** относится к снимку (см. строку под заголовком), а не к сигналу сделки.\n\n"
+            f"**РљСЂСѓРїРЅРµР№С€РёРµ РїРѕР·РёС†РёРё** РїРѕ С†РµР»РµРІРѕРјСѓ РІРµСЃСѓ: {tlist}. "
+            f"**Р”РѕР»Рё РЅРёР¶Рµ** вЂ” РѕСЂРёРµРЅС‚РёСЂ РґР»СЏ СЃС‚СЂР°С‚РµРіРёРё; **РґР°С‚Р°** РѕС‚РЅРѕСЃРёС‚СЃСЏ Рє СЃРЅРёРјРєСѓ (СЃРј. СЃС‚СЂРѕРєСѓ РїРѕРґ Р·Р°РіРѕР»РѕРІРєРѕРј), Р° РЅРµ Рє СЃРёРіРЅР°Р»Сѓ СЃРґРµР»РєРё.\n\n"
         )
     else:
-        parts.append("*Нет позиций для отображения.*\n\n")
+        parts.append("*РќРµС‚ РїРѕР·РёС†РёР№ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ.*\n\n")
     mets = (snap or {}).get("metrics") or {}
     if isinstance(mets, dict) and mets:
-        k = _kpi_block_latex_ru(mets)
+        k = _kpi_panel_latex_ru(mets)
         if k:
-            parts.append("## Ключевые показатели\n\n")
+            parts.append("## РљР»СЋС‡РµРІС‹Рµ РїРѕРєР°Р·Р°С‚РµР»Рё\n\n")
             parts.append(k + "\n")
-    parts.append("## Состав: все позиции\n\n")
-    parts.append("\n| Инструмент | Целевой вес |\n| --- | ---: |\n")
+    parts.append("## РЎРѕСЃС‚Р°РІ: РІСЃРµ РїРѕР·РёС†РёРё\n\n")
+    parts.append("\n| РРЅСЃС‚СЂСѓРјРµРЅС‚ | Р¦РµР»РµРІРѕР№ РІРµСЃ |\n| --- | ---: |\n")
     for t, w in items:
         parts.append(f"| **{t}** | {_escape_md_cell(f'{w * 100:.2f}%')} |\n")
     parts.append(
-        f"\n**Сумма долей — {_fmt_scalar(sum(weights.values()), pct=True)}**; при полном инвестировании ожидается **около 100%**.\n"
+        f"\n**РЎСѓРјРјР° РґРѕР»РµР№ вЂ” {_fmt_scalar(sum(weights.values()), pct=True)}**; РїСЂРё РїРѕР»РЅРѕРј РёРЅРІРµСЃС‚РёСЂРѕРІР°РЅРёРё РѕР¶РёРґР°РµС‚СЃСЏ **РѕРєРѕР»Рѕ 100%**.\n"
     )
     return "".join(parts)
 
@@ -788,7 +787,7 @@ def build_ips_summary_md(
         ae = str(snap.get("analysis_end") or "").strip() or None
     parts.append(
         _yaml_front_matter(
-            "Политика и портфель: сводка реализации (IPS)",
+            "РџРѕР»РёС‚РёРєР° Рё РїРѕСЂС‚С„РµР»СЊ: СЃРІРѕРґРєР° СЂРµР°Р»РёР·Р°С†РёРё (IPS)",
             None,
             analysis_end=ae,
             window_label=wlab,
@@ -799,7 +798,7 @@ def build_ips_summary_md(
     if lines and lines[0].startswith("IPS Summary"):
         lines = lines[1:]
 
-    parts.append("\n## Ключевой вывод\n\n")
+    parts.append("\n## РљР»СЋС‡РµРІРѕР№ РІС‹РІРѕРґ\n\n")
     exec_lines: list[str] = []
     i = 0
     while i < len(lines):
@@ -824,11 +823,11 @@ def build_ips_summary_md(
         if out_ln:
             parts.append("\n".join(out_ln) + "\n")
         else:
-            parts.append("*(Суть изложена в **нумерованных** пунктах ниже.)*\n")
+            parts.append("*(РЎСѓС‚СЊ РёР·Р»РѕР¶РµРЅР° РІ **РЅСѓРјРµСЂРѕРІР°РЅРЅС‹С…** РїСѓРЅРєС‚Р°С… РЅРёР¶Рµ.)*\n")
     else:
-        parts.append("*(Суть изложена в **нумерованных** пунктах ниже.)*\n")
+        parts.append("*(РЎСѓС‚СЊ РёР·Р»РѕР¶РµРЅР° РІ **РЅСѓРјРµСЂРѕРІР°РЅРЅС‹С…** РїСѓРЅРєС‚Р°С… РЅРёР¶Рµ.)*\n")
 
-    parts.append("\n## Реализация: по шагам плана\n\n")
+    parts.append("\n## Р РµР°Р»РёР·Р°С†РёСЏ: РїРѕ С€Р°РіР°Рј РїР»Р°РЅР°\n\n")
     rest = "\n".join(lines[i:]).strip()
     sections = re.split(r"\n(?=\d+\.\s)", rest)
     for sec in sections:
@@ -938,7 +937,7 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
             results["Main portfolio_ew_rp_comparison.pdf"] = False
     else:
         if logger:
-            logger.warning("Missing %s — run run_compare_ew_rp.py", comp_path)
+            logger.warning("Missing %s вЂ” run run_compare_ew_rp.py", comp_path)
         results["Main portfolio_ew_rp_comparison.pdf"] = False
 
     def _commentary_pair(folder: Path, slug: str, title: str) -> None:
@@ -966,10 +965,10 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
             _copy_pdf_to_archive(_PDF_OUT / name, logger)
 
     _commentary_pair(
-        eq_dir, "equal-weight_portfolio", "Equal-weight: ровные веса как база для сравнения"
+        eq_dir, "equal-weight_portfolio", "Equal-weight: СЂРѕРІРЅС‹Рµ РІРµСЃР° РєР°Рє Р±Р°Р·Р° РґР»СЏ СЃСЂР°РІРЅРµРЅРёСЏ"
     )
     _commentary_pair(
-        rp_dir, "risk_parity_portfolio", "Risk parity: риск в первую очередь"
+        rp_dir, "risk_parity_portfolio", "Risk parity: СЂРёСЃРє РІ РїРµСЂРІСѓСЋ РѕС‡РµСЂРµРґСЊ"
     )
 
     def _stress_commentary_pair(folder: Path, pdf_name_stem: str, title: str) -> None:
@@ -997,16 +996,16 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
             _copy_pdf_to_archive(_PDF_OUT / out_name, logger)
 
     _stress_commentary_pair(
-        eq_dir, "equal-weight_portfolio", "Стресс: как ведёт себя equal-weight"
+        eq_dir, "equal-weight_portfolio", "РЎС‚СЂРµСЃСЃ: РєР°Рє РІРµРґС‘С‚ СЃРµР±СЏ equal-weight"
     )
     _stress_commentary_pair(
-        rp_dir, "risk_parity_portfolio", "Стресс: как ведёт себя risk parity"
+        rp_dir, "risk_parity_portfolio", "РЎС‚СЂРµСЃСЃ: РєР°Рє РІРµРґС‘С‚ СЃРµР±СЏ risk parity"
     )
 
     mp_comm = out_final / "commentary.txt"
     if mp_comm.is_file():
         md = build_commentary_report_md(
-            report_title="Основной портфель: устойчивый риск-профиль при умеренной доходности",
+            report_title="РћСЃРЅРѕРІРЅРѕР№ РїРѕСЂС‚С„РµР»СЊ: СѓСЃС‚РѕР№С‡РёРІС‹Р№ СЂРёСЃРє-РїСЂРѕС„РёР»СЊ РїСЂРё СѓРјРµСЂРµРЅРЅРѕР№ РґРѕС…РѕРґРЅРѕСЃС‚Рё",
             commentary_text=mp_comm.read_text(encoding="utf-8"),
             variant_label=out_final.name,
             analysis_end=_detect_analysis_end(out_final),
@@ -1027,13 +1026,13 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     _stress_commentary_pair(
         out_final,
         "Main portfolio",
-        "Стресс: текущий состав под давлением сценариев",
+        "РЎС‚СЂРµСЃСЃ: С‚РµРєСѓС‰РёР№ СЃРѕСЃС‚Р°РІ РїРѕРґ РґР°РІР»РµРЅРёРµРј СЃС†РµРЅР°СЂРёРµРІ",
     )
 
     # --- Weights ---
     for folder, slug, title in (
-        (eq_dir, "equal-weight_portfolio", "Целевые веса: equal-weight"),
-        (rp_dir, "risk_parity_portfolio", "Целевые веса: risk parity"),
+        (eq_dir, "equal-weight_portfolio", "Р¦РµР»РµРІС‹Рµ РІРµСЃР°: equal-weight"),
+        (rp_dir, "risk_parity_portfolio", "Р¦РµР»РµРІС‹Рµ РІРµСЃР°: risk parity"),
     ):
         wpath = folder / "weights.json"
         if wpath.is_file():
@@ -1068,7 +1067,7 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
         if isinstance(raw_w, dict):
             wf = {str(k): float(v) for k, v in raw_w.items() if isinstance(v, (int, float))}
             md = build_weights_report_md(
-                title="Состав портфеля: куда встаёт капитал",
+                title="РЎРѕСЃС‚Р°РІ РїРѕСЂС‚С„РµР»СЏ: РєСѓРґР° РІСЃС‚Р°С‘С‚ РєР°РїРёС‚Р°Р»",
                 weights=wf,
                 variant_label=out_final.name,
                 analysis_end=_detect_analysis_end(out_final),
@@ -1111,7 +1110,7 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     icpath = out_final / "ips_summary.commentary.txt"
     if icpath.is_file():
         md = build_commentary_report_md(
-            report_title="Сводка IPS: смысловой комментарий",
+            report_title="РЎРІРѕРґРєР° IPS: СЃРјС‹СЃР»РѕРІРѕР№ РєРѕРјРјРµРЅС‚Р°СЂРёР№",
             commentary_text=icpath.read_text(encoding="utf-8"),
             variant_label=out_final.name,
             analysis_end=_detect_analysis_end(out_final),

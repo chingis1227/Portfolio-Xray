@@ -1,4 +1,4 @@
-# View After Optimization — Protocol (tactical tilt)
+﻿# View After Optimization вЂ” Protocol (tactical tilt)
 
 **Policy link.** This document defines the **only permitted exception** to the rule "No manual weight adjustments" in [portfolio_construction_policy.md](../portfolio_construction_policy.md). Tilts may be applied to the Policy portfolio **only** through this protocol. Final weights are never edited by hand; changes are deterministic and reported for audit.
 
@@ -15,7 +15,7 @@
 ## 1) PM inputs
 
 1. **Asset** `X`: ticker to increase (must be in the baseline weight set / universe).
-2. **Δchoice:** tilt size from the menu **{+1%, +2%, +5%}** of total portfolio weight (implemented in code as auto-shrink **5% → 2% → 1%** if gates fail).
+2. **О”choice:** tilt size from the menu **{+1%, +2%, +5%}** of total portfolio weight (implemented in code as auto-shrink **5% в†’ 2% в†’ 1%** if gates fail).
 
 There is **no** separate "HEDGE" vs "TACTICAL" mode and **no** hedge-benefit or tail-overlay logic in the implementation.
 
@@ -26,25 +26,24 @@ There is **no** separate "HEDGE" vs "TACTICAL" mode and **no** hedge-benefit or 
 - Funding sells from **other** positions in **descending RC** order (subject to `min_single_security_weight_pct`).
 - Weights are renormalized to sum to 1 after the tilt.
 
-(Legacy spec text about block-aware donors, RB corridors, and stress **PASS** gates is **removed**; the code does not implement those rules.)
 
 ---
 
-## 3) Gates (per attempted Δ, in order)
+## 3) Gates (per attempted О”, in order)
 
 1. **Weights:** each held name within min/max single-name bounds; total weight = 1.
-2. **Vol:** estimated annual vol of tilted portfolio ≤ `1.5 × target_vol_annual` when a target vol is set.
+2. **Vol:** estimated annual vol of tilted portfolio в‰¤ `1.5 Г— target_vol_annual` when a target vol is set.
 3. **Max drawdown:** on the aligned return window, portfolio max DD not worse than `target_max_drawdown_pct` when set.
-4. **Stress:** `run_stress` is run for diagnostics only (`stress_diagnostic_status` / codes in the report); it **does not** accept or reject the tilt in code. Per-asset **RC_vol** may appear in the report as context only — **not** a gate vs caps.
+4. **Stress:** `run_stress` is run for diagnostics only (`stress_diagnostic_status` / codes in the report); it **does not** accept or reject the tilt in code. Per-asset **RC_vol** may appear in the report as context only вЂ” **not** a gate vs caps.
 
-If any gate fails, the next smaller Δ from the menu is tried. If all fail → **TILT_REJECTED**.
+If any gate fails, the next smaller О” from the menu is tried. If all fail в†’ **TILT_REJECTED**.
 
 ---
 
 ## 4) Outcome statuses
 
-- **TILT_ACCEPTED** — a Δ passed all gates.
-- **TILT_REJECTED** — no feasible Δ.
+- **TILT_ACCEPTED** вЂ” a О” passed all gates.
+- **TILT_REJECTED** вЂ” no feasible О”.
 
 `TILT_NO_BENEFIT` and hedge-specific fields are **not** produced by the current implementation.
 
@@ -57,7 +56,7 @@ Minimum fields (see `src/view_after_optimization.py`):
 - `baseline_weights`, optional `baseline_stress` summary
 - `request`: `asset`, `delta_choice`
 - `execution_delta`, `funding_donors_sold`
-- `outcome_status`, `rb_status` (placeholder `N_A`), `broken_gate`, `key_metric_values`
+- `outcome_status`, `broken_gate`, `key_metric_values`
 - `tilted_weights`, `tilted_stress_summary`
 
 ---

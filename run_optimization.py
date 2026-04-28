@@ -141,13 +141,10 @@ def main() -> None:
     ret_primary: pd.DataFrame
     cov_df: pd.DataFrame
 
-    fake_block_map = {t: "Risk" for t in cols_primary}
-
     if dual_enabled:
         cov_df, mu_series_primary, young_diagnostics = build_dual_covariance_and_mu(
             monthly_returns,
             cols_primary,
-            fake_block_map,
             window_months,
             young_pol,
             use_shrinkage_on_core=use_shrinkage,
@@ -241,7 +238,6 @@ def main() -> None:
         cov_5y_pre, mu_5y_pre, diag_5y = build_dual_covariance_and_mu(
             monthly_returns,
             cols_primary,
-            fake_block_map,
             secondary_window_months,
             young_pol,
             use_shrinkage_on_core=use_shrinkage,

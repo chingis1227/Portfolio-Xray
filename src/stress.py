@@ -1,9 +1,9 @@
 """
 Portfolio stress testing per docs/docs/stress_testing_spec.md (asset-level suite).
 
-Synthetic scenarios are **factor shocks applied to the whole portfolio** (no Growth/Duration/Inflation
-blocks, no role tests). Outputs: portfolio PnL, per-asset PnL, optional per-factor portfolio PnL from
-betas, and RC concentration as **diagnostics only**.
+Synthetic scenarios are factor shocks applied to the whole portfolio. Outputs:
+portfolio PnL, per-asset PnL, optional per-factor portfolio PnL from betas, and
+RC concentration as diagnostics only.
 
 Synthetic **pass** = portfolio PnL vs client mandate max drawdown (same threshold as loss_ok).
 RC Top1/Top3 (share of variance) are reported per scenario for diagnostics only; they do not affect status.

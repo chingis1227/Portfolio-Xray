@@ -1,5 +1,5 @@
-"""
-Portfolio Metrics Standard — single entry script.
+﻿"""
+Portfolio Metrics Standard вЂ” single entry script.
 Produces CSV outputs and persists all input series. Run from project root: python run_report.py
 
 All portfolio assumptions and constraints are controlled from config.yml (single configuration layer).
@@ -9,7 +9,7 @@ calculations, reports, and exported files consistently without manual code edits
 Caching:
   - Daily cache: raw prices, invalidated daily
   - Monthly cache: prices/returns/rf, invalidated when month changes or config changes
-  
+
 CLI options:
   --no-cache     Ignore cache, download fresh data
   --clear-cache  Clear all cached data before running
@@ -91,7 +91,7 @@ from src.portfolio_commentary import write_portfolio_commentary, write_stress_co
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="Portfolio Metrics Standard — calculate and export portfolio metrics"
+        description="Portfolio Metrics Standard вЂ” calculate and export portfolio metrics"
     )
     parser.add_argument(
         "--no-cache",
@@ -156,10 +156,10 @@ def run_portfolio_report_for_weights(
     """
     Core metrics/stress/report pipeline, parameterized by explicit weights and output dirs.
 
-    Важно: эта функция не применяет никакой policy-логики к входным весам.
-    Для Equal-Weight и Risk-Parity веса должны быть построены как baseline-портфели
-    без block logic / risk budgets / RC caps / weight caps / discretionary overlays
-    и скрытых policy-фильтров.
+    Р’Р°Р¶РЅРѕ: СЌС‚Р° С„СѓРЅРєС†РёСЏ РЅРµ РїСЂРёРјРµРЅСЏРµС‚ РЅРёРєР°РєРѕР№ policy-Р»РѕРіРёРєРё Рє РІС…РѕРґРЅС‹Рј РІРµСЃР°Рј.
+    Р”Р»СЏ Equal-Weight Рё Risk-Parity РІРµСЃР° РґРѕР»Р¶РЅС‹ Р±С‹С‚СЊ РїРѕСЃС‚СЂРѕРµРЅС‹ РєР°Рє baseline-РїРѕСЂС‚С„РµР»Рё
+    Р±РµР· RC caps / weight caps / discretionary overlays
+    Рё СЃРєСЂС‹С‚С‹С… policy-С„РёР»СЊС‚СЂРѕРІ.
     """
     investor_currency = cfg.investor_currency
     benchmark_base_ticker = cfg.benchmark_base_ticker
@@ -178,14 +178,14 @@ def run_portfolio_report_for_weights(
         tickers, config_local_override, base_benchmark=benchmark_base_ticker
     )
 
-    logger.info(f"Валюта инвестора: {investor_currency}")
-    logger.info(f"Базовый бенчмарк: {benchmark_base_ticker}")
+    logger.info(f"Р’Р°Р»СЋС‚Р° РёРЅРІРµСЃС‚РѕСЂР°: {investor_currency}")
+    logger.info(f"Р‘Р°Р·РѕРІС‹Р№ Р±РµРЅС‡РјР°СЂРє: {benchmark_base_ticker}")
     logger.info(f"Cash proxy: {cash_proxy_ticker}")
     logger.info(f"Risk-free source: {rf_source}")
-    logger.info(f"Локальные бенчмарки: {local_benchmark_map}")
+    logger.info(f"Р›РѕРєР°Р»СЊРЅС‹Рµ Р±РµРЅС‡РјР°СЂРєРё: {local_benchmark_map}")
 
     if cfg.target_nominal_return_annual is not None:
-        logger.info(f"Целевая доходность: {cfg.target_nominal_return_annual:.2%}")
+        logger.info(f"Р¦РµР»РµРІР°СЏ РґРѕС…РѕРґРЅРѕСЃС‚СЊ: {cfg.target_nominal_return_annual:.2%}")
 
     data = load_monthly_data_shared(
         tickers=tickers,
@@ -213,16 +213,16 @@ def run_portfolio_report_for_weights(
     # =========================================================================
     # STEP 4: Compute portfolio returns (NaN-safe dynamic; production vs research mode)
     # =========================================================================
-    
+
     # Ensure cash_returns is aligned to monthly index so common_idx is non-empty (avoid empty portfolio returns)
     if cash_returns.empty or len(cash_returns.index) == 0:
         logger.warning(
-            f"Нет данных по cash proxy ({cash_proxy_ticker}); для расчёта портфеля используется нулевая доходность кэша."
+            f"РќРµС‚ РґР°РЅРЅС‹С… РїРѕ cash proxy ({cash_proxy_ticker}); РґР»СЏ СЂР°СЃС‡С‘С‚Р° РїРѕСЂС‚С„РµР»СЏ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РЅСѓР»РµРІР°СЏ РґРѕС…РѕРґРЅРѕСЃС‚СЊ РєСЌС€Р°."
         )
         cash_returns = pd.Series(0.0, index=monthly_returns.index)
     else:
         cash_returns = cash_returns.reindex(monthly_returns.index).fillna(0.0)
-    
+
     asset_returns_df = monthly_returns[[t for t in tickers if t in monthly_returns.columns]].copy()
     target_weights = {t: weights.get(t, 0.0) for t in tickers}
 
@@ -256,14 +256,14 @@ def run_portfolio_report_for_weights(
             "Backtest mode: dynamic_nan_safe (NaN-safe with global redistribution)."
         )
     else:
-        # Simple (opt-in): no within-block redistribution, no RC-gating
+        # Simple (opt-in): direct portfolio return path, no RC-gating.
         portfolio_returns, weights_used = portfolio_returns_nan_safe(
             asset_returns_df,
             target_weights,
             cash_returns,
         )
         backtest_diagnostics = None
-        logger.info("Backtest mode: simple (no within-block redistribution).")
+        logger.info("Backtest mode: simple.")
 
     # Data policy section: first available month per ticker (young ETF inclusion)
     first_available_month: dict[str, str] = {}
@@ -299,11 +299,11 @@ def run_portfolio_report_for_weights(
 
     # Log data availability summary
     logger.info("=" * 50)
-    logger.info("Сводка по доступным данным:")
+    logger.info("РЎРІРѕРґРєР° РїРѕ РґРѕСЃС‚СѓРїРЅС‹Рј РґР°РЅРЅС‹Рј:")
     for ticker in tickers:
         r = monthly_returns.get(ticker)
         if r is None or r.dropna().empty:
-            warn_skipped_asset(ticker, "нет данных о доходностях")
+            warn_skipped_asset(ticker, "РЅРµС‚ РґР°РЅРЅС‹С… Рѕ РґРѕС…РѕРґРЅРѕСЃС‚СЏС…")
         else:
             r_clean = r.dropna()
             info_data_summary(
@@ -317,7 +317,7 @@ def run_portfolio_report_for_weights(
     # =========================================================================
     # STEP 6: Compute asset metrics per window
     # =========================================================================
-    
+
     coverage_threshold = getattr(cfg, "coverage_threshold", 0.90) or 0.90
     analysis_end_ts = pd.Timestamp(analysis_end_str)
 
@@ -328,12 +328,12 @@ def run_portfolio_report_for_weights(
             r_simple = monthly_returns.get(ticker)
             r_log = monthly_log_returns.get(ticker)
             if r_simple is None or r_log is None:
-                warn_skipped_asset(ticker, "нет данных о доходностях")
+                warn_skipped_asset(ticker, "РЅРµС‚ РґР°РЅРЅС‹С… Рѕ РґРѕС…РѕРґРЅРѕСЃС‚СЏС…")
                 continue
             if coverage_ratio(r_simple, analysis_end_ts, wm) < coverage_threshold:
                 warn_skipped_asset(
                     ticker,
-                    "coverage в окне %d мес. < %.0f%%" % (wm, coverage_threshold * 100),
+                    "coverage РІ РѕРєРЅРµ %d РјРµСЃ. < %.0f%%" % (wm, coverage_threshold * 100),
                 )
                 continue
 
@@ -344,10 +344,10 @@ def run_portfolio_report_for_weights(
                 local_bench_returns = monthly_returns.get(local_bench_ticker)
                 if local_bench_returns is None:
                     logger.warning(
-                        f"Локальный бенчмарк {local_bench_ticker} для {ticker} не найден, "
-                        f"используем базовый бенчмарк {benchmark_base_ticker}"
+                        f"Р›РѕРєР°Р»СЊРЅС‹Р№ Р±РµРЅС‡РјР°СЂРє {local_bench_ticker} РґР»СЏ {ticker} РЅРµ РЅР°Р№РґРµРЅ, "
+                        f"РёСЃРїРѕР»СЊР·СѓРµРј Р±Р°Р·РѕРІС‹Р№ Р±РµРЅС‡РјР°СЂРє {benchmark_base_ticker}"
                     )
-            
+
             row = asset_metrics_one_window(
                 ticker,
                 r_simple,
@@ -366,7 +366,7 @@ def run_portfolio_report_for_weights(
     # =========================================================================
     # STEP 7: Compute portfolio metrics per window
     # =========================================================================
-    
+
     portfolio_metrics_list = []
     for wm in windows_months:
         pm = portfolio_metrics_one_window(
@@ -379,7 +379,7 @@ def run_portfolio_report_for_weights(
         )
         portfolio_metrics_list.append(pm)
     export_portfolio_metrics_csv(portfolio_metrics_list, output_dir_csv)
-    
+
     # Map window_months to human-readable keys for snapshot (3y/5y/10y)
     portfolio_windows: dict[str, dict] = {}
     for pm in portfolio_metrics_list:
@@ -403,7 +403,7 @@ def run_portfolio_report_for_weights(
     # =========================================================================
     # STEP 8: Compute RC_vol and correlation matrix per window
     # =========================================================================
-    
+
     asset_cols = [t for t in tickers if t in monthly_returns.columns]
     rc_for_snapshot = None
     rc_by_window: dict[str, pd.Series] = {}
@@ -411,16 +411,16 @@ def run_portfolio_report_for_weights(
     corr_csv_by_window: dict[str, str] = {}
     for wm in windows_months:
         if not asset_cols:
-            logger.warning(f"RC_vol: нет активов для расчёта")
+            logger.warning(f"RC_vol: РЅРµС‚ Р°РєС‚РёРІРѕРІ РґР»СЏ СЂР°СЃС‡С‘С‚Р°")
             continue
         returns_slice = slice_window(monthly_returns[asset_cols], analysis_end, wm)
         weights_slice = slice_window(weights_used.reindex(columns=asset_cols).fillna(0), analysis_end, wm)
         returns_slice = returns_slice.dropna(how="all")
         if returns_slice.empty or len(returns_slice) < 2:
             window_label = f"{wm // 12}Y" if wm >= 12 else f"{wm}M"
-            logger.warning(f"RC_vol ({window_label}): недостаточно данных (доступно {len(returns_slice)} мес.)")
+            logger.warning(f"RC_vol ({window_label}): РЅРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РґР°РЅРЅС‹С… (РґРѕСЃС‚СѓРїРЅРѕ {len(returns_slice)} РјРµСЃ.)")
             continue
-        
+
         # RC_vol
         rc = rc_vol_window(returns_slice, weights_slice, ddof=1)
         if wm == 60:
@@ -433,7 +433,7 @@ def run_portfolio_report_for_weights(
             key = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
             rc_by_window[key] = rc
             rc_csv_by_window[key] = rc_filename
-        
+
         # Correlation matrix
         corr_matrix = returns_slice.corr()
         export_correlation_matrix_csv(corr_matrix, wm, output_dir_csv)
@@ -444,7 +444,7 @@ def run_portfolio_report_for_weights(
     # =========================================================================
     # STEP 9: Stress testing (per docs/docs/stress_testing_spec.md)
     # =========================================================================
-    
+
     portfolio_betas_5y_dict: dict[str, float] = {}
     portfolio_betas_10y_dict: dict[str, float] = {}
     try:
@@ -466,7 +466,7 @@ def run_portfolio_report_for_weights(
         asset_betas_df = asset_betas_5y_df
         portfolio_betas_dict = portfolio_betas_5y_dict
     except Exception as e:
-        logger.warning(f"Stress factor/beta setup failed: {e}; stress report may use block fallback only.")
+        logger.warning(f"Stress factor/beta setup failed: {e}; stress report may use fallback only.")
         asset_betas_df = pd.DataFrame()
         portfolio_betas_dict = {}
 
@@ -561,7 +561,7 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["factor_betas_rolling_error"] = str(e)
         logger.warning(f"Rolling factor betas diagnostics failed: {e}")
-    # Out-of-sample explainability in historical episodes: beta × realized factor shocks.
+    # Out-of-sample explainability in historical episodes: beta Г— realized factor shocks.
     try:
         stress_report["factor_beta_shock_oos"] = factor_oos_beta_shock_explainability(
             weights=weights,
@@ -573,7 +573,7 @@ def run_portfolio_report_for_weights(
         )
     except Exception as e:
         stress_report["factor_beta_shock_oos_error"] = str(e)
-        logger.warning(f"Factor beta×shock OOS diagnostics failed: {e}")
+        logger.warning(f"Factor betaГ—shock OOS diagnostics failed: {e}")
     export_stress_report(stress_report, output_dir_final)
     logger.info(f"Stress status: {stress_report.get('status', 'N/A')}")
 
@@ -638,7 +638,7 @@ def run_portfolio_report_for_weights(
     # =========================================================================
     # STEP 10: Export run metadata
     # =========================================================================
-    
+
     derived_assumptions = build_derived_assumptions(
         cfg,
         cash_proxy_ticker,
@@ -647,9 +647,9 @@ def run_portfolio_report_for_weights(
         analysis_end_str,
         windows_months,
     )
-    
-    # Gatekeepers: portfolio_valid = False только если MaxDD на полной пересекающейся истории нарушает мандат.
-    # Сценарный стресс (DIAG_*) не делает портфель invalid.
+
+    # Gatekeepers: portfolio_valid = False С‚РѕР»СЊРєРѕ РµСЃР»Рё MaxDD РЅР° РїРѕР»РЅРѕР№ РїРµСЂРµСЃРµРєР°СЋС‰РµР№СЃСЏ РёСЃС‚РѕСЂРёРё РЅР°СЂСѓС€Р°РµС‚ РјР°РЅРґР°С‚.
+    # РЎС†РµРЅР°СЂРЅС‹Р№ СЃС‚СЂРµСЃСЃ (DIAG_*) РЅРµ РґРµР»Р°РµС‚ РїРѕСЂС‚С„РµР»СЊ invalid.
     portfolio_valid = True
     mandate_chk = mandate_max_drawdown_full_history_check(
         monthly_returns,
@@ -659,7 +659,7 @@ def run_portfolio_report_for_weights(
     if cfg.target_max_drawdown_pct is not None:
         if mandate_chk.get("pass") is False or mandate_chk.get("pass") is None:
             portfolio_valid = False
-    
+
     export_run_metadata(
         output_dir_final,
         cfg,
@@ -707,7 +707,7 @@ def run_portfolio_report_for_weights(
             asset_metrics_by_window[key] = asset_metrics_all[i]
     snapshot_assets = build_snapshot_assets(asset_metrics_by_window, run_timestamp)
     save_snapshot(snapshot_assets, output_dir_final / "snapshot_assets.json")
-    logger.info("Snapshot активов: %s", output_dir_final / "snapshot_assets.json")
+    logger.info("Snapshot Р°РєС‚РёРІРѕРІ: %s", output_dir_final / "snapshot_assets.json")
 
     # 2) Three snapshots by window (3y, 5y, 10y)
     for label in ("3y", "5y", "10y"):
@@ -809,11 +809,11 @@ def main() -> None:
     try:
         cfg = load_validated_config()
     except ConfigValidationError as e:
-        logger.error(f"Ошибка валидации конфигурации: {e}")
+        logger.error(f"РћС€РёР±РєР° РІР°Р»РёРґР°С†РёРё РєРѕРЅС„РёРіСѓСЂР°С†РёРё: {e}")
         raise SystemExit(1)
 
     if cfg.pending_fields:
-        logger.info(f"Поля конфигурации, ожидающие ввода пользователя: {cfg.pending_fields}")
+        logger.info(f"РџРѕР»СЏ РєРѕРЅС„РёРіСѓСЂР°С†РёРё, РѕР¶РёРґР°СЋС‰РёРµ РІРІРѕРґР° РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ: {cfg.pending_fields}")
 
     if not cfg.weights:
         logger.error(
@@ -839,24 +839,24 @@ def main() -> None:
 
     print("\nDone.")
     print(
-        "  CSV в %s: asset_metrics, portfolio_metrics, rc_vol, correlation_matrix, rolling_*, var_es, eee, inputs/"
+        "  CSV РІ %s: asset_metrics, portfolio_metrics, rc_vol, correlation_matrix, rolling_*, var_es, eee, inputs/"
         % output_dir_csv
     )
     print(
-        "  Финальные результаты в %s: portfolio_weights.yml, все JSON (snapshot_*, stress_report, run_metadata, data_policy, drawdown_structure), report.txt, report.html, commentary.txt"
+        "  Р¤РёРЅР°Р»СЊРЅС‹Рµ СЂРµР·СѓР»СЊС‚Р°С‚С‹ РІ %s: portfolio_weights.yml, РІСЃРµ JSON (snapshot_*, stress_report, run_metadata, data_policy, drawdown_structure), report.txt, report.html, commentary.txt"
         % output_dir_final
     )
 
     if cfg.pending_fields:
-        print(f"\nПоля, ожидающие ввода пользователя: {cfg.pending_fields}")
+        print(f"\nРџРѕР»СЏ, РѕР¶РёРґР°СЋС‰РёРµ РІРІРѕРґР° РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ: {cfg.pending_fields}")
 
     if cfg.target_nominal_return_annual is not None and portfolio_metrics_summary:
         realized = portfolio_metrics_summary.get("cagr")
         target = cfg.target_nominal_return_annual
         if realized is not None:
             diff = realized - target
-            status = "[OK] достигнута" if diff >= 0 else "[X] не достигнута"
-            print(f"\nЦелевая доходность: {target:.2%}, реализованная: {realized:.2%} ({status})")
+            status = "[OK] РґРѕСЃС‚РёРіРЅСѓС‚Р°" if diff >= 0 else "[X] РЅРµ РґРѕСЃС‚РёРіРЅСѓС‚Р°"
+            print(f"\nР¦РµР»РµРІР°СЏ РґРѕС…РѕРґРЅРѕСЃС‚СЊ: {target:.2%}, СЂРµР°Р»РёР·РѕРІР°РЅРЅР°СЏ: {realized:.2%} ({status})")
 
     stress_report = meta["stress_report"]
     if portfolio_metrics_summary and cfg.target_max_drawdown_pct is not None:
@@ -865,7 +865,7 @@ def main() -> None:
         if realized_mdd is not None and not (realized_mdd != realized_mdd):
             mdd_ok = realized_mdd >= -max_dd_limit
             print(
-                f"\nMax DD: {'PASS' if mdd_ok else 'FAIL'} (цель: -{max_dd_limit:.1%}, реализовано: {realized_mdd:.1%})"
+                f"\nMax DD: {'PASS' if mdd_ok else 'FAIL'} (С†РµР»СЊ: -{max_dd_limit:.1%}, СЂРµР°Р»РёР·РѕРІР°РЅРѕ: {realized_mdd:.1%})"
             )
     if stress_report:
         st = stress_report.get("status", "N/A")
@@ -873,7 +873,7 @@ def main() -> None:
         print(f"Stress Judge: {st}" + (f" ({reason})" if reason else ""))
 
     print(
-        f"\nКеш сохранён в cache/ (дневной: {meta['daily_cache_key']}, месячный: {meta['monthly_cache_key']})"
+        f"\nРљРµС€ СЃРѕС…СЂР°РЅС‘РЅ РІ cache/ (РґРЅРµРІРЅРѕР№: {meta['daily_cache_key']}, РјРµСЃСЏС‡РЅС‹Р№: {meta['monthly_cache_key']})"
     )
 
     if not meta["portfolio_valid"]:

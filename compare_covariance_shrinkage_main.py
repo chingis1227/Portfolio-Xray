@@ -65,13 +65,10 @@ def _primary_optimization_branch(
     per_ticker_young_caps: dict[str, float] | None = None
     young_diagnostics: dict | None = None
     cov_df: pd.DataFrame
-    fake_block_map = {t: "Risk" for t in cols_primary}
-
     if dual_enabled:
         cov_df, mu_series_primary, young_diagnostics = build_dual_covariance_and_mu(
             monthly_returns,
             cols_primary,
-            fake_block_map,
             window_months,
             young_pol,
             use_shrinkage_on_core=use_shrinkage,
