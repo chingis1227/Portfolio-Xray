@@ -409,7 +409,7 @@ def _ols_with_inference(
     """
     OLS with classical (non-HAC) inference.
 
-    Returns dict with params/se/t/p/ci, R^2, adj R^2, df_resid, n_obs.
+    Returns dict with params/se/t/p/ci, R^2, 1 - R^2, adj R^2, df_resid, n_obs.
     """
     if y.ndim != 1:
         y = y.reshape(-1)
@@ -448,6 +448,8 @@ def _ols_with_inference(
     ci_low = beta - tcrit * se
     ci_high = beta + tcrit * se
 
+    idiosyncratic_risk = 1.0 - r2 if np.isfinite(r2) else float("nan")
+
     adj_r2 = float("nan")
     if np.isfinite(r2) and n > 1 and df_resid > 0:
         adj_r2 = 1.0 - (1.0 - r2) * (n - 1) / df_resid
@@ -457,6 +459,7 @@ def _ols_with_inference(
         "k": int(k),
         "df_resid": int(df_resid),
         "r2": float(r2),
+        "idiosyncratic_risk": float(idiosyncratic_risk),
         "adj_r2": float(adj_r2),
         "se_type": "classic_ols",
         "ci_level": float(1.0 - alpha),
@@ -935,6 +938,7 @@ def portfolio_factor_regression_weekly(
         "window_weeks": int(wk),
         "n_obs": int(inf["n_obs"]),
         "r2": float(inf["r2"]),
+        "idiosyncratic_risk": float(inf["idiosyncratic_risk"]),
         "adj_r2": float(inf["adj_r2"]),
         "alpha": float(alpha),
         "se_type": str(inf.get("se_type", "classic_ols")),

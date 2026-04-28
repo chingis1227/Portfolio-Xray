@@ -260,6 +260,7 @@ def _append_factor_regression_section(lines: list[str], fr: Any, label: str) -> 
     lines.append(
         f"РџРѕСЂС‚С„РµР»СЊРЅР°СЏ С„Р°РєС‚РѕСЂРЅР°СЏ СЂРµРіСЂРµСЃСЃРёСЏ ({label}), РЅРµРґРµР»СЊРЅС‹Рµ СЂСЏРґС‹, OLS: "
         f"n_obs={fr.get('n_obs', 'РЅ/Рґ')}, RВІ={_fmt_float(fr.get('r2'), 4)}, "
+        f"idiosyncratic risk (1-RВІ)={_fmt_float(fr.get('idiosyncratic_risk'), 4)}, "
         f"adj RВІ={_fmt_float(fr.get('adj_r2'), 4)}, intercept={_fmt_float(fr.get('intercept'), 4)}, "
         f"se_type={fr.get('se_type', 'вЂ”')}, alpha={fr.get('alpha', 'вЂ”')} (CI СѓСЂРѕРІРµРЅСЊ {fr.get('ci_level', 'вЂ”')})."
     )

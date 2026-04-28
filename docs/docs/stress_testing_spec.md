@@ -143,6 +143,8 @@ If factor limits are set in config and violated в†’ **DIAG_BETA_*** / **DIA
 
 For backward compatibility, `factor_betas` may be present and should mirror `factor_betas_5y`.
 
+Each portfolio factor regression object (`factor_regression_5y`, `factor_regression_10y`) must report `r2`, `adj_r2`, and `idiosyncratic_risk`, where `idiosyncratic_risk = 1 - r2`. This is the residual share of portfolio-return variance not explained by the current factor model; it is diagnostic and measured at the full portfolio regression level, not per beta.
+
 ### 8.1 Factor multicollinearity (`factor_regression_*` only)
 
 Portfolio weekly OLS in `factor_regression_5y` / `factor_regression_10y` must include **`factor_multicollinearity`** on the **same regressor rows** as the regression (after inner join and `valid` mask).

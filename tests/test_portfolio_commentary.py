@@ -118,6 +118,7 @@ def test_write_stress_commentary_from_stress_report() -> None:
             "factor_regression_5y": {
                 "n_obs": 100,
                 "r2": 0.9,
+                "idiosyncratic_risk": 0.1,
                 "adj_r2": 0.89,
                 "intercept": 0.001,
                 "se_type": "classic_ols",
@@ -181,6 +182,8 @@ def test_write_stress_commentary_from_stress_report() -> None:
         text2 = out2.read_text(encoding="utf-8")
         assert "5Y" in text2
         assert "R" in text2
+        assert "idiosyncratic risk" in text2
+        assert "0.1000" in text2
         assert "rolling_factor_betas_3y.png" in text2
         assert "beta_vix" in text2
         assert "beta_us_growth" in text2

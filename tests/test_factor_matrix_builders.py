@@ -105,6 +105,7 @@ def test_portfolio_factor_regression_weekly_emits_new_beta_keys(monkeypatch) -> 
     assert "beta_vix" in out["betas"]
     assert "beta_us_growth" in out["betas"]
     assert "beta_oil" in out["betas"]
+    assert np.isclose(out["idiosyncratic_risk"], 1.0 - out["r2"])
     assert len(out["hac_inference"]["t"]) == len(expected_beta_keys) + 1
 
 
