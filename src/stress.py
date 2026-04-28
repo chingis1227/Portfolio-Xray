@@ -18,6 +18,32 @@ import pandas as pd
 
 from src.risk_contrib import cov_matrix_monthly, percentage_contributions_variance
 
+FACTOR_TO_SHOCK_KEY = {
+    "equity": "shock_eq",
+    "real_rates": "shock_rr",
+    "credit": "shock_credit",
+    "inflation": "shock_inf",
+    "usd": "shock_usd",
+    "commodity": "shock_cmd",
+}
+RECESSION_CALIBRATION_EPISODES = ("2008", "2020")
+
+# Used only when factor history is unavailable; normal report runs pass realized factors.
+RECESSION_SEVERE_FALLBACK_SHOCK = {
+    "shock_eq": -0.35,
+    "shock_rr": -0.010,
+    "shock_credit": 0.045,
+    "shock_inf": -0.003,
+    "shock_usd": 0.08,
+    "shock_cmd": -0.15,
+}
+
+RECESSION_SEVERE_PARAMS = {
+    "vol_mult": 1.60,
+    "stress_cov": True,
+    "risk_on_corr": 0.95,
+}
+
 # Scenario ids and shock vectors (shock_eq, shock_rr, shock_credit, shock_inf, shock_usd, shock_cmd)
 SCENARIOS = {
     "equity_shock": {
@@ -85,6 +111,7 @@ _SCENARIO_SUFFIX = {
     "rates_shock": "RATES_SHOCK",
     "liquidity_shock": "LIQUIDITY_SHOCK",
     "inflation_stagflation": "INFLATION_STAGFLATION",
+    "recession_severe": "RECESSION_SEVERE",
 }
 
 
@@ -153,6 +180,140 @@ def _portfolio_factor_pnl_pct(
     return out
 
 
+def _portfolio_model_pnl_from_shock(
+    shock: dict[str, float],
+    portfolio_betas: dict[str, float],
+) -> float:
+    pnl = 0.0
+    for sk, bk in _SHOCK_TO_BETA:
+        try:
+            pnl += float(shock.get(sk, 0.0)) * float(portfolio_betas.get(bk, 0.0))
+        except (TypeError, ValueError):
+            continue
+    return float(pnl)
+
+
+def _stress_score_from_shock(shock: dict[str, float]) -> float:
+    """Fallback severity score when portfolio betas are unavailable."""
+    return (
+        max(0.0, -float(shock.get("shock_eq", 0.0)))
+        + 5.0 * max(0.0, float(shock.get("shock_credit", 0.0)))
+        + max(0.0, float(shock.get("shock_usd", 0.0)))
+        + 0.5 * max(0.0, -float(shock.get("shock_cmd", 0.0)))
+    )
+
+
+def _episode_factor_shocks(
+    factor_returns: pd.DataFrame | None,
+    episodes: list[tuple[str, str, str]],
+) -> dict[str, dict[str, float]]:
+    """Sum weekly factor moves over the recession calibration episodes."""
+    if factor_returns is None or factor_returns.empty:
+        return {}
+    out: dict[str, dict[str, float]] = {}
+    for ep_id, start, end in episodes:
+        if ep_id not in RECESSION_CALIBRATION_EPISODES:
+            continue
+        sub = factor_returns.loc[start:end] if hasattr(factor_returns.index, "slice_indexer") else factor_returns
+        if sub.empty:
+            continue
+        shock: dict[str, float] = {}
+        for factor_col, shock_key in FACTOR_TO_SHOCK_KEY.items():
+            if factor_col not in sub.columns:
+                continue
+            val = sub[factor_col].dropna().sum()
+            if pd.notna(val):
+                shock[shock_key] = float(val)
+        if shock:
+            for shock_key in FACTOR_TO_SHOCK_KEY.values():
+                shock.setdefault(shock_key, 0.0)
+            out[ep_id] = shock
+    return out
+
+
+def _calibrate_recession_severe(
+    factor_returns: pd.DataFrame | None,
+    portfolio_betas: dict[str, float],
+) -> tuple[dict[str, Any], dict[str, float]]:
+    episode_shocks = _episode_factor_shocks(factor_returns, HISTORICAL_EPISODES)
+    if not episode_shocks:
+        selected_shock = dict(RECESSION_SEVERE_FALLBACK_SHOCK)
+        return {
+            "method": "fallback_static_hard_landing",
+            "status": "fallback_no_factor_history",
+            "source_episodes": list(RECESSION_CALIBRATION_EPISODES),
+            "selected_source_episode": None,
+            "episode_shocks": {},
+            "selected_shock": {k: round(float(v), 4) for k, v in selected_shock.items()},
+            "model_pnl_by_episode": {},
+            "vol_mult": RECESSION_SEVERE_PARAMS["vol_mult"],
+            "risk_on_corr": RECESSION_SEVERE_PARAMS["risk_on_corr"],
+        }, selected_shock
+
+    has_betas = any(k in portfolio_betas for _, k in _SHOCK_TO_BETA)
+    if has_betas:
+        model_pnl_by_episode = {
+            ep_id: _portfolio_model_pnl_from_shock(shock, portfolio_betas)
+            for ep_id, shock in episode_shocks.items()
+        }
+        selected_episode = min(model_pnl_by_episode, key=model_pnl_by_episode.get)
+    else:
+        selected_episode = max(episode_shocks, key=lambda ep_id: _stress_score_from_shock(episode_shocks[ep_id]))
+        model_pnl_by_episode = {ep_id: float("nan") for ep_id in episode_shocks}
+
+    selected_shock = dict(episode_shocks[selected_episode])
+    return {
+        "method": "severe_from_realized_2008_2020_factor_moves",
+        "status": "calibrated",
+        "source_episodes": list(RECESSION_CALIBRATION_EPISODES),
+        "selected_source_episode": selected_episode,
+        "episode_shocks": {
+            ep_id: {k: round(float(v), 4) for k, v in shock.items()}
+            for ep_id, shock in episode_shocks.items()
+        },
+        "selected_shock": {k: round(float(v), 4) for k, v in selected_shock.items()},
+        "model_pnl_by_episode": {
+            ep_id: (round(float(v), 4) if np.isfinite(v) else None)
+            for ep_id, v in model_pnl_by_episode.items()
+        },
+        "vol_mult": RECESSION_SEVERE_PARAMS["vol_mult"],
+        "risk_on_corr": RECESSION_SEVERE_PARAMS["risk_on_corr"],
+    }, selected_shock
+
+
+def _attach_recession_validation(
+    calibration: dict[str, Any],
+    portfolio_betas: dict[str, float],
+    historical_results: list[dict[str, Any]],
+) -> dict[str, Any]:
+    episode_shocks = calibration.get("episode_shocks") or {}
+    realized_by_episode = {
+        str(h.get("episode")): h.get("pnl_real_episode")
+        for h in historical_results
+        if h.get("episode") in RECESSION_CALIBRATION_EPISODES
+    }
+    rows: list[dict[str, Any]] = []
+    for ep_id in RECESSION_CALIBRATION_EPISODES:
+        shock = episode_shocks.get(ep_id)
+        if not isinstance(shock, dict):
+            continue
+        model_pnl = _portfolio_model_pnl_from_shock({k: float(v) for k, v in shock.items()}, portfolio_betas)
+        realized = realized_by_episode.get(ep_id)
+        try:
+            realized_float = float(realized) if realized is not None else None
+        except (TypeError, ValueError):
+            realized_float = None
+        rows.append({
+            "episode": ep_id,
+            "model_pnl_pct": round(float(model_pnl), 4),
+            "realized_pnl_pct": round(realized_float, 4) if realized_float is not None else None,
+            "abs_error": round(abs(float(model_pnl) - realized_float), 4) if realized_float is not None else None,
+        })
+    out = dict(calibration)
+    out["model_vs_realized"] = rows
+    return out
+
+
 def _scenario_return_per_asset(
     shock: dict[str, float],
     betas: pd.DataFrame,
@@ -180,8 +341,9 @@ def _stress_covariance(
     cov_base: pd.DataFrame,
     risk_on_tickers: list[str],
     vol_mult: float,
+    risk_on_corr: float = 0.90,
 ) -> pd.DataFrame:
-    """Within risk-on: corr ≈ 0.90; vol *= vol_mult. Other pairs keep base correlation."""
+    """Within risk-on: override correlation and vol multiplier. Other pairs keep base correlation."""
     tickers = list(cov_base.columns)
     n = len(tickers)
     if n == 0:
@@ -199,7 +361,7 @@ def _stress_covariance(
     for i, ti in enumerate(tickers):
         for j, tj in enumerate(tickers):
             if ti in risk_on_set and tj in risk_on_set:
-                corr[i, j] = 0.90
+                corr[i, j] = risk_on_corr
     vol = vol_base.copy()
     for i, t in enumerate(tickers):
         if t in risk_on_set:
@@ -217,6 +379,7 @@ def run_stress(
     portfolio_betas: dict[str, float],
     target_max_drawdown_pct: float | None,
     cash_proxy_ticker: str | None = None,
+    factor_returns: pd.DataFrame | None = None,
     **_: Any,
 ) -> dict[str, Any]:
     """
@@ -245,11 +408,21 @@ def run_stress(
 
     scenario_results = []
     worst_loss = 0.0
+    recession_calibration, recession_shock = _calibrate_recession_severe(factor_returns, portfolio_betas)
+    scenario_defs: dict[str, dict[str, Any]] = {
+        **SCENARIOS,
+        "recession_severe": {
+            **recession_shock,
+            **RECESSION_SEVERE_PARAMS,
+            "calibration_source_episode": recession_calibration.get("selected_source_episode"),
+        },
+    }
 
-    for scenario_id, params in SCENARIOS.items():
+    for scenario_id, params in scenario_defs.items():
         shock = {k: v for k, v in params.items() if k.startswith("shock_") and isinstance(v, (int, float))}
         vol_mult = float(params.get("vol_mult", 1.0))
         use_stress_cov = bool(params.get("stress_cov", False))
+        risk_on_corr = float(params.get("risk_on_corr", 0.90))
 
         r_asset = _scenario_return_per_asset(shock, asset_betas, asset_cols)
         r_asset = r_asset.reindex(asset_cols).fillna(0)
@@ -257,7 +430,7 @@ def run_stress(
         portfolio_pnl_pct = float(np.sum(pnl_i))
 
         if use_stress_cov:
-            cov_s = _stress_covariance(cov_base, risk_on, vol_mult)
+            cov_s = _stress_covariance(cov_base, risk_on, vol_mult, risk_on_corr=risk_on_corr)
         else:
             cov_s = cov_base.copy()
 
@@ -286,9 +459,10 @@ def run_stress(
         pnl_by_asset_pct = {str(asset_cols[i]): round(float(pnl_i[i]), 4) for i in range(len(asset_cols))}
         pnl_by_factor_pct = _portfolio_factor_pnl_pct(shock, portfolio_betas)
 
-        scenario_results.append({
+        row = {
             "scenario_id": scenario_id,
             "portfolio_pnl_pct": round(portfolio_pnl_pct, 4),
+            "shock_vector": {k: round(float(v), 4) for k, v in shock.items()},
             "pnl_by_asset_pct": pnl_by_asset_pct,
             "pnl_by_factor_pct": pnl_by_factor_pct,
             "top1_rc_asset": top1_asset,
@@ -299,7 +473,12 @@ def run_stress(
             "loss_ok": loss_ok,
             "pass": scenario_pass,
             "diagnostic_codes": loss_diags,
-        })
+        }
+        if scenario_id == "recession_severe":
+            row["calibration_source_episode"] = params.get("calibration_source_episode")
+            row["vol_mult"] = round(vol_mult, 4)
+            row["risk_on_corr"] = round(risk_on_corr, 4)
+        scenario_results.append(row)
 
     factor_betas = {k: round(v, 4) for k, v in portfolio_betas.items()}
 
@@ -364,6 +543,12 @@ def run_stress(
                 "diagnostic_code": None,
             })
 
+    recession_calibration = _attach_recession_validation(
+        recession_calibration,
+        portfolio_betas,
+        historical_results,
+    )
+
     diagnostic_codes: list[str] = []
     seen_codes: set[str] = set()
 
@@ -421,6 +606,7 @@ def run_stress(
         "factor_betas": factor_betas,
         "historical_results": historical_results,
         "max_dd_limit": max_dd_limit,
+        "recession_calibration": recession_calibration,
     }
 
 
@@ -438,5 +624,6 @@ def _empty_report(reason: str) -> dict[str, Any]:
         "factor_betas": {},
         "historical_results": [],
         "max_dd_limit": None,
+        "recession_calibration": {},
         "skip_reason": reason,
     }

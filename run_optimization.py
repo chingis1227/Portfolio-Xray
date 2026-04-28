@@ -352,11 +352,13 @@ def main() -> None:
     portfolio_betas_dict: dict = {}
     portfolio_betas_5y_dict: dict = {}
     portfolio_betas_10y_dict: dict = {}
+    recession_factor_returns = pd.DataFrame()
     try:
         from src.stress_factors import (
             FACTOR_WEEKS_10Y,
             FACTOR_WEEKS_3Y,
             FACTOR_WEEKS_5Y,
+            build_factor_matrix,
             compute_asset_factor_betas_weekly,
             portfolio_factor_betas,
         )
@@ -371,6 +373,10 @@ def main() -> None:
         _asset_betas_10y_df, portfolio_betas_10y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_10Y)
         asset_betas_df = asset_betas_5y_df
         portfolio_betas_dict = portfolio_betas_5y_dict
+        try:
+            recession_factor_returns = build_factor_matrix("2007-01-01", analysis_end_str)
+        except Exception as e:
+            logger.warning("Recession factor calibration setup failed: %s; recession severe will use fallback.", e)
     except Exception as e:
         logger.warning("Не удалось построить факторы для стресса: %s", e)
 
@@ -382,6 +388,7 @@ def main() -> None:
         portfolio_betas=portfolio_betas_dict,
         target_max_drawdown_pct=cfg.target_max_drawdown_pct,
         cash_proxy_ticker=cash_proxy,
+        factor_returns=recession_factor_returns,
     )
 
     if portfolio_betas_5y_dict:

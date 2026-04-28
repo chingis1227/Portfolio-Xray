@@ -76,6 +76,7 @@ from src.stress_factors import (
     FACTOR_WEEKS_5Y,
     compute_portfolio_rolling_factor_betas_weekly,
     compute_asset_factor_betas_weekly,
+    build_factor_matrix,
     factor_oos_beta_shock_explainability,
     portfolio_factor_regression_weekly,
     portfolio_factor_betas,
@@ -447,6 +448,7 @@ def run_portfolio_report_for_weights(
 
     portfolio_betas_5y_dict: dict[str, float] = {}
     portfolio_betas_10y_dict: dict[str, float] = {}
+    recession_factor_returns = pd.DataFrame()
     try:
         beta_tickers = [t for t in tickers if weights.get(t, 0) > 0]
         if not beta_tickers:
@@ -465,6 +467,10 @@ def run_portfolio_report_for_weights(
         # Keep stress engine input/backward compatibility aligned to 5Y betas.
         asset_betas_df = asset_betas_5y_df
         portfolio_betas_dict = portfolio_betas_5y_dict
+        try:
+            recession_factor_returns = build_factor_matrix("2007-01-01", analysis_end_str)
+        except Exception as e:
+            logger.warning(f"Recession factor calibration setup failed: {e}; recession severe will use fallback.")
     except Exception as e:
         logger.warning(f"Stress factor/beta setup failed: {e}; stress report may use fallback only.")
         asset_betas_df = pd.DataFrame()
@@ -478,6 +484,7 @@ def run_portfolio_report_for_weights(
         portfolio_betas=portfolio_betas_dict,
         target_max_drawdown_pct=cfg.target_max_drawdown_pct,
         cash_proxy_ticker=cash_proxy_ticker,
+        factor_returns=recession_factor_returns,
     )
     stress_report["factor_betas_5y"] = {k: round(v, 4) for k, v in (portfolio_betas_5y_dict or {}).items()}
     stress_report["factor_betas_10y"] = {k: round(v, 4) for k, v in (portfolio_betas_10y_dict or {}).items()}

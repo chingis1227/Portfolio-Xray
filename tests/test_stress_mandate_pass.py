@@ -107,3 +107,71 @@ def test_pnl_by_factor_pct_uses_portfolio_betas() -> None:
     eq = next((r for r in out["scenario_results"] if r["scenario_id"] == "equity_shock"), None)
     assert eq is not None
     assert eq.get("pnl_by_factor_pct", {}).get("eq") == round(-0.4 * 1.0, 4)
+
+
+def test_recession_severe_is_calibrated_from_worst_2008_2020_model_pnl() -> None:
+    idx = pd.date_range("2007-01-31", "2021-12-31", freq="M")
+    monthly_returns = pd.DataFrame({"AAA": [0.0] * len(idx)}, index=idx)
+    factor_returns = pd.DataFrame(
+        {
+            "equity": [-0.30, -0.20],
+            "real_rates": [-0.01, -0.005],
+            "inflation": [-0.003, -0.001],
+            "credit": [0.04, 0.02],
+            "usd": [0.05, 0.03],
+            "commodity": [-0.10, -0.05],
+        },
+        index=pd.to_datetime(["2008-10-03", "2020-03-06"]),
+    )
+    tickers = ["AAA"]
+    weights = {"AAA": 1.0}
+    asset_betas = pd.DataFrame(
+        {
+            "beta_eq": [1.0],
+            "beta_rr": [0.0],
+            "beta_inf": [0.0],
+            "beta_credit": [-2.0],
+            "beta_usd": [-0.5],
+            "beta_cmd": [0.1],
+        },
+        index=tickers,
+    )
+    portfolio_betas = {
+        "beta_eq": 1.0,
+        "beta_rr": 0.0,
+        "beta_inf": 0.0,
+        "beta_credit": -2.0,
+        "beta_usd": -0.5,
+        "beta_cmd": 0.1,
+    }
+
+    out = run_stress(
+        tickers=tickers,
+        weights=weights,
+        monthly_returns=monthly_returns,
+        asset_betas=asset_betas,
+        portfolio_betas=portfolio_betas,
+        target_max_drawdown_pct=0.4,
+        cash_proxy_ticker="",
+        factor_returns=factor_returns,
+    )
+
+    recession = next((r for r in out["scenario_results"] if r["scenario_id"] == "recession_severe"), None)
+    assert recession is not None
+    assert recession["calibration_source_episode"] == "2008"
+    assert recession["shock_vector"]["shock_eq"] == -0.30
+    assert recession["shock_vector"]["shock_credit"] == 0.04
+    assert recession["portfolio_pnl_pct"] == -0.415
+    assert recession["vol_mult"] == 1.60
+    assert recession["risk_on_corr"] == 0.95
+    assert "DIAG_LOSS_RECESSION_SEVERE" in recession["diagnostic_codes"]
+    assert "DIAG_LOSS_RECESSION_SEVERE" in out["diagnostic_codes"]
+
+    calibration = out.get("recession_calibration") or {}
+    assert calibration["status"] == "calibrated"
+    assert calibration["selected_source_episode"] == "2008"
+    assert calibration["model_pnl_by_episode"]["2008"] == -0.415
+    assert calibration["model_pnl_by_episode"]["2020"] == -0.26
+    validation = {row["episode"]: row for row in calibration["model_vs_realized"]}
+    assert validation["2008"]["model_pnl_pct"] == -0.415
+    assert validation["2008"]["realized_pnl_pct"] == 0.0
