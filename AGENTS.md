@@ -51,6 +51,24 @@ For new complex tasks, large changes, or refactors, follow `PLANS.md` before imp
 - Keep ExecPlans as living documents: update `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` as work proceeds.
 - Small, localized fixes do not need a separate ExecPlan unless the user asks for one.
 
+## Documentation Sync
+Documentation sync is a blocking part of the definition of done for every meaningful code change.
+
+Meaningful changes include architecture changes, new or removed modules, functions, metrics, data flow, configs, interfaces, optimization logic, reporting behavior, UI behavior, or shared helpers used by those areas.
+
+Required documentation checks:
+- Update `AGENTS.md` when behavior, rules, workflows, verification requirements, or agent instructions change.
+- Update `README.md` when usage, setup, commands, project structure, outputs, or user-facing workflows change.
+- Update `SPEC.md` when functionality, expected behavior, formulas, configs, interfaces, or acceptance criteria change.
+- Update any affected component `.md` files that describe the changed code path, including specs under `docs/`.
+
+Blocking rules:
+- Do not consider a meaningful code change complete until all related documentation is updated.
+- Do not proceed past implementation if documentation is known to be outdated or inconsistent with the code.
+- Verify no stale references remain to deleted or renamed functions, metrics, configs, files, commands, outputs, or workflows.
+- Keep documentation concise and aligned with the current implementation; do not add speculative behavior.
+- In the final response, report the documentation files checked or changed and the stale-reference verification performed.
+
 ## UI / Design
 For any web UI, dashboard, generated HTML report, or visual interface work, follow `DESIGN.md`.
 
