@@ -51,6 +51,17 @@ For new complex tasks, large changes, or refactors, follow `PLANS.md` before imp
 - Keep ExecPlans as living documents: update `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` as work proceeds.
 - Small, localized fixes do not need a separate ExecPlan unless the user asks for one.
 
+## UI / Design
+For any web UI, dashboard, generated HTML report, or visual interface work, follow `DESIGN.md`.
+
+Relevant surfaces:
+- `config_ui/`
+- `results_dashboard/`
+- generated HTML in `src/snapshot.py`
+- Plotly HTML in `src/stress_factors.py`
+
+Keep `DESIGN.md` as the source of truth for tokens, typography, spacing, buttons, and dashboard styling.
+
 ## Important Files
 - `config.yml` - active local config.
 - `config.yml.example` - reference config.
