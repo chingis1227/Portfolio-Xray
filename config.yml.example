@@ -76,12 +76,9 @@ horizon_years: 10.0
 # =============================================================================
 # SECTION 5: OPTIMIZATION CONSTRAINTS
 # =============================================================================
-# If rc_asset_cap_pct or max_single_security_weight_pct or min_single_security_weight_pct is null or 0,
-# values are taken from docs/docs/feasibility_constraints_spec.md (global RC cap formula by N).
+# If max_single_security_weight_pct or min_single_security_weight_pct is null or 0,
+# max weight per name defaults from docs/docs/feasibility_constraints_spec.md (formula by N).
 
-rc_asset_cap_pct: null
-# Stress test: Top3 RC sum cap (default 0.70 = 70%). See docs/docs/stress_testing_spec.md.
-stress_top3_rc_sum_cap_pct: 0.70
 max_single_security_weight_pct: null
 min_single_security_weight_pct: null
 
@@ -89,8 +86,6 @@ min_single_security_weight_pct: null
 N_rc: 3
 # Donor (Shift Mode): proportional or equal — you can set equal.
 donor_shift_mode: proportional
-# RC post-processing: strict = do not write weights if RC caps unresolved; permissive = write but flag violation
-rc_policy_mode: strict
 
 # =============================================================================
 # SECTION 6: ANALYSIS SETTINGS

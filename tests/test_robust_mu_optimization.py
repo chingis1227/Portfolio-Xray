@@ -47,7 +47,6 @@ def test_robust_box_mu_shifts_weights_relative_to_nominal():
     common = dict(
         returns_df=ret,
         risk_tickers=risk,
-        rc_asset_cap_pct=0.99,
         min_single_security_weight_pct=0.01,
         max_single_security_weight_pct=0.99,
         window_months=len(ret),
@@ -84,7 +83,6 @@ def test_robust_worst_case_mu_matches_lower_bound_objective():
     common = dict(
         returns_df=ret,
         risk_tickers=risk,
-        rc_asset_cap_pct=0.99,
         min_single_security_weight_pct=0.02,
         max_single_security_weight_pct=0.99,
         window_months=len(ret),

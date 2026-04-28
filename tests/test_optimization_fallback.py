@@ -20,14 +20,13 @@ def _synthetic_returns() -> pd.DataFrame:
     return pd.DataFrame(data, index=dates)
 
 
-def test_run_max_return_optimization_returns_weights_under_tight_caps():
+def test_run_max_return_optimization_returns_weights():
     returns_df = _synthetic_returns()
     risk_tickers = ["VOO", "BND", "GLD"]
 
     weights, status = run_max_return_optimization(
         returns_df=returns_df,
         risk_tickers=risk_tickers,
-        rc_asset_cap_pct=0.15,
         min_single_security_weight_pct=0.01,
         max_single_security_weight_pct=0.6,
         window_months=24,

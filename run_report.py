@@ -30,6 +30,7 @@ from src.config import (
     resolve_cash_and_rf,
     resolve_local_benchmarks,
     get_mar_from_config,
+    portfolio_total_tickers,
 )
 from src.config_schema import ConfigValidationError, PortfolioConfig
 from src.data_loader import load_monthly_data_shared, MonthlyDataResult
@@ -67,7 +68,7 @@ from src.portfolio_analytics import (
 )
 from src.optimization import get_risk_portfolio_tickers
 from src.portfolio_dynamic import portfolio_returns_nan_safe
-from src.risk_contrib import build_rc_cap_per_ticker, cov_matrix_monthly, rc_vol_window
+from src.risk_contrib import cov_matrix_monthly, rc_vol_window
 from src.stress import run_stress
 from src.stress_factors import (
     FACTOR_WEEKS_10Y,
@@ -161,13 +162,13 @@ def run_portfolio_report_for_weights(
     и скрытых policy-фильтров.
     """
     investor_currency = cfg.investor_currency
-    tickers = cfg.tickers
     benchmark_base_ticker = cfg.benchmark_base_ticker
     windows_months = cfg.windows_months
 
     assets_meta = load_assets_metadata()
 
     cash_proxy_ticker, rf_source = resolve_cash_and_rf(cfg)
+    tickers = portfolio_total_tickers(cfg.tickers, weights, cash_proxy_ticker)
 
     mar_annual = get_mar_from_config(cfg)
     mar_monthly = mar_annual / 12 if mar_annual is not None else None
@@ -231,36 +232,28 @@ def run_portfolio_report_for_weights(
         backtest_mode = "dynamic_nan_safe"
 
     backtest_diagnostics: dict | None = None
-    inner_join_months_used: int | None = None  # for risk Σ/RC (used in dynamic mode for gating)
+    inner_join_months_used: int | None = None  # inner-join sample length (dynamic mode diagnostics)
     if backtest_mode == "dynamic_nan_safe":
-        # Policy-compliant: global redistribution among risk tickers, optional RC-gating to cash
-        cov_df_nan_safe = None
+        # Policy-compliant: global redistribution among risk tickers when returns are missing
         if asset_returns_df.shape[0] >= 2:
-            ret_inner = asset_returns_df.dropna(how="any").iloc[-720:]  # inner join, up to 60y for cov
+            ret_inner = asset_returns_df.dropna(how="any").iloc[-720:]  # inner join, up to 60y
             inner_join_months_used = len(ret_inner)
-            if inner_join_months_used >= 2:
-                cov_df_nan_safe = cov_matrix_monthly(ret_inner, ddof=1)
             if inner_join_months_used is not None and inner_join_months_used < 36 and inner_join_months_used >= 2:
                 logger.warning(
-                    "Inner-join sample for Σ/RC used in backtest gating is %d months (< 36). Risk estimates may be noisy.",
+                    "Inner-join sample for covariance context is %d months (< 36). Risk estimates may be noisy.",
                     inner_join_months_used,
                 )
         risk_rt = get_risk_portfolio_tickers(cfg.tickers, cfg.cash_proxy_ticker)
-        _n_rb = max(len(risk_rt), 1)
-        _rc_cap_map = build_rc_cap_per_ticker(risk_rt, cfg.rc_asset_cap_pct, _n_rb)
         result = portfolio_returns_nan_safe(
             asset_returns_df,
             target_weights,
             cash_returns,
             risk_tickers=risk_rt,
-            rc_asset_cap_pct=cfg.rc_asset_cap_pct,
-            cov_df=cov_df_nan_safe,
             return_diagnostics=True,
-            rc_cap_by_ticker=_rc_cap_map,
         )
         portfolio_returns, weights_used, backtest_diagnostics = result
         logger.info(
-            "Backtest mode: dynamic_nan_safe (NaN-safe with global redistribution and RC-gating)."
+            "Backtest mode: dynamic_nan_safe (NaN-safe with global redistribution)."
         )
     else:
         # Simple (opt-in): no within-block redistribution, no RC-gating
@@ -270,7 +263,7 @@ def run_portfolio_report_for_weights(
             cash_returns,
         )
         backtest_diagnostics = None
-        logger.info("Backtest mode: simple (no within-block redistribution / RC-gating).")
+        logger.info("Backtest mode: simple (no within-block redistribution).")
 
     # Data policy section: first available month per ticker (young ETF inclusion)
     first_available_month: dict[str, str] = {}
@@ -477,7 +470,6 @@ def run_portfolio_report_for_weights(
         asset_betas_df = pd.DataFrame()
         portfolio_betas_dict = {}
 
-    stress_top3_cap = getattr(cfg, "stress_top3_rc_sum_cap_pct", 0.70) or 0.70
     stress_report = run_stress(
         tickers=tickers,
         weights=weights,
@@ -485,8 +477,6 @@ def run_portfolio_report_for_weights(
         asset_betas=asset_betas_df,
         portfolio_betas=portfolio_betas_dict,
         target_max_drawdown_pct=cfg.target_max_drawdown_pct,
-        rc_asset_cap_pct=cfg.rc_asset_cap_pct,
-        stress_top3_rc_sum_cap_pct=stress_top3_cap,
         cash_proxy_ticker=cash_proxy_ticker,
     )
     stress_report["factor_betas_5y"] = {k: round(v, 4) for k, v in (portfolio_betas_5y_dict or {}).items()}

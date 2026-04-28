@@ -173,12 +173,6 @@ def _summarize_violations(violations: list[Any]) -> list[str]:
         elif code == "RB_BREACH" and isinstance(d, dict):
             parts = [f"{bk} {float(dv):+.1f} п.п." for bk, dv in d.items() if isinstance(dv, (int, float))]
             lines.append("Профиль риска (отклонения, п.п.): " + (", ".join(parts) if parts else str(d)))
-        elif code == "VIOL_RC_ASSET_CAP" and isinstance(d, list):
-            for item in d[:6]:
-                if isinstance(item, dict) and "ticker" in item:
-                    lines.append(
-                        f"RC cap: {item.get('ticker')} RC={item.get('rc_pct')}% / cap {item.get('cap_pct')}%"
-                    )
         elif code == "FAIL_STRESS" and isinstance(d, dict):
             lines.append(
                 f"Stress (диаг.): {d.get('primary_diagnostic_code', '—')}; "

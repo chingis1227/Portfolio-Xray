@@ -1,6 +1,6 @@
 # Data Policy, NaN and “Young” ETFs: Single Logic (No Rewriting of History)
 
-This document defines the data policy, handling of missing data (NaN), treatment of newly listed (“young”) ETFs, the dynamic NaN-safe backtest, and the baseline-vs-full comparison. It complements the general NaN-safe portfolio rule in **.cursor/rules/portfolio-metrics.mdc** by specifying **global** redistribution among risk tickers, RC-gated fallback, and reporting requirements.
+This document defines the data policy, handling of missing data (NaN), treatment of newly listed (“young”) ETFs, the dynamic NaN-safe backtest, and the baseline-vs-full comparison. It complements the general NaN-safe portfolio rule in **.cursor/rules/portfolio-metrics.mdc** by specifying **global** redistribution among risk tickers, the **`w_miss` → cash proxy** rule for any weight not on assets with an observed return that month, and reporting requirements.
 
 ---
 
@@ -33,17 +33,13 @@ This document defines the data policy, handling of missing data (NaN), treatment
 
 The portfolio is computed **period by period**. In each period *t*, only assets with an observed return participate.
 
-### NaN Policy: Equal Redistribute Among Risk Tickers + RC-Gated (Fallback to Cash)
+### NaN Policy: Equal Redistribute Among Risk Tickers + `w_miss` to Cash
 
 Risk tickers are all portfolio names **except** the cash proxy (e.g. BIL). If a risk asset has no return (NaN) in period *t*, it is temporarily excluded. Its target weight is **redistributed in equal shares** among the **other risk tickers** that have a valid return in *t*.
 
-Then:
+Portfolio return for the month uses weights actually applied: **sum of (weight × return)** for assets with data, plus **`w_miss` × cash proxy return**, where `w_miss` is the share of portfolio weight not on assets with an observed return that month (including any residual after redistribution). **RC_vol is not used** to gate or revert this path.
 
-1. Recompute **RC_vol** on the post-redistribution weights using the policy covariance window.
-2. If after redistribution **RC_asset_cap** would be violated, fall back to the simple rule: no redistribution — missing weight flows to **cash proxy** for that month.
-3. Always respect **min_weight** and **weight caps** where enforced by the optimizer / post-process.
-
-**Meaning:** NaN months do not rewrite history; redistribution is global across the risk sleeve, and RC caps still gate tail risk from “invented” concentration.
+**Meaning:** NaN months do not rewrite history; redistribution spreads missing risk-sleeve weight across peers with data; any remainder is treated as **cash** for that month.
 
 ---
 
@@ -80,7 +76,7 @@ To avoid decisions driven by a “nice” but regime-dependent segment:
 
 - **Join policy:** inner for cov/RC; outer for single-asset charts.
 - **Inception dates** and **effective inclusion dates** (first full monthly point).
-- **NaN policy:** global_equal_among_risk_rc_gated + fallback rules to cash proxy.
+- **NaN policy:** global_equal_among_risk + `w_miss` to cash proxy.
 - **Baseline vs full** metrics and the **comparison period** (after inception).
 
 ---

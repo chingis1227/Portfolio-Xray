@@ -62,8 +62,6 @@ class PortfolioConfig:
     # Client profile (optional): ultra_conservative | conservative | balanced | growth | aggressive
     client_profile: str | None
     # Optimization constraints (may be pending user input)
-    rc_asset_cap_pct: float | None
-    stress_top3_rc_sum_cap_pct: float | None  # Top3 RC sum limit in stress (default 0.70)
     max_single_security_weight_pct: float | None
     min_single_security_weight_pct: float | None
     N_rc: int
@@ -88,10 +86,6 @@ class PortfolioConfig:
 
     # Liquidity floor from profile or explicit config; used by ProLiquidity when set (else derived from liquidity_need_months * monthly_expenses / portfolio_value)
     liquidity_floor_pct: float | None = None
-    # RC post-processing: "strict" = do not write weights if RC caps unresolved; "permissive" = write but flag violation
-    rc_policy_mode: str = "strict"
-    # RC soft-control strength in optimizer objective (higher => stronger push against RC cap violations)
-    rc_cap_penalty_lambda: float = 25.0
     # Soft penalties for max_return vs target_vol / target return; 0 => runtime uses 12 / 8 in run_optimization
     optimization_soft_vol_penalty_lambda: float = 0.0
     optimization_soft_return_penalty_lambda: float = 0.0
@@ -132,14 +126,10 @@ class PortfolioConfig:
             "target_vol_annual": self.target_vol_annual,
             "target_max_drawdown_pct": self.target_max_drawdown_pct,
             "horizon_years": self.horizon_years,
-            "rc_asset_cap_pct": self.rc_asset_cap_pct,
-            "stress_top3_rc_sum_cap_pct": self.stress_top3_rc_sum_cap_pct,
             "max_single_security_weight_pct": self.max_single_security_weight_pct,
             "min_single_security_weight_pct": self.min_single_security_weight_pct,
             "N_rc": self.N_rc,
             "donor_shift_mode": self.donor_shift_mode,
-            "rc_policy_mode": self.rc_policy_mode,
-            "rc_cap_penalty_lambda": self.rc_cap_penalty_lambda,
             "optimization_soft_vol_penalty_lambda": self.optimization_soft_vol_penalty_lambda,
             "optimization_soft_return_penalty_lambda": self.optimization_soft_return_penalty_lambda,
             "strict_stress_gate": self.strict_stress_gate,
@@ -177,8 +167,6 @@ class PortfolioConfig:
     def get_future_constraint_fields(self) -> dict[str, Any]:
         """Return fields reserved for future portfolio optimization."""
         return {
-            "rc_asset_cap_pct": self.rc_asset_cap_pct,
-            "stress_top3_rc_sum_cap_pct": self.stress_top3_rc_sum_cap_pct,
             "max_single_security_weight_pct": self.max_single_security_weight_pct,
             "min_single_security_weight_pct": self.min_single_security_weight_pct,
             "target_vol_annual": self.target_vol_annual,
@@ -191,8 +179,6 @@ class PortfolioConfig:
             "cash_policy": self.cash_policy,
             "N_rc": self.N_rc,
             "donor_shift_mode": self.donor_shift_mode,
-            "rc_policy_mode": self.rc_policy_mode,
-            "rc_cap_penalty_lambda": self.rc_cap_penalty_lambda,
             "optimization_soft_vol_penalty_lambda": self.optimization_soft_vol_penalty_lambda,
             "optimization_soft_return_penalty_lambda": self.optimization_soft_return_penalty_lambda,
             "strict_stress_gate": self.strict_stress_gate,
@@ -252,8 +238,6 @@ PERCENT_FIELDS = [
     "target_nominal_return_annual",
     "target_vol_annual",
     "target_max_drawdown_pct",
-    "rc_asset_cap_pct",
-    "stress_top3_rc_sum_cap_pct",
     "max_single_security_weight_pct",
     "min_single_security_weight_pct",
     "coverage_threshold",
@@ -269,7 +253,6 @@ NONNEGATIVE_FIELDS = [
 # portfolio_value validated separately (optional, non-negative when set)
 CASH_POLICY_VALUES = ("required_floor", "allowed_for_scaling", "prohibited")
 DONOR_SHIFT_MODES = ("proportional", "equal")
-RC_POLICY_MODES = ("strict", "permissive")
 BACKTEST_MODES = ("dynamic_nan_safe", "simple")
 
 NUMERIC_FIELDS = [
@@ -284,7 +267,6 @@ MAPPING_FIELDS = [
 # These constraint fields may be null until the user provides final numeric values.
 # The system supports them in config and passes them through all layers; no refactor needed when values are set.
 PENDING_USER_INPUT_FIELDS = [
-    "rc_asset_cap_pct",
     "max_single_security_weight_pct",
     "min_single_security_weight_pct",
 ]
@@ -542,9 +524,19 @@ def _validate_tickers_weights(cfg: dict[str, Any]) -> None:
         raise ConfigValidationError(
             f"Config field 'tickers' must be a list, got {type(tickers).__name__}"
         )
-    
+    # portfolio_weights.yml may include cash_proxy even when `tickers` is risk-only (optimizer output).
+    allowed_tickers = {str(t) for t in tickers if isinstance(t, str)}
+    try:
+        from src.config import resolve_cash_and_rf
+
+        cash_proxy, _ = resolve_cash_and_rf(cfg)
+        if cash_proxy and str(cash_proxy) not in allowed_tickers:
+            allowed_tickers.add(str(cash_proxy))
+    except ConfigValidationError:
+        pass
+
     for w_ticker, w_val in weights.items():
-        if w_ticker not in tickers:
+        if w_ticker not in allowed_tickers:
             raise ConfigValidationError(
                 f"Weight defined for ticker '{w_ticker}' which is not in tickers list"
             )
@@ -719,29 +711,6 @@ def _validate_alpha_shift_params(cfg: dict[str, Any]) -> None:
         )
 
 
-def _validate_rc_policy_mode(cfg: dict[str, Any]) -> None:
-    """Validate rc_policy_mode (strict | permissive)."""
-    mode = cfg.get("rc_policy_mode", "strict")
-    if mode is not None and mode not in RC_POLICY_MODES:
-        raise ConfigValidationError(
-            f"Config field 'rc_policy_mode' must be one of {RC_POLICY_MODES}, got {mode!r}"
-        )
-
-
-def _validate_rc_cap_penalty_lambda(cfg: dict[str, Any]) -> None:
-    lam = cfg.get("rc_cap_penalty_lambda", 25.0)
-    try:
-        lf = float(lam)
-    except (TypeError, ValueError):
-        raise ConfigValidationError(
-            f"Config field 'rc_cap_penalty_lambda' must be a positive number, got {lam!r}"
-        ) from None
-    if lf <= 0:
-        raise ConfigValidationError(
-            f"Config field 'rc_cap_penalty_lambda' must be positive, got {lf}"
-        )
-
-
 def _validate_optimization_soft_penalty_lambdas(cfg: dict[str, Any]) -> None:
     """Optional soft IPS alignment lambdas (>= 0; 0 = do not use in optimizer unless caller passes explicitly)."""
     for key in ("optimization_soft_vol_penalty_lambda", "optimization_soft_return_penalty_lambda"):
@@ -796,8 +765,6 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
     _validate_cash_policy(cfg)
     _validate_portfolio_value(cfg)
     _validate_alpha_shift_params(cfg)
-    _validate_rc_policy_mode(cfg)
-    _validate_rc_cap_penalty_lambda(cfg)
     _validate_optimization_soft_penalty_lambdas(cfg)
     _validate_backtest_mode(cfg)
     _validate_robustness_policy(cfg)
@@ -827,14 +794,10 @@ def validate_config(cfg: dict[str, Any], blocks_universe: dict[str, list[str]] |
         target_vol_annual=cfg.get("target_vol_annual"),
         target_max_drawdown_pct=cfg.get("target_max_drawdown_pct"),
         horizon_years=cfg.get("horizon_years"),
-        rc_asset_cap_pct=cfg.get("rc_asset_cap_pct"),
-        stress_top3_rc_sum_cap_pct=cfg.get("stress_top3_rc_sum_cap_pct", 0.70),
         max_single_security_weight_pct=cfg.get("max_single_security_weight_pct"),
         min_single_security_weight_pct=cfg.get("min_single_security_weight_pct"),
         N_rc=cfg.get("N_rc", 3),
         donor_shift_mode=cfg.get("donor_shift_mode", "proportional"),
-        rc_policy_mode=cfg.get("rc_policy_mode", "strict"),
-        rc_cap_penalty_lambda=float(cfg.get("rc_cap_penalty_lambda", 25.0)),
         optimization_soft_vol_penalty_lambda=float(cfg.get("optimization_soft_vol_penalty_lambda", 0.0)),
         optimization_soft_return_penalty_lambda=float(cfg.get("optimization_soft_return_penalty_lambda", 0.0)),
         strict_stress_gate=bool(cfg.get("strict_stress_gate", False)),

@@ -1,6 +1,6 @@
 """
-Portfolio optimization: max expected return with per-asset RC caps, weight bounds, ProLiquidity.
-No structural blocks (Growth/Duration/Inflation) or risk-budget targets.
+Portfolio optimization: max expected return with weight bounds, ProLiquidity.
+RC_vol is diagnostic-only (not enforced in the objective). No structural blocks or risk-budget targets.
 """
 from __future__ import annotations
 
@@ -12,16 +12,9 @@ import pandas as pd
 from scipy.optimize import minimize
 
 from policy_math.feasibility import resolve_max_weight_per_asset_cap
-from src.risk_contrib import (
-    build_rc_cap_per_ticker,
-    cov_matrix_monthly,
-    percentage_contributions_variance,
-    resolve_rc_asset_cap,
-    variance_p,
-)
+from src.risk_contrib import cov_matrix_monthly, percentage_contributions_variance, variance_p
 
 MIN_WEIGHT_DEFAULT = 0.01
-RC_CAP_PENALTY_LAMBDA_DEFAULT = 25.0
 
 OBJECTIVE_MODE_MAX_RETURN = "max_return"
 OBJECTIVE_MODE_RISK_PARITY = "risk_parity"
@@ -70,7 +63,6 @@ def _pc_from_w(w: np.ndarray, cov: np.ndarray) -> np.ndarray:
 def run_max_return_optimization(
     returns_df: pd.DataFrame,
     risk_tickers: list[str],
-    rc_asset_cap_pct: float | None = None,
     min_single_security_weight_pct: float | None = None,
     max_single_security_weight_pct: float | None = None,
     window_months: int = 60,
@@ -80,7 +72,6 @@ def run_max_return_optimization(
     cov_precomputed: pd.DataFrame | None = None,
     mu_precomputed: pd.Series | None = None,
     per_ticker_max_weight: dict[str, float] | None = None,
-    rc_cap_penalty_lambda: float = RC_CAP_PENALTY_LAMBDA_DEFAULT,
     objective_mode: str = OBJECTIVE_MODE_MAX_RETURN,
     warm_start_weights: dict[str, float] | None = None,
     skeleton_tracking_lambda: float = 0.0,
@@ -92,7 +83,7 @@ def run_max_return_optimization(
 ) -> tuple[dict[str, float], str]:
     """
     Optimize weights on ``risk_tickers`` (excluding cash). Sum(weights)=1, long-only.
-    Objective: max_return (minimize -mu'w) + RC-cap penalty; optional risk_parity mode.
+    Objective: max_return (minimize -mu'w) or risk_parity (minimize deviation of PC from 1/n).
     Optional soft penalties vs target vol / nominal return (annual decimals).
     Returns (weights_dict, status_message).
     """
@@ -157,9 +148,6 @@ def run_max_return_optimization(
         mu = ret.mean().values
         cov = cov_matrix_monthly(ret, ddof=1, use_shrinkage=use_shrinkage).values
 
-    rc_cap_map = build_rc_cap_per_ticker(cols, rc_asset_cap_pct, max(n, 1))
-    rc_cap_arr = np.array([float(rc_cap_map.get(t, 0.25)) for t in cols], dtype=float)
-
     min_weight = (
         float(min_single_security_weight_pct)
         if min_single_security_weight_pct is not None and min_single_security_weight_pct > 0
@@ -170,7 +158,6 @@ def run_max_return_optimization(
         max_single_security_weight_pct, per_ticker_max_weight,
     )
 
-    penalty_lambda = float(rc_cap_penalty_lambda) if rc_cap_penalty_lambda > 0 else RC_CAP_PENALTY_LAMBDA_DEFAULT
     obj_mode = objective_mode if objective_mode in OBJECTIVE_MODES else OBJECTIVE_MODE_MAX_RETURN
     obj_mode_invalid = objective_mode not in OBJECTIVE_MODES
     track_lam = float(skeleton_tracking_lambda) if skeleton_tracking_lambda > 0 else 0.0
@@ -190,13 +177,10 @@ def run_max_return_optimization(
 
     def objective(w: np.ndarray) -> float:
         pc = _pc_from_w(w, cov)
-        rc_viol = np.maximum(0.0, pc - rc_cap_arr)
-        rc_pen = float(np.sum(rc_viol * rc_viol))
-        base = penalty_lambda * rc_pen
         if obj_mode == OBJECTIVE_MODE_RISK_PARITY:
             target = 1.0 / float(n)
             rp_dev = float(np.sum((pc - target) ** 2))
-            return rp_dev + base
+            return rp_dev
         track = 0.0
         if w_ref_vec is not None:
             d = w - w_ref_vec
@@ -213,7 +197,7 @@ def run_max_return_optimization(
             ret_ann_lin = 12.0 * mu_m
             dr = ret_ann_lin - st_ret
             soft_ips += lam_sr * (dr * dr)
-        return -float(np.dot(mu, w)) + base + track + soft_ips
+        return -float(np.dot(mu, w)) + track + soft_ips
 
     def constraint_sum(w: np.ndarray) -> float:
         return float(np.sum(w) - 1.0)
@@ -270,9 +254,6 @@ def run_max_return_optimization(
         used_fallback = True
 
     w = res.x
-    pc = _pc_from_w(w, cov)
-    viol_idx = [i for i in range(n) if pc[i] > rc_cap_arr[i]]
-    rc_cap_viol_tickers = [cols[i] for i in viol_idx] if viol_idx else []
 
     w_dict = {t: float(w[i]) for i, t in enumerate(cols)}
     for t in risk_list:
@@ -281,9 +262,6 @@ def run_max_return_optimization(
 
     status_parts = []
     status_parts.append("OK_FALLBACK" if used_fallback else "OK")
-    if rc_cap_viol_tickers:
-        status_parts.append(f"VIOL_RC_ASSET_CAP: {rc_cap_viol_tickers}")
-    status_parts.append(f"RC_CAP_PENALTY_LAMBDA={penalty_lambda:.2f}")
     status_parts.append(f"OBJECTIVE_MODE={obj_mode}")
     if obj_mode_invalid:
         status_parts.append(f"OBJECTIVE_MODE_INVALID: {objective_mode!r} -> max_return")
@@ -296,128 +274,6 @@ def run_max_return_optimization(
     if lam_sr > 0 and st_ret is not None:
         status_parts.append(f"SOFT_RET_TARGET={st_ret:.4f} LAMBDA={lam_sr:.4g}")
     return w_dict, " | ".join(status_parts)
-
-
-RC_POSTPROCESS_MAX_ITER = 200
-RC_POSTPROCESS_STEP_PCT = 0.005
-
-
-def enforce_rc_caps_postprocess(
-    weights_risk: dict[str, float],
-    cov_df: pd.DataFrame,
-    rc_asset_cap: float | list[float],
-    min_weight: float,
-    max_single_security_weight_pct: float | None,
-    risk_tickers: list[str],
-    max_iterations: int = RC_POSTPROCESS_MAX_ITER,
-    step_pct: float = RC_POSTPROCESS_STEP_PCT,
-    per_ticker_max_weight: dict[str, float] | None = None,
-    rc_cap_by_ticker: dict[str, float] | None = None,
-) -> tuple[dict[str, float], bool, dict]:
-    """
-    Iteratively reduce weight from assets above RC cap; reallocate to VOO/VT/VTI then lowest-vol names.
-    """
-    cols = [
-        t for t in risk_tickers
-        if t in weights_risk and t in cov_df.columns and t in cov_df.index and weights_risk.get(t, 0) > 0
-    ]
-    if not cols:
-        return dict(weights_risk), True, {}
-    n = len(cols)
-    bounds = _build_bounds(
-        cols, n, min_weight,
-        max_single_security_weight_pct, per_ticker_max_weight,
-    )
-    cov = cov_df.reindex(index=cols, columns=cols).fillna(0).values
-    w = np.array([weights_risk[t] for t in cols], dtype=float)
-
-    if rc_cap_by_ticker is not None:
-        cap_row = [float(rc_cap_by_ticker.get(t, 1.0)) for t in cols]
-    elif isinstance(rc_asset_cap, (int, float)):
-        cap_row = [float(rc_asset_cap)] * n
-    else:
-        cap_row = [float(x) for x in rc_asset_cap]
-        if len(cap_row) != n:
-            return dict(weights_risk), False, {"reason": "rc_cap_len_mismatch", "n": n, "caps": len(cap_row)}
-
-    vol_per = np.sqrt(np.maximum(np.diag(cov), 1e-20))
-    hedge_vol = [(t, vol_per[cols.index(t)]) for t in cols]
-    hedge_vol.sort(key=lambda x: (x[1], x[0]))
-    recipient_order = [t for t in ("VOO", "VT", "VTI") if t in cols]
-    recipient_order += [t for t, _ in hedge_vol if t not in recipient_order]
-
-    for it in range(max_iterations):
-        var_p = variance_p(w, cov)
-        if var_p <= 1e-16:
-            break
-        pc = (w * (cov @ w)) / var_p
-        violators = [i for i in range(n) if pc[i] > cap_row[i] + 1e-9]
-        if not violators:
-            s = float(w.sum())
-            if s > 1e-12:
-                w = w / s
-            out = {t: float(w[j]) for j, t in enumerate(cols)}
-            for t in risk_tickers:
-                if t not in out:
-                    out[t] = 0.0
-            return out, True, {"iterations": it, "rc_cap": cap_row}
-
-        violators.sort(key=lambda i: (-pc[i], cols[i]))
-        donor_idx = violators[0]
-        lo, hi = bounds[donor_idx]
-        delta_max = float(w[donor_idx] - lo)
-        if delta_max <= 1e-9:
-            out = {t: float(w[j]) for j, t in enumerate(cols)}
-            for t in risk_tickers:
-                if t not in out:
-                    out[t] = 0.0
-            return out, False, {
-                "iterations": it,
-                "remaining_violators": [cols[i] for i in violators],
-                "reason": "donor_at_min",
-            }
-        delta = min(step_pct, delta_max)
-
-        total_recipient_space = 0.0
-        for rec_ticker in recipient_order:
-            j = cols.index(rec_ticker)
-            rec_hi = bounds[j][1]
-            total_recipient_space += max(0.0, rec_hi - w[j])
-        transfer = min(delta, total_recipient_space)
-        if transfer <= 1e-12:
-            out = {t: float(w[j]) for j, t in enumerate(cols)}
-            for t in risk_tickers:
-                if t not in out:
-                    out[t] = 0.0
-            return out, False, {"iterations": it, "reason": "recipient_caps_full"}
-
-        w[donor_idx] -= transfer
-        remaining = transfer
-        for rec_ticker in recipient_order:
-            if remaining <= 1e-12:
-                break
-            j = cols.index(rec_ticker)
-            rec_hi = bounds[j][1]
-            space = max(0.0, rec_hi - w[j])
-            if space <= 1e-12:
-                continue
-            add = min(remaining, space)
-            w[j] += add
-            remaining -= add
-        w = np.clip(w, [b[0] for b in bounds], [b[1] for b in bounds])
-
-    var_p = variance_p(w, cov)
-    pc = (w * (cov @ w)) / var_p if var_p > 1e-16 else np.ones(n) / n
-    violators = [i for i in range(n) if pc[i] > cap_row[i] + 1e-9]
-    out = {t: float(w[j]) for j, t in enumerate(cols)}
-    for t in risk_tickers:
-        if t not in out:
-            out[t] = 0.0
-    return out, False, {
-        "iterations": max_iterations,
-        "remaining_violators": [cols[i] for i in violators],
-        "reason": "max_iterations",
-    }
 
 
 def _alpha_shift_to_target_vol(

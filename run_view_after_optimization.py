@@ -98,8 +98,6 @@ def main() -> int:
         baseline_stress=baseline_stress,
         target_vol_annual=getattr(cfg, "target_vol_annual", None),
         target_max_drawdown_pct=getattr(cfg, "target_max_drawdown_pct", None),
-        rc_asset_cap_pct=getattr(cfg, "rc_asset_cap_pct", None),
-        stress_top3_rc_sum_cap_pct=getattr(cfg, "stress_top3_rc_sum_cap_pct", 0.70) or 0.70,
         min_single_security_weight_pct=getattr(cfg, "min_single_security_weight_pct", 1.0) or 1.0,
         max_single_security_weight_pct=getattr(cfg, "max_single_security_weight_pct", None),
     )

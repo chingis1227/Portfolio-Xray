@@ -62,7 +62,6 @@ DEFAULTS = {
     "target_vol_annual": None,
     "target_max_drawdown_pct": None,
     "horizon_years": None,
-    "rc_asset_cap_pct": None,
     "max_single_security_weight_pct": None,
     "min_single_security_weight_pct": None,
     "N_rc": 3,
@@ -241,7 +240,6 @@ def generate_config():
         "target_vol_annual": parse_percent(data.get("target_vol_annual")),
         "target_max_drawdown_pct": parse_percent(data.get("target_max_drawdown_pct")),
         "horizon_years": parse_float(data.get("horizon_years")),
-        "rc_asset_cap_pct": parse_percent(data.get("rc_asset_cap_pct")),
         "max_single_security_weight_pct": parse_percent(data.get("max_single_security_weight_pct")),
         "min_single_security_weight_pct": parse_percent(data.get("min_single_security_weight_pct")),
         "N_rc": parse_int(data.get("N_rc")) if data.get("N_rc") not in (None, "") else 3,
@@ -409,7 +407,6 @@ def generate_yaml_with_comments(config: dict) -> str:
     lines.append("# SECTION 5: OPTIMIZATION CONSTRAINTS")
     lines.append("# =============================================================================")
     lines.append("")
-    lines.append(f"rc_asset_cap_pct: {config['rc_asset_cap_pct'] if config['rc_asset_cap_pct'] is not None else 'null'}")
     lines.append(f"max_single_security_weight_pct: {config['max_single_security_weight_pct'] if config['max_single_security_weight_pct'] is not None else 'null'}")
     lines.append(f"min_single_security_weight_pct: {config['min_single_security_weight_pct'] if config['min_single_security_weight_pct'] is not None else 'null'}")
     lines.append("")

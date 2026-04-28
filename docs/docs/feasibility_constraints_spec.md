@@ -1,6 +1,8 @@
 # Feasibility Constraints Spec (technical layer)
 
-Defines **formulas** for derived caps used by the optimizer and RC post-processing.  
+Defines **formulas** for derived **weight** caps used by the optimizer.  
+**Per-asset RC_vol caps are not part of feasibility or optimization** (RC_vol remains a **reported diagnostic**; see `metrics_specification.md` and `docs/docs/stress_testing_spec.md`).
+
 There is **no** risk-budget-by-block layer; achievability checks on Growth/Duration/Inflation shares are **removed**.
 
 ---
@@ -12,20 +14,7 @@ There is **no** risk-budget-by-block layer; achievability checks on Growth/Durat
 
 ---
 
-## 1. Global RC cap (per asset, share of portfolio variance)
-
-```
-if N < 4:
-    rc_asset_cap = 0.40
-else:
-    rc_asset_cap = min(0.25, max(0.10, 1.5 / N))
-```
-
-If `rc_asset_cap_pct` in `config.yml` is set to a **positive** number, it **overrides** the formula and applies **uniformly** to every risk ticker.
-
----
-
-## 2. Max weight per asset (uniform)
+## 1. Max weight per asset (uniform)
 
 Implemented as `resolve_max_weight_per_asset_cap(N)` in `policy_math/feasibility.py`. The same upper bound applies to **every** risk ticker (no core vs satellite split):
 
@@ -44,12 +33,18 @@ Optional **max_single_security_weight_pct** in config tightens this cap for all 
 
 ---
 
-## 3. Invariant
+## 2. Invariant
 
 With uniform cap **M**, feasibility requires **N × M ≥ 1.0** (otherwise long-only full investment is impossible).
 
 ---
 
-## 4. Stress / diagnostics
+## 3. Stress / diagnostics
 
-Stress RC thresholds reuse **§1** (or explicit override) for Top1 RC checks; see `docs/docs/stress_testing_spec.md`.
+Stress scenarios report **Top1 / Top3 RC_vol** (share of portfolio variance under base or scenario covariance) for PM review only. **There are no RC breach flags or config thresholds** tied to suite status.
+
+---
+
+## Historical note (removed, pre-2026-04)
+
+Older builds used a global **RC_asset_cap** formula by **N** plus optional `rc_asset_cap_pct` override, RC penalty in the objective, post-processing of weights, NaN-backtest gating on RC, and stress thresholds (`rc1_ok` / `rc3_ok`). That layer is **not** in the current pipeline; do not reintroduce it without a new product decision and spec revision.

@@ -1,6 +1,6 @@
 # Portfolio Optimization — единая точка входа
 
-Система строит портфель **одностадийной** оптимизацией (максимизация ожидаемой доходности при мягких целях по волатильности/доходности и **per-asset** ограничениях на вклад в риск), затем ProLiquidity и диагностический стресс. Веса выдаёт только оптимизатор; ручная правка весов в конфиге не допускается (исключение — протокол «View After Optimization»).
+Система строит портфель **одностадийной** оптимизацией (максимизация ожидаемой доходности при мягких целях по волатильности/доходности и ограничениях по **весу**), затем ProLiquidity и диагностический стресс. **RC_vol** считается и показывается в отчётах, но **не** задаёт жёстких ограничений оптимизатора. Веса выдаёт только оптимизатор; ручная правка весов в конфиге не допускается (исключение — протокол «View After Optimization»).
 
 ---
 
@@ -26,7 +26,7 @@
 
 | Файл | Назначение |
 |------|------------|
-| **config.yml** | Основные настройки: тикеры, валюта, профиль, ликвидность, cash_policy, target_vol, target_max_drawdown_pct, `rc_asset_cap_pct`, окна, `output_dir_final`. Веса в конфиг не вводятся — они результат оптимизации. |
+| **config.yml** | Основные настройки: тикеры, валюта, профиль, ликвидность, cash_policy, target_vol, target_max_drawdown_pct, окна, `output_dir_final`. Веса в конфиг не вводятся — они результат оптимизации. |
 | **config/client_profiles.yml** | Шаблоны по профилям (ultra_conservative … aggressive): целевая волатильность, MaxDD, целевая номинальная доходность и др. При `client_profile` в `config.yml` недостающие поля подставляются из профиля. |
 | **assets.yml** | Метаданные активов (например валюта). Опционально. |
 
@@ -37,20 +37,20 @@
 ## Документация (источники истины)
 
 - **Политика и метрики**  
-  - [Portfolio Construction Policy](docs/portfolio_construction_policy.md) — одностадийный оптимизатор, RC по активам, mandate, стресс как диагностика.  
+  - [Portfolio Construction Policy](docs/portfolio_construction_policy.md) — одностадийный оптимизатор, RC_vol как диагностика, mandate, стресс как диагностика.  
   - [Metrics Specification](metrics_specification.md) — формулы метрик, окна, ddof=1, RC_vol, FX.  
   - [PROJECT_RULES.md](PROJECT_RULES.md) — стандарт частоты, дат, бенчмарков.
 
 - **Данные и бэктест**  
-  - [Data policy, NaN, young ETFs](docs/data_policy_nan_young_etfs.md) — join policy, перераспределение NaN среди риск-активов, RC-gated fallback к кэшу.
+  - [Data policy, NaN, young ETFs](docs/data_policy_nan_young_etfs.md) — join policy, перераспределение NaN среди риск-активов, доля `w_miss` на кэш-прокси.
 
 - **Оптимизация и ограничения**  
   - [Optimization specs (оглавление)](docs/docs/README.md) — ProLiquidity, View After Optimization.  
-  - [Feasibility constraints](docs/docs/feasibility_constraints_spec.md) — формула RC cap, лимиты весов.  
+  - [Feasibility constraints](docs/docs/feasibility_constraints_spec.md) — лимиты весов по **N** (и историческая справка по удалённому RC-cap).  
   - [Optimization run checks](docs/optimization_run_checks.md) — точки отказа, сеть, противоречия параметров.
 
 - **Стресс и View After Optimization**  
-  - [Stress testing spec](docs/docs/stress_testing_spec.md) — сценарии, Loss / RC Top1–Top3, исторические эпизоды, коды **DIAG_***.  
+  - [Stress testing spec](docs/docs/stress_testing_spec.md) — сценарии, Loss, RC Top1–Top3 (числа), исторические эпизоды, коды **DIAG_***.  
   - [View After Optimization](docs/docs/view_after_optimization_spec.md) — разрешённый «тильт» после оптимизации.
 
 - **Продакшен**  

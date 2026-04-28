@@ -135,9 +135,8 @@ def export_run_metadata(
         "derived_assumptions": derived_assumptions,
         "future_constraint_fields": {
             "description": "Constraints/reference inputs for current or future portfolio construction. "
-                          "rc_asset_cap_pct, max_single_security_weight_pct, min_single_security_weight_pct "
-                          "will receive final numeric values later from the user; the system already supports "
-                          "them as config fields and passes them through all relevant layers.",
+                          "max_single_security_weight_pct, min_single_security_weight_pct "
+                          "may receive final numeric values from the user; the system passes them through relevant layers.",
             "fields": portfolio_config.get_future_constraint_fields(),
         },
         "pending_user_input": {
@@ -152,7 +151,6 @@ def export_run_metadata(
         metadata["stress_test"] = {
             "status": stress_report.get("status"),
             "diagnostic_codes": stress_report.get("diagnostic_codes"),
-            "rc_attention_codes": stress_report.get("rc_attention_codes"),
             "primary_diagnostic_code": stress_report.get("primary_diagnostic_code"),
             "fail_reason_code": stress_report.get("fail_reason_code"),
             "warning_code": stress_report.get("warning_code"),
@@ -253,7 +251,7 @@ def _cfg_val(cfg: Any, key: str, default: Any = None) -> Any:
 
 def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path) -> Path:
     """
-    Generate IPS summary with full run results: mandate, status, weights, per-asset RC caps,
+    Generate IPS summary with full run results: mandate, status, weights,
     stress summary, violations, and actions. Single reference for risk and execution.
     """
     target_vol = _cfg_val(cfg, "target_vol_annual")
@@ -266,13 +264,10 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     status = run_result.get("status", "—")
     next_actions = run_result.get("next_actions") or []
     weights = run_result.get("weights") or {}
-    rc_breaches = run_result.get("rc_breaches") or []
     stress_summary = run_result.get("stress_summary") or {}
     violations = run_result.get("violations") or []
     mandate_check = run_result.get("mandate_check") or {}
 
-    rc_cap = _cfg_val(cfg, "rc_asset_cap_pct")
-    rc_cap_pct = round(float(rc_cap) * 100, 2) if rc_cap is not None else None
     lines = [
         "IPS Summary — Full Run Results",
         "=" * 50,
@@ -284,8 +279,7 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
         "  Horizon (years):             %s" % (horizon if horizon is not None else "—"),
         "  Investor currency:           %s" % currency,
         "  Client profile:              %s" % profile,
-        "  Construction:                single-stage max expected return; soft vol/return targets; per-asset RC cap %s%% (portfolio_construction_policy)."
-        % (rc_cap_pct if rc_cap_pct is not None else "—"),
+        "  Construction:                single-stage max expected return; soft vol/return targets; RC_vol diagnostic-only (reports/stress).",
         "",
         "2. Mandate check (blocking)",
         "-" * 30,
@@ -325,16 +319,9 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
         lines.append("  (weights not written for this run)")
     lines.append("")
 
-    lines.append("4. Per-asset RC vs cap (if any breaches)")
+    lines.append("4. Risk contribution (RC_vol)")
     lines.append("-" * 30)
-    if rc_breaches:
-        for b in rc_breaches:
-            ticker = b.get("ticker", "?")
-            rc_pct = b.get("rc_pct")
-            cap_pct = b.get("cap_pct")
-            lines.append("  %s: RC=%.2f%%, cap=%.2f%%" % (ticker, rc_pct or 0, cap_pct or 0))
-    else:
-        lines.append("  (no per-asset RC cap breaches flagged in run_result)")
+    lines.append("  RC_vol is reported in metrics and stress (Top1/Top3) for diagnostics; not used as a construction cap in this run.")
     lines.append("")
 
     lines.append("5. Stress & scenario diagnostics (non-blocking for release)")
@@ -377,10 +364,10 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     lines.append("8. Actions by status (reference)")
     lines.append("-" * 30)
     lines.append("  APPROVED             Use weights as target; safe to execute.")
-    lines.append("  OK_FALLBACK          Check rc_breaches above; use if acceptable for mandate.")
+    lines.append("  OK_FALLBACK          Optimizer used a numerical fallback; review optimization_status if needed.")
     lines.append("  FAIL_MANDATE         Historical MaxDD vs mandate failed or history insufficient; weights not written.")
     lines.append("  DIAG_* / FAIL_STRESS (violation)  Stress diagnostics only; does not block release (review PM).")
-    lines.append("  FAIL_DATA/RC/FEAS    Weights not written. Follow next_actions above.")
+    lines.append("  FAIL_DATA            Weights not written. Follow next_actions above.")
 
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)

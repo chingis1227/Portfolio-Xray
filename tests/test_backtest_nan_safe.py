@@ -74,29 +74,25 @@ def test_nan_redistribution_global_among_risk_tickers():
     assert diag.get("n_months_redistributed", 0) >= 1
 
 
-def test_rc_gating_to_cash():
-    """When redistribution would violate RC cap, fall back to w_miss-to-cash for that month."""
+def test_dynamic_nan_safe_diagnostics():
+    """Diagnostics dict includes redistribution / cash-fallback counters (RC no longer gates path)."""
     dates = pd.date_range("2020-01-31", periods=6, freq="M")
     np.random.seed(42)
     r1 = 0.02 + 0.05 * np.random.randn(6)
     r2 = 0.005 + 0.01 * np.random.randn(6)
     returns_df = pd.DataFrame({"X": r1, "Y": r2}, index=dates)
     cash_returns = pd.Series(0.001, index=dates)
-    rc_asset_cap_pct = 0.30
-    cov_df = returns_df.cov(ddof=1)
 
     r_p, w_df, diag = portfolio_returns_nan_safe(
         returns_df,
         {"X": 0.5, "Y": 0.5},
         cash_returns,
         risk_tickers=["X", "Y"],
-        rc_asset_cap_pct=rc_asset_cap_pct,
-        cov_df=cov_df,
         return_diagnostics=True,
     )
 
     assert "n_months_cash_fallback" in diag
-    assert diag["n_months_cash_fallback"] >= 0
+    assert "n_months_redistributed" in diag
     assert len(r_p) >= 1
 
 
@@ -136,8 +132,8 @@ if __name__ == "__main__":
     print("test_young_etf_does_not_truncate_history: OK")
     test_nan_redistribution_global_among_risk_tickers()
     print("test_nan_redistribution_global_among_risk_tickers: OK")
-    test_rc_gating_to_cash()
-    print("test_rc_gating_to_cash: OK")
+    test_dynamic_nan_safe_diagnostics()
+    print("test_dynamic_nan_safe_diagnostics: OK")
     test_run_report_default_mode_uses_dynamic_engine()
     print("test_run_report_default_mode_uses_dynamic_engine: OK")
     print("All tests passed.")

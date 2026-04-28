@@ -21,18 +21,12 @@ from run_optimization import load_monthly_returns
 from src.config import load_validated_config
 from src.config_schema import ConfigValidationError
 from src.optimization import (
-    enforce_rc_caps_postprocess,
     get_risk_portfolio_tickers,
     portfolio_vol_annual,
     rc_by_asset_from_weights,
     run_max_return_optimization,
 )
-from src.risk_contrib import (
-    build_rc_cap_per_ticker,
-    cov_matrix_monthly,
-    cov_matrix_monthly_robust,
-    resolve_rc_asset_cap,
-)
+from src.risk_contrib import cov_matrix_monthly, cov_matrix_monthly_robust
 from src.utils import setup_logging, logger
 from src.young_etfs_dual_cov import build_dual_covariance_and_mu, per_ticker_young_weight_caps
 
@@ -50,7 +44,7 @@ def _primary_optimization_branch(
     cov_mode: str = "sample",
 ) -> dict:
     """
-    Тот же путь cov + run_max_return_optimization + enforce_rc_caps, что в run_optimization.py.
+    Тот же путь cov + run_max_return_optimization, что в run_optimization.py (без RC-постобработки).
 
     cov_mode: "sample" | "lw" | "robust" (MinCovDet на ядре dual или на full join).
     """
@@ -122,7 +116,6 @@ def _primary_optimization_branch(
     mu_precomputed_arg = mu_series_primary if dual_enabled else (ret_primary.mean() if use_robust else None)
     cov_precomputed_arg = cov_df if use_precomputed_cov else None
 
-    rc_pen_lam = float(getattr(cfg, "rc_cap_penalty_lambda", 25.0))
     vol_lam = float(getattr(cfg, "optimization_soft_vol_penalty_lambda", 0.0) or 0.0)
     ret_lam = float(getattr(cfg, "optimization_soft_return_penalty_lambda", 0.0) or 0.0)
     if vol_lam <= 0:
@@ -135,7 +128,6 @@ def _primary_optimization_branch(
     weights_risk, status = run_max_return_optimization(
         monthly_returns,
         cols_primary,
-        rc_asset_cap_pct=cfg.rc_asset_cap_pct,
         min_single_security_weight_pct=cfg.min_single_security_weight_pct,
         max_single_security_weight_pct=cfg.max_single_security_weight_pct,
         window_months=window_months,
@@ -145,7 +137,6 @@ def _primary_optimization_branch(
         cov_precomputed=cov_precomputed_arg,
         mu_precomputed=mu_precomputed_arg,
         per_ticker_max_weight=per_ticker_young_caps,
-        rc_cap_penalty_lambda=rc_pen_lam,
         soft_target_vol_annual=float(tv) if tv is not None else None,
         soft_vol_penalty_lambda=vol_lam,
         soft_target_return_annual=float(tr) if tr is not None else None,
@@ -154,25 +145,7 @@ def _primary_optimization_branch(
     if not weights_risk:
         return {"error": f"optimization failed: {status}"}
 
-    n_risk = len([t for t in cols_primary if weights_risk.get(t, 0) > 0])
-    rc_cap_resolved = resolve_rc_asset_cap(cfg.rc_asset_cap_pct, max(n_risk, 1))
-    cap_by_ticker = build_rc_cap_per_ticker(cols_primary, cfg.rc_asset_cap_pct, max(n_risk, 1))
-    min_weight_rc = (
-        float(cfg.min_single_security_weight_pct)
-        if (cfg.min_single_security_weight_pct is not None and cfg.min_single_security_weight_pct > 0)
-        else 0.01
-    )
-    risk_keys = [t for t in cols_primary if weights_risk.get(t, 0) > 0]
-    adjusted, rc_ok, rc_diag = enforce_rc_caps_postprocess(
-        weights_risk,
-        cov_df,
-        rc_cap_resolved,
-        min_weight_rc,
-        cfg.max_single_security_weight_pct,
-        risk_keys or cols_primary,
-        per_ticker_max_weight=per_ticker_young_caps,
-        rc_cap_by_ticker=cap_by_ticker,
-    )
+    adjusted = weights_risk
 
     cov_sample_eval = cov_matrix_monthly(ret_primary, ddof=1, use_shrinkage=False)
 
@@ -187,8 +160,8 @@ def _primary_optimization_branch(
         "dual_enabled": dual_enabled,
         "young_diagnostics": young_diagnostics,
         "cols_primary": cols_primary,
-        "rc_postprocess_ok": rc_ok,
-        "rc_postprocess_diag": rc_diag,
+        "rc_postprocess_ok": True,
+        "rc_postprocess_diag": {},
         "vol_on_optim_cov": portfolio_vol_annual(adjusted, cov_df),
         "vol_on_sample_cov": portfolio_vol_annual(adjusted, cov_sample_eval),
         "rc_asset_on_optim_cov": rc_by_asset_from_weights(adjusted, cov_df),

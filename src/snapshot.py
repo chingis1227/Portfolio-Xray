@@ -5,8 +5,8 @@ Used by run_optimization.py and run_report.py.
 Production workflow (single source of truth with run_result.json):
   - Only hard stop: FAIL_DATA (invalid config, missing/NaN data, covariance not computable). Weights are always written otherwise.
   - Stress suite: diagnostic-only (DIAG_*); mandate MaxDD on full overlapping history in run_optimization (FAIL_MANDATE).
-  - RC caps: enforced when feasible; if violated (fallback), weights still returned with VIOL_RC_ASSET_CAP flag + breached tickers.
-  - Soft/diagnostic: Baseline coverage, constraints_status (target_vol, max_dd, rc_caps, weight_caps) for transparency.
+  - RC_vol: diagnostic in metrics/stress only; not a cap gate in snapshot constraints.
+  - Soft/diagnostic: Baseline coverage, constraints_status (target_vol, max_dd, rc_caps legacy slot, weight_caps) for transparency.
   - Report-only: target_nominal_return_annual (comparison with realized CAGR only; not an optimization constraint).
 """
 from __future__ import annotations
@@ -51,6 +51,13 @@ def _constraints_status(
         status["target_vol"] = "NOT_CHECKED"
 
     if max_dd_ok is True:
+        status["max_dd"] = "PASS"
+    elif max_dd_ok is False:
+        status["max_dd"] = "FAIL"
+    else:
+        status["max_dd"] = "NOT_CHECKED"
+
+    if rc_caps_ok is True:
         status["rc_caps"] = "PASS"
     elif rc_caps_ok is False:
         status["rc_caps"] = "FAIL"
@@ -79,10 +86,6 @@ def _stress_suite_results_for_snapshot(stress_report: dict[str, Any], portfolio_
         if not s.get("loss_ok", True):
             violations.append("loss")
         rc_flags: list[str] = []
-        if not s.get("rc1_ok", True):
-            rc_flags.append("rc_top1")
-        if not s.get("rc3_ok", True):
-            rc_flags.append("rc_top3")
         scenarios_out.append({
             "scenario_id": s.get("scenario_id"),
             "portfolio_pnl_pct": round(s.get("portfolio_pnl_pct", 0), 4),

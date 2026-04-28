@@ -8,8 +8,7 @@ Optimization chooses weights that **maximize expected return** (sample mean of m
 
 - long-only, weights sum to 1;
 - minimum weight per held asset (`min_single_security_weight_pct` when set);
-- **per-asset RC_vol cap** (share of portfolio variance — see `metrics_specification.md`);
-- optional **max single name** weight;
+- optional **max single name** weight (uniform cap by **N** and optional override — see `docs/docs/feasibility_constraints_spec.md`);
 - **liquidity floor** and **cash policy** via ProLiquidity (see below);
 - soft penalties vs **target_vol_annual** and **target_nominal_return_annual** (optimizer objective).
 
@@ -31,11 +30,10 @@ There is **no** `risk_budget` or `rc_block_targets`.
 
 ---
 
-## 3. RC_vol and caps
+## 3. RC_vol (diagnostic only)
 
 - RC_vol is **percentage contribution to portfolio variance** on the estimation window, computed as in `metrics_specification.md`.
-- **Per-asset cap:** either explicit `rc_asset_cap_pct` or the global formula in `docs/docs/feasibility_constraints_spec.md` §1 from the number of risk assets `N`.
-- **Post-processing:** iterative reduction of weights that violate RC caps may reallocate to preferred liquid names (e.g. VOO, VT, VTI when present); `rc_policy_mode` strict vs permissive controls whether weights are written if violations remain.
+- It is **reported** in metrics, stress scenarios (Top1 / Top3), and commentary — **not** a hard constraint, objective penalty, or post-processing gate in the optimization pipeline.
 
 ---
 
@@ -57,28 +55,28 @@ There is **no** `risk_budget` or `rc_block_targets`.
 
 ## 6. NaN-safe backtest
 
-Dynamic backtest uses **global equal redistribution** among risk tickers for missing monthly returns, then optional **RC-gated** fallback to simple “missing weight to cash” for that month. See `docs/data_policy_nan_young_etfs.md`.
+Dynamic backtest uses **global equal redistribution** among risk tickers for missing monthly returns; any weight not placed on assets with an observed return for that month earns the **cash proxy** return (`w_miss` rule). See `docs/data_policy_nan_young_etfs.md`.
 
 ---
 
 ## 7. Stress testing (diagnostic)
 
-Synthetic scenarios, historical episodes, per-asset RC concentration checks — **DIAG_*** codes only; they do not block release. Mandate MaxDD is enforced in `run_optimization.py`. See `docs/docs/stress_testing_spec.md`.
+Synthetic scenarios, historical episodes, RC Top1/Top3 as reported numbers — **DIAG_*** codes apply to **loss** and **historical** checks only; they do not block release. Mandate MaxDD is enforced in `run_optimization.py`. See `docs/docs/stress_testing_spec.md`.
 
 ---
 
 ## 8. PM view after optimization
 
-Deterministic **tactical** tilts per `docs/docs/view_after_optimization_spec.md`: funding from **highest RC donors** among other names; gates: weights, vol, MaxDD, RC caps; stress diagnostic only.
+Deterministic **tactical** tilts per `docs/docs/view_after_optimization_spec.md`: funding from **highest RC_vol donors** among other names; gates: weights, vol, MaxDD; stress output remains diagnostic only.
 
 ---
 
 ## 9. Feasibility
 
-Structural RB achievability checks are **removed**. Feasibility reduces to **weight bounds**, **RC formula**, and data coverage.
+Structural RB achievability checks are **removed**. Feasibility reduces to **weight bounds** and data coverage.
 
 ---
 
 ## 10. No manual final weights
 
-Final weights come from optimization (+ ProLiquidity + RC post-process). PM tilts only through the view-after protocol.
+Final weights come from optimization (+ ProLiquidity / vol policy). PM tilts only through the view-after protocol.

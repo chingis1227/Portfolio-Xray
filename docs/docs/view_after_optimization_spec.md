@@ -6,7 +6,7 @@
 
 ## 0) Baseline
 
-1. Build the Policy portfolio per `portfolio_construction_policy.md` (optimization, ProLiquidity, RC post-process, mandate).
+1. Build the Policy portfolio per `portfolio_construction_policy.md` (optimization, ProLiquidity, mandate).
 2. Baseline weights come from `portfolio_weights.yml` / config or the last optimization output.
 3. Optional: pass baseline stress summary from `run_result.json` for reporting context only.
 
@@ -35,8 +35,7 @@ There is **no** separate "HEDGE" vs "TACTICAL" mode and **no** hedge-benefit or 
 1. **Weights:** each held name within min/max single-name bounds; total weight = 1.
 2. **Vol:** estimated annual vol of tilted portfolio ≤ `1.5 × target_vol_annual` when a target vol is set.
 3. **Max drawdown:** on the aligned return window, portfolio max DD not worse than `target_max_drawdown_pct` when set.
-4. **RC caps:** per-asset RC vs caps from config (same machinery as main optimization path).
-5. **Stress:** `run_stress` is run for diagnostics only (`stress_diagnostic_status` / codes in the report); it **does not** accept or reject the tilt in code.
+4. **Stress:** `run_stress` is run for diagnostics only (`stress_diagnostic_status` / codes in the report); it **does not** accept or reject the tilt in code. Per-asset **RC_vol** may appear in the report as context only — **not** a gate vs caps.
 
 If any gate fails, the next smaller Δ from the menu is tried. If all fail → **TILT_REJECTED**.
 

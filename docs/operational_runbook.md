@@ -6,14 +6,14 @@ Short guide for **when to run optimization**, **how to handle universe and confi
 
 ## 1. When to re-run optimization
 
-Re-run `python run_optimization.py` (from project root; **single-stage** max-return optimizer with per-asset RC caps — see **docs/portfolio_construction_policy.md**) in these cases:
+Re-run `python run_optimization.py` (from project root; **single-stage** max-return optimizer with weight bounds and soft vol/return targets — see **docs/portfolio_construction_policy.md**) in these cases:
 
 | Trigger | Action |
 |--------|--------|
 | **Calendar** | e.g. monthly or quarterly on a fixed date (e.g. first business day of the month). |
 | **Deviation** | Current or last-rebalance weights have drifted from target (e.g. max \|w_current − w_target\| > 2% or sum of \|Δw\| > 5%). Consider rebalancing and/or re-running optimization. |
 | **Universe change** | Any add/remove of tickers in **config.yml** → full re-run (see §2). |
-| **Profile / mandate change** | Change of **client_profile**, **target_vol_annual**, **target_max_drawdown_pct**, **rc_asset_cap_pct**, or other policy fields → full re-run. |
+| **Profile / mandate change** | Change of **client_profile**, **target_vol_annual**, **target_max_drawdown_pct**, or other policy fields → full re-run. |
 | **Stress diagnostics** | `DIAG_ATTENTION` or `FAIL_STRESS` (informational) in violations → optional PM review; does not block release. Re-run only if you change architecture. |
 
 ---
@@ -35,13 +35,13 @@ After each run, check `output_dir_final/run_result.json` (e.g. **Main portfolio/
 |-------|--------|
 | **status** | **APPROVED**, **OK_FALLBACK**, or **FAIL_*** (see **production_workflow.md**). |
 | **weights** | Target weights (empty if a blocking FAIL_* prevented writing weights). |
-| **violations** | List of `{ "code", "details" }` (e.g. **VIOL_RC_ASSET_CAP**; stress may appear as diagnostic-only). |
+| **violations** | List of `{ "code", "details" }` (e.g. mandate, data, stress as **VIOL_FAIL_STRESS** with `diagnostic_only`; see code). |
 | **next_actions** | Suggested next steps when violations or failures occur. |
 | **resolved_config** | Merged config (profile + overrides) used for the run; for audit and reproducibility. |
 
-If **status** is **FAIL_DATA**, **FAIL_RC** (strict), or **FAIL_MANDATE** → weights were not written; follow **next_actions** and fix config/data or mandate before using the system for allocation.
+If **status** is **FAIL_DATA** or **FAIL_MANDATE** → weights were not written; follow **next_actions** and fix config/data or mandate before using the system for allocation.
 
-If **status** is **APPROVED** or **OK_FALLBACK** → weights were written to `portfolio_weights.yml`; use them as target weights, taking into account **violations** (e.g. per-asset RC cap breaches) as per your mandate.
+If **status** is **APPROVED** or **OK_FALLBACK** → weights were written to `portfolio_weights.yml`; use them as target weights, taking into account **violations** (e.g. stress diagnostics, young-ETF warnings) as per your mandate.
 
 ---
 

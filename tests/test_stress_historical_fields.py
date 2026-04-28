@@ -28,8 +28,6 @@ def test_historical_results_include_episode_bounds_and_pnl() -> None:
         asset_betas=asset_betas,
         portfolio_betas=portfolio_betas,
         target_max_drawdown_pct=0.2,
-        rc_asset_cap_pct=0.25,
-        stress_top3_rc_sum_cap_pct=0.7,
         cash_proxy_ticker="",
     )
     hist = out.get("historical_results") or []

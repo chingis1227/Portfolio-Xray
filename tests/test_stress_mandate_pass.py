@@ -1,4 +1,4 @@
-"""Synthetic stress pass = mandate portfolio PnL only; RC diagnostics separate."""
+"""Synthetic stress pass = mandate portfolio PnL only; RC Top1/Top3 are diagnostics only."""
 from __future__ import annotations
 
 import pandas as pd
@@ -32,8 +32,6 @@ def test_synthetic_pass_ignores_rc_when_loss_ok() -> None:
         asset_betas=asset_betas,
         portfolio_betas=portfolio_betas,
         target_max_drawdown_pct=0.5,
-        rc_asset_cap_pct=0.05,
-        stress_top3_rc_sum_cap_pct=0.99,
         cash_proxy_ticker="",
     )
     eq = next((r for r in out["scenario_results"] if r["scenario_id"] == "equity_shock"), None)
@@ -41,12 +39,13 @@ def test_synthetic_pass_ignores_rc_when_loss_ok() -> None:
     assert eq["loss_ok"] is True
     assert eq["pass"] is True
     assert "pnl_by_asset_pct" in eq and set(eq["pnl_by_asset_pct"]) == {"AAA", "BBB"}
-    assert eq["rc_diagnostic_codes"], "expected RC breach for tight cap with concentrated weights"
+    assert "top1_rc_pct" in eq and eq["top1_rc_pct"] is not None
+    assert "rc_diagnostic_codes" not in eq
     assert eq["pnl_by_factor_pct"] == {}
 
-    assert out["status"] == "DIAG_PASS_WITH_WARNING"
-    assert out.get("warning_code") == "WARN_RC_SYNTHETIC_CONCENTRATION"
-    assert any(str(c).startswith("DIAG_RC_") for c in (out.get("rc_attention_codes") or []))
+    assert out["status"] == "DIAG_PASS"
+    assert out.get("warning_code") in (None, "")
+    assert "rc_attention_codes" not in out
     assert not any(str(c).startswith("DIAG_RC_") for c in (out.get("diagnostic_codes") or []))
 
 
@@ -68,8 +67,6 @@ def test_synthetic_pass_false_on_loss_only() -> None:
         asset_betas=asset_betas,
         portfolio_betas=portfolio_betas,
         target_max_drawdown_pct=0.05,
-        rc_asset_cap_pct=0.25,
-        stress_top3_rc_sum_cap_pct=0.7,
         cash_proxy_ticker="",
     )
     eq = next((r for r in out["scenario_results"] if r["scenario_id"] == "equity_shock"), None)
@@ -105,8 +102,6 @@ def test_pnl_by_factor_pct_uses_portfolio_betas() -> None:
         asset_betas=asset_betas,
         portfolio_betas=portfolio_betas,
         target_max_drawdown_pct=0.5,
-        rc_asset_cap_pct=0.25,
-        stress_top3_rc_sum_cap_pct=0.7,
         cash_proxy_ticker="",
     )
     eq = next((r for r in out["scenario_results"] if r["scenario_id"] == "equity_shock"), None)

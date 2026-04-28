@@ -3,8 +3,7 @@ Resampled (bootstrap) оптимизация vs одна обычная на con
 
 На каждой репликации: bootstrap строк ret_primary с возвращением, заново
 cov_matrix_monthly(ret_boot), затем run_max_return_optimization с precomputed Σ.
-Веса усредняются по успешным прогонам (до RC), затем один раз enforce_rc_caps_postprocess
-на той же Sigma, что и у baseline (cov_optim из обычного прогона).
+Веса усредняются по успешным прогонам; финальные веса без RC-постобработки.
 
 Не пишет portfolio_weights.yml.
 
@@ -23,13 +22,8 @@ from compare_covariance_shrinkage_main import _primary_optimization_branch
 from run_optimization import load_monthly_returns
 from src.config import load_validated_config
 from src.config_schema import ConfigValidationError
-from src.optimization import (
-    enforce_rc_caps_postprocess,
-    portfolio_vol_annual,
-    rc_by_asset_from_weights,
-    run_max_return_optimization,
-)
-from src.risk_contrib import build_rc_cap_per_ticker, cov_matrix_monthly, resolve_rc_asset_cap
+from src.optimization import portfolio_vol_annual, rc_by_asset_from_weights, run_max_return_optimization
+from src.risk_contrib import cov_matrix_monthly
 from src.utils import setup_logging, logger
 
 
@@ -109,7 +103,6 @@ def main() -> None:
     pre_rc_list: list[dict[str, float]] = []
     n_fail = 0
 
-    rc_pen_lam = float(getattr(cfg, "rc_cap_penalty_lambda", 25.0))
     vol_lam = float(getattr(cfg, "optimization_soft_vol_penalty_lambda", 0.0) or 0.0)
     ret_lam = float(getattr(cfg, "optimization_soft_return_penalty_lambda", 0.0) or 0.0)
     if vol_lam <= 0:
@@ -127,7 +120,6 @@ def main() -> None:
         w_try, st = run_max_return_optimization(
             monthly_returns,
             cols_primary,
-            rc_asset_cap_pct=cfg.rc_asset_cap_pct,
             min_single_security_weight_pct=cfg.min_single_security_weight_pct,
             max_single_security_weight_pct=cfg.max_single_security_weight_pct,
             window_months=window_months,
@@ -137,7 +129,6 @@ def main() -> None:
             cov_precomputed=cov_b,
             mu_precomputed=mu_b,
             per_ticker_max_weight=per_ticker_young_caps,
-            rc_cap_penalty_lambda=rc_pen_lam,
             soft_target_vol_annual=float(tv) if tv is not None else None,
             soft_vol_penalty_lambda=vol_lam,
             soft_target_return_annual=float(tr) if tr is not None else None,
@@ -153,25 +144,9 @@ def main() -> None:
         raise SystemExit(1)
 
     w_avg_pre = _average_weights(pre_rc_list)
-    n_risk = len([t for t in cols_primary if w_avg_pre.get(t, 0) > 0])
-    rc_cap_resolved = resolve_rc_asset_cap(cfg.rc_asset_cap_pct, max(n_risk, 1))
-    cap_by_ticker = build_rc_cap_per_ticker(cols_primary, cfg.rc_asset_cap_pct, max(n_risk, 1))
-    min_weight_rc = (
-        float(cfg.min_single_security_weight_pct)
-        if (cfg.min_single_security_weight_pct is not None and cfg.min_single_security_weight_pct > 0)
-        else 0.01
-    )
-    risk_keys = [t for t in cols_primary if w_avg_pre.get(t, 0) > 0]
-    w_res_final, rc_ok_res, rc_diag_res = enforce_rc_caps_postprocess(
-        w_avg_pre,
-        cov_ref,
-        rc_cap_resolved,
-        min_weight_rc,
-        cfg.max_single_security_weight_pct,
-        risk_keys or cols_primary,
-        per_ticker_max_weight=per_ticker_young_caps,
-        rc_cap_by_ticker=cap_by_ticker,
-    )
+    w_res_final = w_avg_pre
+    rc_ok_res = True
+    rc_diag_res: dict = {}
 
     w_base = r_single["weights"]
     tickers = sorted(set(w_base) | set(w_res_final))

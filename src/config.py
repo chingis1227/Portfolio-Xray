@@ -82,6 +82,32 @@ def load_weights_file(weights_path: str | Path | None = None, config_path: str |
     return out
 
 
+def portfolio_total_tickers(
+    config_tickers: list[str],
+    weights: dict[str, float],
+    cash_proxy_ticker: str | None = None,
+) -> list[str]:
+    """Return the analytics universe: risk config tickers plus any positive-weight portfolio legs."""
+    out: list[str] = []
+    for t in config_tickers:
+        if t and str(t) not in out:
+            out.append(str(t))
+    for t, w in (weights or {}).items():
+        try:
+            positive = float(w) > 0
+        except (TypeError, ValueError):
+            positive = False
+        if positive and t and str(t) not in out:
+            out.append(str(t))
+    if cash_proxy_ticker and cash_proxy_ticker in (weights or {}) and str(cash_proxy_ticker) not in out:
+        try:
+            if float(weights[cash_proxy_ticker]) > 0:
+                out.append(str(cash_proxy_ticker))
+        except (TypeError, ValueError):
+            pass
+    return out
+
+
 def _sync_profile_fields_to_config_file(path: Path, merged: dict[str, Any]) -> None:
     """
     Write profile-derived fields back to config.yml so the file matches the selected profile.
@@ -121,7 +147,8 @@ def load_validated_config(config_path: str | Path | None = None) -> PortfolioCon
     If client_profile is set, target fields are filled from that profile (midpoints)
     and written back to config.yml so the file stays in sync (comments preserved).
     Used by optimization, run_report (policy portfolio), Equal-Weight and Risk-Parity baselines, and comparisons.
-    If portfolio_weights.yml is merged, its ticker set must exactly match config tickers or validation fails.
+    If portfolio_weights.yml is merged, every config ticker must appear in the file; the file may also
+    list ``cash_proxy_ticker`` when it is omitted from ``tickers`` (typical optimizer output with cash).
     Returns a strongly-typed PortfolioConfig object.
     Raises ConfigValidationError if validation fails.
     """
@@ -141,12 +168,22 @@ def load_validated_config(config_path: str | Path | None = None) -> PortfolioCon
             cfg_tickers = [str(t) for t in (raw.get("tickers") or []) if isinstance(t, str)]
             cfg_tickers_set = set(cfg_tickers)
             weights_tickers_set = set(file_weights.keys())
-            if cfg_tickers_set != weights_tickers_set:
-                missing_in_weights = sorted(cfg_tickers_set - weights_tickers_set)
-                stale_in_weights = sorted(weights_tickers_set - cfg_tickers_set)
+            # Optimizer + ProLiquidity may allocate cash to cash_proxy even when it is not in `tickers`
+            # (risk sleeve only in config). Allow exactly that one extra key in portfolio_weights.yml.
+            try:
+                cash_proxy, _ = resolve_cash_and_rf(raw)
+            except ConfigValidationError:
+                cash_proxy = ""
+            allowed_extra_in_weights: set[str] = set()
+            if cash_proxy and cash_proxy not in cfg_tickers_set:
+                allowed_extra_in_weights.add(str(cash_proxy))
+            extra_in_weights = weights_tickers_set - cfg_tickers_set
+            missing_in_weights = cfg_tickers_set - weights_tickers_set
+            if missing_in_weights or not extra_in_weights.issubset(allowed_extra_in_weights):
+                stale_in_weights = sorted(extra_in_weights - allowed_extra_in_weights)
                 raise ConfigValidationError(
                     "portfolio_weights.yml не соответствует текущему config.yml по составу тикеров. "
-                    f"config_only={missing_in_weights}; weights_only={stale_in_weights}. "
+                    f"config_only={sorted(missing_in_weights)}; weights_only={stale_in_weights}. "
                     "Обновите/удалите portfolio_weights.yml, либо задайте актуальные weights прямо в config.yml."
                 )
             raw["weights"] = file_weights

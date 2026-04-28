@@ -4,41 +4,14 @@ RC_vol: percentage contribution to portfolio variance. Per metrics_specification
 - For each month t: σ²_t = w_t' Σ w_t, m_t = Σ w_t, PC_{i,t} = (w_{i,t} * m_{i,t}) / σ²_t. PC sums to 1.
 - RC_window_i = mean_t(PC_{i,t}). Do not use contribution to volatility or correlations.
 
-resolve_rc_asset_cap: global §1 cap from policy_math.feasibility (no block-based modes).
+RC_vol is used for reporting and stress diagnostics only; it is not a portfolio construction cap.
 """
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 
-from policy_math.feasibility import resolve_rc_asset_cap as _policy_resolve_rc_asset_cap
-
 DDOF = 1
-
-
-def resolve_rc_asset_cap(
-    rc_asset_cap_pct: float | None,
-    n_assets: int,
-) -> float:
-    """
-    Per-asset RC_vol cap (share of portfolio variance).
-
-    - If rc_asset_cap_pct is set and > 0, it overrides the formula.
-    - Else the formula from feasibility_constraints_spec §1 is used.
-    """
-    if rc_asset_cap_pct is not None and rc_asset_cap_pct > 0:
-        return float(rc_asset_cap_pct)
-    return _policy_resolve_rc_asset_cap(n_assets)
-
-
-def build_rc_cap_per_ticker(
-    risk_tickers: list[str],
-    rc_asset_cap_pct: float | None,
-    n_total_for_global: int,
-) -> dict[str, float]:
-    """Same scalar RC cap for every risk ticker (global §1)."""
-    cap = resolve_rc_asset_cap(rc_asset_cap_pct, max(n_total_for_global, 1))
-    return {t: cap for t in risk_tickers}
 
 
 def cov_matrix_monthly(

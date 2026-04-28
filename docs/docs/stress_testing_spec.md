@@ -3,7 +3,8 @@
 **Policy link.** This document is the source of truth for **diagnostic** portfolio stress testing. **Blocking** mandate max drawdown is defined in **docs/production_workflow.md** (full historical sample, **FAIL_MANDATE**).
 
 > **2026-04 update:** Block-level **Role** tests are **removed** from `run_stress`.  
-> **2026-04-27 update:** Synthetic **pass** = **Loss (portfolio PnL vs mandate MaxDD)** only. **RC Top1 / Top3** remain in each scenario row as **diagnostics** (`rc1_ok` / `rc3_ok`, `rc_diagnostic_codes`); they do **not** set scenario `pass` or suite **DIAG_ATTENTION**. Aggregate **rc_attention_codes** + **WARN_RC_SYNTHETIC_CONCENTRATION** when RC caps are breached without a loss breach. Historical episode contract unchanged (episode max DD vs mandate). **dotcom** episode added to historical list (see §9).
+> **2026-04-27 update:** Synthetic **pass** = **Loss (portfolio PnL vs mandate MaxDD)** only.  
+> **2026-04-28 update:** **RC Top1 / Top3** (`top1_rc_pct`, `top3_rc_sum_pct`, tickers) remain on each scenario row as **numeric diagnostics only** — no `rc1_ok` / `rc3_ok`, no `rc_diagnostic_codes`, no `rc_attention_codes`, no suite status change for RC-only patterns. Historical episode contract unchanged (episode max DD vs mandate). **dotcom** episode is in the historical list (see §9).
 
 ---
 
@@ -12,7 +13,7 @@
 | Layer | What | Stops weight release? |
 |-------|------|------------------------|
 | **Mandate** | Realized portfolio max drawdown on **full overlapping monthly history** vs `target_max_drawdown_pct` | **Yes** → **FAIL_MANDATE** (`run_optimization.py`) |
-| **Stress suite** (`run_stress`) | Synthetic factor shocks (whole portfolio), historical **episodes** (dotcom / 2008 / 2020 / 2022), RC concentration as diagnostics | **No** → **DIAG_ATTENTION** only for synthetic **Loss** or historical episode breach; **DIAG_PASS_WITH_WARNING** for RC-only breaches or borderline history |
+| **Stress suite** (`run_stress`) | Synthetic factor shocks (whole portfolio), historical **episodes** (dotcom / 2008 / 2020 / 2022), RC concentration as **numbers only** (Top1 / Top3) | **No** → **DIAG_ATTENTION** only for synthetic **Loss** or historical episode breach; **DIAG_PASS_WITH_WARNING** only for non-RC warnings (e.g. borderline history, data) where implemented |
 
 Scenario and episode checks below are **for PM reporting**; they do not replace the mandate gate.
 
@@ -21,9 +22,9 @@ Scenario and episode checks below are **for PM reporting**; they do not replace 
 ## 1. Pass criteria (per synthetic scenario)
 
 - **`pass=true`** iff **Loss (mandate) test** passes: **Portfolio_PnL_% ≥ −MaxDD_limit** (same `max_dd_limit` as historical/synthetic loss gate in `run_stress`). Violation → row **`diagnostic_codes`** includes **DIAG_LOSS_*** and contributes to suite **DIAG_ATTENTION**.
-- **RC concentration** (Top1 / Top3 vs §7 caps): reported as **`rc1_ok`**, **`rc3_ok`**, **`rc_diagnostic_codes`** per scenario. RC breaches **do not** set `pass=false` and **do not** enter top-level **`diagnostic_codes`**; they are aggregated in **`rc_attention_codes`** and may set suite **DIAG_PASS_WITH_WARNING** + **WARN_RC_SYNTHETIC_CONCENTRATION** when there is no loss/historical **DIAG_ATTENTION**.
+- **RC concentration:** **`top1_rc_asset`**, **`top1_rc_pct`**, **`top3_rc_assets`**, **`top3_rc_sum_pct`** are reported for transparency; they **do not** set `pass`, **do not** add **DIAG_RC_*** codes, and **do not** change suite status.
 
-**Outputs per scenario (synthetic):** `portfolio_pnl_pct`, **`pnl_by_asset_pct`** (per ticker), **`pnl_by_factor_pct`** (portfolio-level shock×beta per factor channel when `portfolio_betas` present), RC fields as above.
+**Outputs per scenario (synthetic):** `portfolio_pnl_pct`, **`pnl_by_asset_pct`** (per ticker), **`pnl_by_factor_pct`** (portfolio-level shock×beta per factor channel when `portfolio_betas` present), RC Top1/Top3 fields as above.
 
 (Legacy §6 **Role** / block-aggregate rules are **not** implemented in production `run_stress`; kept below **for archive only** — no **DIAG_ROLE_*** codes.)
 
@@ -64,9 +65,9 @@ r_i(scenario) = β_eq_i * shock_eq + β_rr_i * shock_rr + β_cr_i * shock_credit
 For each scenario the production `run_stress` implementation outputs (see `scenario_results` in `stress_report.json`):
 
 - **portfolio_pnl_pct** (aggregate scenario loss / gain)
-- **top1_rc_asset**, **top1_rc_pct**, **top3_rc_assets**, **top3_rc_sum_pct** (RC_vol under base or stress covariance per scenario flags)
+- **top1_rc_asset**, **top1_rc_pct**, **top3_rc_assets**, **top3_rc_sum_pct** (RC_vol — share of portfolio variance under base or stress covariance)
 - **top3_loss_assets** (tickers with largest negative PnL contribution in the scenario)
-- **loss_ok**, **rc1_ok**, **rc3_ok**, **pass**, **diagnostic_codes**
+- **loss_ok**, **pass** (equals **loss_ok**), **diagnostic_codes** (loss-related only on synthetic rows)
 
 **Legacy / archive:** older specs referred to **PnL_by_block_%**, **defensive_pnl_sum**, and **role_equity_shock_severity**; these are **not** produced by the current asset-level suite. Do not require them for compliance with this spec version.
 
@@ -83,7 +84,7 @@ For each scenario the production `run_stress` implementation outputs (see `scena
 
 Historically the spec defined **Role** checks (stagflation “inflation block”, equity-shock “defensive bundle” **S**) using **aggregated PnL by portfolio block**. That layer depended on a **block map** on the portfolio.
 
-**Current code:** `src/stress.py` applies synthetic shocks at **portfolio** level (per-asset PnL, optional **pnl_by_factor_pct**). **Loss** sets scenario `pass` and suite **DIAG_ATTENTION**; **RC Top1 / Top3** are diagnostics only (`rc_diagnostic_codes`, `rc_attention_codes`). **No** `DIAG_ROLE_*`, **no** `pnl_by_block_pct`, **no** `defensive_pnl_sum`.
+**Current code:** `src/stress.py` applies synthetic shocks at **portfolio** level (per-asset PnL, optional **pnl_by_factor_pct**). **Loss** sets scenario `pass` and suite **DIAG_ATTENTION**; **RC Top1 / Top3** are numeric diagnostics only (no RC breach flags in JSON). **No** `DIAG_ROLE_*`, **no** `pnl_by_block_pct`, **no** `defensive_pnl_sum`.
 
 If reintroducing block-level diagnostics, do so in a **separate** spec revision and keep this document’s **§1 / §7** as the binding minimum for the asset-level suite.
 
@@ -91,10 +92,7 @@ If reintroducing block-level diagnostics, do so in a **separate** spec revision 
 
 ## 7. RC diagnostics (concentration in stress)
 
-- **Top1:** breach if Top1_RC_% > RC_asset_cap (RC_asset_cap from config or feasibility formula) → `rc1_ok=false`, **DIAG_RC_TOP1_*** on the scenario row only (not scenario `pass`).
-- **Top3:** breach if Top3_RC_sum_% > stress_top3_rc_sum_cap (default 0.70 = 70%) → `rc3_ok=false`, **DIAG_RC_TOP3_*** on the scenario row only.
-
-RC in stress is computed using **stress covariance** (see §10).
+Report **Top1** and **Top3** contributors to portfolio variance (**RC_vol**) under the scenario’s covariance (see §10). There is **no** pass/fail threshold, no `rc1_ok` / `rc3_ok`, and no **DIAG_RC_*** codes in the production contract.
 
 ---
 
@@ -205,7 +203,7 @@ Run portfolio through episodes (see `HISTORICAL_EPISODES` in `src/stress.py`):
 
 - **dotcom:** 2000-03-01 → 2002-10-31  
 - **2008:** 2007-10-01 → 2009-03-31  
-- **2020:** 2020-02-15 → 2020-04-30  
+- **2020:** 2020-02-01 → 2020-04-30  
 - **2022:** 2021-11-01 → 2022-10-31  
 
 Output: max drawdown, volatility spike, correlations in stress.  
@@ -239,10 +237,9 @@ Betas: **weekly** changes/returns for reporting outputs in §8 (`factor_betas_5y
 ## 12. Final status and report (diagnostic suite)
 
 - **Status:** **DIAG_PASS** | **DIAG_PASS_WITH_WARNING** | **DIAG_ATTENTION** (legacy **PASS** / **PASS_WITH_WARNING** may appear in old JSON).
-- **primary_diagnostic_code** / **fail_reason_code** (when **DIAG_ATTENTION**): first **Loss** or **Historical** code only (e.g. **DIAG_LOSS_EQUITY_SHOCK**, **DIAG_HIST_2022**). RC-only codes are **not** primary for suite status.
-- **diagnostic_codes:** ordered list of **Loss** + **Historical** **DIAG_*** issues (not RC-only).
-- **rc_attention_codes:** deduplicated list of **DIAG_RC_TOP1_*** / **DIAG_RC_TOP3_*** from synthetic scenarios.
-- **warning_code** (when **DIAG_PASS_WITH_WARNING**): e.g. **WARN_HIST_BORDERLINE**, **WARN_RC_SYNTHETIC_CONCENTRATION**, **WARN_DATA_INSUFFICIENT**.
+- **primary_diagnostic_code** / **fail_reason_code** (when **DIAG_ATTENTION**): first **Loss** or **Historical** code only (e.g. **DIAG_LOSS_EQUITY_SHOCK**, **DIAG_HIST_2022**).
+- **diagnostic_codes:** ordered list of **Loss** + **Historical** **DIAG_*** issues.
+- **warning_code** (when **DIAG_PASS_WITH_WARNING**): e.g. **WARN_HIST_BORDERLINE**, **WARN_DATA_INSUFFICIENT** (no RC-only warning code in current builds).
 - **Report must include:** worst scenario loss; failed scenario (if any); **failed_test** as **Loss** or **Historical** when suite is **DIAG_ATTENTION**; Top1/Top3 RC and top loss names; per-episode **vol_annualized_episode**, **volatility_spike_ratio**, **max_dd**, **pnl_real_episode** where computed; **pnl_by_asset_pct** / **pnl_by_factor_pct** on synthetic rows. **Block-aggregated** mean returns (**mean_monthly_return_by_block_pct**) are **not** part of the `run_stress` contract.
 
 View After Optimization does not block on stress status; stress output is diagnostic only.

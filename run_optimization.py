@@ -1,5 +1,7 @@
 """
-Run portfolio optimization (max expected return + RC caps + ProLiquidity) and output weights.
+Run portfolio optimization (max expected return + ProLiquidity) and output weights.
+
+RC_vol is computed in reports/stress for diagnostics only, not as an optimization constraint.
 
 Uses config.yml; client_profile fills target_vol / max_drawdown / return / liquidity when set.
 
@@ -21,19 +23,18 @@ from src.config import (
     apply_profile_override,
     load_assets_metadata,
     load_validated_config,
+    portfolio_total_tickers,
     resolve_cash_and_rf,
 )
 from src.config_schema import ConfigValidationError
 from src.metrics_asset import mandate_max_drawdown_full_history_check
 from src.optimization import (
-    enforce_rc_caps_postprocess,
     get_risk_portfolio_tickers,
     portfolio_vol_annual,
     proliquidity,
-    rc_by_asset_from_weights,
     run_max_return_optimization,
 )
-from src.risk_contrib import build_rc_cap_per_ticker, cov_matrix_monthly, resolve_rc_asset_cap
+from src.risk_contrib import cov_matrix_monthly
 from src.robustness import compute_robustness_diagnostics, compute_robustness_flags
 from src.snapshot import build_snapshot, print_snapshot, save_snapshot
 from src.stress import run_stress
@@ -44,17 +45,14 @@ STATUS_APPROVED = "APPROVED"
 STATUS_OK_FALLBACK = "OK_FALLBACK"
 STATUS_FAIL_DATA = "FAIL_DATA"
 STATUS_FAIL_MANDATE = "FAIL_MANDATE"
-STATUS_FAIL_RC = "FAIL_RC"
 
-VIOL_RC_VIOLATION = "VIOL_RC_VIOLATION"
-VIOL_RC_ASSET_CAP = "VIOL_RC_ASSET_CAP"
 VIOL_FAIL_STRESS = "VIOL_FAIL_STRESS"
 VIOL_FAIL_MANDATE = "VIOL_FAIL_MANDATE"
 WARN_MODEL_RISK_YOUNG_WEIGHT = "WARN_MODEL_RISK_YOUNG_WEIGHT"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Portfolio optimization — single-stage max return + RC + liquidity")
+    parser = argparse.ArgumentParser(description="Portfolio optimization — single-stage max return + liquidity")
     parser.add_argument("--no-cache", action="store_true", help="Ignore cache, download fresh data")
     parser.add_argument("--write-config", action="store_true", help="Write optimized weights to config.yml")
     parser.add_argument("--profile", type=str, default=None, help="Override client_profile")
@@ -66,8 +64,6 @@ def parse_args() -> argparse.Namespace:
 def _build_next_actions(violations: list, stress_report: dict | None) -> list[str]:
     actions: list[str] = []
     codes = {v["code"] for v in violations}
-    if VIOL_RC_ASSET_CAP in codes:
-        actions.append("Consider adding assets to dilute RC or relax rc_asset_cap; review breached tickers.")
     if VIOL_FAIL_STRESS in codes and stress_report:
         actions.append("Stress diagnostic (DIAG_*): informational only; review scenario loss and RC concentration.")
     if VIOL_FAIL_MANDATE in codes:
@@ -179,7 +175,6 @@ def main() -> None:
             raise SystemExit(1)
         cov_df = cov_matrix_monthly(ret_primary, ddof=1, use_shrinkage=use_shrinkage)
 
-    rc_pen_lam = float(getattr(cfg, "rc_cap_penalty_lambda", 25.0))
     vol_lam = float(getattr(cfg, "optimization_soft_vol_penalty_lambda", 0.0) or 0.0)
     ret_lam = float(getattr(cfg, "optimization_soft_return_penalty_lambda", 0.0) or 0.0)
     if vol_lam <= 0:
@@ -192,7 +187,6 @@ def main() -> None:
     weights_risk, status = run_max_return_optimization(
         monthly_returns,
         cols_primary,
-        rc_asset_cap_pct=cfg.rc_asset_cap_pct,
         min_single_security_weight_pct=cfg.min_single_security_weight_pct,
         max_single_security_weight_pct=cfg.max_single_security_weight_pct,
         window_months=window_months,
@@ -202,7 +196,6 @@ def main() -> None:
         cov_precomputed=cov_df if dual_enabled else None,
         mu_precomputed=mu_series_primary if dual_enabled else None,
         per_ticker_max_weight=per_ticker_young_caps,
-        rc_cap_penalty_lambda=rc_pen_lam,
         soft_target_vol_annual=float(tv) if tv is not None else None,
         soft_vol_penalty_lambda=vol_lam,
         soft_target_return_annual=float(tr) if tr is not None else None,
@@ -224,50 +217,6 @@ def main() -> None:
             effective_months_10y,
             min_effective_months,
         )
-
-    n_risk = len([t for t in cols_primary if weights_risk.get(t, 0) > 0])
-    rc_cap_resolved = resolve_rc_asset_cap(cfg.rc_asset_cap_pct, max(n_risk, 1))
-    cap_by_ticker = build_rc_cap_per_ticker(cols_primary, cfg.rc_asset_cap_pct, max(n_risk, 1))
-    min_weight_rc = (
-        float(cfg.min_single_security_weight_pct)
-        if (cfg.min_single_security_weight_pct is not None and cfg.min_single_security_weight_pct > 0)
-        else 0.01
-    )
-    risk_keys = [t for t in cols_primary if weights_risk.get(t, 0) > 0]
-    adjusted_risk, rc_postprocess_ok, rc_postprocess_diag = enforce_rc_caps_postprocess(
-        weights_risk,
-        cov_df,
-        rc_cap_resolved,
-        min_weight_rc,
-        cfg.max_single_security_weight_pct,
-        risk_keys or cols_primary,
-        per_ticker_max_weight=per_ticker_young_caps,
-        rc_cap_by_ticker=cap_by_ticker,
-    )
-    rc_policy_mode = getattr(cfg, "rc_policy_mode", "strict")
-    if not rc_postprocess_ok and rc_policy_mode == "strict":
-        out_final = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
-        out_final.mkdir(parents=True, exist_ok=True)
-        fail_violations = [{"code": VIOL_RC_VIOLATION, "details": rc_postprocess_diag}]
-        fail_result = {
-            "weights": {},
-            "status": STATUS_FAIL_RC,
-            "violations": fail_violations,
-            "rc_breaches": [],
-            "stress_summary": {},
-            "next_actions": _build_next_actions(fail_violations, None),
-        }
-        try:
-            fail_result["resolved_config"] = cfg.get_resolved_config()
-        except Exception:
-            fail_result["resolved_config"] = None
-        run_result_path = out_final / "run_result.json"
-        with open(run_result_path, "w", encoding="utf-8") as f:
-            json.dump(fail_result, f, indent=2, default=str)
-        logger.error("RC post-processing failed (strict). See %s", run_result_path)
-        raise SystemExit(1)
-    weights_risk = adjusted_risk
-    rc_violation_after_postprocess = not rc_postprocess_ok
 
     mu_10y = mu_series_primary if dual_enabled and mu_series_primary is not None else ret_primary.mean()
     current_vol = portfolio_vol_annual(weights_risk, cov_df)
@@ -301,7 +250,6 @@ def main() -> None:
         weights_5y_risk, status_5y = run_max_return_optimization(
             monthly_returns,
             cols_primary,
-            rc_asset_cap_pct=cfg.rc_asset_cap_pct,
             min_single_security_weight_pct=cfg.min_single_security_weight_pct,
             max_single_security_weight_pct=cfg.max_single_security_weight_pct,
             window_months=secondary_window_months,
@@ -310,7 +258,6 @@ def main() -> None:
             cov_precomputed=cov_5y_pre if dual_enabled else None,
             mu_precomputed=mu_5y_pre if dual_enabled else None,
             per_ticker_max_weight=per_ticker_young_caps,
-            rc_cap_penalty_lambda=float(getattr(cfg, "rc_cap_penalty_lambda", 25.0)),
         )
         cols_5y = [t for t in (weights_5y_risk or weights_risk) if t in monthly_returns.columns]
         ret_5y = monthly_returns[cols_5y].iloc[-secondary_window_months:].dropna(how="any")
@@ -403,6 +350,7 @@ def main() -> None:
     max_dd_limit = abs(cfg.target_max_drawdown_pct) if cfg.target_max_drawdown_pct is not None else None
     mandate_check = mandate_max_drawdown_full_history_check(monthly_returns, final_weights, max_dd_limit)
     max_dd_ok = mandate_check.get("pass")
+    stress_tickers = portfolio_total_tickers(cfg.tickers, final_weights, cash_proxy)
 
     asset_betas_df = pd.DataFrame()
     portfolio_betas_dict: dict = {}
@@ -417,7 +365,7 @@ def main() -> None:
             portfolio_factor_betas,
         )
 
-        beta_tickers = [t for t in cfg.tickers if final_weights.get(t, 0) > 0] or list(cfg.tickers)
+        beta_tickers = [t for t in stress_tickers if final_weights.get(t, 0) > 0] or list(stress_tickers)
 
         def _portfolio_betas_weekly(window_weeks: int) -> tuple[pd.DataFrame, dict]:
             asset_betas_win = compute_asset_factor_betas_weekly(beta_tickers, analysis_end_str, window_weeks)
@@ -430,16 +378,13 @@ def main() -> None:
     except Exception as e:
         logger.warning("Не удалось построить факторы для стресса: %s", e)
 
-    stress_top3_cap = getattr(cfg, "stress_top3_rc_sum_cap_pct", 0.70) or 0.70
     stress_report = run_stress(
-        tickers=cfg.tickers,
+        tickers=stress_tickers,
         weights=final_weights,
         monthly_returns=monthly_returns,
         asset_betas=asset_betas_df,
         portfolio_betas=portfolio_betas_dict,
         target_max_drawdown_pct=cfg.target_max_drawdown_pct,
-        rc_asset_cap_pct=cfg.rc_asset_cap_pct,
-        stress_top3_rc_sum_cap_pct=stress_top3_cap,
         cash_proxy_ticker=cash_proxy,
     )
 
@@ -466,7 +411,7 @@ def main() -> None:
         try:
             stress_report["factor_regression_5y"] = portfolio_factor_regression_weekly(
                 weights=final_weights,
-                tickers=cfg.tickers,
+                tickers=stress_tickers,
                 analysis_end_str=analysis_end_str,
                 window_weeks=FACTOR_WEEKS_5Y,
             )
@@ -475,7 +420,7 @@ def main() -> None:
         try:
             stress_report["factor_regression_10y"] = portfolio_factor_regression_weekly(
                 weights=final_weights,
-                tickers=cfg.tickers,
+                tickers=stress_tickers,
                 analysis_end_str=analysis_end_str,
                 window_weeks=FACTOR_WEEKS_10Y,
             )
@@ -485,7 +430,7 @@ def main() -> None:
         rolling_windows = {"3y": FACTOR_WEEKS_3Y, "5y": FACTOR_WEEKS_5Y, "10y": FACTOR_WEEKS_10Y}
         rb = compute_portfolio_rolling_factor_betas_weekly(
             weights=final_weights,
-            tickers=cfg.tickers,
+            tickers=stress_tickers,
             analysis_end_str=analysis_end_str,
             rolling_windows_weeks=rolling_windows,
         )
@@ -535,7 +480,7 @@ def main() -> None:
         try:
             stress_report["factor_beta_shock_oos"] = factor_oos_beta_shock_explainability(
                 weights=final_weights,
-                tickers=cfg.tickers,
+                tickers=stress_tickers,
                 historical_results=stress_report.get("historical_results") or [],
                 factor_betas_5y=stress_report.get("factor_betas_5y") or {},
                 factor_betas_10y=stress_report.get("factor_betas_10y") or {},
@@ -565,26 +510,13 @@ def main() -> None:
     stress_fail_reason = stress_report.get("fail_reason_code") or stress_report.get("skip_reason")
 
     rc_breaches: list[dict] = []
-    rc_by_asset = rc_by_asset_from_weights(weights_risk, cov_df)
-    for t, rc_share in (rc_by_asset or {}).items():
-        cap_t = float(cap_by_ticker.get(t, rc_cap_resolved))
-        if rc_share > cap_t + 1e-9:
-            rc_breaches.append({
-                "ticker": t,
-                "rc_pct": round(float(rc_share) * 100.0, 2),
-                "cap_pct": round(cap_t * 100.0, 2),
-            })
 
-    if "OK_FALLBACK" in status or rc_breaches or rc_violation_after_postprocess:
+    if "OK_FALLBACK" in status:
         production_status = STATUS_OK_FALLBACK
     else:
         production_status = STATUS_APPROVED
 
     violations: list[dict] = []
-    if rc_violation_after_postprocess:
-        violations.append({"code": VIOL_RC_VIOLATION, "details": rc_postprocess_diag})
-    if rc_breaches:
-        violations.append({"code": VIOL_RC_ASSET_CAP, "details": rc_breaches})
     if young_agg_warn_details:
         violations.append({"code": WARN_MODEL_RISK_YOUNG_WEIGHT, "details": young_agg_warn_details})
     if stress_status == "DIAG_ATTENTION":
@@ -669,13 +601,11 @@ def main() -> None:
         weights_baseline, status_baseline = run_max_return_optimization(
             monthly_returns,
             risk_baseline,
-            rc_asset_cap_pct=cfg.rc_asset_cap_pct,
             min_single_security_weight_pct=cfg.min_single_security_weight_pct,
             max_single_security_weight_pct=cfg.max_single_security_weight_pct,
             window_months=window_months,
             cash_proxy_ticker=cash_proxy,
             use_shrinkage=use_shrinkage,
-            rc_cap_penalty_lambda=float(getattr(cfg, "rc_cap_penalty_lambda", 25.0)),
         )
         if weights_baseline:
             cols_b = [t for t in weights_baseline if t in monthly_returns.columns]
@@ -722,7 +652,7 @@ def main() -> None:
         target_vol_annual=target_vol,
         current_vol_annual=current_vol,
         max_dd_ok=max_dd_ok,
-        rc_caps_ok=len(rc_breaches) == 0,
+        rc_caps_ok=None,
         min_single_security_weight_pct=cfg.min_single_security_weight_pct,
         max_single_security_weight_pct=cfg.max_single_security_weight_pct,
         resolved_config=_resolved,

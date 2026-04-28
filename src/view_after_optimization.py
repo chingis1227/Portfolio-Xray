@@ -2,7 +2,7 @@
 View After Optimization — tilt protocol (tactical only).
 
 PM increases one asset by delta; funding sells from other positions in descending RC order.
-Gates: weight bounds, target vol, max DD, per-asset RC caps. Stress suite is diagnostic-only (run_stress).
+Gates: weight bounds, target vol, max DD. Stress suite is diagnostic-only (run_stress). RC_vol is reported, not capped.
 Auto-shrink: 5% → 2% → 1%.
 """
 from __future__ import annotations
@@ -15,7 +15,7 @@ from typing import Any
 import pandas as pd
 
 from src.optimization import portfolio_vol_annual, rc_by_asset_from_weights
-from src.risk_contrib import build_rc_cap_per_ticker, cov_matrix_monthly, resolve_rc_asset_cap
+from src.risk_contrib import cov_matrix_monthly
 
 DELTA_MENU_PCT = [5.0, 2.0, 1.0]
 
@@ -75,8 +75,6 @@ def run_view_after_optimization(
     baseline_stress: dict[str, Any] | None = None,
     target_vol_annual: float | None = None,
     target_max_drawdown_pct: float | None = None,
-    rc_asset_cap_pct: float | None = None,
-    stress_top3_rc_sum_cap_pct: float = 0.70,
     min_single_security_weight_pct: float = 1.0,
     max_single_security_weight_pct: float = 100.0,
     run_stress_fn=None,
@@ -148,9 +146,6 @@ def run_view_after_optimization(
             deltas_to_try.append(x)
     deltas_to_try.sort(reverse=True)
 
-    n_assets = len([t for t in baseline_weights if baseline_weights.get(t, 0) > 0])
-    rc_cap_map = build_rc_cap_per_ticker(cols, rc_asset_cap_pct, max(n_assets, 1))
-
     execution_delta = 0.0
     tilted_weights: dict[str, float] = {}
     funding_donors_sold: list[tuple[str, float]] = []
@@ -209,25 +204,13 @@ def run_view_after_optimization(
             asset_betas=asset_betas_df,
             portfolio_betas=_portfolio_betas(tilted_weights, asset_betas_df),
             target_max_drawdown_pct=target_max_drawdown_pct,
-            rc_asset_cap_pct=rc_asset_cap_pct,
-            stress_top3_rc_sum_cap_pct=stress_top3_rc_sum_cap_pct,
             cash_proxy_ticker=cash_proxy_ticker or "BIL",
         )
         key_metric_values["stress_diagnostic_status"] = tilted_stress.get("status")
         key_metric_values["stress_diagnostic_codes"] = tilted_stress.get("diagnostic_codes", [])
 
         rc_tilted = rc_by_asset_from_weights(tilted_weights, cov_df)
-        cap_ref = resolve_rc_asset_cap(rc_asset_cap_pct, max(n_assets, 1))
-        for t, rc in rc_tilted.items():
-            cap_t = float(rc_cap_map.get(t, cap_ref))
-            if rc > cap_t + 1e-9:
-                broken_gate = "RC"
-                key_metric_values["rc_breach"] = {t: rc, "cap": cap_t}
-                break
-        else:
-            pass
-        if broken_gate == "RC":
-            continue
+        key_metric_values["rc_by_asset_variance_share"] = {k: round(float(v), 4) for k, v in rc_tilted.items()}
 
         broken_gate = None
         outcome_status = "TILT_ACCEPTED"

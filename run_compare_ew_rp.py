@@ -192,8 +192,6 @@ def _compute_extra_metrics(
         target_weights,
         cash_returns.reindex(asset_returns_df.index).fillna(0.0),
         risk_tickers=risk_rt,
-        rc_asset_cap_pct=cfg.rc_asset_cap_pct,
-        cov_df=cov_df_nan_safe,
         return_diagnostics=True,
     )
 

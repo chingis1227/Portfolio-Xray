@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from src.config import load_validated_config
+from src.config import load_validated_config, portfolio_total_tickers
 from src.config_schema import ConfigValidationError
 
 
@@ -34,6 +34,22 @@ def test_load_validated_config_loads_weights_when_tickers_match(tmp_path: Path) 
 
     cfg = load_validated_config(config_path=config_path)
     assert cfg.weights == {"VOO": 0.6, "BND": 0.4}
+
+
+def test_load_validated_config_allows_cash_proxy_in_weights_when_not_in_tickers(tmp_path: Path) -> None:
+    """Risk-only tickers in config; portfolio_weights.yml may still list cash (e.g. BIL) from optimization."""
+    tickers = ["VOO", "BND"]
+    config_path = tmp_path / "config.yml"
+    weights_dir = tmp_path / "Main portfolio"
+    weights_dir.mkdir(parents=True, exist_ok=True)
+    weights_path = weights_dir / "portfolio_weights.yml"
+
+    _write_yaml(config_path, _base_config(tickers))
+    _write_yaml(weights_path, {"VOO": 0.5, "BND": 0.3, "BIL": 0.2})
+
+    cfg = load_validated_config(config_path=config_path)
+    assert cfg.weights == {"VOO": 0.5, "BND": 0.3, "BIL": 0.2}
+    assert portfolio_total_tickers(cfg.tickers, cfg.weights, cfg.cash_proxy_ticker) == ["VOO", "BND", "BIL"]
 
 
 def test_load_validated_config_raises_on_stale_weights_tickers_mismatch(tmp_path: Path) -> None:

@@ -30,7 +30,7 @@ cash_policy: allowed_for_scaling
 # Weights are not set here. They are produced by optimization and stored in portfolio_weights.yml
 # (in the same directory as config.yml). Run optimization first, then run report.
 
-tickers: [VOO, VT, QQQ, VGK, BBJP, VWO, VDC, ITA, SCHD, COPX, URA, SLV, GLD, SCHP, BIL]
+tickers: [VOO, VT, QQQ, VGK, BBJP, VWO, VDC, ITA, SCHD, COPX, URA, SLV, GLD, SCHP]
 
 # =============================================================================
 # SECTION 3: CLIENT PROFILE AND ASSUMPTIONS
@@ -41,13 +41,8 @@ tickers: [VOO, VT, QQQ, VGK, BBJP, VWO, VDC, ITA, SCHD, COPX, URA, SLV, GLD, SCH
 
 client_profile: Balanced
 
-# RC caps: strict = не записывать веса, если постобработка не уложилась в RC на актив; permissive = записать веса с флагом нарушения.
-rc_policy_mode: permissive
-# Сила штрафа в objective за превышение RC-cap (выше = сильнее давит концентрацию)
-rc_cap_penalty_lambda: 200
 # optimization_soft_vol_penalty_lambda: 0    # мягкий vol к target_vol_annual; 0 => в рантайме 12
 # optimization_soft_return_penalty_lambda: 0  # мягкий доход к target_nominal_return_annual; 0 => в рантайме 8
-# RC cap по активам: глобальная формула по N (feasibility §1); явный rc_asset_cap_pct > 0 задаёт один cap всем активам.
 
 # allow_leverage, allow_short_selling: на выбор true / false.
 allow_leverage: false

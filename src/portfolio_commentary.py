@@ -372,8 +372,6 @@ def write_stress_commentary(
     worst = st.get("worst_scenario_loss_pct")
     fs = st.get("failed_scenario")
     ft = st.get("failed_test")
-    cap1 = st.get("rc_asset_cap_used")
-    cap3 = st.get("stress_top3_rc_sum_cap")
     mdd_lim = st.get("max_dd_limit")
 
     exec_para = [
@@ -402,26 +400,23 @@ def write_stress_commentary(
     if scen_rows:
         lines.append(
             "Синтетические сценарии (stress_report.scenario_results): факторные шоки к портфелю в целом; "
-            "pass = только мандатный порог по PnL портфеля (loss_ok); rc1_ok/rc3_ok — диагностика концентрации RC, "
-            "на pass не влияют. По активам и факторам см. pnl_by_asset_pct / pnl_by_factor_pct в JSON."
+            "pass = только мандатный порог по PnL портфеля (loss_ok). Top1 / Top3 RC (доля дисперсии) — "
+            "числовая диагностика концентрации, без порогового «ок/не ок» в stress_report. "
+            "По активам и факторам см. pnl_by_asset_pct / pnl_by_factor_pct в JSON."
         )
         for row in scen_rows:
             sid = row.get("scenario_id", "?")
             pnl = row.get("portfolio_pnl_pct")
             top1a = row.get("top1_rc_asset")
             top1p = row.get("top1_rc_pct")
+            top3s = row.get("top3_rc_sum_pct")
             lines.append(
-                f"- {sid}: PnL≈{_fmt_pct(pnl)}, pass={row.get('pass')}, "
-                f"loss_ok={row.get('loss_ok')}, "
-                f"rc1_ok={row.get('rc1_ok')}, rc3_ok={row.get('rc3_ok')}; "
-                f"Top1 RC: {top1a} ({_fmt_pct(top1p, 2)})."
+                f"- {sid}: PnL≈{_fmt_pct(pnl)}, pass={row.get('pass')}, loss_ok={row.get('loss_ok')}; "
+                f"Top1 RC (доля дисперсии): {top1a} ({_fmt_pct(top1p, 2)}); сумма Top3≈{_fmt_pct(top3s, 2) if top3s is not None else 'н/д'}."
             )
         sdiag = []
         for row in scen_rows:
             for c in row.get("diagnostic_codes") or []:
-                if c not in sdiag:
-                    sdiag.append(c)
-            for c in row.get("rc_diagnostic_codes") or []:
                 if c not in sdiag:
                     sdiag.append(c)
         if sdiag:
@@ -452,13 +447,9 @@ def write_stress_commentary(
 
     lines.append("Risk Structure")
     caps_line = []
-    if cap1 is not None:
-        caps_line.append(f"rc_asset_cap_used={_fmt_float(cap1, 4)} (доля Top1 RC, контекст отчёта)")
-    if cap3 is not None:
-        caps_line.append(f"stress_top3_rc_sum_cap={_fmt_float(cap3, 4)}")
     if mdd_lim is not None:
-        caps_line.append(f"max_dd_limit (эпизоды/контекст в отчёте)={_fmt_pct(mdd_lim)}")
-    lines.append("; ".join(caps_line) if caps_line else "Лимиты в stress_report не заданы или н/д.")
+        caps_line.append(f"Порог просадки для сценарного loss-теста (max_dd_limit в JSON)={_fmt_pct(mdd_lim)}")
+    lines.append("; ".join(caps_line) if caps_line else "Порог max_dd_limit в stress_report не задан или н/д.")
     if scen_rows:
         triples = [(r.get("scenario_id"), r.get("top1_rc_asset"), r.get("top1_rc_pct")) for r in scen_rows]
         tops = ", ".join(
@@ -512,8 +503,6 @@ def write_stress_commentary(
     if scen_rows:
         if all(row.get("loss_ok") is True for row in scen_rows):
             str_lines.append("Во всех синтетических сценариях loss_ok=true — глубина потерь в рамках порогов loss-теста.")
-        if all(row.get("rc3_ok") is True for row in scen_rows):
-            str_lines.append("Во всех сценариях rc3_ok=true — суммарный Top3 RC не нарушает stress_top3_rc_sum_cap.")
         if any(row.get("pass") is True for row in scen_rows):
             str_lines.append("Есть сценарии с pass=true по мандатному PnL.")
     for h in hist:
@@ -532,10 +521,8 @@ def write_stress_commentary(
         wk.append(
             f"DIAG_ATTENTION: зафиксированы диагностические коды ({dc_str}); для PM имеет смысл разобрать scenario_results и historical_results."
         )
-    if scen_rows and all(row.get("rc1_ok") is False for row in scen_rows):
-        wk.append("Во всех сценариях rc1_ok=false — концентрация Top1 RC выше порога rc_asset_cap_used.")
     if warn:
-        wk.append(f"warning_code={warn} (см. stress_report; RC-синтетика или граничные исторические данные).")
+        wk.append(f"warning_code={warn} (см. stress_report; граничные исторические данные или прочие предупреждения).")
     if hist:
         for h in hist:
             if h.get("max_dd") is None and h.get("episode"):
@@ -551,8 +538,8 @@ def write_stress_commentary(
             sid = row.get("scenario_id")
             pnl = row.get("portfolio_pnl_pct")
             lines.append(
-                f"{sid}: PnL≈{_fmt_pct(pnl)}, pass={row.get('pass')} (мандатный loss), "
-                f"rc1_ok/rc3_ok — в Metric-by-Metric."
+                f"{sid}: PnL≈{_fmt_pct(pnl)}, pass={row.get('pass')} (мандатный loss); "
+                f"доли RC — в Metric-by-Metric."
             )
     else:
         lines.append("Нет scenario_results.")
