@@ -103,6 +103,18 @@ Do not invent formulas if a spec exists.
 - Default backtest mode is `dynamic_nan_safe`.
 - Do not manually require weights in `config.yml`; optimization writes `portfolio_weights.yml` / `run_result.json`.
 
+## Verification Loop
+After any meaningful code change, run tests before considering the task complete.
+
+Meaningful changes include edits to optimization, metrics, config validation, data loading/alignment, NaN handling, stress diagnostics, reporting, generated HTML/UI, CLI flows, or any shared helper used by those areas. Documentation-only changes and tiny comments do not require tests unless they alter executable examples or commands.
+
+Use the narrowest reliable test first, then broaden when risk warrants it:
+- For a localized fix, run the directly relevant test file or test case.
+- For changes touching portfolio math, optimizer behavior, data alignment, config schema, stress logic, or report exports, run the related focused tests and then `python -m pytest` when feasible.
+- For web UI/dashboard/report HTML changes, also run or inspect the affected surface enough to verify it renders without obvious layout or runtime errors.
+
+If tests fail after a change, diagnose the failure, fix the root cause, and rerun the failing tests. Repeat this fix-and-test loop until the relevant tests pass. Do not leave known failing tests unaddressed unless the failure is unrelated to the change, blocked by missing external data/network/service access, or explicitly accepted by the user. In the final response, report what was run and whether anything remains unverified.
+
 ## Generated Outputs
 Do not treat these as source unless the task is about generated results:
 - `cache/`
