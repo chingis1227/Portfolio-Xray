@@ -283,6 +283,23 @@ def test_write_stress_commentary_from_stress_report() -> None:
                     "threshold_pct": 35.0,
                     "overall_flag": True,
                 },
+                "forecast_quality": {
+                    "status": "available",
+                    "method": "rolling_5y_covariance_vs_next_1y_realized_factor_risk",
+                    "train_weeks": 260,
+                    "holdout_weeks": 52,
+                    "step_weeks": 52,
+                    "summary": {
+                        "n_forecasts": 4,
+                        "median_abs_vol_error_pct": 0.18,
+                        "hit_rate_abs_vol_error_le_10pct": 0.25,
+                        "hit_rate_abs_vol_error_le_20pct": 0.75,
+                        "hit_rate_abs_vol_error_le_30pct": 1.0,
+                        "median_corr_rmse": 0.12,
+                        "overall_severity": "moderate",
+                    },
+                    "rows": [],
+                },
             },
             "factor_variance_decomposition": {
                 "status": "available",
@@ -334,6 +351,10 @@ def test_write_stress_commentary_from_stress_report() -> None:
         assert "Overlay amplification" in text2
         assert "RC_stability_flag" in text2
         assert "Covariance stability check" in text2
+        assert "Forecast quality" in text2
+        assert "median_abs_vol_error=18.0%" in text2
+        assert "hit20=75.0%" in text2
+        assert "severity=moderate" in text2
         assert "Factor variance decomposition" in text2
         assert "variance_scale=weekly" in text2
         assert "Risk adders" in text2

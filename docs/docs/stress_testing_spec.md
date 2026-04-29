@@ -302,6 +302,26 @@ Portfolio factor risk is computed under each regime as `b' Sigma_f b`, where `b`
 
 `RC_stability_flag` compares factor RC shares in `base` vs `stress_empirical`; a factor is flagged when its absolute relative RC shift is greater than 30%. `covariance_stability_check` compares 5Y weekly base covariance with 2Y weekly base covariance and flags deviations greater than 35%, using absolute-difference fallback for near-zero denominators.
 
+#### 8.8.1 Factor covariance forecast quality
+
+`stress_report.json.factor_covariance.forecast_quality` is a diagnostic-only out-of-sample backtest of the factor covariance matrix as a risk forecast. It does not change stress pass/fail, mandate status, optimizer behavior, or weight release.
+
+The test uses non-overlapping weekly windows:
+
+- Training window: 260 weekly rows.
+- Holdout window: the next 52 weekly rows.
+- Step: 52 weekly rows.
+- Forecast covariance: sample covariance with `ddof=1` on the training window.
+- Realized covariance: sample covariance with `ddof=1` on the holdout window.
+- Forecast portfolio factor risk: `sqrt(b' Sigma_train b)`, where `b` is the current ordered portfolio factor beta vector.
+- Realized portfolio factor risk: `std(X_holdout b, ddof=1)`.
+
+The block includes `status`, `method = rolling_5y_covariance_vs_next_1y_realized_factor_risk`, `variance_scale = weekly`, `train_weeks = 260`, `holdout_weeks = 52`, `step_weeks = 52`, `ddof = 1`, `summary`, and `rows`. If history is insufficient, `status = unavailable` and `reason = insufficient_factor_history`.
+
+`summary` includes `n_forecasts`, median/mean absolute volatility forecast error, mean signed volatility forecast error, hit rates for absolute volatility error at 10%, 20%, and 30%, median correlation RMSE, median covariance relative Frobenius error, and `overall_severity`. Severity is `low` when median absolute volatility error is at most 15% and the 20% hit rate is at least 60%; `high` when median absolute volatility error is above 35% or the 20% hit rate is below 35%; otherwise `moderate`.
+
+Each row includes `cutoff_date`, `realized_end_date`, train/holdout observation counts, model and realized factor variance/volatility, signed and absolute volatility error, correlation RMSE, covariance relative Frobenius error, and the worst correlation error pair. This diagnostic uses the current beta vector to isolate covariance forecast quality from beta forecast quality.
+
 CSV artifacts written under `results_csv/` include:
 
 - `factor_covariance_base_5y_weekly.csv`
@@ -315,8 +335,9 @@ CSV artifacts written under `results_csv/` include:
 - `portfolio_factor_rc_stress_overlay.csv`
 - `factor_covariance_overlay_deltas.csv`
 - `factor_covariance_stability_check.csv`
+- `factor_covariance_forecast_quality.csv`
 
-`stress_commentary.txt` must label `base` and `stress_empirical` as data-driven and `stress_overlay` as hypothetical. It must report empirical change separately from overlay amplification.
+`stress_commentary.txt` must label `base` and `stress_empirical` as data-driven and `stress_overlay` as hypothetical. It must report empirical change separately from overlay amplification and include the forecast-quality summary when available.
 
 ---
 

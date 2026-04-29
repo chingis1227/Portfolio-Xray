@@ -525,6 +525,28 @@ def _append_factor_covariance_section(lines: list[str], st: dict[str, Any]) -> N
             f"Covariance stability check 5Y vs 2Y (data_driven): threshold={_fmt_float(stability.get('threshold_pct'), 1)}%; "
             f"overall_flag={stability.get('overall_flag', False)}."
         )
+
+    forecast_quality = fc.get("forecast_quality") or {}
+    if isinstance(forecast_quality, dict) and forecast_quality:
+        if forecast_quality.get("status") == "available":
+            summary = forecast_quality.get("summary") or {}
+            lines.append(
+                "Forecast quality (5Y covariance vs next 1Y realized factor risk): "
+                f"n={summary.get('n_forecasts', 0)}, "
+                f"median_abs_vol_error={_fmt_pct(summary.get('median_abs_vol_error_pct'), 1)}, "
+                f"hit10={_fmt_pct(summary.get('hit_rate_abs_vol_error_le_10pct'), 1)}, "
+                f"hit20={_fmt_pct(summary.get('hit_rate_abs_vol_error_le_20pct'), 1)}, "
+                f"hit30={_fmt_pct(summary.get('hit_rate_abs_vol_error_le_30pct'), 1)}, "
+                f"median_corr_rmse={_fmt_float(summary.get('median_corr_rmse'), 4)}, "
+                f"severity={summary.get('overall_severity', 'unknown')}."
+            )
+        else:
+            lines.append(
+                "Forecast quality unavailable: "
+                f"reason={forecast_quality.get('reason', 'unknown')}; "
+                f"train_weeks={forecast_quality.get('train_weeks')}; "
+                f"holdout_weeks={forecast_quality.get('holdout_weeks')}."
+            )
     zero_filled = ((fc.get("exposure_vector") or {}).get("zero_filled_beta_keys") or []) if isinstance(fc.get("exposure_vector"), dict) else []
     if zero_filled:
         lines.append(f"Zero-filled missing factor betas: {', '.join(str(x) for x in zero_filled)}.")

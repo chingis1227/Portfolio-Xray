@@ -117,3 +117,55 @@ def test_factor_covariance_comparison_separates_empirical_and_overlay() -> None:
     assert "overlay_amplification" in comparison
     assert comparison["empirical_change"][0]["factor_i"] in sf.FACTOR_COLUMN_ORDER
     assert comparison["overlay_amplification"][0]["factor_i"] in sf.FACTOR_COLUMN_ORDER
+
+
+def test_factor_covariance_forecast_quality_uses_5y_train_and_1y_holdout() -> None:
+    factors = _factor_fixture()
+    betas = {"beta_eq": 0.5, "beta_credit": -0.2}
+    out = sf.factor_covariance_analytics(
+        analysis_end_str="2026-02-28",
+        portfolio_betas=betas,
+        factor_returns=factors,
+    )
+
+    forecast = out["forecast_quality"]
+    assert forecast["status"] == "available"
+    assert forecast["method"] == "rolling_5y_covariance_vs_next_1y_realized_factor_risk"
+    assert forecast["train_weeks"] == sf.FACTOR_COVARIANCE_FORECAST_TRAIN_WEEKS == 260
+    assert forecast["holdout_weeks"] == sf.FACTOR_COVARIANCE_FORECAST_HOLDOUT_WEEKS == 52
+    assert forecast["step_weeks"] == sf.FACTOR_COVARIANCE_FORECAST_STEP_WEEKS == 52
+    assert forecast["ddof"] == 1
+    assert forecast["summary"]["n_forecasts"] == len(forecast["rows"])
+
+    first = forecast["rows"][0]
+    train = factors.iloc[:260].loc[:, list(sf.FACTOR_COLUMN_ORDER)]
+    forecast_cov = train.cov(ddof=1)
+    beta_vec = np.array([betas.get(sf.FACTOR_TO_BETA_KEY[f], 0.0) for f in sf.FACTOR_COLUMN_ORDER])
+    expected_variance = float(beta_vec.T @ forecast_cov.values.astype(float) @ beta_vec)
+    assert np.isclose(first["model_factor_variance"], expected_variance)
+    assert np.isclose(first["model_factor_vol"], np.sqrt(max(expected_variance, 0.0)))
+    assert "worst_corr_error_pair" in first
+    assert "median_corr_rmse" in forecast["summary"]
+
+
+def test_factor_covariance_forecast_quality_flags_regime_shift() -> None:
+    idx = pd.date_range("2020-01-03", periods=312, freq="W-FRI")
+    rng = np.random.default_rng(99)
+    low_vol = rng.normal(scale=0.005, size=(260, len(sf.FACTOR_COLUMN_ORDER)))
+    high_vol = rng.normal(scale=0.05, size=(52, len(sf.FACTOR_COLUMN_ORDER)))
+    factors = pd.DataFrame(
+        np.vstack([low_vol, high_vol]),
+        index=idx,
+        columns=list(sf.FACTOR_COLUMN_ORDER),
+    )
+    out = sf.factor_covariance_analytics(
+        analysis_end_str="2025-12-26",
+        portfolio_betas={"beta_eq": 1.0, "beta_credit": 0.5},
+        factor_returns=factors,
+    )
+
+    forecast = out["forecast_quality"]
+    assert forecast["status"] == "available"
+    assert forecast["summary"]["n_forecasts"] == 1
+    assert forecast["summary"]["overall_severity"] == "high"
+    assert forecast["summary"]["median_abs_vol_error_pct"] > 0.35

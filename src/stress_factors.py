@@ -32,6 +32,9 @@ FACTOR_COVARIANCE_STABILITY_WEEKS = 104  # ~2 calendar years
 FACTOR_COVARIANCE_STABILITY_THRESHOLD_PCT = 35.0
 FACTOR_COVARIANCE_RC_STABILITY_THRESHOLD_PCT = 30.0
 FACTOR_COVARIANCE_OVERLAY_CORR_FLOOR = 0.70
+FACTOR_COVARIANCE_FORECAST_TRAIN_WEEKS = FACTOR_WEEKS_5Y
+FACTOR_COVARIANCE_FORECAST_HOLDOUT_WEEKS = 52
+FACTOR_COVARIANCE_FORECAST_STEP_WEEKS = 52
 FACTOR_VARIANCE_DECOMP_MIN_OBS = 30
 FACTOR_VARIANCE_DECOMP_EPS = 1e-12
 FACTOR_VARIANCE_DECOMP_NEUTRAL_THRESHOLD = 1e-4
@@ -2880,6 +2883,206 @@ def _covariance_stability_check(base_5y_cov: pd.DataFrame, base_2y_cov: pd.DataF
     }
 
 
+def _factor_covariance_forecast_quality_unavailable(reason: str, *, n_obs: int | None = None) -> dict[str, Any]:
+    return {
+        "status": "unavailable",
+        "reason": reason,
+        "method": "rolling_5y_covariance_vs_next_1y_realized_factor_risk",
+        "variance_scale": "weekly",
+        "train_weeks": FACTOR_COVARIANCE_FORECAST_TRAIN_WEEKS,
+        "holdout_weeks": FACTOR_COVARIANCE_FORECAST_HOLDOUT_WEEKS,
+        "step_weeks": FACTOR_COVARIANCE_FORECAST_STEP_WEEKS,
+        "ddof": 1,
+        "n_obs": n_obs,
+        "summary": {
+            "n_forecasts": 0,
+            "median_abs_vol_error_pct": None,
+            "mean_abs_vol_error_pct": None,
+            "mean_signed_vol_error_pct": None,
+            "hit_rate_abs_vol_error_le_10pct": None,
+            "hit_rate_abs_vol_error_le_20pct": None,
+            "hit_rate_abs_vol_error_le_30pct": None,
+            "median_corr_rmse": None,
+            "median_covariance_relative_frobenius_error": None,
+            "overall_severity": "unknown",
+        },
+        "rows": [],
+    }
+
+
+def _offdiag_corr_rmse_and_worst_pair(forecast_cov: pd.DataFrame, realized_cov: pd.DataFrame) -> tuple[float | None, dict[str, Any] | None]:
+    forecast_corr = _correlation_from_covariance(forecast_cov)
+    realized_corr = _correlation_from_covariance(realized_cov)
+    diffs: list[float] = []
+    worst: dict[str, Any] | None = None
+    for i, fi in enumerate(FACTOR_COLUMN_ORDER):
+        for j, fj in enumerate(FACTOR_COLUMN_ORDER):
+            if i >= j:
+                continue
+            forecast_v = float(forecast_corr.loc[fi, fj])
+            realized_v = float(realized_corr.loc[fi, fj])
+            diff = realized_v - forecast_v
+            diffs.append(diff)
+            row = {
+                "factor_i": str(fi),
+                "factor_j": str(fj),
+                "forecast_corr": forecast_v,
+                "realized_corr": realized_v,
+                "corr_error": diff,
+                "abs_corr_error": abs(diff),
+            }
+            if worst is None or row["abs_corr_error"] > worst["abs_corr_error"]:
+                worst = row
+    if not diffs:
+        return None, worst
+    return float(np.sqrt(np.mean(np.square(diffs)))), worst
+
+
+def _factor_covariance_forecast_quality(
+    factors: pd.DataFrame,
+    beta_vec: np.ndarray,
+    *,
+    train_weeks: int = FACTOR_COVARIANCE_FORECAST_TRAIN_WEEKS,
+    holdout_weeks: int = FACTOR_COVARIANCE_FORECAST_HOLDOUT_WEEKS,
+    step_weeks: int = FACTOR_COVARIANCE_FORECAST_STEP_WEEKS,
+) -> dict[str, Any]:
+    ordered = factors.loc[:, list(FACTOR_COLUMN_ORDER)].sort_index()
+    ordered = ordered.apply(pd.to_numeric, errors="coerce").dropna(how="any")
+    min_obs = int(train_weeks + holdout_weeks)
+    if len(ordered) < min_obs:
+        return _factor_covariance_forecast_quality_unavailable(
+            "insufficient_factor_history",
+            n_obs=int(len(ordered)),
+        )
+
+    beta_arr = np.asarray(beta_vec, dtype=float).reshape(-1)
+    if beta_arr.shape[0] != len(FACTOR_COLUMN_ORDER):
+        return _factor_covariance_forecast_quality_unavailable(
+            "factor_dimension_mismatch",
+            n_obs=int(len(ordered)),
+        )
+
+    rows: list[dict[str, Any]] = []
+    for start in range(0, len(ordered) - min_obs + 1, int(step_weeks)):
+        train_rows = ordered.iloc[start : start + train_weeks]
+        holdout_rows = ordered.iloc[start + train_weeks : start + train_weeks + holdout_weeks]
+        if len(train_rows) < train_weeks or len(holdout_rows) < holdout_weeks:
+            continue
+
+        forecast_cov = _factor_covariance_matrix(train_rows)
+        realized_cov = _factor_covariance_matrix(holdout_rows)
+        forecast_vals = forecast_cov.values.astype(float)
+        realized_vals = realized_cov.values.astype(float)
+        model_variance = max(float(beta_arr.T @ forecast_vals @ beta_arr), 0.0)
+        realized_factor_returns = holdout_rows.values.astype(float) @ beta_arr
+        realized_variance = float(np.var(realized_factor_returns, ddof=1)) if len(realized_factor_returns) >= 2 else np.nan
+        if not np.isfinite(realized_variance):
+            continue
+        realized_variance = max(realized_variance, 0.0)
+        model_vol = float(np.sqrt(model_variance))
+        realized_vol = float(np.sqrt(realized_variance))
+
+        if model_vol > 1e-12:
+            signed_error = float((realized_vol - model_vol) / model_vol)
+            abs_error = abs(signed_error)
+        elif realized_vol <= 1e-12:
+            signed_error = 0.0
+            abs_error = 0.0
+        else:
+            signed_error = None
+            abs_error = None
+
+        corr_rmse, worst_pair = _offdiag_corr_rmse_and_worst_pair(forecast_cov, realized_cov)
+        denom = float(np.linalg.norm(forecast_vals, ord="fro"))
+        cov_rel_frob = (
+            float(np.linalg.norm(realized_vals - forecast_vals, ord="fro") / denom)
+            if denom > 1e-12
+            else None
+        )
+
+        rows.append(
+            {
+                "cutoff_date": str(pd.Timestamp(train_rows.index[-1]).date()),
+                "realized_end_date": str(pd.Timestamp(holdout_rows.index[-1]).date()),
+                "n_train": int(len(train_rows)),
+                "n_holdout": int(len(holdout_rows)),
+                "model_factor_variance": model_variance,
+                "model_factor_vol": model_vol,
+                "realized_factor_variance": realized_variance,
+                "realized_factor_vol": realized_vol,
+                "signed_vol_error_pct": signed_error,
+                "abs_vol_error_pct": abs_error,
+                "corr_rmse": corr_rmse,
+                "covariance_relative_frobenius_error": cov_rel_frob,
+                "worst_corr_error_pair": worst_pair,
+                "worst_corr_error_factor_i": (worst_pair or {}).get("factor_i"),
+                "worst_corr_error_factor_j": (worst_pair or {}).get("factor_j"),
+                "worst_corr_error": (worst_pair or {}).get("corr_error"),
+                "worst_abs_corr_error": (worst_pair or {}).get("abs_corr_error"),
+            }
+        )
+
+    if not rows:
+        return _factor_covariance_forecast_quality_unavailable("no_valid_forecast_windows", n_obs=int(len(ordered)))
+
+    abs_errors = [
+        float(row["abs_vol_error_pct"])
+        for row in rows
+        if row.get("abs_vol_error_pct") is not None and np.isfinite(float(row["abs_vol_error_pct"]))
+    ]
+    signed_errors = [
+        float(row["signed_vol_error_pct"])
+        for row in rows
+        if row.get("signed_vol_error_pct") is not None and np.isfinite(float(row["signed_vol_error_pct"]))
+    ]
+    corr_rmses = [
+        float(row["corr_rmse"])
+        for row in rows
+        if row.get("corr_rmse") is not None and np.isfinite(float(row["corr_rmse"]))
+    ]
+    frob_errors = [
+        float(row["covariance_relative_frobenius_error"])
+        for row in rows
+        if row.get("covariance_relative_frobenius_error") is not None
+        and np.isfinite(float(row["covariance_relative_frobenius_error"]))
+    ]
+    median_abs = float(np.median(abs_errors)) if abs_errors else None
+    hit20 = float(np.mean([v <= 0.20 for v in abs_errors])) if abs_errors else None
+    if median_abs is None or hit20 is None:
+        severity = "unknown"
+    elif median_abs > 0.35 or hit20 < 0.35:
+        severity = "high"
+    elif median_abs <= 0.15 and hit20 >= 0.60:
+        severity = "low"
+    else:
+        severity = "moderate"
+
+    return {
+        "status": "available",
+        "reason": None,
+        "method": "rolling_5y_covariance_vs_next_1y_realized_factor_risk",
+        "variance_scale": "weekly",
+        "train_weeks": int(train_weeks),
+        "holdout_weeks": int(holdout_weeks),
+        "step_weeks": int(step_weeks),
+        "ddof": 1,
+        "n_obs": int(len(ordered)),
+        "summary": {
+            "n_forecasts": int(len(rows)),
+            "median_abs_vol_error_pct": median_abs,
+            "mean_abs_vol_error_pct": float(np.mean(abs_errors)) if abs_errors else None,
+            "mean_signed_vol_error_pct": float(np.mean(signed_errors)) if signed_errors else None,
+            "hit_rate_abs_vol_error_le_10pct": float(np.mean([v <= 0.10 for v in abs_errors])) if abs_errors else None,
+            "hit_rate_abs_vol_error_le_20pct": hit20,
+            "hit_rate_abs_vol_error_le_30pct": float(np.mean([v <= 0.30 for v in abs_errors])) if abs_errors else None,
+            "median_corr_rmse": float(np.median(corr_rmses)) if corr_rmses else None,
+            "median_covariance_relative_frobenius_error": float(np.median(frob_errors)) if frob_errors else None,
+            "overall_severity": severity,
+        },
+        "rows": rows,
+    }
+
+
 def factor_covariance_analytics(
     *,
     analysis_end_str: str,
@@ -2928,6 +3131,7 @@ def factor_covariance_analytics(
     beta_std = _rolling_beta_std_map(rolling_betas_weekly)
     empirical_change = _pairwise_covariance_comparison(base_cov, stress_emp_cov, lhs_label="base", rhs_label="stress_empirical")
     overlay_amplification = _pairwise_covariance_comparison(stress_emp_cov, overlay_cov, lhs_label="stress_empirical", rhs_label="stress_overlay")
+    forecast_quality = _factor_covariance_forecast_quality(factors, beta_vec)
 
     return {
         "method": "weekly_factor_covariance_regime_separated",
@@ -2970,6 +3174,7 @@ def factor_covariance_analytics(
         "beta_sensitivity": _beta_sensitivity(covariances, beta_vec, beta_std),
         "RC_stability_flag": _rc_stability(rc_frames["base"], rc_frames["stress_empirical"]),
         "covariance_stability_check": _covariance_stability_check(base_cov, base_2y_cov),
+        "forecast_quality": forecast_quality,
         "comparison": {
             "empirical_change": empirical_change,
             "overlay_amplification": overlay_amplification,

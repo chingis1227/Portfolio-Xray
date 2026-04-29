@@ -710,6 +710,17 @@ def run_portfolio_report_for_weights(
             stability_rows.append({"type": "factor_variance", **row})
         if stability_rows:
             pd.DataFrame(stability_rows).round(6).to_csv(output_dir_csv / "factor_covariance_stability_check.csv", index=False)
+
+        forecast_quality = factor_cov.get("forecast_quality") or {}
+        forecast_rows = forecast_quality.get("rows") if isinstance(forecast_quality, dict) else []
+        if forecast_rows:
+            flat_rows = []
+            for row in forecast_rows:
+                if not isinstance(row, dict):
+                    continue
+                flat_rows.append({k: v for k, v in row.items() if k != "worst_corr_error_pair"})
+            if flat_rows:
+                pd.DataFrame(flat_rows).round(6).to_csv(output_dir_csv / "factor_covariance_forecast_quality.csv", index=False)
     except Exception as e:
         stress_report["factor_covariance_error"] = str(e)
         logger.warning(f"Factor covariance analytics failed: {e}")

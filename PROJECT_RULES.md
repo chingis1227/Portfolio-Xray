@@ -7,6 +7,8 @@ Current analytics factor order is `equity`, `real_rates`, `inflation`, `credit`,
 
 **Portfolio factor regression diagnostics** (`factor_regression_5y` / `factor_regression_10y` in `stress_report.json`) must report `idiosyncratic_risk = 1 - r2` and use the same weekly OLS rows for multicollinearity, serial correlation, Breusch-Pagan heteroskedasticity, and HAC/Newey-West inference; these diagnostics are non-binding. `factor_betas_stability` adds rolling beta sign, magnitude, specification, and OOS stability diagnostics across weekly/monthly 3Y/5Y/10Y windows; it is also non-binding.
 
+**Factor covariance forecast quality** (`stress_report.json.factor_covariance.forecast_quality`) is diagnostic-only and non-binding. It compares a 260-week weekly factor covariance forecast with realized factor portfolio risk over the next 52 weekly rows, using 52-week non-overlapping steps and sample `ddof=1` covariance/volatility.
+
 **Portfolio weights** are the output of optimization (constraints + client metrics), not user input. Do not require or encourage manual weight entry in config; weights are exported after optimization and can be saved to config.
 
 ## Frequency standard
