@@ -74,9 +74,18 @@ from src.stress_factors import (
     FACTOR_WEEKS_10Y,
     FACTOR_WEEKS_3Y,
     FACTOR_WEEKS_5Y,
+    FACTOR_MONTHS_10Y,
+    FACTOR_MONTHS_3Y,
+    FACTOR_MONTHS_5Y,
     compute_portfolio_rolling_factor_betas_weekly,
+    compute_portfolio_rolling_factor_betas_monthly,
+    compute_portfolio_factor_beta_oos_weekly,
+    compute_portfolio_factor_beta_oos_monthly,
     compute_asset_factor_betas_weekly,
     build_factor_matrix,
+    factor_beta_oos_stability_diagnostics,
+    factor_beta_stability_diagnostics,
+    factor_beta_stability_rows,
     factor_oos_beta_shock_explainability,
     portfolio_factor_regression_weekly,
     portfolio_factor_betas,
@@ -513,14 +522,21 @@ def run_portfolio_report_for_weights(
         stress_report["factor_regression_10y_error"] = str(e)
         logger.warning(f"Factor regression diagnostics (10Y) failed: {e}")
 
-    # Rolling beta stability (diagnostic): 3Y/5Y/10Y rolling weekly betas + summary stats.
+    # Rolling beta stability (diagnostic): 3Y/5Y/10Y weekly + monthly betas, OOS checks, and severity.
     try:
         rolling_windows = {"3y": FACTOR_WEEKS_3Y, "5y": FACTOR_WEEKS_5Y, "10y": FACTOR_WEEKS_10Y}
+        rolling_windows_months = {"3y": FACTOR_MONTHS_3Y, "5y": FACTOR_MONTHS_5Y, "10y": FACTOR_MONTHS_10Y}
         rb = compute_portfolio_rolling_factor_betas_weekly(
             weights=weights,
             tickers=tickers,
             analysis_end_str=analysis_end_str,
             rolling_windows_weeks=rolling_windows,
+        )
+        rb_monthly = compute_portfolio_rolling_factor_betas_monthly(
+            monthly_returns=monthly_returns,
+            weights=weights,
+            analysis_end_str=analysis_end_str,
+            rolling_windows_months=rolling_windows_months,
         )
         # Save rolling beta time series CSV files
         csv_paths: dict[str, str] = {}
@@ -530,6 +546,14 @@ def run_portfolio_report_for_weights(
             p = output_dir_csv / f"rolling_factor_betas_{lbl}.csv"
             df_rb.round(4).to_csv(p, index=True)
             csv_paths[lbl] = p.name
+
+        monthly_csv_paths: dict[str, str] = {}
+        for lbl, df_rb in rb_monthly.items():
+            if df_rb is None or df_rb.empty:
+                continue
+            p = output_dir_csv / f"rolling_factor_betas_monthly_{lbl}.csv"
+            df_rb.round(4).to_csv(p, index=True)
+            monthly_csv_paths[lbl] = p.name
 
         summary_df = rolling_beta_summary(rb)
         summary_csv_name = ""
@@ -549,6 +573,54 @@ def run_portfolio_report_for_weights(
                     "p90": float(row["p90"]),
                 }
 
+        monthly_summary_df = rolling_beta_summary(rb_monthly)
+        monthly_summary_csv_name = ""
+        monthly_summary_struct: dict[str, dict[str, dict[str, float | int]]] = {}
+        if not monthly_summary_df.empty:
+            monthly_summary_csv = output_dir_csv / "rolling_factor_betas_monthly_summary.csv"
+            monthly_summary_df.round(4).to_csv(monthly_summary_csv, index=False)
+            monthly_summary_csv_name = monthly_summary_csv.name
+            for _, row in monthly_summary_df.iterrows():
+                w = str(row["window"])
+                b = str(row["beta"])
+                monthly_summary_struct.setdefault(w, {})[b] = {
+                    "n_points": int(row["n_points"]),
+                    "mean": float(row["mean"]),
+                    "median": float(row["median"]),
+                    "p10": float(row["p10"]),
+                    "p90": float(row["p90"]),
+                }
+
+        oos_weekly = compute_portfolio_factor_beta_oos_weekly(
+            weights=weights,
+            tickers=tickers,
+            analysis_end_str=analysis_end_str,
+            rolling_windows_weeks=rolling_windows,
+        )
+        oos_monthly = compute_portfolio_factor_beta_oos_monthly(
+            monthly_returns=monthly_returns,
+            weights=weights,
+            analysis_end_str=analysis_end_str,
+            rolling_windows_months=rolling_windows_months,
+        )
+        oos_stability = factor_beta_oos_stability_diagnostics({
+            "weekly": oos_weekly,
+            "monthly": oos_monthly,
+        })
+        stability = factor_beta_stability_diagnostics(
+            {
+                "weekly": rb,
+                "monthly": rb_monthly,
+            },
+            oos_stability=oos_stability,
+        )
+        stability_csv_name = ""
+        stability_df = factor_beta_stability_rows(stability)
+        if not stability_df.empty:
+            stability_csv = output_dir_csv / "factor_beta_stability.csv"
+            stability_df.round(4).to_csv(stability_csv, index=False)
+            stability_csv_name = stability_csv.name
+
         plot_name = ""
         plot_png_by_window: dict[str, str] = {}
         if rb:
@@ -558,10 +630,16 @@ def run_portfolio_report_for_weights(
             plot_png_by_window = write_rolling_betas_plot_pngs(rb, output_dir_final)
 
         stress_report["factor_betas_rolling_windows_weeks"] = rolling_windows
+        stress_report["factor_betas_rolling_windows_months"] = rolling_windows_months
         stress_report["factor_betas_rolling_summary"] = summary_struct
+        stress_report["factor_betas_rolling_monthly_summary"] = monthly_summary_struct
+        stress_report["factor_betas_stability"] = stability
         stress_report["factor_betas_rolling_artifacts"] = {
             "csv_by_window": csv_paths,
+            "monthly_csv_by_window": monthly_csv_paths,
             "summary_csv": summary_csv_name,
+            "monthly_summary_csv": monthly_summary_csv_name,
+            "stability_csv": stability_csv_name,
             "plot_html": plot_name,
             "plot_png_by_window": plot_png_by_window,
         }

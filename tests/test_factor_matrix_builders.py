@@ -109,6 +109,37 @@ def test_portfolio_factor_regression_weekly_emits_new_beta_keys(monkeypatch) -> 
     assert len(out["hac_inference"]["t"]) == len(expected_beta_keys) + 1
 
 
+def test_compute_portfolio_rolling_factor_betas_monthly_outputs_windows(monkeypatch) -> None:
+    idx = pd.date_range("2010-01-31", periods=150, freq="ME")
+    rng = np.random.default_rng(456)
+    factors = pd.DataFrame(
+        rng.normal(scale=0.03, size=(len(idx), len(sf.FACTOR_COLUMN_ORDER))),
+        index=idx,
+        columns=list(sf.FACTOR_COLUMN_ORDER),
+    )
+    y = (
+        0.5 * factors["equity"]
+        - 0.2 * factors["credit"]
+        + 0.1 * factors["oil"]
+        + rng.normal(scale=0.01, size=len(idx))
+    )
+    monthly_returns = pd.DataFrame({"AAA": y}, index=idx)
+
+    monkeypatch.setattr(sf, "build_factor_matrix_monthly", lambda *_args, **_kwargs: factors.copy())
+
+    out = sf.compute_portfolio_rolling_factor_betas_monthly(
+        monthly_returns=monthly_returns,
+        weights={"AAA": 1.0},
+        analysis_end_str="2022-06-30",
+        rolling_windows_months={"3y": sf.FACTOR_MONTHS_3Y, "5y": sf.FACTOR_MONTHS_5Y, "10y": sf.FACTOR_MONTHS_10Y},
+    )
+
+    assert set(out) == {"3y", "5y", "10y"}
+    assert "beta_eq" in out["3y"].columns
+    assert "beta_oil" in out["5y"].columns
+    assert not out["10y"].empty
+
+
 def test_write_rolling_betas_plot_pngs_handles_nine_factors() -> None:
     idx = pd.date_range("2024-01-05", periods=15, freq="W-FRI")
     rolling_df = pd.DataFrame(

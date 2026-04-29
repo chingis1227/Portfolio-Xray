@@ -357,6 +357,57 @@ def _append_rolling_betas_section(lines: list[str], st: dict[str, Any], output_d
     lines.append("")
 
 
+def _append_factor_beta_stability_section(lines: list[str], st: dict[str, Any]) -> None:
+    stability = st.get("factor_betas_stability")
+    if not isinstance(stability, dict) or not stability:
+        return
+
+    lines.append("Диагностика стабильности факторных beta")
+    lines.append("Factor beta stability diagnostics: sign stability, magnitude stability, specification sensitivity, and OOS rolling-forward stability.")
+
+    dist = stability.get("severity_distribution") or {}
+    shares = dist.get("shares") if isinstance(dist, dict) else {}
+    if isinstance(shares, dict):
+        lines.append(
+            "Severity distribution: "
+            f"low={_fmt_pct(shares.get('low'), 1)}, "
+            f"moderate={_fmt_pct(shares.get('moderate'), 1)}, "
+            f"high={_fmt_pct(shares.get('high'), 1)}, "
+            f"unknown={_fmt_pct(shares.get('unknown'), 1)}."
+        )
+    warning = stability.get("severity_distribution_warning")
+    if warning:
+        lines.append(f"Severity distribution warning: {warning}.")
+
+    by_beta = stability.get("by_beta") or {}
+    if not isinstance(by_beta, dict):
+        lines.append("")
+        return
+    for beta_key in _ordered_beta_keys(by_beta):
+        row = by_beta.get(beta_key)
+        if not isinstance(row, dict):
+            continue
+        sign = row.get("sign_stability") or {}
+        mag = row.get("magnitude_stability") or {}
+        spec = row.get("specification_sensitivity") or {}
+        oos = row.get("oos_stability") or {}
+        lines.append(
+            f"- {beta_key}: severity={row.get('combined_severity', 'unknown')}; "
+            f"sign={sign.get('severity', 'unknown')} "
+            f"(dominant={sign.get('dominant_sign', 'unknown')}, share={_fmt_float(sign.get('dominant_sign_share'), 3)}, "
+            f"changes={sign.get('sign_change_count', '—')}); "
+            f"magnitude={mag.get('severity', 'unknown')} "
+            f"(band={_fmt_float(mag.get('p90_minus_p10'), 4)}, rel_band={_fmt_float(mag.get('relative_band'), 3)}); "
+            f"spec={spec.get('severity', 'unknown')} "
+            f"(rel_median_span={_fmt_float(spec.get('relative_median_span'), 3)}, sign_disagreement={spec.get('sign_disagreement', False)}); "
+            f"OOS={oos.get('severity', 'unknown') if isinstance(oos, dict) else 'unknown'} "
+            f"(sign_match={_fmt_float(oos.get('sign_match_share') if isinstance(oos, dict) else None, 3)}, "
+            f"degradation={_fmt_float(oos.get('relative_magnitude_degradation') if isinstance(oos, dict) else None, 3)}, "
+            f"n={oos.get('n_tests', '—') if isinstance(oos, dict) else '—'})."
+        )
+    lines.append("")
+
+
 def write_stress_commentary(
     output_dir_final: Path,
     *,
@@ -491,6 +542,7 @@ def write_stress_commentary(
         lines.append(f"Р РµРіСЂРµСЃСЃРёСЏ С„Р°РєС‚РѕСЂРѕРІ 10Y: РЅРµ РїРѕСЃС‡РёС‚Р°РЅР° вЂ” {st.get('factor_regression_10y_error')}")
         lines.append("")
     _append_rolling_betas_section(lines, st, output_dir_final)
+    _append_factor_beta_stability_section(lines, st)
     lines.append("")
 
     lines.append("Risk Structure")

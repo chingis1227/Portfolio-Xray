@@ -25,5 +25,5 @@ This file is a short index for product behavior and implementation specs. Do not
 - Optimized weights and run status are written under `output_dir_final`, usually `Main portfolio/`.
 - Tabular metric outputs are written under `output_dir`, usually `results_csv/`.
 - Reports and diagnostics must follow the definitions in the linked canonical specs.
-- `stress_report.json` factor regression diagnostics follow [docs/docs/stress_testing_spec.md](docs/docs/stress_testing_spec.md), including `idiosyncratic_risk = 1 - r2` and Breusch-Pagan heteroskedasticity checks for portfolio factor betas.
+- `stress_report.json` factor regression diagnostics follow [docs/docs/stress_testing_spec.md](docs/docs/stress_testing_spec.md), including `idiosyncratic_risk = 1 - r2`, rolling beta stability diagnostics, and Breusch-Pagan heteroskedasticity checks for portfolio factor betas.
 - `stress_report.json` factor analytics now include the additional beta keys `beta_vix`, `beta_us_growth`, and `beta_oil` alongside the legacy factor betas. Synthetic stress scenarios remain six-shock diagnostics even though factor analytics now use a nine-factor registry.

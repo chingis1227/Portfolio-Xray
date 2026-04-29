@@ -145,6 +145,8 @@ For backward compatibility, `factor_betas` may be present and should mirror `fac
 
 Each portfolio factor regression object (`factor_regression_5y`, `factor_regression_10y`) must report `r2`, `adj_r2`, and `idiosyncratic_risk`, where `idiosyncratic_risk = 1 - r2`. This is the residual share of portfolio-return variance not explained by the current factor model; it is diagnostic and measured at the full portfolio regression level, not per beta.
 
+Rolling factor beta stability diagnostics must be reported under `factor_betas_stability`. This block is diagnostic only and does not affect weights, optimization, mandate status, or stress pass/fail. It must include `by_beta`, `thresholds`, `severity_distribution`, `severity_distribution_warning`, and `overall_severity`.
+
 ### 8.1 Factor multicollinearity (`factor_regression_*` only)
 
 Portfolio weekly OLS in `factor_regression_5y` / `factor_regression_10y` must include **`factor_multicollinearity`** on the **same regressor rows** as the regression (after inner join and `valid` mask).
@@ -216,7 +218,34 @@ For reporting and decision rules:
 - **Significance, p-values and confidence intervals in stress reports and PDFs must be interpreted using `hac_inference`**;
   classic OLS t/p are retained for diagnostics only.
 
-### 8.5 OOS episode explainability: ОІ Г— realized factor shocks
+### 8.5 Rolling beta stability diagnostics
+
+`factor_betas_stability` evaluates whether each factor beta is reliable as a management signal across rolling windows and data frequencies.
+
+Required inputs and companion outputs:
+
+- Existing weekly rolling beta windows remain `factor_betas_rolling_windows_weeks = {3y: 156, 5y: 260, 10y: 520}` and `factor_betas_rolling_summary`.
+- Monthly rolling beta windows are reported as `factor_betas_rolling_windows_months = {3y: 36, 5y: 60, 10y: 120}` and `factor_betas_rolling_monthly_summary`.
+- `factor_beta_stability.csv` is a flat export of the main per-beta severity metrics.
+
+Per beta, `factor_betas_stability.by_beta[beta_key]` must include:
+
+- `sign_stability`: dominant sign, dominant sign share, sign change count, p10, p90, and severity.
+- `magnitude_stability`: median, p90-minus-p10 band, relative band, and severity.
+- `specification_sensitivity`: median span across weekly/monthly and 3Y/5Y/10Y specifications, relative median span, sign disagreement flag, by-specification medians, and severity.
+- `oos_stability`: rolling-forward next-1Y diagnostics with sign match share, relative magnitude degradation, number of tests, by-specification rows, and severity.
+- `combined_severity`: the maximum of sign, magnitude, specification, and OOS severity.
+
+Fixed conservative thresholds:
+
+- Sign severity is **high** if dominant sign share is below 0.65 or p10/p90 cross zero with at least 0.01 absolute margin; **moderate** if dominant sign share is below 0.80 or the p10/p90 range includes zero; otherwise **low**.
+- Magnitude severity uses `relative_band = (p90 - p10) / max(abs(median), 0.05)`: **high** at `>= 2.0`, **moderate** at `>= 1.0`, otherwise **low**.
+- Specification severity is **high** if weekly/monthly/window medians disagree in sign or relative median span is `>= 2.0`; **moderate** at relative median span `>= 1.0`; otherwise **low**.
+- OOS severity is **high** if next-1Y sign match share is below 0.65 or relative magnitude degradation is `>= 2.0`; **moderate** if sign match share is below 0.80 or degradation is `>= 1.0`; otherwise **low**.
+
+Severity distribution is computed from final `combined_severity` across beta keys. If high share is greater than 0.70, set `severity_distribution_warning` to indicate thresholds may be too strict and suggest reviewing magnitude thresholds around 1.5 / 2.5. If low share is greater than 0.80, set `severity_distribution_warning` to indicate thresholds may be too soft. This warning does not change thresholds automatically.
+
+### 8.6 OOS episode explainability: ОІ Г— realized factor shocks
 
 To verify that factor betas explain stress episodes out-of-sample (not only in-sample fit),
 `stress_report.json` should include `factor_beta_shock_oos` with per-episode diagnostics:

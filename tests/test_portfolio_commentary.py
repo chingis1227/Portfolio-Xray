@@ -177,6 +177,42 @@ def test_write_stress_commentary_from_stress_report() -> None:
                 }
             },
             "factor_betas_rolling_artifacts": {"plot_png_by_window": {"3y": "rolling_factor_betas_3y.png"}},
+            "factor_betas_stability": {
+                "overall_severity": "high",
+                "severity_distribution": {
+                    "shares": {"low": 0.1, "moderate": 0.1, "high": 0.8, "unknown": 0.0},
+                    "counts": {"low": 1, "moderate": 1, "high": 8, "unknown": 0},
+                    "n": 10,
+                },
+                "severity_distribution_warning": "thresholds_may_be_too_strict_consider_relaxing_magnitude_to_1_5_2_5",
+                "by_beta": {
+                    "beta_eq": {
+                        "combined_severity": "high",
+                        "sign_stability": {
+                            "severity": "low",
+                            "dominant_sign": "positive",
+                            "dominant_sign_share": 0.95,
+                            "sign_change_count": 0,
+                        },
+                        "magnitude_stability": {
+                            "severity": "moderate",
+                            "p90_minus_p10": 0.25,
+                            "relative_band": 1.2,
+                        },
+                        "specification_sensitivity": {
+                            "severity": "low",
+                            "relative_median_span": 0.2,
+                            "sign_disagreement": False,
+                        },
+                        "oos_stability": {
+                            "severity": "high",
+                            "n_tests": 12,
+                            "sign_match_share": 0.5,
+                            "relative_magnitude_degradation": 2.1,
+                        },
+                    }
+                },
+            },
         }
         out2 = write_stress_commentary(final, stress_report=stress2, analysis_end="2026-02-28")
         text2 = out2.read_text(encoding="utf-8")
@@ -192,5 +228,8 @@ def test_write_stress_commentary_from_stress_report() -> None:
         assert "Breusch" in text2
         assert "VIF" in text2
         assert "-0.7100" in text2
+        assert "Factor beta stability diagnostics" in text2
+        assert "Severity distribution warning" in text2
+        assert "OOS=high" in text2
     finally:
         shutil.rmtree(root, ignore_errors=True)

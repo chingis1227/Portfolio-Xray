@@ -30,6 +30,44 @@ FACTOR_REGRESSION_BG_LAGS: tuple[int, ...] = (1, 2, 4)
 # HAC / Newey–West: max lag for weekly factor regression residuals (≈ 1 календарный месяц)
 FACTOR_REGRESSION_HAC_LAGS: int = 4
 
+FACTOR_MONTHS_3Y = 36
+FACTOR_MONTHS_5Y = 60
+FACTOR_MONTHS_10Y = 120
+FACTOR_OOS_HOLDOUT_WEEKS = 52
+FACTOR_OOS_HOLDOUT_MONTHS = 12
+FACTOR_STABILITY_MIN_ABS_BETA = 0.05
+FACTOR_STABILITY_ZERO_EPS = 0.01
+FACTOR_STABILITY_THRESHOLDS: dict[str, Any] = {
+    "sign": {
+        "dominant_share_high_lt": 0.65,
+        "dominant_share_moderate_lt": 0.80,
+        "zero_cross_high_eps": FACTOR_STABILITY_ZERO_EPS,
+    },
+    "magnitude": {
+        "relative_band_moderate_gte": 1.0,
+        "relative_band_high_gte": 2.0,
+        "min_abs_beta_denominator": FACTOR_STABILITY_MIN_ABS_BETA,
+    },
+    "specification": {
+        "relative_median_span_moderate_gte": 1.0,
+        "relative_median_span_high_gte": 2.0,
+    },
+    "oos": {
+        "sign_match_share_high_lt": 0.65,
+        "sign_match_share_moderate_lt": 0.80,
+        "relative_magnitude_degradation_moderate_gte": 1.0,
+        "relative_magnitude_degradation_high_gte": 2.0,
+        "holdout_weeks": FACTOR_OOS_HOLDOUT_WEEKS,
+        "holdout_months": FACTOR_OOS_HOLDOUT_MONTHS,
+    },
+    "severity_distribution": {
+        "high_share_warning_gt": 0.70,
+        "low_share_warning_gt": 0.80,
+        "suggested_magnitude_thresholds_if_strict": [1.5, 2.5],
+    },
+}
+_SEVERITY_RANK = {"unknown": 0, "low": 1, "moderate": 2, "high": 3}
+
 # FRED series (fallback when project series not used)
 FRED_EQUITY_LEVEL = "SP500"
 FRED_REAL_10Y = "DFII10"
@@ -1307,6 +1345,530 @@ def compute_portfolio_rolling_factor_betas_weekly(
         df = _rolling_window_betas(y_use, x_use, window_weeks=int(weeks))
         out[str(label)] = df
     return out
+
+
+def compute_portfolio_rolling_factor_betas_monthly(
+    monthly_returns: pd.DataFrame,
+    weights: dict[str, float],
+    analysis_end_str: str,
+    rolling_windows_months: dict[str, int],
+    *,
+    years_back: int = 20,
+) -> dict[str, pd.DataFrame]:
+    """
+    Compute rolling portfolio factor betas on monthly returns for multiple window sizes.
+
+    Returns dict[label -> DataFrame(index=date, columns beta_*)].
+    """
+    if monthly_returns is None or monthly_returns.empty:
+        return {}
+    use = [t for t in monthly_returns.columns if float(weights.get(str(t), 0.0)) > 0]
+    if not use:
+        use = [str(c) for c in monthly_returns.columns]
+    if not use:
+        return {}
+
+    end_ts = pd.Timestamp(analysis_end_str)
+    start_ts = end_ts - pd.DateOffset(years=max(3, int(years_back)))
+    factors = build_factor_matrix_monthly(start_ts.strftime("%Y-%m-%d"), end_ts.strftime("%Y-%m-%d"))
+    if factors.empty:
+        return {}
+
+    returns = monthly_returns[[c for c in use if c in monthly_returns.columns]].copy()
+    if returns.empty:
+        return {}
+    returns.index = pd.to_datetime(returns.index).tz_localize(None)
+    factors.index = pd.to_datetime(factors.index).tz_localize(None)
+
+    common = returns.index.intersection(factors.index).sort_values()
+    common = common[common <= end_ts + pd.Timedelta(days=31)]
+    if len(common) < 12:
+        return {}
+    y_df = returns.reindex(common)
+    x_df = factors.reindex(common).dropna()
+    y_df = y_df.reindex(x_df.index)
+
+    w_vec = np.array([float(weights.get(str(t), 0.0)) for t in y_df.columns], dtype=float)
+    y_port = (np.nan_to_num(y_df.values, nan=0.0) * w_vec.reshape(1, -1)).sum(axis=1)
+    valid = ~(np.isnan(y_port) | np.isnan(x_df.values).any(axis=1))
+    if int(valid.sum()) < 12:
+        return {}
+
+    x_use = x_df.loc[valid]
+    y_use = y_port[valid]
+    out: dict[str, pd.DataFrame] = {}
+    for label, months in (rolling_windows_months or {}).items():
+        df = _rolling_window_betas(y_use, x_use, window_weeks=int(months))
+        out[str(label)] = df
+    return out
+
+
+def _severity_max(values: list[str]) -> str:
+    vals = [str(v) for v in values if str(v) in _SEVERITY_RANK]
+    if not vals:
+        return "unknown"
+    return max(vals, key=lambda v: _SEVERITY_RANK[v])
+
+
+def _beta_sign(value: float, *, eps: float = 1e-12) -> int:
+    if not np.isfinite(value) or abs(value) <= eps:
+        return 0
+    return 1 if value > 0 else -1
+
+
+def _sign_label(sign: int) -> str:
+    if sign > 0:
+        return "positive"
+    if sign < 0:
+        return "negative"
+    return "zero"
+
+
+def _safe_float(value: Any) -> float | None:
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not np.isfinite(v):
+        return None
+    return v
+
+
+def _ols_beta_map(y: np.ndarray, x_df: pd.DataFrame, *, min_obs: int) -> dict[str, float] | None:
+    cols = list(x_df.columns)
+    yv = np.asarray(y, dtype=float).ravel()
+    xv = x_df.values.astype(float)
+    valid = ~(np.isnan(yv) | np.isnan(xv).any(axis=1))
+    n_valid = int(valid.sum())
+    if n_valid < max(int(min_obs), len(cols) + 2):
+        return None
+    try:
+        x_const = np.column_stack([np.ones(n_valid), xv[valid]])
+        beta = np.linalg.lstsq(x_const, yv[valid], rcond=None)[0]
+    except Exception:
+        return None
+    return {
+        FACTOR_TO_BETA_KEY.get(c, f"beta_{c}"): float(v)
+        for c, v in zip(cols, beta[1:])
+    }
+
+
+def _rolling_forward_oos_beta_records(
+    y: np.ndarray,
+    x_df: pd.DataFrame,
+    *,
+    window_periods: int,
+    holdout_periods: int,
+) -> pd.DataFrame:
+    """Estimate beta on a rolling window and compare it with beta over the following holdout."""
+    if len(x_df) != len(y) or len(x_df) < int(window_periods) + int(holdout_periods):
+        return pd.DataFrame()
+    rows: list[dict[str, Any]] = []
+    w = int(window_periods)
+    h = int(holdout_periods)
+    for end_i in range(w - 1, len(x_df) - h):
+        ins_x = x_df.iloc[end_i - w + 1:end_i + 1]
+        ins_y = y[end_i - w + 1:end_i + 1]
+        oos_x = x_df.iloc[end_i + 1:end_i + 1 + h]
+        oos_y = y[end_i + 1:end_i + 1 + h]
+        ins = _ols_beta_map(ins_y, ins_x, min_obs=max(10, w // 3))
+        oos = _ols_beta_map(oos_y, oos_x, min_obs=max(10, h // 3))
+        if not ins or not oos:
+            continue
+        for beta_key in sorted(set(ins).intersection(oos), key=lambda b: BETA_ROW_ORDER.index(b) if b in BETA_ROW_ORDER else len(BETA_ROW_ORDER)):
+            ins_v = float(ins[beta_key])
+            oos_v = float(oos[beta_key])
+            denom = max(abs(ins_v), FACTOR_STABILITY_MIN_ABS_BETA)
+            rows.append(
+                {
+                    "estimation_end": pd.Timestamp(x_df.index[end_i]),
+                    "oos_end": pd.Timestamp(x_df.index[end_i + h]),
+                    "beta": beta_key,
+                    "insample_beta": ins_v,
+                    "oos_beta": oos_v,
+                    "sign_match": bool(_beta_sign(ins_v) == _beta_sign(oos_v)),
+                    "relative_magnitude_degradation": float(abs(oos_v - ins_v) / denom),
+                }
+            )
+    if not rows:
+        return pd.DataFrame()
+    return pd.DataFrame(rows)
+
+
+def compute_portfolio_factor_beta_oos_weekly(
+    weights: dict[str, float],
+    tickers: list[str],
+    analysis_end_str: str,
+    rolling_windows_weeks: dict[str, int],
+    *,
+    holdout_weeks: int = FACTOR_OOS_HOLDOUT_WEEKS,
+    years_back: int = 20,
+) -> dict[str, pd.DataFrame]:
+    """Rolling-forward OOS beta diagnostics on weekly data."""
+    from src.data_yf import download_all
+
+    use = [t for t in tickers if float(weights.get(t, 0.0)) > 0]
+    if not use:
+        use = list(tickers)
+    use = [str(t).strip() for t in use if t and str(t).strip()]
+    if not use:
+        return {}
+
+    end_ts = pd.Timestamp(analysis_end_str)
+    end_dl = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    start_dl = (end_ts - pd.DateOffset(years=max(3, int(years_back)))).strftime("%Y-%m-%d")
+    daily = download_all(use, start_dl, end_dl)
+    daily_prices: dict[str, pd.Series] = {}
+    for t in use:
+        df = daily.get(t)
+        if df is None or df.empty or "Close" not in df.columns:
+            continue
+        daily_prices[t] = df["Close"].copy()
+
+    asset_weekly = asset_weekly_returns_from_daily(daily_prices, start_dl, end_dl)
+    factors = build_factor_matrix(start_dl, end_dl)
+    if asset_weekly.empty or factors.empty:
+        return {}
+
+    common = asset_weekly.index.intersection(factors.index).sort_values()
+    common = common[common <= end_ts + pd.Timedelta(days=6)]
+    if len(common) < 30:
+        return {}
+    y_df = asset_weekly.reindex(common)
+    x_df = factors.reindex(common).dropna()
+    y_df = y_df.reindex(x_df.index)
+    w_vec = np.array([float(weights.get(t, 0.0)) for t in y_df.columns], dtype=float)
+    y_port = (np.nan_to_num(y_df.values, nan=0.0) * w_vec.reshape(1, -1)).sum(axis=1)
+    valid = ~(np.isnan(y_port) | np.isnan(x_df.values).any(axis=1))
+    if int(valid.sum()) < 30:
+        return {}
+    x_use = x_df.loc[valid]
+    y_use = y_port[valid]
+    return {
+        str(label): _rolling_forward_oos_beta_records(
+            y_use,
+            x_use,
+            window_periods=int(weeks),
+            holdout_periods=int(holdout_weeks),
+        )
+        for label, weeks in (rolling_windows_weeks or {}).items()
+    }
+
+
+def compute_portfolio_factor_beta_oos_monthly(
+    monthly_returns: pd.DataFrame,
+    weights: dict[str, float],
+    analysis_end_str: str,
+    rolling_windows_months: dict[str, int],
+    *,
+    holdout_months: int = FACTOR_OOS_HOLDOUT_MONTHS,
+    years_back: int = 20,
+) -> dict[str, pd.DataFrame]:
+    """Rolling-forward OOS beta diagnostics on monthly data."""
+    if monthly_returns is None or monthly_returns.empty:
+        return {}
+    use = [t for t in monthly_returns.columns if float(weights.get(str(t), 0.0)) > 0]
+    if not use:
+        use = [str(c) for c in monthly_returns.columns]
+    if not use:
+        return {}
+
+    end_ts = pd.Timestamp(analysis_end_str)
+    start_ts = end_ts - pd.DateOffset(years=max(3, int(years_back)))
+    factors = build_factor_matrix_monthly(start_ts.strftime("%Y-%m-%d"), end_ts.strftime("%Y-%m-%d"))
+    if factors.empty:
+        return {}
+    returns = monthly_returns[[c for c in use if c in monthly_returns.columns]].copy()
+    returns.index = pd.to_datetime(returns.index).tz_localize(None)
+    factors.index = pd.to_datetime(factors.index).tz_localize(None)
+    common = returns.index.intersection(factors.index).sort_values()
+    common = common[common <= end_ts + pd.Timedelta(days=31)]
+    if len(common) < 12:
+        return {}
+    y_df = returns.reindex(common)
+    x_df = factors.reindex(common).dropna()
+    y_df = y_df.reindex(x_df.index)
+    w_vec = np.array([float(weights.get(str(t), 0.0)) for t in y_df.columns], dtype=float)
+    y_port = (np.nan_to_num(y_df.values, nan=0.0) * w_vec.reshape(1, -1)).sum(axis=1)
+    valid = ~(np.isnan(y_port) | np.isnan(x_df.values).any(axis=1))
+    if int(valid.sum()) < 12:
+        return {}
+    x_use = x_df.loc[valid]
+    y_use = y_port[valid]
+    return {
+        str(label): _rolling_forward_oos_beta_records(
+            y_use,
+            x_use,
+            window_periods=int(months),
+            holdout_periods=int(holdout_months),
+        )
+        for label, months in (rolling_windows_months or {}).items()
+    }
+
+
+def factor_beta_oos_stability_diagnostics(
+    oos_records_by_frequency: dict[str, dict[str, pd.DataFrame]],
+) -> dict[str, Any]:
+    """Summarize rolling-forward OOS beta records by factor beta."""
+    by_beta_rows: dict[str, list[dict[str, Any]]] = {}
+    for frequency, by_window in (oos_records_by_frequency or {}).items():
+        for window, df in (by_window or {}).items():
+            if df is None or df.empty or "beta" not in df.columns:
+                continue
+            for beta_key, part in df.groupby("beta"):
+                sign_share = float(part["sign_match"].astype(float).mean())
+                degradation = float(pd.to_numeric(part["relative_magnitude_degradation"], errors="coerce").median())
+                if sign_share < FACTOR_STABILITY_THRESHOLDS["oos"]["sign_match_share_high_lt"] or degradation >= FACTOR_STABILITY_THRESHOLDS["oos"]["relative_magnitude_degradation_high_gte"]:
+                    severity = "high"
+                elif sign_share < FACTOR_STABILITY_THRESHOLDS["oos"]["sign_match_share_moderate_lt"] or degradation >= FACTOR_STABILITY_THRESHOLDS["oos"]["relative_magnitude_degradation_moderate_gte"]:
+                    severity = "moderate"
+                else:
+                    severity = "low"
+                by_beta_rows.setdefault(str(beta_key), []).append(
+                    {
+                        "frequency": str(frequency),
+                        "window": str(window),
+                        "n_tests": int(len(part)),
+                        "sign_match_share": sign_share,
+                        "relative_magnitude_degradation": degradation,
+                        "severity": severity,
+                    }
+                )
+
+    out_by_beta: dict[str, Any] = {}
+    for beta_key, rows in by_beta_rows.items():
+        severities = [str(r.get("severity", "unknown")) for r in rows]
+        n_total = int(sum(int(r.get("n_tests", 0)) for r in rows))
+        sign_values = [float(r["sign_match_share"]) for r in rows if _safe_float(r.get("sign_match_share")) is not None]
+        deg_values = [float(r["relative_magnitude_degradation"]) for r in rows if _safe_float(r.get("relative_magnitude_degradation")) is not None]
+        out_by_beta[beta_key] = {
+            "severity": _severity_max(severities),
+            "n_tests": n_total,
+            "sign_match_share": float(np.mean(sign_values)) if sign_values else None,
+            "relative_magnitude_degradation": float(np.median(deg_values)) if deg_values else None,
+            "by_specification": rows,
+        }
+    return {
+        "method": "rolling_forward_next_1y",
+        "thresholds": FACTOR_STABILITY_THRESHOLDS["oos"],
+        "by_beta": {
+            beta: out_by_beta[beta]
+            for beta in sorted(out_by_beta, key=lambda b: BETA_ROW_ORDER.index(b) if b in BETA_ROW_ORDER else len(BETA_ROW_ORDER))
+        },
+    }
+
+
+def _severity_distribution(severities: list[str]) -> dict[str, Any]:
+    counts = {k: 0 for k in ("low", "moderate", "high", "unknown")}
+    for sev in severities:
+        counts[str(sev) if str(sev) in counts else "unknown"] += 1
+    total = int(sum(counts.values()))
+    shares = {k: (float(v) / total if total else 0.0) for k, v in counts.items()}
+    return {"counts": counts, "shares": shares, "n": total}
+
+
+def _severity_distribution_warning(distribution: dict[str, Any]) -> str | None:
+    shares = distribution.get("shares") if isinstance(distribution, dict) else {}
+    high_share = float(shares.get("high", 0.0)) if isinstance(shares, dict) else 0.0
+    low_share = float(shares.get("low", 0.0)) if isinstance(shares, dict) else 0.0
+    dist_cfg = FACTOR_STABILITY_THRESHOLDS["severity_distribution"]
+    if high_share > float(dist_cfg["high_share_warning_gt"]):
+        return "thresholds_may_be_too_strict_consider_relaxing_magnitude_to_1_5_2_5"
+    if low_share > float(dist_cfg["low_share_warning_gt"]):
+        return "thresholds_may_be_too_soft"
+    return None
+
+
+def factor_beta_stability_diagnostics(
+    rolling_betas_by_frequency: dict[str, dict[str, pd.DataFrame]],
+    *,
+    oos_stability: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Compute sign, magnitude, specification, and OOS stability diagnostics for factor betas."""
+    by_beta_values: dict[str, list[float]] = {}
+    by_beta_specs: dict[str, list[dict[str, Any]]] = {}
+    for frequency, by_window in (rolling_betas_by_frequency or {}).items():
+        for window, df in (by_window or {}).items():
+            if df is None or df.empty:
+                continue
+            for col in df.columns:
+                s = pd.to_numeric(df[col], errors="coerce").dropna()
+                if s.empty:
+                    continue
+                vals = [float(v) for v in s.tolist() if np.isfinite(float(v))]
+                if not vals:
+                    continue
+                by_beta_values.setdefault(str(col), []).extend(vals)
+                med = float(np.median(vals))
+                by_beta_specs.setdefault(str(col), []).append(
+                    {
+                        "frequency": str(frequency),
+                        "window": str(window),
+                        "n_points": int(len(vals)),
+                        "median": med,
+                        "p10": float(np.quantile(vals, 0.10)),
+                        "p90": float(np.quantile(vals, 0.90)),
+                        "sign": _sign_label(_beta_sign(med)),
+                    }
+                )
+
+    oos_by_beta = ((oos_stability or {}).get("by_beta") or {}) if isinstance(oos_stability, dict) else {}
+    beta_keys = sorted(set(by_beta_values).union(oos_by_beta), key=lambda b: BETA_ROW_ORDER.index(b) if b in BETA_ROW_ORDER else len(BETA_ROW_ORDER))
+    out_by_beta: dict[str, Any] = {}
+    combined_severities: list[str] = []
+    for beta_key in beta_keys:
+        values = by_beta_values.get(beta_key, [])
+        if values:
+            signs = [_beta_sign(v) for v in values]
+            non_zero_signs = [s for s in signs if s != 0]
+            pos = int(sum(1 for s in non_zero_signs if s > 0))
+            neg = int(sum(1 for s in non_zero_signs if s < 0))
+            dominant = 1 if pos >= neg else -1
+            dominant_count = max(pos, neg)
+            dominant_share = float(dominant_count / len(non_zero_signs)) if non_zero_signs else 0.0
+            sign_change_count = int(sum(1 for a, b in zip(non_zero_signs, non_zero_signs[1:]) if a != b))
+            p10 = float(np.quantile(values, 0.10))
+            p90 = float(np.quantile(values, 0.90))
+            median = float(np.median(values))
+            zero_cross_high = p10 < -FACTOR_STABILITY_ZERO_EPS and p90 > FACTOR_STABILITY_ZERO_EPS
+            zero_cross = p10 <= 0.0 <= p90
+            if dominant_share < FACTOR_STABILITY_THRESHOLDS["sign"]["dominant_share_high_lt"] or zero_cross_high:
+                sign_sev = "high"
+            elif dominant_share < FACTOR_STABILITY_THRESHOLDS["sign"]["dominant_share_moderate_lt"] or zero_cross:
+                sign_sev = "moderate"
+            else:
+                sign_sev = "low"
+            band = float(p90 - p10)
+            rel_band = float(band / max(abs(median), FACTOR_STABILITY_MIN_ABS_BETA))
+            if rel_band >= FACTOR_STABILITY_THRESHOLDS["magnitude"]["relative_band_high_gte"]:
+                mag_sev = "high"
+            elif rel_band >= FACTOR_STABILITY_THRESHOLDS["magnitude"]["relative_band_moderate_gte"]:
+                mag_sev = "moderate"
+            else:
+                mag_sev = "low"
+            sign_stability = {
+                "dominant_sign": _sign_label(dominant),
+                "dominant_sign_share": dominant_share,
+                "sign_change_count": sign_change_count,
+                "p10": p10,
+                "p90": p90,
+                "severity": sign_sev,
+            }
+            magnitude_stability = {
+                "median": median,
+                "p90_minus_p10": band,
+                "relative_band": rel_band,
+                "severity": mag_sev,
+            }
+        else:
+            sign_stability = {
+                "dominant_sign": "unknown",
+                "dominant_sign_share": None,
+                "sign_change_count": 0,
+                "p10": None,
+                "p90": None,
+                "severity": "unknown",
+            }
+            magnitude_stability = {
+                "median": None,
+                "p90_minus_p10": None,
+                "relative_band": None,
+                "severity": "unknown",
+            }
+
+        specs = by_beta_specs.get(beta_key, [])
+        medians = [float(s["median"]) for s in specs if _safe_float(s.get("median")) is not None]
+        spec_signs = {_beta_sign(v) for v in medians if _beta_sign(v) != 0}
+        if medians:
+            med_span = float(max(medians) - min(medians))
+            med_anchor = float(np.median(medians))
+            rel_med_span = float(med_span / max(abs(med_anchor), FACTOR_STABILITY_MIN_ABS_BETA))
+            sign_disagreement = len(spec_signs) > 1
+            if sign_disagreement or rel_med_span >= FACTOR_STABILITY_THRESHOLDS["specification"]["relative_median_span_high_gte"]:
+                spec_sev = "high"
+            elif rel_med_span >= FACTOR_STABILITY_THRESHOLDS["specification"]["relative_median_span_moderate_gte"]:
+                spec_sev = "moderate"
+            else:
+                spec_sev = "low"
+        else:
+            med_span = None
+            rel_med_span = None
+            sign_disagreement = False
+            spec_sev = "unknown"
+        specification_sensitivity = {
+            "median_span": med_span,
+            "relative_median_span": rel_med_span,
+            "sign_disagreement": bool(sign_disagreement),
+            "severity": spec_sev,
+            "by_specification": specs,
+        }
+
+        oos = oos_by_beta.get(beta_key, {"severity": "unknown", "n_tests": 0})
+        combined = _severity_max([
+            str(sign_stability.get("severity", "unknown")),
+            str(magnitude_stability.get("severity", "unknown")),
+            str(specification_sensitivity.get("severity", "unknown")),
+            str(oos.get("severity", "unknown")) if isinstance(oos, dict) else "unknown",
+        ])
+        combined_severities.append(combined)
+        out_by_beta[beta_key] = {
+            "combined_severity": combined,
+            "sign_stability": sign_stability,
+            "magnitude_stability": magnitude_stability,
+            "specification_sensitivity": specification_sensitivity,
+            "oos_stability": oos,
+        }
+
+    distribution = _severity_distribution(combined_severities)
+    return {
+        "method": "rolling_beta_sign_magnitude_specification_sensitivity",
+        "thresholds": FACTOR_STABILITY_THRESHOLDS,
+        "by_beta": out_by_beta,
+        "severity_distribution": distribution,
+        "severity_distribution_warning": _severity_distribution_warning(distribution),
+        "overall_severity": _severity_max(combined_severities),
+    }
+
+
+def factor_beta_stability_rows(stability: dict[str, Any]) -> pd.DataFrame:
+    """Flatten stability diagnostics for CSV export."""
+    rows: list[dict[str, Any]] = []
+    by_beta = stability.get("by_beta") if isinstance(stability, dict) else {}
+    if not isinstance(by_beta, dict):
+        return pd.DataFrame()
+    for beta_key, payload in by_beta.items():
+        if not isinstance(payload, dict):
+            continue
+        sign = payload.get("sign_stability") or {}
+        mag = payload.get("magnitude_stability") or {}
+        spec = payload.get("specification_sensitivity") or {}
+        oos = payload.get("oos_stability") or {}
+        rows.append(
+            {
+                "beta": beta_key,
+                "combined_severity": payload.get("combined_severity"),
+                "sign_severity": sign.get("severity"),
+                "dominant_sign": sign.get("dominant_sign"),
+                "dominant_sign_share": sign.get("dominant_sign_share"),
+                "sign_change_count": sign.get("sign_change_count"),
+                "magnitude_severity": mag.get("severity"),
+                "p90_minus_p10": mag.get("p90_minus_p10"),
+                "relative_band": mag.get("relative_band"),
+                "specification_severity": spec.get("severity"),
+                "relative_median_span": spec.get("relative_median_span"),
+                "specification_sign_disagreement": spec.get("sign_disagreement"),
+                "oos_severity": oos.get("severity") if isinstance(oos, dict) else None,
+                "oos_sign_match_share": oos.get("sign_match_share") if isinstance(oos, dict) else None,
+                "oos_relative_magnitude_degradation": oos.get("relative_magnitude_degradation") if isinstance(oos, dict) else None,
+                "oos_n_tests": oos.get("n_tests") if isinstance(oos, dict) else None,
+            }
+        )
+    if not rows:
+        return pd.DataFrame()
+    df = pd.DataFrame(rows)
+    beta_rank = {beta_key: idx for idx, beta_key in enumerate(BETA_ROW_ORDER)}
+    df["beta_rank"] = df["beta"].map(lambda beta: beta_rank.get(str(beta), len(beta_rank)))
+    return df.sort_values(["beta_rank", "beta"]).drop(columns=["beta_rank"]).reset_index(drop=True)
 
 
 def rolling_beta_summary(rolling_betas: dict[str, pd.DataFrame]) -> pd.DataFrame:
