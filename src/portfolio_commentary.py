@@ -453,6 +453,84 @@ def _append_factor_beta_stability_section(lines: list[str], st: dict[str, Any]) 
     lines.append("")
 
 
+def _top_pair_text(rows: Any, *, corr_key: str = "abs_corr_delta") -> str:
+    if not isinstance(rows, list) or not rows:
+        return "n/a"
+    row = next((r for r in rows if isinstance(r, dict)), None)
+    if not row:
+        return "n/a"
+    return (
+        f"{row.get('factor_i')} vs {row.get('factor_j')} "
+        f"(corr_delta={_fmt_float(row.get('corr_delta'), 4)}, "
+        f"abs_corr_delta={_fmt_float(row.get(corr_key), 4)})"
+    )
+
+
+def _append_factor_covariance_section(lines: list[str], st: dict[str, Any]) -> None:
+    fc = st.get("factor_covariance")
+    if not isinstance(fc, dict) or not fc:
+        return
+    lines.append("Factor covariance matrix")
+    if fc.get("error"):
+        lines.append(f"Factor covariance analytics unavailable: {fc.get('error')}")
+        lines.append("")
+        return
+
+    risk = fc.get("portfolio_factor_risk") or {}
+    for regime in ("base", "stress_empirical", "stress_overlay"):
+        row = risk.get(regime) if isinstance(risk, dict) else None
+        if not isinstance(row, dict):
+            continue
+        lines.append(
+            f"- {regime} ({row.get('classification', 'unknown')}): "
+            f"factor_vol={_fmt_pct(row.get('portfolio_factor_vol'), 2)}, "
+            f"factor_variance={_fmt_float(row.get('portfolio_factor_variance'), 6)}."
+        )
+
+    comparison = fc.get("comparison") or {}
+    empirical = comparison.get("empirical_change") if isinstance(comparison, dict) else None
+    overlay = comparison.get("overlay_amplification") if isinstance(comparison, dict) else None
+    lines.append(f"Empirical change (stress_empirical vs base): {_top_pair_text(empirical)}.")
+    lines.append(f"Overlay amplification (stress_overlay vs stress_empirical): {_top_pair_text(overlay)}.")
+
+    rc_flag = fc.get("RC_stability_flag") or {}
+    if isinstance(rc_flag, dict):
+        flagged = [
+            str(r.get("factor"))
+            for r in (rc_flag.get("by_factor") or [])
+            if isinstance(r, dict) and r.get("RC_stability_flag")
+        ]
+        lines.append(
+            f"RC_stability_flag threshold={_fmt_float(rc_flag.get('threshold_pct'), 1)}%; "
+            f"overall={rc_flag.get('overall_flag', False)}; factors={', '.join(flagged) if flagged else 'none'}."
+        )
+
+    sensitivity = fc.get("beta_sensitivity") or {}
+    if isinstance(sensitivity, dict) and sensitivity:
+        parts = []
+        for regime in ("base", "stress_empirical", "stress_overlay"):
+            row = sensitivity.get(regime)
+            if not isinstance(row, dict):
+                continue
+            parts.append(
+                f"{regime} ({row.get('classification', 'unknown')}) vol_range="
+                f"{_fmt_pct(row.get('vol_min'), 2)}..{_fmt_pct(row.get('vol_max'), 2)}"
+            )
+        if parts:
+            lines.append("Beta sensitivity (+/-1 rolling beta std): " + "; ".join(parts) + ".")
+
+    stability = fc.get("covariance_stability_check") or {}
+    if isinstance(stability, dict) and stability:
+        lines.append(
+            f"Covariance stability check 5Y vs 2Y (data_driven): threshold={_fmt_float(stability.get('threshold_pct'), 1)}%; "
+            f"overall_flag={stability.get('overall_flag', False)}."
+        )
+    zero_filled = ((fc.get("exposure_vector") or {}).get("zero_filled_beta_keys") or []) if isinstance(fc.get("exposure_vector"), dict) else []
+    if zero_filled:
+        lines.append(f"Zero-filled missing factor betas: {', '.join(str(x) for x in zero_filled)}.")
+    lines.append("")
+
+
 def write_stress_commentary(
     output_dir_final: Path,
     *,
@@ -588,6 +666,7 @@ def write_stress_commentary(
         lines.append("")
     _append_rolling_betas_section(lines, st, output_dir_final)
     _append_factor_beta_stability_section(lines, st)
+    _append_factor_covariance_section(lines, st)
     lines.append("")
 
     lines.append("Risk Structure")

@@ -24,6 +24,11 @@ FACTOR_WEEKS_3Y = 156   # ~3 calendar years (rolling diagnostics)
 FACTOR_WEEKS_5Y = 260   # ~5 calendar years
 FACTOR_WEEKS_10Y = 520  # ~10 calendar years
 FACTOR_DOWNLOAD_BUFFER_WEEKS = 28  # extra history for factor/asset weekly alignment
+FACTOR_COVARIANCE_BASE_WEEKS = FACTOR_WEEKS_5Y
+FACTOR_COVARIANCE_STABILITY_WEEKS = 104  # ~2 calendar years
+FACTOR_COVARIANCE_STABILITY_THRESHOLD_PCT = 35.0
+FACTOR_COVARIANCE_RC_STABILITY_THRESHOLD_PCT = 30.0
+FACTOR_COVARIANCE_OVERLAY_CORR_FLOOR = 0.70
 
 # Breusch–Godfrey LM: lag orders (weekly residuals; same auxiliary regression as in stress spec §8.2)
 FACTOR_REGRESSION_BG_LAGS: tuple[int, ...] = (1, 2, 4)
@@ -312,6 +317,7 @@ FACTOR_DEFINITIONS: tuple[FactorDefinition, ...] = (
 )
 STRESS_FACTOR_DEFINITIONS: tuple[FactorDefinition, ...] = tuple(spec for spec in FACTOR_DEFINITIONS if spec.stress_participates)
 FACTOR_TO_BETA_KEY = {spec.column: spec.beta_key for spec in FACTOR_DEFINITIONS}
+BETA_KEY_TO_FACTOR = {spec.beta_key: spec.column for spec in FACTOR_DEFINITIONS}
 BETA_ROW_ORDER: tuple[str, ...] = tuple(spec.beta_key for spec in FACTOR_DEFINITIONS)
 BETA_KEY_TO_DISPLAY_NAME = {spec.beta_key: spec.display_name for spec in FACTOR_DEFINITIONS}
 FACTOR_COLUMN_ORDER: tuple[str, ...] = tuple(spec.column for spec in FACTOR_DEFINITIONS)
@@ -1995,6 +2001,522 @@ def factor_beta_stability_rows(stability: dict[str, Any]) -> pd.DataFrame:
     beta_rank = {beta_key: idx for idx, beta_key in enumerate(BETA_ROW_ORDER)}
     df["beta_rank"] = df["beta"].map(lambda beta: beta_rank.get(str(beta), len(beta_rank)))
     return df.sort_values(["beta_rank", "beta"]).drop(columns=["beta_rank"]).reset_index(drop=True)
+
+
+FACTOR_COVARIANCE_STRESS_EPISODES: tuple[tuple[str, str, str], ...] = (
+    ("2008", "2007-10-01", "2009-03-31"),
+    ("2020", "2020-02-01", "2020-04-30"),
+    ("2022", "2021-11-01", "2022-10-31"),
+)
+
+
+def _ordered_factor_frame(factors: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+    """Return factor frame in canonical order; missing columns are explicit zero series."""
+    if factors is None or factors.empty:
+        return pd.DataFrame(columns=list(FACTOR_COLUMN_ORDER)), list(FACTOR_COLUMN_ORDER)
+    df = factors.copy()
+    df.index = pd.to_datetime(df.index).tz_localize(None)
+    missing = [col for col in FACTOR_COLUMN_ORDER if col not in df.columns]
+    for col in missing:
+        df[col] = 0.0
+    df = df.loc[:, list(FACTOR_COLUMN_ORDER)].sort_index()
+    df = df.apply(pd.to_numeric, errors="coerce").dropna(how="all")
+    return df.fillna(0.0), missing
+
+
+def _factor_covariance_matrix(factors: pd.DataFrame) -> pd.DataFrame:
+    if factors is None or factors.empty or len(factors) < 2:
+        return pd.DataFrame(0.0, index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER)
+    cov = factors.loc[:, list(FACTOR_COLUMN_ORDER)].cov(ddof=1)
+    return cov.reindex(index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER).fillna(0.0)
+
+
+def _correlation_from_covariance(cov: pd.DataFrame) -> pd.DataFrame:
+    if cov is None or cov.empty:
+        return pd.DataFrame(0.0, index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER)
+    vals = cov.reindex(index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER).fillna(0.0).values.astype(float)
+    vol = np.sqrt(np.maximum(np.diag(vals), 0.0))
+    corr = np.zeros_like(vals)
+    for i in range(len(vol)):
+        for j in range(len(vol)):
+            den = vol[i] * vol[j]
+            if den > 1e-20:
+                corr[i, j] = vals[i, j] / den
+            else:
+                corr[i, j] = 1.0 if i == j else 0.0
+    corr = np.clip(corr, -1.0, 1.0)
+    np.fill_diagonal(corr, 1.0)
+    return pd.DataFrame(corr, index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER)
+
+
+def _repair_covariance_psd(cov: pd.DataFrame, eps: float = 1e-12) -> tuple[pd.DataFrame, bool]:
+    vals = cov.reindex(index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER).fillna(0.0).values.astype(float)
+    vals = (vals + vals.T) / 2.0
+    try:
+        eigvals, eigvecs = np.linalg.eigh(vals)
+    except Exception:
+        diag = np.maximum(np.diag(vals), eps)
+        repaired = np.diag(diag)
+        return pd.DataFrame(repaired, index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER), True
+    repaired_needed = bool(np.min(eigvals) < -eps)
+    if not repaired_needed:
+        return pd.DataFrame(vals, index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER), False
+    eigvals = np.maximum(eigvals, eps)
+    repaired = eigvecs @ np.diag(eigvals) @ eigvecs.T
+    repaired = (repaired + repaired.T) / 2.0
+    return pd.DataFrame(repaired, index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER), True
+
+
+def _matrix_to_nested(df: pd.DataFrame) -> dict[str, dict[str, float]]:
+    ordered = df.reindex(index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER).fillna(0.0)
+    return {
+        str(i): {str(j): float(ordered.loc[i, j]) for j in FACTOR_COLUMN_ORDER}
+        for i in FACTOR_COLUMN_ORDER
+    }
+
+
+def _regime_block(
+    *,
+    label: str,
+    classification: str,
+    cov: pd.DataFrame,
+    n_obs: int,
+    window: dict[str, Any] | None = None,
+    episodes_used: list[str] | None = None,
+    psd_repaired: bool = False,
+    overlay_deltas: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    corr = _correlation_from_covariance(cov)
+    out: dict[str, Any] = {
+        "label": label,
+        "classification": classification,
+        "n_obs": int(n_obs),
+        "matrix": _matrix_to_nested(cov),
+        "variances": {str(k): float(cov.loc[k, k]) for k in FACTOR_COLUMN_ORDER},
+        "correlations": _matrix_to_nested(corr),
+        "psd_repaired": bool(psd_repaired),
+    }
+    if window is not None:
+        out["window"] = window
+    if episodes_used is not None:
+        out["episodes_used"] = list(episodes_used)
+    if overlay_deltas is not None:
+        out["overlay_deltas"] = overlay_deltas
+    return out
+
+
+def _stress_empirical_rows(factors: pd.DataFrame) -> pd.DataFrame:
+    parts: list[pd.DataFrame] = []
+    for _ep, start, end in FACTOR_COVARIANCE_STRESS_EPISODES:
+        sub = factors.loc[str(start):str(end)] if hasattr(factors.index, "slice_indexer") else pd.DataFrame()
+        if sub is not None and not sub.empty:
+            parts.append(sub)
+    if not parts:
+        return pd.DataFrame(columns=list(FACTOR_COLUMN_ORDER))
+    return pd.concat(parts).sort_index().loc[:, list(FACTOR_COLUMN_ORDER)]
+
+
+def _build_stress_overlay_covariance(
+    base_cov: pd.DataFrame,
+    stress_empirical_cov: pd.DataFrame,
+) -> tuple[pd.DataFrame, list[dict[str, Any]], bool]:
+    base_corr = _correlation_from_covariance(base_cov)
+    stress_corr = _correlation_from_covariance(stress_empirical_cov)
+    stress_vals = stress_empirical_cov.reindex(index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER).fillna(0.0)
+    vols = np.sqrt(np.maximum(np.diag(stress_vals.values.astype(float)), 0.0))
+    corr_overlay = stress_corr.values.astype(float).copy()
+    stress_factor_set = {spec.column for spec in STRESS_FACTOR_DEFINITIONS}
+    deltas: list[dict[str, Any]] = []
+
+    for i, fi in enumerate(FACTOR_COLUMN_ORDER):
+        for j, fj in enumerate(FACTOR_COLUMN_ORDER):
+            if i >= j:
+                continue
+            pre_corr = float(stress_corr.loc[fi, fj])
+            base_abs = abs(float(base_corr.loc[fi, fj]))
+            stress_abs = abs(pre_corr)
+            target_abs = max(base_abs, stress_abs)
+            reasons = []
+            if target_abs > stress_abs + 1e-12:
+                reasons.append("base_abs_corr_exceeds_stress_empirical")
+            if fi in stress_factor_set and fj in stress_factor_set and target_abs < FACTOR_COVARIANCE_OVERLAY_CORR_FLOOR:
+                target_abs = FACTOR_COVARIANCE_OVERLAY_CORR_FLOOR
+                reasons.append("stress_factor_corr_floor")
+            if not reasons:
+                continue
+            sign_anchor = pre_corr
+            if abs(sign_anchor) <= 1e-12:
+                sign_anchor = float(base_corr.loc[fi, fj])
+            sign = 1.0 if sign_anchor >= 0.0 else -1.0
+            target_corr = float(np.clip(sign * target_abs, -0.999999, 0.999999))
+            corr_overlay[i, j] = corr_overlay[j, i] = target_corr
+            pre_cov = float(stress_vals.loc[fi, fj])
+            target_cov = float(target_corr * vols[i] * vols[j])
+            denom = abs(pre_cov)
+            deltas.append(
+                {
+                    "factor_i": str(fi),
+                    "factor_j": str(fj),
+                    "change_type": "correlation_and_covariance",
+                    "pre_overlay_corr": pre_corr,
+                    "target_overlay_corr": target_corr,
+                    "pre_overlay_cov": pre_cov,
+                    "target_overlay_cov": target_cov,
+                    "absolute_delta": abs(target_cov - pre_cov),
+                    "relative_delta": (abs(target_cov - pre_cov) / denom) if denom > 1e-12 else None,
+                    "clamp_reason": "+".join(reasons),
+                }
+            )
+
+    np.fill_diagonal(corr_overlay, 1.0)
+    cov_overlay = np.outer(vols, vols) * corr_overlay
+    np.fill_diagonal(cov_overlay, vols**2)
+    cov_df = pd.DataFrame(cov_overlay, index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER)
+    repaired_cov, repaired = _repair_covariance_psd(cov_df)
+    for row in deltas:
+        fi = str(row["factor_i"])
+        fj = str(row["factor_j"])
+        post_cov = float(repaired_cov.loc[fi, fj])
+        post_corr = float(_correlation_from_covariance(repaired_cov).loc[fi, fj])
+        pre_cov = float(row["pre_overlay_cov"])
+        row["post_overlay_corr"] = post_corr
+        row["post_overlay_cov"] = post_cov
+        row["absolute_delta"] = abs(post_cov - pre_cov)
+        row["relative_delta"] = (abs(post_cov - pre_cov) / abs(pre_cov)) if abs(pre_cov) > 1e-12 else None
+        row["psd_repair_applied"] = bool(repaired)
+    return repaired_cov, deltas, repaired
+
+
+def _exposure_vector(portfolio_betas: dict[str, Any] | None) -> tuple[np.ndarray, dict[str, Any]]:
+    beta_map = portfolio_betas or {}
+    betas_used: dict[str, float] = {}
+    missing: list[str] = []
+    values: list[float] = []
+    for factor in FACTOR_COLUMN_ORDER:
+        beta_key = FACTOR_TO_BETA_KEY.get(factor, f"beta_{factor}")
+        value = _safe_float(beta_map.get(beta_key)) if isinstance(beta_map, dict) else None
+        if value is None:
+            value = 0.0
+            missing.append(beta_key)
+        betas_used[beta_key] = float(value)
+        values.append(float(value))
+    return np.asarray(values, dtype=float), {
+        "factor_order": list(FACTOR_COLUMN_ORDER),
+        "beta_order": [FACTOR_TO_BETA_KEY.get(f, f"beta_{f}") for f in FACTOR_COLUMN_ORDER],
+        "betas_used": betas_used,
+        "zero_filled_beta_keys": missing,
+    }
+
+
+def _portfolio_factor_risk(
+    cov: pd.DataFrame,
+    beta_vec: np.ndarray,
+    *,
+    label: str,
+    classification: str,
+) -> dict[str, Any]:
+    vals = cov.reindex(index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER).fillna(0.0).values.astype(float)
+    variance = float(beta_vec.T @ vals @ beta_vec)
+    variance = max(variance, 0.0)
+    return {
+        "label": label,
+        "classification": classification,
+        "portfolio_factor_variance": variance,
+        "portfolio_factor_vol": float(np.sqrt(variance)),
+    }
+
+
+def _factor_rc(cov: pd.DataFrame, beta_vec: np.ndarray) -> pd.DataFrame:
+    vals = cov.reindex(index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER).fillna(0.0).values.astype(float)
+    variance = float(beta_vec.T @ vals @ beta_vec)
+    rows: list[dict[str, Any]] = []
+    marginal = vals @ beta_vec
+    for idx, factor in enumerate(FACTOR_COLUMN_ORDER):
+        contribution = float(beta_vec[idx] * marginal[idx])
+        rc = float(contribution / variance) if variance > 1e-20 else 0.0
+        rows.append(
+            {
+                "factor": str(factor),
+                "beta_key": FACTOR_TO_BETA_KEY.get(str(factor), f"beta_{factor}"),
+                "component_variance": contribution,
+                "rc_share": rc,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _rc_stability(base_rc: pd.DataFrame, stress_rc: pd.DataFrame) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    base_by = base_rc.set_index("factor")["rc_share"] if not base_rc.empty else pd.Series(dtype=float)
+    stress_by = stress_rc.set_index("factor")["rc_share"] if not stress_rc.empty else pd.Series(dtype=float)
+    threshold = FACTOR_COVARIANCE_RC_STABILITY_THRESHOLD_PCT / 100.0
+    for factor in FACTOR_COLUMN_ORDER:
+        base_v = float(base_by.get(factor, 0.0))
+        stress_v = float(stress_by.get(factor, 0.0))
+        abs_shift = abs(stress_v - base_v)
+        denom = max(abs(base_v), 1e-12)
+        rel_shift = abs_shift / denom
+        rows.append(
+            {
+                "factor": str(factor),
+                "beta_key": FACTOR_TO_BETA_KEY.get(str(factor), f"beta_{factor}"),
+                "base_rc_share": base_v,
+                "stress_empirical_rc_share": stress_v,
+                "absolute_shift": abs_shift,
+                "relative_shift": rel_shift,
+                "RC_stability_flag": bool(rel_shift > threshold),
+            }
+        )
+    return {
+        "threshold_pct": FACTOR_COVARIANCE_RC_STABILITY_THRESHOLD_PCT,
+        "overall_flag": any(bool(r["RC_stability_flag"]) for r in rows),
+        "by_factor": rows,
+    }
+
+
+def _rolling_beta_std_map(rolling_betas_weekly: dict[str, pd.DataFrame] | None) -> dict[str, float]:
+    rb = rolling_betas_weekly or {}
+    preferred = rb.get("5y")
+    frames = [preferred] if isinstance(preferred, pd.DataFrame) and not preferred.empty else [
+        df for df in rb.values() if isinstance(df, pd.DataFrame) and not df.empty
+    ]
+    out: dict[str, float] = {}
+    for beta_key in BETA_ROW_ORDER:
+        vals: list[float] = []
+        for df in frames:
+            if beta_key in df.columns:
+                vals.extend(pd.to_numeric(df[beta_key], errors="coerce").dropna().astype(float).tolist())
+        out[beta_key] = float(np.std(vals, ddof=1)) if len(vals) >= 2 else 0.0
+    return out
+
+
+def _beta_sensitivity(
+    covariances: dict[str, tuple[pd.DataFrame, str]],
+    beta_vec: np.ndarray,
+    beta_std: dict[str, float],
+) -> dict[str, Any]:
+    std_vec = np.asarray(
+        [float(beta_std.get(FACTOR_TO_BETA_KEY.get(f, f"beta_{f}"), 0.0)) for f in FACTOR_COLUMN_ORDER],
+        dtype=float,
+    )
+    minus_vec = beta_vec - std_vec
+    plus_vec = beta_vec + std_vec
+    out: dict[str, Any] = {}
+    for label, (cov, classification) in covariances.items():
+        base = _portfolio_factor_risk(cov, beta_vec, label=label, classification=classification)
+        minus = _portfolio_factor_risk(cov, minus_vec, label=label, classification=classification)
+        plus = _portfolio_factor_risk(cov, plus_vec, label=label, classification=classification)
+        variances = [
+            base["portfolio_factor_variance"],
+            minus["portfolio_factor_variance"],
+            plus["portfolio_factor_variance"],
+        ]
+        vols = [
+            base["portfolio_factor_vol"],
+            minus["portfolio_factor_vol"],
+            plus["portfolio_factor_vol"],
+        ]
+        out[label] = {
+            "label": label,
+            "classification": classification,
+            "method": "portfolio_betas_plus_minus_one_rolling_beta_std",
+            "beta_std": {k: float(v) for k, v in beta_std.items()},
+            "variance_current": base["portfolio_factor_variance"],
+            "variance_minus_1std": minus["portfolio_factor_variance"],
+            "variance_plus_1std": plus["portfolio_factor_variance"],
+            "variance_min": float(min(variances)),
+            "variance_max": float(max(variances)),
+            "vol_current": base["portfolio_factor_vol"],
+            "vol_minus_1std": minus["portfolio_factor_vol"],
+            "vol_plus_1std": plus["portfolio_factor_vol"],
+            "vol_min": float(min(vols)),
+            "vol_max": float(max(vols)),
+        }
+    return out
+
+
+def _pairwise_covariance_comparison(
+    lhs: pd.DataFrame,
+    rhs: pd.DataFrame,
+    *,
+    lhs_label: str,
+    rhs_label: str,
+) -> list[dict[str, Any]]:
+    lhs_cov = lhs.reindex(index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER).fillna(0.0)
+    rhs_cov = rhs.reindex(index=FACTOR_COLUMN_ORDER, columns=FACTOR_COLUMN_ORDER).fillna(0.0)
+    lhs_corr = _correlation_from_covariance(lhs_cov)
+    rhs_corr = _correlation_from_covariance(rhs_cov)
+    rows: list[dict[str, Any]] = []
+    for i, fi in enumerate(FACTOR_COLUMN_ORDER):
+        for j, fj in enumerate(FACTOR_COLUMN_ORDER):
+            if i >= j:
+                continue
+            lhs_c = float(lhs_cov.loc[fi, fj])
+            rhs_c = float(rhs_cov.loc[fi, fj])
+            lhs_r = float(lhs_corr.loc[fi, fj])
+            rhs_r = float(rhs_corr.loc[fi, fj])
+            rows.append(
+                {
+                    "factor_i": str(fi),
+                    "factor_j": str(fj),
+                    f"{lhs_label}_cov": lhs_c,
+                    f"{rhs_label}_cov": rhs_c,
+                    "cov_delta": rhs_c - lhs_c,
+                    "abs_cov_delta": abs(rhs_c - lhs_c),
+                    f"{lhs_label}_corr": lhs_r,
+                    f"{rhs_label}_corr": rhs_r,
+                    "corr_delta": rhs_r - lhs_r,
+                    "abs_corr_delta": abs(rhs_r - lhs_r),
+                }
+            )
+    rows.sort(key=lambda row: (row["abs_corr_delta"], row["abs_cov_delta"]), reverse=True)
+    return rows
+
+
+def _covariance_stability_check(base_5y_cov: pd.DataFrame, base_2y_cov: pd.DataFrame) -> dict[str, Any]:
+    threshold = FACTOR_COVARIANCE_STABILITY_THRESHOLD_PCT / 100.0
+    by_pair: list[dict[str, Any]] = []
+    by_var: list[dict[str, Any]] = []
+    abs_fallback_floor = 1e-8
+    for i, fi in enumerate(FACTOR_COLUMN_ORDER):
+        v5 = float(base_5y_cov.loc[fi, fi])
+        v2 = float(base_2y_cov.loc[fi, fi])
+        abs_delta = abs(v2 - v5)
+        rel = abs_delta / abs(v5) if abs(v5) > abs_fallback_floor else None
+        flag = bool((rel is not None and rel > threshold) or (rel is None and abs_delta > abs_fallback_floor))
+        by_var.append(
+            {
+                "factor": str(fi),
+                "base_5y_variance": v5,
+                "base_2y_variance": v2,
+                "absolute_delta": abs_delta,
+                "relative_deviation": rel,
+                "flag": flag,
+            }
+        )
+        for j, fj in enumerate(FACTOR_COLUMN_ORDER):
+            if i >= j:
+                continue
+            c5 = float(base_5y_cov.loc[fi, fj])
+            c2 = float(base_2y_cov.loc[fi, fj])
+            abs_delta = abs(c2 - c5)
+            rel = abs_delta / abs(c5) if abs(c5) > abs_fallback_floor else None
+            flag = bool((rel is not None and rel > threshold) or (rel is None and abs_delta > abs_fallback_floor))
+            by_pair.append(
+                {
+                    "factor_i": str(fi),
+                    "factor_j": str(fj),
+                    "base_5y_cov": c5,
+                    "base_2y_cov": c2,
+                    "absolute_delta": abs_delta,
+                    "relative_deviation": rel,
+                    "flag": flag,
+                }
+            )
+    return {
+        "classification": "data_driven",
+        "threshold_pct": FACTOR_COVARIANCE_STABILITY_THRESHOLD_PCT,
+        "overall_flag": any(bool(r["flag"]) for r in by_pair + by_var),
+        "by_pair": sorted(by_pair, key=lambda row: (row["relative_deviation"] is not None, row["relative_deviation"] or 0.0, row["absolute_delta"]), reverse=True),
+        "by_factor_variance": sorted(by_var, key=lambda row: (row["relative_deviation"] is not None, row["relative_deviation"] or 0.0, row["absolute_delta"]), reverse=True),
+    }
+
+
+def factor_covariance_analytics(
+    *,
+    analysis_end_str: str,
+    portfolio_betas: dict[str, Any] | None,
+    rolling_betas_weekly: dict[str, pd.DataFrame] | None = None,
+    factor_returns: pd.DataFrame | None = None,
+) -> dict[str, Any]:
+    """Build explicit base / stress_empirical / stress_overlay factor covariance analytics."""
+    end_ts = pd.Timestamp(analysis_end_str)
+    if factor_returns is None or factor_returns.empty:
+        start = (end_ts - pd.DateOffset(years=20)).strftime("%Y-%m-%d")
+        factors_raw = build_factor_matrix(start, (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d"))
+    else:
+        factors_raw = factor_returns.copy()
+    factors, missing_factor_columns = _ordered_factor_frame(factors_raw)
+    factors = factors.loc[factors.index <= end_ts + pd.Timedelta(days=6)]
+    if len(factors) < 2:
+        return {
+            "error": "insufficient_factor_history",
+            "factor_order": list(FACTOR_COLUMN_ORDER),
+            "missing_factor_columns_zero_filled": missing_factor_columns,
+        }
+
+    base_rows = factors.tail(FACTOR_COVARIANCE_BASE_WEEKS)
+    base_2y_rows = factors.tail(FACTOR_COVARIANCE_STABILITY_WEEKS)
+    stress_rows = _stress_empirical_rows(factors)
+    if stress_rows.empty:
+        stress_rows = pd.DataFrame(0.0, index=base_rows.index[:0], columns=FACTOR_COLUMN_ORDER)
+
+    base_cov = _factor_covariance_matrix(base_rows)
+    base_2y_cov = _factor_covariance_matrix(base_2y_rows)
+    stress_emp_cov = _factor_covariance_matrix(stress_rows)
+    overlay_cov, overlay_deltas, overlay_repaired = _build_stress_overlay_covariance(base_cov, stress_emp_cov)
+
+    beta_vec, exposure = _exposure_vector(portfolio_betas)
+    covariances = {
+        "base": (base_cov, "data_driven"),
+        "stress_empirical": (stress_emp_cov, "data_driven"),
+        "stress_overlay": (overlay_cov, "hypothetical"),
+    }
+    risk = {
+        label: _portfolio_factor_risk(cov, beta_vec, label=label, classification=classification)
+        for label, (cov, classification) in covariances.items()
+    }
+    rc_frames = {label: _factor_rc(cov, beta_vec) for label, (cov, _classification) in covariances.items()}
+    beta_std = _rolling_beta_std_map(rolling_betas_weekly)
+    empirical_change = _pairwise_covariance_comparison(base_cov, stress_emp_cov, lhs_label="base", rhs_label="stress_empirical")
+    overlay_amplification = _pairwise_covariance_comparison(stress_emp_cov, overlay_cov, lhs_label="stress_empirical", rhs_label="stress_overlay")
+
+    return {
+        "method": "weekly_factor_covariance_regime_separated",
+        "factor_order": list(FACTOR_COLUMN_ORDER),
+        "beta_order": [FACTOR_TO_BETA_KEY.get(f, f"beta_{f}") for f in FACTOR_COLUMN_ORDER],
+        "missing_factor_columns_zero_filled": missing_factor_columns,
+        "exposure_vector": exposure,
+        "base": _regime_block(
+            label="base",
+            classification="data_driven",
+            cov=base_cov,
+            n_obs=len(base_rows),
+            window={
+                "weeks": FACTOR_COVARIANCE_BASE_WEEKS,
+                "frequency": "weekly",
+                "analysis_end": str(analysis_end_str),
+            },
+        ),
+        "stress_empirical": _regime_block(
+            label="stress_empirical",
+            classification="data_driven",
+            cov=stress_emp_cov,
+            n_obs=len(stress_rows),
+            episodes_used=[ep for ep, _start, _end in FACTOR_COVARIANCE_STRESS_EPISODES],
+        ),
+        "stress_overlay": _regime_block(
+            label="stress_overlay",
+            classification="hypothetical",
+            cov=overlay_cov,
+            n_obs=len(stress_rows),
+            episodes_used=[ep for ep, _start, _end in FACTOR_COVARIANCE_STRESS_EPISODES],
+            psd_repaired=overlay_repaired,
+            overlay_deltas=overlay_deltas,
+        ),
+        "portfolio_factor_risk": risk,
+        "portfolio_factor_rc": {
+            label: frame.to_dict(orient="records")
+            for label, frame in rc_frames.items()
+        },
+        "beta_sensitivity": _beta_sensitivity(covariances, beta_vec, beta_std),
+        "RC_stability_flag": _rc_stability(rc_frames["base"], rc_frames["stress_empirical"]),
+        "covariance_stability_check": _covariance_stability_check(base_cov, base_2y_cov),
+        "comparison": {
+            "empirical_change": empirical_change,
+            "overlay_amplification": overlay_amplification,
+        },
+    }
 
 
 def rolling_beta_summary(rolling_betas: dict[str, pd.DataFrame]) -> pd.DataFrame:

@@ -84,6 +84,7 @@ from src.stress_factors import (
     compute_asset_factor_betas_weekly,
     build_factor_matrix,
     enrich_historical_results_with_factor_attribution,
+    factor_covariance_analytics,
     factor_beta_oos_stability_diagnostics,
     factor_beta_stability_diagnostics,
     factor_beta_stability_rows,
@@ -524,6 +525,7 @@ def run_portfolio_report_for_weights(
         logger.warning(f"Factor regression diagnostics (10Y) failed: {e}")
 
     # Rolling beta stability (diagnostic): 3Y/5Y/10Y weekly + monthly betas, OOS checks, and severity.
+    rb: dict[str, pd.DataFrame] = {}
     try:
         rolling_windows = {"3y": FACTOR_WEEKS_3Y, "5y": FACTOR_WEEKS_5Y, "10y": FACTOR_WEEKS_10Y}
         rolling_windows_months = {"3y": FACTOR_MONTHS_3Y, "5y": FACTOR_MONTHS_5Y, "10y": FACTOR_MONTHS_10Y}
@@ -647,6 +649,70 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["factor_betas_rolling_error"] = str(e)
         logger.warning(f"Rolling factor betas diagnostics failed: {e}")
+
+    # Factor covariance analytics: explicit base / stress_empirical / stress_overlay regimes.
+    try:
+        factor_cov = factor_covariance_analytics(
+            analysis_end_str=analysis_end_str,
+            portfolio_betas=stress_report.get("factor_betas_5y") or stress_report.get("factor_betas") or {},
+            rolling_betas_weekly=rb,
+            factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
+        )
+        stress_report["factor_covariance"] = factor_cov
+
+        def _matrix_df(regime: str, field: str) -> pd.DataFrame:
+            payload = (factor_cov.get(regime) or {}).get(field)
+            if not isinstance(payload, dict):
+                return pd.DataFrame()
+            order = factor_cov.get("factor_order") or []
+            df = pd.DataFrame(payload).T
+            if order:
+                df = df.reindex(index=order, columns=order)
+            return df
+
+        for regime, fname in {
+            "base": "factor_covariance_base_5y_weekly.csv",
+            "stress_empirical": "factor_covariance_stress_empirical_weekly.csv",
+            "stress_overlay": "factor_covariance_stress_overlay_weekly.csv",
+        }.items():
+            df = _matrix_df(regime, "matrix")
+            if not df.empty:
+                df.round(6).to_csv(output_dir_csv / fname)
+
+        for regime, fname in {
+            "base": "factor_correlation_base_5y_weekly.csv",
+            "stress_empirical": "factor_correlation_stress_empirical_weekly.csv",
+            "stress_overlay": "factor_correlation_stress_overlay_weekly.csv",
+        }.items():
+            df = _matrix_df(regime, "correlations")
+            if not df.empty:
+                df.round(6).to_csv(output_dir_csv / fname)
+
+        for regime, fname in {
+            "base": "portfolio_factor_rc_base.csv",
+            "stress_empirical": "portfolio_factor_rc_stress_empirical.csv",
+            "stress_overlay": "portfolio_factor_rc_stress_overlay.csv",
+        }.items():
+            rows = ((factor_cov.get("portfolio_factor_rc") or {}).get(regime) or [])
+            if rows:
+                pd.DataFrame(rows).round(6).to_csv(output_dir_csv / fname, index=False)
+
+        overlay_deltas = ((factor_cov.get("stress_overlay") or {}).get("overlay_deltas") or [])
+        if overlay_deltas:
+            pd.DataFrame(overlay_deltas).round(6).to_csv(output_dir_csv / "factor_covariance_overlay_deltas.csv", index=False)
+
+        stability = factor_cov.get("covariance_stability_check") or {}
+        stability_rows = []
+        for row in stability.get("by_pair") or []:
+            stability_rows.append({"type": "pair", **row})
+        for row in stability.get("by_factor_variance") or []:
+            stability_rows.append({"type": "factor_variance", **row})
+        if stability_rows:
+            pd.DataFrame(stability_rows).round(6).to_csv(output_dir_csv / "factor_covariance_stability_check.csv", index=False)
+    except Exception as e:
+        stress_report["factor_covariance_error"] = str(e)
+        logger.warning(f"Factor covariance analytics failed: {e}")
+
     # Out-of-sample explainability in historical episodes: beta Г— realized factor shocks.
     try:
         stress_report["factor_beta_shock_oos"] = factor_oos_beta_shock_explainability(

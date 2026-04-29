@@ -284,6 +284,42 @@ This enrichment is diagnostic / non-binding. It does not change stress pass/fail
 
 ---
 
+### 8.8 Factor covariance analytics
+
+`stress_report.json` includes `factor_covariance` when weekly factor history is available. This block is diagnostic / non-binding and does not change stress pass/fail, mandate status, optimizer behavior, or weight release.
+
+The block must keep three regimes separate:
+
+- `base`: **data_driven**, 5Y weekly sample covariance ending at `analysis_end`.
+- `stress_empirical`: **data_driven**, weekly sample covariance using only crisis rows from the 2008, 2020, and 2022 historical stress windows.
+- `stress_overlay`: **hypothetical**, derived from `stress_empirical` only, with deterministic correlation/covariance clamps and positive-semidefinite repair if needed.
+
+There must be no implicit blended matrix. Each regime block includes `label`, `classification`, `matrix`, `variances`, `correlations`, and either `window` or `episodes_used`. The canonical factor order is the full weekly factor registry: `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`, and `oil`. Missing portfolio beta keys are zero-filled in `exposure_vector.zero_filled_beta_keys` and all matrices preserve the full order.
+
+`stress_overlay.overlay_deltas` logs every clamp with `factor_i`, `factor_j`, pre/target/post correlation and covariance values, absolute and relative delta where meaningful, `clamp_reason`, and whether PSD repair was applied. The comparison block separates `empirical_change` (`stress_empirical` vs `base`) from `overlay_amplification` (`stress_overlay` vs `stress_empirical`).
+
+Portfolio factor risk is computed under each regime as `b' Sigma_f b`, where `b` is the ordered portfolio factor beta vector and `Sigma_f` is that regime's factor covariance matrix. The report includes `portfolio_factor_variance`, `portfolio_factor_vol`, factor-level `portfolio_factor_rc`, and `beta_sensitivity`. `beta_sensitivity` recomputes `b' Sigma_f b` after applying +/- one rolling weekly beta standard deviation to the exposure vector; it is a sensitivity diagnostic, not a realized risk estimate.
+
+`RC_stability_flag` compares factor RC shares in `base` vs `stress_empirical`; a factor is flagged when its absolute relative RC shift is greater than 30%. `covariance_stability_check` compares 5Y weekly base covariance with 2Y weekly base covariance and flags deviations greater than 35%, using absolute-difference fallback for near-zero denominators.
+
+CSV artifacts written under `results_csv/` include:
+
+- `factor_covariance_base_5y_weekly.csv`
+- `factor_covariance_stress_empirical_weekly.csv`
+- `factor_covariance_stress_overlay_weekly.csv`
+- `factor_correlation_base_5y_weekly.csv`
+- `factor_correlation_stress_empirical_weekly.csv`
+- `factor_correlation_stress_overlay_weekly.csv`
+- `portfolio_factor_rc_base.csv`
+- `portfolio_factor_rc_stress_empirical.csv`
+- `portfolio_factor_rc_stress_overlay.csv`
+- `factor_covariance_overlay_deltas.csv`
+- `factor_covariance_stability_check.csv`
+
+`stress_commentary.txt` must label `base` and `stress_empirical` as data-driven and `stress_overlay` as hypothetical. It must report empirical change separately from overlay amplification.
+
+---
+
 ## 9. Historical validation
 
 Run portfolio through episodes (see `HISTORICAL_EPISODES` in `src/stress.py`):

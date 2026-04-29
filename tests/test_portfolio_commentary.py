@@ -236,6 +236,54 @@ def test_write_stress_commentary_from_stress_report() -> None:
                     }
                 },
             },
+            "factor_covariance": {
+                "factor_order": ["equity", "credit"],
+                "exposure_vector": {
+                    "zero_filled_beta_keys": ["beta_rr"],
+                },
+                "portfolio_factor_risk": {
+                    "base": {
+                        "classification": "data_driven",
+                        "portfolio_factor_vol": 0.04,
+                        "portfolio_factor_variance": 0.0016,
+                    },
+                    "stress_empirical": {
+                        "classification": "data_driven",
+                        "portfolio_factor_vol": 0.06,
+                        "portfolio_factor_variance": 0.0036,
+                    },
+                    "stress_overlay": {
+                        "classification": "hypothetical",
+                        "portfolio_factor_vol": 0.08,
+                        "portfolio_factor_variance": 0.0064,
+                    },
+                },
+                "comparison": {
+                    "empirical_change": [
+                        {"factor_i": "equity", "factor_j": "credit", "corr_delta": 0.25, "abs_corr_delta": 0.25},
+                    ],
+                    "overlay_amplification": [
+                        {"factor_i": "equity", "factor_j": "credit", "corr_delta": 0.15, "abs_corr_delta": 0.15},
+                    ],
+                },
+                "RC_stability_flag": {
+                    "threshold_pct": 30.0,
+                    "overall_flag": True,
+                    "by_factor": [
+                        {"factor": "equity", "RC_stability_flag": True},
+                        {"factor": "credit", "RC_stability_flag": False},
+                    ],
+                },
+                "beta_sensitivity": {
+                    "base": {"classification": "data_driven", "vol_min": 0.03, "vol_max": 0.05},
+                    "stress_empirical": {"classification": "data_driven", "vol_min": 0.05, "vol_max": 0.07},
+                    "stress_overlay": {"classification": "hypothetical", "vol_min": 0.07, "vol_max": 0.09},
+                },
+                "covariance_stability_check": {
+                    "threshold_pct": 35.0,
+                    "overall_flag": True,
+                },
+            },
         }
         out2 = write_stress_commentary(final, stress_report=stress2, analysis_end="2026-02-28")
         text2 = out2.read_text(encoding="utf-8")
@@ -254,5 +302,12 @@ def test_write_stress_commentary_from_stress_report() -> None:
         assert "Factor beta stability diagnostics" in text2
         assert "Severity distribution warning" in text2
         assert "OOS=high" in text2
+        assert "Factor covariance matrix" in text2
+        assert "data_driven" in text2
+        assert "hypothetical" in text2
+        assert "Empirical change" in text2
+        assert "Overlay amplification" in text2
+        assert "RC_stability_flag" in text2
+        assert "Covariance stability check" in text2
     finally:
         shutil.rmtree(root, ignore_errors=True)
