@@ -326,6 +326,78 @@ def test_write_stress_commentary_from_stress_report() -> None:
                     "r2": {"p10": 0.42, "p90": 0.8, "severity": "low"},
                 },
             },
+            "portfolio_pca": {
+                "status": "available",
+                "method": "portfolio_asset_pca_weekly",
+                "window_weeks": 260,
+                "n_obs": 260,
+                "n_assets": 3,
+                "included_assets": ["A", "B", "C"],
+                "raw": {
+                    "status": "available",
+                    "covariance_pca": {
+                        "status": "available",
+                        "interpretation": "risk_dominance",
+                        "pc1_explained_variance_ratio": 0.72,
+                        "pc1_concentration_ratio": 2.16,
+                        "pc1_severity": "high",
+                        "effective_number_of_bets": 1.7,
+                        "effective_number_of_bets_ratio": 0.57,
+                        "enb_severity": "low",
+                        "rolling_pc1": {"summary": {"stability_severity": "high", "trend_slope_per_year": 0.12}},
+                        "components": [
+                            {
+                                "component": "PC1",
+                                "top_positive_loadings": [{"asset": "A", "loading": 0.7}, {"asset": "B", "loading": 0.6}],
+                                "top_negative_loadings": [{"asset": "C", "loading": -0.3}],
+                            }
+                        ],
+                        "pc1_factor_correlations": {
+                            "status": "available",
+                            "top_abs_correlations": [{"factor": "equity", "correlation": 0.81, "abs_correlation": 0.81}],
+                        },
+                    },
+                    "correlation_pca": {
+                        "status": "available",
+                        "interpretation": "structure",
+                        "pc1_explained_variance_ratio": 0.61,
+                        "pc1_concentration_ratio": 1.83,
+                        "pc1_severity": "high",
+                        "effective_number_of_bets": 2.0,
+                        "effective_number_of_bets_ratio": 0.67,
+                        "enb_severity": "low",
+                        "rolling_pc1": {"summary": {"stability_severity": "moderate"}},
+                        "components": [{"component": "PC1", "top_positive_loadings": [{"asset": "A", "loading": 0.58}], "top_negative_loadings": []}],
+                    },
+                },
+                "residual": {
+                    "status": "available",
+                    "covariance_pca": {
+                        "status": "available",
+                        "interpretation": "risk_dominance",
+                        "pc1_explained_variance_ratio": 0.66,
+                        "pc1_concentration_ratio": 1.98,
+                        "pc1_severity": "high",
+                        "effective_number_of_bets": 1.9,
+                        "effective_number_of_bets_ratio": 0.63,
+                        "enb_severity": "low",
+                        "rolling_pc1": {"summary": {"stability_severity": "high"}},
+                        "components": [{"component": "PC1", "top_positive_loadings": [], "top_negative_loadings": []}],
+                    },
+                    "correlation_pca": {
+                        "status": "available",
+                        "interpretation": "structure",
+                        "pc1_explained_variance_ratio": 0.52,
+                        "pc1_concentration_ratio": 1.56,
+                        "pc1_severity": "moderate",
+                        "effective_number_of_bets": 2.2,
+                        "effective_number_of_bets_ratio": 0.73,
+                        "enb_severity": "low",
+                        "rolling_pc1": {"summary": {"stability_severity": "low"}},
+                        "components": [{"component": "PC1", "top_positive_loadings": [], "top_negative_loadings": []}],
+                    },
+                },
+            },
         }
         out2 = write_stress_commentary(final, stress_report=stress2, analysis_end="2026-02-28")
         text2 = out2.read_text(encoding="utf-8")
@@ -362,5 +434,11 @@ def test_write_stress_commentary_from_stress_report() -> None:
         assert "Neutral factors" in text2
         assert "Gross concentration" in text2
         assert "WARN_FACTOR_VARIANCE_DECOMP_MISMATCH" in text2
+        assert "Portfolio PCA diagnostics" in text2
+        assert "risk dominance" in text2
+        assert "structure" in text2
+        assert "Raw covariance PCA" in text2
+        assert "Raw correlation PCA" in text2
+        assert "High residual PC1" in text2
     finally:
         shutil.rmtree(root, ignore_errors=True)

@@ -615,6 +615,103 @@ def _append_factor_variance_decomposition_section(lines: list[str], st: dict[str
     lines.append("")
 
 
+def _pca_block_summary(block: Any) -> str:
+    if not isinstance(block, dict) or block.get("status") != "available":
+        if isinstance(block, dict):
+            return f"unavailable ({block.get('reason', 'unknown')})"
+        return "unavailable"
+    rolling = block.get("rolling_pc1") or {}
+    summary = rolling.get("summary") if isinstance(rolling, dict) else {}
+    stability = summary.get("stability_severity", "unknown") if isinstance(summary, dict) else "unknown"
+    return (
+        f"PC1={_fmt_pct(block.get('pc1_explained_variance_ratio'), 2)}, "
+        f"concentration={_fmt_float(block.get('pc1_concentration_ratio'), 2)}, "
+        f"severity={block.get('pc1_severity', 'unknown')}, "
+        f"ENB={_fmt_float(block.get('effective_number_of_bets'), 2)}, "
+        f"ENB ratio={_fmt_pct(block.get('effective_number_of_bets_ratio'), 2)}, "
+        f"ENB severity={block.get('enb_severity', 'unknown')}, "
+        f"PC1 stability={stability}"
+    )
+
+
+def _pca_loading_text(block: Any) -> str:
+    if not isinstance(block, dict) or block.get("status") != "available":
+        return "n/a"
+    comps = block.get("components") or []
+    if not comps or not isinstance(comps[0], dict):
+        return "n/a"
+    pc1 = comps[0]
+    pos = pc1.get("top_positive_loadings") or []
+    neg = pc1.get("top_negative_loadings") or []
+
+    def _fmt_rows(rows: Any) -> str:
+        if not isinstance(rows, list) or not rows:
+            return "none"
+        parts = []
+        for row in rows[:3]:
+            if isinstance(row, dict):
+                parts.append(f"{row.get('asset')}={_fmt_float(row.get('loading'), 3)}")
+        return ", ".join(parts) if parts else "none"
+
+    return f"positive: {_fmt_rows(pos)}; negative: {_fmt_rows(neg)}"
+
+
+def _pca_factor_corr_text(block: Any) -> str:
+    if not isinstance(block, dict) or block.get("status") != "available":
+        return "n/a"
+    fc = block.get("pc1_factor_correlations") or {}
+    if not isinstance(fc, dict) or fc.get("status") != "available":
+        return f"unavailable ({fc.get('reason', 'unknown') if isinstance(fc, dict) else 'unknown'})"
+    rows = fc.get("top_abs_correlations") or []
+    parts = []
+    for row in rows[:3]:
+        if isinstance(row, dict):
+            parts.append(f"{row.get('factor')}={_fmt_float(row.get('correlation'), 3)}")
+    return ", ".join(parts) if parts else "none"
+
+
+def _append_portfolio_pca_section(lines: list[str], st: dict[str, Any]) -> None:
+    pca = st.get("portfolio_pca")
+    if not isinstance(pca, dict) or not pca:
+        return
+    lines.append("Portfolio PCA diagnostics")
+    if pca.get("status") != "available":
+        lines.append(
+            f"Portfolio PCA unavailable: reason={pca.get('reason', 'unknown')}; "
+            f"window_weeks={pca.get('window_weeks', 'n/a')}."
+        )
+        lines.append("")
+        return
+
+    lines.append(
+        "Covariance PCA is interpreted as risk dominance: it includes volatility scale. "
+        "Correlation PCA is interpreted as structure: it standardizes asset volatility before extracting common movement."
+    )
+    lines.append(
+        f"Universe: n_assets={pca.get('n_assets')}, n_obs={pca.get('n_obs')}, "
+        f"included={', '.join(str(x) for x in (pca.get('included_assets') or []))}."
+    )
+    raw = pca.get("raw") or {}
+    residual = pca.get("residual") or {}
+    raw_cov = raw.get("covariance_pca") if isinstance(raw, dict) else None
+    raw_corr = raw.get("correlation_pca") if isinstance(raw, dict) else None
+    res_cov = residual.get("covariance_pca") if isinstance(residual, dict) else None
+    res_corr = residual.get("correlation_pca") if isinstance(residual, dict) else None
+    lines.append(f"Raw covariance PCA (risk dominance): {_pca_block_summary(raw_cov)}.")
+    lines.append(f"Raw correlation PCA (structure): {_pca_block_summary(raw_corr)}.")
+    lines.append(f"Residual covariance PCA (unexplained risk dominance): {_pca_block_summary(res_cov)}.")
+    lines.append(f"Residual correlation PCA (unexplained structure): {_pca_block_summary(res_corr)}.")
+    lines.append(f"Raw covariance PC1 loadings: {_pca_loading_text(raw_cov)}.")
+    lines.append(f"Raw correlation PC1 loadings: {_pca_loading_text(raw_corr)}.")
+    lines.append(f"Raw covariance PC1 factor correlations: {_pca_factor_corr_text(raw_cov)}.")
+    if isinstance(res_cov, dict) and res_cov.get("pc1_severity") in {"high", "extreme"}:
+        lines.append(
+            "High residual PC1 means hidden common risk remains after the named factor model; review omitted factors, "
+            "factor definitions, and asset-specific concentration."
+        )
+    lines.append("")
+
+
 def write_stress_commentary(
     output_dir_final: Path,
     *,
@@ -752,6 +849,7 @@ def write_stress_commentary(
     _append_factor_beta_stability_section(lines, st)
     _append_factor_covariance_section(lines, st)
     _append_factor_variance_decomposition_section(lines, st)
+    _append_portfolio_pca_section(lines, st)
     lines.append("")
 
     lines.append("Risk Structure")

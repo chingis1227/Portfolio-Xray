@@ -132,6 +132,7 @@ Do not invent formulas if a spec exists.
 - Round only at final export/report stage, not during calculations.
 - Factor regression diagnostics in `stress_report.json` include `idiosyncratic_risk = 1 - R²`, rolling beta stability diagnostics (`factor_betas_stability`), plus Breusch-Pagan heteroskedasticity checks on the same weekly OLS rows as reported betas.
 - Stress factor analytics currently use nine weekly factors: `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`, and `oil`. Synthetic stress scenarios in `src/stress.py` still map only the first six factors into `shock_*` keys unless the stress spec is explicitly changed.
+- Portfolio PCA diagnostics in `stress_report.json.portfolio_pca` are diagnostic-only, use weekly adjusted-close returns for current positive-weight assets, and interpret covariance PCA as `risk_dominance` and correlation PCA as `structure`.
 - `RC_vol` is diagnostic only, not an optimization constraint.
 - Scenario stress is diagnostic; mandate MaxDD can prevent weight release.
 - Default backtest mode is `dynamic_nan_safe`.

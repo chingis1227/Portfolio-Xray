@@ -385,6 +385,71 @@ CSV artifacts written under `results_csv/` include:
 
 - `factor_variance_decomposition_5y.csv`
 
+### 8.10 Portfolio PCA diagnostics
+
+`stress_report.json.portfolio_pca` is a diagnostic-only PCA block for hidden statistical
+risk concentration. It does not change stress pass/fail, mandate status, optimizer
+behavior, or weight release.
+
+The universe is the current portfolio's positive-weight assets. If no positive weights are
+available, all configured tickers may be used. Inputs are weekly Friday returns from
+adjusted close prices, ending at `analysis_end`, with the default 5Y window of 260 weekly
+observations. At least two assets and at least 52 aligned weekly rows are required; otherwise
+the block returns `status = "unavailable"` with a `reason`.
+
+The block reports two return layers:
+
+- `raw`: PCA on original weekly asset returns.
+- `residual`: PCA on each asset's OLS residual after regressing weekly asset returns on the
+  current named factor registry (`equity`, `real_rates`, `inflation`, `credit`, `usd`,
+  `commodity`, `vix`, `us_growth`, `oil`) when factor history is available.
+
+Each layer contains two separate PCA interpretations:
+
+- `covariance_pca` has `interpretation = "risk_dominance"`. It is PCA on the sample
+  covariance matrix with `ddof=1`; PC1 measures how much total risk variance is dominated
+  by one statistical direction, including asset volatility scale.
+- `correlation_pca` has `interpretation = "structure"`. It is PCA on the sample correlation
+  matrix, equivalently covariance PCA after standardizing each asset's weekly returns;
+  PC1 measures common movement structure after removing volatility scale.
+
+Each PCA object includes `explained_variance_ratio`, `cumulative_explained_variance_ratio`,
+`components`, `pc1_explained_variance_ratio`, `pc1_concentration_ratio`,
+`pc1_severity`, `effective_number_of_bets`, `effective_number_of_bets_ratio`,
+`enb_severity`, `rolling_pc1`, and `pc1_factor_correlations` when factor rows are
+available. Component signs are deterministic: the loading with largest absolute magnitude
+is forced positive.
+
+`pc1_concentration_ratio = pc1_explained_variance_ratio / (1 / n_assets)`. Severity is:
+`low` when `pc1 < 0.40` and concentration `< 2.0`; `moderate` when `pc1 >= 0.40` or
+concentration `>= 2.0`; `high` when `pc1 >= 0.60` or concentration `>= 3.0`; `extreme`
+when `pc1 >= 0.75` or concentration `>= 4.0`.
+
+Effective number of bets is `1 / sum(p_i^2)`, where `p_i` are PCA explained-variance
+shares. `effective_number_of_bets_ratio = ENB / n_assets`. ENB severity is `high` below
+`0.35`, `moderate` below `0.55`, otherwise `low`. Covariance ENB is effective risk bets;
+correlation ENB is structural diversification.
+
+`rolling_pc1` uses a 52-week window and 4-week step. Its summary includes latest, mean,
+std, min, max, p10, p90, trend slope per year, latest-minus-mean, latest-minus-p10,
+latest-minus-p90, window count, and stability severity. Stability severity is `high` when
+the annualized trend slope is greater than `0.10` or latest PC1 is above p90, `moderate`
+when slope is greater than `0.05` or latest is above mean plus one standard deviation,
+otherwise `low`.
+
+`pc1_factor_correlations` correlates PC1 scores with the current named factor matrix on
+the same weekly rows and reports all correlations plus the top three by absolute value.
+For raw PCA this helps label PC1 economically. For residual PCA it is an omitted-structure
+check: strong residual PC1 correlation with a named factor suggests factor leakage,
+definition mismatch, or an incomplete factor model.
+
+CSV artifacts written under `results_csv/` include:
+
+- `portfolio_pca_summary_5y.csv`
+- `portfolio_pca_components_5y.csv`
+- `portfolio_pca_rolling_pc1.csv`
+- `portfolio_pca_pc1_factor_correlations.csv`
+
 ---
 
 ## 9. Historical validation

@@ -38,6 +38,10 @@ FACTOR_COVARIANCE_FORECAST_STEP_WEEKS = 52
 FACTOR_VARIANCE_DECOMP_MIN_OBS = 30
 FACTOR_VARIANCE_DECOMP_EPS = 1e-12
 FACTOR_VARIANCE_DECOMP_NEUTRAL_THRESHOLD = 1e-4
+PORTFOLIO_PCA_MIN_OBS = 52
+PORTFOLIO_PCA_ROLLING_WINDOW_WEEKS = 52
+PORTFOLIO_PCA_ROLLING_STEP_WEEKS = 4
+PORTFOLIO_PCA_EPS = 1e-12
 
 # Breusch–Godfrey LM: lag orders (weekly residuals; same auxiliary regression as in stress spec §8.2)
 FACTOR_REGRESSION_BG_LAGS: tuple[int, ...] = (1, 2, 4)
@@ -450,6 +454,467 @@ def estimate_betas(
     df = pd.DataFrame(betas).T
     df = df.rename(columns={c: FACTOR_TO_BETA_KEY.get(c, f"beta_{c}") for c in factor_cols})
     return df
+
+
+def _portfolio_pca_unavailable(reason: str, **extra: Any) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "status": "unavailable",
+        "reason": reason,
+        "method": "portfolio_asset_pca_weekly",
+        "variance_scale": "weekly",
+        "ddof": 1,
+    }
+    out.update(extra)
+    return out
+
+
+def _pc1_severity(pc1_share: float | None, concentration_ratio: float | None) -> str:
+    if pc1_share is None or concentration_ratio is None:
+        return "unknown"
+    if pc1_share >= 0.75 or concentration_ratio >= 4.0:
+        return "extreme"
+    if pc1_share >= 0.60 or concentration_ratio >= 3.0:
+        return "high"
+    if pc1_share >= 0.40 or concentration_ratio >= 2.0:
+        return "moderate"
+    return "low"
+
+
+def _enb_severity(enb_ratio: float | None) -> str:
+    if enb_ratio is None:
+        return "unknown"
+    if enb_ratio < 0.35:
+        return "high"
+    if enb_ratio < 0.55:
+        return "moderate"
+    return "low"
+
+
+def _portfolio_pca_clean_returns(
+    asset_returns: pd.DataFrame,
+    *,
+    window_weeks: int,
+    min_obs: int = PORTFOLIO_PCA_MIN_OBS,
+) -> tuple[pd.DataFrame, list[str], list[str], dict[str, str]]:
+    if asset_returns is None or asset_returns.empty:
+        return pd.DataFrame(), [], [], {}
+
+    raw = asset_returns.copy()
+    raw.index = pd.to_datetime(raw.index).tz_localize(None)
+    raw = raw.sort_index()
+    raw = raw.apply(pd.to_numeric, errors="coerce")
+
+    eligible = [str(c) for c in raw.columns if raw[c].notna().sum() >= min_obs]
+    excluded_reasons = {
+        str(c): "insufficient_non_null_observations"
+        for c in raw.columns
+        if str(c) not in set(eligible)
+    }
+    if len(eligible) < 2:
+        return pd.DataFrame(), eligible, list(excluded_reasons.keys()), excluded_reasons
+
+    aligned = raw.loc[:, eligible].dropna(how="any")
+    if window_weeks and len(aligned) > int(window_weeks):
+        aligned = aligned.tail(int(window_weeks))
+    if len(aligned) < min_obs:
+        return pd.DataFrame(), eligible, list(excluded_reasons.keys()), excluded_reasons
+    return aligned.astype(float), list(aligned.columns), list(excluded_reasons.keys()), excluded_reasons
+
+
+def _portfolio_pca_matrix(data: pd.DataFrame, mode: str) -> tuple[np.ndarray, np.ndarray, list[str], pd.DataFrame] | None:
+    if data.shape[0] < 2 or data.shape[1] < 2:
+        return None
+    cols = [str(c) for c in data.columns]
+    centered = data.loc[:, cols].astype(float) - data.loc[:, cols].astype(float).mean(axis=0)
+    if mode == "covariance":
+        matrix = centered.cov(ddof=1).values.astype(float)
+        score_frame = centered
+    elif mode == "correlation":
+        std = data.loc[:, cols].astype(float).std(axis=0, ddof=1).replace(0.0, np.nan)
+        if std.isna().any():
+            return None
+        score_frame = centered.divide(std, axis=1)
+        matrix = score_frame.cov(ddof=1).values.astype(float)
+    else:
+        return None
+    matrix = (matrix + matrix.T) / 2.0
+    return matrix, score_frame.values.astype(float), cols, score_frame
+
+
+def _portfolio_pca_top_loadings(loadings: dict[str, float], *, limit: int = 3) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    rows = [{"asset": asset, "loading": float(value)} for asset, value in loadings.items()]
+    positives = sorted([r for r in rows if r["loading"] > 0], key=lambda r: r["loading"], reverse=True)[:limit]
+    negatives = sorted([r for r in rows if r["loading"] < 0], key=lambda r: r["loading"])[:limit]
+    return positives, negatives
+
+
+def _portfolio_pca_core(data: pd.DataFrame, *, mode: str, factor_returns: pd.DataFrame | None = None) -> dict[str, Any]:
+    pca_input = _portfolio_pca_matrix(data, mode)
+    interpretation = "risk_dominance" if mode == "covariance" else "structure"
+    if pca_input is None:
+        return {
+            "status": "unavailable",
+            "reason": "degenerate_pca_input",
+            "pca_type": f"{mode}_pca",
+            "interpretation": interpretation,
+        }
+
+    matrix, score_values, cols, _score_frame = pca_input
+    try:
+        eigenvalues, eigenvectors = np.linalg.eigh(matrix)
+    except Exception as ex:
+        return {
+            "status": "unavailable",
+            "reason": "eigendecomposition_failed",
+            "error": str(ex),
+            "pca_type": f"{mode}_pca",
+            "interpretation": interpretation,
+        }
+
+    order = np.argsort(eigenvalues)[::-1]
+    eigenvalues = np.maximum(eigenvalues[order].astype(float), 0.0)
+    eigenvectors = eigenvectors[:, order].astype(float)
+
+    for j in range(eigenvectors.shape[1]):
+        max_idx = int(np.argmax(np.abs(eigenvectors[:, j])))
+        if eigenvectors[max_idx, j] < 0:
+            eigenvectors[:, j] *= -1.0
+
+    total = float(np.sum(eigenvalues))
+    if not np.isfinite(total) or total <= PORTFOLIO_PCA_EPS:
+        return {
+            "status": "unavailable",
+            "reason": "degenerate_eigenvalues",
+            "pca_type": f"{mode}_pca",
+            "interpretation": interpretation,
+        }
+
+    ratios = eigenvalues / total
+    cumulative = np.cumsum(ratios)
+    n_assets = len(cols)
+    pc1_share = float(ratios[0]) if len(ratios) else None
+    concentration = float(pc1_share * n_assets) if pc1_share is not None else None
+    enb = float(1.0 / np.sum(ratios**2)) if np.sum(ratios**2) > PORTFOLIO_PCA_EPS else None
+    enb_ratio = float(enb / n_assets) if enb is not None and n_assets else None
+    scores = score_values @ eigenvectors
+
+    components: list[dict[str, Any]] = []
+    for i, eig in enumerate(eigenvalues):
+        loadings = {asset: float(eigenvectors[idx, i]) for idx, asset in enumerate(cols)}
+        top_pos, top_neg = _portfolio_pca_top_loadings(loadings)
+        components.append(
+            {
+                "component": f"PC{i + 1}",
+                "eigenvalue": float(eig),
+                "explained_variance_ratio": float(ratios[i]),
+                "cumulative_explained_variance_ratio": float(cumulative[i]),
+                "loadings": loadings,
+                "top_positive_loadings": top_pos,
+                "top_negative_loadings": top_neg,
+            }
+        )
+
+    return {
+        "status": "available",
+        "pca_type": f"{mode}_pca",
+        "interpretation": interpretation,
+        "n_obs": int(data.shape[0]),
+        "n_assets": int(n_assets),
+        "assets": cols,
+        "eigenvalues": [float(x) for x in eigenvalues],
+        "explained_variance_ratio": [float(x) for x in ratios],
+        "cumulative_explained_variance_ratio": [float(x) for x in cumulative],
+        "components": components,
+        "pc1_explained_variance_ratio": pc1_share,
+        "pc1_concentration_ratio": concentration,
+        "pc1_severity": _pc1_severity(pc1_share, concentration),
+        "effective_number_of_bets": enb,
+        "effective_number_of_bets_ratio": enb_ratio,
+        "enb_severity": _enb_severity(enb_ratio),
+        "_pc1_scores": pd.Series(scores[:, 0], index=data.index, dtype=float),
+    }
+
+
+def _portfolio_pca_factor_correlations(pc1_scores: pd.Series, factor_returns: pd.DataFrame | None) -> dict[str, Any]:
+    if factor_returns is None or factor_returns.empty or pc1_scores.empty:
+        return {"status": "unavailable", "reason": "missing_factor_returns"}
+    factors = factor_returns.copy()
+    factors.index = pd.to_datetime(factors.index).tz_localize(None)
+    cols = [c for c in FACTOR_COLUMN_ORDER if c in factors.columns]
+    if not cols:
+        return {"status": "unavailable", "reason": "missing_factor_columns"}
+    common = pc1_scores.index.intersection(factors.index).sort_values()
+    if len(common) < 10:
+        return {"status": "unavailable", "reason": "insufficient_common_rows", "n_obs": int(len(common))}
+    y = pc1_scores.reindex(common).astype(float)
+    x = factors.reindex(common).loc[:, cols].astype(float)
+    out: dict[str, float | None] = {}
+    for col in cols:
+        pair = pd.concat([y.rename("pc1"), x[col].rename(col)], axis=1).dropna()
+        if len(pair) < 10 or pair["pc1"].std(ddof=1) <= PORTFOLIO_PCA_EPS or pair[col].std(ddof=1) <= PORTFOLIO_PCA_EPS:
+            out[str(col)] = None
+        else:
+            out[str(col)] = float(pair["pc1"].corr(pair[col]))
+    top = sorted(
+        [{"factor": k, "correlation": v, "abs_correlation": abs(float(v))} for k, v in out.items() if v is not None],
+        key=lambda row: row["abs_correlation"],
+        reverse=True,
+    )[:3]
+    return {
+        "status": "available",
+        "n_obs": int(len(common)),
+        "correlations": out,
+        "top_abs_correlations": top,
+    }
+
+
+def _portfolio_pca_rolling_pc1(data: pd.DataFrame, *, mode: str) -> dict[str, Any]:
+    n = len(data)
+    window = PORTFOLIO_PCA_ROLLING_WINDOW_WEEKS
+    step = PORTFOLIO_PCA_ROLLING_STEP_WEEKS
+    if n < window or data.shape[1] < 2:
+        return {
+            "status": "unavailable",
+            "reason": "insufficient_rolling_observations",
+            "window_weeks": window,
+            "step_weeks": step,
+            "n_obs": int(n),
+        }
+    endpoints = list(range(window, n + 1, step))
+    if endpoints[-1] != n:
+        endpoints.append(n)
+    rows: list[dict[str, Any]] = []
+    for end in endpoints:
+        sub = data.iloc[end - window : end]
+        pca = _portfolio_pca_core(sub, mode=mode, factor_returns=None)
+        if pca.get("status") != "available":
+            continue
+        rows.append(
+            {
+                "end_date": pd.Timestamp(sub.index[-1]).strftime("%Y-%m-%d"),
+                "n_obs": int(len(sub)),
+                "pc1_explained_variance_ratio": float(pca["pc1_explained_variance_ratio"]),
+                "pc1_concentration_ratio": float(pca["pc1_concentration_ratio"]),
+                "pc1_severity": pca["pc1_severity"],
+                "effective_number_of_bets": float(pca["effective_number_of_bets"]),
+                "effective_number_of_bets_ratio": float(pca["effective_number_of_bets_ratio"]),
+                "enb_severity": pca["enb_severity"],
+            }
+        )
+    if not rows:
+        return {
+            "status": "unavailable",
+            "reason": "no_valid_rolling_windows",
+            "window_weeks": window,
+            "step_weeks": step,
+            "n_obs": int(n),
+        }
+    vals = np.asarray([float(r["pc1_explained_variance_ratio"]) for r in rows], dtype=float)
+    x = np.arange(len(vals), dtype=float) * step
+    slope_per_year = 0.0
+    if len(vals) >= 2 and np.var(x) > PORTFOLIO_PCA_EPS:
+        slope_per_week = float(np.polyfit(x, vals, 1)[0])
+        slope_per_year = slope_per_week * 52.0
+    latest = float(vals[-1])
+    mean = float(np.mean(vals))
+    std = float(np.std(vals, ddof=1)) if len(vals) >= 2 else 0.0
+    p10 = float(np.percentile(vals, 10))
+    p90 = float(np.percentile(vals, 90))
+    severity = "low"
+    if slope_per_year > 0.10 or latest > p90:
+        severity = "high"
+    elif slope_per_year > 0.05 or latest > mean + std:
+        severity = "moderate"
+    return {
+        "status": "available",
+        "window_weeks": window,
+        "step_weeks": step,
+        "rows": rows,
+        "summary": {
+            "latest": latest,
+            "mean": mean,
+            "std": std,
+            "min": float(np.min(vals)),
+            "max": float(np.max(vals)),
+            "p10": p10,
+            "p90": p90,
+            "trend_slope_per_year": slope_per_year,
+            "latest_minus_mean": latest - mean,
+            "latest_minus_p10": latest - p10,
+            "latest_minus_p90": latest - p90,
+            "n_windows": int(len(rows)),
+            "stability_severity": severity,
+        },
+    }
+
+
+def _portfolio_pca_finalize_block(block: dict[str, Any], data: pd.DataFrame, factor_returns: pd.DataFrame | None) -> dict[str, Any]:
+    for mode, key in (("covariance", "covariance_pca"), ("correlation", "correlation_pca")):
+        pca = _portfolio_pca_core(data, mode=mode, factor_returns=factor_returns)
+        scores = pca.pop("_pc1_scores", None)
+        if pca.get("status") == "available" and isinstance(scores, pd.Series):
+            pca["pc1_factor_correlations"] = _portfolio_pca_factor_correlations(scores, factor_returns)
+            pca["rolling_pc1"] = _portfolio_pca_rolling_pc1(data, mode=mode)
+        block[key] = pca
+    return block
+
+
+def _portfolio_pca_residual_returns(asset_returns: pd.DataFrame, factor_returns: pd.DataFrame | None) -> tuple[pd.DataFrame, dict[str, Any]]:
+    if factor_returns is None or factor_returns.empty:
+        return pd.DataFrame(), {"status": "unavailable", "reason": "missing_factor_returns"}
+    factors = factor_returns.copy()
+    factors.index = pd.to_datetime(factors.index).tz_localize(None)
+    factor_cols = [c for c in FACTOR_COLUMN_ORDER if c in factors.columns]
+    if not factor_cols:
+        return pd.DataFrame(), {"status": "unavailable", "reason": "missing_factor_columns"}
+    common = asset_returns.index.intersection(factors.index).sort_values()
+    y_frame = asset_returns.reindex(common).dropna(how="any")
+    x_frame = factors.reindex(y_frame.index).loc[:, factor_cols].dropna(how="any")
+    y_frame = y_frame.reindex(x_frame.index).dropna(how="any")
+    x_frame = x_frame.reindex(y_frame.index)
+    if len(y_frame) < PORTFOLIO_PCA_MIN_OBS or y_frame.shape[1] < 2:
+        return pd.DataFrame(), {
+            "status": "unavailable",
+            "reason": "insufficient_residual_common_rows",
+            "n_obs": int(len(y_frame)),
+        }
+    X = np.column_stack([np.ones(len(x_frame)), x_frame.values.astype(float)])
+    residuals: dict[str, np.ndarray] = {}
+    for asset in y_frame.columns:
+        y = y_frame[asset].values.astype(float)
+        try:
+            beta, *_ = np.linalg.lstsq(X, y, rcond=None)
+            residuals[str(asset)] = y - X @ beta
+        except Exception:
+            continue
+    if len(residuals) < 2:
+        return pd.DataFrame(), {"status": "unavailable", "reason": "insufficient_residual_assets"}
+    return pd.DataFrame(residuals, index=y_frame.index), {
+        "status": "available",
+        "factor_cols": list(factor_cols),
+        "n_obs": int(len(y_frame)),
+    }
+
+
+def portfolio_pca_diagnostics_from_weekly_returns(
+    asset_returns: pd.DataFrame,
+    *,
+    factor_returns: pd.DataFrame | None = None,
+    window_weeks: int = FACTOR_WEEKS_5Y,
+) -> dict[str, Any]:
+    """Portfolio-asset PCA diagnostics from weekly returns; no network access."""
+    clean, included, excluded, excluded_reasons = _portfolio_pca_clean_returns(
+        asset_returns,
+        window_weeks=window_weeks,
+    )
+    base = {
+        "method": "portfolio_asset_pca_weekly",
+        "variance_scale": "weekly",
+        "ddof": 1,
+        "window_weeks": int(window_weeks),
+        "included_assets": included,
+        "excluded_assets": excluded,
+        "excluded_asset_reasons": excluded_reasons,
+        "n_obs": int(len(clean)),
+        "n_assets": int(clean.shape[1]) if not clean.empty else int(len(included)),
+    }
+    if clean.empty or clean.shape[1] < 2 or len(clean) < PORTFOLIO_PCA_MIN_OBS:
+        return _portfolio_pca_unavailable(
+            "insufficient_aligned_weekly_returns",
+            **base,
+        )
+
+    out: dict[str, Any] = {"status": "available", **base}
+    raw_block: dict[str, Any] = {
+        "status": "available",
+        "return_layer": "raw",
+        "n_obs": int(len(clean)),
+        "n_assets": int(clean.shape[1]),
+    }
+    out["raw"] = _portfolio_pca_finalize_block(raw_block, clean, factor_returns)
+
+    residual_returns, residual_meta = _portfolio_pca_residual_returns(clean, factor_returns)
+    residual_block: dict[str, Any] = {
+        "return_layer": "residual",
+        **residual_meta,
+    }
+    if residual_meta.get("status") == "available":
+        residual_block["n_assets"] = int(residual_returns.shape[1])
+        out["residual"] = _portfolio_pca_finalize_block(residual_block, residual_returns, factor_returns)
+    else:
+        out["residual"] = residual_block
+    return out
+
+
+def portfolio_pca_diagnostics(
+    *,
+    weights: dict[str, float],
+    tickers: list[str],
+    analysis_end_str: str,
+    window_weeks: int = FACTOR_WEEKS_5Y,
+    factor_returns: pd.DataFrame | None = None,
+) -> dict[str, Any]:
+    """Download portfolio asset history and build weekly PCA diagnostics."""
+    from src.data_yf import download_all
+
+    use = [str(t).strip() for t in tickers if str(t).strip() and float(weights.get(t, 0.0)) > 0.0]
+    if not use:
+        use = [str(t).strip() for t in tickers if str(t).strip()]
+    if len(use) < 2:
+        return _portfolio_pca_unavailable(
+            "insufficient_tickers",
+            window_weeks=int(window_weeks),
+            included_assets=use,
+            excluded_assets=[],
+            n_assets=len(use),
+            n_obs=0,
+        )
+
+    end_ts = pd.Timestamp(analysis_end_str)
+    end_dl = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    start_ts = end_ts - pd.DateOffset(weeks=int(window_weeks) + FACTOR_DOWNLOAD_BUFFER_WEEKS)
+    start_dl = start_ts.strftime("%Y-%m-%d")
+
+    daily = download_all(use, start_dl, end_dl)
+    daily_prices: dict[str, pd.Series] = {}
+    excluded: dict[str, str] = {}
+    for ticker in use:
+        df = daily.get(ticker)
+        if df is None or df.empty or "Close" not in df.columns:
+            excluded[ticker] = "missing_daily_close"
+            continue
+        daily_prices[ticker] = df["Close"].copy()
+
+    weekly = asset_weekly_returns_from_daily(daily_prices, start_dl, end_dl)
+    if weekly.empty:
+        return _portfolio_pca_unavailable(
+            "empty_weekly_returns",
+            window_weeks=int(window_weeks),
+            included_assets=[],
+            excluded_assets=list(excluded.keys()),
+            excluded_asset_reasons=excluded,
+            n_assets=0,
+            n_obs=0,
+        )
+
+    factors = factor_returns
+    if factors is None or factors.empty:
+        try:
+            factors = build_factor_matrix(start_dl, end_dl)
+        except Exception:
+            factors = pd.DataFrame()
+
+    out = portfolio_pca_diagnostics_from_weekly_returns(
+        weekly,
+        factor_returns=factors,
+        window_weeks=window_weeks,
+    )
+    merged_reasons = dict(out.get("excluded_asset_reasons") or {})
+    merged_reasons.update(excluded)
+    out["excluded_asset_reasons"] = merged_reasons
+    out["excluded_assets"] = sorted(set(out.get("excluded_assets") or []) | set(excluded.keys()))
+    out["download_window"] = {"start": start_dl, "end": end_dl}
+    return out
 
 
 def _ols_with_inference(

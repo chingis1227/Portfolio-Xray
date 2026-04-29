@@ -9,6 +9,8 @@ Current analytics factor order is `equity`, `real_rates`, `inflation`, `credit`,
 
 **Factor covariance forecast quality** (`stress_report.json.factor_covariance.forecast_quality`) is diagnostic-only and non-binding. It compares a 260-week weekly factor covariance forecast with realized factor portfolio risk over the next 52 weekly rows, using 52-week non-overlapping steps and sample `ddof=1` covariance/volatility.
 
+**Portfolio PCA diagnostics** (`stress_report.json.portfolio_pca`) are diagnostic-only and non-binding. They use weekly adjusted-close returns for current positive-weight portfolio assets, with a 260-week default window ending at `analysis_end`. Interpret covariance PCA as `risk_dominance` because volatility scale is included; interpret correlation PCA as `structure` because asset volatility is standardized. Raw PCA and factor-residual PCA must be interpreted separately.
+
 **Portfolio weights** are the output of optimization (constraints + client metrics), not user input. Do not require or encourage manual weight entry in config; weights are exported after optimization and can be saved to config.
 
 ## Frequency standard
