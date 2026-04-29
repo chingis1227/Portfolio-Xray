@@ -408,6 +408,7 @@ def main() -> None:
             compute_portfolio_factor_beta_oos_weekly,
             compute_portfolio_rolling_factor_betas_monthly,
             compute_portfolio_rolling_factor_betas_weekly,
+            build_factor_beta_diagnostic_overlay,
             enrich_historical_results_with_factor_attribution,
             factor_beta_oos_stability_diagnostics,
             factor_beta_stability_diagnostics,
@@ -578,6 +579,32 @@ def main() -> None:
             )
         except Exception as e:
             stress_report["factor_beta_shock_oos_error"] = str(e)
+        try:
+            overlay = build_factor_beta_diagnostic_overlay(
+                weights=final_weights,
+                tickers=stress_tickers,
+                scenario_results=stress_report.get("scenario_results") or [],
+                historical_results=stress_report.get("historical_results") or [],
+                factor_betas_5y=stress_report.get("factor_betas_5y") or {},
+                factor_betas_10y=stress_report.get("factor_betas_10y") or {},
+                factor_betas_stability=stress_report.get("factor_betas_stability") or {},
+                factor_beta_shock_oos_raw=stress_report.get("factor_beta_shock_oos"),
+                rolling_window_weeks=FACTOR_WEEKS_3Y,
+            )
+            stress_report["factor_betas_adjusted"] = overlay.get("factor_betas_adjusted") or {}
+            stress_report["synthetic_factor_pnl_adjusted"] = overlay.get("synthetic_factor_pnl_adjusted") or {}
+            stress_report["factor_beta_shock_oos_adjusted"] = overlay.get("factor_beta_shock_oos_adjusted") or {}
+            stress_report["historical_results"] = overlay.get("historical_results_adjusted") or stress_report.get("historical_results") or []
+            stress_report["raw_vs_adjusted_pnl_signal"] = overlay.get("raw_vs_adjusted_pnl_signal") or {}
+            material_signal = stress_report["raw_vs_adjusted_pnl_signal"]
+            if isinstance(material_signal, dict) and material_signal.get("material_difference_any"):
+                logger.info(
+                    "Factor beta adjusted overlay found material raw-vs-adjusted PnL differences: synthetic=%s historical=%s",
+                    ", ".join(material_signal.get("material_scenarios") or []) or "none",
+                    ", ".join(material_signal.get("material_historical_episodes") or []) or "none",
+                )
+        except Exception as e:
+            stress_report["factor_beta_adjusted_overlay_error"] = str(e)
 
         try:
             factor_cov = factor_covariance_analytics(

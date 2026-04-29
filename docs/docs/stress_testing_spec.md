@@ -8,6 +8,7 @@
 > **2026-04-28 update:** Portfolio factor regressions include **Breusch-Pagan** heteroskedasticity diagnostics on the same OLS residuals/rows as the reported factor betas.
 > **2026-04-28 update:** Factor analytics now use a **nine-factor** weekly registry (`equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`, `oil`). Synthetic stress scenarios and recession calibration remain a **six-shock** engine and only map the first six factors into `shock_*` keys.
 > **2026-04-29 update:** Historical stress rows now include **model-based factor attribution** when factor history is available. The primary attribution uses 5Y portfolio betas times realized episode factor shocks and must be labeled as model-based explainability, not pure realized causal decomposition.
+> **2026-04-29 update:** Stress reports now include a **diagnostic-only stability-adjusted beta overlay**. It shrinks unstable 5Y factor betas toward 10Y anchors, flags strong 5Y-vs-10Y divergence, and reports material raw-vs-adjusted factor-model PnL deltas.
 
 ---
 
@@ -105,6 +106,8 @@ For each scenario the production `run_stress` implementation outputs (see `scena
 - **top1_rc_asset**, **top1_rc_pct**, **top3_rc_assets**, **top3_rc_sum_pct** (RC_vol вЂ” share of portfolio variance under base or stress covariance)
 - **top3_loss_assets** (tickers with largest negative PnL contribution in the scenario)
 - **loss_ok**, **pass** (equals **loss_ok**), **diagnostic_codes** (loss-related only on synthetic rows)
+
+Raw scenario rows remain the primary stress contract. Any stability-adjusted factor overlay must be reported in separate top-level blocks and must not overwrite `scenario_results[*].pnl_by_factor_pct` or the raw scenario PnL fields.
 
 
 ---
@@ -256,12 +259,13 @@ To verify that factor betas explain stress episodes out-of-sample (not only in-s
 - Model PnL variants:
   - `pnl_model_5y` using `factor_betas_5y`
   - `pnl_model_10y` using `factor_betas_10y`
+  - `pnl_model_adjusted` using `factor_betas_adjusted.adjusted`
   - `pnl_model_roll3y_pre` using betas estimated on rolling 3Y window ending right before episode start
 - Factor contributions in this diagnostic follow the full analytics registry, so `beta_vix`, `beta_us_growth`, and `beta_oil` should appear when factor history and betas are available.
 - Real benchmark:
   - `pnl_real_episode` from historical episode portfolio return
 - Error fields:
-  - `abs_error_5y`, `abs_error_10y`, `abs_error_roll3y_pre`
+  - `abs_error_5y`, `abs_error_10y`, `abs_error_adjusted`, `abs_error_roll3y_pre`
 - Summary:
   - mean absolute error by method over episodes with available `pnl_real_episode`.
 
@@ -281,6 +285,48 @@ Each enriched historical row should include:
 `method` is `model_based_beta_times_realized_factor_shock`. The required caveat is that this is beta times realized factor shock and **not** a pure realized causal decomposition. `top_factor_drivers` is sorted by absolute model contribution, and `largest_negative_factor` is the single most negative model contribution when one exists.
 
 This enrichment is diagnostic / non-binding. It does not change stress pass/fail, mandate status, optimizer behavior, or weight release.
+
+### 8.7A Stability-adjusted beta overlay
+
+`stress_report.json` must also include a diagnostic-only block `factor_betas_adjusted` with:
+
+- `raw`: the raw 5Y beta map copied from `factor_betas_5y`
+- `adjusted`: stability-adjusted beta map
+- `confidence_by_beta`: shrinkage confidence per beta
+- `severity_by_beta`: copied `combined_severity` per beta when available
+- `anchor_source`: `10y_when_available_else_5y_raw`
+- `shrinkage_method`: fixed code string describing severity-weighted shrinkage toward the 10Y anchor
+- `adjustment_reason_by_beta`: short reason string per beta
+- `beta_5y_vs_10y_divergence`: per-beta divergence diagnostics plus `strong_divergence_any` and `strong_divergence_betas`
+
+The fixed severity-to-confidence map is:
+
+- `low -> 1.00`
+- `moderate -> 0.75`
+- `high -> 0.50`
+- `unknown -> 0.60`
+
+For each beta, source beta is raw `factor_betas_5y[beta_key]`, anchor beta is `factor_betas_10y[beta_key]` when available else the same 5Y beta, and adjusted beta is `beta_adjusted = c * beta_5y + (1 - c) * beta_anchor`.
+
+Strong 5Y-vs-10Y divergence is `true` if signs differ or `relative_gap = abs(beta_5y - beta_10y) / max(abs(beta_5y), 0.05)` is at least `1.0`.
+
+This block is diagnostic only and must not replace raw `factor_betas_5y`, `factor_betas`, or the primary `run_stress` portfolio beta input.
+
+### 8.7B Adjusted synthetic and historical PnL signal
+
+The stress report must keep raw scenario rows unchanged and add separate top-level diagnostics:
+
+- `synthetic_factor_pnl_adjusted`
+- `factor_beta_shock_oos_adjusted`
+- `raw_vs_adjusted_pnl_signal`
+
+`synthetic_factor_pnl_adjusted.scenarios[*]` must include `scenario_id`, `pnl_model_raw`, `pnl_model_adjusted`, `adjusted_minus_raw`, `pnl_abs_delta`, `pnl_relative_delta`, `pnl_by_factor_pct_raw`, and `pnl_by_factor_pct_adjusted`.
+
+`raw_vs_adjusted_pnl_signal` must include `synthetic`, `historical`, `material_difference_any`, and `material_scenarios`.
+
+The material-difference rule is fixed in code: `material_difference = true` if `pnl_relative_delta >= 0.25` or `pnl_abs_delta >= 0.01`.
+
+Historical rows may carry parallel adjusted attribution convenience fields with `_adjusted` suffixes such as `historical_factor_attribution_adjusted`, `pnl_by_factor_pct_adjusted`, and `factor_model_pnl_pct_adjusted`. These adjusted fields are diagnostic overlays and do not replace the primary raw 5Y attribution.
 
 ---
 

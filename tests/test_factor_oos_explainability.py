@@ -74,6 +74,16 @@ def test_factor_oos_beta_shock_explainability_basic(monkeypatch) -> None:
             "beta_us_growth": 0.02,
             "beta_oil": -0.1,
         },
+        factor_betas_adjusted={
+            "beta_eq": 0.35,
+            "beta_rr": -1.0,
+            "beta_credit": -0.2,
+            "beta_usd": -0.2,
+            "beta_cmd": 0.05,
+            "beta_vix": 0.20,
+            "beta_us_growth": 0.03,
+            "beta_oil": -0.15,
+        },
         rolling_window_weeks=sf.FACTOR_WEEKS_3Y,
     )
     assert out.get("method") == "episode_beta_times_realized_factor_shock"
@@ -82,12 +92,15 @@ def test_factor_oos_beta_shock_explainability_basic(monkeypatch) -> None:
     assert ep["episode"] == "X"
     assert ep["pnl_real_episode"] == -0.03
     assert "pnl_model_5y" in ep and "pnl_model_10y" in ep and "pnl_model_roll3y_pre" in ep
+    assert "pnl_model_adjusted" in ep
     assert "abs_error_5y" in ep and "abs_error_roll3y_pre" in ep
     assert "beta_vix" in ep["factor_contrib_5y"]
     assert "beta_us_growth" in ep["factor_contrib_10y"]
+    assert "beta_eq" in ep["factor_contrib_adjusted"]
     assert "beta_oil" in ep["factor_contrib_roll3y_pre"]
     summary = out.get("summary") or {}
     assert "mean_abs_error_5y" in summary
+    assert "mean_abs_error_adjusted" in summary
 
     enriched = sf.enrich_historical_results_with_factor_attribution(hist, out, beta_source="5y")
     assert enriched[0]["factor_attribution_method"] == sf.HISTORICAL_FACTOR_ATTRIBUTION_METHOD
@@ -98,3 +111,8 @@ def test_factor_oos_beta_shock_explainability_basic(monkeypatch) -> None:
     assert enriched[0]["factor_model_error_pct"] == ep["pnl_model_5y"] - hist[0]["pnl_real_episode"]
     assert enriched[0]["top_factor_drivers"][0]["beta_key"] == "beta_eq"
     assert enriched[0]["largest_negative_factor"]["beta_key"] == "beta_eq"
+
+    enriched_adjusted = sf.enrich_historical_results_with_adjusted_factor_attribution(hist, out)
+    assert enriched_adjusted[0]["factor_attribution_beta_source_adjusted"] == "adjusted"
+    assert enriched_adjusted[0]["pnl_by_factor_pct_adjusted"]["beta_eq"] == ep["factor_contrib_adjusted"]["beta_eq"]
+    assert enriched_adjusted[0]["factor_model_pnl_pct_adjusted"] == ep["pnl_model_adjusted"]

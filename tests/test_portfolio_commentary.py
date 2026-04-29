@@ -121,6 +121,45 @@ def test_write_stress_commentary_from_stress_report() -> None:
             ],
             "factor_betas_5y": {"beta_eq": 0.77, "beta_vix": -0.12, "beta_us_growth": 0.08},
             "factor_betas_10y": {"beta_eq": 0.81, "beta_oil": 0.11},
+            "factor_betas_adjusted": {
+                "raw": {"beta_eq": 0.77, "beta_vix": -0.12, "beta_us_growth": 0.08},
+                "adjusted": {"beta_eq": 0.74, "beta_vix": -0.08, "beta_us_growth": 0.08},
+                "severity_by_beta": {"beta_eq": "high", "beta_vix": "moderate", "beta_us_growth": "low"},
+                "adjustment_reason_by_beta": {
+                    "beta_eq": "high_severity_shrink_toward_10y_anchor",
+                    "beta_vix": "moderate_severity_shrink_toward_10y_anchor",
+                    "beta_us_growth": "low_severity_keep_5y_raw",
+                },
+                "beta_5y_vs_10y_divergence": {
+                    "strong_divergence_any": True,
+                    "strong_divergence_betas": ["beta_vix"],
+                },
+            },
+            "raw_vs_adjusted_pnl_signal": {
+                "material_difference_any": True,
+                "material_scenarios": ["equity_shock"],
+                "material_historical_episodes": ["2020"],
+                "synthetic": [
+                    {
+                        "scenario_id": "equity_shock",
+                        "pnl_raw": -0.31,
+                        "pnl_adjusted": -0.24,
+                        "pnl_delta": 0.07,
+                        "pnl_relative_delta": 0.2258,
+                        "material_difference": True,
+                    }
+                ],
+                "historical": [
+                    {
+                        "episode": "2020",
+                        "pnl_raw": -0.072,
+                        "pnl_adjusted": -0.051,
+                        "pnl_delta": 0.021,
+                        "pnl_relative_delta": 0.2917,
+                        "material_difference": True,
+                    }
+                ],
+            },
         }
         out = write_stress_commentary(final, stress_report=stress, analysis_end="2026-02-28")
         assert out is not None and out.name == "stress_commentary.txt"
@@ -416,6 +455,9 @@ def test_write_stress_commentary_from_stress_report() -> None:
         assert "Factor beta stability diagnostics" in text2
         assert "Severity distribution warning" in text2
         assert "OOS=high" in text2
+        assert "Stability-adjusted factor beta overlay" in text2
+        assert "Strong 5Y vs 10Y divergence" in text2
+        assert "Material raw vs adjusted synthetic PnL differences" in text2
         assert "Factor covariance matrix" in text2
         assert "data_driven" in text2
         assert "hypothetical" in text2

@@ -55,6 +55,17 @@ FACTOR_OOS_HOLDOUT_WEEKS = 52
 FACTOR_OOS_HOLDOUT_MONTHS = 12
 FACTOR_STABILITY_MIN_ABS_BETA = 0.05
 FACTOR_STABILITY_ZERO_EPS = 0.01
+FACTOR_BETA_ADJUSTED_CONFIDENCE_BY_SEVERITY: dict[str, float] = {
+    "low": 1.00,
+    "moderate": 0.75,
+    "high": 0.50,
+    "unknown": 0.60,
+}
+FACTOR_BETA_ADJUSTED_ANCHOR_SOURCE = "10y_when_available_else_5y_raw"
+FACTOR_BETA_ADJUSTED_METHOD = "severity_weighted_shrinkage_to_10y_anchor"
+FACTOR_BETA_DIVERGENCE_RELATIVE_GAP_STRONG_GTE = 1.0
+FACTOR_RAW_VS_ADJUSTED_PNL_RELATIVE_DELTA_MATERIAL_GTE = 0.25
+FACTOR_RAW_VS_ADJUSTED_PNL_ABS_DELTA_MATERIAL_GTE = 0.01
 FACTOR_STABILITY_THRESHOLDS: dict[str, Any] = {
     "sign": {
         "dominant_share_high_lt": 0.65,
@@ -334,6 +345,17 @@ BETA_KEY_TO_FACTOR = {spec.beta_key: spec.column for spec in FACTOR_DEFINITIONS}
 BETA_ROW_ORDER: tuple[str, ...] = tuple(spec.beta_key for spec in FACTOR_DEFINITIONS)
 BETA_KEY_TO_DISPLAY_NAME = {spec.beta_key: spec.display_name for spec in FACTOR_DEFINITIONS}
 FACTOR_COLUMN_ORDER: tuple[str, ...] = tuple(spec.column for spec in FACTOR_DEFINITIONS)
+FACTOR_BETA_TO_SYNTHETIC_SHOCK_KEY = {
+    "beta_eq": "shock_eq",
+    "beta_rr": "shock_rr",
+    "beta_credit": "shock_credit",
+    "beta_inf": "shock_inf",
+    "beta_usd": "shock_usd",
+    "beta_cmd": "shock_cmd",
+    "beta_vix": "shock_vix",
+    "beta_us_growth": "shock_us_growth",
+    "beta_oil": "shock_oil",
+}
 
 
 def get_factor_beta_row_order(*, stress_only: bool = False) -> tuple[str, ...]:
@@ -343,6 +365,26 @@ def get_factor_beta_row_order(*, stress_only: bool = False) -> tuple[str, ...]:
 
 def get_factor_display_name(beta_key: str) -> str:
     return BETA_KEY_TO_DISPLAY_NAME.get(beta_key, beta_key)
+
+
+def _ordered_beta_keys(*maps: Any) -> list[str]:
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for key in BETA_ROW_ORDER:
+        if any(isinstance(m, dict) and key in m for m in maps):
+            ordered.append(key)
+            seen.add(key)
+    extra = sorted(
+        {
+            str(key)
+            for m in maps
+            if isinstance(m, dict)
+            for key in m.keys()
+            if str(key) not in seen
+        }
+    )
+    ordered.extend(extra)
+    return ordered
 
 
 def _build_factor_frame(start: str, end: str, *, monthly: bool) -> pd.DataFrame:
@@ -1533,6 +1575,7 @@ def factor_oos_beta_shock_explainability(
     historical_results: list[dict[str, Any]],
     factor_betas_5y: dict[str, float] | None,
     factor_betas_10y: dict[str, float] | None,
+    factor_betas_adjusted: dict[str, float] | None = None,
     rolling_window_weeks: int = FACTOR_WEEKS_3Y,
 ) -> dict[str, Any]:
     """
@@ -1551,6 +1594,7 @@ def factor_oos_beta_shock_explainability(
     }
     b5 = factor_betas_5y or {}
     b10 = factor_betas_10y or {}
+    badj = factor_betas_adjusted or {}
     if not historical_results:
         out["error"] = "historical_results_empty"
         return out
@@ -1570,6 +1614,7 @@ def factor_oos_beta_shock_explainability(
     abs_err_5: list[float] = []
     abs_err_10: list[float] = []
     abs_err_r3: list[float] = []
+    abs_err_adj: list[float] = []
 
     for row in historical_results:
         ep = str(row.get("episode", ""))
@@ -1593,6 +1638,7 @@ def factor_oos_beta_shock_explainability(
         shock = fac.sum()
         pnl5, c5 = _model_pnl(b5, shock)
         pnl10, c10 = _model_pnl(b10, shock)
+        pnl_adj, c_adj = _model_pnl(badj, shock)
 
         pre_end = (pd.Timestamp(start) - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
         r3 = portfolio_factor_regression_weekly(
@@ -1609,6 +1655,8 @@ def factor_oos_beta_shock_explainability(
             abs_err_5.append(abs(pnl5 - float(pnl_real)))
             abs_err_10.append(abs(pnl10 - float(pnl_real)))
             abs_err_r3.append(abs(pnl3 - float(pnl_real)))
+            if badj:
+                abs_err_adj.append(abs(pnl_adj - float(pnl_real)))
 
         out["episodes"].append({
             "episode": ep,
@@ -1618,25 +1666,31 @@ def factor_oos_beta_shock_explainability(
             "pnl_real_episode": float(pnl_real) if isinstance(pnl_real, (int, float)) else None,
             "pnl_model_5y": float(pnl5),
             "pnl_model_10y": float(pnl10),
+            "pnl_model_adjusted": float(pnl_adj),
             "pnl_model_roll3y_pre": float(pnl3),
             "abs_error_5y": (abs(pnl5 - float(pnl_real)) if isinstance(pnl_real, (int, float)) else None),
             "abs_error_10y": (abs(pnl10 - float(pnl_real)) if isinstance(pnl_real, (int, float)) else None),
+            "abs_error_adjusted": (abs(pnl_adj - float(pnl_real)) if isinstance(pnl_real, (int, float)) else None),
             "abs_error_roll3y_pre": (abs(pnl3 - float(pnl_real)) if isinstance(pnl_real, (int, float)) else None),
             "factor_shock_sum": {k: float(v) for k, v in shock.items()},
             "factor_contrib_5y": {k: float(v) for k, v in c5.items()},
             "factor_contrib_10y": {k: float(v) for k, v in c10.items()},
+            "factor_contrib_adjusted": {k: float(v) for k, v in c_adj.items()},
             "factor_contrib_roll3y_pre": {k: float(v) for k, v in c3.items()},
             "roll3y_pre_analysis_end": pre_end,
             "roll3y_pre_betas": {k: float(v) for k, v in (b3.items() if isinstance(b3, dict) else [])},
         })
 
     if abs_err_5 and abs_err_10 and abs_err_r3:
-        out["summary"] = {
+        summary: dict[str, Any] = {
             "mean_abs_error_5y": float(np.mean(abs_err_5)),
             "mean_abs_error_10y": float(np.mean(abs_err_10)),
             "mean_abs_error_roll3y_pre": float(np.mean(abs_err_r3)),
             "n_episodes_with_real_pnl": int(len(abs_err_5)),
         }
+        if abs_err_adj:
+            summary["mean_abs_error_adjusted"] = float(np.mean(abs_err_adj))
+        out["summary"] = summary
     return out
 
 
@@ -1668,11 +1722,305 @@ def _factor_driver_rows(contrib: dict[str, Any], *, top_n: int = 3) -> list[dict
     return rows[:top_n]
 
 
-def enrich_historical_results_with_factor_attribution(
+def build_factor_beta_adjustment_overlay(
+    factor_betas_5y: dict[str, Any] | None,
+    factor_betas_10y: dict[str, Any] | None,
+    factor_betas_stability: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Build stability-adjusted factor beta overlay without changing raw beta outputs."""
+    raw_5y = factor_betas_5y or {}
+    raw_10y = factor_betas_10y or {}
+    stability_by_beta = (
+        (factor_betas_stability or {}).get("by_beta")
+        if isinstance(factor_betas_stability, dict)
+        else {}
+    ) or {}
+    beta_keys = _ordered_beta_keys(raw_5y, raw_10y, stability_by_beta)
+    adjusted: dict[str, float] = {}
+    confidence_by_beta: dict[str, float] = {}
+    severity_by_beta: dict[str, str] = {}
+    reason_by_beta: dict[str, str] = {}
+    divergence_by_beta: dict[str, Any] = {}
+    strong_divergence_betas: list[str] = []
+
+    for beta_key in beta_keys:
+        raw5 = _safe_float(raw_5y.get(beta_key))
+        raw10 = _safe_float(raw_10y.get(beta_key))
+        sev = "unknown"
+        if isinstance(stability_by_beta.get(beta_key), dict):
+            sev = str(stability_by_beta[beta_key].get("combined_severity", "unknown"))
+        if sev not in FACTOR_BETA_ADJUSTED_CONFIDENCE_BY_SEVERITY:
+            sev = "unknown"
+        confidence = float(FACTOR_BETA_ADJUSTED_CONFIDENCE_BY_SEVERITY[sev])
+        confidence_by_beta[beta_key] = confidence
+        severity_by_beta[beta_key] = sev
+
+        beta_anchor = raw10 if raw10 is not None else raw5
+        beta_source = raw5 if raw5 is not None else raw10
+        if beta_source is None:
+            adjusted[beta_key] = 0.0
+            reason_by_beta[beta_key] = "beta_missing_keep_zero"
+        elif beta_anchor is None:
+            adjusted[beta_key] = float(beta_source)
+            reason_by_beta[beta_key] = "anchor_missing_keep_raw"
+        else:
+            adjusted_val = confidence * float(beta_source) + (1.0 - confidence) * float(beta_anchor)
+            adjusted[beta_key] = float(adjusted_val)
+            if raw10 is None:
+                reason_by_beta[beta_key] = "10y_anchor_missing_keep_5y_raw"
+            elif sev == "low":
+                reason_by_beta[beta_key] = "low_severity_keep_5y_raw"
+            else:
+                reason_by_beta[beta_key] = f"{sev}_severity_shrink_toward_10y_anchor"
+
+        abs_gap = abs(float(raw5) - float(raw10)) if raw5 is not None and raw10 is not None else None
+        rel_gap = (
+            abs_gap / max(abs(float(raw5)), FACTOR_STABILITY_MIN_ABS_BETA)
+            if abs_gap is not None and raw5 is not None
+            else None
+        )
+        sign_mismatch = (
+            raw5 is not None and raw10 is not None and _beta_sign(float(raw5)) * _beta_sign(float(raw10)) < 0
+        )
+        strong_divergence = bool(
+            sign_mismatch
+            or (
+                rel_gap is not None
+                and rel_gap >= FACTOR_BETA_DIVERGENCE_RELATIVE_GAP_STRONG_GTE
+            )
+        )
+        divergence_by_beta[beta_key] = {
+            "beta_5y": float(raw5) if raw5 is not None else None,
+            "beta_10y": float(raw10) if raw10 is not None else None,
+            "absolute_gap": float(abs_gap) if abs_gap is not None else None,
+            "relative_gap": float(rel_gap) if rel_gap is not None else None,
+            "sign_mismatch": bool(sign_mismatch),
+            "strong_divergence": strong_divergence,
+        }
+        if strong_divergence:
+            strong_divergence_betas.append(beta_key)
+
+    return {
+        "raw": {str(k): float(v) for k, v in raw_5y.items() if _safe_float(v) is not None},
+        "adjusted": adjusted,
+        "confidence_by_beta": confidence_by_beta,
+        "severity_by_beta": severity_by_beta,
+        "anchor_source": FACTOR_BETA_ADJUSTED_ANCHOR_SOURCE,
+        "shrinkage_method": FACTOR_BETA_ADJUSTED_METHOD,
+        "adjustment_reason_by_beta": reason_by_beta,
+        "beta_5y_vs_10y_divergence": {
+            "by_beta": divergence_by_beta,
+            "strong_divergence_any": bool(strong_divergence_betas),
+            "strong_divergence_betas": strong_divergence_betas,
+            "relative_gap_strong_gte": FACTOR_BETA_DIVERGENCE_RELATIVE_GAP_STRONG_GTE,
+        },
+    }
+
+
+def build_synthetic_factor_pnl_adjusted_overlay(
+    scenario_results: list[dict[str, Any]],
+    raw_betas: dict[str, Any] | None,
+    adjusted_betas: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Compute synthetic factor PnL using raw and adjusted betas side by side."""
+    overlay_rows: list[dict[str, Any]] = []
+    raw_map = raw_betas or {}
+    adj_map = adjusted_betas or {}
+    for row in scenario_results or []:
+        if not isinstance(row, dict):
+            continue
+        shock = row.get("shock_vector") or {}
+        if not isinstance(shock, dict):
+            continue
+        pnl_raw, contrib_raw = 0.0, {}
+        pnl_adj, contrib_adj = 0.0, {}
+        for beta_key in _ordered_beta_keys(raw_map, adj_map):
+            shock_key = FACTOR_BETA_TO_SYNTHETIC_SHOCK_KEY.get(beta_key)
+            if shock_key is None:
+                continue
+            shock_val = _safe_float(shock.get(shock_key))
+            if shock_val is None:
+                continue
+            raw_val = float(raw_map.get(beta_key, 0.0))
+            adj_val = float(adj_map.get(beta_key, 0.0))
+            contrib_raw[beta_key] = float(raw_val * shock_val)
+            contrib_adj[beta_key] = float(adj_val * shock_val)
+            pnl_raw += contrib_raw[beta_key]
+            pnl_adj += contrib_adj[beta_key]
+        pnl_delta = float(pnl_adj - pnl_raw)
+        pnl_abs_delta = abs(pnl_delta)
+        pnl_relative_delta = pnl_abs_delta / max(abs(float(pnl_raw)), 0.01)
+        overlay_rows.append(
+            {
+                "scenario_id": str(row.get("scenario_id", "")),
+                "pnl_model_raw": float(pnl_raw),
+                "pnl_model_adjusted": float(pnl_adj),
+                "adjusted_minus_raw": pnl_delta,
+                "pnl_abs_delta": float(pnl_abs_delta),
+                "pnl_relative_delta": float(pnl_relative_delta),
+                "pnl_by_factor_pct_raw": {str(k): float(v) for k, v in contrib_raw.items() if abs(float(v)) > 0.0},
+                "pnl_by_factor_pct_adjusted": {str(k): float(v) for k, v in contrib_adj.items() if abs(float(v)) > 0.0},
+            }
+        )
+    return {
+        "method": "raw_vs_stability_adjusted_beta_overlay",
+        "scenarios": overlay_rows,
+    }
+
+
+def build_raw_vs_adjusted_pnl_signal(
+    synthetic_overlay: dict[str, Any] | None,
+    factor_beta_shock_oos_raw: dict[str, Any] | None,
+    factor_beta_shock_oos_adjusted: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Summarize when adjusted beta materially changes factor-model PnL."""
+    synthetic_rows: list[dict[str, Any]] = []
+    historical_rows: list[dict[str, Any]] = []
+    material_scenarios: list[str] = []
+    material_historical: list[str] = []
+
+    for row in (synthetic_overlay or {}).get("scenarios") or []:
+        if not isinstance(row, dict):
+            continue
+        pnl_raw = _safe_float(row.get("pnl_model_raw"))
+        pnl_adjusted = _safe_float(row.get("pnl_model_adjusted"))
+        if pnl_raw is None or pnl_adjusted is None:
+            continue
+        pnl_delta = float(pnl_adjusted - pnl_raw)
+        pnl_abs_delta = abs(pnl_delta)
+        pnl_relative_delta = pnl_abs_delta / max(abs(float(pnl_raw)), 0.01)
+        material = bool(
+            pnl_relative_delta >= FACTOR_RAW_VS_ADJUSTED_PNL_RELATIVE_DELTA_MATERIAL_GTE
+            or pnl_abs_delta >= FACTOR_RAW_VS_ADJUSTED_PNL_ABS_DELTA_MATERIAL_GTE
+        )
+        signal_row = {
+            "scenario_id": str(row.get("scenario_id", "")),
+            "pnl_raw": float(pnl_raw),
+            "pnl_adjusted": float(pnl_adjusted),
+            "pnl_delta": float(pnl_delta),
+            "pnl_abs_delta": float(pnl_abs_delta),
+            "pnl_relative_delta": float(pnl_relative_delta),
+            "material_difference": material,
+        }
+        synthetic_rows.append(signal_row)
+        if material:
+            material_scenarios.append(signal_row["scenario_id"])
+
+    raw_by_episode = {
+        str(row.get("episode")): row
+        for row in (factor_beta_shock_oos_raw or {}).get("episodes") or []
+        if isinstance(row, dict)
+    }
+    adjusted_by_episode = {
+        str(row.get("episode")): row
+        for row in (factor_beta_shock_oos_adjusted or {}).get("episodes") or []
+        if isinstance(row, dict)
+    }
+    for episode in sorted(set(raw_by_episode).intersection(adjusted_by_episode)):
+        raw_row = raw_by_episode[episode]
+        adj_row = adjusted_by_episode[episode]
+        pnl_raw = _safe_float(raw_row.get("pnl_model_5y"))
+        pnl_adjusted = _safe_float(adj_row.get("pnl_model_adjusted"))
+        if pnl_raw is None or pnl_adjusted is None:
+            continue
+        pnl_delta = float(pnl_adjusted - pnl_raw)
+        pnl_abs_delta = abs(pnl_delta)
+        pnl_relative_delta = pnl_abs_delta / max(abs(float(pnl_raw)), 0.01)
+        material = bool(
+            pnl_relative_delta >= FACTOR_RAW_VS_ADJUSTED_PNL_RELATIVE_DELTA_MATERIAL_GTE
+            or pnl_abs_delta >= FACTOR_RAW_VS_ADJUSTED_PNL_ABS_DELTA_MATERIAL_GTE
+        )
+        signal_row = {
+            "episode": episode,
+            "pnl_raw": float(pnl_raw),
+            "pnl_adjusted": float(pnl_adjusted),
+            "pnl_delta": float(pnl_delta),
+            "pnl_abs_delta": float(pnl_abs_delta),
+            "pnl_relative_delta": float(pnl_relative_delta),
+            "material_difference": material,
+        }
+        historical_rows.append(signal_row)
+        if material:
+            material_historical.append(episode)
+
+    return {
+        "synthetic": synthetic_rows,
+        "historical": historical_rows,
+        "material_difference_any": bool(material_scenarios or material_historical),
+        "material_scenarios": material_scenarios,
+        "material_historical_episodes": material_historical,
+        "relative_delta_material_gte": FACTOR_RAW_VS_ADJUSTED_PNL_RELATIVE_DELTA_MATERIAL_GTE,
+        "abs_delta_material_gte": FACTOR_RAW_VS_ADJUSTED_PNL_ABS_DELTA_MATERIAL_GTE,
+    }
+
+
+def build_factor_beta_diagnostic_overlay(
+    *,
+    weights: dict[str, float],
+    tickers: list[str],
+    scenario_results: list[dict[str, Any]],
+    historical_results: list[dict[str, Any]],
+    factor_betas_5y: dict[str, Any] | None,
+    factor_betas_10y: dict[str, Any] | None,
+    factor_betas_stability: dict[str, Any] | None,
+    factor_beta_shock_oos_raw: dict[str, Any] | None = None,
+    rolling_window_weeks: int = FACTOR_WEEKS_3Y,
+) -> dict[str, Any]:
+    """Build the full adjusted-beta overlay package for stress diagnostics."""
+    factor_betas_adjusted = build_factor_beta_adjustment_overlay(
+        factor_betas_5y,
+        factor_betas_10y,
+        factor_betas_stability,
+    )
+    adjusted_map = factor_betas_adjusted.get("adjusted") if isinstance(factor_betas_adjusted, dict) else {}
+    synthetic_overlay = build_synthetic_factor_pnl_adjusted_overlay(
+        scenario_results,
+        factor_betas_5y,
+        adjusted_map if isinstance(adjusted_map, dict) else {},
+    )
+    factor_beta_shock_oos_adjusted = factor_oos_beta_shock_explainability(
+        weights=weights,
+        tickers=tickers,
+        historical_results=historical_results,
+        factor_betas_5y=factor_betas_5y,
+        factor_betas_10y=factor_betas_10y,
+        factor_betas_adjusted=adjusted_map if isinstance(adjusted_map, dict) else {},
+        rolling_window_weeks=rolling_window_weeks,
+    )
+    historical_results_adjusted = enrich_historical_results_with_adjusted_factor_attribution(
+        historical_results,
+        factor_beta_shock_oos_adjusted,
+    )
+    raw_oos = factor_beta_shock_oos_raw
+    if not isinstance(raw_oos, dict) or not raw_oos:
+        raw_oos = factor_oos_beta_shock_explainability(
+            weights=weights,
+            tickers=tickers,
+            historical_results=historical_results,
+            factor_betas_5y=factor_betas_5y,
+            factor_betas_10y=factor_betas_10y,
+            rolling_window_weeks=rolling_window_weeks,
+        )
+    raw_vs_adjusted_signal = build_raw_vs_adjusted_pnl_signal(
+        synthetic_overlay,
+        raw_oos,
+        factor_beta_shock_oos_adjusted,
+    )
+    return {
+        "factor_betas_adjusted": factor_betas_adjusted,
+        "synthetic_factor_pnl_adjusted": synthetic_overlay,
+        "factor_beta_shock_oos_adjusted": factor_beta_shock_oos_adjusted,
+        "historical_results_adjusted": historical_results_adjusted,
+        "raw_vs_adjusted_pnl_signal": raw_vs_adjusted_signal,
+    }
+
+
+def _enrich_historical_results_with_factor_attribution(
     historical_results: list[dict[str, Any]],
     factor_beta_shock_oos: dict[str, Any] | None,
     *,
     beta_source: str = "5y",
+    field_suffix: str = "",
 ) -> list[dict[str, Any]]:
     """Attach per-episode model-based factor attribution to historical stress rows."""
     if not historical_results:
@@ -1682,6 +2030,7 @@ def enrich_historical_results_with_factor_attribution(
     source_map = {
         "5y": ("factor_contrib_5y", "pnl_model_5y"),
         "10y": ("factor_contrib_10y", "pnl_model_10y"),
+        "adjusted": ("factor_contrib_adjusted", "pnl_model_adjusted"),
         "roll3y_pre": ("factor_contrib_roll3y_pre", "pnl_model_roll3y_pre"),
         "rolling_3y_pre": ("factor_contrib_roll3y_pre", "pnl_model_roll3y_pre"),
     }
@@ -1696,6 +2045,15 @@ def enrich_historical_results_with_factor_attribution(
     }
 
     enriched: list[dict[str, Any]] = []
+    attr_key = "historical_factor_attribution" + field_suffix
+    pnl_by_factor_key = "pnl_by_factor_pct" + field_suffix
+    top_drivers_key = "top_factor_drivers" + field_suffix
+    largest_negative_key = "largest_negative_factor" + field_suffix
+    model_pnl_key = "factor_model_pnl_pct" + field_suffix
+    model_error_key = "factor_model_error_pct" + field_suffix
+    model_abs_error_key = "factor_model_abs_error_pct" + field_suffix
+    method_key = "factor_attribution_method" + field_suffix
+    beta_source_key = "factor_attribution_beta_source" + field_suffix
     for hist_row in historical_results:
         row = dict(hist_row)
         episode_id = str(row.get("episode"))
@@ -1706,7 +2064,7 @@ def enrich_historical_results_with_factor_attribution(
             "beta_source": source,
         }
         if not isinstance(ep, dict) or ep.get("error"):
-            row["historical_factor_attribution"] = {
+            row[attr_key] = {
                 **base_attr,
                 "error": ep.get("error") if isinstance(ep, dict) else "episode_attribution_unavailable",
             }
@@ -1753,17 +2111,42 @@ def enrich_historical_results_with_factor_attribution(
             "top_factor_drivers": drivers,
             "largest_negative_factor": largest_negative,
         }
-        row["historical_factor_attribution"] = attribution
-        row["pnl_by_factor_pct"] = pnl_by_factor
-        row["top_factor_drivers"] = drivers
-        row["largest_negative_factor"] = largest_negative
-        row["factor_model_pnl_pct"] = model_pnl
-        row["factor_model_error_pct"] = model_error
-        row["factor_model_abs_error_pct"] = abs_error
-        row["factor_attribution_method"] = HISTORICAL_FACTOR_ATTRIBUTION_METHOD
-        row["factor_attribution_beta_source"] = source
+        row[attr_key] = attribution
+        row[pnl_by_factor_key] = pnl_by_factor
+        row[top_drivers_key] = drivers
+        row[largest_negative_key] = largest_negative
+        row[model_pnl_key] = model_pnl
+        row[model_error_key] = model_error
+        row[model_abs_error_key] = abs_error
+        row[method_key] = HISTORICAL_FACTOR_ATTRIBUTION_METHOD
+        row[beta_source_key] = source
         enriched.append(row)
     return enriched
+
+
+def enrich_historical_results_with_factor_attribution(
+    historical_results: list[dict[str, Any]],
+    factor_beta_shock_oos: dict[str, Any] | None,
+    *,
+    beta_source: str = "5y",
+) -> list[dict[str, Any]]:
+    return _enrich_historical_results_with_factor_attribution(
+        historical_results,
+        factor_beta_shock_oos,
+        beta_source=beta_source,
+    )
+
+
+def enrich_historical_results_with_adjusted_factor_attribution(
+    historical_results: list[dict[str, Any]],
+    factor_beta_shock_oos_adjusted: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    return _enrich_historical_results_with_factor_attribution(
+        historical_results,
+        factor_beta_shock_oos_adjusted,
+        beta_source="adjusted",
+        field_suffix="_adjusted",
+    )
 
 
 def compute_asset_factor_betas_weekly(

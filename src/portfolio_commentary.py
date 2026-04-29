@@ -453,6 +453,61 @@ def _append_factor_beta_stability_section(lines: list[str], st: dict[str, Any]) 
     lines.append("")
 
 
+def _append_factor_beta_adjusted_overlay_section(lines: list[str], st: dict[str, Any]) -> None:
+    adjusted = st.get("factor_betas_adjusted")
+    if not isinstance(adjusted, dict) or not adjusted:
+        return
+    lines.append("Stability-adjusted factor beta overlay")
+    divergence = adjusted.get("beta_5y_vs_10y_divergence") or {}
+    raw_map = adjusted.get("raw") or {}
+    adj_map = adjusted.get("adjusted") or {}
+    severity_map = adjusted.get("severity_by_beta") or {}
+    reasons = adjusted.get("adjustment_reason_by_beta") or {}
+    if divergence.get("strong_divergence_any"):
+        lines.append(
+            "Strong 5Y vs 10Y divergence: "
+            + ", ".join(str(x) for x in (divergence.get("strong_divergence_betas") or []))
+            + "."
+        )
+    reduced = []
+    for beta_key in _ordered_beta_keys(raw_map, adj_map):
+        raw_val = raw_map.get(beta_key)
+        adj_val = adj_map.get(beta_key)
+        try:
+            if raw_val is None or adj_val is None:
+                continue
+            if abs(float(adj_val) - float(raw_val)) > 1e-10:
+                reduced.append(
+                    f"{beta_key}: raw={_fmt_float(raw_val, 4)} -> adjusted={_fmt_float(adj_val, 4)} "
+                    f"(severity={severity_map.get(beta_key, 'unknown')}, reason={reasons.get(beta_key, 'n/a')})"
+                )
+        except (TypeError, ValueError):
+            continue
+    if reduced:
+        lines.append("Adjusted betas:")
+        for row in reduced:
+            lines.append(f"  {row}")
+    signal = st.get("raw_vs_adjusted_pnl_signal") or {}
+    if isinstance(signal, dict) and signal:
+        synthetic_material = [row for row in (signal.get("synthetic") or []) if isinstance(row, dict) and row.get("material_difference")]
+        historical_material = [row for row in (signal.get("historical") or []) if isinstance(row, dict) and row.get("material_difference")]
+        if synthetic_material:
+            lines.append("Material raw vs adjusted synthetic PnL differences:")
+            for row in synthetic_material:
+                lines.append(
+                    f"  {row.get('scenario_id')}: raw={_fmt_pct(row.get('pnl_raw'))}, adjusted={_fmt_pct(row.get('pnl_adjusted'))}, "
+                    f"delta={_fmt_pct(row.get('pnl_delta'))}, rel_delta={_fmt_pct(row.get('pnl_relative_delta'))}."
+                )
+        if historical_material:
+            lines.append("Material raw vs adjusted historical model PnL differences:")
+            for row in historical_material:
+                lines.append(
+                    f"  {row.get('episode')}: raw={_fmt_pct(row.get('pnl_raw'))}, adjusted={_fmt_pct(row.get('pnl_adjusted'))}, "
+                    f"delta={_fmt_pct(row.get('pnl_delta'))}, rel_delta={_fmt_pct(row.get('pnl_relative_delta'))}."
+                )
+    lines.append("")
+
+
 def _top_pair_text(rows: Any, *, corr_key: str = "abs_corr_delta") -> str:
     if not isinstance(rows, list) or not rows:
         return "n/a"
@@ -847,6 +902,7 @@ def write_stress_commentary(
         lines.append("")
     _append_rolling_betas_section(lines, st, output_dir_final)
     _append_factor_beta_stability_section(lines, st)
+    _append_factor_beta_adjusted_overlay_section(lines, st)
     _append_factor_covariance_section(lines, st)
     _append_factor_variance_decomposition_section(lines, st)
     _append_portfolio_pca_section(lines, st)
