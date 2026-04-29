@@ -531,6 +531,68 @@ def _append_factor_covariance_section(lines: list[str], st: dict[str, Any]) -> N
     lines.append("")
 
 
+def _top_factor_rows_text(rows: Any, field: str, *, limit: int = 3) -> str:
+    if not isinstance(rows, list) or not rows:
+        return "none"
+    parts = []
+    for row in rows[:limit]:
+        if not isinstance(row, dict):
+            continue
+        parts.append(f"{row.get('factor')}={_fmt_pct(row.get(field), 2)}")
+    return "; ".join(parts) if parts else "none"
+
+
+def _append_factor_variance_decomposition_section(lines: list[str], st: dict[str, Any]) -> None:
+    decomp = st.get("factor_variance_decomposition")
+    if not isinstance(decomp, dict) or not decomp:
+        return
+    lines.append("Factor variance decomposition")
+    if decomp.get("status") != "available":
+        lines.append(
+            f"Factor variance decomposition unavailable: reason={decomp.get('reason', 'unknown')}; "
+            f"variance_scale={decomp.get('variance_scale', 'weekly')}."
+        )
+        cross = decomp.get("cross_check") or {}
+        if isinstance(cross, dict):
+            lines.append(f"Cross-check status={cross.get('status', 'unavailable')}; reason={cross.get('reason') or 'n/a'}.")
+        lines.append("")
+        return
+
+    lines.append(
+        f"Method={decomp.get('method')}; variance_scale={decomp.get('variance_scale')}; "
+        f"R2={_fmt_float(decomp.get('r2'), 4)}; residual={_fmt_pct(decomp.get('residual_share'), 2)} "
+        f"({decomp.get('residual_severity', 'unknown')})."
+    )
+    cross = decomp.get("cross_check") or {}
+    if isinstance(cross, dict):
+        lines.append(
+            f"R2 cross-check: status={cross.get('status', 'unknown')}; "
+            f"bSigma_b/Var(portfolio)={_fmt_float(cross.get('variance_based_explained_share'), 4)}; "
+            f"abs_diff={_fmt_float(cross.get('absolute_difference'), 4)}; "
+            f"warning={cross.get('warning_code') or 'none'}."
+        )
+    warnings = decomp.get("warnings") or []
+    if warnings:
+        lines.append("Local warnings: " + ", ".join(str(w) for w in warnings) + ".")
+    lines.append("Risk adders: " + _top_factor_rows_text(decomp.get("risk_adders"), "net_total_variance_share") + ".")
+    lines.append("Hedgers: " + _top_factor_rows_text(decomp.get("hedgers"), "net_total_variance_share") + ".")
+    lines.append("Neutral factors: " + _top_factor_rows_text(decomp.get("neutral_factors"), "net_total_variance_share") + ".")
+    lines.append("Gross concentration: " + _top_factor_rows_text(decomp.get("gross_top_contributors_abs"), "gross_total_variance_share") + ".")
+    stability = decomp.get("stability") or {}
+    if isinstance(stability, dict):
+        r2_stab = stability.get("r2") or {}
+        lines.append(
+            f"Decomposition stability: status={stability.get('status', 'unknown')}; "
+            f"overall={stability.get('overall_severity', 'unknown')}; "
+            f"R2 p10={_fmt_float(r2_stab.get('p10'), 4)}, p90={_fmt_float(r2_stab.get('p90'), 4)}, "
+            f"severity={r2_stab.get('severity', 'unknown')}."
+        )
+    recommendation = decomp.get("residual_recommendation")
+    if recommendation:
+        lines.append(f"Residual recommendation: {recommendation}")
+    lines.append("")
+
+
 def write_stress_commentary(
     output_dir_final: Path,
     *,
@@ -667,6 +729,7 @@ def write_stress_commentary(
     _append_rolling_betas_section(lines, st, output_dir_final)
     _append_factor_beta_stability_section(lines, st)
     _append_factor_covariance_section(lines, st)
+    _append_factor_variance_decomposition_section(lines, st)
     lines.append("")
 
     lines.append("Risk Structure")

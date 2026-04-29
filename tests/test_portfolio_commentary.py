@@ -284,6 +284,31 @@ def test_write_stress_commentary_from_stress_report() -> None:
                     "overall_flag": True,
                 },
             },
+            "factor_variance_decomposition": {
+                "status": "available",
+                "method": "r2_scaled_factor_rc_plus_residual",
+                "variance_scale": "weekly",
+                "r2": 0.75,
+                "residual_share": 0.25,
+                "residual_severity": "low",
+                "residual_recommendation": "Factor decomposition is suitable as a diagnostic risk-management signal.",
+                "cross_check": {
+                    "status": "warning",
+                    "variance_based_explained_share": 0.73,
+                    "absolute_difference": 0.02,
+                    "warning_code": "WARN_FACTOR_VARIANCE_DECOMP_MISMATCH",
+                },
+                "warnings": ["WARN_FACTOR_VARIANCE_DECOMP_MISMATCH"],
+                "risk_adders": [{"factor": "equity", "net_total_variance_share": 0.4}],
+                "hedgers": [{"factor": "usd", "net_total_variance_share": -0.1}],
+                "neutral_factors": [{"factor": "credit", "net_total_variance_share": 0.0}],
+                "gross_top_contributors_abs": [{"factor": "equity", "gross_total_variance_share": 0.5}],
+                "stability": {
+                    "status": "available",
+                    "overall_severity": "moderate",
+                    "r2": {"p10": 0.42, "p90": 0.8, "severity": "low"},
+                },
+            },
         }
         out2 = write_stress_commentary(final, stress_report=stress2, analysis_end="2026-02-28")
         text2 = out2.read_text(encoding="utf-8")
@@ -309,5 +334,12 @@ def test_write_stress_commentary_from_stress_report() -> None:
         assert "Overlay amplification" in text2
         assert "RC_stability_flag" in text2
         assert "Covariance stability check" in text2
+        assert "Factor variance decomposition" in text2
+        assert "variance_scale=weekly" in text2
+        assert "Risk adders" in text2
+        assert "Hedgers" in text2
+        assert "Neutral factors" in text2
+        assert "Gross concentration" in text2
+        assert "WARN_FACTOR_VARIANCE_DECOMP_MISMATCH" in text2
     finally:
         shutil.rmtree(root, ignore_errors=True)

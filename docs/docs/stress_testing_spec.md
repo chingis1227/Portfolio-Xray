@@ -320,6 +320,52 @@ CSV artifacts written under `results_csv/` include:
 
 ---
 
+### 8.9 Factor variance decomposition
+
+`stress_report.json.factor_variance_decomposition` is a diagnostic-only 5Y weekly decomposition of total portfolio variance into factor sources plus residual risk. It does not change stress pass/fail, mandate status, optimizer behavior, or weight release.
+
+All variance quantities in this block use `variance_scale = "weekly"` and sample variance/covariance with `ddof=1`. The calculation must use the same weekly rows as `factor_regression_5y`: portfolio weekly return `y`, factor matrix `X`, and OLS factor beta vector `b` excluding the intercept.
+
+Required formulas:
+
+- `portfolio_total_variance = Var(y)`
+- `Sigma_f = Cov(X)`
+- `factor_variance = b' Sigma_f b`
+- `variance_based_explained_share = factor_variance / portfolio_total_variance`
+- `residual_share = 1 - R2`
+- `net_component_variance_i = beta_i * (Sigma_f b)_i`
+- `factor_rc_share_i = net_component_variance_i / factor_variance`
+- `net_total_variance_share_i = factor_rc_share_i * R2`
+
+The normalization rule is mandatory: `factor_rc_share` is normalized relative to `factor_variance` before applying `R2`. Signed `factor_rc_share` values should sum to `1.0` when `factor_variance > 0`; signed factor `net_total_variance_share` values should sum to `R2`.
+
+Guardrails:
+
+- If `n_obs < 30`, return `status = "unavailable"` and `reason = "insufficient_observations"`.
+- If `portfolio_total_variance <= 1e-12`, return `status = "unavailable"` and `reason = "degenerate_portfolio_variance"`.
+- If `factor_variance <= 1e-12`, return `status = "unavailable"` and `reason = "degenerate_factor_variance"`.
+- If beta vector length, covariance matrix shape, covariance factor order, and factor matrix columns do not match exactly, return `status = "unavailable"` and `reason = "factor_dimension_mismatch"`.
+
+The cross-check is mandatory when inputs are valid. `cross_check.status` compares `variance_based_explained_share` with `R2`: `pass` when absolute difference is `<= 0.005`, `warning` when it is `> 0.005` and `<= 0.02`, and `high_warning` when it is `> 0.02`. Warning codes are local diagnostics: `WARN_FACTOR_VARIANCE_DECOMP_MISMATCH` and `WARN_FACTOR_VARIANCE_DECOMP_HIGH_MISMATCH`.
+
+Each factor row must include signed net fields (`net_component_variance`, `factor_rc_share`, `net_total_variance_share`, `direction`) and gross fields (`gross_component_variance_abs`, `gross_factor_rc_share`, `gross_total_variance_share`). Gross fields use `abs(net_component_variance)` to show concentration before hedge netting. `direction` is `neutral` when `abs(net_total_variance_share) < 1e-4`, otherwise `risk_adder` for positive signed contribution and `hedger` for negative signed contribution. The report must expose separate `risk_adders`, `hedgers`, `neutral_factors`, and `gross_top_contributors_abs` lists.
+
+Sanity warnings are local only and must not change suite status:
+
+- `WARN_FACTOR_VARIANCE_DECOMP_EXTREME_NET_SHARE` when any `abs(net_total_variance_share_i) > 1.0`.
+- `WARN_FACTOR_VARIANCE_DECOMP_HIGH_GROSS_CONCENTRATION` when gross total share exceeds `R2 + 0.25`.
+- `WARN_FACTOR_VARIANCE_DECOMP_SHARE_SUM_MISMATCH` when signed net shares do not sum to `R2` within `1e-6`.
+
+Residual diagnostics classify `residual_share`: `low` below `0.35`, `moderate` from `0.35` to below `0.60`, and `high` at `0.60` or above. High residual means the current factor model leaves most portfolio variance unexplained and should prompt review of omitted factors, nonlinear exposures, asset-specific risk, factor definitions, and beta stability.
+
+Stability v1 is intentionally minimal. When enough rolling weekly snapshots exist, report factor `sign_stability_share` and severity (`high` below `0.65`, `moderate` below `0.80`, otherwise `low`) plus R2 p10/p90 and severity (`high` when p10 R2 is below `0.25`, `moderate` below `0.40`, otherwise `low`). If rolling snapshots cannot be built, return `stability.status = "unknown"` and `reason = "insufficient_rolling_observations"`.
+
+CSV artifacts written under `results_csv/` include:
+
+- `factor_variance_decomposition_5y.csv`
+
+---
+
 ## 9. Historical validation
 
 Run portfolio through episodes (see `HISTORICAL_EPISODES` in `src/stress.py`):

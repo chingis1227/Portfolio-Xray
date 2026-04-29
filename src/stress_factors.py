@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import logging
 from pathlib import Path
 from typing import Any, Callable
 
@@ -19,6 +20,8 @@ from src.data_fred import fetch_fred_series
 from src.data_yf import fetch_daily
 from src.pandas_compat import MONTH_END_FREQ
 
+_LOG = logging.getLogger(__name__)
+
 # Stress report: weekly regression windows ending at analysis_end (Friday week-ends after inner join)
 FACTOR_WEEKS_3Y = 156   # ~3 calendar years (rolling diagnostics)
 FACTOR_WEEKS_5Y = 260   # ~5 calendar years
@@ -29,6 +32,9 @@ FACTOR_COVARIANCE_STABILITY_WEEKS = 104  # ~2 calendar years
 FACTOR_COVARIANCE_STABILITY_THRESHOLD_PCT = 35.0
 FACTOR_COVARIANCE_RC_STABILITY_THRESHOLD_PCT = 30.0
 FACTOR_COVARIANCE_OVERLAY_CORR_FLOOR = 0.70
+FACTOR_VARIANCE_DECOMP_MIN_OBS = 30
+FACTOR_VARIANCE_DECOMP_EPS = 1e-12
+FACTOR_VARIANCE_DECOMP_NEUTRAL_THRESHOLD = 1e-4
 
 # Breusch–Godfrey LM: lag orders (weekly residuals; same auxiliary regression as in stress spec §8.2)
 FACTOR_REGRESSION_BG_LAGS: tuple[int, ...] = (1, 2, 4)
@@ -869,6 +875,73 @@ def factor_multicollinearity_diagnostics(
         return {**base, "error": str(ex)}
 
 
+def _portfolio_factor_weekly_ols_rows(
+    *,
+    weights: dict[str, float],
+    tickers: list[str],
+    analysis_end_str: str,
+    window_weeks: int,
+    buffer_weeks: int = FACTOR_DOWNLOAD_BUFFER_WEEKS,
+) -> dict[str, Any]:
+    """Return the exact weekly portfolio/factor rows used by portfolio OLS."""
+    from src.data_yf import download_all
+
+    wk = int(window_weeks)
+    end_ts = pd.Timestamp(analysis_end_str)
+    end_dl = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    start_ts = end_ts - pd.DateOffset(weeks=wk + int(buffer_weeks))
+    start_dl = start_ts.strftime("%Y-%m-%d")
+
+    use = [t for t in tickers if float(weights.get(t, 0.0)) > 0]
+    if not use:
+        use = list(tickers)
+    use = [str(t).strip() for t in use if t and str(t).strip()]
+    if not use:
+        return {"error": "no_tickers", "n_obs": 0}
+
+    daily = download_all(use, start_dl, end_dl)
+    daily_prices: dict[str, pd.Series] = {}
+    for t in use:
+        df = daily.get(t)
+        if df is None or df.empty or "Close" not in df.columns:
+            continue
+        daily_prices[t] = df["Close"].copy()
+
+    asset_weekly = asset_weekly_returns_from_daily(daily_prices, start_dl, end_dl)
+    factors = build_factor_matrix(start_dl, end_dl)
+    if asset_weekly.empty or factors.empty:
+        return {"error": "empty_weekly_inputs", "n_obs": 0}
+
+    common = asset_weekly.index.intersection(factors.index).sort_values()
+    common = common[common <= end_ts + pd.Timedelta(days=6)]
+    if len(common) > wk:
+        common = common[-wk:]
+    if len(common) < 10:
+        return {"error": "insufficient_common_rows", "n_obs": int(len(common))}
+
+    y_frame = asset_weekly.reindex(common)
+    x_frame = factors.reindex(common).dropna()
+    y_frame = y_frame.reindex(x_frame.index)
+    if x_frame.empty or len(x_frame) < 10:
+        return {"error": "insufficient_factor_rows", "n_obs": int(len(x_frame))}
+
+    w_vec = np.array([float(weights.get(t, 0.0)) for t in y_frame.columns], dtype=float)
+    y_port = (np.nan_to_num(y_frame.values, nan=0.0) * w_vec.reshape(1, -1)).sum(axis=1)
+
+    valid = ~(np.isnan(y_port) | np.isnan(x_frame.values).any(axis=1))
+    if valid.sum() < 10:
+        return {"error": "insufficient_valid_rows", "n_obs": int(valid.sum())}
+
+    return {
+        "y": y_port[valid].astype(float),
+        "X": x_frame.values[valid].astype(float),
+        "factor_cols": list(x_frame.columns),
+        "dates": [pd.Timestamp(x).strftime("%Y-%m-%d") for x in x_frame.index[valid]],
+        "n_obs": int(valid.sum()),
+        "window_weeks": int(wk),
+    }
+
+
 def portfolio_factor_regression_weekly(
     weights: dict[str, float],
     tickers: list[str],
@@ -889,68 +962,23 @@ def portfolio_factor_regression_weekly(
     - ``serial_correlation_diagnostics``: Durbin–Watson, Breusch–Godfrey LM (see stress spec §8.2)
     - ``heteroskedasticity_diagnostics``: Breusch-Pagan LM/F test (see stress spec §8.3)
     """
-    from src.data_yf import download_all
-
-    wk = int(window_weeks)
-    end_ts = pd.Timestamp(analysis_end_str)
-    end_dl = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
-    start_ts = end_ts - pd.DateOffset(weeks=wk + int(buffer_weeks))
-    start_dl = start_ts.strftime("%Y-%m-%d")
-
-    use = [t for t in tickers if float(weights.get(t, 0.0)) > 0]
-    if not use:
-        use = list(tickers)
-    use = [str(t).strip() for t in use if t and str(t).strip()]
-    if not use:
+    rows = _portfolio_factor_weekly_ols_rows(
+        weights=weights,
+        tickers=tickers,
+        analysis_end_str=analysis_end_str,
+        window_weeks=window_weeks,
+        buffer_weeks=buffer_weeks,
+    )
+    if rows.get("error"):
         return {}
 
-    daily = download_all(use, start_dl, end_dl)
-    daily_prices: dict[str, pd.Series] = {}
-    for t in use:
-        df = daily.get(t)
-        if df is None or df.empty or "Close" not in df.columns:
-            continue
-        daily_prices[t] = df["Close"].copy()
-
-    asset_weekly = asset_weekly_returns_from_daily(daily_prices, start_dl, end_dl)
-    factors = build_factor_matrix(start_dl, end_dl)
-    if asset_weekly.empty or factors.empty:
-        return {}
-
-    # Align and take last wk weeks near analysis_end
-    common = asset_weekly.index.intersection(factors.index).sort_values()
-    common = common[common <= end_ts + pd.Timedelta(days=6)]
-    if len(common) > wk:
-        common = common[-wk:]
-    if len(common) < 10:
-        return {}
-
-    Y = asset_weekly.reindex(common)
-    Xdf = factors.reindex(common)
-    # Require full factor rows and portfolio return defined
-    Xdf = Xdf.dropna()
-    Y = Y.reindex(Xdf.index)
-    if Xdf.empty or len(Xdf) < 10:
-        return {}
-
-    # Portfolio weekly return as weighted sum across available tickers
-    w_vec = np.array([float(weights.get(t, 0.0)) for t in Y.columns], dtype=float)
-    # NaN returns for unavailable assets are treated as zero contribution.
-    # This avoids NaN*0 propagation for zero-weight assets.
-    y_port = (np.nan_to_num(Y.values, nan=0.0) * w_vec.reshape(1, -1)).sum(axis=1)
-
-    # Drop NaNs (if any)
-    valid = ~(np.isnan(y_port) | np.isnan(Xdf.values).any(axis=1))
-    if valid.sum() < 10:
-        return {}
-
-    y_valid = y_port[valid].astype(float)
-    X_valid = Xdf.values[valid].astype(float)
+    y_valid = np.asarray(rows["y"], dtype=float)
+    X_valid = np.asarray(rows["X"], dtype=float)
     inf = _ols_with_inference(y_valid, X_valid, add_const=True, alpha=alpha)
     if not inf:
         return {}
 
-    factor_cols = list(Xdf.columns)
+    factor_cols = list(rows["factor_cols"])
     # params[0] is intercept
     params = inf["params"]
     se = inf["se"]
@@ -965,6 +993,21 @@ def portfolio_factor_regression_weekly(
     mc = factor_multicollinearity_diagnostics(X_valid, factor_cols)
     ser = factor_regression_serial_diagnostics(y_valid, X_valid, bg_lags=FACTOR_REGRESSION_BG_LAGS)
     het = factor_regression_heteroskedasticity_diagnostics(y_valid, X_valid)
+    factor_cov = pd.DataFrame(X_valid, columns=factor_cols).cov(ddof=1).reindex(index=factor_cols, columns=factor_cols)
+    portfolio_variance = float(np.var(y_valid, ddof=1)) if len(y_valid) >= 2 else float("nan")
+    beta_vec = np.asarray(params[1:], dtype=float)
+    factor_variance = (
+        float(beta_vec.T @ factor_cov.values.astype(float) @ beta_vec)
+        if len(beta_vec) == len(factor_cols)
+        else float("nan")
+    )
+    variance_based_explained_share = (
+        float(factor_variance / portfolio_variance)
+        if np.isfinite(factor_variance)
+        and np.isfinite(portfolio_variance)
+        and portfolio_variance > FACTOR_VARIANCE_DECOMP_EPS
+        else None
+    )
 
     # HAC / Newey–West inference (same params, different standard errors)
     Z_full = np.column_stack([np.ones(len(X_valid)), X_valid])
@@ -979,8 +1022,13 @@ def portfolio_factor_regression_weekly(
     ci_high_hac = inf["params"] + tcrit_hac * se_hac
 
     out: dict[str, Any] = {
-        "window_weeks": int(wk),
+        "window_weeks": int(window_weeks),
         "n_obs": int(inf["n_obs"]),
+        "variance_scale": "weekly",
+        "portfolio_variance": portfolio_variance,
+        "factor_variance": factor_variance,
+        "variance_based_explained_share": variance_based_explained_share,
+        "factor_order": factor_cols,
         "r2": float(inf["r2"]),
         "idiosyncratic_risk": float(inf["idiosyncratic_risk"]),
         "adj_r2": float(inf["adj_r2"]),
@@ -2243,6 +2291,416 @@ def _factor_rc(cov: pd.DataFrame, beta_vec: np.ndarray) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
+
+
+def _factor_decomp_cross_check(
+    *,
+    factor_variance: float | None,
+    portfolio_total_variance: float | None,
+    r2: float | None,
+) -> dict[str, Any]:
+    base = {
+        "method": "factor_variance_divided_by_portfolio_variance_vs_r2",
+        "status": "unavailable",
+        "reason": None,
+        "variance_based_explained_share": None,
+        "r2": r2,
+        "absolute_difference": None,
+        "relative_difference": None,
+        "warning_code": None,
+    }
+    if factor_variance is None or not np.isfinite(factor_variance):
+        return {**base, "reason": "invalid_factor_variance"}
+    if portfolio_total_variance is None or not np.isfinite(portfolio_total_variance) or portfolio_total_variance <= FACTOR_VARIANCE_DECOMP_EPS:
+        return {**base, "reason": "invalid_portfolio_total_variance"}
+    if r2 is None or not np.isfinite(r2):
+        return {**base, "reason": "invalid_r2"}
+
+    variance_based = float(factor_variance / portfolio_total_variance)
+    abs_diff = abs(variance_based - float(r2))
+    rel_diff = abs_diff / max(abs(float(r2)), 0.05)
+    status = "pass"
+    warning_code = None
+    if abs_diff > 0.02:
+        status = "high_warning"
+        warning_code = "WARN_FACTOR_VARIANCE_DECOMP_HIGH_MISMATCH"
+    elif abs_diff > 0.005:
+        status = "warning"
+        warning_code = "WARN_FACTOR_VARIANCE_DECOMP_MISMATCH"
+    return {
+        **base,
+        "status": status,
+        "reason": None,
+        "variance_based_explained_share": variance_based,
+        "absolute_difference": float(abs_diff),
+        "relative_difference": float(rel_diff),
+        "warning_code": warning_code,
+    }
+
+
+def _residual_diagnostics(residual_share: float | None) -> dict[str, Any]:
+    if residual_share is None or not np.isfinite(residual_share):
+        return {
+            "residual_severity": "unknown",
+            "residual_interpretation": "Residual share is unavailable.",
+            "residual_recommendation": "Review factor data and regression availability before interpreting factor decomposition.",
+        }
+    if residual_share >= 0.60:
+        return {
+            "residual_severity": "high",
+            "residual_interpretation": "The current factor model leaves most weekly portfolio variance unexplained.",
+            "residual_recommendation": "Review omitted factors, nonlinear exposures, asset-specific risk, factor definitions, and beta stability before relying on factor rankings.",
+        }
+    if residual_share >= 0.35:
+        return {
+            "residual_severity": "moderate",
+            "residual_interpretation": "A material share of weekly portfolio variance remains outside the current factor model.",
+            "residual_recommendation": "Use factor rankings with caution and review omitted factors or unstable beta estimates.",
+        }
+    return {
+        "residual_severity": "low",
+        "residual_interpretation": "The current factor model explains most weekly portfolio variance.",
+        "residual_recommendation": "Factor decomposition is suitable as a diagnostic risk-management signal.",
+    }
+
+
+def _factor_variance_decomposition_unavailable(
+    reason: str,
+    *,
+    window: str = "5y_weekly",
+    n_obs: int | None = None,
+) -> dict[str, Any]:
+    cross_check = _factor_decomp_cross_check(factor_variance=None, portfolio_total_variance=None, r2=None)
+    cross_check["reason"] = reason
+    return {
+        "status": "unavailable",
+        "reason": reason,
+        "method": "r2_scaled_factor_rc_plus_residual",
+        "window": window,
+        "variance_scale": "weekly",
+        "ddof": 1,
+        "n_obs": n_obs,
+        "neutral_threshold": FACTOR_VARIANCE_DECOMP_NEUTRAL_THRESHOLD,
+        "r2": None,
+        "residual_share": None,
+        **_residual_diagnostics(None),
+        "portfolio_total_variance": None,
+        "factor_variance": None,
+        "explained_factor_share_r2_scaled": None,
+        "variance_based_explained_share": None,
+        "cross_check": cross_check,
+        "warnings": [],
+        "rows": [],
+        "risk_adders": [],
+        "hedgers": [],
+        "neutral_factors": [],
+        "gross_top_contributors_abs": [],
+        "stability": {
+            "status": "unknown",
+            "reason": "current_decomposition_unavailable",
+            "overall_severity": "unknown",
+            "by_factor": {},
+            "r2": {"current": None, "p10": None, "p90": None, "severity": "unknown"},
+        },
+    }
+
+
+def _factor_direction(value: float, *, neutral_threshold: float = FACTOR_VARIANCE_DECOMP_NEUTRAL_THRESHOLD) -> str:
+    if not np.isfinite(value) or abs(value) < neutral_threshold:
+        return "neutral"
+    return "risk_adder" if value > 0.0 else "hedger"
+
+
+def _factor_variance_decomposition_stability(
+    snapshots: list[dict[str, Any]],
+    *,
+    current_r2: float | None,
+) -> dict[str, Any]:
+    usable = [s for s in snapshots if isinstance(s, dict) and s.get("status") == "available" and s.get("rows")]
+    if len(usable) < 2:
+        return {
+            "status": "unknown",
+            "reason": "insufficient_rolling_observations",
+            "overall_severity": "unknown",
+            "by_factor": {},
+            "r2": {"current": current_r2, "p10": None, "p90": None, "severity": "unknown"},
+        }
+
+    by_factor: dict[str, dict[str, Any]] = {}
+    severities: list[str] = []
+    factors = [str(row.get("factor")) for row in usable[0].get("rows", []) if row.get("direction") != "residual"]
+    for factor in factors:
+        signs: list[int] = []
+        for snap in usable:
+            row = next((r for r in snap.get("rows", []) if r.get("factor") == factor), None)
+            if not isinstance(row, dict):
+                continue
+            value = _safe_float(row.get("net_total_variance_share"))
+            if value is None:
+                continue
+            signs.append(_beta_sign(value, eps=FACTOR_VARIANCE_DECOMP_NEUTRAL_THRESHOLD))
+        if not signs:
+            severity = "unknown"
+            share = None
+        else:
+            counts = {s: signs.count(s) for s in (-1, 0, 1)}
+            share = float(max(counts.values()) / len(signs))
+            if share < 0.65:
+                severity = "high"
+            elif share < 0.80:
+                severity = "moderate"
+            else:
+                severity = "low"
+        by_factor[factor] = {
+            "sign_stability_share": share,
+            "severity": severity,
+        }
+        severities.append(severity)
+
+    r2_values = [
+        _safe_float(s.get("r2"))
+        for s in usable
+        if _safe_float(s.get("r2")) is not None
+    ]
+    r2_values = [v for v in r2_values if v is not None]
+    if len(r2_values) < 2:
+        r2_diag = {"current": current_r2, "p10": None, "p90": None, "severity": "unknown"}
+        severities.append("unknown")
+    else:
+        p10 = float(np.quantile(r2_values, 0.10))
+        p90 = float(np.quantile(r2_values, 0.90))
+        if p10 < 0.25:
+            r2_sev = "high"
+        elif p10 < 0.40:
+            r2_sev = "moderate"
+        else:
+            r2_sev = "low"
+        r2_diag = {"current": current_r2, "p10": p10, "p90": p90, "severity": r2_sev}
+        severities.append(r2_sev)
+
+    return {
+        "status": "available",
+        "reason": None,
+        "overall_severity": _severity_max(severities),
+        "by_factor": by_factor,
+        "r2": r2_diag,
+    }
+
+
+def _factor_variance_decomposition_from_rows(
+    y: np.ndarray,
+    X: np.ndarray,
+    factor_cols: list[str],
+    *,
+    window: str = "5y_weekly",
+    include_stability: bool = True,
+    stability_snapshots: list[dict[str, Any]] | None = None,
+    neutral_threshold: float = FACTOR_VARIANCE_DECOMP_NEUTRAL_THRESHOLD,
+) -> dict[str, Any]:
+    y_arr = np.asarray(y, dtype=float).reshape(-1)
+    x_arr = np.asarray(X, dtype=float)
+    cols = [str(c) for c in factor_cols]
+    if x_arr.ndim != 2 or y_arr.ndim != 1 or x_arr.shape[0] != len(y_arr) or x_arr.shape[1] != len(cols) or len(set(cols)) != len(cols):
+        return _factor_variance_decomposition_unavailable("factor_dimension_mismatch", window=window, n_obs=int(len(y_arr)))
+    n_obs = int(len(y_arr))
+    if n_obs < FACTOR_VARIANCE_DECOMP_MIN_OBS:
+        return _factor_variance_decomposition_unavailable("insufficient_observations", window=window, n_obs=n_obs)
+    valid = ~(np.isnan(y_arr) | np.isnan(x_arr).any(axis=1))
+    y_arr = y_arr[valid]
+    x_arr = x_arr[valid]
+    n_obs = int(len(y_arr))
+    if n_obs < FACTOR_VARIANCE_DECOMP_MIN_OBS:
+        return _factor_variance_decomposition_unavailable("insufficient_observations", window=window, n_obs=n_obs)
+
+    inf = _ols_with_inference(y_arr, x_arr, add_const=True)
+    if not inf:
+        return _factor_variance_decomposition_unavailable("ols_failed", window=window, n_obs=n_obs)
+
+    beta_vec = np.asarray(inf["params"][1:], dtype=float)
+    factor_cov = pd.DataFrame(x_arr, columns=cols).cov(ddof=1).reindex(index=cols, columns=cols)
+    if beta_vec.shape[0] != len(cols) or factor_cov.shape != (len(cols), len(cols)) or list(factor_cov.index) != cols or list(factor_cov.columns) != cols:
+        return _factor_variance_decomposition_unavailable("factor_dimension_mismatch", window=window, n_obs=n_obs)
+
+    portfolio_total_variance = float(np.var(y_arr, ddof=1))
+    if not np.isfinite(portfolio_total_variance) or portfolio_total_variance <= FACTOR_VARIANCE_DECOMP_EPS:
+        out = _factor_variance_decomposition_unavailable("degenerate_portfolio_variance", window=window, n_obs=n_obs)
+        out["portfolio_total_variance"] = portfolio_total_variance if np.isfinite(portfolio_total_variance) else None
+        out["cross_check"] = _factor_decomp_cross_check(factor_variance=None, portfolio_total_variance=portfolio_total_variance, r2=_safe_float(inf.get("r2")))
+        return out
+
+    cov_vals = factor_cov.values.astype(float)
+    marginal = cov_vals @ beta_vec
+    factor_variance = float(beta_vec.T @ cov_vals @ beta_vec)
+    if not np.isfinite(factor_variance) or factor_variance <= FACTOR_VARIANCE_DECOMP_EPS:
+        out = _factor_variance_decomposition_unavailable("degenerate_factor_variance", window=window, n_obs=n_obs)
+        out["portfolio_total_variance"] = portfolio_total_variance
+        out["factor_variance"] = factor_variance if np.isfinite(factor_variance) else None
+        out["cross_check"] = _factor_decomp_cross_check(factor_variance=factor_variance, portfolio_total_variance=portfolio_total_variance, r2=_safe_float(inf.get("r2")))
+        return out
+
+    r2 = _safe_float(inf.get("r2"))
+    if r2 is None:
+        out = _factor_variance_decomposition_unavailable("invalid_r2", window=window, n_obs=n_obs)
+        out["portfolio_total_variance"] = portfolio_total_variance
+        out["factor_variance"] = factor_variance
+        out["cross_check"] = _factor_decomp_cross_check(factor_variance=factor_variance, portfolio_total_variance=portfolio_total_variance, r2=None)
+        return out
+
+    residual_share = float(1.0 - r2)
+    components = beta_vec * marginal
+    gross_abs = np.abs(components)
+    gross_denom = float(gross_abs.sum())
+    rows: list[dict[str, Any]] = []
+    beta_keys = [FACTOR_TO_BETA_KEY.get(c, f"beta_{c}") for c in cols]
+    for factor, beta_key, comp, gross_comp in zip(cols, beta_keys, components, gross_abs):
+        factor_rc_share = float(comp / factor_variance)
+        net_total_share = float(factor_rc_share * r2)
+        gross_factor_rc_share = float(gross_comp / gross_denom) if gross_denom > FACTOR_VARIANCE_DECOMP_EPS else 0.0
+        gross_total_share = float(gross_factor_rc_share * r2)
+        rows.append(
+            {
+                "factor": str(factor),
+                "beta_key": str(beta_key),
+                "net_component_variance": float(comp),
+                "factor_rc_share": factor_rc_share,
+                "net_total_variance_share": net_total_share,
+                "gross_component_variance_abs": float(gross_comp),
+                "gross_factor_rc_share": gross_factor_rc_share,
+                "gross_total_variance_share": gross_total_share,
+                "direction": _factor_direction(net_total_share, neutral_threshold=neutral_threshold),
+            }
+        )
+
+    residual_diag = _residual_diagnostics(residual_share)
+    residual_row = {
+        "factor": "Residual",
+        "beta_key": None,
+        "net_component_variance": None,
+        "factor_rc_share": None,
+        "net_total_variance_share": residual_share,
+        "gross_component_variance_abs": None,
+        "gross_factor_rc_share": None,
+        "gross_total_variance_share": residual_share,
+        "direction": "residual",
+    }
+    rows_with_residual = rows + [residual_row]
+    risk_adders = sorted([r for r in rows if r["direction"] == "risk_adder"], key=lambda r: r["net_total_variance_share"], reverse=True)
+    hedgers = sorted([r for r in rows if r["direction"] == "hedger"], key=lambda r: abs(r["net_total_variance_share"]), reverse=True)
+    neutral_factors = sorted([r for r in rows if r["direction"] == "neutral"], key=lambda r: abs(r["net_total_variance_share"]), reverse=True)
+    gross_top = sorted(rows, key=lambda r: r["gross_total_variance_share"], reverse=True)
+
+    cross_check = _factor_decomp_cross_check(
+        factor_variance=factor_variance,
+        portfolio_total_variance=portfolio_total_variance,
+        r2=r2,
+    )
+    warnings: list[str] = []
+    if cross_check.get("warning_code"):
+        warnings.append(str(cross_check["warning_code"]))
+    if any(abs(float(r["net_total_variance_share"])) > 1.0 for r in rows):
+        warnings.append("WARN_FACTOR_VARIANCE_DECOMP_EXTREME_NET_SHARE")
+    gross_total_variance_share_sum = float(sum(float(r["gross_total_variance_share"]) for r in rows))
+    if gross_total_variance_share_sum > r2 + 0.25:
+        warnings.append("WARN_FACTOR_VARIANCE_DECOMP_HIGH_GROSS_CONCENTRATION")
+    net_share_sum = float(sum(float(r["net_total_variance_share"]) for r in rows))
+    if abs(net_share_sum - r2) > 1e-6:
+        warnings.append("WARN_FACTOR_VARIANCE_DECOMP_SHARE_SUM_MISMATCH")
+    warnings = list(dict.fromkeys(warnings))
+
+    stability = (
+        _factor_variance_decomposition_stability(stability_snapshots or [], current_r2=r2)
+        if include_stability
+        else {
+            "status": "unknown",
+            "reason": "not_computed_for_snapshot",
+            "overall_severity": "unknown",
+            "by_factor": {},
+            "r2": {"current": r2, "p10": None, "p90": None, "severity": "unknown"},
+        }
+    )
+    return {
+        "status": "available",
+        "reason": None,
+        "method": "r2_scaled_factor_rc_plus_residual",
+        "window": window,
+        "variance_scale": "weekly",
+        "ddof": 1,
+        "n_obs": n_obs,
+        "neutral_threshold": float(neutral_threshold),
+        "r2": r2,
+        "residual_share": residual_share,
+        **residual_diag,
+        "portfolio_total_variance": portfolio_total_variance,
+        "factor_variance": factor_variance,
+        "explained_factor_share_r2_scaled": r2,
+        "variance_based_explained_share": cross_check.get("variance_based_explained_share"),
+        "factor_rc_share_sum": float(sum(float(r["factor_rc_share"]) for r in rows)),
+        "net_total_variance_share_sum": net_share_sum,
+        "gross_total_variance_share_sum": gross_total_variance_share_sum,
+        "cross_check": cross_check,
+        "warnings": warnings,
+        "rows": rows_with_residual,
+        "risk_adders": risk_adders,
+        "hedgers": hedgers,
+        "neutral_factors": neutral_factors,
+        "gross_top_contributors_abs": gross_top,
+        "stability": stability,
+    }
+
+
+def factor_variance_decomposition_weekly(
+    *,
+    weights: dict[str, float],
+    tickers: list[str],
+    analysis_end_str: str,
+    window_weeks: int = FACTOR_WEEKS_5Y,
+    rolling_windows_weeks: dict[str, int] | None = None,
+) -> dict[str, Any]:
+    rows = _portfolio_factor_weekly_ols_rows(
+        weights=weights,
+        tickers=tickers,
+        analysis_end_str=analysis_end_str,
+        window_weeks=window_weeks,
+    )
+    if rows.get("error"):
+        return _factor_variance_decomposition_unavailable(
+            str(rows.get("error")),
+            window="5y_weekly",
+            n_obs=rows.get("n_obs"),
+        )
+
+    snapshots: list[dict[str, Any]] = []
+    windows = rolling_windows_weeks or {"3y": FACTOR_WEEKS_3Y, "5y": FACTOR_WEEKS_5Y, "10y": FACTOR_WEEKS_10Y}
+    for label, weeks in windows.items():
+        snap_rows = _portfolio_factor_weekly_ols_rows(
+            weights=weights,
+            tickers=tickers,
+            analysis_end_str=analysis_end_str,
+            window_weeks=int(weeks),
+        )
+        if snap_rows.get("error"):
+            continue
+        snap = _factor_variance_decomposition_from_rows(
+            np.asarray(snap_rows["y"], dtype=float),
+            np.asarray(snap_rows["X"], dtype=float),
+            list(snap_rows["factor_cols"]),
+            window=f"{label}_weekly",
+            include_stability=False,
+        )
+        if snap.get("status") == "available":
+            snapshots.append(snap)
+
+    out = _factor_variance_decomposition_from_rows(
+        np.asarray(rows["y"], dtype=float),
+        np.asarray(rows["X"], dtype=float),
+        list(rows["factor_cols"]),
+        window="5y_weekly",
+        include_stability=True,
+        stability_snapshots=snapshots,
+    )
+    for warning in out.get("warnings") or []:
+        _LOG.warning("Factor variance decomposition warning: %s", warning)
+    return out
 
 
 def _rc_stability(base_rc: pd.DataFrame, stress_rc: pd.DataFrame) -> dict[str, Any]:

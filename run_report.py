@@ -85,6 +85,7 @@ from src.stress_factors import (
     build_factor_matrix,
     enrich_historical_results_with_factor_attribution,
     factor_covariance_analytics,
+    factor_variance_decomposition_weekly,
     factor_beta_oos_stability_diagnostics,
     factor_beta_stability_diagnostics,
     factor_beta_stability_rows,
@@ -712,6 +713,45 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["factor_covariance_error"] = str(e)
         logger.warning(f"Factor covariance analytics failed: {e}")
+
+    # Factor variance decomposition: 5Y weekly factor shares plus residual risk.
+    try:
+        factor_decomp = factor_variance_decomposition_weekly(
+            weights=weights,
+            tickers=tickers,
+            analysis_end_str=analysis_end_str,
+            window_weeks=FACTOR_WEEKS_5Y,
+        )
+        stress_report["factor_variance_decomposition"] = factor_decomp
+        for warning in factor_decomp.get("warnings") or []:
+            logger.warning(f"Factor variance decomposition warning: {warning}")
+        rows = factor_decomp.get("rows") or []
+        if rows:
+            export_rows = []
+            cross = factor_decomp.get("cross_check") or {}
+            for row in rows:
+                export_rows.append(
+                    {
+                        "method": factor_decomp.get("method"),
+                        "window": factor_decomp.get("window"),
+                        "variance_scale": factor_decomp.get("variance_scale"),
+                        "status": factor_decomp.get("status"),
+                        "r2": factor_decomp.get("r2"),
+                        "residual_share": factor_decomp.get("residual_share"),
+                        "residual_severity": factor_decomp.get("residual_severity"),
+                        "cross_check_status": cross.get("status"),
+                        "cross_check_warning_code": cross.get("warning_code"),
+                        "stability_severity": (factor_decomp.get("stability") or {}).get("overall_severity"),
+                        **row,
+                    }
+                )
+            pd.DataFrame(export_rows).round(8).to_csv(
+                output_dir_csv / "factor_variance_decomposition_5y.csv",
+                index=False,
+            )
+    except Exception as e:
+        stress_report["factor_variance_decomposition_error"] = str(e)
+        logger.warning(f"Factor variance decomposition failed: {e}")
 
     # Out-of-sample explainability in historical episodes: beta Г— realized factor shocks.
     try:
