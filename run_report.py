@@ -83,6 +83,7 @@ from src.stress_factors import (
     compute_portfolio_factor_beta_oos_monthly,
     compute_asset_factor_betas_weekly,
     build_factor_matrix,
+    attach_kalman_factor_betas_to_stress_report,
     build_factor_beta_diagnostic_overlay,
     enrich_historical_results_with_factor_attribution,
     factor_covariance_analytics,
@@ -652,6 +653,20 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["factor_betas_rolling_error"] = str(e)
         logger.warning(f"Rolling factor betas diagnostics failed: {e}")
+
+    # Kalman factor betas: diagnostic-only current regime estimate, does not replace raw 5Y/10Y OLS betas.
+    try:
+        attach_kalman_factor_betas_to_stress_report(
+            stress_report,
+            weights=weights,
+            tickers=tickers,
+            analysis_end_str=analysis_end_str,
+            output_dir_csv=output_dir_csv,
+            window_weeks=FACTOR_WEEKS_10Y,
+        )
+    except Exception as e:
+        stress_report["factor_betas_kalman_error"] = str(e)
+        logger.warning(f"Kalman factor betas diagnostics failed: {e}")
 
     # Factor covariance analytics: explicit base / stress_empirical / stress_overlay regimes.
     try:

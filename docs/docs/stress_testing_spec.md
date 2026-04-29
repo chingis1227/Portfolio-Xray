@@ -312,7 +312,27 @@ Strong 5Y-vs-10Y divergence is `true` if signs differ or `relative_gap = abs(bet
 
 This block is diagnostic only and must not replace raw `factor_betas_5y`, `factor_betas`, or the primary `run_stress` portfolio beta input.
 
-### 8.7B Adjusted synthetic and historical PnL signal
+### 8.7B Kalman time-varying beta diagnostics
+
+`stress_report.json` may include a diagnostic-only block `factor_betas_kalman` when weekly portfolio returns and factor rows are available. This block estimates current portfolio factor betas with a random-walk Kalman filter over the same weekly factor registry used by the raw factor analytics. It must not replace `factor_betas`, `factor_betas_5y`, `factor_betas_10y`, mandate gates, optimizer inputs, or stress pass/fail logic.
+
+The block includes:
+
+- `latest`: capped latest Kalman beta map, using the same beta keys as raw factor betas.
+- `latest_raw`: uncapped latest filtered beta map.
+- `latest_date`, `method`, `window_weeks`, and `n_observations`.
+- `beta_cap_abs`: fixed at `3.0`; reported beta values are clipped to `[-3.0, 3.0]`.
+- `cap_diagnostics`: per-beta `was_capped`, `raw_value`, and `capped_value`.
+- `state_uncertainty`: posterior standard deviation per beta.
+- `uncertainty_by_beta`: `low` when posterior std is `<= 0.15`, `moderate` when `<= 0.35`, and `high` above `0.35`.
+- `uncertainty_severity_distribution` and `high_uncertainty_betas`.
+- `comparison_vs_5y` and `comparison_vs_10y`.
+- `divergence_vs_5y`: flags a beta when the Kalman sign differs from 5Y, `abs_gap >= 0.25`, or `relative_gap = abs(kalman - beta_5y) / max(abs(beta_5y), 0.05) >= 0.75`.
+- `diagnostics`: initialization status, initialization observations, observation variance, initial residual variance, factor order, beta order, and warning codes.
+
+CSV artifacts are `kalman_factor_betas_weekly.csv` and `kalman_factor_betas_latest.csv`. These are report artifacts only.
+
+### 8.7C Adjusted synthetic and historical PnL signal
 
 The stress report must keep raw scenario rows unchanged and add separate top-level diagnostics:
 

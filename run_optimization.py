@@ -408,6 +408,7 @@ def main() -> None:
             compute_portfolio_factor_beta_oos_weekly,
             compute_portfolio_rolling_factor_betas_monthly,
             compute_portfolio_rolling_factor_betas_weekly,
+            attach_kalman_factor_betas_to_stress_report,
             build_factor_beta_diagnostic_overlay,
             enrich_historical_results_with_factor_attribution,
             factor_beta_oos_stability_diagnostics,
@@ -605,6 +606,18 @@ def main() -> None:
                 )
         except Exception as e:
             stress_report["factor_beta_adjusted_overlay_error"] = str(e)
+
+        try:
+            attach_kalman_factor_betas_to_stress_report(
+                stress_report,
+                weights=final_weights,
+                tickers=stress_tickers,
+                analysis_end_str=analysis_end_str,
+                output_dir_csv=out_csv_tmp,
+                window_weeks=FACTOR_WEEKS_10Y,
+            )
+        except Exception as e:
+            stress_report["factor_betas_kalman_error"] = str(e)
 
         try:
             factor_cov = factor_covariance_analytics(

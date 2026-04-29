@@ -453,6 +453,72 @@ def _append_factor_beta_stability_section(lines: list[str], st: dict[str, Any]) 
     lines.append("")
 
 
+def _append_kalman_factor_betas_section(lines: list[str], st: dict[str, Any]) -> None:
+    kalman = st.get("factor_betas_kalman")
+    if not isinstance(kalman, dict) or not kalman:
+        if st.get("factor_betas_kalman_error"):
+            lines.append(f"Kalman factor betas: calculation error - {st.get('factor_betas_kalman_error')}")
+            lines.append("")
+        return
+
+    if kalman.get("status") != "available":
+        warning_codes = ((kalman.get("diagnostics") or {}).get("warning_codes") or [])
+        lines.append("Kalman factor betas: unavailable" + (f" ({', '.join(str(x) for x in warning_codes)})." if warning_codes else "."))
+        lines.append("")
+        return
+
+    latest = kalman.get("latest") or {}
+    latest_raw = kalman.get("latest_raw") or {}
+    cap_diag = kalman.get("cap_diagnostics") or {}
+    uncertainty = kalman.get("uncertainty_by_beta") or {}
+    divergence = kalman.get("divergence_vs_5y") or {}
+
+    lines.append("Kalman factor betas")
+    lines.append(
+        "Diagnostic-only current-regime Kalman beta estimate "
+        f"(date={kalman.get('latest_date', 'n/a')}, n={kalman.get('n_observations', 'n/a')}, "
+        f"cap=+/-{_fmt_float(kalman.get('beta_cap_abs'), 1)})."
+    )
+    if isinstance(latest, dict) and latest:
+        lines.append("Latest capped betas: " + _fmt_beta_dict(latest) + ".")
+
+    capped = [
+        f"{beta_key}: raw={_fmt_float((cap_diag.get(beta_key) or {}).get('raw_value'), 4)} -> capped={_fmt_float((cap_diag.get(beta_key) or {}).get('capped_value'), 4)}"
+        for beta_key in _ordered_beta_keys(latest_raw)
+        if isinstance(cap_diag.get(beta_key), dict) and (cap_diag.get(beta_key) or {}).get("was_capped")
+    ]
+    if capped:
+        lines.append("Capped Kalman betas: " + "; ".join(capped) + ".")
+
+    divergent = divergence.get("divergent_betas") if isinstance(divergence, dict) else []
+    by_div = divergence.get("by_beta") if isinstance(divergence, dict) else {}
+    if divergent and isinstance(by_div, dict):
+        parts = []
+        for beta_key in _ordered_beta_keys({k: 1 for k in divergent}):
+            row = by_div.get(beta_key) or {}
+            parts.append(
+                f"{beta_key}: kalman={_fmt_float(row.get('kalman'), 4)}, "
+                f"5Y={_fmt_float(row.get('benchmark'), 4)}, reason={row.get('reason', 'n/a')}"
+            )
+        lines.append("Kalman vs 5Y divergence flags: " + "; ".join(parts) + ".")
+
+    high_uncertainty = kalman.get("high_uncertainty_betas") or []
+    if high_uncertainty:
+        lines.append("High state uncertainty betas: " + ", ".join(str(x) for x in high_uncertainty) + ".")
+    elif isinstance(uncertainty, dict) and uncertainty:
+        dist = kalman.get("uncertainty_severity_distribution") or {}
+        shares = dist.get("shares") if isinstance(dist, dict) else {}
+        if isinstance(shares, dict):
+            lines.append(
+                "Kalman uncertainty distribution: "
+                f"low={_fmt_pct(shares.get('low'), 1)}, "
+                f"moderate={_fmt_pct(shares.get('moderate'), 1)}, "
+                f"high={_fmt_pct(shares.get('high'), 1)}."
+            )
+    lines.append("Kalman beta diagnostics are non-binding and do not change optimizer weights, mandate gates, or raw 5Y/10Y beta outputs.")
+    lines.append("")
+
+
 def _append_factor_beta_adjusted_overlay_section(lines: list[str], st: dict[str, Any]) -> None:
     adjusted = st.get("factor_betas_adjusted")
     if not isinstance(adjusted, dict) or not adjusted:
@@ -902,6 +968,7 @@ def write_stress_commentary(
         lines.append("")
     _append_rolling_betas_section(lines, st, output_dir_final)
     _append_factor_beta_stability_section(lines, st)
+    _append_kalman_factor_betas_section(lines, st)
     _append_factor_beta_adjusted_overlay_section(lines, st)
     _append_factor_covariance_section(lines, st)
     _append_factor_variance_decomposition_section(lines, st)

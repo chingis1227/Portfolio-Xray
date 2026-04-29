@@ -131,6 +131,7 @@ Do not invent formulas if a spec exists.
 - Align series with inner joins for excess returns, beta, covariance, correlation, and RC_vol.
 - Round only at final export/report stage, not during calculations.
 - Factor regression diagnostics in `stress_report.json` include `idiosyncratic_risk = 1 - R²`, rolling beta stability diagnostics (`factor_betas_stability`), plus Breusch-Pagan heteroskedasticity checks on the same weekly OLS rows as reported betas.
+- `factor_betas_kalman` in `stress_report.json` is diagnostic-only: weekly random-walk Kalman betas are capped at `|beta| <= 3.0`, keep uncapped latest values in `latest_raw`, flag Kalman-vs-5Y divergence, and classify state uncertainty. They must not replace raw OLS 5Y/10Y betas, optimizer inputs, mandate gates, or stress pass/fail logic.
 - Stress factor analytics currently use nine weekly factors: `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`, and `oil`. Synthetic stress scenarios in `src/stress.py` still map only the first six factors into `shock_*` keys unless the stress spec is explicitly changed.
 - Portfolio PCA diagnostics in `stress_report.json.portfolio_pca` are diagnostic-only, use weekly adjusted-close returns for current positive-weight assets, and interpret covariance PCA as `risk_dominance` and correlation PCA as `structure`.
 - `RC_vol` is diagnostic only, not an optimization constraint.

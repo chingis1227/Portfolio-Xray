@@ -66,6 +66,14 @@ FACTOR_BETA_ADJUSTED_METHOD = "severity_weighted_shrinkage_to_10y_anchor"
 FACTOR_BETA_DIVERGENCE_RELATIVE_GAP_STRONG_GTE = 1.0
 FACTOR_RAW_VS_ADJUSTED_PNL_RELATIVE_DELTA_MATERIAL_GTE = 0.25
 FACTOR_RAW_VS_ADJUSTED_PNL_ABS_DELTA_MATERIAL_GTE = 0.01
+FACTOR_KALMAN_BETA_CAP_ABS = 3.0
+FACTOR_KALMAN_DIVERGENCE_ABS_GAP_GTE = 0.25
+FACTOR_KALMAN_DIVERGENCE_RELATIVE_GAP_GTE = 0.75
+FACTOR_KALMAN_DIVERGENCE_MIN_ABS_DENOMINATOR = 0.05
+FACTOR_KALMAN_UNCERTAINTY_LOW_LTE = 0.15
+FACTOR_KALMAN_UNCERTAINTY_MODERATE_LTE = 0.35
+FACTOR_KALMAN_MIN_OBSERVATIONS = 30
+FACTOR_KALMAN_INIT_OBSERVATIONS = 104
 FACTOR_STABILITY_THRESHOLDS: dict[str, Any] = {
     "sign": {
         "dominant_share_high_lt": 0.65,
@@ -1566,6 +1574,381 @@ def portfolio_factor_regression_weekly(
         "factor_multicollinearity": mc,
     }
     return out
+
+
+def _kalman_uncertainty_class(std: float | None) -> str:
+    if std is None or not np.isfinite(float(std)):
+        return "unknown"
+    v = float(std)
+    if v <= FACTOR_KALMAN_UNCERTAINTY_LOW_LTE:
+        return "low"
+    if v <= FACTOR_KALMAN_UNCERTAINTY_MODERATE_LTE:
+        return "moderate"
+    return "high"
+
+
+def _kalman_uncertainty_distribution(uncertainty_by_beta: dict[str, str]) -> dict[str, Any]:
+    counts = {k: 0 for k in ("low", "moderate", "high", "unknown")}
+    for val in uncertainty_by_beta.values():
+        key = str(val) if str(val) in counts else "unknown"
+        counts[key] += 1
+    total = sum(counts.values())
+    shares = {k: (float(v) / total if total else 0.0) for k, v in counts.items()}
+    return {"counts": counts, "shares": shares}
+
+
+def _kalman_beta_comparison(
+    latest: dict[str, float],
+    benchmark: dict[str, Any] | None,
+) -> dict[str, Any]:
+    by_beta: dict[str, dict[str, Any]] = {}
+    for beta_key in sorted(set(latest).union(benchmark or {}), key=lambda b: BETA_ROW_ORDER.index(b) if b in BETA_ROW_ORDER else len(BETA_ROW_ORDER)):
+        k_val = latest.get(beta_key)
+        b_val_raw = (benchmark or {}).get(beta_key)
+        try:
+            if k_val is None or b_val_raw is None:
+                continue
+            b_val = float(b_val_raw)
+            gap = float(k_val) - b_val
+            abs_gap = abs(gap)
+            rel_gap = abs_gap / max(abs(b_val), FACTOR_KALMAN_DIVERGENCE_MIN_ABS_DENOMINATOR)
+            sign_diff = (float(k_val) * b_val) < 0.0
+            by_beta[beta_key] = {
+                "kalman": float(k_val),
+                "benchmark": b_val,
+                "gap": gap,
+                "abs_gap": abs_gap,
+                "relative_gap": rel_gap,
+                "sign_difference": bool(sign_diff),
+            }
+        except (TypeError, ValueError):
+            continue
+    return {"by_beta": by_beta}
+
+
+def _kalman_divergence_vs_5y(
+    latest: dict[str, float],
+    factor_betas_5y: dict[str, Any] | None,
+) -> dict[str, Any]:
+    comparison = _kalman_beta_comparison(latest, factor_betas_5y)
+    by_beta: dict[str, dict[str, Any]] = {}
+    divergent: list[str] = []
+    for beta_key, row in (comparison.get("by_beta") or {}).items():
+        sign_difference = bool(row.get("sign_difference"))
+        abs_gap = float(row.get("abs_gap", 0.0))
+        relative_gap = float(row.get("relative_gap", 0.0))
+        is_divergent = (
+            sign_difference
+            or abs_gap >= FACTOR_KALMAN_DIVERGENCE_ABS_GAP_GTE
+            or relative_gap >= FACTOR_KALMAN_DIVERGENCE_RELATIVE_GAP_GTE
+        )
+        by_beta[beta_key] = {
+            **row,
+            "divergent": bool(is_divergent),
+            "reason": (
+                "sign_difference"
+                if sign_difference
+                else "abs_gap"
+                if abs_gap >= FACTOR_KALMAN_DIVERGENCE_ABS_GAP_GTE
+                else "relative_gap"
+                if relative_gap >= FACTOR_KALMAN_DIVERGENCE_RELATIVE_GAP_GTE
+                else "none"
+            ),
+        }
+        if is_divergent:
+            divergent.append(beta_key)
+    return {
+        "method": "kalman_vs_5y_sign_or_gap",
+        "thresholds": {
+            "abs_gap_gte": FACTOR_KALMAN_DIVERGENCE_ABS_GAP_GTE,
+            "relative_gap_gte": FACTOR_KALMAN_DIVERGENCE_RELATIVE_GAP_GTE,
+            "relative_gap_denominator_floor": FACTOR_KALMAN_DIVERGENCE_MIN_ABS_DENOMINATOR,
+        },
+        "divergence_any": bool(divergent),
+        "divergent_betas": divergent,
+        "by_beta": by_beta,
+    }
+
+
+def _empty_kalman_report(reason: str, n_observations: int = 0) -> dict[str, Any]:
+    return {
+        "status": "unavailable",
+        "method": "kalman_random_walk_weekly_factor_betas",
+        "latest": {},
+        "latest_raw": {},
+        "latest_date": None,
+        "window_weeks": 0,
+        "n_observations": int(n_observations),
+        "beta_cap_abs": FACTOR_KALMAN_BETA_CAP_ABS,
+        "cap_diagnostics": {},
+        "state_uncertainty": {},
+        "uncertainty_by_beta": {},
+        "uncertainty_severity_distribution": _kalman_uncertainty_distribution({}),
+        "high_uncertainty_betas": [],
+        "comparison_vs_5y": {"by_beta": {}},
+        "comparison_vs_10y": {"by_beta": {}},
+        "divergence_vs_5y": {
+            "method": "kalman_vs_5y_sign_or_gap",
+            "divergence_any": False,
+            "divergent_betas": [],
+            "by_beta": {},
+        },
+        "diagnostics": {"warning_codes": [str(reason)], "initialization_status": "failed"},
+    }
+
+
+def kalman_factor_betas_from_frames(
+    portfolio_returns: pd.Series,
+    factor_returns: pd.DataFrame,
+    *,
+    factor_betas_5y: dict[str, Any] | None = None,
+    factor_betas_10y: dict[str, Any] | None = None,
+    window_weeks: int = FACTOR_WEEKS_10Y,
+    beta_cap_abs: float = FACTOR_KALMAN_BETA_CAP_ABS,
+    min_observations: int = FACTOR_KALMAN_MIN_OBSERVATIONS,
+) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame]:
+    """
+    Kalman-filter portfolio factor betas on already-built weekly data.
+
+    The model is diagnostic only: beta states follow a random walk and reported
+    betas are capped while raw filtered states remain in diagnostics.
+    """
+    if portfolio_returns is None or factor_returns is None or factor_returns.empty:
+        return _empty_kalman_report("empty_inputs"), pd.DataFrame(), pd.DataFrame()
+
+    y = pd.Series(portfolio_returns, dtype=float).copy()
+    y.index = pd.to_datetime(y.index).tz_localize(None)
+    factors = factor_returns.copy()
+    factors.index = pd.to_datetime(factors.index).tz_localize(None)
+    factor_cols = [c for c in FACTOR_COLUMN_ORDER if c in factors.columns]
+    if not factor_cols:
+        return _empty_kalman_report("missing_factor_columns"), pd.DataFrame(), pd.DataFrame()
+
+    common = y.dropna().index.intersection(factors[factor_cols].dropna().index).sort_values()
+    if int(window_weeks) > 0 and len(common) > int(window_weeks):
+        common = common[-int(window_weeks):]
+    if len(common) < int(min_observations):
+        return _empty_kalman_report("insufficient_observations", len(common)), pd.DataFrame(), pd.DataFrame()
+
+    y_arr = y.reindex(common).values.astype(float)
+    x_arr = factors.reindex(common).loc[:, factor_cols].values.astype(float)
+    n_obs, n_factors = x_arr.shape
+    beta_keys = [FACTOR_TO_BETA_KEY.get(c, f"beta_{c}") for c in factor_cols]
+
+    init_n = min(FACTOR_KALMAN_INIT_OBSERVATIONS, n_obs)
+    init_n = max(init_n, n_factors + 2)
+    init_n = min(init_n, n_obs)
+    z_init = np.column_stack([np.ones(init_n), x_arr[:init_n]])
+    try:
+        state = np.linalg.lstsq(z_init, y_arr[:init_n], rcond=None)[0].astype(float)
+    except Exception:
+        return _empty_kalman_report("initial_ols_failed", n_obs), pd.DataFrame(), pd.DataFrame()
+
+    resid = y_arr[:init_n] - z_init @ state
+    resid_var = float(np.var(resid, ddof=1)) if len(resid) >= 2 else 0.0
+    y_var = float(np.var(y_arr, ddof=1)) if len(y_arr) >= 2 else 0.0
+    r_var = max(resid_var, y_var * 1e-4, 1e-8)
+
+    try:
+        p_state = np.linalg.pinv(z_init.T @ z_init) * r_var
+    except Exception:
+        p_state = np.eye(n_factors + 1) * 0.05
+    p_state = np.asarray(p_state, dtype=float)
+    p_state = (p_state + p_state.T) / 2.0
+    p_state += np.eye(n_factors + 1) * 1e-8
+
+    q_diag = np.empty(n_factors + 1, dtype=float)
+    q_diag[0] = max(r_var * 0.01, 1e-10)
+    for i, beta in enumerate(state[1:], start=1):
+        scale = max(abs(float(beta)), 0.10)
+        initial_beta_variance = max(float(p_state[i, i]), 1e-8)
+        q_diag[i] = max(initial_beta_variance * 0.05, (0.02 * scale) ** 2)
+    q_state = np.diag(q_diag)
+    identity = np.eye(n_factors + 1)
+
+    raw_rows: list[dict[str, float]] = []
+    capped_rows: list[dict[str, float]] = []
+    std_rows: list[dict[str, float]] = []
+    idx: list[pd.Timestamp] = []
+    for i in range(n_obs):
+        h = np.concatenate([[1.0], x_arr[i]]).astype(float)
+        p_pred = p_state + q_state
+        state_pred = state
+        s_val = float(h @ p_pred @ h.T + r_var)
+        if not np.isfinite(s_val) or s_val <= 1e-12:
+            s_val = 1e-12
+        k_gain = (p_pred @ h.T) / s_val
+        innovation = float(y_arr[i] - h @ state_pred)
+        state = state_pred + k_gain * innovation
+        kh = np.outer(k_gain, h)
+        p_state = (identity - kh) @ p_pred @ (identity - kh).T + np.outer(k_gain, k_gain) * r_var
+        p_state = (p_state + p_state.T) / 2.0
+
+        beta_raw = state[1:].astype(float)
+        beta_capped = np.clip(beta_raw, -float(beta_cap_abs), float(beta_cap_abs))
+        beta_std = np.sqrt(np.maximum(np.diag(p_state)[1:], 0.0))
+        raw_rows.append({k: float(v) for k, v in zip(beta_keys, beta_raw)})
+        capped_rows.append({k: float(v) for k, v in zip(beta_keys, beta_capped)})
+        std_rows.append({k: float(v) for k, v in zip(beta_keys, beta_std)})
+        idx.append(pd.Timestamp(common[i]))
+
+    raw_df = pd.DataFrame(raw_rows, index=pd.DatetimeIndex(idx, name="date"))
+    capped_df = pd.DataFrame(capped_rows, index=pd.DatetimeIndex(idx, name="date"))
+    std_df = pd.DataFrame(std_rows, index=pd.DatetimeIndex(idx, name="date"))
+    latest_raw = {k: float(v) for k, v in raw_df.iloc[-1].items()}
+    latest = {k: float(v) for k, v in capped_df.iloc[-1].items()}
+    state_uncertainty = {k: float(v) for k, v in std_df.iloc[-1].items()}
+    uncertainty_by_beta = {k: _kalman_uncertainty_class(v) for k, v in state_uncertainty.items()}
+    high_uncertainty_betas = [k for k, v in uncertainty_by_beta.items() if v == "high"]
+    cap_diagnostics = {
+        k: {
+            "was_capped": bool(abs(latest_raw[k]) > float(beta_cap_abs)),
+            "raw_value": float(latest_raw[k]),
+            "capped_value": float(latest[k]),
+        }
+        for k in latest
+    }
+
+    comparison_vs_5y = _kalman_beta_comparison(latest, factor_betas_5y)
+    comparison_vs_10y = _kalman_beta_comparison(latest, factor_betas_10y)
+    divergence_vs_5y = _kalman_divergence_vs_5y(latest, factor_betas_5y)
+    latest_rows = []
+    for beta_key in _ordered_beta_keys_for_kalman(latest):
+        row5 = (comparison_vs_5y.get("by_beta") or {}).get(beta_key) or {}
+        row10 = (comparison_vs_10y.get("by_beta") or {}).get(beta_key) or {}
+        div = (divergence_vs_5y.get("by_beta") or {}).get(beta_key) or {}
+        latest_rows.append(
+            {
+                "beta": beta_key,
+                "latest_raw": latest_raw.get(beta_key),
+                "latest": latest.get(beta_key),
+                "beta_5y": row5.get("benchmark"),
+                "beta_10y": row10.get("benchmark"),
+                "gap_vs_5y": row5.get("gap"),
+                "relative_gap_vs_5y": row5.get("relative_gap"),
+                "divergence_vs_5y": bool(div.get("divergent", False)),
+                "divergence_reason": div.get("reason", "none"),
+                "state_uncertainty": state_uncertainty.get(beta_key),
+                "uncertainty_class": uncertainty_by_beta.get(beta_key, "unknown"),
+                "was_capped": cap_diagnostics.get(beta_key, {}).get("was_capped", False),
+            }
+        )
+
+    report = {
+        "status": "available",
+        "method": "kalman_random_walk_weekly_factor_betas",
+        "latest": latest,
+        "latest_raw": latest_raw,
+        "latest_date": idx[-1].strftime("%Y-%m-%d"),
+        "window_weeks": int(window_weeks),
+        "n_observations": int(n_obs),
+        "beta_cap_abs": float(beta_cap_abs),
+        "cap_diagnostics": cap_diagnostics,
+        "state_uncertainty": state_uncertainty,
+        "uncertainty_by_beta": uncertainty_by_beta,
+        "uncertainty_severity_distribution": _kalman_uncertainty_distribution(uncertainty_by_beta),
+        "high_uncertainty_betas": high_uncertainty_betas,
+        "comparison_vs_5y": comparison_vs_5y,
+        "comparison_vs_10y": comparison_vs_10y,
+        "divergence_vs_5y": divergence_vs_5y,
+        "diagnostics": {
+            "initialization_status": "ols_initialized",
+            "initialization_observations": int(init_n),
+            "observation_variance": float(r_var),
+            "initial_residual_variance": float(resid_var),
+            "state_noise_diagonal": [float(v) for v in q_diag.tolist()],
+            "factor_order": list(factor_cols),
+            "beta_order": list(beta_keys),
+            "warning_codes": [],
+        },
+    }
+    return report, capped_df, pd.DataFrame(latest_rows)
+
+
+def _ordered_beta_keys_for_kalman(*maps: dict[str, Any]) -> list[str]:
+    keys: set[str] = set()
+    for m in maps:
+        if isinstance(m, dict):
+            keys.update(str(k) for k in m.keys())
+    return sorted(keys, key=lambda b: BETA_ROW_ORDER.index(b) if b in BETA_ROW_ORDER else len(BETA_ROW_ORDER))
+
+
+def compute_portfolio_kalman_factor_betas_weekly(
+    weights: dict[str, float],
+    tickers: list[str],
+    analysis_end_str: str,
+    *,
+    factor_betas_5y: dict[str, Any] | None = None,
+    factor_betas_10y: dict[str, Any] | None = None,
+    window_weeks: int = FACTOR_WEEKS_10Y,
+    buffer_weeks: int = FACTOR_DOWNLOAD_BUFFER_WEEKS,
+    beta_cap_abs: float = FACTOR_KALMAN_BETA_CAP_ABS,
+) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame]:
+    rows = _portfolio_factor_weekly_ols_rows(
+        weights=weights,
+        tickers=tickers,
+        analysis_end_str=analysis_end_str,
+        window_weeks=window_weeks,
+        buffer_weeks=buffer_weeks,
+    )
+    if rows.get("error"):
+        return _empty_kalman_report(str(rows.get("error")), int(rows.get("n_obs", 0))), pd.DataFrame(), pd.DataFrame()
+    y = pd.Series(
+        np.asarray(rows["y"], dtype=float),
+        index=pd.to_datetime(rows["dates"]),
+        name="portfolio_return",
+    )
+    factors = pd.DataFrame(
+        np.asarray(rows["X"], dtype=float),
+        index=pd.to_datetime(rows["dates"]),
+        columns=list(rows["factor_cols"]),
+    )
+    report, history_df, latest_df = kalman_factor_betas_from_frames(
+        y,
+        factors,
+        factor_betas_5y=factor_betas_5y,
+        factor_betas_10y=factor_betas_10y,
+        window_weeks=window_weeks,
+        beta_cap_abs=beta_cap_abs,
+    )
+    if report.get("status") == "available":
+        report["window_weeks"] = int(rows.get("window_weeks", window_weeks))
+    return report, history_df, latest_df
+
+
+def attach_kalman_factor_betas_to_stress_report(
+    stress_report: dict[str, Any],
+    *,
+    weights: dict[str, float],
+    tickers: list[str],
+    analysis_end_str: str,
+    output_dir_csv: Path | str | None = None,
+    window_weeks: int = FACTOR_WEEKS_10Y,
+) -> dict[str, Any]:
+    report, history_df, latest_df = compute_portfolio_kalman_factor_betas_weekly(
+        weights=weights,
+        tickers=tickers,
+        analysis_end_str=analysis_end_str,
+        factor_betas_5y=stress_report.get("factor_betas_5y") or stress_report.get("factor_betas") or {},
+        factor_betas_10y=stress_report.get("factor_betas_10y") or {},
+        window_weeks=window_weeks,
+    )
+    artifacts: dict[str, str] = {}
+    if output_dir_csv is not None and report.get("status") == "available":
+        out_dir = Path(output_dir_csv)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        if not history_df.empty:
+            history_path = out_dir / "kalman_factor_betas_weekly.csv"
+            history_df.round(6).to_csv(history_path, index=True)
+            artifacts["weekly_csv"] = history_path.name
+        if not latest_df.empty:
+            latest_path = out_dir / "kalman_factor_betas_latest.csv"
+            latest_df.round(6).to_csv(latest_path, index=False)
+            artifacts["latest_csv"] = latest_path.name
+    if artifacts:
+        report["artifacts"] = artifacts
+    stress_report["factor_betas_kalman"] = report
+    return stress_report
 
 
 def factor_oos_beta_shock_explainability(
