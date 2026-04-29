@@ -14,7 +14,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.stress_factors import BETA_ROW_ORDER
+from src.stress_factors import BASE_BETA_ROW_ORDER, BETA_ROW_ORDER
 
 
 def _folder_portfolio_label(output_dir_final: Path) -> str:
@@ -147,13 +147,19 @@ def _historical_vulnerability_summary(hist: list[dict[str, Any]]) -> str | None:
     )
 
 
-def _ordered_beta_keys(*maps: Any) -> list[str]:
+def _ordered_beta_keys(
+    *maps: Any,
+    beta_order: tuple[str, ...] = BETA_ROW_ORDER,
+    include_extra: bool = True,
+) -> list[str]:
     ordered: list[str] = []
     seen: set[str] = set()
-    for key in BETA_ROW_ORDER:
+    for key in beta_order:
         if any(isinstance(m, dict) and key in m for m in maps):
             ordered.append(key)
             seen.add(key)
+    if not include_extra:
+        return ordered
     extra = sorted(
         {
             str(key)
@@ -165,6 +171,12 @@ def _ordered_beta_keys(*maps: Any) -> list[str]:
     )
     ordered.extend(extra)
     return ordered
+
+
+def _base_beta_map(values: Any) -> dict[str, Any]:
+    if not isinstance(values, dict):
+        return {}
+    return {k: v for k, v in values.items() if str(k) in BASE_BETA_ROW_ORDER}
 
 
 def _relpath_for_pdf_md_image(image_file: Path, output_dir_final: Path) -> str | None:
@@ -301,7 +313,15 @@ def _append_factor_regression_section(lines: list[str], fr: Any, label: str) -> 
     p_d = fr.get("p") or {}
     lo = fr.get("ci_low") or {}
     hi = fr.get("ci_high") or {}
-    beta_order = _ordered_beta_keys(betas, t_d, p_d, lo, hi)
+    beta_order = _ordered_beta_keys(
+        betas,
+        t_d,
+        p_d,
+        lo,
+        hi,
+        beta_order=BASE_BETA_ROW_ORDER,
+        include_extra=False,
+    )
     lines.append(
         f"РџРѕСЂС‚С„РµР»СЊРЅР°СЏ С„Р°РєС‚РѕСЂРЅР°СЏ СЂРµРіСЂРµСЃСЃРёСЏ ({label}), РЅРµРґРµР»СЊРЅС‹Рµ СЂСЏРґС‹, OLS: "
         f"n_obs={fr.get('n_obs', 'РЅ/Рґ')}, RВІ={_fmt_float(fr.get('r2'), 4)}, "
@@ -372,7 +392,7 @@ def _append_rolling_betas_section(lines: list[str], st: dict[str, Any], output_d
             if not isinstance(by_b, dict):
                 continue
             lines.append(f"РћРєРЅРѕ {win}:")
-            for bkey in _ordered_beta_keys(by_b):
+            for bkey in _ordered_beta_keys(by_b, beta_order=BASE_BETA_ROW_ORDER, include_extra=False):
                 row = by_b.get(bkey)
                 if not isinstance(row, dict):
                     continue
@@ -428,7 +448,7 @@ def _append_factor_beta_stability_section(lines: list[str], st: dict[str, Any]) 
     if not isinstance(by_beta, dict):
         lines.append("")
         return
-    for beta_key in _ordered_beta_keys(by_beta):
+    for beta_key in _ordered_beta_keys(by_beta, beta_order=BASE_BETA_ROW_ORDER, include_extra=False):
         row = by_beta.get(beta_key)
         if not isinstance(row, dict):
             continue
@@ -467,8 +487,8 @@ def _append_kalman_factor_betas_section(lines: list[str], st: dict[str, Any]) ->
         lines.append("")
         return
 
-    latest = kalman.get("latest") or {}
-    latest_raw = kalman.get("latest_raw") or {}
+    latest = _base_beta_map(kalman.get("latest") or {})
+    latest_raw = _base_beta_map(kalman.get("latest_raw") or {})
     cap_diag = kalman.get("cap_diagnostics") or {}
     uncertainty = kalman.get("uncertainty_by_beta") or {}
     divergence = kalman.get("divergence_vs_5y") or {}
@@ -484,7 +504,7 @@ def _append_kalman_factor_betas_section(lines: list[str], st: dict[str, Any]) ->
 
     capped = [
         f"{beta_key}: raw={_fmt_float((cap_diag.get(beta_key) or {}).get('raw_value'), 4)} -> capped={_fmt_float((cap_diag.get(beta_key) or {}).get('capped_value'), 4)}"
-        for beta_key in _ordered_beta_keys(latest_raw)
+        for beta_key in _ordered_beta_keys(latest_raw, beta_order=BASE_BETA_ROW_ORDER, include_extra=False)
         if isinstance(cap_diag.get(beta_key), dict) and (cap_diag.get(beta_key) or {}).get("was_capped")
     ]
     if capped:
@@ -494,7 +514,11 @@ def _append_kalman_factor_betas_section(lines: list[str], st: dict[str, Any]) ->
     by_div = divergence.get("by_beta") if isinstance(divergence, dict) else {}
     if divergent and isinstance(by_div, dict):
         parts = []
-        for beta_key in _ordered_beta_keys({k: 1 for k in divergent}):
+        for beta_key in _ordered_beta_keys(
+            {k: 1 for k in divergent},
+            beta_order=BASE_BETA_ROW_ORDER,
+            include_extra=False,
+        ):
             row = by_div.get(beta_key) or {}
             parts.append(
                 f"{beta_key}: kalman={_fmt_float(row.get('kalman'), 4)}, "
@@ -502,7 +526,11 @@ def _append_kalman_factor_betas_section(lines: list[str], st: dict[str, Any]) ->
             )
         lines.append("Kalman vs 5Y divergence flags: " + "; ".join(parts) + ".")
 
-    high_uncertainty = kalman.get("high_uncertainty_betas") or []
+    high_uncertainty = [
+        str(beta_key)
+        for beta_key in (kalman.get("high_uncertainty_betas") or [])
+        if str(beta_key) in BASE_BETA_ROW_ORDER
+    ]
     if high_uncertainty:
         lines.append("High state uncertainty betas: " + ", ".join(str(x) for x in high_uncertainty) + ".")
     elif isinstance(uncertainty, dict) and uncertainty:
@@ -516,6 +544,48 @@ def _append_kalman_factor_betas_section(lines: list[str], st: dict[str, Any]) ->
                 f"high={_fmt_pct(shares.get('high'), 1)}."
             )
     lines.append("Kalman beta diagnostics are non-binding and do not change optimizer weights, mandate gates, or raw 5Y/10Y beta outputs.")
+    lines.append("")
+
+
+def _append_diagnostic_oil_beta_section(lines: list[str], st: dict[str, Any]) -> None:
+    oil = st.get("diagnostic_oil_beta")
+    if not isinstance(oil, dict) or not oil:
+        if st.get("diagnostic_oil_beta_error"):
+            lines.append(f"Oil diagnostic warning: calculation error - {st.get('diagnostic_oil_beta_error')}")
+            lines.append("")
+        return
+    lines.append("Oil diagnostic/stress warning")
+    lines.append(
+        "Oil role=diagnostic_warning_only; beta_oil is deprecated in production beta outputs. "
+        "Read Oil exposure only from diagnostic_oil_beta or stress-layer metrics."
+    )
+    lines.append(
+        "Oil beta estimates: "
+        f"5Y={_fmt_float(oil.get('beta_oil_5y'), 4)}, "
+        f"10Y={_fmt_float(oil.get('beta_oil_10y'), 4)}; "
+        f"Commodity production beta 5Y={_fmt_float(oil.get('beta_commodity_5y'), 4)}, "
+        f"10Y={_fmt_float(oil.get('beta_commodity_10y'), 4)}."
+    )
+    corr = oil.get("oil_commodity_correlation") or {}
+    vif = oil.get("oil_commodity_vif") or {}
+    signal = oil.get("collinearity_signal") or {}
+    lines.append(
+        "Oil/Commodity collinearity: "
+        f"corr_5y={_fmt_float(corr.get('factor_regression_5y'), 4)}, "
+        f"corr_10y={_fmt_float(corr.get('factor_regression_10y'), 4)}, "
+        f"cov_corr={_fmt_float(corr.get('factor_covariance_base'), 4)}, "
+        f"oil_vif_5y={_fmt_float(vif.get('oil_5y'), 3)}, "
+        f"severity={signal.get('severity', 'unknown')}."
+    )
+    kalman = oil.get("kalman_oil") or {}
+    if isinstance(kalman, dict) and kalman:
+        lines.append(
+            "Oil Kalman diagnostic: "
+            f"latest={_fmt_float(kalman.get('latest'), 4)}, "
+            f"raw={_fmt_float(kalman.get('latest_raw'), 4)}, "
+            f"uncertainty={kalman.get('uncertainty_class') or kalman.get('state_uncertainty') or 'n/a'}, "
+            f"date={kalman.get('latest_date', 'n/a')}."
+        )
     lines.append("")
 
 
@@ -536,7 +606,7 @@ def _append_factor_beta_adjusted_overlay_section(lines: list[str], st: dict[str,
             + "."
         )
     reduced = []
-    for beta_key in _ordered_beta_keys(raw_map, adj_map):
+    for beta_key in _ordered_beta_keys(raw_map, adj_map, beta_order=BASE_BETA_ROW_ORDER, include_extra=False):
         raw_val = raw_map.get(beta_key)
         adj_val = adj_map.get(beta_key)
         try:
@@ -669,6 +739,7 @@ def _append_factor_covariance_section(lines: list[str], st: dict[str, Any]) -> N
                 f"holdout_weeks={forecast_quality.get('holdout_weeks')}."
             )
     zero_filled = ((fc.get("exposure_vector") or {}).get("zero_filled_beta_keys") or []) if isinstance(fc.get("exposure_vector"), dict) else []
+    zero_filled = [x for x in zero_filled if str(x) != "beta_oil"]
     if zero_filled:
         lines.append(f"Zero-filled missing factor betas: {', '.join(str(x) for x in zero_filled)}.")
     lines.append("")
@@ -948,8 +1019,8 @@ def write_stress_commentary(
     else:
         lines.append("РЎС†РµРЅР°СЂРЅС‹Рµ СЃС‚СЂРѕРєРё (scenario_results) РІ РѕС‚С‡С‘С‚Рµ РѕС‚СЃСѓС‚СЃС‚РІСѓСЋС‚.")
 
-    fb5 = st.get("factor_betas_5y") or st.get("factor_betas") or {}
-    fb10 = st.get("factor_betas_10y") or {}
+    fb5 = _base_beta_map(st.get("factor_betas_5y") or st.get("factor_betas") or {})
+    fb10 = _base_beta_map(st.get("factor_betas_10y") or {})
     lines.append(
         f"Р¤Р°РєС‚РѕСЂРЅС‹Рµ Р±РµС‚С‹ РїРѕСЂС‚С„РµР»СЏ (РЅРµРґРµР»СЊРЅР°СЏ РѕС†РµРЅРєР°, СЃРј. СЃРїРµС†РёС„РёРєР°С†РёСЋ): 5Yв‰€{{{_fmt_beta_dict(fb5 if isinstance(fb5, dict) else {})}}}; "
         f"10Yв‰€{{{_fmt_beta_dict(fb10 if isinstance(fb10, dict) else {})}}}."
@@ -969,6 +1040,7 @@ def write_stress_commentary(
     _append_rolling_betas_section(lines, st, output_dir_final)
     _append_factor_beta_stability_section(lines, st)
     _append_kalman_factor_betas_section(lines, st)
+    _append_diagnostic_oil_beta_section(lines, st)
     _append_factor_beta_adjusted_overlay_section(lines, st)
     _append_factor_covariance_section(lines, st)
     _append_factor_variance_decomposition_section(lines, st)

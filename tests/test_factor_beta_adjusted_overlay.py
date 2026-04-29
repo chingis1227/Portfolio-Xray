@@ -10,20 +10,26 @@ def test_build_factor_beta_adjustment_overlay_shrinks_and_flags_divergence() -> 
             "beta_eq": 1.0,
             "beta_credit": 0.10,
             "beta_usd": 0.10,
+            "beta_oil": 0.77,
         },
         factor_betas_10y={
             "beta_eq": 0.20,
             "beta_credit": 0.25,
             "beta_usd": -0.10,
+            "beta_oil": -0.77,
         },
         factor_betas_stability={
             "by_beta": {
                 "beta_eq": {"combined_severity": "high"},
                 "beta_credit": {"combined_severity": "low"},
                 "beta_usd": {"combined_severity": "moderate"},
+                "beta_oil": {"combined_severity": "high"},
             }
         },
     )
+    assert "beta_oil" not in out["raw"]
+    assert "beta_oil" not in out["adjusted"]
+    assert "beta_oil" not in out["confidence_by_beta"]
     assert out["adjusted"]["beta_eq"] == 0.6
     assert out["adjusted"]["beta_credit"] == 0.1
     assert abs(out["adjusted"]["beta_usd"] - 0.05) < 1e-12

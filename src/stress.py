@@ -26,6 +26,16 @@ FACTOR_TO_SHOCK_KEY = {
     "usd": "shock_usd",
     "commodity": "shock_cmd",
 }
+PRODUCTION_FACTOR_BETA_KEYS = (
+    "beta_eq",
+    "beta_rr",
+    "beta_inf",
+    "beta_credit",
+    "beta_usd",
+    "beta_cmd",
+    "beta_vix",
+    "beta_us_growth",
+)
 RECESSION_CALIBRATION_EPISODES = ("2008", "2020")
 
 # Used only when factor history is unavailable; normal report runs pass realized factors.
@@ -480,7 +490,11 @@ def run_stress(
             row["risk_on_corr"] = round(risk_on_corr, 4)
         scenario_results.append(row)
 
-    factor_betas = {k: round(v, 4) for k, v in portfolio_betas.items()}
+    factor_betas = {
+        k: round(v, 4)
+        for k, v in portfolio_betas.items()
+        if str(k) in PRODUCTION_FACTOR_BETA_KEYS
+    }
 
     historical_results = []
     for ep_id, start, end in HISTORICAL_EPISODES:

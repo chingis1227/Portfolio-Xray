@@ -20,6 +20,7 @@ import argparse
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -71,6 +72,7 @@ from src.portfolio_dynamic import portfolio_returns_nan_safe
 from src.risk_contrib import cov_matrix_monthly, rc_vol_window
 from src.stress import run_stress
 from src.stress_factors import (
+    FACTOR_COLUMN_ORDER,
     FACTOR_WEEKS_10Y,
     FACTOR_WEEKS_3Y,
     FACTOR_WEEKS_5Y,
@@ -84,6 +86,7 @@ from src.stress_factors import (
     compute_asset_factor_betas_weekly,
     build_factor_matrix,
     attach_kalman_factor_betas_to_stress_report,
+    build_diagnostic_oil_beta,
     build_factor_beta_diagnostic_overlay,
     enrich_historical_results_with_factor_attribution,
     factor_covariance_analytics,
@@ -463,6 +466,8 @@ def run_portfolio_report_for_weights(
 
     portfolio_betas_5y_dict: dict[str, float] = {}
     portfolio_betas_10y_dict: dict[str, float] = {}
+    diagnostic_betas_5y_extended: dict[str, float] = {}
+    diagnostic_betas_10y_extended: dict[str, float] = {}
     recession_factor_returns = pd.DataFrame()
     try:
         beta_tickers = [t for t in tickers if weights.get(t, 0) > 0]
@@ -479,6 +484,14 @@ def run_portfolio_report_for_weights(
 
         asset_betas_5y_df, portfolio_betas_5y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_5Y)
         _asset_betas_10y_df, portfolio_betas_10y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_10Y)
+        diagnostic_betas_5y_extended = portfolio_factor_betas(
+            weights,
+            compute_asset_factor_betas_weekly(beta_tickers, analysis_end_str, FACTOR_WEEKS_5Y, factor_columns=FACTOR_COLUMN_ORDER),
+        )
+        diagnostic_betas_10y_extended = portfolio_factor_betas(
+            weights,
+            compute_asset_factor_betas_weekly(beta_tickers, analysis_end_str, FACTOR_WEEKS_10Y, factor_columns=FACTOR_COLUMN_ORDER),
+        )
         # Keep stress engine input/backward compatibility aligned to 5Y betas.
         asset_betas_df = asset_betas_5y_df
         portfolio_betas_dict = portfolio_betas_5y_dict
@@ -507,6 +520,8 @@ def run_portfolio_report_for_weights(
     # Portfolio factor regression diagnostics (5Y/10Y): t/p/CI/R^2 on weekly data, same factor matrix definition.
     stress_report["factor_regression_5y"] = {}
     stress_report["factor_regression_10y"] = {}
+    factor_regression_5y_extended: dict[str, Any] = {}
+    factor_regression_10y_extended: dict[str, Any] = {}
     try:
         stress_report["factor_regression_5y"] = portfolio_factor_regression_weekly(
             weights=weights,
@@ -527,6 +542,24 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["factor_regression_10y_error"] = str(e)
         logger.warning(f"Factor regression diagnostics (10Y) failed: {e}")
+    try:
+        factor_regression_5y_extended = portfolio_factor_regression_weekly(
+            weights=weights,
+            tickers=tickers,
+            analysis_end_str=analysis_end_str,
+            window_weeks=FACTOR_WEEKS_5Y,
+            factor_columns=FACTOR_COLUMN_ORDER,
+        )
+        factor_regression_10y_extended = portfolio_factor_regression_weekly(
+            weights=weights,
+            tickers=tickers,
+            analysis_end_str=analysis_end_str,
+            window_weeks=FACTOR_WEEKS_10Y,
+            factor_columns=FACTOR_COLUMN_ORDER,
+        )
+    except Exception as e:
+        stress_report["diagnostic_oil_beta_regression_error"] = str(e)
+        logger.warning(f"Extended Oil diagnostic regression failed: {e}")
 
     # Rolling beta stability (diagnostic): 3Y/5Y/10Y weekly + monthly betas, OOS checks, and severity.
     rb: dict[str, pd.DataFrame] = {}
@@ -742,6 +775,19 @@ def run_portfolio_report_for_weights(
         stress_report["factor_covariance_error"] = str(e)
         logger.warning(f"Factor covariance analytics failed: {e}")
 
+    try:
+        stress_report["diagnostic_oil_beta"] = build_diagnostic_oil_beta(
+            factor_betas_5y_extended=diagnostic_betas_5y_extended,
+            factor_betas_10y_extended=diagnostic_betas_10y_extended,
+            factor_regression_5y_extended=factor_regression_5y_extended,
+            factor_regression_10y_extended=factor_regression_10y_extended,
+            factor_covariance=stress_report.get("factor_covariance") or {},
+            kalman_report=stress_report.get("factor_betas_kalman") or {},
+        )
+    except Exception as e:
+        stress_report["diagnostic_oil_beta_error"] = str(e)
+        logger.warning(f"Diagnostic Oil beta block failed: {e}")
+
     # Factor variance decomposition: 5Y weekly factor shares plus residual risk.
     try:
         factor_decomp = factor_variance_decomposition_weekly(
@@ -805,7 +851,7 @@ def run_portfolio_report_for_weights(
                 if not isinstance(block, dict) or block.get("status") != "available":
                     continue
                 rolling = block.get("rolling_pc1") or {}
-                rolling_summary = rolling.get("summary") if isinstance(rolling, dict) else {}
+                rolling_pc1_summary = rolling.get("summary") if isinstance(rolling, dict) else {}
                 summary_rows.append(
                     {
                         "layer": layer_name,
@@ -819,9 +865,9 @@ def run_portfolio_report_for_weights(
                         "effective_number_of_bets": block.get("effective_number_of_bets"),
                         "effective_number_of_bets_ratio": block.get("effective_number_of_bets_ratio"),
                         "enb_severity": block.get("enb_severity"),
-                        "rolling_stability_severity": (rolling_summary or {}).get("stability_severity") if isinstance(rolling_summary, dict) else None,
-                        "rolling_trend_slope_per_year": (rolling_summary or {}).get("trend_slope_per_year") if isinstance(rolling_summary, dict) else None,
-                        "rolling_latest_minus_mean": (rolling_summary or {}).get("latest_minus_mean") if isinstance(rolling_summary, dict) else None,
+                        "rolling_stability_severity": (rolling_pc1_summary or {}).get("stability_severity") if isinstance(rolling_pc1_summary, dict) else None,
+                        "rolling_trend_slope_per_year": (rolling_pc1_summary or {}).get("trend_slope_per_year") if isinstance(rolling_pc1_summary, dict) else None,
+                        "rolling_latest_minus_mean": (rolling_pc1_summary or {}).get("latest_minus_mean") if isinstance(rolling_pc1_summary, dict) else None,
                     }
                 )
                 for comp in block.get("components") or []:

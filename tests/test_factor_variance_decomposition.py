@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 
 from src import stress_factors as sf
 
@@ -101,3 +102,43 @@ def test_factor_variance_decomposition_stability_v1() -> None:
 
     unknown = sf._factor_variance_decomposition_from_rows(y, X, cols)
     assert unknown["stability"]["status"] == "unknown"
+
+
+def test_factor_variance_decomposition_weekly_uses_base_factors_by_default(monkeypatch) -> None:
+    idx = pd.date_range("2020-01-03", periods=80, freq="W-FRI")
+    rng = np.random.default_rng(123)
+    factors = pd.DataFrame(
+        rng.normal(scale=0.02, size=(len(idx), len(sf.FACTOR_COLUMN_ORDER))),
+        index=idx,
+        columns=list(sf.FACTOR_COLUMN_ORDER),
+    )
+    returns = pd.DataFrame(
+        {
+            "AAA": 0.4 * factors["equity"] - 0.2 * factors["credit"] + 0.3 * factors["oil"] + rng.normal(scale=0.01, size=len(idx)),
+        },
+        index=idx,
+    )
+
+    monkeypatch.setattr(sf, "build_factor_matrix", lambda *_args, **_kwargs: factors.copy())
+    monkeypatch.setattr(sf, "asset_weekly_returns_from_daily", lambda *_args, **_kwargs: returns.copy())
+
+    import src.data_yf as data_yf
+
+    monkeypatch.setattr(
+        data_yf,
+        "download_all",
+        lambda *_args, **_kwargs: {"AAA": pd.DataFrame({"Close": [1.0, 2.0]}, index=pd.to_datetime(["2024-01-01", "2024-01-02"]))},
+    )
+
+    out = sf.factor_variance_decomposition_weekly(
+        weights={"AAA": 1.0},
+        tickers=["AAA"],
+        analysis_end_str="2021-07-16",
+        window_weeks=60,
+        rolling_windows_weeks={"3y": 40},
+    )
+
+    factors_in_rows = {row["factor"] for row in out["rows"]}
+    assert out["status"] == "available"
+    assert "commodity" in factors_in_rows
+    assert "oil" not in factors_in_rows

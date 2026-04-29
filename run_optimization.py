@@ -14,6 +14,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import yaml
@@ -355,6 +356,7 @@ def main() -> None:
     recession_factor_returns = pd.DataFrame()
     try:
         from src.stress_factors import (
+            FACTOR_COLUMN_ORDER,
             FACTOR_WEEKS_10Y,
             FACTOR_WEEKS_3Y,
             FACTOR_WEEKS_5Y,
@@ -371,6 +373,14 @@ def main() -> None:
 
         asset_betas_5y_df, portfolio_betas_5y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_5Y)
         _asset_betas_10y_df, portfolio_betas_10y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_10Y)
+        diagnostic_betas_5y_extended = portfolio_factor_betas(
+            final_weights,
+            compute_asset_factor_betas_weekly(beta_tickers, analysis_end_str, FACTOR_WEEKS_5Y, factor_columns=FACTOR_COLUMN_ORDER),
+        )
+        diagnostic_betas_10y_extended = portfolio_factor_betas(
+            final_weights,
+            compute_asset_factor_betas_weekly(beta_tickers, analysis_end_str, FACTOR_WEEKS_10Y, factor_columns=FACTOR_COLUMN_ORDER),
+        )
         asset_betas_df = asset_betas_5y_df
         portfolio_betas_dict = portfolio_betas_5y_dict
         try:
@@ -401,6 +411,7 @@ def main() -> None:
             FACTOR_MONTHS_10Y,
             FACTOR_MONTHS_3Y,
             FACTOR_MONTHS_5Y,
+            FACTOR_COLUMN_ORDER,
             FACTOR_WEEKS_10Y,
             FACTOR_WEEKS_3Y,
             FACTOR_WEEKS_5Y,
@@ -409,6 +420,7 @@ def main() -> None:
             compute_portfolio_rolling_factor_betas_monthly,
             compute_portfolio_rolling_factor_betas_weekly,
             attach_kalman_factor_betas_to_stress_report,
+            build_diagnostic_oil_beta,
             build_factor_beta_diagnostic_overlay,
             enrich_historical_results_with_factor_attribution,
             factor_beta_oos_stability_diagnostics,
@@ -426,6 +438,8 @@ def main() -> None:
 
         stress_report["factor_regression_5y"] = {}
         stress_report["factor_regression_10y"] = {}
+        factor_regression_5y_extended: dict[str, Any] = {}
+        factor_regression_10y_extended: dict[str, Any] = {}
         try:
             stress_report["factor_regression_5y"] = portfolio_factor_regression_weekly(
                 weights=final_weights,
@@ -444,6 +458,23 @@ def main() -> None:
             )
         except Exception as e:
             stress_report["factor_regression_10y_error"] = str(e)
+        try:
+            factor_regression_5y_extended = portfolio_factor_regression_weekly(
+                weights=final_weights,
+                tickers=stress_tickers,
+                analysis_end_str=analysis_end_str,
+                window_weeks=FACTOR_WEEKS_5Y,
+                factor_columns=FACTOR_COLUMN_ORDER,
+            )
+            factor_regression_10y_extended = portfolio_factor_regression_weekly(
+                weights=final_weights,
+                tickers=stress_tickers,
+                analysis_end_str=analysis_end_str,
+                window_weeks=FACTOR_WEEKS_10Y,
+                factor_columns=FACTOR_COLUMN_ORDER,
+            )
+        except Exception as e:
+            stress_report["diagnostic_oil_beta_regression_error"] = str(e)
 
         rolling_windows = {"3y": FACTOR_WEEKS_3Y, "5y": FACTOR_WEEKS_5Y, "10y": FACTOR_WEEKS_10Y}
         rolling_windows_months = {"3y": FACTOR_MONTHS_3Y, "5y": FACTOR_MONTHS_5Y, "10y": FACTOR_MONTHS_10Y}
@@ -691,6 +722,19 @@ def main() -> None:
         except Exception as e:
             stress_report["factor_covariance_error"] = str(e)
             logger.warning("Factor covariance analytics failed: %s", e)
+
+        try:
+            stress_report["diagnostic_oil_beta"] = build_diagnostic_oil_beta(
+                factor_betas_5y_extended=locals().get("diagnostic_betas_5y_extended", {}),
+                factor_betas_10y_extended=locals().get("diagnostic_betas_10y_extended", {}),
+                factor_regression_5y_extended=factor_regression_5y_extended,
+                factor_regression_10y_extended=factor_regression_10y_extended,
+                factor_covariance=stress_report.get("factor_covariance") or {},
+                kalman_report=stress_report.get("factor_betas_kalman") or {},
+            )
+        except Exception as e:
+            stress_report["diagnostic_oil_beta_error"] = str(e)
+            logger.warning("Diagnostic Oil beta block failed: %s", e)
 
         try:
             factor_decomp = factor_variance_decomposition_weekly(

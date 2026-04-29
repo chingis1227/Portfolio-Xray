@@ -26,27 +26,21 @@ fontsize: 10pt
 
 - Run status: APPROVED
 - Historical MaxDD РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ: True
-- Realized MaxDD (full hist.): -14.04%
-- History window: 2018-07-31 00:00:00 .. 2026-04-30 00:00:00 (94 months)
+- Realized MaxDD (full hist.): -17.65%
+- History window: 2014-05-31 00:00:00 .. 2026-04-30 00:00:00 (144 months)
 - Note: Only this historical MaxDD vs mandate can prevent weight release.
 
 ### 3. Final portfolio weights
 
-- BIL: 0.203
-- BBJP: 0.142
-- GLD: 0.142
-- SCHP: 0.142
-- VDC: 0.142
-- VWO: 0.142
-- SCHD: 0.022
-- COPX: 0.008
-- ITA: 0.008
-- QQQ: 0.008
-- SLV: 0.008
-- URA: 0.008
-- VGK: 0.008
-- VOO: 0.008
-- VT: 0.008
+- TLT: 0.222
+- BND: 0.174
+- SCHP: 0.164
+- BIL: 0.100
+- SCHD: 0.088
+- GLD: 0.086
+- VOO: 0.072
+- SLV: 0.062
+- QQQ: 0.031
 - (sum: 0.999)
 
 ### 4. Risk contribution (RC_vol)
@@ -58,7 +52,7 @@ RC_vol is reported in metrics and stress (Top1/Top3) for diagnostics; not used a
 
 - Diagnostic status:
 - Primary code: вЂ”
-- Worst scenario loss: -10.80% (informational)
+- Worst scenario loss: -14.36% (informational)
 - Failed scenario: вЂ”
 - Note: Synthetic shocks & episode checks do not prevent weights; review with PM.
 

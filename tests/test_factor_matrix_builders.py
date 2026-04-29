@@ -64,7 +64,34 @@ def test_build_factor_matrix_includes_vix_us_growth_oil_and_shifts_wei_to_friday
     assert np.isclose(out.loc[pd.Timestamp("2024-01-12"), "oil"], expected_oil.loc[pd.Timestamp("2024-01-12")])
 
 
-def test_portfolio_factor_regression_weekly_emits_new_beta_keys(monkeypatch) -> None:
+def test_base_factor_contract_excludes_oil_but_extended_registry_keeps_it() -> None:
+    assert sf.BASE_FACTOR_COLUMN_ORDER == (
+        "equity",
+        "real_rates",
+        "inflation",
+        "credit",
+        "usd",
+        "commodity",
+        "vix",
+        "us_growth",
+    )
+    assert sf.BASE_BETA_ROW_ORDER == (
+        "beta_eq",
+        "beta_rr",
+        "beta_inf",
+        "beta_credit",
+        "beta_usd",
+        "beta_cmd",
+        "beta_vix",
+        "beta_us_growth",
+    )
+    assert "oil" not in sf.BASE_FACTOR_COLUMN_ORDER
+    assert "beta_oil" not in sf.BASE_BETA_ROW_ORDER
+    assert sf.FACTOR_COLUMN_ORDER[-1] == "oil"
+    assert sf.BETA_ROW_ORDER[-1] == "beta_oil"
+
+
+def test_portfolio_factor_regression_weekly_uses_base_by_default_and_extended_when_requested(monkeypatch) -> None:
     idx = pd.date_range("2024-01-05", periods=30, freq="W-FRI")
     rng = np.random.default_rng(123)
     factors = pd.DataFrame(
@@ -100,13 +127,24 @@ def test_portfolio_factor_regression_weekly_emits_new_beta_keys(monkeypatch) -> 
         window_weeks=30,
     )
 
-    expected_beta_keys = [sf.FACTOR_TO_BETA_KEY[col] for col in sf.FACTOR_COLUMN_ORDER]
+    expected_beta_keys = [sf.FACTOR_TO_BETA_KEY[col] for col in sf.BASE_FACTOR_COLUMN_ORDER]
     assert list(out["betas"].keys()) == expected_beta_keys
     assert "beta_vix" in out["betas"]
     assert "beta_us_growth" in out["betas"]
-    assert "beta_oil" in out["betas"]
+    assert "beta_oil" not in out["betas"]
     assert np.isclose(out["idiosyncratic_risk"], 1.0 - out["r2"])
     assert len(out["hac_inference"]["t"]) == len(expected_beta_keys) + 1
+
+    extended = sf.portfolio_factor_regression_weekly(
+        weights={"AAA": 1.0},
+        tickers=["AAA"],
+        analysis_end_str="2024-08-30",
+        window_weeks=30,
+        factor_columns=sf.FACTOR_COLUMN_ORDER,
+    )
+    extended_beta_keys = [sf.FACTOR_TO_BETA_KEY[col] for col in sf.FACTOR_COLUMN_ORDER]
+    assert list(extended["betas"].keys()) == extended_beta_keys
+    assert "beta_oil" in extended["betas"]
 
 
 def test_compute_portfolio_rolling_factor_betas_monthly_outputs_windows(monkeypatch) -> None:
@@ -136,8 +174,17 @@ def test_compute_portfolio_rolling_factor_betas_monthly_outputs_windows(monkeypa
 
     assert set(out) == {"3y", "5y", "10y"}
     assert "beta_eq" in out["3y"].columns
-    assert "beta_oil" in out["5y"].columns
+    assert "beta_oil" not in out["5y"].columns
     assert not out["10y"].empty
+
+    extended = sf.compute_portfolio_rolling_factor_betas_monthly(
+        monthly_returns=monthly_returns,
+        weights={"AAA": 1.0},
+        analysis_end_str="2022-06-30",
+        rolling_windows_months={"5y": sf.FACTOR_MONTHS_5Y},
+        factor_columns=sf.FACTOR_COLUMN_ORDER,
+    )
+    assert "beta_oil" in extended["5y"].columns
 
 
 def test_write_rolling_betas_plot_pngs_handles_nine_factors() -> None:

@@ -120,7 +120,7 @@ def test_write_stress_commentary_from_stress_report() -> None:
                 },
             ],
             "factor_betas_5y": {"beta_eq": 0.77, "beta_vix": -0.12, "beta_us_growth": 0.08},
-            "factor_betas_10y": {"beta_eq": 0.81, "beta_oil": 0.11},
+            "factor_betas_10y": {"beta_eq": 0.81},
             "factor_betas_adjusted": {
                 "raw": {"beta_eq": 0.77, "beta_vix": -0.12, "beta_us_growth": 0.08},
                 "adjusted": {"beta_eq": 0.74, "beta_vix": -0.08, "beta_us_growth": 0.08},
@@ -186,11 +186,11 @@ def test_write_stress_commentary_from_stress_report() -> None:
                 "se_type": "classic_ols",
                 "alpha": 0.05,
                 "ci_level": 0.95,
-                "betas": {"beta_eq": 0.5, "beta_vix": -0.2, "beta_us_growth": 0.15, "beta_oil": 0.05},
-                "t": {"beta_eq": 2.0, "beta_vix": -1.8, "beta_us_growth": 1.2, "beta_oil": 0.7},
-                "p": {"beta_eq": 0.01, "beta_vix": 0.08, "beta_us_growth": 0.24, "beta_oil": 0.49},
-                "ci_low": {"beta_eq": 0.1, "beta_vix": -0.4, "beta_us_growth": -0.1, "beta_oil": -0.08},
-                "ci_high": {"beta_eq": 0.9, "beta_vix": 0.0, "beta_us_growth": 0.4, "beta_oil": 0.18},
+                "betas": {"beta_eq": 0.5, "beta_vix": -0.2, "beta_us_growth": 0.15},
+                "t": {"beta_eq": 2.0, "beta_vix": -1.8, "beta_us_growth": 1.2},
+                "p": {"beta_eq": 0.01, "beta_vix": 0.08, "beta_us_growth": 0.24},
+                "ci_low": {"beta_eq": 0.1, "beta_vix": -0.4, "beta_us_growth": -0.1},
+                "ci_high": {"beta_eq": 0.9, "beta_vix": 0.0, "beta_us_growth": 0.4},
                 "heteroskedasticity_diagnostics": {
                     "method": "breusch_pagan_lm",
                     "h0": "homoskedastic_ols_residuals",
@@ -235,7 +235,6 @@ def test_write_stress_commentary_from_stress_report() -> None:
                     "beta_eq": {"n_points": 10, "mean": 0.5, "median": 0.5, "p10": 0.4, "p90": 0.6},
                     "beta_vix": {"n_points": 10, "mean": -0.2, "median": -0.2, "p10": -0.3, "p90": -0.1},
                     "beta_us_growth": {"n_points": 10, "mean": 0.1, "median": 0.1, "p10": 0.0, "p90": 0.2},
-                    "beta_oil": {"n_points": 10, "mean": 0.05, "median": 0.05, "p10": -0.02, "p90": 0.1},
                 }
             },
             "factor_betas_rolling_artifacts": {"plot_png_by_window": {"3y": "rolling_factor_betas_3y.png"}},
@@ -278,7 +277,7 @@ def test_write_stress_commentary_from_stress_report() -> None:
             "factor_covariance": {
                 "factor_order": ["equity", "credit"],
                 "exposure_vector": {
-                    "zero_filled_beta_keys": ["beta_rr"],
+                    "zero_filled_beta_keys": ["beta_rr", "beta_oil"],
                 },
                 "portfolio_factor_risk": {
                     "base": {
@@ -339,6 +338,37 @@ def test_write_stress_commentary_from_stress_report() -> None:
                     },
                     "rows": [],
                 },
+            },
+            "factor_betas_kalman": {
+                "status": "available",
+                "latest": {"beta_eq": 0.52, "beta_oil": 0.06},
+                "latest_raw": {"beta_eq": 0.52, "beta_oil": 0.06},
+                "latest_date": "2026-02-27",
+                "n_observations": 260,
+                "beta_cap_abs": 3.0,
+                "cap_diagnostics": {},
+                "uncertainty_by_beta": {"beta_eq": "low", "beta_oil": "moderate"},
+                "divergence_vs_5y": {"divergent_betas": [], "by_beta": {}},
+            },
+            "diagnostic_oil_beta": {
+                "role": "diagnostic_warning_only",
+                "production_status": "deprecated_removed_from_production_beta_outputs",
+                "factor": "oil",
+                "beta_key": "beta_oil",
+                "commodity_factor": "commodity",
+                "commodity_beta_key": "beta_cmd",
+                "beta_oil_5y": 0.05,
+                "beta_oil_10y": 0.07,
+                "beta_commodity_5y": 0.2,
+                "beta_commodity_10y": 0.25,
+                "oil_commodity_correlation": {
+                    "factor_regression_5y": 0.86,
+                    "factor_regression_10y": 0.81,
+                    "factor_covariance_base": 0.84,
+                },
+                "oil_commodity_vif": {"oil_5y": 4.8, "commodity_5y": 4.7},
+                "collinearity_signal": {"severity": "moderate"},
+                "kalman_oil": {"latest": 0.06, "latest_raw": 0.06, "uncertainty_class": "moderate", "latest_date": "2026-02-27"},
             },
             "factor_variance_decomposition": {
                 "status": "available",
@@ -447,7 +477,10 @@ def test_write_stress_commentary_from_stress_report() -> None:
         assert "rolling_factor_betas_3y.png" in text2
         assert "beta_vix" in text2
         assert "beta_us_growth" in text2
-        assert "beta_oil" in text2
+        assert "Oil diagnostic/stress warning" in text2
+        assert "role=diagnostic_warning_only" in text2
+        assert "beta_oil is deprecated in production beta outputs" in text2
+        assert "beta_oil" not in text2.split("Oil diagnostic/stress warning", 1)[0]
         assert "Durbin" in text2
         assert "Breusch" in text2
         assert "VIF" in text2

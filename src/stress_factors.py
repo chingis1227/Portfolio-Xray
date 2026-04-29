@@ -347,12 +347,17 @@ FACTOR_DEFINITIONS: tuple[FactorDefinition, ...] = (
     FactorDefinition("us_growth", "beta_us_growth", "US Growth (WEI)", "FRED:WEI", lambda start, end: fetch_us_growth_weekly(start, end), lambda start, end: fetch_us_growth_monthly(start, end), False),
     FactorDefinition("oil", "beta_oil", "Oil (WTI)", "FRED:DCOILWTICO", lambda start, end: fetch_oil_weekly(start, end), lambda start, end: fetch_oil_monthly(start, end), False),
 )
+BASE_FACTOR_DEFINITIONS: tuple[FactorDefinition, ...] = tuple(
+    spec for spec in FACTOR_DEFINITIONS if spec.column != "oil"
+)
 STRESS_FACTOR_DEFINITIONS: tuple[FactorDefinition, ...] = tuple(spec for spec in FACTOR_DEFINITIONS if spec.stress_participates)
 FACTOR_TO_BETA_KEY = {spec.column: spec.beta_key for spec in FACTOR_DEFINITIONS}
 BETA_KEY_TO_FACTOR = {spec.beta_key: spec.column for spec in FACTOR_DEFINITIONS}
 BETA_ROW_ORDER: tuple[str, ...] = tuple(spec.beta_key for spec in FACTOR_DEFINITIONS)
 BETA_KEY_TO_DISPLAY_NAME = {spec.beta_key: spec.display_name for spec in FACTOR_DEFINITIONS}
 FACTOR_COLUMN_ORDER: tuple[str, ...] = tuple(spec.column for spec in FACTOR_DEFINITIONS)
+BASE_FACTOR_COLUMN_ORDER: tuple[str, ...] = tuple(spec.column for spec in BASE_FACTOR_DEFINITIONS)
+BASE_BETA_ROW_ORDER: tuple[str, ...] = tuple(spec.beta_key for spec in BASE_FACTOR_DEFINITIONS)
 FACTOR_BETA_TO_SYNTHETIC_SHOCK_KEY = {
     "beta_eq": "shock_eq",
     "beta_rr": "shock_rr",
@@ -366,8 +371,8 @@ FACTOR_BETA_TO_SYNTHETIC_SHOCK_KEY = {
 }
 
 
-def get_factor_beta_row_order(*, stress_only: bool = False) -> tuple[str, ...]:
-    specs = STRESS_FACTOR_DEFINITIONS if stress_only else FACTOR_DEFINITIONS
+def get_factor_beta_row_order(*, stress_only: bool = False, base_only: bool = False) -> tuple[str, ...]:
+    specs = BASE_FACTOR_DEFINITIONS if base_only else STRESS_FACTOR_DEFINITIONS if stress_only else FACTOR_DEFINITIONS
     return tuple(spec.beta_key for spec in specs)
 
 
@@ -375,13 +380,37 @@ def get_factor_display_name(beta_key: str) -> str:
     return BETA_KEY_TO_DISPLAY_NAME.get(beta_key, beta_key)
 
 
-def _ordered_beta_keys(*maps: Any) -> list[str]:
+def _factor_order(*, extended: bool = False) -> tuple[str, ...]:
+    return FACTOR_COLUMN_ORDER if extended else BASE_FACTOR_COLUMN_ORDER
+
+
+def _beta_order(*, extended: bool = False) -> tuple[str, ...]:
+    return BETA_ROW_ORDER if extended else BASE_BETA_ROW_ORDER
+
+
+def _select_factor_columns(
+    factor_returns: pd.DataFrame,
+    factor_columns: tuple[str, ...] | list[str] | None = None,
+    *,
+    extended: bool = False,
+) -> list[str]:
+    order = tuple(factor_columns) if factor_columns is not None else _factor_order(extended=extended)
+    return [c for c in order if c in factor_returns.columns]
+
+
+def _ordered_beta_keys_with_order(
+    *maps: Any,
+    beta_order: tuple[str, ...],
+    include_extra: bool = True,
+) -> list[str]:
     ordered: list[str] = []
     seen: set[str] = set()
-    for key in BETA_ROW_ORDER:
+    for key in beta_order:
         if any(isinstance(m, dict) and key in m for m in maps):
             ordered.append(key)
             seen.add(key)
+    if not include_extra:
+        return ordered
     extra = sorted(
         {
             str(key)
@@ -393,6 +422,20 @@ def _ordered_beta_keys(*maps: Any) -> list[str]:
     )
     ordered.extend(extra)
     return ordered
+
+
+def _ordered_beta_keys(*maps: Any) -> list[str]:
+    return _ordered_beta_keys_with_order(*maps, beta_order=BETA_ROW_ORDER)
+
+
+def _ordered_base_beta_keys(*maps: Any) -> list[str]:
+    return _ordered_beta_keys_with_order(*maps, beta_order=BASE_BETA_ROW_ORDER, include_extra=False)
+
+
+def _filter_beta_map_to_base(values: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(values, dict):
+        return {}
+    return {k: v for k, v in values.items() if str(k) in BASE_BETA_ROW_ORDER}
 
 
 def _build_factor_frame(start: str, end: str, *, monthly: bool) -> pd.DataFrame:
@@ -458,13 +501,15 @@ def asset_weekly_returns_from_daily(
 def estimate_betas(
     asset_returns: pd.DataFrame,
     factor_returns: pd.DataFrame,
+    *,
+    factor_columns: tuple[str, ...] | list[str] | None = None,
 ) -> pd.DataFrame:
     """
     Regress each asset's weekly return on factor columns. OLS, no constant (or with constant).
-    factor_returns columns follow FACTOR_DEFINITIONS.
+    Production defaults to BASE_FACTOR_DEFINITIONS; diagnostics may pass FACTOR_COLUMN_ORDER.
     Returns DataFrame: index = asset tickers, columns = beta_* keys from FACTOR_TO_BETA_KEY.
     """
-    factor_cols = [c for c in FACTOR_COLUMN_ORDER if c in factor_returns.columns]
+    factor_cols = _select_factor_columns(factor_returns, factor_columns)
     if not factor_cols:
         return pd.DataFrame()
 
@@ -1400,6 +1445,7 @@ def _portfolio_factor_weekly_ols_rows(
     analysis_end_str: str,
     window_weeks: int,
     buffer_weeks: int = FACTOR_DOWNLOAD_BUFFER_WEEKS,
+    factor_columns: tuple[str, ...] | list[str] | None = None,
 ) -> dict[str, Any]:
     """Return the exact weekly portfolio/factor rows used by portfolio OLS."""
     from src.data_yf import download_all
@@ -1429,6 +1475,9 @@ def _portfolio_factor_weekly_ols_rows(
     factors = build_factor_matrix(start_dl, end_dl)
     if asset_weekly.empty or factors.empty:
         return {"error": "empty_weekly_inputs", "n_obs": 0}
+    factor_cols = _select_factor_columns(factors, factor_columns)
+    if not factor_cols:
+        return {"error": "missing_factor_columns", "n_obs": 0}
 
     common = asset_weekly.index.intersection(factors.index).sort_values()
     common = common[common <= end_ts + pd.Timedelta(days=6)]
@@ -1438,7 +1487,7 @@ def _portfolio_factor_weekly_ols_rows(
         return {"error": "insufficient_common_rows", "n_obs": int(len(common))}
 
     y_frame = asset_weekly.reindex(common)
-    x_frame = factors.reindex(common).dropna()
+    x_frame = factors.reindex(common).loc[:, factor_cols].dropna()
     y_frame = y_frame.reindex(x_frame.index)
     if x_frame.empty or len(x_frame) < 10:
         return {"error": "insufficient_factor_rows", "n_obs": int(len(x_frame))}
@@ -1468,6 +1517,7 @@ def portfolio_factor_regression_weekly(
     *,
     buffer_weeks: int = FACTOR_DOWNLOAD_BUFFER_WEEKS,
     alpha: float = 0.05,
+    factor_columns: tuple[str, ...] | list[str] | None = None,
 ) -> dict[str, Any]:
     """
     Portfolio-level factor regression (weekly) with inference.
@@ -1486,6 +1536,7 @@ def portfolio_factor_regression_weekly(
         analysis_end_str=analysis_end_str,
         window_weeks=window_weeks,
         buffer_weeks=buffer_weeks,
+        factor_columns=factor_columns,
     )
     if rows.get("error"):
         return {}
@@ -1890,6 +1941,7 @@ def compute_portfolio_kalman_factor_betas_weekly(
         analysis_end_str=analysis_end_str,
         window_weeks=window_weeks,
         buffer_weeks=buffer_weeks,
+        factor_columns=FACTOR_COLUMN_ORDER,
     )
     if rows.get("error"):
         return _empty_kalman_report(str(rows.get("error")), int(rows.get("n_obs", 0))), pd.DataFrame(), pd.DataFrame()
@@ -1975,9 +2027,9 @@ def factor_oos_beta_shock_explainability(
         "episodes": [],
         "summary": {},
     }
-    b5 = factor_betas_5y or {}
-    b10 = factor_betas_10y or {}
-    badj = factor_betas_adjusted or {}
+    b5 = _filter_beta_map_to_base(factor_betas_5y)
+    b10 = _filter_beta_map_to_base(factor_betas_10y)
+    badj = _filter_beta_map_to_base(factor_betas_adjusted)
     if not historical_results:
         out["error"] = "historical_results_empty"
         return out
@@ -1987,7 +2039,7 @@ def factor_oos_beta_shock_explainability(
         contrib: dict[str, float] = {}
         for fac_col, shock_v in shock.items():
             bkey = FACTOR_TO_BETA_KEY.get(str(fac_col))
-            if not bkey:
+            if not bkey or bkey not in BASE_BETA_ROW_ORDER:
                 continue
             c = float(beta_map.get(bkey, 0.0)) * float(shock_v)
             contrib[bkey] = c
@@ -2111,14 +2163,14 @@ def build_factor_beta_adjustment_overlay(
     factor_betas_stability: dict[str, Any] | None,
 ) -> dict[str, Any]:
     """Build stability-adjusted factor beta overlay without changing raw beta outputs."""
-    raw_5y = factor_betas_5y or {}
-    raw_10y = factor_betas_10y or {}
+    raw_5y = _filter_beta_map_to_base(factor_betas_5y)
+    raw_10y = _filter_beta_map_to_base(factor_betas_10y)
     stability_by_beta = (
         (factor_betas_stability or {}).get("by_beta")
         if isinstance(factor_betas_stability, dict)
         else {}
     ) or {}
-    beta_keys = _ordered_beta_keys(raw_5y, raw_10y, stability_by_beta)
+    beta_keys = _ordered_base_beta_keys(raw_5y, raw_10y, stability_by_beta)
     adjusted: dict[str, float] = {}
     confidence_by_beta: dict[str, float] = {}
     severity_by_beta: dict[str, str] = {}
@@ -2398,6 +2450,106 @@ def build_factor_beta_diagnostic_overlay(
     }
 
 
+def _pair_corr_from_multicollinearity(mc: dict[str, Any] | None, left: str, right: str) -> float | None:
+    if not isinstance(mc, dict):
+        return None
+    corr = mc.get("correlation")
+    if isinstance(corr, dict):
+        for a, b in ((left, right), (right, left)):
+            value = (corr.get(a) or {}).get(b) if isinstance(corr.get(a), dict) else None
+            v = _safe_float(value)
+            if v is not None:
+                return v
+    for row in mc.get("pairwise_correlations") or []:
+        if not isinstance(row, dict):
+            continue
+        pair = {str(row.get("factor_i")), str(row.get("factor_j"))}
+        if pair == {left, right}:
+            return _safe_float(row.get("rho"))
+    return None
+
+
+def _oil_collinearity_severity(correlation: float | None, vif: float | None) -> str:
+    corr_abs = abs(float(correlation)) if correlation is not None else 0.0
+    vif_v = float(vif) if vif is not None else 0.0
+    if corr_abs >= 0.95 or vif_v >= 10.0:
+        return "high"
+    if corr_abs >= 0.85 or vif_v >= 5.0:
+        return "moderate"
+    return "low"
+
+
+def build_diagnostic_oil_beta(
+    *,
+    factor_betas_5y_extended: dict[str, Any] | None = None,
+    factor_betas_10y_extended: dict[str, Any] | None = None,
+    factor_regression_5y_extended: dict[str, Any] | None = None,
+    factor_regression_10y_extended: dict[str, Any] | None = None,
+    factor_covariance: dict[str, Any] | None = None,
+    kalman_report: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Oil is diagnostic/stress-only; expose its warning signals outside production betas."""
+    b5 = factor_betas_5y_extended or {}
+    b10 = factor_betas_10y_extended or {}
+    fr5 = factor_regression_5y_extended or {}
+    fr10 = factor_regression_10y_extended or {}
+    mc5 = fr5.get("factor_multicollinearity") if isinstance(fr5, dict) else {}
+    mc10 = fr10.get("factor_multicollinearity") if isinstance(fr10, dict) else {}
+    corr5 = _pair_corr_from_multicollinearity(mc5, "oil", "commodity")
+    corr10 = _pair_corr_from_multicollinearity(mc10, "oil", "commodity")
+    vifs5 = (mc5 or {}).get("vif_by_factor") if isinstance(mc5, dict) else {}
+    vifs10 = (mc10 or {}).get("vif_by_factor") if isinstance(mc10, dict) else {}
+    oil_vif_5y = _safe_float((vifs5 or {}).get("oil")) if isinstance(vifs5, dict) else None
+    commodity_vif_5y = _safe_float((vifs5 or {}).get("commodity")) if isinstance(vifs5, dict) else None
+    oil_vif_10y = _safe_float((vifs10 or {}).get("oil")) if isinstance(vifs10, dict) else None
+    commodity_vif_10y = _safe_float((vifs10 or {}).get("commodity")) if isinstance(vifs10, dict) else None
+    cov_corr_base = None
+    if isinstance(factor_covariance, dict):
+        cov_corr_base = (
+            ((factor_covariance.get("base") or {}).get("correlations") or {}).get("oil") or {}
+        ).get("commodity")
+        cov_corr_base = _safe_float(cov_corr_base)
+    kalman_oil: dict[str, Any] = {}
+    if isinstance(kalman_report, dict):
+        kalman_oil = {
+            "latest": (kalman_report.get("latest") or {}).get("beta_oil"),
+            "latest_raw": (kalman_report.get("latest_raw") or {}).get("beta_oil"),
+            "state_uncertainty": (kalman_report.get("state_uncertainty") or {}).get("beta_oil"),
+            "uncertainty_class": (kalman_report.get("uncertainty_by_beta") or {}).get("beta_oil"),
+            "latest_date": kalman_report.get("latest_date"),
+        }
+    primary_corr = corr5 if corr5 is not None else cov_corr_base
+    primary_vif = oil_vif_5y if oil_vif_5y is not None else oil_vif_10y
+    return {
+        "role": "diagnostic_warning_only",
+        "production_status": "deprecated_removed_from_production_beta_outputs",
+        "factor": "oil",
+        "beta_key": "beta_oil",
+        "commodity_factor": "commodity",
+        "commodity_beta_key": "beta_cmd",
+        "beta_oil_5y": _safe_float(b5.get("beta_oil")),
+        "beta_oil_10y": _safe_float(b10.get("beta_oil")),
+        "beta_commodity_5y": _safe_float(b5.get("beta_cmd")),
+        "beta_commodity_10y": _safe_float(b10.get("beta_cmd")),
+        "oil_commodity_correlation": {
+            "factor_regression_5y": corr5,
+            "factor_regression_10y": corr10,
+            "factor_covariance_base": cov_corr_base,
+        },
+        "oil_commodity_vif": {
+            "oil_5y": oil_vif_5y,
+            "commodity_5y": commodity_vif_5y,
+            "oil_10y": oil_vif_10y,
+            "commodity_10y": commodity_vif_10y,
+        },
+        "collinearity_signal": {
+            "severity": _oil_collinearity_severity(primary_corr, primary_vif),
+            "basis": "Oil/Commodity correlation and Oil VIF from extended diagnostic rows.",
+        },
+        "kalman_oil": kalman_oil,
+    }
+
+
 def _enrich_historical_results_with_factor_attribution(
     historical_results: list[dict[str, Any]],
     factor_beta_shock_oos: dict[str, Any] | None,
@@ -2539,6 +2691,7 @@ def compute_asset_factor_betas_weekly(
     *,
     buffer_weeks: int = FACTOR_DOWNLOAD_BUFFER_WEEKS,
     min_aligned_weeks: int | None = None,
+    factor_columns: tuple[str, ...] | list[str] | None = None,
 ) -> pd.DataFrame:
     """
     Per-asset factor betas via OLS on weekly data (same estimators as estimate_betas).
@@ -2588,7 +2741,7 @@ def compute_asset_factor_betas_weekly(
 
     Y = asset_weekly.reindex(common)
     X = factors.reindex(common)
-    return estimate_betas(Y, X)
+    return estimate_betas(Y, X, factor_columns=factor_columns)
 
 
 def build_factor_matrix_monthly(
@@ -2606,11 +2759,13 @@ def estimate_betas_monthly(
     monthly_asset_returns: pd.DataFrame,
     factor_monthly: pd.DataFrame,
     min_observations: int = 24,
+    *,
+    factor_columns: tuple[str, ...] | list[str] | None = None,
 ) -> pd.DataFrame:
     """
     Regress each asset monthly return on monthly factor changes. Same column naming as estimate_betas.
     """
-    factor_cols = [c for c in FACTOR_COLUMN_ORDER if c in factor_monthly.columns]
+    factor_cols = _select_factor_columns(factor_monthly, factor_columns)
     if not factor_cols:
         return pd.DataFrame()
 
@@ -2704,6 +2859,7 @@ def compute_portfolio_rolling_factor_betas_weekly(
     rolling_windows_weeks: dict[str, int],
     *,
     years_back: int = 20,
+    factor_columns: tuple[str, ...] | list[str] | None = None,
 ) -> dict[str, pd.DataFrame]:
     """
     Compute rolling portfolio factor betas on weekly data for multiple window sizes.
@@ -2735,13 +2891,16 @@ def compute_portfolio_rolling_factor_betas_weekly(
     factors = build_factor_matrix(start_dl, end_dl)
     if asset_weekly.empty or factors.empty:
         return {}
+    factor_cols = _select_factor_columns(factors, factor_columns)
+    if not factor_cols:
+        return {}
 
     common = asset_weekly.index.intersection(factors.index).sort_values()
     common = common[common <= end_ts + pd.Timedelta(days=6)]
     if len(common) < 30:
         return {}
     y_df = asset_weekly.reindex(common)
-    x_df = factors.reindex(common).dropna()
+    x_df = factors.reindex(common).loc[:, factor_cols].dropna()
     y_df = y_df.reindex(x_df.index)
 
     w_vec = np.array([float(weights.get(t, 0.0)) for t in y_df.columns], dtype=float)
@@ -2768,6 +2927,7 @@ def compute_portfolio_rolling_factor_betas_monthly(
     rolling_windows_months: dict[str, int],
     *,
     years_back: int = 20,
+    factor_columns: tuple[str, ...] | list[str] | None = None,
 ) -> dict[str, pd.DataFrame]:
     """
     Compute rolling portfolio factor betas on monthly returns for multiple window sizes.
@@ -2787,6 +2947,9 @@ def compute_portfolio_rolling_factor_betas_monthly(
     factors = build_factor_matrix_monthly(start_ts.strftime("%Y-%m-%d"), end_ts.strftime("%Y-%m-%d"))
     if factors.empty:
         return {}
+    factor_cols = _select_factor_columns(factors, factor_columns)
+    if not factor_cols:
+        return {}
 
     returns = monthly_returns[[c for c in use if c in monthly_returns.columns]].copy()
     if returns.empty:
@@ -2799,7 +2962,7 @@ def compute_portfolio_rolling_factor_betas_monthly(
     if len(common) < 12:
         return {}
     y_df = returns.reindex(common)
-    x_df = factors.reindex(common).dropna()
+    x_df = factors.reindex(common).loc[:, factor_cols].dropna()
     y_df = y_df.reindex(x_df.index)
 
     w_vec = np.array([float(weights.get(str(t), 0.0)) for t in y_df.columns], dtype=float)
@@ -2889,7 +3052,7 @@ def _rolling_forward_oos_beta_records(
         oos = _ols_beta_map(oos_y, oos_x, min_obs=max(10, h // 3))
         if not ins or not oos:
             continue
-        for beta_key in sorted(set(ins).intersection(oos), key=lambda b: BETA_ROW_ORDER.index(b) if b in BETA_ROW_ORDER else len(BETA_ROW_ORDER)):
+        for beta_key in sorted(set(ins).intersection(oos), key=lambda b: BASE_BETA_ROW_ORDER.index(b) if b in BASE_BETA_ROW_ORDER else len(BASE_BETA_ROW_ORDER)):
             ins_v = float(ins[beta_key])
             oos_v = float(oos[beta_key])
             denom = max(abs(ins_v), FACTOR_STABILITY_MIN_ABS_BETA)
@@ -2917,6 +3080,7 @@ def compute_portfolio_factor_beta_oos_weekly(
     *,
     holdout_weeks: int = FACTOR_OOS_HOLDOUT_WEEKS,
     years_back: int = 20,
+    factor_columns: tuple[str, ...] | list[str] | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Rolling-forward OOS beta diagnostics on weekly data."""
     from src.data_yf import download_all
@@ -2943,13 +3107,16 @@ def compute_portfolio_factor_beta_oos_weekly(
     factors = build_factor_matrix(start_dl, end_dl)
     if asset_weekly.empty or factors.empty:
         return {}
+    factor_cols = _select_factor_columns(factors, factor_columns)
+    if not factor_cols:
+        return {}
 
     common = asset_weekly.index.intersection(factors.index).sort_values()
     common = common[common <= end_ts + pd.Timedelta(days=6)]
     if len(common) < 30:
         return {}
     y_df = asset_weekly.reindex(common)
-    x_df = factors.reindex(common).dropna()
+    x_df = factors.reindex(common).loc[:, factor_cols].dropna()
     y_df = y_df.reindex(x_df.index)
     w_vec = np.array([float(weights.get(t, 0.0)) for t in y_df.columns], dtype=float)
     y_port = (np.nan_to_num(y_df.values, nan=0.0) * w_vec.reshape(1, -1)).sum(axis=1)
@@ -2977,6 +3144,7 @@ def compute_portfolio_factor_beta_oos_monthly(
     *,
     holdout_months: int = FACTOR_OOS_HOLDOUT_MONTHS,
     years_back: int = 20,
+    factor_columns: tuple[str, ...] | list[str] | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Rolling-forward OOS beta diagnostics on monthly data."""
     if monthly_returns is None or monthly_returns.empty:
@@ -2992,6 +3160,9 @@ def compute_portfolio_factor_beta_oos_monthly(
     factors = build_factor_matrix_monthly(start_ts.strftime("%Y-%m-%d"), end_ts.strftime("%Y-%m-%d"))
     if factors.empty:
         return {}
+    factor_cols = _select_factor_columns(factors, factor_columns)
+    if not factor_cols:
+        return {}
     returns = monthly_returns[[c for c in use if c in monthly_returns.columns]].copy()
     returns.index = pd.to_datetime(returns.index).tz_localize(None)
     factors.index = pd.to_datetime(factors.index).tz_localize(None)
@@ -3000,7 +3171,7 @@ def compute_portfolio_factor_beta_oos_monthly(
     if len(common) < 12:
         return {}
     y_df = returns.reindex(common)
-    x_df = factors.reindex(common).dropna()
+    x_df = factors.reindex(common).loc[:, factor_cols].dropna()
     y_df = y_df.reindex(x_df.index)
     w_vec = np.array([float(weights.get(str(t), 0.0)) for t in y_df.columns], dtype=float)
     y_port = (np.nan_to_num(y_df.values, nan=0.0) * w_vec.reshape(1, -1)).sum(axis=1)
@@ -3067,7 +3238,8 @@ def factor_beta_oos_stability_diagnostics(
         "thresholds": FACTOR_STABILITY_THRESHOLDS["oos"],
         "by_beta": {
             beta: out_by_beta[beta]
-            for beta in sorted(out_by_beta, key=lambda b: BETA_ROW_ORDER.index(b) if b in BETA_ROW_ORDER else len(BETA_ROW_ORDER))
+            for beta in sorted(out_by_beta, key=lambda b: BASE_BETA_ROW_ORDER.index(b) if b in BASE_BETA_ROW_ORDER else len(BASE_BETA_ROW_ORDER))
+            if beta in BASE_BETA_ROW_ORDER
         },
     }
 
@@ -3127,7 +3299,10 @@ def factor_beta_stability_diagnostics(
                 )
 
     oos_by_beta = ((oos_stability or {}).get("by_beta") or {}) if isinstance(oos_stability, dict) else {}
-    beta_keys = sorted(set(by_beta_values).union(oos_by_beta), key=lambda b: BETA_ROW_ORDER.index(b) if b in BETA_ROW_ORDER else len(BETA_ROW_ORDER))
+    beta_keys = sorted(
+        set(by_beta_values).union(oos_by_beta).intersection(BASE_BETA_ROW_ORDER),
+        key=lambda b: BASE_BETA_ROW_ORDER.index(b) if b in BASE_BETA_ROW_ORDER else len(BASE_BETA_ROW_ORDER),
+    )
     out_by_beta: dict[str, Any] = {}
     combined_severities: list[str] = []
     for beta_key in beta_keys:
@@ -3280,7 +3455,7 @@ def factor_beta_stability_rows(stability: dict[str, Any]) -> pd.DataFrame:
     if not rows:
         return pd.DataFrame()
     df = pd.DataFrame(rows)
-    beta_rank = {beta_key: idx for idx, beta_key in enumerate(BETA_ROW_ORDER)}
+    beta_rank = {beta_key: idx for idx, beta_key in enumerate(BASE_BETA_ROW_ORDER)}
     df["beta_rank"] = df["beta"].map(lambda beta: beta_rank.get(str(beta), len(beta_rank)))
     return df.sort_values(["beta_rank", "beta"]).drop(columns=["beta_rank"]).reset_index(drop=True)
 

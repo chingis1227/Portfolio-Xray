@@ -63,6 +63,34 @@ def test_factor_covariance_stress_overlay_deltas_and_zero_fill() -> None:
     assert np.isclose(empirical.loc["equity", "credit"], expected_emp.loc["equity", "credit"])
 
 
+def test_diagnostic_oil_beta_reports_warning_role_and_collinearity() -> None:
+    out = sf.build_diagnostic_oil_beta(
+        factor_betas_5y_extended={"beta_cmd": 0.2, "beta_oil": 0.05},
+        factor_betas_10y_extended={"beta_cmd": 0.25, "beta_oil": 0.07},
+        factor_regression_5y_extended={
+            "factor_multicollinearity": {
+                "pairwise_correlations": [{"factor_i": "oil", "factor_j": "commodity", "rho": 0.86}],
+                "vif_by_factor": {"oil": 4.8, "commodity": 4.7},
+            }
+        },
+        factor_covariance={"base": {"correlations": {"oil": {"commodity": 0.84}}}},
+        kalman_report={
+            "latest": {"beta_oil": 0.06},
+            "latest_raw": {"beta_oil": 0.061},
+            "uncertainty_by_beta": {"beta_oil": "moderate"},
+            "latest_date": "2026-02-27",
+        },
+    )
+
+    assert out["role"] == "diagnostic_warning_only"
+    assert out["production_status"] == "deprecated_removed_from_production_beta_outputs"
+    assert out["beta_oil_5y"] == 0.05
+    assert out["oil_commodity_correlation"]["factor_regression_5y"] == 0.86
+    assert out["oil_commodity_vif"]["oil_5y"] == 4.8
+    assert out["collinearity_signal"]["severity"] == "moderate"
+    assert out["kalman_oil"]["latest"] == 0.06
+
+
 def test_factor_risk_sensitivity_rc_and_covariance_stability_flags() -> None:
     factors = _factor_fixture()
     betas = {

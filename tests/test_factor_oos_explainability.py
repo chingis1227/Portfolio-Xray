@@ -37,7 +37,6 @@ def test_factor_oos_beta_shock_explainability_basic(monkeypatch) -> None:
                 "beta_cmd": 0.1,
                 "beta_vix": 0.3,
                 "beta_us_growth": 0.2,
-                "beta_oil": -0.4,
             }
         },
     )
@@ -62,7 +61,6 @@ def test_factor_oos_beta_shock_explainability_basic(monkeypatch) -> None:
             "beta_cmd": 0.0,
             "beta_vix": 0.25,
             "beta_us_growth": 0.05,
-            "beta_oil": -0.2,
         },
         factor_betas_10y={
             "beta_eq": 0.3,
@@ -72,7 +70,6 @@ def test_factor_oos_beta_shock_explainability_basic(monkeypatch) -> None:
             "beta_cmd": 0.1,
             "beta_vix": 0.15,
             "beta_us_growth": 0.02,
-            "beta_oil": -0.1,
         },
         factor_betas_adjusted={
             "beta_eq": 0.35,
@@ -82,7 +79,6 @@ def test_factor_oos_beta_shock_explainability_basic(monkeypatch) -> None:
             "beta_cmd": 0.05,
             "beta_vix": 0.20,
             "beta_us_growth": 0.03,
-            "beta_oil": -0.15,
         },
         rolling_window_weeks=sf.FACTOR_WEEKS_3Y,
     )
@@ -97,7 +93,10 @@ def test_factor_oos_beta_shock_explainability_basic(monkeypatch) -> None:
     assert "beta_vix" in ep["factor_contrib_5y"]
     assert "beta_us_growth" in ep["factor_contrib_10y"]
     assert "beta_eq" in ep["factor_contrib_adjusted"]
-    assert "beta_oil" in ep["factor_contrib_roll3y_pre"]
+    assert "beta_oil" not in ep["factor_contrib_5y"]
+    assert "beta_oil" not in ep["factor_contrib_10y"]
+    assert "beta_oil" not in ep["factor_contrib_adjusted"]
+    assert "beta_oil" not in ep["factor_contrib_roll3y_pre"]
     summary = out.get("summary") or {}
     assert "mean_abs_error_5y" in summary
     assert "mean_abs_error_adjusted" in summary

@@ -111,6 +111,9 @@ def test_pnl_by_factor_pct_uses_portfolio_betas() -> None:
     assert eq is not None
     assert eq.get("pnl_by_factor_pct", {}).get("eq") == round(-0.4 * 1.0, 4)
     assert set(eq.get("pnl_by_factor_pct", {}).keys()) == {"eq"}
+    assert "beta_vix" in out["factor_betas"]
+    assert "beta_us_growth" in out["factor_betas"]
+    assert "beta_oil" not in out["factor_betas"]
 
 
 def test_recession_severe_is_calibrated_from_worst_2008_2020_model_pnl() -> None:

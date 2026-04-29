@@ -9,6 +9,7 @@
 > **2026-04-28 update:** Factor analytics now use a **nine-factor** weekly registry (`equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`, `oil`). Synthetic stress scenarios and recession calibration remain a **six-shock** engine and only map the first six factors into `shock_*` keys.
 > **2026-04-29 update:** Historical stress rows now include **model-based factor attribution** when factor history is available. The primary attribution uses 5Y portfolio betas times realized episode factor shocks and must be labeled as model-based explainability, not pure realized causal decomposition.
 > **2026-04-29 update:** Stress reports now include a **diagnostic-only stability-adjusted beta overlay**. It shrinks unstable 5Y factor betas toward 10Y anchors, flags strong 5Y-vs-10Y divergence, and reports material raw-vs-adjusted factor-model PnL deltas.
+> **2026-04-30 update:** Split factor contract. Production regression/beta/stability/OOS/adjusted-overlay/base variance decomposition use base factors only: `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`. `commodity` is the production сырьевой factor. Extended diagnostics/stress analytics use base factors plus `oil`; `beta_oil` is deprecated in production outputs and exposed through `diagnostic_oil_beta` or stress-layer metrics only.
 
 ---
 
@@ -136,7 +137,9 @@ The system must estimate and output:
 - ОІ_credit (portfolio vs credit spread)
 - ОІ_USD (portfolio vs DXY)
 
-The full current analytics registry is `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`, and `oil`. In report JSON these appear as `beta_eq`, `beta_rr`, `beta_inf`, `beta_credit`, `beta_usd`, `beta_cmd`, `beta_vix`, `beta_us_growth`, and `beta_oil`.
+The base production factor registry is `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, and `us_growth`. In production beta JSON these appear as `beta_eq`, `beta_rr`, `beta_inf`, `beta_credit`, `beta_usd`, `beta_cmd`, `beta_vix`, and `beta_us_growth`. `commodity` is the production сырьевой factor.
+
+The extended diagnostic/stress registry is the base registry plus `oil`, exposed as `beta_oil` only in extended diagnostics. `beta_oil` is deprecated and removed from new production beta outputs, rolling stability, OOS stability, adjusted production beta overlay, and base variance decomposition. Oil exposure must be read from `stress_report.json.diagnostic_oil_beta` or stress-layer metrics.
 
 If factor limits are set in config and violated в†’ **DIAG_BETA_*** / **DIAG_ATTENTION**; if no limits в†’ **DIAG_PASS_WITH_WARNING** (manual review). (Non-blocking.)
 
@@ -146,6 +149,8 @@ If factor limits are set in config and violated в†’ **DIAG_BETA_*** / **DIA
 - **10Y window (~520 weekly observations):** `factor_betas_10y`
 
 For backward compatibility, `factor_betas` may be present and should mirror `factor_betas_5y`.
+
+`factor_betas_5y`, `factor_betas_10y`, and `factor_betas` must not contain `beta_oil` in new outputs.
 
 Each portfolio factor regression object (`factor_regression_5y`, `factor_regression_10y`) must report `r2`, `adj_r2`, and `idiosyncratic_risk`, where `idiosyncratic_risk = 1 - r2`. This is the residual share of portfolio-return variance not explained by the current factor model; it is diagnostic and measured at the full portfolio regression level, not per beta.
 
@@ -261,7 +266,7 @@ To verify that factor betas explain stress episodes out-of-sample (not only in-s
   - `pnl_model_10y` using `factor_betas_10y`
   - `pnl_model_adjusted` using `factor_betas_adjusted.adjusted`
   - `pnl_model_roll3y_pre` using betas estimated on rolling 3Y window ending right before episode start
-- Factor contributions in this diagnostic follow the full analytics registry, so `beta_vix`, `beta_us_growth`, and `beta_oil` should appear when factor history and betas are available.
+- Factor contributions in this production diagnostic follow the base registry, so `beta_vix` and `beta_us_growth` may appear when factor history and betas are available; `beta_oil` must not appear here.
 - Real benchmark:
   - `pnl_real_episode` from historical episode portfolio return
 - Error fields:
@@ -310,11 +315,23 @@ For each beta, source beta is raw `factor_betas_5y[beta_key]`, anchor beta is `f
 
 Strong 5Y-vs-10Y divergence is `true` if signs differ or `relative_gap = abs(beta_5y - beta_10y) / max(abs(beta_5y), 0.05)` is at least `1.0`.
 
-This block is diagnostic only and must not replace raw `factor_betas_5y`, `factor_betas`, or the primary `run_stress` portfolio beta input.
+This block is diagnostic only and must not replace raw `factor_betas_5y`, `factor_betas`, or the primary `run_stress` portfolio beta input. Production adjusted beta maps must exclude `beta_oil`.
 
 ### 8.7B Kalman time-varying beta diagnostics
 
-`stress_report.json` may include a diagnostic-only block `factor_betas_kalman` when weekly portfolio returns and factor rows are available. This block estimates current portfolio factor betas with a random-walk Kalman filter over the same weekly factor registry used by the raw factor analytics. It must not replace `factor_betas`, `factor_betas_5y`, `factor_betas_10y`, mandate gates, optimizer inputs, or stress pass/fail logic.
+`stress_report.json` may include a diagnostic-only block `factor_betas_kalman` when weekly portfolio returns and factor rows are available. This block estimates current portfolio factor betas with a random-walk Kalman filter over the extended weekly diagnostic registry. It must not replace `factor_betas`, `factor_betas_5y`, `factor_betas_10y`, mandate gates, optimizer inputs, or stress pass/fail logic.
+
+### 8.6 Diagnostic Oil beta
+
+`stress_report.json` must include `diagnostic_oil_beta` when extended diagnostic inputs are available:
+
+- `role = "diagnostic_warning_only"`
+- Oil beta estimates where available (`beta_oil_5y`, `beta_oil_10y`)
+- Commodity production beta references (`beta_commodity_5y`, `beta_commodity_10y`)
+- Oil/Commodity correlation and Oil/Commodity VIF or collinearity signal
+- Kalman Oil estimate when available
+
+Reports must label Oil as diagnostic/stress only and must not print Oil as a production beta.
 
 The block includes:
 
@@ -409,7 +426,7 @@ CSV artifacts written under `results_csv/` include:
 
 ### 8.9 Factor variance decomposition
 
-`stress_report.json.factor_variance_decomposition` is a diagnostic-only 5Y weekly decomposition of total portfolio variance into factor sources plus residual risk. It does not change stress pass/fail, mandate status, optimizer behavior, or weight release.
+`stress_report.json.factor_variance_decomposition` is a diagnostic-only 5Y weekly decomposition of total portfolio variance into base factor sources plus residual risk. It excludes Oil. It does not change stress pass/fail, mandate status, optimizer behavior, or weight release.
 
 All variance quantities in this block use `variance_scale = "weekly"` and sample variance/covariance with `ddof=1`. The calculation must use the same weekly rows as `factor_regression_5y`: portfolio weekly return `y`, factor matrix `X`, and OLS factor beta vector `b` excluding the intercept.
 
