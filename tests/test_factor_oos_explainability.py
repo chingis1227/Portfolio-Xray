@@ -88,3 +88,13 @@ def test_factor_oos_beta_shock_explainability_basic(monkeypatch) -> None:
     assert "beta_oil" in ep["factor_contrib_roll3y_pre"]
     summary = out.get("summary") or {}
     assert "mean_abs_error_5y" in summary
+
+    enriched = sf.enrich_historical_results_with_factor_attribution(hist, out, beta_source="5y")
+    assert enriched[0]["factor_attribution_method"] == sf.HISTORICAL_FACTOR_ATTRIBUTION_METHOD
+    assert enriched[0]["factor_attribution_beta_source"] == "5y"
+    assert "not a pure realized causal decomposition" in enriched[0]["historical_factor_attribution"]["caveat"]
+    assert enriched[0]["pnl_by_factor_pct"]["beta_eq"] == ep["factor_contrib_5y"]["beta_eq"]
+    assert enriched[0]["factor_model_pnl_pct"] == ep["pnl_model_5y"]
+    assert enriched[0]["factor_model_error_pct"] == ep["pnl_model_5y"] - hist[0]["pnl_real_episode"]
+    assert enriched[0]["top_factor_drivers"][0]["beta_key"] == "beta_eq"
+    assert enriched[0]["largest_negative_factor"]["beta_key"] == "beta_eq"

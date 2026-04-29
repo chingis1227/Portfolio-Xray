@@ -98,7 +98,26 @@ def test_write_stress_commentary_from_stress_report() -> None:
                 },
             ],
             "historical_results": [
-                {"episode": "2020", "max_dd": -0.1, "pass": True, "vol_annualized_episode": 0.4, "diagnostic_code": None},
+                {
+                    "episode": "2020",
+                    "max_dd": -0.1,
+                    "pnl_real_episode": -0.08,
+                    "pass": True,
+                    "vol_annualized_episode": 0.4,
+                    "diagnostic_code": None,
+                    "factor_model_pnl_pct": -0.072,
+                    "factor_model_error_pct": 0.008,
+                    "historical_factor_attribution": {
+                        "method": "model_based_beta_times_realized_factor_shock",
+                        "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
+                        "beta_source": "5y",
+                    },
+                    "top_factor_drivers": [
+                        {"beta_key": "beta_eq", "factor": "Equity", "pnl_pct": -0.05, "abs_pnl_pct": 0.05, "direction": "loss", "rank": 1},
+                        {"beta_key": "beta_credit", "factor": "Credit (HY)", "pnl_pct": -0.02, "abs_pnl_pct": 0.02, "direction": "loss", "rank": 2},
+                    ],
+                    "largest_negative_factor": {"beta_key": "beta_eq", "factor": "Equity", "pnl_pct": -0.05, "abs_pnl_pct": 0.05, "direction": "loss"},
+                },
             ],
             "factor_betas_5y": {"beta_eq": 0.77, "beta_vix": -0.12, "beta_us_growth": 0.08},
             "factor_betas_10y": {"beta_eq": 0.81, "beta_oil": 0.11},
@@ -112,6 +131,10 @@ def test_write_stress_commentary_from_stress_report() -> None:
         assert "stress_report.json" in text
         assert "диагност" in text.lower()
         assert "URA" in text
+        assert "Historical factor attribution caveat" in text
+        assert "not a pure realized causal decomposition" in text
+        assert "top drivers: Equity" in text
+        assert "Structural historical factor vulnerability" in text
 
         stress2 = {
             **stress,

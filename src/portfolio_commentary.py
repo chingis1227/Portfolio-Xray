@@ -102,6 +102,51 @@ def _fmt_beta_dict(d: dict[str, Any] | None) -> str:
     return ", ".join(parts) if parts else "РЅ/Рґ"
 
 
+def _fmt_factor_driver(driver: dict[str, Any] | None) -> str:
+    if not isinstance(driver, dict):
+        return "n/a"
+    factor = driver.get("factor") or driver.get("beta_key") or "factor"
+    beta = driver.get("beta_key")
+    beta_suffix = f" ({beta})" if beta and beta != factor else ""
+    return f"{factor}{beta_suffix}={_fmt_pct(driver.get('pnl_pct'), 2)}"
+
+
+def _historical_driver_line(row: dict[str, Any]) -> str | None:
+    drivers = row.get("top_factor_drivers")
+    if not isinstance(drivers, list):
+        attr = row.get("historical_factor_attribution") or {}
+        drivers = attr.get("top_factor_drivers") if isinstance(attr, dict) else None
+    if not isinstance(drivers, list) or not drivers:
+        return None
+    return ", ".join(_fmt_factor_driver(d) for d in drivers[:3] if isinstance(d, dict))
+
+
+def _historical_vulnerability_summary(hist: list[dict[str, Any]]) -> str | None:
+    totals: dict[str, float] = {}
+    counts: dict[str, int] = {}
+    for row in hist:
+        largest = row.get("largest_negative_factor")
+        if not isinstance(largest, dict):
+            attr = row.get("historical_factor_attribution") or {}
+            largest = attr.get("largest_negative_factor") if isinstance(attr, dict) else None
+        if not isinstance(largest, dict):
+            continue
+        key = str(largest.get("factor") or largest.get("beta_key") or "factor")
+        try:
+            pnl = float(largest.get("pnl_pct"))
+        except (TypeError, ValueError):
+            continue
+        totals[key] = totals.get(key, 0.0) + pnl
+        counts[key] = counts.get(key, 0) + 1
+    if not totals:
+        return None
+    top = sorted(totals, key=lambda k: (counts.get(k, 0), abs(totals[k])), reverse=True)[0]
+    return (
+        f"Structural historical factor vulnerability: most repeated largest negative driver is "
+        f"{top} ({counts[top]} episodes, cumulative model contribution {_fmt_pct(totals[top], 2)})."
+    )
+
+
 def _ordered_beta_keys(*maps: Any) -> list[str]:
     ordered: list[str] = []
     seen: set[str] = set()
@@ -563,6 +608,11 @@ def write_stress_commentary(
     hist = st.get("historical_results") or []
     if hist:
         lines.append("РСЃС‚РѕСЂРёС‡РµСЃРєРёРµ СЌРїРёР·РѕРґС‹ (historical_results):")
+        if any(isinstance(h, dict) and h.get("historical_factor_attribution") for h in hist):
+            lines.append(
+                "Historical factor attribution caveat: model-based attribution = beta times realized factor shock; "
+                "it is not a pure realized causal decomposition."
+            )
         for h in hist:
             ep = h.get("episode", "?")
             mdd = h.get("max_dd")
@@ -575,6 +625,17 @@ def write_stress_commentary(
                 f"vol_annualized_episodeв‰€{_fmt_float(vole, 4) if vole is not None else 'РЅ/Рґ'}, "
                 f"diagnostic_code={dcode or 'вЂ”'}."
             )
+            driver_line = _historical_driver_line(h)
+            if driver_line:
+                largest = _fmt_factor_driver(h.get("largest_negative_factor"))
+                lines.append(
+                    f"  Factor attribution (5Y beta, model-based): model_pnl={_fmt_pct(h.get('factor_model_pnl_pct'))}, "
+                    f"model_error={_fmt_pct(h.get('factor_model_error_pct'))}; top drivers: {driver_line}; "
+                    f"largest loss driver: {largest}."
+                )
+        vuln = _historical_vulnerability_summary([h for h in hist if isinstance(h, dict)])
+        if vuln:
+            lines.append(vuln)
     else:
         lines.append("РСЃС‚РѕСЂРёС‡РµСЃРєРёРµ СЌРїРёР·РѕРґС‹ РІ JSON РѕС‚СЃСѓС‚СЃС‚РІСѓСЋС‚.")
     oos = st.get("factor_beta_shock_oos")

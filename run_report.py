@@ -83,6 +83,7 @@ from src.stress_factors import (
     compute_portfolio_factor_beta_oos_monthly,
     compute_asset_factor_betas_weekly,
     build_factor_matrix,
+    enrich_historical_results_with_factor_attribution,
     factor_beta_oos_stability_diagnostics,
     factor_beta_stability_diagnostics,
     factor_beta_stability_rows,
@@ -655,6 +656,11 @@ def run_portfolio_report_for_weights(
             factor_betas_5y=stress_report.get("factor_betas_5y") or {},
             factor_betas_10y=stress_report.get("factor_betas_10y") or {},
             rolling_window_weeks=FACTOR_WEEKS_3Y,
+        )
+        stress_report["historical_results"] = enrich_historical_results_with_factor_attribution(
+            stress_report.get("historical_results") or [],
+            stress_report.get("factor_beta_shock_oos"),
+            beta_source="5y",
         )
     except Exception as e:
         stress_report["factor_beta_shock_oos_error"] = str(e)

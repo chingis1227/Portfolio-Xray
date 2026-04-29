@@ -7,6 +7,7 @@
 > **2026-04-28 update:** Add **Recession severe** (`recession_severe`) as a hard-landing synthetic scenario. Its shock vector is calibrated from realized weekly factor moves in the existing **2008** and **2020** historical windows, selecting the episode with the worst model PnL for the current portfolio betas.
 > **2026-04-28 update:** Portfolio factor regressions include **Breusch-Pagan** heteroskedasticity diagnostics on the same OLS residuals/rows as the reported factor betas.
 > **2026-04-28 update:** Factor analytics now use a **nine-factor** weekly registry (`equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`, `oil`). Synthetic stress scenarios and recession calibration remain a **six-shock** engine and only map the first six factors into `shock_*` keys.
+> **2026-04-29 update:** Historical stress rows now include **model-based factor attribution** when factor history is available. The primary attribution uses 5Y portfolio betas times realized episode factor shocks and must be labeled as model-based explainability, not pure realized causal decomposition.
 
 ---
 
@@ -268,6 +269,21 @@ This output is **diagnostic / non-binding** and should be shown in stress commen
 
 ---
 
+### 8.7 Historical row attribution
+
+After `factor_beta_shock_oos` is computed, report generation enriches each `historical_results` row with primary historical factor attribution. The primary attribution uses `factor_contrib_5y`, i.e. current `factor_betas_5y` multiplied by the realized weekly factor shock summed over that episode. This is meant to explain the current portfolio's structural vulnerability to the historical factor mix.
+
+Each enriched historical row should include:
+
+- `historical_factor_attribution`: object with `method`, `caveat`, `beta_source`, `factor_model_pnl_pct`, `factor_model_error_pct`, `factor_model_abs_error_pct`, `factor_shock_sum`, `pnl_by_factor_pct`, `top_factor_drivers`, and `largest_negative_factor`.
+- Convenience mirrors at row level: `pnl_by_factor_pct`, `top_factor_drivers`, `largest_negative_factor`, `factor_model_pnl_pct`, `factor_model_error_pct`, `factor_model_abs_error_pct`, `factor_attribution_method`, and `factor_attribution_beta_source`.
+
+`method` is `model_based_beta_times_realized_factor_shock`. The required caveat is that this is beta times realized factor shock and **not** a pure realized causal decomposition. `top_factor_drivers` is sorted by absolute model contribution, and `largest_negative_factor` is the single most negative model contribution when one exists.
+
+This enrichment is diagnostic / non-binding. It does not change stress pass/fail, mandate status, optimizer behavior, or weight release.
+
+---
+
 ## 9. Historical validation
 
 Run portfolio through episodes (see `HISTORICAL_EPISODES` in `src/stress.py`):
@@ -277,7 +293,7 @@ Run portfolio through episodes (see `HISTORICAL_EPISODES` in `src/stress.py`):
 - **2020:** 2020-02-01 в†’ 2020-04-30
 - **2022:** 2021-11-01 в†’ 2022-10-31
 
-Output: max drawdown, volatility spike, correlations in stress.
+Output: max drawdown, realized episode PnL, volatility spike, and, when factor history is available, model-based factor attribution as described in В§8.7.
 Episode DD vs limit adds **DIAG_HIST_*** when breached; else episode contributes to **DIAG_PASS**. (Non-blocking.)
 
 ---

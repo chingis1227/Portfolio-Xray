@@ -1118,6 +1118,132 @@ def factor_oos_beta_shock_explainability(
     return out
 
 
+HISTORICAL_FACTOR_ATTRIBUTION_METHOD = "model_based_beta_times_realized_factor_shock"
+HISTORICAL_FACTOR_ATTRIBUTION_CAVEAT = (
+    "Model-based attribution: beta times realized factor shock. "
+    "This is not a pure realized causal decomposition."
+)
+
+
+def _factor_driver_rows(contrib: dict[str, Any], *, top_n: int = 3) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for beta_key, value in (contrib or {}).items():
+        v = _safe_float(value)
+        if v is None:
+            continue
+        rows.append(
+            {
+                "beta_key": str(beta_key),
+                "factor": get_factor_display_name(str(beta_key)),
+                "pnl_pct": float(v),
+                "abs_pnl_pct": abs(float(v)),
+                "direction": "loss" if v < 0 else "gain" if v > 0 else "flat",
+            }
+        )
+    rows.sort(key=lambda row: row["abs_pnl_pct"], reverse=True)
+    for idx, row in enumerate(rows[:top_n], start=1):
+        row["rank"] = idx
+    return rows[:top_n]
+
+
+def enrich_historical_results_with_factor_attribution(
+    historical_results: list[dict[str, Any]],
+    factor_beta_shock_oos: dict[str, Any] | None,
+    *,
+    beta_source: str = "5y",
+) -> list[dict[str, Any]]:
+    """Attach per-episode model-based factor attribution to historical stress rows."""
+    if not historical_results:
+        return []
+
+    source = str(beta_source).lower().strip()
+    source_map = {
+        "5y": ("factor_contrib_5y", "pnl_model_5y"),
+        "10y": ("factor_contrib_10y", "pnl_model_10y"),
+        "roll3y_pre": ("factor_contrib_roll3y_pre", "pnl_model_roll3y_pre"),
+        "rolling_3y_pre": ("factor_contrib_roll3y_pre", "pnl_model_roll3y_pre"),
+    }
+    contrib_key, model_key = source_map.get(source, source_map["5y"])
+    source = source if source in source_map else "5y"
+
+    episodes = (factor_beta_shock_oos or {}).get("episodes") if isinstance(factor_beta_shock_oos, dict) else None
+    by_episode = {
+        str(row.get("episode")): row
+        for row in (episodes or [])
+        if isinstance(row, dict) and row.get("episode") is not None
+    }
+
+    enriched: list[dict[str, Any]] = []
+    for hist_row in historical_results:
+        row = dict(hist_row)
+        episode_id = str(row.get("episode"))
+        ep = by_episode.get(episode_id)
+        base_attr: dict[str, Any] = {
+            "method": HISTORICAL_FACTOR_ATTRIBUTION_METHOD,
+            "caveat": HISTORICAL_FACTOR_ATTRIBUTION_CAVEAT,
+            "beta_source": source,
+        }
+        if not isinstance(ep, dict) or ep.get("error"):
+            row["historical_factor_attribution"] = {
+                **base_attr,
+                "error": ep.get("error") if isinstance(ep, dict) else "episode_attribution_unavailable",
+            }
+            enriched.append(row)
+            continue
+
+        contrib = ep.get(contrib_key) if isinstance(ep.get(contrib_key), dict) else {}
+        pnl_by_factor = {
+            str(k): float(v)
+            for k, v in (contrib or {}).items()
+            if _safe_float(v) is not None
+        }
+        drivers = _factor_driver_rows(pnl_by_factor)
+        negative = [
+            {
+                "beta_key": str(k),
+                "factor": get_factor_display_name(str(k)),
+                "pnl_pct": float(v),
+                "abs_pnl_pct": abs(float(v)),
+                "direction": "loss",
+            }
+            for k, v in pnl_by_factor.items()
+            if float(v) < 0
+        ]
+        negative.sort(key=lambda item: item["pnl_pct"])
+        largest_negative = negative[0] if negative else None
+
+        model_pnl = _safe_float(ep.get(model_key))
+        realized = _safe_float(row.get("pnl_real_episode"))
+        model_error = (model_pnl - realized) if model_pnl is not None and realized is not None else None
+        abs_error = abs(model_error) if model_error is not None else None
+
+        attribution = {
+            **base_attr,
+            "factor_model_pnl_pct": model_pnl,
+            "factor_model_error_pct": model_error,
+            "factor_model_abs_error_pct": abs_error,
+            "factor_shock_sum": {
+                str(k): float(v)
+                for k, v in (ep.get("factor_shock_sum") or {}).items()
+                if _safe_float(v) is not None
+            },
+            "pnl_by_factor_pct": pnl_by_factor,
+            "top_factor_drivers": drivers,
+            "largest_negative_factor": largest_negative,
+        }
+        row["historical_factor_attribution"] = attribution
+        row["pnl_by_factor_pct"] = pnl_by_factor
+        row["top_factor_drivers"] = drivers
+        row["largest_negative_factor"] = largest_negative
+        row["factor_model_pnl_pct"] = model_pnl
+        row["factor_model_error_pct"] = model_error
+        row["factor_model_abs_error_pct"] = abs_error
+        row["factor_attribution_method"] = HISTORICAL_FACTOR_ATTRIBUTION_METHOD
+        row["factor_attribution_beta_source"] = source
+        enriched.append(row)
+    return enriched
+
+
 def compute_asset_factor_betas_weekly(
     tickers: list[str],
     analysis_end_str: str,
