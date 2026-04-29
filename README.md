@@ -10,7 +10,7 @@
    ```bash
    python run_optimization.py [--no-cache] [--write-config]
    ```
-   Р§РёС‚Р°РµС‚ `config.yml` Рё РїСЂРё РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚Рё **`config/client_profiles.yml`**; РїРѕРґС‚СЏРіРёРІР°РµС‚ СЂС‹РЅРѕС‡РЅС‹Рµ РґР°РЅРЅС‹Рµ; СЃС‡РёС‚Р°РµС‚ РєРѕРІР°СЂРёР°С†РёРё Рё **РѕРґРёРЅ** РїСЂРѕС…РѕРґ РѕРїС‚РёРјРёР·Р°С‚РѕСЂР° (`run_max_return_optimization`); ProLiquidity; РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ dual-horizon (10Y + 5Y) РґР»СЏ `robustness_report.json`. РџРёС€РµС‚ РІРµСЃР° РІ **`portfolio_weights.yml`** Рё **`run_result.json`** РІ РєР°С‚Р°Р»РѕРі **`output_dir_final`** (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ **Main portfolio**). РџСЂРё РїСЂРѕРІР°Р»Рµ **РјР°РЅРґР°С‚Р° MaxDD** РІРµСЃР° РЅРµ Р·Р°РїРёСЃС‹РІР°СЋС‚СЃСЏ, РІС‹С…РѕРґ СЃ РѕС€РёР±РєРѕР№ (**FAIL_MANDATE**).
+   Р§РёС‚Р°РµС‚ `config.yml` Рё РїСЂРё РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚Рё **`config/client_profiles.yml`**; РїРѕРґС‚СЏРіРёРІР°РµС‚ СЂС‹РЅРѕС‡РЅС‹Рµ РґР°РЅРЅС‹Рµ; СЃС‡РёС‚Р°РµС‚ РєРѕРІР°СЂРёР°С†РёРё Рё **РѕРґРёРЅ** РїСЂРѕС…РѕРґ РѕРїС‚РёРјРёР·Р°С‚РѕСЂР° (`run_max_return_optimization`); ProLiquidity; РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ dual-horizon (10Y + 5Y) РґР»СЏ `robustness_report.json`. РџРёС€РµС‚ РІРµСЃР° РІ **`portfolio_weights.yml`** Рё **`run_result.json`** РІ РєР°С‚Р°Р»РѕРі **`output_dir_final`** (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ **Main portfolio**). РўРѕС‚ Р¶Рµ optimization run С‚РµРїРµСЂСЊ РїРёС€РµС‚ РІ `stress_report.json` РїРѕР»РЅС‹Р№ factor diagnostics block: factor betas/regressions, rolling beta stability, factor covariance, factor variance decomposition, historical factor attribution, Рё portfolio PCA. РџСЂРё РїСЂРѕРІР°Р»Рµ **РјР°РЅРґР°С‚Р° MaxDD** РІРµСЃР° РЅРµ Р·Р°РїРёСЃС‹РІР°СЋС‚СЃСЏ, РІС‹С…РѕРґ СЃ РѕС€РёР±РєРѕР№ (**FAIL_MANDATE**).
 
 2. **РћС‚С‡С‘С‚**
    ```bash

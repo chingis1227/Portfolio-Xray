@@ -69,7 +69,7 @@
 
 ## 4. Р—Р°РІРёСЃРёРјРѕСЃС‚Рё РјРµР¶РґСѓ СЃРєСЂРёРїС‚Р°РјРё
 
-- **run_optimization.py** вЂ” С‡РёС‚Р°РµС‚ `config.yml`, `config/client_profiles.yml`, РєР°С‡Р°РµС‚ РґР°РЅРЅС‹Рµ; РїРёС€РµС‚ **`portfolio_weights.yml`**, **`run_result.json`**, СЃС‚СЂРµСЃСЃ Рё СЃРЅРёРјРєРё РІ `output_dir_final`.
+- **run_optimization.py** вЂ” С‡РёС‚Р°РµС‚ `config.yml`, `config/client_profiles.yml`, РєР°С‡Р°РµС‚ РґР°РЅРЅС‹Рµ; РїРёС€РµС‚ **`portfolio_weights.yml`**, **`run_result.json`**, СЃС‚СЂРµСЃСЃ Рё СЃРЅРёРјРєРё РІ `output_dir_final`. `stress_report.json` РёР· optimization path С‚РµРїРµСЂСЊ СЃРѕРґРµСЂР¶РёС‚ РЅРµ С‚РѕР»СЊРєРѕ factor betas/regressions, РЅРѕ Рё `factor_betas_stability`, `factor_covariance`, `factor_variance_decomposition`, historical factor attribution, Рё `portfolio_pca`.
 - **run_report.py** вЂ” С‡РёС‚Р°РµС‚ `config.yml` Рё РїСЂРё РѕС‚СЃСѓС‚СЃС‚РІРёРё РІРµСЃРѕРІ РІ РєРѕРЅС„РёРіРµ вЂ” **`portfolio_weights.yml`** РёР· `output_dir_final`.
 
 **РџРѕСЂСЏРґРѕРє:** СЃРЅР°С‡Р°Р»Р° `python run_optimization.py`, Р·Р°С‚РµРј `python run_report.py` (РїСЂРё РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚Рё `--no-cache`).

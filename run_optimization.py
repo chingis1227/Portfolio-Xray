@@ -398,11 +398,23 @@ def main() -> None:
 
     try:
         from src.stress_factors import (
+            FACTOR_MONTHS_10Y,
+            FACTOR_MONTHS_3Y,
+            FACTOR_MONTHS_5Y,
             FACTOR_WEEKS_10Y,
             FACTOR_WEEKS_3Y,
             FACTOR_WEEKS_5Y,
+            compute_portfolio_factor_beta_oos_monthly,
+            compute_portfolio_factor_beta_oos_weekly,
+            compute_portfolio_rolling_factor_betas_monthly,
             compute_portfolio_rolling_factor_betas_weekly,
+            enrich_historical_results_with_factor_attribution,
+            factor_beta_oos_stability_diagnostics,
+            factor_beta_stability_diagnostics,
+            factor_beta_stability_rows,
+            factor_covariance_analytics,
             factor_oos_beta_shock_explainability,
+            factor_variance_decomposition_weekly,
             portfolio_pca_diagnostics,
             portfolio_factor_regression_weekly,
             rolling_beta_summary,
@@ -432,11 +444,18 @@ def main() -> None:
             stress_report["factor_regression_10y_error"] = str(e)
 
         rolling_windows = {"3y": FACTOR_WEEKS_3Y, "5y": FACTOR_WEEKS_5Y, "10y": FACTOR_WEEKS_10Y}
+        rolling_windows_months = {"3y": FACTOR_MONTHS_3Y, "5y": FACTOR_MONTHS_5Y, "10y": FACTOR_MONTHS_10Y}
         rb = compute_portfolio_rolling_factor_betas_weekly(
             weights=final_weights,
             tickers=stress_tickers,
             analysis_end_str=analysis_end_str,
             rolling_windows_weeks=rolling_windows,
+        )
+        rb_monthly = compute_portfolio_rolling_factor_betas_monthly(
+            monthly_returns=monthly_returns,
+            weights=final_weights,
+            analysis_end_str=analysis_end_str,
+            rolling_windows_months=rolling_windows_months,
         )
         out_final_tmp = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
         out_final_tmp.mkdir(parents=True, exist_ok=True)
@@ -449,6 +468,13 @@ def main() -> None:
             p = out_csv_tmp / f"rolling_factor_betas_{lbl}.csv"
             df_rb.round(4).to_csv(p, index=True)
             csv_paths[lbl] = p.name
+        monthly_csv_paths: dict[str, str] = {}
+        for lbl, df_rb in rb_monthly.items():
+            if df_rb is None or df_rb.empty:
+                continue
+            p = out_csv_tmp / f"rolling_factor_betas_monthly_{lbl}.csv"
+            df_rb.round(4).to_csv(p, index=True)
+            monthly_csv_paths[lbl] = p.name
         summary_df = rolling_beta_summary(rb)
         summary_struct: dict[str, dict[str, dict[str, float | int]]] = {}
         summary_csv_name = ""
@@ -466,6 +492,52 @@ def main() -> None:
                     "p10": float(row["p10"]),
                     "p90": float(row["p90"]),
                 }
+        monthly_summary_df = rolling_beta_summary(rb_monthly)
+        monthly_summary_struct: dict[str, dict[str, dict[str, float | int]]] = {}
+        monthly_summary_csv_name = ""
+        if not monthly_summary_df.empty:
+            monthly_summary_csv = out_csv_tmp / "rolling_factor_betas_monthly_summary.csv"
+            monthly_summary_df.round(4).to_csv(monthly_summary_csv, index=False)
+            monthly_summary_csv_name = monthly_summary_csv.name
+            for _, row in monthly_summary_df.iterrows():
+                w = str(row["window"])
+                b = str(row["beta"])
+                monthly_summary_struct.setdefault(w, {})[b] = {
+                    "n_points": int(row["n_points"]),
+                    "mean": float(row["mean"]),
+                    "median": float(row["median"]),
+                    "p10": float(row["p10"]),
+                    "p90": float(row["p90"]),
+                }
+        oos_weekly = compute_portfolio_factor_beta_oos_weekly(
+            weights=final_weights,
+            tickers=stress_tickers,
+            analysis_end_str=analysis_end_str,
+            rolling_windows_weeks=rolling_windows,
+        )
+        oos_monthly = compute_portfolio_factor_beta_oos_monthly(
+            monthly_returns=monthly_returns,
+            weights=final_weights,
+            analysis_end_str=analysis_end_str,
+            rolling_windows_months=rolling_windows_months,
+        )
+        oos_stability = factor_beta_oos_stability_diagnostics({
+            "weekly": oos_weekly,
+            "monthly": oos_monthly,
+        })
+        stability = factor_beta_stability_diagnostics(
+            {
+                "weekly": rb,
+                "monthly": rb_monthly,
+            },
+            oos_stability=oos_stability,
+        )
+        stability_csv_name = ""
+        stability_df = factor_beta_stability_rows(stability)
+        if not stability_df.empty:
+            stability_csv = out_csv_tmp / "factor_beta_stability.csv"
+            stability_df.round(4).to_csv(stability_csv, index=False)
+            stability_csv_name = stability_csv.name
         plot_name = ""
         plot_png_by_window: dict[str, str] = {}
         if rb:
@@ -474,10 +546,16 @@ def main() -> None:
             plot_name = plot_path.name
             plot_png_by_window = write_rolling_betas_plot_pngs(rb, out_final_tmp)
         stress_report["factor_betas_rolling_windows_weeks"] = rolling_windows
+        stress_report["factor_betas_rolling_windows_months"] = rolling_windows_months
         stress_report["factor_betas_rolling_summary"] = summary_struct
+        stress_report["factor_betas_rolling_monthly_summary"] = monthly_summary_struct
+        stress_report["factor_betas_stability"] = stability
         stress_report["factor_betas_rolling_artifacts"] = {
             "csv_by_window": csv_paths,
+            "monthly_csv_by_window": monthly_csv_paths,
             "summary_csv": summary_csv_name,
+            "monthly_summary_csv": monthly_summary_csv_name,
+            "stability_csv": stability_csv_name,
             "plot_html": plot_name,
             "plot_png_by_window": plot_png_by_window,
         }
@@ -492,6 +570,122 @@ def main() -> None:
             )
         except Exception as e:
             stress_report["factor_beta_shock_oos_error"] = str(e)
+        try:
+            stress_report["historical_results"] = enrich_historical_results_with_factor_attribution(
+                stress_report.get("historical_results") or [],
+                stress_report.get("factor_beta_shock_oos"),
+                beta_source="5y",
+            )
+        except Exception as e:
+            stress_report["factor_beta_shock_oos_error"] = str(e)
+
+        try:
+            factor_cov = factor_covariance_analytics(
+                analysis_end_str=analysis_end_str,
+                portfolio_betas=stress_report.get("factor_betas_5y") or stress_report.get("factor_betas") or {},
+                rolling_betas_weekly=rb,
+                factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
+            )
+            stress_report["factor_covariance"] = factor_cov
+
+            def _matrix_df(regime: str, field: str) -> pd.DataFrame:
+                payload = (factor_cov.get(regime) or {}).get(field)
+                if not isinstance(payload, dict):
+                    return pd.DataFrame()
+                order = factor_cov.get("factor_order") or []
+                df = pd.DataFrame(payload).T
+                if order:
+                    df = df.reindex(index=order, columns=order)
+                return df
+
+            for regime, fname in {
+                "base": "factor_covariance_base_5y_weekly.csv",
+                "stress_empirical": "factor_covariance_stress_empirical_weekly.csv",
+                "stress_overlay": "factor_covariance_stress_overlay_weekly.csv",
+            }.items():
+                df = _matrix_df(regime, "matrix")
+                if not df.empty:
+                    df.round(6).to_csv(out_csv_tmp / fname)
+
+            for regime, fname in {
+                "base": "factor_correlation_base_5y_weekly.csv",
+                "stress_empirical": "factor_correlation_stress_empirical_weekly.csv",
+                "stress_overlay": "factor_correlation_stress_overlay_weekly.csv",
+            }.items():
+                df = _matrix_df(regime, "correlations")
+                if not df.empty:
+                    df.round(6).to_csv(out_csv_tmp / fname)
+
+            for regime, fname in {
+                "base": "portfolio_factor_rc_base.csv",
+                "stress_empirical": "portfolio_factor_rc_stress_empirical.csv",
+                "stress_overlay": "portfolio_factor_rc_stress_overlay.csv",
+            }.items():
+                rows = ((factor_cov.get("portfolio_factor_rc") or {}).get(regime) or [])
+                if rows:
+                    pd.DataFrame(rows).round(6).to_csv(out_csv_tmp / fname, index=False)
+
+            overlay_deltas = ((factor_cov.get("stress_overlay") or {}).get("overlay_deltas") or [])
+            if overlay_deltas:
+                pd.DataFrame(overlay_deltas).round(6).to_csv(out_csv_tmp / "factor_covariance_overlay_deltas.csv", index=False)
+
+            covariance_stability = factor_cov.get("covariance_stability_check") or {}
+            stability_rows = []
+            for row in covariance_stability.get("by_pair") or []:
+                stability_rows.append({"type": "pair", **row})
+            for row in covariance_stability.get("by_factor_variance") or []:
+                stability_rows.append({"type": "factor_variance", **row})
+            if stability_rows:
+                pd.DataFrame(stability_rows).round(6).to_csv(out_csv_tmp / "factor_covariance_stability_check.csv", index=False)
+
+            forecast_quality = factor_cov.get("forecast_quality") or {}
+            forecast_rows = forecast_quality.get("rows") if isinstance(forecast_quality, dict) else []
+            if forecast_rows:
+                flat_rows = []
+                for row in forecast_rows:
+                    if not isinstance(row, dict):
+                        continue
+                    flat_rows.append({k: v for k, v in row.items() if k != "worst_corr_error_pair"})
+                if flat_rows:
+                    pd.DataFrame(flat_rows).round(6).to_csv(out_csv_tmp / "factor_covariance_forecast_quality.csv", index=False)
+        except Exception as e:
+            stress_report["factor_covariance_error"] = str(e)
+            logger.warning("Factor covariance analytics failed: %s", e)
+
+        try:
+            factor_decomp = factor_variance_decomposition_weekly(
+                weights=final_weights,
+                tickers=stress_tickers,
+                analysis_end_str=analysis_end_str,
+                window_weeks=FACTOR_WEEKS_5Y,
+            )
+            stress_report["factor_variance_decomposition"] = factor_decomp
+            for warning in factor_decomp.get("warnings") or []:
+                logger.warning("Factor variance decomposition warning: %s", warning)
+            rows = factor_decomp.get("rows") or []
+            if rows:
+                export_rows = []
+                cross = factor_decomp.get("cross_check") or {}
+                for row in rows:
+                    export_rows.append(
+                        {
+                            "method": factor_decomp.get("method"),
+                            "window": factor_decomp.get("window"),
+                            "variance_scale": factor_decomp.get("variance_scale"),
+                            "status": factor_decomp.get("status"),
+                            "r2": factor_decomp.get("r2"),
+                            "residual_share": factor_decomp.get("residual_share"),
+                            "residual_severity": factor_decomp.get("residual_severity"),
+                            "cross_check_status": cross.get("status"),
+                            "cross_check_warning_code": cross.get("warning_code"),
+                            "stability_severity": (factor_decomp.get("stability") or {}).get("overall_severity"),
+                            **row,
+                        }
+                    )
+                pd.DataFrame(export_rows).round(8).to_csv(out_csv_tmp / "factor_variance_decomposition_5y.csv", index=False)
+        except Exception as e:
+            stress_report["factor_variance_decomposition_error"] = str(e)
+            logger.warning("Factor variance decomposition failed: %s", e)
 
         try:
             pca = portfolio_pca_diagnostics(
