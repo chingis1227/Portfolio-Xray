@@ -403,6 +403,7 @@ def main() -> None:
             FACTOR_WEEKS_5Y,
             compute_portfolio_rolling_factor_betas_weekly,
             factor_oos_beta_shock_explainability,
+            portfolio_pca_diagnostics,
             portfolio_factor_regression_weekly,
             rolling_beta_summary,
             write_rolling_betas_plot_html,
@@ -491,6 +492,98 @@ def main() -> None:
             )
         except Exception as e:
             stress_report["factor_beta_shock_oos_error"] = str(e)
+
+        try:
+            pca = portfolio_pca_diagnostics(
+                weights=final_weights,
+                tickers=stress_tickers,
+                analysis_end_str=analysis_end_str,
+                window_weeks=FACTOR_WEEKS_5Y,
+                factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
+            )
+            stress_report["portfolio_pca"] = pca
+
+            summary_rows = []
+            component_rows = []
+            rolling_rows = []
+            corr_rows = []
+            for layer_name in ("raw", "residual"):
+                layer = pca.get(layer_name) if isinstance(pca, dict) else None
+                if not isinstance(layer, dict) or layer.get("status") != "available":
+                    continue
+                for pca_key in ("covariance_pca", "correlation_pca"):
+                    block = layer.get(pca_key)
+                    if not isinstance(block, dict) or block.get("status") != "available":
+                        continue
+                    rolling = block.get("rolling_pc1") or {}
+                    rolling_summary = rolling.get("summary") if isinstance(rolling, dict) else {}
+                    summary_rows.append(
+                        {
+                            "layer": layer_name,
+                            "pca_type": pca_key,
+                            "interpretation": block.get("interpretation"),
+                            "n_obs": block.get("n_obs"),
+                            "n_assets": block.get("n_assets"),
+                            "pc1_explained_variance_ratio": block.get("pc1_explained_variance_ratio"),
+                            "pc1_concentration_ratio": block.get("pc1_concentration_ratio"),
+                            "pc1_severity": block.get("pc1_severity"),
+                            "effective_number_of_bets": block.get("effective_number_of_bets"),
+                            "effective_number_of_bets_ratio": block.get("effective_number_of_bets_ratio"),
+                            "enb_severity": block.get("enb_severity"),
+                            "rolling_stability_severity": (rolling_summary or {}).get("stability_severity") if isinstance(rolling_summary, dict) else None,
+                            "rolling_trend_slope_per_year": (rolling_summary or {}).get("trend_slope_per_year") if isinstance(rolling_summary, dict) else None,
+                            "rolling_latest_minus_mean": (rolling_summary or {}).get("latest_minus_mean") if isinstance(rolling_summary, dict) else None,
+                        }
+                    )
+                    for comp in block.get("components") or []:
+                        if not isinstance(comp, dict):
+                            continue
+                        loadings = comp.get("loadings") or {}
+                        if not isinstance(loadings, dict):
+                            continue
+                        for asset, loading in loadings.items():
+                            component_rows.append(
+                                {
+                                    "layer": layer_name,
+                                    "pca_type": pca_key,
+                                    "interpretation": block.get("interpretation"),
+                                    "component": comp.get("component"),
+                                    "asset": asset,
+                                    "loading": loading,
+                                    "eigenvalue": comp.get("eigenvalue"),
+                                    "explained_variance_ratio": comp.get("explained_variance_ratio"),
+                                    "cumulative_explained_variance_ratio": comp.get("cumulative_explained_variance_ratio"),
+                                }
+                            )
+                    if isinstance(rolling, dict):
+                        for row in rolling.get("rows") or []:
+                            if isinstance(row, dict):
+                                rolling_rows.append({"layer": layer_name, "pca_type": pca_key, **row})
+                    fc = block.get("pc1_factor_correlations") or {}
+                    correlations = fc.get("correlations") if isinstance(fc, dict) else {}
+                    if isinstance(correlations, dict):
+                        for factor, corr in correlations.items():
+                            corr_rows.append(
+                                {
+                                    "layer": layer_name,
+                                    "pca_type": pca_key,
+                                    "factor": factor,
+                                    "correlation": corr,
+                                    "abs_correlation": abs(float(corr)) if corr is not None else None,
+                                }
+                            )
+
+            if summary_rows:
+                pd.DataFrame(summary_rows).round(8).to_csv(out_csv_tmp / "portfolio_pca_summary_5y.csv", index=False)
+            if component_rows:
+                pd.DataFrame(component_rows).round(8).to_csv(out_csv_tmp / "portfolio_pca_components_5y.csv", index=False)
+            if rolling_rows:
+                pd.DataFrame(rolling_rows).round(8).to_csv(out_csv_tmp / "portfolio_pca_rolling_pc1.csv", index=False)
+            if corr_rows:
+                pd.DataFrame(corr_rows).round(8).to_csv(out_csv_tmp / "portfolio_pca_pc1_factor_correlations.csv", index=False)
+        except Exception as e:
+            stress_report["portfolio_pca_error"] = str(e)
+            logger.warning("Portfolio PCA diagnostics failed: %s", e)
     except Exception as e:
         stress_report["factor_betas_rolling_error"] = str(e)
 

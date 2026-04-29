@@ -59,9 +59,10 @@ mandate status, or weight release.
 Completed. The report contract now includes `stress_report.json.portfolio_pca` with raw
 and factor-residual PCA, covariance PCA for risk dominance, correlation PCA for structure,
 PC1 stability, effective number of bets, and PC1 factor correlations. `run_report.py`
-exports PCA summary, components, rolling PC1, and PC1-factor-correlation CSV files.
-`stress_commentary.txt` now prints a compact PCA interpretation. Validation passed with
-the full test suite: 61 tests.
+and `run_optimization.py` both export PCA summary, components, rolling PC1, and
+PC1-factor-correlation CSV files. `stress_commentary.txt` now prints a compact PCA
+interpretation. Validation passed with the full test suite: 61 tests, and a follow-up
+sync added the same PCA block to the optimization path.
 
 Focused validation:
 
@@ -79,8 +80,11 @@ Full validation:
 ## Context and Orientation
 
 `run_report.py` is the main reporting entrypoint. It builds weekly factor betas, portfolio
-factor regressions, factor covariance analytics, and factor variance decomposition, then
-exports `stress_report.json` through `src.io_export.export_stress_report`.
+factor regressions, factor covariance analytics, factor variance decomposition, and PCA,
+then exports `stress_report.json` through `src.io_export.export_stress_report`.
+
+`run_optimization.py` also writes `stress_report.json` and `stress_commentary.txt` as part
+of the optimization pipeline. The PCA contract should stay aligned across both entrypoints.
 
 `src/stress_factors.py` owns factor matrix construction and factor diagnostics. It already
 contains `asset_weekly_returns_from_daily`, `build_factor_matrix`, and helpers that download
@@ -104,7 +108,7 @@ Add pure PCA functions in `src/stress_factors.py` that accept weekly returns and
 factor returns. The functions must return unavailable status instead of raising when there
 are too few rows, too few assets, degenerate variance, or empty factor alignment.
 
-Wire the main wrapper into `run_report.py` after factor variance decomposition. Export a
+Wire the main wrapper into both `run_report.py` and `run_optimization.py`. Export a
 summary CSV, component/loadings CSV, rolling PC1 CSV, and PC1-factor-correlation CSV under
 `results_csv/`.
 
@@ -131,10 +135,10 @@ If those pass and changes touch shared helpers, run:
 
 ## Validation and Acceptance
 
-Acceptance requires `stress_report.json.portfolio_pca` after `run_report.py` when there
-are at least two positive-weight assets and at least 52 aligned weekly observations. It
-must include raw and residual blocks, and each must include `covariance_pca` and
-`correlation_pca`.
+Acceptance requires `stress_report.json.portfolio_pca` after both `run_report.py` and
+`run_optimization.py` when there are at least two positive-weight assets and at least 52
+aligned weekly observations. It must include raw and residual blocks, and each must
+include `covariance_pca` and `correlation_pca`.
 
 Each PCA block must include PC1 share, PC1 severity, ENB, ENB severity, rolling PC1
 stability summary, components/loadings, and PC1 factor correlations when factor data is
@@ -146,10 +150,10 @@ rolling PC1 trend/severity works, and commentary renders without breaking unavai
 
 ## Idempotence and Recovery
 
-The implementation is additive. Re-running `run_report.py` overwrites generated
-`stress_report.json`, `stress_commentary.txt`, and PCA CSV artifacts. If factor data or
-asset history is unavailable, the PCA block returns `status = "unavailable"` and does not
-change stress status.
+The implementation is additive. Re-running `run_report.py` or `run_optimization.py`
+overwrites generated `stress_report.json`, `stress_commentary.txt`, and PCA CSV artifacts.
+If factor data or asset history is unavailable, the PCA block returns `status =
+"unavailable"` and does not change stress status.
 
 ## Artifacts and Notes
 
@@ -193,3 +197,6 @@ project requirement for complex feature work.
 
 Revision note 2026-04-29: updated after implementation with completed progress and
 validation evidence.
+
+Revision note 2026-04-29: updated to keep the optimization path aligned with the reporting
+path so PCA is present immediately after `run_optimization.py`.
