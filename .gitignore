@@ -11,6 +11,12 @@ env/
 # Cache
 cache/
 pdf_latex/pandoc_doc_meta.tex
+.pytest_tmp*/
+tmp/
+tmp_pytest*/
+commentary_*/
+stress_commentary_*/
+factor_png_*/
 
 # IDE
 .idea/

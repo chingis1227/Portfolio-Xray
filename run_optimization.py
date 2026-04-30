@@ -28,6 +28,7 @@ from src.config import (
     resolve_cash_and_rf,
 )
 from src.config_schema import ConfigValidationError
+from src.etf_universe import UniverseValidationError, write_universe_diagnostics
 from src.metrics_asset import mandate_max_drawdown_full_history_check
 from src.optimization import (
     get_risk_portfolio_tickers,
@@ -111,6 +112,15 @@ def main() -> None:
     if args.profile:
         apply_profile_override(cfg, args.profile.strip())
     profile_display = (cfg.client_profile or args.profile or "—").strip() or "—"
+
+    out_final = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
+    try:
+        diag_path = write_universe_diagnostics(out_final, cfg.tickers)
+        if diag_path:
+            logger.info("ETF universe diagnostics: %s", diag_path)
+    except UniverseValidationError as e:
+        logger.error("%s", e)
+        raise SystemExit(1)
 
     cash_proxy = cfg.cash_proxy_ticker or "BIL"
     risk_tickers_all = get_risk_portfolio_tickers(cfg.tickers, cfg.cash_proxy_ticker)

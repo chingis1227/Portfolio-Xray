@@ -97,6 +97,7 @@ Keep `DESIGN.md` as the source of truth for tokens, typography, spacing, buttons
 ## Important Files
 - `config.yml` - active local config.
 - `config.yml.example` - reference config.
+- `config/etf_universe.yml` - curated ETF taxonomy source of truth; V1 validates/annotates config tickers but does not change optimizer membership or weights.
 - `config/client_profiles.yml` - client risk profiles.
 - `assets.yml` - optional asset metadata.
 - `src/optimization.py` - optimization logic.
@@ -118,6 +119,7 @@ Before changing formulas or portfolio logic, check the relevant spec:
 - `docs/docs/feasibility_constraints_spec.md` - feasibility and weight limits.
 - `docs/docs/view_after_optimization_spec.md` - allowed post-optimization tilt.
 - `docs/production_workflow.md` - production statuses and blocking rules.
+- `docs/etf_universe_spec.md` - ETF taxonomy schema, enums, duplicate/canonical policy, and diagnostics statuses.
 
 Do not invent formulas if a spec exists.
 
@@ -140,6 +142,7 @@ Do not invent formulas if a spec exists.
 - Scenario stress is diagnostic; mandate MaxDD can prevent weight release.
 - Default backtest mode is `dynamic_nan_safe`.
 - Do not manually require weights in `config.yml`; optimization writes `portfolio_weights.yml` / `run_result.json`.
+- ETF universe taxonomy is annotation-only in V1: `run_etf_universe.py` validates/lists/exports `config/etf_universe.yml`, and optimization/report runs may write `etf_universe_validation.json`, but taxonomy warnings do not alter portfolio composition or weights.
 
 ## Verification Loop
 After any meaningful code change, run tests before considering the task complete.

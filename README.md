@@ -71,3 +71,23 @@
 
 - **View After Optimization:** РѕС‚РґРµР»СЊРЅС‹Р№ СЃРєСЂРёРїС‚ `run_view_after_optimization.py` (СЃРј. СЃРїРµРєСѓ РІС‹С€Рµ).
 - **РњР°РЅРґР°С‚ MaxDD:** РїСЂРё Р·Р°РґР°РЅРЅРѕРј `target_max_drawdown_pct` Р·Р°РїРёСЃСЊ РІРµСЃРѕРІ Р±Р»РѕРєРёСЂСѓРµС‚ С‚РѕР»СЊРєРѕ **СЂРµР°Р»РёР·РѕРІР°РЅРЅР°СЏ РїСЂРѕСЃР°РґРєР° РЅР° РїРѕР»РЅРѕР№ РїРµСЂРµСЃРµРєР°СЋС‰РµР№СЃСЏ РјРµСЃСЏС‡РЅРѕР№ РёСЃС‚РѕСЂРёРё** (СЃРј. `run_result.json`, `mandate_check`, **FAIL_MANDATE**). РЎС†РµРЅР°СЂРЅС‹Р№ СЃС‚СЂРµСЃСЃ вЂ” **РґРёР°РіРЅРѕСЃС‚РёРєР°** (**DIAG_***), РЅРµ Р±Р»РѕРєРёСЂСѓРµС‚ РІС‹РїСѓСЃРє РІРµСЃРѕРІ.
+
+---
+
+## ETF Universe Taxonomy
+
+`config/etf_universe.yml` is the curated ETF classification source of truth. In V1 it validates and annotates the active `config.yml` ticker list; it does not change optimizer membership, optimizer eligibility, or portfolio weights.
+
+Useful commands:
+
+```bash
+python run_etf_universe.py validate
+python run_etf_universe.py check-config --config config.yml
+python run_etf_universe.py export --format csv
+python run_etf_universe.py export --format json
+python run_etf_universe.py list --asset-class equity
+python run_etf_universe.py list --risk-factor real_rates
+python run_etf_universe.py enrich-yahoo
+```
+
+CSV/JSON exports are generated artifacts under `results_csv/`. Optimization and report runs write `etf_universe_validation.json` under `output_dir_final` when the universe file exists. See `docs/etf_universe_spec.md`.

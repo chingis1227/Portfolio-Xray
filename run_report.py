@@ -35,6 +35,7 @@ from src.config import (
 )
 from src.config_schema import ConfigValidationError, PortfolioConfig
 from src.data_loader import load_monthly_data_shared, MonthlyDataResult
+from src.etf_universe import UniverseValidationError, write_universe_diagnostics
 from src.io_export import (
     ensure_output_dir,
     export_asset_metrics_csv,
@@ -1215,6 +1216,14 @@ def main() -> None:
 
     output_dir_csv = ensure_output_dir(Path(cfg.output_dir))
     output_dir_final = ensure_output_dir(Path(getattr(cfg, "output_dir_final", "Main portfolio")))
+
+    try:
+        diag_path = write_universe_diagnostics(output_dir_final, cfg.tickers)
+        if diag_path:
+            logger.info("ETF universe diagnostics: %s", diag_path)
+    except UniverseValidationError as e:
+        logger.error("%s", e)
+        raise SystemExit(1)
 
     portfolio_metrics_summary, meta = run_portfolio_report_for_weights(
         cfg,

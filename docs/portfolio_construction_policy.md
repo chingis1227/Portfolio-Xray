@@ -4,6 +4,8 @@
 
 Portfolios are built from a **single list of tickers** in `config.yml`.
 
+`config/etf_universe.yml` is a taxonomy and diagnostics source only. In V1 it annotates and validates the active `config.yml` ticker list, writes `etf_universe_validation.json`, and reports duplicate/canonical/unknown-ticker warnings. It does **not** select the optimizer universe, change weights, or replace data coverage and young-ETF eligibility rules.
+
 Optimization chooses weights that **maximize expected return** (sample mean of monthly simple returns on the primary window) subject to:
 
 - long-only, weights sum to 1;
