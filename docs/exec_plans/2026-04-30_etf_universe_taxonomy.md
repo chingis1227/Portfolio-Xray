@@ -26,8 +26,8 @@ After this change the project has a curated ETF universe that describes ETF econ
   Evidence: `src.config.load_assets_metadata()` returns `{ticker: {currency: ...}}` and data loading uses it only to resolve asset currency before FX conversion.
 - Observation: the active optimizer universe is still `config.yml` tickers, with cash excluded by `src.optimization.get_risk_portfolio_tickers()`.
   Evidence: `docs/portfolio_construction_policy.md` states portfolios are built from a single list of tickers in `config.yml`.
-- Observation: the current `config.yml` is fully known to the seed taxonomy but selects `GLD` while the duplicate group canonical is `IAU`.
-  Evidence: `python run_etf_universe.py check-config --config config.yml` returned `PASS_WITH_WARNINGS` with `non_canonical_selection` for `GLD -> IAU`.
+- Observation: the gold duplicate group uses `GLD` as the canonical ticker.
+  Evidence: `python run_etf_universe.py check-config --config config.yml` returned `PASS` after setting `canonical_ticker: GLD` for the `gold_physical` group.
 - Observation: sandboxed pytest runs could not create or clean the default temp directory for tests using `tmp_path`.
   Evidence: the first combined pytest run failed with `PermissionError` on `C:\Users\ShumeikoYe\.cache\codex-pytest-temp`; the same suite passed when rerun with approved elevated execution.
 
