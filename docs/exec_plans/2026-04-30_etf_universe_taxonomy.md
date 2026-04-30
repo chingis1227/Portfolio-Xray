@@ -13,12 +13,13 @@ After this change the project has a curated ETF universe that describes ETF econ
 
 - [x] (2026-04-30) Read `PLANS.md`, current config/data flow, `assets.yml`, `run_optimization.py`, `run_report.py`, and existing tests.
 - [x] (2026-04-30) Create this ExecPlan before implementation.
-- [x] (2026-04-30) Add curated `config/etf_universe.yml` with 185 ETF records.
+- [x] (2026-04-30) Add initial curated `config/etf_universe.yml` with 185 ETF records.
 - [x] (2026-04-30) Add `src/etf_universe.py` with schema validation, diagnostics, exports, and config checks.
 - [x] (2026-04-30) Add `run_etf_universe.py` CLI.
 - [x] (2026-04-30) Integrate universe diagnostics into optimization/report outputs.
 - [x] (2026-04-30) Add tests and documentation updates.
 - [x] (2026-04-30) Run focused tests and full suite; record results.
+- [x] (2026-04-30) Add 30 ETF records from `ETF FUNDS КРАТКАЯ ВЫЖИМКА.docx`, bringing the curated universe to 215 records.
 
 ## Surprises & Discoveries
 
@@ -30,6 +31,8 @@ After this change the project has a curated ETF universe that describes ETF econ
   Evidence: `python run_etf_universe.py check-config --config config.yml` returned `PASS` after setting `canonical_ticker: GLD` for the `gold_physical` group.
 - Observation: sandboxed pytest runs could not create or clean the default temp directory for tests using `tmp_path`.
   Evidence: the first combined pytest run failed with `PermissionError` on `C:\Users\ShumeikoYe\.cache\codex-pytest-temp`; the same suite passed when rerun with approved elevated execution.
+- Observation: the source document contains ETF-like tickers that are not all US-listed symbols in the same way as the existing seed universe.
+  Evidence: `IEAC` and `VECP` are described in the source document as EUR corporate bond UCITS ETFs; they were added to taxonomy as raw document tickers, but optimizer data download may still require exchange-specific provider symbols if later used in `config.yml`.
 
 ## Decision Log
 
@@ -45,7 +48,7 @@ After this change the project has a curated ETF universe that describes ETF econ
 
 ## Outcomes & Retrospective
 
-Implemented V1 ETF universe taxonomy. The repository now has a 185-record curated YAML seed, a validator/export/list CLI, closed enum and cross-field validation, config diagnostics with `PASS` / `PASS_WITH_WARNINGS` / `FAIL`, generated CSV/JSON exports, and optimization/report integration that writes `etf_universe_validation.json`. Focused validation passed: `tests/test_etf_universe.py` reported 16 passed, the combined config/universe suite reported 19 passed, and the full suite reported 91 passed. The combined and full suites were run with approved elevated execution because pytest temp directory creation is blocked in the sandbox.
+Implemented V1 ETF universe taxonomy. The repository now has a 215-record curated YAML seed, a validator/export/list CLI, closed enum and cross-field validation, config diagnostics with `PASS` / `PASS_WITH_WARNINGS` / `FAIL`, generated CSV/JSON exports, and optimization/report integration that writes `etf_universe_validation.json`. Focused validation passed: `tests/test_etf_universe.py` reported 16 passed, the combined config/universe suite reported 19 passed, and the full suite reported 91 passed. The combined and full suites were run with approved elevated execution because pytest temp directory creation is blocked in the sandbox.
 
 ## Context and Orientation
 
