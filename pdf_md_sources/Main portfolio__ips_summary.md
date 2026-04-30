@@ -52,7 +52,7 @@ RC_vol is reported in metrics and stress (Top1/Top3) for diagnostics; not used a
 
 - Diagnostic status:
 - Primary code: вЂ”
-- Worst scenario loss: -14.36% (informational)
+- Worst scenario loss: -11.44% (informational)
 - Failed scenario: вЂ”
 - Note: Synthetic shocks & episode checks do not prevent weights; review with PM.
 

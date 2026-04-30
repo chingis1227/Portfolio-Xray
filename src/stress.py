@@ -90,7 +90,7 @@ SCENARIOS = {
         "shock_eq": -0.20,
         "shock_rr": 0.005,
         "shock_credit": 0.0,
-        "shock_inf": 0.0,
+        "shock_inf": 0.005,
         "shock_usd": 0.0,
         "shock_cmd": 0.25,
         "vol_mult": 1.0,

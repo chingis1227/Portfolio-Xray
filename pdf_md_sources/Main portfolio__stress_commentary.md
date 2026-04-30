@@ -26,41 +26,41 @@ fontsize: 10pt
 - СЃРёР»СЊРЅС‹Р№ РѕР±РІР°Р» РЅР° СЂС‹РЅРєРµ Р°РєС†РёР№: PnLв‰€-8.45%, РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ=True, loss_ok=True; Top1 RC (РґРѕР»СЏ РґРёСЃРїРµСЂСЃРёРё): TLT (28.45%); СЃСѓРјРјР° Top3в‰€57.53%.
 - СЃС‚СЂРµСЃСЃ РЅР° СЂС‹РЅРєРµ РєСЂРµРґРёС‚Р°: PnLв‰€-1.31%, РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ=True, loss_ok=True; Top1 RC (РґРѕР»СЏ РґРёСЃРїРµСЂСЃРёРё): TLT (28.45%); СЃСѓРјРјР° Top3в‰€57.53%.
 - rates_shock: PnLв‰€-11.44%, РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ=True, loss_ok=True; Top1 RC (РґРѕР»СЏ РґРёСЃРїРµСЂСЃРёРё): TLT (30.75%); СЃСѓРјРјР° Top3в‰€58.34%.
-- inflation_stagflation: PnLв‰€-4.91%, РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ=True, loss_ok=True; Top1 RC (РґРѕР»СЏ РґРёСЃРїРµСЂСЃРёРё): TLT (30.75%); СЃСѓРјРјР° Top3в‰€58.34%.
+- inflation_stagflation: PnLв‰€-7.30%, РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ=True, loss_ok=True; Top1 RC (РґРѕР»СЏ РґРёСЃРїРµСЂСЃРёРё): TLT (30.75%); СЃСѓРјРјР° Top3в‰€58.34%.
 - liquidity_shock: PnLв‰€-4.68%, РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ=True, loss_ok=True; Top1 RC (РґРѕР»СЏ РґРёСЃРїРµСЂСЃРёРё): TLT (28.46%); СЃСѓРјРјР° Top3в‰€57.53%.
 - recession_severe: PnLв‰€-9.87%, РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ=True, loss_ok=True; Top1 RC (РґРѕР»СЏ РґРёСЃРїРµСЂСЃРёРё): TLT (28.27%); СЃСѓРјРјР° Top3в‰€57.36%.
-Р¤Р°РєС‚РѕСЂРЅС‹Рµ Р±РµС‚С‹ РїРѕСЂС‚С„РµР»СЏ (РЅРµРґРµР»СЊРЅР°СЏ РѕС†РµРЅРєР°, СЃРј. СЃРїРµС†РёС„РёРєР°С†РёСЋ): 5Yв‰€{beta_cmd=0.0866, beta_credit=0.1996, beta_eq=0.2109, beta_inf=-4.7565, beta_rr=-5.7131, beta_us_growth=0.0004, beta_usd=-0.2176, beta_vix=0.0000}; 10Yв‰€{beta_cmd=0.0433, beta_eq=0.1795, beta_inf=-4.3350, beta_rr=-6.6881, beta_us_growth=-0.0010, beta_usd=-0.2061, beta_vix=-0.0007}.
+Р¤Р°РєС‚РѕСЂРЅС‹Рµ Р±РµС‚С‹ РїРѕСЂС‚С„РµР»СЏ (РЅРµРґРµР»СЊРЅР°СЏ РѕС†РµРЅРєР°, СЃРј. СЃРїРµС†РёС„РёРєР°С†РёСЋ): 5Yв‰€{beta_cmd=0.0866, beta_credit=0.1996, beta_eq=0.2109, beta_inf=-4.7565, beta_rr=-5.7131, beta_us_growth=0.0004, beta_usd=-0.2176, beta_vix=0.0000}; 10Yв‰€{beta_cmd=0.0433, beta_eq=0.1795, beta_inf=-4.3349, beta_rr=-6.6881, beta_us_growth=-0.0010, beta_usd=-0.2061, beta_vix=-0.0007}.
 Портфельная факторная регрессия (5Y)
 РџРѕСЂС‚С„РµР»СЊРЅР°СЏ С„Р°РєС‚РѕСЂРЅР°СЏ СЂРµРіСЂРµСЃСЃРёСЏ (5Y), РЅРµРґРµР»СЊРЅС‹Рµ СЂСЏРґС‹, OLS: n_obs=151, RВІ=0.7833, idiosyncratic risk (1-RВІ)=0.2167, adj RВІ=0.7711, intercept=0.0013, se_type=classic_ols, alpha=0.05 (CI СѓСЂРѕРІРµРЅСЊ 0.95).
 РџРѕ С„Р°РєС‚РѕСЂР°Рј (ОІ, t, p, 95% CI) вЂ” РєР»Р°СЃСЃРёС‡РµСЃРєРёР№ OLS (se_type=classic_ols):
 - beta_eq: ОІ=0.2109, t=5.570, p=<1e-6, CI=[0.1361; 0.2858]
 - beta_rr: ОІ=-5.7131, t=-13.678, p=<1e-6, CI=[-6.5388; -4.8874]
 - beta_inf: ОІ=-4.7565, t=-4.921, p=0.000002, CI=[-6.6671; -2.8459]
-- beta_credit: ОІ=0.1996, t=0.500, p=0.617550, CI=[-0.5889; 0.9881]
-- beta_usd: ОІ=-0.2176, t=-3.195, p=0.001726, CI=[-0.3522; -0.0829]
+- beta_credit: ОІ=0.1996, t=0.500, p=0.617562, CI=[-0.5889; 0.9881]
+- beta_usd: ОІ=-0.2176, t=-3.194, p=0.001726, CI=[-0.3522; -0.0829]
 - beta_cmd: ОІ=0.0866, t=4.142, p=0.000059, CI=[0.0453; 0.1280]
-- beta_vix: ОІ=0.0000, t=0.010, p=0.992172, CI=[-0.0080; 0.0081]
-- beta_us_growth: ОІ=0.0004, t=0.372, p=0.710455, CI=[-0.0018; 0.0027]
+- beta_vix: ОІ=0.0000, t=0.010, p=0.992174, CI=[-0.0080; 0.0081]
+- beta_us_growth: ОІ=0.0004, t=0.372, p=0.710435, CI=[-0.0018; 0.0027]
 HAC/NeweyвЂ“West (robust) inference: se_type=hac_newey_west, kernel=bartlett, max_lags=4.
 РџРѕ С„Р°РєС‚РѕСЂР°Рј (HAC t, p, 95% CI):
 - beta_eq: t_HAC=5.228, p_HAC=<1e-6, CI_HAC=[0.1312; 0.2907]
-- beta_rr: t_HAC=-14.159, p_HAC=<1e-6, CI_HAC=[-6.5107; -4.9155]
+- beta_rr: t_HAC=-14.159, p_HAC=<1e-6, CI_HAC=[-6.5108; -4.9155]
 - beta_inf: t_HAC=-5.918, p_HAC=<1e-6, CI_HAC=[-6.3454; -3.1677]
-- beta_credit: t_HAC=0.534, p_HAC=0.594150, CI_HAC=[-0.5393; 0.9385]
+- beta_credit: t_HAC=0.534, p_HAC=0.594162, CI_HAC=[-0.5393; 0.9385]
 - beta_usd: t_HAC=-3.857, p_HAC=0.000173, CI_HAC=[-0.3291; -0.1061]
 - beta_cmd: t_HAC=3.076, p_HAC=0.002516, CI_HAC=[0.0310; 0.1423]
-- beta_vix: t_HAC=0.010, p_HAC=0.992177, CI_HAC=[-0.0080; 0.0081]
-- beta_us_growth: t_HAC=0.340, p_HAC=0.734705, CI_HAC=[-0.0021; 0.0029]
+- beta_vix: t_HAC=0.010, p_HAC=0.992178, CI_HAC=[-0.0080; 0.0081]
+- beta_us_growth: t_HAC=0.340, p_HAC=0.734686, CI_HAC=[-0.0021; 0.0029]
 Breusch-Pagan heteroskedasticity
-Breusch-Pagan (H0: homoskedastic OLS residuals; LM ~ chi-square(k_factors)): LM=8.3728, df=8, p=0.397927, T_aux=151, R2_aux=0.0554.
-F-form: F=1.0420, df=(8, 142), p=0.407568.
+Breusch-Pagan (H0: homoskedastic OLS residuals; LM ~ chi-square(k_factors)): LM=8.3729, df=8, p=0.397917, T_aux=151, R2_aux=0.0554.
+F-form: F=1.0420, df=(8, 142), p=0.407558.
 
 Durbin–Watson / Breusch–Godfrey
 РђРІС‚РѕРєРѕСЂСЂРµР»СЏС†РёСЏ РѕСЃС‚Р°С‚РєРѕРІ С„Р°РєС‚РѕСЂРЅРѕР№ OLS: DurbinвЂ“Watson=2.1091 (в‰€2 вЂ” РјР°Р»Рѕ РђРљ РїРµСЂРІРѕРіРѕ РїРѕСЂСЏРґРєР°; РјРµС‚РѕРґ: durbin_watson_breusch_godfrey_lm).
 BreuschвЂ“Godfrey LM (Hв‚Ђ: РЅРµС‚ РђРљ РґРѕ РїРѕСЂСЏРґРєР° p; LM ~ П‡ВІ(p)):
  lags=1: LM=0.6285, df=1, p=0.427924, T_aux=150, RВІ_aux=0.0042
- lags=2: LM=1.0368, df=2, p=0.595485, T_aux=149, RВІ_aux=0.0070
- lags=4: LM=8.0155, df=4, p=0.091013, T_aux=147, RВІ_aux=0.0545
+ lags=2: LM=1.0368, df=2, p=0.595479, T_aux=149, RВІ_aux=0.0070
+ lags=4: LM=8.0157, df=4, p=0.091004, T_aux=147, RВІ_aux=0.0545
 
 Мультиколлинеарность факторов
 РњСѓР»СЊС‚РёРєРѕР»Р»РёРЅРµР°СЂРЅРѕСЃС‚СЊ С„Р°РєС‚РѕСЂРѕРІ (С‚Рµ Р¶Рµ РЅРµРґРµР»Рё, С‡С‚Рѕ СЂРµРіСЂРµСЃСЃРёСЏ): РѕС†РµРЅРєР°=low; cond(R)=15.447; max VIF=3.617 (С„Р°РєС‚РѕСЂ equity).
@@ -112,10 +112,10 @@ VIF РїРѕ С„Р°РєС‚РѕСЂР°Рј:
 РџРѕ С„Р°РєС‚РѕСЂР°Рј (ОІ, t, p, 95% CI) вЂ” РєР»Р°СЃСЃРёС‡РµСЃРєРёР№ OLS (se_type=classic_ols):
 - beta_eq: ОІ=0.1795, t=14.175, p=<1e-6, CI=[0.1546; 0.2044]
 - beta_rr: ОІ=-6.6881, t=-35.963, p=<1e-6, CI=[-7.0535; -6.3228]
-- beta_inf: ОІ=-4.3350, t=-13.811, p=<1e-6, CI=[-4.9516; -3.7183]
+- beta_inf: ОІ=-4.3349, t=-13.811, p=<1e-6, CI=[-4.9516; -3.7183]
 - beta_usd: ОІ=-0.2061, t=-6.624, p=<1e-6, CI=[-0.2672; -0.1450]
 - beta_cmd: ОІ=0.0433, t=4.971, p=<1e-6, CI=[0.0262; 0.0604]
-- beta_vix: ОІ=-0.0007, t=-0.430, p=0.667125, CI=[-0.0037; 0.0024]
+- beta_vix: ОІ=-0.0007, t=-0.430, p=0.667172, CI=[-0.0037; 0.0024]
 - beta_us_growth: ОІ=-0.0010, t=-2.638, p=0.008581, CI=[-0.0017; -0.0003]
 HAC/NeweyвЂ“West (robust) inference: se_type=hac_newey_west, kernel=bartlett, max_lags=4.
 РџРѕ С„Р°РєС‚РѕСЂР°Рј (HAC t, p, 95% CI):
@@ -124,18 +124,18 @@ HAC/NeweyвЂ“West (robust) inference: se_type=hac_newey_west, kernel=bartlett
 - beta_inf: t_HAC=-10.149, p_HAC=<1e-6, CI_HAC=[-5.1741; -3.4958]
 - beta_usd: t_HAC=-6.255, p_HAC=<1e-6, CI_HAC=[-0.2708; -0.1414]
 - beta_cmd: t_HAC=4.193, p_HAC=0.000032, CI_HAC=[0.0230; 0.0636]
-- beta_vix: t_HAC=-0.359, p_HAC=0.719387, CI_HAC=[-0.0043; 0.0030]
-- beta_us_growth: t_HAC=-1.752, p_HAC=0.080287, CI_HAC=[-0.0021; 0.0001]
+- beta_vix: t_HAC=-0.359, p_HAC=0.719428, CI_HAC=[-0.0043; 0.0030]
+- beta_us_growth: t_HAC=-1.753, p_HAC=0.080286, CI_HAC=[-0.0021; 0.0001]
 Breusch-Pagan heteroskedasticity
-Breusch-Pagan (H0: homoskedastic OLS residuals; LM ~ chi-square(k_factors)): LM=12.5812, df=7, p=0.082995, T_aux=520, R2_aux=0.0242.
-F-form: F=1.8135, df=(7, 512), p=0.082449.
+Breusch-Pagan (H0: homoskedastic OLS residuals; LM ~ chi-square(k_factors)): LM=12.5816, df=7, p=0.082982, T_aux=520, R2_aux=0.0242.
+F-form: F=1.8136, df=(7, 512), p=0.082436.
 
 Durbin–Watson / Breusch–Godfrey
 РђРІС‚РѕРєРѕСЂСЂРµР»СЏС†РёСЏ РѕСЃС‚Р°С‚РєРѕРІ С„Р°РєС‚РѕСЂРЅРѕР№ OLS: DurbinвЂ“Watson=2.1470 (в‰€2 вЂ” РјР°Р»Рѕ РђРљ РїРµСЂРІРѕРіРѕ РїРѕСЂСЏРґРєР°; РјРµС‚РѕРґ: durbin_watson_breusch_godfrey_lm).
 BreuschвЂ“Godfrey LM (Hв‚Ђ: РЅРµС‚ РђРљ РґРѕ РїРѕСЂСЏРґРєР° p; LM ~ П‡ВІ(p)):
- lags=1: LM=3.1748, df=1, p=0.074782, T_aux=519, RВІ_aux=0.0061
- lags=2: LM=3.5258, df=2, p=0.171550, T_aux=518, RВІ_aux=0.0068
- lags=4: LM=16.7365, df=4, p=0.002175, T_aux=516, RВІ_aux=0.0324
+ lags=1: LM=3.1746, df=1, p=0.074790, T_aux=519, RВІ_aux=0.0061
+ lags=2: LM=3.5256, df=2, p=0.171563, T_aux=518, RВІ_aux=0.0068
+ lags=4: LM=16.7369, df=4, p=0.002174, T_aux=516, RВІ_aux=0.0324
 
 Мультиколлинеарность факторов
 РњСѓР»СЊС‚РёРєРѕР»Р»РёРЅРµР°СЂРЅРѕСЃС‚СЊ С„Р°РєС‚РѕСЂРѕРІ (С‚Рµ Р¶Рµ РЅРµРґРµР»Рё, С‡С‚Рѕ СЂРµРіСЂРµСЃСЃРёСЏ): РѕС†РµРЅРєР°=low; cond(R)=11.198; max VIF=2.720 (С„Р°РєС‚РѕСЂ equity).
@@ -180,7 +180,7 @@ VIF РїРѕ С„Р°РєС‚РѕСЂР°Рј:
 РћРєРЅРѕ 3y:
  beta_eq: n=796, mean=0.1387, median=0.1629, p10=0.0084, p90=0.2054
  beta_rr: n=796, mean=-6.3604, median=-6.1882, p10=-8.6459, p90=-4.4450
- beta_inf: n=796, mean=-5.0230, median=-4.5536, p10=-7.1884, p90=-3.7324
+ beta_inf: n=796, mean=-5.0229, median=-4.5536, p10=-7.1883, p90=-3.7324
  beta_usd: n=796, mean=-0.2007, median=-0.1805, p10=-0.3147, p90=-0.1185
  beta_cmd: n=796, mean=0.0549, median=0.0441, p10=0.0164, p90=0.0984
  beta_vix: n=796, mean=-0.0012, median=-0.0014, p10=-0.0060, p90=0.0028
@@ -189,7 +189,7 @@ VIF РїРѕ С„Р°РєС‚РѕСЂР°Рј:
 РћРєРЅРѕ 5y:
  beta_eq: n=692, mean=0.1439, median=0.1663, p10=0.0295, p90=0.2108
  beta_rr: n=692, mean=-6.4945, median=-6.5926, p10=-8.2945, p90=-5.0352
- beta_inf: n=692, mean=-5.0076, median=-4.6717, p10=-6.9057, p90=-3.7757
+ beta_inf: n=692, mean=-5.0076, median=-4.6717, p10=-6.9056, p90=-3.7757
  beta_usd: n=692, mean=-0.1944, median=-0.2055, p10=-0.2525, p90=-0.1419
  beta_cmd: n=692, mean=0.0497, median=0.0434, p10=0.0229, p90=0.0872
  beta_vix: n=692, mean=-0.0015, median=-0.0012, p10=-0.0043, p90=0.0006
@@ -214,7 +214,7 @@ Factor beta stability diagnostics: sign stability, magnitude stability, specific
 Severity distribution: low=42.9%, moderate=28.6%, high=28.6%, unknown=0.0%.
 - beta_eq: severity=moderate; sign=low (dominant=positive, share=0.952, changes=14); magnitude=moderate (band=0.1868, rel_band=1.112); spec=low (rel_median_span=0.099, sign_disagreement=False); OOS=low (sign_match=0.959, degradation=0.315, n=1764).
 - beta_rr: severity=low; sign=low (dominant=negative, share=1.000, changes=0); magnitude=low (band=3.1672, rel_band=0.480); spec=low (rel_median_span=0.086, sign_disagreement=False); OOS=low (sign_match=1.000, degradation=0.217, n=1764).
-- beta_inf: severity=low; sign=low (dominant=negative, share=1.000, changes=0); magnitude=low (band=3.1264, rel_band=0.663); spec=low (rel_median_span=0.079, sign_disagreement=False); OOS=low (sign_match=1.000, degradation=0.206, n=1764).
+- beta_inf: severity=low; sign=low (dominant=negative, share=1.000, changes=0); magnitude=low (band=3.1263, rel_band=0.663); spec=low (rel_median_span=0.079, sign_disagreement=False); OOS=low (sign_match=1.000, degradation=0.206, n=1764).
 - beta_usd: severity=low; sign=low (dominant=negative, share=1.000, changes=0); magnitude=low (band=0.1331, rel_band=0.723); spec=low (rel_median_span=0.141, sign_disagreement=False); OOS=low (sign_match=0.970, degradation=0.456, n=1764).
 - beta_cmd: severity=moderate; sign=low (dominant=positive, share=0.999, changes=2); magnitude=moderate (band=0.0660, rel_band=1.319); spec=low (rel_median_span=0.040, sign_disagreement=False); OOS=low (sign_match=0.953, degradation=0.531, n=1764).
 - beta_vix: severity=high; sign=moderate (dominant=negative, share=0.767, changes=58); magnitude=low (band=0.0068, rel_band=0.136); spec=low (rel_median_span=0.021, sign_disagreement=False); OOS=high (sign_match=0.425, degradation=0.105, n=1764).
@@ -318,7 +318,7 @@ OOS РѕР±СЉСЏСЃРЅРµРЅРёРµ СЌРїРёР·РѕРґРѕРІ С
 СЃРёР»СЊРЅС‹Р№ РѕР±РІР°Р» РЅР° СЂС‹РЅРєРµ Р°РєС†РёР№: PnLв‰€-8.45%, РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ=True (РјР°РЅРґР°С‚РЅС‹Р№ loss); РґРѕР»Рё RC вЂ” РІ Metric-by-Metric.
 СЃС‚СЂРµСЃСЃ РЅР° СЂС‹РЅРєРµ РєСЂРµРґРёС‚Р°: PnLв‰€-1.31%, РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ=True (РјР°РЅРґР°С‚РЅС‹Р№ loss); РґРѕР»Рё RC вЂ” РІ Metric-by-Metric.
 rates_shock: PnLв‰€-11.44%, РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ=True (РјР°РЅРґР°С‚РЅС‹Р№ loss); РґРѕР»Рё RC вЂ” РІ Metric-by-Metric.
-inflation_stagflation: PnLв‰€-4.91%, РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ=True (РјР°РЅРґР°С‚РЅС‹Р№ loss); РґРѕР»Рё RC вЂ” РІ Metric-by-Metric.
+inflation_stagflation: PnLв‰€-7.30%, РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ=True (РјР°РЅРґР°С‚РЅС‹Р№ loss); РґРѕР»Рё RC вЂ” РІ Metric-by-Metric.
 liquidity_shock: PnLв‰€-4.68%, РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ=True (РјР°РЅРґР°С‚РЅС‹Р№ loss); РґРѕР»Рё RC вЂ” РІ Metric-by-Metric.
 recession_severe: PnLв‰€-9.87%, РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ=True (РјР°РЅРґР°С‚РЅС‹Р№ loss); РґРѕР»Рё RC вЂ” РІ Metric-by-Metric.
 

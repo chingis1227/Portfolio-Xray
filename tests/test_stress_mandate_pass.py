@@ -116,6 +116,48 @@ def test_pnl_by_factor_pct_uses_portfolio_betas() -> None:
     assert "beta_oil" not in out["factor_betas"]
 
 
+def test_inflation_stagflation_includes_direct_inflation_shock() -> None:
+    idx = pd.date_range("2015-01-31", periods=60, freq="M")
+    monthly_returns = pd.DataFrame({"AAA": [0.01] * len(idx)}, index=idx)
+    tickers = ["AAA"]
+    weights = {"AAA": 1.0}
+    asset_betas = pd.DataFrame(
+        {
+            "beta_eq": [0.0],
+            "beta_rr": [0.0],
+            "beta_inf": [-4.0],
+            "beta_credit": [0.0],
+            "beta_usd": [0.0],
+            "beta_cmd": [0.0],
+        },
+        index=tickers,
+    )
+    portfolio_betas = {
+        "beta_eq": 0.0,
+        "beta_rr": 0.0,
+        "beta_inf": -4.0,
+        "beta_credit": 0.0,
+        "beta_usd": 0.0,
+        "beta_cmd": 0.0,
+    }
+
+    out = run_stress(
+        tickers=tickers,
+        weights=weights,
+        monthly_returns=monthly_returns,
+        asset_betas=asset_betas,
+        portfolio_betas=portfolio_betas,
+        target_max_drawdown_pct=0.5,
+        cash_proxy_ticker="",
+    )
+
+    stagflation = next((r for r in out["scenario_results"] if r["scenario_id"] == "inflation_stagflation"), None)
+    assert stagflation is not None
+    assert stagflation["shock_vector"]["shock_inf"] == 0.005
+    assert stagflation["pnl_by_factor_pct"]["inf"] == -0.02
+    assert stagflation["portfolio_pnl_pct"] == -0.02
+
+
 def test_recession_severe_is_calibrated_from_worst_2008_2020_model_pnl() -> None:
     idx = pd.date_range("2007-01-31", "2021-12-31", freq="M")
     monthly_returns = pd.DataFrame({"AAA": [0.0] * len(idx)}, index=idx)
