@@ -98,6 +98,7 @@ Keep `DESIGN.md` as the source of truth for tokens, typography, spacing, buttons
 - `config.yml` - active local config.
 - `config.yml.example` - reference config.
 - `config/etf_universe.yml` - curated ETF taxonomy source of truth; V1 validates/annotates config tickers but does not change optimizer membership or weights.
+- `config/stock_universe.yml` - curated stock taxonomy source of truth for current S&P 500 constituents; V1 is CLI-only and does not change optimizer membership or weights.
 - `config/client_profiles.yml` - client risk profiles.
 - `assets.yml` - optional asset metadata.
 - `src/optimization.py` - optimization logic.
@@ -120,6 +121,7 @@ Before changing formulas or portfolio logic, check the relevant spec:
 - `docs/docs/view_after_optimization_spec.md` - allowed post-optimization tilt.
 - `docs/production_workflow.md` - production statuses and blocking rules.
 - `docs/etf_universe_spec.md` - ETF taxonomy schema, enums, duplicate/canonical policy, and diagnostics statuses.
+- `docs/stock_universe_spec.md` - stock taxonomy schema, snapshot header requirements, and CLI workflow.
 
 Do not invent formulas if a spec exists.
 
@@ -143,6 +145,7 @@ Do not invent formulas if a spec exists.
 - Default backtest mode is `dynamic_nan_safe`.
 - Do not manually require weights in `config.yml`; optimization writes `portfolio_weights.yml` / `run_result.json`.
 - ETF universe taxonomy is annotation-only in V1: `run_etf_universe.py` validates/lists/exports `config/etf_universe.yml`, and optimization/report runs may write `etf_universe_validation.json`, but taxonomy warnings do not alter portfolio composition or weights.
+- Stock universe taxonomy is annotation-only in V1: `run_stock_universe.py` validates/lists/exports `config/stock_universe.yml` and can check an explicit stock config, but it is not wired into optimization/report and does not alter portfolio composition or weights.
 
 ## Verification Loop
 After any meaningful code change, run tests before considering the task complete.

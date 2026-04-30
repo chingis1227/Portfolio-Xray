@@ -91,3 +91,17 @@ python run_etf_universe.py enrich-yahoo
 ```
 
 CSV/JSON exports are generated artifacts under `results_csv/`. Optimization and report runs write `etf_universe_validation.json` under `output_dir_final` when the universe file exists. See `docs/etf_universe_spec.md`.
+
+`config/stock_universe.yml` is a separate stock classification source of truth for the current S&P 500 constituent set. In V1 it is CLI-only, validates and exports stock metadata, and can check an explicit stock config, but it does not integrate into optimization/report runs or change portfolio weights.
+
+```bash
+python run_stock_universe.py validate
+python run_stock_universe.py check-config --config path/to/stock_config.yml
+python run_stock_universe.py export --format csv
+python run_stock_universe.py export --format json
+python run_stock_universe.py list --sector "Information Technology"
+python run_stock_universe.py list --industry "Biotechnology"
+python run_stock_universe.py list --risk-factor us_growth
+```
+
+See `docs/stock_universe_spec.md`.

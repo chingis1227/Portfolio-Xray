@@ -14,6 +14,7 @@ This file is a short index for product behavior and implementation specs. Do not
 | Data policy for NaN, young ETFs, and backtest handling | [docs/data_policy_nan_young_etfs.md](docs/data_policy_nan_young_etfs.md) |
 | Production workflow and release statuses | [docs/production_workflow.md](docs/production_workflow.md) |
 | ETF universe taxonomy, closed enums, duplicate groups, canonical tickers, diagnostics statuses | [docs/etf_universe_spec.md](docs/etf_universe_spec.md) |
+| Stock universe taxonomy for current S&P 500 constituents | [docs/stock_universe_spec.md](docs/stock_universe_spec.md) |
 
 ## Expected Product Behavior
 
@@ -21,6 +22,7 @@ This file is a short index for product behavior and implementation specs. Do not
 - `run_report.py` reads optimized weights, computes reports and metrics over the configured windows, and writes CSV/JSON/HTML/text outputs.
 - Final weights must come from optimization plus approved post-processing protocols; manual final weights in config are not the normal workflow.
 - `config/etf_universe.yml` validates and annotates ETF taxonomy for the active config ticker list. V1 diagnostics do not select tickers, do not replace existing optimizer eligibility/data rules, and do not change weights.
+- `config/stock_universe.yml` is a separate stock taxonomy source for the current S&P 500 constituent set. V1 is CLI-only, validates and annotates stock metadata, and does not integrate into optimizer/report flows or change weights.
 
 ## Output Contract
 
