@@ -63,7 +63,7 @@ def test_write_portfolio_commentary_creates_file() -> None:
         assert out.is_file()
         text = out.read_text(encoding="utf-8")
         assert "Executive Summary" in text
-        assert "DIAG_ATTENTION" in text or "диагност" in text.lower()
+        assert "DIAG_ATTENTION" in text or "diagnostic" in text.lower()
         assert "equity_shock" in text
         assert "Risk-Parity baseline" in text or "Risk-Parity" in text
     finally:
@@ -168,7 +168,7 @@ def test_write_stress_commentary_from_stress_report() -> None:
         assert "DIAG_ATTENTION" in text
         assert "equity_shock" in text
         assert "stress_report.json" in text
-        assert "диагност" in text.lower()
+        assert "diagnostic" in text.lower()
         assert "URA" in text
         assert "Historical factor attribution caveat" in text
         assert "not a pure realized causal decomposition" in text

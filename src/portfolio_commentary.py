@@ -16,11 +16,15 @@ import pandas as pd
 
 from src.stress_factors import BASE_BETA_ROW_ORDER, BETA_ROW_ORDER
 
+# Missing-value tokens for exported commentary (English-only artifacts).
+_NA = "n/a"
+_MDASH = "\u2014"
+
 
 def _folder_portfolio_label(output_dir_final: Path) -> str:
     name = output_dir_final.name.strip().lower()
     if name == "main portfolio":
-        return "РѕСЃРЅРѕРІРЅРѕР№ РїРѕСЂС‚С„РµР»СЊ (Main portfolio)"
+        return "Main portfolio (policy)"
     if "equal" in name and "weight" in name:
         return "Equal-Weight baseline"
     if "risk" in name and "parity" in name:
@@ -30,25 +34,25 @@ def _folder_portfolio_label(output_dir_final: Path) -> str:
 
 def _fmt_pct(x: Any, digits: int = 2) -> str:
     if x is None:
-        return "РЅ/Рґ"
+        return _NA
     try:
         v = float(x)
     except (TypeError, ValueError):
-        return "РЅ/Рґ"
+        return _NA
     if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
-        return "РЅ/Рґ"
+        return _NA
     return f"{v * 100:.{digits}f}%"
 
 
 def _fmt_float(x: Any, digits: int = 3) -> str:
     if x is None:
-        return "РЅ/Рґ"
+        return _NA
     try:
         v = float(x)
     except (TypeError, ValueError):
-        return "РЅ/Рґ"
+        return _NA
     if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
-        return "РЅ/Рґ"
+        return _NA
     return f"{v:.{digits}f}"
 
 
@@ -89,17 +93,17 @@ def _scenario_snippets(stress_report: dict[str, Any] | None) -> list[str]:
         pnl = row.get("portfolio_pnl_pct")
         ok = row.get("pass")
         if pnl is not None:
-            lines.append(f"{sid}: PnLв‰€{_fmt_pct(pnl, 2)}, pass={ok}")
+            lines.append(f"{sid}: PnL ~ {_fmt_pct(pnl, 2)}, pass={ok}")
     return lines[:6]
 
 
 def _fmt_beta_dict(d: dict[str, Any] | None) -> str:
     if not d:
-        return "РЅ/Рґ"
+        return _NA
     parts = []
     for k in sorted(d.keys()):
         parts.append(f"{k}={_fmt_float(d.get(k), 4)}")
-    return ", ".join(parts) if parts else "РЅ/Рґ"
+    return ", ".join(parts) if parts else _NA
 
 
 def _fmt_factor_driver(driver: dict[str, Any] | None) -> str:
@@ -194,11 +198,11 @@ def _relpath_for_pdf_md_image(image_file: Path, output_dir_final: Path) -> str |
 
 def _fmt_p_value(x: Any) -> str:
     if x is None:
-        return "РЅ/Рґ"
+        return _NA
     try:
         v = float(x)
     except (TypeError, ValueError):
-        return "РЅ/Рґ"
+        return _NA
     if v == 0.0 or (isinstance(v, float) and v < 1e-6):
         return "<1e-6"
     return _fmt_float(v, 6)
@@ -208,73 +212,75 @@ def _append_factor_multicollinearity_section(lines: list[str], mc: Any) -> None:
     """Append factor multicollinearity (same rows as OLS regressors); from factor_multicollinearity in stress_report."""
     if not isinstance(mc, dict) or not mc:
         return
-    lines.append("Мультиколлинеарность факторов")
+    lines.append("Factor multicollinearity")
     err = mc.get("error")
     if err:
-        lines.append(f"РњСѓР»СЊС‚РёРєРѕР»Р»РёРЅРµР°СЂРЅРѕСЃС‚СЊ С„Р°РєС‚РѕСЂРѕРІ (РґРёР°РіРЅРѕСЃС‚РёРєР°): РЅРµ РїРѕСЃС‡РёС‚Р°РЅР° вЂ” {err}")
+        lines.append(f"Factor multicollinearity diagnostics: not computed — {err}")
         lines.append("")
         return
-    sev = mc.get("severity", "вЂ”")
-    mvif_str = "в€ћ" if mc.get("max_vif_is_infinite") else _fmt_float(mc.get("max_vif"), 3)
+    sev = mc.get("severity", _MDASH)
+    mvif_str = "inf" if mc.get("max_vif_is_infinite") else _fmt_float(mc.get("max_vif"), 3)
     mvf = mc.get("max_vif_factor")
-    fac_suffix = f" (С„Р°РєС‚РѕСЂ {mvf})" if mvf else ""
+    fac_suffix = f" (factor {mvf})" if mvf else ""
     lines.append(
-        f"РњСѓР»СЊС‚РёРєРѕР»Р»РёРЅРµР°СЂРЅРѕСЃС‚СЊ С„Р°РєС‚РѕСЂРѕРІ (С‚Рµ Р¶Рµ РЅРµРґРµР»Рё, С‡С‚Рѕ СЂРµРіСЂРµСЃСЃРёСЏ): РѕС†РµРЅРєР°={sev}; "
-        f"cond(R)={mc.get('cond_correlation_matrix', 'РЅ/Рґ')}; "
+        f"Multicollinearity (same weekly sample as regression): severity={sev}; "
+        f"cond(R)={mc.get('cond_correlation_matrix', _NA)}; "
         f"max VIF={mvif_str}{fac_suffix}."
     )
     sp = mc.get("strongest_pair")
     if isinstance(sp, dict) and sp.get("factor_i"):
         lines.append(
-            f"РЎРёР»СЊРЅРµР№С€Р°СЏ РїРѕРїР°СЂРЅР°СЏ РєРѕСЂСЂРµР»СЏС†РёСЏ: {sp.get('factor_i')} vs {sp.get('factor_j')}, ПЃ={_fmt_float(sp.get('rho'), 4)}."
+            f"Strongest pairwise correlation: {sp.get('factor_i')} vs {sp.get('factor_j')}, "
+            f"rho={_fmt_float(sp.get('rho'), 4)}."
         )
-    lines.append(f"РРЅС‚РµСЂРїСЂРµС‚Р°С†РёСЏ: {mc.get('assessment_ru', 'вЂ”')}")
+    assess_en = mc.get("assessment_en")
+    if assess_en:
+        lines.append(f"Assessment: {assess_en}")
     pairs = mc.get("pairwise_correlations") or []
     if isinstance(pairs, list) and pairs:
-        lines.append("Р’СЃРµ РїРѕРїР°СЂРЅС‹Рµ ПЃ (|ПЃ| РїРѕ СѓР±С‹РІР°РЅРёСЋ):")
+        lines.append("Pairwise correlations rho (sorted by |rho|):")
         for row in pairs:
             if not isinstance(row, dict):
                 continue
             lines.append(
-                f"  {row.get('factor_i')} вЂ” {row.get('factor_j')}: ПЃ={_fmt_float(row.get('rho'), 4)}"
+                f"  {row.get('factor_i')} — {row.get('factor_j')}: rho={_fmt_float(row.get('rho'), 4)}"
             )
     vif_bf = mc.get("vif_by_factor") or {}
     if isinstance(vif_bf, dict) and vif_bf:
-        lines.append("VIF по факторам:")
-        lines.append("VIF РїРѕ С„Р°РєС‚РѕСЂР°Рј:")
+        lines.append("VIF by factor:")
         for fname in sorted(vif_bf.keys()):
             v = vif_bf[fname]
-            vs = "в€ћ" if v is None else _fmt_float(v, 3)
+            vs = "inf" if v is None else _fmt_float(v, 3)
             lines.append(f"  {fname}: {vs}")
-    lines.append(f"РњРµС‚РѕРґ: {mc.get('method', 'вЂ”')}; n_obs_f={mc.get('n_obs_factors', 'вЂ”')}.")
+    lines.append(f"Method: {mc.get('method', _MDASH)}; n_obs_factors={mc.get('n_obs_factors', _MDASH)}.")
     lines.append("")
 
 
 def _append_serial_correlation_section(lines: list[str], ser: Any) -> None:
-    """DurbinвЂ“Watson + BreuschвЂ“Godfrey on portfolio factor OLS residuals (same ordering as regression)."""
+    """Durbin-Watson + Breusch-Godfrey on portfolio factor OLS residuals (same ordering as regression)."""
     if not isinstance(ser, dict) or not ser:
         return
-    lines.append("Durbin–Watson / Breusch–Godfrey")
+    lines.append("Durbin-Watson / Breusch-Godfrey")
     if ser.get("error"):
-        lines.append(f"РђРІС‚РѕРєРѕСЂСЂРµР»СЏС†РёСЏ РѕСЃС‚Р°С‚РєРѕРІ (DW / BreuschвЂ“Godfrey): РЅРµ РїРѕСЃС‡РёС‚Р°РЅР° вЂ” {ser.get('error')}")
+        lines.append(f"Residual autocorrelation (DW / Breusch-Godfrey): not computed — {ser.get('error')}")
         lines.append("")
         return
     dw = ser.get("durbin_watson")
     lines.append(
-        f"РђРІС‚РѕРєРѕСЂСЂРµР»СЏС†РёСЏ РѕСЃС‚Р°С‚РєРѕРІ С„Р°РєС‚РѕСЂРЅРѕР№ OLS: DurbinвЂ“Watson={_fmt_float(dw, 4) if dw is not None else 'РЅ/Рґ'} "
-        f"(в‰€2 вЂ” РјР°Р»Рѕ РђРљ РїРµСЂРІРѕРіРѕ РїРѕСЂСЏРґРєР°; РјРµС‚РѕРґ: {ser.get('method', 'вЂ”')})."
+        f"Factor OLS residual autocorrelation: Durbin-Watson={_fmt_float(dw, 4) if dw is not None else _NA} "
+        f"(~2 suggests little first-order AR; method: {ser.get('method', _MDASH)})."
     )
     bg = ser.get("breusch_godfrey") or []
     if isinstance(bg, list) and bg:
-        lines.append("BreuschвЂ“Godfrey LM (Hв‚Ђ: РЅРµС‚ РђРљ РґРѕ РїРѕСЂСЏРґРєР° p; LM ~ П‡ВІ(p)):")
+        lines.append("Breusch-Godfrey LM (H0: no serial correlation up to order p; LM ~ chi-squared(p)):")
         for row in bg:
             if not isinstance(row, dict):
                 continue
             pv = row.get("p_value")
             lines.append(
-                f"  lags={row.get('lags', 'вЂ”')}: LM={_fmt_float(row.get('lm_statistic'), 4)}, "
-                f"df={row.get('df_chi2', 'вЂ”')}, p={_fmt_p_value(pv)}, "
-                f"T_aux={row.get('n_aux_observations', 'вЂ”')}, RВІ_aux={_fmt_float(row.get('aux_r_squared'), 4)}"
+                f"  lags={row.get('lags', _MDASH)}: LM={_fmt_float(row.get('lm_statistic'), 4)}, "
+                f"df={row.get('df_chi2', _MDASH)}, p={_fmt_p_value(pv)}, "
+                f"T_aux={row.get('n_aux_observations', _MDASH)}, R2_aux={_fmt_float(row.get('aux_r_squared'), 4)}"
             )
     lines.append("")
 
@@ -307,7 +313,7 @@ def _append_heteroskedasticity_section(lines: list[str], het: Any) -> None:
 def _append_factor_regression_section(lines: list[str], fr: Any, label: str) -> None:
     if not isinstance(fr, dict) or not fr:
         return
-    lines.append(f"Портфельная факторная регрессия ({label})")
+    lines.append(f"Portfolio factor regression ({label})")
     betas = fr.get("betas") or {}
     t_d = fr.get("t") or {}
     p_d = fr.get("p") or {}
@@ -323,21 +329,20 @@ def _append_factor_regression_section(lines: list[str], fr: Any, label: str) -> 
         include_extra=False,
     )
     lines.append(
-        f"РџРѕСЂС‚С„РµР»СЊРЅР°СЏ С„Р°РєС‚РѕСЂРЅР°СЏ СЂРµРіСЂРµСЃСЃРёСЏ ({label}), РЅРµРґРµР»СЊРЅС‹Рµ СЂСЏРґС‹, OLS: "
-        f"n_obs={fr.get('n_obs', 'РЅ/Рґ')}, RВІ={_fmt_float(fr.get('r2'), 4)}, "
-        f"idiosyncratic risk (1-RВІ)={_fmt_float(fr.get('idiosyncratic_risk'), 4)}, "
-        f"adj RВІ={_fmt_float(fr.get('adj_r2'), 4)}, intercept={_fmt_float(fr.get('intercept'), 4)}, "
-        f"se_type={fr.get('se_type', 'вЂ”')}, alpha={fr.get('alpha', 'вЂ”')} (CI СѓСЂРѕРІРµРЅСЊ {fr.get('ci_level', 'вЂ”')})."
+        f"Weekly portfolio factor regression ({label}), OLS: "
+        f"n_obs={fr.get('n_obs', _NA)}, R2={_fmt_float(fr.get('r2'), 4)}, "
+        f"idiosyncratic risk (1-R2)={_fmt_float(fr.get('idiosyncratic_risk'), 4)}, "
+        f"adj R2={_fmt_float(fr.get('adj_r2'), 4)}, intercept={_fmt_float(fr.get('intercept'), 4)}, "
+        f"se_type={fr.get('se_type', _MDASH)}, alpha={fr.get('alpha', _MDASH)} (CI level {fr.get('ci_level', _MDASH)})."
     )
-    lines.append("РџРѕ С„Р°РєС‚РѕСЂР°Рј (ОІ, t, p, 95% CI) вЂ” РєР»Р°СЃСЃРёС‡РµСЃРєРёР№ OLS (se_type=classic_ols):")
+    lines.append("By factor (beta, t, p, 95% CI) — classic OLS (se_type=classic_ols):")
     for key in beta_order:
         if key not in betas and key not in t_d:
             continue
         lines.append(
-            f"- {key}: ОІ={_fmt_float(betas.get(key), 4)}, t={_fmt_float(t_d.get(key), 3)}, "
+            f"- {key}: beta={_fmt_float(betas.get(key), 4)}, t={_fmt_float(t_d.get(key), 3)}, "
             f"p={_fmt_p_value(p_d.get(key))}, CI=[{_fmt_float(lo.get(key), 4)}; {_fmt_float(hi.get(key), 4)}]"
         )
-    # HAC / NeweyвЂ“West inference (СЂРѕР±Р°СЃС‚РЅС‹Рµ SE)
     hac = fr.get("hac_inference") or {}
     if isinstance(hac, dict) and hac:
         hac_se = hac.get("se")
@@ -346,13 +351,11 @@ def _append_factor_regression_section(lines: list[str], fr: Any, label: str) -> 
         hac_lo = hac.get("ci_low")
         hac_hi = hac.get("ci_high")
         lines.append(
-            f"HAC/NeweyвЂ“West (robust) inference: se_type={hac.get('se_type', 'hac_newey_west')}, "
-            f"kernel={hac.get('kernel', 'bartlett')}, max_lags={hac.get('max_lags', 'вЂ”')}."
+            f"HAC/Newey-West (robust) inference: se_type={hac.get('se_type', 'hac_newey_west')}, "
+            f"kernel={hac.get('kernel', 'bartlett')}, max_lags={hac.get('max_lags', _MDASH)}."
         )
         if isinstance(hac_se, list) and isinstance(hac_t, list) and isinstance(hac_p, list):
-            # РРЅРґРµРєСЃС‹: 0 вЂ” intercept, 1.. вЂ” С„Р°РєС‚РѕСЂС‹ РІ С‚РѕРј Р¶Рµ РїРѕСЂСЏРґРєРµ, С‡С‚Рѕ Рё factor_cols / beta_keys.
-            lines.append("РџРѕ С„Р°РєС‚РѕСЂР°Рј (HAC t, p, 95% CI):")
-            # РїРѕСЃС‚СЂРѕРёРј РјР°РїСѓ РїРѕ beta_keys РёР· РїРѕР·РёС†РёР№
+            lines.append("By factor (HAC t, p, 95% CI):")
             for idx, key in enumerate(beta_order, start=1):
                 pos = idx
                 if pos >= len(hac_t):
@@ -381,35 +384,40 @@ def _append_factor_regression_section(lines: list[str], fr: Any, label: str) -> 
 def _append_rolling_betas_section(lines: list[str], st: dict[str, Any], output_dir_final: Path) -> None:
     rw = st.get("factor_betas_rolling_windows_weeks")
     if isinstance(rw, dict) and rw:
-        lines.append("Скользящие окна")
-        lines.append(f"РЎРєРѕР»СЊР·СЏС‰РёРµ РѕРєРЅР° (РЅРµРґРµР»СЊ): {', '.join(f'{k}={v}' for k, v in sorted(rw.items()))}.")
+        lines.append("Rolling windows")
+        lines.append(f"Weekly rolling windows (weeks): {', '.join(f'{k}={v}' for k, v in sorted(rw.items()))}.")
 
     summ = st.get("factor_betas_rolling_summary")
     if isinstance(summ, dict) and summ:
-        lines.append("РЎРІРѕРґРєР° СЃРєРѕР»СЊР·СЏС‰РёС… ОІ (РїРѕ РІСЃРµР№ РґРѕСЃС‚СѓРїРЅРѕР№ РёСЃС‚РѕСЂРёРё РІ РїСЂРѕРіРѕРЅРµ): mean, median, p10, p90:")
+        lines.append(
+            "Rolling beta summary over available history in this run (mean, median, p10, p90):"
+        )
         for win in sorted(summ.keys(), key=lambda x: (len(str(x)), str(x))):
             by_b = summ.get(win) or {}
             if not isinstance(by_b, dict):
                 continue
-            lines.append(f"РћРєРЅРѕ {win}:")
+            lines.append(f"Window {win}:")
             for bkey in _ordered_beta_keys(by_b, beta_order=BASE_BETA_ROW_ORDER, include_extra=False):
                 row = by_b.get(bkey)
                 if not isinstance(row, dict):
                     continue
                 lines.append(
-                    f"  {bkey}: n={row.get('n_points', 'вЂ”')}, mean={_fmt_float(row.get('mean'), 4)}, "
+                    f"  {bkey}: n={row.get('n_points', _MDASH)}, mean={_fmt_float(row.get('mean'), 4)}, "
                     f"median={_fmt_float(row.get('median'), 4)}, p10={_fmt_float(row.get('p10'), 4)}, "
                     f"p90={_fmt_float(row.get('p90'), 4)}"
                 )
             lines.append("")
     elif st.get("factor_betas_rolling_error"):
-        lines.append(f"РЎРєРѕР»СЊР·СЏС‰РёРµ Р±РµС‚С‹: РѕС€РёР±РєР° СЂР°СЃС‡С‘С‚Р° вЂ” {st.get('factor_betas_rolling_error')}")
+        lines.append(f"Rolling betas: computation error — {st.get('factor_betas_rolling_error')}")
 
     art = st.get("factor_betas_rolling_artifacts")
     if isinstance(art, dict):
         png_map = art.get("plot_png_by_window") or {}
         if png_map:
-            lines.append("Р¤Р°Р№Р»С‹ РіСЂР°С„РёРєРѕРІ СЃРєРѕР»СЊР·СЏС‰РёС… ОІ (PNG, РїР°РїРєР° РїСЂРѕРіРѕРЅР°): " + ", ".join(f"{k}в†’{v}" for k, v in sorted(png_map.items())))
+            lines.append(
+                "Rolling beta chart files (PNG, variant output folder): "
+                + ", ".join(f"{k}->{v}" for k, v in sorted(png_map.items()))
+            )
 
     labels = ("3y", "5y", "10y")
     for lbl in labels:
@@ -418,7 +426,7 @@ def _append_rolling_betas_section(lines: list[str], st: dict[str, Any], output_d
             continue
         rel = _relpath_for_pdf_md_image(png, output_dir_final)
         if rel:
-            lines.append(f"![Rolling factor betas вЂ” {lbl}]({rel})")
+            lines.append(f"![Rolling factor betas — {lbl}]({rel})")
     lines.append("")
 
 
@@ -427,8 +435,10 @@ def _append_factor_beta_stability_section(lines: list[str], st: dict[str, Any]) 
     if not isinstance(stability, dict) or not stability:
         return
 
-    lines.append("Диагностика стабильности факторных beta")
-    lines.append("Factor beta stability diagnostics: sign stability, magnitude stability, specification sensitivity, and OOS rolling-forward stability.")
+    lines.append("Factor beta stability diagnostics")
+    lines.append(
+        "Sign stability, magnitude stability, specification sensitivity, and OOS rolling-forward stability."
+    )
 
     dist = stability.get("severity_distribution") or {}
     shares = dist.get("shares") if isinstance(dist, dict) else {}
@@ -971,40 +981,41 @@ def write_stress_commentary(
     """
     output_dir_final = Path(output_dir_final)
     label = _folder_portfolio_label(output_dir_final)
-    ae = analysis_end or "вЂ”"
+    ae = analysis_end or _MDASH
     st = stress_report or {}
 
     lines: list[str] = [
-        "Source: stress_report.json (С‚РµРєСѓС‰РёР№ РїСЂРѕРіРѕРЅ)",
+        "Source: stress_report.json (current run)",
         "",
         "Executive Summary",
     ]
 
     if not st:
         lines.append(
-            f"РџРѕ {label} РѕР±СЉРµРєС‚ stress_report РїСѓСЃС‚ РёР»Рё РЅРµ РїРµСЂРµРґР°РЅ: СЃС†РµРЅР°СЂРЅР°СЏ Рё С„Р°РєС‚РѕСЂРЅР°СЏ РґРёР°РіРЅРѕСЃС‚РёРєР° РЅРµРґРѕСЃС‚СѓРїРЅР°. "
-            f"РљРѕРЅРµС† РІС‹Р±РѕСЂРєРё (analysis_end): {ae}."
+            f"For {label}, stress_report is empty or missing: scenario and factor diagnostics are unavailable. "
+            f"analysis_end: {ae}."
         )
         lines.extend(
             [
                 "",
                 "Metric-by-Metric Interpretation",
-                "РќРµС‚ РґР°РЅРЅС‹С… stress_report РґР»СЏ СЂР°Р·Р±РѕСЂР° СЃС†РµРЅР°СЂРёРµРІ Рё Р±РµС‚.",
+                "No stress_report payload to expand scenarios and betas.",
                 "",
                 "Risk Structure",
-                "РЅ/Рґ",
+                _NA,
                 "",
                 "Strengths",
-                "РЅ/Рґ",
+                _NA,
                 "",
                 "Weaknesses",
-                "РћС‚СЃСѓС‚СЃС‚РІСѓРµС‚ stress_report вЂ” РЅРµР»СЊР·СЏ РѕС†РµРЅРёС‚СЊ СЃС‚СЂРµСЃСЃ-РїСЂРѕС„РёР»СЊ РїРѕ РїСЂРѕРµРєС‚Сѓ.",
+                "stress_report is absent — cannot assess the stress profile from this run.",
                 "",
                 "Scenario Behavior",
-                "РЅ/Рґ",
+                _NA,
                 "",
                 "Final Conclusion",
-                f"РџРѕСЃР»Рµ РїРѕСЏРІР»РµРЅРёСЏ stress_report.json РїРµСЂРµР·Р°РїСѓСЃС‚РёС‚Рµ РѕС‚С‡С‘С‚ (run_report / РїСЂРѕРіРѕРЅ РІР°СЂРёР°РЅС‚Р°), С‡С‚РѕР±С‹ РѕР±РЅРѕРІРёС‚СЊ stress_commentary.txt.",
+                "After stress_report.json is produced, rerun the report (run_report.py or the variant pipeline) "
+                "to refresh stress_commentary.txt.",
             ]
         )
         out_path = output_dir_final / "stress_commentary.txt"
@@ -1012,32 +1023,31 @@ def write_stress_commentary(
         return out_path
 
     status = st.get("status", "N/A")
-    primary = st.get("primary_diagnostic_code") or st.get("fail_reason_code") or st.get("skip_reason") or "вЂ”"
+    primary = st.get("primary_diagnostic_code") or st.get("fail_reason_code") or st.get("skip_reason") or _MDASH
     warn = st.get("warning_code")
     dcodes = st.get("diagnostic_codes") or []
-    dc_str = ", ".join(str(x) for x in dcodes) if dcodes else "вЂ”"
+    dc_str = ", ".join(str(x) for x in dcodes) if dcodes else _MDASH
     worst = st.get("worst_scenario_loss_pct")
     fs = st.get("failed_scenario")
     ft = st.get("failed_test")
     mdd_lim = st.get("max_dd_limit")
 
     exec_para = [
-        f"РџСЂРѕРіРѕРЅ: {label}; РєРѕРЅРµС† РІС‹Р±РѕСЂРєРё (analysis_end): {ae}. "
-        f"РС‚РѕРіРѕРІС‹Р№ СЃС‚Р°С‚СѓСЃ СЃС‚СЂРµСЃСЃ-РЅР°Р±РѕСЂР° РІ stress_report: {status}. "
-        f"РћСЃРЅРѕРІРЅРѕР№ РєРѕРґ (primary / fail_reason): {primary}. "
-        f"РЎРїРёСЃРѕРє diagnostic_codes: {dc_str}.",
-        "Это диагностическая справка по стрессам: сценарии и исторические эпизоды здесь используются для диагностики и интерпретации.",
-        "РџРѕ СЂР°Р±РѕС‡РµРјСѓ РїСЂРѕС†РµСЃСЃСѓ РїСЂРѕРµРєС‚Р° СЃРёРЅС‚РµС‚РёС‡РµСЃРєРёРµ СЃС†РµРЅР°СЂРёРё Рё РёСЃС‚РѕСЂРёС‡РµСЃРєРёРµ СЌРїРёР·РѕРґС‹ РІ СЌС‚РѕРј С„Р°Р№Р»Рµ вЂ” "
-        "РґРёР°РіРЅРѕСЃС‚РёРєР° РґР»СЏ PM Рё РЅРµ Р±Р»РѕРєРёСЂСѓСЋС‚ РІС‹РїСѓСЃРє РІРµСЃРѕРІ; Р±Р»РѕРєРёСЂСѓСЋС‰РёР№ РєРѕРЅС‚СѓСЂ РїРѕ РјР°РєСЃРёРјР°Р»СЊРЅРѕР№ РїСЂРѕСЃР°РґРєРµ "
-        "Р·Р°РґР°С‘С‚СЃСЏ РѕС‚РґРµР»СЊРЅРѕ (mandate_check / IPS, РїРѕР»РЅР°СЏ РїРµСЂРµСЃРµРєР°СЋС‰Р°СЏСЃСЏ РёСЃС‚РѕСЂРёСЏ).",
+        f"Run: {label}; analysis_end: {ae}. "
+        f"Overall stress bundle status in stress_report: {status}. "
+        f"Primary code (primary / fail_reason): {primary}. "
+        f"diagnostic_codes: {dc_str}.",
+        "Synthetic scenarios and historical episodes in this file are PM diagnostics: they inform interpretation "
+        "but do not by themselves release or block weights; mandate drawdown and client gates are enforced "
+        "separately (mandate_check / IPS, full-history backtest).",
     ]
     if warn:
-        exec_para.append(f"РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ РІ РѕС‚С‡С‘С‚Рµ: {warn}.")
+        exec_para.append(f"Report warning_code: {warn}.")
     wl = (
-        f"РҐСѓРґС€РёР№ СЃС†РµРЅР°СЂРЅС‹Р№ PnL РїРѕСЂС‚С„РµР»СЏ (worst_scenario_loss_pct): {_fmt_pct(worst)}; "
-        f"РёРјРµРЅРѕРІР°РЅРЅС‹Р№ СЃС†РµРЅР°СЂРёР№: {fs or 'вЂ”'}; РїРѕР»Рµ failed_test: {ft or 'вЂ”'}."
+        f"Worst scenario portfolio PnL (worst_scenario_loss_pct): {_fmt_pct(worst)}; "
+        f"named scenario: {fs or _MDASH}; failed_test: {ft or _MDASH}."
         if worst is not None
-        else f"РРјРµРЅРѕРІР°РЅРЅС‹Р№ СЃС†РµРЅР°СЂРёР№ (failed_scenario): {fs or 'вЂ”'}; failed_test: {ft or 'вЂ”'}."
+        else f"failed_scenario: {fs or _MDASH}; failed_test: {ft or _MDASH}."
     )
     exec_para.append(wl)
     lines.extend(exec_para)
@@ -1047,10 +1057,9 @@ def write_stress_commentary(
     scen_rows = st.get("scenario_results") or []
     if scen_rows:
         lines.append(
-            "РЎРёРЅС‚РµС‚РёС‡РµСЃРєРёРµ СЃС†РµРЅР°СЂРёРё (stress_report.scenario_results): С„Р°РєС‚РѕСЂРЅС‹Рµ С€РѕРєРё Рє РїРѕСЂС‚С„РµР»СЋ РІ С†РµР»РѕРј; "
-            "pass = С‚РѕР»СЊРєРѕ РјР°РЅРґР°С‚РЅС‹Р№ РїРѕСЂРѕРі РїРѕ PnL РїРѕСЂС‚С„РµР»СЏ (loss_ok). Top1 / Top3 RC (РґРѕР»СЏ РґРёСЃРїРµСЂСЃРёРё) вЂ” "
-            "С‡РёСЃР»РѕРІР°СЏ РґРёР°РіРЅРѕСЃС‚РёРєР° РєРѕРЅС†РµРЅС‚СЂР°С†РёРё, Р±РµР· РїРѕСЂРѕРіРѕРІРѕРіРѕ В«РѕРє/РЅРµ РѕРєВ» РІ stress_report. "
-            "РџРѕ Р°РєС‚РёРІР°Рј Рё С„Р°РєС‚РѕСЂР°Рј СЃРј. pnl_by_asset_pct / pnl_by_factor_pct РІ JSON."
+            "Synthetic scenarios (stress_report.scenario_results): factor shocks to the portfolio as a whole; "
+            "pass reflects the mandate PnL threshold (loss_ok). Top1 / Top3 RC are concentration diagnostics, "
+            "not an extra pass/fail gate in stress_report. See pnl_by_asset_pct / pnl_by_factor_pct in JSON."
         )
         for row in scen_rows:
             sid = row.get("scenario_id", "?")
@@ -1059,8 +1068,8 @@ def write_stress_commentary(
             top1p = row.get("top1_rc_pct")
             top3s = row.get("top3_rc_sum_pct")
             lines.append(
-                f"- {sid}: PnLв‰€{_fmt_pct(pnl)}, pass={row.get('pass')}, loss_ok={row.get('loss_ok')}; "
-                f"Top1 RC (РґРѕР»СЏ РґРёСЃРїРµСЂСЃРёРё): {top1a} ({_fmt_pct(top1p, 2)}); СЃСѓРјРјР° Top3в‰€{_fmt_pct(top3s, 2) if top3s is not None else 'РЅ/Рґ'}."
+                f"- {sid}: PnL ~ {_fmt_pct(pnl)}, pass={row.get('pass')}, loss_ok={row.get('loss_ok')}; "
+                f"Top1 RC (dispersion): {top1a} ({_fmt_pct(top1p, 2)}); Top3 sum ~ {_fmt_pct(top3s, 2) if top3s is not None else _NA}."
             )
         sdiag = []
         for row in scen_rows:
@@ -1068,27 +1077,29 @@ def write_stress_commentary(
                 if c not in sdiag:
                     sdiag.append(c)
         if sdiag:
-            lines.append(f"РљРѕРґС‹ РїРѕ СЃС†РµРЅР°СЂРёСЏРј (loss Рё РїСЂРё РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚Рё RC, СѓРЅРёРєР°Р»СЊРЅРѕ): {', '.join(str(x) for x in sdiag)}.")
+            lines.append(
+                f"Per-scenario codes (loss and RC where present, unique): {', '.join(str(x) for x in sdiag)}."
+            )
     else:
-        lines.append("РЎС†РµРЅР°СЂРЅС‹Рµ СЃС‚СЂРѕРєРё (scenario_results) РІ РѕС‚С‡С‘С‚Рµ РѕС‚СЃСѓС‚СЃС‚РІСѓСЋС‚.")
+        lines.append("scenario_results rows are absent in the report payload.")
 
     fb5 = _base_beta_map(st.get("factor_betas_5y") or st.get("factor_betas") or {})
     fb10 = _base_beta_map(st.get("factor_betas_10y") or {})
     lines.append(
-        f"Р¤Р°РєС‚РѕСЂРЅС‹Рµ Р±РµС‚С‹ РїРѕСЂС‚С„РµР»СЏ (РЅРµРґРµР»СЊРЅР°СЏ РѕС†РµРЅРєР°, СЃРј. СЃРїРµС†РёС„РёРєР°С†РёСЋ): 5Yв‰€{{{_fmt_beta_dict(fb5 if isinstance(fb5, dict) else {})}}}; "
-        f"10Yв‰€{{{_fmt_beta_dict(fb10 if isinstance(fb10, dict) else {})}}}."
+        f"Portfolio factor betas (weekly estimation; see stress spec): 5Y ~ {{{_fmt_beta_dict(fb5 if isinstance(fb5, dict) else {})}}}; "
+        f"10Y ~ {{{_fmt_beta_dict(fb10 if isinstance(fb10, dict) else {})}}}."
     )
     fr5 = st.get("factor_regression_5y")
     fr10 = st.get("factor_regression_10y")
     if isinstance(fr5, dict) and fr5:
         _append_factor_regression_section(lines, fr5, "5Y")
     elif st.get("factor_regression_5y_error"):
-        lines.append(f"Р РµРіСЂРµСЃСЃРёСЏ С„Р°РєС‚РѕСЂРѕРІ 5Y: РЅРµ РїРѕСЃС‡РёС‚Р°РЅР° вЂ” {st.get('factor_regression_5y_error')}")
+        lines.append(f"5Y factor regression: not computed — {st.get('factor_regression_5y_error')}")
         lines.append("")
     if isinstance(fr10, dict) and fr10:
         _append_factor_regression_section(lines, fr10, "10Y")
     elif st.get("factor_regression_10y_error"):
-        lines.append(f"Р РµРіСЂРµСЃСЃРёСЏ С„Р°РєС‚РѕСЂРѕРІ 10Y: РЅРµ РїРѕСЃС‡РёС‚Р°РЅР° вЂ” {st.get('factor_regression_10y_error')}")
+        lines.append(f"10Y factor regression: not computed — {st.get('factor_regression_10y_error')}")
         lines.append("")
     _append_rolling_betas_section(lines, st, output_dir_final)
     _append_factor_beta_stability_section(lines, st)
@@ -1104,8 +1115,14 @@ def write_stress_commentary(
     lines.append("Risk Structure")
     caps_line = []
     if mdd_lim is not None:
-        caps_line.append(f"РџРѕСЂРѕРі РїСЂРѕСЃР°РґРєРё РґР»СЏ СЃС†РµРЅР°СЂРЅРѕРіРѕ loss-С‚РµСЃС‚Р° (max_dd_limit РІ JSON)={_fmt_pct(mdd_lim)}")
-    lines.append("; ".join(caps_line) if caps_line else "РџРѕСЂРѕРі max_dd_limit РІ stress_report РЅРµ Р·Р°РґР°РЅ РёР»Рё РЅ/Рґ.")
+        caps_line.append(
+            f"Drawdown threshold for scenario loss test (max_dd_limit in JSON)={_fmt_pct(mdd_lim)}"
+        )
+    lines.append(
+        "; ".join(caps_line)
+        if caps_line
+        else "max_dd_limit is not set in stress_report or n/a."
+    )
     if scen_rows:
         triples = [(r.get("scenario_id"), r.get("top1_rc_asset"), r.get("top1_rc_pct")) for r in scen_rows]
         tops = ", ".join(
@@ -1113,12 +1130,10 @@ def write_stress_commentary(
             for sid, asset, p in triples
             if p is not None and asset is not None
         )
-        lines.append(
-            f"РџРѕ СЃС†РµРЅР°СЂРёСЏРј Top1 RC РїРѕ СЃС†РµРЅР°СЂРёСЏРј (СЃРј. С‚Р°Р±Р»РёС†Сѓ РІС‹С€Рµ): {tops}."
-        )
+        lines.append(f"Top1 RC by scenario (see table above): {tops}.")
     hist = st.get("historical_results") or []
     if hist:
-        lines.append("РСЃС‚РѕСЂРёС‡РµСЃРєРёРµ СЌРїРёР·РѕРґС‹ (historical_results):")
+        lines.append("Historical episodes (historical_results):")
         if any(isinstance(h, dict) and h.get("historical_factor_attribution") for h in hist):
             lines.append(
                 "Historical factor attribution caveat: model-based attribution = beta times realized factor shock; "
@@ -1132,9 +1147,9 @@ def write_stress_commentary(
             vole = h.get("vol_annualized_episode")
             dcode = h.get("diagnostic_code")
             lines.append(
-                f"- {ep}: pnl_real_episodeв‰€{_fmt_pct(pnl_real_ep)}, max_ddв‰€{_fmt_pct(mdd)}, pass={vp}, "
-                f"vol_annualized_episodeв‰€{_fmt_float(vole, 4) if vole is not None else 'РЅ/Рґ'}, "
-                f"diagnostic_code={dcode or 'вЂ”'}."
+                f"- {ep}: pnl_real_episode ~ {_fmt_pct(pnl_real_ep)}, max_dd ~ {_fmt_pct(mdd)}, pass={vp}, "
+                f"vol_annualized_episode ~ {_fmt_float(vole, 4) if vole is not None else _NA}, "
+                f"diagnostic_code={dcode or _MDASH}."
             )
             driver_line = _historical_driver_line(h)
             if driver_line:
@@ -1148,10 +1163,10 @@ def write_stress_commentary(
         if vuln:
             lines.append(vuln)
     else:
-        lines.append("РСЃС‚РѕСЂРёС‡РµСЃРєРёРµ СЌРїРёР·РѕРґС‹ РІ JSON РѕС‚СЃСѓС‚СЃС‚РІСѓСЋС‚.")
+        lines.append("Historical episodes are absent in JSON.")
     oos = st.get("factor_beta_shock_oos")
     if isinstance(oos, dict) and oos.get("episodes"):
-        lines.append("OOS РѕР±СЉСЏСЃРЅРµРЅРёРµ СЌРїРёР·РѕРґРѕРІ С‡РµСЂРµР· ОІГ—shock (5Y/10Y/rolling-3Y pre):")
+        lines.append("Out-of-sample episode explainability via beta x shock (5Y/10Y/rolling-3Y pre):")
         for e in oos.get("episodes") or []:
             if not isinstance(e, dict):
                 continue
@@ -1164,9 +1179,9 @@ def write_stress_commentary(
         summ = oos.get("summary") or {}
         if isinstance(summ, dict) and summ:
             lines.append(
-                f"РЎСЂРµРґРЅСЏСЏ |РѕС€РёР±РєР°| РїРѕ СЌРїРёР·РѕРґР°Рј: 5Y={_fmt_pct(summ.get('mean_abs_error_5y'))}, "
+                f"Mean absolute error across episodes: 5Y={_fmt_pct(summ.get('mean_abs_error_5y'))}, "
                 f"10Y={_fmt_pct(summ.get('mean_abs_error_10y'))}, rolling-3Y={_fmt_pct(summ.get('mean_abs_error_roll3y_pre'))} "
-                f"(n={summ.get('n_episodes_with_real_pnl', 'вЂ”')})."
+                f"(n={summ.get('n_episodes_with_real_pnl', _MDASH)})."
             )
     lines.append("")
 
@@ -1174,16 +1189,18 @@ def write_stress_commentary(
     str_lines: list[str] = []
     if scen_rows:
         if all(row.get("loss_ok") is True for row in scen_rows):
-            str_lines.append("Р’Рѕ РІСЃРµС… СЃРёРЅС‚РµС‚РёС‡РµСЃРєРёС… СЃС†РµРЅР°СЂРёСЏС… loss_ok=true вЂ” РіР»СѓР±РёРЅР° РїРѕС‚РµСЂСЊ РІ СЂР°РјРєР°С… РїРѕСЂРѕРіРѕРІ loss-С‚РµСЃС‚Р°.")
+            str_lines.append(
+                "All synthetic scenarios have loss_ok=true — portfolio loss within loss-test thresholds."
+            )
         if any(row.get("pass") is True for row in scen_rows):
-            str_lines.append("Р•СЃС‚СЊ СЃС†РµРЅР°СЂРёРё СЃ pass=true РїРѕ РјР°РЅРґР°С‚РЅРѕРјСѓ PnL.")
+            str_lines.append("At least one scenario has pass=true on mandate PnL.")
     for h in hist:
         if h.get("pass") is True:
-            str_lines.append(f"РСЃС‚РѕСЂРёС‡РµСЃРєРёР№ СЌРїРёР·РѕРґ {h.get('episode')} РїРѕРјРµС‡РµРЅ pass=true.")
+            str_lines.append(f"Historical episode {h.get('episode')} is marked pass=true.")
     if status in ("DIAG_PASS", "DIAG_PASS_WITH_WARNING", "PASS", "PASS_WITH_WARNING"):
-        str_lines.append(f"РЎС‚Р°С‚СѓСЃ РЅР°Р±РѕСЂР° {status} вЂ” Р±РµР· СѓСЂРѕРІРЅСЏ DIAG_ATTENTION.")
+        str_lines.append(f"Bundle status {status} — not at DIAG_ATTENTION.")
     if not str_lines:
-        str_lines.append("РЇРІРЅС‹С… В«Р·РµР»С‘РЅС‹С…В» С„Р»Р°РіРѕРІ РІ JSON РјР°Р»Рѕ РёР»Рё РѕРЅРё РѕС‚СЃСѓС‚СЃС‚РІСѓСЋС‚ вЂ” СЃРј. Weaknesses.")
+        str_lines.append("Few obvious positive flags in JSON — see Weaknesses.")
     lines.extend(str_lines)
     lines.append("")
 
@@ -1191,16 +1208,20 @@ def write_stress_commentary(
     wk: list[str] = []
     if status == "DIAG_ATTENTION":
         wk.append(
-            f"DIAG_ATTENTION: Р·Р°С„РёРєСЃРёСЂРѕРІР°РЅС‹ РґРёР°РіРЅРѕСЃС‚РёС‡РµСЃРєРёРµ РєРѕРґС‹ ({dc_str}); РґР»СЏ PM РёРјРµРµС‚ СЃРјС‹СЃР» СЂР°Р·РѕР±СЂР°С‚СЊ scenario_results Рё historical_results."
+            f"DIAG_ATTENTION: diagnostic codes recorded ({dc_str}); review scenario_results and historical_results."
         )
     if warn:
-        wk.append(f"warning_code={warn} (СЃРј. stress_report; РіСЂР°РЅРёС‡РЅС‹Рµ РёСЃС‚РѕСЂРёС‡РµСЃРєРёРµ РґР°РЅРЅС‹Рµ РёР»Рё РїСЂРѕС‡РёРµ РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ).")
+        wk.append(
+            f"warning_code={warn} (see stress_report for borderline historical data or other warnings)."
+        )
     if hist:
         for h in hist:
             if h.get("max_dd") is None and h.get("episode"):
-                wk.append(f"Р­РїРёР·РѕРґ {h.get('episode')}: max_dd РЅ/Рґ вЂ” РёРЅС‚РµСЂРїСЂРµС‚Р°С†РёСЏ РѕРіСЂР°РЅРёС‡РµРЅР°.")
+                wk.append(
+                    f"Episode {h.get('episode')}: max_dd n/a — interpretation limited."
+                )
     if not wk:
-        wk.append("РЎСѓС‰РµСЃС‚РІРµРЅРЅС‹С… РѕС‚РјРµС‚РѕРє РІ JSON РЅРµС‚ РёР»Рё РїСЂРѕС„РёР»СЊ РЅРµР№С‚СЂР°Р»РµРЅ РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ РїРµСЂРµС‡РёСЃР»РµРЅРЅС‹С… РїСЂРѕРІРµСЂРѕРє.")
+        wk.append("No material flags in JSON or profile is neutral versus listed checks.")
     lines.extend(wk)
     lines.append("")
 
@@ -1210,18 +1231,18 @@ def write_stress_commentary(
             sid = row.get("scenario_id")
             pnl = row.get("portfolio_pnl_pct")
             lines.append(
-                f"{sid}: PnLв‰€{_fmt_pct(pnl)}, pass={row.get('pass')} (РјР°РЅРґР°С‚РЅС‹Р№ loss); "
-                f"РґРѕР»Рё RC вЂ” РІ Metric-by-Metric."
+                f"{sid}: PnL ~ {_fmt_pct(pnl)}, pass={row.get('pass')} (mandate loss); "
+                f"RC shares — Metric-by-Metric."
             )
     else:
-        lines.append("РќРµС‚ scenario_results.")
+        lines.append("No scenario_results.")
     lines.append("")
 
     lines.append("Final Conclusion")
     lines.append(
-        f"{label}: СЃС‚СЂРµСЃСЃ-РЅР°Р±РѕСЂ {status} ({primary}). "
-        f"РЎРёРЅС‚РµС‚РёС‡РµСЃРєРёРµ РїРѕС‚РµСЂРё Рё RC-РґРёР°РіРЅРѕСЃС‚РёРєР° РѕС‚СЂР°Р¶Р°СЋС‚ С‚РµРєСѓС‰РёР№ СЃРѕСЃС‚Р°РІ Рё ОЈ РёР· РїСЂРѕРіРѕРЅР°; "
-        f"СЂРµС€РµРЅРёСЏ РїРѕ РІС‹РїСѓСЃРєСѓ РІРµСЃРѕРІ СЃРІРµСЂСЏР№С‚Рµ СЃ mandate_check Рё run_result, Р° СЌС‚РѕС‚ С„Р°Р№Р» РёСЃРїРѕР»СЊР·СѓР№С‚Рµ РєР°Рє СЃС†РµРЅР°СЂРЅСѓСЋ СЃРїСЂР°РІРєСѓ РґР»СЏ PM."
+        f"{label}: stress bundle {status} ({primary}). "
+        f"Synthetic losses and RC diagnostics reflect the current holdings and covariance from this run; "
+        f"align weight-release decisions with mandate_check and run_result — use this file as PM scenario reference."
     )
 
     out_path = output_dir_final / "stress_commentary.txt"
@@ -1249,14 +1270,14 @@ def write_portfolio_commentary(
     st = stress_report or {}
 
     sources = [
-        "summary.txt (РµСЃР»Рё РµСЃС‚СЊ)",
+        "summary.txt (if present)",
         "stress_report.json",
         "results_csv/portfolio_metrics_10y.csv",
         "results_csv/rc_vol_10y.csv",
         "report.txt",
     ]
     if output_dir_csv.resolve() != (output_dir_final / "results_csv").resolve():
-        sources.append(f"CSV РєР°С‚Р°Р»РѕРі: {output_dir_csv.as_posix()}")
+        sources.append(f"CSV directory: {output_dir_csv.as_posix()}")
 
     cagr = pm.get("cagr")
     vol = pm.get("vol_annual")
@@ -1272,36 +1293,46 @@ def write_portfolio_commentary(
         st.get("primary_diagnostic_code")
         or st.get("fail_reason_code")
         or st.get("skip_reason")
-        or "вЂ”"
+        or _MDASH
     )
     failed_scenario = st.get("failed_scenario")
     failed_test = st.get("failed_test")
     worst_loss = st.get("worst_scenario_loss_pct")
 
     rc_top = _load_rc_top5(output_dir_csv)
-    rc_lines = ", ".join(f"{t} {_fmt_pct(r, 1)}" for t, r in rc_top) if rc_top else "РЅ/Рґ (РЅРµС‚ rc_vol_*.csv РёР»Рё РїСѓСЃС‚Рѕ)"
+    rc_lines = (
+        ", ".join(f"{t} {_fmt_pct(r, 1)}" for t, r in rc_top)
+        if rc_top
+        else "n/a (no rc_vol_*.csv or empty)"
+    )
 
     client_gate = "PASS" if portfolio_valid else "FAIL"
     if portfolio_valid is None:
-        client_gate = "РЅ/Рґ"
+        client_gate = _NA
 
-    ae = analysis_end or "вЂ”"
+    ae = analysis_end or _MDASH
     scen_lines = _scenario_snippets(st)
 
-    # Executive summary (3вЂ“5 sentences)
+    # Executive summary (3–5 sentences)
     exec_lines = [
-        f"РџСЂРѕРіРѕРЅ РѕС‚РЅРѕСЃРёС‚СЃСЏ Рє {label}; РєРѕРЅРµС† РІС‹Р±РѕСЂРєРё (analysis_end): {ae}. "
-        f"РќР° РґР»РёРЅРЅРѕРј РѕРєРЅРµ (10Y РІ РѕС‚С‡С‘С‚РЅРѕРј РєРѕРЅС‚СѓСЂРµ) РїРѕСЂС‚С„РµР»СЊ РїРѕРєР°Р·С‹РІР°РµС‚ CAGR РѕРєРѕР»Рѕ {_fmt_pct(cagr)}, "
-        f"РіРѕРґРѕРІСѓСЋ РІРѕР»Р°С‚РёР»СЊРЅРѕСЃС‚СЊ РѕРєРѕР»Рѕ {_fmt_pct(vol)}, РјР°РєСЃРёРјР°Р»СЊРЅСѓСЋ РїСЂРѕСЃР°РґРєСѓ РѕРєРѕР»Рѕ {_fmt_pct(mdd)}.",
-        f"Risk-adjusted: Sharpe в‰€ {_fmt_float(sharpe)}, Sortino в‰€ {_fmt_float(sortino)}; "
-        f"С‡СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚СЊ Рє Р±Р°Р·РѕРІРѕРјСѓ Р±РµРЅС‡РјР°СЂРєСѓ: Beta_base в‰€ {_fmt_float(beta)}"
-        + (f", РєРѕСЂСЂРµР»СЏС†РёСЏ СЃ Р±РµРЅС‡РјР°СЂРєРѕРј (Corr_base) в‰€ {_fmt_float(corr)}." if corr is not None and not (isinstance(corr, float) and math.isnan(corr)) else "."),
-        f"РЎС‚СЂРµСЃСЃ-С‚РµСЃС‚: {stress_status}"
-        + (f" ({fail_reason})" if fail_reason != "вЂ”" else "")
-        + (f"; С…СѓРґС€РёР№ СЃС†РµРЅР°СЂРёР№ РїРѕ СѓР±С‹С‚РєСѓ: {failed_scenario} ({failed_test})" if failed_scenario else "")
-        + (f"; worst_scenario_loss_pct в‰€ {_fmt_pct(worst_loss)}" if worst_loss is not None else "")
+        f"This run is {label}; analysis_end: {ae}. "
+        f"On the long window (10Y in the report context) the portfolio shows CAGR ~ {_fmt_pct(cagr)}, "
+        f"annualized volatility ~ {_fmt_pct(vol)}, maximum drawdown ~ {_fmt_pct(mdd)}.",
+        f"Risk-adjusted: Sharpe ~ {_fmt_float(sharpe)}, Sortino ~ {_fmt_float(sortino)}; "
+        f"sensitivity to the base benchmark: Beta_base ~ {_fmt_float(beta)}"
+        + (
+            f", correlation with benchmark (Corr_base) ~ {_fmt_float(corr)}."
+            if corr is not None and not (isinstance(corr, float) and math.isnan(corr))
+            else "."
+        ),
+        f"Stress test: {stress_status}"
+        + (f" ({fail_reason})" if fail_reason != _MDASH else "")
+        + (
+            f"; worst-loss scenario: {failed_scenario} ({failed_test})" if failed_scenario else ""
+        )
+        + (f"; worst_scenario_loss_pct ~ {_fmt_pct(worst_loss)}" if worst_loss is not None else "")
         + ".",
-        f"РљР»РёРµРЅС‚СЃРєРёР№ MaxDD-gate (portfolio_valid): {client_gate}.",
+        f"Client MaxDD gate (portfolio_valid): {client_gate}.",
     ]
 
     # Sections
@@ -1314,18 +1345,20 @@ def write_portfolio_commentary(
 
     lines.append("Metric-by-Metric Interpretation")
     lines.append(
-        f"CAGR ({_fmt_pct(cagr)}) РѕС‚СЂР°Р¶Р°РµС‚ СЃСЂРµРґРЅРµРіРѕРґРѕРІРѕР№ С‚РµРјРї СЂРѕСЃС‚Р° РїРѕ РјРµСЃСЏС‡РЅС‹Рј РїСЂРѕСЃС‚С‹Рј РґРѕС…РѕРґРЅРѕСЃС‚СЏРј РЅР° 10Y-РѕРєРЅРµ РІ С‚РµРєСѓС‰РµРј РїСЂРѕРіРѕРЅРµ. "
-        f"Р’РѕР»Р°С‚РёР»СЊРЅРѕСЃС‚СЊ ({_fmt_pct(vol)}) вЂ” РіРѕРґРѕРІР°СЏ РёР· РјРµСЃСЏС‡РЅС‹С… РґРѕС…РѕРґРЅРѕСЃС‚РµР№; MaxDD ({_fmt_pct(mdd)}) вЂ” РїРѕ РјРµСЃСЏС‡РЅРѕР№ equity-РєСЂРёРІРѕР№. "
-        f"Sharpe ({_fmt_float(sharpe)}) Рё Sortino ({_fmt_float(sortino)}) РёСЃРїРѕР»СЊР·СѓСЋС‚ СЃРїРµС†РёС„РёРєР°С†РёСЋ РїСЂРѕРµРєС‚Р° (Р·РЅР°РјРµРЅР°С‚РµР»СЊ вЂ” vol СЃС‹СЂРѕР№ РґРѕС…РѕРґРЅРѕСЃС‚Рё РґР»СЏ Sharpe). "
-        f"Beta_base ({_fmt_float(beta)}) Рё Treynor ({_fmt_float(treynor)}) Р·Р°РІСЏР·Р°РЅС‹ РЅР° Р±Р°Р·РѕРІС‹Р№ Р±РµРЅС‡РјР°СЂРє; Corr_base РїСЂРё РЅР°Р»РёС‡РёРё РїРѕРєР°Р·С‹РІР°РµС‚ СЃРёРЅС…СЂРѕРЅРЅРѕСЃС‚СЊ СЃ Р±РµРЅС‡РјР°СЂРєРѕРј РЅР° С‚РѕРј Р¶Рµ РѕРєРЅРµ."
+        f"CAGR ({_fmt_pct(cagr)}) is the compound annual growth rate from monthly simple returns on the 10Y window in this run. "
+        f"Volatility ({_fmt_pct(vol)}) is annualized from monthly returns; MaxDD ({_fmt_pct(mdd)}) is from the monthly equity curve. "
+        f"Sharpe ({_fmt_float(sharpe)}) and Sortino ({_fmt_float(sortino)}) follow project definitions (Sharpe uses raw return vol in the denominator). "
+        f"Beta_base ({_fmt_float(beta)}) and Treynor ({_fmt_float(treynor)}) tie to the base benchmark; Corr_base, when present, is correlation with the benchmark on the same window."
     )
     lines.append("")
 
     lines.append("Risk Structure")
     lines.append(
-        f"РќР°РёР±РѕР»СЊС€РёРµ РґРѕР»Рё RC_vol (РІРєР»Р°Рґ РІ РґРёСЃРїРµСЂСЃРёСЋ РїРѕСЂС‚С„РµР»СЏ) РЅР° 10Y: {rc_lines}. "
-        f"РЎС‚СЂРµСЃСЃ: status={stress_status}, fail_reason_code={fail_reason}."
-        + (f" РџСЂРѕРІР°Р» РІ СЃС†РµРЅР°СЂРёРё В«{failed_scenario}В», С‚РµСЃС‚ В«{failed_test}В»." if failed_scenario else "")
+        f"Largest RC_vol shares (portfolio variance contribution) on 10Y: {rc_lines}. "
+        f"Stress: status={stress_status}, fail_reason_code={fail_reason}."
+        + (
+            f" Failed scenario «{failed_scenario}», test «{failed_test}»." if failed_scenario else ""
+        )
     )
     lines.append("")
 
@@ -1333,45 +1366,52 @@ def write_portfolio_commentary(
     _stress_clear = stress_status in ("PASS", "DIAG_PASS", "DIAG_PASS_WITH_WARNING", "PASS_WITH_WARNING")
     if _stress_clear and client_gate == "PASS":
         lines.append(
-            "Р”РёР°РіРЅРѕСЃС‚РёС‡РµСЃРєРёР№ СЃС‚СЂРµСЃСЃ Р±РµР· РєСЂРёС‚РёС‡РЅС‹С… РѕС‚РјРµС‚РѕРє (РёР»Рё С‚РѕР»СЊРєРѕ РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ); РјР°РЅРґР°С‚РЅС‹Р№ MaxDD-gate PASS вЂ” "
-            "СЃРѕС‡РµС‚Р°РЅРёРµ РёСЃС‚РѕСЂРёС‡РµСЃРєРѕР№ РїСЂРѕСЃР°РґРєРё Рё РєР»РёРµРЅС‚СЃРєРѕРіРѕ РїРѕСЂРѕРіР° РЅРµ РєРѕРЅС„Р»РёРєС‚СѓРµС‚ РІ СЌС‚РѕРј РїСЂРѕРіРѕРЅРµ."
+            "Stress diagnostics show no critical flags (or warnings only); mandate MaxDD gate PASS — "
+            "realized drawdown vs client threshold does not conflict in this run."
         )
     elif client_gate == "PASS":
         lines.append(
-            "РњР°РЅРґР°С‚РЅС‹Р№ MaxDD-gate PASS: СЂРµР°Р»РёР·РѕРІР°РЅРЅР°СЏ РїСЂРѕСЃР°РґРєР° РЅР° РїРѕР»РЅРѕР№ РїРµСЂРµСЃРµРєР°СЋС‰РµР№СЃСЏ РёСЃС‚РѕСЂРёРё РІ РґРѕРїСѓСЃРєРµ (СЃРј. run_metadata / mandate_check)."
+            "Mandate MaxDD gate PASS: realized drawdown on full overlapping history is within tolerance "
+            "(see run_metadata / mandate_check)."
         )
     else:
-        lines.append("РўСЂРµР±СѓРµС‚СЃСЏ РІРЅРёРјР°РЅРёРµ Рє РєР»РёРµРЅС‚СЃРєРѕРјСѓ gate Рё/РёР»Рё СЃС‚СЂРµСЃСЃ-СЃС‚Р°С‚СѓСЃСѓ вЂ” СЃРј. РЅРёР¶Рµ Weaknesses.")
+        lines.append("Review client gate and/or stress status — see Weaknesses below.")
     if sharpe is not None and float(sharpe) >= 1.0:
-        lines.append(f"Sharpe в‰Ґ 1.0 ({_fmt_float(sharpe)}) РЅР° РІС‹Р±СЂР°РЅРЅРѕРј РѕРєРЅРµ вЂ” РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ СЃРёР»СЊРЅР°СЏ РєРѕРјРїРµРЅСЃР°С†РёСЏ Р·Р° СЂРёСЃРє РїРѕ РёСЃС‚РѕСЂРёРё.")
+        lines.append(
+            f"Sharpe >= 1.0 ({_fmt_float(sharpe)}) on this window — relatively strong risk-adjusted compensation historically."
+        )
     lines.append("")
 
     lines.append("Weaknesses")
     if stress_status == "DIAG_ATTENTION":
         lines.append(
-            f"РЎС‚СЂРµСЃСЃ-РґРёР°РіРЅРѕСЃС‚РёРєР°: {stress_status} вЂ” {fail_reason}. "
-            f"(РќРµ Р±Р»РѕРєРёСЂСѓРµС‚ РІС‹РїСѓСЃРє; РёРјРµРЅРѕРІР°РЅРЅС‹Р№ СЃС†РµРЅР°СЂРёР№: {failed_scenario or 'вЂ”'}; С‚РµСЃС‚: {failed_test or 'вЂ”'}.)"
+            f"Stress diagnostics: {stress_status} — {fail_reason}. "
+            f"(Does not block release by itself; named scenario: {failed_scenario or _MDASH}; test: {failed_test or _MDASH}.)"
         )
     if client_gate == "FAIL":
-        lines.append("РљР»РёРµРЅС‚СЃРєРёР№ MaxDD-gate FAIL вЂ” РёСЃС‚РѕСЂРёС‡РµСЃРєРёР№ MaxDD С…СѓР¶Рµ РјР°РЅРґР°С‚Р° (СЃРј. run_metadata / snapshot).")
+        lines.append(
+            "Client MaxDD gate FAIL — historical max drawdown exceeds mandate (see run_metadata / snapshot)."
+        )
     if not rc_top:
-        lines.append("RC_vol top-5 РЅРµ РёР·РІР»РµС‡С‘РЅ РёР· CSV вЂ” РїСЂРѕРІРµСЂСЊС‚Рµ РЅР°Р»РёС‡РёРµ results_csv/rc_vol_10y.csv РїРѕСЃР»Рµ РїСЂРѕРіРѕРЅР°.")
+        lines.append(
+            "RC_vol top-5 not extracted from CSV — verify results_csv/rc_vol_10y.csv exists after the run."
+        )
     lines.append("")
 
     lines.append("Scenario Behavior")
     if scen_lines:
-        lines.append("РљСЂР°С‚РєРѕ РїРѕ СЃС†РµРЅР°СЂРёСЏРј РёР· stress_report.json: " + "; ".join(scen_lines) + ".")
+        lines.append("Scenario snapshot from stress_report.json: " + "; ".join(scen_lines) + ".")
     else:
-        lines.append("Р”РµС‚Р°Р»РёР·Р°С†РёСЏ СЃС†РµРЅР°СЂРёРµРІ РІ stress_report.json РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚ РёР»Рё РЅРµ РїСЂРѕС‡РёС‚Р°РЅР°.")
+        lines.append("Scenario detail in stress_report.json is missing or not parsed.")
     if worst_loss is not None:
-        lines.append(f"РҐСѓРґС€РёР№ СЃС†РµРЅР°СЂРЅС‹Р№ СѓР±С‹С‚РѕРє РїРѕСЂС‚С„РµР»СЏ (worst_scenario_loss_pct): в‰€ {_fmt_pct(worst_loss)}.")
+        lines.append(f"Worst scenario portfolio loss (worst_scenario_loss_pct): ~ {_fmt_pct(worst_loss)}.")
     lines.append("")
 
     lines.append("Final Conclusion")
     lines.append(
-        f"{label}: РїСЂРѕС„РёР»СЊ РґРѕС…РѕРґРЅРѕСЃС‚Рё/СЂРёСЃРєР° РЅР° 10Y Р·Р°РґР°С‘С‚СЃСЏ CAGRв‰€{_fmt_pct(cagr)} Рё volв‰€{_fmt_pct(vol)} РїСЂРё MaxDDв‰€{_fmt_pct(mdd)}. "
-        f"РЎС‚СЂРµСЃСЃ {stress_status} ({fail_reason}); РєР»РёРµРЅС‚СЃРєРёР№ gate {client_gate}. "
-        f"Р”Р»СЏ СЃСЂР°РІРЅРµРЅРёСЏ РІР°СЂРёР°РЅС‚РѕРІ РёСЃРїРѕР»СЊР·СѓР№С‚Рµ С‚Рµ Р¶Рµ С„Р°Р№Р»С‹ РІ СЃРѕСЃРµРґРЅРёС… РїР°РїРєР°С… (Equal-Weight / Risk Parity / Main portfolio) РїРѕСЃР»Рµ СЃРёРЅС…СЂРѕРЅРЅРѕРіРѕ РїСЂРѕРіРѕРЅР°."
+        f"{label}: the 10Y return/risk profile is summarized by CAGR ~ {_fmt_pct(cagr)}, vol ~ {_fmt_pct(vol)}, MaxDD ~ {_fmt_pct(mdd)}. "
+        f"Stress {stress_status} ({fail_reason}); client gate {client_gate}. "
+        f"To compare variants, use the same files in sibling folders (Equal-Weight / Risk Parity / Main portfolio) after a synchronized run."
     )
 
     text = "\n".join(lines) + "\n"
