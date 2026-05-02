@@ -1,36 +1,37 @@
 ---
-description: Как устроены инвестиционные PDF (верстка, разделы, тон, санитайзер) и что сохранять при доработках
+description: Investment PDF report layout, sections, tone, sanitizer, and English-only output rules
 alwaysApply: true
 ---
 
 # PDF reports — rules for this project (Blackrock model)
 
-Current front-facing PDF language standard: **English only**. Generated PDFs in `pdf files/`
-must not contain Russian text or mojibake (`Рџ...`, `вЂ...`, etc.). Source `commentary.txt`
-files may remain in their internal format, but `src/pdf_reports.py` must generate English
-client-facing Markdown/PDF from structured run outputs.
+Current language standard: **English only**. Generated PDFs in `pdf files/`, source Markdown,
+and related `.txt` commentary files must not contain Russian text, mixed-language prose, or
+mojibake. `src/pdf_reports.py` must generate English client-facing Markdown/PDF from
+structured run outputs.
 
-## Где «истина» в коде
+## Source Of Truth In Code
 
-- **Сборка Markdown → PDF:** `src/pdf_reports.py` (Pandoc + XeLaTeX).
-- **Стили и поля, шапка/подвал, KPI-блоки:** `pdf_latex/pandoc_preamble.tex` и автогенерируемый `pdf_latex/pandoc_doc_meta.tex`.
-- **Точка пересборки:** `rebuild_pdf_reports.py`; после Main — `try_rebuild_pdfs_after_main_report` / `python rebuild_pdf_reports.py` с нужным флагом; после EW/RP — `try_rebuild_pdfs_after_variant` / пересборка.
-- **Итоговые PDF:** `pdf files/`; при успехе — дублирование в `00_ВАЖНОЕ/11_pdf files/` (если папка есть).
+- **Markdown to PDF build:** `src/pdf_reports.py` (Pandoc + XeLaTeX).
+- **Styles, margins, header/footer, and KPI blocks:** `pdf_latex/pandoc_preamble.tex` and generated `pdf_latex/pandoc_doc_meta.tex`.
+- **Rebuild entry point:** `rebuild_pdf_reports.py`; after Main use `try_rebuild_pdfs_after_main_report` / `python rebuild_pdf_reports.py` with the relevant flag; after EW/RP use `try_rebuild_pdfs_after_variant` / rebuild.
+- **Final PDFs:** `pdf files/`; on success, copy to `00_ВАЖНОЕ/11_pdf files/` if that folder exists.
 
-Любое новое **лицевое** правило сначала фиксировать в этом правиле, затем реализовывать в `pdf_reports.py` / preamble, иначе отчёты разъедутся по смыслу.
-
----
-
-## Визуальный и UX-стандарт (без смены бренд-настроек без причины)
-
-- Стиль: **институциональный one-pager / executive memo** — много «воздуха», чёткая иерархия, тёмно-синие заголовки, светлые панели для KPI, тонкие линейки, шапка (слева — тип отчёта, справа — **Page N**), снизу серая служебная строка (date, format, language).
-- **Не** подменять шрифты, палитру и геометрию `geometry` **наугад**; доработки визуала — в `pandoc_preamble.tex` согласованно.
+Record any new front-facing PDF rule here first, then implement it in `pdf_reports.py` /
+the preamble so report behavior stays consistent.
 
 ---
 
-## Обязательная иерархия контента (лицевая сторона)
+## Visual And UX Standard
 
-Порядок и смысл разделов для **комментариев/основных** PDF (см. `build_commentary_report_md` и аналоги):
+- Style: **institutional one-pager / executive memo** with clear hierarchy, dark-blue headings, light KPI panels, thin separators, a header with report type on the left and **Page N** on the right, plus a gray footer with date, format, and language.
+- Do not change fonts, palette, or `geometry` settings without a specific reason; make visual refinements consistently in `pandoc_preamble.tex`.
+
+---
+
+## Required Front-Facing Content Hierarchy
+
+Order and meaning of sections for **commentary/main** PDFs (see `build_commentary_report_md` and related builders):
 
 1. **Title (H1)** — insight-style English title, not a raw metrics dump.
 2. **Subtitle (YAML `date`)** — e.g. *“Analysis results for the N-year window as of [date]”*.
@@ -41,13 +42,15 @@ client-facing Markdown/PDF from structured run outputs.
 7. **Scenario Analysis** — scenario names and statuses in readable English.
 8. **Conclusion** — short trade-off summary.
 
-Для **весов, IPS, сравнения EW vs RP** — те же принципы: **коротко**, **по смыслу**, без «простынь» движка; сравнение EW/RP **не** превращать в полный dump всех полей (см. `build_ew_rp_markdown` — только ключевое).
+For **weights, IPS, and EW vs RP comparison** reports, use the same principles: keep the text
+short, decision-useful, and free of raw engine dumps. Do not turn EW/RP comparison into a full
+dump of all metrics or fields; `build_ew_rp_markdown` should show only the key points.
 
 ---
 
 ## Tone and language: client-facing English
 
-- **Цель читателя:** уверенный неспециалист / busy owner — не внутренняя техподдержка.
+- **Target reader:** confident non-specialist / busy owner, not internal support.
 - Generate concise English prose from structured outputs; do not copy raw `commentary.txt` verbatim when it is not client-facing.
 - **Forbidden in visible PDF text:** file names/paths, JSON field names, raw internal codes (`FAIL_*`, `DIAG_*`, `fail_reason_code`, `portfolio_valid`), mojibake, and untranslated Russian.
 - **Metrics:** use the KPI grid plus short English explanations; avoid dense paragraphs with too many numbers.
@@ -55,7 +58,7 @@ client-facing Markdown/PDF from structured run outputs.
 
 ---
 
-## Статусы и стресс (лицевая формулировка)
+## Status And Stress Wording
 
 - Success: **within the agreed risk profile** or **passed**.
 - Attention/diagnostic: **one risk area requires attention**.
@@ -63,7 +66,7 @@ client-facing Markdown/PDF from structured run outputs.
 
 ---
 
-## Техническая нормализация (`_executive_ru_sanitize` и вокруг)
+## Technical Normalization (`_executive_ru_sanitize` And Related Code)
 
 - Any generated **PDF-facing** Markdown must pass through the PDF sanitizer before Pandoc.
 - The sanitizer must remove control characters and repair/drop mojibake before PDF generation.
@@ -71,19 +74,19 @@ client-facing Markdown/PDF from structured run outputs.
 
 ---
 
-## Проверка перед сдачей
+## Pre-Delivery Checks
 
 - [ ] PDF contains **English only** visible text: no Russian labels and no mojibake.
-- [ ] В PDF **нет** имён файлов, путей, JSON-полей и внутренних кодов.
+- [ ] PDF contains no file names, paths, JSON fields, or internal codes.
 - [ ] Subtitle with date/window reads naturally for a client.
 - [ ] Sections follow the target hierarchy; no raw system export.
-- [ ] После правок: `python rebuild_pdf_reports.py` (или сценарий after-main / after-variant) — **лог** `PDF written` для затронутых файлов.
-- [ ] Согласованность с `portfolio_run_scope` / `portfolio-commentary`: `commentary.txt` по папкам портфеля — **источник смысла**; PDF — **лицевая** выжимка, не дубликат сырой выгрузки.
+- [ ] After edits, run `python rebuild_pdf_reports.py` or the relevant after-main / after-variant path and confirm `PDF written` for affected files.
+- [ ] Stay consistent with `portfolio_run_scope` / `portfolio-commentary`: portfolio-folder `commentary.txt` files are the analytical source, while PDFs are client-facing summaries, not raw export duplicates.
 
 ---
 
-## Что не делать
+## Do Not
 
 - **Do not** reintroduce Russian client-facing PDF text or raw `stress_report` dumps.
-- **Не** удлиннять `build_ew_rp_markdown` полными таблицами «всех метрик / rolling / всех тикеров» без отдельного соглашения с владельцем продукта.
-- **Не** менять правила `portfolio-commentary` (порядок разделов в `commentary.txt`) в этом файле; при конфликте **согласовать** с `.cursor/rules/portfolio-commentary.mdc`.
+- **Do not** expand `build_ew_rp_markdown` into full tables of all metrics, rolling data, or all tickers without explicit product agreement.
+- **Do not** change `portfolio-commentary` section-order rules in this file; resolve any conflict with `.cursor/rules/portfolio-commentary.mdc`.

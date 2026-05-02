@@ -1,0 +1,34 @@
+---
+description: Require English for project documents, generated outputs, file names, and descriptions
+alwaysApply: true
+---
+
+# English Language Policy
+
+All project-facing and client-facing files must use English for names and visible text.
+
+Chat replies are the only exception: follow `.cursor/rules/chat-response-style.mdc`.
+
+## Scope
+
+This rule applies to:
+- Generated report files: `*.txt`, `*.md`, `*.html`, and `*.pdf`.
+- Portfolio commentary, stress commentary, weights summaries, IPS summaries, comparison notes, and dashboard/report prose.
+- Documentation, Cursor rules, prompts/commands, descriptions, headings, labels, chart captions, table labels, and status messages.
+- Any new or updated explanatory text in config examples, README/SPEC/docs files, and report builders.
+- New file and directory names, unless they are external inputs, existing project paths, ticker symbols, or explicitly requested otherwise.
+
+## Requirements
+
+- Use clear professional English for all visible text.
+- Do not introduce Russian text, mixed-language prose, or mojibake in generated artifacts.
+- Translate existing Russian-facing wording when touching related files or report-generation logic.
+- Keep internal identifiers, ticker symbols, code symbols, JSON keys, and file names unchanged unless the task explicitly asks to rename them.
+- Preserve quoted source data as-is only when it is factual input that must remain unchanged; provide the surrounding explanation in English.
+
+## Output Checks
+
+Before considering report or documentation work complete:
+- Confirm generated PDFs and text reports contain English visible text.
+- Confirm headings, labels, captions, and descriptions are English.
+- Confirm no stale instruction still permits Russian output for the touched workflow.

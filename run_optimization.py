@@ -439,6 +439,8 @@ def main() -> None:
             factor_covariance_analytics,
             factor_oos_beta_shock_explainability,
             factor_variance_decomposition_weekly,
+            macro_regime_csv_frames,
+            macro_regime_diagnostics,
             portfolio_pca_diagnostics,
             portfolio_factor_regression_weekly,
             rolling_beta_summary,
@@ -732,6 +734,21 @@ def main() -> None:
         except Exception as e:
             stress_report["factor_covariance_error"] = str(e)
             logger.warning("Factor covariance analytics failed: %s", e)
+
+        try:
+            macro_regimes = macro_regime_diagnostics(
+                weights=final_weights,
+                tickers=stress_tickers,
+                analysis_end_str=analysis_end_str,
+                factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
+            )
+            stress_report["macro_regime_diagnostics"] = macro_regimes
+            for fname, df in macro_regime_csv_frames(macro_regimes).items():
+                if not df.empty:
+                    df.round(6).to_csv(out_csv_tmp / fname, index=False)
+        except Exception as e:
+            stress_report["macro_regime_diagnostics_error"] = str(e)
+            logger.warning("Macro regime diagnostics failed: %s", e)
 
         try:
             stress_report["diagnostic_oil_beta"] = build_diagnostic_oil_beta(

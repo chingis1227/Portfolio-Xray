@@ -11,6 +11,8 @@ Production factor order is `equity`, `real_rates`, `inflation`, `credit`, `usd`,
 
 **Factor covariance forecast quality** (`stress_report.json.factor_covariance.forecast_quality`) is diagnostic-only and non-binding. It compares a 260-week weekly factor covariance forecast with realized factor portfolio risk over the next 52 weekly rows, using 52-week non-overlapping steps and sample `ddof=1` covariance/volatility.
 
+**Macro regime diagnostics** (`stress_report.json.macro_regime_diagnostics`) are diagnostic-only and non-binding. Method version `internal_market_proxy_v1` labels weekly rows into `goldilocks`, `reflation`, `stagflation`, and `recession_disinflation` using internal market proxies: rolling z-score of `us_growth` for `growth_score` and average rolling z-score of available `inflation` and `commodity` for `inflation_pressure_score`. This is not a full macroeconomic regime model, does not use PMI/NFP/CPI/PCE/copper/credit impulse inputs, and must not replace optimizer inputs, mandate gates, stress pass/fail logic, or raw 5Y/10Y beta outputs.
+
 **Portfolio PCA diagnostics** (`stress_report.json.portfolio_pca`) are diagnostic-only and non-binding. They use weekly adjusted-close returns for current positive-weight portfolio assets, with a 260-week default window ending at `analysis_end`. Interpret covariance PCA as `risk_dominance` because volatility scale is included; interpret correlation PCA as `structure` because asset volatility is standardized. Raw PCA and factor-residual PCA must be interpreted separately.
 
 **Portfolio weights** are the output of optimization (constraints + client metrics), not user input. Do not require or encourage manual weight entry in config; weights are exported after optimization and can be saved to config.

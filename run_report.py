@@ -92,6 +92,8 @@ from src.stress_factors import (
     enrich_historical_results_with_factor_attribution,
     factor_covariance_analytics,
     factor_variance_decomposition_weekly,
+    macro_regime_csv_frames,
+    macro_regime_diagnostics,
     portfolio_pca_diagnostics,
     factor_beta_oos_stability_diagnostics,
     factor_beta_stability_diagnostics,
@@ -775,6 +777,21 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["factor_covariance_error"] = str(e)
         logger.warning(f"Factor covariance analytics failed: {e}")
+
+    try:
+        macro_regimes = macro_regime_diagnostics(
+            weights=weights,
+            tickers=tickers,
+            analysis_end_str=analysis_end_str,
+            factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
+        )
+        stress_report["macro_regime_diagnostics"] = macro_regimes
+        for fname, df in macro_regime_csv_frames(macro_regimes).items():
+            if not df.empty:
+                df.round(6).to_csv(output_dir_csv / fname, index=False)
+    except Exception as e:
+        stress_report["macro_regime_diagnostics_error"] = str(e)
+        logger.warning(f"Macro regime diagnostics failed: {e}")
 
     try:
         stress_report["diagnostic_oil_beta"] = build_diagnostic_oil_beta(

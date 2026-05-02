@@ -1,0 +1,26 @@
+---
+description: 
+alwaysApply: true
+---
+
+# Chat Response Style
+
+This rule applies only to assistant replies in the chat.
+
+This rule controls chat language, brevity, and final response formatting only. It does not
+weaken analytical, portfolio-management, engineering, documentation, or verification standards
+from other project rules, especially `.cursor/rules/portfolio_manager_default.mdc`.
+
+## Language
+
+- Reply in Russian by default.
+- Use another language only when the user explicitly asks for it.
+- Keep project documents, generated files, file names, headings, labels, descriptions, and report text in English.
+
+## Style
+
+- Be brief, businesslike, and structured.
+- Do not add extra explanations unless the user asks for details.
+- Prefer direct status, result, blocker, and next action over long background context.
+- For completed work, state only what changed and how it was verified.
+- For portfolio or engineering judgment, be concise but not vague.

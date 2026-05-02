@@ -425,6 +425,65 @@ CSV artifacts written under `results_csv/` include:
 
 ---
 
+### 8.8.2 Macro regime diagnostics
+
+`stress_report.json.macro_regime_diagnostics` is diagnostic-only and non-binding. It does not change optimizer behavior, mandate status, stress pass/fail, weight release, or the primary raw 5Y/10Y beta outputs.
+
+The method version is `internal_market_proxy_v1`. The required disclaimer is:
+
+`This is an internal market-proxy regime diagnostic model, not a full macroeconomic regime model. It is diagnostic-only and does not affect optimizer weights, mandate gates, or stress pass/fail.`
+
+The model uses internal market proxies, not a full macroeconomic data set. It does not use PMI, NFP, CPI/PCE, wages, copper, credit impulse, or GDP nowcast inputs in this MVP.
+
+Axis model:
+
+- `growth_score`: rolling z-score of `us_growth`.
+- `inflation_pressure_proxy`: average rolling z-score of available `inflation` and `commodity`.
+- Rolling window: 156 weekly rows.
+- Minimum observations for score: 52 weekly rows.
+- Neutral band: absolute score below 0.25. The neutral band does not create neutral regimes; it only lowers confidence and raises transition warnings.
+
+Regime labels:
+
+- `goldilocks`: `growth_score >= 0` and `inflation_pressure_score < 0`.
+- `reflation`: `growth_score >= 0` and `inflation_pressure_score >= 0`.
+- `stagflation`: `growth_score < 0` and `inflation_pressure_score >= 0`.
+- `recession_disinflation`: `growth_score < 0` and `inflation_pressure_score < 0`.
+
+Top-level output fields include `axis_model.version`, `axis_scores_latest.growth_score`, `axis_scores_latest.inflation_pressure_score`, `current_regime`, `regime_confidence`, `regime_transition_warning`, `available_regimes_count`, `available_regimes_by_quality`, `regime_counts`, `base_10y`, `regimes`, `stability_summary`, and `method_disclaimer`.
+
+Confidence rules:
+
+- If `abs(growth_score) < 0.25` or `abs(inflation_pressure_score) < 0.25`, `regime_confidence = low` and `regime_transition_warning = true`.
+- If both scores are outside the neutral band and current regime quality is `usable`, `regime_confidence = medium`.
+- If both scores are outside the neutral band and current regime quality is `reliable`, `regime_confidence = high`.
+- Otherwise confidence is `low`.
+
+Regime quality by number of weekly rows:
+
+- `0`: `no_observations`.
+- `1` to `35`: `insufficient_observations`.
+- `36` to `51`: `low_confidence`.
+- `52` to `103`: `usable`.
+- `104+`: `reliable`.
+
+For regimes with at least 52 rows, the report uses raw regime-specific betas, factor covariance, factor risk, and factor RC. For regimes with 36 to 51 rows, it computes raw estimates and then linearly shrinks betas and covariance toward `base_10y` with `shrinkage_weight_regime = clip((n_obs - 36) / 16, 0, 1)`. For regimes with fewer than 36 rows, it does not use raw regime estimates as standalone and falls back to `base_10y`. For regimes with zero rows, it reports `no_observations`, `historical_estimate_available = false`, `used_fallback = true`, `fallback_method = no_observations_base_10y_reference_only`, and `fallback_target = base_10y`.
+
+`portfolio_factor_rc` must include `rc_share`, `rc_sign`, and `interpretation`. Positive RC means `risk_adder`; negative RC means `hedging_or_diversifying_contribution`.
+
+`stability_summary` uses a global MVP beta-gap threshold of 0.25 and must include the warning `Stability threshold is a global MVP heuristic, not factor-specific calibration.` Policy signals are `green/general_signal`, `yellow/regime_only`, and `red/do_not_use_as_single_signal`.
+
+CSV artifacts written under `results_csv/` include:
+
+- `macro_regime_labels_weekly.csv`
+- `macro_regime_factor_betas.csv`
+- `macro_regime_factor_covariance.csv`
+- `macro_regime_factor_rc.csv`
+
+`stress_commentary.txt` must report current regime, latest growth and inflation-pressure scores, regime confidence, transition warning, available usable/reliable regimes, top unstable betas, policy signal counts, the stability-threshold warning, and the method disclaimer.
+
+---
+
 ### 8.9 Factor variance decomposition
 
 `stress_report.json.factor_variance_decomposition` is a diagnostic-only 5Y weekly decomposition of total portfolio variance into base factor sources plus residual risk. It excludes Oil. It does not change stress pass/fail, mandate status, optimizer behavior, or weight release.

@@ -370,6 +370,36 @@ def test_write_stress_commentary_from_stress_report() -> None:
                 "collinearity_signal": {"severity": "moderate"},
                 "kalman_oil": {"latest": 0.06, "latest_raw": 0.06, "uncertainty_class": "moderate", "latest_date": "2026-02-27"},
             },
+            "macro_regime_diagnostics": {
+                "method_disclaimer": (
+                    "This is an internal market-proxy regime diagnostic model, not a full macroeconomic regime model. "
+                    "It is diagnostic-only and does not affect optimizer weights, mandate gates, or stress pass/fail."
+                ),
+                "current_regime": "stagflation",
+                "axis_scores_latest": {
+                    "growth_score": -0.42,
+                    "inflation_pressure_score": 0.81,
+                },
+                "regime_confidence": "medium",
+                "regime_transition_warning": False,
+                "available_regimes_count": 2,
+                "available_regimes_by_quality": {"usable": 1, "reliable": 1},
+                "stability_summary": {
+                    "warning": "Stability threshold is a global MVP heuristic, not factor-specific calibration.",
+                    "policy_signal_counts": {
+                        "green/general_signal": 2,
+                        "yellow/regime_only": 1,
+                        "red/do_not_use_as_single_signal": 1,
+                    },
+                    "top_unstable_betas": [
+                        {
+                            "beta_key": "beta_eq",
+                            "policy_signal": "red/do_not_use_as_single_signal",
+                            "max_abs_regime_beta_gap": 0.72,
+                        }
+                    ],
+                },
+            },
             "factor_variance_decomposition": {
                 "status": "available",
                 "method": "r2_scaled_factor_rc_plus_residual",
@@ -502,6 +532,13 @@ def test_write_stress_commentary_from_stress_report() -> None:
         assert "median_abs_vol_error=18.0%" in text2
         assert "hit20=75.0%" in text2
         assert "severity=moderate" in text2
+        assert "Macro regime diagnostics" in text2
+        assert "Current regime: stagflation" in text2
+        assert "inflation_pressure_score=0.810" in text2
+        assert "confidence=medium" in text2
+        assert "transition_warning=False" in text2
+        assert "Top unstable regime betas" in text2
+        assert "internal market-proxy regime diagnostic model" in text2
         assert "Factor variance decomposition" in text2
         assert "variance_scale=weekly" in text2
         assert "Risk adders" in text2

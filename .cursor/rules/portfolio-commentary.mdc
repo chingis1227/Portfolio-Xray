@@ -16,7 +16,7 @@ Scope:
 
 Write a **compact internal analyst note**: measured, factual, structured, useful — not a skeletal compliance blurb, not generic filler, not robotic “metric shows / implies” pairs repeated mechanically.
 
-- **Russian** when the run outputs are Russian-facing; clean punctuation and spacing.
+- **English only** for all commentary and report-facing text; translate any legacy Russian-facing wording when updating generated outputs.
 - **Institutional, concise**, but with **real analytical substance** (short paragraphs allowed; avoid walls of text).
 - **No buy/sell recommendations.** No unsupported macro narratives.
 - **Interpret only what is in source files** (and source-of-truth docs for definitions). **Do not invent numbers.**

@@ -745,6 +745,59 @@ def _append_factor_covariance_section(lines: list[str], st: dict[str, Any]) -> N
     lines.append("")
 
 
+def _append_macro_regime_section(lines: list[str], st: dict[str, Any]) -> None:
+    mr = st.get("macro_regime_diagnostics")
+    if not isinstance(mr, dict) or not mr:
+        return
+    lines.append("Macro regime diagnostics")
+    if mr.get("error"):
+        lines.append(f"Macro regime diagnostics unavailable: {mr.get('error')}")
+        lines.append("")
+        return
+
+    scores = mr.get("axis_scores_latest") or {}
+    lines.append(
+        f"Current regime: {mr.get('current_regime', 'n/a')}; "
+        f"growth_score={_fmt_float(scores.get('growth_score'), 3)}; "
+        f"inflation_pressure_score={_fmt_float(scores.get('inflation_pressure_score'), 3)}; "
+        f"confidence={mr.get('regime_confidence', 'unknown')}; "
+        f"transition_warning={mr.get('regime_transition_warning', False)}."
+    )
+    by_quality = mr.get("available_regimes_by_quality") or {}
+    usable = int(by_quality.get("usable", 0) or 0)
+    reliable = int(by_quality.get("reliable", 0) or 0)
+    lines.append(
+        f"Available usable/reliable regimes: usable={usable}, reliable={reliable}, "
+        f"total={mr.get('available_regimes_count', 0)}."
+    )
+    stability = mr.get("stability_summary") or {}
+    top_unstable = stability.get("top_unstable_betas") or []
+    if isinstance(top_unstable, list) and top_unstable:
+        parts = []
+        for row in top_unstable[:5]:
+            if isinstance(row, dict):
+                parts.append(
+                    f"{row.get('beta_key')}:{row.get('policy_signal')} "
+                    f"gap={_fmt_float(row.get('max_abs_regime_beta_gap'), 3)}"
+                )
+        if parts:
+            lines.append("Top unstable regime betas: " + "; ".join(parts) + ".")
+    counts = stability.get("policy_signal_counts") or {}
+    if isinstance(counts, dict):
+        lines.append(
+            "Policy signal counts: "
+            + ", ".join(f"{k}={v}" for k, v in counts.items())
+            + "."
+        )
+    warning = stability.get("warning")
+    if warning:
+        lines.append(str(warning))
+    disclaimer = mr.get("method_disclaimer")
+    if disclaimer:
+        lines.append(str(disclaimer))
+    lines.append("")
+
+
 def _top_factor_rows_text(rows: Any, field: str, *, limit: int = 3) -> str:
     if not isinstance(rows, list) or not rows:
         return "none"
@@ -1043,6 +1096,7 @@ def write_stress_commentary(
     _append_diagnostic_oil_beta_section(lines, st)
     _append_factor_beta_adjusted_overlay_section(lines, st)
     _append_factor_covariance_section(lines, st)
+    _append_macro_regime_section(lines, st)
     _append_factor_variance_decomposition_section(lines, st)
     _append_portfolio_pca_section(lines, st)
     lines.append("")
