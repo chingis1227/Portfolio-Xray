@@ -1,6 +1,6 @@
 ---
 title: "Policy Implementation Summary"
-date: "Analysis results for the 10-year window as of 2026-03-31"
+date: "Analysis results for the 10-year window as of 2026-04-30"
 documentclass: article
 geometry: "left=18mm, right=18mm, top=24mm, bottom=20mm, head=20pt, foot=20pt, footskip=40pt"
 fontsize: 10pt
@@ -8,12 +8,12 @@ fontsize: 10pt
 
 ## Executive Summary
 
-The policy portfolio was reviewed against the current reporting window. CAGR is 5.90%, annualized volatility is 7.70%, maximum drawdown is -17.60%, Sharpe is 0.504, Sortino is 0.778, and market sensitivity is 0.320. Stress diagnostics show: Passed with diagnostic warning; worst scenario loss is -11.44%.
+The policy portfolio was reviewed against the current reporting window. CAGR is 6.00%, annualized volatility is 7.70%, maximum drawdown is -17.60%, Sharpe is 0.502, Sortino is 0.775, and market sensitivity is 0.312. Stress diagnostics show: Passed with diagnostic warning; worst scenario loss is -11.42%.
 
 ## Key Metrics
 
 ```{=latex}
-\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{5.90\%}{CAGR} & \KPIone{7.70\%}{Volatility} & \KPIone{-17.60\%}{Max Drawdown}\\[0.55em] \KPIone{0.504}{Sharpe} & \KPIone{0.778}{Sortino} & \KPIone{0.320}{Market Sensitivity}\end{tabular}\end{center}
+\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{6.00\%}{CAGR} & \KPIone{7.70\%}{Volatility} & \KPIone{-17.60\%}{Max Drawdown}\\[0.55em] \KPIone{0.502}{Sharpe} & \KPIone{0.775}{Sortino} & \KPIone{0.312}{Market Sensitivity}\end{tabular}\end{center}
 ```
 
 ## Implementation Check

@@ -1,6 +1,6 @@
 ---
 title: "Main Portfolio: Executive Commentary"
-date: "Analysis results for the 10-year window as of 2026-03-31"
+date: "Analysis results for the 10-year window as of 2026-04-30"
 documentclass: article
 geometry: "left=18mm, right=18mm, top=24mm, bottom=20mm, head=20pt, foot=20pt, footskip=40pt"
 fontsize: 10pt
@@ -13,7 +13,7 @@ Largest target positions by weight: **TLT** - 22.20%, **BND** - 17.40%, **SCHP**
 ## Key Metrics
 
 ```{=latex}
-\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{5.90\%}{CAGR} & \KPIone{7.70\%}{Volatility} & \KPIone{-17.60\%}{Max Drawdown}\\[0.55em] \KPIone{0.504}{Sharpe} & \KPIone{0.778}{Sortino} & \KPIone{0.320}{Market Sensitivity}\end{tabular}\end{center}
+\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{6.00\%}{CAGR} & \KPIone{7.70\%}{Volatility} & \KPIone{-17.60\%}{Max Drawdown}\\[0.55em] \KPIone{0.502}{Sharpe} & \KPIone{0.775}{Sortino} & \KPIone{0.312}{Market Sensitivity}\end{tabular}\end{center}
 ```
 
 ## Full Allocation

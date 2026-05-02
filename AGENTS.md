@@ -113,7 +113,7 @@ Keep `DESIGN.md` as the source of truth for tokens, typography, spacing, buttons
 - `src/risk_contrib.py` - RC_vol diagnostics.
 - `src/stress.py`, `src/stress_factors.py` - stress and factor diagnostics.
 - `src/portfolio_dynamic.py` - NaN-safe portfolio returns.
-- `src/pdf_reports.py`, `src/portfolio_commentary.py`, `src/snapshot.py` - reporting.
+- `src/pdf_reports.py`, `src/portfolio_commentary.py`, `src/snapshot.py` - reporting. Auto-generated `commentary.txt` and `stress_commentary.txt` are English-only (UTF-8).
 
 ## Source Of Truth
 Before changing formulas or portfolio logic, check the relevant spec:
