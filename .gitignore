@@ -37,3 +37,17 @@ Main portfolio/
 equal-weight portfolio/
 risk parity portfolio/
 portfolio_weights.yml
+
+
+# Secrets
+.env
+.env.*
+!.env.example
+credentials*.json
+secrets*.yml
+secrets*.yaml
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*

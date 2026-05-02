@@ -1,0 +1,14 @@
+# Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+
+# Secrets / credentials
+.env
+.env.*
+credentials*.json
+secrets*.yml
+secrets*.yaml
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+!.env.example

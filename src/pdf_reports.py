@@ -62,21 +62,21 @@ _METRIC_LABELS: dict[str, str] = {
     "ttr_months": "TTR (months)",
 }
 _METRIC_LABELS_RU: dict[str, str] = {
-    "cagr": "Р”РѕС…РѕРґРЅРѕСЃС‚СЊ (CAGR)",
-    "vol_annual": "Р’РѕР»Р°С‚РёР»СЊРЅРѕСЃС‚СЊ (Рі/Рі)",
-    "max_drawdown": "РњР°РєСЃ. РїСЂРѕСЃР°РґРєР°",
-    "sharpe": "РЁР°СЂРї",
-    "sortino": "РЎРѕСЂС‚РёРЅРѕ",
-    "beta_portfolio": "Р§СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚СЊ Рє СЂС‹РЅРєСѓ",
-    "treynor": "РџРѕРєР°Р·Р°С‚РµР»СЊ РЅР° СЂС‹РЅРѕС‡РЅС‹Р№ СЂРёСЃРє",
-    "corr_base": "РЎРІСЏР·СЊ СЃ С€РёСЂРѕРєРёРј СЂС‹РЅРєРѕРј",
-    "downside_deviation_annual": "РќРёР¶. РѕС‚РєР». (Рі/Рі)",
+    "cagr": "CAGR",
+    "vol_annual": "Volatility",
+    "max_drawdown": "Max Drawdown",
+    "sharpe": "Sharpe",
+    "sortino": "Sortino",
+    "beta_portfolio": "Market Sensitivity",
+    "treynor": "Treynor",
+    "corr_base": "Market Correlation",
+    "downside_deviation_annual": "Downside Deviation",
     "skewness": "РЎРєРІ.",
     "kurtosis": "Р­РєСЃС†РµСЃСЃ",
     "es_95": "ES 95%",
     "es_99": "ES 99%",
     "eee_10pct": "EEE 10%",
-    "ttr_months": "TTR, РјРµСЃ.",
+    "ttr_months": "TTR, months",
 }
 
 _COMMENTARY_SECTIONS = (
@@ -91,28 +91,28 @@ _COMMENTARY_SECTIONS = (
 
 # PDF: СЏРєРѕСЂСЏ РІ commentary.txt (EN) -> РІРёРґРёРјС‹Р№ Р·Р°РіРѕР»РѕРІРѕРє (RU, РєР»РёРµРЅС‚СЃРєРёР№)
 _COMMENTARY_PDF_ALIASES: dict[str, str] = {
-    "Metric-by-Metric Interpretation": "Р§С‚Рѕ СЌС‚Рѕ Р·РЅР°С‡РёС‚ РґР»СЏ РёРЅРІРµСЃС‚РѕСЂР°",
-    "Risk Structure": "РЎС‚СЂСѓРєС‚СѓСЂР° СЂРёСЃРєР°",
-    "Strengths": "РЎРёР»СЊРЅС‹Рµ СЃС‚РѕСЂРѕРЅС‹",
-    "Weaknesses": "РЎР»Р°Р±С‹Рµ СЃС‚РѕСЂРѕРЅС‹ Рё СЂРёСЃРєРё",
-    "Scenario Behavior": "РЎС†РµРЅР°СЂРЅС‹Р№ Р°РЅР°Р»РёР·",
-    "Final Conclusion": "РС‚РѕРі",
+    "Metric-by-Metric Interpretation": "What This Means",
+    "Risk Structure": "Risk Structure",
+    "Strengths": "Strengths",
+    "Weaknesses": "Risks and Limitations",
+    "Scenario Behavior": "Scenario Analysis",
+    "Final Conclusion": "Conclusion",
 }
 
 # Р—Р°РіРѕР»РѕРІРѕРє РІ С€Р°РїРєРµ PDF (СЃР»РµРІР°), РїРѕ РёРјРµРЅРё РёС‚РѕРіРѕРІРѕРіРѕ С„Р°Р№Р»Р°
 _PDF_HEADER_LEFT: dict[str, str] = {
-    "Main portfolio_commentary": "РРЅРІРµСЃС‚РёС†РёРѕРЅРЅС‹Р№ РєРѕРјРјРµРЅС‚Р°СЂРёР№: РѕСЃРЅРѕРІРЅРѕР№ РїРѕСЂС‚С„РµР»СЊ",
-    "Main portfolio_stress_commentary": "РЎС‚СЂРµСЃСЃ-Р°РЅР°Р»РёР·: РѕСЃРЅРѕРІРЅРѕР№ РїРѕСЂС‚С„РµР»СЊ",
-    "Main portfolio_ew_rp_comparison": "РЎСЂР°РІРЅРµРЅРёРµ: equal-weight Рё risk parity",
-    "Main portfolio_weights": "РЎРѕСЃС‚Р°РІ РїРѕСЂС‚С„РµР»СЏ: С†РµР»РµРІС‹Рµ РІРµСЃР°",
-    "Main portfolio_ips_summary": "Р РµР°Р»РёР·Р°С†РёСЏ РїРѕР»РёС‚РёРєРё: СЃРІРѕРґРєР° (IPS)",
-    "Main portfolio_ips_summary_commentary": "РљРѕРјРјРµРЅС‚Р°СЂРёР№ Рє СЃРІРѕРґРєРµ IPS",
-    "equal-weight_portfolio_commentary": "РљРѕРјРјРµРЅС‚Р°СЂРёР№: equal-weight",
-    "equal-weight_portfolio_stress_commentary": "РЎС‚СЂРµСЃСЃ-Р°РЅР°Р»РёР·: equal-weight",
-    "equal-weight_portfolio_weights": "Equal-weight: С†РµР»РµРІС‹Рµ РІРµСЃР°",
-    "risk_parity_portfolio_commentary": "РљРѕРјРјРµРЅС‚Р°СЂРёР№: risk parity",
-    "risk_parity_portfolio_stress_commentary": "РЎС‚СЂРµСЃСЃ-Р°РЅР°Р»РёР·: risk parity",
-    "risk_parity_portfolio_weights": "Risk parity: С†РµР»РµРІС‹Рµ РІРµСЃР°",
+    "Main portfolio_commentary": "Investment Commentary: Main Portfolio",
+    "Main portfolio_stress_commentary": "Stress Analysis: Main Portfolio",
+    "Main portfolio_ew_rp_comparison": "Comparison: Equal-Weight vs Risk Parity",
+    "Main portfolio_weights": "Portfolio Composition: Target Weights",
+    "Main portfolio_ips_summary": "Policy Implementation Summary (IPS)",
+    "Main portfolio_ips_summary_commentary": "IPS Commentary",
+    "equal-weight_portfolio_commentary": "Commentary: Equal-Weight",
+    "equal-weight_portfolio_stress_commentary": "Stress Analysis: Equal-Weight",
+    "equal-weight_portfolio_weights": "Equal-Weight: Target Weights",
+    "risk_parity_portfolio_commentary": "Commentary: Risk Parity",
+    "risk_parity_portfolio_stress_commentary": "Stress Analysis: Risk Parity",
+    "risk_parity_portfolio_weights": "Risk Parity: Target Weights",
 }
 
 
@@ -134,7 +134,15 @@ def _russian_subtitle_line(
     else:
         win = default_window_ru
     ae = (analysis_end or datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d")).strip()
-    return f"РС‚РѕРіРё Р°РЅР°Р»РёР·Р° РЅР° {win} РѕРєРЅРµ, РїРѕ СЃРѕСЃС‚РѕСЏРЅРёСЋ РЅР° {ae}"
+    if "10" in win:
+        window_en = "10-year"
+    elif "5" in win:
+        window_en = "5-year"
+    elif "3" in win:
+        window_en = "3-year"
+    else:
+        window_en = "10-year"
+    return f"Analysis results for the {window_en} window as of {ae}"
 
 
 def _line_dropped_for_client_pdf(line: str) -> bool:
@@ -220,13 +228,13 @@ def _humanize_stress_status(val: Any) -> str:
         return "вЂ”"
     u = s.upper().replace(" ", "_")
     if u in ("PASS", "OK", "SUCCESS", "PASSED", "SUCCEEDED", "PORTFOLIO_VALID_PASS"):
-        return "Р’ СЂР°РјРєР°С… СЃРѕРіР»Р°СЃРѕРІР°РЅРЅРѕРіРѕ РїСЂРѕС„РёР»СЏ СЂРёСЃРєР°"
+        return "Within the agreed risk profile"
     if u.startswith("FAIL") or "FAIL" in u:
-        return "Р’С‹С…РѕРґРёС‚ Р·Р° СЃРѕРіР»Р°СЃРѕРІР°РЅРЅС‹Рµ Р»РёРјРёС‚С‹ вЂ” РЅСѓР¶РµРЅ РїРµСЂРµСЃРјРѕС‚СЂ СЃРѕСЃС‚Р°РІР°"
+        return "Outside the agreed limits; portfolio review required"
     if "DIAG_ATTENTION" in u or ("ATTENTION" in u and "STRESS" in u):
-        return "РћРґРёРЅ СЂРёСЃРєРѕРІС‹Р№ Р°СЃРїРµРєС‚ С‚СЂРµР±СѓРµС‚ РІРЅРёРјР°РЅРёСЏ"
+        return "One risk area requires attention"
     if u.startswith("DIAG_") or u.startswith("EQUITY_") or u.startswith("CREDIT_"):
-        return "вЂ”"
+        return "Diagnostic status"
     return _executive_ru_sanitize(s)
 
 
@@ -290,11 +298,11 @@ def _pdf_descriptor_for_output(pdf_out: Path) -> str:
 
 def _default_meta_footer_ru() -> str:
     ts = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
-    return f"РџРѕРґРіРѕС‚РѕРІР»РµРЅРѕ: {ts} | Р¤РѕСЂРјР°С‚: РєСЂР°С‚РєР°СЏ СЃРїСЂР°РІРєР° | РЇР·С‹Рє: СЂСѓСЃСЃРєРёР№"
+    return f"Prepared: {ts} | Format: executive brief | Language: English"
 
 
 def _header_left_for_pdf(pdf_out: Path) -> str:
-    return _PDF_HEADER_LEFT.get(pdf_out.stem, "РџРѕСЂС‚С„РµР»СЊРЅС‹Р№ РѕС‚С‡С‘С‚")
+    return _PDF_HEADER_LEFT.get(pdf_out.stem, "Portfolio Report")
 
 
 def _write_pandoc_doc_meta_tex(pdf_out: Path) -> None:
@@ -394,10 +402,10 @@ def _escape_md_cell(s: str) -> str:
 
 def _fmt_scalar(v: Any, *, pct: bool = False) -> str:
     if v is None:
-        return "вЂ”"
+        return "N/A"
     try:
         if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
-            return "вЂ”"
+            return "N/A"
         f = float(v)
         if pct:
             return f"{f * 100:.2f}%"
@@ -419,18 +427,156 @@ def _read_snapshot_10y(folder: Path) -> dict[str, Any] | None:
         return None
 
 
+def _read_json_file(path: Path) -> dict[str, Any]:
+    try:
+        obj = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return obj if isinstance(obj, dict) else {}
+
+
+def _read_stress_report(folder: Path | None) -> dict[str, Any]:
+    if not folder:
+        return {}
+    return _read_json_file(folder / "stress_report.json")
+
+
+def _metrics_from_snapshot(snapshot: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(snapshot, dict):
+        return {}
+    metrics = snapshot.get("metrics")
+    return metrics if isinstance(metrics, dict) else {}
+
+
+def _portfolio_label_from_folder(folder: Path | None) -> str:
+    if not folder:
+        return "Portfolio"
+    name = folder.name.lower()
+    if "equal-weight" in name:
+        return "Equal-Weight Portfolio"
+    if "risk parity" in name:
+        return "Risk Parity Portfolio"
+    return "Main Portfolio"
+
+
+def _english_report_title(title: str, folder: Path | None = None) -> str:
+    name = _portfolio_label_from_folder(folder)
+    tl = title.lower()
+    if "stress" in tl or "стресс" in tl or "С‚СЂ" in title:
+        return f"{name}: Stress Analysis"
+    if "weight" in tl or "вес" in tl or "С†РµР»" in title:
+        return f"{name}: Target Weights"
+    if "comparison" in tl or ("equal-weight" in tl and "risk parity" in tl):
+        return "Equal-Weight vs Risk Parity Comparison"
+    if "ips" in tl:
+        return "Policy Implementation Summary"
+    return f"{name}: Executive Commentary"
+
+
+def _stress_context(stress: dict[str, Any]) -> tuple[str, str, str, str]:
+    raw_status = str(stress.get("status") or "N/A")
+    status = _humanize_stress_status(raw_status)
+    if raw_status.upper().startswith("DIAG_PASS"):
+        status = "Passed with diagnostic warning" if stress.get("warning_code") else "Passed"
+    worst = _fmt_scalar(stress.get("worst_scenario_loss_pct"), pct=True)
+    scenario = str(stress.get("failed_scenario") or stress.get("worst_scenario") or "N/A")
+    test = str(stress.get("failed_test") or "N/A")
+    return status, worst, scenario, test
+
+
+def _english_metrics_sentence(metrics: dict[str, Any]) -> str:
+    return (
+        f"CAGR is {_fmt_scalar(metrics.get('cagr'), pct=True)}, annualized volatility is "
+        f"{_fmt_scalar(metrics.get('vol_annual'), pct=True)}, maximum drawdown is "
+        f"{_fmt_scalar(metrics.get('max_drawdown'), pct=True)}, Sharpe is "
+        f"{_fmt_scalar(metrics.get('sharpe'))}, Sortino is {_fmt_scalar(metrics.get('sortino'))}, "
+        f"and market sensitivity is {_fmt_scalar(metrics.get('beta_portfolio'))}."
+    )
+
+
+def _english_commentary_md(
+    *,
+    report_title: str,
+    snapshot_folder: Path | None,
+    analysis_end: str | None,
+) -> str:
+    snap = _read_snapshot_10y(snapshot_folder) if snapshot_folder else None
+    metrics = _metrics_from_snapshot(snap)
+    stress = _read_stress_report(snapshot_folder)
+    wlab = str((snap or {}).get("window_label") or "") or None
+    ae = analysis_end or str((snap or {}).get("analysis_end") or "") or None
+    title = _english_report_title(report_title, snapshot_folder)
+    status, worst, scenario, test = _stress_context(stress)
+
+    parts: list[str] = [
+        _yaml_front_matter(title, None, analysis_end=ae, window_label=wlab),
+        "\n## Executive Summary\n\n",
+    ]
+    if metrics:
+        parts.append(
+            f"{_portfolio_label_from_folder(snapshot_folder)} was reviewed on the latest available reporting window. "
+            + _english_metrics_sentence(metrics)
+            + f" Stress diagnostics show: {status}; worst scenario loss is {worst}.\n\n"
+        )
+    else:
+        parts.append("The report was rebuilt from the latest available portfolio outputs.\n\n")
+
+    if metrics:
+        parts.append("## Key Metrics\n\n")
+        parts.append(_kpi_panel_latex_ru(metrics) + "\n")
+
+    parts.append("## What This Means\n\n")
+    if metrics:
+        parts.append(
+            "The portfolio profile should be read as a trade-off between return, realized drawdown, and market sensitivity. "
+            "CAGR measures compound annual growth, volatility measures annualized variability, and maximum drawdown captures the largest peak-to-trough loss in the reporting window. "
+            "Sharpe and Sortino summarize risk-adjusted return, while market sensitivity indicates how strongly the portfolio moves with the broad benchmark.\n\n"
+        )
+    else:
+        parts.append("No complete metrics block was available for this report.\n\n")
+
+    parts.append("## Risk Structure\n\n")
+    parts.append(
+        f"Stress status: {status}. Worst scenario loss: {worst}. "
+        f"Flagged scenario: {scenario}; flagged test: {test}. "
+        "These diagnostics are used to identify risk concentrations and scenario vulnerability; they do not by themselves replace the mandate checks.\n\n"
+    )
+
+    scenarios = stress.get("scenario_results") if isinstance(stress, dict) else None
+    if isinstance(scenarios, list) and scenarios:
+        parts.append("## Scenario Analysis\n\n")
+        parts.append("| Scenario | PnL | Pass | Top RC Asset | Top 3 RC |\n")
+        parts.append("| --- | ---: | --- | --- | ---: |\n")
+        for row in scenarios[:8]:
+            if not isinstance(row, dict):
+                continue
+            parts.append(
+                f"| {row.get('scenario_id', 'N/A')} | {_fmt_scalar(row.get('portfolio_pnl_pct'), pct=True)} | "
+                f"{row.get('pass', 'N/A')} | {row.get('top1_rc_asset', 'N/A')} | "
+                f"{_fmt_scalar(row.get('top3_rc_sum_pct'), pct=True)} |\n"
+            )
+        parts.append("\n")
+
+    parts.append("## Conclusion\n\n")
+    parts.append(
+        "This English PDF was generated from the current structured portfolio outputs. "
+        "Use the metrics, stress status, and scenario table together: the headline return profile is only meaningful when read alongside drawdown resilience and scenario behavior.\n"
+    )
+    return "".join(parts)
+
+
 def _fmt_kpi_val_latex(m: dict[str, Any], key: str, *, pct: bool) -> str:
     v = m.get(key)
     if v is None or (isinstance(v, float) and (math.isnan(v) or math.isinf(v))):
-        return "вЂ”"
+        return "N/A"
     try:
         f = float(v)
         if pct:
-            t = f"{f * 100:.2f}".replace(".", ",")
+            t = f"{f * 100:.2f}"
             return t + r"\%"
-        return f"{f:.3f}".replace(".", ",") if f >= 0 else f"{f:.3f}".replace(".", ",")
+        return f"{f:.3f}"
     except (TypeError, ValueError):
-        return "вЂ”"
+        return "N/A"
 
 
 def _kpi_panel_latex_ru(m: dict[str, Any]) -> str:
@@ -439,12 +585,12 @@ def _kpi_panel_latex_ru(m: dict[str, Any]) -> str:
         return ""
     mk = m
     pairs = [
-        (_fmt_kpi_val_latex(mk, "cagr", pct=True), "Р”РѕС…РѕРґРЅРѕСЃС‚СЊ (CAGR)"),
-        (_fmt_kpi_val_latex(mk, "vol_annual", pct=True), "Р’РѕР»Р°С‚РёР»СЊРЅРѕСЃС‚СЊ"),
-        (_fmt_kpi_val_latex(mk, "max_drawdown", pct=True), "РњР°РєСЃ. РїСЂРѕСЃР°РґРєР°"),
-        (_fmt_kpi_val_latex(mk, "sharpe", pct=False), "РљРѕСЌС„. РЁР°СЂРїР°"),
-        (_fmt_kpi_val_latex(mk, "sortino", pct=False), "РљРѕСЌС„. РЎРѕСЂС‚РёРЅРѕ"),
-        (_fmt_kpi_val_latex(mk, "beta_portfolio", pct=False), "Р§СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚СЊ Рє СЂС‹РЅРєСѓ"),
+        (_fmt_kpi_val_latex(mk, "cagr", pct=True), "CAGR"),
+        (_fmt_kpi_val_latex(mk, "vol_annual", pct=True), "Volatility"),
+        (_fmt_kpi_val_latex(mk, "max_drawdown", pct=True), "Max Drawdown"),
+        (_fmt_kpi_val_latex(mk, "sharpe", pct=False), "Sharpe"),
+        (_fmt_kpi_val_latex(mk, "sortino", pct=False), "Sortino"),
+        (_fmt_kpi_val_latex(mk, "beta_portfolio", pct=False), "Market Sensitivity"),
     ]
     a1, a2, a3 = [r"\KPIone{" + x[0] + "}{" + _escape_latex_arg_for_kpi(x[1]) + "}" for x in pairs[:3]]
     b1, b2, b3 = [r"\KPIone{" + x[0] + "}{" + _escape_latex_arg_for_kpi(x[1]) + "}" for x in pairs[3:6]]
@@ -460,6 +606,35 @@ def _kpi_panel_latex_ru(m: dict[str, Any]) -> str:
 
 def _escape_latex_arg_for_kpi(s: str) -> str:
     return s.replace("\\", r"\textbackslash{}").replace("%", r"\%").replace("&", r"\&")
+
+
+_PANDOC_DISALLOWED_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+_MOJIBAKE_TOKEN_RE = re.compile(r"[\u0080-\u00ff\u0400-\u04ff]+")
+_MOJIBAKE_MARKERS = frozenset(("Р", "С", "в", "Ð", "Ñ"))
+
+
+def _repair_utf8_as_cp1251_mojibake(text: str) -> str:
+    """Repair Russian UTF-8 text that was decoded as cp1251 (e.g. 'Рџ...' -> 'П...')."""
+
+    def repl(match: re.Match[str]) -> str:
+        token = match.group(0)
+        if not any(marker in token for marker in _MOJIBAKE_MARKERS) and not any(
+            0x80 <= ord(ch) <= 0x9F for ch in token
+        ):
+            return token
+        try:
+            repaired = token.encode("cp1251").decode("utf-8")
+        except UnicodeError:
+            return token
+        return repaired
+
+    return _MOJIBAKE_TOKEN_RE.sub(repl, text)
+
+
+def _sanitize_markdown_for_pandoc(text: str) -> str:
+    """Remove invisible control characters that make Pandoc reject YAML/front matter."""
+    text = _repair_utf8_as_cp1251_mojibake(text)
+    return _PANDOC_DISALLOWED_CONTROL_CHARS.sub("", text.lstrip("\ufeff"))
 
 
 def _yaml_front_matter(
@@ -537,6 +712,57 @@ def build_ew_rp_markdown(comp: dict[str, Any]) -> str:
     p = comp.get("period") or {}
     as_of = p.get("analysis_end") if isinstance(p.get("analysis_end"), str) else None
     wlab = p.get("window_label") if isinstance(p.get("window_label"), str) else None
+
+    parts_en: list[str] = [
+        _yaml_front_matter(
+            "Equal-Weight vs Risk Parity Comparison",
+            None,
+            analysis_end=as_of,
+            window_label=wlab,
+        ),
+        "\n## Executive Summary\n\n",
+    ]
+    parts_en.append(
+        f"Equal-Weight and Risk Parity are compared on the same asset universe and reporting window. "
+        f"Equal-Weight CAGR is {_fmt_scalar(eq_m.get('cagr'), pct=True)} versus "
+        f"{_fmt_scalar(rp_m.get('cagr'), pct=True)} for Risk Parity. "
+        f"Equal-Weight volatility is {_fmt_scalar(eq_m.get('vol_annual'), pct=True)} versus "
+        f"{_fmt_scalar(rp_m.get('vol_annual'), pct=True)} for Risk Parity. "
+        f"The CAGR delta (EW minus RP) is {_fmt_scalar(delta_m.get('cagr'), pct=True)}.\n\n"
+    )
+    parts_en.append("## Key Metrics\n\n")
+    parts_en.append("| Metric | Equal-Weight | Risk Parity | Delta (EW - RP) |\n")
+    parts_en.append("| --- | ---: | ---: | ---: |\n")
+    for k in _KPI_EW_RP_KEYS:
+        pct = k in _PCT_METRICS
+        label = _METRIC_LABELS_RU.get(k, _METRIC_LABELS.get(k, k))
+        parts_en.append(
+            f"| **{_escape_md_cell(label)}** | {_escape_md_cell(_fmt_scalar(eq_m.get(k), pct=pct))} | "
+            f"{_escape_md_cell(_fmt_scalar(rp_m.get(k), pct=pct))} | "
+            f"{_escape_md_cell(_fmt_scalar(delta_m.get(k), pct=pct))} |\n"
+        )
+    top = comp.get("rc_vol_top5_asset") or {}
+    eq5 = top.get("equal_weight") or {}
+    rp5 = top.get("risk_parity") or {}
+    d5 = top.get("delta") or {}
+    top_tickers = sorted(set(eq5.keys()) | set(rp5.keys()))
+    if top_tickers:
+        parts_en.append("\n## Main Risk Contributors\n\n")
+        parts_en.append("| Instrument | Equal-Weight | Risk Parity | Delta (EW - RP) |\n")
+        parts_en.append("| --- | ---: | ---: | ---: |\n")
+        for ticker in top_tickers:
+            parts_en.append(
+                f"| **{ticker}** | {_escape_md_cell(_fmt_scalar(eq5.get(ticker), pct=True))} | "
+                f"{_escape_md_cell(_fmt_scalar(rp5.get(ticker), pct=True))} | "
+                f"{_escape_md_cell(_fmt_scalar(d5.get(ticker), pct=True))} |\n"
+            )
+    parts_en.append("\n## Stress Context\n\n")
+    parts_en.append(
+        f"- **Equal-Weight:** {_humanize_stress_status(ew.get('stress_status'))}.\n"
+        f"- **Risk Parity:** {_humanize_stress_status(rp.get('stress_status'))}.\n\n"
+        "Both variants are calculated from the same available data; the difference is the weighting method.\n"
+    )
+    return "".join(parts_en)
 
     parts: list[str] = []
     parts.append(
@@ -637,6 +863,12 @@ def build_commentary_report_md(
     analysis_end: str | None = None,
     snapshot_folder: Path | None = None,
 ) -> str:
+    return _english_commentary_md(
+        report_title=report_title,
+        snapshot_folder=snapshot_folder,
+        analysis_end=analysis_end,
+    )
+
     del variant_label
     parts: list[str] = []
     snap = _read_snapshot_10y(snapshot_folder) if snapshot_folder else None
@@ -729,6 +961,34 @@ def build_weights_report_md(
     analysis_end: str | None = None,
     snapshot_folder: Path | None = None,
 ) -> str:
+    snap = _read_snapshot_10y(snapshot_folder) if snapshot_folder else None
+    metrics = _metrics_from_snapshot(snap)
+    wlab = str((snap or {}).get("window_label") or "") or None
+    ae = analysis_end or str((snap or {}).get("analysis_end") or "") or None
+    items = sorted(weights.items(), key=lambda kv: (-kv[1], kv[0]))
+    top = items[:5]
+    parts: list[str] = [
+        _yaml_front_matter(_english_report_title(title, snapshot_folder), None, analysis_end=ae, window_label=wlab),
+        "\n## Executive Summary\n\n",
+    ]
+    if top:
+        tlist = ", ".join(f"**{ticker}** - {_fmt_scalar(weight, pct=True)}" for ticker, weight in top)
+        parts.append(
+            f"Largest target positions by weight: {tlist}. "
+            "Weights are portfolio construction outputs and should be read as target allocations, not trade instructions.\n\n"
+        )
+    else:
+        parts.append("No target weights were available for this report.\n\n")
+    if metrics:
+        parts.append("## Key Metrics\n\n")
+        parts.append(_kpi_panel_latex_ru(metrics) + "\n")
+    parts.append("## Full Allocation\n\n")
+    parts.append("| Instrument | Target Weight |\n| --- | ---: |\n")
+    for ticker, weight in items:
+        parts.append(f"| **{ticker}** | {_escape_md_cell(f'{weight * 100:.2f}%')} |\n")
+    parts.append(f"\n**Total weight: {_fmt_scalar(sum(weights.values()), pct=True)}**. A fully invested portfolio should be close to 100%.\n")
+    return "".join(parts)
+
     del variant_label
     parts: list[str] = []
     snap = _read_snapshot_10y(snapshot_folder) if snapshot_folder else None
@@ -778,6 +1038,39 @@ def build_ips_summary_md(
     analysis_end: str | None = None,
     snapshot_folder: Path | None = None,
 ) -> str:
+    snap = _read_snapshot_10y(snapshot_folder) if snapshot_folder else None
+    metrics = _metrics_from_snapshot(snap)
+    stress = _read_stress_report(snapshot_folder)
+    wlab = str((snap or {}).get("window_label") or "") or None
+    ae = analysis_end or str((snap or {}).get("analysis_end") or "") or None
+    status, worst, scenario, test = _stress_context(stress)
+    parts: list[str] = [
+        _yaml_front_matter("Policy Implementation Summary", None, analysis_end=ae, window_label=wlab),
+        "\n## Executive Summary\n\n",
+    ]
+    if metrics:
+        parts.append(
+            "The policy portfolio was reviewed against the current reporting window. "
+            + _english_metrics_sentence(metrics)
+            + f" Stress diagnostics show: {status}; worst scenario loss is {worst}.\n\n"
+        )
+    else:
+        parts.append("The policy summary was rebuilt from the latest available outputs.\n\n")
+    if metrics:
+        parts.append("## Key Metrics\n\n")
+        parts.append(_kpi_panel_latex_ru(metrics) + "\n")
+    parts.append("## Implementation Check\n\n")
+    parts.append(
+        "The report summarizes whether the portfolio remains aligned with the configured risk profile, drawdown gate, and stress diagnostics. "
+        f"Current stress context: {status}; flagged scenario: {scenario}; flagged test: {test}.\n\n"
+    )
+    parts.append("## Conclusion\n\n")
+    parts.append(
+        "This English IPS summary is intended as a compact implementation memo. "
+        "Use it together with the weights report and stress report to review allocation, realized risk, and scenario resilience.\n"
+    )
+    return "".join(parts)
+
     del variant_label
     parts: list[str] = []
     snap = _read_snapshot_10y(snapshot_folder) if snapshot_folder else None
@@ -860,6 +1153,7 @@ def build_ips_summary_md(
 def write_md_and_pdf(md_text: str, *, md_out: Path, pdf_out: Path, logger: Any = None) -> bool:
     md_out.parent.mkdir(parents=True, exist_ok=True)
     pdf_out.parent.mkdir(parents=True, exist_ok=True)
+    md_text = _sanitize_markdown_for_pandoc(md_text)
     md_out.write_text(md_text, encoding="utf-8")
 
     pandoc = _find_pandoc()

@@ -1,38 +1,40 @@
 ---
-title: "РћСЃРЅРѕРІРЅРѕР№ РїРѕСЂС‚С„РµР»СЊ: СѓСЃС‚РѕР№С‡РёРІС‹Р№ СЂРёСЃРє-РїСЂРѕС„РёР»СЊ РїСЂРё СѓРјРµСЂРµРЅРЅРѕР№ РґРѕС…РѕРґРЅРѕСЃС‚Рё"
-date: "РС‚РѕРіРё Р°РЅР°Р»РёР·Р° РЅР° 10-Р»РµС‚РЅРµРј РѕРєРЅРµ, РїРѕ СЃРѕСЃС‚РѕСЏРЅРёСЋ РЅР° 2026-03-31"
+title: "Main Portfolio: Executive Commentary"
+date: "Analysis results for the 10-year window as of 2026-03-31"
 documentclass: article
 geometry: "left=18mm, right=18mm, top=24mm, bottom=20mm, head=20pt, foot=20pt, footskip=40pt"
 fontsize: 10pt
 ---
 
-## РљР»СЋС‡РµРІРѕР№ РІС‹РІРѕРґ
+## Executive Summary
 
-Risk-adjusted: Sharpe в‰€ 0.504, Sortino в‰€ 0.778; С‡СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚СЊ Рє Р±Р°Р·РѕРІРѕРјСѓ Р±РµРЅС‡РјР°СЂРєСѓ: С‡СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚СЊ Рє С€РёСЂРѕРєРѕРјСѓ СЂС‹РЅРєСѓ в‰€ 0.320.
-РЎС‚СЂРµСЃСЃ-С‚РµСЃС‚: ; worst_scenario_loss_pct в‰€ -11.44%.
+Main Portfolio was reviewed on the latest available reporting window. CAGR is 5.90%, annualized volatility is 7.70%, maximum drawdown is -17.60%, Sharpe is 0.504, Sortino is 0.778, and market sensitivity is 0.320. Stress diagnostics show: Passed with diagnostic warning; worst scenario loss is -11.44%.
 
-
-## РљР»СЋС‡РµРІС‹Рµ РїРѕРєР°Р·Р°С‚РµР»Рё
+## Key Metrics
 
 ```{=latex}
-\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{5,90\%}{Р”РѕС…РѕРґРЅРѕСЃС‚СЊ (CAGR)} & \KPIone{7,70\%}{Р’РѕР»Р°С‚РёР»СЊРЅРѕСЃС‚СЊ} & \KPIone{-17,60\%}{РњР°РєСЃ. РїСЂРѕСЃР°РґРєР°}\\[0.55em] \KPIone{0,504}{РљРѕСЌС„. РЁР°СЂРїР°} & \KPIone{0,778}{РљРѕСЌС„. РЎРѕСЂС‚РёРЅРѕ} & \KPIone{0,320}{Р§СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚СЊ Рє СЂС‹РЅРєСѓ}\end{tabular}\end{center}
+\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{5.90\%}{CAGR} & \KPIone{7.70\%}{Volatility} & \KPIone{-17.60\%}{Max Drawdown}\\[0.55em] \KPIone{0.504}{Sharpe} & \KPIone{0.778}{Sortino} & \KPIone{0.320}{Market Sensitivity}\end{tabular}\end{center}
 ```
 
+## What This Means
 
-## Р§С‚Рѕ СЌС‚Рѕ Р·РЅР°С‡РёС‚ РґР»СЏ РёРЅРІРµСЃС‚РѕСЂР°
+The portfolio profile should be read as a trade-off between return, realized drawdown, and market sensitivity. CAGR measures compound annual growth, volatility measures annualized variability, and maximum drawdown captures the largest peak-to-trough loss in the reporting window. Sharpe and Sortino summarize risk-adjusted return, while market sensitivity indicates how strongly the portfolio moves with the broad benchmark.
 
-CAGR (5.95%) РѕС‚СЂР°Р¶Р°РµС‚ СЃСЂРµРґРЅРµРіРѕРґРѕРІРѕР№ С‚РµРјРї СЂРѕСЃС‚Р° РїРѕ РјРµСЃСЏС‡РЅС‹Рј РїСЂРѕСЃС‚С‹Рј РґРѕС…РѕРґРЅРѕСЃС‚СЏРј РЅР° 10Y-РѕРєРЅРµ РІ С‚РµРєСѓС‰РµРј РїСЂРѕРіРѕРЅРµ. Р’РѕР»Р°С‚РёР»СЊРЅРѕСЃС‚СЊ (7.65%) вЂ” РіРѕРґРѕРІР°СЏ РёР· РјРµСЃСЏС‡РЅС‹С… РґРѕС…РѕРґРЅРѕСЃС‚РµР№; MaxDD (-17.63%) вЂ” РїРѕ РјРµСЃСЏС‡РЅРѕР№ equity-РєСЂРёРІРѕР№. Sharpe (0.504) Рё Sortino (0.778) РёСЃРїРѕР»СЊР·СѓСЋС‚ СЃРїРµС†РёС„РёРєР°С†РёСЋ РїСЂРѕРµРєС‚Р° (Р·РЅР°РјРµРЅР°С‚РµР»СЊ вЂ” vol СЃС‹СЂРѕР№ РґРѕС…РѕРґРЅРѕСЃС‚Рё РґР»СЏ Sharpe). С‡СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚СЊ Рє С€РёСЂРѕРєРѕРјСѓ СЂС‹РЅРєСѓ (0.320) Рё РѕС†РµРЅРєР° РґРѕС…РѕРґРЅРѕСЃС‚Рё СЃ СѓС‡С‘С‚РѕРј С‡СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚Рё Рє СЂС‹РЅРєСѓ (0.120) Р·Р°РІСЏР·Р°РЅС‹ РЅР° Р±Р°Р·РѕРІС‹Р№ Р±РµРЅС‡РјР°СЂРє; СЃРІСЏР·СЊ СЃ СЂС‹РЅРєРѕРј РІ С†РµР»РѕРј РїСЂРё РЅР°Р»РёС‡РёРё РїРѕРєР°Р·С‹РІР°РµС‚ СЃРёРЅС…СЂРѕРЅРЅРѕСЃС‚СЊ СЃ Р±РµРЅС‡РјР°СЂРєРѕРј РЅР° С‚РѕРј Р¶Рµ РѕРєРЅРµ.
+## Risk Structure
 
-**РЎРёР»СЊРЅС‹Рµ СЃС‚РѕСЂРѕРЅС‹.**
+Stress status: Passed with diagnostic warning. Worst scenario loss: -11.44%. Flagged scenario: N/A; flagged test: N/A. These diagnostics are used to identify risk concentrations and scenario vulnerability; they do not by themselves replace the mandate checks.
 
-Р”РёР°РіРЅРѕСЃС‚РёС‡РµСЃРєРёР№ СЃС‚СЂРµСЃСЃ Р±РµР· РєСЂРёС‚РёС‡РЅС‹С… РѕС‚РјРµС‚РѕРє (РёР»Рё С‚РѕР»СЊРєРѕ РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ); РјР°РЅРґР°С‚РЅС‹Р№ MaxDD-gate РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ вЂ” СЃРѕС‡РµС‚Р°РЅРёРµ РёСЃС‚РѕСЂРёС‡РµСЃРєРѕР№ РїСЂРѕСЃР°РґРєРё Рё РєР»РёРµРЅС‚СЃРєРѕРіРѕ РїРѕСЂРѕРіР° РЅРµ РєРѕРЅС„Р»РёРєС‚СѓРµС‚ РІ СЌС‚РѕРј РїСЂРѕРіРѕРЅРµ.
+## Scenario Analysis
 
-## РЎС†РµРЅР°СЂРЅС‹Р№ Р°РЅР°Р»РёР·
+| Scenario | PnL | Pass | Top RC Asset | Top 3 RC |
+| --- | ---: | --- | --- | ---: |
+| equity_shock | -8.45% | True | TLT | 57.53% |
+| credit_shock | -1.31% | True | TLT | 57.53% |
+| rates_shock | -11.44% | True | TLT | 58.34% |
+| inflation_stagflation | -7.30% | True | TLT | 58.34% |
+| liquidity_shock | -4.68% | True | TLT | 57.53% |
+| recession_severe | -9.87% | True | TLT | 57.36% |
 
-РҐСѓРґС€РёР№ СЃС†РµРЅР°СЂРЅС‹Р№ СѓР±С‹С‚РѕРє РїРѕСЂС‚С„РµР»СЏ (worst_scenario_loss_pct): в‰€ -11.44%.
+## Conclusion
 
-
-## РС‚РѕРі
-
-РѕСЃРЅРѕРІРЅРѕР№ РїРѕСЂС‚С„РµР»СЊ (Main portfolio): РїСЂРѕС„РёР»СЊ РґРѕС…РѕРґРЅРѕСЃС‚Рё/СЂРёСЃРєР° РЅР° 10Y Р·Р°РґР°С‘С‚СЃСЏ CAGRв‰€5.95% Рё volв‰€7.65% РїСЂРё MaxDDв‰€-17.63%. РЎС‚СЂРµСЃСЃ (вЂ”); РєР»РёРµРЅС‚СЃРєРёР№ gate РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ. Р”Р»СЏ СЃСЂР°РІРЅРµРЅРёСЏ РІР°СЂРёР°РЅС‚РѕРІ РёСЃРїРѕР»СЊР·СѓР№С‚Рµ С‚Рµ Р¶Рµ С„Р°Р№Р»С‹ РІ СЃРѕСЃРµРґРЅРёС… РїР°РїРєР°С… (Equal-Weight / Risk Parity / Main portfolio) РїРѕСЃР»Рµ СЃРёРЅС…СЂРѕРЅРЅРѕРіРѕ РїСЂРѕРіРѕРЅР°.
-
+This English PDF was generated from the current structured portfolio outputs. Use the metrics, stress status, and scenario table together: the headline return profile is only meaningful when read alongside drawdown resilience and scenario behavior.

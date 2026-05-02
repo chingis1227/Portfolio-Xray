@@ -1,25 +1,24 @@
 ---
-title: "РЎРѕСЃС‚Р°РІ РїРѕСЂС‚С„РµР»СЏ: РєСѓРґР° РІСЃС‚Р°С‘С‚ РєР°РїРёС‚Р°Р»"
-date: "РС‚РѕРіРё Р°РЅР°Р»РёР·Р° РЅР° 10-Р»РµС‚РЅРµРј РѕРєРЅРµ, РїРѕ СЃРѕСЃС‚РѕСЏРЅРёСЋ РЅР° 2026-03-31"
+title: "Main Portfolio: Executive Commentary"
+date: "Analysis results for the 10-year window as of 2026-03-31"
 documentclass: article
 geometry: "left=18mm, right=18mm, top=24mm, bottom=20mm, head=20pt, foot=20pt, footskip=40pt"
 fontsize: 10pt
 ---
 
-## РљР»СЋС‡РµРІРѕР№ РІС‹РІРѕРґ
+## Executive Summary
 
-**РљСЂСѓРїРЅРµР№С€РёРµ РїРѕР·РёС†РёРё** РїРѕ С†РµР»РµРІРѕРјСѓ РІРµСЃСѓ: **TLT** вЂ” 22.20%, **BND** вЂ” 17.40%, **SCHP** вЂ” 16.40%, **BIL** вЂ” 10.00%, **SCHD** вЂ” 8.80%. **Р”РѕР»Рё РЅРёР¶Рµ** вЂ” РѕСЂРёРµРЅС‚РёСЂ РґР»СЏ СЃС‚СЂР°С‚РµРіРёРё; **РґР°С‚Р°** РѕС‚РЅРѕСЃРёС‚СЃСЏ Рє СЃРЅРёРјРєСѓ (СЃРј. СЃС‚СЂРѕРєСѓ РїРѕРґ Р·Р°РіРѕР»РѕРІРєРѕРј), Р° РЅРµ Рє СЃРёРіРЅР°Р»Сѓ СЃРґРµР»РєРё.
+Largest target positions by weight: **TLT** - 22.20%, **BND** - 17.40%, **SCHP** - 16.40%, **BIL** - 10.00%, **SCHD** - 8.80%. Weights are portfolio construction outputs and should be read as target allocations, not trade instructions.
 
-## РљР»СЋС‡РµРІС‹Рµ РїРѕРєР°Р·Р°С‚РµР»Рё
+## Key Metrics
 
 ```{=latex}
-\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{5,90\%}{Р”РѕС…РѕРґРЅРѕСЃС‚СЊ (CAGR)} & \KPIone{7,70\%}{Р’РѕР»Р°С‚РёР»СЊРЅРѕСЃС‚СЊ} & \KPIone{-17,60\%}{РњР°РєСЃ. РїСЂРѕСЃР°РґРєР°}\\[0.55em] \KPIone{0,504}{РљРѕСЌС„. РЁР°СЂРїР°} & \KPIone{0,778}{РљРѕСЌС„. РЎРѕСЂС‚РёРЅРѕ} & \KPIone{0,320}{Р§СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚СЊ Рє СЂС‹РЅРєСѓ}\end{tabular}\end{center}
+\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{5.90\%}{CAGR} & \KPIone{7.70\%}{Volatility} & \KPIone{-17.60\%}{Max Drawdown}\\[0.55em] \KPIone{0.504}{Sharpe} & \KPIone{0.778}{Sortino} & \KPIone{0.320}{Market Sensitivity}\end{tabular}\end{center}
 ```
 
-## РЎРѕСЃС‚Р°РІ: РІСЃРµ РїРѕР·РёС†РёРё
+## Full Allocation
 
-
-| РРЅСЃС‚СЂСѓРјРµРЅС‚ | Р¦РµР»РµРІРѕР№ РІРµСЃ |
+| Instrument | Target Weight |
 | --- | ---: |
 | **TLT** | 22.20% |
 | **BND** | 17.40% |
@@ -31,4 +30,4 @@ fontsize: 10pt
 | **SLV** | 6.20% |
 | **QQQ** | 3.10% |
 
-**РЎСѓРјРјР° РґРѕР»РµР№ вЂ” 99.90%**; РїСЂРё РїРѕР»РЅРѕРј РёРЅРІРµСЃС‚РёСЂРѕРІР°РЅРёРё РѕР¶РёРґР°РµС‚СЃСЏ **РѕРєРѕР»Рѕ 100%**.
+**Total weight: 99.90%**. A fully invested portfolio should be close to 100%.
