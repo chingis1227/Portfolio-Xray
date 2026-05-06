@@ -105,24 +105,30 @@ FACTOR_STABILITY_THRESHOLDS: dict[str, Any] = {
 }
 _SEVERITY_RANK = {"unknown": 0, "low": 1, "moderate": 2, "high": 3}
 
-MACRO_REGIME_METHOD_VERSION = "internal_market_proxy_v1"
+# Macro regime classifier version v1: macro_two_axis_v1 (monthly, two-axis macro data).
+# See src/stress_factors_macro.py for the full implementation and
+# docs/docs/stress_testing_spec.md §8.8.2 for the contract.
+MACRO_REGIME_METHOD_VERSION = "macro_two_axis_v1"
 MACRO_REGIME_METHOD_DISCLAIMER = (
-    "This is an internal market-proxy regime diagnostic model, not a full macroeconomic regime model. "
-    "It is diagnostic-only and does not affect optimizer weights, mandate gates, or stress pass/fail."
+    "macro_two_axis_v1 is a diagnostic-only macro regime classifier. It does not "
+    "affect optimizer weights, mandate gates, stress pass/fail, or weight release."
 )
-MACRO_REGIME_STABILITY_WARNING = "Stability threshold is a global MVP heuristic, not factor-specific calibration."
-MACRO_REGIME_SCORE_WINDOW_WEEKS = 156
-MACRO_REGIME_SCORE_MIN_OBS = 52
+MACRO_REGIME_STABILITY_WARNING = (
+    "Stability threshold is a global heuristic, not factor-specific calibration."
+)
 MACRO_REGIME_NEUTRAL_BAND = 0.25
 MACRO_REGIME_STABILITY_BETA_GAP = 0.25
-MACRO_REGIME_LOW_CONFIDENCE_MIN_ROWS = 36
-MACRO_REGIME_USABLE_MIN_ROWS = 52
-MACRO_REGIME_RELIABLE_MIN_ROWS = 104
+# Per-regime n_obs gating thresholds in monthly observations. See ExecPlan v1.
+MACRO_REGIME_INSUFFICIENT_MAX_ROWS = 12
+MACRO_REGIME_LOW_CONFIDENCE_MIN_ROWS = 12
+MACRO_REGIME_USABLE_MIN_ROWS = 24
+MACRO_REGIME_RELIABLE_MIN_ROWS = 60
 MACRO_REGIME_NAMES = (
     "goldilocks",
     "reflation",
     "stagflation",
     "recession_disinflation",
+    "neutral_transition",
 )
 
 # FRED series (fallback when project series not used)
@@ -3739,26 +3745,22 @@ def _rolling_zscore(series: pd.Series, *, window: int, min_periods: int) -> pd.S
     return z.replace([np.inf, -np.inf], np.nan)
 
 
-def _macro_regime_label(growth_score: float, inflation_pressure_score: float) -> str | None:
-    if not np.isfinite(growth_score) or not np.isfinite(inflation_pressure_score):
-        return None
-    if growth_score >= 0.0 and inflation_pressure_score < 0.0:
-        return "goldilocks"
-    if growth_score >= 0.0 and inflation_pressure_score >= 0.0:
-        return "reflation"
-    if growth_score < 0.0 and inflation_pressure_score >= 0.0:
-        return "stagflation"
-    return "recession_disinflation"
-
-
 def _macro_quality_status(n_obs: int) -> str:
-    if n_obs <= 0:
+    """Map a monthly observation count to a quality label for ``macro_two_axis_v1``.
+
+    n == 0 -> "no_observations". n < 12 -> "insufficient_data" (estimates
+    suppressed downstream). 12 <= n < 24 -> "low_confidence". 24 <= n < 60 ->
+    "usable". n >= 60 -> "reliable".
+    """
+
+    n = int(n_obs or 0)
+    if n <= 0:
         return "no_observations"
-    if n_obs < MACRO_REGIME_LOW_CONFIDENCE_MIN_ROWS:
-        return "insufficient_observations"
-    if n_obs < MACRO_REGIME_USABLE_MIN_ROWS:
+    if n < MACRO_REGIME_INSUFFICIENT_MAX_ROWS:
+        return "insufficient_data"
+    if n < MACRO_REGIME_USABLE_MIN_ROWS:
         return "low_confidence"
-    if n_obs < MACRO_REGIME_RELIABLE_MIN_ROWS:
+    if n < MACRO_REGIME_RELIABLE_MIN_ROWS:
         return "usable"
     return "reliable"
 
@@ -3965,254 +3967,31 @@ def _macro_policy_signal(regime_betas: dict[str, dict[str, float]], quality_by_r
     }
 
 
-def _macro_axis_frame(factors: pd.DataFrame) -> pd.DataFrame:
-    factors = factors.copy()
-    factors.index = pd.to_datetime(factors.index).tz_localize(None)
-    growth = _rolling_zscore(
-        factors["us_growth"],
-        window=MACRO_REGIME_SCORE_WINDOW_WEEKS,
-        min_periods=MACRO_REGIME_SCORE_MIN_OBS,
-    ) if "us_growth" in factors.columns else pd.Series(index=factors.index, dtype=float)
-    pressure_parts = []
-    for col in ("inflation", "commodity"):
-        if col in factors.columns:
-            pressure_parts.append(
-                _rolling_zscore(
-                    factors[col],
-                    window=MACRO_REGIME_SCORE_WINDOW_WEEKS,
-                    min_periods=MACRO_REGIME_SCORE_MIN_OBS,
-                )
-            )
-    if pressure_parts:
-        inflation_pressure = pd.concat(pressure_parts, axis=1).mean(axis=1, skipna=True)
-    else:
-        inflation_pressure = pd.Series(index=factors.index, dtype=float)
-    out = pd.DataFrame(
-        {
-            "growth_score": growth,
-            "inflation_pressure_score": inflation_pressure,
-        },
-        index=factors.index,
-    )
-    out["regime"] = [
-        _macro_regime_label(g, p)
-        for g, p in zip(out["growth_score"].values, out["inflation_pressure_score"].values)
-    ]
-    return out.dropna(subset=["growth_score", "inflation_pressure_score", "regime"])
-
-
 def macro_regime_diagnostics_from_frames(
-    portfolio_returns: pd.Series,
-    factor_returns: pd.DataFrame,
+    portfolio_returns_monthly: pd.Series,
+    factor_returns_monthly: pd.DataFrame,
+    indicator_panel: pd.DataFrame,
+    indicator_meta: dict[str, Any],
     analysis_end_str: str,
     *,
-    base_window_weeks: int = FACTOR_WEEKS_10Y,
+    neutral_band: float = 0.25,
 ) -> dict[str, Any]:
-    """Diagnostic-only four-regime factor beta/covariance analysis from weekly rows."""
-    if portfolio_returns is None or factor_returns is None or factor_returns.empty:
-        return {
-            "error": "empty_inputs",
-            "axis_model": {"version": MACRO_REGIME_METHOD_VERSION},
-            "method_disclaimer": MACRO_REGIME_METHOD_DISCLAIMER,
-        }
-    end_ts = pd.Timestamp(analysis_end_str)
-    y = pd.Series(portfolio_returns, dtype=float).copy()
-    y.index = pd.to_datetime(y.index).tz_localize(None)
-    factors = factor_returns.copy()
-    factors.index = pd.to_datetime(factors.index).tz_localize(None)
-    factor_cols = [c for c in _macro_order() if c in factors.columns]
-    if len(factor_cols) < 2 or "us_growth" not in factors.columns:
-        return {
-            "error": "missing_required_factor_columns",
-            "axis_model": {"version": MACRO_REGIME_METHOD_VERSION},
-            "factor_order": list(_macro_order()),
-            "method_disclaimer": MACRO_REGIME_METHOD_DISCLAIMER,
-        }
-    common = y.dropna().index.intersection(factors[factor_cols].dropna().index).sort_values()
-    common = common[common <= end_ts + pd.Timedelta(days=6)]
-    if len(common) > int(base_window_weeks):
-        common = common[-int(base_window_weeks):]
-    if len(common) < MACRO_REGIME_SCORE_MIN_OBS:
-        return {
-            "error": "insufficient_common_rows",
-            "n_obs": int(len(common)),
-            "axis_model": {"version": MACRO_REGIME_METHOD_VERSION},
-            "factor_order": list(_macro_order()),
-            "method_disclaimer": MACRO_REGIME_METHOD_DISCLAIMER,
-        }
-    y = y.reindex(common)
-    factors = factors.reindex(common).loc[:, factor_cols]
-    axis = _macro_axis_frame(factors)
-    if axis.empty:
-        return {
-            "error": "insufficient_axis_scores",
-            "n_obs": int(len(common)),
-            "axis_model": {"version": MACRO_REGIME_METHOD_VERSION},
-            "factor_order": list(_macro_order()),
-            "method_disclaimer": MACRO_REGIME_METHOD_DISCLAIMER,
-        }
-    valid_idx = axis.index.intersection(y.dropna().index).intersection(factors.dropna().index).sort_values()
-    y_valid = y.reindex(valid_idx).astype(float)
-    x_valid = factors.reindex(valid_idx).loc[:, factor_cols].astype(float)
-    axis = axis.reindex(valid_idx)
+    """Thin shim over `src.stress_factors_macro.macro_two_axis_diagnostics_from_frames`.
 
-    base_reg = _macro_regression_from_arrays(
-        y_valid.values.astype(float),
-        x_valid.values.astype(float),
-        factor_cols,
-        label="base_10y",
-        n_obs=len(y_valid),
+    Kept on this module so historical import sites and external consumers continue
+    to resolve `from src.stress_factors import macro_regime_diagnostics_from_frames`.
+    """
+
+    from src.stress_factors_macro import macro_two_axis_diagnostics_from_frames
+
+    return macro_two_axis_diagnostics_from_frames(
+        portfolio_returns_monthly,
+        factor_returns_monthly,
+        indicator_panel,
+        indicator_meta or {},
+        analysis_end_str,
+        neutral_band=neutral_band,
     )
-    base_betas = {k: float(v) for k, v in (base_reg.get("betas") or {}).items()}
-    for beta_key in _macro_beta_keys():
-        base_betas.setdefault(beta_key, 0.0)
-    base_cov = _macro_covariance_matrix(x_valid)
-
-    latest = axis.iloc[-1]
-    latest_growth = float(latest["growth_score"])
-    latest_pressure = float(latest["inflation_pressure_score"])
-    current_regime = str(latest["regime"])
-
-    regimes: dict[str, Any] = {}
-    regime_betas_used: dict[str, dict[str, float]] = {}
-    quality_by_regime: dict[str, str] = {}
-    label_rows = []
-    for dt, row in axis.iterrows():
-        label_rows.append(
-            {
-                "date": pd.Timestamp(dt).strftime("%Y-%m-%d"),
-                "growth_score": float(row["growth_score"]),
-                "inflation_pressure_score": float(row["inflation_pressure_score"]),
-                "regime": str(row["regime"]),
-            }
-        )
-
-    for regime in MACRO_REGIME_NAMES:
-        regime_idx = axis.index[axis["regime"] == regime]
-        n_obs = int(len(regime_idx))
-        quality = _macro_quality_status(n_obs)
-        quality_by_regime[regime] = quality
-        raw_reg = None
-        raw_cov = None
-        used_betas = dict(base_betas)
-        used_cov = base_cov.copy()
-        historical_estimate_available = n_obs >= MACRO_REGIME_LOW_CONFIDENCE_MIN_ROWS
-        shrinkage_weight = None
-        if n_obs >= MACRO_REGIME_USABLE_MIN_ROWS:
-            y_r = y_valid.reindex(regime_idx).astype(float)
-            x_r = x_valid.reindex(regime_idx).loc[:, factor_cols].astype(float)
-            raw_reg = _macro_regression_from_arrays(y_r.values, x_r.values, factor_cols, label=regime, n_obs=n_obs)
-            raw_cov = _macro_covariance_matrix(x_r)
-            used_betas = {k: float(v) for k, v in (raw_reg.get("betas") or {}).items()}
-            for beta_key in _macro_beta_keys():
-                used_betas.setdefault(beta_key, 0.0)
-            used_cov = raw_cov
-            used_fallback = False
-            fallback_method = None
-        elif n_obs >= MACRO_REGIME_LOW_CONFIDENCE_MIN_ROWS:
-            y_r = y_valid.reindex(regime_idx).astype(float)
-            x_r = x_valid.reindex(regime_idx).loc[:, factor_cols].astype(float)
-            raw_reg = _macro_regression_from_arrays(y_r.values, x_r.values, factor_cols, label=regime, n_obs=n_obs)
-            raw_cov = _macro_covariance_matrix(x_r)
-            raw_betas = {k: float(v) for k, v in (raw_reg.get("betas") or {}).items()}
-            shrinkage_weight = float(np.clip((n_obs - MACRO_REGIME_LOW_CONFIDENCE_MIN_ROWS) / 16.0, 0.0, 1.0))
-            used_betas = {
-                beta_key: shrinkage_weight * raw_betas.get(beta_key, 0.0)
-                + (1.0 - shrinkage_weight) * base_betas.get(beta_key, 0.0)
-                for beta_key in _macro_beta_keys()
-            }
-            used_cov = raw_cov * shrinkage_weight + base_cov * (1.0 - shrinkage_weight)
-            used_fallback = True
-            fallback_method = "linear_shrinkage_to_base_10y"
-        elif n_obs == 0:
-            used_fallback = True
-            fallback_method = "no_observations_base_10y_reference_only"
-        else:
-            used_fallback = True
-            fallback_method = "fallback_to_base_10y"
-
-        factor_regression = (
-            raw_reg if raw_reg is not None and n_obs >= MACRO_REGIME_USABLE_MIN_ROWS else _macro_empty_regression(regime, n_obs, used_betas)
-        )
-        if raw_reg is not None and n_obs < MACRO_REGIME_USABLE_MIN_ROWS:
-            factor_regression["raw_regime_estimate"] = raw_reg
-        factor_regression["betas"] = {k: float(used_betas.get(k, 0.0)) for k in _macro_beta_keys()}
-        factor_regression["estimate_used"] = "raw_regime" if not used_fallback else "base_10y_or_shrunk"
-
-        regimes[regime] = {
-            "label": regime,
-            "n_obs": n_obs,
-            "quality_status": quality,
-            "historical_estimate_available": bool(historical_estimate_available),
-            "used_fallback": bool(used_fallback),
-            "fallback_method": fallback_method,
-            "fallback_target": "base_10y" if used_fallback else None,
-            "shrinkage_weight_regime": shrinkage_weight,
-            "factor_regression": factor_regression,
-            "factor_covariance": _macro_covariance_block(
-                used_cov,
-                label=regime,
-                n_obs=n_obs,
-                source="raw_regime" if not used_fallback else str(fallback_method),
-            ),
-            "portfolio_factor_risk": _macro_factor_risk(used_cov, used_betas, label=regime),
-            "portfolio_factor_rc": _macro_factor_rc(used_cov, used_betas),
-        }
-        if raw_cov is not None and used_fallback:
-            regimes[regime]["raw_factor_covariance"] = _macro_covariance_block(
-                raw_cov,
-                label=f"{regime}_raw",
-                n_obs=n_obs,
-                source="raw_regime_low_confidence",
-            )
-        regime_betas_used[regime] = used_betas
-
-    current_quality = quality_by_regime.get(current_regime, "unknown")
-    near_boundary = abs(latest_growth) < MACRO_REGIME_NEUTRAL_BAND or abs(latest_pressure) < MACRO_REGIME_NEUTRAL_BAND
-    if near_boundary:
-        confidence = "low"
-    elif current_quality == "reliable":
-        confidence = "high"
-    elif current_quality == "usable":
-        confidence = "medium"
-    else:
-        confidence = "low"
-    available_count = sum(1 for q in quality_by_regime.values() if q in {"usable", "reliable"})
-    by_quality = {q: list(quality_by_regime.values()).count(q) for q in sorted(set(quality_by_regime.values()))}
-
-    return {
-        "method": "macro_regime_diagnostics_from_weekly_market_proxies",
-        "axis_model": {
-            "version": MACRO_REGIME_METHOD_VERSION,
-            "growth_proxy": "rolling_zscore(us_growth)",
-            "inflation_pressure_proxy": "average rolling z-score of available inflation and commodity",
-            "score_window_weeks": int(MACRO_REGIME_SCORE_WINDOW_WEEKS),
-            "score_min_observations": int(MACRO_REGIME_SCORE_MIN_OBS),
-            "neutral_band_abs": float(MACRO_REGIME_NEUTRAL_BAND),
-        },
-        "method_disclaimer": MACRO_REGIME_METHOD_DISCLAIMER,
-        "factor_order": list(_macro_order()),
-        "beta_order": _macro_beta_keys(),
-        "axis_scores_latest": {
-            "date": pd.Timestamp(axis.index[-1]).strftime("%Y-%m-%d"),
-            "growth_score": latest_growth,
-            "inflation_pressure_score": latest_pressure,
-        },
-        "current_regime": current_regime,
-        "regime_confidence": confidence,
-        "regime_transition_warning": bool(near_boundary),
-        "available_regimes_count": int(available_count),
-        "available_regimes_by_quality": by_quality,
-        "regime_counts": {regime: int((axis["regime"] == regime).sum()) for regime in MACRO_REGIME_NAMES},
-        "base_10y": {
-            "n_obs": int(len(y_valid)),
-            "factor_regression": base_reg,
-            "factor_covariance": _macro_covariance_block(base_cov, label="base_10y", n_obs=len(y_valid), source="base_10y"),
-        },
-        "regimes": regimes,
-        "stability_summary": _macro_policy_signal(regime_betas_used, quality_by_regime),
-        "labels_weekly": label_rows,
-    }
 
 
 def macro_regime_diagnostics(
@@ -4221,95 +4000,34 @@ def macro_regime_diagnostics(
     tickers: list[str],
     analysis_end_str: str,
     factor_returns: pd.DataFrame | None = None,
+    factor_returns_monthly: pd.DataFrame | None = None,
+    neutral_band: float = 0.25,
 ) -> dict[str, Any]:
-    rows = _portfolio_factor_weekly_ols_rows(
+    """Thin shim over `src.stress_factors_macro.macro_two_axis_diagnostics`.
+
+    The legacy keyword ``factor_returns`` is preserved for back-compat with
+    ``run_optimization.py`` / ``run_report.py`` call sites that pass weekly factor
+    returns; in v1 those are ignored (the new monthly path builds its own factor
+    matrix). New callers should use ``factor_returns_monthly`` explicitly.
+    """
+
+    from src.stress_factors_macro import macro_two_axis_diagnostics
+
+    return macro_two_axis_diagnostics(
         weights=weights,
         tickers=tickers,
         analysis_end_str=analysis_end_str,
-        window_weeks=FACTOR_WEEKS_10Y,
-        factor_columns=BASE_FACTOR_COLUMN_ORDER,
-    )
-    if rows.get("error"):
-        return {
-            "error": rows.get("error"),
-            "n_obs": rows.get("n_obs", 0),
-            "axis_model": {"version": MACRO_REGIME_METHOD_VERSION},
-            "method_disclaimer": MACRO_REGIME_METHOD_DISCLAIMER,
-        }
-    dates = pd.to_datetime(rows["dates"])
-    y = pd.Series(rows["y"], index=dates, dtype=float)
-    factors = pd.DataFrame(rows["X"], index=dates, columns=list(rows["factor_cols"]))
-    return macro_regime_diagnostics_from_frames(
-        y,
-        factors,
-        analysis_end_str,
-        base_window_weeks=FACTOR_WEEKS_10Y,
+        factor_returns_monthly=factor_returns_monthly,
+        neutral_band=neutral_band,
     )
 
 
 def macro_regime_csv_frames(report: dict[str, Any]) -> dict[str, pd.DataFrame]:
-    """Return CSV-ready DataFrames for macro regime diagnostics."""
-    if not isinstance(report, dict) or report.get("error"):
-        return {}
-    frames: dict[str, pd.DataFrame] = {}
-    labels = report.get("labels_weekly") or []
-    if labels:
-        frames["macro_regime_labels_weekly.csv"] = pd.DataFrame(labels)
+    """Thin shim over `src.stress_factors_macro.macro_regime_csv_frames`."""
 
-    betas_rows: list[dict[str, Any]] = []
-    cov_rows: list[dict[str, Any]] = []
-    rc_rows: list[dict[str, Any]] = []
-    regimes = report.get("regimes") or {}
-    for regime, payload in regimes.items():
-        if not isinstance(payload, dict):
-            continue
-        quality = payload.get("quality_status")
-        used_fallback = payload.get("used_fallback")
-        fallback_method = payload.get("fallback_method")
-        betas = ((payload.get("factor_regression") or {}).get("betas") or {})
-        for beta_key, value in betas.items():
-            betas_rows.append(
-                {
-                    "regime": regime,
-                    "beta_key": beta_key,
-                    "beta": value,
-                    "quality_status": quality,
-                    "used_fallback": used_fallback,
-                    "fallback_method": fallback_method,
-                }
-            )
-        matrix = ((payload.get("factor_covariance") or {}).get("matrix") or {})
-        for factor_i, row in matrix.items():
-            if not isinstance(row, dict):
-                continue
-            for factor_j, value in row.items():
-                cov_rows.append(
-                    {
-                        "regime": regime,
-                        "factor_i": factor_i,
-                        "factor_j": factor_j,
-                        "covariance": value,
-                        "quality_status": quality,
-                        "used_fallback": used_fallback,
-                    }
-                )
-        for row in payload.get("portfolio_factor_rc") or []:
-            if isinstance(row, dict):
-                rc_rows.append(
-                    {
-                        "regime": regime,
-                        "quality_status": quality,
-                        "used_fallback": used_fallback,
-                        **row,
-                    }
-                )
-    if betas_rows:
-        frames["macro_regime_factor_betas.csv"] = pd.DataFrame(betas_rows)
-    if cov_rows:
-        frames["macro_regime_factor_covariance.csv"] = pd.DataFrame(cov_rows)
-    if rc_rows:
-        frames["macro_regime_factor_rc.csv"] = pd.DataFrame(rc_rows)
-    return frames
+    from src.stress_factors_macro import macro_regime_csv_frames as _impl
+
+    return _impl(report)
 
 
 def _factor_decomp_cross_check(

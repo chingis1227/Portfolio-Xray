@@ -429,58 +429,69 @@ CSV artifacts written under `results_csv/` include:
 
 `stress_report.json.macro_regime_diagnostics` is diagnostic-only and non-binding. It does not change optimizer behavior, mandate status, stress pass/fail, weight release, or the primary raw 5Y/10Y beta outputs.
 
-The method version is `internal_market_proxy_v1`. The required disclaimer is:
+The method version is `macro_two_axis_v1`. The required disclaimer is:
 
-`This is an internal market-proxy regime diagnostic model, not a full macroeconomic regime model. It is diagnostic-only and does not affect optimizer weights, mandate gates, or stress pass/fail.`
+`macro_two_axis_v1 is a diagnostic-only macro regime classifier. It does not affect optimizer weights, mandate gates, stress pass/fail, or weight release.`
 
-The model uses internal market proxies, not a full macroeconomic data set. It does not use PMI, NFP, CPI/PCE, wages, copper, credit impulse, or GDP nowcast inputs in this MVP.
+The model is a **two-axis macro classifier on monthly data**. Indicators are loaded through a layered source resolver covering FRED → Yahoo Finance → official CSV (Atlanta Fed GDPNow, NY Fed Nowcast historical) → official API → keyed third-party API → manual CSV (`cache/macro/<key>.csv`, override via `<KEY>_CSV_PATH` env var). When a source is unavailable (missing API key, network failure, paywalled) the indicator becomes `available=False` and the model degrades to a lower `coverage_tier` without crashing the run.
 
-Axis model:
+Indicator blocks (each with one or two indicators):
 
-- `growth_score`: rolling z-score of `us_growth`.
-- `inflation_pressure_proxy`: average rolling z-score of available `inflation` and `commodity`.
-- Rolling window: 156 weekly rows.
-- Minimum observations for score: 52 weekly rows.
-- Neutral band: absolute score below 0.25. The neutral band does not create neutral regimes; it only lowers confidence and raises transition warnings.
+- Growth — `growth_business_activity` (ISM Manuf PMI, ISM Services PMI), `growth_labor` (PAYEMS, UNRATE), `growth_consumer` (Real PCE, Real DPI), `growth_credit` (HY OAS, NFCI), `growth_nowcast` (Atlanta Fed GDPNow, NY Fed Nowcast — optional and historical-only).
+- Inflation — `core_inflation` (Core CPI 3m annualised, Core PCE 3m annualised), `headline_inflation` (Headline CPI 3m annualised, WTI oil monthly average then 3m change), `wages` (Average Hourly Earnings 3m yoy, ECI quarterly forward-filled to monthly yoy), `inflation_expectations` (5y breakeven, 5y5y forward breakeven), `business_price_pressure` (ISM Manuf Prices Paid, ISM Services Prices Paid).
 
-Regime labels:
+Transforms applied per indicator: `level` (month-end unless an indicator-specific aggregation overrides it, e.g. WTI uses monthly average), and a momentum component derived as `m_over_m_change`, `three_m_avg_mom` (PAYEMS), `three_m_change` (UNRATE, sign inverted), `three_m_yoy` (real PCE/DPI, AHE), `three_m_annualized` (core/headline CPI, core PCE), `oil_monthly_avg_three_m_change` (WTI), or `quarterly_ffill_monthly_yoy` (ECI). Each indicator and its momentum series are normalised by a **rolling 10-year monthly z-score** with `window = 120` and `min_periods = 60`, then bucketed at `±0.5` to a `+1 / 0 / −1` signal. Block sub-scores are the sign-adjusted mean of available indicator signals. Composite axis scores are blended `0.6 · momentum_block_average + 0.4 · level_block_average`.
 
-- `goldilocks`: `growth_score >= 0` and `inflation_pressure_score < 0`.
-- `reflation`: `growth_score >= 0` and `inflation_pressure_score >= 0`.
-- `stagflation`: `growth_score < 0` and `inflation_pressure_score >= 0`.
-- `recession_disinflation`: `growth_score < 0` and `inflation_pressure_score < 0`.
+Regime labels (5 values; the previous 4-quadrant set plus `neutral_transition`):
 
-Top-level output fields include `axis_model.version`, `axis_scores_latest.growth_score`, `axis_scores_latest.inflation_pressure_score`, `current_regime`, `regime_confidence`, `regime_transition_warning`, `available_regimes_count`, `available_regimes_by_quality`, `regime_counts`, `base_10y`, `regimes`, `stability_summary`, and `method_disclaimer`.
+- `goldilocks`: `growth_score > 0` and `inflation_score < 0`, both `|score| > neutral_band`.
+- `reflation`: `growth_score > 0` and `inflation_score >= 0`, both `|score| > neutral_band`.
+- `stagflation`: `growth_score < 0` and `inflation_score >= 0`, both `|score| > neutral_band`.
+- `recession_disinflation`: `growth_score < 0` and `inflation_score < 0`, both `|score| > neutral_band`.
+- `neutral_transition`: `|growth_score| <= neutral_band` or `|inflation_score| <= neutral_band` (the neutral band now produces an explicit label, not only a confidence flag).
+
+Default `neutral_band = 0.25`. Implementations must verify regime stability under sensitivity testing at `±0.20`, `±0.25`, and `±0.35`.
+
+**Look-ahead protection**: a 1-month publication lag — labels at month `t` use composite scores computed from data ending at month `t − 1`. Release-date / vintage-accurate handling is **out of scope for v1**; this is documented in `axis_model.look_ahead_caveat`.
+
+Top-level output fields include `axis_model.version`, `axis_model.frequency = "monthly"`, `axis_model.neutral_band_abs`, `axis_model.score_blend`, `axis_model.look_ahead_protection`, `axis_model.look_ahead_caveat`, `axis_scores_latest.growth_score`, `axis_scores_latest.inflation_score`, `axis_scores_latest.growth_blocks`, `axis_scores_latest.inflation_blocks`, `current_regime`, `regime_confidence`, `confidence_level`, `regime_transition_warning`, `score_lag_months = 1`, `score_start_date`, `regime_label_start_date`, `available_blocks`, `missing_blocks`, `optional_blocks_missing`, `planned_not_loaded`, `coverage_ratio`, `coverage_tier`, `data_sources_used`, `available_regimes_count`, `available_regimes_by_quality`, `regime_counts`, `base_10y`, `regimes`, `stability_summary`, `labels_monthly`, and `method_disclaimer`.
+
+`coverage_tier` semantics:
+
+- `full`: every block listed above has at least one resolved indicator.
+- `extended`: at most two blocks unresolved and all required (non-optional) blocks resolved.
+- `reduced`: more than two blocks unresolved but more than five blocks still resolved.
+- `fred_baseline`: only FRED-resolvable blocks resolved (i.e. `data_sources_used` values are all `fred` or `unavailable`), regardless of count.
+- `insufficient`: fewer than five blocks resolved.
+
+Optional blocks (`growth_nowcast`) missing alone (e.g. NY Fed Nowcast was discontinued in 2021 and is `historical_only`) does not pull `confidence_level` below `medium` on its own.
 
 Confidence rules:
 
-- If `abs(growth_score) < 0.25` or `abs(inflation_pressure_score) < 0.25`, `regime_confidence = low` and `regime_transition_warning = true`.
-- If both scores are outside the neutral band and current regime quality is `usable`, `regime_confidence = medium`.
-- If both scores are outside the neutral band and current regime quality is `reliable`, `regime_confidence = high`.
-- Otherwise confidence is `low`.
+- If either composite score has `|score| <= neutral_band`, `confidence_level = low` and `regime_transition_warning = true`.
+- Otherwise `confidence_level` follows `coverage_tier`: `full` / `extended` → `high`, `reduced` / `fred_baseline` → `medium`, `insufficient` → `low`.
 
-Regime quality by number of weekly rows:
+Per-regime n_obs gating in monthly observations:
 
 - `0`: `no_observations`.
-- `1` to `35`: `insufficient_observations`.
-- `36` to `51`: `low_confidence`.
-- `52` to `103`: `usable`.
-- `104+`: `reliable`.
-
-For regimes with at least 52 rows, the report uses raw regime-specific betas, factor covariance, factor risk, and factor RC. For regimes with 36 to 51 rows, it computes raw estimates and then linearly shrinks betas and covariance toward `base_10y` with `shrinkage_weight_regime = clip((n_obs - 36) / 16, 0, 1)`. For regimes with fewer than 36 rows, it does not use raw regime estimates as standalone and falls back to `base_10y`. For regimes with zero rows, it reports `no_observations`, `historical_estimate_available = false`, `used_fallback = true`, `fallback_method = no_observations_base_10y_reference_only`, and `fallback_target = base_10y`.
+- `1` to `11`: `insufficient_data`. `factor_regression`, `factor_covariance`, `portfolio_factor_risk`, and `portfolio_factor_rc` are reported as suppressed (status `insufficient_data`, no estimates).
+- `12` to `23`: `low_confidence`. The block uses linear shrinkage to `base_10y` with `shrinkage_weight_regime = clip((n_obs - 12) / 12, 0, 1)`.
+- `24` to `59`: `usable`. The block uses raw regime-specific estimates.
+- `60+`: `reliable`. The block uses raw regime-specific estimates and is suitable for analytical use.
 
 `portfolio_factor_rc` must include `rc_share`, `rc_sign`, and `interpretation`. Positive RC means `risk_adder`; negative RC means `hedging_or_diversifying_contribution`.
 
-`stability_summary` uses a global MVP beta-gap threshold of 0.25 and must include the warning `Stability threshold is a global MVP heuristic, not factor-specific calibration.` Policy signals are `green/general_signal`, `yellow/regime_only`, and `red/do_not_use_as_single_signal`.
+`stability_summary` uses a global beta-gap threshold of 0.25 and must include the warning `Stability threshold is a global heuristic, not factor-specific calibration.` Policy signals are `green/general_signal`, `yellow/regime_only`, and `red/do_not_use_as_single_signal`.
 
 CSV artifacts written under `results_csv/` include:
 
-- `macro_regime_labels_weekly.csv`
-- `macro_regime_factor_betas.csv`
-- `macro_regime_factor_covariance.csv`
-- `macro_regime_factor_rc.csv`
+- `macro_regime_labels_monthly.csv` (replaces the previous `macro_regime_labels_weekly.csv`).
+- `macro_regime_factor_betas.csv` (filename preserved; contents now monthly).
+- `macro_regime_factor_covariance.csv` (filename preserved; contents now monthly).
+- `macro_regime_factor_rc.csv` (filename preserved; contents now monthly).
+- `macro_regime_indicator_panel.csv` (new; per-month indicator level/momentum and z-scores).
 
-`stress_commentary.txt` must report current regime, latest growth and inflation-pressure scores, regime confidence, transition warning, available usable/reliable regimes, top unstable betas, policy signal counts, the stability-threshold warning, and the method disclaimer.
+`stress_commentary.txt` must report method version, current regime, latest growth and inflation scores, the per-block sub-scores when present, `coverage_tier` with available/missing/optional blocks, regime confidence, transition warning, available usable/reliable regimes, the ECI quarterly-ffill caveat when ECI is available, the look-ahead lag/no-vintage caveat, top unstable betas, policy signal counts, the stability-threshold warning, and the method disclaimer.
 
 ---
 

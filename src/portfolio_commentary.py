@@ -760,19 +760,65 @@ def _append_macro_regime_section(lines: list[str], st: dict[str, Any]) -> None:
     if not isinstance(mr, dict) or not mr:
         return
     lines.append("Macro regime diagnostics")
+    axis_model = mr.get("axis_model") or {}
+    version = axis_model.get("version") or "macro_two_axis_v1"
     if mr.get("error"):
-        lines.append(f"Macro regime diagnostics unavailable: {mr.get('error')}")
+        lines.append(
+            f"Macro regime diagnostics unavailable ({version}): {mr.get('error')}"
+        )
+        coverage_tier = mr.get("coverage_tier") or "insufficient"
+        lines.append(f"Coverage tier: {coverage_tier}.")
+        disclaimer = mr.get("method_disclaimer")
+        if disclaimer:
+            lines.append(str(disclaimer))
         lines.append("")
         return
 
     scores = mr.get("axis_scores_latest") or {}
     lines.append(
+        f"Method={version}; frequency={axis_model.get('frequency', 'monthly')}; "
+        f"score_lag_months={mr.get('score_lag_months', 1)}."
+    )
+    lines.append(
         f"Current regime: {mr.get('current_regime', 'n/a')}; "
         f"growth_score={_fmt_float(scores.get('growth_score'), 3)}; "
-        f"inflation_pressure_score={_fmt_float(scores.get('inflation_pressure_score'), 3)}; "
-        f"confidence={mr.get('regime_confidence', 'unknown')}; "
+        f"inflation_score={_fmt_float(scores.get('inflation_score'), 3)}; "
+        f"confidence={mr.get('confidence_level', mr.get('regime_confidence', 'unknown'))}; "
         f"transition_warning={mr.get('regime_transition_warning', False)}."
     )
+    growth_blocks = scores.get("growth_blocks") or {}
+    inflation_blocks = scores.get("inflation_blocks") or {}
+    if isinstance(growth_blocks, dict) and growth_blocks:
+        parts = ", ".join(
+            f"{k}={_fmt_float(v, 3)}" for k, v in growth_blocks.items() if v is not None
+        )
+        if parts:
+            lines.append(f"Growth block sub-scores: {parts}.")
+    if isinstance(inflation_blocks, dict) and inflation_blocks:
+        parts = ", ".join(
+            f"{k}={_fmt_float(v, 3)}" for k, v in inflation_blocks.items() if v is not None
+        )
+        if parts:
+            lines.append(f"Inflation block sub-scores: {parts}.")
+
+    coverage_tier = mr.get("coverage_tier") or "unknown"
+    coverage_ratio = mr.get("coverage_ratio")
+    available_blocks = mr.get("available_blocks") or []
+    missing_blocks = mr.get("missing_blocks") or []
+    optional_missing = mr.get("optional_blocks_missing") or []
+    lines.append(
+        f"Coverage tier: {coverage_tier}; ratio={_fmt_float(coverage_ratio, 2)}; "
+        f"available_blocks={len(available_blocks)}; missing_blocks={len(missing_blocks)}; "
+        f"optional_blocks_missing={len(optional_missing)}."
+    )
+    if missing_blocks:
+        lines.append("Missing blocks: " + ", ".join(str(b) for b in missing_blocks) + ".")
+    if optional_missing:
+        lines.append(
+            "Optional blocks missing (do not lower confidence): "
+            + ", ".join(str(b) for b in optional_missing) + "."
+        )
+
     by_quality = mr.get("available_regimes_by_quality") or {}
     usable = int(by_quality.get("usable", 0) or 0)
     reliable = int(by_quality.get("reliable", 0) or 0)
@@ -780,6 +826,14 @@ def _append_macro_regime_section(lines: list[str], st: dict[str, Any]) -> None:
         f"Available usable/reliable regimes: usable={usable}, reliable={reliable}, "
         f"total={mr.get('available_regimes_count', 0)}."
     )
+    sources = mr.get("data_sources_used") or {}
+    if isinstance(sources, dict):
+        eci_source = sources.get("eci")
+        if eci_source and eci_source != "unavailable":
+            lines.append(
+                "ECI is quarterly; values are forward-filled to monthly — treat the "
+                "monthly precision as illustrative."
+            )
     stability = mr.get("stability_summary") or {}
     top_unstable = stability.get("top_unstable_betas") or []
     if isinstance(top_unstable, list) and top_unstable:
@@ -802,6 +856,9 @@ def _append_macro_regime_section(lines: list[str], st: dict[str, Any]) -> None:
     warning = stability.get("warning")
     if warning:
         lines.append(str(warning))
+    look_ahead = axis_model.get("look_ahead_caveat")
+    if look_ahead:
+        lines.append(str(look_ahead))
     disclaimer = mr.get("method_disclaimer")
     if disclaimer:
         lines.append(str(disclaimer))
