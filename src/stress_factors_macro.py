@@ -248,16 +248,22 @@ INDICATORS: tuple[IndicatorSpec, ...] = (
         axis="growth",
         role="optional",
         sign="+",
-        frequency="M",
-        transform="level_and_three_m_change",
+        frequency="Q",
+        transform="quarterly_ffill_monthly_three_m_change",
         source_chain=(
+            # FRED hosts the Atlanta Fed GDPNow nowcast as a quarterly series
+            # (Percent Change at Annual Rate, SAAR) — see
+            # https://fred.stlouisfed.org/series/GDPNOW. We forward-fill to
+            # monthly so it can be aligned with the rest of the panel; the
+            # commentary explicitly marks the monthly precision as illustrative.
+            SourceSpec(kind="fred", locator="GDPNOW"),
             SourceSpec(
                 kind="official_csv",
                 locator="https://www.atlantafed.org/-/media/documents/cqer/researchcq/gdpnow/RealGDPTrackingSlides.csv",
             ),
             SourceSpec(kind="manual_csv", locator=""),
         ),
-        description="Atlanta Fed GDPNow (level + 3m change)",
+        description="Atlanta Fed GDPNow nowcast via FRED:GDPNOW (quarterly, ffilled to monthly; level + 3m change)",
     ),
     IndicatorSpec(
         key="ny_fed_nowcast",
@@ -486,21 +492,51 @@ def _t_oil_monthly_avg_three_m_change(raw: pd.Series) -> dict[str, pd.Series]:
     return {"level": monthly_avg, "momentum": monthly_avg.diff(3)}
 
 
-def _t_quarterly_ffill_monthly_yoy(raw: pd.Series) -> dict[str, pd.Series]:
+def _quarterly_ffill_to_monthly(raw: pd.Series) -> pd.Series:
+    """Resample a quarterly series to month-end with forward-fill.
+
+    Used for series published quarterly (ECI) or whose published cadence is
+    quarterly with intra-quarter revisions (Atlanta Fed GDPNow on FRED). The
+    forward-filled monthly series carries no extra information between official
+    releases — caller-side commentary must label this as illustrative monthly
+    precision.
+    """
+
     if raw is None or raw.empty:
-        return {"level": pd.Series(dtype=float), "momentum": pd.Series(dtype=float)}
+        return pd.Series(dtype=float)
     s = raw.dropna().astype(float)
     s.index = pd.to_datetime(s.index).tz_localize(None)
     if s.empty:
-        return {"level": pd.Series(dtype=float), "momentum": pd.Series(dtype=float)}
+        return pd.Series(dtype=float)
     monthly_index = pd.date_range(
         s.index.min().to_period("M").to_timestamp("M"),
         s.index.max().to_period("M").to_timestamp("M"),
         freq=MONTH_END_FREQ,
     )
-    monthly = s.resample(MONTH_END_FREQ).last().reindex(monthly_index).ffill()
+    return s.resample(MONTH_END_FREQ).last().reindex(monthly_index).ffill()
+
+
+def _t_quarterly_ffill_monthly_yoy(raw: pd.Series) -> dict[str, pd.Series]:
+    monthly = _quarterly_ffill_to_monthly(raw)
+    if monthly.empty:
+        return {"level": pd.Series(dtype=float), "momentum": pd.Series(dtype=float)}
     momentum = monthly / monthly.shift(12) - 1.0
     return {"level": monthly, "momentum": momentum}
+
+
+def _t_quarterly_ffill_monthly_three_m_change(raw: pd.Series) -> dict[str, pd.Series]:
+    """Quarterly source -> monthly ffill -> level + 3m change.
+
+    Suitable for series whose value is already a level / annualised growth rate
+    (e.g. GDPNow nowcast: quarterly forecast of annualised real GDP growth).
+    Taking YoY of an already-annualised number would double-count, so we use
+    a 3-month change of the level instead.
+    """
+
+    monthly = _quarterly_ffill_to_monthly(raw)
+    if monthly.empty:
+        return {"level": pd.Series(dtype=float), "momentum": pd.Series(dtype=float)}
+    return {"level": monthly, "momentum": monthly.diff(3)}
 
 
 _TRANSFORMS: dict[str, TransformFn] = {
@@ -511,6 +547,7 @@ _TRANSFORMS: dict[str, TransformFn] = {
     "three_m_annualized": _t_three_m_annualized,
     "oil_monthly_avg_three_m_change": _t_oil_monthly_avg_three_m_change,
     "quarterly_ffill_monthly_yoy": _t_quarterly_ffill_monthly_yoy,
+    "quarterly_ffill_monthly_three_m_change": _t_quarterly_ffill_monthly_three_m_change,
 }
 
 

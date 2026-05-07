@@ -834,6 +834,13 @@ def _append_macro_regime_section(lines: list[str], st: dict[str, Any]) -> None:
                 "ECI is quarterly; values are forward-filled to monthly — treat the "
                 "monthly precision as illustrative."
             )
+        gdpnow_source = sources.get("gdpnow")
+        if gdpnow_source and gdpnow_source != "unavailable":
+            lines.append(
+                "GDPNow (Atlanta Fed) is published quarterly via FRED:GDPNOW; "
+                "values are forward-filled to monthly — treat intra-quarter "
+                "monthly steps as illustrative, not a new release."
+            )
     stability = mr.get("stability_summary") or {}
     top_unstable = stability.get("top_unstable_betas") or []
     if isinstance(top_unstable, list) and top_unstable:

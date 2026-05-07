@@ -72,6 +72,12 @@ optimizer weights, mandate gates, stress pass/fail, or weight release.
   Evidence: FRED legacy series like `NAPM` (ISM Manufacturing PMI) end before 2017;
   ISM website is paywalled. Implementation must accept manual CSV fallback at
   `cache/macro/<key>.csv` (path overridable via `<KEY>_CSV_PATH` env var).
+- Update (2026-05-07): Atlanta Fed GDPNow is **available via FRED:GDPNOW** as a
+  quarterly nowcast (Percent Change at Annual Rate, SAAR). Source:
+  https://fred.stlouisfed.org/series/GDPNOW. Wired into the resolver as the
+  primary source for the `gdpnow` indicator with frequency `Q` and a new
+  `quarterly_ffill_monthly_three_m_change` transform; the Atlanta Fed direct
+  CSV remains as a secondary source.
 - Observation: NY Fed Nowcast was discontinued in 2021.
   Evidence: NY Fed publishes the historical CSV but no current values; therefore it
   must be tagged `historical_only` and its absence at the current month must not

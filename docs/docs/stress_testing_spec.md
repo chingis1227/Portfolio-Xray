@@ -437,10 +437,10 @@ The model is a **two-axis macro classifier on monthly data**. Indicators are loa
 
 Indicator blocks (each with one or two indicators):
 
-- Growth — `growth_business_activity` (ISM Manuf PMI, ISM Services PMI), `growth_labor` (PAYEMS, UNRATE), `growth_consumer` (Real PCE, Real DPI), `growth_credit` (HY OAS, NFCI), `growth_nowcast` (Atlanta Fed GDPNow, NY Fed Nowcast — optional and historical-only).
+- Growth — `growth_business_activity` (ISM Manuf PMI, ISM Services PMI), `growth_labor` (PAYEMS, UNRATE), `growth_consumer` (Real PCE, Real DPI), `growth_credit` (HY OAS, NFCI), `growth_nowcast` (Atlanta Fed GDPNow via FRED:GDPNOW — quarterly, ffilled to monthly; NY Fed Nowcast historical-only — optional block).
 - Inflation — `core_inflation` (Core CPI 3m annualised, Core PCE 3m annualised), `headline_inflation` (Headline CPI 3m annualised, WTI oil monthly average then 3m change), `wages` (Average Hourly Earnings 3m yoy, ECI quarterly forward-filled to monthly yoy), `inflation_expectations` (5y breakeven, 5y5y forward breakeven), `business_price_pressure` (ISM Manuf Prices Paid, ISM Services Prices Paid).
 
-Transforms applied per indicator: `level` (month-end unless an indicator-specific aggregation overrides it, e.g. WTI uses monthly average), and a momentum component derived as `m_over_m_change`, `three_m_avg_mom` (PAYEMS), `three_m_change` (UNRATE, sign inverted), `three_m_yoy` (real PCE/DPI, AHE), `three_m_annualized` (core/headline CPI, core PCE), `oil_monthly_avg_three_m_change` (WTI), or `quarterly_ffill_monthly_yoy` (ECI). Each indicator and its momentum series are normalised by a **rolling 10-year monthly z-score** with `window = 120` and `min_periods = 60`, then bucketed at `±0.5` to a `+1 / 0 / −1` signal. Block sub-scores are the sign-adjusted mean of available indicator signals. Composite axis scores are blended `0.6 · momentum_block_average + 0.4 · level_block_average`.
+Transforms applied per indicator: `level` (month-end unless an indicator-specific aggregation overrides it, e.g. WTI uses monthly average), and a momentum component derived as `m_over_m_change`, `three_m_avg_mom` (PAYEMS), `three_m_change` (UNRATE, sign inverted), `three_m_yoy` (real PCE/DPI, AHE), `three_m_annualized` (core/headline CPI, core PCE), `oil_monthly_avg_three_m_change` (WTI), `quarterly_ffill_monthly_yoy` (ECI; YoY of a level), or `quarterly_ffill_monthly_three_m_change` (GDPNow nowcast; level + 3m change of an already-annualised growth rate). Each indicator and its momentum series are normalised by a **rolling 10-year monthly z-score** with `window = 120` and `min_periods = 60`, then bucketed at `±0.5` to a `+1 / 0 / −1` signal. Block sub-scores are the sign-adjusted mean of available indicator signals. Composite axis scores are blended `0.6 · momentum_block_average + 0.4 · level_block_average`.
 
 Regime labels (5 values; the previous 4-quadrant set plus `neutral_transition`):
 
@@ -491,7 +491,7 @@ CSV artifacts written under `results_csv/` include:
 - `macro_regime_factor_rc.csv` (filename preserved; contents now monthly).
 - `macro_regime_indicator_panel.csv` (new; per-month indicator level/momentum and z-scores).
 
-`stress_commentary.txt` must report method version, current regime, latest growth and inflation scores, the per-block sub-scores when present, `coverage_tier` with available/missing/optional blocks, regime confidence, transition warning, available usable/reliable regimes, the ECI quarterly-ffill caveat when ECI is available, the look-ahead lag/no-vintage caveat, top unstable betas, policy signal counts, the stability-threshold warning, and the method disclaimer.
+`stress_commentary.txt` must report method version, current regime, latest growth and inflation scores, the per-block sub-scores when present, `coverage_tier` with available/missing/optional blocks, regime confidence, transition warning, available usable/reliable regimes, the ECI quarterly-ffill caveat when ECI is available, the GDPNow quarterly-ffill caveat when GDPNow is available, the look-ahead lag/no-vintage caveat, top unstable betas, policy signal counts, the stability-threshold warning, and the method disclaimer.
 
 ---
 

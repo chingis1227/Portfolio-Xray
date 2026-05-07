@@ -114,6 +114,32 @@ def test_oil_monthly_avg_three_m_change_uses_monthly_average() -> None:
     )
 
 
+def test_quarterly_ffill_monthly_three_m_change_for_gdpnow() -> None:
+    """GDPNow nowcast (quarterly, annualised growth rate) -> ffill to monthly,
+    level + 3m change. Intra-quarter months must repeat the latest quarter."""
+
+    quarterly_idx = pd.date_range("2020-03-31", periods=12, freq="QE")
+    raw = pd.Series(
+        [2.0, -2.5, 6.0, 4.0, 3.5, 2.8, 1.5, 2.2, 3.0, 2.5, 3.7, 1.2],
+        index=quarterly_idx,
+    )
+    out = sfm.apply_transform("quarterly_ffill_monthly_three_m_change", raw)
+    level = out["level"]
+    momentum = out["momentum"]
+    # Resampled to monthly frequency.
+    assert level.index.inferred_freq in {"M", "ME"}
+    # Forward fill: month following a quarter end repeats the quarter value.
+    q1 = pd.Timestamp("2020-03-31")
+    apr = pd.Timestamp("2020-04-30")
+    may = pd.Timestamp("2020-05-31")
+    jun = pd.Timestamp("2020-06-30")
+    assert pytest.approx(float(level.loc[apr])) == 2.0
+    assert pytest.approx(float(level.loc[may])) == 2.0
+    assert pytest.approx(float(level.loc[jun])) == -2.5  # next quarter end
+    # 3-month change of an already-annualised growth rate, not yoy.
+    assert pytest.approx(float(momentum.loc[jun]), rel=1e-6) == float(level.loc[jun]) - float(level.loc[q1])
+
+
 def test_quarterly_ffill_monthly_yoy_for_eci() -> None:
     """ECI is quarterly; transform should ffill to monthly and apply 12m yoy."""
 
