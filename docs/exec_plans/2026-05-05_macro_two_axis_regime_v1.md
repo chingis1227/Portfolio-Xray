@@ -77,7 +77,11 @@ optimizer weights, mandate gates, stress pass/fail, or weight release.
   https://fred.stlouisfed.org/series/GDPNOW. Wired into the resolver as the
   primary source for the `gdpnow` indicator with frequency `Q` and a new
   `quarterly_ffill_monthly_three_m_change` transform; the Atlanta Fed direct
-  CSV remains as a secondary source.
+  CSV remains as a secondary source. The Atlanta Fed landing page
+  https://www.atlantafed.org/research-and-data/data/gdpnow is recorded in the
+  source chain as a documented reference / human-facing fallback (HTML page,
+  not a CSV; the resolver records it under `sources_attempted` so a reviewer
+  can trace where to look manually if FRED and the direct CSV both fail).
 - Observation: NY Fed Nowcast was discontinued in 2021.
   Evidence: NY Fed publishes the historical CSV but no current values; therefore it
   must be tagged `historical_only` and its absence at the current month must not

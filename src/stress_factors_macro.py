@@ -251,19 +251,32 @@ INDICATORS: tuple[IndicatorSpec, ...] = (
         frequency="Q",
         transform="quarterly_ffill_monthly_three_m_change",
         source_chain=(
-            # FRED hosts the Atlanta Fed GDPNow nowcast as a quarterly series
-            # (Percent Change at Annual Rate, SAAR) — see
+            # Primary: FRED hosts the Atlanta Fed GDPNow nowcast as a quarterly
+            # series (Percent Change at Annual Rate, SAAR) — see
             # https://fred.stlouisfed.org/series/GDPNOW. We forward-fill to
             # monthly so it can be aligned with the rest of the panel; the
             # commentary explicitly marks the monthly precision as illustrative.
             SourceSpec(kind="fred", locator="GDPNOW"),
+            # Fallback: Atlanta Fed direct CSV (RealGDPTrackingSlides.csv).
             SourceSpec(
                 kind="official_csv",
                 locator="https://www.atlantafed.org/-/media/documents/cqer/researchcq/gdpnow/RealGDPTrackingSlides.csv",
             ),
+            # Reference / human-facing landing page: Atlanta Fed GDPNow
+            # https://www.atlantafed.org/research-and-data/data/gdpnow
+            # (HTML, not a CSV; recorded so it appears in `sources_attempted`
+            # for traceability when the FRED and direct-CSV sources fail).
+            SourceSpec(
+                kind="official_csv",
+                locator="https://www.atlantafed.org/research-and-data/data/gdpnow",
+            ),
             SourceSpec(kind="manual_csv", locator=""),
         ),
-        description="Atlanta Fed GDPNow nowcast via FRED:GDPNOW (quarterly, ffilled to monthly; level + 3m change)",
+        description=(
+            "Atlanta Fed GDPNow nowcast via FRED:GDPNOW (quarterly, ffilled "
+            "to monthly; level + 3m change). Reference page: "
+            "https://www.atlantafed.org/research-and-data/data/gdpnow"
+        ),
     ),
     IndicatorSpec(
         key="ny_fed_nowcast",
