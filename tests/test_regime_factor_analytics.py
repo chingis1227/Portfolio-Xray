@@ -256,6 +256,64 @@ def test_ledoit_wolf_covariance_when_complete_cases_exist():
     assert 0.0 <= float(a_cov["ledoit_wolf_shrinkage"]) <= 1.0
 
 
+def test_ten_year_portfolio_window_metadata_and_csv():
+    """Label history can exceed portfolio overlap; stats use sliced returns only."""
+
+    from src.regime_factor_analytics import REGIME_FACTOR_PORTFOLIO_WINDOW_NOTE
+    from src.stress_factors import FACTOR_MONTHS_10Y, FACTOR_WEEKS_10Y
+
+    n_full = FACTOR_MONTHS_10Y + 60
+    idx_full = _month_end_index(n_full, start_year=2000)
+    regimes_full = _make_labels(idx_full, ("goldilocks",))
+    idx_10y = idx_full[-FACTOR_MONTHS_10Y:]
+    rng = np.random.default_rng(99)
+    assets_full = pd.DataFrame(
+        rng.normal(0.005, 0.02, (len(idx_full), 2)),
+        index=idx_full,
+        columns=["A", "B"],
+    )
+    factors_full = _factor_frame(idx_full, seed=100)
+    assets_10y = assets_full.loc[idx_10y]
+    factors_10y = factors_full.loc[idx_10y]
+    span = {
+        "start": idx_full.min().strftime("%Y-%m-%d"),
+        "end": idx_full.max().strftime("%Y-%m-%d"),
+        "n_months": int(len(idx_full)),
+    }
+    window = {
+        "label": "10Y",
+        "target_months": int(FACTOR_MONTHS_10Y),
+        "target_weeks": int(FACTOR_WEEKS_10Y),
+        "analysis_end": idx_10y.max().strftime("%Y-%m-%d"),
+        "disclaimer": "unit test disclaimer",
+    }
+    out = regime_factor_analytics(
+        monthly_returns=assets_10y,
+        monthly_factor_returns=factors_10y,
+        regime_labels=regimes_full,
+        weights={"A": 0.5, "B": 0.5},
+        regime_label_history_span=span,
+        portfolio_regime_analytics_window=window,
+    )
+    assert out["n_obs_total"] == FACTOR_MONTHS_10Y
+    assert out["regimes"]["goldilocks"]["n_obs"] == FACTOR_MONTHS_10Y
+    assert out["regime_label_history_span"]["n_months"] == n_full
+    win_out = out["portfolio_regime_analytics_window"]
+    assert win_out["label"] == "10Y"
+    assert win_out["actual_n_periods"] == FACTOR_MONTHS_10Y
+    assert out["portfolio_regime_analytics_note"] == REGIME_FACTOR_PORTFOLIO_WINDOW_NOTE
+    slim = regime_factor_analytics_for_stress_report(out)
+    assert slim["regime_label_history_span"]["n_months"] == n_full
+    assert slim["portfolio_regime_analytics_window"]["actual_n_periods"] == FACTOR_MONTHS_10Y
+    summ = regime_factor_analytics_summary(out)
+    assert summ["portfolio_regime_analytics_window"]["target_weeks"] == FACTOR_WEEKS_10Y
+    frames = regime_factor_analytics_csv_frames(out)
+    cov = frames["regime_asset_covariance.csv"]
+    assert not cov.empty
+    assert int(cov["regime_label_history_n_months"].iloc[0]) == n_full
+    assert cov["portfolio_regime_analytics_window_label"].iloc[0] == "10Y"
+
+
 def test_confidence_split_warns_without_series():
     idx = _month_end_index(25)
     regimes = _make_labels(idx, ("goldilocks",))
@@ -269,4 +327,14 @@ def test_confidence_split_warns_without_series():
         confidence_level=None,
     )
     assert any("confidence_split_requested" in w for w in out.get("warnings", []))
+
+
+def test_weekly_gating_uses_month_equivalent():
+    from src.stress_factors_macro import macro_quality_status, macro_regime_obs_month_equivalent
+
+    assert macro_regime_obs_month_equivalent(49, frequency="weekly") == 11
+    assert macro_quality_status(49, frequency="weekly") == "insufficient_data"
+    assert macro_regime_obs_month_equivalent(50, frequency="weekly") == 12
+    assert macro_quality_status(50, frequency="weekly") == "low_confidence"
+    assert macro_quality_status(10, frequency="monthly") == "insufficient_data"
 

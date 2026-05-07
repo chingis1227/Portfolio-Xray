@@ -107,6 +107,7 @@ from src.stress_factors import (
     rolling_beta_summary,
     write_rolling_betas_plot_html,
     write_rolling_betas_plot_pngs,
+    asset_weekly_returns_from_daily,
 )
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
 from src.windows import slice_window
@@ -117,6 +118,7 @@ from src.regime_factor_analytics import (
     regime_factor_analytics_for_stress_report,
     regime_factor_analytics_summary,
 )
+from src.data_yf import download_all
 
 
 def parse_args() -> argparse.Namespace:
@@ -819,28 +821,105 @@ def run_portfolio_report_for_weights(
             idx = pd.to_datetime([row["date"] for row in lm])
             regime_ser = pd.Series([str(row.get("regime", "")) for row in lm], index=idx)
             trans_ser = pd.Series([bool(row.get("transition_flag", False)) for row in lm], index=idx)
+            regime_label_history_span = {
+                "start": idx.min().strftime("%Y-%m-%d"),
+                "end": idx.max().strftime("%Y-%m-%d"),
+                "n_months": int(len(idx)),
+            }
+            portfolio_regime_analytics_window = {
+                "label": "10Y",
+                "target_months": int(FACTOR_MONTHS_10Y),
+                "target_weeks": int(FACTOR_WEEKS_10Y),
+                "analysis_end": str(analysis_end_str),
+                "disclaimer": (
+                    "regime_label_history_span may be longer than the portfolio analytics slice; "
+                    "portfolio_regime_analytics_window is fixed to 10Y (~120 months or ~520 weeks) "
+                    "ending at analysis_end, matching the standard return/metrics/covariance/"
+                    "factor analytics horizon."
+                ),
+            }
             asset_cols = [t for t in tickers if t in monthly_returns.columns]
             monthly_asset = monthly_returns[asset_cols].copy()
             monthly_asset.index = (
                 pd.to_datetime(monthly_asset.index).tz_localize(None).normalize()
             )
             start_m = monthly_asset.index.min().strftime("%Y-%m-%d")
-            monthly_factors = build_factor_matrix_monthly(start_m, analysis_end_str)
-            if monthly_factors is not None and not monthly_factors.empty:
-                monthly_factors.index = (
-                    pd.to_datetime(monthly_factors.index).tz_localize(None).normalize()
-                )
-            rfa_payload = regime_factor_analytics(
-                monthly_returns=monthly_asset,
-                monthly_factor_returns=monthly_factors,
-                regime_labels=regime_ser,
-                transition_flag=trans_ser,
-                confidence_level=None,
-                weights=weights,
-                enable_transition_split=False,
-                enable_confidence_split=False,
-                frequency="monthly",
+            end_ts = pd.Timestamp(analysis_end_str).normalize()
+            end_dl = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+
+            daily = download_all(asset_cols, start_m, end_dl)
+            daily_prices: dict[str, pd.Series] = {}
+            for ticker in asset_cols:
+                df = daily.get(ticker)
+                if df is None or df.empty or "Close" not in df.columns:
+                    continue
+                daily_prices[ticker] = df["Close"].copy()
+
+            weekly_asset = asset_weekly_returns_from_daily(daily_prices, start_m, end_dl)
+            weekly_factors = build_factor_matrix(start_m, analysis_end_str)
+            use_weekly = (
+                weekly_asset is not None
+                and not weekly_asset.empty
+                and weekly_factors is not None
+                and not weekly_factors.empty
             )
+            if use_weekly:
+                weekly_asset = weekly_asset.copy()
+                weekly_asset.index = (
+                    pd.to_datetime(weekly_asset.index).tz_localize(None).normalize()
+                )
+                weekly_factors = weekly_factors.copy()
+                weekly_factors.index = (
+                    pd.to_datetime(weekly_factors.index).tz_localize(None).normalize()
+                )
+                common_w = weekly_asset.index.intersection(weekly_factors.index).sort_values()
+                common_w = common_w[common_w <= end_ts + pd.Timedelta(days=6)]
+                common_w = common_w[-FACTOR_WEEKS_10Y:]
+                weekly_asset = weekly_asset.loc[common_w]
+                weekly_factors = weekly_factors.loc[common_w]
+                rfa_payload = regime_factor_analytics(
+                    monthly_returns=weekly_asset,
+                    monthly_factor_returns=weekly_factors,
+                    regime_labels=regime_ser,
+                    transition_flag=trans_ser,
+                    confidence_level=None,
+                    weights=weights,
+                    enable_transition_split=False,
+                    enable_confidence_split=False,
+                    frequency="weekly",
+                    weekly_alignment="forward_fill_monthly_label",
+                    regime_label_history_span=regime_label_history_span,
+                    portfolio_regime_analytics_window=portfolio_regime_analytics_window,
+                )
+            else:
+                logger.warning(
+                    "Regime factor analytics: weekly asset/factor history unavailable; using monthly alignment."
+                )
+                monthly_factors = build_factor_matrix_monthly(start_m, analysis_end_str)
+                if monthly_factors is not None and not monthly_factors.empty:
+                    monthly_factors.index = (
+                        pd.to_datetime(monthly_factors.index).tz_localize(None).normalize()
+                    )
+                monthly_asset = slice_window(
+                    monthly_asset, end_ts, FACTOR_MONTHS_10Y
+                )
+                if monthly_factors is not None and not monthly_factors.empty:
+                    monthly_factors = slice_window(
+                        monthly_factors, end_ts, FACTOR_MONTHS_10Y
+                    )
+                rfa_payload = regime_factor_analytics(
+                    monthly_returns=monthly_asset,
+                    monthly_factor_returns=monthly_factors,
+                    regime_labels=regime_ser,
+                    transition_flag=trans_ser,
+                    confidence_level=None,
+                    weights=weights,
+                    enable_transition_split=False,
+                    enable_confidence_split=False,
+                    frequency="monthly",
+                    regime_label_history_span=regime_label_history_span,
+                    portfolio_regime_analytics_window=portfolio_regime_analytics_window,
+                )
             stress_report["regime_factor_analytics"] = regime_factor_analytics_for_stress_report(
                 rfa_payload
             )

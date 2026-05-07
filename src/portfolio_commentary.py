@@ -968,6 +968,46 @@ def _append_macro_regime_section(lines: list[str], st: dict[str, Any]) -> None:
     lines.append("")
 
 
+def _append_regime_factor_analytics_window_section(
+    lines: list[str], st: dict[str, Any]
+) -> None:
+    """Disclose label-history span vs fixed 10Y portfolio regime analytics window."""
+
+    rfa = st.get("regime_factor_analytics")
+    if not isinstance(rfa, dict) or not rfa:
+        return
+    lines.append("Regime factor analytics (portfolio window vs label history)")
+    span = rfa.get("regime_label_history_span") or {}
+    win = rfa.get("portfolio_regime_analytics_window") or {}
+    note = rfa.get("portfolio_regime_analytics_note")
+    disc = win.get("disclaimer") if isinstance(win, dict) else None
+    if not isinstance(span, dict):
+        span = {}
+    if not isinstance(win, dict):
+        win = {}
+    lines.append(
+        "macro_two_axis_v1 regime labels in macro_regime_diagnostics may cover a longer "
+        f"history ({span.get('start', 'n/a')}–{span.get('end', 'n/a')}, "
+        f"{span.get('n_months', 'n/a')} scored months in labels_monthly) than the "
+        "portfolio-facing regime analytics slice."
+    )
+    lines.append(
+        f"portfolio_regime_analytics_window is {win.get('label', '10Y')} ending at "
+        f"{win.get('analysis_end', 'n/a')} (target ~{win.get('target_weeks', 'n/a')} weeks / "
+        f"{win.get('target_months', 'n/a')} months); actual overlap in this run: "
+        f"{win.get('actual_data_start', 'n/a')}–{win.get('actual_data_end', 'n/a')} "
+        f"({win.get('actual_n_periods', 'n/a')} {win.get('frequency', '')} periods). "
+        "Per-regime n_obs and all regime-specific covariances, correlations, betas, "
+        "portfolio exposures, variance contributions, and average factor moves refer "
+        "only to that overlap."
+    )
+    if note:
+        lines.append(str(note))
+    elif disc:
+        lines.append(str(disc))
+    lines.append("")
+
+
 def _top_factor_rows_text(rows: Any, field: str, *, limit: int = 3) -> str:
     if not isinstance(rows, list) or not rows:
         return "none"
@@ -1268,6 +1308,7 @@ def write_stress_commentary(
     _append_factor_beta_adjusted_overlay_section(lines, st)
     _append_factor_covariance_section(lines, st)
     _append_macro_regime_section(lines, st)
+    _append_regime_factor_analytics_window_section(lines, st)
     _append_factor_variance_decomposition_section(lines, st)
     _append_portfolio_pca_section(lines, st)
     lines.append("")

@@ -5,11 +5,12 @@ existing asset/factor return infrastructure to produce, per primary regime:
 
 - asset covariance and correlation matrices (Ledoit–Wolf shrinkage when possible),
 - factor covariance and correlation matrices (Ledoit–Wolf when possible; nine-factor model with oil),
-- per-asset OLS factor betas with HAC Newey–West inference,
+- per-asset OLS factor betas with HAC Newey–West inference (monthly or weekly rows),
 - bottom-up portfolio factor exposures (weighted sum of asset betas),
 - factor variance contribution shares (β_pf' Σ_factor β_pf decomposition),
 - average factor moves (mean / median),
-- quality / confidence metadata based on sample size (gating 12 / 24 / 60).
+- quality / confidence metadata based on sample size (gating 12 / 24 / 60 **month-equivalent**
+  when ``frequency='weekly'``: weekly ``n_obs`` is mapped via ``round(n * 12 / 52)``).
 
 The block is **diagnostic-only**: it does not change the macro classifier,
 optimizer weights, mandate gates, stress pass/fail, or weight release. See
@@ -37,6 +38,7 @@ from src.stress_factors_macro import (
     MACRO_REGIME_RELIABLE_MIN_ROWS,
     MACRO_REGIME_USABLE_MIN_ROWS,
     macro_quality_status,
+    macro_regime_obs_month_equivalent,
 )
 
 _LOG = logging.getLogger(__name__)
@@ -44,6 +46,55 @@ _LOG = logging.getLogger(__name__)
 REGIME_FACTOR_ANALYTICS_VERSION = "regime_factor_analytics_v1"
 REGIME_FACTOR_HAC_LAG_CAP_MONTHLY = 12
 REGIME_FACTOR_HAC_LAG_CAP_WEEKLY = 15
+
+# Portfolio-facing regime statistics use the same 10Y horizon as standard returns /
+# metrics / covariance / factor analytics; macro labels may still be computed on
+# longer macro history (`regime_label_history_span` in JSON/CSV).
+REGIME_FACTOR_PORTFOLIO_WINDOW_NOTE = (
+    "macro_two_axis_v1 may emit regime labels over a longer history "
+    "(regime_label_history_span) than the portfolio analytics slice; "
+    "portfolio_regime_analytics_window is 10Y ending at analysis_end "
+    "(~520 weekly or 120 monthly periods), aligned with the standard "
+    "return/metrics/covariance/factor horizons."
+)
+
+
+def _finalize_portfolio_regime_window(payload: dict[str, Any], *, freq_norm: str) -> None:
+    """Attach actual overlap dates to ``portfolio_regime_analytics_window``."""
+
+    win_in = payload.get("portfolio_regime_analytics_window")
+    win: dict[str, Any] = dict(win_in) if isinstance(win_in, dict) else {}
+    win["actual_data_start"] = payload.get("data_start")
+    win["actual_data_end"] = payload.get("data_end")
+    win["actual_n_periods"] = int(payload.get("n_obs_total") or 0)
+    win["frequency"] = str(freq_norm)
+    payload["portfolio_regime_analytics_window"] = win
+
+
+def _payload_csv_window_columns(payload: dict[str, Any]) -> dict[str, Any]:
+    """Flatten label-history vs portfolio-window metadata for CSV row replication."""
+
+    span = payload.get("regime_label_history_span") or {}
+    win = payload.get("portfolio_regime_analytics_window") or {}
+    if not isinstance(span, dict):
+        span = {}
+    if not isinstance(win, dict):
+        win = {}
+    return {
+        "regime_label_history_start": span.get("start"),
+        "regime_label_history_end": span.get("end"),
+        "regime_label_history_n_months": span.get("n_months"),
+        "portfolio_regime_analytics_window_label": win.get("label"),
+        "portfolio_regime_analytics_target_months": win.get("target_months"),
+        "portfolio_regime_analytics_target_weeks": win.get("target_weeks"),
+        "portfolio_regime_analytics_analysis_end": win.get("analysis_end"),
+        "portfolio_regime_analytics_actual_start": win.get("actual_data_start"),
+        "portfolio_regime_analytics_actual_end": win.get("actual_data_end"),
+        "portfolio_regime_analytics_actual_n_periods": win.get("actual_n_periods"),
+        "portfolio_regime_analytics_frequency": win.get("frequency"),
+        "portfolio_regime_analytics_disclaimer": win.get("disclaimer"),
+        "portfolio_regime_analytics_note": payload.get("portfolio_regime_analytics_note"),
+    }
 
 
 def _newey_west_max_lags(n: int, *, cap: int) -> int:
@@ -244,16 +295,18 @@ def _asset_factor_beta_row(
     factor_cols: list[str],
     beta_keys: list[str],
     max_lags: int,
+    frequency: str = "monthly",
 ) -> dict[str, Any] | None:
     """Run a single per-asset OLS with HAC inference inside one regime."""
 
     aligned = pd.concat([y.rename("__y__"), X.loc[:, factor_cols]], axis=1).dropna()
     n = int(len(aligned))
-    if n < MACRO_REGIME_INSUFFICIENT_MAX_ROWS:
+    n_gate = macro_regime_obs_month_equivalent(n, frequency=frequency)
+    if n_gate < MACRO_REGIME_INSUFFICIENT_MAX_ROWS:
         return {
             "asset": asset,
             "n_obs": n,
-            "quality_status": macro_quality_status(n),
+            "quality_status": macro_quality_status(n, frequency=frequency),
             "available": False,
             "reason": "insufficient_data",
         }
@@ -264,7 +317,7 @@ def _asset_factor_beta_row(
         return {
             "asset": asset,
             "n_obs": n,
-            "quality_status": macro_quality_status(n),
+            "quality_status": macro_quality_status(n, frequency=frequency),
             "available": False,
             "reason": "ols_failed",
         }
@@ -274,7 +327,7 @@ def _asset_factor_beta_row(
     cls_ci_low = out["ci_low"]
     cls_ci_high = out["ci_high"]
     hac = out["hac"]
-    quality = macro_quality_status(n)
+    quality = macro_quality_status(n, frequency=frequency)
     not_for_optimization = quality in {"insufficient_data", "low_confidence"}
     return {
         "asset": asset,
@@ -306,9 +359,18 @@ def _asset_factor_beta_row(
 
 
 def _asset_covariance_block(
-    asset_returns: pd.DataFrame, *, regime: str, n_obs: int
+    asset_returns: pd.DataFrame,
+    *,
+    regime: str,
+    n_obs: int,
+    frequency: str = "monthly",
 ) -> dict[str, Any]:
-    if asset_returns is None or asset_returns.empty or n_obs < MACRO_REGIME_INSUFFICIENT_MAX_ROWS:
+    n_gate = macro_regime_obs_month_equivalent(int(n_obs), frequency=frequency)
+    if (
+        asset_returns is None
+        or asset_returns.empty
+        or n_gate < MACRO_REGIME_INSUFFICIENT_MAX_ROWS
+    ):
         return {"available": False, "n_obs": int(n_obs)}
     cleaned = asset_returns.dropna(axis=1, how="all")
     if cleaned.shape[1] < 2:
@@ -334,9 +396,15 @@ def _asset_covariance_block(
 
 
 def _factor_covariance_block(
-    factors: pd.DataFrame, *, regime: str, n_obs: int, factor_cols: list[str]
+    factors: pd.DataFrame,
+    *,
+    regime: str,
+    n_obs: int,
+    factor_cols: list[str],
+    frequency: str = "monthly",
 ) -> dict[str, Any]:
-    if factors is None or factors.empty or n_obs < MACRO_REGIME_INSUFFICIENT_MAX_ROWS:
+    n_gate = macro_regime_obs_month_equivalent(int(n_obs), frequency=frequency)
+    if factors is None or factors.empty or n_gate < MACRO_REGIME_INSUFFICIENT_MAX_ROWS:
         return {"available": False, "n_obs": int(n_obs), "factors": list(factor_cols)}
     cleaned = factors.reindex(columns=factor_cols)
     cov, corr, cov_meta = _covariance_with_ledoit_wolf(cleaned, label=f"factor:{regime}")
@@ -555,11 +623,13 @@ def _compute_regime_block(
     beta_keys: list[str],
     weights: dict[str, float] | None,
     hac_lag_cap: int,
+    frequency: str = "monthly",
     transition_split: str | None = None,
     confidence_split: str | None = None,
 ) -> dict[str, Any]:
     n = int(len(regime_dates))
-    quality = macro_quality_status(n)
+    quality = macro_quality_status(n, frequency=frequency)
+    n_gate = macro_regime_obs_month_equivalent(n, frequency=frequency)
     block = _empty_regime_block(regime)
     block["transition_split"] = transition_split
     block["confidence_split"] = confidence_split
@@ -573,9 +643,10 @@ def _compute_regime_block(
     max_lags = _newey_west_max_lags(n, cap=hac_lag_cap)
     block["hac_max_lags"] = int(max_lags)
 
-    if n < MACRO_REGIME_INSUFFICIENT_MAX_ROWS:
+    if n_gate < MACRO_REGIME_INSUFFICIENT_MAX_ROWS:
         block["warnings"].append(
-            "n_obs<12: estimates suppressed (insufficient_data)."
+            "Insufficient history for regime bucket (below ~12 month-equivalent observations; "
+            "for weekly analytics, n_obs counts weeks). Estimates suppressed."
         )
         return block
 
@@ -584,17 +655,19 @@ def _compute_regime_block(
     block["not_for_optimization"] = bool(not_for_optimization)
     if quality == "low_confidence":
         block["warnings"].append(
-            "12<=n_obs<24: low_confidence; regime estimates not for optimization."
+            "Low confidence (~12–23 month-equivalent observations); regime estimates not for optimization."
         )
 
     a_slice = asset_returns.reindex(regime_dates)
     f_slice = factor_returns.reindex(regime_dates).loc[:, factor_cols]
 
-    block["asset_covariance"] = _asset_covariance_block(a_slice, regime=regime, n_obs=n)
+    block["asset_covariance"] = _asset_covariance_block(
+        a_slice, regime=regime, n_obs=n, frequency=frequency
+    )
     block["asset_covariance_available"] = bool(block["asset_covariance"].get("available"))
 
     block["factor_covariance"] = _factor_covariance_block(
-        f_slice, regime=regime, n_obs=n, factor_cols=factor_cols
+        f_slice, regime=regime, n_obs=n, factor_cols=factor_cols, frequency=frequency
     )
     block["factor_covariance_available"] = bool(block["factor_covariance"].get("available"))
 
@@ -610,6 +683,7 @@ def _compute_regime_block(
             factor_cols=factor_cols,
             beta_keys=beta_keys,
             max_lags=max_lags,
+            frequency=frequency,
         )
         if row is not None:
             asset_betas[str(ticker)] = row
@@ -669,6 +743,8 @@ def regime_factor_analytics(
     enable_confidence_split: bool = False,
     frequency: str = "monthly",
     weekly_alignment: str = "forward_fill_monthly_label",
+    regime_label_history_span: dict[str, Any] | None = None,
+    portfolio_regime_analytics_window: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Compute the full ``regime_factor_analytics_v1`` payload.
 
@@ -693,6 +769,13 @@ def regime_factor_analytics(
     weights:
         Current portfolio weights. Used only for the bottom-up portfolio factor
         exposure and the variance contribution decomposition.
+    regime_label_history_span:
+        Optional metadata for the **full** monthly regime label series (e.g. first/
+        last scored month and count). Does not change alignment; for disclosure only.
+    portfolio_regime_analytics_window:
+        Optional metadata describing the fixed **10Y** portfolio analytics horizon
+        (targets, ``analysis_end``, disclaimer). ``actual_*`` fields are filled
+        from the realized overlap before return.
     """
 
     factor_cols = _factor_columns()
@@ -731,6 +814,24 @@ def regime_factor_analytics(
             name="regime",
         ).dropna().astype(str).sort_index()
         regime_labels = labels_naive.reindex(target_index, method="ffill")
+        if transition_flag is not None:
+            tf_ff = pd.Series(
+                transition_flag.values,
+                index=pd.Index(
+                    _coerce_index_to_naive_timestamps(transition_flag.index)
+                ).normalize(),
+                name="transition_flag",
+            ).sort_index()
+            transition_flag = tf_ff.reindex(target_index, method="ffill")
+        if confidence_level is not None:
+            cl_ff = pd.Series(
+                confidence_level.values,
+                index=pd.Index(
+                    _coerce_index_to_naive_timestamps(confidence_level.index)
+                ).normalize(),
+                name="confidence_level",
+            ).sort_index()
+            confidence_level = cl_ff.reindex(target_index, method="ffill")
 
     asset_aligned, factor_aligned, label_aligned, common_index = _align_inputs(
         monthly_returns, monthly_factor_returns, regime_labels
@@ -756,6 +857,13 @@ def regime_factor_analytics(
         "warnings": warnings,
         "hac_lag_cap": int(hac_lag_cap),
     }
+    if regime_label_history_span:
+        payload["regime_label_history_span"] = {
+            k: v for k, v in regime_label_history_span.items() if v is not None
+        }
+    if portfolio_regime_analytics_window:
+        payload["portfolio_regime_analytics_window"] = dict(portfolio_regime_analytics_window)
+    payload["portfolio_regime_analytics_note"] = REGIME_FACTOR_PORTFOLIO_WINDOW_NOTE
 
     if asset_aligned.empty or factor_aligned.empty or label_aligned.empty:
         for regime in MACRO_PRIMARY_REGIME_NAMES:
@@ -763,6 +871,7 @@ def regime_factor_analytics(
         payload["warnings"].append(
             "no_overlap_between_asset_returns_factor_returns_and_regime_labels"
         )
+        _finalize_portfolio_regime_window(payload, freq_norm=freq_norm)
         return payload
 
     # Ensure transition / confidence series, when provided, are aligned to the
@@ -797,6 +906,7 @@ def regime_factor_analytics(
             beta_keys=beta_keys,
             weights=weights_used,
             hac_lag_cap=hac_lag_cap,
+            frequency=freq_norm,
         )
         payload["regimes"][regime] = block
         primary_coverage_total += float(
@@ -830,6 +940,7 @@ def regime_factor_analytics(
                         beta_keys=beta_keys,
                         weights=weights_used,
                         hac_lag_cap=hac_lag_cap,
+                        frequency=freq_norm,
                         transition_split="transition" if flag else "non_transition",
                     )
                     split_section[key] = block
@@ -858,11 +969,13 @@ def regime_factor_analytics(
                         beta_keys=beta_keys,
                         weights=weights_used,
                         hac_lag_cap=hac_lag_cap,
+                        frequency=freq_norm,
                         confidence_split=level,
                     )
                     split_section[key] = block
             payload["splits"]["confidence"] = split_section
 
+    _finalize_portfolio_regime_window(payload, freq_norm=freq_norm)
     return payload
 
 
@@ -956,6 +1069,8 @@ def regime_factor_analytics_csv_frames(
     if not isinstance(payload, dict) or not payload:
         return {}
 
+    gmeta = _payload_csv_window_columns(payload)
+
     rows_asset_cov: list[dict[str, Any]] = []
     rows_asset_corr: list[dict[str, Any]] = []
     rows_factor_cov: list[dict[str, Any]] = []
@@ -977,7 +1092,7 @@ def regime_factor_analytics_csv_frames(
     gk_avg: set[tuple[Any, Any, Any]] = set()
 
     for regime_key, block in _iter_blocks(payload):
-        meta = _meta_row(block, regime_key)
+        meta = {**gmeta, **_meta_row(block, regime_key)}
         gk = _split_group_key(meta)
         a_cov = block.get("asset_covariance") or {}
         acm = _covariance_csv_meta(a_cov if a_cov.get("available") else None)
@@ -1097,7 +1212,7 @@ def regime_factor_analytics_csv_frames(
             gk_avg.add(gk)
 
     for regime_key, block in _iter_blocks(payload):
-        meta = _meta_row(block, regime_key)
+        meta = {**gmeta, **_meta_row(block, regime_key)}
         gk = _split_group_key(meta)
         a_cov_stub = block.get("asset_covariance") or {}
         f_cov_stub = block.get("factor_covariance") or {}
@@ -1270,6 +1385,9 @@ def regime_factor_analytics_for_stress_report(full: dict[str, Any]) -> dict[str,
         "data_start": full.get("data_start"),
         "data_end": full.get("data_end"),
         "n_obs_total": full.get("n_obs_total"),
+        "regime_label_history_span": full.get("regime_label_history_span"),
+        "portfolio_regime_analytics_window": full.get("portfolio_regime_analytics_window"),
+        "portfolio_regime_analytics_note": full.get("portfolio_regime_analytics_note"),
         "weights_used": full.get("weights_used"),
         "weights_sum": full.get("weights_sum"),
         "weights_coverage": full.get("weights_coverage"),
@@ -1289,6 +1407,9 @@ def regime_factor_analytics_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "version": payload.get("version", REGIME_FACTOR_ANALYTICS_VERSION),
         "frequency": payload.get("frequency", "monthly"),
         "weekly_alignment": payload.get("weekly_alignment"),
+        "regime_label_history_span": payload.get("regime_label_history_span"),
+        "portfolio_regime_analytics_window": payload.get("portfolio_regime_analytics_window"),
+        "portfolio_regime_analytics_note": payload.get("portfolio_regime_analytics_note"),
         "data_start": payload.get("data_start"),
         "data_end": payload.get("data_end"),
         "n_obs_total": payload.get("n_obs_total", 0),
@@ -1342,6 +1463,7 @@ def regime_factor_analytics_summary(payload: dict[str, Any]) -> dict[str, Any]:
 
 __all__ = [
     "REGIME_FACTOR_ANALYTICS_VERSION",
+    "REGIME_FACTOR_PORTFOLIO_WINDOW_NOTE",
     "REGIME_FACTOR_HAC_LAG_CAP_MONTHLY",
     "REGIME_FACTOR_HAC_LAG_CAP_WEEKLY",
     "regime_factor_analytics",

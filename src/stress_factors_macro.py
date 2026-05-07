@@ -124,14 +124,30 @@ MACRO_BLOCK_COVERAGE_MIN_DEFAULT = 0.70
 MACRO_BLOCK_STD_MIN_DEFAULT = 0.30
 
 
-def macro_quality_status(n_obs: int) -> str:
-    """Map a monthly observation count to a quality label.
+def macro_regime_obs_month_equivalent(n_obs: int, *, frequency: str = "monthly") -> int:
+    """Convert regime sample size to a **month-equivalent** count for gating.
 
-    See ExecPlan: <12 -> insufficient_data (estimates suppressed),
-    12..23 -> low_confidence, 24..59 -> usable, 60+ -> reliable.
+    Weekly inputs use ~52 weeks per year so thresholds stay comparable to the
+    macro per-regime policy (12 / 24 / 60 **months** of history).
     """
 
     n = int(n_obs or 0)
+    if n <= 0:
+        return 0
+    freq = (frequency or "monthly").strip().lower()
+    if freq == "weekly":
+        return max(1, int(round(n * 12.0 / 52.0)))
+    return n
+
+
+def macro_quality_status(n_obs: int, *, frequency: str = "monthly") -> str:
+    """Map an observation count to a quality label (monthly or week-scaled).
+
+    See ExecPlan: <12 month-equivalent -> insufficient_data (estimates suppressed),
+    12..23 -> low_confidence, 24..59 -> usable, 60+ -> reliable.
+    """
+
+    n = macro_regime_obs_month_equivalent(int(n_obs or 0), frequency=frequency)
     if n <= 0:
         return "no_observations"
     if n < MACRO_REGIME_INSUFFICIENT_MAX_ROWS:
