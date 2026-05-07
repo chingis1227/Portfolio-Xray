@@ -17,6 +17,7 @@ CLI options:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -789,6 +790,12 @@ def run_portfolio_report_for_weights(
         for fname, df in macro_regime_csv_frames(macro_regimes).items():
             if not df.empty:
                 df.round(6).to_csv(output_dir_csv / fname, index=False)
+        quality_summary = (macro_regimes or {}).get("regime_label_quality_check")
+        if isinstance(quality_summary, dict) and quality_summary:
+            (output_dir_final / "regime_label_quality_summary.json").write_text(
+                json.dumps(quality_summary, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
     except Exception as e:
         stress_report["macro_regime_diagnostics_error"] = str(e)
         logger.warning(f"Macro regime diagnostics failed: {e}")

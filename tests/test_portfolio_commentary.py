@@ -431,6 +431,30 @@ def test_write_stress_commentary_from_stress_report() -> None:
                         }
                     ],
                 },
+                "regime_label_quality_check": {
+                    "status": "available",
+                    "by_regime": {
+                        "goldilocks": {"n_obs": 8, "quality_status": "insufficient_data"},
+                        "reflation": {"n_obs": 14, "quality_status": "low_confidence"},
+                        "stagflation": {"n_obs": 32, "quality_status": "usable"},
+                        "recession_disinflation": {"n_obs": 68, "quality_status": "reliable"},
+                        "neutral_transition": {"n_obs": 6, "quality_status": "insufficient_data"},
+                    },
+                    "stability_summary": {
+                        "n_switches": 18,
+                        "avg_months_between_switches": 2.1,
+                        "share_one_month_regimes": 0.31,
+                        "share_regimes_lt_3m": 0.58,
+                    },
+                    "overall_assessment": {
+                        "history_usable": False,
+                        "classifier_noise_warning": True,
+                        "warnings": [
+                            "at least one regime has fewer than 24 observations; treat regime-specific betas/covariance/RC cautiously",
+                            "regime switching appears noisy; classifier may be too unstable for strong regime-specific inference",
+                        ],
+                    },
+                },
             },
             "factor_variance_decomposition": {
                 "status": "available",
@@ -576,6 +600,10 @@ def test_write_stress_commentary_from_stress_report() -> None:
         assert "Top unstable regime betas" in text2
         assert "Look-ahead protection is a 1-month publication lag only" in text2
         assert "macro_two_axis_v1 is a diagnostic-only macro regime classifier" in text2
+        assert "Regime Label Quality Check" in text2
+        assert "weak regimes (<24 obs)" in text2
+        assert "betas/covariance/RC cautiously" in text2
+        assert "classifier may be too noisy" in text2
         assert "Factor variance decomposition" in text2
         assert "variance_scale=weekly" in text2
         assert "Risk adders" in text2

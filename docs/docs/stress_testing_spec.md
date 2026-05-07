@@ -456,6 +456,15 @@ Default `neutral_band = 0.25`. Implementations must verify regime stability unde
 
 Top-level output fields include `axis_model.version`, `axis_model.frequency = "monthly"`, `axis_model.neutral_band_abs`, `axis_model.score_blend`, `axis_model.look_ahead_protection`, `axis_model.look_ahead_caveat`, `axis_scores_latest.growth_score`, `axis_scores_latest.inflation_score`, `axis_scores_latest.growth_blocks`, `axis_scores_latest.inflation_blocks`, `current_regime`, `regime_confidence`, `confidence_level`, `regime_transition_warning`, `score_lag_months = 1`, `score_start_date`, `regime_label_start_date`, `available_blocks`, `missing_blocks`, `optional_blocks_missing`, `planned_not_loaded`, `coverage_ratio`, `coverage_tier`, `data_sources_used`, `available_regimes_count`, `available_regimes_by_quality`, `regime_counts`, `base_10y`, `regimes`, `stability_summary`, `labels_monthly`, and `method_disclaimer`.
 
+`macro_regime_diagnostics` must also include `regime_label_quality_check` (diagnostic-only) with:
+
+- `by_regime`: n_obs, history share, first/last occurrence, episode-duration statistics, and quality status (`insufficient_data` / `low_confidence` / `usable` / `reliable`).
+- `episode_history`: contiguous regime episodes (`regime`, `start_date`, `end_date`, `length_months`).
+- `stability_summary`: switch count, average months between switches, one-month share, <3m share, and warning flags.
+- `macro_sanity_checks`: directional plausibility checks for 2008, 2020, 2021–2022, 2022–2023 windows.
+- `metadata_quality`: distributions for `coverage_tier`, `confidence_level`, and block-availability frequencies.
+- `overall_assessment`: `history_usable`, caution/noise flags, and warning strings.
+
 `coverage_tier` semantics:
 
 - `full`: every block listed above has at least one resolved indicator.
@@ -490,8 +499,15 @@ CSV artifacts written under `results_csv/` include:
 - `macro_regime_factor_covariance.csv` (filename preserved; contents now monthly).
 - `macro_regime_factor_rc.csv` (filename preserved; contents now monthly).
 - `macro_regime_indicator_panel.csv` (new; per-month indicator level/momentum and z-scores).
+- `regime_label_quality_by_regime.csv`.
+- `regime_label_episode_history.csv`.
+- `regime_label_stability_summary.csv`.
+
+Additionally, the run writes `regime_label_quality_summary.json` to the variant output folder (for example `Main portfolio/`).
 
 `stress_commentary.txt` must report method version, current regime, latest growth and inflation scores, the per-block sub-scores when present, `coverage_tier` with available/missing/optional blocks, regime confidence, transition warning, available usable/reliable regimes, the ECI quarterly-ffill caveat when ECI is available, the GDPNow quarterly-ffill caveat when GDPNow is available, the look-ahead lag/no-vintage caveat, top unstable betas, policy signal counts, the stability-threshold warning, and the method disclaimer.
+
+`stress_commentary.txt` must also include a short **Regime Label Quality Check** subsection with usability verdict, reliable/weak regimes, stability/noise interpretation, and explicit cautions when any regime has `<24` observations or switching is flagged as noisy.
 
 ---
 

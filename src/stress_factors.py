@@ -4002,6 +4002,7 @@ def macro_regime_diagnostics(
     factor_returns: pd.DataFrame | None = None,
     factor_returns_monthly: pd.DataFrame | None = None,
     neutral_band: float = 0.25,
+    months_back: int = 420,
 ) -> dict[str, Any]:
     """Thin shim over `src.stress_factors_macro.macro_two_axis_diagnostics`.
 
@@ -4019,6 +4020,7 @@ def macro_regime_diagnostics(
         analysis_end_str=analysis_end_str,
         factor_returns_monthly=factor_returns_monthly,
         neutral_band=neutral_band,
+        months_back=months_back,
     )
 
 

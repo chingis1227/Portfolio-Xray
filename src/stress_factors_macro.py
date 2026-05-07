@@ -76,6 +76,10 @@ MACRO_REGIME_STABILITY_BETA_GAP = 0.25
 MACRO_REGIME_STABILITY_WARNING = (
     "Stability threshold is a global heuristic, not factor-specific calibration."
 )
+MACRO_LABEL_QUALITY_MIN_MAJOR_SHARE = 0.15
+MACRO_LABEL_SWITCH_WARN_AVG_MONTHS_LT = 4.0
+MACRO_LABEL_ONE_MONTH_WARN_SHARE_GT = 0.25
+MACRO_LABEL_LT3M_WARN_SHARE_GT = 0.45
 
 
 def macro_quality_status(n_obs: int) -> str:
@@ -916,6 +920,319 @@ def _confidence_level(
 
 
 # ---------------------------------------------------------------------------
+# Regime label quality diagnostics
+# ---------------------------------------------------------------------------
+
+
+def _regime_episode_runs(labels: pd.Series) -> list[dict[str, Any]]:
+    if labels is None or labels.empty:
+        return []
+    s = pd.Series(labels).dropna().astype(str).sort_index()
+    if s.empty:
+        return []
+    episodes: list[dict[str, Any]] = []
+    current_label: str | None = None
+    start_ts: pd.Timestamp | None = None
+    prev_ts: pd.Timestamp | None = None
+    length = 0
+    for ts, label in s.items():
+        ts = pd.Timestamp(ts)
+        if current_label is None:
+            current_label = label
+            start_ts = ts
+            prev_ts = ts
+            length = 1
+            continue
+        if label == current_label:
+            length += 1
+            prev_ts = ts
+            continue
+        episodes.append(
+            {
+                "regime": current_label,
+                "start_date": start_ts.strftime("%Y-%m-%d") if start_ts is not None else None,
+                "end_date": prev_ts.strftime("%Y-%m-%d") if prev_ts is not None else None,
+                "length_months": int(length),
+            }
+        )
+        current_label = label
+        start_ts = ts
+        prev_ts = ts
+        length = 1
+    episodes.append(
+        {
+            "regime": current_label,
+            "start_date": start_ts.strftime("%Y-%m-%d") if start_ts is not None else None,
+            "end_date": prev_ts.strftime("%Y-%m-%d") if prev_ts is not None else None,
+            "length_months": int(length),
+        }
+    )
+    return episodes
+
+
+def _window_sanity_check(
+    labels: pd.Series,
+    *,
+    window_name: str,
+    start: str,
+    end: str,
+    expected_labels: tuple[str, ...],
+    note: str,
+) -> dict[str, Any]:
+    s = pd.Series(labels).dropna().astype(str).sort_index()
+    s = s.loc[(s.index >= pd.Timestamp(start)) & (s.index <= pd.Timestamp(end))]
+    n_obs = int(len(s))
+    if n_obs <= 0:
+        return {
+            "window": window_name,
+            "start_date": start,
+            "end_date": end,
+            "n_obs": 0,
+            "label_counts": {},
+            "expected_labels": list(expected_labels),
+            "expected_share": None,
+            "assessment": "insufficient_data",
+            "note": note,
+        }
+    counts = s.value_counts().to_dict()
+    expected_count = int(sum(counts.get(lbl, 0) for lbl in expected_labels))
+    expected_share = float(expected_count) / float(n_obs)
+    if expected_share >= 0.50:
+        assessment = "economically_intuitive"
+    elif expected_share <= 0.25:
+        assessment = "questionable"
+    else:
+        assessment = "mixed_or_borderline"
+    return {
+        "window": window_name,
+        "start_date": start,
+        "end_date": end,
+        "n_obs": n_obs,
+        "label_counts": {str(k): int(v) for k, v in counts.items()},
+        "expected_labels": list(expected_labels),
+        "expected_share": expected_share,
+        "assessment": assessment,
+        "note": note,
+    }
+
+
+def build_regime_label_quality_check(
+    *,
+    labels_with_regime: pd.DataFrame,
+    coverage_tier: str,
+    optional_blocks_missing: set[str],
+    available_blocks: set[str],
+    missing_blocks: set[str],
+    neutral_band: float,
+) -> dict[str, Any]:
+    if labels_with_regime is None or labels_with_regime.empty or "regime" not in labels_with_regime.columns:
+        return {
+            "status": "unavailable",
+            "reason": "empty_labels_monthly",
+            "by_regime": {},
+            "episode_history": [],
+            "stability_summary": {},
+            "macro_sanity_checks": {"episodes": []},
+            "metadata_quality": {},
+            "overall_assessment": {
+                "history_usable": False,
+                "should_treat_regime_specific_cautiously": True,
+                "classifier_noise_warning": True,
+                "warnings": ["regime label history unavailable"],
+            },
+        }
+
+    labelled = labels_with_regime.dropna(subset=["regime"]).copy()
+    if labelled.empty:
+        return {
+            "status": "unavailable",
+            "reason": "no_regime_labels_after_filtering",
+            "by_regime": {},
+            "episode_history": [],
+            "stability_summary": {},
+            "macro_sanity_checks": {"episodes": []},
+            "metadata_quality": {},
+            "overall_assessment": {
+                "history_usable": False,
+                "should_treat_regime_specific_cautiously": True,
+                "classifier_noise_warning": True,
+                "warnings": ["regime label history unavailable"],
+            },
+        }
+
+    labelled = labelled.sort_index()
+    regimes = labelled["regime"].astype(str)
+    total_months = int(len(regimes))
+    episodes = _regime_episode_runs(regimes)
+
+    by_regime: dict[str, dict[str, Any]] = {}
+    for regime in MACRO_REGIME_NAMES:
+        idx = regimes.index[regimes == regime]
+        n_obs = int(len(idx))
+        runs = [int(ep["length_months"]) for ep in episodes if str(ep.get("regime")) == regime]
+        by_regime[regime] = {
+            "n_obs": n_obs,
+            "share_total": (float(n_obs) / float(total_months)) if total_months > 0 else 0.0,
+            "first_occurrence": str(idx.min().date()) if n_obs > 0 else None,
+            "last_occurrence": str(idx.max().date()) if n_obs > 0 else None,
+            "avg_duration_months": float(np.mean(runs)) if runs else None,
+            "median_duration_months": float(np.median(runs)) if runs else None,
+            "n_episodes": int(len(runs)),
+            "min_episode_length": int(min(runs)) if runs else None,
+            "max_episode_length": int(max(runs)) if runs else None,
+            "quality_status": macro_quality_status(n_obs),
+        }
+
+    switch_points = regimes.ne(regimes.shift(1))
+    n_switches = int(max(0, int(switch_points.sum()) - 1))
+    run_lengths = np.array([int(ep["length_months"]) for ep in episodes], dtype=float) if episodes else np.array([], dtype=float)
+    avg_months_between_switches = float(run_lengths.mean()) if run_lengths.size > 0 else None
+    share_one_month = float((run_lengths == 1).sum()) / float(len(run_lengths)) if run_lengths.size > 0 else 0.0
+    share_lt_three = float((run_lengths < 3).sum()) / float(len(run_lengths)) if run_lengths.size > 0 else 0.0
+
+    major_regimes_insufficient = [
+        regime
+        for regime, row in by_regime.items()
+        if float(row.get("share_total") or 0.0) >= MACRO_LABEL_QUALITY_MIN_MAJOR_SHARE
+        and int(row.get("n_obs") or 0) < MACRO_REGIME_USABLE_MIN_ROWS
+    ]
+    too_frequent_switches = (
+        avg_months_between_switches is not None
+        and float(avg_months_between_switches) < MACRO_LABEL_SWITCH_WARN_AVG_MONTHS_LT
+    )
+    too_many_one_month = share_one_month > MACRO_LABEL_ONE_MONTH_WARN_SHARE_GT
+    too_many_short = share_lt_three > MACRO_LABEL_LT3M_WARN_SHARE_GT
+
+    stability_warnings: list[str] = []
+    if too_frequent_switches:
+        stability_warnings.append("regime switches are frequent")
+    if too_many_one_month:
+        stability_warnings.append("high share of one-month regimes")
+    if too_many_short:
+        stability_warnings.append("high share of episodes shorter than 3 months")
+    if major_regimes_insufficient:
+        stability_warnings.append(
+            "major regimes with insufficient observations: " + ", ".join(major_regimes_insufficient)
+        )
+
+    per_row_conf = [
+        _confidence_level(
+            growth_score=float(row.get("growth_score")) if pd.notna(row.get("growth_score")) else float("nan"),
+            inflation_score=float(row.get("inflation_score")) if pd.notna(row.get("inflation_score")) else float("nan"),
+            coverage_tier=coverage_tier,
+            neutral_band=neutral_band,
+            optional_blocks_missing=optional_blocks_missing,
+        )
+        for _, row in labelled.iterrows()
+    ]
+    confidence_distribution = pd.Series(per_row_conf).value_counts().to_dict()
+    coverage_tier_distribution = {str(coverage_tier): int(len(labelled))}
+
+    available_block_frequency: dict[str, float] = {}
+    missing_block_frequency: dict[str, float] = {}
+    for block in GROWTH_BLOCKS:
+        col = f"growth_block_{block}_level"
+        if col in labelled.columns:
+            freq = float(labelled[col].notna().mean())
+            available_block_frequency[block] = freq
+            missing_block_frequency[block] = 1.0 - freq
+    for block in INFLATION_BLOCKS:
+        col = f"inflation_block_{block}_level"
+        if col in labelled.columns:
+            freq = float(labelled[col].notna().mean())
+            available_block_frequency[block] = freq
+            missing_block_frequency[block] = 1.0 - freq
+
+    optional_block_frequency = {
+        block: (1.0 if block in optional_blocks_missing else 0.0)
+        for block in OPTIONAL_BLOCKS
+    }
+
+    sanity_windows = [
+        _window_sanity_check(
+            regimes,
+            window_name="2008_financial_crisis",
+            start="2007-10-01",
+            end="2009-03-31",
+            expected_labels=("recession_disinflation", "stagflation"),
+            note="Crisis window should show weak growth and stress-like inflation regime mix.",
+        ),
+        _window_sanity_check(
+            regimes,
+            window_name="2020_covid_shock",
+            start="2020-02-01",
+            end="2020-06-30",
+            expected_labels=("recession_disinflation", "neutral_transition"),
+            note="COVID shock should not be dominated by expansionary labels.",
+        ),
+        _window_sanity_check(
+            regimes,
+            window_name="2021_2022_inflation_shock",
+            start="2021-01-01",
+            end="2022-12-31",
+            expected_labels=("reflation", "stagflation"),
+            note="Inflation shock should show inflation-positive labels.",
+        ),
+        _window_sanity_check(
+            regimes,
+            window_name="2022_2023_tightening_cycle",
+            start="2022-01-01",
+            end="2023-12-31",
+            expected_labels=("stagflation", "recession_disinflation", "neutral_transition"),
+            note="Tightening cycle should generally avoid broad risk-on reflation dominance.",
+        ),
+    ]
+
+    has_lt24 = any(int(row.get("n_obs") or 0) < MACRO_REGIME_USABLE_MIN_ROWS for row in by_regime.values())
+    is_noisy = too_frequent_switches or too_many_one_month or too_many_short
+    overall_warnings: list[str] = []
+    if has_lt24:
+        overall_warnings.append(
+            "at least one regime has fewer than 24 observations; treat regime-specific betas/covariance/RC cautiously"
+        )
+    if is_noisy:
+        overall_warnings.append(
+            "regime switching appears noisy; classifier may be too unstable for strong regime-specific inference"
+        )
+    overall_warnings.extend(stability_warnings)
+
+    return {
+        "status": "available",
+        "history_months": total_months,
+        "by_regime": by_regime,
+        "episode_history": episodes,
+        "stability_summary": {
+            "n_switches": n_switches,
+            "avg_months_between_switches": avg_months_between_switches,
+            "share_one_month_regimes": share_one_month,
+            "share_regimes_lt_3m": share_lt_three,
+            "too_frequent_switches": bool(too_frequent_switches),
+            "too_many_one_month_regimes": bool(too_many_one_month),
+            "too_many_short_regimes": bool(too_many_short),
+            "major_regimes_insufficient": major_regimes_insufficient,
+            "warnings": stability_warnings,
+        },
+        "macro_sanity_checks": {"episodes": sanity_windows},
+        "metadata_quality": {
+            "coverage_tier_distribution": coverage_tier_distribution,
+            "confidence_level_distribution": {str(k): int(v) for k, v in confidence_distribution.items()},
+            "available_blocks_frequency": available_block_frequency,
+            "missing_blocks_frequency": missing_block_frequency,
+            "optional_blocks_missing_frequency": optional_block_frequency,
+            "available_blocks_latest": sorted(available_blocks),
+            "missing_blocks_latest": sorted(missing_blocks),
+            "optional_blocks_missing_latest": sorted(optional_blocks_missing),
+        },
+        "overall_assessment": {
+            "history_usable": bool(not has_lt24 and not is_noisy),
+            "should_treat_regime_specific_cautiously": bool(has_lt24),
+            "classifier_noise_warning": bool(is_noisy),
+            "warnings": overall_warnings,
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
 # Per-regime monthly factor analytics
 # ---------------------------------------------------------------------------
 
@@ -1329,6 +1646,15 @@ def macro_two_axis_diagnostics_from_frames(
                     }
                 )
 
+    regime_label_quality_check = build_regime_label_quality_check(
+        labels_with_regime=scores,
+        coverage_tier=coverage_tier,
+        optional_blocks_missing=optional_missing,
+        available_blocks=available_blocks,
+        missing_blocks=missing_blocks,
+        neutral_band=neutral_band,
+    )
+
     payload = {
         **base_payload,
         "axis_scores_latest": {
@@ -1380,6 +1706,7 @@ def macro_two_axis_diagnostics_from_frames(
         "stability_summary": helpers["_macro_policy_signal"](regime_betas_used, quality_by_regime),
         "labels_monthly": labels_monthly,
         "indicator_panel_rows": indicator_panel_rows,
+        "regime_label_quality_check": regime_label_quality_check,
     }
 
     return payload
@@ -1396,7 +1723,7 @@ def _build_monthly_portfolio_and_factors(
     tickers: list[str],
     analysis_end_str: str,
     factor_returns_monthly: pd.DataFrame | None,
-    months_back: int = 240,
+    months_back: int = 420,
 ) -> tuple[pd.Series, pd.DataFrame, pd.Timestamp, pd.Timestamp]:
     """Build monthly portfolio + factor returns for the production path."""
 
@@ -1452,7 +1779,7 @@ def macro_two_axis_diagnostics(
     analysis_end_str: str,
     factor_returns_monthly: pd.DataFrame | None = None,
     neutral_band: float = MACRO_REGIME_NEUTRAL_BAND_DEFAULT,
-    months_back: int = 240,
+    months_back: int = 420,
 ) -> dict[str, Any]:
     """Production entry: build monthly portfolio + factor returns, fetch macro
     indicator panel, and run the full ``macro_two_axis_v1`` diagnostic.
@@ -1618,6 +1945,30 @@ def macro_regime_csv_frames(report: dict[str, Any]) -> dict[str, pd.DataFrame]:
     if panel_rows:
         frames["macro_regime_indicator_panel.csv"] = pd.DataFrame(panel_rows)
 
+    quality = report.get("regime_label_quality_check") or {}
+    if isinstance(quality, dict) and quality.get("status") == "available":
+        by_regime = quality.get("by_regime") or {}
+        if isinstance(by_regime, dict) and by_regime:
+            rows = []
+            for regime in MACRO_REGIME_NAMES:
+                row = by_regime.get(regime)
+                if not isinstance(row, dict):
+                    continue
+                rows.append({"regime": regime, **row})
+            if rows:
+                frames["regime_label_quality_by_regime.csv"] = pd.DataFrame(rows)
+
+        episodes = quality.get("episode_history") or []
+        if episodes:
+            frames["regime_label_episode_history.csv"] = pd.DataFrame(episodes)
+
+        stability = quality.get("stability_summary") or {}
+        if isinstance(stability, dict) and stability:
+            flat = {k: v for k, v in stability.items() if not isinstance(v, (list, dict))}
+            flat["major_regimes_insufficient"] = ", ".join(stability.get("major_regimes_insufficient") or [])
+            flat["warnings"] = "; ".join(stability.get("warnings") or [])
+            frames["regime_label_stability_summary.csv"] = pd.DataFrame([flat])
+
     return frames
 
 
@@ -1647,4 +1998,5 @@ __all__ = [
     "macro_two_axis_diagnostics",
     "macro_two_axis_diagnostics_from_frames",
     "macro_regime_csv_frames",
+    "build_regime_label_quality_check",
 ]

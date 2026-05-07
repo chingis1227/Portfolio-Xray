@@ -869,6 +869,50 @@ def _append_macro_regime_section(lines: list[str], st: dict[str, Any]) -> None:
     disclaimer = mr.get("method_disclaimer")
     if disclaimer:
         lines.append(str(disclaimer))
+    quality = mr.get("regime_label_quality_check") or {}
+    if isinstance(quality, dict) and quality:
+        lines.append("Regime Label Quality Check")
+        if quality.get("status") != "available":
+            lines.append(
+                "Regime label quality diagnostics are unavailable; treat regime-specific analytics cautiously."
+            )
+        else:
+            overall = quality.get("overall_assessment") or {}
+            by_regime = quality.get("by_regime") or {}
+            stable = quality.get("stability_summary") or {}
+            reliable = [
+                r for r, row in by_regime.items()
+                if isinstance(row, dict) and row.get("quality_status") == "reliable"
+            ]
+            weak = [
+                r for r, row in by_regime.items()
+                if isinstance(row, dict) and int(row.get("n_obs") or 0) < 24
+            ]
+            lines.append(
+                f"Regime history usable={overall.get('history_usable', False)}; "
+                f"switches={stable.get('n_switches', 'n/a')}; "
+                f"avg_months_between_switches={_fmt_float(stable.get('avg_months_between_switches'), 2)}; "
+                f"one-month share={_fmt_pct(stable.get('share_one_month_regimes'), 1)}; "
+                f"<3m share={_fmt_pct(stable.get('share_regimes_lt_3m'), 1)}."
+            )
+            lines.append(
+                "Reliable regimes: "
+                + (", ".join(reliable) if reliable else "none")
+                + "; weak regimes (<24 obs): "
+                + (", ".join(weak) if weak else "none")
+                + "."
+            )
+            if weak:
+                lines.append(
+                    "Warning: at least one regime has fewer than 24 observations; treat regime-specific betas/covariance/RC cautiously."
+                )
+            if overall.get("classifier_noise_warning"):
+                lines.append(
+                    "Warning: regime labels are unstable; the regime classifier may be too noisy for strong regime-specific conclusions."
+                )
+            warnings = overall.get("warnings") or []
+            if warnings:
+                lines.append("Quality-check warnings: " + "; ".join(str(w) for w in warnings) + ".")
     lines.append("")
 
 
