@@ -1,16 +1,20 @@
 """
 Regime Factor Analytics v1 — diagnostic-only statistical foundation that
-consumes the lagged monthly regime labels from ``macro_two_axis_v1`` and the
-existing asset/factor return infrastructure to produce, per primary regime:
+consumes the lagged monthly regime labels from ``macro_two_axis_v1`` and
+aligns them to **daily** (production), **weekly**, or **monthly** return series
+to produce, per **primary** regime:
 
-- asset covariance and correlation matrices (Ledoit–Wolf shrinkage when possible),
-- factor covariance and correlation matrices (Ledoit–Wolf when possible; nine-factor model with oil),
-- per-asset OLS factor betas with HAC Newey–West inference (monthly or weekly rows),
-- bottom-up portfolio factor exposures (weighted sum of asset betas),
-- factor variance contribution shares (β_pf' Σ_factor β_pf decomposition),
-- average factor moves (mean / median),
-- quality / confidence metadata based on sample size (gating 12 / 24 / 60 **month-equivalent**
-  when ``frequency='weekly'``: weekly ``n_obs`` is mapped via ``round(n * 12 / 52)``).
+- asset / factor covariance and correlation (Ledoit--Wolf when possible);
+  daily mode **annualizes** covariance with factor ``252`` after estimation,
+- per-asset OLS factor betas with HAC Newey--West inference,
+- bottom-up portfolio factor exposures and variance-contribution decomposition,
+- average factor moves, annualized daily vol / drawdown / Sharpe-like ratios
+  (RF=0 approximation) when ``frequency='daily'``.
+
+Production ``run_report.py`` uses **daily** returns with
+``daily_label_alignment = daily_returns_inherit_latest_monthly_regime``.
+Weekly mode keeps month-equivalent gating (12/24/60); daily gating uses
+60 / 125 / 503 / 504+ **trading-day** buckets.
 
 The block is **diagnostic-only**: it does not change the macro classifier,
 optimizer weights, mandate gates, stress pass/fail, or weight release. See
@@ -35,8 +39,6 @@ from src.stress_factors import (
 from src.stress_factors_macro import (
     MACRO_PRIMARY_REGIME_NAMES,
     MACRO_REGIME_INSUFFICIENT_MAX_ROWS,
-    MACRO_REGIME_RELIABLE_MIN_ROWS,
-    MACRO_REGIME_USABLE_MIN_ROWS,
     macro_quality_status,
     macro_regime_obs_month_equivalent,
 )
@@ -46,6 +48,12 @@ _LOG = logging.getLogger(__name__)
 REGIME_FACTOR_ANALYTICS_VERSION = "regime_factor_analytics_v1"
 REGIME_FACTOR_HAC_LAG_CAP_MONTHLY = 12
 REGIME_FACTOR_HAC_LAG_CAP_WEEKLY = 15
+REGIME_FACTOR_HAC_LAG_CAP_DAILY = 22
+
+REGIME_ANALYTICS_ANNUALIZATION_FACTOR = 252
+REGIME_DAILY_INSUFFICIENT_MAX = 60  # n < 60 trading days → insufficient_data
+REGIME_DAILY_LOW_CONFIDENCE_MAX = 125  # 60–125 inclusive → low_confidence
+REGIME_DAILY_USABLE_MAX = 503  # 126–503 → usable; 504+ → reliable
 
 # Portfolio-facing regime statistics use the same 10Y horizon as standard returns /
 # metrics / covariance / factor analytics; macro labels may still be computed on
@@ -54,9 +62,42 @@ REGIME_FACTOR_PORTFOLIO_WINDOW_NOTE = (
     "macro_two_axis_v1 may emit regime labels over a longer history "
     "(regime_label_history_span) than the portfolio analytics slice; "
     "portfolio_regime_analytics_window is 10Y ending at analysis_end "
-    "(~520 weekly or 120 monthly periods), aligned with the standard "
+    "(daily: ~2520 trading days where available; weekly/monthly modes use "
+    "their historical window lengths), aligned with the standard "
     "return/metrics/covariance/factor horizons."
 )
+
+
+def regime_factor_quality_daily(n_obs: int) -> str:
+    """Quality bucket for **daily** trading-day counts inside a regime slice."""
+
+    n = int(n_obs or 0)
+    if n <= 0:
+        return "no_observations"
+    if n < REGIME_DAILY_INSUFFICIENT_MAX:
+        return "insufficient_data"
+    if n <= REGIME_DAILY_LOW_CONFIDENCE_MAX:
+        return "low_confidence"
+    if n <= REGIME_DAILY_USABLE_MAX:
+        return "usable"
+    return "reliable"
+
+
+def _regime_analytics_insufficient(freq_norm: str, n_rows: int, *, n_gate: int | None = None) -> bool:
+    """Return True when estimates (covariance/betas/RC) must be suppressed."""
+
+    f = (freq_norm or "monthly").strip().lower()
+    if f == "daily":
+        return int(n_rows or 0) < REGIME_DAILY_INSUFFICIENT_MAX
+    ng = int(n_gate) if n_gate is not None else macro_regime_obs_month_equivalent(int(n_rows or 0), frequency=f)
+    return ng < MACRO_REGIME_INSUFFICIENT_MAX_ROWS
+
+
+def _regime_quality_label(freq_norm: str, n_rows: int) -> str:
+    f = (freq_norm or "monthly").strip().lower()
+    if f == "daily":
+        return regime_factor_quality_daily(int(n_rows or 0))
+    return macro_quality_status(int(n_rows or 0), frequency=f)
 
 
 def _finalize_portfolio_regime_window(payload: dict[str, Any], *, freq_norm: str) -> None:
@@ -81,12 +122,18 @@ def _payload_csv_window_columns(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(win, dict):
         win = {}
     return {
+        "regime_frequency": payload.get("regime_frequency"),
+        "analytics_frequency": payload.get("analytics_frequency"),
+        "daily_label_alignment": payload.get("daily_label_alignment"),
+        "payload_annualization_factor": payload.get("annualization_factor"),
+        "payload_covariance_scaled_to_annual": payload.get("covariance_scaled_to_annual"),
         "regime_label_history_start": span.get("start"),
         "regime_label_history_end": span.get("end"),
         "regime_label_history_n_months": span.get("n_months"),
         "portfolio_regime_analytics_window_label": win.get("label"),
         "portfolio_regime_analytics_target_months": win.get("target_months"),
         "portfolio_regime_analytics_target_weeks": win.get("target_weeks"),
+        "portfolio_regime_analytics_target_trading_days": win.get("target_trading_days"),
         "portfolio_regime_analytics_analysis_end": win.get("analysis_end"),
         "portfolio_regime_analytics_actual_start": win.get("actual_data_start"),
         "portfolio_regime_analytics_actual_end": win.get("actual_data_end"),
@@ -301,12 +348,14 @@ def _asset_factor_beta_row(
 
     aligned = pd.concat([y.rename("__y__"), X.loc[:, factor_cols]], axis=1).dropna()
     n = int(len(aligned))
-    n_gate = macro_regime_obs_month_equivalent(n, frequency=frequency)
-    if n_gate < MACRO_REGIME_INSUFFICIENT_MAX_ROWS:
+    freq = (frequency or "monthly").strip().lower()
+    n_gate = n if freq == "daily" else macro_regime_obs_month_equivalent(n, frequency=freq)
+    qual = _regime_quality_label(freq, n)
+    if _regime_analytics_insufficient(freq, n, n_gate=n_gate):
         return {
             "asset": asset,
             "n_obs": n,
-            "quality_status": macro_quality_status(n, frequency=frequency),
+            "quality_status": qual,
             "available": False,
             "reason": "insufficient_data",
         }
@@ -317,7 +366,7 @@ def _asset_factor_beta_row(
         return {
             "asset": asset,
             "n_obs": n,
-            "quality_status": macro_quality_status(n, frequency=frequency),
+            "quality_status": qual,
             "available": False,
             "reason": "ols_failed",
         }
@@ -327,12 +376,11 @@ def _asset_factor_beta_row(
     cls_ci_low = out["ci_low"]
     cls_ci_high = out["ci_high"]
     hac = out["hac"]
-    quality = macro_quality_status(n, frequency=frequency)
-    not_for_optimization = quality in {"insufficient_data", "low_confidence"}
+    not_for_optimization = qual in {"insufficient_data", "low_confidence"}
     return {
         "asset": asset,
         "n_obs": n,
-        "quality_status": quality,
+        "quality_status": qual,
         "available": True,
         "not_for_optimization": bool(not_for_optimization),
         "alpha": float(params[0]),
@@ -358,18 +406,58 @@ def _asset_factor_beta_row(
     }
 
 
+def _annualized_vol_daily(
+    s: pd.Series,
+    *,
+    annualization_factor: int = REGIME_ANALYTICS_ANNUALIZATION_FACTOR,
+) -> float:
+    s = pd.to_numeric(s, errors="coerce").dropna()
+    if len(s) < 2:
+        return float("nan")
+    return float(s.std(ddof=1) * np.sqrt(float(annualization_factor)))
+
+
+def _sharpe_like_rf0_daily(
+    s: pd.Series,
+    *,
+    annualization_factor: int = REGIME_ANALYTICS_ANNUALIZATION_FACTOR,
+) -> float:
+    s = pd.to_numeric(s, errors="coerce").dropna()
+    if len(s) < 2:
+        return float("nan")
+    mu = float(s.mean())
+    sig = float(s.std(ddof=1))
+    if sig <= 1e-20 or not np.isfinite(sig):
+        return float("nan")
+    return float(np.sqrt(float(annualization_factor)) * mu / sig)
+
+
+def _max_drawdown_from_simple_returns(s: pd.Series) -> float:
+    s = pd.to_numeric(s, errors="coerce").dropna()
+    if s.empty:
+        return float("nan")
+    eq = (1.0 + s).cumprod()
+    dd = eq / eq.cummax() - 1.0
+    return float(dd.min())
+
+
 def _asset_covariance_block(
     asset_returns: pd.DataFrame,
     *,
     regime: str,
     n_obs: int,
     frequency: str = "monthly",
+    annualize_covariance: bool = False,
+    annualization_factor: int = REGIME_ANALYTICS_ANNUALIZATION_FACTOR,
 ) -> dict[str, Any]:
-    n_gate = macro_regime_obs_month_equivalent(int(n_obs), frequency=frequency)
-    if (
-        asset_returns is None
-        or asset_returns.empty
-        or n_gate < MACRO_REGIME_INSUFFICIENT_MAX_ROWS
+    freq = (frequency or "monthly").strip().lower()
+    n_gate = (
+        int(n_obs or 0)
+        if freq == "daily"
+        else macro_regime_obs_month_equivalent(int(n_obs), frequency=freq)
+    )
+    if asset_returns is None or asset_returns.empty or _regime_analytics_insufficient(
+        freq, int(n_obs), n_gate=n_gate
     ):
         return {"available": False, "n_obs": int(n_obs)}
     cleaned = asset_returns.dropna(axis=1, how="all")
@@ -380,6 +468,11 @@ def _asset_covariance_block(
             "reason": "fewer_than_two_assets_with_data",
         }
     cov, corr, cov_meta = _covariance_with_ledoit_wolf(cleaned, label=f"asset:{regime}")
+    cov_meta = dict(cov_meta)
+    cov_meta["annualization_factor"] = int(annualization_factor) if annualize_covariance else None
+    cov_meta["covariance_scaled_to_annual"] = bool(annualize_covariance)
+    if annualize_covariance:
+        cov = cov.astype(float) * float(annualization_factor)
     out = {
         "available": True,
         "n_obs": int(n_obs),
@@ -402,12 +495,26 @@ def _factor_covariance_block(
     n_obs: int,
     factor_cols: list[str],
     frequency: str = "monthly",
+    annualize_covariance: bool = False,
+    annualization_factor: int = REGIME_ANALYTICS_ANNUALIZATION_FACTOR,
 ) -> dict[str, Any]:
-    n_gate = macro_regime_obs_month_equivalent(int(n_obs), frequency=frequency)
-    if factors is None or factors.empty or n_gate < MACRO_REGIME_INSUFFICIENT_MAX_ROWS:
+    freq = (frequency or "monthly").strip().lower()
+    n_gate = (
+        int(n_obs or 0)
+        if freq == "daily"
+        else macro_regime_obs_month_equivalent(int(n_obs), frequency=freq)
+    )
+    if factors is None or factors.empty or _regime_analytics_insufficient(
+        freq, int(n_obs), n_gate=n_gate
+    ):
         return {"available": False, "n_obs": int(n_obs), "factors": list(factor_cols)}
     cleaned = factors.reindex(columns=factor_cols)
     cov, corr, cov_meta = _covariance_with_ledoit_wolf(cleaned, label=f"factor:{regime}")
+    cov_meta = dict(cov_meta)
+    cov_meta["annualization_factor"] = int(annualization_factor) if annualize_covariance else None
+    cov_meta["covariance_scaled_to_annual"] = bool(annualize_covariance)
+    if annualize_covariance:
+        cov = cov.astype(float) * float(annualization_factor)
     return {
         "available": True,
         "n_obs": int(n_obs),
@@ -582,6 +689,7 @@ def _empty_regime_block(regime: str) -> dict[str, Any]:
     return {
         "label": regime,
         "n_obs": 0,
+        "n_obs_daily": None,
         "quality_status": "no_observations",
         "not_for_optimization": True,
         "available": False,
@@ -589,6 +697,8 @@ def _empty_regime_block(regime: str) -> dict[str, Any]:
         "factor_covariance_available": False,
         "asset_factor_betas_available": False,
         "factor_rc_available": False,
+        "annualization_factor": None,
+        "covariance_scaled_to_annual": False,
         "data_start": None,
         "data_end": None,
         "asset_covariance": {"available": False, "n_obs": 0},
@@ -607,6 +717,10 @@ def _empty_regime_block(regime: str) -> dict[str, Any]:
         },
         "factor_average_moves": [],
         "dominant_factors": [],
+        "asset_volatility_annual": {},
+        "asset_max_drawdown": {},
+        "asset_sharpe_like_rf0_annual": {},
+        "portfolio_daily_risk_metrics": {},
         "warnings": [],
         "transition_split": None,
         "confidence_split": None,
@@ -627,9 +741,10 @@ def _compute_regime_block(
     transition_split: str | None = None,
     confidence_split: str | None = None,
 ) -> dict[str, Any]:
+    freq_norm = (frequency or "monthly").strip().lower()
     n = int(len(regime_dates))
-    quality = macro_quality_status(n, frequency=frequency)
-    n_gate = macro_regime_obs_month_equivalent(n, frequency=frequency)
+    n_gate = n if freq_norm == "daily" else macro_regime_obs_month_equivalent(n, frequency=freq_norm)
+    quality = _regime_quality_label(freq_norm, n)
     block = _empty_regime_block(regime)
     block["transition_split"] = transition_split
     block["confidence_split"] = confidence_split
@@ -639,35 +754,61 @@ def _compute_regime_block(
     block["data_start"] = _format_date(regime_dates.min())
     block["data_end"] = _format_date(regime_dates.max())
     block["n_obs"] = n
+    block["n_obs_daily"] = int(n) if freq_norm == "daily" else None
     block["quality_status"] = quality
     max_lags = _newey_west_max_lags(n, cap=hac_lag_cap)
     block["hac_max_lags"] = int(max_lags)
 
-    if n_gate < MACRO_REGIME_INSUFFICIENT_MAX_ROWS:
-        block["warnings"].append(
-            "Insufficient history for regime bucket (below ~12 month-equivalent observations; "
-            "for weekly analytics, n_obs counts weeks). Estimates suppressed."
-        )
+    if _regime_analytics_insufficient(freq_norm, n, n_gate=n_gate):
+        if freq_norm == "daily":
+            block["warnings"].append(
+                "Insufficient history for regime bucket (<60 trading days). Estimates suppressed."
+            )
+        else:
+            block["warnings"].append(
+                "Insufficient history for regime bucket (below ~12 month-equivalent observations; "
+                "for weekly analytics, n_obs counts weeks). Estimates suppressed."
+            )
         return block
 
     block["available"] = True
     not_for_optimization = quality in {"insufficient_data", "low_confidence"}
     block["not_for_optimization"] = bool(not_for_optimization)
     if quality == "low_confidence":
-        block["warnings"].append(
-            "Low confidence (~12–23 month-equivalent observations); regime estimates not for optimization."
-        )
+        if freq_norm == "daily":
+            block["warnings"].append(
+                "Low confidence (~60–125 trading days); regime estimates not for optimization."
+            )
+        else:
+            block["warnings"].append(
+                "Low confidence (~12–23 month-equivalent observations); regime estimates not for optimization."
+            )
 
     a_slice = asset_returns.reindex(regime_dates)
     f_slice = factor_returns.reindex(regime_dates).loc[:, factor_cols]
+    ann_fac = int(REGIME_ANALYTICS_ANNUALIZATION_FACTOR)
+    annualize_cov = freq_norm == "daily"
+    block["annualization_factor"] = int(ann_fac) if annualize_cov else None
+    block["covariance_scaled_to_annual"] = bool(annualize_cov)
 
     block["asset_covariance"] = _asset_covariance_block(
-        a_slice, regime=regime, n_obs=n, frequency=frequency
+        a_slice,
+        regime=regime,
+        n_obs=n,
+        frequency=freq_norm,
+        annualize_covariance=annualize_cov,
+        annualization_factor=ann_fac,
     )
     block["asset_covariance_available"] = bool(block["asset_covariance"].get("available"))
 
     block["factor_covariance"] = _factor_covariance_block(
-        f_slice, regime=regime, n_obs=n, factor_cols=factor_cols, frequency=frequency
+        f_slice,
+        regime=regime,
+        n_obs=n,
+        factor_cols=factor_cols,
+        frequency=freq_norm,
+        annualize_covariance=annualize_cov,
+        annualization_factor=ann_fac,
     )
     block["factor_covariance_available"] = bool(block["factor_covariance"].get("available"))
 
@@ -683,7 +824,7 @@ def _compute_regime_block(
             factor_cols=factor_cols,
             beta_keys=beta_keys,
             max_lags=max_lags,
-            frequency=frequency,
+            frequency=freq_norm,
         )
         if row is not None:
             asset_betas[str(ticker)] = row
@@ -720,6 +861,38 @@ def _compute_regime_block(
 
     block["factor_average_moves"] = _factor_average_moves(f_slice, factor_cols=factor_cols)
 
+    if freq_norm == "daily":
+        vol_m: dict[str, float] = {}
+        dd_m: dict[str, float] = {}
+        sh_m: dict[str, float] = {}
+        for c in a_slice.columns:
+            col = a_slice[c]
+            vol_m[str(c)] = _annualized_vol_daily(col, annualization_factor=ann_fac)
+            dd_m[str(c)] = _max_drawdown_from_simple_returns(col)
+            sh_m[str(c)] = _sharpe_like_rf0_daily(col, annualization_factor=ann_fac)
+        block["asset_volatility_annual"] = vol_m
+        block["asset_max_drawdown"] = dd_m
+        block["asset_sharpe_like_rf0_annual"] = sh_m
+        wdict = {str(k): float(v) for k, v in (weights or {}).items() if float(v) != 0.0}
+        if wdict:
+            pr = pd.Series(0.0, index=a_slice.index, dtype=float)
+            for c in a_slice.columns:
+                wv = float(wdict.get(str(c), 0.0))
+                if wv == 0.0:
+                    continue
+                pr = pr + a_slice[c].fillna(0.0).astype(float) * wv
+            block["portfolio_daily_risk_metrics"] = {
+                "vol_annual": _annualized_vol_daily(pr, annualization_factor=ann_fac),
+                "max_drawdown": _max_drawdown_from_simple_returns(pr),
+                "sharpe_like_rf0_annual": _sharpe_like_rf0_daily(pr, annualization_factor=ann_fac),
+            }
+        else:
+            block["portfolio_daily_risk_metrics"] = {
+                "vol_annual": float("nan"),
+                "max_drawdown": float("nan"),
+                "sharpe_like_rf0_annual": float("nan"),
+            }
+
     if block["factor_variance_contribution"].get("rows"):
         ranked = sorted(
             block["factor_variance_contribution"]["rows"],
@@ -743,6 +916,7 @@ def regime_factor_analytics(
     enable_confidence_split: bool = False,
     frequency: str = "monthly",
     weekly_alignment: str = "forward_fill_monthly_label",
+    daily_label_alignment: str | None = None,
     regime_label_history_span: dict[str, Any] | None = None,
     portfolio_regime_analytics_window: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -751,31 +925,17 @@ def regime_factor_analytics(
     Parameters
     ----------
     monthly_returns:
-        DataFrame indexed by month-end timestamps. Columns are tickers; values
-        are FX-converted simple returns (the same frame ``run_report.py`` uses).
-        When ``frequency='weekly'`` the caller must pass a weekly DataFrame
-        whose index is Friday week-end timestamps; the function does not
-        auto-resample.
+        Return series whose index matches ``frequency``: month-end, weekly
+        Friday, or **daily** timestamps in production.
     monthly_factor_returns:
-        DataFrame indexed by the same frequency as ``monthly_returns``. Columns
-        must include the nine production factors plus oil; missing columns are
-        filled with zeros to keep the matrix square.
+        Factor matrix on the **same** index as ``monthly_returns``.
     regime_labels:
-        Series of primary regime strings indexed by the matching frequency.
-        Labels must already be lagged (the macro pipeline applies a 1-month
-        publication lag).
-    transition_flag, confidence_level:
-        Optional per-row Series for split analyses.
-    weights:
-        Current portfolio weights. Used only for the bottom-up portfolio factor
-        exposure and the variance contribution decomposition.
-    regime_label_history_span:
-        Optional metadata for the **full** monthly regime label series (e.g. first/
-        last scored month and count). Does not change alignment; for disclosure only.
-    portfolio_regime_analytics_window:
-        Optional metadata describing the fixed **10Y** portfolio analytics horizon
-        (targets, ``analysis_end``, disclaimer). ``actual_*`` fields are filled
-        from the realized overlap before return.
+        Monthly primary-regime labels (``macro_two_axis_v1``). For non-monthly
+        analytics, the caller forward-fills onto the return index inside this
+        function (weekly or daily alignment).
+    daily_label_alignment:
+        When ``frequency='daily'``, defaults to
+        ``"daily_returns_inherit_latest_monthly_regime"`` (forward-filled labels).
     """
 
     factor_cols = _factor_columns()
@@ -783,16 +943,20 @@ def regime_factor_analytics(
     warnings: list[str] = []
 
     freq_norm = (frequency or "monthly").strip().lower()
-    if freq_norm not in {"monthly", "weekly"}:
+    if freq_norm not in {"monthly", "weekly", "daily"}:
         raise ValueError(
-            f"Unsupported frequency: {frequency!r}; expected 'monthly' or 'weekly'."
+            f"Unsupported frequency: {frequency!r}; expected 'monthly', 'weekly', or 'daily'."
         )
-    hac_lag_cap = (
-        REGIME_FACTOR_HAC_LAG_CAP_WEEKLY
-        if freq_norm == "weekly"
-        else REGIME_FACTOR_HAC_LAG_CAP_MONTHLY
-    )
+    if freq_norm == "weekly":
+        hac_lag_cap = REGIME_FACTOR_HAC_LAG_CAP_WEEKLY
+    elif freq_norm == "daily":
+        hac_lag_cap = REGIME_FACTOR_HAC_LAG_CAP_DAILY
+    else:
+        hac_lag_cap = REGIME_FACTOR_HAC_LAG_CAP_MONTHLY
     weekly_alignment_value = weekly_alignment if freq_norm == "weekly" else None
+    daily_alignment_value = None
+    if freq_norm == "daily":
+        daily_alignment_value = daily_label_alignment or "daily_returns_inherit_latest_monthly_regime"
 
     if monthly_factor_returns is not None and not monthly_factor_returns.empty:
         ff = monthly_factor_returns.copy()
@@ -803,8 +967,37 @@ def regime_factor_analytics(
         monthly_factor_returns = ff[factor_cols]
 
     if freq_norm == "weekly" and weekly_alignment_value == "forward_fill_monthly_label":
-        # Forward-fill the most recent monthly regime label onto each weekly
-        # timestamp present in monthly_returns / monthly_factor_returns.
+        target_index = pd.Index(
+            _coerce_index_to_naive_timestamps(monthly_returns.index)
+        ).normalize().sort_values()
+        labels_naive = pd.Series(
+            regime_labels.values,
+            index=pd.Index(_coerce_index_to_naive_timestamps(regime_labels.index)).normalize(),
+            name="regime",
+        ).dropna().astype(str).sort_index()
+        regime_labels = labels_naive.reindex(target_index, method="ffill")
+        if transition_flag is not None:
+            tf_ff = pd.Series(
+                transition_flag.values,
+                index=pd.Index(
+                    _coerce_index_to_naive_timestamps(transition_flag.index)
+                ).normalize(),
+                name="transition_flag",
+            ).sort_index()
+            transition_flag = tf_ff.reindex(target_index, method="ffill")
+        if confidence_level is not None:
+            cl_ff = pd.Series(
+                confidence_level.values,
+                index=pd.Index(
+                    _coerce_index_to_naive_timestamps(confidence_level.index)
+                ).normalize(),
+                name="confidence_level",
+            ).sort_index()
+            confidence_level = cl_ff.reindex(target_index, method="ffill")
+
+    elif freq_norm == "daily":
+        if daily_alignment_value != "daily_returns_inherit_latest_monthly_regime":
+            warnings.append(f"nonstandard_daily_label_alignment:{daily_alignment_value}")
         target_index = pd.Index(
             _coerce_index_to_naive_timestamps(monthly_returns.index)
         ).normalize().sort_values()
@@ -840,10 +1033,20 @@ def regime_factor_analytics(
     weights_used = {str(k): float(v) for k, v in (weights or {}).items() if v}
     weights_total = float(sum(weights_used.values())) if weights_used else 0.0
 
+    annualization_factor_payload = (
+        int(REGIME_ANALYTICS_ANNUALIZATION_FACTOR) if freq_norm == "daily" else None
+    )
+    covariance_scaled_payload = bool(freq_norm == "daily")
+
     payload: dict[str, Any] = {
         "version": REGIME_FACTOR_ANALYTICS_VERSION,
         "frequency": freq_norm,
+        "regime_frequency": "monthly",
+        "analytics_frequency": freq_norm,
         "weekly_alignment": weekly_alignment_value,
+        "daily_label_alignment": daily_alignment_value,
+        "annualization_factor": annualization_factor_payload,
+        "covariance_scaled_to_annual": covariance_scaled_payload,
         "factor_order": factor_cols,
         "beta_order": beta_keys,
         "data_start": _format_date(common_index.min()) if len(common_index) else None,
@@ -1015,6 +1218,7 @@ def _meta_row(block: dict[str, Any], regime_key: str) -> dict[str, Any]:
     return {
         "regime": label if "__" not in regime_key else regime_key,
         "n_obs": int(block.get("n_obs", 0) or 0),
+        "n_obs_daily": block.get("n_obs_daily"),
         "quality_status": str(block.get("quality_status", "no_observations")),
         "not_for_optimization": bool(block.get("not_for_optimization", True)),
         "transition_split": block.get("transition_split"),
@@ -1022,6 +1226,8 @@ def _meta_row(block: dict[str, Any], regime_key: str) -> dict[str, Any]:
         "data_start": block.get("data_start"),
         "data_end": block.get("data_end"),
         "hac_max_lags": block.get("hac_max_lags"),
+        "annualization_factor": block.get("annualization_factor"),
+        "covariance_scaled_to_annual": block.get("covariance_scaled_to_annual"),
     }
 
 
@@ -1038,12 +1244,16 @@ def _covariance_csv_meta(block_cov: dict[str, Any] | None) -> dict[str, Any]:
             "covariance_rows_used": None,
             "cov_complete_case_rows": None,
             "ledoit_wolf_shrinkage": None,
+            "annualization_factor": None,
+            "covariance_scaled_to_annual": None,
         }
     return {
         "covariance_estimator": block_cov.get("covariance_estimator"),
         "covariance_rows_used": block_cov.get("covariance_rows_used"),
         "cov_complete_case_rows": block_cov.get("cov_complete_case_rows"),
         "ledoit_wolf_shrinkage": block_cov.get("ledoit_wolf_shrinkage"),
+        "annualization_factor": block_cov.get("annualization_factor"),
+        "covariance_scaled_to_annual": block_cov.get("covariance_scaled_to_annual"),
     }
 
 
@@ -1340,10 +1550,13 @@ def regime_factor_analytics_for_stress_report(full: dict[str, Any]) -> dict[str,
         out: dict[str, Any] = {
             "label": block.get("label"),
             "n_obs": int(block.get("n_obs", 0) or 0),
+            "n_obs_daily": block.get("n_obs_daily"),
             "quality_status": block.get("quality_status"),
             "not_for_optimization": bool(block.get("not_for_optimization", True)),
             "data_start": block.get("data_start"),
             "data_end": block.get("data_end"),
+            "annualization_factor": block.get("annualization_factor"),
+            "covariance_scaled_to_annual": block.get("covariance_scaled_to_annual"),
             "hac_max_lags": block.get("hac_max_lags"),
             "asset_covariance_available": bool(block.get("asset_covariance_available", False)),
             "factor_covariance_available": bool(block.get("factor_covariance_available", False)),
@@ -1361,6 +1574,7 @@ def regime_factor_analytics_for_stress_report(full: dict[str, Any]) -> dict[str,
                 "rows": vc.get("rows"),
             },
             "factor_average_moves": block.get("factor_average_moves"),
+            "portfolio_daily_risk_metrics": block.get("portfolio_daily_risk_metrics"),
             "n_asset_betas_tracked": len(block.get("asset_factor_betas") or {}),
             "transition_split": block.get("transition_split"),
             "confidence_split": block.get("confidence_split"),
@@ -1379,7 +1593,12 @@ def regime_factor_analytics_for_stress_report(full: dict[str, Any]) -> dict[str,
     return {
         "version": full.get("version", REGIME_FACTOR_ANALYTICS_VERSION),
         "frequency": full.get("frequency", "monthly"),
+        "regime_frequency": full.get("regime_frequency", "monthly"),
+        "analytics_frequency": full.get("analytics_frequency"),
         "weekly_alignment": full.get("weekly_alignment"),
+        "daily_label_alignment": full.get("daily_label_alignment"),
+        "annualization_factor": full.get("annualization_factor"),
+        "covariance_scaled_to_annual": full.get("covariance_scaled_to_annual"),
         "factor_order": full.get("factor_order"),
         "beta_order": full.get("beta_order"),
         "data_start": full.get("data_start"),
@@ -1407,6 +1626,11 @@ def regime_factor_analytics_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "version": payload.get("version", REGIME_FACTOR_ANALYTICS_VERSION),
         "frequency": payload.get("frequency", "monthly"),
         "weekly_alignment": payload.get("weekly_alignment"),
+        "regime_frequency": payload.get("regime_frequency", "monthly"),
+        "analytics_frequency": payload.get("analytics_frequency"),
+        "daily_label_alignment": payload.get("daily_label_alignment"),
+        "annualization_factor": payload.get("annualization_factor"),
+        "covariance_scaled_to_annual": payload.get("covariance_scaled_to_annual"),
         "regime_label_history_span": payload.get("regime_label_history_span"),
         "portfolio_regime_analytics_window": payload.get("portfolio_regime_analytics_window"),
         "portfolio_regime_analytics_note": payload.get("portfolio_regime_analytics_note"),
@@ -1430,8 +1654,11 @@ def regime_factor_analytics_summary(payload: dict[str, Any]) -> dict[str, Any]:
             continue
         summary["regimes"][regime] = {
             "n_obs": int(block.get("n_obs", 0) or 0),
+            "n_obs_daily": block.get("n_obs_daily"),
             "quality_status": block.get("quality_status", "no_observations"),
             "not_for_optimization": bool(block.get("not_for_optimization", True)),
+            "annualization_factor": block.get("annualization_factor"),
+            "covariance_scaled_to_annual": block.get("covariance_scaled_to_annual"),
             "asset_covariance_available": bool(block.get("asset_covariance_available", False)),
             "factor_covariance_available": bool(block.get("factor_covariance_available", False)),
             "asset_factor_betas_available": bool(block.get("asset_factor_betas_available", False)),
@@ -1457,6 +1684,7 @@ def regime_factor_analytics_summary(payload: dict[str, Any]) -> dict[str, Any]:
             "factor_covariance_estimator": (block.get("factor_covariance") or {}).get(
                 "covariance_estimator"
             ),
+            "portfolio_daily_risk_metrics": block.get("portfolio_daily_risk_metrics"),
         }
     return summary
 
@@ -1464,8 +1692,12 @@ def regime_factor_analytics_summary(payload: dict[str, Any]) -> dict[str, Any]:
 __all__ = [
     "REGIME_FACTOR_ANALYTICS_VERSION",
     "REGIME_FACTOR_PORTFOLIO_WINDOW_NOTE",
+    "REGIME_ANALYTICS_ANNUALIZATION_FACTOR",
+    "REGIME_DAILY_INSUFFICIENT_MAX",
+    "REGIME_FACTOR_HAC_LAG_CAP_DAILY",
     "REGIME_FACTOR_HAC_LAG_CAP_MONTHLY",
     "REGIME_FACTOR_HAC_LAG_CAP_WEEKLY",
+    "regime_factor_quality_daily",
     "regime_factor_analytics",
     "regime_factor_analytics_csv_frames",
     "regime_factor_analytics_summary",

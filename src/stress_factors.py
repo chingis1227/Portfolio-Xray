@@ -51,6 +51,8 @@ FACTOR_REGRESSION_HAC_LAGS: int = 4
 FACTOR_MONTHS_3Y = 36
 FACTOR_MONTHS_5Y = 60
 FACTOR_MONTHS_10Y = 120
+# ~10 calendar years of US equity trading sessions (regime_factor_analytics_v1 daily window)
+FACTOR_TRADING_DAYS_10Y = 252 * 10
 FACTOR_OOS_HOLDOUT_WEEKS = 52
 FACTOR_OOS_HOLDOUT_MONTHS = 12
 FACTOR_STABILITY_MIN_ABS_BETA = 0.05
@@ -183,6 +185,50 @@ def _month_end(s: pd.Series) -> pd.Series:
 def _monthly_return(prices: pd.Series) -> pd.Series:
     m = _month_end(prices)
     return m.pct_change().dropna()
+
+
+def _business_daily_last(series: pd.Series) -> pd.Series:
+    """Resample to business days using last observation carried forward."""
+
+    if series is None or series.empty:
+        return pd.Series(dtype=float)
+    out = series.copy()
+    out.index = pd.to_datetime(out.index).tz_localize(None)
+    out = out.sort_index()
+    return out.resample("B").last().ffill()
+
+
+def _fred_daily_pct_change(series_id: str, start: str, end: str) -> pd.Series:
+    try:
+        s = fetch_fred_series(series_id, start, end)
+        if s.empty or len(s) < 2:
+            return pd.Series(dtype=float)
+        d = _business_daily_last(s)
+        return d.pct_change().dropna()
+    except Exception:
+        return pd.Series(dtype=float)
+
+
+def _fred_daily_decimal_diff(series_id: str, start: str, end: str) -> pd.Series:
+    try:
+        s = fetch_fred_series(series_id, start, end)
+        if s.empty or len(s) < 2:
+            return pd.Series(dtype=float)
+        d = _business_daily_last(s)
+        return (d / 100.0).diff().dropna()
+    except Exception:
+        return pd.Series(dtype=float)
+
+
+def _yahoo_daily_return(ticker: str, start: str, end: str) -> pd.Series:
+    try:
+        df = fetch_daily(ticker, start, end)
+        if df.empty or "Close" not in df.columns:
+            return pd.Series(dtype=float)
+        r = df["Close"].astype(float).pct_change().dropna()
+        return r
+    except Exception:
+        return pd.Series(dtype=float)
 
 
 def _fred_weekly_pct_change(series_id: str, start: str, end: str) -> pd.Series:
@@ -362,6 +408,61 @@ def fetch_oil_monthly(start: str, end: str) -> pd.Series:
     return _fred_monthly_pct_change(FRED_WTI_OIL, start, end)
 
 
+def fetch_equity_daily(start: str, end: str) -> pd.Series:
+    out = _yahoo_daily_return(ETF_EQUITY, start, end)
+    if not out.empty:
+        return out
+    try:
+        s = fetch_fred_series(FRED_EQUITY_LEVEL, start, end)
+        if not s.empty:
+            d = _business_daily_last(s)
+            return d.pct_change().dropna()
+    except Exception:
+        pass
+    return pd.Series(dtype=float)
+
+
+def fetch_real_rates_daily(start: str, end: str) -> pd.Series:
+    return _fred_daily_decimal_diff(FRED_REAL_10Y, start, end)
+
+
+def fetch_inflation_surprise_daily(start: str, end: str) -> pd.Series:
+    return _fred_daily_decimal_diff(FRED_BREAKEVEN_10Y, start, end)
+
+
+def fetch_credit_spread_daily(start: str, end: str) -> pd.Series:
+    return _fred_daily_decimal_diff(FRED_HY_SPREAD, start, end)
+
+
+def fetch_usd_daily(start: str, end: str) -> pd.Series:
+    return _fred_daily_pct_change(FRED_DXY, start, end)
+
+
+def fetch_commodity_daily(start: str, end: str) -> pd.Series:
+    return _yahoo_daily_return(ETF_COMMODITY, start, end)
+
+
+def fetch_vix_daily(start: str, end: str) -> pd.Series:
+    return _fred_daily_pct_change(FRED_VIX, start, end)
+
+
+def fetch_us_growth_daily(start: str, end: str) -> pd.Series:
+    """Daily diffs of FRED WEI forward-filled to business days (Wed release shifted to Fri in weekly path)."""
+
+    try:
+        s = fetch_fred_series(FRED_US_GROWTH, start, end)
+        if s.empty or len(s) < 2:
+            return pd.Series(dtype=float)
+        d = _business_daily_last(_shift_index_days(s, -1))
+        return d.diff().dropna()
+    except Exception:
+        return pd.Series(dtype=float)
+
+
+def fetch_oil_daily(start: str, end: str) -> pd.Series:
+    return _fred_daily_pct_change(FRED_WTI_OIL, start, end)
+
+
 FACTOR_DEFINITIONS: tuple[FactorDefinition, ...] = (
     FactorDefinition("equity", "beta_eq", "Equity", "SPY or FRED:SP500", lambda start, end: fetch_equity_weekly(start, end), lambda start, end: fetch_equity_monthly(start, end), True),
     FactorDefinition("real_rates", "beta_rr", "Real rates", "FRED:DFII10", lambda start, end: fetch_real_rates_weekly(start, end), lambda start, end: fetch_real_rates_monthly(start, end), True),
@@ -511,6 +612,85 @@ def build_factor_matrix_monthly(
     ``regime_factor_analytics_v1`` alignment with macro_two_axis monthly labels.
     """
     return _build_factor_frame(start, end, monthly=True)
+
+
+_DAILY_FACTOR_LOADERS: dict[str, Callable[[str, str], pd.Series]] = {
+    "equity": fetch_equity_daily,
+    "real_rates": fetch_real_rates_daily,
+    "inflation": fetch_inflation_surprise_daily,
+    "credit": fetch_credit_spread_daily,
+    "usd": fetch_usd_daily,
+    "commodity": fetch_commodity_daily,
+    "vix": fetch_vix_daily,
+    "us_growth": fetch_us_growth_daily,
+    "oil": fetch_oil_daily,
+}
+
+
+def _build_factor_frame_daily(start: str, end: str) -> pd.DataFrame:
+    data: dict[str, pd.Series] = {}
+    for spec in FACTOR_DEFINITIONS:
+        loader = _DAILY_FACTOR_LOADERS.get(spec.column)
+        if loader is None:
+            series = pd.Series(dtype=float)
+        else:
+            try:
+                series = loader(start, end)
+            except Exception:
+                series = pd.Series(dtype=float)
+        data[spec.column] = series if series is not None else pd.Series(dtype=float)
+
+    ordered_cols = [spec.column for spec in FACTOR_DEFINITIONS]
+    df = pd.DataFrame({col: data[col] for col in ordered_cols})
+    df = df.dropna(how="all")
+    if df.empty:
+        return df
+    min_fill_ratio = 0.45
+    cols_to_drop = [
+        c
+        for c in ordered_cols
+        if c in df.columns and df[c].notna().sum() < len(df) * min_fill_ratio
+    ]
+    if cols_to_drop:
+        df = df.drop(columns=cols_to_drop)
+    df = df.dropna()
+    return df
+
+
+def build_factor_matrix_daily(
+    start: str,
+    end: str,
+) -> pd.DataFrame:
+    """
+    Build daily factor changes/returns on a shared **business-day** index
+    (complete-case inner join across retained columns). Column semantics match
+    ``build_factor_matrix`` (weekly) but sampled at daily frequency.
+    """
+    return _build_factor_frame_daily(start, end)
+
+
+def asset_daily_returns_from_daily(
+    daily_prices: dict[str, pd.Series],
+    start: str,
+    end: str,
+) -> pd.DataFrame:
+    """Daily simple returns from daily price series (dict of Close levels)."""
+
+    out: dict[str, pd.Series] = {}
+    for ticker, prices in daily_prices.items():
+        if prices is None or prices.empty:
+            continue
+        p = prices.loc[start:end] if hasattr(prices.index, "slice_indexer") else prices
+        if p.empty or len(p) < 2:
+            continue
+        p = p.sort_index()
+        r = p.astype(float).pct_change().dropna()
+        if not r.empty:
+            out[str(ticker)] = r
+    if not out:
+        return pd.DataFrame()
+    df = pd.DataFrame(out)
+    return df.dropna(how="all")
 
 
 def asset_weekly_returns_from_daily(
