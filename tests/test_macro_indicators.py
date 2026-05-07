@@ -38,10 +38,11 @@ def test_registry_blocks_cover_five_per_axis() -> None:
     assert growth_blocks == set(sfm.GROWTH_BLOCKS)
     assert inflation_blocks == set(sfm.INFLATION_BLOCKS)
     optional_keys = {s.key for s in sfm.INDICATORS if s.role == "optional"}
-    # Optional indicators include the planned ISM / nowcast set.
-    assert {"ism_manuf_pmi", "ism_services_pmi", "gdpnow", "ny_fed_nowcast"}.issubset(
-        optional_keys
-    )
+    # Optional indicators include the active ISM / nowcast set.
+    # NY Fed Nowcast was retired (2026-05-07) — GDPNow (FRED:GDPNOW) is the
+    # sole nowcast indicator now.
+    assert {"ism_manuf_pmi", "ism_services_pmi", "gdpnow"}.issubset(optional_keys)
+    assert "ny_fed_nowcast" not in {s.key for s in sfm.INDICATORS}
 
 
 def test_optional_blocks_set_includes_growth_nowcast() -> None:

@@ -433,11 +433,11 @@ The method version is `macro_two_axis_v1`. The required disclaimer is:
 
 `macro_two_axis_v1 is a diagnostic-only macro regime classifier. It does not affect optimizer weights, mandate gates, stress pass/fail, or weight release.`
 
-The model is a **two-axis macro classifier on monthly data**. Indicators are loaded through a layered source resolver covering FRED → Yahoo Finance → official CSV (Atlanta Fed GDPNow, NY Fed Nowcast historical) → official API → keyed third-party API → manual CSV (`cache/macro/<key>.csv`, override via `<KEY>_CSV_PATH` env var). When a source is unavailable (missing API key, network failure, paywalled) the indicator becomes `available=False` and the model degrades to a lower `coverage_tier` without crashing the run.
+The model is a **two-axis macro classifier on monthly data**. Indicators are loaded through a layered source resolver covering FRED → Yahoo Finance → official CSV (Atlanta Fed GDPNow) → official API → keyed third-party API → manual CSV (`cache/macro/<key>.csv`, override via `<KEY>_CSV_PATH` env var). When a source is unavailable (missing API key, network failure, paywalled) the indicator becomes `available=False` and the model degrades to a lower `coverage_tier` without crashing the run.
 
 Indicator blocks (each with one or two indicators):
 
-- Growth — `growth_business_activity` (ISM Manuf PMI, ISM Services PMI), `growth_labor` (PAYEMS, UNRATE), `growth_consumer` (Real PCE, Real DPI), `growth_credit` (HY OAS, NFCI), `growth_nowcast` (Atlanta Fed GDPNow via FRED:GDPNOW — quarterly, ffilled to monthly; reference page <https://www.atlantafed.org/research-and-data/data/gdpnow>; NY Fed Nowcast historical-only — optional block).
+- Growth — `growth_business_activity` (ISM Manuf PMI, ISM Services PMI), `growth_labor` (PAYEMS, UNRATE), `growth_consumer` (Real PCE, Real DPI), `growth_credit` (HY OAS, NFCI), `growth_nowcast` (Atlanta Fed GDPNow via FRED:GDPNOW — quarterly, ffilled to monthly; reference page <https://www.atlantafed.org/research-and-data/data/gdpnow>; optional block, single indicator after NY Fed Nowcast was retired on 2026-05-07).
 - Inflation — `core_inflation` (Core CPI 3m annualised, Core PCE 3m annualised), `headline_inflation` (Headline CPI 3m annualised, WTI oil monthly average then 3m change), `wages` (Average Hourly Earnings 3m yoy, ECI quarterly forward-filled to monthly yoy), `inflation_expectations` (5y breakeven, 5y5y forward breakeven), `business_price_pressure` (ISM Manuf Prices Paid, ISM Services Prices Paid).
 
 Transforms applied per indicator: `level` (month-end unless an indicator-specific aggregation overrides it, e.g. WTI uses monthly average), and a momentum component derived as `m_over_m_change`, `three_m_avg_mom` (PAYEMS), `three_m_change` (UNRATE, sign inverted), `three_m_yoy` (real PCE/DPI, AHE), `three_m_annualized` (core/headline CPI, core PCE), `oil_monthly_avg_three_m_change` (WTI), `quarterly_ffill_monthly_yoy` (ECI; YoY of a level), or `quarterly_ffill_monthly_three_m_change` (GDPNow nowcast; level + 3m change of an already-annualised growth rate). Each indicator and its momentum series are normalised by a **rolling 10-year monthly z-score** with `window = 120` and `min_periods = 60`, then bucketed at `±0.5` to a `+1 / 0 / −1` signal. Block sub-scores are the sign-adjusted mean of available indicator signals. Composite axis scores are blended `0.6 · momentum_block_average + 0.4 · level_block_average`.
@@ -464,7 +464,7 @@ Top-level output fields include `axis_model.version`, `axis_model.frequency = "m
 - `fred_baseline`: only FRED-resolvable blocks resolved (i.e. `data_sources_used` values are all `fred` or `unavailable`), regardless of count.
 - `insufficient`: fewer than five blocks resolved.
 
-Optional blocks (`growth_nowcast`) missing alone (e.g. NY Fed Nowcast was discontinued in 2021 and is `historical_only`) does not pull `confidence_level` below `medium` on its own.
+Optional blocks (`growth_nowcast`) missing alone — for example, when GDPNow is temporarily unresolved — does not pull `confidence_level` below `medium` on its own. Historical reference: the NY Fed Nowcast was discontinued in 2021 and was retired from the active classifier on 2026-05-07; GDPNow (FRED:GDPNOW) is now the sole indicator in this block.
 
 Confidence rules:
 

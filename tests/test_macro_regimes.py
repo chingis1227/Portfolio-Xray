@@ -78,7 +78,6 @@ def _build_panel_with_labels(labels: list[str], *, n: int | None = None) -> tupl
             "hy_oas",
             "nfci",
             "gdpnow",
-            "ny_fed_nowcast",
             "headline_cpi_3m_ann",
             "oil_3m_change",
             "ahe",

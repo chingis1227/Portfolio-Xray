@@ -30,11 +30,12 @@ frequency. The new model:
   `24 ≤ n < 60 → usable`, `n ≥ 60 → reliable`;
 - ingests indicators through a layered **source resolver** in
   `src/data_macro_sources.py` covering FRED, Yahoo Finance, official CSV (Atlanta
-  Fed GDPNow, NY Fed Nowcast historical), official API, keyed third-party API, and
-  manual CSV fallback, each entry declaring its `source_chain`, `transform`, `sign`,
-  `role` (`required` / `optional`), and required env keys. Missing API keys do not
-  crash the run; the indicator becomes `available=False` and the model degrades to
-  a lower `coverage_tier`.
+  Fed GDPNow), official API, keyed third-party API, and manual CSV fallback, each
+  entry declaring its `source_chain`, `transform`, `sign`, `role` (`required` /
+  `optional`), and required env keys. Missing API keys do not crash the run; the
+  indicator becomes `available=False` and the model degrades to a lower
+  `coverage_tier`. (NY Fed Nowcast was retired on 2026-05-07 — see Decision Log;
+  GDPNow is now the sole indicator in the `growth_nowcast` block.)
 
 A portfolio reviewer can run `python run_report.py --no-cache` and inspect
 `stress_report.json.macro_regime_diagnostics` to see: latest `growth_score` and
@@ -65,6 +66,7 @@ optimizer weights, mandate gates, stress pass/fail, or weight release.
 - [x] Rewrote `tests/test_macro_regimes.py`; added `tests/test_macro_indicators.py`, `tests/test_macro_source_resolver.py`, `tests/test_macro_neutral_band_sensitivity.py`; updated `tests/test_portfolio_commentary.py`.
 - [x] Rewrote `docs/docs/stress_testing_spec.md` §8.8.2; refreshed `AGENTS.md`, `PROJECT_RULES.md`, `SPEC.md`, `README.md`.
 - [x] Ran focused, broader factor/stress, and full pytest. See `Artifacts and Notes`.
+- [x] (2026-05-07) Retired `ny_fed_nowcast` from the active classifier. Removed the IndicatorSpec from `INDICATORS` in `src/stress_factors_macro.py`, replaced by an inline deprecation comment. GDPNow (FRED:GDPNOW) is now the sole indicator in the `growth_nowcast` block. Updated `tests/test_macro_indicators.py` and `tests/test_macro_regimes.py`; refreshed `docs/docs/stress_testing_spec.md` §8.8.2 and `PROJECT_RULES.md`. The deprecated NY Fed CSV URL is preserved here for historical reference only.
 
 ## Surprises & Discoveries
 
@@ -84,9 +86,18 @@ optimizer weights, mandate gates, stress pass/fail, or weight release.
   can trace where to look manually if FRED and the direct CSV both fail).
 - Observation: NY Fed Nowcast was discontinued in 2021.
   Evidence: NY Fed publishes the historical CSV but no current values; therefore it
-  must be tagged `historical_only` and its absence at the current month must not
-  push `confidence_level` down nor flip `coverage_tier` from `full` / `extended`
+  was originally tagged `historical_only` and its absence at the current month must
+  not push `confidence_level` down nor flip `coverage_tier` from `full` / `extended`
   on its own.
+- Update (2026-05-07): NY Fed Nowcast was **retired from the active classifier**.
+  Rationale: even when the historical CSV resolves it provides no new monthly
+  values (frozen at 2021), so it cannot contribute to current-month rolling
+  z-scores or signals. Keeping the indicator in `INDICATORS` only inflated
+  `unavailable_indicators` and added noise to source-resolution diagnostics. The
+  `growth_nowcast` block now relies on **GDPNow alone**. The deprecated CSV URL
+  (`https://www.newyorkfed.org/medialibrary/media/research/policy/nowcast/nowcast_data_2021.csv`)
+  is preserved in this ExecPlan as a historical reference; it is not listed in
+  `INDICATORS` any more.
 - Observation: The existing weekly helpers in `src/stress_factors.py`
   (`_macro_regression_from_arrays`, `_macro_covariance_block`, `_macro_factor_risk`,
   `_macro_factor_rc`, `_macro_policy_signal`, `_macro_quality_status`) are
@@ -132,6 +143,20 @@ optimizer weights, mandate gates, stress pass/fail, or weight release.
   `macro_regime_indicator_panel.csv`.
   Rationale: Honest about the change, minimises downstream consumer churn.
   Date/Author: 2026-05-06 / Codex.
+- Decision: **Retire `ny_fed_nowcast` from the active classifier.** The
+  IndicatorSpec is removed from `INDICATORS` in `src/stress_factors_macro.py`
+  and replaced by an inline deprecation comment. The `growth_nowcast` block
+  now relies on **GDPNow alone**.
+  Rationale: NY Fed Nowcast has been frozen at 2021 since the program ended;
+  it could never contribute to current-month rolling z-scores, which require
+  fresh observations within the trailing 10-year window. The
+  `historical_only=True` flag prevented `coverage_tier` regressions but the
+  indicator still added noise to `unavailable_indicators` /
+  `data_sources_used` and conveyed the misleading impression that a second
+  nowcast feed was being attempted at runtime. The deprecated CSV URL
+  (`https://www.newyorkfed.org/medialibrary/media/research/policy/nowcast/nowcast_data_2021.csv`)
+  is preserved as a historical reference in this ExecPlan only.
+  Date/Author: 2026-05-07 / Codex.
 
 ## Outcomes & Retrospective
 
@@ -160,9 +185,10 @@ Trade-offs / lessons:
   resolver supports a keyed-API stub plus manual CSV fallback. Without an ISM
   feed the model honestly reports `coverage_tier = reduced` rather than
   silently inventing values.
-- NY Fed Nowcast was discontinued in 2021. The registry tags it
-  `historical_only=True` so its absence at the latest month does not penalise
-  current confidence.
+- NY Fed Nowcast was discontinued in 2021 and **retired from the active
+  classifier on 2026-05-07** (see Decision Log entry). GDPNow is now the sole
+  nowcast indicator in the `growth_nowcast` block. The deprecated URL is kept
+  in this ExecPlan as a historical reference only.
 - Vintage / release-date accuracy remains out of scope and is documented in
   `axis_model.look_ahead_caveat`. A future iteration could integrate FRED
   ALFRED-style vintage data.

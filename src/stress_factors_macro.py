@@ -278,25 +278,13 @@ INDICATORS: tuple[IndicatorSpec, ...] = (
             "https://www.atlantafed.org/research-and-data/data/gdpnow"
         ),
     ),
-    IndicatorSpec(
-        key="ny_fed_nowcast",
-        block=GROWTH_BLOCK_NOWCAST,
-        axis="growth",
-        role="optional",
-        sign="+",
-        frequency="M",
-        transform="level_and_three_m_change",
-        source_chain=(
-            SourceSpec(
-                kind="official_csv",
-                locator="https://www.newyorkfed.org/medialibrary/media/research/policy/nowcast/nowcast_data_2021.csv",
-                historical_only=True,
-            ),
-            SourceSpec(kind="manual_csv", locator="", historical_only=True),
-        ),
-        historical_only=True,
-        description="NY Fed Nowcast (historical-only; discontinued 2021)",
-    ),
+    # NOTE: NY Fed Nowcast was retired from the active classifier on
+    # 2026-05-07. The series was discontinued by the NY Fed in 2021 and only
+    # provided historical values; GDPNow (via FRED:GDPNOW) is now the sole
+    # nowcast indicator in the `growth_nowcast` block. The historical NY Fed
+    # CSV remains documented as a deprecated reference in
+    # `docs/exec_plans/2026-05-05_macro_two_axis_regime_v1.md` and
+    # `docs/docs/stress_testing_spec.md` §8.8.2.
     # ----- Inflation: core -----
     IndicatorSpec(
         key="core_cpi_3m_ann",
