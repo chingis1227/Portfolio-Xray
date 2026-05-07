@@ -23,6 +23,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from src.cache import cleanup_old_cache, clear_all_cache
@@ -87,6 +88,7 @@ from src.stress_factors import (
     compute_portfolio_factor_beta_oos_monthly,
     compute_asset_factor_betas_weekly,
     build_factor_matrix,
+    build_factor_matrix_monthly,
     attach_kalman_factor_betas_to_stress_report,
     build_diagnostic_oil_beta,
     build_factor_beta_diagnostic_overlay,
@@ -109,6 +111,12 @@ from src.stress_factors import (
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
 from src.windows import slice_window
 from src.portfolio_commentary import write_portfolio_commentary, write_stress_commentary
+from src.regime_factor_analytics import (
+    regime_factor_analytics,
+    regime_factor_analytics_csv_frames,
+    regime_factor_analytics_for_stress_report,
+    regime_factor_analytics_summary,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -799,6 +807,58 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["macro_regime_diagnostics_error"] = str(e)
         logger.warning(f"Macro regime diagnostics failed: {e}")
+
+    try:
+        mr = stress_report.get("macro_regime_diagnostics") or {}
+        lm = mr.get("labels_monthly") or []
+        if not isinstance(mr, dict) or mr.get("error") or not lm:
+            stress_report["regime_factor_analytics_skip_reason"] = (
+                "macro_regime_diagnostics unavailable or empty labels_monthly"
+            )
+        else:
+            idx = pd.to_datetime([row["date"] for row in lm])
+            regime_ser = pd.Series([str(row.get("regime", "")) for row in lm], index=idx)
+            trans_ser = pd.Series([bool(row.get("transition_flag", False)) for row in lm], index=idx)
+            asset_cols = [t for t in tickers if t in monthly_returns.columns]
+            monthly_asset = monthly_returns[asset_cols].copy()
+            monthly_asset.index = (
+                pd.to_datetime(monthly_asset.index).tz_localize(None).normalize()
+            )
+            start_m = monthly_asset.index.min().strftime("%Y-%m-%d")
+            monthly_factors = build_factor_matrix_monthly(start_m, analysis_end_str)
+            if monthly_factors is not None and not monthly_factors.empty:
+                monthly_factors.index = (
+                    pd.to_datetime(monthly_factors.index).tz_localize(None).normalize()
+                )
+            rfa_payload = regime_factor_analytics(
+                monthly_returns=monthly_asset,
+                monthly_factor_returns=monthly_factors,
+                regime_labels=regime_ser,
+                transition_flag=trans_ser,
+                confidence_level=None,
+                weights=weights,
+                enable_transition_split=False,
+                enable_confidence_split=False,
+                frequency="monthly",
+            )
+            stress_report["regime_factor_analytics"] = regime_factor_analytics_for_stress_report(
+                rfa_payload
+            )
+            rfa_summary = regime_factor_analytics_summary(rfa_payload)
+            (output_dir_final / "regime_factor_analytics_summary.json").write_text(
+                json.dumps(rfa_summary, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            for fname, df in regime_factor_analytics_csv_frames(rfa_payload).items():
+                if df is not None and not df.empty:
+                    num_cols = df.select_dtypes(include=[np.number]).columns
+                    if len(num_cols):
+                        df = df.copy()
+                        df[num_cols] = df[num_cols].round(6)
+                    df.to_csv(output_dir_csv / fname, index=False)
+    except Exception as e:
+        stress_report["regime_factor_analytics_error"] = str(e)
+        logger.warning(f"Regime factor analytics failed: {e}")
 
     try:
         stress_report["diagnostic_oil_beta"] = build_diagnostic_oil_beta(

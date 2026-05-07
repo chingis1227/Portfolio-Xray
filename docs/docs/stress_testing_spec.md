@@ -530,6 +530,24 @@ Additionally, the run writes `regime_label_quality_summary.json` to the variant 
 
 `stress_commentary.txt` must also include a short **Regime Label Quality Check** subsection with usability verdict, reliable/weak regimes, stability/noise interpretation, and explicit cautions when any regime has `<24` observations or switching is flagged as noisy.
 
+#### 8.8.3 Regime-specific asset and factor analytics (`regime_factor_analytics_v1`)
+
+`stress_report.json.regime_factor_analytics` is diagnostic-only statistical infrastructure for future regime-aware optimization. It does **not** change `macro_two_axis_v1`, optimizer behavior, mandate gates, stress pass/fail, or weight release.
+
+**Inputs.** Monthly inner join of: (1) lagged primary regime labels from `macro_regime_diagnostics.labels_monthly` (`regime` ∈ {`goldilocks`, `reflation`, `stagflation`, `recession_disinflation`}), (2) portfolio asset simple returns (same monthly frame as the main report, FX-converted), (3) nine-factor monthly returns (`equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`, `oil`) from `build_factor_matrix_monthly`, (4) optional `transition_flag` per month for split analyses, (5) current portfolio weights for bottom-up portfolio factor exposure.
+
+**Frequency.** Default `frequency = monthly`. Optional `frequency = weekly` may forward-fill the latest monthly regime label onto weekly rows (`weekly_alignment = forward_fill_monthly_label`); this is a lower-confidence alignment choice and must be tagged in JSON.
+
+**Gating (monthly n_obs per regime slice).** Uses the same thresholds as §8.8.2: `n < 12` → `insufficient_data` (suppress asset/factor covariance, asset betas, factor RC in that slice; still report `n_obs` and quality); `12–23` → `low_confidence` (`not_for_optimization = true`); `24–59` → `usable`; `60+` → `reliable`.
+
+**Computations per primary regime.** Asset and factor covariance use **Ledoit–Wolf** shrinkage (`sklearn.covariance.LedoitWolf`, `assume_centered=False`) on **complete-case** rows (`dropna(how="any")`) when at least two such rows exist; correlations derive from that covariance. If Ledoit–Wolf fails, **complete-case** sample covariance (`ddof=1`) is used; if fewer than two complete rows exist, **pairwise** sample covariance on the regime slice applies. PSD is flagged (`psd` / `not_psd`) without silent repair unless a project-standard repair helper exists. Per-asset OLS of returns on all nine factors with HAC Newey–West inference (Bartlett kernel, lag rule `max(1, min(cap, floor(4*(n/100)^(2/9))))` with monthly cap 12). Portfolio factor betas = weighted sum of asset betas (weights_coverage reported). Factor variance contribution uses the **factor** Ledoit–Wolf (or fallback) covariance: `β_pf' Σ_factor β_pf` decomposed into `beta_i * (Σ beta)_i`, shares normalized to total factor variance; `dominant_factors` lists top contributors by absolute share.
+
+**Outputs.** CSV under `results_csv/`: `regime_asset_covariance.csv`, `regime_asset_correlation.csv`, `regime_factor_covariance.csv`, `regime_factor_correlation.csv`, `regime_asset_factor_betas.csv`, `regime_portfolio_factor_exposures.csv`, `regime_factor_variance_contribution.csv`, `regime_factor_average_moves.csv`. Each row includes `regime`, `n_obs`, `quality_status`, `not_for_optimization` (regime-level), `transition_split`, `confidence_split`, `data_start`, `data_end`, and `estimate_suppressed` when a matrix or beta block is gated. Summary JSON: `regime_factor_analytics_summary.json` in the variant final folder. The slim `stress_report.json` block omits full covariance nests; full matrices appear in CSV.
+
+**Splits.** Optional `enable_transition_split` adds keys like `goldilocks__transition_true`. Per-month `confidence_level` splits require a time-aligned series; until available, `enable_confidence_split` logs a warning and skips.
+
+**Errors.** On failure, `regime_factor_analytics_error` is set and the report continues.
+
 ---
 
 ### 8.9 Factor variance decomposition

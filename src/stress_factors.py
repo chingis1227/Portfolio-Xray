@@ -501,6 +501,18 @@ def build_factor_matrix(
     return _build_factor_frame(start, end, monthly=False)
 
 
+def build_factor_matrix_monthly(
+    start: str,
+    end: str,
+) -> pd.DataFrame:
+    """
+    Build monthly factor series (effective month-end), same columns as
+    ``build_factor_matrix``. Index: month-end timestamps. Used for
+    ``regime_factor_analytics_v1`` alignment with macro_two_axis monthly labels.
+    """
+    return _build_factor_frame(start, end, monthly=True)
+
+
 def asset_weekly_returns_from_daily(
     daily_prices: dict[str, pd.Series],
     start: str,
