@@ -50,20 +50,40 @@ MACRO_INDICATOR_SIGNAL_BAND = 0.5
 MACRO_COMPOSITE_MOMENTUM_WEIGHT = 0.6
 MACRO_COMPOSITE_LEVEL_WEIGHT = 0.4
 
-# Neutral band on composite scores
-MACRO_REGIME_NEUTRAL_BAND_DEFAULT = 0.25
+# Neutral band on composite scores. Lowered from 0.25 to 0.20 after the
+# 2026-05 sensitivity analysis (see docs/exec_plans/2026-05-07_macro_two_axis_regime_v1.md
+# and docs/docs/stress_testing_spec.md §8.8.2): 0.20 reduces the neutral_transition
+# share by ~8pp without breaking macro-sanity windows or expanding low-quality
+# regimes; remains diagnostic-only.
+MACRO_REGIME_NEUTRAL_BAND_DEFAULT = 0.20
 
 # Look-ahead lag (months)
 MACRO_REGIME_SCORE_LAG_MONTHS = 1
 
-# Regime labels (4 quadrants + transition)
-MACRO_REGIME_NAMES: tuple[str, ...] = (
+# Primary regime labels (4 sign-based quadrants). The ``primary_regime`` field is
+# always one of these; transition uncertainty is reported separately via
+# ``transition_flag`` / ``transition_reason``. Pre-2026-05 builds collapsed both
+# ideas into one ``regime`` field with ``neutral_transition`` as a 5th bucket; the
+# legacy 5-bucket label is preserved as ``regime_legacy`` for backward compat.
+MACRO_PRIMARY_REGIME_NAMES: tuple[str, ...] = (
     "goldilocks",
     "reflation",
     "stagflation",
     "recession_disinflation",
+)
+
+# Backward-compatible 5-bucket alias used by legacy callers and CSV exports.
+# New code should iterate ``MACRO_PRIMARY_REGIME_NAMES`` and read transition
+# metadata separately.
+MACRO_REGIME_NAMES: tuple[str, ...] = (
+    *MACRO_PRIMARY_REGIME_NAMES,
     "neutral_transition",
 )
+
+# Transition reason codes emitted alongside ``primary_regime``.
+MACRO_TRANSITION_REASON_GROWTH = "growth_axis_near_neutral"
+MACRO_TRANSITION_REASON_INFLATION = "inflation_axis_near_neutral"
+MACRO_TRANSITION_REASON_BOTH = "both_axes_near_neutral"
 
 # Per-regime n_obs gating thresholds (monthly observations)
 MACRO_REGIME_INSUFFICIENT_MAX_ROWS = 12   # n < 12 -> insufficient_data (estimates suppressed)
@@ -80,6 +100,28 @@ MACRO_LABEL_QUALITY_MIN_MAJOR_SHARE = 0.15
 MACRO_LABEL_SWITCH_WARN_AVG_MONTHS_LT = 4.0
 MACRO_LABEL_ONE_MONTH_WARN_SHARE_GT = 0.25
 MACRO_LABEL_LT3M_WARN_SHARE_GT = 0.45
+
+# Indicator scoring mode. "discrete" keeps the legacy -1/0/+1 bucket; "clipped_z"
+# uses signed clipped rolling z-scores rescaled to [-1, +1] to preserve more signal.
+MACRO_SCORING_METHOD_DEFAULT = "discrete"
+MACRO_CLIPPED_Z_MAX_ABS_DEFAULT = 2.0
+# Persistence rule (regime confirmation) in months. 1 disables persistence; default
+# is 2 to require two consecutive months agreeing on a regime change before
+# adopting the new label. This is a smoothing layer only (does not by itself
+# reduce neutral_transition); it eliminates one-month label flips while
+# preserving real regime transitions. See docs/docs/stress_testing_spec.md §8.8.2.
+MACRO_PERSISTENCE_MONTHS_DEFAULT = 2
+
+# Block-gating: down-weight or exclude blocks with low data coverage or weak
+# rolling signal so that structurally-silent blocks (e.g. growth_nowcast pre-2011)
+# do not dilute the composite axis score toward zero. Modes:
+#   - "off"        : equal-weight all blocks (legacy behaviour, default).
+#   - "downweight" : multiply the block weight by min(1, cov/cov_min) * min(1, std/std_min).
+#   - "exclude"    : drop the block (weight=0) when cov < cov_min or std < std_min.
+# Diagnostic-only knob; defaults stay at "off" until block-gating is endorsed.
+MACRO_BLOCK_GATING_MODE_DEFAULT = "off"
+MACRO_BLOCK_COVERAGE_MIN_DEFAULT = 0.70
+MACRO_BLOCK_STD_MIN_DEFAULT = 0.30
 
 
 def macro_quality_status(n_obs: int) -> str:
@@ -695,7 +737,64 @@ def _bucket_signals(series: pd.Series) -> pd.Series:
     return series.map(_bucket_signal).astype(float)
 
 
+def _clipped_signal(z: float, *, clip: float) -> float:
+    """Continuous clipped z-score signal, rescaled to roughly [-1, +1]."""
+
+    if not np.isfinite(z):
+        return np.nan
+    clip = float(clip) if clip and clip > 0 else MACRO_CLIPPED_Z_MAX_ABS_DEFAULT
+    bounded = max(-clip, min(clip, float(z)))
+    return bounded / clip
+
+
+def _clipped_signals(series: pd.Series, *, clip: float) -> pd.Series:
+    return series.map(lambda x: _clipped_signal(x, clip=clip)).astype(float)
+
+
+def _apply_persistence(labels: list, *, k: int) -> list:
+    """Confirm regime change only when k consecutive months agree on the new label.
+
+    ``k <= 1`` disables persistence (returns the input as a list). ``None``
+    entries (warmup periods before scores are available) are passed through
+    untouched — persistence applies only to the scored part of the series.
+    At the tail of the scored series, when fewer than ``k`` future
+    observations exist, the previous regime is held (an unconfirmed change at
+    the boundary is conservative).
+    """
+
+    if k is None or int(k) <= 1 or not labels:
+        return list(labels)
+    k_int = int(k)
+    out = list(labels)
+    n = len(out)
+    start = 0
+    while start < n and out[start] is None:
+        start += 1
+    if start >= n:
+        return out
+    current = out[start]
+    for i in range(start + 1, n):
+        candidate = out[i]
+        if candidate is None or candidate == current:
+            continue
+        if i + k_int > n:
+            out[i] = current
+            continue
+        confirmed = all(out[j] == candidate for j in range(i, i + k_int))
+        if confirmed:
+            current = candidate
+        else:
+            out[i] = current
+    return out
+
+
 def _label_quadrant(growth: float, infl: float, *, neutral_band: float) -> str:
+    """Legacy 5-bucket label (kept for backward compatibility).
+
+    Returns ``neutral_transition`` for non-finite scores or when either axis
+    falls inside the neutral band; otherwise the sign-based quadrant.
+    """
+
     if not np.isfinite(growth) or not np.isfinite(infl):
         return "neutral_transition"
     if abs(growth) <= neutral_band or abs(infl) <= neutral_band:
@@ -709,12 +808,64 @@ def _label_quadrant(growth: float, infl: float, *, neutral_band: float) -> str:
     return "recession_disinflation"
 
 
+def _primary_quadrant(growth: float, infl: float) -> str | None:
+    """Sign-based primary regime (4 quadrants).
+
+    Returns ``None`` when scores are not finite (warmup tail of the rolling
+    z-score window). The neutral band has no influence here — the primary
+    regime is determined by the *sign* of each axis only. The neutral band is
+    consumed by :func:`_transition_status` to flag low-confidence months.
+    """
+
+    if not np.isfinite(growth) or not np.isfinite(infl):
+        return None
+    g = float(growth)
+    p = float(infl)
+    if g >= 0 and p < 0:
+        return "goldilocks"
+    if g >= 0 and p >= 0:
+        return "reflation"
+    if g < 0 and p >= 0:
+        return "stagflation"
+    return "recession_disinflation"
+
+
+def _transition_status(
+    growth: float, infl: float, *, neutral_band: float
+) -> tuple[bool, str | None]:
+    """Return ``(transition_flag, transition_reason)``.
+
+    The flag is ``True`` when at least one axis is inside ``±neutral_band``;
+    the reason names which axis (or both) is the source of the uncertainty.
+    Non-finite scores produce ``(False, None)`` (no signal yet).
+    """
+
+    if not np.isfinite(growth) or not np.isfinite(infl):
+        return False, None
+    band = float(neutral_band)
+    g_in = abs(float(growth)) <= band
+    i_in = abs(float(infl)) <= band
+    if g_in and i_in:
+        return True, MACRO_TRANSITION_REASON_BOTH
+    if g_in:
+        return True, MACRO_TRANSITION_REASON_GROWTH
+    if i_in:
+        return True, MACRO_TRANSITION_REASON_INFLATION
+    return False, None
+
+
 def compute_macro_scores(
     panel: pd.DataFrame,
     meta: dict[str, Any],
     *,
     neutral_band: float = MACRO_REGIME_NEUTRAL_BAND_DEFAULT,
     indicators: tuple[IndicatorSpec, ...] | None = None,
+    scoring_method: str = MACRO_SCORING_METHOD_DEFAULT,
+    clipped_z_max_abs: float = MACRO_CLIPPED_Z_MAX_ABS_DEFAULT,
+    persistence_months: int = MACRO_PERSISTENCE_MONTHS_DEFAULT,
+    block_gating_mode: str = MACRO_BLOCK_GATING_MODE_DEFAULT,
+    block_coverage_min: float = MACRO_BLOCK_COVERAGE_MIN_DEFAULT,
+    block_std_min: float = MACRO_BLOCK_STD_MIN_DEFAULT,
 ) -> pd.DataFrame:
     """Return a monthly DataFrame with growth/inflation block sub-scores, composite
     scores, the lagged regime label, and per-row coverage metadata.
@@ -755,8 +906,22 @@ def compute_macro_scores(
                 min_periods=MACRO_SCORE_MIN_PERIODS,
             )
 
-    sig_level = {k: _bucket_signals(z) for k, z in z_level.items()}
-    sig_mom = {k: _bucket_signals(z) for k, z in z_mom.items()}
+    method = (scoring_method or MACRO_SCORING_METHOD_DEFAULT).strip().lower()
+    if method not in {"discrete", "clipped_z"}:
+        raise ValueError(
+            f"Unsupported macro scoring method: {scoring_method!r}; "
+            "expected 'discrete' or 'clipped_z'."
+        )
+    if method == "clipped_z":
+        sig_level = {
+            k: _clipped_signals(z, clip=clipped_z_max_abs) for k, z in z_level.items()
+        }
+        sig_mom = {
+            k: _clipped_signals(z, clip=clipped_z_max_abs) for k, z in z_mom.items()
+        }
+    else:
+        sig_level = {k: _bucket_signals(z) for k, z in z_level.items()}
+        sig_mom = {k: _bucket_signals(z) for k, z in z_mom.items()}
 
     def _block_signal(block_keys: list[str], sig_map: dict[str, pd.Series]) -> pd.Series:
         if not block_keys:
@@ -805,10 +970,102 @@ def compute_macro_scores(
         inflation_block_levels.append(lvl)
         inflation_block_moms.append(mom)
 
-    out["growth_level"] = pd.concat(growth_block_levels, axis=1).mean(axis=1, skipna=True)
-    out["growth_momentum"] = pd.concat(growth_block_moms, axis=1).mean(axis=1, skipna=True)
-    out["inflation_level"] = pd.concat(inflation_block_levels, axis=1).mean(axis=1, skipna=True)
-    out["inflation_momentum"] = pd.concat(inflation_block_moms, axis=1).mean(axis=1, skipna=True)
+    gating_mode = (block_gating_mode or "off").strip().lower()
+    if gating_mode not in {"off", "downweight", "exclude"}:
+        raise ValueError(
+            f"Unsupported block_gating_mode: {block_gating_mode!r}; "
+            "expected 'off', 'downweight', or 'exclude'."
+        )
+
+    def _block_panel_columns(axis: str, block: str) -> list[str]:
+        keys = (
+            growth_keys_by_block.get(block, [])
+            if axis == "growth"
+            else inflation_keys_by_block.get(block, [])
+        )
+        cols: list[str] = []
+        for k in keys:
+            for suffix in ("__level", "__momentum"):
+                col = f"{k}{suffix}"
+                if col in panel.columns:
+                    cols.append(col)
+        return cols
+
+    def _block_weight(axis: str, block: str, lvl: pd.Series, mom: pd.Series) -> float:
+        if gating_mode == "off":
+            return 1.0
+        cov_cols = _block_panel_columns(axis, block)
+        if cov_cols:
+            cov = float(panel[cov_cols].notna().any(axis=1).mean())
+        else:
+            cov = 0.0
+        blended = (
+            MACRO_COMPOSITE_MOMENTUM_WEIGHT * mom.fillna(0.0)
+            + MACRO_COMPOSITE_LEVEL_WEIGHT * lvl.fillna(0.0)
+        )
+        std = float(blended.std(ddof=1)) if blended.notna().sum() > 1 else 0.0
+        if gating_mode == "exclude":
+            cov_ok = cov >= float(block_coverage_min) if block_coverage_min > 0 else True
+            std_ok = std >= float(block_std_min) if block_std_min > 0 else True
+            return 1.0 if (cov_ok and std_ok) else 0.0
+        cov_factor = (
+            min(1.0, cov / float(block_coverage_min)) if block_coverage_min > 0 else 1.0
+        )
+        std_factor = (
+            min(1.0, std / float(block_std_min)) if block_std_min > 0 else 1.0
+        )
+        return float(cov_factor * std_factor)
+
+    def _weighted_axis_mean(
+        block_series: list[pd.Series],
+        block_names: list[str],
+        weights: list[float],
+    ) -> pd.Series:
+        if not block_series:
+            return pd.Series(np.nan, index=panel.index)
+        weight_sum = float(sum(weights))
+        if weight_sum <= 0.0:
+            return pd.concat(block_series, axis=1).mean(axis=1, skipna=True)
+        df = pd.concat(block_series, axis=1, keys=block_names)
+        weight_vec = pd.Series(weights, index=block_names, dtype=float)
+        active_mask = df.notna()
+        active_weights = active_mask.mul(weight_vec, axis=1)
+        active_weights_sum = active_weights.sum(axis=1)
+        weighted = (df.fillna(0.0) * weight_vec).sum(axis=1)
+        result = weighted.where(active_weights_sum > 0) / active_weights_sum.where(
+            active_weights_sum > 0, np.nan
+        )
+        return result
+
+    growth_block_weights = [
+        _block_weight("growth", b, growth_block_levels[i], growth_block_moms[i])
+        for i, b in enumerate(GROWTH_BLOCKS)
+    ]
+    inflation_block_weights = [
+        _block_weight("inflation", b, inflation_block_levels[i], inflation_block_moms[i])
+        for i, b in enumerate(INFLATION_BLOCKS)
+    ]
+
+    out.attrs["block_weights"] = {
+        "growth": dict(zip(GROWTH_BLOCKS, growth_block_weights)),
+        "inflation": dict(zip(INFLATION_BLOCKS, inflation_block_weights)),
+        "mode": gating_mode,
+        "coverage_min": float(block_coverage_min),
+        "std_min": float(block_std_min),
+    }
+
+    out["growth_level"] = _weighted_axis_mean(
+        growth_block_levels, list(GROWTH_BLOCKS), growth_block_weights
+    )
+    out["growth_momentum"] = _weighted_axis_mean(
+        growth_block_moms, list(GROWTH_BLOCKS), growth_block_weights
+    )
+    out["inflation_level"] = _weighted_axis_mean(
+        inflation_block_levels, list(INFLATION_BLOCKS), inflation_block_weights
+    )
+    out["inflation_momentum"] = _weighted_axis_mean(
+        inflation_block_moms, list(INFLATION_BLOCKS), inflation_block_weights
+    )
     out["growth_score"] = (
         MACRO_COMPOSITE_MOMENTUM_WEIGHT * out["growth_momentum"]
         + MACRO_COMPOSITE_LEVEL_WEIGHT * out["growth_level"]
@@ -818,15 +1075,58 @@ def compute_macro_scores(
         + MACRO_COMPOSITE_LEVEL_WEIGHT * out["inflation_level"]
     )
 
-    # Per-row regime at the same date (for diagnostics).
-    out["regime_unlagged"] = [
+    # ------------------------------------------------------------------
+    # Primary regime (4 quadrants by sign) + transition metadata.
+    # The legacy 5-bucket label (with ``neutral_transition``) is preserved
+    # under ``regime_legacy*`` for backward compatibility; new code should
+    # consume ``regime`` (primary) plus ``transition_flag`` / ``transition_reason``.
+    # ------------------------------------------------------------------
+    growth_arr = out["growth_score"].values
+    inflation_arr = out["inflation_score"].values
+
+    primary_raw: list = [_primary_quadrant(g, p) for g, p in zip(growth_arr, inflation_arr)]
+    legacy_raw = [
         _label_quadrant(g, p, neutral_band=neutral_band)
-        for g, p in zip(out["growth_score"].values, out["inflation_score"].values)
+        for g, p in zip(growth_arr, inflation_arr)
     ]
+    transition_pairs = [
+        _transition_status(g, p, neutral_band=neutral_band)
+        for g, p in zip(growth_arr, inflation_arr)
+    ]
+    transition_flag_raw = [bool(flag) for flag, _ in transition_pairs]
+    transition_reason_raw = [reason for _, reason in transition_pairs]
+
+    # ``regime_unlagged_raw`` (and ``regime_unlagged``) refer to the *primary*
+    # regime exclusively. The legacy series is kept under ``regime_legacy_*``.
+    out["regime_unlagged_raw"] = primary_raw
+    out["regime_legacy_unlagged_raw"] = legacy_raw
+    out["transition_flag_unlagged"] = transition_flag_raw
+    out["transition_reason_unlagged"] = transition_reason_raw
+
+    if persistence_months and int(persistence_months) > 1:
+        out["regime_unlagged"] = _apply_persistence(
+            list(primary_raw), k=int(persistence_months)
+        )
+        out["regime_legacy_unlagged"] = _apply_persistence(
+            list(legacy_raw), k=int(persistence_months)
+        )
+    else:
+        out["regime_unlagged"] = list(primary_raw)
+        out["regime_legacy_unlagged"] = list(legacy_raw)
+
     # 1-month lag — apply to the labels: row at date t carries the regime computed
     # from data ending at date (t - 1 month). We shift the labels by 1 row of the
     # monthly index so they are valid for "the month after the data".
     out["regime"] = out["regime_unlagged"].shift(MACRO_REGIME_SCORE_LAG_MONTHS)
+    out["regime_legacy"] = out["regime_legacy_unlagged"].shift(
+        MACRO_REGIME_SCORE_LAG_MONTHS
+    )
+    out["transition_flag"] = out["transition_flag_unlagged"].shift(
+        MACRO_REGIME_SCORE_LAG_MONTHS
+    )
+    out["transition_reason"] = out["transition_reason_unlagged"].shift(
+        MACRO_REGIME_SCORE_LAG_MONTHS
+    )
 
     return out
 
@@ -1042,7 +1342,18 @@ def build_regime_label_quality_check(
             },
         }
 
-    labelled = labels_with_regime.dropna(subset=["regime"]).copy()
+    score_cols_present = {
+        "growth_score",
+        "inflation_score",
+    }.issubset(set(labels_with_regime.columns))
+    raw_input = labels_with_regime.copy()
+    if score_cols_present:
+        scored_mask = labels_with_regime[["growth_score", "inflation_score"]].notna().all(axis=1)
+        warmup_months = int((~scored_mask).sum())
+        labelled = labels_with_regime.loc[scored_mask].dropna(subset=["regime"]).copy()
+    else:
+        warmup_months = 0
+        labelled = labels_with_regime.dropna(subset=["regime"]).copy()
     if labelled.empty:
         return {
             "status": "unavailable",
@@ -1052,6 +1363,8 @@ def build_regime_label_quality_check(
             "stability_summary": {},
             "macro_sanity_checks": {"episodes": []},
             "metadata_quality": {},
+            "warmup_months_excluded": warmup_months,
+            "rows_input_total": int(len(raw_input)),
             "overall_assessment": {
                 "history_usable": False,
                 "should_treat_regime_specific_cautiously": True,
@@ -1065,8 +1378,26 @@ def build_regime_label_quality_check(
     total_months = int(len(regimes))
     episodes = _regime_episode_runs(regimes)
 
+    # Quality stats are computed on the *primary* regime list (4 quadrants).
+    # ``neutral_transition`` is preserved as a key with zero observations for
+    # backward compatibility with consumers that still iterate the legacy 5-list.
     by_regime: dict[str, dict[str, Any]] = {}
     for regime in MACRO_REGIME_NAMES:
+        if regime not in MACRO_PRIMARY_REGIME_NAMES:
+            by_regime[regime] = {
+                "n_obs": 0,
+                "share_total": 0.0,
+                "first_occurrence": None,
+                "last_occurrence": None,
+                "avg_duration_months": None,
+                "median_duration_months": None,
+                "n_episodes": 0,
+                "min_episode_length": None,
+                "max_episode_length": None,
+                "quality_status": "no_observations",
+                "note": "primary regime layer no longer assigns 'neutral_transition' as a final bucket; see transition_summary",
+            }
+            continue
         idx = regimes.index[regimes == regime]
         n_obs = int(len(idx))
         runs = [int(ep["length_months"]) for ep in episodes if str(ep.get("regime")) == regime]
@@ -1093,7 +1424,8 @@ def build_regime_label_quality_check(
     major_regimes_insufficient = [
         regime
         for regime, row in by_regime.items()
-        if float(row.get("share_total") or 0.0) >= MACRO_LABEL_QUALITY_MIN_MAJOR_SHARE
+        if regime in MACRO_PRIMARY_REGIME_NAMES
+        and float(row.get("share_total") or 0.0) >= MACRO_LABEL_QUALITY_MIN_MAJOR_SHARE
         and int(row.get("n_obs") or 0) < MACRO_REGIME_USABLE_MIN_ROWS
     ]
     too_frequent_switches = (
@@ -1162,7 +1494,7 @@ def build_regime_label_quality_check(
             window_name="2020_covid_shock",
             start="2020-02-01",
             end="2020-06-30",
-            expected_labels=("recession_disinflation", "neutral_transition"),
+            expected_labels=("recession_disinflation", "stagflation"),
             note="COVID shock should not be dominated by expansionary labels.",
         ),
         _window_sanity_check(
@@ -1178,12 +1510,16 @@ def build_regime_label_quality_check(
             window_name="2022_2023_tightening_cycle",
             start="2022-01-01",
             end="2023-12-31",
-            expected_labels=("stagflation", "recession_disinflation", "neutral_transition"),
+            expected_labels=("stagflation", "recession_disinflation"),
             note="Tightening cycle should generally avoid broad risk-on reflation dominance.",
         ),
     ]
 
-    has_lt24 = any(int(row.get("n_obs") or 0) < MACRO_REGIME_USABLE_MIN_ROWS for row in by_regime.values())
+    has_lt24 = any(
+        int(row.get("n_obs") or 0) < MACRO_REGIME_USABLE_MIN_ROWS
+        for regime, row in by_regime.items()
+        if regime in MACRO_PRIMARY_REGIME_NAMES
+    )
     is_noisy = too_frequent_switches or too_many_one_month or too_many_short
     overall_warnings: list[str] = []
     if has_lt24:
@@ -1196,9 +1532,58 @@ def build_regime_label_quality_check(
         )
     overall_warnings.extend(stability_warnings)
 
+    # Build a transition summary directly from the labelled frame so quality
+    # reporting captures both primary regimes and the new transition metadata.
+    transition_summary_block: dict[str, Any] = {
+        "n_scored_months": int(total_months),
+        "n_transition_months": 0,
+        "transition_share": 0.0,
+        "transition_reason_counts": {
+            MACRO_TRANSITION_REASON_GROWTH: 0,
+            MACRO_TRANSITION_REASON_INFLATION: 0,
+            MACRO_TRANSITION_REASON_BOTH: 0,
+        },
+        "transition_by_primary": {r: 0 for r in MACRO_PRIMARY_REGIME_NAMES},
+        "primary_vs_transition_pivot": {
+            r: {"non_transition": 0, "transition": 0} for r in MACRO_PRIMARY_REGIME_NAMES
+        },
+        "legacy_neutral_transition_share": None,
+    }
+    if "transition_flag" in labelled.columns:
+        flag_raw = labelled["transition_flag"]
+        flag_series = flag_raw.where(flag_raw.notna(), False).astype(bool)
+        transition_summary_block["n_transition_months"] = int(flag_series.sum())
+        transition_summary_block["transition_share"] = (
+            float(flag_series.mean()) if len(flag_series) else 0.0
+        )
+        if "transition_reason" in labelled.columns:
+            reasons = (
+                labelled.loc[flag_series, "transition_reason"].astype(str)
+            )
+            counts = reasons.value_counts().to_dict()
+            for k in transition_summary_block["transition_reason_counts"]:
+                transition_summary_block["transition_reason_counts"][k] = int(counts.get(k, 0))
+        for primary_name in MACRO_PRIMARY_REGIME_NAMES:
+            mask = labelled["regime"].astype(str) == primary_name
+            transition_summary_block["transition_by_primary"][primary_name] = int(
+                (mask & flag_series).sum()
+            )
+            transition_summary_block["primary_vs_transition_pivot"][primary_name] = {
+                "non_transition": int((mask & ~flag_series).sum()),
+                "transition": int((mask & flag_series).sum()),
+            }
+    if "regime_legacy" in labelled.columns:
+        legacy_series = labelled["regime_legacy"].astype(str)
+        legacy_neutral = int((legacy_series == "neutral_transition").sum())
+        transition_summary_block["legacy_neutral_transition_share"] = (
+            float(legacy_neutral) / float(total_months) if total_months > 0 else 0.0
+        )
+
     return {
         "status": "available",
         "history_months": total_months,
+        "rows_input_total": int(len(raw_input)),
+        "warmup_months_excluded": int(warmup_months),
         "by_regime": by_regime,
         "episode_history": episodes,
         "stability_summary": {
@@ -1223,6 +1608,7 @@ def build_regime_label_quality_check(
             "missing_blocks_latest": sorted(missing_blocks),
             "optional_blocks_missing_latest": sorted(optional_blocks_missing),
         },
+        "transition_summary": transition_summary_block,
         "overall_assessment": {
             "history_usable": bool(not has_lt24 and not is_noisy),
             "should_treat_regime_specific_cautiously": bool(has_lt24),
@@ -1396,11 +1782,21 @@ def macro_two_axis_diagnostics_from_frames(
     *,
     neutral_band: float = MACRO_REGIME_NEUTRAL_BAND_DEFAULT,
     indicators: tuple[IndicatorSpec, ...] | None = None,
+    scoring_method: str = MACRO_SCORING_METHOD_DEFAULT,
+    clipped_z_max_abs: float = MACRO_CLIPPED_Z_MAX_ABS_DEFAULT,
+    persistence_months: int = MACRO_PERSISTENCE_MONTHS_DEFAULT,
 ) -> dict[str, Any]:
     """Compute the full ``macro_two_axis_v1`` diagnostic from supplied frames."""
 
     helpers = _macro_helpers()
     factor_order = list(helpers["_macro_order"]())
+    method_norm = (scoring_method or MACRO_SCORING_METHOD_DEFAULT).strip().lower()
+    if method_norm not in {"discrete", "clipped_z"}:
+        raise ValueError(
+            f"Unsupported macro scoring method: {scoring_method!r}; "
+            "expected 'discrete' or 'clipped_z'."
+        )
+    persistence_norm = max(1, int(persistence_months or 1))
     base_payload = {
         "axis_model": {
             "version": MACRO_REGIME_METHOD_VERSION,
@@ -1414,6 +1810,11 @@ def macro_two_axis_diagnostics_from_frames(
             "look_ahead_caveat": MACRO_REGIME_LOOK_AHEAD_CAVEAT,
             "score_window_months": int(MACRO_SCORE_WINDOW_MONTHS),
             "score_min_periods": int(MACRO_SCORE_MIN_PERIODS),
+            "scoring_method": method_norm,
+            "clipped_z_max_abs": (
+                float(clipped_z_max_abs) if method_norm == "clipped_z" else None
+            ),
+            "persistence_months": persistence_norm,
         },
         "method_disclaimer": MACRO_REGIME_METHOD_DISCLAIMER,
         "factor_order": factor_order,
@@ -1447,6 +1848,9 @@ def macro_two_axis_diagnostics_from_frames(
         indicator_meta or {},
         neutral_band=neutral_band,
         indicators=indicators,
+        scoring_method=method_norm,
+        clipped_z_max_abs=clipped_z_max_abs,
+        persistence_months=persistence_norm,
     )
     if scores.empty:
         return {
@@ -1487,12 +1891,28 @@ def macro_two_axis_diagnostics_from_frames(
         latest_inflation = float(latest_row["inflation_score"])
         latest_date = str(composite_valid.index[-1].date())
 
-    # The "current_regime" should be the regime label at the latest available row
-    # (already lagged by 1 month inside compute_macro_scores).
-    current_regime = "neutral_transition"
+    # The "current_regime" should be the primary regime (4-quadrant sign-based)
+    # at the latest available row (already lagged by 1 month inside
+    # compute_macro_scores). The legacy 5-bucket label is reported separately.
+    current_regime = "unavailable"
+    current_regime_legacy = "neutral_transition"
+    current_transition_flag = True
+    current_transition_reason: str | None = None
     regime_transition_warning = True
     if not labelled.empty:
-        current_regime = str(labelled.iloc[-1]["regime"])
+        last_row = labelled.iloc[-1]
+        primary_value = last_row.get("regime")
+        if pd.notna(primary_value):
+            current_regime = str(primary_value)
+        legacy_value = last_row.get("regime_legacy")
+        if pd.notna(legacy_value):
+            current_regime_legacy = str(legacy_value)
+        flag_value = last_row.get("transition_flag")
+        if pd.notna(flag_value):
+            current_transition_flag = bool(flag_value)
+        reason_value = last_row.get("transition_reason")
+        if isinstance(reason_value, str) and reason_value:
+            current_transition_reason = reason_value
 
     if np.isfinite(latest_growth) and np.isfinite(latest_inflation):
         regime_transition_warning = (
@@ -1573,9 +1993,12 @@ def macro_two_axis_diagnostics_from_frames(
     regimes: dict[str, Any] = {}
     regime_betas_used: dict[str, dict[str, float]] = {}
     quality_by_regime: dict[str, str] = {}
+    # Primary regimes are 4 quadrants by sign; ``regime_counts`` stores the new
+    # primary distribution and an explicit zero for the legacy ``neutral_transition``
+    # bucket so existing consumers keep finding the key.
     regime_counts: dict[str, int] = {regime: 0 for regime in MACRO_REGIME_NAMES}
 
-    for regime in MACRO_REGIME_NAMES:
+    for regime in MACRO_PRIMARY_REGIME_NAMES:
         regime_dates = scores_aligned.index[scores_aligned["regime"] == regime]
         regime_counts[regime] = int(len(regime_dates))
         block = _per_regime_block(
@@ -1604,7 +2027,35 @@ def macro_two_axis_diagnostics_from_frames(
     }
 
     labels_monthly = []
+    legacy_counts: dict[str, int] = {regime: 0 for regime in MACRO_REGIME_NAMES}
+    transition_reason_counts: dict[str, int] = {
+        MACRO_TRANSITION_REASON_GROWTH: 0,
+        MACRO_TRANSITION_REASON_INFLATION: 0,
+        MACRO_TRANSITION_REASON_BOTH: 0,
+    }
+    transition_total = 0
+    transition_by_primary: dict[str, int] = {r: 0 for r in MACRO_PRIMARY_REGIME_NAMES}
+    primary_legacy_pivot: dict[str, dict[str, int]] = {
+        r: {"non_transition": 0, "transition": 0} for r in MACRO_PRIMARY_REGIME_NAMES
+    }
     for ts, row in scores.dropna(subset=["growth_score", "inflation_score"]).iterrows():
+        primary_value = row.get("regime")
+        if pd.isna(primary_value):
+            continue
+        primary_str = str(primary_value)
+        legacy_value = row.get("regime_legacy")
+        legacy_str = str(legacy_value) if pd.notna(legacy_value) else "neutral_transition"
+        flag_raw = row.get("transition_flag")
+        if pd.isna(flag_raw):
+            flag_bool = False
+        else:
+            flag_bool = bool(flag_raw)
+        reason_value = row.get("transition_reason")
+        reason_str = (
+            reason_value
+            if isinstance(reason_value, str) and reason_value
+            else None
+        )
         labels_monthly.append(
             {
                 "date": pd.Timestamp(ts).strftime("%Y-%m-%d"),
@@ -1614,10 +2065,48 @@ def macro_two_axis_diagnostics_from_frames(
                 "growth_momentum": float(row["growth_momentum"]),
                 "inflation_level": float(row["inflation_level"]),
                 "inflation_momentum": float(row["inflation_momentum"]),
-                "regime": str(row.get("regime") or "neutral_transition"),
-                "regime_unlagged": str(row.get("regime_unlagged") or "neutral_transition"),
+                "regime": primary_str,
+                "regime_unlagged": str(row.get("regime_unlagged") or primary_str),
+                "regime_legacy": legacy_str,
+                "transition_flag": flag_bool,
+                "transition_reason": reason_str,
             }
         )
+        legacy_counts[legacy_str] = legacy_counts.get(legacy_str, 0) + 1
+        if flag_bool:
+            transition_total += 1
+            if reason_str in transition_reason_counts:
+                transition_reason_counts[reason_str] += 1
+            if primary_str in transition_by_primary:
+                transition_by_primary[primary_str] += 1
+            if primary_str in primary_legacy_pivot:
+                primary_legacy_pivot[primary_str]["transition"] += 1
+        else:
+            if primary_str in primary_legacy_pivot:
+                primary_legacy_pivot[primary_str]["non_transition"] += 1
+
+    n_scored_total = int(len(labels_monthly))
+    transition_summary = {
+        "n_scored_months": n_scored_total,
+        "n_transition_months": int(transition_total),
+        "transition_share": (
+            float(transition_total) / float(n_scored_total)
+            if n_scored_total > 0
+            else 0.0
+        ),
+        "transition_reason_counts": transition_reason_counts,
+        "transition_reason_shares": {
+            reason: (float(count) / float(n_scored_total) if n_scored_total > 0 else 0.0)
+            for reason, count in transition_reason_counts.items()
+        },
+        "transition_by_primary": transition_by_primary,
+        "primary_vs_transition_pivot": primary_legacy_pivot,
+        "legacy_neutral_transition_share": (
+            float(legacy_counts.get("neutral_transition", 0)) / float(n_scored_total)
+            if n_scored_total > 0
+            else 0.0
+        ),
+    }
 
     # Indicator panel rows — long-form: one row per (date, indicator) with level/momentum.
     indicator_panel_rows: list[dict[str, Any]] = []
@@ -1679,6 +2168,10 @@ def macro_two_axis_diagnostics_from_frames(
             },
         },
         "current_regime": current_regime,
+        "current_primary_regime": current_regime,
+        "current_regime_legacy": current_regime_legacy,
+        "current_transition_flag": bool(current_transition_flag),
+        "current_transition_reason": current_transition_reason,
         "regime_confidence": confidence_level,
         "regime_transition_warning": bool(regime_transition_warning),
         "score_lag_months": int(MACRO_REGIME_SCORE_LAG_MONTHS),
@@ -1693,6 +2186,8 @@ def macro_two_axis_diagnostics_from_frames(
         "confidence_level": confidence_level,
         "data_sources_used": (indicator_meta or {}).get("data_sources_used", {}),
         "regime_counts": regime_counts,
+        "regime_legacy_counts": legacy_counts,
+        "transition_summary": transition_summary,
         "available_regimes_count": int(available_regimes_count),
         "available_regimes_by_quality": by_quality,
         "base_10y": {
@@ -1780,6 +2275,9 @@ def macro_two_axis_diagnostics(
     factor_returns_monthly: pd.DataFrame | None = None,
     neutral_band: float = MACRO_REGIME_NEUTRAL_BAND_DEFAULT,
     months_back: int = 420,
+    scoring_method: str = MACRO_SCORING_METHOD_DEFAULT,
+    clipped_z_max_abs: float = MACRO_CLIPPED_Z_MAX_ABS_DEFAULT,
+    persistence_months: int = MACRO_PERSISTENCE_MONTHS_DEFAULT,
 ) -> dict[str, Any]:
     """Production entry: build monthly portfolio + factor returns, fetch macro
     indicator panel, and run the full ``macro_two_axis_v1`` diagnostic.
@@ -1787,6 +2285,13 @@ def macro_two_axis_diagnostics(
 
     helpers = _macro_helpers()
     factor_order = list(helpers["_macro_order"]())
+    method_norm = (scoring_method or MACRO_SCORING_METHOD_DEFAULT).strip().lower()
+    if method_norm not in {"discrete", "clipped_z"}:
+        raise ValueError(
+            f"Unsupported macro scoring method: {scoring_method!r}; "
+            "expected 'discrete' or 'clipped_z'."
+        )
+    persistence_norm = max(1, int(persistence_months or 1))
     base_payload = {
         "axis_model": {
             "version": MACRO_REGIME_METHOD_VERSION,
@@ -1800,6 +2305,11 @@ def macro_two_axis_diagnostics(
             "look_ahead_caveat": MACRO_REGIME_LOOK_AHEAD_CAVEAT,
             "score_window_months": int(MACRO_SCORE_WINDOW_MONTHS),
             "score_min_periods": int(MACRO_SCORE_MIN_PERIODS),
+            "scoring_method": method_norm,
+            "clipped_z_max_abs": (
+                float(clipped_z_max_abs) if method_norm == "clipped_z" else None
+            ),
+            "persistence_months": persistence_norm,
         },
         "method_disclaimer": MACRO_REGIME_METHOD_DISCLAIMER,
         "factor_order": factor_order,
@@ -1854,6 +2364,9 @@ def macro_two_axis_diagnostics(
         meta,
         analysis_end_str,
         neutral_band=neutral_band,
+        scoring_method=method_norm,
+        clipped_z_max_abs=clipped_z_max_abs,
+        persistence_months=persistence_norm,
     )
 
 

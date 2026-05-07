@@ -3974,7 +3974,10 @@ def macro_regime_diagnostics_from_frames(
     indicator_meta: dict[str, Any],
     analysis_end_str: str,
     *,
-    neutral_band: float = 0.25,
+    neutral_band: float = 0.20,
+    scoring_method: str | None = None,
+    clipped_z_max_abs: float | None = None,
+    persistence_months: int | None = None,
 ) -> dict[str, Any]:
     """Thin shim over `src.stress_factors_macro.macro_two_axis_diagnostics_from_frames`.
 
@@ -3982,7 +3985,12 @@ def macro_regime_diagnostics_from_frames(
     to resolve `from src.stress_factors import macro_regime_diagnostics_from_frames`.
     """
 
-    from src.stress_factors_macro import macro_two_axis_diagnostics_from_frames
+    from src.stress_factors_macro import (
+        MACRO_CLIPPED_Z_MAX_ABS_DEFAULT,
+        MACRO_PERSISTENCE_MONTHS_DEFAULT,
+        MACRO_SCORING_METHOD_DEFAULT,
+        macro_two_axis_diagnostics_from_frames,
+    )
 
     return macro_two_axis_diagnostics_from_frames(
         portfolio_returns_monthly,
@@ -3991,6 +3999,17 @@ def macro_regime_diagnostics_from_frames(
         indicator_meta or {},
         analysis_end_str,
         neutral_band=neutral_band,
+        scoring_method=scoring_method or MACRO_SCORING_METHOD_DEFAULT,
+        clipped_z_max_abs=(
+            clipped_z_max_abs
+            if clipped_z_max_abs is not None
+            else MACRO_CLIPPED_Z_MAX_ABS_DEFAULT
+        ),
+        persistence_months=(
+            int(persistence_months)
+            if persistence_months is not None
+            else MACRO_PERSISTENCE_MONTHS_DEFAULT
+        ),
     )
 
 
@@ -4001,8 +4020,11 @@ def macro_regime_diagnostics(
     analysis_end_str: str,
     factor_returns: pd.DataFrame | None = None,
     factor_returns_monthly: pd.DataFrame | None = None,
-    neutral_band: float = 0.25,
+    neutral_band: float = 0.20,
     months_back: int = 420,
+    scoring_method: str | None = None,
+    clipped_z_max_abs: float | None = None,
+    persistence_months: int | None = None,
 ) -> dict[str, Any]:
     """Thin shim over `src.stress_factors_macro.macro_two_axis_diagnostics`.
 
@@ -4012,7 +4034,12 @@ def macro_regime_diagnostics(
     matrix). New callers should use ``factor_returns_monthly`` explicitly.
     """
 
-    from src.stress_factors_macro import macro_two_axis_diagnostics
+    from src.stress_factors_macro import (
+        MACRO_CLIPPED_Z_MAX_ABS_DEFAULT,
+        MACRO_PERSISTENCE_MONTHS_DEFAULT,
+        MACRO_SCORING_METHOD_DEFAULT,
+        macro_two_axis_diagnostics,
+    )
 
     return macro_two_axis_diagnostics(
         weights=weights,
@@ -4021,6 +4048,17 @@ def macro_regime_diagnostics(
         factor_returns_monthly=factor_returns_monthly,
         neutral_band=neutral_band,
         months_back=months_back,
+        scoring_method=scoring_method or MACRO_SCORING_METHOD_DEFAULT,
+        clipped_z_max_abs=(
+            clipped_z_max_abs
+            if clipped_z_max_abs is not None
+            else MACRO_CLIPPED_Z_MAX_ABS_DEFAULT
+        ),
+        persistence_months=(
+            int(persistence_months)
+            if persistence_months is not None
+            else MACRO_PERSISTENCE_MONTHS_DEFAULT
+        ),
     )
 
 

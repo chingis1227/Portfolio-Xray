@@ -590,10 +590,11 @@ def test_write_stress_commentary_from_stress_report() -> None:
         assert "severity=moderate" in text2
         assert "Macro regime diagnostics" in text2
         assert "Method=macro_two_axis_v1" in text2
-        assert "Current regime: stagflation" in text2
+        assert "Current primary regime: stagflation" in text2
         assert "inflation_score=0.810" in text2
         assert "confidence=medium" in text2
-        assert "transition_warning=False" in text2
+        assert "transition_flag=" in text2
+        assert "transition_reason=" in text2
         assert "Coverage tier: reduced" in text2
         assert "Optional blocks missing" in text2
         assert "ECI is quarterly" in text2

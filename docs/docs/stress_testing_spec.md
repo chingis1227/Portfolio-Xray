@@ -442,22 +442,43 @@ Indicator blocks (each with one or two indicators):
 
 Transforms applied per indicator: `level` (month-end unless an indicator-specific aggregation overrides it, e.g. WTI uses monthly average), and a momentum component derived as `m_over_m_change`, `three_m_avg_mom` (PAYEMS), `three_m_change` (UNRATE, sign inverted), `three_m_yoy` (real PCE/DPI, AHE), `three_m_annualized` (core/headline CPI, core PCE), `oil_monthly_avg_three_m_change` (WTI), `quarterly_ffill_monthly_yoy` (ECI; YoY of a level), or `quarterly_ffill_monthly_three_m_change` (GDPNow nowcast; level + 3m change of an already-annualised growth rate). Each indicator and its momentum series are normalised by a **rolling 10-year monthly z-score** with `window = 120` and `min_periods = 60`, then bucketed at `±0.5` to a `+1 / 0 / −1` signal. Block sub-scores are the sign-adjusted mean of available indicator signals. Composite axis scores are blended `0.6 · momentum_block_average + 0.4 · level_block_average`.
 
-Regime labels (5 values; the previous 4-quadrant set plus `neutral_transition`):
+**Primary regime classification (4 quadrants by sign).** Every scored month is assigned a single ``primary_regime`` based on the **sign** of `growth_score` and `inflation_score`. The neutral band no longer produces a 5th regime bucket — uncertainty inside the band is reported separately via `transition_flag` and `transition_reason`:
 
-- `goldilocks`: `growth_score > 0` and `inflation_score < 0`, both `|score| > neutral_band`.
-- `reflation`: `growth_score > 0` and `inflation_score >= 0`, both `|score| > neutral_band`.
-- `stagflation`: `growth_score < 0` and `inflation_score >= 0`, both `|score| > neutral_band`.
-- `recession_disinflation`: `growth_score < 0` and `inflation_score < 0`, both `|score| > neutral_band`.
-- `neutral_transition`: `|growth_score| <= neutral_band` or `|inflation_score| <= neutral_band` (the neutral band now produces an explicit label, not only a confidence flag).
+- `goldilocks`: `growth_score >= 0` and `inflation_score < 0`.
+- `reflation`: `growth_score >= 0` and `inflation_score >= 0`.
+- `stagflation`: `growth_score < 0` and `inflation_score >= 0`.
+- `recession_disinflation`: `growth_score < 0` and `inflation_score < 0`.
 
-Default `neutral_band = 0.25`. Implementations must verify regime stability under sensitivity testing at `±0.20`, `±0.25`, and `±0.35`.
+Transition metadata, reported alongside `primary_regime` per month and as part of `transition_summary`:
+
+- `transition_flag = true` when `|growth_score| <= neutral_band` or `|inflation_score| <= neutral_band`.
+- `transition_reason ∈ {growth_axis_near_neutral, inflation_axis_near_neutral, both_axes_near_neutral}` when the flag is true; `null` otherwise.
+- `confidence_level` continues to follow the existing rules (`high / medium / low`) and is `low` whenever `transition_flag = true`.
+
+**Backward compatibility.** The legacy 5-bucket label is preserved in `regime_legacy` (with `regime_legacy_unlagged` and `regime_legacy_unlagged_raw` for diagnostics) and reported in `regime_legacy_counts` plus the legacy `MACRO_REGIME_NAMES` list. New consumers must group asset / factor / RC analytics by `primary_regime` and may further split by `primary_regime + transition_flag` (e.g. `reflation_non_transition` vs `reflation_transition`) or `primary_regime + confidence_level`. ``primary_regime`` never takes the value `neutral_transition`; consumers iterating the legacy 5-tuple keep finding `neutral_transition` with zero observations under the new scheme.
+
+Default `neutral_band = 0.20`. Implementations must verify regime stability under sensitivity testing at `±0.20`, `±0.25`, and `±0.35`. The 2026-05 sensitivity analysis (`docs/exec_plans/2026-05-07_macro_two_axis_regime_v1.md` / `2026-05-07_regime_label_quality_check.md`) showed that lowering the band from 0.25 to 0.20 reduces the `neutral_transition` share by ~8pp and pushes the major regimes (`reflation`, `goldilocks`) further away from the `<24-obs` low-confidence boundary, without breaking the macro-sanity windows.
+
+**Indicator scoring method.** Two scoring modes are supported:
+
+- `discrete` (default): rolling 10-year monthly z-score with `window = 120`, `min_periods = 60`, then bucketed at `±0.5` to a `+1 / 0 / −1` signal (preserves the historical behaviour and is the most decisive on extremes).
+- `clipped_z` (alternative, diagnostic): the same rolling z-score is signed by indicator direction, clipped to `[-clipped_z_max_abs, +clipped_z_max_abs]` (default `2.0`) and rescaled to `[-1, +1]`. The 2026-05 comparison showed that under the existing block-averaging and momentum/level blend the clipped-z mode dampens block averages relative to the discrete mode and produces a higher `neutral_transition` share at every band, so it must not be the default until block aggregation is changed accordingly.
+
+`axis_model.scoring_method`, `axis_model.clipped_z_max_abs`, and `axis_model.persistence_months` must be reported in `stress_report.json` for traceability.
+
+**Persistence rule (smoothing only).** A 2-month confirmation rule is applied by default: a regime change is adopted only when at least `persistence_months` consecutive monthly labels agree on the new regime. At the tail of the series, when fewer than `persistence_months` future observations exist, the previous regime is held. Persistence is a smoothing layer only — it must not be used as the primary mechanism to reduce `neutral_transition`. The default `persistence_months = 2` eliminates one-month label flips while preserving real regime transitions; `persistence_months = 1` disables smoothing for diagnostics that need the raw label series. The unsmoothed labels are also retained in `regime_unlagged_raw` for inspection.
 
 **Look-ahead protection**: a 1-month publication lag — labels at month `t` use composite scores computed from data ending at month `t − 1`. Release-date / vintage-accurate handling is **out of scope for v1**; this is documented in `axis_model.look_ahead_caveat`.
 
-Top-level output fields include `axis_model.version`, `axis_model.frequency = "monthly"`, `axis_model.neutral_band_abs`, `axis_model.score_blend`, `axis_model.look_ahead_protection`, `axis_model.look_ahead_caveat`, `axis_scores_latest.growth_score`, `axis_scores_latest.inflation_score`, `axis_scores_latest.growth_blocks`, `axis_scores_latest.inflation_blocks`, `current_regime`, `regime_confidence`, `confidence_level`, `regime_transition_warning`, `score_lag_months = 1`, `score_start_date`, `regime_label_start_date`, `available_blocks`, `missing_blocks`, `optional_blocks_missing`, `planned_not_loaded`, `coverage_ratio`, `coverage_tier`, `data_sources_used`, `available_regimes_count`, `available_regimes_by_quality`, `regime_counts`, `base_10y`, `regimes`, `stability_summary`, `labels_monthly`, and `method_disclaimer`.
+Top-level output fields include `axis_model.version`, `axis_model.frequency = "monthly"`, `axis_model.neutral_band_abs`, `axis_model.score_blend`, `axis_model.scoring_method`, `axis_model.clipped_z_max_abs`, `axis_model.persistence_months`, `axis_model.look_ahead_protection`, `axis_model.look_ahead_caveat`, `axis_scores_latest.growth_score`, `axis_scores_latest.inflation_score`, `axis_scores_latest.growth_blocks`, `axis_scores_latest.inflation_blocks`, `current_regime` (= primary regime), `current_primary_regime`, `current_regime_legacy`, `current_transition_flag`, `current_transition_reason`, `regime_confidence`, `confidence_level`, `regime_transition_warning`, `score_lag_months = 1`, `score_start_date`, `regime_label_start_date`, `available_blocks`, `missing_blocks`, `optional_blocks_missing`, `planned_not_loaded`, `coverage_ratio`, `coverage_tier`, `data_sources_used`, `available_regimes_count`, `available_regimes_by_quality`, `regime_counts` (primary, 5-key dict with `neutral_transition = 0`), `regime_legacy_counts` (legacy 5-bucket), `transition_summary`, `base_10y`, `regimes`, `stability_summary`, `labels_monthly` (carries `regime`, `regime_legacy`, `transition_flag`, `transition_reason`), and `method_disclaimer`.
+
+`transition_summary` block must include `n_scored_months`, `n_transition_months`, `transition_share`, `transition_reason_counts` (counts per reason), `transition_reason_shares`, `transition_by_primary` (count of transition months per primary regime), `primary_vs_transition_pivot` (per primary regime, the `non_transition` vs `transition` count), and `legacy_neutral_transition_share`. The same block is mirrored under `regime_label_quality_check.transition_summary`.
 
 `macro_regime_diagnostics` must also include `regime_label_quality_check` (diagnostic-only) with:
 
+- `history_months`: number of months with valid composite scores **and** an assigned regime label (the warmup tail of the rolling z-score window is excluded).
+- `rows_input_total`: total number of rows fed into the quality check.
+- `warmup_months_excluded`: rows dropped because composite scores were not yet available (warmup of the rolling z-score window). Quality statistics are computed on scored months only.
 - `by_regime`: n_obs, history share, first/last occurrence, episode-duration statistics, and quality status (`insufficient_data` / `low_confidence` / `usable` / `reliable`).
 - `episode_history`: contiguous regime episodes (`regime`, `start_date`, `end_date`, `length_months`).
 - `stability_summary`: switch count, average months between switches, one-month share, <3m share, and warning flags.

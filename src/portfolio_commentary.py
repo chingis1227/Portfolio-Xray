@@ -779,12 +779,25 @@ def _append_macro_regime_section(lines: list[str], st: dict[str, Any]) -> None:
         f"Method={version}; frequency={axis_model.get('frequency', 'monthly')}; "
         f"score_lag_months={mr.get('score_lag_months', 1)}."
     )
+    primary_regime = (
+        mr.get("current_primary_regime")
+        or mr.get("current_regime")
+        or "n/a"
+    )
+    legacy_regime = mr.get("current_regime_legacy")
+    transition_flag_now = bool(mr.get("current_transition_flag"))
+    transition_reason_now = mr.get("current_transition_reason") or "none"
+    legacy_suffix = (
+        f"; legacy_label={legacy_regime}" if legacy_regime else ""
+    )
     lines.append(
-        f"Current regime: {mr.get('current_regime', 'n/a')}; "
+        f"Current primary regime: {primary_regime}; "
         f"growth_score={_fmt_float(scores.get('growth_score'), 3)}; "
         f"inflation_score={_fmt_float(scores.get('inflation_score'), 3)}; "
         f"confidence={mr.get('confidence_level', mr.get('regime_confidence', 'unknown'))}; "
-        f"transition_warning={mr.get('regime_transition_warning', False)}."
+        f"transition_flag={transition_flag_now}; "
+        f"transition_reason={transition_reason_now}"
+        f"{legacy_suffix}."
     )
     growth_blocks = scores.get("growth_blocks") or {}
     inflation_blocks = scores.get("inflation_blocks") or {}
@@ -880,13 +893,23 @@ def _append_macro_regime_section(lines: list[str], st: dict[str, Any]) -> None:
             overall = quality.get("overall_assessment") or {}
             by_regime = quality.get("by_regime") or {}
             stable = quality.get("stability_summary") or {}
+            primary_only = {
+                "goldilocks",
+                "reflation",
+                "stagflation",
+                "recession_disinflation",
+            }
             reliable = [
                 r for r, row in by_regime.items()
-                if isinstance(row, dict) and row.get("quality_status") == "reliable"
+                if isinstance(row, dict)
+                and r in primary_only
+                and row.get("quality_status") == "reliable"
             ]
             weak = [
                 r for r, row in by_regime.items()
-                if isinstance(row, dict) and int(row.get("n_obs") or 0) < 24
+                if isinstance(row, dict)
+                and r in primary_only
+                and int(row.get("n_obs") or 0) < 24
             ]
             lines.append(
                 f"Regime history usable={overall.get('history_usable', False)}; "
@@ -913,6 +936,35 @@ def _append_macro_regime_section(lines: list[str], st: dict[str, Any]) -> None:
             warnings = overall.get("warnings") or []
             if warnings:
                 lines.append("Quality-check warnings: " + "; ".join(str(w) for w in warnings) + ".")
+            ts = quality.get("transition_summary") or mr.get("transition_summary") or {}
+            if isinstance(ts, dict) and ts.get("n_scored_months"):
+                reason_counts = ts.get("transition_reason_counts") or {}
+                share = ts.get("transition_share")
+                legacy_share = ts.get("legacy_neutral_transition_share")
+                lines.append(
+                    "Transition months: "
+                    f"n={ts.get('n_transition_months', 0)} ("
+                    f"{_fmt_pct(share, 1)}); "
+                    f"growth_axis={reason_counts.get('growth_axis_near_neutral', 0)}, "
+                    f"inflation_axis={reason_counts.get('inflation_axis_near_neutral', 0)}, "
+                    f"both_axes={reason_counts.get('both_axes_near_neutral', 0)}"
+                    + (
+                        f"; legacy neutral_transition share={_fmt_pct(legacy_share, 1)}"
+                        if legacy_share is not None
+                        else ""
+                    )
+                    + "."
+                )
+                pivot = ts.get("primary_vs_transition_pivot") or {}
+                if isinstance(pivot, dict) and pivot:
+                    parts = [
+                        f"{r}: non_transition={info.get('non_transition', 0)}, "
+                        f"transition={info.get('transition', 0)}"
+                        for r, info in pivot.items()
+                        if isinstance(info, dict)
+                    ]
+                    if parts:
+                        lines.append("Primary regime x transition pivot: " + "; ".join(parts) + ".")
     lines.append("")
 
 

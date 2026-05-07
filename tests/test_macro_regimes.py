@@ -153,16 +153,18 @@ def test_compute_macro_scores_yields_all_five_labels() -> None:
         "reflation",
     ]
     panel, meta = _build_panel_with_labels(labels, n=80)
-    scores = sfm.compute_macro_scores(panel, meta)
+    # Disable persistence smoothing so each instantaneous label survives for the
+    # purpose of checking that all four quadrants can be reached.
+    scores = sfm.compute_macro_scores(panel, meta, persistence_months=1)
     assert not scores.empty
-    unlagged = scores["regime_unlagged"].dropna().tolist()
+    unlagged = scores["regime_unlagged_raw"].dropna().tolist()
     assert {"goldilocks", "reflation", "stagflation", "recession_disinflation"}.issubset(unlagged)
 
 
 def test_compute_macro_scores_lag_shifts_labels_by_one_month() -> None:
     labels = ["goldilocks", "reflation", "stagflation"]
     panel, meta = _build_panel_with_labels(labels, n=80)
-    scores = sfm.compute_macro_scores(panel, meta)
+    scores = sfm.compute_macro_scores(panel, meta, persistence_months=1)
     paired = scores[["regime_unlagged", "regime"]].dropna()
     # The lagged regime at row t equals the unlagged regime at row t-1.
     for ts in paired.index[1:]:
