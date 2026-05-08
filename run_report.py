@@ -128,6 +128,7 @@ from src.regime_portfolio_metrics import (
     regime_portfolio_metrics_for_stress_report,
     regime_portfolio_metrics_summary,
 )
+from src.stress_scenario_analytics import build_stress_scenario_analytics
 from src.data_yf import download_all
 
 
@@ -1191,6 +1192,22 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["factor_beta_adjusted_overlay_error"] = str(e)
         logger.warning(f"Factor beta adjusted overlay failed: {e}")
+    try:
+        ssa = build_stress_scenario_analytics(
+            stress_report=stress_report,
+            weights=weights,
+            tickers=tickers,
+            monthly_returns=monthly_returns,
+            factor_returns_weekly=recession_factor_returns
+            if recession_factor_returns is not None and not recession_factor_returns.empty
+            else None,
+            cash_proxy_ticker=cash_proxy_ticker,
+            output_dir_csv=output_dir_csv,
+        )
+        stress_report["stress_scenario_analytics"] = {k: v for k, v in ssa.items() if k != "csv_export"}
+    except Exception as e:
+        stress_report["stress_scenario_analytics_error"] = str(e)
+        logger.warning(f"Stress scenario analytics failed: {e}")
     export_stress_report(stress_report, output_dir_final)
     logger.info(f"Stress status: {stress_report.get('status', 'N/A')}")
 

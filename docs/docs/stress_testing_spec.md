@@ -133,6 +133,76 @@ For each scenario the production `run_stress` implementation outputs (see `scena
 
 Raw scenario rows remain the primary stress contract. Any stability-adjusted factor overlay must be reported in separate top-level blocks and must not overwrite `scenario_results[*].pnl_by_factor_pct` or the raw scenario PnL fields.
 
+### 2.3 Stress scenario analytics (`stress_scenario_analytics_v1`)
+
+`run_report.py` (after `build_factor_beta_diagnostic_overlay`, before `export_stress_report`) attaches **`stress_scenario_analytics`** to `stress_report.json`:
+
+- **version:** `stress_scenario_analytics_v1`
+- **scenarios:** one object per **synthetic** scenario id (`equity_shock`, …, `recession_severe`) and per **historical** episode id (`dotcom`, `2008`, `2020`, `2022`)
+
+**Diagnostic-only:** no optimizer, mandate, or stress pass/fail changes.
+
+**PnL layer**
+
+- **Historical:** `actual_pnl` is realized `pnl_real_episode` from monthly asset returns in the episode window. It must **not** be shrinkage-adjusted. Optional `model_explained_pnl` may reference factor attribution fields from `historical_results` when present.
+- **Synthetic:** `pnl_raw` aligns with `portfolio_pnl_pct` from `scenario_results`. `pnl_shrinkage_adjusted` is taken from `synthetic_factor_pnl_adjusted.scenarios[]` (`pnl_model_adjusted`) when the overlay exists. `conservative_pnl` = min(raw, adjusted) is diagnostic only.
+
+**Asset covariance / correlation**
+
+- **Historical:** sample covariance on overlapping **monthly** returns in the episode window (`cov_matrix_monthly`, `ddof=1`). Optional parallel branch: **`Ledoit–Wolf`** via `cov_matrix_monthly(..., use_shrinkage=True)`. Report `covariance_method`, `shrinkage_applied`, `n_obs`, `data_start`, `data_end`, `psd_status`, `quality_status`.
+- **Synthetic:** reuse **`stress_covariance_taxonomy_blend`** with the same inputs as `run_stress` (base monthly `cov_base`, tickers, scenario id, cash proxy). Do not alter `run_stress` outputs.
+
+**Factor covariance (synthetic, shock-scale)**
+
+1. Start from **`stress_report.factor_covariance.base.matrix`** (weekly factor window `FACTOR_COVARIANCE_BASE_WEEKS`, sample `ddof=1`), expanded to `FACTOR_COLUMN_ORDER`.
+2. Extract correlation **C** from that covariance.
+3. For each **production stress factor** (the six keys mapped in synthetic shocks: equity, real_rates, inflation, credit, usd, commodity), let `|s_k|` be the absolute scenario shock for the mapped `shock_*` key (`FACTOR_BETA_TO_SYNTHETIC_SHOCK_KEY`). Scale factor **volatility** (not variance directly) by  
+
+   `m_k = 1 + alpha * |s_k|`  
+
+   with default **`alpha = 2.0`** (configurable in code). Non-shocked factors in the full column order use `m_k = 1`.
+4. Rebuild **Σ_scenario = D' C D'** where `D'` is diagonal with `D'_kk = m_k * sigma_k` and `sigma_k = sqrt(Σ_base_kk)`.
+5. Apply **PSD repair** (eigenvalue floor, symmetric) consistent with `factor_covariance` overlay repair semantics.
+
+Report `factor_covariance_method: "base_weekly_corr_shock_vol_scale_v1"` plus `shock_scale_alpha`.
+
+**Factor covariance (historical)**
+
+- Primary: sample covariance (and optional Ledoit–Wolf) on **weekly** factor returns in the episode date range.
+- If `n_obs` (weekly) is too low after month-equivalent gating (`n_weeks * 12/52` mapped to the same `<12 / 12–23 / 24–59 / 60+` quality buckets), **fallback** to `factor_covariance.base` with warning `factor_cov_fallback_full_sample`.
+
+**Quality status (monthly asset windows)**
+
+- `n < 12` → `insufficient_data`
+- `12 <= n < 24` → `low_confidence`
+- `24 <= n < 60` → `usable`
+- `n >= 60` → `reliable`
+
+**Weekly factor windows:** convert with `n_month_equiv = n_weeks * 12 / 52` and apply the same thresholds.
+
+**Factor / asset RC**
+
+- **Asset RC:** `percentage_contributions_variance` from metrics spec (variance, not volatility) using scenario asset Σ and current report weights.
+- **Factor RC:** same marginal contribution definition as `portfolio_factor_rc` in factor covariance (`beta'Σbeta` decomposition with `rc_share` summing to 1 when total variance positive). Report top 1 / top 3 and HHI.
+
+**Usability flags**
+
+Per scenario: `asset_covariance_usable`, `factor_covariance_usable`, `factor_betas_usable`, `asset_rc_usable`, `factor_rc_usable`, `suitable_robust_optimization_input` (conservative v1 rule: true only when PSD OK, quality `usable` or `reliable` where applicable, and 5Y betas present — still **diagnostic-only**, no robust optimization in this release).
+
+**CSV exports** (under `results_csv/`, each row tagged with `scenario_id`, `scenario_type`, `n_obs`, `quality_status`, `covariance_method`, `shrinkage_applied`, `data_start`, `data_end` where applicable):
+
+- `stress_scenario_asset_covariance.csv`
+- `stress_scenario_asset_correlation.csv`
+- `stress_scenario_factor_covariance.csv`
+- `stress_scenario_factor_correlation.csv`
+- `stress_scenario_factor_betas_used.csv`
+- `stress_scenario_asset_risk_contribution.csv`
+- `stress_scenario_factor_risk_contribution.csv`
+- `stress_scenario_raw_vs_shrinkage_summary.csv`
+- `stress_scenario_analytics_summary.csv`
+
+Numeric CSV values rounded to **3 decimals** at export per portfolio metrics policy.
+
 
 ---
 
