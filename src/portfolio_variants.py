@@ -3,20 +3,26 @@ from __future__ import annotations
 """
 Portfolio variants (baseline constructions) outside the policy framework.
 
-This module intentionally does NOT apply any policy logic to Equal-Weight and Risk-Parity:
+This module intentionally does NOT apply RC caps, discretionary overlays, or hidden policy filters to Equal-Weight, Risk-Parity, or Minimum-Variance baselines:
 
-- no RC caps
-- no weight caps
-- no max weight limits
-- no discretionary overlays
-- no hidden policy filters
+- no RC caps as optimization targets (RC_vol stays a report diagnostic)
+- no ProLiquidity / mandate-specific layers on these baselines
+- Minimum-Variance uses the same **feasibility/config box bounds** as ``run_optimization.py`` (:func:`src.optimization._build_bounds`), not extra custom mandate constraints
 
 These variants are pure asset-level baselines built on the same eligible universe
 and then evaluated by the existing metrics / stress-test / client-fit pipeline.
+
+Minimum Variance baseline minimizes ``0.5 * w' Σ w`` subject to the same long-only
+box constraints as the policy optimizer (:func:`src.optimization._build_bounds`), with
+monthly **Σ** built like ``run_optimization.py`` (optional Young-ETF dual covariance +
+per-ticker caps when enabled). **SLSQP** uses the analytical gradient ``Σ w``. Vol
+targeting, extra quadratic inequalities, turnover penalties, and L1 regularization
+are not implemented in v1.
 """
 
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Dict, Iterable, Tuple
 
 import numpy as np
@@ -25,14 +31,51 @@ import yaml
 from scipy.optimize import minimize
 
 from src.config_schema import PortfolioConfig
+from src.optimization import MIN_WEIGHT_DEFAULT, _build_bounds
 from src.risk_contrib import cov_matrix_monthly, rc_vol_window
 from src.risk_parity_spinu import repair_covariance_psd, spinu_ccd_equal_budget
 from src.windows import slice_window
+from src.young_etfs_dual_cov import build_dual_covariance_and_mu, per_ticker_young_weight_caps
 
 
 BASELINE_EQ_LABEL = "Equal-Weight Portfolio"
 BASELINE_EQ_BY_CLASS_LABEL = "Equal-Weight by Asset-Class Portfolio"
 BASELINE_RP_LABEL = "Risk Parity Portfolio"
+BASELINE_MV_LABEL = "Minimum Variance Portfolio"
+
+OPTIMIZER_NAME_MINIMUM_VARIANCE = "minimum_variance"
+MINIMUM_VARIANCE_SOLVER = "SLSQP"
+MINIMUM_VARIANCE_OBJECTIVE = "0.5 * w.T @ covariance @ w"
+
+MINIMUM_VARIANCE_METADATA_EXPORT_KEYS = (
+    "optimizer_name",
+    "solver",
+    "objective",
+    "covariance_method",
+    "shrinkage_used",
+    "psd_repair_used",
+    "young_etf_dual_mode",
+    "eligible_universe",
+    "final_weights",
+    "portfolio_variance",
+    "annualized_volatility",
+    "solver_status",
+    "solver_success",
+    "solver_message",
+    "max_weight",
+    "min_weight",
+    "active_constraints",
+    "fallback_used",
+)
+
+
+def minimum_variance_baseline_metadata_export(diagnostics: Dict[str, object]) -> Dict[str, Any]:
+    """Structured fields for ``baseline_weights_metadata.json`` / summary blobs."""
+    out: Dict[str, Any] = {}
+    for k in MINIMUM_VARIANCE_METADATA_EXPORT_KEYS:
+        if k in diagnostics:
+            out[k] = diagnostics[k]
+    return out
 
 EQUAL_WEIGHT_METHOD_BY_ASSETS = "equal_weight_by_assets"
 EQUAL_WEIGHT_METHOD_BY_ASSET_CLASS = "equal_weight_by_asset_class_then_assets"
@@ -552,6 +595,336 @@ def build_risk_parity_baseline(
         status=status,
         diagnostics=diagnostics,
     )
+
+
+def _budget_simplex_intersects_box(bounds: list[tuple[float, float]]) -> bool:
+    s_lo = float(sum(b[0] for b in bounds))
+    s_hi = float(sum(b[1] for b in bounds))
+    return s_lo <= 1.0 + 1e-9 and s_hi >= 1.0 - 1e-9
+
+
+def _minimum_variance_slsqp(
+    cov: np.ndarray,
+    bounds: list[tuple[float, float]],
+    *,
+    maxiter: int = 2000,
+) -> tuple[np.ndarray, Any, bool]:
+    """
+    Constrained minimum-variance via SLSQP on 0.5 w'Σw with jac Σw, sum(w)=1, box bounds.
+
+    Returns
+    -------
+    weights :
+        Length-N dense weight vector aligned to ``bounds``.
+    result :
+        ``scipy.optimize.OptimizeResult`` or a minimal namespace for clip fallback.
+    fallback_used :
+        True if a normalized boundary clip fallback replaced a failed SLSQP run.
+    """
+    n = len(bounds)
+    lo = np.array([float(b[0]) for b in bounds], dtype=float)
+    hi = np.array([float(b[1]) for b in bounds], dtype=float)
+    diag = np.diag(np.asarray(cov, dtype=float))
+    inv_vol = np.zeros(n, dtype=float)
+    for i in range(n):
+        v = float(diag[i])
+        if v > 1e-18:
+            inv_vol[i] = 1.0 / float(np.sqrt(v))
+    if float(np.sum(inv_vol)) < 1e-12:
+        x0 = np.ones(n, dtype=float) / float(n)
+    else:
+        x0 = inv_vol / float(np.sum(inv_vol))
+    x0 = np.clip(x0, lo, hi)
+    sw = float(x0.sum())
+    if sw > 1e-12:
+        x0 = x0 / sw
+    else:
+        mid = 0.5 * (lo + hi)
+        s_mid = float(np.sum(mid))
+        x0 = mid / s_mid if s_mid > 1e-12 else np.ones(n, dtype=float) / float(n)
+
+    def penalty_feas(w_vec: np.ndarray) -> float:
+        s = float(np.sum(w_vec) - 1.0)
+        return s * s
+
+    feas = minimize(
+        penalty_feas,
+        x0,
+        method="L-BFGS-B",
+        bounds=list(zip(lo, hi)),
+        options={"maxiter": 400},
+    )
+    x_start = np.asarray(feas.x, dtype=float).copy()
+    if not np.all(np.isfinite(x_start)):
+        x_start = np.clip(x0, lo, hi)
+
+    def objective(w_vec: np.ndarray) -> float:
+        return 0.5 * float(w_vec @ cov @ w_vec)
+
+    def grad_obj(w_vec: np.ndarray) -> np.ndarray:
+        return cov @ w_vec
+
+    cons = [{"type": "eq", "fun": lambda w_vec: float(np.sum(w_vec) - 1.0)}]
+    scipy_bounds = list(zip(lo, hi))
+
+    res = minimize(
+        objective,
+        x_start,
+        method="SLSQP",
+        jac=grad_obj,
+        bounds=scipy_bounds,
+        constraints=cons,
+        options={"maxiter": maxiter, "ftol": 1e-9},
+    )
+    fallback_used = False
+    if not getattr(res, "success", False) or not np.all(np.isfinite(res.x)):
+        res = minimize(
+            objective,
+            x_start,
+            method="SLSQP",
+            jac=grad_obj,
+            bounds=scipy_bounds,
+            constraints=cons,
+            options={"maxiter": maxiter, "ftol": 1e-12},
+        )
+
+    x_out = np.asarray(res.x, dtype=float) if getattr(res, "x", None) is not None else None
+    if (
+        not getattr(res, "success", False)
+        or x_out is None
+        or not np.all(np.isfinite(x_out))
+    ):
+        fx = getattr(feas, "x", None)
+        if fx is not None and np.all(np.isfinite(fx)):
+            w_fb = np.clip(np.asarray(fx, dtype=float), lo, hi)
+        elif getattr(res, "x", None) is not None:
+            w_fb = np.clip(np.asarray(res.x, dtype=float), lo, hi)
+        else:
+            w_fb = None
+
+        if w_fb is None:
+            res = SimpleNamespace(
+                success=False,
+                x=np.full(n, np.nan),
+                status=getattr(res, "status", None),
+                message="SLSQP failed and no feasible fallback available",
+                nit=getattr(res, "nit", None),
+            )
+        else:
+            s = float(w_fb.sum())
+            if s > 1e-12:
+                w_fb = w_fb / s
+                res = SimpleNamespace(
+                    success=True,
+                    x=w_fb,
+                    status=getattr(res, "status", None),
+                    message="Normalized feasible point after SLSQP non-convergence",
+                    nit=getattr(res, "nit", None),
+                )
+                fallback_used = True
+            else:
+                res = SimpleNamespace(
+                    success=False,
+                    x=np.full(n, np.nan),
+                    status=getattr(res, "status", None),
+                    message="Fallback normalization failed",
+                    nit=getattr(res, "nit", None),
+                )
+
+    w_final = np.asarray(res.x, dtype=float)
+    return w_final, res, fallback_used
+
+
+def build_minimum_variance_baseline(
+    cfg: PortfolioConfig,
+    monthly_returns: pd.DataFrame,
+    analysis_end: str,
+    window_months: int,
+) -> BaselineWeightsResult:
+    """
+    Minimum-Variance Portfolio (baseline):
+
+    - Universe: same eligible tickers as other baselines (coverage filter on ``cfg.tickers``).
+    - **Σ**: monthly covariance on the inner-joined window; when ``young_etf_optimization_policy.enabled``
+      (default True), uses :func:`build_dual_covariance_and_mu` like ``run_optimization.py``; otherwise
+      sample or Ledoit--Wolf per ``cfg.covariance_shrinkage``. PSD-repaired for the solver.
+    - Bounds: :func:`src.optimization._build_bounds` (feasibility cap + optional global / Young caps).
+    - Solver: **SLSQP** minimizing ``0.5 w' Σ w`` with Jacobian ``Σ w`` and ``sum(w) = 1``.
+
+    RC caps, mandate gates, turnover, vol targeting, and extra quadratic constraints are **not**
+    applied here (v1).
+    """
+    eligible, coverage = _eligible_universe_from_returns(
+        cfg, monthly_returns, analysis_end, window_months
+    )
+    diagnostics: Dict[str, object] = {
+        "universe_eligible": eligible,
+        "universe_coverage": coverage,
+        "optimizer_name": OPTIMIZER_NAME_MINIMUM_VARIANCE,
+        "solver": MINIMUM_VARIANCE_SOLVER,
+        "objective": MINIMUM_VARIANCE_OBJECTIVE,
+        "active_constraints": [
+            "equality: sum(weights) = 1",
+            "box: per-asset bounds from feasibility cap and config (min_single / max_single / young caps)",
+        ],
+    }
+
+    if len(eligible) < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_INFEASIBLE_UNIVERSE",
+            diagnostics={
+                **diagnostics,
+                "reason": "Fewer than 2 eligible assets for Minimum-Variance baseline",
+            },
+        )
+
+    returns_slice = slice_window(
+        monthly_returns[eligible], analysis_end, window_months
+    ).dropna(how="any")
+    if returns_slice.shape[0] < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_DATA",
+            diagnostics={
+                **diagnostics,
+                "reason": f"Insufficient history for covariance (rows={returns_slice.shape[0]})",
+            },
+        )
+
+    cols = [str(c) for c in returns_slice.columns]
+    young_pol = getattr(cfg, "young_etf_optimization_policy", None) or {}
+    dual_enabled = bool(young_pol.get("enabled", True))
+    use_shrinkage = bool(getattr(cfg, "covariance_shrinkage", False))
+    per_ticker_caps: dict[str, float] | None = None
+    young_diag: dict[str, Any] | None = None
+
+    if dual_enabled:
+        cov_df, _mu, ydiag = build_dual_covariance_and_mu(
+            monthly_returns,
+            cols,
+            window_months,
+            young_pol,
+            use_shrinkage_on_core=use_shrinkage,
+        )
+        young_diag = ydiag
+        cols = [str(c) for c in cov_df.columns]
+        per_ticker_caps = per_ticker_young_weight_caps(
+            young_diag["tickers"],
+            float(young_pol.get("max_weight_candidate_or_new_pct", 0.02)),
+        )
+        if not per_ticker_caps:
+            per_ticker_caps = None
+        covariance_method = f"young_etf_dual:{young_diag.get('mode', '')}"
+        diagnostics["young_etf_dual_mode"] = young_diag.get("mode")
+        diagnostics["shrinkage_used"] = bool(use_shrinkage)
+    else:
+        cov_df = cov_matrix_monthly(returns_slice[cols], ddof=1, use_shrinkage=use_shrinkage)
+        covariance_method = "ledoit_wolf_monthly" if use_shrinkage else "sample_monthly_ddof1"
+        diagnostics["young_etf_dual_mode"] = None
+        diagnostics["shrinkage_used"] = bool(use_shrinkage)
+
+    cov_np_raw = cov_df.reindex(index=cols, columns=cols).fillna(0.0).values
+    cov_np, psd_repaired = repair_covariance_psd(cov_np_raw)
+    diagnostics["covariance_method"] = covariance_method
+    diagnostics["psd_repair_used"] = bool(psd_repaired)
+
+    min_w = (
+        float(cfg.min_single_security_weight_pct)
+        if cfg.min_single_security_weight_pct is not None
+        and float(cfg.min_single_security_weight_pct) > 0
+        else float(MIN_WEIGHT_DEFAULT)
+    )
+    bounds = _build_bounds(
+        cols,
+        len(cols),
+        min_w,
+        cfg.max_single_security_weight_pct,
+        per_ticker_caps,
+    )
+
+    if not _budget_simplex_intersects_box(bounds):
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_INFEASIBLE_BOUNDS",
+            diagnostics={
+                **diagnostics,
+                "reason": (
+                    "Weight bounds infeasible for a fully invested portfolio "
+                    "(sum of lower bounds > 1 or sum of upper bounds < 1)"
+                ),
+                "bounds_detail": {
+                    cols[i]: {"min": float(bounds[i][0]), "max": float(bounds[i][1])}
+                    for i in range(len(cols))
+                },
+            },
+        )
+
+    w_vec, res, fallback_used = _minimum_variance_slsqp(cov_np, bounds)
+
+    if (not np.all(np.isfinite(w_vec))) or w_vec.shape[0] != len(cols):
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_NUMERICAL",
+            diagnostics={
+                **diagnostics,
+                "reason": "Minimum-variance solver returned non-finite weights",
+                "fallback_used": bool(fallback_used),
+                "solver_success": bool(getattr(res, "success", False)),
+                "solver_message": str(getattr(res, "message", "")),
+            },
+        )
+
+    lo_arr = np.array([b[0] for b in bounds], dtype=float)
+    hi_arr = np.array([b[1] for b in bounds], dtype=float)
+    w_vec = np.clip(w_vec, lo_arr, hi_arr)
+    ssum = float(w_vec.sum())
+    if ssum > 1e-12:
+        w_vec = w_vec / ssum
+    else:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_NUMERICAL",
+            diagnostics={**diagnostics, "reason": "Normalized weights sum to ~0"},
+        )
+
+    var_p = float(w_vec @ cov_np @ w_vec)
+    ann_vol = float(np.sqrt(max(var_p, 0.0) * 12.0))
+
+    weights: Dict[str, float] = {t: 0.0 for t in cfg.tickers}
+    for i, t in enumerate(cols):
+        weights[t] = float(w_vec[i])
+
+    w_nonzero = {t: float(weights[t]) for t in cols if weights[t] > 1e-14}
+    diagnostics.update(
+        {
+            "eligible_universe": list(cols),
+            "final_weights": dict(sorted(w_nonzero.items(), key=lambda x: (-x[1], x[0]))),
+            "portfolio_variance": var_p,
+            "annualized_volatility": ann_vol,
+            "solver_status": getattr(res, "status", None),
+            "solver_success": bool(getattr(res, "success", False)),
+            "solver_message": str(getattr(res, "message", "")),
+            "max_weight": float(np.max(w_vec)) if len(w_vec) else 0.0,
+            "min_weight": float(np.min(w_vec)) if len(w_vec) else 0.0,
+            "fallback_used": bool(fallback_used),
+        }
+    )
+
+    tol_sum = 1e-5
+    tol_b = 1e-5
+    sum_ok = abs(float(np.sum(w_vec)) - 1.0) < tol_sum
+    in_bounds = bool(np.all(w_vec >= lo_arr - tol_b) and np.all(w_vec <= hi_arr + tol_b))
+    solver_ok = bool(getattr(res, "success", False)) and not fallback_used
+
+    if solver_ok and sum_ok and in_bounds:
+        status = "OK"
+    elif sum_ok and in_bounds and var_p == var_p:
+        status = "APPROXIMATE"
+    else:
+        status = "FAIL_NUMERICAL"
+
+    return BaselineWeightsResult(weights=weights, status=status, diagnostics=diagnostics)
 
 
 def export_baseline_weights_txt(

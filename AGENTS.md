@@ -53,6 +53,11 @@ Run Equal-Weight by asset class (equal budget per `asset_class`, then equal with
 python run_equal_weight_by_asset_class.py
 ```
 
+Run Minimum-Variance baseline (constrained min variance on monthly **Σ**, outputs under `minimum variance portfolio/`):
+```bash
+python run_minimum_variance.py
+```
+
 Run post-optimization tilt:
 ```bash
 python run_view_after_optimization.py --asset VOO --delta 2
@@ -117,7 +122,7 @@ Keep `DESIGN.md` as the source of truth for tokens, typography, spacing, buttons
 - `config/client_profiles.yml` - client risk profiles.
 - `assets.yml` - optional asset metadata.
 - `src/optimization.py` - optimization logic (max-return; optional `objective_mode="risk_parity"` uses Spinu CCD with SLSQP fallback when per-asset bounds fail).
-- `src/portfolio_variants.py`, `src/risk_parity_spinu.py` - Equal-Weight / Risk-Parity baseline builders (`run_equal_weight.py`, `run_risk_parity.py`); RP weights via Spinu CCD on Ledoit-Wolf covariance with SLSQP emergency fallback.
+- `src/portfolio_variants.py`, `src/risk_parity_spinu.py` - Equal-Weight / Risk-Parity / Minimum-Variance baseline builders (`run_equal_weight.py`, `run_risk_parity.py`, `run_minimum_variance.py`); RP weights via Spinu CCD on Ledoit-Wolf covariance with SLSQP emergency fallback; MV minimizes `0.5 w'Σw` with SLSQP + `Σw` gradient on PSD-repaired **Σ**, same box bounds as the policy optimizer when `young_etf_optimization_policy` / `covariance_shrinkage` align with `run_optimization.py`.
 - `src/config_schema.py` - config validation.
 - `src/data_loader.py`, `src/data_yf.py`, `src/fx.py` - data and FX.
 - `src/metrics_asset.py`, `src/metrics_portfolio.py`, `src/metrics_daily.py` - metrics (monthly base + daily helpers for regime diagnostics).

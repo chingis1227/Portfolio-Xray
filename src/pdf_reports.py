@@ -113,6 +113,9 @@ _PDF_HEADER_LEFT: dict[str, str] = {
     "risk_parity_portfolio_commentary": "Commentary: Risk Parity",
     "risk_parity_portfolio_stress_commentary": "Stress Analysis: Risk Parity",
     "risk_parity_portfolio_weights": "Risk Parity: Target Weights",
+    "minimum_variance_portfolio_commentary": "Commentary: Minimum Variance",
+    "minimum_variance_portfolio_stress_commentary": "Stress Analysis: Minimum Variance",
+    "minimum_variance_portfolio_weights": "Minimum Variance: Target Weights",
 }
 
 
@@ -1211,6 +1214,7 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     out_final = _ROOT / (getattr(cfg, "output_dir_final", None) or "Main portfolio")
     eq_dir = _ROOT / "equal-weight portfolio"
     rp_dir = _ROOT / "risk parity portfolio"
+    mv_dir = _ROOT / "minimum variance portfolio"
 
     # --- EW vs RP ---
     comp_path = out_final / "ew_rp_comparison.json"
@@ -1264,6 +1268,11 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     _commentary_pair(
         rp_dir, "risk_parity_portfolio", "Risk parity: СЂРёСЃРє РІ РїРµСЂРІСѓСЋ РѕС‡РµСЂРµРґСЊ"
     )
+    _commentary_pair(
+        mv_dir,
+        "minimum_variance_portfolio",
+        "Minimum variance: volatility-minimizing long-only weights",
+    )
 
     def _stress_commentary_pair(folder: Path, pdf_name_stem: str, title: str) -> None:
         """pdf_name_stem e.g. equal-weight_portfolio or Main portfolio (matches existing PDF filenames)."""
@@ -1294,6 +1303,11 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     )
     _stress_commentary_pair(
         rp_dir, "risk_parity_portfolio", "РЎС‚СЂРµСЃСЃ: РєР°Рє РІРµРґС‘С‚ СЃРµР±СЏ risk parity"
+    )
+    _stress_commentary_pair(
+        mv_dir,
+        "minimum_variance_portfolio",
+        "Stress: minimum-variance portfolio behavior",
     )
 
     mp_comm = out_final / "commentary.txt"
@@ -1327,6 +1341,7 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     for folder, slug, title in (
         (eq_dir, "equal-weight_portfolio", "Р¦РµР»РµРІС‹Рµ РІРµСЃР°: equal-weight"),
         (rp_dir, "risk_parity_portfolio", "Р¦РµР»РµРІС‹Рµ РІРµСЃР°: risk parity"),
+        (mv_dir, "minimum_variance_portfolio", "Target weights: minimum variance"),
     ):
         wpath = folder / "weights.json"
         if wpath.is_file():
