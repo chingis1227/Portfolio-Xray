@@ -89,6 +89,7 @@ def main() -> None:
         assets_meta=assets_meta,
         no_cache=False,
         local_benchmark_map=local_benchmark_map,
+        returns_frequency=getattr(base_cfg, "returns_frequency", None),
     )
     monthly_returns = data.monthly_returns
     analysis_end_str = data.analysis_end_str

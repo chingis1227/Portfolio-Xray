@@ -36,11 +36,20 @@ from src.optimization import (
     proliquidity,
     run_max_return_optimization,
 )
-from src.risk_contrib import cov_matrix_monthly
+from src.risk_contrib import cov_matrix_monthly, cov_matrix_returns
 from src.robustness import compute_robustness_diagnostics, compute_robustness_flags
 from src.snapshot import build_snapshot, print_snapshot, save_snapshot
 from src.stress import run_stress
 from src.utils import logger, setup_logging, tickers_meeting_coverage
+from src.windows import slice_calendar_window
+from src.returns_frequency import (
+    MACRO_REGIME_FREQUENCY_DEFAULT,
+    FACTOR_STRESS_FREQUENCY_DEFAULT,
+    calendar_window_to_n_periods,
+    compute_frequency_disclosure,
+    normalize_returns_frequency,
+    periods_per_year as periods_per_year_for,
+)
 from src.young_etfs_dual_cov import build_dual_covariance_and_mu, per_ticker_young_weight_caps
 
 STATUS_APPROVED = "APPROVED"
@@ -79,7 +88,7 @@ def _build_next_actions(violations: list, stress_report: dict | None) -> list[st
     return actions
 
 
-def load_monthly_returns(cfg, args) -> tuple[pd.DataFrame, str, pd.Timestamp]:
+def load_monthly_returns(cfg, args) -> tuple[pd.DataFrame, str, pd.Timestamp, str]:
     cash_proxy_ticker, rf_source = resolve_cash_and_rf(cfg)
     assets_meta = load_assets_metadata()
     from src.data_loader import load_monthly_data_shared
@@ -94,8 +103,9 @@ def load_monthly_returns(cfg, args) -> tuple[pd.DataFrame, str, pd.Timestamp]:
         assets_meta=assets_meta,
         no_cache=args.no_cache,
         local_benchmark_map=None,
+        returns_frequency=getattr(cfg, "returns_frequency", None),
     )
-    return data.monthly_returns, data.analysis_end_str, data.analysis_end
+    return data.monthly_returns, data.analysis_end_str, data.analysis_end, data.returns_frequency
 
 
 def main() -> None:
@@ -129,7 +139,8 @@ def main() -> None:
         raise SystemExit(1)
 
     logger.info("Загрузка данных...")
-    monthly_returns, analysis_end_str, analysis_end = load_monthly_returns(cfg, args)
+    monthly_returns, analysis_end_str, analysis_end, returns_frequency = load_monthly_returns(cfg, args)
+    ppy = int(periods_per_year_for(returns_frequency))
 
     window_months = int(getattr(cfg, "primary_window_months", 120) or 120)
     secondary_window_months = int(getattr(cfg, "secondary_window_months", 60) or 60)
@@ -159,6 +170,7 @@ def main() -> None:
             window_months,
             young_pol,
             use_shrinkage_on_core=use_shrinkage,
+            analysis_end=analysis_end,
         )
         cols_primary = list(cov_df.columns)
         per_ticker_young_caps = per_ticker_young_weight_caps(
@@ -167,21 +179,31 @@ def main() -> None:
         )
         if not per_ticker_young_caps:
             per_ticker_young_caps = None
-        ret_primary = monthly_returns[cols_primary].iloc[-window_months:]
+        ret_primary = (
+            slice_calendar_window(monthly_returns[cols_primary], analysis_end, window_months)
+            .dropna(axis=1, how="all")
+            .dropna(how="any")
+        )
         logger.info("Young-ETF optimization: mode=%s", young_diagnostics.get("mode"))
     else:
-        MIN_FULL_JOIN_MONTHS = 11
-        ret_primary = monthly_returns[cols_primary].iloc[-window_months:].dropna(axis=1, how="all").dropna(how="any")
-        if len(ret_primary) < MIN_FULL_JOIN_MONTHS:
-            lookback = min(monthly_returns.shape[0], max(window_months * 2, 120))
-            ret_primary = monthly_returns[cols_primary].iloc[-lookback:].dropna(axis=1, how="all").dropna(how="any")
-            if len(ret_primary) >= MIN_FULL_JOIN_MONTHS:
-                ret_primary = ret_primary.iloc[-min(window_months, len(ret_primary)) :]
+        MIN_FULL_JOIN = max(2, calendar_window_to_n_periods(11, returns_frequency))
+        ret_primary = (
+            slice_calendar_window(monthly_returns[cols_primary], analysis_end, window_months)
+            .dropna(axis=1, how="all")
+            .dropna(how="any")
+        )
+        if len(ret_primary) < MIN_FULL_JOIN:
+            span = max(window_months * 4, 48)
+            tail = monthly_returns[cols_primary].iloc[-span:]
+            ae2 = pd.Timestamp(tail.index.max()).normalize()
+            ret_primary = (
+                slice_calendar_window(tail, ae2, window_months).dropna(axis=1, how="all").dropna(how="any")
+            )
         cols_primary = list(ret_primary.columns)
         if not cols_primary:
             logger.error("FAIL_DATA: no assets with returns in window")
             raise SystemExit(1)
-        cov_df = cov_matrix_monthly(ret_primary, ddof=1, use_shrinkage=use_shrinkage)
+        cov_df = cov_matrix_returns(ret_primary, ddof=1, use_shrinkage=use_shrinkage)
 
     vol_lam = float(getattr(cfg, "optimization_soft_vol_penalty_lambda", 0.0) or 0.0)
     ret_lam = float(getattr(cfg, "optimization_soft_return_penalty_lambda", 0.0) or 0.0)
@@ -208,6 +230,8 @@ def main() -> None:
         soft_vol_penalty_lambda=vol_lam,
         soft_target_return_annual=float(tr) if tr is not None else None,
         soft_return_penalty_lambda=ret_lam,
+        periods_per_year=ppy,
+        returns_frequency=returns_frequency,
     )
 
     if not weights_risk:
@@ -227,7 +251,7 @@ def main() -> None:
         )
 
     mu_10y = mu_series_primary if dual_enabled and mu_series_primary is not None else ret_primary.mean()
-    current_vol = portfolio_vol_annual(weights_risk, cov_df)
+    current_vol = portfolio_vol_annual(weights_risk, cov_df, periods_per_year=ppy)
 
     young_agg_warn_details: dict | None = None
     if dual_enabled and young_diagnostics and weights_risk:
@@ -252,6 +276,7 @@ def main() -> None:
             secondary_window_months,
             young_pol,
             use_shrinkage_on_core=use_shrinkage,
+            analysis_end=analysis_end,
         )
     if robustness_enabled and secondary_window_months < window_months:
         weights_5y_risk, status_5y = run_max_return_optimization(
@@ -265,9 +290,13 @@ def main() -> None:
             cov_precomputed=cov_5y_pre if dual_enabled else None,
             mu_precomputed=mu_5y_pre if dual_enabled else None,
             per_ticker_max_weight=per_ticker_young_caps,
+            periods_per_year=ppy,
+            returns_frequency=returns_frequency,
         )
         cols_5y = [t for t in (weights_5y_risk or weights_risk) if t in monthly_returns.columns]
-        ret_5y = monthly_returns[cols_5y].iloc[-secondary_window_months:].dropna(how="any")
+        ret_5y = slice_calendar_window(monthly_returns[cols_5y], analysis_end, secondary_window_months).dropna(
+            how="any"
+        )
         effective_months_5y = len(ret_5y)
         if dual_enabled and diag_5y is not None:
             effective_months_5y = int(diag_5y.get("core_effective_months", 0))
@@ -277,7 +306,7 @@ def main() -> None:
             cov_5y = cov_5y_pre
             mu_5y = mu_5y_pre
         elif weights_5y_risk and len(ret_5y) >= 2:
-            cov_5y = cov_matrix_monthly(ret_5y, ddof=1, use_shrinkage=use_shrinkage)
+            cov_5y = cov_matrix_returns(ret_5y, ddof=1, use_shrinkage=use_shrinkage)
             mu_5y = ret_5y.mean()
         if weights_5y_risk and cov_5y is not None and mu_5y is not None and len(mu_5y):
             diagnostics = compute_robustness_diagnostics(
@@ -334,6 +363,7 @@ def main() -> None:
         cov_df=cov_df,
         n_rc=cfg.N_rc,
         donor_shift_mode=cfg.donor_shift_mode,
+        periods_per_year=ppy,
     )
     if proliquidity_error:
         logger.error("ProLiquidity: %s", proliquidity_error)
@@ -903,6 +933,23 @@ def main() -> None:
     try:
         from src.io_export import export_stress_report
 
+        rf_norm = normalize_returns_frequency(returns_frequency)
+        macro_notes = ""
+        if rf_norm != "monthly":
+            macro_notes = (
+                f"Portfolio metrics and covariance use returns_frequency={rf_norm}; factor betas/regression/stress shocks "
+                f"stay {FACTOR_STRESS_FREQUENCY_DEFAULT}; macro regime classifier labels remain {MACRO_REGIME_FREQUENCY_DEFAULT}; "
+                "regime_factor_analytics may use daily returns when daily data loads (see regime_factor_analytics.summary)."
+            )
+        stress_report["frequency_disclosure"] = compute_frequency_disclosure(
+            returns_frequency=rf_norm,
+            optimization_frequency=rf_norm,
+            factor_stress_frequency=FACTOR_STRESS_FREQUENCY_DEFAULT,
+            macro_regime_frequency=MACRO_REGIME_FREQUENCY_DEFAULT,
+            macro_regime_frequency_notes=(macro_notes or None),
+        )
+        stress_report["periods_per_year"] = int(periods_per_year_for(rf_norm))
+
         export_stress_report(stress_report, _stress_out)
     except Exception as e:
         logger.warning("export_stress_report failed: %s", e)
@@ -1013,13 +1060,15 @@ def main() -> None:
             window_months=window_months,
             cash_proxy_ticker=cash_proxy,
             use_shrinkage=use_shrinkage,
+            periods_per_year=ppy,
+            returns_frequency=returns_frequency,
         )
         if weights_baseline:
             cols_b = [t for t in weights_baseline if t in monthly_returns.columns]
-            ret_b = monthly_returns[cols_b].iloc[-window_months:].dropna(how="any")
+            ret_b = slice_calendar_window(monthly_returns[cols_b], analysis_end, window_months).dropna(how="any")
             if len(ret_b) >= 2:
-                cov_b = cov_matrix_monthly(ret_b, ddof=1, use_shrinkage=use_shrinkage)
-                vol_b = portfolio_vol_annual(weights_baseline, cov_b)
+                cov_b = cov_matrix_returns(ret_b, ddof=1, use_shrinkage=use_shrinkage)
+                vol_b = portfolio_vol_annual(weights_baseline, cov_b, periods_per_year=ppy)
                 print("  Baseline: волатильность %.2f%% (vs Full: %.2f%%)" % (vol_b * 100, current_vol * 100))
 
     out_final = Path(getattr(cfg, "output_dir_final", "Main portfolio"))

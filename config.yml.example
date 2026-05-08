@@ -104,6 +104,8 @@ minimum_variance_l1_experimental: false
 # output_dir_final: веса, все JSON, report (по умолчанию Main portfolio).
 
 windows_months: [36, 60, 120]
+# Main return panel for metrics, optimizer Σ/μ, correlation, RC_vol, and backtest (default: monthly).
+returns_frequency: monthly  # monthly | weekly | daily
 coverage_threshold: 0.9
 output_dir: results_csv
 output_dir_final: "Main portfolio"

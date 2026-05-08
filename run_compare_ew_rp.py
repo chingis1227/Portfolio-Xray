@@ -259,6 +259,7 @@ def main() -> None:
         assets_meta=assets_meta,
         no_cache=False,
         local_benchmark_map=local_benchmark_map,
+        returns_frequency=getattr(cfg, "returns_frequency", None),
     )
     analysis_end = data.analysis_end_str
     window_months = eq.get("window_months") or rp.get("window_months") or 120

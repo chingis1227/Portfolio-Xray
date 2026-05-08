@@ -1313,6 +1313,25 @@ def write_stress_commentary(
     _append_portfolio_pca_section(lines, st)
     lines.append("")
 
+    fd = st.get("frequency_disclosure")
+    if isinstance(fd, dict) and fd:
+        lines.append("Data cadence (optimization vs stress)")
+        lines.append(
+            f"returns_frequency={fd.get('returns_frequency')}, optimization_frequency={fd.get('optimization_frequency')}, "
+            f"factor_stress_frequency={fd.get('factor_stress_frequency')}, "
+            f"macro_regime_frequency={fd.get('macro_regime_frequency')}; "
+            f"frequency_mismatch_warning={fd.get('frequency_mismatch_warning')}."
+        )
+        notes = fd.get("macro_regime_frequency_notes")
+        if isinstance(notes, str) and notes.strip():
+            lines.append(notes.strip())
+        if fd.get("frequency_mismatch_warning"):
+            lines.append(
+                "Non-uniform cadence: align interpretation of stress/regime blocks with the frequencies above; "
+                "full alignment of factor/regime panels with daily/weekly optimization is Phase 2."
+            )
+        lines.append("")
+
     lines.append("Risk Structure")
     caps_line = []
     if mdd_lim is not None:
@@ -1459,6 +1478,7 @@ def write_portfolio_commentary(
     stress_report: dict[str, Any] | None,
     portfolio_valid: bool | None,
     analysis_end: str | None = None,
+    frequency_disclosure: dict[str, Any] | None = None,
 ) -> Path | None:
     """
     Write commentary.txt under output_dir_final using metrics + stress + rc_vol CSV.
@@ -1545,9 +1565,10 @@ def write_portfolio_commentary(
     lines.append("")
 
     lines.append("Metric-by-Metric Interpretation")
+    rf_lbl = str((frequency_disclosure or {}).get("returns_frequency") or "monthly")
     lines.append(
-        f"CAGR ({_fmt_pct(cagr)}) is the compound annual growth rate from monthly simple returns on the 10Y window in this run. "
-        f"Volatility ({_fmt_pct(vol)}) is annualized from monthly returns; MaxDD ({_fmt_pct(mdd)}) is from the monthly equity curve. "
+        f"CAGR ({_fmt_pct(cagr)}) is the compound annual growth rate from simple returns at {rf_lbl} cadence on the 10Y window in this run. "
+        f"Volatility ({_fmt_pct(vol)}) is annualized using the same return frequency; MaxDD ({_fmt_pct(mdd)}) is from the matching equity curve. "
         f"Sharpe ({_fmt_float(sharpe)}) and Sortino ({_fmt_float(sortino)}) follow project definitions (Sharpe uses raw return vol in the denominator). "
         f"Beta_base ({_fmt_float(beta)}) and Treynor ({_fmt_float(treynor)}) tie to the base benchmark; Corr_base, when present, is correlation with the benchmark on the same window."
     )
@@ -1561,6 +1582,24 @@ def write_portfolio_commentary(
             f" Failed scenario «{failed_scenario}», test «{failed_test}»." if failed_scenario else ""
         )
     )
+    fd = frequency_disclosure or {}
+    if fd:
+        lines.append("")
+        lines.append("Data frequency")
+        lines.append(
+            f"optimization_frequency={fd.get('optimization_frequency')}, returns_frequency={fd.get('returns_frequency')}, "
+            f"factor_stress_frequency={fd.get('factor_stress_frequency')}, "
+            f"macro_regime_frequency={fd.get('macro_regime_frequency')}; "
+            f"frequency_mismatch_warning={fd.get('frequency_mismatch_warning')}."
+        )
+        notes = fd.get("macro_regime_frequency_notes")
+        if isinstance(notes, str) and notes.strip():
+            lines.append(f"macro_regime_frequency_notes: {notes.strip()}")
+        if fd.get("frequency_mismatch_warning"):
+            lines.append(
+                "Non-uniform cadence across blocks: align interpretation of stress/regime diagnostics with the "
+                "frequencies above; full factor/regime alignment with daily/weekly optimization is Phase 2."
+            )
     lines.append("")
 
     lines.append("Strengths")

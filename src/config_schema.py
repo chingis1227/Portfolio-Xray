@@ -72,6 +72,7 @@ class PortfolioConfig:
     coverage_threshold: float
     output_dir: str  # CSV only (e.g. results_csv)
     output_dir_final: str  # Weights, JSON, report (e.g. Main portfolio)
+    returns_frequency: str = "monthly"  # monthly | weekly | daily (main metrics + optimizer return panel)
     # Backtest mode: "dynamic_nan_safe" (default, policy-compliant) | "simple" (opt-in, simplified NaN handling)
     backtest_mode: str = "dynamic_nan_safe"
 
@@ -145,6 +146,7 @@ class PortfolioConfig:
             "covariance_shrinkage": self.covariance_shrinkage,
             "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
             "windows_months": self.windows_months,
+            "returns_frequency": self.returns_frequency,
             "coverage_threshold": self.coverage_threshold,
             "output_dir": self.output_dir,
             "output_dir_final": self.output_dir_final,
@@ -266,6 +268,7 @@ NONNEGATIVE_FIELDS = [
 CASH_POLICY_VALUES = ("required_floor", "allowed_for_scaling", "prohibited")
 DONOR_SHIFT_MODES = ("proportional", "equal")
 BACKTEST_MODES = ("dynamic_nan_safe", "simple")
+RETURNS_FREQUENCY_VALUES = ("monthly", "weekly", "daily")
 
 NUMERIC_FIELDS = [
     "horizon_years",
@@ -352,6 +355,12 @@ def _inject_optional_defaults(cfg: dict[str, Any]) -> None:
     if isinstance(ypol_user, dict):
         ypol_base.update({k: v for k, v in ypol_user.items() if v is not None})
     cfg["young_etf_optimization_policy"] = ypol_base
+    # Returns frequency (main metrics + optimizer return panel)
+    raw_rf = cfg.get("returns_frequency")
+    if raw_rf is None:
+        cfg["returns_frequency"] = "monthly"
+    else:
+        cfg["returns_frequency"] = str(raw_rf).strip().lower()
     # Backtest mode default (production report uses dynamic NaN-safe by default)
     raw = cfg.get("backtest_mode")
     if not raw:
@@ -689,6 +698,17 @@ def _validate_backtest_mode(cfg: dict[str, Any]) -> None:
         )
 
 
+def _validate_returns_frequency(cfg: dict[str, Any]) -> None:
+    raw = cfg.get("returns_frequency", "monthly")
+    if raw is None:
+        return
+    val = str(raw).strip().lower()
+    if val not in RETURNS_FREQUENCY_VALUES:
+        raise ConfigValidationError(
+            f"Config field 'returns_frequency' must be one of {RETURNS_FREQUENCY_VALUES}, got {raw!r}"
+        )
+
+
 def _validate_portfolio_value(cfg: dict[str, Any]) -> None:
     """Validate portfolio_value optional, non-negative when set."""
     val = cfg.get("portfolio_value")
@@ -776,6 +796,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
     _validate_alpha_shift_params(cfg)
     _validate_optimization_soft_penalty_lambdas(cfg)
     _validate_backtest_mode(cfg)
+    _validate_returns_frequency(cfg)
     _validate_robustness_policy(cfg)
     _validate_optimization_windows(cfg)
 
@@ -816,6 +837,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
         young_etf_optimization_policy=dict(cfg.get("young_etf_optimization_policy") or DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY),
         liquidity_floor_pct=_parse_float_optional(cfg.get("liquidity_floor_pct")),
         windows_months=list(cfg["windows_months"]),
+        returns_frequency=str(cfg.get("returns_frequency", "monthly")).strip().lower(),
         coverage_threshold=cfg.get("coverage_threshold", 0.90),
         output_dir=cfg["output_dir"],
         output_dir_final=cfg.get("output_dir_final", DEFAULT_OUTPUT_DIR_FINAL),

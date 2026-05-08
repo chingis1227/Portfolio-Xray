@@ -114,6 +114,16 @@ from src.stress_factors import (
 )
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
 from src.windows import slice_window
+from src.returns_frequency import (
+    MACRO_REGIME_FREQUENCY_DEFAULT,
+    FACTOR_STRESS_FREQUENCY_DEFAULT,
+    analysis_end_rule_description,
+    calendar_window_to_n_periods,
+    compute_frequency_disclosure,
+    normalize_returns_frequency,
+    per_period_eff_from_annual_simple,
+    periods_per_year as periods_per_year_for,
+)
 from src.portfolio_commentary import write_portfolio_commentary, write_stress_commentary
 from src.regime_factor_analytics import (
     regime_factor_analytics,
@@ -164,11 +174,15 @@ def build_derived_assumptions(
     local_benchmark_map: dict[str, str],
     analysis_end: str,
     windows_months: list[int],
+    *,
+    returns_frequency: str | None = None,
+    periods_per_year: int = 12,
 ) -> dict:
     """
     Build dictionary of derived assumptions used in the run.
     These are values computed from config (not directly specified).
     """
+    rf_mode = normalize_returns_frequency(returns_frequency)
     # Liquidity life floor amount = liquidity_need_months * monthly_expenses (single source of truth)
     liquidity_need_amount = cfg.liquidity_need_months * (cfg.monthly_expenses or 0)
 
@@ -184,6 +198,9 @@ def build_derived_assumptions(
         "mar_annual_value": cfg.min_acceptable_return,
         "liquidity_need": liquidity_need_amount,
         "liquidity_life_floor_amount": liquidity_need_amount,
+        "returns_frequency": rf_mode,
+        "periods_per_year": periods_per_year,
+        "analysis_end_rule": analysis_end_rule_description(rf_mode),
     }
 
 
@@ -209,13 +226,14 @@ def run_portfolio_report_for_weights(
     benchmark_base_ticker = cfg.benchmark_base_ticker
     windows_months = cfg.windows_months
 
+    returns_frequency = normalize_returns_frequency(getattr(cfg, "returns_frequency", None))
+
     assets_meta = load_assets_metadata()
 
     cash_proxy_ticker, rf_source = resolve_cash_and_rf(cfg)
     tickers = portfolio_total_tickers(cfg.tickers, weights, cash_proxy_ticker)
 
     mar_annual = get_mar_from_config(cfg)
-    mar_monthly = mar_annual / 12 if mar_annual is not None else None
 
     config_local_override = cfg.local_benchmark_map or {}
     local_benchmark_map = resolve_local_benchmarks(
@@ -241,6 +259,7 @@ def run_portfolio_report_for_weights(
         assets_meta=assets_meta,
         no_cache=no_cache,
         local_benchmark_map=local_benchmark_map,
+        returns_frequency=returns_frequency,
     )
     monthly_prices = data.monthly_prices
     monthly_returns = data.monthly_returns
@@ -253,6 +272,13 @@ def run_portfolio_report_for_weights(
     analysis_end_str = data.analysis_end_str
     daily_cache_key = data.daily_cache_key
     monthly_cache_key = data.monthly_cache_key
+    returns_frequency = normalize_returns_frequency(data.returns_frequency)
+    ppy = periods_per_year_for(returns_frequency)
+    mar_period = (
+        per_period_eff_from_annual_simple(float(mar_annual), returns_frequency)
+        if mar_annual is not None
+        else None
+    )
 
     # =========================================================================
     # STEP 4: Compute portfolio returns (NaN-safe dynamic; production vs research mode)
@@ -280,12 +306,20 @@ def run_portfolio_report_for_weights(
     if backtest_mode == "dynamic_nan_safe":
         # Policy-compliant: global redistribution among risk tickers when returns are missing
         if asset_returns_df.shape[0] >= 2:
-            ret_inner = asset_returns_df.dropna(how="any").iloc[-720:]  # inner join, up to 60y
+            inner_cap = max(2, int(round(720.0 * float(ppy) / 12.0)))
+            ret_inner = asset_returns_df.dropna(how="any").iloc[-inner_cap:]
             inner_join_months_used = len(ret_inner)
-            if inner_join_months_used is not None and inner_join_months_used < 36 and inner_join_months_used >= 2:
+            min_cov_obs = calendar_window_to_n_periods(36, returns_frequency)
+            if (
+                inner_join_months_used is not None
+                and inner_join_months_used < min_cov_obs
+                and inner_join_months_used >= 2
+            ):
                 logger.warning(
-                    "Inner-join sample for covariance context is %d months (< 36). Risk estimates may be noisy.",
+                    "Inner-join sample for covariance context is %d observations (< ~3 calendar years at %s cadence); "
+                    "risk estimates may be noisy.",
                     inner_join_months_used,
+                    returns_frequency,
                 )
         risk_rt = get_risk_portfolio_tickers(cfg.tickers, cfg.cash_proxy_ticker)
         result = portfolio_returns_nan_safe(
@@ -400,8 +434,9 @@ def run_portfolio_report_for_weights(
                 benchmark_returns,
                 analysis_end,
                 wm,
-                mar=mar_monthly,
+                mar=mar_period,
                 local_benchmark_returns=local_bench_returns,
+                periods_per_year=ppy,
             )
             rows.append(row)
         asset_metrics_all.append(rows)
@@ -419,7 +454,8 @@ def run_portfolio_report_for_weights(
             analysis_end,
             wm,
             benchmark_returns=benchmark_returns,
-            mar=mar_monthly,
+            mar=mar_period,
+            periods_per_year=ppy,
         )
         portfolio_metrics_list.append(pm)
     export_portfolio_metrics_csv(portfolio_metrics_list, output_dir_csv)
@@ -1208,6 +1244,22 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["stress_scenario_analytics_error"] = str(e)
         logger.warning(f"Stress scenario analytics failed: {e}")
+    macro_notes = ""
+    if returns_frequency != "monthly":
+        macro_notes = (
+            f"Portfolio metrics and covariance use returns_frequency={returns_frequency}; factor betas/regression/stress shocks "
+            f"stay {FACTOR_STRESS_FREQUENCY_DEFAULT}; macro regime classifier labels remain {MACRO_REGIME_FREQUENCY_DEFAULT}; "
+            "regime_factor_analytics may use daily returns when daily data loads (see regime_factor_analytics.summary)."
+        )
+    stress_report["frequency_disclosure"] = compute_frequency_disclosure(
+        returns_frequency=returns_frequency,
+        optimization_frequency=returns_frequency,
+        factor_stress_frequency=FACTOR_STRESS_FREQUENCY_DEFAULT,
+        macro_regime_frequency=MACRO_REGIME_FREQUENCY_DEFAULT,
+        macro_regime_frequency_notes=(macro_notes or None),
+    )
+    stress_report["periods_per_year"] = ppy
+
     export_stress_report(stress_report, output_dir_final)
     logger.info(f"Stress status: {stress_report.get('status', 'N/A')}")
 
@@ -1220,14 +1272,19 @@ def run_portfolio_report_for_weights(
         ret_slice = slice_window(portfolio_returns, analysis_end, wm).dropna()
         rf_slice = slice_window(rf_monthly, analysis_end, wm).reindex(ret_slice.index).fillna(0)
         bench_slice = slice_window(benchmark_returns, analysis_end, wm).reindex(ret_slice.index).dropna()
-        if len(ret_slice) < 24:
+        min_obs_analytics = calendar_window_to_n_periods(24, returns_frequency)
+        if len(ret_slice) < min_obs_analytics:
             continue
-        # Rolling 36m and 12m
-        rs36 = rolling_sharpe(ret_slice, rf_slice, 36)
-        rs12 = rolling_sharpe(ret_slice, rf_slice, 12)
-        rsort36 = rolling_sortino(ret_slice, rf_slice, 36, mar=mar_monthly)
-        rsort12 = rolling_sortino(ret_slice, rf_slice, 12, mar=mar_monthly)
-        rvol = rolling_vol_annual(ret_slice, 12)
+        # Rolling 36m and 12m (calendar mapping)
+        rs36 = rolling_sharpe(ret_slice, rf_slice, 36, returns_frequency=returns_frequency)
+        rs12 = rolling_sharpe(ret_slice, rf_slice, 12, returns_frequency=returns_frequency)
+        rsort36 = rolling_sortino(
+            ret_slice, rf_slice, 36, mar=mar_period, returns_frequency=returns_frequency
+        )
+        rsort12 = rolling_sortino(
+            ret_slice, rf_slice, 12, mar=mar_period, returns_frequency=returns_frequency
+        )
+        rvol = rolling_vol_annual(ret_slice, 12, returns_frequency=returns_frequency)
         # Export rolling series to CSV
         rs36.round(3).to_csv(output_dir_csv / f"rolling_sharpe_36m_{suffix}.csv", header=True)
         rs12.round(3).to_csv(output_dir_csv / f"rolling_sharpe_12m_{suffix}.csv", header=True)
@@ -1280,6 +1337,8 @@ def run_portfolio_report_for_weights(
         local_benchmark_map,
         analysis_end_str,
         windows_months,
+        returns_frequency=returns_frequency,
+        periods_per_year=ppy,
     )
 
     # Gatekeepers: portfolio_valid = False С‚РѕР»СЊРєРѕ РµСЃР»Рё MaxDD РЅР° РїРѕР»РЅРѕР№ РїРµСЂРµСЃРµРєР°СЋС‰РµР№СЃСЏ РёСЃС‚РѕСЂРёРё РЅР°СЂСѓС€Р°РµС‚ РјР°РЅРґР°С‚.
@@ -1406,6 +1465,7 @@ def run_portfolio_report_for_weights(
             stress_report=stress_report,
             portfolio_valid=portfolio_valid,
             analysis_end=analysis_end_str,
+            frequency_disclosure=stress_report.get("frequency_disclosure"),
         )
         if cpath:
             logger.info("commentary.txt: %s", cpath)

@@ -136,7 +136,7 @@ Relevant surfaces:
 Keep `DESIGN.md` as the source of truth for tokens, typography, spacing, buttons, and dashboard styling.
 
 ## Important Files
-- `config.yml` - active local config.
+- `config.yml` - active local config; includes **`returns_frequency`** (`monthly` default, `weekly`, or `daily`) for the shared return panel used by metrics, optimizer inputs, correlation/RC, and backtests.
 - `config.yml.example` - reference config.
 - `config/etf_universe.yml` - curated ETF taxonomy source of truth; V1 validates/annotates config tickers but does not change optimizer membership or weights.
 - `config/stock_universe.yml` - curated stock taxonomy source of truth for current S&P 500 constituents; V1 is CLI-only and does not change optimizer membership or weights.
@@ -145,7 +145,7 @@ Keep `DESIGN.md` as the source of truth for tokens, typography, spacing, buttons
 - `src/optimization.py` - optimization logic (max-return; optional `objective_mode="risk_parity"` uses Spinu CCD with SLSQP fallback when per-asset bounds fail).
 - `src/portfolio_variants.py`, `src/risk_parity_spinu.py` - Equal-Weight / Risk-Parity / Minimum-Variance baseline builders (`run_equal_weight.py`, `run_risk_parity.py`, `run_minimum_variance.py`); RP weights via Spinu CCD on Ledoit-Wolf covariance with SLSQP emergency fallback; MV minimizes `0.5 w'Σw` with SLSQP + `Σw` gradient on PSD-repaired **Σ**, same box bounds as the policy optimizer when `young_etf_optimization_policy` / `covariance_shrinkage` align with `run_optimization.py`. Maximum Diversification constrained baseline (`run_maximum_diversification.py`) maximizes `(σ'w)/√(w'Σw)` on the same monthly **Σ** path and box bounds via SLSQP.
 - `src/config_schema.py` - config validation.
-- `src/data_loader.py`, `src/data_yf.py`, `src/fx.py` - data and FX.
+- `src/data_loader.py`, `src/data_yf.py`, `src/fx.py`, `src/returns_frequency.py` - data, FX, return-calendar builders, risk-free resampling, and `frequency_disclosure` helpers.
 - `src/metrics_asset.py`, `src/metrics_portfolio.py`, `src/metrics_daily.py` - metrics (monthly base + daily helpers for regime diagnostics).
 - `src/risk_contrib.py` - RC_vol diagnostics.
 - `src/stress.py`, `src/stress_covariance_taxonomy.py`, `src/stress_factors.py`, `src/stress_scenario_analytics.py`, `src/regime_factor_analytics.py`, `src/regime_portfolio_metrics.py` - stress and regime diagnostics (`run_stress` default synthetic RC covariance: `taxonomy_blend_v1` with parameter pack **`calibrated_v1_assumptions`** and row metadata including `stress_cov_calibration_version`, `vol_mult_by_block`, `key_rho_overrides_used`; optional `stress_cov_method="uniform_legacy"`).

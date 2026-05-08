@@ -34,34 +34,34 @@ def get_analysis_end(monthly_index: pd.DatetimeIndex, today: datetime | pd.Times
     return before.max()
 
 
+def slice_calendar_window(
+    series_or_df: pd.Series | pd.DataFrame,
+    analysis_end: pd.Timestamp,
+    horizon_months: int,
+) -> pd.Series | pd.DataFrame:
+    """
+    Calendar window (start, analysis_end] with start = analysis_end - horizon_months.
+
+    All observations strictly after start and on or before analysis_end are included.
+    The number of rows may be less than horizon_months if the index has gaps.
+    """
+    idx = series_or_df.index
+    if not isinstance(idx, pd.DatetimeIndex):
+        raise ValueError("series_or_df must have DatetimeIndex")
+    ae = pd.Timestamp(analysis_end).normalize()
+    start = ae - pd.DateOffset(months=int(horizon_months))
+    mask = (idx > start) & (idx <= ae)
+    return series_or_df.loc[mask]
+
+
 def slice_window(
     series_or_df: pd.Series | pd.DataFrame,
     analysis_end: pd.Timestamp,
     window_months: int,
 ) -> pd.Series | pd.DataFrame:
     """
-    Slice series or DataFrame to the window ending at analysis_end with length window_months.
+    Slice to the calendar window ending at analysis_end (see slice_calendar_window).
 
-    Window = [start_month, ..., analysis_end] inclusive, with exactly window_months observations
-    (months). Start is chosen so that the number of month-end dates from start to analysis_end
-    (inclusive) is window_months.
-
-    Args:
-        series_or_df: Data with DatetimeIndex (month-end).
-        analysis_end: Last month-end of the window.
-        window_months: Number of months in the window.
-
-    Returns:
-        Sliced series or DataFrame.
+    Deprecated row-count semantics: callers should treat window_months as calendar horizon.
     """
-    idx = series_or_df.index
-    if not isinstance(idx, pd.DatetimeIndex):
-        raise ValueError("series_or_df must have DatetimeIndex")
-    # Find position of analysis_end (or last index <= analysis_end)
-    end_loc = idx.get_indexer([analysis_end], method="ffill")[0]
-    if end_loc < 0:
-        end_loc = idx.get_indexer([analysis_end], method="bfill")[0]
-    if end_loc < 0:
-        raise ValueError(f"analysis_end {analysis_end} not in index")
-    start_loc = max(0, end_loc - window_months + 1)
-    return series_or_df.iloc[start_loc : end_loc + 1]
+    return slice_calendar_window(series_or_df, analysis_end, window_months)

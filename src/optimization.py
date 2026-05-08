@@ -12,7 +12,8 @@ import pandas as pd
 from scipy.optimize import minimize
 
 from policy_math.feasibility import resolve_max_weight_per_asset_cap
-from src.risk_contrib import cov_matrix_monthly, percentage_contributions_variance, variance_p
+from src.risk_contrib import cov_matrix_monthly, cov_matrix_returns, percentage_contributions_variance, variance_p
+from src.returns_frequency import ReturnsFrequency, calendar_window_to_n_periods
 from src.risk_parity_spinu import repair_covariance_psd, spinu_ccd_equal_budget
 
 MIN_WEIGHT_DEFAULT = 0.01
@@ -80,6 +81,8 @@ def run_max_return_optimization(
     soft_vol_penalty_lambda: float = 0.0,
     soft_target_return_annual: float | None = None,
     soft_return_penalty_lambda: float = 0.0,
+    periods_per_year: int = 12,
+    returns_frequency: ReturnsFrequency = "monthly",
     **_: Any,
 ) -> tuple[dict[str, float], str]:
     """
@@ -94,7 +97,9 @@ def run_max_return_optimization(
     if not risk_list:
         return {}, "FAIL: no risk tickers"
 
-    MIN_FULL_JOIN_MONTHS = 11
+    rf_key = returns_frequency if returns_frequency in ("monthly", "weekly", "daily") else "monthly"
+    min_periods = max(2, calendar_window_to_n_periods(11, rf_key))
+    ppy = int(periods_per_year)
     use_precomputed_cov = (
         cov_precomputed is not None and mu_precomputed is not None and not cov_precomputed.empty
     )
@@ -109,14 +114,14 @@ def run_max_return_optimization(
     elif returns_window is not None and not returns_window.empty:
         ret = returns_window
         cols = list(ret.columns)
-        if len(ret) < MIN_FULL_JOIN_MONTHS:
+        if len(ret) < min_periods:
             return {}, (
-                f"FAIL_DATA: returns_window has only {len(ret)} months. "
-                f"Need at least {MIN_FULL_JOIN_MONTHS} months."
+                f"FAIL_DATA: returns_window has only {len(ret)} periods (need ≥{min_periods} "
+                f"aligned bars for calendar ~11m history)."
             )
         n = len(cols)
         mu = ret.mean().values
-        cov = cov_matrix_monthly(ret, ddof=1, use_shrinkage=use_shrinkage).values
+        cov = cov_matrix_returns(ret, ddof=1, use_shrinkage=use_shrinkage).values
     else:
         cols = [t for t in risk_list if t in returns_df.columns]
         missing = set(risk_list) - set(cols)
@@ -128,27 +133,31 @@ def run_max_return_optimization(
             )
         if not cols:
             return {}, f"FAIL_DATA: no risk tickers with returns (missing: {risk_list})"
-        ret = returns_df[cols].iloc[-window_months:]
-        ret = ret.dropna(axis=1, how="all").dropna(how="any")
-        if len(ret) < MIN_FULL_JOIN_MONTHS:
-            lookback = min(returns_df.shape[0], max(window_months * 2, 120))
-            ret = returns_df[cols].iloc[-lookback:]
-            ret = ret.dropna(axis=1, how="all").dropna(how="any")
-            if len(ret) >= MIN_FULL_JOIN_MONTHS:
-                ret = ret.iloc[-min(window_months, len(ret)):]
-            else:
-                return {}, (
-                    f"FAIL_DATA: insufficient history after inner join ({len(ret)} months). "
-                    f"Need at least {MIN_FULL_JOIN_MONTHS} months where every risk ticker has data."
-                )
-        else:
-            ret = ret.iloc[-min(window_months, len(ret)):]
+
+        from src.windows import slice_calendar_window
+
+        ret_full = returns_df[cols].dropna(axis=1, how="all")
+        ae_panel = pd.Timestamp(ret_full.index.max()).normalize()
+        ret = slice_calendar_window(ret_full, ae_panel, window_months).dropna(how="any")
+        if len(ret) < min_periods:
+            span = max(
+                calendar_window_to_n_periods(int(window_months) * 4, rf_key),
+                min_periods * 6,
+            )
+            tail = ret_full.iloc[-min(len(ret_full), span) :]
+            ae_panel = pd.Timestamp(tail.index.max()).normalize()
+            ret = slice_calendar_window(tail, ae_panel, window_months).dropna(how="any")
+        if len(ret) < min_periods:
+            return {}, (
+                f"FAIL_DATA: insufficient history after inner join ({len(ret)} periods). "
+                f"Need at least {min_periods} overlapping bars (~11 calendar months)."
+            )
         cols = list(ret.columns)
         if not cols:
             return {}, "FAIL_DATA: no assets with returns in window"
         n = len(cols)
         mu = ret.mean().values
-        cov = cov_matrix_monthly(ret, ddof=1, use_shrinkage=use_shrinkage).values
+        cov = cov_matrix_returns(ret, ddof=1, use_shrinkage=use_shrinkage).values
 
     min_weight = (
         float(min_single_security_weight_pct)
@@ -230,12 +239,14 @@ def run_max_return_optimization(
         if lam_sv > 0 and stv is not None:
             var_p = float(w @ cov @ w)
             sigma_m = math.sqrt(max(var_p, 0.0))
-            sigma_ann = sigma_m * math.sqrt(12.0)
+            k = float(ppy)
+            sigma_ann = sigma_m * math.sqrt(k)
             dv = sigma_ann - stv
             soft_ips += lam_sv * (dv * dv)
         if lam_sr > 0 and st_ret is not None:
             mu_m = float(np.dot(mu, w))
-            ret_ann_lin = 12.0 * mu_m
+            k = float(ppy)
+            ret_ann_lin = k * mu_m
             dr = ret_ann_lin - st_ret
             soft_ips += lam_sr * (dr * dr)
         return -float(np.dot(mu, w)) + track + soft_ips
@@ -325,13 +336,16 @@ def _alpha_shift_to_target_vol(
     target_vol_annual: float,
     n_rc: int,
     donor_shift_mode: str,
+    *,
+    periods_per_year: int = 12,
 ) -> tuple[dict[str, float], str | None]:
     tickers = [t for t in weights_risk if t in cov_df.columns and t in cov_df.index]
     if not tickers:
         return dict(weights_risk), "No risk assets in covariance for alpha shift."
     cov = cov_df.reindex(index=tickers, columns=tickers).fillna(0).values
     w = np.array([weights_risk[t] for t in tickers])
-    current_vol = float(np.sqrt(variance_p(w, cov) * 12)) if variance_p(w, cov) > 0 else 0.0
+    k_scale = float(periods_per_year)
+    current_vol = float(np.sqrt(variance_p(w, cov) * k_scale)) if variance_p(w, cov) > 0 else 0.0
     if current_vol <= target_vol_annual:
         return dict(weights_risk), None
 
@@ -352,7 +366,7 @@ def _alpha_shift_to_target_vol(
         vol_by_ticker = []
         for t in tickers:
             idx = tickers.index(t)
-            vol_t = float(np.sqrt(cov[idx, idx] * 12)) if cov[idx, idx] > 0 else 0.0
+            vol_t = float(np.sqrt(cov[idx, idx] * k_scale)) if cov[idx, idx] > 0 else 0.0
             vol_by_ticker.append((t, vol_t))
         vol_by_ticker.sort(key=lambda x: (x[1], x[0]))
         recipient = vol_by_ticker[0][0] if vol_by_ticker else tickers[0]
@@ -381,7 +395,7 @@ def _alpha_shift_to_target_vol(
         new_weights[recipient] = weights_risk.get(recipient, 0.0) + add_to_recipient
         w_new = np.array([new_weights.get(t, 0.0) for t in tickers])
         var_p = variance_p(w_new, cov)
-        vol_new = float(np.sqrt(var_p * 12)) if var_p > 0 else 0.0
+        vol_new = float(np.sqrt(var_p * k_scale)) if var_p > 0 else 0.0
         if vol_new <= target_vol_annual + tol_vol:
             alpha_hi = alpha
         else:
@@ -404,7 +418,7 @@ def _alpha_shift_to_target_vol(
         add_to_recipient = sum(weights_risk[t] for t in donors) - sum(out[t] for t in donors)
     out[recipient] = out.get(recipient, 0.0) + add_to_recipient
     w_final = np.array([out.get(t, 0.0) for t in tickers])
-    vol_final = float(np.sqrt(variance_p(w_final, cov) * 12)) if variance_p(w_final, cov) > 0 else 0.0
+    vol_final = float(np.sqrt(variance_p(w_final, cov) * k_scale)) if variance_p(w_final, cov) > 0 else 0.0
     if vol_final > target_vol_annual + 1e-4:
         return dict(weights_risk), (
             "TargetVol cannot be achieved with cash_policy='prohibited' "
@@ -423,6 +437,8 @@ def proliquidity(
     cov_df: pd.DataFrame | None = None,
     n_rc: int = 3,
     donor_shift_mode: str = "proportional",
+    *,
+    periods_per_year: int = 12,
 ) -> tuple[dict[str, float], str | None]:
     if cash_policy == "prohibited":
         if current_vol_annual > target_vol_annual and cov_df is not None:
@@ -432,6 +448,7 @@ def proliquidity(
                 target_vol_annual,
                 n_rc,
                 donor_shift_mode,
+                periods_per_year=periods_per_year,
             )
             if err:
                 return shifted, err
@@ -452,14 +469,14 @@ def proliquidity(
     return out, None
 
 
-def portfolio_vol_annual(weights: dict[str, float], cov_df: pd.DataFrame) -> float:
+def portfolio_vol_annual(weights: dict[str, float], cov_df: pd.DataFrame, *, periods_per_year: int = 12) -> float:
     tickers = [t for t in weights if t in cov_df.columns and t in cov_df.index]
     if not tickers:
         return 0.0
     w = np.array([weights[t] for t in tickers])
     cov = cov_df.reindex(index=tickers, columns=tickers).fillna(0).values
     var = variance_p(w, cov)
-    return float(np.sqrt(var * 12)) if var > 0 else 0.0
+    return float(np.sqrt(var * float(periods_per_year))) if var > 0 else 0.0
 
 
 def rc_by_asset_from_weights(

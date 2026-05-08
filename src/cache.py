@@ -75,6 +75,7 @@ def compute_monthly_cache_key(
     windows_months: list[int],
     data_month: str,
     extra_tickers: list[str] | None = None,
+    returns_frequency: str = "monthly",
 ) -> str:
     """
     Compute cache key for monthly data.
@@ -99,6 +100,7 @@ def compute_monthly_cache_key(
         "rf_source": rf_source,
         "windows": sorted(windows_months),
         "data_month": data_month,
+        "returns_frequency": str(returns_frequency).strip().lower(),
     }
     return _compute_hash(payload)
 

@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 
 from src.risk_contrib import DDOF, cov_matrix_monthly, cov_matrix_monthly_robust
+from src.windows import slice_calendar_window
 
 
 def _core_covariance(
@@ -32,12 +33,20 @@ def _core_covariance(
     return cov_matrix_monthly(ret, ddof=DDOF, use_shrinkage=use_shrinkage_on_core)
 
 
-def _history_months_in_window(s: pd.Series, window: int) -> int:
-    """Count non-NaN monthly observations in the last ``window`` rows of ``s``."""
+def _history_months_in_window(
+    s: pd.Series,
+    window: int,
+    *,
+    analysis_end: pd.Timestamp | None = None,
+) -> int:
+    """Non-NaN count in calendar ``window`` (months), or last ``window`` rows when analysis_end is None."""
     if s is None or len(s) == 0:
         return 0
-    tail = s.iloc[-window:] if len(s) >= window else s
-    return int(tail.notna().sum())
+    if analysis_end is None:
+        tail = s.iloc[-window:] if len(s) >= window else s
+        return int(tail.notna().sum())
+    sl = slice_calendar_window(s, analysis_end, int(window))
+    return int(sl.dropna().shape[0])
 
 
 def maturity_bucket(history: int, candidate_min: int, eligible: int) -> str:
@@ -105,6 +114,7 @@ def build_dual_covariance_and_mu(
     policy: dict[str, Any],
     use_shrinkage_on_core: bool = False,
     use_robust_on_core: bool = False,
+    analysis_end: pd.Timestamp | None = None,
 ) -> tuple[pd.DataFrame, pd.Series, dict[str, Any]]:
     """
     Build covariance matrix and mean monthly return vector for RiskPortfolio tickers.
@@ -120,6 +130,7 @@ def build_dual_covariance_and_mu(
     tickers = [t for t in tickers if t in monthly_returns.columns]
     if not tickers:
         raise ValueError("No tickers present in monthly_returns")
+    ae = analysis_end if analysis_end is not None else pd.Timestamp(monthly_returns.index.max())
 
     eligible_m = int(policy["eligible_months"])
     cand_min = int(policy["candidate_months_min"])
@@ -127,7 +138,7 @@ def build_dual_covariance_and_mu(
     per_ticker: dict[str, dict[str, Any]] = {}
     hist: dict[str, int] = {}
     for t in tickers:
-        h = _history_months_in_window(monthly_returns[t], window_months)
+        h = _history_months_in_window(monthly_returns[t], window_months, analysis_end=ae)
         hist[t] = h
         bucket = maturity_bucket(h, cand_min, eligible_m)
         alpha = shrinkage_alpha_for_history(h, policy)
@@ -140,9 +151,8 @@ def build_dual_covariance_and_mu(
     eligible = [t for t in tickers if per_ticker[t]["bucket"] == "eligible"]
 
     def _fallback_inner_join(reason: str) -> tuple[pd.DataFrame, pd.Series, dict[str, Any]]:
-        ret = monthly_returns[tickers].iloc[-window_months:]
-        ret = ret.dropna(axis=1, how="all").dropna(how="any")
-        win = monthly_returns[tickers].iloc[-window_months:]
+        win = slice_calendar_window(monthly_returns[tickers], ae, int(window_months))
+        ret = win.dropna(axis=1, how="all").dropna(how="any")
         mu_local = win.mean().reindex(tickers).fillna(0.0)
         if len(ret) < 2 or ret.shape[1] == 0:
             cov_empty = pd.DataFrame(0.0, index=tickers, columns=tickers)
@@ -185,7 +195,7 @@ def build_dual_covariance_and_mu(
     if len(eligible) < 2:
         return _fallback_inner_join("fewer_than_2_eligible_for_core")
 
-    ret_core = monthly_returns[eligible].iloc[-window_months:].dropna(how="any")
+    ret_core = slice_calendar_window(monthly_returns[eligible], ae, int(window_months)).dropna(how="any")
     if len(ret_core) < 2:
         return _fallback_inner_join("core_sample_too_short_after_join")
 
@@ -207,7 +217,7 @@ def build_dual_covariance_and_mu(
             i, j = idx_of[ti], idx_of[tj]
             cov_arr[i, j] = float(sigma_core.loc[ti, tj])
 
-    win_slice = monthly_returns[tickers].iloc[-window_months:]
+    win_slice = slice_calendar_window(monthly_returns[tickers], ae, int(window_months))
 
     for i, ti in enumerate(tickers):
         for j in range(i, n):

@@ -83,6 +83,7 @@ def main() -> int:
         assets_meta=assets_meta,
         no_cache=args.no_cache,
         local_benchmark_map=None,
+        returns_frequency=getattr(cfg, "returns_frequency", None),
     )
     monthly_returns = data.monthly_returns
     if monthly_returns is None or monthly_returns.empty:
