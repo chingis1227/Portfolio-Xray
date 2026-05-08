@@ -111,7 +111,7 @@ Keep `DESIGN.md` as the source of truth for tokens, typography, spacing, buttons
 - `src/data_loader.py`, `src/data_yf.py`, `src/fx.py` - data and FX.
 - `src/metrics_asset.py`, `src/metrics_portfolio.py`, `src/metrics_daily.py` - metrics (monthly base + daily helpers for regime diagnostics).
 - `src/risk_contrib.py` - RC_vol diagnostics.
-- `src/stress.py`, `src/stress_factors.py`, `src/regime_factor_analytics.py`, `src/regime_portfolio_metrics.py` - stress and regime diagnostics.
+- `src/stress.py`, `src/stress_covariance_taxonomy.py`, `src/stress_factors.py`, `src/regime_factor_analytics.py`, `src/regime_portfolio_metrics.py` - stress and regime diagnostics (`run_stress` default synthetic RC covariance: `taxonomy_blend_v1` with parameter pack **`calibrated_v1_assumptions`** and row metadata including `stress_cov_calibration_version`, `vol_mult_by_block`, `key_rho_overrides_used`; optional `stress_cov_method="uniform_legacy"`).
 - `src/portfolio_dynamic.py` - NaN-safe portfolio returns.
 - `src/pdf_reports.py`, `src/portfolio_commentary.py`, `src/snapshot.py` - reporting. Auto-generated `commentary.txt` and `stress_commentary.txt` are English-only (UTF-8).
 

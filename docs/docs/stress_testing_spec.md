@@ -10,7 +10,7 @@
 > **2026-04-29 update:** Historical stress rows now include **model-based factor attribution** when factor history is available. The primary attribution uses 5Y portfolio betas times realized episode factor shocks and must be labeled as model-based explainability, not pure realized causal decomposition.
 > **2026-04-29 update:** Stress reports now include a **diagnostic-only stability-adjusted beta overlay**. It shrinks unstable 5Y factor betas toward 10Y anchors, flags strong 5Y-vs-10Y divergence, and reports material raw-vs-adjusted factor-model PnL deltas.
 > **2026-04-30 update:** Split factor contract. Production regression/beta/stability/OOS/adjusted-overlay/base variance decomposition use base factors only: `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`. `commodity` is the production сырьевой factor. Extended diagnostics/stress analytics use base factors plus `oil`; `beta_oil` is deprecated in production outputs and exposed through `diagnostic_oil_beta` or stress-layer metrics only.
-> **2026-04-30 update:** Inflation/Stagflation now includes a direct inflation-expectations shock: `shock_inf = +0.005` (+50 bps in the T10YIE breakeven proxy). This makes `beta_inf` contribute directly to the scenario PnL instead of remaining zero.
+> **2026-05-08 update:** Synthetic scenario **RC_top1 / RC_top3** concentration diagnostics now use **`taxonomy_blend_v1`**: a blend of sample monthly correlation with a block-structured target matrix (EQ / CR / ND / TI / CO / CA) resolved from `config/etf_universe.yml` and `config/stock_universe.yml`, per-scenario `lambda_blend`, explicit between-block overrides with defaults, per-block volatility multipliers, and PSD repair on the blended correlation. **Historical episodes** are unchanged (realized paths only). Optional `stress_cov_method="uniform_legacy"` restores the prior uniform risk-on correlation + scalar `vol_mult` for synthetic rows only. `rates_shock` and `inflation_stagflation` set `stress_cov=True` for RC diagnostics under the same taxonomy engine.
 
 ---
 
@@ -41,10 +41,28 @@ Scenario and episode checks below are **for PM reporting**; they do not replace 
 |---|---------------------|----------------------|
 | 1 | **Equity shock**    | Broad equity в€’40%. shock_eq = -0.40; others 0. |
 | 2 | **Credit shock**    | HY stress: shock_credit = +0.04 (+400 bps); optionally shock_eq = -0.10; others 0. |
-| 3 | **Rates shock**     | Real rates +200 bps: `shock_rr = +0.02`; others 0. |
-| 4 | **Inflation/Stagflation** | `shock_cmd = +0.25`, `shock_eq = -0.20`, `shock_rr = +0.005`, `shock_inf = +0.005` (+50 bps breakeven inflation); `shock_usd = 0`. |
-| 5 | **Liquidity shock** | shock_eq = -0.25, shock_credit = +0.03 (+300 bps); RC uses stress covariance; others 0. |
-| 6 | **Recession severe** | Hard-landing recession. `shock_eq` / `shock_rr` / `shock_credit` / `shock_inf` / `shock_usd` / `shock_cmd` are calibrated from realized factor moves in 2008 and 2020; the selected vector is the one with worst model PnL for current portfolio betas. RC uses stress covariance with `vol_mult = 1.60` and risk-on correlation override `0.95`. |
+| 3 | **Rates shock**     | Real rates +200 bps: `shock_rr = +0.02`; others 0. RC uses **taxonomy_blend_v1** stress covariance. |
+| 4 | **Inflation/Stagflation** | `shock_cmd = +0.25`, `shock_eq = -0.20`, `shock_rr = +0.005`, `shock_inf = +0.005` (+50 bps breakeven inflation); `shock_usd = 0`. RC uses **taxonomy_blend_v1** stress covariance. |
+| 5 | **Liquidity shock** | shock_eq = -0.25, shock_credit = +0.03 (+300 bps); RC uses **taxonomy_blend_v1** stress covariance (`src/stress_covariance_taxonomy.py`); others 0. |
+| 6 | **Recession severe** | Hard-landing recession. `shock_eq` / `shock_rr` / `shock_credit` / `shock_inf` / `shock_usd` / `shock_cmd` are calibrated from realized factor moves in 2008 and 2020; the selected vector is the one with worst model PnL for current portfolio betas. RC uses **taxonomy_blend_v1** stress covariance. Legacy scalars `vol_mult = 1.60` and `risk_on_corr = 0.95` remain on `recession_calibration` / scenario row for backward compatibility but **do not** define the RC covariance (taxonomy block multipliers and blended correlations apply). |
+
+### 2.2 Synthetic stress covariance (`taxonomy_blend_v1`)
+
+For each synthetic scenario with `stress_cov=True`, `run_stress` builds monthly `cov_base` from overlapping portfolio assets, then:
+
+1. **Block assignment** per ticker via `resolve_stress_asset_block` (cash proxy → CA; ETF rows from `config/etf_universe.yml`; equities from `config/stock_universe.yml`; unknown tickers → EQ with `taxonomy_coverage.missing_tickers`).
+2. **Target correlation** `C_target` from within-block targets, explicit between-block pairs (`RHO_PAIR_OVERRIDES`), and `RHO_DEFAULT_BETWEEN` for unlisted block pairs (see `src/stress_covariance_taxonomy.py`).
+3. **Blend:** `C_blend = (1 - lambda_blend) * Corr(cov_base) + lambda_blend * C_target`, then **PSD repair** (`repair_correlation_matrix`).
+4. **Volatility stress:** `sigma_i_stress = sigma_i_base * vol_mult_block[scenario][block(i)]`.
+5. **Output covariance:** `cov_stress = D * C_blend * D` with `D = diag(sigma_stress)`.
+
+**Portfolio scenario PnL** is unchanged (linear factor shocks × per-asset betas). Only **RC_vol** inputs use `cov_stress`.
+
+**`run_stress` keyword** `stress_cov_method` (default `taxonomy_blend_v1`): set `uniform_legacy` to restore the previous uniform risk-on correlation override and scalar `vol_mult` from scenario params.
+
+**Scenario rows** (`stress_report.json.scenario_results[*]`) add when `stress_cov` applies: `stress_cov_method`, `stress_cov_lambda`, `stress_cov_calibration_version` (current diagnostic pack: **`calibrated_v1_assumptions`** in `STRESS_COV_CALIBRATION_VERSION`), `taxonomy_coverage` (`missing_tickers`, `blocks_by_ticker`), **`vol_mult_by_block`** (the scenario’s per-block volatility multipliers), and **`key_rho_overrides_used`** (compact trace of primary between-block ρ overrides documented for calibration). When `stress_cov` is false, these fields are null or empty as implemented.
+
+**Calibration table** `LAMBDA_BLEND`, `RHO_WITHIN`, `RHO_PAIR_OVERRIDES`, `VOL_MULT_BLOCK` in `src/stress_covariance_taxonomy.py` implement **`calibrated_v1_assumptions`** (diagnostic RC layer only; does not alter scenario shocks, optimizer, or pass/fail gates).
 
 ---
 
@@ -79,9 +97,12 @@ The selected severe vector is the candidate with the lowest `model_pnl` for the 
 - `selected_shock`
 - `model_pnl_by_episode`
 - `model_vs_realized` comparing model PnL with realized `pnl_real_episode` from `historical_results`
-- `vol_mult` and `risk_on_corr`
+- `vol_mult` and `risk_on_corr` (legacy documentation scalars; RC uses taxonomy when `stress_cov_method` is `taxonomy_blend_v1`)
+- `stress_cov_method` (**`taxonomy_blend_v1`** in normal production)
+- `stress_cov_lambda` (scenario `lambda_blend` for recession_severe; **`calibrated_v1_assumptions`** uses **0.65**)
+- `stress_cov_calibration_version`, `vol_mult_by_block`, `key_rho_overrides_used` (same semantics as synthetic scenario rows when taxonomy stress covariance applies)
 
-The `scenario_results` row for `recession_severe` includes `shock_vector`, `calibration_source_episode`, `vol_mult`, and `risk_on_corr`.
+The `scenario_results` row for `recession_severe` includes `shock_vector`, `calibration_source_episode`, `vol_mult`, `risk_on_corr` (legacy scalars), **`stress_cov_method`**, **`stress_cov_lambda`**, **`stress_cov_calibration_version`**, **`vol_mult_by_block`**, **`key_rho_overrides_used`**, and **`taxonomy_coverage`** when RC stress covariance applies.
 
 
 For each asset *i* in the risk universe (aligned monthly columns; cash proxy excluded from shock path where applicable):
@@ -108,6 +129,7 @@ For each scenario the production `run_stress` implementation outputs (see `scena
 - **top1_rc_asset**, **top1_rc_pct**, **top3_rc_assets**, **top3_rc_sum_pct** (RC_vol вЂ” share of portfolio variance under base or stress covariance)
 - **top3_loss_assets** (tickers with largest negative PnL contribution in the scenario)
 - **loss_ok**, **pass** (equals **loss_ok**), **diagnostic_codes** (loss-related only on synthetic rows)
+- **`stress_cov_method`**, **`stress_cov_lambda`**, **`stress_cov_calibration_version`**, **`taxonomy_coverage`**, **`vol_mult_by_block`**, **`key_rho_overrides_used`** when the scenario uses synthetic stress covariance (null or empty when `stress_cov` is false)
 
 Raw scenario rows remain the primary stress contract. Any stability-adjusted factor overlay must be reported in separate top-level blocks and must not overwrite `scenario_results[*].pnl_by_factor_pct` or the raw scenario PnL fields.
 
