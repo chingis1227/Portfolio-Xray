@@ -16,6 +16,9 @@ if str(_root) not in sys.path:
 from src.config_schema import PortfolioConfig
 from src.portfolio_variants import (
     L1_REFERENCE_CURRENT_PORTFOLIO,
+    MV_BASELINE_ROLE_ADVANCED_CONTROLS_PURE_PATH,
+    MV_BASELINE_ROLE_PRIMARY_LOWEST_VOL_UNDER_CONSTRAINTS,
+    MV_BASELINE_ROLE_REBALANCE_AWARE_TURNOVER_CONTROLLED,
     build_equal_weight_baseline,
     build_minimum_variance_advanced_controls,
     build_minimum_variance_baseline,
@@ -96,6 +99,8 @@ def test_build_minimum_variance_three_assets_bounds_and_sum() -> None:
         assert 0.01 - 1e-6 <= res.weights[t] <= 0.40 + 1e-3  # feasibility cap for N=3
     diag = res.diagnostics
     assert diag.get("optimizer_name") == "minimum_variance_constrained"
+    assert diag.get("minimum_variance_baseline_role") == MV_BASELINE_ROLE_PRIMARY_LOWEST_VOL_UNDER_CONSTRAINTS
+    assert "primary" in str(diag.get("minimum_variance_interpretation") or "").lower()
     assert diag.get("solver") == "SLSQP"
     assert diag.get("covariance_method") == "sample_monthly_ddof1"
     assert diag.get("shrinkage_used") is False
@@ -185,6 +190,12 @@ def test_minimum_variance_advanced_reference_and_l1_moves_weights() -> None:
     assert adv.diagnostics.get("reference_allocation_source") is None
     assert adv.diagnostics.get("current_portfolio_weights_available") is True
     assert adv.diagnostics.get("l1_penalty_used") is True
+    assert adv.diagnostics.get("minimum_variance_baseline_role") == (
+        MV_BASELINE_ROLE_REBALANCE_AWARE_TURNOVER_CONTROLLED
+    )
+    assert "rebalance-aware" in str(
+        adv.diagnostics.get("minimum_variance_interpretation") or ""
+    ).lower()
     assert float(adv.diagnostics.get("lambda_turnover_effective") or 0.0) > 0.0
     assert adv.diagnostics.get("shrinkage_used") is True
     w_cols = ["A", "B", "C"]
@@ -221,6 +232,9 @@ def test_minimum_variance_advanced_l1_active_without_legacy_experimental_flag() 
     adv = build_minimum_variance_advanced_controls(cfg, returns, end, len(dates))
     assert adv.status in ("OK", "APPROXIMATE")
     assert adv.diagnostics.get("l1_penalty_used") is True
+    assert adv.diagnostics.get("minimum_variance_baseline_role") == (
+        MV_BASELINE_ROLE_REBALANCE_AWARE_TURNOVER_CONTROLLED
+    )
     assert adv.diagnostics.get("l1_reference_source") == L1_REFERENCE_CURRENT_PORTFOLIO
     assert adv.diagnostics.get("lambda_turnover_effective") == 0.1
 
@@ -249,6 +263,12 @@ def test_minimum_variance_advanced_matches_constrained_without_vol_cap_or_l1() -
     adv = build_minimum_variance_advanced_controls(cfg, returns, end, len(dates))
     assert base.status in ("OK", "APPROXIMATE")
     assert adv.status in ("OK", "APPROXIMATE")
+    assert base.diagnostics.get("minimum_variance_baseline_role") == (
+        MV_BASELINE_ROLE_PRIMARY_LOWEST_VOL_UNDER_CONSTRAINTS
+    )
+    assert adv.diagnostics.get("minimum_variance_baseline_role") == (
+        MV_BASELINE_ROLE_ADVANCED_CONTROLS_PURE_PATH
+    )
     assert adv.diagnostics.get("l1_penalty_used") is False
     assert adv.diagnostics.get("lambda_turnover_effective") == 0.0
     assert adv.diagnostics.get("l1_reference_source") is None
@@ -284,6 +304,9 @@ def test_minimum_variance_advanced_default_lambda_zero_is_pure_min_var_no_l1() -
     assert adv.diagnostics.get("lambda_turnover") == 0.0
     assert adv.diagnostics.get("lambda_turnover_effective") == 0.0
     assert adv.diagnostics.get("l1_penalty_used") is False
+    assert adv.diagnostics.get("minimum_variance_baseline_role") == (
+        MV_BASELINE_ROLE_ADVANCED_CONTROLS_PURE_PATH
+    )
     assert adv.diagnostics.get("l1_reference_source") is None
     dr = str(adv.diagnostics.get("l1_disabled_reason") or "")
     assert "lambda" in dr.lower()

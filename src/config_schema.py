@@ -90,8 +90,10 @@ class PortfolioConfig:
     optimization_soft_vol_penalty_lambda: float = 0.0
     optimization_soft_return_penalty_lambda: float = 0.0
     # Advanced minimum-variance: optional L1 vs **current** portfolio weights when
-    # ``minimum_variance_turnover_lambda > 0``. Default 0 => pure MinVar (no L1 term).
-    # Legacy ``minimum_variance_l1_experimental`` is ignored by the advanced MinVar path.
+    # ``minimum_variance_turnover_lambda > 0``. Default 0 => pure MinVar on the advanced path
+    # (no L1 term). **Not** the primary lowest-volatility-under-constraints baseline—that is
+    # constrained MinVar (`minimum_variance_constrained`). L1 is turnover / rebalance-aware control
+    # only vs current weights (equal-weight never). Legacy ``minimum_variance_l1_experimental`` is ignored.
     minimum_variance_turnover_lambda: float = 0.0
     minimum_variance_l1_experimental: bool = False
     # Deprecated: stress is diagnostic-only (DIAG_*); ignored for blocking. Kept for config compatibility.

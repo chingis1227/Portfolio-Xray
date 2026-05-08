@@ -18,17 +18,22 @@ as the policy optimizer; see ``build_maximum_diversification_constrained``.
 
 Three Minimum-Variance construction modes:
 
-- **minimum_variance_constrained** — same box bounds as ``run_optimization`` (feasibility
-  + config min/max + Young caps when dual covariance is enabled).
+- **minimum_variance_constrained** — **primary** project baseline for the lowest-volatility portfolio
+  under the same long-only box bounds as ``run_optimization`` (feasibility + config min/max + Young
+  caps when dual covariance is enabled). Answers: *what is the lowest volatility achievable under
+  these constraints?*
 - **minimum_variance_uncapped_long_only** — only ``w \\ge 0``, ``\\sum w = 1`` (no min/max
-  weight, no young caps, no basket caps).
-- **minimum_variance_advanced_controls** — same box bounds as constrained plus optional **maximum** vol cap
-  ``w'\\Sigma w \\le \\sigma_{target}^2 / 12`` on monthly ``\\Sigma``. **Default**
-  ``minimum_variance_turnover_lambda = 0``: pure minimum-variance (no L1). When
-  ``minimum_variance_turnover_lambda > 0`` and a valid **current** weight reference exists on the
-  eligible universe, add L1 ``\\lambda \\sum_i |w_i - w^{\\mathrm{current}}_i|``; equal-weight is
-  never used. Uses **Ledoit--Wolf** shrinkage on monthly ``\\Sigma`` for this variant regardless of
-  ``covariance_shrinkage`` in config.
+  weight, no young caps, no basket caps). Diagnostic / relaxed-bounds reference, not the primary
+  constrained lowest-vol baseline.
+- **minimum_variance_advanced_controls** — **not** that primary constrained baseline. Same box bounds
+  as constrained plus optional **maximum** vol cap ``w'\\Sigma w \\le \\sigma_{target}^2 / 12`` on
+  monthly ``\\Sigma``. Uses **Ledoit--Wolf** monthly ``\\Sigma`` for this variant regardless of
+  ``covariance_shrinkage`` in config. **Default** ``minimum_variance_turnover_lambda = 0``: pure
+  variance minimization on this advanced path (no L1). When ``minimum_variance_turnover_lambda > 0``
+  and a valid **current** weight reference exists on the eligible universe, the problem becomes
+  **rebalance-aware / turnover-controlled** minimum variance (L1 vs current weights only; equal-weight
+  is never used)—*move toward lower risk without straying too far from current weights*, not the pure
+  lowest-volatility-under-constraints answer.
 """
 
 from dataclasses import dataclass
@@ -57,6 +62,15 @@ BASELINE_MV_UNCAPPED_LABEL = "Minimum Variance (Uncapped Long-Only) Portfolio"
 BASELINE_MV_ADVANCED_LABEL = "Minimum Variance (Advanced Controls) Portfolio"
 BASELINE_MD_LABEL = "Maximum Diversification Portfolio"
 
+# Roles for reporting / metadata (which question each variant answers).
+MV_BASELINE_ROLE_PRIMARY_LOWEST_VOL_UNDER_CONSTRAINTS = (
+    "primary_lowest_volatility_under_project_constraints"
+)
+MV_BASELINE_ROLE_REBALANCE_AWARE_TURNOVER_CONTROLLED = (
+    "rebalance_aware_turnover_controlled_minimum_variance"
+)
+MV_BASELINE_ROLE_ADVANCED_CONTROLS_PURE_PATH = "advanced_controls_pure_minimum_variance"
+
 OPTIMIZER_NAME_MINIMUM_VARIANCE_CONSTRAINED = "minimum_variance_constrained"
 OPTIMIZER_NAME_MINIMUM_VARIANCE_UNCAPPED = "minimum_variance_uncapped_long_only"
 OPTIMIZER_NAME_MINIMUM_VARIANCE_ADVANCED = "minimum_variance_advanced_controls"
@@ -71,6 +85,8 @@ MINIMUM_VARIANCE_METADATA_EXPORT_KEYS = (
     "optimizer_name",
     "solver",
     "objective",
+    "minimum_variance_baseline_role",
+    "minimum_variance_interpretation",
     "covariance_method",
     "shrinkage_used",
     "psd_repair_used",
@@ -129,6 +145,8 @@ MINIMUM_VARIANCE_ADVANCED_METADATA_EXPORT_KEYS = (
     "optimizer_name",
     "solver",
     "objective",
+    "minimum_variance_baseline_role",
+    "minimum_variance_interpretation",
     "lambda_turnover",
     "lambda_turnover_effective",
     "l1_penalty_used",
@@ -164,6 +182,16 @@ def minimum_variance_advanced_metadata_export(diagnostics: Dict[str, object]) ->
         if k in diagnostics:
             out[k] = diagnostics[k]
     return out
+
+
+def advanced_minimum_variance_weights_txt_label(diagnostics: Dict[str, object]) -> str:
+    """Label for ``weights.txt``; when L1 is active, state rebalance-aware / not pure lowest-vol."""
+    if diagnostics.get("l1_penalty_used"):
+        return (
+            f"{BASELINE_MV_ADVANCED_LABEL} — rebalance-aware / turnover-controlled "
+            f"(L1 vs current portfolio weights; not pure lowest-volatility-under-constraints)"
+        )
+    return BASELINE_MV_ADVANCED_LABEL
 
 
 MAXIMUM_DIVERSIFICATION_METADATA_EXPORT_KEYS = (
@@ -1420,6 +1448,13 @@ def build_minimum_variance_constrained(
         "optimizer_name": OPTIMIZER_NAME_MINIMUM_VARIANCE_CONSTRAINED,
         "solver": MINIMUM_VARIANCE_SOLVER,
         "objective": MINIMUM_VARIANCE_OBJECTIVE,
+        "minimum_variance_baseline_role": MV_BASELINE_ROLE_PRIMARY_LOWEST_VOL_UNDER_CONSTRAINTS,
+        "minimum_variance_interpretation": (
+            "Primary baseline for the lowest portfolio volatility achievable under the project's "
+            "optimizer-equivalent long-only box bounds (feasibility cap, config min/max per name, "
+            "Young-ETF per-ticker caps when dual covariance is enabled). "
+            "This is the canonical answer to: lowest volatility under these constraints."
+        ),
         "active_constraints": [
             "equality: sum(weights) = 1",
             "box: per-asset bounds from feasibility cap and config (min_single / max_single / young caps)",
@@ -1684,10 +1719,14 @@ def build_minimum_variance_advanced_controls(
     MinVar / policy feasibility caps), and optionally ``w'Σw ≤ σ²_target / 12`` when
     ``target_vol_annual = σ_target`` is set.
 
+    **Not the primary lowest-volatility-under-constraints baseline** (that is
+    **minimum_variance_constrained**). This variant adds Ledoit--Wolf covariance, optional max vol cap,
+    and optional **rebalance-aware / turnover control** via L1 vs **current** weights only.
+
     **L1 turnover:** optional. With **default** ``minimum_variance_turnover_lambda = 0``, behavior is
-    pure minimum-variance (no L1). When ``minimum_variance_turnover_lambda > 0`` and **current**
-    portfolio weights (``cfg.weights``) yield a positive, renormalized slice on the **eligible**
-    advanced-universe columns, set ``l1_reference_source = "current_portfolio"`` and add
+    pure minimum-variance on this path (no L1). When ``minimum_variance_turnover_lambda > 0`` and
+    **current** portfolio weights (``cfg.weights``) yield a positive, renormalized slice on the
+    **eligible** advanced-universe columns, set ``l1_reference_source = "current_portfolio"`` and add
     ``λ \\sum_i |w_i - w^{\\mathrm{current}}_i|``. Equal-weight baselines are **never** used.
     Otherwise L1 is off and ``l1_disabled_reason`` explains why.
 
@@ -1718,6 +1757,13 @@ def build_minimum_variance_advanced_controls(
         "optimizer_name": OPTIMIZER_NAME_MINIMUM_VARIANCE_ADVANCED,
         "solver": MINIMUM_VARIANCE_SOLVER,
         "objective": MINIMUM_VARIANCE_OBJECTIVE,
+        "minimum_variance_baseline_role": MV_BASELINE_ROLE_ADVANCED_CONTROLS_PURE_PATH,
+        "minimum_variance_interpretation": (
+            "Advanced minimum-variance controls variant (Ledoit–Wolf monthly Σ; optional maximum "
+            "volatility cap; optional L1 vs current weights). "
+            "Not the primary lowest-volatility-under-constraints baseline—use minimum_variance_constrained "
+            "for that. Role refines when the run completes (pure advanced path vs rebalance-aware L1)."
+        ),
         "lambda_turnover": float(lam_cfg),
         "lambda_turnover_effective": 0.0,
         "l1_penalty_used": False,
@@ -1934,6 +1980,26 @@ def build_minimum_variance_advanced_controls(
     if diagnostics.get("volatility_constraint_binding"):
         binding.append("volatility_cap")
     diagnostics["binding_constraints"] = binding
+
+    if bool(diagnostics.get("l1_penalty_used")):
+        diagnostics["minimum_variance_baseline_role"] = (
+            MV_BASELINE_ROLE_REBALANCE_AWARE_TURNOVER_CONTROLLED
+        )
+        diagnostics["minimum_variance_interpretation"] = (
+            "Rebalance-aware / turnover-controlled minimum variance: adds an L1 penalty vs "
+            "current portfolio weights to limit drift while moving toward lower risk. "
+            "This is not the pure lowest-volatility portfolio under the project's box constraints; "
+            "for that baseline use minimum_variance_constrained (and set turnover lambda to 0 here "
+            "or compare against constrained MinVar outputs)."
+        )
+    else:
+        diagnostics["minimum_variance_baseline_role"] = MV_BASELINE_ROLE_ADVANCED_CONTROLS_PURE_PATH
+        diagnostics["minimum_variance_interpretation"] = (
+            "Pure minimum variance on the advanced-controls path (Ledoit–Wolf Σ; optional maximum "
+            "volatility cap; no active L1 turnover penalty or λ not effective). "
+            "Still not the designated primary lowest-volatility-under-constraints baseline for "
+            "cross-benchmark use—that role belongs to minimum_variance_constrained."
+        )
 
     out.diagnostics.update(diagnostics)
     return out

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 """
-Grid search on ``minimum_variance_turnover_lambda`` for Advanced Minimum Variance.
+Grid search on ``minimum_variance_turnover_lambda`` for Advanced Minimum Variance (**not** the primary
+lowest-volatility-under-constrained-box baseline; that is ``minimum_variance_constrained`` / ``run_minimum_variance.py``).
 
-Uses the active ``config.yml``, Ledoit--Wolf Σ (forced inside advanced MinVar), optional L1 vs current
-portfolio weights when λ > 0, existing bounds and vol cap. For **pure** Advanced MinVar in normal
-configs, keep ``minimum_variance_turnover_lambda: 0``; this script replaces λ per row.
+Uses the active ``config.yml``, Ledoit--Wolf Σ (forced inside advanced MinVar), optional L1 vs **current**
+portfolio weights when λ > 0 (**rebalance-aware / turnover-controlled**; equal-weight is never the reference),
+existing bounds and vol cap. For **pure** Advanced MinVar on this path in normal configs, keep
+``minimum_variance_turnover_lambda: 0``; this script replaces λ per row.
 
 Writes ``minimum variance advanced portfolio/lambda_sensitivity.csv`` and a short JSON summary.
 """

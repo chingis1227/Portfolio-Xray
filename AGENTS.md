@@ -53,7 +53,7 @@ Run Equal-Weight by asset class (equal budget per `asset_class`, then equal with
 python run_equal_weight_by_asset_class.py
 ```
 
-Run Minimum-Variance baseline (constrained, `minimum_variance_constrained`; same box bounds as policy optimizer; outputs under `minimum variance portfolio/`):
+Run Minimum-Variance baseline (**constrained**, ``minimum_variance_constrained``): **primary** project baseline for lowest volatility under the same box bounds as the policy optimizer; answers lowest-volatility-under-constraints. Outputs under `minimum variance portfolio/`:
 ```bash
 python run_minimum_variance.py
 ```
@@ -63,7 +63,7 @@ Run Minimum-Variance **uncapped long-only** (`minimum_variance_uncapped_long_onl
 python run_minimum_variance_uncapped.py
 ```
 
-Run Minimum-Variance **advanced controls** (`minimum_variance_advanced_controls`; **Ledoit--Wolf** monthly Σ forced; optional **max** vol cap from `target_vol_annual`; **default** `minimum_variance_turnover_lambda: 0` = pure MinVar; L1 vs **current** weights only when λ > 0 and reference valid — equal-weight never; legacy `minimum_variance_l1_experimental` ignored; outputs under `minimum variance advanced portfolio/`):
+Run Minimum-Variance **advanced controls** (``minimum_variance_advanced_controls``; **not** the primary lowest-vol-under-constraints baseline—that is constrained MinVar above). **Ledoit--Wolf** monthly Σ forced; optional **max** vol cap from `target_vol_annual`; **default** `minimum_variance_turnover_lambda: 0` = pure MinVar on this path; when λ>0 and reference valid, **rebalance-aware / turnover-controlled** L1 vs **current** weights only — equal-weight never; legacy `minimum_variance_l1_experimental` ignored; outputs under `minimum variance advanced portfolio/`:
 ```bash
 python run_minimum_variance_advanced.py
 ```

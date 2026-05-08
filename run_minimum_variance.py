@@ -7,13 +7,15 @@ Policy note:
 - This script MUST NOT apply mandate-specific construction beyond shared box bounds:
   no RC caps, no ProLiquidity, no discretionary overlays, no hidden policy filters.
 
-Minimum variance: same eligible-universe filter as other baselines; minimizes
-``0.5 * w' Σ w`` on monthly **Σ** (``covariance_shrinkage``, optional Young-ETF dual
+Minimum variance: same eligible-universe filter as other baselines; **constrained** variant
+minimizes ``0.5 * w' Σ w`` on monthly **Σ** (``covariance_shrinkage``, optional Young-ETF dual
 covariance when enabled in config) with PSD repair, **SLSQP** + analytical ``Σ w``,
 and ``sum(w) = 1`` plus :func:`src.optimization._build_bounds` (feasibility + config).
-
-This script is the **constrained** variant only (``minimum_variance_constrained``).
-See ``run_minimum_variance_uncapped.py`` and ``run_minimum_variance_advanced.py`` for the other modes.
+**Constrained MinVar is the primary project baseline for lowest volatility under those box constraints.**
+This script runs the **constrained** variant only (``minimum_variance_constrained``).
+See ``run_minimum_variance_uncapped.py`` and ``run_minimum_variance_advanced.py`` for other modes;
+**advanced** adds Ledoit--Wolf Σ, optional max vol cap, and optional L1 vs **current** weights
+(rebalance-aware when λ>0 and L1 is active)—not the same primary lowest-vol baseline role.
 """
 
 from pathlib import Path
@@ -156,6 +158,9 @@ def main() -> None:
     with open(out_dir / "summary.txt", "w", encoding="utf-8") as f:
         f.write(f"{BASELINE_MV_LABEL}\n")
         f.write("=" * 50 + "\n\n")
+        interp = (meta_export or {}).get("minimum_variance_interpretation")
+        if isinstance(interp, str) and interp.strip():
+            f.write(f"Role: {interp.strip()}\n\n")
         if pm_summary:
             f.write(
                 "CAGR: {cagr:.3%}, Vol: {vol:.3%}, MaxDD: {mdd:.3%}, Sharpe: {sharpe:.3f}, Sortino: {sortino:.3f}, "

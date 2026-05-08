@@ -3,9 +3,16 @@ from __future__ import annotations
 """
 Build **minimum_variance_advanced_controls** portfolio and run full metrics / stress pipeline.
 
-**Default** ``minimum_variance_turnover_lambda: 0`` — pure minimum-variance (no L1). Increase to add
-L1 vs **current** portfolio weights when the reference is valid on the eligible universe; equal-weight
-is never used. Otherwise metadata ``l1_disabled_reason`` explains why L1 is off.
+**Not the primary lowest-volatility-under-constraints baseline** — that is **constrained** MinVar
+(`run_minimum_variance.py` / ``minimum_variance_constrained``). Advanced adds Ledoit--Wolf monthly Σ,
+optional **maximum** vol cap from ``target_vol_annual``, and optional **L1 vs current weights** when
+``minimum_variance_turnover_lambda > 0`` (rebalance-aware / turnover-controlled; equal-weight is
+never the reference).
+
+**Default** ``minimum_variance_turnover_lambda: 0`` — pure minimum variance on this advanced path
+(no L1). When λ>0 and a valid current-weight reference exists on the eligible universe, metadata
+``l1_penalty_used`` is true and outputs are labeled as turnover-controlled, not pure lowest-vol.
+Otherwise ``l1_disabled_reason`` explains why L1 is off.
 
 Same long-only box bounds as constrained MV. Optional **maximum** vol cap from ``target_vol_annual``:
 ``w'Σw ≤ σ²/12`` on monthly Σ (annualized vol ≤ σ).
@@ -25,6 +32,7 @@ from src.config_schema import ConfigValidationError
 from src.data_loader import load_monthly_data_shared
 from src.portfolio_variants import (
     BASELINE_MV_ADVANCED_LABEL,
+    advanced_minimum_variance_weights_txt_label,
     build_minimum_variance_advanced_controls,
     export_baseline_weights_txt,
     minimum_variance_advanced_metadata_export,
@@ -100,7 +108,10 @@ def main() -> None:
         rc_series = None
 
     export_baseline_weights_txt(
-        mv_result.weights, rc_series=rc_series, label=BASELINE_MV_ADVANCED_LABEL, output_dir=out_dir
+        mv_result.weights,
+        rc_series=rc_series,
+        label=advanced_minimum_variance_weights_txt_label(mv_result.diagnostics),
+        output_dir=out_dir,
     )
 
     if mv_result.status not in ("OK", "APPROXIMATE"):
@@ -151,6 +162,15 @@ def main() -> None:
     with open(out_dir / "summary.txt", "w", encoding="utf-8") as f:
         f.write(f"{BASELINE_MV_ADVANCED_LABEL}\n")
         f.write("=" * 50 + "\n\n")
+        interpret = (meta_export or {}).get("minimum_variance_interpretation")
+        role = (meta_export or {}).get("minimum_variance_baseline_role")
+        if isinstance(interpret, str) and interpret.strip():
+            f.write(f"Role ({role}): {interpret.strip()}\n\n")
+        if (meta_export or {}).get("l1_penalty_used"):
+            f.write(
+                "Reporting label: rebalance-aware / turnover-controlled minimum variance "
+                "(L1 vs current portfolio weights).\n\n"
+            )
         if pm_summary:
             f.write(
                 "CAGR: {cagr:.3%}, Vol: {vol:.3%}, MaxDD: {mdd:.3%}, Sharpe: {sharpe:.3f}, Sortino: {sortino:.3f}, "

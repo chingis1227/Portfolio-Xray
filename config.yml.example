@@ -87,11 +87,12 @@ N_rc: 3
 # Donor (Shift Mode): proportional or equal — you can set equal.
 donor_shift_mode: proportional
 
-# Advanced Minimum-Variance (run_minimum_variance_advanced.py):
+# Advanced Minimum-Variance (run_minimum_variance_advanced.py) — not the primary lowest-volatility-
+# under-constrained-box baseline (that is run_minimum_variance.py / minimum_variance_constrained).
 # - Optional max vol cap from target_vol_annual: monthly variance w'Σw ≤ target_vol_annual²/12.
-# - minimum_variance_turnover_lambda (default 0): Advanced MinVar is pure variance minimization when 0.
+# - minimum_variance_turnover_lambda (default 0): pure MinVar on the advanced path when 0.
 #   When > 0 and current portfolio weights (cfg / merged portfolio_weights.yml) are valid on the
-#   eligible universe, L1 vs current weights is applied (equal-weight is never used).
+#   eligible universe, L1 vs current weights is applied (rebalance-aware / turnover-controlled; equal-weight never used).
 # - minimum_variance_l1_experimental: legacy field; ignored by Advanced MinVar (L1 is governed only by lambda).
 minimum_variance_turnover_lambda: 0
 minimum_variance_l1_experimental: false
