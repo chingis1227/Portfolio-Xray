@@ -55,5 +55,3 @@ horizon_years: 10.0
 output_dir: results_csv
 # Финальные результаты: веса, все JSON, report
 output_dir_final: "Main portfolio"
-
-minimum_variance_turnover_lambda: 0.5
