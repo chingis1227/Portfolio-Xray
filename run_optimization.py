@@ -778,7 +778,7 @@ def main() -> None:
                     df.round(6).to_csv(out_csv_tmp / fname, index=False)
             quality_summary = (macro_regimes or {}).get("regime_label_quality_check")
             if isinstance(quality_summary, dict) and quality_summary:
-                (output_dir_final / "regime_label_quality_summary.json").write_text(
+                (out_final_tmp / "regime_label_quality_summary.json").write_text(
                     json.dumps(quality_summary, ensure_ascii=False, indent=2),
                     encoding="utf-8",
                 )
