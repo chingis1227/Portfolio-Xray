@@ -43,6 +43,16 @@ Run report:
 python run_report.py [--no-cache] [--clear-cache] [--backtest-mode dynamic_nan_safe]
 ```
 
+Run Equal-Weight baseline (per eligible asset, `equal_weight_by_assets`):
+```bash
+python run_equal_weight.py
+```
+
+Run Equal-Weight by asset class (equal budget per `asset_class`, then equal within class; `equal_weight_by_asset_class_then_assets`; outputs under `equal-weight by asset-class portfolio/`):
+```bash
+python run_equal_weight_by_asset_class.py
+```
+
 Run post-optimization tilt:
 ```bash
 python run_view_after_optimization.py --asset VOO --delta 2
@@ -106,7 +116,8 @@ Keep `DESIGN.md` as the source of truth for tokens, typography, spacing, buttons
 - `config/stock_universe.yml` - curated stock taxonomy source of truth for current S&P 500 constituents; V1 is CLI-only and does not change optimizer membership or weights.
 - `config/client_profiles.yml` - client risk profiles.
 - `assets.yml` - optional asset metadata.
-- `src/optimization.py` - optimization logic.
+- `src/optimization.py` - optimization logic (max-return; optional `objective_mode="risk_parity"` uses Spinu CCD with SLSQP fallback when per-asset bounds fail).
+- `src/portfolio_variants.py`, `src/risk_parity_spinu.py` - Equal-Weight / Risk-Parity baseline builders (`run_equal_weight.py`, `run_risk_parity.py`); RP weights via Spinu CCD on Ledoit-Wolf covariance with SLSQP emergency fallback.
 - `src/config_schema.py` - config validation.
 - `src/data_loader.py`, `src/data_yf.py`, `src/fx.py` - data and FX.
 - `src/metrics_asset.py`, `src/metrics_portfolio.py`, `src/metrics_daily.py` - metrics (monthly base + daily helpers for regime diagnostics).

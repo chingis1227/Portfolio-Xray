@@ -13,6 +13,7 @@ from scipy.optimize import minimize
 
 from policy_math.feasibility import resolve_max_weight_per_asset_cap
 from src.risk_contrib import cov_matrix_monthly, percentage_contributions_variance, variance_p
+from src.risk_parity_spinu import repair_covariance_psd, spinu_ccd_equal_budget
 
 MIN_WEIGHT_DEFAULT = 0.01
 
@@ -83,8 +84,9 @@ def run_max_return_optimization(
 ) -> tuple[dict[str, float], str]:
     """
     Optimize weights on ``risk_tickers`` (excluding cash). Sum(weights)=1, long-only.
-    Objective: max_return (minimize -mu'w) or risk_parity (minimize deviation of PC from 1/n).
-    Optional soft penalties vs target vol / nominal return (annual decimals).
+    Objective: max_return (minimize -mu'w) or risk_parity: Spinu CCD on 0.5 x'Σx - (1/N)Σ log(x_i)
+    with PSD-repaired Σ and equal budgets b_i=1/N, then normalize x to weights; if convergence/bounds fail,
+    minimize squared deviation of RC from 1/n via SLSQP. Optional soft penalties apply only to max_return.
     Returns (weights_dict, status_message).
     """
     del cash_proxy_ticker  # reserved for callers documenting intent
@@ -175,6 +177,45 @@ def run_max_return_optimization(
     st_ret = float(soft_target_return_annual) if soft_target_return_annual is not None else None
     lam_sr = float(soft_return_penalty_lambda) if soft_return_penalty_lambda and soft_return_penalty_lambda > 0 else 0.0
 
+    # Risk parity: Spinu cyclical coordinate descent on 0.5 x'Σx - (1/N)Σ log(x_i); Σ PSD-repaired.
+    if obj_mode == OBJECTIVE_MODE_RISK_PARITY:
+        cov, _cov_psd_flag = repair_covariance_psd(cov)
+        w_spinu, spinu_diag = spinu_ccd_equal_budget(
+            cov,
+            eps_floor=1e-12,
+            max_iter=50_000,
+            tol=1e-10,
+            init="inv_vol",
+        )
+        bounds_lo = np.array([float(b[0]) for b in bounds])
+        bounds_hi = np.array([float(b[1]) for b in bounds])
+        tol_b = 1e-10
+        in_bounds = bool(
+            np.all(w_spinu >= bounds_lo - tol_b) and np.all(w_spinu <= bounds_hi + tol_b)
+        )
+        spinu_quality = (
+            bool(spinu_diag.get("converged"))
+            and float(spinu_diag.get("max_rc_error", 1.0)) <= 1e-2
+            and np.all(np.isfinite(w_spinu))
+            and abs(float(np.sum(w_spinu)) - 1.0) < 1e-8
+            and np.all(w_spinu > 0)
+        )
+        if spinu_quality and in_bounds:
+            w_dict = {t: float(w_spinu[i]) for i, t in enumerate(cols)}
+            for t in risk_list:
+                if t not in w_dict:
+                    w_dict[t] = 0.0
+            status_parts = [
+                "OK",
+                f"OBJECTIVE_MODE={obj_mode}",
+                "RP_SOLVER=spinu_ccd",
+            ]
+            if obj_mode_invalid:
+                status_parts.append(f"OBJECTIVE_MODE_INVALID: {objective_mode!r} -> max_return")
+            if warm_start_weights:
+                status_parts.append("WARM_START=on")
+            return w_dict, " | ".join(status_parts)
+
     def objective(w: np.ndarray) -> float:
         pc = _pc_from_w(w, cov)
         if obj_mode == OBJECTIVE_MODE_RISK_PARITY:
@@ -263,6 +304,8 @@ def run_max_return_optimization(
     status_parts = []
     status_parts.append("OK_FALLBACK" if used_fallback else "OK")
     status_parts.append(f"OBJECTIVE_MODE={obj_mode}")
+    if obj_mode == OBJECTIVE_MODE_RISK_PARITY:
+        status_parts.append("RP_SOLVER=slsqp_fallback")
     if obj_mode_invalid:
         status_parts.append(f"OBJECTIVE_MODE_INVALID: {objective_mode!r} -> max_return")
     if warm_start_weights:
