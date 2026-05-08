@@ -550,6 +550,32 @@ Additionally, the run writes `regime_label_quality_summary.json` to the variant 
 
 **Errors.** On failure, `regime_factor_analytics_error` is set and the report continues.
 
+#### 8.8.4 Regime-level daily portfolio metrics (`regime_portfolio_metrics_v1`)
+
+`stress_report.json.regime_portfolio_metrics` is **diagnostic-only**. It does not change `macro_two_axis_v1`, optimizer behavior, mandate gates, stress pass/fail, or weight release.
+
+**Purpose.** For each **primary** regime (`goldilocks`, `reflation`, `stagflation`, `recession_disinflation`), compute portfolio and per-asset metrics on **daily** simple returns using the same **conceptual** rules as the base monthly pipeline (`metrics_specification.md`): sample std/cov with `ddof=1`, **Sharpe** uses **raw** return volatility in the denominator, **Sortino** uses downside deviation vs MAR (default MAR = aligned daily risk-free; optional Series), **annualization** uses **252** trading days (`vol_annual = std * sqrt(252)`, mean excess scaled by `252` where applicable). **Treynor** is `(mean(excess) * 252) / beta_base` when `beta_base` is finite and non-zero. **CAGR** uses the daily equity curve with exponent `252 / n_trading_days`. Skewness and kurtosis use **log** daily returns. **Max drawdown** and **time to recovery** follow the monthly definitions applied to the daily equity curve; recovery is reported in **trading days** with `ttr_unit: "trading_days"`.
+
+**Label alignment.** Monthly primary regime labels are **forward-filled** to each trading day (`regime_label_alignment = monthly_label_forward_filled_to_daily`), consistent with the daily `regime_factor_analytics` path.
+
+**Weights and NaNs.** Portfolio return is a **fixed-weight** linear combination of held assets (positive optimizer weights only). Weights are **renormalized** over held names present in the daily return columns. Rows with **any** missing return among held assets are dropped (**complete-case** slice). This MVP does not apply the monthly `dynamic_nan_safe` cash redistribution to regime slices.
+
+**Risk-free and benchmark.** Daily risk-free is built from the same monthly effective series as the main report, expanded to the trading-day index: `ffill` from month-end observations, then **`bfill`** so days **before** the first published month-end rate use the earliest available rate (no look-ahead into future month-ends). Benchmark daily returns match **Beta_base** rules for the investor currency (e.g. SPY/VOO for USD). Optional per-ticker **local** daily benchmarks feed **Beta_local** when provided.
+
+**Quality gating (trading days).** Per-regime `quality_status` uses the same **daily** buckets as `regime_factor_analytics_v1` in daily mode: `n_obs_days < 60` → `insufficient_data`; `60–125` → `low_confidence`; `126–503` → `usable`; `504+` → `reliable`. All four primary regime keys are always present; empty regimes carry `no_observations` or warnings as appropriate.
+
+**Covariance and RC_vol.** **Ledoit–Wolf** on complete-case asset returns per regime (same helper as §8.8.3 daily mode); covariance in JSON is **annualized** (`× 252`). **RC_vol** is percentage **contribution to portfolio variance** using **fixed** weights and the **daily** (non-annualized) regime covariance for PC denominators, averaged over regime days—consistent in spirit with `metrics_specification.md` RC_vol.
+
+**Historical VaR/ES.** Computed on the regime portfolio return series when `n_obs_days >= 60` (same floor as `insufficient_data` for daily regime analytics); below that threshold, VAR/ES fields are marked unavailable with an explicit reason.
+
+**Factor analytics reuse.** When `run_report.py` passes the existing `regime_factor_analytics` payload, each regime’s `factor_analytics` embeds a **slim** subset (exposures, variance contribution, betas, HAC metadata, etc.) **without** duplicating OLS. Full factor matrices remain in `regime_factor_analytics` CSV/JSON as today.
+
+**vs base monthly report.** Not a full mirror: no rolling 12M/36M regime Sharpe strips, no mandate MaxDD gate, no replacement of snapshot monthly windows. Items that are not meaningful on a short regime slice are omitted or carry `metric_available: false` and `unavailable_reason`.
+
+**Artifacts.** Slim block in `stress_report.json`. Summary: `regime_portfolio_metrics_summary.json` under `output_dir_final`. CSV exports under `results_csv/` (e.g. per-regime flattened metrics and covariance/correlation tables—see `regime_portfolio_metrics_csv_frames` in code).
+
+**Errors.** On failure, `regime_portfolio_metrics_error` is set and the report continues.
+
 ---
 
 ### 8.9 Factor variance decomposition

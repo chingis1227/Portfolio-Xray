@@ -121,6 +121,13 @@ from src.regime_factor_analytics import (
     regime_factor_analytics_for_stress_report,
     regime_factor_analytics_summary,
 )
+from src.regime_portfolio_metrics import (
+    build_regime_portfolio_metrics,
+    expand_rf_monthly_to_daily,
+    regime_portfolio_metrics_csv_frames,
+    regime_portfolio_metrics_for_stress_report,
+    regime_portfolio_metrics_summary,
+)
 from src.data_yf import download_all
 
 
@@ -851,7 +858,13 @@ def run_portfolio_report_for_weights(
             end_ts = pd.Timestamp(analysis_end_str).normalize()
             end_dl = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
 
-            daily = download_all(asset_cols, start_m, end_dl)
+            extra_lb: list[str] = []
+            for t in asset_cols:
+                p = local_benchmark_map.get(t)
+                if p and p not in asset_cols and p != benchmark_base_ticker:
+                    extra_lb.append(p)
+            dl_tickers = list(dict.fromkeys(list(asset_cols) + [benchmark_base_ticker] + extra_lb))
+            daily = download_all(dl_tickers, start_m, end_dl)
             daily_prices: dict[str, pd.Series] = {}
             for ticker in asset_cols:
                 df = daily.get(ticker)
@@ -911,6 +924,72 @@ def run_portfolio_report_for_weights(
                             df = df.copy()
                             df[num_cols] = df[num_cols].round(6)
                         df.to_csv(output_dir_csv / fname, index=False)
+                try:
+                    labels_ff = (
+                        pd.Series(
+                            regime_ser.values,
+                            index=pd.to_datetime(regime_ser.index).tz_localize(None).normalize(),
+                            name="regime",
+                        )
+                        .dropna()
+                        .astype(str)
+                        .sort_index()
+                        .reindex(common_d, method="ffill")
+                    )
+                    rf_d = expand_rf_monthly_to_daily(rf_monthly, common_d)
+                    bench_d = pd.Series(dtype=float, index=common_d)
+                    bdf_b = daily.get(benchmark_base_ticker)
+                    if bdf_b is not None and not bdf_b.empty and "Close" in bdf_b.columns:
+                        br = bdf_b["Close"].pct_change()
+                        br.index = pd.to_datetime(br.index).tz_localize(None).normalize()
+                        bench_d = br.reindex(common_d)
+
+                    local_bench_daily: dict[str, pd.Series] = {}
+                    for tcol in asset_cols:
+                        prox = local_benchmark_map.get(tcol)
+                        if not prox:
+                            continue
+                        bdf_lb = daily.get(prox)
+                        if bdf_lb is None or bdf_lb.empty or "Close" not in bdf_lb.columns:
+                            continue
+                        lr_lb = bdf_lb["Close"].pct_change()
+                        lr_lb.index = pd.to_datetime(lr_lb.index).tz_localize(None).normalize()
+                        local_bench_daily[str(tcol)] = lr_lb.reindex(common_d)
+
+                    mar_daily_ser = None
+                    if mar_monthly is not None:
+                        mar_s = pd.Series(float(mar_monthly), index=rf_monthly.index)
+                        mar_s.index = pd.to_datetime(mar_s.index).tz_localize(None).normalize()
+                        mar_daily_ser = mar_s.sort_index().reindex(common_d, method="ffill")
+
+                    rpm_full = build_regime_portfolio_metrics(
+                        daily_asset_returns=daily_asset,
+                        daily_regime_labels_ffill=labels_ff,
+                        weights=weights,
+                        rf_daily=rf_d,
+                        benchmark_daily_returns=bench_d,
+                        mar_daily=mar_daily_ser,
+                        local_benchmark_daily_by_ticker=local_bench_daily,
+                        regime_factor_analytics_payload=rfa_payload,
+                    )
+                    stress_report["regime_portfolio_metrics"] = regime_portfolio_metrics_for_stress_report(
+                        rpm_full
+                    )
+                    rpm_sum = regime_portfolio_metrics_summary(rpm_full)
+                    (output_dir_final / "regime_portfolio_metrics_summary.json").write_text(
+                        json.dumps(rpm_sum, ensure_ascii=False, indent=2),
+                        encoding="utf-8",
+                    )
+                    for fname, df in regime_portfolio_metrics_csv_frames(rpm_full).items():
+                        if df is not None and not df.empty:
+                            num_cols = df.select_dtypes(include=[np.number]).columns
+                            if len(num_cols):
+                                df = df.copy()
+                                df[num_cols] = df[num_cols].round(6)
+                            df.to_csv(output_dir_csv / fname, index=False)
+                except Exception as exc:
+                    stress_report["regime_portfolio_metrics_error"] = str(exc)
+                    logger.warning(f"Regime portfolio metrics failed: {exc}")
             else:
                 logger.warning(
                     "Regime factor analytics: daily asset/factor history unavailable; skipping block."
