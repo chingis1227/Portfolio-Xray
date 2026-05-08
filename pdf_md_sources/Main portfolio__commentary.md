@@ -28,12 +28,12 @@ Stress status: Passed with diagnostic warning. Worst scenario loss: -11.49%. Fla
 
 | Scenario | PnL | Pass | Top RC Asset | Top 3 RC |
 | --- | ---: | --- | --- | ---: |
-| equity_shock | -8.20% | True | TLT | 58.04% |
-| credit_shock | -1.59% | True | TLT | 58.04% |
-| rates_shock | -11.49% | True | TLT | 58.31% |
-| inflation_stagflation | -7.46% | True | TLT | 58.31% |
-| liquidity_shock | -4.78% | True | TLT | 58.04% |
-| recession_severe | -9.08% | True | TLT | 57.87% |
+| equity_shock | -8.20% | True | TLT | 60.00% |
+| credit_shock | -1.59% | True | TLT | 58.28% |
+| rates_shock | -11.49% | True | TLT | 65.69% |
+| inflation_stagflation | -7.46% | True | TLT | 62.66% |
+| liquidity_shock | -4.78% | True | TLT | 57.17% |
+| recession_severe | -9.08% | True | TLT | 57.14% |
 
 ## Conclusion
 
