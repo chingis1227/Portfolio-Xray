@@ -87,6 +87,10 @@ N_rc: 3
 # Donor (Shift Mode): proportional or equal — you can set equal.
 donor_shift_mode: proportional
 
+# Advanced Minimum-Variance only (run_minimum_variance_advanced.py): L1 penalty strength vs flat
+# equal_weight_by_assets reference. 0 disables the penalty (vol cap from target_vol_annual still applies when set).
+minimum_variance_turnover_lambda: 0
+
 # =============================================================================
 # SECTION 6: ANALYSIS SETTINGS
 # =============================================================================

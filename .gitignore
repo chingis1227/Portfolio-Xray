@@ -38,6 +38,8 @@ equal-weight portfolio/
 equal-weight by asset-class portfolio/
 risk parity portfolio/
 minimum variance portfolio/
+minimum variance uncapped portfolio/
+minimum variance advanced portfolio/
 portfolio_weights.yml
 
 

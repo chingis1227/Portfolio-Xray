@@ -1,19 +1,10 @@
 from __future__ import annotations
 
 """
-Build Minimum-Variance baseline portfolio and run full metrics / stress pipeline.
+Build **minimum_variance_uncapped_long_only** portfolio and run full metrics / stress pipeline.
 
-Policy note:
-- This script MUST NOT apply mandate-specific construction beyond shared box bounds:
-  no RC caps, no ProLiquidity, no discretionary overlays, no hidden policy filters.
-
-Minimum variance: same eligible-universe filter as other baselines; minimizes
-``0.5 * w' Σ w`` on monthly **Σ** (``covariance_shrinkage``, optional Young-ETF dual
-covariance when enabled in config) with PSD repair, **SLSQP** + analytical ``Σ w``,
-and ``sum(w) = 1`` plus :func:`src.optimization._build_bounds` (feasibility + config).
-
-This script is the **constrained** variant only (``minimum_variance_constrained``).
-See ``run_minimum_variance_uncapped.py`` and ``run_minimum_variance_advanced.py`` for the other modes.
+Only ``w_i >= 0``, ``sum(w) = 1``; no project min/max weight, Young caps, or basket constraints.
+Same eligible universe and monthly Σ construction as other Minimum-Variance variants.
 """
 
 from pathlib import Path
@@ -29,10 +20,10 @@ from src.config import (
 from src.config_schema import ConfigValidationError
 from src.data_loader import load_monthly_data_shared
 from src.portfolio_variants import (
-    BASELINE_MV_LABEL,
-    build_minimum_variance_baseline,
+    BASELINE_MV_UNCAPPED_LABEL,
+    build_minimum_variance_uncapped_long_only,
     export_baseline_weights_txt,
-    minimum_variance_baseline_metadata_export,
+    minimum_variance_uncapped_metadata_export,
 )
 from src.utils import setup_logging, logger
 from src.risk_contrib import rc_vol_window
@@ -68,17 +59,17 @@ def main() -> None:
     analysis_end_str = data.analysis_end_str
 
     primary_window = cfg.windows_months[-1] if cfg.windows_months else 120
-    mv_result = build_minimum_variance_baseline(
+    mv_result = build_minimum_variance_uncapped_long_only(
         cfg,
         monthly_returns,
         analysis_end_str,
         primary_window,
     )
 
-    out_dir = Path(__file__).resolve().parent / "minimum variance portfolio"
+    out_dir = Path(__file__).resolve().parent / "minimum variance uncapped portfolio"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    meta_export = minimum_variance_baseline_metadata_export(mv_result.diagnostics)
+    meta_export = minimum_variance_uncapped_metadata_export(mv_result.diagnostics)
 
     with open(out_dir / "weights.json", "w", encoding="utf-8") as f:
         json.dump(mv_result.weights, f, indent=2, ensure_ascii=False)
@@ -101,16 +92,16 @@ def main() -> None:
             )
             rc_series = rc_vol_window(ret_slice, weights_df, ddof=1)
     except Exception as e:
-        logger.warning("Could not compute RC_vol for Minimum-Variance baseline: %s", e)
+        logger.warning("Could not compute RC_vol for uncapped Minimum-Variance: %s", e)
         rc_series = None
 
     export_baseline_weights_txt(
-        mv_result.weights, rc_series=rc_series, label=BASELINE_MV_LABEL, output_dir=out_dir
+        mv_result.weights, rc_series=rc_series, label=BASELINE_MV_UNCAPPED_LABEL, output_dir=out_dir
     )
 
     if mv_result.status not in ("OK", "APPROXIMATE"):
         summary = {
-            "portfolio_type": BASELINE_MV_LABEL,
+            "portfolio_type": BASELINE_MV_UNCAPPED_LABEL,
             "status": mv_result.status,
             "reason": mv_result.diagnostics.get("reason"),
             "minimum_variance_metadata": meta_export,
@@ -118,11 +109,11 @@ def main() -> None:
         with open(out_dir / "summary.json", "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2, ensure_ascii=False)
         with open(out_dir / "summary.txt", "w", encoding="utf-8") as f:
-            f.write(f"{BASELINE_MV_LABEL} — infeasible or failed baseline\n")
+            f.write(f"{BASELINE_MV_UNCAPPED_LABEL} — infeasible or failed baseline\n")
             f.write(f"Status: {mv_result.status}\n")
             if summary.get("reason"):
                 f.write(f"Reason: {summary['reason']}\n")
-        print("Minimum-Variance baseline failed or infeasible; summary written.")
+        print("Minimum-Variance (uncapped) baseline failed or infeasible; summary written.")
         return
 
     output_dir_csv = out_dir / "results_csv"
@@ -141,7 +132,7 @@ def main() -> None:
 
     stress_report = meta.get("stress_report") or {}
     summary = {
-        "portfolio_type": BASELINE_MV_LABEL,
+        "portfolio_type": BASELINE_MV_UNCAPPED_LABEL,
         "status": mv_result.status,
         "minimum_variance_metadata": meta_export,
         "metrics_10y": pm_summary,
@@ -154,7 +145,7 @@ def main() -> None:
         json.dump(summary, f, indent=2, ensure_ascii=False)
 
     with open(out_dir / "summary.txt", "w", encoding="utf-8") as f:
-        f.write(f"{BASELINE_MV_LABEL}\n")
+        f.write(f"{BASELINE_MV_UNCAPPED_LABEL}\n")
         f.write("=" * 50 + "\n\n")
         if pm_summary:
             f.write(
@@ -171,22 +162,26 @@ def main() -> None:
             )
         meta_diag = meta_export or {}
         f.write(
-            f"\nOptimizer: {meta_diag.get('optimizer_name', 'minimum_variance_constrained')} "
+            f"\nOptimizer: {meta_diag.get('optimizer_name', 'minimum_variance_uncapped_long_only')} "
             f"(solver={meta_diag.get('solver', 'SLSQP')}, success={meta_diag.get('solver_success', '—')})\n"
         )
         pv = meta_diag.get("portfolio_variance")
         av = meta_diag.get("annualized_volatility")
         if pv is not None and av is not None:
-            f.write(f"Window portfolio variance (monthly): {float(pv):.6g}; annualized vol: {float(av):.3%}\n")
+            f.write(
+                f"Window portfolio variance (monthly): {float(pv):.6g}; annualized vol: {float(av):.3%}\n"
+            )
         f.write(
             f"\nStress: {stress_report.get('status', 'N/A')} "
             f"({stress_report.get('fail_reason_code') or stress_report.get('skip_reason') or '—'})\n"
         )
         f.write(f"Client-fit (MaxDD gate): {'PASS' if meta.get('portfolio_valid') else 'FAIL'}\n")
         if mv_result.status == "APPROXIMATE":
-            f.write("\nNOTE: Minimum-variance solution is approximate (solver tolerances or fallback).\n")
+            f.write(
+                "\nNOTE: Minimum-variance (uncapped) solution is approximate (solver tolerances or fallback).\n"
+            )
 
-    print(f"Minimum-Variance baseline report written to {out_dir}")
+    print(f"Minimum-Variance (uncapped) report written to {out_dir}")
 
     try:
         from src.pdf_reports import try_rebuild_pdfs_after_variant

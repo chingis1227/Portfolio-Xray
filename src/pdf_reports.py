@@ -116,6 +116,9 @@ _PDF_HEADER_LEFT: dict[str, str] = {
     "minimum_variance_portfolio_commentary": "Commentary: Minimum Variance",
     "minimum_variance_portfolio_stress_commentary": "Stress Analysis: Minimum Variance",
     "minimum_variance_portfolio_weights": "Minimum Variance: Target Weights",
+    "maximum_diversification_portfolio_commentary": "Commentary: Maximum Diversification",
+    "maximum_diversification_portfolio_stress_commentary": "Stress Analysis: Maximum Diversification",
+    "maximum_diversification_portfolio_weights": "Maximum Diversification: Target Weights",
 }
 
 
@@ -1214,7 +1217,36 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     out_final = _ROOT / (getattr(cfg, "output_dir_final", None) or "Main portfolio")
     eq_dir = _ROOT / "equal-weight portfolio"
     rp_dir = _ROOT / "risk parity portfolio"
-    mv_dir = _ROOT / "minimum variance portfolio"
+    mv_dirs: list[tuple[Path, str, str, str, str]] = [
+        (
+            _ROOT / "minimum variance portfolio",
+            "minimum_variance_portfolio",
+            "Minimum variance: volatility-minimizing long-only weights",
+            "Stress: minimum-variance portfolio behavior",
+            "Target weights: minimum variance (constrained)",
+        ),
+        (
+            _ROOT / "minimum variance uncapped portfolio",
+            "minimum_variance_uncapped_portfolio",
+            "Minimum variance: unconstrained long-only (no single-name caps)",
+            "Stress: minimum-variance uncapped long-only behavior",
+            "Target weights: minimum variance (uncapped long-only)",
+        ),
+        (
+            _ROOT / "minimum variance advanced portfolio",
+            "minimum_variance_advanced_portfolio",
+            "Minimum variance: advanced controls (vol cap / L1 vs equal-weight)",
+            "Stress: minimum-variance advanced controls behavior",
+            "Target weights: minimum variance (advanced controls)",
+        ),
+        (
+            _ROOT / "maximum diversification portfolio",
+            "maximum_diversification_portfolio",
+            "Maximum diversification: diversification-ratio-maximizing long-only weights",
+            "Stress: maximum-diversification portfolio behavior",
+            "Target weights: maximum diversification (constrained)",
+        ),
+    ]
 
     # --- EW vs RP ---
     comp_path = out_final / "ew_rp_comparison.json"
@@ -1268,11 +1300,8 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     _commentary_pair(
         rp_dir, "risk_parity_portfolio", "Risk parity: СЂРёСЃРє РІ РїРµСЂРІСѓСЋ РѕС‡РµСЂРµРґСЊ"
     )
-    _commentary_pair(
-        mv_dir,
-        "minimum_variance_portfolio",
-        "Minimum variance: volatility-minimizing long-only weights",
-    )
+    for folder, slug, title, _stress_title, _wtitle in mv_dirs:
+        _commentary_pair(folder, slug, title)
 
     def _stress_commentary_pair(folder: Path, pdf_name_stem: str, title: str) -> None:
         """pdf_name_stem e.g. equal-weight_portfolio or Main portfolio (matches existing PDF filenames)."""
@@ -1304,11 +1333,8 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     _stress_commentary_pair(
         rp_dir, "risk_parity_portfolio", "РЎС‚СЂРµСЃСЃ: РєР°Рє РІРµРґС‘С‚ СЃРµР±СЏ risk parity"
     )
-    _stress_commentary_pair(
-        mv_dir,
-        "minimum_variance_portfolio",
-        "Stress: minimum-variance portfolio behavior",
-    )
+    for folder, slug, _comm_title, stress_title, _wtitle in mv_dirs:
+        _stress_commentary_pair(folder, slug, stress_title)
 
     mp_comm = out_final / "commentary.txt"
     if mp_comm.is_file():
@@ -1341,7 +1367,8 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     for folder, slug, title in (
         (eq_dir, "equal-weight_portfolio", "Р¦РµР»РµРІС‹Рµ РІРµСЃР°: equal-weight"),
         (rp_dir, "risk_parity_portfolio", "Р¦РµР»РµРІС‹Рµ РІРµСЃР°: risk parity"),
-        (mv_dir, "minimum_variance_portfolio", "Target weights: minimum variance"),
+        *((folder, slug, wtitle) for folder, slug, _c, _s, wtitle in mv_dirs),
+
     ):
         wpath = folder / "weights.json"
         if wpath.is_file():

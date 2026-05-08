@@ -89,6 +89,8 @@ class PortfolioConfig:
     # Soft penalties for max_return vs target_vol / target return; 0 => runtime uses 12 / 8 in run_optimization
     optimization_soft_vol_penalty_lambda: float = 0.0
     optimization_soft_return_penalty_lambda: float = 0.0
+    # Advanced minimum-variance only: L1 penalty vs flat equal_weight_by_assets (0 = off)
+    minimum_variance_turnover_lambda: float = 0.0
     # Deprecated: stress is diagnostic-only (DIAG_*); ignored for blocking. Kept for config compatibility.
     strict_stress_gate: bool = False
     # When True, use Ledoit-Wolf shrinkage for covariance in optimization/RC (more stable weights)
@@ -132,6 +134,7 @@ class PortfolioConfig:
             "donor_shift_mode": self.donor_shift_mode,
             "optimization_soft_vol_penalty_lambda": self.optimization_soft_vol_penalty_lambda,
             "optimization_soft_return_penalty_lambda": self.optimization_soft_return_penalty_lambda,
+            "minimum_variance_turnover_lambda": self.minimum_variance_turnover_lambda,
             "strict_stress_gate": self.strict_stress_gate,
             "covariance_shrinkage": self.covariance_shrinkage,
             "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
@@ -181,6 +184,7 @@ class PortfolioConfig:
             "donor_shift_mode": self.donor_shift_mode,
             "optimization_soft_vol_penalty_lambda": self.optimization_soft_vol_penalty_lambda,
             "optimization_soft_return_penalty_lambda": self.optimization_soft_return_penalty_lambda,
+            "minimum_variance_turnover_lambda": self.minimum_variance_turnover_lambda,
             "strict_stress_gate": self.strict_stress_gate,
             "covariance_shrinkage": self.covariance_shrinkage,
             "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
@@ -709,7 +713,11 @@ def _validate_alpha_shift_params(cfg: dict[str, Any]) -> None:
 
 def _validate_optimization_soft_penalty_lambdas(cfg: dict[str, Any]) -> None:
     """Optional soft IPS alignment lambdas (>= 0; 0 = do not use in optimizer unless caller passes explicitly)."""
-    for key in ("optimization_soft_vol_penalty_lambda", "optimization_soft_return_penalty_lambda"):
+    for key in (
+        "optimization_soft_vol_penalty_lambda",
+        "optimization_soft_return_penalty_lambda",
+        "minimum_variance_turnover_lambda",
+    ):
         v = cfg.get(key, 0.0)
         try:
             f = float(v)
@@ -793,6 +801,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
         donor_shift_mode=cfg.get("donor_shift_mode", "proportional"),
         optimization_soft_vol_penalty_lambda=float(cfg.get("optimization_soft_vol_penalty_lambda", 0.0)),
         optimization_soft_return_penalty_lambda=float(cfg.get("optimization_soft_return_penalty_lambda", 0.0)),
+        minimum_variance_turnover_lambda=float(cfg.get("minimum_variance_turnover_lambda", 0.0)),
         strict_stress_gate=bool(cfg.get("strict_stress_gate", False)),
         covariance_shrinkage=bool(cfg.get("covariance_shrinkage", False)),
         young_etf_optimization_policy=dict(cfg.get("young_etf_optimization_policy") or DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY),

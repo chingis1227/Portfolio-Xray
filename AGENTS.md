@@ -53,9 +53,24 @@ Run Equal-Weight by asset class (equal budget per `asset_class`, then equal with
 python run_equal_weight_by_asset_class.py
 ```
 
-Run Minimum-Variance baseline (constrained min variance on monthly **Σ**, outputs under `minimum variance portfolio/`):
+Run Minimum-Variance baseline (constrained, `minimum_variance_constrained`; same box bounds as policy optimizer; outputs under `minimum variance portfolio/`):
 ```bash
 python run_minimum_variance.py
+```
+
+Run Minimum-Variance **uncapped long-only** (`minimum_variance_uncapped_long_only`; only ``w ≥ 0``, ``Σw = 1``; outputs under `minimum variance uncapped portfolio/`):
+```bash
+python run_minimum_variance_uncapped.py
+```
+
+Run Minimum-Variance **advanced controls** (`minimum_variance_advanced_controls`; same box bounds as constrained + optional `target_vol_annual` cap + optional L1 vs flat `equal_weight_by_assets` via `minimum_variance_turnover_lambda`; outputs under `minimum variance advanced portfolio/`):
+```bash
+python run_minimum_variance_advanced.py
+```
+
+Run **Maximum-Diversification** baseline (`maximum_diversification_constrained`; same box bounds as constrained MV; maximizes diversification ratio on monthly **Σ**; outputs under `maximum diversification portfolio/`):
+```bash
+python run_maximum_diversification.py
 ```
 
 Run post-optimization tilt:
@@ -122,7 +137,7 @@ Keep `DESIGN.md` as the source of truth for tokens, typography, spacing, buttons
 - `config/client_profiles.yml` - client risk profiles.
 - `assets.yml` - optional asset metadata.
 - `src/optimization.py` - optimization logic (max-return; optional `objective_mode="risk_parity"` uses Spinu CCD with SLSQP fallback when per-asset bounds fail).
-- `src/portfolio_variants.py`, `src/risk_parity_spinu.py` - Equal-Weight / Risk-Parity / Minimum-Variance baseline builders (`run_equal_weight.py`, `run_risk_parity.py`, `run_minimum_variance.py`); RP weights via Spinu CCD on Ledoit-Wolf covariance with SLSQP emergency fallback; MV minimizes `0.5 w'Σw` with SLSQP + `Σw` gradient on PSD-repaired **Σ**, same box bounds as the policy optimizer when `young_etf_optimization_policy` / `covariance_shrinkage` align with `run_optimization.py`.
+- `src/portfolio_variants.py`, `src/risk_parity_spinu.py` - Equal-Weight / Risk-Parity / Minimum-Variance baseline builders (`run_equal_weight.py`, `run_risk_parity.py`, `run_minimum_variance.py`); RP weights via Spinu CCD on Ledoit-Wolf covariance with SLSQP emergency fallback; MV minimizes `0.5 w'Σw` with SLSQP + `Σw` gradient on PSD-repaired **Σ**, same box bounds as the policy optimizer when `young_etf_optimization_policy` / `covariance_shrinkage` align with `run_optimization.py`. Maximum Diversification constrained baseline (`run_maximum_diversification.py`) maximizes `(σ'w)/√(w'Σw)` on the same monthly **Σ** path and box bounds via SLSQP.
 - `src/config_schema.py` - config validation.
 - `src/data_loader.py`, `src/data_yf.py`, `src/fx.py` - data and FX.
 - `src/metrics_asset.py`, `src/metrics_portfolio.py`, `src/metrics_daily.py` - metrics (monthly base + daily helpers for regime diagnostics).
