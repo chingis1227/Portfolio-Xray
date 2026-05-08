@@ -3,8 +3,12 @@ from __future__ import annotations
 """
 Build **minimum_variance_advanced_controls** portfolio and run full metrics / stress pipeline.
 
-Same long-only box bounds as constrained MV; optional annual vol cap from ``target_vol_annual``;
-optional L1 turnover vs flat **equal_weight_by_assets** (``minimum_variance_turnover_lambda`` in config).
+**Default** ``minimum_variance_turnover_lambda: 0`` — pure minimum-variance (no L1). Increase to add
+L1 vs **current** portfolio weights when the reference is valid on the eligible universe; equal-weight
+is never used. Otherwise metadata ``l1_disabled_reason`` explains why L1 is off.
+
+Same long-only box bounds as constrained MV. Optional **maximum** vol cap from ``target_vol_annual``:
+``w'Σw ≤ σ²/12`` on monthly Σ (annualized vol ≤ σ).
 """
 
 from pathlib import Path
@@ -165,20 +169,27 @@ def main() -> None:
             f"\nOptimizer: {meta_diag.get('optimizer_name', 'minimum_variance_advanced_controls')} "
             f"(solver={meta_diag.get('solver', 'SLSQP')}, success={meta_diag.get('solver_success', '—')})\n"
         )
-        if meta_diag.get("reference_allocation_source"):
+        f.write(
+            f"L1: l1_penalty_used={meta_diag.get('l1_penalty_used', False)} "
+            f"(lambda_config={meta_diag.get('lambda_turnover')}, "
+            f"lambda_effective={meta_diag.get('lambda_turnover_effective', 0.0)})\n"
+        )
+        if meta_diag.get("l1_disabled_reason"):
+            f.write(f"L1 disabled reason: {meta_diag.get('l1_disabled_reason')}\n")
+        if meta_diag.get("l1_reference_source"):
             f.write(
-                f"Reference allocation: {meta_diag.get('reference_allocation_source')} "
-                f"(available={meta_diag.get('reference_allocation_available')})\n"
+                f"L1 reference: {meta_diag.get('l1_reference_source')} "
+                f"(current_weights_available={meta_diag.get('current_portfolio_weights_available')})\n"
             )
         if meta_diag.get("volatility_target_used"):
             f.write(
                 f"Vol target: {meta_diag.get('target_volatility')!r}, "
                 f"binding={meta_diag.get('volatility_constraint_binding')}\n"
             )
-        if meta_diag.get("turnover_penalty_used"):
+        if meta_diag.get("l1_penalty_used"):
             f.write(
-                f"L1 vs EW: lambda={meta_diag.get('lambda_turnover')}, "
-                f"turnover={meta_diag.get('final_turnover_vs_equal_weight')}\n"
+                f"L1 vs current: lambda={meta_diag.get('lambda_turnover')}, "
+                f"L1_distance={meta_diag.get('l1_distance_to_current_portfolio')}\n"
             )
         pv = meta_diag.get("portfolio_variance")
         av = meta_diag.get("annualized_volatility")

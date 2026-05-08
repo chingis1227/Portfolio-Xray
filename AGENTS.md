@@ -63,9 +63,15 @@ Run Minimum-Variance **uncapped long-only** (`minimum_variance_uncapped_long_onl
 python run_minimum_variance_uncapped.py
 ```
 
-Run Minimum-Variance **advanced controls** (`minimum_variance_advanced_controls`; same box bounds as constrained + optional `target_vol_annual` cap + optional L1 vs flat `equal_weight_by_assets` via `minimum_variance_turnover_lambda`; outputs under `minimum variance advanced portfolio/`):
+Run Minimum-Variance **advanced controls** (`minimum_variance_advanced_controls`; **Ledoit--Wolf** monthly Σ forced; optional **max** vol cap from `target_vol_annual`; **default** `minimum_variance_turnover_lambda: 0` = pure MinVar; L1 vs **current** weights only when λ > 0 and reference valid — equal-weight never; legacy `minimum_variance_l1_experimental` ignored; outputs under `minimum variance advanced portfolio/`):
 ```bash
 python run_minimum_variance_advanced.py
+```
+
+Lambda sensitivity grid for Advanced MinVar (uses ``config.yml``, writes ``minimum variance advanced portfolio/lambda_sensitivity.csv``):
+
+```bash
+python run_advanced_mv_lambda_sensitivity.py
 ```
 
 Run **Maximum-Diversification** baseline (`maximum_diversification_constrained`; same box bounds as constrained MV; maximizes diversification ratio on monthly **Σ**; outputs under `maximum diversification portfolio/`):

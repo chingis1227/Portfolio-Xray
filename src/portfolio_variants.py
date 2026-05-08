@@ -22,10 +22,13 @@ Three Minimum-Variance construction modes:
   + config min/max + Young caps when dual covariance is enabled).
 - **minimum_variance_uncapped_long_only** — only ``w \\ge 0``, ``\\sum w = 1`` (no min/max
   weight, no young caps, no basket caps).
-- **minimum_variance_advanced_controls** — constrained box plus optional annual vol cap
-  ``w'\\Sigma w \\le (\\sigma_{target}/\\sqrt{{12}})^2`` and optional L1 turnover vs
-  flat **equal_weight_by_assets** (not asset-class EW), solved with auxiliary ``t`` slacks
-  under **SLSQP** when the turnover penalty is on.
+- **minimum_variance_advanced_controls** — same box bounds as constrained plus optional **maximum** vol cap
+  ``w'\\Sigma w \\le \\sigma_{target}^2 / 12`` on monthly ``\\Sigma``. **Default**
+  ``minimum_variance_turnover_lambda = 0``: pure minimum-variance (no L1). When
+  ``minimum_variance_turnover_lambda > 0`` and a valid **current** weight reference exists on the
+  eligible universe, add L1 ``\\lambda \\sum_i |w_i - w^{\\mathrm{current}}_i|``; equal-weight is
+  never used. Uses **Ledoit--Wolf** shrinkage on monthly ``\\Sigma`` for this variant regardless of
+  ``covariance_shrinkage`` in config.
 """
 
 from dataclasses import dataclass
@@ -126,20 +129,24 @@ MINIMUM_VARIANCE_ADVANCED_METADATA_EXPORT_KEYS = (
     "optimizer_name",
     "solver",
     "objective",
-    "reference_allocation_source",
-    "reference_allocation_available",
+    "lambda_turnover",
+    "lambda_turnover_effective",
+    "l1_penalty_used",
+    "l1_reference_source",
+    "current_portfolio_weights_available",
+    "l1_distance_to_current_portfolio",
+    "l1_penalty_value",
+    "l1_disabled_reason",
     "volatility_target_used",
     "target_volatility",
+    "target_variance_monthly_cap",
     "volatility_constraint_binding",
     "volatility_constraint_feasible",
-    "turnover_penalty_used",
-    "lambda_turnover",
-    "final_turnover_vs_equal_weight",
-    "turnover_penalty_value",
     "active_constraints",
     "binding_constraints",
     "covariance_method",
     "shrinkage_used",
+    "young_etf_dual_mode",
     "psd_repair_used",
     "solver_status",
     "solver_success",
@@ -194,6 +201,7 @@ def maximum_diversification_baseline_metadata_export(diagnostics: Dict[str, obje
 
 EQUAL_WEIGHT_METHOD_BY_ASSETS = "equal_weight_by_assets"
 EQUAL_WEIGHT_METHOD_BY_ASSET_CLASS = "equal_weight_by_asset_class_then_assets"
+L1_REFERENCE_CURRENT_PORTFOLIO = "current_portfolio"
 
 EQUAL_WEIGHT_METADATA_EXPORT_KEYS = (
     "equal_weight_method",
@@ -724,6 +732,8 @@ def _mv_covariance_for_eligible(
     analysis_end: str,
     window_months: int,
     eligible: list[str],
+    *,
+    force_shrinkage: bool | None = None,
 ) -> tuple[
     np.ndarray,
     list[str],
@@ -751,7 +761,10 @@ def _mv_covariance_for_eligible(
     cols = [str(c) for c in returns_slice.columns]
     young_pol = getattr(cfg, "young_etf_optimization_policy", None) or {}
     dual_enabled = bool(young_pol.get("enabled", True))
-    use_shrinkage = bool(getattr(cfg, "covariance_shrinkage", False))
+    if force_shrinkage is None:
+        use_shrinkage = bool(getattr(cfg, "covariance_shrinkage", False))
+    else:
+        use_shrinkage = bool(force_shrinkage)
     young_mode: str | None = None
     per_ticker_caps: dict[str, float] | None = None
     if dual_enabled:
@@ -855,14 +868,14 @@ def _minimum_variance_w_only_vol_cap_slsqp(
 def _minimum_variance_l1_extended_slsqp(
     cov: np.ndarray,
     bounds_w: list[tuple[float, float]],
-    w_eq: np.ndarray,
+    w_ref: np.ndarray,
     *,
     lambda_turnover: float,
     v_max_monthly: float | None,
     maxiter: int = 3000,
 ) -> tuple[np.ndarray, Any, bool]:
     """
-    Minimize 0.5 w'Σw + λ Σ t_i subject to Σw=1, box w, t_i >= |w_i - w_eq_i|, t_i>=0,
+    Minimize 0.5 w'Σw + λ Σ t_i subject to Σw=1, box w, t_i >= |w_i - w_ref_i|, t_i>=0,
     and optionally w'Σw <= v_max_monthly. Vector x = [w; t], dim 2n.
     """
     n = len(bounds_w)
@@ -873,7 +886,7 @@ def _minimum_variance_l1_extended_slsqp(
     w0 = np.clip(w0, lo_w, hi_w)
     if float(w0.sum()) > 1e-12:
         w0 = w0 / float(w0.sum())
-    t0 = np.abs(w0 - w_eq) + 1e-8
+    t0 = np.abs(w0 - w_ref) + 1e-8
     x0 = np.concatenate([w0, t0])
     bounds_xt = list(zip(lo_w, hi_w)) + [(0.0, 3.0)] * n
 
@@ -905,9 +918,9 @@ def _minimum_variance_l1_extended_slsqp(
         out = np.empty(n_ineq, dtype=float)
         row = 0
         for i in range(n):
-            out[row] = float(t[i] - w[i] + w_eq[i])
+            out[row] = float(t[i] - w[i] + w_ref[i])
             row += 1
-            out[row] = float(t[i] + w[i] - w_eq[i])
+            out[row] = float(t[i] + w[i] - w_ref[i])
             row += 1
         if v_max_monthly is not None:
             out[row] = float(v_max_monthly - float(w @ cov @ w))
@@ -1637,6 +1650,28 @@ def build_minimum_variance_uncapped_long_only(
     )
 
 
+def _advanced_l1_reference_current_weights(
+    cfg: PortfolioConfig, cols: list[str]
+) -> tuple[np.ndarray | None, bool, str | None]:
+    """
+    Current-portfolio weights aligned to ``cols`` (long-only slice, renormalized on eligible names).
+    No equal-weight or other fallback reference vector.
+    """
+    src = getattr(cfg, "weights", None) or {}
+    if not isinstance(src, dict) or not src:
+        return None, False, "Current portfolio weights missing or empty in config"
+    w = np.zeros(len(cols), dtype=float)
+    for i, c in enumerate(cols):
+        try:
+            w[i] = max(0.0, float(src.get(c, 0.0) or 0.0))
+        except (TypeError, ValueError):
+            w[i] = 0.0
+    s = float(w.sum())
+    if s < 1e-12:
+        return None, False, "No positive current portfolio weight on eligible tickers"
+    return w / s, True, None
+
+
 def build_minimum_variance_advanced_controls(
     cfg: PortfolioConfig,
     monthly_returns: pd.DataFrame,
@@ -1644,18 +1679,32 @@ def build_minimum_variance_advanced_controls(
     window_months: int,
 ) -> BaselineWeightsResult:
     """
-    **minimum_variance_advanced_controls**: constrained box plus optional vol cap
-    (from ``target_vol_annual``) and optional L1 turnover vs flat **equal_weight_by_assets**.
+    **minimum_variance_advanced_controls**: minimize ``0.5 w'Σw`` on monthly **Ledoit--Wolf Σ**
+    (forced for this variant) subject to ``sum(w)=1``, long-only **box** bounds (same as constrained
+    MinVar / policy feasibility caps), and optionally ``w'Σw ≤ σ²_target / 12`` when
+    ``target_vol_annual = σ_target`` is set.
+
+    **L1 turnover:** optional. With **default** ``minimum_variance_turnover_lambda = 0``, behavior is
+    pure minimum-variance (no L1). When ``minimum_variance_turnover_lambda > 0`` and **current**
+    portfolio weights (``cfg.weights``) yield a positive, renormalized slice on the **eligible**
+    advanced-universe columns, set ``l1_reference_source = "current_portfolio"`` and add
+    ``λ \\sum_i |w_i - w^{\\mathrm{current}}_i|``. Equal-weight baselines are **never** used.
+    Otherwise L1 is off and ``l1_disabled_reason`` explains why.
+
+    Bucket / asset-class caps are **not** modeled beyond what :func:`src.optimization._build_bounds`
+    already encodes (e.g. Young-ETF per-ticker caps when dual covariance is on).
     """
     eligible, coverage = _eligible_universe_from_returns(
         cfg, monthly_returns, analysis_end, window_months
     )
     lam_raw = getattr(cfg, "minimum_variance_turnover_lambda", None)
-    lam = (
-        float(lam_raw)
-        if lam_raw is not None and float(lam_raw) > 0 and str(float(lam_raw)) != "nan"
-        else 0.0
-    )
+    try:
+        lam_cfg = float(lam_raw) if lam_raw is not None else 0.0
+        if lam_cfg != lam_cfg:  # NaN
+            lam_cfg = 0.0
+    except (TypeError, ValueError):
+        lam_cfg = 0.0
+
     tv = getattr(cfg, "target_vol_annual", None)
     v_max: float | None = None
     target_vol_f: float | None = None
@@ -1668,27 +1717,35 @@ def build_minimum_variance_advanced_controls(
         "universe_coverage": coverage,
         "optimizer_name": OPTIMIZER_NAME_MINIMUM_VARIANCE_ADVANCED,
         "solver": MINIMUM_VARIANCE_SOLVER,
-        "objective": (
-            "0.5*w.T@Sigma@w + lambda_turnover*sum(abs(w_new-w_equal_weight))"
-        ),
-        "reference_allocation_source": EQUAL_WEIGHT_METHOD_BY_ASSETS,
-        "lambda_turnover": float(lam) if lam > 0 else 0.0,
-        "turnover_penalty_used": False,
-        "reference_allocation_available": False,
+        "objective": MINIMUM_VARIANCE_OBJECTIVE,
+        "lambda_turnover": float(lam_cfg),
+        "lambda_turnover_effective": 0.0,
+        "l1_penalty_used": False,
+        "l1_reference_source": None,
+        "current_portfolio_weights_available": False,
+        "l1_distance_to_current_portfolio": None,
+        "l1_penalty_value": None,
+        "l1_disabled_reason": None,
         "volatility_target_used": v_max is not None,
         "target_volatility": target_vol_f,
+        "target_variance_monthly_cap": v_max,
         "volatility_constraint_feasible": True,
         "volatility_constraint_binding": False,
-        "final_turnover_vs_equal_weight": None,
-        "turnover_penalty_value": None,
         "active_constraints": [
             "equality: sum(weights) = 1",
             "box: per-asset bounds (feasibility + config + young caps when dual Σ enabled)",
-        ],
+        ]
+        + (
+            ["inequality: w.T@Sigma@w <= target_vol_annual**2/12 (monthly Σ)"]
+            if v_max is not None
+            else []
+        ),
         "binding_constraints": [],
     }
 
     if len(eligible) < 2:
+        diagnostics["lambda_turnover_effective"] = 0.0
+        diagnostics["l1_disabled_reason"] = "Fewer than 2 eligible assets; L1 not evaluated."
         return BaselineWeightsResult(
             weights={t: 0.0 for t in cfg.tickers},
             status="FAIL_INFEASIBLE_UNIVERSE",
@@ -1699,9 +1756,16 @@ def build_minimum_variance_advanced_controls(
         )
 
     cov_pack = _mv_covariance_for_eligible(
-        cfg, monthly_returns, analysis_end, window_months, eligible
+        cfg,
+        monthly_returns,
+        analysis_end,
+        window_months,
+        eligible,
+        force_shrinkage=True,
     )
     if cov_pack is None:
+        diagnostics["lambda_turnover_effective"] = 0.0
+        diagnostics["l1_disabled_reason"] = "Insufficient return history for covariance; L1 not evaluated."
         return BaselineWeightsResult(
             weights={t: 0.0 for t in cfg.tickers},
             status="FAIL_DATA",
@@ -1730,6 +1794,8 @@ def build_minimum_variance_advanced_controls(
         per_ticker_caps,
     )
     if not _budget_simplex_intersects_box(bounds):
+        diagnostics["lambda_turnover_effective"] = 0.0
+        diagnostics["l1_disabled_reason"] = "Weight bounds infeasible; L1 not evaluated."
         return BaselineWeightsResult(
             weights={t: 0.0 for t in cfg.tickers},
             status="FAIL_INFEASIBLE_BOUNDS",
@@ -1743,27 +1809,29 @@ def build_minimum_variance_advanced_controls(
             },
         )
 
-    eq_res = build_equal_weight_baseline(cfg, monthly_returns, analysis_end, window_months)
-    ref_ok = eq_res.status == "OK"
-    diagnostics["reference_allocation_available"] = bool(ref_ok)
-    n = len(cols)
-    w_eq = np.zeros(n, dtype=float)
-    for i, c in enumerate(cols):
-        w_eq[i] = float(eq_res.weights.get(c, 0.0)) if ref_ok else 0.0
-    s_eq = float(w_eq.sum())
-    if s_eq > 1e-12:
-        w_eq = w_eq / s_eq
-    else:
-        ref_ok = False
-        diagnostics["reference_allocation_available"] = False
-        w_eq = np.ones(n, dtype=float) / float(n)
+    w_ref, ref_ok, ref_warn = _advanced_l1_reference_current_weights(cfg, cols)
+    diagnostics["current_portfolio_weights_available"] = bool(ref_ok)
 
-    turnover_use = bool(lam > 0 and ref_ok)
-    diagnostics["turnover_penalty_used"] = turnover_use
-    if lam > 0 and not ref_ok:
-        diagnostics["warnings_turnover"] = (
-            "Equal-weight-by-assets reference unavailable; L1 turnover penalty disabled."
+    if lam_cfg <= 1e-18:
+        lam_solve = 0.0
+        l1_dr: str | None = (
+            "minimum_variance_turnover_lambda is zero or negative; "
+            "L1 turnover penalty disabled."
         )
+    elif not ref_ok:
+        lam_solve = 0.0
+        l1_dr = (ref_warn or "Current portfolio weights unavailable on eligible universe; L1 disabled.")
+    else:
+        lam_solve = float(lam_cfg)
+        l1_dr = None
+
+    diagnostics["lambda_turnover_effective"] = float(lam_solve)
+    diagnostics["l1_disabled_reason"] = l1_dr
+
+    if lam_solve > 1e-18 and ref_ok and w_ref is not None:
+        diagnostics["l1_reference_source"] = L1_REFERENCE_CURRENT_PORTFOLIO
+
+    turnover_use = bool(lam_solve > 1e-18 and w_ref is not None and ref_ok)
 
     if v_max is not None:
         w_mv, _, _ = _minimum_variance_slsqp(cov_np, bounds)
@@ -1772,7 +1840,7 @@ def build_minimum_variance_advanced_controls(
             diagnostics["volatility_constraint_feasible"] = False
             diagnostics["reason"] = (
                 "Infeasible volatility target: minimum achievable variance on constrained "
-                f"box exceeds target (min_var_monthly={var_lb:.6g}, max_allowed={v_max:.6g})."
+                f"box exceeds cap (min_var_monthly={var_lb:.6g}, max_allowed={v_max:.6g})."
             )
             return BaselineWeightsResult(
                 weights={t: 0.0 for t in cfg.tickers},
@@ -1783,37 +1851,43 @@ def build_minimum_variance_advanced_controls(
     w_vec: np.ndarray
     res: Any
     fallback_used: bool
+    l1_penalty_used_flag = False
 
-    if turnover_use:
+    if turnover_use and w_ref is not None:
+        diagnostics["objective"] = (
+            "0.5*w.T@Sigma@w + lambda_turnover*sum(abs(w-w_current)) [L1 vs current portfolio]"
+        )
         w_vec, res, fallback_used = _minimum_variance_l1_extended_slsqp(
             cov_np,
             bounds,
-            w_eq,
-            lambda_turnover=lam,
+            w_ref,
+            lambda_turnover=lam_solve,
             v_max_monthly=v_max,
         )
         if not np.all(np.isfinite(w_vec)):
-            if v_max is not None and lam > 0:
+            lam_solve = 0.0
+            diagnostics["lambda_turnover_effective"] = 0.0
+            diagnostics["l1_reference_source"] = None
+            diagnostics["l1_disabled_reason"] = (
+                "L1 slack optimization did not converge; used fallback without L1 turnover term."
+            )
+            if v_max is not None:
                 w_vec, res, fallback_used = _minimum_variance_w_only_vol_cap_slsqp(
                     cov_np, bounds, v_max
                 )
-                diagnostics["turnover_penalty_used"] = False
                 diagnostics["solver_message"] = (
                     str(getattr(res, "message", ""))
                     + " | L1 slack formulation failed; fell back to vol-capped MV without turnover penalty."
                 )
-            elif v_max is None:
-                w_vec, res, fallback_used = _minimum_variance_slsqp(cov_np, bounds)
-                diagnostics["turnover_penalty_used"] = False
             else:
-                return BaselineWeightsResult(
-                    weights={t: 0.0 for t in cfg.tickers},
-                    status="FAIL_NUMERICAL",
-                    diagnostics={
-                        **diagnostics,
-                        "reason": "Advanced Minimum-Variance (L1+optional vol) solver failed",
-                    },
+                w_vec, res, fallback_used = _minimum_variance_slsqp(cov_np, bounds)
+                diagnostics["solver_message"] = (
+                    str(getattr(res, "message", ""))
+                    + " | L1 slack formulation failed; fell back to MV without turnover penalty."
                 )
+        else:
+            l1_penalty_used_flag = True
+            diagnostics["l1_disabled_reason"] = None
     elif v_max is not None:
         w_vec, res, fallback_used = _minimum_variance_w_only_vol_cap_slsqp(
             cov_np, bounds, v_max
@@ -1828,9 +1902,20 @@ def build_minimum_variance_advanced_controls(
         return out
 
     w_fin = np.array([out.weights[c] for c in cols], dtype=float)
-    turnover_l1 = float(np.sum(np.abs(w_fin - w_eq)))
-    diagnostics["final_turnover_vs_equal_weight"] = turnover_l1
-    diagnostics["turnover_penalty_value"] = float(lam * turnover_l1) if turnover_use else 0.0
+    diagnostics["l1_penalty_used"] = bool(l1_penalty_used_flag)
+    if w_ref is not None:
+        dist = float(np.sum(np.abs(w_fin - w_ref)))
+        diagnostics["l1_distance_to_current_portfolio"] = dist
+        if l1_penalty_used_flag and lam_solve > 1e-18:
+            diagnostics["l1_penalty_value"] = float(lam_solve * dist)
+        else:
+            diagnostics["l1_penalty_value"] = 0.0
+    else:
+        diagnostics["l1_distance_to_current_portfolio"] = None
+        diagnostics["l1_penalty_value"] = 0.0
+
+    if l1_penalty_used_flag:
+        diagnostics["l1_disabled_reason"] = None
 
     var_m = float(w_fin @ cov_np @ w_fin)
     if v_max is not None:

@@ -89,8 +89,11 @@ class PortfolioConfig:
     # Soft penalties for max_return vs target_vol / target return; 0 => runtime uses 12 / 8 in run_optimization
     optimization_soft_vol_penalty_lambda: float = 0.0
     optimization_soft_return_penalty_lambda: float = 0.0
-    # Advanced minimum-variance only: L1 penalty vs flat equal_weight_by_assets (0 = off)
+    # Advanced minimum-variance: optional L1 vs **current** portfolio weights when
+    # ``minimum_variance_turnover_lambda > 0``. Default 0 => pure MinVar (no L1 term).
+    # Legacy ``minimum_variance_l1_experimental`` is ignored by the advanced MinVar path.
     minimum_variance_turnover_lambda: float = 0.0
+    minimum_variance_l1_experimental: bool = False
     # Deprecated: stress is diagnostic-only (DIAG_*); ignored for blocking. Kept for config compatibility.
     strict_stress_gate: bool = False
     # When True, use Ledoit-Wolf shrinkage for covariance in optimization/RC (more stable weights)
@@ -135,6 +138,7 @@ class PortfolioConfig:
             "optimization_soft_vol_penalty_lambda": self.optimization_soft_vol_penalty_lambda,
             "optimization_soft_return_penalty_lambda": self.optimization_soft_return_penalty_lambda,
             "minimum_variance_turnover_lambda": self.minimum_variance_turnover_lambda,
+            "minimum_variance_l1_experimental": self.minimum_variance_l1_experimental,
             "strict_stress_gate": self.strict_stress_gate,
             "covariance_shrinkage": self.covariance_shrinkage,
             "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
@@ -185,6 +189,7 @@ class PortfolioConfig:
             "optimization_soft_vol_penalty_lambda": self.optimization_soft_vol_penalty_lambda,
             "optimization_soft_return_penalty_lambda": self.optimization_soft_return_penalty_lambda,
             "minimum_variance_turnover_lambda": self.minimum_variance_turnover_lambda,
+            "minimum_variance_l1_experimental": self.minimum_variance_l1_experimental,
             "strict_stress_gate": self.strict_stress_gate,
             "covariance_shrinkage": self.covariance_shrinkage,
             "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
@@ -235,6 +240,7 @@ BOOLEAN_FIELDS = [
     "allow_short_selling",
     "strict_stress_gate",
     "covariance_shrinkage",
+    "minimum_variance_l1_experimental",
 ]
 
 PERCENT_FIELDS = [
@@ -802,6 +808,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
         optimization_soft_vol_penalty_lambda=float(cfg.get("optimization_soft_vol_penalty_lambda", 0.0)),
         optimization_soft_return_penalty_lambda=float(cfg.get("optimization_soft_return_penalty_lambda", 0.0)),
         minimum_variance_turnover_lambda=float(cfg.get("minimum_variance_turnover_lambda", 0.0)),
+        minimum_variance_l1_experimental=bool(cfg.get("minimum_variance_l1_experimental", False)),
         strict_stress_gate=bool(cfg.get("strict_stress_gate", False)),
         covariance_shrinkage=bool(cfg.get("covariance_shrinkage", False)),
         young_etf_optimization_policy=dict(cfg.get("young_etf_optimization_policy") or DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY),

@@ -15,7 +15,7 @@ if str(_root) not in sys.path:
 
 from src.config_schema import PortfolioConfig
 from src.portfolio_variants import (
-    EQUAL_WEIGHT_METHOD_BY_ASSETS,
+    L1_REFERENCE_CURRENT_PORTFOLIO,
     build_equal_weight_baseline,
     build_minimum_variance_advanced_controls,
     build_minimum_variance_baseline,
@@ -33,9 +33,13 @@ def _minimal_portfolio_config(
     max_w: float | None = None,
     target_vol_annual: float | None = None,
     minimum_variance_turnover_lambda: float = 0.0,
+    minimum_variance_l1_experimental: bool = False,
+    covariance_shrinkage: bool = False,
+    weights: dict[str, float] | None = None,
 ) -> PortfolioConfig:
     n = len(tickers)
     eq = 1.0 / n if n else 0.0
+    wdict = weights if weights is not None else {t: eq for t in tickers}
     return PortfolioConfig(
         investor_currency="USD",
         initial_investable_amount=100_000.0,
@@ -45,7 +49,7 @@ def _minimal_portfolio_config(
         portfolio_value=100_000.0,
         cash_policy="allowed_for_scaling",
         tickers=list(tickers),
-        weights={t: eq for t in tickers},
+        weights=wdict,
         benchmark_base_ticker="VOO",
         rf_source="FRED:DTB3",
         cash_proxy_ticker="BIL",
@@ -66,8 +70,9 @@ def _minimal_portfolio_config(
         coverage_threshold=0.90,
         output_dir="results_csv",
         output_dir_final="Main portfolio",
-        covariance_shrinkage=False,
+        covariance_shrinkage=covariance_shrinkage,
         minimum_variance_turnover_lambda=minimum_variance_turnover_lambda,
+        minimum_variance_l1_experimental=minimum_variance_l1_experimental,
         young_etf_optimization_policy={"enabled": False},
     )
 
@@ -163,25 +168,125 @@ def test_minimum_variance_advanced_reference_and_l1_moves_weights() -> None:
         index=dates,
     )
     end = dates[-1].strftime("%Y-%m-%d")
+    w0 = {"A": 0.5, "B": 0.35, "C": 0.15}
     cfg = _minimal_portfolio_config(
         ["A", "B", "C"],
         max_w=0.45,
         target_vol_annual=None,
         minimum_variance_turnover_lambda=0.25,
+        covariance_shrinkage=True,
+        weights=w0,
     )
     base = build_minimum_variance_constrained(cfg, returns, end, 120)
     adv = build_minimum_variance_advanced_controls(cfg, returns, end, 120)
     assert base.status in ("OK", "APPROXIMATE")
     assert adv.status in ("OK", "APPROXIMATE")
-    assert adv.diagnostics.get("reference_allocation_source") == EQUAL_WEIGHT_METHOD_BY_ASSETS
-    assert adv.diagnostics.get("reference_allocation_available") is True
-    assert adv.diagnostics.get("turnover_penalty_used") is True
+    assert adv.diagnostics.get("l1_reference_source") == L1_REFERENCE_CURRENT_PORTFOLIO
+    assert adv.diagnostics.get("reference_allocation_source") is None
+    assert adv.diagnostics.get("current_portfolio_weights_available") is True
+    assert adv.diagnostics.get("l1_penalty_used") is True
+    assert float(adv.diagnostics.get("lambda_turnover_effective") or 0.0) > 0.0
+    assert adv.diagnostics.get("shrinkage_used") is True
     w_cols = ["A", "B", "C"]
-    eq = 1.0 / 3.0
     diff = sum(abs(adv.weights[t] - base.weights[t]) for t in w_cols)
     assert diff > 0.005
-    turn = sum(abs(adv.weights[t] - eq) for t in w_cols)
-    assert abs(float(adv.diagnostics.get("final_turnover_vs_equal_weight") or -1) - turn) < 1e-6
+    w_cur = np.array([w0[t] for t in w_cols], dtype=float)
+    turn = float(np.sum(np.abs(np.array([adv.weights[t] for t in w_cols]) - w_cur)))
+    assert abs(float(adv.diagnostics.get("l1_distance_to_current_portfolio") or -1.0) - turn) < 1e-5
+    assert adv.diagnostics.get("l1_disabled_reason") is None
+    assert "equal_weight" not in str(adv.diagnostics).lower()
+
+
+def test_minimum_variance_advanced_l1_active_without_legacy_experimental_flag() -> None:
+    rng = np.random.default_rng(101)
+    dates = pd.date_range("2012-01-31", periods=100, freq="ME")
+    n = len(dates)
+    returns = pd.DataFrame(
+        {
+            "A": rng.normal(0.0, 0.04, n),
+            "B": rng.normal(0.0, 0.035, n),
+            "C": rng.normal(0.0, 0.03, n),
+        },
+        index=dates,
+    )
+    end = dates[-1].strftime("%Y-%m-%d")
+    cfg = _minimal_portfolio_config(
+        ["A", "B", "C"],
+        max_w=0.45,
+        minimum_variance_turnover_lambda=0.1,
+        minimum_variance_l1_experimental=False,
+        covariance_shrinkage=True,
+        weights={"A": 0.55, "B": 0.30, "C": 0.15},
+    )
+    adv = build_minimum_variance_advanced_controls(cfg, returns, end, len(dates))
+    assert adv.status in ("OK", "APPROXIMATE")
+    assert adv.diagnostics.get("l1_penalty_used") is True
+    assert adv.diagnostics.get("l1_reference_source") == L1_REFERENCE_CURRENT_PORTFOLIO
+    assert adv.diagnostics.get("lambda_turnover_effective") == 0.1
+
+
+def test_minimum_variance_advanced_matches_constrained_without_vol_cap_or_l1() -> None:
+    rng = np.random.default_rng(31)
+    dates = pd.date_range("2012-06-30", periods=90, freq="ME")
+    n = len(dates)
+    returns = pd.DataFrame(
+        {
+            "A": rng.normal(0.0, 0.04, n),
+            "B": rng.normal(0.0, 0.03, n),
+            "C": rng.normal(0.0, 0.035, n),
+        },
+        index=dates,
+    )
+    end = dates[-1].strftime("%Y-%m-%d")
+    cfg = _minimal_portfolio_config(
+        ["A", "B", "C"],
+        max_w=0.40,
+        target_vol_annual=None,
+        minimum_variance_turnover_lambda=0.0,
+        covariance_shrinkage=True,
+    )
+    base = build_minimum_variance_constrained(cfg, returns, end, len(dates))
+    adv = build_minimum_variance_advanced_controls(cfg, returns, end, len(dates))
+    assert base.status in ("OK", "APPROXIMATE")
+    assert adv.status in ("OK", "APPROXIMATE")
+    assert adv.diagnostics.get("l1_penalty_used") is False
+    assert adv.diagnostics.get("lambda_turnover_effective") == 0.0
+    assert adv.diagnostics.get("l1_reference_source") is None
+    dr = str(adv.diagnostics.get("l1_disabled_reason") or "")
+    assert "lambda" in dr.lower()
+    assert adv.diagnostics.get("shrinkage_used") is True
+    for t in ("A", "B", "C"):
+        assert abs(base.weights[t] - adv.weights[t]) < 1e-8
+
+
+def test_minimum_variance_advanced_default_lambda_zero_is_pure_min_var_no_l1() -> None:
+    """Schema default λ=0: no L1 term; same as constrained when Σ path aligned (LW + same bounds)."""
+    rng = np.random.default_rng(77)
+    dates = pd.date_range("2015-03-31", periods=80, freq="ME")
+    n = len(dates)
+    returns = pd.DataFrame(
+        {
+            "A": rng.normal(0.0, 0.04, n),
+            "B": rng.normal(0.0, 0.03, n),
+            "C": rng.normal(0.0, 0.035, n),
+        },
+        index=dates,
+    )
+    end = dates[-1].strftime("%Y-%m-%d")
+    cfg = _minimal_portfolio_config(
+        ["A", "B", "C"],
+        max_w=0.42,
+        covariance_shrinkage=True,
+    )
+    assert cfg.minimum_variance_turnover_lambda == 0.0
+    adv = build_minimum_variance_advanced_controls(cfg, returns, end, len(dates))
+    assert adv.status in ("OK", "APPROXIMATE")
+    assert adv.diagnostics.get("lambda_turnover") == 0.0
+    assert adv.diagnostics.get("lambda_turnover_effective") == 0.0
+    assert adv.diagnostics.get("l1_penalty_used") is False
+    assert adv.diagnostics.get("l1_reference_source") is None
+    dr = str(adv.diagnostics.get("l1_disabled_reason") or "")
+    assert "lambda" in dr.lower()
 
 
 def test_minimum_variance_advanced_infeasible_vol_target() -> None:
@@ -275,6 +380,52 @@ def test_minimum_variance_infeasible_bounds() -> None:
     res = build_minimum_variance_baseline(cfg, returns, end, 60)
     assert res.status == "FAIL_INFEASIBLE_BOUNDS"
     assert sum(res.weights.values()) == 0.0
+
+
+def test_minimum_variance_advanced_disables_l1_when_no_positive_current_weights() -> None:
+    rng = np.random.default_rng(22)
+    dates = pd.date_range("2013-01-31", periods=60, freq="ME")
+    n = len(dates)
+    returns = pd.DataFrame(
+        {
+            "A": rng.normal(0.0, 0.03, n),
+            "B": rng.normal(0.0, 0.03, n),
+            "C": rng.normal(0.0, 0.03, n),
+        },
+        index=dates,
+    )
+    end = dates[-1].strftime("%Y-%m-%d")
+    cfg = _minimal_portfolio_config(
+        ["A", "B", "C"],
+        minimum_variance_turnover_lambda=0.5,
+        weights={"A": 0.0, "B": 0.0, "C": 0.0},
+        covariance_shrinkage=True,
+    )
+    adv = build_minimum_variance_advanced_controls(cfg, returns, end, 60)
+    assert adv.status in ("OK", "APPROXIMATE")
+    assert adv.diagnostics.get("l1_penalty_used") is False
+    assert adv.diagnostics.get("lambda_turnover_effective") == 0.0
+    assert adv.diagnostics.get("l1_reference_source") is None
+    assert adv.diagnostics.get("l1_disabled_reason")
+
+
+def test_minimum_variance_advanced_forces_ledoit_even_if_config_shrinkage_false() -> None:
+    rng = np.random.default_rng(44)
+    dates = pd.date_range("2014-01-31", periods=72, freq="ME")
+    n = len(dates)
+    returns = pd.DataFrame(
+        {
+            "A": rng.normal(0.0, 0.04, n),
+            "B": rng.normal(0.0, 0.035, n),
+            "C": rng.normal(0.0, 0.03, n),
+        },
+        index=dates,
+    )
+    end = dates[-1].strftime("%Y-%m-%d")
+    cfg = _minimal_portfolio_config(["A", "B", "C"], covariance_shrinkage=False)
+    adv = build_minimum_variance_advanced_controls(cfg, returns, end, len(dates))
+    assert adv.status in ("OK", "APPROXIMATE")
+    assert adv.diagnostics.get("shrinkage_used") is True
 
 
 def test_minimum_variance_import_run_scripts() -> None:
