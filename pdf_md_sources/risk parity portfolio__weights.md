@@ -8,7 +8,7 @@ fontsize: 10pt
 
 ## Executive Summary
 
-Largest target positions by weight: **SCHP** - 22.58%, **BND** - 22.36%, **TLT** - 11.60%, **GLD** - 10.96%, **SCHD** - 10.29%. Weights are portfolio construction outputs and should be read as target allocations, not trade instructions.
+Largest target positions by weight: **SCHP** - 22.58%, **BND** - 22.37%, **TLT** - 11.59%, **GLD** - 10.96%, **SCHD** - 10.28%. Weights are portfolio construction outputs and should be read as target allocations, not trade instructions.
 
 ## Key Metrics
 
@@ -21,10 +21,10 @@ Largest target positions by weight: **SCHP** - 22.58%, **BND** - 22.36%, **TLT**
 | Instrument | Target Weight |
 | --- | ---: |
 | **SCHP** | 22.58% |
-| **BND** | 22.36% |
-| **TLT** | 11.60% |
+| **BND** | 22.37% |
+| **TLT** | 11.59% |
 | **GLD** | 10.96% |
-| **SCHD** | 10.29% |
+| **SCHD** | 10.28% |
 | **VOO** | 9.05% |
 | **QQQ** | 7.76% |
 | **SLV** | 5.41% |

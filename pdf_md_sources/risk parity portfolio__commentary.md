@@ -8,7 +8,7 @@ fontsize: 10pt
 
 ## Executive Summary
 
-Risk Parity Portfolio was reviewed on the latest available reporting window. CAGR is 7.80%, annualized volatility is 8.10%, maximum drawdown is -18.20%, Sharpe is 0.689, Sortino is 1.086, and market sensitivity is 0.395. Stress diagnostics show: Passed with diagnostic warning; worst scenario loss is -15.40%.
+Risk Parity Portfolio was reviewed on the latest available reporting window. CAGR is 7.80%, annualized volatility is 8.10%, maximum drawdown is -18.20%, Sharpe is 0.689, Sortino is 1.086, and market sensitivity is 0.395. Stress diagnostics show: Passed with diagnostic warning; worst scenario loss is -15.28%.
 
 ## Key Metrics
 
@@ -22,18 +22,18 @@ The portfolio profile should be read as a trade-off between return, realized dra
 
 ## Risk Structure
 
-Stress status: Passed with diagnostic warning. Worst scenario loss: -15.40%. Flagged scenario: N/A; flagged test: N/A. These diagnostics are used to identify risk concentrations and scenario vulnerability; they do not by themselves replace the mandate checks.
+Stress status: Passed with diagnostic warning. Worst scenario loss: -15.28%. Flagged scenario: N/A; flagged test: N/A. These diagnostics are used to identify risk concentrations and scenario vulnerability; they do not by themselves replace the mandate checks.
 
 ## Scenario Analysis
 
 | Scenario | PnL | Pass | Top RC Asset | Top 3 RC |
 | --- | ---: | --- | --- | ---: |
-| equity_shock | -11.71% | True | GLD | 42.68% |
-| credit_shock | -1.69% | True | GLD | 42.68% |
-| rates_shock | -9.67% | True | GLD | 39.02% |
-| inflation_stagflation | -7.77% | True | GLD | 39.02% |
-| liquidity_shock | -6.39% | True | GLD | 42.68% |
-| recession_severe | -15.40% | True | GLD | 42.65% |
+| equity_shock | -11.68% | True | GLD | 46.52% |
+| credit_shock | -1.72% | True | GLD | 40.49% |
+| rates_shock | -9.65% | True | TLT | 43.74% |
+| inflation_stagflation | -7.78% | True | GLD | 47.63% |
+| liquidity_shock | -6.40% | True | SCHD | 43.68% |
+| recession_severe | -15.28% | True | SCHD | 43.70% |
 
 ## Conclusion
 
