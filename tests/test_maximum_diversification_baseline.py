@@ -17,6 +17,7 @@ from src.config_schema import PortfolioConfig
 from src.portfolio_variants import (
     build_equal_weight_baseline,
     build_maximum_diversification_constrained,
+    build_maximum_diversification_unconstrained,
 )
 from src.risk_contrib import cov_matrix_monthly
 from src.risk_parity_spinu import repair_covariance_psd
@@ -148,3 +149,105 @@ def test_maximum_diversification_import_run_script() -> None:
     import run_maximum_diversification as rmd
 
     assert callable(rmd.main)
+
+
+def test_build_maximum_diversification_unconstrained_three_assets() -> None:
+    rng = np.random.default_rng(42)
+    dates = pd.date_range("2015-01-31", periods=120, freq="ME")
+    n = len(dates)
+    r_high = rng.normal(0.003, 0.04, n)
+    r_mid = rng.normal(0.003, 0.02, n)
+    r_low = rng.normal(0.003, 0.01, n)
+    returns = pd.DataFrame({"H": r_high, "M": r_mid, "L": r_low}, index=dates)
+    cfg = _minimal_portfolio_config(["H", "M", "L"])
+    end = dates[-1].strftime("%Y-%m-%d")
+    res = build_maximum_diversification_unconstrained(cfg, returns, end, 120)
+    assert res.status in ("OK", "APPROXIMATE")
+    assert abs(sum(res.weights.values()) - 1.0) < 1e-4
+    for t in ("H", "M", "L"):
+        assert res.weights[t] >= -1e-9
+    diag = res.diagnostics
+    assert diag.get("optimizer_name") == "maximum_diversification_unconstrained"
+    assert diag.get("active_constraints") == [
+        "equality: sum(weights) = 1",
+        "long-only: weights >= 0",
+    ]
+    assert diag.get("diversification_ratio") is not None
+    assert float(diag.get("diversification_ratio", 0.0)) >= 1.0 - 1e-6
+
+
+def test_maximum_diversification_unconstrained_succeeds_when_constrained_infeasible() -> None:
+    dates = pd.date_range("2015-01-31", periods=60, freq="ME")
+    n = len(dates)
+    rng = np.random.default_rng(1)
+    returns = pd.DataFrame(
+        {
+            "X": rng.normal(0.005, 0.02, n),
+            "Y": rng.normal(0.005, 0.02, n),
+            "Z": rng.normal(0.005, 0.02, n),
+        },
+        index=dates,
+    )
+    cfg = _minimal_portfolio_config(["X", "Y", "Z"], min_w=0.40)
+    end = dates[-1].strftime("%Y-%m-%d")
+    c_res = build_maximum_diversification_constrained(cfg, returns, end, 60)
+    u_res = build_maximum_diversification_unconstrained(cfg, returns, end, 60)
+    assert c_res.status == "FAIL_INFEASIBLE_BOUNDS"
+    assert u_res.status in ("OK", "APPROXIMATE")
+    assert abs(sum(u_res.weights.values()) - 1.0) < 1e-4
+
+
+def test_unconstrained_diversification_ratio_greater_or_equal_constrained() -> None:
+    rng = np.random.default_rng(123)
+    dates = pd.date_range("2015-01-31", periods=100, freq="ME")
+    n = len(dates)
+    returns = pd.DataFrame(
+        {
+            "A": rng.normal(0.0, 0.12, n),
+            "B": rng.normal(0.0, 0.04, n),
+            "C": rng.normal(0.0, 0.04, n),
+            "D": rng.normal(0.0, 0.04, n),
+            "E": rng.normal(0.0, 0.04, n),
+        },
+        index=dates,
+    )
+    tickers = ["A", "B", "C", "D", "E"]
+    # Need sum of upper bounds >= 1 for a fully-invested box (5 * 0.15 < 1 is infeasible).
+    cfg = _minimal_portfolio_config(tickers, max_w=0.22, min_w=0.01)
+    end = dates[-1].strftime("%Y-%m-%d")
+    wnd = len(dates)
+    u_res = build_maximum_diversification_unconstrained(cfg, returns, end, wnd)
+    c_res = build_maximum_diversification_constrained(cfg, returns, end, wnd)
+    assert u_res.status in ("OK", "APPROXIMATE")
+    assert c_res.status in ("OK", "APPROXIMATE")
+    dr_u = float(u_res.diagnostics["diversification_ratio"])
+    dr_c = float(c_res.diagnostics["diversification_ratio"])
+    assert dr_u >= dr_c - 1e-5
+
+
+def test_unconstrained_weight_can_exceed_project_config_max() -> None:
+    """Unconstrained MaxDiv uses [0,1] bounds only; config max_single should not cap the optimizer."""
+    n = 200
+    dates = pd.date_range("2015-01-31", periods=n, freq="ME")
+    rng = np.random.default_rng(0)
+    # Nearly independent columns: one much higher vol — MD concentrates on the high-vol name.
+    returns = pd.DataFrame(
+        {
+            "A": rng.normal(0.0, 0.35, n),
+            "B": rng.normal(0.0, 0.025, n),
+            "C": rng.normal(0.0, 0.025, n),
+        },
+        index=dates,
+    )
+    cfg = _minimal_portfolio_config(["A", "B", "C"], max_w=0.15, min_w=0.01)
+    end = dates[-1].strftime("%Y-%m-%d")
+    u_res = build_maximum_diversification_unconstrained(cfg, returns, end, n)
+    assert u_res.status in ("OK", "APPROXIMATE")
+    mx = max(u_res.weights[t] for t in ("A", "B", "C"))
+    assert mx > 0.15 + 1e-4
+
+
+def test_maximum_diversification_unconstrained_import_run_script() -> None:
+    import run_maximum_diversification_unconstrained as rmd_u
+
+    assert callable(rmd_u.main)

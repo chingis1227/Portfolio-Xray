@@ -16,6 +16,15 @@ and then evaluated by the existing metrics / stress-test / client-fit pipeline.
 ``(sigma' w) / sqrt(w' Sigma w)`` on monthly ``Sigma`` under the **same box bounds**
 as the policy optimizer; see ``build_maximum_diversification_constrained``.
 
+**Maximum diversification (unconstrained long-only)** maximizes the same diversification ratio
+with only ``sum(w)=1`` and ``w_i >= 0`` (scipy bounds ``[0,1]`` per name); **no** policy
+min/max, feasibility caps, or Young per-ticker caps as optimization constraints; see
+``build_maximum_diversification_unconstrained``.
+
+**Minimum CVaR (Rockafellar–Uryasev LP)** on monthly simple scenario returns: **uncapped**
+``build_minimum_cvar_uncapped`` uses ``w_i \\in [0,1]`` and no project caps; **constrained**
+``build_minimum_cvar_constrained`` uses the same ``_build_bounds`` box as MinVar/MaxDiv.
+
 **Hierarchical Risk Parity (canonical)** builds long-only weights via correlation
 distance, hierarchical clustering, and recursive bisection on monthly ``Sigma`` shared
 with MinVar/MD via ``_mv_covariance_for_eligible``; **no** ``_build_bounds`` box and
@@ -50,7 +59,7 @@ from typing import Any, Dict, Iterable, Tuple
 import numpy as np
 import pandas as pd
 import yaml
-from scipy.optimize import minimize
+from scipy.optimize import linprog, minimize
 
 from src.config_schema import PortfolioConfig
 from src.hrp_weights import hrp_long_only_weights
@@ -68,7 +77,10 @@ BASELINE_MV_LABEL = "Minimum Variance Portfolio"
 BASELINE_MV_UNCAPPED_LABEL = "Minimum Variance (Uncapped Long-Only) Portfolio"
 BASELINE_MV_ADVANCED_LABEL = "Minimum Variance (Advanced Controls) Portfolio"
 BASELINE_MD_LABEL = "Maximum Diversification Portfolio"
+BASELINE_MD_UNCONSTRAINED_LABEL = "Maximum Diversification (Unconstrained Long-Only) Portfolio"
 BASELINE_HRP_LABEL = "Hierarchical Risk Parity Portfolio"
+BASELINE_MCVAR_UNCAPPED_LABEL = "Minimum CVaR (Uncapped) Portfolio"
+BASELINE_MCVAR_CONSTRAINED_LABEL = "Minimum CVaR (Constrained) Portfolio"
 
 # Roles for reporting / metadata (which question each variant answers).
 MV_BASELINE_ROLE_PRIMARY_LOWEST_VOL_UNDER_CONSTRAINTS = (
@@ -83,7 +95,16 @@ OPTIMIZER_NAME_MINIMUM_VARIANCE_CONSTRAINED = "minimum_variance_constrained"
 OPTIMIZER_NAME_MINIMUM_VARIANCE_UNCAPPED = "minimum_variance_uncapped_long_only"
 OPTIMIZER_NAME_MINIMUM_VARIANCE_ADVANCED = "minimum_variance_advanced_controls"
 OPTIMIZER_NAME_MAXIMUM_DIVERSIFICATION_CONSTRAINED = "maximum_diversification_constrained"
+OPTIMIZER_NAME_MAXIMUM_DIVERSIFICATION_UNCONSTRAINED = "maximum_diversification_unconstrained"
 OPTIMIZER_NAME_HIERARCHICAL_RISK_PARITY = "hierarchical_risk_parity"
+OPTIMIZER_NAME_MINIMUM_CVAR_UNCAPPED = "minimum_cvar_uncapped"
+OPTIMIZER_NAME_MINIMUM_CVAR_CONSTRAINED = "minimum_cvar_constrained"
+
+MINIMUM_CVAR_SOLVER = "HiGHS"
+MINIMUM_CVAR_OBJECTIVE = (
+    "Rockafellar-Uryasev LP: min alpha + 1/(T*(1-gamma))*sum(z_t) "
+    "s.t. z_t >= -(R w)_t - alpha, z_t>=0, sum(w)=1, box bounds on w"
+)
 
 MINIMUM_VARIANCE_SOLVER = "SLSQP"
 MINIMUM_VARIANCE_OBJECTIVE = "0.5 * w.T @ covariance @ w"
@@ -258,6 +279,45 @@ def hierarchical_risk_parity_baseline_metadata_export(diagnostics: Dict[str, obj
     """Structured fields for HRP ``baseline_weights_metadata.json``."""
     out: Dict[str, Any] = {}
     for k in HIERARCHICAL_RISK_PARITY_METADATA_EXPORT_KEYS:
+        if k in diagnostics:
+            out[k] = diagnostics[k]
+    return out
+
+
+MINIMUM_CVAR_METADATA_EXPORT_KEYS = (
+    "optimizer_name",
+    "solver",
+    "objective",
+    "cvar_confidence_level",
+    "tail_fraction",
+    "n_scenarios",
+    "cvar_objective_value",
+    "empirical_cvar_loss",
+    "linprog_status",
+    "linprog_success",
+    "linprog_message",
+    "tail_effective_obs",
+    "tail_scenarios_used",
+    "covariance_method",
+    "shrinkage_used",
+    "psd_repair_used",
+    "young_etf_dual_mode",
+    "eligible_universe",
+    "final_weights",
+    "portfolio_variance",
+    "annualized_volatility",
+    "max_weight",
+    "min_weight",
+    "weight_bounds_note",
+    "bounds_used",
+    "constraint_summary",
+)
+
+
+def minimum_cvar_baseline_metadata_export(diagnostics: Dict[str, object]) -> Dict[str, Any]:
+    """Structured fields for minimum-CVaR ``baseline_weights_metadata.json`` (uncapped or constrained)."""
+    out: Dict[str, Any] = {}
+    for k in MINIMUM_CVAR_METADATA_EXPORT_KEYS:
         if k in diagnostics:
             out[k] = diagnostics[k]
     return out
@@ -1662,6 +1722,82 @@ def build_maximum_diversification_constrained(
     )
 
 
+def build_maximum_diversification_unconstrained(
+    cfg: PortfolioConfig,
+    monthly_returns: pd.DataFrame,
+    analysis_end: str,
+    window_months: int,
+) -> BaselineWeightsResult:
+    """
+    **maximum_diversification_unconstrained**: maximize diversification ratio DR on monthly ``Sigma``
+    subject to ``sum(weights)=1`` and **long-only** weights via per-asset bounds ``[0, 1]``.
+
+    Does **not** apply project policy box bounds (no min/max single name from config, no feasibility
+    per-asset caps, no Young per-ticker caps as optimizer bounds). Covariance / eligible-universe
+    path matches :func:`build_maximum_diversification_constrained`.
+    """
+    eligible, coverage = _eligible_universe_from_returns(
+        cfg, monthly_returns, analysis_end, window_months
+    )
+    diagnostics: Dict[str, object] = {
+        "universe_eligible": eligible,
+        "universe_coverage": coverage,
+        "optimizer_name": OPTIMIZER_NAME_MAXIMUM_DIVERSIFICATION_UNCONSTRAINED,
+        "solver": MAXIMUM_DIVERSIFICATION_SOLVER,
+        "objective": MAXIMUM_DIVERSIFICATION_OBJECTIVE,
+        "active_constraints": [
+            "equality: sum(weights) = 1",
+            "long-only: weights >= 0",
+        ],
+    }
+
+    if len(eligible) < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_INFEASIBLE_UNIVERSE",
+            diagnostics={
+                **diagnostics,
+                "reason": "Fewer than 2 eligible assets for Maximum Diversification (unconstrained)",
+            },
+        )
+
+    cov_pack = _mv_covariance_for_eligible(
+        cfg, monthly_returns, analysis_end, window_months, eligible
+    )
+    if cov_pack is None:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_DATA",
+            diagnostics={
+                **diagnostics,
+                "reason": "Insufficient history for covariance after inner join",
+            },
+        )
+    cov_np, cols, covariance_method, shrinkage_used, psd_repaired, young_mode, _per_ticker_caps = (
+        cov_pack
+    )
+    diagnostics["covariance_method"] = covariance_method
+    diagnostics["shrinkage_used"] = bool(shrinkage_used)
+    diagnostics["psd_repair_used"] = bool(psd_repaired)
+    diagnostics["young_etf_dual_mode"] = young_mode
+
+    bounds = [(0.0, 1.0)] * len(cols)
+    if not _budget_simplex_intersects_box(bounds):
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_INFEASIBLE_BOUNDS",
+            diagnostics={
+                **diagnostics,
+                "reason": "Long-only unit hypercube unexpectedly infeasible for sum(weights)=1",
+            },
+        )
+
+    w_vec, res, fallback_used = _maximum_diversification_slsqp(cov_np, bounds)
+    return _finalize_md_weights(
+        w_vec, cols, cfg, cov_np, bounds, res, fallback_used, diagnostics=diagnostics
+    )
+
+
 def build_hierarchical_risk_parity_baseline(
     cfg: PortfolioConfig,
     monthly_returns: pd.DataFrame,
@@ -1768,6 +1904,466 @@ def build_hierarchical_risk_parity_baseline(
         }
     )
     return BaselineWeightsResult(weights=weights, status="OK", diagnostics=diagnostics)
+
+
+def _minimum_cvar_tail_effective_obs(T: int, gamma: float) -> int:
+    """Discrete tail count for reporting: at least one scenario in the tail mass (1-gamma)."""
+    return max(1, int(np.ceil(float(T) * (1.0 - float(gamma)))))
+
+
+def _minimum_cvar_empirical_loss_cvar(R: np.ndarray, w: np.ndarray, gamma: float) -> float:
+    """
+    Sample CVaR of loss L_t = -(Rw)_t: mean of the worst ceil(T*(1-gamma)) losses.
+    Aligns with common discrete CVaR reporting (not identical to LP alpha+z average unless linear loss).
+    """
+    R = np.asarray(R, dtype=float)
+    w = np.asarray(w, dtype=float)
+    L = -(R @ w)
+    T = int(L.shape[0])
+    if T < 1:
+        return float("nan")
+    k = _minimum_cvar_tail_effective_obs(T, gamma)
+    order = np.argsort(-L)
+    return float(np.mean(L[order[:k]]))
+
+
+def _minimum_cvar_linprog(
+    R: np.ndarray,
+    gamma: float,
+    w_bounds: list[tuple[float, float]],
+    scenario_dates: pd.DatetimeIndex | None = None,
+    *,
+    z_active_tol_abs: float = 1e-8,
+) -> Dict[str, Any]:
+    """
+    Rockafellar-Uryasev: minimize alpha + (1/(T*(1-gamma))) * sum(z)
+    s.t. z_t >= -(Rw)_t - alpha, z>=0, sum(w)=1, box bounds on w.
+
+    Variables: [w_0..w_{n-1}, alpha, z_0..z_{T-1}].
+    """
+    R = np.asarray(R, dtype=float)
+    if R.ndim != 2:
+        return {"ok": False, "reason": "R_not_matrix"}
+    T, n = int(R.shape[0]), int(R.shape[1])
+    if T < 1 or n < 1:
+        return {"ok": False, "reason": "empty_R"}
+    if len(w_bounds) != n:
+        return {"ok": False, "reason": "bounds_dim_mismatch"}
+    gamma_f = float(gamma)
+    if not (0.0 < gamma_f < 1.0):
+        return {"ok": False, "reason": "gamma_out_of_range"}
+    one_minus = 1.0 - gamma_f
+    lam = 1.0 / (float(T) * one_minus)
+    tail_effective_obs = _minimum_cvar_tail_effective_obs(T, gamma_f)
+
+    n_vars = n + 1 + T
+    c = np.zeros(n_vars, dtype=float)
+    c[n] = 1.0
+    c[n + 1 :] = lam
+
+    A_ub = np.zeros((T, n_vars), dtype=float)
+    for t in range(T):
+        A_ub[t, :n] = -R[t, :]
+        A_ub[t, n] = -1.0
+        A_ub[t, n + 1 + t] = -1.0
+    b_ub = np.zeros(T, dtype=float)
+
+    A_eq = np.zeros((1, n_vars), dtype=float)
+    A_eq[0, :n] = 1.0
+    b_eq = np.array([1.0], dtype=float)
+
+    bounds: list[tuple[float | None, float | None]] = [
+        (float(lo), float(hi)) for lo, hi in w_bounds
+    ] + [(None, None)]
+    bounds += [(0.0, None)] * T
+
+    res = linprog(
+        c,
+        A_ub=A_ub,
+        b_ub=b_ub,
+        A_eq=A_eq,
+        b_eq=b_eq,
+        bounds=bounds,
+        method="highs",
+    )
+
+    ok = bool(res.success) and res.x is not None and np.all(np.isfinite(res.x))
+    if not ok:
+        return {
+            "ok": False,
+            "reason": "linprog_failed",
+            "linprog_success": bool(res.success),
+            "linprog_status": int(res.status) if res.status is not None else None,
+            "linprog_message": str(res.message) if res.message is not None else "",
+            "n_scenarios": T,
+            "tail_effective_obs": tail_effective_obs,
+            "tail_fraction": one_minus,
+        }
+
+    x = np.asarray(res.x, dtype=float)
+    w = x[:n].copy()
+    alpha = float(x[n])
+    z = x[n + 1 :].copy()
+    obj = float(res.fun)
+
+    z_max = float(np.max(z)) if z.size else 0.0
+    thr = z_active_tol_abs
+    if z_max > 0.0:
+        thr = max(thr, z_active_tol_abs * z_max)
+    tail_scenarios_used: list[Dict[str, Any]] = []
+    for t in range(T):
+        if z[t] > thr:
+            entry: Dict[str, Any] = {"index": t, "z": float(z[t])}
+            if scenario_dates is not None and t < len(scenario_dates):
+                ts = scenario_dates[t]
+                if isinstance(ts, pd.Timestamp):
+                    entry["date"] = ts.strftime("%Y-%m-%d")
+                else:
+                    entry["date"] = str(ts)[:10]
+            tail_scenarios_used.append(entry)
+
+    return {
+        "ok": True,
+        "w": w,
+        "alpha": alpha,
+        "z": z,
+        "cvar_objective_value": obj,
+        "linprog_success": True,
+        "linprog_status": int(res.status) if res.status is not None else None,
+        "linprog_message": str(res.message) if res.message is not None else "",
+        "n_scenarios": T,
+        "tail_effective_obs": tail_effective_obs,
+        "tail_fraction": one_minus,
+        "tail_scenarios_used": tail_scenarios_used,
+        "lambda_cvar": lam,
+    }
+
+
+def _finalize_minimum_cvar_weights(
+    cols: list[str],
+    cfg: PortfolioConfig,
+    cov_np: np.ndarray,
+    bounds: list[tuple[float, float]],
+    lp_out: Dict[str, Any],
+    *,
+    diagnostics: Dict[str, object],
+    gamma: float,
+    R: np.ndarray,
+) -> BaselineWeightsResult:
+    if not lp_out.get("ok"):
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_NUMERICAL",
+            diagnostics={
+                **diagnostics,
+                "reason": lp_out.get("reason", "minimum_cvar_linprog_failed"),
+                "linprog_success": lp_out.get("linprog_success"),
+                "linprog_status": lp_out.get("linprog_status"),
+                "linprog_message": lp_out.get("linprog_message"),
+            },
+        )
+
+    w_raw = np.asarray(lp_out["w"], dtype=float)
+    if not np.all(np.isfinite(w_raw)) or w_raw.shape[0] != len(cols):
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_NUMERICAL",
+            diagnostics={**diagnostics, "reason": "non_finite_weights"},
+        )
+
+    lo_arr = np.array([b[0] for b in bounds], dtype=float)
+    hi_arr = np.array([b[1] for b in bounds], dtype=float)
+    w_vec = np.clip(w_raw, lo_arr, hi_arr)
+    ssum = float(w_vec.sum())
+    if ssum > 1e-12:
+        w_vec = w_vec / ssum
+    else:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_NUMERICAL",
+            diagnostics={**diagnostics, "reason": "weights_sum_zero_after_clip"},
+        )
+
+    cov_a = np.asarray(cov_np, dtype=float)
+    var_p = float(w_vec @ cov_a @ w_vec)
+    ann_vol = float(np.sqrt(max(var_p, 0.0) * 12.0))
+    weights: Dict[str, float] = {t: 0.0 for t in cfg.tickers}
+    for i, t in enumerate(cols):
+        weights[t] = float(w_vec[i])
+    w_nonzero = {t: float(weights[t]) for t in cols if weights[t] > 1e-14}
+    emp_cvar = _minimum_cvar_empirical_loss_cvar(R, w_vec, gamma)
+
+    diagnostics.update(
+        {
+            "eligible_universe": list(cols),
+            "final_weights": dict(sorted(w_nonzero.items(), key=lambda x: (-x[1], x[0]))),
+            "portfolio_variance": var_p,
+            "annualized_volatility": ann_vol,
+            "cvar_confidence_level": float(gamma),
+            "tail_fraction": float(lp_out["tail_fraction"]),
+            "n_scenarios": int(lp_out["n_scenarios"]),
+            "cvar_objective_value": float(lp_out["cvar_objective_value"]),
+            "empirical_cvar_loss": emp_cvar,
+            "linprog_status": lp_out.get("linprog_status"),
+            "linprog_success": bool(lp_out.get("linprog_success")),
+            "linprog_message": lp_out.get("linprog_message"),
+            "tail_effective_obs": int(lp_out["tail_effective_obs"]),
+            "tail_scenarios_used": lp_out.get("tail_scenarios_used", []),
+            "max_weight": float(np.max(w_vec)) if len(w_vec) else 0.0,
+            "min_weight": float(np.min(w_vec)) if len(w_vec) else 0.0,
+        }
+    )
+    tol_sum = 1e-5
+    tol_b = 1e-5
+    sum_ok = abs(float(np.sum(w_vec)) - 1.0) < tol_sum
+    in_bounds = bool(np.all(w_vec >= lo_arr - tol_b) and np.all(w_vec <= hi_arr + tol_b))
+    if sum_ok and in_bounds:
+        status = "OK"
+    elif sum_ok and in_bounds and var_p == var_p:
+        status = "APPROXIMATE"
+    else:
+        status = "FAIL_NUMERICAL"
+    return BaselineWeightsResult(weights=weights, status=status, diagnostics=diagnostics)
+
+
+def _minimum_cvar_resolve_gamma(
+    cfg: PortfolioConfig, confidence_level: float | None
+) -> float:
+    if confidence_level is not None:
+        return float(confidence_level)
+    return float(getattr(cfg, "minimum_cvar_confidence_level", 0.95))
+
+
+def build_minimum_cvar_uncapped(
+    cfg: PortfolioConfig,
+    monthly_returns: pd.DataFrame,
+    analysis_end: str,
+    window_months: int,
+    *,
+    confidence_level: float | None = None,
+) -> BaselineWeightsResult:
+    """
+    **minimum_cvar_uncapped**: minimize sample CVaR of loss L=-(Rw) on monthly scenarios R;
+    long-only, sum(w)=1, **w_i in [0,1]** per asset (no config min/max or Young caps in the LP).
+    """
+    gamma = _minimum_cvar_resolve_gamma(cfg, confidence_level)
+    eligible, coverage = _eligible_universe_from_returns(
+        cfg, monthly_returns, analysis_end, window_months
+    )
+    diagnostics: Dict[str, object] = {
+        "universe_eligible": eligible,
+        "universe_coverage": coverage,
+        "optimizer_name": OPTIMIZER_NAME_MINIMUM_CVAR_UNCAPPED,
+        "solver": MINIMUM_CVAR_SOLVER,
+        "objective": MINIMUM_CVAR_OBJECTIVE,
+        "active_constraints": [
+            "equality: sum(weights) = 1",
+            "long-only: 0 <= w_i <= 1 per asset (no project caps)",
+            "Rockafellar-Uryasev auxiliary z_t >= 0",
+        ],
+        "weight_bounds_note": "[0,1] per asset; no config/young caps",
+    }
+    if not (0.0 < gamma < 1.0):
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_NUMERICAL",
+            diagnostics={**diagnostics, "reason": "cvar_confidence_level must be in (0,1)"},
+        )
+    if len(eligible) < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_INFEASIBLE_UNIVERSE",
+            diagnostics={
+                **diagnostics,
+                "reason": "Fewer than 2 eligible assets for Minimum CVaR (uncapped)",
+            },
+        )
+
+    cov_pack = _mv_covariance_for_eligible(
+        cfg, monthly_returns, analysis_end, window_months, eligible
+    )
+    if cov_pack is None:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_DATA",
+            diagnostics={
+                **diagnostics,
+                "reason": "Insufficient history for covariance/scenarios after inner join",
+            },
+        )
+    cov_np, cols, covariance_method, shrinkage_used, psd_repaired, young_mode, _caps = cov_pack
+    diagnostics["covariance_method"] = covariance_method
+    diagnostics["shrinkage_used"] = bool(shrinkage_used)
+    diagnostics["psd_repair_used"] = bool(psd_repaired)
+    diagnostics["young_etf_dual_mode"] = young_mode
+
+    returns_slice = slice_window(
+        monthly_returns[cols], analysis_end, window_months
+    ).dropna(how="any")
+    if returns_slice.shape[0] < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_DATA",
+            diagnostics={
+                **diagnostics,
+                "reason": f"Insufficient scenario rows after dropna (rows={returns_slice.shape[0]})",
+            },
+        )
+    R = returns_slice[cols].to_numpy(dtype=float)
+    scenario_dates = returns_slice.index
+
+    n = len(cols)
+    bounds = [(0.0, 1.0)] * n
+    if not _budget_simplex_intersects_box(bounds):
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_INFEASIBLE_BOUNDS",
+            diagnostics={
+                **diagnostics,
+                "reason": "Unit-box simplex unexpectedly infeasible for sum(weights)=1",
+            },
+        )
+
+    lp_out = _minimum_cvar_linprog(R, gamma, bounds, scenario_dates=scenario_dates)
+    return _finalize_minimum_cvar_weights(
+        cols,
+        cfg,
+        cov_np,
+        bounds,
+        lp_out,
+        diagnostics=diagnostics,
+        gamma=gamma,
+        R=R,
+    )
+
+
+def build_minimum_cvar_constrained(
+    cfg: PortfolioConfig,
+    monthly_returns: pd.DataFrame,
+    analysis_end: str,
+    window_months: int,
+    *,
+    confidence_level: float | None = None,
+) -> BaselineWeightsResult:
+    """
+    **minimum_cvar_constrained**: same CVaR objective as uncapped but **box bounds** from
+    :func:`src.optimization._build_bounds` (config min/max and Young per-ticker caps when active).
+    """
+    gamma = _minimum_cvar_resolve_gamma(cfg, confidence_level)
+    eligible, coverage = _eligible_universe_from_returns(
+        cfg, monthly_returns, analysis_end, window_months
+    )
+    diagnostics: Dict[str, object] = {
+        "universe_eligible": eligible,
+        "universe_coverage": coverage,
+        "optimizer_name": OPTIMIZER_NAME_MINIMUM_CVAR_CONSTRAINED,
+        "solver": MINIMUM_CVAR_SOLVER,
+        "objective": MINIMUM_CVAR_OBJECTIVE,
+        "active_constraints": [
+            "equality: sum(weights) = 1",
+            "box: per-asset bounds from feasibility cap and config (min_single / max_single / young caps)",
+            "Rockafellar-Uryasev auxiliary z_t >= 0",
+        ],
+    }
+    if not (0.0 < gamma < 1.0):
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_NUMERICAL",
+            diagnostics={**diagnostics, "reason": "cvar_confidence_level must be in (0,1)"},
+        )
+    if len(eligible) < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_INFEASIBLE_UNIVERSE",
+            diagnostics={
+                **diagnostics,
+                "reason": "Fewer than 2 eligible assets for Minimum CVaR (constrained)",
+            },
+        )
+
+    cov_pack = _mv_covariance_for_eligible(
+        cfg, monthly_returns, analysis_end, window_months, eligible
+    )
+    if cov_pack is None:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_DATA",
+            diagnostics={
+                **diagnostics,
+                "reason": "Insufficient history for covariance/scenarios after inner join",
+            },
+        )
+    cov_np, cols, covariance_method, shrinkage_used, psd_repaired, young_mode, per_ticker_caps = (
+        cov_pack
+    )
+    diagnostics["covariance_method"] = covariance_method
+    diagnostics["shrinkage_used"] = bool(shrinkage_used)
+    diagnostics["psd_repair_used"] = bool(psd_repaired)
+    diagnostics["young_etf_dual_mode"] = young_mode
+
+    returns_slice = slice_window(
+        monthly_returns[cols], analysis_end, window_months
+    ).dropna(how="any")
+    if returns_slice.shape[0] < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_DATA",
+            diagnostics={
+                **diagnostics,
+                "reason": f"Insufficient scenario rows after dropna (rows={returns_slice.shape[0]})",
+            },
+        )
+    R = returns_slice[cols].to_numpy(dtype=float)
+    scenario_dates = returns_slice.index
+    n = len(cols)
+
+    min_w = (
+        float(cfg.min_single_security_weight_pct)
+        if cfg.min_single_security_weight_pct is not None
+        and float(cfg.min_single_security_weight_pct) > 0
+        else float(MIN_WEIGHT_DEFAULT)
+    )
+    bounds = _build_bounds(
+        cols,
+        len(cols),
+        min_w,
+        cfg.max_single_security_weight_pct,
+        per_ticker_caps,
+    )
+    diagnostics["bounds_used"] = {
+        cols[i]: {"min": float(bounds[i][0]), "max": float(bounds[i][1])} for i in range(n)
+    }
+    young_applied = isinstance(per_ticker_caps, dict) and len(per_ticker_caps) > 0
+    diagnostics["constraint_summary"] = {
+        "sum_weights": "equality_1",
+        "box_source": "_build_bounds",
+        "young_caps_applied": young_applied,
+    }
+
+    if not _budget_simplex_intersects_box(bounds):
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_INFEASIBLE_BOUNDS",
+            diagnostics={
+                **diagnostics,
+                "reason": (
+                    "Weight bounds infeasible for a fully invested portfolio "
+                    "(sum of lower bounds > 1 or sum of upper bounds < 1)"
+                ),
+            },
+        )
+
+    lp_out = _minimum_cvar_linprog(R, gamma, bounds, scenario_dates=scenario_dates)
+    return _finalize_minimum_cvar_weights(
+        cols,
+        cfg,
+        cov_np,
+        bounds,
+        lp_out,
+        diagnostics=diagnostics,
+        gamma=gamma,
+        R=R,
+    )
 
 
 def build_minimum_variance_uncapped_long_only(
