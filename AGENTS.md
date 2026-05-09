@@ -79,6 +79,11 @@ Run **Maximum-Diversification** baseline (`maximum_diversification_constrained`;
 python run_maximum_diversification.py
 ```
 
+Run **Hierarchical Risk Parity** baseline (`hierarchical_risk_parity`; canonical unconstrained construction: clustering + recursive bisection on monthly **Σ**; long-only, **Σw = 1**; **no** policy box bounds or optimizer projection; comparable to canonical Risk Parity; outputs under `hierarchical risk parity portfolio/`):
+```bash
+python run_hierarchical_risk_parity.py
+```
+
 Run post-optimization tilt:
 ```bash
 python run_view_after_optimization.py --asset VOO --delta 2
@@ -143,7 +148,7 @@ Keep `DESIGN.md` as the source of truth for tokens, typography, spacing, buttons
 - `config/client_profiles.yml` - client risk profiles.
 - `assets.yml` - optional asset metadata.
 - `src/optimization.py` - optimization logic (max-return; optional `objective_mode="risk_parity"` uses Spinu CCD with SLSQP fallback when per-asset bounds fail).
-- `src/portfolio_variants.py`, `src/risk_parity_spinu.py` - Equal-Weight / Risk-Parity / Minimum-Variance baseline builders (`run_equal_weight.py`, `run_risk_parity.py`, `run_minimum_variance.py`); RP weights via Spinu CCD on Ledoit-Wolf covariance with SLSQP emergency fallback; MV minimizes `0.5 w'Σw` with SLSQP + `Σw` gradient on PSD-repaired **Σ**, same box bounds as the policy optimizer when `young_etf_optimization_policy` / `covariance_shrinkage` align with `run_optimization.py`. Maximum Diversification constrained baseline (`run_maximum_diversification.py`) maximizes `(σ'w)/√(w'Σw)` on the same monthly **Σ** path and box bounds via SLSQP.
+- `src/portfolio_variants.py`, `src/risk_parity_spinu.py`, `src/hrp_weights.py` - Equal-Weight / Risk-Parity / HRP / Minimum-Variance baseline builders (`run_equal_weight.py`, `run_risk_parity.py`, `run_hierarchical_risk_parity.py`, `run_minimum_variance.py`); RP weights via Spinu CCD on Ledoit-Wolf covariance with SLSQP emergency fallback; **canonical HRP** via correlation-distance clustering and recursive bisection (no bounds, no projection); MV minimizes `0.5 w'Σw` with SLSQP + `Σw` gradient on PSD-repaired **Σ**, same box bounds as the policy optimizer when `young_etf_optimization_policy` / `covariance_shrinkage` align with `run_optimization.py`. Maximum Diversification constrained baseline (`run_maximum_diversification.py`) maximizes `(σ'w)/√(w'Σw)` on the same monthly **Σ** path and box bounds via SLSQP.
 - `src/config_schema.py` - config validation.
 - `src/data_loader.py`, `src/data_yf.py`, `src/fx.py`, `src/returns_frequency.py` - data, FX, return-calendar builders, risk-free resampling, and `frequency_disclosure` helpers.
 - `src/metrics_asset.py`, `src/metrics_portfolio.py`, `src/metrics_daily.py` - metrics (monthly base + daily helpers for regime diagnostics).

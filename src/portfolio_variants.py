@@ -16,6 +16,12 @@ and then evaluated by the existing metrics / stress-test / client-fit pipeline.
 ``(sigma' w) / sqrt(w' Sigma w)`` on monthly ``Sigma`` under the **same box bounds**
 as the policy optimizer; see ``build_maximum_diversification_constrained``.
 
+**Hierarchical Risk Parity (canonical)** builds long-only weights via correlation
+distance, hierarchical clustering, and recursive bisection on monthly ``Sigma`` shared
+with MinVar/MD via ``_mv_covariance_for_eligible``; **no** ``_build_bounds`` box and
+**no** optimizer projection—unconstrained baseline comparable to canonical Risk Parity;
+see ``build_hierarchical_risk_parity_baseline``.
+
 Three Minimum-Variance construction modes:
 
 - **minimum_variance_constrained** — **primary** project baseline for the lowest-volatility portfolio
@@ -47,6 +53,7 @@ import yaml
 from scipy.optimize import minimize
 
 from src.config_schema import PortfolioConfig
+from src.hrp_weights import hrp_long_only_weights
 from src.optimization import MIN_WEIGHT_DEFAULT, _build_bounds
 from src.risk_contrib import cov_matrix_monthly, rc_vol_window
 from src.risk_parity_spinu import repair_covariance_psd, spinu_ccd_equal_budget
@@ -61,6 +68,7 @@ BASELINE_MV_LABEL = "Minimum Variance Portfolio"
 BASELINE_MV_UNCAPPED_LABEL = "Minimum Variance (Uncapped Long-Only) Portfolio"
 BASELINE_MV_ADVANCED_LABEL = "Minimum Variance (Advanced Controls) Portfolio"
 BASELINE_MD_LABEL = "Maximum Diversification Portfolio"
+BASELINE_HRP_LABEL = "Hierarchical Risk Parity Portfolio"
 
 # Roles for reporting / metadata (which question each variant answers).
 MV_BASELINE_ROLE_PRIMARY_LOWEST_VOL_UNDER_CONSTRAINTS = (
@@ -75,6 +83,7 @@ OPTIMIZER_NAME_MINIMUM_VARIANCE_CONSTRAINED = "minimum_variance_constrained"
 OPTIMIZER_NAME_MINIMUM_VARIANCE_UNCAPPED = "minimum_variance_uncapped_long_only"
 OPTIMIZER_NAME_MINIMUM_VARIANCE_ADVANCED = "minimum_variance_advanced_controls"
 OPTIMIZER_NAME_MAXIMUM_DIVERSIFICATION_CONSTRAINED = "maximum_diversification_constrained"
+OPTIMIZER_NAME_HIERARCHICAL_RISK_PARITY = "hierarchical_risk_parity"
 
 MINIMUM_VARIANCE_SOLVER = "SLSQP"
 MINIMUM_VARIANCE_OBJECTIVE = "0.5 * w.T @ covariance @ w"
@@ -222,6 +231,33 @@ def maximum_diversification_baseline_metadata_export(diagnostics: Dict[str, obje
     """Structured fields for maximum-diversification ``baseline_weights_metadata.json``."""
     out: Dict[str, Any] = {}
     for k in MAXIMUM_DIVERSIFICATION_METADATA_EXPORT_KEYS:
+        if k in diagnostics:
+            out[k] = diagnostics[k]
+    return out
+
+
+HIERARCHICAL_RISK_PARITY_METADATA_EXPORT_KEYS = (
+    "optimizer_name",
+    "covariance_method",
+    "shrinkage_used",
+    "psd_repair_used",
+    "young_etf_dual_mode",
+    "eligible_universe",
+    "final_weights",
+    "portfolio_variance",
+    "annualized_volatility",
+    "hrp_linkage_method",
+    "hrp_linkage_fallback_from_ward",
+    "hrp_distance",
+    "hrp_seriation_indices",
+    "hrp_weights_sum",
+)
+
+
+def hierarchical_risk_parity_baseline_metadata_export(diagnostics: Dict[str, object]) -> Dict[str, Any]:
+    """Structured fields for HRP ``baseline_weights_metadata.json``."""
+    out: Dict[str, Any] = {}
+    for k in HIERARCHICAL_RISK_PARITY_METADATA_EXPORT_KEYS:
         if k in diagnostics:
             out[k] = diagnostics[k]
     return out
@@ -1624,6 +1660,114 @@ def build_maximum_diversification_constrained(
     return _finalize_md_weights(
         w_vec, cols, cfg, cov_np, bounds, res, fallback_used, diagnostics=diagnostics
     )
+
+
+def build_hierarchical_risk_parity_baseline(
+    cfg: PortfolioConfig,
+    monthly_returns: pd.DataFrame,
+    analysis_end: str,
+    window_months: int,
+) -> BaselineWeightsResult:
+    """
+    **hierarchical_risk_parity** (canonical baseline): cluster assets by correlation distance,
+    quasi-diagonalize monthly Σ, recursive bisection (inverse-variance between clusters).
+
+    Unconstrained diversification baseline comparable to Risk Parity: **long-only**, **sum(w)=1**,
+    **no** policy min/max box, **no** Young caps as optimization constraints, **no** SLSQP projection.
+    Uses the same monthly Σ estimation path as constrained MinVar / MaxDiv via
+    :func:`_mv_covariance_for_eligible` (Ledoit–Wolf/shrinkage and Young dual per config; PSD repair).
+    """
+    eligible, coverage = _eligible_universe_from_returns(
+        cfg, monthly_returns, analysis_end, window_months
+    )
+    diagnostics: Dict[str, object] = {
+        "universe_eligible": eligible,
+        "universe_coverage": coverage,
+        "optimizer_name": OPTIMIZER_NAME_HIERARCHICAL_RISK_PARITY,
+        "hrp_interpretation": (
+            "Pure HRP baseline: hierarchical clustering on correlation distance, recursive bisection. "
+            "No matrix inversion; no optimizer box projection. Comparable to canonical Risk Parity as "
+            "an unconstrained diversification reference."
+        ),
+    }
+
+    if len(eligible) < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_INFEASIBLE_UNIVERSE",
+            diagnostics={
+                **diagnostics,
+                "reason": "Fewer than 2 eligible assets for Hierarchical Risk Parity baseline",
+            },
+        )
+
+    cov_pack = _mv_covariance_for_eligible(
+        cfg, monthly_returns, analysis_end, window_months, eligible
+    )
+    if cov_pack is None:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_DATA",
+            diagnostics={
+                **diagnostics,
+                "reason": "Insufficient history for covariance after inner join",
+            },
+        )
+    cov_np, cols, covariance_method, shrinkage_used, psd_repaired, young_mode, _caps = cov_pack
+    diagnostics["covariance_method"] = covariance_method
+    diagnostics["shrinkage_used"] = bool(shrinkage_used)
+    diagnostics["psd_repair_used"] = bool(psd_repaired)
+    diagnostics["young_etf_dual_mode"] = young_mode
+
+    try:
+        w_arr, hrp_meta = hrp_long_only_weights(cov_np, prefer_ward=True)
+    except Exception as exc:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_NUMERICAL",
+            diagnostics={
+                **diagnostics,
+                "reason": f"HRP construction failed: {exc}",
+            },
+        )
+
+    if w_arr.size != len(cols) or not np.all(np.isfinite(w_arr)):
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_NUMERICAL",
+            diagnostics={**diagnostics, "reason": "HRP returned non-finite weights"},
+        )
+
+    w_vec = np.clip(np.asarray(w_arr, dtype=float), 0.0, None)
+    ssum = float(w_vec.sum())
+    if ssum <= 1e-18:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_NUMERICAL",
+            diagnostics={**diagnostics, "reason": "HRP weights sum to ~0"},
+        )
+    w_vec = w_vec / ssum
+
+    var_p = float(w_vec @ cov_np @ w_vec)
+    ann_vol = float(np.sqrt(max(var_p, 0.0) * 12.0))
+    weights: Dict[str, float] = {t: 0.0 for t in cfg.tickers}
+    for i, t in enumerate(cols):
+        weights[t] = float(w_vec[i])
+    w_nonzero = {t: float(weights[t]) for t in cols if weights[t] > 1e-14}
+    diagnostics.update(
+        {
+            "eligible_universe": list(cols),
+            "final_weights": dict(sorted(w_nonzero.items(), key=lambda x: (-x[1], x[0]))),
+            "portfolio_variance": var_p,
+            "annualized_volatility": ann_vol,
+            "hrp_linkage_method": hrp_meta.get("linkage_method"),
+            "hrp_linkage_fallback_from_ward": bool(hrp_meta.get("linkage_fallback_from_ward")),
+            "hrp_distance": hrp_meta.get("distance"),
+            "hrp_seriation_indices": hrp_meta.get("seriation_indices"),
+            "hrp_weights_sum": float(hrp_meta.get("weights_sum", np.sum(w_vec))),
+        }
+    )
+    return BaselineWeightsResult(weights=weights, status="OK", diagnostics=diagnostics)
 
 
 def build_minimum_variance_uncapped_long_only(
