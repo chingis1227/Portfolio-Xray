@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 """
-Robust Mean–Variance λ calibration: scan an internal λ grid, evaluate each candidate against
-config IPS targets (vol, MaxDD mandate, weight cap, optional synthetic loss / RC limits via YAML),
-then pick the lowest λ that satisfies the mandate (including borderline class), tie-break by highest
-10Y CAGR. Writes CSV + JSON summary + ``selected_portfolio/`` full report when a mandate-eligible λ exists.
+Robust Mean–Variance λ calibration: evaluate λ grids (**primary** 0.1–1.0 by default, then **extended**
+1.5–10.0 if needed—YAML ``robust_mv_lambda`` is **ignored**), score candidates against config IPS targets,
+pick the lowest feasible λ (borderline eligible), tie-break highest 10Y CAGR within each phase.
+Writes CSV + JSON summary + ``selected_portfolio/`` when builds succeed.
 When none qualifies, the summary JSON includes ``no_feasible_lambda_diagnostic`` (tested range,
 fallback λ, breached limits, generic causes, suggested actions) and logs a warning.
 
@@ -29,7 +29,7 @@ from src.config import (
     resolve_cash_and_rf,
     resolve_local_benchmarks,
 )
-from src.config_schema import ConfigValidationError
+from src.config_schema import ConfigValidationError, PortfolioConfig
 from src.data_loader import load_monthly_data_shared
 from src.metrics_asset import mandate_max_drawdown_full_history_check
 from src.portfolio_variants import (
@@ -39,21 +39,22 @@ from src.portfolio_variants import (
     robust_mean_variance_baseline_metadata_export,
 )
 from src.robust_mv_calibration import (
+    LAMBDA_GRID_EXTENDED,
+    LAMBDA_GRID_PRIMARY,
     build_no_feasible_lambda_diagnostic,
     classify_robust_mv_mandate,
     infer_binding_constraints,
     load_optional_robust_mv_calibration_block,
     max_top1_rc_synthetic,
     max_top3_rc_sum_synthetic,
-    pick_least_bad_lambda,
+    pick_best_feasible_lambda_row,
     read_es95_from_var_es_csv,
+    select_robust_mv_calibration_winner,
     synthetic_mandatory_loss_detail,
 )
 from src.risk_contrib import rc_vol_window
 from src.utils import logger, setup_logging
 from src.windows import slice_window
-
-DEFAULT_LAMBDA_GRID = (0.1, 0.2, 0.3, 0.5, 0.8, 1.0, 1.5, 2.0)
 
 
 def _lam_slug(lam: float) -> str:
@@ -74,19 +75,130 @@ def _finite_float(x) -> float | None:
         return None
 
 
-def _pick_winner_rows(rows: list[dict[str, object]]) -> dict[str, object] | None:
-    eligible = [
-        r
-        for r in rows
-        if r.get("build_status") in ("OK", "APPROXIMATE")
-        and r.get("mandate_classification") in ("pass", "borderline")
-    ]
-    if eligible:
-        eligible.sort(
-            key=lambda r: (float(r.get("robust_mv_lambda", 1e9)), -float(r.get("cagr_10y") or -1e9))
-        )
-        return eligible[0]
-    return pick_least_bad_lambda(rows)  # type: ignore[arg-type]
+def evaluate_calibration_lambda_row(
+    lam: float,
+    base_cfg: PortfolioConfig,
+    monthly_returns: pd.DataFrame,
+    analysis_end_str: str,
+    primary_window: int,
+    calibration_limits: dict,
+    enforce_syn: bool,
+    scratch_root: Path,
+) -> dict[str, object]:
+    """Single λ evaluation: Robust MV constrained build + mandate-aligned metrics/stress row."""
+    slug = _lam_slug(lam)
+    cfg_lam = replace(base_cfg, robust_mv_lambda=float(lam))
+    res = build_robust_mean_variance_constrained(
+        cfg_lam,
+        monthly_returns,
+        analysis_end_str,
+        primary_window,
+    )
+
+    base_row: dict[str, object] = {
+        "grid_phase": None,
+        "robust_mv_lambda": float(lam),
+        "build_status": res.status,
+        "covariance_method": (res.diagnostics or {}).get("covariance_method"),
+        "mu_shrinkage_method": (res.diagnostics or {}).get("mu_shrinkage_method"),
+        "solver_success": (res.diagnostics or {}).get("solver_success"),
+        "mandate_classification": None,
+        "mandate_failures": None,
+        "portfolio_valid": None,
+        "cagr_10y": None,
+        "vol_annual_10y": None,
+        "max_drawdown_10y": None,
+        "sharpe_10y": None,
+        "es_95_hist_10y": None,
+        "worst_scenario_loss_pct": None,
+        "failed_synthetic_scenarios": None,
+        "max_weight": None,
+        "hhi": None,
+        "effective_n": None,
+        "max_top1_rc_pct_synthetic": None,
+        "max_top3_rc_sum_pct_synthetic": None,
+        "slack_target_vol": None,
+        "slack_mandate_max_dd_hist": None,
+        "slack_max_single_weight": None,
+        "weights_compact": None,
+    }
+
+    if res.status not in ("OK", "APPROXIMATE"):
+        return base_row
+
+    scratch_final = scratch_root / f"lambda_{slug}"
+    scratch_csv = scratch_final / "results_csv"
+    scratch_csv.mkdir(parents=True, exist_ok=True)
+
+    run_ts = datetime.now().isoformat()
+    pm_summary, meta = run_portfolio_report_for_weights(
+        cfg_lam,
+        res.weights,
+        run_timestamp=run_ts,
+        output_dir_csv=scratch_csv,
+        output_dir_final=scratch_final,
+        backtest_mode_override=getattr(cfg_lam, "backtest_mode", "dynamic_nan_safe"),
+        no_cache=False,
+    )
+    stress = meta.get("stress_report") or {}
+    mandate_chk = mandate_max_drawdown_full_history_check(
+        monthly_returns,
+        res.weights,
+        abs(cfg_lam.target_max_drawdown_pct) if cfg_lam.target_max_drawdown_pct is not None else None,
+    )
+
+    cm = (res.diagnostics or {}).get("concentration_metrics") or {}
+    mx_w = float(res.diagnostics.get("max_weight") or 0.0)
+
+    eval_blob = classify_robust_mv_mandate(
+        portfolio_valid=meta.get("portfolio_valid"),
+        target_vol_annual=cfg_lam.target_vol_annual,
+        vol_annual_10y=_finite_float(pm_summary.get("vol_annual")) if pm_summary else None,
+        target_max_drawdown_pct=cfg_lam.target_max_drawdown_pct,
+        mandate_max_drawdown_realized=(
+            float(mandate_chk["max_drawdown_realized"])
+            if mandate_chk.get("max_drawdown_realized") is not None
+            else None
+        ),
+        max_single_security_weight_pct=cfg_lam.max_single_security_weight_pct,
+        weights=res.weights,
+        stress_report=stress,
+        calibration_limits=calibration_limits,
+        enforce_synthetic_vs_mandate_dd=enforce_syn,
+    )
+
+    es95 = read_es95_from_var_es_csv(scratch_csv / "var_es_10y.csv")
+
+    mx1 = max_top1_rc_synthetic(stress)
+    mx3 = max_top3_rc_sum_synthetic(stress)
+    _, syn_failed_list = synthetic_mandatory_loss_detail(stress)
+
+    base_row.update(
+        {
+            "mandate_classification": eval_blob["mandate_classification"],
+            "mandate_failures": ";".join(eval_blob["mandate_failures"]),
+            "portfolio_valid": meta.get("portfolio_valid"),
+            "cagr_10y": _json_safe(pm_summary.get("cagr") if pm_summary else None),
+            "vol_annual_10y": _json_safe(pm_summary.get("vol_annual") if pm_summary else None),
+            "max_drawdown_10y": _json_safe(pm_summary.get("max_drawdown") if pm_summary else None),
+            "sharpe_10y": _json_safe(pm_summary.get("sharpe") if pm_summary else None),
+            "es_95_hist_10y": es95,
+            "worst_scenario_loss_pct": _json_safe(stress.get("worst_scenario_loss_pct")),
+            "failed_synthetic_scenarios": ";".join(syn_failed_list),
+            "max_weight": mx_w,
+            "hhi": _json_safe(cm.get("hhi")),
+            "effective_n": _json_safe(cm.get("effective_n")),
+            "max_top1_rc_pct_synthetic": mx1,
+            "max_top3_rc_sum_pct_synthetic": mx3,
+            "slack_target_vol": eval_blob["slack"].get("target_vol"),
+            "slack_mandate_max_dd_hist": eval_blob["slack"].get("mandate_max_dd_hist"),
+            "slack_max_single_weight": eval_blob["slack"].get("max_single_asset_weight"),
+            "weights_compact": json.dumps(
+                {k: round(float(v), 6) for k, v in sorted(res.weights.items()) if float(v) > 1e-12}
+            ),
+        }
+    )
+    return base_row
 
 
 def parse_args() -> argparse.Namespace:
@@ -102,7 +214,10 @@ def parse_args() -> argparse.Namespace:
         "--lambda-grid",
         type=str,
         default=None,
-        help="Comma-separated λ grid (default: built-in grid). Example: 0.1,0.2,0.5",
+        help=(
+            "Comma-separated primary λ grid only (default: 0.1–1.0). "
+            "Extended grid 1.5–10 still runs automatically when primary has no feasible λ."
+        ),
     )
     p.add_argument(
         "--keep-scratch",
@@ -127,12 +242,12 @@ def main() -> None:
 
     if args.lambda_grid:
         try:
-            lam_grid = tuple(float(x.strip()) for x in args.lambda_grid.split(",") if x.strip())
+            primary_grid = tuple(float(x.strip()) for x in args.lambda_grid.split(",") if x.strip())
         except ValueError:
             logger.error("Invalid --lambda-grid")
             raise SystemExit(2)
     else:
-        lam_grid = DEFAULT_LAMBDA_GRID
+        primary_grid = LAMBDA_GRID_PRIMARY
 
     root = Path(args.output_dir).resolve() if args.output_dir else Path(__file__).resolve().parent / "analysis_robust_mv_lambda_calibration"
     root.mkdir(parents=True, exist_ok=True)
@@ -167,133 +282,74 @@ def main() -> None:
     enforce_syn = base_cfg.target_max_drawdown_pct is not None
 
     rows_out: list[dict[str, object]] = []
+    rows_pri: list[dict[str, object]] = []
+    rows_ext: list[dict[str, object]] = []
     run_started = datetime.now().isoformat()
 
-    for lam in lam_grid:
-        slug = _lam_slug(lam)
-        cfg_lam = replace(base_cfg, robust_mv_lambda=float(lam))
-        res = build_robust_mean_variance_constrained(
-            cfg_lam,
+    seen_lambda: set[float] = set()
+    primary_eval_order: list[float] = []
+
+    for lam in primary_grid:
+        lam_f = float(lam)
+        if lam_f in seen_lambda:
+            continue
+        seen_lambda.add(lam_f)
+        primary_eval_order.append(lam_f)
+        row = evaluate_calibration_lambda_row(
+            lam_f,
+            base_cfg,
             monthly_returns,
             analysis_end_str,
             primary_window,
+            calibration_limits,
+            enforce_syn,
+            scratch_root,
         )
+        row["grid_phase"] = "primary"
+        rows_pri.append(row)
+        rows_out.append(row)
 
-        base_row: dict[str, object] = {
-            "robust_mv_lambda": float(lam),
-            "build_status": res.status,
-            "covariance_method": (res.diagnostics or {}).get("covariance_method"),
-            "mu_shrinkage_method": (res.diagnostics or {}).get("mu_shrinkage_method"),
-            "solver_success": (res.diagnostics or {}).get("solver_success"),
-            "mandate_classification": None,
-            "mandate_failures": None,
-            "portfolio_valid": None,
-            "cagr_10y": None,
-            "vol_annual_10y": None,
-            "max_drawdown_10y": None,
-            "sharpe_10y": None,
-            "es_95_hist_10y": None,
-            "worst_scenario_loss_pct": None,
-            "failed_synthetic_scenarios": None,
-            "max_weight": None,
-            "hhi": None,
-            "effective_n": None,
-            "max_top1_rc_pct_synthetic": None,
-            "max_top3_rc_sum_pct_synthetic": None,
-            "slack_target_vol": None,
-            "slack_mandate_max_dd_hist": None,
-            "slack_max_single_weight": None,
-            "weights_compact": None,
-        }
+    extended_eval_order: list[float] = []
+    if pick_best_feasible_lambda_row(rows_pri) is None:
+        for lam in LAMBDA_GRID_EXTENDED:
+            lam_f = float(lam)
+            if lam_f in seen_lambda:
+                continue
+            seen_lambda.add(lam_f)
+            extended_eval_order.append(lam_f)
+            row = evaluate_calibration_lambda_row(
+                lam_f,
+                base_cfg,
+                monthly_returns,
+                analysis_end_str,
+                primary_window,
+                calibration_limits,
+                enforce_syn,
+                scratch_root,
+            )
+            row["grid_phase"] = "extended"
+            rows_ext.append(row)
+            rows_out.append(row)
 
-        if res.status not in ("OK", "APPROXIMATE"):
-            rows_out.append(base_row)
-            continue
-
-        scratch_final = scratch_root / f"lambda_{slug}"
-        scratch_csv = scratch_final / "results_csv"
-        scratch_csv.mkdir(parents=True, exist_ok=True)
-
-        run_ts = datetime.now().isoformat()
-        pm_summary, meta = run_portfolio_report_for_weights(
-            cfg_lam,
-            res.weights,
-            run_timestamp=run_ts,
-            output_dir_csv=scratch_csv,
-            output_dir_final=scratch_final,
-            backtest_mode_override=getattr(cfg_lam, "backtest_mode", "dynamic_nan_safe"),
-            no_cache=False,
-        )
-        stress = meta.get("stress_report") or {}
-        mandate_chk = mandate_max_drawdown_full_history_check(
-            monthly_returns,
-            res.weights,
-            abs(cfg_lam.target_max_drawdown_pct) if cfg_lam.target_max_drawdown_pct is not None else None,
-        )
-
-        cm = (res.diagnostics or {}).get("concentration_metrics") or {}
-        mx_w = float(res.diagnostics.get("max_weight") or 0.0)
-
-        eval_blob = classify_robust_mv_mandate(
-            portfolio_valid=meta.get("portfolio_valid"),
-            target_vol_annual=cfg_lam.target_vol_annual,
-            vol_annual_10y=_finite_float(pm_summary.get("vol_annual")) if pm_summary else None,
-            target_max_drawdown_pct=cfg_lam.target_max_drawdown_pct,
-            mandate_max_drawdown_realized=(
-                float(mandate_chk["max_drawdown_realized"])
-                if mandate_chk.get("max_drawdown_realized") is not None
-                else None
-            ),
-            max_single_security_weight_pct=cfg_lam.max_single_security_weight_pct,
-            weights=res.weights,
-            stress_report=stress,
-            calibration_limits=calibration_limits,
-            enforce_synthetic_vs_mandate_dd=enforce_syn,
-        )
-
-        es95 = read_es95_from_var_es_csv(scratch_csv / "var_es_10y.csv")
-
-        mx1 = max_top1_rc_synthetic(stress)
-        mx3 = max_top3_rc_sum_synthetic(stress)
-        _, syn_failed_list = synthetic_mandatory_loss_detail(stress)
-
-        base_row.update(
-            {
-                "mandate_classification": eval_blob["mandate_classification"],
-                "mandate_failures": ";".join(eval_blob["mandate_failures"]),
-                "portfolio_valid": meta.get("portfolio_valid"),
-                "cagr_10y": _json_safe(pm_summary.get("cagr") if pm_summary else None),
-                "vol_annual_10y": _json_safe(pm_summary.get("vol_annual") if pm_summary else None),
-                "max_drawdown_10y": _json_safe(pm_summary.get("max_drawdown") if pm_summary else None),
-                "sharpe_10y": _json_safe(pm_summary.get("sharpe") if pm_summary else None),
-                "es_95_hist_10y": es95,
-                "worst_scenario_loss_pct": _json_safe(stress.get("worst_scenario_loss_pct")),
-                "failed_synthetic_scenarios": ";".join(syn_failed_list),
-                "max_weight": mx_w,
-                "hhi": _json_safe(cm.get("hhi")),
-                "effective_n": _json_safe(cm.get("effective_n")),
-                "max_top1_rc_pct_synthetic": mx1,
-                "max_top3_rc_sum_pct_synthetic": mx3,
-                "slack_target_vol": eval_blob["slack"].get("target_vol"),
-                "slack_mandate_max_dd_hist": eval_blob["slack"].get("mandate_max_dd_hist"),
-                "slack_max_single_weight": eval_blob["slack"].get("max_single_asset_weight"),
-                "weights_compact": json.dumps(
-                    {k: round(float(v), 6) for k, v in sorted(res.weights.items()) if float(v) > 1e-12}
-                ),
-            }
-        )
-        rows_out.append(base_row)
-
-    winner = _pick_winner_rows(rows_out)
-    feasible = bool(
-        winner is not None and winner.get("mandate_classification") in ("pass", "borderline")
+    pick_pkg = select_robust_mv_calibration_winner(
+        primary_rows=rows_pri,
+        extended_rows=rows_ext,
+        all_rows=rows_out,
+        primary_grid=tuple(primary_eval_order),
+        extended_grid_evaluated=tuple(extended_eval_order),
     )
+    winner = pick_pkg["winner"]
+    feasible = bool(pick_pkg["feasible_lambda_found"])
+
+    lambda_all_evaluated = primary_eval_order + extended_eval_order
 
     summary = {
         "generated_at": run_started,
         "analysis_end": analysis_end_str,
         "primary_window_months": primary_window,
-        "lambda_grid": list(lam_grid),
+        "primary_grid_tested": list(primary_eval_order),
+        "extended_grid_tested": list(extended_eval_order),
+        "lambda_grid": lambda_all_evaluated,
         "mandate_targets": {
             "target_vol_annual": base_cfg.target_vol_annual,
             "target_max_drawdown_pct": base_cfg.target_max_drawdown_pct,
@@ -303,20 +359,37 @@ def main() -> None:
         "robust_mv_calibration_yaml": calibration_limits or {},
         "enforce_synthetic_loss_vs_mandate_dd": enforce_syn,
         "feasible_lambda_found": feasible,
+        "feasible_found_in_primary_grid": pick_pkg["feasible_found_in_primary_grid"],
+        "feasible_found_in_extended_grid": pick_pkg["feasible_found_in_extended_grid"],
+        "selected_lambda_source": pick_pkg["selected_lambda_source"],
+        "failed_constraints_by_grid": pick_pkg["failed_constraints_by_grid"],
+        "extended_search_explanation": pick_pkg["extended_search_explanation"],
         "selected_lambda": winner.get("robust_mv_lambda") if winner else None,
         "selected_mandate_classification": winner.get("mandate_classification") if winner else None,
         "rows": rows_out,
     }
 
+    base_rule = (
+        "Lowest λ among mandate-eligible (pass or borderline), tie-break highest 10Y CAGR "
+        "within the phase that produced the selection."
+    )
     if feasible:
-        summary["selection_note"] = (
-            "Lowest λ among mandate-eligible (pass or borderline), tie-break highest 10Y CAGR."
-        )
+        src = pick_pkg["selected_lambda_source"]
+        if src == "extended_grid":
+            exp = pick_pkg.get("extended_search_explanation") or ""
+            summary["selection_note"] = f"{exp} {base_rule}".strip()
+        elif src == "primary_grid":
+            summary["selection_note"] = (
+                "Feasible λ found in the primary grid (extended search not required). " + base_rule
+            )
+        else:
+            summary["selection_note"] = base_rule
     else:
-        diag = build_no_feasible_lambda_diagnostic(lambda_grid=list(lam_grid), winner=winner)
+        diag = build_no_feasible_lambda_diagnostic(lambda_grid=lambda_all_evaluated, winner=winner)
         summary["no_feasible_lambda_diagnostic"] = diag
-        summary["selection_note"] = diag["narrative"]
-        logger.warning("Robust MV λ calibration: %s", diag["narrative"])
+        expl = pick_pkg.get("extended_search_explanation") or ""
+        summary["selection_note"] = f"{expl} {diag['narrative']}".strip()
+        logger.warning("Robust MV λ calibration: %s", summary["selection_note"])
 
     if winner and winner.get("build_status") in ("OK", "APPROXIMATE"):
         lam_sel = float(winner["robust_mv_lambda"])

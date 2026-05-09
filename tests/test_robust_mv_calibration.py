@@ -5,7 +5,11 @@ from src.robust_mv_calibration import (
     classify_robust_mv_mandate,
     pick_least_bad_lambda,
     synthetic_mandatory_loss_detail,
+    LAMBDA_GRID_EXTENDED,
+    LAMBDA_GRID_PRIMARY,
+    select_robust_mv_calibration_winner,
 )
+from src.robust_mv_lambda_resolve import resolve_robust_mv_lambda_for_baseline
 
 
 def _stress_rows_all_pass() -> dict:
@@ -132,3 +136,90 @@ def test_no_feasible_lambda_diagnostic_when_no_winner_row():
     d = build_no_feasible_lambda_diagnostic(lambda_grid=(0.5, 1.5), winner=None)
     assert d["best_available_lambda"] is None
     assert d["lambda_range_tested"]["min"] == 0.5
+
+
+def test_lambda_grid_defaults():
+    assert LAMBDA_GRID_PRIMARY == (0.1, 0.2, 0.3, 0.5, 0.8, 1.0)
+    assert LAMBDA_GRID_EXTENDED == (1.5, 2.0, 3.0, 5.0, 7.5, 10.0)
+
+
+def test_select_calibration_winner_prefers_primary_feasible_over_extended():
+    pri = [
+        {"robust_mv_lambda": 1.0, "build_status": "OK", "mandate_classification": "fail", "mandate_failures": "x", "cagr_10y": 0.2},
+        {"robust_mv_lambda": 0.5, "build_status": "OK", "mandate_classification": "pass", "mandate_failures": "", "cagr_10y": 0.05},
+    ]
+    ext = [
+        {"robust_mv_lambda": 5.0, "build_status": "OK", "mandate_classification": "pass", "mandate_failures": "", "cagr_10y": 0.99},
+    ]
+    pkg = select_robust_mv_calibration_winner(
+        primary_rows=pri,
+        extended_rows=ext,
+        all_rows=pri + ext,
+        primary_grid=(1.0, 0.5),
+        extended_grid_evaluated=(5.0,),
+    )
+    assert pkg["selected_lambda_source"] == "primary_grid"
+    assert pkg["feasible_lambda_found"] is True
+    assert pkg["winner"]["robust_mv_lambda"] == 0.5
+
+
+def test_select_calibration_winner_uses_extended_when_primary_infeasible():
+    pri = [
+        {"robust_mv_lambda": 1.0, "build_status": "OK", "mandate_classification": "fail", "mandate_failures": "target_vol_annual", "cagr_10y": 0.1},
+    ]
+    ext = [
+        {"robust_mv_lambda": 5.0, "build_status": "OK", "mandate_classification": "borderline", "mandate_failures": "", "cagr_10y": 0.02},
+    ]
+    pkg = select_robust_mv_calibration_winner(
+        primary_rows=pri,
+        extended_rows=ext,
+        all_rows=pri + ext,
+        primary_grid=(1.0,),
+        extended_grid_evaluated=(5.0,),
+    )
+    assert pkg["selected_lambda_source"] == "extended_grid"
+    assert pkg["feasible_lambda_found"] is True
+    assert pkg["winner"]["robust_mv_lambda"] == 5.0
+    assert pkg["extended_search_explanation"] and "primary grid" in pkg["extended_search_explanation"]
+    assert "target_vol_annual" in pkg["failed_constraints_by_grid"]["primary"]
+
+
+def test_select_calibration_winner_least_bad_when_no_feasible_through_10():
+    pri = [
+        {"robust_mv_lambda": 1.0, "build_status": "OK", "mandate_classification": "fail", "mandate_failures": "a;b", "slack_target_vol": -0.02, "cagr_10y": 0.01},
+    ]
+    ext = [
+        {"robust_mv_lambda": 10.0, "build_status": "OK", "mandate_classification": "fail", "mandate_failures": "a", "slack_target_vol": -0.01, "cagr_10y": 0.01},
+    ]
+    all_rows = pri + ext
+    pkg = select_robust_mv_calibration_winner(
+        primary_rows=pri,
+        extended_rows=ext,
+        all_rows=all_rows,
+        primary_grid=(1.0,),
+        extended_grid_evaluated=(10.0,),
+    )
+    assert pkg["selected_lambda_source"] == "least_bad"
+    assert pkg["feasible_lambda_found"] is False
+    assert pkg["winner"]["robust_mv_lambda"] == 10.0
+
+
+def test_resolve_robust_mv_lambda_cli_overrides_calibration_file(tmp_path):
+    cal = tmp_path / "analysis_robust_mv_lambda_calibration"
+    cal.mkdir(parents=True)
+    (cal / "selected_lambda.txt").write_text("0.25", encoding="utf-8")
+    lam, src = resolve_robust_mv_lambda_for_baseline(project_root=tmp_path, cli_lambda=7.0)
+    assert lam == 7.0 and src == "cli_override"
+
+
+def test_resolve_robust_mv_lambda_reads_calibration_file(tmp_path):
+    cal = tmp_path / "analysis_robust_mv_lambda_calibration"
+    cal.mkdir(parents=True)
+    (cal / "selected_lambda.txt").write_text("0.42", encoding="utf-8")
+    lam, src = resolve_robust_mv_lambda_for_baseline(project_root=tmp_path, cli_lambda=None)
+    assert abs(float(lam) - 0.42) < 1e-9 and src == "calibration_file"
+
+
+def test_resolve_robust_mv_lambda_missing_file_returns_none(tmp_path):
+    lam, src = resolve_robust_mv_lambda_for_baseline(project_root=tmp_path, cli_lambda=None)
+    assert lam is None and src == "none"

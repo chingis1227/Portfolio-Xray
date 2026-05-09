@@ -30,7 +30,7 @@ def _minimal_cfg(
     *,
     min_w: float | None = None,
     max_w: float | None = None,
-    lam: float = 0.0,
+    lam: float | None = 0.0,
     cov_method: str = "ledoit_wolf",
     young_enabled: bool = False,
 ) -> PortfolioConfig:
@@ -69,7 +69,7 @@ def _minimal_cfg(
         covariance_shrinkage=False,
         minimum_variance_turnover_lambda=0.0,
         young_etf_optimization_policy={"enabled": young_enabled},
-        robust_mv_lambda=float(lam),
+        robust_mv_lambda=(None if lam is None else float(lam)),
         robust_mv_covariance_method=cov_method,
         robust_mv_mu_shrinkage_method="james_stein",
     )
@@ -149,6 +149,24 @@ def test_uncapped_weights_sum_one_long_only_lambda_zero_max_mu() -> None:
     sm = diag["shrunk_mu"]
     best = max(sm, key=lambda k: sm[k])
     assert res.weights[best] >= 0.5
+
+
+def test_uncapped_fails_config_when_robust_mv_lambda_unset() -> None:
+    dates = pd.date_range("2017-01-31", periods=100, freq="ME")
+    n = len(dates)
+    returns = pd.DataFrame(
+        {
+            "LOW": np.full(n, -0.001),
+            "MID": np.full(n, 0.0005),
+            "HIGH": np.full(n, 0.004),
+        },
+        index=dates,
+    )
+    cfg = _minimal_cfg(["LOW", "MID", "HIGH"], lam=None)
+    end = dates[-1].strftime("%Y-%m-%d")
+    res = build_robust_mean_variance_uncapped(cfg, returns, end, 100)
+    assert res.status == "FAIL_CONFIG"
+    assert res.diagnostics.get("reason") and "robust_mv_lambda" in str(res.diagnostics["reason"])
 
 
 def test_lambda_increases_variance_penalty_reduces_or_equal_variance() -> None:

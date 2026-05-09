@@ -101,10 +101,13 @@ class PortfolioConfig:
     strict_stress_gate: bool = False
     # Minimum CVaR baselines: confidence level gamma in (0,1) for Rockafellar–Uryasev LP (default 0.95).
     minimum_cvar_confidence_level: float = 0.95
-    # Robust Mean–Variance baselines: James–Stein mu; LW/OAS Sigma; λ>=0 (0 = maximize shrunk mu only).
-    robust_mv_lambda: float = 0.0
+    # Robust Mean–Variance baselines: James–Stein mu; LW/OAS Sigma.
+    # λ is not set via YAML for baseline scripts — resolve via calibration artifacts / CLI / programmatic replace().
+    robust_mv_lambda: float | None = None
     robust_mv_covariance_method: str = "ledoit_wolf"
     robust_mv_mu_shrinkage_method: str = "james_stein"
+    # Optional: risk budgeting baselines (class SLSQP; per-asset Spinu). See run_risk_budget_*.py.
+    risk_budgeting: dict[str, Any] = field(default_factory=dict)
     # When True, use Ledoit-Wolf shrinkage for covariance in optimization/RC (more stable weights)
     covariance_shrinkage: bool = False
     # Dual covariance + caps for short-history assets in optimization (optional merge in validate)
@@ -155,6 +158,7 @@ class PortfolioConfig:
             "robust_mv_lambda": self.robust_mv_lambda,
             "robust_mv_covariance_method": self.robust_mv_covariance_method,
             "robust_mv_mu_shrinkage_method": self.robust_mv_mu_shrinkage_method,
+            "risk_budgeting": dict(self.risk_budgeting or {}),
             "windows_months": self.windows_months,
             "returns_frequency": self.returns_frequency,
             "coverage_threshold": self.coverage_threshold,
@@ -246,6 +250,13 @@ DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY = {
     "candidate_alpha_at_eligible": 1.0,
     "max_weight_candidate_or_new_pct": 0.02,
     "aggregate_candidate_new_warn_pct": 0.10,
+}
+DEFAULT_RISK_BUDGETING = {
+    "preset": "balanced",
+    "targets": {},
+    "missing_taxonomy": "exclude",
+    "drop_empty_buckets": False,
+    "asset_targets": {},
 }
 # Weights are optional: produced by optimization and exported (see Portfolio Construction Policy).
 
@@ -371,9 +382,7 @@ def _inject_optional_defaults(cfg: dict[str, Any]) -> None:
         cfg["returns_frequency"] = "monthly"
     else:
         cfg["returns_frequency"] = str(raw_rf).strip().lower()
-    # Robust Mean–Variance baseline defaults
-    if cfg.get("robust_mv_lambda") is None:
-        cfg["robust_mv_lambda"] = 0.0
+    # Robust Mean–Variance baseline defaults (λ omitted unless explicitly present in YAML)
     if not cfg.get("robust_mv_covariance_method"):
         cfg["robust_mv_covariance_method"] = "ledoit_wolf"
     if not cfg.get("robust_mv_mu_shrinkage_method"):
@@ -390,6 +399,12 @@ def _inject_optional_defaults(cfg: dict[str, Any]) -> None:
             cfg["backtest_mode"] = "dynamic_nan_safe"
         elif raw.strip().lower() not in ("dynamic_nan_safe", "simple"):
             cfg["backtest_mode"] = "dynamic_nan_safe"
+    # Risk budgeting baseline defaults
+    rb = cfg.get("risk_budgeting")
+    rb_base = dict(DEFAULT_RISK_BUDGETING)
+    if isinstance(rb, dict):
+        rb_base.update({k: v for k, v in rb.items() if v is not None})
+    cfg["risk_budgeting"] = rb_base
 
 
 def _parse_percent_value(val: Any, field_name: str) -> float | None:
@@ -702,18 +717,21 @@ def _validate_optimization_windows(cfg: dict[str, Any]) -> None:
 
 def _validate_robust_mv_params(cfg: dict[str, Any]) -> None:
     """Validate Robust Mean–Variance baseline config."""
-    lam_raw = cfg.get("robust_mv_lambda", 0.0)
-    try:
-        lam = float(lam_raw)
-    except (TypeError, ValueError) as e:
-        raise ConfigValidationError(
-            f"Config field 'robust_mv_lambda' must be numeric, got {lam_raw!r}"
-        ) from e
-    if lam < 0:
-        raise ConfigValidationError(
-            f"Config field 'robust_mv_lambda' must be non-negative, got {lam}"
-        )
-    cfg["robust_mv_lambda"] = lam
+    if cfg.get("robust_mv_lambda") is None:
+        cfg["robust_mv_lambda"] = None
+    else:
+        lam_raw = cfg["robust_mv_lambda"]
+        try:
+            lam = float(lam_raw)
+        except (TypeError, ValueError) as e:
+            raise ConfigValidationError(
+                f"Config field 'robust_mv_lambda' must be numeric, got {lam_raw!r}"
+            ) from e
+        if lam < 0:
+            raise ConfigValidationError(
+                f"Config field 'robust_mv_lambda' must be non-negative, got {lam}"
+            )
+        cfg["robust_mv_lambda"] = lam
 
     cov_m = cfg.get("robust_mv_covariance_method", "ledoit_wolf")
     if cov_m is not None:
@@ -750,6 +768,64 @@ def _validate_backtest_mode(cfg: dict[str, Any]) -> None:
         raise ConfigValidationError(
             f"Config field 'backtest_mode' must be one of {BACKTEST_MODES}, got {val!r}"
         )
+
+
+def _validate_risk_budgeting(cfg: dict[str, Any]) -> None:
+    """Validate optional risk_budgeting block (baselines only)."""
+    rb = cfg.get("risk_budgeting")
+    if rb is None:
+        return
+    if not isinstance(rb, dict):
+        raise ConfigValidationError(
+            f"Config field 'risk_budgeting' must be a mapping, got {type(rb).__name__}"
+        )
+    mt = str(rb.get("missing_taxonomy", "exclude")).strip().lower()
+    if mt not in ("exclude", "unknown"):
+        raise ConfigValidationError(
+            "risk_budgeting.missing_taxonomy must be 'exclude' or 'unknown', "
+            f"got {rb.get('missing_taxonomy')!r}"
+        )
+    rb["missing_taxonomy"] = mt
+    deb = rb.get("drop_empty_buckets", False)
+    if deb is not None and not isinstance(deb, bool):
+        raise ConfigValidationError(
+            f"risk_budgeting.drop_empty_buckets must be boolean, got {type(deb).__name__}"
+        )
+    for key in ("targets", "asset_targets"):
+        v = rb.get(key)
+        if v is not None and not isinstance(v, dict):
+            raise ConfigValidationError(
+                f"risk_budgeting.{key} must be a mapping when set, got {type(v).__name__}"
+            )
+    tickers = {str(t).strip() for t in (cfg.get("tickers") or []) if isinstance(t, str)}
+    try:
+        from src.risk_budgeting import normalize_budget_map
+        from src.risk_budgeting_presets import RISK_BUDGET_BUCKET_KEYS
+    except Exception as e:  # pragma: no cover
+        raise ConfigValidationError(f"risk_budgeting validation import failed: {e}") from e
+
+    t = rb.get("targets")
+    if isinstance(t, dict) and len(t) > 0:
+        try:
+            normalize_budget_map(
+                {str(k): v for k, v in t.items()},
+                allowed_keys=set(RISK_BUDGET_BUCKET_KEYS),
+            )
+        except ValueError as e:
+            raise ConfigValidationError(str(e)) from e
+
+    at = rb.get("asset_targets")
+    if isinstance(at, dict) and len(at) > 0:
+        keys = {str(k).strip() for k in at}
+        if not keys <= tickers:
+            raise ConfigValidationError(
+                f"risk_budgeting.asset_targets contains tickers not in config tickers: "
+                f"{sorted(keys - tickers)}"
+            )
+        try:
+            normalize_budget_map({str(k): v for k, v in at.items()}, allowed_keys=None)
+        except ValueError as e:
+            raise ConfigValidationError(str(e)) from e
 
 
 def _validate_returns_frequency(cfg: dict[str, Any]) -> None:
@@ -852,6 +928,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
     _validate_backtest_mode(cfg)
     _validate_returns_frequency(cfg)
     _validate_robust_mv_params(cfg)
+    _validate_risk_budgeting(cfg)
     _validate_robustness_policy(cfg)
     _validate_optimization_windows(cfg)
 
@@ -903,9 +980,14 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
         covariance_shrinkage=bool(cfg.get("covariance_shrinkage", False)),
         minimum_cvar_confidence_level=float(mc_val),
         young_etf_optimization_policy=dict(cfg.get("young_etf_optimization_policy") or DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY),
-        robust_mv_lambda=float(cfg.get("robust_mv_lambda", 0.0)),
+        robust_mv_lambda=(
+            None
+            if cfg.get("robust_mv_lambda") is None
+            else float(cfg["robust_mv_lambda"])
+        ),
         robust_mv_covariance_method=str(cfg.get("robust_mv_covariance_method", "ledoit_wolf")),
         robust_mv_mu_shrinkage_method=str(cfg.get("robust_mv_mu_shrinkage_method", "james_stein")),
+        risk_budgeting=dict(cfg.get("risk_budgeting") or DEFAULT_RISK_BUDGETING),
         liquidity_floor_pct=_parse_float_optional(cfg.get("liquidity_floor_pct")),
         windows_months=list(cfg["windows_months"]),
         returns_frequency=str(cfg.get("returns_frequency", "monthly")).strip().lower(),

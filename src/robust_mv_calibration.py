@@ -26,6 +26,10 @@ MANDATORY_SYNTHETIC_SCENARIO_IDS: frozenset[str] = frozenset(
 
 MandateClass = Literal["pass", "fail", "borderline"]
 
+# Default λ grids for ``run_robust_mv_lambda_calibration.py`` (mandate scoring only; not read from config).
+LAMBDA_GRID_PRIMARY: tuple[float, ...] = (0.1, 0.2, 0.3, 0.5, 0.8, 1.0)
+LAMBDA_GRID_EXTENDED: tuple[float, ...] = (1.5, 2.0, 3.0, 5.0, 7.5, 10.0)
+
 # Human-readable mandate constraint labels for calibration summaries (no ticker-level detail).
 MANDATE_FAILURE_LABELS: dict[str, str] = {
     "mandate_max_drawdown_full_history": "Mandate maximum drawdown (full historical backtest)",
@@ -402,6 +406,106 @@ def pick_least_bad_lambda(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
 
     usable.sort(key=rank_key)
     return usable[0]
+
+
+def pick_best_feasible_lambda_row(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """
+    Lowest λ among mandate-eligible builds (pass / borderline), tie-break highest 10Y CAGR.
+    """
+    eligible = [
+        r
+        for r in rows
+        if r.get("build_status") in ("OK", "APPROXIMATE")
+        and r.get("mandate_classification") in ("pass", "borderline")
+    ]
+    if not eligible:
+        return None
+    eligible.sort(
+        key=lambda r: (float(r.get("robust_mv_lambda", 1e9)), -float(r.get("cagr_10y") or -1e9))
+    )
+    return eligible[0]
+
+
+def failure_codes_union_from_rows(rows: list[dict[str, Any]]) -> list[str]:
+    """Sorted union of mandate_failure tokens across rows (build diagnostics string or list)."""
+    codes: set[str] = set()
+    for r in rows:
+        mf = r.get("mandate_failures")
+        if mf is None:
+            continue
+        if isinstance(mf, str):
+            codes.update(x.strip() for x in mf.split(";") if x.strip())
+        elif isinstance(mf, list):
+            codes.update(str(x).strip() for x in mf if str(x).strip())
+    return sorted(codes)
+
+
+def select_robust_mv_calibration_winner(
+    *,
+    primary_rows: list[dict[str, Any]],
+    extended_rows: list[dict[str, Any]],
+    all_rows: list[dict[str, Any]],
+    primary_grid: tuple[float, ...],
+    extended_grid_evaluated: tuple[float, ...],
+) -> dict[str, Any]:
+    """
+    Choose calibration outcome: prefer primary feasible λ, else extended, else least-bad fallback.
+
+    Returns keys used by ``robust_mv_lambda_calibration_summary.json``.
+    """
+    win_pri = pick_best_feasible_lambda_row(primary_rows)
+    win_ext = pick_best_feasible_lambda_row(extended_rows)
+    feasible_primary = win_pri is not None
+    feasible_extended = win_ext is not None
+
+    pg_sorted = sorted(primary_grid) if primary_grid else []
+    if len(pg_sorted) >= 2:
+        pg_span = f"{pg_sorted[0]:g}–{pg_sorted[-1]:g}"
+    elif len(pg_sorted) == 1:
+        pg_span = f"{pg_sorted[0]:g}"
+    else:
+        pg_span = "none"
+
+    failed_primary = failure_codes_union_from_rows(primary_rows)
+    failed_extended = failure_codes_union_from_rows(extended_rows)
+
+    if feasible_primary:
+        winner = win_pri
+        source = "primary_grid"
+        feasible_found = True
+        explanation = None
+    elif feasible_extended:
+        winner = win_ext
+        source = "extended_grid"
+        feasible_found = True
+        lam_v = float(winner["robust_mv_lambda"])
+        ext_hi = max(extended_grid_evaluated) if extended_grid_evaluated else lam_v
+        explanation = (
+            f"No feasible λ was found in the primary grid ({pg_span}). "
+            f"The search was extended up to {ext_hi:g}, where λ = {lam_v:g} satisfied the mandate."
+        )
+    else:
+        winner = pick_least_bad_lambda(all_rows)
+        source = "least_bad"
+        feasible_found = False
+        ext_hi = max(extended_grid_evaluated) if extended_grid_evaluated else 10.0
+        explanation = (
+            f"No feasible λ was found in the primary grid ({pg_span}) or extended grid "
+            f"(up to {ext_hi:g}); returning least-bad candidate."
+        )
+
+    return {
+        "winner": winner,
+        "feasible_lambda_found": feasible_found,
+        "feasible_found_in_primary_grid": feasible_primary,
+        "feasible_found_in_extended_grid": feasible_extended,
+        "selected_lambda_source": source,
+        "failed_constraints_by_grid": {
+            "primary": failed_primary,
+            "extended": failed_extended,
+        },
+        "extended_search_explanation": explanation,
+    }
 
 
 def infer_binding_constraints(evaluation: dict[str, Any]) -> list[str]:

@@ -9,7 +9,9 @@ Outputs under ``robust mean variance constrained portfolio/``.
 """
 
 from pathlib import Path
+import argparse
 import json
+from dataclasses import replace
 from datetime import datetime
 
 from src.config import (
@@ -26,19 +28,51 @@ from src.portfolio_variants import (
     export_baseline_weights_txt,
     robust_mean_variance_baseline_metadata_export,
 )
+from src.robust_mv_lambda_resolve import resolve_robust_mv_lambda_for_baseline
 from src.utils import setup_logging, logger
 from src.risk_contrib import rc_vol_window
 from src.windows import slice_window
 from run_report import run_portfolio_report_for_weights
 
+_SCRIPT_ROOT = Path(__file__).resolve().parent
+
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Robust Mean–Variance constrained baseline (policy box bounds).")
+    p.add_argument("--config", type=str, default=None, help="Path to config.yml (default: project root).")
+    p.add_argument(
+        "--robust-mv-lambda",
+        type=float,
+        default=None,
+        dest="robust_mv_lambda",
+        help="Override λ (default: read analysis_robust_mv_lambda_calibration/selected_lambda.txt).",
+    )
+    return p.parse_args()
+
 
 def main() -> None:
     setup_logging()
+    args = parse_args()
+    config_path = Path(args.config).resolve() if args.config else _SCRIPT_ROOT / "config.yml"
+
     try:
-        cfg = load_validated_config()
+        base_cfg = load_validated_config(config_path)
     except ConfigValidationError as e:
         logger.error("Configuration validation failed: %s", e)
         raise SystemExit(1)
+
+    lam_resolved, lam_src = resolve_robust_mv_lambda_for_baseline(
+        project_root=_SCRIPT_ROOT,
+        cli_lambda=args.robust_mv_lambda,
+    )
+    if lam_resolved is None:
+        logger.error(
+            "Robust MV λ not resolved: run `python run_robust_mv_lambda_calibration.py` "
+            "or pass `--robust-mv-lambda`."
+        )
+        raise SystemExit(2)
+    cfg = replace(base_cfg, robust_mv_lambda=float(lam_resolved))
+    logger.info("Robust MV λ=%s (resolution=%s)", lam_resolved, lam_src)
 
     assets_meta = load_assets_metadata()
     cash_proxy_ticker, rf_source = resolve_cash_and_rf(cfg)
@@ -110,6 +144,7 @@ def main() -> None:
             "status": result.status,
             "reason": result.diagnostics.get("reason"),
             "robust_mv_metadata": meta_export,
+            "robust_mv_lambda_resolution": lam_src,
         }
         with open(out_dir / "summary.json", "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2, ensure_ascii=False)
@@ -140,6 +175,7 @@ def main() -> None:
         "portfolio_type": BASELINE_ROBUST_MV_CONSTRAINED_LABEL,
         "status": result.status,
         "robust_mv_metadata": meta_export,
+        "robust_mv_lambda_resolution": lam_src,
         "metrics_10y": pm_summary,
         "stress_status": stress_report.get("status"),
         "stress_fail_reason": stress_report.get("fail_reason_code")

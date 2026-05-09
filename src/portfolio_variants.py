@@ -65,6 +65,17 @@ from src.config_schema import PortfolioConfig
 from src.hrp_weights import hrp_long_only_weights
 from src.optimization import MIN_WEIGHT_DEFAULT, _build_bounds
 from src.risk_contrib import cov_matrix_monthly, rc_vol_window
+from src.risk_budgeting import (
+    load_merged_universe_rows,
+    normalize_budget_map,
+    pc_from_w,
+    resolve_class_risk_targets,
+    risk_budget_bucket_from_row,
+    solve_asset_risk_budget_spinu,
+    solve_class_risk_budget_slsqp,
+    TAXONOMY_ETF_REL,
+    TAXONOMY_STOCK_REL,
+)
 from src.risk_parity_spinu import repair_covariance_psd, spinu_ccd_equal_budget
 from src.robust_mv import (
     concentration_metrics,
@@ -91,6 +102,8 @@ BASELINE_MCVAR_UNCAPPED_LABEL = "Minimum CVaR (Uncapped) Portfolio"
 BASELINE_MCVAR_CONSTRAINED_LABEL = "Minimum CVaR (Constrained) Portfolio"
 BASELINE_ROBUST_MV_UNCAPPED_LABEL = "Robust Mean–Variance (Uncapped Long-Only) Portfolio"
 BASELINE_ROBUST_MV_CONSTRAINED_LABEL = "Robust Mean–Variance (Constrained) Portfolio"
+BASELINE_RISK_BUDGET_BY_ASSET_CLASS_LABEL = "Risk Budget by Asset-Class Portfolio"
+BASELINE_RISK_BUDGET_BY_ASSET_LABEL = "Risk Budget by Asset Portfolio"
 
 # Roles for reporting / metadata (which question each variant answers).
 MV_BASELINE_ROLE_PRIMARY_LOWEST_VOL_UNDER_CONSTRAINTS = (
@@ -111,6 +124,8 @@ OPTIMIZER_NAME_MINIMUM_CVAR_UNCAPPED = "minimum_cvar_uncapped"
 OPTIMIZER_NAME_MINIMUM_CVAR_CONSTRAINED = "minimum_cvar_constrained"
 OPTIMIZER_NAME_ROBUST_MEAN_VARIANCE_UNCAPPED = "robust_mean_variance_uncapped"
 OPTIMIZER_NAME_ROBUST_MEAN_VARIANCE_CONSTRAINED = "robust_mean_variance_constrained"
+OPTIMIZER_NAME_RISK_BUDGET_BY_ASSET_CLASS = "risk_budget_by_asset_class"
+OPTIMIZER_NAME_RISK_BUDGET_BY_ASSET = "risk_budget_by_asset"
 
 ROBUST_MV_SOLVER = "SLSQP"
 ROBUST_MV_OBJECTIVE_MIN = (
@@ -395,6 +410,52 @@ def robust_mean_variance_baseline_metadata_export(diagnostics: Dict[str, object]
     """Structured fields for Robust Mean–Variance ``baseline_weights_metadata.json`` / summaries."""
     out: Dict[str, Any] = {}
     for k in ROBUST_MV_METADATA_EXPORT_KEYS:
+        if k in diagnostics:
+            out[k] = diagnostics[k]
+    return out
+
+
+RISK_BUDGET_METADATA_EXPORT_KEYS = (
+    "risk_budgeting_method",
+    "optimizer_name",
+    "solver",
+    "covariance_method",
+    "preset_used",
+    "manual_override_used",
+    "target_risk_budgets",
+    "realized_risk_contributions",
+    "risk_budget_tracking_error",
+    "max_budget_deviation",
+    "budget_buckets_used",
+    "tickers_per_bucket",
+    "asset_classes_used",
+    "tickers_per_class",
+    "excluded_missing_asset_class",
+    "taxonomy_universe_files",
+    "ticker_taxonomy_source",
+    "solver_status",
+    "solver_success",
+    "solver_message",
+    "fallback_used",
+    "unused_target_buckets",
+    "targets_renormalized",
+    "warnings",
+    "reason",
+    "universe_eligible",
+    "universe_coverage",
+    "spinu_converged",
+    "spinu_iterations",
+    "nit",
+    "cov_psd_repaired",
+    "eligible_universe",
+    "final_weights",
+)
+
+
+def risk_budgeting_baseline_metadata_export(diagnostics: Dict[str, object]) -> Dict[str, Any]:
+    """Structured fields for risk budgeting ``baseline_weights_metadata.json``."""
+    out: Dict[str, Any] = {}
+    for k in RISK_BUDGET_METADATA_EXPORT_KEYS:
         if k in diagnostics:
             out[k] = diagnostics[k]
     return out
@@ -919,6 +980,348 @@ def build_risk_parity_baseline(
         status=status,
         diagnostics=diagnostics,
     )
+
+
+def build_risk_budget_by_asset_class_baseline(
+    cfg: PortfolioConfig,
+    monthly_returns: pd.DataFrame,
+    analysis_end: str,
+    window_months: int,
+    *,
+    etf_universe_path: Path | None = None,
+    stock_universe_path: Path | None = None,
+) -> BaselineWeightsResult:
+    """
+    Risk budgeting on **aggregated percentage variance contributions** by taxonomy bucket.
+    Solver: SLSQP. Covariance: Ledoit–Wolf monthly + PSD repair (same path as Risk Parity).
+    """
+    eligible, coverage = _eligible_universe_from_returns(
+        cfg, monthly_returns, analysis_end, window_months
+    )
+    risk_cfg_raw = getattr(cfg, "risk_budgeting", None) or {}
+    risk_cfg: Dict[str, Any] = dict(risk_cfg_raw) if isinstance(risk_cfg_raw, dict) else {}
+    missing_mode = str(risk_cfg.get("missing_taxonomy") or "exclude").strip().lower()
+    drop_empty = bool(risk_cfg.get("drop_empty_buckets", False))
+
+    base_diag: Dict[str, object] = {
+        "risk_budgeting_method": "risk_budget_by_asset_class",
+        "optimizer_name": OPTIMIZER_NAME_RISK_BUDGET_BY_ASSET_CLASS,
+        "solver": "SLSQP",
+        "covariance_method": "ledoit_wolf_monthly",
+        "universe_eligible": eligible,
+        "universe_coverage": coverage,
+        "taxonomy_universe_files": [TAXONOMY_ETF_REL, TAXONOMY_STOCK_REL],
+    }
+
+    if len(eligible) < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_INFEASIBLE_UNIVERSE",
+            diagnostics={
+                **base_diag,
+                "reason": "Fewer than 2 eligible assets for risk budget (class) baseline",
+            },
+        )
+
+    try:
+        targets_full, preset_used, manual_override, rw = resolve_class_risk_targets(risk_cfg)
+    except KeyError as e:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_CONFIG",
+            diagnostics={**base_diag, "reason": str(e)},
+        )
+
+    warnings: list[str] = list(rw)
+    universe_rows, ticker_src = load_merged_universe_rows(
+        etf_universe_path=etf_universe_path,
+        stock_universe_path=stock_universe_path,
+    )
+    excluded_missing: list[str] = []
+    tickers_kept: list[str] = []
+    bucket_by: Dict[str, str] = {}
+    ticker_row_src: Dict[str, str | None] = {}
+
+    for t in eligible:
+        row = universe_rows.get(t)
+        if row is None:
+            if missing_mode == "exclude":
+                excluded_missing.append(t)
+                continue
+            bucket_by[t] = "unknown"
+            ticker_row_src[t] = None
+            tickers_kept.append(t)
+            continue
+        bucket = risk_budget_bucket_from_row(row)
+        if bucket == "unknown" and missing_mode == "exclude":
+            excluded_missing.append(t)
+            continue
+        bucket_by[t] = bucket
+        ticker_row_src[t] = ticker_src.get(t)
+        tickers_kept.append(t)
+
+    base_diag["preset_used"] = preset_used
+    base_diag["manual_override_used"] = manual_override
+    base_diag["target_risk_budgets"] = dict(targets_full)
+    base_diag["excluded_missing_asset_class"] = sorted(set(excluded_missing))
+    base_diag["ticker_taxonomy_source"] = {k: ticker_row_src.get(k) for k in tickers_kept}
+
+    if len(tickers_kept) < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_INFEASIBLE_UNIVERSE",
+            diagnostics={
+                **base_diag,
+                "reason": "Fewer than 2 taxonomy-classified eligible assets after exclusions",
+                "warnings": warnings,
+            },
+        )
+
+    present_buckets = sorted(set(bucket_by[t] for t in tickers_kept))
+    unused_positive: list[str] = []
+    for k, v in targets_full.items():
+        if float(v) > 1e-12 and k not in present_buckets:
+            unused_positive.append(k)
+
+    targets_renormalized = False
+    if unused_positive:
+        if not drop_empty:
+            return BaselineWeightsResult(
+                weights={t: 0.0 for t in cfg.tickers},
+                status="FAIL_INFEASIBLE_TARGETS",
+                diagnostics={
+                    **base_diag,
+                    "unused_target_buckets": unused_positive,
+                    "budget_buckets_used": present_buckets,
+                    "reason": "Positive risk budget on bucket(s) with no eligible assets "
+                    "(set risk_budgeting.drop_empty_buckets: true to renormalize)",
+                    "warnings": warnings,
+                },
+            )
+        targets_renormalized = True
+        warnings.append(
+            "Dropped target mass on buckets with no eligible assets: " + ", ".join(unused_positive)
+        )
+
+    raw_eff = {k: float(targets_full.get(k, 0.0)) for k in present_buckets}
+    mass = float(sum(raw_eff.values()))
+    if mass <= 1e-15:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_INFEASIBLE_TARGETS",
+            diagnostics={
+                **base_diag,
+                "reason": "Effective target risk budgets sum to zero on present buckets",
+                "budget_buckets_used": present_buckets,
+                "warnings": warnings,
+            },
+        )
+    b_active = np.array([raw_eff[k] / mass for k in present_buckets], dtype=float)
+    bucket_to_idx = {b: i for i, b in enumerate(present_buckets)}
+    bi = np.array([bucket_to_idx[bucket_by[t]] for t in tickers_kept], dtype=int)
+
+    returns_slice = slice_window(
+        monthly_returns[tickers_kept], analysis_end, window_months
+    ).dropna(how="any")
+    if returns_slice.shape[0] < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_DATA",
+            diagnostics={
+                **base_diag,
+                "reason": f"Insufficient history for covariance (rows={returns_slice.shape[0]})",
+                "warnings": warnings,
+            },
+        )
+
+    cov_df = cov_matrix_monthly(returns_slice, ddof=1, use_shrinkage=True)
+    cov_raw = cov_df.reindex(index=tickers_kept, columns=tickers_kept).fillna(0.0).values
+    cov_rep, cov_psd_repaired = repair_covariance_psd(cov_raw)
+    base_diag["cov_psd_repaired"] = cov_psd_repaired
+
+    w_vec, sdiag = solve_class_risk_budget_slsqp(cov_rep, bi, b_active)
+    w_vec = np.maximum(w_vec, 0.0)
+    s = float(np.sum(w_vec))
+    w_vec = w_vec / s if s > 1e-15 else np.full(len(tickers_kept), 1.0 / len(tickers_kept))
+
+    realized_list = sdiag.get("realized_class_risk") or []
+    realized_map = {present_buckets[i]: float(realized_list[i]) for i in range(len(present_buckets))}
+    tickers_per_bucket: Dict[str, list[str]] = {}
+    for t in tickers_kept:
+        tickers_per_bucket.setdefault(bucket_by[t], []).append(t)
+    for k in tickers_per_bucket:
+        tickers_per_bucket[k] = sorted(tickers_per_bucket[k])
+
+    weights = {t: 0.0 for t in cfg.tickers}
+    for i, t in enumerate(tickers_kept):
+        weights[t] = float(w_vec[i])
+
+    port_var_m = float(w_vec @ cov_rep @ w_vec)
+    ann_vol = float(np.sqrt(max(port_var_m, 0.0)) * np.sqrt(12))
+
+    diag_out: Dict[str, object] = {
+        **base_diag,
+        **sdiag,
+        "target_risk_budgets_effective": {k: float(b_active[i]) for i, k in enumerate(present_buckets)},
+        "realized_risk_contributions": realized_map,
+        "budget_buckets_used": present_buckets,
+        "tickers_per_bucket": tickers_per_bucket,
+        "asset_classes_used": present_buckets,
+        "tickers_per_class": tickers_per_bucket,
+        "targets_renormalized": targets_renormalized,
+        "unused_target_buckets": unused_positive if unused_positive else [],
+        "warnings": warnings,
+        "eligible_universe": tickers_kept,
+        "final_weights": {t: weights[t] for t in tickers_kept},
+        "portfolio_variance": port_var_m,
+        "annualized_volatility": ann_vol,
+    }
+    st = str(sdiag.get("solver_status") or "OK")
+    status = "OK" if st == "OK" else "APPROXIMATE"
+    return BaselineWeightsResult(weights=weights, status=status, diagnostics=diag_out)
+
+
+def build_risk_budget_by_asset_baseline(
+    cfg: PortfolioConfig,
+    monthly_returns: pd.DataFrame,
+    analysis_end: str,
+    window_months: int,
+) -> BaselineWeightsResult:
+    """Per-asset risk budgets via Spinu CCD (fallback SLSQP)."""
+    eligible, coverage = _eligible_universe_from_returns(
+        cfg, monthly_returns, analysis_end, window_months
+    )
+    risk_cfg_raw = getattr(cfg, "risk_budgeting", None) or {}
+    risk_cfg: Dict[str, Any] = dict(risk_cfg_raw) if isinstance(risk_cfg_raw, dict) else {}
+
+    base_diag: Dict[str, object] = {
+        "risk_budgeting_method": "risk_budget_by_asset",
+        "optimizer_name": OPTIMIZER_NAME_RISK_BUDGET_BY_ASSET,
+        "covariance_method": "ledoit_wolf_monthly",
+        "universe_eligible": eligible,
+        "universe_coverage": coverage,
+        "preset_used": str(risk_cfg.get("preset") or "balanced"),
+        "taxonomy_universe_files": [TAXONOMY_ETF_REL, TAXONOMY_STOCK_REL],
+    }
+
+    at = risk_cfg.get("asset_targets") or {}
+    if not isinstance(at, dict) or len(at) == 0:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_CONFIG",
+            diagnostics={
+                **base_diag,
+                "reason": "risk_budgeting.asset_targets is required and must be non-empty "
+                "for per-asset risk budgeting",
+                "manual_override_used": False,
+            },
+        )
+
+    elig_set = set(eligible)
+    filt: Dict[str, float] = {}
+    for k, v in at.items():
+        t = str(k).strip()
+        if t in elig_set:
+            filt[t] = float(v)
+    missing_elig = elig_set - set(filt.keys())
+    if missing_elig:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_CONFIG",
+            diagnostics={
+                **base_diag,
+                "reason": "asset_targets must include every eligible ticker with positive budget",
+                "missing_eligible_assets_for_targets": sorted(missing_elig),
+                "manual_override_used": True,
+            },
+        )
+
+    extra = set(filt.keys()) - elig_set
+    if extra:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_CONFIG",
+            diagnostics={
+                **base_diag,
+                "reason": "asset_targets contains tickers not in eligible universe",
+                "extra_keys": sorted(extra),
+                "manual_override_used": True,
+            },
+        )
+
+    try:
+        b_map, _ = normalize_budget_map(filt, allowed_keys=None)
+    except ValueError as e:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_CONFIG",
+            diagnostics={**base_diag, "reason": str(e), "manual_override_used": True},
+        )
+
+    tickers_kept = sorted(elig_set)
+    b_vec = np.array([b_map[t] for t in tickers_kept], dtype=float)
+
+    base_diag["manual_override_used"] = True
+    base_diag["target_risk_budgets"] = dict(b_map)
+
+    if len(tickers_kept) < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_INFEASIBLE_UNIVERSE",
+            diagnostics={**base_diag, "reason": "Fewer than 2 eligible assets"},
+        )
+
+    returns_slice = slice_window(
+        monthly_returns[tickers_kept], analysis_end, window_months
+    ).dropna(how="any")
+    if returns_slice.shape[0] < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_DATA",
+            diagnostics={
+                **base_diag,
+                "reason": f"Insufficient history for covariance (rows={returns_slice.shape[0]})",
+            },
+        )
+
+    cov_df = cov_matrix_monthly(returns_slice, ddof=1, use_shrinkage=True)
+    cov_raw = cov_df.reindex(index=tickers_kept, columns=tickers_kept).fillna(0.0).values
+    cov_rep, cov_psd_repaired = repair_covariance_psd(cov_raw)
+    base_diag["cov_psd_repaired"] = cov_psd_repaired
+
+    w_vec, adiag = solve_asset_risk_budget_spinu(cov_rep, b_vec)
+    weights = {t: 0.0 for t in cfg.tickers}
+    for i, t in enumerate(tickers_kept):
+        weights[t] = float(w_vec[i])
+
+    pc = pc_from_w(w_vec, cov_rep)
+    realized_assets = {tickers_kept[i]: float(pc[i]) for i in range(len(tickers_kept))}
+    port_var_m = float(w_vec @ cov_rep @ w_vec)
+    ann_vol = float(np.sqrt(max(port_var_m, 0.0)) * np.sqrt(12))
+
+    diag_out: Dict[str, object] = {
+        **base_diag,
+        **adiag,
+        "realized_risk_contributions": realized_assets,
+        "rc_by_asset": realized_assets,
+        "risk_budget_tracking_error": adiag.get("risk_budget_tracking_error"),
+        "max_budget_deviation": adiag.get("max_budget_deviation"),
+        "eligible_universe": tickers_kept,
+        "final_weights": {t: weights[t] for t in tickers_kept},
+        "portfolio_variance": port_var_m,
+        "annualized_volatility": ann_vol,
+        "excluded_missing_asset_class": [],
+        "solver_status": "OK"
+        if (adiag.get("solver") == "spinu_ccd" and not adiag.get("fallback_used"))
+        else ("OK" if adiag.get("solver_success") else "APPROXIMATE"),
+        "solver_success": bool(
+            (adiag.get("solver") == "spinu_ccd" and not adiag.get("fallback_used"))
+            or adiag.get("solver_success")
+        ),
+    }
+    st = str(diag_out.get("solver_status"))
+    status = "OK" if st == "OK" else "APPROXIMATE"
+    return BaselineWeightsResult(weights=weights, status=status, diagnostics=diag_out)
 
 
 def _budget_simplex_intersects_box(bounds: list[tuple[float, float]]) -> bool:
@@ -2917,7 +3320,25 @@ def _build_robust_mean_variance_core(
             },
         )
 
-    lam = float(getattr(cfg, "robust_mv_lambda", 0.0) or 0.0)
+    lam_raw = getattr(cfg, "robust_mv_lambda", None)
+    if lam_raw is None:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_CONFIG",
+            diagnostics={
+                "robust_mv_variant_role": ROBUST_MV_VARIANT_ROLE,
+                "robust_mv_variant_summary": ROBUST_MV_VARIANT_SUMMARY,
+                "reason": (
+                    "robust_mv_lambda is unset in PortfolioConfig: run "
+                    "`python run_robust_mv_lambda_calibration.py` so baseline scripts can read "
+                    "`analysis_robust_mv_lambda_calibration/selected_lambda.txt`, "
+                    "pass `--robust-mv-lambda` on the baseline CLI, or set λ programmatically "
+                    "(replace(cfg, robust_mv_lambda=…)) for tests."
+                ),
+            },
+        )
+
+    lam = float(lam_raw)
     if lam < 0:
         return BaselineWeightsResult(
             weights={t: 0.0 for t in cfg.tickers},
