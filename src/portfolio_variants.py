@@ -66,6 +66,14 @@ from src.hrp_weights import hrp_long_only_weights
 from src.optimization import MIN_WEIGHT_DEFAULT, _build_bounds
 from src.risk_contrib import cov_matrix_monthly, rc_vol_window
 from src.risk_parity_spinu import repair_covariance_psd, spinu_ccd_equal_budget
+from src.robust_mv import (
+    concentration_metrics,
+    james_stein_shrink_means,
+    normalize_robust_mv_covariance_method,
+    psd_status_after_repair,
+    shrunk_covariance_monthly,
+    solve_robust_mean_variance,
+)
 from src.windows import slice_window
 from src.young_etfs_dual_cov import build_dual_covariance_and_mu, per_ticker_young_weight_caps
 
@@ -81,6 +89,8 @@ BASELINE_MD_UNCONSTRAINED_LABEL = "Maximum Diversification (Unconstrained Long-O
 BASELINE_HRP_LABEL = "Hierarchical Risk Parity Portfolio"
 BASELINE_MCVAR_UNCAPPED_LABEL = "Minimum CVaR (Uncapped) Portfolio"
 BASELINE_MCVAR_CONSTRAINED_LABEL = "Minimum CVaR (Constrained) Portfolio"
+BASELINE_ROBUST_MV_UNCAPPED_LABEL = "Robust Mean–Variance (Uncapped Long-Only) Portfolio"
+BASELINE_ROBUST_MV_CONSTRAINED_LABEL = "Robust Mean–Variance (Constrained) Portfolio"
 
 # Roles for reporting / metadata (which question each variant answers).
 MV_BASELINE_ROLE_PRIMARY_LOWEST_VOL_UNDER_CONSTRAINTS = (
@@ -99,6 +109,13 @@ OPTIMIZER_NAME_MAXIMUM_DIVERSIFICATION_UNCONSTRAINED = "maximum_diversification_
 OPTIMIZER_NAME_HIERARCHICAL_RISK_PARITY = "hierarchical_risk_parity"
 OPTIMIZER_NAME_MINIMUM_CVAR_UNCAPPED = "minimum_cvar_uncapped"
 OPTIMIZER_NAME_MINIMUM_CVAR_CONSTRAINED = "minimum_cvar_constrained"
+OPTIMIZER_NAME_ROBUST_MEAN_VARIANCE_UNCAPPED = "robust_mean_variance_uncapped"
+OPTIMIZER_NAME_ROBUST_MEAN_VARIANCE_CONSTRAINED = "robust_mean_variance_constrained"
+
+ROBUST_MV_SOLVER = "SLSQP"
+ROBUST_MV_OBJECTIVE_MIN = (
+    "minimize lambda * w' Sigma w - mu' w on monthly shrunk Sigma and James–Stein shrunk mu"
+)
 
 MINIMUM_CVAR_SOLVER = "HiGHS"
 MINIMUM_CVAR_OBJECTIVE = (
@@ -318,6 +335,47 @@ def minimum_cvar_baseline_metadata_export(diagnostics: Dict[str, object]) -> Dic
     """Structured fields for minimum-CVaR ``baseline_weights_metadata.json`` (uncapped or constrained)."""
     out: Dict[str, Any] = {}
     for k in MINIMUM_CVAR_METADATA_EXPORT_KEYS:
+        if k in diagnostics:
+            out[k] = diagnostics[k]
+    return out
+
+
+ROBUST_MV_METADATA_EXPORT_KEYS = (
+    "optimizer_name",
+    "solver",
+    "objective_minimize",
+    "robust_mv_lambda",
+    "mu_shrinkage_method",
+    "covariance_method",
+    "covariance_shrinkage_sklearn",
+    "shrinkage_applied",
+    "psd_status",
+    "psd_repair_used",
+    "window_months",
+    "eligible_universe",
+    "raw_mu",
+    "shrunk_mu",
+    "shrinkage_target",
+    "shrinkage_intensity",
+    "bounds_used",
+    "constraint_summary",
+    "solver_status",
+    "solver_success",
+    "solver_message",
+    "objective_value",
+    "max_weight",
+    "min_weight",
+    "concentration_metrics",
+    "final_weights",
+    "portfolio_variance",
+    "annualized_volatility",
+)
+
+
+def robust_mean_variance_baseline_metadata_export(diagnostics: Dict[str, object]) -> Dict[str, Any]:
+    """Structured fields for Robust Mean–Variance ``baseline_weights_metadata.json``."""
+    out: Dict[str, Any] = {}
+    for k in ROBUST_MV_METADATA_EXPORT_KEYS:
         if k in diagnostics:
             out[k] = diagnostics[k]
     return out
@@ -2743,6 +2801,293 @@ def build_minimum_variance_advanced_controls(
 
     out.diagnostics.update(diagnostics)
     return out
+
+
+def _finalize_robust_mv_weights(
+    w_vec: np.ndarray,
+    cols: list[str],
+    cfg: PortfolioConfig,
+    cov_np: np.ndarray,
+    bounds: list[tuple[float, float]],
+    res: Any,
+    *,
+    diagnostics: Dict[str, object],
+) -> BaselineWeightsResult:
+    """Clip to bounds, renormalize, pack full-ticker weights; fill solver and risk diagnostics."""
+    if (not np.all(np.isfinite(w_vec))) or w_vec.shape[0] != len(cols):
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_NUMERICAL",
+            diagnostics={
+                **diagnostics,
+                "reason": "Robust MV solver returned non-finite weights",
+                "solver_success": bool(getattr(res, "success", False)),
+                "solver_message": str(getattr(res, "message", "")),
+            },
+        )
+    lo_arr = np.array([b[0] for b in bounds], dtype=float)
+    hi_arr = np.array([b[1] for b in bounds], dtype=float)
+    w_vec = np.clip(w_vec, lo_arr, hi_arr)
+    ssum = float(w_vec.sum())
+    if ssum > 1e-12:
+        w_vec = w_vec / ssum
+    else:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_NUMERICAL",
+            diagnostics={**diagnostics, "reason": "Normalized weights sum to ~0"},
+        )
+
+    var_p = float(w_vec @ cov_np @ w_vec)
+    ann_vol = float(np.sqrt(max(var_p, 0.0) * 12.0))
+    weights: Dict[str, float] = {t: 0.0 for t in cfg.tickers}
+    for i, t in enumerate(cols):
+        weights[t] = float(w_vec[i])
+    w_nonzero = {t: float(weights[t]) for t in cols if weights[t] > 1e-14}
+    diag_cm = concentration_metrics(w_nonzero)
+    diagnostics.update(
+        {
+            "eligible_universe": list(cols),
+            "final_weights": dict(sorted(w_nonzero.items(), key=lambda x: (-x[1], x[0]))),
+            "portfolio_variance": var_p,
+            "annualized_volatility": ann_vol,
+            "solver_status": getattr(res, "status", None),
+            "solver_success": bool(getattr(res, "success", False)),
+            "solver_message": str(getattr(res, "message", "")),
+            "max_weight": float(np.max(w_vec)) if len(w_vec) else 0.0,
+            "min_weight": float(np.min(w_vec)) if len(w_vec) else 0.0,
+            "concentration_metrics": diag_cm,
+        }
+    )
+    tol_sum = 1e-5
+    tol_b = 1e-5
+    sum_ok = abs(float(np.sum(w_vec)) - 1.0) < tol_sum
+    in_bounds = bool(np.all(w_vec >= lo_arr - tol_b) and np.all(w_vec <= hi_arr + tol_b))
+    solver_ok = bool(getattr(res, "success", False))
+    if solver_ok and sum_ok and in_bounds:
+        status = "OK"
+    elif sum_ok and in_bounds and var_p == var_p:
+        status = "APPROXIMATE"
+    else:
+        status = "FAIL_NUMERICAL"
+    return BaselineWeightsResult(weights=weights, status=status, diagnostics=diagnostics)
+
+
+def _build_robust_mean_variance_core(
+    cfg: PortfolioConfig,
+    monthly_returns: pd.DataFrame,
+    analysis_end: str,
+    window_months: int,
+    *,
+    constrained: bool,
+) -> BaselineWeightsResult:
+    """Shared Robust Mean–Variance baseline (James–Stein mu; LW/OAS Sigma; SLSQP)."""
+    mu_method_raw = getattr(cfg, "robust_mv_mu_shrinkage_method", "james_stein") or "james_stein"
+    mu_method = str(mu_method_raw).strip().lower().replace("-", "_")
+    if mu_method != "james_stein":
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_CONFIG",
+            diagnostics={
+                "reason": (
+                    f"Unsupported robust_mv_mu_shrinkage_method {mu_method_raw!r}; "
+                    "only james_stein is implemented"
+                ),
+            },
+        )
+
+    lam = float(getattr(cfg, "robust_mv_lambda", 0.0) or 0.0)
+    if lam < 0:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_CONFIG",
+            diagnostics={"reason": "robust_mv_lambda must be >= 0"},
+        )
+
+    opt_name = (
+        OPTIMIZER_NAME_ROBUST_MEAN_VARIANCE_CONSTRAINED
+        if constrained
+        else OPTIMIZER_NAME_ROBUST_MEAN_VARIANCE_UNCAPPED
+    )
+    eligible, coverage = _eligible_universe_from_returns(
+        cfg, monthly_returns, analysis_end, window_months
+    )
+    diagnostics: Dict[str, object] = {
+        "universe_eligible": eligible,
+        "universe_coverage": coverage,
+        "optimizer_name": opt_name,
+        "solver": ROBUST_MV_SOLVER,
+        "objective_minimize": ROBUST_MV_OBJECTIVE_MIN,
+        "robust_mv_lambda": lam,
+        "mu_shrinkage_method": "james_stein",
+        "window_months": int(window_months),
+    }
+
+    if len(eligible) < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_INFEASIBLE_UNIVERSE",
+            diagnostics={
+                **diagnostics,
+                "reason": "Fewer than 2 eligible assets for Robust Mean–Variance baseline",
+            },
+        )
+
+    returns_slice = slice_window(monthly_returns[eligible], analysis_end, window_months).dropna(
+        how="any"
+    )
+    cols = [str(c) for c in returns_slice.columns]
+    if len(cols) < 2 or len(returns_slice) < 2:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_DATA",
+            diagnostics={
+                **diagnostics,
+                "reason": (
+                    f"Insufficient synchronous history for Robust MV "
+                    f"(rows={len(returns_slice)}, assets={len(cols)})"
+                ),
+            },
+        )
+
+    try:
+        cov_method_key = normalize_robust_mv_covariance_method(
+            getattr(cfg, "robust_mv_covariance_method", None)
+        )
+    except ValueError as e:
+        return BaselineWeightsResult(
+            weights={t: 0.0 for t in cfg.tickers},
+            status="FAIL_CONFIG",
+            diagnostics={**diagnostics, "reason": str(e)},
+        )
+
+    cov_df, cov_fit_meta = shrunk_covariance_monthly(returns_slice, cov_method_key)
+    cov_df = cov_df.reindex(index=cols, columns=cols).fillna(0.0)
+    cov_np_raw = cov_df.values.astype(float)
+    cov_np, repaired = repair_covariance_psd(cov_np_raw)
+    finite_cov = bool(np.all(np.isfinite(cov_np)))
+    psd_stat = psd_status_after_repair(cov_np, repaired, finite_cov)
+
+    diagnostics["covariance_method"] = str(cov_fit_meta.get("covariance_method", cov_method_key))
+    diagnostics["covariance_shrinkage_sklearn"] = cov_fit_meta.get("shrinkage_applied")
+    diagnostics["shrinkage_applied"] = cov_fit_meta.get("shrinkage_applied")
+    diagnostics["psd_status"] = psd_stat
+    diagnostics["psd_repair_used"] = bool(repaired)
+
+    mu_pack = james_stein_shrink_means(returns_slice)
+    raw_mu_s = mu_pack["raw_mu"].reindex(cols).fillna(0.0)
+    shrunk_mu_s = mu_pack["shrunk_mu"].reindex(cols).fillna(0.0)
+    mu_vec = shrunk_mu_s.values.astype(float)
+
+    diagnostics["raw_mu"] = {str(k): round(float(raw_mu_s.loc[k]), 8) for k in cols}
+    diagnostics["shrunk_mu"] = {str(k): round(float(shrunk_mu_s.loc[k]), 8) for k in cols}
+    diagnostics["shrinkage_target"] = float(mu_pack["shrinkage_target"])
+    diagnostics["shrinkage_intensity"] = float(mu_pack["shrinkage_intensity"])
+
+    per_ticker_caps: dict[str, float] | None = None
+    if constrained:
+        young_pol = getattr(cfg, "young_etf_optimization_policy", None) or {}
+        if bool(young_pol.get("enabled", True)):
+            try:
+                _cov_d, _mu_d, ydiag = build_dual_covariance_and_mu(
+                    monthly_returns,
+                    cols,
+                    window_months,
+                    young_pol,
+                    use_shrinkage_on_core=bool(getattr(cfg, "covariance_shrinkage", False)),
+                    analysis_end=pd.Timestamp(analysis_end),
+                )
+                del _cov_d, _mu_d
+                per_ticker_caps = per_ticker_young_weight_caps(
+                    ydiag["tickers"],
+                    float(young_pol.get("max_weight_candidate_or_new_pct", 0.02)),
+                )
+                if not per_ticker_caps:
+                    per_ticker_caps = None
+            except Exception as e:
+                return BaselineWeightsResult(
+                    weights={t: 0.0 for t in cfg.tickers},
+                    status="FAIL_DATA",
+                    diagnostics={
+                        **diagnostics,
+                        "reason": f"Young-ETF dual policy setup failed for caps: {e}",
+                    },
+                )
+
+        min_w = (
+            float(cfg.min_single_security_weight_pct)
+            if cfg.min_single_security_weight_pct is not None
+            and float(cfg.min_single_security_weight_pct) > 0
+            else float(MIN_WEIGHT_DEFAULT)
+        )
+        bounds = _build_bounds(
+            cols,
+            len(cols),
+            min_w,
+            cfg.max_single_security_weight_pct,
+            per_ticker_caps,
+        )
+        if not _budget_simplex_intersects_box(bounds):
+            return BaselineWeightsResult(
+                weights={t: 0.0 for t in cfg.tickers},
+                status="FAIL_INFEASIBLE_BOUNDS",
+                diagnostics={
+                    **diagnostics,
+                    "reason": (
+                        "Weight bounds infeasible for a fully invested portfolio "
+                        "(sum of lower bounds > 1 or sum of upper bounds < 1)"
+                    ),
+                    "bounds_detail": {
+                        cols[i]: {"min": float(bounds[i][0]), "max": float(bounds[i][1])}
+                        for i in range(len(cols))
+                    },
+                },
+            )
+        diagnostics["bounds_used"] = {
+            cols[i]: {"min": float(bounds[i][0]), "max": float(bounds[i][1])} for i in range(len(cols))
+        }
+        diagnostics["constraint_summary"] = (
+            "equality: sum(weights)=1; box bounds from feasibility cap, "
+            "config min/max per name, Young-ETF per-ticker caps when dual policy enabled"
+        )
+        diagnostics["active_constraints"] = diagnostics["constraint_summary"]
+    else:
+        bounds = [(0.0, 1.0)] * len(cols)
+        diagnostics["bounds_used"] = {"mode": "uncapped_long_only", "per_asset_bounds": [0.0, 1.0]}
+        diagnostics["constraint_summary"] = (
+            "long-only [0,1] per asset, sum(weights)=1; no project feasibility caps or Young caps"
+        )
+
+    w_vec, res, obj_val = solve_robust_mean_variance(mu_vec, cov_np, bounds, lam)
+    diagnostics["objective_value"] = float(obj_val)
+
+    return _finalize_robust_mv_weights(
+        w_vec, cols, cfg, cov_np, bounds, res, diagnostics=diagnostics
+    )
+
+
+def build_robust_mean_variance_uncapped(
+    cfg: PortfolioConfig,
+    monthly_returns: pd.DataFrame,
+    analysis_end: str,
+    window_months: int,
+) -> BaselineWeightsResult:
+    """Robust Mean–Variance with only long-only [0,1] and sum(w)=1 (no project / Young caps)."""
+    return _build_robust_mean_variance_core(
+        cfg, monthly_returns, analysis_end, window_months, constrained=False
+    )
+
+
+def build_robust_mean_variance_constrained(
+    cfg: PortfolioConfig,
+    monthly_returns: pd.DataFrame,
+    analysis_end: str,
+    window_months: int,
+) -> BaselineWeightsResult:
+    """Robust Mean–Variance under the same box bounds as constrained MinVar / MaxDiv / Min CVaR."""
+    return _build_robust_mean_variance_core(
+        cfg, monthly_returns, analysis_end, window_months, constrained=True
+    )
 
 
 def export_baseline_weights_txt(

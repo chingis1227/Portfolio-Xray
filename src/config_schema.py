@@ -101,6 +101,10 @@ class PortfolioConfig:
     strict_stress_gate: bool = False
     # Minimum CVaR baselines: confidence level gamma in (0,1) for Rockafellar–Uryasev LP (default 0.95).
     minimum_cvar_confidence_level: float = 0.95
+    # Robust Mean–Variance baselines: James–Stein mu; LW/OAS Sigma; λ>=0 (0 = maximize shrunk mu only).
+    robust_mv_lambda: float = 0.0
+    robust_mv_covariance_method: str = "ledoit_wolf"
+    robust_mv_mu_shrinkage_method: str = "james_stein"
     # When True, use Ledoit-Wolf shrinkage for covariance in optimization/RC (more stable weights)
     covariance_shrinkage: bool = False
     # Dual covariance + caps for short-history assets in optimization (optional merge in validate)
@@ -148,6 +152,9 @@ class PortfolioConfig:
             "covariance_shrinkage": self.covariance_shrinkage,
             "minimum_cvar_confidence_level": self.minimum_cvar_confidence_level,
             "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
+            "robust_mv_lambda": self.robust_mv_lambda,
+            "robust_mv_covariance_method": self.robust_mv_covariance_method,
+            "robust_mv_mu_shrinkage_method": self.robust_mv_mu_shrinkage_method,
             "windows_months": self.windows_months,
             "returns_frequency": self.returns_frequency,
             "coverage_threshold": self.coverage_threshold,
@@ -364,6 +371,13 @@ def _inject_optional_defaults(cfg: dict[str, Any]) -> None:
         cfg["returns_frequency"] = "monthly"
     else:
         cfg["returns_frequency"] = str(raw_rf).strip().lower()
+    # Robust Mean–Variance baseline defaults
+    if cfg.get("robust_mv_lambda") is None:
+        cfg["robust_mv_lambda"] = 0.0
+    if not cfg.get("robust_mv_covariance_method"):
+        cfg["robust_mv_covariance_method"] = "ledoit_wolf"
+    if not cfg.get("robust_mv_mu_shrinkage_method"):
+        cfg["robust_mv_mu_shrinkage_method"] = "james_stein"
     # Backtest mode default (production report uses dynamic NaN-safe by default)
     raw = cfg.get("backtest_mode")
     if not raw:
@@ -686,6 +700,43 @@ def _validate_optimization_windows(cfg: dict[str, Any]) -> None:
                 )
 
 
+def _validate_robust_mv_params(cfg: dict[str, Any]) -> None:
+    """Validate Robust Mean–Variance baseline config."""
+    lam_raw = cfg.get("robust_mv_lambda", 0.0)
+    try:
+        lam = float(lam_raw)
+    except (TypeError, ValueError) as e:
+        raise ConfigValidationError(
+            f"Config field 'robust_mv_lambda' must be numeric, got {lam_raw!r}"
+        ) from e
+    if lam < 0:
+        raise ConfigValidationError(
+            f"Config field 'robust_mv_lambda' must be non-negative, got {lam}"
+        )
+    cfg["robust_mv_lambda"] = lam
+
+    cov_m = cfg.get("robust_mv_covariance_method", "ledoit_wolf")
+    if cov_m is not None:
+        key = str(cov_m).strip().lower().replace("-", "_")
+        if key in ("lw", "ledoit"):
+            key = "ledoit_wolf"
+        if key not in ("ledoit_wolf", "oas"):
+            raise ConfigValidationError(
+                "Config field 'robust_mv_covariance_method' must be 'ledoit_wolf' or 'oas', "
+                f"got {cov_m!r}"
+            )
+        cfg["robust_mv_covariance_method"] = key
+
+    mu_m = cfg.get("robust_mv_mu_shrinkage_method", "james_stein")
+    if mu_m is not None:
+        mus = str(mu_m).strip().lower().replace("-", "_")
+        if mus != "james_stein":
+            raise ConfigValidationError(
+                "Config field 'robust_mv_mu_shrinkage_method' must be 'james_stein' "
+                f"(only supported method), got {mu_m!r}"
+            )
+
+
 def _validate_backtest_mode(cfg: dict[str, Any]) -> None:
     """Validate backtest_mode is one of dynamic_nan_safe, simple."""
     val = cfg.get("backtest_mode", "dynamic_nan_safe")
@@ -800,6 +851,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
     _validate_optimization_soft_penalty_lambdas(cfg)
     _validate_backtest_mode(cfg)
     _validate_returns_frequency(cfg)
+    _validate_robust_mv_params(cfg)
     _validate_robustness_policy(cfg)
     _validate_optimization_windows(cfg)
 
@@ -851,6 +903,9 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
         covariance_shrinkage=bool(cfg.get("covariance_shrinkage", False)),
         minimum_cvar_confidence_level=float(mc_val),
         young_etf_optimization_policy=dict(cfg.get("young_etf_optimization_policy") or DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY),
+        robust_mv_lambda=float(cfg.get("robust_mv_lambda", 0.0)),
+        robust_mv_covariance_method=str(cfg.get("robust_mv_covariance_method", "ledoit_wolf")),
+        robust_mv_mu_shrinkage_method=str(cfg.get("robust_mv_mu_shrinkage_method", "james_stein")),
         liquidity_floor_pct=_parse_float_optional(cfg.get("liquidity_floor_pct")),
         windows_months=list(cfg["windows_months"]),
         returns_frequency=str(cfg.get("returns_frequency", "monthly")).strip().lower(),

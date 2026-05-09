@@ -119,6 +119,12 @@ _PDF_HEADER_LEFT: dict[str, str] = {
     "maximum_diversification_portfolio_commentary": "Commentary: Maximum Diversification",
     "maximum_diversification_portfolio_stress_commentary": "Stress Analysis: Maximum Diversification",
     "maximum_diversification_portfolio_weights": "Maximum Diversification: Target Weights",
+    "robust_mean_variance_uncapped_portfolio_commentary": "Commentary: Robust Mean–Variance (Uncapped)",
+    "robust_mean_variance_uncapped_portfolio_stress_commentary": "Stress Analysis: Robust Mean–Variance (Uncapped)",
+    "robust_mean_variance_uncapped_portfolio_weights": "Robust Mean–Variance (Uncapped): Target Weights",
+    "robust_mean_variance_constrained_portfolio_commentary": "Commentary: Robust Mean–Variance (Constrained)",
+    "robust_mean_variance_constrained_portfolio_stress_commentary": "Stress Analysis: Robust Mean–Variance (Constrained)",
+    "robust_mean_variance_constrained_portfolio_weights": "Robust Mean–Variance (Constrained): Target Weights",
 }
 
 
@@ -1259,6 +1265,20 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
             "Minimum CVaR (constrained): tail-risk weights under project box bounds",
             "Stress: minimum CVaR constrained portfolio behavior",
             "Target weights: minimum CVaR (constrained)",
+        ),
+        (
+            _ROOT / "robust mean variance uncapped portfolio",
+            "robust_mean_variance_uncapped_portfolio",
+            "Robust mean–variance (uncapped): shrunk μ and Σ, long-only academic baseline",
+            "Stress: robust mean–variance uncapped portfolio behavior",
+            "Target weights: robust mean–variance (uncapped)",
+        ),
+        (
+            _ROOT / "robust mean variance constrained portfolio",
+            "robust_mean_variance_constrained_portfolio",
+            "Robust mean–variance (constrained): shrunk μ and Σ under project box bounds",
+            "Stress: robust mean–variance constrained portfolio behavior",
+            "Target weights: robust mean–variance (constrained)",
         ),
     ]
 

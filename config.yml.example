@@ -101,6 +101,15 @@ minimum_variance_l1_experimental: false
 # confidence level gamma in (0,1) for Rockafellar–Uryasev tail mass (1-gamma); default 0.95.
 minimum_cvar_confidence_level: 0.95
 
+# Robust Mean–Variance baselines (run_robust_mean_variance_uncapped.py / run_robust_mean_variance_constrained.py):
+# - robust_mv_lambda: risk aversion on monthly portfolio variance w'Σw (>= 0). Default 0 => no variance penalty;
+#   optimizer maximizes shrunk expected returns (James–Stein μ) subject to bounds only.
+# - robust_mv_covariance_method: ledoit_wolf | oas (monthly Σ shrinkage).
+# - robust_mv_mu_shrinkage_method: james_stein (only supported value in v1).
+robust_mv_lambda: 0
+robust_mv_covariance_method: ledoit_wolf  # ledoit_wolf | oas
+robust_mv_mu_shrinkage_method: james_stein
+
 # =============================================================================
 # SECTION 6: ANALYSIS SETTINGS
 # =============================================================================
