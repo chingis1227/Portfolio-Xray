@@ -1,0 +1,89 @@
+{
+  "portfolio_type": "Robust Mean–Variance (Uncapped Long-Only) Portfolio",
+  "status": "OK",
+  "robust_mv_metadata": {
+    "optimizer_name": "robust_mean_variance_uncapped",
+    "solver": "SLSQP",
+    "objective_minimize": "minimize lambda * w' Sigma w - mu' w on monthly shrunk Sigma and James–Stein shrunk mu",
+    "robust_mv_lambda": 0.0,
+    "mu_shrinkage_method": "james_stein",
+    "covariance_method": "ledoit_wolf",
+    "covariance_shrinkage_sklearn": 0.014518558531445578,
+    "shrinkage_applied": 0.014518558531445578,
+    "psd_status": "psd",
+    "psd_repair_used": false,
+    "window_months": 120,
+    "eligible_universe": [
+      "VOO",
+      "QQQ",
+      "GLD",
+      "SLV",
+      "BND",
+      "SCHD",
+      "SCHP",
+      "TLT"
+    ],
+    "raw_mu": {
+      "VOO": 0.0006399,
+      "QQQ": 0.00088559,
+      "GLD": 0.00055133,
+      "SLV": 0.00079087,
+      "BND": 7.451e-05,
+      "SCHD": 0.00053052,
+      "SCHP": 0.00011461,
+      "TLT": -1.109e-05
+    },
+    "shrunk_mu": {
+      "VOO": 0.00056697,
+      "QQQ": 0.00071976,
+      "GLD": 0.00051189,
+      "SLV": 0.00066085,
+      "BND": 0.00021537,
+      "SCHD": 0.00049895,
+      "SCHP": 0.00024031,
+      "TLT": 0.00016214
+    },
+    "shrinkage_target": 0.00044702889010366886,
+    "shrinkage_intensity": 0.3781305357801914,
+    "bounds_used": {
+      "mode": "uncapped_long_only",
+      "per_asset_bounds": [
+        0.0,
+        1.0
+      ]
+    },
+    "constraint_summary": "long-only [0,1] per asset, sum(weights)=1; no project feasibility caps or Young caps",
+    "solver_status": 0,
+    "solver_success": true,
+    "solver_message": "Optimization terminated successfully",
+    "objective_value": -0.0007197558174337679,
+    "max_weight": 0.999999999999998,
+    "min_weight": 0.0,
+    "concentration_metrics": {
+      "hhi": 1.0,
+      "effective_n": 1.0,
+      "top1_share": 1.0,
+      "top3_share": 1.0
+    },
+    "final_weights": {
+      "QQQ": 0.999999999999998
+    },
+    "portfolio_variance": 0.00019601464476082318,
+    "annualized_volatility": 0.04849923439735805
+  },
+  "metrics_10y": {
+    "window_months": 120,
+    "cagr": 0.21923364634594034,
+    "vol_annual": 0.2228408113774971,
+    "sharpe": 0.9005793693541364,
+    "sortino": 1.2777065139198611,
+    "beta_portfolio": 1.1605182461027599,
+    "treynor": 0.17292777433758708,
+    "max_drawdown": -0.3511871971603229,
+    "ttr_months": NaN,
+    "recovered": false
+  },
+  "stress_status": "DIAG_ATTENTION",
+  "stress_fail_reason": "DIAG_LOSS_EQUITY_SHOCK",
+  "portfolio_valid": false
+}

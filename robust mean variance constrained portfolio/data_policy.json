@@ -1,0 +1,17 @@
+{
+  "backtest_mode": "dynamic_nan_safe",
+  "join_policy_cov_rc": "inner join (intersection of dates across assets)",
+  "first_available_month": {
+    "VOO": "2014-05",
+    "QQQ": "2014-05",
+    "GLD": "2014-05",
+    "SLV": "2014-05",
+    "BND": "2014-05",
+    "SCHD": "2014-05",
+    "SCHP": "2014-05",
+    "TLT": "2014-05"
+  },
+  "inner_join_months_used_for_risk": 3023,
+  "n_months_redistributed": 0,
+  "n_months_cash_fallback": 0
+}
