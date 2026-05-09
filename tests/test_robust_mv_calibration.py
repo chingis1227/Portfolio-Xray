@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from src.robust_mv_calibration import (
+    build_no_feasible_lambda_diagnostic,
     classify_robust_mv_mandate,
     pick_least_bad_lambda,
     synthetic_mandatory_loss_detail,
@@ -98,3 +99,36 @@ def test_factor_rc_limits_enforced_when_yaml_limits_present():
     )
     assert ev["mandate_classification"] == "fail"
     assert "max_top1_rc_pct" in ev["mandate_failures"]
+
+
+def test_no_feasible_lambda_diagnostic_covers_grid_failures_and_guidance():
+    winner = {
+        "robust_mv_lambda": 2.0,
+        "build_status": "OK",
+        "mandate_classification": "fail",
+        "mandate_failures": "target_vol_annual;mandate_max_drawdown_full_history",
+    }
+    d = build_no_feasible_lambda_diagnostic(lambda_grid=(0.1, 1.0, 2.0), winner=winner)
+    assert d["lambda_range_tested"]["min"] == 0.1
+    assert d["lambda_range_tested"]["max"] == 2.0
+    assert d["lambda_range_tested"]["n_grid_points"] == 3
+    assert d["best_available_lambda"] == 2.0
+    assert "target_vol_annual" in d["mandate_constraints_failed_codes"]
+    assert "mandate_max_drawdown_full_history" in d["mandate_constraints_failed_codes"]
+    assert len(d["possible_causes"]) == 4
+    assert len(d["suggested_next_actions"]) == 4
+    assert "No λ in the tested grid" in d["narrative"]
+    assert "Target volatility limit" in d["narrative"]
+
+
+def test_no_feasible_lambda_diagnostic_when_build_not_ok():
+    winner = {"robust_mv_lambda": 1.0, "build_status": "FAIL_CONFIG", "mandate_failures": None}
+    d = build_no_feasible_lambda_diagnostic(lambda_grid=(1.0,), winner=winner)
+    assert d["mandate_constraints_failed_codes"] == []
+    assert "FAIL_CONFIG" in d["narrative"]
+
+
+def test_no_feasible_lambda_diagnostic_when_no_winner_row():
+    d = build_no_feasible_lambda_diagnostic(lambda_grid=(0.5, 1.5), winner=None)
+    assert d["best_available_lambda"] is None
+    assert d["lambda_range_tested"]["min"] == 0.5

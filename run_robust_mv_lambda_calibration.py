@@ -4,7 +4,9 @@ from __future__ import annotations
 Robust Mean–Variance λ calibration: scan an internal λ grid, evaluate each candidate against
 config IPS targets (vol, MaxDD mandate, weight cap, optional synthetic loss / RC limits via YAML),
 then pick the lowest λ that satisfies the mandate (including borderline class), tie-break by highest
-10Y CAGR. Writes CSV + JSON summary + ``selected_portfolio/`` full report for the winner.
+10Y CAGR. Writes CSV + JSON summary + ``selected_portfolio/`` full report when a mandate-eligible λ exists.
+When none qualifies, the summary JSON includes ``no_feasible_lambda_diagnostic`` (tested range,
+fallback λ, breached limits, generic causes, suggested actions) and logs a warning.
 
 Does **not** modify the policy optimizer, mandate gate implementation in ``run_report``, or ``run_stress``.
 """
@@ -37,6 +39,7 @@ from src.portfolio_variants import (
     robust_mean_variance_baseline_metadata_export,
 )
 from src.robust_mv_calibration import (
+    build_no_feasible_lambda_diagnostic,
     classify_robust_mv_mandate,
     infer_binding_constraints,
     load_optional_robust_mv_calibration_block,
@@ -302,13 +305,18 @@ def main() -> None:
         "feasible_lambda_found": feasible,
         "selected_lambda": winner.get("robust_mv_lambda") if winner else None,
         "selected_mandate_classification": winner.get("mandate_classification") if winner else None,
-        "selection_note": (
-            "Lowest λ among mandate-eligible (pass or borderline), tie-break highest 10Y CAGR."
-            if feasible
-            else "No mandate-eligible λ; reported least-bad build among failures."
-        ),
         "rows": rows_out,
     }
+
+    if feasible:
+        summary["selection_note"] = (
+            "Lowest λ among mandate-eligible (pass or borderline), tie-break highest 10Y CAGR."
+        )
+    else:
+        diag = build_no_feasible_lambda_diagnostic(lambda_grid=list(lam_grid), winner=winner)
+        summary["no_feasible_lambda_diagnostic"] = diag
+        summary["selection_note"] = diag["narrative"]
+        logger.warning("Robust MV λ calibration: %s", diag["narrative"])
 
     if winner and winner.get("build_status") in ("OK", "APPROXIMATE"):
         lam_sel = float(winner["robust_mv_lambda"])

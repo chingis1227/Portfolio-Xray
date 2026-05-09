@@ -8,7 +8,7 @@ gate implementation in ``run_report.py`` — callers reuse ``portfolio_valid`` a
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
 
 import yaml
 
@@ -25,6 +25,30 @@ MANDATORY_SYNTHETIC_SCENARIO_IDS: frozenset[str] = frozenset(
 )
 
 MandateClass = Literal["pass", "fail", "borderline"]
+
+# Human-readable mandate constraint labels for calibration summaries (no ticker-level detail).
+MANDATE_FAILURE_LABELS: dict[str, str] = {
+    "mandate_max_drawdown_full_history": "Mandate maximum drawdown (full historical backtest)",
+    "target_vol_annual": "Target volatility limit",
+    "max_single_security_weight_pct": "Maximum single-asset weight limit",
+    "synthetic_stress_loss": "Mandatory synthetic stress loss versus mandate drawdown limit",
+    "max_top1_rc_pct": "Synthetic scenario RC concentration — largest asset share (calibration YAML)",
+    "max_top3_rc_sum_pct": "Synthetic scenario RC concentration — top-three sum (calibration YAML)",
+}
+
+NO_FEASIBLE_LAMBDA_POSSIBLE_CAUSES: tuple[str, ...] = (
+    "The λ grid may be too narrow: tested values may not be large enough for portfolio variance to dominate shrunk expected returns (consider widening upward, e.g. 5, 10, 20, 50).",
+    "The eligible universe may be collectively risk-seeking: if low-volatility or cash-like exposures are scarce, even defensive Robust MV allocations can breach volatility or drawdown limits.",
+    "Weight constraints may block defensive positioning: minimum weights, caps, feasibility caps, Young caps, or optional YAML RC caps can prevent reallocating sufficient capital toward lower-risk sleeves.",
+    "Shrunk expected returns may still favor riskier sleeves: James–Stein shrinkage reduces estimation noise but does not eliminate cross-sectional expected-return dispersion, so the optimum may retain riskier weights.",
+)
+
+NO_FEASIBLE_LAMBDA_SUGGESTED_ACTIONS: tuple[str, ...] = (
+    "Expand the λ grid (especially toward larger λ) and re-run calibration.",
+    "Review the eligible universe for defensive and cash-like capacity relative to mandate risk limits.",
+    "Review bounds and calibration caps (min/max weights, feasibility caps, Young caps, optional synthetic RC limits) for feasibility of a defensive allocation.",
+    "Confirm explicit volatility and maximum-drawdown limits in configuration reflect the intended mandate.",
+)
 
 
 def load_optional_robust_mv_calibration_block(config_path: Path | None) -> dict[str, Any]:
@@ -230,6 +254,115 @@ def classify_robust_mv_mandate(
             "factor_rc_limits": ok_fac,
         },
         "slack": slack,
+    }
+
+
+def _mandate_failure_codes_from_row(row: dict[str, Any] | None) -> list[str]:
+    if not row:
+        return []
+    mf = row.get("mandate_failures")
+    if mf is None:
+        return []
+    if isinstance(mf, list):
+        return [str(x).strip() for x in mf if str(x).strip()]
+    if isinstance(mf, str):
+        return [x.strip() for x in mf.split(";") if x.strip()]
+    return []
+
+
+def mandate_failure_labels_for_codes(codes: list[str]) -> list[str]:
+    """Return stable English descriptions for mandate failure codes (benchmark calibration summaries)."""
+    out: list[str] = []
+    for c in codes:
+        label = MANDATE_FAILURE_LABELS.get(c)
+        out.append(label if label else str(c))
+    return out
+
+
+def build_no_feasible_lambda_diagnostic(
+    *,
+    lambda_grid: Sequence[float],
+    winner: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """
+    Structured diagnostic when no λ in ``lambda_grid`` satisfies the mandate (pass / borderline).
+
+    ``winner`` is the calibration fallback row when present (typically ``pick_least_bad_lambda``).
+    """
+    grid_list = [float(x) for x in lambda_grid]
+    lam_min = min(grid_list) if grid_list else None
+    lam_max = max(grid_list) if grid_list else None
+
+    build_ok = winner is not None and winner.get("build_status") in ("OK", "APPROXIMATE")
+    best_lambda = (
+        float(winner["robust_mv_lambda"])
+        if winner is not None and winner.get("robust_mv_lambda") is not None
+        else None
+    )
+
+    codes = _mandate_failure_codes_from_row(winner) if build_ok else []
+    labels = mandate_failure_labels_for_codes(codes)
+
+    range_sentence = ""
+    if lam_min is not None and lam_max is not None and grid_list:
+        range_sentence = (
+            f"Tested λ range: {lam_min:g}–{lam_max:g} ({len(grid_list)} values). "
+        )
+
+    if winner is None:
+        fallback_sentence = "No candidate rows were produced for fallback ranking."
+        fail_sentence = "Mandate constraint breaches could not be enumerated."
+    elif not build_ok:
+        bs = winner.get("build_status")
+        fallback_sentence = (
+            f"Fallback row λ={best_lambda if best_lambda is not None else 'n/a'} "
+            f"has build_status={bs!r}; mandate diagnostics were not evaluated on this candidate."
+        )
+        fail_sentence = "See build logs and Robust MV diagnostics for solver/configuration failures."
+    else:
+        mc = winner.get("mandate_classification")
+        fallback_sentence = (
+            f"Among successful solves, the calibration ranks λ={best_lambda:g} as the fallback candidate "
+            f"(mandate_classification={mc!r}). "
+        )
+        if labels:
+            fail_sentence = "Limits still breached at that λ: " + "; ".join(labels) + "."
+        elif codes:
+            fail_sentence = "Limits still breached at that λ: " + "; ".join(codes) + "."
+        else:
+            fail_sentence = "Mandate failure codes were not recorded for this candidate."
+
+    typical_sentence = (
+        "Typical explanations include an overly narrow λ grid, limited defensive capacity in the universe, "
+        "binding constraints that block derisking, and shrunk expected returns that still reward riskier sleeves."
+    )
+    next_sentence = (
+        "Consider widening λ, reassessing the universe and constraints, and verifying volatility "
+        "and drawdown limits are configured as intended (see suggested_next_actions)."
+    )
+
+    narrative = (
+        "No λ in the tested grid satisfied the mandate classification (pass or borderline). "
+        + range_sentence
+        + fallback_sentence
+        + " "
+        + fail_sentence
+        + " "
+        + typical_sentence
+        + " "
+        + next_sentence
+    )
+
+    return {
+        "lambda_range_tested": {"min": lam_min, "max": lam_max, "n_grid_points": len(grid_list)},
+        "best_available_lambda": best_lambda,
+        "best_candidate_build_status": winner.get("build_status") if winner else None,
+        "best_candidate_mandate_classification": winner.get("mandate_classification") if winner else None,
+        "mandate_constraints_failed_codes": codes,
+        "mandate_constraints_failed": labels if labels else list(codes),
+        "possible_causes": list(NO_FEASIBLE_LAMBDA_POSSIBLE_CAUSES),
+        "suggested_next_actions": list(NO_FEASIBLE_LAMBDA_SUGGESTED_ACTIONS),
+        "narrative": narrative.strip(),
     }
 
 

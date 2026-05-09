@@ -100,7 +100,7 @@ python run_robust_mean_variance_uncapped.py
 python run_robust_mean_variance_constrained.py
 ```
 
-Calibrate **`robust_mv_lambda`** against IPS targets from `config.yml` (vol / mandate MaxDD / weight cap; optional synthetic stress loss alignment when `target_max_drawdown_pct` is set; optional `robust_mv_calibration:` RC caps in YAML). Writes `analysis_robust_mv_lambda_calibration/robust_mv_lambda_calibration.csv`, `robust_mv_lambda_calibration_summary.json`, `selected_lambda.txt`, `selected_weights.json`, and a full `selected_portfolio/` report for the chosen λ. Does **not** change the policy optimizer or internal stress gate code paths.
+Calibrate **`robust_mv_lambda`** against IPS targets from `config.yml` (vol / mandate MaxDD / weight cap; optional synthetic stress loss alignment when `target_max_drawdown_pct` is set; optional `robust_mv_calibration:` RC caps in YAML). Writes `analysis_robust_mv_lambda_calibration/robust_mv_lambda_calibration.csv`, `robust_mv_lambda_calibration_summary.json`, `selected_lambda.txt`, `selected_weights.json`, and a full `selected_portfolio/` report when a mandate-eligible λ exists. When none qualifies, the summary JSON adds **`no_feasible_lambda_diagnostic`** (tested λ range, fallback λ/ build status, breached limits at that candidate, generic causes, suggested actions) and **`selection_note`** carries the same narrative text; logs emit a warning. Does **not** change the policy optimizer or internal stress gate code paths.
 
 ```bash
 python run_robust_mv_lambda_calibration.py
