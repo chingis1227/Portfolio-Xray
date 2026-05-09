@@ -1,0 +1,59 @@
+{
+  "portfolio_type": "Maximum Diversification (Unconstrained Long-Only) Portfolio",
+  "status": "OK",
+  "maximum_diversification_metadata": {
+    "optimizer_name": "maximum_diversification_unconstrained",
+    "solver": "SLSQP",
+    "objective": "(sigma' w) / sqrt(w' Sigma w) on monthly Sigma; DR dimensionless",
+    "covariance_method": "young_etf_dual:dual_core_median_anchor",
+    "shrinkage_used": false,
+    "psd_repair_used": false,
+    "young_etf_dual_mode": "dual_core_median_anchor",
+    "eligible_universe": [
+      "VOO",
+      "QQQ",
+      "GLD",
+      "SLV",
+      "BND",
+      "SCHD",
+      "SCHP",
+      "TLT"
+    ],
+    "final_weights": {
+      "TLT": 0.41002788083299274,
+      "SCHD": 0.28890479744510617,
+      "GLD": 0.13188369352415863,
+      "QQQ": 0.10403943926015194,
+      "SLV": 0.06514418893759054
+    },
+    "portfolio_variance": 3.98620529018074e-05,
+    "annualized_volatility": 0.021871091303857903,
+    "diversification_ratio": 1.7380024312055504,
+    "weighted_avg_asset_vol_monthly": 0.01097312206233073,
+    "solver_status": 0,
+    "solver_success": true,
+    "solver_message": "Optimization terminated successfully",
+    "max_weight": 0.41002788083299274,
+    "min_weight": 0.0,
+    "active_constraints": [
+      "equality: sum(weights) = 1",
+      "long-only: weights >= 0"
+    ],
+    "fallback_used": false
+  },
+  "metrics_10y": {
+    "window_months": 120,
+    "cagr": 0.09085398000073752,
+    "vol_annual": 0.10022593143121919,
+    "sharpe": 0.6936328978973194,
+    "sortino": 0.9744236139371508,
+    "beta_portfolio": 0.33958358424543494,
+    "treynor": 0.20472133073679094,
+    "max_drawdown": -0.24211855683398564,
+    "ttr_months": NaN,
+    "recovered": false
+  },
+  "stress_status": "DIAG_ATTENTION",
+  "stress_fail_reason": "DIAG_HIST_2022",
+  "portfolio_valid": false
+}

@@ -1,0 +1,43 @@
+{
+  "optimizer_name": "hierarchical_risk_parity",
+  "covariance_method": "young_etf_dual:dual_core_median_anchor",
+  "shrinkage_used": false,
+  "psd_repair_used": false,
+  "young_etf_dual_mode": "dual_core_median_anchor",
+  "eligible_universe": [
+    "VOO",
+    "QQQ",
+    "GLD",
+    "SLV",
+    "BND",
+    "SCHD",
+    "SCHP",
+    "TLT"
+  ],
+  "final_weights": {
+    "SCHP": 0.4528019757068464,
+    "BND": 0.33159904648481825,
+    "GLD": 0.06234746310437226,
+    "TLT": 0.045520013455132874,
+    "SCHD": 0.03307195355939383,
+    "QQQ": 0.03195236595508884,
+    "VOO": 0.028487144308760017,
+    "SLV": 0.01422003742558758
+  },
+  "portfolio_variance": 1.284742169430864e-05,
+  "annualized_volatility": 0.012416483412452323,
+  "hrp_linkage_method": "ward",
+  "hrp_linkage_fallback_from_ward": false,
+  "hrp_distance": "sqrt(0.5*(1-rho))",
+  "hrp_seriation_indices": [
+    5,
+    0,
+    1,
+    2,
+    3,
+    6,
+    4,
+    7
+  ],
+  "hrp_weights_sum": 1.0
+}

@@ -1,0 +1,32 @@
+Source: summary.txt, stress_report.json, results_csv/portfolio_metrics_10y.csv, results_csv/rc_vol_10y.csv, report.txt
+
+Executive Summary
+This run is maximum diversification unconstrained portfolio; analysis_end: 2026-05-08. On the long window (10Y in the report context) the portfolio shows CAGR ~ 9.09%, annualized volatility ~ 10.02%, maximum drawdown ~ -24.21%.
+Risk-adjusted: Sharpe ~ 0.694, Sortino ~ 0.974; sensitivity to the base benchmark: Beta_base ~ 0.340.
+Stress test: DIAG_ATTENTION (DIAG_HIST_2022); worst-loss scenario: 2022 (Historical); worst_scenario_loss_pct ~ -14.30%.
+Client MaxDD gate (portfolio_valid): FAIL.
+
+Metric-by-Metric Interpretation
+CAGR (9.09%) is the compound annual growth rate from simple returns at daily cadence on the 10Y window in this run. Volatility (10.02%) is annualized using the same return frequency; MaxDD (-24.21%) is from the matching equity curve. Sharpe (0.694) and Sortino (0.974) follow project definitions (Sharpe uses raw return vol in the denominator). Beta_base (0.340) and Treynor (0.205) tie to the base benchmark; Corr_base, when present, is correlation with the benchmark on the same window.
+
+Risk Structure
+Largest RC_vol shares (portfolio variance contribution) on 10Y: TLT 35.1%, SCHD 27.7%, QQQ 13.3%, GLD 12.1%, SLV 11.8%. Stress: status=DIAG_ATTENTION, fail_reason_code=DIAG_HIST_2022. Failed scenario «2022», test «Historical».
+
+Data frequency
+optimization_frequency=daily, returns_frequency=daily, factor_stress_frequency=weekly, macro_regime_frequency=monthly; frequency_mismatch_warning=True.
+macro_regime_frequency_notes: Portfolio metrics and covariance use returns_frequency=daily; factor betas/regression/stress shocks stay weekly; macro regime classifier labels remain monthly; regime_factor_analytics may use daily returns when daily data loads (see regime_factor_analytics.summary).
+Non-uniform cadence across blocks: align interpretation of stress/regime diagnostics with the frequencies above; full factor/regime alignment with daily/weekly optimization is Phase 2.
+
+Strengths
+Review client gate and/or stress status — see Weaknesses below.
+
+Weaknesses
+Stress diagnostics: DIAG_ATTENTION — DIAG_HIST_2022. (Does not block release by itself; named scenario: 2022; test: Historical.)
+Client MaxDD gate FAIL — historical max drawdown exceeds mandate (see run_metadata / snapshot).
+
+Scenario Behavior
+Scenario snapshot from stress_report.json: equity_shock: PnL ~ -12.53%, pass=True; credit_shock: PnL ~ -4.72%, pass=True; rates_shock: PnL ~ -14.30%, pass=True; inflation_stagflation: PnL ~ -10.47%, pass=True; liquidity_shock: PnL ~ -9.02%, pass=True; recession_severe: PnL ~ -13.62%, pass=True.
+Worst scenario portfolio loss (worst_scenario_loss_pct): ~ -14.30%.
+
+Final Conclusion
+maximum diversification unconstrained portfolio: the 10Y return/risk profile is summarized by CAGR ~ 9.09%, vol ~ 10.02%, MaxDD ~ -24.21%. Stress DIAG_ATTENTION (DIAG_HIST_2022); client gate FAIL. To compare variants, use the same files in sibling folders (Equal-Weight / Risk Parity / Main portfolio) after a synchronized run.

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portfolio Snapshot Report</title>
+<!-- Aligned with DESIGN.md + config_ui/static/design.css: Inter/DM Sans, RUI tokens, flat, pill nav. -->
+<style>
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@9..40,400;500&family=Inter:ital,opsz,wght@0,14..32,400;500;600&display=swap");
+:root {
+  --rui-dark: #191c1f;
+  --rui-white: #ffffff;
+  --rui-surface: #f4f4f4;
+  --rui-border: #c9c9cd;
+  --rui-mid: #505a63;
+  --rui-muted: #8d969e;
+  --rui-blue: #376cd5;
+  --rui-blue-brand: #494fdf;
+  --rui-pass: #00a87e;
+  --rui-fail: #e23b4a;
+  --rui-warn: #ec7e00;
+  --rui-pass-bg: #e6f7f2;
+  --rui-fail-bg: #fdeced;
+  --rui-warn-bg: #fff3e6;
+  --font-d: "DM Sans", "Inter", system-ui, sans-serif;
+  --font-b: "Inter", system-ui, -apple-system, sans-serif;
+  --radius-card: 20px;
+  --radius-pill: 9999px;
+  --space-8: 8px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+}
+* { box-sizing: border-box; }
+body { font-family: var(--font-b); font-size: 16px; line-height: 1.5; letter-spacing: 0.02em; background: var(--rui-white); color: var(--rui-dark); margin: 0; padding: var(--space-32) var(--space-16) 48px; -webkit-font-smoothing: antialiased; }
+.report-root { max-width: 1200px; margin: 0 auto; }
+.report-header { margin-bottom: var(--space-32); padding-bottom: var(--space-24); border-bottom: 1px solid var(--rui-border); }
+.report-header h1 { font-family: var(--font-d); font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 500; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 var(--space-8); color: var(--rui-dark); }
+.subtitle { color: var(--rui-mid); font-size: 0.95rem; margin: 0 0 var(--space-24); letter-spacing: 0.02em; line-height: 1.5; max-width: 48rem; }
+.report-nav { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: center; }
+.report-nav a {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-d);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--rui-dark);
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--rui-border);
+  background: var(--rui-white);
+  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+}
+.report-nav a:hover { border-color: var(--rui-dark); background: var(--rui-surface); opacity: 0.9; }
+section {
+  background: var(--rui-surface);
+  border: 1px solid var(--rui-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-24) var(--space-24);
+  margin-bottom: var(--space-24);
+  break-inside: avoid;
+  box-shadow: none;
+}
+section h2 { font-family: var(--font-d); font-size: 1.25rem; font-weight: 500; line-height: 1.3; margin: 0 0 var(--space-16); border-bottom: 1px solid var(--rui-border); padding-bottom: var(--space-8); letter-spacing: -0.01em; }
+section h2 .meta { font-weight: 400; color: var(--rui-mid); font-size: 0.88rem; }
+section p { margin: 0 0 0.75rem; color: var(--rui-dark); }
+section p:last-child { margin-bottom: 0; }
+section p strong { color: var(--rui-mid); font-weight: 600; }
+.table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: var(--space-16); }
+.table-wrap table { margin-bottom: 0; }
+table { width: 100%; max-width: 100%; border-collapse: collapse; margin-bottom: var(--space-16); font-size: 0.94rem; }
+section > table:last-child { margin-bottom: 0; }
+table caption { text-align: left; font-weight: 500; font-family: var(--font-d); margin: 0 0 var(--space-8); font-size: 0.9rem; color: var(--rui-dark); }
+th, td { border: 1px solid var(--rui-border); padding: 10px 12px; text-align: left; vertical-align: top; }
+th { background: var(--rui-white); font-weight: 500; color: var(--rui-dark); }
+tbody tr:nth-child(even) { background: rgba(25, 28, 31, 0.03); }
+.assets-table th, .assets-table td { font-size: 0.88rem; }
+.stress-overall { margin-bottom: 0.75rem; }
+.stress-overall strong { color: var(--rui-mid); }
+/* Status: text + optional pill in stress line */
+.stress-overall .status-pass, .stress-overall .status-fail, .stress-overall .status-diag_attention,
+.stress-overall [class^="status-"] {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: var(--font-d);
+}
+.stress-overall [class^="status-"] { background: var(--rui-surface); color: var(--rui-mid); }
+.stress-overall .status-pass { background: var(--rui-pass-bg); color: #006400; }
+.stress-overall .status-fail, .stress-overall [class^="status-fail"] { background: var(--rui-fail-bg); color: #8b0000; }
+.stress-overall .status-diag_attention { background: var(--rui-warn-bg); color: #b06a00; }
+/* Prose status pills (e.g. robustness flags) */
+.robustness-section p > span[class^="status-"] {
+  display: inline-block; margin-left: 6px; padding: 4px 12px; border-radius: var(--radius-pill);
+  font-size: 0.85rem; font-weight: 500; font-family: var(--font-d);
+  background: var(--rui-surface); color: var(--rui-mid);
+}
+.robustness-section p > span.status-pass { background: var(--rui-pass-bg); color: #006400; }
+.robustness-section p > span.status-fail, .robustness-section p > span[class^="status-fail"] { background: var(--rui-fail-bg); color: #8b0000; }
+.robustness-section p > span.status-diag_attention { background: var(--rui-warn-bg); color: #b06a00; }
+/* Table cells: constraint / generic status (no pill) */
+td.status-pass { color: var(--rui-pass); font-weight: 500; }
+td.status-fail, td[class^="status-fail"] { color: var(--rui-fail); font-weight: 500; }
+td.status-diag_attention { color: var(--rui-warn); font-weight: 500; }
+.data-policy-section table { max-width: 100%; }
+.table-wrap + .table-wrap, section > .table-wrap { margin-top: 0; }
+.data-policy-section .table-wrap, .robustness-section .table-wrap { margin-bottom: var(--space-16); }
+.data-policy-section .table-wrap:last-child, .robustness-section .table-wrap:last-child { margin-bottom: 0; }
+@media (max-width: 720px) {
+  body { padding: var(--space-24) 12px 40px; }
+  .report-header h1 { font-size: 1.5rem; }
+  section { padding: var(--space-16); }
+}
+@media print {
+  body { background: #fff; padding: 0.5rem; }
+  .report-nav { display: none; }
+  section { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="report-root">
+
+<header class="report-header">
+<h1>Portfolio Snapshot Report</h1>
+<p class="subtitle">Generated from snapshot_3y.json, snapshot_5y.json, snapshot_10y.json, snapshot_assets.json</p>
+<nav class="report-nav" aria-label="Report sections"><a href="#data-policy">Data Policy</a><a href="#robustness">Dual-Horizon</a><a href="#win-3y">3Y</a><a href="#win-5y">5Y</a><a href="#win-10y">10Y</a><a href="#assets">Assets</a></nav>
+</header>
+<section class="data-policy-section" id="data-policy">
+<h2>Data Policy / Backtest Mode</h2>
+<div class="table-wrap"><table><caption>Backtest and join policy</caption><tbody><tr><td>backtest_mode</td><td>dynamic_nan_safe</td></tr><tr><td>join_policy (cov/RC/ОІ)</td><td>inner join (intersection of dates across assets)</td></tr><tr><td>inner_join_months_used_for_risk</td><td>3023</td></tr><tr><td>months with NaN redistribution</td><td>0</td></tr><tr><td>months with excess to cash (RC/RB gating)</td><td>0</td></tr></tbody></table></div>
+<div class="table-wrap"><table><caption>First available month (per ticker)</caption><thead><tr><th>Ticker</th><th>First month</th></tr></thead><tbody><tr><td>BND</td><td>2014-05</td></tr><tr><td>GLD</td><td>2014-05</td></tr><tr><td>QQQ</td><td>2014-05</td></tr><tr><td>SCHD</td><td>2014-05</td></tr><tr><td>SCHP</td><td>2014-05</td></tr><tr><td>SLV</td><td>2014-05</td></tr><tr><td>TLT</td><td>2014-05</td></tr><tr><td>VOO</td><td>2014-05</td></tr></tbody></table></div>
+</section>
+<section class="window-section" id="win-3y">
+<h2>Window 3Y <span class="meta">(analysis_end: 2026-05-08)</span></h2>
+<div class="table-wrap"><table><caption>Final weights (total)</caption><thead><tr><th>Ticker</th><th>Weight</th></tr></thead><tbody><tr><td>SCHP</td><td>45.3%</td></tr><tr><td>BND</td><td>33.2%</td></tr><tr><td>GLD</td><td>6.2%</td></tr><tr><td>TLT</td><td>4.6%</td></tr><tr><td>SCHD</td><td>3.3%</td></tr><tr><td>QQQ</td><td>3.2%</td></tr><tr><td>VOO</td><td>2.8%</td></tr><tr><td>SLV</td><td>1.4%</td></tr></tbody></table></div>
+<div class="table-wrap"><table><caption>RC by asset (top)</caption><thead><tr><th>Ticker</th><th>RC %</th></tr></thead><tbody><tr><td>SCHP</td><td>34.7%</td></tr><tr><td>BND</td><td>28.8%</td></tr><tr><td>GLD</td><td>11.5%</td></tr><tr><td>TLT</td><td>9.6%</td></tr><tr><td>SLV</td><td>4.6%</td></tr></tbody></table></div>
+<div class="table-wrap"><table><caption>Constraints</caption><thead><tr><th>Constraint</th><th>Status</th></tr></thead><tbody><tr><td>target_vol</td><td class="status-pass">PASS</td></tr><tr><td>max_dd</td><td class="status-pass">PASS</td></tr><tr><td>rc_caps</td><td class="status-not_checked">NOT_CHECKED</td></tr><tr><td>weight_caps</td><td class="status-not_checked">NOT_CHECKED</td></tr></tbody></table></div>
+<div class="table-wrap"><table><caption>Portfolio metrics</caption><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>cagr</td><td>7.6%</td></tr><tr><td>vol_annual</td><td>5.5%</td></tr><tr><td>sharpe</td><td>0.548</td></tr><tr><td>sortino</td><td>0.777</td></tr><tr><td>beta_portfolio</td><td>0.156</td></tr><tr><td>treynor</td><td>0.194</td></tr><tr><td>max_drawdown</td><td>-5.9%</td></tr><tr><td>ttr_months</td><td>вЂ”</td></tr></tbody></table></div>
+<p class="stress-overall"><strong>Stress:</strong> <span class="status-diag_pass_with_warning">DIAG_PASS_WITH_WARNING</span></p>
+<div class="table-wrap"><table><caption>Analytics</caption><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>rolling_sharpe_36m</td><td>last: вЂ”, mean: вЂ”, p10: вЂ”, p90: вЂ”</td></tr><tr><td>rolling_sortino_36m</td><td>last: вЂ”, mean: вЂ”, p10: вЂ”, p90: вЂ”</td></tr><tr><td>var_95</td><td>-0.5%</td></tr><tr><td>es_95</td><td>-0.8%</td></tr><tr><td>eee_10pct</td><td>10.225%</td></tr></tbody></table></div>
+</section>
+<section class="window-section" id="win-5y">
+<h2>Window 5Y <span class="meta">(analysis_end: 2026-05-08)</span></h2>
+<div class="table-wrap"><table><caption>Final weights (total)</caption><thead><tr><th>Ticker</th><th>Weight</th></tr></thead><tbody><tr><td>SCHP</td><td>45.3%</td></tr><tr><td>BND</td><td>33.2%</td></tr><tr><td>GLD</td><td>6.2%</td></tr><tr><td>TLT</td><td>4.6%</td></tr><tr><td>SCHD</td><td>3.3%</td></tr><tr><td>QQQ</td><td>3.2%</td></tr><tr><td>VOO</td><td>2.8%</td></tr><tr><td>SLV</td><td>1.4%</td></tr></tbody></table></div>
+<div class="table-wrap"><table><caption>RC by asset (top)</caption><thead><tr><th>Ticker</th><th>RC %</th></tr></thead><tbody><tr><td>SCHP</td><td>39.2%</td></tr><tr><td>BND</td><td>28.0%</td></tr><tr><td>GLD</td><td>9.3%</td></tr><tr><td>TLT</td><td>9.0%</td></tr><tr><td>QQQ</td><td>4.6%</td></tr></tbody></table></div>
+<div class="table-wrap"><table><caption>Constraints</caption><thead><tr><th>Constraint</th><th>Status</th></tr></thead><tbody><tr><td>target_vol</td><td class="status-pass">PASS</td></tr><tr><td>max_dd</td><td class="status-pass">PASS</td></tr><tr><td>rc_caps</td><td class="status-not_checked">NOT_CHECKED</td></tr><tr><td>weight_caps</td><td class="status-not_checked">NOT_CHECKED</td></tr></tbody></table></div>
+<div class="table-wrap"><table><caption>Portfolio metrics</caption><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>cagr</td><td>3.3%</td></tr><tr><td>vol_annual</td><td>6.4%</td></tr><tr><td>sharpe</td><td>0.009</td></tr><tr><td>sortino</td><td>0.013</td></tr><tr><td>beta_portfolio</td><td>0.162</td></tr><tr><td>treynor</td><td>0.004</td></tr><tr><td>max_drawdown</td><td>-16.6%</td></tr><tr><td>ttr_months</td><td>вЂ”</td></tr></tbody></table></div>
+<p class="stress-overall"><strong>Stress:</strong> <span class="status-diag_pass_with_warning">DIAG_PASS_WITH_WARNING</span></p>
+<div class="table-wrap"><table><caption>Analytics</caption><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>rolling_sharpe_36m</td><td>last: 0.503, mean: -0.036, p10: -0.496, p90: 0.573</td></tr><tr><td>rolling_sortino_36m</td><td>last: 0.713, mean: -0.043, p10: -0.696, p90: 0.841</td></tr><tr><td>var_95</td><td>-0.6%</td></tr><tr><td>es_95</td><td>-0.9%</td></tr><tr><td>eee_10pct</td><td>18.422%</td></tr></tbody></table></div>
+</section>
+<section class="window-section" id="win-10y">
+<h2>Window 10Y <span class="meta">(analysis_end: 2026-05-08)</span></h2>
+<div class="table-wrap"><table><caption>Final weights (total)</caption><thead><tr><th>Ticker</th><th>Weight</th></tr></thead><tbody><tr><td>SCHP</td><td>45.3%</td></tr><tr><td>BND</td><td>33.2%</td></tr><tr><td>GLD</td><td>6.2%</td></tr><tr><td>TLT</td><td>4.6%</td></tr><tr><td>SCHD</td><td>3.3%</td></tr><tr><td>QQQ</td><td>3.2%</td></tr><tr><td>VOO</td><td>2.8%</td></tr><tr><td>SLV</td><td>1.4%</td></tr></tbody></table></div>
+<div class="table-wrap"><table><caption>RC by asset (top)</caption><thead><tr><th>Ticker</th><th>RC %</th></tr></thead><tbody><tr><td>SCHP</td><td>39.0%</td></tr><tr><td>BND</td><td>28.0%</td></tr><tr><td>GLD</td><td>9.6%</td></tr><tr><td>TLT</td><td>8.5%</td></tr><tr><td>QQQ</td><td>4.7%</td></tr></tbody></table></div>
+<div class="table-wrap"><table><caption>Constraints</caption><thead><tr><th>Constraint</th><th>Status</th></tr></thead><tbody><tr><td>target_vol</td><td class="status-pass">PASS</td></tr><tr><td>max_dd</td><td class="status-pass">PASS</td></tr><tr><td>rc_caps</td><td class="status-not_checked">NOT_CHECKED</td></tr><tr><td>weight_caps</td><td class="status-not_checked">NOT_CHECKED</td></tr></tbody></table></div>
+<div class="table-wrap"><table><caption>Portfolio metrics</caption><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>cagr</td><td>4.6%</td></tr><tr><td>vol_annual</td><td>5.7%</td></tr><tr><td>sharpe</td><td>0.428</td></tr><tr><td>sortino</td><td>0.597</td></tr><tr><td>beta_portfolio</td><td>0.120</td></tr><tr><td>treynor</td><td>0.202</td></tr><tr><td>max_drawdown</td><td>-16.6%</td></tr><tr><td>ttr_months</td><td>вЂ”</td></tr></tbody></table></div>
+<p class="stress-overall"><strong>Stress:</strong> <span class="status-diag_pass_with_warning">DIAG_PASS_WITH_WARNING</span></p>
+<div class="table-wrap"><table><caption>Analytics</caption><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>rolling_sharpe_36m</td><td>last: 0.503, mean: 0.424, p10: -0.480, p90: 1.262</td></tr><tr><td>rolling_sortino_36m</td><td>last: 0.713, mean: 0.590, p10: -0.672, p90: 1.772</td></tr><tr><td>var_95</td><td>-0.5%</td></tr><tr><td>es_95</td><td>-0.8%</td></tr><tr><td>eee_10pct</td><td>16.048%</td></tr></tbody></table></div>
+</section>
+<section class="assets-section" id="assets">
+<h2>Assets (per-asset metrics by window)</h2>
+<div class="table-wrap"><table class="assets-table"><caption>Window 3y</caption><thead><tr><th>ticker</th><th>window_months</th><th>cagr</th><th>vol_annual</th><th>sharpe</th><th>sortino</th><th>beta_base</th><th>beta_local</th><th>treynor</th><th>skewness</th><th>kurtosis</th><th>max_drawdown</th><th>ttr_months</th><th>recovered</th></tr></thead><tbody><tr><td>VOO</td><td>36.000</td><td>23.1%</td><td>14.7%</td><td>1.181</td><td>1.739</td><td>0.972</td><td>0.972</td><td>0.179</td><td>0.313</td><td>14.109</td><td>-18.7%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>QQQ</td><td>36.000</td><td>30.9%</td><td>19.7%</td><td>1.238</td><td>1.830</td><td>1.240</td><td>1.240</td><td>0.197</td><td>0.362</td><td>10.363</td><td>-22.8%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>GLD</td><td>36.000</td><td>32.4%</td><td>19.9%</td><td>1.287</td><td>1.819</td><td>0.183</td><td>0.183</td><td>1.399</td><td>-1.114</td><td>9.806</td><td>-19.2%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>SLV</td><td>36.000</td><td>46.2%</td><td>40.5%</td><td>1.039</td><td>1.407</td><td>0.667</td><td>0.667</td><td>0.631</td><td>-3.213</td><td>38.011</td><td>-42.5%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>BND</td><td>36.000</td><td>3.8%</td><td>5.4%</td><td>-0.111</td><td>-0.154</td><td>0.063</td><td>1.000</td><td>-0.094</td><td>-0.050</td><td>0.699</td><td>-6.9%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>SCHD</td><td>36.000</td><td>14.6%</td><td>13.1%</td><td>0.764</td><td>1.120</td><td>0.586</td><td>0.586</td><td>0.171</td><td>-0.108</td><td>7.591</td><td>-16.1%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>SCHP</td><td>36.000</td><td>3.7%</td><td>4.8%</td><td>-0.153</td><td>-0.214</td><td>0.047</td><td>0.047</td><td>-0.155</td><td>-0.036</td><td>1.190</td><td>-5.6%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>TLT</td><td>36.000</td><td>-2.0%</td><td>14.0%</td><td>-0.396</td><td>-0.540</td><td>0.128</td><td>1.000</td><td>-0.431</td><td>-0.149</td><td>0.593</td><td>-20.2%</td><td>вЂ”</td><td>0.000</td></tr></tbody></table></div>
+<div class="table-wrap"><table class="assets-table"><caption>Window 5y</caption><thead><tr><th>ticker</th><th>window_months</th><th>cagr</th><th>vol_annual</th><th>sharpe</th><th>sortino</th><th>beta_base</th><th>beta_local</th><th>treynor</th><th>skewness</th><th>kurtosis</th><th>max_drawdown</th><th>ttr_months</th><th>recovered</th></tr></thead><tbody><tr><td>VOO</td><td>60.000</td><td>13.5%</td><td>16.9%</td><td>0.632</td><td>0.905</td><td>0.985</td><td>0.985</td><td>0.108</td><td>-0.002</td><td>6.066</td><td>-24.5%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>QQQ</td><td>60.000</td><td>17.1%</td><td>22.4%</td><td>0.662</td><td>0.952</td><td>1.249</td><td>1.249</td><td>0.119</td><td>0.043</td><td>4.642</td><td>-35.1%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>GLD</td><td>60.000</td><td>20.5%</td><td>17.9%</td><td>0.938</td><td>1.328</td><td>0.137</td><td>0.137</td><td>1.231</td><td>-0.894</td><td>9.177</td><td>-21.0%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>SLV</td><td>60.000</td><td>23.5%</td><td>35.7%</td><td>0.681</td><td>0.940</td><td>0.516</td><td>0.516</td><td>0.471</td><td>-2.784</td><td>39.515</td><td>-42.5%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>BND</td><td>60.000</td><td>0.2%</td><td>6.0%</td><td>-0.505</td><td>-0.696</td><td>0.069</td><td>1.000</td><td>-0.437</td><td>0.042</td><td>1.393</td><td>-17.9%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>SCHD</td><td>60.000</td><td>7.9%</td><td>14.4%</td><td>0.366</td><td>0.524</td><td>0.667</td><td>0.667</td><td>0.079</td><td>-0.106</td><td>3.860</td><td>-16.8%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>SCHP</td><td>60.000</td><td>1.2%</td><td>6.1%</td><td>-0.324</td><td>-0.455</td><td>0.065</td><td>0.065</td><td>-0.303</td><td>0.091</td><td>2.348</td><td>-14.3%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>TLT</td><td>60.000</td><td>-6.1%</td><td>15.9%</td><td>-0.534</td><td>-0.735</td><td>0.066</td><td>1.000</td><td>-1.277</td><td>-0.012</td><td>0.462</td><td>-43.7%</td><td>вЂ”</td><td>0.000</td></tr></tbody></table></div>
+<div class="table-wrap"><table class="assets-table"><caption>Window 10y</caption><thead><tr><th>ticker</th><th>window_months</th><th>cagr</th><th>vol_annual</th><th>sharpe</th><th>sortino</th><th>beta_base</th><th>beta_local</th><th>treynor</th><th>skewness</th><th>kurtosis</th><th>max_drawdown</th><th>ttr_months</th><th>recovered</th></tr></thead><tbody><tr><td>VOO</td><td>120.000</td><td>15.6%</td><td>18.0%</td><td>0.771</td><td>1.081</td><td>1.003</td><td>1.003</td><td>0.138</td><td>-0.684</td><td>16.703</td><td>-34.0%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>QQQ</td><td>120.000</td><td>21.9%</td><td>22.3%</td><td>0.901</td><td>1.278</td><td>1.161</td><td>1.161</td><td>0.173</td><td>-0.402</td><td>7.961</td><td>-35.1%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>GLD</td><td>120.000</td><td>13.4%</td><td>16.0%</td><td>0.730</td><td>1.032</td><td>0.073</td><td>0.073</td><td>1.604</td><td>-0.707</td><td>8.842</td><td>-22.0%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>SLV</td><td>120.000</td><td>16.0%</td><td>31.6%</td><td>0.560</td><td>0.777</td><td>0.400</td><td>0.400</td><td>0.442</td><td>-2.279</td><td>35.958</td><td>-42.8%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>BND</td><td>120.000</td><td>1.7%</td><td>5.5%</td><td>-0.067</td><td>-0.092</td><td>0.044</td><td>1.000</td><td>-0.085</td><td>-1.124</td><td>37.555</td><td>-18.6%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>SCHD</td><td>120.000</td><td>12.7%</td><td>16.7%</td><td>0.665</td><td>0.943</td><td>0.811</td><td>0.811</td><td>0.137</td><td>-0.602</td><td>15.750</td><td>-33.4%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>SCHP</td><td>120.000</td><td>2.8%</td><td>5.6%</td><td>0.114</td><td>0.162</td><td>0.020</td><td>0.020</td><td>0.326</td><td>0.222</td><td>13.540</td><td>-14.3%</td><td>вЂ”</td><td>0.000</td></tr><tr><td>TLT</td><td>120.000</td><td>-1.4%</td><td>14.9%</td><td>-0.170</td><td>-0.238</td><td>-0.124</td><td>1.000</td><td>0.203</td><td>0.020</td><td>5.079</td><td>-48.4%</td><td>вЂ”</td><td>0.000</td></tr></tbody></table></div>
+</section>
+
+</div>
+</body>
+</html>

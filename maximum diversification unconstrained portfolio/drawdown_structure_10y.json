@@ -1,0 +1,607 @@
+{
+  "drawdowns": [
+    {
+      "depth": -0.016,
+      "length_months": 16,
+      "recovery_months": "10"
+    },
+    {
+      "depth": -0.001,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.0,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.009,
+      "length_months": 7,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.002,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.014,
+      "length_months": 15,
+      "recovery_months": "7"
+    },
+    {
+      "depth": -0.092,
+      "length_months": 261,
+      "recovery_months": "174"
+    },
+    {
+      "depth": -0.004,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.004,
+      "length_months": 5,
+      "recovery_months": "3"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 3,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.002,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.002,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.02,
+      "length_months": 40,
+      "recovery_months": "23"
+    },
+    {
+      "depth": -0.01,
+      "length_months": 7,
+      "recovery_months": "5"
+    },
+    {
+      "depth": -0.002,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.001,
+      "length_months": 3,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.007,
+      "length_months": 11,
+      "recovery_months": "4"
+    },
+    {
+      "depth": -0.0,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.01,
+      "length_months": 6,
+      "recovery_months": "4"
+    },
+    {
+      "depth": -0.008,
+      "length_months": 4,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.005,
+      "length_months": 4,
+      "recovery_months": "3"
+    },
+    {
+      "depth": -0.0,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.077,
+      "length_months": 266,
+      "recovery_months": "37"
+    },
+    {
+      "depth": -0.018,
+      "length_months": 21,
+      "recovery_months": "13"
+    },
+    {
+      "depth": -0.001,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 5,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.001,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.005,
+      "length_months": 9,
+      "recovery_months": "7"
+    },
+    {
+      "depth": -0.014,
+      "length_months": 27,
+      "recovery_months": "9"
+    },
+    {
+      "depth": -0.0,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.004,
+      "length_months": 4,
+      "recovery_months": "3"
+    },
+    {
+      "depth": -0.001,
+      "length_months": 3,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.006,
+      "length_months": 8,
+      "recovery_months": "4"
+    },
+    {
+      "depth": -0.015,
+      "length_months": 10,
+      "recovery_months": "5"
+    },
+    {
+      "depth": -0.005,
+      "length_months": 4,
+      "recovery_months": "3"
+    },
+    {
+      "depth": -0.006,
+      "length_months": 6,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 3,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.006,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 3,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.031,
+      "length_months": 78,
+      "recovery_months": "71"
+    },
+    {
+      "depth": -0.006,
+      "length_months": 3,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.004,
+      "length_months": 4,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.001,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 3,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 5,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 4,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.038,
+      "length_months": 10,
+      "recovery_months": "5"
+    },
+    {
+      "depth": -0.144,
+      "length_months": 28,
+      "recovery_months": "20"
+    },
+    {
+      "depth": -0.01,
+      "length_months": 4,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.002,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.028,
+      "length_months": 15,
+      "recovery_months": "10"
+    },
+    {
+      "depth": -0.006,
+      "length_months": 4,
+      "recovery_months": "3"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.0,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.008,
+      "length_months": 4,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.019,
+      "length_months": 17,
+      "recovery_months": "15"
+    },
+    {
+      "depth": -0.001,
+      "length_months": 3,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.001,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.0,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.022,
+      "length_months": 19,
+      "recovery_months": "13"
+    },
+    {
+      "depth": -0.055,
+      "length_months": 66,
+      "recovery_months": "52"
+    },
+    {
+      "depth": -0.01,
+      "length_months": 6,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.006,
+      "length_months": 6,
+      "recovery_months": "3"
+    },
+    {
+      "depth": -0.002,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.001,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.051,
+      "length_months": 70,
+      "recovery_months": "30"
+    },
+    {
+      "depth": -0.004,
+      "length_months": 3,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.01,
+      "length_months": 11,
+      "recovery_months": "4"
+    },
+    {
+      "depth": -0.026,
+      "length_months": 12,
+      "recovery_months": "9"
+    },
+    {
+      "depth": -0.002,
+      "length_months": 5,
+      "recovery_months": "3"
+    },
+    {
+      "depth": -0.007,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.001,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.018,
+      "length_months": 17,
+      "recovery_months": "12"
+    },
+    {
+      "depth": -0.007,
+      "length_months": 5,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.007,
+      "length_months": 10,
+      "recovery_months": "9"
+    },
+    {
+      "depth": -0.001,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.022,
+      "length_months": 19,
+      "recovery_months": "14"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 3,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.04,
+      "length_months": 43,
+      "recovery_months": "18"
+    },
+    {
+      "depth": -0.021,
+      "length_months": 32,
+      "recovery_months": "22"
+    },
+    {
+      "depth": -0.242,
+      "length_months": 666,
+      "recovery_months": "460"
+    },
+    {
+      "depth": -0.009,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.011,
+      "length_months": 11,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.011,
+      "length_months": 6,
+      "recovery_months": "4"
+    },
+    {
+      "depth": -0.034,
+      "length_months": 47,
+      "recovery_months": "9"
+    },
+    {
+      "depth": -0.057,
+      "length_months": 57,
+      "recovery_months": "29"
+    },
+    {
+      "depth": -0.009,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.021,
+      "length_months": 20,
+      "recovery_months": "13"
+    },
+    {
+      "depth": -0.078,
+      "length_months": 49,
+      "recovery_months": "45"
+    },
+    {
+      "depth": -0.009,
+      "length_months": 9,
+      "recovery_months": "4"
+    },
+    {
+      "depth": -0.006,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.015,
+      "length_months": 13,
+      "recovery_months": "5"
+    },
+    {
+      "depth": -0.015,
+      "length_months": 10,
+      "recovery_months": "3"
+    },
+    {
+      "depth": -0.002,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.004,
+      "length_months": 3,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.012,
+      "length_months": 7,
+      "recovery_months": "4"
+    },
+    {
+      "depth": -0.004,
+      "length_months": 4,
+      "recovery_months": "3"
+    },
+    {
+      "depth": -0.001,
+      "length_months": 3,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 3,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.007,
+      "length_months": 5,
+      "recovery_months": "3"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 3,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.001,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.005,
+      "length_months": 3,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.03,
+      "length_months": 28,
+      "recovery_months": "17"
+    },
+    {
+      "depth": -0.004,
+      "length_months": 3,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.009,
+      "length_months": 5,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.007,
+      "length_months": 6,
+      "recovery_months": "5"
+    },
+    {
+      "depth": -0.019,
+      "length_months": 6,
+      "recovery_months": "3"
+    },
+    {
+      "depth": -0.003,
+      "length_months": 3,
+      "recovery_months": "2"
+    },
+    {
+      "depth": -0.009,
+      "length_months": 4,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.038,
+      "length_months": 15,
+      "recovery_months": "13"
+    },
+    {
+      "depth": -0.0,
+      "length_months": 2,
+      "recovery_months": "1"
+    },
+    {
+      "depth": -0.077,
+      "length_months": 49,
+      "recovery_months": null
+    }
+  ],
+  "summary": {
+    "recovery_median_months": 2.0,
+    "recovery_p90_months": 17.6,
+    "pct_time_underwater": 0.894,
+    "longest_underwater_months": 665
+  },
+  "by_threshold": {
+    ">5%": {
+      "count": 9,
+      "recovery_median": 41.0,
+      "recovery_p90": 259.8
+    },
+    ">10%": {
+      "count": 2,
+      "recovery_median": 240.0,
+      "recovery_p90": 416.0
+    },
+    ">20%": {
+      "count": 1,
+      "recovery_median": 460.0,
+      "recovery_p90": 460.0
+    }
+  }
+}
