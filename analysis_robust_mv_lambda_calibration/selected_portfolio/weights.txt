@@ -1,0 +1,13 @@
+Robust Mean–Variance (Constrained) Portfolio — final weights
+==================================================
+
+  QQQ: weight=25.0%, RC_vol=33.2%
+  GLD: weight=25.0%, RC_vol=16.2%
+  VOO: weight=17.7%, RC_vol=19.3%
+  SCHD: weight=15.6%, RC_vol=13.5%
+  SLV: weight=11.5%, RC_vol=17.3%
+  SCHP: weight=3.2%, RC_vol=0.3%
+  BND: weight=1.0%, RC_vol=0.1%
+  TLT: weight=1.0%, RC_vol=0.0%
+
+Sum of weights: 100.0%

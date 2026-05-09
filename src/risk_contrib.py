@@ -14,13 +14,14 @@ import pandas as pd
 DDOF = 1
 
 
+
 def cov_matrix_monthly(
     returns_df: pd.DataFrame,
     ddof: int = DDOF,
     use_shrinkage: bool = False,
 ) -> pd.DataFrame:
     """
-    Covariance matrix of monthly returns (columns = assets).
+    Covariance matrix of return columns (e.g. month-end panels; columns = assets).
     When use_shrinkage=True, applies Ledoit-Wolf shrinkage to stabilize estimates.
     """
     if use_shrinkage:
@@ -37,6 +38,15 @@ def cov_matrix_monthly(
         except Exception:
             return returns_df.cov(ddof=ddof)
     return returns_df.cov(ddof=ddof)
+
+
+def cov_matrix_returns(
+    returns_df: pd.DataFrame,
+    ddof: int = DDOF,
+    use_shrinkage: bool = False,
+) -> pd.DataFrame:
+    """Covariance at any frequency (alias naming; delegates to cov_matrix_monthly)."""
+    return cov_matrix_monthly(returns_df, ddof=ddof, use_shrinkage=use_shrinkage)
 
 
 def cov_matrix_monthly_robust(

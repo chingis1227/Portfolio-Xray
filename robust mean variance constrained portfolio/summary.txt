@@ -1,0 +1,13 @@
+Robust Mean–Variance (Constrained) Portfolio
+==================================================
+
+CAGR: 17.736%, Vol: 16.160%, MaxDD: -26.889%, Sharpe: 0.953, Sortino: 1.331, Beta: 0.726, Corr_base: 0.000
+
+Optimizer: robust_mean_variance_constrained (solver=SLSQP, success=True)
+robust_mv_lambda: 0.0
+Covariance: ledoit_wolf (shrinkage=0.014518558531445578)
+Objective value (min lambda*w'Sig*w - mu'w): -0.00060445478
+Concentration: HHI=0.2124, effective_n=4.707, top1=25.000%
+
+Stress: DIAG_ATTENTION (DIAG_LOSS_EQUITY_SHOCK)
+Client-fit (MaxDD gate): FAIL

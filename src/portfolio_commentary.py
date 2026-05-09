@@ -760,19 +760,78 @@ def _append_macro_regime_section(lines: list[str], st: dict[str, Any]) -> None:
     if not isinstance(mr, dict) or not mr:
         return
     lines.append("Macro regime diagnostics")
+    axis_model = mr.get("axis_model") or {}
+    version = axis_model.get("version") or "macro_two_axis_v1"
     if mr.get("error"):
-        lines.append(f"Macro regime diagnostics unavailable: {mr.get('error')}")
+        lines.append(
+            f"Macro regime diagnostics unavailable ({version}): {mr.get('error')}"
+        )
+        coverage_tier = mr.get("coverage_tier") or "insufficient"
+        lines.append(f"Coverage tier: {coverage_tier}.")
+        disclaimer = mr.get("method_disclaimer")
+        if disclaimer:
+            lines.append(str(disclaimer))
         lines.append("")
         return
 
     scores = mr.get("axis_scores_latest") or {}
     lines.append(
-        f"Current regime: {mr.get('current_regime', 'n/a')}; "
-        f"growth_score={_fmt_float(scores.get('growth_score'), 3)}; "
-        f"inflation_pressure_score={_fmt_float(scores.get('inflation_pressure_score'), 3)}; "
-        f"confidence={mr.get('regime_confidence', 'unknown')}; "
-        f"transition_warning={mr.get('regime_transition_warning', False)}."
+        f"Method={version}; frequency={axis_model.get('frequency', 'monthly')}; "
+        f"score_lag_months={mr.get('score_lag_months', 1)}."
     )
+    primary_regime = (
+        mr.get("current_primary_regime")
+        or mr.get("current_regime")
+        or "n/a"
+    )
+    legacy_regime = mr.get("current_regime_legacy")
+    transition_flag_now = bool(mr.get("current_transition_flag"))
+    transition_reason_now = mr.get("current_transition_reason") or "none"
+    legacy_suffix = (
+        f"; legacy_label={legacy_regime}" if legacy_regime else ""
+    )
+    lines.append(
+        f"Current primary regime: {primary_regime}; "
+        f"growth_score={_fmt_float(scores.get('growth_score'), 3)}; "
+        f"inflation_score={_fmt_float(scores.get('inflation_score'), 3)}; "
+        f"confidence={mr.get('confidence_level', mr.get('regime_confidence', 'unknown'))}; "
+        f"transition_flag={transition_flag_now}; "
+        f"transition_reason={transition_reason_now}"
+        f"{legacy_suffix}."
+    )
+    growth_blocks = scores.get("growth_blocks") or {}
+    inflation_blocks = scores.get("inflation_blocks") or {}
+    if isinstance(growth_blocks, dict) and growth_blocks:
+        parts = ", ".join(
+            f"{k}={_fmt_float(v, 3)}" for k, v in growth_blocks.items() if v is not None
+        )
+        if parts:
+            lines.append(f"Growth block sub-scores: {parts}.")
+    if isinstance(inflation_blocks, dict) and inflation_blocks:
+        parts = ", ".join(
+            f"{k}={_fmt_float(v, 3)}" for k, v in inflation_blocks.items() if v is not None
+        )
+        if parts:
+            lines.append(f"Inflation block sub-scores: {parts}.")
+
+    coverage_tier = mr.get("coverage_tier") or "unknown"
+    coverage_ratio = mr.get("coverage_ratio")
+    available_blocks = mr.get("available_blocks") or []
+    missing_blocks = mr.get("missing_blocks") or []
+    optional_missing = mr.get("optional_blocks_missing") or []
+    lines.append(
+        f"Coverage tier: {coverage_tier}; ratio={_fmt_float(coverage_ratio, 2)}; "
+        f"available_blocks={len(available_blocks)}; missing_blocks={len(missing_blocks)}; "
+        f"optional_blocks_missing={len(optional_missing)}."
+    )
+    if missing_blocks:
+        lines.append("Missing blocks: " + ", ".join(str(b) for b in missing_blocks) + ".")
+    if optional_missing:
+        lines.append(
+            "Optional blocks missing (do not lower confidence): "
+            + ", ".join(str(b) for b in optional_missing) + "."
+        )
+
     by_quality = mr.get("available_regimes_by_quality") or {}
     usable = int(by_quality.get("usable", 0) or 0)
     reliable = int(by_quality.get("reliable", 0) or 0)
@@ -780,6 +839,21 @@ def _append_macro_regime_section(lines: list[str], st: dict[str, Any]) -> None:
         f"Available usable/reliable regimes: usable={usable}, reliable={reliable}, "
         f"total={mr.get('available_regimes_count', 0)}."
     )
+    sources = mr.get("data_sources_used") or {}
+    if isinstance(sources, dict):
+        eci_source = sources.get("eci")
+        if eci_source and eci_source != "unavailable":
+            lines.append(
+                "ECI is quarterly; values are forward-filled to monthly — treat the "
+                "monthly precision as illustrative."
+            )
+        gdpnow_source = sources.get("gdpnow")
+        if gdpnow_source and gdpnow_source != "unavailable":
+            lines.append(
+                "GDPNow (Atlanta Fed) is published quarterly via FRED:GDPNOW; "
+                "values are forward-filled to monthly — treat intra-quarter "
+                "monthly steps as illustrative, not a new release."
+            )
     stability = mr.get("stability_summary") or {}
     top_unstable = stability.get("top_unstable_betas") or []
     if isinstance(top_unstable, list) and top_unstable:
@@ -802,9 +876,135 @@ def _append_macro_regime_section(lines: list[str], st: dict[str, Any]) -> None:
     warning = stability.get("warning")
     if warning:
         lines.append(str(warning))
+    look_ahead = axis_model.get("look_ahead_caveat")
+    if look_ahead:
+        lines.append(str(look_ahead))
     disclaimer = mr.get("method_disclaimer")
     if disclaimer:
         lines.append(str(disclaimer))
+    quality = mr.get("regime_label_quality_check") or {}
+    if isinstance(quality, dict) and quality:
+        lines.append("Regime Label Quality Check")
+        if quality.get("status") != "available":
+            lines.append(
+                "Regime label quality diagnostics are unavailable; treat regime-specific analytics cautiously."
+            )
+        else:
+            overall = quality.get("overall_assessment") or {}
+            by_regime = quality.get("by_regime") or {}
+            stable = quality.get("stability_summary") or {}
+            primary_only = {
+                "goldilocks",
+                "reflation",
+                "stagflation",
+                "recession_disinflation",
+            }
+            reliable = [
+                r for r, row in by_regime.items()
+                if isinstance(row, dict)
+                and r in primary_only
+                and row.get("quality_status") == "reliable"
+            ]
+            weak = [
+                r for r, row in by_regime.items()
+                if isinstance(row, dict)
+                and r in primary_only
+                and int(row.get("n_obs") or 0) < 24
+            ]
+            lines.append(
+                f"Regime history usable={overall.get('history_usable', False)}; "
+                f"switches={stable.get('n_switches', 'n/a')}; "
+                f"avg_months_between_switches={_fmt_float(stable.get('avg_months_between_switches'), 2)}; "
+                f"one-month share={_fmt_pct(stable.get('share_one_month_regimes'), 1)}; "
+                f"<3m share={_fmt_pct(stable.get('share_regimes_lt_3m'), 1)}."
+            )
+            lines.append(
+                "Reliable regimes: "
+                + (", ".join(reliable) if reliable else "none")
+                + "; weak regimes (<24 obs): "
+                + (", ".join(weak) if weak else "none")
+                + "."
+            )
+            if weak:
+                lines.append(
+                    "Warning: at least one regime has fewer than 24 observations; treat regime-specific betas/covariance/RC cautiously."
+                )
+            if overall.get("classifier_noise_warning"):
+                lines.append(
+                    "Warning: regime labels are unstable; the regime classifier may be too noisy for strong regime-specific conclusions."
+                )
+            warnings = overall.get("warnings") or []
+            if warnings:
+                lines.append("Quality-check warnings: " + "; ".join(str(w) for w in warnings) + ".")
+            ts = quality.get("transition_summary") or mr.get("transition_summary") or {}
+            if isinstance(ts, dict) and ts.get("n_scored_months"):
+                reason_counts = ts.get("transition_reason_counts") or {}
+                share = ts.get("transition_share")
+                legacy_share = ts.get("legacy_neutral_transition_share")
+                lines.append(
+                    "Transition months: "
+                    f"n={ts.get('n_transition_months', 0)} ("
+                    f"{_fmt_pct(share, 1)}); "
+                    f"growth_axis={reason_counts.get('growth_axis_near_neutral', 0)}, "
+                    f"inflation_axis={reason_counts.get('inflation_axis_near_neutral', 0)}, "
+                    f"both_axes={reason_counts.get('both_axes_near_neutral', 0)}"
+                    + (
+                        f"; legacy neutral_transition share={_fmt_pct(legacy_share, 1)}"
+                        if legacy_share is not None
+                        else ""
+                    )
+                    + "."
+                )
+                pivot = ts.get("primary_vs_transition_pivot") or {}
+                if isinstance(pivot, dict) and pivot:
+                    parts = [
+                        f"{r}: non_transition={info.get('non_transition', 0)}, "
+                        f"transition={info.get('transition', 0)}"
+                        for r, info in pivot.items()
+                        if isinstance(info, dict)
+                    ]
+                    if parts:
+                        lines.append("Primary regime x transition pivot: " + "; ".join(parts) + ".")
+    lines.append("")
+
+
+def _append_regime_factor_analytics_window_section(
+    lines: list[str], st: dict[str, Any]
+) -> None:
+    """Disclose label-history span vs fixed 10Y portfolio regime analytics window."""
+
+    rfa = st.get("regime_factor_analytics")
+    if not isinstance(rfa, dict) or not rfa:
+        return
+    lines.append("Regime factor analytics (portfolio window vs label history)")
+    span = rfa.get("regime_label_history_span") or {}
+    win = rfa.get("portfolio_regime_analytics_window") or {}
+    note = rfa.get("portfolio_regime_analytics_note")
+    disc = win.get("disclaimer") if isinstance(win, dict) else None
+    if not isinstance(span, dict):
+        span = {}
+    if not isinstance(win, dict):
+        win = {}
+    lines.append(
+        "macro_two_axis_v1 regime labels in macro_regime_diagnostics may cover a longer "
+        f"history ({span.get('start', 'n/a')}–{span.get('end', 'n/a')}, "
+        f"{span.get('n_months', 'n/a')} scored months in labels_monthly) than the "
+        "portfolio-facing regime analytics slice."
+    )
+    lines.append(
+        f"portfolio_regime_analytics_window is {win.get('label', '10Y')} ending at "
+        f"{win.get('analysis_end', 'n/a')} (target ~{win.get('target_weeks', 'n/a')} weeks / "
+        f"{win.get('target_months', 'n/a')} months); actual overlap in this run: "
+        f"{win.get('actual_data_start', 'n/a')}–{win.get('actual_data_end', 'n/a')} "
+        f"({win.get('actual_n_periods', 'n/a')} {win.get('frequency', '')} periods). "
+        "Per-regime n_obs and all regime-specific covariances, correlations, betas, "
+        "portfolio exposures, variance contributions, and average factor moves refer "
+        "only to that overlap."
+    )
+    if note:
+        lines.append(str(note))
+    elif disc:
+        lines.append(str(disc))
     lines.append("")
 
 
@@ -1108,9 +1308,29 @@ def write_stress_commentary(
     _append_factor_beta_adjusted_overlay_section(lines, st)
     _append_factor_covariance_section(lines, st)
     _append_macro_regime_section(lines, st)
+    _append_regime_factor_analytics_window_section(lines, st)
     _append_factor_variance_decomposition_section(lines, st)
     _append_portfolio_pca_section(lines, st)
     lines.append("")
+
+    fd = st.get("frequency_disclosure")
+    if isinstance(fd, dict) and fd:
+        lines.append("Data cadence (optimization vs stress)")
+        lines.append(
+            f"returns_frequency={fd.get('returns_frequency')}, optimization_frequency={fd.get('optimization_frequency')}, "
+            f"factor_stress_frequency={fd.get('factor_stress_frequency')}, "
+            f"macro_regime_frequency={fd.get('macro_regime_frequency')}; "
+            f"frequency_mismatch_warning={fd.get('frequency_mismatch_warning')}."
+        )
+        notes = fd.get("macro_regime_frequency_notes")
+        if isinstance(notes, str) and notes.strip():
+            lines.append(notes.strip())
+        if fd.get("frequency_mismatch_warning"):
+            lines.append(
+                "Non-uniform cadence: align interpretation of stress/regime blocks with the frequencies above; "
+                "full alignment of factor/regime panels with daily/weekly optimization is Phase 2."
+            )
+        lines.append("")
 
     lines.append("Risk Structure")
     caps_line = []
@@ -1258,6 +1478,7 @@ def write_portfolio_commentary(
     stress_report: dict[str, Any] | None,
     portfolio_valid: bool | None,
     analysis_end: str | None = None,
+    frequency_disclosure: dict[str, Any] | None = None,
 ) -> Path | None:
     """
     Write commentary.txt under output_dir_final using metrics + stress + rc_vol CSV.
@@ -1344,9 +1565,10 @@ def write_portfolio_commentary(
     lines.append("")
 
     lines.append("Metric-by-Metric Interpretation")
+    rf_lbl = str((frequency_disclosure or {}).get("returns_frequency") or "monthly")
     lines.append(
-        f"CAGR ({_fmt_pct(cagr)}) is the compound annual growth rate from monthly simple returns on the 10Y window in this run. "
-        f"Volatility ({_fmt_pct(vol)}) is annualized from monthly returns; MaxDD ({_fmt_pct(mdd)}) is from the monthly equity curve. "
+        f"CAGR ({_fmt_pct(cagr)}) is the compound annual growth rate from simple returns at {rf_lbl} cadence on the 10Y window in this run. "
+        f"Volatility ({_fmt_pct(vol)}) is annualized using the same return frequency; MaxDD ({_fmt_pct(mdd)}) is from the matching equity curve. "
         f"Sharpe ({_fmt_float(sharpe)}) and Sortino ({_fmt_float(sortino)}) follow project definitions (Sharpe uses raw return vol in the denominator). "
         f"Beta_base ({_fmt_float(beta)}) and Treynor ({_fmt_float(treynor)}) tie to the base benchmark; Corr_base, when present, is correlation with the benchmark on the same window."
     )
@@ -1360,6 +1582,24 @@ def write_portfolio_commentary(
             f" Failed scenario «{failed_scenario}», test «{failed_test}»." if failed_scenario else ""
         )
     )
+    fd = frequency_disclosure or {}
+    if fd:
+        lines.append("")
+        lines.append("Data frequency")
+        lines.append(
+            f"optimization_frequency={fd.get('optimization_frequency')}, returns_frequency={fd.get('returns_frequency')}, "
+            f"factor_stress_frequency={fd.get('factor_stress_frequency')}, "
+            f"macro_regime_frequency={fd.get('macro_regime_frequency')}; "
+            f"frequency_mismatch_warning={fd.get('frequency_mismatch_warning')}."
+        )
+        notes = fd.get("macro_regime_frequency_notes")
+        if isinstance(notes, str) and notes.strip():
+            lines.append(f"macro_regime_frequency_notes: {notes.strip()}")
+        if fd.get("frequency_mismatch_warning"):
+            lines.append(
+                "Non-uniform cadence across blocks: align interpretation of stress/regime diagnostics with the "
+                "frequencies above; full factor/regime alignment with daily/weekly optimization is Phase 2."
+            )
     lines.append("")
 
     lines.append("Strengths")

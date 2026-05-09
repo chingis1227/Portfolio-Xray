@@ -1,0 +1,9 @@
+Minimum CVaR (Uncapped) Portfolio — final weights
+==================================================
+
+  BND: weight=56.5%, RC_vol=57.7%
+  SCHP: weight=34.9%, RC_vol=33.5%
+  SCHD: weight=6.4%, RC_vol=6.1%
+  GLD: weight=2.1%, RC_vol=2.7%
+
+Sum of weights: 100.0%

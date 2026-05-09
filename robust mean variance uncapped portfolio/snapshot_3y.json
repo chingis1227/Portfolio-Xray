@@ -1,0 +1,1287 @@
+{
+  "timestamp": "2026-05-09T14:29:43.241702",
+  "analysis_end": "2026-05-08",
+  "window_label": "3y",
+  "window_months": 36,
+  "final_weights_total": {
+    "VOO": 0.0,
+    "QQQ": 1.0,
+    "GLD": 0.0
+  },
+  "final_weights_risk_portfolio": {
+    "VOO": 0.0,
+    "QQQ": 1.0,
+    "GLD": 0.0
+  },
+  "RC_asset": [
+    {
+      "ticker": "QQQ",
+      "rc_pct": 1.0
+    },
+    {
+      "ticker": "VOO",
+      "rc_pct": 0.0
+    },
+    {
+      "ticker": "GLD",
+      "rc_pct": 0.0
+    },
+    {
+      "ticker": "SLV",
+      "rc_pct": 0.0
+    },
+    {
+      "ticker": "BND",
+      "rc_pct": 0.0
+    }
+  ],
+  "constraints_status": {
+    "target_vol": "FAIL",
+    "max_dd": "FAIL",
+    "rc_caps": "NOT_CHECKED",
+    "weight_caps": "NOT_CHECKED"
+  },
+  "stress_suite_results": {
+    "overall": "DIAG_ATTENTION",
+    "fail_reason_code": "DIAG_LOSS_EQUITY_SHOCK",
+    "scenarios": [
+      {
+        "scenario_id": "equity_shock",
+        "portfolio_pnl_pct": -0.5571,
+        "violations": [
+          "loss"
+        ],
+        "rc_flags": [],
+        "pass": false
+      },
+      {
+        "scenario_id": "credit_shock",
+        "portfolio_pnl_pct": -0.0909,
+        "violations": [],
+        "rc_flags": [],
+        "pass": true
+      },
+      {
+        "scenario_id": "rates_shock",
+        "portfolio_pnl_pct": 0.0393,
+        "violations": [],
+        "rc_flags": [],
+        "pass": true
+      },
+      {
+        "scenario_id": "inflation_stagflation",
+        "portfolio_pnl_pct": -0.2556,
+        "violations": [
+          "loss"
+        ],
+        "rc_flags": [],
+        "pass": false
+      },
+      {
+        "scenario_id": "liquidity_shock",
+        "portfolio_pnl_pct": -0.3119,
+        "violations": [
+          "loss"
+        ],
+        "rc_flags": [],
+        "pass": false
+      },
+      {
+        "scenario_id": "recession_severe",
+        "portfolio_pnl_pct": -0.6157,
+        "violations": [
+          "loss"
+        ],
+        "rc_flags": [],
+        "pass": false
+      }
+    ],
+    "historical": [
+      {
+        "episode": "dotcom",
+        "episode_start": "2000-03-01",
+        "episode_end": "2002-10-31",
+        "max_dd": null,
+        "pnl_real_episode": null,
+        "vol_annualized_episode": null,
+        "volatility_spike_ratio": null,
+        "pass": null,
+        "diagnostic_code": null,
+        "historical_factor_attribution": {
+          "method": "model_based_beta_times_realized_factor_shock",
+          "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
+          "beta_source": "5y",
+          "factor_model_pnl_pct": -0.49564325476917515,
+          "factor_model_error_pct": null,
+          "factor_model_abs_error_pct": null,
+          "factor_shock_sum": {
+            "equity": -0.36044320853717704,
+            "vix": 1.3024583839602109,
+            "oil": 0.068612916334721
+          },
+          "pnl_by_factor_pct": {
+            "beta_eq": -0.5020253008505802,
+            "beta_vix": 0.006382046081405033
+          },
+          "top_factor_drivers": [
+            {
+              "beta_key": "beta_eq",
+              "factor": "Equity",
+              "pnl_pct": -0.5020253008505802,
+              "abs_pnl_pct": 0.5020253008505802,
+              "direction": "loss",
+              "rank": 1
+            },
+            {
+              "beta_key": "beta_vix",
+              "factor": "VIX",
+              "pnl_pct": 0.006382046081405033,
+              "abs_pnl_pct": 0.006382046081405033,
+              "direction": "gain",
+              "rank": 2
+            }
+          ],
+          "largest_negative_factor": {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.5020253008505802,
+            "abs_pnl_pct": 0.5020253008505802,
+            "direction": "loss"
+          }
+        },
+        "pnl_by_factor_pct": {
+          "beta_eq": -0.5020253008505802,
+          "beta_vix": 0.006382046081405033
+        },
+        "top_factor_drivers": [
+          {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.5020253008505802,
+            "abs_pnl_pct": 0.5020253008505802,
+            "direction": "loss",
+            "rank": 1
+          },
+          {
+            "beta_key": "beta_vix",
+            "factor": "VIX",
+            "pnl_pct": 0.006382046081405033,
+            "abs_pnl_pct": 0.006382046081405033,
+            "direction": "gain",
+            "rank": 2
+          }
+        ],
+        "largest_negative_factor": {
+          "beta_key": "beta_eq",
+          "factor": "Equity",
+          "pnl_pct": -0.5020253008505802,
+          "abs_pnl_pct": 0.5020253008505802,
+          "direction": "loss"
+        },
+        "factor_model_pnl_pct": -0.49564325476917515,
+        "factor_model_error_pct": null,
+        "factor_model_abs_error_pct": null,
+        "factor_attribution_method": "model_based_beta_times_realized_factor_shock",
+        "factor_attribution_beta_source": "5y",
+        "historical_factor_attribution_adjusted": {
+          "method": "model_based_beta_times_realized_factor_shock",
+          "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
+          "beta_source": "adjusted",
+          "factor_model_pnl_pct": -0.5037836196689265,
+          "factor_model_error_pct": null,
+          "factor_model_abs_error_pct": null,
+          "factor_shock_sum": {
+            "equity": -0.36044320853717704,
+            "vix": 1.3024583839602109,
+            "oil": 0.068612916334721
+          },
+          "pnl_by_factor_pct": {
+            "beta_eq": -0.5020253008505802,
+            "beta_vix": -0.0017583188183462847
+          },
+          "top_factor_drivers": [
+            {
+              "beta_key": "beta_eq",
+              "factor": "Equity",
+              "pnl_pct": -0.5020253008505802,
+              "abs_pnl_pct": 0.5020253008505802,
+              "direction": "loss",
+              "rank": 1
+            },
+            {
+              "beta_key": "beta_vix",
+              "factor": "VIX",
+              "pnl_pct": -0.0017583188183462847,
+              "abs_pnl_pct": 0.0017583188183462847,
+              "direction": "loss",
+              "rank": 2
+            }
+          ],
+          "largest_negative_factor": {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.5020253008505802,
+            "abs_pnl_pct": 0.5020253008505802,
+            "direction": "loss"
+          }
+        },
+        "pnl_by_factor_pct_adjusted": {
+          "beta_eq": -0.5020253008505802,
+          "beta_vix": -0.0017583188183462847
+        },
+        "top_factor_drivers_adjusted": [
+          {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.5020253008505802,
+            "abs_pnl_pct": 0.5020253008505802,
+            "direction": "loss",
+            "rank": 1
+          },
+          {
+            "beta_key": "beta_vix",
+            "factor": "VIX",
+            "pnl_pct": -0.0017583188183462847,
+            "abs_pnl_pct": 0.0017583188183462847,
+            "direction": "loss",
+            "rank": 2
+          }
+        ],
+        "largest_negative_factor_adjusted": {
+          "beta_key": "beta_eq",
+          "factor": "Equity",
+          "pnl_pct": -0.5020253008505802,
+          "abs_pnl_pct": 0.5020253008505802,
+          "direction": "loss"
+        },
+        "factor_model_pnl_pct_adjusted": -0.5037836196689265,
+        "factor_model_error_pct_adjusted": null,
+        "factor_model_abs_error_pct_adjusted": null,
+        "factor_attribution_method_adjusted": "model_based_beta_times_realized_factor_shock",
+        "factor_attribution_beta_source_adjusted": "adjusted"
+      },
+      {
+        "episode": "2008",
+        "episode_start": "2007-10-01",
+        "episode_end": "2009-03-31",
+        "max_dd": null,
+        "pnl_real_episode": null,
+        "vol_annualized_episode": null,
+        "volatility_spike_ratio": null,
+        "pass": null,
+        "diagnostic_code": null,
+        "historical_factor_attribution": {
+          "method": "model_based_beta_times_realized_factor_shock",
+          "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
+          "beta_source": "5y",
+          "factor_model_pnl_pct": -0.6237139229378613,
+          "factor_model_error_pct": null,
+          "factor_model_abs_error_pct": null,
+          "factor_shock_sum": {
+            "equity": -0.4350141260489361,
+            "real_rates": -0.0018000000000000013,
+            "inflation": -0.0092,
+            "usd": 0.13832470835308175,
+            "commodity": -0.35570785619922796,
+            "vix": 1.1114908486895834,
+            "us_growth": -5.17,
+            "oil": -0.3247541602725945
+          },
+          "pnl_by_factor_pct": {
+            "beta_eq": -0.6058876747609582,
+            "beta_rr": -0.0035353800000000025,
+            "beta_inf": 0.01718192,
+            "beta_usd": 0.008465472151208603,
+            "beta_cmd": -0.03194256548669067,
+            "beta_vix": 0.005446305158578958,
+            "beta_us_growth": -0.013441999999999999
+          },
+          "top_factor_drivers": [
+            {
+              "beta_key": "beta_eq",
+              "factor": "Equity",
+              "pnl_pct": -0.6058876747609582,
+              "abs_pnl_pct": 0.6058876747609582,
+              "direction": "loss",
+              "rank": 1
+            },
+            {
+              "beta_key": "beta_cmd",
+              "factor": "Commodity",
+              "pnl_pct": -0.03194256548669067,
+              "abs_pnl_pct": 0.03194256548669067,
+              "direction": "loss",
+              "rank": 2
+            },
+            {
+              "beta_key": "beta_inf",
+              "factor": "Inflation",
+              "pnl_pct": 0.01718192,
+              "abs_pnl_pct": 0.01718192,
+              "direction": "gain",
+              "rank": 3
+            }
+          ],
+          "largest_negative_factor": {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.6058876747609582,
+            "abs_pnl_pct": 0.6058876747609582,
+            "direction": "loss"
+          }
+        },
+        "pnl_by_factor_pct": {
+          "beta_eq": -0.6058876747609582,
+          "beta_rr": -0.0035353800000000025,
+          "beta_inf": 0.01718192,
+          "beta_usd": 0.008465472151208603,
+          "beta_cmd": -0.03194256548669067,
+          "beta_vix": 0.005446305158578958,
+          "beta_us_growth": -0.013441999999999999
+        },
+        "top_factor_drivers": [
+          {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.6058876747609582,
+            "abs_pnl_pct": 0.6058876747609582,
+            "direction": "loss",
+            "rank": 1
+          },
+          {
+            "beta_key": "beta_cmd",
+            "factor": "Commodity",
+            "pnl_pct": -0.03194256548669067,
+            "abs_pnl_pct": 0.03194256548669067,
+            "direction": "loss",
+            "rank": 2
+          },
+          {
+            "beta_key": "beta_inf",
+            "factor": "Inflation",
+            "pnl_pct": 0.01718192,
+            "abs_pnl_pct": 0.01718192,
+            "direction": "gain",
+            "rank": 3
+          }
+        ],
+        "largest_negative_factor": {
+          "beta_key": "beta_eq",
+          "factor": "Equity",
+          "pnl_pct": -0.6058876747609582,
+          "abs_pnl_pct": 0.6058876747609582,
+          "direction": "loss"
+        },
+        "factor_model_pnl_pct": -0.6237139229378613,
+        "factor_model_error_pct": null,
+        "factor_model_abs_error_pct": null,
+        "factor_attribution_method": "model_based_beta_times_realized_factor_shock",
+        "factor_attribution_beta_source": "5y",
+        "historical_factor_attribution_adjusted": {
+          "method": "model_based_beta_times_realized_factor_shock",
+          "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
+          "beta_source": "adjusted",
+          "factor_model_pnl_pct": -0.5907942488881479,
+          "factor_model_error_pct": null,
+          "factor_model_abs_error_pct": null,
+          "factor_shock_sum": {
+            "equity": -0.4350141260489361,
+            "real_rates": -0.0018000000000000013,
+            "inflation": -0.0092,
+            "usd": 0.13832470835308175,
+            "commodity": -0.35570785619922796,
+            "vix": 1.1114908486895834,
+            "us_growth": -5.17,
+            "oil": -0.3247541602725945
+          },
+          "pnl_by_factor_pct": {
+            "beta_eq": -0.6058876747609582,
+            "beta_rr": -0.0010313100000000006,
+            "beta_inf": 0.025244799999999998,
+            "beta_usd": 0.01456213367187068,
+            "beta_cmd": -0.009515185153329348,
+            "beta_vix": -0.0015005126457309375,
+            "beta_us_growth": -0.012666499999999999
+          },
+          "top_factor_drivers": [
+            {
+              "beta_key": "beta_eq",
+              "factor": "Equity",
+              "pnl_pct": -0.6058876747609582,
+              "abs_pnl_pct": 0.6058876747609582,
+              "direction": "loss",
+              "rank": 1
+            },
+            {
+              "beta_key": "beta_inf",
+              "factor": "Inflation",
+              "pnl_pct": 0.025244799999999998,
+              "abs_pnl_pct": 0.025244799999999998,
+              "direction": "gain",
+              "rank": 2
+            },
+            {
+              "beta_key": "beta_usd",
+              "factor": "USD",
+              "pnl_pct": 0.01456213367187068,
+              "abs_pnl_pct": 0.01456213367187068,
+              "direction": "gain",
+              "rank": 3
+            }
+          ],
+          "largest_negative_factor": {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.6058876747609582,
+            "abs_pnl_pct": 0.6058876747609582,
+            "direction": "loss"
+          }
+        },
+        "pnl_by_factor_pct_adjusted": {
+          "beta_eq": -0.6058876747609582,
+          "beta_rr": -0.0010313100000000006,
+          "beta_inf": 0.025244799999999998,
+          "beta_usd": 0.01456213367187068,
+          "beta_cmd": -0.009515185153329348,
+          "beta_vix": -0.0015005126457309375,
+          "beta_us_growth": -0.012666499999999999
+        },
+        "top_factor_drivers_adjusted": [
+          {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.6058876747609582,
+            "abs_pnl_pct": 0.6058876747609582,
+            "direction": "loss",
+            "rank": 1
+          },
+          {
+            "beta_key": "beta_inf",
+            "factor": "Inflation",
+            "pnl_pct": 0.025244799999999998,
+            "abs_pnl_pct": 0.025244799999999998,
+            "direction": "gain",
+            "rank": 2
+          },
+          {
+            "beta_key": "beta_usd",
+            "factor": "USD",
+            "pnl_pct": 0.01456213367187068,
+            "abs_pnl_pct": 0.01456213367187068,
+            "direction": "gain",
+            "rank": 3
+          }
+        ],
+        "largest_negative_factor_adjusted": {
+          "beta_key": "beta_eq",
+          "factor": "Equity",
+          "pnl_pct": -0.6058876747609582,
+          "abs_pnl_pct": 0.6058876747609582,
+          "direction": "loss"
+        },
+        "factor_model_pnl_pct_adjusted": -0.5907942488881479,
+        "factor_model_error_pct_adjusted": null,
+        "factor_model_abs_error_pct_adjusted": null,
+        "factor_attribution_method_adjusted": "model_based_beta_times_realized_factor_shock",
+        "factor_attribution_beta_source_adjusted": "adjusted"
+      },
+      {
+        "episode": "2020",
+        "episode_start": "2020-02-01",
+        "episode_end": "2020-04-30",
+        "max_dd": -0.2856,
+        "pnl_real_episode": 0.0014,
+        "vol_annualized_episode": 0.1309,
+        "volatility_spike_ratio": 5.5593,
+        "pass": false,
+        "diagnostic_code": "DIAG_HIST_2020",
+        "historical_factor_attribution": {
+          "method": "model_based_beta_times_realized_factor_shock",
+          "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
+          "beta_source": "5y",
+          "factor_model_pnl_pct": -0.20364163970059238,
+          "factor_model_error_pct": -0.2050416397005924,
+          "factor_model_abs_error_pct": 0.2050416397005924,
+          "factor_shock_sum": {
+            "equity": -0.11815039420679918,
+            "real_rates": -0.0044,
+            "inflation": -0.0055,
+            "usd": 0.06543944574029648,
+            "commodity": -0.2895056712071675,
+            "vix": 1.501874397088777,
+            "us_growth": -10.030000000000001,
+            "oil": -0.690850835543455
+          },
+          "pnl_by_factor_pct": {
+            "beta_eq": -0.1645598690512299,
+            "beta_rr": -0.00864204,
+            "beta_inf": 0.0102718,
+            "beta_usd": 0.004004894079306144,
+            "beta_cmd": -0.025997609274403644,
+            "beta_vix": 0.007359184545735006,
+            "beta_us_growth": -0.026078
+          },
+          "top_factor_drivers": [
+            {
+              "beta_key": "beta_eq",
+              "factor": "Equity",
+              "pnl_pct": -0.1645598690512299,
+              "abs_pnl_pct": 0.1645598690512299,
+              "direction": "loss",
+              "rank": 1
+            },
+            {
+              "beta_key": "beta_us_growth",
+              "factor": "US Growth (WEI)",
+              "pnl_pct": -0.026078,
+              "abs_pnl_pct": 0.026078,
+              "direction": "loss",
+              "rank": 2
+            },
+            {
+              "beta_key": "beta_cmd",
+              "factor": "Commodity",
+              "pnl_pct": -0.025997609274403644,
+              "abs_pnl_pct": 0.025997609274403644,
+              "direction": "loss",
+              "rank": 3
+            }
+          ],
+          "largest_negative_factor": {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.1645598690512299,
+            "abs_pnl_pct": 0.1645598690512299,
+            "direction": "loss"
+          }
+        },
+        "pnl_by_factor_pct": {
+          "beta_eq": -0.1645598690512299,
+          "beta_rr": -0.00864204,
+          "beta_inf": 0.0102718,
+          "beta_usd": 0.004004894079306144,
+          "beta_cmd": -0.025997609274403644,
+          "beta_vix": 0.007359184545735006,
+          "beta_us_growth": -0.026078
+        },
+        "top_factor_drivers": [
+          {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.1645598690512299,
+            "abs_pnl_pct": 0.1645598690512299,
+            "direction": "loss",
+            "rank": 1
+          },
+          {
+            "beta_key": "beta_us_growth",
+            "factor": "US Growth (WEI)",
+            "pnl_pct": -0.026078,
+            "abs_pnl_pct": 0.026078,
+            "direction": "loss",
+            "rank": 2
+          },
+          {
+            "beta_key": "beta_cmd",
+            "factor": "Commodity",
+            "pnl_pct": -0.025997609274403644,
+            "abs_pnl_pct": 0.025997609274403644,
+            "direction": "loss",
+            "rank": 3
+          }
+        ],
+        "largest_negative_factor": {
+          "beta_key": "beta_eq",
+          "factor": "Equity",
+          "pnl_pct": -0.1645598690512299,
+          "abs_pnl_pct": 0.1645598690512299,
+          "direction": "loss"
+        },
+        "factor_model_pnl_pct": -0.20364163970059238,
+        "factor_model_error_pct": -0.2050416397005924,
+        "factor_model_abs_error_pct": 0.2050416397005924,
+        "factor_attribution_method": "model_based_beta_times_realized_factor_shock",
+        "factor_attribution_beta_source": "5y",
+        "historical_factor_attribution_adjusted": {
+          "method": "model_based_beta_times_realized_factor_shock",
+          "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
+          "beta_source": "adjusted",
+          "factor_model_pnl_pct": -0.17944501854178177,
+          "factor_model_error_pct": -0.18084501854178178,
+          "factor_model_abs_error_pct": 0.18084501854178178,
+          "factor_shock_sum": {
+            "equity": -0.11815039420679918,
+            "real_rates": -0.0044,
+            "inflation": -0.0055,
+            "usd": 0.06543944574029648,
+            "commodity": -0.2895056712071675,
+            "vix": 1.501874397088777,
+            "us_growth": -10.030000000000001,
+            "oil": -0.690850835543455
+          },
+          "pnl_by_factor_pct": {
+            "beta_eq": -0.1645598690512299,
+            "beta_rr": -0.00252098,
+            "beta_inf": 0.015091999999999998,
+            "beta_usd": 0.006889137650309711,
+            "beta_cmd": -0.007744276704791732,
+            "beta_vix": -0.002027530436069849,
+            "beta_us_growth": -0.0245735
+          },
+          "top_factor_drivers": [
+            {
+              "beta_key": "beta_eq",
+              "factor": "Equity",
+              "pnl_pct": -0.1645598690512299,
+              "abs_pnl_pct": 0.1645598690512299,
+              "direction": "loss",
+              "rank": 1
+            },
+            {
+              "beta_key": "beta_us_growth",
+              "factor": "US Growth (WEI)",
+              "pnl_pct": -0.0245735,
+              "abs_pnl_pct": 0.0245735,
+              "direction": "loss",
+              "rank": 2
+            },
+            {
+              "beta_key": "beta_inf",
+              "factor": "Inflation",
+              "pnl_pct": 0.015091999999999998,
+              "abs_pnl_pct": 0.015091999999999998,
+              "direction": "gain",
+              "rank": 3
+            }
+          ],
+          "largest_negative_factor": {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.1645598690512299,
+            "abs_pnl_pct": 0.1645598690512299,
+            "direction": "loss"
+          }
+        },
+        "pnl_by_factor_pct_adjusted": {
+          "beta_eq": -0.1645598690512299,
+          "beta_rr": -0.00252098,
+          "beta_inf": 0.015091999999999998,
+          "beta_usd": 0.006889137650309711,
+          "beta_cmd": -0.007744276704791732,
+          "beta_vix": -0.002027530436069849,
+          "beta_us_growth": -0.0245735
+        },
+        "top_factor_drivers_adjusted": [
+          {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.1645598690512299,
+            "abs_pnl_pct": 0.1645598690512299,
+            "direction": "loss",
+            "rank": 1
+          },
+          {
+            "beta_key": "beta_us_growth",
+            "factor": "US Growth (WEI)",
+            "pnl_pct": -0.0245735,
+            "abs_pnl_pct": 0.0245735,
+            "direction": "loss",
+            "rank": 2
+          },
+          {
+            "beta_key": "beta_inf",
+            "factor": "Inflation",
+            "pnl_pct": 0.015091999999999998,
+            "abs_pnl_pct": 0.015091999999999998,
+            "direction": "gain",
+            "rank": 3
+          }
+        ],
+        "largest_negative_factor_adjusted": {
+          "beta_key": "beta_eq",
+          "factor": "Equity",
+          "pnl_pct": -0.1645598690512299,
+          "abs_pnl_pct": 0.1645598690512299,
+          "direction": "loss"
+        },
+        "factor_model_pnl_pct_adjusted": -0.17944501854178177,
+        "factor_model_error_pct_adjusted": -0.18084501854178178,
+        "factor_model_abs_error_pct_adjusted": 0.18084501854178178,
+        "factor_attribution_method_adjusted": "model_based_beta_times_realized_factor_shock",
+        "factor_attribution_beta_source_adjusted": "adjusted"
+      },
+      {
+        "episode": "2022",
+        "episode_start": "2021-11-01",
+        "episode_end": "2022-10-31",
+        "max_dd": -0.3506,
+        "pnl_real_episode": -0.2756,
+        "vol_annualized_episode": 0.0668,
+        "volatility_spike_ratio": 1.687,
+        "pass": false,
+        "diagnostic_code": "DIAG_HIST_2022",
+        "historical_factor_attribution": {
+          "method": "model_based_beta_times_realized_factor_shock",
+          "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
+          "beta_source": "5y",
+          "factor_model_pnl_pct": -0.12855240574613136,
+          "factor_model_error_pct": 0.14704759425386865,
+          "factor_model_abs_error_pct": 0.14704759425386865,
+          "factor_shock_sum": {
+            "equity": -0.14630599708134928,
+            "real_rates": 0.026000000000000002,
+            "inflation": -0.00030000000000000165,
+            "usd": 0.11056141491770743,
+            "commodity": 0.2128323551054515,
+            "vix": 1.0569393688446271,
+            "us_growth": -2.8700000000000006,
+            "oil": 0.19355657916011304
+          },
+          "pnl_by_factor_pct": {
+            "beta_eq": -0.2037749927349033,
+            "beta_rr": 0.051066600000000004,
+            "beta_inf": 0.0005602800000000031,
+            "beta_usd": 0.006766358592963695,
+            "beta_cmd": 0.019112345488469545,
+            "beta_vix": 0.005179002907338673,
+            "beta_us_growth": -0.007462000000000001
+          },
+          "top_factor_drivers": [
+            {
+              "beta_key": "beta_eq",
+              "factor": "Equity",
+              "pnl_pct": -0.2037749927349033,
+              "abs_pnl_pct": 0.2037749927349033,
+              "direction": "loss",
+              "rank": 1
+            },
+            {
+              "beta_key": "beta_rr",
+              "factor": "Real rates",
+              "pnl_pct": 0.051066600000000004,
+              "abs_pnl_pct": 0.051066600000000004,
+              "direction": "gain",
+              "rank": 2
+            },
+            {
+              "beta_key": "beta_cmd",
+              "factor": "Commodity",
+              "pnl_pct": 0.019112345488469545,
+              "abs_pnl_pct": 0.019112345488469545,
+              "direction": "gain",
+              "rank": 3
+            }
+          ],
+          "largest_negative_factor": {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.2037749927349033,
+            "abs_pnl_pct": 0.2037749927349033,
+            "direction": "loss"
+          }
+        },
+        "pnl_by_factor_pct": {
+          "beta_eq": -0.2037749927349033,
+          "beta_rr": 0.051066600000000004,
+          "beta_inf": 0.0005602800000000031,
+          "beta_usd": 0.006766358592963695,
+          "beta_cmd": 0.019112345488469545,
+          "beta_vix": 0.005179002907338673,
+          "beta_us_growth": -0.007462000000000001
+        },
+        "top_factor_drivers": [
+          {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.2037749927349033,
+            "abs_pnl_pct": 0.2037749927349033,
+            "direction": "loss",
+            "rank": 1
+          },
+          {
+            "beta_key": "beta_rr",
+            "factor": "Real rates",
+            "pnl_pct": 0.051066600000000004,
+            "abs_pnl_pct": 0.051066600000000004,
+            "direction": "gain",
+            "rank": 2
+          },
+          {
+            "beta_key": "beta_cmd",
+            "factor": "Commodity",
+            "pnl_pct": 0.019112345488469545,
+            "abs_pnl_pct": 0.019112345488469545,
+            "direction": "gain",
+            "rank": 3
+          }
+        ],
+        "largest_negative_factor": {
+          "beta_key": "beta_eq",
+          "factor": "Equity",
+          "pnl_pct": -0.2037749927349033,
+          "abs_pnl_pct": 0.2037749927349033,
+          "direction": "loss"
+        },
+        "factor_model_pnl_pct": -0.12855240574613136,
+        "factor_model_error_pct": 0.14704759425386865,
+        "factor_model_abs_error_pct": 0.14704759425386865,
+        "factor_attribution_method": "model_based_beta_times_realized_factor_shock",
+        "factor_attribution_beta_source": "5y",
+        "historical_factor_attribution_adjusted": {
+          "method": "model_based_beta_times_realized_factor_shock",
+          "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
+          "beta_source": "adjusted",
+          "factor_model_pnl_pct": -0.17918084242831106,
+          "factor_model_error_pct": 0.09641915757168895,
+          "factor_model_abs_error_pct": 0.09641915757168895,
+          "factor_shock_sum": {
+            "equity": -0.14630599708134928,
+            "real_rates": 0.026000000000000002,
+            "inflation": -0.00030000000000000165,
+            "usd": 0.11056141491770743,
+            "commodity": 0.2128323551054515,
+            "vix": 1.0569393688446271,
+            "us_growth": -2.8700000000000006,
+            "oil": 0.19355657916011304
+          },
+          "pnl_by_factor_pct": {
+            "beta_eq": -0.2037749927349033,
+            "beta_rr": 0.0148967,
+            "beta_inf": 0.0008232000000000045,
+            "beta_usd": 0.01163935295546165,
+            "beta_cmd": 0.005693265499070828,
+            "beta_vix": -0.0014268681479402466,
+            "beta_us_growth": -0.007031500000000001
+          },
+          "top_factor_drivers": [
+            {
+              "beta_key": "beta_eq",
+              "factor": "Equity",
+              "pnl_pct": -0.2037749927349033,
+              "abs_pnl_pct": 0.2037749927349033,
+              "direction": "loss",
+              "rank": 1
+            },
+            {
+              "beta_key": "beta_rr",
+              "factor": "Real rates",
+              "pnl_pct": 0.0148967,
+              "abs_pnl_pct": 0.0148967,
+              "direction": "gain",
+              "rank": 2
+            },
+            {
+              "beta_key": "beta_usd",
+              "factor": "USD",
+              "pnl_pct": 0.01163935295546165,
+              "abs_pnl_pct": 0.01163935295546165,
+              "direction": "gain",
+              "rank": 3
+            }
+          ],
+          "largest_negative_factor": {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.2037749927349033,
+            "abs_pnl_pct": 0.2037749927349033,
+            "direction": "loss"
+          }
+        },
+        "pnl_by_factor_pct_adjusted": {
+          "beta_eq": -0.2037749927349033,
+          "beta_rr": 0.0148967,
+          "beta_inf": 0.0008232000000000045,
+          "beta_usd": 0.01163935295546165,
+          "beta_cmd": 0.005693265499070828,
+          "beta_vix": -0.0014268681479402466,
+          "beta_us_growth": -0.007031500000000001
+        },
+        "top_factor_drivers_adjusted": [
+          {
+            "beta_key": "beta_eq",
+            "factor": "Equity",
+            "pnl_pct": -0.2037749927349033,
+            "abs_pnl_pct": 0.2037749927349033,
+            "direction": "loss",
+            "rank": 1
+          },
+          {
+            "beta_key": "beta_rr",
+            "factor": "Real rates",
+            "pnl_pct": 0.0148967,
+            "abs_pnl_pct": 0.0148967,
+            "direction": "gain",
+            "rank": 2
+          },
+          {
+            "beta_key": "beta_usd",
+            "factor": "USD",
+            "pnl_pct": 0.01163935295546165,
+            "abs_pnl_pct": 0.01163935295546165,
+            "direction": "gain",
+            "rank": 3
+          }
+        ],
+        "largest_negative_factor_adjusted": {
+          "beta_key": "beta_eq",
+          "factor": "Equity",
+          "pnl_pct": -0.2037749927349033,
+          "abs_pnl_pct": 0.2037749927349033,
+          "direction": "loss"
+        },
+        "factor_model_pnl_pct_adjusted": -0.17918084242831106,
+        "factor_model_error_pct_adjusted": 0.09641915757168895,
+        "factor_model_abs_error_pct_adjusted": 0.09641915757168895,
+        "factor_attribution_method_adjusted": "model_based_beta_times_realized_factor_shock",
+        "factor_attribution_beta_source_adjusted": "adjusted"
+      }
+    ],
+    "portfolio_params": {
+      "cagr": 0.309,
+      "vol_annual": 0.197,
+      "max_drawdown": -0.228,
+      "sharpe": 1.238,
+      "beta_base": 1.24
+    }
+  },
+  "metrics": {
+    "window_months": 36,
+    "cagr": 0.309,
+    "vol_annual": 0.197,
+    "sharpe": 1.238,
+    "sortino": 1.83,
+    "beta_portfolio": 1.24,
+    "treynor": 0.197,
+    "max_drawdown": -0.228,
+    "ttr_months": NaN,
+    "recovered": 0
+  },
+  "rc_vol_csv": "rc_vol_3y.csv",
+  "correlation_matrix_csv": "correlation_matrix_3y.csv",
+  "analytics": {
+    "rolling_sharpe_36m": {
+      "last": null,
+      "mean": null,
+      "p10": null,
+      "p90": null
+    },
+    "rolling_sharpe_12m": {
+      "last": 2.234,
+      "mean": 0.992,
+      "p10": 0.426,
+      "p90": 1.658
+    },
+    "rolling_sortino_36m": {
+      "last": null,
+      "mean": null,
+      "p10": null,
+      "p90": null
+    },
+    "rolling_sortino_12m": {
+      "last": 3.457,
+      "mean": 1.46,
+      "p10": 0.619,
+      "p90": 2.436
+    },
+    "rolling_vol_12m": {
+      "last": 0.164,
+      "mean": 0.198,
+      "p10": 0.16,
+      "p90": 0.251
+    },
+    "vol_of_vol": 0.036,
+    "rel_vol_of_vol": 0.182,
+    "drawdown_structure": {
+      "drawdowns": [
+        {
+          "depth": -0.004,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.002,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.018,
+          "length_months": 3,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.006,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.017,
+          "length_months": 5,
+          "recovery_months": "3"
+        },
+        {
+          "depth": -0.033,
+          "length_months": 11,
+          "recovery_months": "5"
+        },
+        {
+          "depth": -0.011,
+          "length_months": 6,
+          "recovery_months": "3"
+        },
+        {
+          "depth": -0.0,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.108,
+          "length_months": 84,
+          "recovery_months": "13"
+        },
+        {
+          "depth": -0.015,
+          "length_months": 13,
+          "recovery_months": "2"
+        },
+        {
+          "depth": -0.001,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.015,
+          "length_months": 4,
+          "recovery_months": "3"
+        },
+        {
+          "depth": -0.037,
+          "length_months": 14,
+          "recovery_months": "9"
+        },
+        {
+          "depth": -0.006,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.026,
+          "length_months": 4,
+          "recovery_months": "2"
+        },
+        {
+          "depth": -0.003,
+          "length_months": 3,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.026,
+          "length_months": 8,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.006,
+          "length_months": 5,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.026,
+          "length_months": 14,
+          "recovery_months": "4"
+        },
+        {
+          "depth": -0.071,
+          "length_months": 37,
+          "recovery_months": "18"
+        },
+        {
+          "depth": -0.003,
+          "length_months": 3,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.005,
+          "length_months": 3,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.02,
+          "length_months": 6,
+          "recovery_months": "3"
+        },
+        {
+          "depth": -0.001,
+          "length_months": 3,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.022,
+          "length_months": 9,
+          "recovery_months": "6"
+        },
+        {
+          "depth": -0.136,
+          "length_months": 84,
+          "recovery_months": "64"
+        },
+        {
+          "depth": -0.034,
+          "length_months": 15,
+          "recovery_months": "10"
+        },
+        {
+          "depth": -0.003,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.011,
+          "length_months": 3,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.006,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.06,
+          "length_months": 40,
+          "recovery_months": "22"
+        },
+        {
+          "depth": -0.228,
+          "length_months": 86,
+          "recovery_months": "52"
+        },
+        {
+          "depth": -0.008,
+          "length_months": 3,
+          "recovery_months": "2"
+        },
+        {
+          "depth": -0.008,
+          "length_months": 3,
+          "recovery_months": "2"
+        },
+        {
+          "depth": -0.004,
+          "length_months": 4,
+          "recovery_months": "2"
+        },
+        {
+          "depth": -0.001,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.005,
+          "length_months": 3,
+          "recovery_months": "2"
+        },
+        {
+          "depth": -0.025,
+          "length_months": 8,
+          "recovery_months": "4"
+        },
+        {
+          "depth": -0.003,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.029,
+          "length_months": 18,
+          "recovery_months": "12"
+        },
+        {
+          "depth": -0.003,
+          "length_months": 3,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.014,
+          "length_months": 7,
+          "recovery_months": "4"
+        },
+        {
+          "depth": -0.004,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.005,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.036,
+          "length_months": 8,
+          "recovery_months": "6"
+        },
+        {
+          "depth": -0.01,
+          "length_months": 4,
+          "recovery_months": "2"
+        },
+        {
+          "depth": -0.12,
+          "length_months": 114,
+          "recovery_months": "11"
+        },
+        {
+          "depth": -0.007,
+          "length_months": 3,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.006,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.01,
+          "length_months": 3,
+          "recovery_months": "2"
+        },
+        {
+          "depth": -0.002,
+          "length_months": 2,
+          "recovery_months": "1"
+        },
+        {
+          "depth": -0.001,
+          "length_months": 2,
+          "recovery_months": "1"
+        }
+      ],
+      "summary": {
+        "recovery_median_months": 2.0,
+        "recovery_p90_months": 11.9,
+        "pct_time_underwater": 0.826,
+        "longest_underwater_months": 113
+      },
+      "by_threshold": {
+        ">5%": {
+          "count": 6,
+          "recovery_median": 20.0,
+          "recovery_p90": 58.0
+        },
+        ">10%": {
+          "count": 4,
+          "recovery_median": 32.5,
+          "recovery_p90": 60.4
+        },
+        ">20%": {
+          "count": 1,
+          "recovery_median": 52.0,
+          "recovery_p90": 52.0
+        }
+      }
+    },
+    "var_95": -0.019,
+    "var_99": -0.03,
+    "es_95": -0.028,
+    "es_99": -0.042,
+    "eee_10pct": 100.541
+  }
+}

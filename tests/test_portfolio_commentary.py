@@ -371,21 +371,53 @@ def test_write_stress_commentary_from_stress_report() -> None:
                 "kalman_oil": {"latest": 0.06, "latest_raw": 0.06, "uncertainty_class": "moderate", "latest_date": "2026-02-27"},
             },
             "macro_regime_diagnostics": {
+                "axis_model": {
+                    "version": "macro_two_axis_v1",
+                    "frequency": "monthly",
+                    "neutral_band_abs": 0.25,
+                    "look_ahead_protection": "lag_1m",
+                    "look_ahead_caveat": (
+                        "Look-ahead protection is a 1-month publication lag only. "
+                        "Release-date accurate vintage handling is out of scope for v1."
+                    ),
+                },
                 "method_disclaimer": (
-                    "This is an internal market-proxy regime diagnostic model, not a full macroeconomic regime model. "
-                    "It is diagnostic-only and does not affect optimizer weights, mandate gates, or stress pass/fail."
+                    "macro_two_axis_v1 is a diagnostic-only macro regime classifier. "
+                    "It does not affect optimizer weights, mandate gates, stress pass/fail, "
+                    "or weight release."
                 ),
                 "current_regime": "stagflation",
                 "axis_scores_latest": {
                     "growth_score": -0.42,
-                    "inflation_pressure_score": 0.81,
+                    "inflation_score": 0.81,
+                    "growth_blocks": {"growth_labor": -0.5, "growth_credit": -0.3},
+                    "inflation_blocks": {"core_inflation": 0.8, "wages": 0.6},
                 },
                 "regime_confidence": "medium",
+                "confidence_level": "medium",
                 "regime_transition_warning": False,
+                "score_lag_months": 1,
+                "score_start_date": "2003-12-31",
+                "regime_label_start_date": "2004-01-31",
+                "available_blocks": [
+                    "growth_labor",
+                    "growth_consumer",
+                    "growth_credit",
+                    "core_inflation",
+                    "headline_inflation",
+                    "wages",
+                    "inflation_expectations",
+                ],
+                "missing_blocks": ["growth_business_activity", "growth_nowcast", "business_price_pressure"],
+                "optional_blocks_missing": ["growth_nowcast"],
+                "planned_not_loaded": [],
+                "coverage_ratio": 0.7,
+                "coverage_tier": "reduced",
+                "data_sources_used": {"eci": "fred", "ahe": "fred"},
                 "available_regimes_count": 2,
                 "available_regimes_by_quality": {"usable": 1, "reliable": 1},
                 "stability_summary": {
-                    "warning": "Stability threshold is a global MVP heuristic, not factor-specific calibration.",
+                    "warning": "Stability threshold is a global heuristic, not factor-specific calibration.",
                     "policy_signal_counts": {
                         "green/general_signal": 2,
                         "yellow/regime_only": 1,
@@ -398,6 +430,30 @@ def test_write_stress_commentary_from_stress_report() -> None:
                             "max_abs_regime_beta_gap": 0.72,
                         }
                     ],
+                },
+                "regime_label_quality_check": {
+                    "status": "available",
+                    "by_regime": {
+                        "goldilocks": {"n_obs": 8, "quality_status": "insufficient_data"},
+                        "reflation": {"n_obs": 14, "quality_status": "low_confidence"},
+                        "stagflation": {"n_obs": 32, "quality_status": "usable"},
+                        "recession_disinflation": {"n_obs": 68, "quality_status": "reliable"},
+                        "neutral_transition": {"n_obs": 6, "quality_status": "insufficient_data"},
+                    },
+                    "stability_summary": {
+                        "n_switches": 18,
+                        "avg_months_between_switches": 2.1,
+                        "share_one_month_regimes": 0.31,
+                        "share_regimes_lt_3m": 0.58,
+                    },
+                    "overall_assessment": {
+                        "history_usable": False,
+                        "classifier_noise_warning": True,
+                        "warnings": [
+                            "at least one regime has fewer than 24 observations; treat regime-specific betas/covariance/RC cautiously",
+                            "regime switching appears noisy; classifier may be too unstable for strong regime-specific inference",
+                        ],
+                    },
                 },
             },
             "factor_variance_decomposition": {
@@ -533,12 +589,22 @@ def test_write_stress_commentary_from_stress_report() -> None:
         assert "hit20=75.0%" in text2
         assert "severity=moderate" in text2
         assert "Macro regime diagnostics" in text2
-        assert "Current regime: stagflation" in text2
-        assert "inflation_pressure_score=0.810" in text2
+        assert "Method=macro_two_axis_v1" in text2
+        assert "Current primary regime: stagflation" in text2
+        assert "inflation_score=0.810" in text2
         assert "confidence=medium" in text2
-        assert "transition_warning=False" in text2
+        assert "transition_flag=" in text2
+        assert "transition_reason=" in text2
+        assert "Coverage tier: reduced" in text2
+        assert "Optional blocks missing" in text2
+        assert "ECI is quarterly" in text2
         assert "Top unstable regime betas" in text2
-        assert "internal market-proxy regime diagnostic model" in text2
+        assert "Look-ahead protection is a 1-month publication lag only" in text2
+        assert "macro_two_axis_v1 is a diagnostic-only macro regime classifier" in text2
+        assert "Regime Label Quality Check" in text2
+        assert "weak regimes (<24 obs)" in text2
+        assert "betas/covariance/RC cautiously" in text2
+        assert "classifier may be too noisy" in text2
         assert "Factor variance decomposition" in text2
         assert "variance_scale=weekly" in text2
         assert "Risk adders" in text2

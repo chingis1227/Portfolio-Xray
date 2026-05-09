@@ -1,0 +1,198 @@
+{
+  "version": "regime_factor_analytics_v1",
+  "frequency": "daily",
+  "weekly_alignment": null,
+  "regime_frequency": "monthly",
+  "analytics_frequency": "daily",
+  "daily_label_alignment": "daily_returns_inherit_latest_monthly_regime",
+  "annualization_factor": 252,
+  "covariance_scaled_to_annual": true,
+  "regime_label_history_span": {
+    "start": "1995-08-31",
+    "end": "2026-05-31",
+    "n_months": 370
+  },
+  "portfolio_regime_analytics_window": {
+    "label": "10Y",
+    "target_months": 120,
+    "target_weeks": 520,
+    "target_trading_days": 2520,
+    "analysis_end": "2026-05-08",
+    "disclaimer": "regime_label_history_span may be longer than the portfolio analytics slice; portfolio_regime_analytics_window is fixed to 10Y (~2520 trading days for daily regime_factor_analytics, or ~520 weeks / 120 months in legacy modes) ending at analysis_end.",
+    "actual_data_start": "2016-04-25",
+    "actual_data_end": "2026-05-01",
+    "actual_n_periods": 2520,
+    "frequency": "daily"
+  },
+  "portfolio_regime_analytics_note": "macro_two_axis_v1 may emit regime labels over a longer history (regime_label_history_span) than the portfolio analytics slice; portfolio_regime_analytics_window is 10Y ending at analysis_end (daily: ~2520 trading days where available; weekly/monthly modes use their historical window lengths), aligned with the standard return/metrics/covariance/factor horizons.",
+  "data_start": "2016-04-25",
+  "data_end": "2026-05-01",
+  "n_obs_total": 2520,
+  "factor_order": [
+    "equity",
+    "real_rates",
+    "inflation",
+    "credit",
+    "usd",
+    "commodity",
+    "vix",
+    "us_growth",
+    "oil"
+  ],
+  "beta_order": [
+    "beta_eq",
+    "beta_rr",
+    "beta_inf",
+    "beta_credit",
+    "beta_usd",
+    "beta_cmd",
+    "beta_vix",
+    "beta_us_growth",
+    "beta_oil"
+  ],
+  "weights_used": {
+    "VOO": 0.01,
+    "QQQ": 0.01,
+    "GLD": 0.13991111405406328,
+    "SLV": 0.01,
+    "BND": 0.25,
+    "SCHD": 0.18383288955988478,
+    "SCHP": 0.25,
+    "TLT": 0.14625599638605188
+  },
+  "weights_sum": 1.0,
+  "weights_coverage": 0.0,
+  "warnings": [
+    "factor_column_missing:credit"
+  ],
+  "regimes": {
+    "goldilocks": {
+      "n_obs": 69,
+      "n_obs_daily": 69,
+      "quality_status": "low_confidence",
+      "not_for_optimization": true,
+      "annualization_factor": 252,
+      "covariance_scaled_to_annual": true,
+      "asset_covariance_available": true,
+      "factor_covariance_available": true,
+      "asset_factor_betas_available": false,
+      "factor_rc_available": false,
+      "dominant_factors": [
+        "equity",
+        "real_rates",
+        "inflation"
+      ],
+      "data_start": "2016-04-25",
+      "data_end": "2017-09-29",
+      "warnings": [
+        "Low confidence (~60–125 trading days); regime estimates not for optimization."
+      ],
+      "weights_coverage": 0.0,
+      "top_dominant_factor": "equity",
+      "total_factor_variance": 0.0,
+      "asset_covariance_estimator": "ledoit_wolf",
+      "factor_covariance_estimator": "ledoit_wolf",
+      "portfolio_daily_risk_metrics": {
+        "vol_annual": 0.03850326313681669,
+        "max_drawdown": -0.013948552484117527,
+        "sharpe_like_rf0_annual": 2.698616999679723
+      }
+    },
+    "reflation": {
+      "n_obs": 1906,
+      "n_obs_daily": 1906,
+      "quality_status": "reliable",
+      "not_for_optimization": false,
+      "annualization_factor": 252,
+      "covariance_scaled_to_annual": true,
+      "asset_covariance_available": true,
+      "factor_covariance_available": true,
+      "asset_factor_betas_available": false,
+      "factor_rc_available": false,
+      "dominant_factors": [
+        "equity",
+        "real_rates",
+        "inflation"
+      ],
+      "data_start": "2016-05-02",
+      "data_end": "2026-05-01",
+      "warnings": [],
+      "weights_coverage": 0.0,
+      "top_dominant_factor": "equity",
+      "total_factor_variance": 0.0,
+      "asset_covariance_estimator": "ledoit_wolf",
+      "factor_covariance_estimator": "ledoit_wolf",
+      "portfolio_daily_risk_metrics": {
+        "vol_annual": 0.05878604999438094,
+        "max_drawdown": -0.09398582153063295,
+        "sharpe_like_rf0_annual": 1.017615011517064
+      }
+    },
+    "stagflation": {
+      "n_obs": 460,
+      "n_obs_daily": 460,
+      "quality_status": "usable",
+      "not_for_optimization": false,
+      "annualization_factor": 252,
+      "covariance_scaled_to_annual": true,
+      "asset_covariance_available": true,
+      "factor_covariance_available": true,
+      "asset_factor_betas_available": false,
+      "factor_rc_available": false,
+      "dominant_factors": [
+        "equity",
+        "real_rates",
+        "inflation"
+      ],
+      "data_start": "2019-07-01",
+      "data_end": "2025-07-30",
+      "warnings": [],
+      "weights_coverage": 0.0,
+      "top_dominant_factor": "equity",
+      "total_factor_variance": 0.0,
+      "asset_covariance_estimator": "ledoit_wolf",
+      "factor_covariance_estimator": "ledoit_wolf",
+      "portfolio_daily_risk_metrics": {
+        "vol_annual": 0.0991522724402723,
+        "max_drawdown": -0.14806104488491745,
+        "sharpe_like_rf0_annual": 0.4189459846882367
+      }
+    },
+    "recession_disinflation": {
+      "n_obs": 85,
+      "n_obs_daily": 85,
+      "quality_status": "low_confidence",
+      "not_for_optimization": true,
+      "annualization_factor": 252,
+      "covariance_scaled_to_annual": true,
+      "asset_covariance_available": true,
+      "factor_covariance_available": true,
+      "asset_factor_betas_available": false,
+      "factor_rc_available": false,
+      "dominant_factors": [
+        "equity",
+        "real_rates",
+        "inflation"
+      ],
+      "data_start": "2020-04-30",
+      "data_end": "2020-08-28",
+      "warnings": [
+        "Low confidence (~60–125 trading days); regime estimates not for optimization."
+      ],
+      "weights_coverage": 0.0,
+      "top_dominant_factor": "equity",
+      "total_factor_variance": 0.0,
+      "asset_covariance_estimator": "ledoit_wolf",
+      "factor_covariance_estimator": "ledoit_wolf",
+      "portfolio_daily_risk_metrics": {
+        "vol_annual": 0.05944105637969852,
+        "max_drawdown": -0.015462468537554064,
+        "sharpe_like_rf0_annual": 3.075718544005724
+      }
+    }
+  },
+  "splits_summary": {
+    "transition": [],
+    "confidence": []
+  }
+}

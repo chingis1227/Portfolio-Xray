@@ -17,6 +17,13 @@ import numpy as np
 import pandas as pd
 
 from src.risk_contrib import cov_matrix_monthly, percentage_contributions_variance
+from src.stress_covariance_taxonomy import (
+    LAMBDA_BLEND,
+    STRESS_COV_CALIBRATION_VERSION,
+    VOL_MULT_BLOCK,
+    key_rho_overrides_used_for_scenario,
+    stress_covariance_taxonomy_blend,
+)
 
 FACTOR_TO_SHOCK_KEY = {
     "equity": "shock_eq",
@@ -84,7 +91,7 @@ SCENARIOS = {
         "shock_usd": 0.0,
         "shock_cmd": 0.0,
         "vol_mult": 1.0,
-        "stress_cov": False,
+        "stress_cov": True,
     },
     "inflation_stagflation": {
         "shock_eq": -0.20,
@@ -94,7 +101,7 @@ SCENARIOS = {
         "shock_usd": 0.0,
         "shock_cmd": 0.25,
         "vol_mult": 1.0,
-        "stress_cov": False,
+        "stress_cov": True,
     },
     "liquidity_shock": {
         "shock_eq": -0.25,
@@ -258,6 +265,11 @@ def _calibrate_recession_severe(
             "model_pnl_by_episode": {},
             "vol_mult": RECESSION_SEVERE_PARAMS["vol_mult"],
             "risk_on_corr": RECESSION_SEVERE_PARAMS["risk_on_corr"],
+            "stress_cov_method": "taxonomy_blend_v1",
+            "stress_cov_lambda": round(float(LAMBDA_BLEND.get("recession_severe", 0.62)), 4),
+            "stress_cov_calibration_version": STRESS_COV_CALIBRATION_VERSION,
+            "vol_mult_by_block": {k: round(float(v), 4) for k, v in VOL_MULT_BLOCK.get("recession_severe", {}).items()},
+            "key_rho_overrides_used": key_rho_overrides_used_for_scenario("recession_severe"),
         }, selected_shock
 
     has_betas = any(k in portfolio_betas for _, k in _SHOCK_TO_BETA)
@@ -288,6 +300,11 @@ def _calibrate_recession_severe(
         },
         "vol_mult": RECESSION_SEVERE_PARAMS["vol_mult"],
         "risk_on_corr": RECESSION_SEVERE_PARAMS["risk_on_corr"],
+        "stress_cov_method": "taxonomy_blend_v1",
+        "stress_cov_lambda": round(float(LAMBDA_BLEND.get("recession_severe", 0.62)), 4),
+        "stress_cov_calibration_version": STRESS_COV_CALIBRATION_VERSION,
+        "vol_mult_by_block": {k: round(float(v), 4) for k, v in VOL_MULT_BLOCK.get("recession_severe", {}).items()},
+        "key_rho_overrides_used": key_rho_overrides_used_for_scenario("recession_severe"),
     }, selected_shock
 
 
@@ -390,6 +407,7 @@ def run_stress(
     target_max_drawdown_pct: float | None,
     cash_proxy_ticker: str | None = None,
     factor_returns: pd.DataFrame | None = None,
+    stress_cov_method: str = "taxonomy_blend_v1",
     **_: Any,
 ) -> dict[str, Any]:
     """
@@ -440,9 +458,41 @@ def run_stress(
         portfolio_pnl_pct = float(np.sum(pnl_i))
 
         if use_stress_cov:
-            cov_s = _stress_covariance(cov_base, risk_on, vol_mult, risk_on_corr=risk_on_corr)
+            if stress_cov_method == "uniform_legacy":
+                cov_s = _stress_covariance(cov_base, risk_on, vol_mult, risk_on_corr=risk_on_corr)
+                cov_meta = {
+                    "stress_cov_method": "uniform_legacy",
+                    "stress_cov_lambda": None,
+                    "stress_cov_calibration_version": None,
+                    "taxonomy_coverage": {},
+                    "vol_mult_by_block": None,
+                    "key_rho_overrides_used": None,
+                }
+            else:
+                cov_s, cov_diag = stress_covariance_taxonomy_blend(
+                    cov_base,
+                    asset_cols,
+                    scenario_id,
+                    cash_proxy_ticker=cash_proxy_ticker,
+                )
+                cov_meta = {
+                    "stress_cov_method": cov_diag.get("stress_cov_method", "taxonomy_blend_v1"),
+                    "stress_cov_lambda": cov_diag.get("stress_cov_lambda"),
+                    "stress_cov_calibration_version": cov_diag.get("stress_cov_calibration_version"),
+                    "taxonomy_coverage": cov_diag.get("taxonomy_coverage") or {},
+                    "vol_mult_by_block": cov_diag.get("vol_mult_by_block"),
+                    "key_rho_overrides_used": cov_diag.get("key_rho_overrides_used"),
+                }
         else:
             cov_s = cov_base.copy()
+            cov_meta = {
+                "stress_cov_method": None,
+                "stress_cov_lambda": None,
+                "stress_cov_calibration_version": None,
+                "taxonomy_coverage": {},
+                "vol_mult_by_block": None,
+                "key_rho_overrides_used": None,
+            }
 
         pc = percentage_contributions_variance(w_vec, cov_s.values)
         pc_series = pd.Series(pc, index=asset_cols).sort_values(ascending=False)
@@ -483,6 +533,12 @@ def run_stress(
             "loss_ok": loss_ok,
             "pass": scenario_pass,
             "diagnostic_codes": loss_diags,
+            "stress_cov_method": cov_meta.get("stress_cov_method"),
+            "stress_cov_lambda": cov_meta.get("stress_cov_lambda"),
+            "stress_cov_calibration_version": cov_meta.get("stress_cov_calibration_version"),
+            "taxonomy_coverage": cov_meta.get("taxonomy_coverage"),
+            "vol_mult_by_block": cov_meta.get("vol_mult_by_block"),
+            "key_rho_overrides_used": cov_meta.get("key_rho_overrides_used"),
         }
         if scenario_id == "recession_severe":
             row["calibration_source_episode"] = params.get("calibration_source_episode")

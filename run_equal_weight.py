@@ -10,8 +10,8 @@ Important policy note:
   - do not apply discretionary overlays
   - do not apply hidden policy filters.
 
-Equal-Weight is a pure baseline: same eligible universe, equal weights across assets.
-It is evaluated by the same metrics, stress-tests and client-fit checks as the Policy portfolio.
+Equal-Weight (`equal_weight_by_assets`): same eligible universe, equal weight per eligible asset (`1/N`).
+See ``baseline_weights_metadata.json`` for structured metadata. Metrics/stress match the Policy pipeline.
 """
 
 from pathlib import Path
@@ -20,12 +20,11 @@ import json
 from src.config import load_validated_config
 from src.config_schema import ConfigValidationError
 from src.portfolio_variants import (
-    build_equal_weight_baseline,
     BASELINE_EQ_LABEL,
+    build_equal_weight_baseline,
+    equal_weight_baseline_metadata_export,
     export_baseline_weights_txt,
 )
-from src.portfolio_dynamic import portfolio_returns_nan_safe
-from src.risk_contrib import cov_matrix_monthly, rc_vol_window
 from src.utils import setup_logging, logger
 from run_report import run_portfolio_report_for_weights
 
@@ -35,7 +34,7 @@ def main() -> None:
     try:
         cfg = load_validated_config()
     except ConfigValidationError as e:
-        logger.error(f"Ошибка валидации конфигурации: {e}")
+        logger.error("Configuration validation failed: %s", e)
         raise SystemExit(1)
 
     # We reuse data loader from run_report via run_portfolio_report_for_weights.
@@ -66,6 +65,7 @@ def main() -> None:
         assets_meta=assets_meta,
         no_cache=False,
         local_benchmark_map=local_benchmark_map,
+        returns_frequency=getattr(cfg, "returns_frequency", None),
     )
 
     monthly_returns = data.monthly_returns
@@ -83,10 +83,15 @@ def main() -> None:
     out_dir = Path(__file__).resolve().parent / "equal-weight portfolio"
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    meta_export = equal_weight_baseline_metadata_export(eq_result.diagnostics)
+
     # Persist raw weights.json for the baseline.
     weights_json_path = out_dir / "weights.json"
     with open(weights_json_path, "w", encoding="utf-8") as f:
         json.dump(eq_result.weights, f, indent=2, ensure_ascii=False)
+
+    with open(out_dir / "baseline_weights_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(meta_export, f, indent=2, ensure_ascii=False)
 
     # For Equal-Weight we don't need RC in weights.txt; pass rc_series=None.
     export_baseline_weights_txt(eq_result.weights, rc_series=None, label=BASELINE_EQ_LABEL, output_dir=out_dir)
@@ -97,6 +102,7 @@ def main() -> None:
             "portfolio_type": BASELINE_EQ_LABEL,
             "status": eq_result.status,
             "reason": eq_result.diagnostics.get("reason"),
+            "equal_weight_baseline_metadata": meta_export,
         }
         with open(out_dir / "summary.json", "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2, ensure_ascii=False)
@@ -128,6 +134,7 @@ def main() -> None:
     summary = {
         "portfolio_type": BASELINE_EQ_LABEL,
         "status": eq_result.status,
+        "equal_weight_baseline_metadata": meta_export,
         "metrics_10y": pm_summary,
         "stress_status": stress_report.get("status"),
         "stress_fail_reason": stress_report.get("fail_reason_code")

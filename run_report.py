@@ -1,4 +1,4 @@
-﻿"""
+"""
 Portfolio Metrics Standard вЂ” single entry script.
 Produces CSV outputs and persists all input series. Run from project root: python run_report.py
 
@@ -17,11 +17,13 @@ CLI options:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from src.cache import cleanup_old_cache, clear_all_cache
@@ -74,6 +76,7 @@ from src.risk_contrib import cov_matrix_monthly, rc_vol_window
 from src.stress import run_stress
 from src.stress_factors import (
     FACTOR_COLUMN_ORDER,
+    FACTOR_TRADING_DAYS_10Y,
     FACTOR_WEEKS_10Y,
     FACTOR_WEEKS_3Y,
     FACTOR_WEEKS_5Y,
@@ -86,6 +89,8 @@ from src.stress_factors import (
     compute_portfolio_factor_beta_oos_monthly,
     compute_asset_factor_betas_weekly,
     build_factor_matrix,
+    build_factor_matrix_daily,
+    build_factor_matrix_monthly,
     attach_kalman_factor_betas_to_stress_report,
     build_diagnostic_oil_beta,
     build_factor_beta_diagnostic_overlay,
@@ -104,10 +109,37 @@ from src.stress_factors import (
     rolling_beta_summary,
     write_rolling_betas_plot_html,
     write_rolling_betas_plot_pngs,
+    asset_weekly_returns_from_daily,
+    asset_daily_returns_from_daily,
 )
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
 from src.windows import slice_window
+from src.returns_frequency import (
+    MACRO_REGIME_FREQUENCY_DEFAULT,
+    FACTOR_STRESS_FREQUENCY_DEFAULT,
+    analysis_end_rule_description,
+    calendar_window_to_n_periods,
+    compute_frequency_disclosure,
+    normalize_returns_frequency,
+    per_period_eff_from_annual_simple,
+    periods_per_year as periods_per_year_for,
+)
 from src.portfolio_commentary import write_portfolio_commentary, write_stress_commentary
+from src.regime_factor_analytics import (
+    regime_factor_analytics,
+    regime_factor_analytics_csv_frames,
+    regime_factor_analytics_for_stress_report,
+    regime_factor_analytics_summary,
+)
+from src.regime_portfolio_metrics import (
+    build_regime_portfolio_metrics,
+    expand_rf_monthly_to_daily,
+    regime_portfolio_metrics_csv_frames,
+    regime_portfolio_metrics_for_stress_report,
+    regime_portfolio_metrics_summary,
+)
+from src.stress_scenario_analytics import build_stress_scenario_analytics
+from src.data_yf import download_all
 
 
 def parse_args() -> argparse.Namespace:
@@ -142,11 +174,15 @@ def build_derived_assumptions(
     local_benchmark_map: dict[str, str],
     analysis_end: str,
     windows_months: list[int],
+    *,
+    returns_frequency: str | None = None,
+    periods_per_year: int = 12,
 ) -> dict:
     """
     Build dictionary of derived assumptions used in the run.
     These are values computed from config (not directly specified).
     """
+    rf_mode = normalize_returns_frequency(returns_frequency)
     # Liquidity life floor amount = liquidity_need_months * monthly_expenses (single source of truth)
     liquidity_need_amount = cfg.liquidity_need_months * (cfg.monthly_expenses or 0)
 
@@ -162,6 +198,9 @@ def build_derived_assumptions(
         "mar_annual_value": cfg.min_acceptable_return,
         "liquidity_need": liquidity_need_amount,
         "liquidity_life_floor_amount": liquidity_need_amount,
+        "returns_frequency": rf_mode,
+        "periods_per_year": periods_per_year,
+        "analysis_end_rule": analysis_end_rule_description(rf_mode),
     }
 
 
@@ -187,13 +226,14 @@ def run_portfolio_report_for_weights(
     benchmark_base_ticker = cfg.benchmark_base_ticker
     windows_months = cfg.windows_months
 
+    returns_frequency = normalize_returns_frequency(getattr(cfg, "returns_frequency", None))
+
     assets_meta = load_assets_metadata()
 
     cash_proxy_ticker, rf_source = resolve_cash_and_rf(cfg)
     tickers = portfolio_total_tickers(cfg.tickers, weights, cash_proxy_ticker)
 
     mar_annual = get_mar_from_config(cfg)
-    mar_monthly = mar_annual / 12 if mar_annual is not None else None
 
     config_local_override = cfg.local_benchmark_map or {}
     local_benchmark_map = resolve_local_benchmarks(
@@ -219,6 +259,7 @@ def run_portfolio_report_for_weights(
         assets_meta=assets_meta,
         no_cache=no_cache,
         local_benchmark_map=local_benchmark_map,
+        returns_frequency=returns_frequency,
     )
     monthly_prices = data.monthly_prices
     monthly_returns = data.monthly_returns
@@ -231,6 +272,13 @@ def run_portfolio_report_for_weights(
     analysis_end_str = data.analysis_end_str
     daily_cache_key = data.daily_cache_key
     monthly_cache_key = data.monthly_cache_key
+    returns_frequency = normalize_returns_frequency(data.returns_frequency)
+    ppy = periods_per_year_for(returns_frequency)
+    mar_period = (
+        per_period_eff_from_annual_simple(float(mar_annual), returns_frequency)
+        if mar_annual is not None
+        else None
+    )
 
     # =========================================================================
     # STEP 4: Compute portfolio returns (NaN-safe dynamic; production vs research mode)
@@ -258,12 +306,20 @@ def run_portfolio_report_for_weights(
     if backtest_mode == "dynamic_nan_safe":
         # Policy-compliant: global redistribution among risk tickers when returns are missing
         if asset_returns_df.shape[0] >= 2:
-            ret_inner = asset_returns_df.dropna(how="any").iloc[-720:]  # inner join, up to 60y
+            inner_cap = max(2, int(round(720.0 * float(ppy) / 12.0)))
+            ret_inner = asset_returns_df.dropna(how="any").iloc[-inner_cap:]
             inner_join_months_used = len(ret_inner)
-            if inner_join_months_used is not None and inner_join_months_used < 36 and inner_join_months_used >= 2:
+            min_cov_obs = calendar_window_to_n_periods(36, returns_frequency)
+            if (
+                inner_join_months_used is not None
+                and inner_join_months_used < min_cov_obs
+                and inner_join_months_used >= 2
+            ):
                 logger.warning(
-                    "Inner-join sample for covariance context is %d months (< 36). Risk estimates may be noisy.",
+                    "Inner-join sample for covariance context is %d observations (< ~3 calendar years at %s cadence); "
+                    "risk estimates may be noisy.",
                     inner_join_months_used,
+                    returns_frequency,
                 )
         risk_rt = get_risk_portfolio_tickers(cfg.tickers, cfg.cash_proxy_ticker)
         result = portfolio_returns_nan_safe(
@@ -378,8 +434,9 @@ def run_portfolio_report_for_weights(
                 benchmark_returns,
                 analysis_end,
                 wm,
-                mar=mar_monthly,
+                mar=mar_period,
                 local_benchmark_returns=local_bench_returns,
+                periods_per_year=ppy,
             )
             rows.append(row)
         asset_metrics_all.append(rows)
@@ -397,7 +454,8 @@ def run_portfolio_report_for_weights(
             analysis_end,
             wm,
             benchmark_returns=benchmark_returns,
-            mar=mar_monthly,
+            mar=mar_period,
+            periods_per_year=ppy,
         )
         portfolio_metrics_list.append(pm)
     export_portfolio_metrics_csv(portfolio_metrics_list, output_dir_csv)
@@ -789,9 +847,196 @@ def run_portfolio_report_for_weights(
         for fname, df in macro_regime_csv_frames(macro_regimes).items():
             if not df.empty:
                 df.round(6).to_csv(output_dir_csv / fname, index=False)
+        quality_summary = (macro_regimes or {}).get("regime_label_quality_check")
+        if isinstance(quality_summary, dict) and quality_summary:
+            (output_dir_final / "regime_label_quality_summary.json").write_text(
+                json.dumps(quality_summary, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
     except Exception as e:
         stress_report["macro_regime_diagnostics_error"] = str(e)
         logger.warning(f"Macro regime diagnostics failed: {e}")
+
+    try:
+        mr = stress_report.get("macro_regime_diagnostics") or {}
+        lm = mr.get("labels_monthly") or []
+        if not isinstance(mr, dict) or mr.get("error") or not lm:
+            stress_report["regime_factor_analytics_skip_reason"] = (
+                "macro_regime_diagnostics unavailable or empty labels_monthly"
+            )
+        else:
+            idx = pd.to_datetime([row["date"] for row in lm])
+            regime_ser = pd.Series([str(row.get("regime", "")) for row in lm], index=idx)
+            trans_ser = pd.Series([bool(row.get("transition_flag", False)) for row in lm], index=idx)
+            regime_label_history_span = {
+                "start": idx.min().strftime("%Y-%m-%d"),
+                "end": idx.max().strftime("%Y-%m-%d"),
+                "n_months": int(len(idx)),
+            }
+            portfolio_regime_analytics_window = {
+                "label": "10Y",
+                "target_months": int(FACTOR_MONTHS_10Y),
+                "target_weeks": int(FACTOR_WEEKS_10Y),
+                "target_trading_days": int(FACTOR_TRADING_DAYS_10Y),
+                "analysis_end": str(analysis_end_str),
+                "disclaimer": (
+                    "regime_label_history_span may be longer than the portfolio analytics slice; "
+                    "portfolio_regime_analytics_window is fixed to 10Y (~2520 trading days for daily "
+                    "regime_factor_analytics, or ~520 weeks / 120 months in legacy modes) ending at "
+                    "analysis_end."
+                ),
+            }
+            asset_cols = [t for t in tickers if t in monthly_returns.columns]
+            monthly_asset = monthly_returns[asset_cols].copy()
+            monthly_asset.index = (
+                pd.to_datetime(monthly_asset.index).tz_localize(None).normalize()
+            )
+            start_m = monthly_asset.index.min().strftime("%Y-%m-%d")
+            end_ts = pd.Timestamp(analysis_end_str).normalize()
+            end_dl = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+
+            extra_lb: list[str] = []
+            for t in asset_cols:
+                p = local_benchmark_map.get(t)
+                if p and p not in asset_cols and p != benchmark_base_ticker:
+                    extra_lb.append(p)
+            dl_tickers = list(dict.fromkeys(list(asset_cols) + [benchmark_base_ticker] + extra_lb))
+            daily = download_all(dl_tickers, start_m, end_dl)
+            daily_prices: dict[str, pd.Series] = {}
+            for ticker in asset_cols:
+                df = daily.get(ticker)
+                if df is None or df.empty or "Close" not in df.columns:
+                    continue
+                daily_prices[ticker] = df["Close"].copy()
+
+            daily_asset = asset_daily_returns_from_daily(daily_prices, start_m, end_dl)
+            daily_factors = build_factor_matrix_daily(start_m, analysis_end_str)
+            use_daily = (
+                daily_asset is not None
+                and not daily_asset.empty
+                and daily_factors is not None
+                and not daily_factors.empty
+            )
+            if use_daily:
+                daily_asset = daily_asset.copy()
+                daily_asset.index = (
+                    pd.to_datetime(daily_asset.index).tz_localize(None).normalize()
+                )
+                daily_factors = daily_factors.copy()
+                daily_factors.index = (
+                    pd.to_datetime(daily_factors.index).tz_localize(None).normalize()
+                )
+                common_d = daily_asset.index.intersection(daily_factors.index).sort_values()
+                common_d = common_d[common_d <= end_ts]
+                if len(common_d) > FACTOR_TRADING_DAYS_10Y:
+                    common_d = common_d[-FACTOR_TRADING_DAYS_10Y:]
+                daily_asset = daily_asset.loc[common_d]
+                daily_factors = daily_factors.loc[common_d]
+                rfa_payload = regime_factor_analytics(
+                    monthly_returns=daily_asset,
+                    monthly_factor_returns=daily_factors,
+                    regime_labels=regime_ser,
+                    transition_flag=trans_ser,
+                    confidence_level=None,
+                    weights=weights,
+                    enable_transition_split=False,
+                    enable_confidence_split=False,
+                    frequency="daily",
+                    daily_label_alignment="daily_returns_inherit_latest_monthly_regime",
+                    regime_label_history_span=regime_label_history_span,
+                    portfolio_regime_analytics_window=portfolio_regime_analytics_window,
+                )
+                stress_report["regime_factor_analytics"] = regime_factor_analytics_for_stress_report(
+                    rfa_payload
+                )
+                rfa_summary = regime_factor_analytics_summary(rfa_payload)
+                (output_dir_final / "regime_factor_analytics_summary.json").write_text(
+                    json.dumps(rfa_summary, ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
+                for fname, df in regime_factor_analytics_csv_frames(rfa_payload).items():
+                    if df is not None and not df.empty:
+                        num_cols = df.select_dtypes(include=[np.number]).columns
+                        if len(num_cols):
+                            df = df.copy()
+                            df[num_cols] = df[num_cols].round(6)
+                        df.to_csv(output_dir_csv / fname, index=False)
+                try:
+                    labels_ff = (
+                        pd.Series(
+                            regime_ser.values,
+                            index=pd.to_datetime(regime_ser.index).tz_localize(None).normalize(),
+                            name="regime",
+                        )
+                        .dropna()
+                        .astype(str)
+                        .sort_index()
+                        .reindex(common_d, method="ffill")
+                    )
+                    rf_d = expand_rf_monthly_to_daily(rf_monthly, common_d)
+                    bench_d = pd.Series(dtype=float, index=common_d)
+                    bdf_b = daily.get(benchmark_base_ticker)
+                    if bdf_b is not None and not bdf_b.empty and "Close" in bdf_b.columns:
+                        br = bdf_b["Close"].pct_change()
+                        br.index = pd.to_datetime(br.index).tz_localize(None).normalize()
+                        bench_d = br.reindex(common_d)
+
+                    local_bench_daily: dict[str, pd.Series] = {}
+                    for tcol in asset_cols:
+                        prox = local_benchmark_map.get(tcol)
+                        if not prox:
+                            continue
+                        bdf_lb = daily.get(prox)
+                        if bdf_lb is None or bdf_lb.empty or "Close" not in bdf_lb.columns:
+                            continue
+                        lr_lb = bdf_lb["Close"].pct_change()
+                        lr_lb.index = pd.to_datetime(lr_lb.index).tz_localize(None).normalize()
+                        local_bench_daily[str(tcol)] = lr_lb.reindex(common_d)
+
+                    mar_daily_ser = None
+                    if mar_monthly is not None:
+                        mar_s = pd.Series(float(mar_monthly), index=rf_monthly.index)
+                        mar_s.index = pd.to_datetime(mar_s.index).tz_localize(None).normalize()
+                        mar_daily_ser = mar_s.sort_index().reindex(common_d, method="ffill")
+
+                    rpm_full = build_regime_portfolio_metrics(
+                        daily_asset_returns=daily_asset,
+                        daily_regime_labels_ffill=labels_ff,
+                        weights=weights,
+                        rf_daily=rf_d,
+                        benchmark_daily_returns=bench_d,
+                        mar_daily=mar_daily_ser,
+                        local_benchmark_daily_by_ticker=local_bench_daily,
+                        regime_factor_analytics_payload=rfa_payload,
+                    )
+                    stress_report["regime_portfolio_metrics"] = regime_portfolio_metrics_for_stress_report(
+                        rpm_full
+                    )
+                    rpm_sum = regime_portfolio_metrics_summary(rpm_full)
+                    (output_dir_final / "regime_portfolio_metrics_summary.json").write_text(
+                        json.dumps(rpm_sum, ensure_ascii=False, indent=2),
+                        encoding="utf-8",
+                    )
+                    for fname, df in regime_portfolio_metrics_csv_frames(rpm_full).items():
+                        if df is not None and not df.empty:
+                            num_cols = df.select_dtypes(include=[np.number]).columns
+                            if len(num_cols):
+                                df = df.copy()
+                                df[num_cols] = df[num_cols].round(6)
+                            df.to_csv(output_dir_csv / fname, index=False)
+                except Exception as exc:
+                    stress_report["regime_portfolio_metrics_error"] = str(exc)
+                    logger.warning(f"Regime portfolio metrics failed: {exc}")
+            else:
+                logger.warning(
+                    "Regime factor analytics: daily asset/factor history unavailable; skipping block."
+                )
+                stress_report["regime_factor_analytics_skip_reason"] = (
+                    "regime_factor_analytics_daily_series_unavailable"
+                )
+    except Exception as e:
+        stress_report["regime_factor_analytics_error"] = str(e)
+        logger.warning(f"Regime factor analytics failed: {e}")
 
     try:
         stress_report["diagnostic_oil_beta"] = build_diagnostic_oil_beta(
@@ -983,6 +1228,38 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["factor_beta_adjusted_overlay_error"] = str(e)
         logger.warning(f"Factor beta adjusted overlay failed: {e}")
+    try:
+        ssa = build_stress_scenario_analytics(
+            stress_report=stress_report,
+            weights=weights,
+            tickers=tickers,
+            monthly_returns=monthly_returns,
+            factor_returns_weekly=recession_factor_returns
+            if recession_factor_returns is not None and not recession_factor_returns.empty
+            else None,
+            cash_proxy_ticker=cash_proxy_ticker,
+            output_dir_csv=output_dir_csv,
+        )
+        stress_report["stress_scenario_analytics"] = {k: v for k, v in ssa.items() if k != "csv_export"}
+    except Exception as e:
+        stress_report["stress_scenario_analytics_error"] = str(e)
+        logger.warning(f"Stress scenario analytics failed: {e}")
+    macro_notes = ""
+    if returns_frequency != "monthly":
+        macro_notes = (
+            f"Portfolio metrics and covariance use returns_frequency={returns_frequency}; factor betas/regression/stress shocks "
+            f"stay {FACTOR_STRESS_FREQUENCY_DEFAULT}; macro regime classifier labels remain {MACRO_REGIME_FREQUENCY_DEFAULT}; "
+            "regime_factor_analytics may use daily returns when daily data loads (see regime_factor_analytics.summary)."
+        )
+    stress_report["frequency_disclosure"] = compute_frequency_disclosure(
+        returns_frequency=returns_frequency,
+        optimization_frequency=returns_frequency,
+        factor_stress_frequency=FACTOR_STRESS_FREQUENCY_DEFAULT,
+        macro_regime_frequency=MACRO_REGIME_FREQUENCY_DEFAULT,
+        macro_regime_frequency_notes=(macro_notes or None),
+    )
+    stress_report["periods_per_year"] = ppy
+
     export_stress_report(stress_report, output_dir_final)
     logger.info(f"Stress status: {stress_report.get('status', 'N/A')}")
 
@@ -995,14 +1272,19 @@ def run_portfolio_report_for_weights(
         ret_slice = slice_window(portfolio_returns, analysis_end, wm).dropna()
         rf_slice = slice_window(rf_monthly, analysis_end, wm).reindex(ret_slice.index).fillna(0)
         bench_slice = slice_window(benchmark_returns, analysis_end, wm).reindex(ret_slice.index).dropna()
-        if len(ret_slice) < 24:
+        min_obs_analytics = calendar_window_to_n_periods(24, returns_frequency)
+        if len(ret_slice) < min_obs_analytics:
             continue
-        # Rolling 36m and 12m
-        rs36 = rolling_sharpe(ret_slice, rf_slice, 36)
-        rs12 = rolling_sharpe(ret_slice, rf_slice, 12)
-        rsort36 = rolling_sortino(ret_slice, rf_slice, 36, mar=mar_monthly)
-        rsort12 = rolling_sortino(ret_slice, rf_slice, 12, mar=mar_monthly)
-        rvol = rolling_vol_annual(ret_slice, 12)
+        # Rolling 36m and 12m (calendar mapping)
+        rs36 = rolling_sharpe(ret_slice, rf_slice, 36, returns_frequency=returns_frequency)
+        rs12 = rolling_sharpe(ret_slice, rf_slice, 12, returns_frequency=returns_frequency)
+        rsort36 = rolling_sortino(
+            ret_slice, rf_slice, 36, mar=mar_period, returns_frequency=returns_frequency
+        )
+        rsort12 = rolling_sortino(
+            ret_slice, rf_slice, 12, mar=mar_period, returns_frequency=returns_frequency
+        )
+        rvol = rolling_vol_annual(ret_slice, 12, returns_frequency=returns_frequency)
         # Export rolling series to CSV
         rs36.round(3).to_csv(output_dir_csv / f"rolling_sharpe_36m_{suffix}.csv", header=True)
         rs12.round(3).to_csv(output_dir_csv / f"rolling_sharpe_12m_{suffix}.csv", header=True)
@@ -1055,6 +1337,8 @@ def run_portfolio_report_for_weights(
         local_benchmark_map,
         analysis_end_str,
         windows_months,
+        returns_frequency=returns_frequency,
+        periods_per_year=ppy,
     )
 
     # Gatekeepers: portfolio_valid = False С‚РѕР»СЊРєРѕ РµСЃР»Рё MaxDD РЅР° РїРѕР»РЅРѕР№ РїРµСЂРµСЃРµРєР°СЋС‰РµР№СЃСЏ РёСЃС‚РѕСЂРёРё РЅР°СЂСѓС€Р°РµС‚ РјР°РЅРґР°С‚.
@@ -1181,6 +1465,7 @@ def run_portfolio_report_for_weights(
             stress_report=stress_report,
             portfolio_valid=portfolio_valid,
             analysis_end=analysis_end_str,
+            frequency_disclosure=stress_report.get("frequency_disclosure"),
         )
         if cpath:
             logger.info("commentary.txt: %s", cpath)

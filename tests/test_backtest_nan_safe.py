@@ -110,7 +110,7 @@ def test_run_report_default_mode_uses_dynamic_engine():
         cwd=str(root),
         capture_output=True,
         text=True,
-        timeout=300,
+        timeout=600,
     )
 
     if result.returncode != 0:

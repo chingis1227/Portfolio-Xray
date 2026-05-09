@@ -1,0 +1,204 @@
+Portfolio Snapshot Report
+Generated from snapshot_3y.json, snapshot_5y.json, snapshot_10y.json, snapshot_assets.json
+
+============================================================
+DATA POLICY / BACKTEST MODE
+============================================================
+
+backtest_mode: dynamic_nan_safe
+join_policy (for cov/RC/ОІ): inner join (intersection of dates across assets)
+
+inner_join_months_used_for_risk (ОЈ/RC): 3023
+
+months with NaN redistribution (among risk assets): 0
+months with excess weight to cash (RC caps / gating): 0
+
+first_available_month (per ticker, young ETF inclusion):
+  BND: 2014-05
+  GLD: 2014-05
+  QQQ: 2014-05
+  SCHD: 2014-05
+  SCHP: 2014-05
+  SLV: 2014-05
+  TLT: 2014-05
+  VOO: 2014-05
+
+
+
+============================================================
+WINDOW 3Y (analysis_end: 2026-05-08)
+============================================================
+
+--- final_weights_total ---
+  TLT: 41.0%
+  SCHD: 28.9%
+  GLD: 13.2%
+  QQQ: 10.4%
+  SLV: 6.5%
+  BND: 0.0%
+  SCHP: 0.0%
+
+--- RC_asset (top 5) ---
+  TLT: 37.8%
+  SCHD: 22.5%
+  SLV: 14.8%
+  GLD: 14.7%
+  QQQ: 10.2%
+
+--- constraints_status ---
+  target_vol: FAIL
+  max_dd: FAIL
+  rc_caps: NOT_CHECKED
+  weight_caps: NOT_CHECKED
+
+--- metrics ---
+  cagr: 14.1%
+  vol_annual: 10.5%
+  sharpe: 0.885
+  sortino: 1.268
+  beta_portfolio: 0.418
+  treynor: 0.222
+  max_drawdown: -11.5%
+  ttr_months: вЂ”
+
+--- stress ---
+  overall: DIAG_ATTENTION
+
+--- analytics (summary) ---
+  rolling_sharpe_36m: last: вЂ”, mean: вЂ”, p10: вЂ”, p90: вЂ”
+  rolling_sortino_36m: last: вЂ”, mean: вЂ”, p10: вЂ”, p90: вЂ”
+  var_95: -1.0%
+  es_95: -1.5%
+  eee_10pct: 39.492%
+
+============================================================
+WINDOW 5Y (analysis_end: 2026-05-08)
+============================================================
+
+--- final_weights_total ---
+  TLT: 41.0%
+  SCHD: 28.9%
+  GLD: 13.2%
+  QQQ: 10.4%
+  SLV: 6.5%
+  BND: 0.0%
+  SCHP: 0.0%
+
+--- RC_asset (top 5) ---
+  TLT: 41.1%
+  SCHD: 23.0%
+  GLD: 12.2%
+  QQQ: 11.9%
+  SLV: 11.8%
+
+--- constraints_status ---
+  target_vol: FAIL
+  max_dd: FAIL
+  rc_caps: NOT_CHECKED
+  weight_caps: NOT_CHECKED
+
+--- metrics ---
+  cagr: 6.4%
+  vol_annual: 11.1%
+  sharpe: 0.307
+  sortino: 0.434
+  beta_portfolio: 0.402
+  treynor: 0.085
+  max_drawdown: -24.2%
+  ttr_months: вЂ”
+
+--- stress ---
+  overall: DIAG_ATTENTION
+
+--- analytics (summary) ---
+  rolling_sharpe_36m: last: 0.851, mean: 0.208, p10: -0.236, p90: 0.812
+  rolling_sortino_36m: last: 1.217, mean: 0.306, p10: -0.332, p90: 1.182
+  var_95: -1.1%
+  es_95: -1.5%
+  eee_10pct: 44.511%
+
+============================================================
+WINDOW 10Y (analysis_end: 2026-05-08)
+============================================================
+
+--- final_weights_total ---
+  TLT: 41.0%
+  SCHD: 28.9%
+  GLD: 13.2%
+  QQQ: 10.4%
+  SLV: 6.5%
+  BND: 0.0%
+  SCHP: 0.0%
+
+--- RC_asset (top 5) ---
+  TLT: 35.1%
+  SCHD: 27.7%
+  QQQ: 13.3%
+  GLD: 12.1%
+  SLV: 11.8%
+
+--- constraints_status ---
+  target_vol: FAIL
+  max_dd: FAIL
+  rc_caps: NOT_CHECKED
+  weight_caps: NOT_CHECKED
+
+--- metrics ---
+  cagr: 9.1%
+  vol_annual: 10.0%
+  sharpe: 0.694
+  sortino: 0.974
+  beta_portfolio: 0.340
+  treynor: 0.205
+  max_drawdown: -24.2%
+  ttr_months: вЂ”
+
+--- stress ---
+  overall: DIAG_ATTENTION
+
+--- analytics (summary) ---
+  rolling_sharpe_36m: last: 0.851, mean: 0.636, p10: -0.231, p90: 1.433
+  rolling_sortino_36m: last: 1.217, mean: 0.892, p10: -0.325, p90: 2.015
+  var_95: -1.0%
+  es_95: -1.5%
+  eee_10pct: 34.065%
+
+============================================================
+ASSETS (per-asset metrics by window, standalone)
+============================================================
+
+--- Window 3y ---
+
+ticker	window_months	cagr	vol_annual	sharpe	sortino	beta_base	beta_local	treynor	skewness	kurtosis	max_drawdown	ttr_months	recovered
+VOO	36.000	23.1%	14.7%	1.181	1.739	0.972	0.972	0.179	0.313	14.109	-18.7%	вЂ”	0.000
+QQQ	36.000	30.9%	19.7%	1.238	1.830	1.240	1.240	0.197	0.362	10.363	-22.8%	вЂ”	0.000
+GLD	36.000	32.4%	19.9%	1.287	1.819	0.183	0.183	1.399	-1.114	9.806	-19.2%	вЂ”	0.000
+SLV	36.000	46.2%	40.5%	1.039	1.407	0.667	0.667	0.631	-3.213	38.011	-42.5%	вЂ”	0.000
+BND	36.000	3.8%	5.4%	-0.111	-0.154	0.063	1.000	-0.094	-0.050	0.699	-6.9%	вЂ”	0.000
+SCHD	36.000	14.6%	13.1%	0.764	1.120	0.586	0.586	0.171	-0.108	7.591	-16.1%	вЂ”	0.000
+SCHP	36.000	3.7%	4.8%	-0.153	-0.214	0.047	0.047	-0.155	-0.036	1.190	-5.6%	вЂ”	0.000
+TLT	36.000	-2.0%	14.0%	-0.396	-0.540	0.128	1.000	-0.431	-0.149	0.593	-20.2%	вЂ”	0.000
+
+--- Window 5y ---
+
+ticker	window_months	cagr	vol_annual	sharpe	sortino	beta_base	beta_local	treynor	skewness	kurtosis	max_drawdown	ttr_months	recovered
+VOO	60.000	13.5%	16.9%	0.632	0.905	0.985	0.985	0.108	-0.002	6.066	-24.5%	вЂ”	0.000
+QQQ	60.000	17.1%	22.4%	0.662	0.952	1.249	1.249	0.119	0.043	4.642	-35.1%	вЂ”	0.000
+GLD	60.000	20.5%	17.9%	0.938	1.328	0.137	0.137	1.231	-0.894	9.177	-21.0%	вЂ”	0.000
+SLV	60.000	23.5%	35.7%	0.681	0.940	0.516	0.516	0.471	-2.784	39.515	-42.5%	вЂ”	0.000
+BND	60.000	0.2%	6.0%	-0.505	-0.696	0.069	1.000	-0.437	0.042	1.393	-17.9%	вЂ”	0.000
+SCHD	60.000	7.9%	14.4%	0.366	0.524	0.667	0.667	0.079	-0.106	3.860	-16.8%	вЂ”	0.000
+SCHP	60.000	1.2%	6.1%	-0.324	-0.455	0.065	0.065	-0.303	0.091	2.348	-14.3%	вЂ”	0.000
+TLT	60.000	-6.1%	15.9%	-0.534	-0.735	0.066	1.000	-1.277	-0.012	0.462	-43.7%	вЂ”	0.000
+
+--- Window 10y ---
+
+ticker	window_months	cagr	vol_annual	sharpe	sortino	beta_base	beta_local	treynor	skewness	kurtosis	max_drawdown	ttr_months	recovered
+VOO	120.000	15.6%	18.0%	0.771	1.081	1.003	1.003	0.138	-0.684	16.703	-34.0%	вЂ”	0.000
+QQQ	120.000	21.9%	22.3%	0.901	1.278	1.161	1.161	0.173	-0.402	7.961	-35.1%	вЂ”	0.000
+GLD	120.000	13.4%	16.0%	0.730	1.032	0.073	0.073	1.604	-0.707	8.842	-22.0%	вЂ”	0.000
+SLV	120.000	16.0%	31.6%	0.560	0.777	0.400	0.400	0.442	-2.279	35.958	-42.8%	вЂ”	0.000
+BND	120.000	1.7%	5.5%	-0.067	-0.092	0.044	1.000	-0.085	-1.124	37.555	-18.6%	вЂ”	0.000
+SCHD	120.000	12.7%	16.7%	0.665	0.943	0.811	0.811	0.137	-0.602	15.750	-33.4%	вЂ”	0.000
+SCHP	120.000	2.8%	5.6%	0.114	0.162	0.020	0.020	0.326	0.222	13.540	-14.3%	вЂ”	0.000
+TLT	120.000	-1.4%	14.9%	-0.170	-0.238	-0.124	1.000	0.203	0.020	5.079	-48.4%	вЂ”	0.000

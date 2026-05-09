@@ -1,0 +1,30 @@
+Source: summary.txt, stress_report.json, results_csv/portfolio_metrics_10y.csv, results_csv/rc_vol_10y.csv, report.txt
+
+Executive Summary
+This run is minimum cvar uncapped portfolio; analysis_end: 2026-05-08. On the long window (10Y in the report context) the portfolio shows CAGR ~ 3.14%, annualized volatility ~ 5.12%, maximum drawdown ~ -15.54%.
+Risk-adjusted: Sharpe ~ 0.190, Sortino ~ 0.260; sensitivity to the base benchmark: Beta_base ~ 0.085.
+Stress test: DIAG_PASS_WITH_WARNING; worst_scenario_loss_pct ~ -11.68%.
+Client MaxDD gate (portfolio_valid): PASS.
+
+Metric-by-Metric Interpretation
+CAGR (3.14%) is the compound annual growth rate from simple returns at daily cadence on the 10Y window in this run. Volatility (5.12%) is annualized using the same return frequency; MaxDD (-15.54%) is from the matching equity curve. Sharpe (0.190) and Sortino (0.260) follow project definitions (Sharpe uses raw return vol in the denominator). Beta_base (0.085) and Treynor (0.115) tie to the base benchmark; Corr_base, when present, is correlation with the benchmark on the same window.
+
+Risk Structure
+Largest RC_vol shares (portfolio variance contribution) on 10Y: BND 57.7%, SCHP 33.5%, SCHD 6.1%, GLD 2.7%, SLV 0.0%. Stress: status=DIAG_PASS_WITH_WARNING, fail_reason_code=—.
+
+Data frequency
+optimization_frequency=daily, returns_frequency=daily, factor_stress_frequency=weekly, macro_regime_frequency=monthly; frequency_mismatch_warning=True.
+macro_regime_frequency_notes: Portfolio metrics and covariance use returns_frequency=daily; factor betas/regression/stress shocks stay weekly; macro regime classifier labels remain monthly; regime_factor_analytics may use daily returns when daily data loads (see regime_factor_analytics.summary).
+Non-uniform cadence across blocks: align interpretation of stress/regime diagnostics with the frequencies above; full factor/regime alignment with daily/weekly optimization is Phase 2.
+
+Strengths
+Stress diagnostics show no critical flags (or warnings only); mandate MaxDD gate PASS — realized drawdown vs client threshold does not conflict in this run.
+
+Weaknesses
+
+Scenario Behavior
+Scenario snapshot from stress_report.json: equity_shock: PnL ~ -1.71%, pass=True; credit_shock: PnL ~ -1.16%, pass=True; rates_shock: PnL ~ -11.68%, pass=True; inflation_stagflation: PnL ~ -4.86%, pass=True; liquidity_shock: PnL ~ -1.62%, pass=True; recession_severe: PnL ~ 0.74%, pass=True.
+Worst scenario portfolio loss (worst_scenario_loss_pct): ~ -11.68%.
+
+Final Conclusion
+minimum cvar uncapped portfolio: the 10Y return/risk profile is summarized by CAGR ~ 3.14%, vol ~ 5.12%, MaxDD ~ -15.54%. Stress DIAG_PASS_WITH_WARNING (—); client gate PASS. To compare variants, use the same files in sibling folders (Equal-Weight / Risk Parity / Main portfolio) after a synchronized run.

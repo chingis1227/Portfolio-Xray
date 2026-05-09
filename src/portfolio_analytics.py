@@ -9,6 +9,7 @@ import pandas as pd
 
 from src.metrics_asset import sharpe, sortino
 from src.returns import equity_curve_simple
+from src.returns_frequency import ReturnsFrequency, calendar_window_to_n_periods, periods_per_year
 
 DDOF = 1
 REPORT_DECIMALS = 3
@@ -19,15 +20,19 @@ def rolling_sharpe(
     rf_monthly: pd.Series,
     window_months: int,
     ddof: int = DDOF,
+    *,
+    returns_frequency: ReturnsFrequency = "monthly",
 ) -> pd.Series:
-    """Rolling Sharpe (window_months). Aligns portfolio and rf by inner join per window."""
+    """Rolling Sharpe over a calendar horizon of ``window_months`` mapped to bars at ``returns_frequency``."""
+    wp = calendar_window_to_n_periods(window_months, returns_frequency)
+    k = periods_per_year(returns_frequency)
     out = []
-    for i in range(len(portfolio_returns) - window_months + 1):
-        r = portfolio_returns.iloc[i : i + window_months]
+    for i in range(len(portfolio_returns) - wp + 1):
+        r = portfolio_returns.iloc[i : i + wp]
         rf = rf_monthly.reindex(r.index).dropna()
         r = r.reindex(rf.index).dropna()
         common = r.index.intersection(rf.index)
-        if len(common) < window_months:
+        if len(common) < wp:
             out.append(np.nan)
             continue
         r = r.loc[common]
@@ -35,11 +40,11 @@ def rolling_sharpe(
         if len(r) < 2:
             out.append(np.nan)
             continue
-        val = sharpe(r, rf, ddof=ddof)
+        val = sharpe(r, rf, ddof=ddof, periods_per_year=k)
         out.append(val)
     if not out:
         return pd.Series(dtype=float)
-    idx = portfolio_returns.index[window_months - 1 :]
+    idx = portfolio_returns.index[wp - 1 :]
     return pd.Series(out, index=idx)
 
 
@@ -49,15 +54,19 @@ def rolling_sortino(
     window_months: int,
     mar: float | None = None,
     ddof: int = DDOF,
+    *,
+    returns_frequency: ReturnsFrequency = "monthly",
 ) -> pd.Series:
-    """Rolling Sortino (window_months)."""
+    """Rolling Sortino over a calendar horizon of ``window_months`` at ``returns_frequency``."""
+    wp = calendar_window_to_n_periods(window_months, returns_frequency)
+    k = periods_per_year(returns_frequency)
     out = []
-    for i in range(len(portfolio_returns) - window_months + 1):
-        r = portfolio_returns.iloc[i : i + window_months]
+    for i in range(len(portfolio_returns) - wp + 1):
+        r = portfolio_returns.iloc[i : i + wp]
         rf = rf_monthly.reindex(r.index).dropna()
         r = r.reindex(rf.index).dropna()
         common = r.index.intersection(rf.index)
-        if len(common) < window_months:
+        if len(common) < wp:
             out.append(np.nan)
             continue
         r = r.loc[common]
@@ -65,18 +74,25 @@ def rolling_sortino(
         if len(r) < 2:
             out.append(np.nan)
             continue
-        val = sortino(r, rf, mar=mar, ddof=ddof)
+        val = sortino(r, rf, mar=mar, ddof=ddof, periods_per_year=k)
         out.append(val)
     if not out:
         return pd.Series(dtype=float)
-    idx = portfolio_returns.index[window_months - 1 :]
+    idx = portfolio_returns.index[wp - 1 :]
     return pd.Series(out, index=idx)
 
 
-def rolling_vol_annual(monthly_returns: pd.Series, window_months: int, ddof: int = DDOF) -> pd.Series:
-    """Rolling volatility (annualized)."""
-    r = monthly_returns.rolling(window_months, min_periods=max(2, window_months // 2)).std(ddof=ddof) * np.sqrt(12)
-    return r
+def rolling_vol_annual(
+    monthly_returns: pd.Series,
+    window_months: int,
+    ddof: int = DDOF,
+    *,
+    returns_frequency: ReturnsFrequency = "monthly",
+) -> pd.Series:
+    """Rolling volatility (annualized) over ``window_months`` calendar horizon at ``returns_frequency``."""
+    wp = calendar_window_to_n_periods(window_months, returns_frequency)
+    k = periods_per_year(returns_frequency)
+    return monthly_returns.rolling(wp, min_periods=max(2, wp // 2)).std(ddof=ddof) * np.sqrt(float(k))
 
 
 def drawdown_structure(monthly_simple_returns: pd.Series) -> dict:

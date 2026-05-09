@@ -1,0 +1,33 @@
+Source: summary.txt, stress_report.json, results_csv/portfolio_metrics_10y.csv, results_csv/rc_vol_10y.csv, report.txt
+
+Executive Summary
+This run is selected_portfolio; analysis_end: 2026-05-08. On the long window (10Y in the report context) the portfolio shows CAGR ~ 16.67%, annualized volatility ~ 13.93%, maximum drawdown ~ -23.26%.
+Risk-adjusted: Sharpe ~ 1.015, Sortino ~ 1.432; sensitivity to the base benchmark: Beta_base ~ 0.658.
+Stress test: DIAG_ATTENTION (DIAG_LOSS_EQUITY_SHOCK); worst-loss scenario: equity_shock (Loss); worst_scenario_loss_pct ~ -42.94%.
+Client MaxDD gate (portfolio_valid): FAIL.
+
+Metric-by-Metric Interpretation
+CAGR (16.67%) is the compound annual growth rate from simple returns at daily cadence on the 10Y window in this run. Volatility (13.93%) is annualized using the same return frequency; MaxDD (-23.26%) is from the matching equity curve. Sharpe (1.015) and Sortino (1.432) follow project definitions (Sharpe uses raw return vol in the denominator). Beta_base (0.658) and Treynor (0.215) tie to the base benchmark; Corr_base, when present, is correlation with the benchmark on the same window.
+
+Risk Structure
+Largest RC_vol shares (portfolio variance contribution) on 10Y: QQQ 33.2%, VOO 19.3%, SLV 17.3%, GLD 16.2%, SCHD 13.5%. Stress: status=DIAG_ATTENTION, fail_reason_code=DIAG_LOSS_EQUITY_SHOCK. Failed scenario «equity_shock», test «Loss».
+
+Data frequency
+optimization_frequency=daily, returns_frequency=daily, factor_stress_frequency=weekly, macro_regime_frequency=monthly; frequency_mismatch_warning=True.
+macro_regime_frequency_notes: Portfolio metrics and covariance use returns_frequency=daily; factor betas/regression/stress shocks stay weekly; macro regime classifier labels remain monthly; regime_factor_analytics may use daily returns when daily data loads (see regime_factor_analytics.summary).
+Non-uniform cadence across blocks: align interpretation of stress/regime diagnostics with the frequencies above; full factor/regime alignment with daily/weekly optimization is Phase 2.
+
+Strengths
+Review client gate and/or stress status — see Weaknesses below.
+Sharpe >= 1.0 (1.015) on this window — relatively strong risk-adjusted compensation historically.
+
+Weaknesses
+Stress diagnostics: DIAG_ATTENTION — DIAG_LOSS_EQUITY_SHOCK. (Does not block release by itself; named scenario: equity_shock; test: Loss.)
+Client MaxDD gate FAIL — historical max drawdown exceeds mandate (see run_metadata / snapshot).
+
+Scenario Behavior
+Scenario snapshot from stress_report.json: equity_shock: PnL ~ -27.22%, pass=False; credit_shock: PnL ~ -1.94%, pass=True; rates_shock: PnL ~ -1.67%, pass=True; inflation_stagflation: PnL ~ -10.08%, pass=True; liquidity_shock: PnL ~ -13.36%, pass=True; recession_severe: PnL ~ -42.94%, pass=False.
+Worst scenario portfolio loss (worst_scenario_loss_pct): ~ -42.94%.
+
+Final Conclusion
+selected_portfolio: the 10Y return/risk profile is summarized by CAGR ~ 16.67%, vol ~ 13.93%, MaxDD ~ -23.26%. Stress DIAG_ATTENTION (DIAG_LOSS_EQUITY_SHOCK); client gate FAIL. To compare variants, use the same files in sibling folders (Equal-Weight / Risk Parity / Main portfolio) after a synchronized run.

@@ -1,0 +1,13 @@
+Robust Mean–Variance (Uncapped Long-Only) Portfolio
+==================================================
+
+CAGR: 21.923%, Vol: 22.284%, MaxDD: -35.119%, Sharpe: 0.901, Sortino: 1.278, Beta: 1.161, Corr_base: 0.000
+
+Optimizer: robust_mean_variance_uncapped (solver=SLSQP, success=True)
+robust_mv_lambda: 0.0
+Covariance: ledoit_wolf (shrinkage=0.014518558531445578)
+Objective value (min lambda*w'Sig*w - mu'w): -0.00071975582
+Concentration: HHI=1.0000, effective_n=1.000, top1=100.000%
+
+Stress: DIAG_ATTENTION (DIAG_LOSS_EQUITY_SHOCK)
+Client-fit (MaxDD gate): FAIL

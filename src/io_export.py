@@ -147,6 +147,14 @@ def export_run_metadata(
     if portfolio_valid is not None:
         metadata["portfolio_valid"] = portfolio_valid
 
+    if isinstance(stress_report, dict):
+        fd = stress_report.get("frequency_disclosure")
+        if isinstance(fd, dict):
+            metadata["frequency_disclosure"] = fd
+        pp = stress_report.get("periods_per_year")
+        if isinstance(pp, (int, float)) and not isinstance(pp, bool):
+            metadata["periods_per_year"] = int(pp)
+
     if stress_report:
         metadata["stress_test"] = {
             "status": stress_report.get("status"),

@@ -1,148 +1,289 @@
+"""Tests for the monthly two-axis macro regime classifier (`macro_two_axis_v1`)."""
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 
 from src import stress_factors as sf
+from src import stress_factors_macro as sfm
+from src.pandas_compat import MONTH_END_FREQ
 
 
-def _frames(n: int = 220) -> tuple[pd.Series, pd.DataFrame]:
-    idx = pd.date_range("2020-01-03", periods=n, freq="W-FRI")
-    rng = np.random.default_rng(123)
+# ---------------------------------------------------------------------------
+# Synthetic-panel utilities (no network access).
+# ---------------------------------------------------------------------------
+
+
+def _monthly_index(n: int, *, start: str = "2010-01-31") -> pd.DatetimeIndex:
+    return pd.date_range(start=start, periods=n, freq=MONTH_END_FREQ)
+
+
+def _build_panel_with_labels(labels: list[str], *, n: int | None = None) -> tuple[pd.DataFrame, dict]:
+    """Build a synthetic indicator panel that, after compute_macro_scores, yields
+    composite scores matching the requested labels for the trailing rows.
+
+    We bypass the indicator transforms entirely by constructing per-indicator
+    *level* columns whose values are already z-scored block-style signals: the
+    rolling z-score over the synthetic panel produces ``+1 / -1`` extremes.
+    """
+
+    n = n or (len(labels) + sfm.MACRO_SCORE_MIN_PERIODS + 5)
+    idx = _monthly_index(n)
+    panel: dict[str, pd.Series] = {}
+    rng = np.random.default_rng(0)
+    # baseline noise so that rolling std > 0 even for inactive indicators
+    noise = pd.Series(rng.normal(scale=0.01, size=n), index=idx)
+
+    last_k = len(labels)
+    growth_target = np.zeros(n)
+    inflation_target = np.zeros(n)
+    growth_target[-last_k:] = [1.0 if l in {"goldilocks", "reflation"} else -1.0 if l in {"stagflation", "recession_disinflation"} else 0.0 for l in labels]
+    inflation_target[-last_k:] = [1.0 if l in {"reflation", "stagflation"} else -1.0 if l in {"goldilocks", "recession_disinflation"} else 0.0 for l in labels]
+
+    # Strong driver indicators (one per axis) so the bucketed signal saturates to +/-1.
+    growth_series = pd.Series(growth_target, index=idx) * 5.0 + noise
+    inflation_series = pd.Series(inflation_target, index=idx) * 5.0 + noise
+
+    panel["payems__level"] = growth_series
+    panel["payems__momentum"] = growth_series
+    panel["unrate__level"] = -growth_series  # spec sign is "-"
+    panel["unrate__momentum"] = -growth_series
+    panel["core_cpi_3m_ann__level"] = inflation_series
+    panel["core_cpi_3m_ann__momentum"] = inflation_series
+    panel["core_pce_3m_ann__level"] = inflation_series
+    panel["core_pce_3m_ann__momentum"] = inflation_series
+
+    df = pd.DataFrame(panel)
+    df.index = idx
+
+    meta = {
+        "data_sources_used": {
+            "payems": "fred",
+            "unrate": "fred",
+            "core_cpi_3m_ann": "fred",
+            "core_pce_3m_ann": "fred",
+        },
+        "frequency_native": {
+            "payems": "M",
+            "unrate": "M",
+            "core_cpi_3m_ann": "M",
+            "core_pce_3m_ann": "M",
+        },
+        "available_indicators": ["payems", "unrate", "core_cpi_3m_ann", "core_pce_3m_ann"],
+        "unavailable_indicators": [
+            "ism_manuf_pmi",
+            "ism_services_pmi",
+            "real_pce",
+            "real_dpi",
+            "hy_oas",
+            "nfci",
+            "gdpnow",
+            "headline_cpi_3m_ann",
+            "oil_3m_change",
+            "ahe",
+            "eci",
+            "breakeven_5y",
+            "breakeven_5y5y",
+            "ism_manuf_prices_paid",
+            "ism_services_prices_paid",
+        ],
+        "indicator_specs": {spec.key: sfm._spec_meta(spec) for spec in sfm.INDICATORS},
+    }
+    return df, meta
+
+
+def _build_factor_and_portfolio_returns(
+    n_months: int,
+    *,
+    factor_cols: list[str] | None = None,
+    seed: int = 7,
+) -> tuple[pd.Series, pd.DataFrame]:
+    factor_cols = factor_cols or list(sf.BASE_FACTOR_COLUMN_ORDER)
+    idx = _monthly_index(n_months)
+    rng = np.random.default_rng(seed)
     factors = pd.DataFrame(
-        rng.normal(scale=0.01, size=(n, len(sf.BASE_FACTOR_COLUMN_ORDER))),
+        rng.normal(scale=0.02, size=(n_months, len(factor_cols))),
         index=idx,
-        columns=list(sf.BASE_FACTOR_COLUMN_ORDER),
+        columns=factor_cols,
     )
-    factors["us_growth"] = np.sin(np.linspace(0, 10, n)) + rng.normal(scale=0.05, size=n)
-    factors["inflation"] = np.cos(np.linspace(0, 8, n)) + rng.normal(scale=0.05, size=n)
-    factors["commodity"] = factors["inflation"] * 0.4 + rng.normal(scale=0.05, size=n)
-    beta = np.array([0.3, -0.1, 0.2, 0.15, -0.05, 0.08, -0.02, 0.12])
-    y = pd.Series(factors.loc[:, list(sf.BASE_FACTOR_COLUMN_ORDER)].values @ beta, index=idx)
+    beta_vec = np.array([0.4, -0.2, 0.1, 0.2, -0.05, 0.1, 0.0, 0.05][: len(factor_cols)])
+    y = pd.Series(factors.values @ beta_vec + rng.normal(scale=0.01, size=n_months), index=idx)
     return y, factors
 
 
-def _axis(labels: list[str], index: pd.DatetimeIndex, *, latest_near_zero: bool = False) -> pd.DataFrame:
-    growth = []
-    pressure = []
-    for label in labels:
-        if label == "goldilocks":
-            growth.append(1.0)
-            pressure.append(-1.0)
-        elif label == "reflation":
-            growth.append(1.0)
-            pressure.append(1.0)
-        elif label == "stagflation":
-            growth.append(-1.0)
-            pressure.append(1.0)
-        else:
-            growth.append(-1.0)
-            pressure.append(-1.0)
-    if latest_near_zero:
-        growth[-1] = 0.1
-    return pd.DataFrame(
-        {"growth_score": growth, "inflation_pressure_score": pressure, "regime": labels},
-        index=index[: len(labels)],
+# ---------------------------------------------------------------------------
+# Constants / labels
+# ---------------------------------------------------------------------------
+
+
+def test_method_version_is_macro_two_axis_v1() -> None:
+    assert sf.MACRO_REGIME_METHOD_VERSION == "macro_two_axis_v1"
+    assert sfm.MACRO_REGIME_METHOD_VERSION == "macro_two_axis_v1"
+
+
+def test_macro_regime_names_include_neutral_transition() -> None:
+    assert "neutral_transition" in sfm.MACRO_REGIME_NAMES
+    assert sfm.MACRO_REGIME_NAMES == sf.MACRO_REGIME_NAMES
+
+
+def test_macro_quality_status_monthly_thresholds() -> None:
+    assert sfm.macro_quality_status(0) == "no_observations"
+    assert sfm.macro_quality_status(11) == "insufficient_data"
+    assert sfm.macro_quality_status(12) == "low_confidence"
+    assert sfm.macro_quality_status(23) == "low_confidence"
+    assert sfm.macro_quality_status(24) == "usable"
+    assert sfm.macro_quality_status(59) == "usable"
+    assert sfm.macro_quality_status(60) == "reliable"
+    assert sf._macro_quality_status(11) == "insufficient_data"
+    assert sf._macro_quality_status(60) == "reliable"
+
+
+# ---------------------------------------------------------------------------
+# compute_macro_scores: 5 labels, 1-month lag, neutral band
+# ---------------------------------------------------------------------------
+
+
+def test_compute_macro_scores_yields_all_five_labels() -> None:
+    labels = [
+        "goldilocks",
+        "reflation",
+        "stagflation",
+        "recession_disinflation",
+        "neutral_transition",
+        "reflation",
+    ]
+    panel, meta = _build_panel_with_labels(labels, n=80)
+    # Disable persistence smoothing so each instantaneous label survives for the
+    # purpose of checking that all four quadrants can be reached.
+    scores = sfm.compute_macro_scores(panel, meta, persistence_months=1)
+    assert not scores.empty
+    unlagged = scores["regime_unlagged_raw"].dropna().tolist()
+    assert {"goldilocks", "reflation", "stagflation", "recession_disinflation"}.issubset(unlagged)
+
+
+def test_compute_macro_scores_lag_shifts_labels_by_one_month() -> None:
+    labels = ["goldilocks", "reflation", "stagflation"]
+    panel, meta = _build_panel_with_labels(labels, n=80)
+    scores = sfm.compute_macro_scores(panel, meta, persistence_months=1)
+    paired = scores[["regime_unlagged", "regime"]].dropna()
+    # The lagged regime at row t equals the unlagged regime at row t-1.
+    for ts in paired.index[1:]:
+        prev = paired.index[paired.index.get_loc(ts) - 1]
+        assert scores.loc[ts, "regime"] == scores.loc[prev, "regime_unlagged"]
+
+
+def test_label_quadrant_neutral_band_logic() -> None:
+    """Within ±neutral_band on either axis -> neutral_transition; outside -> quadrant."""
+
+    band = sfm.MACRO_REGIME_NEUTRAL_BAND_DEFAULT
+    assert sfm._label_quadrant(0.0, 0.0, neutral_band=band) == "neutral_transition"
+    assert sfm._label_quadrant(0.10, 1.0, neutral_band=band) == "neutral_transition"
+    assert sfm._label_quadrant(1.0, 0.10, neutral_band=band) == "neutral_transition"
+    # Goldilocks: growth > 0, inflation < 0, both above band.
+    assert sfm._label_quadrant(0.50, -0.50, neutral_band=band) == "goldilocks"
+    # Reflation: growth > 0, inflation >= 0, both above band.
+    assert sfm._label_quadrant(0.50, 0.50, neutral_band=band) == "reflation"
+    # Stagflation: growth < 0, inflation >= 0, both above band.
+    assert sfm._label_quadrant(-0.50, 0.50, neutral_band=band) == "stagflation"
+    # Recession / disinflation: growth < 0, inflation < 0, both above band.
+    assert sfm._label_quadrant(-0.50, -0.50, neutral_band=band) == "recession_disinflation"
+    # NaN guard.
+    assert sfm._label_quadrant(float("nan"), 0.5, neutral_band=band) == "neutral_transition"
+
+
+# ---------------------------------------------------------------------------
+# Diagnostics from frames: gating + JSON contract
+# ---------------------------------------------------------------------------
+
+
+def test_from_frames_returns_full_contract() -> None:
+    labels = (["reflation"] * 30) + (["goldilocks"] * 35) + (["stagflation"] * 30)
+    panel, meta = _build_panel_with_labels(labels, n=160)
+    y, factors = _build_factor_and_portfolio_returns(len(panel))
+    payload = sfm.macro_two_axis_diagnostics_from_frames(
+        y, factors, panel, meta, panel.index[-1].strftime("%Y-%m-%d")
     )
 
+    assert payload["axis_model"]["version"] == "macro_two_axis_v1"
+    assert payload["axis_model"]["frequency"] == "monthly"
+    assert payload["score_lag_months"] == 1
+    assert "look_ahead_caveat" in payload["axis_model"]
+    assert payload["current_regime"] in sfm.MACRO_REGIME_NAMES
+    assert "growth_blocks" in payload["axis_scores_latest"]
+    assert "inflation_blocks" in payload["axis_scores_latest"]
+    for key in (
+        "available_blocks",
+        "missing_blocks",
+        "optional_blocks_missing",
+        "planned_not_loaded",
+        "coverage_ratio",
+        "coverage_tier",
+        "confidence_level",
+        "data_sources_used",
+        "score_start_date",
+        "regime_label_start_date",
+    ):
+        assert key in payload, key
 
-def test_macro_regime_labels_cover_four_quadrants_without_neutral() -> None:
-    assert sf._macro_regime_label(1.0, -1.0) == "goldilocks"
-    assert sf._macro_regime_label(1.0, 1.0) == "reflation"
-    assert sf._macro_regime_label(-1.0, 1.0) == "stagflation"
-    assert sf._macro_regime_label(-1.0, -1.0) == "recession_disinflation"
-    assert "neutral" not in sf.MACRO_REGIME_NAMES
 
-
-def test_macro_regime_output_contract_and_axis_model_version() -> None:
-    y, factors = _frames(220)
-    out = sf.macro_regime_diagnostics_from_frames(y, factors, "2024-03-22")
-
-    assert out["axis_model"]["version"] == "internal_market_proxy_v1"
-    assert "inflation_pressure_proxy" in out["axis_model"]
-    assert "growth_score" in out["axis_scores_latest"]
-    assert "inflation_pressure_score" in out["axis_scores_latest"]
-    assert out["method_disclaimer"] == sf.MACRO_REGIME_METHOD_DISCLAIMER
-
-
-def test_macro_regime_confidence_low_and_transition_warning_near_zero(monkeypatch) -> None:
-    y, factors = _frames(130)
-    labels = ["reflation"] * 80 + ["goldilocks"] * 50
-    monkeypatch.setattr(
-        sf,
-        "_macro_axis_frame",
-        lambda _f: _axis(labels, factors.index, latest_near_zero=True),
+def test_below_minimum_observations_suppress_estimates() -> None:
+    labels = (["reflation"] * 70) + (["goldilocks"] * 8)  # goldilocks gets <12 rows
+    panel, meta = _build_panel_with_labels(labels, n=160)
+    y, factors = _build_factor_and_portfolio_returns(len(panel))
+    payload = sfm.macro_two_axis_diagnostics_from_frames(
+        y, factors, panel, meta, panel.index[-1].strftime("%Y-%m-%d")
     )
 
-    out = sf.macro_regime_diagnostics_from_frames(y, factors, "2022-06-24")
-
-    assert out["current_regime"] == "goldilocks"
-    assert out["regime_confidence"] == "low"
-    assert out["regime_transition_warning"] is True
-
-
-def test_macro_regime_quality_status_thresholds() -> None:
-    assert sf._macro_quality_status(0) == "no_observations"
-    assert sf._macro_quality_status(35) == "insufficient_observations"
-    assert sf._macro_quality_status(36) == "low_confidence"
-    assert sf._macro_quality_status(51) == "low_confidence"
-    assert sf._macro_quality_status(52) == "usable"
-    assert sf._macro_quality_status(103) == "usable"
-    assert sf._macro_quality_status(104) == "reliable"
+    block = payload["regimes"]["goldilocks"]
+    assert block["quality_status"] in {"insufficient_data", "no_observations"}
+    if block["quality_status"] == "insufficient_data":
+        reg = block["factor_regression"]
+        assert reg.get("status") == "insufficient_data"
+        assert "betas" not in reg or reg.get("estimate_used") is None
+        assert block["factor_covariance"] is None
+        assert block["portfolio_factor_risk"] is None
+        assert block["portfolio_factor_rc"] == []
 
 
-def test_macro_regime_fallback_and_shrinkage_methods(monkeypatch) -> None:
-    y, factors = _frames(170)
-    labels = (
-        ["reflation"] * 40
-        + ["stagflation"] * 20
-        + ["recession_disinflation"] * 110
+def test_low_confidence_regime_uses_linear_shrinkage() -> None:
+    # ~16 rows in stagflation -> low_confidence; reflation gets reliable
+    labels = (["reflation"] * 70) + (["stagflation"] * 16)
+    panel, meta = _build_panel_with_labels(labels, n=160)
+    y, factors = _build_factor_and_portfolio_returns(len(panel))
+    payload = sfm.macro_two_axis_diagnostics_from_frames(
+        y, factors, panel, meta, panel.index[-1].strftime("%Y-%m-%d")
     )
-    monkeypatch.setattr(sf, "_macro_axis_frame", lambda _f: _axis(labels, factors.index))
-
-    out = sf.macro_regime_diagnostics_from_frames(y, factors, "2023-04-07")
-
-    low = out["regimes"]["reflation"]
-    insufficient = out["regimes"]["stagflation"]
-    none = out["regimes"]["goldilocks"]
-    reliable = out["regimes"]["recession_disinflation"]
-    assert low["quality_status"] == "low_confidence"
-    assert low["used_fallback"] is True
-    assert low["fallback_method"] == "linear_shrinkage_to_base_10y"
-    assert low["fallback_target"] == "base_10y"
-    assert 0.0 <= low["shrinkage_weight_regime"] <= 1.0
-    assert insufficient["quality_status"] == "insufficient_observations"
-    assert insufficient["used_fallback"] is True
-    assert insufficient["fallback_method"] == "fallback_to_base_10y"
-    assert none["quality_status"] == "no_observations"
-    assert none["fallback_method"] == "no_observations_base_10y_reference_only"
-    assert reliable["quality_status"] == "reliable"
-    assert reliable["used_fallback"] is False
+    stag = payload["regimes"]["stagflation"]
+    assert stag["quality_status"] == "low_confidence"
+    assert stag["used_fallback"] is True
+    assert stag["fallback_method"] == "linear_shrinkage_to_base_10y"
+    assert 0.0 <= float(stag["shrinkage_weight_regime"]) <= 1.0
 
 
-def test_macro_regime_negative_rc_serializes_with_interpretation() -> None:
-    cov = pd.DataFrame(
-        [[1.0, -0.9], [-0.9, 1.0]],
-        index=["equity", "credit"],
-        columns=["equity", "credit"],
-    ).reindex(index=sf.BASE_FACTOR_COLUMN_ORDER, columns=sf.BASE_FACTOR_COLUMN_ORDER).fillna(0.0)
-    betas = {"beta_eq": 1.0, "beta_credit": 0.5}
-
-    rows = sf._macro_factor_rc(cov, betas)
-
-    assert any(row["rc_sign"] == "negative" for row in rows)
-    assert any(row["interpretation"] == "hedging_or_diversifying_contribution" for row in rows)
-
-
-def test_macro_regime_csv_frames_include_required_outputs(monkeypatch) -> None:
-    y, factors = _frames(130)
-    labels = ["reflation"] * 60 + ["goldilocks"] * 70
-    monkeypatch.setattr(sf, "_macro_axis_frame", lambda _f: _axis(labels, factors.index))
-
-    out = sf.macro_regime_diagnostics_from_frames(y, factors, "2022-06-24")
-    frames = sf.macro_regime_csv_frames(out)
-
-    assert "macro_regime_labels_weekly.csv" in frames
+def test_csv_frames_emit_monthly_filenames() -> None:
+    labels = (["reflation"] * 35) + (["goldilocks"] * 35) + (["recession_disinflation"] * 30)
+    panel, meta = _build_panel_with_labels(labels, n=160)
+    y, factors = _build_factor_and_portfolio_returns(len(panel))
+    payload = sfm.macro_two_axis_diagnostics_from_frames(
+        y, factors, panel, meta, panel.index[-1].strftime("%Y-%m-%d")
+    )
+    frames = sfm.macro_regime_csv_frames(payload)
+    assert "macro_regime_labels_monthly.csv" in frames
     assert "macro_regime_factor_betas.csv" in frames
     assert "macro_regime_factor_covariance.csv" in frames
     assert "macro_regime_factor_rc.csv" in frames
+
+
+def test_back_compat_shim_routes_through_new_module() -> None:
+    # The old import name `macro_regime_diagnostics_from_frames` on stress_factors
+    # must dispatch to the new monthly path.
+    labels = (["reflation"] * 40) + (["goldilocks"] * 40)
+    panel, meta = _build_panel_with_labels(labels, n=160)
+    y, factors = _build_factor_and_portfolio_returns(len(panel))
+    via_shim = sf.macro_regime_diagnostics_from_frames(
+        y, factors, panel, meta, panel.index[-1].strftime("%Y-%m-%d")
+    )
+    direct = sfm.macro_two_axis_diagnostics_from_frames(
+        y, factors, panel, meta, panel.index[-1].strftime("%Y-%m-%d")
+    )
+    assert via_shim["axis_model"]["version"] == direct["axis_model"]["version"] == "macro_two_axis_v1"

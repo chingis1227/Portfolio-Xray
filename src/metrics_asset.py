@@ -12,7 +12,7 @@ from scipy import stats
 
 from src.returns import equity_curve_simple
 from src.utils import warn_insufficient_data
-from src.windows import slice_window
+from src.windows import slice_calendar_window
 
 
 DDOF = 1
@@ -27,8 +27,13 @@ def _align(*series: pd.Series) -> tuple[pd.Series, ...]:
     return tuple(df[i] for i in range(len(series)))
 
 
-def cagr_from_equity(monthly_simple_returns: pd.Series, window_months: int) -> float:
-    """CAGR = (Equity_end / Equity_start)^(12 / N_months) - 1, Equity = cumprod(1 + r)."""
+def cagr_from_equity(
+    monthly_simple_returns: pd.Series,
+    window_months: int,
+    *,
+    periods_per_year: int = 12,
+) -> float:
+    """CAGR from equity curve: (Equity_end / Equity_start)^(k / N) - 1, k = periods_per_year."""
     r = monthly_simple_returns.dropna()
     if len(r) < 2:
         return np.nan
@@ -36,28 +41,32 @@ def cagr_from_equity(monthly_simple_returns: pd.Series, window_months: int) -> f
     equity_start = 1.0
     equity_end = equity.iloc[-1]
     n = len(r)
-    return (equity_end / equity_start) ** (12 / n) - 1
+    k = float(periods_per_year)
+    return (equity_end / equity_start) ** (k / n) - 1
 
 
-def vol_annual(monthly_simple_returns: pd.Series, ddof: int = DDOF) -> float:
-    """Annualized vol = monthly_std * sqrt(12), ddof=1."""
+def vol_annual(monthly_simple_returns: pd.Series, ddof: int = DDOF, *, periods_per_year: int = 12) -> float:
+    """Annualized vol = per-period_std * sqrt(periods_per_year), ddof=1."""
     r = monthly_simple_returns.dropna()
     if len(r) < 2:
         return np.nan
-    return float(r.std(ddof=ddof) * np.sqrt(12))
+    return float(r.std(ddof=ddof) * np.sqrt(float(periods_per_year)))
 
 
 def sharpe(
     monthly_simple_returns: pd.Series,
     rf_monthly: pd.Series,
     ddof: int = DDOF,
+    *,
+    periods_per_year: int = 12,
 ) -> float:
-    """Sharpe = (mean(r_simple - rf_monthly)*12) / (std(r_simple, ddof=1)*sqrt(12)). Denominator uses raw returns."""
+    """Sharpe = (mean(excess)*k) / (std(r)*sqrt(k)), k=periods_per_year. Denominator uses raw returns."""
     r, rf = _align(monthly_simple_returns, rf_monthly)
     if len(r) < 2:
         return np.nan
     excess = r - rf
-    return float((excess.mean() * 12) / (r.std(ddof=ddof) * np.sqrt(12)))
+    k = float(periods_per_year)
+    return float((excess.mean() * k) / (r.std(ddof=ddof) * np.sqrt(k)))
 
 
 def sortino(
@@ -65,19 +74,22 @@ def sortino(
     rf_monthly: pd.Series,
     mar: float | None = None,
     ddof: int = DDOF,
+    *,
+    periods_per_year: int = 12,
 ) -> float:
-    """Sortino relative to MAR. Default MAR_monthly = rf_monthly; override with custom mar (scalar). Downside = min(0, r - MAR)."""
+    """Sortino relative to MAR. Default MAR = rf per period; downside on same grid as returns."""
     r, rf = _align(monthly_simple_returns, rf_monthly)
     if len(r) < 2:
         return np.nan
     excess = r - rf
     mar_use = rf if mar is None else mar
     downside = np.minimum(0, r - mar_use)
-    dd_monthly = np.sqrt(np.mean(np.asarray(downside) ** 2))
-    if dd_monthly == 0:
+    dd_period = np.sqrt(np.mean(np.asarray(downside) ** 2))
+    if dd_period == 0:
         return np.nan
-    dd_annual = dd_monthly * np.sqrt(12)
-    return float((excess.mean() * 12) / dd_annual)
+    k = float(periods_per_year)
+    dd_annual = dd_period * np.sqrt(k)
+    return float((excess.mean() * k) / dd_annual)
 
 
 def beta_base(
@@ -102,15 +114,17 @@ def treynor(
     benchmark_returns: pd.Series,
     beta: float,
     ddof: int = DDOF,
+    *,
+    periods_per_year: int = 12,
 ) -> float:
-    """Treynor = (mean(excess)*12) / beta_base. beta from same window."""
+    """Treynor = (mean(excess)*k) / beta_base, k=periods_per_year."""
     if beta == 0 or np.isnan(beta):
         return np.nan
     r, rf = _align(monthly_simple_returns, rf_monthly)
     if len(r) < 2:
         return np.nan
     excess = r - rf
-    return float((excess.mean() * 12) / beta)
+    return float((excess.mean() * float(periods_per_year)) / beta)
 
 
 def skewness_log(monthly_log_returns: pd.Series) -> float:
@@ -217,6 +231,8 @@ def asset_metrics_one_window(
     window_months: int,
     mar: float | None = None,
     local_benchmark_returns: pd.Series | None = None,
+    *,
+    periods_per_year: int = 12,
 ) -> dict[str, float | bool]:
     """
     Compute all asset metrics for one ticker in one window. Returns flat dict.
@@ -233,13 +249,13 @@ def asset_metrics_one_window(
         local_benchmark_returns: Local benchmark returns for Beta_local (e.g., BND for bond assets).
                                  If None, Beta_local = Beta_base.
     """
-    r_slice = slice_window(monthly_simple, analysis_end, window_months)
-    lr_slice = slice_window(monthly_log, analysis_end, window_months)
-    rf_slice = slice_window(rf_monthly, analysis_end, window_months)
-    bench_slice = slice_window(benchmark_returns, analysis_end, window_months)
+    r_slice = slice_calendar_window(monthly_simple, analysis_end, window_months)
+    lr_slice = slice_calendar_window(monthly_log, analysis_end, window_months)
+    rf_slice = slice_calendar_window(rf_monthly, analysis_end, window_months)
+    bench_slice = slice_calendar_window(benchmark_returns, analysis_end, window_months)
     r_slice = r_slice.dropna()
     available_months = len(r_slice)
-    if available_months < window_months:
+    if periods_per_year == 12 and available_months < window_months:
         warn_insufficient_data(ticker, window_months, available_months)
     if available_months < 2:
         return {
@@ -258,13 +274,13 @@ def asset_metrics_one_window(
             "ttr_months": np.nan,
             "recovered": False,
         }
-    cagr = cagr_from_equity(r_slice, window_months)
-    vol = vol_annual(r_slice)
+    cagr = cagr_from_equity(r_slice, window_months, periods_per_year=periods_per_year)
+    vol = vol_annual(r_slice, periods_per_year=periods_per_year)
     beta = beta_base(r_slice, bench_slice)
     
     # Beta_local: use local benchmark if provided, else same as beta_base
     if local_benchmark_returns is not None:
-        local_bench_slice = slice_window(local_benchmark_returns, analysis_end, window_months)
+        local_bench_slice = slice_calendar_window(local_benchmark_returns, analysis_end, window_months)
         beta_loc = beta_base(r_slice, local_bench_slice)
     else:
         beta_loc = beta
@@ -274,11 +290,11 @@ def asset_metrics_one_window(
         "window_months": window_months,
         "cagr": cagr,
         "vol_annual": vol,
-        "sharpe": sharpe(r_slice, rf_slice),
-        "sortino": sortino(r_slice, rf_slice, mar=mar),
+        "sharpe": sharpe(r_slice, rf_slice, periods_per_year=periods_per_year),
+        "sortino": sortino(r_slice, rf_slice, mar=mar, periods_per_year=periods_per_year),
         "beta_base": beta,
         "beta_local": beta_loc,
-        "treynor": treynor(r_slice, rf_slice, bench_slice, beta),
+        "treynor": treynor(r_slice, rf_slice, bench_slice, beta, periods_per_year=periods_per_year),
         "skewness": skewness_log(lr_slice),
         "kurtosis": kurtosis_log(lr_slice),
         "max_drawdown": max_drawdown(r_slice)[0],

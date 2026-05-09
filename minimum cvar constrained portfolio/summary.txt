@@ -1,0 +1,11 @@
+Minimum CVaR (Constrained) Portfolio
+==================================================
+
+CAGR: 6.084%, Vol: 6.770%, MaxDD: -17.420%, Sharpe: 0.574, Sortino: 0.802, Beta: 0.182, Corr_base: 0.000
+
+Optimizer: minimum_cvar_constrained (solver=HiGHS, linprog_success=True)
+CVaR LP objective (alpha + lambda*sum z): 0.00980124
+Empirical sample CVaR (loss): 0.00979496
+
+Stress: DIAG_PASS_WITH_WARNING (—)
+Client-fit (MaxDD gate): PASS

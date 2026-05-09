@@ -1,0 +1,11 @@
+Maximum Diversification (Unconstrained Long-Only) Portfolio
+==================================================
+
+CAGR: 9.085%, Vol: 10.023%, MaxDD: -24.212%, Sharpe: 0.694, Sortino: 0.974, Beta: 0.340, Corr_base: 0.000
+
+Optimizer: maximum_diversification_unconstrained (solver=SLSQP, success=True)
+Window portfolio variance (monthly): 3.98621e-05; annualized vol: 2.187%
+Diversification ratio (dimensionless): 1.738002
+
+Stress: DIAG_ATTENTION (DIAG_HIST_2022)
+Client-fit (MaxDD gate): FAIL

@@ -10,7 +10,8 @@
 > **2026-04-29 update:** Historical stress rows now include **model-based factor attribution** when factor history is available. The primary attribution uses 5Y portfolio betas times realized episode factor shocks and must be labeled as model-based explainability, not pure realized causal decomposition.
 > **2026-04-29 update:** Stress reports now include a **diagnostic-only stability-adjusted beta overlay**. It shrinks unstable 5Y factor betas toward 10Y anchors, flags strong 5Y-vs-10Y divergence, and reports material raw-vs-adjusted factor-model PnL deltas.
 > **2026-04-30 update:** Split factor contract. Production regression/beta/stability/OOS/adjusted-overlay/base variance decomposition use base factors only: `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`. `commodity` is the production сырьевой factor. Extended diagnostics/stress analytics use base factors plus `oil`; `beta_oil` is deprecated in production outputs and exposed through `diagnostic_oil_beta` or stress-layer metrics only.
-> **2026-04-30 update:** Inflation/Stagflation now includes a direct inflation-expectations shock: `shock_inf = +0.005` (+50 bps in the T10YIE breakeven proxy). This makes `beta_inf` contribute directly to the scenario PnL instead of remaining zero.
+> **2026-05-08 update:** Synthetic scenario **RC_top1 / RC_top3** concentration diagnostics now use **`taxonomy_blend_v1`**: a blend of sample monthly correlation with a block-structured target matrix (EQ / CR / ND / TI / CO / CA) resolved from `config/etf_universe.yml` and `config/stock_universe.yml`, per-scenario `lambda_blend`, explicit between-block overrides with defaults, per-block volatility multipliers, and PSD repair on the blended correlation. **Historical episodes** are unchanged (realized paths only). Optional `stress_cov_method="uniform_legacy"` restores the prior uniform risk-on correlation + scalar `vol_mult` for synthetic rows only. `rates_shock` and `inflation_stagflation` set `stress_cov=True` for RC diagnostics under the same taxonomy engine.
+> **2026-05-08 update (multi-frequency):** Portfolio metrics and optimizer inputs can use `returns_frequency` `weekly` / `daily` (default `monthly`). Factor betas, synthetic shocks, and primary regression diagnostics remain **weekly**; macro regime labels remain **monthly**. `stress_report.json` carries **`frequency_disclosure`** and **`periods_per_year`**; **`run_metadata.json`** mirrors **`frequency_disclosure`**. For default monthly metrics, `frequency_mismatch_warning` stays **false** so legacy mixed-cadence commentary remains quiet; non-monthly runs set the warning when optimization cadence differs from factor-stress or macro-regime cadence.
 
 ---
 
@@ -41,10 +42,28 @@ Scenario and episode checks below are **for PM reporting**; they do not replace 
 |---|---------------------|----------------------|
 | 1 | **Equity shock**    | Broad equity в€’40%. shock_eq = -0.40; others 0. |
 | 2 | **Credit shock**    | HY stress: shock_credit = +0.04 (+400 bps); optionally shock_eq = -0.10; others 0. |
-| 3 | **Rates shock**     | Real rates +200 bps: `shock_rr = +0.02`; others 0. |
-| 4 | **Inflation/Stagflation** | `shock_cmd = +0.25`, `shock_eq = -0.20`, `shock_rr = +0.005`, `shock_inf = +0.005` (+50 bps breakeven inflation); `shock_usd = 0`. |
-| 5 | **Liquidity shock** | shock_eq = -0.25, shock_credit = +0.03 (+300 bps); RC uses stress covariance; others 0. |
-| 6 | **Recession severe** | Hard-landing recession. `shock_eq` / `shock_rr` / `shock_credit` / `shock_inf` / `shock_usd` / `shock_cmd` are calibrated from realized factor moves in 2008 and 2020; the selected vector is the one with worst model PnL for current portfolio betas. RC uses stress covariance with `vol_mult = 1.60` and risk-on correlation override `0.95`. |
+| 3 | **Rates shock**     | Real rates +200 bps: `shock_rr = +0.02`; others 0. RC uses **taxonomy_blend_v1** stress covariance. |
+| 4 | **Inflation/Stagflation** | `shock_cmd = +0.25`, `shock_eq = -0.20`, `shock_rr = +0.005`, `shock_inf = +0.005` (+50 bps breakeven inflation); `shock_usd = 0`. RC uses **taxonomy_blend_v1** stress covariance. |
+| 5 | **Liquidity shock** | shock_eq = -0.25, shock_credit = +0.03 (+300 bps); RC uses **taxonomy_blend_v1** stress covariance (`src/stress_covariance_taxonomy.py`); others 0. |
+| 6 | **Recession severe** | Hard-landing recession. `shock_eq` / `shock_rr` / `shock_credit` / `shock_inf` / `shock_usd` / `shock_cmd` are calibrated from realized factor moves in 2008 and 2020; the selected vector is the one with worst model PnL for current portfolio betas. RC uses **taxonomy_blend_v1** stress covariance. Legacy scalars `vol_mult = 1.60` and `risk_on_corr = 0.95` remain on `recession_calibration` / scenario row for backward compatibility but **do not** define the RC covariance (taxonomy block multipliers and blended correlations apply). |
+
+### 2.2 Synthetic stress covariance (`taxonomy_blend_v1`)
+
+For each synthetic scenario with `stress_cov=True`, `run_stress` builds monthly `cov_base` from overlapping portfolio assets, then:
+
+1. **Block assignment** per ticker via `resolve_stress_asset_block` (cash proxy → CA; ETF rows from `config/etf_universe.yml`; equities from `config/stock_universe.yml`; unknown tickers → EQ with `taxonomy_coverage.missing_tickers`).
+2. **Target correlation** `C_target` from within-block targets, explicit between-block pairs (`RHO_PAIR_OVERRIDES`), and `RHO_DEFAULT_BETWEEN` for unlisted block pairs (see `src/stress_covariance_taxonomy.py`).
+3. **Blend:** `C_blend = (1 - lambda_blend) * Corr(cov_base) + lambda_blend * C_target`, then **PSD repair** (`repair_correlation_matrix`).
+4. **Volatility stress:** `sigma_i_stress = sigma_i_base * vol_mult_block[scenario][block(i)]`.
+5. **Output covariance:** `cov_stress = D * C_blend * D` with `D = diag(sigma_stress)`.
+
+**Portfolio scenario PnL** is unchanged (linear factor shocks × per-asset betas). Only **RC_vol** inputs use `cov_stress`.
+
+**`run_stress` keyword** `stress_cov_method` (default `taxonomy_blend_v1`): set `uniform_legacy` to restore the previous uniform risk-on correlation override and scalar `vol_mult` from scenario params.
+
+**Scenario rows** (`stress_report.json.scenario_results[*]`) add when `stress_cov` applies: `stress_cov_method`, `stress_cov_lambda`, `stress_cov_calibration_version` (current diagnostic pack: **`calibrated_v1_assumptions`** in `STRESS_COV_CALIBRATION_VERSION`), `taxonomy_coverage` (`missing_tickers`, `blocks_by_ticker`), **`vol_mult_by_block`** (the scenario’s per-block volatility multipliers), and **`key_rho_overrides_used`** (compact trace of primary between-block ρ overrides documented for calibration). When `stress_cov` is false, these fields are null or empty as implemented.
+
+**Calibration table** `LAMBDA_BLEND`, `RHO_WITHIN`, `RHO_PAIR_OVERRIDES`, `VOL_MULT_BLOCK` in `src/stress_covariance_taxonomy.py` implement **`calibrated_v1_assumptions`** (diagnostic RC layer only; does not alter scenario shocks, optimizer, or pass/fail gates).
 
 ---
 
@@ -79,9 +98,12 @@ The selected severe vector is the candidate with the lowest `model_pnl` for the 
 - `selected_shock`
 - `model_pnl_by_episode`
 - `model_vs_realized` comparing model PnL with realized `pnl_real_episode` from `historical_results`
-- `vol_mult` and `risk_on_corr`
+- `vol_mult` and `risk_on_corr` (legacy documentation scalars; RC uses taxonomy when `stress_cov_method` is `taxonomy_blend_v1`)
+- `stress_cov_method` (**`taxonomy_blend_v1`** in normal production)
+- `stress_cov_lambda` (scenario `lambda_blend` for recession_severe; **`calibrated_v1_assumptions`** uses **0.65**)
+- `stress_cov_calibration_version`, `vol_mult_by_block`, `key_rho_overrides_used` (same semantics as synthetic scenario rows when taxonomy stress covariance applies)
 
-The `scenario_results` row for `recession_severe` includes `shock_vector`, `calibration_source_episode`, `vol_mult`, and `risk_on_corr`.
+The `scenario_results` row for `recession_severe` includes `shock_vector`, `calibration_source_episode`, `vol_mult`, `risk_on_corr` (legacy scalars), **`stress_cov_method`**, **`stress_cov_lambda`**, **`stress_cov_calibration_version`**, **`vol_mult_by_block`**, **`key_rho_overrides_used`**, and **`taxonomy_coverage`** when RC stress covariance applies.
 
 
 For each asset *i* in the risk universe (aligned monthly columns; cash proxy excluded from shock path where applicable):
@@ -108,8 +130,79 @@ For each scenario the production `run_stress` implementation outputs (see `scena
 - **top1_rc_asset**, **top1_rc_pct**, **top3_rc_assets**, **top3_rc_sum_pct** (RC_vol вЂ” share of portfolio variance under base or stress covariance)
 - **top3_loss_assets** (tickers with largest negative PnL contribution in the scenario)
 - **loss_ok**, **pass** (equals **loss_ok**), **diagnostic_codes** (loss-related only on synthetic rows)
+- **`stress_cov_method`**, **`stress_cov_lambda`**, **`stress_cov_calibration_version`**, **`taxonomy_coverage`**, **`vol_mult_by_block`**, **`key_rho_overrides_used`** when the scenario uses synthetic stress covariance (null or empty when `stress_cov` is false)
 
 Raw scenario rows remain the primary stress contract. Any stability-adjusted factor overlay must be reported in separate top-level blocks and must not overwrite `scenario_results[*].pnl_by_factor_pct` or the raw scenario PnL fields.
+
+### 2.3 Stress scenario analytics (`stress_scenario_analytics_v1`)
+
+`run_report.py` (after `build_factor_beta_diagnostic_overlay`, before `export_stress_report`) attaches **`stress_scenario_analytics`** to `stress_report.json`:
+
+- **version:** `stress_scenario_analytics_v1`
+- **scenarios:** one object per **synthetic** scenario id (`equity_shock`, …, `recession_severe`) and per **historical** episode id (`dotcom`, `2008`, `2020`, `2022`)
+
+**Diagnostic-only:** no optimizer, mandate, or stress pass/fail changes.
+
+**PnL layer**
+
+- **Historical:** `actual_pnl` is realized `pnl_real_episode` from monthly asset returns in the episode window. It must **not** be shrinkage-adjusted. Optional `model_explained_pnl` may reference factor attribution fields from `historical_results` when present.
+- **Synthetic:** `pnl_raw` aligns with `portfolio_pnl_pct` from `scenario_results`. `pnl_shrinkage_adjusted` is taken from `synthetic_factor_pnl_adjusted.scenarios[]` (`pnl_model_adjusted`) when the overlay exists. `conservative_pnl` = min(raw, adjusted) is diagnostic only.
+
+**Asset covariance / correlation**
+
+- **Historical:** sample covariance on overlapping **monthly** returns in the episode window (`cov_matrix_monthly`, `ddof=1`). Optional parallel branch: **`Ledoit–Wolf`** via `cov_matrix_monthly(..., use_shrinkage=True)`. Report `covariance_method`, `shrinkage_applied`, `n_obs`, `data_start`, `data_end`, `psd_status`, `quality_status`.
+- **Synthetic:** reuse **`stress_covariance_taxonomy_blend`** with the same inputs as `run_stress` (base monthly `cov_base`, tickers, scenario id, cash proxy). Do not alter `run_stress` outputs.
+
+**Factor covariance (synthetic, shock-scale)**
+
+1. Start from **`stress_report.factor_covariance.base.matrix`** (weekly factor window `FACTOR_COVARIANCE_BASE_WEEKS`, sample `ddof=1`), expanded to `FACTOR_COLUMN_ORDER`.
+2. Extract correlation **C** from that covariance.
+3. For each **production stress factor** (the six keys mapped in synthetic shocks: equity, real_rates, inflation, credit, usd, commodity), let `|s_k|` be the absolute scenario shock for the mapped `shock_*` key (`FACTOR_BETA_TO_SYNTHETIC_SHOCK_KEY`). Scale factor **volatility** (not variance directly) by  
+
+   `m_k = 1 + alpha * |s_k|`  
+
+   with default **`alpha = 2.0`** (configurable in code). Non-shocked factors in the full column order use `m_k = 1`.
+4. Rebuild **Σ_scenario = D' C D'** where `D'` is diagonal with `D'_kk = m_k * sigma_k` and `sigma_k = sqrt(Σ_base_kk)`.
+5. Apply **PSD repair** (eigenvalue floor, symmetric) consistent with `factor_covariance` overlay repair semantics.
+
+Report `factor_covariance_method: "base_weekly_corr_shock_vol_scale_v1"` plus `shock_scale_alpha`.
+
+**Factor covariance (historical)**
+
+- Primary: sample covariance (and optional Ledoit–Wolf) on **weekly** factor returns in the episode date range.
+- If `n_obs` (weekly) is too low after month-equivalent gating (`n_weeks * 12/52` mapped to the same `<12 / 12–23 / 24–59 / 60+` quality buckets), **fallback** to `factor_covariance.base` with warning `factor_cov_fallback_full_sample`.
+
+**Quality status (monthly asset windows)**
+
+- `n < 12` → `insufficient_data`
+- `12 <= n < 24` → `low_confidence`
+- `24 <= n < 60` → `usable`
+- `n >= 60` → `reliable`
+
+**Weekly factor windows:** convert with `n_month_equiv = n_weeks * 12 / 52` and apply the same thresholds.
+
+**Factor / asset RC**
+
+- **Asset RC:** `percentage_contributions_variance` from metrics spec (variance, not volatility) using scenario asset Σ and current report weights.
+- **Factor RC:** same marginal contribution definition as `portfolio_factor_rc` in factor covariance (`beta'Σbeta` decomposition with `rc_share` summing to 1 when total variance positive). Report top 1 / top 3 and HHI.
+
+**Usability flags**
+
+Per scenario: `asset_covariance_usable`, `factor_covariance_usable`, `factor_betas_usable`, `asset_rc_usable`, `factor_rc_usable`, `suitable_robust_optimization_input` (conservative v1 rule: true only when PSD OK, quality `usable` or `reliable` where applicable, and 5Y betas present — still **diagnostic-only**, no robust optimization in this release).
+
+**CSV exports** (under `results_csv/`, each row tagged with `scenario_id`, `scenario_type`, `n_obs`, `quality_status`, `covariance_method`, `shrinkage_applied`, `data_start`, `data_end` where applicable):
+
+- `stress_scenario_asset_covariance.csv`
+- `stress_scenario_asset_correlation.csv`
+- `stress_scenario_factor_covariance.csv`
+- `stress_scenario_factor_correlation.csv`
+- `stress_scenario_factor_betas_used.csv`
+- `stress_scenario_asset_risk_contribution.csv`
+- `stress_scenario_factor_risk_contribution.csv`
+- `stress_scenario_raw_vs_shrinkage_summary.csv`
+- `stress_scenario_analytics_summary.csv`
+
+Numeric CSV values rounded to **3 decimals** at export per portfolio metrics policy.
 
 
 ---
@@ -429,58 +522,152 @@ CSV artifacts written under `results_csv/` include:
 
 `stress_report.json.macro_regime_diagnostics` is diagnostic-only and non-binding. It does not change optimizer behavior, mandate status, stress pass/fail, weight release, or the primary raw 5Y/10Y beta outputs.
 
-The method version is `internal_market_proxy_v1`. The required disclaimer is:
+The method version is `macro_two_axis_v1`. The required disclaimer is:
 
-`This is an internal market-proxy regime diagnostic model, not a full macroeconomic regime model. It is diagnostic-only and does not affect optimizer weights, mandate gates, or stress pass/fail.`
+`macro_two_axis_v1 is a diagnostic-only macro regime classifier. It does not affect optimizer weights, mandate gates, stress pass/fail, or weight release.`
 
-The model uses internal market proxies, not a full macroeconomic data set. It does not use PMI, NFP, CPI/PCE, wages, copper, credit impulse, or GDP nowcast inputs in this MVP.
+The model is a **two-axis macro classifier on monthly data**. Indicators are loaded through a layered source resolver covering FRED → Yahoo Finance → official CSV (Atlanta Fed GDPNow) → official API → keyed third-party API → manual CSV (`cache/macro/<key>.csv`, override via `<KEY>_CSV_PATH` env var). When a source is unavailable (missing API key, network failure, paywalled) the indicator becomes `available=False` and the model degrades to a lower `coverage_tier` without crashing the run.
 
-Axis model:
+Indicator blocks (each with one or two indicators):
 
-- `growth_score`: rolling z-score of `us_growth`.
-- `inflation_pressure_proxy`: average rolling z-score of available `inflation` and `commodity`.
-- Rolling window: 156 weekly rows.
-- Minimum observations for score: 52 weekly rows.
-- Neutral band: absolute score below 0.25. The neutral band does not create neutral regimes; it only lowers confidence and raises transition warnings.
+- Growth — `growth_business_activity` (ISM Manuf PMI, ISM Services PMI), `growth_labor` (PAYEMS, UNRATE), `growth_consumer` (Real PCE, Real DPI), `growth_credit` (HY OAS, NFCI), `growth_nowcast` (Atlanta Fed GDPNow via FRED:GDPNOW — quarterly, ffilled to monthly; reference page <https://www.atlantafed.org/research-and-data/data/gdpnow>; optional block, single indicator after NY Fed Nowcast was retired on 2026-05-07).
+- Inflation — `core_inflation` (Core CPI 3m annualised, Core PCE 3m annualised), `headline_inflation` (Headline CPI 3m annualised, WTI oil monthly average then 3m change), `wages` (Average Hourly Earnings 3m yoy, ECI quarterly forward-filled to monthly yoy), `inflation_expectations` (5y breakeven, 5y5y forward breakeven), `business_price_pressure` (ISM Manuf Prices Paid, ISM Services Prices Paid).
 
-Regime labels:
+Transforms applied per indicator: `level` (month-end unless an indicator-specific aggregation overrides it, e.g. WTI uses monthly average), and a momentum component derived as `m_over_m_change`, `three_m_avg_mom` (PAYEMS), `three_m_change` (UNRATE, sign inverted), `three_m_yoy` (real PCE/DPI, AHE), `three_m_annualized` (core/headline CPI, core PCE), `oil_monthly_avg_three_m_change` (WTI), `quarterly_ffill_monthly_yoy` (ECI; YoY of a level), or `quarterly_ffill_monthly_three_m_change` (GDPNow nowcast; level + 3m change of an already-annualised growth rate). Each indicator and its momentum series are normalised by a **rolling 10-year monthly z-score** with `window = 120` and `min_periods = 60`, then bucketed at `±0.5` to a `+1 / 0 / −1` signal. Block sub-scores are the sign-adjusted mean of available indicator signals. Composite axis scores are blended `0.6 · momentum_block_average + 0.4 · level_block_average`.
 
-- `goldilocks`: `growth_score >= 0` and `inflation_pressure_score < 0`.
-- `reflation`: `growth_score >= 0` and `inflation_pressure_score >= 0`.
-- `stagflation`: `growth_score < 0` and `inflation_pressure_score >= 0`.
-- `recession_disinflation`: `growth_score < 0` and `inflation_pressure_score < 0`.
+**Primary regime classification (4 quadrants by sign).** Every scored month is assigned a single ``primary_regime`` based on the **sign** of `growth_score` and `inflation_score`. The neutral band no longer produces a 5th regime bucket — uncertainty inside the band is reported separately via `transition_flag` and `transition_reason`:
 
-Top-level output fields include `axis_model.version`, `axis_scores_latest.growth_score`, `axis_scores_latest.inflation_pressure_score`, `current_regime`, `regime_confidence`, `regime_transition_warning`, `available_regimes_count`, `available_regimes_by_quality`, `regime_counts`, `base_10y`, `regimes`, `stability_summary`, and `method_disclaimer`.
+- `goldilocks`: `growth_score >= 0` and `inflation_score < 0`.
+- `reflation`: `growth_score >= 0` and `inflation_score >= 0`.
+- `stagflation`: `growth_score < 0` and `inflation_score >= 0`.
+- `recession_disinflation`: `growth_score < 0` and `inflation_score < 0`.
+
+Transition metadata, reported alongside `primary_regime` per month and as part of `transition_summary`:
+
+- `transition_flag = true` when `|growth_score| <= neutral_band` or `|inflation_score| <= neutral_band`.
+- `transition_reason ∈ {growth_axis_near_neutral, inflation_axis_near_neutral, both_axes_near_neutral}` when the flag is true; `null` otherwise.
+- `confidence_level` continues to follow the existing rules (`high / medium / low`) and is `low` whenever `transition_flag = true`.
+
+**Backward compatibility.** The legacy 5-bucket label is preserved in `regime_legacy` (with `regime_legacy_unlagged` and `regime_legacy_unlagged_raw` for diagnostics) and reported in `regime_legacy_counts` plus the legacy `MACRO_REGIME_NAMES` list. New consumers must group asset / factor / RC analytics by `primary_regime` and may further split by `primary_regime + transition_flag` (e.g. `reflation_non_transition` vs `reflation_transition`) or `primary_regime + confidence_level`. ``primary_regime`` never takes the value `neutral_transition`; consumers iterating the legacy 5-tuple keep finding `neutral_transition` with zero observations under the new scheme.
+
+Default `neutral_band = 0.20`. Implementations must verify regime stability under sensitivity testing at `±0.20`, `±0.25`, and `±0.35`. The 2026-05 sensitivity analysis (`docs/exec_plans/2026-05-07_macro_two_axis_regime_v1.md` / `2026-05-07_regime_label_quality_check.md`) showed that lowering the band from 0.25 to 0.20 reduces the `neutral_transition` share by ~8pp and pushes the major regimes (`reflation`, `goldilocks`) further away from the `<24-obs` low-confidence boundary, without breaking the macro-sanity windows.
+
+**Indicator scoring method.** Two scoring modes are supported:
+
+- `discrete` (default): rolling 10-year monthly z-score with `window = 120`, `min_periods = 60`, then bucketed at `±0.5` to a `+1 / 0 / −1` signal (preserves the historical behaviour and is the most decisive on extremes).
+- `clipped_z` (alternative, diagnostic): the same rolling z-score is signed by indicator direction, clipped to `[-clipped_z_max_abs, +clipped_z_max_abs]` (default `2.0`) and rescaled to `[-1, +1]`. The 2026-05 comparison showed that under the existing block-averaging and momentum/level blend the clipped-z mode dampens block averages relative to the discrete mode and produces a higher `neutral_transition` share at every band, so it must not be the default until block aggregation is changed accordingly.
+
+`axis_model.scoring_method`, `axis_model.clipped_z_max_abs`, and `axis_model.persistence_months` must be reported in `stress_report.json` for traceability.
+
+**Persistence rule (smoothing only).** A 2-month confirmation rule is applied by default: a regime change is adopted only when at least `persistence_months` consecutive monthly labels agree on the new regime. At the tail of the series, when fewer than `persistence_months` future observations exist, the previous regime is held. Persistence is a smoothing layer only — it must not be used as the primary mechanism to reduce `neutral_transition`. The default `persistence_months = 2` eliminates one-month label flips while preserving real regime transitions; `persistence_months = 1` disables smoothing for diagnostics that need the raw label series. The unsmoothed labels are also retained in `regime_unlagged_raw` for inspection.
+
+**Look-ahead protection**: a 1-month publication lag — labels at month `t` use composite scores computed from data ending at month `t − 1`. Release-date / vintage-accurate handling is **out of scope for v1**; this is documented in `axis_model.look_ahead_caveat`.
+
+Top-level output fields include `axis_model.version`, `axis_model.frequency = "monthly"`, `axis_model.neutral_band_abs`, `axis_model.score_blend`, `axis_model.scoring_method`, `axis_model.clipped_z_max_abs`, `axis_model.persistence_months`, `axis_model.look_ahead_protection`, `axis_model.look_ahead_caveat`, `axis_scores_latest.growth_score`, `axis_scores_latest.inflation_score`, `axis_scores_latest.growth_blocks`, `axis_scores_latest.inflation_blocks`, `current_regime` (= primary regime), `current_primary_regime`, `current_regime_legacy`, `current_transition_flag`, `current_transition_reason`, `regime_confidence`, `confidence_level`, `regime_transition_warning`, `score_lag_months = 1`, `score_start_date`, `regime_label_start_date`, `available_blocks`, `missing_blocks`, `optional_blocks_missing`, `planned_not_loaded`, `coverage_ratio`, `coverage_tier`, `data_sources_used`, `available_regimes_count`, `available_regimes_by_quality`, `regime_counts` (primary, 5-key dict with `neutral_transition = 0`), `regime_legacy_counts` (legacy 5-bucket), `transition_summary`, `base_10y`, `regimes`, `stability_summary`, `labels_monthly` (carries `regime`, `regime_legacy`, `transition_flag`, `transition_reason`), and `method_disclaimer`.
+
+`transition_summary` block must include `n_scored_months`, `n_transition_months`, `transition_share`, `transition_reason_counts` (counts per reason), `transition_reason_shares`, `transition_by_primary` (count of transition months per primary regime), `primary_vs_transition_pivot` (per primary regime, the `non_transition` vs `transition` count), and `legacy_neutral_transition_share`. The same block is mirrored under `regime_label_quality_check.transition_summary`.
+
+`macro_regime_diagnostics` must also include `regime_label_quality_check` (diagnostic-only) with:
+
+- `history_months`: number of months with valid composite scores **and** an assigned regime label (the warmup tail of the rolling z-score window is excluded).
+- `rows_input_total`: total number of rows fed into the quality check.
+- `warmup_months_excluded`: rows dropped because composite scores were not yet available (warmup of the rolling z-score window). Quality statistics are computed on scored months only.
+- `by_regime`: n_obs, history share, first/last occurrence, episode-duration statistics, and quality status (`insufficient_data` / `low_confidence` / `usable` / `reliable`).
+- `episode_history`: contiguous regime episodes (`regime`, `start_date`, `end_date`, `length_months`).
+- `stability_summary`: switch count, average months between switches, one-month share, <3m share, and warning flags.
+- `macro_sanity_checks`: directional plausibility checks for 2008, 2020, 2021–2022, 2022–2023 windows.
+- `metadata_quality`: distributions for `coverage_tier`, `confidence_level`, and block-availability frequencies.
+- `overall_assessment`: `history_usable`, caution/noise flags, and warning strings.
+
+`coverage_tier` semantics:
+
+- `full`: every block listed above has at least one resolved indicator.
+- `extended`: at most two blocks unresolved and all required (non-optional) blocks resolved.
+- `reduced`: more than two blocks unresolved but more than five blocks still resolved.
+- `fred_baseline`: only FRED-resolvable blocks resolved (i.e. `data_sources_used` values are all `fred` or `unavailable`), regardless of count.
+- `insufficient`: fewer than five blocks resolved.
+
+Optional blocks (`growth_nowcast`) missing alone — for example, when GDPNow is temporarily unresolved — does not pull `confidence_level` below `medium` on its own. Historical reference: the NY Fed Nowcast was discontinued in 2021 and was retired from the active classifier on 2026-05-07; GDPNow (FRED:GDPNOW) is now the sole indicator in this block.
 
 Confidence rules:
 
-- If `abs(growth_score) < 0.25` or `abs(inflation_pressure_score) < 0.25`, `regime_confidence = low` and `regime_transition_warning = true`.
-- If both scores are outside the neutral band and current regime quality is `usable`, `regime_confidence = medium`.
-- If both scores are outside the neutral band and current regime quality is `reliable`, `regime_confidence = high`.
-- Otherwise confidence is `low`.
+- If either composite score has `|score| <= neutral_band`, `confidence_level = low` and `regime_transition_warning = true`.
+- Otherwise `confidence_level` follows `coverage_tier`: `full` / `extended` → `high`, `reduced` / `fred_baseline` → `medium`, `insufficient` → `low`.
 
-Regime quality by number of weekly rows:
+Per-regime n_obs gating in monthly observations:
 
 - `0`: `no_observations`.
-- `1` to `35`: `insufficient_observations`.
-- `36` to `51`: `low_confidence`.
-- `52` to `103`: `usable`.
-- `104+`: `reliable`.
-
-For regimes with at least 52 rows, the report uses raw regime-specific betas, factor covariance, factor risk, and factor RC. For regimes with 36 to 51 rows, it computes raw estimates and then linearly shrinks betas and covariance toward `base_10y` with `shrinkage_weight_regime = clip((n_obs - 36) / 16, 0, 1)`. For regimes with fewer than 36 rows, it does not use raw regime estimates as standalone and falls back to `base_10y`. For regimes with zero rows, it reports `no_observations`, `historical_estimate_available = false`, `used_fallback = true`, `fallback_method = no_observations_base_10y_reference_only`, and `fallback_target = base_10y`.
+- `1` to `11`: `insufficient_data`. `factor_regression`, `factor_covariance`, `portfolio_factor_risk`, and `portfolio_factor_rc` are reported as suppressed (status `insufficient_data`, no estimates).
+- `12` to `23`: `low_confidence`. The block uses linear shrinkage to `base_10y` with `shrinkage_weight_regime = clip((n_obs - 12) / 12, 0, 1)`.
+- `24` to `59`: `usable`. The block uses raw regime-specific estimates.
+- `60+`: `reliable`. The block uses raw regime-specific estimates and is suitable for analytical use.
 
 `portfolio_factor_rc` must include `rc_share`, `rc_sign`, and `interpretation`. Positive RC means `risk_adder`; negative RC means `hedging_or_diversifying_contribution`.
 
-`stability_summary` uses a global MVP beta-gap threshold of 0.25 and must include the warning `Stability threshold is a global MVP heuristic, not factor-specific calibration.` Policy signals are `green/general_signal`, `yellow/regime_only`, and `red/do_not_use_as_single_signal`.
+`stability_summary` uses a global beta-gap threshold of 0.25 and must include the warning `Stability threshold is a global heuristic, not factor-specific calibration.` Policy signals are `green/general_signal`, `yellow/regime_only`, and `red/do_not_use_as_single_signal`.
 
 CSV artifacts written under `results_csv/` include:
 
-- `macro_regime_labels_weekly.csv`
-- `macro_regime_factor_betas.csv`
-- `macro_regime_factor_covariance.csv`
-- `macro_regime_factor_rc.csv`
+- `macro_regime_labels_monthly.csv` (replaces the previous `macro_regime_labels_weekly.csv`).
+- `macro_regime_factor_betas.csv` (filename preserved; contents now monthly).
+- `macro_regime_factor_covariance.csv` (filename preserved; contents now monthly).
+- `macro_regime_factor_rc.csv` (filename preserved; contents now monthly).
+- `macro_regime_indicator_panel.csv` (new; per-month indicator level/momentum and z-scores).
+- `regime_label_quality_by_regime.csv`.
+- `regime_label_episode_history.csv`.
+- `regime_label_stability_summary.csv`.
 
-`stress_commentary.txt` must report current regime, latest growth and inflation-pressure scores, regime confidence, transition warning, available usable/reliable regimes, top unstable betas, policy signal counts, the stability-threshold warning, and the method disclaimer.
+Additionally, the run writes `regime_label_quality_summary.json` to the variant output folder (for example `Main portfolio/`).
+
+`stress_commentary.txt` must report method version, current regime, latest growth and inflation scores, the per-block sub-scores when present, `coverage_tier` with available/missing/optional blocks, regime confidence, transition warning, available usable/reliable regimes, the ECI quarterly-ffill caveat when ECI is available, the GDPNow quarterly-ffill caveat when GDPNow is available, the look-ahead lag/no-vintage caveat, top unstable betas, policy signal counts, the stability-threshold warning, and the method disclaimer. When `stress_report.json.regime_factor_analytics` is present, it must also state that `macro_two_axis_v1` label history may extend beyond the **10Y** `portfolio_regime_analytics_window` and that per-regime `n_obs` / matrices / betas / exposures / variance shares / average factor moves refer only to that overlap.
+
+`stress_commentary.txt` must also include a short **Regime Label Quality Check** subsection with usability verdict, reliable/weak regimes, stability/noise interpretation, and explicit cautions when any regime has `<24` observations or switching is flagged as noisy.
+
+#### 8.8.3 Regime-specific asset and factor analytics (`regime_factor_analytics_v1`)
+
+`stress_report.json.regime_factor_analytics` is diagnostic-only statistical infrastructure for future regime-aware optimization. It does **not** change `macro_two_axis_v1`, optimizer behavior, mandate gates, stress pass/fail, or weight release.
+
+**Inputs.** Primary regime labels remain **monthly** (lagged `macro_regime_diagnostics.labels_monthly`, which may span the full available macro history). The production `run_report.py` path joins them with **weekly** portfolio asset returns (Friday week-ends from the same daily price pipeline as stress factor betas) and the **weekly** nine-factor matrix from `build_factor_matrix`, forward-filling the latest monthly `regime` (and `transition_flag` when used) onto each week (`weekly_alignment = forward_fill_monthly_label`). If weekly asset/factor history cannot be built, the pipeline falls back to the legacy **monthly** inner join: monthly FX-converted asset returns and `build_factor_matrix_monthly`. Current portfolio weights feed bottom-up portfolio factor exposure in both modes.
+
+**Portfolio analytics window (mandatory).** All portfolio-facing regime statistics are computed **only** on the standard **10Y** overlap ending at `analysis_end`, aligned with the main return/metrics/covariance/factor horizons: last `FACTOR_WEEKS_10Y` (≈520) aligned weekly rows when the weekly path is used, or `FACTOR_MONTHS_10Y` (120) month-ends when the monthly fallback is used. The macro classifier output in `macro_regime_diagnostics` may still cover a longer label history; `stress_report.json.regime_factor_analytics`, `regime_factor_analytics_summary.json`, and the `regime_*.csv` tables must disclose **`regime_label_history_span`** (full `labels_monthly` range) versus **`portfolio_regime_analytics_window`** (`label = 10Y`, targets, `analysis_end`, and the realized `actual_*` overlap). Per-regime **`n_obs` counts rows only inside that overlap** (weeks or months per `frequency`).
+
+**Frequency.** `frequency = weekly` is the default production path (with monthly labels). `frequency = monthly` remains supported. JSON carries `frequency` and, when weekly, `weekly_alignment`.
+
+**Gating.** `n_obs` in each regime slice is the **number of aligned rows** (weeks in weekly mode, months in monthly mode). Quality labels (`insufficient_data` / `low_confidence` / `usable` / `reliable`) use the **same calendar-duration intent** as §8.8.2 by mapping weekly counts to **month-equivalent** observations (`round(n_weeks * 12 / 52)`) before applying the `12 / 24 / 60` thresholds. Below ~12 month-equivalent, asset/factor covariance, asset betas, and factor RC in that slice are suppressed; `n_obs` and quality are still reported.
+
+**Computations per primary regime.** Asset and factor covariance use **Ledoit–Wolf** shrinkage (`sklearn.covariance.LedoitWolf`, `assume_centered=False`) on **complete-case** rows (`dropna(how="any")`) when at least two such rows exist; correlations derive from that covariance. If Ledoit–Wolf fails, **complete-case** sample covariance (`ddof=1`) is used; if fewer than two complete rows exist, **pairwise** sample covariance on the regime slice applies. PSD is flagged (`psd` / `not_psd`) without silent repair unless a project-standard repair helper exists. Per-asset OLS of returns on all nine factors with HAC Newey–West inference (Bartlett kernel, lag rule `max(1, min(cap, floor(4*(n/100)^(2/9))))` with **monthly cap 12** and **weekly cap 15**). Portfolio factor betas = weighted sum of asset betas (weights_coverage reported). Factor variance contribution uses the **factor** Ledoit–Wolf (or fallback) covariance: `β_pf' Σ_factor β_pf` decomposed into `beta_i * (Σ beta)_i`, shares normalized to total factor variance; `dominant_factors` lists top contributors by absolute share.
+
+**Outputs.** CSV under `results_csv/`: `regime_asset_covariance.csv`, `regime_asset_correlation.csv`, `regime_factor_covariance.csv`, `regime_factor_correlation.csv`, `regime_asset_factor_betas.csv`, `regime_portfolio_factor_exposures.csv`, `regime_factor_variance_contribution.csv`, `regime_factor_average_moves.csv`. Each row repeats the regime block metadata (`regime`, `n_obs`, `quality_status`, `not_for_optimization` (regime-level), `transition_split`, `confidence_split`, `data_start`, `data_end`, `estimate_suppressed` when applicable) and adds flattened **`regime_label_history_*`** and **`portfolio_regime_analytics_*`** columns so the label span vs 10Y analytics window is explicit on export. Summary JSON: `regime_factor_analytics_summary.json` in the variant final folder. The slim `stress_report.json` block omits full covariance nests; full matrices appear in CSV.
+
+**Splits.** Optional `enable_transition_split` adds keys like `goldilocks__transition_true`. Per-month `confidence_level` splits require a time-aligned series; until available, `enable_confidence_split` logs a warning and skips.
+
+**Errors.** On failure, `regime_factor_analytics_error` is set and the report continues.
+
+#### 8.8.4 Regime-level daily portfolio metrics (`regime_portfolio_metrics_v1`)
+
+`stress_report.json.regime_portfolio_metrics` is **diagnostic-only**. It does not change `macro_two_axis_v1`, optimizer behavior, mandate gates, stress pass/fail, or weight release.
+
+**Purpose.** For each **primary** regime (`goldilocks`, `reflation`, `stagflation`, `recession_disinflation`), compute portfolio and per-asset metrics on **daily** simple returns using the same **conceptual** rules as the base monthly pipeline (`metrics_specification.md`): sample std/cov with `ddof=1`, **Sharpe** uses **raw** return volatility in the denominator, **Sortino** uses downside deviation vs MAR (default MAR = aligned daily risk-free; optional Series), **annualization** uses **252** trading days (`vol_annual = std * sqrt(252)`, mean excess scaled by `252` where applicable). **Treynor** is `(mean(excess) * 252) / beta_base` when `beta_base` is finite and non-zero. **CAGR** uses the daily equity curve with exponent `252 / n_trading_days`. Skewness and kurtosis use **log** daily returns. **Max drawdown** and **time to recovery** follow the monthly definitions applied to the daily equity curve; recovery is reported in **trading days** with `ttr_unit: "trading_days"`.
+
+**Label alignment.** Monthly primary regime labels are **forward-filled** to each trading day (`regime_label_alignment = monthly_label_forward_filled_to_daily`), consistent with the daily `regime_factor_analytics` path.
+
+**Weights and NaNs.** Portfolio return is a **fixed-weight** linear combination of held assets (positive optimizer weights only). Weights are **renormalized** over held names present in the daily return columns. Rows with **any** missing return among held assets are dropped (**complete-case** slice). This MVP does not apply the monthly `dynamic_nan_safe` cash redistribution to regime slices.
+
+**Risk-free and benchmark.** Daily risk-free is built from the same monthly effective series as the main report, expanded to the trading-day index: `ffill` from month-end observations, then **`bfill`** so days **before** the first published month-end rate use the earliest available rate (no look-ahead into future month-ends). Benchmark daily returns match **Beta_base** rules for the investor currency (e.g. SPY/VOO for USD). Optional per-ticker **local** daily benchmarks feed **Beta_local** when provided.
+
+**Quality gating (trading days).** Per-regime `quality_status` uses the same **daily** buckets as `regime_factor_analytics_v1` in daily mode: `n_obs_days < 60` → `insufficient_data`; `60–125` → `low_confidence`; `126–503` → `usable`; `504+` → `reliable`. All four primary regime keys are always present; empty regimes carry `no_observations` or warnings as appropriate.
+
+**Covariance and RC_vol.** **Ledoit–Wolf** on complete-case asset returns per regime (same helper as §8.8.3 daily mode); covariance in JSON is **annualized** (`× 252`). **RC_vol** is percentage **contribution to portfolio variance** using **fixed** weights and the **daily** (non-annualized) regime covariance for PC denominators, averaged over regime days—consistent in spirit with `metrics_specification.md` RC_vol.
+
+**Historical VaR/ES.** Computed on the regime portfolio return series when `n_obs_days >= 60` (same floor as `insufficient_data` for daily regime analytics); below that threshold, VAR/ES fields are marked unavailable with an explicit reason.
+
+**Factor analytics reuse.** When `run_report.py` passes the existing `regime_factor_analytics` payload, each regime’s `factor_analytics` embeds a **slim** subset (exposures, variance contribution, betas, HAC metadata, etc.) **without** duplicating OLS. Full factor matrices remain in `regime_factor_analytics` CSV/JSON as today.
+
+**vs base monthly report.** Not a full mirror: no rolling 12M/36M regime Sharpe strips, no mandate MaxDD gate, no replacement of snapshot monthly windows. Items that are not meaningful on a short regime slice are omitted or carry `metric_available: false` and `unavailable_reason`.
+
+**Artifacts.** Slim block in `stress_report.json`. Summary: `regime_portfolio_metrics_summary.json` under `output_dir_final`. CSV exports under `results_csv/` (e.g. per-regime flattened metrics and covariance/correlation tables—see `regime_portfolio_metrics_csv_frames` in code).
+
+**Errors.** On failure, `regime_portfolio_metrics_error` is set and the report continues.
 
 ---
 
