@@ -78,3 +78,14 @@ Feasibility is based on **weight bounds** and data coverage.
 ## 10. No manual final weights
 
 Final weights come from optimization (+ ProLiquidity / vol policy). PM tilts only through the view-after protocol.
+
+---
+
+## 11. Risk budgeting and other benchmark baselines (non-policy)
+
+Scripts such as **`run_risk_budget_by_asset_class.py`** and **`run_risk_budget_by_asset.py`** construct **long-only, fully invested** weights for **comparison and diagnostics** only. They **do not** implement the client mandate optimizer, **do not** apply ProLiquidity overlays, and **do not** change stress **pass/fail** or weight-release rules—they run the same metrics/stress/report pipeline as other baselines after weights are fixed.
+
+- **Class-level risk budgeting** matches **aggregated** percentage contributions to variance (per `metrics_specification.md` / static **Σ**) across **risk budget buckets** to targets in **`risk_budgeting`** (presets or manual `targets`). Taxonomy for buckets is the merged **`config/etf_universe.yml`** then **`config/stock_universe.yml`** record set, with sub-buckets inferred from row fields in code (`src/risk_budgeting.py`).
+- **Per-asset risk budgeting** requires **`risk_budgeting.asset_targets`** summing to 1 over **every eligible** ticker; it uses **Spinu’s** risk-budget CCD with unequal `b_i` and an **SLSQP** fallback.
+
+For the main portfolio, **§10** still applies: normal production weights come from **`run_optimization.py`** (and view-after where used), not from these baselines.
