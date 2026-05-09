@@ -98,6 +98,12 @@ python run_robust_mean_variance_uncapped.py
 python run_robust_mean_variance_constrained.py
 ```
 
+Calibrate **`robust_mv_lambda`** against IPS targets from `config.yml` (vol / mandate MaxDD / weight cap; optional synthetic stress loss alignment when `target_max_drawdown_pct` is set; optional `robust_mv_calibration:` RC caps in YAML). Writes `analysis_robust_mv_lambda_calibration/robust_mv_lambda_calibration.csv`, `robust_mv_lambda_calibration_summary.json`, `selected_lambda.txt`, `selected_weights.json`, and a full `selected_portfolio/` report for the chosen λ. Does **not** change the policy optimizer or internal stress gate code paths.
+
+```bash
+python run_robust_mv_lambda_calibration.py
+```
+
 Run **Hierarchical Risk Parity** baseline (`hierarchical_risk_parity`; canonical unconstrained construction: clustering + recursive bisection on monthly **Σ**; long-only, **Σw = 1**; **no** policy box bounds or optimizer projection; comparable to canonical Risk Parity; outputs under `hierarchical risk parity portfolio/`):
 ```bash
 python run_hierarchical_risk_parity.py

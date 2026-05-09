@@ -110,6 +110,12 @@ robust_mv_lambda: 0
 robust_mv_covariance_method: ledoit_wolf  # ledoit_wolf | oas
 robust_mv_mu_shrinkage_method: james_stein
 
+# Optional: RMV λ calibration tool (`run_robust_mv_lambda_calibration.py`) — not part of PortfolioConfig validation.
+# Uncomment to cap synthetic-scenario RC concentration when classifying mandate fits.
+# robust_mv_calibration:
+#   max_top1_rc_pct: 0.45      # e.g. cap on max top1_rc_pct across mandatory synthetic scenarios
+#   max_top3_rc_sum_pct: 0.85
+
 # =============================================================================
 # SECTION 6: ANALYSIS SETTINGS
 # =============================================================================
