@@ -99,6 +99,8 @@ class PortfolioConfig:
     minimum_variance_l1_experimental: bool = False
     # Deprecated: stress is diagnostic-only (DIAG_*); ignored for blocking. Kept for config compatibility.
     strict_stress_gate: bool = False
+    # Minimum CVaR baselines: confidence level gamma in (0,1) for Rockafellar–Uryasev LP (default 0.95).
+    minimum_cvar_confidence_level: float = 0.95
     # When True, use Ledoit-Wolf shrinkage for covariance in optimization/RC (more stable weights)
     covariance_shrinkage: bool = False
     # Dual covariance + caps for short-history assets in optimization (optional merge in validate)
@@ -144,6 +146,7 @@ class PortfolioConfig:
             "minimum_variance_l1_experimental": self.minimum_variance_l1_experimental,
             "strict_stress_gate": self.strict_stress_gate,
             "covariance_shrinkage": self.covariance_shrinkage,
+            "minimum_cvar_confidence_level": self.minimum_cvar_confidence_level,
             "young_etf_optimization_policy": dict(self.young_etf_optimization_policy or {}),
             "windows_months": self.windows_months,
             "returns_frequency": self.returns_frequency,
@@ -800,6 +803,18 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
     _validate_robustness_policy(cfg)
     _validate_optimization_windows(cfg)
 
+    mc_raw = cfg.get("minimum_cvar_confidence_level", 0.95)
+    try:
+        mc_val = float(mc_raw)
+    except (TypeError, ValueError) as e:
+        raise ConfigValidationError(
+            f"Config field 'minimum_cvar_confidence_level' must be numeric, got {mc_raw!r}"
+        ) from e
+    if not (0.0 < mc_val < 1.0):
+        raise ConfigValidationError(
+            f"Config field 'minimum_cvar_confidence_level' must be strictly between 0 and 1, got {mc_val}"
+        )
+
     pending = _identify_pending_fields(cfg)
 
     return PortfolioConfig(
@@ -834,6 +849,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
         minimum_variance_l1_experimental=bool(cfg.get("minimum_variance_l1_experimental", False)),
         strict_stress_gate=bool(cfg.get("strict_stress_gate", False)),
         covariance_shrinkage=bool(cfg.get("covariance_shrinkage", False)),
+        minimum_cvar_confidence_level=float(mc_val),
         young_etf_optimization_policy=dict(cfg.get("young_etf_optimization_policy") or DEFAULT_YOUNG_ETF_OPTIMIZATION_POLICY),
         liquidity_floor_pct=_parse_float_optional(cfg.get("liquidity_floor_pct")),
         windows_months=list(cfg["windows_months"]),

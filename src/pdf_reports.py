@@ -1246,6 +1246,20 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
             "Stress: maximum-diversification portfolio behavior",
             "Target weights: maximum diversification (constrained)",
         ),
+        (
+            _ROOT / "minimum cvar uncapped portfolio",
+            "minimum_cvar_uncapped_portfolio",
+            "Minimum CVaR (uncapped): tail-risk-minimizing weights on historical scenarios",
+            "Stress: minimum CVaR uncapped portfolio behavior",
+            "Target weights: minimum CVaR (uncapped)",
+        ),
+        (
+            _ROOT / "minimum cvar constrained portfolio",
+            "minimum_cvar_constrained_portfolio",
+            "Minimum CVaR (constrained): tail-risk weights under project box bounds",
+            "Stress: minimum CVaR constrained portfolio behavior",
+            "Target weights: minimum CVaR (constrained)",
+        ),
     ]
 
     # --- EW vs RP ---

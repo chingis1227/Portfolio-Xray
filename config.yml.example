@@ -97,6 +97,10 @@ donor_shift_mode: proportional
 minimum_variance_turnover_lambda: 0
 minimum_variance_l1_experimental: false
 
+# Minimum CVaR baselines (run_minimum_cvar_uncapped.py / run_minimum_cvar_constrained.py):
+# confidence level gamma in (0,1) for Rockafellar–Uryasev tail mass (1-gamma); default 0.95.
+minimum_cvar_confidence_level: 0.95
+
 # =============================================================================
 # SECTION 6: ANALYSIS SETTINGS
 # =============================================================================
