@@ -117,6 +117,23 @@ ROBUST_MV_OBJECTIVE_MIN = (
     "minimize lambda * w' Sigma w - mu' w on monthly shrunk Sigma and James–Stein shrunk mu"
 )
 
+# Exported on successful Robust MV builds for audit / reporting (see AGENTS.md / SPEC.md).
+ROBUST_MV_VARIANT_ROLE = "return_aware_statistical_benchmark"
+ROBUST_MV_VARIANT_SUMMARY = (
+    "Robust Mean–Variance is a benchmark portfolio construction method: it estimates weights "
+    "from a mean–variance optimum using statistically stabilized inputs—James–Stein shrinkage "
+    "for expected returns, Ledoit–Wolf or OAS shrinkage for the covariance matrix—and an "
+    "internal risk-aversion parameter λ on monthly portfolio variance that trades off expected "
+    "return versus variance. λ is not intended as a client-facing dial; the project provides "
+    "`run_robust_mv_lambda_calibration.py` to evaluate a λ grid against IPS-style limits "
+    "(volatility, mandate maximum drawdown, diagnostic synthetic stress loss alignment where "
+    "configured, concentration caps where configured). Interpret calibrated Robust MV outputs "
+    "as a return-aware statistical benchmark, a sanity check versus the policy optimizer "
+    "pipeline, and a comparison point versus Equal Weight, Equal Weight by asset class, Risk "
+    "Parity, HRP, Minimum Variance, Maximum Diversification, and Minimum CVaR—not a replacement "
+    "for `run_optimization.py`."
+)
+
 MINIMUM_CVAR_SOLVER = "HiGHS"
 MINIMUM_CVAR_OBJECTIVE = (
     "Rockafellar-Uryasev LP: min alpha + 1/(T*(1-gamma))*sum(z_t) "
@@ -341,6 +358,8 @@ def minimum_cvar_baseline_metadata_export(diagnostics: Dict[str, object]) -> Dic
 
 
 ROBUST_MV_METADATA_EXPORT_KEYS = (
+    "robust_mv_variant_role",
+    "robust_mv_variant_summary",
     "optimizer_name",
     "solver",
     "objective_minimize",
@@ -373,7 +392,7 @@ ROBUST_MV_METADATA_EXPORT_KEYS = (
 
 
 def robust_mean_variance_baseline_metadata_export(diagnostics: Dict[str, object]) -> Dict[str, Any]:
-    """Structured fields for Robust Mean–Variance ``baseline_weights_metadata.json``."""
+    """Structured fields for Robust Mean–Variance ``baseline_weights_metadata.json`` / summaries."""
     out: Dict[str, Any] = {}
     for k in ROBUST_MV_METADATA_EXPORT_KEYS:
         if k in diagnostics:
@@ -2889,6 +2908,8 @@ def _build_robust_mean_variance_core(
             weights={t: 0.0 for t in cfg.tickers},
             status="FAIL_CONFIG",
             diagnostics={
+                "robust_mv_variant_role": ROBUST_MV_VARIANT_ROLE,
+                "robust_mv_variant_summary": ROBUST_MV_VARIANT_SUMMARY,
                 "reason": (
                     f"Unsupported robust_mv_mu_shrinkage_method {mu_method_raw!r}; "
                     "only james_stein is implemented"
@@ -2901,7 +2922,11 @@ def _build_robust_mean_variance_core(
         return BaselineWeightsResult(
             weights={t: 0.0 for t in cfg.tickers},
             status="FAIL_CONFIG",
-            diagnostics={"reason": "robust_mv_lambda must be >= 0"},
+            diagnostics={
+                "robust_mv_variant_role": ROBUST_MV_VARIANT_ROLE,
+                "robust_mv_variant_summary": ROBUST_MV_VARIANT_SUMMARY,
+                "reason": "robust_mv_lambda must be >= 0",
+            },
         )
 
     opt_name = (
@@ -2921,6 +2946,8 @@ def _build_robust_mean_variance_core(
         "robust_mv_lambda": lam,
         "mu_shrinkage_method": "james_stein",
         "window_months": int(window_months),
+        "robust_mv_variant_role": ROBUST_MV_VARIANT_ROLE,
+        "robust_mv_variant_summary": ROBUST_MV_VARIANT_SUMMARY,
     }
 
     if len(eligible) < 2:

@@ -1,11 +1,14 @@
 """
-Robust Mean–Variance helpers: James–Stein shrinkage of expected returns,
-Ledoit–Wolf / OAS covariance shrinkage, and SLSQP solve for
+Robust Mean–Variance helpers for a **benchmark** mean–variance construction path (not the policy
+optimizer): James–Stein shrinkage of expected returns, Ledoit–Wolf / OAS covariance shrinkage, and
+SLSQP on
 
     maximize  mu' w - lambda * w' Sigma w
     <=> minimize  lambda * w' Sigma w - mu' w
 
-Monthly simple returns; Sigma and mu are on the same synchronous panel.
+Monthly simple returns; Sigma and mu are on the same synchronous panel. The internal λ scales
+penalized monthly variance; IPS-aligned λ selection belongs in ``run_robust_mv_lambda_calibration.py``.
+See ``portfolio_variants.ROBUST_MV_VARIANT_SUMMARY`` for the normative variant interpretation text.
 """
 from __future__ import annotations
 
