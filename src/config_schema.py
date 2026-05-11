@@ -108,6 +108,8 @@ class PortfolioConfig:
     robust_mv_mu_shrinkage_method: str = "james_stein"
     # Optional: risk budgeting baselines (class SLSQP; per-asset Spinu). See run_risk_budget_*.py.
     risk_budgeting: dict[str, Any] = field(default_factory=dict)
+    # Optional: scenario-based robust optimization CLI (`run_robust_scenario_optimization.py`).
+    robust_scenario_optimization: dict[str, Any] = field(default_factory=dict)
     # When True, use Ledoit-Wolf shrinkage for covariance in optimization/RC (more stable weights)
     covariance_shrinkage: bool = False
     # Dual covariance + caps for short-history assets in optimization (optional merge in validate)
@@ -159,6 +161,7 @@ class PortfolioConfig:
             "robust_mv_covariance_method": self.robust_mv_covariance_method,
             "robust_mv_mu_shrinkage_method": self.robust_mv_mu_shrinkage_method,
             "risk_budgeting": dict(self.risk_budgeting or {}),
+            "robust_scenario_optimization": dict(self.robust_scenario_optimization or {}),
             "windows_months": self.windows_months,
             "returns_frequency": self.returns_frequency,
             "coverage_threshold": self.coverage_threshold,
@@ -405,6 +408,18 @@ def _inject_optional_defaults(cfg: dict[str, Any]) -> None:
     if isinstance(rb, dict):
         rb_base.update({k: v for k, v in rb.items() if v is not None})
     cfg["risk_budgeting"] = rb_base
+    if cfg.get("robust_scenario_optimization") is None:
+        cfg["robust_scenario_optimization"] = {}
+
+
+def _validate_robust_scenario_optimization(cfg: dict[str, Any]) -> None:
+    rs = cfg.get("robust_scenario_optimization")
+    if rs is None:
+        return
+    if not isinstance(rs, dict):
+        raise ConfigValidationError(
+            f"Config field 'robust_scenario_optimization' must be a mapping, got {type(rs).__name__}"
+        )
 
 
 def _parse_percent_value(val: Any, field_name: str) -> float | None:
@@ -929,6 +944,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
     _validate_returns_frequency(cfg)
     _validate_robust_mv_params(cfg)
     _validate_risk_budgeting(cfg)
+    _validate_robust_scenario_optimization(cfg)
     _validate_robustness_policy(cfg)
     _validate_optimization_windows(cfg)
 
@@ -988,6 +1004,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
         robust_mv_covariance_method=str(cfg.get("robust_mv_covariance_method", "ledoit_wolf")),
         robust_mv_mu_shrinkage_method=str(cfg.get("robust_mv_mu_shrinkage_method", "james_stein")),
         risk_budgeting=dict(cfg.get("risk_budgeting") or DEFAULT_RISK_BUDGETING),
+        robust_scenario_optimization=dict(cfg.get("robust_scenario_optimization") or {}),
         liquidity_floor_pct=_parse_float_optional(cfg.get("liquidity_floor_pct")),
         windows_months=list(cfg["windows_months"]),
         returns_frequency=str(cfg.get("returns_frequency", "monthly")).strip().lower(),

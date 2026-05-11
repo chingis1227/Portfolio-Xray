@@ -106,6 +106,7 @@ from src.stress_factors import (
     factor_oos_beta_shock_explainability,
     portfolio_factor_regression_weekly,
     portfolio_factor_betas,
+    asset_factor_betas_dict_from_df,
     rolling_beta_summary,
     write_rolling_betas_plot_html,
     write_rolling_betas_plot_pngs,
@@ -139,6 +140,11 @@ from src.regime_portfolio_metrics import (
     regime_portfolio_metrics_summary,
 )
 from src.stress_scenario_analytics import build_stress_scenario_analytics
+from src.scenario_library import build_scenario_library, summarize_scenario_classifications
+from src.scenario_library_normalized import (
+    build_scenario_library_normalized,
+    summarize_normalized_classifications,
+)
 from src.data_yf import download_all
 
 
@@ -530,6 +536,8 @@ def run_portfolio_report_for_weights(
     diagnostic_betas_5y_extended: dict[str, float] = {}
     diagnostic_betas_10y_extended: dict[str, float] = {}
     recession_factor_returns = pd.DataFrame()
+    # Long history for historical episode factor sums (dotcom, etc.); recession calibration stays 2007+.
+    scenario_episode_factor_returns = pd.DataFrame()
     try:
         beta_tickers = [t for t in tickers if weights.get(t, 0) > 0]
         if not beta_tickers:
@@ -560,6 +568,18 @@ def run_portfolio_report_for_weights(
             recession_factor_returns = build_factor_matrix("2007-01-01", analysis_end_str)
         except Exception as e:
             logger.warning(f"Recession factor calibration setup failed: {e}; recession severe will use fallback.")
+        try:
+            scenario_episode_factor_returns = build_factor_matrix(
+                "1990-01-01",
+                analysis_end_str,
+                require_complete_rows=False,
+            )
+        except Exception as e_long:
+            logger.warning(
+                "Long-window factor matrix (1990+) for historical episode fallback failed: %s",
+                e_long,
+            )
+            scenario_episode_factor_returns = pd.DataFrame()
     except Exception as e:
         logger.warning(f"Stress factor/beta setup failed: {e}; stress report may use fallback only.")
         asset_betas_df = pd.DataFrame()
@@ -578,6 +598,12 @@ def run_portfolio_report_for_weights(
     stress_report["factor_betas_5y"] = {k: round(v, 4) for k, v in (portfolio_betas_5y_dict or {}).items()}
     stress_report["factor_betas_10y"] = {k: round(v, 4) for k, v in (portfolio_betas_10y_dict or {}).items()}
     stress_report["factor_betas"] = dict(stress_report["factor_betas_5y"])
+    stress_report["asset_factor_betas"] = asset_factor_betas_dict_from_df(asset_betas_df)
+    stress_report["asset_factor_betas_meta"] = {
+        "source": "compute_asset_factor_betas_weekly",
+        "window_weeks": int(FACTOR_WEEKS_5Y),
+        "n_assets": int(len(asset_betas_df.index)) if asset_betas_df is not None and not asset_betas_df.empty else 0,
+    }
     # Portfolio factor regression diagnostics (5Y/10Y): t/p/CI/R^2 on weekly data, same factor matrix definition.
     stress_report["factor_regression_5y"] = {}
     stress_report["factor_regression_10y"] = {}
@@ -857,6 +883,7 @@ def run_portfolio_report_for_weights(
         stress_report["macro_regime_diagnostics_error"] = str(e)
         logger.warning(f"Macro regime diagnostics failed: {e}")
 
+    regime_factor_analytics_full = None
     try:
         mr = stress_report.get("macro_regime_diagnostics") or {}
         lm = mr.get("labels_monthly") or []
@@ -946,6 +973,7 @@ def run_portfolio_report_for_weights(
                     regime_label_history_span=regime_label_history_span,
                     portfolio_regime_analytics_window=portfolio_regime_analytics_window,
                 )
+                regime_factor_analytics_full = rfa_payload
                 stress_report["regime_factor_analytics"] = regime_factor_analytics_for_stress_report(
                     rfa_payload
                 )
@@ -1244,6 +1272,69 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["stress_scenario_analytics_error"] = str(e)
         logger.warning(f"Stress scenario analytics failed: {e}")
+
+    _scenario_lib_factor_weekly = (
+        recession_factor_returns
+        if recession_factor_returns is not None and not recession_factor_returns.empty
+        else None
+    )
+    try:
+        sl = build_scenario_library(
+            stress_report,
+            weights=weights,
+            tickers=tickers,
+            monthly_returns=monthly_returns,
+            returns_frequency=str(returns_frequency),
+            regime_factor_analytics_full=regime_factor_analytics_full,
+            factor_returns_weekly=_scenario_lib_factor_weekly,
+            cash_proxy_ticker=cash_proxy_ticker,
+            output_dir_final=output_dir_final,
+            output_dir_csv=output_dir_csv,
+        )
+        stress_report["scenario_library_meta"] = {
+            "version": sl.get("version"),
+            "n_scenarios": sl.get("n_scenarios"),
+            "output_paths": sl.get("output_paths"),
+            "warnings_global": sl.get("warnings_global"),
+            "classifications": summarize_scenario_classifications(sl.get("scenarios") or []),
+        }
+        try:
+            sln = build_scenario_library_normalized(
+                sl,
+                output_dir_final=output_dir_final,
+                output_dir_csv=output_dir_csv,
+                monthly_returns=monthly_returns,
+                weights=weights,
+                tickers=tickers,
+                returns_frequency_pipeline=str(returns_frequency),
+                optimizer_mu_by_ticker=None,
+                stress_report=stress_report,
+                factor_returns_weekly=_scenario_lib_factor_weekly
+                if _scenario_lib_factor_weekly is not None and not _scenario_lib_factor_weekly.empty
+                else None,
+                factor_returns_weekly_episode_loose=scenario_episode_factor_returns
+                if scenario_episode_factor_returns is not None and not scenario_episode_factor_returns.empty
+                else None,
+                cash_proxy_ticker=cash_proxy_ticker,
+                historical_stress_proxy_config=None,
+                enable_historical_stress_fallback=True,
+            )
+            stress_report["scenario_library_normalized_meta"] = {
+                "version": sln.get("version"),
+                "n_scenarios": sln.get("n_scenarios"),
+                **summarize_normalized_classifications(sln.get("scenarios") or []),
+                "readiness_roles": sln.get("readiness_roles"),
+                "monte_carlo_feasibility_note": sln.get("monte_carlo_feasibility_note"),
+                "robust_optimization_note": sln.get("robust_optimization_note"),
+                "output_paths": sln.get("output_paths"),
+                "global_warnings": sln.get("global_warnings"),
+            }
+        except Exception as e:
+            stress_report["scenario_library_normalized_error"] = str(e)
+            logger.warning(f"Scenario library normalized v1 failed: {e}")
+    except Exception as e:
+        stress_report["scenario_library_error"] = str(e)
+        logger.warning(f"Scenario library v1 failed: {e}")
     macro_notes = ""
     if returns_frequency != "monthly":
         macro_notes = (

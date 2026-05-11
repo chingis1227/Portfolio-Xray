@@ -447,6 +447,18 @@ def main() -> None:
         stress_report["factor_betas"] = dict(stress_report["factor_betas_5y"])
 
     try:
+        from src.stress_factors import FACTOR_WEEKS_5Y, asset_factor_betas_dict_from_df
+
+        stress_report["asset_factor_betas"] = asset_factor_betas_dict_from_df(asset_betas_df)
+        stress_report["asset_factor_betas_meta"] = {
+            "source": "compute_asset_factor_betas_weekly",
+            "window_weeks": int(FACTOR_WEEKS_5Y),
+            "n_assets": int(len(asset_betas_df.index)) if asset_betas_df is not None and not asset_betas_df.empty else 0,
+        }
+    except Exception as _e_afb:
+        logger.warning("asset_factor_betas serialization skipped: %s", _e_afb)
+
+    try:
         from src.stress_factors import (
             FACTOR_MONTHS_10Y,
             FACTOR_MONTHS_3Y,

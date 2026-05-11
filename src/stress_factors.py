@@ -565,7 +565,13 @@ def _filter_beta_map_to_base(values: dict[str, Any] | None) -> dict[str, Any]:
     return {k: v for k, v in values.items() if str(k) in BASE_BETA_ROW_ORDER}
 
 
-def _build_factor_frame(start: str, end: str, *, monthly: bool) -> pd.DataFrame:
+def _build_factor_frame(
+    start: str,
+    end: str,
+    *,
+    monthly: bool,
+    require_complete_rows: bool = True,
+) -> pd.DataFrame:
     data: dict[str, pd.Series] = {}
     for spec in FACTOR_DEFINITIONS:
         loader = spec.monthly_loader if monthly else spec.weekly_loader
@@ -585,21 +591,31 @@ def _build_factor_frame(start: str, end: str, *, monthly: bool) -> pd.DataFrame:
         cols_to_drop = [c for c in ordered_cols if c in df.columns and df[c].notna().sum() < len(df) * min_fill_ratio]
         if cols_to_drop:
             df = df.drop(columns=cols_to_drop)
-        df = df.dropna()
+        # Inner join across all columns drops early-history rows when any factor is missing.
+        # Episode factor sums (historical stress fallback) sum each column with its own NaNs dropped,
+        # so incomplete rows must be retained when require_complete_rows is False.
+        if require_complete_rows:
+            df = df.dropna()
     return df
 
 
 def build_factor_matrix(
     start: str,
     end: str,
+    *,
+    require_complete_rows: bool = True,
 ) -> pd.DataFrame:
     """
     Build weekly factor series aligned to common index.
     Columns follow FACTOR_DEFINITIONS and currently include equity, real_rates,
     inflation, credit, usd, commodity, vix, us_growth, and oil.
     Index: week-end dates. All in decimal (returns or changes).
+
+    When ``require_complete_rows`` is False, rows with partial NaNs are kept so
+    per-column episode sums (e.g. dotcom) still have data; callers that need a
+    strict inner join for regressions should keep the default True.
     """
-    return _build_factor_frame(start, end, monthly=False)
+    return _build_factor_frame(start, end, monthly=False, require_complete_rows=require_complete_rows)
 
 
 def build_factor_matrix_monthly(
@@ -3031,6 +3047,29 @@ def portfolio_factor_betas(
         w = np.array([weights.get(t, 0.0) for t in asset_betas.index])
         b = asset_betas[col].fillna(0).values
         out[col] = float(np.dot(w, b))
+    return out
+
+
+def asset_factor_betas_dict_from_df(asset_betas: pd.DataFrame | None) -> dict[str, Any]:
+    """
+    Nested dict for ``stress_report[\"asset_factor_betas\"]``, consumed by
+    ``historical_stress_fallback.asset_betas_from_stress_report`` and robust optimization.
+    """
+    if asset_betas is None or asset_betas.empty:
+        return {}
+    out: dict[str, Any] = {}
+    for ticker in asset_betas.index:
+        row = asset_betas.loc[ticker]
+        betas: dict[str, float] = {}
+        for col in asset_betas.columns:
+            key = str(col)
+            if not key.startswith("beta_"):
+                continue
+            v = row[col]
+            if pd.notna(v):
+                betas[key] = float(v)
+        if betas:
+            out[str(ticker)] = {"betas": betas}
     return out
 
 

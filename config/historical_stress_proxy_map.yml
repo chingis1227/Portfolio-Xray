@@ -1,0 +1,38 @@
+# Historical stress fallback v1 — ticker proxies and asset-class representatives for episodes
+# where direct ETF history is incomplete. Used by src/historical_stress_fallback.py (normalized view).
+
+min_coverage_ratio: 0.45
+
+ticker_proxies:
+  VOO: SPY
+  SCHD: VYM
+  BND: AGG
+  SCHP: TIP
+  TLT: TLT
+  GLD: GLD
+  SLV: SLV
+  QQQ: QQQ
+
+# Map portfolio tickers to asset-class buckets (fallback tier 3).
+# SPY: broad US equity (same representative as us_equity); needed when config uses SPY instead of VOO.
+ticker_asset_class:
+  SPY: us_equity
+  VOO: us_equity
+  QQQ: growth_tech_equity
+  SCHD: dividend_value_equity
+  BND: aggregate_bonds
+  SCHP: tips
+  TLT: long_treasuries
+  GLD: gold
+  SLV: silver_commodities
+
+# Representative monthly-return column per class (must exist in monthly_returns when used).
+asset_class_proxies:
+  us_equity: SPY
+  growth_tech_equity: QQQ
+  dividend_value_equity: VYM
+  aggregate_bonds: AGG
+  tips: TIP
+  long_treasuries: TLT
+  gold: GLD
+  silver_commodities: SLV
