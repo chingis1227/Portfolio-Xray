@@ -48,6 +48,11 @@ Scenario-Based Robust Optimization v1 (requires **`scenario_library_normalized.j
 python run_robust_scenario_optimization.py [--config PATH] [--objective-mode lower_half_mean|maximin|hybrid_legacy] [--normalized-json PATH] [--output-dir DIR]
 ```
 
+Full report for **Robust Scenario** candidate weights (reads `Main portfolio/robust_optimization_weights.json`, writes `robust scenario portfolio/`; does not change policy weights; refreshes `run_compare_variants.py` + PDFs):
+```bash
+python run_robust_scenario_portfolio_report.py [--weights PATH] [--no-cache]
+```
+
 Run Equal-Weight baseline (per eligible asset, `equal_weight_by_assets`):
 ```bash
 python run_equal_weight.py

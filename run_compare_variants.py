@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 """
-Compare Policy vs Equal-Weight vs Risk-Parity portfolios in a single summary file.
+Compare Policy vs Equal-Weight vs Risk-Parity vs Robust Scenario portfolios in a single summary file.
 
 This script assumes that:
 - Policy portfolio report has been generated into output_dir_final (config.yml).
 - Equal-Weight baseline exists in project root folder "equal-weight portfolio".
 - Risk-Parity baseline exists in project root folder "risk parity portfolio".
+- Robust scenario variant exists in project root folder "robust scenario portfolio" (optional).
 
 It builds a machine-readable JSON and a concise TXT table with:
 - CAGR
@@ -105,11 +106,13 @@ def main() -> None:
     policy = _load_variant_summary(root, None, "Policy Portfolio")
     eq = _load_variant_summary(project_root, "equal-weight portfolio", "Equal-Weight Portfolio")
     rp = _load_variant_summary(project_root, "risk parity portfolio", "Risk Parity Portfolio")
+    robust = _load_variant_summary(project_root, "robust scenario portfolio", "Robust Scenario Portfolio")
 
     comparison = {
         "policy": policy,
         "equal_weight": eq,
         "risk_parity": rp,
+        "robust_scenario": robust,
     }
 
     out_json = root / "portfolio_comparison.json"
@@ -128,13 +131,13 @@ def main() -> None:
             return str(v)
 
     lines = [
-        "Policy vs Equal-Weight vs Risk-Parity",
+        "Policy vs Equal-Weight vs Risk-Parity vs Robust Scenario",
         "=" * 70,
         "",
         "Columns:   CAGR | Vol | MaxDD | Sharpe | Sortino | Beta | Stress | Client-fit",
         "",
     ]
-    for item in (policy, eq, rp):
+    for item in (policy, eq, rp, robust):
         m = item["metrics"] or {}
         line = (
             f"{item['label']:<22} "

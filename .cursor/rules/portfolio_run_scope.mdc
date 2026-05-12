@@ -11,7 +11,7 @@ alwaysApply: true
 
 3. **Сравнение EW vs RP:** после **успешного** прогона EW или RP пайплайн вызывает `run_compare_ew_rp.py` и пересборку PDF (`try_rebuild_pdfs_after_variant`). Если обновили только RP, EW на диске остаётся прежним, но **разница** в `ew_rp_comparison.*` и PDF сравнения обновляется.
 
-4. **Сравнение Policy vs EW vs RP:** после **успешного** отчёта Main (`run_report.py`, в т.ч. из `run_optimization.py`) вызывается `run_compare_variants.py`, затем пересборка PDF (`try_rebuild_pdfs_after_main_report`). Baseline-папки не пересчитываются; обновляется только сводка по **текущим** файлам на диске.
+4. **Сравнение Policy vs EW vs RP vs Robust Scenario:** после **успешного** отчёта Main (`run_report.py`, в т.ч. из `run_optimization.py`) вызывается `run_compare_variants.py`, затем пересборка PDF (`try_rebuild_pdfs_after_main_report`). Ключ **`robust_scenario`** добавляется, если существует папка **`robust scenario portfolio/`** со `snapshot_10y.json` (после `run_robust_scenario_portfolio_report.py`). Baseline-папки не пересчитываются; обновляется только сводка по **текущим** файлам на диске.
 
 5. **Не смешивать с «мегапрогоном»:** изменение `config.yml` само по себе ничего не пересчитывает — нужен явный запуск скрипта(ов). Не ожидай авто-прогона всех трёх вариантов без команды пользователя.
 
