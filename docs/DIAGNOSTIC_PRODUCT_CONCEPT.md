@@ -1,12 +1,18 @@
 # Diagnostic Product Concept
 
+This document is a living product blueprint, not a binding implementation spec.
+
 ## Status
 
-This document describes the target product concept and target architecture for Portfolio X-Ray / Portfolio MRI.
+This document describes the target product concept and target architecture for Portfolio X-Ray / Portfolio MRI. It is an evolving draft: sections may be added, edited, renamed, or removed as the project changes.
 
-It is a product and architecture guide, not a canonical implementation specification. It does not replace `SPEC.md`, metric formulas, stress scenario definitions, investment policy logic, configuration schemas, source code behavior, or existing implementation contracts.
+It is a product and architecture guide, not a canonical implementation specification. It does not replace `SPEC.md`, `RULES.md`, `DATA.md`, `docs/specs/*`, metric formulas, stress scenario definitions, investment policy logic, data rules, configuration schemas, source code behavior, or existing implementation contracts.
 
 If this document mentions a metric, stress scenario, assumption, optimization method, UI block, or product module, that mention does not automatically require the current codebase to change. Implementation details must still be governed by the canonical specs and changed through normal planning, documentation sync, and verification.
+
+Ideas from this document become binding only after they are promoted into the relevant canonical source of truth, such as `SPEC.md`, `DATA.md`, `docs/specs/*.md`, `ARCHITECTURE.md`, or an ExecPlan under `docs/exec_plans/`, and then implemented and verified.
+
+Use this document for product direction, terminology, and future planning. Do not use it as the sole authority for current formulas, scenarios, optimizer policy, data handling, outputs, or code behavior.
 
 ## Concept Name
 

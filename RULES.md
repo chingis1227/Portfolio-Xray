@@ -23,7 +23,7 @@ It defines the project-wide principles, boundaries, and required working discipl
 ## Change Requirements
 
 - Meaningful code changes require relevant documentation sync.
-- Meaningful code changes require verification with the narrowest reliable test, CLI command, script, or reproducible manual check.
+- Meaningful code changes require verification with the narrowest reliable test, CLI command, script, or reproducible manual check, selected using [TESTING.md](TESTING.md).
 - If a change affects behavior, logic, formulas, configs, workflows, outputs, interfaces, or shared helpers, update the canonical documentation that governs that area.
 - Do not leave stale references to renamed or removed functions, configs, metrics, files, commands, outputs, workflows, or documents.
 - Report any uncertainty, assumption, unverified area, or blocker explicitly.
@@ -34,10 +34,12 @@ It defines the project-wide principles, boundaries, and required working discipl
 | --- | --- |
 | Current implementation contract, expected behavior, output contracts, and canonical spec index | [SPEC.md](SPEC.md) |
 | Product overview, setup, commands, documentation map, and high-level workflows | [README.md](README.md) |
+| Data-layer map: sources, structures, pipeline, quality rules, and documentation sync triggers | [DATA.md](DATA.md) |
+| Testing and verification framework, test selection, CLI smoke checks, artifact checks, and Markdown link checks | [TESTING.md](TESTING.md) |
 | Product vision, target users, value proposition, and long-term direction | [BUSINESS_VISION.md](BUSINESS_VISION.md) |
 | Target product flow, UX behavior, screens, and product modules | [PRODUCT.md](PRODUCT.md) |
 | Architecture map, module boundaries, execution flow, and target architecture areas | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| Target diagnostic product concept and target architecture | [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) |
+| Living diagnostic product blueprint and target architecture ideas; non-binding until promoted to canonical specs | [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) |
 | Metric formulas, estimators, returns, FX, windows, covariance, beta, drawdown, risk-free, rounding, and portfolio analytics rules | [docs/specs/metrics_specification.md](docs/specs/metrics_specification.md) |
 | Portfolio construction, optimizer behavior, ProLiquidity, mandate gate, RC_vol role, and policy optimizer boundaries | [docs/specs/portfolio_construction_policy.md](docs/specs/portfolio_construction_policy.md) |
 | Data policy, NaN handling, young ETF handling, return panels, and backtest handling | [docs/specs/data_policy_spec.md](docs/specs/data_policy_spec.md) |
@@ -47,7 +49,7 @@ It defines the project-wide principles, boundaries, and required working discipl
 | Production workflow, release statuses, blocking rules, and operational states | [docs/specs/production_workflow.md](docs/specs/production_workflow.md) |
 | ETF taxonomy schema, enums, canonical tickers, duplicate policy, and diagnostics statuses | [docs/specs/etf_universe_spec.md](docs/specs/etf_universe_spec.md) |
 | Stock taxonomy schema, snapshot header requirements, and CLI workflow | [docs/specs/stock_universe_spec.md](docs/specs/stock_universe_spec.md) |
-| Agent operating rules, verification loop, documentation sync rules, generated-output policy, and editing guidance | [AGENTS.md](AGENTS.md) |
+| Agent operating rules, documentation sync rules, generated-output policy, and editing guidance | [AGENTS.md](AGENTS.md) |
 | Planning process and ExecPlan format for complex work | [PLANS.md](PLANS.md) |
 | UI, dashboard, generated HTML, and visual design rules | [DESIGN.md](DESIGN.md) |
 

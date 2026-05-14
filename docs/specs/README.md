@@ -7,6 +7,8 @@ Top-level documents stay compact:
 - [../../RULES.md](../../RULES.md) maps project principles and source-of-truth ownership.
 - [../../AGENTS.md](../../AGENTS.md) defines agent operating rules.
 - [../../SPEC.md](../../SPEC.md) defines the current implementation contract and indexes these detailed specs.
+- [../../DATA.md](../../DATA.md) maps data sources, structures, pipeline, quality rules, and data documentation sync triggers.
+- [../../TESTING.md](../../TESTING.md) defines the quality and verification framework.
 
 ## Spec Index
 
@@ -15,7 +17,9 @@ Top-level documents stay compact:
 | Metrics, estimators, windows, returns, FX, beta, drawdown, RC_vol, rounding | [metrics_specification.md](metrics_specification.md) |
 | Portfolio construction and main optimizer policy | [portfolio_construction_policy.md](portfolio_construction_policy.md) |
 | Feasibility and weight constraints | [feasibility_constraints_spec.md](feasibility_constraints_spec.md) |
-| Data policy, NaN handling, young ETFs, return panels | [data_policy_spec.md](data_policy_spec.md) |
+| Data-layer map, sources, structures, pipeline, quality rules | [../../DATA.md](../../DATA.md) |
+| Testing and verification framework | [../../TESTING.md](../../TESTING.md) |
+| Detailed data policy, NaN handling, young ETFs, return panels | [data_policy_spec.md](data_policy_spec.md) |
 | Stress scenarios and stress diagnostics | [stress_testing_spec.md](stress_testing_spec.md) |
 | Factor diagnostics and factor-risk outputs | [factor_diagnostics_spec.md](factor_diagnostics_spec.md) |
 | Macro regime diagnostics | [macro_regime_spec.md](macro_regime_spec.md) |

@@ -271,6 +271,8 @@ Common artifacts:
 | Path | Purpose |
 | --- | --- |
 | `ARCHITECTURE.md` | Main architecture map: modules, flow, inputs, outputs, and boundaries. |
+| `DATA.md` | Data-layer map: sources, structures, pipeline, quality rules, and data documentation sync triggers. |
+| `TESTING.md` | Quality and verification framework: test selection, CLI smoke checks, artifact checks, and Markdown link checks. |
 | `run_optimization.py` | Main policy optimization entry point. |
 | `run_report.py` | Main report and diagnostics entry point. |
 | `run_*.py` | Baseline, comparison, taxonomy, robust optimization, and utility entry points. |
@@ -295,15 +297,15 @@ Python dependencies include pandas, numpy, scipy, scikit-learn, yfinance, pandas
 
 ## Verification
 
-Run the full test suite:
+Use [TESTING.md](TESTING.md) to choose the right verification level for each change.
+
+Run the full test suite when broad coverage is warranted:
 
 ```bash
 python -m pytest
 ```
 
-For focused changes, run the narrowest reliable pytest file first, then broaden when the change touches portfolio math, optimizer behavior, data alignment, config schema, stress logic, or report exports.
-
-Documentation-only changes do not require tests unless they alter executable examples, commands, or documented behavior that should be verified.
+For focused changes, run the narrowest reliable pytest file first, then broaden when the change touches portfolio math, optimizer behavior, data alignment, config schema, stress logic, report exports, or generated artifact contracts. Documentation-only changes usually require Markdown link and stale-reference checks rather than pytest unless executable examples or documented behavior changed.
 
 ## Documentation Sources Of Truth
 
@@ -312,6 +314,8 @@ Start with [RULES.md](RULES.md) for the high-level project rule map, then use [S
 | Area | Source |
 | --- | --- |
 | High-level project principles, boundaries, and source-of-truth map | [RULES.md](RULES.md) |
+| Data sources, data pipeline, structures, quality rules, and data-doc sync triggers | [DATA.md](DATA.md) |
+| Testing and verification framework | [TESTING.md](TESTING.md) |
 | Portfolio construction, optimizer behavior, ProLiquidity, mandate gate, RC_vol role | [Portfolio Construction Policy](docs/specs/portfolio_construction_policy.md) |
 | Metric formulas, dates, windows, FX, covariance, RC_vol, beta, stress metrics | [Metrics Specification](docs/specs/metrics_specification.md) |
 | Feasibility and weight constraints | [Feasibility Constraints](docs/specs/feasibility_constraints_spec.md) |
@@ -320,7 +324,7 @@ Start with [RULES.md](RULES.md) for the high-level project rule map, then use [S
 | NaN, young ETF, and backtest handling | [Data Policy](docs/specs/data_policy_spec.md) |
 | Production workflow and release statuses | [Production Workflow](docs/specs/production_workflow.md) |
 | Main architecture map | [Architecture](ARCHITECTURE.md) |
-| Target product concept and product architecture | [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) |
+| Living product blueprint and target architecture ideas; non-binding until promoted to specs | [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) |
 | ETF taxonomy | [ETF Universe Spec](docs/specs/etf_universe_spec.md) |
 | Stock taxonomy | [Stock Universe Spec](docs/specs/stock_universe_spec.md) |
 | Large-change planning protocol | [PLANS.md](PLANS.md) and checked-in plans under [docs/exec_plans/](docs/exec_plans/) |
@@ -334,6 +338,7 @@ Start with [RULES.md](RULES.md) for the high-level project rule map, then use [S
 - Keep ETF and stock taxonomy annotation-only unless a future spec changes that behavior.
 - Preserve diagnostic-only boundaries for RC_vol, stress analytics, macro regimes, Kalman betas, PCA, and scenario analytics unless a canonical spec explicitly changes them.
 - Update documentation when behavior, interfaces, outputs, commands, or workflows change.
+- Use `TESTING.md` to select focused tests, CLI smoke runs, artifact checks, and Markdown link checks.
 - For large changes, follow `PLANS.md` and maintain an ExecPlan under `docs/exec_plans/`.
 - Prefer focused tests for focused changes and broader tests for shared math, optimizer, data, stress, or reporting changes.
 

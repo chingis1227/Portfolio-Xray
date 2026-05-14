@@ -11,7 +11,7 @@ Product priority: report-first before full UI, unless a future product decision 
 Related documents:
 
 - [Business Vision](BUSINESS_VISION.md) for the business goal, audience, value proposition, and monetization direction.
-- [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) for target product architecture.
+- [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) for living target product architecture ideas; non-binding until promoted to specs.
 - [README.md](README.md) for current project overview and commands.
 - [SPEC.md](SPEC.md) for canonical technical source-of-truth links.
 

@@ -10,10 +10,11 @@ Related documents:
 
 - [README.md](README.md) for project overview, commands, and documentation map.
 - [SPEC.md](SPEC.md) for canonical technical sources of truth.
+- [DATA.md](DATA.md) for data sources, structures, pipeline, quality rules, and data documentation sync triggers.
 - [Detailed Specifications](docs/specs/README.md) for module-specific behavior.
 - [Business Vision](BUSINESS_VISION.md) for business goals and target users.
 - [Product](PRODUCT.md) for user flow, screens, and feature behavior.
-- [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) for target product architecture.
+- [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) for living target product architecture ideas; non-binding until promoted to specs.
 - [Portfolio Construction Policy](docs/specs/portfolio_construction_policy.md) for the main investment policy.
 
 ## Architecture Summary

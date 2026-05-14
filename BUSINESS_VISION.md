@@ -6,7 +6,7 @@ This document describes the business vision for Portfolio X-Ray & Optimization T
 
 It is a product and business strategy document. It does not replace [SPEC.md](SPEC.md), implementation specs, metric formulas, stress scenario definitions, investment policy logic, configuration schemas, or current code behavior.
 
-For target product architecture, see [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md). For current system behavior and canonical technical sources of truth, start with [README.md](README.md) and [SPEC.md](SPEC.md).
+For living target product architecture ideas, see [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md). For current system behavior and canonical technical sources of truth, start with [README.md](README.md) and [SPEC.md](SPEC.md).
 
 ## Big Idea
 

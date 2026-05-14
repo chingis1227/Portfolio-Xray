@@ -5,9 +5,9 @@ alwaysApply: true
 
 # AGENTS.md
 
-This file defines how agents work in this repository. It is not the place for long formulas, scenario definitions, or module-specific implementation contracts. Detailed behavior lives in [SPEC.md](SPEC.md) and [docs/specs/](docs/specs/README.md).
+This file defines how agents work in this repository. It is not the place for long formulas, scenario definitions, verification matrices, or module-specific implementation contracts. Detailed behavior lives in [SPEC.md](SPEC.md), [TESTING.md](TESTING.md), and [docs/specs/](docs/specs/README.md).
 
-Update this file only when agent workflow, verification rules, documentation sync rules, source-of-truth order, generated-output policy, ExecPlan policy, or operating instructions change.
+Update this file only when agent workflow, documentation sync rules, source-of-truth order, generated-output policy, ExecPlan policy, verification source-of-truth routing, or operating instructions change.
 
 ## Project Summary
 
@@ -47,6 +47,8 @@ Run tests:
 python -m pytest
 ```
 
+Use [TESTING.md](TESTING.md) to choose focused tests, CLI smoke runs, artifact checks, and Markdown link checks.
+
 Run optimization:
 
 ```bash
@@ -73,19 +75,23 @@ Before changing current behavior, formulas, portfolio logic, data flow, scenario
 
 1. [RULES.md](RULES.md) for high-level project principles and source-of-truth ownership.
 2. [SPEC.md](SPEC.md) for the current implementation contract and status matrix.
-3. [docs/specs/](docs/specs/README.md) for detailed module-specific behavior.
-4. [README.md](README.md) for setup, commands, and user-facing documentation map.
-5. [ARCHITECTURE.md](ARCHITECTURE.md) for module boundaries and execution flow.
-6. Product concept documents, including [BUSINESS_VISION.md](BUSINESS_VISION.md), [PRODUCT.md](PRODUCT.md), and [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md), for target direction only.
+3. [DATA.md](DATA.md) for data sources, data structures, data pipeline, and data quality rules.
+4. [TESTING.md](TESTING.md) for verification strategy, test selection, CLI smoke checks, artifact checks, and Markdown link checks.
+5. [docs/specs/](docs/specs/README.md) for detailed module-specific behavior.
+6. [README.md](README.md) for setup, commands, and user-facing documentation map.
+7. [ARCHITECTURE.md](ARCHITECTURE.md) for module boundaries and execution flow.
+8. Product concept documents, including [BUSINESS_VISION.md](BUSINESS_VISION.md), [PRODUCT.md](PRODUCT.md), and [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md), for target direction only.
 
 Detailed specs:
 
 - [docs/specs/metrics_specification.md](docs/specs/metrics_specification.md) governs metric formulas, estimators, windows, returns, FX, beta, RC_vol, and rounding.
+- [DATA.md](DATA.md) governs the high-level data-layer map, data sources, expected structures, quality rules, and data documentation sync triggers.
 - [docs/specs/portfolio_construction_policy.md](docs/specs/portfolio_construction_policy.md) governs optimizer policy and portfolio construction boundaries.
 - [docs/specs/data_policy_spec.md](docs/specs/data_policy_spec.md) governs NaN handling, young ETFs, return panels, and backtest handling.
 - [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) governs stress scenarios and stress diagnostics.
 - [docs/specs/feasibility_constraints_spec.md](docs/specs/feasibility_constraints_spec.md) governs feasibility and weight constraints.
 - [docs/specs/production_workflow.md](docs/specs/production_workflow.md) governs release statuses and blocking rules.
+- [TESTING.md](TESTING.md) governs the quality and verification framework.
 
 Do not invent formulas, estimators, scenarios, constraints, statuses, or data rules when a spec exists.
 
@@ -106,8 +112,10 @@ Documentation sync is blocking for every meaningful code change.
 
 Update the owning documentation when behavior, logic, formulas, configs, workflows, outputs, interfaces, or shared helpers change:
 
-- Update [AGENTS.md](AGENTS.md) only for agent workflow, verification rules, source-of-truth order, or operating instructions.
+- Update [AGENTS.md](AGENTS.md) only for agent workflow, verification source-of-truth routing, source-of-truth order, or operating instructions.
 - Update [SPEC.md](SPEC.md) for general implementation contract, workflows, inputs/outputs, behavior rules, edge cases, or status matrix changes.
+- Update [DATA.md](DATA.md) when data sources, structures, data pipeline, NaN handling, FX logic, benchmark logic, risk-free inputs, factor/macro inputs, config fields, validation rules, fallback behavior, or data quality expectations change.
+- Update [TESTING.md](TESTING.md) when verification strategy, required checks, test scope matrix, CLI smoke expectations, artifact checks, or quality gates change.
 - Update `docs/specs/*.md` when detailed behavior of a specific module changes.
 - Update [README.md](README.md) when setup, commands, project structure, outputs, or user-facing workflows change.
 - Update [ARCHITECTURE.md](ARCHITECTURE.md) when module boundaries, execution flow, or architecture changes.
@@ -117,14 +125,9 @@ Verify no stale references remain to renamed or removed functions, configs, metr
 
 ## Verification Loop
 
-After a meaningful code change, run the narrowest reliable verification first:
+Follow [TESTING.md](TESTING.md) for the verification matrix, focused test selection, CLI smoke runs, artifact checks, and Markdown link checks.
 
-- For localized logic, run the directly relevant test file or test case.
-- For portfolio math, optimizer behavior, data alignment, config schema, stress logic, or report exports, run focused tests and then broaden when feasible.
-- For web UI, dashboard, or generated HTML changes, also verify the affected surface renders without obvious layout or runtime errors.
-- Documentation-only changes do not require pytest unless they alter executable examples, commands, or documented behavior that should be verified.
-
-If a test fails because of the change, fix the root cause and rerun. If any part remains unverified, report the reason and blocker.
+After a meaningful code change, run the narrowest reliable verification first, broaden when the changed risk warrants it, and report any unverified area with the reason and blocker. If a test fails because of the change, fix the root cause and rerun.
 
 ## ExecPlans
 
