@@ -22,7 +22,7 @@ affect analytics and explainability without silently changing scenario PnL seman
 - [x] (2026-04-28 22:40+02:00) Implemented registry-driven factor definitions and new weekly/monthly factor loaders in `src/stress_factors.py`.
 - [x] (2026-04-28 22:40+02:00) Updated rolling beta plotting/commentary paths to use dynamic factor ordering instead of six hardcoded beta keys.
 - [x] (2026-04-28 22:40+02:00) Added focused tests for factor matrix construction, regression shape, OOS explainability, commentary rendering, rolling PNG layout, and stress-engine isolation.
-- [x] (2026-04-28 22:40+02:00) Updated `README.md`, `PROJECT_RULES.md`, `SPEC.md`, `AGENTS.md`, and `docs/docs/stress_testing_spec.md`; verified stale six-factor analytics references were narrowed to synthetic stress shocks or removed.
+- [x] (2026-04-28 22:40+02:00) Updated `README.md`, `RULES.md`, `SPEC.md`, `AGENTS.md`, and `docs/specs/stress_testing_spec.md`; verified stale six-factor analytics references were narrowed to synthetic stress shocks or removed.
 - [x] (2026-04-28 22:40+02:00) Ran focused pytest subset and full `python -m pytest`; recorded validation evidence below.
 
 ## Surprises & Discoveries

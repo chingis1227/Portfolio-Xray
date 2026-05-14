@@ -47,7 +47,7 @@ Implemented. `stress_report.json.factor_covariance.forecast_quality` now reports
 
 ## Context and Orientation
 
-`src/stress_factors.py` owns factor data construction, factor beta estimation, rolling beta diagnostics, factor covariance analytics, and factor variance decomposition. `run_report.py` calls these helpers, stores outputs in `stress_report`, and exports CSV artifacts under `results_csv/`. `src/portfolio_commentary.py` writes `stress_commentary.txt` from the final stress report. The source-of-truth behavior for stress/factor diagnostics is documented in `docs/docs/stress_testing_spec.md`, while `README.md`, `SPEC.md`, and `PROJECT_RULES.md` summarize user-facing and project-wide contracts.
+`src/stress_factors.py` owns factor data construction, factor beta estimation, rolling beta diagnostics, factor covariance analytics, and factor variance decomposition. `run_report.py` calls these helpers, stores outputs in `stress_report`, and exports CSV artifacts under `results_csv/`. `src/portfolio_commentary.py` writes `stress_commentary.txt` from the final stress report. The source-of-truth behavior for stress/factor diagnostics is documented in `docs/specs/stress_testing_spec.md`, while `README.md`, `SPEC.md`, and `RULES.md` summarize user-facing and project-wide contracts.
 
 In this plan, "forecast covariance" means the sample covariance matrix of weekly factor returns estimated from the prior 260 weekly rows. "Realized risk" means the sample standard deviation of the weekly factor portfolio return series `X_holdout @ beta_vector` over the next 52 weekly rows. The beta vector is the current reported 5Y portfolio factor beta vector passed into `factor_covariance_analytics`; this isolates covariance forecast quality from beta forecast quality.
 
@@ -57,7 +57,7 @@ Add constants for forecast-quality train, holdout, and step windows near existin
 
 Wire the helper into `factor_covariance_analytics` after `beta_vec` is built. Add the returned object as `forecast_quality` in the factor covariance payload. In `run_report.py`, export `forecast_quality.rows` to `results_csv/factor_covariance_forecast_quality.csv` when rows exist.
 
-Update `src/portfolio_commentary.py` so the factor covariance section prints a compact "Forecast quality" summary: number of forecasts, median absolute volatility error, 10/20/30 percent hit rates, median correlation RMSE, and severity. Update `docs/docs/stress_testing_spec.md`, `SPEC.md`, `README.md`, and `PROJECT_RULES.md` to describe the new diagnostic-only contract and confirm it does not change weights or status.
+Update `src/portfolio_commentary.py` so the factor covariance section prints a compact "Forecast quality" summary: number of forecasts, median absolute volatility error, 10/20/30 percent hit rates, median correlation RMSE, and severity. Update `docs/specs/stress_testing_spec.md`, `SPEC.md`, `README.md`, and `RULES.md` to describe the new diagnostic-only contract and confirm it does not change weights or status.
 
 Add no-network tests in `tests/test_factor_covariance.py` for the output contract, window settings, model volatility formula, and regime-shift severity. Update `tests/test_portfolio_commentary.py` with fixture data and assertions for the new commentary text.
 

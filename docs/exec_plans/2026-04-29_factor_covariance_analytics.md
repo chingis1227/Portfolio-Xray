@@ -61,7 +61,7 @@ Update `run_report.py` after rolling factor beta diagnostics so it calls `factor
 
 Update `src/portfolio_commentary.py` to add a compact factor covariance section that labels `base` and `stress_empirical` as data-driven, `stress_overlay` as hypothetical, and prints empirical change separately from overlay amplification.
 
-Update `docs/docs/stress_testing_spec.md`, `README.md`, and `SPEC.md` so the report contract and artifact list are documented.
+Update `docs/specs/stress_testing_spec.md`, `README.md`, and `SPEC.md` so the report contract and artifact list are documented.
 
 ## Concrete Steps
 

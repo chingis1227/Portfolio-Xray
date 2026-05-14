@@ -10,7 +10,7 @@ Optimization chooses weights that **maximize expected return** (sample mean of m
 
 - long-only, weights sum to 1;
 - minimum weight per held asset (`min_single_security_weight_pct` when set);
-- optional **max single name** weight (uniform cap by **N** and optional override — see `docs/docs/feasibility_constraints_spec.md`);
+- optional **max single name** weight (uniform cap by **N** and optional override — see `feasibility_constraints_spec.md`);
 - **liquidity floor** and **cash policy** via ProLiquidity (see below);
 - soft penalties vs **target_vol_annual** and **target_nominal_return_annual** (optimizer objective).
 
@@ -53,19 +53,19 @@ Stress testing and factor diagnostics are **non-binding** except where explicitl
 
 ## 6. NaN-safe backtest
 
-Dynamic backtest uses **global equal redistribution** among risk tickers for missing monthly returns; any weight not placed on assets with an observed return for that month earns the **cash proxy** return (`w_miss` rule). See `docs/data_policy_nan_young_etfs.md`.
+Dynamic backtest uses **global equal redistribution** among risk tickers for missing monthly returns; any weight not placed on assets with an observed return for that month earns the **cash proxy** return (`w_miss` rule). See `data_policy_spec.md`.
 
 ---
 
 ## 7. Stress testing (diagnostic)
 
-Synthetic scenarios, historical episodes, RC Top1/Top3 as reported numbers — **DIAG_*** codes apply to **loss** and **historical** checks only; they do not prevent release. Mandate MaxDD is enforced in `run_optimization.py`. See `docs/docs/stress_testing_spec.md`.
+Synthetic scenarios, historical episodes, RC Top1/Top3 as reported numbers — **DIAG_*** codes apply to **loss** and **historical** checks only; they do not prevent release. Mandate MaxDD is enforced in `run_optimization.py`. See `stress_testing_spec.md`.
 
 ---
 
 ## 8. PM view after optimization
 
-Deterministic **tactical** tilts per `docs/docs/view_after_optimization_spec.md`: funding from **highest RC_vol donors** among other names; gates: weights, vol, MaxDD; stress output remains diagnostic only.
+Deterministic **tactical** tilts per `view_after_optimization_spec.md`: funding from **highest RC_vol donors** among other names; gates: weights, vol, MaxDD; stress output remains diagnostic only.
 
 ---
 

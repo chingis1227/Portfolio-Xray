@@ -22,7 +22,7 @@ model PnL compares with realized episode PnL.
 - [x] (2026-04-28 17:11+02:00) Created this ExecPlan before implementation because the work changes stress behavior, report schema, tests, and documentation.
 - [x] (2026-04-28 17:23+02:00) Implemented calibrated `recession_severe` in `src/stress.py`.
 - [x] (2026-04-28 17:23+02:00) Passed historical factor matrix into `run_stress` from `run_report.py` and `run_optimization.py` where available.
-- [x] (2026-04-28 17:23+02:00) Updated stress documentation in `docs/docs/stress_testing_spec.md`; checked README/SPEC references and they point to the stress spec rather than enumerating scenarios.
+- [x] (2026-04-28 17:23+02:00) Updated stress documentation in `docs/specs/stress_testing_spec.md`; checked README/SPEC references and they point to the stress spec rather than enumerating scenarios.
 - [x] (2026-04-28 17:23+02:00) Added focused tests for recession calibration, diagnostic code, and model-vs-realized validation.
 - [x] (2026-04-28 17:23+02:00) Ran focused and broader stress/commentary tests and recorded evidence.
 
@@ -83,7 +83,7 @@ In `run_report.py` and `run_optimization.py`, build a historical factor matrix f
 `analysis_end` when stress factor helpers are available, and pass it to `run_stress` as
 `factor_returns`. If factor loading fails, leave behavior backward compatible.
 
-In `docs/docs/stress_testing_spec.md`, document `recession_severe`, the calibration rule, the
+In `docs/specs/stress_testing_spec.md`, document `recession_severe`, the calibration rule, the
 selected output fields, and the diagnostic code `DIAG_LOSS_RECESSION_SEVERE`. Update README or
 SPEC references only if they need more detail than linking to the stress spec.
 

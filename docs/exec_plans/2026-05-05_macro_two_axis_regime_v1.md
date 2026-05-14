@@ -64,9 +64,9 @@ optimizer weights, mandate gates, stress pass/fail, or weight release.
 - [x] `run_optimization.py` and `run_report.py` continue to call `macro_regime_diagnostics(weights=…, tickers=…, analysis_end_str=…, factor_returns=…)` unchanged; the legacy `factor_returns` kwarg is preserved (ignored by v1) so existing call sites keep working without edits.
 - [x] Updated `src/portfolio_commentary._append_macro_regime_section` to render `coverage_tier`, `available_blocks`, `missing_blocks`, `optional_blocks_missing`, `confidence_level`, `score_lag_months`, the lag/no-vintage caveat, the ECI ffill caveat, and `neutral_transition`.
 - [x] Rewrote `tests/test_macro_regimes.py`; added `tests/test_macro_indicators.py`, `tests/test_macro_source_resolver.py`, `tests/test_macro_neutral_band_sensitivity.py`; updated `tests/test_portfolio_commentary.py`.
-- [x] Rewrote `docs/docs/stress_testing_spec.md` §8.8.2; refreshed `AGENTS.md`, `PROJECT_RULES.md`, `SPEC.md`, `README.md`.
+- [x] Rewrote `docs/specs/stress_testing_spec.md` §8.8.2; refreshed `AGENTS.md`, `RULES.md`, `SPEC.md`, `README.md`.
 - [x] Ran focused, broader factor/stress, and full pytest. See `Artifacts and Notes`.
-- [x] (2026-05-07) Retired `ny_fed_nowcast` from the active classifier. Removed the IndicatorSpec from `INDICATORS` in `src/stress_factors_macro.py`, replaced by an inline deprecation comment. GDPNow (FRED:GDPNOW) is now the sole indicator in the `growth_nowcast` block. Updated `tests/test_macro_indicators.py` and `tests/test_macro_regimes.py`; refreshed `docs/docs/stress_testing_spec.md` §8.8.2 and `PROJECT_RULES.md`. The deprecated NY Fed CSV URL is preserved here for historical reference only.
+- [x] (2026-05-07) Retired `ny_fed_nowcast` from the active classifier. Removed the IndicatorSpec from `INDICATORS` in `src/stress_factors_macro.py`, replaced by an inline deprecation comment. GDPNow (FRED:GDPNOW) is now the sole indicator in the `growth_nowcast` block. Updated `tests/test_macro_indicators.py` and `tests/test_macro_regimes.py`; refreshed `docs/specs/stress_testing_spec.md` §8.8.2 and `RULES.md`. The deprecated NY Fed CSV URL is preserved here for historical reference only.
 
 ## Surprises & Discoveries
 
@@ -117,7 +117,7 @@ optimizer weights, mandate gates, stress pass/fail, or weight release.
   keeps the JSON contract stable across runs.
   Date/Author: 2026-05-06 / Codex.
 - Decision: Frequency = **monthly**, end-of-month effective dates per
-  `metrics_specification.md`.
+  `docs/specs/metrics_specification.md`.
   Rationale: Spec is monthly; macro indicators are mostly monthly natively; per-regime
   factor stability is more meaningful on monthly rows than weekly noise.
   Date/Author: 2026-05-06 / Codex.

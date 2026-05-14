@@ -63,7 +63,7 @@ Update `run_report.py` to call the new helper after `factor_regression_5y`, stor
 
 Update `src/portfolio_commentary.py` to add a compact section that prints decomposition status, cross-check status, residual severity, risk adders, hedgers, neutral factors, gross concentration, local warnings, and stability severity.
 
-Update `docs/docs/stress_testing_spec.md`, `README.md`, and `SPEC.md` with the formulas, weekly scale, guardrails, cross-check thresholds, net/gross definitions, neutral threshold, residual thresholds, and stability v1 rules.
+Update `docs/specs/stress_testing_spec.md`, `README.md`, and `SPEC.md` with the formulas, weekly scale, guardrails, cross-check thresholds, net/gross definitions, neutral threshold, residual thresholds, and stability v1 rules.
 
 ## Concrete Steps
 

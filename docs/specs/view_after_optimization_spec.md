@@ -1,6 +1,6 @@
 ﻿# View After Optimization вЂ” Protocol (tactical tilt)
 
-**Policy link.** This document defines the **only permitted exception** to the rule "No manual weight adjustments" in [portfolio_construction_policy.md](../portfolio_construction_policy.md). Tilts may be applied to the Policy portfolio **only** through this protocol. Final weights are never edited by hand; changes are deterministic and reported for audit.
+**Policy link.** This document defines the **only permitted exception** to the rule "No manual weight adjustments" in [portfolio_construction_policy.md](portfolio_construction_policy.md). Tilts may be applied to the Policy portfolio **only** through this protocol. Final weights are never edited by hand; changes are deterministic and reported for audit.
 
 ---
 

@@ -16,9 +16,9 @@ Verify: new fallback tests pass; normalized historical rows for dotcom/2008 show
 
 - [x] ExecPlan revised with historical stress fallback + **lower-half mean default objective** (`docs/exec_plans/2026-05-10_scenario_based_robust_optimization_v1.md`).
 - [ ] Implement `src/historical_stress_fallback.py` (per-asset waterfall, metadata contract).
-- [ ] Wire fallback into Scenario Library Normalized path ([src/scenario_library_normalized.py](src/scenario_library_normalized.py)) and/or library build so historical episodes carry enriched vectors without mutating upstream stress mandate outputs.
+- [ ] Wire fallback into Scenario Library Normalized path ([src/scenario_library_normalized.py](../../src/scenario_library_normalized.py)) and/or library build so historical episodes carry enriched vectors without mutating upstream stress mandate outputs.
 - [ ] Implement `src/robust_scenario_optimization.py` (inputs, eval, objectives, SLSQP, exporters).
-- [ ] Implement `run_robust_scenario_optimization.py` (+ optional `robust_scenario_optimization` block in [src/config_schema.py](src/config_schema.py)).
+- [ ] Implement `run_robust_scenario_optimization.py` (+ optional `robust_scenario_optimization` block in [src/config_schema.py](../../src/config_schema.py)).
 - [ ] Add `tests/test_historical_stress_fallback.py` and `tests/test_robust_scenario_optimization.py`.
 - [ ] Update [SPEC.md](../../SPEC.md) and [AGENTS.md](../../AGENTS.md).
 

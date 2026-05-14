@@ -26,7 +26,7 @@ After this change the project has a curated ETF universe that describes ETF econ
 - Observation: `assets.yml` currently stores only optional currency overrides.
   Evidence: `src.config.load_assets_metadata()` returns `{ticker: {currency: ...}}` and data loading uses it only to resolve asset currency before FX conversion.
 - Observation: the active optimizer universe is still `config.yml` tickers, with cash excluded by `src.optimization.get_risk_portfolio_tickers()`.
-  Evidence: `docs/portfolio_construction_policy.md` states portfolios are built from a single list of tickers in `config.yml`.
+  Evidence: `docs/specs/portfolio_construction_policy.md` states portfolios are built from a single list of tickers in `config.yml`.
 - Observation: the gold duplicate group uses `GLD` as the canonical ticker.
   Evidence: `python run_etf_universe.py check-config --config config.yml` returned `PASS` after setting `canonical_ticker: GLD` for the `gold_physical` group.
 - Observation: sandboxed pytest runs could not create or clean the default temp directory for tests using `tmp_path`.
@@ -66,7 +66,7 @@ Create `run_etf_universe.py` with subcommands `validate`, `check-config`, `expor
 
 Integrate diagnostics into `run_optimization.py` and `run_report.py` by writing `etf_universe_validation.json` under `output_dir_final` when the universe file exists. Structural validation failure should be visible and fatal because the source-of-truth file is malformed. Config warnings should not block weights or report generation.
 
-Update `README.md`, `SPEC.md`, and `docs/portfolio_construction_policy.md`. Add `docs/etf_universe_spec.md` as the canonical spec for the new taxonomy. Update `AGENTS.md` only if workflow rules change.
+Update `README.md`, `SPEC.md`, and `docs/specs/portfolio_construction_policy.md`. Add `docs/specs/etf_universe_spec.md` as the canonical spec for the new taxonomy. Update `AGENTS.md` only if workflow rules change.
 
 ## Concrete Steps
 

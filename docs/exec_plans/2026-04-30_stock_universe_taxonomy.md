@@ -58,7 +58,7 @@ Create `src/stock_universe.py` as a stock-specific module mirroring the ETF work
 
 Create `run_stock_universe.py` as a CLI with `validate`, `check-config`, `export`, and `list`. `check-config` should read `tickers` from a provided YAML config path and warn about unknown stock tickers. It must not edit the config or alter optimizer behavior.
 
-Update `README.md`, `SPEC.md`, and `AGENTS.md` to mention the stock universe workflow. Add `docs/stock_universe_spec.md` as the schema and command reference.
+Update `README.md`, `SPEC.md`, and `AGENTS.md` to mention the stock universe workflow. Add `docs/specs/stock_universe_spec.md` as the schema and command reference.
 
 ## Concrete Steps
 

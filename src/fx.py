@@ -1,5 +1,5 @@
 """
-FX conversion to investor currency. Explicit rules per PROJECT_RULES.md:
+FX conversion to investor currency. Explicit rules per metrics_specification.md and RULES.md:
 - EURUSD=X means 1 EUR in USD.
 - P_USD = P_EUR * FX(EURUSD=X); P_EUR = P_USD / FX(EURUSD=X).
 - If investor != USD: convert via USD: P_USD = P_asset * FX(asset_ccyUSD), P_investor = P_USD / FX(investor_ccyUSD).

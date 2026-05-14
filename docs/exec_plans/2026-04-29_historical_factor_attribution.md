@@ -14,7 +14,7 @@ After this change, a user reading `stress_report.json` or `stress_commentary.txt
 - [x] (2026-04-29 00:00+02:00) Read `PLANS.md`, stress report generation, existing OOS beta-shock explainability, commentary, and stress specification references.
 - [x] (2026-04-29 00:00+02:00) Implemented JSON enrichment for `historical_results` from the existing `factor_beta_shock_oos` episode calculations.
 - [x] (2026-04-29 00:00+02:00) Added human-readable historical factor attribution and model-based caveat to `stress_commentary.txt`.
-- [x] (2026-04-29 00:00+02:00) Updated focused tests and documentation (`README.md`, `SPEC.md`, `docs/docs/stress_testing_spec.md`).
+- [x] (2026-04-29 00:00+02:00) Updated focused tests and documentation (`README.md`, `SPEC.md`, `docs/specs/stress_testing_spec.md`).
 - [x] (2026-04-29 00:00+02:00) Ran focused validation and recorded results.
 
 ## Surprises & Discoveries
@@ -48,7 +48,7 @@ Add a helper in `src/stress_factors.py` that takes the current `historical_resul
 
 Update `run_report.py` after `factor_beta_shock_oos` is computed so exported `stress_report.json` includes enriched `historical_results`. Update `src/portfolio_commentary.py` to print the caveat and top factor drivers per historical episode, plus a compact structural vulnerability summary based on repeated largest negative drivers.
 
-Update `tests/test_factor_oos_explainability.py` for the enrichment helper and `tests/test_portfolio_commentary.py` for commentary output. Update `docs/docs/stress_testing_spec.md`, `SPEC.md`, and `README.md` so the JSON contract and user-visible reporting are documented.
+Update `tests/test_factor_oos_explainability.py` for the enrichment helper and `tests/test_portfolio_commentary.py` for commentary output. Update `docs/specs/stress_testing_spec.md`, `SPEC.md`, and `README.md` so the JSON contract and user-visible reporting are documented.
 
 ## Concrete Steps
 

@@ -1,7 +1,7 @@
 # Feasibility Constraints Spec (technical layer)
 
 Defines **formulas** for derived **weight** caps used by the optimizer.  
-**Per-asset RC_vol caps are not part of feasibility or optimization** (RC_vol remains a **reported diagnostic**; see `metrics_specification.md` and `docs/docs/stress_testing_spec.md`).
+**Per-asset RC_vol caps are not part of feasibility or optimization** (RC_vol remains a **reported diagnostic**; see `metrics_specification.md` and `stress_testing_spec.md`).
 
 ## Notation
 

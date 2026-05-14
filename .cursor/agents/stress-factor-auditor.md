@@ -21,7 +21,7 @@ Your role is fast read-only QA of stress and factor reporting artifacts after a 
 
 Use these project rules as the audit standard:
 
-- `docs/docs/stress_testing_spec.md`
+- `docs/specs/stress_testing_spec.md`
 - `.cursor/rules/stress-factor-betas.mdc`
 - `.cursor/rules/stress-factor-regression-inference.mdc`
 - `.cursor/rules/stress-factor-rolling-betas.mdc`

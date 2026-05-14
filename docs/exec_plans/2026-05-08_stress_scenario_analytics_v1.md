@@ -19,7 +19,7 @@ key `stress_scenario_analytics`, and confirm CSV files `stress_scenario_*.csv` i
 
 ## Progress
 
-- [x] (2026-05-08) Spec section in `docs/docs/stress_testing_spec.md` for contract and shock-scale factor covariance.
+- [x] (2026-05-08) Spec section in `docs/specs/stress_testing_spec.md` for contract and shock-scale factor covariance.
 - [x] (2026-05-08) Implemented `src/stress_scenario_analytics.py` and wired into `run_report.py` after beta overlay.
 - [x] (2026-05-08) Added `tests/test_stress_scenario_analytics.py` and updated `AGENTS.md` / `SPEC.md`.
 

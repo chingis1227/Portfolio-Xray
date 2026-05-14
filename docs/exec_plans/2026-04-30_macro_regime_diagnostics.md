@@ -31,10 +31,10 @@ market regimes without changing optimizer weights, mandate gates, or stress pass
   `stress_empirical`, and `stress_overlay`, but it is not a four-regime growth/inflation
   classifier.
   Evidence: `src/stress_factors.py` has `factor_covariance_analytics`, and
-  `docs/docs/stress_testing_spec.md` documents the three existing covariance regimes.
+  `docs/specs/stress_testing_spec.md` documents the three existing covariance regimes.
 - Observation: Oil is intentionally excluded from production beta outputs and retained as a
   diagnostic warning-only signal.
-  Evidence: `PROJECT_RULES.md` states that production factor order excludes Oil while extended
+  Evidence: `docs/specs/stress_testing_spec.md` states that production factor order excludes Oil while extended
   diagnostic/stress factor order may include it.
 
 ## Decision Log
@@ -97,7 +97,7 @@ Update `src/portfolio_commentary.py` to add a short macro regime section with cu
 latest scores, confidence, transition warning, usable/reliable regime count, top unstable betas,
 policy signal counts, and the method disclaimer.
 
-Update `docs/docs/stress_testing_spec.md`, `PROJECT_RULES.md`, `SPEC.md`, and `README.md` so the
+Update `docs/specs/stress_testing_spec.md`, `RULES.md`, `SPEC.md`, and `README.md` so the
 report contract and diagnostic-only limitations are explicit.
 
 ## Concrete Steps

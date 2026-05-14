@@ -39,7 +39,7 @@ Delivers **`maximum_diversification_constrained`** in `baseline_weights_metadata
 - **Variants module:** [`src/portfolio_variants.py`](../../src/portfolio_variants.py) builds Equal-Weight, Risk Parity, Minimum Variance, and Maximum Diversification baselines outside policy caps.
 - **Bounds:** [`src.optimization._build_bounds`](../../src/optimization.py) — same feasibility/config min/max/Young caps as constrained MV when dual covariance is on.
 - **Covariance reuse:** **`_eligible_universe_from_returns`**, **`_mv_covariance_for_eligible`**, PSD repair identical to **`build_minimum_variance_constrained`**.
-- **Reporting entry:** **`run_report.run_portfolio_report_for_weights`** from [`run_report.py`](../../run_report.py`).
+- **Reporting entry:** **`run_report.run_portfolio_report_for_weights`** from [`run_report.py`](../../run_report.py).
 - **PDF suite:** [`src/pdf_reports.py`](../../src/pdf_reports.py) **`rebuild_all_pdfs`** iterates **`mv_dirs` tuple list** pattern for commentary/stress/weights PDFs.
 
 ## Plan of Work

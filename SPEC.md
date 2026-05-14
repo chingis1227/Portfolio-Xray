@@ -1,64 +1,197 @@
 # SPEC.md
 
-This file is a short index for product behavior and implementation specs. Do not duplicate formulas or detailed rules here; update the linked source document instead.
+This file is the compact technical entry point and implementation contract for Portfolio X-Ray & Optimization Terminal / Portfolio MRI.
 
-## Canonical Specs
+It defines what must work in the current product, which workflows are binding, which inputs and outputs are expected, which edge cases must be handled, and where detailed technical rules live. Do not duplicate long formulas or module-specific details here when an owning spec exists.
+
+Update this file when the general implementation contract, workflows, inputs/outputs, behavior rules, edge cases, or product status matrix changes. Update [AGENTS.md](AGENTS.md) for agent operating rules. Update `docs/specs/*.md` for detailed behavior of a specific module.
+
+## Status
+
+`SPEC.md` is the canonical implementation entry point. It has higher authority than product concept documents such as [BUSINESS_VISION.md](BUSINESS_VISION.md), [PRODUCT.md](PRODUCT.md), and [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) when the question is current implementation behavior.
+
+Product concept documents can describe target direction. They do not change formulas, scenarios, optimizer policy, data rules, output contracts, or code behavior until this spec and the relevant detailed specs are updated.
+
+## Implementation Scope
+
+The current implementation is a report-first, CLI/file-driven portfolio analytics system.
+
+It supports:
+
+- config validation and profile-derived targets
+- market data loading, FX conversion, and return panel construction
+- main policy optimization and weight release checks
+- portfolio metrics, dynamic backtesting, risk contribution diagnostics, and stress diagnostics
+- factor, macro/regime, PCA, scenario-library, and robustness diagnostics
+- benchmark and candidate portfolio reports
+- CSV, JSON, HTML, TXT, and PDF-style report artifacts
+
+Target product areas remain TBD until separately specified and implemented:
+
+- full interactive UI
+- saved analysis workspaces
+- formal Selection Engine
+- formal Portfolio Health Score
+- full Monitoring
+- Decision Journal
+
+## Main Workflows
+
+Main policy workflow:
+
+```text
+config.yml
+-> validated inputs
+-> market data and return panels
+-> main policy optimization
+-> weight release checks
+-> report and diagnostics
+-> generated artifacts
+```
+
+Main commands:
+
+```bash
+python run_optimization.py
+python run_report.py
+```
+
+Benchmark candidate workflow:
+
+```text
+config.yml
+-> eligible universe and return panels
+-> candidate builder
+-> fixed candidate weights
+-> same report pipeline
+-> candidate output folder
+```
+
+Scenario robust candidate workflow:
+
+```text
+Main report artifacts
+-> scenario_library_normalized.json + stress_report.json
+-> scenario robust optimizer
+-> robust scenario candidate weights
+-> robust scenario portfolio report
+```
+
+## Detailed Spec Index
 
 | Area | Source |
 | --- | --- |
-| Portfolio construction, optimizer behavior, ProLiquidity, mandate gate, RC_vol role | [docs/portfolio_construction_policy.md](docs/portfolio_construction_policy.md) |
-| Metrics formulas, dates, windows, returns, FX, covariance, RC_vol, beta, stress metrics | [metrics_specification.md](metrics_specification.md) |
-| Feasibility and weight constraints | [docs/docs/feasibility_constraints_spec.md](docs/docs/feasibility_constraints_spec.md) |
-| Stress testing scenarios, diagnostics, failure/warning codes | [docs/docs/stress_testing_spec.md](docs/docs/stress_testing_spec.md) |
-| View After Optimization tactical tilt protocol | [docs/docs/view_after_optimization_spec.md](docs/docs/view_after_optimization_spec.md) |
-| Data policy for NaN, young ETFs, and backtest handling | [docs/data_policy_nan_young_etfs.md](docs/data_policy_nan_young_etfs.md) |
-| Production workflow and release statuses | [docs/production_workflow.md](docs/production_workflow.md) |
-| ETF universe taxonomy, closed enums, duplicate groups, canonical tickers, diagnostics statuses | [docs/etf_universe_spec.md](docs/etf_universe_spec.md) |
-| Stock universe taxonomy for current S&P 500 constituents | [docs/stock_universe_spec.md](docs/stock_universe_spec.md) |
+| High-level project principles and source-of-truth ownership | [RULES.md](RULES.md) |
+| Agent operating rules | [AGENTS.md](AGENTS.md) |
+| Detailed spec index | [docs/specs/README.md](docs/specs/README.md) |
+| Metrics, estimators, returns, FX, windows, covariance, beta, RC_vol, drawdown, rounding | [docs/specs/metrics_specification.md](docs/specs/metrics_specification.md) |
+| Portfolio construction, optimizer behavior, ProLiquidity, mandate gate, policy optimizer boundaries | [docs/specs/portfolio_construction_policy.md](docs/specs/portfolio_construction_policy.md) |
+| Feasibility and weight constraints | [docs/specs/feasibility_constraints_spec.md](docs/specs/feasibility_constraints_spec.md) |
+| Data policy, NaN handling, young ETFs, return panels, backtest handling | [docs/specs/data_policy_spec.md](docs/specs/data_policy_spec.md) |
+| Stress scenarios and stress diagnostics | [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) |
+| Factor diagnostics and factor-risk outputs | [docs/specs/factor_diagnostics_spec.md](docs/specs/factor_diagnostics_spec.md) |
+| Macro regime diagnostics | [docs/specs/macro_regime_spec.md](docs/specs/macro_regime_spec.md) |
+| Scenario Library and normalized scenario view | [docs/specs/scenario_library_spec.md](docs/specs/scenario_library_spec.md) |
+| Candidate and benchmark portfolios | [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md) |
+| Robust Mean-Variance baselines and lambda calibration | [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md) |
+| Scenario-Based Robust Optimization | [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md) |
+| Reporting outputs and artifacts | [docs/specs/reporting_outputs_spec.md](docs/specs/reporting_outputs_spec.md) |
+| ETF and stock taxonomy | [docs/specs/taxonomy_spec.md](docs/specs/taxonomy_spec.md) |
+| View After Optimization tactical tilt protocol | [docs/specs/view_after_optimization_spec.md](docs/specs/view_after_optimization_spec.md) |
+| Production workflow and release statuses | [docs/specs/production_workflow.md](docs/specs/production_workflow.md) |
+| Architecture and module boundaries | [ARCHITECTURE.md](ARCHITECTURE.md) |
 
-## Expected Product Behavior
+## Inputs
 
-- `run_optimization.py` reads `config.yml`, applies `config/client_profiles.yml` when needed, downloads/uses market data, runs the optimizer, applies ProLiquidity, and writes portfolio weights only if the mandate gate allows it.
-- `run_report.py` reads optimized weights, computes reports and metrics over the configured windows, and writes CSV/JSON/HTML/text outputs.
-- `returns_frequency` in `config.yml` selects the main investor return panel for metrics, optimization covariance/expected-return inputs, correlation/RC, and `dynamic_nan_safe` backtracking (`monthly` default; `weekly` uses `W-FRI`; `daily` uses trading-day simple returns). Annualization constants are **12 / 52 / 252** respectively (`src/returns_frequency.py`). Production factor regressions remain **weekly**; macro regimes remain **monthly** (`stress_report.json.frequency_disclosure` and `periods_per_year` document cadence alignment; mismatch warnings surface in commentary when the optimization frequency is not monthly).
-- Final weights must come from optimization plus approved post-processing protocols; manual final weights in config are not the normal workflow.
-- `config/etf_universe.yml` validates and annotates ETF taxonomy for the active config ticker list. V1 diagnostics do not select tickers, do not replace existing optimizer eligibility/data rules, and do not change weights.
-- `config/stock_universe.yml` is a separate stock taxonomy source for the current S&P 500 constituent set. V1 is CLI-only, validates and annotates stock metadata, and does not integrate into optimizer/report flows or change weights.
-- Risk-Parity baseline (`run_risk_parity.py`, `src/portfolio_variants.py`) builds weights from Spinu's cyclical coordinate descent on `0.5 x'Σx - Σ_i (1/N) log(x_i)` with **Σ** = PSD-repaired Ledoit–Wolf monthly covariance (`cov_matrix_monthly(..., use_shrinkage=True)`); weights are `x / sum(x)`. **SLSQP** minimizes squared RC dispersion only as **emergency fallback**.
-- Hierarchical Risk Parity baseline (`run_hierarchical_risk_parity.py`, `src/portfolio_variants.py`, `src/hrp_weights.py`) — **canonical unconstrained** diversification reference: correlation distance `sqrt(0.5*(1-ρ))`, hierarchical clustering (prefers **Ward** on condensed distance, **average** linkage fallback if invalid), quasi-diagonal seriation, recursive bisection; uses the same monthly **Σ** stack as constrained MinVar/MaxDiv via `_mv_covariance_for_eligible` (shrinkage / Young dual per config, PSD repair). **No** `_build_bounds`, no policy/Yong caps as construction constraints, no SLSQP projection. Long-only weights with **Σw = 1**. Output folder: `hierarchical risk parity portfolio/`.
-- Minimum-Variance baselines (`run_minimum_variance.py`, `run_minimum_variance_uncapped.py`, `run_minimum_variance_advanced.py`, `src/portfolio_variants.py`): **minimum_variance_constrained** (`run_minimum_variance.py`) is the **primary** project baseline for the **lowest-volatility portfolio under the project's optimizer-equivalent box bounds** (feasibility + config min/max + Young caps when dual Σ is enabled)—the canonical answer to lowest vol under those constraints. **minimum_variance_uncapped_long_only** and **minimum_variance_advanced_controls** are **not** that primary baseline. **minimum_variance_constrained** and **minimum_variance_uncapped_long_only** use the same monthly **Σ** path as configured (`covariance_shrinkage`, optional Young-ETF dual covariance) and PSD repair; **minimum_variance_advanced_controls** always uses **Ledoit–Wolf** shrinkage on monthly **Σ** for that variant. **SLSQP** on `0.5 w'Σw`, `sum(w)=1`, long-only. **minimum_variance_uncapped_long_only** uses `[0,1]` per asset only. **minimum_variance_advanced_controls** adds optional **maximum** vol cap `w'Σw ≤ (target_vol_annual/√12)²` when `target_vol_annual` is set; optional **L1** `λ Σ|w−w_current|` vs **current** portfolio weights when `minimum_variance_turnover_lambda > 0` and a valid reference exists (**default λ=0** = no L1, pure MinVar on the advanced path; equal-weight is never an L1 reference). When L1 is active, treat the result as **rebalance-aware / turnover-controlled** minimum variance, not the pure lowest-vol-under-constraints baseline. Outputs: `minimum variance portfolio/`, `minimum variance uncapped portfolio/`, `minimum variance advanced portfolio/`.
-- Maximum-Diversification baselines (`run_maximum_diversification.py`, `run_maximum_diversification_unconstrained.py`, `src/portfolio_variants.py`): **maximum_diversification_constrained** maximizes the diversification ratio `(σ'w)/√(w'Σw)` on the same monthly **Σ** stack and PSD repair as constrained MV, **SLSQP** on `-DR` with analytic gradient, `sum(w)=1`, and the same **`_build_bounds`** box as policy/MV constrained. Output folder: `maximum diversification portfolio/`. **maximum_diversification_unconstrained** maximizes the same ratio with only `sum(w)=1` and long-only bounds `w_i ∈ [0,1]` from the optimizer (no config min/max single, no feasibility caps, no Young per-ticker caps as optimization constraints). Output folder: `maximum diversification unconstrained portfolio/`.
-- Minimum CVaR baselines (`run_minimum_cvar_uncapped.py`, `run_minimum_cvar_constrained.py`, `src/portfolio_variants.py`): **minimum_cvar_uncapped** minimizes Rockafellar–Uryasev sample CVaR of loss `L_t=-(Rw)_t` with `w_i∈[0,1]`, `sum(w)=1`, no project caps in the LP. **minimum_cvar_constrained** uses the same objective with **`_build_bounds`** (min/max/Young caps when active). Confidence level γ: config `minimum_cvar_confidence_level` (default 0.95). Solver: **scipy.optimize.linprog** HiGHS. Output folders: `minimum cvar uncapped portfolio/`, `minimum cvar constrained portfolio/`.
-- **Robust Mean–Variance (purpose).** A benchmark construction method that estimates weights from a mean–variance optimum using statistically stabilized inputs: **James–Stein** expected returns, **Ledoit–Wolf** or **OAS** covariance, and an internal risk-aversion **λ** on monthly portfolio variance trading off expected return versus variance. **λ is not chosen manually as part of the client mandate:** the project ships **`run_robust_mv_lambda_calibration.py`** to scan λ against IPS-style limits (volatility, mandate maximum drawdown, diagnostic synthetic stress loss alignment where configured, concentration caps where configured). Calibrated Robust MV outputs should be interpreted as: (i) a return-aware statistical benchmark; (ii) a sanity check versus the custom investment policy (`run_optimization`) pipeline; (iii) a comparator versus Equal Weight, Equal Weight by asset class, Risk Parity, HRP, Minimum Variance, Maximum Diversification, and Minimum CVaR; **not** a substitute for the main policy optimizer. Exported **`baseline_weights_metadata.json`** carries **`robust_mv_variant_role`** and **`robust_mv_variant_summary`** documenting this role.
-- **Robust Mean–Variance (implementation).** Baselines (`run_robust_mean_variance_uncapped.py`, `run_robust_mean_variance_constrained.py`, `src/portfolio_variants.py`, `src/robust_mv.py`): **robust_mean_variance_uncapped** solves `max μ′w − λ·w′Σw` with James–Stein shrunk μ, Ledoit–Wolf or OAS shrunk monthly covariance on the inner-join panel, PSD eigenvalue clipping, and **SLSQP** on `λ·w′Σw − μ′w`; bounds are long-only `[0,1]` per asset and `sum(w)=1` only (no feasibility cap, no Young caps). **robust_mean_variance_constrained** uses the **same** μ/Σ panel but **`_build_bounds`** like constrained MinVar/MaxDiv (config min/max + Young per-ticker caps when dual policy is enabled); Σ is **not** the Young dual-merged matrix—only caps come from that path. λ for baseline CLIs is resolved from **`analysis_robust_mv_lambda_calibration/selected_lambda.txt`** (written by calibration) or **`--robust-mv-lambda`**; omit **`robust_mv_lambda`** from YAML or leave unset (programmatic `replace(cfg, robust_mv_lambda=…)` remains supported). **`robust_mv_covariance_method`** (`ledoit_wolf` | `oas`), **`robust_mv_mu_shrinkage_method`** (`james_stein` only in v1). Outputs: **`robust mean variance uncapped portfolio/`**, **`robust mean variance constrained portfolio/`**. No ProLiquidity on these baseline scripts.
-- **Robust Mean–Variance λ calibration (`run_robust_mv_lambda_calibration.py`, `src/robust_mv_calibration.py`).** Scans a **primary** λ grid on the **constrained** Robust MV path (default **0.1–1.0**), then an **extended** grid **1.5–10** automatically when no mandate-eligible λ exists in the primary phase; YAML **`robust_mv_lambda`** is **ignored**. Scores candidates against IPS targets from `config.yml`, mirrors the mandate MaxDD gate via `portfolio_valid`, optionally requires mandatory synthetic stress scenarios to `pass` when `target_max_drawdown_pct` is set (read-only consumption of `stress_report.scenario_results`; does **not** alter `run_stress`), and optionally applies synthetic RC concentration caps from YAML **`robust_mv_calibration`**. Selects the lowest feasible λ within the winning phase (pass/borderline), tie-break highest 10Y CAGR; otherwise falls back to **`least_bad`** across all evaluated points. Writes **`analysis_robust_mv_lambda_calibration/`** artifacts plus **`selected_portfolio/`** full metrics/stress/report bundle when the rebuild at the chosen λ succeeds. **`robust_mv_lambda_calibration_summary.json`** records **`primary_grid_tested`**, **`extended_grid_tested`**, **`feasible_found_in_primary_grid`**, **`feasible_found_in_extended_grid`**, **`selected_lambda_source`**, **`failed_constraints_by_grid`**, **`extended_search_explanation`**, plus **`no_feasible_lambda_diagnostic`** when no mandate-eligible λ exists up to 10, and **`selection_note`** narrative text.
-- Equal-Weight baselines (`run_equal_weight.py`, `run_equal_weight_by_asset_class.py`): per-asset `equal_weight_by_assets` (`1/N` among eligible assets) unchanged; parallel class-balanced variant `equal_weight_by_asset_class_then_assets` allocates `1/K` across **K** non-empty `asset_class` buckets (taxonomy from `config/etf_universe.yml` + `config/stock_universe.yml`), then equal weight within each class; missing-class eligible tickers are excluded with diagnostics.
-- **Risk budgeting baselines** (`run_risk_budget_by_asset_class.py`, `run_risk_budget_by_asset.py`, `src/risk_budgeting.py`, `src/risk_budgeting_presets.py`, `src/portfolio_variants.py`): **benchmark-only** counterparts that do **not** replace `run_optimization.py` or change mandate/stress gates. **Class-level** (`risk_budget_by_asset_class`): **SLSQP** minimizes squared deviations between **summed** per-asset percentage contributions to variance within each **risk budget bucket** and targets from `risk_budgeting.preset` or manual `risk_budgeting.targets` (sums to 1). Buckets derive from merged ETF + stock YAML rows (`config/etf_universe.yml`, `config/stock_universe.yml`) with finer splits (`credit`, `inflation_linked`, `real_assets`, etc.) from row fields per `risk_budget_bucket_from_row`. **Per-asset** (`risk_budget_by_asset`): **Spinu CCD** with positive budgets `b_i` from required `risk_budgeting.asset_targets` (every eligible ticker, sum 1), **SLSQP** fallback on squared PC error. Covariance: **Ledoit–Wolf** monthly `cov_matrix_monthly(..., use_shrinkage=True)` + **PSD repair**, same eligible-universe filter as Risk Parity. Outputs: `risk budget by asset-class portfolio/`, `risk budget by asset portfolio/` (`weights.json`, `baseline_weights_metadata.json`, full variant report when feasible). Config: `risk_budgeting` in `config.yml` (`preset`, `targets`, `asset_targets`, `missing_taxonomy`, `drop_empty_buckets`).
+Primary source inputs:
 
-## Output Contract
+- `config.yml`
+- `config.yml.example`
+- `config/client_profiles.yml`
+- `assets.yml`
+- `config/etf_universe.yml`
+- `config/stock_universe.yml`
+- optional historical stress proxy map and external data source settings
 
-- Optimized weights and run status are written under `output_dir_final`, usually `Main portfolio/`.
-- Tabular metric outputs are written under `output_dir`, usually `results_csv/`.
-- Reports and diagnostics must follow the definitions in the linked canonical specs.
-- When `config/etf_universe.yml` exists, optimization and report runs write `etf_universe_validation.json` under `output_dir_final` with status `PASS`, `PASS_WITH_WARNINGS`, or `FAIL`.
-- `stress_report.json` factor regression diagnostics follow [docs/docs/stress_testing_spec.md](docs/docs/stress_testing_spec.md), including `idiosyncratic_risk = 1 - r2`, rolling beta stability diagnostics, and Breusch-Pagan heteroskedasticity checks for portfolio factor betas.
-- `stress_report.json.scenario_results` synthetic rows use **`taxonomy_blend_v1`** (default `run_stress(..., stress_cov_method=...)`) for RC_vol when `stress_cov` is true: blended correlation from monthly sample plus block targets resolved from `config/etf_universe.yml` and `config/stock_universe.yml`, parameter pack **`calibrated_v1_assumptions`** in `src/stress_covariance_taxonomy.py`, per [docs/docs/stress_testing_spec.md](docs/docs/stress_testing_spec.md) §2.2. Rows include `stress_cov_method`, `stress_cov_lambda`, `stress_cov_calibration_version`, `taxonomy_coverage`, `vol_mult_by_block`, and `key_rho_overrides_used` when applicable; `uniform_legacy` restores the prior uniform risk-on correlation overlay.
-- Production factor outputs use base factors only: `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, and `us_growth`. `commodity` is the production сырьевой factor.
-- Extended diagnostic/stress outputs use base factors plus `oil`. `beta_oil` is deprecated and removed from new production beta outputs; Oil exposure is read from `diagnostic_oil_beta` or stress-layer metrics.
-- `stress_report.json.factor_betas_kalman` follows [docs/docs/stress_testing_spec.md](docs/docs/stress_testing_spec.md): it adds diagnostic-only time-varying weekly Kalman betas with capped reported values, uncapped latest values, Kalman-vs-5Y divergence flags, state uncertainty classes, and CSV exports `kalman_factor_betas_weekly.csv` / `kalman_factor_betas_latest.csv`.
-- `stress_report.json` includes a diagnostic-only stability-adjusted beta overlay (`factor_betas_adjusted`, `synthetic_factor_pnl_adjusted`, `factor_beta_shock_oos_adjusted`, `raw_vs_adjusted_pnl_signal`) that shrinks unstable 5Y betas toward 10Y anchors, flags strong 5Y-vs-10Y divergence, and reports material raw-vs-adjusted factor-model PnL deltas without changing the primary raw stress path. Production adjusted beta maps exclude Oil.
-- `stress_report.json.historical_results` includes model-based historical factor attribution when factor history is available, using 5Y betas as the primary attribution source. The same rows may carry parallel adjusted attribution fields with `_adjusted` suffixes. The report must label both as beta times realized factor shock, not a pure realized causal decomposition.
-- `stress_report.json.factor_covariance` follows [docs/docs/stress_testing_spec.md](docs/docs/stress_testing_spec.md): it keeps `base`, `stress_empirical`, and `stress_overlay` separate, labels data-driven versus hypothetical metrics, zero-fills missing betas explicitly, and exports factor covariance/correlation, factor RC, overlay delta, beta sensitivity, RC stability, covariance stability, and covariance forecast-quality diagnostics.
-- `stress_report.json.macro_regime_diagnostics` follows [docs/docs/stress_testing_spec.md](docs/docs/stress_testing_spec.md): it adds diagnostic-only `macro_two_axis_v1` monthly regime labels (`goldilocks`, `reflation`, `stagflation`, `recession_disinflation`, `neutral_transition`), latest `growth_score` / `inflation_score` with per-block sub-scores, `coverage_tier` (`full / extended / reduced / fred_baseline / insufficient`), `confidence_level`, transition warning, the 1-month publication-lag and no-vintage caveats, regime-specific factor betas/covariance/RC with n_obs gating and `base_10y` linear shrinkage for `12–23` rows, the diagnostic-only `regime_label_quality_check` block (quality/stability/sanity/metadata), and exports `macro_regime_labels_monthly.csv`, `macro_regime_factor_betas.csv`, `macro_regime_factor_covariance.csv`, `macro_regime_factor_rc.csv`, `macro_regime_indicator_panel.csv`, `regime_label_quality_by_regime.csv`, `regime_label_episode_history.csv`, `regime_label_stability_summary.csv`, plus `regime_label_quality_summary.json`.
-- `stress_report.json.regime_factor_analytics` (`regime_factor_analytics_v1`) follows [docs/docs/stress_testing_spec.md](docs/docs/stress_testing_spec.md) §8.8.3: diagnostic-only per-primary-regime **weekly** asset/factor covariance (Ledoit–Wolf on complete-case rows with documented fallbacks) and correlation anchored to **monthly** regime labels (forward-filled to weeks), nine-factor asset betas with HAC, bottom-up portfolio factor exposure, factor variance contribution, and optional monthly fallback; **portfolio-facing** statistics use **only** the standard **10Y** window ending at `analysis_end` while disclosing the full label span vs that overlap (`regime_label_history_span` / `portfolio_regime_analytics_window`); it exports `regime_*.csv` under `results_csv/` and `regime_factor_analytics_summary.json` under `output_dir_final`, does not embed full covariance matrices in the slim JSON block, and does not affect optimization or stress gates.
-- `stress_report.json.regime_portfolio_metrics` (`regime_portfolio_metrics_v1`) follows [docs/docs/stress_testing_spec.md](docs/docs/stress_testing_spec.md) §8.8.4: diagnostic-only per-primary-regime **daily** portfolio and asset metrics (252-day annualization, same Sharpe/Sortino structure as `metrics_specification` where applicable), Ledoit–Wolf regime covariance, RC_vol, VaR/ES when sample length allows, optional slim reuse of daily `regime_factor_analytics` factor fields; writes `regime_portfolio_metrics_summary.json` and related CSV under `results_csv/`; does not affect optimization or stress gates.
-- `stress_report.json.stress_scenario_analytics` (`stress_scenario_analytics_v1`) follows [docs/docs/stress_testing_spec.md](docs/docs/stress_testing_spec.md) §2.3: diagnostic-only per-scenario asset/factor covariances and correlations (synthetic taxonomy blend + shock-scaled factor Σ; historical episode sample with parallel Ledoit–Wolf asset estimates), betas used, variance-based RC for assets and factors, synthetic vs adjusted PnL diagnostics, quality and `suitable_robust_optimization_input` flags; exports `stress_scenario_*.csv` under `results_csv/`; computed after the adjusted-beta overlay in `run_report.py`; does not affect optimization or stress gates.
+Primary runtime inputs:
 
-- **Scenario Library v1** (`src/scenario_library.py`): after stress scenario analytics, the report pipeline writes `scenario_library.json` (full normalized scenario list), summary / missing-inputs / warnings CSVs under `results_csv/`, and `stress_report.scenario_library_meta` (version, paths, classification counts, global warnings). Diagnostic / input-layer only — not an optimizer.
-- **Scenario Library Normalized View v1** (`src/scenario_library_normalized.py`): derived optimization-input view; upstream Scenario Library cadence is unchanged. Supplies a **monthly-only base objective slice** (`optimization_frequency=monthly` for `base_historical`) with μ tagged **`historical_monthly_mean`** (aligned `monthly_returns` × covariance universe) or optional full-universe **`optimizer_mu_precomputed`**; pipeline cadence is disclosed via **`pipeline_returns_frequency_note`** without mixing Σ. **Reclassifies** scenarios for optimization readiness (synthetics from shock + Σ + betas; macro regimes gated). When **`enable_historical_stress_fallback`** is on (default in `run_report.py`), historical crises use **per-asset tiers** — direct ETF episode returns → configurable **ticker proxy** → **asset-class proxy** → **factor replay** (`src/historical_stress_fallback.py`, defaults in `config/historical_stress_proxy_map.yml`) — with **`historical_stress_metadata`** on affected rows; realized direct ETF history is never overwritten. For **tier 4 (factor replay)** on historical episodes whose **episode_end** is strictly before **`2007-01-01`**, `build_scenario_library_normalized` uses weekly factors from **`build_factor_matrix("1990-01-01", analysis_end, require_complete_rows=False)`** (partial rows kept so per-column episode shock sums exist for dotcom). Episodes from **2007** onward use the same **strict inner-join** weekly matrix as `run_stress` / `build_scenario_library` (**2007-01-01** through `analysis_end`). The default **`require_complete_rows=True`** remains for all other `build_factor_matrix` callers that need a strict inner join. Dotcom/2008-style episodes are **`excluded`** only when still **`unavailable`** after all tiers. Writes `scenario_library_normalized.json` + CSVs; `stress_report.scenario_library_normalized_meta` includes classification counts, **`readiness_roles`**, feasibility notes, paths — not large matrices.
-- **Scenario-Based Robust Optimization v1** (`run_robust_scenario_optimization.py`, `src/robust_scenario_optimization.py`): additive **benchmark** optimizer consuming **`scenario_library_normalized.json`** and **`stress_report.json`** (`asset_factor_betas` from weekly 5Y per-asset OLS — same convention as `run_stress` — for synthetic **shock × beta** asset returns; explicit **`factor_betas_5y`** replication fallback with warnings only if per-asset block is missing). Default **`lower_half_mean`** objective maximizes the mean of the **⌈N/2⌉** smallest scenario portfolio returns after sorting eligible rows (**including `base_historical` as one scenario**); optional small **`lambdas`** penalize base volatility, stressed shortfalls, and concentration (HHI). Alternatives: **`maximin`**, **`hybrid_legacy`**. Writes **`robust_optimization_v1_summary.json`**, **`robust_optimization_weights.json`** / **`.txt`**, and CSV diagnostics under **`output_dir_final`** (or `--output-dir`). Optional YAML **`robust_scenario_optimization`** (`normalized_json_path`, `output_dir`, `lambdas`, `objective_mode` via CLI). Does **not** replace `run_optimization.py`, mandate gates, or stress pass/fail logic.
-- **Robust scenario portfolio report** (`run_robust_scenario_portfolio_report.py`): runs the same **`run_portfolio_report_for_weights`** pipeline as Equal-Weight / Risk-Parity, reading **`Main portfolio/robust_optimization_weights.json`** and writing **`robust scenario portfolio/`** (snapshots, `stress_report.json`, `scenario_library*.json`, `results_csv/`, commentary, HTML). Refreshes **`run_compare_variants.py`** (adds **`robust_scenario`** next to policy / EW / RP) and rebuilds PDFs via **`try_rebuild_pdfs_only`**. Does **not** overwrite **`portfolio_weights.yml`** in Main.
-- `stress_report.json` includes **`asset_factor_betas`** (nested per ticker → `betas` map with `beta_eq`, `beta_rr`, … from weekly 5Y OLS) and **`asset_factor_betas_meta`** (`window_weeks`, `n_assets`) for reproducibility and for **Scenario-Based Robust Optimization** synthetic shocks.
-- `stress_report.json.factor_variance_decomposition` follows [docs/docs/stress_testing_spec.md](docs/docs/stress_testing_spec.md): it uses 5Y weekly base-factor OLS rows only, fixes `variance_scale=weekly`, normalizes factor RC against `b' Sigma_f b` before R2 scaling, preserves net and gross views, splits risk adders from hedgers, reports residual severity, performs a mandatory R2 cross-check, and exports `factor_variance_decomposition_5y.csv`.
-- `stress_report.json.portfolio_pca` follows [docs/docs/stress_testing_spec.md](docs/docs/stress_testing_spec.md): it uses 5Y weekly adjusted-close returns for current positive-weight portfolio assets, reports raw and factor-residual PCA, separates covariance PCA (`risk_dominance`) from correlation PCA (`structure`), reports PC1 stability, effective number of bets, and PC1 factor correlations, and exports PCA summary/component/rolling/correlation CSV artifacts.
-- `stress_report.json.frequency_disclosure` (plus `stress_report.periods_per_year`) records optimization return cadence vs weekly factor/stress estimation and monthly macro regime labels; `run_metadata.json` mirrors the disclosure for audit. When `returns_frequency` is not `monthly`, commentary calls out cross-cadence interpretation (Phase 2 may align additional blocks).
+- ticker universe
+- investor currency
+- benchmark and local benchmark settings
+- cash proxy and risk-free source
+- return frequency
+- optimization targets and constraints
+- output directories and cache settings
+- optional profile name
+
+Generated weights are not normal user input. The main policy workflow writes `portfolio_weights.yml` and `run_result.json` when release is allowed.
+
+## Outputs
+
+Primary outputs include:
+
+- `portfolio_weights.yml`
+- `run_result.json`
+- `run_metadata.json`
+- `stress_report.json`
+- metrics and diagnostics under `results_csv/`
+- scenario library JSON/CSV artifacts where available
+- commentary text artifacts
+- generated HTML and PDF-style report artifacts
+- candidate portfolio folders for benchmark variants
+
+Generated outputs are not source files unless a task explicitly targets generated artifacts.
+
+## Binding Behavior Rules
+
+- Use adjusted close prices and convert FX before returns.
+- Compute `analysis_end` as the last completed effective period before today according to the metrics spec.
+- Align series using the rules in the relevant metric, beta, covariance, correlation, RC_vol, stress, or data spec.
+- Preserve full precision internally and round only at final export/report stage.
+- Do not invent formulas, scenarios, estimators, constraints, or statuses when a canonical spec exists.
+- Final policy weights come from optimization plus approved post-processing only.
+- View After Optimization is the only permitted manual post-optimization tilt protocol.
+- Taxonomy validates and annotates in V1; it does not select tickers or change weights.
+- Diagnostic blocks do not affect optimizer inputs, mandate gates, stress pass/fail, or weight release unless a canonical spec says so.
+- Scenario stress is diagnostic; mandate maximum drawdown can block weight release.
+- Default report backtest mode is `dynamic_nan_safe`.
+
+## Edge Cases And Required Handling
+
+The implementation must fail clearly or degrade explicitly for:
+
+- invalid config fields or unsupported config values
+- missing cash proxy or unsupported risk-free assumptions
+- investor-currency risk-free gaps where no explicit source is provided
+- insufficient return history for required windows
+- missing or partial market data
+- young or short-history ETFs
+- NaN return panels and dynamic backtest gaps
+- infeasible weight constraints
+- missing factor, macro, scenario, or taxonomy inputs
+- candidate portfolios whose fixed weights cannot be reported consistently
+
+When a diagnostic degrades because inputs are missing, the output must expose the relevant warning, quality flag, or metadata rather than silently implying full confidence.
+
+## Product Status Matrix
+
+| Area | Current status |
+| --- | --- |
+| Main CLI optimization and report pipeline | Implemented |
+| Config validation and profile-derived targets | Implemented |
+| Portfolio metrics, backtests, risk contribution | Implemented |
+| Stress testing and stress commentary | Implemented diagnostic/reporting layer |
+| Factor diagnostics, PCA, macro/regime diagnostics, scenario analytics | Implemented diagnostic-only layer |
+| Scenario Library and normalized scenario view | Implemented input-standardization/diagnostic layer |
+| Benchmark and candidate portfolio builders | Implemented comparison layer |
+| Robust Mean-Variance and Scenario-Based Robust Optimization | Implemented benchmark/candidate layer |
+| ETF and stock taxonomy | Implemented annotation-only V1 |
+| Generated CSV/JSON/HTML/TXT/PDF-style reports | Implemented |
+| Full interactive UI | Target/TBD |
+| Formal Selection Engine, Portfolio Health Score, Monitoring, Decision Journal | Target/TBD |
+
+## Implementation Contract
+
+Configuration must load and validate before data and optimization run. Data and return panels must be built consistently with the data and metrics specs. The main policy optimizer must either produce releasable weights or refuse release with a clear status. The report pipeline must produce diagnostics and artifacts from fixed weights. Candidate builders must create comparable alternatives without replacing the main policy optimizer. Taxonomy diagnostics must annotate and validate without changing optimizer membership in V1.
+
+Any change to current behavior must update the owning detailed spec, this implementation contract when the general contract changes, and user-facing documentation when workflows or outputs change.

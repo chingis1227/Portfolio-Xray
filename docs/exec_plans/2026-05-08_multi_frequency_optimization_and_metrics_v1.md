@@ -18,7 +18,7 @@ Verify with `python -m pytest tests/test_returns_frequency.py -q` after code cha
 - [x] (2026-05-08) Threaded frequency through `run_report.py` (`load_monthly_data_shared`, MAR compounding, rolling analytics, inner-join cap scaling, `stress_report.frequency_disclosure`, commentary hooks).
 - [x] (2026-05-08) Parameterized `src/portfolio_analytics.py` rolling Sharpe/Sortino/vol for calendar-mapped windows.
 - [x] (2026-05-08) Mirrored disclosure into `export_run_metadata` / `run_optimization.py` stress export path; fixed `src/risk_contrib.py` `cov_matrix_monthly_robust` naming regression; reordered `PortfolioConfig.returns_frequency` field to satisfy dataclass defaults.
-- [x] (2026-05-08) Baseline and utility scripts pass `returns_frequency` into `load_monthly_data_shared`; added `tests/test_returns_frequency.py`; updated `SPEC.md`, `AGENTS.md`, `config.yml.example`, `docs/docs/stress_testing_spec.md` changelog; filed this ExecPlan.
+- [x] (2026-05-08) Baseline and utility scripts pass `returns_frequency` into `load_monthly_data_shared`; added `tests/test_returns_frequency.py`; updated `SPEC.md`, `AGENTS.md`, `config.yml.example`, `docs/specs/stress_testing_spec.md` changelog; filed this ExecPlan.
 
 ## Surprises & Discoveries
 

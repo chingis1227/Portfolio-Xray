@@ -16,7 +16,7 @@ Verify by running `python -m pytest tests/test_regime_portfolio_metrics.py` (all
 - [x] (2026-05-08) Add `src/regime_portfolio_metrics.py` (per-regime slices, quality via `regime_factor_quality_daily`, portfolio + asset packs with `metric_available`, LW covariance, RC_vol, VaR/ES with `n_obs_days >= 60`, slim `factor_analytics` from existing `regime_factor_analytics` payload).
 - [x] (2026-05-08) Wire in `run_report.py` after daily `regime_factor_analytics`; slim JSON; summary + CSV export; `regime_portfolio_metrics_error` on failure.
 - [x] (2026-05-08) Add `tests/test_regime_portfolio_metrics.py`.
-- [x] (2026-05-08) Update `docs/docs/stress_testing_spec.md` §8.8.4, `AGENTS.md`, `SPEC.md`.
+- [x] (2026-05-08) Update `docs/specs/stress_testing_spec.md` §8.8.4, `AGENTS.md`, `SPEC.md`.
 
 ## Surprises & Discoveries
 

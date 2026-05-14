@@ -116,7 +116,7 @@ Add a compact PCA section to `src/portfolio_commentary.py`. The text must interp
 covariance PCA as risk dominance and correlation PCA as structure, and must call out high
 residual PC1 as hidden common risk not explained by the named factor model.
 
-Update `docs/docs/stress_testing_spec.md`, `SPEC.md`, `README.md`, and `PROJECT_RULES.md`
+Update `docs/specs/stress_testing_spec.md`, `SPEC.md`, `README.md`, and `RULES.md`
 so the JSON contract, user-visible outputs, and non-binding rule are explicit.
 
 ## Concrete Steps

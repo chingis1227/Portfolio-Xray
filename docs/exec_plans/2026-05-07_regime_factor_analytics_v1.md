@@ -42,7 +42,7 @@ gain a statistical foundation for future regime-aware optimization.
 
 Planned outcome: diagnostic regime-specific asset/factor structure + portfolio factor risk decomposition with sample-size gating, tests green, documentation updated.
 
-Implementation outcome (2026-05-07): `src/regime_factor_analytics.py` implements v1 gating, HAC OLS, CSV + summary JSON helpers, and a slim `stress_report` slice; `run_report.py` wires the pipeline after macro diagnostics; `build_factor_matrix_monthly` added; tests in `tests/test_regime_factor_analytics.py`; `docs/docs/stress_testing_spec.md` §8.8.3; AGENTS/SPEC/README updated. Full suite: `166 passed`.
+Implementation outcome (2026-05-07): `src/regime_factor_analytics.py` implements v1 gating, HAC OLS, CSV + summary JSON helpers, and a slim `stress_report` slice; `run_report.py` wires the pipeline after macro diagnostics; `build_factor_matrix_monthly` added; tests in `tests/test_regime_factor_analytics.py`; `docs/specs/stress_testing_spec.md` §8.8.3; AGENTS/SPEC/README updated. Full suite: `166 passed`.
 
 ## Context and Orientation
 
@@ -52,7 +52,7 @@ Key files:
 - `src/stress_factors.py` — factor definitions, `build_factor_matrix`, `_build_factor_frame`, OLS/HAC helpers.
 - `src/regime_factor_analytics.py` — new pipeline entry point and CSV/summary builders.
 - `run_report.py` — calls macro diagnostics then regime factor analytics; writes CSVs and JSON summaries.
-- `docs/docs/stress_testing_spec.md` — §8.8.3 describes outputs and contracts.
+- `docs/specs/stress_testing_spec.md` — §8.8.3 describes outputs and contracts.
 
 ## Plan of Work
 

@@ -27,7 +27,7 @@ contains `factor_betas_kalman`, and `results_csv/` contains `kalman_factor_betas
 - Observation: The repository already has `_portfolio_factor_weekly_ols_rows`, which prepares aligned weekly portfolio returns and factor rows.
   Evidence: `portfolio_factor_regression_weekly` uses that helper for the same weekly OLS rows reported in `stress_report.json`.
 - Observation: Existing factor diagnostics are documented as non-binding.
-  Evidence: `docs/docs/stress_testing_spec.md` says rolling beta stability does not affect weights, optimization, mandate status, or stress pass/fail.
+  Evidence: `docs/specs/stress_testing_spec.md` says rolling beta stability does not affect weights, optimization, mandate status, or stress pass/fail.
 
 ## Decision Log
 
