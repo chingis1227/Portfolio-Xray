@@ -5,7 +5,7 @@ alwaysApply: true
 
 # AGENTS.md
 
-This file defines how agents work in this repository. It is not the place for long formulas, scenario definitions, verification matrices, or module-specific implementation contracts. Detailed behavior lives in [SPEC.md](SPEC.md), [TESTING.md](TESTING.md), and [docs/specs/](docs/specs/README.md).
+This file defines how agents work in this repository. It is not the place for long formulas, scenario definitions, verification matrices, issue registries, decision logs, change history, or module-specific implementation contracts. Detailed behavior lives in [SPEC.md](SPEC.md), [TESTING.md](TESTING.md), [KNOWN_ISSUES.md](KNOWN_ISSUES.md), [DECISIONS.md](DECISIONS.md), [CHANGELOG.md](CHANGELOG.md), and [docs/specs/](docs/specs/README.md).
 
 Update this file only when agent workflow, documentation sync rules, source-of-truth order, generated-output policy, ExecPlan policy, verification source-of-truth routing, or operating instructions change.
 
@@ -77,10 +77,13 @@ Before changing current behavior, formulas, portfolio logic, data flow, scenario
 2. [SPEC.md](SPEC.md) for the current implementation contract and status matrix.
 3. [DATA.md](DATA.md) for data sources, data structures, data pipeline, and data quality rules.
 4. [TESTING.md](TESTING.md) for verification strategy, test selection, CLI smoke checks, artifact checks, and Markdown link checks.
-5. [docs/specs/](docs/specs/README.md) for detailed module-specific behavior.
-6. [README.md](README.md) for setup, commands, and user-facing documentation map.
-7. [ARCHITECTURE.md](ARCHITECTURE.md) for module boundaries and execution flow.
-8. Product concept documents, including [BUSINESS_VISION.md](BUSINESS_VISION.md), [PRODUCT.md](PRODUCT.md), and [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md), for target direction only.
+5. [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for active bugs, model limitations, testing gaps, technical debt, and known weak spots.
+6. [DECISIONS.md](DECISIONS.md) for concise rationale behind key project decisions.
+7. [CHANGELOG.md](CHANGELOG.md) for concise history of meaningful project changes.
+8. [docs/specs/](docs/specs/README.md) for detailed module-specific behavior.
+9. [README.md](README.md) for setup, commands, and user-facing documentation map.
+10. [ARCHITECTURE.md](ARCHITECTURE.md) for module boundaries and execution flow.
+11. Product concept documents, including [BUSINESS_VISION.md](BUSINESS_VISION.md), [PRODUCT.md](PRODUCT.md), and [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md), for target direction only.
 
 Detailed specs:
 
@@ -92,6 +95,9 @@ Detailed specs:
 - [docs/specs/feasibility_constraints_spec.md](docs/specs/feasibility_constraints_spec.md) governs feasibility and weight constraints.
 - [docs/specs/production_workflow.md](docs/specs/production_workflow.md) governs release statuses and blocking rules.
 - [TESTING.md](TESTING.md) governs the quality and verification framework.
+- [KNOWN_ISSUES.md](KNOWN_ISSUES.md) governs active known issues, model limitations, testing gaps, and technical debt tracking.
+- [DECISIONS.md](DECISIONS.md) records rationale for key project decisions and rejected alternatives.
+- [CHANGELOG.md](CHANGELOG.md) records concise history of meaningful project changes.
 
 Do not invent formulas, estimators, scenarios, constraints, statuses, or data rules when a spec exists.
 
@@ -116,6 +122,9 @@ Update the owning documentation when behavior, logic, formulas, configs, workflo
 - Update [SPEC.md](SPEC.md) for general implementation contract, workflows, inputs/outputs, behavior rules, edge cases, or status matrix changes.
 - Update [DATA.md](DATA.md) when data sources, structures, data pipeline, NaN handling, FX logic, benchmark logic, risk-free inputs, factor/macro inputs, config fields, validation rules, fallback behavior, or data quality expectations change.
 - Update [TESTING.md](TESTING.md) when verification strategy, required checks, test scope matrix, CLI smoke expectations, artifact checks, or quality gates change.
+- Update [KNOWN_ISSUES.md](KNOWN_ISSUES.md) when an active bug, model limitation, testing gap, weak spot, or technical debt item is discovered, fixed, accepted, or no longer relevant.
+- Update [DECISIONS.md](DECISIONS.md) when a key architecture, product, methodology, source-of-truth, or governance decision is made or superseded.
+- Update [CHANGELOG.md](CHANGELOG.md) for meaningful completed changes, keeping entries short and not duplicating every commit.
 - Update `docs/specs/*.md` when detailed behavior of a specific module changes.
 - Update [README.md](README.md) when setup, commands, project structure, outputs, or user-facing workflows change.
 - Update [ARCHITECTURE.md](ARCHITECTURE.md) when module boundaries, execution flow, or architecture changes.

@@ -4,7 +4,7 @@ This file is the compact technical entry point and implementation contract for P
 
 It defines what must work in the current product, which workflows are binding, which inputs and outputs are expected, which edge cases must be handled, and where detailed technical rules live. Do not duplicate long formulas or module-specific details here when an owning spec exists.
 
-Update this file when the general implementation contract, workflows, inputs/outputs, behavior rules, edge cases, or product status matrix changes. Update [AGENTS.md](AGENTS.md) for agent operating rules. Update [TESTING.md](TESTING.md) for verification strategy and required checks. Update `docs/specs/*.md` for detailed behavior of a specific module.
+Update this file when the general implementation contract, workflows, inputs/outputs, behavior rules, edge cases, or product status matrix changes. Update [AGENTS.md](AGENTS.md) for agent operating rules. Update [TESTING.md](TESTING.md) for verification strategy and required checks. Update [KNOWN_ISSUES.md](KNOWN_ISSUES.md) when active known issues, limitations, or technical debt are discovered or resolved. Update [DECISIONS.md](DECISIONS.md) when a key project decision is made or superseded. Update [CHANGELOG.md](CHANGELOG.md) for meaningful completed changes. Update `docs/specs/*.md` for detailed behavior of a specific module.
 
 ## Status
 
@@ -85,6 +85,9 @@ Main report artifacts
 | Agent operating rules | [AGENTS.md](AGENTS.md) |
 | Data-layer map: sources, structures, pipeline, quality rules, and data-doc sync triggers | [DATA.md](DATA.md) |
 | Testing and verification framework | [TESTING.md](TESTING.md) |
+| Known active issues, model limitations, testing gaps, and technical debt | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) |
+| Key decisions, rationale, rejected alternatives, assumptions, and consequences | [DECISIONS.md](DECISIONS.md) |
+| Concise history of meaningful project changes | [CHANGELOG.md](CHANGELOG.md) |
 | Detailed spec index | [docs/specs/README.md](docs/specs/README.md) |
 | Metrics, estimators, returns, FX, windows, covariance, beta, RC_vol, drawdown, rounding | [docs/specs/metrics_specification.md](docs/specs/metrics_specification.md) |
 | Portfolio construction, optimizer behavior, ProLiquidity, mandate gate, policy optimizer boundaries | [docs/specs/portfolio_construction_policy.md](docs/specs/portfolio_construction_policy.md) |

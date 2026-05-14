@@ -26,6 +26,9 @@ It defines the project-wide principles, boundaries, and required working discipl
 - Meaningful code changes require verification with the narrowest reliable test, CLI command, script, or reproducible manual check, selected using [TESTING.md](TESTING.md).
 - If a change affects behavior, logic, formulas, configs, workflows, outputs, interfaces, or shared helpers, update the canonical documentation that governs that area.
 - Do not leave stale references to renamed or removed functions, configs, metrics, files, commands, outputs, workflows, or documents.
+- Keep active known issues visible in [KNOWN_ISSUES.md](KNOWN_ISSUES.md) until they are fixed, verified, and documented.
+- Record key decisions and rejected alternatives in [DECISIONS.md](DECISIONS.md) when project direction, methodology, or boundaries are chosen.
+- Record meaningful completed changes in [CHANGELOG.md](CHANGELOG.md) with short entries, not long implementation notes.
 - Report any uncertainty, assumption, unverified area, or blocker explicitly.
 
 ## Source Of Truth Map
@@ -36,6 +39,9 @@ It defines the project-wide principles, boundaries, and required working discipl
 | Product overview, setup, commands, documentation map, and high-level workflows | [README.md](README.md) |
 | Data-layer map: sources, structures, pipeline, quality rules, and documentation sync triggers | [DATA.md](DATA.md) |
 | Testing and verification framework, test selection, CLI smoke checks, artifact checks, and Markdown link checks | [TESTING.md](TESTING.md) |
+| Known active issues, model limitations, testing gaps, technical debt, and weak spots | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) |
+| Key project decisions, rationale, rejected alternatives, assumptions, and consequences | [DECISIONS.md](DECISIONS.md) |
+| Concise history of meaningful project changes | [CHANGELOG.md](CHANGELOG.md) |
 | Product vision, target users, value proposition, and long-term direction | [BUSINESS_VISION.md](BUSINESS_VISION.md) |
 | Target product flow, UX behavior, screens, and product modules | [PRODUCT.md](PRODUCT.md) |
 | Architecture map, module boundaries, execution flow, and target architecture areas | [ARCHITECTURE.md](ARCHITECTURE.md) |

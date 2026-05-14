@@ -102,4 +102,5 @@ Minimum checks:
 - Use [DATA.md](DATA.md) for data-layer expectations.
 - Use [docs/specs/](docs/specs/README.md) for detailed module behavior.
 - Use this file for verification strategy and test selection.
+- Use [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for active testing gaps, model limitations, technical debt, and known weak spots.
 - Use [AGENTS.md](AGENTS.md) only for agent operating rules and the requirement to follow this file.

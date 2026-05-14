@@ -273,6 +273,9 @@ Common artifacts:
 | `ARCHITECTURE.md` | Main architecture map: modules, flow, inputs, outputs, and boundaries. |
 | `DATA.md` | Data-layer map: sources, structures, pipeline, quality rules, and data documentation sync triggers. |
 | `TESTING.md` | Quality and verification framework: test selection, CLI smoke checks, artifact checks, and Markdown link checks. |
+| `KNOWN_ISSUES.md` | Living register of active bugs, model limitations, testing gaps, technical debt, and known weak spots. |
+| `DECISIONS.md` | Concise decision log: what was decided, why, rejected alternatives, assumptions, and consequences. |
+| `CHANGELOG.md` | Concise living history of meaningful project changes. |
 | `run_optimization.py` | Main policy optimization entry point. |
 | `run_report.py` | Main report and diagnostics entry point. |
 | `run_*.py` | Baseline, comparison, taxonomy, robust optimization, and utility entry points. |
@@ -316,6 +319,9 @@ Start with [RULES.md](RULES.md) for the high-level project rule map, then use [S
 | High-level project principles, boundaries, and source-of-truth map | [RULES.md](RULES.md) |
 | Data sources, data pipeline, structures, quality rules, and data-doc sync triggers | [DATA.md](DATA.md) |
 | Testing and verification framework | [TESTING.md](TESTING.md) |
+| Known active issues, model limitations, testing gaps, and technical debt | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) |
+| Key decisions, rationale, rejected alternatives, assumptions, and consequences | [DECISIONS.md](DECISIONS.md) |
+| Concise history of meaningful project changes | [CHANGELOG.md](CHANGELOG.md) |
 | Portfolio construction, optimizer behavior, ProLiquidity, mandate gate, RC_vol role | [Portfolio Construction Policy](docs/specs/portfolio_construction_policy.md) |
 | Metric formulas, dates, windows, FX, covariance, RC_vol, beta, stress metrics | [Metrics Specification](docs/specs/metrics_specification.md) |
 | Feasibility and weight constraints | [Feasibility Constraints](docs/specs/feasibility_constraints_spec.md) |
@@ -339,6 +345,9 @@ Start with [RULES.md](RULES.md) for the high-level project rule map, then use [S
 - Preserve diagnostic-only boundaries for RC_vol, stress analytics, macro regimes, Kalman betas, PCA, and scenario analytics unless a canonical spec explicitly changes them.
 - Update documentation when behavior, interfaces, outputs, commands, or workflows change.
 - Use `TESTING.md` to select focused tests, CLI smoke runs, artifact checks, and Markdown link checks.
+- Update `KNOWN_ISSUES.md` when active bugs, model limitations, testing gaps, or technical debt are discovered or resolved.
+- Update `DECISIONS.md` when a key project decision is made or superseded.
+- Update `CHANGELOG.md` for meaningful completed changes, but keep entries short and avoid logging every minor edit.
 - For large changes, follow `PLANS.md` and maintain an ExecPlan under `docs/exec_plans/`.
 - Prefer focused tests for focused changes and broader tests for shared math, optimizer, data, stress, or reporting changes.
 
