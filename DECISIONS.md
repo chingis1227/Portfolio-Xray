@@ -43,7 +43,8 @@ No project-level decisions are recorded yet. Add entries here only when a real d
 Keep entries short. Use this format:
 
 ```markdown
-### DEC-YYYY-MM-DD-NNN - Short title
+Decision ID: DEC-YYYY-MM-DD-NNN
+Title: Short title
 
 - Status: proposed | accepted | superseded
 - Date: YYYY-MM-DD

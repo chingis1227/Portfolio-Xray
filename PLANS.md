@@ -1,5 +1,9 @@
 # Codex Execution Plans (ExecPlans)
 
+## Status
+
+This file governs ExecPlans only. Use [WORKFLOW.md](WORKFLOW.md) to decide when an ExecPlan is needed, use [TESTING.md](TESTING.md) for verification expectations, and record project-level decisions in [DECISIONS.md](DECISIONS.md) rather than treating an ExecPlan decision log as the global decision register.
+
 This document describes the requirements for an execution plan ("ExecPlan"), a design document that a coding agent can follow to deliver a working feature or system change. Treat the reader as a complete beginner to this repository: they have only the current working tree and the single ExecPlan file you provide. There is no memory of prior plans and no external context.
 
 ## How to use ExecPlans and PLANS.md

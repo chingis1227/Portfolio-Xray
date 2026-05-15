@@ -18,21 +18,21 @@ It records what was added, changed, removed, fixed, or deprecated at a project l
 Use date-based sections unless formal releases are introduced later.
 
 ```markdown
-## YYYY-MM-DD
+Date: YYYY-MM-DD
 
-### Added
-
-- Short change summary.
-
-### Changed
+Category: Added
 
 - Short change summary.
 
-### Fixed
+Category: Changed
 
 - Short change summary.
 
-### Removed
+Category: Fixed
+
+- Short change summary.
+
+Category: Removed
 
 - Short change summary.
 ```
@@ -43,13 +43,18 @@ Omit empty categories.
 
 ### Added
 
+- Added [GLOSSARY.md](GLOSSARY.md) as a living glossary for shared project terminology.
+- Added [OUTPUTS.md](OUTPUTS.md) as the root map for generated outputs, report artifacts, output folders, formats, and generated-vs-source boundaries.
+- Added [WORKFLOW.md](WORKFLOW.md) as the explicit task workflow from request to implementation, verification, docs sync, project memory, and commit.
 - Added [DECISIONS.md](DECISIONS.md) as the concise living decision log for key project decisions and rationale.
 - Added [CHANGELOG.md](CHANGELOG.md) as the concise living history for meaningful project changes.
 - Added [KNOWN_ISSUES.md](KNOWN_ISSUES.md) as the living register for active issues, model limitations, testing gaps, and technical debt.
 
 ### Changed
 
+- Populated [GLOSSARY.md](GLOSSARY.md) with the initial 80 shared project terms.
 - Linked decision-log, changelog, and known-issues governance from the top-level documentation maps.
+- Simplified top-level documentation routing and clarified source-of-truth links across root docs.
 
 ## 2026-05-14
 

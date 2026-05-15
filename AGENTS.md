@@ -5,9 +5,9 @@ alwaysApply: true
 
 # AGENTS.md
 
-This file defines how agents work in this repository. It is not the place for long formulas, scenario definitions, verification matrices, issue registries, decision logs, change history, or module-specific implementation contracts. Detailed behavior lives in [SPEC.md](SPEC.md), [TESTING.md](TESTING.md), [KNOWN_ISSUES.md](KNOWN_ISSUES.md), [DECISIONS.md](DECISIONS.md), [CHANGELOG.md](CHANGELOG.md), and [docs/specs/](docs/specs/README.md).
+This file defines agent operating rules for this repository. It is intentionally compact: detailed workflow, implementation contracts, verification matrices, output contracts, issue logs, decision logs, terminology, and module-specific specs live in the linked source-of-truth documents.
 
-Update this file only when agent workflow, documentation sync rules, source-of-truth order, generated-output policy, ExecPlan policy, verification source-of-truth routing, or operating instructions change.
+Update this file only when agent-specific operating instructions, source-of-truth routing, generated-output policy, or editing guidance changes.
 
 ## Project Summary
 
@@ -24,14 +24,7 @@ Weights are optimizer outputs, not manual user inputs. Manual post-optimization 
 
 Product concept documents guide direction but do not override `SPEC.md`, canonical formulas, stress scenarios, policy logic, data rules, output contracts, or current code behavior.
 
-## Stack
-
-- Python
-- pandas, numpy, scipy, scikit-learn
-- yfinance, pandas-datareader
-- PyYAML / ruamel.yaml
-- matplotlib
-- pytest
+## Main Commands
 
 Install dependencies:
 
@@ -39,15 +32,11 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-## Main Commands
-
 Run tests:
 
 ```bash
 python -m pytest
 ```
-
-Use [TESTING.md](TESTING.md) to choose focused tests, CLI smoke runs, artifact checks, and Markdown link checks.
 
 Run optimization:
 
@@ -69,74 +58,47 @@ python run_view_after_optimization.py --asset VOO --delta 2
 
 Candidate and robust portfolio commands are indexed in [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md), [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md), and [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md).
 
-## Source Of Truth Order
+## Source Of Truth
 
-Before changing current behavior, formulas, portfolio logic, data flow, scenarios, outputs, or product-facing workflows, check the relevant source of truth first:
+Before changing behavior, follow [WORKFLOW.md](WORKFLOW.md) and start from [RULES.md](RULES.md).
 
-1. [RULES.md](RULES.md) for high-level project principles and source-of-truth ownership.
-2. [SPEC.md](SPEC.md) for the current implementation contract and status matrix.
-3. [DATA.md](DATA.md) for data sources, data structures, data pipeline, and data quality rules.
-4. [TESTING.md](TESTING.md) for verification strategy, test selection, CLI smoke checks, artifact checks, and Markdown link checks.
-5. [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for active bugs, model limitations, testing gaps, technical debt, and known weak spots.
-6. [DECISIONS.md](DECISIONS.md) for concise rationale behind key project decisions.
-7. [CHANGELOG.md](CHANGELOG.md) for concise history of meaningful project changes.
-8. [docs/specs/](docs/specs/README.md) for detailed module-specific behavior.
-9. [README.md](README.md) for setup, commands, and user-facing documentation map.
-10. [ARCHITECTURE.md](ARCHITECTURE.md) for module boundaries and execution flow.
-11. Product concept documents, including [BUSINESS_VISION.md](BUSINESS_VISION.md), [PRODUCT.md](PRODUCT.md), and [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md), for target direction only.
+Key sources:
 
-Detailed specs:
+- [SPEC.md](SPEC.md) for the current implementation contract.
+- [DATA.md](DATA.md) for data sources, pipeline, structures, and quality rules.
+- [OUTPUTS.md](OUTPUTS.md) for generated outputs, folders, formats, and generated-vs-source boundaries.
+- [TESTING.md](TESTING.md) for verification strategy and test selection.
+- [GLOSSARY.md](GLOSSARY.md) for shared terminology.
+- [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for active issues and technical debt.
+- [DECISIONS.md](DECISIONS.md) for key decisions and rationale.
+- [CHANGELOG.md](CHANGELOG.md) for concise completed-change history.
+- [docs/specs/](docs/specs/README.md) for detailed module-specific behavior.
+- [PLANS.md](PLANS.md) for ExecPlan requirements on large or risky work.
+- [DESIGN.md](DESIGN.md) for UI, dashboard, generated HTML, and visual-interface work.
 
-- [docs/specs/metrics_specification.md](docs/specs/metrics_specification.md) governs metric formulas, estimators, windows, returns, FX, beta, RC_vol, and rounding.
-- [DATA.md](DATA.md) governs the high-level data-layer map, data sources, expected structures, quality rules, and data documentation sync triggers.
-- [docs/specs/portfolio_construction_policy.md](docs/specs/portfolio_construction_policy.md) governs optimizer policy and portfolio construction boundaries.
-- [docs/specs/data_policy_spec.md](docs/specs/data_policy_spec.md) governs NaN handling, young ETFs, return panels, and backtest handling.
-- [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) governs stress scenarios and stress diagnostics.
-- [docs/specs/feasibility_constraints_spec.md](docs/specs/feasibility_constraints_spec.md) governs feasibility and weight constraints.
-- [docs/specs/production_workflow.md](docs/specs/production_workflow.md) governs release statuses and blocking rules.
-- [TESTING.md](TESTING.md) governs the quality and verification framework.
-- [KNOWN_ISSUES.md](KNOWN_ISSUES.md) governs active known issues, model limitations, testing gaps, and technical debt tracking.
-- [DECISIONS.md](DECISIONS.md) records rationale for key project decisions and rejected alternatives.
-- [CHANGELOG.md](CHANGELOG.md) records concise history of meaningful project changes.
-
-Do not invent formulas, estimators, scenarios, constraints, statuses, or data rules when a spec exists.
+Do not invent formulas, estimators, scenarios, constraints, statuses, or data rules when a canonical spec exists.
 
 ## Core Agent Rules
 
-- Keep changes scoped to the requested behavior and the owning module or document.
-- Prefer existing helpers and established repo patterns over new parallel implementations.
+- Keep changes scoped to the requested behavior and owning files.
+- Prefer existing helpers and repo patterns over new parallel implementations.
 - Treat diagnostics as non-binding unless a canonical spec says otherwise.
 - Do not manually require final weights in `config.yml`; optimization writes `portfolio_weights.yml` and `run_result.json`.
 - ETF and stock taxonomy are annotation-only in V1 unless a canonical spec changes that boundary.
 - Round only at final export/report stage when governed by metric specs.
 - Preserve full precision during calculations.
-- Do not treat generated outputs as source unless the task explicitly targets generated artifacts.
+- Do not treat generated outputs as source unless the task explicitly targets generated artifacts; use [OUTPUTS.md](OUTPUTS.md) for output boundaries.
 
-## Documentation Sync
+## Documentation And Verification
 
-Documentation sync is blocking for every meaningful code change.
+Documentation sync is required for meaningful code changes. Use [WORKFLOW.md](WORKFLOW.md) to decide which documents to update and [TESTING.md](TESTING.md) to decide which checks to run.
 
-Update the owning documentation when behavior, logic, formulas, configs, workflows, outputs, interfaces, or shared helpers change:
+After meaningful changes:
 
-- Update [AGENTS.md](AGENTS.md) only for agent workflow, verification source-of-truth routing, source-of-truth order, or operating instructions.
-- Update [SPEC.md](SPEC.md) for general implementation contract, workflows, inputs/outputs, behavior rules, edge cases, or status matrix changes.
-- Update [DATA.md](DATA.md) when data sources, structures, data pipeline, NaN handling, FX logic, benchmark logic, risk-free inputs, factor/macro inputs, config fields, validation rules, fallback behavior, or data quality expectations change.
-- Update [TESTING.md](TESTING.md) when verification strategy, required checks, test scope matrix, CLI smoke expectations, artifact checks, or quality gates change.
-- Update [KNOWN_ISSUES.md](KNOWN_ISSUES.md) when an active bug, model limitation, testing gap, weak spot, or technical debt item is discovered, fixed, accepted, or no longer relevant.
-- Update [DECISIONS.md](DECISIONS.md) when a key architecture, product, methodology, source-of-truth, or governance decision is made or superseded.
-- Update [CHANGELOG.md](CHANGELOG.md) for meaningful completed changes, keeping entries short and not duplicating every commit.
-- Update `docs/specs/*.md` when detailed behavior of a specific module changes.
-- Update [README.md](README.md) when setup, commands, project structure, outputs, or user-facing workflows change.
-- Update [ARCHITECTURE.md](ARCHITECTURE.md) when module boundaries, execution flow, or architecture changes.
-- Update [RULES.md](RULES.md) only when high-level project principles or source-of-truth ownership changes.
-
-Verify no stale references remain to renamed or removed functions, configs, metrics, files, commands, outputs, workflows, or documents.
-
-## Verification Loop
-
-Follow [TESTING.md](TESTING.md) for the verification matrix, focused test selection, CLI smoke runs, artifact checks, and Markdown link checks.
-
-After a meaningful code change, run the narrowest reliable verification first, broaden when the changed risk warrants it, and report any unverified area with the reason and blocker. If a test fails because of the change, fix the root cause and rerun.
+- update owning docs when behavior, logic, formulas, configs, workflows, outputs, interfaces, or shared helpers change;
+- verify no stale references remain after renames, removals, or moved documents;
+- run the narrowest reliable verification first and broaden when risk warrants it;
+- report any unverified area with the reason and blocker.
 
 ## ExecPlans
 
@@ -149,14 +111,14 @@ For new complex tasks, large changes, or refactors, follow [PLANS.md](PLANS.md) 
 
 ## Generated Outputs
 
-Do not treat these as source unless the task explicitly targets generated artifacts:
+Do not treat generated artifacts as source unless the task explicitly targets them.
+
+Common generated paths include:
 
 - `cache/`
 - `output/`
 - `results_csv/`
 - `Main portfolio/`
-- `equal-weight portfolio/`
-- `risk parity portfolio/`
 - portfolio variant output folders
 - `portfolio_weights.yml`
 - `__pycache__/`

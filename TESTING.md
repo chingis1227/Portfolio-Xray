@@ -73,6 +73,8 @@ Do not run every candidate script by default. Run the affected entrypoint plus a
 
 Generated outputs are evidence, not source, unless the task explicitly targets generated artifacts.
 
+Use [OUTPUTS.md](OUTPUTS.md) to identify which generated folders, artifacts, formats, and source-vs-generated boundaries apply.
+
 Inspect artifacts when their schema, existence, naming, or user-facing content is part of the change:
 
 - `portfolio_weights.yml` and `run_result.json` for optimizer release and weights.
@@ -99,6 +101,7 @@ Minimum checks:
 
 - Use [RULES.md](RULES.md) for project-wide principles.
 - Use [SPEC.md](SPEC.md) for the current implementation contract.
+- Use [OUTPUTS.md](OUTPUTS.md) for generated output folders, artifacts, formats, report packaging, and generated-vs-source boundaries.
 - Use [DATA.md](DATA.md) for data-layer expectations.
 - Use [docs/specs/](docs/specs/README.md) for detailed module behavior.
 - Use this file for verification strategy and test selection.

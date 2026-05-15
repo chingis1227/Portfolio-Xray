@@ -6,7 +6,10 @@ Top-level documents stay compact:
 
 - [../../RULES.md](../../RULES.md) maps project principles and source-of-truth ownership.
 - [../../AGENTS.md](../../AGENTS.md) defines agent operating rules.
+- [../../WORKFLOW.md](../../WORKFLOW.md) defines the task workflow from request to implementation, verification, documentation sync, project memory, and commit.
 - [../../SPEC.md](../../SPEC.md) defines the current implementation contract and indexes these detailed specs.
+- [../../OUTPUTS.md](../../OUTPUTS.md) maps generated output folders, artifacts, formats, report packaging, and generated-vs-source boundaries.
+- [../../GLOSSARY.md](../../GLOSSARY.md) defines shared project terminology and short definitions.
 - [../../DATA.md](../../DATA.md) maps data sources, structures, pipeline, quality rules, and data documentation sync triggers.
 - [../../TESTING.md](../../TESTING.md) defines the quality and verification framework.
 - [../../KNOWN_ISSUES.md](../../KNOWN_ISSUES.md) tracks active known issues, model limitations, testing gaps, and technical debt.
@@ -20,6 +23,9 @@ Top-level documents stay compact:
 | Metrics, estimators, windows, returns, FX, beta, drawdown, RC_vol, rounding | [metrics_specification.md](metrics_specification.md) |
 | Portfolio construction and main optimizer policy | [portfolio_construction_policy.md](portfolio_construction_policy.md) |
 | Feasibility and weight constraints | [feasibility_constraints_spec.md](feasibility_constraints_spec.md) |
+| Task workflow from request to implementation, verification, docs sync, project memory, and commit | [../../WORKFLOW.md](../../WORKFLOW.md) |
+| Generated output folders, artifacts, formats, and generated-vs-source boundaries | [../../OUTPUTS.md](../../OUTPUTS.md) |
+| Shared project terminology and short definitions | [../../GLOSSARY.md](../../GLOSSARY.md) |
 | Data-layer map, sources, structures, pipeline, quality rules | [../../DATA.md](../../DATA.md) |
 | Testing and verification framework | [../../TESTING.md](../../TESTING.md) |
 | Known active issues, model limitations, testing gaps, and technical debt | [../../KNOWN_ISSUES.md](../../KNOWN_ISSUES.md) |

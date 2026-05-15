@@ -10,6 +10,10 @@ Product priority: report-first before full UI, unless a future product decision 
 
 Related documents:
 
+- [RULES.md](RULES.md) for high-level principles and source-of-truth ownership.
+- [WORKFLOW.md](WORKFLOW.md) for how product changes move from task to implementation, verification, docs sync, and commit.
+- [OUTPUTS.md](OUTPUTS.md) for generated reports, artifacts, folders, and output-format ownership.
+- [GLOSSARY.md](GLOSSARY.md) for shared product and technical terminology.
 - [Business Vision](BUSINESS_VISION.md) for the business goal, audience, value proposition, and monetization direction.
 - [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) for living target product architecture ideas; non-binding until promoted to specs.
 - [README.md](README.md) for current project overview and commands.
@@ -660,8 +664,12 @@ Product UX should be driven by this document, [Business Vision](BUSINESS_VISION.
 
 Current behavior remains governed by:
 
+- [RULES.md](RULES.md)
+- [WORKFLOW.md](WORKFLOW.md)
 - [README.md](README.md)
 - [SPEC.md](SPEC.md)
+- [OUTPUTS.md](OUTPUTS.md)
+- [DATA.md](DATA.md)
 - [Portfolio Construction Policy](docs/specs/portfolio_construction_policy.md)
 - [Metrics Specification](docs/specs/metrics_specification.md)
 - [Stress Testing Spec](docs/specs/stress_testing_spec.md)

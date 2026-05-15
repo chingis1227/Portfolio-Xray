@@ -1,92 +1,41 @@
 # Portfolio X-Ray & Optimization Terminal
 
-Portfolio X-Ray & Optimization Terminal, also described as Portfolio MRI, is a portfolio research and decision support system. Its purpose is not to output a single "perfect" allocation. Its purpose is to help an investor, advisor, or portfolio manager understand what is inside a portfolio, where hidden risk lives, how the portfolio behaves under stress, which alternative allocations are available, and what trade-offs come with changing the portfolio.
+Portfolio X-Ray & Optimization Terminal, also described as Portfolio MRI, is a Python portfolio research, optimization, diagnostics, and reporting system.
 
-The product workflow is:
+Its purpose is decision support, not black-box allocation. The system helps a user understand portfolio exposures, hidden risks, stress behavior, candidate allocations, robustness trade-offs, and generated report artifacts.
 
-```text
-Diagnose -> Generate candidates -> Stress-test -> Compare robustness -> Choose / explain
-```
+Product concept documents describe target direction only. Current behavior is governed by [SPEC.md](SPEC.md), [RULES.md](RULES.md), [DATA.md](DATA.md), [OUTPUTS.md](OUTPUTS.md), and detailed specs under [docs/specs/](docs/specs/README.md).
 
-The current codebase is a Python portfolio optimization and reporting system. It builds optimized portfolio weights, runs portfolio analytics, stress diagnostics, robustness checks, benchmark portfolio variants, and exports CSV, JSON, HTML, TXT, and PDF-style report artifacts.
-
-## Product Principle
-
-This project is a decision system, not an automatic truth machine.
-
-The user should be able to answer:
-
-- What exactly is being analyzed?
-- What are the client mandate, constraints, and assumptions?
-- What does the portfolio actually hold by asset, class, currency, region, sector, and factor?
-- Where does portfolio risk really come from?
-- Which assets contribute disproportionately to risk or stress losses?
-- How does the portfolio behave in historical and synthetic crises?
-- Which candidate portfolios are available, and why does one look better than another?
-- What trade-off is accepted when choosing a portfolio?
-- What concrete rebalance action is implied, if any?
-- When is the right answer to avoid trading?
-
-The product concept comes from [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md), but that document is target product architecture, not a complete technical specification. If a metric, stress scenario, assumption, or module is mentioned there, it does not automatically replace the existing implementation. Current formulas, scenarios, constraints, policy logic, data rules, and output contracts remain governed by the canonical specs listed in this README and in [SPEC.md](SPEC.md).
-
-## Target Users
-
-- Private investors and HNWI who need an institutional-grade view of portfolio risk.
-- Family offices and wealth managers who need explainable client reporting.
-- Investment advisors who need repeatable portfolio diagnostics before client meetings.
-- Sophisticated retail investors who already use tools such as Portfolio Visualizer, Koyfin, Excel, or Python and want deeper factor, stress, and robustness analysis.
-
-## Current System Scope
+## Current Scope
 
 Implemented today:
 
-- Portfolio optimization through `run_optimization.py`.
-- Portfolio reporting through `run_report.py`.
-- Portfolio metrics across configured windows.
-- Dynamic NaN-safe backtesting.
-- Risk contribution diagnostics.
-- Stress testing and stress commentary.
-- Factor regression diagnostics, factor covariance analytics, portfolio PCA, macro regime diagnostics, regime analytics, and scenario libraries.
-- Benchmark candidate portfolios: Equal Weight, Equal Weight by asset class, Risk Parity, Risk Budgeting, HRP, Minimum Variance, Maximum Diversification, Minimum CVaR, Robust Mean-Variance, and Scenario-Based Robust Optimization.
-- ETF and stock taxonomy validation as annotation and diagnostics layers.
+- CLI/file-driven portfolio optimization through `run_optimization.py`.
+- Portfolio reporting and diagnostics through `run_report.py`.
+- Portfolio metrics, dynamic NaN-safe backtesting, and risk contribution diagnostics.
+- Stress diagnostics, stress commentary, factor diagnostics, macro/regime diagnostics, PCA, scenario libraries, and robustness diagnostics.
+- Benchmark/candidate portfolios including Equal Weight, Risk Parity, HRP, Minimum Variance, Maximum Diversification, Minimum CVaR, Robust Mean-Variance, and Scenario-Based Robust Optimization.
+- CSV, JSON, HTML, TXT, and PDF-style generated artifacts.
+- ETF and stock taxonomy validation as annotation/diagnostic layers.
 
-Product layers that are partially implemented or still TBD:
+Target/TBD areas:
 
-- Interactive "What Happens If?" simulator.
-- Full Portfolio Comparison Arena UI.
-- Formal Portfolio Health Score and Selection Engine scoring formula.
-- Assumption Sensitivity dashboard.
-- Regret Analysis.
+- Full interactive UI.
+- Formal Selection Engine and Portfolio Health Score.
+- Monitoring / What Changed workflow.
 - Decision Journal.
-- Ongoing Monitoring / What Changed workflow.
-- Tax-aware and turnover-aware workflows beyond the currently implemented rebalance and variant tooling.
-
-## Investment Policy
-
-The main portfolio construction policy is documented in [Portfolio Construction Policy](docs/specs/portfolio_construction_policy.md).
-
-Current policy summary:
-
-- The optimizer universe comes from the single ticker list in `config.yml`.
-- Final production weights come from optimization plus approved post-processing protocols.
-- Manual final weights in `config.yml` are not the normal workflow.
-- The main optimizer maximizes expected return on the primary return window subject to practical constraints.
-- Constraints include long-only weights, sum-to-one, minimum held weight when configured, max single-name caps when configured, liquidity floor, cash policy, and feasibility rules.
-- `target_vol_annual` and `target_nominal_return_annual` are soft objective terms, not hard guarantees.
-- ProLiquidity applies cash and liquidity policy after optimization.
-- Historical mandate max drawdown can block weight release.
-- RC_vol, stress testing, factor diagnostics, macro regime diagnostics, Kalman betas, PCA, and scenario analytics are diagnostic unless a spec explicitly says otherwise.
-- Benchmark portfolio scripts are comparison tools; they do not replace `run_optimization.py` as the main policy optimizer.
+- Productized no-trade recommendation and advanced UX modules.
 
 ## Main Pipeline
 
-### 1. Optimization
+Run the main production flow in this order:
 
 ```bash
 python run_optimization.py
+python run_report.py
 ```
 
-Useful options:
+Optimization options:
 
 ```bash
 python run_optimization.py --no-cache
@@ -96,17 +45,7 @@ python run_optimization.py --profile NAME
 python run_optimization.py --no-report
 ```
 
-This command reads `config.yml`, applies a client profile when configured, loads market data, builds expected return and covariance inputs, runs the optimizer, applies ProLiquidity, runs release checks, and writes optimized weights and run metadata under `output_dir_final`, usually `Main portfolio/`.
-
-If the mandate max drawdown gate fails, production weights are not released.
-
-### 2. Report
-
-```bash
-python run_report.py
-```
-
-Useful options:
+Report options:
 
 ```bash
 python run_report.py --no-cache
@@ -114,20 +53,11 @@ python run_report.py --clear-cache
 python run_report.py --backtest-mode dynamic_nan_safe
 ```
 
-This command reads optimized weights, computes metrics, diagnostics, stress reports, scenario libraries, commentary, snapshots, and report artifacts. CSV outputs are usually written under `results_csv/`; portfolio-level outputs are usually written under `Main portfolio/`.
+`run_optimization.py` reads config, loads market data, builds optimizer inputs, runs the main policy optimizer, applies release checks, and writes optimized weights and run metadata. `run_report.py` reads fixed weights and produces metrics, diagnostics, stress reports, scenario libraries, commentary, snapshots, and report artifacts.
 
-### 3. Standard Order
+## Candidate Portfolios
 
-Run the main production flow in this order:
-
-```bash
-python run_optimization.py
-python run_report.py
-```
-
-## Candidate Portfolio Factory
-
-Candidate portfolios are alternative hypotheses, not automatic final answers. They allow the system to compare different construction philosophies under the same reporting and stress framework.
+Candidate portfolios are comparison hypotheses, not automatic replacements for the main policy portfolio.
 
 Common candidate commands:
 
@@ -152,143 +82,73 @@ python run_robust_scenario_optimization.py
 python run_robust_scenario_portfolio_report.py
 ```
 
-Use these outputs for comparison, diagnostics, robustness analysis, and client explanation. Do not treat them as replacements for the main policy optimizer unless a future spec explicitly changes that rule.
+Details live in [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md), [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md), and [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md).
 
-## Conceptual Architecture
-
-### Input & Assumptions Layer
-
-Defines what is being analyzed:
-
-- Universe of assets.
-- Current weights when analyzing an existing portfolio.
-- Investor currency.
-- Benchmark.
-- Risk profile.
-- Investment horizon.
-- Client mandate and constraints.
-- Calculation assumptions such as data window, return frequency, covariance method, risk-free source, cash proxy, rebalance frequency, and missing-data policy.
-
-Current source files include `config.yml`, `config.yml.example`, `config/client_profiles.yml`, `assets.yml`, and validation logic in `src/config_schema.py`.
-
-### Portfolio X-Ray / Diagnostics Layer
-
-Shows what is inside the portfolio before changing it:
-
-- Asset allocation.
-- Portfolio return and risk metrics.
-- Risk contribution.
-- Factor exposure.
-- Hidden concentration and hedge-gap diagnostics.
-- Drawdown, volatility, beta, Sharpe, Sortino, VaR/ES where implemented.
-- Portfolio commentary and report snapshots.
-
-Current source areas include `src/metrics_asset.py`, `src/metrics_portfolio.py`, `src/risk_contrib.py`, `src/portfolio_analytics.py`, `src/portfolio_commentary.py`, and `src/snapshot.py`.
-
-### Stress Test Lab
-
-Tests how the portfolio behaves in adverse environments:
-
-- Historical stress episodes.
-- Synthetic shocks.
-- Scenario Library.
-- Stress contribution by asset and factor.
-- Hedge gap and stress commentary.
-- Diagnostic stress analytics for candidate portfolios.
-
-Current source areas include `src/stress.py`, `src/stress_factors.py`, `src/stress_covariance_taxonomy.py`, `src/stress_scenario_analytics.py`, `src/scenario_library.py`, and `src/scenario_library_normalized.py`.
-
-### Macro And Regime Diagnostics
-
-Adds market context without replacing the optimizer:
-
-- Current macro regime diagnostics.
-- Growth and inflation axes.
-- Regime-specific factor analytics.
-- Regime portfolio metrics.
-- Confidence and coverage warnings.
-
-Current source areas include `src/stress_factors_macro.py`, `src/data_macro_sources.py`, `src/regime_factor_analytics.py`, and `src/regime_portfolio_metrics.py`.
-
-### Comparison, Selection, And Action
-
-The intended product layer compares candidates and explains trade-offs:
-
-- Candidate comparison by return, risk, drawdown, CVaR, stress loss, risk contribution, turnover, and mandate fit.
-- Robustness scorecards.
-- Pareto and dominance checks.
-- Regret analysis.
-- Trade-off explanation.
-- Rebalance recommendations.
-- No-trade recommendation when improvement is too small for the required turnover.
-
-Some comparison and rebalance functionality exists today through scripts such as `run_compare_variants.py`, `run_compare_ew_rp.py`, `run_rebalance.py`, and `src/rebalance.py`. The full product-level Selection Engine and Decision Journal are TBD.
-
-## Key Configuration Files
+## Key Inputs
 
 | File | Purpose |
 | --- | --- |
-| `config.yml` | Active local configuration: tickers, investor currency, benchmark, client profile, targets, windows, cash policy, return frequency, output paths, and feature settings. |
-| `config.yml.example` | Reference configuration template. |
-| `config/client_profiles.yml` | Client risk profile defaults such as target volatility, max drawdown, target return, liquidity floor, and optional minimum position size. |
-| `config/etf_universe.yml` | ETF taxonomy source of truth for annotation and validation. It does not select the optimizer universe in V1. |
-| `config/stock_universe.yml` | Stock taxonomy source of truth for current S&P 500 constituents. It is CLI-only in V1 and does not change optimizer or report membership. |
-| `config/historical_stress_proxy_map.yml` | Historical stress fallback proxy map and coverage thresholds. |
-| `assets.yml` | Optional asset metadata, including asset currency metadata. |
+| `config.yml` | Active local config: tickers, investor currency, benchmark, client profile, targets, windows, cash policy, return frequency, output paths, and feature settings. |
+| `config.yml.example` | Reference config template. |
+| `config/client_profiles.yml` | Client risk profile defaults. |
+| `config/etf_universe.yml` | ETF taxonomy source of truth for annotation and validation. |
+| `config/stock_universe.yml` | Stock taxonomy source of truth for stock metadata validation. |
+| `config/historical_stress_proxy_map.yml` | Historical stress fallback proxy map and thresholds. |
+| `assets.yml` | Optional asset metadata. |
+
+Data rules are governed by [DATA.md](DATA.md) and [docs/specs/data_policy_spec.md](docs/specs/data_policy_spec.md).
 
 ## Outputs
 
-Generated outputs are not source files unless a task explicitly targets generated artifacts.
+Generated outputs are not source files unless a task explicitly targets generated artifacts. Use [OUTPUTS.md](OUTPUTS.md) as the root output/reporting map.
 
-Common output locations:
+Common locations:
 
 - `Main portfolio/`
 - `results_csv/`
 - `output/`
 - `cache/`
-- `equal-weight portfolio/`
-- `risk parity portfolio/`
-- `minimum variance portfolio/`
-- `maximum diversification portfolio/`
-- `minimum cvar constrained portfolio/`
-- `robust mean variance constrained portfolio/`
-- `robust scenario portfolio/`
+- candidate portfolio folders
+- `pdf files/`
+- `pdf_md_sources/`
 
 Common artifacts:
 
 - `portfolio_weights.yml`
 - `run_result.json`
+- `run_metadata.json`
 - `stress_report.json`
 - `scenario_library.json`
 - `scenario_library_normalized.json`
 - `commentary.txt`
 - `stress_commentary.txt`
-- CSV diagnostics under `results_csv/`
-- HTML and PDF-style report artifacts where configured
+- CSV diagnostics
+- HTML and PDF-style artifacts where configured
+
+Detailed report/output behavior lives in [docs/specs/reporting_outputs_spec.md](docs/specs/reporting_outputs_spec.md).
 
 ## Repository Map
 
 | Path | Purpose |
 | --- | --- |
-| `ARCHITECTURE.md` | Main architecture map: modules, flow, inputs, outputs, and boundaries. |
-| `DATA.md` | Data-layer map: sources, structures, pipeline, quality rules, and data documentation sync triggers. |
-| `TESTING.md` | Quality and verification framework: test selection, CLI smoke checks, artifact checks, and Markdown link checks. |
-| `KNOWN_ISSUES.md` | Living register of active bugs, model limitations, testing gaps, technical debt, and known weak spots. |
-| `DECISIONS.md` | Concise decision log: what was decided, why, rejected alternatives, assumptions, and consequences. |
-| `CHANGELOG.md` | Concise living history of meaningful project changes. |
-| `run_optimization.py` | Main policy optimization entry point. |
-| `run_report.py` | Main report and diagnostics entry point. |
-| `run_*.py` | Baseline, comparison, taxonomy, robust optimization, and utility entry points. |
-| `src/optimization.py` | Main optimization logic and ProLiquidity-related behavior. |
-| `src/portfolio_variants.py` | Baseline portfolio builders. |
-| `src/metrics_*.py` | Asset, portfolio, and daily metrics. |
-| `src/stress*.py` | Stress testing, factor diagnostics, covariance overlays, macro and scenario analytics. |
-| `src/scenario_library*.py` | Scenario Library and normalized optimization-input view. |
-| `src/robust_*.py` | Robust Mean-Variance and Scenario-Based Robust Optimization components. |
-| `src/risk_*.py` | Risk contribution, risk parity, and risk budgeting components. |
-| `docs/specs/` | Detailed behavior specs for metrics, policy, data, stress, reporting, taxonomy, and candidate portfolios. |
-| `docs/exec_plans/` | Checked-in ExecPlans for larger changes and refactors. |
-| `tests/` | Pytest coverage for behavior and regression checks. |
+| `RULES.md` | High-level project principles and source-of-truth map. |
+| `WORKFLOW.md` | Task workflow from request to implementation, verification, docs sync, project memory, and commit. |
+| `SPEC.md` | Current implementation contract and detailed spec index. |
+| `OUTPUTS.md` | Root output/reporting map. |
+| `DATA.md` | Data-layer map and data documentation sync triggers. |
+| `TESTING.md` | Verification framework and test/check selection. |
+| `GLOSSARY.md` | Shared terminology. |
+| `KNOWN_ISSUES.md` | Active issues, model limitations, testing gaps, and technical debt. |
+| `DECISIONS.md` | Key decisions, rationale, alternatives, assumptions, and consequences. |
+| `CHANGELOG.md` | Concise history of meaningful project changes. |
+| `ARCHITECTURE.md` | Architecture map, module layers, flows, inputs, outputs, and boundaries. |
+| `PRODUCT.md` | Target product flow, UX behavior, screens, and product modules. |
+| `BUSINESS_VISION.md` | Business vision, users, value proposition, and long-term direction. |
+| `DESIGN.md` | UI, dashboard, HTML, and visual design rules. |
+| `PLANS.md` | ExecPlan protocol for large/risky work. |
+| `docs/specs/` | Detailed behavior specs. |
+| `docs/exec_plans/` | Checked-in ExecPlans. |
+| `tests/` | Pytest coverage. |
 
 ## Installation
 
@@ -300,64 +160,43 @@ Python dependencies include pandas, numpy, scipy, scikit-learn, yfinance, pandas
 
 ## Verification
 
-Use [TESTING.md](TESTING.md) to choose the right verification level for each change.
+Use [TESTING.md](TESTING.md) to choose the right verification level.
 
-Run the full test suite when broad coverage is warranted:
+Full test suite:
 
 ```bash
 python -m pytest
 ```
 
-For focused changes, run the narrowest reliable pytest file first, then broaden when the change touches portfolio math, optimizer behavior, data alignment, config schema, stress logic, report exports, or generated artifact contracts. Documentation-only changes usually require Markdown link and stale-reference checks rather than pytest unless executable examples or documented behavior changed.
+For focused changes, run the narrowest reliable pytest file first, then broaden when the change touches portfolio math, optimizer behavior, data alignment, config schema, stress logic, report exports, or generated artifact contracts.
 
 ## Documentation Sources Of Truth
 
-Start with [RULES.md](RULES.md) for the high-level project rule map, then use [SPEC.md](SPEC.md) as the canonical implementation entry point.
+Start with [RULES.md](RULES.md), then use [SPEC.md](SPEC.md) as the implementation entry point.
 
 | Area | Source |
 | --- | --- |
-| High-level project principles, boundaries, and source-of-truth map | [RULES.md](RULES.md) |
-| Data sources, data pipeline, structures, quality rules, and data-doc sync triggers | [DATA.md](DATA.md) |
-| Testing and verification framework | [TESTING.md](TESTING.md) |
-| Known active issues, model limitations, testing gaps, and technical debt | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) |
-| Key decisions, rationale, rejected alternatives, assumptions, and consequences | [DECISIONS.md](DECISIONS.md) |
-| Concise history of meaningful project changes | [CHANGELOG.md](CHANGELOG.md) |
-| Portfolio construction, optimizer behavior, ProLiquidity, mandate gate, RC_vol role | [Portfolio Construction Policy](docs/specs/portfolio_construction_policy.md) |
-| Metric formulas, dates, windows, FX, covariance, RC_vol, beta, stress metrics | [Metrics Specification](docs/specs/metrics_specification.md) |
-| Feasibility and weight constraints | [Feasibility Constraints](docs/specs/feasibility_constraints_spec.md) |
-| Stress scenarios, diagnostics, failure and warning codes | [Stress Testing Spec](docs/specs/stress_testing_spec.md) |
-| View After Optimization tactical tilt protocol | [View After Optimization Spec](docs/specs/view_after_optimization_spec.md) |
-| NaN, young ETF, and backtest handling | [Data Policy](docs/specs/data_policy_spec.md) |
-| Production workflow and release statuses | [Production Workflow](docs/specs/production_workflow.md) |
-| Main architecture map | [Architecture](ARCHITECTURE.md) |
-| Living product blueprint and target architecture ideas; non-binding until promoted to specs | [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) |
-| ETF taxonomy | [ETF Universe Spec](docs/specs/etf_universe_spec.md) |
-| Stock taxonomy | [Stock Universe Spec](docs/specs/stock_universe_spec.md) |
-| Large-change planning protocol | [PLANS.md](PLANS.md) and checked-in plans under [docs/exec_plans/](docs/exec_plans/) |
-| Agent and contributor operating rules | [AGENTS.md](AGENTS.md) |
+| Project principles and source-of-truth map | [RULES.md](RULES.md) |
+| Task workflow | [WORKFLOW.md](WORKFLOW.md) |
+| Current implementation contract | [SPEC.md](SPEC.md) |
+| Architecture and module boundaries | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Data layer | [DATA.md](DATA.md) |
+| Outputs and generated artifacts | [OUTPUTS.md](OUTPUTS.md) |
+| Testing and verification | [TESTING.md](TESTING.md) |
+| Shared terminology | [GLOSSARY.md](GLOSSARY.md) |
+| Known issues and debt | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) |
+| Decisions and rationale | [DECISIONS.md](DECISIONS.md) |
+| Change history | [CHANGELOG.md](CHANGELOG.md) |
+| Detailed specs | [docs/specs/README.md](docs/specs/README.md) |
+| Product direction | [PRODUCT.md](PRODUCT.md), [BUSINESS_VISION.md](BUSINESS_VISION.md), [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) |
+| Planning protocol | [PLANS.md](PLANS.md) |
+| Design rules | [DESIGN.md](DESIGN.md) |
 
 ## Contributor Rules
 
 - Do not invent formulas when a spec exists.
-- Do not treat the Diagnostic product concept as an automatic change request for metrics, stress scenarios, configs, or code behavior.
-- Keep final production weights generated by the optimizer or approved post-optimization protocols.
-- Keep ETF and stock taxonomy annotation-only unless a future spec changes that behavior.
-- Preserve diagnostic-only boundaries for RC_vol, stress analytics, macro regimes, Kalman betas, PCA, and scenario analytics unless a canonical spec explicitly changes them.
-- Update documentation when behavior, interfaces, outputs, commands, or workflows change.
-- Use `TESTING.md` to select focused tests, CLI smoke runs, artifact checks, and Markdown link checks.
-- Update `KNOWN_ISSUES.md` when active bugs, model limitations, testing gaps, or technical debt are discovered or resolved.
-- Update `DECISIONS.md` when a key project decision is made or superseded.
-- Update `CHANGELOG.md` for meaningful completed changes, but keep entries short and avoid logging every minor edit.
-- For large changes, follow `PLANS.md` and maintain an ExecPlan under `docs/exec_plans/`.
-- Prefer focused tests for focused changes and broader tests for shared math, optimizer, data, stress, or reporting changes.
-
-## Roadmap / TBD
-
-- Define the formal Portfolio Health Score formula.
-- Define the Selection Engine scoring model and governance.
-- Define Assumption Sensitivity outputs and thresholds.
-- Define Regret Analysis methodology.
-- Define interactive simulator requirements.
-- Define Decision Journal schema.
-- Define Monitoring / What Changed cadence and output contract.
-- Decide which product-facing UI surfaces should be built first.
+- Do not treat product concept docs as automatic implementation changes.
+- Keep production weights generated by the optimizer or approved post-optimization protocols.
+- Preserve diagnostic-only boundaries unless a canonical spec changes them.
+- Update docs when behavior, interfaces, outputs, commands, workflows, terminology, or source-of-truth ownership changes.
+- Use `WORKFLOW.md` for the task process and `TESTING.md` for verification.

@@ -40,7 +40,8 @@ It is not a roadmap, product concept, or technical specification. It does not ov
 Use this format for new entries:
 
 ```markdown
-### KI-YYYY-MM-DD-NNN - Short title
+Issue ID: KI-YYYY-MM-DD-NNN
+Title: Short title
 
 - Status: open | planned | in_progress | blocked | accepted
 - Severity: low | medium | high | critical

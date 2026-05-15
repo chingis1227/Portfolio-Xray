@@ -4,7 +4,7 @@ This file is the compact technical entry point and implementation contract for P
 
 It defines what must work in the current product, which workflows are binding, which inputs and outputs are expected, which edge cases must be handled, and where detailed technical rules live. Do not duplicate long formulas or module-specific details here when an owning spec exists.
 
-Update this file when the general implementation contract, workflows, inputs/outputs, behavior rules, edge cases, or product status matrix changes. Update [AGENTS.md](AGENTS.md) for agent operating rules. Update [TESTING.md](TESTING.md) for verification strategy and required checks. Update [KNOWN_ISSUES.md](KNOWN_ISSUES.md) when active known issues, limitations, or technical debt are discovered or resolved. Update [DECISIONS.md](DECISIONS.md) when a key project decision is made or superseded. Update [CHANGELOG.md](CHANGELOG.md) for meaningful completed changes. Update `docs/specs/*.md` for detailed behavior of a specific module.
+Update this file when the general implementation contract, workflows, inputs/outputs, behavior rules, edge cases, or product status matrix changes. Use [RULES.md](RULES.md) and [WORKFLOW.md](WORKFLOW.md) to decide which companion docs also need updates. Detailed module behavior belongs in `docs/specs/*.md`.
 
 ## Status
 
@@ -83,6 +83,9 @@ Main report artifacts
 | --- | --- |
 | High-level project principles and source-of-truth ownership | [RULES.md](RULES.md) |
 | Agent operating rules | [AGENTS.md](AGENTS.md) |
+| Task workflow from request to implementation, verification, docs sync, project memory, and commit | [WORKFLOW.md](WORKFLOW.md) |
+| Generated outputs, report artifacts, output folders, formats, and generated-vs-source boundaries | [OUTPUTS.md](OUTPUTS.md) |
+| Shared project terminology and short definitions | [GLOSSARY.md](GLOSSARY.md) |
 | Data-layer map: sources, structures, pipeline, quality rules, and data-doc sync triggers | [DATA.md](DATA.md) |
 | Testing and verification framework | [TESTING.md](TESTING.md) |
 | Known active issues, model limitations, testing gaps, and technical debt | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) |
@@ -134,6 +137,8 @@ Primary runtime inputs:
 Generated weights are not normal user input. The main policy workflow writes `portfolio_weights.yml` and `run_result.json` when release is allowed.
 
 ## Outputs
+
+The root output map is [OUTPUTS.md](OUTPUTS.md).
 
 Primary outputs include:
 

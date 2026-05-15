@@ -36,6 +36,9 @@ It defines the project-wide principles, boundaries, and required working discipl
 | Area | Governing document |
 | --- | --- |
 | Current implementation contract, expected behavior, output contracts, and canonical spec index | [SPEC.md](SPEC.md) |
+| Task workflow from request to implementation, verification, documentation sync, project memory, and commit | [WORKFLOW.md](WORKFLOW.md) |
+| Generated outputs, report artifacts, output folders, formats, and generated-vs-source boundaries | [OUTPUTS.md](OUTPUTS.md) |
+| Shared project terminology and short definitions | [GLOSSARY.md](GLOSSARY.md) |
 | Product overview, setup, commands, documentation map, and high-level workflows | [README.md](README.md) |
 | Data-layer map: sources, structures, pipeline, quality rules, and documentation sync triggers | [DATA.md](DATA.md) |
 | Testing and verification framework, test selection, CLI smoke checks, artifact checks, and Markdown link checks | [TESTING.md](TESTING.md) |

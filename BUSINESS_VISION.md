@@ -6,7 +6,7 @@ This document describes the business vision for Portfolio X-Ray & Optimization T
 
 It is a product and business strategy document. It does not replace [SPEC.md](SPEC.md), implementation specs, metric formulas, stress scenario definitions, investment policy logic, configuration schemas, or current code behavior.
 
-For living target product architecture ideas, see [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md). For current system behavior and canonical technical sources of truth, start with [README.md](README.md) and [SPEC.md](SPEC.md).
+For source-of-truth ownership, start with [RULES.md](RULES.md). For workflow, use [WORKFLOW.md](WORKFLOW.md). For shared terminology, use [GLOSSARY.md](GLOSSARY.md). For living target product architecture ideas, see [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md). For current system behavior and canonical technical sources of truth, use [README.md](README.md) and [SPEC.md](SPEC.md).
 
 ## Big Idea
 
@@ -332,8 +332,14 @@ Business Vision does not override specs or code. If this document conflicts with
 
 Current implementation details remain governed by:
 
+- [RULES.md](RULES.md)
+- [WORKFLOW.md](WORKFLOW.md)
 - [README.md](README.md)
 - [SPEC.md](SPEC.md)
+- [DATA.md](DATA.md)
+- [OUTPUTS.md](OUTPUTS.md)
+- [GLOSSARY.md](GLOSSARY.md)
+- [TESTING.md](TESTING.md)
 - [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md)
 - [Portfolio Construction Policy](docs/specs/portfolio_construction_policy.md)
 - [Metrics Specification](docs/specs/metrics_specification.md)

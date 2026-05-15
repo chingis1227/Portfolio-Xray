@@ -1,5 +1,11 @@
 # Design System Inspired by Revolut
 
+## Status
+
+This file governs visual/UI/report-surface styling for web interfaces, dashboards, generated HTML, and other visual outputs. It does not override [SPEC.md](SPEC.md), [RULES.md](RULES.md), implementation code, metric formulas, policy logic, or output contracts.
+
+Use [WORKFLOW.md](WORKFLOW.md) for the task process, [OUTPUTS.md](OUTPUTS.md) for generated report/output ownership, and [TESTING.md](TESTING.md) for verification expectations after UI, dashboard, HTML, or visual report changes.
+
 ## 1. Visual Theme & Atmosphere
 
 Revolut's website is fintech confidence distilled into pixels — a design system that communicates "your money is in capable hands" through massive typography, generous whitespace, and a disciplined neutral palette. The visual language is built on Aeonik Pro, a geometric grotesque that creates billboard-scale headlines at 136px with weight 500 and aggressive negative tracking (-2.72px). This isn't subtle branding; it's fintech at stadium scale.

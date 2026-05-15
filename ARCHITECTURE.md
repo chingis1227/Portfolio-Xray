@@ -9,8 +9,13 @@ It is an architecture map, not a formula specification. It does not override [SP
 Related documents:
 
 - [README.md](README.md) for project overview, commands, and documentation map.
+- [RULES.md](RULES.md) for high-level principles and source-of-truth ownership.
+- [WORKFLOW.md](WORKFLOW.md) for task flow, verification, documentation sync, and commit process.
 - [SPEC.md](SPEC.md) for canonical technical sources of truth.
 - [DATA.md](DATA.md) for data sources, structures, pipeline, quality rules, and data documentation sync triggers.
+- [OUTPUTS.md](OUTPUTS.md) for generated outputs, report artifacts, folders, and source-vs-generated boundaries.
+- [GLOSSARY.md](GLOSSARY.md) for shared project terminology.
+- [DECISIONS.md](DECISIONS.md) for key project decisions and rationale.
 - [Detailed Specifications](docs/specs/README.md) for module-specific behavior.
 - [Business Vision](BUSINESS_VISION.md) for business goals and target users.
 - [Product](PRODUCT.md) for user flow, screens, and feature behavior.
@@ -594,6 +599,7 @@ TBD:
 ## Generated Artifacts
 
 Generated artifacts are outputs, not source files, unless a task explicitly targets them.
+Use [OUTPUTS.md](OUTPUTS.md) for the root output/reporting map and generated-vs-source rules.
 
 Common generated paths:
 
@@ -655,13 +661,20 @@ When architecture and implementation conflict, current code and canonical specs 
 
 Primary sources:
 
+- [RULES.md](RULES.md)
+- [WORKFLOW.md](WORKFLOW.md)
 - [SPEC.md](SPEC.md)
+- [OUTPUTS.md](OUTPUTS.md)
+- [DATA.md](DATA.md)
+- [TESTING.md](TESTING.md)
 - [Portfolio Construction Policy](docs/specs/portfolio_construction_policy.md)
 - [Metrics Specification](docs/specs/metrics_specification.md)
 - [Stress Testing Spec](docs/specs/stress_testing_spec.md)
 - [Feasibility Constraints](docs/specs/feasibility_constraints_spec.md)
 - [Data Policy](docs/specs/data_policy_spec.md)
 - [Production Workflow](docs/specs/production_workflow.md)
+- [DECISIONS.md](DECISIONS.md)
+- [CHANGELOG.md](CHANGELOG.md)
 - [PLANS.md](PLANS.md)
 - [AGENTS.md](AGENTS.md)
 

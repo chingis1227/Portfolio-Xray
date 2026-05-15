@@ -1,6 +1,6 @@
 # Reporting Outputs Specification
 
-This document owns the high-level report and artifact contract. Detailed metric formulas are in [metrics_specification.md](metrics_specification.md), stress artifacts are in [stress_testing_spec.md](stress_testing_spec.md), and production status semantics are in [production_workflow.md](production_workflow.md).
+This document owns the detailed report and artifact contract. The root output map is [../../OUTPUTS.md](../../OUTPUTS.md). Detailed metric formulas are in [metrics_specification.md](metrics_specification.md), stress artifacts are in [stress_testing_spec.md](stress_testing_spec.md), and production status semantics are in [production_workflow.md](production_workflow.md).
 
 ## Main Report Flow
 
