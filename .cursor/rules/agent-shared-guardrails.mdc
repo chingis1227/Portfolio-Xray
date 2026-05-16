@@ -1,0 +1,62 @@
+﻿---
+description: Shared guardrails for Cursor agents in Portfolio X-Ray / Portfolio MRI
+alwaysApply: true
+---
+
+# Shared Agent Guardrails
+
+Use these rules for every agent in `.cursor/agents`.
+
+## Product Boundary
+
+Portfolio X-Ray / Portfolio MRI is a portfolio decision-support and reporting system, not a black-box optimizer, black-box allocator, trading bot, or prediction engine.
+
+Agents must help users understand assumptions, diagnostics, alternatives, trade-offs, uncertainty, and implementation limits. Do not present optimizer outputs, scores, diagnostics, stress results, macro labels, or rankings as automatic investment truth.
+
+## Implementation Status
+
+Always separate:
+
+- implemented/current contract
+- partially implemented
+- target/TBD
+- proposal/new idea
+- unknown until code/spec inspection
+
+Do not describe target/TBD product areas as shipped. If status is unclear, say that code, `SPEC.md`, or the owning spec must be checked.
+
+## Source-Of-Truth Discipline
+
+Do not invent formulas, estimators, thresholds, stress scenarios, constraints, statuses, schemas, outputs, data rules, or implementation behavior when a canonical source exists.
+
+Canonical map:
+
+| Area | Source |
+| --- | --- |
+| Current implementation contract | `SPEC.md` |
+| Workflow and done criteria | `WORKFLOW.md` |
+| High-level project rules | `RULES.md` |
+| Data pipeline and quality map | `DATA.md` |
+| Generated outputs and artifacts | `OUTPUTS.md` |
+| Testing strategy | `TESTING.md` |
+| Metrics, returns, FX, windows, beta, RC_vol, rounding | `docs/specs/metrics_specification.md` |
+| Data policy, NaN handling, young ETFs, return panels, backtest handling | `docs/specs/data_policy_spec.md` |
+| Input assumptions and `analysis_setup` | `docs/specs/input_assumptions_spec.md` |
+| Portfolio construction and optimizer policy | `docs/specs/portfolio_construction_policy.md` |
+| Stress, factor, macro/regime diagnostics, scenario analytics | `docs/specs/stress_testing_spec.md` |
+| Candidate portfolios | `docs/specs/candidate_portfolios_spec.md` |
+| Macro regime diagnostics | `docs/specs/macro_regime_spec.md` |
+| Reporting outputs | `docs/specs/reporting_outputs_spec.md` |
+| Module-specific behavior | `docs/specs/` |
+
+If canonical documents are renamed, moved, deleted, or split, update all affected `.cursor/agents`, `.cursor/rules`, and `AGENTS.md` references in the same change. The link-check pytest must pass after any documentation move or rename.
+
+## Diagnostic Boundary
+
+Diagnostics are non-binding unless a canonical spec makes them binding. Stress, factor, macro, PCA, regime, scenario, taxonomy, risk-contribution, and commentary diagnostics must not change optimizer weights, mandate gates, stress pass/fail, production release, or trading actions unless the owning spec explicitly allows it.
+
+Generated outputs such as `cache/`, `output/`, `results_csv/`, portfolio folders, PDFs, CSVs, JSON reports, and `portfolio_weights.yml` are artifacts, not source of truth, unless the task explicitly targets generated artifacts.
+
+## Agent Hygiene
+
+Keep agent files focused on the unique value of that role. Put shared rules here instead of duplicating long boilerplate across many agents.

@@ -1,11 +1,11 @@
----
-description: 
+﻿---
+description:
 alwaysApply: true
 ---
 
-# Project Rules — Portfolio Metrics Standard
+# Project Rules вЂ” Portfolio Metrics Standard
 
-Always follow metrics_specification.md for all metric definitions, estimators, frequency, FX, and windowing. Do not invent formulas.
+Always follow `docs/specs/metrics_specification.md` for all metric definitions, estimators, frequency, FX, and windowing. Do not invent formulas.
 
 ## Frequency standard
 
@@ -51,7 +51,7 @@ Always follow metrics_specification.md for all metric definitions, estimators, f
 
 ## Benchmarks and Beta (two types)
 
-There are two types of beta — do not confuse them.
+There are two types of beta вЂ” do not confuse them.
 
 ### Beta_base (portfolio management)
 
@@ -66,7 +66,7 @@ There are two types of beta — do not confuse them.
 ### Beta_local (diagnostic, per-asset only)
 
 - Computed for each asset individually to understand which "local market" the asset resembles.
-- **Not a portfolio metric** — diagnostic only.
+- **Not a portfolio metric** вЂ” diagnostic only.
 - Same calculation rules as Beta_base: monthly simple returns, one window, aligned dates, ddof=1.
 
 #### Local benchmark dictionary (proxies)
@@ -89,7 +89,7 @@ There are two types of beta — do not confuse them.
 | Asset class | Proxy ETF |
 |----|-----|
 | US Aggregate IG | BND (or AGG) |
-| US Treasuries 7–10Y | IEF |
+| US Treasuries 7вЂ“10Y | IEF |
 | US Long Treasuries | TLT |
 | US TIPS | TIP |
 | US High Yield | HYG (or JNK) |
@@ -114,7 +114,7 @@ There are two types of beta — do not confuse them.
   - Equity = cumprod(1 + r_simple)
   - CAGR = (Equity_end / Equity_start) ** (12 / N_months) - 1
 - **Vol**: std(r_simple, ddof=1) monthly; annual = monthly * sqrt(12).
-- **Sharpe**: Sharpe = (mean(r_simple − rf_monthly) × 12) / (std(r_simple, ddof=1) × sqrt(12)). Volatility in the denominator is from raw returns (r_simple), not from excess returns.
+- **Sharpe**: Sharpe = (mean(r_simple в€’ rf_monthly) Г— 12) / (std(r_simple, ddof=1) Г— sqrt(12)). Volatility in the denominator is from raw returns (r_simple), not from excess returns.
 - **Sortino**: computed relative to MAR (Minimum Acceptable Return). By default MAR_monthly = rf_monthly; can be overridden by a custom MAR parameter. Downside = min(0, r_simple - MAR):
   - dd_monthly = sqrt(mean(downside^2))
   - dd_annual = dd_monthly * sqrt(12)
@@ -138,8 +138,8 @@ There are two types of beta — do not confuse them.
 
 - **RC_vol** is defined as **percentage contribution to portfolio variance** (not to volatility; not via correlations).
 - For each month t in the window:
-  - **σ²_t = w_tᵀ Σ_window w_t** (portfolio variance at t).
-  - **PC_{i,t} = (w_{i,t} × (Σ_window w_t)_i) / σ²_t**.
+  - **ПѓВІ_t = w_tбµЂ ОЈ_window w_t** (portfolio variance at t).
+  - **PC_{i,t} = (w_{i,t} Г— (ОЈ_window w_t)_i) / ПѓВІ_t**.
   - **RC_window_i = mean_t(PC_{i,t})** over the window.
 - **PC must sum to 1** across assets at each t.
 - Do not compute contribution to volatility or via correlations.

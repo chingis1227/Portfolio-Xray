@@ -1,5 +1,5 @@
----
-description: 
+﻿---
+description:
 alwaysApply: true
 ---
 
@@ -14,7 +14,7 @@ Scope:
 
 ## Tone and depth
 
-Write a **compact internal analyst note**: measured, factual, structured, useful — not a skeletal compliance blurb, not generic filler, not robotic “metric shows / implies” pairs repeated mechanically.
+Write a **compact internal analyst note**: measured, factual, structured, useful вЂ” not a skeletal compliance blurb, not generic filler, not robotic вЂњmetric shows / impliesвЂќ pairs repeated mechanically.
 
 - **English only** for all commentary and report-facing text; translate any legacy Russian-facing wording when updating generated outputs.
 - **Institutional, concise**, but with **real analytical substance** (short paragraphs allowed; avoid walls of text).
@@ -23,38 +23,38 @@ Write a **compact internal analyst note**: measured, factual, structured, useful
 
 ## Anti-patterns (avoid)
 
-- Claiming “little detail”, “limited transparency”, or “missing” fields when the same folder or sibling exports (`results_csv/`, `snapshot_*.json`, `stress_report.json`, `run_result.json`) actually contain the data — **use that data first**.
-- A **“Final note”** section, generic compliance closings, or extra disclaimers beyond what policy requires (if inputs are metrics-only, **do not** append a boilerplate “not investment advice” block).
+- Claiming вЂњlittle detailвЂќ, вЂњlimited transparencyвЂќ, or вЂњmissingвЂќ fields when the same folder or sibling exports (`results_csv/`, `snapshot_*.json`, `stress_report.json`, `run_result.json`) actually contain the data вЂ” **use that data first**.
+- A **вЂњFinal noteвЂќ** section, generic compliance closings, or extra disclaimers beyond what policy requires (if inputs are metrics-only, **do not** append a boilerplate вЂњnot investment adviceвЂќ block).
 - Extremely short bullet-only dumps with no synthesis.
 - Identical sentence templates for every metric.
 
 ## Required section order
 
-1. Executive Summary  
-2. Metric-by-Metric Interpretation  
-3. Risk Structure  
-4. Strengths  
-5. Weaknesses  
-6. Scenario Behavior  
-7. Final Conclusion  
+1. Executive Summary
+2. Metric-by-Metric Interpretation
+3. Risk Structure
+4. Strengths
+5. Weaknesses
+6. Scenario Behavior
+7. Final Conclusion
 
 Use plain section titles exactly as above (no markdown in `commentary.txt` unless the folder already uses it).
 
 ## Depth per section
 
-- **Executive Summary:** **3–5 sentences** tying together return, risk, key constraints (vol/DD gates if present), stress outcome, and (if relevant) production status vs snapshot/report.
-- **Metric-by-Metric Interpretation:** For each **key** metric present in sources: what it measures (per metrics spec), what it says about this portfolio, and how it connects to the overall profile; use **comparison context** (windows, EW/RP, targets) when the source provides it. Merge related metrics into short paragraphs where natural — not one sterile line per line item.
+- **Executive Summary:** **3вЂ“5 sentences** tying together return, risk, key constraints (vol/DD gates if present), stress outcome, and (if relevant) production status vs snapshot/report.
+- **Metric-by-Metric Interpretation:** For each **key** metric present in sources: what it measures (per metrics spec), what it says about this portfolio, and how it connects to the overall profile; use **comparison context** (windows, EW/RP, targets) when the source provides it. Merge related metrics into short paragraphs where natural вЂ” not one sterile line per line item.
 - **Risk Structure:** Use **RC_vol by block and asset**, **beta**, **drawdown**, **stress scenario names and PnL**, **fail codes** (`fail_reason_code`, `failed_scenario`, `failed_test`), **actual vs target block risk** from IPS/run outputs when available. Describe concentration, diversification limits, and vulnerability **concretely**.
-- **Strengths / Weaknesses:** **Specific** to this run (numbers and statuses), not generic “diversified portfolio” language.
+- **Strengths / Weaknesses:** **Specific** to this run (numbers and statuses), not generic вЂњdiversified portfolioвЂќ language.
 - **Scenario Behavior:** Contrast **normal** vs **stress** using named scenarios from `stress_report` / IPS where present; cite worst-case loss if given.
-- **Final Conclusion:** Clear **trade-off** and profile summary in **2–4 sentences** — no new disclaimer block.
+- **Final Conclusion:** Clear **trade-off** and profile summary in **2вЂ“4 sentences** вЂ” no new disclaimer block.
 
 ## Source-of-truth documents (definitions only)
 
-- `metrics_specification.md` or `docs/metrics_specification.md`
-- `docs/portfolio_construction_policy.md`
-- `docs/data_policy_nan_young_etfs.md`
-- `docs/stress_testing_spec.md` (stress labels, gates)
+- `docs/specs/metrics_specification.md`
+- `docs/specs/portfolio_construction_policy.md`
+- `docs/specs/data_policy_spec.md`
+- `docs/specs/stress_testing_spec.md` (stress labels, gates)
 
 ## File hygiene
 
