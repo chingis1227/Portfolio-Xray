@@ -37,6 +37,16 @@ Common outputs include:
 
 Variant folders follow the same report contract after their candidate weights are fixed.
 
+## Candidate Comparison
+
+The canonical multi-candidate artifact is `candidate_comparison.json` written under
+`output_dir_final` (default: `Main portfolio/`). It aggregates per-candidate snapshots,
+stress summaries, and mandate metadata into one diagnostic-only JSON contract.
+
+See [candidate_comparison_spec.md](candidate_comparison_spec.md). Legacy
+`portfolio_comparison.json` and `ew_rp_comparison.json` remain for backward compatibility until
+Session 09 migrates producers and consumers to the canonical file.
+
 ## Portfolio X-Ray Summary
 
 `report.txt`, `report.html`, and `commentary.txt` must make the analyzed portfolio understandable without requiring the user to inspect raw JSON first.

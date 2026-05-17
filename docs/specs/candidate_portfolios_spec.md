@@ -33,8 +33,17 @@ Implemented candidate and benchmark families include:
 - Robust Mean-Variance constrained: `run_robust_mean_variance_constrained.py`
 - Scenario-Based Robust Optimization: `run_robust_scenario_optimization.py`
 
+## Comparison Artifact
+
+After individual candidate reports exist, the canonical multi-candidate table is
+[candidate_comparison.json](../../OUTPUTS.md) under `output_dir_final`, governed by
+[candidate_comparison_spec.md](candidate_comparison_spec.md). That contract includes policy,
+user current (when materialized), benchmarks, and optimizer candidates with explicit
+`unavailable` status when folders are missing.
+
 ## Detailed Ownership
 
+- Canonical comparison contract: [candidate_comparison_spec.md](candidate_comparison_spec.md)
 - Portfolio policy boundaries: [portfolio_construction_policy.md](portfolio_construction_policy.md)
 - Weight bounds and feasibility: [feasibility_constraints_spec.md](feasibility_constraints_spec.md)
 - Metrics and RC_vol definitions: [metrics_specification.md](metrics_specification.md)

@@ -38,6 +38,8 @@ Top-level documents stay compact:
 | Macro regime diagnostics | [macro_regime_spec.md](macro_regime_spec.md) |
 | Scenario Library and normalized scenario view | [scenario_library_spec.md](scenario_library_spec.md) |
 | Candidate and benchmark portfolios | [candidate_portfolios_spec.md](candidate_portfolios_spec.md) |
+| Canonical multi-candidate comparison artifact | [candidate_comparison_spec.md](candidate_comparison_spec.md) |
+| Robustness Scorecard (diagnostic resilience scoring) | [robustness_scorecard_spec.md](robustness_scorecard_spec.md) |
 | Robust Mean-Variance baselines and lambda calibration | [robust_mv_spec.md](robust_mv_spec.md) |
 | Scenario-Based Robust Optimization | [robust_scenario_optimization_spec.md](robust_scenario_optimization_spec.md) |
 | Reporting outputs and artifacts | [reporting_outputs_spec.md](reporting_outputs_spec.md) |

@@ -52,10 +52,26 @@ or mix decisions from unrelated areas.
   removed config UI field guards; fixed a stale exec-plan link in `stress_testing_spec.md`; updated
   `TESTING.md`, removed the resolved known issue, marked roadmap `RM-007` done, updated `CHANGELOG.md`,
   and ran `python scripts/verify_docs.py` plus `tests/test_docs_links.py` (`6 passed`).
-- [ ] Session 08: Specify the canonical candidate comparison artifact.
-- [ ] Session 09: Implement canonical candidate comparison output.
-- [ ] Session 10: Specify the Robustness Scorecard.
-- [ ] Session 11: Implement the Robustness Scorecard after its spec is accepted.
+- [x] (2026-05-17) Session 08 completed: created `docs/specs/candidate_comparison_spec.md` with
+  `candidate_comparison_v1`, full candidate registry (`unavailable` when artifacts missing),
+  mandatory `current` row when user-current report is materialized, canonical path under
+  `output_dir_final`, legacy artifact notes, and cross-links in `OUTPUTS.md`, `SPEC.md`,
+  `docs/specs/README.md`, reporting/candidate specs; marked roadmap `RM-100` done; ran docs verify.
+- [x] (2026-05-17) Session 09 completed: implemented `src/candidate_comparison.py` and wired
+  `run_compare_variants.py` to emit `candidate_comparison.json` (full registry, diagnostic-only),
+  optional `candidate_comparison.txt`, and legacy `portfolio_comparison.*` for compatibility.
+  Added `tests/test_candidate_comparison.py`.
+- [x] (2026-05-17) Session 10 completed: created `docs/specs/robustness_scorecard_spec.md` with
+  `robustness_scorecard_v1`, six reviewable-weight components, relative within-run normalization,
+  mandate absolute checks in `mandate_fit`, RC diversification via comparison v1.1 prerequisite,
+  10y primary window and stress scenario ids per stress spec, JSON/TXT contracts, ranking and
+  explanation templates; extended `candidate_comparison_spec.md` with `diversification` block;
+  updated `OUTPUTS.md`, `SPEC.md`, `docs/specs/README.md`, `docs/ROADMAP.md` (RM-200 done);
+  ran `python scripts/verify_docs.py`.
+- [x] (2026-05-17) Session 11 completed: implemented `src/robustness_scorecard.py` (`robustness_scorecard_v1` JSON/TXT),
+  comparison `diversification` block from `snapshot_10y` RC_asset, wired export via `write_candidate_comparison_outputs` /
+  `run_compare_variants.py`, added `tests/test_robustness_scorecard.py`, updated `SPEC.md`, `OUTPUTS.md`, `CHANGELOG.md`,
+  `docs/ROADMAP.md` (RM-201 done); pytest on scorecard and comparison tests passed.
 - [ ] Session 12: Specify the Portfolio Health Score.
 - [ ] Session 13: Implement the Portfolio Health Score after its spec is accepted.
 - [ ] Session 14: Specify the Selection Engine and No-Trade Recommendation.
@@ -184,6 +200,12 @@ or mix decisions from unrelated areas.
   started automatically after Session 20 unless the user explicitly reactivates UI/design work.
   Date/Author: 2026-05-17 / User and Codex
 
+- Decision: V1 candidate comparison uses the full candidate registry, includes `current` when
+  user-current artifacts exist, and writes `candidate_comparison.json` under `output_dir_final` (Main).
+  Rationale: User confirmed full list with `unavailable` rows, include current vs policy/benchmarks,
+  and Main folder placement for a single decision-support table next to existing Main outputs.
+  Date/Author: 2026-05-17 / User and Codex
+
 - Decision: Keep Session 04 config UI input modes on one screen with a clear `analysis_mode`
   selector rather than creating a separate current-portfolio diagnostics panel.
   Rationale: The user explicitly chose one screen with a clear mode switch. This keeps the utility UI
@@ -243,6 +265,20 @@ Session 07 outcome: documentation verification is now repeatable. `scripts/verif
 allowlisted until Sessions 08+ create them. The resolved known issue was removed, `docs/ROADMAP.md`
 marks `RM-007` done, and the next practical step is Session 08: specify the canonical candidate
 comparison artifact.
+
+Session 08 outcome: `docs/specs/candidate_comparison_spec.md` defines the canonical
+`candidate_comparison.json` contract under `output_dir_final`. V1 includes the full candidate registry
+(policy, current, EW, RP, robust scenario, robust MV, min variance, max diversification, min CVaR,
+and extended baselines) with explicit `unavailable` status when folders are missing; `current` is a
+first-class row when `analyze_current_weights` or `user_current_portfolio` artifacts exist. Legacy
+`portfolio_comparison.json` / `ew_rp_comparison.json` remain documented as compatibility outputs.
+`docs/ROADMAP.md` marks `RM-101` done. Next step: Session 10 — specify the Robustness Scorecard.
+
+Session 10 outcome: `docs/specs/robustness_scorecard_spec.md` defines diagnostic-only
+`robustness_scorecard.json` (0–100 total, six components, relative within-run normalization,
+mandate absolute checks in `mandate_fit`, RC via planned comparison `diversification` block).
+`docs/ROADMAP.md` marks `RM-200` done. Session 11 implemented scorecard + comparison v1.1
+diversification fields (`RM-201` done). Next step: Session 12 — specify Portfolio Health Score.
 
 The current documentation set is enough to restart most implementation sessions if the session reads
 the correct files. The gap is that several future product modules do not yet have owning specs:
@@ -1347,6 +1383,18 @@ work item. This keeps the handoff state accurate for a fresh chat that resumes t
 
 Revision note, 2026-05-17: Session 07 was completed and the plan now points to Session 08 as the next
 work item. This keeps the handoff state accurate for a fresh chat that resumes the project plan.
+
+Revision note, 2026-05-17: Session 09 was completed (`src/candidate_comparison.py`, tests, wired
+`run_compare_variants.py`). Next work item: Session 10 (Robustness Scorecard spec).
+
+Revision note, 2026-05-17: Session 10 completed (`docs/specs/robustness_scorecard_spec.md`).
+Next work item: Session 11 (implement scorecard and comparison diversification block).
+
+Revision note, 2026-05-17: Session 11 completed (`src/robustness_scorecard.py`, comparison
+`diversification`, tests). Next work item: Session 12 (Portfolio Health Score spec).
+
+Revision note, 2026-05-17: Session 08 was completed and the plan now points to Session 09 as the next
+work item (implement `candidate_comparison.json` builder).
 
 ## Interfaces and Dependencies
 

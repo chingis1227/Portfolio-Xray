@@ -46,7 +46,7 @@ python run_report.py
 
 | Location | Meaning | Source status |
 | --- | --- | --- |
-| `Main portfolio/` | Default main portfolio output folder, usually `output_dir_final` | Generated |
+| `Main portfolio/` | Default main portfolio output folder, usually `output_dir_final`; hosts `candidate_comparison.json` | Generated |
 | `results_csv/` | Tabular metrics, stress, factor, scenario, and diagnostic CSV outputs | Generated |
 | `output/` | Auxiliary runtime output folder where configured | Generated |
 | `cache/` | Cached data/runtime material | Generated |
@@ -87,6 +87,9 @@ Common project artifacts include:
 - generated HTML snapshots
 - generated PDF-style reports
 - candidate portfolio output folders
+- `candidate_comparison.json` (under `output_dir_final`; see [candidate comparison spec](docs/specs/candidate_comparison_spec.md))
+- `robustness_scorecard.json` and optional `robustness_scorecard.txt` (under `output_dir_final`; written by `run_compare_variants.py` / `write_candidate_comparison_outputs`; see [robustness scorecard spec](docs/specs/robustness_scorecard_spec.md))
+- legacy `portfolio_comparison.json` and `ew_rp_comparison.json` (subset comparisons; superseded by canonical contract)
 
 `portfolio_xray.json` is a generated, diagnostic-only Portfolio X-Ray artifact. It summarizes existing report pipeline outputs and in-memory diagnostics; it does not optimize, change weights, change mandate gates, change stress pass/fail status, or make portfolio selection decisions.
 
@@ -110,6 +113,8 @@ The exact artifact set can vary by config, available data, candidate type, and e
 | --- | --- |
 | Current implementation output contract | [SPEC.md](SPEC.md) |
 | High-level report and artifact contract | [docs/specs/reporting_outputs_spec.md](docs/specs/reporting_outputs_spec.md) |
+| Canonical candidate comparison JSON | [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md) |
+| Robustness Scorecard JSON | [docs/specs/robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md) |
 | Metric formulas, windows, estimators, rounding | [docs/specs/metrics_specification.md](docs/specs/metrics_specification.md) |
 | Stress, factor, macro, regime, and stress CSV/JSON artifacts | [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) |
 | Scenario Library and normalized scenario outputs | [docs/specs/scenario_library_spec.md](docs/specs/scenario_library_spec.md) |

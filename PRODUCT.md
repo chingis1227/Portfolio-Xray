@@ -592,7 +592,7 @@ Current implementation:
 | Macro Risk Dashboard | Important | Diagnostics implemented, product UI TBD |
 | Candidate Comparison Arena | Core target | Partially implemented through comparison scripts |
 | Portfolio Health Score | Target | TBD |
-| Robustness Scorecard | Target | Partially conceptual, formal scoring TBD |
+| Robustness Scorecard | Implemented (diagnostic) | Spec: [robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md); code: `src/robustness_scorecard.py` |
 | Selection Engine | Target | TBD |
 | Assumption Sensitivity | Target | TBD |
 | Pareto / Dominance Check | Target | TBD |

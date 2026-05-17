@@ -60,6 +60,34 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-05-17-002
+Title: V1 candidate comparison contract (full registry, current row, Main output)
+
+- Status: accepted
+- Date: 2026-05-17
+- Decision: The canonical comparison artifact is `candidate_comparison.json` under `output_dir_final` (default `Main portfolio/`). V1 lists the full candidate registry with `unavailable` when artifact folders are missing, and includes a `current` candidate when user-current portfolio artifacts exist (`analyze_current_weights` or `user_current_portfolio` tagging).
+- Context: Legacy `portfolio_comparison.json` and `ew_rp_comparison.json` cover partial subsets with inconsistent schemas; audit AUD-010 requires one contract before scores and selection.
+- Rationale: A single diagnostic-only table supports current vs policy vs benchmarks without implying a recommendation; Main placement keeps the comparison next to primary run outputs.
+- Alternatives considered: Minimal four-candidate launch only; defer `current` to a later session; place the file in a root `comparison/` folder.
+- Assumptions: Session 09 implements a read-only builder that does not recompute metrics; legacy comparison files remain until migration.
+- Consequences: Robustness Scorecard, Health Score, and Selection Engine must consume `candidate_comparison.json` per [candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md).
+- Related documents: [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [OUTPUTS.md](OUTPUTS.md), [docs/ROADMAP.md](docs/ROADMAP.md).
+- Review trigger: Revisit when comparison UI, cross-run history, or a dedicated comparison workspace is introduced.
+
+Decision ID: DEC-2026-05-17-003
+Title: Robustness Scorecard V1 scoring model
+
+- Status: accepted
+- Date: 2026-05-17
+- Decision: The Robustness Scorecard uses relative within-run normalization for component sub-scores, product-concept weights under profile `default_weights_reviewable`, primary window 10y, RC-based diversification from a comparison `diversification` block (no vol/beta proxies), and absolute mandate checks only inside `mandate_fit`. Output is diagnostic-only until Selection Engine exists.
+- Context: Session 10 specifies the scorecard after canonical `candidate_comparison.json`; the product concept defines six components and example weights.
+- Rationale: Relative scoring answers "who is more resilient among these alternatives"; mandate limits stay explicit; RC concentration matches the project's RC_vol diagnostics.
+- Alternatives considered: Absolute scoring against fixed thresholds for all components; temporary diversification proxies without RC in comparison.
+- Assumptions: Session 11 implements the scorecard module and comparison v1.1 diversification fields together.
+- Consequences: See [robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md); `src/robustness.py` remains optimizer weight stability only.
+- Related documents: [docs/specs/robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md), [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [docs/ROADMAP.md](docs/ROADMAP.md).
+- Review trigger: Revisit after empirical validation of weights or when Selection Engine consumes score outputs.
+
 Decision ID: DEC-2026-05-17-001
 Title: Use docs/ROADMAP.md as the durable development roadmap
 

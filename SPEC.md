@@ -102,6 +102,8 @@ Main report artifacts
 | Macro regime diagnostics | [docs/specs/macro_regime_spec.md](docs/specs/macro_regime_spec.md) |
 | Scenario Library and normalized scenario view | [docs/specs/scenario_library_spec.md](docs/specs/scenario_library_spec.md) |
 | Candidate and benchmark portfolios | [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md) |
+| Canonical candidate comparison artifact | [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md) |
+| Robustness Scorecard (diagnostic; `src/robustness_scorecard.py`) | [docs/specs/robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md) |
 | Robust Mean-Variance baselines and lambda calibration | [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md) |
 | Scenario-Based Robust Optimization | [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md) |
 | Reporting outputs and artifacts | [docs/specs/reporting_outputs_spec.md](docs/specs/reporting_outputs_spec.md) |

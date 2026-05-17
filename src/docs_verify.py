@@ -25,8 +25,6 @@ FORBIDDEN_REFERENCES: tuple[str, ...] = (
 ALLOW_MISSING_PATHS: frozenset[str] = frozenset(
     {
         "docs/product_backlog.md",
-        "docs/specs/candidate_comparison_spec.md",
-        "docs/specs/robustness_scorecard_spec.md",
         "docs/specs/portfolio_health_score_spec.md",
         "docs/specs/selection_engine_spec.md",
         "docs/specs/action_engine_spec.md",

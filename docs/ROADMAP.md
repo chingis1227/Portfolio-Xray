@@ -61,8 +61,8 @@ metadata, metrics, diagnostics, warnings, and construction method.
 
 | ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| RM-100 | Planned | Session 08 | Specify the canonical candidate comparison artifact. | Phase 0 complete. | Proposed `docs/specs/candidate_comparison_spec.md`, [candidate portfolios spec](specs/candidate_portfolios_spec.md), [reporting outputs spec](specs/reporting_outputs_spec.md), [PRODUCT](../PRODUCT.md) | Accepted spec for `candidate_comparison.json` | Documentation checks; confirm wording does not imply selection. |
-| RM-101 | Planned | Session 09 | Implement canonical candidate comparison output. | RM-100. | `run_compare_variants.py`, `run_compare_ew_rp.py`, candidate scripts, shared report/export modules | Generated `candidate_comparison.json` or spec-approved equivalent | New comparison tests plus affected comparison CLI smoke. |
+| RM-100 | Done | Session 08 | Specify the canonical candidate comparison artifact. | Phase 0 complete. | [candidate_comparison_spec.md](specs/candidate_comparison_spec.md), [candidate portfolios spec](specs/candidate_portfolios_spec.md), [reporting outputs spec](specs/reporting_outputs_spec.md), [OUTPUTS](../OUTPUTS.md) | Accepted spec for `candidate_comparison.json` (full registry, `current` row, Main output path) | `rg candidate_comparison` shows single contract; docs verify passes. |
+| RM-101 | Done | Session 09 | Implement canonical candidate comparison output. | RM-100. | [candidate_comparison.py](../src/candidate_comparison.py), `run_compare_variants.py`, [candidate_comparison_spec.md](specs/candidate_comparison_spec.md) | `candidate_comparison.json` (+ optional `.txt`, legacy `portfolio_comparison.*`) under `output_dir_final` | `tests/test_candidate_comparison.py -q`; `python run_compare_variants.py` smoke when Main artifacts exist. |
 
 ## Phase 2: Build Scoring Carefully
 
@@ -72,8 +72,8 @@ Exit condition: scores are explainable, testable, and non-binding until the Sele
 
 | ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| RM-200 | Planned | Session 10 | Specify the Robustness Scorecard. | RM-100. | Proposed `docs/specs/robustness_scorecard_spec.md`, candidate comparison spec, [stress testing spec](specs/stress_testing_spec.md), robust specs | Accepted Robustness Scorecard spec | Documentation checks; confirm no recommendation wording. |
-| RM-201 | Planned | Session 11 | Implement the Robustness Scorecard. | RM-200 and RM-101. | Scorecard module, comparison outputs, report/export modules | Generated `robustness_scorecard.json` or spec-approved equivalent | New scorecard tests plus comparison/report smoke where outputs change. |
+| RM-200 | Done | Session 10 | Specify the Robustness Scorecard. | RM-100. | [robustness_scorecard_spec.md](specs/robustness_scorecard_spec.md), [candidate_comparison_spec.md](specs/candidate_comparison_spec.md), [stress testing spec](specs/stress_testing_spec.md) | Accepted spec: relative within-run scoring, RC via comparison v1.1, 10y primary | `python scripts/verify_docs.py`; no recommendation wording in spec |
+| RM-201 | Done | Session 11 | Implement the Robustness Scorecard. | RM-200 and RM-101. | [robustness_scorecard.py](../src/robustness_scorecard.py), [candidate_comparison.py](../src/candidate_comparison.py), [run_compare_variants.py](../run_compare_variants.py) | `robustness_scorecard.json` / `.txt` under `output_dir_final` | `tests/test_robustness_scorecard.py`, `tests/test_candidate_comparison.py` |
 | RM-210 | Planned | Session 12 | Specify the Portfolio Health Score. | RM-200 recommended; RM-100 required. | Proposed `docs/specs/portfolio_health_score_spec.md`, metrics/stress/reporting specs, [PRODUCT](../PRODUCT.md) | Accepted Health Score spec | Documentation checks; confirm score remains explanatory and non-binding. |
 | RM-211 | Planned | Session 13 | Implement the Portfolio Health Score. | RM-210 and RM-101. | Health score module, comparison outputs, report/export modules | Generated `portfolio_health_score.json` or spec-approved equivalent | New health score tests plus adjacent score/comparison tests. |
 
