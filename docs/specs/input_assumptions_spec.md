@@ -219,7 +219,7 @@ The following product concept items are not implemented in this layer yet:
 - user-facing range pickers for every target and technical setting
 - transaction cost / rebalance cost model
 - investment horizon effects on optimizer policy
-- formal assumption sensitivity module
+- formal assumption sensitivity module (specified in [assumption_sensitivity_spec.md](assumption_sensitivity_spec.md); implementation Session 15)
 - formal selection engine or no-trade logic
 
 These items require separate specs and implementation work before they become binding.

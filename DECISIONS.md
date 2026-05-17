@@ -172,6 +172,20 @@ Title: Selection Engine V1 contract — composite score, policy default, No-Trad
 - Related documents: [docs/specs/selection_engine_spec.md](docs/specs/selection_engine_spec.md), [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [docs/specs/portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md), [docs/specs/robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md), [docs/ROADMAP.md](docs/ROADMAP.md) RM-300.
 - Review trigger: Revisit when Pareto/dominance or regret modules are specified, or when transaction-cost-aware No-Trade is added in Action Engine.
 
+Decision ID: DEC-2026-05-17-009
+Title: Assumption Sensitivity V1 — selection-stability grid without optimizer re-run
+
+- Status: accepted
+- Date: 2026-05-17
+- Decision: Adopt [assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md) with Tier A variants (composite weight stress, health/robust-only proxies, policy-default-off) and Tier B evidence variants (Sharpe rank by 3y/5y/10y, stress worst-loss rank). Stability is measured as `favored_stable_rate` on Tier A only; artifact is diagnostic-only and does not change `selection_decision.json`. Explicit V1 exclusions: optimizer re-run, expected-return shocks, covariance re-score, transaction-cost grids.
+- Context: Post-audit Session 14 (RM-620 spec phase); product concept section 14 and audit PSA-012; Selection V1 defers sensitivity from binding logic.
+- Rationale: Answers whether the favored profile is fragile to reviewable score-weight and policy-role assumptions using existing health/robustness totals; avoids expensive or formula-duplicating perturbations in V1.
+- Alternatives considered: Full assumption grid with re-optimization (deferred — out of scope and high model risk); merge into model-risk artifact (rejected — different question); auto-downgrade selection when fragile (rejected — violates diagnostic boundary).
+- Assumptions: Session 15 implements the assumption sensitivity builder, wires after trade-off in `write_candidate_comparison_outputs`, and extends decision-package reporting.
+- Consequences: `assumption_sensitivity_v1` contract; journal/report may cite stability; Pareto/regret remain separate sessions.
+- Related documents: [docs/specs/assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md), [docs/specs/selection_engine_spec.md](docs/specs/selection_engine_spec.md), [OUTPUTS.md](OUTPUTS.md), [docs/ROADMAP.md](docs/ROADMAP.md) RM-620.
+- Review trigger: Revisit when Health/Robustness can be re-scored on alternate windows without full pipeline re-run, or when No-Trade threshold stress is added.
+
 Decision ID: DEC-2026-05-17-008
 Title: Trade-off Explanation and Model Risk Diagnostics V1 — separate diagnostic artifacts
 

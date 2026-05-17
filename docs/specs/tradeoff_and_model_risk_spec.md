@@ -4,7 +4,7 @@ This document owns the **Trade-off Explanation** and **Model Risk Diagnostics** 
 
 It does not own metric formulas, stress scenario definitions, scorecard math, selection rules, action trade construction, or optimizer release policy. Those remain in [metrics_specification.md](metrics_specification.md), [stress_testing_spec.md](stress_testing_spec.md), [candidate_comparison_spec.md](candidate_comparison_spec.md), [robustness_scorecard_spec.md](robustness_scorecard_spec.md), [portfolio_health_score_spec.md](portfolio_health_score_spec.md), [selection_engine_spec.md](selection_engine_spec.md), and [action_engine_spec.md](action_engine_spec.md).
 
-Implementation (Session 13): planned module `src/tradeoff_and_model_risk.py` (name may be split into two helpers; must not collide with `src/robustness.py` optimizer stability). This document is the contract.
+Implementation: [src/tradeoff_and_model_risk.py](../../src/tradeoff_and_model_risk.py) (post-audit Session 13; must not collide with `src/robustness.py` optimizer stability). This document is the contract.
 
 ## Scope
 
@@ -26,6 +26,7 @@ The trade-off and model-risk layers:
 | **Selection Engine** | Formal favored profile and No-Trade; may emit short `tradeoff_bullets` until this layer exists. |
 | **Portfolio Health Score** | Holistic quality score; `mandate_and_model_risk` component is a score input, not this artifact. |
 | **Portfolio commentary / X-Ray** | Narrative diagnostics per portfolio folder; not the canonical cross-candidate trade-off table. |
+| **Assumption Sensitivity** | Selection stability under weight/window perturbations ([assumption_sensitivity_spec.md](assumption_sensitivity_spec.md)); complementary, not duplicate. |
 
 ## Product Boundary
 

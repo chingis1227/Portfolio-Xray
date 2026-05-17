@@ -46,6 +46,7 @@ Location: `{output_dir_final}/` (default `Main portfolio/`).
 | `selection_decision.json` | `decision_status`, `favored_candidate_id`, `favored_display_name`, `rationale.summary`, `no_trade`, `warnings` |
 | `tradeoff_explanation.json` | `tradeoff_status`, `summary`, `improves`, `worsens`, `cost_of_change` (Session 13; see [tradeoff_and_model_risk_spec.md](tradeoff_and_model_risk_spec.md)) |
 | `model_risk_diagnostics.json` | `overall_severity`, `summary_plain_en`, top high/medium warnings (Session 13; same spec) |
+| `assumption_sensitivity.json` | `stability_status`, `favored_stable_rate`, `summary_plain_en`, `policy_default_sensitive` (Session 15; [assumption_sensitivity_spec.md](assumption_sensitivity_spec.md)) |
 | `action_plan.json` | `action_status`, `no_trades_reason`, `turnover_half_sum_pct`, `trades[]` (top rows only in summary) |
 | `monitoring_diff.json` | `diff_status`, `summary_plain_en`, `prior_analysis_end`, `current_analysis_end` |
 | `decision_journal.json` | `analysis_end`, `artifact_index` or `artifact_links` when present |

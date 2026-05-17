@@ -33,7 +33,8 @@ Target product areas remain TBD until separately specified and implemented:
 - full interactive UI
 - saved analysis workspaces
 - orchestrated Candidate Portfolio Factory and hardened current-vs-policy workflow
-- Assumption Sensitivity, Pareto / Dominance, and Regret Analysis artifacts
+- Assumption Sensitivity implementation (`assumption_sensitivity.json`; spec in [docs/specs/assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md); Session 15)
+- Pareto / Dominance and Regret Analysis artifacts
 - user-maintained journal/workflow layers beyond the generated V1 Decision Journal
 
 ## Main Workflows
@@ -162,7 +163,7 @@ Primary outputs include:
 - `robustness_scorecard.json`
 - `portfolio_health_score.json`
 - `selection_decision.json`
-- `tradeoff_explanation.json` and `model_risk_diagnostics.json` (spec: [tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md); implementation post-audit Session 13)
+- `tradeoff_explanation.json` and `model_risk_diagnostics.json` (via [src/tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py))
 - `action_plan.json`
 - `monitoring_diff.json`
 - `decision_journal.json`
@@ -229,7 +230,7 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Generated CSV/JSON/HTML/TXT/PDF-style reports | Implemented |
 | Full interactive UI | Target/TBD |
 | Formal Selection Engine and No-Trade | Implemented (`selection_decision.json` via [src/selection_engine.py](src/selection_engine.py)) |
-| Trade-off Explanation and Model Risk Diagnostics | Spec accepted ([tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md)); implementation post-audit Session 13 |
+| Trade-off Explanation and Model Risk Diagnostics | Implemented ([src/tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py); [tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md)) |
 | Action Engine and Rebalancing Advisor | Implemented (`action_plan.json` via [src/action_engine.py](src/action_engine.py)) |
 | Monitoring / What Changed | Implemented (V1) - [monitoring_spec.md](docs/specs/monitoring_spec.md), `src/monitoring.py` |
 | Decision Journal | Implemented (V1) - [decision_journal_spec.md](docs/specs/decision_journal_spec.md), `src/decision_journal.py` |

@@ -275,7 +275,57 @@ def _build_accepted_risks(cand: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def _build_rationale(selection: dict[str, Any], decision_status: str) -> dict[str, Any]:
+def _tradeoff_bullets(
+    tradeoff: dict[str, Any] | None,
+    selection: dict[str, Any],
+) -> list[str]:
+    if tradeoff and tradeoff.get("schema_version") == "tradeoff_explanation_v1":
+        bullets: list[str] = []
+        summary = tradeoff.get("summary") or {}
+        if summary.get("headline"):
+            bullets.append(str(summary["headline"]))
+        paragraph = summary.get("tradeoff_paragraph")
+        if paragraph:
+            bullets.append(str(paragraph))
+        primary = next(
+            (p for p in tradeoff.get("pairs") or [] if p.get("pair_id") == "current_to_favored"),
+            None,
+        )
+        if primary:
+            for dim_id in (tradeoff.get("improves") or [])[:3]:
+                dim = next(
+                    (
+                        d
+                        for d in primary.get("dimensions") or []
+                        if d.get("dimension_id") == dim_id
+                    ),
+                    None,
+                )
+                if dim and dim.get("plain_english"):
+                    bullets.append(str(dim["plain_english"]))
+            for dim_id in (tradeoff.get("worsens") or [])[:2]:
+                dim = next(
+                    (
+                        d
+                        for d in primary.get("dimensions") or []
+                        if d.get("dimension_id") == dim_id
+                    ),
+                    None,
+                )
+                if dim and dim.get("plain_english"):
+                    bullets.append(str(dim["plain_english"]))
+        return bullets[:8] if bullets else list(
+            (selection.get("rationale") or {}).get("tradeoff_bullets") or []
+        )
+    sel_rat = selection.get("rationale") or {}
+    return list(sel_rat.get("tradeoff_bullets") or [])
+
+
+def _build_rationale(
+    selection: dict[str, Any],
+    decision_status: str,
+    tradeoff: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     sel_rat = selection.get("rationale") or {}
     summary = sel_rat.get("summary") or ""
     if not summary:
@@ -283,11 +333,14 @@ def _build_rationale(selection: dict[str, Any], decision_status: str) -> dict[st
         summary = f"Decision status: {decision_status}."
         if favored:
             summary += f" Favored profile for review: {favored}."
+    tradeoff_summary = (tradeoff or {}).get("summary") or {}
+    if tradeoff_summary.get("tradeoff_paragraph"):
+        summary = f"{summary} {tradeoff_summary['tradeoff_paragraph']}".strip()
     return {
         "summary": summary,
         "selection_bullets": list(sel_rat.get("selection_bullets") or []),
         "no_trade_bullets": list(sel_rat.get("no_trade_bullets") or []),
-        "tradeoff_bullets": list(sel_rat.get("tradeoff_bullets") or []),
+        "tradeoff_bullets": _tradeoff_bullets(tradeoff, selection),
         "data_quality_notes": list(sel_rat.get("data_quality_notes") or []),
     }
 
@@ -353,6 +406,7 @@ def build_decision_journal(
     monitoring_diff: dict[str, Any] | None = None,
     health: dict[str, Any] | None = None,
     robustness: dict[str, Any] | None = None,
+    tradeoff: dict[str, Any] | None = None,
     project_root: Path | None = None,
 ) -> dict[str, Any]:
     """Project decision journal from pipeline artifacts (no recomputation)."""
@@ -410,6 +464,11 @@ def build_decision_journal(
             if robustness
             else None
         ),
+        "tradeoff_explanation": (
+            _rel_path(out_dir / "tradeoff_explanation.json", project_root)
+            if tradeoff
+            else None
+        ),
     }
 
     return {
@@ -463,7 +522,7 @@ def build_decision_journal(
             "macro_regime_label": macro_label,
             "profile_id": macro_profile_id if macro_row else None,
         },
-        "rationale": _build_rationale(selection, decision_status),
+        "rationale": _build_rationale(selection, decision_status, tradeoff=tradeoff),
         "no_trade_status": {
             "is_no_trade": decision_status == "no_material_rebalance",
             "no_trade": selection.get("no_trade"),
@@ -570,6 +629,7 @@ def write_decision_journal_outputs(
         health = _load_json(out_dir / "portfolio_health_score.json")
     if robustness is None:
         robustness = _load_json(out_dir / "robustness_scorecard.json")
+    tradeoff = _load_json(out_dir / "tradeoff_explanation.json")
 
     journal = build_decision_journal(
         comparison,
@@ -578,6 +638,7 @@ def write_decision_journal_outputs(
         monitoring_diff=monitoring_diff,
         health=health,
         robustness=robustness,
+        tradeoff=tradeoff,
         project_root=project_root,
     )
 

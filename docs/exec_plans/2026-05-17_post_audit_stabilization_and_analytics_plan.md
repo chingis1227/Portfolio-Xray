@@ -69,8 +69,14 @@ available without silently changing the policy optimizer.
   (`tradeoff_explanation_v1`, `model_risk_diagnostics_v1`, pipeline placement, warning catalog,
   downstream consumers); cross-linked OUTPUTS, reporting, selection, journal, decision package;
   recorded `DEC-2026-05-17-008`. Runtime unchanged.
-- [ ] Session 13: Trade-off and model-risk implementation.
-- [ ] Session 14: Assumption Sensitivity spec.
+- [x] (2026-05-17) Session 13 completed: implemented `src/tradeoff_and_model_risk.py`
+  (`tradeoff_explanation_v1`, `model_risk_diagnostics_v1`), wired after selection in
+  `write_candidate_comparison_outputs`, extended decision package reporting and journal;
+  `tests/test_tradeoff_and_model_risk.py`.
+- [x] (2026-05-17) Session 14 completed: created `docs/specs/assumption_sensitivity_spec.md`
+  (`assumption_sensitivity_v1`, Tier A selection-weight catalog, Tier B evidence ranks,
+  stability bands, explicit V1 exclusions, pipeline placement after trade-off); cross-linked
+  OUTPUTS, SPEC, selection engine, spec index; recorded `DEC-2026-05-17-009`. Runtime unchanged.
 - [ ] Session 15: Assumption Sensitivity implementation.
 - [ ] Session 16: Pareto/Dominance spec.
 - [ ] Session 17: Pareto/Dominance implementation.
@@ -207,7 +213,8 @@ optional `--then-compare`. Verified with `python -m pytest tests/test_candidate_
 Session 12 outcome: trade-off and model-risk spec accepted (`tradeoff_explanation_v1`,
 `model_risk_diagnostics_v1`, separate JSON/TXT artifacts, primary pair current→favored, unified
 warning catalog, non-binding boundary). Verified with `python scripts/verify_docs.py`.
-Handoff: Session 13 (trade-off and model-risk implementation).
+Session 13 outcome: trade-off and model-risk implementation complete (`DEC-2026-05-17-008`,
+RM-616 done). Handoff: Session 15 (Assumption Sensitivity implementation).
 
 Future sessions must update this section when each milestone completes, noting what changed, what was
 verified, and what remains.
@@ -575,3 +582,6 @@ spec phase). Handoff moves to Session 11 (factory implementation).
 
 Revision note, 2026-05-17: Session 12 completed trade-off and model-risk spec (`DEC-2026-05-17-008`,
 RM-616 spec phase). Handoff moves to Session 13 (implementation).
+
+Revision note, 2026-05-17: Session 14 completed assumption sensitivity spec (`DEC-2026-05-17-009`,
+RM-620 spec phase). Handoff moves to Session 15 (implementation).

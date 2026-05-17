@@ -493,7 +493,7 @@ Current implementation:
 
 Target additions:
 
-- Trade-off and model-risk artifacts are specified in [tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md); pipeline implementation is post-audit Session 13.
+- Trade-off and model-risk artifacts are implemented in [tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py) per [tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md).
 - Risk improvement per 1% turnover is TBD.
 
 ### 11. Report Export
@@ -595,10 +595,10 @@ Current implementation:
 | Portfolio Health Score | Implemented (diagnostic) | [portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md), [src/portfolio_health_score.py](src/portfolio_health_score.py) |
 | Robustness Scorecard | Implemented (diagnostic) | Spec: [robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md); code: `src/robustness_scorecard.py` |
 | Selection Engine | Implemented | [selection_engine_spec.md](docs/specs/selection_engine_spec.md), [src/selection_engine.py](src/selection_engine.py) |
-| Assumption Sensitivity | Target | TBD |
+| Assumption Sensitivity | Partial | Spec: [assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md); implementation Session 15 |
 | Pareto / Dominance Check | Target | TBD |
 | Regret Analysis | Target | TBD |
-| Trade-off Explanation | Core target | Spec accepted (`tradeoff_explanation_v1`); implementation Session 13 |
+| Trade-off Explanation | Implemented | `tradeoff_explanation_v1` via [tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py) |
 | Action Engine | Implemented (V1) | `action_plan.json` via [src/action_engine.py](src/action_engine.py); mechanical trades via [src/rebalance.py](src/rebalance.py) |
 | Rebalancing Advisor | Implemented (V1) | `action_plan.txt` companion summary |
 | No-Trade Recommendation | Implemented (V1) | Same module as Selection Engine; `no_material_rebalance` outcome |

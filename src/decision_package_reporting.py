@@ -110,6 +110,8 @@ def build_decision_package_summary_lines(
     monitoring_diff: dict[str, Any] | None,
     decision_journal: dict[str, Any] | None,
     workflow_status: dict[str, Any] | None = None,
+    tradeoff: dict[str, Any] | None = None,
+    model_risk: dict[str, Any] | None = None,
 ) -> list[str]:
     """Build plain-English summary lines (UTF-8)."""
     analysis_end = (comparison or selection or action or {}).get("analysis_end") or "—"
@@ -244,6 +246,34 @@ def build_decision_package_summary_lines(
             lines.append(f"  Warning: {w}")
     lines.append("")
 
+    lines.append("Trade-offs")
+    lines.append("-" * 40)
+    if not tradeoff:
+        lines.append("Not available (tradeoff_explanation.json missing).")
+    else:
+        summary = tradeoff.get("summary") or {}
+        if summary.get("headline"):
+            lines.append(f"  {summary['headline']}")
+        if summary.get("tradeoff_paragraph"):
+            lines.append(f"  {summary['tradeoff_paragraph']}")
+        cost = tradeoff.get("cost_of_change") or {}
+        if cost.get("turnover_half_sum_pct") is not None:
+            lines.append(f"  Turnover (half-sum): {cost['turnover_half_sum_pct']}%")
+    lines.append("")
+
+    lines.append("Model risk")
+    lines.append("-" * 40)
+    if not model_risk:
+        lines.append("Not available (model_risk_diagnostics.json missing).")
+    else:
+        lines.append(f"  Overall severity: {model_risk.get('overall_severity', '—')}")
+        if model_risk.get("summary_plain_en"):
+            lines.append(f"  {model_risk['summary_plain_en']}")
+        for row in model_risk.get("warnings") or []:
+            if row.get("severity") in ("high", "medium"):
+                lines.append(f"  - {row.get('plain_english')}")
+    lines.append("")
+
     # Action
     lines.append("Action plan")
     lines.append("-" * 40)
@@ -306,6 +336,8 @@ def build_decision_package_summary_lines(
         "robustness_scorecard.json",
         "portfolio_health_score.json",
         "selection_decision.json",
+        "tradeoff_explanation.json",
+        "model_risk_diagnostics.json",
         "action_plan.json",
         "monitoring_diff.json",
         "decision_journal.json",
@@ -325,6 +357,8 @@ def build_decision_package_report(
     monitoring_diff: dict[str, Any] | None,
     decision_journal: dict[str, Any] | None,
     workflow_status: dict[str, Any] | None = None,
+    tradeoff: dict[str, Any] | None = None,
+    model_risk: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Machine-readable index plus embedded plain summary."""
     lines = build_decision_package_summary_lines(
@@ -336,6 +370,8 @@ def build_decision_package_report(
         monitoring_diff=monitoring_diff,
         decision_journal=decision_journal,
         workflow_status=workflow_status,
+        tradeoff=tradeoff,
+        model_risk=model_risk,
     )
     return {
         "schema_version": SCHEMA_VERSION,
@@ -351,6 +387,8 @@ def build_decision_package_report(
             "robustness": _section_status(robustness is not None),
             "health": _section_status(health is not None),
             "selection": _section_status(selection is not None),
+            "tradeoffs": _section_status(tradeoff is not None),
+            "model_risk": _section_status(model_risk is not None),
             "action": _section_status(action is not None),
             "monitoring": _section_status(monitoring_diff is not None),
             "journal": _section_status(decision_journal is not None),
@@ -360,6 +398,8 @@ def build_decision_package_report(
             "robustness_scorecard": "robustness_scorecard.json" if robustness else None,
             "portfolio_health_score": "portfolio_health_score.json" if health else None,
             "selection_decision": "selection_decision.json" if selection else None,
+            "tradeoff_explanation": "tradeoff_explanation.json" if tradeoff else None,
+            "model_risk_diagnostics": "model_risk_diagnostics.json" if model_risk else None,
             "action_plan": "action_plan.json" if action else None,
             "monitoring_diff": "monitoring_diff.json" if monitoring_diff else None,
             "decision_journal": "decision_journal.json" if decision_journal else None,
@@ -413,6 +453,8 @@ def write_decision_package_reporting_outputs(
     monitoring_diff: dict[str, Any] | None = None,
     decision_journal: dict[str, Any] | None = None,
     workflow_status: dict[str, Any] | None = None,
+    tradeoff: dict[str, Any] | None = None,
+    model_risk: dict[str, Any] | None = None,
     append_report_txt: bool = True,
 ) -> dict[str, Path]:
     project_root = project_root or Path.cwd()
@@ -435,6 +477,10 @@ def write_decision_package_reporting_outputs(
         decision_journal = _load_json(out_dir / "decision_journal.json")
     if workflow_status is None:
         workflow_status = _load_json(out_dir / "current_vs_policy_status.json")
+    if tradeoff is None:
+        tradeoff = _load_json(out_dir / "tradeoff_explanation.json")
+    if model_risk is None:
+        model_risk = _load_json(out_dir / "model_risk_diagnostics.json")
 
     doc = build_decision_package_report(
         comparison=comparison,
@@ -445,6 +491,8 @@ def write_decision_package_reporting_outputs(
         monitoring_diff=monitoring_diff,
         decision_journal=decision_journal,
         workflow_status=workflow_status,
+        tradeoff=tradeoff,
+        model_risk=model_risk,
     )
     paths: dict[str, Path] = {}
     json_path = out_dir / "decision_package_summary.json"

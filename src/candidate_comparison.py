@@ -988,6 +988,19 @@ def write_candidate_comparison_outputs(
     if sel_json and sel_json.is_file():
         selection_doc = _load_json(sel_json)
 
+    from src.tradeoff_and_model_risk import write_tradeoff_and_model_risk_outputs
+
+    paths.update(
+        write_tradeoff_and_model_risk_outputs(
+            cfg,
+            project_root=project_root,
+            comparison=comparison,
+            selection=selection_doc,
+            health=health_doc,
+            robustness=robustness_doc,
+        )
+    )
+
     from src.current_vs_policy import write_current_vs_policy_status_outputs
 
     paths.update(
@@ -1050,6 +1063,12 @@ def write_candidate_comparison_outputs(
     journal_doc = _load_json(
         paths.get("decision_journal_json") or out_dir / "decision_journal.json"
     )
+    tradeoff_doc = _load_json(
+        paths.get("tradeoff_explanation_json") or out_dir / "tradeoff_explanation.json"
+    )
+    model_risk_doc = _load_json(
+        paths.get("model_risk_diagnostics_json") or out_dir / "model_risk_diagnostics.json"
+    )
     paths.update(
         write_decision_package_reporting_outputs(
             cfg,
@@ -1062,6 +1081,8 @@ def write_candidate_comparison_outputs(
             monitoring_diff=monitoring_doc,
             decision_journal=journal_doc,
             workflow_status=workflow_status,
+            tradeoff=tradeoff_doc,
+            model_risk=model_risk_doc,
         )
     )
 

@@ -44,6 +44,7 @@ Top-level documents stay compact:
 | Portfolio Health Score (diagnostic holistic quality scoring) | [portfolio_health_score_spec.md](portfolio_health_score_spec.md) |
 | Selection Engine and No-Trade Recommendation (formal decision contract) | [selection_engine_spec.md](selection_engine_spec.md) |
 | Trade-off Explanation and Model Risk Diagnostics | [tradeoff_and_model_risk_spec.md](tradeoff_and_model_risk_spec.md) |
+| Assumption Sensitivity (selection stability under perturbations) | [assumption_sensitivity_spec.md](assumption_sensitivity_spec.md) |
 | Current-vs-policy workflow and No-Trade actionability | [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md) |
 | Action Engine and Rebalancing Advisor (implementation plan) | [action_engine_spec.md](action_engine_spec.md) |
 | Monitoring snapshots and What Changed diff | [monitoring_spec.md](monitoring_spec.md) |
