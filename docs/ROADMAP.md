@@ -11,13 +11,16 @@ spec and implementation are updated.
 
 ## Current Development Rule
 
-Do not add new major analytics until the current source-of-truth cleanup and the canonical candidate
-comparison contract are done. The current project already has a strong report-first analytical base;
-the next quality step is a controlled decision pipeline:
+Post-audit stabilization (RM-610 through RM-623, Sessions 02–20) is **complete** as of 2026-05-17.
+The file-first V1 decision pipeline is implemented end-to-end through `write_candidate_comparison_outputs`.
+Do not add new major analytics without an accepted spec and roadmap row. Default next backlog:
 
 ```text
-concept -> source-of-truth spec -> canonical artifact -> tests -> report/UI surface -> decision record
+optional UI decision (RM-500) -> narrow UI slice (RM-501) OR user-directed maintenance (KI-007 refresh, KI-004 docs)
 ```
+
+New diagnostic layers must remain non-binding unless a canonical spec explicitly changes Selection or
+policy release behavior.
 
 ## Status Values
 
@@ -122,8 +125,9 @@ portfolio logic.
 Goal: reconcile the project after Sessions 01-20, then stabilize the new decision pipeline before
 adding larger product surfaces or analytics.
 
-Exit condition: stale status docs are synced, the decision package has a clear report/export surface,
-source text is clean enough for user-facing reports, and the next analytical/UI work has accepted specs.
+Exit condition (**met 2026-05-17**): stale status docs synced; V1 decision package has report/export
+surface; post-audit analytics implemented; `RM-623` closed. Residual: regenerated-output language QA
+(`KI-2026-05-17-007`); optional Phase 5 UI (`RM-500+`).
 
 | ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -132,14 +136,14 @@ source text is clean enough for user-facing reports, and the next analytical/UI 
 | RM-610 | Done | Post-audit Session 02 | Sync top-level current-status docs after Sessions 01-20. | RM-601. | [README](../README.md), [AGENTS](../AGENTS.md), [SPEC](../SPEC.md), [PRODUCT](../PRODUCT.md), [ARCHITECTURE](../ARCHITECTURE.md), this roadmap, [post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md) | Implemented file-first V1 decision artifacts no longer described as target/TBD in top-level docs | `python scripts/verify_docs.py`; targeted stale-reference search for Selection/Health/Monitoring/Journal TBD wording. |
 | RM-611 | Done | Post-audit Session 03 | Fix decision-log and planning-doc integrity issues. | RM-601. | [DECISIONS](../DECISIONS.md), [post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md), this roadmap | Unique decision IDs; handoff text now points to Session 04 | `python scripts/verify_docs.py`; targeted search for `DEC-2026-05-17-003` references. |
 | RM-612 | Done | Post-audit Sessions 04, 06, 07 | Update detailed specs and report/PDF surfaces for the full decision package. | RM-610 recommended. | [decision package reporting spec](specs/decision_package_reporting_spec.md), [decision_package_reporting.py](../src/decision_package_reporting.py), [reporting outputs spec](specs/reporting_outputs_spec.md), [pdf_reports.py](../src/pdf_reports.py) | `decision_package_summary.txt` / `.json`, `report.txt` append, CLI paths, optional `Main portfolio_decision_package.pdf` | `tests/test_decision_package_reporting.py`; `python scripts/verify_docs.py`. |
-| RM-613 | In progress | Post-audit Session 05 | Fix remaining source/generator mojibake, broken symbols, and English-language acceptance gaps. | RM-600. | `src/pdf_reports.py`, runner scripts, robust optimizer scripts/specs, [DESIGN](../DESIGN.md), affected docs | Source/generator text is cleaned; representative generated output refresh remains for report/PDF sessions | Targeted Cyrillic/mojibake source scans pass; `python scripts/verify_docs.py` passes. |
+| RM-613 | Done | Post-audit Session 05 | Fix remaining source/generator mojibake, broken symbols, and English-language acceptance gaps. | RM-600. | `src/pdf_reports.py`, runner scripts, robust optimizer scripts/specs, [DESIGN](../DESIGN.md), affected docs | Source/generator text cleaned; regenerated-output QA tracked under `KI-2026-05-17-007` | Targeted Cyrillic/mojibake source scans pass; `python scripts/verify_docs.py` passes. |
 | RM-614 | Done | Post-audit Sessions 08, 09 | Define and harden current-vs-policy/no-trade workflow. | RM-301, RM-310, RM-601. | [current vs policy workflow spec](specs/current_vs_policy_workflow_spec.md), [current_vs_policy.py](../src/current_vs_policy.py), `run_report.py`, candidate comparison, runners | Sidecar materialization, status JSON, No-Trade actionability gating | `tests/test_current_vs_policy_workflow.py`; `python scripts/verify_docs.py`. |
 | RM-615 | Done | Post-audit Sessions 10, 11 | Orchestrate candidate generation as a factory before comparison and implement the factory CLI. | RM-601. | [candidate factory spec](specs/candidate_factory_spec.md), [run_candidate_factory.py](../run_candidate_factory.py), [candidate_factory.py](../src/candidate_factory.py) | `candidate_factory_run.json` / `.txt` under `output_dir_final` | `tests/test_candidate_factory.py` |
 | RM-616 | Done | Post-audit Sessions 12–13 | Specify and implement the trade-off explanation and model-risk diagnostics layer. | RM-612 recommended. | [tradeoff_and_model_risk.py](../src/tradeoff_and_model_risk.py), [candidate_comparison.py](../src/candidate_comparison.py), [decision_package_reporting.py](../src/decision_package_reporting.py) | `tradeoff_explanation.json` / `.txt`, `model_risk_diagnostics.json` / `.txt` under `output_dir_final` | `tests/test_tradeoff_and_model_risk.py`; wired in comparison pipeline. |
-| RM-620 | In progress | Post-audit Sessions 14–15 | Specify and implement Assumption Sensitivity. Session 14 done (spec); Session 15 implements module. | RM-610 and RM-612 recommended. | [assumption_sensitivity_spec.md](specs/assumption_sensitivity_spec.md) | `assumption_sensitivity.json` / `.txt` and tests | `python scripts/verify_docs.py`; focused tests in Session 15. |
-| RM-621 | Planned | Post-audit Sessions 16, 17 | Specify and implement Pareto/Dominance. | RM-620 recommended. | Selection/comparison specs and modules | Pareto/dominance artifact and tests | New focused tests. |
-| RM-622 | Planned | Post-audit Sessions 18, 19 | Specify and implement Regret Analysis. | RM-620 recommended. | Selection/comparison/scenario specs and modules | Regret artifact and tests | New focused tests. |
-| RM-623 | Planned | Post-audit Session 20 | Close the post-audit plan with broad verification and project-memory updates. | RM-610 through RM-622 complete or explicitly deferred. | [post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md), [CHANGELOG](../CHANGELOG.md), [known issues](../KNOWN_ISSUES.md), [decisions](../DECISIONS.md) | Closure note and updated project registers | Docs verify, focused tests, relevant smoke run when data allows. |
+| RM-620 | Done | Post-audit Sessions 14–15 | Specify and implement Assumption Sensitivity. | RM-610 and RM-612 recommended. | [assumption_sensitivity_spec.md](specs/assumption_sensitivity_spec.md), [assumption_sensitivity.py](../src/assumption_sensitivity.py), [candidate_comparison.py](../src/candidate_comparison.py) | `assumption_sensitivity.json` / `.txt` under `output_dir_final` | `tests/test_assumption_sensitivity.py`; wired in `write_candidate_comparison_outputs`. |
+| RM-621 | Done | Post-audit Sessions 16, 17 | Specify and implement Pareto/Dominance. | RM-620 recommended. | [pareto_dominance.py](../src/pareto_dominance.py), [pareto_dominance_spec.md](specs/pareto_dominance_spec.md) | `pareto_dominance.json` / `.txt` under `output_dir_final` | `tests/test_pareto_dominance.py`; wired after assumption sensitivity. |
+| RM-622 | Done | Post-audit Sessions 18, 19 | Specify and implement Regret Analysis. | RM-620 recommended. | [regret_analysis_spec.md](specs/regret_analysis_spec.md), `src/regret_analysis.py` | `regret_analysis.json` / `.txt` | Session 19: wired after Pareto; `tests/test_regret_analysis.py`. |
+| RM-623 | Done | Post-audit Session 20 | Close the post-audit plan with broad verification and project-memory updates. | RM-610 through RM-622 complete or explicitly deferred. | [post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md), [CHANGELOG](../CHANGELOG.md), [known issues](../KNOWN_ISSUES.md), [decisions](../DECISIONS.md) | Plan marked completed; exec plan register updated; smoke compare refreshed Main portfolio artifacts | `python scripts/verify_docs.py`; 112 focused pipeline tests; `python run_compare_variants.py` smoke. |
 
 ## Audit Mapping
 
@@ -157,23 +161,30 @@ source text is clean enough for user-facing reports, and the next analytical/UI 
 | AUD-010 | Resolved at artifact level by RM-100 and RM-101; UI/workspace follow-up continues under RM-612, RM-614, and RM-615. |
 | AUD-011 | Resolved at V1 decision-artifact level by RM-200 through RM-301; report/UI integration continues under RM-612. |
 | AUD-012 | Resolved via RM-007 (Session 07): `scripts/verify_docs.py` and `tests/test_docs_links.py`. |
-| PSA-001 through PSA-013 | Registered in the [post-session audit](audits/2026-05-17_post_session_deep_system_audit.md); follow-up work starts at RM-610. |
+| PSA-001 through PSA-013 | Addressed by RM-610 through RM-623 (post-audit plan closed 2026-05-17); residual items in [KNOWN_ISSUES](../KNOWN_ISSUES.md). |
 
 ## Session Boundary Rule
 
-Use [the post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md)
-for RM-610 and later post-audit work. Complete one post-audit session per fresh chat unless the user
-explicitly asks to combine sessions. Update that ExecPlan after each session with completed, partial,
-or blocked status.
+Post-audit Sessions 02–20 are **closed** (see completed [post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md)).
+For new work, use `docs/ROADMAP.md` backlog rows (default: Phase 5 RM-500+) or a new ExecPlan per
+`PLANS.md` when scope is large or risky. Do not reopen post-audit sessions unless the user explicitly
+requests plan amendments.
 
 ## Implemented Decision Artifacts
 
-These artifacts now have accepted V1 specs and implementations:
+These artifacts now have accepted V1 specs and implementations (emitted from `write_candidate_comparison_outputs` unless noted):
 
 - `candidate_comparison.json`
 - `robustness_scorecard.json`
 - `portfolio_health_score.json`
 - `selection_decision.json`
+- `tradeoff_explanation.json` and `model_risk_diagnostics.json`
+- `assumption_sensitivity.json`
+- `pareto_dominance.json`
+- `regret_analysis.json`
 - `action_plan.json`
 - `monitoring_diff.json`
 - `decision_journal.json`
+- `decision_package_summary.json` / `.txt` (reporting; [decision_package_reporting.py](../src/decision_package_reporting.py))
+- `current_vs_policy_status.json` (when current weights are supplied)
+- `candidate_factory_run.json` (orchestration; [run_candidate_factory.py](../run_candidate_factory.py))

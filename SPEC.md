@@ -24,17 +24,13 @@ It supports:
 - portfolio metrics, dynamic backtesting, risk contribution diagnostics, and stress diagnostics
 - factor, macro/regime, PCA, scenario-library, and robustness diagnostics
 - benchmark and candidate portfolio reports
-- canonical candidate comparison and V1 decision artifacts: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, Action Plan, Monitoring / What Changed, and generated Decision Journal
+- canonical candidate comparison and V1 decision artifacts: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, trade-off and model-risk diagnostics, Assumption Sensitivity, Action Plan, Monitoring / What Changed, generated Decision Journal, current-vs-policy status, and candidate factory run summary
 - decision package report summary (`decision_package_summary.txt` / `.json`, optional `report.txt` append, decision-package PDF after comparison)
 - CSV, JSON, HTML, TXT, and PDF-style report artifacts
 
 Target product areas remain TBD until separately specified and implemented:
 
-- full interactive UI
-- saved analysis workspaces
-- orchestrated Candidate Portfolio Factory and hardened current-vs-policy workflow
-- Assumption Sensitivity implementation (`assumption_sensitivity.json`; spec in [docs/specs/assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md); Session 15)
-- Pareto / Dominance and Regret Analysis artifacts
+- full interactive UI and saved analysis workspaces
 - user-maintained journal/workflow layers beyond the generated V1 Decision Journal
 
 ## Main Workflows
@@ -164,6 +160,8 @@ Primary outputs include:
 - `portfolio_health_score.json`
 - `selection_decision.json`
 - `tradeoff_explanation.json` and `model_risk_diagnostics.json` (via [src/tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py))
+- `assumption_sensitivity.json` (via [src/assumption_sensitivity.py](src/assumption_sensitivity.py))
+- `pareto_dominance.json` (via [src/pareto_dominance.py](src/pareto_dominance.py))
 - `action_plan.json`
 - `monitoring_diff.json`
 - `decision_journal.json`
@@ -231,6 +229,9 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Full interactive UI | Target/TBD |
 | Formal Selection Engine and No-Trade | Implemented (`selection_decision.json` via [src/selection_engine.py](src/selection_engine.py)) |
 | Trade-off Explanation and Model Risk Diagnostics | Implemented ([src/tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py); [tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md)) |
+| Assumption Sensitivity | Implemented ([src/assumption_sensitivity.py](src/assumption_sensitivity.py); [assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md)) |
+| Pareto / Dominance Check | Implemented ([src/pareto_dominance.py](src/pareto_dominance.py); [pareto_dominance_spec.md](docs/specs/pareto_dominance_spec.md)) |
+| Regret Analysis | Implemented ([regret_analysis_spec.md](docs/specs/regret_analysis_spec.md); `src/regret_analysis.py`, `regret_analysis.json` / `.txt`) |
 | Action Engine and Rebalancing Advisor | Implemented (`action_plan.json` via [src/action_engine.py](src/action_engine.py)) |
 | Monitoring / What Changed | Implemented (V1) - [monitoring_spec.md](docs/specs/monitoring_spec.md), `src/monitoring.py` |
 | Decision Journal | Implemented (V1) - [decision_journal_spec.md](docs/specs/decision_journal_spec.md), `src/decision_journal.py` |

@@ -47,6 +47,8 @@ Location: `{output_dir_final}/` (default `Main portfolio/`).
 | `tradeoff_explanation.json` | `tradeoff_status`, `summary`, `improves`, `worsens`, `cost_of_change` (Session 13; see [tradeoff_and_model_risk_spec.md](tradeoff_and_model_risk_spec.md)) |
 | `model_risk_diagnostics.json` | `overall_severity`, `summary_plain_en`, top high/medium warnings (Session 13; same spec) |
 | `assumption_sensitivity.json` | `stability_status`, `favored_stable_rate`, `summary_plain_en`, `policy_default_sensitive` (Session 15; [assumption_sensitivity_spec.md](assumption_sensitivity_spec.md)) |
+| `pareto_dominance.json` | `non_dominated_count`, `dominated_count`, `favored_is_dominated`, `summary_plain_en` (Session 17; [pareto_dominance_spec.md](pareto_dominance_spec.md)) |
+| `regret_analysis.json` | `regret_status`, favored reference `worst_regret`, `worst_scenario_id`, `summary_plain_en` (Session 19; [regret_analysis_spec.md](regret_analysis_spec.md)) |
 | `action_plan.json` | `action_status`, `no_trades_reason`, `turnover_half_sum_pct`, `trades[]` (top rows only in summary) |
 | `monitoring_diff.json` | `diff_status`, `summary_plain_en`, `prior_analysis_end`, `current_analysis_end` |
 | `decision_journal.json` | `analysis_end`, `artifact_index` or `artifact_links` when present |

@@ -19,17 +19,18 @@ artifact contracts.
 
 ## Current Pointer
 
-Active plan: [Post-Audit Stabilization And Analytics Plan](2026-05-17_post_audit_stabilization_and_analytics_plan.md)
+No active project-level ExecPlan (as of 2026-05-17).
 
-Next default work item: continue the first incomplete session in the active plan unless the user names
-another session or plan.
+Completed: [Post-Audit Stabilization And Analytics Plan](2026-05-17_post_audit_stabilization_and_analytics_plan.md) (Sessions 02–20, `RM-623`).
+
+Next default backlog: [docs/ROADMAP.md](../ROADMAP.md) Phase 5 (`RM-500` UI surface decision) or explicit user-directed work. Phase 6 post-closure audit triage runs only when the user requests it.
 
 ## Major Plan History
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
 | 2026-05-17 | [Project Development Session Plan](2026-05-17_project_development_session_plan.md) | Completed | [Full Project System Audit](../audits/2026-05-17_full_project_system_audit.md) | Sessions 01-20 and post-closure triage are complete; keep as historical project memory. |
-| 2026-05-17 | [Post-Audit Stabilization And Analytics Plan](2026-05-17_post_audit_stabilization_and_analytics_plan.md) | Active | [Post-Session Deep System Audit](../audits/2026-05-17_post_session_deep_system_audit.md) | Resume from the first incomplete session in this plan. |
+| 2026-05-17 | [Post-Audit Stabilization And Analytics Plan](2026-05-17_post_audit_stabilization_and_analytics_plan.md) | Completed | [Post-Session Deep System Audit](../audits/2026-05-17_post_session_deep_system_audit.md) | Sessions 02–20 closed 2026-05-17; see plan closure note and [ROADMAP](../ROADMAP.md) RM-623. |
 
 ## Focused Historical ExecPlans
 

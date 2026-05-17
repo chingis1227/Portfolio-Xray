@@ -77,12 +77,26 @@ available without silently changing the policy optimizer.
   (`assumption_sensitivity_v1`, Tier A selection-weight catalog, Tier B evidence ranks,
   stability bands, explicit V1 exclusions, pipeline placement after trade-off); cross-linked
   OUTPUTS, SPEC, selection engine, spec index; recorded `DEC-2026-05-17-009`. Runtime unchanged.
-- [ ] Session 15: Assumption Sensitivity implementation.
-- [ ] Session 16: Pareto/Dominance spec.
-- [ ] Session 17: Pareto/Dominance implementation.
-- [ ] Session 18: Regret Analysis spec.
-- [ ] Session 19: Regret Analysis implementation.
-- [ ] Session 20: Final integration and closure.
+- [x] (2026-05-17) Session 15 completed: implemented `src/assumption_sensitivity.py` (`assumption_sensitivity_v1` JSON/TXT), wired after trade-off in `write_candidate_comparison_outputs`, decision-package summary section; `tests/test_assumption_sensitivity.py`; RM-620 done.
+- [x] (2026-05-17) Session 16 completed: created `docs/specs/pareto_dominance_spec.md`
+  (`pareto_dominance_v1`, strict Pareto objective catalog, pairwise dominance rules,
+  pipeline placement after assumption sensitivity); cross-linked OUTPUTS, SPEC, selection,
+  trade-off, assumption sensitivity, spec index; recorded `DEC-2026-05-17-010`. Runtime unchanged.
+- [x] (2026-05-17) Session 17 completed: implemented `src/pareto_dominance.py` (`pareto_dominance_v1` JSON/TXT),
+  wired after assumption sensitivity in `write_candidate_comparison_outputs`, `es_95` metric projection in
+  comparison builder, decision-package Pareto section; `tests/test_pareto_dominance.py`; RM-621 done.
+- [x] (2026-05-17) Session 18 completed: created `docs/specs/regret_analysis_spec.md`
+  (`regret_analysis_v1`, stress-scenario regret vs best available, reference profiles favored/current/benchmark,
+  optional macro regime slice, pipeline placement after Pareto); cross-linked OUTPUTS, SPEC, selection,
+  pareto, assumption sensitivity, decision package, spec index; recorded `DEC-2026-05-17-011`. Runtime unchanged.
+- [x] (2026-05-17) Session 19 completed: implemented `src/regret_analysis.py` (`regret_analysis_v1` JSON/TXT),
+  wired after Pareto in `write_candidate_comparison_outputs`, decision-package Regret section;
+  `tests/test_regret_analysis.py`; RM-622 done.
+- [x] (2026-05-17) Session 20 completed: broad verification (`verify_docs.py`, 112 focused pipeline
+  tests), smoke `run_compare_variants.py` emitted full V1 decision package including assumption
+  sensitivity, Pareto, and regret artifacts; closed post-audit plan (`RM-623`); updated roadmap,
+  changelog, PRODUCT comparison targets, exec plan register; `KI-2026-05-17-007` remains open for
+  regenerated-output language QA.
 
 ## Surprises & Discoveries
 
@@ -216,8 +230,24 @@ warning catalog, non-binding boundary). Verified with `python scripts/verify_doc
 Session 13 outcome: trade-off and model-risk implementation complete (`DEC-2026-05-17-008`,
 RM-616 done). Handoff: Session 15 (Assumption Sensitivity implementation).
 
-Future sessions must update this section when each milestone completes, noting what changed, what was
-verified, and what remains.
+Session 19 outcome: Regret Analysis implementation complete (`src/regret_analysis.py`,
+`regret_analysis_v1` JSON/TXT after Pareto, decision-package Regret section, `DEC-2026-05-17-011`,
+RM-622 done). Verified with `python -m pytest tests/test_regret_analysis.py -q` and comparison
+pipeline tests. Handoff: Session 20 (final integration and closure).
+
+Session 20 outcome: post-audit plan closed. Ran `python scripts/verify_docs.py` (OK), 112 focused
+decision-pipeline tests (OK), and smoke `python run_compare_variants.py` which refreshed
+`Main portfolio/` artifacts including `assumption_sensitivity.json`, `pareto_dominance.json`,
+`regret_analysis.json`, `tradeoff_explanation.json`, `model_risk_diagnostics.json`, and
+`decision_package_summary.json`. Updated `docs/ROADMAP.md` (`RM-623` done), `docs/exec_plans/README.md`,
+`CHANGELOG.md`, and `PRODUCT.md` comparison targets. Active known issues: `KI-2026-05-17-004` (partial
+utility UI docs), `KI-2026-05-17-007` (regenerated report/PDF language QA). No further sessions in this
+plan unless the user reopens it.
+
+Plan closure (2026-05-17): Sessions 02–20 complete. The V1 file-first decision pipeline is documented,
+tested, and emits a coherent artifact chain through `write_candidate_comparison_outputs`. Main
+optimization remains the production policy path; robust optimization remains candidate/benchmark only.
+Next default backlog is `docs/ROADMAP.md` Phase 5 (RM-500 UI decision) or explicit user-directed work.
 
 ## Context and Orientation
 
@@ -242,11 +272,12 @@ Important terms in this plan:
 - "Generated outputs" are files under output folders such as Main portfolio, candidate folders, PDF
   output folders, caches, and report artifacts. Do not manually edit those as source.
 
-The post-session audit found that the V1 decision pipeline is implemented, but several risks remain.
-Session 02 synced the top-level current-status docs, and Session 03 fixed the duplicate decision ID.
-Remaining risks are that user-facing text has mojibake/broken symbols, reports do not yet fully surface
-the decision package, current-vs-policy workflows need hardening, candidate generation is not yet
-orchestrated, and sensitivity/Pareto/regret analytics are missing.
+The post-session audit found that the V1 decision pipeline was implemented but documentation, reporting,
+and analytics layers were incomplete. Sessions 02–20 addressed those gaps: top-level docs sync,
+decision-package reporting, current-vs-policy workflow, candidate factory orchestration, trade-off/model
+risk, assumption sensitivity, Pareto/dominance, and regret analysis. Residual risks tracked in
+`KNOWN_ISSUES.md`: regenerated-output language QA (`KI-2026-05-17-007`) and partial utility UI status
+wording (`KI-2026-05-17-004`).
 
 ## Documentation Sufficiency
 
@@ -507,21 +538,26 @@ ExecPlan's `Decision Log`, and update the owning spec before code changes.
 
 ## Artifacts and Notes
 
-Current completed baseline before this plan:
+Current completed V1 decision package (file-first, via `write_candidate_comparison_outputs`):
 
 - `candidate_comparison.json`
 - `robustness_scorecard.json`
 - `portfolio_health_score.json`
 - `selection_decision.json`
+- `tradeoff_explanation.json` and `model_risk_diagnostics.json`
+- `assumption_sensitivity.json`
+- `pareto_dominance.json`
+- `regret_analysis.json`
 - `action_plan.json`
 - `monitoring_diff.json`
 - `decision_journal.json`
+- `decision_package_summary.json` / `.txt` (reporting layer)
+- `current_vs_policy_status.json` (when current weights are available)
 
-Known active issue IDs relevant to this plan:
+Known active issue IDs still relevant after plan closure:
 
 - `KI-2026-05-17-004`: partial utility UI status is under-described.
 - `KI-2026-05-17-007`: regenerated representative outputs still need language/readability QA.
-- `KI-2026-05-17-008`: report surfaces still lag new decision artifacts.
 
 The current audit finding IDs for this plan are PSA-001 through PSA-013 in
 `docs/audits/2026-05-17_post_session_deep_system_audit.md`.
@@ -585,3 +621,9 @@ RM-616 spec phase). Handoff moves to Session 13 (implementation).
 
 Revision note, 2026-05-17: Session 14 completed assumption sensitivity spec (`DEC-2026-05-17-009`,
 RM-620 spec phase). Handoff moves to Session 15 (implementation).
+
+Revision note, 2026-05-17: Session 16 completed Pareto/Dominance spec (`DEC-2026-05-17-010`,
+RM-621 spec phase). Handoff moves to Session 17 (implementation).
+
+Revision note, 2026-05-17: Session 20 completed final integration and closure. Plan status: **Completed**.
+`RM-623` done. Resume only on explicit user request; default next backlog is `docs/ROADMAP.md` Phase 5.

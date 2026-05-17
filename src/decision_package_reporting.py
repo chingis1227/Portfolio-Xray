@@ -112,6 +112,9 @@ def build_decision_package_summary_lines(
     workflow_status: dict[str, Any] | None = None,
     tradeoff: dict[str, Any] | None = None,
     model_risk: dict[str, Any] | None = None,
+    assumption_sensitivity: dict[str, Any] | None = None,
+    pareto_dominance: dict[str, Any] | None = None,
+    regret_analysis: dict[str, Any] | None = None,
 ) -> list[str]:
     """Build plain-English summary lines (UTF-8)."""
     analysis_end = (comparison or selection or action or {}).get("analysis_end") or "—"
@@ -274,6 +277,73 @@ def build_decision_package_summary_lines(
                 lines.append(f"  - {row.get('plain_english')}")
     lines.append("")
 
+    lines.append("Assumption sensitivity")
+    lines.append("-" * 40)
+    if not assumption_sensitivity:
+        lines.append("Not available (assumption_sensitivity.json missing).")
+    else:
+        stability = assumption_sensitivity.get("stability_status", "—")
+        client_stability = (
+            "assumption-sensitive"
+            if stability == "fragile"
+            else stability.replace("_", " ")
+        )
+        lines.append(f"  Stability: {client_stability}")
+        rate = assumption_sensitivity.get("favored_stable_rate")
+        if rate is not None:
+            lines.append(f"  Favored stable rate (Tier A): {rate:.1%}")
+        if assumption_sensitivity.get("policy_default_sensitive"):
+            lines.append(
+                "  Policy-default check: composite-only ranking would favor a different profile."
+            )
+        summary = assumption_sensitivity.get("summary_plain_en")
+        if summary:
+            lines.append(f"  {summary}")
+    lines.append("")
+
+    lines.append("Pareto / dominance")
+    lines.append("-" * 40)
+    if not pareto_dominance:
+        lines.append("Not available (pareto_dominance.json missing).")
+    else:
+        lines.append(
+            f"  Efficient set: {pareto_dominance.get('non_dominated_count', '—')} profile(s); "
+            f"dominated: {pareto_dominance.get('dominated_count', '—')}."
+        )
+        if pareto_dominance.get("favored_is_dominated"):
+            lines.append(
+                "  Selection favorite is dominated on evaluated metrics (informational only)."
+            )
+        summary = pareto_dominance.get("summary_plain_en")
+        if summary:
+            lines.append(f"  {summary}")
+    lines.append("")
+
+    lines.append("Regret analysis")
+    lines.append("-" * 40)
+    if not regret_analysis:
+        lines.append("Not available (regret_analysis.json missing).")
+    else:
+        status = regret_analysis.get("regret_status", "—")
+        lines.append(f"  Status: {status}")
+        favored_ref = next(
+            (
+                r
+                for r in regret_analysis.get("reference_profiles") or []
+                if r.get("reference_id") == "favored"
+            ),
+            None,
+        )
+        if favored_ref and favored_ref.get("worst_regret") is not None:
+            lines.append(
+                f"  Favored worst regret: {favored_ref.get('worst_regret')} "
+                f"({favored_ref.get('worst_scenario_id', '—')})."
+            )
+        summary = regret_analysis.get("summary_plain_en")
+        if summary:
+            lines.append(f"  {summary}")
+    lines.append("")
+
     # Action
     lines.append("Action plan")
     lines.append("-" * 40)
@@ -338,6 +408,9 @@ def build_decision_package_summary_lines(
         "selection_decision.json",
         "tradeoff_explanation.json",
         "model_risk_diagnostics.json",
+        "assumption_sensitivity.json",
+        "pareto_dominance.json",
+        "regret_analysis.json",
         "action_plan.json",
         "monitoring_diff.json",
         "decision_journal.json",
@@ -359,6 +432,9 @@ def build_decision_package_report(
     workflow_status: dict[str, Any] | None = None,
     tradeoff: dict[str, Any] | None = None,
     model_risk: dict[str, Any] | None = None,
+    assumption_sensitivity: dict[str, Any] | None = None,
+    pareto_dominance: dict[str, Any] | None = None,
+    regret_analysis: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Machine-readable index plus embedded plain summary."""
     lines = build_decision_package_summary_lines(
@@ -372,6 +448,9 @@ def build_decision_package_report(
         workflow_status=workflow_status,
         tradeoff=tradeoff,
         model_risk=model_risk,
+        assumption_sensitivity=assumption_sensitivity,
+        pareto_dominance=pareto_dominance,
+        regret_analysis=regret_analysis,
     )
     return {
         "schema_version": SCHEMA_VERSION,
@@ -389,6 +468,9 @@ def build_decision_package_report(
             "selection": _section_status(selection is not None),
             "tradeoffs": _section_status(tradeoff is not None),
             "model_risk": _section_status(model_risk is not None),
+            "assumption_sensitivity": _section_status(assumption_sensitivity is not None),
+            "pareto_dominance": _section_status(pareto_dominance is not None),
+            "regret_analysis": _section_status(regret_analysis is not None),
             "action": _section_status(action is not None),
             "monitoring": _section_status(monitoring_diff is not None),
             "journal": _section_status(decision_journal is not None),
@@ -400,6 +482,11 @@ def build_decision_package_report(
             "selection_decision": "selection_decision.json" if selection else None,
             "tradeoff_explanation": "tradeoff_explanation.json" if tradeoff else None,
             "model_risk_diagnostics": "model_risk_diagnostics.json" if model_risk else None,
+            "assumption_sensitivity": (
+                "assumption_sensitivity.json" if assumption_sensitivity else None
+            ),
+            "pareto_dominance": "pareto_dominance.json" if pareto_dominance else None,
+            "regret_analysis": "regret_analysis.json" if regret_analysis else None,
             "action_plan": "action_plan.json" if action else None,
             "monitoring_diff": "monitoring_diff.json" if monitoring_diff else None,
             "decision_journal": "decision_journal.json" if decision_journal else None,
@@ -455,6 +542,9 @@ def write_decision_package_reporting_outputs(
     workflow_status: dict[str, Any] | None = None,
     tradeoff: dict[str, Any] | None = None,
     model_risk: dict[str, Any] | None = None,
+    assumption_sensitivity: dict[str, Any] | None = None,
+    pareto_dominance: dict[str, Any] | None = None,
+    regret_analysis: dict[str, Any] | None = None,
     append_report_txt: bool = True,
 ) -> dict[str, Path]:
     project_root = project_root or Path.cwd()
@@ -481,6 +571,12 @@ def write_decision_package_reporting_outputs(
         tradeoff = _load_json(out_dir / "tradeoff_explanation.json")
     if model_risk is None:
         model_risk = _load_json(out_dir / "model_risk_diagnostics.json")
+    if assumption_sensitivity is None:
+        assumption_sensitivity = _load_json(out_dir / "assumption_sensitivity.json")
+    if pareto_dominance is None:
+        pareto_dominance = _load_json(out_dir / "pareto_dominance.json")
+    if regret_analysis is None:
+        regret_analysis = _load_json(out_dir / "regret_analysis.json")
 
     doc = build_decision_package_report(
         comparison=comparison,
@@ -493,6 +589,9 @@ def write_decision_package_reporting_outputs(
         workflow_status=workflow_status,
         tradeoff=tradeoff,
         model_risk=model_risk,
+        assumption_sensitivity=assumption_sensitivity,
+        pareto_dominance=pareto_dominance,
+        regret_analysis=regret_analysis,
     )
     paths: dict[str, Path] = {}
     json_path = out_dir / "decision_package_summary.json"

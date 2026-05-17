@@ -220,6 +220,7 @@ def _metric_fields_from_snapshot(metrics: dict[str, Any]) -> dict[str, Any]:
         "sortino",
         "beta_portfolio",
         "correlation_benchmark",
+        "es_95",
     )
     out: dict[str, Any] = {}
     for key in keys:
@@ -1001,6 +1002,49 @@ def write_candidate_comparison_outputs(
         )
     )
 
+    model_risk_doc = _load_json(
+        paths.get("model_risk_diagnostics_json") or out_dir / "model_risk_diagnostics.json"
+    )
+    from src.assumption_sensitivity import write_assumption_sensitivity_outputs
+
+    paths.update(
+        write_assumption_sensitivity_outputs(
+            cfg,
+            project_root=project_root,
+            comparison=comparison,
+            selection=selection_doc,
+            health=health_doc,
+            robustness=robustness_doc,
+            model_risk=model_risk_doc,
+        )
+    )
+
+    from src.pareto_dominance import write_pareto_dominance_outputs
+
+    paths.update(
+        write_pareto_dominance_outputs(
+            cfg,
+            project_root=project_root,
+            comparison=comparison,
+            selection=selection_doc,
+        )
+    )
+
+    pareto_doc = _load_json(
+        paths.get("pareto_dominance_json") or out_dir / "pareto_dominance.json"
+    )
+    from src.regret_analysis import write_regret_analysis_outputs
+
+    paths.update(
+        write_regret_analysis_outputs(
+            cfg,
+            project_root=project_root,
+            comparison=comparison,
+            selection=selection_doc,
+            pareto=pareto_doc,
+        )
+    )
+
     from src.current_vs_policy import write_current_vs_policy_status_outputs
 
     paths.update(
@@ -1066,8 +1110,19 @@ def write_candidate_comparison_outputs(
     tradeoff_doc = _load_json(
         paths.get("tradeoff_explanation_json") or out_dir / "tradeoff_explanation.json"
     )
-    model_risk_doc = _load_json(
-        paths.get("model_risk_diagnostics_json") or out_dir / "model_risk_diagnostics.json"
+    if model_risk_doc is None:
+        model_risk_doc = _load_json(
+            paths.get("model_risk_diagnostics_json") or out_dir / "model_risk_diagnostics.json"
+        )
+    assumption_doc = _load_json(
+        paths.get("assumption_sensitivity_json") or out_dir / "assumption_sensitivity.json"
+    )
+    if pareto_doc is None:
+        pareto_doc = _load_json(
+            paths.get("pareto_dominance_json") or out_dir / "pareto_dominance.json"
+        )
+    regret_doc = _load_json(
+        paths.get("regret_analysis_json") or out_dir / "regret_analysis.json"
     )
     paths.update(
         write_decision_package_reporting_outputs(
@@ -1083,6 +1138,9 @@ def write_candidate_comparison_outputs(
             workflow_status=workflow_status,
             tradeoff=tradeoff_doc,
             model_risk=model_risk_doc,
+            assumption_sensitivity=assumption_doc,
+            pareto_dominance=pareto_doc,
+            regret_analysis=regret_doc,
         )
     )
 

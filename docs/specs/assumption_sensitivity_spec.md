@@ -25,8 +25,8 @@ The Assumption Sensitivity layer:
 | **Input assumptions / `analysis_setup`** | Runtime configuration of the run ([input_assumptions_spec.md](input_assumptions_spec.md)); not perturbed in V1. |
 | **Selection Engine** | Produces baseline `favored_candidate_id`; unchanged by this layer in V1. |
 | **Trade-off / Model Risk** | Price of change and warning catalog; complementary diagnostics. |
-| **Pareto / Dominance** | Separate future module ([post-audit plan](../exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md) Sessions 16–17). |
-| **Regret Analysis** | Separate future module (Sessions 18–19). |
+| **Pareto / Dominance** | Multi-criteria dominance pruning ([pareto_dominance_spec.md](pareto_dominance_spec.md)); implementation Session 17. |
+| **Regret Analysis** | Scenario opportunity loss vs best available ([regret_analysis_spec.md](regret_analysis_spec.md)); implementation Session 19. |
 | **`src/robustness.py`** | Optimizer weight stability across horizons; unrelated to this artifact. |
 
 ## Product Boundary
@@ -66,6 +66,8 @@ run_compare_variants.py
        -> selection_decision
        -> tradeoff_explanation + model_risk_diagnostics
        -> [Session 15] assumption_sensitivity  (this spec)
+       -> pareto_dominance
+       -> [Session 19] regret_analysis  ([regret_analysis_spec.md](regret_analysis_spec.md))
        -> current_vs_policy_status
        -> action_plan
        -> monitoring, journal, decision_package_reporting

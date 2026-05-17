@@ -48,7 +48,7 @@ Recorded defaults when the user continues the plan without overrides:
 1. **Decision tone:** neutral decision-support only (no direct trade imperatives in Selection/No-Trade artifacts).
 2. **Default favored candidate:** `policy` when `status` is `available` or `degraded` and mandate gates allow; otherwise the highest **composite selection score** among scored non-current candidates (see [Selection model](#selection-model-v1)).
 3. **No-Trade baseline:** compare **`current`** (role `user_current`) to the **favored target** (normally `policy`; if policy is unavailable, favored target is the composite winner). If `current` is `unavailable`, No-Trade is not computed; decision may still select a favored non-current candidate with a warning.
-4. **V1 scope:** composite ranking from Health + Robustness + mandate gates only. **Pareto dominance** and **regret analysis** remain future specs. **Assumption sensitivity** is specified in [assumption_sensitivity_spec.md](assumption_sensitivity_spec.md) as a **diagnostic-only** layer that does not change Selection output in V1.
+4. **V1 scope:** composite ranking from Health + Robustness + mandate gates only. **Pareto dominance** is specified in [pareto_dominance_spec.md](pareto_dominance_spec.md) as a **diagnostic-only** layer that does not change Selection output in V1. **Regret analysis** is specified in [regret_analysis_spec.md](regret_analysis_spec.md) as a **diagnostic-only** layer that does not change Selection output in V1. **Assumption sensitivity** is specified in [assumption_sensitivity_spec.md](assumption_sensitivity_spec.md) as a **diagnostic-only** layer that does not change Selection output in V1.
 5. **Binding boundary:** Selection output is a **formal decision record** for the product workflow, but it remains **non-executing** (no broker integration, no automatic weight writes).
 
 ## Canonical Artifacts
@@ -329,7 +329,7 @@ Downstream commentary may **reference** the decision artifact but must not contr
 
 ## Non-Goals (V1)
 
-- Pareto / dominance pruning (future product analytics; see [PRODUCT.md](../../PRODUCT.md)).
+- Pareto / dominance pruning (implemented in [pareto_dominance_spec.md](pareto_dominance_spec.md); diagnostic-only in V1).
 - Regret analysis and assumption sensitivity grids.
 - Transaction cost models beyond Action Engine V1 simple bps-on-turnover (see [action_engine_spec.md](action_engine_spec.md)).
 - Automatic weight release or optimizer re-run.

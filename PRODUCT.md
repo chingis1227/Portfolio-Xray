@@ -440,11 +440,10 @@ Current implementation:
 
 Target additions:
 
-- Full Portfolio Comparison Arena is TBD.
-- Orchestrated Candidate Portfolio Factory is TBD.
-- Current-vs-policy workflow hardening is TBD.
-- Pareto / dominance UI is TBD.
-- Regret Analysis UI is TBD.
+- Full Portfolio Comparison Arena UI is TBD (file-first compare, factory, Pareto, and regret artifacts are implemented).
+- Orchestrated Candidate Portfolio Factory: implemented via [run_candidate_factory.py](run_candidate_factory.py) (unified product UX TBD).
+- Current-vs-policy workflow: implemented file-first via [current_vs_policy.py](src/current_vs_policy.py) and `run_report.py --materialize-current` (product UX TBD).
+- Pareto / dominance and Regret Analysis: implemented as `pareto_dominance.json` and `regret_analysis.json` (UI TBD).
 
 ### 10. Recommendation & Action
 
@@ -595,9 +594,9 @@ Current implementation:
 | Portfolio Health Score | Implemented (diagnostic) | [portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md), [src/portfolio_health_score.py](src/portfolio_health_score.py) |
 | Robustness Scorecard | Implemented (diagnostic) | Spec: [robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md); code: `src/robustness_scorecard.py` |
 | Selection Engine | Implemented | [selection_engine_spec.md](docs/specs/selection_engine_spec.md), [src/selection_engine.py](src/selection_engine.py) |
-| Assumption Sensitivity | Partial | Spec: [assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md); implementation Session 15 |
-| Pareto / Dominance Check | Target | TBD |
-| Regret Analysis | Target | TBD |
+| Assumption Sensitivity | Implemented (V1) | [assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md); `src/assumption_sensitivity.py` after trade-off in compare pipeline |
+| Pareto / Dominance Check | Implemented (V1) | [src/pareto_dominance.py](src/pareto_dominance.py); [pareto_dominance_spec.md](docs/specs/pareto_dominance_spec.md) |
+| Regret Analysis | Implemented (V1) | [regret_analysis_spec.md](docs/specs/regret_analysis_spec.md); `src/regret_analysis.py` |
 | Trade-off Explanation | Implemented | `tradeoff_explanation_v1` via [tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py) |
 | Action Engine | Implemented (V1) | `action_plan.json` via [src/action_engine.py](src/action_engine.py); mechanical trades via [src/rebalance.py](src/rebalance.py) |
 | Rebalancing Advisor | Implemented (V1) | `action_plan.txt` companion summary |

@@ -296,6 +296,9 @@ def test_write_outputs_and_legacy_subset(tmp_path: Path) -> None:
     assert paths.get("portfolio_health_score_json", Path()).is_file()
     assert paths.get("robustness_scorecard_json", Path()).is_file()
     assert paths.get("tradeoff_explanation_json", Path()).is_file()
+    assert paths.get("assumption_sensitivity_json", Path()).is_file()
+    assert paths.get("pareto_dominance_json", Path()).is_file()
+    assert paths.get("regret_analysis_json", Path()).is_file()
     assert paths.get("model_risk_diagnostics_json", Path()).is_file()
     with open(paths["candidate_comparison_json"], encoding="utf-8") as f:
         doc = json.load(f)

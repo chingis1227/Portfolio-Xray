@@ -43,6 +43,11 @@ Omit empty categories.
 
 ### Added
 
+- Implemented [src/regret_analysis.py](src/regret_analysis.py): `regret_analysis_v1` JSON/TXT, stress-scenario regret vs best available, reference profiles favored/current/benchmark, Tier B CAGR slice, wired after Pareto in `write_candidate_comparison_outputs`, decision-package Regret section; [tests/test_regret_analysis.py](tests/test_regret_analysis.py) (post-audit Session 19).
+- Added [regret analysis spec](docs/specs/regret_analysis_spec.md): `regret_analysis_v1` contract, stress-scenario regret vs best available, reference profiles favored/current/benchmark, pipeline placement after Pareto (post-audit Session 18); decision `DEC-2026-05-17-011`.
+- Implemented [src/pareto_dominance.py](src/pareto_dominance.py): `pareto_dominance_v1` JSON/TXT, strict Pareto dominance on comparison metrics, wired after assumption sensitivity in `write_candidate_comparison_outputs`, decision-package section; optional `es_95` in comparison metrics; [tests/test_pareto_dominance.py](tests/test_pareto_dominance.py) (post-audit Session 17).
+- Added [pareto dominance spec](docs/specs/pareto_dominance_spec.md): `pareto_dominance_v1` contract, strict Pareto objectives, pairwise dominance rules, pipeline placement after assumption sensitivity (post-audit Session 16); decision `DEC-2026-05-17-010`.
+- Implemented [src/assumption_sensitivity.py](src/assumption_sensitivity.py): `assumption_sensitivity_v1` JSON/TXT, Tier A/B variant grid, wired after trade-off in `write_candidate_comparison_outputs`, decision-package summary section; [tests/test_assumption_sensitivity.py](tests/test_assumption_sensitivity.py) (post-audit Session 15).
 - Added [assumption sensitivity spec](docs/specs/assumption_sensitivity_spec.md): `assumption_sensitivity_v1` contract, Tier A selection-weight variants, Tier B evidence ranks, stability bands, pipeline placement after trade-off (post-audit Session 14); decision `DEC-2026-05-17-009`.
 - Implemented [src/tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py): `tradeoff_explanation_v1` and `model_risk_diagnostics_v1` after selection in `write_candidate_comparison_outputs`; decision package and journal integration; [tests/test_tradeoff_and_model_risk.py](tests/test_tradeoff_and_model_risk.py) (post-audit Session 13).
 - Added [trade-off and model risk spec](docs/specs/tradeoff_and_model_risk_spec.md): `tradeoff_explanation_v1` and `model_risk_diagnostics_v1` contracts, warning catalog, pipeline placement after selection (post-audit Session 12); decision `DEC-2026-05-17-008`.
@@ -75,6 +80,7 @@ Omit empty categories.
 
 ### Changed
 
+- Closed post-audit stabilization plan (Session 20, `RM-623`): marked [post-audit ExecPlan](docs/exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md) completed, updated [docs/ROADMAP.md](docs/ROADMAP.md) and [exec plan register](docs/exec_plans/README.md), synced [PRODUCT.md](PRODUCT.md) comparison targets with implemented factory/current-vs-policy/Pareto/regret file-first artifacts.
 - Cross-linked current-vs-policy workflow spec from candidate comparison, input assumptions, selection, action, reporting outputs, OUTPUTS, and spec index (post-audit Session 08).
 - Cleaned source/generator text defaults across optimization/report/PDF/config/docs paths so project artifacts use English and common mojibake markers are removed from source.
 - Synced detailed decision-package specs so reporting, comparison, selection, action, monitoring, and journal contracts describe the implemented V1 artifact chain instead of stale future/TBD neighbors.

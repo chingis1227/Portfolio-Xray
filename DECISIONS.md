@@ -186,6 +186,34 @@ Title: Assumption Sensitivity V1 — selection-stability grid without optimizer 
 - Related documents: [docs/specs/assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md), [docs/specs/selection_engine_spec.md](docs/specs/selection_engine_spec.md), [OUTPUTS.md](OUTPUTS.md), [docs/ROADMAP.md](docs/ROADMAP.md) RM-620.
 - Review trigger: Revisit when Health/Robustness can be re-scored on alternate windows without full pipeline re-run, or when No-Trade threshold stress is added.
 
+Decision ID: DEC-2026-05-17-010
+Title: Pareto / Dominance Check V1 — strict metric-only dominance diagnostic
+
+- Status: accepted
+- Date: 2026-05-17
+- Decision: Adopt [pareto_dominance_spec.md](docs/specs/pareto_dominance_spec.md) with strict Pareto dominance on primary-window `cagr`, `vol_annual`, `max_drawdown`, and `stress_worst_loss`, optional `es_95` and `turnover_vs_current_half_sum_pct` when present. Artifact is diagnostic-only, does not change `selection_decision.json`, and runs after assumption sensitivity in the comparison pipeline.
+- Context: Post-audit Session 16 (RM-621 spec phase); product concept section 15 and audit PSA-012; Selection V1 defers dominance from binding logic.
+- Rationale: Surfaces clearly weaker candidates using existing comparison exports without duplicating metric formulas or auto-pruning Selection output.
+- Alternatives considered: Mandate-aware dominance (rejected for V1 — blurs binding gates with metric evidence); auto-remove dominated candidates from Selection (rejected — violates diagnostic boundary); Sharpe-only dominance (rejected — overlaps Assumption Sensitivity Tier B).
+- Assumptions: Session 17 implements the Pareto/Dominance builder, wires into `write_candidate_comparison_outputs`, and extends decision-package reporting.
+- Consequences: `pareto_dominance_v1` contract; journal/report may cite efficient set and `favored_is_dominated`; Regret Analysis spec in Session 18, implementation Session 19.
+- Related documents: [docs/specs/pareto_dominance_spec.md](docs/specs/pareto_dominance_spec.md), [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [OUTPUTS.md](OUTPUTS.md), [docs/ROADMAP.md](docs/ROADMAP.md) RM-621.
+- Review trigger: Revisit when multi-window Pareto surfaces or mandate-aware dominance are product-required.
+
+Decision ID: DEC-2026-05-17-011
+Title: Regret Analysis V1 — stress-scenario opportunity-loss diagnostic
+
+- Status: accepted
+- Date: 2026-05-17
+- Decision: Adopt [regret_analysis_spec.md](docs/specs/regret_analysis_spec.md) with stress-scenario regret `best_pnl - pnl_R` over the evaluable opportunity set, reference profiles `favored`, `current`, and `benchmark`, headline `mean_regret` / `worst_regret`, optional macro regime slice when comparison exports regime PnL, and informational primary-window CAGR regret (Tier B). Artifact is diagnostic-only, does not change `selection_decision.json`, and runs after Pareto dominance in the comparison pipeline.
+- Context: Post-audit Session 18 (RM-622 spec phase); product concept section 16 and audit PSA-012; comparison-ranking agent regret guidance.
+- Rationale: Surfaces opportunity cost of committing to a reference profile under named stress scenarios using existing comparison exports without duplicating stress engine runs or auto-overriding Selection.
+- Alternatives considered: Regret vs Pareto-efficient set only (deferred to V2); auto-switch selection on high regret (rejected — violates diagnostic boundary); full macro regime regret without projected comparison fields (deferred — optional slice with `not_available` when data missing).
+- Assumptions: Session 19 implements the Regret Analysis builder, wires into `write_candidate_comparison_outputs`, and extends decision-package reporting.
+- Consequences: `regret_analysis_v1` contract; journal/report may cite `worst_regret` for favored reference; implementation remains Session 19.
+- Related documents: [docs/specs/regret_analysis_spec.md](docs/specs/regret_analysis_spec.md), [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [OUTPUTS.md](OUTPUTS.md), [docs/ROADMAP.md](docs/ROADMAP.md) RM-622.
+- Review trigger: Revisit when regret-vs-Pareto-set or multi-window regret surfaces are product-required.
+
 Decision ID: DEC-2026-05-17-008
 Title: Trade-off Explanation and Model Risk Diagnostics V1 — separate diagnostic artifacts
 
