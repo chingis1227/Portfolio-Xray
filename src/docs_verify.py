@@ -52,7 +52,7 @@ EXCLUDE_DIR_NAMES: frozenset[str] = frozenset(
         "minimum_cvar_uncapped portfolio",
         "robust_mean_variance_constrained portfolio",
         "robust_mean_variance_uncapped portfolio",
-        "00_ВАЖНОЕ",
+        "00_IMPORTANT",
     }
 )
 

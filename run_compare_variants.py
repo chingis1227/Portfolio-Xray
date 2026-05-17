@@ -32,6 +32,16 @@ def main() -> None:
         msg += f"\nRobustness scorecard: {paths['robustness_scorecard_json']}"
     if "portfolio_health_score_json" in paths:
         msg += f"\nPortfolio health score: {paths['portfolio_health_score_json']}"
+    if "selection_decision_json" in paths:
+        msg += f"\nSelection decision: {paths['selection_decision_json']}"
+    if "action_plan_json" in paths:
+        msg += f"\nAction plan: {paths['action_plan_json']}"
+    if "monitoring_diff_json" in paths:
+        msg += f"\nMonitoring diff: {paths['monitoring_diff_json']}"
+    if "decision_journal_json" in paths:
+        msg += f"\nDecision journal: {paths['decision_journal_json']}"
+    if "decision_package_summary_txt" in paths:
+        msg += f"\nDecision package summary: {paths['decision_package_summary_txt']}"
     print(msg)
 
 

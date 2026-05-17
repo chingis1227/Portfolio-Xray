@@ -122,7 +122,7 @@ SKIP_DIR_NAMES = {
     ".pytest_cache",
     "node_modules",
     ".git",
-    "00_ВАЖНОЕ",
+    "00_IMPORTANT",
 }
 
 SKIP_PATH_PARTS = {

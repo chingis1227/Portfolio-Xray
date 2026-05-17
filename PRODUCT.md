@@ -436,11 +436,13 @@ User questions answered:
 
 Current implementation:
 
-- Some comparison scripts and variant reports exist.
+- Canonical file-first comparison exists through `run_compare_variants.py` and `src/candidate_comparison.py`. It emits `candidate_comparison.json` / `.txt` and downstream V1 artifacts when inputs are available.
 
 Target additions:
 
 - Full Portfolio Comparison Arena is TBD.
+- Orchestrated Candidate Portfolio Factory is TBD.
+- Current-vs-policy workflow hardening is TBD.
 - Pareto / dominance UI is TBD.
 - Regret Analysis UI is TBD.
 
@@ -487,11 +489,11 @@ User questions answered:
 
 Current implementation:
 
-- Rebalance tooling and commentary exist in parts of the project.
+- V1 Selection/No-Trade and Action artifacts are implemented. `src/selection_engine.py` emits `selection_decision.json` / `.txt`; `src/action_engine.py` emits `action_plan.json` / `.txt`; mechanical rebalance helpers remain available through `src/rebalance.py`.
 
 Target additions:
 
-- Formal Selection Engine and No-Trade: implemented ([selection_engine_spec.md](docs/specs/selection_engine_spec.md), [src/selection_engine.py](src/selection_engine.py); `selection_decision.json`).
+- Richer trade-off and model-risk explanation is TBD.
 - Risk improvement per 1% turnover is TBD.
 
 ### 11. Report Export
@@ -602,7 +604,7 @@ Current implementation:
 | No-Trade Recommendation | Implemented (V1) | Same module as Selection Engine; `no_material_rebalance` outcome |
 | AI Portfolio Commentary | Core | Implemented in report/commentary form |
 | Monitoring / What Changed | Implemented (V1) | [monitoring_spec.md](docs/specs/monitoring_spec.md), [src/monitoring.py](src/monitoring.py) |
-| Decision Journal | Core target | Implemented (V1) — `decision_journal.json` via [decision_journal.py](src/decision_journal.py) |
+| Decision Journal | Implemented (V1) | `decision_journal.json` via [decision_journal.py](src/decision_journal.py); user-maintained journal workflow remains TBD |
 
 ## User Outputs
 
@@ -617,7 +619,7 @@ At the end of a complete analysis, the user should receive:
 - A trade-off explanation.
 - Actionable rebalance details where applicable.
 - A professional report.
-- A decision record when the Decision Journal exists.
+- A generated decision record from the V1 Decision Journal.
 
 ## Empty / Error States
 
@@ -654,11 +656,9 @@ Expected behavior:
 
 - What is the first real UI surface: dashboard, static report, local app, or web app?
 - Should the initial product be investor-first, advisor-first, or report-first?
-- Which Portfolio Health Score components should be formalized first?
 - What minimum comparison set is required for launch?
-- What is the first version of the no-trade rule?
 - How should monitoring frequency work?
-- What fields are mandatory in the Decision Journal?
+- What fields and review workflow are required for a user-maintained Decision Journal beyond generated V1 records?
 
 ## Source Of Truth Relationship
 

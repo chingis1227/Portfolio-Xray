@@ -117,6 +117,30 @@ portfolio logic.
 | RM-500 | Planned | Session 21 | Decide the first real product UI surface: static report package, local dashboard, or web app. | Phases 1-4 enough for the chosen surface. | [DESIGN](../DESIGN.md), [PRODUCT](../PRODUCT.md), [ARCHITECTURE](../ARCHITECTURE.md), `config_ui/`, `results_dashboard/` | Decision record and updated product docs if direction changes | Documentation checks; no code unless explicitly requested. |
 | RM-501 | Planned | Session 22 | Implement the first narrow UI slice. | RM-500 and stable artifact contracts. | Chosen UI code, stable artifact specs, [DESIGN](../DESIGN.md) | First UI surface around existing artifacts | UI tests if present; local browser inspection for significant frontend changes. |
 
+## Phase 6: Post-Session Audit And Next Stage
+
+Goal: reconcile the project after Sessions 01-20, then stabilize the new decision pipeline before
+adding larger product surfaces or analytics.
+
+Exit condition: stale status docs are synced, the decision package has a clear report/export surface,
+source text is clean enough for user-facing reports, and the next analytical/UI work has accepted specs.
+
+| ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| RM-600 | Done | Post-closure 1-4 | Perform the post-session deep audit, including concept comparison, weak-block triage, mojibake triage, and Main-vs-robust optimizer review. | Sessions 01-20 complete. | [post-session audit](audits/2026-05-17_post_session_deep_system_audit.md), this roadmap, [known issues](../KNOWN_ISSUES.md), [decisions](../DECISIONS.md) | New audit and next-stage backlog | `python scripts/verify_docs.py`. |
+| RM-601 | Done | Post-audit Session 01 | Create the post-audit stabilization and analytics ExecPlan. | RM-600. | [post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md), this roadmap | Sessionized handoff plan for RM-610 through RM-622 | `python scripts/verify_docs.py`. |
+| RM-610 | Done | Post-audit Session 02 | Sync top-level current-status docs after Sessions 01-20. | RM-601. | [README](../README.md), [AGENTS](../AGENTS.md), [SPEC](../SPEC.md), [PRODUCT](../PRODUCT.md), [ARCHITECTURE](../ARCHITECTURE.md), this roadmap, [post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md) | Implemented file-first V1 decision artifacts no longer described as target/TBD in top-level docs | `python scripts/verify_docs.py`; targeted stale-reference search for Selection/Health/Monitoring/Journal TBD wording. |
+| RM-611 | Done | Post-audit Session 03 | Fix decision-log and planning-doc integrity issues. | RM-601. | [DECISIONS](../DECISIONS.md), [post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md), this roadmap | Unique decision IDs; handoff text now points to Session 04 | `python scripts/verify_docs.py`; targeted search for `DEC-2026-05-17-003` references. |
+| RM-612 | Done | Post-audit Sessions 04, 06, 07 | Update detailed specs and report/PDF surfaces for the full decision package. | RM-610 recommended. | [decision package reporting spec](specs/decision_package_reporting_spec.md), [decision_package_reporting.py](../src/decision_package_reporting.py), [reporting outputs spec](specs/reporting_outputs_spec.md), [pdf_reports.py](../src/pdf_reports.py) | `decision_package_summary.txt` / `.json`, `report.txt` append, CLI paths, optional `Main portfolio_decision_package.pdf` | `tests/test_decision_package_reporting.py`; `python scripts/verify_docs.py`. |
+| RM-613 | In progress | Post-audit Session 05 | Fix remaining source/generator mojibake, broken symbols, and English-language acceptance gaps. | RM-600. | `src/pdf_reports.py`, runner scripts, robust optimizer scripts/specs, [DESIGN](../DESIGN.md), affected docs | Source/generator text is cleaned; representative generated output refresh remains for report/PDF sessions | Targeted Cyrillic/mojibake source scans pass; `python scripts/verify_docs.py` passes. |
+| RM-614 | Planned | Post-audit Sessions 08, 09 | Define and harden current-vs-policy/no-trade workflow. | RM-301, RM-310, RM-601. | selection/action specs, candidate comparison workflow, relevant runners | No-Trade is only presented when current and target inputs are reliable | Focused selection/action tests and smoke comparison. |
+| RM-615 | Planned | Post-audit Sessions 10, 11 | Decide whether candidate generation should be orchestrated as a factory before comparison and implement the chosen factory. | RM-601. | candidate portfolio specs, candidate comparison spec, runners | Accepted candidate factory/workflow decision and factory summary | Decision record, docs verify, focused comparison tests. |
+| RM-616 | Planned | Post-audit Sessions 12, 13 | Specify and implement the trade-off explanation and model-risk diagnostics layer. | RM-612 recommended. | comparison/selection/reporting specs and modules | Trade-off/model-risk artifact and report surface | New focused tests plus report smoke. |
+| RM-620 | Planned | Post-audit Sessions 14, 15 | Specify and implement Assumption Sensitivity. | RM-610 and RM-612 recommended. | New or existing specs under `docs/specs/`, comparison/selection modules | Sensitivity artifact and tests | New focused tests. |
+| RM-621 | Planned | Post-audit Sessions 16, 17 | Specify and implement Pareto/Dominance. | RM-620 recommended. | Selection/comparison specs and modules | Pareto/dominance artifact and tests | New focused tests. |
+| RM-622 | Planned | Post-audit Sessions 18, 19 | Specify and implement Regret Analysis. | RM-620 recommended. | Selection/comparison/scenario specs and modules | Regret artifact and tests | New focused tests. |
+| RM-623 | Planned | Post-audit Session 20 | Close the post-audit plan with broad verification and project-memory updates. | RM-610 through RM-622 complete or explicitly deferred. | [post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md), [CHANGELOG](../CHANGELOG.md), [known issues](../KNOWN_ISSUES.md), [decisions](../DECISIONS.md) | Closure note and updated project registers | Docs verify, focused tests, relevant smoke run when data allows. |
+
 ## Audit Mapping
 
 | Audit ID | Roadmap handling |
@@ -130,19 +154,21 @@ portfolio logic.
 | AUD-007 | Fixed by updating [DECISIONS](../DECISIONS.md). |
 | AUD-008 | Fixed by registering unresolved issues in [KNOWN_ISSUES](../KNOWN_ISSUES.md). |
 | AUD-009 | Fixed by RM-006 in Session 06; resolved issue removed from [KNOWN_ISSUES](../KNOWN_ISSUES.md). |
-| AUD-010 | Deferred to RM-100 and RM-101. |
-| AUD-011 | Deferred to RM-200 through RM-301; current X-Ray/commentary remain diagnostic-only. |
+| AUD-010 | Resolved at artifact level by RM-100 and RM-101; UI/workspace follow-up continues under RM-612, RM-614, and RM-615. |
+| AUD-011 | Resolved at V1 decision-artifact level by RM-200 through RM-301; report/UI integration continues under RM-612. |
 | AUD-012 | Resolved via RM-007 (Session 07): `scripts/verify_docs.py` and `tests/test_docs_links.py`. |
+| PSA-001 through PSA-013 | Registered in the [post-session audit](audits/2026-05-17_post_session_deep_system_audit.md); follow-up work starts at RM-610. |
 
 ## Session Boundary Rule
 
-Use [the session plan](exec_plans/2026-05-17_project_development_session_plan.md) to continue work.
-Complete the first incomplete or partial session before starting later items. Update that ExecPlan
-after each session with one of three states: completed, partial, or blocked.
+Use [the post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md)
+for RM-610 and later post-audit work. Complete one post-audit session per fresh chat unless the user
+explicitly asks to combine sessions. Update that ExecPlan after each session with completed, partial,
+or blocked status.
 
-## Proposed Future Artifacts
+## Implemented Decision Artifacts
 
-These names are proposals until accepted by owning specs:
+These artifacts now have accepted V1 specs and implementations:
 
 - `candidate_comparison.json`
 - `robustness_scorecard.json`

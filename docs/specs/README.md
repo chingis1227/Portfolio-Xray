@@ -48,6 +48,7 @@ Top-level documents stay compact:
 | Robust Mean-Variance baselines and lambda calibration | [robust_mv_spec.md](robust_mv_spec.md) |
 | Scenario-Based Robust Optimization | [robust_scenario_optimization_spec.md](robust_scenario_optimization_spec.md) |
 | Reporting outputs and artifacts | [reporting_outputs_spec.md](reporting_outputs_spec.md) |
+| Decision package report/PDF summary | [decision_package_reporting_spec.md](decision_package_reporting_spec.md) |
 | ETF and stock taxonomy | [taxonomy_spec.md](taxonomy_spec.md) |
 | ETF taxonomy schema | [etf_universe_spec.md](etf_universe_spec.md) |
 | Stock taxonomy schema | [stock_universe_spec.md](stock_universe_spec.md) |

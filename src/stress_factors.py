@@ -43,9 +43,9 @@ PORTFOLIO_PCA_ROLLING_WINDOW_WEEKS = 52
 PORTFOLIO_PCA_ROLLING_STEP_WEEKS = 4
 PORTFOLIO_PCA_EPS = 1e-12
 
-# Breusch–Godfrey LM: lag orders (weekly residuals; same auxiliary regression as in stress spec §8.2)
+# Breusch-Godfrey LM: lag orders (weekly residuals; same auxiliary regression as in stress spec Section 8.2)
 FACTOR_REGRESSION_BG_LAGS: tuple[int, ...] = (1, 2, 4)
-# HAC / Newey–West: max lag for weekly factor regression residuals (≈ 1 календарный месяц)
+# HAC / Newey-West: max lag for weekly factor regression residuals (about one calendar month)
 FACTOR_REGRESSION_HAC_LAGS: int = 4
 
 FACTOR_MONTHS_3Y = 36
@@ -1629,7 +1629,7 @@ def factor_multicollinearity_diagnostics(
 
         # Severity (aligned with stress_testing_spec.md)
         severity = "unknown"
-        assessment_ru = "н/д: не удалось классифицировать."
+        assessment_ru = "N/A: classification was not available."
         mv_for_rule = float("inf") if max_vif_is_infinite else float(max_vif_finite)
         cr_for_rule = float(cond_r) if np.isfinite(cond_r) else float("inf")
         if strongest is not None and (np.isfinite(mv_for_rule) or max_vif_is_infinite):
@@ -1637,18 +1637,18 @@ def factor_multicollinearity_diagnostics(
             if max_vif_is_infinite or mv_for_rule >= 10 or cr_for_rule >= 80 or mr >= 0.95:
                 severity = "high"
                 assessment_ru = (
-                    "Высокая: сильная линейная связь между факторами — отдельные β и p-value "
-                    "интерпретировать осторожно даже при высоком R²."
+                    "High: strong linear relationships between factors; individual beta and p-value "
+                    "estimates should be interpreted carefully even when R^2 is high."
                 )
             elif mv_for_rule >= 5 or cr_for_rule >= 30 or mr >= 0.85:
                 severity = "moderate"
                 assessment_ru = (
-                    "Умеренная: заметная коллинеарность; β по отдельным факторам могут быть менее устойчивыми."
+                    "Moderate: visible collinearity; beta estimates for individual factors may be less stable."
                 )
             else:
                 severity = "low"
                 assessment_ru = (
-                    "Низкая: типичные VIF и cond(R); коллинеарность не доминирует, но попарные корреляции всё равно учитывать."
+                    "Low: typical VIF and cond(R); collinearity is not dominant, but pairwise correlations still matter."
                 )
 
         return {

@@ -335,7 +335,7 @@ def save_config():
     try:
         parsed = yaml.safe_load(yaml_content) or {}
     except yaml.YAMLError as e:
-        return jsonify({"success": False, "error": f"Неверный YAML: {e}"})
+        return jsonify({"success": False, "error": f"Invalid YAML: {e}"})
 
     parsed = apply_profile_to_config(parsed)
     try:

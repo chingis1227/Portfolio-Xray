@@ -65,7 +65,7 @@ WARN_MODEL_RISK_YOUNG_WEIGHT = "WARN_MODEL_RISK_YOUNG_WEIGHT"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Portfolio optimization — single-stage max return + liquidity")
+    parser = argparse.ArgumentParser(description="Portfolio optimization - single-stage max return + liquidity")
     parser.add_argument("--no-cache", action="store_true", help="Ignore cache, download fresh data")
     parser.add_argument("--write-config", action="store_true", help="Write optimized weights to config.yml")
     parser.add_argument("--profile", type=str, default=None, help="Override client_profile")
@@ -85,7 +85,7 @@ def _build_next_actions(violations: list, stress_report: dict | None) -> list[st
         )
     if WARN_MODEL_RISK_YOUNG_WEIGHT in codes:
         actions.append(
-            "Young ETF aggregate weight above warn threshold — consider lower share of candidate/new names or dual-cov settings."
+            "Young ETF aggregate weight above warn threshold - consider lower share of candidate/new names or dual-cov settings."
         )
     return actions
 
@@ -118,7 +118,7 @@ def main() -> None:
         cfg_path = Path(args.config).resolve() if args.config else None
         cfg = load_validated_config(cfg_path)
     except ConfigValidationError as e:
-        logger.error("Ошибка конфигурации: %s", e)
+        logger.error("Configuration error: %s", e)
         raise SystemExit(1)
 
     if args.profile:
@@ -130,7 +130,7 @@ def main() -> None:
             "analysis_mode=optimize_from_universe before running optimization."
         )
         raise SystemExit(1)
-    profile_display = (cfg.client_profile or args.profile or "—").strip() or "—"
+    profile_display = (cfg.client_profile or args.profile or "-").strip() or "-"
 
     out_final = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
     try:
@@ -144,10 +144,10 @@ def main() -> None:
     cash_proxy = cfg.cash_proxy_ticker or "BIL"
     risk_tickers_all = get_risk_portfolio_tickers(cfg.tickers, cfg.cash_proxy_ticker)
     if not risk_tickers_all:
-        logger.error("Нет тикеров для RiskPortfolio (после исключения cash proxy).")
+        logger.error("No tickers for RiskPortfolio after excluding cash proxy.")
         raise SystemExit(1)
 
-    logger.info("Загрузка данных...")
+    logger.info("Loading data...")
     monthly_returns, analysis_end_str, analysis_end, returns_frequency = load_monthly_returns(cfg, args)
     ppy = int(periods_per_year_for(returns_frequency))
 
@@ -244,9 +244,9 @@ def main() -> None:
     )
 
     if not weights_risk:
-        logger.error("Оптимизация не удалась: %s", status)
+        logger.error("Optimization failed: %s", status)
         raise SystemExit(1)
-    logger.info("RiskPortfolio (%d мес.): %s", window_months, status)
+    logger.info("RiskPortfolio (%d months): %s", window_months, status)
 
     if dual_enabled and young_diagnostics:
         effective_months_10y = int(young_diagnostics.get("core_effective_months", len(ret_primary)))
@@ -384,14 +384,14 @@ def main() -> None:
 
     rounded = {t: round(w, 3) for t, w in final_weights.items() if w > 0}
     print("\n" + "=" * 60)
-    print("ВЕСА ПОСЛЕ ОПТИМИЗАЦИИ (профиль: %s)" % profile_display)
+    print("WEIGHTS AFTER OPTIMIZATION (profile: %s)" % profile_display)
     print("=" * 60)
     for t in sorted(rounded.keys(), key=lambda x: (-rounded[x], x)):
         print(f"  {t}: {rounded[t]:.3f}")
     print("=" * 60)
-    print("Сумма весов: %.3f" % sum(final_weights.values()))
-    print("Целевая волатильность: %.2f%%" % (target_vol * 100))
-    print("Волатильность RiskPortfolio (оценка): %.2f%%" % (current_vol * 100))
+    print("Total weight: %.3f" % sum(final_weights.values()))
+    print("Target volatility: %.2f%%" % (target_vol * 100))
+    print("RiskPortfolio volatility estimate: %.2f%%" % (current_vol * 100))
 
     max_dd_limit = abs(cfg.target_max_drawdown_pct) if cfg.target_max_drawdown_pct is not None else None
     mandate_check = mandate_max_drawdown_full_history_check(monthly_returns, final_weights, max_dd_limit)
@@ -437,7 +437,7 @@ def main() -> None:
         except Exception as e:
             logger.warning("Recession factor calibration setup failed: %s; recession severe will use fallback.", e)
     except Exception as e:
-        logger.warning("Не удалось построить факторы для стресса: %s", e)
+        logger.warning("Could not build stress factors: %s", e)
 
     stress_report = run_stress(
         tickers=stress_tickers,
@@ -1109,14 +1109,14 @@ def main() -> None:
             if len(ret_b) >= 2:
                 cov_b = cov_matrix_returns(ret_b, ddof=1, use_shrinkage=use_shrinkage)
                 vol_b = portfolio_vol_annual(weights_baseline, cov_b, periods_per_year=ppy)
-                print("  Baseline: волатильность %.2f%% (vs Full: %.2f%%)" % (vol_b * 100, current_vol * 100))
+                print("  Baseline: volatility %.2f%% (vs Full: %.2f%%)" % (vol_b * 100, current_vol * 100))
 
     out_final = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
     out_final.mkdir(parents=True, exist_ok=True)
     run_result_path = out_final / "run_result.json"
     with open(run_result_path, "w", encoding="utf-8") as f:
         json.dump(run_result, f, indent=2, default=str)
-    print("Результат прогона: %s (status=%s)" % (run_result_path, production_status))
+    print("Run result: %s (status=%s)" % (run_result_path, production_status))
 
     from src.io_export import generate_ips_summary
 
@@ -1125,13 +1125,13 @@ def main() -> None:
     if not mandate_gate_passed:
         logger.error("Mandate gate failed. Weights not written. %s", mandate_check)
         print("")
-        print("--- Мандат MaxDD: веса НЕ записаны (FAIL_MANDATE) ---")
+        print("--- MaxDD mandate: weights NOT written (FAIL_MANDATE) ---")
         raise SystemExit(1)
 
     weights_path = out_final / WEIGHTS_FILENAME
     with open(weights_path, "w", encoding="utf-8") as f:
         yaml.dump(rounded, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-    print("Веса записаны в %s." % weights_path)
+    print("Weights written to %s." % weights_path)
 
     try:
         _resolved = cfg.get_resolved_config()
@@ -1155,7 +1155,7 @@ def main() -> None:
     )
     print_snapshot(snapshot)
     save_snapshot(snapshot, out_final)
-    print("Snapshot сохранён в %s" % (out_final / "snapshot.json"))
+    print("Snapshot saved to %s" % (out_final / "snapshot.json"))
 
     project_root = Path(__file__).resolve().parent
     if not args.no_report:
@@ -1188,7 +1188,7 @@ def main() -> None:
         data["weights"] = rounded
         with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-        print("Веса также записаны в config.yml (weights).")
+        print("Weights also written to config.yml (weights).")
 
 
 if __name__ == "__main__":

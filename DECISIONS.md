@@ -60,6 +60,20 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-05-17-005
+Title: Post-session next stage and optimizer-role boundary
+
+- Status: accepted
+- Date: 2026-05-17
+- Decision: After Sessions 01-20, the next project stage is stabilization and integration of the new decision pipeline before major new analytics or UI. Main optimization remains the production policy path; robust MV and robust scenario optimization remain comparison/candidate paths unless a future accepted spec changes that boundary.
+- Context: The post-session audit found that candidate comparison, robustness, health, selection, action, monitoring, and journal artifacts are implemented, while top-level docs, reporting surfaces, source text quality, and current-vs-policy workflow still need cleanup. It also reviewed Main optimizer inputs/objective/gates against robust optimizer paths and the product concept.
+- Rationale: The project now has the V1 decision artifacts, but the user-facing and source-of-truth layers are not yet stable enough to safely build larger UI or advanced analytics on top. Keeping Main and robust optimizer roles explicit prevents silent changes to production policy behavior.
+- Alternatives considered: Start UI work immediately; replace Main with robust optimization; add assumption sensitivity/Pareto/regret before syncing docs and reports. These were rejected as higher-risk sequencing because they would build on stale docs and incomplete user-facing surfaces.
+- Assumptions: Sessions 01-20 remain the accepted V1 artifact baseline; generated outputs are not source of truth; any optimizer role change requires a new owning spec.
+- Consequences: Near-term roadmap work should prioritize docs/status sync, decision-log integrity, report/PDF decision-package integration, mojibake cleanup, current-vs-policy workflow, and candidate factory orchestration before Sessions 21-22 or new analytics.
+- Related documents: [post-session audit](docs/audits/2026-05-17_post_session_deep_system_audit.md), [docs/ROADMAP.md](docs/ROADMAP.md), [docs/specs/portfolio_construction_policy.md](docs/specs/portfolio_construction_policy.md), [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md), [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md).
+- Review trigger: Revisit if robust optimization is proposed as the production policy optimizer, if a candidate factory becomes authoritative, or before implementing the first full product UI.
+
 Decision ID: DEC-2026-05-17-002
 Title: V1 candidate comparison contract (full registry, current row, Main output)
 
@@ -144,7 +158,7 @@ Title: Make analysis_setup the input-layer runtime contract
 - Related documents: [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md), [OUTPUTS.md](OUTPUTS.md), [docs/specs/reporting_outputs_spec.md](docs/specs/reporting_outputs_spec.md).
 - Review trigger: Revisit when SPEC authorizes taxonomy hard rejection in current repo mode or equal-weight universe-only diagnostics as executable report behavior.
 
-Decision ID: DEC-2026-05-17-003
+Decision ID: DEC-2026-05-17-006
 Title: Selection Engine V1 contract — composite score, policy default, No-Trade materiality
 
 - Status: accepted

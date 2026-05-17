@@ -129,7 +129,7 @@ def run_max_return_optimization(
             import logging
 
             logging.getLogger(__name__).warning(
-                "Тикеры без данных (исключены из оптимизации, вес = 0): %s", sorted(missing)
+                "Tickers without data (excluded from optimization, weight = 0): %s", sorted(missing)
             )
         if not cols:
             return {}, f"FAIL_DATA: no risk tickers with returns (missing: {risk_list})"

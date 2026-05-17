@@ -11,9 +11,9 @@ Update this file only when agent-specific operating instructions, source-of-trut
 
 ## Project Summary
 
-Portfolio X-Ray & Optimization Terminal / Portfolio MRI is a Python portfolio decision-support and reporting system. It diagnoses portfolio exposures, hidden risks, stress behavior, candidate allocations, robustness checks, and report artifacts.
+Portfolio X-Ray & Optimization Terminal / Portfolio MRI is a Python portfolio decision-support and reporting system. It diagnoses portfolio exposures, hidden risks, stress behavior, candidate allocations, robustness checks, decision artifacts, and report outputs.
 
-The current implementation is report-first and CLI/file-driven. Full UI, Selection Engine implementation, Monitoring, and Decision Journal remain target/TBD until separately implemented; Portfolio Health Score and Selection Engine contracts are specified under `docs/specs/`.
+The current implementation is report-first and CLI/file-driven. V1 decision artifacts are implemented as generated files: candidate comparison, robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, Action Plan, Monitoring / What Changed, and generated Decision Journal. Full UI, saved analysis workspaces, richer report/PDF decision packaging, and advanced product workflows remain future scope until separately specified and implemented.
 
 Main flow:
 
@@ -72,6 +72,8 @@ Key sources:
 - [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for active issues and technical debt.
 - [DECISIONS.md](DECISIONS.md) for key decisions and rationale.
 - [CHANGELOG.md](CHANGELOG.md) for concise completed-change history.
+- [docs/audits/README.md](docs/audits/README.md) for the audit register and audit-to-plan links.
+- [docs/exec_plans/README.md](docs/exec_plans/README.md) for the plan register and current active-plan pointer.
 - [docs/specs/](docs/specs/README.md) for detailed module-specific behavior.
 - [PLANS.md](PLANS.md) for ExecPlan requirements on large or risky work.
 - [DESIGN.md](DESIGN.md) for UI, dashboard, generated HTML, and visual-interface work.

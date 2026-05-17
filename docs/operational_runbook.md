@@ -1,75 +1,64 @@
 # Operational Runbook
 
-Short guide for **when to run optimization**, **how to handle universe and config changes**, and **how to read run results**. See **specs/production_workflow.md** for status and gate semantics.
+Short guide for when to run optimization, how to handle universe and config changes, and how to read run results. See `docs/specs/production_workflow.md` for status and gate semantics.
 
----
+## 1. When To Re-Run Optimization
 
-## 1. When to re-run optimization
-
-Re-run `python run_optimization.py` (from project root; **single-stage** max-return optimizer with weight bounds and soft vol/return targets — see **docs/specs/portfolio_construction_policy.md**) in these cases:
+Re-run `python run_optimization.py` from the project root when any of the following happens. The optimizer is the single-stage max-return policy optimizer with weight bounds and soft vol/return targets; see `docs/specs/portfolio_construction_policy.md`.
 
 | Trigger | Action |
-|--------|--------|
-| **Calendar** | e.g. monthly or quarterly on a fixed date (e.g. first business day of the month). |
-| **Deviation** | Current or last-rebalance weights have drifted from target (e.g. max \|w_current − w_target\| > 2% or sum of \|Δw\| > 5%). Consider rebalancing and/or re-running optimization. |
-| **Universe change** | Any add/remove of tickers in **config.yml** → full re-run (see §2). |
-| **Profile / mandate change** | Change of **client_profile**, **target_vol_annual**, **target_max_drawdown_pct**, or other policy fields → full re-run. |
-| **Stress diagnostics** | `DIAG_ATTENTION` or `FAIL_STRESS` (informational) in violations → optional PM review; does not prevent release. Re-run only if you change architecture. |
+| --- | --- |
+| **Calendar** | Run monthly or quarterly on a fixed schedule, for example the first business day of the month. |
+| **Deviation** | Current or last-rebalance weights drift from target, for example max `|w_current - w_target| > 2%` or total `|delta w| > 5%`. Consider rebalancing and/or re-running optimization. |
+| **Universe change** | Any ticker add/remove in `config.yml` requires a full re-run. |
+| **Profile / mandate change** | Changes to `client_profile`, `target_vol_annual`, `target_max_drawdown_pct`, or other policy fields require a full re-run. |
+| **Stress diagnostics** | `DIAG_ATTENTION` or `FAIL_STRESS` is informational and does not prevent release. Re-run only if the portfolio architecture or config changes. |
 
----
+## 2. Universe Changes
 
-## 2. Universe changes (add/remove tickers)
+Adding a ticker: add it to `config.yml` under `tickers`, then run a full optimization. Do not patch existing weights manually; the new weights file will include the new ticker.
 
-- **Adding a ticker:** Add it to `config.yml` (`tickers`). Then run a **full** optimization. Do not try to “patch” existing weights; the new weights file will include the new ticker.
-- **Removing a ticker:** Remove from `config.yml`, then run a **full** optimization. The new `portfolio_weights.yml` will no longer contain the removed ticker (weight 0 or omitted).
+Removing a ticker: remove it from `config.yml`, then run a full optimization. The new `portfolio_weights.yml` will omit the ticker or assign zero weight.
 
-There is no partial update: every change to the investable universe requires a full re-run of `run_optimization.py`.
+There is no partial update path. Every investable-universe change requires a full `run_optimization.py` run.
 
----
+## 3. Reading `run_result.json`
 
-## 3. How to read run_result.json
-
-After each run, check `output_dir_final/run_result.json` (e.g. **Main portfolio/run_result.json**):
+After each run, check `output_dir_final/run_result.json`, for example `Main portfolio/run_result.json`.
 
 | Field | Meaning |
-|-------|--------|
-| **status** | **APPROVED**, **OK_FALLBACK**, or **FAIL_*** (see **specs/production_workflow.md**). |
-| **weights** | Target weights (empty if a blocking FAIL_* prevented writing weights). |
-| **violations** | List of `{ "code", "details" }` (e.g. mandate, data, stress as **VIOL_FAIL_STRESS** with `diagnostic_only`; see code). |
+| --- | --- |
+| **status** | `APPROVED`, `OK_FALLBACK`, or `FAIL_*`; see `docs/specs/production_workflow.md`. |
+| **weights** | Target weights; empty when a blocking `FAIL_*` prevents writing weights. |
+| **violations** | List of `{ "code", "details" }`, including mandate, data, stress, and warning entries. |
 | **next_actions** | Suggested next steps when violations or failures occur. |
-| **resolved_config** | Merged config (profile + overrides) used for the run; for audit and reproducibility. |
+| **resolved_config** | Merged config used for the run, including profile defaults and overrides. |
 
-If **status** is **FAIL_DATA** or **FAIL_MANDATE** → weights were not written; follow **next_actions** and fix config/data or mandate before using the system for allocation.
+If status is `FAIL_DATA` or `FAIL_MANDATE`, weights were not written. Follow `next_actions`, fix data/config/mandate inputs, and rerun before using the output for allocation.
 
-If **status** is **APPROVED** or **OK_FALLBACK** → weights were written to `portfolio_weights.yml`; use them as target weights, taking into account **violations** (e.g. stress diagnostics, young-ETF warnings) as per your mandate.
+If status is `APPROVED` or `OK_FALLBACK`, weights were written to `portfolio_weights.yml`. Treat them as target weights, while reviewing any non-blocking violations such as stress diagnostics or young-ETF warnings.
 
----
-
-## 4. Output files
+## 4. Output Files
 
 | File | Location | Purpose |
-|------|----------|--------|
-| **portfolio_weights.yml** | output_dir_final (e.g. ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ) | Target weights for execution; only present if weights were written. |
-| **run_result.json** | output_dir_final | Status, violations, next_actions, resolved_config; always written after a run. |
-| **snapshot.json** | output_dir_final | Snapshot of weights, RC, constraints, stress summary; written when weights are written. |
-| **ips_summary.txt** | output_dir_final | One-page mandate summary and actions by status; written after every run. |
+| --- | --- | --- |
+| `portfolio_weights.yml` | `output_dir_final` | Target weights for execution; present only if weights were written. |
+| `run_result.json` | `output_dir_final` | Status, violations, next actions, and resolved config. Always written after a run. |
+| `snapshot.json` | `output_dir_final` | Snapshot of weights, RC, constraints, and stress summary; written when weights are written. |
+| `ips_summary.txt` | `output_dir_final` | One-page mandate summary and actions by status; written after every run. |
 
-Report CSV and other report outputs are produced by `run_report.py` (invoked after optimization when report is enabled). If report fails, weights and run_result are still saved.
+Report CSV and other report outputs are produced by `run_report.py`, which runs after optimization when reporting is enabled. If report generation fails, weights and `run_result.json` remain saved.
 
----
+## 5. First Run
 
-## 5. First run (первый деплой)
+1. Check `config.yml`: `tickers`, `client_profile`, and `investor_currency` are set. When needed, set `liquidity_need_months`, `monthly_expenses`, and `portfolio_value` for the liquidity floor calculation.
+2. Run `python run_optimization.py` from the project root. On first data load, add `--no-cache` if you want a fresh data download.
+3. Open `output_dir_final/run_result.json` and check `status`. If status is `APPROVED` or `OK_FALLBACK`, weights were written to `portfolio_weights.yml` and can be used as target weights. For `OK_FALLBACK`, review `rc_breaches` if present.
+4. If there are violations, follow `next_actions`. For `FAIL_MANDATE`, the full-history drawdown breached the limit or data was unavailable; adjust risk/mandate inputs and rerun. Stress `DIAG_*` entries do not block release.
 
-1. **Проверить config.yml:** заданы `tickers`, `client_profile`, `investor_currency`. При необходимости задать `liquidity_need_months`, `monthly_expenses`, `portfolio_value` для расчёта ликвидного пола.
-2. **Запуск:** из корня проекта выполнить `python run_optimization.py` (при первой загрузке данных можно использовать `--no-cache`).
-3. **Проверка результата:** открыть `output_dir_final/run_result.json` и проверить поле **status**. При **APPROVED** или **OK_FALLBACK** веса записаны в `portfolio_weights.yml` и могут использоваться как целевые (при OK_FALLBACK — проверить **rc_breaches**).
-4. **При нарушениях:** следовать **next_actions**. При **FAIL_MANDATE** — историческая просадка на полной выборке не прошла лимит (или нет данных); скорректировать риск/мандат и перезапустить. Стресс **DIAG_*** не блокирует выпуск.
+## 6. Recurring Run
 
----
-
-## 6. Recurring run (регулярный прогон)
-
-1. **Обновление данных:** при необходимости запускать с флагом `--no-cache` для перезагрузки цен и курсов.
-2. **Календарный запуск:** выполнять `run_optimization.py` по выбранному графику (например, первый рабочий день месяца).
-3. **Сравнение с предыдущим прогоном:** проверить статус и нарушения в новом run_result.json; при изменении статуса или появлении новых нарушений — просмотреть **next_actions** и при необходимости скорректировать конфиг или мандат.
-4. **Ребаланс:** для получения списка сделок использовать `run_rebalance.py --current current_positions.yml --target <path_to_portfolio_weights.yml>`. При необходимости задать порог ребаланса (`--threshold`) и минимальный размер сделки (`--min-trade`). Учитывать объём торговли (turnover) при принятии решения о проведении ребаланса.
+1. Refresh data when needed by running with `--no-cache`.
+2. Run `run_optimization.py` on the chosen schedule, for example the first business day of each month.
+3. Compare with the prior run: check status and violations in the new `run_result.json`. If status changes or new violations appear, review `next_actions` and adjust config or mandate if needed.
+4. For rebalance trade lists, run `run_rebalance.py --current current_positions.yml --target <path_to_portfolio_weights.yml>`. Use `--threshold` and `--min-trade` when needed. Consider turnover before deciding to rebalance.

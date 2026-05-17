@@ -125,7 +125,7 @@ def load_monthly_data_shared(
         cfg_meta = (meta or {}).get("config") or {}
         cached_freq = str(cfg_meta.get("returns_frequency", "monthly")).strip().lower()
         if cached_freq == rf_mode:
-            logger.info("Найден кеш панели доходностей, загружаю...")
+            logger.info("Return panel cache found; loading...")
             monthly_data = load_monthly_data(monthly_cache_path)
 
     if monthly_data is not None:
@@ -139,11 +139,11 @@ def load_monthly_data_shared(
     else:
         daily = None
         if not no_cache and cache_exists(daily_cache_path):
-            logger.info("Найден дневной кеш, загружаю...")
+            logger.info("Daily cache found; loading...")
             daily = load_daily_prices(daily_cache_path)
 
         if daily is None:
-            logger.info("Загружаю данные из Yahoo Finance...")
+            logger.info("Loading data from Yahoo Finance...")
             daily_raw = download_all(all_tickers, start_str, end_str, currency_by_ticker)
             daily = {t: df for t, df in daily_raw.items() if not df.empty and "Close" in df.columns}
             save_cache_meta(
@@ -177,7 +177,7 @@ def load_monthly_data_shared(
             tickers=all_tickers,
         )
 
-        logger.info(f"Загружаю risk-free rate из {rf_source}...")
+        logger.info(f"Loading risk-free rate from {rf_source}...")
         if rf_source.startswith("FRED:"):
             series_id = rf_source.split(":", 1)[1]
             rf_annual = fetch_fred_series(series_id, start_str, end_str)

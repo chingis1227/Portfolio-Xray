@@ -23,7 +23,7 @@ Monitoring V1:
 2. **Monitored profiles:** **`current`** and **`policy`** when `status` is `available` or `degraded` in `candidate_comparison.json`.
 3. **Retention:** keep `latest` plus **history** files named `analysis_snapshot_{analysis_end}.json` (one file per distinct `analysis_end`).
 4. **Primary diff focus:** **`current`** profile risk and mandate fields; decision and action blocks at run level.
-5. **Session delivery:** spec (Session 17) and implementation (Session 18) in one delivery when the user requests implementation.
+5. **Session delivery:** the V1 spec and implementation are delivered; future work may add report/PDF surfacing or scheduled monitoring.
 
 ## Naming Boundary
 
@@ -48,6 +48,7 @@ Monitoring V1:
 1. After `action_plan.json` is written in `write_candidate_comparison_outputs` / `run_compare_variants.py`.
 2. Load prior snapshot from `monitoring/latest/analysis_snapshot.json` **before** overwriting.
 3. Do not re-run optimizer, stress, scores, or selection.
+4. Decision Journal runs after monitoring and may summarize `monitoring_diff.json`; monitoring itself does not write journal files.
 
 ## Analysis Snapshot (`analysis_snapshot_v1`)
 
@@ -142,7 +143,7 @@ Monitoring V1:
 
 - Scheduled monitoring jobs or email alerts.
 - Durable user-maintained workspace outside `output_dir_final`.
-- PDF/report integration (follow-up allowed).
+- Compact PDF/report integration beyond the generated JSON/TXT files.
 - Multi-portfolio workspace comparison.
 - Recomputing metrics inside the monitoring module.
 
@@ -165,4 +166,4 @@ Focused tests should cover:
 | Inputs | comparison, health, robustness, selection, action JSON |
 | Output location | [OUTPUTS.md](../../OUTPUTS.md) |
 | Implementation | `src/monitoring.py` |
-| Downstream journal | [decision_journal_spec.md](decision_journal_spec.md) (consumes `monitoring_diff` after Session 20) |
+| Downstream journal | [decision_journal_spec.md](decision_journal_spec.md) (consumes `monitoring_diff`) |

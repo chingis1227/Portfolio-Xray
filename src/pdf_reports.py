@@ -5,8 +5,8 @@ Style target: institutional executive PDF  -  sans-serif, wide margins, navy/gra
 subtle top/footer rules, footer label + page number, generous whitespace. Layout is driven by
 `pdf_latex/pandoc_preamble.tex` and per-build `pdf_latex/pandoc_doc_meta.tex` (see user style brief).
 
-Client-facing PDF Markdown: РєРѕСЂРѕС‚РєРёРµ, СЃРІСЏР·РЅС‹Рµ С„РѕСЂРјСѓР»РёСЂРѕРІРєРё РЅР° СЂСѓСЃСЃРєРѕРј, **Р±РµР·** РёРјС‘РЅ С„Р°Р№Р»РѕРІ,
-РІРЅСѓС‚СЂРµРЅРЅРёС… РєРѕРґРѕРІ, В«СЌРєСЃРїРѕСЂС‚РЅРѕРіРѕВ» С‚РѕРЅР°; СЃС‚Р°С‚СѓСЃС‹ Рё СЃС†РµРЅР°СЂРёРё  -  Р±С‹С‚РѕРІС‹Рј СЏР·С‹РєРѕРј.
+Client-facing PDF Markdown uses concise English wording without file names, internal codes,
+or export-style phrasing. Statuses and scenarios are rendered in plain language.
 
 Requires: pandoc and xelatex on PATH (or Pandoc under %LOCALAPPDATA%\\Pandoc on Windows).
 """
@@ -31,7 +31,7 @@ from src.config import load_validated_config
 _ROOT = Path(__file__).resolve().parent.parent
 _PDF_OUT = _ROOT / "pdf files"
 _PDF_MD_SOURCES = _ROOT / "pdf_md_sources"
-_OPTIONAL_ARCHIVE = _ROOT / "00_Р’РђР–РќРћР•" / "11_pdf files"
+_OPTIONAL_ARCHIVE = _ROOT / "00_IMPORTANT" / "11_pdf files"
 _PDF_LATEX_DIR = _ROOT / "pdf_latex"
 _PANDOC_PREAMBLE = _PDF_LATEX_DIR / "pandoc_preamble.tex"
 _PANDOC_DOC_META = _PDF_LATEX_DIR / "pandoc_doc_meta.tex"
@@ -71,8 +71,8 @@ _METRIC_LABELS_RU: dict[str, str] = {
     "treynor": "Treynor",
     "corr_base": "Market Correlation",
     "downside_deviation_annual": "Downside Deviation",
-    "skewness": "РЎРєРІ.",
-    "kurtosis": "Р­РєСЃС†РµСЃСЃ",
+    "skewness": "Skew.",
+    "kurtosis": "Excess kurt.",
     "es_95": "ES 95%",
     "es_99": "ES 99%",
     "eee_10pct": "EEE 10%",
@@ -89,7 +89,7 @@ _COMMENTARY_SECTIONS = (
     "Final Conclusion",
 )
 
-# PDF: СЏРєРѕСЂСЏ РІ commentary.txt (EN) -> РІРёРґРёРјС‹Р№ Р·Р°РіРѕР»РѕРІРѕРє (RU, РєР»РёРµРЅС‚СЃРєРёР№)
+# PDF headings: commentary.txt section anchors -> visible client-facing headings.
 _COMMENTARY_PDF_ALIASES: dict[str, str] = {
     "Metric-by-Metric Interpretation": "What This Means",
     "Risk Structure": "Risk Structure",
@@ -99,7 +99,7 @@ _COMMENTARY_PDF_ALIASES: dict[str, str] = {
     "Final Conclusion": "Conclusion",
 }
 
-# Р—Р°РіРѕР»РѕРІРѕРє РІ С€Р°РїРєРµ PDF (СЃР»РµРІР°), РїРѕ РёРјРµРЅРё РёС‚РѕРіРѕРІРѕРіРѕ С„Р°Р№Р»Р°
+# PDF header label, keyed by output filename stem.
 _PDF_HEADER_LEFT: dict[str, str] = {
     "Main portfolio_commentary": "Investment Commentary: Main Portfolio",
     "Main portfolio_stress_commentary": "Stress Analysis: Main Portfolio",
@@ -132,17 +132,17 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M %Z")
 
 
-def _russian_subtitle_line(
-    window_label: str | None, analysis_end: str | None, *, default_window_label: str = "10-Р»РµС‚РЅРµРј"
+def _subtitle_line(
+    window_label: str | None, analysis_end: str | None, *, default_window_label: str = "10-year"
 ) -> str:
-    """Р’С‚РѕСЂР°СЏ СЃС‚СЂРѕРєР° С‚РёС‚СѓР»СЊРЅРѕРіРѕ Р±Р»РѕРєР°, РєР°Рє РІ СЌС‚Р°Р»РѕРЅРµ: В«РёС‚РѕРіРё РЅР° N-Р»РµС‚РЅРµРј РѕРєРЅРµ, РїРѕ СЃРѕСЃС‚РѕСЏРЅРёСЋ РЅР° ...В»."""
+    """Subtitle line for the report title block."""
     wl = (window_label or "").strip().upper().replace(" ", "")
     if "10" in wl or "10Y" in wl or (window_label and "10" in str(window_label)):
-        win = "10-Р»РµС‚РЅРµРј"
+        win = "10-year"
     elif "5" in wl or (window_label and "5" in str(window_label)):
-        win = "5-Р»РµС‚РЅРµРј"
+        win = "5-year"
     elif "3" in wl or (window_label and "3" in str(window_label)):
-        win = "3-Р»РµС‚РЅРµРј"
+        win = "3-year"
     else:
         win = default_window_label
     ae = (analysis_end or datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d")).strip()
@@ -162,7 +162,7 @@ def _line_dropped_for_client_pdf(line: str) -> bool:
     if not t:
         return False
     low = t.lower()
-    if re.match(r"^source\s*:", low) or t.startswith("РСЃС‚РѕС‡РЅРёРє:") and re.search(r"[/\\]", t):
+    if re.match(r"^source\s*:", low) or re.match(r"^source\s*:", _repair_utf8_as_cp1251_mojibake(t).lower()) and re.search(r"[/\\]", t):
         return True
     if any(
         x in low
@@ -181,7 +181,7 @@ def _line_dropped_for_client_pdf(line: str) -> bool:
     ):
         return True
     if re.search(
-        r"(?:[A-Za-z]:[\\/]|[/\\](?:Users|home|UЕјytkownicy)[/\\]|\\\\[^/\\]+\\).+\.(json|csv|txt|yml|md|parquet)\b",
+        r"(?:[A-Za-z]:[\\/]|[/\\](?:Users|home)[/\\]|\\\\[^/\\]+\\).+\.(json|csv|txt|yml|md|parquet)\b",
         t,
         re.I,
     ):
@@ -193,8 +193,8 @@ def _line_dropped_for_client_pdf(line: str) -> bool:
 
 def _executive_ru_sanitize(text: str) -> str:
     """
-    РљР»РёРµРЅС‚СЃРєРёР№ РёСЃРїРѕР»РЅРµРЅС‡РµСЃРєРёР№ С‚РѕРЅ: СѓР±СЂР°С‚СЊ РІРЅСѓС‚СЂРµРЅРЅРёРµ РєРѕРґС‹, РїСѓС‚Рё, В«СЃРёСЃС‚РµРјРЅС‹РµВ» РѕР±РѕР·РЅР°С‡РµРЅРёСЏ.
-    РќРµ СЃРѕС…СЂР°РЅСЏРµС‚ РґРѕСЃР»РѕРІРЅРѕ РёСЃС…РѕРґ  -  С‚РѕР»СЊРєРѕ Р±РµР·РѕРїР°СЃРЅС‹Р№ РґР»СЏ PDF СЃРјС‹СЃР».
+    Keep narrative PDF text client-facing by removing internal codes, paths, and system tokens.
+    The sanitizer keeps the useful meaning rather than preserving source wording verbatim.
     """
     if not text:
         return text
@@ -206,25 +206,25 @@ def _executive_ru_sanitize(text: str) -> str:
     out = "\n".join(out_lines)
 
     repl_text = [
-        (r"equity\s*shock", "СЃРёР»СЊРЅС‹Р№ РѕР±РІР°Р» РЅР° СЂС‹РЅРєРµ Р°РєС†РёР№"),
-        (r"credit\s*shock", "СЃС‚СЂРµСЃСЃ РЅР° СЂС‹РЅРєРµ РєСЂРµРґРёС‚Р°"),
-        (r"EQUITY_SHOCK", "СЃРёР»СЊРЅС‹Р№ РѕР±РІР°Р» РЅР° СЂС‹РЅРєРµ Р°РєС†РёР№"),
-        (r"CREDIT_SHOCK", "СЃС‚СЂРµСЃСЃ РЅР° СЂС‹РЅРєРµ РєСЂРµРґРёС‚Р°"),
+        (r"equity\s*shock", "severe equity market decline"),
+        (r"credit\s*shock", "credit market stress"),
+        (r"EQUITY_SHOCK", "severe equity market decline"),
+        (r"CREDIT_SHOCK", "credit market stress"),
         (r"DIAG_[A-Z0-9_]+", " "),
         (r"FAIL_[A-Z0-9_]+", " "),
-        (r"\banalysis_end\b", "РґР°С‚Р° СЃСЂРµР·Р°"),
+        (r"\banalysis_end\b", "as-of date"),
         (r"\bportfolio_valid\b", " "),
         (r"\bfail_reason_code\b", " "),
-        (r"beta_base", "С‡СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚СЊ Рє С€РёСЂРѕРєРѕРјСѓ СЂС‹РЅРєСѓ"),
-        (r"corr_base", "СЃРІСЏР·СЊ СЃ СЂС‹РЅРєРѕРј РІ С†РµР»РѕРј"),
-        (r"Treynor", "РѕС†РµРЅРєР° РґРѕС…РѕРґРЅРѕСЃС‚Рё СЃ СѓС‡С‘С‚РѕРј С‡СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚Рё Рє СЂС‹РЅРєСѓ"),
-        (r"treynor", "РѕС†РµРЅРєР° РґРѕС…РѕРґРЅРѕСЃС‚Рё СЃ СѓС‡С‘С‚РѕРј С‡СѓРІСЃС‚РІРёС‚РµР»СЊРЅРѕСЃС‚Рё Рє СЂС‹РЅРєСѓ"),
+        (r"beta_base", "broad market sensitivity"),
+        (r"corr_base", "overall market correlation"),
+        (r"Treynor", "return per unit of market sensitivity"),
+        (r"treynor", "return per unit of market sensitivity"),
         (r"\bDIAG\b", " "),
-        (r"policy\s*run", "СЂР°СЃС‡С‘С‚ РїРѕ РїРѕР»РёС‚РёРєРµ"),
+        (r"policy\s*run", "policy run"),
     ]
     for pat, to in repl_text:
         out = re.sub(pat, to, out, flags=re.IGNORECASE)
-    out = re.sub(r"\bPASS\b", "РІ РЅРѕСЂРјРµ РїРѕ РїСЂРѕРІРµСЂРєРµ", out, flags=re.IGNORECASE)
+    out = re.sub(r"\bPASS\b", "within the agreed risk profile", out, flags=re.IGNORECASE)
     out = re.sub(r"\bPreamble\b", "", out, flags=re.IGNORECASE)
     out = re.sub(r"[ \t]{2,}", " ", out)
     out = re.sub(r"\n{3,}", "\n\n", out)
@@ -232,7 +232,7 @@ def _executive_ru_sanitize(text: str) -> str:
 
 
 def _humanize_stress_status(val: Any) -> str:
-    """РљРѕСЂРѕС‚РєРёРµ С„РѕСЂРјСѓР»РёСЂРѕРІРєРё РґР»СЏ Р»РёС†РµРІРѕР№ СЃС‚РѕСЂРѕРЅС‹  -  Р±РµР· РІРЅСѓС‚СЂРµРЅРЅРёС… РєРѕРґРѕРІ РґРІРёР¶РєР°."""
+    """Short client-facing status labels without internal engine codes."""
     if val is None:
         return " - "
     s = str(val).strip()
@@ -264,7 +264,7 @@ def _looks_like_code_token(s: str) -> bool:
 
 
 def _humanize_stress_detail(val: Any) -> str:
-    """РЎС‹СЂС‹Рµ РїСЂРёС‡РёРЅС‹-РєРѕРґС‹ РЅРµ РїРµС‡Р°С‚Р°РµРј; РѕСЃРјС‹СЃР»РµРЅРЅС‹Р№ С‚РµРєСЃС‚  -  С‡РµСЂРµР· СЃР°РЅРёС‚Р°Р№Р·РµСЂ."""
+    """Do not print raw reason codes; route meaningful text through the sanitizer."""
     if val is None:
         return " - "
     s = str(val).strip()
@@ -281,7 +281,7 @@ def _humanize_stress_detail(val: Any) -> str:
 
 
 def _soft_sanitize_narrative_for_pdf(text: str) -> str:
-    """РўРµРєСЃС‚ РґР»СЏ PDF: Р±РµР· РІРЅСѓС‚СЂРµРЅРЅРёС… СЏСЂР»С‹РєРѕРІ Рё СЃСѓС…РѕР№ С‚РµС…РЅРёРєРё."""
+    """PDF narrative text without internal labels or dry technical tokens."""
     return _executive_ru_sanitize(text)
 
 
@@ -474,9 +474,9 @@ def _portfolio_label_from_folder(folder: Path | None) -> str:
 def _english_report_title(title: str, folder: Path | None = None) -> str:
     name = _portfolio_label_from_folder(folder)
     tl = title.lower()
-    if "stress" in tl or "стресс" in tl or "С‚СЂ" in title:
+    if "stress" in tl:
         return f"{name}: Stress Analysis"
-    if "weight" in tl or "вес" in tl or "С†РµР»" in title:
+    if "weight" in tl:
         return f"{name}: Target Weights"
     if "comparison" in tl or ("equal-weight" in tl and "risk parity" in tl):
         return "Equal-Weight vs Risk Parity Comparison"
@@ -592,7 +592,7 @@ def _fmt_kpi_val_latex(m: dict[str, Any], key: str, *, pct: bool) -> str:
 
 
 def _kpi_panel_latex_ru(m: dict[str, Any]) -> str:
-    """2*3 СЃРµС‚РєР° KPI (LaTeX), РєР°Рє РЅР° СЌС‚Р°Р»РѕРЅРµ."""
+    """2x3 KPI grid rendered as LaTeX."""
     if not m:
         return ""
     mk = m
@@ -622,11 +622,11 @@ def _escape_latex_arg_for_kpi(s: str) -> str:
 
 _PANDOC_DISALLOWED_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
 _MOJIBAKE_TOKEN_RE = re.compile(r"[\u0080-\u00ff\u0400-\u04ff]+")
-_MOJIBAKE_MARKERS = frozenset(("Р", "С", "в", "Ð", "Ñ"))
+_MOJIBAKE_MARKERS = frozenset(("\u0420", "\u0421", "\u0432", "\u00d0", "\u00d1"))
 
 
 def _repair_utf8_as_cp1251_mojibake(text: str) -> str:
-    """Repair Russian UTF-8 text that was decoded as cp1251 (e.g. 'Рџ...' -> 'П...')."""
+    """Repair UTF-8 text that was decoded as cp1251 before sanitizing Markdown."""
 
     def repl(match: re.Match[str]) -> str:
         token = match.group(0)
@@ -656,9 +656,9 @@ def _yaml_front_matter(
     analysis_end: str | None = None,
     window_label: str | None = None,
 ) -> str:
-    """H1: РёРЅСЃР°Р№С‚-Р·Р°РіРѕР»РѕРІРѕРє; `date` РІ YAML  -  РІС‚РѕСЂР°СЏ СЃС‚СЂРѕРєР°, РєР°Рє РІ СЌС‚Р°Р»РѕРЅРµ (РїРѕРґР·Р°РіРѕР»РѕРІРѕРє-РѕРїРёСЃР°РЅРёРµ)."""
+    """Build Pandoc YAML front matter with title and subtitle metadata."""
     full_title = title if not subtitle else f"{title}  -  {subtitle}"
-    date_line = _russian_subtitle_line(window_label, analysis_end)
+    date_line = _subtitle_line(window_label, analysis_end)
     lines = [
         "---",
         f'title: "{full_title.replace(chr(34), chr(39))}"',
@@ -695,24 +695,6 @@ _KPI_EW_RP_KEYS: tuple[str, ...] = (
     "sortino",
     "beta_portfolio",
 )
-
-
-def _ew_rp_executive_takeaway(comp: dict[str, Any]) -> str:
-    p = comp.get("period") or {}
-    ae = p.get("analysis_end") or " - "
-    wl = (p.get("window_label") or " - ")
-    em = (comp.get("equal_weight") or {}).get("metrics") or {}
-    rm = (comp.get("risk_parity") or {}).get("metrics") or {}
-    dm = (comp.get("delta") or {}).get("metrics") or {}
-    s_ew = _humanize_stress_status((comp.get("equal_weight") or {}).get("stress_status"))
-    s_rp = _humanize_stress_status((comp.get("risk_parity") or {}).get("stress_status"))
-    return (
-        f"РќР° РіРѕСЂРёР·РѕРЅС‚Рµ **{wl}** (РѕС†РµРЅРєР° **{ae}**) СЂР°РІРЅС‹Рµ РІРµСЃР° РѕР±С‹С‡РЅРѕ СЃРёР»СЊРЅРµРµ РѕСЂРёРµРЅС‚РёСЂРѕРІР°РЅС‹ РЅР° **РѕР¶РёРґР°РµРјСѓСЋ РґРѕС…РѕРґРЅРѕСЃС‚СЊ**, "
-        f"Р° **risk parity** СЃРіР»Р°Р¶РёРІР°РµС‚ **РІРєР»Р°Рґ РёРЅСЃС‚СЂСѓРјРµРЅС‚РѕРІ РІ РѕР±С‰РёР№ СЂРёСЃРє**. "
-        f"РџРѕ РґРѕС…РѕРґРЅРѕСЃС‚Рё СЂР°РІРЅС‹Рµ РІРµСЃР° **РѕРїРµСЂРµР¶Р°СЋС‚** РІР°СЂРёР°РЅС‚ СЃ РІС‹СЂР°РІРЅРёРІР°РЅРёРµРј СЂРёСЃРєР° РЅР° **{_fmt_scalar(dm.get('cagr'), pct=True)}**; "
-        f"**РІРѕР»Р°С‚РёР»СЊРЅРѕСЃС‚СЊ**  -  **{_fmt_scalar(em.get('vol_annual'), pct=True)}** Сѓ СЂР°РІРЅС‹С… РІРµСЃРѕРІ Рё **{_fmt_scalar(rm.get('vol_annual'), pct=True)}** Сѓ risk parity. "
-        f"РџРѕ **СЃС‚СЂРµСЃСЃ-РїСЂРѕРІРµСЂРєРµ** СЂР°РІРЅС‹Рµ РІРµСЃР°: **{s_ew}**; risk parity: **{s_rp}**.\n"
-    )
 
 
 def build_ew_rp_markdown(comp: dict[str, Any]) -> str:
@@ -776,72 +758,6 @@ def build_ew_rp_markdown(comp: dict[str, Any]) -> str:
     )
     return "".join(parts_en)
 
-    parts: list[str] = []
-    parts.append(
-        _yaml_front_matter(
-            "РЎСЂР°РІРЅРµРЅРёРµ: equal-weight Рё risk parity",
-            None,
-            analysis_end=as_of,
-            window_label=wlab,
-        )
-    )
-    parts.append("## РљР»СЋС‡РµРІРѕР№ РІС‹РІРѕРґ\n\n")
-    parts.append(_ew_rp_executive_takeaway(comp) + "\n\n")
-
-    parts.append("## РљР»СЋС‡РµРІС‹Рµ РїРѕРєР°Р·Р°С‚РµР»Рё\n\n")
-    parts.append(
-        "*Р Р°Р·РЅРёС†Р° (РїРѕСЃР»РµРґРЅРёР№ СЃС‚РѕР»Р±РµС†)  -  **РЅР°СЃРєРѕР»СЊРєРѕ Р±РѕР»СЊС€Рµ Сѓ СЂР°РІРЅС‹С… РІРµСЃРѕРІ**, С‡РµРј Сѓ risk parity, РІ С‚РµС… Р¶Рµ РµРґРёРЅРёС†Р°С…, С‡С‚Рѕ Рё РјРµС‚СЂРёРєР°.*\n\n"
-    )
-    parts.append("|  | Р Р°РІРЅС‹Рµ РІРµСЃР° (EW) | Risk parity | Р Р°Р·РЅРёС†Р° (EW - RP) |\n")
-    parts.append("| --- | ---: | ---: | ---: |\n")
-    for k in _KPI_EW_RP_KEYS:
-        pct = k in _PCT_METRICS
-        label = _METRIC_LABELS_RU.get(k, k)
-        parts.append(
-            f"| **{_escape_md_cell(label)}** | {_escape_md_cell(_fmt_scalar(eq_m.get(k), pct=pct))} | "
-            f"{_escape_md_cell(_fmt_scalar(rp_m.get(k), pct=pct))} | "
-            f"{_escape_md_cell(_fmt_scalar(delta_m.get(k), pct=pct))} |\n"
-        )
-
-    top = comp.get("rc_vol_top5_asset") or {}
-    eq5 = top.get("equal_weight") or {}
-    rp5 = top.get("risk_parity") or {}
-    d5 = top.get("delta") or {}
-    top_tickers = sorted(set(eq5.keys()) | set(rp5.keys()))
-    if top_tickers:
-        parts.append("\n## РљС‚Рѕ СЃРёР»СЊРЅРµРµ РІСЃРµРіРѕ РІР»РёСЏРµС‚ РЅР° СЂРёСЃРє (С‚РѕРї РїРѕР·РёС†РёР№)\n\n")
-        parts.append("\n| РРЅСЃС‚СЂСѓРјРµРЅС‚ | Р Р°РІРЅС‹Рµ РІРµСЃР° | Risk parity | Р Р°Р·РЅРёС†Р° (EW - RP) |\n| --- | ---: | ---: | ---: |\n")
-        for t in top_tickers:
-            parts.append(
-                f"| **{t}** | {_escape_md_cell(_fmt_scalar(eq5.get(t), pct=True))} | "
-                f"{_escape_md_cell(_fmt_scalar(rp5.get(t), pct=True))} | "
-                f"{_escape_md_cell(_fmt_scalar(d5.get(t), pct=True))} |\n"
-            )
-
-    se = _humanize_stress_status(ew.get("stress_status"))
-    sr = _humanize_stress_status(rp.get("stress_status"))
-    re_ew = _humanize_stress_detail(ew.get("stress_fail_reason"))
-    re_rp = _humanize_stress_detail(rp.get("stress_fail_reason"))
-    parts.append("\n## РЎС†РµРЅР°СЂРЅС‹Р№ Р°РЅР°Р»РёР· (СЃС‚СЂРµСЃСЃ, СЃСЂР°РІРЅРµРЅРёРµ)\n\n")
-    parts.append(
-        f"- **Р Р°РІРЅС‹Рµ РІРµСЃР° (equal-weight):** {se}.\n"
-        f"- **Risk parity:** {sr}.\n"
-    )
-    de, dr = re_ew.strip(), re_rp.strip()
-    if (de and de not in (" - ",)) or (dr and dr not in (" - ",)):
-        if de and dr and de not in (" - ",) and dr not in (" - ",):
-            parts.append(
-                f"\n*РџРѕСЏСЃРЅРµРЅРёСЏ Рє СЃС†РµРЅР°СЂРЅРѕР№ РїСЂРѕРІРµСЂРєРµ: **СЂР°РІРЅС‹Рµ РІРµСЃР°**  -  {de}; **risk parity**  -  {dr}.*\n"
-            )
-        elif de and de not in (" - ",):
-            parts.append(f"\n*РџРѕСЏСЃРЅРµРЅРёРµ: **СЂР°РІРЅС‹Рµ РІРµСЃР°**  -  {de}.*\n")
-        elif dr and dr not in (" - ",):
-            parts.append(f"\n*РџРѕСЏСЃРЅРµРЅРёРµ: **risk parity**  -  {dr}.*\n")
-    parts.append(
-        "\n*РћР±Р° РІР°СЂРёР°РЅС‚Р° РїРѕСЃС‡РёС‚Р°РЅС‹ РЅР° **РѕРґРЅРѕРј** РЅР°Р±РѕСЂРµ РёРЅСЃС‚СЂСѓРјРµРЅС‚РѕРІ Рё **РѕРґРЅРѕР№** РёСЃС‚РѕСЂРёРё; РѕС‚Р»РёС‡Р°РµС‚СЃСЏ С‚РѕР»СЊРєРѕ СЃРїРѕСЃРѕР± РІР·РІРµС€РёРІР°РЅРёСЏ.*\n"
-    )
-    return "".join(parts)
-
 
 def _parse_commentary_sections(text: str) -> list[tuple[str, str]]:
     lines = text.replace("\r\n", "\n").strip().split("\n")
@@ -881,89 +797,6 @@ def build_commentary_report_md(
         analysis_end=analysis_end,
     )
 
-    del variant_label
-    parts: list[str] = []
-    snap = _read_snapshot_10y(snapshot_folder) if snapshot_folder else None
-    wlab: str | None = None
-    ae = analysis_end
-    if snap:
-        wlab = str(snap.get("window_label") or "") or None
-        if not ae and snap.get("analysis_end"):
-            ae = str(snap.get("analysis_end") or "").strip() or None
-    parts.append(
-        _yaml_front_matter(
-            report_title,
-            None,
-            analysis_end=ae,
-            window_label=wlab,
-        )
-    )
-    sections = _parse_commentary_sections(commentary_text)
-    smap: dict[str, str] = {}
-    for title, body in sections:
-        b = _soft_sanitize_narrative_for_pdf(body)
-        if not b.strip() and title != "Preamble":
-            continue
-        if title in smap:
-            smap[title] = smap[title].rstrip() + "\n\n" + b
-        else:
-            smap[title] = b
-
-    pre = (smap.get("Preamble") or "").strip()
-    ex = (smap.get("Executive Summary") or "").strip()
-    if pre and ex:
-        exec_body = _soft_sanitize_narrative_for_pdf(f"{pre}\n\n{ex}")
-    else:
-        exec_body = _soft_sanitize_narrative_for_pdf(ex or pre)
-
-    parts.append("\n## РљР»СЋС‡РµРІРѕР№ РІС‹РІРѕРґ\n\n")
-    if exec_body.strip():
-        for para in [p.strip() for p in exec_body.split("\n\n") if p.strip()]:
-            if para.startswith("- "):
-                parts.append(f"{para}\n")
-            else:
-                parts.append(f"{para}\n\n")
-    else:
-        parts.append(
-            "*РЎР°РјРѕРµ РіР»Р°РІРЅРѕРµ РµС‰С‘ РЅРµ РІС‹РЅРµСЃРµРЅРѕ: РІ РЅР°С‡Р°Р»Рѕ СЂР°Р±РѕС‡РµРіРѕ РєРѕРјРјРµРЅС‚Р°СЂРёСЏ Рє РїСЂРѕРіРѕРЅСѓ РґРѕР±Р°РІСЊС‚Рµ 3-5 РїСЂРµРґР»РѕР¶РµРЅРёР№ СЃ **РёС‚РѕРіРѕРј** (РїРµСЂРІС‹Р№ Р±Р»РѕРє РїРѕ РІРЅСѓС‚СЂРµРЅРЅРµРјСѓ С€Р°Р±Р»РѕРЅСѓ РєРѕРјРјРµРЅС‚Р°СЂРёСЏ).*\n"
-        )
-
-    mets = (snap or {}).get("metrics") or {}
-    if isinstance(mets, dict) and mets:
-        kpi = _kpi_panel_latex_ru(mets)
-        if kpi:
-            parts.append("\n## РљР»СЋС‡РµРІС‹Рµ РїРѕРєР°Р·Р°С‚РµР»Рё\n\n")
-            parts.append(kpi + "\n")
-
-    wimi_chunks: list[str] = []
-    mmm = (smap.get("Metric-by-Metric Interpretation") or "").strip()
-    if mmm:
-        wimi_chunks.append(mmm)
-    st = (smap.get("Strengths") or "").strip()
-    if st:
-        wimi_chunks.append("**РЎРёР»СЊРЅС‹Рµ СЃС‚РѕСЂРѕРЅС‹.**\n\n" + st)
-    wk = (smap.get("Weaknesses") or "").strip()
-    if wk:
-        wimi_chunks.append("**Р РёСЃРєРё Рё РѕРіСЂР°РЅРёС‡РµРЅРёСЏ.**\n\n" + wk)
-    if wimi_chunks:
-        parts.append("\n## Р§С‚Рѕ СЌС‚Рѕ Р·РЅР°С‡РёС‚ РґР»СЏ РёРЅРІРµСЃС‚РѕСЂР°\n\n")
-        parts.append("\n\n".join(wimi_chunks) + "\n")
-
-    for key in ("Risk Structure", "Scenario Behavior", "Final Conclusion"):
-        body = (smap.get(key) or "").strip()
-        if not body:
-            continue
-        head = _COMMENTARY_PDF_ALIASES.get(key, key)
-        parts.append(f"\n## {head}\n\n")
-        is_listy = bool(re.search(r"(?m)^\s*[-*]\s", body))
-        if is_listy:
-            parts.append(body if body.endswith("\n") else body + "\n")
-        else:
-            for para in [p.strip() for p in body.split("\n\n") if p.strip()]:
-                parts.append(f"{para}\n\n")
-
-    return "".join(parts)
-
 
 def build_weights_report_md(
     *,
@@ -999,47 +832,6 @@ def build_weights_report_md(
     for ticker, weight in items:
         parts.append(f"| **{ticker}** | {_escape_md_cell(f'{weight * 100:.2f}%')} |\n")
     parts.append(f"\n**Total weight: {_fmt_scalar(sum(weights.values()), pct=True)}**. A fully invested portfolio should be close to 100%.\n")
-    return "".join(parts)
-
-    del variant_label
-    parts: list[str] = []
-    snap = _read_snapshot_10y(snapshot_folder) if snapshot_folder else None
-    wlab = str(snap.get("window_label") or "") if snap else None
-    ae = analysis_end
-    if snap and not ae and snap.get("analysis_end"):
-        ae = str(snap.get("analysis_end") or "").strip() or None
-    parts.append(
-        _yaml_front_matter(
-            title,
-            None,
-            analysis_end=ae,
-            window_label=wlab,
-        )
-    )
-    items = sorted(weights.items(), key=lambda kv: (-kv[1], kv[0]))
-    top = items[:5]
-    parts.append("\n## РљР»СЋС‡РµРІРѕР№ РІС‹РІРѕРґ\n\n")
-    if top:
-        tlist = ", ".join(f"**{t}**  -  {_fmt_scalar(w, pct=True)}" for t, w in top)
-        parts.append(
-            f"**РљСЂСѓРїРЅРµР№С€РёРµ РїРѕР·РёС†РёРё** РїРѕ С†РµР»РµРІРѕРјСѓ РІРµСЃСѓ: {tlist}. "
-            f"**Р”РѕР»Рё РЅРёР¶Рµ**  -  РѕСЂРёРµРЅС‚РёСЂ РґР»СЏ СЃС‚СЂР°С‚РµРіРёРё; **РґР°С‚Р°** РѕС‚РЅРѕСЃРёС‚СЃСЏ Рє СЃРЅРёРјРєСѓ (СЃРј. СЃС‚СЂРѕРєСѓ РїРѕРґ Р·Р°РіРѕР»РѕРІРєРѕРј), Р° РЅРµ Рє СЃРёРіРЅР°Р»Сѓ СЃРґРµР»РєРё.\n\n"
-        )
-    else:
-        parts.append("*РќРµС‚ РїРѕР·РёС†РёР№ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ.*\n\n")
-    mets = (snap or {}).get("metrics") or {}
-    if isinstance(mets, dict) and mets:
-        k = _kpi_panel_latex_ru(mets)
-        if k:
-            parts.append("## РљР»СЋС‡РµРІС‹Рµ РїРѕРєР°Р·Р°С‚РµР»Рё\n\n")
-            parts.append(k + "\n")
-    parts.append("## РЎРѕСЃС‚Р°РІ: РІСЃРµ РїРѕР·РёС†РёРё\n\n")
-    parts.append("\n| РРЅСЃС‚СЂСѓРјРµРЅС‚ | Р¦РµР»РµРІРѕР№ РІРµСЃ |\n| --- | ---: |\n")
-    for t, w in items:
-        parts.append(f"| **{t}** | {_escape_md_cell(f'{w * 100:.2f}%')} |\n")
-    parts.append(
-        f"\n**РЎСѓРјРјР° РґРѕР»РµР№  -  {_fmt_scalar(sum(weights.values()), pct=True)}**; РїСЂРё РїРѕР»РЅРѕРј РёРЅРІРµСЃС‚РёСЂРѕРІР°РЅРёРё РѕР¶РёРґР°РµС‚СЃСЏ **РѕРєРѕР»Рѕ 100%**.\n"
-    )
     return "".join(parts)
 
 
@@ -1081,84 +873,6 @@ def build_ips_summary_md(
         "This English IPS summary is intended as a compact implementation memo. "
         "Use it together with the weights report and stress report to review allocation, realized risk, and scenario resilience.\n"
     )
-    return "".join(parts)
-
-    del variant_label
-    parts: list[str] = []
-    snap = _read_snapshot_10y(snapshot_folder) if snapshot_folder else None
-    wlab = str(snap.get("window_label") or "") if snap else None
-    ae = analysis_end
-    if snap and not ae and snap.get("analysis_end"):
-        ae = str(snap.get("analysis_end") or "").strip() or None
-    parts.append(
-        _yaml_front_matter(
-            "РџРѕР»РёС‚РёРєР° Рё РїРѕСЂС‚С„РµР»СЊ: СЃРІРѕРґРєР° СЂРµР°Р»РёР·Р°С†РёРё (IPS)",
-            None,
-            analysis_end=ae,
-            window_label=wlab,
-        )
-    )
-    raw = _soft_sanitize_narrative_for_pdf(text.replace("\r\n", "\n").strip())
-    lines = [ln.rstrip() for ln in raw.split("\n") if ln.strip() != "=================================================="]
-    if lines and lines[0].startswith("IPS Summary"):
-        lines = lines[1:]
-
-    parts.append("\n## РљР»СЋС‡РµРІРѕР№ РІС‹РІРѕРґ\n\n")
-    exec_lines: list[str] = []
-    i = 0
-    while i < len(lines):
-        ln = lines[i]
-        if re.match(r"^\d+\.\s", ln):
-            break
-        if ln.strip().startswith("---") or not ln.strip():
-            i += 1
-            continue
-        exec_lines.append(ln.strip())
-        i += 1
-    if exec_lines:
-        out_ln: list[str] = []
-        for x in exec_lines:
-            z = _executive_ru_sanitize(x)
-            if not z.strip():
-                continue
-            if z.startswith("-"):
-                out_ln.append(z)
-            else:
-                out_ln.append(f"- {z}")
-        if out_ln:
-            parts.append("\n".join(out_ln) + "\n")
-        else:
-            parts.append("*(РЎСѓС‚СЊ РёР·Р»РѕР¶РµРЅР° РІ **РЅСѓРјРµСЂРѕРІР°РЅРЅС‹С…** РїСѓРЅРєС‚Р°С… РЅРёР¶Рµ.)*\n")
-    else:
-        parts.append("*(РЎСѓС‚СЊ РёР·Р»РѕР¶РµРЅР° РІ **РЅСѓРјРµСЂРѕРІР°РЅРЅС‹С…** РїСѓРЅРєС‚Р°С… РЅРёР¶Рµ.)*\n")
-
-    parts.append("\n## Р РµР°Р»РёР·Р°С†РёСЏ: РїРѕ С€Р°РіР°Рј РїР»Р°РЅР°\n\n")
-    rest = "\n".join(lines[i:]).strip()
-    sections = re.split(r"\n(?=\d+\.\s)", rest)
-    for sec in sections:
-        sec = sec.strip()
-        if not sec:
-            continue
-        slines = sec.split("\n")
-        head = _executive_ru_sanitize(slines[0].strip())
-        body_lines = [
-            x.rstrip()
-            for x in slines[1:]
-            if x.strip() and not re.match(r"^-+$", x.strip()) and not x.strip().startswith("---")
-        ]
-        parts.append(f"\n### {head}\n\n")
-        if not body_lines:
-            continue
-        for bl in body_lines:
-            bls = _executive_ru_sanitize(bl.strip())
-            if not bls:
-                continue
-            if bls.startswith("-"):
-                parts.append(f"{bls}\n")
-            elif ":" in bls:
-                parts.append(f"- {bls}\n")
-            else:
-                parts.append(f"{bls}\n\n")
     return "".join(parts)
 
 
@@ -1304,6 +1018,37 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
             logger.warning("Missing %s  -  run run_compare_ew_rp.py", comp_path)
         results["Main portfolio_ew_rp_comparison.pdf"] = False
 
+    dp_summary = out_final / "decision_package_summary.txt"
+    if dp_summary.is_file():
+        try:
+            from src.decision_package_reporting import build_decision_package_report_md
+
+            summary_text = dp_summary.read_text(encoding="utf-8")
+            md = build_decision_package_report_md(
+                summary_text,
+                analysis_end=_detect_analysis_end(out_final),
+            )
+            ok = write_md_and_pdf(
+                md,
+                md_out=_PDF_MD_SOURCES / "Main portfolio__decision_package.md",
+                pdf_out=_PDF_OUT / "Main portfolio_decision_package.pdf",
+                logger=logger,
+            )
+            results["Main portfolio_decision_package.pdf"] = ok
+            if ok:
+                _copy_pdf_to_archive(_PDF_OUT / "Main portfolio_decision_package.pdf", logger)
+        except Exception as ex:
+            if logger:
+                logger.warning("Decision package PDF skipped: %s", ex)
+            results["Main portfolio_decision_package.pdf"] = False
+    else:
+        if logger:
+            logger.warning(
+                "Missing %s  -  run run_compare_variants.py after candidate reports",
+                dp_summary,
+            )
+        results["Main portfolio_decision_package.pdf"] = False
+
     def _commentary_pair(folder: Path, slug: str, title: str) -> None:
         cpath = folder / "commentary.txt"
         if not cpath.is_file():
@@ -1329,10 +1074,10 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
             _copy_pdf_to_archive(_PDF_OUT / name, logger)
 
     _commentary_pair(
-        eq_dir, "equal-weight_portfolio", "Equal-weight: СЂРѕРІРЅС‹Рµ РІРµСЃР° РєР°Рє Р±Р°Р·Р° РґР»СЏ СЃСЂР°РІРЅРµРЅРёСЏ"
+        eq_dir, "equal-weight_portfolio", "Equal-weight: equal allocations as comparison baseline"
     )
     _commentary_pair(
-        rp_dir, "risk_parity_portfolio", "Risk parity: СЂРёСЃРє РІ РїРµСЂРІСѓСЋ РѕС‡РµСЂРµРґСЊ"
+        rp_dir, "risk_parity_portfolio", "Risk parity: risk-first allocation baseline"
     )
     for folder, slug, title, _stress_title, _wtitle in mv_dirs:
         _commentary_pair(folder, slug, title)
@@ -1362,10 +1107,10 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
             _copy_pdf_to_archive(_PDF_OUT / out_name, logger)
 
     _stress_commentary_pair(
-        eq_dir, "equal-weight_portfolio", "РЎС‚СЂРµСЃСЃ: РєР°Рє РІРµРґС‘С‚ СЃРµР±СЏ equal-weight"
+        eq_dir, "equal-weight_portfolio", "Stress: equal-weight behavior"
     )
     _stress_commentary_pair(
-        rp_dir, "risk_parity_portfolio", "РЎС‚СЂРµСЃСЃ: РєР°Рє РІРµРґС‘С‚ СЃРµР±СЏ risk parity"
+        rp_dir, "risk_parity_portfolio", "Stress: risk-parity behavior"
     )
     for folder, slug, _comm_title, stress_title, _wtitle in mv_dirs:
         _stress_commentary_pair(folder, slug, stress_title)
@@ -1373,7 +1118,7 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     mp_comm = out_final / "commentary.txt"
     if mp_comm.is_file():
         md = build_commentary_report_md(
-            report_title="РћСЃРЅРѕРІРЅРѕР№ РїРѕСЂС‚С„РµР»СЊ: СѓСЃС‚РѕР№С‡РёРІС‹Р№ СЂРёСЃРє-РїСЂРѕС„РёР»СЊ РїСЂРё СѓРјРµСЂРµРЅРЅРѕР№ РґРѕС…РѕРґРЅРѕСЃС‚Рё",
+            report_title="Main Portfolio: stable risk profile with moderate return",
             commentary_text=mp_comm.read_text(encoding="utf-8"),
             variant_label=out_final.name,
             analysis_end=_detect_analysis_end(out_final),
@@ -1394,13 +1139,13 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     _stress_commentary_pair(
         out_final,
         "Main portfolio",
-        "РЎС‚СЂРµСЃСЃ: С‚РµРєСѓС‰РёР№ СЃРѕСЃС‚Р°РІ РїРѕРґ РґР°РІР»РµРЅРёРµРј СЃС†РµРЅР°СЂРёРµРІ",
+        "Stress: current allocation under scenario pressure",
     )
 
     # --- Weights ---
     for folder, slug, title in (
-        (eq_dir, "equal-weight_portfolio", "Р¦РµР»РµРІС‹Рµ РІРµСЃР°: equal-weight"),
-        (rp_dir, "risk_parity_portfolio", "Р¦РµР»РµРІС‹Рµ РІРµСЃР°: risk parity"),
+        (eq_dir, "equal-weight_portfolio", "Target weights: equal-weight"),
+        (rp_dir, "risk_parity_portfolio", "Target weights: risk parity"),
         *((folder, slug, wtitle) for folder, slug, _c, _s, wtitle in mv_dirs),
 
     ):
@@ -1437,7 +1182,7 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
         if isinstance(raw_w, dict):
             wf = {str(k): float(v) for k, v in raw_w.items() if isinstance(v, (int, float))}
             md = build_weights_report_md(
-                title="РЎРѕСЃС‚Р°РІ РїРѕСЂС‚С„РµР»СЏ: РєСѓРґР° РІСЃС‚Р°С‘С‚ РєР°РїРёС‚Р°Р»",
+                title="Portfolio Composition: target capital allocation",
                 weights=wf,
                 variant_label=out_final.name,
                 analysis_end=_detect_analysis_end(out_final),
@@ -1480,7 +1225,7 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     icpath = out_final / "ips_summary.commentary.txt"
     if icpath.is_file():
         md = build_commentary_report_md(
-            report_title="РЎРІРѕРґРєР° IPS: СЃРјС‹СЃР»РѕРІРѕР№ РєРѕРјРјРµРЅС‚Р°СЂРёР№",
+            report_title="IPS Summary: narrative commentary",
             commentary_text=icpath.read_text(encoding="utf-8"),
             variant_label=out_final.name,
             analysis_end=_detect_analysis_end(out_final),

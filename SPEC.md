@@ -24,14 +24,17 @@ It supports:
 - portfolio metrics, dynamic backtesting, risk contribution diagnostics, and stress diagnostics
 - factor, macro/regime, PCA, scenario-library, and robustness diagnostics
 - benchmark and candidate portfolio reports
+- canonical candidate comparison and V1 decision artifacts: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, Action Plan, Monitoring / What Changed, and generated Decision Journal
+- decision package report summary (`decision_package_summary.txt` / `.json`, optional `report.txt` append, decision-package PDF after comparison)
 - CSV, JSON, HTML, TXT, and PDF-style report artifacts
 
 Target product areas remain TBD until separately specified and implemented:
 
 - full interactive UI
 - saved analysis workspaces
-- full Monitoring
-- Decision Journal
+- orchestrated Candidate Portfolio Factory and hardened current-vs-policy workflow
+- Assumption Sensitivity, Pareto / Dominance, Regret Analysis, and unified trade-off/model-risk artifacts
+- user-maintained journal/workflow layers beyond the generated V1 Decision Journal
 
 ## Main Workflows
 
@@ -154,6 +157,13 @@ Primary outputs include:
 - `run_metadata.json`
 - `stress_report.json`
 - `portfolio_xray.json`
+- `candidate_comparison.json`
+- `robustness_scorecard.json`
+- `portfolio_health_score.json`
+- `selection_decision.json`
+- `action_plan.json`
+- `monitoring_diff.json`
+- `decision_journal.json`
 - metrics and diagnostics under `results_csv/`
 - scenario library JSON/CSV artifacts where available
 - commentary text artifacts
@@ -210,13 +220,16 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Scenario Library and normalized scenario view | Implemented input-standardization/diagnostic layer |
 | Benchmark and candidate portfolio builders | Implemented comparison layer |
 | Robust Mean-Variance and Scenario-Based Robust Optimization | Implemented benchmark/candidate layer |
+| Canonical candidate comparison | Implemented (`candidate_comparison.json` via [src/candidate_comparison.py](src/candidate_comparison.py)) |
+| Robustness Scorecard | Implemented diagnostic artifact (`robustness_scorecard.json` via [src/robustness_scorecard.py](src/robustness_scorecard.py)) |
+| Portfolio Health Score | Implemented diagnostic artifact (`portfolio_health_score.json` via [src/portfolio_health_score.py](src/portfolio_health_score.py)) |
 | ETF and stock taxonomy | Implemented annotation-only V1 |
 | Generated CSV/JSON/HTML/TXT/PDF-style reports | Implemented |
 | Full interactive UI | Target/TBD |
 | Formal Selection Engine and No-Trade | Implemented (`selection_decision.json` via [src/selection_engine.py](src/selection_engine.py)) |
 | Action Engine and Rebalancing Advisor | Implemented (`action_plan.json` via [src/action_engine.py](src/action_engine.py)) |
-| Monitoring / What Changed | Implemented (V1) — [monitoring_spec.md](docs/specs/monitoring_spec.md), `src/monitoring.py` |
-| Decision Journal | Implemented (V1) — [decision_journal_spec.md](docs/specs/decision_journal_spec.md), `src/decision_journal.py` |
+| Monitoring / What Changed | Implemented (V1) - [monitoring_spec.md](docs/specs/monitoring_spec.md), `src/monitoring.py` |
+| Decision Journal | Implemented (V1) - [decision_journal_spec.md](docs/specs/decision_journal_spec.md), `src/decision_journal.py` |
 
 ## Implementation Contract
 

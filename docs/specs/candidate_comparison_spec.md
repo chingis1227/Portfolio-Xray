@@ -18,7 +18,7 @@ Implementation: `src/candidate_comparison.py` (builder) and `run_compare_variant
 ## Product Boundary
 
 - Comparison output is **evidence for decision support**, not a recommendation.
-- Wording in downstream reports must not imply “choose this portfolio” unless [selection_engine_spec.md](selection_engine_spec.md) decision artifacts and reporting rules explicitly allow decision-support phrasing for that surface.
+- Wording in downstream reports must not imply "choose this portfolio" unless [selection_engine_spec.md](selection_engine_spec.md) decision artifacts and reporting rules explicitly allow decision-support phrasing for that surface.
 - Portfolio X-Ray, commentary, and stress diagnostics remain non-binding inputs; comparison does not override them.
 
 ## Canonical Artifact
@@ -27,7 +27,7 @@ Implementation: `src/candidate_comparison.py` (builder) and `run_compare_variant
 | --- | --- |
 | File name | `candidate_comparison.json` |
 | Location | `{output_dir_final}/candidate_comparison.json` (default folder: `Main portfolio/`) |
-| Companion (optional) | `{output_dir_final}/candidate_comparison.txt` — human-readable summary table |
+| Companion (optional) | `{output_dir_final}/candidate_comparison.txt` - human-readable summary table |
 | Schema version | `candidate_comparison_v1` |
 
 `output_dir_final` is the configured main output folder from `config.yml` (see [input_assumptions_spec.md](input_assumptions_spec.md)).
@@ -248,7 +248,7 @@ Construction methods and script entry points are defined in [candidate_portfolio
 - `optimize_from_universe`: expect `policy` available when optimization/report artifacts exist; `current` is `unavailable` unless a separate current-portfolio report was materialized with `user_current_portfolio` tagging (future builder may support explicit refresh).
 - `analyze_current_weights`: expect `current` available from Main report; `policy` is `unavailable` with reason `not_applicable_for_analysis_mode` unless a prior optimization snapshot still exists and is explicitly linked (then `degraded` with warning `stale_policy_snapshot`).
 
-## Assembly Rules (Session 09)
+## Assembly Rules
 
 The comparison builder must:
 
@@ -263,6 +263,21 @@ The comparison builder must:
 
 The builder must **not** call the optimizer or candidate scripts; it only reads artifacts.
 
+## Downstream Decision-Package Wiring
+
+`write_candidate_comparison_outputs` is the V1 orchestration point for the generated decision package.
+After journal export it also writes the compact report summary via
+[decision_package_reporting_spec.md](decision_package_reporting_spec.md).
+After writing `candidate_comparison.json`, it writes the existing downstream artifacts in this order:
+`robustness_scorecard.json`, `portfolio_health_score.json`, `selection_decision.json`,
+`action_plan.json`, `monitoring_diff.json`, and `decision_journal.json` when their required inputs are
+available.
+
+This wiring does not change the comparison artifact boundary. `candidate_comparison.json` remains
+`diagnostic_only: true`; the formal decision status lives only in `selection_decision.json`, the
+implementation-plan surface lives only in `action_plan.json`, temporal change evidence lives in
+`monitoring_diff.json`, and the run-level process record lives in `decision_journal.json`.
+
 ## Legacy Artifacts
 
 | File | Producer | V1 status |
@@ -276,7 +291,7 @@ Canonical consumers (Robustness Scorecard, Health Score, Selection Engine) must 
 
 `candidate_comparison.txt` is optional. When written, it should list `display_name`, primary-window CAGR, vol, max drawdown, Sharpe, stress overall, and mandate/client-fit in a fixed-width table. English only.
 
-## Tests (Session 09)
+## Tests
 
 Focused tests should cover:
 
@@ -296,4 +311,8 @@ Focused tests should cover:
 | Report artifacts per portfolio | [reporting_outputs_spec.md](reporting_outputs_spec.md) |
 | Output locations | [OUTPUTS.md](../../OUTPUTS.md) |
 | Robustness Scorecard | [robustness_scorecard_spec.md](robustness_scorecard_spec.md) |
-| Future health / selection | portfolio health / selection specs (TBD) |
+| Portfolio Health Score | [portfolio_health_score_spec.md](portfolio_health_score_spec.md) |
+| Selection / No-Trade | [selection_engine_spec.md](selection_engine_spec.md) |
+| Action Engine / Rebalancing Advisor | [action_engine_spec.md](action_engine_spec.md) |
+| Monitoring / What Changed | [monitoring_spec.md](monitoring_spec.md) |
+| Decision Journal | [decision_journal_spec.md](decision_journal_spec.md) |

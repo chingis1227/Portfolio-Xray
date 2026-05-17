@@ -1,4 +1,4 @@
-# Client risk profiles — target return, volatility, max drawdown, liquidity floor.
+# Client risk profiles - target return, volatility, max drawdown, liquidity floor.
 # When client_profile is set in config, midpoints are applied via src/client_profiles.py.
 
 profiles:
@@ -9,7 +9,7 @@ profiles:
     target_vol_annual: { min_pct: 2, max_pct: 5, midpoint: 0.035 }
     target_max_drawdown_pct: -0.10
     liquidity_floor_pct: { min_pct: 10, max_pct: 25, midpoint: 0.175 }
-    note: "Цель — не упасть; доходность вторична."
+    note: "Primary objective is capital preservation; return is secondary."
 
   conservative:
     name: Conservative
@@ -18,7 +18,7 @@ profiles:
     target_vol_annual: { min_pct: 4, max_pct: 7, midpoint: 0.055 }
     target_max_drawdown_pct: -0.15
     liquidity_floor_pct: { min_pct: 10, max_pct: 20, midpoint: 0.15 }
-    note: "Умеренный рост, приоритет стабильность."
+    note: "Moderate growth with stability as the priority."
 
   balanced:
     name: Balanced
@@ -27,17 +27,17 @@ profiles:
     target_vol_annual: { min_pct: 7, max_pct: 10, midpoint: 0.085 }
     target_max_drawdown_pct: -0.20
     liquidity_floor_pct: { min_pct: 5, max_pct: 15, midpoint: 0.10 }
-    note: "Рост + контроль просадок."
+    note: "Growth with drawdown control."
 
   growth:
     name: Growth
-    max_drawdown_pct: ~25–30%
+    max_drawdown_pct: ~25-30%
     target_return_annual: { min_pct: 7, max_pct: 10, midpoint: 0.085 }
     target_vol_annual: { min_pct: 10, max_pct: 14, midpoint: 0.12 }
     target_max_drawdown_pct: -0.275
     min_single_security_weight_pct: 0.02
     liquidity_floor_pct: { min_pct: 0, max_pct: 10, midpoint: 0.05 }
-    note: "Доходность, просадки принимаются."
+    note: "Return-oriented profile; drawdowns are accepted."
 
   aggressive:
     name: Aggressive
@@ -47,4 +47,4 @@ profiles:
     target_max_drawdown_pct: -0.35
     min_single_security_weight_pct: 0.02
     liquidity_floor_pct: { min_pct: 0, max_pct: 5, midpoint: 0.025 }
-    note: "Максимум роста; просадки как у акций."
+    note: "Maximum growth profile; equity-like drawdowns are accepted."

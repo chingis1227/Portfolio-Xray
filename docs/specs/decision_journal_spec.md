@@ -283,7 +283,7 @@ See artifact_refs in decision_journal.json for selection, action, and monitoring
 | Scorecards / comparison | Remain diagnostic-only. |
 | User notes / IC memos | Out of scope for V1 generated journal. |
 
-Downstream PDF or report builders may summarize the journal using [reporting_outputs_spec.md](reporting_outputs_spec.md) and project PDF rules. V1 does not require PDF integration.
+Downstream PDF or report builders may summarize the journal using [reporting_outputs_spec.md](reporting_outputs_spec.md) and project PDF rules. The generated journal is available today as JSON/TXT; compact report/PDF integration remains a separate reporting workstream.
 
 ## Generated vs Source Boundary
 
@@ -300,12 +300,12 @@ Users must not treat `decision_journal.json` as mandate or weight source. Manual
 - User-maintained decision records or merge-with-generated workflows.
 - Post-hoc outcome scoring ("was the decision good in hindsight").
 - Automatic `follow_up_review_date` scheduling or alerts.
-- PDF/report integration (Session 20+ follow-up allowed).
+- Compact PDF/report integration beyond the generated JSON/TXT files.
 - Duplicating full `commentary.txt` or Portfolio X-Ray bodies.
 - Multi-portfolio workspace journals.
 - Recomputing metrics, scores, or selection inside the journal module.
 
-## Tests (Session 20)
+## Tests
 
 Focused tests should cover:
 
@@ -328,4 +328,4 @@ Focused tests should cover:
 | Monitoring inputs | [monitoring_spec.md](monitoring_spec.md) |
 | Comparison / assumptions | [candidate_comparison_spec.md](candidate_comparison_spec.md), [input_assumptions_spec.md](input_assumptions_spec.md) |
 | Output location | [OUTPUTS.md](../../OUTPUTS.md) |
-| Implementation | `src/decision_journal.py` (Session 20) |
+| Implementation | `src/decision_journal.py` |

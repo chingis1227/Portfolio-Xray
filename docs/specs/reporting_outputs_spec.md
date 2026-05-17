@@ -32,6 +32,9 @@ Common outputs include:
 - `stress_commentary.txt`
 - generated HTML snapshots
 - PDF-style reports under configured output folders
+- decision-package artifacts under `output_dir_final`: `candidate_comparison.json`,
+  `robustness_scorecard.json`, `portfolio_health_score.json`, `selection_decision.json`,
+  `action_plan.json`, `monitoring_diff.json`, and `decision_journal.json`
 
 `run_result.json` and `run_metadata.json` expose `analysis_setup`, the resolved runtime contract governed by [input_assumptions_spec.md](input_assumptions_spec.md). They also expose `input_assumptions`, the reporting/reproducibility view projected from `analysis_setup`.
 
@@ -44,8 +47,42 @@ The canonical multi-candidate artifact is `candidate_comparison.json` written un
 stress summaries, and mandate metadata into one diagnostic-only JSON contract.
 
 See [candidate_comparison_spec.md](candidate_comparison_spec.md). Legacy
-`portfolio_comparison.json` and `ew_rp_comparison.json` remain for backward compatibility until
-Session 09 migrates producers and consumers to the canonical file.
+`portfolio_comparison.json` and `ew_rp_comparison.json` remain for backward compatibility as
+subset comparison files; new consumers should use `candidate_comparison.json`.
+
+## Decision Package Artifact Chain (V1)
+
+`run_compare_variants.py` calls `write_candidate_comparison_outputs`, which writes a file-first
+decision-support package under `output_dir_final` after candidate report folders already exist. The
+package is generated evidence and workflow output; it does not rewrite optimizer weights, rerun
+candidate builders, execute trades, or override stress pass/fail.
+
+The V1 artifact chain is:
+
+1. `candidate_comparison.json` / `.txt` - diagnostic table of policy, current when materialized, and
+   supported candidate families.
+2. `robustness_scorecard.json` / `.txt` - diagnostic resilience scorecard from the comparison table.
+3. `portfolio_health_score.json` / `.txt` - diagnostic holistic health score from comparison plus
+   optional robustness reference.
+4. `selection_decision.json` / `.txt` - formal, non-executing decision record with one decision
+   status and optional No-Trade materiality.
+5. `action_plan.json` / `.txt` - non-executing implementation plan, turnover, optional trade rows for
+   review, and simple transaction-cost estimate.
+6. `monitoring_diff.json` / `.txt` plus `monitoring/latest/` and `monitoring/history/` snapshots -
+   generated What Changed evidence versus the prior run.
+7. `decision_journal.json` / `.txt` plus `journal/latest/` and `journal/history/` copies - generated
+   decision record and artifact index for the run.
+
+Compact report/PDF-facing summaries are defined in
+[decision_package_reporting_spec.md](decision_package_reporting_spec.md) and implemented in
+[src/decision_package_reporting.py](../../src/decision_package_reporting.py). After
+`write_candidate_comparison_outputs` completes, the pipeline also writes:
+
+- `decision_package_summary.txt` — primary English summary for humans and `report.txt` append
+- `decision_package_summary.json` — `decision_package_report_v1` index with section availability
+
+The per-artifact JSON/TXT files above remain the authoritative structured contracts; the summary is a
+read-only projection for reports and PDF rebuild.
 
 ## Portfolio X-Ray Summary
 
@@ -88,3 +125,10 @@ Generated outputs are not source files unless the task explicitly targets genera
 - Stress and factor artifact contracts: [stress_testing_spec.md](stress_testing_spec.md)
 - Scenario Library outputs: [scenario_library_spec.md](scenario_library_spec.md)
 - Production statuses: [production_workflow.md](production_workflow.md)
+- Candidate comparison: [candidate_comparison_spec.md](candidate_comparison_spec.md)
+- Robustness Scorecard: [robustness_scorecard_spec.md](robustness_scorecard_spec.md)
+- Portfolio Health Score: [portfolio_health_score_spec.md](portfolio_health_score_spec.md)
+- Selection / No-Trade: [selection_engine_spec.md](selection_engine_spec.md)
+- Action Engine / Rebalancing Advisor: [action_engine_spec.md](action_engine_spec.md)
+- Monitoring / What Changed: [monitoring_spec.md](monitoring_spec.md)
+- Decision Journal: [decision_journal_spec.md](decision_journal_spec.md)

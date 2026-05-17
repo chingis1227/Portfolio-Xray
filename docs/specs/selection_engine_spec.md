@@ -2,7 +2,7 @@
 
 This document owns the **Selection Engine** and **No-Trade Recommendation** contract: the first formal, machine-readable decision layer that states which portfolio profile is favored in a comparison run and whether a move from the user's current allocation appears materially worthwhile.
 
-It does not own metric formulas, stress scenario definitions, candidate construction, scorecard component math, rebalance trade lists, or optimizer release policy. Those remain in [metrics_specification.md](metrics_specification.md), [stress_testing_spec.md](stress_testing_spec.md), [candidate_comparison_spec.md](candidate_comparison_spec.md), [robustness_scorecard_spec.md](robustness_scorecard_spec.md), [portfolio_health_score_spec.md](portfolio_health_score_spec.md), [portfolio_construction_policy.md](portfolio_construction_policy.md), and (future) [action_engine_spec.md](action_engine_spec.md).
+It does not own metric formulas, stress scenario definitions, candidate construction, scorecard component math, rebalance trade lists, or optimizer release policy. Those remain in [metrics_specification.md](metrics_specification.md), [stress_testing_spec.md](stress_testing_spec.md), [candidate_comparison_spec.md](candidate_comparison_spec.md), [robustness_scorecard_spec.md](robustness_scorecard_spec.md), [portfolio_health_score_spec.md](portfolio_health_score_spec.md), [portfolio_construction_policy.md](portfolio_construction_policy.md), and [action_engine_spec.md](action_engine_spec.md).
 
 Implementation: [src/selection_engine.py](../../src/selection_engine.py) (`selection_decision_v1`). This document is the contract.
 
@@ -29,7 +29,7 @@ The No-Trade Recommendation is a **first-class outcome** of the same module when
 | **Portfolio Health Score** | Diagnostic holistic quality score; not a binding decision. |
 | **Robustness Scorecard** | Diagnostic resilience ranking; not a binding decision. |
 | **Candidate Comparison** | Diagnostic evidence table; remains `diagnostic_only: true`. |
-| **Action Engine / Rebalancing Advisor** | Future trade list and implementation deltas (Session 16+). |
+| **Action Engine / Rebalancing Advisor** | Existing non-executing implementation-plan artifact (`action_plan.json`) that consumes selection output. |
 | **`src/rebalance.py`** | Mechanical trade list from two weight vectors; `threshold_pct` gates max per-ticker drift only, not Selection or No-Trade logic. |
 
 ## Product Boundary
@@ -304,12 +304,12 @@ Conclusion: No material rebalance suggested versus current weights.
 See selection_decision.json for composite ranking and rejected candidates.
 ```
 
-## Pipeline Placement (Session 15)
+## Pipeline Placement
 
 1. After `candidate_comparison.json`, `robustness_scorecard.json`, and `portfolio_health_score.json` are written (same path as `write_candidate_comparison_outputs` / `run_compare_variants.py`).
 2. Do not re-run optimizer, stress engine, or score formulas.
 3. Write `selection_decision.json` to `output_dir_final`.
-4. Report/PDF integration only when [reporting_outputs_spec.md](reporting_outputs_spec.md) is updated in the same or a follow-up session.
+4. Report/PDF-facing summaries are owned by [reporting_outputs_spec.md](reporting_outputs_spec.md); until the compact decision-package report surface is implemented, `selection_decision.json` / `.txt` are the direct generated selection surfaces.
 
 ## Diagnostic Artifacts Remain Non-Binding
 
@@ -325,14 +325,14 @@ Downstream commentary may **reference** the decision artifact but must not contr
 
 ## Non-Goals (V1)
 
-- Pareto / dominance pruning ([PRODUCT.md](../../PRODUCT.md) target/TBD).
+- Pareto / dominance pruning (future product analytics; see [PRODUCT.md](../../PRODUCT.md)).
 - Regret analysis and assumption sensitivity grids.
 - Transaction cost models beyond Action Engine V1 simple bps-on-turnover (see [action_engine_spec.md](action_engine_spec.md)).
 - Automatic weight release or optimizer re-run.
 - User-maintained decision journal writes (see [decision_journal_spec.md](decision_journal_spec.md); generated-only V1).
-- Multi-period or monitoring-based selection (Monitoring sessions 17–18).
+- Multi-period or monitoring-based selection. Monitoring consumes selection output; it must not change the selection status.
 
-## Tests (Session 15)
+## Tests
 
 Focused tests should cover:
 
@@ -359,4 +359,4 @@ Focused tests should cover:
 | Mandate / release | [portfolio_construction_policy.md](portfolio_construction_policy.md), [production_workflow.md](production_workflow.md) |
 | Trade lists | [action_engine_spec.md](action_engine_spec.md), `src/action_engine.py`, `src/rebalance.py` |
 | Output location | [OUTPUTS.md](../../OUTPUTS.md) |
-| Implementation | `src/selection_engine.py` (Session 15) |
+| Implementation | `src/selection_engine.py` |

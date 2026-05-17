@@ -941,18 +941,37 @@ def write_candidate_comparison_outputs(
 
     from src.decision_journal import write_decision_journal_outputs
 
+    monitoring_doc = _load_json(
+        paths.get("monitoring_diff_json") or out_dir / "monitoring_diff.json"
+    )
+    journal_paths = write_decision_journal_outputs(
+        cfg,
+        project_root=project_root,
+        comparison=comparison,
+        selection=selection_doc,
+        action=action_doc,
+        monitoring_diff=monitoring_doc,
+        health=health_doc,
+        robustness=robustness_doc,
+    )
+    paths.update(journal_paths)
+
+    from src.decision_package_reporting import write_decision_package_reporting_outputs
+
+    journal_doc = _load_json(
+        paths.get("decision_journal_json") or out_dir / "decision_journal.json"
+    )
     paths.update(
-        write_decision_journal_outputs(
+        write_decision_package_reporting_outputs(
             cfg,
             project_root=project_root,
             comparison=comparison,
-            selection=selection_doc,
-            action=action_doc,
-            monitoring_diff=_load_json(
-                paths.get("monitoring_diff_json") or out_dir / "monitoring_diff.json"
-            ),
             health=health_doc,
             robustness=robustness_doc,
+            selection=selection_doc,
+            action=action_doc,
+            monitoring_diff=monitoring_doc,
+            decision_journal=journal_doc,
         )
     )
 

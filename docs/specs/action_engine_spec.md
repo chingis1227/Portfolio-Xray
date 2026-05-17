@@ -26,7 +26,7 @@ The Rebalancing Advisor is the same artifact surfaced for humans: compact `.txt`
 1. **Transaction costs:** `10` bps applied to turnover half-sum:  
    `estimated_transaction_cost_pct = turnover_half_sum_pct * transaction_cost_bps / 10000`.
 2. **Always emit `action_plan`:** written after every comparison run that produces `selection_decision.json`, including No-Trade and inconclusive outcomes (`trades: []` with reason).
-3. **Session delivery:** spec and implementation in one session (Session 16).
+3. **Session delivery:** the V1 spec and implementation are delivered.
 
 ## Naming Boundary
 
@@ -126,6 +126,7 @@ Reuses comparison/selection projections only (no new formulas):
 1. After `selection_decision.json` is written (`write_candidate_comparison_outputs` / `run_compare_variants.py`).
 2. Do not re-run optimizer, stress, scores, or selection.
 3. Write `action_plan.json` to `output_dir_final` whenever selection was written.
+4. Monitoring consumes the action status and Decision Journal summarizes the resulting implementation-plan fields; Action Engine must not update monitoring or journal files directly.
 
 ## Diagnostic Boundary
 
@@ -140,10 +141,10 @@ Reuses comparison/selection projections only (no new formulas):
 - NAV-based dollar amounts (optional in `compute_trades` but not required in JSON V1).
 - Per-asset transaction cost tables or tax logic.
 - Partial rebalance optimization or trade netting.
-- PDF/report integration (follow-up session allowed).
+- Compact PDF/report integration beyond the generated JSON/TXT files.
 - Automatic execution or `portfolio_weights.yml` updates.
 
-## Tests (Session 16)
+## Tests
 
 Focused tests should cover:
 
@@ -166,3 +167,5 @@ Focused tests should cover:
 | Trade mechanics | `src/rebalance.py` |
 | Output location | [OUTPUTS.md](../../OUTPUTS.md) |
 | Implementation | `src/action_engine.py` |
+| Downstream monitoring | [monitoring_spec.md](monitoring_spec.md) |
+| Downstream journal | [decision_journal_spec.md](decision_journal_spec.md) |

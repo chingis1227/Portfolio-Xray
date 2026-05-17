@@ -56,6 +56,20 @@ Title: Short title
 
 ## Active Issues
 
+Issue ID: KI-2026-05-17-007
+Title: Source/generator mojibake and English-language normalization remain in user-facing paths
+
+- Status: in_progress
+- Severity: high
+- Area: reports
+- Risk: Generated reports can still contain stale broken text until they are regenerated from cleaned source strings.
+- Evidence: Session 05 cleaned source/generator text in CLI/log/report/PDF/config/docs paths and targeted source scans now pass for Cyrillic and common mojibake markers. Existing generated output folders were not hand-edited and may still contain older text.
+- Current mitigation: Source and generator defaults are English; generated outputs are not treated as source.
+- Next action: Regenerate representative report/PDF outputs during the reporting/PDF sessions and visually/readably check the result.
+- Source links: [post-session audit](docs/audits/2026-05-17_post_session_deep_system_audit.md), [OUTPUTS](OUTPUTS.md), [TESTING](TESTING.md).
+- Remove when: Targeted source scans pass and regenerated representative outputs no longer show broken or non-English default text.
+
+
 Issue ID: KI-2026-05-17-004
 Title: Partial utility UI status is under-described in top-level docs
 

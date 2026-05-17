@@ -28,24 +28,24 @@ def warn_insufficient_data(
     window_label = f"{window_months // 12}Y" if window_months >= 12 else f"{window_months}M"
     if metric:
         logger.warning(
-            f"{ticker}: недостаточно данных для {metric} ({window_label}): "
-            f"доступно {available_months} мес., требуется {window_months}"
+            f"{ticker}: insufficient data for {metric} ({window_label}): "
+            f"{available_months} months available, {window_months} required"
         )
     else:
         logger.warning(
-            f"{ticker}: недостаточно данных для окна {window_label}: "
-            f"доступно {available_months} мес., требуется {window_months}"
+            f"{ticker}: insufficient data for window {window_label}: "
+            f"{available_months} months available, {window_months} required"
         )
 
 
 def warn_skipped_asset(ticker: str, reason: str) -> None:
     """Log warning when asset is skipped."""
-    logger.warning(f"{ticker}: пропущен — {reason}")
+    logger.warning(f"{ticker}: skipped - {reason}")
 
 
 def info_data_summary(ticker: str, available_months: int, start_date: str, end_date: str) -> None:
     """Log info about available data range."""
-    logger.info(f"{ticker}: {available_months} мес. данных ({start_date} — {end_date})")
+    logger.info(f"{ticker}: {available_months} months of data ({start_date} - {end_date})")
 
 
 def coverage_ratio(

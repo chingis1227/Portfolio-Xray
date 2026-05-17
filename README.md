@@ -16,16 +16,17 @@ Implemented today:
 - Portfolio metrics, dynamic NaN-safe backtesting, and risk contribution diagnostics.
 - Stress diagnostics, stress commentary, factor diagnostics, macro/regime diagnostics, PCA, scenario libraries, and robustness diagnostics.
 - Benchmark/candidate portfolios including Equal Weight, Risk Parity, HRP, Minimum Variance, Maximum Diversification, Minimum CVaR, Robust Mean-Variance, and Scenario-Based Robust Optimization.
+- Canonical candidate comparison and V1 decision artifacts through `run_compare_variants.py`: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, Action Plan, Monitoring / What Changed, and generated Decision Journal.
 - CSV, JSON, HTML, TXT, and PDF-style generated artifacts.
 - ETF and stock taxonomy validation as annotation/diagnostic layers.
 
 Target/TBD areas:
 
-- Full interactive UI.
-- Formal Selection Engine and Portfolio Health Score.
-- Monitoring / What Changed workflow.
-- Decision Journal.
-- Productized no-trade recommendation and advanced UX modules.
+- Full interactive UI and saved analysis workspaces.
+- Productized report/PDF decision package that summarizes all V1 decision artifacts.
+- Orchestrated Candidate Portfolio Factory and hardened current-vs-policy workflow.
+- Assumption Sensitivity, Pareto / Dominance, Regret Analysis, and unified trade-off/model-risk artifacts.
+- Advanced UX modules around the implemented file-first V1 artifacts.
 
 ## Main Pipeline
 
@@ -122,6 +123,13 @@ Common artifacts:
 - `run_metadata.json`
 - `stress_report.json`
 - `portfolio_xray.json`
+- `candidate_comparison.json`
+- `robustness_scorecard.json`
+- `portfolio_health_score.json`
+- `selection_decision.json`
+- `action_plan.json`
+- `monitoring_diff.json`
+- `decision_journal.json`
 - `scenario_library.json`
 - `scenario_library_normalized.json`
 - `commentary.txt`

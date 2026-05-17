@@ -167,7 +167,7 @@ def save_daily_prices(cache_path: Path, prices: dict[str, pd.DataFrame]) -> None
     
     combined = pd.concat(all_dfs, axis=1)
     combined.to_parquet(cache_path / "prices_daily.parquet")
-    logger.info(f"Сохранён дневной кеш: {len(all_dfs)} тикеров, {len(combined)} дней")
+    logger.info(f"Saved daily cache: {len(all_dfs)} tickers, {len(combined)} days")
 
 
 def load_daily_prices(cache_path: Path) -> dict[str, pd.DataFrame] | None:
@@ -189,10 +189,10 @@ def load_daily_prices(cache_path: Path) -> dict[str, pd.DataFrame] | None:
             ticker_df.columns = ["Close"]
             ticker_df = ticker_df.dropna()
             result[col] = ticker_df
-        logger.info(f"Загружен дневной кеш: {len(result)} тикеров")
+        logger.info(f"Loaded daily cache: {len(result)} tickers")
         return result
     except Exception as e:
-        logger.warning(f"Ошибка загрузки дневного кеша: {e}")
+        logger.warning(f"Daily cache load failed: {e}")
         return None
 
 
@@ -222,7 +222,7 @@ def save_monthly_data(
         fx_df = pd.DataFrame(fx_series)
         fx_df.to_parquet(cache_path / "fx_series.parquet")
     
-    logger.info(f"Сохранён месячный кеш: {len(monthly_prices.columns)} тикеров, {len(monthly_prices)} месяцев")
+    logger.info(f"Saved monthly cache: {len(monthly_prices.columns)} tickers, {len(monthly_prices)} months")
 
 
 def load_monthly_data(cache_path: Path) -> dict[str, Any] | None:
@@ -245,7 +245,7 @@ def load_monthly_data(cache_path: Path) -> dict[str, Any] | None:
     
     for f in required_files:
         if not (cache_path / f).is_file():
-            logger.debug(f"Месячный кеш неполный: отсутствует {f}")
+            logger.debug(f"Monthly cache incomplete: missing {f}")
             return None
     
     try:
@@ -264,10 +264,10 @@ def load_monthly_data(cache_path: Path) -> dict[str, Any] | None:
             fx_df = pd.read_parquet(fx_path)
             result["fx_series"] = {col: fx_df[col] for col in fx_df.columns}
         
-        logger.info(f"Загружен месячный кеш: {len(result['monthly_prices'].columns)} тикеров")
+        logger.info(f"Loaded monthly cache: {len(result['monthly_prices'].columns)} tickers")
         return result
     except Exception as e:
-        logger.warning(f"Ошибка загрузки месячного кеша: {e}")
+        logger.warning(f"Monthly cache load failed: {e}")
         return None
 
 
@@ -307,7 +307,7 @@ def cleanup_old_cache(keep_versions: int = 3) -> None:
             if old_version.is_dir():
                 import shutil
                 shutil.rmtree(old_version)
-                logger.info(f"Удалён старый кеш: {old_version.name}")
+                logger.info(f"Removed old cache: {old_version.name}")
 
 
 def clear_all_cache() -> None:
@@ -315,4 +315,4 @@ def clear_all_cache() -> None:
     if CACHE_DIR.is_dir():
         import shutil
         shutil.rmtree(CACHE_DIR)
-        logger.info("Весь кеш очищен")
+        logger.info("All cache cleared")

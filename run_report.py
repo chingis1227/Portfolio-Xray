@@ -429,7 +429,7 @@ def run_portfolio_report_for_weights(
                 local_bench_returns = monthly_returns.get(local_bench_ticker)
                 if local_bench_returns is None:
                     logger.warning(
-                        f"Local benchmark {local_bench_ticker} для {ticker} not found, "
+                        f"Local benchmark {local_bench_ticker} for {ticker} not found, "
                         f"using base benchmark {benchmark_base_ticker}"
                     )
 
@@ -1655,7 +1655,7 @@ def main() -> None:
         % output_dir_csv
     )
     print(
-        "  Final results in %s: portfolio_weights.yml, все JSON (snapshot_*, stress_report, run_metadata, data_policy, drawdown_structure), report.txt, report.html, commentary.txt"
+        "  Final results in %s: portfolio_weights.yml, all JSON (snapshot_*, stress_report, run_metadata, data_policy, drawdown_structure), report.txt, report.html, commentary.txt"
         % output_dir_final
     )
 

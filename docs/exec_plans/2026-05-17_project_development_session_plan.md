@@ -86,7 +86,7 @@ or mix decisions from unrelated areas.
   comparison `weight_concentration` from `snapshot_10y.final_weights_total`, wired export via `write_candidate_comparison_outputs` /
   `run_compare_variants.py`, added `tests/test_portfolio_health_score.py`, updated `SPEC.md`, `OUTPUTS.md`, `CHANGELOG.md`,
   `docs/ROADMAP.md` (RM-211 done); pytest on health, scorecard, and comparison tests passed.
-- [x] (2026-05-17) Session 14 completed: created `docs/specs/selection_engine_spec.md` with `selection_decision_v1`, five decision outcomes, composite selection (health + robustness + mandate), No-Trade materiality thresholds, neutral decision-support boundaries; updated `SPEC.md`, `OUTPUTS.md`, `docs/specs/README.md`, score/comparison cross-links, `PRODUCT.md`, `DECISIONS.md` (DEC-2026-05-17-003), `CHANGELOG.md`, `docs/ROADMAP.md` (RM-300 done); ran `python scripts/verify_docs.py`.
+- [x] (2026-05-17) Session 14 completed: created `docs/specs/selection_engine_spec.md` with `selection_decision_v1`, five decision outcomes, composite selection (health + robustness + mandate), No-Trade materiality thresholds, neutral decision-support boundaries; updated `SPEC.md`, `OUTPUTS.md`, `docs/specs/README.md`, score/comparison cross-links, `PRODUCT.md`, `DECISIONS.md` (DEC-2026-05-17-006), `CHANGELOG.md`, `docs/ROADMAP.md` (RM-300 done); ran `python scripts/verify_docs.py`.
 - [x] (2026-05-17) Session 15 completed: implemented `src/selection_engine.py` (`selection_decision_v1` JSON/TXT),
   composite selection from health and robustness scores, No-Trade materiality vs current, five decision outcomes;
   wired export via `write_candidate_comparison_outputs` / `run_compare_variants.py`, added `tests/test_selection_engine.py`,
@@ -104,6 +104,10 @@ or mix decisions from unrelated areas.
   pytest on monitoring tests passed.
 - [x] (2026-05-17) Session 19 completed: created `docs/specs/decision_journal_spec.md` (`decision_journal_v1`, generated-only, `journal/latest/` + `history/`, pipeline after monitoring), updated `OUTPUTS.md`, `SPEC.md`, `PRODUCT.md`, `docs/specs/README.md`, `docs/ROADMAP.md` (RM-410 done), `CHANGELOG.md`; ran `python scripts/verify_docs.py`.
 - [x] (2026-05-17) Session 20 completed: implemented `src/decision_journal.py` and `tests/test_decision_journal.py`, wired export via `write_candidate_comparison_outputs` after monitoring (`decision_journal.json` / `.txt`, `journal/latest/` and `history/`); updated `SPEC.md`, `docs/ROADMAP.md` (RM-411 done), `CHANGELOG.md`; pytest on journal and related tests passed.
+- [x] (2026-05-17) Phase 6 post-closure triage completed as a new deep audit:
+  `docs/audits/2026-05-17_post_session_deep_system_audit.md`; updated `docs/ROADMAP.md`,
+  `DECISIONS.md`, `KNOWN_ISSUES.md`, and `CHANGELOG.md` with next-stage priorities and tracked
+  follow-up issues. Implementation follow-ups remain separate scoped sessions.
 - [ ] Session 21: Deferred/later - decide the first real product UI surface only after core analytics,
   comparison, scoring, selection, monitoring, and journal artifacts are stable.
 - [ ] Session 22: Deferred/later - implement the first UI slice only after Session 21 is explicitly
@@ -112,15 +116,15 @@ or mix decisions from unrelated areas.
 **Post-plan closure (mandatory after Sessions 01–20 are complete; start only when the user reactivates
 Phase 6 or explicitly asks to run post-closure work — not automatically after Session 20):**
 
-- [ ] Post-closure 1: New full project audit; compare implemented system vs
+- [x] Post-closure 1: New full project audit; compare implemented system vs
   `docs/DIAGNOSTIC_PRODUCT_CONCEPT.md` and `docs/audits/2026-05-17_*`; decide the next development
   stage and record it in `docs/ROADMAP.md` / `DECISIONS.md`.
-- [ ] Post-closure 2: Identify weak or incomplete product blocks; prioritize and improve them in
+- [x] Post-closure 2: Identify weak or incomplete product blocks; prioritize and improve them in
   separate scoped sessions (one block or workstream per session; do not mix unrelated block fixes).
-- [ ] Post-closure 3: Mojibake and broken-symbol sweep beyond Session 06 (source docs, specs,
+- [x] Post-closure 3: Mojibake and broken-symbol sweep beyond Session 06 (source docs, specs,
   generated commentary, PDF-facing Markdown, config examples, and other user-visible text); fix or
   track in `KNOWN_ISSUES.md`.
-- [ ] Post-closure 4: Review what currently feeds **Main** optimization (`run_optimization.py` /
+- [x] Post-closure 4: Review what currently feeds **Main** optimization (`run_optimization.py` /
   `docs/specs/portfolio_construction_policy.md`) vs **robust** paths (`run_robust_mean_variance_constrained.py`,
   `run_robust_scenario_optimization.py`, related specs); compare inputs, objectives, and constraints
   to the product concept; decide per path whether to change, document-as-is, or defer — record in
@@ -482,9 +486,10 @@ and run stale-reference search." The final chat response must repeat that same h
 so the user knows whether to continue the same session or open a new one.
 
 When a session is completed, Codex should tell the user that the session is complete, identify the next
-session, and recommend starting a new chat if the current chat context is becoming large. In the next
-chat, the user may simply write: "Continue the project development plan." Codex should then read this
-ExecPlan and resume from the recorded state.
+session, and recommend starting a new chat if the current chat context is becoming large. This
+historical ExecPlan is now complete; for current post-audit work, the user may simply write:
+"Continue the post-audit stabilization plan." Codex should then read the active post-audit ExecPlan and
+resume from its recorded state.
 
 Generic kickoff text for any future session:
 
@@ -1495,27 +1500,31 @@ Generic kickoff for Post-closure work:
 
 ## Concrete Steps
 
-The next immediate action is Session 08. The user can start it by saying:
+Sessions 01-20 and the Phase 6 post-closure audit triage are complete. This ExecPlan is historical.
+The active handoff now lives in
+`docs/exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md`; after post-audit
+Sessions 01-03, the next default action is Session 04 / RM-612 unless the user explicitly chooses a
+different session or Session 21 UI work. The user can start it by saying:
 
-    Continue the project development plan.
+    Continue the post-audit stabilization plan.
 
-Codex should then read this ExecPlan, identify Session 08 as the first incomplete session, and guide the
-work without requiring the user to paste the full kickoff text.
+Codex should then read the active post-audit ExecPlan and `docs/ROADMAP.md`, identify the first
+incomplete or explicitly requested roadmap item, and guide the work without requiring the user to paste
+the full kickoff text.
 
 If a precise kickoff prompt is useful, use this:
 
     We are continuing `docs/exec_plans/2026-05-17_project_development_session_plan.md`.
-    Work on Session 08 only: specify the canonical candidate comparison artifact. Read `AGENTS.md`,
+    Work on the first incomplete post-audit stabilization item from `docs/ROADMAP.md`. Read `AGENTS.md`,
     `WORKFLOW.md`, `RULES.md`, `SPEC.md`, `TESTING.md`, `OUTPUTS.md`,
-    `docs/audits/2026-05-17_full_project_system_audit.md`, this ExecPlan, and the Session 08 doc list.
+    `docs/audits/2026-05-17_post_session_deep_system_audit.md`, this ExecPlan, and the owning specs
+    for that roadmap item.
 
-After Session 08 is complete, start a new session for Session 09. Continue this pattern until all
-sessions are complete. If a session discovers a material contradiction, update this ExecPlan before
-continuing to the next session.
+Continue the new roadmap sequence one scoped workstream at a time. If a workstream discovers a material
+contradiction, update this ExecPlan before continuing to the next session.
 
-After Sessions 01–20 are complete, **do not** auto-start Phase 6. When the user is ready, start
-Post-closure 1 in a fresh chat, then Post-closure 2–4 in separate chats as needed. Sessions 21–22
-(UI) remain independent and optional.
+Sessions 21-22 (UI) remain independent and optional. Do not start them unless the user explicitly asks
+for UI direction or implementation.
 
 ## Validation and Acceptance
 
@@ -1608,6 +1617,10 @@ Sessions 01–20: new audit vs concept and next stage; block-by-block improvemen
 extended mojibake/symbol sweep; Main vs robust optimizer input review with explicit change/no-change
 decisions. Phase 6 requires an explicit user trigger and does not run automatically after Session 20.
 
+Revision note, 2026-05-17: Phase 6 was completed as audit/triage in
+`docs/audits/2026-05-17_post_session_deep_system_audit.md`. The next work should follow the
+post-audit stabilization backlog in `docs/ROADMAP.md`.
+
 ## Interfaces and Dependencies
 
 Future implementation sessions should prefer these stable module boundaries:
@@ -1625,7 +1638,7 @@ Future implementation sessions should prefer these stable module boundaries:
 - Decision Journal V1 should be generated-only unless a future spec deliberately defines a
   user-maintained source record.
 
-Potential future spec files:
+Accepted V1 decision-pipeline spec files:
 
 - `docs/specs/candidate_comparison_spec.md`
 - `docs/specs/robustness_scorecard_spec.md`
@@ -1635,7 +1648,7 @@ Potential future spec files:
 - `docs/specs/monitoring_spec.md`
 - `docs/specs/decision_journal_spec.md`
 
-Potential future generated artifacts:
+Accepted V1 generated decision artifacts:
 
 - `candidate_comparison.json`
 - `robustness_scorecard.json`
@@ -1645,4 +1658,5 @@ Potential future generated artifacts:
 - `monitoring_diff.json`
 - `decision_journal.json`
 
-These names are proposals until the owning specs are created and accepted.
+These names are no longer proposals. They have owning specs and V1 implementations after Sessions
+08-20. Future sessions may revise them only through the owning specs and tests.

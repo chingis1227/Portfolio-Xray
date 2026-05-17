@@ -65,6 +65,7 @@ The current implementation is report-first and CLI/file-driven. A full product U
 - Stress testing and stress commentary.
 - Factor diagnostics, factor covariance analytics, PCA, macro regime diagnostics, scenario libraries, and regime analytics.
 - Benchmark and alternative portfolio builders.
+- Canonical candidate comparison and V1 decision artifacts: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, Action Plan, Monitoring / What Changed, and generated Decision Journal.
 - CSV, JSON, HTML, TXT, and PDF-style report artifacts.
 
 ### Target / TBD
@@ -72,13 +73,11 @@ The current implementation is report-first and CLI/file-driven. A full product U
 - Full interactive product UI.
 - User workspace and saved analyses.
 - Portfolio Comparison Arena UI.
-- Portfolio Health Score.
-- Selection Engine.
 - Assumption Sensitivity dashboard.
-- Regret Analysis.
-- Formal No-Trade Recommendation.
-- Monitoring / What Changed.
-- Decision Journal.
+- Pareto / Dominance and Regret Analysis surfaces.
+- Productized report/PDF decision package around the V1 artifacts.
+- Orchestrated Candidate Portfolio Factory and hardened current-vs-policy workflow.
+- Monitoring UI and user-maintained journal workflow beyond generated V1 artifacts.
 - API / white-label integration.
 
 ## High-Level Data Flow
@@ -518,6 +517,13 @@ Key files:
 - `run_compare_variants.py`
 - `run_compare_ew_rp.py`
 - `run_rebalance.py`
+- `src/candidate_comparison.py`
+- `src/robustness_scorecard.py`
+- `src/portfolio_health_score.py`
+- `src/selection_engine.py`
+- `src/action_engine.py`
+- `src/monitoring.py`
+- `src/decision_journal.py`
 - `src/rebalance.py`
 - `src/view_after_optimization.py`
 
@@ -527,20 +533,36 @@ Inputs:
 - Candidate weights.
 - Metrics and diagnostics.
 - Constraints and mandate settings.
+- Previous monitoring snapshots where available.
 
 Outputs:
 
-- Variant comparison artifacts.
+- `candidate_comparison.json` / `.txt`.
+- `robustness_scorecard.json` / `.txt`.
+- `portfolio_health_score.json` / `.txt`.
+- `selection_decision.json` / `.txt`.
+- `action_plan.json` / `.txt`.
+- `monitoring_diff.json` / `.txt`.
+- `decision_journal.json` / `.txt`.
 - Rebalance deltas.
 - Tactical tilt view where approved.
-- Action-oriented outputs where implemented.
+- Latest/history monitoring and journal copies.
 
 TBD:
 
-- Formal Selection Engine.
-- Formal No-Trade Recommendation.
 - Regret Analysis.
-- Decision Journal.
+- Assumption Sensitivity.
+- Pareto / Dominance.
+- Unified trade-off/model-risk artifact.
+- Productized report/PDF decision package.
+- Full Portfolio Comparison Arena UI.
+- Full user-maintained Decision Journal workflow.
+
+Boundary:
+
+The file-first V1 decision artifacts are generated outputs. They support decision review, but they do
+not change optimizer formulas, mandate gates, or production weight release unless a canonical spec says
+so.
 
 ## Main Flow Details
 
@@ -599,7 +621,7 @@ TBD:
 | Scenario library | Stress and regime analytics | Scenario library JSON/CSVs |
 | Candidate builders | Universe, returns, covariance, variant settings | Candidate weights and metadata |
 | Reporting | Metrics, stress, scenarios, commentary inputs | CSV/JSON/HTML/TXT/PDF-style artifacts |
-| Comparison/action | Current and candidate outputs | Comparison, rebalance, tilt, action artifacts |
+| Comparison/action | Current and candidate outputs | Comparison, scores, selection, action, monitoring, journal, rebalance, tilt artifacts |
 
 ## Generated Artifacts
 
@@ -658,7 +680,7 @@ Guidelines:
 - Product UI is report-first before full UI.
 - Macro Dashboard is a diagnostic overlay after portfolio and candidate stress evaluation.
 - Macro Dashboard contextualizes regime vulnerability without directly controlling optimizer weights.
-- Selection Engine, Health Score, No-Trade Recommendation, Monitoring, and Decision Journal are target product modules until specified and implemented.
+- Selection Engine, Health Score, No-Trade Recommendation, Monitoring, and Decision Journal have file-first V1 implementations. Full UI/workspace surfaces and user-maintained workflows around them remain target product work.
 
 ## Source Of Truth
 
@@ -694,7 +716,7 @@ Product sources:
 - What is the first product UI surface: static report package, local dashboard, or web app?
 - Where should persistent analysis state live once the product moves beyond file-driven CLI runs?
 - What is the formal data model for saved analyses, candidates, decisions, and monitoring snapshots?
-- How should candidate comparison artifacts be standardized across all variants?
-- Where should the future Selection Engine live in the module structure?
+- How should candidate generation be orchestrated before comparison?
+- How should implemented V1 decision artifacts be packaged for reports, PDFs, and future UI surfaces?
 - Which outputs should become stable API contracts?
 - What should be batch-oriented for advisors and family offices?
