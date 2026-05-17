@@ -18,7 +18,7 @@ Implementation: `src/candidate_comparison.py` (builder) and `run_compare_variant
 ## Product Boundary
 
 - Comparison output is **evidence for decision support**, not a recommendation.
-- Wording in downstream reports must not imply “choose this portfolio” unless a future [selection engine spec](selection_engine_spec.md) explicitly allows it.
+- Wording in downstream reports must not imply “choose this portfolio” unless [selection_engine_spec.md](selection_engine_spec.md) decision artifacts and reporting rules explicitly allow decision-support phrasing for that surface.
 - Portfolio X-Ray, commentary, and stress diagnostics remain non-binding inputs; comparison does not override them.
 
 ## Canonical Artifact
@@ -189,6 +189,19 @@ Required for [Robustness Scorecard](robustness_scorecard_spec.md) `diversificati
 | `source_window` | `10y` |
 
 When snapshot has no `RC_asset`, leave block empty and list `diversification` in `missing_fields`.
+
+### `weight_concentration` (comparison v1.2 — Session 13)
+
+Required for [Portfolio Health Score](portfolio_health_score_spec.md) `weight_concentration` component. Populated from `snapshot_10y.json` `final_weights_total` when present (Session 13).
+
+| Field | Source |
+| --- | --- |
+| `top1_weight_asset`, `top1_weight_pct` | largest weight in `final_weights_total` |
+| `top3_weight_assets`, `top3_weight_sum_pct` | top three weights by pct |
+| `weight_hhi` | optional Herfindahl of weight shares when implemented |
+| `source` | `snapshot_10y.final_weights_total` |
+
+When snapshot has no weight block, leave empty and list `weight_concentration` in `missing_fields`.
 
 ### `source_files`
 

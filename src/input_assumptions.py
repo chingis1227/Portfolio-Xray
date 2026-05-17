@@ -100,7 +100,7 @@ def build_input_assumptions_from_analysis_setup(analysis_setup: dict[str, Any]) 
             "transaction_costs": "not_implemented",
             "manual_ui_controls": "not_implemented_cli_file_driven",
             "investment_horizon_optimizer_effect": "not_implemented_report_context_only",
-            "formal_selection_engine": "not_implemented",
+            "formal_selection_engine": "selection_decision_v1",
         },
     }
 

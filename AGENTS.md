@@ -13,7 +13,7 @@ Update this file only when agent-specific operating instructions, source-of-trut
 
 Portfolio X-Ray & Optimization Terminal / Portfolio MRI is a Python portfolio decision-support and reporting system. It diagnoses portfolio exposures, hidden risks, stress behavior, candidate allocations, robustness checks, and report artifacts.
 
-The current implementation is report-first and CLI/file-driven. Full UI, formal Selection Engine, Portfolio Health Score, Monitoring, and Decision Journal remain target/TBD areas until separately specified and implemented.
+The current implementation is report-first and CLI/file-driven. Full UI, Selection Engine implementation, Monitoring, and Decision Journal remain target/TBD until separately implemented; Portfolio Health Score and Selection Engine contracts are specified under `docs/specs/`.
 
 Main flow:
 

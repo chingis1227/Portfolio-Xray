@@ -491,8 +491,7 @@ Current implementation:
 
 Target additions:
 
-- Formal Selection Engine is TBD.
-- Formal No-Trade Recommendation logic is TBD.
+- Formal Selection Engine and No-Trade: implemented ([selection_engine_spec.md](docs/specs/selection_engine_spec.md), [src/selection_engine.py](src/selection_engine.py); `selection_decision.json`).
 - Risk improvement per 1% turnover is TBD.
 
 ### 11. Report Export
@@ -551,7 +550,7 @@ Key outputs:
 
 Current implementation:
 
-- Full monitoring workflow is TBD.
+- V1 monitoring snapshots and `monitoring_diff.json` after `run_compare_variants.py` (see [monitoring spec](docs/specs/monitoring_spec.md)). Full product UI for monitoring remains TBD.
 
 ### 13. Decision Journal
 
@@ -577,7 +576,7 @@ Key output:
 
 Current implementation:
 
-- Decision Journal is TBD.
+- V1 implemented in [decision journal spec](docs/specs/decision_journal_spec.md) and [src/decision_journal.py](src/decision_journal.py) (generated-only, non-executing `decision_journal.json`).
 
 ## Feature Inventory
 
@@ -591,19 +590,19 @@ Current implementation:
 | Strategy Backtest | Core | Implemented in reporting pipeline, UX TBD |
 | Macro Risk Dashboard | Important | Diagnostics implemented, product UI TBD |
 | Candidate Comparison Arena | Core target | Partially implemented through comparison scripts |
-| Portfolio Health Score | Target | TBD |
+| Portfolio Health Score | Implemented (diagnostic) | [portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md), [src/portfolio_health_score.py](src/portfolio_health_score.py) |
 | Robustness Scorecard | Implemented (diagnostic) | Spec: [robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md); code: `src/robustness_scorecard.py` |
-| Selection Engine | Target | TBD |
+| Selection Engine | Implemented | [selection_engine_spec.md](docs/specs/selection_engine_spec.md), [src/selection_engine.py](src/selection_engine.py) |
 | Assumption Sensitivity | Target | TBD |
 | Pareto / Dominance Check | Target | TBD |
 | Regret Analysis | Target | TBD |
 | Trade-off Explanation | Core target | Partially covered by commentary, formal UX TBD |
-| Action Engine | Core target | Partially covered by rebalance tooling |
-| Rebalancing Advisor | Core target | Partially implemented |
-| No-Trade Recommendation | Core target | TBD |
+| Action Engine | Implemented (V1) | `action_plan.json` via [src/action_engine.py](src/action_engine.py); mechanical trades via [src/rebalance.py](src/rebalance.py) |
+| Rebalancing Advisor | Implemented (V1) | `action_plan.txt` companion summary |
+| No-Trade Recommendation | Implemented (V1) | Same module as Selection Engine; `no_material_rebalance` outcome |
 | AI Portfolio Commentary | Core | Implemented in report/commentary form |
-| Monitoring / What Changed | Target | TBD |
-| Decision Journal | Target | TBD |
+| Monitoring / What Changed | Implemented (V1) | [monitoring_spec.md](docs/specs/monitoring_spec.md), [src/monitoring.py](src/monitoring.py) |
+| Decision Journal | Core target | Implemented (V1) — `decision_journal.json` via [decision_journal.py](src/decision_journal.py) |
 
 ## User Outputs
 

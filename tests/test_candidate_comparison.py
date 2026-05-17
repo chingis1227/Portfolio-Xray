@@ -20,7 +20,12 @@ def _write_yaml(path: Path, data: dict) -> None:
         yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False)
 
 
-def _snapshot_10y(metrics: dict, *, rc_asset: list | None = None) -> dict:
+def _snapshot_10y(
+    metrics: dict,
+    *,
+    rc_asset: list | None = None,
+    final_weights_total: dict | None = None,
+) -> dict:
     snap = {
         "analysis_end": "2026-04-30",
         "window_label": "10y",
@@ -35,6 +40,8 @@ def _snapshot_10y(metrics: dict, *, rc_asset: list | None = None) -> dict:
     }
     if rc_asset is not None:
         snap["RC_asset"] = rc_asset
+    if final_weights_total is not None:
+        snap["final_weights_total"] = final_weights_total
     return snap
 
 
@@ -196,7 +203,14 @@ def test_current_available_in_analyze_current_mode(tmp_path: Path) -> None:
     main.mkdir()
     rc = [{"ticker": "VOO", "rc_pct": 0.6}, {"ticker": "BND", "rc_pct": 0.4}]
     with open(main / "snapshot_10y.json", "w", encoding="utf-8") as f:
-        json.dump(_snapshot_10y({"cagr": 0.065, "vol_annual": 0.09}, rc_asset=rc), f)
+        json.dump(
+            _snapshot_10y(
+                {"cagr": 0.065, "vol_annual": 0.09},
+                rc_asset=rc,
+                final_weights_total={"VOO": 0.6, "BND": 0.4},
+            ),
+            f,
+        )
     with open(main / "run_metadata.json", "w", encoding="utf-8") as f:
         json.dump(_run_metadata("user_current_portfolio"), f)
 
@@ -215,6 +229,26 @@ def test_current_available_in_analyze_current_mode(tmp_path: Path) -> None:
     assert cur["status"] == "available"
     assert pol["status"] == "degraded"
     assert "stale_policy_snapshot" in pol["warnings"]
+
+
+def test_weight_concentration_from_final_weights(tmp_path: Path) -> None:
+    folder = tmp_path / "equal-weight portfolio"
+    folder.mkdir()
+    weights = {"VOO": 0.35, "BND": 0.25, "GLD": 0.15, "TLT": 0.25}
+    with open(folder / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y({"cagr": 0.08, "vol_annual": 0.12}, final_weights_total=weights),
+            f,
+        )
+
+    cfg = validate_config({"investor_currency": "USD", "tickers": ["VOO"]})
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    eq = next(c for c in doc["candidates"] if c["candidate_id"] == "equal_weight")
+    wc = eq["weight_concentration"]
+    assert wc["top1_weight_asset"] == "VOO"
+    assert wc["top1_weight_pct"] == 0.35
+    assert wc["top3_weight_sum_pct"] == 0.85
+    assert wc["source"] == "snapshot_10y.final_weights_total"
 
 
 def test_diversification_from_rc_asset(tmp_path: Path) -> None:
@@ -259,6 +293,8 @@ def test_write_outputs_and_legacy_subset(tmp_path: Path) -> None:
     )
     paths = write_candidate_comparison_outputs(cfg, project_root=tmp_path)
     assert paths["candidate_comparison_json"].is_file()
+    assert paths.get("portfolio_health_score_json", Path()).is_file()
+    assert paths.get("robustness_scorecard_json", Path()).is_file()
     with open(paths["candidate_comparison_json"], encoding="utf-8") as f:
         doc = json.load(f)
     legacy = build_legacy_portfolio_comparison(doc)

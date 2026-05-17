@@ -2,7 +2,7 @@
 
 This document owns the **Robustness Scorecard** contract: a transparent, diagnostic-only resilience score for each portfolio candidate in a comparison run.
 
-It does not own metric formulas, stress scenario definitions, candidate construction, or selection logic. Those remain in [metrics_specification.md](metrics_specification.md), [stress_testing_spec.md](stress_testing_spec.md), [candidate_comparison_spec.md](candidate_comparison_spec.md), and (future) [selection_engine_spec.md](selection_engine_spec.md).
+It does not own metric formulas, stress scenario definitions, candidate construction, or selection logic. Those remain in [metrics_specification.md](metrics_specification.md), [stress_testing_spec.md](stress_testing_spec.md), [candidate_comparison_spec.md](candidate_comparison_spec.md), and [selection_engine_spec.md](selection_engine_spec.md).
 
 ## Scope
 
@@ -23,8 +23,8 @@ Implementation: **`src/robustness_scorecard.py`** (Session 11). This document is
 | --- | --- |
 | **Robustness Scorecard** (this spec) | Multi-candidate resilience score 0–100 from comparison inputs. |
 | **`src/robustness.py`** | Dual-horizon **optimizer weight stability** (10Y vs 5Y); unrelated to this scorecard. The scorecard implementation module (Session 11) must use a distinct module name and must not reuse `robustness.py`. |
-| **Portfolio Health Score** | Separate future product score ([portfolio_health_score_spec.md](portfolio_health_score_spec.md) TBD, Session 12). |
-| **Selection Engine** | Future formal decision artifact (Session 14+). |
+| **Portfolio Health Score** | Separate holistic quality score ([portfolio_health_score_spec.md](portfolio_health_score_spec.md)); may ingest this scorecard's `total_score` in `resilience_reference` only. |
+| **Selection Engine** | Formal decision artifact ([selection_engine_spec.md](selection_engine_spec.md); implementation Session 15). |
 
 ## Product Boundary
 
@@ -359,4 +359,4 @@ Focused tests should cover:
 | Output location | [OUTPUTS.md](../../OUTPUTS.md) |
 | Implementation | [src/robustness_scorecard.py](../../src/robustness_scorecard.py) (not `robustness.py`) |
 | Optimizer weight stability (separate) | `src/robustness.py` |
-| Selection / recommendation | [selection_engine_spec.md](selection_engine_spec.md) (TBD) |
+| Selection / recommendation | [selection_engine_spec.md](selection_engine_spec.md) |

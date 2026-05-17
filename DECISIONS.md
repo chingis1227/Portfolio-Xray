@@ -74,6 +74,20 @@ Title: V1 candidate comparison contract (full registry, current row, Main output
 - Related documents: [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [OUTPUTS.md](OUTPUTS.md), [docs/ROADMAP.md](docs/ROADMAP.md).
 - Review trigger: Revisit when comparison UI, cross-run history, or a dedicated comparison workspace is introduced.
 
+Decision ID: DEC-2026-05-17-004
+Title: Portfolio Health Score V1 scoring model
+
+- Status: accepted
+- Date: 2026-05-17
+- Decision: The Portfolio Health Score uses ten reviewable components under profile `default_weights_reviewable`, within-run percentile normalization plus absolute mandate/liquidity checks, primary window 10y, optional `resilience_reference` (10%) from `robustness_scorecard.json` only, and weight concentration from a comparison `weight_concentration` block (not RC proxies). Output is diagnostic-only for all scored candidates; report surfaces prioritize `current` and `policy`.
+- Context: Session 12 specifies holistic quality scoring after canonical comparison and robustness scorecard; product concept section 11 defines investor-facing health components distinct from resilience ranking.
+- Rationale: Health answers balance, fit, and implementability; Robustness answers crisis resilience; ingesting robustness total avoids duplicating six robustness formulas while keeping a separate narrative.
+- Alternatives considered: Health Score only for current/policy; full duplication of robustness stress/downside components; no cross-reference to robustness scorecard.
+- Assumptions: Session 13 implements the health score module and comparison v1.2 `weight_concentration` together.
+- Consequences: See [portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md).
+- Related documents: [docs/specs/portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md), [docs/specs/robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md), [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [docs/ROADMAP.md](docs/ROADMAP.md).
+- Review trigger: Revisit after empirical validation of weights or when Selection Engine consumes health outputs.
+
 Decision ID: DEC-2026-05-17-003
 Title: Robustness Scorecard V1 scoring model
 
@@ -129,3 +143,17 @@ Title: Make analysis_setup the input-layer runtime contract
 - Consequences: Run artifacts expose `analysis_setup`; `input_assumptions` is projected from it; Equal Weight Initial Portfolio is labeled as a baseline, not a recommendation.
 - Related documents: [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md), [OUTPUTS.md](OUTPUTS.md), [docs/specs/reporting_outputs_spec.md](docs/specs/reporting_outputs_spec.md).
 - Review trigger: Revisit when SPEC authorizes taxonomy hard rejection in current repo mode or equal-weight universe-only diagnostics as executable report behavior.
+
+Decision ID: DEC-2026-05-17-003
+Title: Selection Engine V1 contract — composite score, policy default, No-Trade materiality
+
+- Status: accepted
+- Date: 2026-05-17
+- Decision: Session 14 adopts [selection_engine_spec.md](docs/specs/selection_engine_spec.md) with neutral decision-support tone; favored target defaults to `policy` when mandate-clean; No-Trade compares `current` to favored target using reviewable health/robustness deltas, half-sum turnover, and optional drawdown improvement; Pareto/regret/assumption sensitivity remain out of V1; diagnostic scorecards stay non-binding inputs.
+- Context: Comparison and diagnostic scores (Sessions 08–13) exist; the product needs a formal non-executing decision artifact before Action Engine and Decision Journal.
+- Rationale: Separates evidence (comparison, health, robustness) from a single machine-readable decision status; No-Trade prevents implying trades when benefit is immaterial relative to turnover.
+- Alternatives considered: Auto-select top health rank only (rejected — ignores policy role and robustness); merge Selection into Health Score (rejected — blurs diagnostic vs decision); include Pareto pruning in V1 (deferred — no owning spec).
+- Assumptions: Session 15 will implement `selection_decision.json` without changing optimizer release or stress pass/fail.
+- Consequences: `selection_decision_v1` is the target artifact; `src/selection_engine.py` and tests follow in Session 15; PDF/report surfaces reference decision rules when integrated.
+- Related documents: [docs/specs/selection_engine_spec.md](docs/specs/selection_engine_spec.md), [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [docs/specs/portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md), [docs/specs/robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md), [docs/ROADMAP.md](docs/ROADMAP.md) RM-300.
+- Review trigger: Revisit when Pareto/dominance or regret modules are specified, or when transaction-cost-aware No-Trade is added in Action Engine.

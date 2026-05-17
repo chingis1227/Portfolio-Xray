@@ -40,6 +40,11 @@ Top-level documents stay compact:
 | Candidate and benchmark portfolios | [candidate_portfolios_spec.md](candidate_portfolios_spec.md) |
 | Canonical multi-candidate comparison artifact | [candidate_comparison_spec.md](candidate_comparison_spec.md) |
 | Robustness Scorecard (diagnostic resilience scoring) | [robustness_scorecard_spec.md](robustness_scorecard_spec.md) |
+| Portfolio Health Score (diagnostic holistic quality scoring) | [portfolio_health_score_spec.md](portfolio_health_score_spec.md) |
+| Selection Engine and No-Trade Recommendation (formal decision contract) | [selection_engine_spec.md](selection_engine_spec.md) |
+| Action Engine and Rebalancing Advisor (implementation plan) | [action_engine_spec.md](action_engine_spec.md) |
+| Monitoring snapshots and What Changed diff | [monitoring_spec.md](monitoring_spec.md) |
+| Decision Journal (generated decision record) | [decision_journal_spec.md](decision_journal_spec.md) |
 | Robust Mean-Variance baselines and lambda calibration | [robust_mv_spec.md](robust_mv_spec.md) |
 | Scenario-Based Robust Optimization | [robust_scenario_optimization_spec.md](robust_scenario_optimization_spec.md) |
 | Reporting outputs and artifacts | [reporting_outputs_spec.md](reporting_outputs_spec.md) |

@@ -355,6 +355,48 @@ def _diversification_from_snapshot(snap_10y: dict[str, Any] | None) -> dict[str,
     }
 
 
+def _weight_concentration_from_snapshot(snap_10y: dict[str, Any] | None) -> dict[str, Any]:
+    """Weight concentration block for comparison v1.2 (Portfolio Health Score input)."""
+    if not snap_10y:
+        return {}
+    weights_raw = snap_10y.get("final_weights_total")
+    if not isinstance(weights_raw, dict) or not weights_raw:
+        return {}
+
+    rows: list[tuple[str, float]] = []
+    for ticker, pct in weights_raw.items():
+        if ticker is None or pct is None:
+            continue
+        try:
+            pct_f = float(pct)
+        except (TypeError, ValueError):
+            continue
+        if math.isnan(pct_f) or math.isinf(pct_f) or pct_f <= 0:
+            continue
+        rows.append((str(ticker), pct_f))
+
+    if not rows:
+        return {}
+
+    rows.sort(key=lambda x: (-x[1], x[0]))
+    top1_ticker, top1_pct = rows[0]
+    top3 = rows[:3]
+    top3_sum = sum(p for _, p in top3)
+    shares = [p for _, p in rows if p > 0]
+    weight_hhi: float | None = None
+    if len(shares) > 1:
+        weight_hhi = round(sum(p * p for p in shares), REPORT_DECIMALS)
+
+    return {
+        "top1_weight_asset": top1_ticker,
+        "top1_weight_pct": round(top1_pct, REPORT_DECIMALS),
+        "top3_weight_assets": [t for t, _ in top3],
+        "top3_weight_sum_pct": round(top3_sum, REPORT_DECIMALS),
+        "weight_hhi": weight_hhi,
+        "source": "snapshot_10y.final_weights_total",
+    }
+
+
 def _mandate_from_artifacts(
     folder: Path,
     snap_10y: dict[str, Any] | None,
@@ -496,6 +538,10 @@ def _evaluate_artifact_candidate(
     if not diversification:
         missing_fields.append("diversification")
 
+    weight_concentration = _weight_concentration_from_snapshot(snap_10y)
+    if not weight_concentration:
+        missing_fields.append("weight_concentration")
+
     status = "available"
     if used_summary_only or missing_fields:
         status = "degraded"
@@ -507,6 +553,7 @@ def _evaluate_artifact_candidate(
         "factor_regime": _factor_regime_from_stress(folder),
         "mandate": _mandate_from_artifacts(folder, snap_10y, run_meta),
         "diversification": diversification,
+        "weight_concentration": weight_concentration,
         "source_files": sorted(set(source_files)),
     }
     return status, None, payload, missing_fields, warnings
@@ -612,6 +659,7 @@ def _build_candidate_row(
         "factor_regime": payload.get("factor_regime", {}) if status != "unavailable" else {},
         "mandate": payload.get("mandate", {}) if status != "unavailable" else {},
         "diversification": payload.get("diversification", {}) if status != "unavailable" else {},
+        "weight_concentration": payload.get("weight_concentration", {}) if status != "unavailable" else {},
         "missing_fields": missing_fields if status == "degraded" else [],
         "warnings": warnings,
         "source_files": payload.get("source_files", []) if status != "unavailable" else [],
@@ -826,11 +874,85 @@ def write_candidate_comparison_outputs(
             f.write("\n".join(lines))
         paths["portfolio_comparison_txt"] = legacy_txt
 
-    from src.robustness_scorecard import write_robustness_scorecard_outputs
+    from src.portfolio_health_score import write_portfolio_health_score_outputs
+    from src.robustness_scorecard import (
+        build_robustness_scorecard,
+        write_robustness_scorecard_outputs,
+    )
+
+    rob_paths = write_robustness_scorecard_outputs(
+        cfg, project_root=project_root, comparison=comparison
+    )
+    paths.update(rob_paths)
+    robustness_doc = build_robustness_scorecard(comparison, project_root=project_root)
+    paths.update(
+        write_portfolio_health_score_outputs(
+            cfg,
+            project_root=project_root,
+            comparison=comparison,
+            robustness_scorecard=robustness_doc,
+        )
+    )
+
+    from src.selection_engine import write_selection_decision_outputs
+
+    health_path = paths.get("portfolio_health_score_json")
+    health_doc = None
+    if health_path and health_path.is_file():
+        health_doc = _load_json(health_path)
+    sel_paths = write_selection_decision_outputs(
+        cfg,
+        project_root=project_root,
+        comparison=comparison,
+        health=health_doc,
+        robustness=robustness_doc,
+    )
+    paths.update(sel_paths)
+
+    from src.action_engine import write_action_plan_outputs
+
+    selection_doc = None
+    sel_json = paths.get("selection_decision_json")
+    if sel_json and sel_json.is_file():
+        selection_doc = _load_json(sel_json)
+    paths.update(
+        write_action_plan_outputs(
+            cfg,
+            project_root=project_root,
+            comparison=comparison,
+            selection=selection_doc,
+        )
+    )
+
+    from src.monitoring import write_monitoring_outputs
+
+    action_doc = _load_json(paths.get("action_plan_json") or out_dir / "action_plan.json")
+    paths.update(
+        write_monitoring_outputs(
+            cfg,
+            project_root=project_root,
+            comparison=comparison,
+            health=health_doc,
+            robustness=robustness_doc,
+            selection=selection_doc,
+            action=action_doc,
+        )
+    )
+
+    from src.decision_journal import write_decision_journal_outputs
 
     paths.update(
-        write_robustness_scorecard_outputs(
-            cfg, project_root=project_root, comparison=comparison
+        write_decision_journal_outputs(
+            cfg,
+            project_root=project_root,
+            comparison=comparison,
+            selection=selection_doc,
+            action=action_doc,
+            monitoring_diff=_load_json(
+                paths.get("monitoring_diff_json") or out_dir / "monitoring_diff.json"
+            ),
+            health=health_doc,
+            robustness=robustness_doc,
         )
     )
 

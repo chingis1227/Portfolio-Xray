@@ -30,8 +30,6 @@ Target product areas remain TBD until separately specified and implemented:
 
 - full interactive UI
 - saved analysis workspaces
-- formal Selection Engine
-- formal Portfolio Health Score
 - full Monitoring
 - Decision Journal
 
@@ -104,6 +102,9 @@ Main report artifacts
 | Candidate and benchmark portfolios | [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md) |
 | Canonical candidate comparison artifact | [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md) |
 | Robustness Scorecard (diagnostic; `src/robustness_scorecard.py`) | [docs/specs/robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md) |
+| Portfolio Health Score | [docs/specs/portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md), [src/portfolio_health_score.py](src/portfolio_health_score.py) |
+| Selection Engine and No-Trade Recommendation | [docs/specs/selection_engine_spec.md](docs/specs/selection_engine_spec.md), [src/selection_engine.py](src/selection_engine.py) |
+| Action Engine and Rebalancing Advisor | [docs/specs/action_engine_spec.md](docs/specs/action_engine_spec.md), [src/action_engine.py](src/action_engine.py) |
 | Robust Mean-Variance baselines and lambda calibration | [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md) |
 | Scenario-Based Robust Optimization | [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md) |
 | Reporting outputs and artifacts | [docs/specs/reporting_outputs_spec.md](docs/specs/reporting_outputs_spec.md) |
@@ -212,7 +213,10 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | ETF and stock taxonomy | Implemented annotation-only V1 |
 | Generated CSV/JSON/HTML/TXT/PDF-style reports | Implemented |
 | Full interactive UI | Target/TBD |
-| Formal Selection Engine, Portfolio Health Score, Monitoring, Decision Journal | Target/TBD |
+| Formal Selection Engine and No-Trade | Implemented (`selection_decision.json` via [src/selection_engine.py](src/selection_engine.py)) |
+| Action Engine and Rebalancing Advisor | Implemented (`action_plan.json` via [src/action_engine.py](src/action_engine.py)) |
+| Monitoring / What Changed | Implemented (V1) — [monitoring_spec.md](docs/specs/monitoring_spec.md), `src/monitoring.py` |
+| Decision Journal | Implemented (V1) — [decision_journal_spec.md](docs/specs/decision_journal_spec.md), `src/decision_journal.py` |
 
 ## Implementation Contract
 
