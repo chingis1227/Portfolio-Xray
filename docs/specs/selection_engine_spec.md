@@ -173,6 +173,10 @@ No-Trade runs only when:
 - a **favored target** `target_id` is identified (`policy` or composite winner), and
 - weight vectors can be resolved for both (from comparison-linked snapshots or `final_weights_total`).
 
+**Actionability:** When the current row is missing or weights cannot load, No-Trade is **not** evaluated. Reporting must not present a completed No-Trade conclusion. See [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md) for workflow profiles, `current_vs_policy_status.json`, and skip reason codes (`no_trade_not_actionable` warning in selection output).
+
+**Workflow and actionability:** combined policy + current context, materialization, and reporting skip rules are defined in [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md). When that spec's conditions for "not actionable" apply, do not emit `no_material_rebalance` or imply No-Trade in downstream summaries; use explicit warnings such as `no_trade_skipped_missing_weights` or `no_trade_not_evaluated` as appropriate.
+
 ### Turnover metric
 
 Use **half-sum absolute weight change** (reported as percent of portfolio):
@@ -284,7 +288,7 @@ This status **does not** select an aggressive alternative. List `risk_reduction_
 | `summary` | 1–3 sentences, neutral English. |
 | `selection_bullets` | Up to 5 bullets: why favored target won (policy default, composite, mandate). |
 | `no_trade_bullets` | Present when No-Trade fired; materiality numbers in plain English. |
-| `tradeoff_bullets` | Optional: return vs drawdown vs stress vs turnover (from comparison, no new formulas). |
+| `tradeoff_bullets` | Optional short bullets from comparison (no new formulas). When [tradeoff_and_model_risk_spec.md](tradeoff_and_model_risk_spec.md) artifacts exist, journal and reporting prefer those over this field. |
 | `data_quality_notes` | Missing fields, degraded candidates, partial scores. |
 
 Forbidden in `rationale` strings: imperative rebalance language, "recommended buy/sell", internal codes (`FAIL_*`, `DIAG_*`) in PDF-facing export paths.
@@ -354,6 +358,7 @@ Focused tests should cover:
 | Area | Spec / module |
 | --- | --- |
 | Comparison inputs | [candidate_comparison_spec.md](candidate_comparison_spec.md) |
+| Current-vs-policy workflow | [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md) |
 | Health inputs | [portfolio_health_score_spec.md](portfolio_health_score_spec.md) |
 | Robustness inputs | [robustness_scorecard_spec.md](robustness_scorecard_spec.md) |
 | Mandate / release | [portfolio_construction_policy.md](portfolio_construction_policy.md), [production_workflow.md](production_workflow.md) |

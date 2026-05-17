@@ -15,6 +15,8 @@ The Candidate Comparison layer:
 
 Implementation: `src/candidate_comparison.py` (builder) and `run_compare_variants.py` (CLI). Legacy `portfolio_comparison.json` / `ew_rp_comparison.json` remain for backward compatibility.
 
+Upstream orchestration (optional): [candidate_factory_spec.md](candidate_factory_spec.md) defines how existing per-candidate `run_*.py` scripts are run before comparison so the registry is populated deliberately rather than by ad hoc manual runs.
+
 ## Product Boundary
 
 - Comparison output is **evidence for decision support**, not a recommendation.
@@ -36,10 +38,10 @@ Do not place the canonical file under a separate project-root `comparison/` fold
 
 ## V1 User Decisions (2026-05-17)
 
-Recorded for Session 08:
+Recorded for the canonical comparison contract (development Session 08, 2026-05-17):
 
 1. **Candidate set:** full registry of supported families; each row may be `unavailable` when its artifact folder or required files are missing.
-2. **Current portfolio:** include candidate `current` (role `user_current`) when the user runs or has materialized a current-portfolio report (`analyze_current_weights` or equivalent artifacts tagged `user_current_portfolio`).
+2. **Current portfolio:** include candidate `current` (role `user_current`) when the user runs or has materialized a current-portfolio report (`analyze_current_weights` or equivalent artifacts tagged `user_current_portfolio`, or sidecar under `{output_dir_final}/current_portfolio/` per [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md)).
 3. **Location:** single canonical JSON under `output_dir_final` (Main).
 
 ## Top-Level JSON Contract
@@ -216,7 +218,7 @@ Project root is the repository root. `artifact_root` is relative to project root
 | candidate_id | role | construction_method | artifact_root | Notes |
 | --- | --- | --- | --- | --- |
 | `policy` | `policy` | `policy_optimizer` | `{output_dir_final}` | Optimizer-released weights; Main report after `run_optimization` + `run_report`. |
-| `current` | `user_current` | `user_supplied_weights` | `{output_dir_final}` | **Included when** `analysis_mode=analyze_current_weights` **or** Main `run_metadata` / `analysis_setup` shows `portfolio_role=user_current_portfolio`. If `current_weights` exist in config but no report was run, status `unavailable`, reason `missing_current_report`. |
+| `current` | `user_current` | `user_supplied_weights` | `{output_dir_final}` or `{output_dir_final}/current_portfolio` | **Combined workflow:** sidecar `current_portfolio/` when materialized ([current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md)). **Legacy/single-mode:** Main root when `analyze_current_weights` or `portfolio_role=user_current_portfolio`. If `current_weights` exist in optimize mode but no materialization, `unavailable`, reason `missing_current_report`. |
 | `equal_weight` | `benchmark` | `equal_weight_by_asset` | `equal-weight portfolio` | |
 | `risk_parity` | `benchmark` | `risk_parity` | `risk parity portfolio` | |
 | `robust_scenario` | `robust_candidate` | `scenario_robust_optimization` | `robust scenario portfolio` | |
@@ -243,10 +245,12 @@ Construction methods and script entry points are defined in [candidate_portfolio
 
 ### Policy vs current on the same folder
 
-`policy` and `current` both use `{output_dir_final}` but are **not** both `available` from a single config mode:
+`policy` uses `{output_dir_final}` (Main). `current` uses Main in `analyze_current_weights` mode, or **`{output_dir_final}/current_portfolio/`** sidecar when the user follows the combined current-vs-policy workflow in [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md).
 
-- `optimize_from_universe`: expect `policy` available when optimization/report artifacts exist; `current` is `unavailable` unless a separate current-portfolio report was materialized with `user_current_portfolio` tagging (future builder may support explicit refresh).
-- `analyze_current_weights`: expect `current` available from Main report; `policy` is `unavailable` with reason `not_applicable_for_analysis_mode` unless a prior optimization snapshot still exists and is explicitly linked (then `degraded` with warning `stale_policy_snapshot`).
+They are **not** both `available` from a single `analysis_mode` on Main alone:
+
+- `optimize_from_universe`: expect `policy` available when optimization/report artifacts exist; `current` is `unavailable` with `missing_current_report` when `current_weights` is set but sidecar/Main current materialization is missing; otherwise `not_applicable_for_analysis_mode`.
+- `analyze_current_weights`: expect `current` available from Main report; `policy` is `unavailable` with reason `not_applicable_for_analysis_mode` unless a prior optimization snapshot still exists (then `degraded` with warning `stale_policy_snapshot`). This mode does not provide primary current-vs-policy No-Trade versus policy.
 
 ## Assembly Rules
 
@@ -308,11 +312,13 @@ Focused tests should cover:
 | --- | --- |
 | Candidate construction | [candidate_portfolios_spec.md](candidate_portfolios_spec.md) |
 | Input modes and current weights | [input_assumptions_spec.md](input_assumptions_spec.md) |
+| Current-vs-policy workflow | [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md) |
 | Report artifacts per portfolio | [reporting_outputs_spec.md](reporting_outputs_spec.md) |
 | Output locations | [OUTPUTS.md](../../OUTPUTS.md) |
 | Robustness Scorecard | [robustness_scorecard_spec.md](robustness_scorecard_spec.md) |
 | Portfolio Health Score | [portfolio_health_score_spec.md](portfolio_health_score_spec.md) |
 | Selection / No-Trade | [selection_engine_spec.md](selection_engine_spec.md) |
+| Current-vs-policy workflow | [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md) |
 | Action Engine / Rebalancing Advisor | [action_engine_spec.md](action_engine_spec.md) |
 | Monitoring / What Changed | [monitoring_spec.md](monitoring_spec.md) |
 | Decision Journal | [decision_journal_spec.md](decision_journal_spec.md) |

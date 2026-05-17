@@ -74,6 +74,10 @@ The Rebalancing Advisor is the same artifact surfaced for humans: compact `.txt`
 | `trades_skipped_missing_weights` | `selected_candidate` but current or target weights could not be loaded. |
 | `advisory_only` | No favored target id on selection artifact. |
 
+When [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md) marks No-Trade as not actionable, `no_trades_reason` must use the workflow `user_message_en` or equivalent skip wording—not a No-Trade materiality conclusion.
+
+When [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md) marks No-Trade as not actionable, `no_trades_reason` must state that current-vs-policy was not evaluated (e.g. missing current materialization), not imply a completed No-Trade review.
+
 ## Transaction Costs (V1)
 
 | Field | Value |

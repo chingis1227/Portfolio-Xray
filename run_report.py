@@ -171,6 +171,14 @@ def parse_args() -> argparse.Namespace:
         default="dynamic_nan_safe",
         help="Backtest mode: dynamic_nan_safe (default, policy-compliant NaN/young ETF handling) or simple (opt-in)",
     )
+    parser.add_argument(
+        "--materialize-current",
+        action="store_true",
+        help=(
+            "Materialize current_weights into output_dir_final/current_portfolio/ sidecar "
+            "(combined current-vs-policy workflow; does not overwrite policy Main artifacts)"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -220,6 +228,8 @@ def run_portfolio_report_for_weights(
     output_dir_final: Path,
     backtest_mode_override: str | None = None,
     no_cache: bool = False,
+    weights_source: str | None = None,
+    portfolio_role_override: str | None = None,
 ) -> tuple[dict | None, dict]:
     """
     Core metrics/stress/report pipeline, parameterized by explicit weights and output dirs.
@@ -1432,10 +1442,11 @@ def run_portfolio_report_for_weights(
         returns_frequency=returns_frequency,
         periods_per_year=ppy,
     )
+    resolved_weights_source = weights_source or getattr(cfg, "weights_source", None)
     analysis_setup = build_analysis_setup(
         cfg,
         portfolio_weights=weights,
-        weights_source=getattr(cfg, "weights_source", None),
+        weights_source=resolved_weights_source,
         cash_proxy_ticker=cash_proxy_ticker,
         rf_source=rf_source,
         local_benchmark_map=local_benchmark_map,
@@ -1444,6 +1455,7 @@ def run_portfolio_report_for_weights(
         returns_frequency=returns_frequency,
         periods_per_year=ppy,
         run_context="report",
+        portfolio_role_override=portfolio_role_override,
     )
 
     # Gatekeepers: portfolio_valid = False only when MaxDD on the full overlapping history breaches the mandate.
@@ -1468,7 +1480,7 @@ def run_portfolio_report_for_weights(
         stress_report=stress_report,
         portfolio_valid=portfolio_valid,
         portfolio_weights=weights,
-        weights_source=getattr(cfg, "weights_source", None),
+        weights_source=resolved_weights_source,
         analysis_setup=analysis_setup,
     )
 
@@ -1601,6 +1613,52 @@ def run_portfolio_report_for_weights(
     return portfolio_metrics_summary, meta
 
 
+def run_materialize_current_report(
+    cfg: PortfolioConfig,
+    *,
+    run_timestamp: str,
+    backtest_mode: str,
+    no_cache: bool,
+) -> None:
+    """Write current portfolio diagnostics to output_dir_final/current_portfolio/ sidecar."""
+    from src.candidate_comparison import CURRENT_SIDECAR_SUBDIR, positive_current_weights
+
+    if getattr(cfg, "analysis_mode", "optimize_from_universe") != "optimize_from_universe":
+        logger.error(
+            "materialize-current requires analysis_mode=optimize_from_universe "
+            "(use a combined workflow; see docs/specs/current_vs_policy_workflow_spec.md)."
+        )
+        raise SystemExit(1)
+
+    current_weights = dict(getattr(cfg, "current_weights", {}) or {})
+    if not positive_current_weights(cfg):
+        logger.error(
+            "materialize-current requires non-empty current_weights in config.yml."
+        )
+        raise SystemExit(1)
+
+    output_dir_final = ensure_output_dir(Path(getattr(cfg, "output_dir_final", "Main portfolio")))
+    sidecar_final = ensure_output_dir(output_dir_final / CURRENT_SIDECAR_SUBDIR)
+    sidecar_csv = ensure_output_dir(sidecar_final / "results_csv")
+
+    logger.info(
+        "Materializing current portfolio to %s (policy artifacts on Main root are not modified).",
+        sidecar_final,
+    )
+
+    run_portfolio_report_for_weights(
+        cfg,
+        current_weights,
+        run_timestamp=run_timestamp,
+        output_dir_csv=sidecar_csv,
+        output_dir_final=sidecar_final,
+        backtest_mode_override=backtest_mode,
+        no_cache=no_cache,
+        weights_source="config.current_weights",
+        portfolio_role_override="user_current_portfolio",
+    )
+
+
 def main() -> None:
     args = parse_args()
     setup_logging()
@@ -1617,6 +1675,20 @@ def main() -> None:
 
     if cfg.pending_fields:
         logger.info(f"Configuration fields awaiting user input: {cfg.pending_fields}")
+
+    if args.materialize_current:
+        run_materialize_current_report(
+            cfg,
+            run_timestamp=run_timestamp,
+            backtest_mode=args.backtest_mode,
+            no_cache=args.no_cache,
+        )
+        cleanup_old_cache(keep_versions=3)
+        sidecar = Path(getattr(cfg, "output_dir_final", "Main portfolio")) / "current_portfolio"
+        print("\nDone (current materialization).")
+        print(f"  Current portfolio artifacts: {sidecar}")
+        print("  Next: python run_compare_variants.py")
+        return
 
     if not cfg.weights:
         logger.error(

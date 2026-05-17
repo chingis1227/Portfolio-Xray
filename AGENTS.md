@@ -56,7 +56,13 @@ Run post-optimization tilt:
 python run_view_after_optimization.py --asset VOO --delta 2
 ```
 
-Candidate and robust portfolio commands are indexed in [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md), [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md), and [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md).
+Run candidate factory (orchestrate benchmark/optimizer builders before compare):
+
+```bash
+python run_candidate_factory.py [--profile default_v1] [--candidates ID,ID,...] [--force] [--fail-fast] [--then-compare]
+```
+
+Candidate and robust portfolio commands are indexed in [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md), [docs/specs/candidate_factory_spec.md](docs/specs/candidate_factory_spec.md), [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md), and [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md).
 
 ## Source Of Truth
 

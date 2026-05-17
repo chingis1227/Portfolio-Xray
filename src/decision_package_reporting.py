@@ -109,6 +109,7 @@ def build_decision_package_summary_lines(
     action: dict[str, Any] | None,
     monitoring_diff: dict[str, Any] | None,
     decision_journal: dict[str, Any] | None,
+    workflow_status: dict[str, Any] | None = None,
 ) -> list[str]:
     """Build plain-English summary lines (UTF-8)."""
     analysis_end = (comparison or selection or action or {}).get("analysis_end") or "—"
@@ -122,6 +123,11 @@ def build_decision_package_summary_lines(
         "It is not trade advice and does not execute orders.",
         "",
     ]
+    if workflow_status and workflow_status.get("user_message_en"):
+        lines.append("Current vs policy workflow")
+        lines.append("-" * 40)
+        lines.append(f"  {workflow_status['user_message_en']}")
+        lines.append("")
 
     # Comparison
     lines.append("Comparison highlights")
@@ -212,14 +218,28 @@ def build_decision_package_summary_lines(
     else:
         status = selection.get("decision_status", "")
         favored = selection.get("favored_display_name") or favored_id or "—"
-        lines.append(f"  Status: {_DECISION_STATUS_LINES.get(status, status)}")
+        nt = selection.get("no_trade")
+        no_trade_ok = bool(
+            workflow_status.get("no_trade_actionable")
+            if workflow_status
+            else (nt and nt.get("evaluated"))
+        )
+        if status == "no_material_rebalance" and not no_trade_ok:
+            lines.append(
+                "  Status: Selection recorded; No-Trade versus current was not evaluated."
+            )
+        else:
+            lines.append(f"  Status: {_DECISION_STATUS_LINES.get(status, status)}")
         lines.append(f"  Favored profile: {favored}")
         rationale = selection.get("rationale") or {}
         if rationale.get("summary"):
             lines.append(f"  {rationale['summary']}")
-        nt = selection.get("no_trade")
-        if nt and nt.get("evaluated"):
+        if nt and nt.get("evaluated") and no_trade_ok:
             lines.append(f"  Versus current: {nt.get('summary', '')}")
+        elif workflow_status and not workflow_status.get("no_trade_actionable"):
+            skip = workflow_status.get("user_message_en")
+            if skip:
+                lines.append(f"  {skip}")
         for w in selection.get("warnings") or []:
             lines.append(f"  Warning: {w}")
     lines.append("")
@@ -304,6 +324,7 @@ def build_decision_package_report(
     action: dict[str, Any] | None,
     monitoring_diff: dict[str, Any] | None,
     decision_journal: dict[str, Any] | None,
+    workflow_status: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Machine-readable index plus embedded plain summary."""
     lines = build_decision_package_summary_lines(
@@ -314,6 +335,7 @@ def build_decision_package_report(
         action=action,
         monitoring_diff=monitoring_diff,
         decision_journal=decision_journal,
+        workflow_status=workflow_status,
     )
     return {
         "schema_version": SCHEMA_VERSION,
@@ -390,6 +412,7 @@ def write_decision_package_reporting_outputs(
     action: dict[str, Any] | None = None,
     monitoring_diff: dict[str, Any] | None = None,
     decision_journal: dict[str, Any] | None = None,
+    workflow_status: dict[str, Any] | None = None,
     append_report_txt: bool = True,
 ) -> dict[str, Path]:
     project_root = project_root or Path.cwd()
@@ -410,6 +433,8 @@ def write_decision_package_reporting_outputs(
         monitoring_diff = _load_json(out_dir / "monitoring_diff.json")
     if decision_journal is None:
         decision_journal = _load_json(out_dir / "decision_journal.json")
+    if workflow_status is None:
+        workflow_status = _load_json(out_dir / "current_vs_policy_status.json")
 
     doc = build_decision_package_report(
         comparison=comparison,
@@ -419,6 +444,7 @@ def write_decision_package_reporting_outputs(
         action=action,
         monitoring_diff=monitoring_diff,
         decision_journal=decision_journal,
+        workflow_status=workflow_status,
     )
     paths: dict[str, Path] = {}
     json_path = out_dir / "decision_package_summary.json"

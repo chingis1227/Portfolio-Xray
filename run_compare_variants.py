@@ -42,6 +42,23 @@ def main() -> None:
         msg += f"\nDecision journal: {paths['decision_journal_json']}"
     if "decision_package_summary_txt" in paths:
         msg += f"\nDecision package summary: {paths['decision_package_summary_txt']}"
+    if "current_vs_policy_status_json" in paths:
+        msg += f"\nCurrent vs policy status: {paths['current_vs_policy_status_json']}"
+        try:
+            import json
+
+            with open(paths["current_vs_policy_status_json"], encoding="utf-8") as f:
+                status = json.load(f)
+            user_line = status.get("user_message_en")
+            if user_line:
+                msg += f"\n  {user_line}"
+            hint = (status.get("materialization") or {}).get("command_hint")
+            if hint:
+                msg += f"\n  Hint: {hint}"
+            if status.get("no_trade_actionable"):
+                msg += "\n  No-Trade versus current was evaluated in this run."
+        except (OSError, json.JSONDecodeError):
+            pass
     print(msg)
 
 

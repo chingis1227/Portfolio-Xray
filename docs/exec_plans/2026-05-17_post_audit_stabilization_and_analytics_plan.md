@@ -52,11 +52,23 @@ available without silently changing the policy optimizer.
   `write_candidate_comparison_outputs`, extended `run_compare_variants.py` CLI messaging,
   added decision-package PDF rebuild in `pdf_reports.py`, and added
   `tests/test_decision_package_reporting.py`.
-- [ ] Session 08: Current-vs-policy workflow spec.
-- [ ] Session 09: Current-vs-policy workflow implementation.
-- [ ] Session 10: Candidate factory spec.
-- [ ] Session 11: Candidate factory implementation.
-- [ ] Session 12: Trade-off and model-risk spec.
+- [x] (2026-05-17) Session 08 completed: created `docs/specs/current_vs_policy_workflow_spec.md`
+  (combined sidecar workflow, No-Trade actionability matrix, `current_vs_policy_status.json`
+  contract); cross-linked candidate comparison, input assumptions, selection, action, reporting,
+  OUTPUTS, and spec index.
+- [x] (2026-05-17) Session 09 completed: current-vs-policy workflow implementation
+  (`--materialize-current`, sidecar resolution, `current_vs_policy_status.json`, reporting gating).
+- [x] (2026-05-17) Session 10 completed: created `docs/specs/candidate_factory_spec.md`
+  (profiles, registry-to-script table, `candidate_factory_run_v1`, CLI contract for Session 11);
+  cross-linked candidate portfolios, comparison, current-vs-policy, OUTPUTS, spec index;
+  recorded `DEC-2026-05-17-007`; RM-615 spec phase done (implementation Session 11).
+- [x] (2026-05-17) Session 11 completed: `run_candidate_factory.py`, `src/candidate_factory.py`,
+  `candidate_factory_run.json` / `.txt`, profiles, skip-existing, robust-scenario prerequisites,
+  optional `--then-compare`; `tests/test_candidate_factory.py` (9 tests).
+- [x] (2026-05-17) Session 12 completed: created `docs/specs/tradeoff_and_model_risk_spec.md`
+  (`tradeoff_explanation_v1`, `model_risk_diagnostics_v1`, pipeline placement, warning catalog,
+  downstream consumers); cross-linked OUTPUTS, reporting, selection, journal, decision package;
+  recorded `DEC-2026-05-17-008`. Runtime unchanged.
 - [ ] Session 13: Trade-off and model-risk implementation.
 - [ ] Session 14: Assumption Sensitivity spec.
 - [ ] Session 15: Assumption Sensitivity implementation.
@@ -170,6 +182,32 @@ Session 06–07 outcome: `decision_package_summary.txt` / `.json` project the fu
 `report.txt` receives an appended decision-package section when present; PDF rebuild can emit
 `Main portfolio_decision_package.pdf` when the summary exists. `RM-612` is done; `KI-2026-05-17-008`
 is resolved for the compact summary surface (regenerated-folder QA may remain under `KI-2026-05-17-007`).
+
+Session 08 outcome: `docs/specs/current_vs_policy_workflow_spec.md` defines the V1 combined workflow
+(optimize + policy report on Main, current materialization to `current_portfolio/` sidecar, then
+comparison), No-Trade actionability matrix, skip reason codes, and `current_vs_policy_status_v1`
+contract. Runtime behavior unchanged; Session 09 implements materialization CLI, comparison sidecar
+resolution, status artifact, and focused tests. Handoff: Session 09.
+
+Session 09 outcome: implemented `run_report.py --materialize-current` (sidecar under
+`current_portfolio/`), sidecar-aware `current` row in `candidate_comparison`, `current_vs_policy_status.json`
+/ `.txt`, selection/action/reporting gating for No-Trade actionability, and
+`tests/test_current_vs_policy_workflow.py`. Verified with focused pytest. Handoff: Session 10.
+
+Session 10 outcome: accepted [candidate_factory_spec.md](../specs/candidate_factory_spec.md) —
+factory profiles (`default_v1`, `core_benchmarks`, …), sixteen-script registry table aligned with
+`_REGISTRY_ROWS`, `candidate_factory_run_v1` artifacts under `output_dir_final`, continue-on-error
+policy, and planned `run_candidate_factory.py` CLI for Session 11. Runtime behavior unchanged.
+Verified with `python scripts/verify_docs.py`. Handoff: Session 11.
+
+Session 11 outcome: implemented candidate factory orchestration (`src/candidate_factory.py`,
+`run_candidate_factory.py`): sequential sixteen-candidate `default_v1` profile, skip-existing,
+robust-scenario dependency checks, `candidate_factory_run_v1` JSON/TXT under `output_dir_final`,
+optional `--then-compare`. Verified with `python -m pytest tests/test_candidate_factory.py -q`.
+Session 12 outcome: trade-off and model-risk spec accepted (`tradeoff_explanation_v1`,
+`model_risk_diagnostics_v1`, separate JSON/TXT artifacts, primary pair current→favored, unified
+warning catalog, non-binding boundary). Verified with `python scripts/verify_docs.py`.
+Handoff: Session 13 (trade-off and model-risk implementation).
 
 Future sessions must update this section when each milestone completes, noting what changed, what was
 verified, and what remains.
@@ -525,3 +563,15 @@ package surfacing open for Sessions 06-07.
 Revision note, 2026-05-17: Session 05 completed source/generator English and mojibake cleanup, left
 generated-output refresh/QA tracked in `KI-2026-05-17-007`, and moved the remaining handoff to Session
 06.
+
+Revision note, 2026-05-17: Session 08 completed the current-vs-policy workflow spec (`RM-614` spec
+phase). Handoff moves to Session 09 for runner and comparison implementation.
+
+Revision note, 2026-05-17: Session 09 completed current-vs-policy implementation (`RM-614` done).
+Handoff moves to Session 10 (candidate factory spec).
+
+Revision note, 2026-05-17: Session 10 completed candidate factory spec (`DEC-2026-05-17-007`, RM-615
+spec phase). Handoff moves to Session 11 (factory implementation).
+
+Revision note, 2026-05-17: Session 12 completed trade-off and model-risk spec (`DEC-2026-05-17-008`,
+RM-616 spec phase). Handoff moves to Session 13 (implementation).

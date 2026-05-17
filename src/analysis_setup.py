@@ -119,6 +119,7 @@ def _analysis_portfolio(
     portfolio_weights: dict[str, float] | None,
     weights_source: str | None,
     cash_proxy_ticker: str | None,
+    portfolio_role_override: str | None = None,
 ) -> dict[str, Any]:
     analysis_mode = getattr(cfg, "analysis_mode", "optimize_from_universe")
     current_weights = dict(getattr(cfg, "current_weights", {}) or {})
@@ -130,7 +131,13 @@ def _analysis_portfolio(
     notes: list[str] = []
     resolved_weights: dict[str, float] = {}
 
-    if analysis_mode == "analyze_current_weights" and positive_weights(current_weights):
+    if portfolio_role_override == "user_current_portfolio" and positive_weights(effective_weights):
+        role = "user_current_portfolio"
+        effective_source = weights_source or "config.current_weights"
+        resolved_weights = effective_weights
+        recommendation_status = "diagnostic_current_portfolio_not_recommendation"
+        notes.append("materialized current portfolio sidecar for current-vs-policy comparison")
+    elif analysis_mode == "analyze_current_weights" and positive_weights(current_weights):
         role = "user_current_portfolio"
         effective_source = "config.current_weights"
         resolved_weights = current_weights
@@ -261,6 +268,7 @@ def build_analysis_setup(
     returns_frequency: str | None = None,
     periods_per_year: int | None = None,
     run_context: str | None = None,
+    portfolio_role_override: str | None = None,
 ) -> dict[str, Any]:
     """Return the resolved runtime contract for the analysis input layer.
 
@@ -278,6 +286,7 @@ def build_analysis_setup(
         portfolio_weights=portfolio_weights,
         weights_source=weights_source,
         cash_proxy_ticker=cash_proxy_ticker,
+        portfolio_role_override=portfolio_role_override,
     )
 
     setup = {

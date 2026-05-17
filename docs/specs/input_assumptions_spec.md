@@ -83,6 +83,10 @@ Final production policy weights still come from `run_optimization.py` and approv
 
 `current_weights` may be entered manually only for existing-portfolio diagnostics. In `analyze_current_weights` mode, current weights become fixed report weights. In `optimize_from_universe` mode, current weights are preserved as input context but do not replace generated policy weights.
 
+For the **combined current-vs-policy workflow** (policy optimize + report on Main, current materialized to `{output_dir_final}/current_portfolio/`, then comparison), see [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md). Users should not toggle the whole config to `analyze_current_weights` to answer "should I move to policy?"
+
+When the user wants **current-vs-policy No-Trade** in the same comparison run, keep `analysis_mode: optimize_from_universe`, set `current_weights`, run the policy path, then **materialize current** into `{output_dir_final}/current_portfolio/` without overwriting Main policy artifacts. See [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md).
+
 Equal Weight Initial Portfolio is a baseline, not a recommendation. It must be excluded from recommendation language unless it later becomes an explicit candidate and wins comparison under documented selection logic.
 
 ## Lifecycle Mapping

@@ -87,16 +87,21 @@ Common project artifacts include:
 - generated HTML snapshots
 - generated PDF-style reports
 - candidate portfolio output folders
+- `candidate_factory_run.json` and optional `candidate_factory_run.txt` (under `output_dir_final`; factory orchestration run summary from `run_candidate_factory.py`; spec in [candidate factory spec](docs/specs/candidate_factory_spec.md))
 - `candidate_comparison.json` (under `output_dir_final`; see [candidate comparison spec](docs/specs/candidate_comparison_spec.md))
 - `robustness_scorecard.json` and optional `robustness_scorecard.txt` (under `output_dir_final`; written by `run_compare_variants.py` / `write_candidate_comparison_outputs`; see [robustness scorecard spec](docs/specs/robustness_scorecard_spec.md))
 - `portfolio_health_score.json` and optional `portfolio_health_score.txt` (under `output_dir_final`; Session 13; see [portfolio health score spec](docs/specs/portfolio_health_score_spec.md))
-- `selection_decision.json` and optional `selection_decision.txt` (under `output_dir_final`; Session 15 implementation; contract in [selection engine spec](docs/specs/selection_engine_spec.md))
-- `action_plan.json` and optional `action_plan.txt` (under `output_dir_final`; Session 16 implementation; contract in [action engine spec](docs/specs/action_engine_spec.md))
+- `selection_decision.json` and optional `selection_decision.txt` (under `output_dir_final`; contract in [selection engine spec](docs/specs/selection_engine_spec.md))
+- `tradeoff_explanation.json` and optional `tradeoff_explanation.txt` (under `output_dir_final`; post-audit Session 13 implementation; contract in [trade-off and model risk spec](docs/specs/tradeoff_and_model_risk_spec.md))
+- `model_risk_diagnostics.json` and optional `model_risk_diagnostics.txt` (under `output_dir_final`; post-audit Session 13 implementation; same spec)
+- `action_plan.json` and optional `action_plan.txt` (under `output_dir_final`; contract in [action engine spec](docs/specs/action_engine_spec.md))
 - `monitoring_diff.json` and optional `monitoring_diff.txt` (under `output_dir_final`; [monitoring spec](docs/specs/monitoring_spec.md); compares to prior `monitoring/latest/analysis_snapshot.json`)
 - `monitoring/latest/analysis_snapshot.json` and `monitoring/history/analysis_snapshot_{analysis_end}.json` (generated monitoring snapshots; same spec)
 - `decision_journal.json` and optional `decision_journal.txt` (under `output_dir_final`; written by `write_candidate_comparison_outputs`; see [decision journal spec](docs/specs/decision_journal_spec.md))
 - `journal/latest/decision_journal.json` and `journal/history/decision_journal_{analysis_end}.json` (generated journal copies; same spec)
 - `decision_package_summary.json` and `decision_package_summary.txt` (under `output_dir_final`; compact English summary of the full V1 decision package; see [decision package reporting spec](docs/specs/decision_package_reporting_spec.md))
+- `current_vs_policy_status.json` and optional `current_vs_policy_status.txt` (under `output_dir_final`; workflow status and No-Trade actionability; see [current vs policy workflow spec](docs/specs/current_vs_policy_workflow_spec.md); written after comparison in Session 09 implementation)
+- `{output_dir_final}/current_portfolio/` (sidecar folder for materialized current-portfolio snapshots when using the combined current-vs-policy workflow; does not replace policy artifacts on Main root)
 - legacy `portfolio_comparison.json` and `ew_rp_comparison.json` (subset comparisons; superseded by canonical contract)
 
 `portfolio_xray.json` is a generated, diagnostic-only Portfolio X-Ray artifact. It summarizes existing report pipeline outputs and in-memory diagnostics; it does not optimize, change weights, change mandate gates, change stress pass/fail status, or make portfolio selection decisions.
@@ -121,10 +126,13 @@ The exact artifact set can vary by config, available data, candidate type, and e
 | --- | --- |
 | Current implementation output contract | [SPEC.md](SPEC.md) |
 | High-level report and artifact contract | [docs/specs/reporting_outputs_spec.md](docs/specs/reporting_outputs_spec.md) |
+| Candidate factory run summary JSON | [docs/specs/candidate_factory_spec.md](docs/specs/candidate_factory_spec.md) |
 | Canonical candidate comparison JSON | [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md) |
 | Robustness Scorecard JSON | [docs/specs/robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md) |
 | Portfolio Health Score JSON | [docs/specs/portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md) |
 | Selection decision JSON | [docs/specs/selection_engine_spec.md](docs/specs/selection_engine_spec.md) |
+| Trade-off explanation and model risk diagnostics JSON | [docs/specs/tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md) |
+| Current-vs-policy workflow and status JSON | [docs/specs/current_vs_policy_workflow_spec.md](docs/specs/current_vs_policy_workflow_spec.md) |
 | Monitoring snapshot and diff JSON | [docs/specs/monitoring_spec.md](docs/specs/monitoring_spec.md) |
 | Metric formulas, windows, estimators, rounding | [docs/specs/metrics_specification.md](docs/specs/metrics_specification.md) |
 | Stress, factor, macro, regime, and stress CSV/JSON artifacts | [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) |

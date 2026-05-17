@@ -171,3 +171,31 @@ Title: Selection Engine V1 contract — composite score, policy default, No-Trad
 - Consequences: `selection_decision_v1` is the target artifact; `src/selection_engine.py` and tests follow in Session 15; PDF/report surfaces reference decision rules when integrated.
 - Related documents: [docs/specs/selection_engine_spec.md](docs/specs/selection_engine_spec.md), [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [docs/specs/portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md), [docs/specs/robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md), [docs/ROADMAP.md](docs/ROADMAP.md) RM-300.
 - Review trigger: Revisit when Pareto/dominance or regret modules are specified, or when transaction-cost-aware No-Trade is added in Action Engine.
+
+Decision ID: DEC-2026-05-17-008
+Title: Trade-off Explanation and Model Risk Diagnostics V1 — separate diagnostic artifacts
+
+- Status: accepted
+- Date: 2026-05-17
+- Decision: Adopt two file-first diagnostic artifacts under `output_dir_final`: `tradeoff_explanation_v1` (baseline `current` → favored target from selection, metric/stress deltas without new formulas, weight-based turnover at write time) and `model_risk_diagnostics_v1` (deduplicated warning catalog from comparison, scores, stress, and run metadata). Pipeline placement is after `selection_decision.json` and before `action_plan.json`. Layer is non-binding and does not change selection, mandate, or stress pass/fail.
+- Context: Post-audit Session 12 (RM-616 spec phase); audit PSA-012 and product concept sections 17–18 flagged partial coverage via selection bullets and scattered warnings only.
+- Rationale: Makes “price of improvement” and model self-criticism explicit for decision package and journal without conflating them with Health Score or Selection outcomes.
+- Alternatives considered: Single combined JSON (rejected — reporting and tests are clearer with two files); compute trade-off after action for action turnover (deferred — V1 uses weight deltas at trade-off write time); auto-veto selection on high model risk (rejected — violates diagnostic boundary).
+- Assumptions: Session 13 implements `src/tradeoff_and_model_risk.py`, wires into `write_candidate_comparison_outputs`, and extends decision-package reporting sections.
+- Consequences: See [docs/specs/tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md); journal and reporting prefer trade-off artifact over selection `tradeoff_bullets` when present.
+- Related documents: [docs/specs/tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md), [docs/specs/selection_engine_spec.md](docs/specs/selection_engine_spec.md), [docs/specs/decision_package_reporting_spec.md](docs/specs/decision_package_reporting_spec.md), [OUTPUTS.md](OUTPUTS.md), [docs/ROADMAP.md](docs/ROADMAP.md) RM-616.
+- Review trigger: Revisit if trade-off should run after action for turnover parity, or if concentration thresholds should become mandate-binding.
+
+Decision ID: DEC-2026-05-17-007
+Title: Candidate Portfolio Factory V1 — orchestrate before compare
+
+- Status: accepted
+- Date: 2026-05-17
+- Decision: Adopt a file-first Candidate Portfolio Factory that runs existing per-candidate `run_*.py` builders in defined profiles, writes `candidate_factory_run_v1` under `output_dir_final`, uses continue-on-error and skip-existing-by-default, and hands off to `run_compare_variants.py`. Policy (`run_optimization.py` + Main report) and optional current materialization stay outside factory profiles. Main remains the production policy path; robust MV/scenario stay candidate inputs only.
+- Context: Post-audit Session 10 (PSA-008): comparison quality depended on which builders were run manually; the product concept expects a controlled comparison arena.
+- Rationale: Makes the intended candidate set auditable without duplicating optimizer formulas or changing comparison/selection contracts.
+- Alternatives considered: Require manual script runs only (rejected — opaque and error-prone); embed all builders in one mega-optimizer (rejected — violates Main vs candidate boundary); auto-run policy inside factory (rejected — blurs production release path).
+- Assumptions: Registry stays aligned with `_REGISTRY_ROWS` in [src/candidate_comparison.py](src/candidate_comparison.py).
+- Consequences: Implemented `run_candidate_factory.py` and [src/candidate_factory.py](src/candidate_factory.py); RM-615 done; factory run summary under `output_dir_final`.
+- Related documents: [docs/specs/candidate_factory_spec.md](docs/specs/candidate_factory_spec.md), [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md), [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [docs/ROADMAP.md](docs/ROADMAP.md) RM-615.
+- Review trigger: Revisit if factory should parallelize builders, change default profile, or include policy/current in automated batches.

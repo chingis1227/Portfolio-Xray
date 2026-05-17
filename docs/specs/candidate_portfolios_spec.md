@@ -33,12 +33,19 @@ Implemented candidate and benchmark families include:
 - Robust Mean-Variance constrained: `run_robust_mean_variance_constrained.py`
 - Scenario-Based Robust Optimization: `run_robust_scenario_optimization.py`
 
+## Candidate Portfolio Factory
+
+Orchestration of the per-family builder scripts (default profiles, run summary, handoff to
+comparison) is defined in [candidate_factory_spec.md](candidate_factory_spec.md). The factory
+invokes the scripts listed in **Candidate Families** above; it does not change their formulas.
+Implementation: Session 11 (`run_candidate_factory.py`); spec accepted in post-audit Session 10.
+
 ## Comparison Artifact
 
-After individual candidate reports exist, the canonical multi-candidate table is
-[candidate_comparison.json](../../OUTPUTS.md) under `output_dir_final`, governed by
-[candidate_comparison_spec.md](candidate_comparison_spec.md). That contract includes policy,
-user current (when materialized), benchmarks, and optimizer candidates with explicit
+After individual candidate reports exist (manually or via the factory), the canonical
+multi-candidate table is [candidate_comparison.json](../../OUTPUTS.md) under `output_dir_final`,
+governed by [candidate_comparison_spec.md](candidate_comparison_spec.md). That contract includes
+policy, user current (when materialized), benchmarks, and optimizer candidates with explicit
 `unavailable` status when folders are missing.
 
 ## Detailed Ownership

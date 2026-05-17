@@ -34,7 +34,8 @@ Common outputs include:
 - PDF-style reports under configured output folders
 - decision-package artifacts under `output_dir_final`: `candidate_comparison.json`,
   `robustness_scorecard.json`, `portfolio_health_score.json`, `selection_decision.json`,
-  `action_plan.json`, `monitoring_diff.json`, and `decision_journal.json`
+  `tradeoff_explanation.json`, `model_risk_diagnostics.json`, `action_plan.json`,
+  `monitoring_diff.json`, and `decision_journal.json`
 
 `run_result.json` and `run_metadata.json` expose `analysis_setup`, the resolved runtime contract governed by [input_assumptions_spec.md](input_assumptions_spec.md). They also expose `input_assumptions`, the reporting/reproducibility view projected from `analysis_setup`.
 
@@ -60,17 +61,20 @@ candidate builders, execute trades, or override stress pass/fail.
 The V1 artifact chain is:
 
 1. `candidate_comparison.json` / `.txt` - diagnostic table of policy, current when materialized, and
-   supported candidate families.
+   supported candidate families. Combined current-vs-policy materialization and No-Trade actionability:
+   [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md).
 2. `robustness_scorecard.json` / `.txt` - diagnostic resilience scorecard from the comparison table.
 3. `portfolio_health_score.json` / `.txt` - diagnostic holistic health score from comparison plus
    optional robustness reference.
 4. `selection_decision.json` / `.txt` - formal, non-executing decision record with one decision
    status and optional No-Trade materiality.
-5. `action_plan.json` / `.txt` - non-executing implementation plan, turnover, optional trade rows for
+5. `tradeoff_explanation.json` / `.txt` and `model_risk_diagnostics.json` / `.txt` - diagnostic
+   trade-off deltas (baseline vs favored) and unified model-risk warnings ([tradeoff_and_model_risk_spec.md](tradeoff_and_model_risk_spec.md); implementation post-audit Session 13).
+6. `action_plan.json` / `.txt` - non-executing implementation plan, turnover, optional trade rows for
    review, and simple transaction-cost estimate.
-6. `monitoring_diff.json` / `.txt` plus `monitoring/latest/` and `monitoring/history/` snapshots -
+7. `monitoring_diff.json` / `.txt` plus `monitoring/latest/` and `monitoring/history/` snapshots -
    generated What Changed evidence versus the prior run.
-7. `decision_journal.json` / `.txt` plus `journal/latest/` and `journal/history/` copies - generated
+8. `decision_journal.json` / `.txt` plus `journal/latest/` and `journal/history/` copies - generated
    decision record and artifact index for the run.
 
 Compact report/PDF-facing summaries are defined in
@@ -80,6 +84,7 @@ Compact report/PDF-facing summaries are defined in
 
 - `decision_package_summary.txt` — primary English summary for humans and `report.txt` append
 - `decision_package_summary.json` — `decision_package_report_v1` index with section availability
+- `current_vs_policy_status.json` / `.txt` — workflow completeness and No-Trade actionability per [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md)
 
 The per-artifact JSON/TXT files above remain the authoritative structured contracts; the summary is a
 read-only projection for reports and PDF rebuild.

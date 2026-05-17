@@ -43,6 +43,11 @@ Omit empty categories.
 
 ### Added
 
+- Added [trade-off and model risk spec](docs/specs/tradeoff_and_model_risk_spec.md): `tradeoff_explanation_v1` and `model_risk_diagnostics_v1` contracts, warning catalog, pipeline placement after selection (post-audit Session 12); decision `DEC-2026-05-17-008`.
+- Implemented candidate factory (post-audit Session 11): [run_candidate_factory.py](run_candidate_factory.py), [src/candidate_factory.py](src/candidate_factory.py), profiles and skip-existing orchestration, `candidate_factory_run.json` / `.txt`, optional `--then-compare`; [tests/test_candidate_factory.py](tests/test_candidate_factory.py).
+- Added [candidate factory spec](docs/specs/candidate_factory_spec.md): V1 orchestration profiles, registry-to-script table, `candidate_factory_run_v1` contract, and planned `run_candidate_factory.py` CLI (post-audit Session 10; implementation Session 11); decision `DEC-2026-05-17-007`.
+- Implemented current-vs-policy workflow (post-audit Session 09): `run_report.py --materialize-current`, sidecar resolution in [src/candidate_comparison.py](src/candidate_comparison.py), [src/current_vs_policy.py](src/current_vs_policy.py) status artifacts, reporting/selection/action gating; [tests/test_current_vs_policy_workflow.py](tests/test_current_vs_policy_workflow.py).
+- Added [current vs policy workflow spec](docs/specs/current_vs_policy_workflow_spec.md): V1 combined workflow (policy on Main + `current_portfolio/` sidecar), No-Trade actionability matrix, skip reason codes, and `current_vs_policy_status_v1` contract (post-audit Session 08).
 - Added [audit register](docs/audits/README.md) and [ExecPlan register](docs/exec_plans/README.md) to keep audit history, plan history, and the active plan pointer in concise documentation indexes.
 - Added [post-audit stabilization and analytics ExecPlan](docs/exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md) to guide separate future sessions for docs sync, report integration, workflow hardening, candidate factory, and new analytics.
 - Added the post-session deep system audit after Sessions 01-20, covering concept alignment, docs/code drift, Post-closure triage, and Main-vs-robust optimizer boundaries.
@@ -68,6 +73,7 @@ Omit empty categories.
 
 ### Changed
 
+- Cross-linked current-vs-policy workflow spec from candidate comparison, input assumptions, selection, action, reporting outputs, OUTPUTS, and spec index (post-audit Session 08).
 - Cleaned source/generator text defaults across optimization/report/PDF/config/docs paths so project artifacts use English and common mojibake markers are removed from source.
 - Synced detailed decision-package specs so reporting, comparison, selection, action, monitoring, and journal contracts describe the implemented V1 artifact chain instead of stale future/TBD neighbors.
 - Synced top-level docs after the post-session audit: `README.md`, `AGENTS.md`, `SPEC.md`, `PRODUCT.md`, and `ARCHITECTURE.md` now treat the V1 decision pipeline as implemented file-first artifacts while keeping full UI/workspace and advanced analytics as future work.

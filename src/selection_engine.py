@@ -587,9 +587,15 @@ def build_selection_decision(
             decision_status = "selected_candidate"
             rationale["summary"] = f"Favored profile: {favored_display} for this comparison."
             if not current_ok:
+                warnings.append("no_trade_not_actionable")
                 rationale["data_quality_notes"].append(
                     "Current portfolio not available; No-Trade versus current was not evaluated."
                 )
+                cur = by_id.get("current") or {}
+                if cur.get("unavailable_reason") == "missing_current_report":
+                    rationale["data_quality_notes"].append(
+                        "Run: python run_report.py --materialize-current"
+                    )
 
     if missing_inputs:
         rationale["data_quality_notes"].append(

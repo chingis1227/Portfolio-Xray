@@ -219,7 +219,7 @@ From favored (or current when no-trade vs policy) comparison row:
 | `summary` | 2–4 sentences combining selection `rationale.summary` and journal context (English, neutral). |
 | `selection_bullets` | from selection `rationale.selection_bullets` |
 | `no_trade_bullets` | from selection when present |
-| `tradeoff_bullets` | from selection when present |
+| `tradeoff_bullets` | from [tradeoff_explanation.json](tradeoff_and_model_risk_spec.md) summary when present; else from selection `tradeoff_bullets` |
 | `data_quality_notes` | from selection `rationale.data_quality_notes` |
 
 Forbidden in narrative strings: imperative buy/sell, performance guarantees, raw internal codes in client-facing export paths.

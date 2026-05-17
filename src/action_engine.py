@@ -106,8 +106,18 @@ def _no_trades_reason(
     action_status: str,
     selection_summary: str | None,
     no_trade_summary: str | None,
+    workflow_status: dict[str, Any] | None = None,
 ) -> str:
+    if workflow_status and not workflow_status.get("no_trade_actionable"):
+        skip_msg = workflow_status.get("user_message_en")
+        if skip_msg:
+            return str(skip_msg)
     if decision_status == "no_material_rebalance":
+        if workflow_status and not workflow_status.get("no_trade_actionable"):
+            return (
+                workflow_status.get("user_message_en")
+                or "No-Trade versus current was not evaluated for this workflow."
+            )
         base = no_trade_summary or "No material rebalance suggested versus current weights."
         return f"{base} Trade list omitted per Selection Engine outcome."
     if decision_status == "mandate_risk_reduction":
@@ -134,6 +144,7 @@ def build_action_plan(
     *,
     project_root: Path,
     min_trade_pct: float | None = None,
+    workflow_status: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build action_plan_v1 from comparison and selection artifacts."""
     warnings: list[str] = []
@@ -210,6 +221,7 @@ def build_action_plan(
         action_status=action_status,
         selection_summary=rationale.get("summary"),
         no_trade_summary=no_trade_block.get("summary"),
+        workflow_status=workflow_status,
     )
 
     return {
@@ -295,6 +307,7 @@ def write_action_plan_outputs(
     project_root: Path | None = None,
     comparison: dict[str, Any] | None = None,
     selection: dict[str, Any] | None = None,
+    workflow_status: dict[str, Any] | None = None,
     write_txt: bool = True,
 ) -> dict[str, Path]:
     """Write action_plan.json when selection and comparison exist."""
@@ -309,10 +322,14 @@ def write_action_plan_outputs(
     if not comparison or not selection:
         return {}
 
+    if workflow_status is None:
+        workflow_status = _load_json(out_dir / "current_vs_policy_status.json")
+
     plan = build_action_plan(
         comparison,
         selection,
         project_root=project_root,
+        workflow_status=workflow_status,
     )
     out_dir.mkdir(parents=True, exist_ok=True)
     paths: dict[str, Path] = {}

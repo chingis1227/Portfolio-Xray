@@ -493,7 +493,7 @@ Current implementation:
 
 Target additions:
 
-- Richer trade-off and model-risk explanation is TBD.
+- Trade-off and model-risk artifacts are specified in [tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md); pipeline implementation is post-audit Session 13.
 - Risk improvement per 1% turnover is TBD.
 
 ### 11. Report Export
@@ -598,7 +598,7 @@ Current implementation:
 | Assumption Sensitivity | Target | TBD |
 | Pareto / Dominance Check | Target | TBD |
 | Regret Analysis | Target | TBD |
-| Trade-off Explanation | Core target | Partially covered by commentary, formal UX TBD |
+| Trade-off Explanation | Core target | Spec accepted (`tradeoff_explanation_v1`); implementation Session 13 |
 | Action Engine | Implemented (V1) | `action_plan.json` via [src/action_engine.py](src/action_engine.py); mechanical trades via [src/rebalance.py](src/rebalance.py) |
 | Rebalancing Advisor | Implemented (V1) | `action_plan.txt` companion summary |
 | No-Trade Recommendation | Implemented (V1) | Same module as Selection Engine; `no_material_rebalance` outcome |

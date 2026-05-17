@@ -19,6 +19,7 @@ SCHEMA_VERSION = "candidate_comparison_v1"
 WINDOWS = ("3y", "5y", "10y")
 PRIMARY_WINDOW = "10y"
 SNAPSHOT_FILES = {"3y": "snapshot_3y.json", "5y": "snapshot_5y.json", "10y": "snapshot_10y.json"}
+CURRENT_SIDECAR_SUBDIR = "current_portfolio"
 
 _REGISTRY_ROWS: list[dict[str, str]] = [
     {
@@ -473,12 +474,53 @@ def _resolve_analysis_end(main_dir: Path, cfg: PortfolioConfig) -> str:
     return str(getattr(cfg, "analysis_end", "") or "")
 
 
+def current_sidecar_dir(output_dir_final: Path) -> Path:
+    return output_dir_final / CURRENT_SIDECAR_SUBDIR
+
+
+def sidecar_meets_minimum(sidecar: Path) -> bool:
+    if not (sidecar / SNAPSHOT_FILES[PRIMARY_WINDOW]).is_file():
+        return False
+    meta = _load_json(sidecar / "run_metadata.json")
+    if not meta:
+        return False
+    setup = meta.get("analysis_setup") or {}
+    ap = setup.get("analysis_portfolio") or {}
+    return ap.get("portfolio_role") == "user_current_portfolio"
+
+
+def resolve_current_artifact_folder(
+    *,
+    output_dir_final: Path,
+    output_dir_final_rel: str,
+    analysis_mode: str,
+) -> tuple[Path, str]:
+    """Folder path and artifact_root string for the current candidate row."""
+    if analysis_mode == "optimize_from_universe":
+        sidecar = current_sidecar_dir(output_dir_final)
+        if sidecar_meets_minimum(sidecar):
+            return sidecar, f"{output_dir_final_rel}/{CURRENT_SIDECAR_SUBDIR}"
+    return output_dir_final, output_dir_final_rel
+
+
 def _artifact_folder(
     row: dict[str, str],
     *,
     output_dir_final: Path,
     project_root: Path,
+    analysis_mode: str = "optimize_from_universe",
+    output_dir_final_rel: str | None = None,
 ) -> Path:
+    if row.get("candidate_id") == "current":
+        rel = output_dir_final_rel or str(
+            getattr(output_dir_final, "name", output_dir_final)
+        )
+        folder, _ = resolve_current_artifact_folder(
+            output_dir_final=output_dir_final,
+            output_dir_final_rel=rel.replace("\\", "/"),
+            analysis_mode=analysis_mode,
+        )
+        return folder
     root_tpl = row["artifact_root"]
     if root_tpl == "{output_dir_final}":
         return output_dir_final
@@ -567,6 +609,7 @@ def _apply_policy_current_gating(
     analysis_mode: str,
     main_role: str | None,
     folder: Path,
+    output_dir_final: Path,
     cfg: PortfolioConfig,
 ) -> tuple[str, str | None, list[str]]:
     warnings: list[str] = []
@@ -575,6 +618,9 @@ def _apply_policy_current_gating(
 
     if analysis_mode == "optimize_from_universe":
         if candidate_id == "current":
+            sidecar = current_sidecar_dir(output_dir_final)
+            if folder.resolve() == sidecar.resolve() and status in ("available", "degraded"):
+                return status, None, warnings
             if main_role == "user_current_portfolio" and status in ("available", "degraded"):
                 return status, None, warnings
             if positive_current_weights(cfg):
@@ -615,8 +661,23 @@ def _build_candidate_row(
     main_role: str | None,
     main_meta: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    artifact_root_tpl = row["artifact_root"].replace("{output_dir_final}", str(output_dir_final))
-    folder = _artifact_folder(row, output_dir_final=output_dir_final, project_root=project_root)
+    out_rel = str(getattr(cfg, "output_dir_final", "Main portfolio")).replace("\\", "/")
+    if row["candidate_id"] == "current":
+        folder, artifact_root_str = resolve_current_artifact_folder(
+            output_dir_final=output_dir_final,
+            output_dir_final_rel=out_rel,
+            analysis_mode=analysis_mode,
+        )
+        artifact_root_tpl = artifact_root_str
+    else:
+        artifact_root_tpl = row["artifact_root"].replace("{output_dir_final}", out_rel)
+        folder = _artifact_folder(
+            row,
+            output_dir_final=output_dir_final,
+            project_root=project_root,
+            analysis_mode=analysis_mode,
+            output_dir_final_rel=out_rel,
+        )
 
     status, unavailable_reason, payload, missing_fields, warnings = _evaluate_artifact_candidate(
         folder, candidate_id=row["candidate_id"]
@@ -628,18 +689,24 @@ def _build_candidate_row(
         analysis_mode=analysis_mode,
         main_role=main_role,
         folder=folder,
+        output_dir_final=output_dir_final,
         cfg=cfg,
     )
     warnings = list(warnings) + gate_warnings
 
     portfolio_role = None
     recommendation_status = None
-    if row["candidate_id"] in ("policy", "current") and folder == output_dir_final.resolve():
-        if main_meta:
+    if row["candidate_id"] in ("policy", "current"):
+        row_meta = _load_json(folder / "run_metadata.json")
+        if row_meta:
+            ap = (row_meta.get("analysis_setup") or {}).get("analysis_portfolio") or {}
+            portfolio_role = ap.get("portfolio_role")
+            recommendation_status = ap.get("recommendation_status")
+        elif folder == output_dir_final.resolve() and main_meta:
             ap = (main_meta.get("analysis_setup") or {}).get("analysis_portfolio") or {}
             portfolio_role = ap.get("portfolio_role")
             recommendation_status = ap.get("recommendation_status")
-        elif main_role:
+        elif folder == output_dir_final.resolve() and main_role:
             portfolio_role = main_role
 
     candidate: dict[str, Any] = {
@@ -705,14 +772,21 @@ def build_candidate_comparison(
         for row in _REGISTRY_ROWS
     ]
 
+    out_rel = str(getattr(cfg, "output_dir_final", "Main portfolio")).replace("\\", "/")
+    setup_summary = _analysis_setup_summary_from_main(main_dir, cfg)
+    sidecar = current_sidecar_dir(output_dir_final)
+    if sidecar_meets_minimum(sidecar):
+        setup_summary = dict(setup_summary)
+        setup_summary["current_materialization_root"] = f"{out_rel}/{CURRENT_SIDECAR_SUBDIR}"
+
     doc: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "diagnostic_only": True,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "analysis_end": _resolve_analysis_end(main_dir, cfg),
         "investor_currency": str(getattr(cfg, "investor_currency", "USD")),
-        "output_dir_final": str(getattr(cfg, "output_dir_final", "Main portfolio")).replace("\\", "/"),
-        "analysis_setup_summary": _analysis_setup_summary_from_main(main_dir, cfg),
+        "output_dir_final": out_rel,
+        "analysis_setup_summary": setup_summary,
         "windows": list(WINDOWS),
         "primary_window": PRIMARY_WINDOW,
         "candidates": candidates,
@@ -909,18 +983,33 @@ def write_candidate_comparison_outputs(
     )
     paths.update(sel_paths)
 
-    from src.action_engine import write_action_plan_outputs
-
     selection_doc = None
     sel_json = paths.get("selection_decision_json")
     if sel_json and sel_json.is_file():
         selection_doc = _load_json(sel_json)
+
+    from src.current_vs_policy import write_current_vs_policy_status_outputs
+
+    paths.update(
+        write_current_vs_policy_status_outputs(
+            cfg,
+            comparison,
+            project_root=project_root,
+            selection=selection_doc,
+        )
+    )
+    status_json = paths.get("current_vs_policy_status_json")
+    workflow_status = _load_json(status_json) if status_json else None
+
+    from src.action_engine import write_action_plan_outputs
+
     paths.update(
         write_action_plan_outputs(
             cfg,
             project_root=project_root,
             comparison=comparison,
             selection=selection_doc,
+            workflow_status=workflow_status,
         )
     )
 
@@ -972,6 +1061,7 @@ def write_candidate_comparison_outputs(
             action=action_doc,
             monitoring_diff=monitoring_doc,
             decision_journal=journal_doc,
+            workflow_status=workflow_status,
         )
     )
 
@@ -980,9 +1070,14 @@ def write_candidate_comparison_outputs(
 
 __all__ = [
     "SCHEMA_VERSION",
+    "CURRENT_SIDECAR_SUBDIR",
     "build_candidate_comparison",
     "build_legacy_portfolio_comparison",
     "candidate_registry_ids",
+    "current_sidecar_dir",
+    "positive_current_weights",
+    "resolve_current_artifact_folder",
+    "sidecar_meets_minimum",
     "write_candidate_comparison_outputs",
     "write_candidate_comparison_txt",
 ]

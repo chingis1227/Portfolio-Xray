@@ -30,6 +30,8 @@ ALLOW_MISSING_PATHS: frozenset[str] = frozenset(
         "docs/specs/action_engine_spec.md",
         "docs/specs/monitoring_spec.md",
         "docs/specs/decision_journal_spec.md",
+        "src/tradeoff_and_model_risk.py",
+        "tests/test_tradeoff_and_model_risk.py",
     }
 )
 

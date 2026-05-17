@@ -38,10 +38,13 @@ Top-level documents stay compact:
 | Macro regime diagnostics | [macro_regime_spec.md](macro_regime_spec.md) |
 | Scenario Library and normalized scenario view | [scenario_library_spec.md](scenario_library_spec.md) |
 | Candidate and benchmark portfolios | [candidate_portfolios_spec.md](candidate_portfolios_spec.md) |
+| Candidate portfolio factory orchestration | [candidate_factory_spec.md](candidate_factory_spec.md) |
 | Canonical multi-candidate comparison artifact | [candidate_comparison_spec.md](candidate_comparison_spec.md) |
 | Robustness Scorecard (diagnostic resilience scoring) | [robustness_scorecard_spec.md](robustness_scorecard_spec.md) |
 | Portfolio Health Score (diagnostic holistic quality scoring) | [portfolio_health_score_spec.md](portfolio_health_score_spec.md) |
 | Selection Engine and No-Trade Recommendation (formal decision contract) | [selection_engine_spec.md](selection_engine_spec.md) |
+| Trade-off Explanation and Model Risk Diagnostics | [tradeoff_and_model_risk_spec.md](tradeoff_and_model_risk_spec.md) |
+| Current-vs-policy workflow and No-Trade actionability | [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md) |
 | Action Engine and Rebalancing Advisor (implementation plan) | [action_engine_spec.md](action_engine_spec.md) |
 | Monitoring snapshots and What Changed diff | [monitoring_spec.md](monitoring_spec.md) |
 | Decision Journal (generated decision record) | [decision_journal_spec.md](decision_journal_spec.md) |
