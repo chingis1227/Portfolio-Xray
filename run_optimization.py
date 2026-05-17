@@ -29,6 +29,8 @@ from src.config import (
 )
 from src.config_schema import ConfigValidationError
 from src.etf_universe import UniverseValidationError, write_universe_diagnostics
+from src.analysis_setup import build_analysis_setup
+from src.input_assumptions import build_input_assumptions_from_analysis_setup
 from src.metrics_asset import mandate_max_drawdown_full_history_check
 from src.optimization import (
     get_risk_portfolio_tickers,
@@ -121,6 +123,13 @@ def main() -> None:
 
     if args.profile:
         apply_profile_override(cfg, args.profile.strip())
+    if getattr(cfg, "analysis_mode", "optimize_from_universe") == "analyze_current_weights":
+        logger.error(
+            "analysis_mode=analyze_current_weights is a fixed-weight report mode. "
+            "Use run_report.py for existing-portfolio diagnostics, or set "
+            "analysis_mode=optimize_from_universe before running optimization."
+        )
+        raise SystemExit(1)
     profile_display = (cfg.client_profile or args.profile or "—").strip() or "—"
 
     out_final = Path(getattr(cfg, "output_dir_final", "Main portfolio"))
@@ -1040,9 +1049,28 @@ def main() -> None:
         production_status = STATUS_FAIL_MANDATE
 
     write_weights_gate = mandate_gate_passed
+    try:
+        resolved_cash_proxy, resolved_rf_source = resolve_cash_and_rf(cfg)
+    except ConfigValidationError:
+        resolved_cash_proxy, resolved_rf_source = cash_proxy, None
+    analysis_setup = build_analysis_setup(
+        cfg,
+        portfolio_weights=final_weights,
+        weights_source="optimization_result_released" if write_weights_gate else "optimization_result_blocked",
+        cash_proxy_ticker=resolved_cash_proxy,
+        rf_source=resolved_rf_source,
+        analysis_end=analysis_end_str,
+        windows_months=list(getattr(cfg, "windows_months", []) or []),
+        returns_frequency=returns_frequency,
+        periods_per_year=ppy,
+        run_context="optimization",
+    )
+    input_assumptions = build_input_assumptions_from_analysis_setup(analysis_setup)
     run_result: dict = {
         "weights": rounded if write_weights_gate else {},
         "status": production_status,
+        "analysis_setup": analysis_setup,
+        "input_assumptions": input_assumptions,
         "mandate_check": mandate_check,
         "violations": violations,
         "rc_breaches": rc_breaches,

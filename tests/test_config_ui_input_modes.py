@@ -1,0 +1,89 @@
+from __future__ import annotations
+
+import yaml
+
+
+def test_config_ui_renders_analysis_mode_and_read_only_generated_weights(monkeypatch, tmp_path) -> None:
+    from config_ui import app as config_app
+
+    config_path = tmp_path / "config.yml"
+    output_dir = tmp_path / "Main portfolio"
+    output_dir.mkdir()
+    config_path.write_text(
+        "investor_currency: USD\n"
+        "analysis_mode: optimize_from_universe\n"
+        "tickers:\n"
+        "  - VOO\n"
+        "  - BND\n"
+        "output_dir_final: Main portfolio\n",
+        encoding="utf-8",
+    )
+    (output_dir / "portfolio_weights.yml").write_text(
+        "VOO: 0.9\n"
+        "BND: 0.1\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(config_app, "CONFIG_PATH", config_path)
+
+    response = config_app.app.test_client().get("/")
+
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+    assert 'name="analysis_mode"' in html
+    assert "Generated policy weights" in html
+    assert "Read-only output" in html
+    assert 'name="current_weight[]" value="90.0%"' not in html
+    assert 'name="weight[]"' not in html
+
+
+def test_config_ui_generate_optimize_mode_does_not_write_manual_weights(monkeypatch, tmp_path) -> None:
+    from config_ui import app as config_app
+
+    config_path = tmp_path / "config.yml"
+    config_path.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(config_app, "CONFIG_PATH", config_path)
+
+    response = config_app.app.test_client().post(
+        "/generate",
+        data={
+            "analysis_mode": "optimize_from_universe",
+            "investor_currency": "USD",
+            "initial_investable_amount": "1000",
+            "ticker[]": ["VOO", "BND"],
+            "current_weight[]": ["70%", "30%"],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    config = yaml.safe_load(payload["yaml"])
+    assert config["analysis_mode"] == "optimize_from_universe"
+    assert config["tickers"] == ["VOO", "BND"]
+    assert config["current_weights"] == {}
+    assert config["weights"] == {}
+
+
+def test_config_ui_generate_analyze_mode_writes_current_weights_only(monkeypatch, tmp_path) -> None:
+    from config_ui import app as config_app
+
+    config_path = tmp_path / "config.yml"
+    config_path.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(config_app, "CONFIG_PATH", config_path)
+
+    response = config_app.app.test_client().post(
+        "/generate",
+        data={
+            "analysis_mode": "analyze_current_weights",
+            "investor_currency": "USD",
+            "initial_investable_amount": "1000",
+            "ticker[]": ["VOO", "BND"],
+            "current_weight[]": ["60%", "40%"],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    config = yaml.safe_load(payload["yaml"])
+    assert config["analysis_mode"] == "analyze_current_weights"
+    assert config["current_weights"] == {"VOO": 0.6, "BND": 0.4}
+    assert config["weights"] == {}

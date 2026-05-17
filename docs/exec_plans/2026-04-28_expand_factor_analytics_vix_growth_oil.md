@@ -112,7 +112,7 @@ the analytics/stress boundary explicit and document the three new analytics-only
 
 Work from the repository root:
 
-    C:\Users\ShumeikoYe\OneDrive\Р Р°Р±РѕС‡РёР№ СЃС‚РѕР»\РљСѓСЂСЃРѕСЂ РњРѕРґРµР»СЊ Р‘Р»РµРєСЂРѕРєР° 2
+    C:\Users\ShumeikoYe\OneDrive\Рабочий стол\Курсор Модель Блекрока 2
 
 Focused validation after implementation:
 

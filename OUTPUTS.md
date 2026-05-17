@@ -36,7 +36,7 @@ python run_report.py
 | Producer | Role | Common outputs |
 | --- | --- | --- |
 | `run_optimization.py` | Main policy optimization and release checks | `portfolio_weights.yml`, `run_result.json`, run metadata under `output_dir_final` |
-| `run_report.py` | Main report and diagnostics flow | `stress_report.json`, metrics CSV, scenario libraries, commentary, HTML/PDF-style artifacts |
+| `run_report.py` | Main report and diagnostics flow | `stress_report.json`, `portfolio_xray.json`, metrics CSV, scenario libraries, commentary, HTML/PDF-style artifacts |
 | Candidate portfolio scripts | Build fixed benchmark/candidate weights and run the report pipeline | Candidate output folders with the same report contract after weights are fixed |
 | Robust/scenario scripts | Build robust candidate weights or reports from existing report artifacts | Robust/scenario JSON, CSV, and candidate report folders |
 | Taxonomy scripts | Validate/list/export taxonomy diagnostics | Taxonomy validation/list/export artifacts where configured |
@@ -77,6 +77,7 @@ Common project artifacts include:
 - `run_result.json`
 - `run_metadata.json`
 - `stress_report.json`
+- `portfolio_xray.json`
 - `scenario_library.json`
 - `scenario_library_normalized.json`
 - metric CSV files under `results_csv/`
@@ -86,6 +87,10 @@ Common project artifacts include:
 - generated HTML snapshots
 - generated PDF-style reports
 - candidate portfolio output folders
+
+`portfolio_xray.json` is a generated, diagnostic-only Portfolio X-Ray artifact. It summarizes existing report pipeline outputs and in-memory diagnostics; it does not optimize, change weights, change mandate gates, change stress pass/fail status, or make portfolio selection decisions.
+
+`run_result.json` and `run_metadata.json` include an `analysis_setup` block, the resolved runtime contract for the input and assumptions layer. They also include `input_assumptions`, the reporting view projected from `analysis_setup`, summarizing the input mode, tickers, fixed/current weight status, resolved market assumptions, mandate inputs, calculation settings, and known V1 gaps.
 
 The exact artifact set can vary by config, available data, candidate type, and enabled report features.
 

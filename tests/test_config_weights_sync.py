@@ -62,5 +62,5 @@ def test_load_validated_config_raises_on_stale_weights_tickers_mismatch(tmp_path
     _write_yaml(config_path, _base_config(tickers))
     _write_yaml(weights_path, {"VOO": 0.6, "ARMY.PA": 0.4})
 
-    with pytest.raises(ConfigValidationError, match="portfolio_weights.yml не соответствует текущему config.yml"):
+    with pytest.raises(ConfigValidationError, match="portfolio_weights.yml does not match the current config.yml"):
         load_validated_config(config_path=config_path)

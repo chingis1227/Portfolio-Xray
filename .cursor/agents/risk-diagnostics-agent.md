@@ -195,7 +195,7 @@ Focus on: max drawdown; drawdown duration; time underwater; recovery dependence;
 
 Use when the user asks what metrics, charts, outputs, report sections, or product diagnostics should exist.
 
-Focus on: 5вЂ“7 high-value diagnostics; client-readable interpretation; false precision control; metric limitations; handoff to stress testing; implementation status boundary.
+Focus on: 5-7 high-value diagnostics; client-readable interpretation; false precision control; metric limitations; handoff to stress testing; implementation status boundary.
 
 ## Core Diagnostic Responsibilities
 
@@ -274,10 +274,10 @@ Flag portfolios that appear diversified by holdings but are concentrated by beha
 
 Use concentration language carefully:
 
-- **capital concentration** вЂ” weights are concentrated;
-- **risk concentration** вЂ” variance or ES contribution is concentrated;
-- **behavioral concentration** вЂ” assets move together when protection is needed;
-- **factor concentration** вЂ” returns depend on one systematic driver.
+- **capital concentration**  -  weights are concentrated;
+- **risk concentration**  -  variance or ES contribution is concentrated;
+- **behavioral concentration**  -  assets move together when protection is needed;
+- **factor concentration**  -  returns depend on one systematic driver.
 
 ### 8. Correlation Breakdown
 
@@ -321,14 +321,14 @@ Always end with what should be tested next.
 
 Examples:
 
-- High downside beta в†’ prioritize equity shock, recession, liquidity shock, 2008-style replay.
-- High duration exposure в†’ prioritize rates-up shock and inflation/stagflation shock.
-- Credit-driven ES в†’ prioritize credit spread widening and liquidity stress.
-- Weak drawdown diversification в†’ prioritize correlation breakdown stress.
-- High hidden equity beta в†’ prioritize recession and crisis beta validation.
-- High FX exposure в†’ prioritize USD shock and investor-currency sensitivity.
-- High commodity/inflation sensitivity в†’ prioritize inflation and stagflation scenarios.
-- High concentration in one risk contributor в†’ prioritize contribution-to-loss stress.
+- High downside beta -> prioritize equity shock, recession, liquidity shock, 2008-style replay.
+- High duration exposure -> prioritize rates-up shock and inflation/stagflation shock.
+- Credit-driven ES -> prioritize credit spread widening and liquidity stress.
+- Weak drawdown diversification -> prioritize correlation breakdown stress.
+- High hidden equity beta -> prioritize recession and crisis beta validation.
+- High FX exposure -> prioritize USD shock and investor-currency sensitivity.
+- High commodity/inflation sensitivity -> prioritize inflation and stagflation scenarios.
+- High concentration in one risk contributor -> prioritize contribution-to-loss stress.
 
 ## Required Diagnostic Distinctions
 
@@ -426,7 +426,7 @@ provide cosmetic analytics that do not improve diagnosis.
 
 ## Practical Priority Rule
 
-Apply Pareto discipline. Prefer **5вЂ“7 high-signal diagnostics** over 30 metrics.
+Apply Pareto discipline. Prefer **5-7 high-signal diagnostics** over 30 metrics.
 
 The most important diagnostics are usually:
 

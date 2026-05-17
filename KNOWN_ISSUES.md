@@ -56,7 +56,18 @@ Title: Short title
 
 ## Active Issues
 
-No active issues are currently recorded.
+Issue ID: KI-2026-05-17-004
+Title: Partial utility UI status is under-described in top-level docs
+
+- Status: planned
+- Severity: medium
+- Area: docs
+- Risk: Contributors may not know whether `config_ui/` and `results_dashboard/` are supported utility surfaces, abandoned experiments, or part of the future full product UI.
+- Evidence: Audit item `AUD-005` reports that partial utility UIs exist while top-level docs mostly state full UI is TBD.
+- Current mitigation: `SPEC.md`, `PRODUCT.md`, and `ARCHITECTURE.md` correctly keep the full product workspace as TBD.
+- Next action: Add consistent wording that partial utility UIs exist for config editing and read-only result viewing, while the full product workspace remains TBD.
+- Source links: [full audit](docs/audits/2026-05-17_full_project_system_audit.md), [README](README.md), [SPEC](SPEC.md), [PRODUCT](PRODUCT.md), [ARCHITECTURE](ARCHITECTURE.md), [DESIGN](DESIGN.md).
+- Remove when: The wording is synced across the owning top-level docs and stale UI-status references are checked.
 
 ## Update Rules
 

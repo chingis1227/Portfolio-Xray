@@ -41,13 +41,19 @@ base_benchmark_ticker: SPY
 beta_local_mapping: {}
 
 # =============================================================================
-# SECTION 3: PORTFOLIO TICKERS AND WEIGHTS
+# SECTION 3: PORTFOLIO INPUT MODE, TICKERS, AND WEIGHTS
 # =============================================================================
+# analysis_mode:
+# - optimize_from_universe (default): user supplies tickers; policy weights are produced by run_optimization.py.
+# - analyze_current_weights: user supplies current_weights; run_report.py diagnoses the existing portfolio.
 # tickers: list of instruments (cash proxy, e.g. BIL, is excluded from the risk optimization universe).
-# weights: do not set by hand. Produced by optimization; export and save here after optimization.
+# current_weights: optional existing-portfolio weights, used only when analysis_mode=analyze_current_weights.
+# weights: legacy fixed report weights / generated policy weights. Do not hand-edit as final policy output.
 
+analysis_mode: optimize_from_universe
 tickers: [VOO, QQQ, GLD, BND, VT]
 
+current_weights: {}
 weights: {}
 
 # =============================================================================

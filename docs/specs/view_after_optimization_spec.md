@@ -1,4 +1,4 @@
-﻿# View After Optimization вЂ” Protocol (tactical tilt)
+﻿# View After Optimization - Protocol (tactical tilt)
 
 **Policy link.** This document defines the **only permitted exception** to the rule "No manual weight adjustments" in [portfolio_construction_policy.md](portfolio_construction_policy.md). Tilts may be applied to the Policy portfolio **only** through this protocol. Final weights are never edited by hand; changes are deterministic and reported for audit.
 
@@ -15,7 +15,7 @@
 ## 1) PM inputs
 
 1. **Asset** `X`: ticker to increase (must be in the baseline weight set / universe).
-2. **О”choice:** tilt size from the menu **{+1%, +2%, +5%}** of total portfolio weight (implemented in code as auto-shrink **5% в†’ 2% в†’ 1%** if gates fail).
+2. **deltachoice:** tilt size from the menu **{+1%, +2%, +5%}** of total portfolio weight (implemented in code as auto-shrink **5% -> 2% -> 1%** if gates fail).
 
 There is **no** separate "HEDGE" vs "TACTICAL" mode and **no** hedge-benefit or tail-overlay logic in the implementation.
 
@@ -29,21 +29,21 @@ There is **no** separate "HEDGE" vs "TACTICAL" mode and **no** hedge-benefit or 
 
 ---
 
-## 3) Gates (per attempted О”, in order)
+## 3) Gates (per attempted delta, in order)
 
 1. **Weights:** each held name within min/max single-name bounds; total weight = 1.
-2. **Vol:** estimated annual vol of tilted portfolio в‰¤ `1.5 Г— target_vol_annual` when a target vol is set.
+2. **Vol:** estimated annual vol of tilted portfolio <= `1.5 * target_vol_annual` when a target vol is set.
 3. **Max drawdown:** on the aligned return window, portfolio max DD not worse than `target_max_drawdown_pct` when set.
-4. **Stress:** `run_stress` is run for diagnostics only (`stress_diagnostic_status` / codes in the report); it **does not** accept or reject the tilt in code. Per-asset **RC_vol** may appear in the report as context only вЂ” **not** a gate vs caps.
+4. **Stress:** `run_stress` is run for diagnostics only (`stress_diagnostic_status` / codes in the report); it **does not** accept or reject the tilt in code. Per-asset **RC_vol** may appear in the report as context only - **not** a gate vs caps.
 
-If any gate fails, the next smaller О” from the menu is tried. If all fail в†’ **TILT_REJECTED**.
+If any gate fails, the next smaller delta from the menu is tried. If all fail -> **TILT_REJECTED**.
 
 ---
 
 ## 4) Outcome statuses
 
-- **TILT_ACCEPTED** вЂ” a О” passed all gates.
-- **TILT_REJECTED** вЂ” no feasible О”.
+- **TILT_ACCEPTED**  -  a delta passed all gates.
+- **TILT_REJECTED**  -  no feasible delta.
 
 `TILT_NO_BENEFIT` and hedge-specific fields are **not** produced by the current implementation.
 

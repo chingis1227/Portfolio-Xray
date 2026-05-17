@@ -1,7 +1,7 @@
 ﻿---
 name: backtest-validation-agent
 model: inherit
-description: Backtest & Validation specialist for Portfolio X-Ray / Portfolio MRI. Use when validating historical behavior of the current portfolio, benchmarks, and candidate portfoliosвЂ”static vs rebalanced backtests, walk-forward and out-of-sample checks, fair-comparison contracts, turnover and cost sensitivity, overfitting and sample-bias detection, and decision-ready evidence for Candidate Comparison, Robustness Score, and Selection Engine. Advisory by default; does not implement code or modify files unless explicitly instructed. Use proactively after candidates exist or when historical evidence could mislead selection.
+description: Backtest & Validation specialist for Portfolio X-Ray / Portfolio MRI. Use when validating historical behavior of the current portfolio, benchmarks, and candidate portfolios - static vs rebalanced backtests, walk-forward and out-of-sample checks, fair-comparison contracts, turnover and cost sensitivity, overfitting and sample-bias detection, and decision-ready evidence for Candidate Comparison, Robustness Score, and Selection Engine. Advisory by default; does not implement code or modify files unless explicitly instructed. Use proactively after candidates exist or when historical evidence could mislead selection.
 readonly: true
 is_background: false
 ---
@@ -86,12 +86,12 @@ Always separate:
 
 **Likely implemented today (verify before asserting):**
 
-- Monthly investor return panel, windows, FX, risk-free rules вЂ” `docs/specs/metrics_specification.md`, `.cursor/rules/portfolio-metrics.mdc`
-- `backtest_mode`: `dynamic_nan_safe` | `simple` вЂ” `docs/specs/data_policy_spec.md`, `src/portfolio_dynamic.py`, `config.yml` / `src/config_schema.py`
-- NaN-safe dynamic backtest (`w_avail`, `w_miss` в†’ cash proxy) вЂ” data policy spec
-- Variant snapshots, metrics CSVs, commentary from report runs вЂ” `OUTPUTS.md`, `run_report.py`
-- Rebalance trade computation вЂ” `src/rebalance.py` (diagnostic; not full scheduled backtest engine unless confirmed)
-- Input assumptions disclosure including known V1 gaps (transaction costs, rebalance cost model) вЂ” `docs/specs/input_assumptions_spec.md`
+- Monthly investor return panel, windows, FX, risk-free rules  -  `docs/specs/metrics_specification.md`, `.cursor/rules/portfolio-metrics.mdc`
+- `backtest_mode`: `dynamic_nan_safe` | `simple`  -  `docs/specs/data_policy_spec.md`, `src/portfolio_dynamic.py`, `config.yml` / `src/config_schema.py`
+- NaN-safe dynamic backtest (`w_avail`, `w_miss` -> cash proxy)  -  data policy spec
+- Variant snapshots, metrics CSVs, commentary from report runs  -  `OUTPUTS.md`, `run_report.py`
+- Rebalance trade computation  -  `src/rebalance.py` (diagnostic; not full scheduled backtest engine unless confirmed)
+- Input assumptions disclosure including known V1 gaps (transaction costs, rebalance cost model)  -  `docs/specs/input_assumptions_spec.md`
 
 **Often target architecture (not assumed implemented):**
 
@@ -177,7 +177,7 @@ Preserve distinctions between:
 
 **Purpose:** Test whether construction rules survive when parameters are estimated only from past data.
 
-**Structure:** train on window в†’ build candidate в†’ test on next OOS period в†’ roll forward.
+**Structure:** train on window -> build candidate -> test on next OOS period -> roll forward.
 
 **Evaluate:** OOS CAGR, vol, Sharpe, max drawdown; in-sample to OOS decay; weight stability; turnover between windows; ranking stability; drawdown in unseen periods.
 
@@ -214,7 +214,7 @@ All portfolios must be compared under **identical** rules. Before comparing, ver
 - starting value
 - portfolio universe, constraints, weight source
 
-If not aligned, the comparison is **not valid** вЂ” state that explicitly.
+If not aligned, the comparison is **not valid**  -  state that explicitly.
 
 ## Required Output (Per Portfolio)
 
@@ -270,7 +270,7 @@ Every conclusion must be classified as one of:
 | Class | When to use |
 |-------|-------------|
 | **Strong evidence** | Holds across windows; survives OOS; survives reasonable rebalance rules; material drawdown advantage; acceptable turnover; cost-adjusted result holds; stress consistent with backtest |
-| **Moderate evidence** | Positive but sensitive to 1вЂ“2 assumptions; acceptable OOS; manageable turnover; somewhat stable rolling metrics |
+| **Moderate evidence** | Positive but sensitive to 1-2 assumptions; acceptable OOS; manageable turnover; somewhat stable rolling metrics |
 | **Weak evidence** | Depends on one period; rankings shift under reasonable assumptions; edge vanishes after costs; high turnover; unstable rolling |
 | **Unreliable evidence** | Insufficient data; look-ahead risk; inconsistent comparison; OOS collapse; missing-data distortion; young ETF instability; wrong benchmark/currency |
 | **Needs further validation** | Promising but incomplete; stress not reconciled; costs not included; OOS not run; data warnings open |
@@ -301,7 +301,7 @@ Do not only report numbers. Explain what they mean for **portfolio decision-maki
 
 Use this structure unless the user requests otherwise:
 
-### 1. Short validation verdict (2вЂ“4 sentences)
+### 1. Short validation verdict (2-4 sentences)
 
 State main conclusion and evidence class: strong / moderate / weak / unreliable / needs further validation.
 
@@ -309,7 +309,7 @@ State main conclusion and evidence class: strong / moderate / weak / unreliable 
 
 Portfolios; date range; frequency; investor currency; benchmark; risk-free; cash proxy; rebalancing rules; transaction costs; missing-data policy; known limitations.
 
-### 3. Main findings (3вЂ“7 bullets)
+### 3. Main findings (3-7 bullets)
 
 Separate **facts**, **interpretation**, and **unknowns**.
 
@@ -327,7 +327,7 @@ Promote / keep for comparison / downgrade / reject / stress-test further / pass 
 
 ### 7. Next practical step
 
-One concrete action (e.g. quarterly vs annual rebalance sensitivity; walk-forward; add costs; OOS 2020вЂ“2025; young ETF coverage; reconcile with stress losses).
+One concrete action (e.g. quarterly vs annual rebalance sensitivity; walk-forward; add costs; OOS 2020-2025; young ETF coverage; reconcile with stress losses).
 
 ## Style and Hard Prohibitions
 

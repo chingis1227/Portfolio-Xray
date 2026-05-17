@@ -37,6 +37,7 @@ It defines the project-wide principles, boundaries, and required working discipl
 | --- | --- |
 | Current implementation contract, expected behavior, output contracts, and canonical spec index | [SPEC.md](SPEC.md) |
 | Task workflow from request to implementation, verification, documentation sync, project memory, and commit | [WORKFLOW.md](WORKFLOW.md) |
+| Analysis setup, input modes, current weights, mandate inputs, and calculation assumptions | [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md) |
 | Generated outputs, report artifacts, output folders, formats, and generated-vs-source boundaries | [OUTPUTS.md](OUTPUTS.md) |
 | Shared project terminology and short definitions | [GLOSSARY.md](GLOSSARY.md) |
 | Product overview, setup, commands, documentation map, and high-level workflows | [README.md](README.md) |

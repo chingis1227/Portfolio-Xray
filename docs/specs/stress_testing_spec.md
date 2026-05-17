@@ -3,7 +3,7 @@
 **Policy link.** This document is the source of truth for **diagnostic** portfolio stress testing. **Blocking** mandate max drawdown is defined in **production_workflow.md** (full historical sample, **FAIL_MANDATE**).
 
 > **2026-04-27 update:** Synthetic **pass** = **Loss (portfolio PnL vs mandate MaxDD)** only.
-> **2026-04-28 update:** **RC Top1 / Top3** (`top1_rc_pct`, `top3_rc_sum_pct`, tickers) remain on each scenario row as **numeric diagnostics only** вЂ” no `rc1_ok` / `rc3_ok`, no `rc_diagnostic_codes`, no `rc_attention_codes`, no suite status change for RC-only patterns. Historical episode contract unchanged (episode max DD vs mandate). **dotcom** episode is in the historical list (see В§9).
+> **2026-04-28 update:** **RC Top1 / Top3** (`top1_rc_pct`, `top3_rc_sum_pct`, tickers) remain on each scenario row as **numeric diagnostics only** - no `rc1_ok` / `rc3_ok`, no `rc_diagnostic_codes`, no `rc_attention_codes`, no suite status change for RC-only patterns. Historical episode contract unchanged (episode max DD vs mandate). **dotcom** episode is in the historical list (see Section 9).
 > **2026-04-28 update:** Add **Recession severe** (`recession_severe`) as a hard-landing synthetic scenario. Its shock vector is calibrated from realized weekly factor moves in the existing **2008** and **2020** historical windows, selecting the episode with the worst model PnL for the current portfolio betas.
 > **2026-04-28 update:** Portfolio factor regressions include **Breusch-Pagan** heteroskedasticity diagnostics on the same OLS residuals/rows as the reported factor betas.
 > **2026-04-28 update:** Factor analytics now use a **nine-factor** weekly registry (`equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`, `oil`). Synthetic stress scenarios and recession calibration remain a **six-shock** engine and only map the first six factors into `shock_*` keys.
@@ -19,8 +19,8 @@
 
 | Layer | What | Stops weight release? |
 |-------|------|------------------------|
-| **Mandate** | Realized portfolio max drawdown on **full overlapping monthly history** vs `target_max_drawdown_pct` | **Yes** в†’ **FAIL_MANDATE** (`run_optimization.py`) |
-| **Stress suite** (`run_stress`) | Synthetic factor shocks (whole portfolio), calibrated `recession_severe`, historical **episodes** (dotcom / 2008 / 2020 / 2022), RC concentration as **numbers only** (Top1 / Top3) | **No** в†’ **DIAG_ATTENTION** only for synthetic **Loss** or historical episode breach; **DIAG_PASS_WITH_WARNING** only for non-RC warnings (e.g. borderline history, data) where implemented |
+| **Mandate** | Realized portfolio max drawdown on **full overlapping monthly history** vs `target_max_drawdown_pct` | **Yes** -> **FAIL_MANDATE** (`run_optimization.py`) |
+| **Stress suite** (`run_stress`) | Synthetic factor shocks (whole portfolio), calibrated `recession_severe`, historical **episodes** (dotcom / 2008 / 2020 / 2022), RC concentration as **numbers only** (Top1 / Top3) | **No** -> **DIAG_ATTENTION** only for synthetic **Loss** or historical episode breach; **DIAG_PASS_WITH_WARNING** only for non-RC warnings (e.g. borderline history, data) where implemented |
 
 Scenario and episode checks below are **for PM reporting**; they do not replace the mandate gate.
 
@@ -28,10 +28,10 @@ Scenario and episode checks below are **for PM reporting**; they do not replace 
 
 ## 1. Pass criteria (per synthetic scenario)
 
-- **`pass=true`** iff **Loss (mandate) test** passes: **Portfolio_PnL_% в‰Ґ в€’MaxDD_limit** (same `max_dd_limit` as historical/synthetic loss gate in `run_stress`). Violation в†’ row **`diagnostic_codes`** includes **DIAG_LOSS_*** and contributes to suite **DIAG_ATTENTION**.
+- **`pass=true`** iff **Loss (mandate) test** passes: **Portfolio_PnL_% >= -MaxDD_limit** (same `max_dd_limit` as historical/synthetic loss gate in `run_stress`). Violation -> row **`diagnostic_codes`** includes **DIAG_LOSS_*** and contributes to suite **DIAG_ATTENTION**.
 - **RC concentration:** **`top1_rc_asset`**, **`top1_rc_pct`**, **`top3_rc_assets`**, **`top3_rc_sum_pct`** are reported for transparency; they **do not** set `pass`, **do not** add **DIAG_RC_*** codes, and **do not** change suite status.
 
-**Outputs per scenario (synthetic):** `portfolio_pnl_pct`, **`pnl_by_asset_pct`** (per ticker), **`pnl_by_factor_pct`** (portfolio-level shockГ—beta per factor channel when `portfolio_betas` present), RC Top1/Top3 fields as above.
+**Outputs per scenario (synthetic):** `portfolio_pnl_pct`, **`pnl_by_asset_pct`** (per ticker), **`pnl_by_factor_pct`** (portfolio-level shock * beta per factor channel when `portfolio_betas` present), RC Top1/Top3 fields as above.
 
 
 ---
@@ -40,7 +40,7 @@ Scenario and episode checks below are **for PM reporting**; they do not replace 
 
 | # | Scenario            | Description / shocks |
 |---|---------------------|----------------------|
-| 1 | **Equity shock**    | Broad equity в€’40%. shock_eq = -0.40; others 0. |
+| 1 | **Equity shock**    | Broad equity -40%. shock_eq = -0.40; others 0. |
 | 2 | **Credit shock**    | HY stress: shock_credit = +0.04 (+400 bps); optionally shock_eq = -0.10; others 0. |
 | 3 | **Rates shock**     | Real rates +200 bps: `shock_rr = +0.02`; others 0. RC uses **taxonomy_blend_v1** stress covariance. |
 | 4 | **Inflation/Stagflation** | `shock_cmd = +0.25`, `shock_eq = -0.20`, `shock_rr = +0.005`, `shock_inf = +0.005` (+50 bps breakeven inflation); `shock_usd = 0`. RC uses **taxonomy_blend_v1** stress covariance. |
@@ -73,12 +73,12 @@ For each synthetic scenario with `stress_cov=True`, `run_stress` builds monthly 
 
 For each calibration window (**2008** and **2020**, using the dates in `HISTORICAL_EPISODES`), the implementation sums weekly factor values over the window. The sums are mapped into shock keys:
 
-- `equity` в†’ `shock_eq`
-- `real_rates` в†’ `shock_rr`
-- `credit` в†’ `shock_credit`
-- `inflation` в†’ `shock_inf`
-- `usd` в†’ `shock_usd`
-- `commodity` в†’ `shock_cmd`
+- `equity` -> `shock_eq`
+- `real_rates` -> `shock_rr`
+- `credit` -> `shock_credit`
+- `inflation` -> `shock_inf`
+- `usd` -> `shock_usd`
+- `commodity` -> `shock_cmd`
 
 Analytics-only factors `vix`, `us_growth`, and `oil` are intentionally excluded from the synthetic shock mapping in the current production contract.
 
@@ -109,13 +109,13 @@ The `scenario_results` row for `recession_severe` includes `shock_vector`, `cali
 For each asset *i* in the risk universe (aligned monthly columns; cash proxy excluded from shock path where applicable):
 
 ```
-r_i(scenario) = ОІ_eq_i * shock_eq + ОІ_rr_i * shock_rr + ОІ_cr_i * shock_credit
-                + ОІ_inf_i * shock_inf + ОІ_usd_i * shock_usd + ОІ_cmd_i * shock_cmd
+r_i(scenario) = beta_eq_i * shock_eq + beta_rr_i * shock_rr + beta_cr_i * shock_credit
+                + beta_inf_i * shock_inf + beta_usd_i * shock_usd + beta_cmd_i * shock_cmd
 ```
 
-(mapping of shock keys to per-asset beta columns follows `src/stress.py` / asset beta frame: `beta_eq`, `beta_rr`, вЂ¦)
+(mapping of shock keys to per-asset beta columns follows `src/stress.py` / asset beta frame: `beta_eq`, `beta_rr`, ...)
 
-- **PnL_i** = w_i Г— r_i (portfolio weights **w** on the same asset set used for the scenario).
+- **PnL_i** = w_i * r_i (portfolio weights **w** on the same asset set used for the scenario).
 - **Portfolio_PnL_%** = sum_i PnL_i.
 
 
@@ -127,7 +127,7 @@ For each scenario the production `run_stress` implementation outputs (see `scena
 
 - **portfolio_pnl_pct** (aggregate scenario loss / gain)
 - **shock_vector** (the factor shock values used for that scenario)
-- **top1_rc_asset**, **top1_rc_pct**, **top3_rc_assets**, **top3_rc_sum_pct** (RC_vol вЂ” share of portfolio variance under base or stress covariance)
+- **top1_rc_asset**, **top1_rc_pct**, **top3_rc_assets**, **top3_rc_sum_pct** (RC_vol - share of portfolio variance under base or stress covariance)
 - **top3_loss_assets** (tickers with largest negative PnL contribution in the scenario)
 - **loss_ok**, **pass** (equals **loss_ok**), **diagnostic_codes** (loss-related only on synthetic rows)
 - **`stress_cov_method`**, **`stress_cov_lambda`**, **`stress_cov_calibration_version`**, **`taxonomy_coverage`**, **`vol_mult_by_block`**, **`key_rho_overrides_used`** when the scenario uses synthetic stress covariance (null or empty when `stress_cov` is false)
@@ -209,15 +209,15 @@ Numeric CSV values rounded to **3 decimals** at export per portfolio metrics pol
 
 ## 5. Loss test (diagnostic)
 
-- **Criterion:** Portfolio_PnL_% в‰Ґ -|MaxDD_limit| (e.g. в‰Ґ -0.15 if MaxDD = -15%).
-- If violated в†’ **DIAG_LOSS_*** (diagnostic; does not prevent release).
+- **Criterion:** Portfolio_PnL_% >= -|MaxDD_limit| (e.g. >= -0.15 if MaxDD = -15%).
+- If violated -> **DIAG_LOSS_*** (diagnostic; does not prevent release).
 - For `recession_severe`, a synthetic loss breach emits **DIAG_LOSS_RECESSION_SEVERE**.
 
 ---
 
 ## 7. RC diagnostics (concentration in stress)
 
-Report **Top1** and **Top3** contributors to portfolio variance (**RC_vol**) under the scenarioвЂ™s covariance (see В§10). There is **no** pass/fail threshold, no `rc1_ok` / `rc3_ok`, and no **DIAG_RC_*** codes in the production contract.
+Report **Top1** and **Top3** contributors to portfolio variance (**RC_vol**) under the scenario's covariance (see Section 10). There is **no** pass/fail threshold, no `rc1_ok` / `rc3_ok`, and no **DIAG_RC_*** codes in the production contract.
 
 ---
 
@@ -225,17 +225,17 @@ Report **Top1** and **Top3** contributors to portfolio variance (**RC_vol**) und
 
 The system must estimate and output:
 
-- ОІ_equity (portfolio vs S&P)
-- ОІ_real_rates (portfolio vs О”10Y real yield)
-- ОІ_inflation (portfolio vs inflation surprise proxy)
-- ОІ_credit (portfolio vs credit spread)
-- ОІ_USD (portfolio vs DXY)
+- beta_equity (portfolio vs S&P)
+- beta_real_rates (portfolio vs delta10Y real yield)
+- beta_inflation (portfolio vs inflation surprise proxy)
+- beta_credit (portfolio vs credit spread)
+- beta_USD (portfolio vs DXY)
 
 The base production factor registry is `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, and `us_growth`. In production beta JSON these appear as `beta_eq`, `beta_rr`, `beta_inf`, `beta_credit`, `beta_usd`, `beta_cmd`, `beta_vix`, and `beta_us_growth`. `commodity` is the production сырьевой factor.
 
 The extended diagnostic/stress registry is the base registry plus `oil`, exposed as `beta_oil` only in extended diagnostics. `beta_oil` is deprecated and removed from new production beta outputs, rolling stability, OOS stability, adjusted production beta overlay, and base variance decomposition. Oil exposure must be read from `stress_report.json.diagnostic_oil_beta` or stress-layer metrics.
 
-If factor limits are set in config and violated в†’ **DIAG_BETA_*** / **DIAG_ATTENTION**; if no limits в†’ **DIAG_PASS_WITH_WARNING** (manual review). (Non-blocking.)
+If factor limits are set in config and violated -> **DIAG_BETA_*** / **DIAG_ATTENTION**; if no limits -> **DIAG_PASS_WITH_WARNING** (manual review). (Non-blocking.)
 
 **Output windows (mandatory):**
 
@@ -257,19 +257,19 @@ Portfolio weekly OLS in `factor_regression_5y` / `factor_regression_10y` must in
 | Output field | Meaning |
 |--------------|---------|
 | `correlation` | Nested Pearson correlation matrix of factor columns |
-| `pairwise_correlations` | All unordered pairs with `rho`, sorted by \|ПЃ\| descending |
-| `cond_correlation_matrix` | cond(R) = О»_max / О»_min (eigvalsh on R; О»_min clipped at 1e-15); `null` if singular |
+| `pairwise_correlations` | All unordered pairs with `rho`, sorted by |rho| descending |
+| `cond_correlation_matrix` | cond(R) = lambda_max / lambda_min (eigvalsh on R; lambda_min clipped at 1e-15); `null` if singular |
 | `cond_correlation_matrix_singular` | Boolean if cond not finite |
 | `vif_by_factor` | Classical VIF via auxiliary OLS (raw-scale X); `null` for a factor if VIF infinite |
 | `max_vif`, `max_vif_factor`, `max_vif_is_infinite` | Summary |
-| `strongest_pair` | Pair with largest \|ПЃ\| |
-| `severity` | `low` \| `moderate` \| `high` \| `unknown` вЂ” see rules below |
+| `strongest_pair` | Pair with largest |rho| |
+| `severity` | `low` \| `moderate` \| `high` \| `unknown`  -  see rules below |
 | `assessment_ru` | Short Russian sentence for reports |
 
 **Severity rules (fixed in code, `src/stress_factors.py`):**
 
-- **high** if `max_vif_is_infinite` **or** max VIF в‰Ґ 10 **or** cond(R) в‰Ґ 80 **or** max \|ПЃ\| among pairs в‰Ґ 0.95
-- else **moderate** if max VIF в‰Ґ 5 **or** cond(R) в‰Ґ 30 **or** max \|ПЃ\| в‰Ґ 0.85
+- **high** if `max_vif_is_infinite` **or** max VIF >= 10 **or** cond(R) >= 80 **or** max |rho| among pairs >= 0.95
+- else **moderate** if max VIF >= 5 **or** cond(R) >= 30 **or** max |rho| >= 0.85
 - else **low**
 
 **Note:** cond([1, X]) on raw units is **not** reported (misleading across scales); use **cond(correlation matrix)** and VIF.
@@ -280,11 +280,11 @@ Each of `factor_regression_5y` / `factor_regression_10y` must include **`serial_
 
 | Field | Meaning |
 |-------|---------|
-| `durbin_watson` | DurbinвЂ“Watson statistic on the residual series (~2: little first-order serial correlation) |
+| `durbin_watson` | Durbin-Watson statistic on the residual series (~2: little first-order serial correlation) |
 | `breusch_godfrey` | List of objects, one per lag order `p` in `FACTOR_REGRESSION_BG_LAGS` (`src/stress_factors.py`, default **1, 2, 4**): `lags`, `lm_statistic`, `df_chi2` (= p), `p_value`, `n_aux_observations`, `aux_r_squared` |
 | `method`, `h0`, `notes` | Fixed strings describing procedure |
 
-**BreuschвЂ“Godfrey:** auxiliary regression of \(\hat u_t\) on intercept, \(X_t\), and \(\hat u_{t-1},\ldots,\hat u_{t-p}\); **LM = T Г— RВІ_aux** of that regression; under **Hв‚Ђ** (no serial correlation through lag p), LM в†’ **П‡ВІ(p)** (asymptotic).
+**Breusch-Godfrey:** auxiliary regression of \(\hat u_t\) on intercept, \(X_t\), and \(\hat u_{t-1},\ldots,\hat u_{t-p}\); **LM = T * R^2_aux** of that regression; under **H0** (no serial correlation through lag p), LM -> **chi^2(p)** (asymptotic).
 
 ### 8.3 Heteroskedasticity of factor OLS residuals (`factor_regression_*`)
 
@@ -295,16 +295,16 @@ Each of `factor_regression_5y` / `factor_regression_10y` must include **`heteros
 | `breusch_pagan` | Object with `lm_statistic`, `df_chi2` (= number of factor regressors), `p_value`, `n_aux_observations`, `aux_r_squared`, `f_statistic`, `f_df_num`, `f_df_den`, `f_p_value` |
 | `method`, `h0`, `auxiliary_regression`, `notes` | Fixed strings describing procedure |
 
-**Breusch-Pagan:** auxiliary regression of \(\hat u_t^2\) on intercept and factor regressors \(X_t\); **LM = T Г— RВІ_aux** of that regression; under **Hв‚Ђ** (homoskedastic residuals), LM в†’ **П‡ВІ(k)** where \(k\) is the number of factor regressors. This is diagnostic/non-binding; if heteroskedasticity is indicated, beta point estimates remain OLS, and inference should rely on the HAC/Newey-West section below.
+**Breusch-Pagan:** auxiliary regression of \(\hat u_t^2\) on intercept and factor regressors \(X_t\); **LM = T * R^2_aux** of that regression; under **H0** (homoskedastic residuals), LM -> **chi^2(k)** where \(k\) is the number of factor regressors. This is diagnostic/non-binding; if heteroskedasticity is indicated, beta point estimates remain OLS, and inference should rely on the HAC/Newey-West section below.
 
-### 8.4 Robust (HAC / NeweyвЂ“West) inference for factor betas
+### 8.4 Robust (HAC / Newey-West) inference for factor betas
 
-Portfolio factor betas are **always** estimated via OLS (same as В§8: y = weekly portfolio return, X = weekly factor matrix).
+Portfolio factor betas are **always** estimated via OLS (same as Section8: y = weekly portfolio return, X = weekly factor matrix).
 However, when reporting **inference** (standard errors, t-statistics, p-values, confidence intervals), the project must use
-**HAC/NeweyвЂ“West robust standard errors** on the same residual series:
+**HAC/Newey-West robust standard errors** on the same residual series:
 
 - Kernel: **Bartlett**
-- Max lags (weekly): `FACTOR_REGRESSION_HAC_LAGS = 4` (в‰€ 1 month)
+- Max lags (weekly): `FACTOR_REGRESSION_HAC_LAGS = 4` (~= 1 month)
 
 Output convention in each `factor_regression_5y` / `factor_regression_10y`:
 
@@ -317,7 +317,7 @@ Output convention in each `factor_regression_5y` / `factor_regression_10y`:
 
 For reporting and decision rules:
 
-- **Point estimates (ОІ)** are taken from OLS (`betas`).
+- **Point estimates (beta)** are taken from OLS (`betas`).
 - **Significance, p-values and confidence intervals in stress reports and PDFs must be interpreted using `hac_inference`**;
   classic OLS t/p are retained for diagnostics only.
 
@@ -348,7 +348,7 @@ Fixed conservative thresholds:
 
 Severity distribution is computed from final `combined_severity` across beta keys. If high share is greater than 0.70, set `severity_distribution_warning` to indicate thresholds may be too strict and suggest reviewing magnitude thresholds around 1.5 / 2.5. If low share is greater than 0.80, set `severity_distribution_warning` to indicate thresholds may be too soft. This warning does not change thresholds automatically.
 
-### 8.6 OOS episode explainability: ОІ Г— realized factor shocks
+### 8.6 OOS episode explainability: beta * realized factor shocks
 
 To verify that factor betas explain stress episodes out-of-sample (not only in-sample fit),
 `stress_report.json` should include `factor_beta_shock_oos` with per-episode diagnostics:
@@ -550,7 +550,7 @@ Transition metadata, reported alongside `primary_regime` per month and as part o
 
 **Backward compatibility.** The legacy 5-bucket label is preserved in `regime_legacy` (with `regime_legacy_unlagged` and `regime_legacy_unlagged_raw` for diagnostics) and reported in `regime_legacy_counts` plus the legacy `MACRO_REGIME_NAMES` list. New consumers must group asset / factor / RC analytics by `primary_regime` and may further split by `primary_regime + transition_flag` (e.g. `reflation_non_transition` vs `reflation_transition`) or `primary_regime + confidence_level`. ``primary_regime`` never takes the value `neutral_transition`; consumers iterating the legacy 5-tuple keep finding `neutral_transition` with zero observations under the new scheme.
 
-Default `neutral_band = 0.20`. Implementations must verify regime stability under sensitivity testing at `±0.20`, `±0.25`, and `±0.35`. The 2026-05 sensitivity analysis (`docs/exec_plans/2026-05-07_macro_two_axis_regime_v1.md` / `2026-05-07_regime_label_quality_check.md`) showed that lowering the band from 0.25 to 0.20 reduces the `neutral_transition` share by ~8pp and pushes the major regimes (`reflation`, `goldilocks`) further away from the `<24-obs` low-confidence boundary, without breaking the macro-sanity windows.
+Default `neutral_band = 0.20`. Implementations must verify regime stability under sensitivity testing at `±0.20`, `±0.25`, and `±0.35`. The 2026-05 sensitivity analysis (`docs/exec_plans/2026-05-07_regime_label_quality_check.md`) showed that lowering the band from 0.25 to 0.20 reduces the `neutral_transition` share by ~8pp and pushes the major regimes (`reflation`, `goldilocks`) further away from the `<24-obs` low-confidence boundary, without breaking the macro-sanity windows.
 
 **Indicator scoring method.** Two scoring modes are supported:
 
@@ -786,39 +786,81 @@ CSV artifacts written under `results_csv/` include:
 
 Run portfolio through episodes (see `HISTORICAL_EPISODES` in `src/stress.py`):
 
-- **dotcom:** 2000-03-01 в†’ 2002-10-31
-- **2008:** 2007-10-01 в†’ 2009-03-31
-- **2020:** 2020-02-01 в†’ 2020-04-30
-- **2022:** 2021-11-01 в†’ 2022-10-31
+- **dotcom:** 2000-03-01 -> 2002-10-31
+- **2008:** 2007-10-01 -> 2009-03-31
+- **2020:** 2020-02-01 -> 2020-04-30
+- **2022:** 2021-11-01 -> 2022-10-31
 
-Output: max drawdown, realized episode PnL, volatility spike, and, when factor history is available, model-based factor attribution as described in В§8.7.
+Output: max drawdown, realized episode PnL, volatility spike, and, when factor history is available, model-based factor attribution as described in Section8.7.
 Episode DD vs limit adds **DIAG_HIST_*** when breached; else episode contributes to **DIAG_PASS**. (Non-blocking.)
 
 ---
 
 ## 10. Stress covariance (for RC in stress)
 
-- **Base:** ОЈ_base from project returns (monthly, ddof=1).
-- **Stress:** For Equity / Credit / Liquidity scenarios (`stress_cov: true` in `src/stress.py`):
-  - Pairs involving at least one ticker **outside** that set keep the **base** correlation from ОЈ_base (see `_stress_covariance`).
-  - **Vol scaling:** equity/credit scenarios `vol_mult = 1.25`; liquidity shock `vol_mult = 1.50`.
-- RC is computed on **current portfolio weights** using ОЈ_stress.
+This section governs only the covariance matrix used for synthetic scenario **RC_vol** diagnostics.
+It does not change scenario PnL, historical episode realized paths, mandate checks, optimizer inputs,
+stress pass/fail status, or weight release.
+
+### 10.1 Current default: `taxonomy_blend_v1`
+
+`run_stress` defaults to `stress_cov_method = "taxonomy_blend_v1"`. For every synthetic scenario
+with `stress_cov: true` in `src/stress.py` (`equity_shock`, `credit_shock`, `rates_shock`,
+`inflation_stagflation`, `liquidity_shock`, and `recession_severe`), RC_vol uses
+`stress_covariance_taxonomy_blend` from `src/stress_covariance_taxonomy.py`.
+
+- **Base:** `cov_base` from overlapping monthly portfolio returns (`ddof=1`).
+- **Block assignment:** each ticker maps to a stress block using `resolve_stress_asset_block`; the
+  cash proxy maps to `CA`, ETF/stock metadata maps known tickers, and unknown tickers fall back to
+  `EQ` with `taxonomy_coverage.missing_tickers`.
+- **Target correlation:** `C_target` comes from `RHO_WITHIN`, `RHO_PAIR_OVERRIDES`, and
+  `RHO_DEFAULT_BETWEEN`.
+- **Blend:** `C_blend = (1 - lambda_blend) * Corr(cov_base) + lambda_blend * C_target`, followed by
+  PSD repair.
+- **Volatility scaling:** each asset's base volatility is multiplied by the scenario-specific,
+  block-specific value in `VOL_MULT_BLOCK`.
+- **Stress covariance:** `cov_stress = D * C_blend * D`, where `D` is the diagonal matrix of stressed
+  asset volatilities.
+
+RC is computed on current portfolio weights using `cov_stress`. Scenario rows expose
+`stress_cov_method`, `stress_cov_lambda`, `stress_cov_calibration_version`, `taxonomy_coverage`,
+`vol_mult_by_block`, and `key_rho_overrides_used` when taxonomy stress covariance applies.
+
+For synthetic rows without stress covariance, RC uses `cov_base`. Historical episodes are unchanged:
+they use realized episode paths rather than taxonomy stress covariance.
+
+### 10.2 Legacy opt-in: `uniform_legacy`
+
+`uniform_legacy` is not the normal production default. It is an optional compatibility path for
+`run_stress(..., stress_cov_method="uniform_legacy")` on synthetic rows with `stress_cov: true`.
+
+The legacy implementation is `_stress_covariance` in `src/stress.py`:
+
+- the risk-on set is every scenario asset except the configured cash proxy;
+- pairs where both tickers are in the risk-on set use the scenario's uniform `risk_on_corr`;
+- pairs involving at least one ticker outside the risk-on set keep the base correlation from
+  `cov_base`;
+- risk-on asset volatilities are multiplied by the scenario scalar `vol_mult`.
+
+Legacy scalars such as `vol_mult = 1.25`, `vol_mult = 1.50`, `vol_mult = 1.60`, and
+`risk_on_corr = 0.95` remain in scenario metadata for backward compatibility and for the
+`uniform_legacy` path. They do not define current `taxonomy_blend_v1` RC covariance.
 
 ---
 
 ## 11. Factor data sources (FRED + fallback)
 
 - **Equity (S&P):** FRED:SP500 or ETF proxy SPY (total return preferred).
-- **10Y real yield:** FRED:DFII10; use О”(DFII10).
-- **Inflation surprise:** FRED:T10YIE; use О”(T10YIE) as proxy.
-- **Credit spread (HY):** FRED:BAMLH0A0HYM2; use О”(spread).
-- **USD:** FRED:DTWEXBGS; use О” or % change.
+- **10Y real yield:** FRED:DFII10; use delta(DFII10).
+- **Inflation surprise:** FRED:T10YIE; use delta(T10YIE) as proxy.
+- **Credit spread (HY):** FRED:BAMLH0A0HYM2; use delta(spread).
+- **USD:** FRED:DTWEXBGS; use delta or % change.
 - **Commodity:** ETF proxy DBC; use weekly/month-end percent change.
 - **VIX:** FRED:VIXCLS; use weekly/month-end percent change.
 - **US growth proxy:** FRED:WEI; shift week-ending-Saturday timestamps to Friday, then use weekly/month-end first difference.
 - **Oil:** FRED:DCOILWTICO; use weekly/month-end percent change.
 
-Betas: **weekly** changes/returns for reporting outputs in В§8 (`factor_betas_5y`, `factor_betas_10y`), with synchronized week-end dates (inner join), ending at **analysis_end**. Windows: **260 weeks (5Y)** and **520 weeks (10Y)** (see `src/stress_factors.py`: `FACTOR_WEEKS_5Y`, `FACTOR_WEEKS_10Y`). Use project series when available; FRED codes as fallback.
+Betas: **weekly** changes/returns for reporting outputs in Section8 (`factor_betas_5y`, `factor_betas_10y`), with synchronized week-end dates (inner join), ending at **analysis_end**. Windows: **260 weeks (5Y)** and **520 weeks (10Y)** (see `src/stress_factors.py`: `FACTOR_WEEKS_5Y`, `FACTOR_WEEKS_10Y`). Use project series when available; FRED codes as fallback.
 
 ---
 

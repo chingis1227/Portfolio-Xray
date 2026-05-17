@@ -227,11 +227,24 @@ def _episode_factor_shocks(
     """Sum weekly factor moves over the recession calibration episodes."""
     if factor_returns is None or factor_returns.empty:
         return {}
+    factors = factor_returns.copy()
+    try:
+        dt_index = pd.to_datetime(factors.index, errors="coerce")
+        valid = pd.notna(dt_index)
+        if not bool(valid.all()):
+            factors = factors.loc[valid].copy()
+            dt_index = dt_index[valid]
+        factors.index = dt_index
+        factors = factors.sort_index()
+    except Exception:
+        return {}
+    if factors.empty:
+        return {}
     out: dict[str, dict[str, float]] = {}
     for ep_id, start, end in episodes:
         if ep_id not in RECESSION_CALIBRATION_EPISODES:
             continue
-        sub = factor_returns.loc[start:end] if hasattr(factor_returns.index, "slice_indexer") else factor_returns
+        sub = factors.loc[pd.Timestamp(start):pd.Timestamp(end)] if hasattr(factors.index, "slice_indexer") else factors
         if sub.empty:
             continue
         shock: dict[str, float] = {}

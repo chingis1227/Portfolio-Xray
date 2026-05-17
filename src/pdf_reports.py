@@ -1,12 +1,12 @@
 ﻿"""
-Rebuild investor-facing PDF reports from latest run outputs (Markdown в†’ Pandoc в†’ PDF).
+Rebuild investor-facing PDF reports from latest run outputs (Markdown -> Pandoc -> PDF).
 
-Style target: institutional executive PDF вЂ” sans-serif, wide margins, navy/gray palette,
+Style target: institutional executive PDF  -  sans-serif, wide margins, navy/gray palette,
 subtle top/footer rules, footer label + page number, generous whitespace. Layout is driven by
 `pdf_latex/pandoc_preamble.tex` and per-build `pdf_latex/pandoc_doc_meta.tex` (see user style brief).
 
 Client-facing PDF Markdown: РєРѕСЂРѕС‚РєРёРµ, СЃРІСЏР·РЅС‹Рµ С„РѕСЂРјСѓР»РёСЂРѕРІРєРё РЅР° СЂСѓСЃСЃРєРѕРј, **Р±РµР·** РёРјС‘РЅ С„Р°Р№Р»РѕРІ,
-РІРЅСѓС‚СЂРµРЅРЅРёС… РєРѕРґРѕРІ, В«СЌРєСЃРїРѕСЂС‚РЅРѕРіРѕВ» С‚РѕРЅР°; СЃС‚Р°С‚СѓСЃС‹ Рё СЃС†РµРЅР°СЂРёРё вЂ” Р±С‹С‚РѕРІС‹Рј СЏР·С‹РєРѕРј.
+РІРЅСѓС‚СЂРµРЅРЅРёС… РєРѕРґРѕРІ, В«СЌРєСЃРїРѕСЂС‚РЅРѕРіРѕВ» С‚РѕРЅР°; СЃС‚Р°С‚СѓСЃС‹ Рё СЃС†РµРЅР°СЂРёРё  -  Р±С‹С‚РѕРІС‹Рј СЏР·С‹РєРѕРј.
 
 Requires: pandoc and xelatex on PATH (or Pandoc under %LOCALAPPDATA%\\Pandoc on Windows).
 """
@@ -133,9 +133,9 @@ def _now_iso() -> str:
 
 
 def _russian_subtitle_line(
-    window_label: str | None, analysis_end: str | None, *, default_window_ru: str = "10-Р»РµС‚РЅРµРј"
+    window_label: str | None, analysis_end: str | None, *, default_window_label: str = "10-Р»РµС‚РЅРµРј"
 ) -> str:
-    """Р’С‚РѕСЂР°СЏ СЃС‚СЂРѕРєР° С‚РёС‚СѓР»СЊРЅРѕРіРѕ Р±Р»РѕРєР°, РєР°Рє РІ СЌС‚Р°Р»РѕРЅРµ: В«РёС‚РѕРіРё РЅР° N-Р»РµС‚РЅРµРј РѕРєРЅРµ, РїРѕ СЃРѕСЃС‚РѕСЏРЅРёСЋ РЅР° вЂ¦В»."""
+    """Р’С‚РѕСЂР°СЏ СЃС‚СЂРѕРєР° С‚РёС‚СѓР»СЊРЅРѕРіРѕ Р±Р»РѕРєР°, РєР°Рє РІ СЌС‚Р°Р»РѕРЅРµ: В«РёС‚РѕРіРё РЅР° N-Р»РµС‚РЅРµРј РѕРєРЅРµ, РїРѕ СЃРѕСЃС‚РѕСЏРЅРёСЋ РЅР° ...В»."""
     wl = (window_label or "").strip().upper().replace(" ", "")
     if "10" in wl or "10Y" in wl or (window_label and "10" in str(window_label)):
         win = "10-Р»РµС‚РЅРµРј"
@@ -144,7 +144,7 @@ def _russian_subtitle_line(
     elif "3" in wl or (window_label and "3" in str(window_label)):
         win = "3-Р»РµС‚РЅРµРј"
     else:
-        win = default_window_ru
+        win = default_window_label
     ae = (analysis_end or datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d")).strip()
     if "10" in win:
         window_en = "10-year"
@@ -194,7 +194,7 @@ def _line_dropped_for_client_pdf(line: str) -> bool:
 def _executive_ru_sanitize(text: str) -> str:
     """
     РљР»РёРµРЅС‚СЃРєРёР№ РёСЃРїРѕР»РЅРµРЅС‡РµСЃРєРёР№ С‚РѕРЅ: СѓР±СЂР°С‚СЊ РІРЅСѓС‚СЂРµРЅРЅРёРµ РєРѕРґС‹, РїСѓС‚Рё, В«СЃРёСЃС‚РµРјРЅС‹РµВ» РѕР±РѕР·РЅР°С‡РµРЅРёСЏ.
-    РќРµ СЃРѕС…СЂР°РЅСЏРµС‚ РґРѕСЃР»РѕРІРЅРѕ РёСЃС…РѕРґ вЂ” С‚РѕР»СЊРєРѕ Р±РµР·РѕРїР°СЃРЅС‹Р№ РґР»СЏ PDF СЃРјС‹СЃР».
+    РќРµ СЃРѕС…СЂР°РЅСЏРµС‚ РґРѕСЃР»РѕРІРЅРѕ РёСЃС…РѕРґ  -  С‚РѕР»СЊРєРѕ Р±РµР·РѕРїР°СЃРЅС‹Р№ РґР»СЏ PDF СЃРјС‹СЃР».
     """
     if not text:
         return text
@@ -232,12 +232,12 @@ def _executive_ru_sanitize(text: str) -> str:
 
 
 def _humanize_stress_status(val: Any) -> str:
-    """РљРѕСЂРѕС‚РєРёРµ С„РѕСЂРјСѓР»РёСЂРѕРІРєРё РґР»СЏ Р»РёС†РµРІРѕР№ СЃС‚РѕСЂРѕРЅС‹ вЂ” Р±РµР· РІРЅСѓС‚СЂРµРЅРЅРёС… РєРѕРґРѕРІ РґРІРёР¶РєР°."""
+    """РљРѕСЂРѕС‚РєРёРµ С„РѕСЂРјСѓР»РёСЂРѕРІРєРё РґР»СЏ Р»РёС†РµРІРѕР№ СЃС‚РѕСЂРѕРЅС‹  -  Р±РµР· РІРЅСѓС‚СЂРµРЅРЅРёС… РєРѕРґРѕРІ РґРІРёР¶РєР°."""
     if val is None:
-        return "вЂ”"
+        return " - "
     s = str(val).strip()
-    if not s or s == "вЂ”":
-        return "вЂ”"
+    if not s or s == " - ":
+        return " - "
     u = s.upper().replace(" ", "_")
     if u in ("PASS", "OK", "SUCCESS", "PASSED", "SUCCEEDED", "PORTFOLIO_VALID_PASS"):
         return "Within the agreed risk profile"
@@ -252,7 +252,7 @@ def _humanize_stress_status(val: Any) -> str:
 
 def _looks_like_code_token(s: str) -> bool:
     t = s.strip()
-    if not t or t in ("вЂ”", "OK"):
+    if not t or t in (" - ", "OK"):
         return False
     if re.match(r"^DIAG[_A-Z0-9]+$", t, re.I):
         return True
@@ -264,19 +264,19 @@ def _looks_like_code_token(s: str) -> bool:
 
 
 def _humanize_stress_detail(val: Any) -> str:
-    """РЎС‹СЂС‹Рµ РїСЂРёС‡РёРЅС‹-РєРѕРґС‹ РЅРµ РїРµС‡Р°С‚Р°РµРј; РѕСЃРјС‹СЃР»РµРЅРЅС‹Р№ С‚РµРєСЃС‚ вЂ” С‡РµСЂРµР· СЃР°РЅРёС‚Р°Р№Р·РµСЂ."""
+    """РЎС‹СЂС‹Рµ РїСЂРёС‡РёРЅС‹-РєРѕРґС‹ РЅРµ РїРµС‡Р°С‚Р°РµРј; РѕСЃРјС‹СЃР»РµРЅРЅС‹Р№ С‚РµРєСЃС‚  -  С‡РµСЂРµР· СЃР°РЅРёС‚Р°Р№Р·РµСЂ."""
     if val is None:
-        return "вЂ”"
+        return " - "
     s = str(val).strip()
-    if not s or s == "вЂ”":
-        return "вЂ”"
+    if not s or s == " - ":
+        return " - "
     if _looks_like_code_token(s):
-        return "вЂ”"
+        return " - "
     s2 = _executive_ru_sanitize(s)
-    if not s2 or s2 in ("вЂ”",) or _looks_like_code_token(s2):
-        return "вЂ”"
+    if not s2 or s2 in (" - ",) or _looks_like_code_token(s2):
+        return " - "
     if len(s2) > 90:
-        return s2[:87].rstrip() + "вЂ¦"
+        return s2[:87].rstrip() + "..."
     return s2
 
 
@@ -302,7 +302,7 @@ def _escape_latex_command_arg(s: str) -> str:
 
 
 def _pdf_descriptor_for_output(pdf_out: Path) -> str:
-    """Humanize PDF stem for footer: underscores в†’ spaces, keep readable."""
+    """Humanize PDF stem for footer: underscores -> spaces, keep readable."""
     t = pdf_out.stem.replace("_", " ")
     t = t.replace("  ", " ").strip()
     return t if t else "Report"
@@ -592,7 +592,7 @@ def _fmt_kpi_val_latex(m: dict[str, Any], key: str, *, pct: bool) -> str:
 
 
 def _kpi_panel_latex_ru(m: dict[str, Any]) -> str:
-    """2Г—3 СЃРµС‚РєР° KPI (LaTeX), РєР°Рє РЅР° СЌС‚Р°Р»РѕРЅРµ."""
+    """2*3 СЃРµС‚РєР° KPI (LaTeX), РєР°Рє РЅР° СЌС‚Р°Р»РѕРЅРµ."""
     if not m:
         return ""
     mk = m
@@ -656,8 +656,8 @@ def _yaml_front_matter(
     analysis_end: str | None = None,
     window_label: str | None = None,
 ) -> str:
-    """H1: РёРЅСЃР°Р№С‚-Р·Р°РіРѕР»РѕРІРѕРє; `date` РІ YAML вЂ” РІС‚РѕСЂР°СЏ СЃС‚СЂРѕРєР°, РєР°Рє РІ СЌС‚Р°Р»РѕРЅРµ (РїРѕРґР·Р°РіРѕР»РѕРІРѕРє-РѕРїРёСЃР°РЅРёРµ)."""
-    full_title = title if not subtitle else f"{title} вЂ” {subtitle}"
+    """H1: РёРЅСЃР°Р№С‚-Р·Р°РіРѕР»РѕРІРѕРє; `date` РІ YAML  -  РІС‚РѕСЂР°СЏ СЃС‚СЂРѕРєР°, РєР°Рє РІ СЌС‚Р°Р»РѕРЅРµ (РїРѕРґР·Р°РіРѕР»РѕРІРѕРє-РѕРїРёСЃР°РЅРёРµ)."""
+    full_title = title if not subtitle else f"{title}  -  {subtitle}"
     date_line = _russian_subtitle_line(window_label, analysis_end)
     lines = [
         "---",
@@ -699,8 +699,8 @@ _KPI_EW_RP_KEYS: tuple[str, ...] = (
 
 def _ew_rp_executive_takeaway(comp: dict[str, Any]) -> str:
     p = comp.get("period") or {}
-    ae = p.get("analysis_end") or "вЂ”"
-    wl = (p.get("window_label") or "вЂ”")
+    ae = p.get("analysis_end") or " - "
+    wl = (p.get("window_label") or " - ")
     em = (comp.get("equal_weight") or {}).get("metrics") or {}
     rm = (comp.get("risk_parity") or {}).get("metrics") or {}
     dm = (comp.get("delta") or {}).get("metrics") or {}
@@ -710,7 +710,7 @@ def _ew_rp_executive_takeaway(comp: dict[str, Any]) -> str:
         f"РќР° РіРѕСЂРёР·РѕРЅС‚Рµ **{wl}** (РѕС†РµРЅРєР° **{ae}**) СЂР°РІРЅС‹Рµ РІРµСЃР° РѕР±С‹С‡РЅРѕ СЃРёР»СЊРЅРµРµ РѕСЂРёРµРЅС‚РёСЂРѕРІР°РЅС‹ РЅР° **РѕР¶РёРґР°РµРјСѓСЋ РґРѕС…РѕРґРЅРѕСЃС‚СЊ**, "
         f"Р° **risk parity** СЃРіР»Р°Р¶РёРІР°РµС‚ **РІРєР»Р°Рґ РёРЅСЃС‚СЂСѓРјРµРЅС‚РѕРІ РІ РѕР±С‰РёР№ СЂРёСЃРє**. "
         f"РџРѕ РґРѕС…РѕРґРЅРѕСЃС‚Рё СЂР°РІРЅС‹Рµ РІРµСЃР° **РѕРїРµСЂРµР¶Р°СЋС‚** РІР°СЂРёР°РЅС‚ СЃ РІС‹СЂР°РІРЅРёРІР°РЅРёРµРј СЂРёСЃРєР° РЅР° **{_fmt_scalar(dm.get('cagr'), pct=True)}**; "
-        f"**РІРѕР»Р°С‚РёР»СЊРЅРѕСЃС‚СЊ** вЂ” **{_fmt_scalar(em.get('vol_annual'), pct=True)}** Сѓ СЂР°РІРЅС‹С… РІРµСЃРѕРІ Рё **{_fmt_scalar(rm.get('vol_annual'), pct=True)}** Сѓ risk parity. "
+        f"**РІРѕР»Р°С‚РёР»СЊРЅРѕСЃС‚СЊ**  -  **{_fmt_scalar(em.get('vol_annual'), pct=True)}** Сѓ СЂР°РІРЅС‹С… РІРµСЃРѕРІ Рё **{_fmt_scalar(rm.get('vol_annual'), pct=True)}** Сѓ risk parity. "
         f"РџРѕ **СЃС‚СЂРµСЃСЃ-РїСЂРѕРІРµСЂРєРµ** СЂР°РІРЅС‹Рµ РІРµСЃР°: **{s_ew}**; risk parity: **{s_rp}**.\n"
     )
 
@@ -790,9 +790,9 @@ def build_ew_rp_markdown(comp: dict[str, Any]) -> str:
 
     parts.append("## РљР»СЋС‡РµРІС‹Рµ РїРѕРєР°Р·Р°С‚РµР»Рё\n\n")
     parts.append(
-        "*Р Р°Р·РЅРёС†Р° (РїРѕСЃР»РµРґРЅРёР№ СЃС‚РѕР»Р±РµС†) вЂ” **РЅР°СЃРєРѕР»СЊРєРѕ Р±РѕР»СЊС€Рµ Сѓ СЂР°РІРЅС‹С… РІРµСЃРѕРІ**, С‡РµРј Сѓ risk parity, РІ С‚РµС… Р¶Рµ РµРґРёРЅРёС†Р°С…, С‡С‚Рѕ Рё РјРµС‚СЂРёРєР°.*\n\n"
+        "*Р Р°Р·РЅРёС†Р° (РїРѕСЃР»РµРґРЅРёР№ СЃС‚РѕР»Р±РµС†)  -  **РЅР°СЃРєРѕР»СЊРєРѕ Р±РѕР»СЊС€Рµ Сѓ СЂР°РІРЅС‹С… РІРµСЃРѕРІ**, С‡РµРј Сѓ risk parity, РІ С‚РµС… Р¶Рµ РµРґРёРЅРёС†Р°С…, С‡С‚Рѕ Рё РјРµС‚СЂРёРєР°.*\n\n"
     )
-    parts.append("|  | Р Р°РІРЅС‹Рµ РІРµСЃР° (EW) | Risk parity | Р Р°Р·РЅРёС†Р° (EW в€’ RP) |\n")
+    parts.append("|  | Р Р°РІРЅС‹Рµ РІРµСЃР° (EW) | Risk parity | Р Р°Р·РЅРёС†Р° (EW - RP) |\n")
     parts.append("| --- | ---: | ---: | ---: |\n")
     for k in _KPI_EW_RP_KEYS:
         pct = k in _PCT_METRICS
@@ -810,7 +810,7 @@ def build_ew_rp_markdown(comp: dict[str, Any]) -> str:
     top_tickers = sorted(set(eq5.keys()) | set(rp5.keys()))
     if top_tickers:
         parts.append("\n## РљС‚Рѕ СЃРёР»СЊРЅРµРµ РІСЃРµРіРѕ РІР»РёСЏРµС‚ РЅР° СЂРёСЃРє (С‚РѕРї РїРѕР·РёС†РёР№)\n\n")
-        parts.append("\n| РРЅСЃС‚СЂСѓРјРµРЅС‚ | Р Р°РІРЅС‹Рµ РІРµСЃР° | Risk parity | Р Р°Р·РЅРёС†Р° (EW в€’ RP) |\n| --- | ---: | ---: | ---: |\n")
+        parts.append("\n| РРЅСЃС‚СЂСѓРјРµРЅС‚ | Р Р°РІРЅС‹Рµ РІРµСЃР° | Risk parity | Р Р°Р·РЅРёС†Р° (EW - RP) |\n| --- | ---: | ---: | ---: |\n")
         for t in top_tickers:
             parts.append(
                 f"| **{t}** | {_escape_md_cell(_fmt_scalar(eq5.get(t), pct=True))} | "
@@ -828,15 +828,15 @@ def build_ew_rp_markdown(comp: dict[str, Any]) -> str:
         f"- **Risk parity:** {sr}.\n"
     )
     de, dr = re_ew.strip(), re_rp.strip()
-    if (de and de not in ("вЂ”",)) or (dr and dr not in ("вЂ”",)):
-        if de and dr and de not in ("вЂ”",) and dr not in ("вЂ”",):
+    if (de and de not in (" - ",)) or (dr and dr not in (" - ",)):
+        if de and dr and de not in (" - ",) and dr not in (" - ",):
             parts.append(
-                f"\n*РџРѕСЏСЃРЅРµРЅРёСЏ Рє СЃС†РµРЅР°СЂРЅРѕР№ РїСЂРѕРІРµСЂРєРµ: **СЂР°РІРЅС‹Рµ РІРµСЃР°** вЂ” {de}; **risk parity** вЂ” {dr}.*\n"
+                f"\n*РџРѕСЏСЃРЅРµРЅРёСЏ Рє СЃС†РµРЅР°СЂРЅРѕР№ РїСЂРѕРІРµСЂРєРµ: **СЂР°РІРЅС‹Рµ РІРµСЃР°**  -  {de}; **risk parity**  -  {dr}.*\n"
             )
-        elif de and de not in ("вЂ”",):
-            parts.append(f"\n*РџРѕСЏСЃРЅРµРЅРёРµ: **СЂР°РІРЅС‹Рµ РІРµСЃР°** вЂ” {de}.*\n")
-        elif dr and dr not in ("вЂ”",):
-            parts.append(f"\n*РџРѕСЏСЃРЅРµРЅРёРµ: **risk parity** вЂ” {dr}.*\n")
+        elif de and de not in (" - ",):
+            parts.append(f"\n*РџРѕСЏСЃРЅРµРЅРёРµ: **СЂР°РІРЅС‹Рµ РІРµСЃР°**  -  {de}.*\n")
+        elif dr and dr not in (" - ",):
+            parts.append(f"\n*РџРѕСЏСЃРЅРµРЅРёРµ: **risk parity**  -  {dr}.*\n")
     parts.append(
         "\n*РћР±Р° РІР°СЂРёР°РЅС‚Р° РїРѕСЃС‡РёС‚Р°РЅС‹ РЅР° **РѕРґРЅРѕРј** РЅР°Р±РѕСЂРµ РёРЅСЃС‚СЂСѓРјРµРЅС‚РѕРІ Рё **РѕРґРЅРѕР№** РёСЃС‚РѕСЂРёРё; РѕС‚Р»РёС‡Р°РµС‚СЃСЏ С‚РѕР»СЊРєРѕ СЃРїРѕСЃРѕР± РІР·РІРµС€РёРІР°РЅРёСЏ.*\n"
     )
@@ -925,7 +925,7 @@ def build_commentary_report_md(
                 parts.append(f"{para}\n\n")
     else:
         parts.append(
-            "*РЎР°РјРѕРµ РіР»Р°РІРЅРѕРµ РµС‰С‘ РЅРµ РІС‹РЅРµСЃРµРЅРѕ: РІ РЅР°С‡Р°Р»Рѕ СЂР°Р±РѕС‡РµРіРѕ РєРѕРјРјРµРЅС‚Р°СЂРёСЏ Рє РїСЂРѕРіРѕРЅСѓ РґРѕР±Р°РІСЊС‚Рµ 3вЂ“5 РїСЂРµРґР»РѕР¶РµРЅРёР№ СЃ **РёС‚РѕРіРѕРј** (РїРµСЂРІС‹Р№ Р±Р»РѕРє РїРѕ РІРЅСѓС‚СЂРµРЅРЅРµРјСѓ С€Р°Р±Р»РѕРЅСѓ РєРѕРјРјРµРЅС‚Р°СЂРёСЏ).*\n"
+            "*РЎР°РјРѕРµ РіР»Р°РІРЅРѕРµ РµС‰С‘ РЅРµ РІС‹РЅРµСЃРµРЅРѕ: РІ РЅР°С‡Р°Р»Рѕ СЂР°Р±РѕС‡РµРіРѕ РєРѕРјРјРµРЅС‚Р°СЂРёСЏ Рє РїСЂРѕРіРѕРЅСѓ РґРѕР±Р°РІСЊС‚Рµ 3-5 РїСЂРµРґР»РѕР¶РµРЅРёР№ СЃ **РёС‚РѕРіРѕРј** (РїРµСЂРІС‹Р№ Р±Р»РѕРє РїРѕ РІРЅСѓС‚СЂРµРЅРЅРµРјСѓ С€Р°Р±Р»РѕРЅСѓ РєРѕРјРјРµРЅС‚Р°СЂРёСЏ).*\n"
         )
 
     mets = (snap or {}).get("metrics") or {}
@@ -1020,10 +1020,10 @@ def build_weights_report_md(
     top = items[:5]
     parts.append("\n## РљР»СЋС‡РµРІРѕР№ РІС‹РІРѕРґ\n\n")
     if top:
-        tlist = ", ".join(f"**{t}** вЂ” {_fmt_scalar(w, pct=True)}" for t, w in top)
+        tlist = ", ".join(f"**{t}**  -  {_fmt_scalar(w, pct=True)}" for t, w in top)
         parts.append(
             f"**РљСЂСѓРїРЅРµР№С€РёРµ РїРѕР·РёС†РёРё** РїРѕ С†РµР»РµРІРѕРјСѓ РІРµСЃСѓ: {tlist}. "
-            f"**Р”РѕР»Рё РЅРёР¶Рµ** вЂ” РѕСЂРёРµРЅС‚РёСЂ РґР»СЏ СЃС‚СЂР°С‚РµРіРёРё; **РґР°С‚Р°** РѕС‚РЅРѕСЃРёС‚СЃСЏ Рє СЃРЅРёРјРєСѓ (СЃРј. СЃС‚СЂРѕРєСѓ РїРѕРґ Р·Р°РіРѕР»РѕРІРєРѕРј), Р° РЅРµ Рє СЃРёРіРЅР°Р»Сѓ СЃРґРµР»РєРё.\n\n"
+            f"**Р”РѕР»Рё РЅРёР¶Рµ**  -  РѕСЂРёРµРЅС‚РёСЂ РґР»СЏ СЃС‚СЂР°С‚РµРіРёРё; **РґР°С‚Р°** РѕС‚РЅРѕСЃРёС‚СЃСЏ Рє СЃРЅРёРјРєСѓ (СЃРј. СЃС‚СЂРѕРєСѓ РїРѕРґ Р·Р°РіРѕР»РѕРІРєРѕРј), Р° РЅРµ Рє СЃРёРіРЅР°Р»Сѓ СЃРґРµР»РєРё.\n\n"
         )
     else:
         parts.append("*РќРµС‚ РїРѕР·РёС†РёР№ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ.*\n\n")
@@ -1038,7 +1038,7 @@ def build_weights_report_md(
     for t, w in items:
         parts.append(f"| **{t}** | {_escape_md_cell(f'{w * 100:.2f}%')} |\n")
     parts.append(
-        f"\n**РЎСѓРјРјР° РґРѕР»РµР№ вЂ” {_fmt_scalar(sum(weights.values()), pct=True)}**; РїСЂРё РїРѕР»РЅРѕРј РёРЅРІРµСЃС‚РёСЂРѕРІР°РЅРёРё РѕР¶РёРґР°РµС‚СЃСЏ **РѕРєРѕР»Рѕ 100%**.\n"
+        f"\n**РЎСѓРјРјР° РґРѕР»РµР№  -  {_fmt_scalar(sum(weights.values()), pct=True)}**; РїСЂРё РїРѕР»РЅРѕРј РёРЅРІРµСЃС‚РёСЂРѕРІР°РЅРёРё РѕР¶РёРґР°РµС‚СЃСЏ **РѕРєРѕР»Рѕ 100%**.\n"
     )
     return "".join(parts)
 
@@ -1301,7 +1301,7 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
             results["Main portfolio_ew_rp_comparison.pdf"] = False
     else:
         if logger:
-            logger.warning("Missing %s вЂ” run run_compare_ew_rp.py", comp_path)
+            logger.warning("Missing %s  -  run run_compare_ew_rp.py", comp_path)
         results["Main portfolio_ew_rp_comparison.pdf"] = False
 
     def _commentary_pair(folder: Path, slug: str, title: str) -> None:

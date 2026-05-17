@@ -79,6 +79,8 @@ Feasibility is based on **weight bounds** and data coverage.
 
 Final weights come from optimization (+ ProLiquidity / vol policy). PM tilts only through the view-after protocol.
 
+This rule applies to **policy weights**. It does not prohibit user-supplied `current_weights` in `analysis_mode=analyze_current_weights`, because those weights represent an existing portfolio for diagnostics and fixed-weight reporting. Input-mode semantics are governed by [input_assumptions_spec.md](input_assumptions_spec.md).
+
 ---
 
 ## 11. Risk budgeting and other benchmark baselines (non-policy)

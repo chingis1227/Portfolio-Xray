@@ -10,6 +10,8 @@ Update this file whenever data sources, data structures, the data pipeline, NaN 
 
 The data layer turns user configuration and external market/macro inputs into consistent analysis panels for optimization, reporting, stress diagnostics, candidate portfolios, and exports.
 
+Analysis setup, input mode, current-weight semantics, mandate inputs, and technical calculation settings are governed by [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md).
+
 The core pipeline is:
 
 ```text
@@ -46,6 +48,8 @@ Current external and local source families:
 - Official CSV/API/keyed/manual macro sources where supported by the macro source resolver.
 - Local YAML config and metadata files.
 - Local cache files under `cache/` when cache is enabled.
+
+Future quote-data candidates to evaluate: EODHD as first priority, Tiingo for personal usage only, and Alpaca. These are not active project data sources yet.
 
 Source-specific behavior belongs in the relevant implementation modules and detailed specs. Any new source must document its expected format, frequency, failure mode, and fallback behavior.
 

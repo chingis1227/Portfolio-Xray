@@ -21,6 +21,7 @@ Top-level documents stay compact:
 | Area | Spec |
 | --- | --- |
 | Metrics, estimators, windows, returns, FX, beta, drawdown, RC_vol, rounding | [metrics_specification.md](metrics_specification.md) |
+| Analysis setup, input modes, current weights, mandate inputs, and calculation assumptions | [input_assumptions_spec.md](input_assumptions_spec.md) |
 | Portfolio construction and main optimizer policy | [portfolio_construction_policy.md](portfolio_construction_policy.md) |
 | Feasibility and weight constraints | [feasibility_constraints_spec.md](feasibility_constraints_spec.md) |
 | Task workflow from request to implementation, verification, docs sync, project memory, and commit | [../../WORKFLOW.md](../../WORKFLOW.md) |

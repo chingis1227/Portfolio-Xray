@@ -2,8 +2,9 @@
 Rebalance: current positions → target weights → list of trades.
 
 Input: current weights (ticker → weight), target weights (ticker → weight), optional NAV.
-Optional: threshold (do not trade if |Δw| < threshold_pct per position or portfolio drift below threshold);
-          min_trade_pct (do not emit trade smaller than X% of portfolio).
+Optional: threshold_pct — skip trades when max absolute per-ticker weight change (max |Δw_i|,
+          in percent points) is below this value; turnover is not used for this gate.
+          min_trade_pct — do not emit trades smaller than this percent of portfolio.
 Output: list of trades (ticker, direction, delta_weight, optional delta_amount).
 """
 from __future__ import annotations
@@ -36,7 +37,8 @@ def compute_trades(
     missing ticker is treated as 0.
 
     Returns (list of Trade, rebalance_needed).
-    If threshold_pct is set and max absolute weight deviation is below threshold_pct, returns ([], False).
+    If threshold_pct is set and max absolute per-ticker weight deviation (percent points) is below
+    threshold_pct, returns ([], False). Portfolio turnover is not used for this gate.
     Trades with |delta_pct| < min_trade_pct are excluded if min_trade_pct is set.
     """
     all_tickers = set(current_weights) | set(target_weights)
@@ -71,7 +73,8 @@ def rebalance_needed(
     threshold_pct: float,
 ) -> bool:
     """
-    Return True if rebalance is needed (max |Δw| or turnover above threshold_pct).
+    Return True if rebalance is needed: max absolute per-ticker weight deviation (percent points)
+    is at or above threshold_pct. Portfolio turnover is not evaluated.
     """
     _, needed = compute_trades(current_weights, target_weights, threshold_pct=threshold_pct)
     return needed

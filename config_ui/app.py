@@ -43,6 +43,7 @@ CONFIG_PATH = PROJECT_ROOT / "config.yml"
 
 # Default values (aligned with config_schema; UI form uses benchmark_base_ticker, rf_source)
 DEFAULTS = {
+    "analysis_mode": "optimize_from_universe",
     "investor_currency": "USD",
     "initial_investable_amount": 1000,
     "liquidity_need": 0,
@@ -69,6 +70,10 @@ DEFAULTS = {
     "windows_months": [36, 60, 120],
     "coverage_threshold": 0.90,
     "output_dir": "output",
+    "output_dir_final": "Main portfolio",
+    "tickers": [],
+    "weights": {},
+    "current_weights": {},
 }
 
 CURRENCY_BENCHMARKS = {
@@ -77,6 +82,13 @@ CURRENCY_BENCHMARKS = {
     "JPY": "EWJ",
     "CHF": "EWL",
 }
+
+
+def _format_weight_percent(value: float | None) -> str:
+    """Format a decimal weight for form display."""
+    if value is None:
+        return ""
+    return f"{float(value) * 100:.1f}%"
 
 
 def _normalize_loaded_config(raw: dict) -> dict:
@@ -95,18 +107,38 @@ def _normalize_loaded_config(raw: dict) -> dict:
     return out
 
 
+def _numeric_weight_map(raw: object) -> dict[str, float]:
+    """Return only numeric ticker weights from a mapping-like object."""
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, float] = {}
+    for ticker, value in raw.items():
+        if isinstance(ticker, str) and ticker and isinstance(value, (int, float)):
+            out[str(ticker)] = float(value)
+    return out
+
+
+def _generated_weights_path(config: dict) -> Path:
+    """Return generated policy weights path for the current config."""
+    output_dir_final = config.get("output_dir_final") or "Main portfolio"
+    return CONFIG_PATH.resolve().parent / str(output_dir_final) / WEIGHTS_FILENAME
+
+
+def load_generated_weights(config: dict) -> tuple[dict[str, float], Path]:
+    """Load generated policy weights for read-only display in the UI."""
+    weights_path = _generated_weights_path(config)
+    if not weights_path.is_file():
+        return {}, weights_path
+    with open(weights_path, encoding="utf-8") as wf:
+        file_weights = yaml.safe_load(wf) or {}
+    return _numeric_weight_map(file_weights), weights_path
+
+
 def load_current_config() -> dict:
-    """Load current config.yml if exists. If config has no weights, load from portfolio_weights.yml."""
+    """Load current config.yml if it exists without merging generated weights into editable fields."""
     if CONFIG_PATH.exists():
         with open(CONFIG_PATH, encoding="utf-8") as f:
             raw = yaml.safe_load(f) or {}
-        if not raw.get("weights"):
-            weights_path = PROJECT_ROOT / WEIGHTS_FILENAME
-            if weights_path.is_file():
-                with open(weights_path, encoding="utf-8") as wf:
-                    file_weights = yaml.safe_load(wf) or {}
-                if isinstance(file_weights, dict):
-                    raw["weights"] = {k: v for k, v in file_weights.items() if isinstance(v, (int, float))}
         return _normalize_loaded_config(raw)
     return {}
 
@@ -168,6 +200,30 @@ def parse_int(val: str | None) -> int | None:
     return int(val.strip())
 
 
+def _ticker_rows(tickers: list[str], weights: dict, current_weights: dict) -> list[dict]:
+    """Build form rows from configured tickers and any existing weight maps."""
+    ordered: list[str] = []
+    for source in (tickers, list((weights or {}).keys()), list((current_weights or {}).keys())):
+        for ticker in source:
+            if ticker and str(ticker) not in ordered:
+                ordered.append(str(ticker))
+    return [
+        {
+            "ticker": ticker,
+            "weight": (weights or {}).get(ticker),
+            "current_weight": (current_weights or {}).get(ticker),
+        }
+        for ticker in ordered
+    ]
+
+
+def _generated_weight_rows(generated_weights: dict[str, float]) -> list[dict[str, str]]:
+    return [
+        {"ticker": ticker, "weight": _format_weight_percent(weight)}
+        for ticker, weight in sorted(generated_weights.items())
+    ]
+
+
 @app.route("/")
 def index():
     """Main config form page."""
@@ -180,18 +236,19 @@ def index():
     # Parse tickers and weights
     tickers = config.get("tickers", [])
     weights = config.get("weights", {})
+    current_weights = config.get("current_weights", {})
+    generated_weights, generated_weights_path = load_generated_weights(config)
     
     # Create ticker-weight pairs for template
-    ticker_weights = []
-    for t in tickers:
-        w = weights.get(t, 0)
-        ticker_weights.append({"ticker": t, "weight": w})
+    ticker_weights = _ticker_rows(tickers, weights, current_weights)
     
     client_profiles_reminder = load_client_profiles_reminder()
     return render_template(
         "config_form.html",
         config=config,
         ticker_weights=ticker_weights,
+        generated_weight_rows=_generated_weight_rows(generated_weights),
+        generated_weights_path=str(generated_weights_path),
         currency_benchmarks=CURRENCY_BENCHMARKS,
         client_profiles_reminder=client_profiles_reminder,
     )
@@ -202,24 +259,33 @@ def generate_config():
     """Generate config.yml from form data."""
     data = request.form
     current = load_current_config()
+    analysis_mode = (data.get("analysis_mode") or "optimize_from_universe").strip().lower()
+    if analysis_mode not in ("optimize_from_universe", "analyze_current_weights"):
+        analysis_mode = "optimize_from_universe"
     
-    # Parse tickers and weights
+    # Parse tickers and current weights. Generated policy weights are never loaded
+    # into editable form fields and are never written back as manual source config.
     tickers = []
-    weights = {}
+    current_weights = {}
     
     ticker_entries = data.getlist("ticker[]")
-    weight_entries = data.getlist("weight[]")
+    current_weight_entries = data.getlist("current_weight[]")
+    if not current_weight_entries:
+        current_weight_entries = data.getlist("weight[]")
     
-    for t, w in zip(ticker_entries, weight_entries):
+    for i, t in enumerate(ticker_entries):
         t = t.strip().upper()
         if t:
             tickers.append(t)
-            w_val = parse_percent(w)
-            if w_val is not None:
-                weights[t] = w_val
+            if analysis_mode == "analyze_current_weights":
+                raw_weight = current_weight_entries[i] if i < len(current_weight_entries) else ""
+                w_val = parse_percent(raw_weight)
+                if w_val is not None:
+                    current_weights[t] = w_val
     
     # Build config dict
     config = {
+        "analysis_mode": analysis_mode,
         "investor_currency": data.get("investor_currency", "USD"),
         "initial_investable_amount": parse_float(data.get("initial_investable_amount")) or 1000,
         "liquidity_need": parse_float(data.get("liquidity_need")) or 0,
@@ -229,7 +295,8 @@ def generate_config():
         "cash_policy": data.get("cash_policy", "allowed_for_scaling") or "allowed_for_scaling",
         "client_profile": data.get("client_profile") or None,
         "tickers": tickers,
-        "weights": weights,
+        "current_weights": current_weights if analysis_mode == "analyze_current_weights" else {},
+        "weights": {},
         "benchmark_base_ticker": data.get("benchmark_base_ticker", "SPY"),
         "risk_free_source": data.get("risk_free_source") or current.get("risk_free_source") or current.get("rf_source"),
         "cash_proxy_ticker": data.get("cash_proxy_ticker") or current.get("cash_proxy_ticker"),
@@ -247,6 +314,7 @@ def generate_config():
         "windows_months": [36, 60, 120],
         "coverage_threshold": parse_percent(data.get("coverage_threshold")) or 0.90,
         "output_dir": data.get("output_dir", "output"),
+        "output_dir_final": current.get("output_dir_final") or "Main portfolio",
     }
 
     # Generate YAML content
@@ -365,10 +433,22 @@ def generate_yaml_with_comments(config: dict) -> str:
     lines.append("# SECTION 2: PORTFOLIO TICKERS AND WEIGHTS")
     lines.append("# =============================================================================")
     lines.append("")
+    lines.append("# analysis_mode: optimize_from_universe | analyze_current_weights")
+    lines.append(f"analysis_mode: {config.get('analysis_mode', 'optimize_from_universe')}")
+    lines.append("")
     lines.append("tickers:")
     for t in config["tickers"]:
         lines.append(f"  - {t}")
     lines.append("")
+    lines.append("# current_weights: existing portfolio weights for analyze_current_weights mode.")
+    if config.get("current_weights"):
+        lines.append("current_weights:")
+        for t, w in config["current_weights"].items():
+            lines.append(f"  {t}: {w}")
+    else:
+        lines.append("current_weights: {}")
+    lines.append("")
+    lines.append("# weights: legacy fixed-report weights. Generated policy weights live in portfolio_weights.yml.")
     if config.get("weights"):
         lines.append("weights:")
         for t, w in config["weights"].items():
@@ -422,6 +502,7 @@ def generate_yaml_with_comments(config: dict) -> str:
     lines.append(f"windows_months: {config['windows_months']}")
     lines.append(f"coverage_threshold: {config['coverage_threshold']}")
     lines.append(f"output_dir: {config['output_dir']}")
+    lines.append(f"output_dir_final: \"{config.get('output_dir_final', 'Main portfolio')}\"")
     
     return "\n".join(lines)
 

@@ -68,18 +68,18 @@ Input & Assumptions
 
 Always separate:
 
-1. **Data** вЂ” what metrics, tests, and diagnostics show
-2. **Interpretation** вЂ” what those results mean
-3. **Decision implication** вЂ” what the investor should do or consider
-4. **Uncertainty** вЂ” what remains fragile, assumption-sensitive, or unverified
-5. **Implementation status** вЂ” confirmed in code / SPEC / docs vs target architecture
+1. **Data**  -  what metrics, tests, and diagnostics show
+2. **Interpretation**  -  what those results mean
+3. **Decision implication**  -  what the investor should do or consider
+4. **Uncertainty**  -  what remains fragile, assumption-sensitive, or unverified
+5. **Implementation status**  -  confirmed in code / SPEC / docs vs target architecture
 
 **Confirmed or partial today (verify before claiming):**
 
 - Variant comparison artifacts: `run_compare_variants.py`, `run_compare_ew_rp.py` (`ew_rp_comparison.json` / `.txt`, variant comparison summaries)
 - Per-candidate report folders with metrics, stress, commentary (see `docs/specs/candidate_portfolios_spec.md`, `OUTPUTS.md`)
 - `analysis_setup` fair-comparison contract (`docs/specs/input_assumptions_spec.md`)
-- Portfolio X-Ray v2 is **diagnostic only** вЂ” must not create Health Score, Selection Engine, or scoring-driven decisions (`docs/specs/reporting_outputs_spec.md`)
+- Portfolio X-Ray v2 is **diagnostic only**  -  must not create Health Score, Selection Engine, or scoring-driven decisions (`docs/specs/reporting_outputs_spec.md`)
 
 **Target architecture (not confirmed unless verified):**
 
@@ -121,7 +121,7 @@ Use `analysis_setup` and candidate metadata when available. Never rank under inc
 
 Put all candidates into one **fair comparison format**.
 
-Use **7вЂ“10 decision-critical criteria**, not 40 metrics.
+Use **7-10 decision-critical criteria**, not 40 metrics.
 
 **Default core criteria:**
 
@@ -177,7 +177,7 @@ Before promoting a winner, check whether the ranking is stable enough to matter:
 
 ### 5. Pareto Frontier / Dominance Check
 
-Remove weak candidates that are worse **without compensation** вЂ” but do **not** eliminate mechanically.
+Remove weak candidates that are worse **without compensation**  -  but do **not** eliminate mechanically.
 
 A candidate may be dominated if it has lower return, higher volatility, worse max drawdown, worse CVaR, worse stress loss, higher turnover, weaker mandate fit, with **no compensating advantage**.
 
@@ -233,7 +233,7 @@ For every candidate provide: **rank**; role in the portfolio menu; main strength
 
 ## Interaction with Other Agents
 
-| Agent | Use its output toвЂ¦ |
+| Agent | Use its output to... |
 |-------|-------------------|
 | **Risk Diagnostics / Portfolio X-Ray** | Identify what problem the current portfolio actually has; do not promote a candidate unless it solves a real diagnosed weakness |
 | **Stress Testing** | Assess crisis resilience, tail risk, hedge gaps, worst-scenario behavior |
@@ -248,7 +248,7 @@ For every candidate provide: **rank**; role in the portfolio menu; main strength
 
 Use this structure unless the user requests otherwise:
 
-### 1. Short conclusion (2вЂ“4 sentences)
+### 1. Short conclusion (2-4 sentences)
 
 Which candidate looks strongest and why. Include **evidence classification**.
 
@@ -258,7 +258,7 @@ Rank with one-line rationale each. Include status label: Promote / Keep / Downgr
 
 ### 3. Why the top candidate wins
 
-Explain the **3вЂ“5 decisive criteria**.
+Explain the **3-5 decisive criteria**.
 
 ### 4. Trade-offs accepted
 
@@ -274,7 +274,7 @@ How stable the ranking is; where the winner could underperform.
 
 ### 7. Decision implication
 
-Promote / keep / downgrade / reject / validate further / **no-trade** вЂ” should the investor change the portfolio, and why?
+Promote / keep / downgrade / reject / validate further / **no-trade**  -  should the investor change the portfolio, and why?
 
 ### 8. Next practical step
 
@@ -284,7 +284,7 @@ One concrete next step before Action Engine, Rebalancing Advisor, or Report (e.g
 
 **Style:** concise; rigorous; professional investment language; do not bury the decision; expose assumptions; connect ranking to the practical question: *Should the investor change the portfolio, and why?*
 
-**Anti-patterns вЂ” never:**
+**Anti-patterns  -  never:**
 
 - rank by one metric (CAGR, Sharpe, or score alone)
 - say "the optimizer found the optimal portfolio"

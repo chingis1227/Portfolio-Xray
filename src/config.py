@@ -158,9 +158,18 @@ def load_validated_config(config_path: str | Path | None = None) -> PortfolioCon
     raw = apply_profile_to_config(raw)
     if raw.get("client_profile") and get_profile_defaults(raw["client_profile"]):
         _sync_profile_fields_to_config_file(path, raw)
-    # If config has no weights, load from portfolio_weights.yml in output_dir_final (e.g. Main portfolio)
-    # but only when ticker universe exactly matches config.yml.
-    if not raw.get("weights"):
+    raw_mode = str(raw.get("analysis_mode") or "optimize_from_universe").strip().lower()
+    has_user_fixed_weights = bool(raw.get("weights")) or (
+        raw_mode == "analyze_current_weights" and bool(raw.get("current_weights"))
+    )
+    if raw.get("weights"):
+        raw["_weights_source"] = "config.weights"
+    elif raw_mode == "analyze_current_weights" and raw.get("current_weights"):
+        raw["_weights_source"] = "config.current_weights"
+
+    # If config has no fixed user weights, load generated policy weights from portfolio_weights.yml
+    # in output_dir_final (e.g. Main portfolio), but only when ticker universe exactly matches config.yml.
+    if not has_user_fixed_weights:
         output_dir_final = raw.get("output_dir_final") or "Main portfolio"
         weights_path = path.parent / output_dir_final / WEIGHTS_FILENAME
         file_weights = load_weights_file(weights_path=weights_path)
@@ -182,11 +191,12 @@ def load_validated_config(config_path: str | Path | None = None) -> PortfolioCon
             if missing_in_weights or not extra_in_weights.issubset(allowed_extra_in_weights):
                 stale_in_weights = sorted(extra_in_weights - allowed_extra_in_weights)
                 raise ConfigValidationError(
-                    "portfolio_weights.yml не соответствует текущему config.yml по составу тикеров. "
+                    "portfolio_weights.yml does not match the current config.yml ticker set. "
                     f"config_only={sorted(missing_in_weights)}; weights_only={stale_in_weights}. "
-                    "Обновите/удалите portfolio_weights.yml, либо задайте актуальные weights прямо в config.yml."
+                    "Update or remove portfolio_weights.yml, or set current weights in config.yml."
                 )
             raw["weights"] = file_weights
+            raw["_weights_source"] = str(weights_path)
     portfolio_cfg = validate_config(raw)
     _cfg_log.info("Config source: %s", path)
     _cfg_log.info("Config tickers (%d): %s", len(portfolio_cfg.tickers), portfolio_cfg.tickers)

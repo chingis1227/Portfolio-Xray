@@ -9,15 +9,15 @@ import pandas as pd
 from src.portfolio_commentary import write_portfolio_commentary, write_stress_commentary
 
 
-def _test_output_dir(name: str) -> Path:
-    root = Path.cwd() / "output" / "codex_test_artifacts" / name
+def _test_output_dir(tmp_path: Path, name: str) -> Path:
+    root = tmp_path / name
     shutil.rmtree(root, ignore_errors=True)
     root.mkdir(parents=True, exist_ok=True)
     return root
 
 
-def test_write_portfolio_commentary_creates_file() -> None:
-    root = _test_output_dir("commentary")
+def test_write_portfolio_commentary_creates_file(tmp_path: Path) -> None:
+    root = _test_output_dir(tmp_path, "commentary")
     try:
         final = root / "risk parity portfolio"
         csv_dir = final / "results_csv"
@@ -58,6 +58,21 @@ def test_write_portfolio_commentary_creates_file() -> None:
             stress_report=stress,
             portfolio_valid=True,
             analysis_end="2026-02-28",
+            analysis_setup={
+                "portfolio_input": {"product_input_case": "user_current", "investor_currency": "USD"},
+                "analysis_portfolio": {
+                    "portfolio_role": "user_current_portfolio",
+                    "weight_source": "config.current_weights",
+                    "recommendation_status": "diagnostic_current_portfolio_not_recommendation",
+                    "weights": {"A": 0.4, "B": 0.3, "C": 0.3},
+                    "cash_handling": {"cash_proxy_ticker": "BIL"},
+                },
+                "resolved_assumptions": {
+                    "base_benchmark_ticker": "SPY",
+                    "cash_proxy": {"ticker": "BIL"},
+                    "return_frequency": "monthly",
+                },
+            },
         )
         assert out is not None
         assert out.is_file()
@@ -65,13 +80,17 @@ def test_write_portfolio_commentary_creates_file() -> None:
         assert "Executive Summary" in text
         assert "DIAG_ATTENTION" in text or "diagnostic" in text.lower()
         assert "equity_shock" in text
+        assert "Portfolio X-Ray Summary" in text
+        assert "role=user_current_portfolio" in text
+        assert "weight_source=config.current_weights" in text
+        assert "not a score, recommendation, selection decision, or trade instruction" in text
         assert "Risk-Parity baseline" in text or "Risk-Parity" in text
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
 
-def test_write_stress_commentary_from_stress_report() -> None:
-    root = _test_output_dir("stress_commentary")
+def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
+    root = _test_output_dir(tmp_path, "stress_commentary")
     try:
         final = root / "Main portfolio"
         final.mkdir(parents=True)

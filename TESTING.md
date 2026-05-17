@@ -21,7 +21,7 @@ Use the narrowest reliable check first. Broaden only when the change touches sha
 | Full pytest | Shared math, optimizer, data, stress, config, or report contracts may regress | `python -m pytest` |
 | CLI smoke run | Entrypoint behavior, generated outputs, or end-to-end flow changed | `python run_optimization.py`, `python run_report.py`, or the affected `run_*.py` |
 | Artifact inspection | JSON/CSV/HTML/TXT/PDF-style output shape or content changed | Inspect relevant files under `Main portfolio/`, `results_csv/`, variant folders, or `pdf files/` |
-| Documentation verification | Docs, links, commands, renamed files, or source-of-truth maps changed | Markdown link check plus stale-reference search with `rg` |
+| Documentation verification | Docs, links, commands, renamed files, or source-of-truth maps changed | `python scripts/verify_docs.py` or `python -m pytest tests/test_docs_links.py -q`; add `rg` stale-reference searches when renaming removed fields |
 
 `pytest.ini` limits test discovery to `tests/`, so `python -m pytest` is the repository-level test command.
 
@@ -37,8 +37,6 @@ Use the narrowest reliable check first. Broaden only when the change touches sha
 | Reports / outputs | Broken JSON/CSV schema, missing commentary, bad report rendering, stale generated files, changed user-facing artifacts | `tests/test_portfolio_commentary.py`, plus affected output tests such as `tests/test_scenario_library.py`, `tests/test_scenario_library_normalized.py`, `tests/test_stress_scenario_analytics.py`, `tests/test_regime_portfolio_metrics.py`, `tests/test_portfolio_pca.py` | Run `python run_report.py`; run `python rebuild_pdf_reports.py` only when PDF rebuild behavior or PDF-style artifacts are the target |
 | Config / schema | Invalid config accepted, valid config rejected, config/weights desync, taxonomy validation drift | `tests/test_config_weights_sync.py`, `tests/test_returns_frequency.py`; add `tests/test_etf_universe.py` or `tests/test_stock_universe.py` for taxonomy config changes | Run affected CLI such as `python run_etf_universe.py`, `python run_stock_universe.py`, `python run_optimization.py`, or `python run_report.py` when user-facing config workflows change |
 | Documentation-only change | Broken links, stale source-of-truth maps, obsolete commands, copied concept text treated as binding | Markdown link check; stale-reference search with `rg`; no `pytest` required unless executable examples, commands, or documented behavior changed | Run relevant CLI/test command if docs change executable examples or acceptance criteria |
-
-TBD: there is no dedicated repository Markdown link-check command checked in yet. Until one exists, use an equivalent local Markdown link checker and report the exact result.
 
 TBD: portfolio metrics do not have one single named golden-scenario test file. Use the affected focused tests above and add targeted regression coverage when changing formulas, windows, annualization, FX, risk-free handling, covariance, beta, drawdown, or rounding.
 
@@ -92,9 +90,15 @@ Documentation changes require link and stale-reference verification when they re
 
 Minimum checks:
 
-- Search for stale names or removed paths with `rg`.
-- Validate relative Markdown links.
+```bash
+python scripts/verify_docs.py
+python -m pytest tests/test_docs_links.py -q
+```
+
+- Search for stale names or removed paths with `rg` (for example `rc_asset_cap_pct` in editable UI surfaces after Session 03).
 - Confirm changed command examples are real entrypoints or real test commands.
+
+`scripts/verify_docs.py` scans source Markdown under the repo root, `docs/`, and `.cursor/` agents/rules. It checks local file links (repo-root and file-relative), forbidden stale canonical paths, and that `config_ui` does not reintroduce removed editable fields. Planned future spec filenames listed in `src/docs_verify.py` are allowed until those specs are created.
 - Keep [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) non-binding: ideas from that document do not require code tests unless they are promoted into `SPEC.md`, `DATA.md`, `docs/specs/*.md`, or implementation work.
 
 ## Source-Of-Truth Links

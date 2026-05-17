@@ -167,11 +167,15 @@ Key files:
 - `assets.yml`
 - `src/config.py`
 - `src/config_schema.py`
+- `src/analysis_setup.py`
+- `src/input_assumptions.py`
 - `src/client_profiles.py`
 
 Inputs:
 
+- Analysis mode.
 - Tickers.
+- Optional current weights for existing-portfolio diagnostics.
 - Investor currency.
 - Benchmark.
 - Risk profile.
@@ -190,6 +194,7 @@ Outputs:
 Notes:
 
 - Final production weights are not manually authored as the normal workflow.
+- Existing-portfolio diagnostics may use user-supplied `current_weights` in `analysis_mode=analyze_current_weights`.
 - Client profiles fill targets; they do not replace the optimizer.
 
 ### 2. Universe Taxonomy And Metadata

@@ -84,6 +84,9 @@ class PortfolioConfig:
 
     # Track pending fields
     pending_fields: list[str] = field(default_factory=list)
+    analysis_mode: str = "optimize_from_universe"
+    current_weights: dict[str, float] = field(default_factory=dict)
+    weights_source: str = "none"
 
     # Liquidity floor from profile or explicit config; used by ProLiquidity when set (else derived from liquidity_need_months * monthly_expenses / portfolio_value)
     liquidity_floor_pct: float | None = None
@@ -137,7 +140,10 @@ class PortfolioConfig:
             "base_benchmark_ticker": self.benchmark_base_ticker,
             "beta_local_mapping": self.local_benchmark_map,
             "tickers": self.tickers,
+            "analysis_mode": self.analysis_mode,
+            "current_weights": self.current_weights,
             "weights": self.weights,
+            "weights_source": self.weights_source,
             "allow_leverage": self.allow_leverage,
             "allow_short_selling": self.allow_short_selling,
             "min_acceptable_return": self.min_acceptable_return,
@@ -182,6 +188,7 @@ class PortfolioConfig:
         """Return assumptions that are actively used in calculations."""
         return {
             "investor_currency": self.investor_currency,
+            "analysis_mode": self.analysis_mode,
             "initial_investable_amount": self.initial_investable_amount,
             "rf_source": self.rf_source,
             "cash_proxy_ticker": self.cash_proxy_ticker,
@@ -262,6 +269,7 @@ DEFAULT_RISK_BUDGETING = {
     "asset_targets": {},
 }
 # Weights are optional: produced by optimization and exported (see Portfolio Construction Policy).
+ANALYSIS_MODES = ("optimize_from_universe", "analyze_current_weights")
 
 BOOLEAN_FIELDS = [
     "allow_leverage",
@@ -300,6 +308,7 @@ NUMERIC_FIELDS = [
 
 MAPPING_FIELDS = [
     "weights",
+    "current_weights",
     "local_benchmark_map",
 ]
 
@@ -356,6 +365,10 @@ def _inject_optional_defaults(cfg: dict[str, Any]) -> None:
         cfg["output_dir"] = DEFAULT_OUTPUT_DIR
     if not cfg.get("output_dir_final"):
         cfg["output_dir_final"] = DEFAULT_OUTPUT_DIR_FINAL
+    if not cfg.get("analysis_mode"):
+        cfg["analysis_mode"] = "optimize_from_universe"
+    else:
+        cfg["analysis_mode"] = str(cfg["analysis_mode"]).strip().lower()
     if cfg.get("primary_window_months") is None:
         cfg["primary_window_months"] = DEFAULT_PRIMARY_WINDOW_MONTHS
     if cfg.get("secondary_window_months") is None:
@@ -494,15 +507,16 @@ def _normalize_percent_fields(cfg: dict[str, Any]) -> dict[str, Any]:
         if f in result:
             result[f] = _parse_numeric_value(result[f], f)
     
-    # Handle weights dict (also supports percent format)
-    weights = result.get("weights")
-    if weights is not None and isinstance(weights, dict):
-        normalized_weights = {}
-        for ticker, w_val in weights.items():
-            normalized_weights[ticker] = _parse_percent_value(
-                w_val, f"weights['{ticker}']"
-            )
-        result["weights"] = normalized_weights
+    # Handle weight maps (also supports percent format)
+    for weights_field in ("weights", "current_weights"):
+        weights = result.get(weights_field)
+        if weights is not None and isinstance(weights, dict):
+            normalized_weights = {}
+            for ticker, w_val in weights.items():
+                normalized_weights[ticker] = _parse_percent_value(
+                    w_val, f"{weights_field}['{ticker}']"
+                )
+            result[weights_field] = normalized_weights
     
     return result
 
@@ -580,10 +594,32 @@ def _validate_mappings(cfg: dict[str, Any]) -> None:
             )
 
 
+def _validate_analysis_mode(cfg: dict[str, Any]) -> None:
+    """Validate analysis_mode and map current_weights for fixed current-portfolio reports."""
+    val = str(cfg.get("analysis_mode") or "optimize_from_universe").strip().lower()
+    if val not in ANALYSIS_MODES:
+        raise ConfigValidationError(
+            f"Config field 'analysis_mode' must be one of {ANALYSIS_MODES}, got {cfg.get('analysis_mode')!r}"
+        )
+    cfg["analysis_mode"] = val
+    if val == "analyze_current_weights":
+        if not cfg.get("weights") and cfg.get("current_weights"):
+            cfg["weights"] = dict(cfg["current_weights"])
+            cfg["_weights_source"] = cfg.get("_weights_source") or "config.current_weights"
+        if not cfg.get("weights"):
+            raise ConfigValidationError(
+                "analysis_mode='analyze_current_weights' requires non-empty current_weights "
+                "(or legacy weights) in config.yml."
+            )
+
+
 def _validate_tickers_weights(cfg: dict[str, Any]) -> None:
     """Validate tickers/weights consistency."""
     tickers = cfg.get("tickers", [])
-    weights = cfg.get("weights", {})
+    weight_maps = {
+        "weights": cfg.get("weights", {}),
+        "current_weights": cfg.get("current_weights", {}),
+    }
     
     if not isinstance(tickers, list):
         raise ConfigValidationError(
@@ -600,19 +636,22 @@ def _validate_tickers_weights(cfg: dict[str, Any]) -> None:
     except ConfigValidationError:
         pass
 
-    for w_ticker, w_val in weights.items():
-        if w_ticker not in allowed_tickers:
-            raise ConfigValidationError(
-                f"Weight defined for ticker '{w_ticker}' which is not in tickers list"
-            )
-        if not isinstance(w_val, (int, float)):
-            raise ConfigValidationError(
-                f"Weight for '{w_ticker}' must be numeric, got {type(w_val).__name__}"
-            )
-        if w_val < 0:
-            raise ConfigValidationError(
-                f"Weight for '{w_ticker}' must be non-negative, got {w_val}"
-            )
+    for field_name, weights in weight_maps.items():
+        if not weights:
+            continue
+        for w_ticker, w_val in weights.items():
+            if w_ticker not in allowed_tickers:
+                raise ConfigValidationError(
+                    f"{field_name} defined for ticker '{w_ticker}' which is not in tickers list"
+                )
+            if not isinstance(w_val, (int, float)):
+                raise ConfigValidationError(
+                    f"{field_name} for '{w_ticker}' must be numeric, got {type(w_val).__name__}"
+                )
+            if w_val < 0:
+                raise ConfigValidationError(
+                    f"{field_name} for '{w_ticker}' must be non-negative, got {w_val}"
+                )
 
 
 def _validate_windows(cfg: dict[str, Any]) -> None:
@@ -932,6 +971,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
     _validate_percents(cfg)
     _validate_nonnegative(cfg)
     _validate_mappings(cfg)
+    _validate_analysis_mode(cfg)
     _validate_tickers_weights(cfg)
     _validate_windows(cfg)
     _validate_horizon_years(cfg)
@@ -972,7 +1012,10 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
         cash_policy=cfg.get("cash_policy", "allowed_for_scaling"),
         client_profile=cfg.get("client_profile"),
         tickers=list(cfg["tickers"]),
+        analysis_mode=str(cfg.get("analysis_mode", "optimize_from_universe")),
+        current_weights=dict(cfg.get("current_weights") or {}),
         weights=dict(cfg.get("weights") or {}),
+        weights_source=str(cfg.get("_weights_source") or ("config.weights" if cfg.get("weights") else "none")),
         benchmark_base_ticker=cfg["benchmark_base_ticker"],
         rf_source=cfg.get("rf_source"),
         cash_proxy_ticker=cfg.get("cash_proxy_ticker"),

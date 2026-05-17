@@ -8,12 +8,12 @@ fontsize: 10pt
 
 ## Executive Summary
 
-The policy portfolio was reviewed against the current reporting window. CAGR is 5.50%, annualized volatility is 7.60%, maximum drawdown is -19.20%, Sharpe is 0.443, Sortino is 0.620, and market sensitivity is 0.107. Stress diagnostics show: Passed with diagnostic warning; worst scenario loss is -11.90%.
+The policy portfolio was reviewed against the current reporting window. CAGR is 6.30%, annualized volatility is 7.20%, maximum drawdown is -19.20%, Sharpe is 0.574, Sortino is 0.802, and market sensitivity is 0.194. Stress diagnostics show: Passed with diagnostic warning; worst scenario loss is -13.84%.
 
 ## Key Metrics
 
 ```{=latex}
-\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{5.50\%}{CAGR} & \KPIone{7.60\%}{Volatility} & \KPIone{-19.20\%}{Max Drawdown}\\[0.55em] \KPIone{0.443}{Sharpe} & \KPIone{0.620}{Sortino} & \KPIone{0.107}{Market Sensitivity}\end{tabular}\end{center}
+\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{6.30\%}{CAGR} & \KPIone{7.20\%}{Volatility} & \KPIone{-19.20\%}{Max Drawdown}\\[0.55em] \KPIone{0.574}{Sharpe} & \KPIone{0.802}{Sortino} & \KPIone{0.194}{Market Sensitivity}\end{tabular}\end{center}
 ```
 
 ## Implementation Check

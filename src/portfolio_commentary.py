@@ -14,6 +14,7 @@ from typing import Any
 
 import pandas as pd
 
+from src.portfolio_xray import build_portfolio_xray_v2, format_portfolio_xray_text
 from src.stress_factors import BASE_BETA_ROW_ORDER, BETA_ROW_ORDER
 
 # Missing-value tokens for exported commentary (English-only artifacts).
@@ -1479,6 +1480,7 @@ def write_portfolio_commentary(
     portfolio_valid: bool | None,
     analysis_end: str | None = None,
     frequency_disclosure: dict[str, Any] | None = None,
+    analysis_setup: dict[str, Any] | None = None,
 ) -> Path | None:
     """
     Write commentary.txt under output_dir_final using metrics + stress + rc_vol CSV.
@@ -1495,6 +1497,7 @@ def write_portfolio_commentary(
         "stress_report.json",
         "results_csv/portfolio_metrics_10y.csv",
         "results_csv/rc_vol_10y.csv",
+        "run_metadata.json / analysis_setup",
         "report.txt",
     ]
     if output_dir_csv.resolve() != (output_dir_final / "results_csv").resolve():
@@ -1533,6 +1536,14 @@ def write_portfolio_commentary(
 
     ae = analysis_end or _MDASH
     scen_lines = _scenario_snippets(st)
+    xray_summary = build_portfolio_xray_v2(
+        analysis_setup=analysis_setup,
+        weights=None,
+        rc_asset=[{"ticker": ticker, "rc_pct": value} for ticker, value in rc_top],
+        stress_report=st,
+        portfolio_valid=portfolio_valid,
+        portfolio_metrics=pm,
+    )
 
     # Executive summary (3–5 sentences)
     exec_lines = [
@@ -1558,7 +1569,12 @@ def write_portfolio_commentary(
 
     # Sections
     lines: list[str] = []
-    lines.append("Source: summary.txt, stress_report.json, results_csv/portfolio_metrics_10y.csv, results_csv/rc_vol_10y.csv, report.txt")
+    lines.append(
+        "Source: summary.txt, stress_report.json, results_csv/portfolio_metrics_10y.csv, "
+        "results_csv/rc_vol_10y.csv, run_metadata.json / analysis_setup, report.txt"
+    )
+    lines.append("")
+    lines.append(format_portfolio_xray_text(xray_summary))
     lines.append("")
     lines.append("Executive Summary")
     lines.extend(exec_lines)

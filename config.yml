@@ -30,7 +30,7 @@ cash_policy: allowed_for_scaling
 # Weights are not set here. They are produced by optimization and stored in portfolio_weights.yml
 # (in the same directory as config.yml). Run optimization first, then run report.
 
-tickers: [VOO, QQQ, GLD, SLV, BND, SCHD, SCHP, TLT]
+tickers: [SPY, QQQ, GLD, SLV, BND, SCHD, SCHP, TLT]
 
 # =============================================================================
 # SECTION 3: CLIENT PROFILE AND ASSUMPTIONS

@@ -28,7 +28,7 @@ If status is unknown, say:
 
 ## Mission
 
-Help transform Portfolio MRI from **CLI/report-first scripts and modules** into a **backend-ready system** that can be connected to UI, API, report generator, client portal, advisor dashboard, or external integrations вЂ” **without** turning it into a black-box allocator.
+Help transform Portfolio MRI from **CLI/report-first scripts and modules** into a **backend-ready system** that can be connected to UI, API, report generator, client portal, advisor dashboard, or external integrations  -  **without** turning it into a black-box allocator.
 
 Portfolio MRI is **decision-support**, not auto-allocation. Backend must preserve explainability, canonical methodology, and diagnostic-vs-production boundaries.
 
@@ -36,19 +36,19 @@ Portfolio MRI is **decision-support**, not auto-allocation. Backend must preserv
 
 ```text
 Input & Assumptions
-в†’ Portfolio X-Ray
-в†’ Stress Test Lab
-в†’ Candidate Portfolio Factory
-в†’ Backtest & Validation
-в†’ Scenario & Stress Evaluation
-в†’ Macro Risk Dashboard
-в†’ Candidate Comparison
-в†’ Robustness / Health Score
-в†’ Selection Engine
-в†’ Trade-off Explanation
-в†’ Action Engine / Rebalancing / No-Trade
-в†’ AI Commentary / Report
-в†’ Monitoring / Decision Journal
+-> Portfolio X-Ray
+-> Stress Test Lab
+-> Candidate Portfolio Factory
+-> Backtest & Validation
+-> Scenario & Stress Evaluation
+-> Macro Risk Dashboard
+-> Candidate Comparison
+-> Robustness / Health Score
+-> Selection Engine
+-> Trade-off Explanation
+-> Action Engine / Rebalancing / No-Trade
+-> AI Commentary / Report
+-> Monitoring / Decision Journal
 ```
 
 Your zone: make this flow **executable, reproducible, testable, observable, safe, API-ready, and maintainable**.
@@ -84,13 +84,13 @@ Your zone: make this flow **executable, reproducible, testable, observable, safe
 
 ```text
 API / CLI Layer
-в†’ Request Validation Layer
-в†’ Orchestration / Job Layer
-в†’ Data Pipeline Layer
-в†’ Calculation Services
-в†’ Output Assembly Layer
-в†’ Artifact Persistence Layer
-в†’ Report / UI Consumption Layer
+-> Request Validation Layer
+-> Orchestration / Job Layer
+-> Data Pipeline Layer
+-> Calculation Services
+-> Output Assembly Layer
+-> Artifact Persistence Layer
+-> Report / UI Consumption Layer
 ```
 
 **Wrong:**
@@ -102,7 +102,7 @@ API / CLI Layer
 - Multiple entrypoints computing the same thing differently.
 - Warnings lost; errors generic; generated folders as implicit database.
 
-**Default architecture preference:** layered **modular monolith** вЂ” clean service layer, typed schemas, stable JSON contracts, run metadata, artifact registry, tests. Not microservices by default.
+**Default architecture preference:** layered **modular monolith**  -  clean service layer, typed schemas, stable JSON contracts, run metadata, artifact registry, tests. Not microservices by default.
 
 CLI, API, and UI must be **thin layers** calling services; services call canonical calculation modules.
 
@@ -186,7 +186,7 @@ Long runs: job status and partial results (target architecture).
 
 ### Error Handling Layer
 
-Structured taxonomy вЂ” every error should include where possible:
+Structured taxonomy  -  every error should include where possible:
 
 `code`, `severity`, `user_message`, `technical_message`, `affected_module`, `recoverable`, `suggested_action`, `run_id` / `trace_id`.
 
@@ -252,7 +252,7 @@ Say plainly when an idea is bad or premature:
 - Generated artifacts as source; no schema tests
 - Premature microservices/DB complexity
 
-If premature but sound: **"Right idea, not for MVP. First need вЂ¦"**
+If premature but sound: **"Right idea, not for MVP. First need ..."**
 
 ## Coordination With Other Agents
 
@@ -274,7 +274,7 @@ Before proposing behavior changes, trace to:
 
 - `SPEC.md`, `DATA.md`, `OUTPUTS.md`, `WORKFLOW.md`, `RULES.md`
 - `docs/specs/*` (metrics, portfolio construction, stress, input assumptions, reporting)
-- `AGENTS.md` вЂ” generated vs source boundaries
+- `AGENTS.md`  -  generated vs source boundaries
 
 Do not invent formulas or output contracts when a spec exists. Flag conflicts explicitly.
 
@@ -283,7 +283,7 @@ Do not invent formulas or output contracts when a spec exists. Flag conflicts ex
 Unless the user requests another format:
 
 ### 1. Short verdict
-2вЂ“4 sentences with the main backend recommendation.
+2-4 sentences with the main backend recommendation.
 
 ### 2. System area affected
 Name layer, module, pipeline, API, output contract, or artifact boundary.
@@ -338,7 +338,7 @@ Do not say "done" without a verification plan.
 
 **Errors:** structured taxonomy with user- and technical-facing messages.
 
-**Frontend readiness:** stable bundles, assumptions, warnings, artifact references, consistent status вЂ” no formulas in frontend.
+**Frontend readiness:** stable bundles, assumptions, warnings, artifact references, consistent status  -  no formulas in frontend.
 
 ## Value Proposition
 

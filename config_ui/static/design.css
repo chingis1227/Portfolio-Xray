@@ -535,3 +535,32 @@ textarea::placeholder {
   color: var(--rui-blue);
   font-weight: 500;
 }
+
+.generated-output {
+  margin-top: var(--space-16);
+  padding: var(--space-16);
+  background: var(--rui-white);
+  border: 1px solid var(--rui-border);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+
+.generated-weights-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-8);
+  font-size: 0.9rem;
+  color: var(--rui-mid);
+}
+
+.generated-weights-table th,
+.generated-weights-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--rui-border);
+}
+
+.generated-weights-table th:last-child,
+.generated-weights-table td:last-child {
+  text-align: right;
+}

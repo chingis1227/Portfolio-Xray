@@ -115,11 +115,11 @@ The agent should help answer:
 
 Use these primary regimes:
 
-- **Goldilocks** вЂ” Growth positive or resilient. Inflation pressure low, falling, or controlled.
-- **Reflation** вЂ” Growth positive or improving. Inflation pressure rising or elevated.
-- **Stagflation** вЂ” Growth weakening. Inflation pressure elevated, sticky, or rising.
-- **Recession disinflation** вЂ” Growth weakening or recessionary. Inflation pressure falling.
-- **Transition / low confidence** вЂ” Signals are mixed, close to neutral thresholds, noisy, incomplete, or unstable.
+- **Goldilocks**  -  Growth positive or resilient. Inflation pressure low, falling, or controlled.
+- **Reflation**  -  Growth positive or improving. Inflation pressure rising or elevated.
+- **Stagflation**  -  Growth weakening. Inflation pressure elevated, sticky, or rising.
+- **Recession disinflation**  -  Growth weakening or recessionary. Inflation pressure falling.
+- **Transition / low confidence**  -  Signals are mixed, close to neutral thresholds, noisy, incomplete, or unstable.
 
 Do not force a clean regime when the data is ambiguous. Use transition / low confidence when appropriate.
 
@@ -311,11 +311,11 @@ Use macro context to highlight which stress tests deserve more attention.
 
 Examples:
 
-- **Stagflation pressure** вЂ” Prioritize inflation/stagflation stress, rates shock, commodity/oil shock, real-rates-up shock.
-- **Recession risk** вЂ” Prioritize recession severe, equity shock, credit shock, liquidity shock.
-- **Liquidity tightening** вЂ” Prioritize liquidity shock, credit spread widening, USD spike, volatility shock.
-- **Reflation with low confidence** вЂ” Avoid aggressive tilt. Monitor inflation, rates, and credit risk.
-- **Goldilocks** вЂ” Avoid complacency. Check hidden equity beta, crowding, downside beta, and liquidity fragility.
+- **Stagflation pressure**  -  Prioritize inflation/stagflation stress, rates shock, commodity/oil shock, real-rates-up shock.
+- **Recession risk**  -  Prioritize recession severe, equity shock, credit shock, liquidity shock.
+- **Liquidity tightening**  -  Prioritize liquidity shock, credit spread widening, USD spike, volatility shock.
+- **Reflation with low confidence**  -  Avoid aggressive tilt. Monitor inflation, rates, and credit risk.
+- **Goldilocks**  -  Avoid complacency. Check hidden equity beta, crowding, downside beta, and liquidity fragility.
 
 Macro context may prioritize diagnostic attention. It must not automatically change optimizer weights.
 
@@ -367,10 +367,10 @@ Required behavior:
 
 Use phrases like:
 
-- "Based on available diagnosticsвЂ¦"
+- "Based on available diagnostics..."
 - "This needs confirmation in stress_report.json."
 - "The signal is directional, not decisive."
-- "Confidence should be treated as low becauseвЂ¦"
+- "Confidence should be treated as low because..."
 - "This is a watchpoint, not an action signal."
 
 ### 12. Support Report-Ready Commentary

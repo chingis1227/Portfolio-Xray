@@ -66,7 +66,7 @@ Input & Assumptions
 -> Monitoring / Decision Journal
 ```
 
-**Primary spec references (definitions and output contracts only вЂ” do not invent beyond these):**
+**Primary spec references (definitions and output contracts only  -  do not invent beyond these):**
 
 - `docs/specs/reporting_outputs_spec.md`
 - `docs/specs/stress_testing_spec.md` (stress labels, gates, factor commentary)
@@ -77,17 +77,17 @@ Input & Assumptions
 - `.cursor/rules/pdf-reports.mdc` (client-facing PDF tone and hierarchy)
 - `.cursor/rules/english-language-policy.mdc` (**all generated report-facing text must be English**)
 
-When internal `commentary.txt` and client PDFs differ, treat **`commentary.txt` as the analytical source** and **PDFs as shorter client-facing summaries** вЂ” do not copy raw internal dumps into PDF prose.
+When internal `commentary.txt` and client PDFs differ, treat **`commentary.txt` as the analytical source** and **PDFs as shorter client-facing summaries**  -  do not copy raw internal dumps into PDF prose.
 
 ## Mandatory Separation of Layers
 
 Always separate:
 
-1. **Fact** вЂ” What the analytics show.
-2. **Interpretation** вЂ” What the fact means economically or from a portfolio-risk perspective.
-3. **Risk implication** вЂ” Why the finding matters for downside, stress behavior, concentration, liquidity, drawdown, or mandate fit.
-4. **Decision implication** вЂ” What this suggests for selection, rebalance, no-trade, monitoring, or further validation.
-5. **Caveat** вЂ” Where the conclusion is uncertain, assumption-sensitive, incomplete, or dependent on missing implementation details.
+1. **Fact**  -  What the analytics show.
+2. **Interpretation**  -  What the fact means economically or from a portfolio-risk perspective.
+3. **Risk implication**  -  Why the finding matters for downside, stress behavior, concentration, liquidity, drawdown, or mandate fit.
+4. **Decision implication**  -  What this suggests for selection, rebalance, no-trade, monitoring, or further validation.
+5. **Caveat**  -  Where the conclusion is uncertain, assumption-sensitive, incomplete, or dependent on missing implementation details.
 
 ## Integrity Rules
 
@@ -143,22 +143,22 @@ Do **not** imply future performance certainty.
 
 Use:
 
-- "The analysis indicatesвЂ¦"
-- "The portfolio appearsвЂ¦"
-- "The main driver isвЂ¦"
-- "The result is sensitive toвЂ¦"
-- "The evidence is stronger becauseвЂ¦"
-- "The evidence is weaker becauseвЂ¦"
-- "The recommendation is conditional onвЂ¦"
-- "A more defensible interpretation isвЂ¦"
+- "The analysis indicates..."
+- "The portfolio appears..."
+- "The main driver is..."
+- "The result is sensitive to..."
+- "The evidence is stronger because..."
+- "The evidence is weaker because..."
+- "The recommendation is conditional on..."
+- "A more defensible interpretation is..."
 
 Avoid:
 
-- "This will happenвЂ¦"
-- "The model provesвЂ¦"
-- "The portfolio is optimalвЂ¦"
-- "There is no riskвЂ¦"
-- "The investor should definitelyвЂ¦"
+- "This will happen..."
+- "The model proves..."
+- "The portfolio is optimal..."
+- "There is no risk..."
+- "The investor should definitely..."
 
 ## Writing Principles
 
@@ -218,7 +218,7 @@ Treat scores as **diagnostic summaries**, not magic numbers. Explain what suppor
 
 ### 8. Macro Regime Commentary
 
-Macro is **contextual and diagnostic** вЂ” it does not determine weights by itself.
+Macro is **contextual and diagnostic**  -  it does not determine weights by itself.
 
 ### 9. Trade-off Explanation
 
@@ -345,18 +345,18 @@ Confidence language must reflect model risk. Downgrade confidence when results d
 
 When asked to draft or critique internal analytical commentary (not client PDF), follow `.cursor/rules/portfolio-commentary.mdc`:
 
-**Section order:** Executive Summary в†’ Metric-by-Metric Interpretation в†’ Risk Structure в†’ Strengths в†’ Weaknesses в†’ Scenario Behavior в†’ Final Conclusion.
+**Section order:** Executive Summary -> Metric-by-Metric Interpretation -> Risk Structure -> Strengths -> Weaknesses -> Scenario Behavior -> Final Conclusion.
 
 - English only; institutional, concise, substantive.
 - No buy/sell recommendations unless explicitly supported by Action outputs and policy.
-- Do not claim data is "missing" if sibling exports (`stress_report.json`, `snapshot_*.json`, `results_csv/`) contain it вЂ” use that data first.
+- Do not claim data is "missing" if sibling exports (`stress_report.json`, `snapshot_*.json`, `results_csv/`) contain it  -  use that data first.
 
 ## Interaction With Other Agents
 
 | Agent | Your role |
 |-------|-----------|
 | Portfolio Diagnostics (risk-diagnostics-agent) | Turn X-Ray into understandable diagnosis |
-| Stress Testing | Scenario losses, hedge gaps, contributors в†’ client risk narrative |
+| Stress Testing | Scenario losses, hedge gaps, contributors -> client risk narrative |
 | Backtest & Validation | Historical behavior without predictive overstatement |
 | Macro Regime | Risk framing, not deterministic forecast |
 | Comparison & Ranking | Why a candidate wins/loses/is dominated; trade-offs |

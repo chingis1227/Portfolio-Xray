@@ -1,38 +1,37 @@
 ﻿# Production Workflow: Release Gates
 
-Р•РґРёРЅС‹Р№ РѕСЂРёРµРЅС‚РёСЂ: **С‡С‚Рѕ РјРµС€Р°РµС‚ Р·Р°РїРёСЃР°С‚СЊ РІРµСЃР°** Рё **РєР°Рє С‡РёС‚Р°С‚СЊ СЃС‚Р°С‚СѓСЃ** РїРѕСЃР»Рµ `run_optimization.py`. РЎРѕРіР»Р°СЃРѕРІР°РЅРѕ СЃ **`portfolio_construction_policy.md`** (production workflow).
+Single orientation: **when weights may be written** and **how to read status** after `run_optimization.py`. Aligned with **`portfolio_construction_policy.md`** (production workflow).
 
 ---
 
-## 1. Р–С‘СЃС‚РєРёРµ РѕСЃС‚Р°РЅРѕРІС‹ (РІРµСЃР° РЅРµ Р·Р°РїРёСЃР°РЅС‹ РёР»Рё РїСЂРѕРіРѕРЅ РѕР±РѕСЂРІР°РЅ)
+## 1. Hard stops (weights not written or run aborted)
 
-РўРёРїРёС‡РЅС‹Рµ СЃР»СѓС‡Р°Рё (С‚РѕС‡РЅС‹Р№ СЃРїРёСЃРѕРє СЃРј. РІ РєРѕРґРµ `run_optimization.py` Рё СЃРѕРѕР±С‰РµРЅРёСЏС… Р»РѕРіР°):
+Typical cases (exact list in `run_optimization.py` and log messages):
 
-| Gate | РЎРјС‹СЃР» |
+| Gate | Meaning |
 |------|--------|
-| **FAIL_MANDATE** | Р—Р°РґР°РЅ `target_max_drawdown_pct` Рё **СЂРµР°Р»РёР·РѕРІР°РЅРЅР°СЏ** max drawdown РїРѕСЂС‚С„РµР»СЏ РЅР° **РїРѕР»РЅРѕР№ РїРµСЂРµСЃРµРєР°СЋС‰РµР№СЃСЏ** РјРµСЃСЏС‡РЅРѕР№ РёСЃС‚РѕСЂРёРё С…СѓР¶Рµ Р»РёРјРёС‚Р°, Р»РёР±Рѕ РїСЂРѕРІРµСЂРєР° **РЅРµРІРѕР·РјРѕР¶РЅР°** (РјР°Р»Рѕ РґР°РЅРЅС‹С…). Р’ `run_result.json`: `status`, `mandate_check`, РїСѓСЃС‚С‹Рµ РёР»Рё РЅРµС„РёРЅР°Р»СЊРЅС‹Рµ РІРµСЃР° РїРѕ РїРѕР»РёС‚РёРєРµ РїСЂРѕРіРѕРЅР°. |
-| **FAIL_DATA** | РќРµРІР°Р»РёРґРЅС‹Р№ РєРѕРЅС„РёРі, РЅРµС‚ РґР°РЅРЅС‹С…, РЅРµ СЃС‡РёС‚Р°РµС‚СЃСЏ РєРѕРІР°СЂРёР°С†РёСЏ Рё С‚.Рї. |
+| **FAIL_MANDATE** | `target_max_drawdown_pct` is set and **realized** portfolio max drawdown on the **full overlapping** monthly history is worse than the limit, or the check is **not possible** (insufficient data). In `run_result.json`: `status`, `mandate_check`, empty or non-final weights per policy. |
+| **FAIL_DATA** | Invalid config, missing data, FX conversion failure, etc. |
 
-**РЎС‚СЂРµСЃСЃ (`run_stress`):** СЃРёРЅС‚РµС‚РёС‡РµСЃРєРёРµ СЃС†РµРЅР°СЂРёРё, РёСЃС‚РѕСЂРёС‡РµСЃРєРёРµ РѕРєРЅР° 2008/2020/2022, РєРѕРґС‹ **DIAG_*** вЂ” **С‚РѕР»СЊРєРѕ РґРёР°РіРЅРѕСЃС‚РёРєР°**. РћРЅРё **РЅРµ** РѕС‚РјРµРЅСЏСЋС‚ Р·Р°РїРёСЃСЊ РІРµСЃРѕРІ РїСЂРё СѓСЃРїРµС€РЅРѕРј РїСЂРѕС…РѕР¶РґРµРЅРёРё РјР°РЅРґР°С‚Р°. РџР°СЂР°РјРµС‚СЂ `strict_stress_gate` **РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РєР°Рє Р¶С‘СЃС‚РєРёР№ СЃС‚РѕРї** (СѓСЃС‚Р°СЂРµРІС€РµРµ РёРјСЏ РјРѕР¶РµС‚ Р»РѕРіРёСЂРѕРІР°С‚СЊСЃСЏ).
-
+**Stress (`run_stress`):** synthetic scenarios, historical windows 2008/2020/2022, codes **DIAG_*** — **diagnostics only**. They **do not** block weight release when the mandate passes. Parameter `strict_stress_gate` is **not used as a hard stop** (legacy name may still appear in logs).
 
 ---
 
-## 2. РЈСЃРїРµС€РЅР°СЏ Р·Р°РїРёСЃСЊ РІРµСЃРѕРІ Рё СЃС‚Р°С‚СѓСЃС‹
+## 2. Successful weight write and statuses
 
-РљРѕРіРґР° РјР°РЅРґР°С‚ Рё РїСЂРѕС‡РёРµ Р¶С‘СЃС‚РєРёРµ РїСЂРѕРІРµСЂРєРё РїСЂРѕР№РґРµРЅС‹, РІРµСЃР° Р·Р°РїРёСЃС‹РІР°СЋС‚СЃСЏ. Р’ `run_result.json`:
+When the mandate and other hard checks pass, weights are written. In `run_result.json`:
 
-| Status | РЎРјС‹СЃР» |
+| Status | Meaning |
 |--------|--------|
-| **APPROVED** | РќРµС‚ СЃС‚Р°С‚СѓСЃР° **OK_FALLBACK** РѕС‚ РѕРїС‚РёРјРёР·Р°С‚РѕСЂР° (СЃРј. `optimization_status` РІ `run_result.json`). |
-| **OK_FALLBACK** | РћРїС‚РёРјРёР·Р°С‚РѕСЂ РІРµСЂРЅСѓР» **OK_FALLBACK** (Р°Р»СЊС‚РµСЂРЅР°С‚РёРІРЅР°СЏ РІРµС‚РєР° СЂРµС€РµРЅРёСЏ); РїРѕР»Рµ **`rc_breaches`** РІ JSON РѕСЃС‚Р°РІР»РµРЅРѕ РґР»СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё Рё СЃРµР№С‡Р°СЃ **РїСѓСЃС‚РѕРµ** вЂ” RC РЅРµ СЏРІР»СЏРµС‚СЃСЏ РѕРіСЂР°РЅРёС‡РµРЅРёРµРј Р·Р°РїРёСЃРё РІРµСЃРѕРІ. |
+| **APPROVED** | Optimizer did not return **OK_FALLBACK** (see `optimization_status` in `run_result.json`). |
+| **OK_FALLBACK** | Optimizer returned **OK_FALLBACK** (alternative solution branch); field **`rc_breaches`** remains in JSON for compatibility and is currently **empty** — RC is not a release constraint. |
 
-Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕ РІ `violations` РјРѕРіСѓС‚ РїРѕРїР°СЃС‚СЊ РґРёР°РіРЅРѕСЃС‚РёС‡РµСЃРєРёРµ Р·Р°РїРёСЃРё РїРѕ СЃС‚СЂРµСЃСЃСѓ (**`FAIL_STRESS`** / С„Р»Р°Рі СЃ `diagnostic_only`) вЂ” РґР»СЏ PM, **РЅРµ** РєР°Рє Р·Р°РїСЂРµС‚ РЅР° РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ РІРµСЃРѕРІ, РµСЃР»Рё РЅРµС‚ **FAIL_MANDATE**.
+`violations` may also contain stress diagnostics (**`FAIL_STRESS`** / `diagnostic_only` flag) for the PM — **not** a ban on using weights unless **FAIL_MANDATE** is present.
 
 ---
 
-## 3. РљСЂР°С‚РєРѕ
+## 3. Summary
 
-- **Р‘Р»РѕРєРёСЂСѓРµС‚ РІС‹РїСѓСЃРє РІРµСЃРѕРІ:** РїСЂРµР¶РґРµ РІСЃРµРіРѕ **FAIL_MANDATE**, Р° С‚Р°РєР¶Рµ **FAIL_DATA** Рё Р°РЅР°Р»РѕРіРёС‡РЅС‹Рµ РѕС€РёР±РєРё РґР°РЅРЅС‹С…/РєРѕРЅС„РёРіР°.
-- **РќРµ Р±Р»РѕРєРёСЂСѓРµС‚:** СЃС†РµРЅР°СЂРЅС‹Р№ СЃС‚СЂРµСЃСЃ Рё РєРѕРґС‹ **DIAG_***.
-- РџРѕРґСЂРѕР±РЅРѕСЃС‚Рё РїСЂР°РІРёР» РєРѕРЅСЃС‚СЂСѓРєС†РёРё РїРѕСЂС‚С„РµР»СЏ вЂ” **`portfolio_construction_policy.md`**.
+- **Blocks weight release:** first and foremost **FAIL_MANDATE**, plus **FAIL_DATA** and analogous data/config errors.
+- **Does not block:** scenario stress and **DIAG_*** codes.
+- Portfolio construction rules — **`portfolio_construction_policy.md`**.

@@ -14,7 +14,9 @@ from typing import Any
 
 import pandas as pd
 
+from src.analysis_setup import build_analysis_setup
 from src.config_schema import PortfolioConfig
+from src.input_assumptions import build_input_assumptions_from_analysis_setup
 
 REPORT_DECIMALS = 3
 
@@ -109,6 +111,9 @@ def export_run_metadata(
     portfolio_metrics_summary: dict[str, Any] | None = None,
     stress_report: dict[str, Any] | None = None,
     portfolio_valid: bool | None = None,
+    portfolio_weights: dict[str, float] | None = None,
+    weights_source: str | None = None,
+    analysis_setup: dict[str, Any] | None = None,
 ) -> Path:
     """
     Export run metadata to JSON including:
@@ -124,6 +129,21 @@ def export_run_metadata(
     if run_timestamp is None:
         run_timestamp = datetime.now().isoformat()
 
+    if analysis_setup is None:
+        analysis_setup = build_analysis_setup(
+            portfolio_config,
+            portfolio_weights=portfolio_weights,
+            weights_source=weights_source,
+            cash_proxy_ticker=derived_assumptions.get("resolved_cash_proxy_ticker"),
+            rf_source=derived_assumptions.get("resolved_rf_source"),
+            local_benchmark_map=derived_assumptions.get("resolved_local_benchmark_map"),
+            analysis_end=analysis_end,
+            windows_months=derived_assumptions.get("windows_months"),
+            returns_frequency=derived_assumptions.get("returns_frequency"),
+            periods_per_year=derived_assumptions.get("periods_per_year"),
+            run_context="report",
+        )
+
     # Build metadata structure
     metadata = {
         "run_info": {
@@ -131,6 +151,8 @@ def export_run_metadata(
             "analysis_end_date": analysis_end,
         },
         "resolved_config": portfolio_config.get_resolved_config(),
+        "analysis_setup": analysis_setup,
+        "input_assumptions": build_input_assumptions_from_analysis_setup(analysis_setup),
         "active_assumptions": portfolio_config.get_active_assumptions(),
         "derived_assumptions": derived_assumptions,
         "future_constraint_fields": {
@@ -268,8 +290,8 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     max_dd_pct = round(abs(float(max_dd)) * 100, 1) if max_dd is not None else None
     horizon = _cfg_val(cfg, "horizon_years")
     currency = _cfg_val(cfg, "investor_currency", "USD")
-    profile = _cfg_val(cfg, "client_profile") or "вЂ”"
-    status = run_result.get("status", "вЂ”")
+    profile = _cfg_val(cfg, "client_profile") or " - "
+    status = run_result.get("status", " - ")
     next_actions = run_result.get("next_actions") or []
     weights = run_result.get("weights") or {}
     stress_summary = run_result.get("stress_summary") or {}
@@ -277,14 +299,14 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     mandate_check = run_result.get("mandate_check") or {}
 
     lines = [
-        "IPS Summary вЂ” Full Run Results",
+        "IPS Summary  -  Full Run Results",
         "=" * 50,
         "",
         "1. Mandate parameters",
         "-" * 30,
-        "  Target volatility (annual):  %s%%" % (target_vol_pct if target_vol_pct is not None else "вЂ”"),
-        "  Max drawdown limit:          %s%%" % (max_dd_pct if max_dd_pct is not None else "вЂ”"),
-        "  Horizon (years):             %s" % (horizon if horizon is not None else "вЂ”"),
+        "  Target volatility (annual):  %s%%" % (target_vol_pct if target_vol_pct is not None else " - "),
+        "  Max drawdown limit:          %s%%" % (max_dd_pct if max_dd_pct is not None else " - "),
+        "  Horizon (years):             %s" % (horizon if horizon is not None else " - "),
         "  Investor currency:           %s" % currency,
         "  Client profile:              %s" % profile,
         "  Construction:                single-stage max expected return; soft vol/return targets; RC_vol diagnostic-only (reports/stress).",
@@ -302,12 +324,12 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
         % (
             ("%.2f%%" % (float(mandate_check["max_drawdown_realized"]) * 100))
             if mandate_check.get("max_drawdown_realized") is not None
-            else "вЂ”"
+            else " - "
         ),
         "  History window:              %s .. %s (%s months)"
         % (
-            mandate_check.get("history_start") or "вЂ”",
-            mandate_check.get("history_end") or "вЂ”",
+            mandate_check.get("history_start") or " - ",
+            mandate_check.get("history_end") or " - ",
             mandate_check.get("months_used") or 0,
         ),
         "  Note: Only this historical MaxDD vs mandate can prevent weight release.",
@@ -334,17 +356,17 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
 
     lines.append("5. Stress & scenario diagnostics (non-blocking for release)")
     lines.append("-" * 30)
-    lines.append("  Diagnostic status:   %s" % stress_summary.get("diagnostic_status", stress_summary.get("status", "вЂ”")))
+    lines.append("  Diagnostic status:   %s" % stress_summary.get("diagnostic_status", stress_summary.get("status", " - ")))
     dcodes = stress_summary.get("diagnostic_codes") or []
     if dcodes:
         lines.append("  Diagnostic codes:    %s" % ", ".join(str(c) for c in dcodes))
     lines.append(
-        "  Primary code:        %s" % (stress_summary.get("primary_diagnostic_code") or stress_summary.get("fail_reason_code") or "вЂ”")
+        "  Primary code:        %s" % (stress_summary.get("primary_diagnostic_code") or stress_summary.get("fail_reason_code") or " - ")
     )
     worst = stress_summary.get("worst_scenario_loss_pct")
     if worst is not None:
         lines.append("  Worst scenario loss: %.2f%% (informational)" % (float(worst) * 100))
-    lines.append("  Failed scenario:     %s" % (stress_summary.get("failed_scenario") or "вЂ”"))
+    lines.append("  Failed scenario:     %s" % (stress_summary.get("failed_scenario") or " - "))
     lines.append("  Note: Synthetic shocks & episode checks do not prevent weights; review with PM.")
     lines.append("")
 

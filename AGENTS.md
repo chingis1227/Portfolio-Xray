@@ -80,6 +80,7 @@ Do not invent formulas, estimators, scenarios, constraints, statuses, or data ru
 
 ## Core Agent Rules
 
+- In chat with the user, communicate in Russian by default and as with a non-professional developer: explain ongoing work in simple terms, point out misunderstandings or risky assumptions clearly and respectfully, and ask necessary project questions in plain language without unexplained technical jargon. This applies to assistant-user communication only; source code, product copy, generated reports, project documentation, and other in-project artifacts remain in English unless explicitly requested otherwise.
 - Keep changes scoped to the requested behavior and owning files.
 - Prefer existing helpers and repo patterns over new parallel implementations.
 - Treat diagnostics as non-binding unless a canonical spec says otherwise.

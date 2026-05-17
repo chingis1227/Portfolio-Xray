@@ -224,3 +224,57 @@ def test_recession_severe_is_calibrated_from_worst_2008_2020_model_pnl() -> None
     validation = {row["episode"]: row for row in calibration["model_vs_realized"]}
     assert validation["2008"]["model_pnl_pct"] == -0.415
     assert validation["2008"]["realized_pnl_pct"] == 0.0
+
+
+def test_recession_severe_calibration_accepts_mixed_date_index_labels() -> None:
+    idx = pd.date_range("2007-01-31", "2021-12-31", freq="M")
+    monthly_returns = pd.DataFrame({"AAA": [0.0] * len(idx)}, index=idx)
+    factor_returns = pd.DataFrame(
+        {
+            "equity": [-0.30, -0.20],
+            "real_rates": [-0.01, -0.005],
+            "inflation": [-0.003, -0.001],
+            "credit": [0.04, 0.02],
+            "usd": [0.05, 0.03],
+            "commodity": [-0.10, -0.05],
+        },
+        index=pd.Index([pd.Timestamp("2008-10-03"), "2020-03-06"], dtype=object),
+    )
+    tickers = ["AAA"]
+    weights = {"AAA": 1.0}
+    asset_betas = pd.DataFrame(
+        {
+            "beta_eq": [1.0],
+            "beta_rr": [0.0],
+            "beta_inf": [0.0],
+            "beta_credit": [-2.0],
+            "beta_usd": [-0.5],
+            "beta_cmd": [0.1],
+        },
+        index=tickers,
+    )
+    portfolio_betas = {
+        "beta_eq": 1.0,
+        "beta_rr": 0.0,
+        "beta_inf": 0.0,
+        "beta_credit": -2.0,
+        "beta_usd": -0.5,
+        "beta_cmd": 0.1,
+    }
+
+    out = run_stress(
+        tickers=tickers,
+        weights=weights,
+        monthly_returns=monthly_returns,
+        asset_betas=asset_betas,
+        portfolio_betas=portfolio_betas,
+        target_max_drawdown_pct=0.4,
+        cash_proxy_ticker="",
+        factor_returns=factor_returns,
+    )
+
+    calibration = out.get("recession_calibration") or {}
+    assert calibration["status"] == "calibrated"
+    assert calibration["selected_source_episode"] == "2008"
+    assert calibration["episode_shocks"]["2008"]["shock_eq"] == -0.30
+    assert calibration["episode_shocks"]["2020"]["shock_credit"] == 0.02

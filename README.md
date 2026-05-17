@@ -12,6 +12,7 @@ Implemented today:
 
 - CLI/file-driven portfolio optimization through `run_optimization.py`.
 - Portfolio reporting and diagnostics through `run_report.py`.
+- Input and Assumptions Layer V1 through `analysis_mode`, `tickers`, optional `current_weights`, profile/target fields, and technical calculation settings in `config.yml`.
 - Portfolio metrics, dynamic NaN-safe backtesting, and risk contribution diagnostics.
 - Stress diagnostics, stress commentary, factor diagnostics, macro/regime diagnostics, PCA, scenario libraries, and robustness diagnostics.
 - Benchmark/candidate portfolios including Equal Weight, Risk Parity, HRP, Minimum Variance, Maximum Diversification, Minimum CVaR, Robust Mean-Variance, and Scenario-Based Robust Optimization.
@@ -96,6 +97,8 @@ Details live in [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_p
 | `config/historical_stress_proxy_map.yml` | Historical stress fallback proxy map and thresholds. |
 | `assets.yml` | Optional asset metadata. |
 
+Analysis setup and input mode details live in [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md). Default `analysis_mode` is `optimize_from_universe`; use `analysis_mode: analyze_current_weights` plus `current_weights` to diagnose an existing fixed-weight portfolio with `run_report.py`.
+
 Data rules are governed by [DATA.md](DATA.md) and [docs/specs/data_policy_spec.md](docs/specs/data_policy_spec.md).
 
 ## Outputs
@@ -118,12 +121,15 @@ Common artifacts:
 - `run_result.json`
 - `run_metadata.json`
 - `stress_report.json`
+- `portfolio_xray.json`
 - `scenario_library.json`
 - `scenario_library_normalized.json`
 - `commentary.txt`
 - `stress_commentary.txt`
 - CSV diagnostics
 - HTML and PDF-style artifacts where configured
+
+`portfolio_xray.json` is diagnostic-only. It summarizes existing report diagnostics and does not optimize, change weights, change mandate gates, change stress pass/fail status, or select portfolios.
 
 Detailed report/output behavior lives in [docs/specs/reporting_outputs_spec.md](docs/specs/reporting_outputs_spec.md).
 
@@ -143,6 +149,7 @@ Detailed report/output behavior lives in [docs/specs/reporting_outputs_spec.md](
 | `CHANGELOG.md` | Concise history of meaningful project changes. |
 | `ARCHITECTURE.md` | Architecture map, module layers, flows, inputs, outputs, and boundaries. |
 | `PRODUCT.md` | Target product flow, UX behavior, screens, and product modules. |
+| `docs/ROADMAP.md` | Ordered development roadmap, backlog phases, prerequisites, and audit-to-session mapping. |
 | `BUSINESS_VISION.md` | Business vision, users, value proposition, and long-term direction. |
 | `DESIGN.md` | UI, dashboard, HTML, and visual design rules. |
 | `PLANS.md` | ExecPlan protocol for large/risky work. |
@@ -188,6 +195,8 @@ Start with [RULES.md](RULES.md), then use [SPEC.md](SPEC.md) as the implementati
 | Decisions and rationale | [DECISIONS.md](DECISIONS.md) |
 | Change history | [CHANGELOG.md](CHANGELOG.md) |
 | Detailed specs | [docs/specs/README.md](docs/specs/README.md) |
+| Roadmap and backlog | [docs/ROADMAP.md](docs/ROADMAP.md) |
+| Input and assumptions | [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md) |
 | Product direction | [PRODUCT.md](PRODUCT.md), [BUSINESS_VISION.md](BUSINESS_VISION.md), [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) |
 | Planning protocol | [PLANS.md](PLANS.md) |
 | Design rules | [DESIGN.md](DESIGN.md) |

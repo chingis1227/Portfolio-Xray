@@ -164,7 +164,7 @@ For expected returns, check:
 - regime dependence;
 - currency effects;
 - risk premium assumption;
-- sensitivity to В±20вЂ“30%;
+- sensitivity to +/-20-30%;
 - dominance over risk model;
 - look-ahead / survivorship risk.
 
@@ -237,7 +237,7 @@ Flag these issues aggressively:
 - HRP clusters unstable across windows;
 - Risk Parity hides equity, credit, or duration concentration;
 - robust optimizer only wins under one scenario set;
-- factor model has low RВІ;
+- factor model has low R^2;
 - factor regressions have high multicollinearity;
 - regime-specific estimates have insufficient observations;
 - stress conclusions are based on weak or partial data;

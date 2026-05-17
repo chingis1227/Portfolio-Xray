@@ -118,6 +118,30 @@ Term heading
 - Area: optimizer
 - Canonical source: [docs/specs/portfolio_construction_policy.md](docs/specs/portfolio_construction_policy.md)
 
+### Analysis mode
+
+- Definition: Config setting that defines whether the run builds policy weights from a ticker universe or diagnoses an existing fixed-weight portfolio.
+- Area: input and assumptions
+- Canonical source: [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md)
+
+### Analysis setup
+
+- Definition: The resolved runtime contract for portfolio input, analysis portfolio, mandate, assumptions, and validation before downstream analytics consume the setup.
+- Area: input and assumptions
+- Canonical source: [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md)
+
+### Input assumptions
+
+- Definition: Exported/reporting view projected from `analysis_setup`; it is used for reproducibility and display, not as a separate business-logic source.
+- Area: input and assumptions
+- Canonical source: [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md)
+
+### Current weights
+
+- Definition: User-supplied existing-portfolio weights used for diagnostics when `analysis_mode` is `analyze_current_weights`; they are not generated policy weights.
+- Area: input and assumptions
+- Canonical source: [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md)
+
 ### Policy portfolio
 
 - Definition: The main portfolio produced by the primary policy optimization workflow.

@@ -1,26 +1,26 @@
 ﻿---
-description: Always report factor betas with inference (t/p/CI/RВІ)
+description: Always report factor betas with inference (t/p/CI/R^2)
 alwaysApply: true
 ---
 
-# Stress factor betas вЂ” inference is mandatory
+# Stress factor betas - inference is mandatory
 
 When the project estimates **portfolio factor betas** for stress testing / reporting, it must **always** output the accompanying regression diagnostics:
 
 - **t-statistics**
 - **p-values**
 - **confidence intervals** (default 95%)
-- **RВІ** and **adjusted RВІ**
+- **R^2** and **adjusted R^2**
 - **n_obs** (effective aligned observations)
-- **Multicollinearity:** `factor_multicollinearity` inside each `factor_regression_*` вЂ” Pearson corr matrix, all pairwise rho, VIF by factor, cond(correlation matrix), `severity`, `assessment_ru` (see `docs/specs/stress_testing_spec.md` section 8.1)
-- **Serial correlation (residuals):** `serial_correlation_diagnostics` вЂ” DurbinвЂ“Watson and BreuschвЂ“Godfrey LM for default lags (see stress spec В§8.2)
-- **Heteroskedasticity-robust inference:** `hac_inference` вЂ” NeweyвЂ“West (Bartlett) robust SE on the same OLS residuals, with `se_type="hac_newey_west"`, `kernel`, `max_lags`, and arrays for `se`, `t`, `p`, `ci_low`, `ci_high` (see stress spec В§8.3). **All reported p-values and CI in stress commentary and PDFs must be based on this block.**
-- **OOS explainability block:** `factor_beta_shock_oos` вЂ” for historical episodes compare `pnl_real_episode` vs `ОІГ—realized_factor_shock` using 5Y/10Y/rolling-pre betas; include absolute errors and mean absolute error summary (see stress spec В§8.4).
+- **Multicollinearity:** `factor_multicollinearity` inside each `factor_regression_*`  -  Pearson corr matrix, all pairwise rho, VIF by factor, cond(correlation matrix), `severity`, `assessment_ru` (see `docs/specs/stress_testing_spec.md` section 8.1)
+- **Serial correlation (residuals):** `serial_correlation_diagnostics`  -  Durbin-Watson and Breusch-Godfrey LM for default lags (see stress spec Section8.2)
+- **Heteroskedasticity-robust inference:** `hac_inference`  -  Newey-West (Bartlett) robust SE on the same OLS residuals, with `se_type="hac_newey_west"`, `kernel`, `max_lags`, and arrays for `se`, `t`, `p`, `ci_low`, `ci_high` (see stress spec Section8.3). **All reported p-values and CI in stress commentary and PDFs must be based on this block.**
+- **OOS explainability block:** `factor_beta_shock_oos`  -  for historical episodes compare `pnl_real_episode` vs `beta*realized_factor_shock` using 5Y/10Y/rolling-pre betas; include absolute errors and mean absolute error summary (see stress spec Section8.4).
 
 ## Where it must appear
 
 - `**/stress_report.json` must include the inference outputs for each reported beta horizon (at minimum 5Y and 10Y when present).
-- Any вЂњresults / report / summaryвЂќ artifacts that present factor betas must also carry (or reference) the same inference block, not only point estimates.
+- Any "results / report / summary" artifacts that present factor betas must also carry (or reference) the same inference block, not only point estimates.
 
 ## Implementation constraints
 
@@ -31,4 +31,4 @@ When the project estimates **portfolio factor betas** for stress testing / repor
 ## Statistical standard (minimum)
 
 - OLS is acceptable, but inference must be reported.
-- If weekly data are used, consider robust SE (HAC/NeweyвЂ“West) when feasible; if not used, state it in the output metadata.
+- If weekly data are used, consider robust SE (HAC/Newey-West) when feasible; if not used, state it in the output metadata.
