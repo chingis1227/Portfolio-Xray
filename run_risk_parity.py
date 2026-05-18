@@ -38,7 +38,7 @@ def main() -> None:
     try:
         cfg = load_validated_config()
     except ConfigValidationError as e:
-        logger.error(f"Ошибка валидации конфигурации: {e}")
+        logger.error("Configuration validation failed: %s", e)
         raise SystemExit(1)
 
     assets_meta = load_assets_metadata()

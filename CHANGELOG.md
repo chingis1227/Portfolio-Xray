@@ -39,10 +39,28 @@ Category: Removed
 
 Omit empty categories.
 
+## 2026-05-18
+
+### Added
+
+- Closed [post-audit MVP stabilization plan](docs/exec_plans/2026-05-17_post_audit_mvp_stabilization_plan.md) Session 11: Phase 7 (`RM-700`–`RM-710`) complete; broad verification (`462` pytest passes, docs verify, generated-output QA scan).
+- Added file-first MVP workflow orchestration ([run_mvp_workflow.py](run_mvp_workflow.py), [src/mvp_workflow.py](src/mvp_workflow.py), [tests/test_mvp_workflow.py](tests/test_mvp_workflow.py)): thin wrapper for `input -> diagnosis -> comparison -> action`; documented in [docs/operational_runbook.md](docs/operational_runbook.md) (MVP stabilization Session 10).
+- Added offline MVP pipeline smoke test ([tests/test_mvp_pipeline_offline.py](tests/test_mvp_pipeline_offline.py), [tests/mvp_offline_fixtures.py](tests/mvp_offline_fixtures.py)): synthetic snapshots, network guards, and decision-package JSON chain verification; documented in [TESTING.md](TESTING.md) (MVP stabilization Session 09).
+
+### Changed
+
+- Updated [README](README.md) and [ARCHITECTURE](ARCHITECTURE.md) to document supported partial utility UIs (`config_ui/`, `results_dashboard/`) vs full product workspace TBD.
+
+### Fixed
+
+- Removed active issue `KI-2026-05-17-004` after partial utility UI status was synced in top-level docs (MVP stabilization Session 11).
+- Removed active issue `KI-2026-05-17-020` after the offline MVP smoke test landed.
+
 ## 2026-05-17
 
 ### Added
 
+- Added [repeat project MVP readiness audit](docs/audits/2026-05-17_repeat_project_mvp_readiness_audit.md) and active [post-audit MVP stabilization plan](docs/exec_plans/2026-05-17_post_audit_mvp_stabilization_plan.md), with roadmap/register/known-issue handoff for Sessions 01-11.
 - Implemented [src/regret_analysis.py](src/regret_analysis.py): `regret_analysis_v1` JSON/TXT, stress-scenario regret vs best available, reference profiles favored/current/benchmark, Tier B CAGR slice, wired after Pareto in `write_candidate_comparison_outputs`, decision-package Regret section; [tests/test_regret_analysis.py](tests/test_regret_analysis.py) (post-audit Session 19).
 - Added [regret analysis spec](docs/specs/regret_analysis_spec.md): `regret_analysis_v1` contract, stress-scenario regret vs best available, reference profiles favored/current/benchmark, pipeline placement after Pareto (post-audit Session 18); decision `DEC-2026-05-17-011`.
 - Implemented [src/pareto_dominance.py](src/pareto_dominance.py): `pareto_dominance_v1` JSON/TXT, strict Pareto dominance on comparison metrics, wired after assumption sensitivity in `write_candidate_comparison_outputs`, decision-package section; optional `es_95` in comparison metrics; [tests/test_pareto_dominance.py](tests/test_pareto_dominance.py) (post-audit Session 17).
@@ -80,6 +98,13 @@ Omit empty categories.
 
 ### Changed
 
+- Completed MVP stabilization Session 08 (`RM-707`): regenerated representative Main/EW/RP outputs, added generated-output QA scan/test, English EW/RP comparison labels, and FRED CSV fallback when `pandas_datareader` is unavailable.
+- Completed MVP stabilization Session 06 (`RM-705`): time-to-recovery now follows the max-drawdown peak/trough path, counts monthly/trading observations by index position, and treats no-drawdown windows as recovered with `ttr = 0`.
+- Completed MVP stabilization Session 07 (`RM-706`): factor multicollinearity diagnostics now emit `assessment_en`; stress commentary prefers `assessment_en` and legacy-reads `assessment_ru` from older reports only.
+- Completed MVP stabilization Session 05 (`RM-704`): NaN-safe data policy docs now define when `n_months_cash_fallback` is counted after risk-weight redistribution.
+- Completed MVP stabilization Session 04 (`RM-703`): monthly return-panel cache keys now include resolved asset-currency metadata so FX-adjusted cached panels invalidate after `assets.yml` currency changes.
+- Completed MVP stabilization Session 03 (`RM-702`): synced risk-free and cash policy docs/tests so USD/EUR defaults are explicit and unsupported non-USD currencies require configured cash and risk-free sources.
+- Completed MVP stabilization Session 02 (`RM-701`): synced `README.md`, `ARCHITECTURE.md`, and `PRODUCT.md` so implemented file-first factory, current-vs-policy, trade-off/model-risk, assumption sensitivity, Pareto, regret, and decision-package outputs are not described as target/TBD work.
 - Closed post-audit stabilization plan (Session 20, `RM-623`): marked [post-audit ExecPlan](docs/exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md) completed, updated [docs/ROADMAP.md](docs/ROADMAP.md) and [exec plan register](docs/exec_plans/README.md), synced [PRODUCT.md](PRODUCT.md) comparison targets with implemented factory/current-vs-policy/Pareto/regret file-first artifacts.
 - Cross-linked current-vs-policy workflow spec from candidate comparison, input assumptions, selection, action, reporting outputs, OUTPUTS, and spec index (post-audit Session 08).
 - Cleaned source/generator text defaults across optimization/report/PDF/config/docs paths so project artifacts use English and common mojibake markers are removed from source.
@@ -92,6 +117,13 @@ Omit empty categories.
 
 ### Fixed
 
+- Closed `KI-2026-05-17-019` by emitting `assessment_en` from factor multicollinearity diagnostics and keeping `assessment_ru` as legacy-read compatibility in stress commentary only.
+- Closed `KI-2026-05-17-007` after representative output regeneration and automated QA scan passed; opened `KI-2026-05-18-001` for the residual decision-package PDF Pandoc failure.
+- Closed `KI-2026-05-17-018` by adding focused recovered/unrecovered/no-drawdown TTR regressions and correcting monthly/daily recovery semantics.
+- Closed `KI-2026-05-17-017` by counting actual NaN-safe cash fallback months and adding focused regressions for missing-risk residual cash usage.
+- Closed `KI-2026-05-17-016` by adding an asset-currency metadata fingerprint to monthly cache keys and focused regression coverage for currency-metadata invalidation.
+- Closed `KI-2026-05-17-015` by aligning risk-free/cash policy wording with config resolver behavior and adding focused regressions for EUR defaults and unsupported-currency explicit configuration.
+- Closed `KI-2026-05-17-014` by removing top-level implemented-as-TBD wording for the file-first V1 decision artifact chain.
 - Closed `KI-2026-05-17-006` by assigning Selection Engine V1 the unique decision ID `DEC-2026-05-17-006` and updating the session handoff references.
 - Closed `KI-2026-05-17-005` by removing stale top-level wording that described implemented Health Score, Selection/No-Trade, Monitoring, and Decision Journal artifacts as target/TBD.
 - Project-wide documentation hygiene: fixed punctuation/math mojibake in `.cursor/` agents and rules, `docs/`, and engineering Python (`run_report.py`, `src/snapshot.py`, `results_dashboard/app.py`, `src/pdf_reports.py`, `src/config.py`); restored cp1251-mojibake logger text in `run_report.py`.

@@ -149,16 +149,35 @@ def max_drawdown_daily(daily_simple_returns: pd.Series) -> tuple[float, pd.Times
     if len(r) < 2:
         return float("nan"), None
     equity = equity_curve_simple(r)
+    mdd, peak_pos, _ = _max_drawdown_peak_trough_daily(equity)
+    peak_date = equity.index[peak_pos] if peak_pos is not None else None
+    return mdd, peak_date
+
+
+def _max_drawdown_peak_trough_daily(equity: pd.Series) -> tuple[float, int | None, int | None]:
+    """Return max drawdown plus integer positions for its preceding peak and trough."""
+
+    if equity.empty:
+        return float("nan"), None, None
     cummax = equity.cummax()
-    dd = equity / cummax - 1.0
-    return float(dd.min()), cummax.idxmax() if not dd.empty else None
+    dd = equity / cummax - 1
+    dd_values = dd.to_numpy(dtype=float)
+    if len(dd_values) == 0 or np.all(np.isnan(dd_values)):
+        return float("nan"), None, None
+    trough_pos = int(np.nanargmin(dd_values))
+    mdd = float(dd_values[trough_pos])
+    peak_val = float(cummax.iloc[trough_pos])
+    prior_equity = equity.iloc[: trough_pos + 1].to_numpy(dtype=float)
+    peak_candidates = np.flatnonzero(np.isclose(prior_equity, peak_val, rtol=1e-12, atol=1e-12))
+    peak_pos = int(peak_candidates[-1]) if len(peak_candidates) else trough_pos
+    return mdd, peak_pos, trough_pos
 
 
 def time_to_recovery_daily(
     daily_simple_returns: pd.Series,
 ) -> tuple[float | None, bool, str]:
     """
-    Trading days from equity peak to first day on or after peak where equity >= peak level.
+    Trading days from the max-drawdown peak to first post-trough day equity >= peak level.
 
     Uses index positions (business-day index expected).
     """
@@ -167,25 +186,21 @@ def time_to_recovery_daily(
     if len(r) < 2:
         return None, False, "trading_days"
     equity = equity_curve_simple(r)
-    peak_val = float(equity.max())
-    peak_date = equity.idxmax()
-    after = equity.loc[equity.index > peak_date]
-    if after.empty:
+    mdd, peak_pos, trough_pos = _max_drawdown_peak_trough_daily(equity)
+    if peak_pos is None or trough_pos is None or not np.isfinite(mdd):
         return None, False, "trading_days"
-    recovered = bool((after >= peak_val).any())
-    if not recovered:
+    if mdd >= 0:
+        return 0.0, True, "trading_days"
+
+    peak_val = float(equity.iloc[peak_pos])
+    after_trough = equity.iloc[trough_pos + 1 :]
+    if after_trough.empty:
         return None, False, "trading_days"
-    first_recovery_date = after[after >= peak_val].index[0]
-    try:
-        i0 = int(r.index.get_loc(peak_date))
-        if isinstance(i0, slice):
-            i0 = i0.start or 0
-        i1 = int(r.index.get_loc(first_recovery_date))
-        if isinstance(i1, slice):
-            i1 = i1.start or i0
-        ttr = float(i1 - i0)
-    except Exception:
-        ttr = float((first_recovery_date - peak_date).days)
+    recovery_candidates = np.flatnonzero(after_trough.to_numpy(dtype=float) >= peak_val)
+    if len(recovery_candidates) == 0:
+        return None, False, "trading_days"
+    recovery_pos = trough_pos + 1 + int(recovery_candidates[0])
+    ttr = float(recovery_pos - peak_pos)
     return ttr, True, "trading_days"
 
 

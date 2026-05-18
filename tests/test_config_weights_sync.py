@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from src.config import load_validated_config, portfolio_total_tickers
+from src.config import load_validated_config, portfolio_total_tickers, resolve_cash_and_rf
 from src.config_schema import ConfigValidationError
 
 
@@ -50,6 +50,44 @@ def test_load_validated_config_allows_cash_proxy_in_weights_when_not_in_tickers(
     cfg = load_validated_config(config_path=config_path)
     assert cfg.weights == {"VOO": 0.5, "BND": 0.3, "BIL": 0.2}
     assert portfolio_total_tickers(cfg.tickers, cfg.weights, cfg.cash_proxy_ticker) == ["VOO", "BND", "BIL"]
+
+
+def test_load_validated_config_allows_eur_default_cash_proxy_in_weights(tmp_path: Path) -> None:
+    """EUR has a built-in cash proxy, so PEU is allowed as optimizer-generated cash."""
+    config_path = tmp_path / "config.yml"
+    weights_dir = tmp_path / "Main portfolio"
+    weights_dir.mkdir(parents=True, exist_ok=True)
+    weights_path = weights_dir / "portfolio_weights.yml"
+
+    _write_yaml(config_path, {"investor_currency": "EUR", "tickers": ["VGK"], "output_dir_final": "Main portfolio"})
+    _write_yaml(weights_path, {"VGK": 0.8, "PEU": 0.2})
+
+    cfg = load_validated_config(config_path=config_path)
+
+    assert cfg.weights == {"VGK": 0.8, "PEU": 0.2}
+    assert resolve_cash_and_rf(cfg) == ("PEU", "ECB:\N{EURO SIGN}STR")
+
+
+def test_resolve_cash_and_rf_uses_supported_currency_defaults() -> None:
+    assert resolve_cash_and_rf({"investor_currency": "USD", "tickers": ["VOO"]}) == ("BIL", "FRED:DTB3")
+    assert resolve_cash_and_rf({"investor_currency": "EUR", "tickers": ["VGK"]}) == (
+        "PEU",
+        "ECB:\N{EURO SIGN}STR",
+    )
+
+
+def test_resolve_cash_and_rf_requires_explicit_sources_for_unsupported_currency() -> None:
+    with pytest.raises(ConfigValidationError, match="No default for investor_currency=JPY"):
+        resolve_cash_and_rf({"investor_currency": "JPY", "tickers": ["EWJ"]})
+
+    assert resolve_cash_and_rf(
+        {
+            "investor_currency": "JPY",
+            "tickers": ["EWJ"],
+            "cash_proxy_ticker": "JPY_CASH",
+            "risk_free_source": "MANUAL:JPY_CASH_RATE",
+        }
+    ) == ("JPY_CASH", "MANUAL:JPY_CASH_RATE")
 
 
 def test_load_validated_config_raises_on_stale_weights_tickers_mismatch(tmp_path: Path) -> None:

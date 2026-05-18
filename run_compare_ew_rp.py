@@ -117,11 +117,11 @@ def _safe_delta(a: Any, b: Any) -> float | None:
 
 def _fmt(v: Any, pct: bool = False) -> str:
     if v is None:
-        return "—"
+        return " - "
     try:
         f = float(v)
         if np.isnan(f):
-            return "—"
+            return " - "
         if pct:
             return f"{f:.2%}"
         return f"{f:.3f}"
@@ -140,7 +140,7 @@ def _load_variant_payload(project_root: Path, folder_name: str) -> dict[str, Any
 
     if not summary_path.exists() or not snapshot_path.exists() or not weights_path.exists():
         raise FileNotFoundError(
-            f"Не найдены обязательные файлы в {base}. Сначала запусти расчеты EW/RP."
+            f"Required files are missing in {base}. Run the EW and RP portfolio pipelines first."
         )
 
     summary = _read_json(summary_path)
@@ -419,8 +419,8 @@ def main() -> None:
     lines = [
         "Equal-Weight vs Risk-Parity",
         "=" * 90,
-        f"Период расчета: {comparison['period']['window_label']} (window_months={comparison['period']['window_months']}), analysis_end={comparison['period']['analysis_end']}",
-        "Правило дельты: EW - RP",
+        f"Analysis period: {comparison['period']['window_label']} (window_months={comparison['period']['window_months']}), analysis_end={comparison['period']['analysis_end']}",
+        "Delta rule: EW - RP",
         "",
         f"{'Metric':<28} {'EW':>14} {'RP':>14} {'Delta':>14}",
         "-" * 90,
@@ -456,7 +456,7 @@ def main() -> None:
             f"- vol_of_vol: EW={_fmt(eq_vol_stability.get('vol_of_vol'))} | RP={_fmt(rp_vol_stability.get('vol_of_vol'))} | Delta={_fmt(_safe_delta(eq_vol_stability.get('vol_of_vol'), rp_vol_stability.get('vol_of_vol')))}",
             f"- rel_vol_of_vol: EW={_fmt(eq_vol_stability.get('rel_vol_of_vol'))} | RP={_fmt(rp_vol_stability.get('rel_vol_of_vol'))} | Delta={_fmt(_safe_delta(eq_vol_stability.get('rel_vol_of_vol'), rp_vol_stability.get('rel_vol_of_vol')))}",
             "",
-            "RC_vol по каждому активу (EW, RP, Delta):",
+            "RC_vol by asset (EW, RP, Delta):",
         ]
     )
     for t in all_tickers:
@@ -465,7 +465,7 @@ def main() -> None:
         d_t = delta_rc_asset.get(t)
         lines.append(f"- {t}: EW={_fmt(ew_t, pct=True)} | RP={_fmt(rp_t, pct=True)} | Delta={_fmt(d_t, pct=True)}")
 
-    lines.extend(["", "RC_vol топ-5 активов (EW, RP, Delta):"])
+    lines.extend(["", "RC_vol top-5 assets (EW, RP, Delta):"])
     for t in all_top5_tickers:
         lines.append(
             f"- {t}: EW={_fmt(eq_rc_top5.get(t), pct=True)} | RP={_fmt(rp_rc_top5.get(t), pct=True)} | Delta={_fmt(delta_rc_top5.get(t), pct=True)}"
@@ -474,7 +474,7 @@ def main() -> None:
     lines.extend(
         [
             "",
-            "Статусы:",
+            "Statuses:",
             f"- EW stress: {eq.get('stress_status')} ({eq.get('stress_fail_reason')}) | portfolio_valid={eq.get('portfolio_valid')}",
             f"- RP stress: {rp.get('stress_status')} ({rp.get('stress_fail_reason')}) | portfolio_valid={rp.get('portfolio_valid')}",
         ]

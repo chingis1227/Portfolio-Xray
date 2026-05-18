@@ -1629,25 +1629,25 @@ def factor_multicollinearity_diagnostics(
 
         # Severity (aligned with stress_testing_spec.md)
         severity = "unknown"
-        assessment_ru = "N/A: classification was not available."
+        assessment_en = "N/A: classification was not available."
         mv_for_rule = float("inf") if max_vif_is_infinite else float(max_vif_finite)
         cr_for_rule = float(cond_r) if np.isfinite(cond_r) else float("inf")
         if strongest is not None and (np.isfinite(mv_for_rule) or max_vif_is_infinite):
             mr = abs(float(strongest["rho"]))
             if max_vif_is_infinite or mv_for_rule >= 10 or cr_for_rule >= 80 or mr >= 0.95:
                 severity = "high"
-                assessment_ru = (
+                assessment_en = (
                     "High: strong linear relationships between factors; individual beta and p-value "
                     "estimates should be interpreted carefully even when R^2 is high."
                 )
             elif mv_for_rule >= 5 or cr_for_rule >= 30 or mr >= 0.85:
                 severity = "moderate"
-                assessment_ru = (
+                assessment_en = (
                     "Moderate: visible collinearity; beta estimates for individual factors may be less stable."
                 )
             else:
                 severity = "low"
-                assessment_ru = (
+                assessment_en = (
                     "Low: typical VIF and cond(R); collinearity is not dominant, but pairwise correlations still matter."
                 )
 
@@ -1666,7 +1666,7 @@ def factor_multicollinearity_diagnostics(
             "max_vif_factor": max_vif_name,
             "strongest_pair": strongest,
             "severity": severity,
-            "assessment_ru": assessment_ru,
+            "assessment_en": assessment_en,
         }
     except Exception as ex:
         return {**base, "error": str(ex)}

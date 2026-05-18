@@ -143,16 +143,33 @@ def kurtosis_log(monthly_log_returns: pd.Series) -> float:
     return float(stats.kurtosis(lr))
 
 
+def _max_drawdown_peak_trough(equity: pd.Series) -> tuple[float, int | None, int | None]:
+    """Return max drawdown plus integer positions for its preceding peak and trough."""
+
+    if equity.empty:
+        return np.nan, None, None
+    cummax = equity.cummax()
+    dd = equity / cummax - 1
+    dd_values = dd.to_numpy(dtype=float)
+    if len(dd_values) == 0 or np.all(np.isnan(dd_values)):
+        return np.nan, None, None
+    trough_pos = int(np.nanargmin(dd_values))
+    mdd = float(dd_values[trough_pos])
+    peak_val = float(cummax.iloc[trough_pos])
+    prior_equity = equity.iloc[: trough_pos + 1].to_numpy(dtype=float)
+    peak_candidates = np.flatnonzero(np.isclose(prior_equity, peak_val, rtol=1e-12, atol=1e-12))
+    peak_pos = int(peak_candidates[-1]) if len(peak_candidates) else trough_pos
+    return mdd, peak_pos, trough_pos
+
+
 def max_drawdown(monthly_simple_returns: pd.Series) -> tuple[float, pd.Timestamp | None]:
     """MDD from monthly equity curve. dd = equity / cummax(equity) - 1. Returns (mdd, peak_date)."""
     r = monthly_simple_returns.dropna()
     if len(r) < 2:
         return np.nan, None
     equity = equity_curve_simple(r)
-    cummax = equity.cummax()
-    dd = equity / cummax - 1
-    mdd = float(dd.min())
-    peak_date = cummax.idxmax() if not dd.empty else None
+    mdd, peak_pos, _ = _max_drawdown_peak_trough(equity)
+    peak_date = equity.index[peak_pos] if peak_pos is not None else None
     return mdd, peak_date
 
 
@@ -199,26 +216,28 @@ def mandate_max_drawdown_full_history_check(
 
 def time_to_recovery(monthly_simple_returns: pd.Series) -> tuple[float | None, bool]:
     """
-    Months from peak to first month equity >= prior peak. If not recovered: ttr=NaN, recovered=False.
+    Months from the max-drawdown peak to first post-trough month equity >= prior peak.
+    If not recovered: ttr=None, recovered=False. If no drawdown occurs: ttr=0, recovered=True.
     """
     r = monthly_simple_returns.dropna()
     if len(r) < 2:
         return None, False
     equity = equity_curve_simple(r)
-    cummax = equity.cummax()
-    peak_val = cummax.iloc[-1]
-    peak_date = equity.index[equity.values == peak_val][-1] if peak_val > 0 else equity.index[0]
-    # Find first month after peak where equity >= peak_val
-    after_peak = equity.index > peak_date
-    if not np.any(after_peak):
+    mdd, peak_pos, trough_pos = _max_drawdown_peak_trough(equity)
+    if peak_pos is None or trough_pos is None or not np.isfinite(mdd):
         return None, False
-    recovered = np.any(equity.loc[after_peak].values >= peak_val)
-    if not recovered:
+    if mdd >= 0:
+        return 0.0, True
+
+    peak_val = float(equity.iloc[peak_pos])
+    after_trough = equity.iloc[trough_pos + 1 :]
+    if after_trough.empty:
         return None, False
-    first_recovery_idx = np.where(equity.loc[after_peak].values >= peak_val)[0][0]
-    recovery_date = equity.loc[after_peak].index[first_recovery_idx]
-    ttr_months = (recovery_date - peak_date).days / 30.44  # approximate months
-    return float(ttr_months), True
+    recovery_candidates = np.flatnonzero(after_trough.to_numpy(dtype=float) >= peak_val)
+    if len(recovery_candidates) == 0:
+        return None, False
+    recovery_pos = trough_pos + 1 + int(recovery_candidates[0])
+    return float(recovery_pos - peak_pos), True
 
 
 def asset_metrics_one_window(
@@ -285,6 +304,8 @@ def asset_metrics_one_window(
     else:
         beta_loc = beta
     
+    ttr_months, recovered = time_to_recovery(r_slice)
+
     return {
         "ticker": ticker,
         "window_months": window_months,
@@ -298,6 +319,6 @@ def asset_metrics_one_window(
         "skewness": skewness_log(lr_slice),
         "kurtosis": kurtosis_log(lr_slice),
         "max_drawdown": max_drawdown(r_slice)[0],
-        "ttr_months": time_to_recovery(r_slice)[0] or np.nan,
-        "recovered": time_to_recovery(r_slice)[1],
+        "ttr_months": ttr_months if ttr_months is not None else np.nan,
+        "recovered": recovered,
     }

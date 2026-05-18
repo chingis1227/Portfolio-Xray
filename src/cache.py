@@ -41,6 +41,25 @@ def _compute_hash(payload: dict[str, Any]) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:12]
 
 
+def compute_asset_metadata_fingerprint(currency_by_ticker: dict[str, str]) -> str:
+    """
+    Compute a stable fingerprint for asset currency metadata used by FX conversion.
+
+    The monthly panel cache stores FX-adjusted prices and returns, so changing a
+    ticker's resolved currency must produce a different cache key.
+    """
+    payload = {
+        "asset_currency_by_ticker": [
+            {
+                "ticker": str(ticker),
+                "currency": str(currency or "").strip().upper(),
+            }
+            for ticker, currency in sorted(currency_by_ticker.items(), key=lambda item: str(item[0]))
+        ]
+    }
+    return _compute_hash(payload)
+
+
 def compute_daily_cache_key(
     tickers: list[str],
     start_date: str,
@@ -74,6 +93,7 @@ def compute_monthly_cache_key(
     rf_source: str,
     windows_months: list[int],
     data_month: str,
+    asset_metadata_fingerprint: str,
     extra_tickers: list[str] | None = None,
     returns_frequency: str = "monthly",
 ) -> str:
@@ -89,6 +109,7 @@ def compute_monthly_cache_key(
         rf_source: Risk-free rate source
         windows_months: Analysis windows
         data_month: Last completed month YYYY-MM
+        asset_metadata_fingerprint: Fingerprint of resolved per-ticker asset currencies
         extra_tickers: Optional (e.g. local benchmark tickers) so cache differs when they change
     """
     all_tickers = sorted(tickers) + sorted(extra_tickers or [])
@@ -100,6 +121,7 @@ def compute_monthly_cache_key(
         "rf_source": rf_source,
         "windows": sorted(windows_months),
         "data_month": data_month,
+        "asset_metadata_fingerprint": str(asset_metadata_fingerprint),
         "returns_frequency": str(returns_frequency).strip().lower(),
     }
     return _compute_hash(payload)

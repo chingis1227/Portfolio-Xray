@@ -52,7 +52,10 @@ Main commands:
 ```bash
 python run_optimization.py
 python run_report.py
+python run_mvp_workflow.py
 ```
+
+`run_mvp_workflow.py` orchestrates the file-first MVP stages (`input -> diagnosis -> comparison -> action`) by calling existing entrypoints only. See [docs/operational_runbook.md](docs/operational_runbook.md).
 
 Benchmark candidate workflow:
 

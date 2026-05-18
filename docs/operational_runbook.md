@@ -2,6 +2,44 @@
 
 Short guide for when to run optimization, how to handle universe and config changes, and how to read run results. See `docs/specs/production_workflow.md` for status and gate semantics.
 
+## 0. File-First MVP Workflow
+
+The file-first MVP path is **`input -> diagnosis -> comparison -> action`**. It is implemented as separate CLI entrypoints; `run_mvp_workflow.py` is an optional thin orchestrator that calls them in order without changing formulas or optimizer logic.
+
+| Stage | Purpose | Primary commands | Key artifacts |
+| --- | --- | --- | --- |
+| **Input** | Universe, profile, optional `current_weights` | Edit `config.yml`; validate via any `run_*.py` load | `config.yml`, optional `assets.yml` |
+| **Diagnosis** | Policy optimize/report, stress, metrics | `run_optimization.py`, `run_report.py`; optional `run_report.py --materialize-current` | `Main portfolio/run_result.json`, `snapshot_*.json`, `stress_report.json`, `portfolio_xray.json` |
+| **Comparison** | Rank candidates, robustness, health | `run_candidate_factory.py` (optional), `run_compare_variants.py` | `candidate_comparison.json`, `robustness_scorecard.json`, `portfolio_health_score.json` |
+| **Action** | Selection, trades, monitoring, package | Emitted by `run_compare_variants.py` / comparison builder | `selection_decision.json`, `action_plan.json`, `monitoring_diff.json`, `decision_package_summary.json` |
+
+**Recommended orchestration (optional):**
+
+```bash
+python run_mvp_workflow.py --workflow policy-only
+python run_mvp_workflow.py --workflow policy-current
+python run_mvp_workflow.py --workflow full-decision
+python run_mvp_workflow.py --workflow diagnosis-only
+python run_mvp_workflow.py --dry-run
+```
+
+| `--workflow` | When to use |
+| --- | --- |
+| `policy-only` (default) | Fresh policy optimize + report, then comparison/decision package. |
+| `policy-current` | Same as policy-only, plus `--materialize-current` when `current_weights` are set (No-Trade versus current). |
+| `full-decision` | Policy path, optional current sidecar, candidate factory (`default_v1`), comparison via factory `--then-compare`, PDF rebuild. |
+| `diagnosis-only` | Refresh reports from existing weights (`run_report.py`) without re-optimization. |
+
+Manual equivalent for combined current-vs-policy (see [current_vs_policy_workflow_spec.md](specs/current_vs_policy_workflow_spec.md)):
+
+1. `python run_optimization.py`
+2. `python run_report.py` (skipped when optimization runs with report enabled)
+3. `python run_report.py --materialize-current` (when `current_weights` are configured)
+4. `python run_compare_variants.py`
+5. `python rebuild_pdf_reports.py` (optional client PDFs)
+
+`run_optimization.py` already chains `run_report.py` unless `--no-report` is set. Use `--skip-optimize` on `run_mvp_workflow.py` when weights and policy snapshots are already current.
+
 ## 1. When To Re-Run Optimization
 
 Re-run `python run_optimization.py` from the project root when any of the following happens. The optimizer is the single-stage max-return policy optimizer with weight bounds and soft vol/return targets; see `docs/specs/portfolio_construction_policy.md`.

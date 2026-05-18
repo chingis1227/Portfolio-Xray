@@ -16,11 +16,15 @@ The file-first V1 decision pipeline is implemented end-to-end through `write_can
 Do not add new major analytics without an accepted spec and roadmap row. Default next backlog:
 
 ```text
-optional UI decision (RM-500) -> narrow UI slice (RM-501) OR user-directed maintenance (KI-007 refresh, KI-004 docs)
+MVP stabilization (RM-700 -> RM-710) complete as of 2026-05-18 -> next backlog is deferred UI/workspace work
 ```
 
 New diagnostic layers must remain non-binding unless a canonical spec explicitly changes Selection or
 policy release behavior.
+
+Completed plan: [Post-Audit MVP Stabilization Plan](exec_plans/2026-05-17_post_audit_mvp_stabilization_plan.md)
+(Sessions 01-11). No active project-level ExecPlan unless the user starts a new one. UI/workspace
+decisions are the default next backlog unless the user explicitly reprioritizes.
 
 ## Status Values
 
@@ -117,8 +121,8 @@ portfolio logic.
 
 | ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| RM-500 | Planned | Session 21 | Decide the first real product UI surface: static report package, local dashboard, or web app. | Phases 1-4 enough for the chosen surface. | [DESIGN](../DESIGN.md), [PRODUCT](../PRODUCT.md), [ARCHITECTURE](../ARCHITECTURE.md), `config_ui/`, `results_dashboard/` | Decision record and updated product docs if direction changes | Documentation checks; no code unless explicitly requested. |
-| RM-501 | Planned | Session 22 | Implement the first narrow UI slice. | RM-500 and stable artifact contracts. | Chosen UI code, stable artifact specs, [DESIGN](../DESIGN.md) | First UI surface around existing artifacts | UI tests if present; local browser inspection for significant frontend changes. |
+| RM-500 | Deferred | After MVP stabilization | Decide the first real product UI surface: static report package, local dashboard, or web app. | Active MVP stabilization plan closed. | [DESIGN](../DESIGN.md), [PRODUCT](../PRODUCT.md), [ARCHITECTURE](../ARCHITECTURE.md), `config_ui/`, `results_dashboard/` | Decision record and updated product docs if direction changes | Documentation checks; no code unless explicitly requested. |
+| RM-501 | Deferred | After RM-500 | Implement the first narrow UI slice. | RM-500 and stable artifact contracts. | Chosen UI code, stable artifact specs, [DESIGN](../DESIGN.md) | First UI surface around existing artifacts | UI tests if present; local browser inspection for significant frontend changes. |
 
 ## Phase 6: Post-Session Audit And Next Stage
 
@@ -127,7 +131,7 @@ adding larger product surfaces or analytics.
 
 Exit condition (**met 2026-05-17**): stale status docs synced; V1 decision package has report/export
 surface; post-audit analytics implemented; `RM-623` closed. Residual: regenerated-output language QA
-(`KI-2026-05-17-007`); optional Phase 5 UI (`RM-500+`).
+(`KI-2026-05-17-007`); Phase 5 UI (`RM-500+`) is deferred until MVP stabilization closes.
 
 | ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -144,6 +148,30 @@ surface; post-audit analytics implemented; `RM-623` closed. Residual: regenerate
 | RM-621 | Done | Post-audit Sessions 16, 17 | Specify and implement Pareto/Dominance. | RM-620 recommended. | [pareto_dominance.py](../src/pareto_dominance.py), [pareto_dominance_spec.md](specs/pareto_dominance_spec.md) | `pareto_dominance.json` / `.txt` under `output_dir_final` | `tests/test_pareto_dominance.py`; wired after assumption sensitivity. |
 | RM-622 | Done | Post-audit Sessions 18, 19 | Specify and implement Regret Analysis. | RM-620 recommended. | [regret_analysis_spec.md](specs/regret_analysis_spec.md), `src/regret_analysis.py` | `regret_analysis.json` / `.txt` | Session 19: wired after Pareto; `tests/test_regret_analysis.py`. |
 | RM-623 | Done | Post-audit Session 20 | Close the post-audit plan with broad verification and project-memory updates. | RM-610 through RM-622 complete or explicitly deferred. | [post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md), [CHANGELOG](../CHANGELOG.md), [known issues](../KNOWN_ISSUES.md), [decisions](../DECISIONS.md) | Plan marked completed; exec plan register updated; smoke compare refreshed Main portfolio artifacts | `python scripts/verify_docs.py`; 112 focused pipeline tests; `python run_compare_variants.py` smoke. |
+
+## Phase 7: MVP Stabilization After Repeat Audit
+
+Goal: stabilize the file-first MVP before UI/workspace work. This phase keeps existing analytics
+intact and focuses on source-of-truth coherence, data-policy correctness, schema/language cleanup,
+generated-output QA, offline end-to-end verification, and a clearer user flow.
+
+Exit condition: a user or new agent can run the file-first project path and trust the docs, data
+behavior, diagnostics, generated outputs, and tests. UI/workspace decisions stay deferred until this
+phase is closed.
+
+| ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| RM-700 | Done | MVP Session 01 | Create repeat audit handoff and active MVP stabilization ExecPlan. | User-approved roadmap. | [repeat audit](audits/2026-05-17_repeat_project_mvp_readiness_audit.md), [MVP stabilization ExecPlan](exec_plans/2026-05-17_post_audit_mvp_stabilization_plan.md), audit and plan registers, this roadmap, [known issues](../KNOWN_ISSUES.md), [CHANGELOG](../CHANGELOG.md) | Active plan and registered audit evidence | `python scripts/verify_docs.py`. |
+| RM-701 | Done | MVP Session 02 | Sync source-of-truth status docs and remove implemented-as-TBD wording. | RM-700. | [README](../README.md), [ARCHITECTURE](../ARCHITECTURE.md), [SPEC](../SPEC.md), [PRODUCT](../PRODUCT.md), [OUTPUTS](../OUTPUTS.md), spec index | Top-level docs agree on file-first V1 vs future UI/workspace | `python scripts/verify_docs.py`; stale-reference search. |
+| RM-702 | Done | MVP Session 03 | Sync risk-free and cash policy across docs/code/tests. | RM-701 recommended. | [config.py](../src/config.py), [DATA](../DATA.md), input assumptions and metrics specs, tests | USD/EUR defaults documented and tested; unsupported non-USD requires explicit config | `tests/test_config_weights_sync.py` and `tests/test_input_assumptions.py`; `python scripts/verify_docs.py`; stale-policy search. |
+| RM-703 | Done | MVP Session 04 | Add asset metadata fingerprint to monthly data cache key. | RM-702 recommended. | [data_loader.py](../src/data_loader.py), cache/data docs, data tests | Cache invalidates when asset currency metadata changes | `tests/test_data_cache_key.py`; `python scripts/verify_docs.py`. |
+| RM-704 | Done | MVP Session 05 | Fix NaN-safe cash fallback diagnostics. | RM-700. | [portfolio_dynamic.py](../src/portfolio_dynamic.py), data policy docs, NaN-safe tests | `n_months_cash_fallback` counts actual fallback months after redistribution | Focused backtest NaN-safe regression passed. |
+| RM-705 | Done | MVP Session 06 | Harden time-to-recovery metric semantics. | RM-700. | [metrics_asset.py](../src/metrics_asset.py), [metrics_daily.py](../src/metrics_daily.py), [metrics spec](specs/metrics_specification.md), [TESTING](../TESTING.md), tests | TTR uses the peak/trough path of maximum drawdown, preserves no-drawdown `0` recovery, and has focused monthly/daily regressions | `tests/test_metrics_drawdown.py`; adjacent metric/report tests; `python scripts/verify_docs.py`. |
+| RM-706 | Done | MVP Session 07 | Clean source-level schema and language drift. | RM-700. | [stress_factors.py](../src/stress_factors.py), [portfolio_commentary.py](../src/portfolio_commentary.py), [stress testing spec](specs/stress_testing_spec.md), tests | `assessment_en` primary in new multicollinearity outputs; commentary legacy-reads `assessment_ru` | `tests/test_factor_multicollinearity.py`, `tests/test_portfolio_commentary.py`; `python scripts/verify_docs.py`. |
+| RM-707 | Done | MVP Session 08 | Regenerate and QA representative generated outputs after source/schema fixes. | RM-706. | Report runners, `Main portfolio/`, `pdf_md_sources/`, `pdf files/`, `scripts/scan_generated_outputs.py`, tests | Representative outputs regenerated; QA scan passes on text artifacts | `scripts/scan_generated_outputs.py`; `tests/test_generated_output_language.py`; CLI regen. |
+| RM-708 | Done | MVP Session 09 | Add offline end-to-end MVP pipeline smoke test. | RM-703 through RM-706 recommended. | [test_mvp_pipeline_offline.py](../tests/test_mvp_pipeline_offline.py), [mvp_offline_fixtures.py](../tests/mvp_offline_fixtures.py), [TESTING](../TESTING.md) | Synthetic offline test proves key decision-package JSON outputs | `python -m pytest tests/test_mvp_pipeline_offline.py -q`. |
+| RM-709 | Done | MVP Session 10 | Clarify and optionally orchestrate the user flow. | RM-708 recommended. | [operational runbook](operational_runbook.md), [mvp_workflow.py](../src/mvp_workflow.py), [run_mvp_workflow.py](../run_mvp_workflow.py), production workflow spec | Documented `input -> diagnosis -> comparison -> action` path and `run_mvp_workflow.py` wrapper | `tests/test_mvp_workflow.py`; `python scripts/verify_docs.py`. |
+| RM-710 | Done | MVP Session 11 | Close MVP stabilization with broad verification and project-memory cleanup. | RM-701 through RM-709 complete or accepted/deferred. | Whole repo, roadmap, known issues, changelog, active ExecPlan | MVP stabilization plan closed; Phase 7 exit met | `scripts/verify_docs.py`; `scripts/scan_generated_outputs.py`; full pytest (`462 passed`, `--basetemp=tmp/pytest_mvp_session_11`). |
 
 ## Audit Mapping
 
@@ -162,13 +190,14 @@ surface; post-audit analytics implemented; `RM-623` closed. Residual: regenerate
 | AUD-011 | Resolved at V1 decision-artifact level by RM-200 through RM-301; report/UI integration continues under RM-612. |
 | AUD-012 | Resolved via RM-007 (Session 07): `scripts/verify_docs.py` and `tests/test_docs_links.py`. |
 | PSA-001 through PSA-013 | Addressed by RM-610 through RM-623 (post-audit plan closed 2026-05-17); residual items in [KNOWN_ISSUES](../KNOWN_ISSUES.md). |
+| RMA-001 through RMA-008 | Addressed by RM-700 through RM-710; handoff closed in [Post-Audit MVP Stabilization Plan](exec_plans/2026-05-17_post_audit_mvp_stabilization_plan.md) (2026-05-18). |
 
 ## Session Boundary Rule
 
 Post-audit Sessions 02–20 are **closed** (see completed [post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md)).
-For new work, use `docs/ROADMAP.md` backlog rows (default: Phase 5 RM-500+) or a new ExecPlan per
-`PLANS.md` when scope is large or risky. Do not reopen post-audit sessions unless the user explicitly
-requests plan amendments.
+Phase 7 (`RM-700` through `RM-710`) is **closed** as of 2026-05-18. Keep each future project-level
+session in a separate chat unless the user explicitly changes that rule. Do not reopen closed MVP or
+post-audit sessions unless the user explicitly requests plan amendments.
 
 ## Implemented Decision Artifacts
 

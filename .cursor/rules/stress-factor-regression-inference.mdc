@@ -12,7 +12,7 @@ When the project estimates **portfolio factor betas** for stress testing / repor
 - **confidence intervals** (default 95%)
 - **R^2** and **adjusted R^2**
 - **n_obs** (effective aligned observations)
-- **Multicollinearity:** `factor_multicollinearity` inside each `factor_regression_*`  -  Pearson corr matrix, all pairwise rho, VIF by factor, cond(correlation matrix), `severity`, `assessment_ru` (see `docs/specs/stress_testing_spec.md` section 8.1)
+- **Multicollinearity:** `factor_multicollinearity` inside each `factor_regression_*`  -  Pearson corr matrix, all pairwise rho, VIF by factor, cond(correlation matrix), `severity`, `assessment_en` (legacy-read `assessment_ru`; see `docs/specs/stress_testing_spec.md` section 8.1)
 - **Serial correlation (residuals):** `serial_correlation_diagnostics`  -  Durbin-Watson and Breusch-Godfrey LM for default lags (see stress spec Section8.2)
 - **Heteroskedasticity-robust inference:** `hac_inference`  -  Newey-West (Bartlett) robust SE on the same OLS residuals, with `se_type="hac_newey_west"`, `kernel`, `max_lags`, and arrays for `se`, `t`, `p`, `ci_low`, `ci_high` (see stress spec Section8.3). **All reported p-values and CI in stress commentary and PDFs must be based on this block.**
 - **OOS explainability block:** `factor_beta_shock_oos`  -  for historical episodes compare `pnl_real_episode` vs `beta*realized_factor_shock` using 5Y/10Y/rolling-pre betas; include absolute errors and mean absolute error summary (see stress spec Section8.4).

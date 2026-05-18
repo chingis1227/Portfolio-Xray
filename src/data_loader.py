@@ -13,6 +13,7 @@ from typing import Any
 import pandas as pd
 
 from src.cache import (
+    compute_asset_metadata_fingerprint,
     compute_daily_cache_key,
     compute_monthly_cache_key,
     get_daily_cache_path,
@@ -84,6 +85,7 @@ def load_monthly_data_shared(
     currency_by_ticker = {}
     for t in all_tickers:
         currency_by_ticker[t] = get_asset_currency(t, assets_meta, infer_currency_from_ticker(t))
+    asset_metadata_fingerprint = compute_asset_metadata_fingerprint(currency_by_ticker)
 
     max_window = max(windows_months)
     end_date = datetime.now()
@@ -108,6 +110,7 @@ def load_monthly_data_shared(
         rf_source=rf_source,
         windows_months=windows_months,
         data_month=data_month,
+        asset_metadata_fingerprint=asset_metadata_fingerprint,
         extra_tickers=local_bench_tickers if local_bench_tickers else None,
         returns_frequency=rf_mode,
     )
@@ -214,6 +217,8 @@ def load_monthly_data_shared(
                 "rf_source": rf_source,
                 "windows_months": windows_months,
                 "data_month": data_month,
+                "asset_metadata_fingerprint": asset_metadata_fingerprint,
+                "asset_currency_by_ticker": currency_by_ticker,
                 "returns_frequency": rf_mode,
             },
         )

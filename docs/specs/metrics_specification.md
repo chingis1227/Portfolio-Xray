@@ -79,11 +79,13 @@ All variance, covariance, and standard deviation used in metrics must use **samp
 
 ## 5. Risk-free rate
 
-- Default: **FRED DTB3** (3-Month Treasury Bill, secondary market, annual percent).
-- Convert to **monthly effective rate:**
+- Built-in default for **USD**: **FRED DTB3** (3-Month Treasury Bill, secondary market, annual percent).
+- Built-in default for **EUR**: **ECB €STR** (Euro Short-Term Rate, annual percent).
+- Convert the annual percent series to **monthly effective rate:**
   **rf_monthly = (1 + y/100)^(1/12) - 1**
 - Resample to month-end: use **last available value** in each month.
-- If investor currency != USD and no explicit rf source/ticker is provided: **fail fast** (do not guess).
+- If investor currency is not covered by a built-in default and no explicit rf source/ticker is
+  provided: **fail fast** (do not guess).
 
 ---
 
@@ -187,7 +189,10 @@ There are two types of beta - do not confuse them.
 
 ### 6.9 Time to recovery (TTR)
 
-- From **peak** (date of cummax before the drawdown): count **months** until first month where **Equity >= value at that peak**.
+- From the **peak immediately before the maximum drawdown trough**: count **monthly observations**
+  until the first post-trough month where **Equity >= value at that peak**.
+- Count months by return-index position, not by approximating calendar days.
+- If no drawdown occurs in the window: **ttr = 0**, **recovered = True**.
 - If equity never recovers to the prior peak by end of window: **ttr = NaN**, **recovered = False**.
 
 ---
@@ -198,7 +203,8 @@ There are two types of beta - do not confuse them.
   - **w_avail** = target weights only for assets that have **non-NaN** return at t (do **not** renormalize).
   - **w_miss = 1 - sum(w_avail)**.
   - **R_p,t = sum(w_avail_i * R_i,t) + w_miss * R_cash,t**.
-- Default cash proxy: **BIL** for USD. If investor currency != USD, require **explicit** cash proxy in config.
+- Cash-proxy defaults: **BIL** for USD and **PEU** for EUR. If investor currency is not covered by
+  a built-in cash-proxy default, require **explicit** `cash_proxy_ticker` in config.
 
 ---
 

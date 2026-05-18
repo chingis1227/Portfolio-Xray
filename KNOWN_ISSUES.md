@@ -56,32 +56,19 @@ Title: Short title
 
 ## Active Issues
 
-Issue ID: KI-2026-05-17-007
-Title: Source/generator mojibake and English-language normalization remain in user-facing paths
+Issue ID: KI-2026-05-18-001
+Title: Decision package PDF build can fail Pandoc/LaTeX on some analysis-end dates
 
-- Status: in_progress
-- Severity: high
+- Status: open
+- Severity: low
 - Area: reports
-- Risk: Generated reports can still contain stale broken text until they are regenerated from cleaned source strings.
-- Evidence: Session 05 cleaned source/generator text in CLI/log/report/PDF/config/docs paths and targeted source scans now pass for Cyrillic and common mojibake markers. Existing generated output folders were not hand-edited and may still contain older text.
-- Current mitigation: Source and generator defaults are English; generated outputs are not treated as source.
-- Next action: Regenerate representative report/PDF outputs during the reporting/PDF sessions and visually/readably check the result.
-- Source links: [post-session audit](docs/audits/2026-05-17_post_session_deep_system_audit.md), [OUTPUTS](OUTPUTS.md), [TESTING](TESTING.md).
-- Remove when: Targeted source scans pass and regenerated representative outputs no longer show broken or non-English default text.
+- Risk: `Main portfolio_decision_package.pdf` may be missing while other representative PDFs rebuild successfully.
+- Evidence: Session 08 regeneration logged `Pandoc failed for Main portfolio_decision_package.pdf` with `Extra }, or forgotten \endgroup` near the analysis-end date line; `decision_package_summary.txt` and Markdown sidecar remain available.
+- Current mitigation: Text/JSON decision package artifacts are generated; other Main PDFs rebuild successfully.
+- Next action: Harden decision-package Markdown/Pandoc sanitization for LaTeX-special characters in plain summary text.
+- Source links: [pdf_reports.py](src/pdf_reports.py), [decision_package_reporting.py](src/decision_package_reporting.py).
+- Remove when: `Main portfolio_decision_package.pdf` rebuilds successfully on a fresh `run_report.py` without Pandoc errors.
 
-
-Issue ID: KI-2026-05-17-004
-Title: Partial utility UI status is under-described in top-level docs
-
-- Status: planned
-- Severity: medium
-- Area: docs
-- Risk: Contributors may not know whether `config_ui/` and `results_dashboard/` are supported utility surfaces, abandoned experiments, or part of the future full product UI.
-- Evidence: Audit item `AUD-005` reports that partial utility UIs exist while top-level docs mostly state full UI is TBD.
-- Current mitigation: `SPEC.md`, `PRODUCT.md`, and `ARCHITECTURE.md` correctly keep the full product workspace as TBD.
-- Next action: Add consistent wording that partial utility UIs exist for config editing and read-only result viewing, while the full product workspace remains TBD.
-- Source links: [full audit](docs/audits/2026-05-17_full_project_system_audit.md), [README](README.md), [SPEC](SPEC.md), [PRODUCT](PRODUCT.md), [ARCHITECTURE](ARCHITECTURE.md), [DESIGN](DESIGN.md).
-- Remove when: The wording is synced across the owning top-level docs and stale UI-status references are checked.
 
 ## Update Rules
 

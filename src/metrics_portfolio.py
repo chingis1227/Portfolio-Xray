@@ -70,6 +70,8 @@ def portfolio_metrics_one_window(
         else np.nan
     )
 
+    ttr_months, recovered = time_to_recovery(r_slice)
+
     return {
         "window_months": window_months,
         "cagr": cagr_from_equity(r_slice, window_months, periods_per_year=periods_per_year),
@@ -79,6 +81,6 @@ def portfolio_metrics_one_window(
         "beta_portfolio": beta_val,
         "treynor": treynor_val,
         "max_drawdown": max_drawdown(r_slice)[0],
-        "ttr_months": time_to_recovery(r_slice)[0] or np.nan,
-        "recovered": time_to_recovery(r_slice)[1],
+        "ttr_months": ttr_months if ttr_months is not None else np.nan,
+        "recovered": recovered,
     }

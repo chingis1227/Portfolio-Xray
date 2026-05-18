@@ -264,7 +264,8 @@ Portfolio weekly OLS in `factor_regression_5y` / `factor_regression_10y` must in
 | `max_vif`, `max_vif_factor`, `max_vif_is_infinite` | Summary |
 | `strongest_pair` | Pair with largest |rho| |
 | `severity` | `low` \| `moderate` \| `high` \| `unknown`  -  see rules below |
-| `assessment_ru` | Short Russian sentence for reports |
+| `assessment_en` | Short English assessment sentence for reports and commentary |
+| `assessment_ru` | Legacy-read only; older artifacts may still carry this key. Writers emit `assessment_en`. |
 
 **Severity rules (fixed in code, `src/stress_factors.py`):**
 

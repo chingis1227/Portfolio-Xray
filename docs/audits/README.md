@@ -22,7 +22,8 @@ outcome.
 | --- | --- | --- | --- | --- |
 | 2026-05-17 | [Diagnostic Product Concept Alignment Audit](2026-05-17_diagnostic_product_concept_alignment_audit.md) | Historical | [Project Development Session Plan](../exec_plans/2026-05-17_project_development_session_plan.md) | Quick concept-alignment audit supporting the first full project audit. |
 | 2026-05-17 | [Full Project System Audit](2026-05-17_full_project_system_audit.md) | Historical | [Project Development Session Plan](../exec_plans/2026-05-17_project_development_session_plan.md) | Identified the missing ordered decision-support pipeline and led to Sessions 01-20. |
-| 2026-05-17 | [Post-Session Deep System Audit](2026-05-17_post_session_deep_system_audit.md) | Active input | [Post-Audit Stabilization And Analytics Plan](../exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md) | Reviewed the project after Sessions 01-20 and set the stabilization/integration backlog. |
+| 2026-05-17 | [Post-Session Deep System Audit](2026-05-17_post_session_deep_system_audit.md) | Historical | [Post-Audit Stabilization And Analytics Plan](../exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md) | Reviewed the project after Sessions 01-20 and set the stabilization/integration backlog. |
+| 2026-05-17 | [Repeat Project MVP Readiness Audit](2026-05-17_repeat_project_mvp_readiness_audit.md) | Historical | [Post-Audit MVP Stabilization Plan](../exec_plans/2026-05-17_post_audit_mvp_stabilization_plan.md) | Drove Phase 7 (`RM-700`–`RM-710`); plan closed 2026-05-18 after Sessions 01-11. |
 
 ## Maintenance
 

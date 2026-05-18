@@ -14,6 +14,8 @@ from typing import Any
 
 import pandas as pd
 
+CASH_FALLBACK_EPS = 1e-12
+
 
 def dynamic_weights_matrix(
     returns_df: pd.DataFrame,
@@ -43,7 +45,11 @@ def _weights_at_t_global_redist(
 ) -> dict[str, float]:
     """Equal redistribution of missing weight among available risk tickers for this period."""
     out = dict(target_weights)
-    valid = [t for t in risk_tickers if t in row.index and pd.notna(row[t]) and target_weights.get(t, 0) != 0]
+    valid = [
+        t
+        for t in risk_tickers
+        if t in row.index and pd.notna(row[t]) and target_weights.get(t, 0) != 0
+    ]
     missing = [t for t in risk_tickers if t not in valid or target_weights.get(t, 0) == 0]
     w_miss_b = sum(target_weights.get(t, 0) for t in missing)
     if not valid or w_miss_b <= 0:
@@ -58,6 +64,25 @@ def _weights_at_t_global_redist(
         else:
             out[t] = 0.0
     return out
+
+
+def _positive_missing_weight(
+    row: pd.Series,
+    target_weights: dict[str, float],
+    tickers: list[str],
+) -> float:
+    """Return positive target weight for tickers without an observed return in this period."""
+    missing_weight = 0.0
+    for ticker in tickers:
+        try:
+            weight = float(target_weights.get(ticker, 0.0) or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if weight <= CASH_FALLBACK_EPS:
+            continue
+        if ticker not in row.index or pd.isna(row.get(ticker)):
+            missing_weight += weight
+    return missing_weight
 
 
 def portfolio_returns_nan_safe(
@@ -88,12 +113,19 @@ def portfolio_returns_nan_safe(
     for t in common_idx:
         row = returns_df.loc[t] if t in returns_df.index else pd.Series(dtype=float)
         used_redist = False
-        used_fallback = False
+        fallback_candidates = rt if rt else list(target_weights.keys())
+        positive_missing_weight = _positive_missing_weight(row, target_weights, fallback_candidates)
         if rt:
             w_row = _weights_at_t_global_redist(row, target_weights, rt)
             for ticker in rt:
-                if target_weights.get(ticker, 0) and (ticker not in row.index or pd.isna(row.get(ticker))):
-                    others = [x for x in rt if x in row.index and pd.notna(row.get(x)) and target_weights.get(x, 0) != 0]
+                if target_weights.get(ticker, 0) and (
+                    ticker not in row.index or pd.isna(row.get(ticker))
+                ):
+                    others = [
+                        x
+                        for x in rt
+                        if x in row.index and pd.notna(row.get(x)) and target_weights.get(x, 0) != 0
+                    ]
                     if others:
                         used_redist = True
                         break
@@ -108,16 +140,21 @@ def portfolio_returns_nan_safe(
                     w_row[ticker] = 0.0
         if used_redist:
             n_months_redistributed += 1
-        if used_fallback:
-            n_months_cash_fallback += 1
         for k in w_row:
             w_df.loc[t, k] = w_row[k]
         w_miss = 1.0 - sum(w_row.values())
+        cash_available = t in cash_returns.index and pd.notna(cash_returns.loc[t])
+        if (
+            w_miss > CASH_FALLBACK_EPS
+            and positive_missing_weight > CASH_FALLBACK_EPS
+            and cash_available
+        ):
+            n_months_cash_fallback += 1
         r_p_t = 0.0
         for ticker in w_row:
             if ticker in row and pd.notna(row.get(ticker)):
                 r_p_t += w_row[ticker] * row[ticker]
-        if t in cash_returns.index and pd.notna(cash_returns.loc[t]):
+        if cash_available:
             r_p_t += w_miss * cash_returns.loc[t]
         r_p.loc[t] = r_p_t
 

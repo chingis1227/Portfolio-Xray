@@ -129,13 +129,17 @@ Core user-controlled inputs include:
 
 The system resolves:
 
-- cash proxy ticker from `cash_proxy_ticker` or currency defaults
-- risk-free source from `risk_free_source` or currency defaults where supported
+- cash proxy ticker from `cash_proxy_ticker`, otherwise from supported currency defaults: USD uses
+  `BIL` and EUR uses `PEU`
+- risk-free source from `risk_free_source`, otherwise from supported currency defaults: USD uses
+  `FRED:DTB3` and EUR uses ECB `€STR`
 - base benchmark from `base_benchmark_ticker` or currency defaults
 - local benchmark map from config overrides plus defaults
 - profile-derived target values from `config/client_profiles.yml`
 
-Risk-free and benchmark behavior remains governed by `metrics_specification.md`, `DATA.md`, and config resolution code.
+Unsupported investor currencies may still use benchmark defaults, but they must set both
+`cash_proxy_ticker` and `risk_free_source` explicitly. Risk-free and benchmark behavior remains
+governed by `metrics_specification.md`, `DATA.md`, and config resolution code.
 
 ## Ticker Validation Policy
 

@@ -16,16 +16,17 @@ Implemented today:
 - Portfolio metrics, dynamic NaN-safe backtesting, and risk contribution diagnostics.
 - Stress diagnostics, stress commentary, factor diagnostics, macro/regime diagnostics, PCA, scenario libraries, and robustness diagnostics.
 - Benchmark/candidate portfolios including Equal Weight, Risk Parity, HRP, Minimum Variance, Maximum Diversification, Minimum CVaR, Robust Mean-Variance, and Scenario-Based Robust Optimization.
-- Canonical candidate comparison and V1 decision artifacts through `run_compare_variants.py`: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, Action Plan, Monitoring / What Changed, and generated Decision Journal.
+- Candidate Portfolio Factory orchestration through `run_candidate_factory.py`.
+- Canonical candidate comparison and V1 decision artifacts through `run_compare_variants.py`: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, trade-off/model-risk diagnostics, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Action Plan, current-vs-policy status, Monitoring / What Changed, generated Decision Journal, and decision package summary.
 - CSV, JSON, HTML, TXT, and PDF-style generated artifacts.
 - ETF and stock taxonomy validation as annotation/diagnostic layers.
+- Partial utility UIs: `config_ui/` (local config editor) and `results_dashboard/` (read-only results viewer). These are supported utility surfaces, not the full product workspace.
 
 Target/TBD areas:
 
 - Full interactive UI and saved analysis workspaces.
-- Productized report/PDF decision package that summarizes all V1 decision artifacts.
-- Orchestrated Candidate Portfolio Factory and hardened current-vs-policy workflow.
-- Assumption Sensitivity, Pareto / Dominance, Regret Analysis, and unified trade-off/model-risk artifacts.
+- Polished product UI and workspace flows around the existing file-first Candidate Portfolio Factory, current-vs-policy workflow, comparison, and decision package artifacts.
+- More deliberately designed client-facing report packages beyond the current file-first summary/PDF-style surfaces.
 - Advanced UX modules around the implemented file-first V1 artifacts.
 
 ## Main Pipeline
@@ -36,6 +37,16 @@ Run the main production flow in this order:
 python run_optimization.py
 python run_report.py
 ```
+
+Optional single command for the file-first MVP path (`input -> diagnosis -> comparison -> action`):
+
+```bash
+python run_mvp_workflow.py --workflow policy-only
+python run_mvp_workflow.py --workflow policy-current
+python run_mvp_workflow.py --workflow full-decision
+```
+
+See [docs/operational_runbook.md](docs/operational_runbook.md) for stage definitions and manual step equivalents.
 
 Optimization options:
 
@@ -64,6 +75,7 @@ Candidate portfolios are comparison hypotheses, not automatic replacements for t
 Common candidate commands:
 
 ```bash
+python run_candidate_factory.py --then-compare
 python run_equal_weight.py
 python run_equal_weight_by_asset_class.py
 python run_risk_parity.py
@@ -84,7 +96,7 @@ python run_robust_scenario_optimization.py
 python run_robust_scenario_portfolio_report.py
 ```
 
-Details live in [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md), [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md), and [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md).
+Use `run_candidate_factory.py` to orchestrate multiple candidate builders before comparison. Details live in [docs/specs/candidate_factory_spec.md](docs/specs/candidate_factory_spec.md), [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md), [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md), and [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md).
 
 ## Key Inputs
 
@@ -127,9 +139,17 @@ Common artifacts:
 - `robustness_scorecard.json`
 - `portfolio_health_score.json`
 - `selection_decision.json`
+- `tradeoff_explanation.json`
+- `model_risk_diagnostics.json`
+- `assumption_sensitivity.json`
+- `pareto_dominance.json`
+- `regret_analysis.json`
 - `action_plan.json`
+- `current_vs_policy_status.json`
 - `monitoring_diff.json`
 - `decision_journal.json`
+- `decision_package_summary.json`
+- `candidate_factory_run.json`
 - `scenario_library.json`
 - `scenario_library_normalized.json`
 - `commentary.txt`

@@ -305,11 +305,11 @@ Outputs:
 
 Current implementation:
 
-- Multiple candidate builders exist as `run_*.py` scripts.
+- Multiple candidate builders exist as `run_*.py` scripts, and `run_candidate_factory.py` orchestrates configured builder sets before optional comparison.
 
 Target additions:
 
-- Unified candidate selection UI is TBD.
+- Unified candidate selection UI and workspace UX are TBD.
 
 ### 7. Strategy Backtest
 
@@ -436,14 +436,12 @@ User questions answered:
 
 Current implementation:
 
-- Canonical file-first comparison exists through `run_compare_variants.py` and `src/candidate_comparison.py`. It emits `candidate_comparison.json` / `.txt` and downstream V1 artifacts when inputs are available.
+- Canonical file-first comparison exists through `run_compare_variants.py` and `src/candidate_comparison.py`. It emits `candidate_comparison.json` / `.txt` and downstream V1 artifacts when inputs are available, including robustness, health, selection, trade-off/model-risk, assumption sensitivity, Pareto / dominance, regret, action, current-vs-policy status, monitoring, journal, and decision-package summary outputs.
 
 Target additions:
 
-- Full Portfolio Comparison Arena UI is TBD (file-first compare, factory, Pareto, and regret artifacts are implemented).
-- Orchestrated Candidate Portfolio Factory: implemented via [run_candidate_factory.py](run_candidate_factory.py) (unified product UX TBD).
-- Current-vs-policy workflow: implemented file-first via [current_vs_policy.py](src/current_vs_policy.py) and `run_report.py --materialize-current` (product UX TBD).
-- Pareto / dominance and Regret Analysis: implemented as `pareto_dominance.json` and `regret_analysis.json` (UI TBD).
+- Full Portfolio Comparison Arena UI is TBD.
+- Unified product UX around the file-first factory, current-vs-policy, Pareto, regret, and trade-off artifacts remains future product work.
 
 ### 10. Recommendation & Action
 
@@ -488,11 +486,10 @@ User questions answered:
 
 Current implementation:
 
-- V1 Selection/No-Trade and Action artifacts are implemented. `src/selection_engine.py` emits `selection_decision.json` / `.txt`; `src/action_engine.py` emits `action_plan.json` / `.txt`; mechanical rebalance helpers remain available through `src/rebalance.py`.
+- V1 Selection/No-Trade, trade-off/model-risk, and Action artifacts are implemented. `src/selection_engine.py` emits `selection_decision.json` / `.txt`; [tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py) emits `tradeoff_explanation.json` / `.txt` and `model_risk_diagnostics.json` / `.txt`; `src/action_engine.py` emits `action_plan.json` / `.txt`; mechanical rebalance helpers remain available through `src/rebalance.py`.
 
 Target additions:
 
-- Trade-off and model-risk artifacts are implemented in [tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py) per [tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md).
 - Risk improvement per 1% turnover is TBD.
 
 ### 11. Report Export
@@ -521,11 +518,11 @@ Formats:
 
 Current implementation:
 
-- The reporting pipeline exports CSV, JSON, HTML, TXT, and PDF-style artifacts.
+- The reporting pipeline exports CSV, JSON, HTML, TXT, and PDF-style artifacts. After comparison, the file-first decision package summary is implemented as `decision_package_summary.json` / `.txt`, with PDF-facing output where configured.
 
 Target additions:
 
-- More deliberately designed client-facing report packages are TBD.
+- More deliberately designed client-facing report packages and interactive report UX are TBD.
 
 ### 12. Monitoring / What Changed
 
@@ -586,11 +583,11 @@ Current implementation:
 | Portfolio input | Core | File/config-driven today |
 | Mandate and assumptions | Core | Implemented through config/specs |
 | Portfolio X-Ray | Core | Partially implemented through reports |
-| Stress Test Lab | Core | Implemented as reports/diagnostics, UI TBD |
-| Candidate Portfolio Factory | Core | Implemented through scripts, unified UX TBD |
+| Stress Test Lab | Core | Reports/diagnostics available; UI remains future scope |
+| Candidate Portfolio Factory | Core | Implemented through scripts and `run_candidate_factory.py`, unified UX TBD |
 | Strategy Backtest | Core | Implemented in reporting pipeline, UX TBD |
-| Macro Risk Dashboard | Important | Diagnostics implemented, product UI TBD |
-| Candidate Comparison Arena | Core target | Partially implemented through comparison scripts |
+| Macro Risk Dashboard | Important | Diagnostics available; product UI remains future scope |
+| Candidate Comparison Arena | Core target | File-first comparison and downstream decision artifacts available; full UI remains future scope |
 | Portfolio Health Score | Implemented (diagnostic) | [portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md), [src/portfolio_health_score.py](src/portfolio_health_score.py) |
 | Robustness Scorecard | Implemented (diagnostic) | Spec: [robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md); code: `src/robustness_scorecard.py` |
 | Selection Engine | Implemented | [selection_engine_spec.md](docs/specs/selection_engine_spec.md), [src/selection_engine.py](src/selection_engine.py) |

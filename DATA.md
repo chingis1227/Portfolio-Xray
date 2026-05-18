@@ -84,6 +84,8 @@ Detailed field schemas are owned by the relevant config schema, taxonomy specs, 
 - FX daily data may be forward-filled only where the detailed data/FX rules allow it.
 - Monthly returns use effective month-end.
 - `analysis_end` is the last completed effective period before today.
+- Monthly return-panel cache keys must include the resolved per-ticker asset-currency fingerprint;
+  changing an asset currency in `assets.yml` must invalidate FX-adjusted cached panels.
 - Use inner joins for covariance, correlation, beta, excess-return metrics, and RC_vol unless the owning spec says otherwise.
 - Preserve full precision through calculations; round only at final export/report stage.
 - Missing returns are missing data, not zero returns.
@@ -97,10 +99,13 @@ Missing data must be handled explicitly:
 
 - Missing asset returns remain NaN until the owning pipeline applies a documented policy.
 - Dynamic NaN-safe backtests use the documented `w_miss` to cash-proxy behavior.
+- `data_policy.json.n_months_cash_fallback` counts periods where missing positive risk-asset weight
+  could not be placed on observed risk returns after redistribution and therefore used the cash proxy.
 - Young ETFs must not truncate the entire portfolio history to the youngest inception date.
 - Insufficient data should produce clear errors, warnings, fallback metadata, or quality flags.
 - Failed data source calls should not silently produce misleading complete outputs.
-- If investor-currency risk-free data is required and not explicitly available, the pipeline must fail fast rather than guess.
+- If investor-currency risk-free data is required and neither an explicit source nor a supported
+  currency default exists, the pipeline must fail fast rather than guess.
 
 Detailed fallback and reporting behavior is governed by [docs/specs/data_policy_spec.md](docs/specs/data_policy_spec.md), [docs/specs/production_workflow.md](docs/specs/production_workflow.md), and the module-specific specs.
 
@@ -121,9 +126,17 @@ Benchmarks:
 
 Risk-free:
 
-- Default USD risk-free behavior uses FRED `DTB3` where configured by the metrics spec.
+- Supported built-in risk-free defaults are USD -> FRED `DTB3` and EUR -> ECB `€STR`, where
+  configured by the metrics spec.
 - Risk-free series must be converted/resampled to the relevant metric frequency.
-- If investor currency is not USD and no explicit risk-free source exists, the pipeline must not guess.
+- If investor currency is not covered by a built-in default and no explicit risk-free source exists,
+  the pipeline must not guess.
+
+Cash proxies:
+
+- Supported built-in cash-proxy defaults are USD -> `BIL` and EUR -> `PEU`.
+- If investor currency is not covered by a built-in cash-proxy default, `cash_proxy_ticker` must be
+  set explicitly.
 
 ## Factor And Macro Data
 
@@ -158,6 +171,7 @@ Every data-layer change should preserve these standards:
 - Fallbacks must be visible in metadata, warnings, or report fields.
 - Diagnostics must report confidence, coverage, or usability flags where the owning spec requires them.
 - Cache use must not hide stale or failed source behavior.
+- Cache metadata must expose cache-relevant config such as the asset-currency fingerprint when cached panels are written.
 - Generated outputs must not be treated as source-of-truth data.
 - Tests or reproducible checks should cover new parsing, validation, fallback, or alignment behavior.
 

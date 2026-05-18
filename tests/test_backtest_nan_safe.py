@@ -72,6 +72,59 @@ def test_nan_redistribution_global_among_risk_tickers():
     assert w_a >= 0.4 and w_c >= 0.4
     assert abs((w_a + w_c) - 1.0) < 1e-6
     assert diag.get("n_months_redistributed", 0) >= 1
+    assert diag.get("n_months_cash_fallback") == 0
+
+
+def test_dynamic_nan_safe_counts_cash_fallback_when_no_risk_peer_has_data():
+    """If missing risk weight cannot be redistributed, the residual cash month is counted."""
+    dates = pd.date_range("2020-01-31", periods=4, freq="M")
+    returns_df = pd.DataFrame(
+        {
+            "A": [0.01, np.nan, 0.01, 0.01],
+            "B": [0.01, np.nan, 0.01, 0.01],
+        },
+        index=dates,
+    )
+    cash = pd.Series(0.001, index=dates)
+
+    r_p, w_df, diag = portfolio_returns_nan_safe(
+        returns_df,
+        {"A": 0.6, "B": 0.4},
+        cash,
+        risk_tickers=["A", "B"],
+        return_diagnostics=True,
+    )
+
+    t_fallback = dates[1]
+    assert float(w_df.loc[t_fallback, "A"]) == 0.0
+    assert float(w_df.loc[t_fallback, "B"]) == 0.0
+    assert abs(float(r_p.loc[t_fallback]) - 0.001) < 1e-12
+    assert diag.get("n_months_redistributed") == 0
+    assert diag.get("n_months_cash_fallback") == 1
+
+
+def test_dynamic_nan_safe_does_not_count_planned_cash_without_missing_returns():
+    """Intentional underinvestment is not a data-fallback month when all risk returns exist."""
+    dates = pd.date_range("2020-01-31", periods=3, freq="M")
+    returns_df = pd.DataFrame(
+        {
+            "A": [0.01, 0.01, 0.01],
+            "B": [0.02, 0.02, 0.02],
+        },
+        index=dates,
+    )
+    cash = pd.Series(0.001, index=dates)
+
+    _r_p, _w_df, diag = portfolio_returns_nan_safe(
+        returns_df,
+        {"A": 0.5, "B": 0.3},
+        cash,
+        risk_tickers=["A", "B"],
+        return_diagnostics=True,
+    )
+
+    assert diag.get("n_months_redistributed") == 0
+    assert diag.get("n_months_cash_fallback") == 0
 
 
 def test_dynamic_nan_safe_diagnostics():
@@ -132,6 +185,10 @@ if __name__ == "__main__":
     print("test_young_etf_does_not_truncate_history: OK")
     test_nan_redistribution_global_among_risk_tickers()
     print("test_nan_redistribution_global_among_risk_tickers: OK")
+    test_dynamic_nan_safe_counts_cash_fallback_when_no_risk_peer_has_data()
+    print("test_dynamic_nan_safe_counts_cash_fallback_when_no_risk_peer_has_data: OK")
+    test_dynamic_nan_safe_does_not_count_planned_cash_without_missing_returns()
+    print("test_dynamic_nan_safe_does_not_count_planned_cash_without_missing_returns: OK")
     test_dynamic_nan_safe_diagnostics()
     print("test_dynamic_nan_safe_diagnostics: OK")
     test_run_report_default_mode_uses_dynamic_engine()

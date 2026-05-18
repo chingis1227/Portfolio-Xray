@@ -41,6 +41,10 @@ Portfolio return for the month uses weights actually applied: **sum of (weight �
 
 **Meaning:** NaN months do not rewrite history; redistribution spreads missing risk-sleeve weight across peers with data; any remainder is treated as **cash** for that month.
 
+`data_policy.json.n_months_cash_fallback` counts only months where missing positive risk-sleeve
+weight remains after redistribution and is applied to the cash proxy through positive `w_miss`. It
+does not count ordinary explicit or implicit cash exposure when all risk returns are observed.
+
 ---
 
 ## 5. Adding a New ETF = Strategy Update (Not “Improving History”)
@@ -77,6 +81,7 @@ To avoid decisions driven by a “nice” but regime-dependent segment:
 - **Join policy:** inner for cov/RC; outer for single-asset charts.
 - **Inception dates** and **effective inclusion dates** (first full monthly point).
 - **NaN policy:** global_equal_among_risk + `w_miss` to cash proxy.
+- **Fallback diagnostics:** `n_months_redistributed` and `n_months_cash_fallback`.
 - **Baseline vs full** metrics and the **comparison period** (after inception).
 
 ---

@@ -20,6 +20,12 @@ Main flow:
 1. `python run_optimization.py`
 2. `python run_report.py`
 
+Optional MVP orchestration (thin wrapper; same entrypoints):
+
+```bash
+python run_mvp_workflow.py [--workflow policy-only|policy-current|full-decision|diagnosis-only]
+```
+
 Weights are optimizer outputs, not manual user inputs. Manual post-optimization tilt is allowed only through View After Optimization.
 
 Product concept documents guide direction but do not override `SPEC.md`, canonical formulas, stress scenarios, policy logic, data rules, output contracts, or current code behavior.

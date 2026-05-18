@@ -50,7 +50,9 @@ Input & assumptions
 -> Monitoring / Decision Journal
 ```
 
-The current implementation is report-first and CLI/file-driven. A full product UI is TBD.
+The current implementation is report-first and CLI/file-driven. Supported partial utility UIs exist
+(`config_ui/` for config editing, `results_dashboard/` for read-only result viewing). A full product
+workspace UI remains TBD.
 
 ## System Boundaries
 
@@ -65,18 +67,19 @@ The current implementation is report-first and CLI/file-driven. A full product U
 - Stress testing and stress commentary.
 - Factor diagnostics, factor covariance analytics, PCA, macro regime diagnostics, scenario libraries, and regime analytics.
 - Benchmark and alternative portfolio builders.
-- Canonical candidate comparison and V1 decision artifacts: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, Action Plan, Monitoring / What Changed, and generated Decision Journal.
+- Candidate Portfolio Factory orchestration.
+- Canonical candidate comparison and V1 decision artifacts: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, trade-off/model-risk diagnostics, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Action Plan, current-vs-policy status, Monitoring / What Changed, generated Decision Journal, and decision package summary.
 - CSV, JSON, HTML, TXT, and PDF-style report artifacts.
+- Partial utility UIs (`config_ui/`, `results_dashboard/`) for config editing and read-only results.
 
 ### Target / TBD
 
 - Full interactive product UI.
 - User workspace and saved analyses.
 - Portfolio Comparison Arena UI.
-- Assumption Sensitivity dashboard.
-- Pareto / Dominance and Regret Analysis surfaces.
-- Productized report/PDF decision package around the V1 artifacts.
-- Orchestrated Candidate Portfolio Factory and hardened current-vs-policy workflow.
+- Product UX around the existing file-first Candidate Portfolio Factory and current-vs-policy workflow.
+- Dashboard surfaces for implemented diagnostics such as Assumption Sensitivity, Pareto / Dominance, Regret Analysis, and trade-off/model-risk.
+- More polished report/PDF packaging beyond the current file-first decision package summary and PDF-style surfaces.
 - Monitoring UI and user-maintained journal workflow beyond generated V1 artifacts.
 - API / white-label integration.
 
@@ -122,7 +125,8 @@ Main report artifacts
 | `run_optimization.py` | Main policy optimization flow | `portfolio_weights.yml`, `run_result.json`, diagnostics under `output_dir_final` |
 | `run_report.py` | Main report and diagnostics flow | `stress_report.json`, scenario libraries, CSV/JSON/HTML/TXT/PDF-style artifacts |
 | `run_view_after_optimization.py` | Approved post-optimization tactical tilt protocol | Tilted view outputs without changing policy rules outside the protocol |
-| `run_compare_variants.py` | Variant comparison flow | Comparison artifacts across policy and benchmark portfolios |
+| `run_compare_variants.py` | Variant comparison flow | Comparison and downstream decision-package artifacts across policy and benchmark portfolios |
+| `run_candidate_factory.py` | Candidate factory orchestration | `candidate_factory_run.json` / `.txt`, optional comparison tail |
 | `run_rebalance.py` | Rebalance-oriented utility flow | Rebalance outputs where configured |
 
 ## Candidate And Baseline Entry Points
@@ -441,6 +445,7 @@ Build alternative portfolios for comparison.
 Key files:
 
 - `src/portfolio_variants.py`
+- `src/candidate_factory.py`
 - `src/risk_parity_spinu.py`
 - `src/risk_budgeting.py`
 - `src/risk_budgeting_presets.py`
@@ -463,6 +468,7 @@ Outputs:
 
 - Candidate weights.
 - Candidate metadata.
+- `candidate_factory_run.json` / `.txt` when the factory orchestration runs.
 - Variant output folders.
 - Full variant reports where supported.
 
@@ -481,6 +487,7 @@ Key files:
 - `run_report.py`
 - `src/snapshot.py`
 - `src/portfolio_commentary.py`
+- `src/decision_package_reporting.py`
 - `src/pdf_reports.py`
 - `src/io_export.py`
 
@@ -500,6 +507,7 @@ Outputs:
 - HTML snapshots.
 - `commentary.txt`.
 - `stress_commentary.txt`.
+- `decision_package_summary.json` / `.txt` after comparison when decision-package reporting runs.
 - PDF-style report artifacts where configured.
 
 Product priority:
@@ -521,9 +529,15 @@ Key files:
 - `src/robustness_scorecard.py`
 - `src/portfolio_health_score.py`
 - `src/selection_engine.py`
+- `src/tradeoff_and_model_risk.py`
+- `src/assumption_sensitivity.py`
+- `src/pareto_dominance.py`
+- `src/regret_analysis.py`
 - `src/action_engine.py`
+- `src/current_vs_policy.py`
 - `src/monitoring.py`
 - `src/decision_journal.py`
+- `src/decision_package_reporting.py`
 - `src/rebalance.py`
 - `src/view_after_optimization.py`
 
@@ -541,21 +555,25 @@ Outputs:
 - `robustness_scorecard.json` / `.txt`.
 - `portfolio_health_score.json` / `.txt`.
 - `selection_decision.json` / `.txt`.
+- `tradeoff_explanation.json` / `.txt`.
+- `model_risk_diagnostics.json` / `.txt`.
+- `assumption_sensitivity.json` / `.txt`.
+- `pareto_dominance.json` / `.txt`.
+- `regret_analysis.json` / `.txt`.
 - `action_plan.json` / `.txt`.
+- `current_vs_policy_status.json` / `.txt` when current weights are supplied.
 - `monitoring_diff.json` / `.txt`.
 - `decision_journal.json` / `.txt`.
+- `decision_package_summary.json` / `.txt`.
 - Rebalance deltas.
 - Tactical tilt view where approved.
 - Latest/history monitoring and journal copies.
 
 TBD:
 
-- Regret Analysis.
-- Assumption Sensitivity.
-- Pareto / Dominance.
-- Unified trade-off/model-risk artifact.
-- Productized report/PDF decision package.
 - Full Portfolio Comparison Arena UI.
+- Product UI flows around existing comparison and decision-package outputs.
+- More deliberately designed client-facing report packages.
 - Full user-maintained Decision Journal workflow.
 
 Boundary:

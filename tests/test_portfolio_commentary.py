@@ -239,7 +239,7 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
                     "max_vif_factor": "equity",
                     "max_vif_is_infinite": False,
                     "strongest_pair": {"factor_i": "equity", "factor_j": "credit", "rho": -0.71},
-                    "assessment_ru": "Мягкая: тест.",
+                    "assessment_en": "Low: test fixture.",
                     "pairwise_correlations": [
                         {"factor_i": "equity", "factor_j": "credit", "rho": -0.71},
                     ],
@@ -589,6 +589,7 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
         assert "Durbin" in text2
         assert "Breusch" in text2
         assert "VIF" in text2
+        assert "Assessment: Low: test fixture." in text2
         assert "-0.7100" in text2
         assert "Factor beta stability diagnostics" in text2
         assert "Severity distribution warning" in text2

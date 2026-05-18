@@ -234,9 +234,9 @@ def _append_factor_multicollinearity_section(lines: list[str], mc: Any) -> None:
             f"Strongest pairwise correlation: {sp.get('factor_i')} vs {sp.get('factor_j')}, "
             f"rho={_fmt_float(sp.get('rho'), 4)}."
         )
-    assess_en = mc.get("assessment_en")
-    if assess_en:
-        lines.append(f"Assessment: {assess_en}")
+    assess = mc.get("assessment_en") or mc.get("assessment_ru")
+    if assess:
+        lines.append(f"Assessment: {assess}")
     pairs = mc.get("pairwise_correlations") or []
     if isinstance(pairs, list) and pairs:
         lines.append("Pairwise correlations rho (sorted by |rho|):")
