@@ -5,10 +5,36 @@ from typing import Any
 
 from src.client_profiles import get_profile_defaults
 from src.config_schema import PortfolioConfig
-from src.returns_frequency import normalize_returns_frequency
+from src.returns_frequency import (
+    normalize_returns_frequency,
+    resolve_returns_frequencies,
+)
 
 
 ANALYSIS_SETUP_VERSION = "analysis_setup_v1"
+ANALYSIS_SUBJECT_VERSION = "analysis_subject_v1"
+ANALYSIS_SUBJECT_TYPES = ("current_portfolio", "model_portfolio", "universe_baseline")
+
+_SUBJECT_DEFAULT_DISPLAY = {
+    "current_portfolio": "Current Portfolio",
+    "model_portfolio": "Model Portfolio",
+    "universe_baseline": "Universe Baseline",
+}
+_SUBJECT_PORTFOLIO_ROLE = {
+    "current_portfolio": "user_current_portfolio",
+    "model_portfolio": "model_portfolio",
+    "universe_baseline": "equal_weight_initial_baseline",
+}
+_SUBJECT_PRODUCT_INPUT_CASE = {
+    "current_portfolio": "user_current",
+    "model_portfolio": "model_portfolio",
+    "universe_baseline": "universe_only",
+}
+_SUBJECT_RECOMMENDATION_STATUS = {
+    "current_portfolio": "diagnostic_current_portfolio_not_recommendation",
+    "model_portfolio": "diagnostic_model_portfolio_not_recommendation",
+    "universe_baseline": "baseline_not_recommendation",
+}
 
 
 def _round_weight(value: float) -> float:
@@ -62,6 +88,178 @@ def _equal_weight_map(tickers: list[str]) -> dict[str, float]:
     return {ticker: _round_weight(weight) for ticker in clean}
 
 
+def _clean_tickers(tickers: list[str] | None) -> list[str]:
+    out: list[str] = []
+    for raw in tickers or []:
+        ticker = str(raw).strip()
+        if ticker and ticker not in out:
+            out.append(ticker)
+    return out
+
+
+def _default_subject_display(subject_type: str) -> str:
+    return _SUBJECT_DEFAULT_DISPLAY.get(subject_type, "Analysis Subject")
+
+
+def _is_generated_weight_source(source: str | None) -> bool:
+    text = str(source or "")
+    return "portfolio_weights.yml" in text or text.startswith("optimization_result")
+
+
+def _analysis_subject_payload(
+    *,
+    subject_type: str,
+    tickers: list[str],
+    weights: dict[str, float] | None,
+    weight_source: str,
+    resolution_source: str,
+    subject_id: str = "analysis_subject",
+    display_name: str | None = None,
+    notes: list[str] | None = None,
+    warnings: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    blockers: list[dict[str, Any]] = []
+    clean_tickers = _clean_tickers(tickers)
+    resolved_weights = positive_weights(weights)
+    if not clean_tickers:
+        blockers.append(
+            {
+                "code": "ANALYSIS_SUBJECT_TICKERS_EMPTY",
+                "message": "analysis_subject requires at least one ticker.",
+            }
+        )
+    if subject_type in ("current_portfolio", "model_portfolio") and not resolved_weights:
+        blockers.append(
+            {
+                "code": "ANALYSIS_SUBJECT_WEIGHTS_MISSING",
+                "message": f"analysis_subject.type={subject_type!r} requires positive weights.",
+            }
+        )
+    if subject_type == "universe_baseline" and not resolved_weights:
+        resolved_weights = _equal_weight_map(clean_tickers)
+    status = "blocked" if blockers else "resolved"
+    return {
+        "version": ANALYSIS_SUBJECT_VERSION,
+        "id": subject_id or "analysis_subject",
+        "type": subject_type,
+        "display_name": display_name or _default_subject_display(subject_type),
+        "tickers": clean_tickers,
+        "ticker_count": len(clean_tickers),
+        "weights": _rounded_weight_map(resolved_weights),
+        "weight_status": weight_status(resolved_weights),
+        "weight_source": weight_source,
+        "portfolio_role": _SUBJECT_PORTFOLIO_ROLE.get(subject_type, "unresolved"),
+        "product_input_case": _SUBJECT_PRODUCT_INPUT_CASE.get(subject_type, "legacy_or_unknown"),
+        "recommendation_status": _SUBJECT_RECOMMENDATION_STATUS.get(
+            subject_type, "not_recommendation"
+        ),
+        "resolution_source": resolution_source,
+        "resolution_status": status,
+        "blocking_errors": blockers,
+        "warnings": list(warnings or []),
+        "notes": list(notes or []),
+    }
+
+
+def resolve_analysis_subject(
+    cfg: PortfolioConfig,
+    *,
+    portfolio_weights: dict[str, float] | None = None,
+    weights_source: str | None = None,
+    portfolio_role_override: str | None = None,
+) -> dict[str, Any]:
+    """Resolve the portfolio-first subject without loading files or mutating config."""
+    explicit = getattr(cfg, "analysis_subject", {}) or {}
+    if isinstance(explicit, dict) and explicit.get("type"):
+        subject_type = str(explicit.get("type")).strip().lower()
+        tickers = _clean_tickers(explicit.get("tickers") or list(getattr(cfg, "tickers", []) or []))
+        weights = dict(explicit.get("weights") or {})
+        if subject_type == "universe_baseline" and not weights:
+            weights = _equal_weight_map(tickers)
+        source = (
+            "system.analysis_subject.equal_weight_baseline"
+            if subject_type == "universe_baseline"
+            else "config.analysis_subject.weights"
+        )
+        return _analysis_subject_payload(
+            subject_type=subject_type,
+            subject_id=str(explicit.get("id") or "analysis_subject"),
+            display_name=str(explicit.get("display_name") or "").strip() or None,
+            tickers=tickers,
+            weights=weights,
+            weight_source=source,
+            resolution_source="config.analysis_subject",
+            notes=["explicit analysis_subject takes precedence over compatibility inference"],
+        )
+
+    if portfolio_role_override == "user_current_portfolio" and positive_weights(portfolio_weights):
+        return _analysis_subject_payload(
+            subject_type="current_portfolio",
+            tickers=list((portfolio_weights or {}).keys()),
+            weights=portfolio_weights,
+            weight_source=weights_source or "config.current_weights",
+            resolution_source="runtime.portfolio_role_override",
+            notes=["materialized current portfolio sidecar resolved as analysis_subject"],
+        )
+
+    analysis_mode = getattr(cfg, "analysis_mode", "optimize_from_universe")
+    current_weights = dict(getattr(cfg, "current_weights", {}) or {})
+    cfg_weights = dict(getattr(cfg, "weights", {}) or {})
+    effective_source = weights_source or getattr(cfg, "weights_source", "none")
+
+    if analysis_mode == "analyze_current_weights" and positive_weights(current_weights):
+        return _analysis_subject_payload(
+            subject_type="current_portfolio",
+            tickers=list(getattr(cfg, "tickers", []) or []),
+            weights=current_weights,
+            weight_source="config.current_weights",
+            resolution_source="compat.analysis_mode.analyze_current_weights",
+        )
+
+    if (
+        positive_weights(cfg_weights)
+        and str(getattr(cfg, "weights_source", "")) == "config.weights"
+        and not _is_generated_weight_source(effective_source)
+    ):
+        return _analysis_subject_payload(
+            subject_type="model_portfolio",
+            tickers=list(getattr(cfg, "tickers", []) or []),
+            weights=cfg_weights,
+            weight_source="config.weights",
+            resolution_source="compat.legacy_fixed_weights",
+            notes=["legacy fixed report weights are treated as a model_portfolio subject"],
+        )
+
+    warnings: list[dict[str, Any]] = []
+    if analysis_mode == "optimize_from_universe" and positive_weights(current_weights):
+        warnings.append(
+            {
+                "code": "CURRENT_WEIGHTS_CONTEXT_NOT_DEFAULT_SUBJECT",
+                "message": (
+                    "current_weights are available as legacy policy-context input, but without an "
+                    "explicit analysis_subject or materialization override the default subject is the universe baseline."
+                ),
+            }
+        )
+    if _is_generated_weight_source(effective_source):
+        warnings.append(
+            {
+                "code": "GENERATED_POLICY_WEIGHTS_NOT_ANALYSIS_SUBJECT",
+                "message": "Generated policy weights remain legacy report inputs and are not the default analysis_subject.",
+            }
+        )
+
+    return _analysis_subject_payload(
+        subject_type="universe_baseline",
+        tickers=list(getattr(cfg, "tickers", []) or []),
+        weights=_equal_weight_map(list(getattr(cfg, "tickers", []) or [])),
+        weight_source="system.equal_weight_universe_baseline",
+        resolution_source="compat.analysis_mode.optimize_from_universe",
+        warnings=warnings,
+        notes=["default portfolio-first subject inferred from configured ticker universe"],
+    )
+
+
 def _same_number(left: Any, right: Any) -> bool:
     try:
         return abs(float(left) - float(right)) <= 1e-12
@@ -103,7 +301,13 @@ def _effective_covariance_method(cfg: PortfolioConfig) -> str:
     return "sample_covariance"
 
 
-def _product_input_case(analysis_mode: str, current_weights: dict[str, float]) -> str:
+def _product_input_case(
+    analysis_mode: str,
+    current_weights: dict[str, float],
+    analysis_subject: dict[str, Any] | None = None,
+) -> str:
+    if isinstance(analysis_subject, dict) and analysis_subject.get("product_input_case"):
+        return str(analysis_subject["product_input_case"])
     if analysis_mode == "analyze_current_weights" and positive_weights(current_weights):
         return "user_current"
     if analysis_mode == "optimize_from_universe" and positive_weights(current_weights):
@@ -119,6 +323,7 @@ def _analysis_portfolio(
     portfolio_weights: dict[str, float] | None,
     weights_source: str | None,
     cash_proxy_ticker: str | None,
+    analysis_subject: dict[str, Any] | None = None,
     portfolio_role_override: str | None = None,
 ) -> dict[str, Any]:
     analysis_mode = getattr(cfg, "analysis_mode", "optimize_from_universe")
@@ -131,12 +336,37 @@ def _analysis_portfolio(
     notes: list[str] = []
     resolved_weights: dict[str, float] = {}
 
-    if portfolio_role_override == "user_current_portfolio" and positive_weights(effective_weights):
+    if (
+        portfolio_role_override == "analysis_subject"
+        and isinstance(analysis_subject, dict)
+        and analysis_subject.get("resolution_status") == "resolved"
+        and positive_weights(analysis_subject.get("weights") or effective_weights)
+    ):
+        role = str(analysis_subject.get("portfolio_role") or "unresolved")
+        effective_source = str(analysis_subject.get("weight_source") or effective_source)
+        resolved_weights = dict(analysis_subject.get("weights") or effective_weights)
+        recommendation_status = str(
+            analysis_subject.get("recommendation_status") or "not_recommendation"
+        )
+        notes.append("materialized analysis_subject diagnostics sidecar")
+    elif portfolio_role_override == "user_current_portfolio" and positive_weights(effective_weights):
         role = "user_current_portfolio"
         effective_source = weights_source or "config.current_weights"
         resolved_weights = effective_weights
         recommendation_status = "diagnostic_current_portfolio_not_recommendation"
         notes.append("materialized current portfolio sidecar for current-vs-policy comparison")
+    elif (
+        isinstance(analysis_subject, dict)
+        and analysis_subject.get("resolution_status") == "resolved"
+        and str(effective_source).startswith(("config.analysis_subject", "system.analysis_subject"))
+    ):
+        role = str(analysis_subject.get("portfolio_role") or "unresolved")
+        effective_source = str(analysis_subject.get("weight_source") or effective_source)
+        resolved_weights = dict(analysis_subject.get("weights") or {})
+        recommendation_status = str(
+            analysis_subject.get("recommendation_status") or "not_recommendation"
+        )
+        notes.append("analysis_portfolio mirrors explicit analysis_subject for this run")
     elif analysis_mode == "analyze_current_weights" and positive_weights(current_weights):
         role = "user_current_portfolio"
         effective_source = "config.current_weights"
@@ -196,6 +426,7 @@ def _validation_result(
     cfg: PortfolioConfig,
     *,
     product_input_case: str,
+    analysis_subject: dict[str, Any],
     analysis_portfolio: dict[str, Any],
 ) -> dict[str, Any]:
     warnings: list[dict[str, Any]] = []
@@ -240,16 +471,22 @@ def _validation_result(
         )
 
     status = "valid"
+    blocking_errors = list(analysis_subject.get("blocking_errors") or [])
+    for warning in analysis_subject.get("warnings") or []:
+        warnings.append(dict(warning))
+    if blocking_errors:
+        status = "invalid"
     if warnings:
-        status = "valid_with_action_required_warnings"
+        status = "valid_with_action_required_warnings" if status != "invalid" else status
 
     return {
         "status": status,
-        "blocking_errors": [],
+        "blocking_errors": blocking_errors,
         "action_required_warnings": warnings,
         "informational_notices": notices,
         "legacy_current_repo_conflicts": conflicts,
         "product_input_case": product_input_case,
+        "analysis_subject_status": analysis_subject.get("resolution_status"),
         "backward_compatibility": "preserved",
         "no_silent_behavior_change": True,
     }
@@ -276,16 +513,27 @@ def build_analysis_setup(
     config/runtime values and does not load files, fetch data, mutate config, or
     release weights.
     """
-    frequency = normalize_returns_frequency(returns_frequency or getattr(cfg, "returns_frequency", None))
+    freq_res = resolve_returns_frequencies(
+        returns_frequency or getattr(cfg, "returns_frequency", None)
+    )
+    frequency = freq_res.main_metrics
+    configured_frequency = freq_res.configured
     window_values = list(windows_months if windows_months is not None else (cfg.windows_months or []))
     current_weights = dict(getattr(cfg, "current_weights", {}) or {})
     analysis_mode = getattr(cfg, "analysis_mode", "optimize_from_universe")
-    product_input_case = _product_input_case(analysis_mode, current_weights)
+    analysis_subject = resolve_analysis_subject(
+        cfg,
+        portfolio_weights=portfolio_weights,
+        weights_source=weights_source,
+        portfolio_role_override=portfolio_role_override,
+    )
+    product_input_case = _product_input_case(analysis_mode, current_weights, analysis_subject)
     analysis_portfolio = _analysis_portfolio(
         cfg,
         portfolio_weights=portfolio_weights,
         weights_source=weights_source,
         cash_proxy_ticker=cash_proxy_ticker,
+        analysis_subject=analysis_subject,
         portfolio_role_override=portfolio_role_override,
     )
 
@@ -295,6 +543,9 @@ def build_analysis_setup(
         "portfolio_input": {
             "source_analysis_mode": analysis_mode,
             "product_input_case": product_input_case,
+            "analysis_subject_id": analysis_subject.get("id"),
+            "analysis_subject_type": analysis_subject.get("type"),
+            "analysis_subject_resolution_source": analysis_subject.get("resolution_source"),
             "tickers": list(cfg.tickers),
             "selected_ticker_count": len(cfg.tickers),
             "current_weights_provided": bool(positive_weights(current_weights)),
@@ -309,6 +560,7 @@ def build_analysis_setup(
                 "affects_calculations": False,
             },
         },
+        "analysis_subject": analysis_subject,
         "analysis_portfolio": analysis_portfolio,
         "resolved_mandate": {
             "client_profile": cfg.client_profile,
@@ -391,6 +643,8 @@ def build_analysis_setup(
             "primary_window_months": cfg.primary_window_months,
             "secondary_window_months": cfg.secondary_window_months,
             "return_frequency": frequency,
+            "configured_return_frequency": configured_frequency,
+            "main_metrics_return_frequency_forced": freq_res.forced_to_monthly,
             "periods_per_year": periods_per_year,
             "expected_return_method": "historical_baseline",
             "covariance_method": _effective_covariance_method(cfg),
@@ -426,6 +680,7 @@ def build_analysis_setup(
     setup["validation_result"] = _validation_result(
         cfg,
         product_input_case=product_input_case,
+        analysis_subject=analysis_subject,
         analysis_portfolio=analysis_portfolio,
     )
     return setup
@@ -433,7 +688,9 @@ def build_analysis_setup(
 
 __all__ = [
     "ANALYSIS_SETUP_VERSION",
+    "ANALYSIS_SUBJECT_VERSION",
     "build_analysis_setup",
     "positive_weights",
+    "resolve_analysis_subject",
     "weight_status",
 ]

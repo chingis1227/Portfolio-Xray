@@ -5,7 +5,8 @@ RC_vol is computed in reports/stress for diagnostics only, not as an optimizatio
 
 Uses config.yml; client_profile fills target_vol / max_drawdown / return / liquidity when set.
 
-Run from project root: python run_optimization.py [--no-cache] [--write-config] [--config PATH] [--profile NAME] [--no-report]
+Legacy compatibility command from project root:
+python run_optimization.py [--no-cache] [--write-config] [--config PATH] [--profile NAME] [--no-report]
 """
 from __future__ import annotations
 
@@ -48,9 +49,9 @@ from src.returns_frequency import (
     MACRO_REGIME_FREQUENCY_DEFAULT,
     FACTOR_STRESS_FREQUENCY_DEFAULT,
     calendar_window_to_n_periods,
-    compute_frequency_disclosure,
-    normalize_returns_frequency,
+    frequency_disclosure_from_resolution,
     periods_per_year as periods_per_year_for,
+    resolve_returns_frequencies,
 )
 from src.young_etfs_dual_cov import build_dual_covariance_and_mu, per_ticker_young_weight_caps
 
@@ -65,7 +66,12 @@ WARN_MODEL_RISK_YOUNG_WEIGHT = "WARN_MODEL_RISK_YOUNG_WEIGHT"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Portfolio optimization - single-stage max return + liquidity")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Legacy policy optimization compatibility flow - single-stage max return + liquidity. "
+            "Use run_portfolio_review.py for the portfolio-first analysis_subject workflow."
+        )
+    )
     parser.add_argument("--no-cache", action="store_true", help="Ignore cache, download fresh data")
     parser.add_argument("--write-config", action="store_true", help="Write optimized weights to config.yml")
     parser.add_argument("--profile", type=str, default=None, help="Override client_profile")
@@ -954,22 +960,13 @@ def main() -> None:
     try:
         from src.io_export import export_stress_report
 
-        rf_norm = normalize_returns_frequency(returns_frequency)
-        macro_notes = ""
-        if rf_norm != "monthly":
-            macro_notes = (
-                f"Portfolio metrics and covariance use returns_frequency={rf_norm}; factor betas/regression/stress shocks "
-                f"stay {FACTOR_STRESS_FREQUENCY_DEFAULT}; macro regime classifier labels remain {MACRO_REGIME_FREQUENCY_DEFAULT}; "
-                "regime_factor_analytics may use daily returns when daily data loads (see regime_factor_analytics.summary)."
-            )
-        stress_report["frequency_disclosure"] = compute_frequency_disclosure(
-            returns_frequency=rf_norm,
-            optimization_frequency=rf_norm,
+        freq_res = resolve_returns_frequencies(returns_frequency)
+        stress_report["frequency_disclosure"] = frequency_disclosure_from_resolution(
+            freq_res,
             factor_stress_frequency=FACTOR_STRESS_FREQUENCY_DEFAULT,
             macro_regime_frequency=MACRO_REGIME_FREQUENCY_DEFAULT,
-            macro_regime_frequency_notes=(macro_notes or None),
         )
-        stress_report["periods_per_year"] = int(periods_per_year_for(rf_norm))
+        stress_report["periods_per_year"] = int(periods_per_year_for(freq_res.main_metrics))
 
         export_stress_report(stress_report, _stress_out)
     except Exception as e:

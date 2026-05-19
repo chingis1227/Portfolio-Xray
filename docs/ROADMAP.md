@@ -13,18 +13,25 @@ spec and implementation are updated.
 
 Post-audit stabilization (RM-610 through RM-623, Sessions 02–20) is **complete** as of 2026-05-17.
 The file-first V1 decision pipeline is implemented end-to-end through `write_candidate_comparison_outputs`.
-Do not add new major analytics without an accepted spec and roadmap row. Default next backlog:
+Do not add new major analytics without an accepted spec and roadmap row. Current active backlog:
 
 ```text
-MVP stabilization (RM-700 -> RM-710) complete as of 2026-05-18 -> next backlog is deferred UI/workspace work
+Post-portfolio-first stabilization (RM-900 -> RM-911) active as of 2026-05-19
 ```
 
 New diagnostic layers must remain non-binding unless a canonical spec explicitly changes Selection or
 policy release behavior.
 
-Completed plan: [Post-Audit MVP Stabilization Plan](exec_plans/2026-05-17_post_audit_mvp_stabilization_plan.md)
-(Sessions 01-11). No active project-level ExecPlan unless the user starts a new one. UI/workspace
-decisions are the default next backlog unless the user explicitly reprioritizes.
+Completed plan: [Portfolio-First Transition Plan](exec_plans/2026-05-18_portfolio_first_transition_plan.md)
+(Sessions 01-09). Its source-of-truth correction is that the main product flow starts from
+`analysis_subject` diagnostics, not generated policy optimization. The old policy engine is preserved
+as legacy or archived infrastructure and is excluded from the default portfolio-first path unless a
+future canonical spec reactivates it.
+
+Active plan: [Post-Portfolio-First Stabilization Plan](exec_plans/2026-05-19_post_portfolio_first_stabilization_plan.md)
+(Sessions 00-11). It stabilizes the implemented portfolio-first path before any UI/product-layer work:
+subject metadata trust first, candidate freshness second, then decision reliability, methodology,
+macro/regime diagnostics, monitoring, and report/PDF polish.
 
 ## Status Values
 
@@ -173,6 +180,56 @@ phase is closed.
 | RM-709 | Done | MVP Session 10 | Clarify and optionally orchestrate the user flow. | RM-708 recommended. | [operational runbook](operational_runbook.md), [mvp_workflow.py](../src/mvp_workflow.py), [run_mvp_workflow.py](../run_mvp_workflow.py), production workflow spec | Documented `input -> diagnosis -> comparison -> action` path and `run_mvp_workflow.py` wrapper | `tests/test_mvp_workflow.py`; `python scripts/verify_docs.py`. |
 | RM-710 | Done | MVP Session 11 | Close MVP stabilization with broad verification and project-memory cleanup. | RM-701 through RM-709 complete or accepted/deferred. | Whole repo, roadmap, known issues, changelog, active ExecPlan | MVP stabilization plan closed; Phase 7 exit met | `scripts/verify_docs.py`; `scripts/scan_generated_outputs.py`; full pytest (`462 passed`, `--basetemp=tmp/pytest_mvp_session_11`). |
 
+## Phase 8: Portfolio-First Workflow Transition
+
+Goal: correct the main workflow contract so the project starts from the user-selected
+`analysis_subject`, diagnoses that portfolio first, and only then generates alternatives for
+comparison. The old policy optimizer remains available as legacy or archived infrastructure, but it
+is not the default starting portfolio and is not a default candidate in this phase.
+
+Exit condition: the main file-first workflow can resolve `analysis_subject`, materialize its
+diagnostics before any candidate generation, compare that subject against allowed candidates, and emit
+decision artifacts that answer whether to keep, improve, rebalance, or rethink the starting
+portfolio.
+
+| ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| RM-800 | Done | Portfolio-first Session 01 | Create active ExecPlan and record the policy-first architecture conflict. | User-approved portfolio-first transition plan. | [Portfolio-first ExecPlan](exec_plans/2026-05-18_portfolio_first_transition_plan.md), this roadmap, [known issues](../KNOWN_ISSUES.md), [CHANGELOG](../CHANGELOG.md), [ExecPlan register](exec_plans/README.md) | Active handoff plan; old mental model (`policy first`) and new mental model (`analysis_subject first`) recorded | `python scripts/verify_docs.py`. |
+| RM-801 | Done | Portfolio-first Session 02 | Create canonical portfolio review workflow spec. | RM-800. | [portfolio_review_workflow_spec.md](specs/portfolio_review_workflow_spec.md), [SPEC](../SPEC.md), [ARCHITECTURE](../ARCHITECTURE.md), [PRODUCT](../PRODUCT.md), [OUTPUTS](../OUTPUTS.md) | Binding workflow contract: diagnostics before candidate generation; policy engine legacy by default | `python scripts/verify_docs.py`; stale policy-first wording search. |
+| RM-802 | Done | Portfolio-first Session 03 | Add `analysis_subject` input contract and resolver. | RM-801. | Config schema/loading, [analysis_setup.py](../src/analysis_setup.py), [input_assumptions.py](../src/input_assumptions.py), [input assumptions spec](specs/input_assumptions_spec.md), [config example](../config.yml.example) | Runtime resolves `current_portfolio`, `model_portfolio`, and `universe_baseline`; explicit subject blocks stale generated-weight merge | `python -m pytest tests/test_input_assumptions.py tests/test_config_weights_sync.py -q --basetemp='tmp/pytest_portfolio_first_session_03'`. |
+| RM-803 | Done | Portfolio-first Session 04 | Materialize diagnostics for `analysis_subject` before candidates. | RM-802. | [run_report.py](../run_report.py), report helpers, snapshots, metadata tests | `run_report.py --materialize-analysis-subject` writes `{output_dir_final}/analysis_subject/` diagnostics for current/model/universe baseline without overwriting candidate outputs | `python -m pytest tests/test_analysis_subject_materialization.py tests/test_input_assumptions.py -q --basetemp='tmp/pytest_portfolio_first_session_04'`. |
+| RM-804 | Done | Portfolio-first Session 05 | Add portfolio-first orchestrator. | RM-803. | [run_portfolio_review.py](../run_portfolio_review.py), [portfolio_review_workflow.py](../src/portfolio_review_workflow.py), candidate factory integration, [operational runbook](operational_runbook.md), workflow tests | Default command materializes and diagnoses `analysis_subject`, then runs allowed non-policy candidates and comparison outputs without calling `run_optimization.py` | `python -m pytest tests/test_portfolio_review_workflow.py -q --basetemp='tmp/pytest_portfolio_first_session_05_workflow'`. |
+| RM-805 | Done | Portfolio-first Session 06 | Center comparison and decision logic on `analysis_subject` versus candidates. | RM-804. | Candidate comparison, selection, action, decision package, status artifacts | New comparison/status contract where baseline is `analysis_subject`; old `current_vs_policy_status.json` remains compatibility-only | Focused comparison/selection/action tests. |
+| RM-806 | Done | Portfolio-first Session 07 | Isolate the old policy engine as legacy infrastructure. | RM-805. | [README](../README.md), [SPEC](../SPEC.md), [ARCHITECTURE](../ARCHITECTURE.md), [AGENTS](../AGENTS.md), [operational runbook](operational_runbook.md), [portfolio construction policy](specs/portfolio_construction_policy.md) | User-facing docs and CLI help route the normal path through `run_portfolio_review.py`; `run_optimization.py` is labeled legacy compatibility | `python scripts/verify_docs.py`; stale wording search; help text smoke checks. |
+| RM-807 | Done | Portfolio-first Session 08 | Update report language, examples, and generated-output QA. | RM-806. | [decision package reporting](../src/decision_package_reporting.py), [generated output QA](../src/generated_output_qa.py), [config example](../config.yml.example), reporting specs | Decision package summaries name `analysis_subject` as the starting portfolio and candidates as alternatives; generated-output QA checks the story markers | `python -m pytest tests/test_decision_package_reporting.py tests/test_generated_output_language.py -q`; `python scripts/verify_docs.py`. |
+| RM-808 | Done | Portfolio-first Session 09 | Add offline end-to-end coverage and close the transition. | RM-801 through RM-807 complete. | [test_portfolio_first_e2e_offline.py](../tests/test_portfolio_first_e2e_offline.py), [TESTING](../TESTING.md), roadmap, changelog, known issues, ExecPlan register | Portfolio-first transition closed; default workflow has offline coverage across current, model, and universe-baseline subjects | `python -m pytest tests/test_portfolio_first_e2e_offline.py -q`; adjacent portfolio-first tests; `python scripts/verify_docs.py`. |
+
+## Phase 9: Post-Portfolio-First Stabilization
+
+Goal: make the implemented portfolio-first pipeline trustworthy before adding UI, saved workspaces, or
+new product surfaces. This phase follows the 2026-05-19 post-portfolio-first audit and prioritizes
+comparison trust before report polish.
+
+Exit condition: a fresh `run_portfolio_review.py` run correctly identifies `analysis_subject`, compares
+it against fresh or explicitly stale-labeled candidates, produces explainable selection/no-trade
+artifacts, avoids known first-run monitoring contradictions, restores regime metrics, and builds the
+decision package outputs needed for advisor/client review.
+
+| ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| RM-900 | Done | Stabilization Session 00 | Create post-portfolio-first stabilization handoff. | 2026-05-19 audit completed and user-approved priority order. | [stabilization ExecPlan](exec_plans/2026-05-19_post_portfolio_first_stabilization_plan.md), this roadmap, [audit register](audits/README.md), [known issues](../KNOWN_ISSUES.md), [ExecPlan register](exec_plans/README.md) | Active plan; Phase 9 roadmap; audit findings mapped to sessions and known issues | `python scripts/verify_docs.py`. |
+| RM-901 | Done | Stabilization Session 01 | Fix comparison metadata precedence so subject sidecar metadata beats legacy root metadata. | RM-900. | [candidate_comparison.py](../src/candidate_comparison.py), [candidate comparison spec](specs/candidate_comparison_spec.md), comparison tests | `candidate_comparison.json.analysis_setup_summary` reflects the actual `analysis_subject` such as `current_portfolio` | Focused candidate comparison tests and portfolio-first comparison regression. |
+| RM-902 | Planned | Stabilization Session 02 | Add candidate freshness contract. | RM-901. | [candidate_factory.py](../src/candidate_factory.py), [run_candidate_factory.py](../run_candidate_factory.py), [run_portfolio_review.py](../run_portfolio_review.py), [candidate factory spec](specs/candidate_factory_spec.md) | Factory/review output distinguishes fresh, reused, stale, failed, and skipped candidates; stale snapshots are not silently used | Candidate factory tests plus a stale `analysis_end` regression. |
+| RM-903 | Done | Stabilization Session 03 | Perform quick `returns_frequency` methodology check. | RM-902. | [run_report.py](../run_report.py), metrics/config flow, [metrics spec](specs/metrics_specification.md), config examples | ExecPlan finding records whether `returns_frequency: daily` affects main metrics or only daily/regime diagnostics | Focused inspection/test; promote a fix before RM-904 if main metrics are affected. |
+| RM-904 | Planned | Stabilization Session 04 | Improve selection and mandate/no-trade reliability after comparison trust is fixed. | RM-901, RM-902, RM-903 finding. | Selection, trade-off/model-risk, assumption sensitivity, regret modules and specs | No-favored mandate blocks explain the evidence and use `analysis_subject` as baseline | Focused selection/trade-off/sensitivity/regret tests. |
+| RM-905 | Planned | Stabilization Session 05 | Clean portfolio-first legacy policy boundary. | RM-904. | Candidate comparison, current-vs-policy, decision package reporting, related specs | Policy appears only as optional legacy reference in portfolio-first outputs | Focused output text/schema tests and stale wording search. |
+| RM-906 | Done | Stabilization Session 06 | Fix regime portfolio metrics `mar_monthly` failure. | RM-903 finding. | [run_report.py](../run_report.py), [regime_portfolio_metrics.py](../src/regime_portfolio_metrics.py), [stress testing spec](specs/stress_testing_spec.md) | Subject `stress_report.json` includes `regime_portfolio_metrics` without `regime_portfolio_metrics_error` | Focused regime metrics tests and syntax parsing of the touched report path. |
+| RM-907 | Done | Stabilization Session 07 | Apply methodology consistency follow-up. | RM-903; required only if docs/runtime need alignment. | [returns_frequency.py](../src/returns_frequency.py), [data_loader.py](../src/data_loader.py), metrics/input/stress specs, config examples | Main metrics/optimizer always monthly; non-monthly config is disclosure-only | `tests/test_returns_frequency.py`, `tests/test_input_assumptions.py`; `python scripts/verify_docs.py`. |
+| RM-908 | Planned | Stabilization Session 08 | Fix first-run monitoring honesty. | RM-904 recommended. | [monitoring.py](../src/monitoring.py), [monitoring spec](specs/monitoring_spec.md), monitoring tests | `no_prior_snapshot` does not show fake deltas or identical prior/current paths as a real comparison | Focused monitoring tests. |
+| RM-909 | Planned | Stabilization Session 09 | Repair decision package PDF build. | RM-901 and RM-902; after core trust blockers. | [decision_package_reporting.py](../src/decision_package_reporting.py), [pdf_reports.py](../src/pdf_reports.py), [decision package reporting spec](specs/decision_package_reporting_spec.md) | `Main portfolio_decision_package.pdf` builds; `KI-2026-05-18-001` can be removed after verification | Decision package tests and PDF rebuild smoke. |
+| RM-910 | Planned | Stabilization Session 10 | Reduce portfolio-first report/PDF rebuild noise. | RM-909 recommended. | [run_portfolio_review.py](../run_portfolio_review.py), [rebuild_pdf_reports.py](../rebuild_pdf_reports.py), [pdf_reports.py](../src/pdf_reports.py), [OUTPUTS](../OUTPUTS.md) | Portfolio-first review focuses on subject/decision outputs; full legacy variant PDF rebuild is explicit | CLI/help tests or smoke plus reporting docs verification. |
+| RM-911 | Planned | Stabilization Session 11 | Run fresh representative review and close the stabilization plan. | RM-901 through RM-910 complete or explicitly deferred. | Whole pipeline, roadmap, known issues, changelog, ExecPlan | Stabilization plan closed or remaining issues explicitly deferred | Full-refresh review, focused/broad pytest as risk warrants, and `python scripts/verify_docs.py`. |
+
 ## Audit Mapping
 
 | Audit ID | Roadmap handling |
@@ -191,13 +248,23 @@ phase is closed.
 | AUD-012 | Resolved via RM-007 (Session 07): `scripts/verify_docs.py` and `tests/test_docs_links.py`. |
 | PSA-001 through PSA-013 | Addressed by RM-610 through RM-623 (post-audit plan closed 2026-05-17); residual items in [KNOWN_ISSUES](../KNOWN_ISSUES.md). |
 | RMA-001 through RMA-008 | Addressed by RM-700 through RM-710; handoff closed in [Post-Audit MVP Stabilization Plan](exec_plans/2026-05-17_post_audit_mvp_stabilization_plan.md) (2026-05-18). |
+| PFT-001 | Fixed by RM-800 through RM-808: default workflow starts from `analysis_subject`, not generated policy optimization. |
+| PPF-001 | Fixed by RM-906: regime portfolio metrics no longer reference undefined `mar_monthly`; default MAR is aligned daily risk-free. |
+| PPF-002 | Fixed by RM-901: comparison setup summary now prefers `analysis_subject` sidecar metadata. |
+| PPF-003 | Planned as RM-909 and tracked as `KI-2026-05-18-001`: decision package PDF build failure. |
+| PPF-004 | Planned as RM-902: candidate freshness contract for review runs. |
+| PPF-005 | Planned as RM-905: legacy policy artifacts must be clearly optional/compatibility-only. |
+| PPF-006 | Planned as RM-904: mandate/no-favored downstream artifacts need useful blocked-decision narrative. |
+| PPF-007 | Planned as RM-908: monitoring first run must not show contradictory deltas. |
 
 ## Session Boundary Rule
 
 Post-audit Sessions 02–20 are **closed** (see completed [post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md)).
-Phase 7 (`RM-700` through `RM-710`) is **closed** as of 2026-05-18. Keep each future project-level
-session in a separate chat unless the user explicitly changes that rule. Do not reopen closed MVP or
-post-audit sessions unless the user explicitly requests plan amendments.
+Phase 7 (`RM-700` through `RM-710`) is **closed** as of 2026-05-18. Phase 8 (`RM-800` through
+`RM-808`) is **closed** as of 2026-05-18. Phase 9 (`RM-900` through `RM-911`) is **active** as of
+2026-05-19. Keep each future project-level session in a separate chat unless the user
+explicitly changes that rule. Do not reopen closed MVP or post-audit sessions unless the user
+explicitly requests plan amendments.
 
 ## Implemented Decision Artifacts
 

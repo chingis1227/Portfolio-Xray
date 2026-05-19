@@ -2,6 +2,12 @@
 
 This document defines all formulas, conventions, and estimators for the Portfolio Metrics Standard. All code must implement these definitions exactly.
 
+### Config `returns_frequency` (runtime contract)
+
+- **Canonical main-metrics cadence:** monthly simple returns for all sections below unless a subsection explicitly names another cadence (for example daily regime diagnostics governed by `stress_testing_spec.md`).
+- **Config field:** `returns_frequency` may be `monthly`, `weekly`, or `daily`, but the loader and report/optimizer pipelines **always build the main investor return panel at monthly cadence**. Non-monthly values are stored as `configured_returns_frequency` in `frequency_disclosure` and input-assumption metadata only.
+- **Rationale:** Prevents mixed daily-vs-monthly portfolio metrics, covariance, RC_vol, correlation, mandate checks, and optimizer inputs when operators experiment with higher-frequency config values.
+
 ---
 
 ## 1. Analysis end and windows

@@ -32,6 +32,41 @@ cash_policy: allowed_for_scaling
 
 tickers: [SPY, QQQ, GLD, SLV, BND, SCHD, SCHP, TLT]
 
+# Portfolio-first starting portfolio (python run_portfolio_review.py).
+analysis_subject:
+  type: current_portfolio
+  id: analysis_subject
+  display_name: Current Portfolio
+  weights:
+    SPY: 0.10
+    QQQ: 0.13
+    GLD: 0.09
+    SLV: 0.09
+    BND: 0.16
+    SCHD: 0.17
+    SCHP: 0.13
+    TLT: 0.13
+
+# Risk budgeting baselines (run_risk_budget_by_asset.py / run_risk_budget_by_asset_class.py)
+risk_budgeting:
+  preset: balanced
+  missing_taxonomy: exclude
+  drop_empty_buckets: false
+  asset_targets:
+    SPY: 0.10
+    QQQ: 0.13
+    GLD: 0.09
+    SLV: 0.09
+    BND: 0.16
+    SCHD: 0.17
+    SCHP: 0.13
+    TLT: 0.13
+  targets:
+    equity: 0.40
+    fixed_income: 0.29
+    real_assets: 0.18
+    inflation_linked: 0.13
+
 # =============================================================================
 # SECTION 3: CLIENT PROFILE AND ASSUMPTIONS
 # =============================================================================
@@ -58,4 +93,4 @@ output_dir_final: "Main portfolio"
 
 # Return panel cadence for metrics, optimizer covariance/μ, correlation, RC_vol, NaN-safe backtest.
 # Omit to use implicit default monthly. See config.yml.example Section 6 for full analysis block.
-returns_frequency: daily # monthly | weekly | daily
+returns_frequency: monthly  # monthly | weekly | daily (non-monthly is disclosure-only; main metrics stay monthly)

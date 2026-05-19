@@ -43,12 +43,38 @@ beta_local_mapping: {}
 # =============================================================================
 # SECTION 3: PORTFOLIO INPUT MODE, TICKERS, AND WEIGHTS
 # =============================================================================
+# analysis_subject is the portfolio diagnosed first in the portfolio-first workflow.
+# Supported types:
+# - current_portfolio: user current allocation; requires analysis_subject.weights.
+# - model_portfolio: user model/proposed allocation; requires analysis_subject.weights.
+# - universe_baseline: ticker-only diagnostic baseline; system creates equal weights.
+# If analysis_subject is set, it takes priority over legacy analysis_mode/weights inference.
+# Portfolio-first command:
+#   python run_portfolio_review.py
+#
 # analysis_mode:
-# - optimize_from_universe (default): user supplies tickers; policy weights are produced by run_optimization.py.
+# - optimize_from_universe (legacy compatibility): user supplies tickers; policy weights are produced by run_optimization.py.
 # - analyze_current_weights: user supplies current_weights; run_report.py diagnoses the existing portfolio.
 # tickers: list of instruments (cash proxy, e.g. BIL, is excluded from the risk optimization universe).
 # current_weights: optional existing-portfolio weights, used only when analysis_mode=analyze_current_weights.
 # weights: legacy fixed report weights / generated policy weights. Do not hand-edit as final policy output.
+
+analysis_subject:
+  type: universe_baseline
+  id: analysis_subject
+  display_name: Universe Baseline
+  # tickers omitted => use top-level tickers.
+  # weights omitted for universe_baseline; current_portfolio/model_portfolio require weights.
+  #
+  # Example current_portfolio:
+  # type: current_portfolio
+  # display_name: Current Portfolio
+  # weights: {VOO: 0.45, QQQ: 0.20, GLD: 0.10, BND: 0.20, VT: 0.05}
+  #
+  # Example model_portfolio:
+  # type: model_portfolio
+  # display_name: Proposed Model Portfolio
+  # weights: {VOO: 0.40, QQQ: 0.20, GLD: 0.15, BND: 0.20, VT: 0.05}
 
 analysis_mode: optimize_from_universe
 tickers: [VOO, QQQ, GLD, BND, VT]
@@ -139,7 +165,8 @@ risk_budgeting:
 # output_dir_final: веса, все JSON, report (по умолчанию Main portfolio).
 
 windows_months: [36, 60, 120]
-# Main return panel for metrics, optimizer Σ/μ, correlation, RC_vol, and backtest (default: monthly).
+# Main return panel is always monthly per metrics_specification.md (default: monthly).
+# Non-monthly values are retained for disclosure only and do not change main metrics/optimizer panels.
 returns_frequency: monthly  # monthly | weekly | daily
 coverage_threshold: 0.9
 output_dir: results_csv

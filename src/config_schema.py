@@ -72,7 +72,7 @@ class PortfolioConfig:
     coverage_threshold: float
     output_dir: str  # CSV only (e.g. results_csv)
     output_dir_final: str  # Weights, JSON, report (e.g. Main portfolio)
-    returns_frequency: str = "monthly"  # monthly | weekly | daily (main metrics + optimizer return panel)
+    returns_frequency: str = "monthly"  # monthly | weekly | daily (disclosure only when not monthly; main metrics stay monthly)
     # Backtest mode: "dynamic_nan_safe" (default, policy-compliant) | "simple" (opt-in, simplified NaN handling)
     backtest_mode: str = "dynamic_nan_safe"
 
@@ -86,6 +86,7 @@ class PortfolioConfig:
     pending_fields: list[str] = field(default_factory=list)
     analysis_mode: str = "optimize_from_universe"
     current_weights: dict[str, float] = field(default_factory=dict)
+    analysis_subject: dict[str, Any] = field(default_factory=dict)
     weights_source: str = "none"
 
     # Liquidity floor from profile or explicit config; used by ProLiquidity when set (else derived from liquidity_need_months * monthly_expenses / portfolio_value)
@@ -141,6 +142,7 @@ class PortfolioConfig:
             "beta_local_mapping": self.local_benchmark_map,
             "tickers": self.tickers,
             "analysis_mode": self.analysis_mode,
+            "analysis_subject": dict(self.analysis_subject or {}),
             "current_weights": self.current_weights,
             "weights": self.weights,
             "weights_source": self.weights_source,
@@ -189,6 +191,7 @@ class PortfolioConfig:
         return {
             "investor_currency": self.investor_currency,
             "analysis_mode": self.analysis_mode,
+            "analysis_subject": dict(self.analysis_subject or {}),
             "initial_investable_amount": self.initial_investable_amount,
             "rf_source": self.rf_source,
             "cash_proxy_ticker": self.cash_proxy_ticker,
@@ -270,6 +273,8 @@ DEFAULT_RISK_BUDGETING = {
 }
 # Weights are optional: produced by optimization and exported (see Portfolio Construction Policy).
 ANALYSIS_MODES = ("optimize_from_universe", "analyze_current_weights")
+ANALYSIS_SUBJECT_TYPES = ("current_portfolio", "model_portfolio", "universe_baseline")
+ANALYSIS_SUBJECT_WEIGHTED_TYPES = ("current_portfolio", "model_portfolio")
 
 BOOLEAN_FIELDS = [
     "allow_leverage",
@@ -309,6 +314,7 @@ NUMERIC_FIELDS = [
 MAPPING_FIELDS = [
     "weights",
     "current_weights",
+    "analysis_subject",
     "local_benchmark_map",
 ]
 
@@ -346,6 +352,32 @@ def _normalize_config_keys(cfg: dict[str, Any]) -> dict[str, Any]:
         if canonical in result and result.get(internal) is None:
             result[internal] = result[canonical]
     return result
+
+
+def _clean_string_list(values: Any, field_name: str) -> list[str]:
+    if not isinstance(values, list):
+        raise ConfigValidationError(
+            f"Config field '{field_name}' must be a list, got {type(values).__name__}"
+        )
+    out: list[str] = []
+    for raw in values:
+        if not isinstance(raw, str) or not raw.strip():
+            raise ConfigValidationError(
+                f"Config field '{field_name}' must contain non-empty ticker strings"
+            )
+        ticker = raw.strip()
+        if ticker not in out:
+            out.append(ticker)
+    if not out:
+        raise ConfigValidationError(f"Config field '{field_name}' must not be empty")
+    return out
+
+
+def _equal_weight_map(tickers: list[str]) -> dict[str, float]:
+    if not tickers:
+        return {}
+    weight = 1.0 / len(tickers)
+    return {ticker: weight for ticker in tickers}
 
 
 def _inject_optional_defaults(cfg: dict[str, Any]) -> None:
@@ -517,6 +549,17 @@ def _normalize_percent_fields(cfg: dict[str, Any]) -> dict[str, Any]:
                     w_val, f"{weights_field}['{ticker}']"
                 )
             result[weights_field] = normalized_weights
+
+    subject = result.get("analysis_subject")
+    if isinstance(subject, dict) and isinstance(subject.get("weights"), dict):
+        normalized_subject = dict(subject)
+        normalized_subject_weights = {}
+        for ticker, w_val in subject["weights"].items():
+            normalized_subject_weights[ticker] = _parse_percent_value(
+                w_val, f"analysis_subject.weights['{ticker}']"
+            )
+        normalized_subject["weights"] = normalized_subject_weights
+        result["analysis_subject"] = normalized_subject
     
     return result
 
@@ -592,6 +635,85 @@ def _validate_mappings(cfg: dict[str, Any]) -> None:
             raise ConfigValidationError(
                 f"Config field '{f}' must be a dictionary, got {type(val).__name__}"
             )
+
+
+def _validate_analysis_subject(cfg: dict[str, Any]) -> None:
+    """Validate explicit portfolio-first analysis_subject and map it to runtime weights."""
+    raw = cfg.get("analysis_subject")
+    if raw is None or raw == {}:
+        cfg["analysis_subject"] = {}
+        return
+    if not isinstance(raw, dict):
+        raise ConfigValidationError(
+            f"Config field 'analysis_subject' must be a dictionary, got {type(raw).__name__}"
+        )
+
+    subject_type = str(raw.get("type") or "").strip().lower()
+    if subject_type not in ANALYSIS_SUBJECT_TYPES:
+        raise ConfigValidationError(
+            "Config field 'analysis_subject.type' must be one of "
+            f"{ANALYSIS_SUBJECT_TYPES}, got {raw.get('type')!r}"
+        )
+
+    tickers = _clean_string_list(raw.get("tickers") or cfg.get("tickers"), "analysis_subject.tickers")
+    config_tickers = set(_clean_string_list(cfg.get("tickers"), "tickers"))
+    missing_from_config = sorted(set(tickers) - config_tickers)
+    if missing_from_config:
+        raise ConfigValidationError(
+            "analysis_subject.tickers must be present in top-level tickers; "
+            f"missing={missing_from_config}"
+        )
+
+    subject_id = str(raw.get("id") or "analysis_subject").strip() or "analysis_subject"
+    display_name = str(raw.get("display_name") or "").strip()
+    weights = dict(raw.get("weights") or {})
+
+    allowed_weight_tickers = set(tickers)
+    try:
+        from src.config import resolve_cash_and_rf
+
+        cash_proxy, _ = resolve_cash_and_rf(cfg)
+        if cash_proxy:
+            allowed_weight_tickers.add(str(cash_proxy))
+    except ConfigValidationError:
+        pass
+
+    if subject_type in ANALYSIS_SUBJECT_WEIGHTED_TYPES:
+        if not weights:
+            raise ConfigValidationError(
+                f"analysis_subject.type='{subject_type}' requires non-empty analysis_subject.weights"
+            )
+        for ticker, value in weights.items():
+            if ticker not in allowed_weight_tickers:
+                raise ConfigValidationError(
+                    "analysis_subject.weights contains ticker not in analysis_subject.tickers "
+                    f"or cash proxy: {ticker!r}"
+                )
+            if not isinstance(value, (int, float)):
+                raise ConfigValidationError(
+                    f"analysis_subject.weights for '{ticker}' must be numeric, got {type(value).__name__}"
+                )
+            if value < 0:
+                raise ConfigValidationError(
+                    f"analysis_subject.weights for '{ticker}' must be non-negative, got {value}"
+                )
+        cfg["weights"] = dict(weights)
+        cfg["_weights_source"] = "config.analysis_subject.weights"
+    else:
+        if weights:
+            raise ConfigValidationError(
+                "analysis_subject.type='universe_baseline' takes tickers only; remove analysis_subject.weights"
+            )
+        cfg["weights"] = _equal_weight_map(tickers)
+        cfg["_weights_source"] = "system.analysis_subject.equal_weight_baseline"
+
+    cfg["analysis_subject"] = {
+        "id": subject_id,
+        "type": subject_type,
+        "display_name": display_name,
+        "tickers": tickers,
+        "weights": dict(weights),
+    }
 
 
 def _validate_analysis_mode(cfg: dict[str, Any]) -> None:
@@ -971,6 +1093,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
     _validate_percents(cfg)
     _validate_nonnegative(cfg)
     _validate_mappings(cfg)
+    _validate_analysis_subject(cfg)
     _validate_analysis_mode(cfg)
     _validate_tickers_weights(cfg)
     _validate_windows(cfg)
@@ -1013,6 +1136,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
         client_profile=cfg.get("client_profile"),
         tickers=list(cfg["tickers"]),
         analysis_mode=str(cfg.get("analysis_mode", "optimize_from_universe")),
+        analysis_subject=dict(cfg.get("analysis_subject") or {}),
         current_weights=dict(cfg.get("current_weights") or {}),
         weights=dict(cfg.get("weights") or {}),
         weights_source=str(cfg.get("_weights_source") or ("config.weights" if cfg.get("weights") else "none")),

@@ -7,11 +7,15 @@ per metrics convention (see metrics_daily.TRADING_DAYS_PER_YEAR).
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from typing import Any, Literal, TypedDict
 
 import pandas as pd
 
 ReturnsFrequency = Literal["monthly", "weekly", "daily"]
+
+# Canonical cadence for portfolio metrics, covariance, RC_vol, optimizer inputs, and backtest.
+MAIN_METRICS_RETURNS_FREQUENCY: ReturnsFrequency = "monthly"
 
 # Production factor / stress regression cadence (Phase 2 may generalize).
 FACTOR_STRESS_FREQUENCY_DEFAULT: ReturnsFrequency = "weekly"
@@ -22,10 +26,50 @@ MACRO_REGIME_FREQUENCY_DEFAULT: ReturnsFrequency = "monthly"
 class FrequencyDisclosure(TypedDict, total=False):
     optimization_frequency: ReturnsFrequency
     returns_frequency: ReturnsFrequency
+    configured_returns_frequency: ReturnsFrequency
+    main_metrics_returns_frequency: ReturnsFrequency
+    main_metrics_frequency_forced: bool
     factor_stress_frequency: ReturnsFrequency
     macro_regime_frequency: ReturnsFrequency
     frequency_mismatch_warning: bool
     macro_regime_frequency_notes: str
+
+
+@dataclass(frozen=True)
+class ReturnsFrequencyResolution:
+    """Configured cadence vs enforced main-metrics cadence."""
+
+    configured: ReturnsFrequency
+    main_metrics: ReturnsFrequency
+    forced_to_monthly: bool
+
+
+def resolve_returns_frequencies(raw: str | None) -> ReturnsFrequencyResolution:
+    """
+    Map config ``returns_frequency`` to the effective main-metrics cadence.
+
+    Non-monthly config values are retained for disclosure only; main portfolio
+    metrics, covariance, RC_vol, correlation, optimizer inputs, and backtest always
+    use ``MAIN_METRICS_RETURNS_FREQUENCY`` (monthly per metrics_specification.md).
+    """
+    configured = normalize_returns_frequency(raw)
+    main = MAIN_METRICS_RETURNS_FREQUENCY
+    return ReturnsFrequencyResolution(
+        configured=configured,
+        main_metrics=main,
+        forced_to_monthly=configured != main,
+    )
+
+
+def main_metrics_frequency_override_note(resolution: ReturnsFrequencyResolution) -> str:
+    if not resolution.forced_to_monthly:
+        return ""
+    return (
+        f"Config returns_frequency={resolution.configured} does not drive main portfolio "
+        f"metrics, covariance, RC_vol, correlation, optimizer inputs, or backtest; "
+        f"main_metrics_returns_frequency={resolution.main_metrics} per metrics_specification.md. "
+        "Regime factor analytics and other explicitly daily paths may still load daily series."
+    )
 
 
 def normalize_returns_frequency(raw: str | None) -> ReturnsFrequency:
@@ -136,6 +180,7 @@ def compute_frequency_disclosure(
     *,
     returns_frequency: ReturnsFrequency,
     optimization_frequency: ReturnsFrequency | None = None,
+    configured_returns_frequency: ReturnsFrequency | None = None,
     factor_stress_frequency: ReturnsFrequency,
     macro_regime_frequency: ReturnsFrequency,
     macro_regime_frequency_notes: str | None = None,
@@ -143,20 +188,31 @@ def compute_frequency_disclosure(
     """
     Machine-readable frequency alignment.
 
-    When returns_frequency is monthly (default), frequency_mismatch_warning is False so legacy
+    ``returns_frequency`` is the effective main-metrics cadence (monthly). When
+    ``configured_returns_frequency`` differs, ``main_metrics_frequency_forced`` is True
+    and notes should explain the override.
+
+    When main metrics are monthly (default), frequency_mismatch_warning is False so legacy
     pipelines (monthly metrics + weekly factor stress + monthly macro regime) stay quiet.
-    For weekly/daily portfolio/metrics paths, warning is True if optimization cadence differs
-    from factor_stress or macro_regime cadence.
     """
     opt = optimization_frequency or returns_frequency
-    notes = macro_regime_frequency_notes or ""
-    if returns_frequency == "monthly":
-        mismatch = False
-    else:
+    configured = configured_returns_frequency or returns_frequency
+    forced = configured != returns_frequency
+    notes_parts: list[str] = []
+    if forced:
+        notes_parts.append(main_metrics_frequency_override_note(resolve_returns_frequencies(configured)))
+    if macro_regime_frequency_notes:
+        notes_parts.append(str(macro_regime_frequency_notes).strip())
+    notes = " ".join(p for p in notes_parts if p).strip()
+    mismatch = False
+    if returns_frequency != "monthly":
         mismatch = (opt != factor_stress_frequency) or (opt != macro_regime_frequency)
     out: dict[str, Any] = {
         "optimization_frequency": opt,
         "returns_frequency": returns_frequency,
+        "configured_returns_frequency": configured,
+        "main_metrics_returns_frequency": returns_frequency,
+        "main_metrics_frequency_forced": bool(forced),
         "factor_stress_frequency": factor_stress_frequency,
         "macro_regime_frequency": macro_regime_frequency,
         "frequency_mismatch_warning": bool(mismatch),
@@ -164,6 +220,24 @@ def compute_frequency_disclosure(
     if notes:
         out["macro_regime_frequency_notes"] = notes
     return out
+
+
+def frequency_disclosure_from_resolution(
+    resolution: ReturnsFrequencyResolution,
+    *,
+    factor_stress_frequency: ReturnsFrequency,
+    macro_regime_frequency: ReturnsFrequency,
+    extra_notes: str | None = None,
+) -> dict[str, Any]:
+    """Build frequency_disclosure for report/stress artifacts from a resolution."""
+    return compute_frequency_disclosure(
+        returns_frequency=resolution.main_metrics,
+        optimization_frequency=resolution.main_metrics,
+        configured_returns_frequency=resolution.configured,
+        factor_stress_frequency=factor_stress_frequency,
+        macro_regime_frequency=macro_regime_frequency,
+        macro_regime_frequency_notes=extra_notes,
+    )
 
 
 def minimum_inner_join_span_timedelta() -> pd.Timedelta:

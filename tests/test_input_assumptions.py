@@ -3,11 +3,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 
 from src.analysis_setup import build_analysis_setup
 from src.config import load_validated_config
-from src.config_schema import validate_config
+from src.config_schema import ConfigValidationError, validate_config
 from src.input_assumptions import (
     build_input_assumptions_from_analysis_setup,
     build_input_assumptions_summary,
@@ -84,10 +85,14 @@ def test_input_assumptions_summary_contains_input_mode_and_known_gap() -> None:
 
     assert summary["portfolio_input"]["analysis_mode"] == "optimize_from_universe"
     assert summary["source_analysis_setup_version"] == "analysis_setup_v1"
+    assert summary["analysis_subject"]["type"] == "model_portfolio"
+    assert summary["analysis_subject"]["resolution_source"] == "compat.legacy_fixed_weights"
     assert summary["portfolio_input"]["reported_weights"]["status"] == "fully_invested"
     assert summary["currency_and_market"]["cash_proxy_ticker"] == "BIL"
     assert summary["mandate_and_constraints"]["horizon_role"] == "report_context_only_not_optimizer_constraint"
-    assert summary["calculation_assumptions"]["returns_frequency"] == "weekly"
+    assert summary["calculation_assumptions"]["returns_frequency"] == "monthly"
+    assert summary["calculation_assumptions"]["configured_returns_frequency"] == "weekly"
+    assert summary["calculation_assumptions"]["main_metrics_returns_frequency_forced"] is True
     assert summary["current_v1_gaps"]["transaction_costs"] == "not_implemented"
 
 
@@ -151,6 +156,7 @@ def test_analysis_setup_contract_shape_and_projection() -> None:
     assert set(
         [
             "portfolio_input",
+            "analysis_subject",
             "analysis_portfolio",
             "resolved_mandate",
             "resolved_assumptions",
@@ -158,6 +164,7 @@ def test_analysis_setup_contract_shape_and_projection() -> None:
         ]
     ).issubset(setup)
     assert setup["portfolio_input"]["product_input_case"] == "user_current"
+    assert setup["analysis_subject"]["type"] == "current_portfolio"
     assert setup["analysis_portfolio"]["portfolio_role"] == "user_current_portfolio"
     assert setup["analysis_portfolio"]["recommendation_status"] == "diagnostic_current_portfolio_not_recommendation"
     assert setup["portfolio_input"]["investment_horizon_years"]["affects_calculations"] is False
@@ -165,6 +172,7 @@ def test_analysis_setup_contract_shape_and_projection() -> None:
     projection = build_input_assumptions_from_analysis_setup(setup)
     assert projection["version"] == "input_assumptions_v1"
     assert projection["source_analysis_setup_version"] == "analysis_setup_v1"
+    assert projection["analysis_subject"]["type"] == "current_portfolio"
     assert projection["portfolio_input"]["analysis_portfolio_role"] == "user_current_portfolio"
 
 
@@ -180,6 +188,8 @@ def test_universe_only_analysis_setup_creates_equal_weight_baseline_not_recommen
     setup = build_analysis_setup(cfg, cash_proxy_ticker="BIL", rf_source="FRED:DTB3")
 
     assert setup["portfolio_input"]["product_input_case"] == "universe_only"
+    assert setup["analysis_subject"]["type"] == "universe_baseline"
+    assert setup["analysis_subject"]["weight_source"] == "system.equal_weight_universe_baseline"
     assert setup["analysis_portfolio"]["portfolio_role"] == "equal_weight_initial_baseline"
     assert setup["analysis_portfolio"]["recommendation_status"] == "baseline_not_recommendation"
     assert setup["analysis_portfolio"]["weight_source"] == "system.equal_weight_initial_baseline"
@@ -205,9 +215,112 @@ def test_optimize_from_universe_with_generated_weights_preserves_current_repo_be
     )
 
     assert setup["portfolio_input"]["product_input_case"] == "universe_only"
+    assert setup["analysis_subject"]["type"] == "universe_baseline"
+    assert setup["analysis_subject"]["warnings"][0]["code"] == "GENERATED_POLICY_WEIGHTS_NOT_ANALYSIS_SUBJECT"
     assert setup["analysis_portfolio"]["portfolio_role"] == "generated_policy_portfolio"
     assert setup["analysis_portfolio"]["weight_source"] == "optimization_result_released"
     assert setup["analysis_portfolio"]["recommendation_status"] == "generated_policy_output_released"
+
+
+def test_explicit_current_analysis_subject_sets_report_weights_and_metadata() -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "tickers": ["VOO", "BND"],
+            "analysis_subject": {
+                "type": "current_portfolio",
+                "display_name": "Client current portfolio",
+                "weights": {"VOO": "60%", "BND": "40%"},
+            },
+        }
+    )
+
+    setup = build_analysis_setup(cfg, cash_proxy_ticker="BIL", rf_source="FRED:DTB3")
+
+    assert cfg.weights == {"VOO": 0.6, "BND": 0.4}
+    assert cfg.weights_source == "config.analysis_subject.weights"
+    assert setup["analysis_subject"]["type"] == "current_portfolio"
+    assert setup["analysis_subject"]["display_name"] == "Client current portfolio"
+    assert setup["analysis_subject"]["weight_status"]["status"] == "fully_invested"
+    assert setup["analysis_portfolio"]["portfolio_role"] == "user_current_portfolio"
+
+
+def test_explicit_model_analysis_subject_resolves_as_model_portfolio() -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "tickers": ["VOO", "BND", "GLD"],
+            "analysis_subject": {
+                "type": "model_portfolio",
+                "id": "income_model",
+                "tickers": ["VOO", "BND", "GLD"],
+                "weights": {"VOO": 0.4, "BND": 0.4, "GLD": 0.2},
+            },
+        }
+    )
+
+    setup = build_analysis_setup(cfg, cash_proxy_ticker="BIL", rf_source="FRED:DTB3")
+
+    assert setup["portfolio_input"]["product_input_case"] == "model_portfolio"
+    assert setup["analysis_subject"]["id"] == "income_model"
+    assert setup["analysis_subject"]["type"] == "model_portfolio"
+    assert setup["analysis_subject"]["portfolio_role"] == "model_portfolio"
+    assert setup["analysis_subject"]["recommendation_status"] == "diagnostic_model_portfolio_not_recommendation"
+    assert setup["analysis_portfolio"]["portfolio_role"] == "model_portfolio"
+
+
+def test_explicit_universe_baseline_analysis_subject_creates_equal_weights() -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "tickers": ["VOO", "BND", "GLD"],
+            "analysis_subject": {
+                "type": "universe_baseline",
+                "display_name": "Starter universe",
+            },
+        }
+    )
+
+    setup = build_analysis_setup(cfg, cash_proxy_ticker="BIL", rf_source="FRED:DTB3")
+
+    assert cfg.weights_source == "system.analysis_subject.equal_weight_baseline"
+    assert sum(cfg.weights.values()) == pytest.approx(1.0)
+    assert setup["analysis_subject"]["type"] == "universe_baseline"
+    assert setup["analysis_subject"]["display_name"] == "Starter universe"
+    assert setup["analysis_subject"]["weight_status"]["status"] == "fully_invested"
+    assert setup["analysis_portfolio"]["portfolio_role"] == "equal_weight_initial_baseline"
+
+
+def test_explicit_analysis_subject_blocks_generated_weights_merge(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yml"
+    weights_dir = tmp_path / "Main portfolio"
+    weights_dir.mkdir(parents=True)
+    _write_yaml(
+        config_path,
+        {
+            "investor_currency": "USD",
+            "tickers": ["VOO", "BND"],
+            "output_dir_final": "Main portfolio",
+            "analysis_subject": {"type": "universe_baseline"},
+        },
+    )
+    _write_yaml(weights_dir / "portfolio_weights.yml", {"VOO": 0.1, "BND": 0.9})
+
+    cfg = load_validated_config(config_path)
+
+    assert cfg.weights == {"VOO": pytest.approx(0.5), "BND": pytest.approx(0.5)}
+    assert cfg.weights_source == "system.analysis_subject.equal_weight_baseline"
+
+
+def test_invalid_current_analysis_subject_requires_weights() -> None:
+    with pytest.raises(ConfigValidationError, match="requires non-empty analysis_subject.weights"):
+        validate_config(
+            {
+                "investor_currency": "USD",
+                "tickers": ["VOO", "BND"],
+                "analysis_subject": {"type": "current_portfolio"},
+            }
+        )
 
 
 def test_input_assumptions_spec_documents_unknown_ticker_policy_conflict() -> None:

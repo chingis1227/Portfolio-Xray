@@ -11,6 +11,7 @@ The Input and Assumptions Layer defines what the user or system must know before
 It covers:
 
 - portfolio input mode
+- canonical `analysis_subject` input object
 - configured ticker universe
 - optional current portfolio weights
 - investor currency, benchmark, cash proxy, and risk-free source
@@ -27,6 +28,9 @@ It does not own metric formulas, risk-free conversion formulas, NaN handling for
 
 `analysis_setup_v1` contains:
 
+- `analysis_subject`: the resolved portfolio-first subject diagnosed before candidates, including
+  type, id, display name, tickers, resolved weights, weight source, role, recommendation status,
+  resolution source, and validation status.
 - `portfolio_input`: raw user/config intent, selected tickers, optional current weights, currency, benchmark request, profile, and horizon metadata.
 - `analysis_portfolio`: the resolved portfolio used as the diagnostic base, including role, weight source, weights, cash handling, and recommendation status.
 - `resolved_mandate`: profile/default/override values with source, enforcement type, and downstream applicability.
@@ -35,7 +39,39 @@ It does not own metric formulas, risk-free conversion formulas, NaN handling for
 
 The exported `input_assumptions` block is a projection from `analysis_setup`. Reports may display it for reproducibility, but calculation or policy modules must use `analysis_setup` or their existing canonical runtime inputs, not infer business logic from `input_assumptions`.
 
-## Supported Config Modes
+## `analysis_subject` Config Object
+
+`analysis_subject` is the canonical portfolio-first input object. When it is present and valid, it
+takes priority over compatibility inference from `analysis_mode`, legacy `weights`, and generated
+`portfolio_weights.yml`.
+
+Supported explicit values:
+
+- `analysis_subject.type: current_portfolio` requires `analysis_subject.weights` and represents the
+  user's real current allocation.
+- `analysis_subject.type: model_portfolio` requires `analysis_subject.weights` and represents a
+  user-specified model or proposed allocation to diagnose before alternatives.
+- `analysis_subject.type: universe_baseline` requires tickers only; the resolver creates equal
+  weights for diagnostic baseline use.
+
+Optional fields:
+
+- `id`: stable subject id; defaults to `analysis_subject`.
+- `display_name`: report-friendly label; defaults from the subject type.
+- `tickers`: subject ticker list; defaults to top-level `tickers` and must be a subset of them.
+- `weights`: required only for current/model subjects; percent strings such as `"60%"` are accepted.
+
+Runtime behavior:
+
+- explicit current/model subjects become fixed report weights with
+  `weights_source = config.analysis_subject.weights`;
+- explicit universe-baseline subjects become equal-weight diagnostic weights with
+  `weights_source = system.analysis_subject.equal_weight_baseline`;
+- explicit `analysis_subject` prevents stale generated `portfolio_weights.yml` from being merged as
+  the report weights for that run;
+- generated policy weights remain legacy outputs and are not the default `analysis_subject`.
+
+## Supported Compatibility Modes
 
 `analysis_mode` is the current config compatibility mode.
 
@@ -48,16 +84,24 @@ When omitted, `analysis_mode` defaults to `optimize_from_universe`.
 
 ### optimize_from_universe
 
-This is the default policy workflow.
+This is the legacy compatibility policy workflow. The config default remains
+`optimize_from_universe` for backward compatibility, but the portfolio-first product workflow should
+use explicit `analysis_subject` and `run_portfolio_review.py`.
 
 The user supplies a ticker list in `tickers`. The configured tickers define the risk-asset universe after cash proxy exclusion. `run_optimization.py` builds policy weights from the universe, applies the current construction policy, and writes generated weights to `portfolio_weights.yml` under `output_dir_final`.
 
-In this mode, `run_report.py` expects fixed weights from either legacy `weights` or the generated `portfolio_weights.yml`. If neither exists, reporting must fail clearly and tell the user to run optimization first.
+In this mode, `run_report.py` expects fixed weights from either legacy `weights` or the generated
+`portfolio_weights.yml`. If neither exists, the normal report command must fail clearly and point to
+portfolio-first subject materialization or deliberate legacy policy optimization.
 
 Lifecycle mapping:
 
-- In target MVP product semantics, tickers without weights represent `universe_only` and resolve to an `Equal Weight Initial Portfolio` baseline before diagnostics.
-- In current repo compatibility mode, `optimize_from_universe` remains optimizer-first. Reporting without generated or fixed weights still fails unless SPEC and code are updated to make equal-weight universe-only diagnostics binding behavior.
+- In portfolio-first semantics, explicit `analysis_subject.type: universe_baseline` resolves the
+  ticker universe to equal diagnostic weights before candidates are generated.
+- In current repo compatibility mode without explicit `analysis_subject`, `optimize_from_universe`
+  remains optimizer-first. Reporting without generated or fixed weights still fails unless the user
+  materializes the resolved subject through `run_report.py --materialize-analysis-subject` or uses
+  `run_portfolio_review.py`.
 
 ### analyze_current_weights
 
@@ -79,7 +123,9 @@ There are four distinct weight concepts:
 - `portfolio_weights.yml`: generated policy weights produced by `run_optimization.py`.
 - selected/target weights: weights selected after explicit comparison or policy release logic.
 
-Final production policy weights still come from `run_optimization.py` and approved post-optimization protocols. Users must not manually edit generated final weights as if they were policy optimizer output.
+Legacy production policy weights still come from `run_optimization.py` and approved
+post-optimization protocols. Users must not manually edit generated final weights as if they were
+policy optimizer output.
 
 `current_weights` may be entered manually only for existing-portfolio diagnostics. In `analyze_current_weights` mode, current weights become fixed report weights. In `optimize_from_universe` mode, current weights are preserved as input context but do not replace generated policy weights.
 
@@ -93,15 +139,20 @@ Equal Weight Initial Portfolio is a baseline, not a recommendation. It must be e
 
 The target product lifecycle maps user intent into `analysis_setup`:
 
-- `user_current`: tickers plus current weights create `analysis_portfolio.portfolio_role = user_current_portfolio`.
-- `universe_only`: tickers without current weights create `analysis_portfolio.portfolio_role = equal_weight_initial_baseline`.
-- `custom_model_later`: manual model-portfolio creation and comparison is out of scope for this MVP decision area.
+- `current_portfolio`: tickers plus subject weights create
+  `analysis_subject.type = current_portfolio` and
+  `analysis_portfolio.portfolio_role = user_current_portfolio` when the run diagnoses that subject.
+- `model_portfolio`: tickers plus subject weights create
+  `analysis_subject.type = model_portfolio` and
+  `analysis_portfolio.portfolio_role = model_portfolio` when the run diagnoses that subject.
+- `universe_baseline`: tickers without subject weights create
+  `analysis_subject.type = universe_baseline` and equal-weight diagnostic baseline weights.
 
 Current repo compatibility:
 
 - `analysis_mode=analyze_current_weights` maps to `user_current`.
-- `analysis_mode=optimize_from_universe` maps to the existing construction workflow.
-- legacy `weights` remains supported for fixed-report compatibility and must be distinguished from `current_weights` and generated `portfolio_weights.yml`.
+- `analysis_mode=optimize_from_universe` without explicit `analysis_subject` maps to the existing construction workflow and resolves a universe-baseline subject for metadata.
+- legacy `weights` remains supported for fixed-report compatibility and resolves as a model-portfolio subject when not generated from `portfolio_weights.yml`.
 
 ## User Inputs
 
@@ -178,7 +229,7 @@ Technical analysis settings include:
 - `output_dir`
 - `output_dir_final`
 
-`returns_frequency` controls the main investor return panel for metrics, optimizer covariance and expected returns, correlation, RC_vol, and backtest. Factor stress, primary factor regression diagnostics, and macro regime labels may use their own canonical frequencies and must disclose mismatches as defined in the stress and metrics specs.
+`returns_frequency` in config may be `monthly`, `weekly`, or `daily`, but the **main investor return panel** for metrics, optimizer covariance and expected returns, correlation, RC_vol, and backtest is always **monthly** per `metrics_specification.md`. Non-monthly config values are recorded as `configured_returns_frequency` / `configured_return_frequency` in runtime metadata and `frequency_disclosure`; they do not resample the main panel. Factor stress, primary factor regression diagnostics, macro regime labels, and regime factor analytics may use their own canonical frequencies and must disclose mismatches as defined in the stress and metrics specs.
 
 NaN and young-ETF behavior remains governed by `data_policy_spec.md`.
 
@@ -194,6 +245,8 @@ Runs must expose structured `analysis_setup` and `input_assumptions` objects whe
 
 - schema version
 - run context
+- resolved `analysis_subject` with type, id, display name, tickers, weights, weight source,
+  resolution source, and validation status
 - portfolio input and product input case
 - analysis portfolio role, weight source, weights, cash handling, and recommendation status
 - resolved mandate values with source, enforcement, and applicability
@@ -204,6 +257,7 @@ Runs must expose structured `analysis_setup` and `input_assumptions` objects whe
 
 - source `analysis_setup` version
 - run context
+- resolved `analysis_subject` summary
 - analysis mode and product input case
 - configured tickers and ticker count
 - current-weight status

@@ -17,6 +17,7 @@ def _mandate_value(analysis_setup: dict[str, Any], key: str) -> Any:
 def build_input_assumptions_from_analysis_setup(analysis_setup: dict[str, Any]) -> dict[str, Any]:
     """Project the report/export view from the resolved analysis setup contract."""
     portfolio_input = analysis_setup.get("portfolio_input") or {}
+    analysis_subject = analysis_setup.get("analysis_subject") or {}
     analysis_portfolio = analysis_setup.get("analysis_portfolio") or {}
     resolved_assumptions = analysis_setup.get("resolved_assumptions") or {}
     validation_result = analysis_setup.get("validation_result") or {}
@@ -31,6 +32,8 @@ def build_input_assumptions_from_analysis_setup(analysis_setup: dict[str, Any]) 
         "portfolio_input": {
             "analysis_mode": portfolio_input.get("source_analysis_mode"),
             "product_input_case": portfolio_input.get("product_input_case"),
+            "analysis_subject_id": portfolio_input.get("analysis_subject_id"),
+            "analysis_subject_type": portfolio_input.get("analysis_subject_type"),
             "tickers": list(portfolio_input.get("tickers") or []),
             "configured_ticker_count": portfolio_input.get("selected_ticker_count", 0),
             "current_weights_provided": bool(portfolio_input.get("current_weights_provided")),
@@ -44,6 +47,19 @@ def build_input_assumptions_from_analysis_setup(analysis_setup: dict[str, Any]) 
                 "reporting view. Current/input weights, initial baseline weights, generated/candidate "
                 "weights, and selected/target weights must remain distinct."
             ),
+        },
+        "analysis_subject": {
+            "id": analysis_subject.get("id"),
+            "type": analysis_subject.get("type"),
+            "display_name": analysis_subject.get("display_name"),
+            "resolution_source": analysis_subject.get("resolution_source"),
+            "resolution_status": analysis_subject.get("resolution_status"),
+            "tickers": list(analysis_subject.get("tickers") or []),
+            "ticker_count": analysis_subject.get("ticker_count", 0),
+            "weight_source": analysis_subject.get("weight_source"),
+            "weight_status": analysis_subject.get("weight_status") or weight_status({}),
+            "portfolio_role": analysis_subject.get("portfolio_role"),
+            "recommendation_status": analysis_subject.get("recommendation_status"),
         },
         "currency_and_market": {
             "investor_currency": portfolio_input.get("investor_currency"),
@@ -76,6 +92,10 @@ def build_input_assumptions_from_analysis_setup(analysis_setup: dict[str, Any]) 
             "primary_window_months": resolved_assumptions.get("primary_window_months"),
             "secondary_window_months": resolved_assumptions.get("secondary_window_months"),
             "returns_frequency": resolved_assumptions.get("return_frequency"),
+            "configured_returns_frequency": resolved_assumptions.get("configured_return_frequency"),
+            "main_metrics_returns_frequency_forced": resolved_assumptions.get(
+                "main_metrics_return_frequency_forced"
+            ),
             "periods_per_year": resolved_assumptions.get("periods_per_year"),
             "coverage_threshold": resolved_assumptions.get("coverage_threshold"),
             "backtest_mode": resolved_assumptions.get("missing_data_policy"),

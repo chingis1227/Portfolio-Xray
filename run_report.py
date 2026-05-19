@@ -26,7 +26,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from src.analysis_setup import build_analysis_setup
+from src.analysis_setup import build_analysis_setup, resolve_analysis_subject
 from src.cache import cleanup_old_cache, clear_all_cache
 from src.config import (
     load_validated_config,
@@ -121,10 +121,11 @@ from src.returns_frequency import (
     FACTOR_STRESS_FREQUENCY_DEFAULT,
     analysis_end_rule_description,
     calendar_window_to_n_periods,
-    compute_frequency_disclosure,
+    frequency_disclosure_from_resolution,
     normalize_returns_frequency,
     per_period_eff_from_annual_simple,
     periods_per_year as periods_per_year_for,
+    resolve_returns_frequencies,
 )
 from src.portfolio_commentary import write_portfolio_commentary, write_stress_commentary
 from src.regime_factor_analytics import (
@@ -179,6 +180,14 @@ def parse_args() -> argparse.Namespace:
             "(combined current-vs-policy workflow; does not overwrite policy Main artifacts)"
         ),
     )
+    parser.add_argument(
+        "--materialize-analysis-subject",
+        action="store_true",
+        help=(
+            "Materialize the resolved analysis_subject into output_dir_final/analysis_subject/ "
+            "before candidate generation."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -197,11 +206,12 @@ def build_derived_assumptions(
     Build dictionary of derived assumptions used in the run.
     These are values computed from config (not directly specified).
     """
-    rf_mode = normalize_returns_frequency(returns_frequency)
+    freq_res = resolve_returns_frequencies(returns_frequency)
+    rf_mode = freq_res.main_metrics
     # Liquidity life floor amount = liquidity_need_months * monthly_expenses (single source of truth)
     liquidity_need_amount = cfg.liquidity_need_months * (cfg.monthly_expenses or 0)
 
-    return {
+    derived = {
         "resolved_cash_proxy_ticker": cash_proxy_ticker,
         "resolved_rf_source": rf_source,
         "resolved_local_benchmark_map": local_benchmark_map,
@@ -214,9 +224,20 @@ def build_derived_assumptions(
         "liquidity_need": liquidity_need_amount,
         "liquidity_life_floor_amount": liquidity_need_amount,
         "returns_frequency": rf_mode,
+        "configured_returns_frequency": freq_res.configured,
+        "main_metrics_returns_frequency_forced": freq_res.forced_to_monthly,
         "periods_per_year": periods_per_year,
         "analysis_end_rule": analysis_end_rule_description(rf_mode),
     }
+    return derived
+
+
+def regime_mar_daily_from_annual(mar_annual: float | None) -> float | None:
+    """Return daily MAR override for regime metrics; None keeps daily risk-free as MAR."""
+
+    if mar_annual is None:
+        return None
+    return per_period_eff_from_annual_simple(float(mar_annual), "daily")
 
 
 def run_portfolio_report_for_weights(
@@ -243,7 +264,7 @@ def run_portfolio_report_for_weights(
     benchmark_base_ticker = cfg.benchmark_base_ticker
     windows_months = cfg.windows_months
 
-    returns_frequency = normalize_returns_frequency(getattr(cfg, "returns_frequency", None))
+    freq_res = resolve_returns_frequencies(getattr(cfg, "returns_frequency", None))
 
     assets_meta = load_assets_metadata()
 
@@ -276,7 +297,7 @@ def run_portfolio_report_for_weights(
         assets_meta=assets_meta,
         no_cache=no_cache,
         local_benchmark_map=local_benchmark_map,
-        returns_frequency=returns_frequency,
+        returns_frequency=freq_res.configured,
     )
     monthly_prices = data.monthly_prices
     monthly_returns = data.monthly_returns
@@ -290,12 +311,15 @@ def run_portfolio_report_for_weights(
     daily_cache_key = data.daily_cache_key
     monthly_cache_key = data.monthly_cache_key
     returns_frequency = normalize_returns_frequency(data.returns_frequency)
+    configured_returns_frequency = normalize_returns_frequency(data.configured_returns_frequency)
+    freq_res = resolve_returns_frequencies(configured_returns_frequency)
     ppy = periods_per_year_for(returns_frequency)
     mar_period = (
         per_period_eff_from_annual_simple(float(mar_annual), returns_frequency)
         if mar_annual is not None
         else None
     )
+    regime_mar_daily = regime_mar_daily_from_annual(mar_annual)
 
     # =========================================================================
     # STEP 4: Compute portfolio returns (NaN-safe dynamic; production vs research mode)
@@ -1032,19 +1056,13 @@ def run_portfolio_report_for_weights(
                         lr_lb.index = pd.to_datetime(lr_lb.index).tz_localize(None).normalize()
                         local_bench_daily[str(tcol)] = lr_lb.reindex(common_d)
 
-                    mar_daily_ser = None
-                    if mar_monthly is not None:
-                        mar_s = pd.Series(float(mar_monthly), index=rf_monthly.index)
-                        mar_s.index = pd.to_datetime(mar_s.index).tz_localize(None).normalize()
-                        mar_daily_ser = mar_s.sort_index().reindex(common_d, method="ffill")
-
                     rpm_full = build_regime_portfolio_metrics(
                         daily_asset_returns=daily_asset,
                         daily_regime_labels_ffill=labels_ff,
                         weights=weights,
                         rf_daily=rf_d,
                         benchmark_daily_returns=bench_d,
-                        mar_daily=mar_daily_ser,
+                        mar_daily=regime_mar_daily,
                         local_benchmark_daily_by_ticker=local_bench_daily,
                         regime_factor_analytics_payload=rfa_payload,
                     )
@@ -1346,19 +1364,10 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["scenario_library_error"] = str(e)
         logger.warning(f"Scenario library v1 failed: {e}")
-    macro_notes = ""
-    if returns_frequency != "monthly":
-        macro_notes = (
-            f"Portfolio metrics and covariance use returns_frequency={returns_frequency}; factor betas/regression/stress shocks "
-            f"stay {FACTOR_STRESS_FREQUENCY_DEFAULT}; macro regime classifier labels remain {MACRO_REGIME_FREQUENCY_DEFAULT}; "
-            "regime_factor_analytics may use daily returns when daily data loads (see regime_factor_analytics.summary)."
-        )
-    stress_report["frequency_disclosure"] = compute_frequency_disclosure(
-        returns_frequency=returns_frequency,
-        optimization_frequency=returns_frequency,
+    stress_report["frequency_disclosure"] = frequency_disclosure_from_resolution(
+        freq_res,
         factor_stress_frequency=FACTOR_STRESS_FREQUENCY_DEFAULT,
         macro_regime_frequency=MACRO_REGIME_FREQUENCY_DEFAULT,
-        macro_regime_frequency_notes=(macro_notes or None),
     )
     stress_report["periods_per_year"] = ppy
 
@@ -1659,6 +1668,90 @@ def run_materialize_current_report(
     )
 
 
+def resolve_analysis_subject_materialization(cfg: PortfolioConfig) -> dict[str, Any]:
+    """Return the resolved analysis_subject weights and metadata for sidecar materialization."""
+    subject = resolve_analysis_subject(
+        cfg,
+        portfolio_weights=dict(getattr(cfg, "weights", {}) or {}),
+        weights_source=getattr(cfg, "weights_source", None),
+    )
+    if subject.get("resolution_status") != "resolved":
+        return {
+            "status": "blocked",
+            "subject": subject,
+            "weights": {},
+            "weights_source": subject.get("weight_source"),
+            "blocking_errors": list(subject.get("blocking_errors") or []),
+        }
+
+    weights = {
+        str(ticker): float(weight)
+        for ticker, weight in (subject.get("weights") or {}).items()
+        if float(weight) > 0
+    }
+    if not weights:
+        return {
+            "status": "blocked",
+            "subject": subject,
+            "weights": {},
+            "weights_source": subject.get("weight_source"),
+            "blocking_errors": [
+                {
+                    "code": "ANALYSIS_SUBJECT_WEIGHTS_EMPTY",
+                    "message": "Resolved analysis_subject has no positive diagnostic weights.",
+                }
+            ],
+        }
+
+    return {
+        "status": "resolved",
+        "subject": subject,
+        "weights": weights,
+        "weights_source": subject.get("weight_source"),
+        "blocking_errors": [],
+    }
+
+
+def run_materialize_analysis_subject_report(
+    cfg: PortfolioConfig,
+    *,
+    run_timestamp: str,
+    backtest_mode: str,
+    no_cache: bool,
+) -> None:
+    """Write resolved analysis_subject diagnostics to output_dir_final/analysis_subject/."""
+    materialization = resolve_analysis_subject_materialization(cfg)
+    if materialization["status"] != "resolved":
+        errors = materialization.get("blocking_errors") or []
+        msg = "; ".join(str(err.get("message") or err) for err in errors) or "unknown blocker"
+        logger.error("materialize-analysis-subject failed: %s", msg)
+        raise SystemExit(1)
+
+    output_dir_final = ensure_output_dir(Path(getattr(cfg, "output_dir_final", "Main portfolio")))
+    subject_final = ensure_output_dir(output_dir_final / "analysis_subject")
+    subject_csv = ensure_output_dir(subject_final / "results_csv")
+    subject = materialization["subject"]
+
+    logger.info(
+        "Materializing analysis_subject (%s, role=%s) to %s.",
+        subject.get("type"),
+        subject.get("portfolio_role"),
+        subject_final,
+    )
+
+    run_portfolio_report_for_weights(
+        cfg,
+        materialization["weights"],
+        run_timestamp=run_timestamp,
+        output_dir_csv=subject_csv,
+        output_dir_final=subject_final,
+        backtest_mode_override=backtest_mode,
+        no_cache=no_cache,
+        weights_source=str(materialization["weights_source"] or "analysis_subject"),
+        portfolio_role_override="analysis_subject",
+    )
+
+
 def main() -> None:
     args = parse_args()
     setup_logging()
@@ -1675,6 +1768,24 @@ def main() -> None:
 
     if cfg.pending_fields:
         logger.info(f"Configuration fields awaiting user input: {cfg.pending_fields}")
+
+    if args.materialize_current and args.materialize_analysis_subject:
+        logger.error("Use only one materialization mode at a time.")
+        raise SystemExit(1)
+
+    if args.materialize_analysis_subject:
+        run_materialize_analysis_subject_report(
+            cfg,
+            run_timestamp=run_timestamp,
+            backtest_mode=args.backtest_mode,
+            no_cache=args.no_cache,
+        )
+        cleanup_old_cache(keep_versions=3)
+        sidecar = Path(getattr(cfg, "output_dir_final", "Main portfolio")) / "analysis_subject"
+        print("\nDone (analysis_subject materialization).")
+        print(f"  Analysis subject artifacts: {sidecar}")
+        print("  Next: generate or compare candidate portfolios after subject diagnostics exist.")
+        return
 
     if args.materialize_current:
         run_materialize_current_report(
@@ -1693,8 +1804,9 @@ def main() -> None:
     if not cfg.weights:
         logger.error(
             "Portfolio weights are not set. Use analysis_mode=analyze_current_weights with current_weights "
-            "for an existing portfolio, or run the optimization step first: python run_optimization.py "
-            "(writes portfolio_weights.yml)."
+            "for an existing portfolio, run `python run_report.py --materialize-analysis-subject` "
+            "for the portfolio-first subject sidecar, or run legacy policy optimization with "
+            "`python run_optimization.py` to write portfolio_weights.yml."
         )
         raise SystemExit(1)
 

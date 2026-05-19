@@ -8,11 +8,14 @@ import pytest
 
 from src.portfolio_analytics import rolling_sharpe, rolling_vol_annual
 from src.returns_frequency import (
+    MAIN_METRICS_RETURNS_FREQUENCY,
     calendar_window_to_n_periods,
     compute_frequency_disclosure,
+    frequency_disclosure_from_resolution,
     normalize_returns_frequency,
     per_period_eff_from_annual_simple,
     periods_per_year,
+    resolve_returns_frequencies,
     rf_series_annual_pct_to_returns_frequency,
 )
 from src.windows import slice_calendar_window
@@ -43,6 +46,28 @@ def test_per_period_mar_compounding_weekly_vs_monthly() -> None:
     assert abs((1 + m) ** 12 - 1.06) < 1e-9
     assert abs((1 + w) ** 52 - 1.06) < 1e-9
     assert m > w
+
+
+def test_resolve_returns_frequencies_forces_monthly_main_metrics() -> None:
+    res = resolve_returns_frequencies("daily")
+    assert res.configured == "daily"
+    assert res.main_metrics == MAIN_METRICS_RETURNS_FREQUENCY
+    assert res.forced_to_monthly is True
+    res_m = resolve_returns_frequencies("monthly")
+    assert res_m.forced_to_monthly is False
+
+
+def test_frequency_disclosure_records_configured_override() -> None:
+    res = resolve_returns_frequencies("daily")
+    fd = frequency_disclosure_from_resolution(
+        res,
+        factor_stress_frequency="weekly",
+        macro_regime_frequency="monthly",
+    )
+    assert fd["returns_frequency"] == "monthly"
+    assert fd["configured_returns_frequency"] == "daily"
+    assert fd["main_metrics_frequency_forced"] is True
+    assert "metrics_specification.md" in fd.get("macro_regime_frequency_notes", "")
 
 
 def test_frequency_disclosure_quiet_monthly_mismatch_legacy() -> None:

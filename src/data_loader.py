@@ -35,7 +35,8 @@ from src.fx import convert_prices_to_investor_currency
 from src.returns_frequency import (
     ReturnsFrequency,
     build_levels_and_returns_from_daily_prices,
-    normalize_returns_frequency,
+    main_metrics_frequency_override_note,
+    resolve_returns_frequencies,
     rf_series_annual_pct_to_returns_frequency,
 )
 from src.utils import logger
@@ -58,6 +59,7 @@ class MonthlyDataResult:
     daily_cache_key: str
     monthly_cache_key: str
     returns_frequency: ReturnsFrequency = "monthly"
+    configured_returns_frequency: ReturnsFrequency = "monthly"
 
 
 def load_monthly_data_shared(
@@ -73,12 +75,18 @@ def load_monthly_data_shared(
     returns_frequency: str | None = None,
 ) -> MonthlyDataResult:
     """
-    Load or build prices/returns, rf, benchmark, cash at ``returns_frequency`` (default monthly).
+    Load or build prices/returns, rf, benchmark, cash at the main-metrics cadence (monthly).
+
+    ``returns_frequency`` in config may be weekly/daily for disclosure only; the returned
+    panel always follows ``MAIN_METRICS_RETURNS_FREQUENCY``.
 
     Uses daily and panel cache. If local_benchmark_map is provided, its values are included
     in downloaded and converted tickers so Beta_local can use local benchmark returns.
     """
-    rf_mode = normalize_returns_frequency(returns_frequency)
+    freq_res = resolve_returns_frequencies(returns_frequency)
+    rf_mode = freq_res.main_metrics
+    if freq_res.forced_to_monthly:
+        logger.warning(main_metrics_frequency_override_note(freq_res))
     local_bench_tickers = list(local_benchmark_map.values()) if local_benchmark_map else []
     all_tickers = list(set(tickers + [benchmark_base_ticker, cash_proxy_ticker] + local_bench_tickers))
 
@@ -250,4 +258,5 @@ def load_monthly_data_shared(
         daily_cache_key=daily_cache_key,
         monthly_cache_key=monthly_cache_key,
         returns_frequency=rf_mode,
+        configured_returns_frequency=freq_res.configured,
     )
