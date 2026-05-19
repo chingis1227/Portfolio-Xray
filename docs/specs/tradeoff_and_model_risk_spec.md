@@ -42,7 +42,7 @@ The trade-off and model-risk layers:
 Recorded defaults when the user continues without overrides:
 
 1. **Two artifacts:** separate `tradeoff_explanation_v1` and `model_risk_diagnostics_v1` JSON files plus companion TXT summaries (not one combined file).
-2. **Primary trade-off pair:** **baseline** = `user_current` (`current`) when `status` is `available` or `degraded`; **target** = `selection_decision.favored_candidate_id` when present. If current is unavailable, emit `tradeoff_status: baseline_unavailable` and still allow **policy-vs-benchmark** secondary pairs documented below.
+2. **Primary trade-off pair:** **baseline** = `selection_decision.baseline_candidate_id` when available, preferring portfolio-first `analysis_subject`; otherwise use `candidate_comparison.comparison_baseline_candidate_id`; otherwise fall back to legacy `current` when `status` is `available` or `degraded`. **Target** = `selection_decision.favored_candidate_id` when present. If the selected baseline is unavailable, emit `tradeoff_status: baseline_unavailable` and still allow secondary pairs documented below.
 3. **Primary window:** `10y` for metric and drawdown deltas; stress deltas use comparison `stress` block (10y-aligned snapshot stress).
 4. **Turnover:** prefer `action_plan.turnover_half_sum_pct` when action exists for the favored target; else compute half-sum absolute weight deltas from `snapshot_10y.final_weights_total` on baseline and target artifact roots (same definition as Action Engine).
 5. **No new formulas:** all numeric deltas are differences of fields already exported in comparison or action artifacts, rounded to **three decimals** at export only per [metrics_specification.md](metrics_specification.md).
@@ -119,7 +119,7 @@ Rationale: trade-off needs `favored_candidate_id`; turnover in trade-off may rea
   "analysis_end": "YYYY-MM-DD",
   "primary_window": "10y",
   "tradeoff_status": "complete",
-  "baseline_candidate_id": "current",
+  "baseline_candidate_id": "analysis_subject",
   "target_candidate_id": "policy",
   "selection_decision_status": "no_material_rebalance",
   "pairs": [],
@@ -137,7 +137,7 @@ Rationale: trade-off needs `favored_candidate_id`; turnover in trade-off may rea
 | Value | Meaning |
 | --- | --- |
 | `complete` | Primary pair computed with at least one improves/worsens dimension. |
-| `baseline_unavailable` | No `current` row or current not scored; secondary pairs may still be present. |
+| `baseline_unavailable` | Preferred baseline row is absent or unavailable; secondary pairs may still be present. |
 | `no_favored_target` | Selection did not name a favored candidate id. |
 | `selection_unavailable` | `selection_decision.json` missing. |
 | `insufficient_metrics` | Baseline and target exist but primary-window metrics missing on one side. |
@@ -150,8 +150,8 @@ Each pair is a structured delta block. V1 requires **at least one** entry when s
 
 | Field | Value |
 | --- | --- |
-| `pair_id` | `current_to_favored` |
-| `baseline_candidate_id` | `current` |
+| `pair_id` | `baseline_to_favored` |
+| `baseline_candidate_id` | `analysis_subject` when available, else legacy `current` |
 | `target_candidate_id` | favored id |
 | `baseline_display_name` / `target_display_name` | from comparison |
 | `dimensions` | array of dimension objects (below) |
@@ -302,8 +302,9 @@ Implementation must emit a row when the upstream condition is true. Severity may
 | `factor_rolling_betas_error` | `factor_model` | medium | `factor_betas_rolling_error` present on stress report |
 | `stress_partial_coverage` | `stress_coverage` | medium | candidate `stress` in `missing_fields` or degraded stress |
 | `stress_fail_on_favored` | `stress_coverage` | high | favored or policy `stress.overall` indicates fail (map per stress spec labels) |
-| `candidate_degraded` | `data_quality` | medium | `status === degraded` on favored, policy, or current |
-| `current_unavailable` | `selection_confidence` | low | current row unavailable — No-Trade not fully grounded |
+| `candidate_degraded` | `data_quality` | medium | `status === degraded` on favored, policy, or selected baseline |
+| `analysis_subject_unavailable` | `selection_confidence` | low | portfolio-first baseline row unavailable — trade-off and No-Trade context not fully grounded |
+| `current_unavailable` | `selection_confidence` | low | legacy current row unavailable — No-Trade not fully grounded |
 | `selection_partial_scores` | `selection_confidence` | medium | selection warning `partial_score_inputs` |
 | `selection_data_review` | `selection_confidence` | high | `decision_status === data_review_required` |
 | `mandate_portfolio_invalid` | `mandate` | high | `mandate.portfolio_valid === false` on policy or favored |

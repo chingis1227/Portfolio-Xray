@@ -5,52 +5,52 @@
   "warmup_months_excluded": 62,
   "by_regime": {
     "goldilocks": {
-      "n_obs": 66,
-      "share_total": 0.1783783783783784,
+      "n_obs": 57,
+      "share_total": 0.15405405405405406,
       "first_occurrence": "1995-08-31",
-      "last_occurrence": "2017-08-31",
-      "avg_duration_months": 5.076923076923077,
-      "median_duration_months": 4.0,
-      "n_episodes": 13,
+      "last_occurrence": "2016-03-31",
+      "avg_duration_months": 4.75,
+      "median_duration_months": 3.0,
+      "n_episodes": 12,
       "min_episode_length": 2,
-      "max_episode_length": 14,
-      "quality_status": "reliable"
+      "max_episode_length": 17,
+      "quality_status": "usable"
     },
     "reflation": {
-      "n_obs": 213,
-      "share_total": 0.5756756756756757,
-      "first_occurrence": "1996-10-31",
-      "last_occurrence": "2026-05-31",
-      "avg_duration_months": 11.210526315789474,
-      "median_duration_months": 7.0,
-      "n_episodes": 19,
-      "min_episode_length": 2,
-      "max_episode_length": 28,
+      "n_obs": 253,
+      "share_total": 0.6837837837837838,
+      "first_occurrence": "1995-07-31",
+      "last_occurrence": "2026-04-30",
+      "avg_duration_months": 14.882352941176471,
+      "median_duration_months": 8.0,
+      "n_episodes": 17,
+      "min_episode_length": 1,
+      "max_episode_length": 44,
       "quality_status": "reliable"
     },
     "stagflation": {
-      "n_obs": 67,
-      "share_total": 0.1810810810810811,
-      "first_occurrence": "2000-11-30",
-      "last_occurrence": "2025-06-30",
-      "avg_duration_months": 7.444444444444445,
-      "median_duration_months": 6.0,
-      "n_episodes": 9,
-      "min_episode_length": 2,
-      "max_episode_length": 18,
-      "quality_status": "reliable"
-    },
-    "recession_disinflation": {
-      "n_obs": 24,
-      "share_total": 0.06486486486486487,
-      "first_occurrence": "1998-08-31",
-      "last_occurrence": "2020-07-31",
-      "avg_duration_months": 4.0,
-      "median_duration_months": 3.0,
+      "n_obs": 48,
+      "share_total": 0.12972972972972974,
+      "first_occurrence": "2001-12-31",
+      "last_occurrence": "2022-08-31",
+      "avg_duration_months": 8.0,
+      "median_duration_months": 5.5,
       "n_episodes": 6,
       "min_episode_length": 2,
-      "max_episode_length": 9,
+      "max_episode_length": 17,
       "quality_status": "usable"
+    },
+    "recession_disinflation": {
+      "n_obs": 12,
+      "share_total": 0.032432432432432434,
+      "first_occurrence": "2001-10-31",
+      "last_occurrence": "2020-07-31",
+      "avg_duration_months": 4.0,
+      "median_duration_months": 4.0,
+      "n_episodes": 3,
+      "min_episode_length": 2,
+      "max_episode_length": 6,
+      "quality_status": "low_confidence"
     },
     "neutral_transition": {
       "n_obs": 0,
@@ -68,22 +68,40 @@
   },
   "episode_history": [
     {
+      "regime": "reflation",
+      "start_date": "1995-07-31",
+      "end_date": "1995-07-31",
+      "length_months": 1
+    },
+    {
       "regime": "goldilocks",
       "start_date": "1995-08-31",
+      "end_date": "1996-01-31",
+      "length_months": 6
+    },
+    {
+      "regime": "reflation",
+      "start_date": "1996-02-29",
+      "end_date": "1996-07-31",
+      "length_months": 6
+    },
+    {
+      "regime": "goldilocks",
+      "start_date": "1996-08-31",
       "end_date": "1996-09-30",
-      "length_months": 14
+      "length_months": 2
     },
     {
       "regime": "reflation",
       "start_date": "1996-10-31",
-      "end_date": "1997-04-30",
-      "length_months": 7
+      "end_date": "1997-03-31",
+      "length_months": 6
     },
     {
       "regime": "goldilocks",
-      "start_date": "1997-05-31",
+      "start_date": "1997-04-30",
       "end_date": "1997-09-30",
-      "length_months": 5
+      "length_months": 6
     },
     {
       "regime": "reflation",
@@ -94,44 +112,32 @@
     {
       "regime": "goldilocks",
       "start_date": "1997-12-31",
-      "end_date": "1998-07-31",
-      "length_months": 8
-    },
-    {
-      "regime": "recession_disinflation",
-      "start_date": "1998-08-31",
-      "end_date": "1998-09-30",
-      "length_months": 2
-    },
-    {
-      "regime": "goldilocks",
-      "start_date": "1998-10-31",
       "end_date": "1999-04-30",
-      "length_months": 7
+      "length_months": 17
     },
     {
       "regime": "reflation",
       "start_date": "1999-05-31",
-      "end_date": "2000-10-31",
-      "length_months": 18
-    },
-    {
-      "regime": "stagflation",
-      "start_date": "2000-11-30",
-      "end_date": "2001-04-30",
-      "length_months": 6
-    },
-    {
-      "regime": "goldilocks",
-      "start_date": "2001-05-31",
-      "end_date": "2001-06-30",
-      "length_months": 2
+      "end_date": "2001-09-30",
+      "length_months": 29
     },
     {
       "regime": "recession_disinflation",
-      "start_date": "2001-07-31",
+      "start_date": "2001-10-31",
+      "end_date": "2001-11-30",
+      "length_months": 2
+    },
+    {
+      "regime": "stagflation",
+      "start_date": "2001-12-31",
+      "end_date": "2002-01-31",
+      "length_months": 2
+    },
+    {
+      "regime": "goldilocks",
+      "start_date": "2002-02-28",
       "end_date": "2002-03-31",
-      "length_months": 9
+      "length_months": 2
     },
     {
       "regime": "reflation",
@@ -148,104 +154,62 @@
     {
       "regime": "reflation",
       "start_date": "2003-01-31",
-      "end_date": "2003-03-31",
-      "length_months": 3
-    },
-    {
-      "regime": "stagflation",
-      "start_date": "2003-04-30",
-      "end_date": "2003-06-30",
-      "length_months": 3
+      "end_date": "2003-04-30",
+      "length_months": 4
     },
     {
       "regime": "goldilocks",
-      "start_date": "2003-07-31",
+      "start_date": "2003-05-31",
       "end_date": "2003-08-31",
-      "length_months": 2
-    },
-    {
-      "regime": "reflation",
-      "start_date": "2003-09-30",
-      "end_date": "2005-04-30",
-      "length_months": 20
-    },
-    {
-      "regime": "stagflation",
-      "start_date": "2005-05-31",
-      "end_date": "2005-07-31",
-      "length_months": 3
-    },
-    {
-      "regime": "reflation",
-      "start_date": "2005-08-31",
-      "end_date": "2007-04-30",
-      "length_months": 21
-    },
-    {
-      "regime": "stagflation",
-      "start_date": "2007-05-31",
-      "end_date": "2008-10-31",
-      "length_months": 18
-    },
-    {
-      "regime": "recession_disinflation",
-      "start_date": "2008-11-30",
-      "end_date": "2009-03-31",
-      "length_months": 5
-    },
-    {
-      "regime": "stagflation",
-      "start_date": "2009-04-30",
-      "end_date": "2010-01-31",
-      "length_months": 10
-    },
-    {
-      "regime": "reflation",
-      "start_date": "2010-02-28",
-      "end_date": "2010-06-30",
-      "length_months": 5
-    },
-    {
-      "regime": "goldilocks",
-      "start_date": "2010-07-31",
-      "end_date": "2010-10-31",
       "length_months": 4
     },
     {
       "regime": "reflation",
-      "start_date": "2010-11-30",
-      "end_date": "2011-09-30",
-      "length_months": 11
+      "start_date": "2003-09-30",
+      "end_date": "2007-04-30",
+      "length_months": 44
+    },
+    {
+      "regime": "stagflation",
+      "start_date": "2007-05-31",
+      "end_date": "2008-09-30",
+      "length_months": 17
     },
     {
       "regime": "recession_disinflation",
-      "start_date": "2011-10-31",
-      "end_date": "2011-11-30",
-      "length_months": 2
-    },
-    {
-      "regime": "reflation",
-      "start_date": "2011-12-31",
-      "end_date": "2012-05-31",
+      "start_date": "2008-10-31",
+      "end_date": "2009-03-31",
       "length_months": 6
     },
     {
-      "regime": "goldilocks",
-      "start_date": "2012-06-30",
-      "end_date": "2012-07-31",
-      "length_months": 2
+      "regime": "stagflation",
+      "start_date": "2009-04-30",
+      "end_date": "2010-07-31",
+      "length_months": 16
     },
     {
-      "regime": "recession_disinflation",
-      "start_date": "2012-08-31",
-      "end_date": "2012-09-30",
+      "regime": "goldilocks",
+      "start_date": "2010-08-31",
+      "end_date": "2010-10-31",
+      "length_months": 3
+    },
+    {
+      "regime": "reflation",
+      "start_date": "2010-11-30",
+      "end_date": "2012-06-30",
+      "length_months": 20
+    },
+    {
+      "regime": "goldilocks",
+      "start_date": "2012-07-31",
+      "end_date": "2012-08-31",
       "length_months": 2
     },
     {
       "regime": "reflation",
-      "start_date": "2012-10-31",
+      "start_date": "2012-09-30",
       "end_date": "2013-04-30",
-      "length_months": 7
+      "length_months": 8
     },
     {
       "regime": "goldilocks",
@@ -256,20 +220,8 @@
     {
       "regime": "reflation",
       "start_date": "2013-08-31",
-      "end_date": "2014-01-31",
-      "length_months": 6
-    },
-    {
-      "regime": "goldilocks",
-      "start_date": "2014-02-28",
-      "end_date": "2014-03-31",
-      "length_months": 2
-    },
-    {
-      "regime": "reflation",
-      "start_date": "2014-04-30",
       "end_date": "2014-09-30",
-      "length_months": 6
+      "length_months": 14
     },
     {
       "regime": "goldilocks",
@@ -286,32 +238,38 @@
     {
       "regime": "goldilocks",
       "start_date": "2015-09-30",
-      "end_date": "2016-03-31",
-      "length_months": 7
-    },
-    {
-      "regime": "reflation",
-      "start_date": "2016-04-30",
-      "end_date": "2017-05-31",
-      "length_months": 14
-    },
-    {
-      "regime": "goldilocks",
-      "start_date": "2017-06-30",
-      "end_date": "2017-08-31",
+      "end_date": "2015-11-30",
       "length_months": 3
     },
     {
       "regime": "reflation",
-      "start_date": "2017-09-30",
-      "end_date": "2019-05-31",
-      "length_months": 21
+      "start_date": "2015-12-31",
+      "end_date": "2016-01-31",
+      "length_months": 2
+    },
+    {
+      "regime": "goldilocks",
+      "start_date": "2016-02-29",
+      "end_date": "2016-03-31",
+      "length_months": 2
+    },
+    {
+      "regime": "reflation",
+      "start_date": "2016-04-30",
+      "end_date": "2018-11-30",
+      "length_months": 32
     },
     {
       "regime": "stagflation",
-      "start_date": "2019-06-30",
+      "start_date": "2018-12-31",
+      "end_date": "2019-01-31",
+      "length_months": 2
+    },
+    {
+      "regime": "reflation",
+      "start_date": "2019-02-28",
       "end_date": "2020-03-31",
-      "length_months": 10
+      "length_months": 14
     },
     {
       "regime": "recession_disinflation",
@@ -328,33 +286,21 @@
     {
       "regime": "stagflation",
       "start_date": "2022-03-31",
-      "end_date": "2022-12-31",
-      "length_months": 10
+      "end_date": "2022-08-31",
+      "length_months": 6
     },
     {
       "regime": "reflation",
-      "start_date": "2023-01-31",
-      "end_date": "2025-04-30",
-      "length_months": 28
-    },
-    {
-      "regime": "stagflation",
-      "start_date": "2025-05-31",
-      "end_date": "2025-06-30",
-      "length_months": 2
-    },
-    {
-      "regime": "reflation",
-      "start_date": "2025-07-31",
-      "end_date": "2026-05-31",
-      "length_months": 11
+      "start_date": "2022-09-30",
+      "end_date": "2026-04-30",
+      "length_months": 44
     }
   ],
   "stability_summary": {
-    "n_switches": 46,
-    "avg_months_between_switches": 7.872340425531915,
-    "share_one_month_regimes": 0.0,
-    "share_regimes_lt_3m": 0.19148936170212766,
+    "n_switches": 37,
+    "avg_months_between_switches": 9.736842105263158,
+    "share_one_month_regimes": 0.02631578947368421,
+    "share_regimes_lt_3m": 0.2631578947368421,
     "too_frequent_switches": false,
     "too_many_one_month_regimes": false,
     "too_many_short_regimes": false,
@@ -369,8 +315,8 @@
         "end_date": "2009-03-31",
         "n_obs": 18,
         "label_counts": {
-          "stagflation": 13,
-          "recession_disinflation": 5
+          "stagflation": 12,
+          "recession_disinflation": 6
         },
         "expected_labels": [
           "recession_disinflation",
@@ -387,13 +333,13 @@
         "n_obs": 5,
         "label_counts": {
           "recession_disinflation": 3,
-          "stagflation": 2
+          "reflation": 2
         },
         "expected_labels": [
           "recession_disinflation",
           "stagflation"
         ],
-        "expected_share": 1.0,
+        "expected_share": 0.6,
         "assessment": "economically_intuitive",
         "note": "COVID shock should not be dominated by expansionary labels."
       },
@@ -403,8 +349,8 @@
         "end_date": "2022-12-31",
         "n_obs": 24,
         "label_counts": {
-          "reflation": 14,
-          "stagflation": 10
+          "reflation": 18,
+          "stagflation": 6
         },
         "expected_labels": [
           "reflation",
@@ -420,58 +366,56 @@
         "end_date": "2023-12-31",
         "n_obs": 24,
         "label_counts": {
-          "reflation": 14,
-          "stagflation": 10
+          "reflation": 18,
+          "stagflation": 6
         },
         "expected_labels": [
           "stagflation",
           "recession_disinflation"
         ],
-        "expected_share": 0.4166666666666667,
-        "assessment": "mixed_or_borderline",
+        "expected_share": 0.25,
+        "assessment": "questionable",
         "note": "Tightening cycle should generally avoid broad risk-on reflation dominance."
       }
     ]
   },
   "metadata_quality": {
     "coverage_tier_distribution": {
-      "full": 370
+      "fred_baseline": 370
     },
     "confidence_level_distribution": {
-      "low": 233,
-      "high": 137
+      "low": 215,
+      "medium": 155
     },
     "available_blocks_frequency": {
-      "growth_business_activity": 1.0,
-      "growth_labor": 0.9972972972972973,
-      "growth_consumer": 0.9945945945945946,
+      "growth_business_activity": 0.0,
+      "growth_labor": 1.0,
+      "growth_consumer": 0.9972972972972973,
       "growth_credit": 1.0,
       "growth_nowcast": 0.3216216216216216,
-      "core_inflation": 0.9945945945945946,
+      "core_inflation": 1.0,
       "headline_inflation": 1.0,
       "wages": 0.6621621621621622,
-      "inflation_expectations": 0.6,
-      "business_price_pressure": 1.0
+      "inflation_expectations": 0.5972972972972973,
+      "business_price_pressure": 0.0
     },
     "missing_blocks_frequency": {
-      "growth_business_activity": 0.0,
-      "growth_labor": 0.002702702702702675,
-      "growth_consumer": 0.00540540540540535,
+      "growth_business_activity": 1.0,
+      "growth_labor": 0.0,
+      "growth_consumer": 0.002702702702702675,
       "growth_credit": 0.0,
       "growth_nowcast": 0.6783783783783783,
-      "core_inflation": 0.00540540540540535,
+      "core_inflation": 0.0,
       "headline_inflation": 0.0,
       "wages": 0.33783783783783783,
-      "inflation_expectations": 0.4,
-      "business_price_pressure": 0.0
+      "inflation_expectations": 0.4027027027027027,
+      "business_price_pressure": 1.0
     },
     "optional_blocks_missing_frequency": {
       "growth_nowcast": 0.0
     },
     "available_blocks_latest": [
-      "business_price_pressure",
       "core_inflation",
-      "growth_business_activity",
       "growth_consumer",
       "growth_credit",
       "growth_labor",
@@ -480,48 +424,53 @@
       "inflation_expectations",
       "wages"
     ],
-    "missing_blocks_latest": [],
+    "missing_blocks_latest": [
+      "business_price_pressure",
+      "growth_business_activity"
+    ],
     "optional_blocks_missing_latest": []
   },
   "transition_summary": {
     "n_scored_months": 370,
-    "n_transition_months": 233,
-    "transition_share": 0.6297297297297297,
+    "n_transition_months": 214,
+    "transition_share": 0.5783783783783784,
     "transition_reason_counts": {
-      "growth_axis_near_neutral": 111,
-      "inflation_axis_near_neutral": 65,
-      "both_axes_near_neutral": 57
+      "growth_axis_near_neutral": 96,
+      "inflation_axis_near_neutral": 76,
+      "both_axes_near_neutral": 42
     },
     "transition_by_primary": {
-      "goldilocks": 48,
-      "reflation": 121,
-      "stagflation": 49,
-      "recession_disinflation": 15
+      "goldilocks": 40,
+      "reflation": 135,
+      "stagflation": 32,
+      "recession_disinflation": 7
     },
     "primary_vs_transition_pivot": {
       "goldilocks": {
-        "non_transition": 18,
-        "transition": 48
+        "non_transition": 17,
+        "transition": 40
       },
       "reflation": {
-        "non_transition": 92,
-        "transition": 121
+        "non_transition": 118,
+        "transition": 135
       },
       "stagflation": {
-        "non_transition": 18,
-        "transition": 49
+        "non_transition": 16,
+        "transition": 32
       },
       "recession_disinflation": {
-        "non_transition": 9,
-        "transition": 15
+        "non_transition": 5,
+        "transition": 7
       }
     },
-    "legacy_neutral_transition_share": 0.6702702702702703
+    "legacy_neutral_transition_share": 0.5945945945945946
   },
   "overall_assessment": {
-    "history_usable": true,
-    "should_treat_regime_specific_cautiously": false,
+    "history_usable": false,
+    "should_treat_regime_specific_cautiously": true,
     "classifier_noise_warning": false,
-    "warnings": []
+    "warnings": [
+      "at least one regime has fewer than 24 observations; treat regime-specific betas/covariance/RC cautiously"
+    ]
   }
 }

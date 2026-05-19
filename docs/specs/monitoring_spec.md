@@ -10,7 +10,7 @@ Implementation: [src/monitoring.py](../../src/monitoring.py) (`analysis_snapshot
 
 Monitoring V1:
 
-- projects **current** and **policy** profile fields from existing decision-pipeline JSON (no new formulas);
+- projects **analysis_subject**, **current**, and **policy** profile fields from existing decision-pipeline JSON (no new formulas);
 - writes **`analysis_snapshot.json`** under `{output_dir_final}/monitoring/latest/` and archives a copy under `monitoring/history/` keyed by `analysis_end`;
 - writes **`monitoring_diff.json`** (and optional **`monitoring_diff.txt`**) under `{output_dir_final}/` after each comparison run that produces score and selection artifacts;
 - compares the new snapshot to the **previous** `monitoring/latest/analysis_snapshot.json` when `analysis_end` differs;
@@ -20,9 +20,9 @@ Monitoring V1:
 ## V1 User Decisions (2026-05-17, Sessions 17–18)
 
 1. **Storage:** generated-only under `{output_dir_final}/monitoring/` (`latest/` + `history/`). No separate `analyses/` workspace in V1.
-2. **Monitored profiles:** **`current`** and **`policy`** when `status` is `available` or `degraded` in `candidate_comparison.json`.
+2. **Monitored profiles:** **`analysis_subject`**, **`current`**, and **`policy`** when `status` is `available` or `degraded` in `candidate_comparison.json`.
 3. **Retention:** keep `latest` plus **history** files named `analysis_snapshot_{analysis_end}.json` (one file per distinct `analysis_end`).
-4. **Primary diff focus:** **`current`** profile risk and mandate fields; decision and action blocks at run level.
+4. **Primary diff focus:** **`analysis_subject`** profile risk and mandate fields when available; legacy runs fall back to `current`, then `policy`. Decision and action blocks remain at run level.
 5. **Session delivery:** the V1 spec and implementation are delivered; future work may add report/PDF surfacing or scheduled monitoring.
 
 ## Naming Boundary
@@ -61,13 +61,13 @@ Monitoring V1:
 | `analysis_end` | From comparison |
 | `investor_currency` | From comparison |
 | `output_dir_final` | Relative path when possible |
-| `profiles` | Object keyed by `current`, `policy` (omit keys when unavailable) |
+| `profiles` | Object keyed by `analysis_subject`, `current`, `policy` (omit keys when unavailable) |
 | `decision` | Projection from `selection_decision.json` |
 | `action` | Projection from `action_plan.json` |
 | `artifact_refs` | Relative paths to source JSON files |
 | `warnings` | Run-level warnings |
 
-### Profile object (per `current` / `policy`)
+### Profile object (per `analysis_subject` / `current` / `policy`)
 
 | Field | Source |
 | --- | --- |
@@ -91,6 +91,13 @@ Monitoring V1:
 | `diff_available` | Prior loaded and primary profile compared |
 | `diff_degraded` | Prior exists but primary profile missing in current or prior |
 
+When `diff_status` is `no_prior_snapshot`, the diff must not imply a real prior comparison:
+`prior_analysis_end` is `null`, `profile_changes` is `{}`, decision/action change flags are
+`false` with prior fields `null`, `input_artifacts.prior_snapshot` is `null`, and
+`summary_plain_en` is narrative-only (first snapshot or same `analysis_end` re-run). Warning
+`prior_same_analysis_end_ignored` is set when a prior file exists but shares `analysis_end`
+with the current run.
+
 ### Required top-level
 
 | Field | Description |
@@ -98,7 +105,7 @@ Monitoring V1:
 | `schema_version` | `monitoring_diff_v1` |
 | `generated_at` | ISO UTC |
 | `diff_status` | See table above |
-| `primary_profile_id` | Normally `current`; `policy` if current unavailable |
+| `primary_profile_id` | Normally `analysis_subject`; `current` if subject unavailable; `policy` if both are unavailable |
 | `prior_analysis_end` | From prior snapshot or `null` |
 | `current_analysis_end` | From current snapshot |
 | `profile_changes` | Object keyed by profile id (`current`, `policy`) with numeric/string deltas |

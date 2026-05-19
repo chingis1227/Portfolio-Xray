@@ -17,6 +17,8 @@ Related documents:
 - [GLOSSARY.md](GLOSSARY.md) for shared project terminology.
 - [DECISIONS.md](DECISIONS.md) for key project decisions and rationale.
 - [Detailed Specifications](docs/specs/README.md) for module-specific behavior.
+- [Portfolio Review Workflow](docs/specs/portfolio_review_workflow_spec.md) for the portfolio-first
+  `analysis_subject` workflow and legacy policy boundary.
 - [Business Vision](BUSINESS_VISION.md) for business goals and target users.
 - [Product](PRODUCT.md) for user flow, screens, and feature behavior.
 - [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) for living target product architecture ideas; non-binding until promoted to specs.
@@ -24,9 +26,22 @@ Related documents:
 
 ## Architecture Summary
 
-The current project is a Python-based portfolio optimization and reporting system.
+The current project is a Python-based portfolio diagnostics, optimization, comparison, and reporting
+system.
 
-Primary execution chain:
+Portfolio-first target execution chain:
+
+```text
+analysis_subject
+-> validation and assumptions
+-> Portfolio X-Ray and diagnostics
+-> stress / factor / macro / scenario diagnostics
+-> candidate generation
+-> comparison and decision artifacts
+-> report / monitoring / journal
+```
+
+Legacy compatibility execution chain:
 
 ```text
 config.yml
@@ -58,9 +73,12 @@ workspace UI remains TBD.
 
 ### In Scope Today
 
+- Canonical portfolio-first workflow contract: resolve and diagnose `analysis_subject` before
+  candidates or decision artifacts; runtime transition is active.
+- Portfolio-first CLI orchestration that materializes the subject before candidate generation.
 - Config-driven portfolio universe and analysis settings.
 - Market data loading, FX conversion, and return panel construction.
-- Main policy optimization.
+- Legacy main policy optimization.
 - Portfolio weight output and mandate release checks.
 - Portfolio metrics and dynamic backtesting.
 - Risk contribution diagnostics.
@@ -84,6 +102,21 @@ workspace UI remains TBD.
 - API / white-label integration.
 
 ## High-Level Data Flow
+
+Portfolio-first flow:
+
+```text
+Analysis subject input
+  -> Subject resolver and assumptions
+  -> Subject report diagnostics
+  -> Candidate builders
+  -> Candidate report diagnostics
+  -> Subject-centered comparison
+  -> Selection / Action / Monitoring / Journal
+  -> Report package
+```
+
+Legacy policy flow:
 
 ```text
 Configuration
@@ -122,7 +155,8 @@ Main report artifacts
 
 | Entry point | Role | Primary outputs |
 | --- | --- | --- |
-| `run_optimization.py` | Main policy optimization flow | `portfolio_weights.yml`, `run_result.json`, diagnostics under `output_dir_final` |
+| `run_portfolio_review.py` | Portfolio-first review orchestration | `{output_dir_final}/analysis_subject/`, candidate factory/comparison outputs |
+| `run_optimization.py` | Legacy policy optimization compatibility flow | `portfolio_weights.yml`, `run_result.json`, diagnostics under `output_dir_final` |
 | `run_report.py` | Main report and diagnostics flow | `stress_report.json`, scenario libraries, CSV/JSON/HTML/TXT/PDF-style artifacts |
 | `run_view_after_optimization.py` | Approved post-optimization tactical tilt protocol | Tilted view outputs without changing policy rules outside the protocol |
 | `run_compare_variants.py` | Variant comparison flow | Comparison and downstream decision-package artifacts across policy and benchmark portfolios |
@@ -152,7 +186,9 @@ Main report artifacts
 | `run_robust_scenario_optimization.py` | Scenario-Based Robust Optimization | Additive robust scenario candidate builder |
 | `run_robust_scenario_portfolio_report.py` | Robust scenario candidate report | Full report for robust scenario weights |
 
-These entry points create comparison portfolios. They do not replace the main policy optimizer unless a future canonical spec changes that rule.
+These entry points create comparison portfolios. They do not replace the diagnosed
+`analysis_subject` in the portfolio-first workflow, and they do not replace the legacy policy
+optimizer unless a future canonical spec changes that rule.
 
 ## Module Layers
 
@@ -280,11 +316,11 @@ Core rules:
 - Use inner joins where specs require synchronous observations.
 - Follow `returns_frequency` for the main investor return panel.
 
-### 4. Main Policy Optimization
+### 4. Legacy Main Policy Optimization
 
 Purpose:
 
-Generate the main policy portfolio weights under the current investment policy.
+Generate policy portfolio weights under the legacy compatibility investment policy path.
 
 Key files:
 
@@ -317,7 +353,8 @@ Outputs:
 
 Architecture rule:
 
-The main policy optimizer is the production weight engine. Benchmark variants are comparison tools.
+The policy optimizer remains callable and tested, but the portfolio-first workflow does not use it
+as the default starting portfolio or default candidate. Benchmark variants are comparison tools.
 
 ### 5. Release Checks And Mandate Gates
 
@@ -584,7 +621,23 @@ so.
 
 ## Main Flow Details
 
-### Production Flow
+### Portfolio-First Review Flow
+
+```text
+1. Load config
+2. Resolve analysis_subject, assumptions, mandate, and validation result
+3. Build data and return panels
+4. Materialize diagnostics for analysis_subject
+5. Generate allowed non-policy candidates
+6. Materialize candidate diagnostics
+7. Compare analysis_subject versus candidates
+8. Write Selection / No-Trade, Action, Monitoring, Journal, and report package artifacts
+```
+
+Runtime support for this flow is implemented by the active portfolio-first transition sessions. The
+required order is already canonical in the portfolio review workflow spec.
+
+### Legacy Policy Compatibility Flow
 
 ```text
 1. Load config
@@ -593,7 +646,7 @@ so.
 4. Load adjusted market data and FX-adjust prices
 5. Build return panel and analysis_end
 6. Build optimization inputs
-7. Run main policy optimizer
+7. Run legacy policy optimizer
 8. Apply ProLiquidity / cash policy
 9. Run mandate and release checks
 10. Write weights and run metadata if allowed
@@ -630,9 +683,9 @@ so.
 
 | Layer | Inputs | Outputs |
 | --- | --- | --- |
-| Configuration | YAML config, profiles, metadata | Validated config, profile-derived targets |
+| Configuration | YAML config, profiles, metadata, `analysis_subject` | Validated config, subject, profile-derived targets |
 | Data | Tickers, FX, benchmark, risk-free source | Prices, returns, analysis_end, frequency disclosure |
-| Optimization | Returns, covariance, constraints, targets | Weights, status, run metadata |
+| Legacy optimization | Returns, covariance, constraints, targets | Weights, status, run metadata |
 | Release checks | Weights, returns, mandate | Approved or blocked release |
 | Metrics | Weights, returns, benchmark, risk-free | Asset/portfolio metrics and RC_vol |
 | Stress diagnostics | Weights, returns, factors, scenarios | Stress report and stress CSVs |
@@ -686,6 +739,10 @@ Guidelines:
 
 ### Current Policy Boundaries
 
+- The portfolio-first workflow starts from `analysis_subject` diagnostics before candidate generation
+  or decision artifacts.
+- The legacy policy optimizer is preserved, but it is not the default portfolio-first starting point
+  or default candidate.
 - The active optimizer universe comes from `config.yml`.
 - ETF and stock taxonomy are annotation-only in V1.
 - Final production weights come from the optimizer and approved post-processing protocols.
@@ -709,6 +766,7 @@ Primary sources:
 - [RULES.md](RULES.md)
 - [WORKFLOW.md](WORKFLOW.md)
 - [SPEC.md](SPEC.md)
+- [Portfolio Review Workflow](docs/specs/portfolio_review_workflow_spec.md)
 - [OUTPUTS.md](OUTPUTS.md)
 - [DATA.md](DATA.md)
 - [TESTING.md](TESTING.md)

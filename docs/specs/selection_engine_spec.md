@@ -18,7 +18,7 @@ The Selection Engine:
 - does **not** change optimizer weights, stress pass/fail, mandate MaxDD release gates, or `portfolio_weights.yml`;
 - does **not** replace Portfolio X-Ray, commentary, or diagnostic scorecards (those remain evidence inputs only).
 
-The No-Trade Recommendation is a **first-class outcome** of the same module when a target profile is identified but the benefit of moving from **current** weights does not clear reviewable materiality thresholds.
+The No-Trade Recommendation is a **first-class outcome** of the same module when a target profile is identified but the benefit of moving from the portfolio-first **baseline** does not clear reviewable materiality thresholds. The preferred baseline is `analysis_subject`; legacy runs fall back to `current`.
 
 ## Naming Boundary
 
@@ -46,8 +46,8 @@ The No-Trade Recommendation is a **first-class outcome** of the same module when
 Recorded defaults when the user continues the plan without overrides:
 
 1. **Decision tone:** neutral decision-support only (no direct trade imperatives in Selection/No-Trade artifacts).
-2. **Default favored candidate:** `policy` when `status` is `available` or `degraded` and mandate gates allow; otherwise the highest **composite selection score** among scored non-current candidates (see [Selection model](#selection-model-v1)).
-3. **No-Trade baseline:** compare **`current`** (role `user_current`) to the **favored target** (normally `policy`; if policy is unavailable, favored target is the composite winner). If `current` is `unavailable`, No-Trade is not computed; decision may still select a favored non-current candidate with a warning.
+2. **Default favored candidate:** legacy current-vs-policy runs keep `policy` as default when `status` is `available` or `degraded` and mandate gates allow. Portfolio-first runs with `analysis_subject` do not use the policy default; they select the highest **composite selection score** among scored alternatives.
+3. **No-Trade baseline:** compare **`analysis_subject`** to the **favored target**. If `analysis_subject` is unavailable, fall back to legacy **`current`** (role `user_current`). If no baseline is available, No-Trade is not computed; decision may still select a favored non-baseline candidate with a warning.
 4. **V1 scope:** composite ranking from Health + Robustness + mandate gates only. **Pareto dominance** is specified in [pareto_dominance_spec.md](pareto_dominance_spec.md) as a **diagnostic-only** layer that does not change Selection output in V1. **Regret analysis** is specified in [regret_analysis_spec.md](regret_analysis_spec.md) as a **diagnostic-only** layer that does not change Selection output in V1. **Assumption sensitivity** is specified in [assumption_sensitivity_spec.md](assumption_sensitivity_spec.md) as a **diagnostic-only** layer that does not change Selection output in V1.
 5. **Binding boundary:** Selection output is a **formal decision record** for the product workflow, but it remains **non-executing** (no broker integration, no automatic weight writes).
 
@@ -98,8 +98,9 @@ Recorded defaults when the user continues the plan without overrides:
 
 **Role rules (V1):**
 
-- `policy` — default favored target when present and mandate-allowed.
-- `user_current` (`current`) — No-Trade baseline only; never auto-selected as favored target unless policy and all alternatives are unavailable (then `inconclusive` with explanation).
+- `policy` — default favored target only in legacy current-vs-policy runs when present and mandate-allowed.
+- `analysis_subject` — portfolio-first baseline only; excluded from favored-target ranking.
+- `user_current` (`current`) — legacy No-Trade baseline only when `analysis_subject` is absent; excluded from favored-target ranking.
 - `benchmark` / `optimizer_candidate` / `robust_candidate` — may win composite only when `policy` is unavailable or fails hard mandate exclusion (see gates).
 
 Hard exclusion from favored target:
@@ -155,9 +156,10 @@ If one score file is missing, renormalize `w_health` and `w_robust` to sum to 0.
 
 ### Default favored candidate
 
-1. If `policy` is eligible and `mandate_component(policy) > 0`: favored id = `policy`.
-2. Else: favored id = argmax `selection_score(c)` over eligible non-current candidates.
-3. Tie-break order: higher `robustness_rank` (lower number wins), then higher `health_rank`, then lexicographic `candidate_id`.
+1. If `analysis_subject` is available: favored id = argmax `selection_score(c)` over eligible non-baseline candidates.
+2. Else if `policy` is eligible and `mandate_component(policy) > 0`: favored id = `policy` for legacy current-vs-policy compatibility.
+3. Else: favored id = argmax `selection_score(c)` over eligible non-baseline candidates.
+4. Tie-break order: higher `robustness_rank` (lower number wins), then higher `health_rank`, then lexicographic `candidate_id`.
 
 ### Relationship to score ranks
 
@@ -169,7 +171,7 @@ Health and Robustness **ranks** are explanatory. The favored candidate is **not*
 
 No-Trade runs only when:
 
-- `current` candidate is `available` or `degraded`, and
+- `analysis_subject` or fallback `current` baseline is `available` or `degraded`, and
 - a **favored target** `target_id` is identified (`policy` or composite winner), and
 - weight vectors can be resolved for both (from comparison-linked snapshots or `final_weights_total`).
 
@@ -205,7 +207,7 @@ Profile id: **`default_no_trade_thresholds_reviewable`**
 
 If drawdown fields are missing, skip drawdown clause and warn `no_trade_drawdown_unknown`.
 
-Otherwise, when favored target differs materially from current, `decision_status` = `selected_candidate`.
+Otherwise, when favored target differs materially from the baseline, `decision_status` = `selected_candidate`.
 
 **Clarification:** Small score improvement with **low** turnover may still be `selected_candidate` (user may prefer to implement small trades). No-Trade targets the case where **benefit is small and turnover is high**, or benefit is small across scores and drawdown.
 
@@ -248,6 +250,8 @@ This status **does not** select an aggressive alternative. List `risk_reduction_
   "investor_currency": "USD",
   "output_dir_final": "Main portfolio",
   "decision_status": "no_material_rebalance",
+  "baseline_candidate_id": "analysis_subject",
+  "baseline_display_name": "Starting Portfolio",
   "favored_candidate_id": "policy",
   "favored_display_name": "Policy (Optimized)",
   "selection_weights_profile": "default_weights_reviewable",
@@ -271,6 +275,8 @@ This status **does not** select an aggressive alternative. List `risk_reduction_
 | `non_executing` | bool | Always `true` in V1. |
 | `generated_at` | string | ISO timestamp. |
 | `decision_status` | string | One of the outcome table ids. |
+| `baseline_candidate_id` | string \| null | `analysis_subject` when available, else legacy `current`, else `null`. |
+| `baseline_display_name` | string \| null | English label from comparison for the baseline row. |
 | `favored_candidate_id` | string \| null | Favored profile; null when inconclusive or mandate-only message. |
 | `favored_display_name` | string \| null | English label from comparison. |
 | `selection_weights_profile` | string | Active composite weights profile. |
@@ -290,6 +296,7 @@ This status **does not** select an aggressive alternative. List `risk_reduction_
 | `no_trade_bullets` | Present when No-Trade fired; materiality numbers in plain English. |
 | `tradeoff_bullets` | Optional short bullets from comparison (no new formulas). When [tradeoff_and_model_risk_spec.md](tradeoff_and_model_risk_spec.md) artifacts exist, journal and reporting prefer those over this field. |
 | `data_quality_notes` | Missing fields, degraded candidates, partial scores. |
+| `risk_reduction_notes` | Present when `decision_status` is `mandate_risk_reduction`; plain-English mandate blockers suitable for TXT/PDF summaries. |
 
 Forbidden in `rationale` strings: imperative rebalance language, "recommended buy/sell", internal codes (`FAIL_*`, `DIAG_*`) in PDF-facing export paths.
 
@@ -348,7 +355,8 @@ Focused tests should cover:
 - `inconclusive` with no scored candidates;
 - `data_review_required` when comparison or both scores missing;
 - `mandate_risk_reduction` when `portfolio_valid` false on current/policy;
-- missing `current` → no No-Trade block, still may select policy;
+- `analysis_subject` baseline disables legacy policy default and drives No-Trade materiality when available;
+- missing baseline → no No-Trade block, still may select a candidate;
 - partial score file → renormalized weights warning;
 - tie-break ordering;
 - rationale strings contain no forbidden imperative patterns (fixture lint).

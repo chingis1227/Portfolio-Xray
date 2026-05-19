@@ -8,6 +8,7 @@ It defines the project-wide principles, boundaries, and required working discipl
 
 - The product is a portfolio decision-support and reporting system, not a black-box allocator. It must make assumptions, inputs, diagnostics, constraints, and outputs visible enough for a user to evaluate.
 - The current implementation is report-first and CLI/file-driven. Target product concepts do not change current behavior until the relevant implementation specs and code are updated.
+- The portfolio-first workflow contract starts from `analysis_subject` diagnostics before candidate generation or decision artifacts. The old policy optimizer is preserved as legacy or compatibility infrastructure until a canonical spec reactivates it for the default path.
 - Product concept documents can guide direction, but they do not override `SPEC.md`, canonical formulas, stress scenarios, data rules, optimizer policy, release logic, or current code behavior.
 - Optimized weights are system outputs. Manual post-optimization tilt is allowed only through the specified View After Optimization workflow.
 
@@ -37,6 +38,7 @@ It defines the project-wide principles, boundaries, and required working discipl
 | --- | --- |
 | Current implementation contract, expected behavior, output contracts, and canonical spec index | [SPEC.md](SPEC.md) |
 | Task workflow from request to implementation, verification, documentation sync, project memory, and commit | [WORKFLOW.md](WORKFLOW.md) |
+| Portfolio-first review workflow, `analysis_subject`, diagnostics-before-candidates order, and legacy policy boundary | [docs/specs/portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md) |
 | Analysis setup, input modes, current weights, mandate inputs, and calculation assumptions | [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md) |
 | Generated outputs, report artifacts, output folders, formats, and generated-vs-source boundaries | [OUTPUTS.md](OUTPUTS.md) |
 | Shared project terminology and short definitions | [GLOSSARY.md](GLOSSARY.md) |

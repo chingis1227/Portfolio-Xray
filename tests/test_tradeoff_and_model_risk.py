@@ -108,6 +108,21 @@ def _selection(favored: str = "policy") -> dict:
     }
 
 
+def _portfolio_first_selection(favored: str = "equal_weight") -> dict:
+    doc = _selection(favored)
+    doc["baseline_candidate_id"] = "analysis_subject"
+    doc["favored_display_name"] = "Equal Weight"
+    doc["composite_ranking"] = [
+        {"candidate_id": "equal_weight", "composite_score": 80},
+        {"candidate_id": "policy", "composite_score": 70},
+    ]
+    doc["no_trade"] = {
+        "evaluated": True,
+        "baseline_candidate_id": "analysis_subject",
+    }
+    return doc
+
+
 def test_tradeoff_primary_pair_complete(tmp_path: Path) -> None:
     comparison = _comparison_with_current(tmp_path)
     selection = _selection("policy")
@@ -119,9 +134,61 @@ def test_tradeoff_primary_pair_complete(tmp_path: Path) -> None:
     assert doc["schema_version"] == TRADEOFF_SCHEMA
     assert doc["tradeoff_status"] == "complete"
     assert "return_cagr" in doc["improves"]
-    primary = next(p for p in doc["pairs"] if p["pair_id"] == "current_to_favored")
+    primary = next(p for p in doc["pairs"] if p["pair_id"] == "baseline_to_favored")
     assert primary["turnover_half_sum_pct"] == 10.0
     assert doc["cost_of_change"]["turnover_half_sum_pct"] == 10.0
+
+
+def test_tradeoff_uses_analysis_subject_as_primary_baseline(tmp_path: Path) -> None:
+    subject = tmp_path / "analysis_subject"
+    equal = tmp_path / "equal-weight portfolio"
+    subject.mkdir()
+    equal.mkdir()
+    for folder, weights in (
+        (subject, {"VOO": 0.4, "BND": 0.6}),
+        (equal, {"VOO": 0.7, "BND": 0.3}),
+    ):
+        with open(folder / "snapshot_10y.json", "w", encoding="utf-8") as f:
+            json.dump({"final_weights_total": weights}, f)
+
+    comparison = {
+        "schema_version": "candidate_comparison_v1",
+        "analysis_end": "2025-12-31",
+        "primary_window": "10y",
+        "comparison_baseline_candidate_id": "analysis_subject",
+        "candidates": [
+            _cand(
+                "analysis_subject",
+                role="analysis_subject",
+                metrics=_metrics(cagr=0.06, vol_annual=0.13, max_drawdown=-0.25),
+                artifact_root="analysis_subject",
+            ),
+            _cand(
+                "current",
+                role="user_current",
+                metrics=_metrics(cagr=0.05, vol_annual=0.14, max_drawdown=-0.30),
+            ),
+            _cand(
+                "equal_weight",
+                role="benchmark",
+                metrics=_metrics(cagr=0.08, vol_annual=0.11, max_drawdown=-0.18),
+                artifact_root="equal-weight portfolio",
+            ),
+        ],
+    }
+
+    doc = build_tradeoff_explanation(
+        comparison,
+        _portfolio_first_selection(),
+        project_root=tmp_path,
+    )
+
+    assert doc["tradeoff_status"] == "complete"
+    assert doc["baseline_candidate_id"] == "analysis_subject"
+    primary = next(p for p in doc["pairs"] if p["pair_id"] == "baseline_to_favored")
+    assert primary["baseline_candidate_id"] == "analysis_subject"
+    assert primary["target_candidate_id"] == "equal_weight"
+    assert doc["cost_of_change"]["no_trade_context"]["baseline_candidate_id"] == "analysis_subject"
 
 
 def test_tradeoff_baseline_unavailable() -> None:
@@ -139,7 +206,7 @@ def test_tradeoff_baseline_unavailable() -> None:
         project_root=Path("."),
     )
     assert doc["tradeoff_status"] == "baseline_unavailable"
-    assert not any(p["pair_id"] == "current_to_favored" for p in doc["pairs"])
+    assert not any(p["pair_id"] == "baseline_to_favored" for p in doc["pairs"])
 
 
 def test_model_risk_dedup_and_mandate(tmp_path: Path) -> None:

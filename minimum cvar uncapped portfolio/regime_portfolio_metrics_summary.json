@@ -1,0 +1,64 @@
+{
+  "version": "regime_portfolio_metrics_v1",
+  "frequency": "daily",
+  "annualization_factor": 252,
+  "regime_label_alignment": "monthly_label_forward_filled_to_daily",
+  "regimes": {
+    "goldilocks": {
+      "n_obs_days": 10,
+      "quality_status": "insufficient_data",
+      "data_start": "2016-04-18",
+      "data_end": "2016-04-29",
+      "portfolio_metrics_available": true,
+      "cagr_annual": 0.045845732859109534,
+      "vol_annual": 0.03331314596777064,
+      "sharpe": 0.038161433428534765,
+      "covariance_available": true,
+      "factor_betas_available": false,
+      "factor_rc_available": false,
+      "warnings": []
+    },
+    "reflation": {
+      "n_obs_days": 2259,
+      "quality_status": "reliable",
+      "data_start": "2016-05-02",
+      "data_end": "2026-04-24",
+      "portfolio_metrics_available": true,
+      "cagr_annual": 0.03399165491192946,
+      "vol_annual": 0.050512823293995444,
+      "sharpe": -9.022881649374336,
+      "covariance_available": true,
+      "factor_betas_available": false,
+      "factor_rc_available": false,
+      "warnings": []
+    },
+    "stagflation": {
+      "n_obs_days": 166,
+      "quality_status": "usable",
+      "data_start": "2018-12-31",
+      "data_end": "2022-09-29",
+      "portfolio_metrics_available": true,
+      "cagr_annual": -0.12263963837387337,
+      "vol_annual": 0.07358668044268465,
+      "sharpe": -6.727679653567394,
+      "covariance_available": true,
+      "factor_betas_available": false,
+      "factor_rc_available": false,
+      "warnings": []
+    },
+    "recession_disinflation": {
+      "n_obs_days": 85,
+      "quality_status": "low_confidence",
+      "data_start": "2020-04-30",
+      "data_end": "2020-08-28",
+      "portfolio_metrics_available": true,
+      "cagr_annual": 0.07835850304312952,
+      "vol_annual": 0.027982311107843036,
+      "sharpe": 1.8066510987505386,
+      "covariance_available": true,
+      "factor_betas_available": false,
+      "factor_rc_available": false,
+      "warnings": []
+    }
+  }
+}

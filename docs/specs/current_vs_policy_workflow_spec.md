@@ -127,7 +127,7 @@ Policy root (`{output_dir_final}/`) must retain its own `snapshot_10y.json` and 
 | `schema_version` | string | `current_vs_policy_status_v1` |
 | `generated_at` | string | ISO timestamp |
 | `analysis_end` | string | From comparison |
-| `workflow_profile` | string | `combined_current_vs_policy` \| `policy_only` \| `current_only_diagnostic` |
+| `workflow_profile` | string | `combined_current_vs_policy` \| `policy_only` \| `current_only_diagnostic` \| `portfolio_first_review` |
 | `combined_context_complete` | bool | True when policy and current rows are both `available` or `degraded` |
 | `no_trade_actionable` | bool | True when Selection rules allow No-Trade evaluation (see matrix) |
 | `policy_row_status` | string | `available` \| `degraded` \| `unavailable` |
@@ -165,6 +165,13 @@ Rules align with [selection_engine_spec.md](selection_engine_spec.md) § No-Trad
 | `policy_target_unavailable` | Policy row unavailable | Policy target is unavailable; No-Trade versus current was not evaluated. |
 | `weights_not_loadable` | Rows present but snapshots lack `final_weights_total` | Weight vectors could not be loaded; No-Trade and trades were skipped. |
 | `mandate_or_data_block` | `mandate_risk_reduction` or `data_review_required` | Resolve mandate or data issues before interpreting versus-current results. |
+
+Portfolio-first compatibility profile: when `candidate_comparison.json` has an available
+`analysis_subject` baseline, this artifact may still be written for legacy consumers, but
+`workflow_profile` is `portfolio_first_review`, `no_trade_actionable` is false, `skip_reason` is
+`portfolio_first_review`, and the user message states that current-vs-policy status is
+compatibility-only for the run. Portfolio-first report summaries must not display this as a main
+workflow section.
 
 ## Downstream module contracts
 

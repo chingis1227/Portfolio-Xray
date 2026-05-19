@@ -18,10 +18,11 @@ REPORT_TXT_MARKER = "## Decision package (non-executing)"
 PRIMARY_WINDOW = "10y"
 TOP_CANDIDATE_ROWS = 3
 TOP_TRADE_ROWS = 5
+BASELINE_CANDIDATE_IDS = ("analysis_subject", "current")
 
 _DECISION_STATUS_LINES: dict[str, str] = {
     "selected_candidate": "Favored profile selected for further review.",
-    "no_material_rebalance": "No material rebalance suggested versus current weights.",
+    "no_material_rebalance": "No material rebalance suggested versus starting portfolio weights.",
     "inconclusive": "Selection inconclusive; review comparison and score drivers.",
     "data_review_required": "Decision requires data review before acting on results.",
     "mandate_risk_reduction": (
@@ -49,6 +50,61 @@ def _candidates_by_id(comparison: dict[str, Any] | None) -> dict[str, dict[str, 
         for c in comparison.get("candidates", [])
         if c.get("candidate_id")
     }
+
+
+def _candidate_available(cand: dict[str, Any] | None) -> bool:
+    return bool(cand and cand.get("status") in ("available", "degraded"))
+
+
+def _preferred_baseline_id(
+    comparison: dict[str, Any] | None,
+    selection: dict[str, Any] | None,
+) -> str | None:
+    by_id = _candidates_by_id(comparison)
+    explicit = (selection or {}).get("baseline_candidate_id")
+    if explicit and _candidate_available(by_id.get(str(explicit))):
+        return str(explicit)
+    comp_baseline = (comparison or {}).get("comparison_baseline_candidate_id")
+    if comp_baseline and _candidate_available(by_id.get(str(comp_baseline))):
+        return str(comp_baseline)
+    for candidate_id in BASELINE_CANDIDATE_IDS:
+        if _candidate_available(by_id.get(candidate_id)):
+            return candidate_id
+    return None
+
+
+def _format_candidate_highlight(cand: dict[str, Any], *, label: str | None = None) -> str:
+    m = (cand.get("metrics") or {}).get(PRIMARY_WINDOW) or {}
+    name = cand.get("display_name") or cand.get("candidate_id") or "Profile"
+    prefix = f"{label}: " if label else ""
+    return (
+        f"  {prefix}{name}: "
+        f"CAGR {_fmt_pct(m.get('cagr'))}, vol {_fmt_pct(m.get('vol_annual'))}, "
+        f"max DD {_fmt_pct(m.get('max_drawdown'))}, "
+        f"stress {_fmt_stress_label((cand.get('stress') or {}).get('overall'))}"
+    )
+
+
+def _selection_explanation_notes(selection: dict[str, Any]) -> list[str]:
+    rationale = selection.get("rationale") or {}
+    notes: list[str] = []
+    for key in ("risk_reduction_notes", "selection_bullets", "data_quality_notes"):
+        for raw in rationale.get(key) or []:
+            text = str(raw).strip()
+            if text and text not in notes:
+                notes.append(text)
+    return notes
+
+
+def _selection_warning_line(raw: Any) -> str:
+    text = str(raw)
+    labels = {
+        "mandate_risk_reduction": "Mandate risk-reduction status recorded.",
+        "no_trade_skipped_missing_weights": "No-Trade materiality could not be evaluated because weights were missing.",
+        "no_trade_not_actionable": "No-Trade materiality was not actionable for this run.",
+        "partial_score_inputs": "Selection used partial score inputs.",
+    }
+    return labels.get(text, text)
 
 
 def _score_row(
@@ -128,8 +184,13 @@ def build_decision_package_summary_lines(
         "It is not trade advice and does not execute orders.",
         "",
     ]
-    if workflow_status and workflow_status.get("user_message_en"):
-        lines.append("Current vs policy workflow")
+    show_legacy_workflow_status = (
+        workflow_status
+        and workflow_status.get("user_message_en")
+        and workflow_status.get("workflow_profile") != "portfolio_first_review"
+    )
+    if show_legacy_workflow_status:
+        lines.append("Legacy current-vs-policy workflow")
         lines.append("-" * 40)
         lines.append(f"  {workflow_status['user_message_en']}")
         lines.append("")
@@ -141,33 +202,22 @@ def build_decision_package_summary_lines(
         lines.append("Not available (candidate_comparison.json missing).")
     else:
         by_id = _candidates_by_id(comparison)
-        for key in ("policy", "current"):
-            cand = by_id.get(key)
-            if not cand:
-                continue
-            status = cand.get("status", "")
-            if status == "unavailable":
-                lines.append(
-                    f"  {cand.get('display_name', key)}: unavailable "
-                    f"({cand.get('unavailable_reason', 'no artifacts')})"
-                )
-                continue
-            m = (cand.get("metrics") or {}).get(PRIMARY_WINDOW) or {}
-            lines.append(
-                f"  {cand.get('display_name', key)}: "
-                f"CAGR {_fmt_pct(m.get('cagr'))}, vol {_fmt_pct(m.get('vol_annual'))}, "
-                f"max DD {_fmt_pct(m.get('max_drawdown'))}, "
-                f"stress {_fmt_stress_label((cand.get('stress') or {}).get('overall'))}"
-            )
+        baseline_id = _preferred_baseline_id(comparison, selection)
+        baseline = by_id.get(baseline_id or "")
+        if baseline:
+            lines.append(_format_candidate_highlight(baseline, label="Starting portfolio"))
+        else:
+            lines.append("  Starting portfolio: not available (analysis_subject diagnostics missing).")
         if health:
             scored = [
                 r
                 for r in health.get("candidates", [])
-                if r.get("score_status") == "scored" and r.get("candidate_id") != "current"
+                if r.get("score_status") == "scored"
+                and r.get("candidate_id") not in BASELINE_CANDIDATE_IDS
             ]
             scored.sort(key=lambda r: r.get("health_rank") or 999)
             if scored:
-                lines.append("  Top candidates by health rank:")
+                lines.append("  Candidate alternatives by health rank:")
                 for row in scored[:TOP_CANDIDATE_ROWS]:
                     cid = row.get("candidate_id", "")
                     disp = (by_id.get(cid) or {}).get("display_name") or cid
@@ -224,14 +274,18 @@ def build_decision_package_summary_lines(
         status = selection.get("decision_status", "")
         favored = selection.get("favored_display_name") or favored_id or "—"
         nt = selection.get("no_trade")
-        no_trade_ok = bool(
-            workflow_status.get("no_trade_actionable")
-            if workflow_status
-            else (nt and nt.get("evaluated"))
-        )
+        workflow_profile = (workflow_status or {}).get("workflow_profile")
+        if workflow_profile == "portfolio_first_review":
+            no_trade_ok = bool(nt and nt.get("evaluated"))
+        else:
+            no_trade_ok = bool(
+                workflow_status.get("no_trade_actionable")
+                if workflow_status
+                else (nt and nt.get("evaluated"))
+            )
         if status == "no_material_rebalance" and not no_trade_ok:
             lines.append(
-                "  Status: Selection recorded; No-Trade versus current was not evaluated."
+                "  Status: Selection recorded; No-Trade versus the starting portfolio was not evaluated."
             )
         else:
             lines.append(f"  Status: {_DECISION_STATUS_LINES.get(status, status)}")
@@ -239,14 +293,24 @@ def build_decision_package_summary_lines(
         rationale = selection.get("rationale") or {}
         if rationale.get("summary"):
             lines.append(f"  {rationale['summary']}")
+        if status == "mandate_risk_reduction" and not favored_id:
+            lines.append(
+                "  No favored profile is shown because mandate risk-reduction gates blocked selection."
+            )
+            for note in _selection_explanation_notes(selection)[:3]:
+                lines.append(f"  Mandate note: {note}")
         if nt and nt.get("evaluated") and no_trade_ok:
-            lines.append(f"  Versus current: {nt.get('summary', '')}")
-        elif workflow_status and not workflow_status.get("no_trade_actionable"):
+            lines.append(f"  Versus starting portfolio: {nt.get('summary', '')}")
+        elif (
+            workflow_status
+            and workflow_profile != "portfolio_first_review"
+            and not workflow_status.get("no_trade_actionable")
+        ):
             skip = workflow_status.get("user_message_en")
             if skip:
                 lines.append(f"  {skip}")
         for w in selection.get("warnings") or []:
-            lines.append(f"  Warning: {w}")
+            lines.append(f"  Warning: {_selection_warning_line(w)}")
     lines.append("")
 
     lines.append("Trade-offs")
@@ -500,12 +564,16 @@ def build_decision_package_report_md(
     report_title: str = "Decision Package Summary",
     analysis_end: str | None = None,
 ) -> str:
-    """PDF-facing Markdown from the plain summary body."""
-    title = report_title
-    if analysis_end:
-        title = f"{report_title} — analysis end {analysis_end}"
-    body = summary_plain_en.replace("\n", "\n\n")
-    return f"# {title}\n\n{body}\n"
+    """
+    PDF-facing Markdown from the plain summary body.
+
+    Delegates to ``pdf_reports.build_decision_package_pdf_md`` so Pandoc uses YAML front matter
+    instead of a long H1 that can break XeLaTeX on analysis-end dates.
+    """
+    from src.pdf_reports import build_decision_package_pdf_md
+
+    _ = report_title  # kept for backward-compatible call signature
+    return build_decision_package_pdf_md(summary_plain_en, analysis_end=analysis_end)
 
 
 def _append_summary_to_report_txt(report_path: Path, summary_plain_en: str) -> bool:

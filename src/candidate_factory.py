@@ -112,20 +112,59 @@ def validate_candidate_ids(candidate_ids: list[str]) -> list[str]:
     return [cid for cid in candidate_ids if cid not in known]
 
 
-def _resolve_analysis_end(project_root: Path, output_dir_final: str) -> str | None:
-    meta_path = project_root / output_dir_final / "run_metadata.json"
-    if not meta_path.is_file():
+def _load_json(path: Path) -> dict[str, Any] | None:
+    if not path.is_file():
         return None
     try:
-        data = json.loads(meta_path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
-    run_info = data.get("run_info") if isinstance(data, dict) else None
+    return data if isinstance(data, dict) else None
+
+
+def _analysis_end_from_artifact_dir(path: Path) -> str | None:
+    for name in ("snapshot_10y.json", "snapshot_5y.json", "snapshot_3y.json"):
+        snap = _load_json(path / name)
+        if snap and snap.get("analysis_end"):
+            return str(snap["analysis_end"])
+    meta = _load_json(path / "run_metadata.json")
+    run_info = meta.get("run_info") if isinstance(meta, dict) else None
     if isinstance(run_info, dict):
         end = run_info.get("analysis_end_date")
         if end:
             return str(end)
     return None
+
+
+def _resolve_analysis_end(project_root: Path, output_dir_final: str) -> str | None:
+    final_dir = project_root / output_dir_final
+    subject_end = _analysis_end_from_artifact_dir(final_dir / "analysis_subject")
+    if subject_end:
+        return subject_end
+    return _analysis_end_from_artifact_dir(final_dir)
+
+
+def _snapshot_analysis_end(snapshot_path: Path) -> str | None:
+    snap = _load_json(snapshot_path)
+    if not snap:
+        return None
+    end = snap.get("analysis_end")
+    return str(end) if end else None
+
+
+def _snapshot_freshness(
+    snapshot_path: Path,
+    *,
+    expected_analysis_end: str | None,
+) -> tuple[str, str | None]:
+    if not snapshot_path.is_file():
+        return "missing", None
+    snapshot_end = _snapshot_analysis_end(snapshot_path)
+    if not expected_analysis_end:
+        return "unchecked", snapshot_end
+    if snapshot_end == expected_analysis_end:
+        return "fresh", snapshot_end
+    return "stale", snapshot_end
 
 
 def _robust_scenario_prerequisites_met(project_root: Path, output_dir_final: str) -> bool:
@@ -190,6 +229,7 @@ def _empty_summary() -> dict[str, int]:
         "skipped_existing": 0,
         "skipped_dependency": 0,
         "skipped_profile": 0,
+        "rebuilt_stale": 0,
     }
 
 
@@ -291,21 +331,40 @@ def run_candidate_factory(
         entry_commands = _command_strings(commands)
 
         if skip_existing and not force and snapshot_path.is_file():
-            step = _failed_step(
-                candidate_id=candidate_id,
-                display_name=row["display_name"],
-                role=row["role"],
-                artifact_root=artifact_root,
-                status="skipped_existing",
-                reason_code="skipped_existing",
-                message="snapshot_10y.json already present; step skipped.",
-                entry_commands=entry_commands,
-                exit_code=None,
-                duration_seconds=0.0,
+            freshness, snapshot_end = _snapshot_freshness(
+                snapshot_path,
+                expected_analysis_end=analysis_end,
             )
-            steps.append(step)
-            _increment_summary(summary, "skipped_existing")
-            continue
+            if freshness in ("fresh", "unchecked"):
+                message = "snapshot_10y.json already present; step skipped."
+                if freshness == "unchecked":
+                    message = (
+                        "snapshot_10y.json already present; step skipped, but review "
+                        "analysis_end was unavailable so freshness could not be certified."
+                    )
+                    warnings.append("candidate_freshness_unchecked_no_review_analysis_end")
+                step = _failed_step(
+                    candidate_id=candidate_id,
+                    display_name=row["display_name"],
+                    role=row["role"],
+                    artifact_root=artifact_root,
+                    status="skipped_existing",
+                    reason_code="skipped_existing",
+                    message=message,
+                    entry_commands=entry_commands,
+                    exit_code=None,
+                    duration_seconds=0.0,
+                    expected_analysis_end=analysis_end,
+                    snapshot_analysis_end=snapshot_end,
+                    freshness_status=freshness,
+                )
+                steps.append(step)
+                _increment_summary(summary, "skipped_existing")
+                continue
+            warnings.append(
+                f"stale_candidate_snapshot_rebuild_attempted:{candidate_id}:"
+                f"{snapshot_end or 'missing_analysis_end'}!={analysis_end}"
+            )
 
         if candidate_id == "robust_scenario" and not _robust_scenario_prerequisites_met(
             project_root, output_dir_final
@@ -369,6 +428,9 @@ def run_candidate_factory(
                 entry_commands=entry_commands,
                 exit_code=exit_code,
                 duration_seconds=duration,
+                expected_analysis_end=analysis_end,
+                snapshot_analysis_end=None,
+                freshness_status="missing",
             )
             steps.append(step)
             _increment_summary(summary, "failed")
@@ -376,21 +438,57 @@ def run_candidate_factory(
                 break
             continue
 
-        steps.append(
-            {
-                "candidate_id": candidate_id,
-                "display_name": row["display_name"],
-                "role": row["role"],
-                "artifact_root": artifact_root,
-                "status": "succeeded",
-                "entry_commands": entry_commands,
-                "exit_code": exit_code,
-                "duration_seconds": duration,
-                "reason_code": None,
-                "message": None,
-            }
+        freshness, snapshot_end = _snapshot_freshness(
+            snapshot_path,
+            expected_analysis_end=analysis_end,
         )
+        if freshness == "stale":
+            step = _failed_step(
+                candidate_id=candidate_id,
+                display_name=row["display_name"],
+                role=row["role"],
+                artifact_root=artifact_root,
+                status="failed",
+                reason_code="stale_snapshot_after_build",
+                message=(
+                    f"{SNAPSHOT_MINIMUM} analysis_end {snapshot_end or 'missing'} "
+                    f"does not match review analysis_end {analysis_end} after builder exit."
+                ),
+                entry_commands=entry_commands,
+                exit_code=exit_code,
+                duration_seconds=duration,
+                expected_analysis_end=analysis_end,
+                snapshot_analysis_end=snapshot_end,
+                freshness_status=freshness,
+            )
+            steps.append(step)
+            _increment_summary(summary, "failed")
+            if fail_fast:
+                break
+            continue
+
+        step = {
+            "candidate_id": candidate_id,
+            "display_name": row["display_name"],
+            "role": row["role"],
+            "artifact_root": artifact_root,
+            "status": "succeeded",
+            "entry_commands": entry_commands,
+            "exit_code": exit_code,
+            "duration_seconds": duration,
+            "reason_code": None,
+            "message": None,
+            "expected_analysis_end": analysis_end,
+            "snapshot_analysis_end": snapshot_end,
+            "freshness_status": freshness,
+        }
+        steps.append(step)
         _increment_summary(summary, "succeeded")
+        if freshness == "fresh" and any(
+            w.startswith(f"stale_candidate_snapshot_rebuild_attempted:{candidate_id}:")
+            for w in warnings
+        ):
+            summary["rebuilt_stale"] += 1
 
     doc: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -427,6 +525,9 @@ def _failed_step(
     entry_commands: list[str],
     exit_code: int | None,
     duration_seconds: float,
+    expected_analysis_end: str | None = None,
+    snapshot_analysis_end: str | None = None,
+    freshness_status: str | None = None,
 ) -> dict[str, Any]:
     return {
         "candidate_id": candidate_id,
@@ -439,6 +540,9 @@ def _failed_step(
         "duration_seconds": duration_seconds,
         "reason_code": reason_code,
         "message": message,
+        "expected_analysis_end": expected_analysis_end,
+        "snapshot_analysis_end": snapshot_analysis_end,
+        "freshness_status": freshness_status,
     }
 
 
@@ -460,7 +564,8 @@ def build_factory_run_txt(doc: dict[str, Any]) -> str:
         f"succeeded={summary.get('succeeded', 0)} "
         f"failed={summary.get('failed', 0)} "
         f"skipped_existing={summary.get('skipped_existing', 0)} "
-        f"skipped_dependency={summary.get('skipped_dependency', 0)}"
+        f"skipped_dependency={summary.get('skipped_dependency', 0)} "
+        f"rebuilt_stale={summary.get('rebuilt_stale', 0)}"
     )
     failed_ids = [
         s["candidate_id"]

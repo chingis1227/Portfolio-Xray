@@ -159,9 +159,11 @@ def load_validated_config(config_path: str | Path | None = None) -> PortfolioCon
     if raw.get("client_profile") and get_profile_defaults(raw["client_profile"]):
         _sync_profile_fields_to_config_file(path, raw)
     raw_mode = str(raw.get("analysis_mode") or "optimize_from_universe").strip().lower()
+    raw_subject = raw.get("analysis_subject")
+    has_explicit_analysis_subject = isinstance(raw_subject, dict) and bool(raw_subject)
     has_user_fixed_weights = bool(raw.get("weights")) or (
         raw_mode == "analyze_current_weights" and bool(raw.get("current_weights"))
-    )
+    ) or has_explicit_analysis_subject
     if raw.get("weights"):
         raw["_weights_source"] = "config.weights"
     elif raw_mode == "analyze_current_weights" and raw.get("current_weights"):

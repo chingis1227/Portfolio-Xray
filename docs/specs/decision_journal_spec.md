@@ -123,7 +123,8 @@ Root and `journal/latest/` must contain the same logical content for a given run
 | `analysis_end` | string | From comparison. |
 | `investor_currency` | string | From comparison. |
 | `output_dir_final` | string | Relative path when possible. |
-| `decision_record` | object | Projection from selection (see below). |
+| `decision_record` | object | Projection from selection, including the baseline candidate (see below). |
+| `diagnosed_subject` | object | Portfolio-first baseline summary; `analysis_subject` when available, else legacy `current`. |
 | `selected_portfolio` | object | Favored profile summary (see below). |
 | `rejected_alternatives` | array | Copy of `selection_decision.rejected_candidates`. |
 | `assumptions` | object | Analysis setup summary (see below). |
@@ -144,6 +145,8 @@ Root and `journal/latest/` must contain the same logical content for a given run
 | Field | Source |
 | --- | --- |
 | `decision_status` | `selection_decision.decision_status` |
+| `baseline_candidate_id` | selection |
+| `baseline_display_name` | selection |
 | `favored_candidate_id` | selection |
 | `favored_display_name` | selection |
 | `formal_decision` | copy `selection_decision.formal_decision` (always `true` when present) |
@@ -178,12 +181,15 @@ No new assumption inference in the journal module.
 
 ### `expected_improvement`
 
-Structured comparison vs **`current`** when `current` is available; otherwise `status: not_applicable`.
+Structured comparison vs the portfolio-first baseline when available. The preferred baseline is
+**`analysis_subject`**; legacy runs fall back to **`current`**. If neither exists, emit
+`status: not_applicable`.
 
 | Field | Source |
 | --- | --- |
 | `status` | `available` \| `not_applicable` \| `degraded` |
-| `health_score_delta` | selection `no_trade` or score files vs current |
+| `baseline_candidate_id` | baseline id used for deltas |
+| `health_score_delta` | selection `no_trade` or score files vs baseline |
 | `robustness_score_delta` | same |
 | `drawdown_improvement_pp` | action `risk_context` or comparison 10y drawdown fields |
 | `turnover_half_sum_pct` | action or selection no_trade |

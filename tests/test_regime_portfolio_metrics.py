@@ -4,7 +4,13 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from src.metrics_daily import TRADING_DAYS_PER_YEAR, vol_annual_daily, cagr_from_equity_daily
+from run_report import regime_mar_daily_from_annual
+from src.metrics_daily import (
+    TRADING_DAYS_PER_YEAR,
+    cagr_from_equity_daily,
+    sortino_daily,
+    vol_annual_daily,
+)
 from src.regime_portfolio_metrics import (
     REGIME_PORTFOLIO_METRICS_VERSION,
     build_regime_portfolio_metrics,
@@ -77,6 +83,55 @@ def test_regime_portfolio_metrics_ffill_and_filter():
     assert summ["regimes"]["goldilocks"]["n_obs_days"] == g["n_obs_days"]
     frames = regime_portfolio_metrics_csv_frames(out)
     assert not frames["regime_portfolio_metrics_portfolio.csv"].empty
+
+
+def test_regime_sortino_defaults_to_daily_rf_when_mar_absent():
+    idx_d = _bdaily("2020-01-02", 90)
+    base = np.sin(np.linspace(0.0, 8.0, len(idx_d))) * 0.006
+    assets = pd.DataFrame({"A": 0.0002 + base}, index=idx_d)
+    lab = pd.Series(["goldilocks"] * len(idx_d), index=idx_d)
+    rf_d = pd.Series(0.0001, index=idx_d)
+    bench = pd.Series(0.00015 + base * 0.5, index=idx_d)
+
+    out = build_regime_portfolio_metrics(
+        daily_asset_returns=assets,
+        daily_regime_labels_ffill=lab,
+        weights={"A": 1.0},
+        rf_daily=rf_d,
+        benchmark_daily_returns=bench,
+        mar_daily=None,
+    )
+
+    actual = out["regimes"]["goldilocks"]["portfolio_metrics"]["sortino"]["value"]
+    expected = sortino_daily(assets["A"], rf_d, mar_daily=None)
+    assert actual == expected
+
+
+def test_regime_mar_annual_override_converts_to_daily_period():
+    mar_daily = regime_mar_daily_from_annual(0.05)
+    assert mar_daily is not None
+    assert abs(mar_daily - ((1.0 + 0.05) ** (1.0 / 252.0) - 1.0)) < 1e-12
+    assert regime_mar_daily_from_annual(None) is None
+
+    idx_d = _bdaily("2020-01-02", 90)
+    base = np.sin(np.linspace(0.0, 8.0, len(idx_d))) * 0.006
+    assets = pd.DataFrame({"A": 0.0002 + base}, index=idx_d)
+    lab = pd.Series(["goldilocks"] * len(idx_d), index=idx_d)
+    rf_d = pd.Series(0.0001, index=idx_d)
+    bench = pd.Series(0.00015 + base * 0.5, index=idx_d)
+
+    out = build_regime_portfolio_metrics(
+        daily_asset_returns=assets,
+        daily_regime_labels_ffill=lab,
+        weights={"A": 1.0},
+        rf_daily=rf_d,
+        benchmark_daily_returns=bench,
+        mar_daily=mar_daily,
+    )
+
+    actual = out["regimes"]["goldilocks"]["portfolio_metrics"]["sortino"]["value"]
+    expected = sortino_daily(assets["A"], rf_d, mar_daily=mar_daily)
+    assert actual == expected
 
 
 def test_vol_and_cagr_annualization_daily():

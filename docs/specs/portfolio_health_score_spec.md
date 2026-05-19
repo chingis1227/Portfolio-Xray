@@ -34,14 +34,18 @@ Implementation: [src/portfolio_health_score.py](../../src/portfolio_health_score
 - Allowed narrative: descriptive totals, component drivers, and comparative phrasing (e.g. "Current portfolio health is 62/100, mainly dragged by weight concentration and stagflation stress loss.").
 - Forbidden: imperative trade advice, "recommended portfolio", or implying Selection Engine outcomes before that module exists.
 
-Report surfaces should list **`policy`** and **`current`** first when present (`display_priority`), then other candidates by `health_rank`.
+Report surfaces should list **`analysis_subject`** first when the portfolio-first subject is
+available (`display_priority`), then other candidates by `health_rank`. Legacy current-vs-policy
+runs without an available `analysis_subject` keep the old `current`, then `policy` priority.
 
 ## V1 User Decisions (2026-05-17)
 
 Recorded for Session 12:
 
 1. **Candidate set:** score every `available` / `degraded` row in `candidate_comparison.json`; `unavailable` -> `not_scored`.
-2. **Display priority:** reports and TXT summaries show `current` and `policy` before benchmarks when both exist.
+2. **Display priority:** portfolio-first reports and TXT summaries show `analysis_subject` as the
+   priority row when it exists. Legacy current-vs-policy reports show `current` and `policy` before
+   benchmarks when both exist.
 3. **Normalization:** primary sub-scores use **within-run percentile ranks**; **`mandate_and_model_risk`** and parts of **`liquidity_implementation`** use **absolute** artifact status.
 4. **Robustness boundary:** do **not** re-implement the six Robustness Scorecard components; optional **`resilience_reference`** (10%) ingests `robustness_scorecard.json` `total_score` when present.
 5. **Component weights:** product-concept defaults as **`default_weights_reviewable`** (sum = 1.0); may be revised after validation.
@@ -285,7 +289,7 @@ When `weight_concentration` is missing for a scored candidate:
   },
   "comparison_schema_version": "candidate_comparison_v1",
   "robustness_schema_version": "robustness_scorecard_v1",
-  "display_priority": ["current", "policy"],
+  "display_priority": ["analysis_subject"],
   "candidates": [ ],
   "comparison_summary": { },
   "warnings": [ ]
@@ -403,7 +407,7 @@ Focused tests should cover:
 - mandate `portfolio_valid: false` cap;
 - missing `diversification` / `weight_concentration` -> partial re-weight;
 - missing `robustness_scorecard.json` -> `resilience_reference` not_computed;
-- `display_priority` fields for policy/current summary;
+- `display_priority` fields for `analysis_subject` in portfolio-first and policy/current in legacy summary;
 - tie-breaking on `total_score`;
 - no duplicate metric formulas (mock comparison fixtures).
 

@@ -23,6 +23,7 @@ TRADEOFF_SCHEMA = "tradeoff_explanation_v1"
 MODEL_RISK_SCHEMA = "model_risk_diagnostics_v1"
 PRIMARY_WINDOW = "10y"
 ELIGIBLE_BASELINE_STATUSES = frozenset({"available", "degraded"})
+BASELINE_CANDIDATE_IDS = ("analysis_subject", "current")
 SEVERITY_ORDER = ("info", "low", "medium", "high")
 
 DIMENSION_SPECS: tuple[tuple[str, str, str, str], ...] = (
@@ -52,6 +53,27 @@ def _round3(value: float | None) -> float | None:
 
 def _candidates_by_id(comparison: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {c["candidate_id"]: c for c in comparison.get("candidates", []) if c.get("candidate_id")}
+
+
+def _candidate_available(cand: dict[str, Any] | None) -> bool:
+    return bool(cand and cand.get("status") in ELIGIBLE_BASELINE_STATUSES)
+
+
+def _preferred_baseline_id(
+    comparison: dict[str, Any],
+    selection: dict[str, Any] | None,
+    by_id: dict[str, dict[str, Any]],
+) -> str | None:
+    explicit = (selection or {}).get("baseline_candidate_id")
+    if explicit and _candidate_available(by_id.get(str(explicit))):
+        return str(explicit)
+    comp_baseline = comparison.get("comparison_baseline_candidate_id")
+    if comp_baseline and _candidate_available(by_id.get(str(comp_baseline))):
+        return str(comp_baseline)
+    for candidate_id in BASELINE_CANDIDATE_IDS:
+        if _candidate_available(by_id.get(candidate_id)):
+            return candidate_id
+    return None
 
 
 def _metrics_10y(cand: dict[str, Any]) -> dict[str, Any]:
@@ -418,22 +440,21 @@ def build_tradeoff_explanation(
     by_id = _candidates_by_id(comparison)
     favored_id = (selection or {}).get("favored_candidate_id")
     decision_status = (selection or {}).get("decision_status")
+    baseline_id = _preferred_baseline_id(comparison, selection, by_id)
 
     if selection is None:
         tradeoff_status = "selection_unavailable"
     elif not favored_id:
         tradeoff_status = "no_favored_target"
     else:
-        current = by_id.get("current")
-        if not current or current.get("status") not in ELIGIBLE_BASELINE_STATUSES:
+        baseline = by_id.get(baseline_id or "")
+        if not baseline:
             tradeoff_status = "baseline_unavailable"
         elif favored_id not in by_id:
             tradeoff_status = "insufficient_metrics"
         else:
             target = by_id[favored_id]
-            if not _metrics_10y(target) or (
-                current and not _metrics_10y(current)
-            ):
+            if not _metrics_10y(target) or not _metrics_10y(baseline):
                 tradeoff_status = "insufficient_metrics"
             else:
                 tradeoff_status = "complete"
@@ -442,15 +463,14 @@ def build_tradeoff_explanation(
     improves: list[str] = []
     worsens: list[str] = []
     cost_of_change: dict[str, Any] = {}
-    baseline_id = "current"
     target_id = favored_id
 
     if favored_id and favored_id in by_id and tradeoff_status in ("complete", "baseline_unavailable"):
         target_cand = by_id[favored_id]
         if tradeoff_status == "complete":
-            baseline_cand = by_id["current"]
+            baseline_cand = by_id[str(baseline_id)]
             primary = _build_pair(
-                "current_to_favored",
+                "baseline_to_favored",
                 baseline_cand,
                 target_cand,
                 health=health,
@@ -522,7 +542,7 @@ def build_tradeoff_explanation(
     if tradeoff_status == "complete" and not (improves or worsens):
         tradeoff_status = "insufficient_metrics"
 
-    baseline_name = (by_id.get(baseline_id) or {}).get("display_name") or baseline_id
+    baseline_name = (by_id.get(baseline_id or "") or {}).get("display_name") or baseline_id or "baseline"
     target_name = (
         (by_id.get(target_id) or {}).get("display_name") if target_id else None
     ) or (selection or {}).get("favored_display_name") or target_id or "—"
@@ -684,7 +704,8 @@ def build_model_risk_diagnostics(
     warnings: list[dict[str, Any]] = []
     by_id = _candidates_by_id(comparison)
     favored_id = (selection or {}).get("favored_candidate_id")
-    focus_ids = {cid for cid in ("policy", "current", favored_id) if cid}
+    baseline_id = _preferred_baseline_id(comparison, selection, by_id)
+    focus_ids = {cid for cid in ("policy", baseline_id, favored_id) if cid}
 
     for run_w in comparison.get("warnings") or []:
         text = str(run_w)
@@ -903,18 +924,24 @@ def build_model_risk_diagnostics(
                         )
                     )
 
-    current = by_id.get("current")
-    if not current or current.get("status") not in ELIGIBLE_BASELINE_STATUSES:
+    baseline = by_id.get(baseline_id or "")
+    if not baseline:
+        warning_id = (
+            "analysis_subject_unavailable"
+            if (selection or {}).get("baseline_candidate_id") == "analysis_subject"
+            or comparison.get("comparison_baseline_candidate_id") == "analysis_subject"
+            else "current_unavailable"
+        )
         warnings.append(
             _warning_row(
-                "current_unavailable",
+                warning_id,
                 category="selection_confidence",
                 severity="low",
                 candidate_id=None,
                 source_artifact="candidate_comparison.json",
                 plain_english=(
-                    "Current portfolio inputs are unavailable; No-Trade versus "
-                    "current may be less grounded."
+                    "Starting portfolio inputs are unavailable; baseline trade-off "
+                    "and No-Trade context may be less grounded."
                 ),
             )
         )
@@ -1032,7 +1059,14 @@ def write_tradeoff_explanation_txt(doc: dict[str, Any], path: Path) -> None:
         f"Status: {doc.get('tradeoff_status', '—')}",
         "",
     ]
-    primary = next((p for p in doc.get("pairs") or [] if p.get("pair_id") == "current_to_favored"), None)
+    primary = next(
+        (
+            p
+            for p in doc.get("pairs") or []
+            if p.get("pair_id") in ("baseline_to_favored", "current_to_favored")
+        ),
+        None,
+    )
     if primary:
         lines.append(
             f"Primary pair: {primary.get('baseline_display_name')} → "
@@ -1057,7 +1091,7 @@ def write_tradeoff_explanation_txt(doc: dict[str, Any], path: Path) -> None:
             if dim:
                 lines.append(f"  - {dim.get('plain_english')}")
     else:
-        lines.append("Primary current-to-favored pair not available.")
+        lines.append("Primary baseline-to-favored pair not available.")
     lines.append("")
     lines.append("Cost of change")
     cost = doc.get("cost_of_change") or {}

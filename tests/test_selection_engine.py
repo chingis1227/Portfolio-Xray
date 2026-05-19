@@ -167,6 +167,52 @@ def test_composite_winner_when_policy_unavailable() -> None:
     assert doc["decision_status"] == "selected_candidate"
 
 
+def test_analysis_subject_is_no_trade_baseline_and_disables_policy_default(tmp_path: Path) -> None:
+    comp = _comparison_policy_current(output_dir="Main")
+    comp["candidates"].insert(
+        0,
+        _cand(
+            "analysis_subject",
+            display="Starting Portfolio",
+            role="analysis_subject",
+            max_dd=-0.24,
+            artifact_root="subject_dir",
+        ),
+    )
+    comp["candidates"][1]["artifact_root"] = "policy_dir"
+    comp["candidates"][3]["artifact_root"] = "equal_dir"
+    _write_weights(
+        tmp_path / "subject_dir" / "snapshot_10y.json",
+        {"VOO": 0.50, "BND": 0.50},
+    )
+    _write_weights(
+        tmp_path / "equal_dir" / "snapshot_10y.json",
+        {"VOO": 0.30, "BND": 0.70},
+    )
+
+    doc = build_selection_decision(
+        comp,
+        health=_health_fixture(
+            ("analysis_subject", 60, 3),
+            ("policy", 70, 2),
+            ("equal_weight", 88, 1),
+        ),
+        robustness=_robust_fixture(
+            ("analysis_subject", 58, 3),
+            ("policy", 70, 2),
+            ("equal_weight", 86, 1),
+        ),
+        project_root=tmp_path,
+    )
+
+    assert doc["baseline_candidate_id"] == "analysis_subject"
+    assert doc["favored_candidate_id"] == "equal_weight"
+    assert doc["decision_status"] == "selected_candidate"
+    assert "Policy (optimized) profile is the default favored target" not in " ".join(
+        doc["rationale"]["selection_bullets"]
+    )
+
+
 def test_no_material_rebalance(tmp_path: Path) -> None:
     out = "Main portfolio"
     comp = _comparison_policy_current(output_dir=out)
@@ -255,6 +301,7 @@ def test_mandate_risk_reduction_current_breach() -> None:
     )
     assert doc["decision_status"] == "mandate_risk_reduction"
     assert doc["favored_candidate_id"] is None
+    assert doc["rationale"]["risk_reduction_notes"]
 
 
 def test_missing_current_skips_no_trade() -> None:

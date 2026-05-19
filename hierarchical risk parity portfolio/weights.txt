@@ -1,13 +1,13 @@
 Hierarchical Risk Parity Portfolio — final weights
 ==================================================
 
-  SCHP: weight=45.3%, RC_vol=39.0%
-  BND: weight=33.2%, RC_vol=28.0%
-  GLD: weight=6.2%, RC_vol=9.6%
-  TLT: weight=4.6%, RC_vol=8.5%
-  SCHD: weight=3.3%, RC_vol=3.1%
-  QQQ: weight=3.2%, RC_vol=4.7%
-  VOO: weight=2.8%, RC_vol=3.4%
-  SLV: weight=1.4%, RC_vol=3.7%
+  SCHP: weight=42.2%, RC_vol=34.1%
+  BND: weight=37.3%, RC_vol=31.0%
+  TLT: weight=5.4%, RC_vol=10.0%
+  GLD: weight=4.6%, RC_vol=6.6%
+  SCHD: weight=3.2%, RC_vol=4.4%
+  SPY: weight=3.1%, RC_vol=5.1%
+  QQQ: weight=3.0%, RC_vol=6.0%
+  SLV: weight=1.2%, RC_vol=3.0%
 
 Sum of weights: 100.0%

@@ -10,7 +10,10 @@ Product concept documents describe target direction only. Current behavior is go
 
 Implemented today:
 
-- CLI/file-driven portfolio optimization through `run_optimization.py`.
+- Canonical portfolio-first workflow contract through `analysis_subject`; runtime transition is active
+  and governed by [portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md).
+- Portfolio-first CLI orchestration through `run_portfolio_review.py`.
+- Legacy CLI/file-driven policy optimization compatibility through `run_optimization.py`.
 - Portfolio reporting and diagnostics through `run_report.py`.
 - Input and Assumptions Layer V1 through `analysis_mode`, `tickers`, optional `current_weights`, profile/target fields, and technical calculation settings in `config.yml`.
 - Portfolio metrics, dynamic NaN-safe backtesting, and risk contribution diagnostics.
@@ -31,14 +34,41 @@ Target/TBD areas:
 
 ## Main Pipeline
 
-Run the main production flow in this order:
+Portfolio-first is the binding product workflow contract:
+
+```text
+analysis_subject
+-> Portfolio X-Ray diagnostics
+-> stress / factor / macro diagnostics
+-> candidate generation
+-> comparison and decision artifacts
+```
+
+Runtime migration to that order is in progress under the active
+[Portfolio-First Transition Plan](docs/exec_plans/2026-05-18_portfolio_first_transition_plan.md).
+The portfolio-first orchestrator is:
+
+```bash
+python run_portfolio_review.py
+python run_portfolio_review.py --dry-run
+python run_portfolio_review.py --skip-candidates
+python run_portfolio_review.py --candidate-profile core_benchmarks
+python run_portfolio_review.py --candidates equal_weight,risk_parity
+```
+
+`run_portfolio_review.py` materializes `{output_dir_final}/analysis_subject/` first, then runs
+the non-policy candidate factory and comparison path. It does not call `run_optimization.py` in the
+default path. Subject-centered comparison and decision wording continue under later transition
+sessions.
+
+The existing legacy policy flow remains callable for compatibility and historical policy runs:
 
 ```bash
 python run_optimization.py
 python run_report.py
 ```
 
-Optional single command for the file-first MVP path (`input -> diagnosis -> comparison -> action`):
+Optional single command for the legacy file-first MVP policy path:
 
 ```bash
 python run_mvp_workflow.py --workflow policy-only
@@ -48,7 +78,7 @@ python run_mvp_workflow.py --workflow full-decision
 
 See [docs/operational_runbook.md](docs/operational_runbook.md) for stage definitions and manual step equivalents.
 
-Optimization options:
+Legacy policy optimization options:
 
 ```bash
 python run_optimization.py --no-cache
@@ -64,13 +94,23 @@ Report options:
 python run_report.py --no-cache
 python run_report.py --clear-cache
 python run_report.py --backtest-mode dynamic_nan_safe
+python run_report.py --materialize-analysis-subject
 ```
 
-`run_optimization.py` reads config, loads market data, builds optimizer inputs, runs the main policy optimizer, applies release checks, and writes optimized weights and run metadata. `run_report.py` reads fixed weights and produces metrics, diagnostics, stress reports, scenario libraries, commentary, snapshots, and report artifacts.
+`run_optimization.py` reads config, loads market data, builds optimizer inputs, runs the legacy
+policy optimizer, applies release checks, and writes optimized weights and run metadata. It remains
+callable for compatibility, but it is not the default starting point for the portfolio-first
+workflow. `run_report.py` reads fixed weights and produces metrics, diagnostics, stress reports,
+scenario libraries, commentary, snapshots, and report artifacts.
+`run_report.py --materialize-analysis-subject` writes the resolved portfolio-first subject to
+`{output_dir_final}/analysis_subject/` so candidate generation can happen only after subject
+diagnostics exist.
 
 ## Candidate Portfolios
 
-Candidate portfolios are comparison hypotheses, not automatic replacements for the main policy portfolio.
+Candidate portfolios are comparison hypotheses, not automatic replacements for the diagnosed
+`analysis_subject`. The legacy policy optimizer is not a default portfolio-first candidate unless a
+future accepted spec reactivates it for that role.
 
 Common candidate commands:
 
@@ -110,7 +150,17 @@ Use `run_candidate_factory.py` to orchestrate multiple candidate builders before
 | `config/historical_stress_proxy_map.yml` | Historical stress fallback proxy map and thresholds. |
 | `assets.yml` | Optional asset metadata. |
 
-Analysis setup and input mode details live in [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md). Default `analysis_mode` is `optimize_from_universe`; use `analysis_mode: analyze_current_weights` plus `current_weights` to diagnose an existing fixed-weight portfolio with `run_report.py`.
+Portfolio-first input semantics live in
+[docs/specs/portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md):
+`analysis_subject` is the portfolio diagnosed before candidates, with supported types
+`current_portfolio`, `model_portfolio`, and `universe_baseline`.
+
+Analysis setup and legacy input mode details live in
+[docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md). Default
+compatibility `analysis_mode` is `optimize_from_universe`; use
+`analysis_mode: analyze_current_weights` plus `current_weights` to diagnose an existing
+fixed-weight portfolio with `run_report.py`. New portfolio-first configs may use explicit
+`analysis_subject` with type `current_portfolio`, `model_portfolio`, or `universe_baseline`.
 
 Data rules are governed by [DATA.md](DATA.md) and [docs/specs/data_policy_spec.md](docs/specs/data_policy_spec.md).
 
@@ -214,6 +264,7 @@ Start with [RULES.md](RULES.md), then use [SPEC.md](SPEC.md) as the implementati
 | Project principles and source-of-truth map | [RULES.md](RULES.md) |
 | Task workflow | [WORKFLOW.md](WORKFLOW.md) |
 | Current implementation contract | [SPEC.md](SPEC.md) |
+| Portfolio-first review workflow and `analysis_subject` | [docs/specs/portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md) |
 | Architecture and module boundaries | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Data layer | [DATA.md](DATA.md) |
 | Outputs and generated artifacts | [OUTPUTS.md](OUTPUTS.md) |

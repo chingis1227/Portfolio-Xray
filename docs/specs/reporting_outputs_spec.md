@@ -4,11 +4,14 @@ This document owns the detailed report and artifact contract. The root output ma
 
 ## Main Report Flow
 
-`run_report.py` and shared report helpers produce decision-ready artifacts for the main policy portfolio and candidate portfolios.
+`run_report.py` and shared report helpers produce decision-ready artifacts for the portfolio-first
+`analysis_subject`, legacy policy portfolio, and candidate portfolios.
 
 Primary report responsibilities:
 
 - load fixed weights for the target portfolio
+- materialize resolved portfolio-first `analysis_subject` diagnostics to
+  `{output_dir_final}/analysis_subject/` when invoked with `--materialize-analysis-subject`
 - expose the resolved Analysis Setup Summary for the analyzed portfolio
 - build portfolio metrics and diagnostics
 - run stress and factor diagnostics
@@ -40,6 +43,9 @@ Common outputs include:
 `run_result.json` and `run_metadata.json` expose `analysis_setup`, the resolved runtime contract governed by [input_assumptions_spec.md](input_assumptions_spec.md). They also expose `input_assumptions`, the reporting/reproducibility view projected from `analysis_setup`.
 
 Variant folders follow the same report contract after their candidate weights are fixed.
+The `analysis_subject/` sidecar follows the same report contract after subject weights are resolved
+from `analysis_subject`, compatibility current weights, or a universe-baseline equal-weight
+diagnostic baseline.
 
 ## Candidate Comparison
 
@@ -60,8 +66,10 @@ candidate builders, execute trades, or override stress pass/fail.
 
 The V1 artifact chain is:
 
-1. `candidate_comparison.json` / `.txt` - diagnostic table of policy, current when materialized, and
-   supported candidate families. Combined current-vs-policy materialization and No-Trade actionability:
+1. `candidate_comparison.json` / `.txt` - diagnostic table centered on the portfolio-first
+   `analysis_subject` baseline when materialized, followed by supported candidate alternatives.
+   Legacy policy/current rows may still appear for compatibility. Combined current-vs-policy
+   materialization and No-Trade actionability:
    [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md).
 2. `robustness_scorecard.json` / `.txt` - diagnostic resilience scorecard from the comparison table.
 3. `portfolio_health_score.json` / `.txt` - diagnostic holistic health score from comparison plus
@@ -88,6 +96,12 @@ Compact report/PDF-facing summaries are defined in
 
 The per-artifact JSON/TXT files above remain the authoritative structured contracts; the summary is a
 read-only projection for reports and PDF rebuild.
+
+Portfolio-first review (`run_portfolio_review.py`) rebuilds a narrow PDF subset by default:
+decision package plus `analysis_subject/` sidecar outputs. Legacy Equal-Weight, Risk-Parity, policy
+Main, and optimizer baseline PDFs are not refreshed unless the user passes
+`--legacy-full-pdf` or runs bare `rebuild_pdf_reports.py`. See
+[portfolio_review_workflow_spec.md](portfolio_review_workflow_spec.md).
 
 ## Portfolio X-Ray Summary
 

@@ -60,10 +60,14 @@ If a file is missing, the corresponding summary section uses `availability: not_
 Fixed order for V1:
 
 1. **Header** — analysis end, investor currency, non-executing disclaimer.
-2. **Comparison highlights** — policy and current rows when present; top three scored non-current candidates by health rank when scores exist.
+2. **Comparison highlights** — the portfolio-first starting portfolio first (`analysis_subject`
+   when available, then legacy `current` fallback), followed by top scored candidate alternatives by
+   health rank when scores exist. Legacy policy/current status may appear only in an explicitly
+   labeled compatibility block, and is omitted when
+   `current_vs_policy_status.workflow_profile` is `portfolio_first_review`.
 3. **Robustness** — favored candidate robustness total and rank when scored.
 4. **Health** — favored candidate health total and rank when scored.
-5. **Selection** — decision status line and favored profile; No-Trade summary **only when** `no_trade.evaluated` is true or `decision_status` is `no_material_rebalance` with a populated `no_trade` block (see [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md)).
+5. **Selection** — decision status line and favored profile; No-Trade summary **only when** `no_trade.evaluated` is true or `decision_status` is `no_material_rebalance` with a populated `no_trade` block. Portfolio-first wording says "starting portfolio"; current-vs-policy wording is compatibility-only. When `decision_status` is `mandate_risk_reduction` and `favored_candidate_id` is null, the section must state that mandate risk-reduction gates blocked selection and include the plain-English mandate notes from `selection_decision.rationale` (see [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md)).
 6. **Action** — action status, turnover, top priority trades (max 5) or no-trades reason; when current-vs-policy No-Trade was not actionable, use skip wording instead of a No-Trade headline.
 7. **Monitoring** — diff status and `summary_plain_en`; explicit message when no prior snapshot.
 8. **Journal** — pointer to `decision_journal.json` and latest/history copies.
@@ -74,6 +78,9 @@ Fixed order for V1:
 - Use display names, not internal enum codes, in TXT and PDF surfaces.
 - Map `decision_status` to short English lines (see [selection_engine_spec.md](selection_engine_spec.md)).
 - Prefix trade rows with "For review:" — not execution instructions.
+- In portfolio-first summaries, call `analysis_subject` the "Starting portfolio" and call scored
+  non-baseline rows "Candidate alternatives"; do not frame generated policy optimization as the
+  user's starting point.
 - Portfolio X-Ray and commentary remain separate diagnostic surfaces; this summary does not replace them.
 
 ## `report.txt` integration
@@ -87,7 +94,10 @@ When `write_decision_package_reporting_outputs` runs:
 
 When [pdf_reports.py](../../src/pdf_reports.py) rebuilds Main portfolio PDFs and `decision_package_summary.txt` exists:
 
-- build Markdown via `build_decision_package_report_md`;
+- build Markdown via `build_decision_package_pdf_md` (YAML front matter with a single-line title and
+  date subtitle; body from client-sanitized `decision_package_summary.txt`). Do not use a long `#` H1
+  that embeds `analysis_end` — Pandoc/XeLaTeX can split the title and fail PDF generation;
+- `build_decision_package_report_md` in [decision_package_reporting.py](../../src/decision_package_reporting.py) delegates to the PDF builder for backward compatibility;
 - write `pdf_md_sources/Main portfolio__decision_package.md` and `pdf files/Main portfolio_decision_package.pdf` using the standard Pandoc path.
 
 ## Pipeline boundary
@@ -116,6 +126,11 @@ run_compare_variants.py
 
 ## Verification
 
-- `tests/test_decision_package_reporting.py` — section presence, missing-input behavior, client-safe lines.
+- `tests/test_decision_package_reporting.py` — section presence, missing-input behavior,
+  portfolio-first subject wording, and client-safe lines.
+- `tests/test_generated_output_language.py` — generated-output language QA plus portfolio-first
+  summary story markers.
 - After a comparison smoke run: `decision_package_summary.txt` and `.json` exist under `output_dir_final`.
+- `tests/test_decision_package_reporting.py` includes PDF Markdown structure checks and optional Pandoc
+  smoke when `pandoc` and `xelatex` are on PATH.
 - `python scripts/verify_docs.py` passes after doc updates.

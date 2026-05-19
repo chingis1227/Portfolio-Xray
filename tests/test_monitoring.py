@@ -53,6 +53,12 @@ def _comparison(*, analysis_end: str = "2025-12-31") -> dict:
     }
 
 
+def _comparison_with_subject(*, analysis_end: str = "2025-12-31") -> dict:
+    comp = _comparison(analysis_end=analysis_end)
+    comp["candidates"].insert(0, _cand("analysis_subject", role="analysis_subject", vol=0.13))
+    return comp
+
+
 def _health_robust() -> tuple[dict, dict]:
     rows = [
         {"candidate_id": "policy", "total_score": 72, "score_status": "scored"},
@@ -98,12 +104,31 @@ def test_snapshot_schema_and_profiles():
     assert snap["profiles"]["current"]["macro_regime_label"] == "late_cycle"
 
 
+def test_monitoring_primary_profile_prefers_analysis_subject():
+    health, robust = _health_robust()
+    health["candidates"].append(
+        {"candidate_id": "analysis_subject", "total_score": 66, "score_status": "scored"}
+    )
+    robust["candidates"].append(
+        {"candidate_id": "analysis_subject", "total_score": 67, "score_status": "scored"}
+    )
+    snap = build_analysis_snapshot(_comparison_with_subject(), health=health, robustness=robust)
+    diff = build_monitoring_diff(snap, None)
+    assert "analysis_subject" in snap["profiles"]
+    assert diff["primary_profile_id"] == "analysis_subject"
+
+
 def test_diff_no_prior_snapshot():
     snap = build_analysis_snapshot(_comparison(), health=_health_robust()[0])
     diff = build_monitoring_diff(snap, None)
     assert diff["schema_version"] == DIFF_SCHEMA_VERSION
     assert diff["diff_status"] == "no_prior_snapshot"
     assert "first stored monitoring snapshot" in diff["summary_plain_en"]
+    assert diff["profile_changes"] == {}
+    assert diff["prior_analysis_end"] is None
+    assert diff["decision_changes"]["decision_status_changed"] is False
+    assert diff["decision_changes"]["prior_decision_status"] is None
+    assert diff["input_artifacts"]["prior_snapshot"] is None
 
 
 def test_diff_available_with_deltas():
@@ -136,10 +161,18 @@ def test_diff_available_with_deltas():
 
 
 def test_diff_same_analysis_end_ignored():
-    snap = build_analysis_snapshot(_comparison(), health=_health_robust()[0])
-    diff = build_monitoring_diff(snap, snap)
+    health, robust = _health_robust()
+    prior = build_analysis_snapshot(_comparison(), health=health, robustness=robust)
+    prior["profiles"]["current"]["health_score"] = 50
+    current = build_analysis_snapshot(_comparison(), health=health, robustness=robust)
+    diff = build_monitoring_diff(current, prior)
     assert diff["diff_status"] == "no_prior_snapshot"
     assert "prior_same_analysis_end_ignored" in diff["warnings"]
+    assert diff["profile_changes"] == {}
+    assert diff["prior_analysis_end"] is None
+    assert diff["input_artifacts"]["prior_snapshot"] is None
+    pc = diff["profile_changes"].get("current")
+    assert pc is None
 
 
 def test_persist_history_and_write_outputs(tmp_path: Path):

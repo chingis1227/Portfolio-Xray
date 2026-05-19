@@ -15,18 +15,25 @@ Portfolio X-Ray & Optimization Terminal / Portfolio MRI is a Python portfolio de
 
 The current implementation is report-first and CLI/file-driven. V1 decision artifacts are implemented as generated files: candidate comparison, robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, Action Plan, Monitoring / What Changed, and generated Decision Journal. Full UI, saved analysis workspaces, richer report/PDF decision packaging, and advanced product workflows remain future scope until separately specified and implemented.
 
-Main flow:
+Main portfolio-first flow:
+
+1. `python run_portfolio_review.py`
+2. inspect `{output_dir_final}/analysis_subject/` before interpreting candidate or decision artifacts
+
+Legacy policy compatibility flow:
 
 1. `python run_optimization.py`
 2. `python run_report.py`
 
-Optional MVP orchestration (thin wrapper; same entrypoints):
+Optional legacy MVP orchestration (thin wrapper; same policy entrypoints):
 
 ```bash
 python run_mvp_workflow.py [--workflow policy-only|policy-current|full-decision|diagnosis-only]
 ```
 
-Weights are optimizer outputs, not manual user inputs. Manual post-optimization tilt is allowed only through View After Optimization.
+Legacy policy weights are optimizer outputs, not manual user inputs. User-supplied
+`analysis_subject` weights are allowed for `current_portfolio` and `model_portfolio` diagnostics.
+Manual post-optimization tilt is allowed only through View After Optimization.
 
 Product concept documents guide direction but do not override `SPEC.md`, canonical formulas, stress scenarios, policy logic, data rules, output contracts, or current code behavior.
 
@@ -44,7 +51,16 @@ Run tests:
 python -m pytest
 ```
 
-Run optimization:
+Run portfolio-first review:
+
+```bash
+python run_portfolio_review.py [--dry-run] [--skip-candidates] [--candidate-profile PROFILE] [--candidates ID,ID,...] [--legacy-full-pdf]
+```
+
+Default PDF rebuild is portfolio-first only (`analysis_subject` + decision package). Use
+`--legacy-full-pdf` to regenerate the full legacy variant PDF suite.
+
+Run legacy policy optimization:
 
 ```bash
 python run_optimization.py [--no-cache] [--write-config] [--config PATH] [--profile NAME] [--no-report]

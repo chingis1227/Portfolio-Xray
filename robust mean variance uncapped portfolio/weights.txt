@@ -1,6 +1,7 @@
 Robust Mean–Variance (Uncapped Long-Only) Portfolio — final weights
 ==================================================
 
-  QQQ: weight=100.0%, RC_vol=100.0%
+  QQQ: weight=62.3%, RC_vol=78.7%
+  GLD: weight=37.7%, RC_vol=21.3%
 
 Sum of weights: 100.0%

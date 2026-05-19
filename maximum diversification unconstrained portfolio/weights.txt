@@ -1,10 +1,10 @@
 Maximum Diversification (Unconstrained Long-Only) Portfolio — final weights
 ==================================================
 
-  TLT: weight=41.0%, RC_vol=35.1%
-  SCHD: weight=28.9%, RC_vol=27.7%
-  GLD: weight=13.2%, RC_vol=12.1%
-  QQQ: weight=10.4%, RC_vol=13.3%
-  SLV: weight=6.5%, RC_vol=11.8%
+  TLT: weight=32.5%, RC_vol=27.4%
+  SCHD: weight=26.3%, RC_vol=24.5%
+  GLD: weight=19.1%, RC_vol=17.6%
+  QQQ: weight=14.7%, RC_vol=17.0%
+  SLV: weight=7.3%, RC_vol=13.5%
 
 Sum of weights: 100.0%

@@ -26,10 +26,10 @@ deferred until the existing file-first pipeline is stable.
 - [x] (2026-05-19) Session 05: Legacy Policy Boundary Cleanup.
 - [x] (2026-05-19) Session 06: Regime Metrics Fix.
 - [x] (2026-05-19) Session 07: Methodology Consistency Follow-Up.
-- [ ] Session 08: Monitoring First-Run Honesty.
-- [ ] Session 09: Decision PDF Repair.
-- [ ] Session 10: Report Scope And Noise Reduction.
-- [ ] Session 11: Fresh Representative Run And Closure.
+- [x] (2026-05-19) Session 08: Monitoring First-Run Honesty.
+- [x] (2026-05-19) Session 09: Decision PDF Repair.
+- [x] (2026-05-19) Session 10: Report Scope And Noise Reduction.
+- [x] (2026-05-19) Session 11: Fresh Representative Run And Closure.
 
 ## Surprises & Discoveries
 
@@ -91,6 +91,20 @@ deferred until the existing file-first pipeline is stable.
   Evidence: `src/regime_portfolio_metrics.py` already accepted `mar_daily=None` and delegated the
   default to `sortino_daily(..., mar_daily=None)`, while `run_report.py` attempted to build
   `mar_daily_ser` from undefined `mar_monthly`.
+
+- Observation: Decision-package PDF failure was a Pandoc section-title line break, not unescaped
+  body percentages.
+  Evidence: LaTeX error `l.186 2026-05-15}` came from `\section{Decision Package Summary --- analysis end`
+  split across lines; body `%` values were already emitted as `\%`. YAML front matter removed the
+  broken H1.
+
+- Observation: A full `default_v1` candidate factory rebuild exceeds practical agent-session runtime
+  on this machine; comparison refresh after a fresh subject run is sufficient to validate freshness
+  gating when stale rows are marked `unavailable`.
+  Evidence: Session 11 subject materialization completed; `run_compare_variants.py` at `2026-05-19`
+  aligned `candidate_comparison.json` to `analysis_end: 2026-04-30` with six `available` and thirteen
+  `unavailable` candidates (stale optimizers at `2026-05-15`); factory subprocess attempts timed out
+  at 10–30 minutes without finishing the profile.
 
 ## Decision Log
 
@@ -163,6 +177,32 @@ deferred until the existing file-first pipeline is stable.
   monthly metrics standard; portfolio-first selection must not run on mixed cadences.
   Date/Author: 2026-05-19 / Codex, Session 07 RM-907.
 
+- Decision: When `monitoring_diff_v1` has `diff_status: no_prior_snapshot`, omit profile/decision
+  deltas and do not report a prior `analysis_end` or prior snapshot path.
+  Rationale: First-run and same-`analysis_end` re-runs were computing profile diffs against the
+  on-disk prior file while labeling the result as having no prior, which misled advisors.
+  Date/Author: 2026-05-19 / Codex, Session 08 RM-908.
+
+- Decision: Decision-package PDF Markdown uses YAML front matter via
+  `build_decision_package_pdf_md` instead of a long `#` H1 that embeds `analysis_end`.
+  Rationale: Pandoc split the H1 across lines in LaTeX (`\section{... analysis end` / `2026-05-15}`),
+  producing `Extra }, or forgotten \endgroup` and failing XeLaTeX; other reports already use YAML
+  titles.
+  Date/Author: 2026-05-19 / Codex, Session 09 RM-909.
+
+- Decision: `run_portfolio_review.py` calls `rebuild_pdf_reports.py --portfolio-first` by default;
+  `--legacy-full-pdf` opts into the full legacy variant suite.
+  Rationale: Portfolio-first review should refresh advisor-facing subject and decision-package PDFs
+  without rewriting EW/RP, policy Main, and optimizer baseline PDFs on every run.
+  Date/Author: 2026-05-19 / Codex, Session 10 RM-910.
+
+- Decision: Session 11 closure accepts a subject refresh plus comparison/PDF refresh when a full
+  `default_v1` factory rebuild cannot complete within the session window; stale optimizer snapshots
+  must remain explicitly `unavailable` in comparison, not silently scored.
+  Rationale: Representative verification proved freshness gating and portfolio-first artifacts; a
+  multi-hour factory rebuild is operational follow-up, not a blocker for plan closure.
+  Date/Author: 2026-05-19 / Codex, Session 11 RM-911.
+
 ## Outcomes & Retrospective
 
 Session 01 completed RM-901 by making candidate comparison prefer
@@ -216,6 +256,34 @@ optimizer inputs, covariance, RC_vol, correlation, mandate checks, and backtest 
 of config `returns_frequency`; non-monthly values are disclosure-only via
 `configured_returns_frequency` and `frequency_disclosure`. `config.yml` was reset to `monthly`;
 focused tests cover resolution, disclosure, and input-assumption export.
+
+Session 08 completed RM-908 (monitoring first-run honesty). `build_monitoring_diff` now treats
+`no_prior_snapshot` as narrative-only: empty `profile_changes`, null `prior_analysis_end` and
+`input_artifacts.prior_snapshot`, and neutral decision/action change flags when there is no prior
+or when the prior shares the same `analysis_end`. Focused tests cover first run, same-end re-run,
+and unchanged real diffs when `analysis_end` advances.
+
+Session 09 completed RM-909 (decision package PDF repair). `build_decision_package_pdf_md` in
+`pdf_reports.py` emits YAML front matter with a single-line title and date subtitle, client-sanitizes
+the summary body, and strips the redundant TXT banner. `build_decision_package_report_md` delegates to
+this builder. `Main portfolio_decision_package.pdf` rebuilds successfully with Pandoc/XeLaTeX; focused
+tests cover Markdown structure and optional PDF smoke when pandoc is available.
+
+Session 10 completed RM-910 (report scope and noise reduction). `rebuild_portfolio_first_pdfs` and
+`rebuild_pdf_reports.py --portfolio-first` rebuild only the decision package and `analysis_subject/`
+sidecar PDFs. `run_portfolio_review.py` uses this narrow scope by default; `--legacy-full-pdf` restores
+the full legacy variant suite. Focused tests cover workflow argv forwarding and rebuild scope.
+
+Session 11 completed RM-911 (fresh representative run and plan closure). A fresh
+`run_report.py --materialize-analysis-subject` run produced `analysis_end: 2026-04-30` subject
+artifacts with `regime_portfolio_metrics` and no `regime_portfolio_metrics_error`. Comparison and the
+decision package were refreshed via `run_compare_variants.py` and `rebuild_pdf_reports.py
+--portfolio-first`; `candidate_comparison.json` reports `analysis_subject_type: current_portfolio`,
+`comparison_baseline_candidate_id: analysis_subject`, and marks stale optimizer/policy rows
+`unavailable` with explicit reasons. `Main portfolio_decision_package.pdf` and subject PDFs rebuilt
+successfully. Verification: `python scripts/verify_docs.py` OK; full pytest `504 passed` with
+`--basetemp=tmp/pytest_session11`. Phase 9 stabilization plan is closed; rebuild remaining stale
+optimizer candidates with `run_candidate_factory.py --no-skip-existing` when a full refresh is needed.
 
 ## Context and Orientation
 
@@ -377,3 +445,18 @@ Revision note, 2026-05-19 / Session 07 (RM-907): completed methodology consisten
 Session 03A alignment. Main portfolio metrics and optimizer paths always use monthly returns; config
 `returns_frequency` weekly/daily is disclosure-only. Updated metrics, input-assumptions, and stress
 specs, config examples, and focused tests.
+
+Revision note, 2026-05-19 / Session 08 (RM-908): completed monitoring first-run honesty.
+`no_prior_snapshot` diffs omit profile/decision deltas, null prior metadata, and narrative-only
+summaries; same-`analysis_end` re-runs keep warning `prior_same_analysis_end_ignored`.
+
+Revision note, 2026-05-19 / Session 09 (RM-909): completed decision package PDF repair. PDF Markdown
+uses YAML front matter instead of a long H1 with embedded analysis-end dates; `KI-2026-05-18-001`
+removed after verification.
+
+Revision note, 2026-05-19 / Session 10 (RM-910): portfolio-first review defaults to narrow PDF rebuild
+(`--portfolio-first`); full legacy variant PDFs require `--legacy-full-pdf`.
+
+Revision note, 2026-05-19 / Session 11 (RM-911): closed Phase 9 stabilization. Representative
+verification used fresh subject materialization, comparison/PDF refresh, `504` pytest passes, and docs
+verify. Remaining stale optimizer candidates are operational rebuild follow-up, not open plan items.

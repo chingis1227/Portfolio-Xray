@@ -140,6 +140,22 @@ def test_schema_required_keys() -> None:
     assert doc["display_priority"] == ["current", "policy"]
 
 
+def test_display_priority_starts_with_analysis_subject_when_available() -> None:
+    comp = _comparison_three_candidates()
+    subject = dict(comp["candidates"][0])
+    subject["candidate_id"] = "analysis_subject"
+    subject["display_name"] = "Starting portfolio"
+    subject["role"] = "analysis_subject"
+    comp["candidates"].append(subject)
+
+    doc = build_portfolio_health_score(
+        comp,
+        robustness_scorecard=_robustness_fixture(),
+    )
+
+    assert doc["display_priority"] == ["analysis_subject"]
+
+
 def test_relative_ranking_three_candidates() -> None:
     doc = build_portfolio_health_score(
         _comparison_three_candidates(),

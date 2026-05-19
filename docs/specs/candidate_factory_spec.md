@@ -19,7 +19,8 @@ The Candidate Portfolio Factory:
 
 The factory does **not**:
 
-- replace `run_optimization.py` as the production policy path;
+- replace the portfolio-first `analysis_subject` diagnosis step;
+- replace `run_optimization.py` in legacy policy workflows;
 - write or overwrite `portfolio_weights.yml` except through the existing policy optimizer entry point (policy is outside the factory batch);
 - merge candidate formulas into one optimizer;
 - provide product UI/workspace (deferred).
@@ -32,12 +33,16 @@ Today, `run_compare_variants.py` / `write_candidate_comparison_outputs` correctl
 
 | Role | Entry | Factory includes? |
 | --- | --- | --- |
-| **Production policy** | `run_optimization.py` → `run_report.py` on Main | **No** — run separately before or in parallel; factory documents this as **Step 0** in full workflows only |
+| **Portfolio-first subject** | `run_report.py --materialize-analysis-subject` via `run_portfolio_review.py` | **No** — must exist before factory output is interpreted |
+| **Legacy production policy** | `run_optimization.py` then `run_report.py` on Main | **No** — run only in compatibility workflows |
 | **User current (sidecar)** | `run_report.py --materialize-current` | **Optional** — see [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md) |
 | **Benchmark / optimizer candidates** | Per-family `run_*.py` scripts | **Yes** — factory core |
 | **Comparison + decision package** | `run_compare_variants.py` | **Optional tail** (`--then-compare` in Session 11) |
 
-**Main = production policy.** Robust MV and robust scenario paths are **candidate/benchmark inputs** only unless a future accepted decision changes release policy ([DEC-2026-05-17-007](../../DECISIONS.md)).
+In the portfolio-first workflow, the diagnosed `analysis_subject` is the comparison baseline.
+Legacy Main policy output remains available for compatibility. Robust MV and robust scenario paths
+are **candidate/benchmark inputs** only unless a future accepted decision changes release policy
+([DEC-2026-05-17-007](../../DECISIONS.md)).
 
 ## V1 User Decisions (2026-05-17, Session 10)
 
@@ -46,7 +51,7 @@ Recorded defaults when the post-audit plan continues without overrides:
 1. **Orchestrate before compare:** V1 adopts a factory layer; comparison remains read-only aggregation.
 2. **No formula duplication:** each `candidate_id` maps to one existing entry script (or a documented two-step chain); Session 11 must subprocess or import those scripts, not copy optimization code.
 3. **Default profile `default_v1`:** all **sixteen** script-backed registry rows (every row except `policy` and `current`).
-4. **Skip-existing default:** when `{artifact_root}/snapshot_10y.json` exists, skip rerunning that candidate unless `--force` is set (Session 11).
+4. **Skip-existing default with freshness:** when `{artifact_root}/snapshot_10y.json` exists, skip rerunning that candidate only when its `analysis_end` matches the review `analysis_end`; otherwise attempt a rebuild unless `--force` or dependency rules dictate a different outcome.
 5. **Failure policy `continue_on_error`:** one failed candidate does not abort the whole factory run; failures appear in the run summary and as `unavailable` / `degraded` in comparison.
 6. **Run summary location:** `{output_dir_final}/candidate_factory_run.json` and optional `candidate_factory_run.txt`.
 7. **Registry source of truth:** `src/candidate_comparison.py` `_REGISTRY_ROWS`; factory spec table below must stay aligned when registry changes.
@@ -62,16 +67,26 @@ Recorded defaults when the post-audit plan continues without overrides:
 
 ## Supported End-to-End Workflows
 
-### A. Full decision-support run (recommended)
+### A. Portfolio-first decision-support run (default)
 
 | Step | Command | Purpose |
 | --- | --- | --- |
-| 0 Policy | `python run_optimization.py` then `python run_report.py` | Policy weights and Main diagnostics |
-| 0b Current (optional) | `python run_report.py --materialize-current` | Current sidecar for No-Trade versus current |
-| 1 Factory | `python run_candidate_factory.py --profile default_v1` | Build or refresh candidate artifact folders |
-| 2 Compare | `python run_compare_variants.py` | `candidate_comparison.json` + decision package |
+| 0 Subject | `python run_portfolio_review.py` | Materialize `analysis_subject`, build candidates, and compare through the orchestrator |
+| 1 Factory only (advanced) | `python run_candidate_factory.py --profile default_v1` | Build or refresh candidate artifact folders after subject diagnostics exist |
+| 2 Compare only (advanced) | `python run_compare_variants.py` | Rebuild `candidate_comparison.json` + decision package from existing artifacts |
 
 Factory may implement `--then-compare` to run step 2 automatically after step 1.
+
+### A-legacy. Policy compatibility run
+
+Use only when the intended baseline is generated legacy policy weights.
+
+| Step | Command | Purpose |
+| --- | --- | --- |
+| 0 Policy | `python run_optimization.py` then `python run_report.py` | Legacy policy weights and Main diagnostics |
+| 0b Current (optional) | `python run_report.py --materialize-current` | Current sidecar for No-Trade versus current |
+| 1 Factory | `python run_candidate_factory.py --profile default_v1` | Build or refresh candidate artifact folders |
+| 2 Compare | `python run_compare_variants.py` | Compatibility comparison and decision package |
 
 ### B. Benchmarks-only refresh
 
@@ -119,7 +134,8 @@ Paths are relative to the **project root** (repository root). `artifact_root` mu
 | `robust_mv_uncapped` | optimizer_candidate | `run_robust_mean_variance_uncapped.py` | `robust mean variance uncapped portfolio` | Same |
 | `robust_scenario` | robust_candidate | `run_robust_scenario_optimization.py` then `run_robust_scenario_portfolio_report.py` | `robust scenario portfolio` | Policy `run_report.py` must have produced `scenario_library_normalized.json` and `stress_report.json` under `output_dir_final` |
 
-**Policy row (`policy`):** `run_optimization.py` + `run_report.py` on Main — documented in workflow A step 0, not invoked by factory profiles.
+**Policy row (`policy`):** `run_optimization.py` + `run_report.py` on Main; legacy compatibility
+only, not invoked by factory profiles.
 
 **Current row (`current`):** `run_report.py --materialize-current` — optional step 0b.
 
@@ -135,6 +151,13 @@ For each `candidate_id` in the active profile:
 4. Otherwise invoke entry script(s) in order with project Python, same `config.yml` as policy run.
 5. On subprocess non-zero exit → status `failed` with `exit_code` and stderr tail (truncated); continue unless `--fail-fast`.
 6. On success → status `succeeded`; verify minimum comparison inputs: `snapshot_10y.json` present (else `failed` with `missing_snapshot_after_build`).
+
+Freshness addendum (RM-902, supersedes item 2 when a review date is known): the skip-existing rule is date-gated. Factory must read
+`snapshot_10y.json.analysis_end` before reusing an existing candidate artifact. Reuse is allowed
+only when that value matches the review `analysis_end`, resolved from
+`{output_dir_final}/analysis_subject/` first and Main artifacts second. Stale snapshots are rebuilt,
+not silently skipped. If a builder exits 0 but the candidate `snapshot_10y.json` remains stale, the
+step status is `failed` with reason `stale_snapshot_after_build`.
 
 **Robust scenario chain:** factory runs optimization script first; on success runs portfolio report script. One factory step row may represent the chain; both commands appear in `entry_commands` array in the run summary.
 
@@ -173,7 +196,8 @@ For each `candidate_id` in the active profile:
     "succeeded": 0,
     "failed": 0,
     "skipped_existing": 0,
-    "skipped_dependency": 0
+    "skipped_dependency": 0,
+    "rebuilt_stale": 0
   },
   "warnings": [],
   "next_recommended_command": "python run_compare_variants.py"
@@ -194,6 +218,9 @@ For each `candidate_id` in the active profile:
 | `duration_seconds` | number | Wall time for the step |
 | `reason_code` | string or null | Machine code when not succeeded |
 | `message` | string or null | Short English explanation |
+| `expected_analysis_end` | string or null | Review `analysis_end` used for freshness checks. Prefer `{output_dir_final}/analysis_subject/` metadata/snapshots, then Main metadata/snapshots. |
+| `snapshot_analysis_end` | string or null | `analysis_end` read from candidate `snapshot_10y.json` before reuse or after build. |
+| `freshness_status` | string or null | `fresh` when the snapshot matches the review date, `stale` when it does not, `missing` when no snapshot exists, or `unchecked` when no review date was available. |
 
 ### Reason codes (V1)
 
@@ -202,6 +229,7 @@ For each `candidate_id` in the active profile:
 | `skipped_existing` | `snapshot_10y.json` already present and skip-existing active |
 | `skipped_dependency` | Prerequisite artifacts missing (e.g. scenario library) |
 | `missing_snapshot_after_build` | Script exited 0 but comparison minimum files absent |
+| `stale_snapshot_after_build` | Script exited 0 but `snapshot_10y.json.analysis_end` still does not match the review `analysis_end` |
 | `subprocess_failed` | Builder returned non-zero exit |
 | `subprocess_timeout` | Reserved; optional timeout in Session 11 |
 | `unknown_candidate_id` | ID not in registry (explicit list mode) |

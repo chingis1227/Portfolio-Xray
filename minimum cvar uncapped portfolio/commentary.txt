@@ -1,21 +1,115 @@
-Source: summary.txt, stress_report.json, results_csv/portfolio_metrics_10y.csv, results_csv/rc_vol_10y.csv, report.txt
+Source: summary.txt, stress_report.json, results_csv/portfolio_metrics_10y.csv, results_csv/rc_vol_10y.csv, run_metadata.json / analysis_setup, report.txt
+
+Portfolio X-Ray Summary
+Version: portfolio_xray_v2; diagnostic_only=True.
+Portfolio X-Ray v2 is diagnostic-only. It summarizes existing report pipeline outputs and in-memory diagnostics; it does not optimize, change weights, change mandate gates, change stress pass/fail status, score portfolios, select portfolios, or provide trade instructions.
+Analyzed portfolio: role=user_current_portfolio; weight_source=config.analysis_subject.weights; recommendation_status=diagnostic_current_portfolio_not_recommendation.
+Setup: input_case=user_current; currency=USD; benchmark=SPY; cash_proxy=BIL; frequency=monthly.
+Asset Allocation: main capital concentration is SCHD 17.0%, BND 16.0%, QQQ 13.0%; cash=n/a.
+Risk Contribution Summary: main RC_vol concentration is BND 60.8%, SCHP 36.1%, SCHD 2.0%. RC_vol is diagnostic-only and does not act as an optimizer gate or recommendation rule.
+Portfolio Diagnostic Verdict:
+Analyzed portfolio role: user_current_portfolio; weight source: config.analysis_subject.weights.
+Capital concentration: SCHD 17.0%, BND 16.0%, QQQ 13.0%.
+Risk concentration by RC_vol: BND 60.8%, SCHP 36.1%, SCHD 2.0%.
+Main diagnostic concern: rates_shock sensitivity.
+Mandate gate: PASS; stress status: DIAG_PASS_WITH_WARNING.
+This is an explanatory diagnostic summary, not a score, recommendation, selection decision, or trade instruction.
+
+Asset Allocation Summary
+status=available; sources=analyzed weights, config/etf_universe.yml, config/stock_universe.yml.
+- SCHD: weight 17.0%, asset_class=equity, region=US, risk_bucket=equity
+- BND: weight 16.0%, asset_class=fixed_income, region=US, risk_bucket=fixed_income
+- QQQ: weight 13.0%, asset_class=equity, region=US, risk_bucket=equity
+- SCHP: weight 13.0%, asset_class=fixed_income, region=US, risk_bucket=inflation_linked
+- TLT: weight 13.0%, asset_class=fixed_income, region=US, risk_bucket=fixed_income
+- SPY: weight 10.0%, asset_class=equity, region=US, risk_bucket=equity
+- GLD: weight 9.0%, asset_class=commodity, region=Global, risk_bucket=real_assets
+- SLV: weight 9.0%, asset_class=commodity, region=Global, risk_bucket=real_assets
+- asset_class: fixed_income 42.0%, equity 40.0%, commodity 18.0%
+- region: US 82.0%, Global 18.0%
+- currency_exposure: USD 100.0%
+- sector: none 60.0%, multi_sector 40.0%
+- ... 3 more items in portfolio_xray.json
+limitation: Taxonomy is annotation-only in V1 and does not select assets or change weights.
+limitation: ETF sector and currency fields can describe broad economic exposure rather than exact look-through holdings.
+
+Portfolio Metrics / Risk Diagnostics
+status=partial; sources=snapshot metrics, snapshot analytics, drawdown_structure.
+warning: portfolio analytics summary is missing
+- CAGR 2.4%, vol 5.0%, Sharpe 0.042, Sortino 0.057, MaxDD -14.2%, beta 0.167
+limitation: Historical metrics describe realized behavior in the selected window, not expected future returns.
+limitation: VaR and ES are historical tail metrics and should be checked against stress scenarios before action.
+
+Factor Exposure / Factor Sensitivity
+status=available; sources=stress_report.factor_betas_5y, stress_report.factor_betas_10y, stress_report.factor_betas_kalman, stress_report.factor_variance_decomposition.
+- real_rates: beta_5y -5.994, beta_10y -6.058, variance share 86.1%
+- inflation: beta_5y -3.103, beta_10y -2.664, variance share 9.9%
+- equity: beta_5y 0.027, beta_10y 0.056, variance share 1.9%
+- usd: beta_5y -0.016, beta_10y -0.056, variance share 0.5%
+- vix: beta_5y 0.001, beta_10y 0.002, variance share -0.4%
+- commodity: beta_5y 0.007, beta_10y 0.011, variance share -0.3%
+- credit: beta_5y -0.092, beta_10y n/a, variance share 0.1%
+- us_growth: beta_5y -0.000, beta_10y -0.001, variance share 0.1%
+- Residual factor risk: 2.2%, severity=low
+limitation: Factor exposures are diagnostics from the existing factor pipeline and do not replace raw holdings.
+limitation: Kalman betas are current-regime diagnostics and do not replace raw 5Y/10Y OLS betas.
+
+Hidden Exposure / Hidden Risk Detector
+status=available; sources=stress_report.factor_betas_5y, snapshot.RC_asset, stress_report.portfolio_pca, stress_report.factor_variance_decomposition, taxonomy metadata.
+- high single_asset_risk_concentration: BND contributes 60.8% of RC_vol. Portfolio risk is more concentrated than capital weights alone imply. Next test: Compare weight vs RC_vol and inspect stress Top1/Top3 RC concentration. Limitation: RC_vol depends on the selected covariance window and existing RC calculation.
+- medium correlation_or_common_factor_concentration: Raw covariance PCA PC1 explains 54.2% of asset-return variance. Several holdings may be driven by the same statistical risk direction. Next test: Review PCA loadings, raw correlation PCA, and residual PCA after factor removal. Limitation: PCA is statistical and does not identify a tradable economic factor by itself.
+- high stress_loss_contributor_concentration: In worst scenario rates_shock, top stress RC asset BND is 62.3%. Stress losses may be dominated by a small number of assets. Next test: Inspect pnl_by_asset_pct and Top3 RC for the worst stress scenario. Limitation: Synthetic stress RC uses scenario covariance diagnostics and is not a pass/fail gate.
+- medium duration_concentration: Intermediate/long duration-labeled holdings are 42.0% of capital. The portfolio may be sensitive to rates and duration shocks beyond broad asset labels. Next test: Check rates_shock, real-rate beta, and stress RC contribution from bond holdings. Limitation: Duration bucket is taxonomy metadata, not a live duration estimate.
+limitation: Hidden risk flags are transparent threshold rules, not AI judgment and not portfolio recommendations.
+limitation: Flags summarize existing diagnostics and should be validated with stress testing and comparison.
+
+Portfolio Archetype Classification
+status=available; sources=asset allocation, factor betas, RC_vol, PCA.
+- primary=Inflation-sensitive, secondary=Pseudo-diversified Portfolio, confidence=high, drivers=commodity weight 18.0%; inflation-linked weight 26.0%; commodity beta 0.007
+limitation: Archetype is a rule-based behavior label with caveats, not a portfolio selection decision.
+limitation: A portfolio can have multiple simultaneous characteristics; confidence reflects signal clarity.
+
+Risk Budget View
+status=available; sources=analyzed weights, snapshot.RC_asset, stress_report.scenario_results.pnl_by_asset_pct.
+- BND: weight 16.0%, RC_vol 60.8%, gap +44.8pp, worst stress contribution -7.2% (rates_shock)
+- SCHP: weight 13.0%, RC_vol 36.1%, gap +23.1pp, worst stress contribution -4.6% (rates_shock)
+- SCHD: weight 17.0%, RC_vol 2.0%, gap -15.0pp, worst stress contribution -0.3% (recession_severe)
+- GLD: weight 9.0%, RC_vol 1.1%, gap -7.9pp, worst stress contribution -0.3% (recession_severe)
+- SLV: weight 9.0%, RC_vol 0.0%, gap -9.0pp, worst stress contribution -0.0% (equity_shock)
+- QQQ: weight 13.0%, RC_vol n/a, gap n/a, worst stress contribution -0.0% (equity_shock)
+- SPY: weight 10.0%, RC_vol n/a, gap n/a, worst stress contribution -0.0% (equity_shock)
+- TLT: weight 13.0%, RC_vol n/a, gap n/a, worst stress contribution -0.0% (equity_shock)
+limitation: RC_vol is contribution to portfolio variance from the existing pipeline and is diagnostic-only.
+limitation: Stress loss contribution is scenario-specific and should not be read as expected loss.
+
+Portfolio Weakness Map
+status=available; sources=stress_report.scenario_results, stress_report.factor_betas_5y, snapshot.RC_asset, snapshot metrics, snapshot analytics, taxonomy metadata.
+- recession: medium (stress_scenario; max_drawdown)
+- inflation: high (stress_scenario; factor_beta)
+- rates: high (stress_scenario; factor_beta)
+- credit: low (stress_scenario)
+- liquidity: low (stress_scenario)
+- usd: low (available_diagnostics)
+- equity_crash: medium (stress_scenario; max_drawdown)
+- commodity_shock: low (available_diagnostics)
+- volatility_spike: low (available_diagnostics)
+limitation: Weakness Map aggregates existing evidence only; it is not a forecasting or scoring model.
+limitation: Low severity means available evidence did not cross configured thresholds, not that the risk is impossible.
 
 Executive Summary
-This run is minimum cvar uncapped portfolio; analysis_end: 2026-05-08. On the long window (10Y in the report context) the portfolio shows CAGR ~ 3.14%, annualized volatility ~ 5.12%, maximum drawdown ~ -15.54%.
-Risk-adjusted: Sharpe ~ 0.190, Sortino ~ 0.260; sensitivity to the base benchmark: Beta_base ~ 0.085.
-Stress test: DIAG_PASS_WITH_WARNING; worst_scenario_loss_pct ~ -11.68%.
+This run is minimum cvar uncapped portfolio; analysis_end: 2026-04-30. On the long window (10Y in the report context) the portfolio shows CAGR ~ 2.37%, annualized volatility ~ 4.99%, maximum drawdown ~ -14.25%.
+Risk-adjusted: Sharpe ~ 0.042, Sortino ~ 0.057; sensitivity to the base benchmark: Beta_base ~ 0.167.
+Stress test: DIAG_PASS_WITH_WARNING; worst_scenario_loss_pct ~ -11.99%.
 Client MaxDD gate (portfolio_valid): PASS.
 
 Metric-by-Metric Interpretation
-CAGR (3.14%) is the compound annual growth rate from simple returns at daily cadence on the 10Y window in this run. Volatility (5.12%) is annualized using the same return frequency; MaxDD (-15.54%) is from the matching equity curve. Sharpe (0.190) and Sortino (0.260) follow project definitions (Sharpe uses raw return vol in the denominator). Beta_base (0.085) and Treynor (0.115) tie to the base benchmark; Corr_base, when present, is correlation with the benchmark on the same window.
+CAGR (2.37%) is the compound annual growth rate from simple returns at monthly cadence on the 10Y window in this run. Volatility (4.99%) is annualized using the same return frequency; MaxDD (-14.25%) is from the matching equity curve. Sharpe (0.042) and Sortino (0.057) follow project definitions (Sharpe uses raw return vol in the denominator). Beta_base (0.167) and Treynor (0.013) tie to the base benchmark; Corr_base, when present, is correlation with the benchmark on the same window.
 
 Risk Structure
-Largest RC_vol shares (portfolio variance contribution) on 10Y: BND 57.7%, SCHP 33.5%, SCHD 6.1%, GLD 2.7%, SLV 0.0%. Stress: status=DIAG_PASS_WITH_WARNING, fail_reason_code=—.
+Largest RC_vol shares (portfolio variance contribution) on 10Y: BND 60.8%, SCHP 36.1%, SCHD 2.0%, GLD 1.1%, SLV 0.0%. Stress: status=DIAG_PASS_WITH_WARNING, fail_reason_code=—.
 
 Data frequency
-optimization_frequency=daily, returns_frequency=daily, factor_stress_frequency=weekly, macro_regime_frequency=monthly; frequency_mismatch_warning=True.
-macro_regime_frequency_notes: Portfolio metrics and covariance use returns_frequency=daily; factor betas/regression/stress shocks stay weekly; macro regime classifier labels remain monthly; regime_factor_analytics may use daily returns when daily data loads (see regime_factor_analytics.summary).
-Non-uniform cadence across blocks: align interpretation of stress/regime diagnostics with the frequencies above; full factor/regime alignment with daily/weekly optimization is Phase 2.
+optimization_frequency=monthly, returns_frequency=monthly, factor_stress_frequency=weekly, macro_regime_frequency=monthly; frequency_mismatch_warning=False.
 
 Strengths
 Stress diagnostics show no critical flags (or warnings only); mandate MaxDD gate PASS — realized drawdown vs client threshold does not conflict in this run.
@@ -23,8 +117,8 @@ Stress diagnostics show no critical flags (or warnings only); mandate MaxDD gate
 Weaknesses
 
 Scenario Behavior
-Scenario snapshot from stress_report.json: equity_shock: PnL ~ -1.71%, pass=True; credit_shock: PnL ~ -1.16%, pass=True; rates_shock: PnL ~ -11.68%, pass=True; inflation_stagflation: PnL ~ -4.86%, pass=True; liquidity_shock: PnL ~ -1.62%, pass=True; recession_severe: PnL ~ 0.74%, pass=True.
-Worst scenario portfolio loss (worst_scenario_loss_pct): ~ -11.68%.
+Scenario snapshot from stress_report.json: equity_shock: PnL ~ -1.07%, pass=True; credit_shock: PnL ~ -0.64%, pass=True; rates_shock: PnL ~ -11.99%, pass=True; inflation_stagflation: PnL ~ -4.91%, pass=True; liquidity_shock: PnL ~ -0.94%, pass=True; recession_severe: PnL ~ 2.31%, pass=True.
+Worst scenario portfolio loss (worst_scenario_loss_pct): ~ -11.99%.
 
 Final Conclusion
-minimum cvar uncapped portfolio: the 10Y return/risk profile is summarized by CAGR ~ 3.14%, vol ~ 5.12%, MaxDD ~ -15.54%. Stress DIAG_PASS_WITH_WARNING (—); client gate PASS. To compare variants, use the same files in sibling folders (Equal-Weight / Risk Parity / Main portfolio) after a synchronized run.
+minimum cvar uncapped portfolio: the 10Y return/risk profile is summarized by CAGR ~ 2.37%, vol ~ 4.99%, MaxDD ~ -14.25%. Stress DIAG_PASS_WITH_WARNING (—); client gate PASS. To compare variants, use the same files in sibling folders (Equal-Weight / Risk Parity / Main portfolio) after a synchronized run.

@@ -222,6 +222,44 @@ def test_selected_candidate_has_trades(tmp_path: Path) -> None:
     assert directions <= {"buy", "sell"}
 
 
+def test_action_plan_uses_analysis_subject_baseline(tmp_path: Path) -> None:
+    comp = _comparison_policy_current(output_dir="Main")
+    comp["candidates"].insert(
+        0,
+        _cand(
+            "analysis_subject",
+            display="Starting Portfolio",
+            role="analysis_subject",
+            artifact_root="subject portfolio",
+        ),
+    )
+    comp["candidates"][3]["artifact_root"] = "equal portfolio"
+    _write_weights(
+        tmp_path / "subject portfolio" / "snapshot_10y.json",
+        {"AAA": 0.7, "BBB": 0.3},
+    )
+    _write_weights(
+        tmp_path / "equal portfolio" / "snapshot_10y.json",
+        {"AAA": 0.4, "BBB": 0.6},
+    )
+    selection = {
+        "schema_version": "selection_decision_v1",
+        "decision_status": "selected_candidate",
+        "baseline_candidate_id": "analysis_subject",
+        "favored_candidate_id": "equal_weight",
+        "favored_display_name": "Equal-Weight",
+        "rationale": {"summary": "Favored profile: Equal-Weight for this comparison."},
+    }
+
+    plan = build_action_plan(comp, selection, project_root=tmp_path)
+
+    assert plan["baseline_candidate_id"] == "analysis_subject"
+    assert plan["baseline_display_name"] == "Starting Portfolio"
+    assert plan["baseline_weights"] == {"AAA": 0.7, "BBB": 0.3}
+    assert plan["action_status"] == "trades_for_review"
+    assert plan["trades"]
+
+
 def test_transaction_cost_and_risk_per_turnover(tmp_path: Path) -> None:
     out = "Main portfolio"
     comp = _comparison_policy_current(output_dir=out)

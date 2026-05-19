@@ -20,7 +20,8 @@ PRIMARY_WINDOW = "10y"
 LATEST_JOURNAL_REL = Path("journal/latest/decision_journal.json")
 HISTORY_DIR_REL = Path("journal/history")
 
-ELIGIBLE_CURRENT_STATUSES = frozenset({"available", "degraded"})
+ELIGIBLE_BASELINE_STATUSES = frozenset({"available", "degraded"})
+BASELINE_CANDIDATE_IDS = ("analysis_subject", "current")
 
 
 def _load_json(path: Path) -> dict[str, Any] | None:
@@ -148,22 +149,43 @@ def _weight_sources(comparison: dict[str, Any]) -> dict[str, str]:
     return out
 
 
-def _current_available(by_id: dict[str, dict[str, Any]]) -> bool:
-    current = by_id.get("current")
-    return bool(current and current.get("status") in ELIGIBLE_CURRENT_STATUSES)
+def _baseline_candidate_id(
+    by_id: dict[str, dict[str, Any]],
+    selection: dict[str, Any] | None = None,
+) -> str | None:
+    explicit = (selection or {}).get("baseline_candidate_id")
+    if explicit and by_id.get(str(explicit), {}).get("status") in ELIGIBLE_BASELINE_STATUSES:
+        return str(explicit)
+    no_trade = (selection or {}).get("no_trade") or {}
+    explicit = no_trade.get("baseline_candidate_id")
+    if explicit and by_id.get(str(explicit), {}).get("status") in ELIGIBLE_BASELINE_STATUSES:
+        return str(explicit)
+    for candidate_id in BASELINE_CANDIDATE_IDS:
+        cand = by_id.get(candidate_id)
+        if cand and cand.get("status") in ELIGIBLE_BASELINE_STATUSES:
+            return candidate_id
+    return None
+
+
+def _baseline_available(
+    by_id: dict[str, dict[str, Any]],
+    selection: dict[str, Any] | None = None,
+) -> bool:
+    return _baseline_candidate_id(by_id, selection) is not None
 
 
 def _score_deltas(
     *,
     favored_id: str | None,
+    baseline_id: str | None,
     health_by_id: dict[str, dict[str, Any]],
     robust_by_id: dict[str, dict[str, Any]],
 ) -> tuple[float | None, float | None]:
-    if not favored_id:
+    if not favored_id or not baseline_id:
         return None, None
-    cur_h = health_by_id.get("current", {}).get("total_score")
+    cur_h = health_by_id.get(baseline_id, {}).get("total_score")
     fav_h = health_by_id.get(favored_id, {}).get("total_score")
-    cur_r = robust_by_id.get("current", {}).get("total_score")
+    cur_r = robust_by_id.get(baseline_id, {}).get("total_score")
     fav_r = robust_by_id.get(favored_id, {}).get("total_score")
     h_delta = None
     r_delta = None
@@ -184,15 +206,18 @@ def _build_expected_improvement(
     health: dict[str, Any] | None,
     robustness: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    if not _current_available(by_id):
+    baseline_id = _baseline_candidate_id(by_id, selection)
+    baseline_display = (by_id.get(baseline_id or "") or {}).get("display_name") or baseline_id
+    if not _baseline_available(by_id, selection):
         return {
             "status": "not_applicable",
+            "baseline_candidate_id": None,
             "health_score_delta": None,
             "robustness_score_delta": None,
             "drawdown_improvement_pp": None,
             "turnover_half_sum_pct": None,
             "materiality_met": None,
-            "summary": "Current portfolio not in comparison; improvement versus current not assessed.",
+            "summary": "Starting portfolio baseline not in comparison; improvement versus baseline not assessed.",
         }
 
     no_trade = selection.get("no_trade") or {}
@@ -215,6 +240,7 @@ def _build_expected_improvement(
     if health_delta is None and robust_delta is None:
         h_delta, r_delta = _score_deltas(
             favored_id=favored_id,
+            baseline_id=baseline_id,
             health_by_id=_score_by_id(health),
             robust_by_id=_score_by_id(robustness),
         )
@@ -226,12 +252,12 @@ def _build_expected_improvement(
     if decision_status == "selected_candidate":
         materiality_met: bool | None = True
         summary = (
-            "Material rebalance criteria met relative to current for the favored profile."
+            f"Material rebalance criteria met relative to {baseline_display} for the favored profile."
         )
     elif decision_status == "no_material_rebalance":
         materiality_met = False
         summary = (
-            "Score and turnover deltas versus current do not support a material rebalance."
+            f"Score and turnover deltas versus {baseline_display} do not support a material rebalance."
         )
     else:
         materiality_met = None
@@ -240,6 +266,7 @@ def _build_expected_improvement(
     status = "degraded" if degraded else "available"
     return {
         "status": status,
+        "baseline_candidate_id": baseline_id,
         "health_score_delta": health_delta,
         "robustness_score_delta": robust_delta,
         "drawdown_improvement_pp": dd_improvement,
@@ -416,10 +443,12 @@ def build_decision_journal(
     favored_id = selection.get("favored_candidate_id")
     favored_display = selection.get("favored_display_name")
     favored_row = by_id.get(favored_id) if favored_id else None
+    baseline_id = _baseline_candidate_id(by_id, selection)
+    baseline_row = by_id.get(baseline_id) if baseline_id else None
 
     risk_row = favored_row
-    if decision_status == "no_material_rebalance" and by_id.get("current"):
-        risk_row = by_id.get("current") or favored_row
+    if decision_status == "no_material_rebalance" and baseline_row:
+        risk_row = baseline_row or favored_row
 
     setup = comparison.get("analysis_setup_summary") or {}
     analysis_mode = (
@@ -428,8 +457,8 @@ def build_decision_journal(
         or "unknown"
     )
 
-    macro_profile_id = favored_id or "policy"
-    macro_row = by_id.get(macro_profile_id) or by_id.get("policy")
+    macro_profile_id = favored_id or baseline_id or "policy"
+    macro_row = by_id.get(macro_profile_id) or by_id.get(baseline_id or "") or by_id.get("policy")
     macro_label = None
     if macro_row:
         macro_label = _macro_regime_label(macro_row.get("factor_regime") or {})
@@ -481,6 +510,8 @@ def build_decision_journal(
         "output_dir_final": out_dir_name,
         "decision_record": {
             "decision_status": decision_status,
+            "baseline_candidate_id": baseline_id,
+            "baseline_display_name": (baseline_row or {}).get("display_name"),
             "favored_candidate_id": favored_id,
             "favored_display_name": favored_display,
             "formal_decision": selection.get("formal_decision"),
@@ -489,6 +520,14 @@ def build_decision_journal(
             "composite_rank_top3": _composite_rank_top3(
                 list(selection.get("composite_ranking") or [])
             ),
+        },
+        "diagnosed_subject": {
+            "candidate_id": baseline_id,
+            "display_name": (baseline_row or {}).get("display_name"),
+            "role": (baseline_row or {}).get("role"),
+            "status": (baseline_row or {}).get("status"),
+            "portfolio_role": (baseline_row or {}).get("portfolio_role"),
+            "weight_source": (baseline_row or {}).get("weight_source"),
         },
         "selected_portfolio": {
             "candidate_id": favored_id,
@@ -503,6 +542,9 @@ def build_decision_journal(
         "rejected_alternatives": list(selection.get("rejected_candidates") or []),
         "assumptions": {
             "analysis_mode": analysis_mode,
+            "analysis_subject_id": setup.get("analysis_subject_id"),
+            "analysis_subject_type": setup.get("analysis_subject_type"),
+            "analysis_subject_display_name": setup.get("analysis_subject_display_name"),
             "primary_window": PRIMARY_WINDOW,
             "investor_currency": comparison.get("investor_currency"),
             "weight_sources": _weight_sources(comparison),

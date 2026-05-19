@@ -4,7 +4,11 @@ This document owns the high-level contract for benchmark and candidate portfolio
 
 ## Scope
 
-Candidate portfolios are comparison portfolios. They run through the same report pipeline as the main policy portfolio after weights are fixed, but they do not replace `run_optimization.py` as the main policy optimizer unless a future canonical spec changes that rule.
+Candidate portfolios are comparison portfolios. In the portfolio-first workflow, they are generated
+only after `analysis_subject` diagnostics exist and are compared against that subject. They run
+through the same report pipeline after weights are fixed, but they do not replace the diagnosed
+subject and do not reactivate `run_optimization.py` as a default candidate unless a future canonical
+spec changes that rule.
 
 ## Shared Behavior
 
@@ -45,8 +49,8 @@ Implementation: Session 11 (`run_candidate_factory.py`); spec accepted in post-a
 After individual candidate reports exist (manually or via the factory), the canonical
 multi-candidate table is [candidate_comparison.json](../../OUTPUTS.md) under `output_dir_final`,
 governed by [candidate_comparison_spec.md](candidate_comparison_spec.md). That contract includes
-policy, user current (when materialized), benchmarks, and optimizer candidates with explicit
-`unavailable` status when folders are missing.
+`analysis_subject`, legacy policy and current rows when materialized, benchmarks, and optimizer
+candidates with explicit `unavailable` status when folders are missing.
 
 ## Detailed Ownership
 

@@ -5,15 +5,15 @@
   "hrp_linkage_fallback_from_ward": false,
   "metrics_10y": {
     "window_months": 120,
-    "cagr": 0.04623238761549975,
-    "vol_annual": 0.056899475102726374,
-    "sharpe": 0.4277107084037636,
-    "sortino": 0.5969850122998844,
-    "beta_portfolio": 0.1203283202307167,
-    "treynor": 0.20225093109690837,
-    "max_drawdown": -0.16643266459403994,
-    "ttr_months": NaN,
-    "recovered": false
+    "cagr": 0.04111184530328904,
+    "vol_annual": 0.05846554019108945,
+    "sharpe": 0.33363613867234465,
+    "sortino": 0.478911205738114,
+    "beta_portfolio": 0.2396459099338565,
+    "treynor": 0.0813959941153666,
+    "max_drawdown": -0.1573322463944875,
+    "ttr_months": 39.0,
+    "recovered": true
   },
   "stress_status": "DIAG_PASS_WITH_WARNING",
   "stress_fail_reason": null,
@@ -25,7 +25,7 @@
     "psd_repair_used": false,
     "young_etf_dual_mode": "dual_core_median_anchor",
     "eligible_universe": [
-      "VOO",
+      "SPY",
       "QQQ",
       "GLD",
       "SLV",
@@ -35,17 +35,17 @@
       "TLT"
     ],
     "final_weights": {
-      "SCHP": 0.4528019757068464,
-      "BND": 0.33159904648481825,
-      "GLD": 0.06234746310437226,
-      "TLT": 0.045520013455132874,
-      "SCHD": 0.03307195355939383,
-      "QQQ": 0.03195236595508884,
-      "VOO": 0.028487144308760017,
-      "SLV": 0.01422003742558758
+      "SCHP": 0.4220761596678713,
+      "BND": 0.37295491474015663,
+      "TLT": 0.05407786493266888,
+      "GLD": 0.04616096272646712,
+      "SCHD": 0.03211389337040758,
+      "SPY": 0.031074911813458554,
+      "QQQ": 0.029992842061134353,
+      "SLV": 0.011548450687835572
     },
-    "portfolio_variance": 1.284742169430864e-05,
-    "annualized_volatility": 0.012416483412452323,
+    "portfolio_variance": 0.0002847071500127006,
+    "annualized_volatility": 0.05845071257181051,
     "hrp_linkage_method": "ward",
     "hrp_linkage_fallback_from_ward": false,
     "hrp_distance": "sqrt(0.5*(1-rho))",
@@ -53,11 +53,11 @@
       5,
       0,
       1,
-      2,
-      3,
       6,
       4,
-      7
+      7,
+      2,
+      3
     ],
     "hrp_weights_sum": 1.0
   }

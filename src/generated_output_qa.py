@@ -25,6 +25,15 @@ TEXT_SUFFIXES: frozenset[str] = frozenset({".txt", ".md", ".html"})
 
 STRESS_REPORT_NAME = "stress_report.json"
 JSON_SCAN_NAMES: frozenset[str] = frozenset({STRESS_REPORT_NAME})
+PORTFOLIO_FIRST_SUMMARY_REQUIRED_MARKERS: tuple[str, ...] = (
+    "Starting portfolio",
+    "Candidate alternatives",
+)
+PORTFOLIO_FIRST_SUMMARY_FORBIDDEN_MARKERS: tuple[str, ...] = (
+    "Current vs policy workflow",
+    "Top candidates by health rank",
+    "Versus current:",
+)
 
 REPRESENTATIVE_REL_DIRS: tuple[str, ...] = (
     "Main portfolio",
@@ -148,4 +157,25 @@ def scan_representative_outputs(repo_root: Path | None = None) -> ScanResult:
                 )
             else:
                 result.findings.extend(_scan_stress_report(rel, payload))
+    return result
+
+
+def scan_portfolio_first_summary_text(
+    text: str,
+    *,
+    rel_path: str = "decision_package_summary.txt",
+) -> ScanResult:
+    """Check the portfolio-first report story for an analysis_subject decision summary."""
+    result = ScanResult(scanned_files=1)
+    result.findings.extend(_scan_text_lines(rel_path, text))
+    for marker in PORTFOLIO_FIRST_SUMMARY_REQUIRED_MARKERS:
+        if marker not in text:
+            result.findings.append(
+                ScanFinding(rel_path, "story_marker_missing", f"missing {marker!r}")
+            )
+    for marker in PORTFOLIO_FIRST_SUMMARY_FORBIDDEN_MARKERS:
+        if marker in text:
+            result.findings.append(
+                ScanFinding(rel_path, "stale_story_marker", f"contains {marker!r}")
+            )
     return result

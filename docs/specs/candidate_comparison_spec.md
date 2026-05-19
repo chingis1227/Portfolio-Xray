@@ -17,6 +17,14 @@ Implementation: `src/candidate_comparison.py` (builder) and `run_compare_variant
 
 Upstream orchestration (optional): [candidate_factory_spec.md](candidate_factory_spec.md) defines how existing per-candidate `run_*.py` scripts are run before comparison so the registry is populated deliberately rather than by ad hoc manual runs.
 
+Portfolio-first workflow note: when `{output_dir_final}/analysis_subject/` has been materialized,
+the comparison includes candidate id `analysis_subject` as the baseline row. Downstream Selection,
+No-Trade, Action, Monitoring, and Journal artifacts use that row before falling back to legacy
+`current`. In that portfolio-first context, any root `policy` artifacts are compatibility evidence
+only and are not default candidate evidence; the `policy` row remains in the registry but is emitted
+as `unavailable` with `unavailable_reason:
+legacy_policy_not_default_portfolio_first_candidate`.
+
 ## Product Boundary
 
 - Comparison output is **evidence for decision support**, not a recommendation.
@@ -50,6 +58,7 @@ Recorded for the canonical comparison contract (development Session 08, 2026-05-
 {
   "schema_version": "candidate_comparison_v1",
   "diagnostic_only": true,
+  "comparison_baseline_candidate_id": "analysis_subject",
   "generated_at": "ISO-8601 timestamp",
   "analysis_end": "YYYY-MM-DD",
   "investor_currency": "USD",
@@ -72,11 +81,12 @@ Recorded for the canonical comparison contract (development Session 08, 2026-05-
 | --- | --- | --- |
 | `schema_version` | string | Always `candidate_comparison_v1` for this contract. |
 | `diagnostic_only` | bool | Always `true` in V1. |
+| `comparison_baseline_candidate_id` | string | Preferred baseline id for portfolio-first interpretation; `analysis_subject` when the sidecar exists. |
 | `generated_at` | string | UTC or local ISO timestamp when the file was written. |
 | `analysis_end` | string | Effective month-end used for windows (from config or dominant snapshot). |
 | `investor_currency` | string | Investor currency code. |
 | `output_dir_final` | string | Relative or absolute path to main output folder. |
-| `analysis_setup_summary` | object | Projected summary from `analysis_setup` / `input_assumptions` (mode, roles, weight sources). |
+| `analysis_setup_summary` | object | Projected summary from `analysis_setup` / `input_assumptions` (mode, roles, weight sources). In portfolio-first runs, prefer `{output_dir_final}/analysis_subject/run_metadata.json`; use root metadata only as fallback. |
 | `windows` | array | Window labels present in the comparison (`3y`, `5y`, `10y`). |
 | `primary_window` | string | Default window for summary tables (V1: `10y`). |
 | `candidates` | array | One object per registered candidate (see below). |
@@ -116,7 +126,7 @@ Each element of `candidates[]`:
 | --- | --- | --- |
 | `candidate_id` | yes | Stable machine id (snake_case, see registry). |
 | `display_name` | yes | English label for reports. |
-| `role` | yes | `policy` \| `user_current` \| `benchmark` \| `optimizer_candidate` \| `robust_candidate`. |
+| `role` | yes | `analysis_subject` \| `policy` \| `user_current` \| `benchmark` \| `optimizer_candidate` \| `robust_candidate`. |
 | `construction_method` | yes | Short id matching candidate family (e.g. `risk_parity`, `minimum_cvar_constrained`). |
 | `weight_source` | yes | How weights were fixed (e.g. `optimization_result_released`, `config.current_weights`, `candidate_script.fixed_weights`). |
 | `artifact_root` | yes | Project-relative folder containing that candidate's report outputs, or `output_dir_final` for policy/current on Main. |
@@ -134,6 +144,12 @@ Each element of `candidates[]`:
 | `unavailable` | Candidate is in the V1 registry but artifacts are missing or not applicable for this run. |
 
 **Do not omit** registry candidates from `candidates[]` when artifacts are missing; emit them with `status: unavailable` and a clear `unavailable_reason`.
+
+Freshness rule (RM-902): when comparison has a review `analysis_end`, a candidate
+`snapshot_10y.json` with a different `analysis_end` is not current evidence. Emit the candidate as
+`status: unavailable`, `unavailable_reason: stale_snapshot_analysis_end`, and include a warning of
+the form `stale_snapshot_analysis_end:{snapshot_analysis_end}!={review_analysis_end}`. This prevents
+Selection, No-Trade, and downstream decision artifacts from silently using stale candidate metrics.
 
 ## Metric, Stress, and Diagnostic Blocks
 
@@ -217,7 +233,8 @@ Project root is the repository root. `artifact_root` is relative to project root
 
 | candidate_id | role | construction_method | artifact_root | Notes |
 | --- | --- | --- | --- | --- |
-| `policy` | `policy` | `policy_optimizer` | `{output_dir_final}` | Optimizer-released weights; Main report after `run_optimization` + `run_report`. |
+| `analysis_subject` | `analysis_subject` | `analysis_subject_diagnostics` | `{output_dir_final}/analysis_subject` | Portfolio-first baseline row from `run_report.py --materialize-analysis-subject`; preferred baseline for Selection, No-Trade, Action, Monitoring, and Journal. |
+| `policy` | `policy` | `policy_optimizer` | `{output_dir_final}` | Optimizer-released weights; Main report after `run_optimization` + `run_report`. In portfolio-first runs with an available `analysis_subject`, this row is legacy/compatibility-only and must not be treated as a default candidate. |
 | `current` | `user_current` | `user_supplied_weights` | `{output_dir_final}` or `{output_dir_final}/current_portfolio` | **Combined workflow:** sidecar `current_portfolio/` when materialized ([current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md)). **Legacy/single-mode:** Main root when `analyze_current_weights` or `portfolio_role=user_current_portfolio`. If `current_weights` exist in optimize mode but no materialization, `unavailable`, reason `missing_current_report`. |
 | `equal_weight` | `benchmark` | `equal_weight_by_asset` | `equal-weight portfolio` | |
 | `risk_parity` | `benchmark` | `risk_parity` | `risk parity portfolio` | |
@@ -257,13 +274,15 @@ They are **not** both `available` from a single `analysis_mode` on Main alone:
 The comparison builder must:
 
 1. Load config and resolve `output_dir_final`.
-2. Iterate the V1 registry in stable order: `policy`, `current`, then remaining ids alphabetically by `candidate_id` (or fixed table order above).
+2. Iterate the V1 registry in stable order: `analysis_subject`, `policy`, `current`, then remaining ids alphabetically by `candidate_id` (or fixed table order above).
 3. For each row, resolve `artifact_root`; if the folder or minimum files are missing, emit `unavailable`.
 4. Minimum files for `available`: `snapshot_10y.json` **or** (`summary.json` with `metrics_10y`).
 5. Prefer snapshot over summary for all blocks.
-6. Copy `analysis_setup_summary` from Main `run_result.json` or `run_metadata.json` when present.
-7. Write `candidate_comparison.json` to `output_dir_final`.
-8. Optionally refresh legacy `portfolio_comparison.json` for backward compatibility (subset: policy, equal_weight, risk_parity, robust_scenario).
+6. Copy `analysis_setup_summary` from `{output_dir_final}/analysis_subject/run_metadata.json` when present; otherwise fall back to Main `run_metadata.json`, Main `run_result.json`, then config.
+7. Resolve comparison `analysis_end` from `{output_dir_final}/analysis_subject/` snapshots or metadata first, then Main snapshots or metadata, then config. Use that date to enforce candidate snapshot freshness.
+8. When `analysis_subject` is available, gate the `policy` row as portfolio-first legacy evidence with `legacy_policy_not_default_portfolio_first_candidate`; this prevents Health Score and Selection from ranking stale root policy artifacts as normal alternatives.
+9. Write `candidate_comparison.json` to `output_dir_final`.
+10. Optionally refresh legacy `portfolio_comparison.json` for backward compatibility (subset: policy, equal_weight, risk_parity, robust_scenario).
 
 The builder must **not** call the optimizer or candidate scripts; it only reads artifacts.
 

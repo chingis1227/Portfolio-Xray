@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 """
-Thin orchestration for the file-first MVP path: input -> diagnosis -> comparison -> action.
+Thin orchestration for the legacy file-first MVP policy path:
+input -> policy diagnosis -> comparison -> action.
 
 Calls existing entrypoints only; does not change optimizer, metrics, or comparison logic.
+Use run_portfolio_review.py for the portfolio-first analysis_subject workflow.
 See docs/operational_runbook.md.
 """
 
@@ -29,8 +31,9 @@ def main(argv: list[str] | None = None) -> int:
     setup_logging()
     parser = argparse.ArgumentParser(
         description=(
-            "Run the file-first MVP workflow (policy optimize/report, optional current "
-            "materialization, optional candidate factory, comparison/decision package, PDF rebuild)."
+            "Run the legacy file-first MVP policy workflow (policy optimize/report, optional "
+            "current materialization, optional candidate factory, comparison/decision package, "
+            "PDF rebuild). Use run_portfolio_review.py for portfolio-first review."
         )
     )
     parser.add_argument(
@@ -38,22 +41,22 @@ def main(argv: list[str] | None = None) -> int:
         choices=WORKFLOW_CHOICES,
         default=WORKFLOW_POLICY_ONLY,
         help=(
-            "policy-only: optimize+report then compare; "
-            "policy-current: add --materialize-current when current_weights set; "
+            "policy-only: legacy optimize+report then compare; "
+            "policy-current: legacy optimize+report plus --materialize-current when current_weights set; "
             "diagnosis-only: run_report then compare; "
-            "full-decision: policy path + factory + compare + PDF."
+            "full-decision: legacy policy path + factory + compare + PDF."
         ),
     )
     parser.add_argument(
         "--skip-optimize",
         action="store_true",
-        help="Skip run_optimization.py; run report/compare from existing weights.",
+        help="Skip legacy run_optimization.py; run report/compare from existing weights.",
     )
     parser.add_argument("--no-cache", action="store_true", help="Pass --no-cache to data-heavy steps.")
     parser.add_argument(
         "--no-report",
         action="store_true",
-        help="Pass --no-report to run_optimization.py and run report explicitly afterward.",
+        help="Pass --no-report to legacy run_optimization.py and run report explicitly afterward.",
     )
     parser.add_argument("--config", type=str, default=None, help="Path to config.yml.")
     parser.add_argument(
@@ -61,7 +64,7 @@ def main(argv: list[str] | None = None) -> int:
         type=str,
         default=None,
         dest="optimizer_profile",
-        help="Client profile name for run_optimization.py.",
+        help="Client profile name for legacy run_optimization.py.",
     )
     parser.add_argument(
         "--skip-compare",

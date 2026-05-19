@@ -54,6 +54,44 @@ def _comparison() -> dict:
     }
 
 
+def _portfolio_first_comparison() -> dict:
+    comp = _comparison()
+    comp["comparison_baseline_candidate_id"] = "analysis_subject"
+    comp["candidates"] = [
+        {
+            "candidate_id": "analysis_subject",
+            "display_name": "Starter model",
+            "role": "analysis_subject",
+            "status": "available",
+            "metrics": {
+                "10y": {
+                    "cagr": 0.06,
+                    "vol_annual": 0.11,
+                    "max_drawdown": -0.18,
+                }
+            },
+            "stress": {"overall": "DIAG_PASS"},
+            "mandate": {"portfolio_valid": True},
+        },
+        {
+            "candidate_id": "equal_weight",
+            "display_name": "Equal-Weight Portfolio",
+            "role": "benchmark",
+            "status": "available",
+            "metrics": {
+                "10y": {
+                    "cagr": 0.065,
+                    "vol_annual": 0.10,
+                    "max_drawdown": -0.16,
+                }
+            },
+            "stress": {"overall": "DIAG_PASS"},
+            "mandate": {"portfolio_valid": True},
+        },
+    ]
+    return comp
+
+
 def _health_robust() -> tuple[dict, dict]:
     rows = [
         {
@@ -86,6 +124,38 @@ def _health_robust() -> tuple[dict, dict]:
     return health, robust
 
 
+def _portfolio_first_health_robust() -> tuple[dict, dict]:
+    rows = [
+        {
+            "candidate_id": "analysis_subject",
+            "total_score": 64,
+            "score_status": "scored",
+            "health_rank": 2,
+            "robustness_rank": 2,
+        },
+        {
+            "candidate_id": "equal_weight",
+            "total_score": 71,
+            "score_status": "scored",
+            "health_rank": 1,
+            "robustness_rank": 1,
+        },
+    ]
+    health = {
+        "schema_version": "portfolio_health_score_v1",
+        "candidates": [
+            {k: v for k, v in r.items() if k != "robustness_rank"} for r in rows
+        ],
+    }
+    robust = {
+        "schema_version": "robustness_scorecard_v1",
+        "candidates": [
+            {k: v for k, v in r.items() if k != "health_rank"} for r in rows
+        ],
+    }
+    return health, robust
+
+
 def _selection() -> dict:
     return {
         "schema_version": "selection_decision_v1",
@@ -100,6 +170,48 @@ def _selection() -> dict:
             "summary": "Health and robustness deltas are below thresholds.",
         },
         "warnings": [],
+    }
+
+
+def _portfolio_first_selection() -> dict:
+    return {
+        "schema_version": "selection_decision_v1",
+        "baseline_candidate_id": "analysis_subject",
+        "baseline_display_name": "Starter model",
+        "decision_status": "selected_candidate",
+        "favored_candidate_id": "equal_weight",
+        "favored_display_name": "Equal-Weight Portfolio",
+        "rationale": {
+            "summary": "Equal-Weight Portfolio is favored for review versus the diagnosed subject."
+        },
+        "no_trade": {
+            "evaluated": True,
+            "baseline_candidate_id": "analysis_subject",
+            "summary": "Material improvement versus the starting portfolio may warrant review.",
+        },
+        "warnings": [],
+    }
+
+
+def _mandate_blocked_selection() -> dict:
+    return {
+        "schema_version": "selection_decision_v1",
+        "baseline_candidate_id": "analysis_subject",
+        "baseline_display_name": "Starter model",
+        "decision_status": "mandate_risk_reduction",
+        "favored_candidate_id": None,
+        "favored_display_name": None,
+        "rationale": {
+            "summary": "Mandate constraints require risk reduction; allocation change is not advised until resolved.",
+            "selection_bullets": [
+                "Starter model does not meet mandate fit; risk reduction is required before allocation changes."
+            ],
+            "data_quality_notes": [
+                "Starter model does not meet mandate fit; risk reduction is required before allocation changes."
+            ],
+        },
+        "no_trade": None,
+        "warnings": ["mandate_risk_reduction"],
     }
 
 
@@ -145,6 +257,50 @@ def test_build_decision_package_report_sections() -> None:
     assert "Policy (Optimized)" in text
     assert "No material rebalance" in text
     assert "First analysis snapshot" in text
+    assert rationale_text_is_client_safe(text)
+
+
+def test_portfolio_first_summary_names_subject_before_alternatives() -> None:
+    health, robust = _portfolio_first_health_robust()
+    doc = build_decision_package_report(
+        comparison=_portfolio_first_comparison(),
+        health=health,
+        robustness=robust,
+        selection=_portfolio_first_selection(),
+        action=_action(),
+        monitoring_diff=_monitoring(),
+        decision_journal=_journal(),
+        workflow_status={
+            "schema_version": "current_vs_policy_status_v1",
+            "workflow_profile": "portfolio_first_review",
+            "user_message_en": "Portfolio-first review uses analysis_subject as the baseline.",
+        },
+    )
+    text = doc["summary_plain_en"]
+    assert "Starting portfolio: Starter model" in text
+    assert "Candidate alternatives by health rank" in text
+    assert "Equal-Weight Portfolio" in text
+    assert "Versus starting portfolio" in text
+    assert "Current vs policy workflow" not in text
+    assert rationale_text_is_client_safe(text)
+
+
+def test_mandate_block_selection_explains_missing_favored_profile() -> None:
+    health, robust = _portfolio_first_health_robust()
+    doc = build_decision_package_report(
+        comparison=_portfolio_first_comparison(),
+        health=health,
+        robustness=robust,
+        selection=_mandate_blocked_selection(),
+        action={"schema_version": "action_plan_v1", "action_status": "no_trades_other"},
+        monitoring_diff=_monitoring(),
+        decision_journal=_journal(),
+    )
+    text = doc["summary_plain_en"]
+    assert "Favored profile: —" in text
+    assert "mandate risk-reduction gates blocked selection" in text
+    assert "Mandate note: Starter model does not meet mandate fit" in text
+    assert "Warning: mandate_risk_reduction" not in text
     assert rationale_text_is_client_safe(text)
 
 
@@ -204,4 +360,50 @@ def test_write_outputs_and_append_report_txt(tmp_path: Path) -> None:
         paths["decision_package_summary_txt"].read_text(encoding="utf-8"),
         analysis_end="2025-12-31",
     )
-    assert "# Decision Package Summary" in md
+    assert 'title: "Decision Package Summary"' in md
+    assert "2025-12-31" in md
+    assert "# Decision Package Summary" not in md
+
+
+def test_decision_package_pdf_md_avoids_broken_latex_section_title() -> None:
+    from src.pdf_reports import build_decision_package_pdf_md
+
+    summary = (
+        "Decision package summary (non-executing)\n"
+        "========================================================================\n"
+        "Analysis end: 2026-05-15   Investor currency: USD\n\n"
+        "Comparison highlights\n"
+        "----------------------------------------\n"
+        "  Starting portfolio: CAGR 10.4%, vol 9.6%, max DD -20.2%.\n"
+    )
+    md = build_decision_package_pdf_md(summary, analysis_end="2026-05-15")
+    assert md.startswith("---\n")
+    assert 'title: "Decision Package Summary"' in md
+    assert "Decision package summary as of 2026-05-15" in md
+    assert "# Decision Package Summary" not in md
+    assert "analysis end 2026-05-15" not in md
+
+
+def test_decision_package_pdf_builds_when_pandoc_available(tmp_path: Path) -> None:
+    from src.pdf_reports import _find_pandoc, _find_xelatex, build_decision_package_pdf_md, write_md_and_pdf
+
+    if not _find_pandoc() or not _find_xelatex():
+        import pytest
+
+        pytest.skip("pandoc/xelatex not available")
+
+    summary = (
+        "Analysis end: 2026-05-15   Investor currency: USD\n\n"
+        "Selection\n"
+        "----------------------------------------\n"
+        "  Status: Mandate constraints require risk reduction.\n"
+        "  Starting portfolio: CAGR 10.4%, vol 9.6%.\n"
+    )
+    md = build_decision_package_pdf_md(summary, analysis_end="2026-05-15")
+    ok = write_md_and_pdf(
+        md,
+        md_out=tmp_path / "decision_package.md",
+        pdf_out=tmp_path / "decision_package.pdf",
+    )
+    assert ok
+    assert (tmp_path / "decision_package.pdf").is_file()

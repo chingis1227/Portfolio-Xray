@@ -655,10 +655,15 @@ def _yaml_front_matter(
     *,
     analysis_end: str | None = None,
     window_label: str | None = None,
+    date_line_override: str | None = None,
 ) -> str:
     """Build Pandoc YAML front matter with title and subtitle metadata."""
     full_title = title if not subtitle else f"{title}  -  {subtitle}"
-    date_line = _subtitle_line(window_label, analysis_end)
+    date_line = (
+        date_line_override
+        if date_line_override is not None
+        else _subtitle_line(window_label, analysis_end)
+    )
     lines = [
         "---",
         f'title: "{full_title.replace(chr(34), chr(39))}"',
@@ -670,6 +675,56 @@ def _yaml_front_matter(
         "",
     ]
     return "\n".join(lines)
+
+
+def _strip_decision_package_summary_banner(summary_plain_en: str) -> str:
+    """Remove the TXT title banner when YAML front matter carries the title."""
+    return re.sub(
+        r"^Decision package summary \(non-executing\)\s*\n=+\s*\n",
+        "",
+        summary_plain_en,
+        count=1,
+        flags=re.IGNORECASE,
+    ).lstrip("\n")
+
+
+def build_decision_package_pdf_md(
+    summary_plain_en: str,
+    *,
+    analysis_end: str | None = None,
+) -> str:
+    """
+    PDF-facing Markdown for the decision package summary.
+
+    Uses YAML front matter (single-line title/date) so Pandoc/XeLaTeX does not break long H1
+    titles that include analysis-end dates. Body text is client-sanitized; Pandoc escapes inline
+    LaTeX specials in narrative paragraphs.
+    """
+    ae = (analysis_end or "").strip() or None
+    if not ae:
+        match = re.search(r"^Analysis end:\s*(\S+)", summary_plain_en, re.MULTILINE)
+        if match:
+            ae = match.group(1)
+    date_line = (
+        f"Decision package summary as of {ae}"
+        if ae
+        else "Decision package summary (non-executing)"
+    )
+    body = _strip_decision_package_summary_banner(
+        _soft_sanitize_narrative_for_pdf(summary_plain_en)
+    )
+    body_md = body.replace("\n", "\n\n").strip()
+    return (
+        _yaml_front_matter(
+            "Decision Package Summary",
+            None,
+            analysis_end=ae,
+            date_line_override=date_line,
+        )
+        + "\n\n"
+        + body_md
+        + "\n"
+    )
 
 
 def _detect_analysis_end(folder: Path) -> str | None:
@@ -924,6 +979,151 @@ def _copy_pdf_to_archive(pdf_path: Path, logger: Any = None) -> None:
             logger.warning("Could not archive PDF %s: %s", pdf_path.name, e)
 
 
+def rebuild_portfolio_first_pdfs(*, logger: Any = None) -> dict[str, bool]:
+    """
+    Rebuild advisor-facing PDFs for portfolio-first review.
+
+    Scope: ``decision_package_summary`` and ``analysis_subject/`` sidecar only.
+    Does not rebuild EW/RP, legacy policy Main outputs, or optimizer baseline variant PDFs.
+    Use :func:`rebuild_all_pdfs` for the full legacy suite.
+    """
+    results: dict[str, bool] = {}
+    try:
+        cfg = load_validated_config()
+    except Exception as e:
+        if logger:
+            logger.error("Cannot load config for portfolio-first PDF rebuild: %s", e)
+        return results
+
+    out_final = _ROOT / (getattr(cfg, "output_dir_final", None) or "Main portfolio")
+    subject_dir = out_final / "analysis_subject"
+
+    dp_summary = out_final / "decision_package_summary.txt"
+    if dp_summary.is_file():
+        try:
+            summary_text = dp_summary.read_text(encoding="utf-8")
+            md = build_decision_package_pdf_md(
+                summary_text,
+                analysis_end=_detect_analysis_end(out_final),
+            )
+            ok = write_md_and_pdf(
+                md,
+                md_out=_PDF_MD_SOURCES / "Main portfolio__decision_package.md",
+                pdf_out=_PDF_OUT / "Main portfolio_decision_package.pdf",
+                logger=logger,
+            )
+            results["Main portfolio_decision_package.pdf"] = ok
+            if ok:
+                _copy_pdf_to_archive(_PDF_OUT / "Main portfolio_decision_package.pdf", logger)
+        except Exception as ex:
+            if logger:
+                logger.warning("Decision package PDF skipped: %s", ex)
+            results["Main portfolio_decision_package.pdf"] = False
+    else:
+        if logger:
+            logger.warning(
+                "Missing %s  -  run candidate comparison before portfolio-first PDF rebuild",
+                dp_summary,
+            )
+        results["Main portfolio_decision_package.pdf"] = False
+
+    def _commentary_pair(folder: Path, slug: str, title: str) -> None:
+        cpath = folder / "commentary.txt"
+        if not cpath.is_file():
+            results[f"{slug}_commentary.pdf"] = False
+            return
+        md = build_commentary_report_md(
+            report_title=title,
+            commentary_text=cpath.read_text(encoding="utf-8"),
+            variant_label=folder.name,
+            analysis_end=_detect_analysis_end(folder),
+            snapshot_folder=folder,
+        )
+        name = f"{slug}_commentary.pdf"
+        ok = write_md_and_pdf(
+            md,
+            md_out=_PDF_MD_SOURCES / f"{folder.name}__commentary.md",
+            pdf_out=_PDF_OUT / name,
+            logger=logger,
+        )
+        results[name] = ok
+        if ok:
+            _copy_pdf_to_archive(_PDF_OUT / name, logger)
+
+    def _stress_commentary_pair(folder: Path, pdf_name_stem: str, title: str) -> None:
+        spath = folder / "stress_commentary.txt"
+        if not spath.is_file():
+            results[f"{pdf_name_stem}_stress_commentary.pdf"] = False
+            return
+        md = build_commentary_report_md(
+            report_title=title,
+            commentary_text=spath.read_text(encoding="utf-8"),
+            variant_label=folder.name,
+            analysis_end=_detect_analysis_end(folder),
+            snapshot_folder=folder,
+        )
+        out_name = f"{pdf_name_stem}_stress_commentary.pdf"
+        ok = write_md_and_pdf(
+            md,
+            md_out=_PDF_MD_SOURCES / f"{folder.name}__stress_commentary.md",
+            pdf_out=_PDF_OUT / out_name,
+            logger=logger,
+        )
+        results[out_name] = ok
+        if ok:
+            _copy_pdf_to_archive(_PDF_OUT / out_name, logger)
+
+    if subject_dir.is_dir():
+        _commentary_pair(
+            subject_dir,
+            "analysis_subject",
+            "Starting portfolio: diagnostic commentary",
+        )
+        _stress_commentary_pair(
+            subject_dir,
+            "analysis_subject",
+            "Stress: starting portfolio behavior",
+        )
+        wpath = subject_dir / "weights.json"
+        if wpath.is_file():
+            try:
+                w = json.loads(wpath.read_text(encoding="utf-8"))
+                if isinstance(w, dict):
+                    wf = {str(k): float(v) for k, v in w.items()}
+                    md = build_weights_report_md(
+                        title="Target weights: starting portfolio",
+                        weights=wf,
+                        variant_label=subject_dir.name,
+                        analysis_end=_detect_analysis_end(subject_dir),
+                        snapshot_folder=subject_dir,
+                    )
+                    ok = write_md_and_pdf(
+                        md,
+                        md_out=_PDF_MD_SOURCES / f"{subject_dir.name}__weights.md",
+                        pdf_out=_PDF_OUT / "analysis_subject_weights.pdf",
+                        logger=logger,
+                    )
+                    results["analysis_subject_weights.pdf"] = ok
+                    if ok:
+                        _copy_pdf_to_archive(_PDF_OUT / "analysis_subject_weights.pdf", logger)
+                else:
+                    results["analysis_subject_weights.pdf"] = False
+            except Exception as ex:
+                if logger:
+                    logger.warning("analysis_subject weights PDF skipped: %s", ex)
+                results["analysis_subject_weights.pdf"] = False
+        else:
+            results["analysis_subject_weights.pdf"] = False
+    else:
+        if logger:
+            logger.warning(
+                "Missing %s  -  run run_report.py --materialize-analysis-subject first",
+                subject_dir,
+            )
+
+    return results
+
+
 def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     """Regenerate all suite PDFs from current outputs. Returns {name: ok}."""
     results: dict[str, bool] = {}
@@ -1021,10 +1221,8 @@ def rebuild_all_pdfs(*, logger: Any = None) -> dict[str, bool]:
     dp_summary = out_final / "decision_package_summary.txt"
     if dp_summary.is_file():
         try:
-            from src.decision_package_reporting import build_decision_package_report_md
-
             summary_text = dp_summary.read_text(encoding="utf-8")
-            md = build_decision_package_report_md(
+            md = build_decision_package_pdf_md(
                 summary_text,
                 analysis_end=_detect_analysis_end(out_final),
             )
@@ -1284,3 +1482,8 @@ def try_rebuild_pdfs_after_main_report(*, logger: Any = None) -> None:
                     e.returncode,
                 )
     rebuild_all_pdfs(logger=logger)
+
+
+def try_rebuild_pdfs_after_portfolio_review(*, logger: Any = None) -> None:
+    """After portfolio-first review: rebuild subject and decision-package PDFs only."""
+    rebuild_portfolio_first_pdfs(logger=logger)

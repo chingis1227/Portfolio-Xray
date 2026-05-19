@@ -23,6 +23,10 @@ ELIGIBLE_ROW_STATUSES = frozenset({"available", "degraded"})
 MATERIALIZE_COMMAND = "python run_report.py --materialize-current"
 
 _SKIP_MESSAGES: dict[str, str] = {
+    "portfolio_first_review": (
+        "Portfolio-first review uses analysis_subject as the baseline; legacy current-vs-policy "
+        "status is compatibility-only for this run."
+    ),
     "current_not_configured": (
         "Current weights were not supplied; No-Trade versus current was not evaluated."
     ),
@@ -57,6 +61,13 @@ def _row_status(comparison: dict[str, Any], candidate_id: str) -> str:
     if not row:
         return "unavailable"
     return str(row.get("status") or "unavailable")
+
+
+def _has_portfolio_first_subject(comparison: dict[str, Any]) -> bool:
+    if comparison.get("comparison_baseline_candidate_id") != "analysis_subject":
+        return False
+    row = _candidate_by_id(comparison, "analysis_subject") or {}
+    return str(row.get("status") or "unavailable") in ELIGIBLE_ROW_STATUSES
 
 
 def _resolve_skip_reason(
@@ -115,27 +126,33 @@ def build_current_vs_policy_status(
     current_status = _row_status(comparison, "current")
     current_row = _candidate_by_id(comparison, "current") or {}
     current_reason = current_row.get("unavailable_reason")
+    portfolio_first = _has_portfolio_first_subject(comparison)
 
     combined_complete = (
         policy_status in ELIGIBLE_ROW_STATUSES and current_status in ELIGIBLE_ROW_STATUSES
     )
 
-    if analysis_mode == "analyze_current_weights":
+    if portfolio_first:
+        workflow_profile = "portfolio_first_review"
+    elif analysis_mode == "analyze_current_weights":
         workflow_profile = "current_only_diagnostic"
     elif combined_complete and analysis_mode == "optimize_from_universe":
         workflow_profile = "combined_current_vs_policy"
     else:
         workflow_profile = "policy_only"
 
-    skip_reason = _resolve_skip_reason(
-        analysis_mode=analysis_mode,
-        cfg=cfg,
-        policy_status=policy_status,
-        current_status=current_status,
-        current_reason=current_reason,
-        output_dir_final=output_dir_final,
-        selection=selection,
-    )
+    if portfolio_first:
+        skip_reason = "portfolio_first_review"
+    else:
+        skip_reason = _resolve_skip_reason(
+            analysis_mode=analysis_mode,
+            cfg=cfg,
+            policy_status=policy_status,
+            current_status=current_status,
+            current_reason=current_reason,
+            output_dir_final=output_dir_final,
+            selection=selection,
+        )
 
     no_trade_actionable = (
         workflow_profile == "combined_current_vs_policy"

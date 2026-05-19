@@ -90,4 +90,7 @@ Scripts such as **`run_risk_budget_by_asset_class.py`** and **`run_risk_budget_b
 - **Class-level risk budgeting** matches **aggregated** percentage contributions to variance (per `metrics_specification.md` / static **Σ**) across **risk budget buckets** to targets in **`risk_budgeting`** (presets or manual `targets`). Taxonomy for buckets is the merged **`config/etf_universe.yml`** then **`config/stock_universe.yml`** record set, with sub-buckets inferred from row fields in code (`src/risk_budgeting.py`).
 - **Per-asset risk budgeting** requires **`risk_budgeting.asset_targets`** summing to 1 over **every eligible** ticker; it uses **Spinu’s** risk-budget CCD with unequal `b_i` and an **SLSQP** fallback.
 
-For the main portfolio, **§10** still applies: normal production weights come from **`run_optimization.py`** (and view-after where used), not from these baselines.
+For legacy policy runs, **§10** still applies: production policy weights come from
+**`run_optimization.py`** (and view-after where used), not from these baselines. In the
+portfolio-first workflow, candidates are compared against `analysis_subject` only after subject
+diagnostics exist.

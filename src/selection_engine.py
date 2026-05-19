@@ -36,6 +36,7 @@ DEFAULT_NO_TRADE_THRESHOLDS: dict[str, float] = {
 
 ELIGIBLE_STATUSES = frozenset({"available", "degraded"})
 SCORABLE_SCORE_STATUSES = frozenset({"scored", "partial"})
+BASELINE_CANDIDATE_IDS = ("analysis_subject", "current")
 
 FORBIDDEN_RATIONALE_PATTERNS = (
     re.compile(r"\bbuy\b", re.IGNORECASE),
@@ -72,6 +73,14 @@ def _load_json(path: Path) -> dict[str, Any] | None:
 
 def _candidates_by_id(comparison: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {c["candidate_id"]: c for c in comparison.get("candidates", []) if c.get("candidate_id")}
+
+
+def _baseline_candidate_id(by_id: dict[str, dict[str, Any]]) -> str | None:
+    for candidate_id in BASELINE_CANDIDATE_IDS:
+        cand = by_id.get(candidate_id)
+        if cand and cand.get("status") in ELIGIBLE_STATUSES:
+            return candidate_id
+    return None
 
 
 def _score_maps(
@@ -191,17 +200,24 @@ def _mandate_breach_indicators(cand: dict[str, Any]) -> bool:
 
 def _check_mandate_risk_reduction(
     by_id: dict[str, dict[str, Any]],
+    *,
+    baseline_id: str | None = None,
 ) -> tuple[bool, list[str]]:
     notes: list[str] = []
-    current = by_id.get("current")
+    baseline_id = baseline_id or _baseline_candidate_id(by_id)
+    current = by_id.get(baseline_id or "current")
     policy = by_id.get("policy")
 
     if current and current.get("status") in ELIGIBLE_STATUSES:
         if _mandate_breach_indicators(current):
+            label = current.get("display_name") or current.get("candidate_id") or "Starting portfolio"
             notes.append(
-                "Current portfolio does not meet mandate fit; risk reduction is required before allocation changes."
+                f"{label} does not meet mandate fit; risk reduction is required before allocation changes."
             )
             return True, notes
+
+    if baseline_id == "analysis_subject":
+        return False, notes
 
     if policy and policy.get("status") in ELIGIBLE_STATUSES:
         if _mandate_breach_indicators(policy):
@@ -243,7 +259,7 @@ def _composite_row(
     cid = cand["candidate_id"]
     if cand.get("status") not in ELIGIBLE_STATUSES:
         return None
-    if cand.get("role") == "user_current":
+    if cid in BASELINE_CANDIDATE_IDS or cand.get("role") in ("analysis_subject", "user_current"):
         return None
 
     mandate_pts, _ = _mandate_component(cand)
@@ -295,7 +311,7 @@ def _composite_sort_key(row: dict[str, Any]) -> tuple:
 def _evaluate_no_trade(
     *,
     target: dict[str, Any],
-    current: dict[str, Any],
+    baseline: dict[str, Any],
     health_by_id: dict[str, dict[str, Any]],
     robust_by_id: dict[str, dict[str, Any]],
     project_root: Path,
@@ -304,10 +320,11 @@ def _evaluate_no_trade(
 ) -> tuple[bool, dict[str, Any]]:
     """Returns (is_no_trade, no_trade_block)."""
     target_id = target["candidate_id"]
+    baseline_id = str(baseline.get("candidate_id") or "current")
     h_tgt = _health_total(health_by_id.get(target_id))
-    h_cur = _health_total(health_by_id.get("current"))
+    h_cur = _health_total(health_by_id.get(baseline_id))
     r_tgt = _robustness_total(robust_by_id.get(target_id))
-    r_cur = _robustness_total(robust_by_id.get("current"))
+    r_cur = _robustness_total(robust_by_id.get(baseline_id))
 
     health_delta: float | None = None
     robust_delta: float | None = None
@@ -317,12 +334,12 @@ def _evaluate_no_trade(
         robust_delta = round(r_tgt - r_cur, 3)
 
     w_target = _resolve_weights(target, project_root=project_root)
-    w_current = _resolve_weights(current, project_root=project_root)
+    w_current = _resolve_weights(baseline, project_root=project_root)
     turnover: float | None = None
     if w_target and w_current:
         turnover = _turnover_half_sum_pct(w_target, w_current)
 
-    dd_improvement = _drawdown_improvement_pp(target, current)
+    dd_improvement = _drawdown_improvement_pp(target, baseline)
     if dd_improvement is None:
         warnings.append("no_trade_drawdown_unknown")
 
@@ -350,7 +367,7 @@ def _evaluate_no_trade(
 
     block: dict[str, Any] = {
         "evaluated": True,
-        "baseline_candidate_id": "current",
+        "baseline_candidate_id": baseline_id,
         "target_candidate_id": target_id,
         "health_score_delta": health_delta,
         "robustness_score_delta": robust_delta,
@@ -359,9 +376,9 @@ def _evaluate_no_trade(
         "thresholds_profile": THRESHOLDS_PROFILE,
         "materiality_pass": not is_no_trade,
         "summary": (
-            "No material rebalance suggested versus current weights."
+            f"No material rebalance suggested versus {baseline.get('display_name') or baseline_id}."
             if is_no_trade
-            else "Material benefit versus current weights may warrant review."
+            else f"Material benefit versus {baseline.get('display_name') or baseline_id} may warrant review."
         ),
     }
     return is_no_trade, block
@@ -371,13 +388,15 @@ def _build_rejected(
     composite: list[dict[str, Any]],
     favored_id: str | None,
     by_id: dict[str, dict[str, Any]],
+    *,
+    baseline_id: str | None = None,
 ) -> list[dict[str, Any]]:
     rejected: list[dict[str, Any]] = []
     ranked_ids = {r["candidate_id"] for r in composite}
     for cid, cand in sorted(by_id.items()):
         if cid == favored_id:
             continue
-        if cid == "current":
+        if cid == baseline_id or cid in BASELINE_CANDIDATE_IDS:
             continue
         if cand.get("status") == "unavailable":
             rejected.append(
@@ -427,6 +446,9 @@ def build_selection_decision(
     project_root = project_root or Path.cwd()
     warnings: list[str] = []
     missing_inputs: list[str] = []
+    by_id = _candidates_by_id(comparison)
+    baseline_id = _baseline_candidate_id(by_id)
+    baseline = by_id.get(baseline_id) if baseline_id else None
 
     health_by_id, robust_by_id = _score_maps(health, robustness)
     has_health = bool(health_by_id)
@@ -442,6 +464,8 @@ def build_selection_decision(
             "investor_currency": comparison.get("investor_currency"),
             "output_dir_final": comparison.get("output_dir_final"),
             "decision_status": "data_review_required",
+            "baseline_candidate_id": baseline_id,
+            "baseline_display_name": (baseline or {}).get("display_name"),
             "favored_candidate_id": None,
             "favored_display_name": None,
             "selection_weights_profile": WEIGHTS_PROFILE,
@@ -466,7 +490,6 @@ def build_selection_decision(
         }
 
     sel_weights, _ = _selection_weights(health, robustness, warnings)
-    by_id = _candidates_by_id(comparison)
     thresholds = dict(DEFAULT_NO_TRADE_THRESHOLDS)
 
     if not has_health:
@@ -474,7 +497,10 @@ def build_selection_decision(
     if not has_robust:
         missing_inputs.append("robustness_scorecard.json")
 
-    mandate_reduction, risk_notes = _check_mandate_risk_reduction(by_id)
+    mandate_reduction, risk_notes = _check_mandate_risk_reduction(
+        by_id,
+        baseline_id=baseline_id,
+    )
 
     composite: list[dict[str, Any]] = []
     for cid, cand in by_id.items():
@@ -495,7 +521,7 @@ def build_selection_decision(
     favored_id: str | None = None
     favored_display: str | None = None
 
-    if policy and policy.get("status") in ELIGIBLE_STATUSES:
+    if baseline_id != "analysis_subject" and policy and policy.get("status") in ELIGIBLE_STATUSES:
         m_pts, _ = _mandate_component(policy)
         if m_pts > 0:
             favored_id = "policy"
@@ -506,7 +532,7 @@ def build_selection_decision(
         favored_id = winner["candidate_id"]
         favored_display = winner["display_name"]
 
-    rejected = _build_rejected(composite, favored_id, by_id)
+    rejected = _build_rejected(composite, favored_id, by_id, baseline_id=baseline_id)
 
     rationale: dict[str, Any] = {
         "summary": "",
@@ -526,6 +552,7 @@ def build_selection_decision(
             "Mandate constraints require risk reduction; allocation change is not advised until resolved."
         )
         rationale["selection_bullets"] = risk_notes[:5]
+        rationale["risk_reduction_notes"] = risk_notes[:5]
         rationale["data_quality_notes"] = risk_notes
         warnings.append("mandate_risk_reduction")
     elif favored_id is None:
@@ -535,7 +562,7 @@ def build_selection_decision(
             rationale["data_quality_notes"].append("No eligible scored candidates for composite ranking.")
             warnings.append("no_scored_candidates")
     else:
-        current = by_id.get("current")
+        current = baseline
         current_ok = current and current.get("status") in ELIGIBLE_STATUSES
         target = by_id.get(favored_id) or {}
 
@@ -548,13 +575,13 @@ def build_selection_decision(
                 f"Highest composite selection score among eligible alternatives ({composite[0]['selection_score']:.1f})."
             )
 
-        if current_ok and favored_id != "current":
+        if current_ok and favored_id != baseline_id:
             w_tgt = _resolve_weights(target, project_root=project_root)
             w_cur = _resolve_weights(current, project_root=project_root)
             if w_tgt and w_cur:
                 is_no_trade, no_trade_block = _evaluate_no_trade(
                     target=target,
-                    current=current,
+                    baseline=current,
                     health_by_id=health_by_id,
                     robust_by_id=robust_by_id,
                     project_root=project_root,
@@ -563,10 +590,13 @@ def build_selection_decision(
                 )
                 if is_no_trade:
                     decision_status = "no_material_rebalance"
-                    rationale["summary"] = "No material rebalance suggested versus current weights."
+                    rationale["summary"] = no_trade_block.get(
+                        "summary",
+                        "No material rebalance suggested versus the starting portfolio.",
+                    )
                     rationale["no_trade_bullets"] = [
-                        f"Health score delta versus current: {no_trade_block.get('health_score_delta')}.",
-                        f"Robustness score delta versus current: {no_trade_block.get('robustness_score_delta')}.",
+                        f"Health score delta versus baseline: {no_trade_block.get('health_score_delta')}.",
+                        f"Robustness score delta versus baseline: {no_trade_block.get('robustness_score_delta')}.",
                         f"Estimated turnover (half-sum): {no_trade_block.get('turnover_half_sum_abs_delta_pct')}%.",
                     ]
                 else:
@@ -581,7 +611,7 @@ def build_selection_decision(
                 )
                 warnings.append("no_trade_skipped_missing_weights")
                 rationale["data_quality_notes"].append(
-                    "No-Trade materiality not evaluated: weight vectors could not be loaded."
+                    "No-Trade materiality not evaluated: baseline or target weight vectors could not be loaded."
                 )
         else:
             decision_status = "selected_candidate"
@@ -589,7 +619,7 @@ def build_selection_decision(
             if not current_ok:
                 warnings.append("no_trade_not_actionable")
                 rationale["data_quality_notes"].append(
-                    "Current portfolio not available; No-Trade versus current was not evaluated."
+                    "Starting portfolio baseline not available; No-Trade versus baseline was not evaluated."
                 )
                 cur = by_id.get("current") or {}
                 if cur.get("unavailable_reason") == "missing_current_report":
@@ -610,6 +640,8 @@ def build_selection_decision(
         "analysis_end": comparison.get("analysis_end"),
         "investor_currency": comparison.get("investor_currency"),
         "output_dir_final": comparison.get("output_dir_final"),
+        "baseline_candidate_id": baseline_id,
+        "baseline_display_name": (baseline or {}).get("display_name"),
         "decision_status": decision_status,
         "favored_candidate_id": favored_id,
         "favored_display_name": favored_display,
@@ -647,10 +679,11 @@ def write_selection_decision_txt(decision: dict[str, Any], path: Path) -> None:
     ]
     nt = decision.get("no_trade")
     if nt and nt.get("evaluated"):
+        baseline = nt.get("baseline_candidate_id") or decision.get("baseline_candidate_id") or "current"
         lines.extend(
             [
                 (
-                    f"Versus current: health {nt.get('health_score_delta')}, "
+                    f"Versus {baseline}: health {nt.get('health_score_delta')}, "
                     f"robustness {nt.get('robustness_score_delta')}, "
                     f"turnover (half-sum) {nt.get('turnover_half_sum_abs_delta_pct')}%"
                 ),

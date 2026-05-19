@@ -10,7 +10,7 @@
     "psd_repair_used": false,
     "young_etf_dual_mode": "dual_core_median_anchor",
     "eligible_universe": [
-      "VOO",
+      "SPY",
       "QQQ",
       "GLD",
       "SLV",
@@ -20,20 +20,20 @@
       "TLT"
     ],
     "final_weights": {
-      "TLT": 0.41002788083299274,
-      "SCHD": 0.28890479744510617,
-      "GLD": 0.13188369352415863,
-      "QQQ": 0.10403943926015194,
-      "SLV": 0.06514418893759054
+      "TLT": 0.3250379871360111,
+      "SCHD": 0.26335849912355563,
+      "GLD": 0.19130554667141147,
+      "QQQ": 0.14719662210262177,
+      "SLV": 0.07310134496639989
     },
-    "portfolio_variance": 3.98620529018074e-05,
-    "annualized_volatility": 0.021871091303857903,
-    "diversification_ratio": 1.7380024312055504,
-    "weighted_avg_asset_vol_monthly": 0.01097312206233073,
+    "portfolio_variance": 0.0009653042545654455,
+    "annualized_volatility": 0.10762737130853539,
+    "diversification_ratio": 1.4996309086857478,
+    "weighted_avg_asset_vol_monthly": 0.04659255142215537,
     "solver_status": 0,
     "solver_success": true,
     "solver_message": "Optimization terminated successfully",
-    "max_weight": 0.41002788083299274,
+    "max_weight": 0.3250379871360111,
     "min_weight": 0.0,
     "active_constraints": [
       "equality: sum(weights) = 1",
@@ -43,17 +43,17 @@
   },
   "metrics_10y": {
     "window_months": 120,
-    "cagr": 0.09085398000073752,
-    "vol_annual": 0.10022593143121919,
-    "sharpe": 0.6936328978973194,
-    "sortino": 0.9744236139371508,
-    "beta_portfolio": 0.33958358424543494,
-    "treynor": 0.20472133073679094,
-    "max_drawdown": -0.24211855683398564,
-    "ttr_months": NaN,
-    "recovered": false
+    "cagr": 0.1021267295411048,
+    "vol_annual": 0.1077216120440314,
+    "sharpe": 0.7502287854105139,
+    "sortino": 1.2259022595949962,
+    "beta_portfolio": 0.49627568807096684,
+    "treynor": 0.16284467707936498,
+    "max_drawdown": -0.21855496259377838,
+    "ttr_months": 31.0,
+    "recovered": true
   },
   "stress_status": "DIAG_ATTENTION",
-  "stress_fail_reason": "DIAG_HIST_2022",
+  "stress_fail_reason": "DIAG_LOSS_RECESSION_SEVERE",
   "portfolio_valid": false
 }

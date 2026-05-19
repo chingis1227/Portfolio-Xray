@@ -16,6 +16,18 @@ Source files define behavior. Generated files show the result of a run.
 
 The current implementation is report-first and CLI/file-driven.
 
+Portfolio-first output flow contract:
+
+```text
+analysis_subject
+-> subject diagnostics
+-> candidate outputs
+-> subject-centered comparison and decision package
+```
+
+Runtime migration to this order is active under the portfolio-first transition. The existing legacy
+policy output flow remains callable for compatibility:
+
 ```text
 config.yml
 -> run_optimization.py
@@ -24,7 +36,7 @@ config.yml
 -> metrics, diagnostics, stress reports, scenario libraries, commentary, snapshots, and report artifacts
 ```
 
-Main commands:
+Compatibility commands:
 
 ```bash
 python run_optimization.py
@@ -35,7 +47,8 @@ python run_report.py
 
 | Producer | Role | Common outputs |
 | --- | --- | --- |
-| `run_optimization.py` | Main policy optimization and release checks | `portfolio_weights.yml`, `run_result.json`, run metadata under `output_dir_final` |
+| Portfolio-first subject materialization | Subject diagnostics before candidates | `{output_dir_final}/analysis_subject/` snapshots, metadata, X-Ray, and diagnostics from `run_report.py --materialize-analysis-subject` |
+| `run_optimization.py` | Legacy policy optimization and release checks | `portfolio_weights.yml`, `run_result.json`, run metadata under `output_dir_final` |
 | `run_report.py` | Main report and diagnostics flow | `stress_report.json`, `portfolio_xray.json`, metrics CSV, scenario libraries, commentary, HTML/PDF-style artifacts |
 | Candidate portfolio scripts | Build fixed benchmark/candidate weights and run the report pipeline | Candidate output folders with the same report contract after weights are fixed |
 | Robust/scenario scripts | Build robust candidate weights or reports from existing report artifacts | Robust/scenario JSON, CSV, and candidate report folders |
@@ -47,11 +60,12 @@ python run_report.py
 | Location | Meaning | Source status |
 | --- | --- | --- |
 | `Main portfolio/` | Default main portfolio output folder, usually `output_dir_final`; hosts `candidate_comparison.json` | Generated |
+| `{output_dir_final}/analysis_subject/` | Portfolio-first diagnostics folder for the subject analyzed before candidates | Generated |
 | `results_csv/` | Tabular metrics, stress, factor, scenario, and diagnostic CSV outputs | Generated |
 | `output/` | Auxiliary runtime output folder where configured | Generated |
 | `cache/` | Cached data/runtime material | Generated |
 | Candidate portfolio folders | Outputs for Equal Weight, Risk Parity, MinVar, CVaR, Robust MV, robust scenario, and other variants | Generated |
-| `pdf files/` | Generated PDF-style report artifacts | Generated |
+| `pdf files/` | Generated PDF-style report artifacts | Generated; portfolio-first review rebuilds `Main portfolio_decision_package.pdf` and `analysis_subject_*` PDFs by default (`rebuild_pdf_reports.py --portfolio-first`); full legacy variant PDFs require `--legacy-full-pdf` or bare `rebuild_pdf_reports.py` |
 | `pdf_md_sources/` | Generated Markdown sidecars used for PDF-style report builds | Generated |
 | `portfolio_weights.yml` | Optimizer-produced weights | Generated runtime output, not normal manual input |
 
@@ -87,8 +101,9 @@ Common project artifacts include:
 - generated HTML snapshots
 - generated PDF-style reports
 - candidate portfolio output folders
+- `{output_dir_final}/analysis_subject/` (portfolio-first subject diagnostics from `run_report.py --materialize-analysis-subject`; see [portfolio review workflow spec](docs/specs/portfolio_review_workflow_spec.md))
 - `candidate_factory_run.json` and optional `candidate_factory_run.txt` (under `output_dir_final`; factory orchestration run summary from `run_candidate_factory.py`; spec in [candidate factory spec](docs/specs/candidate_factory_spec.md))
-- `candidate_comparison.json` (under `output_dir_final`; see [candidate comparison spec](docs/specs/candidate_comparison_spec.md))
+- `candidate_comparison.json` (under `output_dir_final`; includes the portfolio-first `analysis_subject` baseline row when materialized; see [candidate comparison spec](docs/specs/candidate_comparison_spec.md))
 - `robustness_scorecard.json` and optional `robustness_scorecard.txt` (under `output_dir_final`; written by `run_compare_variants.py` / `write_candidate_comparison_outputs`; see [robustness scorecard spec](docs/specs/robustness_scorecard_spec.md))
 - `portfolio_health_score.json` and optional `portfolio_health_score.txt` (under `output_dir_final`; Session 13; see [portfolio health score spec](docs/specs/portfolio_health_score_spec.md))
 - `selection_decision.json` and optional `selection_decision.txt` (under `output_dir_final`; contract in [selection engine spec](docs/specs/selection_engine_spec.md))
@@ -103,7 +118,7 @@ Common project artifacts include:
 - `decision_journal.json` and optional `decision_journal.txt` (under `output_dir_final`; written by `write_candidate_comparison_outputs`; see [decision journal spec](docs/specs/decision_journal_spec.md))
 - `journal/latest/decision_journal.json` and `journal/history/decision_journal_{analysis_end}.json` (generated journal copies; same spec)
 - `decision_package_summary.json` and `decision_package_summary.txt` (under `output_dir_final`; compact English summary of the full V1 decision package; see [decision package reporting spec](docs/specs/decision_package_reporting_spec.md))
-- `current_vs_policy_status.json` and optional `current_vs_policy_status.txt` (under `output_dir_final`; workflow status and No-Trade actionability; see [current vs policy workflow spec](docs/specs/current_vs_policy_workflow_spec.md); written after comparison in Session 09 implementation)
+- `current_vs_policy_status.json` and optional `current_vs_policy_status.txt` (under `output_dir_final`; legacy current-vs-policy workflow status and No-Trade actionability; portfolio-first runs may write it with `workflow_profile: portfolio_first_review` as compatibility-only metadata; see [current vs policy workflow spec](docs/specs/current_vs_policy_workflow_spec.md); written after comparison in Session 09 implementation)
 - `{output_dir_final}/current_portfolio/` (sidecar folder for materialized current-portfolio snapshots when using the combined current-vs-policy workflow; does not replace policy artifacts on Main root)
 - legacy `portfolio_comparison.json` and `ew_rp_comparison.json` (subset comparisons; superseded by canonical contract)
 
@@ -128,6 +143,7 @@ The exact artifact set can vary by config, available data, candidate type, and e
 | Area | Governing document |
 | --- | --- |
 | Current implementation output contract | [SPEC.md](SPEC.md) |
+| Portfolio-first workflow order and `analysis_subject` output role | [docs/specs/portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md) |
 | High-level report and artifact contract | [docs/specs/reporting_outputs_spec.md](docs/specs/reporting_outputs_spec.md) |
 | Candidate factory run summary JSON | [docs/specs/candidate_factory_spec.md](docs/specs/candidate_factory_spec.md) |
 | Canonical candidate comparison JSON | [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md) |
@@ -158,7 +174,8 @@ Update [OUTPUTS.md](OUTPUTS.md) when any of these change:
 - JSON/CSV/TXT/HTML/PDF-style report contracts change
 - report sections, commentary files, snapshots, or generated packages change meaningfully
 - generated-vs-source boundaries change
-- `run_optimization.py`, `run_report.py`, or candidate scripts change what they write
+- portfolio-first subject materialization, `run_optimization.py`, `run_report.py`, or candidate scripts
+  change what they write
 - visual/report formatting rules for generated HTML or PDF-style artifacts change
 - verification requirements for generated outputs change
 

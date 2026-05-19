@@ -16,11 +16,19 @@ Product concept documents can describe target direction. They do not change form
 
 The current implementation is a report-first, CLI/file-driven portfolio analytics system.
 
+The canonical portfolio-first workflow contract is now [Portfolio Review Workflow
+Specification](docs/specs/portfolio_review_workflow_spec.md): resolve `analysis_subject`, diagnose
+that portfolio first, then generate and compare alternatives. Runtime migration is active under the
+[Portfolio-First Transition Plan](docs/exec_plans/2026-05-18_portfolio_first_transition_plan.md);
+`run_portfolio_review.py` now provides the portfolio-first orchestration entrypoint. Existing
+policy-first entrypoints remain callable as compatibility infrastructure, but they are not the
+target default portfolio-first contract.
+
 It supports:
 
 - config validation and profile-derived targets
 - market data loading, FX conversion, and return panel construction
-- main policy optimization and weight release checks
+- legacy policy optimization and weight release checks
 - portfolio metrics, dynamic backtesting, risk contribution diagnostics, and stress diagnostics
 - factor, macro/regime, PCA, scenario-library, and robustness diagnostics
 - benchmark and candidate portfolio reports
@@ -35,7 +43,26 @@ Target product areas remain TBD until separately specified and implemented:
 
 ## Main Workflows
 
-Main policy workflow:
+Portfolio-first review workflow (binding transition contract):
+
+```text
+analysis_subject
+-> resolved assumptions and validation
+-> subject diagnostics / Portfolio X-Ray
+-> stress, factor, macro, and scenario diagnostics
+-> allowed candidate generation
+-> candidate diagnostics
+-> comparison: analysis_subject versus candidates
+-> keep / rebalance / review / no-trade decision artifacts
+-> action plan, monitoring, journal, and report package
+```
+
+The subject must be diagnosed before candidate generation or candidate decision artifacts are
+presented as the main result. Supported subject types are `current_portfolio`, `model_portfolio`,
+and `universe_baseline`; details live in
+[portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md).
+
+Legacy policy workflow (compatibility while the transition is implemented):
 
 ```text
 config.yml
@@ -47,15 +74,21 @@ config.yml
 -> generated artifacts
 ```
 
-Main commands:
+Primary and compatibility commands:
 
 ```bash
+python run_portfolio_review.py
 python run_optimization.py
 python run_report.py
 python run_mvp_workflow.py
 ```
 
-`run_mvp_workflow.py` orchestrates the file-first MVP stages (`input -> diagnosis -> comparison -> action`) by calling existing entrypoints only. See [docs/operational_runbook.md](docs/operational_runbook.md).
+`run_portfolio_review.py` is the portfolio-first orchestration entrypoint: it runs
+`run_report.py --materialize-analysis-subject`, then the candidate factory/comparison path.
+`run_optimization.py` and `run_mvp_workflow.py` remain legacy/compatibility entrypoints. The
+default portfolio-first orchestrator must not call `run_optimization.py` unless a future accepted
+spec reactivates the policy engine as an optional candidate generator. See
+[docs/operational_runbook.md](docs/operational_runbook.md) for the current runbook.
 
 Benchmark candidate workflow:
 
@@ -93,6 +126,7 @@ Main report artifacts
 | Key decisions, rationale, rejected alternatives, assumptions, and consequences | [DECISIONS.md](DECISIONS.md) |
 | Concise history of meaningful project changes | [CHANGELOG.md](CHANGELOG.md) |
 | Detailed spec index | [docs/specs/README.md](docs/specs/README.md) |
+| Portfolio-first review workflow, `analysis_subject`, and legacy policy boundary | [docs/specs/portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md) |
 | Analysis setup, input modes, current weights, mandate inputs, and calculation assumptions | [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md) |
 | Metrics, estimators, returns, FX, windows, covariance, beta, RC_vol, drawdown, rounding | [docs/specs/metrics_specification.md](docs/specs/metrics_specification.md) |
 | Portfolio construction, optimizer behavior, ProLiquidity, mandate gate, policy optimizer boundaries | [docs/specs/portfolio_construction_policy.md](docs/specs/portfolio_construction_policy.md) |
@@ -133,6 +167,9 @@ The data-layer map is [DATA.md](DATA.md). Keep it aligned when data sources, exp
 
 Primary runtime inputs:
 
+- `analysis_subject` for the portfolio-first review workflow: the current, model, or
+  universe-baseline portfolio diagnosed before candidates; explicit config is resolved in
+  `analysis_setup.analysis_subject`
 - resolved `analysis_setup` for the input and assumptions layer
 - ticker universe
 - investor currency
@@ -143,7 +180,9 @@ Primary runtime inputs:
 - output directories and cache settings
 - optional profile name
 
-Generated weights are not normal user input. The main policy workflow writes `portfolio_weights.yml` and `run_result.json` when release is allowed.
+Generated weights are not normal user input. The legacy policy workflow writes
+`portfolio_weights.yml` and `run_result.json` when release is allowed, but generated policy weights
+are not the default `analysis_subject` in the portfolio-first workflow.
 
 `analysis_setup` is the resolved runtime contract for portfolio input, mandate, assumptions, and validation metadata. `input_assumptions` is an exported/reporting view of that contract, not a separate business-logic source.
 
@@ -176,6 +215,16 @@ Primary outputs include:
 
 Generated outputs are not source files unless a task explicitly targets generated artifacts.
 
+Portfolio-first runtime can materialize the diagnosed `analysis_subject` before candidate generation
+with:
+
+```bash
+python run_report.py --materialize-analysis-subject
+```
+
+The canonical subject diagnostic folder is `{output_dir_final}/analysis_subject/`; detailed output
+ownership remains in [OUTPUTS.md](OUTPUTS.md) and the portfolio review workflow spec.
+
 `portfolio_xray.json` is generated by the report path as a diagnostic-only X-Ray summary. It consumes existing report pipeline outputs and in-memory diagnostics; it does not optimize, change weights, change mandate gates, change stress pass/fail status, or select portfolios.
 
 `run_result.json` and `run_metadata.json` include `analysis_setup` plus projected `input_assumptions`.
@@ -187,6 +236,11 @@ Generated outputs are not source files unless a task explicitly targets generate
 - Align series using the rules in the relevant metric, beta, covariance, correlation, RC_vol, stress, or data spec.
 - Preserve full precision internally and round only at final export/report stage.
 - Do not invent formulas, scenarios, estimators, constraints, or statuses when a canonical spec exists.
+- In the portfolio-first workflow, diagnose `analysis_subject` before generating candidates or
+  presenting comparison/decision artifacts as the main review outcome.
+- The old policy optimizer is legacy/compatibility infrastructure in the portfolio-first transition;
+  it is not the default starting portfolio and is not a default candidate unless a future accepted
+  spec changes that boundary.
 - Final policy weights come from optimization plus approved post-processing only.
 - View After Optimization is the only permitted manual post-optimization tilt protocol.
 - Taxonomy validates and annotates in V1; it does not select tickers or change weights.
@@ -215,6 +269,7 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 
 | Area | Current status |
 | --- | --- |
+| Portfolio-first review workflow (`analysis_subject` first) | Canonical spec accepted; runtime transition active |
 | Main CLI optimization and report pipeline | Implemented |
 | Input and Assumptions Layer | Implemented CLI/file-driven V1 |
 | Config validation and profile-derived targets | Implemented |
@@ -224,13 +279,13 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Scenario Library and normalized scenario view | Implemented input-standardization/diagnostic layer |
 | Benchmark and candidate portfolio builders | Implemented comparison layer |
 | Robust Mean-Variance and Scenario-Based Robust Optimization | Implemented benchmark/candidate layer |
-| Canonical candidate comparison | Implemented (`candidate_comparison.json` via [src/candidate_comparison.py](src/candidate_comparison.py)) |
+| Canonical candidate comparison | Implemented (`candidate_comparison.json` via [src/candidate_comparison.py](src/candidate_comparison.py)); includes `analysis_subject` baseline row when materialized |
 | Robustness Scorecard | Implemented diagnostic artifact (`robustness_scorecard.json` via [src/robustness_scorecard.py](src/robustness_scorecard.py)) |
 | Portfolio Health Score | Implemented diagnostic artifact (`portfolio_health_score.json` via [src/portfolio_health_score.py](src/portfolio_health_score.py)) |
 | ETF and stock taxonomy | Implemented annotation-only V1 |
 | Generated CSV/JSON/HTML/TXT/PDF-style reports | Implemented |
 | Full interactive UI | Target/TBD |
-| Formal Selection Engine and No-Trade | Implemented (`selection_decision.json` via [src/selection_engine.py](src/selection_engine.py)) |
+| Formal Selection Engine and No-Trade | Implemented (`selection_decision.json` via [src/selection_engine.py](src/selection_engine.py)); portfolio-first baseline is `analysis_subject`, with legacy fallback to `current` |
 | Trade-off Explanation and Model Risk Diagnostics | Implemented ([src/tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py); [tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md)) |
 | Assumption Sensitivity | Implemented ([src/assumption_sensitivity.py](src/assumption_sensitivity.py); [assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md)) |
 | Pareto / Dominance Check | Implemented ([src/pareto_dominance.py](src/pareto_dominance.py); [pareto_dominance_spec.md](docs/specs/pareto_dominance_spec.md)) |
@@ -241,6 +296,13 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 
 ## Implementation Contract
 
-Configuration must load and validate before data and optimization run. Data and return panels must be built consistently with the data and metrics specs. The main policy optimizer must either produce releasable weights or refuse release with a clear status. The report pipeline must produce diagnostics and artifacts from fixed weights. Candidate builders must create comparable alternatives without replacing the main policy optimizer. Taxonomy diagnostics must annotate and validate without changing optimizer membership in V1.
+Configuration must load and validate before data, diagnostics, candidate generation, or legacy
+optimization run. Data and return panels must be built consistently with the data and metrics specs.
+The portfolio-first path must resolve and diagnose `analysis_subject` before alternatives are
+generated or compared. The legacy policy optimizer must either produce releasable weights or refuse
+release with a clear status when that compatibility path is explicitly run. The report pipeline must
+produce diagnostics and artifacts from fixed weights. Candidate builders must create comparable
+alternatives without replacing the portfolio-first subject or legacy policy optimizer boundaries.
+Taxonomy diagnostics must annotate and validate without changing optimizer membership in V1.
 
 Any change to current behavior must update the owning detailed spec, this implementation contract when the general contract changes, and user-facing documentation when workflows or outputs change.

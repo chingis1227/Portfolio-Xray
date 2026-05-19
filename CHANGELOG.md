@@ -39,9 +39,64 @@ Category: Removed
 
 Omit empty categories.
 
+## 2026-05-19
+
+### Changed
+
+- Closed RM-911 / Phase 9 post-portfolio-first stabilization: representative review verified subject
+  metadata, freshness gating, selection/decision package, regime metrics, monitoring, and PDF outputs;
+  removed active issues `KI-2026-05-19-002` and `KI-2026-05-19-004`.
+
+- RM-910: `run_portfolio_review.py` now rebuilds portfolio-first PDFs only by default
+  (`rebuild_pdf_reports.py --portfolio-first`: decision package + `analysis_subject` sidecar);
+  use `--legacy-full-pdf` for the full EW/RP/policy/baseline variant suite.
+
+### Fixed
+
+- Fixed RM-909: Decision package PDF now uses YAML front matter (`build_decision_package_pdf_md`)
+  instead of a long H1 with embedded `analysis_end`, restoring `Main portfolio_decision_package.pdf`
+  Pandoc/XeLaTeX builds; closed `KI-2026-05-18-001`.
+- Fixed RM-908: `monitoring_diff_v1` with `no_prior_snapshot` no longer emits profile/decision
+  deltas or prior snapshot paths; same-`analysis_end` re-runs stay narrative-only with warning
+  `prior_same_analysis_end_ignored`.
+- Fixed RM-906: Regime portfolio metrics no longer reference undefined `mar_monthly`; daily regime
+  Sortino uses aligned daily risk-free by default or a daily-converted configured MAR.
+- Fixed RM-905: Portfolio-first comparison now gates root `policy` artifacts as legacy optional
+  references, Health Score prioritizes `analysis_subject`, and decision summaries hide the
+  current-vs-policy compatibility block for portfolio-first runs.
+- Fixed RM-902: Candidate Factory now reuses existing candidate snapshots only when
+  `snapshot_10y.json.analysis_end` matches the review date, and Candidate Comparison marks stale
+  candidate snapshots unavailable.
+- Fixed RM-901: `candidate_comparison.json.analysis_setup_summary` now prefers `analysis_subject/run_metadata.json` over stale root metadata, with regression coverage for `current_portfolio` subjects.
+
+### Added
+
+- Added active [Post-Portfolio-First Stabilization Plan](docs/exec_plans/2026-05-19_post_portfolio_first_stabilization_plan.md)
+  and roadmap Phase 9 (`RM-900`-`RM-911`) to stabilize subject metadata, candidate freshness,
+  decision reliability, methodology consistency, monitoring, and report/PDF output before UI work.
+- [Post-Portfolio-First State Audit](docs/audits/2026-05-19_post_portfolio_first_state_audit.md):
+  documents system state after transition closure, latest `run_portfolio_review.py` evidence, P0–P2
+  stabilization backlog, and register entry in [docs/audits/README.md](docs/audits/README.md).
+
 ## 2026-05-18
 
 ### Added
+
+- Closed the portfolio-first transition with offline E2E coverage for `current_portfolio`,
+  `model_portfolio`, and `universe_baseline` subjects through comparison, decision artifacts, and
+  decision-package reporting (Portfolio-first Session 09).
+- Updated decision-package report language and generated-output QA for the portfolio-first story:
+  summaries now name `analysis_subject` as the starting portfolio and scored rows as candidate
+  alternatives, with config examples for current/model subjects (Portfolio-first Session 08).
+- Isolated legacy policy workflow language: `run_portfolio_review.py` is now the documented normal
+  first command, while `run_optimization.py` and `run_mvp_workflow.py` help/docs are labeled legacy
+  compatibility (Portfolio-first Session 07).
+- Added subject-centered comparison and decision baselines: `candidate_comparison.json` now includes `analysis_subject`, and Selection/No-Trade, Action, Monitoring, and Decision Journal prefer that baseline before legacy `current` (Portfolio-first Session 06).
+- Added portfolio-first orchestration ([run_portfolio_review.py](run_portfolio_review.py), [src/portfolio_review_workflow.py](src/portfolio_review_workflow.py), [tests/test_portfolio_review_workflow.py](tests/test_portfolio_review_workflow.py)) to materialize `analysis_subject` before non-policy candidates and comparison without calling `run_optimization.py` by default (Portfolio-first Session 05).
+- Added `run_report.py --materialize-analysis-subject` to write portfolio-first subject diagnostics under `{output_dir_final}/analysis_subject/` before candidate generation (Portfolio-first Session 04).
+- Added explicit `analysis_subject` config/schema support and resolver export through `analysis_setup` and `input_assumptions` (Portfolio-first Session 03).
+- Added canonical [portfolio review workflow spec](docs/specs/portfolio_review_workflow_spec.md) for the `analysis_subject`-first contract and linked it from top-level source-of-truth docs (Portfolio-first Session 02).
+- Added active [Portfolio-First Transition Plan](docs/exec_plans/2026-05-18_portfolio_first_transition_plan.md) and roadmap Phase 8 (`RM-800`-`RM-808`) to move the main workflow from policy-first to `analysis_subject`-first while preserving the old policy engine as legacy infrastructure.
 
 - Closed [post-audit MVP stabilization plan](docs/exec_plans/2026-05-17_post_audit_mvp_stabilization_plan.md) Session 11: Phase 7 (`RM-700`–`RM-710`) complete; broad verification (`462` pytest passes, docs verify, generated-output QA scan).
 - Added file-first MVP workflow orchestration ([run_mvp_workflow.py](run_mvp_workflow.py), [src/mvp_workflow.py](src/mvp_workflow.py), [tests/test_mvp_workflow.py](tests/test_mvp_workflow.py)): thin wrapper for `input -> diagnosis -> comparison -> action`; documented in [docs/operational_runbook.md](docs/operational_runbook.md) (MVP stabilization Session 10).
@@ -53,6 +108,8 @@ Omit empty categories.
 
 ### Fixed
 
+- Removed active issue `KI-2026-05-18-002` after the default workflow was moved to
+  `analysis_subject`-first and covered by offline end-to-end tests.
 - Removed active issue `KI-2026-05-17-004` after partial utility UI status was synced in top-level docs (MVP stabilization Session 11).
 - Removed active issue `KI-2026-05-17-020` after the offline MVP smoke test landed.
 

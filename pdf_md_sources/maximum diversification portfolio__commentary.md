@@ -1,6 +1,6 @@
 ---
 title: "Main Portfolio: Target Weights"
-date: "Analysis results for the 10-year window as of 2026-05-15"
+date: "Analysis results for the 10-year window as of 2026-04-30"
 documentclass: article
 geometry: "left=18mm, right=18mm, top=24mm, bottom=20mm, head=20pt, foot=20pt, footskip=40pt"
 fontsize: 10pt
@@ -8,12 +8,12 @@ fontsize: 10pt
 
 ## Executive Summary
 
-Main Portfolio was reviewed on the latest available reporting window. CAGR is 8.40%, annualized volatility is 8.60%, maximum drawdown is -20.50%, Sharpe is 0.724, Sortino is 1.018, and market sensitivity is 0.304. Stress diagnostics show: One risk area requires attention; worst scenario loss is -13.86%.
+Main Portfolio was reviewed on the latest available reporting window. CAGR is 11.20%, annualized volatility is 10.70%, maximum drawdown is -20.80%, Sharpe is 0.843, Sortino is 1.408, and market sensitivity is 0.505. Stress diagnostics show: One risk area requires attention; worst scenario loss is -23.96%.
 
 ## Key Metrics
 
 ```{=latex}
-\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{8.40\%}{CAGR} & \KPIone{8.60\%}{Volatility} & \KPIone{-20.50\%}{Max Drawdown}\\[0.55em] \KPIone{0.724}{Sharpe} & \KPIone{1.018}{Sortino} & \KPIone{0.304}{Market Sensitivity}\end{tabular}\end{center}
+\begin{center}\begin{tabular}{@{}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{\hspace{0.45em}}>{\centering\arraybackslash}m{0.30\textwidth}@{}} \KPIone{11.20\%}{CAGR} & \KPIone{10.70\%}{Volatility} & \KPIone{-20.80\%}{Max Drawdown}\\[0.55em] \KPIone{0.843}{Sharpe} & \KPIone{1.408}{Sortino} & \KPIone{0.505}{Market Sensitivity}\end{tabular}\end{center}
 ```
 
 ## What This Means
@@ -22,18 +22,18 @@ The portfolio profile should be read as a trade-off between return, realized dra
 
 ## Risk Structure
 
-Stress status: One risk area requires attention. Worst scenario loss: -13.86%. Flagged scenario: 2022; flagged test: Historical. These diagnostics are used to identify risk concentrations and scenario vulnerability; they do not by themselves replace the mandate checks.
+Stress status: One risk area requires attention. Worst scenario loss: -23.96%. Flagged scenario: recession_severe; flagged test: Loss. These diagnostics are used to identify risk concentrations and scenario vulnerability; they do not by themselves replace the mandate checks.
 
 ## Scenario Analysis
 
 | Scenario | PnL | Pass | Top RC Asset | Top 3 RC |
 | --- | ---: | --- | --- | ---: |
-| equity_shock | -10.93% | True | SCHD | 65.22% |
-| credit_shock | -3.09% | True | SCHD | 67.18% |
-| rates_shock | -12.11% | True | TLT | 67.78% |
-| inflation_stagflation | -8.20% | True | SCHD | 63.63% |
-| liquidity_shock | -7.10% | True | SCHD | 67.31% |
-| recession_severe | -13.86% | True | SCHD | 66.39% |
+| equity_shock | -16.32% | True | GLD | 74.50% |
+| credit_shock | -2.79% | True | SCHD | 69.20% |
+| rates_shock | -9.67% | True | GLD | 69.74% |
+| inflation_stagflation | -9.10% | True | GLD | 70.45% |
+| liquidity_shock | -9.23% | True | SCHD | 71.55% |
+| recession_severe | -23.96% | False | SCHD | 71.92% |
 
 ## Conclusion
 

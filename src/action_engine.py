@@ -24,6 +24,7 @@ TRANSACTION_COST_BPS = 10
 TRANSACTION_COST_MODEL = "bps_on_turnover_half_sum"
 PRIORITY_TRADE_LIMIT = 5
 ELIGIBLE_STATUSES = frozenset({"available", "degraded"})
+BASELINE_CANDIDATE_IDS = ("analysis_subject", "current")
 
 
 def _load_json(path: Path) -> dict[str, Any] | None:
@@ -39,6 +40,25 @@ def _load_json(path: Path) -> dict[str, Any] | None:
 
 def _candidates_by_id(comparison: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {c["candidate_id"]: c for c in comparison.get("candidates", []) if c.get("candidate_id")}
+
+
+def _baseline_candidate_id(
+    comparison: dict[str, Any],
+    selection: dict[str, Any] | None = None,
+) -> str | None:
+    by_id = _candidates_by_id(comparison)
+    explicit = (selection or {}).get("baseline_candidate_id")
+    if explicit and by_id.get(str(explicit), {}).get("status") in ELIGIBLE_STATUSES:
+        return str(explicit)
+    no_trade = (selection or {}).get("no_trade") or {}
+    explicit = no_trade.get("baseline_candidate_id")
+    if explicit and by_id.get(str(explicit), {}).get("status") in ELIGIBLE_STATUSES:
+        return str(explicit)
+    for candidate_id in BASELINE_CANDIDATE_IDS:
+        cand = by_id.get(candidate_id)
+        if cand and cand.get("status") in ELIGIBLE_STATUSES:
+            return candidate_id
+    return None
 
 
 def _weight_deltas(
@@ -153,7 +173,8 @@ def build_action_plan(
     favored_id = selection.get("favored_candidate_id")
     favored_display = selection.get("favored_display_name")
 
-    current = by_id.get("current")
+    baseline_id = _baseline_candidate_id(comparison, selection)
+    current = by_id.get(baseline_id) if baseline_id else None
     target = by_id.get(favored_id) if favored_id else None
 
     w_current: dict[str, float] | None = None
@@ -233,7 +254,9 @@ def build_action_plan(
         "output_dir_final": comparison.get("output_dir_final"),
         "action_status": action_status,
         "selection_decision_status": decision_status,
-        "baseline_candidate_id": "current" if current else None,
+        "baseline_candidate_id": baseline_id if current else None,
+        "baseline_display_name": (current or {}).get("display_name"),
+        "baseline_weights": w_current,
         "target_candidate_id": favored_id,
         "target_display_name": favored_display,
         "current_weights": w_current,

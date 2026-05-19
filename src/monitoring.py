@@ -16,7 +16,7 @@ from src.config_schema import PortfolioConfig
 
 SNAPSHOT_SCHEMA_VERSION = "analysis_snapshot_v1"
 DIFF_SCHEMA_VERSION = "monitoring_diff_v1"
-MONITORED_PROFILE_IDS = ("current", "policy")
+MONITORED_PROFILE_IDS = ("analysis_subject", "current", "policy")
 LATEST_SNAPSHOT_REL = Path("monitoring/latest/analysis_snapshot.json")
 HISTORY_DIR_REL = Path("monitoring/history")
 
@@ -148,6 +148,8 @@ def _decision_projection(selection: dict[str, Any] | None) -> dict[str, Any]:
     if not selection:
         return {}
     return {
+        "baseline_candidate_id": selection.get("baseline_candidate_id"),
+        "baseline_display_name": selection.get("baseline_display_name"),
         "decision_status": selection.get("decision_status"),
         "favored_candidate_id": selection.get("favored_candidate_id"),
         "favored_display_name": selection.get("favored_display_name"),
@@ -162,6 +164,7 @@ def _action_projection(action: dict[str, Any] | None) -> dict[str, Any]:
         "action_status": action.get("action_status"),
         "selection_decision_status": action.get("selection_decision_status"),
         "turnover_half_sum_pct": action.get("turnover_half_sum_pct"),
+        "baseline_candidate_id": action.get("baseline_candidate_id"),
         "target_candidate_id": action.get("target_candidate_id"),
     }
 
@@ -294,6 +297,26 @@ def _profile_diff(
     }
 
 
+def _neutral_decision_changes(current_snapshot: dict[str, Any]) -> dict[str, Any]:
+    cur_dec = current_snapshot.get("decision") or {}
+    return {
+        "decision_status_changed": False,
+        "prior_decision_status": None,
+        "current_decision_status": cur_dec.get("decision_status"),
+        "prior_favored_candidate_id": None,
+        "current_favored_candidate_id": cur_dec.get("favored_candidate_id"),
+    }
+
+
+def _neutral_action_changes(current_snapshot: dict[str, Any]) -> dict[str, Any]:
+    cur_act = current_snapshot.get("action") or {}
+    return {
+        "action_status_changed": False,
+        "prior_action_status": None,
+        "current_action_status": cur_act.get("action_status"),
+    }
+
+
 def _rebalance_trigger(selection: dict[str, Any] | None, action: dict[str, Any] | None) -> bool:
     if selection and selection.get("decision_status") == "selected_candidate":
         return True
@@ -357,6 +380,7 @@ def build_monitoring_diff(
     current_end = current_snapshot.get("analysis_end")
     prior_end = prior_snapshot.get("analysis_end") if prior_snapshot else None
 
+    no_prior = not prior_snapshot or prior_end == current_end
     if not prior_snapshot:
         diff_status = "no_prior_snapshot"
     elif prior_end == current_end:
@@ -368,53 +392,63 @@ def build_monitoring_diff(
     profiles_current = current_snapshot.get("profiles") or {}
     profiles_prior = (prior_snapshot or {}).get("profiles") or {}
 
-    primary_id = "current"
-    if primary_id not in profiles_current and "policy" in profiles_current:
-        primary_id = "policy"
+    primary_id = "analysis_subject"
+    if primary_id not in profiles_current:
+        primary_id = "current" if "current" in profiles_current else "policy"
 
     profile_changes: dict[str, Any] = {}
-    for pid in MONITORED_PROFILE_IDS:
-        if pid in profiles_current or pid in profiles_prior:
-            profile_changes[pid] = _profile_diff(
-                profiles_current.get(pid),
-                profiles_prior.get(pid),
-            )
+    decision_changes: dict[str, Any]
+    action_changes: dict[str, Any]
+    prior_end_reported: str | None = None
+
+    if no_prior:
+        decision_changes = _neutral_decision_changes(current_snapshot)
+        action_changes = _neutral_action_changes(current_snapshot)
+    else:
+        for pid in MONITORED_PROFILE_IDS:
+            if pid in profiles_current or pid in profiles_prior:
+                profile_changes[pid] = _profile_diff(
+                    profiles_current.get(pid),
+                    profiles_prior.get(pid),
+                )
+
+        prior_end_reported = prior_end
+
+        cur_dec = current_snapshot.get("decision") or {}
+        pri_dec = (prior_snapshot or {}).get("decision") or {}
+        decision_changes = {
+            "decision_status_changed": bool(
+                cur_dec.get("decision_status") != pri_dec.get("decision_status")
+                and (cur_dec.get("decision_status") or pri_dec.get("decision_status"))
+            ),
+            "prior_decision_status": pri_dec.get("decision_status"),
+            "current_decision_status": cur_dec.get("decision_status"),
+            "prior_favored_candidate_id": pri_dec.get("favored_candidate_id"),
+            "current_favored_candidate_id": cur_dec.get("favored_candidate_id"),
+        }
+
+        cur_act = current_snapshot.get("action") or {}
+        pri_act = (prior_snapshot or {}).get("action") or {}
+        action_changes = {
+            "action_status_changed": bool(
+                cur_act.get("action_status") != pri_act.get("action_status")
+                and (cur_act.get("action_status") or pri_act.get("action_status"))
+            ),
+            "prior_action_status": pri_act.get("action_status"),
+            "current_action_status": cur_act.get("action_status"),
+        }
 
     primary_change = profile_changes.get(primary_id) or {"available": False}
     if diff_status == "diff_available" and not primary_change.get("available"):
         diff_status = "diff_degraded"
         warnings.append("primary_profile_diff_degraded")
 
-    cur_dec = current_snapshot.get("decision") or {}
-    pri_dec = (prior_snapshot or {}).get("decision") or {}
-    decision_changes = {
-        "decision_status_changed": bool(
-            cur_dec.get("decision_status") != pri_dec.get("decision_status")
-            and (cur_dec.get("decision_status") or pri_dec.get("decision_status"))
-        ),
-        "prior_decision_status": pri_dec.get("decision_status"),
-        "current_decision_status": cur_dec.get("decision_status"),
-        "prior_favored_candidate_id": pri_dec.get("favored_candidate_id"),
-        "current_favored_candidate_id": cur_dec.get("favored_candidate_id"),
-    }
-
-    cur_act = current_snapshot.get("action") or {}
-    pri_act = (prior_snapshot or {}).get("action") or {}
-    action_changes = {
-        "action_status_changed": bool(
-            cur_act.get("action_status") != pri_act.get("action_status")
-            and (cur_act.get("action_status") or pri_act.get("action_status"))
-        ),
-        "prior_action_status": pri_act.get("action_status"),
-        "current_action_status": cur_act.get("action_status"),
-    }
-
     return {
         "schema_version": DIFF_SCHEMA_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "diff_status": diff_status,
         "primary_profile_id": primary_id,
-        "prior_analysis_end": prior_end,
+        "prior_analysis_end": prior_end_reported,
         "current_analysis_end": current_end,
         "profile_changes": profile_changes,
         "decision_changes": decision_changes,
@@ -429,14 +463,14 @@ def build_monitoring_diff(
             profile_change=primary_change,
             decision_changes=decision_changes,
             current_end=current_end,
-            prior_end=prior_end,
+            prior_end=prior_end_reported,
         ),
         "warnings": warnings,
         "input_artifacts": {
             "current_snapshot": "monitoring/latest/analysis_snapshot.json",
-            "prior_snapshot": "monitoring/latest/analysis_snapshot.json"
-            if prior_snapshot
-            else None,
+            "prior_snapshot": None
+            if no_prior
+            else "monitoring/latest/analysis_snapshot.json",
         },
     }
 

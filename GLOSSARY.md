@@ -130,6 +130,12 @@ Term heading
 - Area: input and assumptions
 - Canonical source: [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md)
 
+### Analysis subject
+
+- Definition: The `analysis_subject` portfolio diagnosed first in the portfolio-first review workflow; it can be a user current portfolio, a user model portfolio, or a universe baseline and is resolved into `analysis_setup.analysis_subject`.
+- Area: workflow
+- Canonical source: [docs/specs/portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md)
+
 ### Input assumptions
 
 - Definition: Exported/reporting view projected from `analysis_setup`; it is used for reproducibility and display, not as a separate business-logic source.
@@ -144,7 +150,7 @@ Term heading
 
 ### Policy portfolio
 
-- Definition: The main portfolio produced by the primary policy optimization workflow.
+- Definition: A portfolio produced by the legacy policy optimization workflow; it is not the default starting portfolio in the portfolio-first workflow.
 - Area: optimizer
 - Canonical source: [docs/specs/portfolio_construction_policy.md](docs/specs/portfolio_construction_policy.md)
 
@@ -387,6 +393,12 @@ Term heading
 - Definition: Current implementation mode where the project prioritizes CLI/file-driven reports and artifacts before a full interactive UI.
 - Area: product
 - Canonical source: [SPEC.md](SPEC.md)
+
+### Portfolio-first workflow
+
+- Definition: Review workflow where the system resolves and diagnoses `analysis_subject` before generating candidates or presenting comparison and decision artifacts.
+- Area: workflow
+- Canonical source: [docs/specs/portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md)
 
 ### CLI/file-driven
 

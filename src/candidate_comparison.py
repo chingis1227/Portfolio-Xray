@@ -20,8 +20,19 @@ WINDOWS = ("3y", "5y", "10y")
 PRIMARY_WINDOW = "10y"
 SNAPSHOT_FILES = {"3y": "snapshot_3y.json", "5y": "snapshot_5y.json", "10y": "snapshot_10y.json"}
 CURRENT_SIDECAR_SUBDIR = "current_portfolio"
+ANALYSIS_SUBJECT_SIDECAR_SUBDIR = "analysis_subject"
+PORTFOLIO_FIRST_POLICY_LEGACY_REASON = "legacy_policy_not_default_portfolio_first_candidate"
+PORTFOLIO_FIRST_POLICY_LEGACY_WARNING = "legacy_policy_reference_optional_portfolio_first"
 
 _REGISTRY_ROWS: list[dict[str, str]] = [
+    {
+        "candidate_id": "analysis_subject",
+        "display_name": "Analysis Subject",
+        "role": "analysis_subject",
+        "construction_method": "analysis_subject_diagnostics",
+        "weight_source": "analysis_subject.resolved_weights",
+        "artifact_root": "{output_dir_final}/analysis_subject",
+    },
     {
         "candidate_id": "policy",
         "display_name": "Policy Portfolio",
@@ -423,12 +434,19 @@ def _mandate_from_artifacts(
 
 
 def _analysis_setup_summary_from_main(main_dir: Path, cfg: PortfolioConfig) -> dict[str, Any]:
-    meta = _load_json(main_dir / "run_metadata.json")
-    if meta:
+    for meta_path in (
+        analysis_subject_sidecar_dir(main_dir) / "run_metadata.json",
+        main_dir / "run_metadata.json",
+        main_dir / "run_result.json",
+    ):
+        meta = _load_json(meta_path)
+        if not meta:
+            continue
         setup = meta.get("analysis_setup") or meta.get("input_assumptions")
         if isinstance(setup, dict):
             ap = setup.get("analysis_portfolio") or {}
             pi = setup.get("portfolio_input") or {}
+            subject = setup.get("analysis_subject") or {}
             return {
                 "source_analysis_mode": pi.get("source_analysis_mode")
                 or getattr(cfg, "analysis_mode", None),
@@ -436,11 +454,20 @@ def _analysis_setup_summary_from_main(main_dir: Path, cfg: PortfolioConfig) -> d
                 "portfolio_role": ap.get("portfolio_role"),
                 "weight_source": ap.get("weight_source"),
                 "recommendation_status": ap.get("recommendation_status"),
+                "analysis_subject_id": subject.get("id"),
+                "analysis_subject_type": subject.get("type"),
+                "analysis_subject_display_name": subject.get("display_name"),
+                "analysis_subject_weight_source": subject.get("weight_source"),
+                "analysis_subject_resolution_source": subject.get("resolution_source"),
             }
+    cfg_subject = getattr(cfg, "analysis_subject", {}) or {}
     return {
         "source_analysis_mode": getattr(cfg, "analysis_mode", "optimize_from_universe"),
         "portfolio_role": None,
         "weight_source": getattr(cfg, "weights_source", None),
+        "analysis_subject_id": cfg_subject.get("id"),
+        "analysis_subject_type": cfg_subject.get("type"),
+        "analysis_subject_display_name": cfg_subject.get("display_name"),
     }
 
 
@@ -463,6 +490,16 @@ def _main_portfolio_role(main_dir: Path) -> str | None:
 
 
 def _resolve_analysis_end(main_dir: Path, cfg: PortfolioConfig) -> str:
+    subject_dir = analysis_subject_sidecar_dir(main_dir)
+    for name in ("snapshot_10y.json", "snapshot_5y.json", "snapshot_3y.json"):
+        snap = _load_json(subject_dir / name)
+        if snap and snap.get("analysis_end"):
+            return str(snap["analysis_end"])
+    subject_meta = _load_json(subject_dir / "run_metadata.json")
+    if subject_meta:
+        run_info = subject_meta.get("run_info") or {}
+        if run_info.get("analysis_end_date"):
+            return str(run_info["analysis_end_date"])
     for name in ("snapshot_10y.json", "snapshot_5y.json", "snapshot_3y.json"):
         snap = _load_json(main_dir / name)
         if snap and snap.get("analysis_end"):
@@ -479,7 +516,16 @@ def current_sidecar_dir(output_dir_final: Path) -> Path:
     return output_dir_final / CURRENT_SIDECAR_SUBDIR
 
 
-def sidecar_meets_minimum(sidecar: Path) -> bool:
+def analysis_subject_sidecar_dir(output_dir_final: Path) -> Path:
+    return output_dir_final / ANALYSIS_SUBJECT_SIDECAR_SUBDIR
+
+
+def sidecar_meets_minimum(
+    sidecar: Path,
+    *,
+    expected_portfolio_role: str | None = "user_current_portfolio",
+    require_analysis_subject: bool = False,
+) -> bool:
     if not (sidecar / SNAPSHOT_FILES[PRIMARY_WINDOW]).is_file():
         return False
     meta = _load_json(sidecar / "run_metadata.json")
@@ -487,7 +533,19 @@ def sidecar_meets_minimum(sidecar: Path) -> bool:
         return False
     setup = meta.get("analysis_setup") or {}
     ap = setup.get("analysis_portfolio") or {}
-    return ap.get("portfolio_role") == "user_current_portfolio"
+    if expected_portfolio_role is not None and ap.get("portfolio_role") != expected_portfolio_role:
+        return False
+    if require_analysis_subject and not isinstance(setup.get("analysis_subject"), dict):
+        return False
+    return True
+
+
+def analysis_subject_meets_minimum(output_dir_final: Path) -> bool:
+    return sidecar_meets_minimum(
+        analysis_subject_sidecar_dir(output_dir_final),
+        expected_portfolio_role=None,
+        require_analysis_subject=True,
+    )
 
 
 def resolve_current_artifact_folder(
@@ -512,6 +570,8 @@ def _artifact_folder(
     analysis_mode: str = "optimize_from_universe",
     output_dir_final_rel: str | None = None,
 ) -> Path:
+    if row.get("candidate_id") == "analysis_subject":
+        return analysis_subject_sidecar_dir(output_dir_final)
     if row.get("candidate_id") == "current":
         rel = output_dir_final_rel or str(
             getattr(output_dir_final, "name", output_dir_final)
@@ -532,6 +592,7 @@ def _evaluate_artifact_candidate(
     folder: Path,
     *,
     candidate_id: str,
+    expected_analysis_end: str | None = None,
 ) -> tuple[str, str | None, dict[str, Any], list[str], list[str]]:
     """
     Returns (status, unavailable_reason, payload_blocks, missing_fields, warnings).
@@ -543,6 +604,16 @@ def _evaluate_artifact_candidate(
 
     if not folder.is_dir():
         return "unavailable", "missing_artifact_folder", {}, source_files, warnings
+
+    snap_10y = _load_json(folder / SNAPSHOT_FILES[PRIMARY_WINDOW])
+    if snap_10y and expected_analysis_end:
+        snapshot_end = snap_10y.get("analysis_end")
+        if str(snapshot_end) != str(expected_analysis_end):
+            warnings.append(
+                "stale_snapshot_analysis_end:"
+                f"{snapshot_end or 'missing'}!={expected_analysis_end}"
+            )
+            return "unavailable", "stale_snapshot_analysis_end", {}, source_files, warnings
 
     metrics_by_window: dict[str, dict[str, Any]] = {}
     has_primary_metrics = False
@@ -561,7 +632,6 @@ def _evaluate_artifact_candidate(
     if not has_primary_metrics:
         return "unavailable", "missing_snapshot", {}, source_files, warnings
 
-    snap_10y = _load_json(folder / SNAPSHOT_FILES[PRIMARY_WINDOW])
     if snap_10y:
         source_files.append(SNAPSHOT_FILES[PRIMARY_WINDOW])
     run_meta = _load_json(folder / "run_metadata.json")
@@ -617,6 +687,10 @@ def _apply_policy_current_gating(
     if candidate_id not in ("policy", "current"):
         return status, unavailable_reason, warnings
 
+    if candidate_id == "policy" and analysis_subject_meets_minimum(output_dir_final):
+        warnings.append(PORTFOLIO_FIRST_POLICY_LEGACY_WARNING)
+        return "unavailable", PORTFOLIO_FIRST_POLICY_LEGACY_REASON, warnings
+
     if analysis_mode == "optimize_from_universe":
         if candidate_id == "current":
             sidecar = current_sidecar_dir(output_dir_final)
@@ -661,6 +735,7 @@ def _build_candidate_row(
     analysis_mode: str,
     main_role: str | None,
     main_meta: dict[str, Any] | None,
+    expected_analysis_end: str | None,
 ) -> dict[str, Any]:
     out_rel = str(getattr(cfg, "output_dir_final", "Main portfolio")).replace("\\", "/")
     if row["candidate_id"] == "current":
@@ -670,6 +745,9 @@ def _build_candidate_row(
             analysis_mode=analysis_mode,
         )
         artifact_root_tpl = artifact_root_str
+    elif row["candidate_id"] == "analysis_subject":
+        folder = analysis_subject_sidecar_dir(output_dir_final)
+        artifact_root_tpl = f"{out_rel}/{ANALYSIS_SUBJECT_SIDECAR_SUBDIR}"
     else:
         artifact_root_tpl = row["artifact_root"].replace("{output_dir_final}", out_rel)
         folder = _artifact_folder(
@@ -681,7 +759,9 @@ def _build_candidate_row(
         )
 
     status, unavailable_reason, payload, missing_fields, warnings = _evaluate_artifact_candidate(
-        folder, candidate_id=row["candidate_id"]
+        folder,
+        candidate_id=row["candidate_id"],
+        expected_analysis_end=expected_analysis_end,
     )
     status, unavailable_reason, gate_warnings = _apply_policy_current_gating(
         row["candidate_id"],
@@ -697,12 +777,19 @@ def _build_candidate_row(
 
     portfolio_role = None
     recommendation_status = None
-    if row["candidate_id"] in ("policy", "current"):
+    display_name = row["display_name"]
+    weight_source = row["weight_source"]
+    if row["candidate_id"] in ("analysis_subject", "policy", "current"):
         row_meta = _load_json(folder / "run_metadata.json")
         if row_meta:
-            ap = (row_meta.get("analysis_setup") or {}).get("analysis_portfolio") or {}
+            setup = row_meta.get("analysis_setup") or {}
+            ap = setup.get("analysis_portfolio") or {}
+            subject = setup.get("analysis_subject") or {}
             portfolio_role = ap.get("portfolio_role")
             recommendation_status = ap.get("recommendation_status")
+            if row["candidate_id"] == "analysis_subject":
+                display_name = subject.get("display_name") or display_name
+                weight_source = subject.get("weight_source") or ap.get("weight_source") or weight_source
         elif folder == output_dir_final.resolve() and main_meta:
             ap = (main_meta.get("analysis_setup") or {}).get("analysis_portfolio") or {}
             portfolio_role = ap.get("portfolio_role")
@@ -712,10 +799,10 @@ def _build_candidate_row(
 
     candidate: dict[str, Any] = {
         "candidate_id": row["candidate_id"],
-        "display_name": row["display_name"],
+        "display_name": display_name,
         "role": row["role"],
         "construction_method": row["construction_method"],
-        "weight_source": row["weight_source"],
+        "weight_source": weight_source,
         "artifact_root": artifact_root_tpl.replace("\\", "/"),
         "status": status,
         "unavailable_reason": unavailable_reason,
@@ -760,6 +847,7 @@ def build_candidate_comparison(
     if ew.is_file():
         legacy["ew_rp_comparison_json"] = "ew_rp_comparison.json"
 
+    analysis_end = _resolve_analysis_end(main_dir, cfg)
     candidates = [
         _build_candidate_row(
             row,
@@ -769,6 +857,7 @@ def build_candidate_comparison(
             analysis_mode=analysis_mode,
             main_role=main_role,
             main_meta=main_meta,
+            expected_analysis_end=analysis_end or None,
         )
         for row in _REGISTRY_ROWS
     ]
@@ -783,8 +872,9 @@ def build_candidate_comparison(
     doc: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "diagnostic_only": True,
+        "comparison_baseline_candidate_id": "analysis_subject",
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "analysis_end": _resolve_analysis_end(main_dir, cfg),
+        "analysis_end": analysis_end,
         "investor_currency": str(getattr(cfg, "investor_currency", "USD")),
         "output_dir_final": out_rel,
         "analysis_setup_summary": setup_summary,
@@ -1149,7 +1239,9 @@ def write_candidate_comparison_outputs(
 
 __all__ = [
     "SCHEMA_VERSION",
+    "ANALYSIS_SUBJECT_SIDECAR_SUBDIR",
     "CURRENT_SIDECAR_SUBDIR",
+    "analysis_subject_sidecar_dir",
     "build_candidate_comparison",
     "build_legacy_portfolio_comparison",
     "candidate_registry_ids",

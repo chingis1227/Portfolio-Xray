@@ -12,7 +12,7 @@ The Action Engine:
 
 - reads **`selection_decision.json`** and **`candidate_comparison.json`** as primary inputs;
 - always writes **`action_plan.json`** (and optional **`action_plan.txt`**) under `output_dir_final` when comparison and selection artifacts exist for the run;
-- resolves **current** (`role=user_current`) and **target** (favored candidate from selection) weights from each candidate's `snapshot_10y.json` → `final_weights_total` (same loader as Selection Engine);
+- resolves the portfolio-first **baseline** (`analysis_subject`, falling back to legacy `current`) and **target** (favored candidate from selection) weights from each candidate's `snapshot_10y.json` -> `final_weights_total` (same loader as Selection Engine);
 - emits **trade rows** only when selection status is `selected_candidate` and both weight vectors load; otherwise `trades` is an empty array with an explicit **`no_trades_reason`**;
 - uses **`src/rebalance.compute_trades`** for mechanical buy/sell/hold deltas (no NAV required in V1);
 - applies a **simple transaction-cost model**: `10` basis points on turnover half-sum (reviewable constant in code);
@@ -109,10 +109,12 @@ Reuses comparison/selection projections only (no new formulas):
 | `generated_at` | string | ISO timestamp. |
 | `action_status` | string | See action status table. |
 | `selection_decision_status` | string | Copy of `selection_decision.decision_status`. |
-| `baseline_candidate_id` | string | Always `current` when present in comparison, else `null`. |
+| `baseline_candidate_id` | string | `analysis_subject` when present in comparison, else legacy `current`, else `null`. |
+| `baseline_display_name` | string \| null | Baseline label from comparison. |
+| `baseline_weights` | object \| null | Ticker -> weight fraction for the baseline row. |
 | `target_candidate_id` | string \| null | Favored candidate from selection. |
 | `target_display_name` | string \| null | English label. |
-| `current_weights` | object \| null | Ticker → weight fraction. |
+| `current_weights` | object \| null | Compatibility alias for the baseline weight vector in V1. |
 | `target_weights` | object \| null | Ticker → weight fraction. |
 | `weight_deltas` | array | Per-ticker `{ ticker, current_weight, target_weight, delta_weight, delta_pct }`. |
 | `trades` | array | `{ ticker, direction, delta_weight, delta_pct }` from `compute_trades`; empty when no trades. |

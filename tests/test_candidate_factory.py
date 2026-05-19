@@ -56,6 +56,125 @@ def test_skip_existing_when_snapshot_present(tmp_path: Path) -> None:
     assert ew_step["reason_code"] == "skipped_existing"
 
 
+def test_skip_existing_requires_matching_analysis_end(tmp_path: Path) -> None:
+    subject_dir = tmp_path / "Main portfolio" / "analysis_subject"
+    subject_dir.mkdir(parents=True)
+    (subject_dir / "run_metadata.json").write_text(
+        json.dumps({"run_info": {"analysis_end_date": "2026-05-15"}}),
+        encoding="utf-8",
+    )
+    ew_dir = tmp_path / "equal-weight portfolio"
+    ew_dir.mkdir(parents=True)
+    (ew_dir / "snapshot_10y.json").write_text(
+        json.dumps({"analysis_end": "2026-05-15"}),
+        encoding="utf-8",
+    )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO"],
+        }
+    )
+
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["equal_weight"],
+        skip_existing=True,
+        force=False,
+        runner=lambda cmd, cwd: 0,
+    )
+    ew_step = doc["steps"][0]
+    assert ew_step["status"] == "skipped_existing"
+    assert ew_step["freshness_status"] == "fresh"
+    assert ew_step["expected_analysis_end"] == "2026-05-15"
+    assert ew_step["snapshot_analysis_end"] == "2026-05-15"
+
+
+def test_stale_existing_snapshot_is_rebuilt_not_skipped(tmp_path: Path) -> None:
+    subject_dir = tmp_path / "Main portfolio" / "analysis_subject"
+    subject_dir.mkdir(parents=True)
+    (subject_dir / "run_metadata.json").write_text(
+        json.dumps({"run_info": {"analysis_end_date": "2026-05-15"}}),
+        encoding="utf-8",
+    )
+    ew_dir = tmp_path / "equal-weight portfolio"
+    ew_dir.mkdir(parents=True)
+    snapshot = ew_dir / "snapshot_10y.json"
+    snapshot.write_text(json.dumps({"analysis_end": "2026-04-30"}), encoding="utf-8")
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO"],
+        }
+    )
+
+    calls = []
+
+    def runner(cmd, cwd):  # noqa: ANN001
+        calls.append(cmd)
+        snapshot.write_text(json.dumps({"analysis_end": "2026-05-15"}), encoding="utf-8")
+        return 0
+
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["equal_weight"],
+        skip_existing=True,
+        force=False,
+        runner=runner,
+    )
+    ew_step = doc["steps"][0]
+    assert calls
+    assert ew_step["status"] == "succeeded"
+    assert ew_step["freshness_status"] == "fresh"
+    assert doc["summary"]["rebuilt_stale"] == 1
+    assert any(w.startswith("stale_candidate_snapshot_rebuild_attempted:equal_weight") for w in doc["warnings"])
+
+
+def test_stale_snapshot_after_build_fails_explicitly(tmp_path: Path) -> None:
+    subject_dir = tmp_path / "Main portfolio" / "analysis_subject"
+    subject_dir.mkdir(parents=True)
+    (subject_dir / "run_metadata.json").write_text(
+        json.dumps({"run_info": {"analysis_end_date": "2026-05-15"}}),
+        encoding="utf-8",
+    )
+    ew_dir = tmp_path / "equal-weight portfolio"
+    ew_dir.mkdir(parents=True)
+    (ew_dir / "snapshot_10y.json").write_text(
+        json.dumps({"analysis_end": "2026-04-30"}),
+        encoding="utf-8",
+    )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO"],
+        }
+    )
+
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["equal_weight"],
+        skip_existing=True,
+        force=False,
+        runner=lambda cmd, cwd: 0,
+    )
+    ew_step = doc["steps"][0]
+    assert ew_step["status"] == "failed"
+    assert ew_step["reason_code"] == "stale_snapshot_after_build"
+    assert ew_step["freshness_status"] == "stale"
+
+
 def test_robust_scenario_skipped_dependency(tmp_path: Path) -> None:
     cfg = validate_config(
         {

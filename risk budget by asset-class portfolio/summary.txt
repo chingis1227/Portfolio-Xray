@@ -1,0 +1,9 @@
+Risk Budget by Asset-Class Portfolio
+==================================================
+
+CAGR: 7.316%, Vol: 7.949%, MaxDD: -18.686%, Sharpe: 0.647, Sortino: 1.000, Beta: 0.399, Corr_base: 0.000
+
+Stress: DIAG_PASS_WITH_WARNING (—)
+Client-fit (MaxDD gate): PASS
+Risk budget tracking error: 6.647547668051076e-11
+Max budget deviation: 6.891351267857004e-06

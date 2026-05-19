@@ -1,11 +1,11 @@
 Minimum CVaR (Uncapped) Portfolio
 ==================================================
 
-CAGR: 3.137%, Vol: 5.120%, MaxDD: -15.539%, Sharpe: 0.190, Sortino: 0.260, Beta: 0.085, Corr_base: 0.000
+CAGR: 2.367%, Vol: 4.986%, MaxDD: -14.249%, Sharpe: 0.042, Sortino: 0.057, Beta: 0.167, Corr_base: 0.000
 
 Optimizer: minimum_cvar_uncapped (solver=HiGHS, linprog_success=True)
-CVaR LP objective (alpha + lambda*sum z): 0.00739713
-Empirical sample CVaR (loss): 0.00739141
+CVaR LP objective (alpha + lambda*sum z): 0.0302828
+Empirical sample CVaR (loss): 0.029257
 
 Stress: DIAG_PASS_WITH_WARNING (—)
 Client-fit (MaxDD gate): PASS

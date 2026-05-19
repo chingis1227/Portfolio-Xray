@@ -1,50 +1,147 @@
 Portfolio Snapshot Report
 Generated from snapshot_3y.json, snapshot_5y.json, snapshot_10y.json, snapshot_assets.json
 
+Portfolio X-Ray Summary
+Version: portfolio_xray_v2; diagnostic_only=True.
+Portfolio X-Ray v2 is diagnostic-only. It summarizes existing report pipeline outputs and in-memory diagnostics; it does not optimize, change weights, change mandate gates, change stress pass/fail status, score portfolios, select portfolios, or provide trade instructions.
+Analyzed portfolio: role=user_current_portfolio; weight_source=config.analysis_subject.weights; recommendation_status=diagnostic_current_portfolio_not_recommendation.
+Setup: input_case=user_current; currency=USD; benchmark=SPY; cash_proxy=BIL; frequency=monthly.
+Asset Allocation: main capital concentration is GLD 25.0%, QQQ 25.0%, SPY 25.0%; cash=n/a.
+Risk Contribution Summary: main RC_vol concentration is QQQ 32.0%, SPY 27.4%, GLD 15.8%. RC_vol is diagnostic-only and does not act as an optimizer gate or recommendation rule.
+Portfolio Diagnostic Verdict:
+Analyzed portfolio role: user_current_portfolio; weight source: config.analysis_subject.weights.
+Capital concentration: GLD 25.0%, QQQ 25.0%, SPY 25.0%.
+Risk concentration by RC_vol: QQQ 32.0%, SPY 27.4%, GLD 15.8%.
+Main diagnostic concern: mandate MaxDD gate did not pass.
+Mandate gate: FAIL; stress status: DIAG_ATTENTION.
+This is an explanatory diagnostic summary, not a score, recommendation, selection decision, or trade instruction.
+
+Asset Allocation Summary
+status=available; sources=analyzed weights, config/etf_universe.yml, config/stock_universe.yml.
+- GLD: weight 25.0%, asset_class=commodity, region=Global, risk_bucket=real_assets
+- QQQ: weight 25.0%, asset_class=equity, region=US, risk_bucket=equity
+- SPY: weight 25.0%, asset_class=equity, region=US, risk_bucket=equity
+- SCHD: weight 15.7%, asset_class=equity, region=US, risk_bucket=equity
+- SLV: weight 6.3%, asset_class=commodity, region=Global, risk_bucket=real_assets
+- BND: weight 1.0%, asset_class=fixed_income, region=US, risk_bucket=fixed_income
+- SCHP: weight 1.0%, asset_class=fixed_income, region=US, risk_bucket=inflation_linked
+- TLT: weight 1.0%, asset_class=fixed_income, region=US, risk_bucket=fixed_income
+- asset_class: equity 65.7%, commodity 31.3%, fixed_income 3.0%
+- region: US 68.7%, Global 31.3%
+- currency_exposure: USD 100.0%
+- sector: multi_sector 65.7%, none 34.3%
+- ... 3 more items in portfolio_xray.json
+limitation: Taxonomy is annotation-only in V1 and does not select assets or change weights.
+limitation: ETF sector and currency fields can describe broad economic exposure rather than exact look-through holdings.
+
+Portfolio Metrics / Risk Diagnostics
+status=available; sources=snapshot metrics, snapshot analytics, drawdown_structure.
+- CAGR 16.0%, vol 12.5%, Sharpe 1.081, Sortino 1.833, MaxDD -20.7%, beta 0.729
+- VaR95 -5.0%, ES95 -6.8%, EEE10 54.959%
+- rolling metrics available for Sharpe, Sortino, and volatility summaries
+limitation: Historical metrics describe realized behavior in the selected window, not expected future returns.
+limitation: VaR and ES are historical tail metrics and should be checked against stress scenarios before action.
+
+Factor Exposure / Factor Sensitivity
+status=available; sources=stress_report.factor_betas_5y, stress_report.factor_betas_10y, stress_report.factor_betas_kalman, stress_report.factor_variance_decomposition.
+- equity: beta_5y 0.729, beta_10y 0.640, variance share 73.0%
+- usd: beta_5y -0.480, beta_10y -0.360, variance share 8.0%
+- credit: beta_5y 0.987, beta_10y n/a, variance share -6.2%
+- commodity: beta_5y 0.158, beta_10y 0.063, variance share 5.0%
+- real_rates: beta_5y -0.748, beta_10y -2.471, variance share 1.2%
+- inflation: beta_5y -1.095, beta_10y -1.154, variance share -0.4%
+- vix: beta_5y 0.000, beta_10y -0.001, variance share -0.1%
+- us_growth: beta_5y 0.001, beta_10y -0.001, variance share 0.1%
+- Residual factor risk: 19.4%, severity=low
+limitation: Factor exposures are diagnostics from the existing factor pipeline and do not replace raw holdings.
+limitation: Kalman betas are current-regime diagnostics and do not replace raw 5Y/10Y OLS betas.
+
+Hidden Exposure / Hidden Risk Detector
+status=available; sources=stress_report.factor_betas_5y, snapshot.RC_asset, stress_report.portfolio_pca, stress_report.factor_variance_decomposition, taxonomy metadata.
+- high hidden_equity_beta: 5Y equity beta is 0.729. The portfolio has meaningful equity-market sensitivity even if holdings labels look diversified. Next test: Check equity_shock, recession_severe, and downside equity behavior. Limitation: Beta is historical and can change when correlations or holdings change.
+- medium single_asset_risk_concentration: QQQ contributes 32.0% of RC_vol. Portfolio risk is more concentrated than capital weights alone imply. Next test: Compare weight vs RC_vol and inspect stress Top1/Top3 RC concentration. Limitation: RC_vol depends on the selected covariance window and existing RC calculation.
+- medium correlation_or_common_factor_concentration: Raw covariance PCA PC1 explains 54.4% of asset-return variance. Several holdings may be driven by the same statistical risk direction. Next test: Review PCA loadings, raw correlation PCA, and residual PCA after factor removal. Limitation: PCA is statistical and does not identify a tradable economic factor by itself.
+- medium stress_loss_contributor_concentration: In worst scenario recession_severe, top stress RC asset QQQ is 31.5%. Stress losses may be dominated by a small number of assets. Next test: Inspect pnl_by_asset_pct and Top3 RC for the worst stress scenario. Limitation: Synthetic stress RC uses scenario covariance diagnostics and is not a pass/fail gate.
+limitation: Hidden risk flags are transparent threshold rules, not AI judgment and not portfolio recommendations.
+limitation: Flags summarize existing diagnostics and should be validated with stress testing and comparison.
+
+Portfolio Archetype Classification
+status=available; sources=asset allocation, factor betas, RC_vol, PCA.
+- primary=Inflation-sensitive, secondary=Credit Carry Portfolio, confidence=medium, drivers=commodity weight 31.3%; inflation-linked weight 2.0%; commodity beta 0.158
+limitation: Archetype is a rule-based behavior label with caveats, not a portfolio selection decision.
+limitation: A portfolio can have multiple simultaneous characteristics; confidence reflects signal clarity.
+
+Risk Budget View
+status=available; sources=analyzed weights, snapshot.RC_asset, stress_report.scenario_results.pnl_by_asset_pct.
+- QQQ: weight 25.0%, RC_vol 32.0%, gap +7.0pp, worst stress contribution -15.3% (recession_severe)
+- SPY: weight 25.0%, RC_vol 27.4%, gap +2.4pp, worst stress contribution -10.9% (recession_severe)
+- GLD: weight 25.0%, RC_vol 15.8%, gap -9.2pp, worst stress contribution -9.5% (recession_severe)
+- SCHD: weight 15.7%, RC_vol 14.7%, gap -1.0pp, worst stress contribution -2.9% (recession_severe)
+- SLV: weight 6.3%, RC_vol 9.3%, gap +3.0pp, worst stress contribution -4.5% (recession_severe)
+- BND: weight 1.0%, RC_vol n/a, gap n/a, worst stress contribution -0.1% (rates_shock)
+- SCHP: weight 1.0%, RC_vol n/a, gap n/a, worst stress contribution -0.1% (rates_shock)
+- TLT: weight 1.0%, RC_vol n/a, gap n/a, worst stress contribution -0.3% (rates_shock)
+limitation: RC_vol is contribution to portfolio variance from the existing pipeline and is diagnostic-only.
+limitation: Stress loss contribution is scenario-specific and should not be read as expected loss.
+
+Portfolio Weakness Map
+status=available; sources=stress_report.scenario_results, stress_report.factor_betas_5y, snapshot.RC_asset, snapshot metrics, snapshot analytics, taxonomy metadata.
+- recession: high (stress_scenario; max_drawdown; historical_es_95)
+- inflation: high (stress_scenario; factor_beta)
+- rates: high (stress_scenario; factor_beta)
+- credit: high (stress_scenario; factor_beta)
+- liquidity: high (stress_scenario; historical_es_95)
+- usd: medium (factor_beta)
+- equity_crash: high (stress_scenario; factor_beta; max_drawdown)
+- commodity_shock: low (available_diagnostics)
+- volatility_spike: high (historical_es_95)
+limitation: Weakness Map aggregates existing evidence only; it is not a forecasting or scoring model.
+limitation: Low severity means available evidence did not cross configured thresholds, not that the risk is impossible.
+
 ============================================================
 DATA POLICY / BACKTEST MODE
 ============================================================
 
 backtest_mode: dynamic_nan_safe
-join_policy (for cov/RC/ОІ): inner join (intersection of dates across assets)
+join_policy (for cov/RC/beta): inner join (intersection of dates across assets)
 
-inner_join_months_used_for_risk (ОЈ/RC): 3023
+inner_join_months_used_for_risk (Sigma/RC): 144
 
 months with NaN redistribution (among risk assets): 0
 months with excess weight to cash (RC caps / gating): 0
 
 first_available_month (per ticker, young ETF inclusion):
-  BND: 2014-05
-  GLD: 2014-05
-  QQQ: 2014-05
-  SCHD: 2014-05
-  SCHP: 2014-05
-  SLV: 2014-05
-  TLT: 2014-05
-  VOO: 2014-05
+  BND: 2014-06
+  GLD: 2014-06
+  QQQ: 2014-06
+  SCHD: 2014-06
+  SCHP: 2014-06
+  SLV: 2014-06
+  SPY: 2014-06
+  TLT: 2014-06
 
 
 
 ============================================================
-WINDOW 3Y (analysis_end: 2026-05-08)
+WINDOW 3Y (analysis_end: 2026-04-30)
 ============================================================
 
 --- final_weights_total ---
+  GLD: 25.0%
   QQQ: 25.0%
-  SLV: 25.0%
-  VOO: 25.0%
-  GLD: 12.5%
-  SCHD: 9.5%
+  SPY: 25.0%
+  SCHD: 15.7%
+  SLV: 6.3%
   BND: 1.0%
   SCHP: 1.0%
   TLT: 1.0%
 
 --- RC_asset (top 5) ---
-  SLV: 50.5%
-  QQQ: 20.4%
-  VOO: 15.5%
-  GLD: 10.0%
-  SCHD: 3.4%
+  QQQ: 27.8%
+  SPY: 25.6%
+  GLD: 20.0%
+  SCHD: 14.0%
+  SLV: 11.2%
 
 --- constraints_status ---
   target_vol: FAIL
@@ -53,45 +150,45 @@ WINDOW 3Y (analysis_end: 2026-05-08)
   weight_caps: NOT_CHECKED
 
 --- metrics ---
-  cagr: 32.4%
-  vol_annual: 17.0%
-  sharpe: 1.474
-  sortino: 2.070
-  beta_portfolio: 0.801
-  treynor: 0.313
-  max_drawdown: -16.8%
-  ttr_months: вЂ”
+  cagr: 26.0%
+  vol_annual: 10.5%
+  sharpe: 1.844
+  sortino: 3.384
+  beta_portfolio: 0.659
+  treynor: 0.295
+  max_drawdown: -6.9%
+  ttr_months:  - 
 
 --- stress ---
   overall: DIAG_ATTENTION
 
 --- analytics (summary) ---
-  rolling_sharpe_36m: last: вЂ”, mean: вЂ”, p10: вЂ”, p90: вЂ”
-  rolling_sortino_36m: last: вЂ”, mean: вЂ”, p10: вЂ”, p90: вЂ”
-  var_95: -1.4%
-  es_95: -2.5%
-  eee_10pct: 79.075%
+  rolling_sharpe_36m: last: 1.844, mean: 1.844, p10: 1.844, p90: 1.844
+  rolling_sortino_36m: last: 3.384, mean: 3.384, p10: 3.384, p90: 3.384
+  var_95: -3.0%
+  es_95: -6.0%
+  eee_10pct: -51.383%
 
 ============================================================
-WINDOW 5Y (analysis_end: 2026-05-08)
+WINDOW 5Y (analysis_end: 2026-04-30)
 ============================================================
 
 --- final_weights_total ---
+  GLD: 25.0%
   QQQ: 25.0%
-  SLV: 25.0%
-  VOO: 25.0%
-  GLD: 12.5%
-  SCHD: 9.5%
+  SPY: 25.0%
+  SCHD: 15.7%
+  SLV: 6.3%
   BND: 1.0%
   SCHP: 1.0%
   TLT: 1.0%
 
 --- RC_asset (top 5) ---
-  SLV: 41.6%
-  QQQ: 25.3%
-  VOO: 19.5%
-  GLD: 8.3%
-  SCHD: 4.9%
+  QQQ: 32.5%
+  SPY: 27.2%
+  GLD: 17.2%
+  SCHD: 13.2%
+  SLV: 8.4%
 
 --- constraints_status ---
   target_vol: FAIL
@@ -100,45 +197,45 @@ WINDOW 5Y (analysis_end: 2026-05-08)
   weight_caps: NOT_CHECKED
 
 --- metrics ---
-  cagr: 18.4%
-  vol_annual: 16.9%
-  sharpe: 0.883
-  sortino: 1.243
-  beta_portfolio: 0.770
-  treynor: 0.194
-  max_drawdown: -23.7%
-  ttr_months: вЂ”
+  cagr: 15.8%
+  vol_annual: 13.0%
+  sharpe: 0.939
+  sortino: 1.487
+  beta_portfolio: 0.737
+  treynor: 0.165
+  max_drawdown: -20.7%
+  ttr_months: 19.000
 
 --- stress ---
   overall: DIAG_ATTENTION
 
 --- analytics (summary) ---
-  rolling_sharpe_36m: last: 1.484, mean: 0.889, p10: 0.402, p90: 1.558
-  rolling_sortino_36m: last: 2.085, mean: 1.291, p10: 0.575, p90: 2.262
-  var_95: -1.6%
-  es_95: -2.5%
-  eee_10pct: 76.107%
+  rolling_sharpe_36m: last: 1.844, mean: 1.070, p10: 0.422, p90: 1.972
+  rolling_sortino_36m: last: 3.384, mean: 2.010, p10: 0.634, p90: 4.198
+  var_95: -6.4%
+  es_95: -7.0%
+  eee_10pct: 119.922%
 
 ============================================================
-WINDOW 10Y (analysis_end: 2026-05-08)
+WINDOW 10Y (analysis_end: 2026-04-30)
 ============================================================
 
 --- final_weights_total ---
+  GLD: 25.0%
   QQQ: 25.0%
-  SLV: 25.0%
-  VOO: 25.0%
-  GLD: 12.5%
-  SCHD: 9.5%
+  SPY: 25.0%
+  SCHD: 15.7%
+  SLV: 6.3%
   BND: 1.0%
   SCHP: 1.0%
   TLT: 1.0%
 
 --- RC_asset (top 5) ---
-  SLV: 36.4%
-  QQQ: 27.4%
-  VOO: 22.5%
-  GLD: 7.0%
-  SCHD: 6.6%
+  QQQ: 32.0%
+  SPY: 27.4%
+  GLD: 15.8%
+  SCHD: 14.7%
+  SLV: 9.3%
 
 --- constraints_status ---
   target_vol: FAIL
@@ -147,24 +244,24 @@ WINDOW 10Y (analysis_end: 2026-05-08)
   weight_caps: NOT_CHECKED
 
 --- metrics ---
-  cagr: 17.7%
-  vol_annual: 16.2%
-  sharpe: 0.953
-  sortino: 1.331
-  beta_portfolio: 0.726
-  treynor: 0.212
-  max_drawdown: -26.9%
-  ttr_months: вЂ”
+  cagr: 16.0%
+  vol_annual: 12.5%
+  sharpe: 1.081
+  sortino: 1.833
+  beta_portfolio: 0.729
+  treynor: 0.185
+  max_drawdown: -20.7%
+  ttr_months: 19.000
 
 --- stress ---
   overall: DIAG_ATTENTION
 
 --- analytics (summary) ---
-  rolling_sharpe_36m: last: 1.484, mean: 0.800, p10: 0.358, p90: 1.241
-  rolling_sortino_36m: last: 2.085, mean: 1.127, p10: 0.513, p90: 1.750
-  var_95: -1.4%
-  es_95: -2.4%
-  eee_10pct: 75.434%
+  rolling_sharpe_36m: last: 1.844, mean: 0.963, p10: 0.434, p90: 1.496
+  rolling_sortino_36m: last: 3.384, mean: 1.723, p10: 0.656, p90: 2.849
+  var_95: -5.0%
+  es_95: -6.8%
+  eee_10pct: 54.959%
 
 ============================================================
 ASSETS (per-asset metrics by window, standalone)
@@ -173,35 +270,35 @@ ASSETS (per-asset metrics by window, standalone)
 --- Window 3y ---
 
 ticker	window_months	cagr	vol_annual	sharpe	sortino	beta_base	beta_local	treynor	skewness	kurtosis	max_drawdown	ttr_months	recovered
-VOO	36.000	23.1%	14.7%	1.181	1.739	0.972	0.972	0.179	0.313	14.109	-18.7%	вЂ”	0.000
-QQQ	36.000	30.9%	19.7%	1.238	1.830	1.240	1.240	0.197	0.362	10.363	-22.8%	вЂ”	0.000
-GLD	36.000	32.4%	19.9%	1.287	1.819	0.183	0.183	1.399	-1.114	9.806	-19.2%	вЂ”	0.000
-SLV	36.000	46.2%	40.5%	1.039	1.407	0.667	0.667	0.631	-3.213	38.011	-42.5%	вЂ”	0.000
-BND	36.000	3.8%	5.4%	-0.111	-0.154	0.063	1.000	-0.094	-0.050	0.699	-6.9%	вЂ”	0.000
-SCHD	36.000	14.6%	13.1%	0.764	1.120	0.586	0.586	0.171	-0.108	7.591	-16.1%	вЂ”	0.000
-SCHP	36.000	3.7%	4.8%	-0.153	-0.214	0.047	0.047	-0.155	-0.036	1.190	-5.6%	вЂ”	0.000
-TLT	36.000	-2.0%	14.0%	-0.396	-0.540	0.128	1.000	-0.431	-0.149	0.593	-20.2%	вЂ”	0.000
+SPY	36.000	21.5%	13.1%	1.221	2.392	1.000	1.000	0.160	-0.015	-0.297	-8.3%	4.000	1.000
+QQQ	36.000	28.2%	16.9%	1.303	2.843	1.178	1.178	0.187	0.253	0.067	-10.1%	5.000	1.000
+GLD	36.000	31.9%	16.5%	1.506	3.100	-0.046	-0.046	-5.396	-0.333	0.879	-12.4%	 - 	0.000
+SLV	36.000	42.6%	31.7%	1.144	2.292	0.329	0.329	1.104	-0.197	0.388	-21.6%	 - 	0.000
+BND	36.000	3.4%	5.5%	-0.169	-0.237	0.219	1.000	-0.043	0.265	0.163	-4.9%	7.000	1.000
+SCHD	36.000	14.0%	13.8%	0.701	1.128	0.612	0.612	0.158	-0.369	-0.502	-11.0%	14.000	1.000
+SCHP	36.000	3.5%	4.3%	-0.215	-0.286	0.159	0.159	-0.058	-0.063	-0.737	-3.5%	7.000	1.000
+TLT	36.000	-3.2%	14.0%	-0.482	-0.641	0.567	1.000	-0.119	0.249	-0.012	-17.9%	 - 	0.000
 
 --- Window 5y ---
 
 ticker	window_months	cagr	vol_annual	sharpe	sortino	beta_base	beta_local	treynor	skewness	kurtosis	max_drawdown	ttr_months	recovered
-VOO	60.000	13.5%	16.9%	0.632	0.905	0.985	0.985	0.108	-0.002	6.066	-24.5%	вЂ”	0.000
-QQQ	60.000	17.1%	22.4%	0.662	0.952	1.249	1.249	0.119	0.043	4.642	-35.1%	вЂ”	0.000
-GLD	60.000	20.5%	17.9%	0.938	1.328	0.137	0.137	1.231	-0.894	9.177	-21.0%	вЂ”	0.000
-SLV	60.000	23.5%	35.7%	0.681	0.940	0.516	0.516	0.471	-2.784	39.515	-42.5%	вЂ”	0.000
-BND	60.000	0.2%	6.0%	-0.505	-0.696	0.069	1.000	-0.437	0.042	1.393	-17.9%	вЂ”	0.000
-SCHD	60.000	7.9%	14.4%	0.366	0.524	0.667	0.667	0.079	-0.106	3.860	-16.8%	вЂ”	0.000
-SCHP	60.000	1.2%	6.1%	-0.324	-0.455	0.065	0.065	-0.303	0.091	2.348	-14.3%	вЂ”	0.000
-TLT	60.000	-6.1%	15.9%	-0.534	-0.735	0.066	1.000	-1.277	-0.012	0.462	-43.7%	вЂ”	0.000
+SPY	60.000	13.0%	15.7%	0.641	1.013	1.000	1.000	0.101	-0.384	-0.310	-23.9%	24.000	1.000
+QQQ	60.000	15.3%	20.5%	0.631	1.014	1.210	1.210	0.107	-0.345	0.023	-32.6%	24.000	1.000
+GLD	60.000	20.7%	16.1%	1.043	2.029	0.153	0.153	1.096	-0.060	0.133	-15.9%	12.000	1.000
+SLV	60.000	22.7%	30.1%	0.714	1.309	0.451	0.451	0.477	0.022	-0.015	-36.0%	36.000	1.000
+BND	60.000	0.2%	6.4%	-0.479	-0.617	0.256	1.000	-0.119	-0.023	-0.079	-16.5%	55.000	1.000
+SCHD	60.000	9.0%	14.7%	0.430	0.681	0.681	0.681	0.093	-0.098	-0.469	-15.7%	11.000	1.000
+SCHP	60.000	1.4%	6.1%	-0.304	-0.380	0.266	0.266	-0.070	-0.936	3.005	-13.8%	47.000	1.000
+TLT	60.000	-6.2%	14.6%	-0.595	-0.758	0.525	1.000	-0.166	0.098	-0.292	-42.0%	 - 	0.000
 
 --- Window 10y ---
 
 ticker	window_months	cagr	vol_annual	sharpe	sortino	beta_base	beta_local	treynor	skewness	kurtosis	max_drawdown	ttr_months	recovered
-VOO	120.000	15.6%	18.0%	0.771	1.081	1.003	1.003	0.138	-0.684	16.703	-34.0%	вЂ”	0.000
-QQQ	120.000	21.9%	22.3%	0.901	1.278	1.161	1.161	0.173	-0.402	7.961	-35.1%	вЂ”	0.000
-GLD	120.000	13.4%	16.0%	0.730	1.032	0.073	0.073	1.604	-0.707	8.842	-22.0%	вЂ”	0.000
-SLV	120.000	16.0%	31.6%	0.560	0.777	0.400	0.400	0.442	-2.279	35.958	-42.8%	вЂ”	0.000
-BND	120.000	1.7%	5.5%	-0.067	-0.092	0.044	1.000	-0.085	-1.124	37.555	-18.6%	вЂ”	0.000
-SCHD	120.000	12.7%	16.7%	0.665	0.943	0.811	0.811	0.137	-0.602	15.750	-33.4%	вЂ”	0.000
-SCHP	120.000	2.8%	5.6%	0.114	0.162	0.020	0.020	0.326	0.222	13.540	-14.3%	вЂ”	0.000
-TLT	120.000	-1.4%	14.9%	-0.170	-0.238	-0.124	1.000	0.203	0.020	5.079	-48.4%	вЂ”	0.000
+SPY	120.000	15.2%	15.3%	0.858	1.349	1.000	1.000	0.131	-0.595	0.763	-23.9%	24.000	1.000
+QQQ	120.000	21.1%	18.7%	1.003	1.703	1.125	1.125	0.167	-0.394	0.278	-32.6%	24.000	1.000
+GLD	120.000	13.1%	14.9%	0.751	1.388	0.118	0.118	0.948	0.125	0.107	-18.1%	40.000	1.000
+SLV	120.000	14.7%	29.7%	0.528	0.962	0.549	0.549	0.286	0.314	0.681	-36.8%	45.000	1.000
+BND	120.000	1.7%	5.2%	-0.079	-0.108	0.148	1.000	-0.028	-0.138	0.693	-17.3%	 - 	0.000
+SCHD	120.000	12.9%	15.0%	0.735	1.172	0.824	0.824	0.134	-0.368	0.732	-21.5%	8.000	1.000
+SCHP	120.000	2.7%	5.0%	0.108	0.144	0.173	0.173	0.031	-0.956	4.289	-13.8%	47.000	1.000
+TLT	120.000	-1.4%	13.7%	-0.198	-0.278	0.157	1.000	-0.172	0.145	0.049	-47.6%	 - 	0.000

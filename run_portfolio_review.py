@@ -1,0 +1,120 @@
+from __future__ import annotations
+
+"""
+Portfolio-first review CLI.
+
+Runs existing entrypoints in the portfolio-first order:
+analysis_subject diagnostics -> candidates -> comparison -> report package.
+"""
+
+import argparse
+from pathlib import Path
+
+from src.config import load_validated_config
+from src.config_schema import ConfigValidationError
+from src.portfolio_review_workflow import (
+    build_portfolio_review_plan,
+    run_portfolio_review_plan,
+    summarize_plan,
+)
+from src.utils import logger, setup_logging
+
+
+def main(argv: list[str] | None = None) -> int:
+    setup_logging()
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run the portfolio-first review workflow: materialize analysis_subject "
+            "diagnostics before candidate generation, comparison, and report packaging."
+        )
+    )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Pass --no-cache to analysis_subject materialization.",
+    )
+    parser.add_argument(
+        "--skip-candidates",
+        action="store_true",
+        help="Skip candidate factory and compare existing candidate artifacts instead.",
+    )
+    parser.add_argument(
+        "--candidate-profile",
+        type=str,
+        default="default_v1",
+        help="Candidate factory profile (default: default_v1).",
+    )
+    parser.add_argument(
+        "--candidates",
+        type=str,
+        default=None,
+        help="Comma-separated candidate ids; overrides --candidate-profile.",
+    )
+    parser.add_argument(
+        "--no-skip-existing",
+        action="store_true",
+        help="Ask candidate factory to rerun builders even when snapshots exist.",
+    )
+    parser.add_argument(
+        "--force-candidates",
+        action="store_true",
+        help="Pass --force to candidate factory.",
+    )
+    parser.add_argument(
+        "--fail-fast",
+        action="store_true",
+        help="Pass --fail-fast to candidate factory.",
+    )
+    parser.add_argument(
+        "--skip-compare",
+        action="store_true",
+        help="Do not run comparison / decision-package writers.",
+    )
+    parser.add_argument("--skip-pdf", action="store_true", help="Skip rebuild_pdf_reports.py.")
+    parser.add_argument(
+        "--legacy-full-pdf",
+        action="store_true",
+        help=(
+            "Rebuild the full legacy PDF suite (EW/RP, policy Main, optimizer baselines). "
+            "Default rebuild is portfolio-first only (analysis_subject + decision package)."
+        ),
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print planned commands without executing them.",
+    )
+    args = parser.parse_args(argv)
+
+    project_root = Path(__file__).resolve().parent
+
+    try:
+        cfg = load_validated_config()
+    except ConfigValidationError as exc:
+        logger.error("Config validation failed: %s", exc)
+        return 1
+
+    plan = build_portfolio_review_plan(
+        cfg,
+        project_root=project_root,
+        no_cache=args.no_cache,
+        skip_candidates=args.skip_candidates,
+        candidate_profile=args.candidate_profile,
+        candidate_ids=args.candidates,
+        skip_existing_candidates=not args.no_skip_existing,
+        force_candidates=args.force_candidates,
+        fail_fast=args.fail_fast,
+        skip_compare=args.skip_compare,
+        skip_pdf=args.skip_pdf,
+        legacy_full_pdf=args.legacy_full_pdf,
+    )
+
+    print(summarize_plan(plan))
+    code = run_portfolio_review_plan(plan, project_root=project_root, dry_run=args.dry_run)
+    if code == 0 and not args.dry_run:
+        print("\nPortfolio review workflow completed.")
+    return code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

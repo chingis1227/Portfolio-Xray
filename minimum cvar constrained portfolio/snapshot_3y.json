@@ -1,48 +1,48 @@
 {
-  "timestamp": "2026-05-09T12:05:43.940504",
-  "analysis_end": "2026-05-08",
+  "timestamp": "2026-05-19T14:33:45.647787",
+  "analysis_end": "2026-04-30",
   "window_label": "3y",
   "window_months": 36,
   "final_weights_total": {
-    "VOO": 0.01,
+    "SPY": 0.01,
     "QQQ": 0.01,
-    "GLD": 0.14,
+    "GLD": 0.25,
     "SLV": 0.01,
     "BND": 0.25,
-    "SCHD": 0.184,
+    "SCHD": 0.193,
     "SCHP": 0.25,
-    "TLT": 0.146
+    "TLT": 0.027
   },
   "final_weights_risk_portfolio": {
-    "VOO": 0.01,
+    "SPY": 0.01,
     "QQQ": 0.01,
-    "GLD": 0.14,
+    "GLD": 0.25,
     "SLV": 0.01,
     "BND": 0.25,
-    "SCHD": 0.184,
+    "SCHD": 0.193,
     "SCHP": 0.25,
-    "TLT": 0.146
+    "TLT": 0.027
   },
   "RC_asset": [
     {
       "ticker": "GLD",
-      "rc_pct": 0.244
-    },
-    {
-      "ticker": "TLT",
-      "rc_pct": 0.222
+      "rc_pct": 0.414
     },
     {
       "ticker": "SCHD",
-      "rc_pct": 0.195
+      "rc_pct": 0.26
     },
     {
       "ticker": "BND",
-      "rc_pct": 0.155
+      "rc_pct": 0.138
     },
     {
       "ticker": "SCHP",
-      "rc_pct": 0.134
+      "rc_pct": 0.111
+    },
+    {
+      "ticker": "TLT",
+      "rc_pct": 0.038
     }
   ],
   "constraints_status": {
@@ -57,42 +57,42 @@
     "scenarios": [
       {
         "scenario_id": "equity_shock",
-        "portfolio_pnl_pct": -0.0524,
+        "portfolio_pnl_pct": -0.0607,
         "violations": [],
         "rc_flags": [],
         "pass": true
       },
       {
         "scenario_id": "credit_shock",
-        "portfolio_pnl_pct": -0.0202,
+        "portfolio_pnl_pct": -0.0033,
         "violations": [],
         "rc_flags": [],
         "pass": true
       },
       {
         "scenario_id": "rates_shock",
-        "portfolio_pnl_pct": -0.123,
+        "portfolio_pnl_pct": -0.0917,
         "violations": [],
         "rc_flags": [],
         "pass": true
       },
       {
         "scenario_id": "inflation_stagflation",
-        "portfolio_pnl_pct": -0.0585,
+        "portfolio_pnl_pct": -0.0361,
         "violations": [],
         "rc_flags": [],
         "pass": true
       },
       {
         "scenario_id": "liquidity_shock",
-        "portfolio_pnl_pct": -0.0381,
+        "portfolio_pnl_pct": -0.0291,
         "violations": [],
         "rc_flags": [],
         "pass": true
       },
       {
         "scenario_id": "recession_severe",
-        "portfolio_pnl_pct": -0.0637,
+        "portfolio_pnl_pct": -0.1304,
         "violations": [],
         "rc_flags": [],
         "pass": true
@@ -113,24 +113,24 @@
           "method": "model_based_beta_times_realized_factor_shock",
           "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
           "beta_source": "5y",
-          "factor_model_pnl_pct": -0.04474337775846804,
+          "factor_model_pnl_pct": -0.05224049583507933,
           "factor_model_error_pct": null,
           "factor_model_abs_error_pct": null,
           "factor_shock_sum": {
-            "equity": -0.36044311975566745,
+            "equity": -0.36044246880503117,
             "vix": 1.3024583839602109,
             "oil": 0.068612916334721
           },
           "pnl_by_factor_pct": {
-            "beta_eq": -0.04721804868799244,
+            "beta_eq": -0.05471516676460373,
             "beta_vix": 0.0024746709295244006
           },
           "top_factor_drivers": [
             {
               "beta_key": "beta_eq",
               "factor": "Equity",
-              "pnl_pct": -0.04721804868799244,
-              "abs_pnl_pct": 0.04721804868799244,
+              "pnl_pct": -0.05471516676460373,
+              "abs_pnl_pct": 0.05471516676460373,
               "direction": "loss",
               "rank": 1
             },
@@ -146,21 +146,21 @@
           "largest_negative_factor": {
             "beta_key": "beta_eq",
             "factor": "Equity",
-            "pnl_pct": -0.04721804868799244,
-            "abs_pnl_pct": 0.04721804868799244,
+            "pnl_pct": -0.05471516676460373,
+            "abs_pnl_pct": 0.05471516676460373,
             "direction": "loss"
           }
         },
         "pnl_by_factor_pct": {
-          "beta_eq": -0.04721804868799244,
+          "beta_eq": -0.05471516676460373,
           "beta_vix": 0.0024746709295244006
         },
         "top_factor_drivers": [
           {
             "beta_key": "beta_eq",
             "factor": "Equity",
-            "pnl_pct": -0.04721804868799244,
-            "abs_pnl_pct": 0.04721804868799244,
+            "pnl_pct": -0.05471516676460373,
+            "abs_pnl_pct": 0.05471516676460373,
             "direction": "loss",
             "rank": 1
           },
@@ -176,11 +176,11 @@
         "largest_negative_factor": {
           "beta_key": "beta_eq",
           "factor": "Equity",
-          "pnl_pct": -0.04721804868799244,
-          "abs_pnl_pct": 0.04721804868799244,
+          "pnl_pct": -0.05471516676460373,
+          "abs_pnl_pct": 0.05471516676460373,
           "direction": "loss"
         },
-        "factor_model_pnl_pct": -0.04474337775846804,
+        "factor_model_pnl_pct": -0.05224049583507933,
         "factor_model_error_pct": null,
         "factor_model_abs_error_pct": null,
         "factor_attribution_method": "model_based_beta_times_realized_factor_shock",
@@ -189,32 +189,32 @@
           "method": "model_based_beta_times_realized_factor_shock",
           "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
           "beta_source": "adjusted",
-          "factor_model_pnl_pct": -0.04881306667158381,
+          "factor_model_pnl_pct": -0.053899747565648,
           "factor_model_error_pct": null,
           "factor_model_abs_error_pct": null,
           "factor_shock_sum": {
-            "equity": -0.36044311975566745,
+            "equity": -0.36044246880503117,
             "vix": 1.3024583839602109,
             "oil": 0.068612916334721
           },
           "pnl_by_factor_pct": {
-            "beta_eq": -0.05024577089394004,
-            "beta_vix": 0.001432704222356232
+            "beta_eq": -0.05604880389918235,
+            "beta_vix": 0.002149056333534348
           },
           "top_factor_drivers": [
             {
               "beta_key": "beta_eq",
               "factor": "Equity",
-              "pnl_pct": -0.05024577089394004,
-              "abs_pnl_pct": 0.05024577089394004,
+              "pnl_pct": -0.05604880389918235,
+              "abs_pnl_pct": 0.05604880389918235,
               "direction": "loss",
               "rank": 1
             },
             {
               "beta_key": "beta_vix",
               "factor": "VIX",
-              "pnl_pct": 0.001432704222356232,
-              "abs_pnl_pct": 0.001432704222356232,
+              "pnl_pct": 0.002149056333534348,
+              "abs_pnl_pct": 0.002149056333534348,
               "direction": "gain",
               "rank": 2
             }
@@ -222,29 +222,29 @@
           "largest_negative_factor": {
             "beta_key": "beta_eq",
             "factor": "Equity",
-            "pnl_pct": -0.05024577089394004,
-            "abs_pnl_pct": 0.05024577089394004,
+            "pnl_pct": -0.05604880389918235,
+            "abs_pnl_pct": 0.05604880389918235,
             "direction": "loss"
           }
         },
         "pnl_by_factor_pct_adjusted": {
-          "beta_eq": -0.05024577089394004,
-          "beta_vix": 0.001432704222356232
+          "beta_eq": -0.05604880389918235,
+          "beta_vix": 0.002149056333534348
         },
         "top_factor_drivers_adjusted": [
           {
             "beta_key": "beta_eq",
             "factor": "Equity",
-            "pnl_pct": -0.05024577089394004,
-            "abs_pnl_pct": 0.05024577089394004,
+            "pnl_pct": -0.05604880389918235,
+            "abs_pnl_pct": 0.05604880389918235,
             "direction": "loss",
             "rank": 1
           },
           {
             "beta_key": "beta_vix",
             "factor": "VIX",
-            "pnl_pct": 0.001432704222356232,
-            "abs_pnl_pct": 0.001432704222356232,
+            "pnl_pct": 0.002149056333534348,
+            "abs_pnl_pct": 0.002149056333534348,
             "direction": "gain",
             "rank": 2
           }
@@ -252,11 +252,11 @@
         "largest_negative_factor_adjusted": {
           "beta_key": "beta_eq",
           "factor": "Equity",
-          "pnl_pct": -0.05024577089394004,
-          "abs_pnl_pct": 0.05024577089394004,
+          "pnl_pct": -0.05604880389918235,
+          "abs_pnl_pct": 0.05604880389918235,
           "direction": "loss"
         },
-        "factor_model_pnl_pct_adjusted": -0.04881306667158381,
+        "factor_model_pnl_pct_adjusted": -0.053899747565648,
         "factor_model_error_pct_adjusted": null,
         "factor_model_abs_error_pct_adjusted": null,
         "factor_attribution_method_adjusted": "model_based_beta_times_realized_factor_shock",
@@ -276,50 +276,50 @@
           "method": "model_based_beta_times_realized_factor_shock",
           "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
           "beta_source": "5y",
-          "factor_model_pnl_pct": -0.0647113198186106,
+          "factor_model_pnl_pct": -0.13193292736692686,
           "factor_model_error_pct": null,
           "factor_model_abs_error_pct": null,
           "factor_shock_sum": {
-            "equity": -0.43501447455560216,
+            "equity": -0.4350147558957319,
             "real_rates": -0.0018000000000000013,
             "inflation": -0.0092,
             "usd": 0.13832470835308175,
-            "commodity": -0.35570776342525645,
+            "commodity": -0.35570781484037783,
             "vix": 1.1114908486895834,
             "us_growth": -5.17,
             "oil": -0.3247541602725945
           },
           "pnl_by_factor_pct": {
-            "beta_eq": -0.05698689616678389,
-            "beta_rr": 0.011067840000000008,
-            "beta_inf": 0.0311006,
-            "beta_usd": -0.027097810366368713,
-            "beta_cmd": -0.02180488589796822,
+            "beta_eq": -0.0660352399449721,
+            "beta_rr": 0.008253000000000005,
+            "beta_inf": 0.01466664,
+            "beta_usd": -0.05152595386152295,
+            "beta_cmd": -0.03578420617294201,
             "beta_vix": 0.0021118326125102085,
-            "beta_us_growth": -0.0031019999999999997
+            "beta_us_growth": -0.003619
           },
           "top_factor_drivers": [
             {
               "beta_key": "beta_eq",
               "factor": "Equity",
-              "pnl_pct": -0.05698689616678389,
-              "abs_pnl_pct": 0.05698689616678389,
+              "pnl_pct": -0.0660352399449721,
+              "abs_pnl_pct": 0.0660352399449721,
               "direction": "loss",
               "rank": 1
             },
             {
-              "beta_key": "beta_inf",
-              "factor": "Inflation",
-              "pnl_pct": 0.0311006,
-              "abs_pnl_pct": 0.0311006,
-              "direction": "gain",
+              "beta_key": "beta_usd",
+              "factor": "USD",
+              "pnl_pct": -0.05152595386152295,
+              "abs_pnl_pct": 0.05152595386152295,
+              "direction": "loss",
               "rank": 2
             },
             {
-              "beta_key": "beta_usd",
-              "factor": "USD",
-              "pnl_pct": -0.027097810366368713,
-              "abs_pnl_pct": 0.027097810366368713,
+              "beta_key": "beta_cmd",
+              "factor": "Commodity",
+              "pnl_pct": -0.03578420617294201,
+              "abs_pnl_pct": 0.03578420617294201,
               "direction": "loss",
               "rank": 3
             }
@@ -327,42 +327,42 @@
           "largest_negative_factor": {
             "beta_key": "beta_eq",
             "factor": "Equity",
-            "pnl_pct": -0.05698689616678389,
-            "abs_pnl_pct": 0.05698689616678389,
+            "pnl_pct": -0.0660352399449721,
+            "abs_pnl_pct": 0.0660352399449721,
             "direction": "loss"
           }
         },
         "pnl_by_factor_pct": {
-          "beta_eq": -0.05698689616678389,
-          "beta_rr": 0.011067840000000008,
-          "beta_inf": 0.0311006,
-          "beta_usd": -0.027097810366368713,
-          "beta_cmd": -0.02180488589796822,
+          "beta_eq": -0.0660352399449721,
+          "beta_rr": 0.008253000000000005,
+          "beta_inf": 0.01466664,
+          "beta_usd": -0.05152595386152295,
+          "beta_cmd": -0.03578420617294201,
           "beta_vix": 0.0021118326125102085,
-          "beta_us_growth": -0.0031019999999999997
+          "beta_us_growth": -0.003619
         },
         "top_factor_drivers": [
           {
             "beta_key": "beta_eq",
             "factor": "Equity",
-            "pnl_pct": -0.05698689616678389,
-            "abs_pnl_pct": 0.05698689616678389,
+            "pnl_pct": -0.0660352399449721,
+            "abs_pnl_pct": 0.0660352399449721,
             "direction": "loss",
             "rank": 1
           },
           {
-            "beta_key": "beta_inf",
-            "factor": "Inflation",
-            "pnl_pct": 0.0311006,
-            "abs_pnl_pct": 0.0311006,
-            "direction": "gain",
+            "beta_key": "beta_usd",
+            "factor": "USD",
+            "pnl_pct": -0.05152595386152295,
+            "abs_pnl_pct": 0.05152595386152295,
+            "direction": "loss",
             "rank": 2
           },
           {
-            "beta_key": "beta_usd",
-            "factor": "USD",
-            "pnl_pct": -0.027097810366368713,
-            "abs_pnl_pct": 0.027097810366368713,
+            "beta_key": "beta_cmd",
+            "factor": "Commodity",
+            "pnl_pct": -0.03578420617294201,
+            "abs_pnl_pct": 0.03578420617294201,
             "direction": "loss",
             "rank": 3
           }
@@ -370,11 +370,11 @@
         "largest_negative_factor": {
           "beta_key": "beta_eq",
           "factor": "Equity",
-          "pnl_pct": -0.05698689616678389,
-          "abs_pnl_pct": 0.05698689616678389,
+          "pnl_pct": -0.0660352399449721,
+          "abs_pnl_pct": 0.0660352399449721,
           "direction": "loss"
         },
-        "factor_model_pnl_pct": -0.0647113198186106,
+        "factor_model_pnl_pct": -0.13193292736692686,
         "factor_model_error_pct": null,
         "factor_model_abs_error_pct": null,
         "factor_attribution_method": "model_based_beta_times_realized_factor_shock",
@@ -383,50 +383,50 @@
           "method": "model_based_beta_times_realized_factor_shock",
           "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
           "beta_source": "adjusted",
-          "factor_model_pnl_pct": -0.06705738408382932,
+          "factor_model_pnl_pct": -0.12751991531546053,
           "factor_model_error_pct": null,
           "factor_model_abs_error_pct": null,
           "factor_shock_sum": {
-            "equity": -0.43501447455560216,
+            "equity": -0.4350147558957319,
             "real_rates": -0.0018000000000000013,
             "inflation": -0.0092,
             "usd": 0.13832470835308175,
-            "commodity": -0.35570776342525645,
+            "commodity": -0.35570781484037783,
             "vix": 1.1114908486895834,
             "us_growth": -5.17,
             "oil": -0.3247541602725945
           },
           "pnl_by_factor_pct": {
-            "beta_eq": -0.06064101775305094,
-            "beta_rr": 0.011067840000000008,
-            "beta_inf": 0.0311006,
-            "beta_usd": -0.027097810366368713,
-            "beta_cmd": -0.02180488589796822,
-            "beta_vix": 0.0012226399335585419,
-            "beta_us_growth": -0.0009047499999999998
+            "beta_eq": -0.06764479454178632,
+            "beta_rr": 0.008253000000000005,
+            "beta_inf": 0.01439754,
+            "beta_usd": -0.05152595386152295,
+            "beta_cmd": -0.03205816681248905,
+            "beta_vix": 0.0018339599003378126,
+            "beta_us_growth": -0.0007754999999999998
           },
           "top_factor_drivers": [
             {
               "beta_key": "beta_eq",
               "factor": "Equity",
-              "pnl_pct": -0.06064101775305094,
-              "abs_pnl_pct": 0.06064101775305094,
+              "pnl_pct": -0.06764479454178632,
+              "abs_pnl_pct": 0.06764479454178632,
               "direction": "loss",
               "rank": 1
             },
             {
-              "beta_key": "beta_inf",
-              "factor": "Inflation",
-              "pnl_pct": 0.0311006,
-              "abs_pnl_pct": 0.0311006,
-              "direction": "gain",
+              "beta_key": "beta_usd",
+              "factor": "USD",
+              "pnl_pct": -0.05152595386152295,
+              "abs_pnl_pct": 0.05152595386152295,
+              "direction": "loss",
               "rank": 2
             },
             {
-              "beta_key": "beta_usd",
-              "factor": "USD",
-              "pnl_pct": -0.027097810366368713,
-              "abs_pnl_pct": 0.027097810366368713,
+              "beta_key": "beta_cmd",
+              "factor": "Commodity",
+              "pnl_pct": -0.03205816681248905,
+              "abs_pnl_pct": 0.03205816681248905,
               "direction": "loss",
               "rank": 3
             }
@@ -434,42 +434,42 @@
           "largest_negative_factor": {
             "beta_key": "beta_eq",
             "factor": "Equity",
-            "pnl_pct": -0.06064101775305094,
-            "abs_pnl_pct": 0.06064101775305094,
+            "pnl_pct": -0.06764479454178632,
+            "abs_pnl_pct": 0.06764479454178632,
             "direction": "loss"
           }
         },
         "pnl_by_factor_pct_adjusted": {
-          "beta_eq": -0.06064101775305094,
-          "beta_rr": 0.011067840000000008,
-          "beta_inf": 0.0311006,
-          "beta_usd": -0.027097810366368713,
-          "beta_cmd": -0.02180488589796822,
-          "beta_vix": 0.0012226399335585419,
-          "beta_us_growth": -0.0009047499999999998
+          "beta_eq": -0.06764479454178632,
+          "beta_rr": 0.008253000000000005,
+          "beta_inf": 0.01439754,
+          "beta_usd": -0.05152595386152295,
+          "beta_cmd": -0.03205816681248905,
+          "beta_vix": 0.0018339599003378126,
+          "beta_us_growth": -0.0007754999999999998
         },
         "top_factor_drivers_adjusted": [
           {
             "beta_key": "beta_eq",
             "factor": "Equity",
-            "pnl_pct": -0.06064101775305094,
-            "abs_pnl_pct": 0.06064101775305094,
+            "pnl_pct": -0.06764479454178632,
+            "abs_pnl_pct": 0.06764479454178632,
             "direction": "loss",
             "rank": 1
           },
           {
-            "beta_key": "beta_inf",
-            "factor": "Inflation",
-            "pnl_pct": 0.0311006,
-            "abs_pnl_pct": 0.0311006,
-            "direction": "gain",
+            "beta_key": "beta_usd",
+            "factor": "USD",
+            "pnl_pct": -0.05152595386152295,
+            "abs_pnl_pct": 0.05152595386152295,
+            "direction": "loss",
             "rank": 2
           },
           {
-            "beta_key": "beta_usd",
-            "factor": "USD",
-            "pnl_pct": -0.027097810366368713,
-            "abs_pnl_pct": 0.027097810366368713,
+            "beta_key": "beta_cmd",
+            "factor": "Commodity",
+            "pnl_pct": -0.03205816681248905,
+            "abs_pnl_pct": 0.03205816681248905,
             "direction": "loss",
             "rank": 3
           }
@@ -477,11 +477,11 @@
         "largest_negative_factor_adjusted": {
           "beta_key": "beta_eq",
           "factor": "Equity",
-          "pnl_pct": -0.06064101775305094,
-          "abs_pnl_pct": 0.06064101775305094,
+          "pnl_pct": -0.06764479454178632,
+          "abs_pnl_pct": 0.06764479454178632,
           "direction": "loss"
         },
-        "factor_model_pnl_pct_adjusted": -0.06705738408382932,
+        "factor_model_pnl_pct_adjusted": -0.12751991531546053,
         "factor_model_error_pct_adjusted": null,
         "factor_model_abs_error_pct_adjusted": null,
         "factor_attribution_method_adjusted": "model_based_beta_times_realized_factor_shock",
@@ -491,224 +491,224 @@
         "episode": "2020",
         "episode_start": "2020-02-01",
         "episode_end": "2020-04-30",
-        "max_dd": -0.1138,
-        "pnl_real_episode": 0.0304,
-        "vol_annualized_episode": 0.0377,
-        "volatility_spike_ratio": 4.418,
+        "max_dd": -0.0326,
+        "pnl_real_episode": 0.0116,
+        "vol_annualized_episode": 0.1692,
+        "volatility_spike_ratio": 4.156,
         "pass": true,
         "diagnostic_code": null,
         "historical_factor_attribution": {
           "method": "model_based_beta_times_realized_factor_shock",
           "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
           "beta_source": "5y",
-          "factor_model_pnl_pct": -0.0035609091501891768,
-          "factor_model_error_pct": -0.03396090915018918,
-          "factor_model_abs_error_pct": 0.03396090915018918,
+          "factor_model_pnl_pct": -0.04666095837987179,
+          "factor_model_error_pct": -0.05826095837987179,
+          "factor_model_abs_error_pct": 0.05826095837987179,
           "factor_shock_sum": {
-            "equity": -0.118150016114416,
+            "equity": -0.11814995881132095,
             "real_rates": -0.0044,
             "inflation": -0.0055,
             "usd": 0.06543944574029648,
-            "commodity": -0.28950572549992293,
+            "commodity": -0.2895055909395776,
             "vix": 1.501874397088777,
             "us_growth": -10.030000000000001,
             "oil": -0.690850835543455
           },
           "pnl_by_factor_pct": {
-            "beta_eq": -0.015477652110988496,
-            "beta_rr": 0.02705472,
-            "beta_inf": 0.018592749999999998,
-            "beta_usd": -0.01281958742052408,
-            "beta_cmd": -0.017746700973145277,
+            "beta_eq": -0.01793516374755852,
+            "beta_rr": 0.020174,
+            "beta_inf": 0.0087681,
+            "beta_usd": -0.024376193538260437,
+            "beta_cmd": -0.029124262448521506,
             "beta_vix": 0.0028535613544686763,
-            "beta_us_growth": -0.006018
+            "beta_us_growth": -0.007021
           },
           "top_factor_drivers": [
             {
-              "beta_key": "beta_rr",
-              "factor": "Real rates",
-              "pnl_pct": 0.02705472,
-              "abs_pnl_pct": 0.02705472,
-              "direction": "gain",
+              "beta_key": "beta_cmd",
+              "factor": "Commodity",
+              "pnl_pct": -0.029124262448521506,
+              "abs_pnl_pct": 0.029124262448521506,
+              "direction": "loss",
               "rank": 1
             },
             {
-              "beta_key": "beta_inf",
-              "factor": "Inflation",
-              "pnl_pct": 0.018592749999999998,
-              "abs_pnl_pct": 0.018592749999999998,
-              "direction": "gain",
+              "beta_key": "beta_usd",
+              "factor": "USD",
+              "pnl_pct": -0.024376193538260437,
+              "abs_pnl_pct": 0.024376193538260437,
+              "direction": "loss",
               "rank": 2
             },
             {
-              "beta_key": "beta_cmd",
-              "factor": "Commodity",
-              "pnl_pct": -0.017746700973145277,
-              "abs_pnl_pct": 0.017746700973145277,
-              "direction": "loss",
+              "beta_key": "beta_rr",
+              "factor": "Real rates",
+              "pnl_pct": 0.020174,
+              "abs_pnl_pct": 0.020174,
+              "direction": "gain",
               "rank": 3
             }
           ],
           "largest_negative_factor": {
             "beta_key": "beta_cmd",
             "factor": "Commodity",
-            "pnl_pct": -0.017746700973145277,
-            "abs_pnl_pct": 0.017746700973145277,
+            "pnl_pct": -0.029124262448521506,
+            "abs_pnl_pct": 0.029124262448521506,
             "direction": "loss"
           }
         },
         "pnl_by_factor_pct": {
-          "beta_eq": -0.015477652110988496,
-          "beta_rr": 0.02705472,
-          "beta_inf": 0.018592749999999998,
-          "beta_usd": -0.01281958742052408,
-          "beta_cmd": -0.017746700973145277,
+          "beta_eq": -0.01793516374755852,
+          "beta_rr": 0.020174,
+          "beta_inf": 0.0087681,
+          "beta_usd": -0.024376193538260437,
+          "beta_cmd": -0.029124262448521506,
           "beta_vix": 0.0028535613544686763,
-          "beta_us_growth": -0.006018
+          "beta_us_growth": -0.007021
         },
         "top_factor_drivers": [
           {
-            "beta_key": "beta_rr",
-            "factor": "Real rates",
-            "pnl_pct": 0.02705472,
-            "abs_pnl_pct": 0.02705472,
-            "direction": "gain",
+            "beta_key": "beta_cmd",
+            "factor": "Commodity",
+            "pnl_pct": -0.029124262448521506,
+            "abs_pnl_pct": 0.029124262448521506,
+            "direction": "loss",
             "rank": 1
           },
           {
-            "beta_key": "beta_inf",
-            "factor": "Inflation",
-            "pnl_pct": 0.018592749999999998,
-            "abs_pnl_pct": 0.018592749999999998,
-            "direction": "gain",
+            "beta_key": "beta_usd",
+            "factor": "USD",
+            "pnl_pct": -0.024376193538260437,
+            "abs_pnl_pct": 0.024376193538260437,
+            "direction": "loss",
             "rank": 2
           },
           {
-            "beta_key": "beta_cmd",
-            "factor": "Commodity",
-            "pnl_pct": -0.017746700973145277,
-            "abs_pnl_pct": 0.017746700973145277,
-            "direction": "loss",
+            "beta_key": "beta_rr",
+            "factor": "Real rates",
+            "pnl_pct": 0.020174,
+            "abs_pnl_pct": 0.020174,
+            "direction": "gain",
             "rank": 3
           }
         ],
         "largest_negative_factor": {
           "beta_key": "beta_cmd",
           "factor": "Commodity",
-          "pnl_pct": -0.017746700973145277,
-          "abs_pnl_pct": 0.017746700973145277,
+          "pnl_pct": -0.029124262448521506,
+          "abs_pnl_pct": 0.029124262448521506,
           "direction": "loss"
         },
-        "factor_model_pnl_pct": -0.0035609091501891768,
-        "factor_model_error_pct": -0.03396090915018918,
-        "factor_model_abs_error_pct": 0.03396090915018918,
+        "factor_model_pnl_pct": -0.04666095837987179,
+        "factor_model_error_pct": -0.05826095837987179,
+        "factor_model_abs_error_pct": 0.05826095837987179,
         "factor_attribution_method": "model_based_beta_times_realized_factor_shock",
         "factor_attribution_beta_source": "5y",
         "historical_factor_attribution_adjusted": {
           "method": "model_based_beta_times_realized_factor_shock",
           "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
           "beta_source": "adjusted",
-          "factor_model_pnl_pct": -0.0014921188032212894,
-          "factor_model_error_pct": -0.03189211880322129,
-          "factor_model_abs_error_pct": 0.03189211880322129,
+          "factor_model_pnl_pct": -0.03908538576165379,
+          "factor_model_error_pct": -0.05068538576165379,
+          "factor_model_abs_error_pct": 0.05068538576165379,
           "factor_shock_sum": {
-            "equity": -0.118150016114416,
+            "equity": -0.11814995881132095,
             "real_rates": -0.0044,
             "inflation": -0.0055,
             "usd": 0.06543944574029648,
-            "commodity": -0.28950572549992293,
+            "commodity": -0.2895055909395776,
             "vix": 1.501874397088777,
             "us_growth": -10.030000000000001,
             "oil": -0.690850835543455
           },
           "pnl_by_factor_pct": {
-            "beta_eq": -0.01647011224634959,
-            "beta_rr": 0.02705472,
-            "beta_inf": 0.018592749999999998,
-            "beta_usd": -0.01281958742052408,
-            "beta_cmd": -0.017746700973145277,
-            "beta_vix": 0.0016520618367976546,
-            "beta_us_growth": -0.0017552499999999999
+            "beta_eq": -0.01837231859516041,
+            "beta_rr": 0.020174,
+            "beta_inf": 0.008607225,
+            "beta_usd": -0.024376193538260437,
+            "beta_cmd": -0.026091691383429427,
+            "beta_vix": 0.002478092755196482,
+            "beta_us_growth": -0.0015044999999999998
           },
           "top_factor_drivers": [
             {
-              "beta_key": "beta_rr",
-              "factor": "Real rates",
-              "pnl_pct": 0.02705472,
-              "abs_pnl_pct": 0.02705472,
-              "direction": "gain",
+              "beta_key": "beta_cmd",
+              "factor": "Commodity",
+              "pnl_pct": -0.026091691383429427,
+              "abs_pnl_pct": 0.026091691383429427,
+              "direction": "loss",
               "rank": 1
             },
             {
-              "beta_key": "beta_inf",
-              "factor": "Inflation",
-              "pnl_pct": 0.018592749999999998,
-              "abs_pnl_pct": 0.018592749999999998,
-              "direction": "gain",
+              "beta_key": "beta_usd",
+              "factor": "USD",
+              "pnl_pct": -0.024376193538260437,
+              "abs_pnl_pct": 0.024376193538260437,
+              "direction": "loss",
               "rank": 2
             },
             {
-              "beta_key": "beta_cmd",
-              "factor": "Commodity",
-              "pnl_pct": -0.017746700973145277,
-              "abs_pnl_pct": 0.017746700973145277,
-              "direction": "loss",
+              "beta_key": "beta_rr",
+              "factor": "Real rates",
+              "pnl_pct": 0.020174,
+              "abs_pnl_pct": 0.020174,
+              "direction": "gain",
               "rank": 3
             }
           ],
           "largest_negative_factor": {
             "beta_key": "beta_cmd",
             "factor": "Commodity",
-            "pnl_pct": -0.017746700973145277,
-            "abs_pnl_pct": 0.017746700973145277,
+            "pnl_pct": -0.026091691383429427,
+            "abs_pnl_pct": 0.026091691383429427,
             "direction": "loss"
           }
         },
         "pnl_by_factor_pct_adjusted": {
-          "beta_eq": -0.01647011224634959,
-          "beta_rr": 0.02705472,
-          "beta_inf": 0.018592749999999998,
-          "beta_usd": -0.01281958742052408,
-          "beta_cmd": -0.017746700973145277,
-          "beta_vix": 0.0016520618367976546,
-          "beta_us_growth": -0.0017552499999999999
+          "beta_eq": -0.01837231859516041,
+          "beta_rr": 0.020174,
+          "beta_inf": 0.008607225,
+          "beta_usd": -0.024376193538260437,
+          "beta_cmd": -0.026091691383429427,
+          "beta_vix": 0.002478092755196482,
+          "beta_us_growth": -0.0015044999999999998
         },
         "top_factor_drivers_adjusted": [
           {
-            "beta_key": "beta_rr",
-            "factor": "Real rates",
-            "pnl_pct": 0.02705472,
-            "abs_pnl_pct": 0.02705472,
-            "direction": "gain",
+            "beta_key": "beta_cmd",
+            "factor": "Commodity",
+            "pnl_pct": -0.026091691383429427,
+            "abs_pnl_pct": 0.026091691383429427,
+            "direction": "loss",
             "rank": 1
           },
           {
-            "beta_key": "beta_inf",
-            "factor": "Inflation",
-            "pnl_pct": 0.018592749999999998,
-            "abs_pnl_pct": 0.018592749999999998,
-            "direction": "gain",
+            "beta_key": "beta_usd",
+            "factor": "USD",
+            "pnl_pct": -0.024376193538260437,
+            "abs_pnl_pct": 0.024376193538260437,
+            "direction": "loss",
             "rank": 2
           },
           {
-            "beta_key": "beta_cmd",
-            "factor": "Commodity",
-            "pnl_pct": -0.017746700973145277,
-            "abs_pnl_pct": 0.017746700973145277,
-            "direction": "loss",
+            "beta_key": "beta_rr",
+            "factor": "Real rates",
+            "pnl_pct": 0.020174,
+            "abs_pnl_pct": 0.020174,
+            "direction": "gain",
             "rank": 3
           }
         ],
         "largest_negative_factor_adjusted": {
           "beta_key": "beta_cmd",
           "factor": "Commodity",
-          "pnl_pct": -0.017746700973145277,
-          "abs_pnl_pct": 0.017746700973145277,
+          "pnl_pct": -0.026091691383429427,
+          "abs_pnl_pct": 0.026091691383429427,
           "direction": "loss"
         },
-        "factor_model_pnl_pct_adjusted": -0.0014921188032212894,
-        "factor_model_error_pct_adjusted": -0.03189211880322129,
-        "factor_model_abs_error_pct_adjusted": 0.03189211880322129,
+        "factor_model_pnl_pct_adjusted": -0.03908538576165379,
+        "factor_model_error_pct_adjusted": -0.05068538576165379,
+        "factor_model_abs_error_pct_adjusted": 0.05068538576165379,
         "factor_attribution_method_adjusted": "model_based_beta_times_realized_factor_shock",
         "factor_attribution_beta_source_adjusted": "adjusted"
       },
@@ -716,60 +716,60 @@
         "episode": "2022",
         "episode_start": "2021-11-01",
         "episode_end": "2022-10-31",
-        "max_dd": -0.1742,
-        "pnl_real_episode": -0.1392,
-        "vol_annualized_episode": 0.0194,
-        "volatility_spike_ratio": 1.6894,
+        "max_dd": -0.1394,
+        "pnl_real_episode": -0.107,
+        "vol_annualized_episode": 0.0865,
+        "volatility_spike_ratio": 1.3584,
         "pass": true,
         "diagnostic_code": null,
         "historical_factor_attribution": {
           "method": "model_based_beta_times_realized_factor_shock",
           "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
           "beta_source": "5y",
-          "factor_model_pnl_pct": -0.1863468679559419,
-          "factor_model_error_pct": -0.04714686795594192,
-          "factor_model_abs_error_pct": 0.04714686795594192,
+          "factor_model_pnl_pct": -0.1607149769347133,
+          "factor_model_error_pct": -0.05371497693471329,
+          "factor_model_abs_error_pct": 0.05371497693471329,
           "factor_shock_sum": {
-            "equity": -0.14630574907757332,
+            "equity": -0.14630589295378138,
             "real_rates": 0.026000000000000002,
             "inflation": -0.00030000000000000165,
             "usd": 0.11056141491770743,
-            "commodity": 0.21283248865896076,
+            "commodity": 0.21283240429137162,
             "vix": 1.0569393688446271,
             "us_growth": -2.8700000000000006,
             "oil": 0.19355657916011304
           },
           "pnl_by_factor_pct": {
-            "beta_eq": -0.019166053129162107,
-            "beta_rr": -0.1598688,
-            "beta_inf": 0.0010141500000000055,
-            "beta_usd": -0.021658981182378887,
-            "beta_cmd": 0.013046631554794295,
+            "beta_eq": -0.02220923455038401,
+            "beta_rr": -0.11921000000000001,
+            "beta_inf": 0.00047826000000000265,
+            "beta_usd": -0.04118412705684602,
+            "beta_cmd": 0.021410939871711984,
             "beta_vix": 0.0020081848008047915,
-            "beta_us_growth": -0.0017220000000000002
+            "beta_us_growth": -0.0020090000000000004
           },
           "top_factor_drivers": [
             {
               "beta_key": "beta_rr",
               "factor": "Real rates",
-              "pnl_pct": -0.1598688,
-              "abs_pnl_pct": 0.1598688,
+              "pnl_pct": -0.11921000000000001,
+              "abs_pnl_pct": 0.11921000000000001,
               "direction": "loss",
               "rank": 1
             },
             {
               "beta_key": "beta_usd",
               "factor": "USD",
-              "pnl_pct": -0.021658981182378887,
-              "abs_pnl_pct": 0.021658981182378887,
+              "pnl_pct": -0.04118412705684602,
+              "abs_pnl_pct": 0.04118412705684602,
               "direction": "loss",
               "rank": 2
             },
             {
               "beta_key": "beta_eq",
               "factor": "Equity",
-              "pnl_pct": -0.019166053129162107,
-              "abs_pnl_pct": 0.019166053129162107,
+              "pnl_pct": -0.02220923455038401,
+              "abs_pnl_pct": 0.02220923455038401,
               "direction": "loss",
               "rank": 3
             }
@@ -777,42 +777,42 @@
           "largest_negative_factor": {
             "beta_key": "beta_rr",
             "factor": "Real rates",
-            "pnl_pct": -0.1598688,
-            "abs_pnl_pct": 0.1598688,
+            "pnl_pct": -0.11921000000000001,
+            "abs_pnl_pct": 0.11921000000000001,
             "direction": "loss"
           }
         },
         "pnl_by_factor_pct": {
-          "beta_eq": -0.019166053129162107,
-          "beta_rr": -0.1598688,
-          "beta_inf": 0.0010141500000000055,
-          "beta_usd": -0.021658981182378887,
-          "beta_cmd": 0.013046631554794295,
+          "beta_eq": -0.02220923455038401,
+          "beta_rr": -0.11921000000000001,
+          "beta_inf": 0.00047826000000000265,
+          "beta_usd": -0.04118412705684602,
+          "beta_cmd": 0.021410939871711984,
           "beta_vix": 0.0020081848008047915,
-          "beta_us_growth": -0.0017220000000000002
+          "beta_us_growth": -0.0020090000000000004
         },
         "top_factor_drivers": [
           {
             "beta_key": "beta_rr",
             "factor": "Real rates",
-            "pnl_pct": -0.1598688,
-            "abs_pnl_pct": 0.1598688,
+            "pnl_pct": -0.11921000000000001,
+            "abs_pnl_pct": 0.11921000000000001,
             "direction": "loss",
             "rank": 1
           },
           {
             "beta_key": "beta_usd",
             "factor": "USD",
-            "pnl_pct": -0.021658981182378887,
-            "abs_pnl_pct": 0.021658981182378887,
+            "pnl_pct": -0.04118412705684602,
+            "abs_pnl_pct": 0.04118412705684602,
             "direction": "loss",
             "rank": 2
           },
           {
             "beta_key": "beta_eq",
             "factor": "Equity",
-            "pnl_pct": -0.019166053129162107,
-            "abs_pnl_pct": 0.019166053129162107,
+            "pnl_pct": -0.02220923455038401,
+            "abs_pnl_pct": 0.02220923455038401,
             "direction": "loss",
             "rank": 3
           }
@@ -820,63 +820,63 @@
         "largest_negative_factor": {
           "beta_key": "beta_rr",
           "factor": "Real rates",
-          "pnl_pct": -0.1598688,
-          "abs_pnl_pct": 0.1598688,
+          "pnl_pct": -0.11921000000000001,
+          "abs_pnl_pct": 0.11921000000000001,
           "direction": "loss"
         },
-        "factor_model_pnl_pct": -0.1863468679559419,
-        "factor_model_error_pct": -0.04714686795594192,
-        "factor_model_abs_error_pct": 0.04714686795594192,
+        "factor_model_pnl_pct": -0.1607149769347133,
+        "factor_model_error_pct": -0.05371497693471329,
+        "factor_model_abs_error_pct": 0.05371497693471329,
         "factor_attribution_method": "model_based_beta_times_realized_factor_shock",
         "factor_attribution_beta_source": "5y",
         "historical_factor_attribution_adjusted": {
           "method": "model_based_beta_times_realized_factor_shock",
           "caveat": "Model-based attribution: beta times realized factor shock. This is not a pure realized causal decomposition.",
           "beta_source": "adjusted",
-          "factor_model_pnl_pct": -0.18720163774326923,
-          "factor_model_error_pct": -0.04800163774326924,
-          "factor_model_abs_error_pct": 0.04800163774326924,
+          "factor_model_pnl_pct": -0.16218023801580553,
+          "factor_model_error_pct": -0.05518023801580553,
+          "factor_model_abs_error_pct": 0.05518023801580553,
           "factor_shock_sum": {
-            "equity": -0.14630574907757332,
+            "equity": -0.14630589295378138,
             "real_rates": 0.026000000000000002,
             "inflation": -0.00030000000000000165,
             "usd": 0.11056141491770743,
-            "commodity": 0.21283248865896076,
+            "commodity": 0.21283240429137162,
             "vix": 1.0569393688446271,
             "us_growth": -2.8700000000000006,
             "oil": 0.19355657916011304
           },
           "pnl_by_factor_pct": {
-            "beta_eq": -0.02039502142141372,
-            "beta_rr": -0.1598688,
-            "beta_inf": 0.0010141500000000055,
-            "beta_usd": -0.021658981182378887,
-            "beta_cmd": 0.013046631554794295,
-            "beta_vix": 0.00116263330572909,
-            "beta_us_growth": -0.00050225
+            "beta_eq": -0.022750566354313006,
+            "beta_rr": -0.11921000000000001,
+            "beta_inf": 0.0004694850000000026,
+            "beta_usd": -0.04118412705684602,
+            "beta_cmd": 0.019181520436759865,
+            "beta_vix": 0.0017439499585936349,
+            "beta_us_growth": -0.00043049999999999995
           },
           "top_factor_drivers": [
             {
               "beta_key": "beta_rr",
               "factor": "Real rates",
-              "pnl_pct": -0.1598688,
-              "abs_pnl_pct": 0.1598688,
+              "pnl_pct": -0.11921000000000001,
+              "abs_pnl_pct": 0.11921000000000001,
               "direction": "loss",
               "rank": 1
             },
             {
               "beta_key": "beta_usd",
               "factor": "USD",
-              "pnl_pct": -0.021658981182378887,
-              "abs_pnl_pct": 0.021658981182378887,
+              "pnl_pct": -0.04118412705684602,
+              "abs_pnl_pct": 0.04118412705684602,
               "direction": "loss",
               "rank": 2
             },
             {
               "beta_key": "beta_eq",
               "factor": "Equity",
-              "pnl_pct": -0.02039502142141372,
-              "abs_pnl_pct": 0.02039502142141372,
+              "pnl_pct": -0.022750566354313006,
+              "abs_pnl_pct": 0.022750566354313006,
               "direction": "loss",
               "rank": 3
             }
@@ -884,42 +884,42 @@
           "largest_negative_factor": {
             "beta_key": "beta_rr",
             "factor": "Real rates",
-            "pnl_pct": -0.1598688,
-            "abs_pnl_pct": 0.1598688,
+            "pnl_pct": -0.11921000000000001,
+            "abs_pnl_pct": 0.11921000000000001,
             "direction": "loss"
           }
         },
         "pnl_by_factor_pct_adjusted": {
-          "beta_eq": -0.02039502142141372,
-          "beta_rr": -0.1598688,
-          "beta_inf": 0.0010141500000000055,
-          "beta_usd": -0.021658981182378887,
-          "beta_cmd": 0.013046631554794295,
-          "beta_vix": 0.00116263330572909,
-          "beta_us_growth": -0.00050225
+          "beta_eq": -0.022750566354313006,
+          "beta_rr": -0.11921000000000001,
+          "beta_inf": 0.0004694850000000026,
+          "beta_usd": -0.04118412705684602,
+          "beta_cmd": 0.019181520436759865,
+          "beta_vix": 0.0017439499585936349,
+          "beta_us_growth": -0.00043049999999999995
         },
         "top_factor_drivers_adjusted": [
           {
             "beta_key": "beta_rr",
             "factor": "Real rates",
-            "pnl_pct": -0.1598688,
-            "abs_pnl_pct": 0.1598688,
+            "pnl_pct": -0.11921000000000001,
+            "abs_pnl_pct": 0.11921000000000001,
             "direction": "loss",
             "rank": 1
           },
           {
             "beta_key": "beta_usd",
             "factor": "USD",
-            "pnl_pct": -0.021658981182378887,
-            "abs_pnl_pct": 0.021658981182378887,
+            "pnl_pct": -0.04118412705684602,
+            "abs_pnl_pct": 0.04118412705684602,
             "direction": "loss",
             "rank": 2
           },
           {
             "beta_key": "beta_eq",
             "factor": "Equity",
-            "pnl_pct": -0.02039502142141372,
-            "abs_pnl_pct": 0.02039502142141372,
+            "pnl_pct": -0.022750566354313006,
+            "abs_pnl_pct": 0.022750566354313006,
             "direction": "loss",
             "rank": 3
           }
@@ -927,171 +927,86 @@
         "largest_negative_factor_adjusted": {
           "beta_key": "beta_rr",
           "factor": "Real rates",
-          "pnl_pct": -0.1598688,
-          "abs_pnl_pct": 0.1598688,
+          "pnl_pct": -0.11921000000000001,
+          "abs_pnl_pct": 0.11921000000000001,
           "direction": "loss"
         },
-        "factor_model_pnl_pct_adjusted": -0.18720163774326923,
-        "factor_model_error_pct_adjusted": -0.04800163774326924,
-        "factor_model_abs_error_pct_adjusted": 0.04800163774326924,
+        "factor_model_pnl_pct_adjusted": -0.16218023801580553,
+        "factor_model_error_pct_adjusted": -0.05518023801580553,
+        "factor_model_abs_error_pct_adjusted": 0.05518023801580553,
         "factor_attribution_method_adjusted": "model_based_beta_times_realized_factor_shock",
         "factor_attribution_beta_source_adjusted": "adjusted"
       }
     ],
     "portfolio_params": {
-      "cagr": 0.098,
-      "vol_annual": 0.069,
-      "max_drawdown": -0.074,
-      "sharpe": 0.737,
-      "beta_base": 0.208
+      "cagr": 0.131,
+      "vol_annual": 0.076,
+      "max_drawdown": -0.046,
+      "sharpe": 1.071,
+      "beta_base": 0.242
     }
   },
   "metrics": {
     "window_months": 36,
-    "cagr": 0.098,
-    "vol_annual": 0.069,
-    "sharpe": 0.737,
-    "sortino": 1.052,
-    "beta_portfolio": 0.208,
-    "treynor": 0.246,
-    "max_drawdown": -0.074,
-    "ttr_months": NaN,
-    "recovered": 0
+    "cagr": 0.131,
+    "vol_annual": 0.076,
+    "sharpe": 1.071,
+    "sortino": 1.839,
+    "beta_portfolio": 0.242,
+    "treynor": 0.338,
+    "max_drawdown": -0.046,
+    "ttr_months": 5.0,
+    "recovered": 1
   },
   "rc_vol_csv": "rc_vol_3y.csv",
   "correlation_matrix_csv": "correlation_matrix_3y.csv",
   "analytics": {
     "rolling_sharpe_36m": {
-      "last": null,
-      "mean": null,
-      "p10": null,
-      "p90": null
+      "last": 1.071,
+      "mean": 1.071,
+      "p10": 1.071,
+      "p90": 1.071
     },
     "rolling_sharpe_12m": {
-      "last": 1.678,
-      "mean": 0.948,
-      "p10": 0.255,
-      "p90": 1.784
+      "last": 1.587,
+      "mean": 1.549,
+      "p10": 0.596,
+      "p90": 2.757
     },
     "rolling_sortino_36m": {
-      "last": null,
-      "mean": null,
-      "p10": null,
-      "p90": null
+      "last": 1.839,
+      "mean": 1.839,
+      "p10": 1.839,
+      "p90": 1.839
     },
     "rolling_sortino_12m": {
-      "last": 2.435,
-      "mean": 1.374,
-      "p10": 0.355,
-      "p90": 2.675
+      "last": 2.908,
+      "mean": 5.211,
+      "p10": 1.039,
+      "p90": 14.618
     },
     "rolling_vol_12m": {
-      "last": 0.064,
-      "mean": 0.07,
-      "p10": 0.064,
-      "p90": 0.076
+      "last": 0.087,
+      "mean": 0.069,
+      "p10": 0.058,
+      "p90": 0.086
     },
-    "vol_of_vol": 0.005,
-    "rel_vol_of_vol": 0.069,
+    "vol_of_vol": 0.012,
+    "rel_vol_of_vol": 0.18,
     "drawdown_structure": {
       "drawdowns": [
         {
-          "depth": -0.024,
-          "length_months": 42,
-          "recovery_months": "32"
-        },
-        {
-          "depth": -0.005,
-          "length_months": 4,
+          "depth": -0.046,
+          "length_months": 5,
           "recovery_months": "3"
         },
         {
-          "depth": -0.074,
-          "length_months": 103,
-          "recovery_months": "50"
-        },
-        {
-          "depth": -0.004,
-          "length_months": 6,
-          "recovery_months": "4"
-        },
-        {
-          "depth": -0.03,
-          "length_months": 47,
-          "recovery_months": "15"
-        },
-        {
-          "depth": -0.012,
-          "length_months": 12,
-          "recovery_months": "7"
-        },
-        {
-          "depth": -0.006,
-          "length_months": 7,
-          "recovery_months": "6"
-        },
-        {
-          "depth": -0.024,
-          "length_months": 26,
-          "recovery_months": "11"
-        },
-        {
-          "depth": -0.022,
-          "length_months": 14,
-          "recovery_months": "5"
-        },
-        {
-          "depth": -0.013,
-          "length_months": 8,
-          "recovery_months": "6"
-        },
-        {
-          "depth": -0.003,
-          "length_months": 2,
+          "depth": -0.005,
+          "length_months": 3,
           "recovery_months": "1"
         },
         {
           "depth": -0.013,
-          "length_months": 8,
-          "recovery_months": "3"
-        },
-        {
-          "depth": -0.002,
-          "length_months": 3,
-          "recovery_months": "1"
-        },
-        {
-          "depth": -0.001,
-          "length_months": 2,
-          "recovery_months": "1"
-        },
-        {
-          "depth": -0.017,
-          "length_months": 10,
-          "recovery_months": "5"
-        },
-        {
-          "depth": -0.0,
-          "length_months": 2,
-          "recovery_months": "1"
-        },
-        {
-          "depth": -0.016,
-          "length_months": 8,
-          "recovery_months": "5"
-        },
-        {
-          "depth": -0.006,
-          "length_months": 2,
-          "recovery_months": "1"
-        },
-        {
-          "depth": -0.004,
-          "length_months": 7,
-          "recovery_months": "2"
-        },
-        {
-          "depth": -0.003,
           "length_months": 2,
           "recovery_months": "1"
         },
@@ -1101,94 +1016,14 @@
           "recovery_months": "1"
         },
         {
-          "depth": -0.007,
-          "length_months": 6,
-          "recovery_months": "4"
-        },
-        {
-          "depth": -0.042,
-          "length_months": 103,
-          "recovery_months": "29"
-        },
-        {
-          "depth": -0.004,
-          "length_months": 3,
-          "recovery_months": "1"
-        },
-        {
-          "depth": -0.014,
-          "length_months": 12,
-          "recovery_months": "5"
-        },
-        {
-          "depth": -0.006,
-          "length_months": 8,
-          "recovery_months": "3"
-        },
-        {
-          "depth": -0.045,
-          "length_months": 50,
-          "recovery_months": "45"
-        },
-        {
-          "depth": -0.006,
-          "length_months": 9,
-          "recovery_months": "7"
-        },
-        {
-          "depth": -0.005,
-          "length_months": 2,
-          "recovery_months": "1"
-        },
-        {
-          "depth": -0.011,
-          "length_months": 13,
-          "recovery_months": "5"
-        },
-        {
-          "depth": -0.011,
-          "length_months": 9,
-          "recovery_months": "2"
-        },
-        {
-          "depth": -0.003,
-          "length_months": 6,
-          "recovery_months": "2"
-        },
-        {
-          "depth": -0.008,
-          "length_months": 7,
-          "recovery_months": "4"
-        },
-        {
-          "depth": -0.003,
+          "depth": -0.027,
           "length_months": 3,
           "recovery_months": "2"
-        },
-        {
-          "depth": -0.002,
-          "length_months": 2,
-          "recovery_months": "1"
-        },
-        {
-          "depth": -0.002,
-          "length_months": 3,
-          "recovery_months": "2"
-        },
-        {
-          "depth": -0.005,
-          "length_months": 9,
-          "recovery_months": "7"
         },
         {
           "depth": -0.001,
           "length_months": 3,
-          "recovery_months": "2"
-        },
-        {
-          "depth": -0.004,
-          "length_months": 3,
-          "recovery_months": "2"
+          "recovery_months": "1"
         },
         {
           "depth": -0.002,
@@ -1196,67 +1031,22 @@
           "recovery_months": "1"
         },
         {
-          "depth": -0.024,
-          "length_months": 42,
-          "recovery_months": "30"
-        },
-        {
-          "depth": -0.001,
+          "depth": -0.044,
           "length_months": 2,
-          "recovery_months": "1"
-        },
-        {
-          "depth": -0.011,
-          "length_months": 6,
-          "recovery_months": "3"
-        },
-        {
-          "depth": -0.001,
-          "length_months": 2,
-          "recovery_months": "1"
-        },
-        {
-          "depth": -0.005,
-          "length_months": 4,
-          "recovery_months": "2"
-        },
-        {
-          "depth": -0.021,
-          "length_months": 7,
-          "recovery_months": "5"
-        },
-        {
-          "depth": -0.004,
-          "length_months": 2,
-          "recovery_months": "1"
-        },
-        {
-          "depth": -0.006,
-          "length_months": 4,
-          "recovery_months": "3"
-        },
-        {
-          "depth": -0.002,
-          "length_months": 3,
-          "recovery_months": "1"
-        },
-        {
-          "depth": -0.052,
-          "length_months": 49,
           "recovery_months": null
         }
       ],
       "summary": {
-        "recovery_median_months": 3.0,
-        "recovery_p90_months": 17.8,
-        "pct_time_underwater": 0.853,
-        "longest_underwater_months": 102
+        "recovery_median_months": 1.0,
+        "recovery_p90_months": 2.4,
+        "pct_time_underwater": 0.417,
+        "longest_underwater_months": 4
       },
       "by_threshold": {
         ">5%": {
-          "count": 2,
-          "recovery_median": 50.0,
-          "recovery_p90": 50.0
+          "count": 0,
+          "recovery_median": null,
+          "recovery_p90": null
         },
         ">10%": {
           "count": 0,
@@ -1270,10 +1060,10 @@
         }
       }
     },
-    "var_95": -0.007,
-    "var_99": -0.012,
-    "es_95": -0.01,
-    "es_99": -0.014,
-    "eee_10pct": 19.065
+    "var_95": -0.029,
+    "var_99": -0.041,
+    "es_95": -0.04,
+    "es_99": -0.044,
+    "eee_10pct": -207.774
   }
 }

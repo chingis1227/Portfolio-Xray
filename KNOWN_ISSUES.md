@@ -56,58 +56,7 @@ Title: Short title
 
 ## Active Issues
 
-Issue ID: KI-2026-05-19-002
-Title: Candidate freshness is not guaranteed in portfolio-first review runs
-
-- Status: planned
-- Severity: high
-- Area: architecture
-- Risk: Selection, robustness, and Pareto outputs can compare a fresh `analysis_subject` against stale candidate snapshots.
-- Evidence: The 2026-05-19 audit observed one candidate succeeded and fifteen were `skipped_existing`; factory skip logic checks only for `snapshot_10y.json`, not matching `analysis_end`.
-- Current mitigation: Users can manually pass `--no-skip-existing`, but stale reuse is not clearly surfaced as a trust warning.
-- Next action: Implement RM-902 by comparing candidate `snapshot_10y.analysis_end` to review `analysis_end` and rebuilding or explicitly labeling stale candidates.
-- Source links: [candidate_factory.py](src/candidate_factory.py), [run_portfolio_review.py](run_portfolio_review.py), [candidate_factory_spec.md](docs/specs/candidate_factory_spec.md).
-- Remove when: Factory outputs and tests distinguish fresh, reused, stale, failed, and skipped candidates, and portfolio review no longer silently uses stale snapshots.
-
-Issue ID: KI-2026-05-19-004
-Title: Decision artifacts are weak when mandate_risk_reduction blocks favored selection
-
-- Status: planned
-- Severity: medium
-- Area: architecture
-- Risk: No-favored runs can feel empty or confusing even when candidates rank above the subject, because downstream outputs do not clearly explain the mandate block.
-- Evidence: The 2026-05-19 audit found empty trade-off pairs, `assumption_sensitivity` marked `not_evaluated`, favored regret unavailable, and baseline naming drift when `favored_candidate_id` was null.
-- Current mitigation: `selection_decision.json` records the mandate block, but downstream narrative is thin.
-- Next action: Implement RM-904 after metadata and freshness fixes; align trade-off baseline to `analysis_subject` and add useful blocked-decision explanation.
-- Source links: [selection_engine.py](src/selection_engine.py), [tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py), [assumption_sensitivity.py](src/assumption_sensitivity.py), [regret_analysis.py](src/regret_analysis.py).
-- Remove when: No-favored mandate-block outputs explain the evidence, use `analysis_subject` consistently, and have focused regression coverage.
-
-Issue ID: KI-2026-05-19-007
-Title: Monitoring first run can show contradictory deltas
-
-- Status: planned
-- Severity: medium
-- Area: architecture
-- Risk: A first review can appear to compare against prior history even when no prior snapshot exists.
-- Evidence: The 2026-05-19 audit found `diff_status: no_prior_snapshot` with non-zero profile changes and prior/current snapshot paths pointing to the same latest snapshot.
-- Current mitigation: The `diff_status` field is present, but generated deltas can still mislead readers.
-- Next action: Implement RM-908 so first-run monitoring emits narrative-only or empty deltas when there is no valid prior snapshot.
-- Source links: [monitoring.py](src/monitoring.py), [monitoring_spec.md](docs/specs/monitoring_spec.md).
-- Remove when: Focused tests prove `no_prior_snapshot` does not include fake profile deltas or identical prior/current paths as meaningful evidence.
-
-Issue ID: KI-2026-05-18-001
-Title: Decision package PDF build can fail Pandoc/LaTeX on some analysis-end dates
-
-- Status: planned
-- Severity: low
-- Area: reports
-- Risk: `Main portfolio_decision_package.pdf` may be missing while other representative PDFs rebuild successfully.
-- Evidence: Session 08 regeneration logged `Pandoc failed for Main portfolio_decision_package.pdf` with `Extra }, or forgotten \endgroup` near the analysis-end date line; `decision_package_summary.txt` and Markdown sidecar remain available.
-- Current mitigation: Text/JSON decision package artifacts are generated; other Main PDFs rebuild successfully.
-- Next action: Implement RM-909 by hardening decision-package Markdown/Pandoc sanitization for LaTeX-special characters in plain summary text.
-- Source links: [pdf_reports.py](src/pdf_reports.py), [decision_package_reporting.py](src/decision_package_reporting.py).
-- Remove when: `Main portfolio_decision_package.pdf` rebuilds successfully on a fresh `run_report.py` without Pandoc errors.
-
+_No open issues registered as of 2026-05-19 (post-portfolio-first stabilization closure, RM-911)._
 
 ## Update Rules
 

@@ -62,10 +62,11 @@ def _run_metadata(portfolio_role: str) -> dict:
 
 def test_registry_length_and_order() -> None:
     ids = candidate_registry_ids()
-    assert ids[0] == "policy"
-    assert ids[1] == "current"
-    assert len(ids) == 18
-    assert ids[2:] == sorted(ids[2:])
+    assert ids[0] == "analysis_subject"
+    assert ids[1] == "policy"
+    assert ids[2] == "current"
+    assert len(ids) == 19
+    assert ids[3:] == sorted(ids[3:])
 
 
 def test_schema_required_top_level_keys(tmp_path: Path) -> None:
@@ -108,7 +109,227 @@ def test_schema_required_top_level_keys(tmp_path: Path) -> None:
         "warnings",
     ):
         assert key in doc
-    assert len(doc["candidates"]) == 18
+    assert doc["comparison_baseline_candidate_id"] == "analysis_subject"
+    assert len(doc["candidates"]) == 19
+
+
+def test_analysis_subject_row_reads_canonical_sidecar(tmp_path: Path) -> None:
+    main = tmp_path / "Main portfolio"
+    subject = main / "analysis_subject"
+    subject.mkdir(parents=True)
+    with open(subject / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y(
+                {"cagr": 0.071, "vol_annual": 0.10, "max_drawdown": -0.18},
+                final_weights_total={"VOO": 0.6, "BND": 0.4},
+            ),
+            f,
+        )
+    with open(subject / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "analysis_setup": {
+                    "analysis_subject": {
+                        "id": "starter",
+                        "type": "model_portfolio",
+                        "display_name": "Starter model",
+                        "weight_source": "config.analysis_subject.weights",
+                    },
+                    "analysis_portfolio": {
+                        "portfolio_role": "model_portfolio",
+                        "recommendation_status": "diagnostic_model_portfolio_not_recommendation",
+                    },
+                }
+            },
+            f,
+        )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+            "analysis_subject": {
+                "type": "model_portfolio",
+                "weights": {"VOO": 0.6, "BND": 0.4},
+            },
+        }
+    )
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+
+    row = next(c for c in doc["candidates"] if c["candidate_id"] == "analysis_subject")
+    assert row["status"] == "degraded"
+    assert row["display_name"] == "Starter model"
+    assert row["artifact_root"] == "Main portfolio/analysis_subject"
+    assert row["portfolio_role"] == "model_portfolio"
+    assert doc["analysis_end"] == "2026-04-30"
+
+
+def test_stale_candidate_snapshot_marked_unavailable(tmp_path: Path) -> None:
+    main = tmp_path / "Main portfolio"
+    subject = main / "analysis_subject"
+    subject.mkdir(parents=True)
+    subject_snapshot = _snapshot_10y({"cagr": 0.06, "vol_annual": 0.1})
+    subject_snapshot["analysis_end"] = "2026-05-15"
+    with open(subject / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(subject_snapshot, f)
+    with open(subject / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(_run_metadata("user_current_portfolio"), f)
+
+    eq = tmp_path / "equal-weight portfolio"
+    eq.mkdir()
+    with open(eq / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.08, "vol_annual": 0.12}), f)
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+
+    assert doc["analysis_end"] == "2026-05-15"
+    eq_row = next(c for c in doc["candidates"] if c["candidate_id"] == "equal_weight")
+    assert eq_row["status"] == "unavailable"
+    assert eq_row["unavailable_reason"] == "stale_snapshot_analysis_end"
+    assert "stale_snapshot_analysis_end:2026-04-30!=2026-05-15" in eq_row["warnings"]
+
+
+def test_analysis_setup_summary_prefers_analysis_subject_sidecar_metadata(
+    tmp_path: Path,
+) -> None:
+    main = tmp_path / "Main portfolio"
+    subject = main / "analysis_subject"
+    subject.mkdir(parents=True)
+    with open(main / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "analysis_setup": {
+                    "portfolio_input": {"source_analysis_mode": "optimize_from_universe"},
+                    "analysis_subject": {
+                        "id": "legacy_root",
+                        "type": "universe_baseline",
+                        "display_name": "Universe Baseline",
+                        "weight_source": "system.equal_weight_initial_baseline",
+                    },
+                    "analysis_portfolio": {
+                        "portfolio_role": "equal_weight_initial_baseline",
+                        "weight_source": "system.equal_weight_initial_baseline",
+                        "recommendation_status": "baseline_not_recommendation",
+                    },
+                }
+            },
+            f,
+        )
+    with open(subject / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y(
+                {"cagr": 0.061, "vol_annual": 0.11, "max_drawdown": -0.19},
+                final_weights_total={"VOO": 0.55, "BND": 0.35, "GLD": 0.10},
+            ),
+            f,
+        )
+    with open(subject / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "analysis_setup": {
+                    "portfolio_input": {"source_analysis_mode": "optimize_from_universe"},
+                    "analysis_subject": {
+                        "id": "client_current",
+                        "type": "current_portfolio",
+                        "display_name": "Client current portfolio",
+                        "weight_source": "config.analysis_subject.weights",
+                        "resolution_source": "config.analysis_subject",
+                    },
+                    "analysis_portfolio": {
+                        "portfolio_role": "user_current_portfolio",
+                        "weight_source": "config.analysis_subject.weights",
+                        "recommendation_status": "diagnostic_current_portfolio_not_recommendation",
+                    },
+                }
+            },
+            f,
+        )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND", "GLD"],
+            "analysis_subject": {
+                "id": "client_current",
+                "type": "current_portfolio",
+                "display_name": "Client current portfolio",
+                "weights": {"VOO": 0.55, "BND": 0.35, "GLD": 0.10},
+            },
+        }
+    )
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+
+    summary = doc["analysis_setup_summary"]
+    assert summary["analysis_subject_id"] == "client_current"
+    assert summary["analysis_subject_type"] == "current_portfolio"
+    assert summary["analysis_subject_display_name"] == "Client current portfolio"
+    assert summary["portfolio_role"] == "user_current_portfolio"
+
+
+def test_policy_row_is_legacy_only_when_analysis_subject_exists(tmp_path: Path) -> None:
+    main = tmp_path / "Main portfolio"
+    subject = main / "analysis_subject"
+    subject.mkdir(parents=True)
+    with open(main / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y(
+                {"cagr": 0.09, "vol_annual": 0.11},
+                final_weights_total={"VOO": 0.7, "BND": 0.3},
+            ),
+            f,
+        )
+    with open(main / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(_run_metadata("generated_policy_portfolio"), f)
+    with open(subject / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y(
+                {"cagr": 0.06, "vol_annual": 0.12},
+                final_weights_total={"VOO": 0.55, "BND": 0.45},
+            ),
+            f,
+        )
+    with open(subject / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "analysis_setup": {
+                    "analysis_subject": {"type": "current_portfolio"},
+                    "analysis_portfolio": {"portfolio_role": "user_current_portfolio"},
+                }
+            },
+            f,
+        )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+            "analysis_subject": {
+                "type": "current_portfolio",
+                "weights": {"VOO": 0.55, "BND": 0.45},
+            },
+        }
+    )
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+
+    subject_row = next(c for c in doc["candidates"] if c["candidate_id"] == "analysis_subject")
+    policy_row = next(c for c in doc["candidates"] if c["candidate_id"] == "policy")
+    assert subject_row["status"] in ("available", "degraded")
+    assert policy_row["status"] == "unavailable"
+    assert policy_row["unavailable_reason"] == "legacy_policy_not_default_portfolio_first_candidate"
+    assert "legacy_policy_reference_optional_portfolio_first" in policy_row["warnings"]
 
 
 def test_unavailable_when_folder_missing(tmp_path: Path) -> None:

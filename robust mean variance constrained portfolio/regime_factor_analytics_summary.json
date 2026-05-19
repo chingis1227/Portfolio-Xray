@@ -8,8 +8,8 @@
   "annualization_factor": 252,
   "covariance_scaled_to_annual": true,
   "regime_label_history_span": {
-    "start": "1995-08-31",
-    "end": "2026-05-31",
+    "start": "1995-07-31",
+    "end": "2026-04-30",
     "n_months": 370
   },
   "portfolio_regime_analytics_window": {
@@ -17,16 +17,16 @@
     "target_months": 120,
     "target_weeks": 520,
     "target_trading_days": 2520,
-    "analysis_end": "2026-05-08",
+    "analysis_end": "2026-04-30",
     "disclaimer": "regime_label_history_span may be longer than the portfolio analytics slice; portfolio_regime_analytics_window is fixed to 10Y (~2520 trading days for daily regime_factor_analytics, or ~520 weeks / 120 months in legacy modes) ending at analysis_end.",
-    "actual_data_start": "2016-04-25",
-    "actual_data_end": "2026-05-01",
+    "actual_data_start": "2016-04-18",
+    "actual_data_end": "2026-04-24",
     "actual_n_periods": 2520,
     "frequency": "daily"
   },
   "portfolio_regime_analytics_note": "macro_two_axis_v1 may emit regime labels over a longer history (regime_label_history_span) than the portfolio analytics slice; portfolio_regime_analytics_window is 10Y ending at analysis_end (daily: ~2520 trading days where available; weekly/monthly modes use their historical window lengths), aligned with the standard return/metrics/covariance/factor horizons.",
-  "data_start": "2016-04-25",
-  "data_end": "2026-05-01",
+  "data_start": "2016-04-18",
+  "data_end": "2026-04-24",
   "n_obs_total": 2520,
   "factor_order": [
     "equity",
@@ -51,14 +51,14 @@
     "beta_oil"
   ],
   "weights_used": {
-    "VOO": 0.24999999999999983,
-    "QQQ": 0.2499999999999999,
-    "GLD": 0.12472494234056372,
-    "SLV": 0.24999999999999978,
-    "BND": 0.01,
-    "SCHD": 0.09527505765943682,
-    "SCHP": 0.01,
-    "TLT": 0.01
+    "SPY": 0.25000000000000006,
+    "QQQ": 0.25000000000000006,
+    "GLD": 0.25000000000000006,
+    "SLV": 0.06317097914753768,
+    "BND": 0.010000000000000068,
+    "SCHD": 0.15682902085246184,
+    "SCHP": 0.010000000000000186,
+    "TLT": 0.010000000000000045
   },
   "weights_sum": 1.0,
   "weights_coverage": 0.0,
@@ -67,40 +67,32 @@
   ],
   "regimes": {
     "goldilocks": {
-      "n_obs": 69,
-      "n_obs_daily": 69,
-      "quality_status": "low_confidence",
+      "n_obs": 10,
+      "n_obs_daily": 10,
+      "quality_status": "insufficient_data",
       "not_for_optimization": true,
-      "annualization_factor": 252,
-      "covariance_scaled_to_annual": true,
-      "asset_covariance_available": true,
-      "factor_covariance_available": true,
+      "annualization_factor": null,
+      "covariance_scaled_to_annual": false,
+      "asset_covariance_available": false,
+      "factor_covariance_available": false,
       "asset_factor_betas_available": false,
       "factor_rc_available": false,
-      "dominant_factors": [
-        "equity",
-        "real_rates",
-        "inflation"
-      ],
-      "data_start": "2016-04-25",
-      "data_end": "2017-09-29",
+      "dominant_factors": [],
+      "data_start": "2016-04-18",
+      "data_end": "2016-04-29",
       "warnings": [
-        "Low confidence (~60–125 trading days); regime estimates not for optimization."
+        "Insufficient history for regime bucket (<60 trading days). Estimates suppressed."
       ],
       "weights_coverage": 0.0,
-      "top_dominant_factor": "equity",
+      "top_dominant_factor": null,
       "total_factor_variance": 0.0,
-      "asset_covariance_estimator": "ledoit_wolf",
-      "factor_covariance_estimator": "ledoit_wolf",
-      "portfolio_daily_risk_metrics": {
-        "vol_annual": 0.06731853456279158,
-        "max_drawdown": -0.021478216539269512,
-        "sharpe_like_rf0_annual": 2.3588670934548386
-      }
+      "asset_covariance_estimator": null,
+      "factor_covariance_estimator": null,
+      "portfolio_daily_risk_metrics": {}
     },
     "reflation": {
-      "n_obs": 1906,
-      "n_obs_daily": 1906,
+      "n_obs": 2259,
+      "n_obs_daily": 2259,
       "quality_status": "reliable",
       "not_for_optimization": false,
       "annualization_factor": 252,
@@ -115,7 +107,7 @@
         "inflation"
       ],
       "data_start": "2016-05-02",
-      "data_end": "2026-05-01",
+      "data_end": "2026-04-24",
       "warnings": [],
       "weights_coverage": 0.0,
       "top_dominant_factor": "equity",
@@ -123,14 +115,14 @@
       "asset_covariance_estimator": "ledoit_wolf",
       "factor_covariance_estimator": "ledoit_wolf",
       "portfolio_daily_risk_metrics": {
-        "vol_annual": 0.14267888241566745,
-        "max_drawdown": -0.1675566256021549,
-        "sharpe_like_rf0_annual": 1.167937604359664
+        "vol_annual": 0.13661646959670232,
+        "max_drawdown": -0.23915373095636516,
+        "sharpe_like_rf0_annual": 1.2271592979471717
       }
     },
     "stagflation": {
-      "n_obs": 460,
-      "n_obs_daily": 460,
+      "n_obs": 166,
+      "n_obs_daily": 166,
       "quality_status": "usable",
       "not_for_optimization": false,
       "annualization_factor": 252,
@@ -144,8 +136,8 @@
         "real_rates",
         "inflation"
       ],
-      "data_start": "2019-07-01",
-      "data_end": "2025-07-30",
+      "data_start": "2018-12-31",
+      "data_end": "2022-09-29",
       "warnings": [],
       "weights_coverage": 0.0,
       "top_dominant_factor": "equity",
@@ -153,9 +145,9 @@
       "asset_covariance_estimator": "ledoit_wolf",
       "factor_covariance_estimator": "ledoit_wolf",
       "portfolio_daily_risk_metrics": {
-        "vol_annual": 0.2216528847045964,
-        "max_drawdown": -0.2919242794839805,
-        "sharpe_like_rf0_annual": 0.2726333791752658
+        "vol_annual": 0.17620508893452375,
+        "max_drawdown": -0.19619236054589584,
+        "sharpe_like_rf0_annual": -0.9610489992196892
       }
     },
     "recession_disinflation": {
@@ -185,9 +177,9 @@
       "asset_covariance_estimator": "ledoit_wolf",
       "factor_covariance_estimator": "ledoit_wolf",
       "portfolio_daily_risk_metrics": {
-        "vol_annual": 0.20503818234912438,
-        "max_drawdown": -0.04880397807764958,
-        "sharpe_like_rf0_annual": 4.465092064829077
+        "vol_annual": 0.15584355718634588,
+        "max_drawdown": -0.03999644011511849,
+        "sharpe_like_rf0_annual": 4.124791022874676
       }
     }
   },

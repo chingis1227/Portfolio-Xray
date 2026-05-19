@@ -1,0 +1,4350 @@
+{
+  "version": "scenario_library_v1",
+  "returns_frequency": "monthly",
+  "factor_stress_native_frequency": "weekly",
+  "n_scenarios": 15,
+  "scenarios": [
+    {
+      "scenario_id": "base_historical",
+      "scenario_type": "base",
+      "frequency": "monthly",
+      "scaling_note": "asset_covariance: monthly simple returns ddof=1; factor_covariance: weekly factor window scaled to monthly-equivalent via Σ_m≈Σ_w*(12/52)",
+      "asset_covariance": {
+        "native_frequency": "monthly",
+        "normalized_frequency": "monthly",
+        "matrix": {
+          "SPY": {
+            "SPY": 0.0018183753078843644,
+            "QQQ": 0.0020650033214277977,
+            "GLD": 0.00014025447956737385,
+            "SLV": 0.0009269895833531607,
+            "BND": 0.0002329521744137269,
+            "SCHD": 0.0015062493931529953,
+            "SCHP": 0.00028849223504911364,
+            "TLT": 0.00019945685320149964
+          },
+          "QQQ": {
+            "SPY": 0.0020650033214277977,
+            "QQQ": 0.0027620937247102083,
+            "GLD": 0.00011034801993197688,
+            "SLV": 0.0009118778635047141,
+            "BND": 0.00029373031819641206,
+            "SCHD": 0.0014288534559433973,
+            "SCHP": 0.00035194747754622535,
+            "TLT": 0.00037912325051657323
+          },
+          "GLD": {
+            "SPY": 0.00014025447956737385,
+            "QQQ": 0.00011034801993197688,
+            "GLD": 0.0019114891357122656,
+            "SLV": 0.0027312840269259273,
+            "BND": 0.0002691074039645015,
+            "SCHD": 0.00020423264959139634,
+            "SCHP": 0.00028582562548226984,
+            "TLT": 0.0006646201489318757
+          },
+          "SLV": {
+            "SPY": 0.0009269895833531607,
+            "QQQ": 0.0009118778635047141,
+            "GLD": 0.0027312840269259273,
+            "SLV": 0.00688070783635032,
+            "BND": 0.00040676729832851813,
+            "SCHD": 0.0009314178514353962,
+            "SCHP": 0.0004552999671671584,
+            "TLT": 0.00072922217881291
+          },
+          "BND": {
+            "SPY": 0.0002329521744137269,
+            "QQQ": 0.00029373031819641206,
+            "GLD": 0.0002691074039645015,
+            "SLV": 0.00040676729832851813,
+            "BND": 0.00019904115076619682,
+            "SCHD": 0.000189659286715527,
+            "SCHP": 0.00016793508139865043,
+            "TLT": 0.0004800227042932502
+          },
+          "SCHD": {
+            "SPY": 0.0015062493931529953,
+            "QQQ": 0.0014288534559433973,
+            "GLD": 0.00020423264959139634,
+            "SLV": 0.0009314178514353962,
+            "BND": 0.000189659286715527,
+            "SCHD": 0.0017331576618352387,
+            "SCHP": 0.00023679959593739117,
+            "TLT": 9.743857815260242e-05
+          },
+          "SCHP": {
+            "SPY": 0.00028849223504911364,
+            "QQQ": 0.00035194747754622535,
+            "GLD": 0.00028582562548226984,
+            "SLV": 0.0004552999671671584,
+            "BND": 0.00016793508139865043,
+            "SCHD": 0.00023679959593739117,
+            "SCHP": 0.00019670345633723095,
+            "TLT": 0.0003871392419879519
+          },
+          "TLT": {
+            "SPY": 0.00019945685320149964,
+            "QQQ": 0.00037912325051657323,
+            "GLD": 0.0006646201489318757,
+            "SLV": 0.00072922217881291,
+            "BND": 0.0004800227042932502,
+            "SCHD": 9.743857815260242e-05,
+            "SCHP": 0.0003871392419879519,
+            "TLT": 0.0014998708235890526
+          }
+        },
+        "n_obs": 144,
+        "quality_status": "reliable"
+      },
+      "factor_covariance": {
+        "native_frequency": "weekly",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "equity": {
+            "equity": 0.00011633537610733765,
+            "real_rates": -1.8344636911645587e-06,
+            "inflation": 9.639388115588074e-07,
+            "credit": 0.0,
+            "usd": -1.605567818977629e-05,
+            "commodity": 2.3096078914384596e-05,
+            "vix": -0.0006059531747593394,
+            "us_growth": -9.864521316394164e-06,
+            "oil": 1.897552163473416e-05
+          },
+          "real_rates": {
+            "equity": -1.8344636911645587e-06,
+            "real_rates": 3.1155542482465565e-07,
+            "inflation": -2.478781613397002e-08,
+            "credit": 0.0,
+            "usd": 4.991247024467469e-07,
+            "commodity": -7.419188190662126e-07,
+            "vix": 4.882327825290605e-06,
+            "us_growth": 2.0106805876036737e-06,
+            "oil": -3.6435556715331807e-07
+          },
+          "inflation": {
+            "equity": 9.639388115588074e-07,
+            "real_rates": -2.478781613397002e-08,
+            "inflation": 1.2738636311713247e-07,
+            "credit": 0.0,
+            "usd": -3.069802684807111e-08,
+            "commodity": 2.0889543155158547e-06,
+            "vix": -6.813432493884319e-06,
+            "us_growth": -8.367115213269219e-07,
+            "oil": 3.824054828678345e-06
+          },
+          "credit": {
+            "equity": 0.0,
+            "real_rates": 0.0,
+            "inflation": 0.0,
+            "credit": 0.0,
+            "usd": 0.0,
+            "commodity": 0.0,
+            "vix": 0.0,
+            "us_growth": 0.0,
+            "oil": 0.0
+          },
+          "usd": {
+            "equity": -1.605567818977629e-05,
+            "real_rates": 4.991247024467469e-07,
+            "inflation": -3.069802684807111e-08,
+            "credit": 0.0,
+            "usd": 1.0502657914923013e-05,
+            "commodity": -6.88770131285239e-06,
+            "vix": 8.472470689917044e-05,
+            "us_growth": 2.0310307502626756e-05,
+            "oil": 3.2298634635602876e-06
+          },
+          "commodity": {
+            "equity": 2.3096078914384596e-05,
+            "real_rates": -7.419188190662126e-07,
+            "inflation": 2.0889543155158547e-06,
+            "credit": 0.0,
+            "usd": -6.88770131285239e-06,
+            "commodity": 0.00016540837616367904,
+            "vix": -0.00016249091759243666,
+            "us_growth": 0.00012302059852209224,
+            "oil": 0.0002966572615488469
+          },
+          "vix": {
+            "equity": -0.0006059531747593394,
+            "real_rates": 4.882327825290605e-06,
+            "inflation": -6.813432493884319e-06,
+            "credit": 0.0,
+            "usd": 8.472470689917044e-05,
+            "commodity": -0.00016249091759243666,
+            "vix": 0.005812735803455304,
+            "us_growth": 0.0004850458471686824,
+            "oil": -7.871651414108821e-05
+          },
+          "us_growth": {
+            "equity": -9.864521316394164e-06,
+            "real_rates": 2.0106805876036737e-06,
+            "inflation": -8.367115213269219e-07,
+            "credit": 0.0,
+            "usd": 2.0310307502626756e-05,
+            "commodity": 0.00012302059852209224,
+            "vix": 0.0004850458471686824,
+            "us_growth": 0.03968952365721596,
+            "oil": 0.0001900312096638374
+          },
+          "oil": {
+            "equity": 1.897552163473416e-05,
+            "real_rates": -3.6435556715331807e-07,
+            "inflation": 3.824054828678345e-06,
+            "credit": 0.0,
+            "usd": 3.2298634635602876e-06,
+            "commodity": 0.0002966572615488469,
+            "vix": -7.871651414108821e-05,
+            "us_growth": 0.0001900312096638374,
+            "oil": 0.0007278963314474383
+          }
+        },
+        "n_obs": 260,
+        "quality_status": "reliable"
+      },
+      "factor_betas": {
+        "beta_eq": 0.3768,
+        "beta_rr": -5.798,
+        "beta_inf": -5.4769,
+        "beta_credit": 0.0688,
+        "beta_usd": -0.369,
+        "beta_cmd": 0.1362,
+        "beta_vix": 0.0005,
+        "beta_us_growth": 0.0012
+      },
+      "scenario_factor_move": null,
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": null,
+      "scenario_risk": {
+        "portfolio_sigma_monthly": 0.029748303299456772,
+        "portfolio_sigma_annual": 0.103051145507256,
+        "basis": "monthly_return_std_of_buy_hold_weights"
+      },
+      "scenario_drawdown_proxy": null,
+      "asset_rc": null,
+      "factor_rc": [
+        {
+          "factor": "equity",
+          "beta_key": "beta_eq",
+          "component_variance": 9.461653253188505e-05,
+          "rc_share": 0.4835995768040311
+        },
+        {
+          "factor": "real_rates",
+          "beta_key": "beta_rr",
+          "component_variance": 6.638530527506832e-05,
+          "rc_share": 0.33930545410983737
+        },
+        {
+          "factor": "inflation",
+          "beta_key": "beta_inf",
+          "component_variance": -2.3895072527819992e-06,
+          "rc_share": -0.012213137231869297
+        },
+        {
+          "factor": "credit",
+          "beta_key": "beta_credit",
+          "component_variance": 0.0,
+          "rc_share": 0.0
+        },
+        {
+          "factor": "usd",
+          "beta_key": "beta_usd",
+          "component_variance": 2.1622358391152134e-05,
+          "rc_share": 0.1105151825759677
+        },
+        {
+          "factor": "commodity",
+          "beta_key": "beta_cmd",
+          "component_variance": 1.575823130558277e-05,
+          "rc_share": 0.08054273166258502
+        },
+        {
+          "factor": "vix",
+          "beta_key": "beta_vix",
+          "component_variance": -5.833114331593308e-07,
+          "rc_share": -0.002981393998197338
+        },
+        {
+          "factor": "us_growth",
+          "beta_key": "beta_us_growth",
+          "component_variance": 2.409605172764149e-07,
+          "rc_share": 0.001231586077645421
+        },
+        {
+          "factor": "oil",
+          "beta_key": "beta_oil",
+          "component_variance": 0.0,
+          "rc_share": 0.0
+        }
+      ],
+      "quality_status": "reliable",
+      "confidence_weight": 1.0,
+      "usable_for_optimization": false,
+      "warnings": [],
+      "classification": "usable_with_caution",
+      "raw_vs_shrinkage": null
+    },
+    {
+      "scenario_id": "goldilocks",
+      "scenario_type": "macro_regime",
+      "frequency": "daily",
+      "scaling_note": "regime analytics_frequency=daily; regime labels monthly; full regime payload missing — covariance not populated",
+      "asset_covariance": null,
+      "factor_covariance": null,
+      "factor_betas": {
+        "beta_eq": 0.0,
+        "beta_rr": 0.0,
+        "beta_inf": 0.0,
+        "beta_credit": 0.0,
+        "beta_usd": 0.0,
+        "beta_cmd": 0.0,
+        "beta_vix": 0.0,
+        "beta_us_growth": 0.0,
+        "beta_oil": 0.0
+      },
+      "scenario_factor_move": [],
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": null,
+      "scenario_risk": null,
+      "scenario_drawdown_proxy": null,
+      "asset_rc": null,
+      "factor_rc": {
+        "available": false,
+        "total_factor_variance": 0.0,
+        "rows": [],
+        "top_dominant_factor": null
+      },
+      "quality_status": "insufficient_data",
+      "confidence_weight": 0.0,
+      "usable_for_optimization": false,
+      "warnings": [
+        "Insufficient history for regime bucket (<60 trading days). Estimates suppressed.",
+        "not_for_optimization_true_in_regime_analytics"
+      ],
+      "classification": "insufficient_data",
+      "raw_vs_shrinkage": null
+    },
+    {
+      "scenario_id": "reflation",
+      "scenario_type": "macro_regime",
+      "frequency": "daily",
+      "scaling_note": "regime analytics_frequency=daily; regime labels monthly; asset covariance converted from daily-annualized to monthly-equivalent via Σ_m≈Σ_ann/12; factor covariance converted from daily-annualized to monthly-equivalent via Σ_m≈Σ_ann/12",
+      "asset_covariance": {
+        "native_frequency": "daily",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "SPY": {
+            "SPY": 0.0025341844146802737,
+            "QQQ": 0.002877365479072981,
+            "GLD": 0.0001624952535518088,
+            "SLV": 0.0009413316174579748,
+            "BND": 9.634356376157376e-05,
+            "SCHD": 0.002017659427890329,
+            "SCHP": 1.64959506366242e-05,
+            "TLT": -0.00034012168823721546
+          },
+          "QQQ": {
+            "SPY": 0.002877365479072981,
+            "QQQ": 0.0038634692244015733,
+            "GLD": 0.00023193110155731258,
+            "SLV": 0.001141217674337954,
+            "BND": 0.00011460330105530684,
+            "SCHD": 0.002015345506482802,
+            "SCHP": 2.5814349789410877e-05,
+            "TLT": -0.0002885592053218638
+          },
+          "GLD": {
+            "SPY": 0.0001624952535518088,
+            "QQQ": 0.00023193110155731258,
+            "GLD": 0.0021430198590714246,
+            "SLV": 0.003153147659761409,
+            "BND": 0.00021549413006441512,
+            "SCHD": 0.00011411486640139266,
+            "SCHP": 0.0002416766157922981,
+            "TLT": 0.00046786807692519796
+          },
+          "SLV": {
+            "SPY": 0.0009413316174579748,
+            "QQQ": 0.001141217674337954,
+            "GLD": 0.003153147659761409,
+            "SLV": 0.007895887842010035,
+            "BND": 0.0002526557000337775,
+            "SCHD": 0.0006684182874679204,
+            "SCHP": 0.0003301033396019033,
+            "TLT": 0.0004130369618320363
+          },
+          "BND": {
+            "SPY": 9.634356376157376e-05,
+            "QQQ": 0.00011460330105530684,
+            "GLD": 0.00021549413006441512,
+            "SLV": 0.0002526557000337775,
+            "BND": 0.00029087453041280655,
+            "SCHD": 7.542386102919805e-05,
+            "SCHP": 0.00018208467242587746,
+            "TLT": 0.0005206354676690567
+          },
+          "SCHD": {
+            "SPY": 0.002017659427890329,
+            "QQQ": 0.002015345506482802,
+            "GLD": 0.00011411486640139266,
+            "SLV": 0.0006684182874679204,
+            "BND": 7.542386102919805e-05,
+            "SCHD": 0.0022320266809212437,
+            "SCHP": -2.416127393912016e-06,
+            "TLT": -0.00038606550798619233
+          },
+          "SCHP": {
+            "SPY": 1.64959506366242e-05,
+            "QQQ": 2.5814349789410877e-05,
+            "GLD": 0.0002416766157922981,
+            "SLV": 0.0003301033396019033,
+            "BND": 0.00018208467242587746,
+            "SCHD": -2.416127393912016e-06,
+            "SCHP": 0.00028552028057478144,
+            "TLT": 0.00048113405051189206
+          },
+          "TLT": {
+            "SPY": -0.00034012168823721546,
+            "QQQ": -0.0002885592053218638,
+            "GLD": 0.00046786807692519796,
+            "SLV": 0.0004130369618320363,
+            "BND": 0.0005206354676690567,
+            "SCHD": -0.00038606550798619233,
+            "SCHP": 0.00048113405051189206,
+            "TLT": 0.00181291516998985
+          }
+        },
+        "n_obs": 2259,
+        "quality_status": "reliable"
+      },
+      "factor_covariance": {
+        "native_frequency": "daily",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "equity": {
+            "equity": 0.007844191084456442,
+            "real_rates": -3.916112489313728e-07,
+            "inflation": 1.7468483317334623e-05,
+            "credit": 0.0,
+            "usd": -0.00018110882559209504,
+            "commodity": 0.0007316910030039099,
+            "vix": -0.013695725084221275,
+            "us_growth": 0.0012369389143430899,
+            "oil": 0.0017450326149198944
+          },
+          "real_rates": {
+            "equity": -3.916112489313728e-07,
+            "real_rates": 0.0054147010609473314,
+            "inflation": -3.2510278532052294e-07,
+            "credit": 0.0,
+            "usd": 6.382505949192862e-06,
+            "commodity": -4.982330020522063e-06,
+            "vix": -1.838615359802553e-05,
+            "us_growth": 0.00011089915870300158,
+            "oil": -8.550698660134828e-06
+          },
+          "inflation": {
+            "equity": 1.7468483317334623e-05,
+            "real_rates": -3.2510278532052294e-07,
+            "inflation": 0.0054120729636243,
+            "credit": 0.0,
+            "usd": -8.931218927578624e-07,
+            "commodity": 2.3447594311591077e-05,
+            "vix": -0.00012126974365575577,
+            "us_growth": -3.5191570992045376e-05,
+            "oil": 6.112002967641796e-05
+          },
+          "credit": {
+            "equity": 0.0,
+            "real_rates": 0.0,
+            "inflation": 0.0,
+            "credit": 0.005410334752989739,
+            "usd": 0.0,
+            "commodity": 0.0,
+            "vix": 0.0,
+            "us_growth": 0.0,
+            "oil": 0.0
+          },
+          "usd": {
+            "equity": -0.00018110882559209504,
+            "real_rates": 6.382505949192862e-06,
+            "inflation": -8.931218927578624e-07,
+            "credit": 0.0,
+            "usd": 0.0056056698334987776,
+            "commodity": -0.00015600610869903852,
+            "vix": 0.0010397852835979538,
+            "us_growth": 0.0007177139680995291,
+            "oil": -0.00022575235752855452
+          },
+          "commodity": {
+            "equity": 0.0007316910030039099,
+            "real_rates": -4.982330020522063e-06,
+            "inflation": 2.3447594311591077e-05,
+            "credit": 0.0,
+            "usd": -0.00015600610869903852,
+            "commodity": 0.007782012031652526,
+            "vix": -0.00464984341912596,
+            "us_growth": 0.00040646191258419343,
+            "oil": 0.005393849211204739
+          },
+          "vix": {
+            "equity": -0.013695725084221275,
+            "real_rates": -1.838615359802553e-05,
+            "inflation": -0.00012126974365575577,
+            "credit": 0.0,
+            "usd": 0.0010397852835979538,
+            "commodity": -0.00464984341912596,
+            "vix": 0.15917177623567366,
+            "us_growth": 0.007557010300222521,
+            "oil": -0.010671123466384673
+          },
+          "us_growth": {
+            "equity": 0.0012369389143430899,
+            "real_rates": 0.00011089915870300158,
+            "inflation": -3.5191570992045376e-05,
+            "credit": 0.0,
+            "usd": 0.0007177139680995291,
+            "commodity": 0.00040646191258419343,
+            "vix": 0.007557010300222521,
+            "us_growth": 0.9351361018964304,
+            "oil": 0.004998030264682066
+          },
+          "oil": {
+            "equity": 0.0017450326149198944,
+            "real_rates": -8.550698660134828e-06,
+            "inflation": 6.112002967641796e-05,
+            "credit": 0.0,
+            "usd": -0.00022575235752855452,
+            "commodity": 0.005393849211204739,
+            "vix": -0.010671123466384673,
+            "us_growth": 0.004998030264682066,
+            "oil": 0.12025103083330918
+          }
+        },
+        "n_obs": 2259,
+        "quality_status": "reliable"
+      },
+      "factor_betas": {
+        "beta_eq": 0.0,
+        "beta_rr": 0.0,
+        "beta_inf": 0.0,
+        "beta_credit": 0.0,
+        "beta_usd": 0.0,
+        "beta_cmd": 0.0,
+        "beta_vix": 0.0,
+        "beta_us_growth": 0.0,
+        "beta_oil": 0.0
+      },
+      "scenario_factor_move": [
+        {
+          "factor": "equity",
+          "mean": 0.0006484197782728892,
+          "median": 0.00065816132284513,
+          "n_obs": 2259
+        },
+        {
+          "factor": "real_rates",
+          "mean": 1.328021248339972e-06,
+          "median": 0.0,
+          "n_obs": 2259
+        },
+        {
+          "factor": "inflation",
+          "mean": 2.3019034971226214e-06,
+          "median": 0.0,
+          "n_obs": 2259
+        },
+        {
+          "factor": "credit",
+          "mean": 0.0,
+          "median": 0.0,
+          "n_obs": 2259
+        },
+        {
+          "factor": "usd",
+          "mean": 3.085113974770908e-05,
+          "median": -4.290464442779918e-05,
+          "n_obs": 2259
+        },
+        {
+          "factor": "commodity",
+          "mean": 0.00034193305022109485,
+          "median": 0.0009040450405772837,
+          "n_obs": 2259
+        },
+        {
+          "factor": "vix",
+          "mean": 0.0033841922705955033,
+          "median": -0.006250000000000089,
+          "n_obs": 2259
+        },
+        {
+          "factor": "us_growth",
+          "mean": -0.0017706949977866313,
+          "median": 0.0,
+          "n_obs": 2259
+        },
+        {
+          "factor": "oil",
+          "mean": -0.0012029584895298104,
+          "median": 0.0012557555462537895,
+          "n_obs": 2259
+        }
+      ],
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": null,
+      "scenario_risk": {
+        "portfolio_sigma_monthly": 0.029224676419745826,
+        "portfolio_sigma_annual": 0.10123724878751976,
+        "basis": "regime_slice_asset_covariance"
+      },
+      "scenario_drawdown_proxy": -0.1464188134057055,
+      "asset_rc": null,
+      "factor_rc": {
+        "available": true,
+        "total_factor_variance": 0.0,
+        "rows": [
+          {
+            "factor": "equity",
+            "beta_key": "beta_eq",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "real_rates",
+            "beta_key": "beta_rr",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "inflation",
+            "beta_key": "beta_inf",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "credit",
+            "beta_key": "beta_credit",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "usd",
+            "beta_key": "beta_usd",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "commodity",
+            "beta_key": "beta_cmd",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "vix",
+            "beta_key": "beta_vix",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "us_growth",
+            "beta_key": "beta_us_growth",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "oil",
+            "beta_key": "beta_oil",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          }
+        ],
+        "top_dominant_factor": "equity"
+      },
+      "quality_status": "reliable",
+      "confidence_weight": 1.0,
+      "usable_for_optimization": false,
+      "warnings": [],
+      "classification": "diagnostic_only",
+      "raw_vs_shrinkage": null
+    },
+    {
+      "scenario_id": "stagflation",
+      "scenario_type": "macro_regime",
+      "frequency": "daily",
+      "scaling_note": "regime analytics_frequency=daily; regime labels monthly; asset covariance converted from daily-annualized to monthly-equivalent via Σ_m≈Σ_ann/12; factor covariance converted from daily-annualized to monthly-equivalent via Σ_m≈Σ_ann/12",
+      "asset_covariance": {
+        "native_frequency": "daily",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "SPY": {
+            "SPY": 0.0043984418371257735,
+            "QQQ": 0.00544700944018391,
+            "GLD": 0.00047782419856595015,
+            "SLV": 0.0017191389950288942,
+            "BND": 0.0003831613482527834,
+            "SCHD": 0.003129849975268965,
+            "SCHP": 0.0004915591429477178,
+            "TLT": 0.0001336744717780057
+          },
+          "QQQ": {
+            "SPY": 0.00544700944018391,
+            "QQQ": 0.007474277289605298,
+            "GLD": 0.0004502404262619782,
+            "SLV": 0.0019321657482375073,
+            "BND": 0.00047818248808225165,
+            "SCHD": 0.003722304381218261,
+            "SCHP": 0.0005368048234509176,
+            "TLT": 0.00016086353247928516
+          },
+          "GLD": {
+            "SPY": 0.00047782419856595015,
+            "QQQ": 0.0004502404262619782,
+            "GLD": 0.001381671014754378,
+            "SLV": 0.002046724501444956,
+            "BND": 0.000349743867857233,
+            "SCHD": 0.0003797710372830832,
+            "SCHP": 0.0004577919024486974,
+            "TLT": 0.0007190581137824023
+          },
+          "SLV": {
+            "SPY": 0.0017191389950288942,
+            "QQQ": 0.0019321657482375073,
+            "GLD": 0.002046724501444956,
+            "SLV": 0.005158814421443754,
+            "BND": 0.0005627263822731298,
+            "SCHD": 0.0012871126862229916,
+            "SCHP": 0.0007556575903049581,
+            "TLT": 0.000988121247136833
+          },
+          "BND": {
+            "SPY": 0.0003831613482527834,
+            "QQQ": 0.00047818248808225165,
+            "GLD": 0.000349743867857233,
+            "SLV": 0.0005627263822731298,
+            "BND": 0.0005343610511243512,
+            "SCHD": 0.00029675514333425435,
+            "SCHP": 0.00039752470082517275,
+            "TLT": 0.0009566535144510707
+          },
+          "SCHD": {
+            "SPY": 0.003129849975268965,
+            "QQQ": 0.003722304381218261,
+            "GLD": 0.0003797710372830832,
+            "SLV": 0.0012871126862229916,
+            "BND": 0.00029675514333425435,
+            "SCHD": 0.002676448009880588,
+            "SCHP": 0.00038431349905331826,
+            "TLT": 0.0001172729490117368
+          },
+          "SCHP": {
+            "SPY": 0.0004915591429477178,
+            "QQQ": 0.0005368048234509176,
+            "GLD": 0.0004577919024486974,
+            "SLV": 0.0007556575903049581,
+            "BND": 0.00039752470082517275,
+            "SCHD": 0.00038431349905331826,
+            "SCHP": 0.0006804834625080114,
+            "TLT": 0.0008792300810962883
+          },
+          "TLT": {
+            "SPY": 0.0001336744717780057,
+            "QQQ": 0.00016086353247928516,
+            "GLD": 0.0007190581137824023,
+            "SLV": 0.000988121247136833,
+            "BND": 0.0009566535144510707,
+            "SCHD": 0.0001172729490117368,
+            "SCHP": 0.0008792300810962883,
+            "TLT": 0.0027841270005599526
+          }
+        },
+        "n_obs": 166,
+        "quality_status": "usable"
+      },
+      "factor_covariance": {
+        "native_frequency": "daily",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "equity": {
+            "equity": 0.013176329881796033,
+            "real_rates": -5.8902897739674306e-05,
+            "inflation": 3.764621531843158e-05,
+            "credit": 0.0,
+            "usd": -0.0003598107727709206,
+            "commodity": 0.0012260350213872183,
+            "vix": -0.015664891492184117,
+            "us_growth": 0.001674172928779783,
+            "oil": 0.0014373809009095386
+          },
+          "real_rates": {
+            "equity": -5.8902897739674306e-05,
+            "real_rates": 0.009252358743086324,
+            "inflation": -2.0849391811384457e-06,
+            "credit": 0.0,
+            "usd": 1.6049068726797357e-05,
+            "commodity": -2.7609397833893842e-05,
+            "vix": 0.00027012917787926246,
+            "us_growth": -0.0002245354947030031,
+            "oil": -2.4382912643295763e-05
+          },
+          "inflation": {
+            "equity": 3.764621531843158e-05,
+            "real_rates": -2.0849391811384457e-06,
+            "inflation": 0.009245645312232063,
+            "credit": 0.0,
+            "usd": -3.995739951579981e-06,
+            "commodity": 4.360137578754685e-05,
+            "vix": -0.00010626698597955766,
+            "us_growth": -5.1843507979463965e-05,
+            "oil": 6.985507537244768e-05
+          },
+          "credit": {
+            "equity": 0.0,
+            "real_rates": 0.0,
+            "inflation": 0.0,
+            "credit": 0.009241999350249105,
+            "usd": 0.0,
+            "commodity": 0.0,
+            "vix": 0.0,
+            "us_growth": 0.0,
+            "oil": 0.0
+          },
+          "usd": {
+            "equity": -0.0003598107727709206,
+            "real_rates": 1.6049068726797357e-05,
+            "inflation": -3.995739951579981e-06,
+            "credit": 0.0,
+            "usd": 0.009493884444236796,
+            "commodity": -0.00043518423017261054,
+            "vix": 0.0017038563733553617,
+            "us_growth": 0.00044541903976349844,
+            "oil": -0.000632545532089006
+          },
+          "commodity": {
+            "equity": 0.0012260350213872183,
+            "real_rates": -2.7609397833893842e-05,
+            "inflation": 4.360137578754685e-05,
+            "credit": 0.0,
+            "usd": -0.00043518423017261054,
+            "commodity": 0.01346355069277248,
+            "vix": -0.005704639948560902,
+            "us_growth": -0.004784751378401321,
+            "oil": 0.006666025915717627
+          },
+          "vix": {
+            "equity": -0.015664891492184117,
+            "real_rates": 0.00027012917787926246,
+            "inflation": -0.00010626698597955766,
+            "credit": 0.0,
+            "usd": 0.0017038563733553617,
+            "commodity": -0.005704639948560902,
+            "vix": 0.10328686520279302,
+            "us_growth": -0.0052323715141016965,
+            "oil": -0.0072535938220027055
+          },
+          "us_growth": {
+            "equity": 0.001674172928779783,
+            "real_rates": -0.0002245354947030031,
+            "inflation": -5.1843507979463965e-05,
+            "credit": 0.0,
+            "usd": 0.00044541903976349844,
+            "commodity": -0.004784751378401321,
+            "vix": -0.0052323715141016965,
+            "us_growth": 0.5378380718905744,
+            "oil": -0.010194993218231623
+          },
+          "oil": {
+            "equity": 0.0014373809009095386,
+            "real_rates": -2.4382912643295763e-05,
+            "inflation": 6.985507537244768e-05,
+            "credit": 0.0,
+            "usd": -0.000632545532089006,
+            "commodity": 0.006666025915717627,
+            "vix": -0.0072535938220027055,
+            "us_growth": -0.010194993218231623,
+            "oil": 0.023208184727943004
+          }
+        },
+        "n_obs": 166,
+        "quality_status": "usable"
+      },
+      "factor_betas": {
+        "beta_eq": 0.0,
+        "beta_rr": 0.0,
+        "beta_inf": 0.0,
+        "beta_credit": 0.0,
+        "beta_usd": 0.0,
+        "beta_cmd": 0.0,
+        "beta_vix": 0.0,
+        "beta_us_growth": 0.0,
+        "beta_oil": 0.0
+      },
+      "scenario_factor_move": [
+        {
+          "factor": "equity",
+          "mean": -0.0005360000947747988,
+          "median": 0.0004238506519231855,
+          "n_obs": 166
+        },
+        {
+          "factor": "real_rates",
+          "mean": 0.00011144578313253014,
+          "median": 0.00010000000000000015,
+          "n_obs": 166
+        },
+        {
+          "factor": "inflation",
+          "mean": -2.831325301204821e-05,
+          "median": 0.0,
+          "n_obs": 166
+        },
+        {
+          "factor": "credit",
+          "mean": 0.0,
+          "median": 0.0,
+          "n_obs": 166
+        },
+        {
+          "factor": "usd",
+          "mean": 0.0005406120931603114,
+          "median": 0.00046012898601199836,
+          "n_obs": 166
+        },
+        {
+          "factor": "commodity",
+          "mean": 0.00017252463609581712,
+          "median": 0.002579815147021436,
+          "n_obs": 166
+        },
+        {
+          "factor": "vix",
+          "mean": 0.0009825503099501983,
+          "median": -0.015028205757096014,
+          "n_obs": 166
+        },
+        {
+          "factor": "us_growth",
+          "mean": -0.008012048192771085,
+          "median": 0.0,
+          "n_obs": 166
+        },
+        {
+          "factor": "oil",
+          "mean": 0.00011010688006637858,
+          "median": 0.002996059614783775,
+          "n_obs": 166
+        }
+      ],
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": null,
+      "scenario_risk": {
+        "portfolio_sigma_monthly": 0.03731363796246103,
+        "portfolio_sigma_annual": 0.1292582335324267,
+        "basis": "regime_slice_asset_covariance"
+      },
+      "scenario_drawdown_proxy": -0.20087178629479874,
+      "asset_rc": null,
+      "factor_rc": {
+        "available": true,
+        "total_factor_variance": 0.0,
+        "rows": [
+          {
+            "factor": "equity",
+            "beta_key": "beta_eq",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "real_rates",
+            "beta_key": "beta_rr",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "inflation",
+            "beta_key": "beta_inf",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "credit",
+            "beta_key": "beta_credit",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "usd",
+            "beta_key": "beta_usd",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "commodity",
+            "beta_key": "beta_cmd",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "vix",
+            "beta_key": "beta_vix",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "us_growth",
+            "beta_key": "beta_us_growth",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "oil",
+            "beta_key": "beta_oil",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          }
+        ],
+        "top_dominant_factor": "equity"
+      },
+      "quality_status": "usable",
+      "confidence_weight": 0.75,
+      "usable_for_optimization": false,
+      "warnings": [],
+      "classification": "diagnostic_only",
+      "raw_vs_shrinkage": null
+    },
+    {
+      "scenario_id": "recession_disinflation",
+      "scenario_type": "macro_regime",
+      "frequency": "daily",
+      "scaling_note": "regime analytics_frequency=daily; regime labels monthly; asset covariance converted from daily-annualized to monthly-equivalent via Σ_m≈Σ_ann/12; factor covariance converted from daily-annualized to monthly-equivalent via Σ_m≈Σ_ann/12",
+      "asset_covariance": {
+        "native_frequency": "daily",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "SPY": {
+            "SPY": 0.0033198808493134714,
+            "QQQ": 0.0024785617510377188,
+            "GLD": 9.868439172732695e-05,
+            "SLV": 0.001779273614486602,
+            "BND": -2.3678632324745335e-06,
+            "SCHD": 0.0028511546469965603,
+            "SCHP": 3.366435926086236e-05,
+            "TLT": -0.0009606232272221577
+          },
+          "QQQ": {
+            "SPY": 0.0024785617510377188,
+            "QQQ": 0.003769389403261484,
+            "GLD": 0.0005694051644296961,
+            "SLV": 0.002689956558241418,
+            "BND": 4.238442151309048e-05,
+            "SCHD": 0.0018497572964134223,
+            "SCHP": 0.00010044384270899016,
+            "TLT": -0.000618889045074791
+          },
+          "GLD": {
+            "SPY": 9.868439172732695e-05,
+            "QQQ": 0.0005694051644296961,
+            "GLD": 0.0030445221081751624,
+            "SLV": 0.005281482337100532,
+            "BND": 0.00016007994567048792,
+            "SCHD": -0.0003294493468394193,
+            "SCHP": 0.00023733409427961037,
+            "TLT": 0.0006771527201065366
+          },
+          "SLV": {
+            "SPY": 0.001779273614486602,
+            "QQQ": 0.002689956558241418,
+            "GLD": 0.005281482337100532,
+            "SLV": 0.017881445319750645,
+            "BND": 0.00022610908415696685,
+            "SCHD": 0.0008665069443272527,
+            "SCHP": 0.00034370522454909495,
+            "TLT": 0.0003923946280168033
+          },
+          "BND": {
+            "SPY": -2.3678632324745335e-06,
+            "QQQ": 4.238442151309048e-05,
+            "GLD": 0.00016007994567048792,
+            "SLV": 0.00022610908415696685,
+            "BND": 0.0006130096962310458,
+            "SCHD": -6.011218173568825e-05,
+            "SCHP": 4.6607784003642066e-05,
+            "TLT": 0.0001933760654400653
+          },
+          "SCHD": {
+            "SPY": 0.0028511546469965603,
+            "QQQ": 0.0018497572964134223,
+            "GLD": -0.0003294493468394193,
+            "SLV": 0.0008665069443272527,
+            "BND": -6.011218173568825e-05,
+            "SCHD": 0.004354496168757327,
+            "SCHP": -3.3740582625958484e-05,
+            "TLT": -0.001247327380636137
+          },
+          "SCHP": {
+            "SPY": 3.366435926086236e-05,
+            "QQQ": 0.00010044384270899016,
+            "GLD": 0.00023733409427961037,
+            "SLV": 0.00034370522454909495,
+            "BND": 4.6607784003642066e-05,
+            "SCHD": -3.3740582625958484e-05,
+            "SCHP": 0.0006606853687804705,
+            "TLT": 0.00021533214020971728
+          },
+          "TLT": {
+            "SPY": -0.0009606232272221577,
+            "QQQ": -0.000618889045074791,
+            "GLD": 0.0006771527201065366,
+            "SLV": 0.0003923946280168033,
+            "BND": 0.0001933760654400653,
+            "SCHD": -0.001247327380636137,
+            "SCHP": 0.00021533214020971728,
+            "TLT": 0.0018835971020238827
+          }
+        },
+        "n_obs": 85,
+        "quality_status": "low_confidence"
+      },
+      "factor_covariance": {
+        "native_frequency": "daily",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "equity": {
+            "equity": 0.015859446724404796,
+            "real_rates": 4.1341352472797085e-06,
+            "inflation": 3.673689651871551e-05,
+            "credit": 0.0,
+            "usd": -0.0003565120738970977,
+            "commodity": 0.0017364015353901335,
+            "vix": -0.014875814015112532,
+            "us_growth": 0.004044726901674572,
+            "oil": 0.002423006763684268
+          },
+          "real_rates": {
+            "equity": 4.1341352472797085e-06,
+            "real_rates": 0.013058414834898679,
+            "inflation": -2.83873010341242e-07,
+            "credit": 0.0,
+            "usd": 1.207746056746445e-06,
+            "commodity": -1.0518866419847277e-06,
+            "vix": -2.1432217644685393e-05,
+            "us_growth": 9.940972785804984e-05,
+            "oil": 5.335020344757874e-05
+          },
+          "inflation": {
+            "equity": 3.673689651871551e-05,
+            "real_rates": -2.83873010341242e-07,
+            "inflation": 0.013058068635716675,
+            "credit": 0.0,
+            "usd": -6.931521531934299e-06,
+            "commodity": 2.4562125955914243e-05,
+            "vix": -0.00018731620807285997,
+            "us_growth": 5.3451915433211386e-05,
+            "oil": 1.1087386972849963e-05
+          },
+          "credit": {
+            "equity": 0.0,
+            "real_rates": 0.0,
+            "inflation": 0.0,
+            "credit": 0.013056778618108975,
+            "usd": 0.0,
+            "commodity": 0.0,
+            "vix": 0.0,
+            "us_growth": 0.0,
+            "oil": 0.0
+          },
+          "usd": {
+            "equity": -0.0003565120738970977,
+            "real_rates": 1.207746056746445e-06,
+            "inflation": -6.931521531934299e-06,
+            "credit": 0.0,
+            "usd": 0.013247044810859896,
+            "commodity": -0.000380699603422068,
+            "vix": 0.0013289296388008132,
+            "us_growth": 3.292709288263125e-05,
+            "oil": -0.0009716739822905296
+          },
+          "commodity": {
+            "equity": 0.0017364015353901335,
+            "real_rates": -1.0518866419847277e-06,
+            "inflation": 2.4562125955914243e-05,
+            "credit": 0.0,
+            "usd": -0.000380699603422068,
+            "commodity": 0.015289634882874744,
+            "vix": -0.01003190188883122,
+            "us_growth": 0.0017829672501175511,
+            "oil": 0.006070243115854974
+          },
+          "vix": {
+            "equity": -0.014875814015112532,
+            "real_rates": -2.1432217644685393e-05,
+            "inflation": -0.00018731620807285997,
+            "credit": 0.0,
+            "usd": 0.0013289296388008132,
+            "commodity": -0.01003190188883122,
+            "vix": 0.12729652034477393,
+            "us_growth": -0.03914801987111339,
+            "oil": -0.013377395161892717
+          },
+          "us_growth": {
+            "equity": 0.004044726901674572,
+            "real_rates": 9.940972785804984e-05,
+            "inflation": 5.3451915433211386e-05,
+            "credit": 0.0,
+            "usd": 3.292709288263125e-05,
+            "commodity": 0.0017829672501175511,
+            "vix": -0.03914801987111339,
+            "us_growth": 0.7831435805266527,
+            "oil": -0.0013870103487043967
+          },
+          "oil": {
+            "equity": 0.002423006763684268,
+            "real_rates": 5.335020344757874e-05,
+            "inflation": 1.1087386972849963e-05,
+            "credit": 0.0,
+            "usd": -0.0009716739822905296,
+            "commodity": 0.006070243115854974,
+            "vix": -0.013377395161892717,
+            "us_growth": -0.0013870103487043967,
+            "oil": 0.05098300235091471
+          }
+        },
+        "n_obs": 85,
+        "quality_status": "low_confidence"
+      },
+      "factor_betas": {
+        "beta_eq": 0.0,
+        "beta_rr": 0.0,
+        "beta_inf": 0.0,
+        "beta_credit": 0.0,
+        "beta_usd": 0.0,
+        "beta_cmd": 0.0,
+        "beta_vix": 0.0,
+        "beta_us_growth": 0.0,
+        "beta_oil": 0.0
+      },
+      "scenario_factor_move": [
+        {
+          "factor": "equity",
+          "mean": 0.0022323513997851304,
+          "median": 0.003862455915164098,
+          "n_obs": 85
+        },
+        {
+          "factor": "real_rates",
+          "mean": -6.117647058823529e-05,
+          "median": -0.0001999999999999988,
+          "n_obs": 85
+        },
+        {
+          "factor": "inflation",
+          "mean": 7.411764705882355e-05,
+          "median": 9.99999999999994e-05,
+          "n_obs": 85
+        },
+        {
+          "factor": "credit",
+          "mean": 0.0,
+          "median": 0.0,
+          "n_obs": 85
+        },
+        {
+          "factor": "usd",
+          "mean": -0.0006691264661073609,
+          "median": -0.0006354722809844837,
+          "n_obs": 85
+        },
+        {
+          "factor": "commodity",
+          "mean": 0.002841970482943578,
+          "median": 0.00531515970195362,
+          "n_obs": 85
+        },
+        {
+          "factor": "vix",
+          "mean": -0.0008969228175021418,
+          "median": -0.012590494176896394,
+          "n_obs": 85
+        },
+        {
+          "factor": "us_growth",
+          "mean": 0.06352941176470586,
+          "median": 0.0,
+          "n_obs": 85
+        },
+        {
+          "factor": "oil",
+          "mean": 0.013350755817375952,
+          "median": 0.0059910134797802606,
+          "n_obs": 85
+        }
+      ],
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": null,
+      "scenario_risk": {
+        "portfolio_sigma_monthly": 0.03163888289950838,
+        "portfolio_sigma_annual": 0.10960030535334125,
+        "basis": "regime_slice_asset_covariance"
+      },
+      "scenario_drawdown_proxy": -0.02752632492302398,
+      "asset_rc": null,
+      "factor_rc": {
+        "available": true,
+        "total_factor_variance": 0.0,
+        "rows": [
+          {
+            "factor": "equity",
+            "beta_key": "beta_eq",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "real_rates",
+            "beta_key": "beta_rr",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "inflation",
+            "beta_key": "beta_inf",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "credit",
+            "beta_key": "beta_credit",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "usd",
+            "beta_key": "beta_usd",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "commodity",
+            "beta_key": "beta_cmd",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "vix",
+            "beta_key": "beta_vix",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "us_growth",
+            "beta_key": "beta_us_growth",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          },
+          {
+            "factor": "oil",
+            "beta_key": "beta_oil",
+            "factor_variance_contribution": 0.0,
+            "factor_risk_contribution_share": 0.0,
+            "factor_risk_contribution_sign": "zero"
+          }
+        ],
+        "top_dominant_factor": "equity"
+      },
+      "quality_status": "low_confidence",
+      "confidence_weight": 0.25,
+      "usable_for_optimization": false,
+      "warnings": [
+        "Low confidence (~60–125 trading days); regime estimates not for optimization.",
+        "not_for_optimization_true_in_regime_analytics"
+      ],
+      "classification": "diagnostic_only",
+      "raw_vs_shrinkage": null
+    },
+    {
+      "scenario_id": "equity_shock",
+      "scenario_type": "synthetic_stress",
+      "frequency": "monthly",
+      "scaling_note": "synthetic: asset Σ monthly (taxonomy_blend); factor Σ weekly shock-scaled then monthly-equivalent; ",
+      "asset_covariance": {
+        "native_frequency": "monthly",
+        "normalized_frequency": "monthly",
+        "matrix": {
+          "SPY": {
+            "SPY": 0.0031683371364577173,
+            "QQQ": 0.0034901265045020773,
+            "GLD": 0.0007701624239406106,
+            "SLV": 0.0020657650655949394,
+            "BND": 7.597032182851628e-05,
+            "SCHD": 0.002640539135693013,
+            "SCHP": 0.00015714037311187292,
+            "TLT": -0.00014285210670370233
+          },
+          "QQQ": {
+            "SPY": 0.0034901265045020773,
+            "QQQ": 0.0048126721059350685,
+            "GLD": 0.0008920211158876084,
+            "SLV": 0.002335045345914809,
+            "BND": 9.892053147018541e-05,
+            "SCHD": 0.002844655664327505,
+            "SCHP": 0.00019083962478741762,
+            "TLT": -6.960955524900273e-05
+          },
+          "GLD": {
+            "SPY": 0.0007701624239406104,
+            "QQQ": 0.0008920211158876082,
+            "GLD": 0.003034680151856793,
+            "SLV": 0.004250373905211128,
+            "BND": 0.00033978895705205923,
+            "SCHD": 0.0008134662550890802,
+            "SCHP": 0.0003716292587763644,
+            "TLT": 0.0008762609363301892
+          },
+          "SLV": {
+            "SPY": 0.0020657650655949394,
+            "QQQ": 0.0023350453459148085,
+            "GLD": 0.004250373905211128,
+            "SLV": 0.010923811760989768,
+            "BND": 0.0005655439327648512,
+            "SCHD": 0.00204093772575383,
+            "SCHP": 0.0006399764676894102,
+            "TLT": 0.0012571593211054696
+          },
+          "BND": {
+            "SPY": 7.597032182851622e-05,
+            "QQQ": 9.892053147018537e-05,
+            "GLD": 0.0003397889570520592,
+            "SLV": 0.0005655439327648512,
+            "BND": 0.00024083979242709819,
+            "SCHD": 4.40066575516793e-05,
+            "SCHP": 0.000202815787535448,
+            "TLT": 0.0005039090508649059
+          },
+          "SCHD": {
+            "SPY": 0.002640539135693013,
+            "QQQ": 0.0028446556643275047,
+            "GLD": 0.00081346625508908,
+            "SLV": 0.0020409377257538303,
+            "BND": 4.40066575516793e-05,
+            "SCHD": 0.00301985390998172,
+            "SCHP": 0.00011824687931617786,
+            "TLT": -0.0002171591359603696
+          },
+          "SCHP": {
+            "SPY": 0.0001571403731118729,
+            "QQQ": 0.00019083962478741752,
+            "GLD": 0.0003716292587763644,
+            "SLV": 0.0006399764676894103,
+            "BND": 0.00020281578753544803,
+            "SCHD": 0.00011824687931617783,
+            "SCHP": 0.00022943491147174624,
+            "TLT": 0.0005084883432725427
+          },
+          "TLT": {
+            "SPY": -0.00014285210670370244,
+            "QQQ": -6.960955524900285e-05,
+            "GLD": 0.0008762609363301892,
+            "SLV": 0.0012571593211054696,
+            "BND": 0.0005039090508649059,
+            "SCHD": -0.0002171591359603696,
+            "SCHP": 0.0005084883432725427,
+            "TLT": 0.0018148436965427536
+          }
+        },
+        "n_obs": 144,
+        "quality_status": "reliable"
+      },
+      "factor_covariance": {
+        "native_frequency": "weekly",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "equity": {
+            "equity": 0.00037692661858777413,
+            "real_rates": -3.302034644096206e-06,
+            "inflation": 1.7350898608058536e-06,
+            "credit": 0.0,
+            "usd": -2.890022074159732e-05,
+            "commodity": 4.157294204589228e-05,
+            "vix": -0.001090715714566811,
+            "us_growth": -1.77561383695095e-05,
+            "oil": 3.41559389425215e-05
+          },
+          "real_rates": {
+            "equity": -3.302034644096206e-06,
+            "real_rates": 3.1155542482465565e-07,
+            "inflation": -2.478781613397002e-08,
+            "credit": 0.0,
+            "usd": 4.991247024467469e-07,
+            "commodity": -7.419188190662126e-07,
+            "vix": 4.882327825290605e-06,
+            "us_growth": 2.0106805876036737e-06,
+            "oil": -3.6435556715331807e-07
+          },
+          "inflation": {
+            "equity": 1.7350898608058536e-06,
+            "real_rates": -2.478781613397002e-08,
+            "inflation": 1.2738636311713247e-07,
+            "credit": 0.0,
+            "usd": -3.069802684807111e-08,
+            "commodity": 2.0889543155158547e-06,
+            "vix": -6.81343249388432e-06,
+            "us_growth": -8.367115213269219e-07,
+            "oil": 3.824054828678345e-06
+          },
+          "credit": {
+            "equity": 0.0,
+            "real_rates": 0.0,
+            "inflation": 0.0,
+            "credit": 0.0,
+            "usd": 0.0,
+            "commodity": 0.0,
+            "vix": 0.0,
+            "us_growth": 0.0,
+            "oil": 0.0
+          },
+          "usd": {
+            "equity": -2.890022074159732e-05,
+            "real_rates": 4.991247024467469e-07,
+            "inflation": -3.069802684807111e-08,
+            "credit": 0.0,
+            "usd": 1.0502657914923013e-05,
+            "commodity": -6.887701312852389e-06,
+            "vix": 8.472470689917044e-05,
+            "us_growth": 2.0310307502626756e-05,
+            "oil": 3.2298634635602876e-06
+          },
+          "commodity": {
+            "equity": 4.157294204589228e-05,
+            "real_rates": -7.419188190662126e-07,
+            "inflation": 2.0889543155158547e-06,
+            "credit": 0.0,
+            "usd": -6.887701312852389e-06,
+            "commodity": 0.00016540837616367904,
+            "vix": -0.00016249091759243666,
+            "us_growth": 0.00012302059852209224,
+            "oil": 0.0002966572615488469
+          },
+          "vix": {
+            "equity": -0.001090715714566811,
+            "real_rates": 4.882327825290605e-06,
+            "inflation": -6.81343249388432e-06,
+            "credit": 0.0,
+            "usd": 8.472470689917044e-05,
+            "commodity": -0.00016249091759243666,
+            "vix": 0.005812735803455305,
+            "us_growth": 0.0004850458471686824,
+            "oil": -7.871651414108821e-05
+          },
+          "us_growth": {
+            "equity": -1.77561383695095e-05,
+            "real_rates": 2.0106805876036737e-06,
+            "inflation": -8.367115213269219e-07,
+            "credit": 0.0,
+            "usd": 2.0310307502626756e-05,
+            "commodity": 0.00012302059852209224,
+            "vix": 0.0004850458471686824,
+            "us_growth": 0.03968952365721596,
+            "oil": 0.0001900312096638374
+          },
+          "oil": {
+            "equity": 3.41559389425215e-05,
+            "real_rates": -3.6435556715331807e-07,
+            "inflation": 3.824054828678345e-06,
+            "credit": 0.0,
+            "usd": 3.2298634635602876e-06,
+            "commodity": 0.0002966572615488469,
+            "vix": -7.871651414108821e-05,
+            "us_growth": 0.0001900312096638374,
+            "oil": 0.0007278963314474383
+          }
+        },
+        "factor_covariance_method": "base_weekly_corr_shock_vol_scale_v1",
+        "n_obs": 0,
+        "quality_status": "insufficient_data"
+      },
+      "factor_betas": {
+        "5y": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1362,
+          "beta_vix": 0.0005,
+          "beta_us_growth": 0.0012
+        },
+        "10y": {
+          "beta_eq": 0.3499,
+          "beta_rr": -7.0841,
+          "beta_inf": -5.3303,
+          "beta_usd": -0.3134,
+          "beta_cmd": 0.0654,
+          "beta_vix": -0.0025,
+          "beta_us_growth": -0.0012
+        },
+        "adjusted": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1185,
+          "beta_vix": -0.001,
+          "beta_us_growth": 0.0
+        }
+      },
+      "scenario_factor_move": {
+        "shock_eq": -0.4,
+        "shock_rr": 0.0,
+        "shock_credit": 0.0,
+        "shock_inf": 0.0,
+        "shock_usd": 0.0,
+        "shock_cmd": 0.0
+      },
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": -0.1507,
+      "scenario_risk": {
+        "portfolio_sigma_monthly": 0.03741989040645589,
+        "portfolio_sigma_annual": 0.1296263027952816,
+        "basis": "stress_scenario_asset_covariance"
+      },
+      "scenario_drawdown_proxy": -0.1507,
+      "asset_rc": {
+        "top1_asset": "SCHD",
+        "top1_rc_share": 0.272388,
+        "top3_assets": [
+          "SCHD",
+          "GLD",
+          "QQQ"
+        ],
+        "top3_rc_sum": 0.667002,
+        "asset_rc_hhi": 0.208174
+      },
+      "factor_rc": {
+        "raw_5y": {
+          "total_factor_variance": 0.00039284442305920263,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.69589,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "usd"
+          ],
+          "top3_rc_sum": 0.974982,
+          "factor_rc_hhi": 0.534731
+        },
+        "adjusted": {
+          "total_factor_variance": 0.0003936258381000156,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.698331,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "usd"
+          ],
+          "top3_rc_sum": 0.976773,
+          "factor_rc_hhi": 0.536883
+        }
+      },
+      "quality_status": "insufficient_data",
+      "confidence_weight": 0.0,
+      "usable_for_optimization": false,
+      "warnings": [],
+      "classification": "insufficient_data",
+      "raw_vs_shrinkage": {
+        "pnl_raw": -0.1507,
+        "pnl_shrinkage_adjusted": -0.15072000000000002,
+        "actual_realized_historical": null,
+        "model_explained": null,
+        "note": "synthetic PnL is factor model; optional adjusted overlay separate"
+      }
+    },
+    {
+      "scenario_id": "credit_shock",
+      "scenario_type": "synthetic_stress",
+      "frequency": "monthly",
+      "scaling_note": "synthetic: asset Σ monthly (taxonomy_blend); factor Σ weekly shock-scaled then monthly-equivalent; ",
+      "asset_covariance": {
+        "native_frequency": "monthly",
+        "normalized_frequency": "monthly",
+        "matrix": {
+          "SPY": {
+            "SPY": 0.002531905778698189,
+            "QQQ": 0.002535895511039022,
+            "GLD": 0.0006014145523699173,
+            "SLV": 0.0015500019705636618,
+            "BND": 0.0002665124302753776,
+            "SCHD": 0.00192582001664219,
+            "SCHP": 0.00033154708647973707,
+            "TLT": 0.00045932024558283053
+          },
+          "QQQ": {
+            "SPY": 0.0025358955110390217,
+            "QQQ": 0.003845939302286494,
+            "GLD": 0.0007025454139357609,
+            "SLV": 0.001767634941139183,
+            "BND": 0.00033256767672921523,
+            "SCHD": 0.0020996684816202036,
+            "SCHP": 0.00040646654303995997,
+            "TLT": 0.0006485836044845925
+          },
+          "GLD": {
+            "SPY": 0.0006014145523699173,
+            "QQQ": 0.0007025454139357612,
+            "GLD": 0.0024841712807716597,
+            "SLV": 0.0031089669875484964,
+            "BND": 0.00032536857242113976,
+            "SCHD": 0.0006288001310270209,
+            "SCHP": 0.00032266105029099453,
+            "TLT": 0.0008488643809140319
+          },
+          "SLV": {
+            "SPY": 0.0015500019705636618,
+            "QQQ": 0.0017676349411391834,
+            "GLD": 0.0031089669875484964,
+            "SLV": 0.008942167904120875,
+            "BND": 0.0005552585510626754,
+            "SCHD": 0.0015295885410290806,
+            "SCHP": 0.0005619977677051155,
+            "TLT": 0.001292644196348239
+          },
+          "BND": {
+            "SPY": 0.0002665124302753776,
+            "QQQ": 0.00033256767672921534,
+            "GLD": 0.00032536857242113976,
+            "SLV": 0.0005552585510626755,
+            "BND": 0.0002586738795357493,
+            "SCHD": 0.0002368214681153374,
+            "SCHP": 0.00021746165655684934,
+            "TLT": 0.0005093627123103708
+          },
+          "SCHD": {
+            "SPY": 0.0019258200166421898,
+            "QQQ": 0.0020996684816202036,
+            "GLD": 0.0006288001310270209,
+            "SLV": 0.0015295885410290806,
+            "BND": 0.00023682146811533733,
+            "SCHD": 0.002413248728339386,
+            "SCHP": 0.000296905019940337,
+            "TLT": 0.00038822682904321974
+          },
+          "SCHP": {
+            "SPY": 0.000331547086479737,
+            "QQQ": 0.00040646654303996,
+            "GLD": 0.00032266105029099453,
+            "SLV": 0.0005619977677051155,
+            "BND": 0.00021746165655684934,
+            "SCHD": 0.00029690501994033706,
+            "SCHP": 0.0002380111821680495,
+            "TLT": 0.0005543469245706951
+          },
+          "TLT": {
+            "SPY": 0.00045932024558283026,
+            "QQQ": 0.0006485836044845924,
+            "GLD": 0.0008488643809140319,
+            "SLV": 0.0012926441963482392,
+            "BND": 0.0005093627123103708,
+            "SCHD": 0.0003882268290432197,
+            "SCHP": 0.0005543469245706951,
+            "TLT": 0.0019492321223363322
+          }
+        },
+        "n_obs": 144,
+        "quality_status": "reliable"
+      },
+      "factor_covariance": {
+        "native_frequency": "weekly",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "equity": {
+            "equity": 0.00016752294159456623,
+            "real_rates": -2.2013564293974702e-06,
+            "inflation": 1.1567265738705686e-06,
+            "credit": 0.0,
+            "usd": -1.926681382773155e-05,
+            "commodity": 2.7715294697261512e-05,
+            "vix": -0.0007271438097112075,
+            "us_growth": -1.1837425579672997e-05,
+            "oil": 2.2770625961680998e-05
+          },
+          "real_rates": {
+            "equity": -2.2013564293974702e-06,
+            "real_rates": 3.1155542482465565e-07,
+            "inflation": -2.478781613397002e-08,
+            "credit": 0.0,
+            "usd": 4.991247024467469e-07,
+            "commodity": -7.419188190662126e-07,
+            "vix": 4.882327825290605e-06,
+            "us_growth": 2.0106805876036737e-06,
+            "oil": -3.6435556715331807e-07
+          },
+          "inflation": {
+            "equity": 1.1567265738705686e-06,
+            "real_rates": -2.478781613397002e-08,
+            "inflation": 1.2738636311713247e-07,
+            "credit": 0.0,
+            "usd": -3.069802684807111e-08,
+            "commodity": 2.0889543155158547e-06,
+            "vix": -6.81343249388432e-06,
+            "us_growth": -8.367115213269219e-07,
+            "oil": 3.824054828678345e-06
+          },
+          "credit": {
+            "equity": 0.0,
+            "real_rates": 0.0,
+            "inflation": 0.0,
+            "credit": 0.0,
+            "usd": 0.0,
+            "commodity": 0.0,
+            "vix": 0.0,
+            "us_growth": 0.0,
+            "oil": 0.0
+          },
+          "usd": {
+            "equity": -1.926681382773155e-05,
+            "real_rates": 4.991247024467469e-07,
+            "inflation": -3.069802684807111e-08,
+            "credit": 0.0,
+            "usd": 1.0502657914923013e-05,
+            "commodity": -6.887701312852389e-06,
+            "vix": 8.472470689917044e-05,
+            "us_growth": 2.0310307502626756e-05,
+            "oil": 3.2298634635602876e-06
+          },
+          "commodity": {
+            "equity": 2.7715294697261512e-05,
+            "real_rates": -7.419188190662126e-07,
+            "inflation": 2.0889543155158547e-06,
+            "credit": 0.0,
+            "usd": -6.887701312852389e-06,
+            "commodity": 0.00016540837616367904,
+            "vix": -0.00016249091759243666,
+            "us_growth": 0.00012302059852209224,
+            "oil": 0.0002966572615488469
+          },
+          "vix": {
+            "equity": -0.0007271438097112075,
+            "real_rates": 4.882327825290605e-06,
+            "inflation": -6.81343249388432e-06,
+            "credit": 0.0,
+            "usd": 8.472470689917044e-05,
+            "commodity": -0.00016249091759243666,
+            "vix": 0.005812735803455305,
+            "us_growth": 0.0004850458471686824,
+            "oil": -7.871651414108821e-05
+          },
+          "us_growth": {
+            "equity": -1.1837425579672997e-05,
+            "real_rates": 2.0106805876036737e-06,
+            "inflation": -8.367115213269219e-07,
+            "credit": 0.0,
+            "usd": 2.0310307502626756e-05,
+            "commodity": 0.00012302059852209224,
+            "vix": 0.0004850458471686824,
+            "us_growth": 0.03968952365721596,
+            "oil": 0.0001900312096638374
+          },
+          "oil": {
+            "equity": 2.2770625961680998e-05,
+            "real_rates": -3.6435556715331807e-07,
+            "inflation": 3.824054828678345e-06,
+            "credit": 0.0,
+            "usd": 3.2298634635602876e-06,
+            "commodity": 0.0002966572615488469,
+            "vix": -7.871651414108821e-05,
+            "us_growth": 0.0001900312096638374,
+            "oil": 0.0007278963314474383
+          }
+        },
+        "factor_covariance_method": "base_weekly_corr_shock_vol_scale_v1",
+        "n_obs": 0,
+        "quality_status": "insufficient_data"
+      },
+      "factor_betas": {
+        "5y": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1362,
+          "beta_vix": 0.0005,
+          "beta_us_growth": 0.0012
+        },
+        "10y": {
+          "beta_eq": 0.3499,
+          "beta_rr": -7.0841,
+          "beta_inf": -5.3303,
+          "beta_usd": -0.3134,
+          "beta_cmd": 0.0654,
+          "beta_vix": -0.0025,
+          "beta_us_growth": -0.0012
+        },
+        "adjusted": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1185,
+          "beta_vix": -0.001,
+          "beta_us_growth": 0.0
+        }
+      },
+      "scenario_factor_move": {
+        "shock_eq": -0.1,
+        "shock_rr": 0.0,
+        "shock_credit": 0.04,
+        "shock_inf": 0.0,
+        "shock_usd": 0.0,
+        "shock_cmd": 0.0
+      },
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": -0.0349,
+      "scenario_risk": {
+        "portfolio_sigma_monthly": 0.03661248698307637,
+        "portfolio_sigma_annual": 0.12682937529228486,
+        "basis": "stress_scenario_asset_covariance"
+      },
+      "scenario_drawdown_proxy": -0.0349,
+      "asset_rc": {
+        "top1_asset": "TLT",
+        "top1_rc_share": 0.26386,
+        "top3_assets": [
+          "TLT",
+          "SCHD",
+          "GLD"
+        ],
+        "top3_rc_sum": 0.697865,
+        "asset_rc_hhi": 0.213627
+      },
+      "factor_rc": {
+        "raw_5y": {
+          "total_factor_variance": 0.00023636014495235008,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.553044,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "usd"
+          ],
+          "top3_rc_sum": 0.948271,
+          "factor_rc_hhi": 0.408503
+        },
+        "adjusted": {
+          "total_factor_variance": 0.00023613843313355048,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.557812,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "usd"
+          ],
+          "top3_rc_sum": 0.953248,
+          "factor_rc_hhi": 0.411808
+        }
+      },
+      "quality_status": "insufficient_data",
+      "confidence_weight": 0.0,
+      "usable_for_optimization": false,
+      "warnings": [],
+      "classification": "insufficient_data",
+      "raw_vs_shrinkage": {
+        "pnl_raw": -0.0349,
+        "pnl_shrinkage_adjusted": -0.03492800000000001,
+        "actual_realized_historical": null,
+        "model_explained": null,
+        "note": "synthetic PnL is factor model; optional adjusted overlay separate"
+      }
+    },
+    {
+      "scenario_id": "rates_shock",
+      "scenario_type": "synthetic_stress",
+      "frequency": "monthly",
+      "scaling_note": "synthetic: asset Σ monthly (taxonomy_blend); factor Σ weekly shock-scaled then monthly-equivalent; ",
+      "asset_covariance": {
+        "native_frequency": "monthly",
+        "normalized_frequency": "monthly",
+        "matrix": {
+          "SPY": {
+            "SPY": 0.0021209529591163234,
+            "QQQ": 0.002069473763747337,
+            "GLD": 0.0003493295580120803,
+            "SLV": 0.0011407078697786145,
+            "BND": 7.424740437749665e-05,
+            "SCHD": 0.001545644315775846,
+            "SCHP": 0.0001613800050098992,
+            "TLT": -0.00021456620701495606
+          },
+          "QQQ": {
+            "SPY": 0.0020694737637473367,
+            "QQQ": 0.0032217061205019877,
+            "GLD": 0.00038533270698739924,
+            "SLV": 0.0012391206371658095,
+            "BND": 9.780531976388375e-05,
+            "SCHD": 0.0015957684781150565,
+            "SCHP": 0.0001956319179592381,
+            "TLT": -0.00013770302508545192
+          },
+          "GLD": {
+            "SPY": 0.00034932955801208034,
+            "QQQ": 0.00038533270698739924,
+            "GLD": 0.002229560927894787,
+            "SLV": 0.00281104372090596,
+            "BND": 0.0002990113774920313,
+            "SCHD": 0.0003897178929336216,
+            "SCHP": 0.00035349914273374226,
+            "TLT": 0.0007503524890472435
+          },
+          "SLV": {
+            "SPY": 0.0011407078697786145,
+            "QQQ": 0.0012391206371658095,
+            "GLD": 0.0028110437209059604,
+            "SLV": 0.008025657620319013,
+            "BND": 0.00046860723520228095,
+            "SCHD": 0.0011327568639910987,
+            "SCHP": 0.000592049893082127,
+            "TLT": 0.0009180250282697457
+          },
+          "BND": {
+            "SPY": 7.424740437749664e-05,
+            "QQQ": 9.780531976388382e-05,
+            "GLD": 0.0002990113774920312,
+            "SLV": 0.00046860723520228095,
+            "BND": 0.00040134657640495915,
+            "SCHD": 3.6574981064356834e-05,
+            "SCHP": 0.00033364733701447965,
+            "TLT": 0.000926661705090043
+          },
+          "SCHD": {
+            "SPY": 0.001545644315775846,
+            "QQQ": 0.0015957684781150569,
+            "GLD": 0.00038971789293362167,
+            "SLV": 0.0011327568639910987,
+            "BND": 3.657498106435685e-05,
+            "SCHD": 0.0020215550967646223,
+            "SCHP": 0.0001170091802085773,
+            "TLT": -0.00030198305751499084
+          },
+          "SCHP": {
+            "SPY": 0.00016138000500989918,
+            "QQQ": 0.00019563191795923815,
+            "GLD": 0.0003534991427337422,
+            "SLV": 0.0005920498930821269,
+            "BND": 0.00033364733701447965,
+            "SCHD": 0.00011700918020857727,
+            "SCHP": 0.0003584920491746035,
+            "TLT": 0.0008281082437700496
+          },
+          "TLT": {
+            "SPY": -0.00021456620701495609,
+            "QQQ": -0.00013770302508545195,
+            "GLD": 0.0007503524890472434,
+            "SLV": 0.0009180250282697457,
+            "BND": 0.000926661705090043,
+            "SCHD": -0.00030198305751499106,
+            "SCHP": 0.0008281082437700498,
+            "TLT": 0.003024339528684965
+          }
+        },
+        "n_obs": 144,
+        "quality_status": "reliable"
+      },
+      "factor_covariance": {
+        "native_frequency": "weekly",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "equity": {
+            "equity": 0.00011633537610733765,
+            "real_rates": -1.9078422388111415e-06,
+            "inflation": 9.639388115588074e-07,
+            "credit": 0.0,
+            "usd": -1.605567818977629e-05,
+            "commodity": 2.3096078914384596e-05,
+            "vix": -0.0006059531747593394,
+            "us_growth": -9.864521316394164e-06,
+            "oil": 1.897552163473416e-05
+          },
+          "real_rates": {
+            "equity": -1.9078422388111415e-06,
+            "real_rates": 3.369783474903476e-07,
+            "inflation": -2.5779328779328824e-08,
+            "credit": 0.0,
+            "usd": 5.190896905446167e-07,
+            "commodity": -7.715955718288612e-07,
+            "vix": 5.07762093830223e-06,
+            "us_growth": 2.0911078111078203e-06,
+            "oil": -3.789297898394508e-07
+          },
+          "inflation": {
+            "equity": 9.639388115588074e-07,
+            "real_rates": -2.5779328779328824e-08,
+            "inflation": 1.2738636311713247e-07,
+            "credit": 0.0,
+            "usd": -3.069802684807111e-08,
+            "commodity": 2.0889543155158547e-06,
+            "vix": -6.81343249388432e-06,
+            "us_growth": -8.367115213269219e-07,
+            "oil": 3.824054828678345e-06
+          },
+          "credit": {
+            "equity": 0.0,
+            "real_rates": 0.0,
+            "inflation": 0.0,
+            "credit": 0.0,
+            "usd": 0.0,
+            "commodity": 0.0,
+            "vix": 0.0,
+            "us_growth": 0.0,
+            "oil": 0.0
+          },
+          "usd": {
+            "equity": -1.605567818977629e-05,
+            "real_rates": 5.190896905446167e-07,
+            "inflation": -3.069802684807111e-08,
+            "credit": 0.0,
+            "usd": 1.0502657914923013e-05,
+            "commodity": -6.887701312852389e-06,
+            "vix": 8.472470689917044e-05,
+            "us_growth": 2.0310307502626756e-05,
+            "oil": 3.2298634635602876e-06
+          },
+          "commodity": {
+            "equity": 2.3096078914384596e-05,
+            "real_rates": -7.715955718288612e-07,
+            "inflation": 2.0889543155158547e-06,
+            "credit": 0.0,
+            "usd": -6.887701312852389e-06,
+            "commodity": 0.00016540837616367904,
+            "vix": -0.00016249091759243666,
+            "us_growth": 0.00012302059852209224,
+            "oil": 0.0002966572615488469
+          },
+          "vix": {
+            "equity": -0.0006059531747593394,
+            "real_rates": 5.07762093830223e-06,
+            "inflation": -6.81343249388432e-06,
+            "credit": 0.0,
+            "usd": 8.472470689917044e-05,
+            "commodity": -0.00016249091759243666,
+            "vix": 0.005812735803455305,
+            "us_growth": 0.0004850458471686824,
+            "oil": -7.871651414108821e-05
+          },
+          "us_growth": {
+            "equity": -9.864521316394164e-06,
+            "real_rates": 2.0911078111078203e-06,
+            "inflation": -8.367115213269219e-07,
+            "credit": 0.0,
+            "usd": 2.0310307502626756e-05,
+            "commodity": 0.00012302059852209224,
+            "vix": 0.0004850458471686824,
+            "us_growth": 0.03968952365721596,
+            "oil": 0.0001900312096638374
+          },
+          "oil": {
+            "equity": 1.897552163473416e-05,
+            "real_rates": -3.789297898394508e-07,
+            "inflation": 3.824054828678345e-06,
+            "credit": 0.0,
+            "usd": 3.2298634635602876e-06,
+            "commodity": 0.0002966572615488469,
+            "vix": -7.871651414108821e-05,
+            "us_growth": 0.0001900312096638374,
+            "oil": 0.0007278963314474383
+          }
+        },
+        "factor_covariance_method": "base_weekly_corr_shock_vol_scale_v1",
+        "n_obs": 0,
+        "quality_status": "insufficient_data"
+      },
+      "factor_betas": {
+        "5y": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1362,
+          "beta_vix": 0.0005,
+          "beta_us_growth": 0.0012
+        },
+        "10y": {
+          "beta_eq": 0.3499,
+          "beta_rr": -7.0841,
+          "beta_inf": -5.3303,
+          "beta_usd": -0.3134,
+          "beta_cmd": 0.0654,
+          "beta_vix": -0.0025,
+          "beta_us_growth": -0.0012
+        },
+        "adjusted": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1185,
+          "beta_vix": -0.001,
+          "beta_us_growth": 0.0
+        }
+      },
+      "scenario_factor_move": {
+        "shock_eq": 0.0,
+        "shock_rr": 0.02,
+        "shock_credit": 0.0,
+        "shock_inf": 0.0,
+        "shock_usd": 0.0,
+        "shock_cmd": 0.0
+      },
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": -0.116,
+      "scenario_risk": {
+        "portfolio_sigma_monthly": 0.03255276253302843,
+        "portfolio_sigma_annual": 0.11276607726785957,
+        "basis": "stress_scenario_asset_covariance"
+      },
+      "scenario_drawdown_proxy": -0.116,
+      "asset_rc": {
+        "top1_asset": "TLT",
+        "top1_rc_share": 0.335528,
+        "top3_assets": [
+          "TLT",
+          "SCHD",
+          "GLD"
+        ],
+        "top3_rc_sum": 0.72783,
+        "asset_rc_hhi": 0.226784
+      },
+      "factor_rc": {
+        "raw_5y": {
+          "total_factor_variance": 0.00020103401000741233,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.474105,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "usd"
+          ],
+          "top3_rc_sum": 0.935401,
+          "factor_rc_hhi": 0.367416
+        },
+        "adjusted": {
+          "total_factor_variance": 0.00020047109739343734,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.479606,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "usd"
+          ],
+          "top3_rc_sum": 0.94199,
+          "factor_rc_hhi": 0.370694
+        }
+      },
+      "quality_status": "insufficient_data",
+      "confidence_weight": 0.0,
+      "usable_for_optimization": false,
+      "warnings": [],
+      "classification": "insufficient_data",
+      "raw_vs_shrinkage": {
+        "pnl_raw": -0.116,
+        "pnl_shrinkage_adjusted": -0.11596000000000001,
+        "actual_realized_historical": null,
+        "model_explained": null,
+        "note": "synthetic PnL is factor model; optional adjusted overlay separate"
+      }
+    },
+    {
+      "scenario_id": "inflation_stagflation",
+      "scenario_type": "synthetic_stress",
+      "frequency": "monthly",
+      "scaling_note": "synthetic: asset Σ monthly (taxonomy_blend); factor Σ weekly shock-scaled then monthly-equivalent; ",
+      "asset_covariance": {
+        "native_frequency": "monthly",
+        "normalized_frequency": "monthly",
+        "matrix": {
+          "SPY": {
+            "SPY": 0.0027064698082550883,
+            "QQQ": 0.0027192153635262816,
+            "GLD": 0.0007828033111636789,
+            "SLV": 0.0021444116967531766,
+            "BND": 0.0001012418281952836,
+            "SCHD": 0.002046038023231604,
+            "SCHP": 0.00039396746678748335,
+            "TLT": -9.485043002503578e-05
+          },
+          "QQQ": {
+            "SPY": 0.0027192153635262816,
+            "QQQ": 0.004111100299858674,
+            "GLD": 0.000902430188922534,
+            "SLV": 0.0024129008348618107,
+            "BND": 0.00013038865032101798,
+            "SCHD": 0.002165315172107293,
+            "SCHP": 0.0004824454579283568,
+            "TLT": -3.974761247003412e-06
+          },
+          "GLD": {
+            "SPY": 0.000782803311163679,
+            "QQQ": 0.0009024301889225342,
+            "GLD": 0.004074530241684265,
+            "SLV": 0.005777377111595834,
+            "BND": 0.00038092295448713615,
+            "SCHD": 0.0008313742388820038,
+            "SCHP": 0.0006121000443852053,
+            "TLT": 0.0009705387373330391
+          },
+          "SLV": {
+            "SPY": 0.0021444116967531766,
+            "QQQ": 0.0024129008348618107,
+            "GLD": 0.005777377111595834,
+            "SLV": 0.014666916823964342,
+            "BND": 0.0006174773369200843,
+            "SCHD": 0.0021199038299221057,
+            "SCHP": 0.0010717077559792168,
+            "TLT": 0.0013022834891553707
+          },
+          "BND": {
+            "SPY": 0.00010124182819528357,
+            "QQQ": 0.000130388650321018,
+            "GLD": 0.00038092295448713615,
+            "SLV": 0.0006174773369200843,
+            "BND": 0.00030604567341810417,
+            "SCHD": 6.684453378057223e-05,
+            "SCHP": 0.00026663678540507805,
+            "TLT": 0.0006572975091725769
+          },
+          "SCHD": {
+            "SPY": 0.002046038023231604,
+            "QQQ": 0.002165315172107293,
+            "GLD": 0.000831374238882004,
+            "SLV": 0.0021199038299221057,
+            "BND": 6.684453378057223e-05,
+            "SCHD": 0.0025796318638755694,
+            "SCHP": 0.0003460155277401374,
+            "TLT": -0.00017502085366593185
+          },
+          "SCHP": {
+            "SPY": 0.0003939674667874833,
+            "QQQ": 0.00048244545792835677,
+            "GLD": 0.0006121000443852053,
+            "SLV": 0.0010717077559792166,
+            "BND": 0.00026663678540507805,
+            "SCHD": 0.00034601552774013737,
+            "SCHP": 0.00031228640728098785,
+            "TLT": 0.0006673198181271062
+          },
+          "TLT": {
+            "SPY": -9.48504300250358e-05,
+            "QQQ": -3.974761247003474e-06,
+            "GLD": 0.000970538737333039,
+            "SLV": 0.0013022834891553705,
+            "BND": 0.0006572975091725768,
+            "SCHD": -0.00017502085366593196,
+            "SCHP": 0.0006673198181271062,
+            "TLT": 0.002306201378350527
+          }
+        },
+        "n_obs": 144,
+        "quality_status": "reliable"
+      },
+      "factor_covariance": {
+        "native_frequency": "weekly",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "equity": {
+            "equity": 0.00022801733717038177,
+            "real_rates": -2.5939316593066865e-06,
+            "inflation": 1.3630094795441535e-06,
+            "credit": 0.0,
+            "usd": -2.2477949465686803e-05,
+            "commodity": 4.850176572020764e-05,
+            "vix": -0.0008483344446630752,
+            "us_growth": -1.3810329842951832e-05,
+            "oil": 2.6565730288627826e-05
+          },
+          "real_rates": {
+            "equity": -2.5939316593066865e-06,
+            "real_rates": 3.1781768886363125e-07,
+            "inflation": -2.528605123826282e-08,
+            "credit": 0.0,
+            "usd": 5.041159494712143e-07,
+            "commodity": -1.1240070108853122e-06,
+            "vix": 4.931151103543511e-06,
+            "us_growth": 2.0307873934797103e-06,
+            "oil": -3.679991228248512e-07
+          },
+          "inflation": {
+            "equity": 1.3630094795441535e-06,
+            "real_rates": -2.528605123826282e-08,
+            "inflation": 1.2994682901578682e-07,
+            "credit": 0.0,
+            "usd": -3.1005007116551824e-08,
+            "commodity": 3.1647657880065194e-06,
+            "vix": -6.8815668188231636e-06,
+            "us_growth": -8.450786365401912e-07,
+            "oil": 3.862295376965128e-06
+          },
+          "credit": {
+            "equity": 0.0,
+            "real_rates": 0.0,
+            "inflation": 0.0,
+            "credit": 0.0,
+            "usd": 0.0,
+            "commodity": 0.0,
+            "vix": 0.0,
+            "us_growth": 0.0,
+            "oil": 0.0
+          },
+          "usd": {
+            "equity": -2.2477949465686803e-05,
+            "real_rates": 5.041159494712143e-07,
+            "inflation": -3.1005007116551824e-08,
+            "credit": 0.0,
+            "usd": 1.0502657914923013e-05,
+            "commodity": -1.0331551969278584e-05,
+            "vix": 8.472470689917044e-05,
+            "us_growth": 2.0310307502626756e-05,
+            "oil": 3.2298634635602876e-06
+          },
+          "commodity": {
+            "equity": 4.850176572020764e-05,
+            "real_rates": -1.1240070108853122e-06,
+            "inflation": 3.1647657880065194e-06,
+            "credit": 0.0,
+            "usd": -1.0331551969278584e-05,
+            "commodity": 0.0003721688463682778,
+            "vix": -0.00024373637638865498,
+            "us_growth": 0.00018453089778313833,
+            "oil": 0.00044498589232327024
+          },
+          "vix": {
+            "equity": -0.0008483344446630752,
+            "real_rates": 4.931151103543511e-06,
+            "inflation": -6.8815668188231636e-06,
+            "credit": 0.0,
+            "usd": 8.472470689917044e-05,
+            "commodity": -0.00024373637638865498,
+            "vix": 0.005812735803455305,
+            "us_growth": 0.0004850458471686824,
+            "oil": -7.871651414108821e-05
+          },
+          "us_growth": {
+            "equity": -1.3810329842951832e-05,
+            "real_rates": 2.0307873934797103e-06,
+            "inflation": -8.450786365401912e-07,
+            "credit": 0.0,
+            "usd": 2.0310307502626756e-05,
+            "commodity": 0.00018453089778313833,
+            "vix": 0.0004850458471686824,
+            "us_growth": 0.03968952365721596,
+            "oil": 0.0001900312096638374
+          },
+          "oil": {
+            "equity": 2.6565730288627826e-05,
+            "real_rates": -3.679991228248512e-07,
+            "inflation": 3.862295376965128e-06,
+            "credit": 0.0,
+            "usd": 3.2298634635602876e-06,
+            "commodity": 0.00044498589232327024,
+            "vix": -7.871651414108821e-05,
+            "us_growth": 0.0001900312096638374,
+            "oil": 0.0007278963314474383
+          }
+        },
+        "factor_covariance_method": "base_weekly_corr_shock_vol_scale_v1",
+        "n_obs": 0,
+        "quality_status": "insufficient_data"
+      },
+      "factor_betas": {
+        "5y": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1362,
+          "beta_vix": 0.0005,
+          "beta_us_growth": 0.0012
+        },
+        "10y": {
+          "beta_eq": 0.3499,
+          "beta_rr": -7.0841,
+          "beta_inf": -5.3303,
+          "beta_usd": -0.3134,
+          "beta_cmd": 0.0654,
+          "beta_vix": -0.0025,
+          "beta_us_growth": -0.0012
+        },
+        "adjusted": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1185,
+          "beta_vix": -0.001,
+          "beta_us_growth": 0.0
+        }
+      },
+      "scenario_factor_move": {
+        "shock_eq": -0.2,
+        "shock_rr": 0.005,
+        "shock_credit": 0.0,
+        "shock_inf": 0.005,
+        "shock_usd": 0.0,
+        "shock_cmd": 0.25
+      },
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": -0.0977,
+      "scenario_risk": {
+        "portfolio_sigma_monthly": 0.038587496709100874,
+        "portfolio_sigma_annual": 0.13367100967411913,
+        "basis": "stress_scenario_asset_covariance"
+      },
+      "scenario_drawdown_proxy": -0.0977,
+      "asset_rc": {
+        "top1_asset": "GLD",
+        "top1_rc_share": 0.240136,
+        "top3_assets": [
+          "GLD",
+          "SCHD",
+          "TLT"
+        ],
+        "top3_rc_sum": 0.676903,
+        "asset_rc_hhi": 0.205511
+      },
+      "factor_rc": {
+        "raw_5y": {
+          "total_factor_variance": 0.00030524575015244206,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.577444,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "commodity"
+          ],
+          "top3_rc_sum": 0.945671,
+          "factor_rc_hhi": 0.417786
+        },
+        "adjusted": {
+          "total_factor_variance": 0.0003007976660283367,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.588321,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "commodity"
+          ],
+          "top3_rc_sum": 0.934328,
+          "factor_rc_hhi": 0.426532
+        }
+      },
+      "quality_status": "insufficient_data",
+      "confidence_weight": 0.0,
+      "usable_for_optimization": false,
+      "warnings": [],
+      "classification": "insufficient_data",
+      "raw_vs_shrinkage": {
+        "pnl_raw": -0.0977,
+        "pnl_shrinkage_adjusted": -0.1021095,
+        "actual_realized_historical": null,
+        "model_explained": null,
+        "note": "synthetic PnL is factor model; optional adjusted overlay separate"
+      }
+    },
+    {
+      "scenario_id": "liquidity_shock",
+      "scenario_type": "synthetic_stress",
+      "frequency": "monthly",
+      "scaling_note": "synthetic: asset Σ monthly (taxonomy_blend); factor Σ weekly shock-scaled then monthly-equivalent; ",
+      "asset_covariance": {
+        "native_frequency": "monthly",
+        "normalized_frequency": "monthly",
+        "matrix": {
+          "SPY": {
+            "SPY": 0.003982969274389913,
+            "QQQ": 0.00441337473587652,
+            "GLD": 0.0013658333599900511,
+            "SLV": 0.0031942732820013794,
+            "BND": 0.0004828313000225118,
+            "SCHD": 0.0033654970336930413,
+            "SCHP": 0.0005109989811867882,
+            "TLT": 0.0009539538575961368
+          },
+          "QQQ": {
+            "SPY": 0.00441337473587652,
+            "QQQ": 0.006050090094605241,
+            "GLD": 0.0016263250399858637,
+            "SLV": 0.003726475108107525,
+            "BND": 0.0006006676927040952,
+            "SCHD": 0.003717083523587179,
+            "SCHP": 0.0006268420901582504,
+            "TLT": 0.0012882515968988494
+          },
+          "GLD": {
+            "SPY": 0.0013658333599900511,
+            "QQQ": 0.0016263250399858637,
+            "GLD": 0.0034322698920849445,
+            "SLV": 0.004998814806957811,
+            "BND": 0.0004713439907313439,
+            "SCHD": 0.001394844281127527,
+            "SCHP": 0.00046699131185479697,
+            "TLT": 0.0012372395605147123
+          },
+          "SLV": {
+            "SPY": 0.0031942732820013794,
+            "QQQ": 0.003726475108107525,
+            "GLD": 0.004998814806957811,
+            "SLV": 0.012354998990950638,
+            "BND": 0.0008149288701462124,
+            "SCHD": 0.0031426193255518504,
+            "SCHP": 0.0008216666909035417,
+            "TLT": 0.001940952969332942
+          },
+          "BND": {
+            "SPY": 0.0004828313000225119,
+            "QQQ": 0.0006006676927040951,
+            "GLD": 0.00047134399073134385,
+            "SLV": 0.0008149288701462124,
+            "BND": 0.00030604567341810417,
+            "SCHD": 0.0004394975741292831,
+            "SCHP": 0.00025168096278679685,
+            "TLT": 0.0006570837999944931
+          },
+          "SCHD": {
+            "SPY": 0.0033654970336930417,
+            "QQQ": 0.003717083523587179,
+            "GLD": 0.0013948442811275272,
+            "SLV": 0.0031426193255518504,
+            "BND": 0.0004394975741292831,
+            "SCHD": 0.0037963085424839067,
+            "SCHP": 0.00046223953619274003,
+            "TLT": 0.0008492021180732337
+          },
+          "SCHP": {
+            "SPY": 0.0005109989811867883,
+            "QQQ": 0.0006268420901582505,
+            "GLD": 0.000466991311854797,
+            "SLV": 0.0008216666909035418,
+            "BND": 0.00025168096278679685,
+            "SCHD": 0.0004622395361927401,
+            "SCHP": 0.0002832529771256126,
+            "TLT": 0.0006403318483992201
+          },
+          "TLT": {
+            "SPY": 0.0009539538575961368,
+            "QQQ": 0.0012882515968988492,
+            "GLD": 0.0012372395605147123,
+            "SLV": 0.0019409529693329424,
+            "BND": 0.0006570837999944931,
+            "SCHD": 0.0008492021180732337,
+            "SCHP": 0.0006403318483992201,
+            "TLT": 0.002306201378350527
+          }
+        },
+        "n_obs": 144,
+        "quality_status": "reliable"
+      },
+      "factor_covariance": {
+        "native_frequency": "weekly",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "equity": {
+            "equity": 0.00026175459624150967,
+            "real_rates": -2.751695536746838e-06,
+            "inflation": 1.445908217338211e-06,
+            "credit": 0.0,
+            "usd": -2.4083517284664433e-05,
+            "commodity": 3.4644118371576886e-05,
+            "vix": -0.0009089297621390091,
+            "us_growth": -1.4796781974591249e-05,
+            "oil": 2.8463282452101243e-05
+          },
+          "real_rates": {
+            "equity": -2.751695536746838e-06,
+            "real_rates": 3.1155542482465565e-07,
+            "inflation": -2.478781613397002e-08,
+            "credit": 0.0,
+            "usd": 4.991247024467469e-07,
+            "commodity": -7.419188190662126e-07,
+            "vix": 4.882327825290605e-06,
+            "us_growth": 2.0106805876036737e-06,
+            "oil": -3.6435556715331807e-07
+          },
+          "inflation": {
+            "equity": 1.445908217338211e-06,
+            "real_rates": -2.478781613397002e-08,
+            "inflation": 1.2738636311713247e-07,
+            "credit": 0.0,
+            "usd": -3.069802684807111e-08,
+            "commodity": 2.0889543155158547e-06,
+            "vix": -6.81343249388432e-06,
+            "us_growth": -8.367115213269219e-07,
+            "oil": 3.824054828678345e-06
+          },
+          "credit": {
+            "equity": 0.0,
+            "real_rates": 0.0,
+            "inflation": 0.0,
+            "credit": 0.0,
+            "usd": 0.0,
+            "commodity": 0.0,
+            "vix": 0.0,
+            "us_growth": 0.0,
+            "oil": 0.0
+          },
+          "usd": {
+            "equity": -2.4083517284664433e-05,
+            "real_rates": 4.991247024467469e-07,
+            "inflation": -3.069802684807111e-08,
+            "credit": 0.0,
+            "usd": 1.0502657914923013e-05,
+            "commodity": -6.887701312852389e-06,
+            "vix": 8.472470689917044e-05,
+            "us_growth": 2.0310307502626756e-05,
+            "oil": 3.2298634635602876e-06
+          },
+          "commodity": {
+            "equity": 3.4644118371576886e-05,
+            "real_rates": -7.419188190662126e-07,
+            "inflation": 2.0889543155158547e-06,
+            "credit": 0.0,
+            "usd": -6.887701312852389e-06,
+            "commodity": 0.00016540837616367904,
+            "vix": -0.00016249091759243666,
+            "us_growth": 0.00012302059852209224,
+            "oil": 0.0002966572615488469
+          },
+          "vix": {
+            "equity": -0.0009089297621390091,
+            "real_rates": 4.882327825290605e-06,
+            "inflation": -6.81343249388432e-06,
+            "credit": 0.0,
+            "usd": 8.472470689917044e-05,
+            "commodity": -0.00016249091759243666,
+            "vix": 0.005812735803455305,
+            "us_growth": 0.0004850458471686824,
+            "oil": -7.871651414108821e-05
+          },
+          "us_growth": {
+            "equity": -1.4796781974591249e-05,
+            "real_rates": 2.0106805876036737e-06,
+            "inflation": -8.367115213269219e-07,
+            "credit": 0.0,
+            "usd": 2.0310307502626756e-05,
+            "commodity": 0.00012302059852209224,
+            "vix": 0.0004850458471686824,
+            "us_growth": 0.03968952365721596,
+            "oil": 0.0001900312096638374
+          },
+          "oil": {
+            "equity": 2.8463282452101243e-05,
+            "real_rates": -3.6435556715331807e-07,
+            "inflation": 3.824054828678345e-06,
+            "credit": 0.0,
+            "usd": 3.2298634635602876e-06,
+            "commodity": 0.0002966572615488469,
+            "vix": -7.871651414108821e-05,
+            "us_growth": 0.0001900312096638374,
+            "oil": 0.0007278963314474383
+          }
+        },
+        "factor_covariance_method": "base_weekly_corr_shock_vol_scale_v1",
+        "n_obs": 0,
+        "quality_status": "insufficient_data"
+      },
+      "factor_betas": {
+        "5y": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1362,
+          "beta_vix": 0.0005,
+          "beta_us_growth": 0.0012
+        },
+        "10y": {
+          "beta_eq": 0.3499,
+          "beta_rr": -7.0841,
+          "beta_inf": -5.3303,
+          "beta_usd": -0.3134,
+          "beta_cmd": 0.0654,
+          "beta_vix": -0.0025,
+          "beta_us_growth": -0.0012
+        },
+        "adjusted": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1185,
+          "beta_vix": -0.001,
+          "beta_us_growth": 0.0
+        }
+      },
+      "scenario_factor_move": {
+        "shock_eq": -0.25,
+        "shock_rr": 0.0,
+        "shock_credit": 0.03,
+        "shock_inf": 0.0,
+        "shock_usd": 0.0,
+        "shock_cmd": 0.0
+      },
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": -0.0921,
+      "scenario_risk": {
+        "portfolio_sigma_monthly": 0.04696574121553613,
+        "portfolio_sigma_annual": 0.1626941000008805,
+        "basis": "stress_scenario_asset_covariance"
+      },
+      "scenario_drawdown_proxy": -0.0921,
+      "asset_rc": {
+        "top1_asset": "SCHD",
+        "top1_rc_share": 0.276939,
+        "top3_assets": [
+          "SCHD",
+          "TLT",
+          "QQQ"
+        ],
+        "top3_rc_sum": 0.695721,
+        "asset_rc_hhi": 0.21246
+      },
+      "factor_rc": {
+        "raw_5y": {
+          "total_factor_variance": 0.00030816061814548774,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.634751,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "usd"
+          ],
+          "top3_rc_sum": 0.964215,
+          "factor_rc_hhi": 0.473641
+        },
+        "adjusted": {
+          "total_factor_variance": 0.00030844046975649444,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.638241,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "usd"
+          ],
+          "top3_rc_sum": 0.967282,
+          "factor_rc_hhi": 0.476463
+        }
+      },
+      "quality_status": "insufficient_data",
+      "confidence_weight": 0.0,
+      "usable_for_optimization": false,
+      "warnings": [],
+      "classification": "insufficient_data",
+      "raw_vs_shrinkage": {
+        "pnl_raw": -0.0921,
+        "pnl_shrinkage_adjusted": -0.09213600000000001,
+        "actual_realized_historical": null,
+        "model_explained": null,
+        "note": "synthetic PnL is factor model; optional adjusted overlay separate"
+      }
+    },
+    {
+      "scenario_id": "recession_severe",
+      "scenario_type": "synthetic_stress",
+      "frequency": "monthly",
+      "scaling_note": "synthetic: asset Σ monthly (taxonomy_blend); factor Σ weekly shock-scaled then monthly-equivalent; ",
+      "asset_covariance": {
+        "native_frequency": "monthly",
+        "normalized_frequency": "monthly",
+        "matrix": {
+          "SPY": {
+            "SPY": 0.004368646677192187,
+            "QQQ": 0.004886189737904239,
+            "GLD": 0.001631730185607552,
+            "SLV": 0.00359778790862076,
+            "BND": 0.00043219433886791545,
+            "SCHD": 0.003761622098429214,
+            "SCHP": 0.00059198937479943,
+            "TLT": 0.0008760879259965116
+          },
+          "QQQ": {
+            "SPY": 0.004886189737904239,
+            "QQQ": 0.006635930173616277,
+            "GLD": 0.001963585780711508,
+            "SLV": 0.0042590270566207076,
+            "BND": 0.0005373387835530191,
+            "SCHD": 0.00427657483248765,
+            "SCHP": 0.0007271423719729266,
+            "TLT": 0.0011737632348055491
+          },
+          "GLD": {
+            "SPY": 0.0016317301856075518,
+            "QQQ": 0.001963585780711508,
+            "GLD": 0.00374651870599604,
+            "SLV": 0.0055699155508295685,
+            "BND": 0.0005508634525258613,
+            "SCHD": 0.0016441535741491071,
+            "SCHP": 0.0005280080174631154,
+            "TLT": 0.0014649629450422246
+          },
+          "SLV": {
+            "SPY": 0.00359778790862076,
+            "QQQ": 0.0042590270566207076,
+            "GLD": 0.0055699155508295685,
+            "SLV": 0.013486187359246627,
+            "BND": 0.0009790172511056263,
+            "SCHD": 0.0035325304195823666,
+            "SCHP": 0.0009480694293957914,
+            "TLT": 0.002440717624866431
+          },
+          "BND": {
+            "SPY": 0.0004321943388679155,
+            "QQQ": 0.0005373387835530191,
+            "GLD": 0.0005508634525258613,
+            "SLV": 0.0009790172511056263,
+            "BND": 0.0003363795447948726,
+            "SCHD": 0.00039530906232116477,
+            "SCHP": 0.00029009447085244305,
+            "TLT": 0.0007280839205036483
+          },
+          "SCHD": {
+            "SPY": 0.003761622098429214,
+            "QQQ": 0.004276574832487651,
+            "GLD": 0.0016441535741491071,
+            "SLV": 0.003532530419582367,
+            "BND": 0.0003953090623211649,
+            "SCHD": 0.00416391128255916,
+            "SCHP": 0.0005472929969095186,
+            "TLT": 0.0007867001139871196
+          },
+          "SCHP": {
+            "SPY": 0.00059198937479943,
+            "QQQ": 0.0007271423719729268,
+            "GLD": 0.0005280080174631154,
+            "SLV": 0.0009480694293957914,
+            "BND": 0.00029009447085244305,
+            "SCHD": 0.0005472929969095186,
+            "SCHP": 0.00031228640728098785,
+            "TLT": 0.0007539914855607214
+          },
+          "TLT": {
+            "SPY": 0.0008760879259965116,
+            "QQQ": 0.0011737632348055491,
+            "GLD": 0.0014649629450422248,
+            "SLV": 0.002440717624866431,
+            "BND": 0.0007280839205036483,
+            "SCHD": 0.0007867001139871196,
+            "SCHP": 0.0007539914855607215,
+            "TLT": 0.0025347816918654983
+          }
+        },
+        "n_obs": 144,
+        "quality_status": "reliable"
+      },
+      "factor_covariance": {
+        "native_frequency": "weekly",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "equity": {
+            "equity": 0.00040681317670974917,
+            "real_rates": -3.442796712046645e-06,
+            "inflation": 1.8357327842430853e-06,
+            "credit": 0.0,
+            "usd": -3.8328789313117934e-05,
+            "commodity": 7.391479707912549e-05,
+            "vix": -0.001133132436799965,
+            "us_growth": -1.8446654861657095e-05,
+            "oil": 3.548422545695289e-05
+          },
+          "real_rates": {
+            "equity": -3.442796712046645e-06,
+            "real_rates": 3.1380266164169896e-07,
+            "inflation": -2.5334790033858075e-08,
+            "credit": 0.0,
+            "usd": 6.394764524860338e-07,
+            "commodity": -1.274290858470936e-06,
+            "vix": 4.899904205461651e-06,
+            "us_growth": 2.017919037719047e-06,
+            "oil": -3.6566724719507003e-07
+          },
+          "inflation": {
+            "equity": 1.8357327842430853e-06,
+            "real_rates": -2.5334790033858075e-08,
+            "inflation": 1.3211730920693986e-07,
+            "credit": 0.0,
+            "usd": -3.991018053401373e-08,
+            "commodity": 3.6408170856203915e-06,
+            "vix": -6.93879965177179e-06,
+            "us_growth": -8.521070133193371e-07,
+            "oil": 3.894417437526026e-06
+          },
+          "credit": {
+            "equity": 0.0,
+            "real_rates": 0.0,
+            "inflation": 0.0,
+            "credit": 0.0,
+            "usd": 0.0,
+            "commodity": 0.0,
+            "vix": 0.0,
+            "us_growth": 0.0,
+            "oil": 0.0
+          },
+          "usd": {
+            "equity": -3.8328789313117934e-05,
+            "real_rates": 6.394764524860338e-07,
+            "inflation": -3.991018053401373e-08,
+            "credit": 0.0,
+            "usd": 1.711626100404387e-05,
+            "commodity": -1.5048065513432768e-05,
+            "vix": 0.00010815956082748099,
+            "us_growth": 2.5928138557853315e-05,
+            "oil": 4.123243697581064e-06
+          },
+          "commodity": {
+            "equity": 7.391479707912549e-05,
+            "real_rates": -1.274290858470936e-06,
+            "inflation": 3.6408170856203915e-06,
+            "credit": 0.0,
+            "usd": -1.5048065513432768e-05,
+            "commodity": 0.0004844629322457029,
+            "vix": -0.0002780869563676961,
+            "us_growth": 0.00021053745231070864,
+            "oil": 0.0005076992374146965
+          },
+          "vix": {
+            "equity": -0.001133132436799965,
+            "real_rates": 4.899904205461651e-06,
+            "inflation": -6.93879965177179e-06,
+            "credit": 0.0,
+            "usd": 0.00010815956082748099,
+            "commodity": -0.0002780869563676961,
+            "vix": 0.005812735803455305,
+            "us_growth": 0.0004850458471686824,
+            "oil": -7.871651414108821e-05
+          },
+          "us_growth": {
+            "equity": -1.8446654861657095e-05,
+            "real_rates": 2.017919037719047e-06,
+            "inflation": -8.521070133193371e-07,
+            "credit": 0.0,
+            "usd": 2.5928138557853315e-05,
+            "commodity": 0.00021053745231070864,
+            "vix": 0.0004850458471686824,
+            "us_growth": 0.03968952365721596,
+            "oil": 0.0001900312096638374
+          },
+          "oil": {
+            "equity": 3.548422545695289e-05,
+            "real_rates": -3.6566724719507003e-07,
+            "inflation": 3.894417437526026e-06,
+            "credit": 0.0,
+            "usd": 4.123243697581064e-06,
+            "commodity": 0.0005076992374146965,
+            "vix": -7.871651414108821e-05,
+            "us_growth": 0.0001900312096638374,
+            "oil": 0.0007278963314474383
+          }
+        },
+        "factor_covariance_method": "base_weekly_corr_shock_vol_scale_v1",
+        "n_obs": 0,
+        "quality_status": "insufficient_data"
+      },
+      "factor_betas": {
+        "5y": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1362,
+          "beta_vix": 0.0005,
+          "beta_us_growth": 0.0012
+        },
+        "10y": {
+          "beta_eq": 0.3499,
+          "beta_rr": -7.0841,
+          "beta_inf": -5.3303,
+          "beta_usd": -0.3134,
+          "beta_cmd": 0.0654,
+          "beta_vix": -0.0025,
+          "beta_us_growth": -0.0012
+        },
+        "adjusted": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1185,
+          "beta_vix": -0.001,
+          "beta_us_growth": 0.0
+        }
+      },
+      "scenario_factor_move": {
+        "shock_eq": -0.435,
+        "shock_rr": -0.0018,
+        "shock_inf": -0.0092,
+        "shock_usd": 0.1383,
+        "shock_cmd": -0.3557,
+        "shock_credit": 0.0
+      },
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": -0.2026,
+      "scenario_risk": {
+        "portfolio_sigma_monthly": 0.04945725543005472,
+        "portfolio_sigma_annual": 0.17132495841553302,
+        "basis": "stress_scenario_asset_covariance"
+      },
+      "scenario_drawdown_proxy": -0.2026,
+      "asset_rc": {
+        "top1_asset": "SCHD",
+        "top1_rc_share": 0.275046,
+        "top3_assets": [
+          "SCHD",
+          "TLT",
+          "QQQ"
+        ],
+        "top3_rc_sum": 0.68683,
+        "asset_rc_hhi": 0.211176
+      },
+      "factor_rc": {
+        "raw_5y": {
+          "total_factor_variance": 0.0004677185628882273,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.652173,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "commodity"
+          ],
+          "top3_rc_sum": 0.943595,
+          "factor_rc_hhi": 0.479413
+        },
+        "adjusted": {
+          "total_factor_variance": 0.00046116548034004745,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.662905,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "usd"
+          ],
+          "top3_rc_sum": 0.937124,
+          "factor_rc_hhi": 0.489886
+        }
+      },
+      "quality_status": "insufficient_data",
+      "confidence_weight": 0.0,
+      "usable_for_optimization": false,
+      "warnings": [],
+      "classification": "insufficient_data",
+      "raw_vs_shrinkage": {
+        "pnl_raw": -0.2026,
+        "pnl_shrinkage_adjusted": -0.19626727,
+        "actual_realized_historical": null,
+        "model_explained": null,
+        "note": "synthetic PnL is factor model; optional adjusted overlay separate"
+      }
+    },
+    {
+      "scenario_id": "dotcom",
+      "scenario_type": "historical_stress",
+      "frequency": "episode",
+      "scaling_note": "historical: asset Σ from episode monthly returns; factor Σ from weekly episode sample scaled to monthly-equivalent",
+      "asset_covariance": {
+        "native_frequency": "monthly",
+        "normalized_frequency": "monthly",
+        "matrix": {
+          "SPY": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          },
+          "QQQ": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          },
+          "GLD": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          },
+          "SLV": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          },
+          "BND": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          },
+          "SCHD": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          },
+          "SCHP": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          },
+          "TLT": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          }
+        },
+        "n_obs": 0,
+        "quality_status": "insufficient_data"
+      },
+      "factor_covariance": {
+        "native_frequency": "weekly",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "equity": {
+            "equity": 0.00011633537610733765,
+            "real_rates": -1.8344636911645587e-06,
+            "inflation": 9.639388115588074e-07,
+            "credit": 0.0,
+            "usd": -1.605567818977629e-05,
+            "commodity": 2.3096078914384596e-05,
+            "vix": -0.0006059531747593394,
+            "us_growth": -9.864521316394164e-06,
+            "oil": 1.897552163473416e-05
+          },
+          "real_rates": {
+            "equity": -1.8344636911645587e-06,
+            "real_rates": 3.1155542482465565e-07,
+            "inflation": -2.478781613397002e-08,
+            "credit": 0.0,
+            "usd": 4.991247024467469e-07,
+            "commodity": -7.419188190662126e-07,
+            "vix": 4.882327825290605e-06,
+            "us_growth": 2.0106805876036737e-06,
+            "oil": -3.6435556715331807e-07
+          },
+          "inflation": {
+            "equity": 9.639388115588074e-07,
+            "real_rates": -2.478781613397002e-08,
+            "inflation": 1.2738636311713247e-07,
+            "credit": 0.0,
+            "usd": -3.069802684807111e-08,
+            "commodity": 2.0889543155158547e-06,
+            "vix": -6.813432493884319e-06,
+            "us_growth": -8.367115213269219e-07,
+            "oil": 3.824054828678345e-06
+          },
+          "credit": {
+            "equity": 0.0,
+            "real_rates": 0.0,
+            "inflation": 0.0,
+            "credit": 0.0,
+            "usd": 0.0,
+            "commodity": 0.0,
+            "vix": 0.0,
+            "us_growth": 0.0,
+            "oil": 0.0
+          },
+          "usd": {
+            "equity": -1.605567818977629e-05,
+            "real_rates": 4.991247024467469e-07,
+            "inflation": -3.069802684807111e-08,
+            "credit": 0.0,
+            "usd": 1.0502657914923013e-05,
+            "commodity": -6.88770131285239e-06,
+            "vix": 8.472470689917044e-05,
+            "us_growth": 2.0310307502626756e-05,
+            "oil": 3.2298634635602876e-06
+          },
+          "commodity": {
+            "equity": 2.3096078914384596e-05,
+            "real_rates": -7.419188190662126e-07,
+            "inflation": 2.0889543155158547e-06,
+            "credit": 0.0,
+            "usd": -6.88770131285239e-06,
+            "commodity": 0.00016540837616367904,
+            "vix": -0.00016249091759243666,
+            "us_growth": 0.00012302059852209224,
+            "oil": 0.0002966572615488469
+          },
+          "vix": {
+            "equity": -0.0006059531747593394,
+            "real_rates": 4.882327825290605e-06,
+            "inflation": -6.813432493884319e-06,
+            "credit": 0.0,
+            "usd": 8.472470689917044e-05,
+            "commodity": -0.00016249091759243666,
+            "vix": 0.005812735803455304,
+            "us_growth": 0.0004850458471686824,
+            "oil": -7.871651414108821e-05
+          },
+          "us_growth": {
+            "equity": -9.864521316394164e-06,
+            "real_rates": 2.0106805876036737e-06,
+            "inflation": -8.367115213269219e-07,
+            "credit": 0.0,
+            "usd": 2.0310307502626756e-05,
+            "commodity": 0.00012302059852209224,
+            "vix": 0.0004850458471686824,
+            "us_growth": 0.03968952365721596,
+            "oil": 0.0001900312096638374
+          },
+          "oil": {
+            "equity": 1.897552163473416e-05,
+            "real_rates": -3.6435556715331807e-07,
+            "inflation": 3.824054828678345e-06,
+            "credit": 0.0,
+            "usd": 3.2298634635602876e-06,
+            "commodity": 0.0002966572615488469,
+            "vix": -7.871651414108821e-05,
+            "us_growth": 0.0001900312096638374,
+            "oil": 0.0007278963314474383
+          }
+        },
+        "factor_covariance_method": "fallback_factor_covariance_base",
+        "n_obs": 0,
+        "quality_status": "insufficient_data"
+      },
+      "factor_betas": {
+        "5y": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1362,
+          "beta_vix": 0.0005,
+          "beta_us_growth": 0.0012
+        },
+        "10y": {
+          "beta_eq": 0.3499,
+          "beta_rr": -7.0841,
+          "beta_inf": -5.3303,
+          "beta_usd": -0.3134,
+          "beta_cmd": 0.0654,
+          "beta_vix": -0.0025,
+          "beta_us_growth": -0.0012
+        },
+        "adjusted": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1185,
+          "beta_vix": -0.001,
+          "beta_us_growth": 0.0
+        }
+      },
+      "scenario_factor_move": null,
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": null,
+      "scenario_risk": {
+        "portfolio_sigma_monthly": 0.0,
+        "portfolio_sigma_annual": 0.0,
+        "basis": "stress_scenario_asset_covariance"
+      },
+      "scenario_drawdown_proxy": null,
+      "asset_rc": {
+        "top1_asset": "SPY",
+        "top1_rc_share": NaN,
+        "top3_assets": [
+          "SPY",
+          "QQQ",
+          "GLD"
+        ],
+        "top3_rc_sum": NaN,
+        "asset_rc_hhi": NaN
+      },
+      "factor_rc": {
+        "raw_5y": {
+          "total_factor_variance": 0.00019565056933502334,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.4836,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "usd"
+          ],
+          "top3_rc_sum": 0.93342,
+          "factor_rc_hhi": 0.367857
+        },
+        "adjusted": {
+          "total_factor_variance": 0.0001950944818963529,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.489263,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "usd"
+          ],
+          "top3_rc_sum": 0.94017,
+          "factor_rc_hhi": 0.37127
+        }
+      },
+      "quality_status": "insufficient_data",
+      "confidence_weight": 0.0,
+      "usable_for_optimization": false,
+      "warnings": [
+        "historical_asset_cov_insufficient"
+      ],
+      "classification": "insufficient_data",
+      "raw_vs_shrinkage": {
+        "pnl_raw": null,
+        "pnl_shrinkage_adjusted": null,
+        "actual_realized_historical": null,
+        "model_explained": -0.13516359684765578,
+        "note": "historical PnL is realized and not shrinkage-adjusted per stress spec"
+      }
+    },
+    {
+      "scenario_id": "2008",
+      "scenario_type": "historical_stress",
+      "frequency": "episode",
+      "scaling_note": "historical: asset Σ from episode monthly returns; factor Σ from weekly episode sample scaled to monthly-equivalent",
+      "asset_covariance": {
+        "native_frequency": "monthly",
+        "normalized_frequency": "monthly",
+        "matrix": {
+          "SPY": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          },
+          "QQQ": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          },
+          "GLD": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          },
+          "SLV": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          },
+          "BND": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          },
+          "SCHD": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          },
+          "SCHP": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          },
+          "TLT": {
+            "SPY": 0.0,
+            "QQQ": 0.0,
+            "GLD": 0.0,
+            "SLV": 0.0,
+            "BND": 0.0,
+            "SCHD": 0.0,
+            "SCHP": 0.0,
+            "TLT": 0.0
+          }
+        },
+        "n_obs": 0,
+        "quality_status": "insufficient_data"
+      },
+      "factor_covariance": {
+        "native_frequency": "weekly",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "equity": {
+            "equity": 0.0013733959035354254,
+            "real_rates": -5.744277544727766e-06,
+            "inflation": 9.767131142568532e-06,
+            "credit": 0.0,
+            "usd": -8.037141658033184e-05,
+            "commodity": 0.0001712556143704302,
+            "vix": -0.0010226417458989788,
+            "us_growth": -0.0010866953478313776,
+            "oil": 0.0002984113428470098
+          },
+          "real_rates": {
+            "equity": -5.744277544727766e-06,
+            "real_rates": 0.000908823096191241,
+            "inflation": -4.484548049887538e-07,
+            "credit": 0.0,
+            "usd": 2.589418003007521e-06,
+            "commodity": -1.7838899689822832e-06,
+            "vix": 1.0379175173645629e-05,
+            "us_growth": 3.5291292426878554e-05,
+            "oil": 3.7619030812854836e-06
+          },
+          "inflation": {
+            "equity": 9.767131142568532e-06,
+            "real_rates": -4.484548049887538e-07,
+            "inflation": 0.0009085914414982432,
+            "credit": 0.0,
+            "usd": -2.498684595437905e-06,
+            "commodity": 6.067943606479286e-06,
+            "vix": -1.9291869374215462e-05,
+            "us_growth": -3.8528426669397954e-05,
+            "oil": 8.089276030109499e-06
+          },
+          "credit": {
+            "equity": 0.0,
+            "real_rates": 0.0,
+            "inflation": 0.0,
+            "credit": 0.0,
+            "usd": 0.0,
+            "commodity": 0.0,
+            "vix": 0.0,
+            "us_growth": 0.0,
+            "oil": 0.0
+          },
+          "usd": {
+            "equity": -8.037141658033184e-05,
+            "real_rates": 2.589418003007521e-06,
+            "inflation": -2.498684595437905e-06,
+            "credit": 0.0,
+            "usd": 0.0009446914614125759,
+            "commodity": -8.689214834272266e-05,
+            "vix": 0.00017449971397501512,
+            "us_growth": 0.00020823288805527245,
+            "oil": -9.405374724805453e-05
+          },
+          "commodity": {
+            "equity": 0.0001712556143704302,
+            "real_rates": -1.7838899689822832e-06,
+            "inflation": 6.067943606479286e-06,
+            "credit": 0.0,
+            "usd": -8.689214834272266e-05,
+            "commodity": 0.0013690260330795699,
+            "vix": -0.0002795917127798444,
+            "us_growth": -8.042199226763581e-05,
+            "oil": 0.0006636315047056812
+          },
+          "vix": {
+            "equity": -0.0010226417458989788,
+            "real_rates": 1.0379175173645629e-05,
+            "inflation": -1.9291869374215462e-05,
+            "credit": 0.0,
+            "usd": 0.00017449971397501512,
+            "commodity": -0.0002795917127798444,
+            "vix": 0.004499658331129636,
+            "us_growth": 0.002324799302381631,
+            "oil": -0.00040579090897903484
+          },
+          "us_growth": {
+            "equity": -0.0010866953478313776,
+            "real_rates": 3.5291292426878554e-05,
+            "inflation": -3.8528426669397954e-05,
+            "credit": 0.0,
+            "usd": 0.00020823288805527245,
+            "commodity": -8.042199226763581e-05,
+            "vix": 0.002324799302381631,
+            "us_growth": 0.02665373960342055,
+            "oil": -0.0002136282278094935
+          },
+          "oil": {
+            "equity": 0.0002984113428470098,
+            "real_rates": 3.7619030812854836e-06,
+            "inflation": 8.089276030109499e-06,
+            "credit": 0.0,
+            "usd": -9.405374724805453e-05,
+            "commodity": 0.0006636315047056812,
+            "vix": -0.00040579090897903484,
+            "us_growth": -0.0002136282278094935,
+            "oil": 0.0025991976161077518
+          }
+        },
+        "factor_covariance_method": "weekly_episode_ledoit_wolf",
+        "n_obs": 64,
+        "quality_status": "low_confidence"
+      },
+      "factor_betas": {
+        "5y": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1362,
+          "beta_vix": 0.0005,
+          "beta_us_growth": 0.0012
+        },
+        "10y": {
+          "beta_eq": 0.3499,
+          "beta_rr": -7.0841,
+          "beta_inf": -5.3303,
+          "beta_usd": -0.3134,
+          "beta_cmd": 0.0654,
+          "beta_vix": -0.0025,
+          "beta_us_growth": -0.0012
+        },
+        "adjusted": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1185,
+          "beta_vix": -0.001,
+          "beta_us_growth": 0.0
+        }
+      },
+      "scenario_factor_move": null,
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": null,
+      "scenario_risk": {
+        "portfolio_sigma_monthly": 0.0,
+        "portfolio_sigma_annual": 0.0,
+        "basis": "stress_scenario_asset_covariance"
+      },
+      "scenario_drawdown_proxy": null,
+      "asset_rc": {
+        "top1_asset": "SPY",
+        "top1_rc_share": NaN,
+        "top3_assets": [
+          "SPY",
+          "QQQ",
+          "GLD"
+        ],
+        "top3_rc_sum": NaN,
+        "asset_rc_hhi": NaN
+      },
+      "factor_rc": {
+        "raw_5y": {
+          "total_factor_variance": 0.251997989236064,
+          "top1_factor": "real_rates",
+          "top1_rc_share": 0.52545,
+          "top3_factors": [
+            "real_rates",
+            "inflation",
+            "equity"
+          ],
+          "top3_rc_sum": 0.996919,
+          "factor_rc_hhi": 0.495062
+        },
+        "adjusted": {
+          "total_factor_variance": 0.25197058723844423,
+          "top1_factor": "real_rates",
+          "top1_rc_share": 0.52551,
+          "top3_factors": [
+            "real_rates",
+            "inflation",
+            "equity"
+          ],
+          "top3_rc_sum": 0.997032,
+          "factor_rc_hhi": 0.495175
+        }
+      },
+      "quality_status": "insufficient_data",
+      "confidence_weight": 0.0,
+      "usable_for_optimization": false,
+      "warnings": [
+        "historical_asset_cov_insufficient"
+      ],
+      "classification": "insufficient_data",
+      "raw_vs_shrinkage": {
+        "pnl_raw": null,
+        "pnl_shrinkage_adjusted": null,
+        "actual_realized_historical": null,
+        "model_explained": -0.20822697216232344,
+        "note": "historical PnL is realized and not shrinkage-adjusted per stress spec"
+      }
+    },
+    {
+      "scenario_id": "2020",
+      "scenario_type": "historical_stress",
+      "frequency": "episode",
+      "scaling_note": "historical: asset Σ from episode monthly returns; factor Σ from weekly episode sample scaled to monthly-equivalent",
+      "asset_covariance": {
+        "native_frequency": "monthly",
+        "normalized_frequency": "monthly",
+        "matrix": {
+          "SPY": {
+            "SPY": 0.018002872097511034,
+            "QQQ": 0.01666316852779464,
+            "GLD": 0.005823071054117851,
+            "SLV": 0.015410346683736354,
+            "BND": 0.002369042412856507,
+            "SCHD": 0.018015643841115793,
+            "SCHP": 0.0025516355701924215,
+            "TLT": -0.004003905901451218
+          },
+          "QQQ": {
+            "SPY": 0.01666316852779464,
+            "QQQ": 0.015655181264317926,
+            "GLD": 0.005535982971378237,
+            "SLV": 0.013924470881218298,
+            "BND": 0.0019999315345126797,
+            "SCHD": 0.016832711409790112,
+            "SCHP": 0.002225772147908933,
+            "TLT": -0.003803824787307644
+          },
+          "GLD": {
+            "SPY": 0.005823071054117851,
+            "QQQ": 0.005535982971378237,
+            "GLD": 0.001975662042585913,
+            "SLV": 0.004770780045362202,
+            "BND": 0.0006447408400623471,
+            "SCHD": 0.0059266136410676806,
+            "SCHP": 0.0007396241991406319,
+            "TLT": -0.0013567624503840723
+          },
+          "SLV": {
+            "SPY": 0.015410346683736354,
+            "QQQ": 0.013924470881218298,
+            "GLD": 0.004770780045362202,
+            "SLV": 0.013686751819021679,
+            "BND": 0.0023096857114998162,
+            "SCHD": 0.01519076950343684,
+            "SCHP": 0.002382919615127976,
+            "TLT": -0.0032842760089042493
+          },
+          "BND": {
+            "SPY": 0.002369042412856507,
+            "QQQ": 0.0019999315345126797,
+            "GLD": 0.0006447408400623471,
+            "SLV": 0.0023096857114998162,
+            "BND": 0.0004719837881699975,
+            "SCHD": 0.0022396519052796248,
+            "SCHP": 0.0004487798745622065,
+            "TLT": -0.0004455477841138299
+          },
+          "SCHD": {
+            "SPY": 0.018015643841115793,
+            "QQQ": 0.016832711409790112,
+            "GLD": 0.0059266136410676806,
+            "SLV": 0.01519076950343684,
+            "BND": 0.0022396519052796248,
+            "SCHD": 0.018135639568673367,
+            "SCHP": 0.0024610097432569192,
+            "TLT": -0.004073278497733014
+          },
+          "SCHP": {
+            "SPY": 0.0025516355701924215,
+            "QQQ": 0.002225772147908933,
+            "GLD": 0.0007396241991406319,
+            "SLV": 0.002382919615127976,
+            "BND": 0.0004487798745622065,
+            "SCHD": 0.0024610097432569192,
+            "SCHP": 0.00044135016505356085,
+            "TLT": -0.0005101321830556238
+          },
+          "TLT": {
+            "SPY": -0.004003905901451218,
+            "QQQ": -0.003803824787307644,
+            "GLD": -0.0013567624503840723,
+            "SLV": -0.0032842760089042493,
+            "BND": -0.0004455477841138299,
+            "SCHD": -0.004073278497733014,
+            "SCHP": -0.0005101321830556238,
+            "TLT": 0.0009317700419649551
+          }
+        },
+        "n_obs": 3,
+        "quality_status": "insufficient_data"
+      },
+      "factor_covariance": {
+        "native_frequency": "weekly",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "equity": {
+            "equity": 0.00011633537610733765,
+            "real_rates": -1.8344636911645587e-06,
+            "inflation": 9.639388115588074e-07,
+            "credit": 0.0,
+            "usd": -1.605567818977629e-05,
+            "commodity": 2.3096078914384596e-05,
+            "vix": -0.0006059531747593394,
+            "us_growth": -9.864521316394164e-06,
+            "oil": 1.897552163473416e-05
+          },
+          "real_rates": {
+            "equity": -1.8344636911645587e-06,
+            "real_rates": 3.1155542482465565e-07,
+            "inflation": -2.478781613397002e-08,
+            "credit": 0.0,
+            "usd": 4.991247024467469e-07,
+            "commodity": -7.419188190662126e-07,
+            "vix": 4.882327825290605e-06,
+            "us_growth": 2.0106805876036737e-06,
+            "oil": -3.6435556715331807e-07
+          },
+          "inflation": {
+            "equity": 9.639388115588074e-07,
+            "real_rates": -2.478781613397002e-08,
+            "inflation": 1.2738636311713247e-07,
+            "credit": 0.0,
+            "usd": -3.069802684807111e-08,
+            "commodity": 2.0889543155158547e-06,
+            "vix": -6.813432493884319e-06,
+            "us_growth": -8.367115213269219e-07,
+            "oil": 3.824054828678345e-06
+          },
+          "credit": {
+            "equity": 0.0,
+            "real_rates": 0.0,
+            "inflation": 0.0,
+            "credit": 0.0,
+            "usd": 0.0,
+            "commodity": 0.0,
+            "vix": 0.0,
+            "us_growth": 0.0,
+            "oil": 0.0
+          },
+          "usd": {
+            "equity": -1.605567818977629e-05,
+            "real_rates": 4.991247024467469e-07,
+            "inflation": -3.069802684807111e-08,
+            "credit": 0.0,
+            "usd": 1.0502657914923013e-05,
+            "commodity": -6.88770131285239e-06,
+            "vix": 8.472470689917044e-05,
+            "us_growth": 2.0310307502626756e-05,
+            "oil": 3.2298634635602876e-06
+          },
+          "commodity": {
+            "equity": 2.3096078914384596e-05,
+            "real_rates": -7.419188190662126e-07,
+            "inflation": 2.0889543155158547e-06,
+            "credit": 0.0,
+            "usd": -6.88770131285239e-06,
+            "commodity": 0.00016540837616367904,
+            "vix": -0.00016249091759243666,
+            "us_growth": 0.00012302059852209224,
+            "oil": 0.0002966572615488469
+          },
+          "vix": {
+            "equity": -0.0006059531747593394,
+            "real_rates": 4.882327825290605e-06,
+            "inflation": -6.813432493884319e-06,
+            "credit": 0.0,
+            "usd": 8.472470689917044e-05,
+            "commodity": -0.00016249091759243666,
+            "vix": 0.005812735803455304,
+            "us_growth": 0.0004850458471686824,
+            "oil": -7.871651414108821e-05
+          },
+          "us_growth": {
+            "equity": -9.864521316394164e-06,
+            "real_rates": 2.0106805876036737e-06,
+            "inflation": -8.367115213269219e-07,
+            "credit": 0.0,
+            "usd": 2.0310307502626756e-05,
+            "commodity": 0.00012302059852209224,
+            "vix": 0.0004850458471686824,
+            "us_growth": 0.03968952365721596,
+            "oil": 0.0001900312096638374
+          },
+          "oil": {
+            "equity": 1.897552163473416e-05,
+            "real_rates": -3.6435556715331807e-07,
+            "inflation": 3.824054828678345e-06,
+            "credit": 0.0,
+            "usd": 3.2298634635602876e-06,
+            "commodity": 0.0002966572615488469,
+            "vix": -7.871651414108821e-05,
+            "us_growth": 0.0001900312096638374,
+            "oil": 0.0007278963314474383
+          }
+        },
+        "factor_covariance_method": "fallback_factor_covariance_base",
+        "n_obs": 12,
+        "quality_status": "insufficient_data"
+      },
+      "factor_betas": {
+        "5y": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1362,
+          "beta_vix": 0.0005,
+          "beta_us_growth": 0.0012
+        },
+        "10y": {
+          "beta_eq": 0.3499,
+          "beta_rr": -7.0841,
+          "beta_inf": -5.3303,
+          "beta_usd": -0.3134,
+          "beta_cmd": 0.0654,
+          "beta_vix": -0.0025,
+          "beta_us_growth": -0.0012
+        },
+        "adjusted": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1185,
+          "beta_vix": -0.001,
+          "beta_us_growth": 0.0
+        }
+      },
+      "scenario_factor_move": null,
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": 0.0227,
+      "scenario_risk": {
+        "portfolio_sigma_monthly": 0.060719099118823686,
+        "portfolio_sigma_annual": 0.21033712932722654,
+        "basis": "stress_scenario_asset_covariance"
+      },
+      "scenario_drawdown_proxy": 0.0227,
+      "asset_rc": {
+        "top1_asset": "SCHD",
+        "top1_rc_share": 0.583903,
+        "top3_assets": [
+          "SCHD",
+          "QQQ",
+          "GLD"
+        ],
+        "top3_rc_sum": 1.024555,
+        "asset_rc_hhi": 0.496262
+      },
+      "factor_rc": {
+        "raw_5y": {
+          "total_factor_variance": 0.00019565056933502334,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.4836,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "usd"
+          ],
+          "top3_rc_sum": 0.93342,
+          "factor_rc_hhi": 0.367857
+        },
+        "adjusted": {
+          "total_factor_variance": 0.0001950944818963529,
+          "top1_factor": "equity",
+          "top1_rc_share": 0.489263,
+          "top3_factors": [
+            "equity",
+            "real_rates",
+            "usd"
+          ],
+          "top3_rc_sum": 0.94017,
+          "factor_rc_hhi": 0.37127
+        }
+      },
+      "quality_status": "insufficient_data",
+      "confidence_weight": 0.0,
+      "usable_for_optimization": false,
+      "warnings": [],
+      "classification": "insufficient_data",
+      "raw_vs_shrinkage": {
+        "pnl_raw": null,
+        "pnl_shrinkage_adjusted": null,
+        "actual_realized_historical": 0.0227,
+        "model_explained": -0.06374773121172474,
+        "note": "historical PnL is realized and not shrinkage-adjusted per stress spec"
+      }
+    },
+    {
+      "scenario_id": "2022",
+      "scenario_type": "historical_stress",
+      "frequency": "episode",
+      "scaling_note": "historical: asset Σ from episode monthly returns; factor Σ from weekly episode sample scaled to monthly-equivalent",
+      "asset_covariance": {
+        "native_frequency": "monthly",
+        "normalized_frequency": "monthly",
+        "matrix": {
+          "SPY": {
+            "SPY": 0.004142818051095701,
+            "QQQ": 0.004613163762409729,
+            "GLD": 0.00029341855475289335,
+            "SLV": 0.0009932046046381275,
+            "BND": 0.0008642601611371167,
+            "SCHD": 0.0034251813081272744,
+            "SCHP": 0.0014477465176200167,
+            "TLT": 0.0010051763488737554
+          },
+          "QQQ": {
+            "SPY": 0.004613163762409729,
+            "QQQ": 0.005754738175639667,
+            "GLD": 0.00025365042594323485,
+            "SLV": 0.0010737366174418202,
+            "BND": 0.0011083374571782742,
+            "SCHD": 0.0032595808100634193,
+            "SCHP": 0.0016736166605470103,
+            "TLT": 0.0016816735632939229
+          },
+          "GLD": {
+            "SPY": 0.00029341855475289335,
+            "QQQ": 0.00025365042594323485,
+            "GLD": 0.0008283348787402277,
+            "SLV": 0.0010531676786233225,
+            "BND": 3.6468479113463825e-05,
+            "SCHD": 0.00027260103187112816,
+            "SCHP": 0.0002184237408023543,
+            "TLT": 0.0002053130102573548
+          },
+          "SLV": {
+            "SPY": 0.0009932046046381275,
+            "QQQ": 0.0010737366174418202,
+            "GLD": 0.0010531676786233225,
+            "SLV": 0.003397580463724425,
+            "BND": 8.567773650680947e-05,
+            "SCHD": 0.0007195416125071193,
+            "SCHP": 0.00022926409977554624,
+            "TLT": 6.0117121254524915e-05
+          },
+          "BND": {
+            "SPY": 0.0008642601611371167,
+            "QQQ": 0.0011083374571782742,
+            "GLD": 3.6468479113463825e-05,
+            "SLV": 8.567773650680947e-05,
+            "BND": 0.00038013128482795275,
+            "SCHD": 0.000593342336608053,
+            "SCHP": 0.0004551771185109939,
+            "TLT": 0.00062686485773284
+          },
+          "SCHD": {
+            "SPY": 0.0034251813081272744,
+            "QQQ": 0.0032595808100634193,
+            "GLD": 0.00027260103187112816,
+            "SLV": 0.0007195416125071193,
+            "BND": 0.000593342336608053,
+            "SCHD": 0.003425820014208698,
+            "SCHP": 0.0010949261047338069,
+            "TLT": 0.0003156277635321004
+          },
+          "SCHP": {
+            "SPY": 0.0014477465176200167,
+            "QQQ": 0.0016736166605470103,
+            "GLD": 0.0002184237408023543,
+            "SLV": 0.00022926409977554624,
+            "BND": 0.0004551771185109939,
+            "SCHD": 0.0010949261047338069,
+            "SCHP": 0.0007947455825718867,
+            "TLT": 0.0006971484699884103
+          },
+          "TLT": {
+            "SPY": 0.0010051763488737554,
+            "QQQ": 0.0016816735632939229,
+            "GLD": 0.0002053130102573548,
+            "SLV": 6.0117121254524915e-05,
+            "BND": 0.00062686485773284,
+            "SCHD": 0.0003156277635321004,
+            "SCHP": 0.0006971484699884103,
+            "TLT": 0.0014076431320048332
+          }
+        },
+        "n_obs": 12,
+        "quality_status": "low_confidence"
+      },
+      "factor_covariance": {
+        "native_frequency": "weekly",
+        "normalized_frequency": "monthly_equivalent",
+        "matrix": {
+          "equity": {
+            "equity": 0.0005701786576907953,
+            "real_rates": -3.0469634184445706e-06,
+            "inflation": 2.1283097934447146e-06,
+            "credit": 0.0,
+            "usd": -3.048950716508144e-05,
+            "commodity": 5.786177860184898e-05,
+            "vix": -0.0007457250292283456,
+            "us_growth": 0.0001743086667001094,
+            "oil": 7.419828504259511e-05
+          },
+          "real_rates": {
+            "equity": -3.0469634184445706e-06,
+            "real_rates": 0.0003617137967648242,
+            "inflation": -1.4472483717717252e-07,
+            "credit": 0.0,
+            "usd": 3.651005540519143e-07,
+            "commodity": -3.6695184422433326e-06,
+            "vix": 8.731172785055972e-07,
+            "us_growth": 4.868151621125946e-06,
+            "oil": -5.542617445791933e-06
+          },
+          "inflation": {
+            "equity": 2.1283097934447146e-06,
+            "real_rates": -1.4472483717717252e-07,
+            "inflation": 0.0003614572131845851,
+            "credit": 0.0,
+            "usd": -1.0982225034977317e-08,
+            "commodity": 3.4512618510351185e-06,
+            "vix": -7.398433597334912e-06,
+            "us_growth": -1.1545891591549177e-05,
+            "oil": 4.746656361513832e-06
+          },
+          "credit": {
+            "equity": 0.0,
+            "real_rates": 0.0,
+            "inflation": 0.0,
+            "credit": 0.0,
+            "usd": 0.0,
+            "commodity": 0.0,
+            "vix": 0.0,
+            "us_growth": 0.0,
+            "oil": 0.0
+          },
+          "usd": {
+            "equity": -3.048950716508144e-05,
+            "real_rates": 3.651005540519143e-07,
+            "inflation": -1.0982225034977317e-08,
+            "credit": 0.0,
+            "usd": 0.0003732547689203652,
+            "commodity": -1.4699798151432187e-05,
+            "vix": 0.0001245561195496498,
+            "us_growth": 6.520263539115342e-05,
+            "oil": -1.4593671378243263e-05
+          },
+          "commodity": {
+            "equity": 5.786177860184898e-05,
+            "real_rates": -3.6695184422433326e-06,
+            "inflation": 3.4512618510351185e-06,
+            "credit": 0.0,
+            "usd": -1.4699798151432187e-05,
+            "commodity": 0.0006647588412438218,
+            "vix": -0.00019223698592197764,
+            "us_growth": -0.0008008501293274433,
+            "oil": 0.0004882580868666329
+          },
+          "vix": {
+            "equity": -0.0007457250292283456,
+            "real_rates": 8.731172785055972e-07,
+            "inflation": -7.398433597334912e-06,
+            "credit": 0.0,
+            "usd": 0.0001245561195496498,
+            "commodity": -0.00019223698592197764,
+            "vix": 0.00591163397105058,
+            "us_growth": -0.0009101415038117596,
+            "oil": -0.00011921466052232039
+          },
+          "us_growth": {
+            "equity": 0.0001743086667001094,
+            "real_rates": 4.868151621125946e-06,
+            "inflation": -1.1545891591549177e-05,
+            "credit": 0.0,
+            "usd": 6.520263539115342e-05,
+            "commodity": -0.0008008501293274433,
+            "vix": -0.0009101415038117596,
+            "us_growth": 0.050092377412655605,
+            "oil": -0.0011811692355803971
+          },
+          "oil": {
+            "equity": 7.419828504259511e-05,
+            "real_rates": -5.542617445791933e-06,
+            "inflation": 4.746656361513832e-06,
+            "credit": 0.0,
+            "usd": -1.4593671378243263e-05,
+            "commodity": 0.0004882580868666329,
+            "vix": -0.00011921466052232039,
+            "us_growth": -0.0011811692355803971,
+            "oil": 0.0013682510373090968
+          }
+        },
+        "factor_covariance_method": "weekly_episode_ledoit_wolf",
+        "n_obs": 52,
+        "quality_status": "low_confidence"
+      },
+      "factor_betas": {
+        "5y": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1362,
+          "beta_vix": 0.0005,
+          "beta_us_growth": 0.0012
+        },
+        "10y": {
+          "beta_eq": 0.3499,
+          "beta_rr": -7.0841,
+          "beta_inf": -5.3303,
+          "beta_usd": -0.3134,
+          "beta_cmd": 0.0654,
+          "beta_vix": -0.0025,
+          "beta_us_growth": -0.0012
+        },
+        "adjusted": {
+          "beta_eq": 0.3768,
+          "beta_rr": -5.798,
+          "beta_inf": -5.4769,
+          "beta_credit": 0.0688,
+          "beta_usd": -0.369,
+          "beta_cmd": 0.1185,
+          "beta_vix": -0.001,
+          "beta_us_growth": 0.0
+        }
+      },
+      "scenario_factor_move": null,
+      "scenario_asset_return": null,
+      "scenario_portfolio_return": -0.1892,
+      "scenario_risk": {
+        "portfolio_sigma_monthly": 0.034315705438419206,
+        "portfolio_sigma_annual": 0.11887309063381939,
+        "basis": "stress_scenario_asset_covariance"
+      },
+      "scenario_drawdown_proxy": -0.1892,
+      "asset_rc": {
+        "top1_asset": "SCHD",
+        "top1_rc_share": 0.355454,
+        "top3_assets": [
+          "SCHD",
+          "QQQ",
+          "TLT"
+        ],
+        "top3_rc_sum": 0.882465,
+        "asset_rc_hhi": 0.274552
+      },
+      "factor_rc": {
+        "raw_5y": {
+          "total_factor_variance": 0.10035683765130561,
+          "top1_factor": "real_rates",
+          "top1_rc_share": 0.525291,
+          "top3_factors": [
+            "real_rates",
+            "inflation",
+            "equity"
+          ],
+          "top3_rc_sum": 0.996865,
+          "factor_rc_hhi": 0.49467
+        },
+        "adjusted": {
+          "total_factor_variance": 0.10034345968304956,
+          "top1_factor": "real_rates",
+          "top1_rc_share": 0.525347,
+          "top3_factors": [
+            "real_rates",
+            "inflation",
+            "equity"
+          ],
+          "top3_rc_sum": 0.99699,
+          "factor_rc_hhi": 0.494794
+        }
+      },
+      "quality_status": "low_confidence",
+      "confidence_weight": 0.25,
+      "usable_for_optimization": false,
+      "warnings": [],
+      "classification": "diagnostic_only",
+      "raw_vs_shrinkage": {
+        "pnl_raw": null,
+        "pnl_shrinkage_adjusted": null,
+        "actual_realized_historical": -0.1892,
+        "model_explained": -0.2189579583314959,
+        "note": "historical PnL is realized and not shrinkage-adjusted per stress spec"
+      }
+    }
+  ],
+  "warnings_global": []
+}

@@ -1,0 +1,133 @@
+{
+  "risk_budgeting_method": "risk_budget_by_asset_class",
+  "optimizer_name": "risk_budget_by_asset_class",
+  "solver": "SLSQP",
+  "covariance_method": "ledoit_wolf_monthly",
+  "preset_used": "balanced",
+  "manual_override_used": true,
+  "target_risk_budgets": {
+    "equity": 0.4,
+    "fixed_income": 0.29,
+    "real_assets": 0.18,
+    "inflation_linked": 0.13
+  },
+  "realized_risk_contributions": {
+    "equity": 0.399998690991445,
+    "fixed_income": 0.289998128060906,
+    "inflation_linked": 0.12999628959638113,
+    "real_assets": 0.18000689135126785
+  },
+  "risk_budget_tracking_error": 6.647547668051076e-11,
+  "max_budget_deviation": 6.891351267857004e-06,
+  "budget_buckets_used": [
+    "equity",
+    "fixed_income",
+    "inflation_linked",
+    "real_assets"
+  ],
+  "tickers_per_bucket": {
+    "equity": [
+      "QQQ",
+      "SCHD",
+      "SPY"
+    ],
+    "real_assets": [
+      "GLD",
+      "SLV"
+    ],
+    "fixed_income": [
+      "BND",
+      "TLT"
+    ],
+    "inflation_linked": [
+      "SCHP"
+    ]
+  },
+  "asset_classes_used": [
+    "equity",
+    "fixed_income",
+    "inflation_linked",
+    "real_assets"
+  ],
+  "tickers_per_class": {
+    "equity": [
+      "QQQ",
+      "SCHD",
+      "SPY"
+    ],
+    "real_assets": [
+      "GLD",
+      "SLV"
+    ],
+    "fixed_income": [
+      "BND",
+      "TLT"
+    ],
+    "inflation_linked": [
+      "SCHP"
+    ]
+  },
+  "excluded_missing_asset_class": [],
+  "taxonomy_universe_files": [
+    "config/etf_universe.yml",
+    "config/stock_universe.yml"
+  ],
+  "ticker_taxonomy_source": {
+    "SPY": "etf_universe",
+    "QQQ": "etf_universe",
+    "GLD": "etf_universe",
+    "SLV": "etf_universe",
+    "BND": "etf_universe",
+    "SCHD": "etf_universe",
+    "SCHP": "etf_universe",
+    "TLT": "etf_universe"
+  },
+  "solver_status": "OK",
+  "solver_success": true,
+  "solver_message": "Optimization terminated successfully",
+  "unused_target_buckets": [],
+  "targets_renormalized": false,
+  "warnings": [],
+  "universe_eligible": [
+    "SPY",
+    "QQQ",
+    "GLD",
+    "SLV",
+    "BND",
+    "SCHD",
+    "SCHP",
+    "TLT"
+  ],
+  "universe_coverage": {
+    "SPY": 1.0,
+    "QQQ": 1.0,
+    "GLD": 1.0,
+    "SLV": 1.0,
+    "BND": 1.0,
+    "SCHD": 1.0,
+    "SCHP": 1.0,
+    "TLT": 1.0
+  },
+  "nit": 7,
+  "cov_psd_repaired": false,
+  "eligible_universe": [
+    "SPY",
+    "QQQ",
+    "GLD",
+    "SLV",
+    "BND",
+    "SCHD",
+    "SCHP",
+    "TLT"
+  ],
+  "final_weights": {
+    "SPY": 0.09703563895429092,
+    "QQQ": 0.0827010110018902,
+    "GLD": 0.077445949499924,
+    "SLV": 0.04571449784755612,
+    "BND": 0.24215740310973446,
+    "SCHD": 0.09630642176610099,
+    "SCHP": 0.22760400916402868,
+    "TLT": 0.1310350686564747
+  }
+}

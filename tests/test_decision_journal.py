@@ -49,15 +49,30 @@ def _comparison(*, with_current: bool = True, analysis_end: str = "2025-12-31") 
     }
 
 
+def _comparison_with_subject(*, analysis_end: str = "2025-12-31") -> dict:
+    comp = _comparison(analysis_end=analysis_end)
+    comp["candidates"].insert(0, _cand("analysis_subject", role="analysis_subject"))
+    comp["analysis_setup_summary"] = {
+        "source_analysis_mode": "optimize_from_universe",
+        "analysis_subject_id": "analysis_subject",
+        "analysis_subject_type": "model_portfolio",
+        "analysis_subject_display_name": "Starting Portfolio",
+    }
+    return comp
+
+
 def _selection(
     *,
     status: str = "no_material_rebalance",
     favored_id: str = "policy",
+    baseline_id: str = "current",
 ) -> dict:
     return {
         "schema_version": "selection_decision_v1",
         "formal_decision": True,
         "decision_status": status,
+        "baseline_candidate_id": baseline_id,
+        "baseline_display_name": "Starting Portfolio" if baseline_id == "analysis_subject" else "Current Portfolio",
         "favored_candidate_id": favored_id,
         "favored_display_name": "Policy",
         "selection_weights_profile": "default_weights_reviewable",
@@ -197,6 +212,20 @@ def test_expected_improvement_not_applicable_without_current():
     comp = _comparison(with_current=False)
     journal = build_decision_journal(comp, _selection())
     assert journal["expected_improvement"]["status"] == "not_applicable"
+
+
+def test_journal_identifies_analysis_subject_baseline():
+    comp = _comparison_with_subject()
+    sel = _selection(
+        status="selected_candidate",
+        favored_id="policy",
+        baseline_id="analysis_subject",
+    )
+    journal = build_decision_journal(comp, sel, action=_action(status="trades_for_review"))
+    assert journal["decision_record"]["baseline_candidate_id"] == "analysis_subject"
+    assert journal["diagnosed_subject"]["candidate_id"] == "analysis_subject"
+    assert journal["expected_improvement"]["baseline_candidate_id"] == "analysis_subject"
+    assert journal["assumptions"]["analysis_subject_type"] == "model_portfolio"
 
 
 def test_artifact_refs_and_rationale_lint():

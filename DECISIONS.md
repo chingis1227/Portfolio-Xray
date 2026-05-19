@@ -60,6 +60,48 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-05-18-001
+Title: Portfolio-first workflow and legacy policy engine boundary
+
+- Status: accepted
+- Date: 2026-05-18
+- Decision: The main product workflow must start from `analysis_subject` diagnostics. Generated policy optimization must not be presented before `analysis_subject` is diagnosed and must not be a default candidate in the portfolio-first workflow. The old policy engine remains available as legacy, archived, or experimental infrastructure until a future canonical spec explicitly reactivates it.
+- Context: The user identified that the project contract drifted toward a policy-first mental model: `run_optimization.py` generated policy weights first, then reports and comparisons treated that policy portfolio as the main starting point. This conflicts with the product vision that a user's current, model, or universe-baseline portfolio should be diagnosed first.
+- Rationale: A portfolio review product must answer whether to keep, improve, rebalance, or rethink the portfolio the user started with. Showing optimized results before diagnosing that portfolio reverses the product logic and misleads agents and users.
+- Alternatives considered: Keep policy as the default candidate; keep policy as the default starting portfolio but change wording; delete the old policy engine. These were rejected because they either preserve the source-of-truth conflict or discard potentially useful infrastructure.
+- Assumptions: The transition remains file-first; UI work is not part of this decision; reintroducing policy as a candidate requires a future spec and explicit approval.
+- Consequences: New specs, workflow orchestration, comparison, decision artifacts, reports, and docs must center on `analysis_subject`. `run_optimization.py` remains callable but is not part of the default portfolio-first path.
+- Related documents: [Portfolio Review Workflow Specification](docs/specs/portfolio_review_workflow_spec.md), [Portfolio-First Transition Plan](docs/exec_plans/2026-05-18_portfolio_first_transition_plan.md), [docs/ROADMAP.md](docs/ROADMAP.md), [KNOWN_ISSUES.md](KNOWN_ISSUES.md), [PRODUCT.md](PRODUCT.md).
+- Review trigger: Revisit only if a future accepted spec proposes reintroducing the policy engine as an optional candidate generator or production policy path.
+
+Decision ID: DEC-2026-05-19-001
+Title: Portfolio-first policy artifacts are compatibility-only
+
+- Status: accepted
+- Date: 2026-05-19
+- Decision: When `analysis_subject` diagnostics are available, root `policy` artifacts remain readable for legacy compatibility but are not ranked or selected as normal portfolio-first candidate evidence. `current_vs_policy_status.json` may still be written, but it uses `workflow_profile: portfolio_first_review` and is hidden from the main decision-package summary story.
+- Context: The post-portfolio-first audit found that policy rows, current-vs-policy status, and Health Score priority still made old policy optimizer artifacts look like the primary workflow in fresh portfolio-first outputs.
+- Rationale: Keeping the artifacts avoids breaking legacy consumers, while gating and labeling them prevents users from treating generated policy output as the starting portfolio or default recommendation.
+- Alternatives considered: Delete policy artifacts from comparison; leave them fully available with wording only. Deletion was too disruptive for compatibility, while wording-only cleanup would still let Selection and Health Score rank stale policy evidence.
+- Assumptions: Reintroducing policy as an explicit portfolio-first candidate requires a future canonical spec.
+- Consequences: Candidate Comparison gates `policy` as legacy-only when `analysis_subject` exists, Health Score priority starts with `analysis_subject`, and current-vs-policy status is compatibility metadata in portfolio-first runs.
+- Related documents: [Portfolio Review Workflow Specification](docs/specs/portfolio_review_workflow_spec.md), [candidate comparison spec](docs/specs/candidate_comparison_spec.md), [current-vs-policy workflow spec](docs/specs/current_vs_policy_workflow_spec.md), [portfolio health score spec](docs/specs/portfolio_health_score_spec.md).
+- Review trigger: Revisit if a future accepted spec adds an explicit opt-in policy-as-candidate mode for portfolio-first reviews.
+
+Decision ID: DEC-2026-05-18-002
+Title: Analysis subject is the decision baseline
+
+- Status: accepted
+- Date: 2026-05-18
+- Decision: When `analysis_subject` diagnostics are materialized, candidate comparison and downstream decision artifacts use `analysis_subject` as the baseline. The legacy `current` baseline remains a fallback for current-vs-policy compatibility only.
+- Context: Earlier Selection V1 behavior favored `policy` by default and evaluated No-Trade versus `current`. That was correct for the old current-vs-policy workflow but contradicted the portfolio-first transition once `analysis_subject` became the diagnosed starting portfolio.
+- Rationale: Selection, No-Trade, Action, Monitoring, and Journal must answer whether to keep, improve, rebalance, or rethink the starting portfolio, not whether to move from current to generated policy.
+- Alternatives considered: Keep policy as default even when `analysis_subject` exists; duplicate a separate subject-only decision artifact. These were rejected because they preserve old policy-first interpretation or split one decision workflow into parallel contracts.
+- Assumptions: `current_vs_policy_status.json` remains compatibility-only; the policy engine is not deleted; report language cleanup continues in later transition sessions.
+- Consequences: `candidate_comparison.json` includes `analysis_subject`; `selection_decision.json`, `action_plan.json`, monitoring snapshots, and `decision_journal.json` expose baseline fields and prefer `analysis_subject`.
+- Related documents: [Portfolio Review Workflow Specification](docs/specs/portfolio_review_workflow_spec.md), [candidate comparison spec](docs/specs/candidate_comparison_spec.md), [selection engine spec](docs/specs/selection_engine_spec.md), [action engine spec](docs/specs/action_engine_spec.md), [monitoring spec](docs/specs/monitoring_spec.md), [decision journal spec](docs/specs/decision_journal_spec.md).
+- Review trigger: Revisit if a future spec creates a multi-baseline comparison workflow or reintroduces policy as an explicit portfolio-first candidate.
+
 Decision ID: DEC-2026-05-17-005
 Title: Post-session next stage and optimizer-role boundary
 

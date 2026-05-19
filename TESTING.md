@@ -19,11 +19,13 @@ Use the narrowest reliable check first. Broaden only when the change touches sha
 | Focused unit/regression test | One module or behavior changed | `python -m pytest tests/test_name.py -q` |
 | Adjacent focused suite | Change touches shared helpers or nearby behavior | Run multiple related `tests/test_*.py` files together |
 | Full pytest | Shared math, optimizer, data, stress, config, or report contracts may regress | `python -m pytest` |
-| CLI smoke run | Entrypoint behavior, generated outputs, or end-to-end flow changed | `python run_optimization.py`, `python run_report.py`, or the affected `run_*.py` |
+| CLI smoke run | Entrypoint behavior, generated outputs, or end-to-end flow changed | `python run_portfolio_review.py`, `python run_report.py`, legacy `python run_optimization.py`, or the affected `run_*.py` |
 | Artifact inspection | JSON/CSV/HTML/TXT/PDF-style output shape or content changed | Inspect relevant files under `Main portfolio/`, `results_csv/`, variant folders, or `pdf files/` |
 | Documentation verification | Docs, links, commands, renamed files, or source-of-truth maps changed | `python scripts/verify_docs.py` or `python -m pytest tests/test_docs_links.py -q`; add `rg` stale-reference searches when renaming removed fields |
-| Generated-output language QA | Representative report/PDF text artifacts regenerated or language rules touched | `python scripts/scan_generated_outputs.py` and `python -m pytest tests/test_generated_output_language.py -q` |
+| Generated-output language QA | Representative report/PDF text artifacts regenerated or language/story rules touched | `python scripts/scan_generated_outputs.py` and `python -m pytest tests/test_generated_output_language.py -q`; portfolio-first summaries must keep `Starting portfolio` and `Candidate alternatives` markers |
 | Offline MVP pipeline smoke | File-first decision chain (comparison through decision package) or cross-module orchestration regressions | `python -m pytest tests/test_mvp_pipeline_offline.py -q` |
+| Portfolio-first offline E2E smoke | Portfolio-first subject diagnostics, comparison, and decision package regressions across subject types | `python -m pytest tests/test_portfolio_first_e2e_offline.py -q` |
+| Portfolio-first workflow orchestration | `run_portfolio_review.py` plan building or step ordering | `python -m pytest tests/test_portfolio_review_workflow.py -q` |
 | MVP workflow orchestration | `run_mvp_workflow.py` plan building or step ordering | `python -m pytest tests/test_mvp_workflow.py -q` |
 
 `pytest.ini` limits test discovery to `tests/`, so `python -m pytest` is the repository-level test command.
@@ -45,7 +47,33 @@ Command (prefer a workspace-local basetemp on Windows desktops):
 python -m pytest tests/test_mvp_pipeline_offline.py -q --basetemp='tmp/pytest_mvp_offline'
 ```
 
-Fixtures live in `tests/mvp_offline_fixtures.py`. This does not replace CLI smoke runs of `run_optimization.py` / `run_report.py` when data download, stress, or full report exports change.
+Fixtures live in `tests/mvp_offline_fixtures.py`. This does not replace CLI smoke runs of
+`run_portfolio_review.py`, `run_report.py`, or legacy `run_optimization.py` when data download,
+stress, or full report exports change.
+
+## Portfolio-First Offline E2E Smoke
+
+Use this when touching `analysis_subject` resolution/materialization, `run_portfolio_review.py`
+ordering, subject-centered candidate comparison, Selection/No-Trade, Action, Monitoring, Journal, or
+decision-package reporting.
+
+The smoke test is fully offline:
+
+- seeds synthetic `{output_dir_final}/analysis_subject/` snapshots and metadata for
+  `current_portfolio`, `model_portfolio`, and `universe_baseline`;
+- seeds synthetic candidate snapshots for allowed non-policy alternatives;
+- validates the `run_portfolio_review.py` plan materializes subject diagnostics before candidates and
+  does not include `run_optimization.py`;
+- runs `write_candidate_comparison_outputs` through comparison, scorecards, Selection, Action,
+  Monitoring, Journal, and decision-package writers;
+- blocks `src.data_yf.download_all` and `src.data_fred.fetch_fred_series` so live network access
+  fails the test.
+
+Command:
+
+```bash
+python -m pytest tests/test_portfolio_first_e2e_offline.py -q --basetemp='tmp/pytest_portfolio_first_e2e'
+```
 
 ## Change-To-Check Matrix
 
@@ -69,8 +97,9 @@ Run CLI smoke checks when the change affects orchestration, generated outputs, o
 Common existing entrypoints:
 
 ```bash
-python run_optimization.py
+python run_portfolio_review.py
 python run_report.py
+python run_optimization.py  # legacy policy compatibility
 python run_report.py --backtest-mode dynamic_nan_safe
 python run_view_after_optimization.py --asset VOO --delta 2
 ```
@@ -127,6 +156,8 @@ python -m pytest tests/test_docs_links.py -q
 
 - Use [RULES.md](RULES.md) for project-wide principles.
 - Use [SPEC.md](SPEC.md) for the current implementation contract.
+- Use [docs/specs/portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md) for
+  the portfolio-first `analysis_subject` workflow and legacy policy boundary.
 - Use [OUTPUTS.md](OUTPUTS.md) for generated output folders, artifacts, formats, report packaging, and generated-vs-source boundaries.
 - Use [DATA.md](DATA.md) for data-layer expectations.
 - Use [docs/specs/](docs/specs/README.md) for detailed module behavior.

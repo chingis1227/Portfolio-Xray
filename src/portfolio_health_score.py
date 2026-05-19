@@ -18,7 +18,7 @@ from src.config_schema import PortfolioConfig
 SCHEMA_VERSION = "portfolio_health_score_v1"
 WEIGHTS_PROFILE = "default_weights_reviewable"
 PRIMARY_WINDOW = "10y"
-DISPLAY_PRIORITY = ("current", "policy")
+LEGACY_DISPLAY_PRIORITY = ("current", "policy")
 
 DEFAULT_WEIGHTS: dict[str, float] = {
     "structural_diversification": 0.15,
@@ -1009,6 +1009,10 @@ def build_portfolio_health_score(
     by_id = {c["candidate_id"]: c for c in rankable}
     policy_score = (by_id.get("policy") or {}).get("total_score")
     current_score = (by_id.get("current") or {}).get("total_score")
+    if (by_id.get("analysis_subject") or {}).get("total_score") is not None:
+        display_priority = ["analysis_subject"]
+    else:
+        display_priority = list(LEGACY_DISPLAY_PRIORITY)
 
     ranking_table = [
         {
@@ -1035,7 +1039,7 @@ def build_portfolio_health_score(
         "robustness_schema_version": (
             robustness_scorecard.get("schema_version") if robustness_scorecard else None
         ),
-        "display_priority": list(DISPLAY_PRIORITY),
+        "display_priority": display_priority,
         "candidates": candidate_scores,
         "comparison_summary": {
             "scored_count": scored_count,
@@ -1061,7 +1065,7 @@ def write_portfolio_health_score_txt(scorecard: dict[str, Any], path: Path) -> N
         "Priority rows:",
     ]
     by_id = {c["candidate_id"]: c for c in scorecard.get("candidates", [])}
-    for cid in DISPLAY_PRIORITY:
+    for cid in scorecard.get("display_priority") or LEGACY_DISPLAY_PRIORITY:
         row = by_id.get(cid)
         if row and row.get("total_score") is not None:
             lines.append(f"  {row.get('display_name', cid):<38}  {row.get('total_score'):>3}")

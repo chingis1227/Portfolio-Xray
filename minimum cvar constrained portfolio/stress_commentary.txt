@@ -1,189 +1,191 @@
 Source: stress_report.json (current run)
 
 Executive Summary
-Run: minimum cvar constrained portfolio; analysis_end: 2026-05-08. Overall stress bundle status in stress_report: DIAG_PASS_WITH_WARNING. Primary code (primary / fail_reason): —. diagnostic_codes: —.
+Run: minimum cvar constrained portfolio; analysis_end: 2026-04-30. Overall stress bundle status in stress_report: DIAG_PASS_WITH_WARNING. Primary code (primary / fail_reason): —. diagnostic_codes: —.
 Synthetic scenarios and historical episodes in this file are PM diagnostics: they inform interpretation but do not by themselves release or block weights; mandate drawdown and client gates are enforced separately (mandate_check / IPS, full-history backtest).
 Report warning_code: WARN_HIST_BORDERLINE.
-Worst scenario portfolio PnL (worst_scenario_loss_pct): -12.30%; named scenario: —; failed_test: —.
+Worst scenario portfolio PnL (worst_scenario_loss_pct): -13.04%; named scenario: —; failed_test: —.
 
 Metric-by-Metric Interpretation
 Synthetic scenarios (stress_report.scenario_results): factor shocks to the portfolio as a whole; pass reflects the mandate PnL threshold (loss_ok). Top1 / Top3 RC are concentration diagnostics, not an extra pass/fail gate in stress_report. See pnl_by_asset_pct / pnl_by_factor_pct in JSON.
-- equity_shock: PnL ~ -5.24%, pass=True, loss_ok=True; Top1 RC (dispersion): SCHD (26.73%); Top3 sum ~ 69.49%.
-- credit_shock: PnL ~ -2.02%, pass=True, loss_ok=True; Top1 RC (dispersion): SCHD (26.36%); Top3 sum ~ 67.02%.
-- rates_shock: PnL ~ -12.30%, pass=True, loss_ok=True; Top1 RC (dispersion): TLT (27.35%); Top3 sum ~ 64.94%.
-- inflation_stagflation: PnL ~ -5.85%, pass=True, loss_ok=True; Top1 RC (dispersion): GLD (26.76%); Top3 sum ~ 65.39%.
-- liquidity_shock: PnL ~ -3.81%, pass=True, loss_ok=True; Top1 RC (dispersion): SCHD (30.74%); Top3 sum ~ 69.67%.
-- recession_severe: PnL ~ -6.37%, pass=True, loss_ok=True; Top1 RC (dispersion): SCHD (30.19%); Top3 sum ~ 69.35%.
-Portfolio factor betas (weekly estimation; see stress spec): 5Y ~ {beta_cmd=0.0613, beta_credit=-0.1771, beta_eq=0.1310, beta_inf=-3.3805, beta_rr=-6.1488, beta_us_growth=0.0006, beta_usd=-0.1959, beta_vix=0.0019}; 10Y ~ {beta_cmd=0.0402, beta_eq=0.1646, beta_inf=-3.1972, beta_rr=-6.4675, beta_us_growth=-0.0011, beta_usd=-0.1939, beta_vix=0.0003}.
+- equity_shock: PnL ~ -6.07%, pass=True, loss_ok=True; Top1 RC (dispersion): GLD (46.27%); Top3 sum ~ 83.15%.
+- credit_shock: PnL ~ -0.33%, pass=True, loss_ok=True; Top1 RC (dispersion): GLD (41.34%); Top3 sum ~ 80.21%.
+- rates_shock: PnL ~ -9.17%, pass=True, loss_ok=True; Top1 RC (dispersion): GLD (41.30%); Top3 sum ~ 77.57%.
+- inflation_stagflation: PnL ~ -3.61%, pass=True, loss_ok=True; Top1 RC (dispersion): GLD (49.13%); Top3 sum ~ 83.55%.
+- liquidity_shock: PnL ~ -2.91%, pass=True, loss_ok=True; Top1 RC (dispersion): GLD (40.39%); Top3 sum ~ 80.98%.
+- recession_severe: PnL ~ -13.04%, pass=True, loss_ok=True; Top1 RC (dispersion): GLD (40.60%); Top3 sum ~ 81.18%.
+Portfolio factor betas (weekly estimation; see stress spec): 5Y ~ {beta_cmd=0.1006, beta_credit=0.2961, beta_eq=0.1518, beta_inf=-1.5942, beta_rr=-4.5850, beta_us_growth=0.0007, beta_usd=-0.3725, beta_vix=0.0019}; 10Y ~ {beta_cmd=0.0587, beta_eq=0.1666, beta_inf=-1.4772, beta_rr=-5.2073, beta_us_growth=-0.0015, beta_usd=-0.3321, beta_vix=0.0014}.
 Portfolio factor regression (5Y)
-Weekly portfolio factor regression (5Y), OLS: n_obs=155, R2=0.7890, idiosyncratic risk (1-R2)=0.2110, adj R2=0.7774, intercept=0.0013, se_type=classic_ols, alpha=0.05 (CI level 0.95).
+Weekly portfolio factor regression (5Y), OLS: n_obs=153, R2=0.5755, idiosyncratic risk (1-R2)=0.4245, adj R2=0.5520, intercept=0.0018, se_type=classic_ols, alpha=0.05 (CI level 0.95).
 By factor (beta, t, p, 95% CI) — classic OLS (se_type=classic_ols):
-- beta_eq: beta=0.1310, t=3.939, p=0.000126, CI=[0.0653; 0.1968]
-- beta_rr: beta=-6.1488, t=-16.411, p=<1e-6, CI=[-6.8893; -5.4084]
-- beta_inf: beta=-3.3805, t=-3.892, p=0.000151, CI=[-5.0971; -1.6638]
-- beta_credit: beta=-0.1771, t=-0.495, p=0.621594, CI=[-0.8845; 0.5304]
-- beta_usd: beta=-0.1959, t=-3.231, p=0.001525, CI=[-0.3157; -0.0761]
-- beta_cmd: beta=0.0613, t=3.344, p=0.001049, CI=[0.0251; 0.0976]
-- beta_vix: beta=0.0019, t=0.508, p=0.612527, CI=[-0.0054; 0.0091]
-- beta_us_growth: beta=0.0006, t=0.581, p=0.561937, CI=[-0.0014; 0.0026]
+- beta_eq: beta=0.1518, t=3.059, p=0.002648, CI=[0.0537; 0.2498]
+- beta_rr: beta=-4.5850, t=-8.164, p=<1e-6, CI=[-5.6951; -3.4749]
+- beta_inf: beta=-1.5942, t=-1.231, p=0.220174, CI=[-4.1531; 0.9647]
+- beta_credit: beta=0.2961, t=0.556, p=0.579137, CI=[-0.7568; 1.3490]
+- beta_usd: beta=-0.3725, t=-4.128, p=0.000062, CI=[-0.5509; -0.1942]
+- beta_cmd: beta=0.1006, t=3.669, p=0.000342, CI=[0.0464; 0.1548]
+- beta_vix: beta=0.0019, t=0.352, p=0.725321, CI=[-0.0089; 0.0127]
+- beta_us_growth: beta=0.0007, t=0.441, p=0.659574, CI=[-0.0024; 0.0037]
 HAC/Newey-West (robust) inference: se_type=hac_newey_west, kernel=bartlett, max_lags=4.
 By factor (HAC t, p, 95% CI):
-- beta_eq: t_HAC=3.859, p_HAC=0.000170, CI_HAC=[0.0639; 0.1982]
-- beta_rr: t_HAC=-14.678, p_HAC=<1e-6, CI_HAC=[-6.9768; -5.3209]
-- beta_inf: t_HAC=-5.022, p_HAC=0.000001, CI_HAC=[-4.7109; -2.0501]
-- beta_credit: t_HAC=-0.607, p_HAC=0.545033, CI_HAC=[-0.7539; 0.3998]
-- beta_usd: t_HAC=-3.895, p_HAC=0.000149, CI_HAC=[-0.2953; -0.0965]
-- beta_cmd: t_HAC=2.528, p_HAC=0.012531, CI_HAC=[0.0134; 0.1092]
-- beta_vix: t_HAC=0.488, p_HAC=0.626566, CI_HAC=[-0.0057; 0.0094]
-- beta_us_growth: t_HAC=0.447, p_HAC=0.655650, CI_HAC=[-0.0021; 0.0033]
+- beta_eq: t_HAC=2.725, p_HAC=0.007220, CI_HAC=[0.0417; 0.2618]
+- beta_rr: t_HAC=-7.738, p_HAC=<1e-6, CI_HAC=[-5.7562; -3.4138]
+- beta_inf: t_HAC=-1.731, p_HAC=0.085663, CI_HAC=[-3.4150; 0.2266]
+- beta_credit: t_HAC=0.679, p_HAC=0.498127, CI_HAC=[-0.5657; 1.1579]
+- beta_usd: t_HAC=-5.013, p_HAC=0.000002, CI_HAC=[-0.5194; -0.2256]
+- beta_cmd: t_HAC=2.750, p_HAC=0.006716, CI_HAC=[0.0283; 0.1729]
+- beta_vix: t_HAC=0.335, p_HAC=0.738137, CI_HAC=[-0.0094; 0.0133]
+- beta_us_growth: t_HAC=0.316, p_HAC=0.752146, CI_HAC=[-0.0036; 0.0049]
 Breusch-Pagan heteroskedasticity
-Breusch-Pagan (H0: homoskedastic OLS residuals; LM ~ chi-square(k_factors)): LM=9.5726, df=8, p=0.296310, T_aux=155, R2_aux=0.0618.
-F-form: F=1.2013, df=(8, 146), p=0.302161.
+Breusch-Pagan (H0: homoskedastic OLS residuals; LM ~ chi-square(k_factors)): LM=6.9265, df=8, p=0.544580, T_aux=153, R2_aux=0.0453.
+F-form: F=0.8535, df=(8, 144), p=0.557382.
 
 Durbin-Watson / Breusch-Godfrey
-Factor OLS residual autocorrelation: Durbin-Watson=2.2163 (~2 suggests little first-order AR; method: durbin_watson_breusch_godfrey_lm).
+Factor OLS residual autocorrelation: Durbin-Watson=2.1529 (~2 suggests little first-order AR; method: durbin_watson_breusch_godfrey_lm).
 Breusch-Godfrey LM (H0: no serial correlation up to order p; LM ~ chi-squared(p)):
-  lags=1: LM=2.0228, df=1, p=0.154950, T_aux=154, R2_aux=0.0131
-  lags=2: LM=2.5466, df=2, p=0.279901, T_aux=153, R2_aux=0.0166
-  lags=4: LM=2.9048, df=4, p=0.573876, T_aux=151, R2_aux=0.0192
+  lags=1: LM=1.4200, df=1, p=0.233407, T_aux=152, R2_aux=0.0093
+  lags=2: LM=1.9394, df=2, p=0.379199, T_aux=151, R2_aux=0.0128
+  lags=4: LM=1.9174, df=4, p=0.750942, T_aux=149, R2_aux=0.0129
 
 Factor multicollinearity
-Multicollinearity (same weekly sample as regression): severity=low; cond(R)=15.543; max VIF=3.637 (factor equity).
-Strongest pairwise correlation: equity vs vix, rho=-0.7945.
+Multicollinearity (same weekly sample as regression): severity=low; cond(R)=15.576; max VIF=3.650 (factor equity).
+Strongest pairwise correlation: equity vs vix, rho=-0.7951.
+Assessment: Low: typical VIF and cond(R); collinearity is not dominant, but pairwise correlations still matter.
 Pairwise correlations rho (sorted by |rho|):
-  equity — vix: rho=-0.7945
-  equity — credit: rho=-0.7555
-  credit — vix: rho=0.7335
-  inflation — commodity: rho=0.4228
-  inflation — credit: rho=-0.4101
-  equity — usd: rho=-0.3241
-  inflation — vix: rho=-0.2569
-  real_rates — usd: rho=0.2505
-  real_rates — inflation: rho=0.2419
-  credit — usd: rho=0.2352
-  credit — commodity: rho=-0.2324
-  usd — vix: rho=0.2273
-  equity — real_rates: rho=-0.2171
-  equity — inflation: rho=0.1923
-  commodity — us_growth: rho=0.1680
-  inflation — usd: rho=0.1584
-  real_rates — vix: rho=0.1268
-  equity — commodity: rho=0.1086
-  vix — us_growth: rho=0.0987
-  commodity — vix: rho=-0.0906
-  credit — us_growth: rho=0.0903
-  real_rates — credit: rho=0.0837
-  real_rates — commodity: rho=0.0618
-  real_rates — us_growth: rho=0.0517
-  usd — us_growth: rho=0.0467
-  equity — us_growth: rho=-0.0402
-  usd — commodity: rho=-0.0023
-  inflation — us_growth: rho=0.0020
+  equity — vix: rho=-0.7951
+  equity — credit: rho=-0.7547
+  credit — vix: rho=0.7337
+  inflation — commodity: rho=0.4194
+  inflation — credit: rho=-0.4057
+  equity — usd: rho=-0.3266
+  inflation — vix: rho=-0.2537
+  real_rates — usd: rho=0.2477
+  credit — usd: rho=0.2374
+  real_rates — inflation: rho=0.2320
+  credit — commodity: rho=-0.2307
+  equity — real_rates: rho=-0.2274
+  usd — vix: rho=0.2267
+  equity — inflation: rho=0.1874
+  commodity — us_growth: rho=0.1773
+  inflation — usd: rho=0.1592
+  real_rates — vix: rho=0.1306
+  equity — commodity: rho=0.1073
+  vix — us_growth: rho=0.0971
+  real_rates — credit: rho=0.0937
+  credit — us_growth: rho=0.0931
+  commodity — vix: rho=-0.0860
+  real_rates — commodity: rho=0.0620
+  equity — us_growth: rho=-0.0430
+  real_rates — us_growth: rho=0.0428
+  usd — us_growth: rho=0.0416
+  usd — commodity: rho=0.0017
+  inflation — us_growth: rho=0.0012
 VIF by factor:
-  commodity: 1.291
-  credit: 3.155
-  equity: 3.637
-  inflation: 1.629
-  real_rates: 1.176
-  us_growth: 1.062
+  commodity: 1.292
+  credit: 3.148
+  equity: 3.650
+  inflation: 1.611
+  real_rates: 1.173
+  us_growth: 1.065
   usd: 1.224
-  vix: 3.110
-Method: pearson_sample_corr_vif_raw_regressors; n_obs_factors=155.
+  vix: 3.125
+Method: pearson_sample_corr_vif_raw_regressors; n_obs_factors=153.
 
 Portfolio factor regression (10Y)
-Weekly portfolio factor regression (10Y), OLS: n_obs=520, R2=0.8568, idiosyncratic risk (1-R2)=0.1432, adj R2=0.8549, intercept=0.0009, se_type=classic_ols, alpha=0.05 (CI level 0.95).
+Weekly portfolio factor regression (10Y), OLS: n_obs=520, R2=0.7596, idiosyncratic risk (1-R2)=0.2404, adj R2=0.7563, intercept=0.0011, se_type=classic_ols, alpha=0.05 (CI level 0.95).
 By factor (beta, t, p, 95% CI) — classic OLS (se_type=classic_ols):
-- beta_eq: beta=0.1646, t=14.510, p=<1e-6, CI=[0.1423; 0.1868]
-- beta_rr: beta=-6.4675, t=-38.740, p=<1e-6, CI=[-6.7955; -6.1395]
-- beta_inf: beta=-3.1972, t=-11.302, p=<1e-6, CI=[-3.7529; -2.6414]
-- beta_usd: beta=-0.1939, t=-6.934, p=<1e-6, CI=[-0.2489; -0.1390]
-- beta_cmd: beta=0.0402, t=5.180, p=<1e-6, CI=[0.0250; 0.0555]
-- beta_vix: beta=0.0003, t=0.194, p=0.845963, CI=[-0.0024; 0.0030]
-- beta_us_growth: beta=-0.0011, t=-3.309, p=0.001003, CI=[-0.0018; -0.0004]
+- beta_eq: beta=0.1666, t=10.808, p=<1e-6, CI=[0.1363; 0.1969]
+- beta_rr: beta=-5.2073, t=-22.974, p=<1e-6, CI=[-5.6526; -4.7620]
+- beta_inf: beta=-1.4772, t=-3.847, p=0.000135, CI=[-2.2317; -0.7227]
+- beta_usd: beta=-0.3321, t=-8.757, p=<1e-6, CI=[-0.4066; -0.2576]
+- beta_cmd: beta=0.0587, t=5.572, p=<1e-6, CI=[0.0380; 0.0794]
+- beta_vix: beta=0.0014, t=0.765, p=0.444705, CI=[-0.0022; 0.0051]
+- beta_us_growth: beta=-0.0015, t=-3.244, p=0.001257, CI=[-0.0024; -0.0006]
 HAC/Newey-West (robust) inference: se_type=hac_newey_west, kernel=bartlett, max_lags=4.
 By factor (HAC t, p, 95% CI):
-- beta_eq: t_HAC=11.219, p_HAC=<1e-6, CI_HAC=[0.1357; 0.1934]
-- beta_rr: t_HAC=-21.176, p_HAC=<1e-6, CI_HAC=[-7.0675; -5.8675]
-- beta_inf: t_HAC=-7.555, p_HAC=<1e-6, CI_HAC=[-4.0286; -2.3658]
-- beta_usd: t_HAC=-6.364, p_HAC=<1e-6, CI_HAC=[-0.2538; -0.1341]
-- beta_cmd: t_HAC=4.282, p_HAC=0.000022, CI_HAC=[0.0218; 0.0587]
-- beta_vix: t_HAC=0.146, p_HAC=0.884158, CI_HAC=[-0.0033; 0.0039]
-- beta_us_growth: t_HAC=-1.738, p_HAC=0.082785, CI_HAC=[-0.0023; 0.0001]
+- beta_eq: t_HAC=8.731, p_HAC=<1e-6, CI_HAC=[0.1291; 0.2041]
+- beta_rr: t_HAC=-15.019, p_HAC=<1e-6, CI_HAC=[-5.8884; -4.5261]
+- beta_inf: t_HAC=-3.111, p_HAC=0.001968, CI_HAC=[-2.4101; -0.5444]
+- beta_usd: t_HAC=-7.867, p_HAC=<1e-6, CI_HAC=[-0.4150; -0.2491]
+- beta_cmd: t_HAC=4.638, p_HAC=0.000004, CI_HAC=[0.0338; 0.0836]
+- beta_vix: t_HAC=0.602, p_HAC=0.547739, CI_HAC=[-0.0032; 0.0061]
+- beta_us_growth: t_HAC=-1.899, p_HAC=0.058183, CI_HAC=[-0.0030; 0.0001]
 Breusch-Pagan heteroskedasticity
-Breusch-Pagan (H0: homoskedastic OLS residuals; LM ~ chi-square(k_factors)): LM=23.7412, df=7, p=0.001265, T_aux=520, R2_aux=0.0457.
-F-form: F=3.4992, df=(7, 512), p=0.001120.
+Breusch-Pagan (H0: homoskedastic OLS residuals; LM ~ chi-square(k_factors)): LM=9.6918, df=7, p=0.206724, T_aux=520, R2_aux=0.0186.
+F-form: F=1.3891, df=(7, 512), p=0.207469.
 
 Durbin-Watson / Breusch-Godfrey
-Factor OLS residual autocorrelation: Durbin-Watson=2.1559 (~2 suggests little first-order AR; method: durbin_watson_breusch_godfrey_lm).
+Factor OLS residual autocorrelation: Durbin-Watson=2.0905 (~2 suggests little first-order AR; method: durbin_watson_breusch_godfrey_lm).
 Breusch-Godfrey LM (H0: no serial correlation up to order p; LM ~ chi-squared(p)):
-  lags=1: LM=3.2249, df=1, p=0.072528, T_aux=519, R2_aux=0.0062
-  lags=2: LM=3.6928, df=2, p=0.157804, T_aux=518, R2_aux=0.0071
-  lags=4: LM=4.1342, df=4, p=0.388153, T_aux=516, R2_aux=0.0080
+  lags=1: LM=1.2864, df=1, p=0.256707, T_aux=519, R2_aux=0.0025
+  lags=2: LM=3.4312, df=2, p=0.179853, T_aux=518, R2_aux=0.0066
+  lags=4: LM=3.8853, df=4, p=0.421747, T_aux=516, R2_aux=0.0075
 
 Factor multicollinearity
-Multicollinearity (same weekly sample as regression): severity=low; cond(R)=11.246; max VIF=2.741 (factor equity).
+Multicollinearity (same weekly sample as regression): severity=low; cond(R)=11.239; max VIF=2.743 (factor equity).
 Strongest pairwise correlation: equity vs vix, rho=-0.7192.
+Assessment: Low: typical VIF and cond(R); collinearity is not dominant, but pairwise correlations still matter.
 Pairwise correlations rho (sorted by |rho|):
   equity — vix: rho=-0.7192
   equity — usd: rho=-0.4724
-  inflation — commodity: rho=0.4663
+  inflation — commodity: rho=0.4639
   equity — inflation: rho=0.3836
-  equity — commodity: rho=0.3395
-  usd — commodity: rho=-0.3256
-  inflation — vix: rho=-0.3130
-  real_rates — usd: rho=0.3025
-  commodity — vix: rho=-0.2523
-  usd — vix: rho=0.2475
-  equity — real_rates: rho=-0.2155
-  inflation — usd: rho=-0.1708
-  real_rates — inflation: rho=-0.1686
-  real_rates — commodity: rho=-0.1083
-  commodity — us_growth: rho=0.0708
-  real_rates — vix: rho=0.0468
-  real_rates — us_growth: rho=0.0441
-  usd — us_growth: rho=-0.0169
-  inflation — us_growth: rho=0.0081
-  vix — us_growth: rho=0.0058
-  equity — us_growth: rho=0.0006
+  equity — commodity: rho=0.3385
+  usd — commodity: rho=-0.3225
+  inflation — vix: rho=-0.3123
+  real_rates — usd: rho=0.3012
+  commodity — vix: rho=-0.2511
+  usd — vix: rho=0.2469
+  equity — real_rates: rho=-0.2152
+  inflation — usd: rho=-0.1710
+  real_rates — inflation: rho=-0.1685
+  real_rates — commodity: rho=-0.1096
+  commodity — us_growth: rho=0.0735
+  real_rates — vix: rho=0.0469
+  real_rates — us_growth: rho=0.0435
+  usd — us_growth: rho=-0.0158
+  inflation — us_growth: rho=0.0083
+  vix — us_growth: rho=0.0053
+  equity — us_growth: rho=0.0004
 VIF by factor:
-  commodity: 1.410
-  equity: 2.741
-  inflation: 1.416
-  real_rates: 1.147
+  commodity: 1.403
+  equity: 2.743
+  inflation: 1.412
+  real_rates: 1.146
   us_growth: 1.009
-  usd: 1.458
-  vix: 2.168
+  usd: 1.454
+  vix: 2.167
 Method: pearson_sample_corr_vif_raw_regressors; n_obs_factors=520.
 
 Rolling windows
 Weekly rolling windows (weeks): 10y=520, 3y=156, 5y=260.
 Rolling beta summary over available history in this run (mean, median, p10, p90):
 Window 3y:
-  beta_eq: n=801, mean=0.1325, median=0.1523, p10=-0.0022, p90=0.2062
-  beta_rr: n=801, mean=-6.1327, median=-6.0927, p10=-7.9699, p90=-4.3976
-  beta_inf: n=801, mean=-3.9797, median=-3.3129, p10=-6.0202, p90=-2.7538
-  beta_usd: n=801, mean=-0.1868, median=-0.1737, p10=-0.2691, p90=-0.1190
-  beta_cmd: n=801, mean=0.0424, median=0.0406, p10=0.0171, p90=0.0676
-  beta_vix: n=801, mean=0.0003, median=0.0001, p10=-0.0023, p90=0.0032
-  beta_us_growth: n=801, mean=-0.0006, median=-0.0005, p10=-0.0014, p90=0.0005
+  beta_eq: n=800, mean=0.1342, median=0.1488, p10=0.0204, p90=0.2190
+  beta_rr: n=800, mean=-4.9941, median=-4.7656, p10=-6.9520, p90=-3.7722
+  beta_inf: n=800, mean=-2.3972, median=-1.8408, p10=-4.6770, p90=-1.0660
+  beta_usd: n=800, mean=-0.3170, median=-0.3138, p10=-0.4189, p90=-0.2366
+  beta_cmd: n=800, mean=0.0679, median=0.0625, p10=0.0239, p90=0.1153
+  beta_vix: n=800, mean=0.0019, median=0.0021, p10=-0.0041, p90=0.0067
+  beta_us_growth: n=800, mean=-0.0008, median=-0.0010, p10=-0.0020, p90=0.0010
 
 Window 5y:
-  beta_eq: n=697, mean=0.1379, median=0.1610, p10=0.0241, p90=0.2049
-  beta_rr: n=697, mean=-6.2410, median=-6.3550, p10=-7.6841, p90=-5.0883
-  beta_inf: n=697, mean=-3.9603, median=-3.4279, p10=-5.7472, p90=-2.8170
-  beta_usd: n=697, mean=-0.1833, median=-0.1876, p10=-0.2279, p90=-0.1410
-  beta_cmd: n=697, mean=0.0385, median=0.0375, p10=0.0188, p90=0.0572
-  beta_vix: n=697, mean=-0.0004, median=-0.0001, p10=-0.0023, p90=0.0008
-  beta_us_growth: n=697, mean=-0.0007, median=-0.0007, p10=-0.0014, p90=0.0003
+  beta_eq: n=696, mean=0.1397, median=0.1586, p10=0.0391, p90=0.2151
+  beta_rr: n=696, mean=-5.0601, median=-5.1417, p10=-6.7093, p90=-4.0510
+  beta_inf: n=696, mean=-2.3321, median=-1.8342, p10=-4.3440, p90=-0.9835
+  beta_usd: n=696, mean=-0.3156, median=-0.3199, p10=-0.3682, p90=-0.2600
+  beta_cmd: n=696, mean=0.0619, median=0.0542, p10=0.0315, p90=0.1063
+  beta_vix: n=696, mean=0.0011, median=0.0018, p10=-0.0021, p90=0.0036
+  beta_us_growth: n=696, mean=-0.0010, median=-0.0011, p10=-0.0018, p90=0.0003
 
 Window 10y:
-  beta_eq: n=437, mean=0.1457, median=0.1727, p10=0.0236, p90=0.1922
-  beta_rr: n=437, mean=-6.3052, median=-6.4615, p10=-6.9128, p90=-5.1116
-  beta_inf: n=437, mean=-3.9555, median=-3.9795, p10=-4.6086, p90=-3.2098
-  beta_usd: n=437, mean=-0.1674, median=-0.1698, p10=-0.1920, p90=-0.1456
-  beta_cmd: n=437, mean=0.0382, median=0.0360, p10=0.0321, p90=0.0487
-  beta_vix: n=437, mean=-0.0010, median=0.0002, p10=-0.0061, p90=0.0011
-  beta_us_growth: n=437, mean=-0.0010, median=-0.0012, p10=-0.0015, p90=-0.0001
+  beta_eq: n=436, mean=0.1487, median=0.1760, p10=0.0139, p90=0.1948
+  beta_rr: n=436, mean=-5.1080, median=-5.2393, p10=-5.7341, p90=-3.9298
+  beta_inf: n=436, mean=-2.2880, median=-2.2588, p10=-3.0203, p90=-1.4729
+  beta_usd: n=436, mean=-0.2994, median=-0.3004, p10=-0.3282, p90=-0.2718
+  beta_cmd: n=436, mean=0.0602, median=0.0582, p10=0.0471, p90=0.0788
+  beta_vix: n=436, mean=0.0009, median=0.0018, p10=-0.0049, p90=0.0027
+  beta_us_growth: n=436, mean=-0.0013, median=-0.0015, p10=-0.0021, p90=-0.0003
 
 Rolling beta chart files (PNG, variant output folder): 10y->rolling_factor_betas_10y.png, 3y->rolling_factor_betas_3y.png, 5y->rolling_factor_betas_5y.png
 ![Rolling factor betas — 3y](../minimum cvar constrained portfolio/rolling_factor_betas_3y.png)
@@ -192,53 +194,56 @@ Rolling beta chart files (PNG, variant output folder): 10y->rolling_factor_betas
 
 Factor beta stability diagnostics
 Sign stability, magnitude stability, specification sensitivity, and OOS rolling-forward stability.
-Severity distribution: low=57.1%, moderate=28.6%, high=14.3%, unknown=0.0%.
-- beta_eq: severity=moderate; sign=low (dominant=positive, share=0.919, changes=9); magnitude=moderate (band=0.1963, rel_band=1.207); spec=low (rel_median_span=0.127, sign_disagreement=False); OOS=low (sign_match=0.925, degradation=0.364, n=1779).
-- beta_rr: severity=low; sign=low (dominant=negative, share=1.000, changes=0); magnitude=low (band=2.8040, rel_band=0.440); spec=low (rel_median_span=0.058, sign_disagreement=False); OOS=low (sign_match=1.000, degradation=0.165, n=1779).
-- beta_inf: severity=low; sign=low (dominant=negative, share=1.000, changes=0); magnitude=low (band=2.8819, rel_band=0.800); spec=low (rel_median_span=0.194, sign_disagreement=False); OOS=low (sign_match=1.000, degradation=0.232, n=1779).
-- beta_usd: severity=low; sign=low (dominant=negative, share=1.000, changes=0); magnitude=low (band=0.1100, rel_band=0.631); spec=low (rel_median_span=0.102, sign_disagreement=False); OOS=low (sign_match=0.984, degradation=0.404, n=1779).
-- beta_cmd: severity=low; sign=low (dominant=positive, share=0.997, changes=4); magnitude=low (band=0.0415, rel_band=0.829); spec=low (rel_median_span=0.092, sign_disagreement=False); OOS=low (sign_match=0.942, degradation=0.499, n=1779).
-- beta_vix: severity=high; sign=high (dominant=positive, share=0.535, changes=92); magnitude=low (band=0.0043, rel_band=0.087); spec=high (rel_median_span=0.007, sign_disagreement=True); OOS=high (sign_match=0.464, degradation=0.084, n=1779).
-- beta_us_growth: severity=moderate; sign=moderate (dominant=negative, share=0.844, changes=33); magnitude=low (band=0.0017, rel_band=0.034); spec=low (rel_median_span=0.014, sign_disagreement=False); OOS=moderate (sign_match=0.680, degradation=0.019, n=1779).
+Severity distribution: low=28.6%, moderate=57.1%, high=14.3%, unknown=0.0%.
+- beta_eq: severity=moderate; sign=low (dominant=positive, share=0.917, changes=9); magnitude=moderate (band=0.1918, rel_band=1.196); spec=low (rel_median_span=0.172, sign_disagreement=False); OOS=low (sign_match=0.902, degradation=0.441, n=1776).
+- beta_rr: severity=low; sign=low (dominant=negative, share=1.000, changes=0); magnitude=low (band=2.7160, rel_band=0.529); spec=low (rel_median_span=0.092, sign_disagreement=False); OOS=low (sign_match=1.000, degradation=0.259, n=1776).
+- beta_inf: severity=moderate; sign=low (dominant=negative, share=1.000, changes=0); magnitude=moderate (band=3.2524, rel_band=1.576); spec=low (rel_median_span=0.231, sign_disagreement=False); OOS=low (sign_match=0.990, degradation=0.470, n=1776).
+- beta_usd: severity=low; sign=low (dominant=negative, share=1.000, changes=0); magnitude=low (band=0.1437, rel_band=0.467); spec=low (rel_median_span=0.062, sign_disagreement=False); OOS=low (sign_match=1.000, degradation=0.286, n=1776).
+- beta_cmd: severity=moderate; sign=low (dominant=positive, share=0.981, changes=4); magnitude=moderate (band=0.0757, rel_band=1.311); spec=low (rel_median_span=0.142, sign_disagreement=False); OOS=low (sign_match=0.857, degradation=0.759, n=1776).
+- beta_vix: severity=high; sign=moderate (dominant=positive, share=0.730, changes=42); magnitude=low (band=0.0078, rel_band=0.156); spec=low (rel_median_span=0.006, sign_disagreement=False); OOS=high (sign_match=0.464, degradation=0.138, n=1776).
+- beta_us_growth: severity=moderate; sign=moderate (dominant=negative, share=0.852, changes=23); magnitude=low (band=0.0024, rel_band=0.047); spec=low (rel_median_span=0.010, sign_disagreement=False); OOS=moderate (sign_match=0.730, degradation=0.026, n=1776).
 
 Kalman factor betas
-Diagnostic-only current-regime Kalman beta estimate (date=2026-05-01, n=520, cap=+/-3.0).
-Latest capped betas: beta_cmd=0.0579, beta_eq=0.1313, beta_inf=-3.0000, beta_rr=-3.0000, beta_us_growth=-0.0089, beta_usd=-0.1534, beta_vix=0.0136.
-Capped Kalman betas: beta_rr: raw=-7.0616 -> capped=-3.0000; beta_inf: raw=-4.8455 -> capped=-3.0000.
-Kalman vs 5Y divergence flags: beta_rr: kalman=-3.0000, 5Y=-6.1488, reason=abs_gap; beta_inf: kalman=-3.0000, 5Y=-3.3805, reason=abs_gap; beta_us_growth: kalman=-0.0089, 5Y=0.0006, reason=sign_difference.
+Diagnostic-only current-regime Kalman beta estimate (date=2026-04-24, n=520, cap=+/-3.0).
+Latest capped betas: beta_cmd=0.1233, beta_eq=0.1722, beta_inf=-3.0000, beta_rr=-3.0000, beta_us_growth=-0.0127, beta_usd=-0.3303, beta_vix=0.0129.
+Capped Kalman betas: beta_rr: raw=-5.9610 -> capped=-3.0000; beta_inf: raw=-4.5652 -> capped=-3.0000.
+Kalman vs 5Y divergence flags: beta_rr: kalman=-3.0000, 5Y=-4.5850, reason=abs_gap; beta_inf: kalman=-3.0000, 5Y=-1.5942, reason=abs_gap; beta_us_growth: kalman=-0.0127, 5Y=0.0007, reason=sign_difference.
 High state uncertainty betas: beta_rr, beta_inf.
 Kalman beta diagnostics are non-binding and do not change optimizer weights, mandate gates, or raw 5Y/10Y beta outputs.
 
 Oil diagnostic/stress warning
 Oil role=diagnostic_warning_only; beta_oil is deprecated in production beta outputs. Read Oil exposure only from diagnostic_oil_beta or stress-layer metrics.
-Oil beta estimates: 5Y=-0.0308, 10Y=-0.0119; Commodity production beta 5Y=0.1227, 10Y=0.0637.
-Oil/Commodity collinearity: corr_5y=0.8368, corr_10y=0.6810, cov_corr=0.8579, oil_vif_5y=4.447, severity=low.
-Oil Kalman diagnostic: latest=-0.0133, raw=-0.0133, uncertainty=low, date=2026-05-01.
+Oil beta estimates: 5Y=-0.0481, 10Y=-0.0151; Commodity production beta 5Y=0.1964, 10Y=0.0884.
+Oil/Commodity collinearity: corr_5y=0.8355, corr_10y=0.6805, cov_corr=0.8550, oil_vif_5y=4.412, severity=low.
+Oil Kalman diagnostic: latest=-0.0243, raw=-0.0243, uncertainty=low, date=2026-04-24.
 
 Stability-adjusted factor beta overlay
 Strong 5Y vs 10Y divergence: beta_us_growth.
 Adjusted betas:
-  beta_eq: raw=0.1310 -> adjusted=0.1394 (severity=moderate, reason=moderate_severity_shrink_toward_10y_anchor)
-  beta_vix: raw=0.0019 -> adjusted=0.0011 (severity=high, reason=high_severity_shrink_toward_10y_anchor)
-  beta_us_growth: raw=0.0006 -> adjusted=0.0002 (severity=moderate, reason=moderate_severity_shrink_toward_10y_anchor)
+  beta_eq: raw=0.1518 -> adjusted=0.1555 (severity=moderate, reason=moderate_severity_shrink_toward_10y_anchor)
+  beta_inf: raw=-1.5942 -> adjusted=-1.5650 (severity=moderate, reason=moderate_severity_shrink_toward_10y_anchor)
+  beta_cmd: raw=0.1006 -> adjusted=0.0901 (severity=moderate, reason=moderate_severity_shrink_toward_10y_anchor)
+  beta_vix: raw=0.0019 -> adjusted=0.0016 (severity=high, reason=high_severity_shrink_toward_10y_anchor)
+  beta_us_growth: raw=0.0007 -> adjusted=0.0001 (severity=moderate, reason=moderate_severity_shrink_toward_10y_anchor)
 
 Factor covariance matrix
-- base (data_driven): factor_vol=0.91%, factor_variance=0.000082.
-- stress_empirical (data_driven): factor_vol=1.46%, factor_variance=0.000213.
-- stress_overlay (hypothetical): factor_vol=1.76%, factor_variance=0.000309.
-Empirical change (stress_empirical vs base): real_rates vs inflation (corr_delta=-0.4478, abs_corr_delta=0.4478).
-Overlay amplification (stress_overlay vs stress_empirical): real_rates vs commodity (corr_delta=-0.4276, abs_corr_delta=0.4276).
-RC_stability_flag threshold=30.0%; overall=True; factors=equity, inflation, usd, commodity, us_growth.
-Beta sensitivity (+/-1 rolling beta std): base (data_driven) vol_range=0.91%..0.95%; stress_empirical (data_driven) vol_range=1.39%..1.62%; stress_overlay (hypothetical) vol_range=1.58%..1.98%.
+- base (data_driven): factor_vol=0.90%, factor_variance=0.000081.
+- stress_empirical (data_driven): factor_vol=1.70%, factor_variance=0.000290.
+- stress_overlay (hypothetical): factor_vol=2.05%, factor_variance=0.000421.
+Empirical change (stress_empirical vs base): real_rates vs inflation (corr_delta=-0.4430, abs_corr_delta=0.4430).
+Overlay amplification (stress_overlay vs stress_empirical): real_rates vs commodity (corr_delta=-0.4284, abs_corr_delta=0.4284).
+RC_stability_flag threshold=30.0%; overall=True; factors=inflation, commodity, vix, us_growth.
+Beta sensitivity (+/-1 rolling beta std): base (data_driven) vol_range=0.89%..0.95%; stress_empirical (data_driven) vol_range=1.50%..1.98%; stress_overlay (hypothetical) vol_range=1.78%..2.36%.
 Covariance stability check 5Y vs 2Y (data_driven): threshold=35.0%; overall_flag=True.
-Forecast quality (5Y covariance vs next 1Y realized factor risk): n=13, median_abs_vol_error=19.4%, hit10=15.4%, hit20=53.8%, hit30=69.2%, median_corr_rmse=0.1746, severity=moderate.
+Forecast quality (5Y covariance vs next 1Y realized factor risk): n=13, median_abs_vol_error=26.3%, hit10=30.8%, hit20=30.8%, hit30=61.5%, median_corr_rmse=0.1746, severity=high.
 
 Macro regime diagnostics
 Method=macro_two_axis_v1; frequency=monthly; score_lag_months=1.
-Current primary regime: reflation; growth_score=-0.100; inflation_score=1.000; confidence=low; transition_flag=True; transition_reason=growth_axis_near_neutral; legacy_label=neutral_transition.
-Growth block sub-scores: growth_business_activity=-0.500, growth_labor=n/a, growth_consumer=n/a, growth_credit=0.000, growth_nowcast=n/a.
-Inflation block sub-scores: core_inflation=n/a, headline_inflation=1.000, wages=n/a, inflation_expectations=1.000, business_price_pressure=1.000.
-Coverage tier: full; ratio=1.00; available_blocks=10; missing_blocks=0; optional_blocks_missing=0.
+Current primary regime: reflation; growth_score=0.067; inflation_score=0.550; confidence=low; transition_flag=True; transition_reason=growth_axis_near_neutral; legacy_label=neutral_transition.
+Growth block sub-scores: growth_business_activity=n/a, growth_labor=0.500, growth_consumer=n/a, growth_credit=0.000, growth_nowcast=0.000.
+Inflation block sub-scores: core_inflation=1.000, headline_inflation=1.000, wages=1.000, inflation_expectations=1.000, business_price_pressure=n/a.
+Coverage tier: fred_baseline; ratio=0.80; available_blocks=8; missing_blocks=2; optional_blocks_missing=0.
+Missing blocks: business_price_pressure, growth_business_activity.
 Available usable/reliable regimes: usable=1, reliable=0, total=1.
 ECI is quarterly; values are forward-filled to monthly — treat the monthly precision as illustrative.
 GDPNow (Atlanta Fed) is published quarterly via FRED:GDPNOW; values are forward-filled to monthly — treat intra-quarter monthly steps as illustrative, not a new release.
@@ -248,64 +253,64 @@ Stability threshold is a global heuristic, not factor-specific calibration.
 Look-ahead protection is a 1-month publication lag only. Release-date accurate vintage handling is out of scope for v1.
 macro_two_axis_v1 is a diagnostic-only macro regime classifier. It does not affect optimizer weights, mandate gates, stress pass/fail, or weight release.
 Regime Label Quality Check
-Regime history usable=True; switches=46; avg_months_between_switches=7.87; one-month share=0.0%; <3m share=19.1%.
-Reliable regimes: goldilocks, reflation, stagflation; weak regimes (<24 obs): none.
-Transition months: n=233 (63.0%); growth_axis=111, inflation_axis=65, both_axes=57; legacy neutral_transition share=67.0%.
-Primary regime x transition pivot: goldilocks: non_transition=18, transition=48; reflation: non_transition=92, transition=121; stagflation: non_transition=18, transition=49; recession_disinflation: non_transition=9, transition=15.
+Regime history usable=False; switches=37; avg_months_between_switches=9.74; one-month share=2.6%; <3m share=26.3%.
+Reliable regimes: reflation; weak regimes (<24 obs): recession_disinflation.
+Warning: at least one regime has fewer than 24 observations; treat regime-specific betas/covariance/RC cautiously.
+Quality-check warnings: at least one regime has fewer than 24 observations; treat regime-specific betas/covariance/RC cautiously.
+Transition months: n=214 (57.8%); growth_axis=96, inflation_axis=76, both_axes=42; legacy neutral_transition share=59.5%.
+Primary regime x transition pivot: goldilocks: non_transition=17, transition=40; reflation: non_transition=118, transition=135; stagflation: non_transition=16, transition=32; recession_disinflation: non_transition=5, transition=7.
 
 Regime factor analytics (portfolio window vs label history)
-macro_two_axis_v1 regime labels in macro_regime_diagnostics may cover a longer history (1995-08-31–2026-05-31, 370 scored months in labels_monthly) than the portfolio-facing regime analytics slice.
-portfolio_regime_analytics_window is 10Y ending at 2026-05-08 (target ~520 weeks / 120 months); actual overlap in this run: 2016-04-25–2026-05-01 (2520 daily periods). Per-regime n_obs and all regime-specific covariances, correlations, betas, portfolio exposures, variance contributions, and average factor moves refer only to that overlap.
+macro_two_axis_v1 regime labels in macro_regime_diagnostics may cover a longer history (1995-07-31–2026-04-30, 370 scored months in labels_monthly) than the portfolio-facing regime analytics slice.
+portfolio_regime_analytics_window is 10Y ending at 2026-04-30 (target ~520 weeks / 120 months); actual overlap in this run: 2016-04-18–2026-04-24 (2520 daily periods). Per-regime n_obs and all regime-specific covariances, correlations, betas, portfolio exposures, variance contributions, and average factor moves refer only to that overlap.
 macro_two_axis_v1 may emit regime labels over a longer history (regime_label_history_span) than the portfolio analytics slice; portfolio_regime_analytics_window is 10Y ending at analysis_end (daily: ~2520 trading days where available; weekly/monthly modes use their historical window lengths), aligned with the standard return/metrics/covariance/factor horizons.
 
 Factor variance decomposition
-Method=r2_scaled_factor_rc_plus_residual; variance_scale=weekly; R2=0.7890; residual=21.10% (low).
-R2 cross-check: status=pass; bSigma_b/Var(portfolio)=0.7890; abs_diff=0.0000; warning=none.
-Risk adders: real_rates=54.59%; equity=12.94%; usd=5.81%.
-Hedgers: vix=-1.01%; us_growth=-0.01%.
+Method=r2_scaled_factor_rc_plus_residual; variance_scale=weekly; R2=0.5755; residual=42.45% (moderate).
+R2 cross-check: status=pass; bSigma_b/Var(portfolio)=0.5755; abs_diff=0.0000; warning=none.
+Risk adders: real_rates=29.21%; equity=14.20%; usd=11.46%.
+Hedgers: credit=-1.50%; vix=-0.99%.
 Neutral factors: none.
-Gross concentration: real_rates=53.21%; equity=12.62%; usd=5.66%.
-Decomposition stability: status=available; overall=moderate; R2 p10=0.7890, p90=0.8433, severity=low.
-Residual recommendation: Factor decomposition is suitable as a diagnostic risk-management signal.
+Gross concentration: real_rates=26.88%; equity=13.06%; usd=10.54%.
+Decomposition stability: status=available; overall=moderate; R2 p10=0.5755, p90=0.7228, severity=low.
+Residual recommendation: Use factor rankings with caution and review omitted factors or unstable beta estimates.
 
 Portfolio PCA diagnostics
 Covariance PCA is interpreted as risk dominance: it includes volatility scale. Correlation PCA is interpreted as structure: it standardizes asset volatility before extracting common movement.
-Universe: n_assets=8, n_obs=260, included=VOO, QQQ, GLD, SLV, BND, SCHD, SCHP, TLT.
-Raw covariance PCA (risk dominance): PC1=54.55%, concentration=4.36, severity=extreme, ENB=2.61, ENB ratio=32.59%, ENB severity=high, PC1 stability=high.
-Raw correlation PCA (structure): PC1=43.19%, concentration=3.46, severity=high, ENB=3.45, ENB ratio=43.12%, ENB severity=moderate, PC1 stability=low.
-Residual covariance PCA (unexplained risk dominance): PC1=79.17%, concentration=6.33, severity=extreme, ENB=1.56, ENB ratio=19.49%, ENB severity=high, PC1 stability=high.
-Residual correlation PCA (unexplained structure): PC1=22.02%, concentration=1.76, severity=low, ENB=6.09, ENB ratio=76.15%, ENB severity=low, PC1 stability=low.
-Raw covariance PC1 loadings: positive: SLV=0.862, GLD=0.333, QQQ=0.268; negative: none.
-Raw correlation PC1 loadings: positive: VOO=0.410, BND=0.408, SCHP=0.404; negative: none.
-Raw covariance PC1 factor correlations: usd=-0.514, equity=0.504, vix=-0.386.
+Universe: n_assets=8, n_obs=260, included=SPY, QQQ, GLD, SLV, BND, SCHD, SCHP, TLT.
+Raw covariance PCA (risk dominance): PC1=54.37%, concentration=4.35, severity=extreme, ENB=2.61, ENB ratio=32.68%, ENB severity=high, PC1 stability=high.
+Raw correlation PCA (structure): PC1=43.16%, concentration=3.45, severity=high, ENB=3.45, ENB ratio=43.12%, ENB severity=moderate, PC1 stability=low.
+Residual covariance PCA (unexplained risk dominance): PC1=79.21%, concentration=6.34, severity=extreme, ENB=1.56, ENB ratio=19.48%, ENB severity=high, PC1 stability=high.
+Residual correlation PCA (unexplained structure): PC1=21.96%, concentration=1.76, severity=low, ENB=6.10, ENB ratio=76.24%, ENB severity=low, PC1 stability=low.
+Raw covariance PC1 loadings: positive: SLV=0.863, GLD=0.334, QQQ=0.263; negative: none.
+Raw correlation PC1 loadings: positive: SPY=0.409, BND=0.408, SCHP=0.405; negative: none.
+Raw covariance PC1 factor correlations: usd=-0.515, equity=0.503, vix=-0.386.
 High residual PC1 means hidden common risk remains after the named factor model; review omitted factors, factor definitions, and asset-specific concentration.
 
 
 Data cadence (optimization vs stress)
-returns_frequency=daily, optimization_frequency=daily, factor_stress_frequency=weekly, macro_regime_frequency=monthly; frequency_mismatch_warning=True.
-Portfolio metrics and covariance use returns_frequency=daily; factor betas/regression/stress shocks stay weekly; macro regime classifier labels remain monthly; regime_factor_analytics may use daily returns when daily data loads (see regime_factor_analytics.summary).
-Non-uniform cadence: align interpretation of stress/regime blocks with the frequencies above; full alignment of factor/regime panels with daily/weekly optimization is Phase 2.
+returns_frequency=monthly, optimization_frequency=monthly, factor_stress_frequency=weekly, macro_regime_frequency=monthly; frequency_mismatch_warning=False.
 
 Risk Structure
 Drawdown threshold for scenario loss test (max_dd_limit in JSON)=20.00%
-Top1 RC by scenario (see table above): equity_shock SCHD=26.7%, credit_shock SCHD=26.4%, rates_shock TLT=27.4%, inflation_stagflation GLD=26.8%, liquidity_shock SCHD=30.7%, recession_severe SCHD=30.2%.
+Top1 RC by scenario (see table above): equity_shock GLD=46.3%, credit_shock GLD=41.3%, rates_shock GLD=41.3%, inflation_stagflation GLD=49.1%, liquidity_shock GLD=40.4%, recession_severe GLD=40.6%.
 Historical episodes (historical_results):
 Historical factor attribution caveat: model-based attribution = beta times realized factor shock; it is not a pure realized causal decomposition.
 - dotcom: pnl_real_episode ~ n/a, max_dd ~ n/a, pass=None, vol_annualized_episode ~ n/a, diagnostic_code=—.
-  Factor attribution (5Y beta, model-based): model_pnl=-4.47%, model_error=n/a; top drivers: Equity (beta_eq)=-4.72%, VIX (beta_vix)=0.25%; largest loss driver: Equity (beta_eq)=-4.72%.
+  Factor attribution (5Y beta, model-based): model_pnl=-5.22%, model_error=n/a; top drivers: Equity (beta_eq)=-5.47%, VIX (beta_vix)=0.25%; largest loss driver: Equity (beta_eq)=-5.47%.
 - 2008: pnl_real_episode ~ n/a, max_dd ~ n/a, pass=None, vol_annualized_episode ~ n/a, diagnostic_code=—.
-  Factor attribution (5Y beta, model-based): model_pnl=-6.47%, model_error=n/a; top drivers: Equity (beta_eq)=-5.70%, Inflation (beta_inf)=3.11%, USD (beta_usd)=-2.71%; largest loss driver: Equity (beta_eq)=-5.70%.
-- 2020: pnl_real_episode ~ 3.04%, max_dd ~ -11.38%, pass=True, vol_annualized_episode ~ 0.0377, diagnostic_code=—.
-  Factor attribution (5Y beta, model-based): model_pnl=-0.36%, model_error=-3.40%; top drivers: Real rates (beta_rr)=2.71%, Inflation (beta_inf)=1.86%, Commodity (beta_cmd)=-1.77%; largest loss driver: Commodity (beta_cmd)=-1.77%.
-- 2022: pnl_real_episode ~ -13.92%, max_dd ~ -17.42%, pass=True, vol_annualized_episode ~ 0.0194, diagnostic_code=—.
-  Factor attribution (5Y beta, model-based): model_pnl=-18.63%, model_error=-4.71%; top drivers: Real rates (beta_rr)=-15.99%, USD (beta_usd)=-2.17%, Equity (beta_eq)=-1.92%; largest loss driver: Real rates (beta_rr)=-15.99%.
-Structural historical factor vulnerability: most repeated largest negative driver is Equity (2 episodes, cumulative model contribution -10.42%).
+  Factor attribution (5Y beta, model-based): model_pnl=-13.19%, model_error=n/a; top drivers: Equity (beta_eq)=-6.60%, USD (beta_usd)=-5.15%, Commodity (beta_cmd)=-3.58%; largest loss driver: Equity (beta_eq)=-6.60%.
+- 2020: pnl_real_episode ~ 1.16%, max_dd ~ -3.26%, pass=True, vol_annualized_episode ~ 0.1692, diagnostic_code=—.
+  Factor attribution (5Y beta, model-based): model_pnl=-4.67%, model_error=-5.83%; top drivers: Commodity (beta_cmd)=-2.91%, USD (beta_usd)=-2.44%, Real rates (beta_rr)=2.02%; largest loss driver: Commodity (beta_cmd)=-2.91%.
+- 2022: pnl_real_episode ~ -10.70%, max_dd ~ -13.94%, pass=True, vol_annualized_episode ~ 0.0865, diagnostic_code=—.
+  Factor attribution (5Y beta, model-based): model_pnl=-16.07%, model_error=-5.37%; top drivers: Real rates (beta_rr)=-11.92%, USD (beta_usd)=-4.12%, Equity (beta_eq)=-2.22%; largest loss driver: Real rates (beta_rr)=-11.92%.
+Structural historical factor vulnerability: most repeated largest negative driver is Equity (2 episodes, cumulative model contribution -12.08%).
 Out-of-sample episode explainability via beta x shock (5Y/10Y/rolling-3Y pre):
-- dotcom: real=n/a, model_5y=-4.47%, model_10y=-5.89%, model_roll3y=-0.45%; |err|: 5y=n/a, 10y=n/a, roll3y=n/a.
-- 2008: real=n/a, model_5y=-6.47%, model_10y=-6.56%, model_roll3y=-0.63%; |err|: 5y=n/a, 10y=n/a, roll3y=n/a.
-- 2020: real=3.04%, model_5y=-0.36%, model_10y=1.38%, model_roll3y=2.80%; |err|: 5y=3.40%, 10y=1.66%, roll3y=0.24%.
-- 2022: real=-13.92%, model_5y=-18.63%, model_10y=-20.07%, model_roll3y=-25.88%; |err|: 5y=4.71%, 10y=6.15%, roll3y=11.96%.
-Mean absolute error across episodes: 5Y=4.06%, 10Y=3.91%, rolling-3Y=6.10% (n=2).
+- dotcom: real=n/a, model_5y=-5.22%, model_10y=-5.82%, model_roll3y=-0.52%; |err|: 5y=n/a, 10y=n/a, roll3y=n/a.
+- 2008: real=n/a, model_5y=-13.19%, model_10y=-10.70%, model_roll3y=-4.75%; |err|: 5y=n/a, 10y=n/a, roll3y=n/a.
+- 2020: real=1.16%, model_5y=-4.67%, model_10y=-1.02%, model_roll3y=1.29%; |err|: 5y=5.83%, 10y=2.18%, roll3y=0.13%.
+- 2022: real=-10.70%, model_5y=-16.07%, model_10y=-17.78%, model_roll3y=-25.85%; |err|: 5y=5.37%, 10y=7.08%, roll3y=15.15%.
+Mean absolute error across episodes: 5Y=5.60%, 10Y=4.63%, rolling-3Y=7.64% (n=2).
 
 Strengths
 All synthetic scenarios have loss_ok=true — portfolio loss within loss-test thresholds.
@@ -320,12 +325,12 @@ Episode dotcom: max_dd n/a — interpretation limited.
 Episode 2008: max_dd n/a — interpretation limited.
 
 Scenario Behavior
-equity_shock: PnL ~ -5.24%, pass=True (mandate loss); RC shares — Metric-by-Metric.
-credit_shock: PnL ~ -2.02%, pass=True (mandate loss); RC shares — Metric-by-Metric.
-rates_shock: PnL ~ -12.30%, pass=True (mandate loss); RC shares — Metric-by-Metric.
-inflation_stagflation: PnL ~ -5.85%, pass=True (mandate loss); RC shares — Metric-by-Metric.
-liquidity_shock: PnL ~ -3.81%, pass=True (mandate loss); RC shares — Metric-by-Metric.
-recession_severe: PnL ~ -6.37%, pass=True (mandate loss); RC shares — Metric-by-Metric.
+equity_shock: PnL ~ -6.07%, pass=True (mandate loss); RC shares — Metric-by-Metric.
+credit_shock: PnL ~ -0.33%, pass=True (mandate loss); RC shares — Metric-by-Metric.
+rates_shock: PnL ~ -9.17%, pass=True (mandate loss); RC shares — Metric-by-Metric.
+inflation_stagflation: PnL ~ -3.61%, pass=True (mandate loss); RC shares — Metric-by-Metric.
+liquidity_shock: PnL ~ -2.91%, pass=True (mandate loss); RC shares — Metric-by-Metric.
+recession_severe: PnL ~ -13.04%, pass=True (mandate loss); RC shares — Metric-by-Metric.
 
 Final Conclusion
 minimum cvar constrained portfolio: stress bundle DIAG_PASS_WITH_WARNING (—). Synthetic losses and RC diagnostics reflect the current holdings and covariance from this run; align weight-release decisions with mandate_check and run_result — use this file as PM scenario reference.
