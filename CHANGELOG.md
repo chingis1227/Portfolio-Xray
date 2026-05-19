@@ -43,6 +43,10 @@ Omit empty categories.
 
 ### Changed
 
+- Documented deferred operational follow-up after Phase 9: heavy full candidate refresh vs practical
+  one-shot runs (`RM-920`–`RM-922`, `KI-2026-05-19-005`; ROADMAP Phase 10, ExecPlan post-closure,
+  runbook and factory/review specs).
+
 - Closed RM-911 / Phase 9 post-portfolio-first stabilization: representative review verified subject
   metadata, freshness gating, selection/decision package, regime metrics, monitoring, and PDF outputs;
   removed active issues `KI-2026-05-19-002` and `KI-2026-05-19-004`.

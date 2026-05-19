@@ -163,6 +163,29 @@ step status is `failed` with reason `stale_snapshot_after_build`.
 
 **Ordering within `default_v1`:** run `core_benchmarks` first, then `risk_budgets`, then `classic_optimizers`, then `robust_suite` (robust last because of policy-report dependencies and runtime). Session 11 may parallelize only if a future decision adds isolation guarantees; V1 is **sequential**.
 
+### Operational limits and deferred improvements (RM-920–RM-922)
+
+**Current state:** freshness gating (RM-902) prevents silent reuse of stale `snapshot_10y.json` when
+`analysis_end` differs from the review date. Factory statuses (`succeeded`, `skipped_existing`,
+`failed`, stale rebuild warnings) are the operator source of truth.
+
+**Deferred gap:** rebuilding **all** script-backed optimizers in `default_v1` is intentionally
+sequential and can exceed practical one-shot `run_portfolio_review.py` or agent session limits when
+many candidates are stale. That is an **operational** limitation, not a broken comparison contract.
+
+**Target product model (not yet implemented):**
+
+| Mode | Intended scope | Notes |
+| --- | --- | --- |
+| **core-run** | Subject + benchmarks/risk budgets + compare + decision package | Default routine review; should finish under normal session limits |
+| **full-run** | Full `default_v1` including classic optimizers and robust suite | Explicit refresh; may require `--no-skip-existing` and long runtime |
+
+**Future work:** CLI/orchestrator profiles for core vs full; resumable factory steps and clearer
+progress logs; optional parallel builders with isolation guarantees; explicit partial-menu warnings
+in decision outputs; stronger reuse keys (config fingerprint, universe, weights) in addition to
+`analysis_end`. See [ROADMAP.md](../ROADMAP.md) Phase 10 and [KNOWN_ISSUES.md](../../KNOWN_ISSUES.md)
+`KI-2026-05-19-005`.
+
 ## Canonical Factory Run Artifacts
 
 | Field | Value |

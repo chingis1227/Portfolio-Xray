@@ -460,3 +460,47 @@ Revision note, 2026-05-19 / Session 10 (RM-910): portfolio-first review defaults
 Revision note, 2026-05-19 / Session 11 (RM-911): closed Phase 9 stabilization. Representative
 verification used fresh subject materialization, comparison/PDF refresh, `504` pytest passes, and docs
 verify. Remaining stale optimizer candidates are operational rebuild follow-up, not open plan items.
+
+## Deferred Follow-Up (Post-Closure)
+
+This section records intentional follow-up **outside** Sessions 00–11. It does not reopen the plan.
+
+### Current state (accepted)
+
+- Portfolio-first **logic** is in good shape: `analysis_subject` metadata trust (RM-901), candidate
+  freshness gating (RM-902), selection/mandate and legacy-policy boundaries (RM-904–RM-905), regime
+  metrics (RM-906), monthly main metrics (RM-907), monitoring honesty (RM-908), decision PDF (RM-909),
+  narrow portfolio-first PDF scope (RM-910).
+- Stale candidate snapshots are **not** silently scored; comparison marks them `unavailable` with
+  `stale_snapshot_analysis_end` or related reasons.
+- The remaining gap is **operational**: a full refresh of all script-backed optimizer/robust
+  builders (`default_v1`) can take too long for a single normal agent or interactive session when
+  many snapshots must rebuild.
+
+### Deferred problem
+
+- The default product path must not **depend** on rebuilding every expensive optimizer candidate on
+  every review.
+- `python run_portfolio_review.py` may stop after subject materialization or before factory completes
+  when session/time limits are hit, even though compare/PDF can still be run on a partial menu.
+
+### Suggested direction (RM-920–RM-922)
+
+1. **Split workflows:** **core-run** (subject + benchmarks/risk budgets + compare + decision package)
+   vs **full-run** (all optimizers, robust MV/CVaR, full refresh with `--no-skip-existing` when needed).
+2. **CLI profiles:** explicit fast vs full review modes on `run_portfolio_review.py` and factory
+   profiles (extend beyond today’s `--candidate-profile` / `--candidates` advanced use).
+3. **Factory operations:** progress logs, resumable steps, per-step duration already partially in
+   `candidate_factory_run.json`; improve operator visibility; consider parallel builders only with
+   isolation guarantees.
+4. **Disclosure:** decision package and comparison should state when the scored menu is partial
+   (counts, unavailable reasons, recommended refresh command).
+5. **Reuse policy:** keep RM-902 date gate; extend with config/universe fingerprint when implemented.
+
+### Priority and risk
+
+- **Deferred** — not a blocker for file-first MVP core if users read factory/comparison status.
+- **Should be addressed before RM-500+ UI/productization** — a UI must not wrap a single heavy
+  command that often times out.
+- Registered in [KNOWN_ISSUES.md](../../KNOWN_ISSUES.md) (`KI-2026-05-19-005`, accepted) and
+  [ROADMAP.md](../ROADMAP.md) Phase 10.

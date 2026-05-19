@@ -132,6 +132,11 @@ Update project-memory documents only when relevant:
 
 Project memory must stay concise. If an entry becomes long, move detail into the owning spec or ExecPlan and keep only a short pointer.
 
+**Deferred operational follow-up (post Phase 9):** full `default_v1` candidate regeneration can exceed
+one-shot session limits. Track [ROADMAP.md](docs/ROADMAP.md) `RM-920`–`RM-922` and accepted issue
+[KNOWN_ISSUES.md](KNOWN_ISSUES.md) `KI-2026-05-19-005` before treating `run_portfolio_review.py` as
+always completing factory in one run or before UI/productization (`RM-500+`).
+
 ## 8. Diff Review
 
 Before finishing:

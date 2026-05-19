@@ -30,8 +30,10 @@ Completed: [Post-Audit MVP Stabilization Plan](2026-05-17_post_audit_mvp_stabili
 
 Also completed: [Post-Audit Stabilization And Analytics Plan](2026-05-17_post_audit_stabilization_and_analytics_plan.md) (Sessions 02-20, `RM-623`).
 
-Default next work: choose the next roadmap item or create a new ExecPlan when the next task is large,
-risky, or architectural (see [ROADMAP](../ROADMAP.md)).
+Default next work: deferred **operational portfolio-first review** (`RM-920`–`RM-922` in
+[ROADMAP](../ROADMAP.md) Phase 10) — core-run vs full-run, factory operability, partial-menu
+disclosure. UI (`RM-500+`) should wait until that model exists. Otherwise choose the next roadmap item
+or create a new ExecPlan when the task is large, risky, or architectural.
 
 ## Major Plan History
 

@@ -17,10 +17,15 @@ Do not add new major analytics without an accepted spec and roadmap row. Current
 
 ```text
 Post-portfolio-first stabilization (RM-900 -> RM-911) closed as of 2026-05-19
+Next deferred backlog: operational portfolio-first review (RM-920 -> RM-922)
 ```
 
 New diagnostic layers must remain non-binding unless a canonical spec explicitly changes Selection or
 policy release behavior.
+
+**Not a logic blocker:** the file-first MVP core is usable when partial vs full candidate coverage
+is read from `candidate_factory_run.json` and comparison row `status`. Address RM-920+ before serious
+UI/productization so the product does not depend on one heavy command finishing every time.
 
 Completed plan: [Portfolio-First Transition Plan](exec_plans/2026-05-18_portfolio_first_transition_plan.md)
 (Sessions 01-09). Its source-of-truth correction is that the main product flow starts from
@@ -230,6 +235,25 @@ decision package outputs needed for advisor/client review.
 | RM-910 | Done | Stabilization Session 10 | Reduce portfolio-first report/PDF rebuild noise. | RM-909 recommended. | [run_portfolio_review.py](../run_portfolio_review.py), [rebuild_pdf_reports.py](../rebuild_pdf_reports.py), [pdf_reports.py](../src/pdf_reports.py), [OUTPUTS](../OUTPUTS.md) | Portfolio-first review focuses on subject/decision outputs; full legacy variant PDF rebuild is explicit | `tests/test_portfolio_review_workflow.py`, `tests/test_portfolio_first_pdf_rebuild.py`; `python scripts/verify_docs.py`. |
 | RM-911 | Done | Stabilization Session 11 | Run fresh representative review and close the stabilization plan. | RM-901 through RM-910 complete or explicitly deferred. | Whole pipeline, roadmap, known issues, changelog, ExecPlan | Stabilization plan closed or remaining issues explicitly deferred | Fresh subject materialization; compare/PDF refresh; `504` pytest passes; `python scripts/verify_docs.py`. |
 
+## Phase 10: Operational Portfolio-First Review (Deferred)
+
+Goal: make the portfolio-first pipeline practical for routine runs without weakening freshness gating
+or reintroducing silent stale reuse.
+
+Exit condition: a documented **core-run** completes subject → lightweight candidates → compare →
+decision package within normal session limits; **full-run** remains explicit for all optimizer/robust
+builders; partial menus are visible in factory, comparison, and decision outputs.
+
+| ID | Status | When | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| RM-920 | Deferred | After Phase 9; before RM-500 UI | Split portfolio-first review into **core-run** and **full-run** CLI modes/profiles (e.g. benchmarks + risk budgets vs full `default_v1` optimizers/robust suite). | RM-911. | [run_portfolio_review.py](../run_portfolio_review.py), [portfolio_review_workflow.py](../src/portfolio_review_workflow.py), [candidate_factory.py](../src/candidate_factory.py), [portfolio_review_workflow_spec.md](specs/portfolio_review_workflow_spec.md), [candidate_factory_spec.md](specs/candidate_factory_spec.md), [operational_runbook.md](operational_runbook.md) | Documented fast vs full commands; factory profiles aligned to product intent | Core path finishes under agreed time budget; full path documented for intentional refresh. |
+| RM-921 | Deferred | After RM-920 or in parallel | Improve factory orchestration operations: progress logging, resumable steps, clearer per-candidate duration in `candidate_factory_run.json`, optional parallel execution only with isolation guarantees. | RM-902 freshness contract. | [candidate_factory.py](../src/candidate_factory.py), [candidate_factory_spec.md](specs/candidate_factory_spec.md) | Operators can resume or monitor long runs without guessing state | Manual long-run smoke; focused factory tests for resume/status fields. |
+| RM-922 | Deferred | After RM-920 recommended | Add explicit **partial candidate menu** disclosure in comparison and decision-package outputs when scored candidates are a subset of the product menu (counts, unavailable reasons, refresh command). | RM-902, RM-904. | [candidate_comparison.py](../src/candidate_comparison.py), [decision_package_reporting.py](../src/decision_package_reporting.py), related specs | Advisors see when selection used a reduced menu | Focused comparison/reporting tests; generated summary wording review. |
+
+**Direction (not yet implemented):** cache/reuse candidates only when `analysis_end`, config fingerprint,
+universe, weights, and material assumptions match; do not default to rebuilding every expensive
+optimizer on every `run_portfolio_review.py` invocation.
+
 ## Audit Mapping
 
 | Audit ID | Roadmap handling |
@@ -256,6 +280,7 @@ decision package outputs needed for advisor/client review.
 | PPF-005 | Fixed by RM-905: legacy policy artifacts are optional/compatibility-only in portfolio-first outputs. |
 | PPF-006 | Fixed by RM-904: mandate/no-favored downstream artifacts include blocked-decision narrative. |
 | PPF-007 | Done (RM-908): monitoring first run no longer shows contradictory deltas on `no_prior_snapshot`. |
+| PPF-008 | Deferred as RM-920–RM-922: full candidate regeneration can exceed practical one-shot runtime; need core-run vs full-run operational model and partial-menu disclosure. |
 
 ## Session Boundary Rule
 

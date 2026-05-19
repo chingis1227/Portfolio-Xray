@@ -56,7 +56,18 @@ Title: Short title
 
 ## Active Issues
 
-_No open issues registered as of 2026-05-19 (post-portfolio-first stabilization closure, RM-911)._
+Issue ID: KI-2026-05-19-005
+Title: Full candidate factory refresh is operationally heavy for one-shot review runs
+
+- Status: accepted
+- Severity: medium
+- Area: architecture
+- Risk: Users or agents may assume `run_portfolio_review.py` always finishes subject → factory → compare → PDF in one session; when all optimizer builders must rebuild, the run can exceed practical time limits and leave a partial candidate menu while decision outputs still look complete.
+- Evidence: Phase 9 closure (RM-911): core portfolio-first logic and freshness gating work; stale rows are marked `unavailable` instead of scored silently. Representative runs showed multi-hour `default_v1` factory duration when snapshots are stale; agent/session limits aborted full factory before compare in some attempts.
+- Current mitigation: Run subject materialization and `run_compare_variants.py` separately; use `run_candidate_factory.py` with `--profile` subsets or `--no-skip-existing` only when a full refresh is intended; rely on `candidate_factory_run.json` and comparison `status` / `unavailable_reason` for transparency; reuse snapshots when `snapshot_10y.json.analysis_end` matches review `analysis_end` (RM-902).
+- Next action: Implement deferred roadmap items RM-920–RM-922 (core-run vs full-run profiles, resumable/progress factory, explicit partial-menu disclosure in decision outputs). See [ROADMAP.md](docs/ROADMAP.md) Phase 10.
+- Source links: [run_portfolio_review.py](run_portfolio_review.py), [candidate_factory.py](src/candidate_factory.py), [candidate_factory_spec.md](docs/specs/candidate_factory_spec.md), [portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md), [operational_runbook.md](docs/operational_runbook.md), [post-portfolio-first stabilization ExecPlan](docs/exec_plans/2026-05-19_post_portfolio_first_stabilization_plan.md).
+- Remove when: Default portfolio-first workflow offers a documented fast core path, optional full refresh path, resumable factory progress, and decision-package warnings when the scored candidate menu is partial; UI work should not start before this operational model is defined.
 
 ## Update Rules
 

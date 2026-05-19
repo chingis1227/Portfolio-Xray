@@ -26,6 +26,24 @@ python run_portfolio_review.py --skip-candidates
 The default portfolio-first command does not call `run_optimization.py`. The old policy workflow
 below remains available for compatibility and historical policy runs.
 
+### Runtime limits and partial runs (deferred operational follow-up)
+
+Phase 9 closed the **trust** gaps (metadata, freshness gating, selection narrative, PDF). The main
+remaining limitation is **runtime**, not logic:
+
+| Situation | What happens | What to do |
+| --- | --- | --- |
+| Snapshots already match review `analysis_end` | Factory mostly `skipped_existing`; review often finishes in one session | `python run_portfolio_review.py` |
+| Many stale optimizer snapshots | Full `default_v1` rebuild can take hours (sequential builders) | Run stages separately or use a smaller `--candidate-profile` until RM-920 core/full split ships |
+| Session/agent timeout | Subject may refresh; factory may not finish; compare may run on a **partial menu** | Read `candidate_factory_run.json` and comparison `status` / `unavailable_reason`; run `run_candidate_factory.py --no-skip-existing` when a full refresh is intended |
+
+**Trust rule:** stale candidates are marked `unavailable` in comparison — they are not silently scored.
+**Interpretation rule:** if many rows are `unavailable`, selection ranks only the **available** menu;
+treat favored-candidate outputs as conditional on that menu until a full-run completes.
+
+Deferred improvements: [ROADMAP.md](ROADMAP.md) `RM-920`–`RM-922`; [KNOWN_ISSUES.md](../KNOWN_ISSUES.md)
+`KI-2026-05-19-005`.
+
 ## 1. Legacy File-First MVP Policy Workflow
 
 The old MVP policy path remains available for compatibility and historical policy runs. It is not
