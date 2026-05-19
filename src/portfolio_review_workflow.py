@@ -14,9 +14,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
+from src.candidate_factory import REVIEW_MODE_PROFILES
 from src.config_schema import PortfolioConfig
 
 RunSubprocess = Callable[..., subprocess.CompletedProcess[Any]]
+
+REVIEW_MODES = frozenset(REVIEW_MODE_PROFILES.keys())
+DEFAULT_REVIEW_MODE = "core"
 
 
 @dataclass(frozen=True)
@@ -35,13 +39,26 @@ def _python(project_root: Path) -> str:
     return sys.executable
 
 
+def resolve_review_candidate_profile(
+    *,
+    review_mode: str = DEFAULT_REVIEW_MODE,
+    candidate_profile: str | None = None,
+) -> tuple[str, str]:
+    """Return (review_mode, factory_profile_id). Explicit profile overrides mode."""
+    mode = review_mode if review_mode in REVIEW_MODE_PROFILES else DEFAULT_REVIEW_MODE
+    if candidate_profile:
+        return mode, candidate_profile
+    return mode, REVIEW_MODE_PROFILES[mode]
+
+
 def build_portfolio_review_plan(
     cfg: PortfolioConfig,
     *,
     project_root: Path,
     no_cache: bool = False,
     skip_candidates: bool = False,
-    candidate_profile: str = "default_v1",
+    review_mode: str = DEFAULT_REVIEW_MODE,
+    candidate_profile: str | None = None,
     candidate_ids: str | None = None,
     skip_existing_candidates: bool = True,
     force_candidates: bool = False,
@@ -51,6 +68,10 @@ def build_portfolio_review_plan(
     legacy_full_pdf: bool = False,
 ) -> PortfolioReviewPlan:
     """Build ordered CLI steps for the portfolio-first review workflow."""
+    resolved_mode, factory_profile = resolve_review_candidate_profile(
+        review_mode=review_mode,
+        candidate_profile=candidate_profile,
+    )
     py = _python(project_root)
     cache_flags: list[str] = ["--no-cache"] if no_cache else []
     steps: list[PortfolioReviewStep] = []
@@ -82,7 +103,7 @@ def build_portfolio_review_plan(
         if candidate_ids:
             factory_argv.extend(["--candidates", candidate_ids])
         else:
-            factory_argv.extend(["--profile", candidate_profile])
+            factory_argv.extend(["--profile", factory_profile])
         if not skip_existing_candidates:
             factory_argv.append("--no-skip-existing")
         if force_candidates:
@@ -92,7 +113,11 @@ def build_portfolio_review_plan(
         if not skip_compare:
             factory_argv.append("--then-compare")
             compare_via_factory = True
-        add("candidates", "Candidate factory without legacy policy optimization", factory_argv)
+        factory_label = (
+            f"Candidate factory ({factory_profile}, review_mode={resolved_mode}) "
+            "without legacy policy optimization"
+        )
+        add("candidates", factory_label, factory_argv)
 
     if not skip_compare and not compare_via_factory:
         add(
@@ -140,9 +165,16 @@ def run_portfolio_review_plan(
     return 0
 
 
-def summarize_plan(plan: PortfolioReviewPlan) -> str:
+def summarize_plan(
+    plan: PortfolioReviewPlan,
+    *,
+    review_mode: str = DEFAULT_REVIEW_MODE,
+    factory_profile: str | None = None,
+) -> str:
+    profile_note = f" (factory profile: {factory_profile})" if factory_profile else ""
     lines = [
         "Portfolio review workflow: analysis_subject-first",
+        f"Review mode: {review_mode}{profile_note}",
         "Stages: input -> subject diagnostics -> candidates -> comparison -> action",
     ]
     for step in plan.steps:

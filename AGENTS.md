@@ -54,7 +54,7 @@ python -m pytest
 Run portfolio-first review:
 
 ```bash
-python run_portfolio_review.py [--dry-run] [--skip-candidates] [--candidate-profile PROFILE] [--candidates ID,ID,...] [--legacy-full-pdf]
+python run_portfolio_review.py [--mode core|full] [--dry-run] [--skip-candidates] [--candidate-profile PROFILE] [--candidates ID,ID,...] [--legacy-full-pdf]
 ```
 
 Default PDF rebuild is portfolio-first only (`analysis_subject` + decision package). Use

@@ -449,6 +449,14 @@ No Monte Carlo and no normality assumptions.
 
 Daily simple returns.
 
+- Report / X-Ray implementation (`run_report.py` STEP 9b):
+
+Portfolio tail risk is computed on **daily** NaN-safe portfolio simple returns in investor currency,
+sliced to each analysis window (3Y / 5Y / 10Y calendar months ending at `analysis_end`).
+Outputs include `analytics.tail_risk` with `method`, `frequency`, `window_months`, `window_label`,
+`n_obs`, and 95%/99% levels. Minimum 60 daily observations. Main-metrics cadence (monthly) is not
+used for VaR/ES in the standard report pipeline.
+
 - Confidence levels:
 
 95% and 99%.

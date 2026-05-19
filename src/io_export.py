@@ -88,18 +88,47 @@ def save_inputs(
     benchmark_returns: pd.Series,
     cash_returns: pd.Series,
     fx_series_used: dict[str, pd.Series] | None = None,
+    monthly_returns_raw: pd.DataFrame | None = None,
+    analysis_end: str | None = None,
 ) -> None:
-    """Persist all input series used for reproducibility."""
+    """
+    Persist input series used for reproducibility.
+
+    ``monthly_returns`` must be the analysis-effective panel (rows ``<= analysis_end``).
+    When the raw cached panel extends later, pass ``monthly_returns_raw``; it is written to
+    ``monthly_returns_raw.csv`` only when its last index is after the effective panel.
+    """
     sub = output_dir / "inputs"
     sub.mkdir(parents=True, exist_ok=True)
     persist_df(monthly_prices, sub / "monthly_prices.csv")
     persist_df(monthly_returns, sub / "monthly_returns.csv")
+    if monthly_returns_raw is not None and not monthly_returns_raw.empty:
+        raw_max = pd.Timestamp(monthly_returns_raw.index.max()).normalize()
+        eff_max = (
+            pd.Timestamp(monthly_returns.index.max()).normalize()
+            if not monthly_returns.empty
+            else raw_max
+        )
+        if raw_max > eff_max:
+            persist_df(monthly_returns_raw, sub / "monthly_returns_raw.csv")
     persist_series(rf_monthly, sub / "rf_monthly.csv")
     persist_series(benchmark_returns, sub / "benchmark_returns.csv")
     persist_series(cash_returns, sub / "cash_proxy_returns.csv")
     if fx_series_used:
         for name, s in fx_series_used.items():
             persist_series(s, sub / f"fx_{name}.csv")
+    if analysis_end:
+        manifest = {
+            "analysis_end": analysis_end,
+            "monthly_returns_effective": "monthly_returns.csv",
+            "monthly_returns_raw": "monthly_returns_raw.csv"
+            if (sub / "monthly_returns_raw.csv").is_file()
+            else None,
+        }
+        (sub / "inputs_manifest.json").write_text(
+            json.dumps(manifest, indent=2),
+            encoding="utf-8",
+        )
 
 
 def export_run_metadata(

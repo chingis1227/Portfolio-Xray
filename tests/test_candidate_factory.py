@@ -25,6 +25,15 @@ def test_default_v1_profile_has_sixteen_candidates() -> None:
     assert ids[-1] == "robust_scenario"
 
 
+def test_core_v1_profile_has_six_lightweight_candidates() -> None:
+    ids = resolve_profile_candidate_ids(profile_id="core_v1", explicit_candidates=None)
+    assert len(ids) == 6
+    assert "equal_weight" in ids
+    assert "hierarchical_risk_parity" in ids
+    assert "minimum_variance" not in ids
+    assert "robust_scenario" not in ids
+
+
 def test_validate_unknown_candidate() -> None:
     assert validate_candidate_ids(["not_a_real_id"]) == ["not_a_real_id"]
 

@@ -40,7 +40,7 @@ from src.returns_frequency import (
     rf_series_annual_pct_to_returns_frequency,
 )
 from src.utils import logger
-from src.windows import get_analysis_end
+from src.windows import get_analysis_end, truncate_to_analysis_end
 
 
 @dataclass
@@ -260,3 +260,84 @@ def load_monthly_data_shared(
         returns_frequency=rf_mode,
         configured_returns_frequency=freq_res.configured,
     )
+
+
+def load_daily_asset_returns_shared(
+    *,
+    tickers: list[str],
+    benchmark_base_ticker: str,
+    cash_proxy_ticker: str,
+    investor_currency: str,
+    windows_months: list[int],
+    assets_meta: dict[str, dict[str, Any]],
+    daily_cache_key: str,
+    analysis_end: pd.Timestamp,
+    no_cache: bool = False,
+    local_benchmark_map: dict[str, str] | None = None,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """
+    Daily simple returns in investor currency for portfolio tickers and cash proxy.
+
+    Uses the same daily price cache as ``load_monthly_data_shared``. Rows are truncated to
+    ``analysis_end`` for analysis-effective tail-risk panels.
+    """
+    local_bench_tickers = list(local_benchmark_map.values()) if local_benchmark_map else []
+    all_tickers = list(
+        dict.fromkeys(list(tickers) + [benchmark_base_ticker, cash_proxy_ticker] + local_bench_tickers)
+    )
+    currency_by_ticker = {}
+    for t in all_tickers:
+        currency_by_ticker[t] = get_asset_currency(t, assets_meta, infer_currency_from_ticker(t))
+
+    max_window = max(windows_months)
+    end_date = datetime.now()
+    start_date = datetime(end_date.year - (max_window // 12) - 2, end_date.month, 1)
+    start_str = start_date.strftime("%Y-%m-%d")
+    end_str = end_date.strftime("%Y-%m-%d")
+
+    daily_cache_path = get_daily_cache_path(daily_cache_key)
+    daily = None
+    if not no_cache and cache_exists(daily_cache_path):
+        logger.info("Daily cache found for tail-risk panel; loading...")
+        daily = load_daily_prices(daily_cache_path)
+
+    if daily is None:
+        logger.info("Loading daily prices for tail-risk panel from Yahoo Finance...")
+        daily_raw = download_all(all_tickers, start_str, end_str, currency_by_ticker)
+        daily = {t: df for t, df in daily_raw.items() if not df.empty and "Close" in df.columns}
+        save_cache_meta(
+            daily_cache_path,
+            {
+                "tickers": all_tickers,
+                "start": start_str,
+                "end": end_str,
+                "data_date": get_current_date(),
+            },
+        )
+        save_daily_prices(daily_cache_path, daily)
+
+    prices_daily = {t: df["Close"] for t, df in daily.items()}
+    prices_daily_sub = {t: prices_daily[t] for t in all_tickers if t in prices_daily}
+    fx_cache: dict[str, pd.Series | None] = {}
+    prices_inv = convert_prices_to_investor_currency(
+        prices_daily_sub,
+        currency_by_ticker,
+        investor_currency,
+        start_str,
+        end_str,
+        fx_cache=fx_cache,
+        ffill_fx=True,
+    )
+    _, daily_returns, _ = build_levels_and_returns_from_daily_prices(
+        prices_inv,
+        freq="daily",
+        tickers=all_tickers,
+    )
+    daily_returns = truncate_to_analysis_end(daily_returns, analysis_end)
+    cash_col = cash_proxy_ticker if cash_proxy_ticker in daily_returns.columns else None
+    if cash_col is not None:
+        cash_returns_daily = daily_returns[cash_col].dropna()
+    else:
+        cash_returns_daily = pd.Series(0.0, index=daily_returns.index)
+    asset_cols = [t for t in tickers if t in daily_returns.columns]
+    return daily_returns[asset_cols].copy(), cash_returns_daily

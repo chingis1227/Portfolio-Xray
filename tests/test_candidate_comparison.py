@@ -8,9 +8,12 @@ import yaml
 from src.candidate_comparison import (
     SCHEMA_VERSION,
     build_candidate_comparison,
+    build_candidate_menu,
+    build_candidate_menu_warnings,
     build_legacy_portfolio_comparison,
     candidate_registry_ids,
     write_candidate_comparison_outputs,
+    write_candidate_comparison_txt,
 )
 from src.config_schema import validate_config
 
@@ -526,3 +529,107 @@ def test_write_outputs_and_legacy_subset(tmp_path: Path) -> None:
     legacy = build_legacy_portfolio_comparison(doc)
     assert set(legacy.keys()) == {"policy", "equal_weight", "risk_parity", "robust_scenario"}
     assert legacy["equal_weight"]["metrics"]["cagr"] == 0.08
+
+
+def test_build_candidate_menu_flags_reduced_core_scope() -> None:
+    candidates = [
+        {"candidate_id": "equal_weight", "status": "available"},
+        {"candidate_id": "risk_parity", "status": "available"},
+        {"candidate_id": "minimum_variance", "status": "unavailable", "unavailable_reason": "missing_artifact_folder"},
+    ]
+    menu = build_candidate_menu(
+        candidates,
+        factory_run={"factory_profile_id": "core_v1"},
+        review_mode="core",
+    )
+    assert menu["intended_menu_profile_id"] == "core_v1"
+    assert menu["product_menu_profile_id"] == "default_v1"
+    assert menu["is_reduced_vs_product_menu"] is True
+    assert menu["is_partial_menu"] is True
+    assert menu["partial_menu_reason"] in (
+        "reduced_menu_scope_vs_product_default_v1",
+        "reduced_menu_scope_and_unavailable_intended_candidates",
+    )
+
+
+def test_build_candidate_menu_flags_incomplete_intended_menu() -> None:
+    from src.candidate_factory import CORE_V1_CANDIDATE_ORDER
+
+    candidates = [
+        {"candidate_id": cid, "status": "available"}
+        for cid in CORE_V1_CANDIDATE_ORDER[:2]
+    ] + [
+        {
+            "candidate_id": CORE_V1_CANDIDATE_ORDER[2],
+            "status": "unavailable",
+            "unavailable_reason": "stale_snapshot_analysis_end",
+        }
+    ]
+    menu = build_candidate_menu(
+        candidates,
+        factory_run={"factory_profile_id": "core_v1"},
+    )
+    assert menu["is_incomplete_intended_menu"] is True
+    assert menu["is_partial_menu"] is True
+    assert menu["unavailable_reasons_summary"]["stale_snapshot_analysis_end"] == 1
+
+
+def test_comparison_includes_candidate_menu_and_warnings(tmp_path: Path) -> None:
+    main = tmp_path / "Main portfolio"
+    main.mkdir()
+    eq = tmp_path / "equal-weight portfolio"
+    eq.mkdir()
+    with open(main / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.09, "vol_annual": 0.11}), f)
+    with open(main / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(_run_metadata("generated_policy_portfolio"), f)
+    with open(eq / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.08, "vol_annual": 0.12}), f)
+    with open(main / "candidate_factory_run.json", "w", encoding="utf-8") as f:
+        json.dump({"factory_profile_id": "core_v1"}, f)
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO"],
+        }
+    )
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    assert "candidate_menu" in doc
+    assert doc["candidate_menu"]["intended_menu_profile_id"] == "core_v1"
+    warnings = build_candidate_menu_warnings(doc["candidate_menu"])
+    assert any("reduced menu" in w.lower() for w in warnings)
+    assert any(w in doc["warnings"] for w in warnings)
+
+    txt_path = tmp_path / "candidate_comparison.txt"
+    write_candidate_comparison_txt(doc, txt_path)
+    text = txt_path.read_text(encoding="utf-8")
+    assert "Partial menu" in text or "Menu:" in text
+
+
+def test_decision_package_summary_mentions_partial_menu() -> None:
+    from src.decision_package_reporting import build_decision_package_summary_lines
+
+    comparison = {
+        "analysis_end": "2026-04-30",
+        "investor_currency": "USD",
+        "candidate_menu": build_candidate_menu(
+            [{"candidate_id": "equal_weight", "status": "available"}],
+            factory_run={"factory_profile_id": "core_v1"},
+        ),
+        "candidates": [],
+    }
+    lines = build_decision_package_summary_lines(
+        comparison=comparison,
+        health=None,
+        robustness=None,
+        selection=None,
+        action=None,
+        monitoring_diff=None,
+        decision_journal=None,
+    )
+    joined = "\n".join(lines)
+    assert "Candidate menu" in joined
+    assert "core_v1" in joined
+    assert "Partial menu" in joined

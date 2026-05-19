@@ -99,3 +99,16 @@ For **mean–variance / RC_vol inputs used by the policy optimizer** (primary an
 Configuration: `young_etf_optimization_policy` in `config.yml` (defaults injected by `config_schema`). Set `enabled: false` to restore the legacy inner-join-only optimizer covariance.
 
 **Note:** §2 above still applies to **generic** cov/corr/RC on a fixed panel (reports, correlation CSVs): those continue to use **inner join** unless a separate spec says otherwise. The dual matrix is specific to **optimization inputs** in `run_optimization.py`.
+
+---
+
+## 9. Analysis-effective panels vs raw cached panels
+
+- **`analysis_end`** is the last completed effective period-end strictly before today (see [metrics_specification.md](metrics_specification.md)). All **diagnostic** calculations and disclosed `data_end` fields must use rows **`<= analysis_end`**.
+- **Raw cached panels** (monthly/weekly return matrices loaded from cache or rebuilt from daily prices) may include later incomplete period stamps. Those rows are **not** analysis-effective until the period is complete.
+- **Report / `run_report.py` path:** after load, panels are truncated with `truncate_to_analysis_end` in `src/windows.py` before portfolio metrics, stress scenario analytics, scenario library, and reproducibility exports.
+- **Reproducibility exports** under `results_csv/inputs/`:
+  - `monthly_returns.csv` — analysis-effective returns (canonical for diagnostics).
+  - `monthly_returns_raw.csv` — written only when the raw panel extends past `analysis_end`.
+  - `inputs_manifest.json` — records `analysis_end` and which files are effective vs raw.
+- Diagnostic consumers (e.g. `stress_scenario_analytics`, `scenario_library`) must accept `analysis_end_str` and must not set `data_end` later than `analysis_end` for base-layer asset covariance built from the return panel.

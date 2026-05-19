@@ -65,3 +65,24 @@ def slice_window(
     Deprecated row-count semantics: callers should treat window_months as calendar horizon.
     """
     return slice_calendar_window(series_or_df, analysis_end, window_months)
+
+
+def truncate_to_analysis_end(
+    series_or_df: pd.Series | pd.DataFrame,
+    analysis_end: pd.Timestamp | str,
+) -> pd.Series | pd.DataFrame:
+    """
+    Keep rows on or before analysis_end (analysis-effective panel).
+
+    Raw cached return panels may include later incomplete period stamps; diagnostic
+    consumers and reproducibility exports must use this helper (or equivalent) before
+    computing or disclosing ``data_end``.
+    """
+    if series_or_df is None or len(series_or_df) == 0:
+        return series_or_df
+    idx = series_or_df.index
+    if not isinstance(idx, pd.DatetimeIndex):
+        raise ValueError("series_or_df must have DatetimeIndex")
+    ae = pd.Timestamp(analysis_end).normalize()
+    mask = idx <= ae
+    return series_or_df.loc[mask]

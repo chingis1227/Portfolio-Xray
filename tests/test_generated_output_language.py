@@ -6,8 +6,10 @@ from pathlib import Path
 import pytest
 
 from src.generated_output_qa import (
+    PORTFOLIO_XRAY_COMMENTARY_REQUIRED_MARKERS,
     REPRESENTATIVE_REL_DIRS,
     scan_portfolio_first_summary_text,
+    scan_portfolio_xray_report_text,
     scan_representative_outputs,
 )
 
@@ -38,6 +40,23 @@ def test_portfolio_first_summary_story_qa() -> None:
         ]
     )
     result = scan_portfolio_first_summary_text(text)
+    assert result.ok(), "\n".join(result.messages())
+
+
+def test_portfolio_xray_commentary_story_qa() -> None:
+    text = "\n".join(
+        [
+            "Portfolio X-Ray (diagnostic-only)",
+            "Diagnostic summary only.",
+            "Archetype lens: Balanced (confidence medium); secondary none.",
+            "Full seven-section tables and evidence: portfolio_xray.json, report.html, report.txt.",
+        ]
+    )
+    result = scan_portfolio_xray_report_text(
+        text,
+        rel_path="commentary.txt",
+        required_markers=PORTFOLIO_XRAY_COMMENTARY_REQUIRED_MARKERS,
+    )
     assert result.ok(), "\n".join(result.messages())
 
 

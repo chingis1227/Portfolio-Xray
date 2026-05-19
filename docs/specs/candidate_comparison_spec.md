@@ -71,9 +71,17 @@ Recorded for the canonical comparison contract (development Session 08, 2026-05-
     "portfolio_comparison_json": "portfolio_comparison.json",
     "ew_rp_comparison_json": "ew_rp_comparison.json"
   },
-  "warnings": [ ]
+  "warnings": [ ],
+  "candidate_menu": { }
 }
 ```
+
+### `candidate_menu` block (Session 09)
+
+When present, describes the **intended** factory menu versus the **product** reference menu
+(`default_v1`), scored counts, partial-menu flags, unavailable-reason summary, and refresh commands.
+Downstream decision-package reporting must surface `is_partial_menu` when true so selection ranks are
+not read as covering the full product menu.
 
 ### Required top-level fields
 
@@ -91,7 +99,8 @@ Recorded for the canonical comparison contract (development Session 08, 2026-05-
 | `primary_window` | string | Default window for summary tables (V1: `10y`). |
 | `candidates` | array | One object per registered candidate (see below). |
 | `legacy_artifacts` | object | Paths to pre-canonical comparison files, if present. |
-| `warnings` | array | Run-level warnings (stale artifacts, mixed analysis dates, partial coverage). |
+| `warnings` | array | Run-level warnings (stale artifacts, mixed analysis dates, partial coverage, partial menu). |
+| `candidate_menu` | object | Intended vs product menu disclosure (counts, `is_partial_menu`, refresh commands). Optional until comparison is rebuilt; required for new portfolio-first runs after Session 09. |
 
 ## Candidate Object Contract
 

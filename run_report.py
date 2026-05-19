@@ -37,7 +37,11 @@ from src.config import (
     portfolio_total_tickers,
 )
 from src.config_schema import ConfigValidationError, PortfolioConfig
-from src.data_loader import load_monthly_data_shared, MonthlyDataResult
+from src.data_loader import (
+    load_daily_asset_returns_shared,
+    load_monthly_data_shared,
+    MonthlyDataResult,
+)
 from src.etf_universe import UniverseValidationError, write_universe_diagnostics
 from src.io_export import (
     ensure_output_dir,
@@ -62,14 +66,17 @@ from src.snapshot import (
 from src.metrics_asset import asset_metrics_one_window, mandate_max_drawdown_full_history_check
 from src.metrics_portfolio import portfolio_metrics_one_window
 from src.portfolio_analytics import (
+    compute_tail_risk_historical,
     drawdown_structure,
     effective_equity_exposure,
-    es_historical,
+    rolling_beta,
+    rolling_beta_correlation_block,
+    rolling_correlation,
     rolling_sharpe,
     rolling_sortino,
     rolling_summary,
     rolling_vol_annual,
-    var_historical,
+    tail_risk_flat_fields,
 )
 from src.optimization import get_risk_portfolio_tickers
 from src.portfolio_dynamic import portfolio_returns_nan_safe
@@ -115,7 +122,7 @@ from src.stress_factors import (
     asset_daily_returns_from_daily,
 )
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
-from src.windows import slice_window
+from src.windows import slice_window, truncate_to_analysis_end
 from src.returns_frequency import (
     MACRO_REGIME_FREQUENCY_DEFAULT,
     FACTOR_STRESS_FREQUENCY_DEFAULT,
@@ -308,6 +315,13 @@ def run_portfolio_report_for_weights(
     fx_series_used = data.fx_series_used
     analysis_end = data.analysis_end
     analysis_end_str = data.analysis_end_str
+    monthly_returns_raw = monthly_returns
+    monthly_prices = truncate_to_analysis_end(monthly_prices, analysis_end)
+    monthly_returns = truncate_to_analysis_end(monthly_returns, analysis_end)
+    monthly_log_returns = truncate_to_analysis_end(monthly_log_returns, analysis_end)
+    rf_monthly = truncate_to_analysis_end(rf_monthly, analysis_end)
+    benchmark_returns = truncate_to_analysis_end(benchmark_returns, analysis_end)
+    cash_returns = truncate_to_analysis_end(cash_returns, analysis_end)
     daily_cache_key = data.daily_cache_key
     monthly_cache_key = data.monthly_cache_key
     returns_frequency = normalize_returns_frequency(data.returns_frequency)
@@ -405,6 +419,8 @@ def run_portfolio_report_for_weights(
         benchmark_returns,
         cash_returns,
         fx_series_used,
+        monthly_returns_raw=monthly_returns_raw,
+        analysis_end=analysis_end_str,
     )
 
     export_data_policy(
@@ -497,6 +513,9 @@ def run_portfolio_report_for_weights(
             benchmark_returns=benchmark_returns,
             mar=mar_period,
             periods_per_year=ppy,
+            benchmark_ticker=benchmark_base_ticker,
+            risk_free_source=rf_source,
+            returns_frequency=returns_frequency,
         )
         portfolio_metrics_list.append(pm)
     export_portfolio_metrics_csv(portfolio_metrics_list, output_dir_csv)
@@ -1295,6 +1314,7 @@ def run_portfolio_report_for_weights(
             if recession_factor_returns is not None and not recession_factor_returns.empty
             else None,
             cash_proxy_ticker=cash_proxy_ticker,
+            analysis_end_str=analysis_end_str,
             output_dir_csv=output_dir_csv,
         )
         stress_report["stress_scenario_analytics"] = {k: v for k, v in ssa.items() if k != "csv_export"}
@@ -1314,6 +1334,7 @@ def run_portfolio_report_for_weights(
             tickers=tickers,
             monthly_returns=monthly_returns,
             returns_frequency=str(returns_frequency),
+            analysis_end_str=analysis_end_str,
             regime_factor_analytics_full=regime_factor_analytics_full,
             factor_returns_weekly=_scenario_lib_factor_weekly,
             cash_proxy_ticker=cash_proxy_ticker,
@@ -1377,6 +1398,44 @@ def run_portfolio_report_for_weights(
     # =========================================================================
     # STEP 9b: Portfolio analytics per window (rolling Sharpe/Sortino, drawdown, VaR/ES, EEE)
     # =========================================================================
+    portfolio_returns_daily: pd.Series | None = None
+    try:
+        daily_asset_returns, cash_returns_daily = load_daily_asset_returns_shared(
+            tickers=tickers,
+            benchmark_base_ticker=benchmark_base_ticker,
+            cash_proxy_ticker=cash_proxy_ticker,
+            investor_currency=investor_currency,
+            windows_months=windows_months,
+            assets_meta=assets_meta,
+            daily_cache_key=daily_cache_key,
+            analysis_end=analysis_end,
+            no_cache=no_cache,
+            local_benchmark_map=local_benchmark_map,
+        )
+        if cash_returns_daily.empty or len(cash_returns_daily.index) == 0:
+            cash_returns_daily = pd.Series(0.0, index=daily_asset_returns.index)
+        else:
+            cash_returns_daily = cash_returns_daily.reindex(daily_asset_returns.index).fillna(0.0)
+        target_weights_daily = {t: weights.get(t, 0.0) for t in tickers}
+        if backtest_mode == "dynamic_nan_safe":
+            risk_rt_daily = get_risk_portfolio_tickers(cfg.tickers, cfg.cash_proxy_ticker)
+            portfolio_returns_daily, _ = portfolio_returns_nan_safe(
+                daily_asset_returns,
+                target_weights_daily,
+                cash_returns_daily,
+                risk_tickers=risk_rt_daily,
+            )
+        else:
+            portfolio_returns_daily, _ = portfolio_returns_nan_safe(
+                daily_asset_returns,
+                target_weights_daily,
+                cash_returns_daily,
+            )
+        portfolio_returns_daily = truncate_to_analysis_end(portfolio_returns_daily, analysis_end)
+    except Exception as e:
+        logger.warning("Daily portfolio returns for tail risk unavailable: %s", e)
+        portfolio_returns_daily = None
+
     analytics_by_window: dict[str, dict] = {}
     for wm in windows_months:
         suffix = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
@@ -1402,19 +1461,62 @@ def run_portfolio_report_for_weights(
         rsort36.round(3).to_csv(output_dir_csv / f"rolling_sortino_36m_{suffix}.csv", header=True)
         rsort12.round(3).to_csv(output_dir_csv / f"rolling_sortino_12m_{suffix}.csv", header=True)
         rvol.round(3).to_csv(output_dir_csv / f"rolling_vol_12m_{suffix}.csv", header=True)
+        beta_corr_block: dict[str, dict] = {}
+        if len(bench_slice.dropna()) >= 12:
+            rb36 = rolling_beta(
+                ret_slice, bench_slice, 36, returns_frequency=returns_frequency
+            )
+            rb12 = rolling_beta(
+                ret_slice, bench_slice, 12, returns_frequency=returns_frequency
+            )
+            rc36 = rolling_correlation(
+                ret_slice, bench_slice, 36, returns_frequency=returns_frequency
+            )
+            rc12 = rolling_correlation(
+                ret_slice, bench_slice, 12, returns_frequency=returns_frequency
+            )
+            rb36.round(3).to_csv(output_dir_csv / f"rolling_beta_36m_{suffix}.csv", header=True)
+            rb12.round(3).to_csv(output_dir_csv / f"rolling_beta_12m_{suffix}.csv", header=True)
+            rc36.round(3).to_csv(output_dir_csv / f"rolling_correlation_36m_{suffix}.csv", header=True)
+            rc12.round(3).to_csv(output_dir_csv / f"rolling_correlation_12m_{suffix}.csv", header=True)
+            beta_corr_block = rolling_beta_correlation_block(
+                ret_slice, bench_slice, returns_frequency=returns_frequency
+            )
         # Drawdown structure (JSON -> final)
         dd_struct = drawdown_structure(ret_slice)
         import json as _json
         with open(output_dir_final / f"drawdown_structure_{suffix}.json", "w", encoding="utf-8") as _f:
             _json.dump(dd_struct, _f, indent=2, default=str)
-        # VaR / ES 95% and 99% (CSV)
-        var_95 = var_historical(ret_slice, 0.95)
-        var_99 = var_historical(ret_slice, 0.99)
-        es_95 = es_historical(ret_slice, 0.95)
-        es_99 = es_historical(ret_slice, 0.99)
-        pd.DataFrame([{"var_95": var_95, "var_99": var_99, "es_95": es_95, "es_99": es_99}]).round(3).to_csv(
-            output_dir_csv / f"var_es_{suffix}.csv", index=False
-        )
+        # VaR / ES 95% and 99% on daily simple returns (metrics_spec historical tail risk)
+        tail_risk = {"metric_available": False, "unavailable_reason": "daily_portfolio_returns_unavailable"}
+        if portfolio_returns_daily is not None and len(portfolio_returns_daily.dropna()) >= 2:
+            tail_risk = compute_tail_risk_historical(
+                portfolio_returns_daily,
+                window_months=wm,
+                window_label=suffix,
+                analysis_end=analysis_end,
+            )
+        flat_tail = tail_risk_flat_fields(tail_risk)
+        var_95 = flat_tail.get("var_95")
+        var_99 = flat_tail.get("var_99")
+        es_95 = flat_tail.get("es_95")
+        es_99 = flat_tail.get("es_99")
+        pd.DataFrame(
+            [
+                {
+                    "method": tail_risk.get("method"),
+                    "frequency": tail_risk.get("frequency"),
+                    "window_months": tail_risk.get("window_months", wm),
+                    "window_label": suffix,
+                    "n_obs": tail_risk.get("n_obs"),
+                    "var_95": var_95,
+                    "var_99": var_99,
+                    "es_95": es_95,
+                    "es_99": es_99,
+                    "metric_available": tail_risk.get("metric_available"),
+                }
+            ]
+        ).round(3).to_csv(output_dir_csv / f"var_es_{suffix}.csv", index=False)
         # EEE (crisis beta * 100%) (CSV)
         eee = effective_equity_exposure(ret_slice, bench_slice, 0.10) if len(bench_slice.dropna()) >= 12 else None
         pd.DataFrame([{"eee_10pct": eee}]).round(3).to_csv(output_dir_csv / f"eee_{suffix}.csv", index=False)
@@ -1427,13 +1529,15 @@ def run_portfolio_report_for_weights(
             "rolling_sortino_36m": rolling_summary(rsort36),
             "rolling_sortino_12m": rolling_summary(rsort12),
             "rolling_vol_12m": rolling_summary(rvol),
+            **beta_corr_block,
             "vol_of_vol": round(vol_of_vol, 3) if vol_of_vol is not None else None,
             "rel_vol_of_vol": round(rel_vol_of_vol, 3) if rel_vol_of_vol is not None else None,
             "drawdown_structure": dd_struct,
-            "var_95": round(var_95, 3),
-            "var_99": round(var_99, 3),
-            "es_95": round(es_95, 3),
-            "es_99": round(es_99, 3),
+            "tail_risk": tail_risk,
+            "var_95": var_95,
+            "var_99": var_99,
+            "es_95": es_95,
+            "es_99": es_99,
             "eee_10pct": eee,
         }
 

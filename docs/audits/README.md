@@ -20,6 +20,7 @@ outcome.
 
 | Date | Audit | Status | Follow-up plan | Outcome |
 | --- | --- | --- | --- | --- |
+| 2026-05-19 | [Portfolio X-Ray Layer Audit](2026-05-19_portfolio_xray_layer_audit.md) | Active input | [Portfolio X-Ray Diagnostics Deepening Plan](../exec_plans/2026-05-19_portfolio_xray_diagnostics_deepening_plan.md) | Created the active Session 00-09 plan for X-Ray trust fixes, metrics deepening, hidden-risk/weakness/archetype upgrades, and later report productization. |
 | 2026-05-19 | [Post-Portfolio-First State Audit](2026-05-19_post_portfolio_first_state_audit.md) | Historical | [Post-Portfolio-First Stabilization Plan](../exec_plans/2026-05-19_post_portfolio_first_stabilization_plan.md) | Phase 9 (`RM-900`-`RM-911`) closed 2026-05-19 after Sessions 00-11; audit findings addressed or explicitly deferred in the stabilization plan. |
 | 2026-05-17 | [Diagnostic Product Concept Alignment Audit](2026-05-17_diagnostic_product_concept_alignment_audit.md) | Historical | [Project Development Session Plan](../exec_plans/2026-05-17_project_development_session_plan.md) | Quick concept-alignment audit supporting the first full project audit. |
 | 2026-05-17 | [Full Project System Audit](2026-05-17_full_project_system_audit.md) | Historical | [Project Development Session Plan](../exec_plans/2026-05-17_project_development_session_plan.md) | Identified the missing ordered decision-support pipeline and led to Sessions 01-20. |

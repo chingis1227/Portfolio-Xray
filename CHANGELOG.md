@@ -39,7 +39,64 @@ Category: Removed
 
 Omit empty categories.
 
+## 2026-05-20
+
+### Added
+
+- X-Ray Session 09 / RM-939: portfolio-first **core** vs **full** review modes on
+  `run_portfolio_review.py` (`--mode core|full`, factory profiles `core_v1` / `default_v1`);
+  `candidate_menu` partial-menu disclosure in `candidate_comparison.json` and decision-package
+  summary; operational runbook and spec updates.
+
+- X-Ray Session 08 / RM-938: structured X-Ray report surfaces (`format_portfolio_xray_html`,
+  `format_portfolio_xray_text`, `format_portfolio_xray_commentary`) and generated-output QA scans
+  for X-Ray wording in `report.txt`, `report.html`, and `commentary.txt`.
+
+- X-Ray Session 07 / RM-937: Portfolio Archetype V2 scorecard with per-archetype
+  `positive_evidence` / `negative_evidence`, `archetype_scorecard`, regime
+  `conflicting_signals`, and `conflict_summary` (built after weakness map).
+
+### Changed
+
+- Default `run_portfolio_review.py` factory scope is `core_v1` via `--mode core` (was implicit
+  full `default_v1`). Use `--mode full` for the complete optimizer menu.
+
+### Fixed
+
+- X-Ray Session 07 / RM-937: archetype labels no longer hide inflation/rates regime
+  tensions (`KI-2026-05-19-010`).
+
+- Mitigated `KI-2026-05-19-005`: core/full review modes and `candidate_menu` disclosure (Session 09).
+
 ## 2026-05-19
+
+### Added
+
+- X-Ray Session 06 / RM-936: Weakness Map V2 separates `exposure_present`,
+  `adverse_evidence`, `severity`, and `confidence`; adds `scenario_coverage`,
+  `top_asset_loss_drivers`, `top_factor_drivers`, per-row `missing_inputs`, and
+  conditional `crypto_shock` when crypto taxonomy/weights are present.
+
+- X-Ray Session 05 / RM-935: Hidden Risk Detector V2 emits per-category
+  `flagged` / `below_threshold` / `unavailable` assessments (equity beta, duration, credit, liquidity,
+  raw/residual PCA, weak hedge, tail risk, stress RC, macro factor dependency, Top1 RC) plus section
+  `confidence`, `evidence_count`, and flag counts in `portfolio_xray.json`.
+
+- X-Ray Session 04 / RM-934: portfolio window metrics now include skewness/kurtosis (monthly log
+  returns), downside/upside beta, `corr_base`, rolling beta/correlation summaries, and `metric_quality`
+  metadata; exposed in snapshots, CSV exports, and X-Ray risk diagnostics.
+
+### Fixed
+
+- X-Ray Session 03 / RM-933: portfolio VaR/ES computed on daily historical returns with
+  `analytics.tail_risk` disclosure (method, frequency, window, n_obs); X-Ray and report surfaces
+  updated (`KI-2026-05-19-009`).
+- X-Ray Session 02 / RM-932: Risk Budget View loads full `rc_vol_*` CSV evidence; factor exposure
+  reads Kalman betas from `stress_report.factor_betas_kalman.latest` (`KI-2026-05-19-007`,
+  `KI-2026-05-19-008`).
+- X-Ray Session 01 / RM-931: report path truncates return panels to `analysis_end`; stress scenario
+  analytics and scenario library honor cutoff; `inputs/monthly_returns.csv` is analysis-effective with
+  optional `monthly_returns_raw.csv` and `inputs_manifest.json` (`KI-2026-05-19-006`).
 
 ### Changed
 
@@ -75,6 +132,10 @@ Omit empty categories.
 
 ### Added
 
+- Added the [Portfolio X-Ray Layer Audit](docs/audits/2026-05-19_portfolio_xray_layer_audit.md),
+  active [Portfolio X-Ray Diagnostics Deepening Plan](docs/exec_plans/2026-05-19_portfolio_xray_diagnostics_deepening_plan.md),
+  and dedicated [Portfolio X-Ray diagnostics spec](docs/specs/portfolio_xray_diagnostics_spec.md)
+  for Sessions 00-09 (`RM-930`-`RM-939`).
 - Added active [Post-Portfolio-First Stabilization Plan](docs/exec_plans/2026-05-19_post_portfolio_first_stabilization_plan.md)
   and roadmap Phase 9 (`RM-900`-`RM-911`) to stabilize subject metadata, candidate freshness,
   decision reliability, methodology consistency, monitoring, and report/PDF output before UI work.

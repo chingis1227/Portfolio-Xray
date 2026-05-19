@@ -14,7 +14,11 @@ from typing import Any
 
 import pandas as pd
 
-from src.portfolio_xray import build_portfolio_xray_v2, format_portfolio_xray_text
+from src.portfolio_xray import (
+    build_portfolio_xray_v2,
+    format_portfolio_xray_commentary,
+    load_rc_vol_map_from_csv,
+)
 from src.stress_factors import BASE_BETA_ROW_ORDER, BETA_ROW_ORDER
 
 # Missing-value tokens for exported commentary (English-only artifacts).
@@ -1536,6 +1540,17 @@ def write_portfolio_commentary(
 
     ae = analysis_end or _MDASH
     scen_lines = _scenario_snippets(st)
+    snapshot_10y_path = output_dir_final / "snapshot_10y.json"
+    portfolio_analytics_10y: dict[str, Any] | None = None
+    drawdown_structure_10y: dict[str, Any] | None = None
+    if snapshot_10y_path.is_file():
+        try:
+            snap_10y = json.loads(snapshot_10y_path.read_text(encoding="utf-8"))
+            if isinstance(snap_10y, dict):
+                portfolio_analytics_10y = snap_10y.get("analytics")
+                drawdown_structure_10y = snap_10y.get("drawdown_structure")
+        except Exception:
+            portfolio_analytics_10y = None
     xray_summary = build_portfolio_xray_v2(
         analysis_setup=analysis_setup,
         weights=None,
@@ -1543,6 +1558,10 @@ def write_portfolio_commentary(
         stress_report=st,
         portfolio_valid=portfolio_valid,
         portfolio_metrics=pm,
+        portfolio_analytics=portfolio_analytics_10y if isinstance(portfolio_analytics_10y, dict) else None,
+        drawdown_structure=drawdown_structure_10y if isinstance(drawdown_structure_10y, dict) else None,
+        rc_vol_map=load_rc_vol_map_from_csv(output_dir_csv),
+        output_dir_csv=output_dir_csv,
     )
 
     # Executive summary (3–5 sentences)
@@ -1574,7 +1593,7 @@ def write_portfolio_commentary(
         "results_csv/rc_vol_10y.csv, run_metadata.json / analysis_setup, report.txt"
     )
     lines.append("")
-    lines.append(format_portfolio_xray_text(xray_summary))
+    lines.append(format_portfolio_xray_commentary(xray_summary))
     lines.append("")
     lines.append("Executive Summary")
     lines.extend(exec_lines)

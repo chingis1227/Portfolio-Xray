@@ -1,18 +1,30 @@
 """
 Portfolio analytics per metrics_specification.md §11 (238-507): rolling Sharpe/Sortino,
-drawdown structure, rolling vol, vol-of-vol, VaR/ES, EEE. All on monthly simple returns, ddof=1.
+drawdown structure, rolling vol, vol-of-vol, VaR/ES, EEE.
+
+Rolling metrics and drawdown structure use the main-metrics cadence (monthly by default).
+Portfolio tail risk (VaR / ES) uses daily simple returns per metrics_specification.md § VAR AND
+EXPECTED SHORTFALL.
 """
 from __future__ import annotations
+
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
-from src.metrics_asset import sharpe, sortino
+from src.metrics_asset import beta_base, sharpe, sortino
 from src.returns import equity_curve_simple
 from src.returns_frequency import ReturnsFrequency, calendar_window_to_n_periods, periods_per_year
+from src.windows import slice_calendar_window
 
 DDOF = 1
 REPORT_DECIMALS = 3
+
+TAIL_RISK_METHOD = "historical"
+TAIL_RISK_FREQUENCY = "daily"
+TAIL_RISK_MIN_OBS_DAILY = 60
+TAIL_RISK_CONFIDENCE_LEVELS = (0.95, 0.99)
 
 
 def rolling_sharpe(
@@ -175,6 +187,71 @@ def es_historical(returns: pd.Series, confidence: float) -> float:
     return float(tail.mean())
 
 
+def compute_tail_risk_historical(
+    daily_simple_returns: pd.Series,
+    *,
+    window_months: int,
+    window_label: str,
+    analysis_end: pd.Timestamp,
+    min_obs: int = TAIL_RISK_MIN_OBS_DAILY,
+) -> dict[str, Any]:
+    """
+    Historical VaR / ES on daily simple returns for a calendar window ending at analysis_end.
+
+    Returns a disclosure block with method, frequency, window, n_obs, and 95%/99% levels.
+    """
+    r = slice_calendar_window(daily_simple_returns, analysis_end, window_months).dropna()
+    n_obs = int(len(r))
+    ae_str = pd.Timestamp(analysis_end).strftime("%Y-%m-%d")
+    out: dict[str, Any] = {
+        "method": TAIL_RISK_METHOD,
+        "frequency": TAIL_RISK_FREQUENCY,
+        "window_months": int(window_months),
+        "window_label": str(window_label),
+        "analysis_end": ae_str,
+        "confidence_levels": list(TAIL_RISK_CONFIDENCE_LEVELS),
+        "n_obs": n_obs,
+        "metric_available": False,
+        "unavailable_reason": None,
+        "var_95": None,
+        "var_99": None,
+        "es_95": None,
+        "es_99": None,
+    }
+    if n_obs < max(2, int(min_obs)):
+        out["unavailable_reason"] = f"insufficient_daily_obs_lt_{min_obs}"
+        return out
+    for conf, suffix in ((0.95, "95"), (0.99, "99")):
+        v = var_historical(r, conf)
+        e = es_historical(r, conf)
+        out[f"var_{suffix}"] = round(v, REPORT_DECIMALS) if np.isfinite(v) else None
+        out[f"es_{suffix}"] = round(e, REPORT_DECIMALS) if np.isfinite(e) else None
+    if all(out.get(k) is not None for k in ("var_95", "es_95", "var_99", "es_99")):
+        out["metric_available"] = True
+    else:
+        out["unavailable_reason"] = "var_es_undefined"
+    return out
+
+
+def tail_risk_flat_fields(tail_risk: dict[str, Any] | None) -> dict[str, float | None]:
+    """Backward-compatible flat var/es keys from a tail_risk block."""
+    if not isinstance(tail_risk, dict):
+        return {}
+    if not tail_risk.get("metric_available"):
+        return {
+            "var_95": None,
+            "var_99": None,
+            "es_95": None,
+            "es_99": None,
+        }
+    return {
+        "var_95": tail_risk.get("var_95"),
+        "var_99": tail_risk.get("var_99"),
+        "es_95": tail_risk.get("es_95"),
+        "es_99": tail_risk.get("es_99"),
+    }
+
+
 def effective_equity_exposure(
     portfolio_returns: pd.Series,
     benchmark_returns: pd.Series,
@@ -212,3 +289,81 @@ def rolling_summary(series: pd.Series) -> dict:
         "p10": round(float(np.percentile(s, 10)), REPORT_DECIMALS),
         "p90": round(float(np.percentile(s, 90)), REPORT_DECIMALS),
     }
+
+
+def rolling_beta(
+    portfolio_returns: pd.Series,
+    benchmark_returns: pd.Series,
+    window_months: int,
+    ddof: int = DDOF,
+    *,
+    returns_frequency: ReturnsFrequency = "monthly",
+) -> pd.Series:
+    """Rolling beta vs base benchmark (calendar window mapped to bars at returns_frequency)."""
+    wp = calendar_window_to_n_periods(window_months, returns_frequency)
+    bench = benchmark_returns.reindex(portfolio_returns.index)
+    out: list[float] = []
+    for i in range(len(portfolio_returns) - wp + 1):
+        r = portfolio_returns.iloc[i : i + wp]
+        b = bench.iloc[i : i + wp]
+        val = beta_base(r, b, ddof=ddof)
+        out.append(val)
+    if not out:
+        return pd.Series(dtype=float)
+    idx = portfolio_returns.index[wp - 1 :]
+    return pd.Series(out, index=idx)
+
+
+def rolling_correlation(
+    portfolio_returns: pd.Series,
+    benchmark_returns: pd.Series,
+    window_months: int,
+    *,
+    returns_frequency: ReturnsFrequency = "monthly",
+) -> pd.Series:
+    """Rolling Pearson correlation vs base benchmark on aligned simple returns."""
+    wp = calendar_window_to_n_periods(window_months, returns_frequency)
+    bench = benchmark_returns.reindex(portfolio_returns.index)
+    out: list[float] = []
+    for i in range(len(portfolio_returns) - wp + 1):
+        r = portfolio_returns.iloc[i : i + wp].dropna()
+        b = bench.iloc[i : i + wp].reindex(r.index).dropna()
+        common = r.index.intersection(b.index)
+        if len(common) < 2:
+            out.append(np.nan)
+            continue
+        out.append(float(r.loc[common].corr(b.loc[common])))
+    if not out:
+        return pd.Series(dtype=float)
+    idx = portfolio_returns.index[wp - 1 :]
+    return pd.Series(out, index=idx)
+
+
+def rolling_beta_correlation_block(
+    portfolio_returns: pd.Series,
+    benchmark_returns: pd.Series,
+    *,
+    returns_frequency: ReturnsFrequency = "monthly",
+) -> dict[str, dict]:
+    """Rolling beta/correlation summaries for 36m and 12m windows (metrics spec beta analysis)."""
+    if benchmark_returns is None or benchmark_returns.empty:
+        return {}
+    block: dict[str, dict] = {}
+    for wm, label in ((36, "36m"), (12, "12m")):
+        rb = rolling_beta(
+            portfolio_returns,
+            benchmark_returns,
+            wm,
+            returns_frequency=returns_frequency,
+        )
+        rc = rolling_correlation(
+            portfolio_returns,
+            benchmark_returns,
+            wm,
+            returns_frequency=returns_frequency,
+        )
+        if not rb.dropna().empty:
+            block[f"rolling_beta_{label}"] = rolling_summary(rb)
+        if not rc.dropna().empty:
+            block[f"rolling_correlation_{label}"] = rolling_summary(rc)
+    return block

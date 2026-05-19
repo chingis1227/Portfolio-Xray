@@ -13,7 +13,10 @@ from pathlib import Path
 from src.config import load_validated_config
 from src.config_schema import ConfigValidationError
 from src.portfolio_review_workflow import (
+    DEFAULT_REVIEW_MODE,
+    REVIEW_MODES,
     build_portfolio_review_plan,
+    resolve_review_candidate_profile,
     run_portfolio_review_plan,
     summarize_plan,
 )
@@ -39,10 +42,22 @@ def main(argv: list[str] | None = None) -> int:
         help="Skip candidate factory and compare existing candidate artifacts instead.",
     )
     parser.add_argument(
+        "--mode",
+        choices=sorted(REVIEW_MODES),
+        default=DEFAULT_REVIEW_MODE,
+        help=(
+            "Review scope: core = benchmarks + risk budgets (default routine path); "
+            "full = entire default_v1 menu including optimizers and robust suite."
+        ),
+    )
+    parser.add_argument(
         "--candidate-profile",
         type=str,
-        default="default_v1",
-        help="Candidate factory profile (default: default_v1).",
+        default=None,
+        help=(
+            "Override factory profile (e.g. core_v1, default_v1). "
+            "When omitted, profile follows --mode."
+        ),
     )
     parser.add_argument(
         "--candidates",
@@ -94,11 +109,17 @@ def main(argv: list[str] | None = None) -> int:
         logger.error("Config validation failed: %s", exc)
         return 1
 
+    review_mode, factory_profile = resolve_review_candidate_profile(
+        review_mode=args.mode,
+        candidate_profile=args.candidate_profile,
+    )
+
     plan = build_portfolio_review_plan(
         cfg,
         project_root=project_root,
         no_cache=args.no_cache,
         skip_candidates=args.skip_candidates,
+        review_mode=review_mode,
         candidate_profile=args.candidate_profile,
         candidate_ids=args.candidates,
         skip_existing_candidates=not args.no_skip_existing,
@@ -109,7 +130,13 @@ def main(argv: list[str] | None = None) -> int:
         legacy_full_pdf=args.legacy_full_pdf,
     )
 
-    print(summarize_plan(plan))
+    print(
+        summarize_plan(
+            plan,
+            review_mode=review_mode,
+            factory_profile=factory_profile if not args.candidates else "explicit_list",
+        )
+    )
     code = run_portfolio_review_plan(plan, project_root=project_root, dry_run=args.dry_run)
     if code == 0 and not args.dry_run:
         print("\nPortfolio review workflow completed.")

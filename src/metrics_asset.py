@@ -108,6 +108,40 @@ def beta_base(
     return float(cov / var_b)
 
 
+def downside_beta(
+    asset_returns: pd.Series,
+    benchmark_returns: pd.Series,
+    ddof: int = DDOF,
+) -> float:
+    """Beta on months where benchmark return < 0 (monthly simple returns, aligned dates)."""
+    ra, rb = _align(asset_returns, benchmark_returns)
+    mask = rb < 0
+    if mask.sum() < 2:
+        return np.nan
+    return beta_base(ra[mask], rb[mask], ddof=ddof)
+
+
+def upside_beta(
+    asset_returns: pd.Series,
+    benchmark_returns: pd.Series,
+    ddof: int = DDOF,
+) -> float:
+    """Beta on months where benchmark return > 0 (monthly simple returns, aligned dates)."""
+    ra, rb = _align(asset_returns, benchmark_returns)
+    mask = rb > 0
+    if mask.sum() < 2:
+        return np.nan
+    return beta_base(ra[mask], rb[mask], ddof=ddof)
+
+
+def corr_base(asset_returns: pd.Series, benchmark_returns: pd.Series) -> float:
+    """Pearson correlation vs base benchmark on aligned monthly simple returns."""
+    ra, rb = _align(asset_returns, benchmark_returns)
+    if len(ra) < 2:
+        return np.nan
+    return float(ra.corr(rb))
+
+
 def treynor(
     monthly_simple_returns: pd.Series,
     rf_monthly: pd.Series,

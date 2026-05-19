@@ -35,6 +35,34 @@ PORTFOLIO_FIRST_SUMMARY_FORBIDDEN_MARKERS: tuple[str, ...] = (
     "Versus current:",
 )
 
+PORTFOLIO_XRAY_REPORT_REQUIRED_MARKERS: tuple[str, ...] = (
+    "PORTFOLIO X-RAY SUMMARY",
+    "diagnostic-only",
+    "Portfolio Metrics / Risk Diagnostics",
+    "Hidden Exposure / Hidden Risk Detector",
+    "Portfolio Weakness Map",
+    "portfolio_xray.json",
+)
+
+PORTFOLIO_XRAY_HTML_REQUIRED_MARKERS: tuple[str, ...] = (
+    'class="xray-summary-section"',
+    'class="xray-section"',
+    "Portfolio X-Ray Summary",
+    "Portfolio Weakness Map",
+)
+
+PORTFOLIO_XRAY_COMMENTARY_REQUIRED_MARKERS: tuple[str, ...] = (
+    "Portfolio X-Ray (diagnostic-only)",
+    "portfolio_xray.json",
+    "report.html",
+)
+
+PORTFOLIO_XRAY_FORBIDDEN_MARKERS: tuple[str, ...] = (
+    "status=partial; sources=",
+    "more items in portfolio_xray.json",
+    "<pre>",
+)
+
 REPRESENTATIVE_REL_DIRS: tuple[str, ...] = (
     "Main portfolio",
     "equal-weight portfolio",
@@ -157,6 +185,47 @@ def scan_representative_outputs(repo_root: Path | None = None) -> ScanResult:
                 )
             else:
                 result.findings.extend(_scan_stress_report(rel, payload))
+    return result
+
+
+def scan_portfolio_xray_report_text(
+    text: str,
+    *,
+    rel_path: str = "report.txt",
+    required_markers: tuple[str, ...] = PORTFOLIO_XRAY_REPORT_REQUIRED_MARKERS,
+) -> ScanResult:
+    """Check report/commentary surfaces for structured X-Ray wording (Session 08)."""
+    result = ScanResult(scanned_files=1)
+    result.findings.extend(_scan_text_lines(rel_path, text))
+    for marker in required_markers:
+        if marker not in text:
+            result.findings.append(
+                ScanFinding(rel_path, "xray_marker_missing", f"missing {marker!r}")
+            )
+    for marker in PORTFOLIO_XRAY_FORBIDDEN_MARKERS:
+        if marker in text:
+            result.findings.append(
+                ScanFinding(rel_path, "xray_raw_dump", f"contains forbidden {marker!r}")
+            )
+    return result
+
+
+def scan_portfolio_xray_html_text(
+    text: str,
+    *,
+    rel_path: str = "report.html",
+) -> ScanResult:
+    result = ScanResult(scanned_files=1)
+    result.findings.extend(_scan_text_lines(rel_path, text))
+    for marker in PORTFOLIO_XRAY_HTML_REQUIRED_MARKERS:
+        if marker not in text:
+            result.findings.append(
+                ScanFinding(rel_path, "xray_html_marker_missing", f"missing {marker!r}")
+            )
+    if "<pre>" in text.lower() and "xray-summary" in text.lower():
+        result.findings.append(
+            ScanFinding(rel_path, "xray_raw_dump", "X-Ray HTML uses preformatted dump")
+        )
     return result
 
 

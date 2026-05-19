@@ -83,7 +83,7 @@ Detailed field schemas are owned by the relevant config schema, taxonomy specs, 
 - Do not interpolate asset returns.
 - FX daily data may be forward-filled only where the detailed data/FX rules allow it.
 - Monthly returns use effective month-end.
-- `analysis_end` is the last completed effective period before today.
+- `analysis_end` is the last completed effective period before today. Diagnostic runs use analysis-effective panels (rows `<= analysis_end`); raw cached panels may extend later and are exported separately when needed (`results_csv/inputs/monthly_returns_raw.csv`). See [docs/specs/data_policy_spec.md](docs/specs/data_policy_spec.md) §9.
 - Monthly return-panel cache keys must include the resolved per-ticker asset-currency fingerprint;
   changing an asset currency in `assets.yml` must invalidate FX-adjusted cached panels.
 - Use inner joins for covariance, correlation, beta, excess-return metrics, and RC_vol unless the owning spec says otherwise.

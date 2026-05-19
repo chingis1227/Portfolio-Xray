@@ -56,18 +56,54 @@ Title: Short title
 
 ## Active Issues
 
+Issue ID: KI-2026-05-19-007
+Title: X-Ray Risk Budget View reads top-5 RC snapshot instead of full RC evidence
+
+- Status: resolved (2026-05-19, Session 02)
+- Severity: high
+- Area: reports
+- Risk: Positive-weight holdings can show `RC_vol = null` in `portfolio_xray.json`, making the risk budget look incomplete or implying no measured risk when full `rc_vol_10y.csv` evidence exists.
+- Evidence: Portfolio X-Ray audit found Risk Budget View consuming `snapshot_10y.json.RC_asset`, a top-5 display subset, while full risk contribution data exists in `results_csv/rc_vol_10y.csv`.
+- Current mitigation: Users can manually inspect the CSV, but the X-Ray output itself remains misleading.
+- Next action: Implement Session 02 / `RM-932` in the active [Portfolio X-Ray Diagnostics Deepening Plan](docs/exec_plans/2026-05-19_portfolio_xray_diagnostics_deepening_plan.md).
+- Source links: [portfolio_xray.py](src/portfolio_xray.py), [snapshot.py](src/snapshot.py), [X-Ray diagnostics spec](docs/specs/portfolio_xray_diagnostics_spec.md), [OUTPUTS.md](OUTPUTS.md).
+- Remove when: `portfolio_xray.json.risk_budget_view` includes all positive-weight holdings with RC evidence and focused tests cover full RC loading.
+
+Issue ID: KI-2026-05-19-008
+Title: X-Ray does not surface available Kalman factor betas
+
+- Status: resolved (2026-05-19, Session 02)
+- Severity: medium
+- Area: factor_macro
+- Risk: Factor Exposure can look incomplete even when Kalman beta evidence exists in `stress_report.json`.
+- Evidence: Portfolio X-Ray audit found available evidence under `stress_report.factor_betas_kalman.latest`, while X-Ray reads older field names such as `latest_betas_capped` / `latest_betas`.
+- Current mitigation: Raw stress report evidence can be inspected manually.
+- Next action: Implement Session 02 / `RM-932` and add a regression test for Kalman beta mapping.
+- Source links: [portfolio_xray.py](src/portfolio_xray.py), [factor diagnostics spec](docs/specs/factor_diagnostics_spec.md), [X-Ray diagnostics spec](docs/specs/portfolio_xray_diagnostics_spec.md).
+- Remove when: `factor_exposure.items[].kalman_current_beta` is populated when `stress_report.factor_betas_kalman.latest` is available.
+
+Issue ID: KI-2026-05-19-010
+Title: X-Ray archetype and weakness explanations can create false confidence
+
+- Status: resolved
+- Severity: medium
+- Area: reports
+- Risk: Simple labels or low-severity rows can be read as definitive conclusions instead of partial diagnostics with incomplete evidence and conflicting signals.
+- Evidence: Portfolio X-Ray audit found archetype output capable of labeling a portfolio as inflation-sensitive without explaining simultaneous inflation/rates vulnerability.
+- Resolution (2026-05-20, Session 07 / RM-937): Archetype V2 emits `positive_evidence`, `negative_evidence`, `archetype_scorecard`, `conflicting_signals`, and `conflict_summary`, including weakness-map regime tensions when inflation-sensitive holdings coexist with inflation/rates vulnerability.
+- Source links: [Portfolio X-Ray audit](docs/audits/2026-05-19_portfolio_xray_layer_audit.md), [X-Ray diagnostics spec](docs/specs/portfolio_xray_diagnostics_spec.md), [portfolio_xray.py](src/portfolio_xray.py), [tests/test_portfolio_xray.py](tests/test_portfolio_xray.py).
+
 Issue ID: KI-2026-05-19-005
 Title: Full candidate factory refresh is operationally heavy for one-shot review runs
 
-- Status: accepted
+- Status: mitigated
 - Severity: medium
 - Area: architecture
-- Risk: Users or agents may assume `run_portfolio_review.py` always finishes subject → factory → compare → PDF in one session; when all optimizer builders must rebuild, the run can exceed practical time limits and leave a partial candidate menu while decision outputs still look complete.
-- Evidence: Phase 9 closure (RM-911): core portfolio-first logic and freshness gating work; stale rows are marked `unavailable` instead of scored silently. Representative runs showed multi-hour `default_v1` factory duration when snapshots are stale; agent/session limits aborted full factory before compare in some attempts.
-- Current mitigation: Run subject materialization and `run_compare_variants.py` separately; use `run_candidate_factory.py` with `--profile` subsets or `--no-skip-existing` only when a full refresh is intended; rely on `candidate_factory_run.json` and comparison `status` / `unavailable_reason` for transparency; reuse snapshots when `snapshot_10y.json.analysis_end` matches review `analysis_end` (RM-902).
-- Next action: Implement deferred roadmap items RM-920–RM-922 (core-run vs full-run profiles, resumable/progress factory, explicit partial-menu disclosure in decision outputs). See [ROADMAP.md](docs/ROADMAP.md) Phase 10.
-- Source links: [run_portfolio_review.py](run_portfolio_review.py), [candidate_factory.py](src/candidate_factory.py), [candidate_factory_spec.md](docs/specs/candidate_factory_spec.md), [portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md), [operational_runbook.md](docs/operational_runbook.md), [post-portfolio-first stabilization ExecPlan](docs/exec_plans/2026-05-19_post_portfolio_first_stabilization_plan.md).
-- Remove when: Default portfolio-first workflow offers a documented fast core path, optional full refresh path, resumable factory progress, and decision-package warnings when the scored candidate menu is partial; UI work should not start before this operational model is defined.
+- Risk: Full `--mode full` rebuild can still exceed session limits when many optimizer snapshots are stale; decision outputs must not be read as covering the full product menu when `candidate_menu.is_partial_menu` is true.
+- Resolution (2026-05-20, Session 09 / RM-939): Default `run_portfolio_review.py` uses `--mode core` and factory profile `core_v1`; `--mode full` runs `default_v1` explicitly. Comparison and decision-package outputs include `candidate_menu` partial-menu disclosure and refresh commands.
+- Remaining gap: resumable factory progress / optional parallelism (`RM-921`).
+- Source links: [run_portfolio_review.py](run_portfolio_review.py), [portfolio_review_workflow.py](src/portfolio_review_workflow.py), [candidate_comparison.py](src/candidate_comparison.py), [operational_runbook.md](docs/operational_runbook.md).
+- Remove when: Resumable factory and progress logging ship, or full-run reliably completes within agreed operator time budget without manual staging.
 
 ## Update Rules
 

@@ -19,7 +19,11 @@ from typing import Any
 
 import pandas as pd
 
-from src.portfolio_xray import build_portfolio_xray_v2, format_portfolio_xray_text
+from src.portfolio_xray import (
+    build_portfolio_xray_v2,
+    format_portfolio_xray_html,
+    format_portfolio_xray_text,
+)
 from src.risk_contrib import rc_vol_window
 from src.windows import slice_window
 
@@ -425,26 +429,63 @@ def _format_window_snapshot_text(label: str, data: dict[str, Any]) -> str:
     metrics = data.get("metrics") or {}
     if metrics:
         lines.extend(["", "--- metrics ---"])
-        for k in ("cagr", "vol_annual", "sharpe", "sortino", "beta_portfolio", "treynor", "max_drawdown", "ttr_months"):
+        for k in (
+            "cagr",
+            "vol_annual",
+            "sharpe",
+            "sortino",
+            "beta_portfolio",
+            "corr_base",
+            "downside_beta",
+            "upside_beta",
+            "skewness",
+            "kurtosis",
+            "treynor",
+            "max_drawdown",
+            "ttr_months",
+        ):
             if k in metrics:
                 if k in ("cagr", "vol_annual", "max_drawdown"):
                     lines.append(f"  {k}: {_fmt_ratio(metrics[k])}")
                 else:
                     lines.append(f"  {k}: {_fmt_val(metrics[k])}")
+        mq = metrics.get("metric_quality")
+        if isinstance(mq, dict) and mq:
+            lines.append(
+                f"  metric_quality: n_obs={mq.get('n_obs')}, freq={mq.get('frequency')}, "
+                f"bench={mq.get('benchmark_ticker')}, rf={mq.get('risk_free_source')}"
+            )
     stress = data.get("stress_suite_results") or {}
     lines.extend(["", "--- stress ---"])
     lines.append(f"  overall: {stress.get('overall', ' - ')}")
     analytics = data.get("analytics") or {}
     if analytics:
         lines.extend(["", "--- analytics (summary) ---"])
-        for k in ("rolling_sharpe_36m", "rolling_sortino_36m", "var_95", "es_95", "eee_10pct"):
-            if k in analytics:
-                if k in ("var_95", "es_95"):
+        tail_risk = analytics.get("tail_risk")
+        if isinstance(tail_risk, dict) and tail_risk.get("metric_available"):
+            lines.append(
+                f"  tail_risk: daily historical VaR/ES, window {tail_risk.get('window_label')}, "
+                f"n_obs={tail_risk.get('n_obs')}"
+            )
+            for k in ("var_95", "var_99", "es_95", "es_99"):
+                if tail_risk.get(k) is not None:
+                    lines.append(f"  {k}: {_fmt_ratio(tail_risk[k])}")
+        else:
+            for k in ("var_95", "es_95"):
+                if k in analytics and analytics[k] is not None:
                     lines.append(f"  {k}: {_fmt_ratio(analytics[k])}")
-                elif k == "eee_10pct":
-                    lines.append(f"  {k}: {_fmt_val(analytics[k])}%")
-                else:
-                    lines.append(f"  {k}: {_fmt_val(analytics[k])}")
+        if analytics.get("eee_10pct") is not None:
+            lines.append(f"  eee_10pct: {_fmt_val(analytics['eee_10pct'])}%")
+        for k in (
+            "rolling_sharpe_36m",
+            "rolling_sortino_36m",
+            "rolling_beta_36m",
+            "rolling_beta_12m",
+            "rolling_correlation_36m",
+            "rolling_correlation_12m",
+        ):
+            if k in analytics:
+                lines.append(f"  {k}: {_fmt_val(analytics[k])}")
     return "\n".join(lines)
 
 
@@ -498,6 +539,7 @@ def _xray_summary_from_output_dir(out: Path) -> dict[str, Any] | None:
     analysis_setup = metadata.get("analysis_setup")
     if not isinstance(analysis_setup, dict) and not snapshot:
         return None
+    csv_dir = out / "results_csv"
     xray = build_portfolio_xray_v2(
         analysis_setup=analysis_setup if isinstance(analysis_setup, dict) else None,
         weights=snapshot.get("final_weights_total") if isinstance(snapshot, dict) else None,
@@ -507,6 +549,7 @@ def _xray_summary_from_output_dir(out: Path) -> dict[str, Any] | None:
         portfolio_metrics=snapshot.get("metrics") if isinstance(snapshot, dict) else None,
         portfolio_analytics=snapshot.get("analytics") if isinstance(snapshot, dict) else None,
         drawdown_structure=snapshot.get("drawdown_structure") if isinstance(snapshot, dict) else None,
+        output_dir_csv=csv_dir if csv_dir.is_dir() else None,
     )
     try:
         with open(out / "portfolio_xray.json", "w", encoding="utf-8") as f:
@@ -518,15 +561,7 @@ def _xray_summary_from_output_dir(out: Path) -> dict[str, Any] | None:
 
 def _format_xray_summary_html(summary: dict[str, Any]) -> str:
     if summary.get("version") == "portfolio_xray_v2":
-        text = format_portfolio_xray_text(summary)
-        return (
-            '<section class="xray-summary-section" id="xray-summary">\n'
-            "<h2>Portfolio X-Ray Summary</h2>\n"
-            "<pre>"
-            + html.escape(text)
-            + "</pre>\n"
-            "</section>"
-        )
+        return format_portfolio_xray_html(summary)
 
     setup = summary.get("analysis_setup_summary") or {}
     alloc = summary.get("asset_allocation_summary") or {}
@@ -857,14 +892,35 @@ def _format_window_snapshot_html(label: str, data: dict[str, Any]) -> str:
     analytics = data.get("analytics") or {}
     if analytics:
         rows = []
-        for k in ("rolling_sharpe_36m", "rolling_sortino_36m", "var_95", "es_95", "eee_10pct"):
+        tail_risk = analytics.get("tail_risk")
+        if isinstance(tail_risk, dict) and tail_risk.get("metric_available"):
+            rows.append(
+                "<tr><td>tail_risk</td><td>"
+                + html.escape(
+                    f"daily historical, window {tail_risk.get('window_label')}, n_obs={tail_risk.get('n_obs')}"
+                )
+                + "</td></tr>"
+            )
+            for k in ("var_95", "var_99", "es_95", "es_99"):
+                if tail_risk.get(k) is not None:
+                    rows.append(
+                        f"<tr><td>{html.escape(k)}</td><td>{html.escape(_fmt_ratio(tail_risk[k]))}</td></tr>"
+                    )
+        else:
+            for k in ("var_95", "es_95"):
+                if k in analytics and analytics[k] is not None:
+                    rows.append(
+                        f"<tr><td>{html.escape(k)}</td><td>{html.escape(_fmt_ratio(analytics[k]))}</td></tr>"
+                    )
+        if analytics.get("eee_10pct") is not None:
+            rows.append(
+                f"<tr><td>eee_10pct</td><td>{_fmt_val_html(analytics['eee_10pct'])}%</td></tr>"
+            )
+        for k in ("rolling_sharpe_36m", "rolling_sortino_36m"):
             if k in analytics:
-                if k in ("var_95", "es_95"):
-                    rows.append(f"<tr><td>{html.escape(k)}</td><td>{html.escape(_fmt_ratio(analytics[k]))}</td></tr>")
-                elif k == "eee_10pct":
-                    rows.append(f"<tr><td>{html.escape(k)}</td><td>{_fmt_val_html(analytics[k])}%</td></tr>")
-                else:
-                    rows.append(f"<tr><td>{html.escape(k)}</td><td>{_fmt_val_html(analytics[k])}</td></tr>")
+                rows.append(
+                    f"<tr><td>{html.escape(k)}</td><td>{_fmt_val_html(analytics[k])}</td></tr>"
+                )
         if rows:
             parts.append(
                 _html_table_section(
@@ -1023,6 +1079,13 @@ td.status-diag_attention { color: var(--rui-warn); font-weight: 500; }
 .table-wrap + .table-wrap, section > .table-wrap { margin-top: 0; }
 .data-policy-section .table-wrap, .robustness-section .table-wrap { margin-bottom: var(--space-16); }
 .data-policy-section .table-wrap:last-child, .robustness-section .table-wrap:last-child { margin-bottom: 0; }
+.xray-summary-section .xray-disclaimer { color: var(--rui-mid); font-size: 0.92rem; }
+.xray-section-nav { display: flex; flex-wrap: wrap; gap: var(--space-8); margin: var(--space-16) 0; }
+.xray-section-nav a { font-size: 0.82rem; padding: 6px 12px; border-radius: var(--radius-pill); border: 1px solid var(--rui-border); text-decoration: none; color: var(--rui-dark); }
+.xray-section { margin-top: var(--space-16); padding-top: var(--space-16); border-top: 1px solid var(--rui-border); }
+.xray-section h3 { font-family: var(--font-d); font-size: 1.05rem; margin: 0 0 var(--space-8); }
+.xray-meta, .xray-warning, .xray-limitation, .xray-source-note { font-size: 0.9rem; color: var(--rui-mid); }
+.xray-bullets { margin: 0 0 var(--space-16); padding-left: 1.25rem; }
 @media (max-width: 720px) {
   body { padding: var(--space-24) 12px 40px; }
   .report-header h1 { font-size: 1.5rem; }

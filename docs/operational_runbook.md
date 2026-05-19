@@ -11,38 +11,40 @@ and only then builds or compares candidate portfolios.
 ```bash
 python run_portfolio_review.py
 python run_portfolio_review.py --dry-run
-python run_portfolio_review.py --candidate-profile core_benchmarks
+python run_portfolio_review.py --mode full --no-skip-existing
 python run_portfolio_review.py --skip-candidates
+python run_portfolio_review.py --candidate-profile default_v1
 ```
+
+| Review mode | Command | Factory profile | Typical use |
+| --- | --- | --- | --- |
+| **Core** (default) | `python run_portfolio_review.py` or `--mode core` | `core_v1` (benchmarks + risk budgets, 6 builders) | Routine monthly review within normal session limits |
+| **Full** | `python run_portfolio_review.py --mode full` | `default_v1` (16 builders incl. optimizers + robust) | Explicit refresh when all script-backed candidates are needed |
 
 | Stage | Purpose | Primary command | Key artifacts |
 | --- | --- | --- | --- |
 | **Subject diagnosis** | Diagnose the starting portfolio before alternatives | `run_report.py --materialize-analysis-subject` via `run_portfolio_review.py` | `{output_dir_final}/analysis_subject/` |
 | **Candidates** | Build non-policy comparison alternatives | `run_candidate_factory.py` via `run_portfolio_review.py` | Candidate output folders, `candidate_factory_run.json` |
-| **Comparison** | Merge available subject/candidate evidence | `run_compare_variants.py` via factory `--then-compare` or directly | `candidate_comparison.json` and decision-package artifacts |
+| **Comparison** | Merge available subject/candidate evidence | `run_compare_variants.py` via factory `--then-compare` or directly | `candidate_comparison.json` (`candidate_menu` block) and decision-package artifacts |
 | **Package** | Refresh portfolio-first PDFs | `rebuild_pdf_reports.py --portfolio-first` via `run_portfolio_review.py` unless `--skip-pdf` is set | `Main portfolio_decision_package.pdf`, `analysis_subject_*` PDFs when sidecar outputs exist |
 | **Package (legacy)** | Full EW/RP/policy/baseline PDF suite | `run_portfolio_review.py --legacy-full-pdf` or `rebuild_pdf_reports.py` without `--portfolio-first` | All PDFs under `pdf files/` |
 
 The default portfolio-first command does not call `run_optimization.py`. The old policy workflow
 below remains available for compatibility and historical policy runs.
 
-### Runtime limits and partial runs (deferred operational follow-up)
-
-Phase 9 closed the **trust** gaps (metadata, freshness gating, selection narrative, PDF). The main
-remaining limitation is **runtime**, not logic:
+### Runtime limits and partial menus
 
 | Situation | What happens | What to do |
 | --- | --- | --- |
-| Snapshots already match review `analysis_end` | Factory mostly `skipped_existing`; review often finishes in one session | `python run_portfolio_review.py` |
-| Many stale optimizer snapshots | Full `default_v1` rebuild can take hours (sequential builders) | Run stages separately or use a smaller `--candidate-profile` until RM-920 core/full split ships |
-| Session/agent timeout | Subject may refresh; factory may not finish; compare may run on a **partial menu** | Read `candidate_factory_run.json` and comparison `status` / `unavailable_reason`; run `run_candidate_factory.py --no-skip-existing` when a full refresh is intended |
+| Routine review | Core mode builds six lightweight candidates; compare + decision package finish in one session when snapshots are fresh | `python run_portfolio_review.py` |
+| Snapshots already match review `analysis_end` | Factory mostly `skipped_existing`; core path is fast | Default core command |
+| Need all optimizers / robust suite | Full mode runs all 16 `default_v1` builders; can take hours when stale | `python run_portfolio_review.py --mode full --no-skip-existing` |
+| Session/agent timeout | Subject may refresh; factory may not finish; compare may run on incomplete intended menu | Read `candidate_factory_run.json`, `candidate_comparison.json` → `candidate_menu`, and row `unavailable_reason` |
 
 **Trust rule:** stale candidates are marked `unavailable` in comparison — they are not silently scored.
-**Interpretation rule:** if many rows are `unavailable`, selection ranks only the **available** menu;
-treat favored-candidate outputs as conditional on that menu until a full-run completes.
+**Interpretation rule:** `candidate_menu.is_partial_menu` and decision-package summary text disclose when selection used a **reduced** menu (core vs product `default_v1`) or when intended candidates are missing. Rankings apply only to scored rows in the intended menu.
 
-Deferred improvements: [ROADMAP.md](ROADMAP.md) `RM-920`–`RM-922`; [KNOWN_ISSUES.md](../KNOWN_ISSUES.md)
-`KI-2026-05-19-005`.
+Further deferred work: resumable factory progress and optional parallel builders ([ROADMAP.md](ROADMAP.md) `RM-921`).
 
 ## 1. Legacy File-First MVP Policy Workflow
 

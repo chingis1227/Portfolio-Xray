@@ -415,6 +415,7 @@ def build_stress_scenario_analytics(
     monthly_returns: pd.DataFrame,
     factor_returns_weekly: pd.DataFrame | None,
     cash_proxy_ticker: str | None,
+    analysis_end_str: str | None = None,
     output_dir_csv: str | Path | None = None,
     shock_scale_alpha: float = SHOCK_SCALE_ALPHA_DEFAULT,
 ) -> dict[str, Any]:
@@ -424,13 +425,32 @@ def build_stress_scenario_analytics(
     Caller must pass a ``stress_report`` already containing ``scenario_results``,
     ``historical_results``, ``factor_covariance`` (optional), ``factor_betas_5y`` / ``10y``,
     ``factor_regression_*``, ``factor_betas_adjusted``, ``synthetic_factor_pnl_adjusted``.
+
+    When ``analysis_end_str`` is set, return panels are truncated to rows ``<= analysis_end``
+    before covariance and ``data_end`` metadata are computed.
     """
-    asset_cols = [t for t in tickers if t in monthly_returns.columns]
+    from src.windows import truncate_to_analysis_end
+
+    ae = analysis_end_str
+    if ae is None:
+        fc_block = stress_report.get("factor_covariance") or {}
+        base_win = ((fc_block.get("base") or {}).get("window")) if isinstance(fc_block, dict) else None
+        if isinstance(base_win, dict) and base_win.get("analysis_end"):
+            ae = str(base_win["analysis_end"])
+
+    monthly_eff = monthly_returns
+    if ae:
+        monthly_eff = truncate_to_analysis_end(monthly_returns, ae)
+    factor_weekly_eff = factor_returns_weekly
+    if ae and factor_returns_weekly is not None and not factor_returns_weekly.empty:
+        factor_weekly_eff = truncate_to_analysis_end(factor_returns_weekly, ae)
+
+    asset_cols = [t for t in tickers if t in monthly_eff.columns]
     w = np.array([float(weights.get(t, 0.0)) for t in asset_cols], dtype=float)
     if w.sum() > 0:
         w = w / w.sum()
 
-    returns_all = monthly_returns[asset_cols].copy()
+    returns_all = monthly_eff[asset_cols].copy()
     returns_all.index = pd.to_datetime(returns_all.index).tz_localize(None)
     cov_base_monthly = cov_matrix_monthly(returns_all.dropna(how="all"), ddof=1)
 
@@ -868,7 +888,7 @@ def build_stress_scenario_analytics(
         )
 
         fac_cov_ep, fac_meta_ep = _factor_cov_episode(
-            factor_returns_weekly,
+            factor_weekly_eff,
             start,
             end,
             fallback_base=factor_cov_base,

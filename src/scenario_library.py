@@ -136,6 +136,7 @@ def build_scenario_library(
     tickers: list[str],
     monthly_returns: pd.DataFrame,
     returns_frequency: str = "monthly",
+    analysis_end_str: str | None = None,
     regime_factor_analytics_full: dict[str, Any] | None = None,
     factor_returns_weekly: pd.DataFrame | None = None,
     cash_proxy_ticker: str | None = None,
@@ -158,13 +159,29 @@ def build_scenario_library(
     - Stress scenario dense matrices are recomputed using the same helpers as
       ``build_stress_scenario_analytics`` (taxonomy blend asset Σ, shock-scale factor Σ).
     """
+    from src.windows import truncate_to_analysis_end
+
     warnings_global: list[str] = []
     scenarios: list[dict[str, Any]] = []
     missing_rows: list[dict[str, str]] = []
     warn_rows: list[dict[str, str]] = []
 
-    asset_cols = [t for t in tickers if t in monthly_returns.columns]
-    returns_all = monthly_returns[asset_cols].copy()
+    ae = analysis_end_str
+    if ae is None:
+        fc_block_ae = stress_report.get("factor_covariance") or {}
+        base_win_ae = ((fc_block_ae.get("base") or {}).get("window")) if isinstance(fc_block_ae, dict) else None
+        if isinstance(base_win_ae, dict) and base_win_ae.get("analysis_end"):
+            ae = str(base_win_ae["analysis_end"])
+
+    monthly_eff = monthly_returns
+    if ae:
+        monthly_eff = truncate_to_analysis_end(monthly_returns, ae)
+    factor_weekly_eff = factor_returns_weekly
+    if ae and factor_returns_weekly is not None and not factor_returns_weekly.empty:
+        factor_weekly_eff = truncate_to_analysis_end(factor_returns_weekly, ae)
+
+    asset_cols = [t for t in tickers if t in monthly_eff.columns]
+    returns_all = monthly_eff[asset_cols].copy()
     returns_all.index = pd.to_datetime(returns_all.index).tz_localize(None)
     w_vec = _weights_vector(weights, asset_cols)
 
@@ -444,7 +461,7 @@ def build_scenario_library(
             start = str(meta_ssa.get("data_start", ""))
             end = str(meta_ssa.get("data_end", ""))
             fac_w_m, fac_meta = _ssa._factor_cov_episode(
-                factor_returns_weekly,
+                factor_weekly_eff,
                 start,
                 end,
                 fallback_base=factor_cov_weekly_df,

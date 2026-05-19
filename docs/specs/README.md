@@ -21,6 +21,7 @@ Top-level documents stay compact:
 | Area | Spec |
 | --- | --- |
 | Portfolio-first review workflow, `analysis_subject` baseline, and `run_portfolio_review.py` orchestration | [portfolio_review_workflow_spec.md](portfolio_review_workflow_spec.md) |
+| Portfolio X-Ray diagnostics, seven-section current-portfolio diagnostic layer, and `portfolio_xray.json` contract | [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) |
 | Metrics, estimators, windows, returns, FX, beta, drawdown, RC_vol, rounding | [metrics_specification.md](metrics_specification.md) |
 | Analysis setup, input modes, current weights, mandate inputs, and calculation assumptions | [input_assumptions_spec.md](input_assumptions_spec.md) |
 | Portfolio construction and main optimizer policy | [portfolio_construction_policy.md](portfolio_construction_policy.md) |

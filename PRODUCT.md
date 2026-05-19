@@ -229,7 +229,7 @@ Current implementation:
 
 Target additions:
 
-- Formal Portfolio Archetype Classification is TBD.
+- Portfolio Archetype Classification is implemented in `portfolio_xray.json` (V2 evidence scorecard with conflicts); structured report/HTML surfaces ship via Session 08 formatters in `src/portfolio_xray.py`.
 - Formal Weakness Map UI is TBD.
 
 ### 5. Stress Test Lab

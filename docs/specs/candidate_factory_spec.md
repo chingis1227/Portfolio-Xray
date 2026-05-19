@@ -173,18 +173,19 @@ step status is `failed` with reason `stale_snapshot_after_build`.
 sequential and can exceed practical one-shot `run_portfolio_review.py` or agent session limits when
 many candidates are stale. That is an **operational** limitation, not a broken comparison contract.
 
-**Target product model (not yet implemented):**
+**Implemented product model (Session 09 / RM-939):**
 
-| Mode | Intended scope | Notes |
-| --- | --- | --- |
-| **core-run** | Subject + benchmarks/risk budgets + compare + decision package | Default routine review; should finish under normal session limits |
-| **full-run** | Full `default_v1` including classic optimizers and robust suite | Explicit refresh; may require `--no-skip-existing` and long runtime |
+| Mode | CLI | Factory profile | Intended scope |
+| --- | --- | --- | --- |
+| **core-run** | `python run_portfolio_review.py` (default `--mode core`) | `core_v1` | Benchmarks + risk budgets (6 script-backed candidates) + compare + decision package |
+| **full-run** | `python run_portfolio_review.py --mode full` | `default_v1` | Full menu including classic optimizers and robust suite (16 candidates) |
 
-**Future work:** CLI/orchestrator profiles for core vs full; resumable factory steps and clearer
-progress logs; optional parallel builders with isolation guarantees; explicit partial-menu warnings
-in decision outputs; stronger reuse keys (config fingerprint, universe, weights) in addition to
-`analysis_end`. See [ROADMAP.md](../ROADMAP.md) Phase 10 and [KNOWN_ISSUES.md](../../KNOWN_ISSUES.md)
-`KI-2026-05-19-005`.
+`--candidate-profile` overrides `--mode` when an explicit profile is required. Partial-menu disclosure
+is emitted in `candidate_comparison.json` → `candidate_menu` and in the decision-package summary.
+
+**Future work:** resumable factory steps and clearer progress logs; optional parallel builders with
+isolation guarantees; stronger reuse keys (config fingerprint, universe, weights) in addition to
+`analysis_end`. See [ROADMAP.md](../ROADMAP.md) `RM-921`.
 
 ## Canonical Factory Run Artifacts
 

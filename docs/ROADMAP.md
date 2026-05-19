@@ -17,7 +17,8 @@ Do not add new major analytics without an accepted spec and roadmap row. Current
 
 ```text
 Post-portfolio-first stabilization (RM-900 -> RM-911) closed as of 2026-05-19
-Next deferred backlog: operational portfolio-first review (RM-920 -> RM-922)
+Portfolio X-Ray diagnostics deepening (RM-930 -> RM-939): **closed** as of 2026-05-20 (Session 09).
+Deferred follow-up: factory resumability / progress logging (RM-921).
 ```
 
 New diagnostic layers must remain non-binding unless a canonical spec explicitly changes Selection or
@@ -37,6 +38,12 @@ Completed plan: [Post-Portfolio-First Stabilization Plan](exec_plans/2026-05-19_
 (Sessions 00-11, closed 2026-05-19). Stabilized the portfolio-first path: subject metadata, candidate
 freshness, decision reliability, methodology alignment, regime metrics, monitoring honesty, and
 portfolio-first PDF scope. Choose the next roadmap item or create a new ExecPlan for large work.
+
+Active plan: [Portfolio X-Ray Diagnostics Deepening Plan](exec_plans/2026-05-19_portfolio_xray_diagnostics_deepening_plan.md)
+(Sessions 00-09, active from 2026-05-19). It deepens the current-portfolio diagnostic layer before
+UI or advanced optimization: data cutoff trust, X-Ray evidence completeness, VaR / ES methodology,
+portfolio metrics, hidden risk, weakness map, archetype, report productization, and then operational
+portfolio-first review modes.
 
 ## Status Values
 
@@ -246,13 +253,38 @@ builders; partial menus are visible in factory, comparison, and decision outputs
 
 | ID | Status | When | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| RM-920 | Deferred | After Phase 9; before RM-500 UI | Split portfolio-first review into **core-run** and **full-run** CLI modes/profiles (e.g. benchmarks + risk budgets vs full `default_v1` optimizers/robust suite). | RM-911. | [run_portfolio_review.py](../run_portfolio_review.py), [portfolio_review_workflow.py](../src/portfolio_review_workflow.py), [candidate_factory.py](../src/candidate_factory.py), [portfolio_review_workflow_spec.md](specs/portfolio_review_workflow_spec.md), [candidate_factory_spec.md](specs/candidate_factory_spec.md), [operational_runbook.md](operational_runbook.md) | Documented fast vs full commands; factory profiles aligned to product intent | Core path finishes under agreed time budget; full path documented for intentional refresh. |
+| RM-920 | Done | X-Ray Session 09 | Split portfolio-first review into **core-run** and **full-run** CLI modes/profiles (`core_v1` vs `default_v1`). | RM-911. | [run_portfolio_review.py](../run_portfolio_review.py), [portfolio_review_workflow.py](../src/portfolio_review_workflow.py), [candidate_factory.py](../src/candidate_factory.py), [operational_runbook.md](operational_runbook.md) | `--mode core` (default) and `--mode full` | `tests/test_portfolio_review_workflow.py`; operational runbook. |
 | RM-921 | Deferred | After RM-920 or in parallel | Improve factory orchestration operations: progress logging, resumable steps, clearer per-candidate duration in `candidate_factory_run.json`, optional parallel execution only with isolation guarantees. | RM-902 freshness contract. | [candidate_factory.py](../src/candidate_factory.py), [candidate_factory_spec.md](specs/candidate_factory_spec.md) | Operators can resume or monitor long runs without guessing state | Manual long-run smoke; focused factory tests for resume/status fields. |
-| RM-922 | Deferred | After RM-920 recommended | Add explicit **partial candidate menu** disclosure in comparison and decision-package outputs when scored candidates are a subset of the product menu (counts, unavailable reasons, refresh command). | RM-902, RM-904. | [candidate_comparison.py](../src/candidate_comparison.py), [decision_package_reporting.py](../src/decision_package_reporting.py), related specs | Advisors see when selection used a reduced menu | Focused comparison/reporting tests; generated summary wording review. |
+| RM-922 | Done | X-Ray Session 09 | Add explicit **partial candidate menu** disclosure in comparison and decision-package outputs. | RM-920. | [candidate_comparison.py](../src/candidate_comparison.py), [decision_package_reporting.py](../src/decision_package_reporting.py), [candidate_comparison_spec.md](specs/candidate_comparison_spec.md) | `candidate_menu` block + decision summary | `tests/test_candidate_comparison.py`. |
 
 **Direction (not yet implemented):** cache/reuse candidates only when `analysis_end`, config fingerprint,
 universe, weights, and material assumptions match; do not default to rebuilding every expensive
 optimizer on every `run_portfolio_review.py` invocation.
+
+## Phase 11: Portfolio X-Ray Diagnostics Deepening
+
+Goal: make the current-portfolio diagnostic layer trustworthy and decision-useful before UI,
+advanced optimization, or heavier product surfaces. This phase follows the 2026-05-19 Portfolio
+X-Ray Layer Audit and is governed by the active
+[Portfolio X-Ray Diagnostics Deepening Plan](exec_plans/2026-05-19_portfolio_xray_diagnostics_deepening_plan.md).
+
+Exit condition: `analysis_subject` diagnostics use analysis-effective data, expose complete risk
+budget and factor evidence, align tail-risk methodology with the metrics spec, include richer
+portfolio metrics, and present hidden risk, weakness, and archetype evidence with confidence and
+caveats. Report surfaces should be readable without inspecting raw JSON.
+
+| ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| RM-930 | Done | X-Ray Session 00 | Create Portfolio X-Ray audit memory, active ExecPlan, dedicated diagnostics spec scaffold, roadmap rows, known issues, and registers. | User-approved X-Ray roadmap. | [Portfolio X-Ray audit](audits/2026-05-19_portfolio_xray_layer_audit.md), [X-Ray ExecPlan](exec_plans/2026-05-19_portfolio_xray_diagnostics_deepening_plan.md), [X-Ray spec](specs/portfolio_xray_diagnostics_spec.md), [known issues](../KNOWN_ISSUES.md), this roadmap | Active plan and source-of-truth scaffold for Sessions 01-09 | `python scripts/verify_docs.py`. |
+| RM-931 | Done | X-Ray Session 01 | Fix P0 data cutoff and `analysis_end` integrity across diagnostic consumers. | RM-930. | [windows.py](../src/windows.py), [run_report.py](../run_report.py), [io_export.py](../src/io_export.py), [stress_scenario_analytics.py](../src/stress_scenario_analytics.py), [scenario_library.py](../src/scenario_library.py), [data policy spec](specs/data_policy_spec.md), [DATA](../DATA.md) | Diagnostics use rows `<= analysis_end`; raw cache vs analysis-effective panels documented | `tests/test_analysis_end_cutoff.py`; fresh subject run should show no diagnostic `data_end` after `analysis_end`. |
+| RM-932 | Planned | X-Ray Session 02 | Fix P0 X-Ray evidence completeness: full risk contribution data and Kalman factor beta mapping. | RM-931 recommended. | [portfolio_xray.py](../src/portfolio_xray.py), [snapshot.py](../src/snapshot.py), [portfolio_commentary.py](../src/portfolio_commentary.py), [X-Ray spec](specs/portfolio_xray_diagnostics_spec.md), [OUTPUTS](../OUTPUTS.md) | Risk budget includes all positive-weight holdings with RC evidence; Kalman betas surface when available | `tests/test_portfolio_xray.py`; regenerated `portfolio_xray.json` review. |
+| RM-933 | Done | X-Ray Session 03 | Align VaR / ES methodology with canonical metrics spec or explicitly revise the spec. | RM-932. | [portfolio_analytics.py](../src/portfolio_analytics.py), [data_loader.py](../src/data_loader.py), [run_report.py](../run_report.py), [metrics spec](specs/metrics_specification.md) | Tail metrics disclose method, frequency, and window; docs and generated output agree | `tests/test_tail_risk.py`, `tests/test_portfolio_xray.py`. |
+| RM-934 | Done | X-Ray Session 04 | Add missing portfolio metrics and quality metadata. | RM-933. | `src/metrics_*`, [portfolio_analytics.py](../src/portfolio_analytics.py), [run_report.py](../run_report.py), [X-Ray spec](specs/portfolio_xray_diagnostics_spec.md) | X-Ray risk diagnostics include skew/kurtosis, downside/upside beta, rolling beta/correlation, and quality metadata | `tests/test_portfolio_metrics_deepening.py`. |
+| RM-935 | Done | X-Ray Session 05 | Build Hidden Risk Detector V2 with explicit flags, non-flags, evidence counts, and confidence. | RM-934. | [portfolio_xray.py](../src/portfolio_xray.py), [X-Ray spec](specs/portfolio_xray_diagnostics_spec.md) | Per-category flagged/below-threshold/unavailable assessments; section confidence and counts | `python -m pytest tests/test_portfolio_xray.py -q` (hidden-risk tests). |
+| RM-936 | Done | X-Ray Session 06 | Build Weakness Map V2 with exposure, adverse evidence, severity, confidence, and drivers. | RM-935. | [portfolio_xray.py](../src/portfolio_xray.py), [portfolio_xray diagnostics spec](specs/portfolio_xray_diagnostics_spec.md), tests | Weakness rows separate exposure vs adverse evidence; top asset/factor drivers; conditional crypto_shock | `tests/test_portfolio_xray.py` weakness V2 tests; `python scripts/verify_docs.py`. |
+| RM-937 | Done | X-Ray Session 07 | Rework Portfolio Archetype as an evidence scorecard with conflicts and caveats. | RM-936. | [portfolio_xray.py](../src/portfolio_xray.py), [X-Ray spec](specs/portfolio_xray_diagnostics_spec.md), [PRODUCT](../PRODUCT.md) | Archetype output includes positive evidence, negative evidence, confidence, and conflicting signals | `python -m pytest tests/test_portfolio_xray.py -q` (archetype V2 tests). |
+| RM-938 | Done | X-Ray Session 08 | Productize X-Ray report/HTML/PDF presentation. | RM-931 through RM-937 stable. | [snapshot.py](../src/snapshot.py), [portfolio_xray.py](../src/portfolio_xray.py), [portfolio_commentary.py](../src/portfolio_commentary.py), [generated_output_qa.py](../src/generated_output_qa.py), [DESIGN](../DESIGN.md), [OUTPUTS](../OUTPUTS.md) | Reports show structured X-Ray sections instead of raw JSON-style dumps | `format_portfolio_xray_html` / `format_portfolio_xray_commentary`; QA scans; `tests/test_portfolio_xray.py`. |
+| RM-939 | Done | X-Ray Session 09 | Implement operational portfolio-first review modes after X-Ray trust fixes. | RM-938. | [run_portfolio_review.py](../run_portfolio_review.py), [portfolio_review_workflow.py](../src/portfolio_review_workflow.py), [candidate_factory.py](../src/candidate_factory.py), [candidate_comparison.py](../src/candidate_comparison.py), [decision_package_reporting.py](../src/decision_package_reporting.py), [operational runbook](operational_runbook.md) | Core/full modes + partial menu disclosure | Focused workflow, factory, comparison, reporting tests. |
 
 ## Audit Mapping
 
@@ -280,16 +312,18 @@ optimizer on every `run_portfolio_review.py` invocation.
 | PPF-005 | Fixed by RM-905: legacy policy artifacts are optional/compatibility-only in portfolio-first outputs. |
 | PPF-006 | Fixed by RM-904: mandate/no-favored downstream artifacts include blocked-decision narrative. |
 | PPF-007 | Done (RM-908): monitoring first run no longer shows contradictory deltas on `no_prior_snapshot`. |
-| PPF-008 | Deferred as RM-920–RM-922: full candidate regeneration can exceed practical one-shot runtime; need core-run vs full-run operational model and partial-menu disclosure. |
+| PXL-001 through PXL-010 | Registered under RM-930 through RM-939 in the active Portfolio X-Ray Diagnostics Deepening Plan. P0 trust issues are tracked in [KNOWN_ISSUES](../KNOWN_ISSUES.md) as `KI-2026-05-19-006` through `KI-2026-05-19-010`. |
+| PPF-008 | Mitigated (RM-920, RM-922, RM-939): core default path + partial-menu disclosure; full refresh remains explicit via `--mode full`. |
 
 ## Session Boundary Rule
 
 Post-audit Sessions 02–20 are **closed** (see completed [post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md)).
 Phase 7 (`RM-700` through `RM-710`) is **closed** as of 2026-05-18. Phase 8 (`RM-800` through
 `RM-808`) is **closed** as of 2026-05-18. Phase 9 (`RM-900` through `RM-911`) is **closed** as of
-2026-05-19. Keep each future project-level session in a separate chat unless the user
-explicitly changes that rule. Do not reopen closed MVP or post-audit sessions unless the user
-explicitly requests plan amendments.
+2026-05-19. Phase 11 (`RM-930` through `RM-939`) is **active** as of 2026-05-19. Keep each future
+project-level session in a separate chat unless the user explicitly changes that rule. Do not reopen
+closed MVP, post-audit, portfolio-first, or Phase 9 sessions unless the user explicitly requests plan
+amendments.
 
 ## Implemented Decision Artifacts
 

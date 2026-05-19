@@ -54,6 +54,17 @@ DEFAULT_V1_CANDIDATE_ORDER: list[str] = (
     + FACTORY_PROFILES["robust_suite"]
 )
 
+# Lightweight portfolio-first review menu (benchmarks + risk budgets only).
+CORE_V1_CANDIDATE_ORDER: list[str] = (
+    FACTORY_PROFILES["core_benchmarks"] + FACTORY_PROFILES["risk_budgets"]
+)
+
+PRODUCT_MENU_PROFILE_ID = "default_v1"
+REVIEW_MODE_PROFILES: dict[str, str] = {
+    "core": "core_v1",
+    "full": "default_v1",
+}
+
 CANDIDATE_ENTRY_SCRIPTS: dict[str, list[str]] = {
     "equal_weight": ["run_equal_weight.py"],
     "equal_weight_by_asset_class": ["run_equal_weight_by_asset_class.py"],
@@ -98,6 +109,8 @@ def resolve_profile_candidate_ids(
         return list(explicit_candidates)
     if profile_id == "default_v1":
         return list(DEFAULT_V1_CANDIDATE_ORDER)
+    if profile_id == "core_v1":
+        return list(CORE_V1_CANDIDATE_ORDER)
     if profile_id == "explicit_list":
         return []
     profile = FACTORY_PROFILES.get(profile_id)

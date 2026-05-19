@@ -23,6 +23,8 @@ CURRENT_SIDECAR_SUBDIR = "current_portfolio"
 ANALYSIS_SUBJECT_SIDECAR_SUBDIR = "analysis_subject"
 PORTFOLIO_FIRST_POLICY_LEGACY_REASON = "legacy_policy_not_default_portfolio_first_candidate"
 PORTFOLIO_FIRST_POLICY_LEGACY_WARNING = "legacy_policy_reference_optional_portfolio_first"
+MENU_BASELINE_IDS = frozenset({"analysis_subject", "policy", "current"})
+PRODUCT_MENU_PROFILE_ID = "default_v1"
 
 _REGISTRY_ROWS: list[dict[str, str]] = [
     {
@@ -822,6 +824,141 @@ def _build_candidate_row(
     return _round_export_value(candidate)
 
 
+def _factory_menu_candidate_ids(profile_id: str) -> list[str]:
+    from src.candidate_factory import resolve_profile_candidate_ids
+
+    return resolve_profile_candidate_ids(profile_id=profile_id, explicit_candidates=None)
+
+
+def _load_factory_run(main_dir: Path) -> dict[str, Any] | None:
+    return _load_json(main_dir / "candidate_factory_run.json")
+
+
+def build_candidate_menu(
+    candidates: list[dict[str, Any]],
+    *,
+    factory_run: dict[str, Any] | None = None,
+    review_mode: str | None = None,
+) -> dict[str, Any]:
+    """
+    Summarize intended vs product candidate menus for comparison and decision outputs.
+
+    See docs/specs/candidate_comparison_spec.md (candidate_menu block).
+    """
+    by_id = {c["candidate_id"]: c for c in candidates if c.get("candidate_id")}
+    run_profile = (factory_run or {}).get("factory_profile_id") or review_mode
+    if run_profile in ("core", "full"):
+        from src.candidate_factory import REVIEW_MODE_PROFILES
+
+        run_profile = REVIEW_MODE_PROFILES.get(str(run_profile), str(run_profile))
+    if run_profile in (None, "", "explicit_list"):
+        run_profile = PRODUCT_MENU_PROFILE_ID
+
+    intended_ids = _factory_menu_candidate_ids(str(run_profile))
+    product_ids = _factory_menu_candidate_ids(PRODUCT_MENU_PROFILE_ID)
+
+    def _status_counts(ids: list[str]) -> dict[str, int]:
+        counts: dict[str, int] = {
+            "available": 0,
+            "degraded": 0,
+            "unavailable": 0,
+            "missing_from_registry": 0,
+        }
+        for cid in ids:
+            row = by_id.get(cid)
+            if not row:
+                counts["missing_from_registry"] += 1
+                continue
+            status = str(row.get("status") or "unavailable")
+            if status in counts:
+                counts[status] += 1
+            else:
+                counts["unavailable"] += 1
+        return counts
+
+    intended_counts = _status_counts(intended_ids)
+    product_counts = _status_counts(product_ids)
+    intended_scored = intended_counts["available"] + intended_counts["degraded"]
+    product_scored = product_counts["available"] + product_counts["degraded"]
+
+    unavailable_summary: dict[str, int] = {}
+    for cid in intended_ids:
+        row = by_id.get(cid) or {}
+        if row.get("status") != "unavailable":
+            continue
+        reason = str(row.get("unavailable_reason") or "unknown")
+        unavailable_summary[reason] = unavailable_summary.get(reason, 0) + 1
+
+    is_reduced_vs_product = str(run_profile) != PRODUCT_MENU_PROFILE_ID
+    is_incomplete_intended_menu = intended_scored < len(intended_ids)
+    is_partial_menu = is_reduced_vs_product or is_incomplete_intended_menu
+
+    if is_reduced_vs_product and is_incomplete_intended_menu:
+        partial_reason = "reduced_menu_scope_and_unavailable_intended_candidates"
+    elif is_reduced_vs_product:
+        partial_reason = "reduced_menu_scope_vs_product_default_v1"
+    elif is_incomplete_intended_menu:
+        partial_reason = "unavailable_intended_candidates"
+    else:
+        partial_reason = None
+
+    resolved_review_mode = review_mode
+    if not resolved_review_mode:
+        from src.candidate_factory import REVIEW_MODE_PROFILES
+
+        for mode, profile in REVIEW_MODE_PROFILES.items():
+            if profile == run_profile:
+                resolved_review_mode = mode
+                break
+
+    refresh_core = "python run_portfolio_review.py --mode core"
+    refresh_full = "python run_portfolio_review.py --mode full --no-skip-existing"
+    menu: dict[str, Any] = {
+        "product_menu_profile_id": PRODUCT_MENU_PROFILE_ID,
+        "product_menu_size": len(product_ids),
+        "intended_menu_profile_id": str(run_profile),
+        "intended_menu_size": len(intended_ids),
+        "review_mode": resolved_review_mode,
+        "intended_menu_status_counts": intended_counts,
+        "product_menu_status_counts": product_counts,
+        "intended_menu_scored_count": intended_scored,
+        "product_menu_scored_count": product_scored,
+        "is_reduced_vs_product_menu": is_reduced_vs_product,
+        "is_incomplete_intended_menu": is_incomplete_intended_menu,
+        "is_partial_menu": is_partial_menu,
+        "partial_menu_reason": partial_reason,
+        "unavailable_reasons_summary": unavailable_summary,
+        "refresh_command_core": refresh_core,
+        "refresh_command_full": refresh_full,
+    }
+    if factory_run and factory_run.get("generated_at"):
+        menu["factory_run_generated_at"] = factory_run["generated_at"]
+    return _round_export_value(menu)
+
+
+def build_candidate_menu_warnings(menu: dict[str, Any]) -> list[str]:
+    """Run-level warnings derived from candidate_menu disclosure."""
+    warnings: list[str] = []
+    if not menu.get("is_partial_menu"):
+        return warnings
+    intended = menu.get("intended_menu_profile_id")
+    product = menu.get("product_menu_profile_id")
+    scored = menu.get("intended_menu_scored_count")
+    size = menu.get("intended_menu_size")
+    if menu.get("is_reduced_vs_product_menu"):
+        warnings.append(
+            f"Candidate comparison used reduced menu '{intended}' "
+            f"(product menu '{product}' has {menu.get('product_menu_size')} script-backed candidates). "
+            f"Selection and health ranks apply only to this menu unless a full refresh is run."
+        )
+    if menu.get("is_incomplete_intended_menu"):
+        warnings.append(
+            f"Intended menu '{intended}' is incomplete: {scored}/{size} candidates scored "
+            f"(available or degraded). See unavailable_reasons_summary in candidate_menu."
+        )
+    return warnings
+
+
 def build_candidate_comparison(
     cfg: PortfolioConfig,
     *,
@@ -862,6 +999,24 @@ def build_candidate_comparison(
         for row in _REGISTRY_ROWS
     ]
 
+    factory_run = _load_factory_run(main_dir)
+    review_mode: str | None = None
+    if factory_run:
+        profile = str(factory_run.get("factory_profile_id") or "")
+        from src.candidate_factory import REVIEW_MODE_PROFILES
+
+        for mode, mapped in REVIEW_MODE_PROFILES.items():
+            if mapped == profile:
+                review_mode = mode
+                break
+
+    candidate_menu = build_candidate_menu(
+        candidates,
+        factory_run=factory_run,
+        review_mode=review_mode,
+    )
+    menu_warnings = build_candidate_menu_warnings(candidate_menu)
+
     out_rel = str(getattr(cfg, "output_dir_final", "Main portfolio")).replace("\\", "/")
     setup_summary = _analysis_setup_summary_from_main(main_dir, cfg)
     sidecar = current_sidecar_dir(output_dir_final)
@@ -881,8 +1036,9 @@ def build_candidate_comparison(
         "windows": list(WINDOWS),
         "primary_window": PRIMARY_WINDOW,
         "candidates": candidates,
+        "candidate_menu": candidate_menu,
         "legacy_artifacts": legacy,
-        "warnings": run_warnings,
+        "warnings": run_warnings + menu_warnings,
     }
     return _round_export_value(doc)
 
@@ -918,13 +1074,34 @@ def write_candidate_comparison_txt(
     path: Path,
 ) -> None:
     """Optional human-readable summary table (English)."""
+    menu = comparison.get("candidate_menu") or {}
     lines = [
         "Candidate comparison (diagnostic only)",
         "=" * 72,
         "",
-        "Columns: CAGR | Vol | MaxDD | Sharpe | Stress | Client-fit",
-        "",
     ]
+    if menu:
+        intended = menu.get("intended_menu_profile_id", "—")
+        product = menu.get("product_menu_profile_id", "—")
+        scored = menu.get("intended_menu_scored_count")
+        size = menu.get("intended_menu_size")
+        lines.append(
+            f"Menu: intended={intended} ({scored}/{size} scored); product reference={product} "
+            f"({menu.get('product_menu_scored_count')}/{menu.get('product_menu_size')} scored)."
+        )
+        if menu.get("is_partial_menu"):
+            lines.append(
+                f"Partial menu: {menu.get('partial_menu_reason')}. "
+                f"Full refresh: {menu.get('refresh_command_full')}."
+            )
+        lines.append("")
+
+    lines.extend(
+        [
+            "Columns: CAGR | Vol | MaxDD | Sharpe | Stress | Client-fit",
+            "",
+        ]
+    )
 
     def _fmt(v: Any, pct: bool = False) -> str:
         if v is None:

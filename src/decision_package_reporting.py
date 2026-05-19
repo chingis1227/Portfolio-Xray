@@ -96,6 +96,35 @@ def _selection_explanation_notes(selection: dict[str, Any]) -> list[str]:
     return notes
 
 
+def _candidate_menu_summary_lines(menu: dict[str, Any] | None) -> list[str]:
+    if not menu:
+        return []
+    lines: list[str] = []
+    intended = menu.get("intended_menu_profile_id", "—")
+    product = menu.get("product_menu_profile_id", "—")
+    scored = menu.get("intended_menu_scored_count")
+    size = menu.get("intended_menu_size")
+    lines.append(
+        f"  Intended menu: {intended} ({scored}/{size} candidates scored)."
+    )
+    lines.append(
+        f"  Product reference menu: {product} "
+        f"({menu.get('product_menu_scored_count')}/{menu.get('product_menu_size')} scored)."
+    )
+    if menu.get("is_partial_menu"):
+        lines.append(
+            f"  Partial menu: {menu.get('partial_menu_reason')}. "
+            "Rankings and selection apply only to scored candidates in the intended menu."
+        )
+        reasons = menu.get("unavailable_reasons_summary") or {}
+        if reasons:
+            parts = [f"{k}={v}" for k, v in sorted(reasons.items())]
+            lines.append(f"  Unavailable reasons: {', '.join(parts)}.")
+        lines.append(f"  Routine refresh: {menu.get('refresh_command_core')}.")
+        lines.append(f"  Full menu refresh: {menu.get('refresh_command_full')}.")
+    return lines
+
+
 def _selection_warning_line(raw: Any) -> str:
     text = str(raw)
     labels = {
@@ -201,6 +230,11 @@ def build_decision_package_summary_lines(
     if not comparison:
         lines.append("Not available (candidate_comparison.json missing).")
     else:
+        menu_lines = _candidate_menu_summary_lines(comparison.get("candidate_menu"))
+        if menu_lines:
+            lines.append("Candidate menu")
+            lines.extend(menu_lines)
+            lines.append("")
         by_id = _candidates_by_id(comparison)
         baseline_id = _preferred_baseline_id(comparison, selection)
         baseline = by_id.get(baseline_id or "")
@@ -539,6 +573,7 @@ def build_decision_package_report(
             "monitoring": _section_status(monitoring_diff is not None),
             "journal": _section_status(decision_journal is not None),
         },
+        "candidate_menu": (comparison or {}).get("candidate_menu"),
         "input_artifacts": {
             "candidate_comparison": "candidate_comparison.json" if comparison else None,
             "robustness_scorecard": "robustness_scorecard.json" if robustness else None,

@@ -276,21 +276,21 @@ python scripts/verify_docs.py
 and a stale wording search for policy-first defaults when source-of-truth maps or user-facing command
 sections are edited.
 
-## Operational Model (Deferred — RM-920–RM-922)
+## Operational Model (Session 09 — RM-939)
 
-The portfolio-first **workflow order** in this spec is implemented and trustworthy after Phase 9.
-The **default one-command runtime** for a full candidate refresh is not yet productized.
+The portfolio-first **workflow order** is implemented. The default CLI uses **core-run** scope.
 
-| Topic | Current behavior | Deferred target |
-| --- | --- | --- |
-| End-to-end command | `run_portfolio_review.py` chains subject → factory (`default_v1` unless overridden) → compare → portfolio-first PDFs | **core-run** vs **full-run** entrypoints with documented time budgets |
-| Stale snapshots | Comparison marks non-matching `analysis_end` as `unavailable` | Same, plus explicit partial-menu summary in decision package |
-| Long factory | Operators may run factory/compare/PDF separately; full rebuild can take hours | Resumable factory, progress logs, optional parallelism |
-| UI readiness | File-first MVP acceptable when status fields are read | Do not build UI on a single heavy command until RM-920+ lands |
+| Topic | Behavior |
+| --- | --- |
+| End-to-end command | `run_portfolio_review.py` chains subject → factory → compare → portfolio-first PDFs |
+| **Core-run** (default) | `--mode core` → factory profile `core_v1` (benchmarks + risk budgets) |
+| **Full-run** | `--mode full` → factory profile `default_v1` (all script-backed candidates) |
+| Stale snapshots | Comparison marks non-matching `analysis_end` as `unavailable` |
+| Partial menu | `candidate_comparison.json` includes `candidate_menu`; decision-package summary repeats scope and refresh commands |
+| Long factory | Full rebuild can still take hours; use `--mode full --no-skip-existing` intentionally |
 
-See [operational_runbook.md](../operational_runbook.md), [candidate_factory_spec.md](candidate_factory_spec.md),
-[ROADMAP.md](../ROADMAP.md) Phase 10, and the post-closure section in
-[post-portfolio-first stabilization ExecPlan](../exec_plans/2026-05-19_post_portfolio_first_stabilization_plan.md).
+Deferred: resumable factory progress and optional parallelism (`RM-921`). See
+[operational_runbook.md](../operational_runbook.md) and [candidate_factory_spec.md](candidate_factory_spec.md).
 
 ## Detailed Ownership
 
