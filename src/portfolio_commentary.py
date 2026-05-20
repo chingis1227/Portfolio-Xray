@@ -16,6 +16,7 @@ import pandas as pd
 
 from src.portfolio_xray import (
     build_portfolio_xray_v2,
+    load_portfolio_windows_from_dir,
     format_portfolio_xray_commentary,
     load_rc_vol_map_from_csv,
 )
@@ -1646,6 +1647,7 @@ def write_portfolio_commentary(
                 drawdown_structure_10y = snap_10y.get("drawdown_structure")
         except Exception:
             portfolio_analytics_10y = None
+    portfolio_windows = load_portfolio_windows_from_dir(output_dir_final)
     xray_summary = build_portfolio_xray_v2(
         analysis_setup=analysis_setup,
         weights=None,
@@ -1653,9 +1655,10 @@ def write_portfolio_commentary(
         stress_report=st,
         portfolio_valid=portfolio_valid,
         portfolio_metrics=pm,
+        portfolio_windows=portfolio_windows or None,
         portfolio_analytics=portfolio_analytics_10y if isinstance(portfolio_analytics_10y, dict) else None,
         drawdown_structure=drawdown_structure_10y if isinstance(drawdown_structure_10y, dict) else None,
-        rc_vol_map=load_rc_vol_map_from_csv(output_dir_csv),
+        rc_vol_map=load_rc_vol_map_from_csv(output_dir_csv)[0],
         output_dir_csv=output_dir_csv,
     )
 

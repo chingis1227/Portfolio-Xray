@@ -19,7 +19,14 @@ artifact contracts.
 
 ## Current Pointer
 
-Active: none (use [ROADMAP](../ROADMAP.md) for backlog). Last closed wave: Stress Lab Sessions 00-10.
+No project-level ExecPlan is **Active** as of 2026-05-20. Resume from [ROADMAP](../ROADMAP.md)
+for deferred backlog (e.g. factory resumability `RM-921`, UI `RM-500+`).
+
+Completed (2026-05-20): [Portfolio X-Ray Post-Audit Roadmap](2026-05-20_portfolio_xray_post_audit_roadmap.md)
+(Sessions 00-10; baseline in
+[Portfolio X-Ray Baseline Snapshot](../audits/2026-05-20_portfolio_xray_baseline_snapshot.md);
+methodology map in
+[Portfolio X-Ray Methodology Map](../audits/2026-05-20_portfolio_xray_methodology_map.md)).
 
 Completed (2026-05-20): [Stress Lab Post-Audit Roadmap](2026-05-20_stress_lab_post_audit_roadmap.md)
 (Sessions 00-10; baseline in [Stress Lab Baseline Snapshot](../audits/2026-05-20_stress_lab_baseline_snapshot.md)).
@@ -37,12 +44,13 @@ Completed: [Post-Audit MVP Stabilization Plan](2026-05-17_post_audit_mvp_stabili
 Also completed: [Post-Audit Stabilization And Analytics Plan](2026-05-17_post_audit_stabilization_and_analytics_plan.md) (Sessions 02-20, `RM-623`).
 
 Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. factory resumability
-`RM-921`, UI `RM-500+`). The currently resumed stress wave is tracked in the active plan above.
+`RM-921`, UI `RM-500+`).
 
 ## Major Plan History
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-05-20 | [Portfolio X-Ray Post-Audit Roadmap](2026-05-20_portfolio_xray_post_audit_roadmap.md) | Completed | [Portfolio X-Ray Baseline Snapshot](../audits/2026-05-20_portfolio_xray_baseline_snapshot.md) | Sessions 00-10 closed 2026-05-20: threshold registry, provenance, factor inference, multi-window/TTR, layer spec, concentration, vol-spike Option B, golden contract tests, baseline snapshot; Phase 12 (`RM-940`-`RM-950`) Done. |
 | 2026-05-20 | [Stress Lab Post-Audit Roadmap](2026-05-20_stress_lab_post_audit_roadmap.md) | Completed | [Stress Lab Baseline Snapshot](../audits/2026-05-20_stress_lab_baseline_snapshot.md) | Sessions 00-10 closed 2026-05-20: scorecard, replay, hedge gap, scenario coverage, synthetic transparency, portfolio-first integration, commentary/IPS, simulator API; Session 10 regression bundle + docs sync. |
 | 2026-05-19 | [Portfolio X-Ray Diagnostics Deepening Plan](2026-05-19_portfolio_xray_diagnostics_deepening_plan.md) | Completed | [Portfolio X-Ray Layer Audit](../audits/2026-05-19_portfolio_xray_layer_audit.md) | Sessions 00-09 closed (`RM-930`-`RM-939`); X-Ray trust fixes and operational core/full review modes shipped 2026-05-20. |
 | 2026-05-19 | [Post-Portfolio-First Stabilization Plan](2026-05-19_post_portfolio_first_stabilization_plan.md) | Completed | [Post-Portfolio-First State Audit](../audits/2026-05-19_post_portfolio_first_state_audit.md) | Sessions 00-11 closed Phase 9 (`RM-900`-`RM-911`); representative review and pytest/docs verify passed 2026-05-19. |

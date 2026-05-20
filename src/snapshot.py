@@ -23,6 +23,7 @@ from src.portfolio_xray import (
     build_portfolio_xray_v2,
     format_portfolio_xray_html,
     format_portfolio_xray_text,
+    load_portfolio_windows_from_dir,
 )
 from src.risk_contrib import rc_vol_window
 from src.windows import slice_window
@@ -546,6 +547,7 @@ def _xray_summary_from_output_dir(out: Path) -> dict[str, Any] | None:
     if not isinstance(analysis_setup, dict) and not snapshot:
         return None
     csv_dir = out / "results_csv"
+    portfolio_windows = load_portfolio_windows_from_dir(out)
     xray = build_portfolio_xray_v2(
         analysis_setup=analysis_setup if isinstance(analysis_setup, dict) else None,
         weights=snapshot.get("final_weights_total") if isinstance(snapshot, dict) else None,
@@ -553,6 +555,7 @@ def _xray_summary_from_output_dir(out: Path) -> dict[str, Any] | None:
         stress_report=stress_report,
         portfolio_valid=metadata.get("portfolio_valid") if isinstance(metadata, dict) else None,
         portfolio_metrics=snapshot.get("metrics") if isinstance(snapshot, dict) else None,
+        portfolio_windows=portfolio_windows or None,
         portfolio_analytics=snapshot.get("analytics") if isinstance(snapshot, dict) else None,
         drawdown_structure=snapshot.get("drawdown_structure") if isinstance(snapshot, dict) else None,
         output_dir_csv=csv_dir if csv_dir.is_dir() else None,

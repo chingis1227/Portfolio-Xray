@@ -272,6 +272,69 @@ def _rich_stress_report() -> dict:
     }
 
 
+def test_portfolio_xray_section_provenance_metadata() -> None:
+    """Session 03 (RM-943): sections 2.2–2.3, 2.6–2.7 expose frequency/window/n_obs/benchmark."""
+    metrics = {
+        "cagr": 0.08,
+        "vol_annual": 0.10,
+        "max_drawdown": -0.18,
+        "metric_quality": {
+            "n_obs": 118,
+            "frequency": "monthly",
+            "benchmark_ticker": "SPY",
+            "risk_free_source": "FRED:DTB3",
+            "window_months": 120,
+            "analysis_end": "2026-04-30",
+        },
+    }
+    stress = {
+        **_rich_stress_report(),
+        "factor_regression_10y": {"n_obs": 480, "r2": 0.55, "adj_r2": 0.52, "betas": {}},
+        "factor_regression_5y": {"n_obs": 250, "r2": 0.50, "adj_r2": 0.47, "betas": {}},
+    }
+    xray = build_portfolio_xray_v2(
+        analysis_setup=_analysis_setup(),
+        weights={"SPY": 0.45, "TLT": 0.30, "HYG": 0.15, "GLD": 0.10},
+        rc_asset=[{"ticker": "SPY", "rc_pct": 0.40}],
+        stress_report=stress,
+        portfolio_valid=True,
+        portfolio_metrics=metrics,
+        portfolio_analytics={
+            "tail_risk": {
+                "method": "historical",
+                "frequency": "daily",
+                "window_label": "10y",
+                "metric_available": True,
+                "var_95": -0.02,
+                "es_95": -0.03,
+            },
+        },
+    )
+    risk_diag = xray["sections"]["risk_diagnostics"]
+    assert risk_diag["frequency"] == "mixed"
+    assert "10Y" in risk_diag["window"]
+    assert risk_diag["n_obs"] == 118
+    assert risk_diag["benchmark"] == "SPY"
+    assert "monthly" in risk_diag["method"]
+
+    factor = xray["sections"]["factor_exposure"]
+    assert factor["frequency"] == "weekly"
+    assert "260" in factor["window"]
+    assert factor["n_obs"] == 480
+    assert factor["benchmark"] == "n/a"
+
+    risk_budget = xray["sections"]["risk_budget_view"]
+    assert risk_budget["frequency"] == "monthly"
+    assert risk_budget["window"] == "10Y display subset (snapshot.RC_asset top-N)"
+    assert risk_budget["benchmark"] == "n/a"
+
+    weakness = xray["sections"]["weakness_map"]
+    assert weakness["frequency"] == "mixed"
+    assert "stress scenarios" in weakness["window"]
+    assert weakness["n_obs"] == 118
+    assert weakness["benchmark"] == "SPY"
+
+
 def test_portfolio_xray_v2_tail_risk_disclosure_in_risk_diagnostics() -> None:
     xray = build_portfolio_xray_v2(
         analysis_setup=_analysis_setup(),
@@ -365,6 +428,50 @@ def test_portfolio_xray_v2_taxonomy_breakdown_and_missing_taxonomy_partial() -> 
     assert values["equity"] == 0.50
     assert values["fixed_income"] == 0.25
     assert values["unknown"] == 0.25
+
+
+def test_portfolio_xray_weight_concentration_in_asset_allocation() -> None:
+    weights = {"VOO": 0.35, "BND": 0.30, "TLT": 0.20, "GLD": 0.15}
+    xray = build_portfolio_xray_v2(
+        analysis_setup=_analysis_setup(),
+        weights=weights,
+        rc_asset=[],
+        stress_report={},
+        portfolio_valid=True,
+        taxonomy_rows=_taxonomy_rows(),
+    )
+    section = xray["sections"]["asset_allocation"]
+    conc = next(item for item in section["items"] if item.get("type") == "weight_concentration")
+    assert conc["basis"] == "capital_weights"
+    assert conc["top1_weight_asset"] == "VOO"
+    assert conc["top1_weight_pct"] == 0.35
+    assert conc["top3_weight_assets"] == ["VOO", "BND", "TLT"]
+    assert conc["top3_weight_sum_pct"] == 0.85
+    assert conc["n_holdings"] == 4
+    expected_hhi = round(0.35**2 + 0.30**2 + 0.20**2 + 0.15**2, 3)
+    assert conc["weight_hhi"] == expected_hhi
+
+    legacy_alloc = xray["legacy_summary"]["asset_allocation_summary"]
+    assert legacy_alloc["weight_hhi"] == expected_hhi
+    assert legacy_alloc["top3_weight_sum_pct"] == 0.85
+
+    text = format_portfolio_xray_text(xray)
+    assert "HHI" in text
+    assert "0.35" in text or "35.0%" in text
+
+    single = build_portfolio_xray_v2(
+        analysis_setup=_analysis_setup(),
+        weights={"VOO": 1.0},
+        rc_asset=[],
+        stress_report={},
+        portfolio_valid=True,
+        taxonomy_rows=_taxonomy_rows(),
+    )
+    single_conc = next(
+        item for item in single["sections"]["asset_allocation"]["items"] if item.get("type") == "weight_concentration"
+    )
+    assert single_conc["weight_hhi"] is None
+    assert single_conc["n_holdings"] == 1
 
 
 def test_portfolio_xray_v2_risk_budget_hidden_flags_archetype_and_weakness() -> None:
@@ -578,6 +685,207 @@ def test_portfolio_xray_v2_risk_budget_covers_all_positive_weights_from_csv(
     assert any("rc_vol_10y.csv" in src for src in xray["sections"]["risk_budget_view"]["data_sources_used"])
 
 
+def _sample_factor_regression_block(
+    *,
+    n_obs: int = 250,
+    r2: float = 0.50,
+    betas: dict[str, float] | None = None,
+) -> dict:
+    betas = betas or {"beta_eq": 0.72, "beta_credit": 0.31}
+    beta_keys = list(betas.keys())
+    hac_len = len(beta_keys) + 1
+    return {
+        "window_weeks": 260,
+        "n_obs": n_obs,
+        "r2": r2,
+        "adj_r2": r2 - 0.03,
+        "idiosyncratic_risk": 1.0 - r2,
+        "intercept": 0.001,
+        "se_type": "classic_ols",
+        "ci_level": 0.95,
+        "betas": betas,
+        "t": {k: 2.0 for k in beta_keys},
+        "p": {k: 0.04 for k in beta_keys},
+        "ci_low": {k: v - 0.1 for k, v in betas.items()},
+        "ci_high": {k: v + 0.1 for k, v in betas.items()},
+        "hac_inference": {
+            "se_type": "hac_newey_west",
+            "kernel": "bartlett",
+            "max_lags": 4,
+            "se": [0.01] * hac_len,
+            "t": [0.5] + [3.1, 2.0][: len(beta_keys)],
+            "p": [0.6] + [0.002, 0.05][: len(beta_keys)],
+            "ci_low": [0.0] + [v - 0.08 for v in betas.values()],
+            "ci_high": [0.02] + [v + 0.08 for v in betas.values()],
+        },
+        "factor_multicollinearity": {
+            "severity": "moderate",
+            "max_vif": 4.2,
+            "max_vif_factor": "credit",
+            "cond_correlation_matrix": 25.0,
+            "assessment_en": "Moderate multicollinearity; interpret betas jointly.",
+        },
+        "serial_correlation_diagnostics": {
+            "durbin_watson": 2.05,
+            "breusch_godfrey": [{"lags": 1, "p_value": 0.12}],
+        },
+        "heteroskedasticity_diagnostics": {
+            "breusch_pagan": {"p_value": 0.08},
+        },
+    }
+
+
+def test_portfolio_xray_factor_regression_inference_panel() -> None:
+    """Session 04 (RM-944): factor_regression_5y/10y inference surfaced read-only in factor_exposure."""
+    stress = {
+        **_rich_stress_report(),
+        "factor_regression_5y": _sample_factor_regression_block(n_obs=250, r2=0.50),
+        "factor_regression_10y": _sample_factor_regression_block(
+            n_obs=480, r2=0.55, betas={"beta_eq": 0.55, "beta_cmd": 0.12}
+        ),
+    }
+    xray = build_portfolio_xray_v2(
+        analysis_setup=_analysis_setup(),
+        weights={"SPY": 0.6, "TLT": 0.4},
+        rc_asset=[],
+        stress_report=stress,
+        portfolio_valid=True,
+    )
+    section = xray["sections"]["factor_exposure"]
+    inference = [i for i in section["items"] if i.get("type") == "factor_regression_inference"]
+    assert len(inference) == 2
+    horizons = {p["horizon"] for p in inference}
+    assert horizons == {"5Y", "10Y"}
+    five_y = next(p for p in inference if p["horizon"] == "5Y")
+    assert five_y["n_obs"] == 250
+    assert five_y["inference_standard"] == "hac_newey_west"
+    assert five_y["r2"] == 0.50
+    eq = next(r for r in five_y["by_factor"] if r["beta_key"] == "beta_eq")
+    assert eq["beta"] == 0.72
+    assert eq["hac_p"] == 0.002
+    assert five_y["factor_multicollinearity"]["severity"] == "moderate"
+    assert five_y["serial_correlation_diagnostics"]["durbin_watson"] == 2.05
+    assert five_y["heteroskedasticity_diagnostics"]["breusch_pagan_p"] == 0.08
+    assert "stress_report.factor_regression_5y" in section["data_sources_used"]
+    assert "stress_report.factor_regression_10y" in section["data_sources_used"]
+    text = format_portfolio_xray_text(xray)
+    assert "Factor regression 5Y" in text
+    assert "HAC p" in text
+
+
+def test_portfolio_xray_factor_regression_inference_missing_warning() -> None:
+    stress = _rich_stress_report()
+    xray = build_portfolio_xray_v2(
+        analysis_setup=_analysis_setup(),
+        weights={"SPY": 1.0},
+        rc_asset=[],
+        stress_report=stress,
+        portfolio_valid=True,
+    )
+    section = xray["sections"]["factor_exposure"]
+    assert not any(i.get("type") == "factor_regression_inference" for i in section["items"])
+    assert any("inference panels missing" in w for w in section.get("warnings") or [])
+
+
+def _window_metrics(
+    window_months: int,
+    *,
+    cagr: float,
+    vol: float,
+    sharpe: float,
+    mdd: float,
+    ttr_months: float,
+    recovered: bool = True,
+) -> dict:
+    return {
+        "window_months": window_months,
+        "cagr": cagr,
+        "vol_annual": vol,
+        "sharpe": sharpe,
+        "sortino": sharpe * 1.05,
+        "beta_portfolio": 0.85,
+        "treynor": 0.12,
+        "max_drawdown": mdd,
+        "ttr_months": ttr_months,
+        "recovered": recovered,
+        "metric_quality": {
+            "n_obs": window_months,
+            "frequency": "monthly",
+            "benchmark_ticker": "SPY",
+            "window_months": window_months,
+            "analysis_end": "2026-04-30",
+        },
+    }
+
+
+def test_portfolio_xray_multi_window_metrics_panel() -> None:
+    """Session 05 (RM-945): 3Y/5Y/10Y panel when snapshot metrics are passed."""
+    windows = {
+        "3y": _window_metrics(36, cagr=0.05, vol=0.08, sharpe=0.4, mdd=-0.10, ttr_months=3.0),
+        "5y": _window_metrics(60, cagr=0.06, vol=0.09, sharpe=0.45, mdd=-0.14, ttr_months=5.0),
+        "10y": _window_metrics(120, cagr=0.07, vol=0.10, sharpe=0.5, mdd=-0.18, ttr_months=8.0),
+    }
+    xray = build_portfolio_xray_v2(
+        analysis_setup=_analysis_setup(),
+        weights={"SPY": 1.0},
+        rc_asset=[],
+        stress_report={},
+        portfolio_valid=True,
+        portfolio_metrics=windows["10y"],
+        portfolio_windows=windows,
+    )
+    section = xray["sections"]["risk_diagnostics"]
+    panel = next(i for i in section["items"] if i.get("type") == "multi_window_metrics")
+    assert len(panel["windows"]) == 3
+    labels = [row["window_label"] for row in panel["windows"]]
+    assert labels == ["3Y (36M)", "5Y (60M)", "10Y (120M)"]
+    assert panel["windows"][0]["ttr_months"] == 3.0
+    assert "snapshot_3y.json metrics" in section["data_sources_used"]
+    assert "3Y (36M)" in section["window"]
+    text = format_portfolio_xray_text(xray)
+    assert "3Y (36M)" in text
+    assert "TTR" in text
+
+
+def test_portfolio_xray_ttr_in_primary_risk_metrics() -> None:
+    """Session 05 (RM-945): primary portfolio_metrics item exposes TTR fields."""
+    metrics = _window_metrics(
+        120,
+        cagr=0.07,
+        vol=0.10,
+        sharpe=0.5,
+        mdd=-0.18,
+        ttr_months=0.0,
+        recovered=True,
+    )
+    xray = build_portfolio_xray_v2(
+        analysis_setup=_analysis_setup(),
+        weights={"SPY": 1.0},
+        rc_asset=[],
+        stress_report={},
+        portfolio_valid=True,
+        portfolio_metrics=metrics,
+    )
+    primary = next(
+        i for i in xray["sections"]["risk_diagnostics"]["items"] if i.get("type") == "portfolio_metrics"
+    )
+    assert primary["ttr_months"] == 0.0
+    assert primary["recovered"] is True
+    assert "no drawdown" in format_portfolio_xray_text(xray)
+
+
+def test_load_portfolio_windows_from_dir(tmp_path: Path) -> None:
+    from src.portfolio_xray import load_portfolio_windows_from_dir
+
+    for label, months in [("3y", 36), ("5y", 60), ("10y", 120)]:
+        (tmp_path / f"snapshot_{label}.json").write_text(
+            json.dumps({"metrics": _window_metrics(months, cagr=0.1, vol=0.1, sharpe=0.5, mdd=-0.1, ttr_months=1.0)}),
+            encoding="utf-8",
+        )
+    loaded = load_portfolio_windows_from_dir(tmp_path)
+    assert set(loaded.keys()) == {"3y", "5y", "10y"}
+
+
 def test_portfolio_xray_v2_kalman_reads_factor_betas_kalman_latest() -> None:
     stress = _rich_stress_report()
     stress["factor_betas_kalman"] = {
@@ -606,8 +914,9 @@ def test_load_rc_vol_map_from_csv_fallback_window(tmp_path: Path) -> None:
     csv_dir.mkdir()
     pd.DataFrame({"rc_vol": {"AAA": 0.5, "BBB": 0.5}}).to_csv(csv_dir / "rc_vol_5y.csv")
 
-    loaded = load_rc_vol_map_from_csv(csv_dir)
+    loaded, source = load_rc_vol_map_from_csv(csv_dir)
     assert loaded == {"AAA": 0.5, "BBB": 0.5}
+    assert source == "rc_vol_5y.csv"
 
 
 def test_weakness_map_v2_low_risk_portfolio_not_overstated() -> None:
@@ -729,6 +1038,56 @@ def test_weakness_map_v2_missing_mapped_scenarios_surface_warnings() -> None:
     assert "recession_severe" in recession["scenario_coverage"]["scenarios_missing"]
     assert recession["missing_inputs"]
     assert any("missing stress scenarios" in msg for msg in recession["missing_inputs"])
+
+
+def test_volatility_spike_weakness_factor_only_methodology() -> None:
+    """Session 08 (RM-948): volatility_spike uses Option B (factor-only), not stress scenarios."""
+    xray = build_portfolio_xray_v2(
+        analysis_setup=_analysis_setup(),
+        weights={"SPY": 0.50, "TLT": 0.50},
+        rc_asset=[],
+        stress_report={
+            "scenario_results": [
+                {
+                    "scenario_id": "equity_shock",
+                    "portfolio_pnl_pct": -0.08,
+                    "pnl_by_asset_pct": {"SPY": -0.06, "TLT": -0.02},
+                    "pnl_by_factor_pct": {"eq": -0.07, "vix": 0.01},
+                }
+            ],
+            "factor_betas_5y": {"beta_vix": 0.55, "beta_eq": 0.40},
+        },
+        portfolio_valid=True,
+        portfolio_analytics={
+            "tail_risk": {
+                "method": "historical",
+                "frequency": "daily",
+                "window_label": "10y",
+                "metric_available": True,
+                "es_95": -0.028,
+            },
+        },
+        taxonomy_rows=_taxonomy_rows(),
+    )
+    vol = next(
+        item for item in xray["sections"]["weakness_map"]["items"] if item["risk"] == "volatility_spike"
+    )
+    coverage = vol["scenario_coverage"]
+    assert coverage["evidence_mode"] == "factor_only"
+    assert coverage["scenario_mapping"] == "none_by_design"
+    assert coverage["mapped_scenarios"] == []
+    assert coverage["scenarios_present"] == []
+    assert coverage["scenarios_missing"] == []
+    assert vol["exposure_present"] is True
+    assert vol["adverse_evidence"] is True
+    assert vol["severity"] in {"medium", "high"}
+    assert not any("missing stress scenarios" in msg for msg in vol["missing_inputs"])
+    assert not vol["top_asset_loss_drivers"]
+    beta_evidence = [e for e in vol["evidence"] if e.get("evidence_type") == "factor_beta"]
+    assert any(e.get("beta_key") == "beta_vix" for e in beta_evidence)
+    assert any(e.get("evidence_type") == "historical_tail" for e in vol["evidence"])
+    drivers = vol["top_factor_drivers"]
+    assert any(d.get("beta_key") == "beta_vix" for d in drivers)
 
 
 def test_portfolio_xray_v2_degraded_inputs_are_not_overconfident() -> None:

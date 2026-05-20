@@ -18,6 +18,8 @@ Do not add new major analytics without an accepted spec and roadmap row. Current
 ```text
 Post-portfolio-first stabilization (RM-900 -> RM-911) closed as of 2026-05-19
 Portfolio X-Ray diagnostics deepening (RM-930 -> RM-939): **closed** as of 2026-05-20 (Session 09).
+Portfolio X-Ray post-audit governance (RM-940 -> RM-950): **closed** as of 2026-05-20 (Session 10).
+Baseline: [Portfolio X-Ray Baseline Snapshot](audits/2026-05-20_portfolio_xray_baseline_snapshot.md).
 Deferred follow-up: factory resumability / progress logging (RM-921).
 ```
 
@@ -37,13 +39,19 @@ future canonical spec reactivates it.
 Completed plan: [Post-Portfolio-First Stabilization Plan](exec_plans/2026-05-19_post_portfolio_first_stabilization_plan.md)
 (Sessions 00-11, closed 2026-05-19). Stabilized the portfolio-first path: subject metadata, candidate
 freshness, decision reliability, methodology alignment, regime metrics, monitoring honesty, and
-portfolio-first PDF scope. Choose the next roadmap item or create a new ExecPlan for large work.
+portfolio-first PDF scope.
 
-Active plan: [Portfolio X-Ray Diagnostics Deepening Plan](exec_plans/2026-05-19_portfolio_xray_diagnostics_deepening_plan.md)
-(Sessions 00-09, active from 2026-05-19). It deepens the current-portfolio diagnostic layer before
-UI or advanced optimization: data cutoff trust, X-Ray evidence completeness, VaR / ES methodology,
-portfolio metrics, hidden risk, weakness map, archetype, report productization, and then operational
-portfolio-first review modes.
+Completed plan: [Portfolio X-Ray Diagnostics Deepening Plan](exec_plans/2026-05-19_portfolio_xray_diagnostics_deepening_plan.md)
+(Sessions 00-09, closed 2026-05-20). Deepened the current-portfolio diagnostic layer: data cutoff,
+X-Ray evidence completeness, VaR / ES, portfolio metrics, hidden risk, weakness map, archetype,
+report productization, and operational portfolio-first review modes.
+
+Completed plan: [Portfolio X-Ray Post-Audit Roadmap](exec_plans/2026-05-20_portfolio_xray_post_audit_roadmap.md)
+(Sessions 00-10, closed 2026-05-20). Made Block 2 audit-grade for governance scope: spec-owned thresholds,
+section provenance, factor inference surfacing, multi-window metrics, layer spec, concentration, golden
+contract tests, and baseline snapshot. Methodology map and baseline:
+[2026-05-20_portfolio_xray_methodology_map.md](audits/2026-05-20_portfolio_xray_methodology_map.md),
+[2026-05-20_portfolio_xray_baseline_snapshot.md](audits/2026-05-20_portfolio_xray_baseline_snapshot.md).
 
 ## Status Values
 
@@ -277,7 +285,7 @@ caveats. Report surfaces should be readable without inspecting raw JSON.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | RM-930 | Done | X-Ray Session 00 | Create Portfolio X-Ray audit memory, active ExecPlan, dedicated diagnostics spec scaffold, roadmap rows, known issues, and registers. | User-approved X-Ray roadmap. | [Portfolio X-Ray audit](audits/2026-05-19_portfolio_xray_layer_audit.md), [X-Ray ExecPlan](exec_plans/2026-05-19_portfolio_xray_diagnostics_deepening_plan.md), [X-Ray spec](specs/portfolio_xray_diagnostics_spec.md), [known issues](../KNOWN_ISSUES.md), this roadmap | Active plan and source-of-truth scaffold for Sessions 01-09 | `python scripts/verify_docs.py`. |
 | RM-931 | Done | X-Ray Session 01 | Fix P0 data cutoff and `analysis_end` integrity across diagnostic consumers. | RM-930. | [windows.py](../src/windows.py), [run_report.py](../run_report.py), [io_export.py](../src/io_export.py), [stress_scenario_analytics.py](../src/stress_scenario_analytics.py), [scenario_library.py](../src/scenario_library.py), [data policy spec](specs/data_policy_spec.md), [DATA](../DATA.md) | Diagnostics use rows `<= analysis_end`; raw cache vs analysis-effective panels documented | `tests/test_analysis_end_cutoff.py`; fresh subject run should show no diagnostic `data_end` after `analysis_end`. |
-| RM-932 | Planned | X-Ray Session 02 | Fix P0 X-Ray evidence completeness: full risk contribution data and Kalman factor beta mapping. | RM-931 recommended. | [portfolio_xray.py](../src/portfolio_xray.py), [snapshot.py](../src/snapshot.py), [portfolio_commentary.py](../src/portfolio_commentary.py), [X-Ray spec](specs/portfolio_xray_diagnostics_spec.md), [OUTPUTS](../OUTPUTS.md) | Risk budget includes all positive-weight holdings with RC evidence; Kalman betas surface when available | `tests/test_portfolio_xray.py`; regenerated `portfolio_xray.json` review. |
+| RM-932 | Done | X-Ray Session 02 | Fix P0 X-Ray evidence completeness: full risk contribution data and Kalman factor beta mapping. | RM-931 recommended. | [portfolio_xray.py](../src/portfolio_xray.py), [snapshot.py](../src/snapshot.py), [portfolio_commentary.py](../src/portfolio_commentary.py), [X-Ray spec](specs/portfolio_xray_diagnostics_spec.md), [OUTPUTS](../OUTPUTS.md) | Risk budget includes all positive-weight holdings with RC evidence; Kalman betas surface when available | `tests/test_portfolio_xray.py` (`test_resolve_rc_asset_prefers_full_csv_over_snapshot_top5`, `test_portfolio_xray_v2_kalman_reads_factor_betas_kalman_latest`). |
 | RM-933 | Done | X-Ray Session 03 | Align VaR / ES methodology with canonical metrics spec or explicitly revise the spec. | RM-932. | [portfolio_analytics.py](../src/portfolio_analytics.py), [data_loader.py](../src/data_loader.py), [run_report.py](../run_report.py), [metrics spec](specs/metrics_specification.md) | Tail metrics disclose method, frequency, and window; docs and generated output agree | `tests/test_tail_risk.py`, `tests/test_portfolio_xray.py`. |
 | RM-934 | Done | X-Ray Session 04 | Add missing portfolio metrics and quality metadata. | RM-933. | `src/metrics_*`, [portfolio_analytics.py](../src/portfolio_analytics.py), [run_report.py](../run_report.py), [X-Ray spec](specs/portfolio_xray_diagnostics_spec.md) | X-Ray risk diagnostics include skew/kurtosis, downside/upside beta, rolling beta/correlation, and quality metadata | `tests/test_portfolio_metrics_deepening.py`. |
 | RM-935 | Done | X-Ray Session 05 | Build Hidden Risk Detector V2 with explicit flags, non-flags, evidence counts, and confidence. | RM-934. | [portfolio_xray.py](../src/portfolio_xray.py), [X-Ray spec](specs/portfolio_xray_diagnostics_spec.md) | Per-category flagged/below-threshold/unavailable assessments; section confidence and counts | `python -m pytest tests/test_portfolio_xray.py -q` (hidden-risk tests). |
@@ -285,6 +293,39 @@ caveats. Report surfaces should be readable without inspecting raw JSON.
 | RM-937 | Done | X-Ray Session 07 | Rework Portfolio Archetype as an evidence scorecard with conflicts and caveats. | RM-936. | [portfolio_xray.py](../src/portfolio_xray.py), [X-Ray spec](specs/portfolio_xray_diagnostics_spec.md), [PRODUCT](../PRODUCT.md) | Archetype output includes positive evidence, negative evidence, confidence, and conflicting signals | `python -m pytest tests/test_portfolio_xray.py -q` (archetype V2 tests). |
 | RM-938 | Done | X-Ray Session 08 | Productize X-Ray report/HTML/PDF presentation. | RM-931 through RM-937 stable. | [snapshot.py](../src/snapshot.py), [portfolio_xray.py](../src/portfolio_xray.py), [portfolio_commentary.py](../src/portfolio_commentary.py), [generated_output_qa.py](../src/generated_output_qa.py), [DESIGN](../DESIGN.md), [OUTPUTS](../OUTPUTS.md) | Reports show structured X-Ray sections instead of raw JSON-style dumps | `format_portfolio_xray_html` / `format_portfolio_xray_commentary`; QA scans; `tests/test_portfolio_xray.py`. |
 | RM-939 | Done | X-Ray Session 09 | Implement operational portfolio-first review modes after X-Ray trust fixes. | RM-938. | [run_portfolio_review.py](../run_portfolio_review.py), [portfolio_review_workflow.py](../src/portfolio_review_workflow.py), [candidate_factory.py](../src/candidate_factory.py), [candidate_comparison.py](../src/candidate_comparison.py), [decision_package_reporting.py](../src/decision_package_reporting.py), [operational runbook](operational_runbook.md) | Core/full modes + partial menu disclosure | Focused workflow, factory, comparison, reporting tests. |
+
+## Phase 12: Portfolio X-Ray Post-Audit Governance
+
+Goal: make Block 2 (Portfolio X-Ray) **audit-grade** — transparent thresholds, provenance metadata,
+factor inference surfacing, multi-window metrics, layer spec, contract tests, and baseline snapshot.
+
+Exit condition: methodology map and layer navigation exist in repo; spec owns thresholds; sections
+disclose frequency/window where applicable; contract tests prevent schema drift; documentation registers
+match runtime.
+
+Governed by the completed
+[Portfolio X-Ray Post-Audit Roadmap](exec_plans/2026-05-20_portfolio_xray_post_audit_roadmap.md)
+(Sessions 00–10 closed 2026-05-20).
+Methodology baseline:
+[Portfolio X-Ray Methodology Map](audits/2026-05-20_portfolio_xray_methodology_map.md).
+
+| ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| RM-940 | Done | X-Ray Post-Audit Session 00 | Project memory: methodology map, ExecPlan, registers, ROADMAP Phase 12. | 2026-05-20 methodology audit. | [methodology map](audits/2026-05-20_portfolio_xray_methodology_map.md), [post-audit ExecPlan](exec_plans/2026-05-20_portfolio_xray_post_audit_roadmap.md), [audits/README](audits/README.md), [exec_plans/README](exec_plans/README.md) | Active handoff for Sessions 01-10 | `python scripts/verify_docs.py`. |
+| RM-941 | Done | Session 01 | Doc sync: close stale KNOWN_ISSUES (RC/Kalman); mark RM-932 Done; CHANGELOG; TESTING bundle stub. | RM-940. | [KNOWN_ISSUES](../KNOWN_ISSUES.md), [ROADMAP](ROADMAP.md), [CHANGELOG](../CHANGELOG.md), [TESTING](../TESTING.md) | Registers match deepening wave runtime | `python scripts/verify_docs.py`; Portfolio X-Ray regression bundle stub in TESTING.md. |
+| RM-942 | Done | Session 02 | Canonical threshold registry in spec + validation tests. | RM-941. | [portfolio_xray_diagnostics_spec.md](specs/portfolio_xray_diagnostics_spec.md) §8, [portfolio_xray.py](../src/portfolio_xray.py), [test_portfolio_xray_threshold_registry.py](../tests/test_portfolio_xray_threshold_registry.py) | Spec-owned `XRAY_THRESHOLDS`; drift tests | `python -m pytest tests/test_portfolio_xray_threshold_registry.py -q`. |
+| RM-943 | Done | Session 03 | Section provenance metadata (frequency/window/n_obs/benchmark). | RM-942. | [portfolio_xray.py](../src/portfolio_xray.py), X-Ray spec §2.2–2.7 | Sections 2.2/2.3/2.6/2.7 disclose provenance | `tests/test_portfolio_xray.py` (`test_portfolio_xray_section_provenance_metadata`). |
+| RM-944 | Done | Session 04 | Factor regression inference panel (read-only from stress_report). | RM-943. | [portfolio_xray.py](../src/portfolio_xray.py), [stress_testing_spec.md](specs/stress_testing_spec.md) | Inference visible when stress provides it | `test_portfolio_xray_factor_regression_inference_panel`. |
+| RM-945 | Done | Session 05 | Multi-window metrics + TTR in risk diagnostics. | RM-944. | [snapshot.py](../src/snapshot.py), [portfolio_xray.py](../src/portfolio_xray.py) | `multi_window_metrics` panel; `ttr_months`/`recovered` on primary metrics | `test_portfolio_xray_multi_window_metrics_panel`, `test_portfolio_xray_ttr_in_primary_risk_metrics`, `test_load_portfolio_windows_from_dir`. |
+| RM-946 | Done | Session 06 | Create `portfolio_xray_layer_spec.md`. | RM-945. | [portfolio_xray_layer_spec.md](specs/portfolio_xray_layer_spec.md), [SPEC.md](../SPEC.md) | Block 2 layer map 2.1–2.7 | `python scripts/verify_docs.py`. |
+| RM-947 | Done | Session 07 | Allocation concentration (HHI, top-N). | RM-946. | [portfolio_xray.py](../src/portfolio_xray.py), X-Ray spec §2.1 | `weight_concentration` item in asset_allocation | `test_portfolio_xray_weight_concentration_in_asset_allocation`. |
+| RM-948 | Done | Session 08 | `volatility_spike` methodology: Option B factor-only (`beta_vix`, ES_95); spec + `scenario_coverage` contract. | RM-947. | [portfolio_xray_diagnostics_spec.md](specs/portfolio_xray_diagnostics_spec.md) §2.7, [portfolio_xray.py](../src/portfolio_xray.py) | Documented vol-spike rule; no new stress scenario | `test_volatility_spike_weakness_factor_only_methodology`. |
+| RM-949 | Done | Session 09 | Golden contract tests + TESTING bundle. | RM-948. | [tests/fixtures/portfolio_xray_golden_v2.json](../tests/fixtures/portfolio_xray_golden_v2.json), [test_portfolio_xray_contract.py](../tests/test_portfolio_xray_contract.py), [TESTING.md](../TESTING.md) | Golden JSON + schema drift tests | `python -m pytest tests/test_portfolio_xray_contract.py tests/test_portfolio_xray.py tests/test_portfolio_xray_threshold_registry.py -q`. |
+| RM-950 | Done | Session 10 | Baseline snapshot + wave closure. | RM-949. | [baseline snapshot](audits/2026-05-20_portfolio_xray_baseline_snapshot.md), ExecPlan, ROADMAP | `2026-05-20_portfolio_xray_baseline_snapshot.md`; Phase 12 closed | verify_docs + X-Ray bundle (40 tests). |
+
+Note: `RM-932` (full RC + Kalman in X-Ray) was implemented in the deepening Session 02; post-audit
+Session 01 marked it **Done** in Phase 11 and removed stale `KI-2026-05-19-007` / `KI-2026-05-19-008`
+from active KNOWN_ISSUES.
 
 ## Audit Mapping
 
@@ -312,7 +353,8 @@ caveats. Report surfaces should be readable without inspecting raw JSON.
 | PPF-005 | Fixed by RM-905: legacy policy artifacts are optional/compatibility-only in portfolio-first outputs. |
 | PPF-006 | Fixed by RM-904: mandate/no-favored downstream artifacts include blocked-decision narrative. |
 | PPF-007 | Done (RM-908): monitoring first run no longer shows contradictory deltas on `no_prior_snapshot`. |
-| PXL-001 through PXL-010 | Registered under RM-930 through RM-939 in the active Portfolio X-Ray Diagnostics Deepening Plan. P0 trust issues are tracked in [KNOWN_ISSUES](../KNOWN_ISSUES.md) as `KI-2026-05-19-006` through `KI-2026-05-19-010`. |
+| PXL-001 through PXL-010 | Addressed by RM-930 through RM-939 (deepening plan closed 2026-05-20). Governance gaps G1–G11 closed in Phase 12 RM-940–RM-950 except deferred G7 (factor/drawdown/ES risk budget). |
+| PXF-001 | Closed: methodology map and post-audit governance wave completed (RM-940–RM-950, Sessions 00–10, 2026-05-20). |
 | PPF-008 | Mitigated (RM-920, RM-922, RM-939): core default path + partial-menu disclosure; full refresh remains explicit via `--mode full`. |
 
 ## Session Boundary Rule
@@ -320,9 +362,10 @@ caveats. Report surfaces should be readable without inspecting raw JSON.
 Post-audit Sessions 02–20 are **closed** (see completed [post-audit ExecPlan](exec_plans/2026-05-17_post_audit_stabilization_and_analytics_plan.md)).
 Phase 7 (`RM-700` through `RM-710`) is **closed** as of 2026-05-18. Phase 8 (`RM-800` through
 `RM-808`) is **closed** as of 2026-05-18. Phase 9 (`RM-900` through `RM-911`) is **closed** as of
-2026-05-19. Phase 11 (`RM-930` through `RM-939`) is **active** as of 2026-05-19. Keep each future
-project-level session in a separate chat unless the user explicitly changes that rule. Do not reopen
-closed MVP, post-audit, portfolio-first, or Phase 9 sessions unless the user explicitly requests plan
+2026-05-19. Phase 11 (`RM-930` through `RM-939`) is **closed** as of 2026-05-20. Phase 12
+(`RM-940` through `RM-950`) is **closed** as of 2026-05-20. Keep each future project-level session
+in a separate chat unless the user explicitly changes that rule. Do not reopen closed MVP,
+post-audit, portfolio-first, Phase 9, or Phase 11 sessions unless the user explicitly requests plan
 amendments.
 
 ## Implemented Decision Artifacts

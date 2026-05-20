@@ -1,6 +1,9 @@
 # Portfolio X-Ray Diagnostics Specification
 
-Status: Skeleton source-of-truth for the active Portfolio X-Ray deepening plan.
+Status: source-of-truth for section contracts, thresholds, and JSON fields (Block 2).
+
+Layer navigation (sub-blocks 2.1–2.7, code map, orchestration):
+[portfolio_xray_layer_spec.md](portfolio_xray_layer_spec.md).
 
 This spec defines the intended contract for the current-portfolio diagnostic layer. It is diagnostic-only: it describes how the system should explain an existing `analysis_subject` before any candidate comparison, optimization decision, or action plan.
 
@@ -119,7 +122,16 @@ Target views:
 - ETF/stock taxonomy allocation
 - capital concentration diagnostics
 
-Current status: partially implemented. Asset-level weights and some metadata/taxonomy summaries exist. Region, currency, sector, risk bucket, and concentration views need fuller coverage and warnings.
+Current status: partially implemented. Asset-level weights and some metadata/taxonomy summaries exist. Region, currency, sector, and risk bucket breakdowns are available when taxonomy is present; unknown taxonomy weight is warned. Capital concentration indices are implemented on positive analyzed weights only (no ETF look-through).
+
+Post-audit Session 07 (`RM-947`):
+
+- `asset_allocation` includes a read-only `weight_concentration` item (`type`: `weight_concentration`) with:
+  - `basis`: `capital_weights` (positive weights from analysis setup / snapshot; not look-through)
+  - `n_holdings`, `top1_weight_asset`, `top1_weight_pct`, `top3_weight_assets`, `top3_weight_sum_pct`
+  - `weight_hhi`: Herfindahl–Hirschman index \(\sum_i w_i^2\) on positive capital weights, rounded to 3 decimals at export; omitted when only one positive holding (trivial HHI = 1)
+- Formulas align with `candidate_comparison` `weight_concentration` for cross-artifact consistency.
+- `legacy_summary.asset_allocation_summary` mirrors top-1/top-3/HHI fields for text overview lines.
 
 ### 2.2 Portfolio Metrics / Risk Diagnostics
 
@@ -144,6 +156,14 @@ Target metrics:
 
 Current status: partially implemented. Core metrics exist; daily historical VaR/ES with `tail_risk` metadata (method, frequency, window, n_obs) is available when daily data loads. Portfolio window metrics include skewness/kurtosis (monthly log returns), downside/upside beta, `corr_base`, `metric_quality` (n_obs, frequency, benchmark, risk-free source, window, analysis_end), and analytics rolling beta/correlation summaries (36m/12m) when benchmark data is available.
 
+Post-audit Session 05 (`RM-945`):
+
+- Primary `portfolio_metrics` item includes `ttr_months`, `recovered`, and `treynor` when present in snapshot metrics (per [metrics_specification.md](metrics_specification.md) §6.9).
+- When at least two of `snapshot_3y.json`, `snapshot_5y.json`, and `snapshot_10y.json` provide `metrics`, `risk_diagnostics` adds a read-only `multi_window_metrics` item with rows for 3Y (36M), 5Y (60M), and 10Y (120M): CAGR, vol, Sharpe, Sortino, max drawdown, TTR, recovered flag, beta, and `n_obs` from each window's `metric_quality`.
+- `load_portfolio_windows_from_dir` in `src/portfolio_xray.py` loads per-window metrics; `build_portfolio_xray_v2(..., portfolio_windows=...)` and report rebuild paths pass them through without recomputing formulas.
+
+Section-level provenance (post-audit Session 03, `RM-943`): `risk_diagnostics` exposes `method`, `frequency` (`mixed` when monthly metrics and daily tail risk coexist), `window`, `n_obs`, and `benchmark` (from `metric_quality` / tail window labels). When the multi-window panel is present, `window` lists the panel horizons and `data_sources_used` includes `snapshot_{3y,5y,10y}.json metrics` for loaded files.
+
 Canonical formula ownership remains in [metrics_specification.md](metrics_specification.md). This spec owns how those metrics are grouped, disclosed, and interpreted in the X-Ray layer.
 
 ### 2.3 Factor Exposure / Factor Sensitivity
@@ -163,6 +183,20 @@ Target factor coverage:
 - PCA/common factor evidence where available
 
 Current status: partially implemented. Supporting factor/stress/PCA artifacts exist, but X-Ray does not yet expose all evidence consistently. Kalman betas are read from `stress_report.factor_betas_kalman.latest` (legacy `latest_betas_capped` / `latest_betas` only as fallback).
+
+Section-level provenance (`RM-943`): `frequency=weekly`, `window` describes 5Y/10Y week counts, `n_obs` from `factor_regression_10y` then `factor_regression_5y` when present, `benchmark=n/a`.
+
+Factor regression inference panel (`RM-944`, post-audit Session 04): when `stress_report.json` includes
+`factor_regression_5y` and/or `factor_regression_10y` with non-empty `betas`, `factor_exposure.items`
+must include read-only items with `type=factor_regression_inference` (one per available horizon). Each
+panel passes through portfolio-level `r2`, `adj_r2`, `idiosyncratic_risk`, `n_obs`, `window_weeks`, and
+per-factor rows in `by_factor` with OLS point `beta` plus **HAC/Newey-West** `hac_t`, `hac_p`,
+`hac_ci_low`, `hac_ci_high` (arrays aligned per [stress_testing_spec.md](stress_testing_spec.md) §8.4).
+Classical OLS `ols_t` / `ols_p` / `ols_ci_*` are diagnostic-only. Summaries:
+`factor_multicollinearity` (severity, max VIF, cond(R), `assessment_en`),
+`serial_correlation_diagnostics` (Durbin–Watson, minimum Breusch–Godfrey p),
+`heteroskedasticity_diagnostics` (Breusch–Pagan p). X-Ray does not recompute inference; if regression
+blocks are absent, emit warning `factor regression inference panels missing from stress_report`.
 
 Canonical factor behavior remains in [factor_diagnostics_spec.md](factor_diagnostics_spec.md) and stress behavior in [stress_testing_spec.md](stress_testing_spec.md).
 
@@ -269,6 +303,8 @@ Target comparisons:
 
 Current status: partially implemented. Risk Budget View loads full `results_csv/rc_vol_10y.csv` evidence (5Y/3Y fallback) when available; `snapshot_10y.json.RC_asset` remains a display-oriented top-N subset for snapshot/report tables only.
 
+Section-level provenance (`RM-943`): `frequency=monthly`, `window` derived from the RC CSV actually loaded (`rc_vol_10y.csv`, `rc_vol_5y.csv`, or `rc_vol_3y.csv`) or `snapshot.RC_asset` top-N fallback label, `benchmark=n/a`.
+
 Canonical RC formula ownership remains in [metrics_specification.md](metrics_specification.md). This spec owns the risk-budget display contract and completeness expectations.
 
 ### 2.7 Portfolio Weakness Map
@@ -303,9 +339,110 @@ Each row should separate:
 
 `crypto_shock` is emitted only when crypto exposure is present (`asset_class=crypto` or `main_risk_factor=crypto_beta`).
 
+#### `volatility_spike` methodology (Session 08, `RM-948`, Option B)
+
+**Decision:** **Option B — factor-only.** Portfolio X-Ray does **not** map `volatility_spike` to a
+synthetic `stress_report.scenario_results` row. A dedicated `vix_shock` / `volatility_spike` synthetic
+scenario (**Option A**) is deferred; it would require an explicit change to
+[stress_testing_spec.md](stress_testing_spec.md) and `src/stress.py`, not X-Ray alone.
+
+**Evidence channels (diagnostic only):**
+
+| Channel | Source | Role |
+| --- | --- | --- |
+| Factor beta | `stress_report.factor_betas_5y.beta_vix` (fallback: `factor_betas`) | Exposure and adverse evidence via `factor_beta_moderate_abs` / `factor_beta_high_abs` |
+| Historical tail | `portfolio_analytics` / `tail_risk.es_95` | Adverse evidence via `es_95_moderate` / `es_95_high` (same rule family as recession/liquidity) |
+| Stress scenario PnL | — | **Not used** — `scenario_coverage.mapped_scenarios` is intentionally `[]` |
+
+**`scenario_coverage` contract for factor-only rows:**
+
+- `evidence_mode`: `"factor_only"`
+- `scenario_mapping`: `"none_by_design"`
+- `mapped_scenarios`, `scenarios_present`, `scenarios_missing`: empty lists (absence is not a data gap)
+- `top_factor_drivers` may include `vix` / `beta_vix` from betas; `top_asset_loss_drivers` stay empty unless Option A is adopted later
+
+Runtime: `WEAKNESS_FACTOR_ONLY_RISKS` and `WEAKNESS_FACTOR_SHORTS["volatility_spike"] = ("vix",)` in
+`src/portfolio_xray.py`.
+
 Low severity with `adverse_evidence=false` means thresholds were not crossed, not that the risk is impossible.
 
-Current status: implemented (Weakness Map V2, Session 06, 2026-05-19).
+Current status: implemented (Weakness Map V2, Session 06, 2026-05-19); `volatility_spike` factor-only contract (Session 08, 2026-05-20).
+
+Section-level provenance (`RM-943`): `frequency=mixed`, `window` lists stress scenarios, 5Y factor betas, and portfolio-metrics window when `metric_quality` exists; `n_obs` and `benchmark` from snapshot `metric_quality` when available.
+
+## Threshold Registry (`XRAY_THRESHOLDS`)
+
+Status: canonical registry (post-audit Session 02, `RM-942`, 2026-05-20).
+
+Portfolio X-Ray uses named, diagnostic-only thresholds to classify existing metrics into
+`flagged` / `below_threshold` / severity bands. These thresholds do **not** define optimizer
+constraints, mandate gates, stress pass/fail, production release, or trade instructions.
+
+**Sources of truth**
+
+| Layer | Location |
+| --- | --- |
+| Spec (this section) | Numeric values, units, comparators, primary consumers |
+| Runtime | `src/portfolio_xray.py::XRAY_THRESHOLDS` |
+| Export | `portfolio_xray.json` top-level `thresholds` (copy of runtime dict) |
+
+**Change policy:** update this section and `tests/test_portfolio_xray_threshold_registry.py`
+(`CANONICAL_XRAY_THRESHOLDS`) in the same change as `XRAY_THRESHOLDS`. Do not change runtime
+values without an explicit spec decision recorded in [DECISIONS.md](../../DECISIONS.md) or the
+active post-audit ExecPlan decision log.
+
+**Comparator families** (how rules apply in `src/portfolio_xray.py`):
+
+| Family | Rule | Example keys |
+| --- | --- | --- |
+| `gte_share` | Flag when observed share ≥ threshold | `top1_rc_*`, `pca_pc1_*`, bucket weights, archetype weights |
+| `gte_abs` | Flag when \|observed\| ≥ threshold | `equity_beta_*`, `factor_beta_*` |
+| `lte_adverse` | Flag when observed ≤ threshold (more negative = worse) | `stress_loss_*`, `max_drawdown_*`, `es_95_*` |
+| `gte_adverse` | Flag when observed ≥ threshold (higher = worse) | `weak_hedge_oos_mae_*` |
+
+### Canonical values
+
+| Key | Value | Unit | Comparator | Primary consumers |
+| --- | ---: | --- | --- | --- |
+| `equity_beta_moderate_abs` | 0.35 | abs beta | `gte_abs` | hidden_equity_beta; archetype rules |
+| `equity_beta_high_abs` | 0.65 | abs beta | `gte_abs` | hidden_equity_beta; archetype rules |
+| `factor_beta_moderate_abs` | 0.25 | abs beta | `gte_abs` | macro_factor_dependency; weakness map; archetype |
+| `factor_beta_high_abs` | 0.50 | abs beta | `gte_abs` | macro_factor_dependency; weakness map |
+| `top1_rc_moderate` | 0.25 | RC share (0–1) | `gte_share` | single_asset_risk_concentration; archetype |
+| `top1_rc_high` | 0.35 | RC share (0–1) | `gte_share` | single_asset_risk_concentration; archetype |
+| `top3_rc_high` | 0.60 | RC share (0–1) | `gte_share` | exported in JSON; not used in V2 rule logic (reserved) |
+| `pca_pc1_moderate` | 0.40 | variance share (0–1) | `gte_share` | correlation_or_common_factor_concentration |
+| `pca_pc1_high` | 0.60 | variance share (0–1) | `gte_share` | correlation_or_common_factor_concentration; archetype |
+| `stress_top1_rc_moderate` | 0.25 | RC share (0–1) | `gte_share` | stress_loss_contributor_concentration |
+| `stress_top1_rc_high` | 0.35 | RC share (0–1) | `gte_share` | stress_loss_contributor_concentration |
+| `factor_residual_moderate` | 0.50 | variance share (0–1) | `gte_share` | exported; reserved for residual PCA rules |
+| `factor_residual_high` | 0.65 | variance share (0–1) | `gte_share` | exported; reserved for residual PCA rules |
+| `duration_weight_high` | 0.30 | capital weight (0–1) | `gte_share` | duration_concentration |
+| `credit_weight_high` | 0.25 | capital weight (0–1) | `gte_share` | credit_concentration; weakness map |
+| `liquidity_risk_weight_high` | 0.20 | capital weight (0–1) | `gte_share` | liquidity_concentration; weakness map |
+| `weak_hedge_oos_mae_moderate` | 0.05 | MAE (0–1) | `gte_adverse` | weak_hedge_behavior |
+| `weak_hedge_oos_mae_high` | 0.10 | MAE (0–1) | `gte_adverse` | weak_hedge_behavior |
+| `macro_dominant_variance_share_moderate` | 0.35 | variance share (0–1) | `gte_share` | macro_factor_dependency |
+| `macro_dominant_variance_share_high` | 0.50 | variance share (0–1) | `gte_share` | macro_factor_dependency |
+| `archetype_equity_weight_high` | 0.55 | capital weight (0–1) | `gte_share` | portfolio_archetype scorecard |
+| `archetype_fixed_income_weight_high` | 0.45 | capital weight (0–1) | `gte_share` | portfolio_archetype scorecard |
+| `archetype_balanced_equity_min` | 0.30 | capital weight (0–1) | `gte_share` | balanced archetype band |
+| `archetype_balanced_equity_max` | 0.70 | capital weight (0–1) | `gte_share` | balanced archetype band |
+| `archetype_balanced_fixed_income_min` | 0.20 | capital weight (0–1) | `gte_share` | balanced archetype band |
+| `archetype_cash_weight_high` | 0.35 | capital weight (0–1) | `gte_share` | portfolio_archetype scorecard |
+| `archetype_defensive_equity_max` | 0.30 | capital weight (0–1) | `gte_share` | portfolio_archetype scorecard |
+| `archetype_concentrated_rc_min` | 0.35 | RC share (0–1) | `gte_share` | concentrated archetype |
+| `stress_loss_moderate` | -0.06 | scenario PnL (decimal) | `lte_adverse` | weakness map severity |
+| `stress_loss_high` | -0.12 | scenario PnL (decimal) | `lte_adverse` | weakness map severity |
+| `max_drawdown_moderate` | -0.10 | drawdown (decimal) | `lte_adverse` | weakness map; archetype tail |
+| `max_drawdown_high` | -0.20 | drawdown (decimal) | `lte_adverse` | weakness map; archetype tail |
+| `es_95_moderate` | -0.015 | daily ES (decimal) | `lte_adverse` | tail_risk; weakness map |
+| `es_95_high` | -0.025 | daily ES (decimal) | `lte_adverse` | tail_risk; weakness map |
+
+Hidden-risk categories reference threshold keys in each item's `thresholds` list; archetype and
+weakness-map builders use the same named keys inline. Mandate and IPS gates remain in
+[portfolio_construction_policy.md](portfolio_construction_policy.md) and
+[stress_testing_spec.md](stress_testing_spec.md) — not in this registry.
 
 ## Confidence and Warnings Policy
 
@@ -320,7 +457,10 @@ Every section should avoid false confidence:
 
 ## Current Known Gaps
 
-Known gaps are tracked in [KNOWN_ISSUES.md](../../KNOWN_ISSUES.md) and the active [Portfolio X-Ray Diagnostics Deepening Plan](../exec_plans/2026-05-19_portfolio_xray_diagnostics_deepening_plan.md).
+Known gaps are tracked in [KNOWN_ISSUES.md](../../KNOWN_ISSUES.md), the active
+[Portfolio X-Ray Post-Audit Roadmap](../exec_plans/2026-05-20_portfolio_xray_post_audit_roadmap.md),
+and the methodology baseline
+[2026-05-20_portfolio_xray_methodology_map.md](../audits/2026-05-20_portfolio_xray_methodology_map.md).
 
 P0:
 
@@ -341,6 +481,23 @@ P2:
 
 - operational core-run/full-run review modes (implemented Session 09; see [portfolio_review_workflow_spec.md](portfolio_review_workflow_spec.md))
 
+Resolved in post-audit Session 02 (2026-05-20, `RM-942`):
+
+- canonical `XRAY_THRESHOLDS` registry in §8; drift tests in `tests/test_portfolio_xray_threshold_registry.py`
+
+Resolved in post-audit Session 03 (2026-05-20, `RM-943`):
+
+- section-level provenance on `risk_diagnostics`, `factor_exposure`, `risk_budget_view`, `weakness_map` (`method`, `frequency`, `window`, `n_obs`, `benchmark`); `load_rc_vol_map_from_csv` records the RC file actually loaded
+
+Resolved in post-audit Session 04 (2026-05-20, `RM-944`):
+
+- `factor_regression_inference` items in `factor_exposure` (read-only from `factor_regression_5y` / `factor_regression_10y`); tests `test_portfolio_xray_factor_regression_inference_panel`
+
+Resolved in post-audit Session 09 (2026-05-20, `RM-949`):
+
+- golden `portfolio_xray.json` contract tests in `tests/test_portfolio_xray_contract.py`; committed
+  fixture `tests/fixtures/portfolio_xray_golden_v2.json`
+
 Resolved in Session 08 (2026-05-20):
 
 - report/HTML productization via `format_portfolio_xray_html` and structured `format_portfolio_xray_text`
@@ -355,8 +512,11 @@ Minimum documentation verification:
 python scripts/verify_docs.py
 ```
 
-Expected later implementation checks:
+Expected implementation checks:
 
+- threshold registry drift: `tests/test_portfolio_xray_threshold_registry.py`
+- golden JSON contract: `tests/test_portfolio_xray_contract.py` and
+  `tests/fixtures/portfolio_xray_golden_v2.json` (regenerate: `python tests/portfolio_xray_golden_inputs.py`)
 - focused X-Ray tests under `tests/test_portfolio_xray.py`
 - focused metrics/frequency tests
 - focused data-cutoff tests

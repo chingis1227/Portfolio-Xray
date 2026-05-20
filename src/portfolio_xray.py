@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import html
+import json
 import math
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+
+from src.io_export import REPORT_DECIMALS
+from src.stress_factors import BASE_BETA_ROW_ORDER
 
 
 PORTFOLIO_XRAY_VERSION = "portfolio_xray_v2"
@@ -37,8 +41,10 @@ XRAY_SECTION_TITLES = {
     "weakness_map": "Portfolio Weakness Map",
 }
 
-# Named thresholds for transparent diagnostic rules. These thresholds classify
-# existing diagnostics; they do not create optimizer constraints or portfolio gates.
+# Named thresholds for transparent diagnostic rules. Canonical registry:
+# docs/specs/portfolio_xray_diagnostics_spec.md §8 (RM-942). Drift tests:
+# tests/test_portfolio_xray_threshold_registry.py. Do not change values without
+# a spec decision; thresholds classify diagnostics only — not mandate gates.
 XRAY_THRESHOLDS: dict[str, float] = {
     "equity_beta_moderate_abs": 0.35,
     "equity_beta_high_abs": 0.65,
@@ -98,6 +104,9 @@ WEAKNESS_SCENARIO_MAP = {
     "commodity_shock": "commodity_shock",
 }
 
+# Weakness rows without mapped synthetic stress scenarios (Session 08 / RM-948, Option B).
+WEAKNESS_FACTOR_ONLY_RISKS = frozenset({"volatility_spike"})
+
 WEAKNESS_FACTOR_MAP = {
     "beta_eq": "equity_crash",
     "beta_rr": "rates",
@@ -143,7 +152,7 @@ WEAKNESS_FACTOR_SHORTS: dict[str, tuple[str, ...]] = {
     "usd": ("usd",),
     "equity_crash": ("eq",),
     "commodity_shock": ("cmd",),
-    "volatility_spike": (),
+    "volatility_spike": ("vix",),
     WEAKNESS_CRYPTO_KEY: (),
 }
 
@@ -262,6 +271,11 @@ def _section(
     warnings: list[str] | tuple[str, ...] | None = None,
     limitations: list[str] | tuple[str, ...] | None = None,
     unavailable_warning: str | None = None,
+    method: str | None = None,
+    frequency: str | None = None,
+    window: str | None = None,
+    n_obs: int | None = None,
+    benchmark: str | None = None,
 ) -> dict[str, Any]:
     item_list = list(items or [])
     warning_list = [str(w) for w in warnings or [] if str(w).strip()]
@@ -273,13 +287,296 @@ def _section(
         status = "partial"
     else:
         status = "available"
-    return {
+    section: dict[str, Any] = {
         "status": status,
         "data_sources_used": _clean_sources(data_sources_used),
         "warnings": warning_list,
         "items": item_list,
         "limitations": [str(x) for x in limitations or [] if str(x).strip()],
     }
+    if method:
+        section["method"] = method
+    if frequency:
+        section["frequency"] = frequency
+    if window:
+        section["window"] = window
+    if n_obs is not None:
+        section["n_obs"] = int(n_obs)
+    if benchmark:
+        section["benchmark"] = benchmark
+    return section
+
+
+def _window_label_from_months(window_months: int | float | None) -> str | None:
+    if window_months is None:
+        return None
+    months = int(window_months)
+    labels = {36: "3Y (36M)", 60: "5Y (60M)", 120: "10Y (120M)"}
+    return labels.get(months, f"{months}M")
+
+
+def _metric_quality_dict(portfolio_metrics: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(portfolio_metrics, dict):
+        return {}
+    mq = portfolio_metrics.get("metric_quality")
+    return mq if isinstance(mq, dict) else {}
+
+
+MULTI_WINDOW_SNAPSHOT_ORDER: tuple[tuple[str, str, int], ...] = (
+    ("3y", "3Y (36M)", 36),
+    ("5y", "5Y (60M)", 60),
+    ("10y", "10Y (120M)", 120),
+)
+
+
+def _portfolio_metrics_item(metrics: dict[str, Any]) -> dict[str, Any]:
+    """Single-window portfolio metrics row for risk_diagnostics (primary horizon)."""
+    return {
+        "type": "portfolio_metrics",
+        "cagr": metrics.get("cagr"),
+        "vol_annual": metrics.get("vol_annual"),
+        "sharpe": metrics.get("sharpe"),
+        "sortino": metrics.get("sortino"),
+        "beta_portfolio": metrics.get("beta_portfolio"),
+        "corr_base": metrics.get("corr_base"),
+        "downside_beta": metrics.get("downside_beta"),
+        "upside_beta": metrics.get("upside_beta"),
+        "skewness": metrics.get("skewness"),
+        "kurtosis": metrics.get("kurtosis"),
+        "treynor": metrics.get("treynor"),
+        "max_drawdown": metrics.get("max_drawdown"),
+        "ttr_months": metrics.get("ttr_months"),
+        "recovered": metrics.get("recovered"),
+        "metric_quality": metrics.get("metric_quality"),
+    }
+
+
+def _multi_window_metric_row(
+    window_key: str,
+    window_label: str,
+    window_months: int,
+    metrics: dict[str, Any],
+) -> dict[str, Any]:
+    mq = _metric_quality_dict(metrics)
+    return {
+        "window_key": window_key,
+        "window_label": window_label,
+        "window_months": metrics.get("window_months") or window_months,
+        "cagr": metrics.get("cagr"),
+        "vol_annual": metrics.get("vol_annual"),
+        "sharpe": metrics.get("sharpe"),
+        "sortino": metrics.get("sortino"),
+        "beta_portfolio": metrics.get("beta_portfolio"),
+        "treynor": metrics.get("treynor"),
+        "max_drawdown": metrics.get("max_drawdown"),
+        "ttr_months": metrics.get("ttr_months"),
+        "recovered": metrics.get("recovered"),
+        "n_obs": mq.get("n_obs"),
+        "analysis_end": mq.get("analysis_end"),
+    }
+
+
+def _multi_window_metrics_item(portfolio_windows: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
+    """3Y/5Y/10Y metrics panel when per-window snapshot metrics exist (RM-945)."""
+    rows: list[dict[str, Any]] = []
+    for window_key, window_label, window_months in MULTI_WINDOW_SNAPSHOT_ORDER:
+        metrics = portfolio_windows.get(window_key)
+        if isinstance(metrics, dict) and metrics:
+            rows.append(_multi_window_metric_row(window_key, window_label, window_months, metrics))
+    if not rows:
+        return None
+    return {
+        "type": "multi_window_metrics",
+        "frequency": "monthly",
+        "method": "monthly simple portfolio metrics per metrics_specification.md",
+        "windows": rows,
+    }
+
+
+def _ttr_summary_phrase(ttr_months: Any, recovered: Any) -> str:
+    ttr = _as_float(ttr_months)
+    if ttr is not None and ttr == 0.0 and recovered is not False:
+        return "0 months (no drawdown in window)"
+    if ttr is not None and recovered is not False:
+        return f"{_fmt_num(ttr)} months"
+    if recovered is False:
+        return "not recovered within window"
+    return "n/a"
+
+
+def _rc_window_label_from_sources(sources: list[str] | tuple[str, ...] | None) -> str:
+    joined = " ".join(str(s) for s in sources or []).lower()
+    if "rc_vol_10y" in joined:
+        return "10Y (120M)"
+    if "rc_vol_5y" in joined:
+        return "5Y (60M)"
+    if "rc_vol_3y" in joined:
+        return "3Y (36M)"
+    if "snapshot.rc_asset" in joined:
+        return "10Y display subset (snapshot.RC_asset top-N)"
+    if "rc_vol_map" in joined:
+        return "RC_vol map (window per upstream CSV)"
+    return "n/a"
+
+
+def _factor_regression_n_obs(stress_report: dict[str, Any] | None) -> int | None:
+    if not isinstance(stress_report, dict):
+        return None
+    for key in ("factor_regression_10y", "factor_regression_5y"):
+        reg = stress_report.get(key)
+        if isinstance(reg, dict) and reg.get("n_obs") is not None:
+            try:
+                return int(reg["n_obs"])
+            except (TypeError, ValueError):
+                continue
+    return None
+
+
+def _ordered_beta_keys(*maps: Any) -> list[str]:
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for key in BASE_BETA_ROW_ORDER:
+        if any(isinstance(m, dict) and key in m for m in maps):
+            ordered.append(key)
+            seen.add(key)
+    extra = sorted(
+        {
+            str(key)
+            for m in maps
+            if isinstance(m, dict)
+            for key in m.keys()
+            if str(key) not in seen
+        }
+    )
+    ordered.extend(extra)
+    return ordered
+
+
+def _fmt_p_value(value: Any) -> str:
+    number = _as_float(value)
+    if number is None:
+        return "n/a"
+    if number < 0.001:
+        return "<0.001"
+    return f"{number:.3f}"
+
+
+def _factor_regression_inference_panel(
+    reg: dict[str, Any],
+    *,
+    horizon: str,
+    reg_source: str,
+) -> dict[str, Any] | None:
+    """Read-only pass-through of stress_report factor_regression_* inference (RM-944)."""
+    betas = reg.get("betas") or {}
+    if not isinstance(betas, dict) or not betas:
+        return None
+    beta_order = _ordered_beta_keys(
+        betas,
+        reg.get("t"),
+        reg.get("p"),
+        reg.get("ci_low"),
+        reg.get("ci_high"),
+    )
+    hac = reg.get("hac_inference") if isinstance(reg.get("hac_inference"), dict) else {}
+    hac_t = hac.get("t")
+    hac_p = hac.get("p")
+    hac_lo = hac.get("ci_low")
+    hac_hi = hac.get("ci_high")
+    by_factor: list[dict[str, Any]] = []
+    for idx, beta_key in enumerate(beta_order, start=1):
+        row: dict[str, Any] = {
+            "beta_key": beta_key,
+            "factor": FACTOR_DISPLAY_NAMES.get(beta_key, beta_key),
+            "beta": _as_float(betas.get(beta_key)),
+            "ols_t": _as_float((reg.get("t") or {}).get(beta_key)),
+            "ols_p": _as_float((reg.get("p") or {}).get(beta_key)),
+            "ols_ci_low": _as_float((reg.get("ci_low") or {}).get(beta_key)),
+            "ols_ci_high": _as_float((reg.get("ci_high") or {}).get(beta_key)),
+        }
+        if isinstance(hac_t, list) and idx < len(hac_t):
+            row["hac_t"] = _as_float(hac_t[idx])
+        if isinstance(hac_p, list) and idx < len(hac_p):
+            row["hac_p"] = _as_float(hac_p[idx])
+        if isinstance(hac_lo, list) and idx < len(hac_lo):
+            row["hac_ci_low"] = _as_float(hac_lo[idx])
+        if isinstance(hac_hi, list) and idx < len(hac_hi):
+            row["hac_ci_high"] = _as_float(hac_hi[idx])
+        by_factor.append(row)
+    mc = reg.get("factor_multicollinearity") if isinstance(reg.get("factor_multicollinearity"), dict) else {}
+    mc_summary: dict[str, Any] = {
+        "severity": mc.get("severity"),
+        "max_vif": _as_float(mc.get("max_vif")),
+        "max_vif_factor": mc.get("max_vif_factor"),
+        "cond_correlation_matrix": _as_float(mc.get("cond_correlation_matrix")),
+        "assessment_en": mc.get("assessment_en") or mc.get("assessment_ru"),
+    }
+    ser = (
+        reg.get("serial_correlation_diagnostics")
+        if isinstance(reg.get("serial_correlation_diagnostics"), dict)
+        else {}
+    )
+    ser_summary: dict[str, Any] = {"durbin_watson": _as_float(ser.get("durbin_watson"))}
+    bg_rows = ser.get("breusch_godfrey") or []
+    if isinstance(bg_rows, list):
+        bg_pvals = [
+            _as_float(row.get("p_value"))
+            for row in bg_rows
+            if isinstance(row, dict) and _as_float(row.get("p_value")) is not None
+        ]
+        if bg_pvals:
+            ser_summary["breusch_godfrey_min_p"] = min(bg_pvals)
+    het = (
+        reg.get("heteroskedasticity_diagnostics")
+        if isinstance(reg.get("heteroskedasticity_diagnostics"), dict)
+        else {}
+    )
+    bp = het.get("breusch_pagan") if isinstance(het.get("breusch_pagan"), dict) else {}
+    het_summary: dict[str, Any] = {"breusch_pagan_p": _as_float(bp.get("p_value"))}
+    return {
+        "type": "factor_regression_inference",
+        "horizon": horizon,
+        "regression_source": reg_source,
+        "window_weeks": reg.get("window_weeks"),
+        "n_obs": reg.get("n_obs"),
+        "r2": _as_float(reg.get("r2")),
+        "adj_r2": _as_float(reg.get("adj_r2")),
+        "idiosyncratic_risk": _as_float(reg.get("idiosyncratic_risk")),
+        "intercept": _as_float(reg.get("intercept")),
+        "se_type": reg.get("se_type"),
+        "ci_level": reg.get("ci_level"),
+        "inference_standard": "hac_newey_west",
+        "hac": {
+            "se_type": hac.get("se_type"),
+            "kernel": hac.get("kernel"),
+            "max_lags": hac.get("max_lags"),
+        },
+        "by_factor": by_factor,
+        "factor_multicollinearity": mc_summary,
+        "serial_correlation_diagnostics": ser_summary,
+        "heteroskedasticity_diagnostics": het_summary,
+    }
+
+
+def _factor_regression_inference_items(stress_report: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not isinstance(stress_report, dict):
+        return []
+    items: list[dict[str, Any]] = []
+    for reg_key, horizon in (
+        ("factor_regression_5y", "5Y"),
+        ("factor_regression_10y", "10Y"),
+    ):
+        reg = stress_report.get(reg_key)
+        if not isinstance(reg, dict):
+            continue
+        panel = _factor_regression_inference_panel(
+            reg,
+            horizon=horizon,
+            reg_source=f"stress_report.{reg_key}",
+        )
+        if panel:
+            items.append(panel)
+    return items
 
 
 def _top_items(values: dict[str, Any], limit: int = 3) -> list[dict[str, Any]]:
@@ -403,6 +700,7 @@ def build_portfolio_xray_summary(
     top_rc_first = top_rc[0] if top_rc else None
     top3_weight_sum = sum(row["value"] for row in top_weight)
     top3_rc_sum = sum(row["value"] for row in top_rc)
+    weight_conc = _weight_concentration_item(_positive_weights(weight_map))
     concern = _main_concern(
         stress_report=stress_report,
         portfolio_valid=portfolio_valid,
@@ -439,6 +737,11 @@ def build_portfolio_xray_summary(
         "asset_allocation_summary": {
             "top_holdings": top_weight,
             "top3_weight_sum": top3_weight_sum,
+            "top1_weight_asset": (weight_conc or {}).get("top1_weight_asset"),
+            "top1_weight_pct": (weight_conc or {}).get("top1_weight_pct"),
+            "top3_weight_assets": (weight_conc or {}).get("top3_weight_assets"),
+            "top3_weight_sum_pct": (weight_conc or {}).get("top3_weight_sum_pct"),
+            "weight_hhi": (weight_conc or {}).get("weight_hhi"),
             "cash_proxy_ticker": cash_proxy,
             "cash_weight": cash_weight,
             "largest_holding": top_weight_first,
@@ -506,14 +809,43 @@ def _positive_weights(weights: dict[str, Any]) -> dict[str, float]:
     return out
 
 
+def _weight_concentration_item(weight_map: dict[str, float]) -> dict[str, Any] | None:
+    """Capital-weight concentration (HHI and top-N sums); no look-through."""
+    if not weight_map:
+        return None
+    rows = sorted(weight_map.items(), key=lambda x: (-x[1], x[0]))
+    top1_ticker, top1_pct = rows[0]
+    top3 = rows[:3]
+    top3_sum = sum(p for _, p in top3)
+    shares = [p for _, p in rows if p > 0]
+    weight_hhi: float | None = None
+    if len(shares) > 1:
+        weight_hhi = round(sum(p * p for p in shares), REPORT_DECIMALS)
+    return {
+        "type": "weight_concentration",
+        "basis": "capital_weights",
+        "n_holdings": len(rows),
+        "top1_weight_asset": top1_ticker,
+        "top1_weight_pct": round(top1_pct, REPORT_DECIMALS),
+        "top3_weight_assets": [t for t, _ in top3],
+        "top3_weight_sum_pct": round(top3_sum, REPORT_DECIMALS),
+        "weight_hhi": weight_hhi,
+    }
+
+
 def _as_rc_map(rc_asset: Any) -> dict[str, float]:
     return {row["ticker"]: row["value"] for row in _rc_items(rc_asset, limit=10_000)}
 
 
-def load_rc_vol_map_from_csv(output_dir_csv: Path | str | None) -> dict[str, float]:
-    """Load full per-asset RC_vol from results_csv (10Y preferred, then 5Y/3Y)."""
+def load_rc_vol_map_from_csv(
+    output_dir_csv: Path | str | None,
+) -> tuple[dict[str, float], str | None]:
+    """Load full per-asset RC_vol from results_csv (10Y preferred, then 5Y/3Y).
+
+    Returns (ticker -> RC_vol share, source filename such as ``rc_vol_5y.csv`` or None).
+    """
     if output_dir_csv is None:
-        return {}
+        return {}, None
     base = Path(output_dir_csv)
     for suffix in ("10y", "5y", "3y"):
         path = base / f"rc_vol_{suffix}.csv"
@@ -532,10 +864,10 @@ def load_rc_vol_map_from_csv(output_dir_csv: Path | str | None) -> dict[str, flo
                     continue
                 out[ticker_s] = number
             if out:
-                return out
+                return out, path.name
         except Exception:
             continue
-    return {}
+    return {}, None
 
 
 def resolve_rc_asset_for_xray(
@@ -555,9 +887,9 @@ def resolve_rc_asset_for_xray(
         merged = {str(k): float(v) for k, v in rc_vol_map.items() if _as_float(v) is not None}
         sources.append("rc_vol_map")
     elif output_dir_csv is not None:
-        merged = load_rc_vol_map_from_csv(output_dir_csv)
-        if merged:
-            sources.append(f"{Path(output_dir_csv)}/rc_vol_10y.csv")
+        merged, rc_filename = load_rc_vol_map_from_csv(output_dir_csv)
+        if merged and rc_filename:
+            sources.append(f"{Path(output_dir_csv)}/{rc_filename}")
     for row in _rc_items(rc_asset, limit=10_000):
         merged.setdefault(row["ticker"], row["value"])
     if not sources and rc_asset:
@@ -655,7 +987,11 @@ def _allocation_section(
             }
         )
 
-    items = holding_items + breakdowns
+    concentration_item = _weight_concentration_item(weight_map)
+    items: list[dict[str, Any]] = []
+    if concentration_item:
+        items.append(concentration_item)
+    items.extend(holding_items + breakdowns)
     return _section(
         items=items,
         data_sources_used=["analyzed weights", "config/etf_universe.yml", "config/stock_universe.yml"],
@@ -673,29 +1009,17 @@ def _risk_diagnostics_section(
     portfolio_metrics: dict[str, Any] | None,
     portfolio_analytics: dict[str, Any] | None,
     drawdown_structure: dict[str, Any] | None,
+    portfolio_windows: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     metrics = portfolio_metrics if isinstance(portfolio_metrics, dict) else {}
+    windows_in = portfolio_windows if isinstance(portfolio_windows, dict) else {}
     analytics = portfolio_analytics if isinstance(portfolio_analytics, dict) else {}
     items: list[dict[str, Any]] = []
     if metrics:
-        items.append(
-            {
-                "type": "portfolio_metrics",
-                "cagr": metrics.get("cagr"),
-                "vol_annual": metrics.get("vol_annual"),
-                "sharpe": metrics.get("sharpe"),
-                "sortino": metrics.get("sortino"),
-                "beta_portfolio": metrics.get("beta_portfolio"),
-                "corr_base": metrics.get("corr_base"),
-                "downside_beta": metrics.get("downside_beta"),
-                "upside_beta": metrics.get("upside_beta"),
-                "skewness": metrics.get("skewness"),
-                "kurtosis": metrics.get("kurtosis"),
-                "treynor": metrics.get("treynor"),
-                "max_drawdown": metrics.get("max_drawdown"),
-                "metric_quality": metrics.get("metric_quality"),
-            }
-        )
+        items.append(_portfolio_metrics_item(metrics))
+    panel = _multi_window_metrics_item(windows_in)
+    if panel:
+        items.append(panel)
     tail_risk = analytics.get("tail_risk")
     if isinstance(tail_risk, dict):
         items.append({"type": "tail_risk", **tail_risk})
@@ -729,11 +1053,34 @@ def _risk_diagnostics_section(
     warnings: list[str] = []
     if not metrics:
         warnings.append("portfolio metrics are missing")
+    if not panel and len(windows_in) < 2:
+        warnings.append("multi-window metrics panel requires at least two snapshot horizons")
     if not analytics:
         warnings.append("portfolio analytics summary is missing")
+    mq = _metric_quality_dict(metrics)
+    tail_risk = analytics.get("tail_risk") if isinstance(analytics.get("tail_risk"), dict) else None
+    has_tail = isinstance(tail_risk, dict) and tail_risk.get("metric_available") is not False
+    freq = "mixed" if metrics and has_tail else (mq.get("frequency") or ("daily" if has_tail else "n/a"))
+    window = _window_label_from_months(mq.get("window_months"))
+    if panel:
+        panel_labels = ", ".join(row["window_label"] for row in panel["windows"])
+        window = panel_labels if not window else f"{window}; panel {panel_labels}"
+    if has_tail:
+        tail_window = tail_risk.get("window_label") or _window_label_from_months(
+            tail_risk.get("window_months")
+        )
+        if window and tail_window and str(tail_window) != str(window):
+            window = f"{window}; tail {tail_window}"
+        elif not window and tail_window:
+            window = f"tail {tail_window}"
+    sources = ["snapshot metrics", "snapshot analytics", "drawdown_structure"]
+    if panel:
+        for window_key, _, _ in MULTI_WINDOW_SNAPSHOT_ORDER:
+            if window_key in windows_in:
+                sources.append(f"snapshot_{window_key}.json metrics")
     return _section(
         items=items,
-        data_sources_used=["snapshot metrics", "snapshot analytics", "drawdown_structure"],
+        data_sources_used=sources,
         warnings=warnings,
         limitations=[
             "Historical metrics describe realized behavior in the selected window, not expected future returns.",
@@ -741,6 +1088,14 @@ def _risk_diagnostics_section(
             "When tail_risk.metric_available is false, flat var/es fields may be absent or stale.",
         ],
         unavailable_warning="No portfolio metrics or analytics were available.",
+        method=(
+            "monthly simple portfolio metrics (metrics_spec); "
+            "daily historical VaR/ES when tail_risk is present"
+        ),
+        frequency=str(freq) if freq else "n/a",
+        window=window or "n/a",
+        n_obs=mq.get("n_obs") if mq.get("n_obs") is not None else None,
+        benchmark=mq.get("benchmark_ticker"),
     )
 
 
@@ -839,23 +1194,43 @@ def _factor_exposure_section(stress_report: dict[str, Any] | None) -> dict[str, 
                     ),
                 }
             )
+    inference_items = _factor_regression_inference_items(stress_report)
+    items.extend(inference_items)
     warnings = []
     if not items:
         warnings.append("factor betas and factor variance decomposition are missing")
+    elif not inference_items:
+        warnings.append("factor regression inference panels missing from stress_report")
+    n_obs = _factor_regression_n_obs(stress_report)
+    sources = [
+        "stress_report.factor_betas_5y",
+        "stress_report.factor_betas_10y",
+        "stress_report.factor_betas_kalman",
+        "stress_report.factor_variance_decomposition",
+    ]
+    if inference_items:
+        for reg_key in ("factor_regression_5y", "factor_regression_10y"):
+            if isinstance(stress_report.get(reg_key), dict):
+                sources.append(f"stress_report.{reg_key}")
     return _section(
         items=items,
-        data_sources_used=[
-            "stress_report.factor_betas_5y",
-            "stress_report.factor_betas_10y",
-            "stress_report.factor_betas_kalman",
-            "stress_report.factor_variance_decomposition",
-        ],
+        data_sources_used=sources,
         warnings=warnings,
         limitations=[
             "Factor exposures are diagnostics from the existing factor pipeline and do not replace raw holdings.",
             "Kalman betas are current-regime diagnostics and do not replace raw 5Y/10Y OLS betas.",
+            "Reported significance uses HAC/Newey-West p-values and confidence intervals per stress_testing_spec §8.4; "
+            "classical OLS t/p in by_factor are diagnostic-only.",
         ],
         unavailable_warning="No factor diagnostics were available.",
+        method=(
+            "weekly OLS portfolio factor betas (5Y/10Y); Kalman latest; variance decomposition; "
+            "factor_regression inference panel (HAC, multicollinearity, residual diagnostics)"
+        ),
+        frequency="weekly",
+        window="5Y (~260 weeks), 10Y (~520 weeks)",
+        n_obs=n_obs,
+        benchmark="n/a",
     )
 
 
@@ -949,6 +1324,10 @@ def _risk_budget_section(
             "Stress loss contribution is scenario-specific and should not be read as expected loss.",
         ],
         unavailable_warning="No weight, RC_vol, or stress contribution rows were available.",
+        method="RC_vol percentage variance contribution; worst-case stress PnL by asset across scenarios",
+        frequency="monthly",
+        window=_rc_window_label_from_sources(rc_sources),
+        benchmark="n/a",
     )
 
 
@@ -2463,11 +2842,18 @@ def _weakness_scenario_coverage(
         }
     )
     missing = [sid for sid in mapped if sid not in present]
-    return {
+    coverage: dict[str, Any] = {
         "mapped_scenarios": mapped,
         "scenarios_present": present,
         "scenarios_missing": missing,
     }
+    if weakness in WEAKNESS_FACTOR_ONLY_RISKS:
+        coverage["evidence_mode"] = "factor_only"
+        coverage["scenario_mapping"] = "none_by_design"
+    else:
+        coverage["evidence_mode"] = "stress_scenario_and_factor"
+        coverage["scenario_mapping"] = "WEAKNESS_SCENARIO_MAP"
+    return coverage
 
 
 def _weakness_top_asset_loss_drivers(
@@ -2779,6 +3165,11 @@ def _weakness_map_section(
     if not betas:
         warnings.append("factor betas are missing")
         section_missing.append("stress_report.factor_betas_5y")
+    mq = _metric_quality_dict(portfolio_metrics)
+    metrics_window = _window_label_from_months(mq.get("window_months"))
+    window_parts = ["stress scenarios (synthetic)", "5Y weekly factor betas"]
+    if metrics_window:
+        window_parts.append(f"portfolio metrics {metrics_window}")
     section = _section(
         items=items,
         data_sources_used=[
@@ -2794,7 +3185,13 @@ def _weakness_map_section(
             "Weakness Map aggregates existing evidence only; it is not a forecasting or scoring model.",
             "Low severity with adverse_evidence=false means thresholds were not crossed, not that the risk is absent.",
             "crypto_shock appears only when crypto exposure is present in taxonomy or weights.",
+            "volatility_spike is factor-only (beta_vix, historical ES_95); no synthetic stress scenario is mapped by design (RM-948 Option B).",
         ],
+        method="rule-based threshold aggregation over stress, factor, tail, and metrics evidence",
+        frequency="mixed",
+        window="; ".join(window_parts),
+        n_obs=mq.get("n_obs") if mq.get("n_obs") is not None else None,
+        benchmark=mq.get("benchmark_ticker"),
     )
     if section_missing:
         section["missing_input_warnings"] = section_missing
@@ -2843,6 +3240,7 @@ def build_portfolio_xray_v2(
     stress_report: dict[str, Any] | None,
     portfolio_valid: bool | None,
     portfolio_metrics: dict[str, Any] | None = None,
+    portfolio_windows: dict[str, dict[str, Any]] | None = None,
     portfolio_analytics: dict[str, Any] | None = None,
     drawdown_structure: dict[str, Any] | None = None,
     taxonomy_rows: dict[str, dict[str, Any]] | None = None,
@@ -2885,6 +3283,7 @@ def build_portfolio_xray_v2(
             portfolio_metrics=portfolio_metrics,
             portfolio_analytics=portfolio_analytics,
             drawdown_structure=drawdown_structure,
+            portfolio_windows=portfolio_windows,
         ),
         "factor_exposure": _factor_exposure_section(stress_report),
         "hidden_risk_detector": _hidden_risk_section(
@@ -2931,6 +3330,16 @@ def build_portfolio_xray_v2(
 
 def _summarize_item(item: dict[str, Any]) -> str:
     t = item.get("type")
+    if t == "weight_concentration":
+        hhi = item.get("weight_hhi")
+        hhi_phrase = _fmt_num(hhi, 3) if hhi is not None else "n/a (single holding)"
+        return (
+            f"Capital weight concentration ({item.get('basis') or 'capital_weights'}): "
+            f"top1 {item.get('top1_weight_asset')} {_fmt_pct(item.get('top1_weight_pct'))}, "
+            f"top3 sum {_fmt_pct(item.get('top3_weight_sum_pct'))} "
+            f"({', '.join(item.get('top3_weight_assets') or [])}), "
+            f"HHI {hhi_phrase}, n_holdings={item.get('n_holdings')}"
+        )
     if t == "holding":
         return (
             f"{item.get('ticker')}: weight {_fmt_pct(item.get('weight'))}, "
@@ -2945,14 +3354,29 @@ def _summarize_item(item: dict[str, Any]) -> str:
         mq = item.get("metric_quality") if isinstance(item.get("metric_quality"), dict) else {}
         n_obs = mq.get("n_obs")
         bench = mq.get("benchmark_ticker")
+        ttr_phrase = _ttr_summary_phrase(item.get("ttr_months"), item.get("recovered"))
         return (
             f"CAGR {_fmt_pct(item.get('cagr'))}, vol {_fmt_pct(item.get('vol_annual'))}, "
             f"Sharpe {_fmt_num(item.get('sharpe'))}, Sortino {_fmt_num(item.get('sortino'))}, "
-            f"MaxDD {_fmt_pct(item.get('max_drawdown'))}, beta {_fmt_num(item.get('beta_portfolio'))}, "
+            f"MaxDD {_fmt_pct(item.get('max_drawdown'))}, TTR {ttr_phrase}, "
+            f"beta {_fmt_num(item.get('beta_portfolio'))}, Treynor {_fmt_num(item.get('treynor'))}, "
             f"down/up beta {_fmt_num(item.get('downside_beta'))}/{_fmt_num(item.get('upside_beta'))}, "
             f"skew/kurt {_fmt_num(item.get('skewness'))}/{_fmt_num(item.get('kurtosis'))}"
             + (f" (n_obs={n_obs}, bench={bench})" if n_obs is not None else "")
         )
+    if t == "multi_window_metrics":
+        rows = item.get("windows") or []
+        parts = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            ttr_phrase = _ttr_summary_phrase(row.get("ttr_months"), row.get("recovered"))
+            parts.append(
+                f"{row.get('window_label')}: CAGR {_fmt_pct(row.get('cagr'))}, "
+                f"vol {_fmt_pct(row.get('vol_annual'))}, Sharpe {_fmt_num(row.get('sharpe'))}, "
+                f"MaxDD {_fmt_pct(row.get('max_drawdown'))}, TTR {ttr_phrase}"
+            )
+        return "; ".join(parts) if parts else "multi-window metrics unavailable"
     if t == "tail_risk":
         freq = item.get("frequency") or "daily"
         window = item.get("window_label") or item.get("window_months")
@@ -2980,6 +3404,22 @@ def _summarize_item(item: dict[str, Any]) -> str:
         )
     if t == "factor_residual_risk":
         return f"Residual factor risk: {_fmt_pct(item.get('residual_share'))}, severity={item.get('residual_severity')}"
+    if t == "factor_regression_inference":
+        horizon = item.get("horizon") or "n/a"
+        mc = item.get("factor_multicollinearity") or {}
+        ser = item.get("serial_correlation_diagnostics") or {}
+        het = item.get("heteroskedasticity_diagnostics") or {}
+        factors = item.get("by_factor") or []
+        top = factors[0] if factors else {}
+        return (
+            f"Factor regression {horizon}: n_obs={item.get('n_obs', 'n/a')}, "
+            f"R2={_fmt_num(item.get('r2'), 4)}, adj R2={_fmt_num(item.get('adj_r2'), 4)}, "
+            f"idiosyncratic={_fmt_num(item.get('idiosyncratic_risk'), 4)}; "
+            f"multicollinearity={mc.get('severity') or 'n/a'} (max VIF {_fmt_num(mc.get('max_vif'), 2)}); "
+            f"DW={_fmt_num(ser.get('durbin_watson'), 3)}, BP p={_fmt_p_value(het.get('breusch_pagan_p'))}; "
+            f"example {top.get('factor')}: beta={_fmt_num(top.get('beta'), 3)}, "
+            f"HAC p={_fmt_p_value(top.get('hac_p'))}"
+        )
     if t in {"hidden_risk_flag", "hidden_risk_assessment"}:
         status = item.get("assessment_status") or ("flagged" if t == "hidden_risk_flag" else "n/a")
         sev = item.get("severity") or "n/a"
@@ -3042,6 +3482,9 @@ def _xray_section_meta_phrase(section: dict[str, Any]) -> str:
     n_obs = section.get("n_obs")
     if n_obs is not None:
         parts.append(f"n_obs: {n_obs}")
+    benchmark = section.get("benchmark")
+    if benchmark and benchmark != "n/a":
+        parts.append(f"Benchmark: {benchmark}")
     sources = section.get("data_sources_used") or []
     if sources:
         parts.append(f"Sources: {', '.join(str(s) for s in sources)}")
@@ -3109,9 +3552,44 @@ def _xray_section_text_block(section_key: str, section: dict[str, Any]) -> list[
             lines.append(f"  - {_summarize_item(item)}")
         if len(items) > 16:
             lines.append(f"  - ({len(items) - 16} additional rows in portfolio_xray.json)")
+    for item in items:
+        if item.get("type") == "factor_regression_inference":
+            lines.append(f"  - {_summarize_item(item)}")
+            inf_rows = _factor_regression_inference_table_rows(item)
+            if inf_rows:
+                headers, rows = inf_rows
+                lines.extend(_xray_text_table(headers, rows))
     for limitation in section.get("limitations") or []:
         lines.append(f"Limitation: {limitation}")
     return lines
+
+
+def _factor_regression_inference_table_rows(
+    panel: dict[str, Any],
+) -> tuple[list[str], list[list[str]]] | None:
+    by_factor = panel.get("by_factor") or []
+    if not by_factor:
+        return None
+    horizon = str(panel.get("horizon") or "")
+    rows = [
+        [
+            horizon,
+            str(row.get("factor") or ""),
+            _fmt_num(row.get("beta")),
+            _fmt_num(row.get("hac_t")),
+            _fmt_p_value(row.get("hac_p")),
+            _fmt_num(row.get("hac_ci_low")),
+            _fmt_num(row.get("hac_ci_high")),
+        ]
+        for row in by_factor
+        if isinstance(row, dict)
+    ]
+    if not rows:
+        return None
+    return (
+        ["Horizon", "Factor", "Beta", "HAC t", "HAC p", "HAC CI low", "HAC CI high"],
+        rows,
+    )
 
 
 def _xray_section_table_rows(
@@ -3120,6 +3598,22 @@ def _xray_section_table_rows(
     if not items:
         return None
     if section_key == "asset_allocation":
+        concentration = [item for item in items if item.get("type") == "weight_concentration"]
+        if concentration:
+            c = concentration[0]
+            hhi_cell = _fmt_num(c.get("weight_hhi"), 3) if c.get("weight_hhi") is not None else "n/a"
+            return (
+                ["Metric", "Value"],
+                [
+                    ["Basis", str(c.get("basis") or "capital_weights")],
+                    ["Holdings (positive weight)", str(c.get("n_holdings") or "n/a")],
+                    ["Top-1 asset", str(c.get("top1_weight_asset") or "n/a")],
+                    ["Top-1 weight", _fmt_pct(c.get("top1_weight_pct"))],
+                    ["Top-3 assets", ", ".join(c.get("top3_weight_assets") or []) or "n/a"],
+                    ["Top-3 weight sum", _fmt_pct(c.get("top3_weight_sum_pct"))],
+                    ["HHI (capital weights)", hhi_cell],
+                ],
+            )
         holdings = [item for item in items if item.get("type") == "holding"]
         if holdings:
             return (
@@ -3149,9 +3643,47 @@ def _xray_section_table_rows(
                     )
             return (["Dimension", "Bucket", "Weight"], rows[:24])
     if section_key == "risk_diagnostics":
+        panel = [item for item in items if item.get("type") == "multi_window_metrics"]
+        if panel:
+            headers = [
+                "Window",
+                "CAGR",
+                "Vol",
+                "Sharpe",
+                "Sortino",
+                "Max DD",
+                "TTR (months)",
+                "Recovered",
+                "Beta",
+            ]
+            rows = []
+            for row in panel[0].get("windows") or []:
+                if not isinstance(row, dict):
+                    continue
+                ttr_val = row.get("ttr_months")
+                ttr_cell = _fmt_num(ttr_val) if _as_float(ttr_val) is not None else "n/a"
+                if _as_float(ttr_val) == 0.0 and row.get("recovered") is not False:
+                    ttr_cell = "0"
+                recovered = row.get("recovered")
+                rows.append(
+                    [
+                        str(row.get("window_label") or ""),
+                        _fmt_pct(row.get("cagr")),
+                        _fmt_pct(row.get("vol_annual")),
+                        _fmt_num(row.get("sharpe")),
+                        _fmt_num(row.get("sortino")),
+                        _fmt_pct(row.get("max_drawdown")),
+                        ttr_cell,
+                        "yes" if recovered is True else ("no" if recovered is False else "n/a"),
+                        _fmt_num(row.get("beta_portfolio")),
+                    ]
+                )
+            if rows:
+                return (headers, rows)
         metrics = [item for item in items if item.get("type") == "portfolio_metrics"]
         if metrics:
             m = metrics[0]
+            ttr_phrase = _ttr_summary_phrase(m.get("ttr_months"), m.get("recovered"))
             return (
                 ["Metric", "Value"],
                 [
@@ -3160,7 +3692,9 @@ def _xray_section_table_rows(
                     ["Sharpe", _fmt_num(m.get("sharpe"))],
                     ["Sortino", _fmt_num(m.get("sortino"))],
                     ["Max drawdown", _fmt_pct(m.get("max_drawdown"))],
+                    ["Time to recovery", ttr_phrase],
                     ["Beta (base)", _fmt_num(m.get("beta_portfolio"))],
+                    ["Treynor", _fmt_num(m.get("treynor"))],
                     ["Downside / upside beta", f"{_fmt_num(m.get('downside_beta'))} / {_fmt_num(m.get('upside_beta'))}"],
                     ["Skew / kurtosis", f"{_fmt_num(m.get('skewness'))} / {_fmt_num(m.get('kurtosis'))}"],
                 ],
@@ -3193,6 +3727,19 @@ def _xray_section_table_rows(
                     for item in factors
                 ],
             )
+        inference = [item for item in items if item.get("type") == "factor_regression_inference"]
+        if inference:
+            headers: list[str] | None = None
+            rows: list[list[str]] = []
+            for panel in inference:
+                table = _factor_regression_inference_table_rows(panel)
+                if not table:
+                    continue
+                if headers is None:
+                    headers = table[0]
+                rows.extend(table[1])
+            if headers and rows:
+                return (headers, rows)
     if section_key == "hidden_risk_detector":
         assessments = [
             item
@@ -3307,6 +3854,14 @@ def _xray_section_html_block(section_key: str, section: dict[str, Any]) -> list[
             parts.append(
                 f"<p class=\"xray-more\">{_html_esc(f'{len(items) - 16} additional rows in portfolio_xray.json.')}</p>"
             )
+    for item in items:
+        if item.get("type") != "factor_regression_inference":
+            continue
+        parts.append(f"<p>{_html_esc(_summarize_item(item))}</p>")
+        inf_table = _factor_regression_inference_table_rows(item)
+        if inf_table:
+            headers, rows = inf_table
+            parts.append(_xray_html_table_wrapped(f"{title} — {item.get('horizon', '')} HAC", headers, rows))
     for limitation in section.get("limitations") or []:
         parts.append(f'<p class="xray-limitation"><strong>Limitation:</strong> {_html_esc(limitation)}</p>')
     parts.append("</section>")
@@ -3472,16 +4027,35 @@ def format_portfolio_xray_commentary(xray: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def load_portfolio_windows_from_dir(output_dir: Path | str) -> dict[str, dict[str, Any]]:
+    """Load per-window portfolio metrics from snapshot_3y/5y/10y.json when present."""
+    out = Path(output_dir)
+    windows: dict[str, dict[str, Any]] = {}
+    for window_key, _, _ in MULTI_WINDOW_SNAPSHOT_ORDER:
+        path = out / f"snapshot_{window_key}.json"
+        if not path.is_file():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(data, dict) and isinstance(data.get("metrics"), dict):
+            windows[window_key] = data["metrics"]
+    return windows
+
+
 __all__ = [
     "DIAGNOSTIC_ONLY_DISCLAIMER",
     "PORTFOLIO_XRAY_VERSION",
     "XRAY_SECTION_KEYS",
     "XRAY_THRESHOLDS",
+    "MULTI_WINDOW_SNAPSHOT_ORDER",
     "build_portfolio_xray_summary",
     "build_portfolio_xray_v2",
     "format_portfolio_xray_commentary",
     "format_portfolio_xray_html",
     "format_portfolio_xray_text",
+    "load_portfolio_windows_from_dir",
     "load_rc_vol_map_from_csv",
     "resolve_rc_asset_for_xray",
 ]

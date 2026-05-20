@@ -1,0 +1,1665 @@
+{
+  "version": "portfolio_xray_v2",
+  "diagnostic_only": true,
+  "diagnostic_only_disclaimer": "Portfolio X-Ray v2 is diagnostic-only. It summarizes existing report pipeline outputs and in-memory diagnostics; it does not optimize, change weights, change mandate gates, change stress pass/fail status, score portfolios, select portfolios, or provide trade instructions.",
+  "analysis_setup_summary": {
+    "portfolio_role": "generated_policy_portfolio",
+    "weight_source": "Main portfolio/portfolio_weights.yml",
+    "recommendation_status": "generated_policy_output_not_user_input",
+    "product_input_case": "universe_only",
+    "investor_currency": "USD",
+    "base_benchmark_ticker": "SPY",
+    "cash_proxy_ticker": "BIL",
+    "return_frequency": "monthly",
+    "analysis_windows": [
+      36,
+      60,
+      120
+    ]
+  },
+  "thresholds": {
+    "equity_beta_moderate_abs": 0.35,
+    "equity_beta_high_abs": 0.65,
+    "factor_beta_moderate_abs": 0.25,
+    "factor_beta_high_abs": 0.5,
+    "top1_rc_moderate": 0.25,
+    "top1_rc_high": 0.35,
+    "top3_rc_high": 0.6,
+    "pca_pc1_moderate": 0.4,
+    "pca_pc1_high": 0.6,
+    "stress_top1_rc_moderate": 0.25,
+    "stress_top1_rc_high": 0.35,
+    "factor_residual_moderate": 0.5,
+    "factor_residual_high": 0.65,
+    "duration_weight_high": 0.3,
+    "credit_weight_high": 0.25,
+    "liquidity_risk_weight_high": 0.2,
+    "weak_hedge_oos_mae_moderate": 0.05,
+    "weak_hedge_oos_mae_high": 0.1,
+    "macro_dominant_variance_share_moderate": 0.35,
+    "macro_dominant_variance_share_high": 0.5,
+    "archetype_equity_weight_high": 0.55,
+    "archetype_fixed_income_weight_high": 0.45,
+    "archetype_balanced_equity_min": 0.3,
+    "archetype_balanced_equity_max": 0.7,
+    "archetype_balanced_fixed_income_min": 0.2,
+    "archetype_cash_weight_high": 0.35,
+    "archetype_defensive_equity_max": 0.3,
+    "archetype_concentrated_rc_min": 0.35,
+    "stress_loss_moderate": -0.06,
+    "stress_loss_high": -0.12,
+    "max_drawdown_moderate": -0.1,
+    "max_drawdown_high": -0.2,
+    "es_95_moderate": -0.015,
+    "es_95_high": -0.025
+  },
+  "sections": {
+    "asset_allocation": {
+      "status": "available",
+      "data_sources_used": [
+        "analyzed weights",
+        "config/etf_universe.yml",
+        "config/stock_universe.yml"
+      ],
+      "warnings": [],
+      "items": [
+        {
+          "type": "weight_concentration",
+          "basis": "capital_weights",
+          "n_holdings": 4,
+          "top1_weight_asset": "SPY",
+          "top1_weight_pct": 0.45,
+          "top3_weight_assets": [
+            "SPY",
+            "TLT",
+            "HYG"
+          ],
+          "top3_weight_sum_pct": 0.9,
+          "weight_hhi": 0.325
+        },
+        {
+          "type": "holding",
+          "ticker": "SPY",
+          "weight": 0.45,
+          "taxonomy_source": "test_taxonomy",
+          "asset_class": "equity",
+          "region": "US",
+          "currency_exposure": "USD",
+          "sector": "multi_sector",
+          "risk_role": [
+            "risk_on",
+            "growth"
+          ],
+          "main_risk_factor": "equity",
+          "secondary_risk_factors": [
+            "us_growth"
+          ],
+          "duration_bucket": "none",
+          "credit_quality": "none",
+          "risk_bucket": "equity"
+        },
+        {
+          "type": "holding",
+          "ticker": "TLT",
+          "weight": 0.3,
+          "taxonomy_source": "test_taxonomy",
+          "asset_class": "fixed_income",
+          "region": "US",
+          "currency_exposure": "USD",
+          "sector": "none",
+          "risk_role": [
+            "defensive",
+            "duration"
+          ],
+          "main_risk_factor": "real_rates",
+          "secondary_risk_factors": [],
+          "duration_bucket": "long",
+          "credit_quality": "Treasury",
+          "risk_bucket": "fixed_income"
+        },
+        {
+          "type": "holding",
+          "ticker": "HYG",
+          "weight": 0.15,
+          "taxonomy_source": "test_taxonomy",
+          "asset_class": "fixed_income",
+          "region": "US",
+          "currency_exposure": "USD",
+          "sector": "none",
+          "risk_role": [
+            "carry",
+            "risk_on",
+            "income"
+          ],
+          "main_risk_factor": "credit",
+          "secondary_risk_factors": [
+            "liquidity"
+          ],
+          "duration_bucket": "intermediate",
+          "credit_quality": "HY",
+          "risk_bucket": "credit"
+        },
+        {
+          "type": "holding",
+          "ticker": "GLD",
+          "weight": 0.1,
+          "taxonomy_source": "test_taxonomy",
+          "asset_class": "commodity",
+          "region": "Global",
+          "currency_exposure": "USD",
+          "sector": "none",
+          "risk_role": [
+            "inflation_hedge",
+            "crisis_hedge"
+          ],
+          "main_risk_factor": "commodity",
+          "secondary_risk_factors": [
+            "usd"
+          ],
+          "duration_bucket": "none",
+          "credit_quality": "none",
+          "risk_bucket": "real_assets"
+        },
+        {
+          "type": "breakdown",
+          "dimension": "asset_class",
+          "values": [
+            {
+              "name": "equity",
+              "weight": 0.45
+            },
+            {
+              "name": "fixed_income",
+              "weight": 0.44999999999999996
+            },
+            {
+              "name": "commodity",
+              "weight": 0.1
+            }
+          ]
+        },
+        {
+          "type": "breakdown",
+          "dimension": "region",
+          "values": [
+            {
+              "name": "US",
+              "weight": 0.9
+            },
+            {
+              "name": "Global",
+              "weight": 0.1
+            }
+          ]
+        },
+        {
+          "type": "breakdown",
+          "dimension": "currency_exposure",
+          "values": [
+            {
+              "name": "USD",
+              "weight": 1.0
+            }
+          ]
+        },
+        {
+          "type": "breakdown",
+          "dimension": "sector",
+          "values": [
+            {
+              "name": "none",
+              "weight": 0.5499999999999999
+            },
+            {
+              "name": "multi_sector",
+              "weight": 0.45
+            }
+          ]
+        },
+        {
+          "type": "breakdown",
+          "dimension": "risk_role",
+          "values": [
+            {
+              "name": "risk_on",
+              "weight": 0.275
+            },
+            {
+              "name": "growth",
+              "weight": 0.225
+            },
+            {
+              "name": "defensive",
+              "weight": 0.15
+            },
+            {
+              "name": "duration",
+              "weight": 0.15
+            },
+            {
+              "name": "crisis_hedge",
+              "weight": 0.05
+            },
+            {
+              "name": "inflation_hedge",
+              "weight": 0.05
+            },
+            {
+              "name": "carry",
+              "weight": 0.049999999999999996
+            },
+            {
+              "name": "income",
+              "weight": 0.049999999999999996
+            }
+          ]
+        },
+        {
+          "type": "breakdown",
+          "dimension": "main_risk_factor",
+          "values": [
+            {
+              "name": "equity",
+              "weight": 0.45
+            },
+            {
+              "name": "real_rates",
+              "weight": 0.3
+            },
+            {
+              "name": "credit",
+              "weight": 0.15
+            },
+            {
+              "name": "commodity",
+              "weight": 0.1
+            }
+          ]
+        },
+        {
+          "type": "breakdown",
+          "dimension": "risk_bucket",
+          "values": [
+            {
+              "name": "equity",
+              "weight": 0.45
+            },
+            {
+              "name": "fixed_income",
+              "weight": 0.3
+            },
+            {
+              "name": "credit",
+              "weight": 0.15
+            },
+            {
+              "name": "real_assets",
+              "weight": 0.1
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "Taxonomy is annotation-only in V1 and does not select assets or change weights.",
+        "ETF sector and currency fields can describe broad economic exposure rather than exact look-through holdings."
+      ]
+    },
+    "risk_diagnostics": {
+      "status": "available",
+      "data_sources_used": [
+        "snapshot metrics",
+        "snapshot analytics",
+        "drawdown_structure",
+        "snapshot_3y.json metrics",
+        "snapshot_5y.json metrics",
+        "snapshot_10y.json metrics"
+      ],
+      "warnings": [],
+      "items": [
+        {
+          "type": "portfolio_metrics",
+          "cagr": 0.08,
+          "vol_annual": 0.1,
+          "sharpe": 0.6,
+          "sortino": 0.63,
+          "beta_portfolio": 0.85,
+          "corr_base": null,
+          "downside_beta": null,
+          "upside_beta": null,
+          "skewness": null,
+          "kurtosis": null,
+          "treynor": 0.12,
+          "max_drawdown": -0.22,
+          "ttr_months": 2.0,
+          "recovered": true,
+          "metric_quality": {
+            "n_obs": 118,
+            "frequency": "monthly",
+            "benchmark_ticker": "SPY",
+            "risk_free_source": "FRED:DTB3",
+            "window_months": 120,
+            "analysis_end": "2026-04-30"
+          }
+        },
+        {
+          "type": "multi_window_metrics",
+          "frequency": "monthly",
+          "method": "monthly simple portfolio metrics per metrics_specification.md",
+          "windows": [
+            {
+              "window_key": "3y",
+              "window_label": "3Y (36M)",
+              "window_months": 36,
+              "cagr": 0.05,
+              "vol_annual": 0.08,
+              "sharpe": 0.4,
+              "sortino": 0.42000000000000004,
+              "beta_portfolio": 0.85,
+              "treynor": 0.12,
+              "max_drawdown": -0.1,
+              "ttr_months": 3.0,
+              "recovered": true,
+              "n_obs": 36,
+              "analysis_end": "2026-04-30"
+            },
+            {
+              "window_key": "5y",
+              "window_label": "5Y (60M)",
+              "window_months": 60,
+              "cagr": 0.07,
+              "vol_annual": 0.09,
+              "sharpe": 0.55,
+              "sortino": 0.5775000000000001,
+              "beta_portfolio": 0.85,
+              "treynor": 0.12,
+              "max_drawdown": -0.15,
+              "ttr_months": 4.0,
+              "recovered": true,
+              "n_obs": 60,
+              "analysis_end": "2026-04-30"
+            },
+            {
+              "window_key": "10y",
+              "window_label": "10Y (120M)",
+              "window_months": 120,
+              "cagr": 0.08,
+              "vol_annual": 0.1,
+              "sharpe": 0.6,
+              "sortino": 0.63,
+              "beta_portfolio": 0.85,
+              "treynor": 0.12,
+              "max_drawdown": -0.22,
+              "ttr_months": 2.0,
+              "recovered": true,
+              "n_obs": 118,
+              "analysis_end": "2026-04-30"
+            }
+          ]
+        },
+        {
+          "type": "tail_risk",
+          "method": "historical",
+          "frequency": "daily",
+          "window_label": "10y",
+          "metric_available": true,
+          "var_95": -0.02,
+          "es_95": -0.03
+        }
+      ],
+      "limitations": [
+        "Historical metrics describe realized behavior in the selected window, not expected future returns.",
+        "VaR and ES use historical daily simple returns (not Monte Carlo); check against stress scenarios before action.",
+        "When tail_risk.metric_available is false, flat var/es fields may be absent or stale."
+      ],
+      "method": "monthly simple portfolio metrics (metrics_spec); daily historical VaR/ES when tail_risk is present",
+      "frequency": "mixed",
+      "window": "10Y (120M); panel 3Y (36M), 5Y (60M), 10Y (120M); tail 10y",
+      "n_obs": 118,
+      "benchmark": "SPY"
+    },
+    "factor_exposure": {
+      "status": "available",
+      "data_sources_used": [
+        "stress_report.factor_betas_5y",
+        "stress_report.factor_betas_10y",
+        "stress_report.factor_betas_kalman",
+        "stress_report.factor_variance_decomposition",
+        "stress_report.factor_regression_5y",
+        "stress_report.factor_regression_10y"
+      ],
+      "warnings": [],
+      "items": [
+        {
+          "type": "factor_exposure",
+          "beta_key": "beta_eq",
+          "factor": "equity",
+          "beta_5y": 0.72,
+          "beta_10y": 0.55,
+          "kalman_current_beta": 0.81,
+          "net_total_variance_share": 0.4,
+          "gross_total_variance_share": 0.4,
+          "direction": "risk_adder"
+        },
+        {
+          "type": "factor_exposure",
+          "beta_key": "beta_cmd",
+          "factor": "commodity",
+          "beta_5y": 0.18,
+          "beta_10y": 0.12,
+          "kalman_current_beta": null,
+          "net_total_variance_share": null,
+          "gross_total_variance_share": null,
+          "direction": null
+        },
+        {
+          "type": "factor_exposure",
+          "beta_key": "beta_credit",
+          "factor": "credit",
+          "beta_5y": 0.31,
+          "beta_10y": 0.2,
+          "kalman_current_beta": 0.42,
+          "net_total_variance_share": 0.08,
+          "gross_total_variance_share": 0.08,
+          "direction": "risk_adder"
+        },
+        {
+          "type": "factor_residual_risk",
+          "residual_share": 0.7,
+          "residual_severity": "high",
+          "interpretation": null
+        },
+        {
+          "type": "factor_regression_inference",
+          "horizon": "5Y",
+          "regression_source": "stress_report.factor_regression_5y",
+          "window_weeks": 260,
+          "n_obs": 250,
+          "r2": 0.5,
+          "adj_r2": 0.47,
+          "idiosyncratic_risk": 0.5,
+          "intercept": 0.001,
+          "se_type": "classic_ols",
+          "ci_level": 0.95,
+          "inference_standard": "hac_newey_west",
+          "hac": {
+            "se_type": "hac_newey_west",
+            "kernel": "bartlett",
+            "max_lags": 4
+          },
+          "by_factor": [
+            {
+              "beta_key": "beta_eq",
+              "factor": "equity",
+              "beta": 0.72,
+              "ols_t": 2.0,
+              "ols_p": 0.04,
+              "ols_ci_low": 0.62,
+              "ols_ci_high": 0.82,
+              "hac_t": 3.1,
+              "hac_p": 0.002,
+              "hac_ci_low": 0.64,
+              "hac_ci_high": 0.7999999999999999
+            },
+            {
+              "beta_key": "beta_credit",
+              "factor": "credit",
+              "beta": 0.31,
+              "ols_t": 2.0,
+              "ols_p": 0.04,
+              "ols_ci_low": 0.21,
+              "ols_ci_high": 0.41000000000000003,
+              "hac_t": 2.0,
+              "hac_p": 0.05,
+              "hac_ci_low": 0.22999999999999998,
+              "hac_ci_high": 0.39
+            }
+          ],
+          "factor_multicollinearity": {
+            "severity": "moderate",
+            "max_vif": 4.2,
+            "max_vif_factor": "credit",
+            "cond_correlation_matrix": 25.0,
+            "assessment_en": "Moderate multicollinearity; interpret betas jointly."
+          },
+          "serial_correlation_diagnostics": {
+            "durbin_watson": 2.05,
+            "breusch_godfrey_min_p": 0.12
+          },
+          "heteroskedasticity_diagnostics": {
+            "breusch_pagan_p": 0.08
+          }
+        },
+        {
+          "type": "factor_regression_inference",
+          "horizon": "10Y",
+          "regression_source": "stress_report.factor_regression_10y",
+          "window_weeks": 260,
+          "n_obs": 480,
+          "r2": 0.55,
+          "adj_r2": 0.52,
+          "idiosyncratic_risk": 0.44999999999999996,
+          "intercept": 0.001,
+          "se_type": "classic_ols",
+          "ci_level": 0.95,
+          "inference_standard": "hac_newey_west",
+          "hac": {
+            "se_type": "hac_newey_west",
+            "kernel": "bartlett",
+            "max_lags": 4
+          },
+          "by_factor": [
+            {
+              "beta_key": "beta_eq",
+              "factor": "equity",
+              "beta": 0.55,
+              "ols_t": 2.0,
+              "ols_p": 0.04,
+              "ols_ci_low": 0.45000000000000007,
+              "ols_ci_high": 0.65,
+              "hac_t": 3.1,
+              "hac_p": 0.002,
+              "hac_ci_low": 0.47000000000000003,
+              "hac_ci_high": 0.63
+            },
+            {
+              "beta_key": "beta_cmd",
+              "factor": "commodity",
+              "beta": 0.12,
+              "ols_t": 2.0,
+              "ols_p": 0.04,
+              "ols_ci_low": 0.01999999999999999,
+              "ols_ci_high": 0.22,
+              "hac_t": 2.0,
+              "hac_p": 0.05,
+              "hac_ci_low": 0.039999999999999994,
+              "hac_ci_high": 0.2
+            }
+          ],
+          "factor_multicollinearity": {
+            "severity": "moderate",
+            "max_vif": 4.2,
+            "max_vif_factor": "credit",
+            "cond_correlation_matrix": 25.0,
+            "assessment_en": "Moderate multicollinearity; interpret betas jointly."
+          },
+          "serial_correlation_diagnostics": {
+            "durbin_watson": 2.05,
+            "breusch_godfrey_min_p": 0.12
+          },
+          "heteroskedasticity_diagnostics": {
+            "breusch_pagan_p": 0.08
+          }
+        }
+      ],
+      "limitations": [
+        "Factor exposures are diagnostics from the existing factor pipeline and do not replace raw holdings.",
+        "Kalman betas are current-regime diagnostics and do not replace raw 5Y/10Y OLS betas.",
+        "Reported significance uses HAC/Newey-West p-values and confidence intervals per stress_testing_spec \u00a78.4; classical OLS t/p in by_factor are diagnostic-only."
+      ],
+      "method": "weekly OLS portfolio factor betas (5Y/10Y); Kalman latest; variance decomposition; factor_regression inference panel (HAC, multicollinearity, residual diagnostics)",
+      "frequency": "weekly",
+      "window": "5Y (~260 weeks), 10Y (~520 weeks)",
+      "n_obs": 480,
+      "benchmark": "n/a"
+    },
+    "hidden_risk_detector": {
+      "status": "available",
+      "data_sources_used": [
+        "stress_report.factor_betas_5y",
+        "stress_report.portfolio_pca",
+        "stress_report.factor_variance_decomposition",
+        "stress_report.factor_beta_shock_oos",
+        "stress_report.scenario_results",
+        "portfolio_analytics.tail_risk",
+        "RC_vol evidence",
+        "taxonomy metadata"
+      ],
+      "warnings": [],
+      "items": [
+        {
+          "type": "hidden_risk_flag",
+          "name": "hidden_equity_beta",
+          "category": "hidden_equity_beta",
+          "flagged": true,
+          "assessment_status": "flagged",
+          "severity": "high",
+          "fact": "5Y equity beta is 0.720 (above 0.350 moderate threshold).",
+          "interpretation": "The portfolio has meaningful equity-market sensitivity even if holdings labels look diversified.",
+          "next_test": "Check equity_shock, recession_severe, and downside equity behavior.",
+          "limitation": "Beta is historical and can change when correlations or holdings change.",
+          "evidence": {
+            "beta_key": "beta_eq",
+            "value": 0.72
+          },
+          "thresholds": [
+            "equity_beta_moderate_abs",
+            "equity_beta_high_abs"
+          ]
+        },
+        {
+          "type": "hidden_risk_flag",
+          "name": "duration_concentration",
+          "category": "duration_concentration",
+          "flagged": true,
+          "assessment_status": "flagged",
+          "severity": "medium",
+          "fact": "Intermediate/long duration-labeled holdings are 45.0% of capital.",
+          "interpretation": "The portfolio may be sensitive to rates and duration shocks beyond broad asset labels.",
+          "next_test": "Check rates_shock, real-rate beta, and stress RC contribution from bond holdings.",
+          "limitation": "Duration bucket is taxonomy metadata, not a live duration estimate.",
+          "evidence": {
+            "duration_labeled_weight": 0.44999999999999996
+          },
+          "thresholds": [
+            "duration_weight_high"
+          ]
+        },
+        {
+          "type": "hidden_risk_assessment",
+          "name": "credit_concentration",
+          "category": "credit_concentration",
+          "flagged": false,
+          "assessment_status": "below_threshold",
+          "severity": null,
+          "fact": "Credit-labeled weight is 15.0%; below 25.0% threshold.",
+          "interpretation": "Credit-labeled capital concentration is not elevated under X-Ray rules.",
+          "next_test": "Review credit factor beta and credit stress scenarios if HY/IG holdings exist.",
+          "limitation": "Low labeled credit weight does not remove spread or default risk.",
+          "evidence": {
+            "credit_labeled_weight": 0.15
+          },
+          "thresholds": [
+            "credit_weight_high"
+          ]
+        },
+        {
+          "type": "hidden_risk_assessment",
+          "name": "liquidity_concentration",
+          "category": "liquidity_concentration",
+          "flagged": false,
+          "assessment_status": "below_threshold",
+          "severity": null,
+          "fact": "Liquidity-labeled weight is 0.0%; below 20.0% threshold.",
+          "interpretation": "Liquidity-labeled concentration is not elevated under taxonomy rules.",
+          "next_test": "Still review liquidity_shock if holdings are illiquid in practice.",
+          "limitation": "Absence of a liquidity label does not guarantee market liquidity.",
+          "evidence": {
+            "liquidity_labeled_weight": 0.0
+          },
+          "thresholds": [
+            "liquidity_risk_weight_high"
+          ]
+        },
+        {
+          "type": "hidden_risk_flag",
+          "name": "correlation_or_common_factor_concentration",
+          "category": "correlation_or_common_factor_concentration",
+          "flagged": true,
+          "assessment_status": "flagged",
+          "severity": "high",
+          "fact": "Raw covariance PCA PC1 explains 66.0% of asset-return variance.",
+          "interpretation": "Several holdings may be driven by the same statistical risk direction.",
+          "next_test": "Review PCA loadings, raw correlation PCA, and residual PCA after factor removal.",
+          "limitation": "PCA is statistical and does not identify a tradable economic factor by itself.",
+          "evidence": {
+            "pca_layer": "raw",
+            "pc1_explained_variance_ratio": 0.66
+          },
+          "thresholds": [
+            "pca_pc1_moderate",
+            "pca_pc1_high"
+          ]
+        },
+        {
+          "type": "hidden_risk_flag",
+          "name": "residual_pca_concentration",
+          "category": "residual_pca_concentration",
+          "flagged": true,
+          "assessment_status": "flagged",
+          "severity": "medium",
+          "fact": "Residual PCA PC1 explains 52.0% of factor-adjusted return variance.",
+          "interpretation": "After named factors, holdings may still share a common residual direction.",
+          "next_test": "Review residual PCA loadings and unexplained factor residual share.",
+          "limitation": "Residual PCA is model-dependent on the factor set used.",
+          "evidence": {
+            "pca_layer": "residual",
+            "pc1_explained_variance_ratio": 0.52
+          },
+          "thresholds": [
+            "pca_pc1_moderate",
+            "pca_pc1_high"
+          ]
+        },
+        {
+          "type": "hidden_risk_flag",
+          "name": "weak_hedge_behavior",
+          "category": "weak_hedge_behavior",
+          "flagged": true,
+          "assessment_status": "flagged",
+          "severity": "medium",
+          "fact": "hedge-labeled assets (GLD) did not offset portfolio loss in worst scenario recession_severe; factor OOS mean absolute error (5Y beta) is 3.0%.",
+          "interpretation": "Defensive or hedge-labeled sleeves may not provide expected crisis offset.",
+          "next_test": "Review historical episodes, hedge asset stress PnL, and crisis_hedge role coverage.",
+          "limitation": "Hedge labels and factor OOS tests are approximations, not live hedge effectiveness.",
+          "evidence": {
+            "hedge_labeled_weight": 0.4,
+            "hedge_tickers": [
+              "TLT",
+              "GLD"
+            ],
+            "worst_scenario_id": "recession_severe",
+            "portfolio_pnl_pct": -0.14,
+            "hedge_assets_negative_with_portfolio_loss": [
+              {
+                "ticker": "GLD",
+                "pnl_pct": -0.01
+              }
+            ],
+            "mean_abs_error_5y": 0.03
+          },
+          "thresholds": [
+            "weak_hedge_oos_mae_moderate",
+            "weak_hedge_oos_mae_high"
+          ]
+        },
+        {
+          "type": "hidden_risk_flag",
+          "name": "tail_risk",
+          "category": "tail_risk",
+          "flagged": true,
+          "assessment_status": "flagged",
+          "severity": "high",
+          "fact": "Daily historical ES95 is -3.0% (historical, daily, window 10y).",
+          "interpretation": "Left-tail loss magnitude is elevated relative to configured ES thresholds.",
+          "next_test": "Review tail_risk block, stress worst-case loss, and drawdown metrics together.",
+          "limitation": "Historical VaR/ES is backward-looking and not a forecast.",
+          "evidence": {
+            "es_95": -0.03,
+            "var_95": -0.02,
+            "method": "historical",
+            "frequency": "daily",
+            "window_label": "10y",
+            "n_obs": null
+          },
+          "thresholds": [
+            "es_95_moderate",
+            "es_95_high"
+          ]
+        },
+        {
+          "type": "hidden_risk_flag",
+          "name": "stress_loss_contributor_concentration",
+          "category": "stress_loss_contributor_concentration",
+          "flagged": true,
+          "assessment_status": "flagged",
+          "severity": "high",
+          "fact": "In worst scenario recession_severe, top stress RC asset HYG is 42.0%.",
+          "interpretation": "Stress losses may be dominated by a small number of assets.",
+          "next_test": "Inspect pnl_by_asset_pct and Top3 RC for the worst stress scenario.",
+          "limitation": "Synthetic stress RC uses scenario covariance diagnostics and is not a pass/fail gate.",
+          "evidence": {
+            "scenario_id": "recession_severe",
+            "top1_rc_asset": "HYG",
+            "top1_rc_pct": 0.42
+          },
+          "thresholds": [
+            "stress_top1_rc_moderate",
+            "stress_top1_rc_high"
+          ]
+        },
+        {
+          "type": "hidden_risk_flag",
+          "name": "macro_factor_dependency",
+          "category": "macro_factor_dependency",
+          "flagged": true,
+          "assessment_status": "flagged",
+          "severity": "high",
+          "fact": "Largest |beta| is beta_eq=0.720; dominant variance share equity=40.0%; residual share 70.0%.",
+          "interpretation": "Portfolio behavior may be driven by a small set of macro/factor exposures.",
+          "next_test": "Review factor exposure section, factor stress history, and residual risk.",
+          "limitation": "Factor maps are linear approximations and may miss regime shifts.",
+          "evidence": {
+            "max_abs_beta_key": "beta_eq",
+            "max_abs_beta": 0.72,
+            "dominant_factor": "equity",
+            "dominant_variance_share": 0.4,
+            "residual_share": 0.7
+          },
+          "thresholds": [
+            "factor_beta_moderate_abs",
+            "factor_beta_high_abs",
+            "macro_dominant_variance_share_moderate",
+            "macro_dominant_variance_share_high"
+          ]
+        },
+        {
+          "type": "hidden_risk_flag",
+          "name": "single_asset_risk_concentration",
+          "category": "single_asset_risk_concentration",
+          "flagged": true,
+          "assessment_status": "flagged",
+          "severity": "high",
+          "fact": "SPY contributes 40.0% of RC_vol.",
+          "interpretation": "Portfolio risk is more concentrated than capital weights alone imply.",
+          "next_test": "Compare weight vs RC_vol and inspect stress Top1/Top3 RC concentration.",
+          "limitation": "RC_vol depends on the selected covariance window and existing RC calculation.",
+          "evidence": {
+            "ticker": "SPY",
+            "rc_vol": 0.4
+          },
+          "thresholds": [
+            "top1_rc_moderate",
+            "top1_rc_high"
+          ]
+        }
+      ],
+      "limitations": [
+        "Hidden risk flags are transparent threshold rules, not AI judgment and not portfolio recommendations.",
+        "Each category reports flagged, below-threshold, or unavailable evidence; absence of a flag is not proof of safety."
+      ],
+      "confidence": "high",
+      "evidence_count": 11,
+      "flagged_count": 9,
+      "below_threshold_count": 2,
+      "unavailable_count": 0
+    },
+    "portfolio_archetype": {
+      "status": "available",
+      "data_sources_used": [
+        "asset allocation",
+        "factor betas",
+        "RC_vol",
+        "PCA",
+        "weakness map",
+        "hidden risk detector",
+        "tail risk"
+      ],
+      "warnings": [],
+      "items": [
+        {
+          "type": "portfolio_archetype",
+          "primary_archetype": "Equity Growth Portfolio",
+          "secondary_archetype": "Pseudo-diversified Portfolio",
+          "confidence": "low",
+          "positive_evidence": [
+            "equity factor beta 0.720 is at or above 0.650"
+          ],
+          "negative_evidence": [
+            "weakness map flags high equity crash vulnerability despite equity growth portfolio characteristics",
+            "weakness map flags high recession vulnerability despite equity growth portfolio characteristics"
+          ],
+          "drivers": [
+            "equity factor beta 0.720 is at or above 0.650"
+          ],
+          "archetype_scorecard": [
+            {
+              "archetype": "Equity Growth Portfolio",
+              "strength": 0.72,
+              "positive_evidence": [
+                "equity factor beta 0.720 is at or above 0.650"
+              ],
+              "negative_evidence": [
+                "weakness map flags high equity crash vulnerability despite equity growth portfolio characteristics",
+                "weakness map flags high recession vulnerability despite equity growth portfolio characteristics"
+              ],
+              "fit": "primary"
+            },
+            {
+              "archetype": "Pseudo-diversified Portfolio",
+              "strength": 0.66,
+              "positive_evidence": [
+                "top RC_vol 40.0% indicates concentration despite many holdings",
+                "raw PCA PC1 66.0% shows common-factor concentration"
+              ],
+              "negative_evidence": [
+                "weakness map flags high recession vulnerability despite pseudo-diversified portfolio characteristics",
+                "weakness map flags high equity crash vulnerability despite pseudo-diversified portfolio characteristics"
+              ],
+              "fit": "secondary"
+            },
+            {
+              "archetype": "Balanced 60/40-like",
+              "strength": 0.6,
+              "positive_evidence": [
+                "equity 45.0% and fixed income 45.0% sit in a balanced capital mix band"
+              ],
+              "negative_evidence": [
+                "weakness map flags high recession vulnerability despite balanced 60/40-like characteristics"
+              ],
+              "fit": "secondary"
+            },
+            {
+              "archetype": "Concentrated-risk Portfolio",
+              "strength": 0.4,
+              "positive_evidence": [
+                "top RC_vol 40.0% shows concentrated risk budget",
+                "hidden risk detector flags single-asset risk concentration",
+                "equity beta 0.720 adds market-beta concentration"
+              ],
+              "negative_evidence": [
+                "weakness map flags high equity crash vulnerability despite concentrated-risk portfolio characteristics",
+                "weakness map flags high recession vulnerability despite concentrated-risk portfolio characteristics",
+                "weakness map flags high liquidity vulnerability despite concentrated-risk portfolio characteristics"
+              ],
+              "fit": "secondary"
+            },
+            {
+              "archetype": "Defensive Portfolio",
+              "strength": 0.36,
+              "positive_evidence": [
+                "fixed income weight 45.0% supports defensive posture"
+              ],
+              "negative_evidence": [],
+              "fit": "secondary"
+            },
+            {
+              "archetype": "Credit Carry Portfolio",
+              "strength": 0.31,
+              "positive_evidence": [
+                "credit-labeled capital weight 30.0% is elevated",
+                "credit factor beta 0.310 is material"
+              ],
+              "negative_evidence": [
+                "weakness map flags medium credit vulnerability despite credit carry portfolio characteristics",
+                "weakness map flags high liquidity vulnerability despite credit carry portfolio characteristics"
+              ],
+              "fit": "secondary"
+            },
+            {
+              "archetype": "Tail-risk Exposed Portfolio",
+              "strength": 0.22,
+              "positive_evidence": [
+                "daily historical ES95 -3.0% is in the high tail-risk band",
+                "hidden risk detector flags elevated tail risk",
+                "max drawdown -22.0% is severe"
+              ],
+              "negative_evidence": [
+                "weakness map flags high volatility spike vulnerability despite tail-risk exposed portfolio characteristics",
+                "weakness map flags high liquidity vulnerability despite tail-risk exposed portfolio characteristics"
+              ],
+              "fit": "secondary"
+            },
+            {
+              "archetype": "Inflation-sensitive",
+              "strength": 0.1,
+              "positive_evidence": [
+                "commodity capital weight 10.0%"
+              ],
+              "negative_evidence": [],
+              "fit": "below_threshold"
+            },
+            {
+              "archetype": "Cash-heavy Low-Risk",
+              "strength": 0.0,
+              "positive_evidence": [],
+              "negative_evidence": [
+                "cash weight 0.0% is not material"
+              ],
+              "fit": "below_threshold"
+            },
+            {
+              "archetype": "Duration-heavy Defensive",
+              "strength": 0.0,
+              "positive_evidence": [],
+              "negative_evidence": [
+                "equity beta 0.720 is not low enough for a defensive duration read"
+              ],
+              "fit": "below_threshold"
+            }
+          ],
+          "conflicting_signals": [
+            {
+              "archetype": "Pseudo-diversified Portfolio",
+              "tension": "competing_label",
+              "explanation": "Pseudo-diversified Portfolio also scores 0.660 versus primary Equity Growth Portfolio at 0.720; multiple behavior labels may apply.",
+              "positive_evidence": [
+                "top RC_vol 40.0% indicates concentration despite many holdings",
+                "raw PCA PC1 66.0% shows common-factor concentration"
+              ],
+              "negative_evidence": [
+                "weakness map flags high recession vulnerability despite pseudo-diversified portfolio characteristics",
+                "weakness map flags high equity crash vulnerability despite pseudo-diversified portfolio characteristics"
+              ]
+            },
+            {
+              "archetype": "Balanced 60/40-like",
+              "tension": "competing_label",
+              "explanation": "Balanced 60/40-like also scores 0.600 versus primary Equity Growth Portfolio at 0.720; multiple behavior labels may apply.",
+              "positive_evidence": [
+                "equity 45.0% and fixed income 45.0% sit in a balanced capital mix band"
+              ],
+              "negative_evidence": [
+                "weakness map flags high recession vulnerability despite balanced 60/40-like characteristics"
+              ]
+            },
+            {
+              "archetype": "Equity Growth Portfolio",
+              "tension": "equity_growth_portfolio_vs_equity_crash_weakness",
+              "explanation": "Equity Growth Portfolio is supported by allocation/factor evidence, but the weakness map shows high equity crash vulnerability \u2014 review both together.",
+              "positive_evidence": [
+                "equity factor beta 0.720 is at or above 0.650"
+              ],
+              "negative_evidence": [
+                "weakness map flags high equity crash vulnerability despite equity growth portfolio characteristics",
+                "weakness map flags high recession vulnerability despite equity growth portfolio characteristics"
+              ],
+              "related_weakness": "equity_crash",
+              "weakness_severity": "high"
+            },
+            {
+              "archetype": "Equity Growth Portfolio",
+              "tension": "equity_growth_portfolio_vs_recession_weakness",
+              "explanation": "Equity Growth Portfolio is supported by allocation/factor evidence, but the weakness map shows high recession vulnerability \u2014 review both together.",
+              "positive_evidence": [
+                "equity factor beta 0.720 is at or above 0.650"
+              ],
+              "negative_evidence": [
+                "weakness map flags high equity crash vulnerability despite equity growth portfolio characteristics",
+                "weakness map flags high recession vulnerability despite equity growth portfolio characteristics"
+              ],
+              "related_weakness": "recession",
+              "weakness_severity": "high"
+            },
+            {
+              "archetype": "Pseudo-diversified Portfolio",
+              "tension": "label_vs_regime_tension",
+              "explanation": "Pseudo-diversified Portfolio has supporting evidence but simultaneous regime weakness: weakness map flags high recession vulnerability despite pseudo-diversified portfolio characteristics",
+              "positive_evidence": [
+                "top RC_vol 40.0% indicates concentration despite many holdings",
+                "raw PCA PC1 66.0% shows common-factor concentration"
+              ],
+              "negative_evidence": [
+                "weakness map flags high recession vulnerability despite pseudo-diversified portfolio characteristics",
+                "weakness map flags high equity crash vulnerability despite pseudo-diversified portfolio characteristics"
+              ]
+            },
+            {
+              "archetype": "Balanced 60/40-like",
+              "tension": "label_vs_regime_tension",
+              "explanation": "Balanced 60/40-like has supporting evidence but simultaneous regime weakness: weakness map flags high recession vulnerability despite balanced 60/40-like characteristics",
+              "positive_evidence": [
+                "equity 45.0% and fixed income 45.0% sit in a balanced capital mix band"
+              ],
+              "negative_evidence": [
+                "weakness map flags high recession vulnerability despite balanced 60/40-like characteristics"
+              ]
+            }
+          ],
+          "conflict_summary": "Primary label Equity Growth Portfolio coexists with high equity crash weakness \u2014 the label describes holdings, not immunity to that regime."
+        }
+      ],
+      "limitations": [
+        "Archetype is a rule-based behavior label with caveats, not a portfolio selection decision.",
+        "A portfolio can have multiple simultaneous characteristics; confidence reflects signal clarity and regime tensions.",
+        "Negative evidence and conflicting signals can apply even when a primary label is shown."
+      ],
+      "confidence": "low"
+    },
+    "risk_budget_view": {
+      "status": "available",
+      "data_sources_used": [
+        "analyzed weights",
+        "snapshot.RC_asset",
+        "stress_report.scenario_results.pnl_by_asset_pct"
+      ],
+      "warnings": [],
+      "items": [
+        {
+          "type": "asset_risk_budget",
+          "ticker": "SPY",
+          "weight": 0.45,
+          "rc_vol": 0.4,
+          "risk_weight_gap": -0.04999999999999999,
+          "worst_stress_loss_contribution_pct": -0.06,
+          "worst_stress_scenario": "equity_shock"
+        },
+        {
+          "type": "asset_risk_budget",
+          "ticker": "HYG",
+          "weight": 0.15,
+          "rc_vol": 0.3,
+          "risk_weight_gap": 0.15,
+          "worst_stress_loss_contribution_pct": -0.08,
+          "worst_stress_scenario": "recession_severe"
+        },
+        {
+          "type": "asset_risk_budget",
+          "ticker": "TLT",
+          "weight": 0.3,
+          "rc_vol": 0.2,
+          "risk_weight_gap": -0.09999999999999998,
+          "worst_stress_loss_contribution_pct": -0.01,
+          "worst_stress_scenario": "equity_shock"
+        },
+        {
+          "type": "asset_risk_budget",
+          "ticker": "GLD",
+          "weight": 0.1,
+          "rc_vol": 0.1,
+          "risk_weight_gap": 0.0,
+          "worst_stress_loss_contribution_pct": -0.01,
+          "worst_stress_scenario": "recession_severe"
+        }
+      ],
+      "limitations": [
+        "RC_vol is contribution to portfolio variance from the existing pipeline and is diagnostic-only.",
+        "Stress loss contribution is scenario-specific and should not be read as expected loss."
+      ],
+      "method": "RC_vol percentage variance contribution; worst-case stress PnL by asset across scenarios",
+      "frequency": "monthly",
+      "window": "10Y display subset (snapshot.RC_asset top-N)",
+      "benchmark": "n/a"
+    },
+    "weakness_map": {
+      "status": "available",
+      "data_sources_used": [
+        "stress_report.scenario_results",
+        "stress_report.factor_betas_5y",
+        "snapshot metrics",
+        "snapshot analytics",
+        "taxonomy metadata",
+        "config/etf_universe.yml"
+      ],
+      "warnings": [],
+      "items": [
+        {
+          "type": "weakness",
+          "risk": "recession",
+          "exposure_present": true,
+          "adverse_evidence": true,
+          "severity": "high",
+          "confidence": "high",
+          "scenario_coverage": {
+            "mapped_scenarios": [
+              "recession_severe"
+            ],
+            "scenarios_present": [
+              "recession_severe"
+            ],
+            "scenarios_missing": [],
+            "evidence_mode": "stress_scenario_and_factor",
+            "scenario_mapping": "WEAKNESS_SCENARIO_MAP"
+          },
+          "top_asset_loss_drivers": [
+            {
+              "ticker": "HYG",
+              "pnl_pct": -0.08,
+              "scenario_id": "recession_severe",
+              "evidence_type": "stress_asset_pnl"
+            },
+            {
+              "ticker": "SPY",
+              "pnl_pct": -0.05,
+              "scenario_id": "recession_severe",
+              "evidence_type": "stress_asset_pnl"
+            },
+            {
+              "ticker": "GLD",
+              "pnl_pct": -0.01,
+              "scenario_id": "recession_severe",
+              "evidence_type": "stress_asset_pnl"
+            }
+          ],
+          "top_factor_drivers": [
+            {
+              "factor_short": "eq",
+              "beta_key": "beta_eq",
+              "beta_5y": 0.72,
+              "scenario_pnl_pct": -0.1,
+              "scenario_id": "recession_severe",
+              "evidence_type": "stress_factor_pnl"
+            },
+            {
+              "factor_short": "credit",
+              "beta_key": "beta_credit",
+              "beta_5y": 0.31,
+              "scenario_pnl_pct": -0.04,
+              "scenario_id": "recession_severe",
+              "evidence_type": "stress_factor_pnl"
+            }
+          ],
+          "evidence": [
+            {
+              "source": "stress_scenario",
+              "evidence_type": "stress_scenario",
+              "scenario_id": "recession_severe",
+              "portfolio_pnl_pct": -0.14,
+              "severity": "high"
+            },
+            {
+              "source": "max_drawdown",
+              "evidence_type": "max_drawdown",
+              "max_drawdown": -0.22,
+              "severity": "high"
+            },
+            {
+              "source": "historical_es_95",
+              "evidence_type": "historical_tail",
+              "es_95": -0.03,
+              "severity": "high"
+            }
+          ],
+          "missing_inputs": [],
+          "interpretation": "Adverse evidence for recession or hard-landing channels (high severity); review scenario coverage, asset loss drivers, and factor drivers before action."
+        },
+        {
+          "type": "weakness",
+          "risk": "inflation",
+          "exposure_present": true,
+          "adverse_evidence": false,
+          "severity": "low",
+          "confidence": "medium",
+          "scenario_coverage": {
+            "mapped_scenarios": [
+              "inflation_stagflation"
+            ],
+            "scenarios_present": [],
+            "scenarios_missing": [
+              "inflation_stagflation"
+            ],
+            "evidence_mode": "stress_scenario_and_factor",
+            "scenario_mapping": "WEAKNESS_SCENARIO_MAP"
+          },
+          "top_asset_loss_drivers": [],
+          "top_factor_drivers": [],
+          "evidence": [
+            {
+              "source": "available_diagnostics",
+              "evidence_type": "below_threshold",
+              "note": "No adverse evidence crossed configured X-Ray thresholds."
+            }
+          ],
+          "missing_inputs": [
+            "missing stress scenarios: inflation_stagflation",
+            "pnl_by_asset_pct missing for mapped stress scenarios"
+          ],
+          "interpretation": "Exposure to inflation or stagflation pressure is present, but available stress/factor/tail diagnostics did not cross adverse-evidence thresholds in this run."
+        },
+        {
+          "type": "weakness",
+          "risk": "rates",
+          "exposure_present": true,
+          "adverse_evidence": false,
+          "severity": "low",
+          "confidence": "medium",
+          "scenario_coverage": {
+            "mapped_scenarios": [
+              "rates_shock"
+            ],
+            "scenarios_present": [],
+            "scenarios_missing": [
+              "rates_shock"
+            ],
+            "evidence_mode": "stress_scenario_and_factor",
+            "scenario_mapping": "WEAKNESS_SCENARIO_MAP"
+          },
+          "top_asset_loss_drivers": [],
+          "top_factor_drivers": [],
+          "evidence": [
+            {
+              "source": "available_diagnostics",
+              "evidence_type": "below_threshold",
+              "note": "No adverse evidence crossed configured X-Ray thresholds."
+            }
+          ],
+          "missing_inputs": [
+            "missing stress scenarios: rates_shock",
+            "pnl_by_asset_pct missing for mapped stress scenarios"
+          ],
+          "interpretation": "Exposure to real-rate or duration shocks is present, but available stress/factor/tail diagnostics did not cross adverse-evidence thresholds in this run."
+        },
+        {
+          "type": "weakness",
+          "risk": "credit",
+          "exposure_present": true,
+          "adverse_evidence": true,
+          "severity": "medium",
+          "confidence": "medium",
+          "scenario_coverage": {
+            "mapped_scenarios": [
+              "credit_shock"
+            ],
+            "scenarios_present": [],
+            "scenarios_missing": [
+              "credit_shock"
+            ],
+            "evidence_mode": "stress_scenario_and_factor",
+            "scenario_mapping": "WEAKNESS_SCENARIO_MAP"
+          },
+          "top_asset_loss_drivers": [],
+          "top_factor_drivers": [
+            {
+              "factor_short": "credit",
+              "beta_key": "beta_credit",
+              "beta_5y": 0.31,
+              "scenario_pnl_pct": null,
+              "scenario_id": null,
+              "evidence_type": "factor_beta_5y"
+            }
+          ],
+          "evidence": [
+            {
+              "source": "factor_beta",
+              "evidence_type": "factor_beta",
+              "beta_key": "beta_credit",
+              "value": 0.31,
+              "severity": "medium"
+            }
+          ],
+          "missing_inputs": [
+            "missing stress scenarios: credit_shock",
+            "pnl_by_asset_pct missing for mapped stress scenarios"
+          ],
+          "interpretation": "Adverse evidence for credit spread or default-risk repricing (medium severity); review scenario coverage, asset loss drivers, and factor drivers before action."
+        },
+        {
+          "type": "weakness",
+          "risk": "liquidity",
+          "exposure_present": true,
+          "adverse_evidence": true,
+          "severity": "high",
+          "confidence": "medium",
+          "scenario_coverage": {
+            "mapped_scenarios": [
+              "liquidity_shock"
+            ],
+            "scenarios_present": [],
+            "scenarios_missing": [
+              "liquidity_shock"
+            ],
+            "evidence_mode": "stress_scenario_and_factor",
+            "scenario_mapping": "WEAKNESS_SCENARIO_MAP"
+          },
+          "top_asset_loss_drivers": [],
+          "top_factor_drivers": [],
+          "evidence": [
+            {
+              "source": "historical_es_95",
+              "evidence_type": "historical_tail",
+              "es_95": -0.03,
+              "severity": "high"
+            }
+          ],
+          "missing_inputs": [
+            "missing stress scenarios: liquidity_shock",
+            "pnl_by_asset_pct missing for mapped stress scenarios"
+          ],
+          "interpretation": "Adverse evidence for liquidity shocks and crowded risk-off behavior (high severity); review scenario coverage, asset loss drivers, and factor drivers before action."
+        },
+        {
+          "type": "weakness",
+          "risk": "usd",
+          "exposure_present": false,
+          "adverse_evidence": false,
+          "severity": "low",
+          "confidence": "low",
+          "scenario_coverage": {
+            "mapped_scenarios": [
+              "usd_shock"
+            ],
+            "scenarios_present": [],
+            "scenarios_missing": [
+              "usd_shock"
+            ],
+            "evidence_mode": "stress_scenario_and_factor",
+            "scenario_mapping": "WEAKNESS_SCENARIO_MAP"
+          },
+          "top_asset_loss_drivers": [],
+          "top_factor_drivers": [],
+          "evidence": [
+            {
+              "source": "available_diagnostics",
+              "evidence_type": "below_threshold",
+              "note": "No adverse evidence crossed configured X-Ray thresholds."
+            }
+          ],
+          "missing_inputs": [
+            "missing stress scenarios: usd_shock",
+            "pnl_by_asset_pct missing for mapped stress scenarios"
+          ],
+          "interpretation": "Limited mapped exposure to USD moves through currency or global-risk channels; available diagnostics did not cross thresholds."
+        },
+        {
+          "type": "weakness",
+          "risk": "equity_crash",
+          "exposure_present": true,
+          "adverse_evidence": true,
+          "severity": "high",
+          "confidence": "high",
+          "scenario_coverage": {
+            "mapped_scenarios": [
+              "equity_shock"
+            ],
+            "scenarios_present": [
+              "equity_shock"
+            ],
+            "scenarios_missing": [],
+            "evidence_mode": "stress_scenario_and_factor",
+            "scenario_mapping": "WEAKNESS_SCENARIO_MAP"
+          },
+          "top_asset_loss_drivers": [
+            {
+              "ticker": "SPY",
+              "pnl_pct": -0.06,
+              "scenario_id": "equity_shock",
+              "evidence_type": "stress_asset_pnl"
+            },
+            {
+              "ticker": "HYG",
+              "pnl_pct": -0.02,
+              "scenario_id": "equity_shock",
+              "evidence_type": "stress_asset_pnl"
+            },
+            {
+              "ticker": "TLT",
+              "pnl_pct": -0.01,
+              "scenario_id": "equity_shock",
+              "evidence_type": "stress_asset_pnl"
+            }
+          ],
+          "top_factor_drivers": [
+            {
+              "factor_short": "eq",
+              "beta_key": "beta_eq",
+              "beta_5y": 0.72,
+              "scenario_pnl_pct": -0.07,
+              "scenario_id": "equity_shock",
+              "evidence_type": "stress_factor_pnl"
+            }
+          ],
+          "evidence": [
+            {
+              "source": "stress_scenario",
+              "evidence_type": "stress_scenario",
+              "scenario_id": "equity_shock",
+              "portfolio_pnl_pct": -0.09,
+              "severity": "medium"
+            },
+            {
+              "source": "factor_beta",
+              "evidence_type": "factor_beta",
+              "beta_key": "beta_eq",
+              "value": 0.72,
+              "severity": "high"
+            },
+            {
+              "source": "max_drawdown",
+              "evidence_type": "max_drawdown",
+              "max_drawdown": -0.22,
+              "severity": "high"
+            }
+          ],
+          "missing_inputs": [],
+          "interpretation": "Adverse evidence for broad equity market drawdowns (high severity); review scenario coverage, asset loss drivers, and factor drivers before action."
+        },
+        {
+          "type": "weakness",
+          "risk": "commodity_shock",
+          "exposure_present": true,
+          "adverse_evidence": false,
+          "severity": "low",
+          "confidence": "medium",
+          "scenario_coverage": {
+            "mapped_scenarios": [
+              "commodity_shock"
+            ],
+            "scenarios_present": [],
+            "scenarios_missing": [
+              "commodity_shock"
+            ],
+            "evidence_mode": "stress_scenario_and_factor",
+            "scenario_mapping": "WEAKNESS_SCENARIO_MAP"
+          },
+          "top_asset_loss_drivers": [],
+          "top_factor_drivers": [
+            {
+              "factor_short": "cmd",
+              "beta_key": "beta_cmd",
+              "beta_5y": 0.18,
+              "scenario_pnl_pct": null,
+              "scenario_id": null,
+              "evidence_type": "factor_beta_5y"
+            }
+          ],
+          "evidence": [
+            {
+              "source": "available_diagnostics",
+              "evidence_type": "below_threshold",
+              "note": "No adverse evidence crossed configured X-Ray thresholds."
+            }
+          ],
+          "missing_inputs": [
+            "missing stress scenarios: commodity_shock",
+            "pnl_by_asset_pct missing for mapped stress scenarios"
+          ],
+          "interpretation": "Exposure to commodity shocks or commodity-linked assets is present, but available stress/factor/tail diagnostics did not cross adverse-evidence thresholds in this run."
+        },
+        {
+          "type": "weakness",
+          "risk": "volatility_spike",
+          "exposure_present": false,
+          "adverse_evidence": true,
+          "severity": "high",
+          "confidence": "medium",
+          "scenario_coverage": {
+            "mapped_scenarios": [],
+            "scenarios_present": [],
+            "scenarios_missing": [],
+            "evidence_mode": "factor_only",
+            "scenario_mapping": "none_by_design"
+          },
+          "top_asset_loss_drivers": [],
+          "top_factor_drivers": [],
+          "evidence": [
+            {
+              "source": "historical_es_95",
+              "evidence_type": "historical_tail",
+              "es_95": -0.03,
+              "severity": "high"
+            }
+          ],
+          "missing_inputs": [],
+          "interpretation": "Adverse evidence for volatility spikes and nonlinear risk-off moves (high severity); review scenario coverage, asset loss drivers, and factor drivers before action."
+        }
+      ],
+      "limitations": [
+        "Weakness Map aggregates existing evidence only; it is not a forecasting or scoring model.",
+        "Low severity with adverse_evidence=false means thresholds were not crossed, not that the risk is absent.",
+        "crypto_shock appears only when crypto exposure is present in taxonomy or weights.",
+        "volatility_spike is factor-only (beta_vix, historical ES_95); no synthetic stress scenario is mapped by design (RM-948 Option B)."
+      ],
+      "method": "rule-based threshold aggregation over stress, factor, tail, and metrics evidence",
+      "frequency": "mixed",
+      "window": "stress scenarios (synthetic); 5Y weekly factor betas; portfolio metrics 10Y (120M)",
+      "n_obs": 118,
+      "benchmark": "SPY"
+    }
+  },
+  "legacy_summary": {
+    "analysis_setup_summary": {
+      "portfolio_role": "generated_policy_portfolio",
+      "weight_source": "Main portfolio/portfolio_weights.yml",
+      "recommendation_status": "generated_policy_output_not_user_input",
+      "product_input_case": "universe_only",
+      "investor_currency": "USD",
+      "base_benchmark_ticker": "SPY",
+      "cash_proxy_ticker": "BIL",
+      "return_frequency": "monthly",
+      "analysis_windows": [
+        36,
+        60,
+        120
+      ]
+    },
+    "asset_allocation_summary": {
+      "top_holdings": [
+        {
+          "ticker": "SPY",
+          "value": 0.45
+        },
+        {
+          "ticker": "TLT",
+          "value": 0.3
+        },
+        {
+          "ticker": "HYG",
+          "value": 0.15
+        }
+      ],
+      "top3_weight_sum": 0.9,
+      "top1_weight_asset": "SPY",
+      "top1_weight_pct": 0.45,
+      "top3_weight_assets": [
+        "SPY",
+        "TLT",
+        "HYG"
+      ],
+      "top3_weight_sum_pct": 0.9,
+      "weight_hhi": 0.325,
+      "cash_proxy_ticker": "BIL",
+      "cash_weight": null,
+      "largest_holding": {
+        "ticker": "SPY",
+        "value": 0.45
+      }
+    },
+    "risk_contribution_summary": {
+      "top_rc_contributors": [
+        {
+          "ticker": "SPY",
+          "value": 0.4
+        },
+        {
+          "ticker": "HYG",
+          "value": 0.3
+        },
+        {
+          "ticker": "TLT",
+          "value": 0.2
+        }
+      ],
+      "top3_rc_sum": 0.9,
+      "largest_risk_contributor": {
+        "ticker": "SPY",
+        "value": 0.4
+      },
+      "largest_weight_vs_largest_risk_match": true,
+      "method_note": "RC_vol is diagnostic-only and does not act as an optimizer gate or recommendation rule."
+    },
+    "portfolio_diagnostic_verdict": {
+      "main_diagnostic_concern": "recession_severe sensitivity",
+      "mandate_gate": "PASS",
+      "stress_status": "DIAG_PASS_WITH_WARNING",
+      "vol_annual": 0.1,
+      "max_drawdown": -0.22,
+      "lines": [
+        "Analyzed portfolio role: generated_policy_portfolio; weight source: Main portfolio/portfolio_weights.yml.",
+        "Capital concentration: SPY 45.0%, TLT 30.0%, HYG 15.0%.",
+        "Risk concentration by RC_vol: SPY 40.0%, HYG 30.0%, TLT 20.0%.",
+        "Main diagnostic concern: recession_severe sensitivity.",
+        "Mandate gate: PASS; stress status: DIAG_PASS_WITH_WARNING.",
+        "This is an explanatory diagnostic summary, not a score, recommendation, selection decision, or trade instruction."
+      ]
+    }
+  }
+}

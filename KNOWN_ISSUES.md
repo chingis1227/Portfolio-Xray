@@ -56,32 +56,6 @@ Title: Short title
 
 ## Active Issues
 
-Issue ID: KI-2026-05-19-007
-Title: X-Ray Risk Budget View reads top-5 RC snapshot instead of full RC evidence
-
-- Status: resolved (2026-05-19, Session 02)
-- Severity: high
-- Area: reports
-- Risk: Positive-weight holdings can show `RC_vol = null` in `portfolio_xray.json`, making the risk budget look incomplete or implying no measured risk when full `rc_vol_10y.csv` evidence exists.
-- Evidence: Portfolio X-Ray audit found Risk Budget View consuming `snapshot_10y.json.RC_asset`, a top-5 display subset, while full risk contribution data exists in `results_csv/rc_vol_10y.csv`.
-- Current mitigation: Users can manually inspect the CSV, but the X-Ray output itself remains misleading.
-- Next action: Implement Session 02 / `RM-932` in the active [Portfolio X-Ray Diagnostics Deepening Plan](docs/exec_plans/2026-05-19_portfolio_xray_diagnostics_deepening_plan.md).
-- Source links: [portfolio_xray.py](src/portfolio_xray.py), [snapshot.py](src/snapshot.py), [X-Ray diagnostics spec](docs/specs/portfolio_xray_diagnostics_spec.md), [OUTPUTS.md](OUTPUTS.md).
-- Remove when: `portfolio_xray.json.risk_budget_view` includes all positive-weight holdings with RC evidence and focused tests cover full RC loading.
-
-Issue ID: KI-2026-05-19-008
-Title: X-Ray does not surface available Kalman factor betas
-
-- Status: resolved (2026-05-19, Session 02)
-- Severity: medium
-- Area: factor_macro
-- Risk: Factor Exposure can look incomplete even when Kalman beta evidence exists in `stress_report.json`.
-- Evidence: Portfolio X-Ray audit found available evidence under `stress_report.factor_betas_kalman.latest`, while X-Ray reads older field names such as `latest_betas_capped` / `latest_betas`.
-- Current mitigation: Raw stress report evidence can be inspected manually.
-- Next action: Implement Session 02 / `RM-932` and add a regression test for Kalman beta mapping.
-- Source links: [portfolio_xray.py](src/portfolio_xray.py), [factor diagnostics spec](docs/specs/factor_diagnostics_spec.md), [X-Ray diagnostics spec](docs/specs/portfolio_xray_diagnostics_spec.md).
-- Remove when: `factor_exposure.items[].kalman_current_beta` is populated when `stress_report.factor_betas_kalman.latest` is available.
-
 Issue ID: KI-2026-05-19-010
 Title: X-Ray archetype and weakness explanations can create false confidence
 

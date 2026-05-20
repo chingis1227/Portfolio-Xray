@@ -84,7 +84,7 @@ python -m pytest tests/test_portfolio_first_e2e_offline.py -q --basetemp='tmp/py
 | Optimizer / constraints | Infeasible weights, wrong bounds, broken mandate gate, changed release semantics, baseline drift | `tests/test_optimization_fallback.py`, `tests/test_config_weights_sync.py`, `tests/test_resampled_optimization_helpers.py`, `tests/test_young_etfs_dual_cov.py`; add affected baseline tests such as `tests/test_minimum_variance_baseline.py`, `tests/test_maximum_diversification_baseline.py`, `tests/test_minimum_cvar_baseline.py`, `tests/test_risk_parity_baseline.py`, `tests/test_risk_budgeting.py`, `tests/test_hrp_weights.py`, `tests/test_robust_mean_variance.py`, or `tests/test_robust_mv_calibration.py` | Run `python run_optimization.py` when main policy optimization, release status, or output files change |
 | Stress scenarios | Scenario PnL drift, mandate/stress boundary confusion, missing historical fields, bad covariance taxonomy, changed diagnostic-only behavior | Stress Lab wave bundle (see above): `tests/test_stress_mandate_pass.py`, `tests/test_stress_historical_fields.py`, `tests/test_stress_covariance_taxonomy.py`, `tests/test_stress_scenario_analytics.py`, plus scorecard/hedge-gap/coverage/synthetic/simulator/artifacts/commentary contract tests | Run `python run_report.py --materialize-analysis-subject` if `stress_report.json`, stress CSVs, or commentary output changes |
 | Factor / macro analytics | Factor matrix drift, regression diagnostics broken, macro regime label instability, publication-lag mistakes, diagnostic blocks affecting policy | Factor tests: `tests/test_factor_matrix_builders.py`, `tests/test_factor_beta_stability.py`, `tests/test_factor_beta_adjusted_overlay.py`, `tests/test_factor_beta_kalman.py`, `tests/test_factor_covariance.py`, `tests/test_factor_oos_explainability.py`, `tests/test_factor_regression_hac.py`, `tests/test_factor_regression_heteroskedasticity.py`, `tests/test_factor_regression_serial.py`, `tests/test_factor_variance_decomposition.py`; macro tests: `tests/test_macro_regimes.py`, `tests/test_macro_primary_regime.py`, `tests/test_macro_indicators.py`, `tests/test_macro_scoring_modes.py`, `tests/test_macro_source_resolver.py`, `tests/test_macro_regime_label_quality.py`, `tests/test_macro_neutral_band_sensitivity.py`; regime tests: `tests/test_regime_factor_analytics.py`, `tests/test_regime_portfolio_metrics.py` | Run full pytest and `python run_report.py` when exported `stress_report.json` blocks or CSV artifacts change |
-| Reports / outputs | Broken JSON/CSV schema, missing commentary, bad report rendering, stale generated files, changed user-facing artifacts | `tests/test_portfolio_commentary.py`, plus affected output tests such as `tests/test_scenario_library.py`, `tests/test_scenario_library_normalized.py`, `tests/test_stress_scenario_analytics.py`, `tests/test_regime_portfolio_metrics.py`, `tests/test_portfolio_pca.py` | Run `python run_report.py`; run `python rebuild_pdf_reports.py` only when PDF rebuild behavior or PDF-style artifacts are the target |
+| Reports / outputs | Broken JSON/CSV schema, missing commentary, bad report rendering, stale generated files, changed user-facing artifacts | Portfolio X-Ray wave bundle (see below) when `portfolio_xray.json` or X-Ray report surfaces change; otherwise `tests/test_portfolio_commentary.py` plus affected output tests such as `tests/test_scenario_library.py`, `tests/test_scenario_library_normalized.py`, `tests/test_stress_scenario_analytics.py`, `tests/test_regime_portfolio_metrics.py`, `tests/test_portfolio_pca.py` | Run `python run_report.py`; run `python rebuild_pdf_reports.py` only when PDF rebuild behavior or PDF-style artifacts are the target |
 | Config / schema | Invalid config accepted, valid config rejected, config/weights desync, taxonomy validation drift | `tests/test_config_weights_sync.py`, `tests/test_returns_frequency.py`; add `tests/test_etf_universe.py` or `tests/test_stock_universe.py` for taxonomy config changes | Run affected CLI such as `python run_etf_universe.py`, `python run_stock_universe.py`, `python run_optimization.py`, or `python run_report.py` when user-facing config workflows change |
 | Documentation-only change | Broken links, stale source-of-truth maps, obsolete commands, copied concept text treated as binding | Markdown link check; stale-reference search with `rg`; no `pytest` required unless executable examples, commands, or documented behavior changed | Run relevant CLI/test command if docs change executable examples or acceptance criteria |
 
@@ -136,6 +136,47 @@ representative subject run and update baseline hashes in the audit snapshot:
 ```bash
 python run_report.py --materialize-analysis-subject
 python run_stress_variant.py --variant main
+```
+
+## Portfolio X-Ray Wave Regression Bundle
+
+Use this focused bundle after Portfolio X-Ray contract changes (seven-section JSON, risk budget RC
+loading, factor/Kalman mapping, hidden-risk V2, weakness map V2, archetype scorecard, or structured
+X-Ray report/commentary surfaces). Post-audit Sessions 09–10 (`RM-949`, `RM-950`) add golden JSON
+contract tests and the baseline artifact checklist in
+[docs/audits/2026-05-20_portfolio_xray_baseline_snapshot.md](docs/audits/2026-05-20_portfolio_xray_baseline_snapshot.md).
+
+```bash
+python -m pytest tests/test_portfolio_xray.py tests/test_portfolio_xray_threshold_registry.py tests/test_portfolio_xray_contract.py tests/test_portfolio_metrics_deepening.py tests/test_tail_risk.py tests/test_portfolio_commentary.py -q
+python scripts/verify_docs.py
+```
+
+Golden fixture (regenerate only after intentional `portfolio_xray.json` contract changes):
+
+```bash
+python tests/portfolio_xray_golden_inputs.py
+python -m pytest tests/test_portfolio_xray_contract.py -q
+```
+
+After Session 04+ factor inference changes, confirm `test_portfolio_xray_factor_regression_inference_panel`
+and `test_portfolio_xray_factor_regression_inference_missing_warning` pass in that bundle.
+
+After Session 05 (`RM-945`) multi-window/TTR changes, confirm
+`test_portfolio_xray_multi_window_metrics_panel`, `test_portfolio_xray_ttr_in_primary_risk_metrics`, and
+`test_load_portfolio_windows_from_dir` pass in that bundle.
+
+After Session 08 (`RM-948`) `volatility_spike` factor-only contract, confirm
+`test_volatility_spike_weakness_factor_only_methodology` passes in that bundle.
+
+After Session 09 (`RM-949`) golden contract tests, confirm `tests/test_portfolio_xray_contract.py`
+and `tests/fixtures/portfolio_xray_golden_v2.json` stay aligned (`test_live_build_matches_golden_document`).
+
+When `portfolio_xray.json` or sibling subject artifacts change intentionally, refresh the
+representative subject run and update baseline fingerprints per the compare command in
+[docs/audits/2026-05-20_portfolio_xray_baseline_snapshot.md](docs/audits/2026-05-20_portfolio_xray_baseline_snapshot.md):
+
+```bash
+python run_report.py --materialize-analysis-subject
 ```
 
 ## Artifact Checks

@@ -43,6 +43,49 @@ Omit empty categories.
 
 ### Added
 
+- Block 2 post-audit Session 10 (`RM-950`): [Portfolio X-Ray Baseline Snapshot](docs/audits/2026-05-20_portfolio_xray_baseline_snapshot.md)
+  — artifact checklist, golden contract reference, compare template; Phase 12 (`RM-940`–`RM-950`) closed;
+  post-audit ExecPlan marked Completed.
+
+- Block 2 post-audit Session 09 (`RM-949`): golden `portfolio_xray.json` contract tests —
+  `tests/fixtures/portfolio_xray_golden_v2.json`, `tests/test_portfolio_xray_contract.py`,
+  `tests/portfolio_xray_golden_inputs.py`; Portfolio X-Ray wave bundle in [TESTING.md](TESTING.md).
+
+- Block 2 post-audit Session 08 (`RM-948`): `volatility_spike` weakness row documented and implemented
+  as **factor-only (Option B)** — `beta_vix` + historical `es_95`; `scenario_coverage.evidence_mode`
+  and `WEAKNESS_FACTOR_ONLY_RISKS`; test `test_volatility_spike_weakness_factor_only_methodology`.
+
+- Block 2 post-audit Session 07 (`RM-947`): Portfolio X-Ray `weight_concentration` item in
+  `asset_allocation` (top-1/top-3 capital weight sums, HHI on positive weights, no look-through);
+  legacy summary mirrors fields; test `test_portfolio_xray_weight_concentration_in_asset_allocation`.
+
+- Block 2 post-audit Session 06 (`RM-946`): [portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md)
+  — Block 2.1–2.7 layer map (code, upstream inputs, tests, Phase 12 follow-ups); indexed in
+  [SPEC.md](SPEC.md) and [docs/specs/README.md](docs/specs/README.md).
+
+- Block 2 post-audit Session 05 (`RM-945`): Portfolio X-Ray `multi_window_metrics` panel (3Y/5Y/10Y
+  from snapshot metrics) and `ttr_months`/`recovered` on primary `portfolio_metrics`; loader
+  `load_portfolio_windows_from_dir`; tests `test_portfolio_xray_multi_window_metrics_panel`,
+  `test_portfolio_xray_ttr_in_primary_risk_metrics`, `test_load_portfolio_windows_from_dir`.
+
+- Block 2 post-audit Session 04 (`RM-944`): Portfolio X-Ray `factor_regression_inference` items in
+  `factor_exposure` (read-only HAC inference, multicollinearity, and residual diagnostics from
+  `stress_report.factor_regression_5y/10y`); tests
+  `test_portfolio_xray_factor_regression_inference_panel`.
+
+- Block 2 post-audit Session 03 (`RM-943`): section-level provenance on Portfolio X-Ray sections
+  `risk_diagnostics`, `factor_exposure`, `risk_budget_view`, and `weakness_map` (`method`,
+  `frequency`, `window`, `n_obs`, `benchmark`); RC CSV loader returns the file actually used;
+  test `test_portfolio_xray_section_provenance_metadata`.
+
+- Block 2 post-audit Session 02 (`RM-942`): canonical `XRAY_THRESHOLDS` registry in
+  [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §8 and drift
+  tests in [tests/test_portfolio_xray_threshold_registry.py](tests/test_portfolio_xray_threshold_registry.py).
+
+- Block 2 post-audit governance Session 00: [Portfolio X-Ray Methodology Map](docs/audits/2026-05-20_portfolio_xray_methodology_map.md),
+  active ExecPlan [2026-05-20_portfolio_xray_post_audit_roadmap.md](docs/exec_plans/2026-05-20_portfolio_xray_post_audit_roadmap.md),
+  and ROADMAP Phase 12 (`RM-940`–`RM-950`) for audit-grade X-Ray transparency.
+
 - Stress Lab Sessions 01-10 (post-audit wave): hardened `stress_scorecard_v1` / `stress_conclusions`,
   `historical_episode_paths` crisis replay CSVs, `hedge_gap_analysis`, expanded synthetic scenario
   coverage (`usd_shock`, `commodity_shock`, `banking_2023`), `synthetic_assumptions` transparency,
@@ -65,6 +108,11 @@ Omit empty categories.
   `conflicting_signals`, and `conflict_summary` (built after weakness map).
 
 ### Changed
+
+- Block 2 post-audit governance Session 01 / `RM-941`: documentation registers aligned with the
+  deepening wave — `RM-932` marked Done in ROADMAP Phase 11; resolved RC/Kalman known issues removed
+  from active KNOWN_ISSUES; Portfolio X-Ray regression bundle stub added to [TESTING.md](TESTING.md)
+  (golden contract tests shipped in post-audit Session 09 / `RM-949`).
 
 - Default `run_portfolio_review.py` factory scope is `core_v1` via `--mode core` (was implicit
   full `default_v1`). Use `--mode full` for the complete optimizer menu.

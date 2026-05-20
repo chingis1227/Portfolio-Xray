@@ -128,6 +128,7 @@ Main report artifacts
 | Detailed spec index | [docs/specs/README.md](docs/specs/README.md) |
 | Portfolio-first review workflow, `analysis_subject`, and legacy policy boundary | [docs/specs/portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md) |
 | Portfolio X-Ray diagnostics and `portfolio_xray.json` contract | [docs/specs/portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) |
+| Portfolio X-Ray layer mapping (Block 2.1-2.7) | [docs/specs/portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md) |
 | Analysis setup, input modes, current weights, mandate inputs, and calculation assumptions | [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md) |
 | Metrics, estimators, returns, FX, windows, covariance, beta, RC_vol, drawdown, rounding | [docs/specs/metrics_specification.md](docs/specs/metrics_specification.md) |
 | Portfolio construction, optimizer behavior, ProLiquidity, mandate gate, policy optimizer boundaries | [docs/specs/portfolio_construction_policy.md](docs/specs/portfolio_construction_policy.md) |
