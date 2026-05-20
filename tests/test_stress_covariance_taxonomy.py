@@ -89,6 +89,8 @@ def test_key_rho_overrides_trace_matches_table() -> None:
     assert key_rho_overrides_used_for_scenario("credit_shock") == {"CR_EQ": 0.74}
     assert key_rho_overrides_used_for_scenario("inflation_stagflation") == {"CO_TI": 0.64}
     assert key_rho_overrides_used_for_scenario("rates_shock") == {"EQ_ND": -0.42, "ND_TI": 0.93}
+    assert key_rho_overrides_used_for_scenario("usd_shock") == {"CO_EQ": -0.20}
+    assert key_rho_overrides_used_for_scenario("commodity_shock") == {"CO_EQ": 0.52, "CO_TI": 0.68}
 
 
 def test_stress_covariance_taxonomy_blend_psd() -> None:

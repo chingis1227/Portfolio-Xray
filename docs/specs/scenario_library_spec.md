@@ -40,6 +40,11 @@ Primary outputs:
 - normalized summary and warning artifacts where implemented
 - `stress_report.scenario_library_normalized_meta`
 
+Current canonical scenario ids are sourced from `src/stress.py` and include synthetic
+`equity_shock`, `credit_shock`, `rates_shock`, `inflation_stagflation`, `liquidity_shock`,
+`usd_shock`, `commodity_shock`, `recession_severe`, plus historical `dotcom`, `2008`, `2020`,
+`2022`, and `banking_2023`.
+
 ## Historical Stress Fallback
 
 `src/historical_stress_fallback.py` provides a per-asset historical episode return waterfall for normalized historical rows:

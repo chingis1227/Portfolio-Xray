@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.stress import HISTORICAL_EPISODES, run_stress
+from src.stress import HISTORICAL_EPISODES, run_stress, simulate_custom_shock
 
 
 def test_historical_episodes_include_dotcom() -> None:
     ids = [t[0] for t in HISTORICAL_EPISODES]
     assert ids[0] == "dotcom"
-    assert "2008" in ids and "2020" in ids and "2022" in ids
+    assert "2008" in ids and "2020" in ids and "2022" in ids and "banking_2023" in ids
 
 
 def test_synthetic_pass_ignores_rc_when_loss_ok() -> None:
@@ -156,6 +156,49 @@ def test_inflation_stagflation_includes_direct_inflation_shock() -> None:
     assert stagflation["shock_vector"]["shock_inf"] == 0.005
     assert stagflation["pnl_by_factor_pct"]["inf"] == -0.02
     assert stagflation["portfolio_pnl_pct"] == -0.02
+
+
+def test_scorecard_conclusions_and_hedge_gap_are_present() -> None:
+    idx = pd.date_range("2015-01-31", periods=120, freq="M")
+    monthly_returns = pd.DataFrame({"AAA": [0.01] * len(idx), "BBB": [0.01] * len(idx)}, index=idx)
+    tickers = ["AAA", "BBB"]
+    weights = {"AAA": 0.8, "BBB": 0.2}
+    asset_betas = pd.DataFrame(columns=["beta_eq", "beta_rr", "beta_inf", "beta_credit", "beta_usd", "beta_cmd"])
+    portfolio_betas = {"beta_eq": 0.0, "beta_rr": 0.0, "beta_inf": 0.0, "beta_credit": 0.0, "beta_usd": 0.0, "beta_cmd": 0.0}
+    out = run_stress(
+        tickers=tickers,
+        weights=weights,
+        monthly_returns=monthly_returns,
+        asset_betas=asset_betas,
+        portfolio_betas=portfolio_betas,
+        target_max_drawdown_pct=0.2,
+        cash_proxy_ticker="",
+        hedge_assets=["AAA"],
+    )
+    assert isinstance(out.get("stress_scorecard_v1"), dict)
+    assert isinstance(out.get("stress_conclusions"), dict)
+    assert isinstance(out.get("hedge_gap_analysis"), dict)
+    assert out["stress_scorecard_v1"]["version"] == "stress_scorecard_v1"
+    assert out["stress_conclusions"]["version"] == "stress_conclusions_v1"
+    assert out["stress_scorecard_v1"]["overall_confidence"] in {"low", "medium", "high"}
+    assert out["stress_conclusions"]["overall_confidence"] == out["stress_scorecard_v1"]["overall_confidence"]
+    assert out["hedge_gap_analysis"]["method"] == "stress_scenario_hedge_evidence_v1"
+
+
+def test_simulate_custom_shock_reuses_linear_engine() -> None:
+    tickers = ["AAA"]
+    weights = {"AAA": 1.0}
+    asset_betas = pd.DataFrame({"beta_eq": [1.0], "beta_rr": [0.0], "beta_inf": [0.0], "beta_credit": [0.0], "beta_usd": [0.0], "beta_cmd": [0.0]}, index=tickers)
+    portfolio_betas = {"beta_eq": 1.0, "beta_rr": 0.0, "beta_inf": 0.0, "beta_credit": 0.0, "beta_usd": 0.0, "beta_cmd": 0.0}
+    out = simulate_custom_shock(
+        tickers=tickers,
+        weights=weights,
+        asset_betas=asset_betas,
+        portfolio_betas=portfolio_betas,
+        shock_vector={"shock_eq": -0.2},
+    )
+    assert out["portfolio_pnl_pct"] == -0.2
+    assert out["pnl_by_factor_pct"]["eq"] == -0.2
 
 
 def test_recession_severe_is_calibrated_from_worst_2008_2020_model_pnl() -> None:

@@ -8,7 +8,7 @@ fontsize: 10pt
 
 ## Executive Summary
 
-The policy portfolio was reviewed against the current reporting window. CAGR is 9.90%, annualized volatility is 9.60%, maximum drawdown is -19.80%, Sharpe is 0.799, Sortino is 1.286, and market sensitivity is 0.513. Stress diagnostics show: One risk area requires attention; worst scenario loss is -22.09%.
+The policy portfolio was reviewed against the current reporting window. CAGR is 9.90%, annualized volatility is 9.60%, maximum drawdown is -19.80%, Sharpe is 0.799, Sortino is 1.286, and market sensitivity is 0.513. Stress diagnostics show: One risk area requires attention; worst scenario loss is -22.16%.
 
 ## Key Metrics
 

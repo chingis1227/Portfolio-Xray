@@ -97,6 +97,9 @@ def _stress_suite_results_for_snapshot(stress_report: dict[str, Any], portfolio_
             "violations": violations,
             "rc_flags": rc_flags,
             "pass": s.get("pass", True),
+            "synthetic_assumptions": dict(s.get("synthetic_assumptions") or {})
+            if isinstance(s.get("synthetic_assumptions"), dict)
+            else {},
         })
 
     return {
@@ -105,6 +108,9 @@ def _stress_suite_results_for_snapshot(stress_report: dict[str, Any], portfolio_
         "scenarios": scenarios_out,
         "historical": stress_report.get("historical_results", []),
         "portfolio_params": portfolio_params or {},
+        "scorecard": stress_report.get("stress_scorecard_v1") or {},
+        "conclusions": stress_report.get("stress_conclusions") or {},
+        "hedge_gap_analysis": stress_report.get("hedge_gap_analysis") or {},
     }
 
 

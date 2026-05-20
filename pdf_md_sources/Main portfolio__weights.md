@@ -8,7 +8,7 @@ fontsize: 10pt
 
 ## Executive Summary
 
-Largest target positions by weight: **TLT** - 22.50%, **BND** - 19.60%, **SCHP** - 18.30%, **GLD** - 10.30%, **BIL** - 10.00%. Weights are portfolio construction outputs and should be read as target allocations, not trade instructions.
+Largest target positions by weight: **TLT** - 22.20%, **BND** - 17.50%, **SCHP** - 16.50%, **BIL** - 10.00%, **GLD** - 8.70%. Weights are portfolio construction outputs and should be read as target allocations, not trade instructions.
 
 ## Key Metrics
 
@@ -20,14 +20,14 @@ Largest target positions by weight: **TLT** - 22.50%, **BND** - 19.60%, **SCHP**
 
 | Instrument | Target Weight |
 | --- | ---: |
-| **TLT** | 22.50% |
-| **BND** | 19.60% |
-| **SCHP** | 18.30% |
-| **GLD** | 10.30% |
+| **TLT** | 22.20% |
+| **BND** | 17.50% |
+| **SCHP** | 16.50% |
 | **BIL** | 10.00% |
-| **SLV** | 9.00% |
-| **SCHD** | 5.90% |
-| **SPY** | 3.60% |
-| **QQQ** | 0.90% |
+| **GLD** | 8.70% |
+| **SCHD** | 8.60% |
+| **SPY** | 7.20% |
+| **SLV** | 6.20% |
+| **QQQ** | 3.10% |
 
-**Total weight: 100.10%**. A fully invested portfolio should be close to 100%.
+**Total weight: 100.00%**. A fully invested portfolio should be close to 100%.

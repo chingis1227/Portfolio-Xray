@@ -562,6 +562,8 @@ def build_scenario_library_normalized(
             "reason_for_classification": reason,
             "warnings": all_warnings,
         }
+        if isinstance(s.get("synthetic_assumptions"), dict):
+            row["synthetic_assumptions"] = dict(s.get("synthetic_assumptions") or {})
         if scenario_asset_returns_dict:
             row["scenario_asset_return"] = dict(scenario_asset_returns_dict)
         if historical_fallback_meta is not None:

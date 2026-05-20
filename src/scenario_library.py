@@ -31,9 +31,11 @@ SYNTHETIC_SCENARIO_IDS: tuple[str, ...] = (
     "rates_shock",
     "inflation_stagflation",
     "liquidity_shock",
+    "usd_shock",
+    "commodity_shock",
     "recession_severe",
 )
-HISTORICAL_SCENARIO_IDS: tuple[str, ...] = ("dotcom", "2008", "2020", "2022")
+HISTORICAL_SCENARIO_IDS: tuple[str, ...] = ("dotcom", "2008", "2020", "2022", "banking_2023")
 
 
 def _nested_cov_from_df(cov: pd.DataFrame) -> dict[str, dict[str, float]]:
@@ -561,6 +563,10 @@ def build_scenario_library(
             "classification": cl,
             "raw_vs_shrinkage": raw_vs,
         }
+        if stype == "synthetic":
+            src_row = by_sid.get(sid) or {}
+            if isinstance(src_row.get("synthetic_assumptions"), dict):
+                scen["synthetic_assumptions"] = dict(src_row.get("synthetic_assumptions") or {})
         scen["usable_for_optimization"] = _usable_for_opt_flag(cl)
         scenarios.append(scen)
 

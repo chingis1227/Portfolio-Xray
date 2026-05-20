@@ -94,6 +94,8 @@ WEAKNESS_SCENARIO_MAP = {
     "credit_shock": "credit",
     "liquidity_shock": "liquidity",
     "equity_shock": "equity_crash",
+    "usd_shock": "usd",
+    "commodity_shock": "commodity_shock",
 }
 
 WEAKNESS_FACTOR_MAP = {

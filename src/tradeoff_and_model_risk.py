@@ -18,6 +18,7 @@ from src.selection_engine import (
     _resolve_weights,
     _turnover_half_sum_pct,
 )
+from src.stress_artifacts import resolve_candidate_stress_report_path
 
 TRADEOFF_SCHEMA = "tradeoff_explanation_v1"
 MODEL_RISK_SCHEMA = "model_risk_diagnostics_v1"
@@ -633,12 +634,20 @@ def _adj_r2_from_regression(block: dict[str, Any] | None) -> float | None:
     return None
 
 
-def _load_stress_report(cand: dict[str, Any], project_root: Path) -> dict[str, Any] | None:
-    root = cand.get("artifact_root")
-    if not root:
+def _load_stress_report(
+    cand: dict[str, Any],
+    project_root: Path,
+    *,
+    output_dir_final: str,
+) -> dict[str, Any] | None:
+    path = resolve_candidate_stress_report_path(
+        cand,
+        project_root=project_root,
+        output_dir_final=output_dir_final,
+    )
+    if not path:
         return None
-    folder = project_root / str(root).replace("\\", "/")
-    return _load_json(folder / "stress_report.json")
+    return _load_json(path)
 
 
 def _load_run_result(cand: dict[str, Any], project_root: Path) -> dict[str, Any] | None:
@@ -697,11 +706,13 @@ def build_model_risk_diagnostics(
     selection: dict[str, Any] | None,
     *,
     project_root: Path,
+    output_dir_final: str | None = None,
     health: dict[str, Any] | None = None,
     robustness: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build model_risk_diagnostics_v1 from comparison and linked artifacts."""
     warnings: list[dict[str, Any]] = []
+    resolved_output_dir_final = str(comparison.get("output_dir_final") or output_dir_final or "")
     by_id = _candidates_by_id(comparison)
     favored_id = (selection or {}).get("favored_candidate_id")
     baseline_id = _preferred_baseline_id(comparison, selection, by_id)
@@ -851,7 +862,11 @@ def build_model_risk_diagnostics(
                 )
             )
 
-        stress_report = _load_stress_report(cand, project_root)
+        stress_report = _load_stress_report(
+            cand,
+            project_root,
+            output_dir_final=resolved_output_dir_final,
+        )
         if stress_report:
             reg10 = stress_report.get("factor_regression_10y")
             if isinstance(reg10, dict):
@@ -1179,6 +1194,7 @@ def write_tradeoff_and_model_risk_outputs(
         comparison,
         selection,
         project_root=project_root,
+        output_dir_final=str(getattr(cfg, "output_dir_final", "Main portfolio")),
         health=health,
         robustness=robustness,
     )

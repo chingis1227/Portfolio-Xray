@@ -36,9 +36,12 @@ Top-level documents stay compact:
 | Concise history of meaningful project changes | [../../CHANGELOG.md](../../CHANGELOG.md) |
 | Detailed data policy, NaN handling, young ETFs, return panels | [data_policy_spec.md](data_policy_spec.md) |
 | Stress scenarios and stress diagnostics | [stress_testing_spec.md](stress_testing_spec.md) |
+| Stress Lab layer (Block 3.1-3.6) | [stress_lab_layer_spec.md](stress_lab_layer_spec.md) |
 | Factor diagnostics and factor-risk outputs | [factor_diagnostics_spec.md](factor_diagnostics_spec.md) |
 | Macro regime diagnostics | [macro_regime_spec.md](macro_regime_spec.md) |
 | Scenario Library and normalized scenario view | [scenario_library_spec.md](scenario_library_spec.md) |
+| Hedge gap analysis contract | [hedge_gap_analysis_spec.md](hedge_gap_analysis_spec.md) |
+| Crisis replay path contract | [crisis_replay_spec.md](crisis_replay_spec.md) |
 | Candidate and benchmark portfolios | [candidate_portfolios_spec.md](candidate_portfolios_spec.md) |
 | Candidate portfolio factory orchestration | [candidate_factory_spec.md](candidate_factory_spec.md) |
 | Canonical multi-candidate comparison artifact | [candidate_comparison_spec.md](candidate_comparison_spec.md) |

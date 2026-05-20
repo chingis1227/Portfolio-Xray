@@ -36,6 +36,8 @@ LAMBDA_BLEND: dict[str, float] = {
     "recession_severe": 0.65,
     "rates_shock": 0.38,
     "inflation_stagflation": 0.44,
+    "usd_shock": 0.42,
+    "commodity_shock": 0.46,
 }
 
 RHO_DEFAULT_BETWEEN: dict[str, float] = {
@@ -45,6 +47,8 @@ RHO_DEFAULT_BETWEEN: dict[str, float] = {
     "recession_severe": 0.52,
     "rates_shock": 0.30,
     "inflation_stagflation": 0.36,
+    "usd_shock": 0.34,
+    "commodity_shock": 0.38,
 }
 
 # Within-block targets by scenario × block
@@ -55,6 +59,8 @@ RHO_WITHIN: dict[str, dict[str, float]] = {
     "recession_severe": {BLOCK_EQ: 0.90, BLOCK_CR: 0.89, BLOCK_ND: 0.74, BLOCK_TI: 0.76, BLOCK_CO: 0.80, BLOCK_CA: 0.24},
     "rates_shock": {BLOCK_EQ: 0.58, BLOCK_CR: 0.56, BLOCK_ND: 0.78, BLOCK_TI: 0.76, BLOCK_CO: 0.52, BLOCK_CA: 0.16},
     "inflation_stagflation": {BLOCK_EQ: 0.68, BLOCK_CR: 0.63, BLOCK_ND: 0.66, BLOCK_TI: 0.72, BLOCK_CO: 0.74, BLOCK_CA: 0.18},
+    "usd_shock": {BLOCK_EQ: 0.80, BLOCK_CR: 0.70, BLOCK_ND: 0.60, BLOCK_TI: 0.62, BLOCK_CO: 0.68, BLOCK_CA: 0.18},
+    "commodity_shock": {BLOCK_EQ: 0.72, BLOCK_CR: 0.64, BLOCK_ND: 0.66, BLOCK_TI: 0.70, BLOCK_CO: 0.80, BLOCK_CA: 0.18},
 }
 
 # Explicit between-block overrides: canonical key = tuple(sorted((b1, b2)))
@@ -125,6 +131,25 @@ RHO_PAIR_OVERRIDES: dict[str, dict[tuple[str, str], float]] = {
         ("CR", "ND"): 0.44,
         ("CO", "ND"): 0.22,
     },
+    "usd_shock": {
+        ("CR", "EQ"): 0.68,
+        ("EQ", "ND"): -0.22,
+        ("CO", "EQ"): -0.20,
+        ("ND", "TI"): 0.86,
+        ("CO", "TI"): 0.36,
+        ("CA", "CO"): 0.10,
+        ("CA", "CR"): 0.10,
+        ("CA", "EQ"): 0.10,
+    },
+    "commodity_shock": {
+        ("CO", "TI"): 0.68,
+        ("CO", "EQ"): 0.52,
+        ("CO", "ND"): 0.28,
+        ("ND", "TI"): 0.86,
+        ("EQ", "ND"): -0.18,
+        ("CR", "EQ"): 0.38,
+        ("CA", "CO"): 0.12,
+    },
 }
 
 VOL_MULT_BLOCK: dict[str, dict[str, float]] = {
@@ -134,6 +159,8 @@ VOL_MULT_BLOCK: dict[str, dict[str, float]] = {
     "recession_severe": {BLOCK_EQ: 1.55, BLOCK_CR: 1.50, BLOCK_ND: 1.30, BLOCK_TI: 1.26, BLOCK_CO: 1.40, BLOCK_CA: 1.08},
     "rates_shock": {BLOCK_EQ: 1.08, BLOCK_CR: 1.16, BLOCK_ND: 1.42, BLOCK_TI: 1.35, BLOCK_CO: 1.08, BLOCK_CA: 1.02},
     "inflation_stagflation": {BLOCK_EQ: 1.22, BLOCK_CR: 1.18, BLOCK_ND: 1.24, BLOCK_TI: 1.26, BLOCK_CO: 1.46, BLOCK_CA: 1.03},
+    "usd_shock": {BLOCK_EQ: 1.20, BLOCK_CR: 1.16, BLOCK_ND: 1.12, BLOCK_TI: 1.10, BLOCK_CO: 1.30, BLOCK_CA: 1.02},
+    "commodity_shock": {BLOCK_EQ: 1.18, BLOCK_CR: 1.14, BLOCK_ND: 1.16, BLOCK_TI: 1.18, BLOCK_CO: 1.52, BLOCK_CA: 1.03},
 }
 
 # Pairs echoed in stress output for calibration traceability (subset of RHO_PAIR_OVERRIDES).
@@ -141,6 +168,8 @@ KEY_RHO_TRACE_PAIRS: dict[str, list[tuple[str, str]]] = {
     "credit_shock": [("CR", "EQ")],
     "inflation_stagflation": [("CO", "TI")],
     "rates_shock": [("ND", "TI"), ("EQ", "ND")],
+    "usd_shock": [("CO", "EQ")],
+    "commodity_shock": [("CO", "TI"), ("CO", "EQ")],
 }
 
 

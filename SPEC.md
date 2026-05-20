@@ -134,6 +134,9 @@ Main report artifacts
 | Feasibility and weight constraints | [docs/specs/feasibility_constraints_spec.md](docs/specs/feasibility_constraints_spec.md) |
 | Data policy, NaN handling, young ETFs, return panels, backtest handling | [docs/specs/data_policy_spec.md](docs/specs/data_policy_spec.md) |
 | Stress scenarios and stress diagnostics | [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) |
+| Stress Lab layer mapping (Block 3.1-3.6) | [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) |
+| Hedge gap analysis contract | [docs/specs/hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md) |
+| Crisis replay path contract | [docs/specs/crisis_replay_spec.md](docs/specs/crisis_replay_spec.md) |
 | Factor diagnostics and factor-risk outputs | [docs/specs/factor_diagnostics_spec.md](docs/specs/factor_diagnostics_spec.md) |
 | Macro regime diagnostics | [docs/specs/macro_regime_spec.md](docs/specs/macro_regime_spec.md) |
 | Scenario Library and normalized scenario view | [docs/specs/scenario_library_spec.md](docs/specs/scenario_library_spec.md) |

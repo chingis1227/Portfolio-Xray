@@ -20,7 +20,7 @@
 | Layer | What | Stops weight release? |
 |-------|------|------------------------|
 | **Mandate** | Realized portfolio max drawdown on **full overlapping monthly history** vs `target_max_drawdown_pct` | **Yes** -> **FAIL_MANDATE** (`run_optimization.py`) |
-| **Stress suite** (`run_stress`) | Synthetic factor shocks (whole portfolio), calibrated `recession_severe`, historical **episodes** (dotcom / 2008 / 2020 / 2022), RC concentration as **numbers only** (Top1 / Top3) | **No** -> **DIAG_ATTENTION** only for synthetic **Loss** or historical episode breach; **DIAG_PASS_WITH_WARNING** only for non-RC warnings (e.g. borderline history, data) where implemented |
+| **Stress suite** (`run_stress`) | Synthetic factor shocks (whole portfolio), calibrated `recession_severe`, historical **episodes** (dotcom / 2008 / 2020 / 2022 / banking_2023), RC concentration as **numbers only** (Top1 / Top3) | **No** -> **DIAG_ATTENTION** only for synthetic **Loss** or historical episode breach; **DIAG_PASS_WITH_WARNING** only for non-RC warnings (e.g. borderline history, data) where implemented |
 
 Scenario and episode checks below are **for PM reporting**; they do not replace the mandate gate.
 
@@ -45,7 +45,9 @@ Scenario and episode checks below are **for PM reporting**; they do not replace 
 | 3 | **Rates shock**     | Real rates +200 bps: `shock_rr = +0.02`; others 0. RC uses **taxonomy_blend_v1** stress covariance. |
 | 4 | **Inflation/Stagflation** | `shock_cmd = +0.25`, `shock_eq = -0.20`, `shock_rr = +0.005`, `shock_inf = +0.005` (+50 bps breakeven inflation); `shock_usd = 0`. RC uses **taxonomy_blend_v1** stress covariance. |
 | 5 | **Liquidity shock** | shock_eq = -0.25, shock_credit = +0.03 (+300 bps); RC uses **taxonomy_blend_v1** stress covariance (`src/stress_covariance_taxonomy.py`); others 0. |
-| 6 | **Recession severe** | Hard-landing recession. `shock_eq` / `shock_rr` / `shock_credit` / `shock_inf` / `shock_usd` / `shock_cmd` are calibrated from realized factor moves in 2008 and 2020; the selected vector is the one with worst model PnL for current portfolio betas. RC uses **taxonomy_blend_v1** stress covariance. Legacy scalars `vol_mult = 1.60` and `risk_on_corr = 0.95` remain on `recession_calibration` / scenario row for backward compatibility but **do not** define the RC covariance (taxonomy block multipliers and blended correlations apply). |
+| 6 | **USD shock** | USD strengthening shock: `shock_usd = +0.10`, with mild risk-off cross terms (`shock_eq = -0.05`, `shock_cmd = -0.05`); RC uses **taxonomy_blend_v1** stress covariance. |
+| 7 | **Commodity shock** | Commodity upside shock: `shock_cmd = +0.20`, with mild inflation/FX cross terms (`shock_inf = +0.005`, `shock_usd = -0.03`); RC uses **taxonomy_blend_v1** stress covariance. |
+| 8 | **Recession severe** | Hard-landing recession. `shock_eq` / `shock_rr` / `shock_credit` / `shock_inf` / `shock_usd` / `shock_cmd` are calibrated from realized factor moves in 2008 and 2020; the selected vector is the one with worst model PnL for current portfolio betas. RC uses **taxonomy_blend_v1** stress covariance. Legacy scalars `vol_mult = 1.60` and `risk_on_corr = 0.95` remain on `recession_calibration` / scenario row for backward compatibility but **do not** define the RC covariance (taxonomy block multipliers and blended correlations apply). |
 
 ### 2.2 Synthetic stress covariance (`taxonomy_blend_v1`)
 
@@ -131,6 +133,7 @@ For each scenario the production `run_stress` implementation outputs (see `scena
 - **top3_loss_assets** (tickers with largest negative PnL contribution in the scenario)
 - **loss_ok**, **pass** (equals **loss_ok**), **diagnostic_codes** (loss-related only on synthetic rows)
 - **`stress_cov_method`**, **`stress_cov_lambda`**, **`stress_cov_calibration_version`**, **`taxonomy_coverage`**, **`vol_mult_by_block`**, **`key_rho_overrides_used`** when the scenario uses synthetic stress covariance (null or empty when `stress_cov` is false)
+- **`synthetic_assumptions`** (synthetic rows): explicit fallback/proxy disclosure block with `version`, `beta_source`, `beta_coverage_ratio`, `beta_confidence`, `fallback_used`, `fallback_asset_count`, `beta_fallback_assets`, `proxy_method_for_missing_betas`, and `proxy_applied_to_assets`
 
 Raw scenario rows remain the primary stress contract. Any stability-adjusted factor overlay must be reported in separate top-level blocks and must not overwrite `scenario_results[*].pnl_by_factor_pct` or the raw scenario PnL fields.
 
@@ -139,7 +142,7 @@ Raw scenario rows remain the primary stress contract. Any stability-adjusted fac
 `run_report.py` (after `build_factor_beta_diagnostic_overlay`, before `export_stress_report`) attaches **`stress_scenario_analytics`** to `stress_report.json`:
 
 - **version:** `stress_scenario_analytics_v1`
-- **scenarios:** one object per **synthetic** scenario id (`equity_shock`, …, `recession_severe`) and per **historical** episode id (`dotcom`, `2008`, `2020`, `2022`)
+- **scenarios:** one object per **synthetic** scenario id (`equity_shock`, …, `recession_severe`, including `usd_shock` and `commodity_shock`) and per **historical** episode id (`dotcom`, `2008`, `2020`, `2022`, `banking_2023`)
 
 **Diagnostic-only:** no optimizer, mandate, or stress pass/fail changes.
 
@@ -354,7 +357,7 @@ Severity distribution is computed from final `combined_severity` across beta key
 To verify that factor betas explain stress episodes out-of-sample (not only in-sample fit),
 `stress_report.json` should include `factor_beta_shock_oos` with per-episode diagnostics:
 
-- Uses the same episode windows as **`historical_results`** from `run_stress` (including **dotcom**, **2008**, **2020**, **2022** when present).
+- Uses the same episode windows as **`historical_results`** from `run_stress` (including **dotcom**, **2008**, **2020**, **2022**, **banking_2023** when present).
 - Realized factor shock for episode = **sum of weekly factor series** over the episode window.
 - Model PnL variants:
   - `pnl_model_5y` using `factor_betas_5y`
@@ -791,9 +794,27 @@ Run portfolio through episodes (see `HISTORICAL_EPISODES` in `src/stress.py`):
 - **2008:** 2007-10-01 -> 2009-03-31
 - **2020:** 2020-02-01 -> 2020-04-30
 - **2022:** 2021-11-01 -> 2022-10-31
+- **banking_2023:** 2023-02-01 -> 2023-05-31
 
 Output: max drawdown, realized episode PnL, volatility spike, and, when factor history is available, model-based factor attribution as described in Section8.7.
 Episode DD vs limit adds **DIAG_HIST_*** when breached; else episode contributes to **DIAG_PASS**. (Non-blocking.)
+
+### 9.1 Crisis replay paths
+
+`run_stress` also writes `historical_episode_paths` (diagnostic-only) for each episode with sufficient
+data. Each episode includes `rows` with `date`, `portfolio_return`, `equity`, and `drawdown`, plus
+`n_obs`, `n_expected_obs`, `coverage_ratio`, and `data_quality`.
+
+`run_report.py` exports these paths to `results_csv/crisis_replay_{episode}.csv`.
+
+### 9.2 Historical data quality fields
+
+Each historical row carries:
+
+- `n_obs`
+- `n_expected_obs`
+- `coverage_ratio`
+- `data_quality` (`insufficient_data`, `low_confidence`, `usable_with_gaps`, `reliable`)
 
 ---
 
@@ -807,8 +828,9 @@ stress pass/fail status, or weight release.
 
 `run_stress` defaults to `stress_cov_method = "taxonomy_blend_v1"`. For every synthetic scenario
 with `stress_cov: true` in `src/stress.py` (`equity_shock`, `credit_shock`, `rates_shock`,
-`inflation_stagflation`, `liquidity_shock`, and `recession_severe`), RC_vol uses
-`stress_covariance_taxonomy_blend` from `src/stress_covariance_taxonomy.py`.
+`inflation_stagflation`, `liquidity_shock`, `usd_shock`, `commodity_shock`, and
+`recession_severe`), RC_vol uses `stress_covariance_taxonomy_blend` from
+`src/stress_covariance_taxonomy.py`.
 
 - **Base:** `cov_base` from overlapping monthly portfolio returns (`ddof=1`).
 - **Block assignment:** each ticker maps to a stress block using `resolve_stress_asset_block`; the
@@ -873,3 +895,103 @@ Betas: **weekly** changes/returns for reporting outputs in Section8 (`factor_bet
 - **warning_code** (when **DIAG_PASS_WITH_WARNING**): e.g. **WARN_HIST_BORDERLINE**, **WARN_DATA_INSUFFICIENT** (no RC-only warning code in current builds).
 
 View After Optimization does not stop on stress status; stress output is diagnostic only.
+
+### 12.1 Stress Scorecard and Conclusions
+
+`stress_report.json` includes machine-readable summary blocks. Downstream consumers
+(`snapshot_10y.stress_suite_results`, `candidate_comparison`, stress commentary) must read these
+blocks first; full `scenario_results` remains the detailed evidence layer.
+
+**`stress_scorecard_v1`** (version string `stress_scorecard_v1`):
+
+| Field | Description |
+| --- | --- |
+| `overall_status` | Same as top-level `status` (`DIAG_PASS` / `DIAG_PASS_WITH_WARNING` / `DIAG_ATTENTION`). |
+| `overall_reason` | `primary_diagnostic_code` or `warning_code`. |
+| `overall_confidence` | `low` \| `medium` \| `high` — worst of beta-coverage and historical `data_quality` signals. |
+| `max_dd_limit` | Mandate drawdown threshold used for synthetic `loss_ok` and severity. |
+| `n_synthetic_scenarios` / `n_historical_episodes` | Row counts (must match array lengths). |
+| `synthetic_scenarios[]` | Per-scenario: `scenario_id`, `portfolio_pnl_pct`, `pass`, `loss_ok`, `loss_severity`, `beta_coverage_ratio`, `beta_confidence`, `top3_loss_assets`, `top1_rc_asset`, `top1_rc_pct`, `top3_rc_assets`, `top3_rc_sum_pct`, `diagnostic_codes`. |
+| `historical_episodes[]` | Per-episode: `episode`, `pnl_real_episode`, `max_dd`, `pass`, `loss_severity`, `data_quality`, `coverage_ratio`, `n_obs`, `diagnostic_code`. |
+
+**`loss_severity`** (synthetic and historical): `low` \| `moderate` \| `high` \| `unknown`. Relative to
+`max_dd_limit`: **high** when mandate loss gate fails (`loss_ok` false or `max_dd` below limit);
+**moderate** when PnL/max_dd is between −50% and −100% of the limit; otherwise **low**.
+
+**`beta_confidence`**: `high` (coverage ≥ 0.95), `medium` (≥ 0.75), `low` otherwise.
+
+**`stress_conclusions`** (version string `stress_conclusions_v1`):
+
+| Field | Description |
+| --- | --- |
+| `overall_confidence` | Copy of scorecard `overall_confidence`. |
+| `worst_synthetic_scenario` | `scenario_id`, `portfolio_pnl_pct`, `loss_severity`, `pass`. |
+| `worst_historical_episode` | `episode`, `pnl_real_episode`, `max_dd`, `loss_severity`, `data_quality`. |
+| `top_loss_assets_worst_scenario` | Tickers from worst synthetic row `top3_loss_assets`. |
+| `helped_assets_worst_scenario` | Up to three assets with positive PnL in worst synthetic scenario. |
+| `data_quality_warnings` | Episodes where `data_quality` ∉ {`reliable`, `usable_with_gaps`}. |
+| `hedge_gap_status` | Copy of `hedge_gap_analysis.status`. |
+
+These blocks are diagnostic summaries over existing scenario rows and do not alter pass/fail logic.
+
+### 12.2 Hedge gap diagnostic
+
+`stress_report.json.hedge_gap_analysis` records stress-evidence of hedge weakness in the worst synthetic
+scenario (minimum `portfolio_pnl_pct` across `scenario_results`). Hedge-labeled tickers come from
+universe `risk_role` metadata (`crisis_hedge`, `defensive`, `inflation_hedge`, `tail_hedge`) passed
+into `run_stress` from `run_report.py`.
+
+| Field | Description |
+| --- | --- |
+| `method` | `stress_scenario_hedge_evidence_v1` |
+| `hedge_assets_considered` | Hedge-labeled tickers in the run |
+| `n_hedge_assets_considered` | Length of `hedge_assets_considered` |
+| `worst_scenario_id` | Worst synthetic scenario by portfolio PnL |
+| `worst_scenario_portfolio_pnl_pct` | Portfolio PnL in that scenario |
+| `hedge_assets_negative_in_worst_scenario` | Hedge tickers with non-positive `pnl_by_asset_pct` when portfolio loss is negative |
+| `gap_detected` | `true` iff `status` is `gap_detected` |
+| `status` | `gap_detected` \| `no_gap_detected` \| `insufficient_data` |
+
+`stress_conclusions.hedge_gap_status` copies `hedge_gap_analysis.status`. See
+`hedge_gap_analysis_spec.md` for interpretation rules.
+
+This diagnostic does not alter mandate gates, optimizer behavior, or stress pass/fail.
+
+### 12.3 Simulator API foundation (no UI)
+
+Stress Lab exposes a programmatic **What Happens If** primitive (no UI, no new generated artifact
+by default). Implementation: `src/stress.py`.
+
+| Symbol | Role |
+| --- | --- |
+| `simulate_custom_shock` | Run one custom or built-in-aligned shock vector through the linear engine |
+| `shock_vector_from_scenario` | Extract canonical `shock_*` inputs for a built-in `scenario_id` |
+| `CUSTOM_SHOCK_SIMULATOR_VERSION` | API version string (`custom_shock_simulator_v1`) |
+
+**Engine:** same as synthetic `scenario_results` rows — `_scenario_return_per_asset` for per-asset
+returns, weighted sum for `portfolio_pnl_pct`, `_portfolio_factor_pnl_pct` for factor attribution.
+**Not included:** mandate pass/fail, stress-covariance RC fields (`top1_rc_*`, `top3_rc_*`); those
+remain in full `run_stress` only.
+
+**Acceptance (Session 09):** for matching `shock_vector`, `simulate_custom_shock` must reproduce
+`portfolio_pnl_pct`, `pnl_by_asset_pct`, `pnl_by_factor_pct`, `top3_loss_assets`, and
+`shock_vector` from the corresponding built-in `scenario_results` row (including calibrated
+`recession_severe`).
+
+#### `simulate_custom_shock` output contract
+
+| Field | Description |
+| --- | --- |
+| `version` | `custom_shock_simulator_v1` |
+| `method` | `linear_factor_shock_v1` |
+| `scenario_id` | Caller label (default `custom_shock`) |
+| `shock_vector` | Normalized `shock_eq` … `shock_cmd` |
+| `portfolio_pnl_pct` | Weighted portfolio PnL |
+| `model_pnl_pct` | Same as `portfolio_pnl_pct` (linear beta map) |
+| `pnl_by_asset_pct` | Per-asset PnL |
+| `pnl_by_factor_pct` | Factor attribution at portfolio level |
+| `top3_loss_assets` | Worst three assets by PnL |
+| `beta_fallback_assets`, `beta_coverage_ratio` | Same meta as synthetic rows |
+| `synthetic_assumptions` | Same block as synthetic rows (`synthetic_assumptions_v1`) |
+
+Diagnostic only: does not alter mandate gates, optimizer behavior, or `run_stress` status.

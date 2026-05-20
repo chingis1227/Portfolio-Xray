@@ -324,8 +324,27 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     next_actions = run_result.get("next_actions") or []
     weights = run_result.get("weights") or {}
     stress_summary = run_result.get("stress_summary") or {}
+    stress_detail = run_result.get("stress_diagnostic_report") or {}
     violations = run_result.get("violations") or []
     mandate_check = run_result.get("mandate_check") or {}
+
+    def _fmt_pct(value: Any) -> str:
+        if isinstance(value, (int, float)):
+            return "%.2f%%" % (float(value) * 100)
+        return " - "
+
+    def _fmt_top_loss_assets(rows: Any, *, limit: int = 3) -> str:
+        if not isinstance(rows, list) or not rows:
+            return " - "
+        parts: list[str] = []
+        for row in rows[:limit]:
+            if not isinstance(row, dict):
+                continue
+            ticker = row.get("ticker") or row.get("asset") or row.get("name")
+            pnl = row.get("pnl_pct")
+            if ticker:
+                parts.append(f"{ticker} ({_fmt_pct(pnl)})")
+        return ", ".join(parts) if parts else " - "
 
     lines = [
         "IPS Summary  -  Full Run Results",
@@ -396,6 +415,44 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     if worst is not None:
         lines.append("  Worst scenario loss: %.2f%% (informational)" % (float(worst) * 100))
     lines.append("  Failed scenario:     %s" % (stress_summary.get("failed_scenario") or " - "))
+    conclusions = stress_detail.get("stress_conclusions") if isinstance(stress_detail, dict) else None
+    if isinstance(conclusions, dict) and conclusions:
+        ws = conclusions.get("worst_synthetic_scenario") or {}
+        wh = conclusions.get("worst_historical_episode") or {}
+        lines.append(
+            "  Worst synthetic:    %s (%s, severity=%s)"
+            % (
+                ws.get("scenario_id") or " - ",
+                _fmt_pct(ws.get("portfolio_pnl_pct")),
+                ws.get("loss_severity") or " - ",
+            )
+        )
+        lines.append(
+            "  Worst historical:   %s (%s, severity=%s)"
+            % (
+                wh.get("episode") or " - ",
+                _fmt_pct(wh.get("pnl_real_episode")),
+                wh.get("loss_severity") or " - ",
+            )
+        )
+        lines.append(
+            "  Main loss drivers:  %s"
+            % _fmt_top_loss_assets(conclusions.get("top_loss_assets_worst_scenario"))
+        )
+        lines.append(
+            "  Stress confidence:  %s"
+            % (conclusions.get("overall_confidence") or " - ")
+        )
+    hedge_gap = stress_detail.get("hedge_gap_analysis") if isinstance(stress_detail, dict) else None
+    if isinstance(hedge_gap, dict) and hedge_gap:
+        lines.append(
+            "  Hedge gap:          %s (worst=%s, pnl=%s)"
+            % (
+                hedge_gap.get("status") or " - ",
+                hedge_gap.get("worst_scenario_id") or " - ",
+                _fmt_pct(hedge_gap.get("worst_scenario_portfolio_pnl_pct")),
+            )
+        )
     lines.append("  Note: Synthetic shocks & episode checks do not prevent weights; review with PM.")
     lines.append("")
 

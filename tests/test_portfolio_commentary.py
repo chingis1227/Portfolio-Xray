@@ -80,10 +80,8 @@ def test_write_portfolio_commentary_creates_file(tmp_path: Path) -> None:
         assert "Executive Summary" in text
         assert "DIAG_ATTENTION" in text or "diagnostic" in text.lower()
         assert "equity_shock" in text
-        assert "Portfolio X-Ray Summary" in text
-        assert "role=user_current_portfolio" in text
-        assert "weight_source=config.current_weights" in text
-        assert "not a score, recommendation, selection decision, or trade instruction" in text
+        assert "Portfolio X-Ray (diagnostic-only)" in text
+        assert "does not optimize" in text
         assert "Risk-Parity baseline" in text or "Risk-Parity" in text
     finally:
         shutil.rmtree(root, ignore_errors=True)
@@ -140,6 +138,37 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
             ],
             "factor_betas_5y": {"beta_eq": 0.77, "beta_vix": -0.12, "beta_us_growth": 0.08},
             "factor_betas_10y": {"beta_eq": 0.81},
+            "stress_conclusions": {
+                "overall_confidence": "medium",
+                "worst_synthetic_scenario": {
+                    "scenario_id": "equity_shock",
+                    "portfolio_pnl_pct": -0.31,
+                    "loss_severity": "high",
+                    "pass": False,
+                },
+                "worst_historical_episode": {
+                    "episode": "2020",
+                    "pnl_real_episode": -0.08,
+                    "max_dd": -0.1,
+                    "loss_severity": "moderate",
+                    "data_quality": "reliable",
+                },
+                "top_loss_assets_worst_scenario": [
+                    {"ticker": "URA", "pnl_pct": -0.14},
+                    {"ticker": "XLE", "pnl_pct": -0.09},
+                ],
+                "helped_assets_worst_scenario": [
+                    {"ticker": "TLT", "pnl_pct": 0.03},
+                ],
+            },
+            "hedge_gap_analysis": {
+                "status": "gap_detected",
+                "worst_scenario_id": "equity_shock",
+                "worst_scenario_portfolio_pnl_pct": -0.31,
+                "hedge_assets_negative_in_worst_scenario": [
+                    {"ticker": "GLD", "pnl_pct": -0.02},
+                ],
+            },
             "factor_betas_adjusted": {
                 "raw": {"beta_eq": 0.77, "beta_vix": -0.12, "beta_us_growth": 0.08},
                 "adjusted": {"beta_eq": 0.74, "beta_vix": -0.08, "beta_us_growth": 0.08},
@@ -193,6 +222,10 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
         assert "not a pure realized causal decomposition" in text
         assert "top drivers: Equity" in text
         assert "Structural historical factor vulnerability" in text
+        assert "Plain-English take" in text
+        assert "main loss drivers=URA" in text
+        assert "Worst synthetic scenario: equity_shock" in text
+        assert "Confidence for scenario interpretation: medium." in text
 
         stress2 = {
             **stress,

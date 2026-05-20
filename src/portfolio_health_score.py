@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config_schema import PortfolioConfig
+from src.stress_artifacts import resolve_candidate_stress_report_path
 
 SCHEMA_VERSION = "portfolio_health_score_v1"
 WEIGHTS_PROFILE = "default_weights_reviewable"
@@ -139,21 +140,21 @@ def _resolve_stress_scenarios(
     cand: dict[str, Any],
     *,
     project_root: Path,
+    output_dir_final: str,
 ) -> list[dict[str, Any]]:
     stress = cand.get("stress") or {}
     scenarios = stress.get("scenarios")
     if isinstance(scenarios, list) and scenarios:
         return [s for s in scenarios if isinstance(s, dict)]
 
-    artifact_root = cand.get("artifact_root")
-    if not artifact_root:
+    report_path = resolve_candidate_stress_report_path(
+        cand,
+        project_root=project_root,
+        output_dir_final=output_dir_final,
+    )
+    if not report_path:
         return []
-
-    folder = Path(str(artifact_root))
-    if not folder.is_absolute():
-        folder = project_root / folder
-
-    report = _load_json(folder / "stress_report.json")
+    report = _load_json(report_path)
     if not report:
         return []
 
@@ -420,6 +421,7 @@ def _component_stress_behavior(
     scored: list[dict[str, Any]],
     *,
     project_root: Path,
+    output_dir_final: str,
 ) -> dict[str, dict[str, Any]]:
     raw_overall: dict[str, float | None] = {}
     raw_worst_pnl: dict[str, float | None] = {}
@@ -429,7 +431,11 @@ def _component_stress_behavior(
         cid = cand["candidate_id"]
         stress = cand.get("stress") or {}
         raw_overall[cid] = _stress_overall_numeric(stress.get("overall"))
-        scenarios = _resolve_stress_scenarios(cand, project_root=project_root)
+        scenarios = _resolve_stress_scenarios(
+            cand,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+        )
         pnls: list[float] = []
         passes = 0
         total_pass = 0
@@ -848,9 +854,11 @@ def build_portfolio_health_score(
     *,
     project_root: Path | None = None,
     robustness_scorecard: dict[str, Any] | None = None,
+    output_dir_final: str | None = None,
 ) -> dict[str, Any]:
     """Build health score document from canonical candidate_comparison.json content."""
     project_root = project_root or Path.cwd()
+    resolved_output_dir_final = str(comparison.get("output_dir_final") or output_dir_final or "")
     primary = comparison.get("primary_window") or PRIMARY_WINDOW
     scored = _scorable_candidates(comparison)
     run_warnings: list[str] = []
@@ -868,7 +876,11 @@ def build_portfolio_health_score(
     structural = _component_structural_diversification(scored)
     weight_conc = _component_weight_concentration(scored)
     drawdown = _component_drawdown_resilience(scored, primary)
-    stress = _component_stress_behavior(scored, project_root=project_root)
+    stress = _component_stress_behavior(
+        scored,
+        project_root=project_root,
+        output_dir_final=resolved_output_dir_final,
+    )
     risk_ret = _component_risk_adjusted_return(scored, primary)
     factor_bal = _component_factor_balance(scored)
     macro_fit = _component_macro_regime_fit(scored)
@@ -1114,6 +1126,7 @@ def write_portfolio_health_score_outputs(
         comparison,
         project_root=project_root,
         robustness_scorecard=robustness_scorecard,
+        output_dir_final=str(getattr(cfg, "output_dir_final", "Main portfolio")),
     )
     out_dir.mkdir(parents=True, exist_ok=True)
 

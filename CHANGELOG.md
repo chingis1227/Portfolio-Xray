@@ -43,6 +43,14 @@ Omit empty categories.
 
 ### Added
 
+- Stress Lab Sessions 01-10 (post-audit wave): hardened `stress_scorecard_v1` / `stress_conclusions`,
+  `historical_episode_paths` crisis replay CSVs, `hedge_gap_analysis`, expanded synthetic scenario
+  coverage (`usd_shock`, `commodity_shock`, `banking_2023`), `synthetic_assumptions` transparency,
+  portfolio-first stress resolution via `src/stress_artifacts.py`, plain-English stress narrative in
+  commentary/IPS, and custom-shock simulator API (`simulate_custom_shock`); contract tests and specs
+  (`stress_lab_layer_spec`, `hedge_gap_analysis_spec`, `crisis_replay_spec`); Session 10 closed the
+  wave with documented regression bundle in [TESTING.md](TESTING.md).
+
 - X-Ray Session 09 / RM-939: portfolio-first **core** vs **full** review modes on
   `run_portfolio_review.py` (`--mode core|full`, factory profiles `core_v1` / `default_v1`);
   `candidate_menu` partial-menu disclosure in `candidate_comparison.json` and decision-package
@@ -62,6 +70,9 @@ Omit empty categories.
   full `default_v1`). Use `--mode full` for the complete optimizer menu.
 
 ### Fixed
+
+- Stress Lab Session 10: aligned stale `test_write_portfolio_commentary_creates_file` assertions with
+  current `format_portfolio_xray_commentary` headings (`Portfolio X-Ray (diagnostic-only)`).
 
 - X-Ray Session 07 / RM-937: archetype labels no longer hide inflation/rates regime
   tensions (`KI-2026-05-19-010`).

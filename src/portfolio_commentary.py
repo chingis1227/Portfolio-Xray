@@ -1189,6 +1189,19 @@ def write_stress_commentary(
     ae = analysis_end or _MDASH
     st = stress_report or {}
 
+    def _fmt_loss_drivers(rows: Any, *, limit: int = 3) -> str:
+        if not isinstance(rows, list) or not rows:
+            return _MDASH
+        parts: list[str] = []
+        for row in rows[:limit]:
+            if not isinstance(row, dict):
+                continue
+            ticker = row.get("ticker") or row.get("asset") or row.get("name")
+            pnl = row.get("pnl_pct")
+            if ticker:
+                parts.append(f"{ticker} ({_fmt_pct(pnl)})")
+        return ", ".join(parts) if parts else _MDASH
+
     lines: list[str] = [
         "Source: stress_report.json (current run)",
         "",
@@ -1255,29 +1268,91 @@ def write_stress_commentary(
         else f"failed_scenario: {fs or _MDASH}; failed_test: {ft or _MDASH}."
     )
     exec_para.append(wl)
+    conclusions = st.get("stress_conclusions") or {}
+    if isinstance(conclusions, dict) and conclusions:
+        ws = conclusions.get("worst_synthetic_scenario") or {}
+        wh = conclusions.get("worst_historical_episode") or {}
+        worst_driver_text = _fmt_loss_drivers(conclusions.get("top_loss_assets_worst_scenario"))
+        helped_text = _fmt_loss_drivers(conclusions.get("helped_assets_worst_scenario"))
+        exec_para.append(
+            "Stress conclusions: "
+            f"worst synthetic={ws.get('scenario_id', _MDASH)} ({_fmt_pct(ws.get('portfolio_pnl_pct'))}, "
+            f"severity={ws.get('loss_severity', _MDASH)}), "
+            f"worst historical={wh.get('episode', _MDASH)} ({_fmt_pct(wh.get('pnl_real_episode'))}, "
+            f"severity={wh.get('loss_severity', _MDASH)}); "
+            f"overall_confidence={conclusions.get('overall_confidence', _MDASH)}."
+        )
+        exec_para.append(
+            "Plain-English take: "
+            f"the worst synthetic case is {ws.get('scenario_id', _MDASH)} with portfolio PnL {_fmt_pct(ws.get('portfolio_pnl_pct'))}; "
+            f"main loss drivers={worst_driver_text}; "
+            f"helping assets={helped_text}; "
+            f"confidence={conclusions.get('overall_confidence', _MDASH)}."
+        )
+    hedge_gap = st.get("hedge_gap_analysis") or {}
+    if isinstance(hedge_gap, dict) and hedge_gap:
+        gap_line = (
+            "Hedge gap status: "
+            f"{hedge_gap.get('status', _MDASH)} "
+            f"(worst scenario={hedge_gap.get('worst_scenario_id', _MDASH)}, "
+            f"portfolio PnL={_fmt_pct(hedge_gap.get('worst_scenario_portfolio_pnl_pct'))})."
+        )
+        if hedge_gap.get("status") == "gap_detected":
+            failing = hedge_gap.get("hedge_assets_negative_in_worst_scenario") or []
+            if isinstance(failing, list) and failing:
+                parts = []
+                for row in failing:
+                    if isinstance(row, dict) and row.get("ticker"):
+                        parts.append(f"{row['ticker']} ({_fmt_pct(row.get('pnl_pct'))})")
+                if parts:
+                    gap_line += f" Weak hedges in worst scenario: {', '.join(parts)}."
+        exec_para.append(gap_line)
     lines.extend(exec_para)
     lines.append("")
 
     lines.append("Metric-by-Metric Interpretation")
+    scorecard = st.get("stress_scorecard_v1") or {}
     scen_rows = st.get("scenario_results") or []
-    if scen_rows:
+    syn_scorecard = (
+        scorecard.get("synthetic_scenarios")
+        if isinstance(scorecard, dict)
+        else None
+    ) or []
+    if isinstance(scorecard, dict) and scorecard:
         lines.append(
-            "Synthetic scenarios (stress_report.scenario_results): factor shocks to the portfolio as a whole; "
+            f"Scorecard snapshot: overall={scorecard.get('overall_status', _MDASH)}, "
+            f"reason={scorecard.get('overall_reason', _MDASH)}, "
+            f"confidence={scorecard.get('overall_confidence', _MDASH)}."
+        )
+    display_syn = syn_scorecard if syn_scorecard else scen_rows
+    if display_syn:
+        source = "stress_scorecard_v1.synthetic_scenarios" if syn_scorecard else "scenario_results"
+        lines.append(
+            f"Synthetic scenarios ({source}): factor shocks to the portfolio as a whole; "
             "pass reflects the mandate PnL threshold (loss_ok). Top1 / Top3 RC are concentration diagnostics, "
             "not an extra pass/fail gate in stress_report. See pnl_by_asset_pct / pnl_by_factor_pct in JSON."
         )
-        for row in scen_rows:
+        for row in display_syn:
             sid = row.get("scenario_id", "?")
             pnl = row.get("portfolio_pnl_pct")
             top1a = row.get("top1_rc_asset")
             top1p = row.get("top1_rc_pct")
             top3s = row.get("top3_rc_sum_pct")
+            sev = row.get("loss_severity")
+            beta_conf = row.get("beta_confidence")
+            loss_ok = row.get("loss_ok")
+            extra = []
+            if sev:
+                extra.append(f"severity={sev}")
+            if beta_conf:
+                extra.append(f"beta_confidence={beta_conf}")
+            extra_s = f"; {'; '.join(extra)}" if extra else ""
             lines.append(
-                f"- {sid}: PnL ~ {_fmt_pct(pnl)}, pass={row.get('pass')}, loss_ok={row.get('loss_ok')}; "
+                f"- {sid}: PnL ~ {_fmt_pct(pnl)}, pass={row.get('pass')}, loss_ok={loss_ok if loss_ok is not None else _MDASH}{extra_s}; "
                 f"Top1 RC (dispersion): {top1a} ({_fmt_pct(top1p, 2)}); Top3 sum ~ {_fmt_pct(top3s, 2) if top3s is not None else _NA}."
             )
         sdiag = []
-        for row in scen_rows:
+        for row in display_syn:
             for c in row.get("diagnostic_codes") or []:
                 if c not in sdiag:
                     sdiag.append(c)
@@ -1286,7 +1361,7 @@ def write_stress_commentary(
                 f"Per-scenario codes (loss and RC where present, unique): {', '.join(str(x) for x in sdiag)}."
             )
     else:
-        lines.append("scenario_results rows are absent in the report payload.")
+        lines.append("Synthetic scenario rows are absent in stress_scorecard_v1 and scenario_results.")
 
     fb5 = _base_beta_map(st.get("factor_betas_5y") or st.get("factor_betas") or {})
     fb10 = _base_beta_map(st.get("factor_betas_10y") or {})
@@ -1451,6 +1526,26 @@ def write_stress_commentary(
     lines.append("")
 
     lines.append("Scenario Behavior")
+    if isinstance(conclusions, dict) and conclusions:
+        ws = conclusions.get("worst_synthetic_scenario") or {}
+        wh = conclusions.get("worst_historical_episode") or {}
+        lines.append(
+            f"Worst synthetic scenario: {ws.get('scenario_id', _MDASH)} "
+            f"(PnL {_fmt_pct(ws.get('portfolio_pnl_pct'))}, severity={ws.get('loss_severity', _MDASH)}, pass={ws.get('pass', _MDASH)})."
+        )
+        lines.append(
+            f"Worst historical episode: {wh.get('episode', _MDASH)} "
+            f"(realized PnL {_fmt_pct(wh.get('pnl_real_episode'))}, max_dd {_fmt_pct(wh.get('max_dd'))}, "
+            f"data_quality={wh.get('data_quality', _MDASH)})."
+        )
+        lines.append(
+            "Worst-case drivers in this run: "
+            f"{_fmt_loss_drivers(conclusions.get('top_loss_assets_worst_scenario'))}."
+        )
+        lines.append(
+            "Confidence for scenario interpretation: "
+            f"{conclusions.get('overall_confidence', _MDASH)}."
+        )
     if scen_rows:
         for row in scen_rows:
             sid = row.get("scenario_id")

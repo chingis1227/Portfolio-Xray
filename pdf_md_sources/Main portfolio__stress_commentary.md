@@ -8,7 +8,7 @@ fontsize: 10pt
 
 ## Executive Summary
 
-Main Portfolio was reviewed on the latest available reporting window. CAGR is 9.90%, annualized volatility is 9.60%, maximum drawdown is -19.80%, Sharpe is 0.799, Sortino is 1.286, and market sensitivity is 0.513. Stress diagnostics show: One risk area requires attention; worst scenario loss is -22.09%.
+Main Portfolio was reviewed on the latest available reporting window. CAGR is 9.90%, annualized volatility is 9.60%, maximum drawdown is -19.80%, Sharpe is 0.799, Sortino is 1.286, and market sensitivity is 0.513. Stress diagnostics show: One risk area requires attention; worst scenario loss is -22.16%.
 
 ## Key Metrics
 
@@ -22,18 +22,20 @@ The portfolio profile should be read as a trade-off between return, realized dra
 
 ## Risk Structure
 
-Stress status: One risk area requires attention. Worst scenario loss: -22.09%. Flagged scenario: recession_severe; flagged test: Loss. These diagnostics are used to identify risk concentrations and scenario vulnerability; they do not by themselves replace the mandate checks.
+Stress status: One risk area requires attention. Worst scenario loss: -22.16%. Flagged scenario: recession_severe; flagged test: Loss. These diagnostics are used to identify risk concentrations and scenario vulnerability; they do not by themselves replace the mandate checks.
 
 ## Scenario Analysis
 
 | Scenario | PnL | Pass | Top RC Asset | Top 3 RC |
 | --- | ---: | --- | --- | ---: |
-| equity_shock | -16.27% | True | SCHD | 63.69% |
-| credit_shock | -3.01% | True | SCHD | 58.67% |
-| rates_shock | -8.26% | True | SLV | 55.31% |
-| inflation_stagflation | -9.13% | True | SLV | 60.15% |
-| liquidity_shock | -9.38% | True | SCHD | 60.41% |
-| recession_severe | -22.09% | False | SCHD | 60.64% |
+| equity_shock | -16.24% | True | SCHD | 63.68% |
+| credit_shock | -2.90% | True | SCHD | 58.66% |
+| rates_shock | -8.32% | True | SLV | 55.31% |
+| inflation_stagflation | -9.11% | True | SLV | 60.14% |
+| liquidity_shock | -9.28% | True | SCHD | 60.41% |
+| usd_shock | -5.77% | True | SCHD | 60.76% |
+| commodity_shock | -0.54% | True | SCHD | 60.76% |
+| recession_severe | -22.16% | False | SCHD | 60.63% |
 
 ## Conclusion
 

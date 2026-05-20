@@ -13,6 +13,7 @@ from typing import Any
 
 from src.config_schema import PortfolioConfig
 from src.selection_engine import ELIGIBLE_STATUSES, _finite, _load_json
+from src.stress_artifacts import resolve_analysis_subject_stress_report_path
 
 SCHEMA_VERSION = "regret_analysis_v1"
 
@@ -189,8 +190,13 @@ def _try_regime_slices(
     opportunity_ids: list[str],
     references: list[tuple[str, str | None, dict[str, Any] | None, str]],
 ) -> tuple[str, list[dict[str, Any]], str | None]:
-    policy_folder = project_root / str(getattr(cfg, "output_dir_final", "Main portfolio"))
-    stress = _load_json(policy_folder / "stress_report.json")
+    output_dir_final = str(getattr(cfg, "output_dir_final", "Main portfolio"))
+    subject_stress = resolve_analysis_subject_stress_report_path(
+        project_root=project_root,
+        output_dir_final=output_dir_final,
+    )
+    policy_folder = project_root / output_dir_final
+    stress = _load_json(subject_stress) if subject_stress else _load_json(policy_folder / "stress_report.json")
     macro_diag = (stress or {}).get("macro_regime_diagnostics") or {}
     primary = macro_diag.get("current_regime") or macro_diag.get("primary_regime")
     if not primary:

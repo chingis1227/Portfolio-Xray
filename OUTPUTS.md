@@ -91,11 +91,18 @@ Common project artifacts include:
 - `run_result.json`
 - `run_metadata.json`
 - `stress_report.json`
+- Custom shock simulator API (no generated file by default): `src/stress.py::simulate_custom_shock` and
+  `shock_vector_from_scenario`; contract in [stress testing spec](docs/specs/stress_testing_spec.md) §12.3
+- `stress_report.json.stress_scorecard_v1` (unified stress scorecard block)
+- `stress_report.json.stress_conclusions` (aggregated stress conclusions)
+- `stress_report.json.hedge_gap_analysis` (hedge gap diagnostic block)
+- `stress_report.json.historical_episode_paths` (path-level crisis replay block)
 - `portfolio_xray.json`
 - `scenario_library.json`
 - `scenario_library_normalized.json`
 - metric CSV files under `results_csv/`
 - stress, factor, macro, regime, and scenario CSV files under `results_csv/`
+- `results_csv/crisis_replay_{episode}.csv` (path-level historical replay export)
 - `commentary.txt`
 - `stress_commentary.txt`
 - generated HTML snapshots

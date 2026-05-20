@@ -19,6 +19,14 @@ Comparison highlights
 
 ----------------------------------------
 
+Candidate menu
+
+ Intended menu: default_v1 (16/16 candidates scored).
+
+ Product reference menu: default_v1 (16/16 scored).
+
+
+
  Starting portfolio: Current Portfolio: CAGR 9.9%, vol 9.6%, max DD -19.8%, stress Diagnostic review
 
 
@@ -101,7 +109,7 @@ Regret analysis
 
 ----------------------------------------
 
- Status: complete
+ Status: partial
 
  Favored worst regret: 0.177 (recession_severe).
 

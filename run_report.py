@@ -639,6 +639,15 @@ def run_portfolio_report_for_weights(
         asset_betas_df = pd.DataFrame()
         portfolio_betas_dict = {}
 
+    hedge_assets = []
+    for ticker in tickers:
+        meta = assets_meta.get(ticker) if isinstance(assets_meta, dict) else None
+        if not isinstance(meta, dict):
+            continue
+        roles = [str(x).lower() for x in (meta.get("risk_role") or [])]
+        if any(r in {"crisis_hedge", "defensive", "inflation_hedge", "tail_hedge"} for r in roles):
+            hedge_assets.append(str(ticker))
+
     stress_report = run_stress(
         tickers=tickers,
         weights=weights,
@@ -648,7 +657,11 @@ def run_portfolio_report_for_weights(
         target_max_drawdown_pct=cfg.target_max_drawdown_pct,
         cash_proxy_ticker=cash_proxy_ticker,
         factor_returns=recession_factor_returns,
+        scenario_overrides=getattr(cfg, "stress_scenario_overrides", None),
+        hedge_assets=hedge_assets,
     )
+    stress_report["generated_at"] = run_timestamp
+    stress_report["analysis_end"] = analysis_end_str
     stress_report["factor_betas_5y"] = {k: round(v, 4) for k, v in (portfolio_betas_5y_dict or {}).items()}
     stress_report["factor_betas_10y"] = {k: round(v, 4) for k, v in (portfolio_betas_10y_dict or {}).items()}
     stress_report["factor_betas"] = dict(stress_report["factor_betas_5y"])
@@ -1304,6 +1317,22 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["factor_beta_adjusted_overlay_error"] = str(e)
         logger.warning(f"Factor beta adjusted overlay failed: {e}")
+
+    try:
+        historical_paths = stress_report.get("historical_episode_paths") or []
+        for item in historical_paths:
+            if not isinstance(item, dict):
+                continue
+            episode = str(item.get("episode") or "").strip()
+            rows = item.get("rows")
+            if not episode or not isinstance(rows, list) or not rows:
+                continue
+            df_path = pd.DataFrame(rows)
+            if df_path.empty:
+                continue
+            df_path.to_csv(output_dir_csv / f"crisis_replay_{episode}.csv", index=False)
+    except Exception as e:
+        logger.warning(f"Historical episode path export failed: {e}")
     try:
         ssa = build_stress_scenario_analytics(
             stress_report=stress_report,

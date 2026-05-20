@@ -284,6 +284,12 @@ def _stress_from_artifacts(folder: Path, snap_10y: dict[str, Any] | None) -> dic
                     for s in scenarios[:8]
                     if isinstance(s, dict)
                 ]
+            scorecard = suite.get("scorecard")
+            if isinstance(scorecard, dict) and scorecard:
+                stress["scorecard"] = scorecard
+            conclusions = suite.get("conclusions")
+            if isinstance(conclusions, dict) and conclusions:
+                stress["conclusions"] = conclusions
 
     summary = _load_json(folder / "summary.json")
     if stress.get("overall") is None and summary:
@@ -295,6 +301,19 @@ def _stress_from_artifacts(folder: Path, snap_10y: dict[str, Any] | None) -> dic
             stress["fail_reason_code"] = stress_report.get("fail_reason_code")
         if stress.get("failed_scenario") is None:
             stress["failed_scenario"] = stress_report.get("failed_scenario")
+        if stress.get("analysis_end") is None:
+            stress["analysis_end"] = stress_report.get("analysis_end")
+        if stress.get("generated_at") is None:
+            stress["generated_at"] = stress_report.get("generated_at")
+        if "scorecard" not in stress and isinstance(stress_report.get("stress_scorecard_v1"), dict):
+            stress["scorecard"] = stress_report.get("stress_scorecard_v1")
+        if "conclusions" not in stress and isinstance(stress_report.get("stress_conclusions"), dict):
+            stress["conclusions"] = stress_report.get("stress_conclusions")
+        if isinstance(stress_report.get("hedge_gap_analysis"), dict):
+            stress["hedge_gap_analysis"] = stress_report.get("hedge_gap_analysis")
+        stress["source_file"] = "stress_report.json"
+    elif snap_10y:
+        stress["source_file"] = SNAPSHOT_FILES[PRIMARY_WINDOW]
 
     return stress
 
