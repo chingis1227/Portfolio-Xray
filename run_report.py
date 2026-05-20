@@ -1331,6 +1331,19 @@ def run_portfolio_report_for_weights(
             if df_path.empty:
                 continue
             df_path.to_csv(output_dir_csv / f"crisis_replay_{episode}.csv", index=False)
+            asset_contrib = item.get("asset_pnl_contrib_episode")
+            if isinstance(asset_contrib, dict) and asset_contrib:
+                contrib_rows = [
+                    {
+                        "ticker": ticker,
+                        "episode_pnl_contrib": value,
+                    }
+                    for ticker, value in sorted(asset_contrib.items())
+                ]
+                pd.DataFrame(contrib_rows).to_csv(
+                    output_dir_csv / f"crisis_replay_{episode}_asset_contrib.csv",
+                    index=False,
+                )
     except Exception as e:
         logger.warning(f"Historical episode path export failed: {e}")
     try:

@@ -1275,6 +1275,16 @@ def write_stress_commentary(
         wh = conclusions.get("worst_historical_episode") or {}
         worst_driver_text = _fmt_loss_drivers(conclusions.get("top_loss_assets_worst_scenario"))
         helped_text = _fmt_loss_drivers(conclusions.get("helped_assets_worst_scenario"))
+        factor_loss_text = ", ".join(
+            _fmt_factor_driver(d)
+            for d in (conclusions.get("top_factor_drivers_worst_scenario") or [])[:3]
+            if isinstance(d, dict)
+        ) or _MDASH
+        factor_help_text = ", ".join(
+            _fmt_factor_driver(d)
+            for d in (conclusions.get("helped_factors_worst_scenario") or [])[:3]
+            if isinstance(d, dict)
+        ) or _MDASH
         exec_para.append(
             "Stress conclusions: "
             f"worst synthetic={ws.get('scenario_id', _MDASH)} ({_fmt_pct(ws.get('portfolio_pnl_pct'))}, "
@@ -1288,26 +1298,72 @@ def write_stress_commentary(
             f"the worst synthetic case is {ws.get('scenario_id', _MDASH)} with portfolio PnL {_fmt_pct(ws.get('portfolio_pnl_pct'))}; "
             f"main loss drivers={worst_driver_text}; "
             f"helping assets={helped_text}; "
+            f"main factor loss drivers={factor_loss_text}; "
+            f"helping factors={factor_help_text}; "
             f"confidence={conclusions.get('overall_confidence', _MDASH)}."
+        )
+        dq_warn = conclusions.get("data_quality_warnings")
+        if isinstance(dq_warn, list) and dq_warn:
+            exec_para.append(
+                "Data quality / methodology: " + "; ".join(str(w) for w in dq_warn[:4] if w)
+            )
+    hist_method = st.get("historical_methodology") or {}
+    if isinstance(hist_method, dict) and hist_method.get("version"):
+        exec_para.append(
+            "Historical stress methodology: "
+            f"primary_path={hist_method.get('primary_stress_path', _MDASH)}, "
+            f"return_method={hist_method.get('return_method', _MDASH)}, "
+            f"proxy_in_primary={hist_method.get('proxy_used_in_primary_stress', _MDASH)}; "
+            "normalized-library proxy waterfall is separate."
         )
     hedge_gap = st.get("hedge_gap_analysis") or {}
     if isinstance(hedge_gap, dict) and hedge_gap:
-        gap_line = (
-            "Hedge gap status: "
-            f"{hedge_gap.get('status', _MDASH)} "
-            f"(worst scenario={hedge_gap.get('worst_scenario_id', _MDASH)}, "
-            f"portfolio PnL={_fmt_pct(hedge_gap.get('worst_scenario_portfolio_pnl_pct'))})."
-        )
-        if hedge_gap.get("status") == "gap_detected":
-            failing = hedge_gap.get("hedge_assets_negative_in_worst_scenario") or []
-            if isinstance(failing, list) and failing:
-                parts = []
-                for row in failing:
-                    if isinstance(row, dict) and row.get("ticker"):
-                        parts.append(f"{row['ticker']} ({_fmt_pct(row.get('pnl_pct'))})")
-                if parts:
-                    gap_line += f" Weak hedges in worst scenario: {', '.join(parts)}."
+        hg_status = hedge_gap.get("status", _MDASH)
+        if hg_status == "not_applicable":
+            reason_en = hedge_gap.get("status_reason_en") or hedge_gap.get("status_reason", _MDASH)
+            gap_line = f"Hedge gap: not applicable — {reason_en}"
+        elif hg_status == "insufficient_data":
+            reason_en = hedge_gap.get("status_reason_en") or hedge_gap.get("status_reason", _MDASH)
+            gap_line = (
+                "Hedge gap: insufficient data — "
+                f"{reason_en} "
+                f"(worst scenario={hedge_gap.get('worst_scenario_id', _MDASH)}, "
+                f"portfolio PnL={_fmt_pct(hedge_gap.get('worst_scenario_portfolio_pnl_pct'))})."
+            )
+        else:
+            gap_line = (
+                "Hedge gap status: "
+                f"{hg_status} "
+                f"(worst scenario={hedge_gap.get('worst_scenario_id', _MDASH)}, "
+                f"portfolio PnL={_fmt_pct(hedge_gap.get('worst_scenario_portfolio_pnl_pct'))})."
+            )
+            if hg_status == "gap_detected":
+                failing = hedge_gap.get("hedge_assets_negative_in_worst_scenario") or []
+                if isinstance(failing, list) and failing:
+                    parts = []
+                    for row in failing:
+                        if isinstance(row, dict) and row.get("ticker"):
+                            parts.append(f"{row['ticker']} ({_fmt_pct(row.get('pnl_pct'))})")
+                    if parts:
+                        gap_line += f" Weak hedges in worst scenario: {', '.join(parts)}."
         exec_para.append(gap_line)
+        by_risk = hedge_gap.get("by_risk_type") or []
+        if isinstance(by_risk, list) and by_risk:
+            gap_types = [
+                str(r.get("risk_type"))
+                for r in by_risk
+                if isinstance(r, dict) and r.get("gap_detected")
+            ]
+            if gap_types:
+                exec_para.append(
+                    "Hedge gap by risk type (mapped scenarios): gap detected for "
+                    + ", ".join(gap_types)
+                    + "."
+                )
+            elif hedge_gap.get("any_risk_type_gap_detected") is False:
+                exec_para.append(
+                    "Hedge gap by risk type: no mapped weakness bucket shows hedge gap evidence."
+                )
     lines.extend(exec_para)
     lines.append("")
 
@@ -1447,10 +1503,18 @@ def write_stress_commentary(
             vp = h.get("pass")
             vole = h.get("vol_annualized_episode")
             dcode = h.get("diagnostic_code")
+            rm = h.get("return_method")
+            proxy = h.get("proxy_used")
+            method_bits = []
+            if rm:
+                method_bits.append(f"return_method={rm}")
+            if proxy is not None:
+                method_bits.append(f"proxy_used={proxy}")
+            method_suffix = f"; {'; '.join(method_bits)}" if method_bits else ""
             lines.append(
                 f"- {ep}: pnl_real_episode ~ {_fmt_pct(pnl_real_ep)}, max_dd ~ {_fmt_pct(mdd)}, pass={vp}, "
                 f"vol_annualized_episode ~ {_fmt_float(vole, 4) if vole is not None else _NA}, "
-                f"diagnostic_code={dcode or _MDASH}."
+                f"diagnostic_code={dcode or _MDASH}{method_suffix}."
             )
             driver_line = _historical_driver_line(h)
             if driver_line:
@@ -1463,6 +1527,26 @@ def write_stress_commentary(
         vuln = _historical_vulnerability_summary([h for h in hist if isinstance(h, dict)])
         if vuln:
             lines.append(vuln)
+        episode_paths = st.get("historical_episode_paths") or []
+        if isinstance(episode_paths, list) and episode_paths:
+            lines.append("Crisis replay (path-level, crisis_replay_v2):")
+            for path in episode_paths:
+                if not isinstance(path, dict) or not path.get("episode"):
+                    continue
+                ep = path.get("episode")
+                ttr = path.get("time_to_recovery_months")
+                rec = path.get("recovered")
+                top_loss = path.get("top_loss_assets_episode") or []
+                top_str = ", ".join(str(t) for t in top_loss[:3]) if top_loss else _MDASH
+                rec_str = (
+                    f"recovered={rec}, time_to_recovery_months={_fmt_float(ttr, 1) if ttr is not None else _NA}"
+                    if rec is not None
+                    else f"time_to_recovery_months={_fmt_float(ttr, 1) if ttr is not None else _NA}"
+                )
+                lines.append(
+                    f"- {ep}: {rec_str}; top loss assets in episode={top_str}; "
+                    f"data_quality={path.get('data_quality', _MDASH)}."
+                )
     else:
         lines.append("Historical episodes are absent in JSON.")
     oos = st.get("factor_beta_shock_oos")
@@ -1543,6 +1627,20 @@ def write_stress_commentary(
             "Worst-case drivers in this run: "
             f"{_fmt_loss_drivers(conclusions.get('top_loss_assets_worst_scenario'))}."
         )
+        factor_drivers = conclusions.get("top_factor_drivers_worst_scenario") or []
+        if isinstance(factor_drivers, list) and factor_drivers:
+            lines.append(
+                "Worst-case factor drivers: "
+                + ", ".join(_fmt_factor_driver(d) for d in factor_drivers[:3] if isinstance(d, dict))
+                + "."
+            )
+        helped_factors = conclusions.get("helped_factors_worst_scenario") or []
+        if isinstance(helped_factors, list) and helped_factors:
+            lines.append(
+                "Factors that helped in the worst scenario: "
+                + ", ".join(_fmt_factor_driver(d) for d in helped_factors[:3] if isinstance(d, dict))
+                + "."
+            )
         lines.append(
             "Confidence for scenario interpretation: "
             f"{conclusions.get('overall_confidence', _MDASH)}."

@@ -26,6 +26,7 @@ from src.portfolio_xray import (
     load_portfolio_windows_from_dir,
 )
 from src.risk_contrib import rc_vol_window
+from src.stress import crisis_replay_summary_from_paths
 from src.windows import slice_window
 
 REPORT_DECIMALS = 3
@@ -103,15 +104,25 @@ def _stress_suite_results_for_snapshot(stress_report: dict[str, Any], portfolio_
             else {},
         })
 
+    episode_paths = stress_report.get("historical_episode_paths")
+    crisis_summary = crisis_replay_summary_from_paths(
+        episode_paths if isinstance(episode_paths, list) else None
+    )
+    historical_methodology = stress_report.get("historical_methodology")
     return {
         "overall": overall,
         "fail_reason_code": fail_reason,
+        "failed_scenario": stress_report.get("failed_scenario"),
         "scenarios": scenarios_out,
         "historical": stress_report.get("historical_results", []),
         "portfolio_params": portfolio_params or {},
         "scorecard": stress_report.get("stress_scorecard_v1") or {},
         "conclusions": stress_report.get("stress_conclusions") or {},
         "hedge_gap_analysis": stress_report.get("hedge_gap_analysis") or {},
+        "historical_methodology": historical_methodology
+        if isinstance(historical_methodology, dict)
+        else {},
+        "crisis_replay_summary": crisis_summary,
     }
 
 

@@ -60,6 +60,34 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-05-20-002
+Title: Defer crypto_shock and volatility_shock synthetic scenarios in run_stress
+
+- Status: accepted
+- Date: 2026-05-20
+- Decision: Do **not** add `crypto_shock` or `volatility_shock` / `vix_shock` to `src/stress.py::SCENARIOS` or the mandatory `run_stress` suite until a follow-up implementation session is explicitly approved. Keep Portfolio X-Ray **volatility_spike** on **factor-only Option B** (`beta_vix` + `es_95`). Keep **crypto_shock** as a conditional Weakness Map row only (taxonomy / weights), not a `scenario_results` row.
+- Context: Block 3 governance gap G8 — X-Ray surfaces vol and crypto risks but stress suite has eight synthetic scenarios on the six-shock engine; adding scenarios without a factor/crypto channel plan risks double counting or equity-proxy misstatement.
+- Rationale: Session 08 default is spec-only governance; VIX factor exists in analytics but is excluded from synthetic shock mapping by design; crypto has no production `shock_crypto` channel. Deferral preserves suite stability, mandate boundary, and baseline comparability until product requests named PnL rows.
+- Alternatives considered: Implement `volatility_shock` now (deferred — see proposal Option A); map crypto to `equity_shock` proxy (rejected); implement both in Session 08 without spec (rejected — violates governance non-goals).
+- Assumptions: `liquidity_shock` / `equity_shock` remain acceptable partial risk-off proxies for vol in the eight-scenario suite; historical episodes (2020, 2022) cover realized vol stress paths.
+- Consequences: `stress_testing_spec.md` §2.3 documents deferred ids; methodology map G8 closed as spec-only; implementation requires proposal §5 checklist, WEAKNESS_SCENARIO_MAP alignment, and Sessions 10–11 integration if later accepted.
+- Related documents: [docs/proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md](docs/proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md), [stress_testing_spec.md](docs/specs/stress_testing_spec.md) §2.3, [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.7, [docs/exec_plans/2026-05-20_stress_lab_methodology_governance_plan.md](docs/exec_plans/2026-05-20_stress_lab_methodology_governance_plan.md) Session 08.
+- Review trigger: Revisit when product requires vol/crypto PnL in IPS, stress commentary, or hedge-gap mapping alongside other named scenarios, or when crypto factor data policy is approved.
+
+Decision ID: DEC-2026-05-20-001
+Title: Primary historical stress stays realized-only; proxy only in normalized library
+
+- Status: accepted
+- Date: 2026-05-20
+- Decision: `run_stress` historical episodes use aligned portfolio **realized** monthly returns only (`return_method: realized_portfolio_monthly`, `proxy_used: false` on each row). Per-asset historical proxy waterfall remains in `scenario_library_normalized` via `historical_stress_fallback` and is disclosed in `stress_report.json.historical_methodology` and `stress_conclusions.data_quality_warnings`. Do not route primary historical stress through the proxy waterfall unless this decision is superseded.
+- Context: Stress Lab methodology audit (G2): consumers could confuse primary `historical_results` with normalized-library proxy fills.
+- Rationale: Mandate historical pass/fail and crisis replay must reflect actual portfolio path; proxies are a separate readiness layer for candidate/library analytics.
+- Alternatives considered: Enable proxy in `run_stress` primary path (deferred — proposal P1); hide proxy entirely (rejected — misleads library readers).
+- Assumptions: `scenario_library_normalized` continues to document waterfall steps; factor attribution on historical rows remains model-based overlay, not a return proxy.
+- Consequences: `historical_methodology` block on stress reports; spec §9.3; tests in `test_stress_historical_fields.py`.
+- Related documents: [stress_testing_spec.md](docs/specs/stress_testing_spec.md) §9, [scenario_library_spec.md](docs/specs/scenario_library_spec.md), [docs/exec_plans/2026-05-20_stress_lab_methodology_governance_plan.md](docs/exec_plans/2026-05-20_stress_lab_methodology_governance_plan.md) Session 02, [docs/audits/2026-05-20_stress_lab_methodology_map.md](docs/audits/2026-05-20_stress_lab_methodology_map.md).
+- Review trigger: Revisit if product requires primary historical stress to use per-asset proxy fills for young ETFs or missing history.
+
 Decision ID: DEC-2026-05-18-001
 Title: Portfolio-first workflow and legacy policy engine boundary
 

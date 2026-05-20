@@ -125,8 +125,16 @@ coverage, synthetic assumptions, crisis replay paths, portfolio-first artifact r
 commentary/IPS stress narrative, or custom-shock simulator API). Baseline artifact fingerprints
 live in [docs/audits/2026-05-20_stress_lab_baseline_snapshot.md](docs/audits/2026-05-20_stress_lab_baseline_snapshot.md).
 
+## Stress Lab Governance Wave Bundle (Phase 13)
+
+Governance wave (Phase 13, Sessions 01–11) **closed** 2026-05-20 per
+[Stress Lab Methodology Governance Plan](docs/exec_plans/2026-05-20_stress_lab_methodology_governance_plan.md).
+Methodology baseline (historical):
+[docs/audits/2026-05-20_stress_lab_methodology_map.md](docs/audits/2026-05-20_stress_lab_methodology_map.md).
+Re-run this bundle after Block 3 contract or downstream integration changes.
+
 ```bash
-python -m pytest tests/test_stress_scorecard_contract.py tests/test_stress_hedge_gap_contract.py tests/test_stress_scenario_coverage_contract.py tests/test_stress_synthetic_assumptions_contract.py tests/test_stress_simulator_contract.py tests/test_stress_mandate_pass.py tests/test_stress_scenario_analytics.py tests/test_stress_historical_fields.py tests/test_stress_covariance_taxonomy.py tests/test_stress_artifacts_priority.py tests/test_portfolio_commentary.py tests/test_io_export_ips_summary.py -q
+python -m pytest tests/test_stress_scorecard_contract.py tests/test_stress_hedge_gap_contract.py tests/test_stress_scenario_coverage_contract.py tests/test_stress_synthetic_assumptions_contract.py tests/test_stress_simulator_contract.py tests/test_stress_mandate_pass.py tests/test_stress_scenario_analytics.py tests/test_stress_historical_fields.py tests/test_stress_covariance_taxonomy.py tests/test_stress_artifacts_priority.py tests/test_stress_downstream_integration.py tests/test_portfolio_commentary.py tests/test_io_export_ips_summary.py -q
 python scripts/verify_docs.py
 ```
 

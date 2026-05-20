@@ -11,12 +11,18 @@ Mandate MaxDD on full history is enforced in run_optimization (FAIL_MANDATE), no
 """
 from __future__ import annotations
 
+import json
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
+from src.metrics_asset import time_to_recovery
 from src.risk_contrib import cov_matrix_monthly, percentage_contributions_variance
+from src.stress_factors import get_factor_display_name
 from src.stress_covariance_taxonomy import (
     LAMBDA_BLEND,
     STRESS_COV_CALIBRATION_VERSION,
@@ -143,6 +149,10 @@ HISTORICAL_EPISODES = [
     ("banking_2023", "2023-02-01", "2023-05-31"),
 ]
 
+# Primary stress historical path: realized portfolio monthly returns only (no proxy waterfall).
+HISTORICAL_PRIMARY_RETURN_METHOD = "realized_portfolio_monthly"
+HISTORICAL_METHODOLOGY_VERSION = "historical_methodology_v1"
+
 _SCENARIO_SUFFIX = {
     "equity_shock": "EQUITY_SHOCK",
     "credit_shock": "CREDIT_SHOCK",
@@ -195,6 +205,7 @@ _BETA_TO_FACTOR_SHORT = {
     "beta_usd": "usd",
     "beta_cmd": "cmd",
 }
+_FACTOR_SHORT_TO_BETA = {short: beta for beta, short in _BETA_TO_FACTOR_SHORT.items()}
 
 
 def _portfolio_factor_pnl_pct(
@@ -452,6 +463,105 @@ def _historical_data_quality(n_obs: int, n_expected: int) -> tuple[float | None,
     return coverage, "reliable"
 
 
+def _historical_methodology_block() -> dict[str, Any]:
+    """Report-level disclosure: primary stress is realized-only; proxies live in normalized library."""
+    return {
+        "version": HISTORICAL_METHODOLOGY_VERSION,
+        "primary_stress_path": "realized_only",
+        "return_method": HISTORICAL_PRIMARY_RETURN_METHOD,
+        "proxy_used_in_primary_stress": False,
+        "proxy_location": "scenario_library_normalized",
+        "proxy_module": "historical_stress_fallback",
+        "proxy_disclosure": (
+            "Primary historical episodes in run_stress use aligned portfolio monthly returns only. "
+            "Per-asset proxy waterfall (direct, ticker proxy, asset-class, factor replay) applies "
+            "only when building scenario_library_normalized historical rows."
+        ),
+    }
+
+
+def _historical_row_disclosure_fields() -> dict[str, Any]:
+    return {
+        "return_method": HISTORICAL_PRIMARY_RETURN_METHOD,
+        "proxy_used": False,
+    }
+
+
+CRISIS_REPLAY_VERSION = "crisis_replay_v2"
+
+
+def _episode_recovery_fields(port_ret: pd.Series) -> dict[str, Any]:
+    """Max-drawdown recovery on episode portfolio monthly returns (metrics_spec §6.9)."""
+    ttr, recovered = time_to_recovery(port_ret)
+    return {
+        "time_to_recovery_months": round(float(ttr), 3) if ttr is not None else None,
+        "recovered": bool(recovered),
+    }
+
+
+def _episode_asset_pnl_contrib(
+    sub: pd.DataFrame,
+    asset_cols: list[str],
+    w_vec: np.ndarray,
+) -> dict[str, float]:
+    """Additive static-weight monthly attribution; sums to sum(portfolio monthly returns)."""
+    out: dict[str, float] = {}
+    for i, ticker in enumerate(asset_cols):
+        contrib = float((sub[ticker] * w_vec[i]).sum())
+        out[str(ticker)] = round(contrib, 4)
+    return out
+
+
+def _top_loss_assets_from_contrib(asset_pnl_contrib: dict[str, float], n: int = 3) -> list[str]:
+    if not asset_pnl_contrib:
+        return []
+    ranked = sorted(asset_pnl_contrib.items(), key=lambda kv: kv[1])
+    return [t for t, _ in ranked[:n]]
+
+
+def crisis_replay_summary_from_paths(
+    historical_episode_paths: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    """Compact crisis replay for snapshot/comparison consumers (no daily ``rows``)."""
+    summary: list[dict[str, Any]] = []
+    for block in historical_episode_paths or []:
+        if not isinstance(block, dict):
+            continue
+        summary.append(
+            {
+                "replay_version": block.get("replay_version"),
+                "episode": block.get("episode"),
+                "episode_start": block.get("episode_start"),
+                "episode_end": block.get("episode_end"),
+                "n_obs": block.get("n_obs"),
+                "coverage_ratio": block.get("coverage_ratio"),
+                "data_quality": block.get("data_quality"),
+                "time_to_recovery_months": block.get("time_to_recovery_months"),
+                "recovered": block.get("recovered"),
+                "top_loss_assets_episode": list(block.get("top_loss_assets_episode") or []),
+            }
+        )
+    return summary
+
+
+def _build_historical_data_quality_warnings(historical_results: list[dict[str, Any]]) -> list[str]:
+    """Methodology boundary plus per-episode quality flags for stress_conclusions."""
+    warnings = [
+        (
+            "primary_historical_stress: realized_portfolio_monthly (no proxy in run_stress); "
+            "per-asset proxy waterfall only in scenario_library_normalized "
+            "(see scenario_library_spec Historical Stress Fallback)"
+        ),
+    ]
+    for row in historical_results:
+        quality = row.get("data_quality")
+        if quality not in {"reliable", "usable_with_gaps"}:
+            ep = row.get("episode", "unknown")
+            method = row.get("return_method", HISTORICAL_PRIMARY_RETURN_METHOD)
+            warnings.append(f"{ep}: {quality} (return_method={method})")
+    return warnings
+
+
 def _loss_severity_vs_limit(pnl_pct: float | None, max_dd_limit: float, *, loss_ok: bool | None = None) -> str:
     """Diagnostic loss severity relative to mandate MaxDD (does not change pass/fail)."""
     if pnl_pct is None:
@@ -538,6 +648,8 @@ def _scorecard_historical_row(row: dict[str, Any], max_dd_limit: float) -> dict[
         "coverage_ratio": row.get("coverage_ratio"),
         "n_obs": row.get("n_obs"),
         "diagnostic_code": row.get("diagnostic_code"),
+        "return_method": row.get("return_method"),
+        "proxy_used": row.get("proxy_used"),
     }
 
 
@@ -565,6 +677,62 @@ def _build_stress_scorecard_v1(
     }
 
 
+def _select_worst_historical_row(historical_results: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Episode with minimum max_dd (most severe drawdown), matching historical pass/fail."""
+    hist_with_dd = [h for h in historical_results if h.get("max_dd") is not None]
+    if not hist_with_dd:
+        return None
+    return min(hist_with_dd, key=lambda x: float(x.get("max_dd", 0.0)))
+
+
+def _synthetic_factor_driver_row(factor_short: str, pnl_pct: float) -> dict[str, Any]:
+    beta_key = _FACTOR_SHORT_TO_BETA.get(factor_short)
+    return {
+        "factor_short": factor_short,
+        "beta_key": beta_key,
+        "factor": get_factor_display_name(beta_key) if beta_key else factor_short,
+        "pnl_pct": round(float(pnl_pct), 4),
+        "abs_pnl_pct": round(abs(float(pnl_pct)), 4),
+        "direction": "loss" if pnl_pct < 0 else "gain" if pnl_pct > 0 else "flat",
+    }
+
+
+def _worst_scenario_factor_drivers(
+    worst_scenario_row: dict[str, Any] | None,
+    *,
+    limit: int = 3,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Top loss and helping factor channels from worst synthetic row pnl_by_factor_pct."""
+    if not isinstance(worst_scenario_row, dict):
+        return [], []
+    pnl_by_factor = worst_scenario_row.get("pnl_by_factor_pct")
+    if not isinstance(pnl_by_factor, dict) or not pnl_by_factor:
+        return [], []
+
+    negatives: list[dict[str, Any]] = []
+    positives: list[dict[str, Any]] = []
+    for factor_short, raw_pnl in pnl_by_factor.items():
+        if not isinstance(raw_pnl, (int, float)):
+            continue
+        pnl = float(raw_pnl)
+        row = _synthetic_factor_driver_row(str(factor_short), pnl)
+        if pnl < 0:
+            negatives.append(row)
+        elif pnl > 0:
+            positives.append(row)
+
+    negatives.sort(key=lambda row: (float(row["pnl_pct"]), str(row["factor_short"])))
+    positives.sort(key=lambda row: (-float(row["pnl_pct"]), str(row["factor_short"])))
+
+    top_loss = negatives[:limit]
+    helped = positives[:limit]
+    for idx, row in enumerate(top_loss, start=1):
+        row["rank"] = idx
+    for idx, row in enumerate(helped, start=1):
+        row["rank"] = idx
+    return top_loss, helped
+
+
 def _build_stress_conclusions(
     *,
     worst_scenario_row: dict[str, Any] | None,
@@ -578,6 +746,7 @@ def _build_stress_conclusions(
     ws_pnl = worst_scenario_row.get("portfolio_pnl_pct") if isinstance(worst_scenario_row, dict) else None
     ws_loss_ok = worst_scenario_row.get("loss_ok") if isinstance(worst_scenario_row, dict) else None
     wh_max_dd = worst_historical_row.get("max_dd") if isinstance(worst_historical_row, dict) else None
+    top_factor_drivers, helped_factors = _worst_scenario_factor_drivers(worst_scenario_row)
     return {
         "version": "stress_conclusions_v1",
         "overall_confidence": overall_confidence,
@@ -608,80 +777,314 @@ def _build_stress_conclusions(
         if isinstance(worst_scenario_row, dict)
         else [],
         "helped_assets_worst_scenario": helped_assets,
-        "data_quality_warnings": [
-            f"{row.get('episode')}: {row.get('data_quality')}"
-            for row in historical_results
-            if row.get("data_quality") not in {"reliable", "usable_with_gaps"}
-        ],
+        "top_factor_drivers_worst_scenario": top_factor_drivers,
+        "helped_factors_worst_scenario": helped_factors,
+        "data_quality_warnings": _build_historical_data_quality_warnings(historical_results),
         "hedge_gap_status": hedge_gap_analysis.get("status"),
     }
+
+
+# Universe taxonomy roles that qualify a holding as hedge-labeled (see hedge_gap_analysis_spec.md).
+HEDGE_LABEL_RISK_ROLES: tuple[str, ...] = (
+    "crisis_hedge",
+    "defensive",
+    "inflation_hedge",
+    "tail_hedge",
+)
+
+# scenario_id -> weakness risk type; keep aligned with portfolio_xray.WEAKNESS_SCENARIO_MAP.
+HEDGE_GAP_SCENARIO_BY_RISK: dict[str, str] = {
+    "recession_severe": "recession",
+    "inflation_stagflation": "inflation",
+    "rates_shock": "rates",
+    "credit_shock": "credit",
+    "liquidity_shock": "liquidity",
+    "equity_shock": "equity_crash",
+    "usd_shock": "usd",
+    "commodity_shock": "commodity_shock",
+}
+
+HEDGE_GAP_RISK_TYPE_ORDER: tuple[str, ...] = (
+    "recession",
+    "inflation",
+    "rates",
+    "credit",
+    "liquidity",
+    "usd",
+    "equity_crash",
+    "commodity_shock",
+)
+
+
+def _hedge_gap_scenarios_by_risk() -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {}
+    for scenario_id, risk_type in HEDGE_GAP_SCENARIO_BY_RISK.items():
+        out.setdefault(risk_type, []).append(scenario_id)
+    for risk_type in out:
+        out[risk_type] = sorted(out[risk_type])
+    return out
+
+
+HEDGE_GAP_SCENARIOS_BY_RISK = _hedge_gap_scenarios_by_risk()
+
+HEDGE_GAP_STATUS_REASON_EN: dict[str, str] = {
+    "no_hedge_labels": (
+        "No portfolio holdings carry hedge risk_role labels "
+        f"({', '.join(HEDGE_LABEL_RISK_ROLES)}) in ETF/stock taxonomy."
+    ),
+    "no_synthetic_scenarios": "No synthetic stress scenarios available to evaluate hedge behavior.",
+    "portfolio_pnl_unavailable": "Worst synthetic scenario portfolio PnL is unavailable.",
+    "scenario_not_available": (
+        "No mapped synthetic scenario for this risk type is present in scenario_results."
+    ),
+    "gap_evidence": (
+        "At least one hedge-labeled holding had non-positive PnL while the portfolio lost "
+        "in the mapped stress scenario for this risk type."
+    ),
+    "no_gap_evidence": (
+        "Hedge-labeled holdings were not flagged as failing to offset loss in the mapped "
+        "stress scenario for this risk type."
+    ),
+    "no_gap_evidence_global": (
+        "Hedge-labeled holdings were not flagged as failing to offset loss in the worst synthetic scenario."
+    ),
+}
+
+
+def _hedge_gap_status_reason_en(reason: str) -> str:
+    return HEDGE_GAP_STATUS_REASON_EN.get(reason, reason)
+
+
+def _hedge_gap_analysis_shell(
+    *,
+    method: str,
+    considered: list[str],
+    status: str,
+    status_reason: str,
+    worst_scenario_row: dict[str, Any] | None = None,
+    hedge_negative: list[dict[str, Any]] | None = None,
+    gap_detected: bool = False,
+    by_risk_type: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    portfolio_pnl_out = None
+    worst_id = None
+    if isinstance(worst_scenario_row, dict):
+        worst_id = worst_scenario_row.get("scenario_id")
+        portfolio_pnl_raw = worst_scenario_row.get("portfolio_pnl_pct")
+        if isinstance(portfolio_pnl_raw, (int, float)):
+            portfolio_pnl_out = round(float(portfolio_pnl_raw), 4)
+    rows = by_risk_type or []
+    return {
+        "method": method,
+        "scenario_mapping": "HEDGE_GAP_SCENARIO_BY_RISK",
+        "hedge_label_risk_roles": list(HEDGE_LABEL_RISK_ROLES),
+        "hedge_assets_considered": considered,
+        "n_hedge_assets_considered": len(considered),
+        "worst_scenario_id": worst_id,
+        "worst_scenario_portfolio_pnl_pct": portfolio_pnl_out,
+        "hedge_assets_negative_in_worst_scenario": hedge_negative or [],
+        "gap_detected": gap_detected,
+        "status": status,
+        "status_reason": status_reason,
+        "status_reason_en": _hedge_gap_status_reason_en(status_reason),
+        "by_risk_type": rows,
+        "n_risk_types_evaluated": len(rows),
+        "any_risk_type_gap_detected": any(bool(r.get("gap_detected")) for r in rows),
+    }
+
+
+def _hedge_assets_negative_in_scenario(
+    scenario_row: dict[str, Any],
+    hedge_assets: list[str],
+) -> list[dict[str, Any]]:
+    portfolio_pnl_raw = scenario_row.get("portfolio_pnl_pct")
+    portfolio_pnl = float(portfolio_pnl_raw) if isinstance(portfolio_pnl_raw, (int, float)) else None
+    if portfolio_pnl is None or portfolio_pnl >= 0:
+        return []
+    hedge_assets_u = {str(t).upper() for t in hedge_assets}
+    hedge_negative: list[dict[str, Any]] = []
+    by_asset = scenario_row.get("pnl_by_asset_pct") or {}
+    if not isinstance(by_asset, dict):
+        return []
+    for t, v in by_asset.items():
+        if str(t).upper() not in hedge_assets_u or not isinstance(v, (int, float)):
+            continue
+        asset_pnl = float(v)
+        if asset_pnl <= 0:
+            hedge_negative.append({"ticker": str(t), "pnl_pct": round(asset_pnl, 4)})
+    return hedge_negative
+
+
+def _worst_mapped_scenario_row(
+    scenario_results: list[dict[str, Any]],
+    mapped_ids: set[str],
+) -> dict[str, Any] | None:
+    candidates = [
+        r
+        for r in scenario_results
+        if str(r.get("scenario_id") or "") in mapped_ids
+    ]
+    if not candidates:
+        return None
+    with_pnl = [r for r in candidates if isinstance(r.get("portfolio_pnl_pct"), (int, float))]
+    if with_pnl:
+        return min(with_pnl, key=lambda x: float(x["portfolio_pnl_pct"]))
+    return candidates[0]
+
+
+def _hedge_gap_row_for_scenario(
+    *,
+    risk_type: str,
+    mapped_scenario_ids: list[str],
+    scenario_row: dict[str, Any] | None,
+    hedge_assets: list[str],
+) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        "risk_type": risk_type,
+        "mapped_scenario_ids": mapped_scenario_ids,
+        "scenario_mapping": "HEDGE_GAP_SCENARIO_BY_RISK",
+        "evaluation_scenario_id": None,
+        "evaluation_scenario_portfolio_pnl_pct": None,
+        "hedge_assets_negative": [],
+        "gap_detected": False,
+        "status": "insufficient_data",
+        "status_reason": "scenario_not_available",
+        "status_reason_en": _hedge_gap_status_reason_en("scenario_not_available"),
+    }
+    if not isinstance(scenario_row, dict):
+        return base
+
+    scenario_id = scenario_row.get("scenario_id")
+    portfolio_pnl_raw = scenario_row.get("portfolio_pnl_pct")
+    portfolio_pnl = float(portfolio_pnl_raw) if isinstance(portfolio_pnl_raw, (int, float)) else None
+    base["evaluation_scenario_id"] = scenario_id
+    if portfolio_pnl is not None:
+        base["evaluation_scenario_portfolio_pnl_pct"] = round(portfolio_pnl, 4)
+
+    if portfolio_pnl is None:
+        base["status_reason"] = "portfolio_pnl_unavailable"
+        base["status_reason_en"] = _hedge_gap_status_reason_en("portfolio_pnl_unavailable")
+        return base
+
+    hedge_negative = _hedge_assets_negative_in_scenario(scenario_row, hedge_assets)
+    base["hedge_assets_negative"] = hedge_negative
+    if portfolio_pnl >= 0:
+        base["status"] = "no_gap_detected"
+        base["status_reason"] = "no_gap_evidence"
+        base["status_reason_en"] = _hedge_gap_status_reason_en("no_gap_evidence")
+        return base
+    if hedge_negative:
+        base["status"] = "gap_detected"
+        base["status_reason"] = "gap_evidence"
+        base["status_reason_en"] = _hedge_gap_status_reason_en("gap_evidence")
+        base["gap_detected"] = True
+        return base
+    base["status"] = "no_gap_detected"
+    base["status_reason"] = "no_gap_evidence"
+    base["status_reason_en"] = _hedge_gap_status_reason_en("no_gap_evidence")
+    return base
+
+
+def _build_hedge_gap_by_risk_type(
+    *,
+    scenario_results: list[dict[str, Any]],
+    hedge_assets: list[str],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for risk_type in HEDGE_GAP_RISK_TYPE_ORDER:
+        mapped = HEDGE_GAP_SCENARIOS_BY_RISK.get(risk_type) or []
+        if not mapped:
+            continue
+        scenario_row = _worst_mapped_scenario_row(scenario_results, set(mapped))
+        rows.append(
+            _hedge_gap_row_for_scenario(
+                risk_type=risk_type,
+                mapped_scenario_ids=mapped,
+                scenario_row=scenario_row,
+                hedge_assets=hedge_assets,
+            )
+        )
+    return rows
 
 
 def _build_hedge_gap_analysis(
     *,
     worst_scenario_row: dict[str, Any] | None,
     hedge_assets: list[str] | None,
+    scenario_results: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """
     Stress-evidence hedge gap block (diagnostic only; see hedge_gap_analysis_spec.md).
-    Gap is flagged when the worst synthetic scenario has portfolio loss and a hedge-labeled
-    asset contributes non-positive PnL in that scenario.
+    v1 aggregate: worst synthetic scenario globally. v2 by_risk_type: per weakness risk type,
+    evaluate hedge assets in the worst mapped scenario for that type.
     """
-    method = "stress_scenario_hedge_evidence_v1"
+    method = "stress_scenario_hedge_evidence_v2"
     considered = [str(t) for t in (hedge_assets or [])]
     n_hedge = len(considered)
+    syn_rows = [r for r in (scenario_results or []) if isinstance(r, dict)]
+    by_risk_type: list[dict[str, Any]] = []
+    if n_hedge > 0 and syn_rows:
+        by_risk_type = _build_hedge_gap_by_risk_type(scenario_results=syn_rows, hedge_assets=considered)
 
-    if n_hedge == 0 or not isinstance(worst_scenario_row, dict):
-        return {
-            "method": method,
-            "hedge_assets_considered": considered,
-            "n_hedge_assets_considered": n_hedge,
-            "worst_scenario_id": None,
-            "worst_scenario_portfolio_pnl_pct": None,
-            "hedge_assets_negative_in_worst_scenario": [],
-            "gap_detected": False,
-            "status": "insufficient_data",
-        }
+    if n_hedge == 0:
+        return _hedge_gap_analysis_shell(
+            method=method,
+            considered=considered,
+            status="not_applicable",
+            status_reason="no_hedge_labels",
+            by_risk_type=[],
+        )
+
+    if not isinstance(worst_scenario_row, dict):
+        return _hedge_gap_analysis_shell(
+            method=method,
+            considered=considered,
+            status="insufficient_data",
+            status_reason="no_synthetic_scenarios",
+            by_risk_type=by_risk_type,
+        )
 
     portfolio_pnl_raw = worst_scenario_row.get("portfolio_pnl_pct")
     portfolio_pnl = float(portfolio_pnl_raw) if isinstance(portfolio_pnl_raw, (int, float)) else None
-    worst_id = worst_scenario_row.get("scenario_id")
-    portfolio_pnl_out = round(portfolio_pnl, 4) if portfolio_pnl is not None else None
-
-    hedge_assets_u = {str(t).upper() for t in considered}
-    hedge_negative: list[dict[str, Any]] = []
-    by_asset = worst_scenario_row.get("pnl_by_asset_pct") or {}
-    if isinstance(by_asset, dict) and portfolio_pnl is not None and portfolio_pnl < 0:
-        for t, v in by_asset.items():
-            if str(t).upper() not in hedge_assets_u or not isinstance(v, (int, float)):
-                continue
-            asset_pnl = float(v)
-            if asset_pnl <= 0:
-                hedge_negative.append({"ticker": str(t), "pnl_pct": round(asset_pnl, 4)})
+    hedge_negative = _hedge_assets_negative_in_scenario(worst_scenario_row, considered)
 
     if portfolio_pnl is None:
-        status = "insufficient_data"
-        gap_detected = False
-    elif portfolio_pnl >= 0:
-        status = "no_gap_detected"
-        gap_detected = False
-    elif hedge_negative:
-        status = "gap_detected"
-        gap_detected = True
-    else:
-        status = "no_gap_detected"
-        gap_detected = False
-
-    return {
-        "method": method,
-        "hedge_assets_considered": considered,
-        "n_hedge_assets_considered": n_hedge,
-        "worst_scenario_id": worst_id,
-        "worst_scenario_portfolio_pnl_pct": portfolio_pnl_out,
-        "hedge_assets_negative_in_worst_scenario": hedge_negative,
-        "gap_detected": gap_detected,
-        "status": status,
-    }
+        return _hedge_gap_analysis_shell(
+            method=method,
+            considered=considered,
+            status="insufficient_data",
+            status_reason="portfolio_pnl_unavailable",
+            worst_scenario_row=worst_scenario_row,
+            by_risk_type=by_risk_type,
+        )
+    if portfolio_pnl >= 0:
+        return _hedge_gap_analysis_shell(
+            method=method,
+            considered=considered,
+            status="no_gap_detected",
+            status_reason="no_gap_evidence_global",
+            worst_scenario_row=worst_scenario_row,
+            by_risk_type=by_risk_type,
+        )
+    if hedge_negative:
+        return _hedge_gap_analysis_shell(
+            method=method,
+            considered=considered,
+            status="gap_detected",
+            status_reason="gap_evidence",
+            worst_scenario_row=worst_scenario_row,
+            hedge_negative=hedge_negative,
+            gap_detected=True,
+            by_risk_type=by_risk_type,
+        )
+    return _hedge_gap_analysis_shell(
+        method=method,
+        considered=considered,
+        status="no_gap_detected",
+        status_reason="no_gap_evidence_global",
+        worst_scenario_row=worst_scenario_row,
+        by_risk_type=by_risk_type,
+    )
 
 
 def _stress_covariance(
@@ -918,6 +1321,7 @@ def run_stress(
                     "n_expected_obs": n_expected_obs,
                     "coverage_ratio": round(coverage_ratio, 4) if coverage_ratio is not None else None,
                     "data_quality": quality,
+                    **_historical_row_disclosure_fields(),
                 })
                 continue
             port_ret = sub.dot(w_vec)
@@ -954,6 +1358,7 @@ def run_stress(
                 "n_expected_obs": n_expected_obs,
                 "coverage_ratio": round(coverage_ratio, 4) if coverage_ratio is not None else None,
                 "data_quality": quality,
+                **_historical_row_disclosure_fields(),
             })
             path_rows = []
             for dt in port_ret.index:
@@ -966,8 +1371,10 @@ def run_stress(
                         "drawdown": round(float(port_dd.iloc[idx]), 6),
                     }
                 )
+            asset_pnl_contrib = _episode_asset_pnl_contrib(sub, asset_cols, w_vec)
             historical_episode_paths.append(
                 {
+                    "replay_version": CRISIS_REPLAY_VERSION,
                     "episode": ep_id,
                     "episode_start": start,
                     "episode_end": end,
@@ -975,6 +1382,9 @@ def run_stress(
                     "n_expected_obs": n_expected_obs,
                     "coverage_ratio": round(coverage_ratio, 4) if coverage_ratio is not None else None,
                     "data_quality": quality,
+                    **_episode_recovery_fields(port_ret),
+                    "asset_pnl_contrib_episode": asset_pnl_contrib,
+                    "top_loss_assets_episode": _top_loss_assets_from_contrib(asset_pnl_contrib),
                     "rows": path_rows,
                 }
             )
@@ -993,6 +1403,7 @@ def run_stress(
                 "n_expected_obs": 0,
                 "coverage_ratio": None,
                 "data_quality": "insufficient_data",
+                **_historical_row_disclosure_fields(),
             })
 
     recession_calibration = _attach_recession_validation(
@@ -1051,13 +1462,7 @@ def run_stress(
             scenario_results,
             key=lambda x: float(x.get("portfolio_pnl_pct", 0.0)),
         )
-    worst_historical_row = None
-    hist_with_pnl = [h for h in historical_results if h.get("pnl_real_episode") is not None]
-    if hist_with_pnl:
-        worst_historical_row = min(
-            hist_with_pnl,
-            key=lambda x: float(x.get("pnl_real_episode", 0.0)),
-        )
+    worst_historical_row = _select_worst_historical_row(historical_results)
     helped_assets: list[dict[str, Any]] = []
     if isinstance(worst_scenario_row, dict):
         by_asset = worst_scenario_row.get("pnl_by_asset_pct") or {}
@@ -1070,6 +1475,7 @@ def run_stress(
     hedge_gap_analysis = _build_hedge_gap_analysis(
         worst_scenario_row=worst_scenario_row if isinstance(worst_scenario_row, dict) else None,
         hedge_assets=hedge_assets,
+        scenario_results=scenario_results,
     )
     stress_scorecard_v1 = _build_stress_scorecard_v1(
         status=status,
@@ -1101,6 +1507,7 @@ def run_stress(
         "scenario_results": scenario_results,
         "factor_betas": factor_betas,
         "historical_results": historical_results,
+        "historical_methodology": _historical_methodology_block(),
         "historical_episode_paths": historical_episode_paths,
         "max_dd_limit": max_dd_limit,
         "recession_calibration": recession_calibration,
@@ -1123,6 +1530,7 @@ def _empty_report(reason: str) -> dict[str, Any]:
         "scenario_results": [],
         "factor_betas": {},
         "historical_results": [],
+        "historical_methodology": _historical_methodology_block(),
         "historical_episode_paths": [],
         "max_dd_limit": None,
         "recession_calibration": {},
@@ -1155,19 +1563,18 @@ def _empty_report(reason: str) -> dict[str, Any]:
             },
             "top_loss_assets_worst_scenario": [],
             "helped_assets_worst_scenario": [],
-            "data_quality_warnings": ["insufficient_data"],
-            "hedge_gap_status": "insufficient_data",
+            "top_factor_drivers_worst_scenario": [],
+            "helped_factors_worst_scenario": [],
+            "data_quality_warnings": _build_historical_data_quality_warnings([]),
+            "hedge_gap_status": "not_applicable",
         },
-        "hedge_gap_analysis": {
-            "method": "stress_scenario_hedge_evidence_v1",
-            "hedge_assets_considered": [],
-            "n_hedge_assets_considered": 0,
-            "worst_scenario_id": None,
-            "worst_scenario_portfolio_pnl_pct": None,
-            "hedge_assets_negative_in_worst_scenario": [],
-            "gap_detected": False,
-            "status": "insufficient_data",
-        },
+        "hedge_gap_analysis": _hedge_gap_analysis_shell(
+            method="stress_scenario_hedge_evidence_v2",
+            considered=[],
+            status="not_applicable",
+            status_reason="no_hedge_labels",
+            by_risk_type=[],
+        ),
         "skip_reason": reason,
     }
 
@@ -1254,3 +1661,185 @@ def simulate_custom_shock(
             beta_coverage_ratio=beta_coverage_ratio,
         ),
     }
+
+
+CUSTOM_SHOCK_RUNS_VERSION = "custom_shock_runs_v1"
+CUSTOM_SHOCK_RUNS_FILENAME = "custom_shock_runs.json"
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def _round_json_export(obj: Any) -> Any:
+    """Round floats for JSON export (same 4dp rule as stress_report export)."""
+    if isinstance(obj, dict):
+        return {k: _round_json_export(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_round_json_export(x) for x in obj]
+    if isinstance(obj, float) and obj is not None and not isinstance(obj, bool):
+        return round(obj, 4)
+    return obj
+
+
+def empty_custom_shock_runs_document() -> dict[str, Any]:
+    """Versioned shell for optional custom-shock audit trail (not written by run_stress)."""
+    now = _utc_now_iso()
+    return {
+        "version": CUSTOM_SHOCK_RUNS_VERSION,
+        "simulator_version": CUSTOM_SHOCK_SIMULATOR_VERSION,
+        "created_at": now,
+        "updated_at": now,
+        "n_runs": 0,
+        "runs": [],
+    }
+
+
+def load_custom_shock_runs(path: str | Path) -> dict[str, Any]:
+    """
+    Load ``custom_shock_runs.json`` or return an empty document when missing or invalid version.
+    """
+    p = Path(path)
+    if not p.is_file():
+        return empty_custom_shock_runs_document()
+    try:
+        with open(p, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return empty_custom_shock_runs_document()
+    if not isinstance(data, dict) or data.get("version") != CUSTOM_SHOCK_RUNS_VERSION:
+        return empty_custom_shock_runs_document()
+    runs = data.get("runs")
+    if not isinstance(runs, list):
+        data["runs"] = []
+    data.setdefault("simulator_version", CUSTOM_SHOCK_SIMULATOR_VERSION)
+    data["n_runs"] = len(data["runs"])
+    return data
+
+
+def build_custom_shock_run_entry(
+    simulation: dict[str, Any],
+    *,
+    tickers: list[str],
+    portfolio_betas: dict[str, float] | None = None,
+    run_id: str | None = None,
+    notes: str | None = None,
+    analysis_subject: str | None = None,
+) -> dict[str, Any]:
+    """One appendable run row referencing a ``simulate_custom_shock`` result."""
+    entry: dict[str, Any] = {
+        "run_id": run_id or str(uuid.uuid4()),
+        "recorded_at": _utc_now_iso(),
+        "scenario_id": simulation.get("scenario_id"),
+        "shock_vector": simulation.get("shock_vector"),
+        "simulation": simulation,
+        "inputs_summary": {
+            "tickers": sorted(str(t) for t in tickers),
+            "n_assets": len(tickers),
+        },
+        "provenance": {
+            "source": "simulate_custom_shock",
+            "simulator_version": simulation.get("version", CUSTOM_SHOCK_SIMULATOR_VERSION),
+            "method": simulation.get("method"),
+        },
+    }
+    if portfolio_betas is not None:
+        entry["inputs_summary"]["portfolio_betas"] = {
+            k: round(float(v), 4) for k, v in portfolio_betas.items()
+        }
+    if notes:
+        entry["notes"] = str(notes)
+    if analysis_subject:
+        entry["analysis_subject"] = str(analysis_subject)
+    return entry
+
+
+def append_custom_shock_run(
+    document: dict[str, Any],
+    simulation: dict[str, Any],
+    *,
+    tickers: list[str],
+    portfolio_betas: dict[str, float] | None = None,
+    notes: str | None = None,
+    analysis_subject: str | None = None,
+) -> dict[str, Any]:
+    """Append one run to an in-memory ``custom_shock_runs`` document (mutates and returns it)."""
+    if document.get("version") != CUSTOM_SHOCK_RUNS_VERSION:
+        document.clear()
+        document.update(empty_custom_shock_runs_document())
+    runs = document.setdefault("runs", [])
+    if not isinstance(runs, list):
+        runs = []
+        document["runs"] = runs
+    runs.append(
+        build_custom_shock_run_entry(
+            simulation,
+            tickers=tickers,
+            portfolio_betas=portfolio_betas,
+            notes=notes,
+            analysis_subject=analysis_subject,
+        )
+    )
+    document["updated_at"] = _utc_now_iso()
+    document["simulator_version"] = CUSTOM_SHOCK_SIMULATOR_VERSION
+    document["n_runs"] = len(runs)
+    return document
+
+
+def write_custom_shock_runs(path: str | Path, document: dict[str, Any]) -> Path:
+    """Persist a versioned ``custom_shock_runs`` document (optional artifact; not part of run_stress)."""
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    out = _round_json_export(document)
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(out, f, indent=2, ensure_ascii=False, default=str)
+    return p
+
+
+def record_custom_shock_run(
+    *,
+    tickers: list[str],
+    weights: dict[str, float],
+    asset_betas: pd.DataFrame,
+    portfolio_betas: dict[str, float],
+    shock_vector: dict[str, float],
+    scenario_id: str | None = None,
+    output_dir: str | Path | None = None,
+    persist: bool = True,
+    merge_existing: bool = True,
+    notes: str | None = None,
+    analysis_subject: str | None = None,
+) -> dict[str, Any]:
+    """
+    Run ``simulate_custom_shock`` and optionally append to ``custom_shock_runs.json`` under
+    ``output_dir``. Does not alter ``run_stress`` pass/fail or mandate gates.
+    """
+    simulation = simulate_custom_shock(
+        tickers=tickers,
+        weights=weights,
+        asset_betas=asset_betas,
+        portfolio_betas=portfolio_betas,
+        shock_vector=shock_vector,
+        scenario_id=scenario_id,
+    )
+    result: dict[str, Any] = {"simulation": simulation, "document": None, "path": None}
+    if not persist or output_dir is None:
+        return result
+    out_path = Path(output_dir) / CUSTOM_SHOCK_RUNS_FILENAME
+    document = (
+        load_custom_shock_runs(out_path)
+        if merge_existing
+        else empty_custom_shock_runs_document()
+    )
+    append_custom_shock_run(
+        document,
+        simulation,
+        tickers=tickers,
+        portfolio_betas=portfolio_betas,
+        notes=notes,
+        analysis_subject=analysis_subject,
+    )
+    write_custom_shock_runs(out_path, document)
+    result["document"] = document
+    result["path"] = out_path
+    return result

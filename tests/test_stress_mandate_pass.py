@@ -182,7 +182,7 @@ def test_scorecard_conclusions_and_hedge_gap_are_present() -> None:
     assert out["stress_conclusions"]["version"] == "stress_conclusions_v1"
     assert out["stress_scorecard_v1"]["overall_confidence"] in {"low", "medium", "high"}
     assert out["stress_conclusions"]["overall_confidence"] == out["stress_scorecard_v1"]["overall_confidence"]
-    assert out["hedge_gap_analysis"]["method"] == "stress_scenario_hedge_evidence_v1"
+    assert out["hedge_gap_analysis"]["method"] == "stress_scenario_hedge_evidence_v2"
 
 
 def test_simulate_custom_shock_reuses_linear_engine() -> None:

@@ -12,6 +12,7 @@
 > **2026-04-30 update:** Split factor contract. Production regression/beta/stability/OOS/adjusted-overlay/base variance decomposition use base factors only: `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`. `commodity` is the production commodity factor. Extended diagnostics/stress analytics use base factors plus `oil`; `beta_oil` is deprecated in production outputs and exposed through `diagnostic_oil_beta` or stress-layer metrics only.
 > **2026-05-08 update:** Synthetic scenario **RC_top1 / RC_top3** concentration diagnostics now use **`taxonomy_blend_v1`**: a blend of sample monthly correlation with a block-structured target matrix (EQ / CR / ND / TI / CO / CA) resolved from `config/etf_universe.yml` and `config/stock_universe.yml`, per-scenario `lambda_blend`, explicit between-block overrides with defaults, per-block volatility multipliers, and PSD repair on the blended correlation. **Historical episodes** are unchanged (realized paths only). Optional `stress_cov_method="uniform_legacy"` restores the prior uniform risk-on correlation + scalar `vol_mult` for synthetic rows only. `rates_shock` and `inflation_stagflation` set `stress_cov=True` for RC diagnostics under the same taxonomy engine.
 > **2026-05-08 update (multi-frequency):** Config may set `returns_frequency` to `weekly` / `daily`, but **main portfolio metrics and optimizer inputs always use monthly** simple returns per `metrics_specification.md`. Non-monthly config values are disclosure-only (`configured_returns_frequency`, `main_metrics_frequency_forced`). Factor betas, synthetic shocks, and primary regression diagnostics remain **weekly**; macro regime labels remain **monthly**; regime factor analytics may load **daily** series when available. `stress_report.json` carries **`frequency_disclosure`** and **`periods_per_year`**; **`run_metadata.json`** mirrors **`frequency_disclosure`**. `frequency_mismatch_warning` stays **false** for the default monthly main-metrics path.
+> **2026-05-20 update (governance Session 08):** `crypto_shock` and `volatility_shock` / `vix_shock` are **not** in the mandatory `run_stress` suite. See Section 2.3 and [DEC-2026-05-20-002](../../DECISIONS.md); reviewable proposal in [docs/proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md](../proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md). Portfolio X-Ray `volatility_spike` remains **factor-only** per [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) §2.7.
 
 ---
 
@@ -107,6 +108,23 @@ The selected severe vector is the candidate with the lowest `model_pnl` for the 
 
 The `scenario_results` row for `recession_severe` includes `shock_vector`, `calibration_source_episode`, `vol_mult`, `risk_on_corr` (legacy scalars), **`stress_cov_method`**, **`stress_cov_lambda`**, **`stress_cov_calibration_version`**, **`vol_mult_by_block`**, **`key_rho_overrides_used`**, and **`taxonomy_coverage`** when RC stress covariance applies.
 
+### 2.3 Deferred synthetic scenarios (`crypto_shock`, `volatility_shock`)
+
+**Status (2026-05-20):** Not implemented in `run_stress`. Decision: [DEC-2026-05-20-002](../../DECISIONS.md). Proposal:
+[docs/proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md](../proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md).
+
+| Scenario id (proposed) | In `run_stress` today | Where surfaced instead |
+| --- | --- | --- |
+| `volatility_shock` / `vix_shock` | **No** | Portfolio X-Ray `volatility_spike` weakness — **factor-only** (`beta_vix`, tail `es_95`); see [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) §2.7 |
+| `crypto_shock` | **No** | Portfolio X-Ray conditional `crypto_shock` weakness when crypto taxonomy/weights present |
+
+**Rationale for deferral:** The production synthetic engine maps **six** factor shocks (`shock_eq` … `shock_cmd`)
+only. Adding VIX or crypto channels requires spec-approved shock units, beta coverage, optional
+conditional execution, taxonomy/RC extensions, and downstream scorecard/commentary integration — not
+silent `SCENARIOS` edits.
+
+**If approved later:** update this section and Section 2 table, then implement in a dedicated session
+with contract tests and baseline snapshot refresh (see proposal §5).
 
 For each asset *i* in the risk universe (aligned monthly columns; cash proxy excluded from shock path where applicable):
 
@@ -788,6 +806,14 @@ CSV artifacts written under `results_csv/` include:
 
 ## 9. Historical validation
 
+**Primary stress path (`run_stress`):** realized portfolio monthly returns only. Each
+`historical_results` row carries `return_method: "realized_portfolio_monthly"` and
+`proxy_used: false`. Report-level disclosure is in `stress_report.json.historical_methodology`
+(version `historical_methodology_v1`). Per-asset proxy waterfall for historical episodes applies
+**only** in `scenario_library_normalized` via `src/historical_stress_fallback.py` (see
+[scenario_library_spec.md](scenario_library_spec.md) Historical Stress Fallback). Primary stress does
+**not** call that waterfall unless a future accepted decision explicitly changes it (DEC-2026-05-20-001).
+
 Run portfolio through episodes (see `HISTORICAL_EPISODES` in `src/stress.py`):
 
 - **dotcom:** 2000-03-01 -> 2002-10-31
@@ -799,22 +825,46 @@ Run portfolio through episodes (see `HISTORICAL_EPISODES` in `src/stress.py`):
 Output: max drawdown, realized episode PnL, volatility spike, and, when factor history is available, model-based factor attribution as described in Section8.7.
 Episode DD vs limit adds **DIAG_HIST_*** when breached; else episode contributes to **DIAG_PASS**. (Non-blocking.)
 
-### 9.1 Crisis replay paths
+### 9.1 Crisis replay paths (crisis_replay_v2)
 
 `run_stress` also writes `historical_episode_paths` (diagnostic-only) for each episode with sufficient
-data. Each episode includes `rows` with `date`, `portfolio_return`, `equity`, and `drawdown`, plus
-`n_obs`, `n_expected_obs`, `coverage_ratio`, and `data_quality`.
+data. Each block carries `replay_version: crisis_replay_v2`, quality fields aligned with
+`historical_results`, recovery (`time_to_recovery_months`, `recovered` per metrics_spec §6.9),
+static-weight `asset_pnl_contrib_episode`, `top_loss_assets_episode`, and `rows` with `date`,
+`portfolio_return`, `equity`, and `drawdown`.
 
-`run_report.py` exports these paths to `results_csv/crisis_replay_{episode}.csv`.
+`run_report.py` exports `results_csv/crisis_replay_{episode}.csv` and
+`results_csv/crisis_replay_{episode}_asset_contrib.csv`. See
+[crisis_replay_spec.md](crisis_replay_spec.md).
 
 ### 9.2 Historical data quality fields
 
 Each historical row carries:
 
+- `return_method` — always `realized_portfolio_monthly` in primary `run_stress` output
+- `proxy_used` — always `false` in primary `run_stress` output
 - `n_obs`
 - `n_expected_obs`
 - `coverage_ratio`
 - `data_quality` (`insufficient_data`, `low_confidence`, `usable_with_gaps`, `reliable`)
+
+### 9.3 Historical methodology disclosure (`historical_methodology`)
+
+Top-level block on `stress_report.json` (same on empty/skip reports):
+
+| Field | Description |
+| --- | --- |
+| `version` | `historical_methodology_v1` |
+| `primary_stress_path` | `realized_only` |
+| `return_method` | `realized_portfolio_monthly` |
+| `proxy_used_in_primary_stress` | `false` |
+| `proxy_location` | `scenario_library_normalized` |
+| `proxy_module` | `historical_stress_fallback` |
+| `proxy_disclosure` | English prose: primary vs normalized-library proxy boundary |
+
+`stress_conclusions.data_quality_warnings` always includes the methodology boundary line, then
+one line per episode with `data_quality` ∉ {`reliable`, `usable_with_gaps`} (including
+`return_method` on episode lines).
 
 ---
 
@@ -902,6 +952,13 @@ View After Optimization does not stop on stress status; stress output is diagnos
 (`snapshot_10y.stress_suite_results`, `candidate_comparison`, stress commentary) must read these
 blocks first; full `scenario_results` remains the detailed evidence layer.
 
+**`snapshot_10y.stress_suite_results` mirror (Session 10):** in addition to `overall`,
+`fail_reason_code`, `failed_scenario`, abbreviated `scenarios[]`, `historical[]`, `scorecard`,
+`conclusions`, and `hedge_gap_analysis`, the snapshot embeds `historical_methodology` (report-level
+boundary) and `crisis_replay_summary` (compact list derived from `historical_episode_paths` without
+daily `rows`). Comparison `stress` blocks copy the same keys from the snapshot when present, then
+fill from `stress_report.json` when missing.
+
 **`stress_scorecard_v1`** (version string `stress_scorecard_v1`):
 
 | Field | Description |
@@ -912,7 +969,7 @@ blocks first; full `scenario_results` remains the detailed evidence layer.
 | `max_dd_limit` | Mandate drawdown threshold used for synthetic `loss_ok` and severity. |
 | `n_synthetic_scenarios` / `n_historical_episodes` | Row counts (must match array lengths). |
 | `synthetic_scenarios[]` | Per-scenario: `scenario_id`, `portfolio_pnl_pct`, `pass`, `loss_ok`, `loss_severity`, `beta_coverage_ratio`, `beta_confidence`, `top3_loss_assets`, `top1_rc_asset`, `top1_rc_pct`, `top3_rc_assets`, `top3_rc_sum_pct`, `diagnostic_codes`. |
-| `historical_episodes[]` | Per-episode: `episode`, `pnl_real_episode`, `max_dd`, `pass`, `loss_severity`, `data_quality`, `coverage_ratio`, `n_obs`, `diagnostic_code`. |
+| `historical_episodes[]` | Per-episode: `episode`, `pnl_real_episode`, `max_dd`, `pass`, `loss_severity`, `data_quality`, `coverage_ratio`, `n_obs`, `diagnostic_code`, `return_method`, `proxy_used`. |
 
 **`loss_severity`** (synthetic and historical): `low` \| `moderate` \| `high` \| `unknown`. Relative to
 `max_dd_limit`: **high** when mandate loss gate fails (`loss_ok` false or `max_dd` below limit);
@@ -926,41 +983,54 @@ blocks first; full `scenario_results` remains the detailed evidence layer.
 | --- | --- |
 | `overall_confidence` | Copy of scorecard `overall_confidence`. |
 | `worst_synthetic_scenario` | `scenario_id`, `portfolio_pnl_pct`, `loss_severity`, `pass`. |
-| `worst_historical_episode` | `episode`, `pnl_real_episode`, `max_dd`, `loss_severity`, `data_quality`. |
+| `worst_historical_episode` | `episode`, `pnl_real_episode`, `max_dd`, `loss_severity`, `data_quality`. Selected as the episode with **minimum** `max_dd` (most negative drawdown) among rows with computed `max_dd`, consistent with historical pass/fail (`max_dd >= -max_dd_limit` in Section 9). **Not** ranked by `pnl_real_episode`. |
 | `top_loss_assets_worst_scenario` | Tickers from worst synthetic row `top3_loss_assets`. |
 | `helped_assets_worst_scenario` | Up to three assets with positive PnL in worst synthetic scenario. |
-| `data_quality_warnings` | Episodes where `data_quality` ∉ {`reliable`, `usable_with_gaps`}. |
+| `top_factor_drivers_worst_scenario` | Up to three **negative** factor channels from worst synthetic row `pnl_by_factor_pct`, sorted by most negative contribution first. Each row: `factor_short`, `beta_key`, `factor` (display name), `pnl_pct`, `abs_pnl_pct`, `direction`, `rank`. Linear shock × portfolio beta map — same engine as `scenario_results[*].pnl_by_factor_pct`. |
+| `helped_factors_worst_scenario` | Up to three **positive** factor channels from the same row, sorted by largest gain first; same row shape as `top_factor_drivers_worst_scenario`. Empty when no positive factor attribution in the worst scenario. |
+| `data_quality_warnings` | Methodology boundary line (primary realized-only vs normalized-library proxy), then episode lines where `data_quality` ∉ {`reliable`, `usable_with_gaps`}. |
 | `hedge_gap_status` | Copy of `hedge_gap_analysis.status`. |
 
 These blocks are diagnostic summaries over existing scenario rows and do not alter pass/fail logic.
 
 ### 12.2 Hedge gap diagnostic
 
-`stress_report.json.hedge_gap_analysis` records stress-evidence of hedge weakness in the worst synthetic
-scenario (minimum `portfolio_pnl_pct` across `scenario_results`). Hedge-labeled tickers come from
-universe `risk_role` metadata (`crisis_hedge`, `defensive`, `inflation_hedge`, `tail_hedge`) passed
-into `run_stress` from `run_report.py`.
+`stress_report.json.hedge_gap_analysis` records stress-evidence of hedge weakness. **Aggregate (v1):**
+worst synthetic scenario globally (minimum `portfolio_pnl_pct`). **Per risk type (v2):** for each
+weakness bucket mapped via `HEDGE_GAP_SCENARIO_BY_RISK` (aligned with X-Ray `WEAKNESS_SCENARIO_MAP`),
+evaluate hedge-labeled holdings in the worst mapped scenario for that bucket. Hedge-labeled tickers
+come from universe `risk_role` metadata (`crisis_hedge`, `defensive`, `inflation_hedge`, `tail_hedge`)
+passed into `run_stress` from `run_report.py`.
 
 | Field | Description |
 | --- | --- |
-| `method` | `stress_scenario_hedge_evidence_v1` |
+| `method` | `stress_scenario_hedge_evidence_v2` |
+| `scenario_mapping` | `HEDGE_GAP_SCENARIO_BY_RISK` |
 | `hedge_assets_considered` | Hedge-labeled tickers in the run |
 | `n_hedge_assets_considered` | Length of `hedge_assets_considered` |
-| `worst_scenario_id` | Worst synthetic scenario by portfolio PnL |
-| `worst_scenario_portfolio_pnl_pct` | Portfolio PnL in that scenario |
-| `hedge_assets_negative_in_worst_scenario` | Hedge tickers with non-positive `pnl_by_asset_pct` when portfolio loss is negative |
-| `gap_detected` | `true` iff `status` is `gap_detected` |
-| `status` | `gap_detected` \| `no_gap_detected` \| `insufficient_data` |
+| `worst_scenario_id` | Global worst synthetic scenario by portfolio PnL |
+| `worst_scenario_portfolio_pnl_pct` | Portfolio PnL in global worst scenario |
+| `hedge_assets_negative_in_worst_scenario` | Hedge tickers with non-positive `pnl_by_asset_pct` in global worst when portfolio loss is negative |
+| `gap_detected` | `true` iff aggregate `status` is `gap_detected` |
+| `status` | Aggregate: `gap_detected` \| `no_gap_detected` \| `insufficient_data` \| `not_applicable` |
+| `status_reason` | Aggregate machine code: `no_hedge_labels`, `no_synthetic_scenarios`, `portfolio_pnl_unavailable`, `gap_evidence`, `no_gap_evidence_global` |
+| `status_reason_en` | English explanation (commentary/PDF) |
+| `hedge_label_risk_roles` | Taxonomy roles: `crisis_hedge`, `defensive`, `inflation_hedge`, `tail_hedge` |
+| `by_risk_type` | Per weakness-bucket rows (`risk_type`, `evaluation_scenario_id`, `gap_detected`, …) |
+| `n_risk_types_evaluated` | Length of `by_risk_type` |
+| `any_risk_type_gap_detected` | True if any per-type row has `gap_detected` |
 
-`stress_conclusions.hedge_gap_status` copies `hedge_gap_analysis.status`. See
-`hedge_gap_analysis_spec.md` for interpretation rules.
+`not_applicable` / `no_hedge_labels` means no holdings carry hedge labels — not ambiguous
+`insufficient_data`. `stress_conclusions.hedge_gap_status` copies aggregate `hedge_gap_analysis.status`.
+See `hedge_gap_analysis_spec.md` for per-type status taxonomy and mapping table.
 
 This diagnostic does not alter mandate gates, optimizer behavior, or stress pass/fail.
 
 ### 12.3 Simulator API foundation (no UI)
 
-Stress Lab exposes a programmatic **What Happens If** primitive (no UI, no new generated artifact
-by default). Implementation: `src/stress.py`.
+Stress Lab exposes a programmatic **What Happens If** primitive (no UI; no artifact on default
+report paths). Optional `custom_shock_runs.json` when callers use `record_custom_shock_run`.
+Implementation: `src/stress.py`.
 
 | Symbol | Role |
 | --- | --- |
@@ -995,3 +1065,48 @@ remain in full `run_stress` only.
 | `synthetic_assumptions` | Same block as synthetic rows (`synthetic_assumptions_v1`) |
 
 Diagnostic only: does not alter mandate gates, optimizer behavior, or `run_stress` status.
+
+#### Optional persistence (`custom_shock_runs.json`)
+
+`run_stress` and default report paths **do not** write this file. Callers opt in when they need an
+audit trail for exploratory shocks (API, scripts, future UI).
+
+| Symbol | Role |
+| --- | --- |
+| `CUSTOM_SHOCK_RUNS_VERSION` | Envelope version (`custom_shock_runs_v1`) |
+| `CUSTOM_SHOCK_RUNS_FILENAME` | `custom_shock_runs.json` |
+| `empty_custom_shock_runs_document` | Versioned empty shell |
+| `load_custom_shock_runs` | Load file or return empty shell on missing/invalid version |
+| `build_custom_shock_run_entry` | One appendable row from a simulation dict |
+| `append_custom_shock_run` | Append row to in-memory document |
+| `write_custom_shock_runs` | Persist document to disk |
+| `record_custom_shock_run` | `simulate_custom_shock` + optional append/write |
+
+**Location:** same portfolio output folder as `stress_report.json` (e.g.
+`Main portfolio/analysis_subject/custom_shock_runs.json`).
+
+**Envelope (`custom_shock_runs_v1`):**
+
+| Field | Description |
+| --- | --- |
+| `version` | `custom_shock_runs_v1` |
+| `simulator_version` | `custom_shock_simulator_v1` at time of last write |
+| `created_at`, `updated_at` | UTC ISO-8601 timestamps |
+| `n_runs` | Length of `runs` |
+| `runs` | Ordered list of run entries (append-only when `merge_existing=True`) |
+
+**Run entry:**
+
+| Field | Description |
+| --- | --- |
+| `run_id` | UUID string |
+| `recorded_at` | UTC ISO-8601 when appended |
+| `scenario_id` | Caller label (from simulation) |
+| `shock_vector` | Normalized shocks used |
+| `simulation` | Full `simulate_custom_shock` output (§12.3 output contract) |
+| `inputs_summary` | `tickers`, `n_assets`, optional `portfolio_betas` |
+| `provenance` | `source`, `simulator_version`, `method` |
+| `notes`, `analysis_subject` | Optional caller metadata |
+
+Invalid or superseded envelope versions are not merged; `load_custom_shock_runs` returns a fresh
+shell. Diagnostic only: no mandate, optimizer, or `run_stress` status impact.

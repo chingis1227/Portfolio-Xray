@@ -343,8 +343,9 @@ Each row should separate:
 
 **Decision:** **Option B — factor-only.** Portfolio X-Ray does **not** map `volatility_spike` to a
 synthetic `stress_report.scenario_results` row. A dedicated `vix_shock` / `volatility_spike` synthetic
-scenario (**Option A**) is deferred; it would require an explicit change to
-[stress_testing_spec.md](stress_testing_spec.md) and `src/stress.py`, not X-Ray alone.
+scenario (**Option A**) is **deferred** for Stress Lab ([DEC-2026-05-20-002](../../DECISIONS.md),
+[proposal](../proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md) §3); it would require an
+explicit change to [stress_testing_spec.md](stress_testing_spec.md) §2.3 and `src/stress.py`, not X-Ray alone.
 
 **Evidence channels (diagnostic only):**
 

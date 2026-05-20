@@ -14,6 +14,7 @@ from typing import Any
 
 from src.config_schema import PortfolioConfig
 from src.io_export import REPORT_DECIMALS
+from src.stress import crisis_replay_summary_from_paths
 
 SCHEMA_VERSION = "candidate_comparison_v1"
 WINDOWS = ("3y", "5y", "10y")
@@ -290,6 +291,15 @@ def _stress_from_artifacts(folder: Path, snap_10y: dict[str, Any] | None) -> dic
             conclusions = suite.get("conclusions")
             if isinstance(conclusions, dict) and conclusions:
                 stress["conclusions"] = conclusions
+            hm = suite.get("historical_methodology")
+            if isinstance(hm, dict) and hm:
+                stress["historical_methodology"] = hm
+            crs = suite.get("crisis_replay_summary")
+            if isinstance(crs, list) and crs:
+                stress["crisis_replay_summary"] = crs
+            hg_suite = suite.get("hedge_gap_analysis")
+            if isinstance(hg_suite, dict) and hg_suite:
+                stress["hedge_gap_analysis"] = hg_suite
 
     summary = _load_json(folder / "summary.json")
     if stress.get("overall") is None and summary:
@@ -311,6 +321,14 @@ def _stress_from_artifacts(folder: Path, snap_10y: dict[str, Any] | None) -> dic
             stress["conclusions"] = stress_report.get("stress_conclusions")
         if isinstance(stress_report.get("hedge_gap_analysis"), dict):
             stress["hedge_gap_analysis"] = stress_report.get("hedge_gap_analysis")
+        if "historical_methodology" not in stress:
+            hm = stress_report.get("historical_methodology")
+            if isinstance(hm, dict) and hm:
+                stress["historical_methodology"] = hm
+        if "crisis_replay_summary" not in stress:
+            paths = stress_report.get("historical_episode_paths")
+            if isinstance(paths, list) and paths:
+                stress["crisis_replay_summary"] = crisis_replay_summary_from_paths(paths)
         stress["source_file"] = "stress_report.json"
     elif snap_10y:
         stress["source_file"] = SNAPSHOT_FILES[PRIMARY_WINDOW]

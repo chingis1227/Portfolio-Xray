@@ -43,6 +43,57 @@ Omit empty categories.
 
 ### Added
 
+- Block 3 governance Session 11 (`RM-961` closure): Phase 13 wave closed — governance pytest bundle
+  **90 passed**, `verify_docs` OK; baseline snapshot Session 11 section and G1–G10 table;
+  [Stress Lab Methodology Governance Plan](docs/exec_plans/2026-05-20_stress_lab_methodology_governance_plan.md)
+  marked Completed; ROADMAP Phase 13 Done.
+
+- Block 3 governance Session 10 (`RM-961` part 1): downstream integration — `crisis_replay_summary`
+  on `snapshot_10y.stress_suite_results` and `candidate_comparison` `stress` blocks;
+  `historical_methodology` mirror; commentary lines for methodology, crisis replay v2, hedge
+  `by_risk_type`, and per-episode `return_method`; `tests/test_stress_downstream_integration.py`;
+  G10 closed.
+
+- Block 3 governance Session 09 (`RM-960`): optional `custom_shock_runs.json` audit trail
+  (`custom_shock_runs_v1`) via `record_custom_shock_run` in [src/stress.py](src/stress.py); opt-in
+  only (not written by `run_stress`); [stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.3;
+  [OUTPUTS.md](OUTPUTS.md); G9 closed.
+
+- Block 3 governance Session 08 (`RM-959`): crypto/vol synthetic stress **proposal** and
+  [docs/proposals/README.md](docs/proposals/README.md); [DEC-2026-05-20-002](DECISIONS.md) defers
+  `crypto_shock` / `volatility_shock` in `run_stress` (no `SCENARIOS` changes);
+  [stress_testing_spec.md](docs/specs/stress_testing_spec.md) §2.3; methodology map G8 closed.
+
+- Block 3 governance Session 07 (`RM-958`): handoff-grade
+  [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) — provenance per sub-block 3.1–3.6,
+  JSON contract index, Phase 13 session table; indexed in [SPEC.md](SPEC.md) and
+  [docs/specs/README.md](docs/specs/README.md); methodology map G7 closed.
+
+- Block 3 governance Session 06 (`RM-957`): crisis replay v2 — `time_to_recovery_months`,
+  `recovered`, `asset_pnl_contrib_episode`, `top_loss_assets_episode` on `historical_episode_paths`;
+  `crisis_replay_{episode}_asset_contrib.csv` export; [crisis_replay_spec.md](docs/specs/crisis_replay_spec.md);
+  G6 closed.
+
+- Block 3 governance Session 05 (`RM-956`): hedge gap v2 — `by_risk_type[]` per weakness bucket
+  via `HEDGE_GAP_SCENARIO_BY_RISK` (aligned with X-Ray `WEAKNESS_SCENARIO_MAP`); method
+  `stress_scenario_hedge_evidence_v2`; [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md);
+  extended `tests/test_stress_hedge_gap_contract.py`; G5 closed.
+
+- Block 3 governance Session 04 (`RM-955`): factor drivers in `stress_conclusions` —
+  `top_factor_drivers_worst_scenario` and `helped_factors_worst_scenario` from worst synthetic
+  `pnl_by_factor_pct`; [stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.1;
+  stress commentary factor driver lines; G4 closed.
+
+- Block 3 governance Session 03 (`RM-954`): hedge gap N/A transparency —
+  `not_applicable` + `status_reason` / `status_reason_en` on `hedge_gap_analysis` when no hedge
+  `risk_role` labels; [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md) taxonomy;
+  stress commentary plain-English N/A line; G3 closed.
+
+- Block 3 governance Session 02 (`RM-953`): primary historical stress disclosure —
+  `historical_methodology` on `stress_report.json`, `return_method` / `proxy_used` on
+  `historical_results`, enhanced `stress_conclusions.data_quality_warnings`; DEC-2026-05-20-001;
+  [stress_testing_spec.md](docs/specs/stress_testing_spec.md) §9.3.
+
 - Block 2 post-audit Session 10 (`RM-950`): [Portfolio X-Ray Baseline Snapshot](docs/audits/2026-05-20_portfolio_xray_baseline_snapshot.md)
   — artifact checklist, golden contract reference, compare template; Phase 12 (`RM-940`–`RM-950`) closed;
   post-audit ExecPlan marked Completed.

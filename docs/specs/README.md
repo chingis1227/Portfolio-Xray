@@ -38,7 +38,9 @@ Top-level documents stay compact:
 | Concise history of meaningful project changes | [../../CHANGELOG.md](../../CHANGELOG.md) |
 | Detailed data policy, NaN handling, young ETFs, return panels | [data_policy_spec.md](data_policy_spec.md) |
 | Stress scenarios and stress diagnostics | [stress_testing_spec.md](stress_testing_spec.md) |
-| Stress Lab layer (Block 3.1-3.6) | [stress_lab_layer_spec.md](stress_lab_layer_spec.md) |
+| Deferred stress scenario proposals (governance) | [../proposals/README.md](../proposals/README.md) |
+| Stress Lab layer (Block 3.1-3.6), provenance map, and handoff index | [stress_lab_layer_spec.md](stress_lab_layer_spec.md) |
+| Stress Lab methodology map (Block 3 audit baseline) | [../audits/2026-05-20_stress_lab_methodology_map.md](../audits/2026-05-20_stress_lab_methodology_map.md) |
 | Factor diagnostics and factor-risk outputs | [factor_diagnostics_spec.md](factor_diagnostics_spec.md) |
 | Macro regime diagnostics | [macro_regime_spec.md](macro_regime_spec.md) |
 | Scenario Library and normalized scenario view | [scenario_library_spec.md](scenario_library_spec.md) |

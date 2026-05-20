@@ -180,6 +180,10 @@ Keyed by `3y`, `5y`, `10y`. Each window object may include:
 | `overall` | `snapshot_*`.stress_suite_results.overall or `summary.json`.stress_status |
 | `fail_reason_code`, `failed_scenario` | stress suite or `stress_report.json` |
 | `scenarios` | optional abbreviated list from snapshot stress suite |
+| `scorecard`, `conclusions` | `stress_suite_results` or `stress_report.json` (`stress_scorecard_v1`, `stress_conclusions`) |
+| `hedge_gap_analysis` | `stress_suite_results` or `stress_report.json` (aggregate + `by_risk_type[]`) |
+| `historical_methodology` | `stress_suite_results` or `stress_report.json` (`historical_methodology_v1`) |
+| `crisis_replay_summary` | `stress_suite_results` or compact projection of `historical_episode_paths` (no daily rows) |
 
 ### `drawdown`
 

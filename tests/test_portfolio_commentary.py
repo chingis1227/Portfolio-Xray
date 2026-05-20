@@ -160,6 +160,13 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
                 "helped_assets_worst_scenario": [
                     {"ticker": "TLT", "pnl_pct": 0.03},
                 ],
+                "top_factor_drivers_worst_scenario": [
+                    {"factor_short": "eq", "beta_key": "beta_eq", "factor": "Equity", "pnl_pct": -0.22, "abs_pnl_pct": 0.22, "direction": "loss", "rank": 1},
+                    {"factor_short": "credit", "beta_key": "beta_credit", "factor": "Credit (HY)", "pnl_pct": -0.06, "abs_pnl_pct": 0.06, "direction": "loss", "rank": 2},
+                ],
+                "helped_factors_worst_scenario": [
+                    {"factor_short": "rr", "beta_key": "beta_rr", "factor": "Real rates", "pnl_pct": 0.02, "abs_pnl_pct": 0.02, "direction": "gain", "rank": 1},
+                ],
             },
             "hedge_gap_analysis": {
                 "status": "gap_detected",
@@ -224,6 +231,8 @@ def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
         assert "Structural historical factor vulnerability" in text
         assert "Plain-English take" in text
         assert "main loss drivers=URA" in text
+        assert "main factor loss drivers=Equity" in text
+        assert "helping factors=Real rates" in text
         assert "Worst synthetic scenario: equity_shock" in text
         assert "Confidence for scenario interpretation: medium." in text
 

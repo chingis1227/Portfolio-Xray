@@ -98,3 +98,6 @@ def test_snapshot_stress_suite_includes_synthetic_assumptions() -> None:
     first = scenarios[0]
     assert "synthetic_assumptions" in first
     assert first["synthetic_assumptions"].get("version") == "synthetic_assumptions_v1"
+    assert "historical_methodology" in section
+    assert "crisis_replay_summary" in section
+    assert "hedge_gap_analysis" in section

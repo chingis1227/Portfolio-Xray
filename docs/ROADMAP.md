@@ -20,6 +20,10 @@ Post-portfolio-first stabilization (RM-900 -> RM-911) closed as of 2026-05-19
 Portfolio X-Ray diagnostics deepening (RM-930 -> RM-939): **closed** as of 2026-05-20 (Session 09).
 Portfolio X-Ray post-audit governance (RM-940 -> RM-950): **closed** as of 2026-05-20 (Session 10).
 Baseline: [Portfolio X-Ray Baseline Snapshot](audits/2026-05-20_portfolio_xray_baseline_snapshot.md).
+Stress Lab methodology governance (RM-951 -> RM-961): **closed** as of 2026-05-20 (Sessions 00-11).
+Plan: [Stress Lab Methodology Governance Plan](exec_plans/2026-05-20_stress_lab_methodology_governance_plan.md).
+Methodology map: [Stress Lab Methodology Map](audits/2026-05-20_stress_lab_methodology_map.md).
+Baseline: [Stress Lab Baseline Snapshot](audits/2026-05-20_stress_lab_baseline_snapshot.md).
 Deferred follow-up: factory resumability / progress logging (RM-921).
 ```
 
@@ -327,6 +331,33 @@ Note: `RM-932` (full RC + Kalman in X-Ray) was implemented in the deepening Sess
 Session 01 marked it **Done** in Phase 11 and removed stale `KI-2026-05-19-007` / `KI-2026-05-19-008`
 from active KNOWN_ISSUES.
 
+## Phase 13: Stress Lab Methodology Governance
+
+Goal: make Block 3 (Stress Test Lab) **audit-grade** — transparent methodology boundary, conclusions
+integrity, hedge/replay/factor decision context, layer spec handoff, spec-only proposals for new scenarios.
+
+Exit condition: methodology map and governance ExecPlan exist in repo; gaps G1–G3 closed; G4–G7
+implemented per plan; verification bundle and baseline snapshot updated; documentation registers match runtime.
+
+Governed by the active
+[Stress Lab Methodology Governance Plan](exec_plans/2026-05-20_stress_lab_methodology_governance_plan.md)
+(Sessions 00–11). Methodology baseline:
+[Stress Lab Methodology Map](audits/2026-05-20_stress_lab_methodology_map.md).
+
+| ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| RM-951 | Done | Session 00 | Project memory: methodology map, ExecPlan, registers, ROADMAP Phase 13, TESTING stub. | 2026-05-20 methodology audit. | [methodology map](audits/2026-05-20_stress_lab_methodology_map.md), [governance ExecPlan](exec_plans/2026-05-20_stress_lab_methodology_governance_plan.md) | Active handoff for Sessions 01–11 | `python scripts/verify_docs.py`. |
+| RM-952 | Done | Session 01 | Worst historical episode by max_dd in stress_conclusions. | RM-951. | [stress.py](../src/stress.py), [stress_testing_spec.md](specs/stress_testing_spec.md) §12.1 | Consistent worst_historical_episode | `tests/test_stress_scorecard_contract.py`. |
+| RM-953 | Done | Session 02 | Historical realized-vs-proxy boundary + disclosure on historical_results. | RM-952. | [stress.py](../src/stress.py), [DECISIONS.md](../DECISIONS.md), stress spec §9 | `return_method` / `historical_methodology` | `tests/test_stress_historical_fields.py`. |
+| RM-954 | Done | Session 03 | Hedge analysis N/A transparency (status_reason, commentary). | RM-953. | [hedge_gap_analysis_spec.md](specs/hedge_gap_analysis_spec.md), [portfolio_commentary.py](../src/portfolio_commentary.py) | `not_applicable` + `no_hedge_labels` when no taxonomy hedge roles | `tests/test_stress_hedge_gap_contract.py`. |
+| RM-955 | Done | Session 04 | Factor drivers in stress_conclusions. | RM-954. | [stress.py](../src/stress.py), stress spec §12.1 | top_factor_drivers on worst synthetic | scorecard/conclusions contract tests. |
+| RM-956 | Done | Session 05 | Hedge gap v2 by risk type (`by_risk_type[]`, `HEDGE_GAP_SCENARIO_BY_RISK`). | RM-955. | [hedge_gap_analysis_spec.md](specs/hedge_gap_analysis_spec.md), [stress.py](../src/stress.py) | `by_risk_type[]` on hedge_gap_analysis | `tests/test_stress_hedge_gap_contract.py`. |
+| RM-957 | Done | Session 06 | Crisis replay v2 (recovery + asset episode contrib). | RM-956. | [crisis_replay_spec.md](specs/crisis_replay_spec.md), [run_report.py](../run_report.py) | `crisis_replay_v2` path fields + `_asset_contrib.csv` | `tests/test_stress_historical_fields.py`. |
+| RM-958 | Done | Session 07 | Deepen stress_lab_layer_spec.md (handoff-grade 3.1–3.6). | RM-957. | [stress_lab_layer_spec.md](specs/stress_lab_layer_spec.md) | Layer navigation without chat | `python scripts/verify_docs.py`. |
+| RM-959 | Done | Session 08 | crypto/vol synthetic scenarios — spec-only + DECISIONS. | RM-958. | [proposal](proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md), [DECISIONS.md](../DECISIONS.md) | DEC-2026-05-20-002 defer; stress spec §2.3; G8 closed | `python scripts/verify_docs.py`. |
+| RM-960 | Done | Session 09 | Optional custom_shock run artifact. | RM-959. | [stress.py](../src/stress.py), stress spec §12.3 | `custom_shock_runs.json` opt-in | `tests/test_stress_simulator_contract.py`. |
+| RM-961 | Done | Session 11 | Downstream integration + verification closure. | RM-960. | [snapshot.py](../src/snapshot.py), [candidate_comparison.py](../src/candidate_comparison.py), [portfolio_commentary.py](../src/portfolio_commentary.py), [TESTING.md](../TESTING.md), baseline snapshot | Session 10: mirrors; Session 11: 90-test bundle + baseline closure | `tests/test_stress_downstream_integration.py` + governance pytest bundle (90 passed) + verify_docs. |
+
 ## Audit Mapping
 
 | Audit ID | Roadmap handling |
@@ -363,10 +394,11 @@ Post-audit Sessions 02–20 are **closed** (see completed [post-audit ExecPlan](
 Phase 7 (`RM-700` through `RM-710`) is **closed** as of 2026-05-18. Phase 8 (`RM-800` through
 `RM-808`) is **closed** as of 2026-05-18. Phase 9 (`RM-900` through `RM-911`) is **closed** as of
 2026-05-19. Phase 11 (`RM-930` through `RM-939`) is **closed** as of 2026-05-20. Phase 12
-(`RM-940` through `RM-950`) is **closed** as of 2026-05-20. Keep each future project-level session
-in a separate chat unless the user explicitly changes that rule. Do not reopen closed MVP,
-post-audit, portfolio-first, Phase 9, or Phase 11 sessions unless the user explicitly requests plan
-amendments.
+(`RM-940` through `RM-950`) is **closed** as of 2026-05-20. Phase 13 (`RM-951` through `RM-961`) is
+**closed** as of 2026-05-20 (Sessions 00–11 complete). Keep each future
+project-level session in a separate chat unless the user explicitly changes that rule. Do not reopen
+closed MVP, post-audit, portfolio-first, Phase 9, Phase 11, or Phase 12 sessions unless the user
+explicitly requests plan amendments.
 
 ## Implemented Decision Artifacts
 
