@@ -146,18 +146,31 @@ When `_REGISTRY_ROWS` changes in code, update this table and [candidate_portfoli
 For each `candidate_id` in the active profile:
 
 1. Resolve `artifact_root` under project root.
-2. If `--skip-existing` (default) and `{artifact_root}/snapshot_10y.json` exists and `--force` is not set → status `skipped_existing`.
+2. If `--skip-existing` (default) and `{artifact_root}/snapshot_10y.json` exists and `--force` is not set → status `skipped_existing` **only when freshness is `fresh`** (review `analysis_end` known and matches the candidate snapshot).
 3. If prerequisites fail (e.g. robust scenario missing scenario library) → status `skipped_dependency` with reason code; do not throw away the whole run unless `--fail-fast` (Session 11 optional flag).
 4. Otherwise invoke entry script(s) in order with project Python, same `config.yml` as policy run.
 5. On subprocess non-zero exit → status `failed` with `exit_code` and stderr tail (truncated); continue unless `--fail-fast`.
 6. On success → status `succeeded`; verify minimum comparison inputs: `snapshot_10y.json` present (else `failed` with `missing_snapshot_after_build`).
 
-Freshness addendum (RM-902, supersedes item 2 when a review date is known): the skip-existing rule is date-gated. Factory must read
+Freshness addendum (RM-902 / RM-973, supersedes item 2): the skip-existing rule is date-gated. Factory must read
 `snapshot_10y.json.analysis_end` before reusing an existing candidate artifact. Reuse is allowed
 only when that value matches the review `analysis_end`, resolved from
-`{output_dir_final}/analysis_subject/` first and Main artifacts second. Stale snapshots are rebuilt,
-not silently skipped. If a builder exits 0 but the candidate `snapshot_10y.json` remains stale, the
-step status is `failed` with reason `stale_snapshot_after_build`.
+`{output_dir_final}/analysis_subject/` first and Main artifacts second. When review `analysis_end`
+cannot be resolved, `freshness_status` is `unchecked` and the factory **rebuilds** (warning
+`unchecked_candidate_snapshot_rebuild_attempted:{candidate_id}:review_analysis_end_unavailable`);
+it must **not** emit `skipped_existing`. Stale snapshots are rebuilt, not silently skipped. If a
+builder exits 0 but the candidate `snapshot_10y.json` remains stale, the step status is `failed`
+with reason `stale_snapshot_after_build`.
+
+Config fingerprint addendum (RM-976 / G2): reuse also requires
+`snapshot_10y.json.candidate_config_fingerprint` to match the review run fingerprint computed from
+`config.yml` (investor currency, sorted tickers, `risk_budgeting`, min/max single-security weight
+bounds). The factory writes `config_fingerprint` at the run root and per-step
+`expected_config_fingerprint` / `snapshot_config_fingerprint`. When the date matches but the
+fingerprint does not, `freshness_status` is `stale_config` and the factory rebuilds (warning
+`stale_candidate_config_fingerprint_rebuild_attempted:{candidate_id}:…`). After build, mismatch
+fails with `stale_config_fingerprint_after_build`. New reports stamp the fingerprint on all window
+snapshots via `run_portfolio_report_for_weights`.
 
 **Robust scenario chain:** factory runs optimization script first; on success runs portfolio report script. One factory step row may represent the chain; both commands appear in `entry_commands` array in the run summary.
 
@@ -183,9 +196,13 @@ many candidates are stale. That is an **operational** limitation, not a broken c
 `--candidate-profile` overrides `--mode` when an explicit profile is required. Partial-menu disclosure
 is emitted in `candidate_comparison.json` → `candidate_menu` and in the decision-package summary.
 
-**Future work:** resumable factory steps and clearer progress logs; optional parallel builders with
-isolation guarantees; stronger reuse keys (config fingerprint, universe, weights) in addition to
-`analysis_end`. See [ROADMAP.md](../ROADMAP.md) `RM-921`.
+**Resumable factory (RM-979 / RM-921):** `{output_dir_final}/candidate_factory_manifest.json`
+records `run_checksum` (profile, candidate menu, `analysis_end`, `config_fingerprint`) and
+per-step `completed_steps`. `python run_candidate_factory.py --resume` skips `succeeded` and
+fresh `skipped_existing` steps when the checksum matches; failed steps are retried. Manifest is
+updated after each step so an interrupted run can resume without redoing succeeded builders.
+Optional parallel builders remain future scope. Universe-file hashing and weight-source keys
+remain future scope.
 
 ## Canonical Factory Run Artifacts
 
@@ -194,6 +211,7 @@ isolation guarantees; stronger reuse keys (config fingerprint, universe, weights
 | File name | `candidate_factory_run.json` |
 | Location | `{output_dir_final}/candidate_factory_run.json` |
 | Companion (optional) | `{output_dir_final}/candidate_factory_run.txt` |
+| Resume manifest | `{output_dir_final}/candidate_factory_manifest.json` (`candidate_factory_manifest_v1`) |
 | Schema version | `candidate_factory_run_v1` |
 
 ### Top-level JSON contract (`candidate_factory_run_v1`)
@@ -208,11 +226,18 @@ isolation guarantees; stronger reuse keys (config fingerprint, universe, weights
   "output_dir_final": "Main portfolio",
   "config_path": "config.yml",
   "analysis_end": "YYYY-MM-DD",
+  "config_fingerprint": "sha256-hex",
   "options": {
     "skip_existing": true,
     "force": false,
     "fail_fast": false,
+    "resume": false,
     "then_compare": false
+  },
+  "manifest": {
+    "path": "Main portfolio/candidate_factory_manifest.json",
+    "run_checksum": "sha256-hex",
+    "resume_manifest_active": false
   },
   "steps": [],
   "summary": {
@@ -221,7 +246,8 @@ isolation guarantees; stronger reuse keys (config fingerprint, universe, weights
     "failed": 0,
     "skipped_existing": 0,
     "skipped_dependency": 0,
-    "rebuilt_stale": 0
+    "rebuilt_stale": 0,
+    "resumed_from_manifest": 0
   },
   "warnings": [],
   "next_recommended_command": "python run_compare_variants.py"
@@ -242,21 +268,57 @@ isolation guarantees; stronger reuse keys (config fingerprint, universe, weights
 | `duration_seconds` | number | Wall time for the step |
 | `reason_code` | string or null | Machine code when not succeeded |
 | `message` | string or null | Short English explanation |
+| `builder_status` | string or null | Optional; raw `status` from `{artifact_root}/summary.json` when a builder FAIL_* was mapped (Session 02) |
+| `builder_reason` | string or null | Optional; builder `reason` string from `summary.json` when present |
 | `expected_analysis_end` | string or null | Review `analysis_end` used for freshness checks. Prefer `{output_dir_final}/analysis_subject/` metadata/snapshots, then Main metadata/snapshots. |
+| `expected_config_fingerprint` | string or null | Review config fingerprint for the step (RM-976). |
 | `snapshot_analysis_end` | string or null | `analysis_end` read from candidate `snapshot_10y.json` before reuse or after build. |
-| `freshness_status` | string or null | `fresh` when the snapshot matches the review date, `stale` when it does not, `missing` when no snapshot exists, or `unchecked` when no review date was available. |
+| `snapshot_config_fingerprint` | string or null | `candidate_config_fingerprint` read from candidate `snapshot_10y.json` when present. |
+| `freshness_status` | string or null | `fresh` when date and config fingerprint match; `stale` when date mismatches; `stale_config` when date matches but fingerprint mismatches or is missing; `missing` when no snapshot; `unchecked` when no review date. |
+| `resume_from_manifest` | boolean or null | Optional; `true` when `--resume` reused a prior manifest entry without invoking builders. |
+| `robust_paths_disclosure` | object or null | Present for `robust_mv_constrained`, `robust_mv_uncapped`, and `robust_scenario` (Session 07 / RM-977). λ resolution snapshot or Main prerequisite checklist; see [robust_mv_spec.md](robust_mv_spec.md) and comparison `construction_disclosure.robust_paths`. |
+
+### Manifest JSON (`candidate_factory_manifest_v1`)
+
+Written incrementally during a factory run and read on `--resume`.
+
+| Field | Description |
+| --- | --- |
+| `schema_version` | `candidate_factory_manifest_v1` |
+| `run_checksum` | SHA-256 of profile id, comma-separated candidate ids, `analysis_end`, `config_fingerprint` |
+| `factory_profile_id` | Profile used for the run |
+| `candidate_ids` | Ordered menu for this run |
+| `analysis_end` | Review date used for freshness |
+| `config_fingerprint` | Review config fingerprint (RM-976) |
+| `completed_steps` | Map of `candidate_id` → `{status, reason_code, recorded_at}` |
+| `last_completed_candidate_id` | Last step persisted (crash recovery hint) |
+| `updated_at` | ISO-8601 timestamp |
+
+Resume skips a prior `succeeded` or fresh `skipped_existing` entry only when `run_checksum` matches the current run and the candidate snapshot is still fresh.
 
 ### Reason codes (V1)
 
 | Code | Meaning |
 | --- | --- |
 | `skipped_existing` | `snapshot_10y.json` already present and skip-existing active |
-| `skipped_dependency` | Prerequisite artifacts missing (e.g. scenario library) |
+| `skipped_dependency` | Prerequisite artifacts missing (robust_scenario: `scenario_library_normalized.json` and/or `stress_report.json` under `output_dir_final`; message lists missing names) |
 | `missing_snapshot_after_build` | Script exited 0 but comparison minimum files absent |
 | `stale_snapshot_after_build` | Script exited 0 but `snapshot_10y.json.analysis_end` still does not match the review `analysis_end` |
-| `subprocess_failed` | Builder returned non-zero exit |
+| `stale_config_fingerprint_after_build` | Script exited 0 but `snapshot_10y.json.candidate_config_fingerprint` still does not match review `config_fingerprint` |
+| `subprocess_failed` | Builder returned non-zero exit and no FAIL_* in `summary.json` |
 | `subprocess_timeout` | Reserved; optional timeout in Session 11 |
 | `unknown_candidate_id` | ID not in registry (explicit list mode) |
+| `builder_fail_config` | Builder `summary.json` status `FAIL_CONFIG` |
+| `builder_fail_data` | Builder `summary.json` status `FAIL_DATA` |
+| `builder_infeasible_universe` | Builder `FAIL_INFEASIBLE_UNIVERSE` |
+| `builder_infeasible_targets` | Builder `FAIL_INFEASIBLE_TARGETS` |
+| `builder_infeasible_bounds` | Builder `FAIL_INFEASIBLE_BOUNDS` |
+| `builder_infeasible_vol_target` | Builder `FAIL_INFEASIBLE_VOL_TARGET` |
+| `builder_fail_numerical` | Builder `FAIL_NUMERICAL` |
+| `builder_fail_no_assets` | Builder `FAIL_NO_ASSETS` |
+| `builder_failed` | Other builder `FAIL_*` status not listed above |
+
+After each build attempt, when `snapshot_10y.json` is absent or the subprocess exits non-zero, the factory reads `{artifact_root}/summary.json` when present and maps builder `status`/`reason` to the codes above. `missing_snapshot_after_build` applies only when the subprocess exited zero, no snapshot exists, and `summary.json` does not report a FAIL_* status.
 
 Human-readable `.txt` summarizes profile, counts, failed IDs, and the next recommended command. Wording must stay **diagnostic** (no buy/sell, no "recommended portfolio").
 
@@ -276,7 +338,7 @@ Entry point at repository root:
 
 ```bash
 python run_candidate_factory.py [--profile PROFILE] [--candidates ID,ID,...]
-  [--skip-existing | --force] [--fail-fast] [--then-compare] [--config PATH]
+  [--skip-existing | --force] [--fail-fast] [--resume] [--then-compare] [--config PATH]
 ```
 
 | Flag | Default | Behavior |
@@ -286,21 +348,30 @@ python run_candidate_factory.py [--profile PROFILE] [--candidates ID,ID,...]
 | `--skip-existing` | on | Skip when `snapshot_10y.json` exists |
 | `--force` | off | Rerun even when snapshot exists |
 | `--fail-fast` | off | Stop factory on first failed step |
+| `--resume` | off | Skip prior `succeeded` / fresh `skipped_existing` steps when manifest checksum matches |
 | `--then-compare` | off | Run `run_compare_variants.py` after factory |
 | `--config` | `config.yml` | Config path passed to builders |
 
-Exit codes (Session 11):
+Exit codes:
 
 - `0` — all attempted steps succeeded or were skipped intentionally; no fail-fast abort
 - `1` — one or more `failed` steps, or fail-fast abort
 - `2` — configuration or registry validation error before any builder runs
 
-## Verification (Session 10 vs 11)
+Operator playbooks (reason codes, recovery, partial menu): [operational_runbook.md](../operational_runbook.md) §8.
 
-| Session | Verification |
+`next_recommended_command` is set from run context (resume after failures, full rebuild when manifest checksum mismatches, otherwise comparison). Human summary: `candidate_factory_run.txt` lists failed `reason_code` values and the factory-only exit hint.
+
+## Verification
+
+Governance regression (Phase 14 Session 08 / `RM-978`): golden JSON fixtures and contract tests —
+see [TESTING.md](../../TESTING.md) § Candidate Factory Governance Wave Bundle;
+regenerate with `python tests/candidate_factory_golden_inputs.py`.
+
+| Milestone | Verification |
 | --- | --- |
-| **10 (this spec)** | `python scripts/verify_docs.py`; registry table matches `_REGISTRY_ROWS` |
-| **11 (implementation)** | New focused factory tests under `tests/`; smoke: factory + compare increases `available` count on a fixture project |
+| **Operator runbook (Session 10 / RM-980)** | [operational_runbook.md](../operational_runbook.md) §8; `python scripts/verify_docs.py`; registry table matches `_REGISTRY_ROWS` |
+| **Implementation** | `tests/test_candidate_factory.py`, `tests/test_candidate_factory_contract.py`; smoke: factory + compare increases `available` count on a fixture project |
 
 ## Related Documents
 

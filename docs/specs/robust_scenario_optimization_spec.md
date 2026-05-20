@@ -10,10 +10,12 @@ Scenario-Based Robust Optimization is an additive candidate builder. It uses rep
 
 Primary inputs:
 
-- `scenario_library_normalized.json`
-- `stress_report.json`
+- `scenario_library_normalized.json` under **`output_dir_final`** (typically `Main portfolio/`) — shared Main/policy stress calibration, not per-candidate
+- `stress_report.json` in the same folder — same shared scope
 - active config
 - scenario optimizer settings from CLI arguments or the optional `robust_scenario_optimization` YAML block
+
+The candidate factory skips `robust_scenario` with `skipped_dependency` when either Main file is missing. Disclosure: factory `robust_paths_disclosure` and comparison `construction_disclosure.robust_paths` (`kind: robust_scenario_main_prerequisites`). See [operational_runbook.md](../operational_runbook.md) and [candidate_factory_spec.md](candidate_factory_spec.md).
 
 The optimizer builds a scenario coefficient matrix from normalized scenarios and `stress_report.json.asset_factor_betas`. If per-ticker betas are unavailable, the implementation may use the documented portfolio-beta replication fallback and must report beta-load warnings.
 

@@ -16,6 +16,7 @@ from src.candidate_comparison import (
     write_candidate_comparison_txt,
 )
 from src.config_schema import validate_config
+from src.snapshot import compute_candidate_config_fingerprint
 
 
 def _write_yaml(path: Path, data: dict) -> None:
@@ -28,9 +29,11 @@ def _snapshot_10y(
     *,
     rc_asset: list | None = None,
     final_weights_total: dict | None = None,
+    cfg: object | None = None,
+    analysis_end: str = "2026-04-30",
 ) -> dict:
     snap = {
-        "analysis_end": "2026-04-30",
+        "analysis_end": analysis_end,
         "window_label": "10y",
         "metrics": metrics,
         "stress_suite_results": {
@@ -45,6 +48,8 @@ def _snapshot_10y(
         snap["RC_asset"] = rc_asset
     if final_weights_total is not None:
         snap["final_weights_total"] = final_weights_total
+    if cfg is not None:
+        snap["candidate_config_fingerprint"] = compute_candidate_config_fingerprint(cfg)
     return snap
 
 
@@ -168,6 +173,31 @@ def test_analysis_subject_row_reads_canonical_sidecar(tmp_path: Path) -> None:
     assert doc["analysis_end"] == "2026-04-30"
 
 
+def test_comparison_warns_when_review_analysis_end_unknown(tmp_path: Path) -> None:
+    eq = tmp_path / "equal-weight portfolio"
+    eq.mkdir()
+    with open(eq / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.08, "vol_annual": 0.12}), f)
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+
+    assert doc["analysis_end"] == ""
+    eq_row = next(c for c in doc["candidates"] if c["candidate_id"] == "equal_weight")
+    assert eq_row["status"] in ("available", "degraded")
+    assert (
+        "candidate_freshness_unchecked_no_review_analysis_end:equal_weight"
+        in eq_row["warnings"]
+    )
+
+
 def test_stale_candidate_snapshot_marked_unavailable(tmp_path: Path) -> None:
     main = tmp_path / "Main portfolio"
     subject = main / "analysis_subject"
@@ -199,6 +229,44 @@ def test_stale_candidate_snapshot_marked_unavailable(tmp_path: Path) -> None:
     assert eq_row["status"] == "unavailable"
     assert eq_row["unavailable_reason"] == "stale_snapshot_analysis_end"
     assert "stale_snapshot_analysis_end:2026-04-30!=2026-05-15" in eq_row["warnings"]
+
+
+def test_stale_config_fingerprint_marked_unavailable(tmp_path: Path) -> None:
+    main = tmp_path / "Main portfolio"
+    subject = main / "analysis_subject"
+    subject.mkdir(parents=True)
+    subject_snapshot = _snapshot_10y({"cagr": 0.06, "vol_annual": 0.1})
+    subject_snapshot["analysis_end"] = "2026-05-15"
+    with open(subject / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(subject_snapshot, f)
+    with open(subject / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(_run_metadata("user_current_portfolio"), f)
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    fp = compute_candidate_config_fingerprint(cfg)
+
+    eq = tmp_path / "equal-weight portfolio"
+    eq.mkdir()
+    eq_snap = _snapshot_10y({"cagr": 0.08, "vol_annual": 0.12})
+    eq_snap["analysis_end"] = "2026-05-15"
+    eq_snap["candidate_config_fingerprint"] = "deadbeef" * 8
+    with open(eq / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(eq_snap, f)
+
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+
+    assert doc["config_fingerprint"] == fp
+    eq_row = next(c for c in doc["candidates"] if c["candidate_id"] == "equal_weight")
+    assert eq_row["status"] == "unavailable"
+    assert eq_row["unavailable_reason"] == "stale_config_fingerprint"
+    assert any(w.startswith("stale_config_fingerprint:") for w in eq_row["warnings"])
 
 
 def test_analysis_setup_summary_prefers_analysis_subject_sidecar_metadata(
@@ -633,3 +701,214 @@ def test_decision_package_summary_mentions_partial_menu() -> None:
     assert "Candidate menu" in joined
     assert "core_v1" in joined
     assert "Partial menu" in joined
+
+
+def test_equal_weight_construction_disclosure_passthrough_baseline_metadata(
+    tmp_path: Path,
+) -> None:
+    eq = tmp_path / "equal-weight portfolio"
+    eq.mkdir()
+    with open(eq / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.08, "vol_annual": 0.12}), f)
+    with open(eq / "baseline_weights_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "equal_weight_method": "equal_weight_by_assets",
+                "universe_eligible": ["VOO", "BND"],
+                "baseline_weights_note": "fixture",
+            },
+            f,
+        )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    row = next(c for c in doc["candidates"] if c["candidate_id"] == "equal_weight")
+    disc = row["construction_disclosure"]
+    assert disc["disclosure_status"] == "available"
+    assert "baseline_weights_metadata.json" in disc["source_files"]
+    assert (
+        disc["baseline_metadata"]["equal_weight_method"] == "equal_weight_by_assets"
+    )
+
+
+def test_risk_budget_construction_disclosure_includes_effective_targets(
+    tmp_path: Path,
+) -> None:
+    rb = tmp_path / "risk budget by asset portfolio"
+    rb.mkdir()
+    with open(rb / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.07, "vol_annual": 0.11}), f)
+    with open(rb / "baseline_weights_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "risk_budgeting_method": "spinu_asset_level",
+                "target_risk_budgets": {"VOO": 0.6, "BND": 0.4},
+                "target_risk_budgets_effective": {"VOO": 0.6, "BND": 0.4},
+            },
+            f,
+        )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    row = next(
+        c for c in doc["candidates"] if c["candidate_id"] == "risk_budget_by_asset"
+    )
+    meta = row["construction_disclosure"]["baseline_metadata"]
+    assert meta["target_risk_budgets_effective"]["VOO"] == 0.6
+
+
+def test_construction_disclosure_partial_from_summary_when_metadata_missing(
+    tmp_path: Path,
+) -> None:
+    rp = tmp_path / "risk parity portfolio"
+    rp.mkdir()
+    with open(rp / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.07, "vol_annual": 0.1}), f)
+    with open(rp / "summary.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "portfolio_type": "Risk Parity",
+                "status": "OK",
+                "solver_status": "APPROXIMATE",
+                "max_rc_error": 0.02,
+            },
+            f,
+        )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO"],
+        }
+    )
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    row = next(c for c in doc["candidates"] if c["candidate_id"] == "risk_parity")
+    disc = row["construction_disclosure"]
+    assert disc["disclosure_status"] == "partial"
+    assert disc["builder_summary"]["solver_status"] == "APPROXIMATE"
+    assert "summary.json" in disc["source_files"]
+
+
+def test_construction_disclosure_includes_factory_step_excerpt(tmp_path: Path) -> None:
+    eq = tmp_path / "equal-weight portfolio"
+    eq.mkdir()
+    main = tmp_path / "Main portfolio"
+    main.mkdir()
+    with open(eq / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.08, "vol_annual": 0.12}), f)
+    with open(main / "candidate_factory_run.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "factory_profile_id": "core_v1",
+                "steps": [
+                    {
+                        "candidate_id": "equal_weight",
+                        "status": "failed",
+                        "reason_code": "builder_infeasible",
+                        "builder_status": "FAIL_INFEASIBLE",
+                        "builder_reason": "empty universe",
+                    }
+                ],
+            },
+            f,
+        )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO"],
+        }
+    )
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    row = next(c for c in doc["candidates"] if c["candidate_id"] == "equal_weight")
+    step = row["construction_disclosure"]["factory_step"]
+    assert step["reason_code"] == "builder_infeasible"
+    assert step["builder_status"] == "FAIL_INFEASIBLE"
+    assert "candidate_factory_run.json" in row["construction_disclosure"]["source_files"]
+
+
+def test_robust_scenario_construction_disclosure_main_prerequisites(tmp_path: Path) -> None:
+    main = tmp_path / "Main portfolio"
+    main.mkdir()
+    with open(main / "candidate_factory_run.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "factory_profile_id": "default_v1",
+                "steps": [
+                    {
+                        "candidate_id": "robust_scenario",
+                        "status": "skipped_dependency",
+                        "reason_code": "skipped_dependency",
+                        "robust_paths_disclosure": {
+                            "kind": "robust_scenario_main_prerequisites",
+                            "shared_calibration_scope": "main_output_dir_final",
+                            "prerequisites_met": False,
+                            "missing_artifacts": [
+                                "scenario_library_normalized.json",
+                                "stress_report.json",
+                            ],
+                        },
+                    }
+                ],
+            },
+            f,
+        )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO"],
+        }
+    )
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    row = next(c for c in doc["candidates"] if c["candidate_id"] == "robust_scenario")
+    rp = row["construction_disclosure"]["robust_paths"]
+    assert rp["kind"] == "robust_scenario_main_prerequisites"
+    assert rp["prerequisites_met"] is False
+    assert rp["shared_calibration_scope"] == "main_output_dir_final"
+
+
+def test_robust_mv_construction_disclosure_lambda_without_factory_run(
+    tmp_path: Path,
+) -> None:
+    cal = tmp_path / "analysis_robust_mv_lambda_calibration"
+    cal.mkdir(parents=True)
+    (cal / "selected_lambda.txt").write_text("0.3\n", encoding="utf-8")
+    folder = tmp_path / "robust mean variance constrained portfolio"
+    folder.mkdir()
+    with open(folder / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.06, "vol_annual": 0.1}), f)
+    with open(folder / "baseline_weights_metadata.json", "w", encoding="utf-8") as f:
+        json.dump({"robust_mv_lambda": 0.3, "optimizer_name": "robust_mv"}, f)
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO"],
+        }
+    )
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    row = next(
+        c for c in doc["candidates"] if c["candidate_id"] == "robust_mv_constrained"
+    )
+    rp = row["construction_disclosure"]["robust_paths"]
+    assert rp["kind"] == "robust_mv_lambda"
+    assert rp["robust_mv_lambda"] == 0.3
+    assert rp["lambda_resolution_key"] == "calibration_file"
+    assert rp["robust_mv_lambda_from_baseline_metadata"] == 0.3

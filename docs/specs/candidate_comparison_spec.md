@@ -125,7 +125,8 @@ Each element of `candidates[]`:
   "mandate": { },
   "missing_fields": [ ],
   "warnings": [ ],
-  "source_files": [ ]
+  "source_files": [ ],
+  "construction_disclosure": { }
 }
 ```
 
@@ -143,6 +144,30 @@ Each element of `candidates[]`:
 | `unavailable_reason` | if unavailable | Machine code, e.g. `missing_artifact_folder`, `missing_snapshot`, `not_applicable_for_analysis_mode`. |
 | `portfolio_role` | when known | From `analysis_setup.analysis_portfolio.portfolio_role` when this row is the analyzed Main report. |
 | `recommendation_status` | when known | From run metadata; must not be interpreted as advice. |
+| `construction_disclosure` | yes | Passthrough of how weights were built (see below). Always present; use `disclosure_status` to interpret completeness. |
+
+### `construction_disclosure` (comparison v1.3 — Block 4 Session 04, RM-974)
+
+Diagnostic-only disclosure of construction parameters. The comparison builder **must not** recompute weights or optimizer targets; it copies existing metadata from candidate artifact folders.
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `disclosure_status` | yes | `available` when `baseline_weights_metadata.json` was loaded; `partial` when only `summary.json`, Main `run_result.json` / sidecar `run_metadata.json`, or factory step excerpts exist; `missing` when no construction sources were found. |
+| `source_files` | yes | Relative filenames under `artifact_root` that contributed (e.g. `baseline_weights_metadata.json`, `summary.json`, `candidate_factory_run.json`). |
+| `baseline_metadata` | when available | Full JSON object from `{artifact_root}/baseline_weights_metadata.json` (e.g. `equal_weight_method`, `target_risk_budgets`, `target_risk_budgets_effective`, optimizer diagnostics). |
+| `builder_summary` | optional | Selected fields from `{artifact_root}/summary.json` (`status`, `reason`, `solver_status`, …) and any `*_metadata` nested blobs when the baseline file is absent. |
+| `main_row_excerpt` | optional | For `policy`: excerpt from `run_result.json` (`optimization_status`, mandate gate summary). For `analysis_subject` / `current`: excerpt from `run_metadata.json` `analysis_setup`. |
+| `factory_step` | optional | Excerpt from `{output_dir_final}/candidate_factory_run.json` `steps[]` for this `candidate_id` when a factory run exists (`reason_code`, `builder_status`, `builder_reason`, freshness fields, `robust_paths_disclosure` when present). |
+| `robust_paths` | when robust suite | For `robust_mv_constrained`, `robust_mv_uncapped`, `robust_scenario` only (Session 07 / RM-977). Copied from factory step `robust_paths_disclosure` when available; otherwise built from project root + `output_dir_final` + optional `baseline_metadata` (no recomputation of weights or scenarios). |
+
+**`robust_paths` kinds:**
+
+| `kind` | Candidates | Meaning |
+| --- | --- | --- |
+| `robust_mv_lambda` | `robust_mv_*` | Whether `selected_lambda.txt` exists, `lambda_resolution_key` (`calibration_file` \| `none`), `robust_mv_lambda`, `lambda_ready_for_build`, `factory_runs_lambda_calibration: false`. |
+| `robust_scenario_main_prerequisites` | `robust_scenario` | Whether Main `scenario_library_normalized.json` and `stress_report.json` exist; `shared_calibration_scope: main_output_dir_final`; `recommended_before_factory`. |
+
+Emit `construction_disclosure` on **every** registry row, including `unavailable` rows, when artifact files exist (e.g. builder failed but `summary.json` documents `FAIL_*`).
 
 ### Status rules
 
@@ -159,6 +184,19 @@ Freshness rule (RM-902): when comparison has a review `analysis_end`, a candidat
 `status: unavailable`, `unavailable_reason: stale_snapshot_analysis_end`, and include a warning of
 the form `stale_snapshot_analysis_end:{snapshot_analysis_end}!={review_analysis_end}`. This prevents
 Selection, No-Trade, and downstream decision artifacts from silently using stale candidate metrics.
+
+Unchecked freshness (RM-973): when comparison cannot resolve a review `analysis_end`, candidate
+metrics may still load, but each row with a primary snapshot must include warning
+`candidate_freshness_unchecked_no_review_analysis_end:{candidate_id}` so operators know freshness
+was not certified against the current subject run.
+
+Config fingerprint (RM-976): when comparison has a review `analysis_end` and the candidate
+`snapshot_10y.json` date matches, but `candidate_config_fingerprint` is present and differs from the
+review `config_fingerprint` (top-level field, or computed from current `config.yml` when no factory
+run exists), emit `status: unavailable`, `unavailable_reason: stale_config_fingerprint`, and warning
+`stale_config_fingerprint:{snapshot_fp}!={expected_fp}`. When the fingerprint field is absent on an
+otherwise date-fresh snapshot, emit warning `candidate_config_fingerprint_missing:{candidate_id}` and
+still allow `available`/`degraded` (factory rebuilds missing fingerprints on the next run).
 
 ## Metric, Stress, and Diagnostic Blocks
 
@@ -329,13 +367,20 @@ Canonical consumers (Robustness Scorecard, Health Score, Selection Engine) must 
 
 ## Tests
 
-Focused tests should cover:
+Focused tests: `tests/test_candidate_comparison.py`. Golden contract (Phase 14 Session 08 /
+`RM-978`): `tests/test_candidate_comparison_contract.py` and
+`tests/fixtures/candidate_comparison_golden_v1.json` (regenerate:
+`python tests/candidate_factory_golden_inputs.py`). Governance bundle:
+[TESTING.md](../../TESTING.md) § Candidate Factory Governance Wave Bundle.
+
+Coverage should include:
 
 - schema version and required top-level keys;
 - full registry length and stable ordering;
 - `unavailable` when folder missing;
 - `current` available vs unavailable by analysis mode;
 - `degraded` when only `summary.json` exists;
+- `construction_disclosure` on every row;
 - no duplicate formulas (mock snapshots, assert passthrough values).
 
 ## Detailed Ownership

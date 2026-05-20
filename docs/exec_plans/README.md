@@ -19,10 +19,14 @@ artifact contracts.
 
 ## Current Pointer
 
-**Active:** none (2026-05-20). Resume from [ROADMAP](../ROADMAP.md) deferred backlog (e.g. factory
-resumability `RM-921`, UI `RM-500+`) unless the user starts a new ExecPlan.
+**Active:** None — start from [ROADMAP](../ROADMAP.md) deferred backlog (e.g. UI `RM-500+`) or a new ExecPlan when scoped.
 
-Deferred backlog: [ROADMAP](../ROADMAP.md) (e.g. factory resumability `RM-921`, UI `RM-500+`).
+Completed (2026-05-20): [Candidate Portfolio Factory Post-Audit Roadmap](2026-05-20_candidate_factory_post_audit_roadmap.md)
+(Sessions 00–11; Phase 14 `RM-970`–`RM-981` Done). Handoff:
+[Candidate Factory Methodology Map](../audits/2026-05-20_candidate_factory_methodology_map.md),
+[Candidate Factory Baseline Snapshot](../audits/2026-05-20_candidate_factory_baseline_snapshot.md).
+
+Deferred post-wave: UI `RM-500+`; new `candidate_id` families only via spec + DEC (see DEC-2026-05-20-003 appendix).
 
 Completed (2026-05-20): [Portfolio X-Ray Post-Audit Roadmap](2026-05-20_portfolio_xray_post_audit_roadmap.md)
 (Sessions 00-10; baseline in
@@ -57,6 +61,7 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. factory r
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-05-20 | [Candidate Portfolio Factory Post-Audit Roadmap](2026-05-20_candidate_factory_post_audit_roadmap.md) | Completed | [Candidate Factory Methodology Map](../audits/2026-05-20_candidate_factory_methodology_map.md) | Sessions 00–11 closed 2026-05-20: G1–G10 governance gaps; DEC-2026-05-20-003 concept registry; Phase 14 Done. |
 | 2026-05-20 | [Stress Lab Methodology Governance Plan](2026-05-20_stress_lab_methodology_governance_plan.md) | Completed | [Stress Lab Methodology Map](../audits/2026-05-20_stress_lab_methodology_map.md) | Sessions 00–11 closed 2026-05-20: G1–G10 governance gaps; 90-test bundle + verify_docs; Phase 13 Done. |
 | 2026-05-20 | [Portfolio X-Ray Post-Audit Roadmap](2026-05-20_portfolio_xray_post_audit_roadmap.md) | Completed | [Portfolio X-Ray Baseline Snapshot](../audits/2026-05-20_portfolio_xray_baseline_snapshot.md) | Sessions 00-10 closed 2026-05-20: threshold registry, provenance, factor inference, multi-window/TTR, layer spec, concentration, vol-spike Option B, golden contract tests, baseline snapshot; Phase 12 (`RM-940`-`RM-950`) Done. |
 | 2026-05-20 | [Stress Lab Post-Audit Roadmap](2026-05-20_stress_lab_post_audit_roadmap.md) | Completed | [Stress Lab Baseline Snapshot](../audits/2026-05-20_stress_lab_baseline_snapshot.md) | Sessions 00-10 closed 2026-05-20: scorecard, replay, hedge gap, scenario coverage, synthetic transparency, portfolio-first integration, commentary/IPS, simulator API; Session 10 regression bundle + docs sync. |

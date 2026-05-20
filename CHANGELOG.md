@@ -43,6 +43,50 @@ Omit empty categories.
 
 ### Added
 
+- Block 4 governance Session 11 (`RM-981`): **DEC-2026-05-20-003** concept registry boundary;
+  [candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md) § Concept candidates not in registry;
+  Phase 14 wave closure (baseline snapshot, methodology map verdict, registers); G9 / `KI-2026-05-20-007` closed.
+
+- Block 4 governance Session 10 (`RM-980`): [operational_runbook.md](docs/operational_runbook.md) §8
+  (factory exit codes, reason-code table, scenario playbooks); contextual `next_recommended_command` and
+  richer `candidate_factory_run.txt` in [candidate_factory.py](src/candidate_factory.py); G4 operator
+  playbook documented.
+
+- Block 4 governance Session 09 (`RM-979`): resumable candidate factory — `candidate_factory_manifest.json`,
+  `--resume` on `run_candidate_factory.py`, incremental manifest persistence per step, `resumed_from_manifest`
+  summary field; closes RM-921 resumable scope and G5; [candidate_factory_spec.md](docs/specs/candidate_factory_spec.md).
+
+- Block 4 governance Session 00 (`RM-970`): [Candidate Factory Methodology Map](docs/audits/2026-05-20_candidate_factory_methodology_map.md),
+  [Candidate Factory Baseline Snapshot](docs/audits/2026-05-20_candidate_factory_baseline_snapshot.md), active
+  [Candidate Portfolio Factory Post-Audit Roadmap](docs/exec_plans/2026-05-20_candidate_factory_post_audit_roadmap.md),
+  ROADMAP Phase 14 (`RM-970`–`RM-981`), TESTING.md governance bundle stub.
+
+- Block 4 governance Session 01 (`RM-971`): documentation sync — G1–G10 gap index and eight active
+  `KNOWN_ISSUES` entries mapped to Phase 14 `RM-972`–`RM-981`; [SPEC.md](SPEC.md) and [OUTPUTS.md](OUTPUTS.md)
+  link methodology map, layer spec scaffold, and governance ExecPlan; `KI-2026-05-19-005` cross-ref G4/G5.
+
+- Block 4 governance Session 08 (`RM-978`): golden contract tests —
+  `tests/fixtures/candidate_factory_run_golden_v1.json`,
+  `tests/fixtures/candidate_comparison_golden_v1.json`,
+  `tests/candidate_factory_golden_inputs.py`,
+  `tests/test_candidate_factory_contract.py`,
+  `tests/test_candidate_comparison_contract.py`; Phase 14 governance bundle finalized in [TESTING.md](TESTING.md).
+
+- Block 4 governance Session 07 (`RM-977`): robust paths disclosure — `src/candidate_robust_disclosure.py`,
+  factory `robust_paths_disclosure` on robust suite steps, comparison `construction_disclosure.robust_paths`,
+  operational runbook robust prerequisites; G8 / G10 and `KI-2026-05-20-005` / `006` closed.
+
+- Block 4 governance Session 06 (`RM-976`): config fingerprint freshness — `candidate_config_fingerprint`
+  on window snapshots, factory `config_fingerprint` / `stale_config` gating, comparison
+  `stale_config_fingerprint` unavailable reason; G2 / `KI-2026-05-20-002` closed.
+
+- Block 4 governance Session 05 (`RM-975`): [candidate_factory_layer_spec.md](docs/specs/candidate_factory_layer_spec.md)
+  active handoff for Block 4.1–4.9 (workflow, artifacts, sub-block map, Phase 14 gap table); G7 closed.
+
+- Block 4 governance Session 04 (`RM-974`): `construction_disclosure` on every
+  `candidate_comparison.json` row — passthrough from `baseline_weights_metadata.json`, builder
+  `summary.json`, policy/subject excerpts, and optional factory step; [candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md) v1.3.
+
 - Block 3 governance Session 11 (`RM-961` closure): Phase 13 wave closed — governance pytest bundle
   **90 passed**, `verify_docs` OK; baseline snapshot Session 11 section and G1–G10 table;
   [Stress Lab Methodology Governance Plan](docs/exec_plans/2026-05-20_stress_lab_methodology_governance_plan.md)
@@ -159,6 +203,19 @@ Omit empty categories.
   `conflicting_signals`, and `conflict_summary` (built after weakness map).
 
 ### Changed
+
+- Block 4 governance Session 04 (`RM-974`): comparison rows include `construction_disclosure`
+  (passthrough `baseline_weights_metadata.json`, builder `summary.json`, policy/subject excerpts,
+  optional factory step); closes G6 / `KI-2026-05-20-004`; [candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md) v1.3.
+
+- Block 4 governance Session 03 (`RM-973`): unchecked freshness rebuilds instead of `skipped_existing`;
+  comparison warns `candidate_freshness_unchecked_no_review_analysis_end:{candidate_id}` when review
+  `analysis_end` unknown; closes G3 / `KI-2026-05-20-003`; factory + comparison specs updated.
+
+- Block 4 governance Session 02 (`RM-972`): factory propagates builder `summary.json` `FAIL_*` into
+  `candidate_factory_run.json` `reason_code` (`builder_fail_config`, `builder_infeasible_universe`, …)
+  with optional `builder_status` / `builder_reason`; closes G1 / `KI-2026-05-20-001`;
+  [candidate_factory_spec.md](docs/specs/candidate_factory_spec.md) reason-code table updated.
 
 - Block 2 post-audit governance Session 01 / `RM-941`: documentation registers aligned with the
   deepening wave — `RM-932` marked Done in ROADMAP Phase 11; resolved RC/Kalman known issues removed

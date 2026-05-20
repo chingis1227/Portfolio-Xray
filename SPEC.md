@@ -143,6 +143,10 @@ Main report artifacts
 | Macro regime diagnostics | [docs/specs/macro_regime_spec.md](docs/specs/macro_regime_spec.md) |
 | Scenario Library and normalized scenario view | [docs/specs/scenario_library_spec.md](docs/specs/scenario_library_spec.md) |
 | Candidate and benchmark portfolios | [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md) |
+| Candidate portfolio factory orchestration | [docs/specs/candidate_factory_spec.md](docs/specs/candidate_factory_spec.md) |
+| Candidate Factory layer mapping (Block 4.1–4.9) | [docs/specs/candidate_factory_layer_spec.md](docs/specs/candidate_factory_layer_spec.md) |
+| Candidate Factory methodology map (Block 4 audit baseline; gaps G1–G10) | [docs/audits/2026-05-20_candidate_factory_methodology_map.md](docs/audits/2026-05-20_candidate_factory_methodology_map.md) |
+| Candidate Factory governance ExecPlan (Phase 14 Sessions 00–11) | [docs/exec_plans/2026-05-20_candidate_factory_post_audit_roadmap.md](docs/exec_plans/2026-05-20_candidate_factory_post_audit_roadmap.md) |
 | Canonical candidate comparison artifact | [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md) |
 | Robustness Scorecard (diagnostic; `src/robustness_scorecard.py`) | [docs/specs/robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md) |
 | Portfolio Health Score | [docs/specs/portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md), [src/portfolio_health_score.py](src/portfolio_health_score.py) |

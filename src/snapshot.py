@@ -11,6 +11,7 @@ Production workflow (single source of truth with run_result.json):
 """
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 from datetime import datetime
@@ -18,6 +19,8 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+
+from src.config_schema import PortfolioConfig
 
 from src.portfolio_xray import (
     build_portfolio_xray_v2,
@@ -31,6 +34,60 @@ from src.windows import slice_window
 
 REPORT_DECIMALS = 3
 TOP_RC_N = 5
+CANDIDATE_CONFIG_FINGERPRINT_KEY = "candidate_config_fingerprint"
+
+
+def _normalize_fingerprint_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(k): _normalize_fingerprint_value(v) for k, v in sorted(value.items())}
+    if isinstance(value, (list, tuple)):
+        return [_normalize_fingerprint_value(v) for v in value]
+    if isinstance(value, float):
+        return round(value, 12)
+    return value
+
+
+def build_candidate_config_fingerprint_payload(cfg: PortfolioConfig) -> dict[str, Any]:
+    """
+    Canonical inputs for candidate freshness beyond analysis_end (RM-976 / G2).
+
+    Hashes investor currency, ticker universe, risk budgeting, and weight bound fields only.
+    """
+    tickers = sorted(
+        {str(t).strip().upper() for t in (cfg.tickers or []) if isinstance(t, str) and str(t).strip()}
+    )
+    return _normalize_fingerprint_value(
+        {
+            "investor_currency": str(cfg.investor_currency or "").strip().upper(),
+            "tickers": tickers,
+            "risk_budgeting": dict(cfg.risk_budgeting or {}),
+            "min_single_security_weight_pct": cfg.min_single_security_weight_pct,
+            "max_single_security_weight_pct": cfg.max_single_security_weight_pct,
+        }
+    )
+
+
+def compute_candidate_config_fingerprint(cfg: PortfolioConfig) -> str:
+    """SHA-256 of canonical JSON fingerprint payload."""
+    payload = build_candidate_config_fingerprint_payload(cfg)
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def snapshot_config_fingerprint(snapshot: dict[str, Any] | None) -> str | None:
+    if not snapshot:
+        return None
+    fp = snapshot.get(CANDIDATE_CONFIG_FINGERPRINT_KEY)
+    return str(fp) if fp else None
+
+
+def attach_candidate_config_fingerprint(
+    snapshot: dict[str, Any],
+    fingerprint: str,
+) -> dict[str, Any]:
+    out = dict(snapshot)
+    out[CANDIDATE_CONFIG_FINGERPRINT_KEY] = fingerprint
+    return out
 
 
 def _rc_asset_top(rc_series: pd.Series, top_n: int = TOP_RC_N) -> list[dict[str, Any]]:
@@ -151,6 +208,7 @@ def build_snapshot(
     rc_csv_by_window: dict[str, str] | None = None,
     corr_csv_by_window: dict[str, str] | None = None,
     resolved_config: dict[str, Any] | None = None,
+    candidate_config_fingerprint: str | None = None,
 ) -> dict[str, Any]:
     """
     Build the single final snapshot dict.
@@ -259,6 +317,8 @@ def build_snapshot(
         snapshot["windows"] = windows
     if resolved_config is not None:
         snapshot["resolved_config"] = resolved_config
+    if candidate_config_fingerprint:
+        snapshot[CANDIDATE_CONFIG_FINGERPRINT_KEY] = candidate_config_fingerprint
     return snapshot
 
 
@@ -357,6 +417,7 @@ def build_snapshot_for_window(
     run_timestamp: str | None = None,
     stress_portfolio_params: dict[str, Any] | None = None,
     analytics: dict[str, Any] | None = None,
+    candidate_config_fingerprint: str | None = None,
 ) -> dict[str, Any]:
     """
     Build a single snapshot for one window (3y, 5y, or 10y). Contains everything for that horizon.
@@ -395,6 +456,8 @@ def build_snapshot_for_window(
     }
     if analytics:
         snapshot["analytics"] = analytics
+    if candidate_config_fingerprint:
+        snapshot[CANDIDATE_CONFIG_FINGERPRINT_KEY] = candidate_config_fingerprint
     return snapshot
 
 

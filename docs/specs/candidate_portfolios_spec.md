@@ -42,7 +42,8 @@ Implemented candidate and benchmark families include:
 Orchestration of the per-family builder scripts (default profiles, run summary, handoff to
 comparison) is defined in [candidate_factory_spec.md](candidate_factory_spec.md). The factory
 invokes the scripts listed in **Candidate Families** above; it does not change their formulas.
-Implementation: Session 11 (`run_candidate_factory.py`); spec accepted in post-audit Session 10.
+Implementation: `run_candidate_factory.py` (post-audit Session 11); operator playbooks in
+[operational_runbook.md](../operational_runbook.md) §8 (Phase 14 Session 10).
 
 ## Comparison Artifact
 
@@ -51,6 +52,29 @@ multi-candidate table is [candidate_comparison.json](../../OUTPUTS.md) under `ou
 governed by [candidate_comparison_spec.md](candidate_comparison_spec.md). That contract includes
 `analysis_subject`, legacy policy and current rows when materialized, benchmarks, and optimizer
 candidates with explicit `unavailable` status when folders are missing.
+
+## Concept candidates not in registry
+
+Non-binding product names in [DIAGNOSTIC_PRODUCT_CONCEPT.md](../DIAGNOSTIC_PRODUCT_CONCEPT.md) §4–5
+must not be treated as shipped `candidate_id` values. The implementation registry is
+`_REGISTRY_ROWS` in `src/candidate_comparison.py` (18 rows including `analysis_subject`, `policy`,
+`current`, and optimizer/benchmark families above). Governance: **DEC-2026-05-20-003**, Phase 14
+Session 11 (`RM-981`).
+
+| Concept id | Product reference | Status | Rationale | Existing overlap / workflow |
+| --- | --- | --- | --- | --- |
+| `concept_custom_constraints` | §4 Custom Constraints | **deferred** | No user-defined constraint builder or factory step in V1. | Feasibility bounds live in [feasibility_constraints_spec.md](feasibility_constraints_spec.md); policy path uses mandate boxes. |
+| `concept_tactical_tilt_menu` | §4 Tactical Tilt variant | **declined** | Not a standalone comparison hypothesis; tilts apply after policy release. | [view_after_optimization_spec.md](view_after_optimization_spec.md), `run_view_after_optimization.py`. |
+| `concept_max_sharpe` | §5 Max Sharpe | **deferred** | No `run_max_sharpe.py`; Sharpe-max with project bounds needs spec + quant review. | Constrained optimizers (min variance, max diversification, robust MV) remain the shipped menu. |
+| `concept_max_return_under_risk` | §5 Max Return under Risk Constraint | **covered_by_existing** | Production max-return path is legacy policy optimization, not factory. | `run_optimization.py` + Main `policy` row (portfolio-first: legacy-only when `analysis_subject` exists). |
+| `concept_drawdown_controlled` | §5 Drawdown-controlled | **deferred** | No drawdown-target optimizer candidate script. | Drawdown metrics in snapshots/stress; no mandate-binding DD optimizer in factory. |
+| `concept_macro_resilient` | §5 Macro-resilient | **deferred** | No dedicated macro-resilient weight builder. | Macro/regime diagnostics are non-binding overlays per [macro_regime_spec.md](macro_regime_spec.md). |
+| `concept_stress_test_optimized_menu` | §5 Stress-test optimized | **covered_by_existing** (partial) | Scenario-robust weights are a candidate, not a second menu id. | `robust_scenario` (`run_robust_scenario_optimization.py`); separate standalone id **deferred**. |
+| `concept_tax_turnover_aware` | §5 Tax-aware / turnover-aware | **deferred** | Explicitly “later versions” in product concept. | Turnover appears in trade-off/action artifacts, not candidate construction. |
+
+**Adding a row:** requires accepted spec amendment, builder script, factory profile entry, golden
+fixture update, DEC (or supersede DEC-2026-05-20-003 for that id), and roadmap row — not product
+concept text alone.
 
 ## Detailed Ownership
 

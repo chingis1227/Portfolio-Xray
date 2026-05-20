@@ -65,6 +65,14 @@ def main(argv: list[str] | None = None) -> int:
         help="Stop factory on first failed step.",
     )
     parser.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "Resume from candidate_factory_manifest.json: skip succeeded and "
+            "fresh skipped_existing steps when run checksum matches."
+        ),
+    )
+    parser.add_argument(
         "--then-compare",
         action="store_true",
         help="Run comparison and decision package after factory completes.",
@@ -98,6 +106,7 @@ def main(argv: list[str] | None = None) -> int:
             skip_existing=args.skip_existing,
             force=args.force,
             fail_fast=args.fail_fast,
+            resume=args.resume,
             config_path=config_path if config_path.is_file() else None,
         )
     except FactoryValidationError as exc:

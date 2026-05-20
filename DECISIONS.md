@@ -60,6 +60,20 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-05-20-003
+Title: Concept-only candidate families — registry boundary (Block 4 P5)
+
+- Status: accepted
+- Date: 2026-05-20
+- Decision: Product-concept candidate and optimizer variants that are **not** in `_REGISTRY_ROWS` (`src/candidate_comparison.py`) remain **out of scope** for V1 factory and comparison until a future accepted spec adds a `candidate_id`, builder script, and DEC. Each listed concept id has an explicit status in [candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md) § Concept candidates not in registry: **declined** (use a different workflow), **deferred** (future builder/spec), or **covered_by_existing** (partial overlap with shipped ids). No silent registry expansion from [DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) alone.
+- Context: Phase 14 governance gap G9 — concept docs name Max Sharpe, tactical tilt, custom constraints, drawdown-controlled, macro-resilient, and stress-test-optimized menu rows that do not exist as comparison registry entries, creating drift vs `_REGISTRY_ROWS`.
+- Rationale: Prevents operators and agents from assuming missing builders are bugs; keeps the 18-row registry the implementation truth; tactical tilt stays post-policy (`view_after_optimization`), not a factory hypothesis; stress-robust menu overlap is disclosed via `robust_scenario` rather than a duplicate id.
+- Alternatives considered: Add placeholder `unavailable` registry rows for every concept name (rejected — inflates menu without builders); ignore concept drift in docs only (rejected — G9); implement all concept optimizers in Session 11 (rejected — non-goals for Phase 14).
+- Assumptions: New families require quant review, factory profile update, golden fixture refresh, and a superseding or companion DEC; registry length stays 18 until then.
+- Consequences: G9 / `KI-2026-05-20-007` closed; methodology map P5 documented; Phase 14 Session 11 (`RM-981`) wave closure.
+- Related documents: [candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md) (appendix table), [candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [candidate_factory_methodology_map.md](docs/audits/2026-05-20_candidate_factory_methodology_map.md), [view_after_optimization_spec.md](docs/specs/view_after_optimization_spec.md), [docs/exec_plans/2026-05-20_candidate_factory_post_audit_roadmap.md](docs/exec_plans/2026-05-20_candidate_factory_post_audit_roadmap.md) Session 11.
+- Review trigger: Revisit when product requests a new comparison `candidate_id` with an accepted builder spec and implementation plan.
+
 Decision ID: DEC-2026-05-20-002
 Title: Defer crypto_shock and volatility_shock synthetic scenarios in run_stress
 

@@ -44,7 +44,45 @@ below remains available for compatibility and historical policy runs.
 **Trust rule:** stale candidates are marked `unavailable` in comparison — they are not silently scored.
 **Interpretation rule:** `candidate_menu.is_partial_menu` and decision-package summary text disclose when selection used a **reduced** menu (core vs product `default_v1`) or when intended candidates are missing. Rankings apply only to scored rows in the intended menu.
 
-Further deferred work: resumable factory progress and optional parallel builders ([ROADMAP.md](ROADMAP.md) `RM-921`).
+**Resume after interrupt:** when a full factory run stops mid-menu, rerun with the same profile and
+candidate list:
+
+```bash
+python run_candidate_factory.py --profile default_v1 --resume
+```
+
+`candidate_factory_manifest.json` under `{output_dir_final}/` records completed steps; `--resume`
+skips prior `succeeded` and fresh `skipped_existing` rows when `run_checksum` matches (profile,
+menu, `analysis_end`, `config_fingerprint`). Failed steps are retried. Use `--force` to ignore
+manifest skips. Optional parallel builders remain deferred ([ROADMAP.md](ROADMAP.md) `RM-921` non-resume scope).
+
+### Robust suite prerequisites (Block 4 — `robust_suite` profile)
+
+The factory **does not** run λ calibration. Robust MV builders (`robust_mv_constrained`, `robust_mv_uncapped`) read λ from:
+
+1. `analysis_robust_mv_lambda_calibration/selected_lambda.txt` (after `python run_robust_mv_lambda_calibration.py`), or
+2. `--robust-mv-lambda` on the builder CLI (factory does not pass this flag).
+
+Before a **full** review that includes `robust_suite`, run λ calibration once per project root (or confirm `selected_lambda.txt` exists). Each factory step and comparison row for robust MV candidates carries `robust_paths_disclosure` / `construction_disclosure.robust_paths` with `lambda_resolution_key` and `lambda_ready_for_build`.
+
+**`robust_scenario`** is a two-script chain that depends on **Main** stress artifacts, not on the candidate folder:
+
+| Prerequisite | Location | Produced by |
+| --- | --- | --- |
+| `scenario_library_normalized.json` | `{output_dir_final}/` | `run_report.py` / stress pipeline on Main |
+| `stress_report.json` | `{output_dir_final}/` | Same |
+
+If either file is missing, the factory step is `skipped_dependency` (whole factory continues unless `--fail-fast`). This is **intentional shared calibration**: scenario weights use the Main scenario library and portfolio factor betas from the policy/Main report path, not a per-candidate stress library. Per-candidate `stress_report.json` after a successful build is a separate diagnostic for that portfolio only.
+
+**Operator sequence for full menu with robust scenario:**
+
+1. `python run_portfolio_review.py --mode full` (subject + core candidates), **or** ensure Main already has fresh `stress_report.json` and `scenario_library_normalized.json` from `python run_optimization.py` / `python run_report.py`.
+2. `python run_robust_mv_lambda_calibration.py` when robust MV candidates are in scope.
+3. Run factory (`run_portfolio_review.py --mode full` or `run_candidate_factory.py --profile default_v1`).
+
+Inspect `candidate_factory_run.json` → `steps[]` → `robust_paths_disclosure` and `candidate_comparison.json` → `construction_disclosure.robust_paths` when λ source or Main prerequisites are unclear.
+
+**Operator playbook (reason codes, exit codes, recovery):** see [section 8](#8-candidate-portfolio-factory-operator-playbook) below.
 
 ## 1. Legacy File-First MVP Policy Workflow
 
@@ -161,3 +199,128 @@ For a deliberate legacy policy run, use `python run_optimization.py` and inspect
 4. For legacy policy rebalancing, run the policy flow intentionally, then use
    `run_rebalance.py --current current_positions.yml --target <path_to_portfolio_weights.yml>`.
    Use `--threshold` and `--min-trade` when needed. Consider turnover before deciding to rebalance.
+
+## 8. Candidate Portfolio Factory operator playbook
+
+Use this section when interpreting `candidate_factory_run.json`, `candidate_factory_run.txt`, or the
+factory CLI exit code. Canonical field definitions: [candidate_factory_spec.md](specs/candidate_factory_spec.md).
+Layer handoff: [candidate_factory_layer_spec.md](specs/candidate_factory_layer_spec.md).
+
+### 8.1 Standalone factory CLI
+
+```bash
+python run_candidate_factory.py
+python run_candidate_factory.py --profile default_v1 --resume
+python run_candidate_factory.py --profile core_v1 --then-compare
+python run_candidate_factory.py --candidates equal_weight,risk_parity --force
+python run_candidate_factory.py --profile default_v1 --fail-fast
+```
+
+| Flag | When to use |
+| --- | --- |
+| `--profile core_v1` | Six benchmark/risk-budget builders (routine). |
+| `--profile default_v1` | Full 16-builder menu (optimizers + robust). |
+| `--candidates ID,...` | Subset or custom order; sets profile to `explicit_list`. |
+| `--skip-existing` (default) | Reuse fresh `snapshot_10y.json` per candidate. |
+| `--no-skip-existing` / `--force` | Rebuild after config/universe change or bad artifacts. |
+| `--resume` | Continue after interrupt; reads `candidate_factory_manifest.json`. |
+| `--fail-fast` | Stop on first `failed` step (debugging). |
+| `--then-compare` | Run comparison/decision package after factory. |
+
+Portfolio-first review wraps the same factory via `run_portfolio_review.py` (core vs full profile).
+
+### 8.2 Process exit codes (`run_candidate_factory.py`)
+
+| Code | Meaning | Operator action |
+| --- | --- | --- |
+| **0** | No `failed` steps (skips and `skipped_dependency` are OK). | Run comparison if not already done (`--then-compare` or `run_compare_variants.py`). |
+| **1** | One or more steps `failed`, or `--fail-fast` stopped the run. | Open `candidate_factory_run.txt` → failed `reason_code` rows; follow playbooks in §8.5; rerun with `--resume` after fix. |
+| **2** | Config/registry validation before any builder (bad profile, unknown id, missing `config.yml`). | Fix `config.yml` or CLI args; no manifest update for failed builders. |
+
+`candidate_factory_run.txt` repeats the factory-only exit hint (`0` or `1`). Comparison failures with
+`--then-compare` add a `comparison_failed:` warning but do not change the factory exit code when
+builders succeeded.
+
+### 8.3 Step statuses (per `steps[]`)
+
+| `status` | Meaning |
+| --- | --- |
+| `succeeded` | Builder finished; `snapshot_10y.json` present and matches review `analysis_end` + `config_fingerprint`. |
+| `failed` | Builder or post-build validation failed; see `reason_code`. |
+| `skipped_existing` | Fresh snapshot reused (`--skip-existing`). |
+| `skipped_dependency` | Prerequisite missing (e.g. Main stress files for `robust_scenario`). |
+| `skipped_profile` | Reserved; not used in V1 profiles. |
+
+### 8.4 Reason codes (`reason_code`)
+
+| Code | Typical cause | Recovery |
+| --- | --- | --- |
+| `skipped_existing` | Fresh snapshot on disk | None — intentional skip. |
+| `skipped_dependency` | Main `stress_report.json` / `scenario_library_normalized.json` or λ file missing | §8.5 playbook **Robust / dependency skip**; factory continues unless `--fail-fast`. |
+| `subprocess_failed` | Builder exited non-zero; no `FAIL_*` in `summary.json` | Inspect builder logs; open `{artifact_root}/summary.json` if present; fix data/config; `--resume`. |
+| `missing_snapshot_after_build` | Exit 0 but no `snapshot_10y.json` | Inspect builder output folder; rerun builder or `--force` for that id. |
+| `stale_snapshot_after_build` | Snapshot `analysis_end` still wrong after build | Confirm `analysis_subject` refreshed; `--no-skip-existing` for that candidate. |
+| `stale_config_fingerprint_after_build` | Snapshot missing/wrong `candidate_config_fingerprint` | Universe/bounds/currency changed — `--no-skip-existing` or `--force`. |
+| `unknown_candidate_id` | Typo in `--candidates` | Fix id against [candidate_factory_spec.md](specs/candidate_factory_spec.md) registry table. |
+| `builder_fail_config` | Builder `FAIL_CONFIG` | Fix `config.yml` / profile per builder `reason` in `summary.json`. |
+| `builder_fail_data` | Builder `FAIL_DATA` | Data download/cache; young ETF / NaN policy per [data_policy_spec.md](specs/data_policy_spec.md). |
+| `builder_infeasible_universe` | `FAIL_INFEASIBLE_UNIVERSE` | Universe too small or illiquid for that optimizer family. |
+| `builder_infeasible_targets` | `FAIL_INFEASIBLE_TARGETS` | Soft targets infeasible — review policy targets (diagnostic). |
+| `builder_infeasible_bounds` | `FAIL_INFEASIBLE_BOUNDS` | Weight bounds conflict — review min/max per asset. |
+| `builder_infeasible_vol_target` | `FAIL_INFEASIBLE_VOL_TARGET` | Vol target not achievable. |
+| `builder_fail_numerical` | `FAIL_NUMERICAL` | Solver/numerical issue — retry; check cov/returns panel. |
+| `builder_fail_no_assets` | `FAIL_NO_ASSETS` | No eligible assets after filters. |
+| `builder_failed` | Other builder `FAIL_*` | Read `builder_status` / `builder_reason` on the step. |
+
+When `builder_status` is present on a failed step, treat builder `summary.json` as the detailed
+diagnostic; factory `reason_code` is the stable machine label for comparison and run summaries.
+
+### 8.5 Scenario playbooks
+
+**Interrupted full menu (G4 / RM-979)**
+
+1. Confirm `analysis_subject` exists and `analysis_end` is current.
+2. `python run_candidate_factory.py --profile default_v1 --resume` (same profile and menu as the interrupted run).
+3. If warning `resume_manifest_stale:run_checksum_mismatch_full_execution`, config or menu changed — use `--no-skip-existing` without `--resume` or delete `candidate_factory_manifest.json` and rerun.
+
+**Config or universe change (G2)**
+
+1. After editing `config.yml` tickers, bounds, or `investor_currency`, do **not** trust old candidate folders.
+2. `python run_portfolio_review.py --no-skip-existing` or `run_candidate_factory.py --profile <profile> --no-skip-existing`.
+3. In comparison, rows with `unavailable_reason` containing `stale_config_fingerprint` need rebuild.
+
+**Builder infeasible / data failure (G1)**
+
+1. Open `{artifact_root}/summary.json` and step `builder_reason`.
+2. Adjust inputs only when mandate/data policy allows; factory does not change optimizer formulas.
+3. `python run_candidate_factory.py --profile <profile> --resume` after fix.
+
+**Robust / dependency skip (G8, G10)**
+
+1. `robust_mv_*`: run `python run_robust_mv_lambda_calibration.py` or confirm `analysis_robust_mv_lambda_calibration/selected_lambda.txt`.
+2. `robust_scenario`: refresh Main `stress_report.json` and `scenario_library_normalized.json` (`run_report.py` on Main).
+3. Rerun factory with `--resume` or targeted `--candidates robust_scenario`.
+
+**Partial menu / core vs full (G4, RM-920)**
+
+1. Read `candidate_comparison.json` → `candidate_menu` (`is_partial_menu`, `intended_candidate_ids`, `available_candidate_ids`).
+2. Do not treat rankings as covering `default_v1` when only `core_v1` ran.
+3. For full menu: `python run_portfolio_review.py --mode full`.
+
+**Comparison not updated**
+
+1. Factory exit 0 but no `candidate_comparison.json` — run `python run_compare_variants.py` or factory `--then-compare`.
+2. Warning `comparison_failed:` — read nested message; fix comparison inputs; rerun compare only.
+
+### 8.6 Artifacts to open first
+
+| Question | Open |
+| --- | --- |
+| Which step failed and why? | `candidate_factory_run.txt` (summary + reason codes) or `steps[]` in JSON |
+| Resume state? | `candidate_factory_manifest.json` (`completed_steps`, `run_checksum`) |
+| Fair comparison ready? | `candidate_comparison.json` row `availability` / `unavailable_reason` |
+| Construction hypothesis? | Row `construction_disclosure` (not recomputed in factory) |
+| Robust λ / Main deps? | Step `robust_paths_disclosure` or §0 robust suite table |
+
+`next_recommended_command` in the factory run JSON is contextual: failed runs suggest `--resume`;
+stale manifest suggests full rebuild; success suggests `run_compare_variants.py`.

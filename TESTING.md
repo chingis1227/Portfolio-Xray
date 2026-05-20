@@ -159,32 +159,57 @@ python -m pytest tests/test_portfolio_xray.py tests/test_portfolio_xray_threshol
 python scripts/verify_docs.py
 ```
 
-Golden fixture (regenerate only after intentional `portfolio_xray.json` contract changes):
+## Candidate Factory Governance Wave Bundle (Phase 14)
+
+Governance wave (Phase 14, Sessions 00–11) **closed** 2026-05-20 per
+[Candidate Portfolio Factory Post-Audit Roadmap](docs/exec_plans/2026-05-20_candidate_factory_post_audit_roadmap.md).
+Methodology baseline:
+[docs/audits/2026-05-20_candidate_factory_methodology_map.md](docs/audits/2026-05-20_candidate_factory_methodology_map.md).
+Baseline checklist:
+[docs/audits/2026-05-20_candidate_factory_baseline_snapshot.md](docs/audits/2026-05-20_candidate_factory_baseline_snapshot.md).
+
+Re-run this bundle after Block 4 factory/comparison contract changes (reason codes, freshness,
+`construction_disclosure`, config fingerprint, robust paths, resume manifest, or registry/menu schema):
 
 ```bash
-python tests/portfolio_xray_golden_inputs.py
-python -m pytest tests/test_portfolio_xray_contract.py -q
+python -m pytest tests/test_candidate_factory_contract.py tests/test_candidate_comparison_contract.py tests/test_candidate_factory.py tests/test_candidate_comparison.py tests/test_portfolio_review_workflow.py -q
+python scripts/verify_docs.py
 ```
 
-After Session 04+ factor inference changes, confirm `test_portfolio_xray_factor_regression_inference_panel`
-and `test_portfolio_xray_factor_regression_inference_missing_warning` pass in that bundle.
-
-After Session 05 (`RM-945`) multi-window/TTR changes, confirm
-`test_portfolio_xray_multi_window_metrics_panel`, `test_portfolio_xray_ttr_in_primary_risk_metrics`, and
-`test_load_portfolio_windows_from_dir` pass in that bundle.
-
-After Session 08 (`RM-948`) `volatility_spike` factor-only contract, confirm
-`test_volatility_spike_weakness_factor_only_methodology` passes in that bundle.
-
-After Session 09 (`RM-949`) golden contract tests, confirm `tests/test_portfolio_xray_contract.py`
-and `tests/fixtures/portfolio_xray_golden_v2.json` stay aligned (`test_live_build_matches_golden_document`).
-
-When `portfolio_xray.json` or sibling subject artifacts change intentionally, refresh the
-representative subject run and update baseline fingerprints per the compare command in
-[docs/audits/2026-05-20_portfolio_xray_baseline_snapshot.md](docs/audits/2026-05-20_portfolio_xray_baseline_snapshot.md):
+Golden fixtures (regenerate only after intentional `candidate_factory_run_v1` /
+`candidate_comparison_v1` contract changes):
 
 ```bash
-python run_report.py --materialize-analysis-subject
+python tests/candidate_factory_golden_inputs.py
+python -m pytest tests/test_candidate_factory_contract.py tests/test_candidate_comparison_contract.py -q
+```
+
+Committed fixtures:
+
+- `tests/fixtures/candidate_factory_run_golden_v1.json`
+- `tests/fixtures/candidate_comparison_golden_v1.json`
+
+After Session 02+ builder reason mapping, confirm `test_builder_reason_mapping_contract` and
+`test_factory_reason_from_builder_summary_mapping` pass in this bundle.
+
+After Session 04+ `construction_disclosure`, confirm comparison disclosure passthrough tests and
+`test_golden_comparison_post_audit_surface` (`equal_weight` available, `risk_parity` partial).
+
+After Session 06+ config fingerprint, confirm `test_stale_config_fingerprint_*` and factory
+`test_stale_config_fingerprint_rebuilds_same_analysis_end` pass in this bundle.
+
+After Session 07+ robust paths, confirm factory robust disclosure tests and
+`test_robust_scenario_construction_disclosure_main_prerequisites` pass in this bundle.
+
+Session 11 wave closure (2026-05-20): governance bundle **77 passed**; family spot-check **19 passed**;
+`verify_docs` OK. Phase 14 (`RM-970`–`RM-981`) complete.
+
+When `candidate_factory_run.json` or `candidate_comparison.json` change intentionally on a live
+run, refresh baseline fingerprints per
+[docs/audits/2026-05-20_candidate_factory_baseline_snapshot.md](docs/audits/2026-05-20_candidate_factory_baseline_snapshot.md):
+
+```bash
+python run_portfolio_review.py --mode core
 ```
 
 ## Artifact Checks

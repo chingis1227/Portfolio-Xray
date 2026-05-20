@@ -24,7 +24,11 @@ Stress Lab methodology governance (RM-951 -> RM-961): **closed** as of 2026-05-2
 Plan: [Stress Lab Methodology Governance Plan](exec_plans/2026-05-20_stress_lab_methodology_governance_plan.md).
 Methodology map: [Stress Lab Methodology Map](audits/2026-05-20_stress_lab_methodology_map.md).
 Baseline: [Stress Lab Baseline Snapshot](audits/2026-05-20_stress_lab_baseline_snapshot.md).
-Deferred follow-up: factory resumability / progress logging (RM-921).
+Candidate Portfolio Factory governance (RM-970 -> RM-981): **closed** as of 2026-05-20 (Sessions 00-11).
+Plan: [Candidate Portfolio Factory Post-Audit Roadmap](exec_plans/2026-05-20_candidate_factory_post_audit_roadmap.md).
+Methodology map: [Candidate Factory Methodology Map](audits/2026-05-20_candidate_factory_methodology_map.md).
+Baseline: [Candidate Factory Baseline Snapshot](audits/2026-05-20_candidate_factory_baseline_snapshot.md).
+Note: RM-921 resumable factory is scheduled in Phase 14 Session 09 (RM-979), not deferred indefinitely.
 ```
 
 New diagnostic layers must remain non-binding unless a canonical spec explicitly changes Selection or
@@ -266,7 +270,7 @@ builders; partial menus are visible in factory, comparison, and decision outputs
 | ID | Status | When | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | RM-920 | Done | X-Ray Session 09 | Split portfolio-first review into **core-run** and **full-run** CLI modes/profiles (`core_v1` vs `default_v1`). | RM-911. | [run_portfolio_review.py](../run_portfolio_review.py), [portfolio_review_workflow.py](../src/portfolio_review_workflow.py), [candidate_factory.py](../src/candidate_factory.py), [operational_runbook.md](operational_runbook.md) | `--mode core` (default) and `--mode full` | `tests/test_portfolio_review_workflow.py`; operational runbook. |
-| RM-921 | Deferred | After RM-920 or in parallel | Improve factory orchestration operations: progress logging, resumable steps, clearer per-candidate duration in `candidate_factory_run.json`, optional parallel execution only with isolation guarantees. | RM-902 freshness contract. | [candidate_factory.py](../src/candidate_factory.py), [candidate_factory_spec.md](specs/candidate_factory_spec.md) | Operators can resume or monitor long runs without guessing state | Manual long-run smoke; focused factory tests for resume/status fields. |
+| RM-921 | Done (resumable scope) | Session 09 (`RM-979`) | Improve factory orchestration operations: resumable steps via manifest + `--resume` (shipped Session 09). Remaining: optional parallel execution with isolation guarantees. | RM-902 freshness contract; RM-979. | [candidate_factory.py](../src/candidate_factory.py), [candidate_factory_spec.md](specs/candidate_factory_spec.md) | Operators can resume long runs without redoing succeeded steps | `tests/test_candidate_factory.py` resume tests. |
 | RM-922 | Done | X-Ray Session 09 | Add explicit **partial candidate menu** disclosure in comparison and decision-package outputs. | RM-920. | [candidate_comparison.py](../src/candidate_comparison.py), [decision_package_reporting.py](../src/decision_package_reporting.py), [candidate_comparison_spec.md](specs/candidate_comparison_spec.md) | `candidate_menu` block + decision summary | `tests/test_candidate_comparison.py`. |
 
 **Direction (not yet implemented):** cache/reuse candidates only when `analysis_end`, config fingerprint,
@@ -358,6 +362,35 @@ Governed by the active
 | RM-960 | Done | Session 09 | Optional custom_shock run artifact. | RM-959. | [stress.py](../src/stress.py), stress spec §12.3 | `custom_shock_runs.json` opt-in | `tests/test_stress_simulator_contract.py`. |
 | RM-961 | Done | Session 11 | Downstream integration + verification closure. | RM-960. | [snapshot.py](../src/snapshot.py), [candidate_comparison.py](../src/candidate_comparison.py), [portfolio_commentary.py](../src/portfolio_commentary.py), [TESTING.md](../TESTING.md), baseline snapshot | Session 10: mirrors; Session 11: 90-test bundle + baseline closure | `tests/test_stress_downstream_integration.py` + governance pytest bundle (90 passed) + verify_docs. |
 
+## Phase 14: Candidate Portfolio Factory Governance
+
+Goal: make Block 4 (Candidate Portfolio Factory / Portfolio Menu) **audit-grade** — explicit factory
+failure reasons, config-aware freshness, construction disclosure in comparison, layer spec handoff,
+resumable long runs, and a regression bundle—without new candidate types, UI, or optimizer changes.
+
+Exit condition: methodology map and governance ExecPlan in repo; gaps G1, G3, G6, G8, G10 addressed;
+P1–P4 implemented per accepted specs; P5 documented; verification bundle and baseline snapshot updated.
+
+Governed by the active
+[Candidate Portfolio Factory Post-Audit Roadmap](exec_plans/2026-05-20_candidate_factory_post_audit_roadmap.md)
+(Sessions 00–11). Methodology baseline:
+[Candidate Factory Methodology Map](audits/2026-05-20_candidate_factory_methodology_map.md).
+
+| ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| RM-970 | Done | Session 00 | Project memory: methodology map link, ExecPlan, registers, ROADMAP Phase 14, baseline snapshot, TESTING stub. | 2026-05-20 methodology audit. | [methodology map](audits/2026-05-20_candidate_factory_methodology_map.md), [baseline snapshot](audits/2026-05-20_candidate_factory_baseline_snapshot.md), [governance ExecPlan](exec_plans/2026-05-20_candidate_factory_post_audit_roadmap.md) | Active handoff for Sessions 01–11 | `python scripts/verify_docs.py`; factory/comparison/workflow pytest stub. |
+| RM-971 | Done | Session 01 | Documentation sync (CHANGELOG, KNOWN_ISSUES, SPEC links). | RM-970. | [CHANGELOG](../CHANGELOG.md), [KNOWN_ISSUES](../KNOWN_ISSUES.md), [SPEC.md](../SPEC.md), [OUTPUTS.md](../OUTPUTS.md) | Registers match audit G1–G10 | `python scripts/verify_docs.py`. |
+| RM-972 | Done | Session 02 | Builder FAIL_* → factory `reason_code` (G1, P1). | RM-971. | [candidate_factory.py](../src/candidate_factory.py), [candidate_factory_spec.md](specs/candidate_factory_spec.md) | Explicit infeasible/config reasons in run JSON | `tests/test_candidate_factory.py` (16 passed). |
+| RM-973 | Done | Session 03 | Freshness when `analysis_end` missing (G3). | RM-972. | [candidate_factory.py](../src/candidate_factory.py), [candidate_comparison_spec.md](specs/candidate_comparison_spec.md) | No silent unchecked skip | `tests/test_candidate_factory.py` + `tests/test_candidate_comparison.py` (36 passed). |
+| RM-974 | Done | Session 04 | `construction_disclosure` in comparison (G6, P3). | RM-971. | [candidate_comparison.py](../src/candidate_comparison.py), [candidate_comparison_spec.md](specs/candidate_comparison_spec.md) | Metadata passthrough on rows | `tests/test_candidate_comparison.py` (40 passed). |
+| RM-975 | Done | Session 05 | `candidate_factory_layer_spec.md`. | RM-974. | [candidate_factory_layer_spec.md](specs/candidate_factory_layer_spec.md) | Block 4.1–4.9 handoff doc | `verify_docs`. |
+| RM-976 | Done | Session 06 | Config fingerprint freshness (G2, P2). | RM-975. | [candidate_factory.py](../src/candidate_factory.py), [snapshot.py](../src/snapshot.py), comparison spec | `stale_config_fingerprint` when mismatch | new + existing tests. |
+| RM-977 | Done | Session 07 | Robust MV λ + robust_scenario Main deps (G8, G10). | RM-975. | [candidate_robust_disclosure.py](../src/candidate_robust_disclosure.py), [operational_runbook.md](operational_runbook.md) | `robust_paths_disclosure` + runbook | factory/comparison robust tests. |
+| RM-978 | Done | Session 08 | Golden contract tests + TESTING bundle finalize. | RM-972–RM-977 stable. | [tests/fixtures/candidate_factory_run_golden_v1.json](../tests/fixtures/candidate_factory_run_golden_v1.json), [tests/fixtures/candidate_comparison_golden_v1.json](../tests/fixtures/candidate_comparison_golden_v1.json), [TESTING.md](../TESTING.md) | Golden JSON + bundle command | `python -m pytest tests/test_candidate_factory_contract.py tests/test_candidate_comparison_contract.py tests/test_candidate_factory.py tests/test_candidate_comparison.py tests/test_portfolio_review_workflow.py -q` (71 passed Session 08). |
+| RM-979 | Done | Session 09 | Resumable factory (P4, closes RM-921 resumable scope). | RM-978. | [candidate_factory.py](../src/candidate_factory.py), [run_candidate_factory.py](../run_candidate_factory.py) | `--resume` + `candidate_factory_manifest.json` | factory resume tests (Session 09). |
+| RM-980 | Done | Session 10 | Operational runbook factory UX. | RM-979. | [operational_runbook.md](operational_runbook.md), [candidate_factory.py](../src/candidate_factory.py) | §8 playbooks; contextual `next_recommended_command`; richer `candidate_factory_run.txt` | doc review + factory tests. |
+| RM-981 | Done | Session 11 | Concept registry DEC + wave closure (P5). | RM-980. | [DECISIONS.md](../DECISIONS.md), [candidate_portfolios_spec.md](specs/candidate_portfolios_spec.md), baseline snapshot | Phase 14 closed; DEC-2026-05-20-003; G9 closed | full governance bundle + `verify_docs`. |
+
 ## Audit Mapping
 
 | Audit ID | Roadmap handling |
@@ -395,7 +428,8 @@ Phase 7 (`RM-700` through `RM-710`) is **closed** as of 2026-05-18. Phase 8 (`RM
 `RM-808`) is **closed** as of 2026-05-18. Phase 9 (`RM-900` through `RM-911`) is **closed** as of
 2026-05-19. Phase 11 (`RM-930` through `RM-939`) is **closed** as of 2026-05-20. Phase 12
 (`RM-940` through `RM-950`) is **closed** as of 2026-05-20. Phase 13 (`RM-951` through `RM-961`) is
-**closed** as of 2026-05-20 (Sessions 00–11 complete). Keep each future
+**closed** as of 2026-05-20 (Sessions 00–11 complete). Phase 14 (`RM-970` through `RM-981`) is
+**closed** as of 2026-05-20 (Session 11 complete). Keep each future
 project-level session in a separate chat unless the user explicitly changes that rule. Do not reopen
 closed MVP, post-audit, portfolio-first, Phase 9, Phase 11, or Phase 12 sessions unless the user
 explicitly requests plan amendments.

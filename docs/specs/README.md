@@ -48,6 +48,7 @@ Top-level documents stay compact:
 | Crisis replay path contract | [crisis_replay_spec.md](crisis_replay_spec.md) |
 | Candidate and benchmark portfolios | [candidate_portfolios_spec.md](candidate_portfolios_spec.md) |
 | Candidate portfolio factory orchestration | [candidate_factory_spec.md](candidate_factory_spec.md) |
+| Candidate Factory layer mapping (Block 4.1–4.9) | [candidate_factory_layer_spec.md](candidate_factory_layer_spec.md) |
 | Canonical multi-candidate comparison artifact | [candidate_comparison_spec.md](candidate_comparison_spec.md) |
 | Robustness Scorecard (diagnostic resilience scoring) | [robustness_scorecard_spec.md](robustness_scorecard_spec.md) |
 | Portfolio Health Score (diagnostic holistic quality scoring) | [portfolio_health_score_spec.md](portfolio_health_score_spec.md) |

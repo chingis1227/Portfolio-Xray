@@ -33,6 +33,10 @@ Baseline runners resolve lambda from:
 
 YAML `robust_mv_lambda` is not read by calibration or baseline CLIs. Tests may still set it programmatically where needed.
 
+### Candidate factory disclosure (Block 4 Session 07)
+
+`run_candidate_factory.py` does **not** invoke `run_robust_mv_lambda_calibration.py`. For `robust_mv_constrained` and `robust_mv_uncapped`, each factory step includes `robust_paths_disclosure` with `kind: robust_mv_lambda` (file presence, resolved λ, `lambda_ready_for_build`). Comparison rows mirror this under `construction_disclosure.robust_paths`. Operator playbook: [operational_runbook.md](../operational_runbook.md) (Robust suite prerequisites).
+
 ## Variants
 
 Implemented scripts:

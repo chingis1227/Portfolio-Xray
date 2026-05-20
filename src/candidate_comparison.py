@@ -12,8 +12,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from src.candidate_robust_disclosure import (
+    build_robust_paths_disclosure,
+    is_robust_suite_candidate,
+)
 from src.config_schema import PortfolioConfig
 from src.io_export import REPORT_DECIMALS
+from src.snapshot import compute_candidate_config_fingerprint, snapshot_config_fingerprint
 from src.stress import crisis_replay_summary_from_paths
 
 SCHEMA_VERSION = "candidate_comparison_v1"
@@ -26,6 +31,33 @@ PORTFOLIO_FIRST_POLICY_LEGACY_REASON = "legacy_policy_not_default_portfolio_firs
 PORTFOLIO_FIRST_POLICY_LEGACY_WARNING = "legacy_policy_reference_optional_portfolio_first"
 MENU_BASELINE_IDS = frozenset({"analysis_subject", "policy", "current"})
 PRODUCT_MENU_PROFILE_ID = "default_v1"
+BASELINE_WEIGHTS_METADATA_FILE = "baseline_weights_metadata.json"
+_SUMMARY_BUILDER_EXCERPT_KEYS = (
+    "status",
+    "reason",
+    "solver_status",
+    "max_rc_error",
+    "portfolio_type",
+)
+_POLICY_RUN_RESULT_EXCERPT_KEYS = (
+    "status",
+    "optimization_status",
+    "young_etf_dual_cov_enabled",
+)
+_FACTORY_STEP_EXCERPT_KEYS = (
+    "status",
+    "reason_code",
+    "message",
+    "builder_status",
+    "builder_reason",
+    "exit_code",
+    "freshness_status",
+    "snapshot_analysis_end",
+    "expected_analysis_end",
+    "expected_config_fingerprint",
+    "snapshot_config_fingerprint",
+    "robust_paths_disclosure",
+)
 
 _REGISTRY_ROWS: list[dict[str, str]] = [
     {
@@ -449,6 +481,164 @@ def _weight_concentration_from_snapshot(snap_10y: dict[str, Any] | None) -> dict
     }
 
 
+def _factory_step_excerpt(step: dict[str, Any] | None) -> dict[str, Any]:
+    if not step:
+        return {}
+    return {k: step[k] for k in _FACTORY_STEP_EXCERPT_KEYS if k in step and step[k] is not None}
+
+
+def _builder_summary_excerpt(summary: dict[str, Any]) -> dict[str, Any]:
+    excerpt: dict[str, Any] = {}
+    for key in _SUMMARY_BUILDER_EXCERPT_KEYS:
+        if key in summary and summary[key] is not None:
+            excerpt[key] = summary[key]
+    for key, value in summary.items():
+        if key.endswith("_metadata") and isinstance(value, dict) and value:
+            excerpt[key] = value
+    return excerpt
+
+
+def _policy_construction_excerpt(folder: Path) -> tuple[dict[str, Any], list[str]]:
+    source_files: list[str] = []
+    excerpt: dict[str, Any] = {}
+    run_result = _load_json(folder / "run_result.json")
+    if run_result:
+        source_files.append("run_result.json")
+        for key in _POLICY_RUN_RESULT_EXCERPT_KEYS:
+            if key in run_result and run_result[key] is not None:
+                excerpt[key] = run_result[key]
+        mandate = run_result.get("mandate_check")
+        if isinstance(mandate, dict) and mandate:
+            excerpt["mandate_check"] = {
+                k: mandate[k]
+                for k in ("passed", "fail_reason_code", "failed_scenario")
+                if k in mandate
+            }
+    return excerpt, source_files
+
+
+def _subject_construction_excerpt(folder: Path) -> tuple[dict[str, Any], list[str]]:
+    source_files: list[str] = []
+    excerpt: dict[str, Any] = {}
+    run_meta = _load_json(folder / "run_metadata.json")
+    if not run_meta:
+        return excerpt, source_files
+    source_files.append("run_metadata.json")
+    setup = run_meta.get("analysis_setup") or {}
+    if isinstance(setup, dict):
+        subject = setup.get("analysis_subject")
+        if isinstance(subject, dict) and subject:
+            excerpt["analysis_subject"] = {
+                k: subject[k]
+                for k in (
+                    "id",
+                    "type",
+                    "display_name",
+                    "weight_source",
+                    "resolution_source",
+                )
+                if k in subject
+            }
+        ap = setup.get("analysis_portfolio")
+        if isinstance(ap, dict) and ap:
+            excerpt["analysis_portfolio"] = {
+                k: ap[k]
+                for k in ("portfolio_role", "weight_source", "recommendation_status")
+                if k in ap
+            }
+    return excerpt, source_files
+
+
+def _construction_disclosure_status(
+    *,
+    baseline_metadata: dict[str, Any],
+    builder_summary: dict[str, Any],
+    main_row_excerpt: dict[str, Any],
+    factory_step: dict[str, Any],
+) -> str:
+    if baseline_metadata:
+        return "available"
+    if builder_summary or main_row_excerpt:
+        return "partial"
+    if factory_step:
+        return "partial"
+    return "missing"
+
+
+def construction_disclosure_from_folder(
+    folder: Path,
+    *,
+    candidate_id: str,
+    factory_step: dict[str, Any] | None = None,
+    project_root: Path | None = None,
+    output_dir_final: str | None = None,
+) -> dict[str, Any]:
+    """
+    Passthrough construction parameters from existing artifact metadata (no recomputation).
+
+    See docs/specs/candidate_comparison_spec.md (construction_disclosure).
+    """
+    source_files: list[str] = []
+    baseline_metadata: dict[str, Any] = {}
+    builder_summary: dict[str, Any] = {}
+    main_row_excerpt: dict[str, Any] = {}
+
+    if folder.is_dir():
+        meta = _load_json(folder / BASELINE_WEIGHTS_METADATA_FILE)
+        if meta:
+            baseline_metadata = dict(meta)
+            source_files.append(BASELINE_WEIGHTS_METADATA_FILE)
+
+        summary = _load_json(folder / "summary.json")
+        if summary:
+            builder_summary = _builder_summary_excerpt(summary)
+            if builder_summary:
+                source_files.append("summary.json")
+
+        if candidate_id == "policy":
+            main_row_excerpt, policy_sources = _policy_construction_excerpt(folder)
+            source_files.extend(s for s in policy_sources if s not in source_files)
+        elif candidate_id in ("analysis_subject", "current"):
+            main_row_excerpt, subject_sources = _subject_construction_excerpt(folder)
+            source_files.extend(s for s in subject_sources if s not in source_files)
+
+    factory_excerpt = _factory_step_excerpt(factory_step)
+    if factory_excerpt:
+        source_files.append("candidate_factory_run.json")
+
+    disclosure: dict[str, Any] = {
+        "disclosure_status": _construction_disclosure_status(
+            baseline_metadata=baseline_metadata,
+            builder_summary=builder_summary,
+            main_row_excerpt=main_row_excerpt,
+            factory_step=factory_excerpt,
+        ),
+        "source_files": sorted(set(source_files)),
+    }
+    if baseline_metadata:
+        disclosure["baseline_metadata"] = baseline_metadata
+    if builder_summary:
+        disclosure["builder_summary"] = builder_summary
+    if main_row_excerpt:
+        disclosure["main_row_excerpt"] = main_row_excerpt
+    if factory_excerpt:
+        disclosure["factory_step"] = factory_excerpt
+
+    robust_paths = factory_excerpt.get("robust_paths_disclosure")
+    if robust_paths is None and is_robust_suite_candidate(candidate_id):
+        if project_root is not None and output_dir_final:
+            robust_paths = build_robust_paths_disclosure(
+                candidate_id=candidate_id,
+                project_root=project_root,
+                output_dir_final=output_dir_final,
+                baseline_metadata=baseline_metadata or None,
+            )
+    if robust_paths:
+        disclosure["robust_paths"] = robust_paths
+
+    return _round_export_value(disclosure)
+
+
 def _mandate_from_artifacts(
     folder: Path,
     snap_10y: dict[str, Any] | None,
@@ -632,6 +822,7 @@ def _evaluate_artifact_candidate(
     *,
     candidate_id: str,
     expected_analysis_end: str | None = None,
+    expected_config_fingerprint: str | None = None,
 ) -> tuple[str, str | None, dict[str, Any], list[str], list[str]]:
     """
     Returns (status, unavailable_reason, payload_blocks, missing_fields, warnings).
@@ -645,6 +836,10 @@ def _evaluate_artifact_candidate(
         return "unavailable", "missing_artifact_folder", {}, source_files, warnings
 
     snap_10y = _load_json(folder / SNAPSHOT_FILES[PRIMARY_WINDOW])
+    if snap_10y and not expected_analysis_end:
+        warnings.append(
+            f"candidate_freshness_unchecked_no_review_analysis_end:{candidate_id}"
+        )
     if snap_10y and expected_analysis_end:
         snapshot_end = snap_10y.get("analysis_end")
         if str(snapshot_end) != str(expected_analysis_end):
@@ -653,6 +848,16 @@ def _evaluate_artifact_candidate(
                 f"{snapshot_end or 'missing'}!={expected_analysis_end}"
             )
             return "unavailable", "stale_snapshot_analysis_end", {}, source_files, warnings
+        snapshot_fp = snapshot_config_fingerprint(snap_10y)
+        if expected_config_fingerprint:
+            if snapshot_fp is None:
+                warnings.append(f"candidate_config_fingerprint_missing:{candidate_id}")
+            elif snapshot_fp != expected_config_fingerprint:
+                warnings.append(
+                    "stale_config_fingerprint:"
+                    f"{snapshot_fp}!={expected_config_fingerprint}"
+                )
+                return "unavailable", "stale_config_fingerprint", {}, source_files, warnings
 
     metrics_by_window: dict[str, dict[str, Any]] = {}
     has_primary_metrics = False
@@ -765,6 +970,19 @@ def positive_current_weights(cfg: PortfolioConfig) -> bool:
     return bool(current) and sum(float(v) for v in current.values() if v) > 0
 
 
+def _factory_steps_by_candidate_id(factory_run: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    by_id: dict[str, dict[str, Any]] = {}
+    if not factory_run:
+        return by_id
+    for step in factory_run.get("steps") or []:
+        if not isinstance(step, dict):
+            continue
+        cid = step.get("candidate_id")
+        if cid:
+            by_id[str(cid)] = step
+    return by_id
+
+
 def _build_candidate_row(
     row: dict[str, str],
     *,
@@ -775,6 +993,7 @@ def _build_candidate_row(
     main_role: str | None,
     main_meta: dict[str, Any] | None,
     expected_analysis_end: str | None,
+    factory_steps_by_id: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     out_rel = str(getattr(cfg, "output_dir_final", "Main portfolio")).replace("\\", "/")
     if row["candidate_id"] == "current":
@@ -801,6 +1020,7 @@ def _build_candidate_row(
         folder,
         candidate_id=row["candidate_id"],
         expected_analysis_end=expected_analysis_end,
+        expected_config_fingerprint=compute_candidate_config_fingerprint(cfg),
     )
     status, unavailable_reason, gate_warnings = _apply_policy_current_gating(
         row["candidate_id"],
@@ -836,6 +1056,15 @@ def _build_candidate_row(
         elif folder == output_dir_final.resolve() and main_role:
             portfolio_role = main_role
 
+    factory_step = (factory_steps_by_id or {}).get(row["candidate_id"])
+    construction_disclosure = construction_disclosure_from_folder(
+        folder,
+        candidate_id=row["candidate_id"],
+        factory_step=factory_step,
+        project_root=project_root,
+        output_dir_final=out_rel,
+    )
+
     candidate: dict[str, Any] = {
         "candidate_id": row["candidate_id"],
         "display_name": display_name,
@@ -847,6 +1076,7 @@ def _build_candidate_row(
         "unavailable_reason": unavailable_reason,
         "portfolio_role": portfolio_role,
         "recommendation_status": recommendation_status,
+        "construction_disclosure": construction_disclosure,
         "metrics": payload.get("metrics", {}) if status != "unavailable" else {},
         "stress": payload.get("stress", {}) if status != "unavailable" else {},
         "drawdown": payload.get("drawdown", {}) if status != "unavailable" else {},
@@ -1022,6 +1252,8 @@ def build_candidate_comparison(
         legacy["ew_rp_comparison_json"] = "ew_rp_comparison.json"
 
     analysis_end = _resolve_analysis_end(main_dir, cfg)
+    factory_run = _load_factory_run(main_dir)
+    factory_steps_by_id = _factory_steps_by_candidate_id(factory_run)
     candidates = [
         _build_candidate_row(
             row,
@@ -1032,11 +1264,10 @@ def build_candidate_comparison(
             main_role=main_role,
             main_meta=main_meta,
             expected_analysis_end=analysis_end or None,
+            factory_steps_by_id=factory_steps_by_id,
         )
         for row in _REGISTRY_ROWS
     ]
-
-    factory_run = _load_factory_run(main_dir)
     review_mode: str | None = None
     if factory_run:
         profile = str(factory_run.get("factory_profile_id") or "")
@@ -1067,6 +1298,11 @@ def build_candidate_comparison(
         "comparison_baseline_candidate_id": "analysis_subject",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "analysis_end": analysis_end,
+        "config_fingerprint": (
+            str(factory_run.get("config_fingerprint"))
+            if factory_run and factory_run.get("config_fingerprint")
+            else compute_candidate_config_fingerprint(cfg)
+        ),
         "investor_currency": str(getattr(cfg, "investor_currency", "USD")),
         "output_dir_final": out_rel,
         "analysis_setup_summary": setup_summary,
@@ -1458,6 +1694,7 @@ __all__ = [
     "analysis_subject_sidecar_dir",
     "build_candidate_comparison",
     "build_legacy_portfolio_comparison",
+    "construction_disclosure_from_folder",
     "candidate_registry_ids",
     "current_sidecar_dir",
     "positive_current_weights",

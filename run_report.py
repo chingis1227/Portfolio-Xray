@@ -58,6 +58,7 @@ from src.snapshot import (
     build_snapshot,
     build_snapshot_assets,
     build_snapshot_for_window,
+    compute_candidate_config_fingerprint,
     print_snapshot,
     save_snapshot,
     write_report_html,
@@ -1677,6 +1678,8 @@ def run_portfolio_report_for_weights(
     save_snapshot(snapshot_assets, output_dir_final / "snapshot_assets.json")
     logger.info("Asset snapshot: %s", output_dir_final / "snapshot_assets.json")
 
+    config_fingerprint = compute_candidate_config_fingerprint(cfg)
+
     # 2) Three snapshots by window (3y, 5y, 10y)
     for label in ("3y", "5y", "10y"):
         if label not in portfolio_windows:
@@ -1708,6 +1711,7 @@ def run_portfolio_report_for_weights(
             run_timestamp=run_timestamp,
             stress_portfolio_params=stress_params,
             analytics=analytics_by_window.get(label),
+            candidate_config_fingerprint=config_fingerprint,
         )
         save_snapshot(snap_w, output_dir_final / f"snapshot_{label}.json")
         logger.info("Snapshot %s: %s", label, output_dir_final / f"snapshot_{label}.json")
