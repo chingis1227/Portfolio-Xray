@@ -103,6 +103,7 @@ def test_candidate_options_are_forwarded_without_policy_step(tmp_path: Path) -> 
         candidate_ids="equal_weight,risk_parity",
         skip_existing_candidates=False,
         force_candidates=True,
+        resume_candidates=True,
         fail_fast=True,
         skip_compare=True,
         skip_pdf=True,
@@ -113,8 +114,26 @@ def test_candidate_options_are_forwarded_without_policy_step(tmp_path: Path) -> 
     assert "equal_weight,risk_parity" in argv
     assert "--no-skip-existing" in argv
     assert "--force" in argv
+    assert "--resume" in argv
     assert "--fail-fast" in argv
     assert "--then-compare" not in argv
+    assert "run_optimization.py" not in _argv_text(plan)
+
+
+def test_full_mode_resume_candidates_forwards_factory_resume(tmp_path: Path) -> None:
+    plan = build_portfolio_review_plan(
+        _cfg(),
+        project_root=tmp_path,
+        review_mode="full",
+        resume_candidates=True,
+        skip_pdf=True,
+    )
+    factory_argv = plan.steps[1].argv
+
+    assert "--profile" in factory_argv
+    assert "default_v1" in factory_argv
+    assert "--resume" in factory_argv
+    assert "--then-compare" in factory_argv
     assert "run_optimization.py" not in _argv_text(plan)
 
 

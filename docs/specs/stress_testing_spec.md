@@ -991,6 +991,21 @@ fill from `stress_report.json` when missing.
 | `data_quality_warnings` | Methodology boundary line (primary realized-only vs normalized-library proxy), then episode lines where `data_quality` ∉ {`reliable`, `usable_with_gaps`}. |
 | `hedge_gap_status` | Copy of `hedge_gap_analysis.status`. |
 
+**`data_trust_summary`** (version `stress_data_trust_summary_v1`, RM-1016): report-readable
+promotion of the same historical data-quality facts. Does not change stress PnL, episode ranking,
+or pass/fail.
+
+| Field | Description |
+| --- | --- |
+| `overall_trust` | `low` \| `medium` \| `high` — episode-quality rollup for user-facing trust. |
+| `overall_confidence` | Copy of `stress_conclusions.overall_confidence` when present. |
+| `historical_episode_quality_counts` | Counts by `data_quality` across `historical_results`. |
+| `n_historical_episodes_flagged` | Episodes where `data_quality` ∉ {`reliable`, `usable_with_gaps`}. |
+| `episode_flags[]` | Per episode: `episode`, `data_quality`, `coverage_ratio`, `n_obs`, `replay_available`, `plain_english`. |
+| `promoted_warnings[]` | Structured view of `data_quality_warnings` (`methodology_boundary`, `historical_episode`, `other`). |
+| `user_summary_lines[]` | Short English lines for `stress_commentary.txt` and portfolio commentary. |
+| `does_not_change_stress_methodology` | Always `true`. |
+
 These blocks are diagnostic summaries over existing scenario rows and do not alter pass/fail logic.
 
 ### 12.2 Hedge gap diagnostic

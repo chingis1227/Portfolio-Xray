@@ -18,7 +18,10 @@ from src.candidate_robust_disclosure import (
 )
 from src.config_schema import PortfolioConfig
 from src.io_export import REPORT_DECIMALS
-from src.optimization_readiness import build_optimization_readiness
+from src.optimization_readiness import (
+    OPTIMIZER_COMPARISON_ROLES,
+    build_optimization_readiness,
+)
 from src.optimization_status import (
     optimizer_quality_from_solver_block,
     optimization_quality_family,
@@ -732,6 +735,7 @@ def _optimizer_quality_from_disclosure(disclosure: dict[str, Any]) -> dict[str, 
 
 def _apply_factory_and_optimizer_quality_policy(
     *,
+    role: str,
     status: str,
     unavailable_reason: str | None,
     warnings: list[str],
@@ -750,6 +754,7 @@ def _apply_factory_and_optimizer_quality_policy(
         return "unavailable", str(reason_code), out_warnings
 
     quality = _optimizer_quality_from_disclosure(construction_disclosure)
+    has_quality = bool(quality)
     if quality:
         construction_disclosure["optimizer_quality"] = quality
         family = quality.get("optimization_quality_family")
@@ -761,6 +766,19 @@ def _apply_factory_and_optimizer_quality_policy(
             out_warnings.append(f"optimizer_quality_not_clean:{q_status}")
             if out_status == "available":
                 out_status = "degraded"
+        elif family == "unknown" and role in OPTIMIZER_COMPARISON_ROLES:
+            out_warnings.append(f"optimizer_quality_unknown:{q_status}")
+            if out_status == "available":
+                out_status = "degraded"
+    if role in OPTIMIZER_COMPARISON_ROLES and out_status == "available":
+        methodology = construction_disclosure.get("optimizer_methodology")
+        has_methodology = isinstance(methodology, dict) and bool(methodology)
+        if role in {"optimizer_candidate", "robust_candidate"} and not has_methodology:
+            out_warnings.append("optimizer_readiness_missing:optimizer_methodology")
+            out_status = "degraded"
+        if not has_quality:
+            out_warnings.append("optimizer_readiness_missing:optimizer_quality")
+            out_status = "degraded"
     return out_status, out_reason, out_warnings
 
 
@@ -1200,6 +1218,106 @@ def _factory_steps_by_candidate_id(factory_run: dict[str, Any] | None) -> dict[s
     return by_id
 
 
+def _parse_iso_datetime(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        text = str(value).strip()
+        if text.endswith("Z"):
+            text = f"{text[:-1]}+00:00"
+        parsed = datetime.fromisoformat(text)
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def _existing_comparison_generated_at(main_dir: Path) -> str | None:
+    existing = _load_json(main_dir / "candidate_comparison.json")
+    if isinstance(existing, dict) and existing.get("generated_at"):
+        return str(existing["generated_at"])
+    return None
+
+
+def _assess_factory_run_context(
+    factory_run: dict[str, Any] | None,
+    *,
+    analysis_end: str | None,
+    expected_config_fingerprint: str | None,
+    existing_comparison_generated_at: str | None,
+) -> dict[str, Any]:
+    """Decide whether factory steps are current enough to annotate comparison rows."""
+    if not factory_run:
+        return {
+            "status": "missing",
+            "steps_used": False,
+            "warnings": ["factory_summary_missing"],
+        }
+
+    warnings: list[str] = []
+    status = "current"
+
+    profile = str(factory_run.get("factory_profile_id") or "")
+    if not profile:
+        warnings.append("factory_summary_not_authoritative:missing_factory_profile_id")
+        status = "not_authoritative"
+    elif profile != "explicit_list":
+        try:
+            _factory_menu_candidate_ids(profile)
+        except Exception:  # noqa: BLE001 - invalid profile should degrade disclosure, not comparison
+            warnings.append(f"factory_summary_not_authoritative:unknown_profile:{profile}")
+            status = "not_authoritative"
+
+    generated_at = factory_run.get("generated_at")
+    factory_dt = _parse_iso_datetime(generated_at)
+    if not factory_dt:
+        warnings.append("factory_summary_not_authoritative:missing_or_invalid_generated_at")
+        status = "not_authoritative"
+    else:
+        existing_dt = _parse_iso_datetime(existing_comparison_generated_at)
+        if existing_dt and factory_dt <= existing_dt:
+            warnings.append(
+                "factory_summary_stale_vs_existing_comparison:"
+                f"{generated_at}<={existing_comparison_generated_at}"
+            )
+            status = "stale"
+
+    factory_analysis_end = factory_run.get("analysis_end")
+    if analysis_end and factory_analysis_end and str(factory_analysis_end) != str(analysis_end):
+        warnings.append(
+            "factory_summary_stale_analysis_end:"
+            f"{factory_analysis_end}!={analysis_end}"
+        )
+        status = "stale"
+    elif analysis_end and not factory_analysis_end:
+        warnings.append("factory_summary_not_authoritative:missing_analysis_end")
+        status = "not_authoritative"
+
+    factory_fp = factory_run.get("config_fingerprint")
+    if (
+        expected_config_fingerprint
+        and factory_fp
+        and str(factory_fp) != str(expected_config_fingerprint)
+    ):
+        warnings.append(
+            "factory_summary_stale_config_fingerprint:"
+            f"{factory_fp}!={expected_config_fingerprint}"
+        )
+        status = "stale"
+
+    return {
+        "status": status,
+        "steps_used": status == "current",
+        "warnings": warnings,
+        "factory_profile_id": profile or None,
+        "factory_run_generated_at": generated_at,
+        "factory_run_analysis_end": factory_analysis_end,
+        "factory_run_config_fingerprint": factory_fp,
+        "existing_comparison_generated_at": existing_comparison_generated_at,
+    }
+
+
 def _build_candidate_row(
     row: dict[str, str],
     *,
@@ -1282,6 +1400,7 @@ def _build_candidate_row(
         output_dir_final=out_rel,
     )
     status, unavailable_reason, warnings = _apply_factory_and_optimizer_quality_policy(
+        role=row["role"],
         status=status,
         unavailable_reason=unavailable_reason,
         warnings=warnings,
@@ -1342,6 +1461,7 @@ def build_candidate_menu(
     candidates: list[dict[str, Any]],
     *,
     factory_run: dict[str, Any] | None = None,
+    factory_context: dict[str, Any] | None = None,
     review_mode: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -1437,29 +1557,40 @@ def build_candidate_menu(
     }
     if factory_run and factory_run.get("generated_at"):
         menu["factory_run_generated_at"] = factory_run["generated_at"]
+    if factory_context is not None:
+        menu["factory_evidence_status"] = factory_context.get("status")
+        menu["factory_steps_used"] = bool(factory_context.get("steps_used"))
+        menu["factory_evidence_warnings"] = list(factory_context.get("warnings") or [])
+        for source_key, target_key in (
+            ("factory_run_analysis_end", "factory_run_analysis_end"),
+            ("factory_run_config_fingerprint", "factory_run_config_fingerprint"),
+            ("existing_comparison_generated_at", "existing_comparison_generated_at"),
+        ):
+            if factory_context.get(source_key):
+                menu[target_key] = factory_context[source_key]
     return _round_export_value(menu)
 
 
 def build_candidate_menu_warnings(menu: dict[str, Any]) -> list[str]:
     """Run-level warnings derived from candidate_menu disclosure."""
     warnings: list[str] = []
-    if not menu.get("is_partial_menu"):
-        return warnings
     intended = menu.get("intended_menu_profile_id")
     product = menu.get("product_menu_profile_id")
     scored = menu.get("intended_menu_scored_count")
     size = menu.get("intended_menu_size")
-    if menu.get("is_reduced_vs_product_menu"):
+    if menu.get("is_partial_menu") and menu.get("is_reduced_vs_product_menu"):
         warnings.append(
             f"Candidate comparison used reduced menu '{intended}' "
             f"(product menu '{product}' has {menu.get('product_menu_size')} script-backed candidates). "
             f"Selection and health ranks apply only to this menu unless a full refresh is run."
         )
-    if menu.get("is_incomplete_intended_menu"):
+    if menu.get("is_partial_menu") and menu.get("is_incomplete_intended_menu"):
         warnings.append(
             f"Intended menu '{intended}' is incomplete: {scored}/{size} candidates scored "
             f"(available or degraded). See unavailable_reasons_summary in candidate_menu."
         )
+    for warning in menu.get("factory_evidence_warnings") or []:
+        warnings.append(str(warning))
     return warnings
 
 
@@ -1489,8 +1620,19 @@ def build_candidate_comparison(
         legacy["ew_rp_comparison_json"] = "ew_rp_comparison.json"
 
     analysis_end = _resolve_analysis_end(main_dir, cfg)
+    expected_config_fingerprint = compute_candidate_config_fingerprint(cfg)
     factory_run = _load_factory_run(main_dir)
-    factory_steps_by_id = _factory_steps_by_candidate_id(factory_run)
+    factory_context = _assess_factory_run_context(
+        factory_run,
+        analysis_end=analysis_end or None,
+        expected_config_fingerprint=expected_config_fingerprint,
+        existing_comparison_generated_at=_existing_comparison_generated_at(main_dir),
+    )
+    factory_steps_by_id = (
+        _factory_steps_by_candidate_id(factory_run)
+        if factory_context.get("steps_used")
+        else {}
+    )
     candidates = [
         _build_candidate_row(
             row,
@@ -1518,6 +1660,7 @@ def build_candidate_comparison(
     candidate_menu = build_candidate_menu(
         candidates,
         factory_run=factory_run,
+        factory_context=factory_context,
         review_mode=review_mode,
     )
     menu_warnings = build_candidate_menu_warnings(candidate_menu)
@@ -1537,8 +1680,12 @@ def build_candidate_comparison(
         "analysis_end": analysis_end,
         "config_fingerprint": (
             str(factory_run.get("config_fingerprint"))
-            if factory_run and factory_run.get("config_fingerprint")
-            else compute_candidate_config_fingerprint(cfg)
+            if (
+                factory_context.get("steps_used")
+                and factory_run
+                and factory_run.get("config_fingerprint")
+            )
+            else expected_config_fingerprint
         ),
         "investor_currency": str(getattr(cfg, "investor_currency", "USD")),
         "output_dir_final": out_rel,

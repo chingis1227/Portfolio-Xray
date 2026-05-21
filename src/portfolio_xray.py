@@ -9,6 +9,7 @@ from typing import Any
 
 import pandas as pd
 
+from src.data_trust_signals import build_xray_data_trust_signals
 from src.io_export import REPORT_DECIMALS
 from src.stress_factors import BASE_BETA_ROW_ORDER
 
@@ -3317,14 +3318,28 @@ def build_portfolio_xray_v2(
         portfolio_analytics=portfolio_analytics,
         hidden_risk_section=sections["hidden_risk_detector"],
     )
+    sections_out = {key: sections[key] for key in XRAY_SECTION_KEYS}
+    xray_shell = {
+        "version": PORTFOLIO_XRAY_VERSION,
+        "sections": sections_out,
+    }
+    stress_trust = (
+        (stress_report or {}).get("data_trust_summary")
+        if isinstance(stress_report, dict)
+        else None
+    )
     return {
         "version": PORTFOLIO_XRAY_VERSION,
         "diagnostic_only": True,
         "diagnostic_only_disclaimer": DIAGNOSTIC_ONLY_DISCLAIMER,
         "analysis_setup_summary": legacy_summary["analysis_setup_summary"],
         "thresholds": dict(XRAY_THRESHOLDS),
-        "sections": {key: sections[key] for key in XRAY_SECTION_KEYS},
+        "sections": sections_out,
         "legacy_summary": legacy_summary,
+        "data_trust_signals": build_xray_data_trust_signals(
+            xray_shell,
+            stress_data_trust_summary=stress_trust if isinstance(stress_trust, dict) else None,
+        ),
     }
 
 
@@ -4020,6 +4035,12 @@ def format_portfolio_xray_commentary(xray: dict[str, Any]) -> str:
             f"{item.get('risk')} ({item.get('severity')})" for item in weaknesses[:5]
         )
         lines.append(f"Elevated scenario vulnerabilities: {preview}.")
+
+    trust = xray.get("data_trust_signals")
+    if isinstance(trust, dict):
+        for line in trust.get("user_summary_lines") or []:
+            if line:
+                lines.append(f"Data trust: {line}")
 
     lines.append(
         "Full seven-section tables and evidence: portfolio_xray.json, report.html, report.txt."

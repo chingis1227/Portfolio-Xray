@@ -9,7 +9,7 @@ import pytest
 import yaml
 
 from src.candidate_comparison import write_candidate_comparison_outputs
-from tests.mvp_offline_fixtures import (
+from mvp_offline_fixtures import (
     MVP_DECISION_PACKAGE_ARTIFACTS,
     load_mvp_config,
     seed_minimal_mvp_workspace,

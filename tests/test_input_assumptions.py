@@ -16,6 +16,9 @@ from src.input_assumptions import (
 from src.io_export import export_run_metadata
 
 
+FIVE_TICKERS = ["VOO", "BND", "GLD", "QQQ", "VNQ"]
+
+
 def _write_yaml(path: Path, data: dict) -> None:
     with open(path, "w", encoding="utf-8") as f:
         yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False)
@@ -245,6 +248,121 @@ def test_explicit_current_analysis_subject_sets_report_weights_and_metadata() ->
     assert setup["analysis_portfolio"]["portfolio_role"] == "user_current_portfolio"
 
 
+def test_five_ticker_current_analysis_subject_accepts_valid_weights() -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "tickers": FIVE_TICKERS,
+            "analysis_subject": {
+                "type": "current_portfolio",
+                "weights": {
+                    "VOO": "35%",
+                    "BND": "25%",
+                    "GLD": "15%",
+                    "QQQ": "15%",
+                    "VNQ": "10%",
+                },
+            },
+        }
+    )
+
+    setup = build_analysis_setup(cfg, cash_proxy_ticker="BIL", rf_source="FRED:DTB3")
+
+    assert cfg.weights_source == "config.analysis_subject.weights"
+    assert setup["analysis_subject"]["ticker_count"] == 5
+    assert setup["analysis_subject"]["weight_status"]["status"] == "fully_invested"
+    assert setup["validation_result"]["status"] == "valid"
+
+
+def test_five_ticker_current_analysis_subject_partial_weights_show_cash_remainder() -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "tickers": FIVE_TICKERS,
+            "analysis_subject": {
+                "type": "current_portfolio",
+                "weights": {
+                    "VOO": "30%",
+                    "BND": "20%",
+                    "GLD": "10%",
+                    "QQQ": "10%",
+                    "VNQ": "5%",
+                },
+            },
+        }
+    )
+
+    setup = build_analysis_setup(cfg, cash_proxy_ticker="BIL", rf_source="FRED:DTB3")
+    projection = build_input_assumptions_from_analysis_setup(setup)
+
+    assert setup["analysis_subject"]["weight_status"]["status"] == "partial_with_cash_remainder"
+    assert setup["analysis_subject"]["weight_status"]["cash_remainder"] == pytest.approx(0.25)
+    assert setup["validation_result"]["status"] == "valid_with_action_required_warnings"
+    assert projection["analysis_subject"]["weight_status"]["status"] == "partial_with_cash_remainder"
+    assert projection["analysis_subject"]["weight_status"]["cash_remainder"] == pytest.approx(0.25)
+    assert projection["portfolio_input"]["reported_weights"]["status"] == "partial_with_cash_remainder"
+
+
+def test_five_ticker_current_analysis_subject_rejects_overallocated_weights() -> None:
+    with pytest.raises(ConfigValidationError, match="must not sum above 1\\.0"):
+        validate_config(
+            {
+                "investor_currency": "USD",
+                "tickers": FIVE_TICKERS,
+                "analysis_subject": {
+                    "type": "current_portfolio",
+                    "weights": {
+                        "VOO": "50%",
+                        "BND": "30%",
+                        "GLD": "25%",
+                        "QQQ": "20%",
+                        "VNQ": "10%",
+                    },
+                },
+            }
+        )
+
+
+def test_five_ticker_model_analysis_subject_rejects_overallocated_weights() -> None:
+    with pytest.raises(ConfigValidationError, match="must not sum above 1\\.0"):
+        validate_config(
+            {
+                "investor_currency": "USD",
+                "tickers": FIVE_TICKERS,
+                "analysis_subject": {
+                    "type": "model_portfolio",
+                    "weights": {
+                        "VOO": "40%",
+                        "BND": "30%",
+                        "GLD": "20%",
+                        "QQQ": "15%",
+                        "VNQ": "5%",
+                    },
+                },
+            }
+        )
+
+
+def test_five_ticker_current_analysis_subject_rejects_negative_weight() -> None:
+    with pytest.raises(ConfigValidationError, match="must be non-negative"):
+        validate_config(
+            {
+                "investor_currency": "USD",
+                "tickers": FIVE_TICKERS,
+                "analysis_subject": {
+                    "type": "current_portfolio",
+                    "weights": {
+                        "VOO": "40%",
+                        "BND": "30%",
+                        "GLD": "-5%",
+                        "QQQ": "20%",
+                        "VNQ": "15%",
+                    },
+                },
+            }
+        )
+
+
 def test_explicit_model_analysis_subject_resolves_as_model_portfolio() -> None:
     cfg = validate_config(
         {
@@ -312,13 +430,14 @@ def test_explicit_analysis_subject_blocks_generated_weights_merge(tmp_path: Path
     assert cfg.weights_source == "system.analysis_subject.equal_weight_baseline"
 
 
-def test_invalid_current_analysis_subject_requires_weights() -> None:
+@pytest.mark.parametrize("subject_type", ["current_portfolio", "model_portfolio"])
+def test_invalid_weighted_analysis_subject_requires_weights(subject_type: str) -> None:
     with pytest.raises(ConfigValidationError, match="requires non-empty analysis_subject.weights"):
         validate_config(
             {
                 "investor_currency": "USD",
-                "tickers": ["VOO", "BND"],
-                "analysis_subject": {"type": "current_portfolio"},
+                "tickers": FIVE_TICKERS,
+                "analysis_subject": {"type": subject_type},
             }
         )
 

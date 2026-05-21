@@ -53,6 +53,8 @@ Required top-level fields (v2):
 - `thresholds`: copy of `XRAY_THRESHOLDS` (canonical registry in diagnostics spec §8)
 - `sections`: seven keys in fixed order (see `XRAY_SECTION_KEYS` in code)
 - `legacy_summary`: backward-compatible v1-style summary
+- `data_trust_signals` (`xray_data_trust_signals_v1`, RM-1016): rollup of section `warnings` plus
+  optional `stress_report.data_trust_summary` lines for commentary; does not change X-Ray formulas.
 
 Section JSON keys (stable; match `sections` in the artifact):
 

@@ -275,6 +275,7 @@ DEFAULT_RISK_BUDGETING = {
 ANALYSIS_MODES = ("optimize_from_universe", "analyze_current_weights")
 ANALYSIS_SUBJECT_TYPES = ("current_portfolio", "model_portfolio", "universe_baseline")
 ANALYSIS_SUBJECT_WEIGHTED_TYPES = ("current_portfolio", "model_portfolio")
+ANALYSIS_SUBJECT_WEIGHT_SUM_TOLERANCE = 1e-6
 
 BOOLEAN_FIELDS = [
     "allow_leverage",
@@ -683,6 +684,7 @@ def _validate_analysis_subject(cfg: dict[str, Any]) -> None:
             raise ConfigValidationError(
                 f"analysis_subject.type='{subject_type}' requires non-empty analysis_subject.weights"
             )
+        positive_weight_sum = 0.0
         for ticker, value in weights.items():
             if ticker not in allowed_weight_tickers:
                 raise ConfigValidationError(
@@ -697,6 +699,17 @@ def _validate_analysis_subject(cfg: dict[str, Any]) -> None:
                 raise ConfigValidationError(
                     f"analysis_subject.weights for '{ticker}' must be non-negative, got {value}"
                 )
+            if value > 0:
+                positive_weight_sum += float(value)
+        if positive_weight_sum <= 0:
+            raise ConfigValidationError(
+                f"analysis_subject.type='{subject_type}' requires at least one positive analysis_subject weight"
+            )
+        if positive_weight_sum > 1.0 + ANALYSIS_SUBJECT_WEIGHT_SUM_TOLERANCE:
+            raise ConfigValidationError(
+                "analysis_subject.weights for weighted current/model subjects must not sum "
+                f"above 1.0; got {positive_weight_sum:.10g}"
+            )
         cfg["weights"] = dict(weights)
         cfg["_weights_source"] = "config.analysis_subject.weights"
     else:

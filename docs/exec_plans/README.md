@@ -19,7 +19,12 @@ artifact contracts.
 
 ## Current Pointer
 
-**Active:** None (Phase 15 Block 5 governance closed 2026-05-21). Resume product work from [ROADMAP](../ROADMAP.md) deferred backlog (e.g. UI `RM-500+`) or a new ExecPlan when a new wave starts.
+**Active:** None (resume from [ROADMAP](../ROADMAP.md) for the next backlog row).
+
+Completed (2026-05-21): [Blocks 1-5 MVP Core Reliability Plan](2026-05-21_blocks_1_5_mvp_core_reliability_plan.md)
+(Sessions 01-09; Phase 16 `RM-1010`-`RM-1018` Done). Handoff: hardened `analysis_subject` weight
+validation, factory/comparison freshness, `--resume-candidates`, optimizer readiness degradation,
+five-ticker offline smoke, data-trust signals, root docs/runbook, offline bundle **125 passed**.
 
 Completed (2026-05-21): [Optimization Engine Post-Audit Roadmap](2026-05-20_optimization_engine_post_audit_roadmap.md)
 (Sessions 00-12; Phase 15 `RM-990`-`RM-1002` Done). Handoff:
@@ -65,6 +70,7 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-05-21 | [Blocks 1-5 MVP Core Reliability Plan](2026-05-21_blocks_1_5_mvp_core_reliability_plan.md) | Completed | User-requested operational audit of Blocks 1-5 | Sessions 01-09 closed 2026-05-21: Phase 16 Done; offline bundle **125 passed**; subject materialization live smoke; `tests/conftest.py` fixture import fix. |
 | 2026-05-20 | [Optimization Engine Post-Audit Roadmap](2026-05-20_optimization_engine_post_audit_roadmap.md) | Completed | [Optimization Engine Methodology Map](../audits/2026-05-20_optimization_engine_methodology_map.md) | Sessions 00-12 closed 2026-05-21: G1-G8/G10 governance gaps; DEC-2026-05-21-001; golden contracts; Phase 15 Done. |
 | 2026-05-20 | [Candidate Portfolio Factory Post-Audit Roadmap](2026-05-20_candidate_factory_post_audit_roadmap.md) | Completed | [Candidate Factory Methodology Map](../audits/2026-05-20_candidate_factory_methodology_map.md) | Sessions 00-11 closed 2026-05-20: G1-G10 governance gaps; DEC-2026-05-20-003 concept registry; Phase 14 Done. |
 | 2026-05-20 | [Stress Lab Methodology Governance Plan](2026-05-20_stress_lab_methodology_governance_plan.md) | Completed | [Stress Lab Methodology Map](../audits/2026-05-20_stress_lab_methodology_map.md) | Sessions 00-11 closed 2026-05-20: G1-G10 governance gaps; 90-test bundle + verify_docs; Phase 13 Done. |

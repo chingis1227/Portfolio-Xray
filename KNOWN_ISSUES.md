@@ -56,6 +56,18 @@ Title: Short title
 
 ## Active Issues
 
+### Blocks 1-5 MVP core reliability gap index (Phase 16)
+
+Wave **closed** 2026-05-21 (Session 09 / `RM-1018`). See
+[Blocks 1-5 MVP Core Reliability Plan](docs/exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md)
+for closure evidence. Audit gaps B15-G1 through B15-G6 from the opening audit are closed in
+Sessions 02-07; representative verification and offline acceptance bundle closed in Session 09.
+
+**Accepted residual (not Phase 16 blockers):** full `default_v1` factory remains operationally heavy
+(use `--resume-candidates` after interruption); live full orchestrator E2E is operator-run, not
+required every closure session.
+
+---
 ### Block 5 governance gap index (Phase 15)
 
 Audit gaps **G1–G10** are defined in

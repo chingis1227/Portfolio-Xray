@@ -41,7 +41,47 @@ Omit empty categories.
 
 ## 2026-05-21
 
+### Changed
+
+- Blocks 1-5 MVP core reliability Session 09 (`RM-1018`): Phase 16 wave **closed** — offline
+  acceptance bundle **125 passed**, `verify_docs` OK, dry-run core/full resume OK, live core
+  subject materialization smoke refreshed `Main portfolio/analysis_subject/`; ExecPlan register
+  and ROADMAP mark Phase 16 Done.
+
+### Fixed
+
+- Blocks 1-5 MVP core reliability Session 09: `tests/conftest.py` and direct
+  `mvp_offline_fixtures` imports so offline MVP smoke tests are not broken by a third-party
+  `tests` package in site-packages.
+
+- Blocks 1-5 MVP core reliability Session 08 (`RM-1017`): documentation handoff — `README.md`,
+  `SPEC.md`, `OUTPUTS.md`, `TESTING.md`, and `docs/operational_runbook.md` now describe Blocks 1-5
+  MVP core, portfolio-first core/full/resume commands, trust-signal outputs, factory-evidence
+  boundaries, and offline acceptance without chat context; documentation-only.
+
 ### Added
+
+- Blocks 1-5 MVP core reliability Session 07 (`RM-1016`): promoted data-quality and young-ETF trust
+  signals in `stress_report.data_trust_summary`, `input_assumptions.data_trust_signals`, and
+  `portfolio_xray.data_trust_signals`, with commentary/stress-commentary summary lines; no formula
+  changes.
+
+- Blocks 1-5 MVP core reliability Session 06 (`RM-1015`): added an offline
+  `tests/test_blocks_1_5_mvp_smoke.py` gate covering a five-ticker explicit weighted subject
+  through diagnostics, X-Ray, stress, current factory evidence, and comparison baseline checks.
+
+- Blocks 1-5 MVP core reliability Session 05 (`RM-1014`): optimizer-backed comparison rows now
+  explicitly degrade when optimizer methodology or quality evidence is missing, or when solver
+  quality normalizes to `unknown`, keeping readiness disclosure visible.
+
+- Blocks 1-5 MVP core reliability Session 04 (`RM-1013`): `run_portfolio_review.py` now supports
+  `--resume-candidates`, passing factory `--resume` through the portfolio-first full-review path
+  after interrupted candidate runs.
+
+- Blocks 1-5 MVP core reliability Session 01 (`RM-1010`): active
+  [ExecPlan](docs/exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md), ROADMAP Phase 16
+  (`RM-1010`-`RM-1018`), ExecPlan register pointer, and active known issues for input validation,
+  factory freshness, resumable full review, and optimizer readiness gaps; documentation-only.
 
 - Block 5 governance Session 12 (`RM-1002`): Phase 15 wave closure — baseline snapshot closure
   section, ROADMAP Phase 15 **Done** (`RM-990`–`RM-1002`), ExecPlan and registers marked complete;
@@ -91,6 +131,16 @@ Omit empty categories.
   and release gate without changing optimizer behavior.
 
 - Block 5 governance Session 02 (`RM-992`): **DEC-2026-05-21-001** target-only optimizer objective boundary and [optimization_engine_layer_spec.md](docs/specs/optimization_engine_layer_spec.md) appendix for Max Sharpe, drawdown, macro, stress-test, tax, and turnover concepts.
+
+### Fixed
+
+- Blocks 1-5 MVP core reliability Session 03 (`RM-1012`): candidate comparison now reports
+  missing/stale factory evidence in `candidate_menu` and ignores stale factory `steps[]` as current
+  row evidence.
+
+- Blocks 1-5 MVP core reliability Session 02 (`RM-1011`): weighted current/model
+  `analysis_subject` inputs now hard-fail material overallocations while partial weights remain
+  explicit cash-remainder diagnostics.
 
 ## 2026-05-20
 

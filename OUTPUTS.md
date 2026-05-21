@@ -25,8 +25,8 @@ analysis_subject
 -> subject-centered comparison and decision package
 ```
 
-Runtime migration to this order is active under the portfolio-first transition. The existing legacy
-policy output flow remains callable for compatibility:
+The portfolio-first orchestrator (`run_portfolio_review.py`) follows this order by default. The
+legacy policy output flow remains callable for compatibility only:
 
 ```text
 config.yml
@@ -100,7 +100,9 @@ Common project artifacts include:
 - `stress_report.json.stress_conclusions` (aggregated stress conclusions)
 - `stress_report.json.hedge_gap_analysis` (hedge gap diagnostic block)
 - `stress_report.json.historical_episode_paths` (path-level crisis replay block)
+- `stress_report.json.data_trust_summary` (`stress_data_trust_summary_v1`; episode quality, young-ETF and taxonomy warnings for user-readable surfaces; RM-1016)
 - `portfolio_xray.json`
+- `portfolio_xray.json.data_trust_signals` and `input_assumptions.data_trust_signals` (`input_data_trust_signals_v1`; rolled section warnings plus stress trust; RM-1016)
 - `scenario_library.json`
 - `scenario_library_normalized.json`
 - metric CSV files under `results_csv/`
@@ -114,7 +116,7 @@ Common project artifacts include:
 - candidate portfolio output folders
 - `{output_dir_final}/analysis_subject/` (portfolio-first subject diagnostics from `run_report.py --materialize-analysis-subject`; see [portfolio review workflow spec](docs/specs/portfolio_review_workflow_spec.md))
 - `candidate_factory_run.json`, optional `candidate_factory_run.txt`, and `candidate_factory_manifest.json` (under `output_dir_final`; factory orchestration from `run_candidate_factory.py`; `--resume` reads the manifest; contract in [candidate factory spec](docs/specs/candidate_factory_spec.md); methodology map [§4](docs/audits/2026-05-20_candidate_factory_methodology_map.md))
-- `candidate_comparison.json` (under `output_dir_final`; includes the portfolio-first `analysis_subject` baseline row when materialized; per-row `construction_disclosure` passthrough including `optimizer_methodology`, `optimizer_quality`, and `optimization_readiness` (`fair_comparison_ready` checklist) for optimizer-backed rows when artifacts exist; see [candidate comparison spec](docs/specs/candidate_comparison_spec.md))
+- `candidate_comparison.json` (under `output_dir_final`; includes the portfolio-first `analysis_subject` baseline row when materialized; `candidate_menu` reports `factory_evidence_status`, `factory_steps_used`, and `factory_evidence_warnings` for `candidate_factory_run.json` freshness; per-row `construction_disclosure` passthrough including `optimizer_methodology`, `optimizer_quality`, and `optimization_readiness` (`fair_comparison_ready` checklist) for optimizer-backed rows when artifacts exist; optimizer-backed rows with missing methodology/quality or `unknown` quality degrade instead of ordinary `available` evidence; see [candidate comparison spec](docs/specs/candidate_comparison_spec.md))
 - `robustness_scorecard.json` and optional `robustness_scorecard.txt` (under `output_dir_final`; written by `run_compare_variants.py` / `write_candidate_comparison_outputs`; see [robustness scorecard spec](docs/specs/robustness_scorecard_spec.md))
 - `portfolio_health_score.json` and optional `portfolio_health_score.txt` (under `output_dir_final`; Session 13; see [portfolio health score spec](docs/specs/portfolio_health_score_spec.md))
 - `selection_decision.json` and optional `selection_decision.txt` (under `output_dir_final`; contract in [selection engine spec](docs/specs/selection_engine_spec.md))
@@ -158,6 +160,24 @@ weights. Session 09 adds `optimizer_covariance_methodology_v1` and
 methodology notes in `candidate_comparison.txt` / `ips_summary.txt`. Session 10 adds
 `construction_disclosure.optimization_readiness` (`optimizer_comparison_readiness_v1`) and compact
 readiness notes in `candidate_comparison.txt` for optimizer-backed comparison rows.
+
+## Blocks 1-5 MVP Output Acceptance
+
+When validating the first-five-block MVP core (offline smoke or a representative
+`run_portfolio_review.py --mode core --skip-pdf` run), inspect generated artifacts under
+`{output_dir_final}/analysis_subject/` before candidate or decision outputs:
+
+| Block | Minimum artifacts | Trust checks |
+| --- | --- | --- |
+| 1 Input | `run_metadata.json` with `analysis_setup` and `input_assumptions` | Explicit current/model weights sum to at most `1.0`; partial sums disclose cash remainder |
+| 2 X-Ray | `portfolio_xray.json` (seven sections) | `data_trust_signals.user_summary_lines` when data-quality warnings exist |
+| 3 Stress | `stress_report.json` with scorecard, conclusions, historical methodology, hedge gap | `data_trust_summary.user_summary_lines` for episode/taxonomy/young-ETF warnings |
+| 4 Factory | `candidate_factory_run.json` at review root | Comparison `candidate_menu.factory_evidence_status` must be `current` or explicitly not authoritative |
+| 5 Optimizers | Candidate folders + comparison rows | Optimizer-backed rows are `available` only when readiness-critical evidence is complete; otherwise `degraded` with warning codes |
+
+Generated outputs remain evidence, not source files. Do not commit routine run refreshes unless a
+session explicitly targets generated artifacts. Offline gate:
+`tests/test_blocks_1_5_mvp_smoke.py` ([TESTING.md](TESTING.md)).
 
 ## Output Rules
 

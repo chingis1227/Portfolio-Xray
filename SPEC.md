@@ -16,13 +16,16 @@ Product concept documents can describe target direction. They do not change form
 
 The current implementation is a report-first, CLI/file-driven portfolio analytics system.
 
-The canonical portfolio-first workflow contract is now [Portfolio Review Workflow
+The canonical portfolio-first workflow contract is [Portfolio Review Workflow
 Specification](docs/specs/portfolio_review_workflow_spec.md): resolve `analysis_subject`, diagnose
-that portfolio first, then generate and compare alternatives. Runtime migration is active under the
-[Portfolio-First Transition Plan](docs/exec_plans/2026-05-18_portfolio_first_transition_plan.md);
-`run_portfolio_review.py` now provides the portfolio-first orchestration entrypoint. Existing
-policy-first entrypoints remain callable as compatibility infrastructure, but they are not the
-target default portfolio-first contract.
+that portfolio first, then generate and compare alternatives. `run_portfolio_review.py` is the
+portfolio-first orchestration entrypoint (`--mode core` default, `--mode full`,
+`--resume-candidates` for interrupted full factory runs). Legacy policy-first entrypoints remain
+callable as compatibility infrastructure only; they are not the default starting path.
+
+Blocks 1-5 MVP core reliability (input validation, factory freshness, resumability, optimizer
+readiness disclosure, offline smoke, data-trust summaries) is governed by the active
+[Blocks 1-5 MVP Core Reliability Plan](docs/exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md).
 
 It supports:
 
@@ -62,7 +65,7 @@ presented as the main result. Supported subject types are `current_portfolio`, `
 and `universe_baseline`; details live in
 [portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md).
 
-Legacy policy workflow (compatibility while the transition is implemented):
+Legacy policy workflow (compatibility only):
 
 ```text
 config.yml
@@ -276,9 +279,17 @@ weights, or mandate gates.
 - Do not invent formulas, scenarios, estimators, constraints, or statuses when a canonical spec exists.
 - In the portfolio-first workflow, diagnose `analysis_subject` before generating candidates or
   presenting comparison/decision artifacts as the main review outcome.
-- The old policy optimizer is legacy/compatibility infrastructure in the portfolio-first transition;
-  it is not the default starting portfolio and is not a default candidate unless a future accepted
-  spec changes that boundary.
+- The old policy optimizer is legacy/compatibility infrastructure only; it is not the default
+  starting portfolio and is not a default candidate unless a future accepted spec changes that
+  boundary.
+- Explicit weighted `current_portfolio` / `model_portfolio` subjects reject material
+  overallocations at config validation; partial weights below `1.0` export
+  `partial_with_cash_remainder` in `analysis_setup` / `input_assumptions`.
+- `candidate_comparison.json` must treat `candidate_factory_run.json` as current, missing, stale, or
+  not authoritative via `candidate_menu.factory_evidence_status`; stale factory `steps[]` are not
+  row-level construction evidence.
+- Optimizer-backed comparison rows with missing methodology/quality or `unknown` solver quality
+  degrade rather than remain ordinary `available` evidence.
 - Final policy weights come from optimization plus approved post-processing only.
 - View After Optimization is the only permitted manual post-optimization tilt protocol.
 - Taxonomy validates and annotates in V1; it does not select tickers or change weights.
@@ -308,7 +319,8 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 
 | Area | Current status |
 | --- | --- |
-| Portfolio-first review workflow (`analysis_subject` first) | Canonical spec accepted; runtime transition active |
+| Portfolio-first review workflow (`analysis_subject` first) | Implemented; `run_portfolio_review.py` is the default entrypoint |
+| Blocks 1-5 MVP core reliability (Phase 16) | **Done** (Sessions 01-09, `RM-1010`-`RM-1018`); offline acceptance bundle and operator runbook govern routine verification |
 | Main CLI optimization and report pipeline | Implemented |
 | Input and Assumptions Layer | Implemented CLI/file-driven V1 |
 | Config validation and profile-derived targets | Implemented |

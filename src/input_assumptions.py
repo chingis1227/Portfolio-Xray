@@ -5,6 +5,7 @@ from typing import Any
 
 from src.analysis_setup import build_analysis_setup, weight_status
 from src.config_schema import PortfolioConfig
+from src.data_trust_signals import build_input_data_trust_signals
 
 
 def _mandate_value(analysis_setup: dict[str, Any], key: str) -> Any:
@@ -122,6 +123,12 @@ def build_input_assumptions_from_analysis_setup(analysis_setup: dict[str, Any]) 
             "investment_horizon_optimizer_effect": "not_implemented_report_context_only",
             "formal_selection_engine": "selection_decision_v1",
         },
+        "data_trust_signals": build_input_data_trust_signals(
+            young_etf_optimization_policy=dict(
+                resolved_assumptions.get("young_etf_optimization_policy") or {}
+            ),
+            validation_result=validation_result,
+        ),
     }
 
 

@@ -33,6 +33,10 @@ Optimization Engine governance (RM-990 -> RM-1002): **closed** as of 2026-05-21 
 Plan: [Optimization Engine Post-Audit Roadmap](exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md).
 Methodology map: [Optimization Engine Methodology Map](audits/2026-05-20_optimization_engine_methodology_map.md).
 Baseline: [Optimization Engine Baseline Snapshot](audits/2026-05-20_optimization_engine_baseline_snapshot.md).
+Blocks 1-5 MVP core reliability (RM-1010 -> RM-1018): **closed** as of 2026-05-21 (Session 09 complete).
+Plan: [Blocks 1-5 MVP Core Reliability Plan](exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md).
+Scope: harden the existing portfolio-first MVP core without adding UI, new optimizer methodology,
+new stress methodology, new constraints, or new candidate behavior.
 ```
 
 New diagnostic layers must remain non-binding unless a canonical spec explicitly changes Selection or
@@ -427,6 +431,35 @@ Governed by the active
 | RM-1001 | Done | Session 11 | Golden contracts and Optimization governance bundle. | RM-993-RM-1000 stable. | [tests/fixtures](../tests/fixtures/), [optimization_engine_golden_inputs.py](../tests/optimization_engine_golden_inputs.py), [test_optimization_engine_contract.py](../tests/test_optimization_engine_contract.py), `TESTING.md` | Block 5 golden JSON + governance bundle (159 passed) | focused bundle + `verify_docs`. |
 | RM-1002 | Done | Session 12 | Wave closure and documentation sync. | RM-1001. | root docs, roadmap, ExecPlan, baseline | Phase 15 **Done** (`RM-990`–`RM-1002`); G1–G8/G10 closed; G9 accepted | governance bundle **159 passed** + `verify_docs`. |
 
+## Phase 16: Blocks 1-5 MVP Core Reliability
+
+Goal: make the first five blocks work as a trustworthy file-first MVP core. A user should be able
+to provide `analysis_subject` tickers and weights, materialize diagnostics, stress-test the subject,
+generate candidate alternatives, run optimizer-backed candidates, and compare only fresh or clearly
+degraded artifacts.
+
+Exit condition: the project has strict enough input validation to prevent misleading starting
+weights, comparison does not rely on stale factory evidence, full candidate generation can be
+resumed through the portfolio-first orchestrator, optimizer-backed rows disclose readiness
+consistently, a five-ticker smoke gate covers the MVP core, and the operator runbook/docs can hand
+the work to a new session without chat memory.
+
+Governed by the active
+[Blocks 1-5 MVP Core Reliability Plan](exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md)
+(Sessions 01-09).
+
+| ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| RM-1010 | Done | Session 01 | Create active ExecPlan and registers. | User-approved post-audit plan. | [Blocks 1-5 MVP Core Reliability Plan](exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md), ExecPlan register, this roadmap, `KNOWN_ISSUES.md`, `CHANGELOG.md` | Active handoff plan for Sessions 02-09 | `python scripts/verify_docs.py`. |
+| RM-1011 | Done | Session 02 | Harden input and weight validation for `analysis_subject`. | RM-1010. | `src/config_schema.py`, `src/analysis_setup.py`, input assumptions spec/tests | Weighted current/model subjects hard-fail on material overallocations; partial weights remain explicit cash-remainder diagnostics | `test_input_assumptions.py` (19 passed); `test_config_weights_sync.py` (6 passed); `verify_docs` OK. |
+| RM-1012 | Done | Session 03 | Fix factory/comparison freshness coherence. | RM-1010. | `src/candidate_comparison.py`, candidate factory/comparison specs/tests | `candidate_comparison.json.candidate_menu` reports missing/stale factory evidence and does not treat stale step evidence as authoritative | Candidate factory governance bundle (85 passed); `verify_docs` OK. |
+| RM-1013 | Done | Session 04 | Make portfolio-first full factory resumable from `run_portfolio_review.py`. | RM-1012 recommended. | `run_portfolio_review.py`, `src/portfolio_review_workflow.py`, `docs/operational_runbook.md`, workflow tests | `--resume-candidates` passes factory `--resume`; dry-run exposes it | `test_portfolio_review_workflow.py`; dry-run smoke; `verify_docs` OK. |
+| RM-1014 | Done | Session 05 | Normalize optimizer readiness disclosure. | RM-1012. | `src/candidate_comparison.py`, `src/optimization_readiness.py`, Block 5 tests/specs | Optimizer-backed rows with missing methodology/quality or `unknown` quality now degrade instead of looking like ordinary available evidence | Readiness, comparison, and golden contract tests; `verify_docs` OK. |
+| RM-1015 | Done | Session 06 | Add real five-ticker MVP smoke gate. | RM-1011-RM-1014. | `tests/test_blocks_1_5_mvp_smoke.py`, `tests/mvp_offline_fixtures.py`, `TESTING.md` | Offline executable smoke test for five tickers plus explicit weights through subject diagnostics, X-Ray, stress, current factory evidence, and comparison baseline | `test_blocks_1_5_mvp_smoke.py` (4 passed); `verify_docs` OK. |
+| RM-1016 | Done | Session 07 | Improve data-quality and young-ETF trust signals. | RM-1015 recommended. | `src/data_trust_signals.py`, stress/input/X-Ray/commentary surfaces, specs/tests | `data_trust_summary` and `data_trust_signals` expose episode quality, taxonomy, and young-ETF policy in user-readable summaries | `test_data_trust_signals.py`, stress historical tests, input/X-Ray tests; `verify_docs` OK. |
+| RM-1017 | Done | Session 08 | Documentation handoff and operator runbook cleanup. | RM-1013-RM-1016. | `README.md`, `SPEC.md`, `OUTPUTS.md`, `TESTING.md`, `docs/operational_runbook.md` | Root docs explain Blocks 1-5 MVP core, core/full/resume paths, trust artifacts, factory-evidence boundaries, and offline acceptance without chat context | `python scripts/verify_docs.py` OK. |
+| RM-1018 | Done | Session 09 | Representative run and closure. | RM-1011-RM-1017. | tests, `tests/conftest.py`, roadmap, known issues, changelog, ExecPlan | Phase 16 **Done**; closure verdict: MVP core reliability objectives met under plan scope | Offline bundle **125 passed**; `verify_docs` OK; dry-run core/full resume OK; live core subject materialization OK. |
+
 ## Audit Mapping
 
 | Audit ID | Roadmap handling |
@@ -466,7 +499,8 @@ Phase 7 (`RM-700` through `RM-710`) is **closed** as of 2026-05-18. Phase 8 (`RM
 (`RM-940` through `RM-950`) is **closed** as of 2026-05-20. Phase 13 (`RM-951` through `RM-961`) is
 **closed** as of 2026-05-20 (Sessions 00-11 complete). Phase 14 (`RM-970` through `RM-981`) is
 **closed** as of 2026-05-20 (Session 11 complete). Phase 15 (`RM-990` through `RM-1002`) is
-**closed** as of 2026-05-21 (Session 12 complete). Keep each future
+**closed** as of 2026-05-21 (Session 12 complete). Phase 16 (`RM-1010` through `RM-1018`) is
+**closed** as of 2026-05-21 (Session 09 complete). Keep each future
 project-level session in a separate chat unless the user explicitly changes that rule. Do not reopen
 closed MVP, post-audit, portfolio-first, Phase 9, Phase 11, or Phase 12 sessions unless the user
 explicitly requests plan amendments.

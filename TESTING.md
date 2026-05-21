@@ -25,6 +25,8 @@ Use the narrowest reliable check first. Broaden only when the change touches sha
 | Generated-output language QA | Representative report/PDF text artifacts regenerated or language/story rules touched | `python scripts/scan_generated_outputs.py` and `python -m pytest tests/test_generated_output_language.py -q`; portfolio-first summaries must keep `Starting portfolio` and `Candidate alternatives` markers |
 | Offline MVP pipeline smoke | File-first decision chain (comparison through decision package) or cross-module orchestration regressions | `python -m pytest tests/test_mvp_pipeline_offline.py -q` |
 | Portfolio-first offline E2E smoke | Portfolio-first subject diagnostics, comparison, and decision package regressions across subject types | `python -m pytest tests/test_portfolio_first_e2e_offline.py -q` |
+| Blocks 1-5 five-ticker MVP smoke | First-five-block contract from explicit weighted subject input through diagnostics, X-Ray, stress, current factory evidence, and comparison baseline | `python -m pytest tests/test_blocks_1_5_mvp_smoke.py -q` |
+| Blocks 1-5 data trust signals | Stress/input/X-Ray trust summaries for episode quality, taxonomy warnings, and young-ETF policy disclosure | `python -m pytest tests/test_data_trust_signals.py -q` |
 | Portfolio-first workflow orchestration | `run_portfolio_review.py` plan building or step ordering | `python -m pytest tests/test_portfolio_review_workflow.py -q` |
 | MVP workflow orchestration | `run_mvp_workflow.py` plan building or step ordering | `python -m pytest tests/test_mvp_workflow.py -q` |
 
@@ -75,6 +77,67 @@ Command:
 python -m pytest tests/test_portfolio_first_e2e_offline.py -q --basetemp='tmp/pytest_portfolio_first_e2e'
 ```
 
+## Blocks 1-5 Five-Ticker MVP Smoke
+
+Use this as the focused executable gate for Blocks 1-5 MVP reliability. The smoke test is fully
+offline:
+
+- validates a five-ticker `current_portfolio` `analysis_subject` with explicit weights;
+- rejects missing, negative, and overallocated explicit subject weights before report generation;
+- seeds synthetic `analysis_subject` diagnostics with `run_metadata.json`, `input_assumptions`,
+  `snapshot_10y.json`, `portfolio_xray.json`, and `stress_report.json`;
+- seeds current `core_v1` `candidate_factory_run.json` evidence and matching candidate snapshots;
+- runs `write_candidate_comparison_outputs` and confirms `analysis_subject` is the baseline and
+  current factory steps are used for candidate construction disclosure;
+- blocks live Yahoo/FRED calls so the gate cannot silently depend on network data.
+
+Command (workspace-local basetemp, Windows-safe):
+
+```bash
+python -m pytest tests/test_blocks_1_5_mvp_smoke.py -q --basetemp='tmp\pytest_rm1015_blocks_1_5_smoke'
+python -m pytest tests/test_data_trust_signals.py -q --basetemp='tmp\pytest_rm1016_data_trust'
+```
+
+## Blocks 1-5 MVP Core Reliability (Phase 16)
+
+Use this section when handing off or verifying the first-five-block MVP core without prior chat
+context. Governed by
+[Blocks 1-5 MVP Core Reliability Plan](docs/exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md).
+
+**Routine CLI (representative live run, Session 09):**
+
+```bash
+python run_portfolio_review.py --mode core --skip-pdf
+python run_portfolio_review.py --dry-run --mode full --resume-candidates --skip-pdf
+```
+
+**Note:** `tests/conftest.py` prepends the repository `tests/` directory so
+`mvp_offline_fixtures` imports are not shadowed by a third-party `tests` package in
+site-packages.
+
+**Offline acceptance bundle (Sessions 02-08 focused gates; Session 09 closure):**
+
+```bash
+python -m pytest tests/test_input_assumptions.py -q --basetemp='tmp\pytest_rm1011_input'
+python -m pytest tests/test_candidate_comparison.py tests/test_candidate_comparison_contract.py -q --basetemp='tmp\pytest_rm1012_comparison'
+python -m pytest tests/test_portfolio_review_workflow.py -q --basetemp='tmp\pytest_rm1013_portfolio_review'
+python -m pytest tests/test_optimization_readiness.py -q --basetemp='tmp\pytest_rm1014_readiness'
+python -m pytest tests/test_blocks_1_5_mvp_smoke.py -q --basetemp='tmp\pytest_rm1015_blocks_1_5_smoke'
+python -m pytest tests/test_data_trust_signals.py tests/test_stress_historical_fields.py tests/test_input_assumptions.py tests/test_portfolio_xray.py -q --basetemp='tmp\pytest_rm1016_trust_bundle'
+python scripts/verify_docs.py
+```
+
+Session 09 closure (2026-05-21): single-command bundle above reported **125 passed**;
+`verify_docs` OK.
+
+**What the offline smoke proves:** five-ticker explicit weighted `analysis_subject`; config rejects
+missing, negative, and overallocated weights; subject `run_metadata`, `input_assumptions`,
+`portfolio_xray.json`, and `stress_report.json` exist; current `core_v1` factory evidence is
+authoritative; `candidate_comparison.json` uses `analysis_subject` as baseline with
+`candidate_menu.factory_evidence_status: current`. Output acceptance checklist:
+[OUTPUTS.md](OUTPUTS.md) Blocks 1-5 section; operator commands:
+[docs/operational_runbook.md](docs/operational_runbook.md) section 0.
+
 ## Change-To-Check Matrix
 
 | Change area | Primary risks | Minimum checks | Broaden when |
@@ -88,6 +151,22 @@ python -m pytest tests/test_portfolio_first_e2e_offline.py -q --basetemp='tmp/py
 | Config / schema | Invalid config accepted, valid config rejected, config/weights desync, taxonomy validation drift | `tests/test_config_weights_sync.py`, `tests/test_returns_frequency.py`; add `tests/test_etf_universe.py` or `tests/test_stock_universe.py` for taxonomy config changes | Run affected CLI such as `python run_etf_universe.py`, `python run_stock_universe.py`, `python run_optimization.py`, or `python run_report.py` when user-facing config workflows change |
 | Documentation-only change | Broken links, stale source-of-truth maps, obsolete commands, copied concept text treated as binding | Markdown link check; stale-reference search with `rg`; no `pytest` required unless executable examples, commands, or documented behavior changed | Run relevant CLI/test command if docs change executable examples or acceptance criteria |
 
+For explicit `analysis_subject` weight validation changes, use the focused input assumptions check
+first. It covers five-ticker current/model subjects with valid, missing, negative, partial, and
+overallocated weights:
+
+```bash
+python -m pytest tests/test_input_assumptions.py -q --basetemp='tmp/pytest_rm1011_input'
+```
+
+For Blocks 1-5 reliability Session 04 (`RM-1013`) or later changes to portfolio-first candidate
+resume wiring, use the focused workflow check and a dry-run smoke:
+
+```bash
+python -m pytest tests/test_portfolio_review_workflow.py -q --basetemp='tmp/pytest_rm1013_portfolio_review'
+python run_portfolio_review.py --dry-run --mode full --resume-candidates --skip-pdf
+```
+
 Focused drawdown and time-to-recovery coverage lives in `tests/test_metrics_drawdown.py`. Keep adding targeted regression coverage when changing formulas, windows, annualization, FX, risk-free handling, covariance, beta, drawdown, or rounding.
 
 ## CLI Smoke Runs
@@ -98,6 +177,8 @@ Common existing entrypoints:
 
 ```bash
 python run_portfolio_review.py
+python run_portfolio_review.py --mode core --skip-pdf
+python run_portfolio_review.py --mode full --resume-candidates --skip-pdf
 python run_report.py
 python run_optimization.py  # legacy policy compatibility
 python run_report.py --backtest-mode dynamic_nan_safe
@@ -201,6 +282,11 @@ After Session 06+ config fingerprint, confirm `test_stale_config_fingerprint_*` 
 After Session 07+ robust paths, confirm factory robust disclosure tests and
 `test_robust_scenario_construction_disclosure_main_prerequisites` pass in this bundle.
 
+After Blocks 1-5 reliability Session 03 (`RM-1012`), confirm
+`test_stale_factory_summary_not_used_after_fresh_comparison_rebuild` passes so stale
+`candidate_factory_run.json` steps are reported in `candidate_menu` but not treated as current row
+evidence.
+
 Session 11 wave closure (2026-05-20): governance bundle **77 passed**; family spot-check **19 passed**;
 `verify_docs` OK. Phase 14 (`RM-970`–`RM-981`) complete.
 
@@ -289,6 +375,12 @@ Session 10 optimization comparison readiness: confirm
 `tests/test_optimization_readiness.py` and `test_block5_golden_post_audit_surface` in
 `tests/test_optimization_engine_contract.py` cover `optimizer_comparison_readiness_v1`,
 `fair_comparison_ready`, and Block 5 comparison disclosure keys.
+
+Blocks 1-5 reliability Session 05 (`RM-1014`) optimizer readiness normalization: confirm
+`tests/test_optimization_readiness.py`, `tests/test_candidate_comparison.py`, and
+`tests/test_optimization_engine_contract.py` cover degradation of otherwise available
+optimizer-backed rows when optimizer methodology is absent, optimizer quality is absent, or solver
+quality normalizes to `unknown`.
 
 Session 11 golden contracts and governance bundle closure (2026-05-21): Block 5 governance bundle
 **159 passed** (`test_optimization_engine_contract.py` 9 tests included in comparison/factory line);

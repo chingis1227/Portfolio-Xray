@@ -352,8 +352,15 @@ Human-readable `.txt` summarizes profile, counts, failed IDs, and the next recom
 After factory completes (or after manual builders):
 
 1. `run_compare_variants.py` calls `write_candidate_comparison_outputs`.
-2. Comparison behavior is **unchanged** — still read-only; factory only increases `available` row count.
+2. Comparison stays read-only and validates whether `candidate_factory_run.json` is current evidence
+   for the comparison context before copying `steps[]` into candidate rows.
 3. Downstream artifacts (robustness, health, selection, action, monitoring, journal, decision package summary) emit when comparison runs; factory does not write them directly.
+
+Blocks 1-5 reliability Session 03 (`RM-1012`) adds a comparison-side trust boundary: missing, stale,
+or not-authoritative factory summaries are reported in `candidate_comparison.json.candidate_menu`,
+but their per-step factory evidence is not treated as current row evidence. This means an old failed
+factory step cannot make a fresh candidate row unavailable after a later comparison rebuild, and an
+old successful step cannot be read as proof that the current comparison was refreshed by factory.
 
 If `--then-compare` is set and comparison fails, factory run summary should add warning `comparison_failed` with nested error message; factory step statuses remain authoritative for builders.
 

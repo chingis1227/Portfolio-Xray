@@ -285,11 +285,14 @@ The portfolio-first **workflow order** is implemented. The default CLI uses **co
 | End-to-end command | `run_portfolio_review.py` chains subject → factory → compare → portfolio-first PDFs |
 | **Core-run** (default) | `--mode core` → factory profile `core_v1` (benchmarks + risk budgets) |
 | **Full-run** | `--mode full` → factory profile `default_v1` (all script-backed candidates) |
+| **Full-run recovery** | `--mode full --resume-candidates` passes factory `--resume` through the portfolio-first orchestrator |
 | Stale snapshots | Comparison marks non-matching `analysis_end` as `unavailable` |
 | Partial menu | `candidate_comparison.json` includes `candidate_menu`; decision-package summary repeats scope and refresh commands |
 | Long factory | Full rebuild can still take hours; use `--mode full --no-skip-existing` intentionally |
 
-Deferred: resumable factory progress and optional parallelism (`RM-921`). See
+Factory resume is available from both `run_candidate_factory.py --resume` and
+`run_portfolio_review.py --mode full --resume-candidates`. Optional parallelism remains deferred
+(`RM-921`). See
 [operational_runbook.md](../operational_runbook.md) and [candidate_factory_spec.md](candidate_factory_spec.md).
 
 ## Detailed Ownership

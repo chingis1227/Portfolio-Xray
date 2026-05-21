@@ -66,6 +66,17 @@ def test_historical_results_include_episode_bounds_and_pnl() -> None:
     assert isinstance(paths, list)
 
 
+def test_stress_data_trust_summary_promotes_episode_quality() -> None:
+    idx = pd.date_range("2023-01-31", periods=24, freq="ME")
+    monthly_returns = pd.DataFrame({"AAA": [0.01] * len(idx), "BBB": [0.005] * len(idx)}, index=idx)
+    out = _minimal_run(monthly_returns=monthly_returns)
+    trust = out.get("data_trust_summary") or {}
+    assert trust.get("version") == "stress_data_trust_summary_v1"
+    assert trust.get("user_summary_lines")
+    promoted = trust.get("promoted_warnings") or []
+    assert any(row.get("kind") == "methodology_boundary" for row in promoted)
+
+
 def test_historical_methodology_warnings_in_conclusions() -> None:
     out = _minimal_run()
     warnings = out["stress_conclusions"]["data_quality_warnings"]

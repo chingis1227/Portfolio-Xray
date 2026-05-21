@@ -381,6 +381,13 @@ Session 10 adds `construction_disclosure.optimization_readiness`
 `policy`. The block is read-only evidence assembled from existing artifacts; it does not rerun
 optimizers or change comparison ranking.
 
+Blocks 1-5 reliability Session 05 (`RM-1014`) tightens the comparison boundary around that
+readiness evidence. An optimizer-backed row that has report metrics but lacks required optimizer
+methodology or optimizer-quality evidence is explicitly degraded instead of remaining ordinary
+`available`. `optimizer_quality` normalized to `unknown` also degrades an otherwise available
+optimizer-backed row. This does not change optimizer formulas, constraints, solvers, or weights; it
+only aligns `optimizer_methodology`, `optimizer_quality`, and `optimization_readiness` disclosure.
+
 | Readiness item | Current behavior |
 | --- | --- |
 | Fixed weights | Required check: `weights.json`, `snapshot_10y.final_weights_total`, or `baseline_weights_metadata` weights. |
@@ -390,7 +397,7 @@ optimizers or change comparison ranking.
 | Freshness | Required check uses factory `freshness_status`, snapshot `analysis_end`, and stale warnings. |
 | Construction disclosure | Required check: `disclosure_status` available or partial; `available` required for fair comparison. |
 | Optimizer methodology | Required for `fair_comparison_ready` on optimizer/robust rows via `optimizer_methodology`. |
-| Optimizer quality | Copied from Session 06 `optimizer_quality`; `clean` required for `fair_comparison_ready`. |
+| Optimizer quality | Copied from Session 06 `optimizer_quality`; `clean` required for `fair_comparison_ready`; missing or `unknown` evidence degrades an otherwise available optimizer-backed row. |
 | Failed/stale candidates | `overall_status: failed` when row is `unavailable` or optimizer quality family is `failed`. |
 | Selection boundary | `candidate_comparison.json` remains diagnostic-only; `fair_comparison_ready` is not a trade signal. |
 | Fallback/approximate optimizer quality | `overall_status: degraded_quality`; `fair_comparison_ready: false`. |

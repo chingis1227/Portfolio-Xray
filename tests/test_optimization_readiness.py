@@ -185,6 +185,73 @@ def test_build_readiness_degraded_quality_on_approximate_solver(tmp_path: Path) 
     assert readiness["optimization_quality_family"] == "approximate"
 
 
+def test_optimizer_row_degraded_when_metadata_absent(tmp_path: Path) -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    main = tmp_path / "Main portfolio"
+    main.mkdir()
+    _subject_sidecar(main, cfg)
+    _mv_folder(
+        tmp_path,
+        cfg,
+        metadata={"optimizer_name": "minimum_variance_constrained"},
+    )
+
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    row = next(c for c in doc["candidates"] if c["candidate_id"] == "minimum_variance")
+    readiness = row["construction_disclosure"]["optimization_readiness"]
+    assert row["status"] == "degraded"
+    assert "optimizer_readiness_missing:optimizer_methodology" in row["warnings"]
+    assert "optimizer_readiness_missing:optimizer_quality" in row["warnings"]
+    assert "optimizer_methodology" in readiness["gaps"]
+    assert "optimizer_quality" in readiness["gaps"]
+    assert readiness["overall_status"] == "partial"
+    assert readiness["fair_comparison_ready"] is False
+
+
+def test_optimizer_row_degraded_when_solver_quality_unknown(tmp_path: Path) -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    main = tmp_path / "Main portfolio"
+    main.mkdir()
+    _subject_sidecar(main, cfg)
+    _mv_folder(
+        tmp_path,
+        cfg,
+        metadata={
+            "optimizer_run_metadata": {
+                "schema_version": "candidate_optimizer_run_metadata_v1",
+                "optimizer_role": "candidate_only",
+                "method_id": "minimum_variance_constrained",
+                "solver": {},
+            },
+        },
+    )
+
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    row = next(c for c in doc["candidates"] if c["candidate_id"] == "minimum_variance")
+    readiness = row["construction_disclosure"]["optimization_readiness"]
+    quality = row["construction_disclosure"]["optimizer_quality"]
+    assert row["status"] == "degraded"
+    assert "optimizer_quality_unknown:unknown" in row["warnings"]
+    assert quality["optimization_quality_status"] == "unknown"
+    assert quality["optimization_quality_family"] == "unknown"
+    assert "optimizer_quality" in readiness["gaps"]
+    assert "optimizer_methodology" not in readiness["gaps"]
+    assert readiness["overall_status"] == "partial"
+    assert readiness["fair_comparison_ready"] is False
+
+
 def test_build_readiness_failed_when_row_unavailable(tmp_path: Path) -> None:
     cfg = validate_config(
         {
@@ -197,14 +264,24 @@ def test_build_readiness_failed_when_row_unavailable(tmp_path: Path) -> None:
     main.mkdir()
     _subject_sidecar(main, cfg)
     _mv_folder(tmp_path, cfg)
+    fp = compute_candidate_config_fingerprint(cfg)
     with open(main / "candidate_factory_run.json", "w", encoding="utf-8") as handle:
         json.dump(
             {
+                "factory_profile_id": "default_v1",
+                "generated_at": "2026-05-21T10:00:00+00:00",
+                "analysis_end": "2026-04-30",
+                "config_fingerprint": fp,
                 "steps": [
                     {
                         "candidate_id": "minimum_variance",
                         "status": "failed",
                         "reason_code": "builder_fail_numerical",
+                        "freshness_status": "fresh",
+                        "snapshot_analysis_end": "2026-04-30",
+                        "expected_analysis_end": "2026-04-30",
+                        "expected_config_fingerprint": fp,
+                        "snapshot_config_fingerprint": fp,
                     }
                 ]
             },

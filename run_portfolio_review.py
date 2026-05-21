@@ -76,6 +76,14 @@ def main(argv: list[str] | None = None) -> int:
         help="Pass --force to candidate factory.",
     )
     parser.add_argument(
+        "--resume-candidates",
+        action="store_true",
+        help=(
+            "Pass --resume to candidate factory. Use after an interrupted full "
+            "candidate run to continue from candidate_factory_manifest.json."
+        ),
+    )
+    parser.add_argument(
         "--fail-fast",
         action="store_true",
         help="Pass --fail-fast to candidate factory.",
@@ -124,6 +132,7 @@ def main(argv: list[str] | None = None) -> int:
         candidate_ids=args.candidates,
         skip_existing_candidates=not args.no_skip_existing,
         force_candidates=args.force_candidates,
+        resume_candidates=args.resume_candidates,
         fail_fast=args.fail_fast,
         skip_compare=args.skip_compare,
         skip_pdf=args.skip_pdf,

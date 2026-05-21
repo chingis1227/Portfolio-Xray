@@ -1,7 +1,9 @@
 # Operational Runbook
 
 Short guide for the portfolio-first review command and for legacy policy optimization compatibility.
-See `docs/specs/production_workflow.md` for legacy policy status and gate semantics.
+See `docs/specs/production_workflow.md` for legacy policy status and gate semantics. Blocks 1-5
+MVP core reliability handoff:
+[Blocks 1-5 MVP Core Reliability Plan](exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md).
 
 ## 0. Portfolio-First Review Workflow
 
@@ -12,6 +14,7 @@ and only then builds or compares candidate portfolios.
 python run_portfolio_review.py
 python run_portfolio_review.py --dry-run
 python run_portfolio_review.py --mode full --no-skip-existing
+python run_portfolio_review.py --mode full --resume-candidates
 python run_portfolio_review.py --skip-candidates
 python run_portfolio_review.py --candidate-profile default_v1
 ```
@@ -20,6 +23,7 @@ python run_portfolio_review.py --candidate-profile default_v1
 | --- | --- | --- | --- |
 | **Core** (default) | `python run_portfolio_review.py` or `--mode core` | `core_v1` (benchmarks + risk budgets, 6 builders) | Routine monthly review within normal session limits |
 | **Full** | `python run_portfolio_review.py --mode full` | `default_v1` (16 builders incl. optimizers + robust) | Explicit refresh when all script-backed candidates are needed |
+| **Full resume** | `python run_portfolio_review.py --mode full --resume-candidates` | `default_v1` with factory `--resume` | Recovery after an interrupted full factory run |
 
 | Stage | Purpose | Primary command | Key artifacts |
 | --- | --- | --- | --- |
@@ -32,6 +36,28 @@ python run_portfolio_review.py --candidate-profile default_v1
 The default portfolio-first command does not call `run_optimization.py`. The old policy workflow
 below remains available for compatibility and historical policy runs.
 
+### Blocks 1-5 MVP acceptance (operator checklist)
+
+Use this checklist when validating the first-five product blocks without prior chat context.
+
+| Step | Action | Pass criterion |
+| --- | --- | --- |
+| 1 | Configure `analysis_subject` with five tickers and explicit weights summing to `1.0` for `current_portfolio` / `model_portfolio` | Config validation accepts; overallocated positive sums above `1.0` fail before reports |
+| 2 | Run routine review | `python run_portfolio_review.py --mode core --skip-pdf` completes subject materialization, `core_v1` factory, and comparison |
+| 3 | Open subject folder first | `{output_dir_final}/analysis_subject/` contains `run_metadata.json`, `portfolio_xray.json`, `stress_report.json` |
+| 4 | Read trust summaries | `data_trust_summary` / `data_trust_signals` and commentary `user_summary_lines` surface data-quality and young-ETF warnings when present |
+| 5 | Confirm factory evidence | `candidate_comparison.json` → `candidate_menu.factory_evidence_status` is `current`, or warnings explain stale/missing factory evidence |
+| 6 | Scan optimizer rows | Optimizer-backed rows are fair-comparison-ready or visibly `degraded` with readiness warning codes — not silent ordinary `available` evidence |
+
+Offline regression gate (no network):
+
+```bash
+python -m pytest tests/test_blocks_1_5_mvp_smoke.py -q --basetemp='tmp\pytest_blocks_1_5_smoke'
+```
+
+Full verification matrix: [TESTING.md](../TESTING.md) Blocks 1-5 section; output map:
+[OUTPUTS.md](../OUTPUTS.md) Blocks 1-5 MVP Output Acceptance.
+
 ### Runtime limits and partial menus
 
 | Situation | What happens | What to do |
@@ -39,13 +65,20 @@ below remains available for compatibility and historical policy runs.
 | Routine review | Core mode builds six lightweight candidates; compare + decision package finish in one session when snapshots are fresh | `python run_portfolio_review.py` |
 | Snapshots already match review `analysis_end` | Factory mostly `skipped_existing`; core path is fast | Default core command |
 | Need all optimizers / robust suite | Full mode runs all 16 `default_v1` builders; can take hours when stale | `python run_portfolio_review.py --mode full --no-skip-existing` |
-| Session/agent timeout | Subject may refresh; factory may not finish; compare may run on incomplete intended menu | Read `candidate_factory_run.json`, `candidate_comparison.json` → `candidate_menu`, and row `unavailable_reason` |
+| Session/agent timeout | Subject may refresh; factory may not finish; compare may run on incomplete intended menu | Rerun `python run_portfolio_review.py --mode full --resume-candidates`; then read `candidate_factory_run.json`, `candidate_comparison.json` → `candidate_menu`, and row `unavailable_reason` |
 
 **Trust rule:** stale candidates are marked `unavailable` in comparison — they are not silently scored.
 **Interpretation rule:** `candidate_menu.is_partial_menu` and decision-package summary text disclose when selection used a **reduced** menu (core vs product `default_v1`) or when intended candidates are missing. Rankings apply only to scored rows in the intended menu.
 
-**Resume after interrupt:** when a full factory run stops mid-menu, rerun with the same profile and
-candidate list:
+**Resume after interrupt:** when a portfolio-first full factory run stops mid-menu, prefer the
+orchestrator recovery command so subject materialization, factory resume, comparison, and packaging
+stay in the same workflow:
+
+```bash
+python run_portfolio_review.py --mode full --resume-candidates
+```
+
+For advanced factory-only recovery, rerun with the same profile and candidate list:
 
 ```bash
 python run_candidate_factory.py --profile default_v1 --resume
@@ -228,6 +261,8 @@ python run_candidate_factory.py --profile default_v1 --fail-fast
 | `--then-compare` | Run comparison/decision package after factory. |
 
 Portfolio-first review wraps the same factory via `run_portfolio_review.py` (core vs full profile).
+Use `run_portfolio_review.py --mode full --resume-candidates` to pass factory `--resume` through
+the portfolio-first path after an interrupted full review.
 
 ### 8.2 Process exit codes (`run_candidate_factory.py`)
 
@@ -280,8 +315,9 @@ diagnostic; factory `reason_code` is the stable machine label for comparison and
 **Interrupted full menu (G4 / RM-979)**
 
 1. Confirm `analysis_subject` exists and `analysis_end` is current.
-2. `python run_candidate_factory.py --profile default_v1 --resume` (same profile and menu as the interrupted run).
-3. If warning `resume_manifest_stale:run_checksum_mismatch_full_execution`, config or menu changed — use `--no-skip-existing` without `--resume` or delete `candidate_factory_manifest.json` and rerun.
+2. Prefer `python run_portfolio_review.py --mode full --resume-candidates` to rematerialize the subject and pass factory `--resume` through the orchestrator.
+3. For factory-only recovery, run `python run_candidate_factory.py --profile default_v1 --resume` with the same profile and menu as the interrupted run.
+4. If warning `resume_manifest_stale:run_checksum_mismatch_full_execution`, config or menu changed — use `--no-skip-existing` without `--resume` or delete `candidate_factory_manifest.json` and rerun.
 
 **Config or universe change (G2)**
 

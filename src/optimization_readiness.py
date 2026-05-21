@@ -122,6 +122,8 @@ def _overall_readiness_status(
         return "failed"
     if quality_family == "approximate":
         return "degraded_quality"
+    if quality_family == "unknown":
+        return "partial"
     if not checks["weights"]["present"] or not checks["snapshot_10y"]["present"]:
         return "not_ready"
     if fair_comparison_ready and comparison_status == "available":
@@ -252,6 +254,8 @@ def build_optimization_readiness(
     if role in {"optimizer_candidate", "robust_candidate"} and not has_methodology:
         if "optimizer_methodology" not in gaps:
             gaps.append("optimizer_methodology")
+    if quality_family == "unknown" and "optimizer_quality" not in gaps:
+        gaps.append("optimizer_quality")
 
     fair_comparison_ready = (
         comparison_status == "available"

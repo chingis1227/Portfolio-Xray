@@ -39,6 +39,20 @@ It does not own metric formulas, risk-free conversion formulas, NaN handling for
 
 The exported `input_assumptions` block is a projection from `analysis_setup`. Reports may display it for reproducibility, but calculation or policy modules must use `analysis_setup` or their existing canonical runtime inputs, not infer business logic from `input_assumptions`.
 
+### `data_trust_signals` (RM-1016)
+
+`input_assumptions_v1` may include `data_trust_signals` (`input_data_trust_signals_v1`): a
+read-only trust panel for young-ETF optimization policy and input-validation/taxonomy notices.
+It does not change data policy, NaN handling, or optimizer formulas.
+
+| Field | Description |
+| --- | --- |
+| `young_etf_policy_enabled` | Copy of `calculation_assumptions.young_etf_optimization_policy.enabled`. |
+| `young_etf_policy_summary` | Plain-English summary of young-ETF policy scope for optimizer runs. |
+| `signals[]` | Structured rows (`category`, `severity`, `code`, `plain_english`). |
+| `user_summary_lines[]` | Short lines for run metadata and commentary handoff. |
+| `does_not_change_data_policy` | Always `true`. |
+
 ## `analysis_subject` Config Object
 
 `analysis_subject` is the canonical portfolio-first input object. When it is present and valid, it
@@ -65,6 +79,14 @@ Runtime behavior:
 
 - explicit current/model subjects become fixed report weights with
   `weights_source = config.analysis_subject.weights`;
+- explicit current/model subject weights must be numeric, non-negative, include at least one
+  positive weight, and have a positive-weight sum no greater than `1.0` plus a small floating-point
+  tolerance;
+- explicit current/model subject weights with a positive-weight sum below `1.0` remain valid as a
+  partial allocation with the remainder disclosed as `cash_remainder` in `analysis_setup` and
+  `input_assumptions`;
+- explicit current/model subject weights with a material positive-weight sum above `1.0` fail config
+  validation before report generation, rather than continuing as warning-only diagnostics;
 - explicit universe-baseline subjects become equal-weight diagnostic weights with
   `weights_source = system.analysis_subject.equal_weight_baseline`;
 - explicit `analysis_subject` prevents stale generated `portfolio_weights.yml` from being merged as

@@ -20,6 +20,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from src.data_trust_signals import build_stress_data_trust_summary
 from src.metrics_asset import time_to_recovery
 from src.risk_contrib import cov_matrix_monthly, percentage_contributions_variance
 from src.stress_factors import get_factor_display_name
@@ -1494,6 +1495,12 @@ def run_stress(
         hedge_gap_analysis=hedge_gap_analysis,
         overall_confidence=stress_scorecard_v1.get("overall_confidence", "medium"),
     )
+    data_trust_summary = build_stress_data_trust_summary(
+        historical_results=historical_results,
+        stress_conclusions=stress_conclusions,
+        stress_scorecard_v1=stress_scorecard_v1,
+        historical_episode_paths=historical_episode_paths,
+    )
 
     return {
         "status": status,
@@ -1513,6 +1520,7 @@ def run_stress(
         "recession_calibration": recession_calibration,
         "stress_scorecard_v1": stress_scorecard_v1,
         "stress_conclusions": stress_conclusions,
+        "data_trust_summary": data_trust_summary,
         "hedge_gap_analysis": hedge_gap_analysis,
     }
 
@@ -1574,6 +1582,19 @@ def _empty_report(reason: str) -> dict[str, Any]:
             status="not_applicable",
             status_reason="no_hedge_labels",
             by_risk_type=[],
+        ),
+        "data_trust_summary": build_stress_data_trust_summary(
+            historical_results=[],
+            stress_conclusions={
+                "version": "stress_conclusions_v1",
+                "overall_confidence": "low",
+                "data_quality_warnings": _build_historical_data_quality_warnings([]),
+            },
+            stress_scorecard_v1={
+                "version": "stress_scorecard_v1",
+                "overall_confidence": "low",
+            },
+            historical_episode_paths=[],
         ),
         "skip_reason": reason,
     }

@@ -62,6 +62,7 @@ def build_portfolio_review_plan(
     candidate_ids: str | None = None,
     skip_existing_candidates: bool = True,
     force_candidates: bool = False,
+    resume_candidates: bool = False,
     fail_fast: bool = False,
     skip_compare: bool = False,
     skip_pdf: bool = False,
@@ -108,6 +109,8 @@ def build_portfolio_review_plan(
             factory_argv.append("--no-skip-existing")
         if force_candidates:
             factory_argv.append("--force")
+        if resume_candidates:
+            factory_argv.append("--resume")
         if fail_fast:
             factory_argv.append("--fail-fast")
         if not skip_compare:

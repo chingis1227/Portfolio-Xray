@@ -227,6 +227,9 @@ def build_golden_comparison_block5() -> dict[str, Any]:
             main / "candidate_factory_run.json",
             {
                 "factory_profile_id": "default_v1",
+                "generated_at": "2026-05-21T10:00:00+00:00",
+                "analysis_end": GOLDEN_ANALYSIS_END,
+                "config_fingerprint": fp,
                 "steps": [
                     {
                         "candidate_id": "minimum_variance",

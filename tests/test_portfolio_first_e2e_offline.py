@@ -12,7 +12,7 @@ from src.analysis_setup import build_analysis_setup
 from src.candidate_comparison import write_candidate_comparison_outputs
 from src.config_schema import PortfolioConfig, validate_config
 from src.portfolio_review_workflow import build_portfolio_review_plan
-from tests.mvp_offline_fixtures import (
+from mvp_offline_fixtures import (
     MVP_DECISION_PACKAGE_ARTIFACTS,
     DEFAULT_ANALYSIS_END,
     snapshot_10y,

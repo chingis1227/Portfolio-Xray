@@ -1302,11 +1302,17 @@ def write_stress_commentary(
             f"helping factors={factor_help_text}; "
             f"confidence={conclusions.get('overall_confidence', _MDASH)}."
         )
-        dq_warn = conclusions.get("data_quality_warnings")
-        if isinstance(dq_warn, list) and dq_warn:
+        trust = st.get("data_trust_summary")
+        if isinstance(trust, dict) and trust.get("user_summary_lines"):
             exec_para.append(
-                "Data quality / methodology: " + "; ".join(str(w) for w in dq_warn[:4] if w)
+                "Data trust summary: " + " ".join(str(line) for line in trust["user_summary_lines"][:4] if line)
             )
+        else:
+            dq_warn = conclusions.get("data_quality_warnings")
+            if isinstance(dq_warn, list) and dq_warn:
+                exec_para.append(
+                    "Data quality / methodology: " + "; ".join(str(w) for w in dq_warn[:4] if w)
+                )
     hist_method = st.get("historical_methodology") or {}
     if isinstance(hist_method, dict) and hist_method.get("version"):
         exec_para.append(
@@ -1761,6 +1767,16 @@ def write_portfolio_commentary(
     )
 
     # Executive summary (3–5 sentences)
+    trust_lines: list[str] = []
+    stress_trust = st.get("data_trust_summary")
+    if isinstance(stress_trust, dict):
+        trust_lines.extend(str(line) for line in (stress_trust.get("user_summary_lines") or [])[:2] if line)
+    xray_trust = xray_summary.get("data_trust_signals")
+    if isinstance(xray_trust, dict):
+        for line in xray_trust.get("user_summary_lines") or []:
+            if line and line not in trust_lines:
+                trust_lines.append(str(line))
+
     exec_lines = [
         f"This run is {label}; analysis_end: {ae}. "
         f"On the long window (10Y in the report context) the portfolio shows CAGR ~ {_fmt_pct(cagr)}, "
@@ -1781,6 +1797,8 @@ def write_portfolio_commentary(
         + ".",
         f"Client MaxDD gate (portfolio_valid): {client_gate}.",
     ]
+    if trust_lines:
+        exec_lines.append("Data trust: " + " ".join(trust_lines[:3]))
 
     # Sections
     lines: list[str] = []

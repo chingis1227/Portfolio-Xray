@@ -76,12 +76,21 @@ Recorded for the canonical comparison contract (development Session 08, 2026-05-
 }
 ```
 
-### `candidate_menu` block (Session 09)
+### `candidate_menu` block (Session 09; factory evidence addendum RM-1012)
 
 When present, describes the **intended** factory menu versus the **product** reference menu
 (`default_v1`), scored counts, partial-menu flags, unavailable-reason summary, and refresh commands.
 Downstream decision-package reporting must surface `is_partial_menu` when true so selection ranks are
 not read as covering the full product menu.
+
+Beginning with Blocks 1-5 reliability Session 03 (`RM-1012`), this block also reports whether
+`candidate_factory_run.json` is current evidence for the comparison. `factory_evidence_status` is
+`current`, `missing`, `stale`, or `not_authoritative`; `factory_steps_used` is true only when the
+factory summary matches the current comparison context closely enough for `steps[]` to annotate
+candidate rows. `factory_evidence_warnings` carries machine-readable reasons such as
+`factory_summary_missing`, `factory_summary_stale_analysis_end:...`,
+`factory_summary_stale_config_fingerprint:...`, and
+`factory_summary_stale_vs_existing_comparison:...`.
 
 ### Required top-level fields
 
@@ -100,7 +109,7 @@ not read as covering the full product menu.
 | `candidates` | array | One object per registered candidate (see below). |
 | `legacy_artifacts` | object | Paths to pre-canonical comparison files, if present. |
 | `warnings` | array | Run-level warnings (stale artifacts, mixed analysis dates, partial coverage, partial menu). |
-| `candidate_menu` | object | Intended vs product menu disclosure (counts, `is_partial_menu`, refresh commands). Optional until comparison is rebuilt; required for new portfolio-first runs after Session 09. |
+| `candidate_menu` | object | Intended vs product menu disclosure (counts, `is_partial_menu`, refresh commands) plus factory-evidence freshness. Optional until comparison is rebuilt; required for new portfolio-first runs after Session 09. |
 
 ## Candidate Object Contract
 
@@ -157,7 +166,7 @@ Diagnostic-only disclosure of construction parameters. The comparison builder **
 | `baseline_metadata` | when available | Full JSON object from `{artifact_root}/baseline_weights_metadata.json` (e.g. `equal_weight_method`, `target_risk_budgets`, `target_risk_budgets_effective`, optimizer diagnostics). |
 | `builder_summary` | optional | Selected fields from `{artifact_root}/summary.json` (`status`, `reason`, `solver_status`, …) and any `*_metadata` nested blobs when the baseline file is absent. |
 | `main_row_excerpt` | optional | For `policy`: excerpt from `run_result.json` (`optimization_status`, mandate gate summary). For `analysis_subject` / `current`: excerpt from `run_metadata.json` `analysis_setup`. |
-| `factory_step` | optional | Excerpt from `{output_dir_final}/candidate_factory_run.json` `steps[]` for this `candidate_id` when a factory run exists (`reason_code`, `builder_status`, `builder_reason`, freshness fields, `robust_paths_disclosure` when present). |
+| `factory_step` | optional | Excerpt from `{output_dir_final}/candidate_factory_run.json` `steps[]` for this `candidate_id` only when the factory summary is current for this comparison (`reason_code`, `builder_status`, `builder_reason`, freshness fields, `robust_paths_disclosure` when present). |
 | `optimizer_methodology` | when available | Compact comparison-level optimizer disclosure copied from `baseline_weights_metadata.json.optimizer_run_metadata` for optimizer candidates or `run_result.json.optimizer_run_metadata` for legacy policy. |
 | `optimizer_quality` | when available | Normalized optimizer-quality projection from `optimizer_methodology` or factory step evidence. Includes quality status/family, fallback flag/reason, solver status, and evidence source. |
 | `optimization_readiness` | optimizer-backed roles | Block 5 Session 10 (`RM-1000`) checklist for `optimizer_candidate`, `robust_candidate`, and `policy` rows only. See below. |
@@ -238,7 +247,9 @@ Boundary rules:
   `unavailable_reason: optimizer_quality_failed`;
 - a current factory step with `status: failed` or `skipped_dependency` makes the row `unavailable`
   using the factory `reason_code`, even if an old `snapshot_10y.json` exists;
-- `unknown` does not by itself invalidate a row, but it must not be described as clean.
+- `unknown` does not by itself make an optimizer row `unavailable`, but beginning with Blocks 1-5
+  reliability Session 05 (`RM-1014`) it degrades an otherwise `available` optimizer-backed row and
+  adds warning `optimizer_quality_unknown:{status}`.
 
 ### Status rules
 
@@ -251,6 +262,15 @@ Boundary rules:
 Beginning with Block 5 Session 06, fallback/approximate optimizer quality is also a valid reason
 for `degraded`, and failed optimizer quality or failed current factory step is a valid reason for
 `unavailable`.
+
+Beginning with Blocks 1-5 reliability Session 05 (`RM-1014`), an otherwise `available`
+optimizer-backed row (`optimizer_candidate`, `robust_candidate`, or `policy`) must not remain
+ordinary `available` when required optimizer readiness evidence is absent or unknown. Missing
+`optimizer_methodology` on `optimizer_candidate` / `robust_candidate` rows degrades the row and adds
+warning `optimizer_readiness_missing:optimizer_methodology`. Missing `optimizer_quality` on any
+optimizer-backed row degrades the row and adds warning
+`optimizer_readiness_missing:optimizer_quality`. This does not rerun optimizers or infer missing
+methodology; it only makes incomplete evidence visible.
 
 ### `optimization_readiness` (Block 5 Session 10, RM-1000)
 
@@ -281,6 +301,8 @@ Boundary rules:
 - `overall_status: degraded_quality` when Session 06 marks an optimizer row `degraded` because of
   approximate/fallback quality;
 - `overall_status: failed` when the row is `unavailable` because of failed factory/optimizer quality;
+- `overall_status: partial` and gap `optimizer_quality` when optimizer quality is present but
+  normalized to `unknown`;
 - benchmark, analysis-subject, and current rows omit this block.
 
 `candidate_comparison.txt` may append an "Optimization readiness (optimizer-backed rows)" section
@@ -307,6 +329,16 @@ run exists), emit `status: unavailable`, `unavailable_reason: stale_config_finge
 `stale_config_fingerprint:{snapshot_fp}!={expected_fp}`. When the fingerprint field is absent on an
 otherwise date-fresh snapshot, emit warning `candidate_config_fingerprint_missing:{candidate_id}` and
 still allow `available`/`degraded` (factory rebuilds missing fingerprints on the next run).
+
+Factory summary coherence (RM-1012): comparison must evaluate
+`{output_dir_final}/candidate_factory_run.json` before copying any per-step factory evidence into
+candidate rows. The factory summary is current only when it has a valid `factory_profile_id`, a valid
+`generated_at`, an `analysis_end` matching the current review when the review date is known, and a
+matching `config_fingerprint` when the factory summary exposes one. If an existing
+`candidate_comparison.json` on disk has a `generated_at` later than or equal to the factory summary
+`generated_at`, the factory summary is treated as stale for the rebuild. Missing, stale, or
+not-authoritative factory summaries remain disclosed in `candidate_menu` but their `steps[]` are not
+used as current `construction_disclosure.factory_step` evidence and cannot block or upgrade a row.
 
 ## Metric, Stress, and Diagnostic Blocks
 

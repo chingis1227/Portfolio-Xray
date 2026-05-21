@@ -119,6 +119,9 @@ def test_schema_required_top_level_keys(tmp_path: Path) -> None:
         assert key in doc
     assert doc["comparison_baseline_candidate_id"] == "analysis_subject"
     assert len(doc["candidates"]) == 19
+    assert doc["candidate_menu"]["factory_evidence_status"] == "missing"
+    assert doc["candidate_menu"]["factory_steps_used"] is False
+    assert "factory_summary_missing" in doc["warnings"]
 
 
 def test_analysis_subject_row_reads_canonical_sidecar(tmp_path: Path) -> None:
@@ -654,7 +657,13 @@ def test_comparison_includes_candidate_menu_and_warnings(tmp_path: Path) -> None
     with open(eq / "snapshot_10y.json", "w", encoding="utf-8") as f:
         json.dump(_snapshot_10y({"cagr": 0.08, "vol_annual": 0.12}), f)
     with open(main / "candidate_factory_run.json", "w", encoding="utf-8") as f:
-        json.dump({"factory_profile_id": "core_v1"}, f)
+        json.dump(
+            {
+                "factory_profile_id": "core_v1",
+                "generated_at": "2026-05-21T10:00:00+00:00",
+            },
+            f,
+        )
 
     cfg = validate_config(
         {
@@ -830,6 +839,9 @@ def test_optimizer_candidate_methodology_disclosure_from_baseline_metadata(
         json.dump(
             {
                 "factory_profile_id": "default_v1",
+                "generated_at": "2026-05-21T10:00:00+00:00",
+                "analysis_end": "2026-04-30",
+                "config_fingerprint": fp,
                 "steps": [
                     {
                         "candidate_id": "minimum_variance",
@@ -959,6 +971,9 @@ def test_failed_factory_step_blocks_comparison_row_even_with_snapshot(
         json.dump(
             {
                 "factory_profile_id": "default_v1",
+                "generated_at": "2026-05-21T10:00:00+00:00",
+                "analysis_end": "2026-04-30",
+                "config_fingerprint": compute_candidate_config_fingerprint(cfg),
                 "steps": [
                     {
                         "candidate_id": "minimum_variance",
@@ -975,6 +990,76 @@ def test_failed_factory_step_blocks_comparison_row_even_with_snapshot(
     assert row["status"] == "unavailable"
     assert row["unavailable_reason"] == "builder_fail_numerical"
     assert "factory_step_not_successful:builder_fail_numerical" in row["warnings"]
+
+
+def test_stale_factory_summary_not_used_after_fresh_comparison_rebuild(
+    tmp_path: Path,
+) -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    fp = compute_candidate_config_fingerprint(cfg)
+    main = tmp_path / "Main portfolio"
+    subject = main / "analysis_subject"
+    subject.mkdir(parents=True)
+    with open(subject / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.06, "vol_annual": 0.1}, cfg=cfg), f)
+    with open(subject / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(_run_metadata("model_portfolio"), f)
+
+    eq = tmp_path / "equal-weight portfolio"
+    eq.mkdir()
+    with open(eq / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y(
+                {"cagr": 0.08, "vol_annual": 0.12, "max_drawdown": -0.2},
+                cfg=cfg,
+            ),
+            f,
+        )
+
+    with open(main / "candidate_factory_run.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "factory_profile_id": "core_v1",
+                "generated_at": "2026-05-21T10:00:00+00:00",
+                "analysis_end": "2026-04-30",
+                "config_fingerprint": fp,
+                "steps": [
+                    {
+                        "candidate_id": "equal_weight",
+                        "status": "failed",
+                        "reason_code": "builder_fail_numerical",
+                    }
+                ],
+            },
+            f,
+        )
+    with open(main / "candidate_comparison.json", "w", encoding="utf-8") as f:
+        json.dump({"generated_at": "2026-05-21T11:00:00+00:00"}, f)
+
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    row = next(c for c in doc["candidates"] if c["candidate_id"] == "equal_weight")
+    assert row["status"] == "degraded"
+    assert row["unavailable_reason"] is None
+    assert "factory_step" not in row["construction_disclosure"]
+    assert "candidate_factory_run.json" not in row["construction_disclosure"]["source_files"]
+
+    menu = doc["candidate_menu"]
+    assert menu["factory_evidence_status"] == "stale"
+    assert menu["factory_steps_used"] is False
+    assert any(
+        w.startswith("factory_summary_stale_vs_existing_comparison:")
+        for w in menu["factory_evidence_warnings"]
+    )
+    assert any(
+        w.startswith("factory_summary_stale_vs_existing_comparison:")
+        for w in doc["warnings"]
+    )
 
 
 def test_policy_optimizer_methodology_disclosure_from_run_result(tmp_path: Path) -> None:
@@ -1111,6 +1196,7 @@ def test_construction_disclosure_includes_factory_step_excerpt(tmp_path: Path) -
         json.dump(
             {
                 "factory_profile_id": "core_v1",
+                "generated_at": "2026-05-21T10:00:00+00:00",
                 "steps": [
                     {
                         "candidate_id": "equal_weight",
@@ -1146,6 +1232,7 @@ def test_robust_scenario_construction_disclosure_main_prerequisites(tmp_path: Pa
         json.dump(
             {
                 "factory_profile_id": "default_v1",
+                "generated_at": "2026-05-21T10:00:00+00:00",
                 "steps": [
                     {
                         "candidate_id": "robust_scenario",

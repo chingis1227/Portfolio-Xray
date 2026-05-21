@@ -44,22 +44,54 @@ analysis_subject
 -> comparison and decision artifacts
 ```
 
-Runtime migration to that order is in progress under the active
-[Portfolio-First Transition Plan](docs/exec_plans/2026-05-18_portfolio_first_transition_plan.md).
-The portfolio-first orchestrator is:
+The portfolio-first orchestrator is implemented and governed by
+[portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md). Routine and
+full-review commands:
 
 ```bash
 python run_portfolio_review.py
+python run_portfolio_review.py --mode core --skip-pdf
 python run_portfolio_review.py --dry-run
+python run_portfolio_review.py --mode full --skip-pdf
+python run_portfolio_review.py --mode full --resume-candidates --skip-pdf
 python run_portfolio_review.py --skip-candidates
 python run_portfolio_review.py --candidate-profile core_benchmarks
 python run_portfolio_review.py --candidates equal_weight,risk_parity
 ```
 
+| Review mode | Factory profile | Typical use |
+| --- | --- | --- |
+| **Core** (default) | `core_v1` (six lightweight builders) | Routine monthly review |
+| **Full** | `default_v1` (16 builders incl. optimizers + robust) | Explicit refresh of the full candidate menu |
+| **Full resume** | `default_v1` with factory `--resume` | Recovery after an interrupted full factory run |
+
 `run_portfolio_review.py` materializes `{output_dir_final}/analysis_subject/` first, then runs
 the non-policy candidate factory and comparison path. It does not call `run_optimization.py` in the
-default path. Subject-centered comparison and decision wording continue under later transition
-sessions.
+default path. Inspect subject diagnostics before interpreting candidate or decision artifacts.
+
+### Blocks 1-5 MVP core (first five product blocks)
+
+Blocks 1-5 are the practical MVP core: Input and Assumptions, Portfolio X-Ray, Stress Lab,
+Candidate Factory, and Optimization Engine (optimizer-backed candidates for comparison only). The
+active reliability plan is
+[Blocks 1-5 MVP Core Reliability Plan](docs/exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md).
+
+Routine command (no PDF rebuild):
+
+```bash
+python run_portfolio_review.py --mode core --skip-pdf
+```
+
+Offline acceptance gate (five tickers, explicit weights, no network):
+
+```bash
+python -m pytest tests/test_blocks_1_5_mvp_smoke.py -q --basetemp='tmp\pytest_blocks_1_5_smoke'
+```
+
+Weighted `current_portfolio` / `model_portfolio` subjects must not have a positive-weight sum above
+`1.0`; partial sums below `1.0` remain valid as explicit cash-remainder diagnostics. Operator
+details: [docs/operational_runbook.md](docs/operational_runbook.md) section 0; verification matrix:
+[TESTING.md](TESTING.md).
 
 The existing legacy policy flow remains callable for compatibility and historical policy runs:
 
