@@ -24,6 +24,7 @@ from src.portfolio_variants import (
     build_minimum_variance_baseline,
     build_minimum_variance_constrained,
     build_minimum_variance_uncapped_long_only,
+    minimum_variance_baseline_metadata_export,
 )
 from src.risk_contrib import cov_matrix_monthly
 from src.risk_parity_spinu import repair_covariance_psd
@@ -107,6 +108,33 @@ def test_build_minimum_variance_three_assets_bounds_and_sum() -> None:
     assert diag.get("portfolio_variance") is not None
     assert diag.get("annualized_volatility") is not None
     assert "solver_success" in diag
+    meta = minimum_variance_baseline_metadata_export(diag)
+    orm = meta["optimizer_run_metadata"]
+    assert orm["schema_version"] == "candidate_optimizer_run_metadata_v1"
+    assert orm["optimizer_role"] == "candidate_only"
+    assert orm["method_id"] == "minimum_variance_constrained"
+    assert orm["input_window"]["analysis_end"] == end
+    assert orm["input_window"]["window_months"] == 120
+    assert orm["input_window"]["return_frequency"] == "monthly_simple"
+    assert orm["input_window"]["returns_panel_end"] == end
+    assert orm["input_window"]["returns_panel_rows"] == 120
+    assert len(orm["input_fingerprints"]["returns_panel_fingerprint"]) == 64
+    assert len(orm["input_fingerprints"]["config_fingerprint"]) == 64
+    assert len(orm["input_fingerprints"]["universe_fingerprint"]) == 64
+    assert orm["covariance"]["analysis_end"] == end
+    assert orm["covariance"]["returns_panel_fingerprint"] == (
+        orm["input_fingerprints"]["returns_panel_fingerprint"]
+    )
+    assert orm["covariance"]["methodology"]["schema_version"] == "optimizer_covariance_methodology_v1"
+    assert orm["covariance"]["methodology"]["join_policy"] == "inner_join_complete_cases"
+    assert orm["young_etf_methodology"]["enabled"] is False
+    assert "Covariance method=sample_monthly_ddof1" in orm["covariance"]["methodology_summary"]
+    assert orm["expected_return"]["uses_expected_returns"] is False
+    assert orm["constraints"]["bounds_used"]["H"]["min"] == 0.01
+    assert orm["solver"]["optimization_quality_status"] in {
+        "clean_solve",
+        "approximate_fallback",
+    }
 
 
 def test_minimum_variance_baseline_alias_matches_constrained() -> None:

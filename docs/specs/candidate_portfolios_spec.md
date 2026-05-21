@@ -16,6 +16,30 @@ Candidate builders use the eligible universe and return panels defined by the cu
 
 Unless explicitly stated, candidate scripts do not apply ProLiquidity overlays, client mandate release logic, or policy weight release behavior.
 
+Optimizer candidate folders that write `baseline_weights_metadata.json` include a normalized
+`optimizer_run_metadata` block (`candidate_optimizer_run_metadata_v1`) for Minimum Variance,
+Maximum Diversification, Minimum CVaR, and Robust Mean-Variance families. The block records the
+candidate-only role, method id, objective, monthly input window, expected-return usage, covariance
+method, eligible universe, resolved constraints/bounds, solver/fallback quality, relevant
+parameters, input fingerprints, and output summary fields while preserving the older top-level
+metadata fields. Session 08 adds `returns_panel_fingerprint`, `config_fingerprint`, and
+`universe_fingerprint`, plus return-panel start/end/row disclosure, to optimizer candidate metadata.
+Candidate young-ETF dual covariance estimation receives the wrapper `analysis_end` explicitly. This
+is disclosure only and does not change weights, formulas, constraints, mandate gates, or comparison
+ranking.
+
+Session 09 adds explicit covariance and Young ETF methodology disclosure to the same optimizer
+metadata envelope: `covariance.methodology` (`optimizer_covariance_methodology_v1`),
+`covariance.methodology_summary`, and `young_etf_methodology`
+(`optimizer_young_etf_methodology_v1`). These fields describe already-used estimator choices,
+join policy, shrinkage, PSD repair status, Young ETF mode/buckets/fallback reason, and per-ticker
+caps where applicable. They do not recompute covariance or change candidate weights.
+
+Beginning with Optimization Engine Session 06, normalized quality values use `clean_solve`,
+`approximate_fallback`, `approximate_solver`, `failed_solver`, `failed`, or `unknown`. Candidate
+builders still own only their construction artifacts; factory, comparison, and selection decide how
+to surface fallback/failure quality downstream.
+
 ## Candidate Families
 
 Implemented candidate and benchmark families include:

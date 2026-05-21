@@ -43,6 +43,32 @@ Primary artifacts:
 - objective and contribution CSVs where implemented
 - full robust scenario portfolio report when `run_robust_scenario_portfolio_report.py` is run
 
+## Solver Status Contract
+
+`robust_optimization_v1_summary.json` includes a normalized `solver` block for the selected SLSQP
+multi-start result:
+
+- `name: SLSQP`
+- `success`: boolean SciPy success flag for the selected result
+- `status`: `OK` for a clean selected solve, otherwise `APPROXIMATE`
+- `raw_status`, `message`, `iterations`, and `multi_start_count`
+- `fallback_used` and `fallback_reason` (`false` / `null` in the current implementation)
+- `optimization_quality_status`: `clean_solve` when the selected SLSQP result succeeded,
+  otherwise `approximate_solver`
+
+The summary also repeats `solver_success`, `solver_status`, `fallback_used`, `fallback_reason`, and
+`optimization_quality_status` at top level for factory readers that consume compact summaries.
+These fields disclose solver quality only; they do not change the objective, constraints, weights,
+or candidate-only boundary.
+
+When `run_robust_scenario_portfolio_report.py` materializes the `robust scenario portfolio/`
+candidate folder and the source robust summary is present beside the weights file, it copies the
+solver contract into `baseline_weights_metadata.json.optimizer_run_metadata`
+(`robust_scenario_optimizer_run_metadata_v1`). This metadata lets the candidate factory and
+candidate comparison expose robust scenario solver quality using the same
+`construction_disclosure.optimizer_methodology` and `construction_disclosure.optimizer_quality`
+surfaces used by other optimizer candidates.
+
 ## Boundaries
 
 Scenario robust optimization creates candidate weights only. It does not change policy weights, mandate gates, stress pass/fail logic, or production release status.

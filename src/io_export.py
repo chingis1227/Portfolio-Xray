@@ -17,6 +17,10 @@ import pandas as pd
 from src.analysis_setup import build_analysis_setup
 from src.config_schema import PortfolioConfig
 from src.input_assumptions import build_input_assumptions_from_analysis_setup
+from src.optimizer_methodology import (
+    covariance_methodology_summary,
+    young_etf_methodology_summary,
+)
 
 REPORT_DECIMALS = 3
 
@@ -327,6 +331,7 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     stress_detail = run_result.get("stress_diagnostic_report") or {}
     violations = run_result.get("violations") or []
     mandate_check = run_result.get("mandate_check") or {}
+    optimizer_metadata = run_result.get("optimizer_run_metadata") or {}
 
     def _fmt_pct(value: Any) -> str:
         if isinstance(value, (int, float)):
@@ -401,6 +406,29 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
     lines.append("-" * 30)
     lines.append("  RC_vol is reported in metrics and stress (Top1/Top3) for diagnostics; not used as a construction cap in this run.")
     lines.append("")
+
+    if isinstance(optimizer_metadata, dict) and optimizer_metadata:
+        cov = optimizer_metadata.get("covariance") if isinstance(optimizer_metadata.get("covariance"), dict) else {}
+        cov_methodology = (
+            cov.get("methodology") if isinstance(cov.get("methodology"), dict) else cov
+        )
+        young = optimizer_metadata.get("young_etf_methodology")
+        if not isinstance(young, dict) and isinstance(cov_methodology, dict):
+            young = cov_methodology.get("young_etf")
+        lines.append("4b. Optimizer methodology")
+        lines.append("-" * 30)
+        lines.append("  " + covariance_methodology_summary(cov_methodology))
+        lines.append(
+            "  "
+            + young_etf_methodology_summary(young if isinstance(young, dict) else None)
+        )
+        solver = optimizer_metadata.get("solver") if isinstance(optimizer_metadata.get("solver"), dict) else {}
+        if solver:
+            lines.append(
+                "  Optimizer quality: %s"
+                % (solver.get("optimization_quality_status") or "unknown")
+            )
+        lines.append("")
 
     lines.append("5. Stress & scenario diagnostics (non-blocking for release)")
     lines.append("-" * 30)

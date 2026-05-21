@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config_schema import PortfolioConfig
+from src.optimization_status import optimization_quality_family
 
 SCHEMA_VERSION = "selection_decision_v1"
 WEIGHTS_PROFILE = "default_weights_reviewable"
@@ -196,6 +197,30 @@ def _mandate_breach_indicators(cand: dict[str, Any]) -> bool:
             return True
     warnings = cand.get("warnings") or []
     return any("mandate" in str(w).lower() for w in warnings)
+
+
+def _candidate_optimization_quality(cand: dict[str, Any]) -> dict[str, Any]:
+    disclosure = cand.get("construction_disclosure") or {}
+    quality = disclosure.get("optimizer_quality")
+    if isinstance(quality, dict):
+        return quality
+    methodology = disclosure.get("optimizer_methodology")
+    if isinstance(methodology, dict):
+        solver = methodology.get("solver")
+        if isinstance(solver, dict):
+            q_status = solver.get("optimization_quality_status")
+            fallback_used = bool(solver.get("fallback_used", False))
+            if q_status or fallback_used:
+                return {
+                    "optimization_quality_status": q_status,
+                    "optimization_quality_family": optimization_quality_family(
+                        q_status,
+                        fallback_used=fallback_used,
+                    ),
+                    "fallback_used": fallback_used,
+                    "fallback_reason": solver.get("fallback_reason"),
+                }
+    return {}
 
 
 def _check_mandate_risk_reduction(
@@ -565,6 +590,7 @@ def build_selection_decision(
         current = baseline
         current_ok = current and current.get("status") in ELIGIBLE_STATUSES
         target = by_id.get(favored_id) or {}
+        target_quality = _candidate_optimization_quality(target)
 
         if favored_id == "policy" and policy and policy.get("status") in ELIGIBLE_STATUSES:
             rationale["selection_bullets"].append(
@@ -626,6 +652,20 @@ def build_selection_decision(
                     rationale["data_quality_notes"].append(
                         "Run: python run_report.py --materialize-current"
                     )
+
+        if target_quality:
+            family = target_quality.get("optimization_quality_family")
+            q_status = target_quality.get("optimization_quality_status") or "unknown"
+            if family == "approximate":
+                warnings.append(f"favored_optimizer_quality_not_clean:{favored_id}:{q_status}")
+                rationale["data_quality_notes"].append(
+                    "Favored target used an approximate optimizer solve or fallback; review construction disclosure before acting."
+                )
+            elif family == "failed":
+                warnings.append(f"favored_optimizer_quality_failed:{favored_id}:{q_status}")
+                rationale["data_quality_notes"].append(
+                    "Favored target reports failed optimizer quality; review comparison artifacts before acting."
+                )
 
     if missing_inputs:
         rationale["data_quality_notes"].append(

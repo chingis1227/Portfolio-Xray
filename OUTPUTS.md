@@ -114,7 +114,7 @@ Common project artifacts include:
 - candidate portfolio output folders
 - `{output_dir_final}/analysis_subject/` (portfolio-first subject diagnostics from `run_report.py --materialize-analysis-subject`; see [portfolio review workflow spec](docs/specs/portfolio_review_workflow_spec.md))
 - `candidate_factory_run.json`, optional `candidate_factory_run.txt`, and `candidate_factory_manifest.json` (under `output_dir_final`; factory orchestration from `run_candidate_factory.py`; `--resume` reads the manifest; contract in [candidate factory spec](docs/specs/candidate_factory_spec.md); methodology map [§4](docs/audits/2026-05-20_candidate_factory_methodology_map.md))
-- `candidate_comparison.json` (under `output_dir_final`; includes the portfolio-first `analysis_subject` baseline row when materialized; per-row `construction_disclosure` passthrough; see [candidate comparison spec](docs/specs/candidate_comparison_spec.md))
+- `candidate_comparison.json` (under `output_dir_final`; includes the portfolio-first `analysis_subject` baseline row when materialized; per-row `construction_disclosure` passthrough including `optimizer_methodology`, `optimizer_quality`, and `optimization_readiness` (`fair_comparison_ready` checklist) for optimizer-backed rows when artifacts exist; see [candidate comparison spec](docs/specs/candidate_comparison_spec.md))
 - `robustness_scorecard.json` and optional `robustness_scorecard.txt` (under `output_dir_final`; written by `run_compare_variants.py` / `write_candidate_comparison_outputs`; see [robustness scorecard spec](docs/specs/robustness_scorecard_spec.md))
 - `portfolio_health_score.json` and optional `portfolio_health_score.txt` (under `output_dir_final`; Session 13; see [portfolio health score spec](docs/specs/portfolio_health_score_spec.md))
 - `selection_decision.json` and optional `selection_decision.txt` (under `output_dir_final`; contract in [selection engine spec](docs/specs/selection_engine_spec.md))
@@ -135,9 +135,29 @@ Common project artifacts include:
 
 `portfolio_xray.json` is a generated, diagnostic-only Portfolio X-Ray artifact. It summarizes existing report pipeline outputs and in-memory diagnostics; it does not optimize, change weights, change mandate gates, change stress pass/fail status, or make portfolio selection decisions. Its section and disclosure contract is owned by [docs/specs/portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md). Human-readable surfaces are rendered from this JSON via `format_portfolio_xray_text` (`report.txt`), `format_portfolio_xray_html` (`report.html`), and `format_portfolio_xray_commentary` (`commentary.txt` compact block).
 
-`run_result.json` and `run_metadata.json` include an `analysis_setup` block, the resolved runtime contract for the input and assumptions layer. They also include `input_assumptions`, the reporting view projected from `analysis_setup`, summarizing the input mode, tickers, fixed/current weight status, resolved market assumptions, mandate inputs, calculation settings, and known V1 gaps.
+`run_result.json` and `run_metadata.json` include an `analysis_setup` block, the resolved runtime contract for the input and assumptions layer. They also include `input_assumptions`, the reporting view projected from `analysis_setup`, summarizing the input mode, tickers, fixed/current weight status, resolved market assumptions, mandate inputs, calculation settings, and known V1 gaps. Legacy policy `run_result.json` also includes `optimizer_run_metadata` (`legacy_policy_optimizer_run_metadata_v1`) with objective, estimator, window, input fingerprints, universe, bounds/caps, cash policy, solver/fallback, release-gate disclosure, covariance methodology, and Young ETF methodology. Optimizer candidate `baseline_weights_metadata.json` exports for Minimum Variance, Maximum Diversification, Minimum CVaR, and Robust Mean-Variance include `optimizer_run_metadata` (`candidate_optimizer_run_metadata_v1`) with candidate-only role, method/objective, input window, input fingerprints, estimator/constraint, solver/fallback, parameter, output-summary disclosure, covariance methodology, and Young ETF methodology while preserving legacy top-level metadata fields. Materialized Robust Scenario candidate metadata may include `optimizer_run_metadata` (`robust_scenario_optimizer_run_metadata_v1`) copied from `robust_optimization_v1_summary.json`, including SLSQP solver/fallback quality. `candidate_comparison.json` copies the comparison-ready subset to `construction_disclosure.optimizer_methodology` when those upstream metadata blocks exist and projects normalized fallback/failure quality to `construction_disclosure.optimizer_quality` when metadata or factory evidence is available. `candidate_comparison.txt` and legacy `ips_summary.txt` include compact optimizer methodology notes when source metadata is present.
 
 The exact artifact set can vary by config, available data, candidate type, and enabled report features.
+
+Optimization output disclosure is governed by the current artifact contracts above and the
+[Optimization Engine layer spec](docs/specs/optimization_engine_layer_spec.md). Session 03 adds
+legacy policy `optimizer_run_metadata` to `run_result.json`; Session 04 adds candidate optimizer
+`optimizer_run_metadata` inside optimizer candidate `baseline_weights_metadata.json` exports.
+Session 05 propagates those normalized blocks into `candidate_comparison.json`
+`construction_disclosure.optimizer_methodology` without changing optimizer behavior or generated
+weights. Session 06 adds `construction_disclosure.optimizer_quality` and factory step optimizer
+quality evidence so fallback/approximate solves are degraded, failed factory/optimizer quality is
+unavailable, and Selection warnings can surface favored fallback targets. Session 07 adds robust
+scenario SLSQP solver status to `robust_optimization_v1_summary.json` and propagates it through the
+materialized robust scenario candidate metadata for factory and comparison disclosure. Session 08
+adds `input_fingerprints` (`returns_panel_fingerprint`, `config_fingerprint`,
+`universe_fingerprint`) and return-panel start/end/row disclosure to legacy policy and optimizer
+candidate metadata so stale or mismatched estimator inputs can be audited without regenerating
+weights. Session 09 adds `optimizer_covariance_methodology_v1` and
+`optimizer_young_etf_methodology_v1` disclosure to optimizer metadata and surfaces compact
+methodology notes in `candidate_comparison.txt` / `ips_summary.txt`. Session 10 adds
+`construction_disclosure.optimization_readiness` (`optimizer_comparison_readiness_v1`) and compact
+readiness notes in `candidate_comparison.txt` for optimizer-backed comparison rows.
 
 ## Output Rules
 
@@ -171,6 +191,7 @@ The exact artifact set can vary by config, available data, candidate type, and e
 | Current-vs-policy workflow and status JSON | [docs/specs/current_vs_policy_workflow_spec.md](docs/specs/current_vs_policy_workflow_spec.md) |
 | Monitoring snapshot and diff JSON | [docs/specs/monitoring_spec.md](docs/specs/monitoring_spec.md) |
 | Metric formulas, windows, estimators, rounding | [docs/specs/metrics_specification.md](docs/specs/metrics_specification.md) |
+| Optimization Engine roles, current optimizer output disclosure, and target-only optimizer boundaries | [docs/specs/optimization_engine_layer_spec.md](docs/specs/optimization_engine_layer_spec.md) |
 | Stress, factor, macro, regime, and stress CSV/JSON artifacts | [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) |
 | Scenario Library and normalized scenario outputs | [docs/specs/scenario_library_spec.md](docs/specs/scenario_library_spec.md) |
 | Portfolio construction and weight-release outputs | [docs/specs/portfolio_construction_policy.md](docs/specs/portfolio_construction_policy.md) |

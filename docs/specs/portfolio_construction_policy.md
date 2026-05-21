@@ -49,6 +49,18 @@ Stress testing and factor diagnostics are **non-binding** except where explicitl
 - **Young / short-history ETFs:** optional dual covariance (`young_etf_optimization_policy`).
 - **Covariance:** sample monthly covariance; optional Ledoit–Wolf shrinkage via `covariance_shrinkage`.
 
+Disclosure: legacy policy `run_result.json.optimizer_run_metadata` records the objective mode,
+return/covariance sources, windows, `analysis_end`, eligible universe, bounds/caps, cash policy,
+solver/fallback quality, and release gate. Session 06 normalizes clean solves as `clean_solve` and
+fallback solves as `approximate_fallback`. Session 08 adds estimator-input fingerprints
+(`returns_panel_fingerprint`, `config_fingerprint`, `universe_fingerprint`) and return-panel
+start/end/row disclosure to make the actual estimation inputs auditable. Session 09 adds
+`covariance.methodology`, `covariance.methodology_summary`, and `young_etf_methodology` so the
+sample/shrinkage/dual-covariance path and any Young ETF fallback/caps are visible in machine and
+TXT outputs. It is explanatory metadata only and does not change the optimizer objective,
+constraints, covariance formula, fallback branch, ProLiquidity overlay, or mandate release
+semantics.
+
 ---
 
 ## 6. NaN-safe backtest

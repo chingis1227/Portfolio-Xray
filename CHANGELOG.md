@@ -39,6 +39,59 @@ Category: Removed
 
 Omit empty categories.
 
+## 2026-05-21
+
+### Added
+
+- Block 5 governance Session 12 (`RM-1002`): Phase 15 wave closure — baseline snapshot closure
+  section, ROADMAP Phase 15 **Done** (`RM-990`–`RM-1002`), ExecPlan and registers marked complete;
+  Block 5 gap index in `KNOWN_ISSUES.md`; governance bundle **159 passed**, `verify_docs` OK.
+
+- Block 5 governance Session 11 (`RM-1001`): golden contract fixtures
+  (`legacy_policy_optimizer_run_metadata_golden_v1.json`,
+  `candidate_optimizer_run_metadata_golden_v1.json`,
+  `optimization_comparison_block5_golden_v1.json`), `tests/optimization_engine_golden_inputs.py`,
+  `tests/test_optimization_engine_contract.py`; `TESTING.md` Block 5 bundle finalized.
+
+- Block 5 governance Session 01 (`RM-991`): canonical
+  [optimization_engine_layer_spec.md](docs/specs/optimization_engine_layer_spec.md) for Block 5.1–5.11
+  roles, matrices, and boundaries (documentation only).
+
+- Block 5 governance Session 10 (`RM-1000`): `candidate_comparison.json` rows for optimizer-backed
+  candidates now include `construction_disclosure.optimization_readiness` with
+  `fair_comparison_ready` and artifact checklist gates without changing optimizer formulas or
+  comparison ranking.
+
+- Block 5 governance Session 09 (`RM-999`): legacy and candidate optimizer metadata now disclose
+  covariance methodology and Young ETF methodology, with compact human summaries in comparison and
+  IPS TXT outputs, without changing covariance formulas or weights.
+
+- Block 5 governance Session 08 (`RM-998`): legacy and candidate optimizer metadata now disclose
+  estimator `analysis_end`, return-panel start/end/rows, and input fingerprints without changing
+  optimizer formulas or weights.
+
+- Block 5 governance Session 07 (`RM-997`): Robust Scenario now emits normalized SLSQP solver
+  status and propagates it through candidate metadata, factory quality evidence, and comparison
+  optimizer disclosure.
+
+- Block 5 governance Session 06 (`RM-996`): optimizer fallback/failure quality now propagates
+  through factory steps, comparison readiness, and Selection warnings so fallback is not ordinary
+  clean optimization evidence.
+
+- Block 5 governance Session 05 (`RM-995`): comparison rows now expose
+  `construction_disclosure.optimizer_methodology` from upstream optimizer metadata without changing
+  optimizer behavior.
+
+- Block 5 governance Session 04 (`RM-994`): candidate optimizer
+  `baseline_weights_metadata.json.optimizer_run_metadata` disclosure for Minimum Variance, Maximum
+  Diversification, Minimum CVaR, and Robust Mean-Variance without changing optimizer behavior.
+
+- Block 5 governance Session 03 (`RM-993`): legacy policy `run_result.json.optimizer_run_metadata`
+  disclosure for objective, estimator/window, universe, bounds/caps, cash policy, solver/fallback,
+  and release gate without changing optimizer behavior.
+
+- Block 5 governance Session 02 (`RM-992`): **DEC-2026-05-21-001** target-only optimizer objective boundary and [optimization_engine_layer_spec.md](docs/specs/optimization_engine_layer_spec.md) appendix for Max Sharpe, drawdown, macro, stress-test, tax, and turnover concepts.
+
 ## 2026-05-20
 
 ### Added

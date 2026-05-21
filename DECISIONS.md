@@ -60,6 +60,34 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-05-21-002
+Title: Optimizer fallback quality is not clean success
+
+- Status: accepted
+- Date: 2026-05-21
+- Decision: `OK_FALLBACK`, fallback branches, and approximate solver outputs must be disclosed as non-clean optimizer quality. Normalized quality statuses are `clean_solve`, `approximate_fallback`, `approximate_solver`, `failed_solver`, `failed`, and `unknown`; fallback/approximate quality degrades comparison evidence, and failed current factory or optimizer quality makes comparison evidence unavailable.
+- Context: Block 5 Session 06 formalizes fallback and failure policy after Sessions 03-05 added optimizer metadata and comparison passthrough. Before this decision, an artifact with a valid `snapshot_10y.json` could look successful in factory/comparison even when upstream optimizer metadata described fallback or approximate quality.
+- Rationale: Users need to distinguish a clean solve from a fallback or approximate solve before interpreting candidate comparison or Selection output. The project can preserve existing optimizer formulas and fallback branches while making their quality visible at boundaries.
+- Alternatives considered: Treat fallback as ordinary success when weights exist (rejected because it hides model/solver quality); hard-fail all fallback outputs (rejected because fallback weights can still be useful review evidence); change optimizer formulas or retry logic (rejected because Session 06 is disclosure/boundary work only).
+- Assumptions: Existing builder artifacts are the source of truth for solver/fallback evidence. Comparison and Selection must not recompute optimizer math.
+- Consequences: Factory steps may carry optimizer quality fields in addition to orchestration status. `candidate_comparison.json` may degrade or mark unavailable rows based on visible optimizer/factory quality. `selection_decision.json` warns if a fallback/approximate optimizer row is favored. Optimizer formulas, fallback behavior, mandate gates, and generated weights are unchanged.
+- Related documents: [optimization_engine_layer_spec.md](docs/specs/optimization_engine_layer_spec.md), [candidate_factory_spec.md](docs/specs/candidate_factory_spec.md), [candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [selection_engine_spec.md](docs/specs/selection_engine_spec.md), [Optimization Engine Post-Audit Roadmap](docs/exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md).
+- Review trigger: Revisit if fallback outputs become hard-ineligible, if new solver quality states are added, or if Selection should exclude approximate optimizer rows entirely.
+
+Decision ID: DEC-2026-05-21-001
+Title: Target-only optimizer objectives require a future spec decision
+
+- Status: accepted
+- Date: 2026-05-21
+- Decision: Max Sharpe, drawdown-controlled, macro-resilient, stress-test-optimized, tax-aware, and turnover-aware optimizer objectives are target-only concepts in the current Optimization Engine layer. They are not implemented legacy policy objectives, candidate optimizer objectives, robust optimizer modes, comparison candidate ids, hard constraints, mandate gates, or output contract fields unless a future accepted spec, implementation, tests, and documentation update explicitly add them.
+- Context: Block 5 governance needs a project-level decision so product-concept names cannot drift into optimizer behavior by implication. Session 01 documented the boundary in the Optimization Engine layer spec; this decision records the methodology choice in the global decision log.
+- Rationale: The project already ships multiple optimizer paths with different authority. Treating concept names as current objectives would silently change expectations for policy release, candidate comparison, solver disclosure, and reproducibility metadata.
+- Alternatives considered: Implement placeholder optimizer modes now (rejected because Session 02 is governance-only and does not add formulas or solvers); rely only on the spec wording (rejected because this is a methodology boundary that belongs in the project decision log); hide concept names entirely (rejected because product documents may still use them as future direction when clearly labeled).
+- Assumptions: New optimizer objectives require quantitative review, an owning spec section, implementation, focused tests, output-contract documentation, and a superseding or companion decision before release.
+- Consequences: Future references to these names must label them as target-only, deferred, not implemented, or methodology proposals. Current runtime code, generated outputs, formulas, constraints, gates, and candidate registry remain unchanged by this decision.
+- Related documents: [optimization_engine_layer_spec.md](docs/specs/optimization_engine_layer_spec.md), [Optimization Engine Post-Audit Roadmap](docs/exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md), [Optimization Engine Methodology Map](docs/audits/2026-05-20_optimization_engine_methodology_map.md), [candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md), [DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md).
+- Review trigger: Revisit when product requests one of these objectives as a shipped policy mode, candidate builder, comparison row, or public output contract.
+
 Decision ID: DEC-2026-05-20-003
 Title: Concept-only candidate families — registry boundary (Block 4 P5)
 

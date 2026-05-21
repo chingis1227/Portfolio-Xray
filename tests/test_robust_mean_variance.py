@@ -17,6 +17,7 @@ from src.config_schema import PortfolioConfig
 from src.portfolio_variants import (
     build_robust_mean_variance_constrained,
     build_robust_mean_variance_uncapped,
+    robust_mean_variance_baseline_metadata_export,
 )
 from src.robust_mv import (
     james_stein_shrink_means,
@@ -225,3 +226,23 @@ def test_metadata_covariance_method_recorded() -> None:
     end = dates[-1].strftime("%Y-%m-%d")
     res = build_robust_mean_variance_uncapped(cfg, returns, end, 90)
     assert res.diagnostics.get("covariance_method") == "oas"
+    meta = robust_mean_variance_baseline_metadata_export(res.diagnostics)
+    orm = meta["optimizer_run_metadata"]
+    assert orm["schema_version"] == "candidate_optimizer_run_metadata_v1"
+    assert orm["method_id"] == "robust_mean_variance_uncapped"
+    assert orm["input_window"]["analysis_end"] == end
+    assert orm["input_window"]["window_months"] == 90
+    assert orm["input_window"]["returns_panel_end"] == end
+    assert len(orm["input_fingerprints"]["returns_panel_fingerprint"]) == 64
+    assert len(orm["input_fingerprints"]["config_fingerprint"]) == 64
+    assert len(orm["input_fingerprints"]["universe_fingerprint"]) == 64
+    assert orm["expected_return"]["uses_expected_returns"] is True
+    assert orm["expected_return"]["method"] == "james_stein"
+    assert orm["expected_return"]["analysis_end"] == end
+    assert orm["parameters"]["robust_mv_lambda"] == 0.2
+    assert orm["covariance"]["method"] == "oas"
+    assert orm["covariance"]["returns_panel_fingerprint"] == (
+        orm["input_fingerprints"]["returns_panel_fingerprint"]
+    )
+    assert orm["covariance"]["methodology"]["estimator"] == "oas_shrinkage_covariance"
+    assert orm["young_etf_methodology"]["enabled"] is False

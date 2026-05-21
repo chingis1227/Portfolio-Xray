@@ -1,0 +1,187 @@
+{
+  "candidate_id": "minimum_variance",
+  "role": "optimizer_candidate",
+  "status": "degraded",
+  "construction_disclosure": {
+    "disclosure_status": "available",
+    "optimizer_methodology": {
+      "source": "baseline_weights_metadata.json.optimizer_run_metadata",
+      "source_schema_version": "candidate_optimizer_run_metadata_v1",
+      "optimizer_role": "candidate_only",
+      "candidate_only": true,
+      "method_id": "minimum_variance_constrained",
+      "objective": "minimize portfolio variance (monthly)",
+      "input_window": {
+        "analysis_end": "2026-04-30",
+        "window_months": 120,
+        "return_frequency": "monthly_simple",
+        "returns_panel_start": "2016-05-31",
+        "returns_panel_end": "2026-04-30",
+        "returns_panel_rows": 120
+      },
+      "expected_return": {
+        "uses_expected_returns": false,
+        "method": "not_used",
+        "analysis_end": "2026-04-30",
+        "returns_panel_fingerprint": "a1b2c3d4e5f6789012345678abcdef0123456789abcdef0123456789abcdef01"
+      },
+      "covariance": {
+        "method": "ledoit_wolf",
+        "analysis_end": "2026-04-30",
+        "shrinkage_used": true,
+        "psd_repair_used": false,
+        "psd_status": "already_psd",
+        "young_etf_dual_mode": null,
+        "returns_panel_fingerprint": "a1b2c3d4e5f6789012345678abcdef0123456789abcdef0123456789abcdef01",
+        "methodology": {
+          "schema_version": "optimizer_covariance_methodology_v1",
+          "method": "ledoit_wolf",
+          "source": "monthly_return_panel",
+          "estimator": "ledoit_wolf_shrinkage_covariance",
+          "return_frequency": "monthly_simple",
+          "analysis_end": "2026-04-30",
+          "window_months": 120,
+          "join_policy": "inner_join_complete_cases",
+          "ddof": 1,
+          "shrinkage": {
+            "enabled": true,
+            "method": "ledoit_wolf"
+          },
+          "psd_repair": {
+            "used": false,
+            "status": "already_psd"
+          },
+          "young_etf": {
+            "schema_version": "optimizer_young_etf_methodology_v1",
+            "enabled": false,
+            "role": "not_used",
+            "mode": null,
+            "policy": {},
+            "eligible_tickers": [],
+            "ticker_buckets": {},
+            "per_ticker_caps": {},
+            "fallback_reason": null,
+            "core_effective_months": null,
+            "human_summary": "Young ETF policy disabled or not used for this optimizer."
+          },
+          "returns_panel_fingerprint": "a1b2c3d4e5f6789012345678abcdef0123456789abcdef0123456789abcdef01",
+          "does_not_change_formula": true,
+          "human_summary": "Covariance method=ledoit_wolf; join_policy=inner_join_complete_cases; shrinkage=True (ledoit_wolf); psd_repair=False; young ETF policy off/not used."
+        },
+        "methodology_summary": "Covariance method=ledoit_wolf; join_policy=inner_join_complete_cases; shrinkage=True (ledoit_wolf); psd_repair=False; young ETF policy off/not used."
+      },
+      "young_etf_methodology": {
+        "schema_version": "optimizer_young_etf_methodology_v1",
+        "enabled": false,
+        "role": "not_used",
+        "mode": null,
+        "policy": {},
+        "eligible_tickers": [],
+        "ticker_buckets": {},
+        "per_ticker_caps": {},
+        "fallback_reason": null,
+        "core_effective_months": null,
+        "human_summary": "Young ETF policy disabled or not used for this optimizer."
+      },
+      "constraints": {
+        "active_constraints": [
+          "long_only",
+          "fully_invested",
+          "box_bounds"
+        ],
+        "constraints_used": [
+          "long_only",
+          "fully_invested",
+          "box_bounds"
+        ],
+        "constraints_not_used": [
+          "volatility_target"
+        ],
+        "bounds_used": true,
+        "constraint_summary": "long-only fully invested with box bounds",
+        "binding_constraints": null
+      },
+      "solver": {
+        "name": "SLSQP",
+        "success": true,
+        "status": "OK",
+        "fallback_used": false,
+        "fallback_reason": null,
+        "optimization_quality_status": "clean_solve"
+      },
+      "freshness": {
+        "freshness_status": "fresh",
+        "snapshot_analysis_end": "2026-04-30",
+        "expected_analysis_end": "2026-04-30",
+        "expected_config_fingerprint": "81b172f5387da3c132fa92dee88005522e08472ec08b6cc500419501abed7988",
+        "snapshot_config_fingerprint": "81b172f5387da3c132fa92dee88005522e08472ec08b6cc500419501abed7988",
+        "optimizer_analysis_end": "2026-04-30"
+      }
+    },
+    "optimizer_quality": {
+      "source": "candidate_factory_run.json.steps[]",
+      "optimization_quality_status": "clean_solve",
+      "optimization_quality_family": "clean",
+      "fallback_used": false,
+      "fallback_reason": null,
+      "solver_status": null
+    },
+    "optimization_readiness": {
+      "schema_version": "optimizer_comparison_readiness_v1",
+      "role": "optimizer_candidate",
+      "overall_status": "partial",
+      "comparison_row_status": "degraded",
+      "unavailable_reason": null,
+      "fair_comparison_ready": false,
+      "required_checks": {
+        "weights": {
+          "present": true,
+          "required_for_fair_comparison": true,
+          "detail": "weights.json, snapshot_10y.final_weights_total"
+        },
+        "snapshot_10y": {
+          "present": true,
+          "required_for_fair_comparison": true,
+          "source": "snapshot_10y.json"
+        },
+        "stress_summary": {
+          "present": true,
+          "required_for_fair_comparison": true,
+          "source": "stress_report.json"
+        },
+        "construction_disclosure": {
+          "present": true,
+          "required_for_fair_comparison": true,
+          "source": "disclosure_status=available",
+          "detail": "available"
+        },
+        "optimizer_methodology": {
+          "present": true,
+          "required_for_fair_comparison": true,
+          "source": "baseline_weights_metadata.json.optimizer_run_metadata"
+        },
+        "optimizer_quality": {
+          "present": true,
+          "required_for_fair_comparison": true,
+          "source": "candidate_factory_run.json.steps[]",
+          "detail": "clean_solve"
+        },
+        "freshness": {
+          "present": true,
+          "required_for_fair_comparison": true,
+          "source": "fresh",
+          "detail": "factory_step_fresh; factory_freshness_status=fresh; snapshot_analysis_end=2026-04-30; expected_analysis_end=2026-04-30"
+        }
+      },
+      "optional_checks": {
+        "portfolio_xray": {
+          "present": false,
+          "required_for_fair_comparison": false
+        }
+      },
+      "gaps": [],
+      "optimization_quality_status": "clean_solve",
+      "optimization_quality_family": "clean"
+    }
+  }
+}

@@ -15,6 +15,7 @@ import pandas as pd
 from scipy.optimize import minimize
 
 from src.optimization import _build_bounds, get_risk_portfolio_tickers
+from src.optimization_status import APPROXIMATE_SOLVER, CLEAN_SOLVE
 from src.risk_parity_spinu import repair_covariance_psd
 from src.historical_stress_fallback import asset_betas_from_stress_report
 from src.stress import PRODUCTION_FACTOR_BETA_KEYS, _scenario_return_per_asset
@@ -298,6 +299,9 @@ def run_robust_scenario_optimization(
     best_x: np.ndarray | None = None
     best_loss = float("inf")
     msg = ""
+    best_success = False
+    best_status: int | None = None
+    best_nit: int | None = None
 
     starts: list[np.ndarray] = []
     if warm_starts:
@@ -324,12 +328,16 @@ def run_robust_scenario_optimization(
             best_loss = float(res.fun)
             best_x = np.asarray(res.x, dtype=float)
             msg = str(res.message)
+            best_success = bool(res.success)
+            best_status = int(res.status) if getattr(res, "status", None) is not None else None
+            best_nit = int(res.nit) if getattr(res, "nit", None) is not None else None
 
     assert best_x is not None
     w_opt = best_x / max(best_x.sum(), 1e-12)
     r_opt = compute_scenario_returns_vector(w_opt, inputs)
     lh, k_lh, idx_lh = lower_half_mean(r_opt)
     pct = discrete_percentiles(r_opt, (0.05, 0.10, 0.25))
+    quality_status = CLEAN_SOLVE if best_success else APPROXIMATE_SOLVER
 
     return {
         "weights_vec": w_opt,
@@ -339,6 +347,18 @@ def run_robust_scenario_optimization(
         "lower_half_indices": idx_lh.tolist(),
         "objective_loss_at_optimum": best_loss,
         "optimizer_message": msg,
+        "solver": {
+            "name": "SLSQP",
+            "success": bool(best_success),
+            "status": "OK" if best_success else "APPROXIMATE",
+            "raw_status": best_status,
+            "message": msg,
+            "iterations": best_nit,
+            "multi_start_count": len(starts),
+            "fallback_used": False,
+            "fallback_reason": None,
+            "optimization_quality_status": quality_status,
+        },
         "percentile_diagnostics_only": True,
         "percentiles_discrete": pct,
         "scenario_ids_order": list(inputs.scenario_ids),
@@ -371,6 +391,12 @@ def export_robust_optimization_outputs(
         ],
         "comparisons": comparisons or {},
         "optimizer_message": result.get("optimizer_message"),
+        "solver": dict(result.get("solver") or {}),
+        "solver_success": (result.get("solver") or {}).get("success"),
+        "solver_status": (result.get("solver") or {}).get("status"),
+        "fallback_used": (result.get("solver") or {}).get("fallback_used", False),
+        "fallback_reason": (result.get("solver") or {}).get("fallback_reason"),
+        "optimization_quality_status": (result.get("solver") or {}).get("optimization_quality_status"),
         "beta_load_warnings": list(inputs.beta_load_warnings or []),
     }
 

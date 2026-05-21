@@ -1,0 +1,138 @@
+{
+  "schema_version": "candidate_optimizer_run_metadata_v1",
+  "optimizer_role": "candidate_only",
+  "candidate_only": true,
+  "method_id": "minimum_variance_constrained",
+  "entrypoint_family": "candidate_portfolio_builder",
+  "objective": "minimize portfolio variance (monthly)",
+  "input_window": {
+    "analysis_end": "2026-04-30",
+    "window_months": 120,
+    "return_frequency": "monthly_simple",
+    "returns_panel_start": "2016-05-31",
+    "returns_panel_end": "2026-04-30",
+    "returns_panel_rows": 120
+  },
+  "input_fingerprints": {
+    "returns_panel_fingerprint": "a1b2c3d4e5f6789012345678abcdef0123456789abcdef0123456789abcdef01",
+    "config_fingerprint": "fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321",
+    "universe_fingerprint": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  },
+  "expected_return": {
+    "uses_expected_returns": false,
+    "method": "not_used",
+    "analysis_end": "2026-04-30",
+    "returns_panel_fingerprint": "a1b2c3d4e5f6789012345678abcdef0123456789abcdef0123456789abcdef01"
+  },
+  "covariance": {
+    "method": "ledoit_wolf",
+    "analysis_end": "2026-04-30",
+    "shrinkage_used": true,
+    "psd_repair_used": false,
+    "psd_status": "already_psd",
+    "young_etf_dual_mode": null,
+    "returns_panel_fingerprint": "a1b2c3d4e5f6789012345678abcdef0123456789abcdef0123456789abcdef01",
+    "methodology": {
+      "schema_version": "optimizer_covariance_methodology_v1",
+      "method": "ledoit_wolf",
+      "source": "monthly_return_panel",
+      "estimator": "ledoit_wolf_shrinkage_covariance",
+      "return_frequency": "monthly_simple",
+      "analysis_end": "2026-04-30",
+      "window_months": 120,
+      "join_policy": "inner_join_complete_cases",
+      "ddof": 1,
+      "shrinkage": {
+        "enabled": true,
+        "method": "ledoit_wolf"
+      },
+      "psd_repair": {
+        "used": false,
+        "status": "already_psd"
+      },
+      "young_etf": {
+        "schema_version": "optimizer_young_etf_methodology_v1",
+        "enabled": false,
+        "role": "not_used",
+        "mode": null,
+        "policy": {},
+        "eligible_tickers": [],
+        "ticker_buckets": {},
+        "per_ticker_caps": {},
+        "fallback_reason": null,
+        "core_effective_months": null,
+        "human_summary": "Young ETF policy disabled or not used for this optimizer."
+      },
+      "returns_panel_fingerprint": "a1b2c3d4e5f6789012345678abcdef0123456789abcdef0123456789abcdef01",
+      "does_not_change_formula": true,
+      "human_summary": "Covariance method=ledoit_wolf; join_policy=inner_join_complete_cases; shrinkage=True (ledoit_wolf); psd_repair=False; young ETF policy off/not used."
+    },
+    "methodology_summary": "Covariance method=ledoit_wolf; join_policy=inner_join_complete_cases; shrinkage=True (ledoit_wolf); psd_repair=False; young ETF policy off/not used."
+  },
+  "young_etf_methodology": {
+    "schema_version": "optimizer_young_etf_methodology_v1",
+    "enabled": false,
+    "role": "not_used",
+    "mode": null,
+    "policy": {},
+    "eligible_tickers": [],
+    "ticker_buckets": {},
+    "per_ticker_caps": {},
+    "fallback_reason": null,
+    "core_effective_months": null,
+    "human_summary": "Young ETF policy disabled or not used for this optimizer."
+  },
+  "universe": {
+    "eligible_universe": [
+      "VOO",
+      "BND"
+    ],
+    "estimator_input_columns": [
+      "VOO",
+      "BND"
+    ],
+    "universe_fingerprint": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  },
+  "constraints": {
+    "active_constraints": [
+      "long_only",
+      "fully_invested",
+      "box_bounds"
+    ],
+    "constraints_used": [
+      "long_only",
+      "fully_invested",
+      "box_bounds"
+    ],
+    "constraints_not_used": [
+      "volatility_target"
+    ],
+    "bounds_used": true,
+    "constraint_summary": "long-only fully invested with box bounds",
+    "binding_constraints": null
+  },
+  "solver": {
+    "name": "SLSQP",
+    "success": true,
+    "status": "OK",
+    "message": "golden_fixture",
+    "fallback_used": false,
+    "fallback_reason": null,
+    "optimization_quality_status": "clean_solve"
+  },
+  "parameters": {},
+  "outputs": {
+    "final_weights": {
+      "VOO": 0.55,
+      "BND": 0.45
+    },
+    "portfolio_variance": 0.00042,
+    "annualized_volatility": 0.08,
+    "objective_value": 0.00042
+  },
+  "notes": {
+    "does_not_write_policy_weights": true,
+    "does_not_apply_proliquidity": true,
+    "does_not_apply_legacy_mandate_release_gate": true
+  }
+}

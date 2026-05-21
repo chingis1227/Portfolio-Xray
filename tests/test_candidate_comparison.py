@@ -737,6 +737,304 @@ def test_equal_weight_construction_disclosure_passthrough_baseline_metadata(
     )
 
 
+def test_optimizer_candidate_methodology_disclosure_from_baseline_metadata(
+    tmp_path: Path,
+) -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    fp = compute_candidate_config_fingerprint(cfg)
+    main = tmp_path / "Main portfolio"
+    subject = main / "analysis_subject"
+    subject.mkdir(parents=True)
+    with open(subject / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.06, "vol_annual": 0.1}, cfg=cfg), f)
+    with open(subject / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(_run_metadata("model_portfolio"), f)
+
+    mv = tmp_path / "minimum variance portfolio"
+    mv.mkdir()
+    with open(mv / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y(
+                {"cagr": 0.05, "vol_annual": 0.08, "max_drawdown": -0.1},
+                cfg=cfg,
+            ),
+            f,
+        )
+    with open(mv / "baseline_weights_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "optimizer_name": "minimum_variance_constrained",
+                "optimizer_run_metadata": {
+                    "schema_version": "candidate_optimizer_run_metadata_v1",
+                    "optimizer_role": "candidate_only",
+                    "candidate_only": True,
+                    "method_id": "minimum_variance_constrained",
+                    "objective": "0.5 * w.T @ covariance @ w",
+                    "input_window": {
+                        "analysis_end": "2026-04-30",
+                        "window_months": 120,
+                        "return_frequency": "monthly_simple",
+                    },
+                    "expected_return": {
+                        "uses_expected_returns": False,
+                        "method": "not_used",
+                    },
+                    "covariance": {
+                        "method": "sample_covariance",
+                        "methodology": {
+                            "schema_version": "optimizer_covariance_methodology_v1",
+                            "method": "sample_covariance",
+                            "join_policy": "inner_join_complete_cases",
+                            "shrinkage": {"enabled": False, "method": None},
+                            "psd_repair": {"used": False, "status": None},
+                            "young_etf": {
+                                "schema_version": "optimizer_young_etf_methodology_v1",
+                                "enabled": False,
+                                "role": "covariance_and_per_ticker_caps",
+                                "mode": None,
+                                "per_ticker_caps": {},
+                            },
+                        },
+                        "methodology_summary": "Covariance method=sample_covariance; join_policy=inner_join_complete_cases; shrinkage=False (none); psd_repair=False; young ETF policy off/not used.",
+                    },
+                    "young_etf_methodology": {
+                        "schema_version": "optimizer_young_etf_methodology_v1",
+                        "enabled": False,
+                        "role": "covariance_and_per_ticker_caps",
+                        "mode": None,
+                        "per_ticker_caps": {},
+                    },
+                    "constraints": {
+                        "active_constraints": ["long_only", "fully_invested", "box_bounds"],
+                        "bounds_used": {"VOO": {"min": 0.02, "max": 0.35}},
+                    },
+                    "solver": {
+                        "name": "SLSQP",
+                        "success": True,
+                        "status": "OK",
+                        "fallback_used": False,
+                        "fallback_reason": None,
+                        "optimization_quality_status": "clean_solve",
+                    },
+                },
+            },
+            f,
+        )
+    with open(main / "candidate_factory_run.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "factory_profile_id": "default_v1",
+                "steps": [
+                    {
+                        "candidate_id": "minimum_variance",
+                        "status": "succeeded",
+                        "freshness_status": "fresh",
+                        "snapshot_analysis_end": "2026-04-30",
+                        "expected_analysis_end": "2026-04-30",
+                        "expected_config_fingerprint": fp,
+                        "snapshot_config_fingerprint": fp,
+                    }
+                ],
+            },
+            f,
+        )
+
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    row = next(c for c in doc["candidates"] if c["candidate_id"] == "minimum_variance")
+    methodology = row["construction_disclosure"]["optimizer_methodology"]
+    assert methodology["source"] == "baseline_weights_metadata.json.optimizer_run_metadata"
+    assert methodology["method_id"] == "minimum_variance_constrained"
+    assert methodology["objective"] == "0.5 * w.T @ covariance @ w"
+    assert methodology["candidate_only"] is True
+    assert methodology["constraints"]["active_constraints"] == [
+        "long_only",
+        "fully_invested",
+        "box_bounds",
+    ]
+    assert methodology["solver"]["optimization_quality_status"] == "clean_solve"
+    assert methodology["solver"]["fallback_used"] is False
+    assert methodology["covariance"]["methodology"]["join_policy"] == "inner_join_complete_cases"
+    assert methodology["young_etf_methodology"]["enabled"] is False
+    assert methodology["freshness"]["freshness_status"] == "fresh"
+    assert methodology["freshness"]["expected_config_fingerprint"] == fp
+
+    txt_path = tmp_path / "candidate_comparison.txt"
+    write_candidate_comparison_txt(doc, txt_path)
+    text = txt_path.read_text(encoding="utf-8")
+    assert "Optimizer methodology notes" in text
+    assert "Covariance method=sample_covariance" in text
+    assert "Young ETF policy disabled or not used" in text
+
+
+def test_optimizer_fallback_quality_degrades_comparison_row(tmp_path: Path) -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    main = tmp_path / "Main portfolio"
+    subject = main / "analysis_subject"
+    subject.mkdir(parents=True)
+    with open(subject / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.06, "vol_annual": 0.1}, cfg=cfg), f)
+    with open(subject / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(_run_metadata("model_portfolio"), f)
+
+    mv = tmp_path / "minimum variance portfolio"
+    mv.mkdir()
+    with open(mv / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y(
+                {"cagr": 0.05, "vol_annual": 0.08, "max_drawdown": -0.1},
+                cfg=cfg,
+            ),
+            f,
+        )
+    with open(mv / "baseline_weights_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "optimizer_run_metadata": {
+                    "schema_version": "candidate_optimizer_run_metadata_v1",
+                    "optimizer_role": "candidate_only",
+                    "method_id": "minimum_variance_constrained",
+                    "solver": {
+                        "success": True,
+                        "status": "OK_FALLBACK",
+                        "fallback_used": True,
+                        "fallback_reason": "fixture_retry",
+                        "optimization_quality_status": "approximate_fallback",
+                    },
+                },
+            },
+            f,
+        )
+
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    row = next(c for c in doc["candidates"] if c["candidate_id"] == "minimum_variance")
+    assert row["status"] == "degraded"
+    assert "optimizer_quality_not_clean:approximate_fallback" in row["warnings"]
+    quality = row["construction_disclosure"]["optimizer_quality"]
+    assert quality["optimization_quality_status"] == "approximate_fallback"
+    assert quality["optimization_quality_family"] == "approximate"
+    assert quality["fallback_used"] is True
+
+
+def test_failed_factory_step_blocks_comparison_row_even_with_snapshot(
+    tmp_path: Path,
+) -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    main = tmp_path / "Main portfolio"
+    subject = main / "analysis_subject"
+    subject.mkdir(parents=True)
+    with open(subject / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.06, "vol_annual": 0.1}, cfg=cfg), f)
+    with open(subject / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(_run_metadata("model_portfolio"), f)
+
+    mv = tmp_path / "minimum variance portfolio"
+    mv.mkdir()
+    with open(mv / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y(
+                {"cagr": 0.05, "vol_annual": 0.08, "max_drawdown": -0.1},
+                cfg=cfg,
+            ),
+            f,
+        )
+    with open(main / "candidate_factory_run.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "factory_profile_id": "default_v1",
+                "steps": [
+                    {
+                        "candidate_id": "minimum_variance",
+                        "status": "failed",
+                        "reason_code": "builder_fail_numerical",
+                    }
+                ],
+            },
+            f,
+        )
+
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    row = next(c for c in doc["candidates"] if c["candidate_id"] == "minimum_variance")
+    assert row["status"] == "unavailable"
+    assert row["unavailable_reason"] == "builder_fail_numerical"
+    assert "factory_step_not_successful:builder_fail_numerical" in row["warnings"]
+
+
+def test_policy_optimizer_methodology_disclosure_from_run_result(tmp_path: Path) -> None:
+    main = tmp_path / "Main portfolio"
+    main.mkdir()
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    with open(main / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.07, "vol_annual": 0.11}, cfg=cfg), f)
+    with open(main / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(_run_metadata("generated_policy_portfolio"), f)
+    with open(main / "run_result.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "status": "APPROVED",
+                "optimization_status": "OK",
+                "optimizer_run_metadata": {
+                    "schema_version": "legacy_policy_optimizer_run_metadata_v1",
+                    "optimizer_role": "legacy_policy",
+                    "method_id": "legacy_policy_max_return_v1",
+                    "objective": {
+                        "objective_mode": "max_return",
+                        "expected_returns_used": True,
+                    },
+                    "input_window": {
+                        "analysis_end": "2026-04-30",
+                        "window_months": 120,
+                    },
+                    "constraints": {
+                        "long_only": True,
+                        "fully_invested_risk_portfolio": True,
+                    },
+                    "solver": {
+                        "solver_success": True,
+                        "solver_status": "OK",
+                        "fallback_used": False,
+                        "fallback_reason": None,
+                        "optimization_quality_status": "clean_solve",
+                    },
+                },
+            },
+            f,
+        )
+
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    row = next(c for c in doc["candidates"] if c["candidate_id"] == "policy")
+    methodology = row["construction_disclosure"]["optimizer_methodology"]
+    assert methodology["source"] == "run_result.json.optimizer_run_metadata"
+    assert methodology["optimizer_role"] == "legacy_policy"
+    assert methodology["candidate_only"] is False
+    assert methodology["method_id"] == "legacy_policy_max_return_v1"
+    assert methodology["solver"]["status"] == "OK"
+    assert methodology["solver"]["optimization_quality_status"] == "clean_solve"
+
+
 def test_risk_budget_construction_disclosure_includes_effective_targets(
     tmp_path: Path,
 ) -> None:
@@ -881,6 +1179,86 @@ def test_robust_scenario_construction_disclosure_main_prerequisites(tmp_path: Pa
     assert rp["kind"] == "robust_scenario_main_prerequisites"
     assert rp["prerequisites_met"] is False
     assert rp["shared_calibration_scope"] == "main_output_dir_final"
+
+
+def test_robust_scenario_optimizer_methodology_disclosure(tmp_path: Path) -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    main = tmp_path / "Main portfolio"
+    subject = main / "analysis_subject"
+    subject.mkdir(parents=True)
+    with open(subject / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.06, "vol_annual": 0.1}, cfg=cfg), f)
+    with open(subject / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(_run_metadata("model_portfolio"), f)
+
+    robust = tmp_path / "robust scenario portfolio"
+    robust.mkdir()
+    with open(robust / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y(
+                {"cagr": 0.055, "vol_annual": 0.09, "max_drawdown": -0.12},
+                cfg=cfg,
+            ),
+            f,
+        )
+    with open(robust / "baseline_weights_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "variant": "robust_scenario_portfolio_v1",
+                "optimizer_run_metadata": {
+                    "schema_version": "robust_scenario_optimizer_run_metadata_v1",
+                    "optimizer_role": "candidate_only",
+                    "candidate_only": True,
+                    "method_id": "robust_scenario_optimization_v1",
+                    "objective": {
+                        "objective_mode": "lower_half_mean",
+                        "expected_returns_used": True,
+                    },
+                    "input_window": {
+                        "analysis_end": None,
+                        "scenario_count": 3,
+                    },
+                    "expected_return": {"used": True},
+                    "covariance": {
+                        "method": "base_historical.asset_covariance_monthly_equivalent",
+                    },
+                    "constraints": {
+                        "active_constraints": [
+                            "long_only",
+                            "fully_invested",
+                            "box_bounds",
+                        ],
+                    },
+                    "solver": {
+                        "name": "SLSQP",
+                        "success": True,
+                        "status": "OK",
+                        "fallback_used": False,
+                        "fallback_reason": None,
+                        "optimization_quality_status": "clean_solve",
+                    },
+                },
+            },
+            f,
+        )
+
+    doc = build_candidate_comparison(cfg, project_root=tmp_path)
+    row = next(c for c in doc["candidates"] if c["candidate_id"] == "robust_scenario")
+    methodology = row["construction_disclosure"]["optimizer_methodology"]
+    assert methodology["source"] == "baseline_weights_metadata.json.optimizer_run_metadata"
+    assert methodology["source_schema_version"] == "robust_scenario_optimizer_run_metadata_v1"
+    assert methodology["method_id"] == "robust_scenario_optimization_v1"
+    assert methodology["objective"]["objective_mode"] == "lower_half_mean"
+    assert methodology["solver"]["optimization_quality_status"] == "clean_solve"
+    quality = row["construction_disclosure"]["optimizer_quality"]
+    assert quality["optimization_quality_status"] == "clean_solve"
+    assert quality["optimization_quality_family"] == "clean"
 
 
 def test_robust_mv_construction_disclosure_lambda_without_factory_run(

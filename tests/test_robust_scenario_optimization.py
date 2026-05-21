@@ -129,7 +129,17 @@ def test_build_inputs_and_optimize_round_trip(tmp_path: Path) -> None:
     bounds = _build_bounds(inputs.ticker_order, 2, MIN_WEIGHT_DEFAULT, None, None)
     res = run_robust_scenario_optimization(inputs, bounds=bounds, warm_starts=[np.array([0.5, 0.5])])
     assert res["weights_vec"].sum() > 0.99
+    assert res["solver"]["name"] == "SLSQP"
+    assert res["solver"]["status"] == ("OK" if res["solver"]["success"] else "APPROXIMATE")
+    assert res["solver"]["fallback_used"] is False
+    assert res["solver"]["optimization_quality_status"] == (
+        "clean_solve" if res["solver"]["success"] else "approximate_solver"
+    )
     paths = export_robust_optimization_outputs(res, inputs, output_dir=tmp_path)
     assert (tmp_path / "robust_optimization_v1_summary.json").is_file()
     summary = json.loads((tmp_path / "robust_optimization_v1_summary.json").read_text(encoding="utf-8"))
     assert "lower_half_mean" in summary
+    assert summary["solver"]["name"] == "SLSQP"
+    assert summary["solver_status"] == summary["solver"]["status"]
+    assert summary["fallback_used"] is False
+    assert summary["optimization_quality_status"] == summary["solver"]["optimization_quality_status"]

@@ -144,7 +144,7 @@ Each element of `candidates[]`:
 | `unavailable_reason` | if unavailable | Machine code, e.g. `missing_artifact_folder`, `missing_snapshot`, `not_applicable_for_analysis_mode`. |
 | `portfolio_role` | when known | From `analysis_setup.analysis_portfolio.portfolio_role` when this row is the analyzed Main report. |
 | `recommendation_status` | when known | From run metadata; must not be interpreted as advice. |
-| `construction_disclosure` | yes | Passthrough of how weights were built (see below). Always present; use `disclosure_status` to interpret completeness. |
+| `construction_disclosure` | yes | Passthrough of how weights were built (see below). Always present; use `disclosure_status` to interpret completeness. Optimizer rows may also include `optimizer_methodology` when upstream optimizer metadata exists. |
 
 ### `construction_disclosure` (comparison v1.3 — Block 4 Session 04, RM-974)
 
@@ -158,6 +158,9 @@ Diagnostic-only disclosure of construction parameters. The comparison builder **
 | `builder_summary` | optional | Selected fields from `{artifact_root}/summary.json` (`status`, `reason`, `solver_status`, …) and any `*_metadata` nested blobs when the baseline file is absent. |
 | `main_row_excerpt` | optional | For `policy`: excerpt from `run_result.json` (`optimization_status`, mandate gate summary). For `analysis_subject` / `current`: excerpt from `run_metadata.json` `analysis_setup`. |
 | `factory_step` | optional | Excerpt from `{output_dir_final}/candidate_factory_run.json` `steps[]` for this `candidate_id` when a factory run exists (`reason_code`, `builder_status`, `builder_reason`, freshness fields, `robust_paths_disclosure` when present). |
+| `optimizer_methodology` | when available | Compact comparison-level optimizer disclosure copied from `baseline_weights_metadata.json.optimizer_run_metadata` for optimizer candidates or `run_result.json.optimizer_run_metadata` for legacy policy. |
+| `optimizer_quality` | when available | Normalized optimizer-quality projection from `optimizer_methodology` or factory step evidence. Includes quality status/family, fallback flag/reason, solver status, and evidence source. |
+| `optimization_readiness` | optimizer-backed roles | Block 5 Session 10 (`RM-1000`) checklist for `optimizer_candidate`, `robust_candidate`, and `policy` rows only. See below. |
 | `robust_paths` | when robust suite | For `robust_mv_constrained`, `robust_mv_uncapped`, `robust_scenario` only (Session 07 / RM-977). Copied from factory step `robust_paths_disclosure` when available; otherwise built from project root + `output_dir_final` + optional `baseline_metadata` (no recomputation of weights or scenarios). |
 
 **`robust_paths` kinds:**
@@ -169,6 +172,74 @@ Diagnostic-only disclosure of construction parameters. The comparison builder **
 
 Emit `construction_disclosure` on **every** registry row, including `unavailable` rows, when artifact files exist (e.g. builder failed but `summary.json` documents `FAIL_*`).
 
+### `optimizer_methodology` (Block 5 Session 05, RM-995)
+
+`optimizer_methodology` is diagnostic-only, read-only disclosure for rows whose source artifacts
+already expose normalized optimizer metadata. The comparison builder must not infer objectives,
+solve weights, recompute constraints, or upgrade row status from this block.
+
+Sources:
+
+- optimizer candidates: `{artifact_root}/baseline_weights_metadata.json` ->
+  `optimizer_run_metadata`;
+- robust scenario candidate: `robust scenario portfolio/baseline_weights_metadata.json` ->
+  `optimizer_run_metadata` (`robust_scenario_optimizer_run_metadata_v1`) when
+  `run_robust_scenario_portfolio_report.py` copied the source robust solver summary;
+- legacy policy: `{output_dir_final}/run_result.json` -> `optimizer_run_metadata`.
+
+The block copies the comparison-ready subset needed to read a row fairly:
+
+| Field | Description |
+| --- | --- |
+| `source` | Source path inside the artifact, e.g. `baseline_weights_metadata.json.optimizer_run_metadata`. |
+| `source_schema_version` | Upstream metadata schema version. |
+| `optimizer_role` | Upstream role such as `candidate_only` or `legacy_policy`. |
+| `candidate_only` | Boolean; true for candidate-only optimizer rows and false for legacy policy. |
+| `method_id` | Optimizer method id from the source metadata. |
+| `objective` | Objective disclosure copied as-is from upstream metadata. |
+| `input_window` | `analysis_end`, window length, and return-frequency fields when present. |
+| `expected_return` | Expected-return usage/method disclosure when present. |
+| `covariance` | Covariance method disclosure when present; Session 09 may include `methodology` (`optimizer_covariance_methodology_v1`) and `methodology_summary`. |
+| `young_etf_methodology` | Young ETF methodology disclosure copied from upstream optimizer metadata when present. |
+| `constraints` | Active constraints, bounds, and constraint summary copied from upstream metadata. |
+| `solver` | Solver name/status/success plus `fallback_used`, `fallback_reason`, and `optimization_quality_status`. |
+| `freshness` | Factory freshness fields (`freshness_status`, snapshot/expected `analysis_end`, config fingerprints) plus optimizer `analysis_end` when present. |
+
+Absence of `optimizer_methodology` means no normalized optimizer metadata was found in source
+artifacts. It does not mean the candidate is invalid; row validity is still governed by `status`,
+`unavailable_reason`, freshness checks, and required report artifacts.
+
+Beginning with Block 5 Session 09 (`RM-999`), the optional human-readable
+`candidate_comparison.txt` appends an "Optimizer methodology notes" section when rows expose
+`optimizer_methodology`. The section summarizes covariance method, join policy, shrinkage, PSD
+repair, Young ETF policy/caps, and optimizer quality. It is a summary of existing metadata only; it
+does not change ranking, readiness, or row status.
+
+### `optimizer_quality` (Block 5 Session 06, RM-996)
+
+`optimizer_quality` is the comparison-level fallback/failure boundary. It is derived only from
+source metadata already present in `construction_disclosure`; the comparison builder must not rerun
+or reinterpret optimizer math.
+
+| Field | Description |
+| --- | --- |
+| `source` | Source path used for evidence. |
+| `optimization_quality_status` | `clean_solve`, `approximate_fallback`, `approximate_solver`, `failed_solver`, `failed`, or `unknown`. |
+| `optimization_quality_family` | `clean`, `approximate`, `failed`, or `unknown`. |
+| `fallback_used` | Boolean fallback disclosure. |
+| `fallback_reason` | Source fallback reason when present. |
+| `solver_status` | Source solver status when present. |
+
+Boundary rules:
+
+- `approximate_fallback` and `approximate_solver` degrade an otherwise `available` optimizer row to
+  `degraded` and add warning `optimizer_quality_not_clean:{status}`;
+- `failed_solver` and `failed` make the row `unavailable` with
+  `unavailable_reason: optimizer_quality_failed`;
+- a current factory step with `status: failed` or `skipped_dependency` makes the row `unavailable`
+  using the factory `reason_code`, even if an old `snapshot_10y.json` exists;
+- `unknown` does not by itself invalidate a row, but it must not be described as clean.
+
 ### Status rules
 
 | Status | Meaning |
@@ -176,6 +247,45 @@ Emit `construction_disclosure` on **every** registry row, including `unavailable
 | `available` | Required primary-window metrics and stress summary loaded successfully. |
 | `degraded` | Partial data (e.g. metrics without stress, or only `summary.json` fallback). List gaps in `missing_fields` and `warnings`. |
 | `unavailable` | Candidate is in the V1 registry but artifacts are missing or not applicable for this run. |
+
+Beginning with Block 5 Session 06, fallback/approximate optimizer quality is also a valid reason
+for `degraded`, and failed optimizer quality or failed current factory step is a valid reason for
+`unavailable`.
+
+### `optimization_readiness` (Block 5 Session 10, RM-1000)
+
+`optimization_readiness` is diagnostic-only evidence for optimizer-backed comparison rows. The
+comparison builder assembles it from existing artifacts after row status and Session 06 optimizer
+quality policy are applied. It must not rerun optimizers, recompute weights, or change ranking.
+
+Emitted only when `role` is `optimizer_candidate`, `robust_candidate`, or `policy`.
+
+| Field | Description |
+| --- | --- |
+| `schema_version` | `optimizer_comparison_readiness_v1` |
+| `role` | Registry role copied for auditability |
+| `overall_status` | `ready`, `partial`, `not_ready`, `degraded_quality`, or `failed` |
+| `comparison_row_status` | Final row `status` after comparison and optimizer-quality policy |
+| `unavailable_reason` | Row unavailable reason when present |
+| `fair_comparison_ready` | `true` only when the row is `available`, disclosure is `available`, required checks pass, `optimizer_methodology` is present, optimizer quality family is `clean`, and freshness checks pass |
+| `required_checks` | Machine-readable checklist for weights, `snapshot_10y`, stress summary, construction disclosure, optimizer methodology, optimizer quality, and freshness |
+| `optional_checks` | `portfolio_xray` when present (not a fair-comparison gate) |
+| `gaps` | Required checks that failed |
+| `optimization_quality_status` | Copied normalized quality status |
+| `optimization_quality_family` | Copied quality family (`clean`, `approximate`, `failed`, `unknown`) |
+
+Boundary rules:
+
+- `fair_comparison_ready: false` for `degraded`, `unavailable`, approximate/fallback quality, stale
+  artifacts, missing methodology on optimizer/robust rows, or missing required artifacts;
+- `overall_status: degraded_quality` when Session 06 marks an optimizer row `degraded` because of
+  approximate/fallback quality;
+- `overall_status: failed` when the row is `unavailable` because of failed factory/optimizer quality;
+- benchmark, analysis-subject, and current rows omit this block.
+
+`candidate_comparison.txt` may append an "Optimization readiness (optimizer-backed rows)" section
+summarizing `overall_status`, `fair_comparison_ready`, and `gaps` per row. The section does not
+change row status.
 
 **Do not omit** registry candidates from `candidates[]` when artifacts are missing; emit them with `status: unavailable` and a clear `unavailable_reason`.
 

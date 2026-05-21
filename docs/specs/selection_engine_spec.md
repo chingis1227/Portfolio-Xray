@@ -96,6 +96,14 @@ Recorded defaults when the user continues the plan without overrides:
 | `unavailable` | Excluded from ranking; may appear in `rejected_candidates` with `reason: unavailable`. |
 | `not_scored` (health/robustness) | Excluded from composite; if all non-current are `not_scored`, `inconclusive`. |
 
+Optimization Engine Session 06 adds a quality boundary for optimizer candidates. If comparison
+marks a candidate `degraded` because `construction_disclosure.optimizer_quality` is
+`approximate_fallback` or `approximate_solver`, Selection may still rank it as degraded evidence,
+but if it becomes the favored target the decision must add warning
+`favored_optimizer_quality_not_clean:{candidate_id}:{status}` and a plain-English data-quality note.
+Candidates marked `unavailable` because of failed factory or failed optimizer quality remain
+excluded like other unavailable rows.
+
 **Role rules (V1):**
 
 - `policy` — default favored target only in legacy current-vs-policy runs when present and mandate-allowed.

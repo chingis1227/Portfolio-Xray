@@ -57,6 +57,20 @@ def test_generate_ips_summary_adds_stress_decision_context(tmp_path: Path) -> No
                 "worst_scenario_portfolio_pnl_pct": -0.31,
             },
         },
+        "optimizer_run_metadata": {
+            "covariance": {
+                "method": "sample_covariance",
+                "methodology": {
+                    "method": "sample_covariance",
+                    "join_policy": "inner_join_complete_cases",
+                    "shrinkage": {"enabled": False, "method": None},
+                    "psd_repair": {"used": None, "status": None},
+                    "young_etf": {"enabled": False},
+                },
+            },
+            "young_etf_methodology": {"enabled": False},
+            "solver": {"optimization_quality_status": "clean_solve"},
+        },
     }
 
     path = generate_ips_summary(cfg, run_result, out_path)
@@ -70,3 +84,6 @@ def test_generate_ips_summary_adds_stress_decision_context(tmp_path: Path) -> No
     assert "Stress confidence:" in text
     assert "Hedge gap:" in text
     assert "gap_detected" in text
+    assert "Optimizer methodology" in text
+    assert "Covariance method=sample_covariance" in text
+    assert "Young ETF policy disabled or not used" in text

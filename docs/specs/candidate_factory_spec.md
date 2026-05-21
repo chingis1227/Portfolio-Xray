@@ -320,6 +320,31 @@ Resume skips a prior `succeeded` or fresh `skipped_existing` entry only when `ru
 
 After each build attempt, when `snapshot_10y.json` is absent or the subprocess exits non-zero, the factory reads `{artifact_root}/summary.json` when present and maps builder `status`/`reason` to the codes above. `missing_snapshot_after_build` applies only when the subprocess exited zero, no snapshot exists, and `summary.json` does not report a FAIL_* status.
 
+Beginning with Optimization Engine Session 06, factory step `status` remains an orchestration
+status, not optimizer quality. A step can be `succeeded` because the script exited and
+`snapshot_10y.json` exists while the optimizer solve was fallback or approximate. When
+`baseline_weights_metadata.json.optimizer_run_metadata` or `summary.json` exposes solver quality,
+the step copies these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `optimization_status_source` | Artifact path used for quality evidence, such as `baseline_weights_metadata.json.optimizer_run_metadata`. |
+| `optimization_quality_status` | Normalized quality: `clean_solve`, `approximate_fallback`, `approximate_solver`, `failed_solver`, `failed`, or `unknown`. |
+| `optimization_quality_family` | Grouped quality: `clean`, `approximate`, `failed`, or `unknown`. |
+| `optimizer_fallback_used` | Boolean fallback disclosure. |
+| `optimizer_fallback_reason` | Source fallback reason when available. |
+| `optimizer_solver_status` | Source solver status when available. |
+
+These fields are diagnostic disclosure only. They do not rerun builders, change weights, or convert
+factory orchestration statuses. Downstream comparison uses them to avoid treating fallback or failed
+optimization quality as ordinary available evidence.
+
+Beginning with Optimization Engine Session 07, the `robust_scenario` chain writes normalized solver
+quality through `robust scenario portfolio/baseline_weights_metadata.json.optimizer_run_metadata`
+(`robust_scenario_optimizer_run_metadata_v1`) when the source
+`robust_optimization_v1_summary.json` is present. The factory reads that block with the same fields
+above, so robust scenario SLSQP status is visible separately from factory orchestration success.
+
 Human-readable `.txt` summarizes profile, counts, failed IDs, and the next recommended command. Wording must stay **diagnostic** (no buy/sell, no "recommended portfolio").
 
 ## Integration with Comparison and Decision Package

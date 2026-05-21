@@ -34,10 +34,21 @@ from src.analysis_setup import build_analysis_setup
 from src.input_assumptions import build_input_assumptions_from_analysis_setup
 from src.metrics_asset import mandate_max_drawdown_full_history_check
 from src.optimization import (
+    MIN_WEIGHT_DEFAULT,
+    _build_bounds,
     get_risk_portfolio_tickers,
     portfolio_vol_annual,
     proliquidity,
     run_max_return_optimization,
+)
+from src.optimizer_input_fingerprints import (
+    optimizer_config_fingerprint,
+    returns_panel_disclosure,
+    universe_fingerprint,
+)
+from src.optimizer_methodology import (
+    covariance_methodology_disclosure,
+    young_etf_methodology_disclosure,
 )
 from src.risk_contrib import cov_matrix_monthly, cov_matrix_returns
 from src.robustness import compute_robustness_diagnostics, compute_robustness_flags
@@ -54,6 +65,7 @@ from src.returns_frequency import (
     resolve_returns_frequencies,
 )
 from src.young_etfs_dual_cov import build_dual_covariance_and_mu, per_ticker_young_weight_caps
+from src.optimization_status import normalize_optimization_quality_status
 
 STATUS_APPROVED = "APPROVED"
 STATUS_OK_FALLBACK = "OK_FALLBACK"
@@ -63,6 +75,237 @@ STATUS_FAIL_MANDATE = "FAIL_MANDATE"
 VIOL_FAIL_STRESS = "VIOL_FAIL_STRESS"
 VIOL_FAIL_MANDATE = "VIOL_FAIL_MANDATE"
 WARN_MODEL_RISK_YOUNG_WEIGHT = "WARN_MODEL_RISK_YOUNG_WEIGHT"
+
+
+def _optimizer_status_disclosure(status: str) -> dict[str, Any]:
+    status_text = str(status or "")
+    parts = [p.strip() for p in status_text.split("|") if p.strip()]
+    objective_mode = "max_return"
+    rp_solver: str | None = None
+    for part in parts:
+        if part.startswith("OBJECTIVE_MODE="):
+            objective_mode = part.split("=", 1)[1].strip() or objective_mode
+        elif part.startswith("RP_SOLVER="):
+            rp_solver = part.split("=", 1)[1].strip() or None
+
+    failed = status_text.startswith("FAIL")
+    fallback_used = "OK_FALLBACK" in status_text or rp_solver == "slsqp_fallback"
+    quality_status = normalize_optimization_quality_status(
+        "failed" if failed else None,
+        solver_success=bool(status_text) and not failed,
+        solver_status=parts[0] if parts else status_text,
+        fallback_used=fallback_used,
+    )
+
+    fallback_reason: str | None = None
+    if "OK_FALLBACK" in status_text:
+        fallback_reason = "primary_slsqp_retry_or_feasibility_projection"
+    elif rp_solver == "slsqp_fallback":
+        fallback_reason = "risk_parity_spinu_fallback_to_slsqp"
+
+    return {
+        "raw_status": status_text,
+        "objective_mode": objective_mode,
+        "solver": "SLSQP" if rp_solver is None else rp_solver,
+        "solver_success": bool(status_text) and not failed,
+        "fallback_used": fallback_used,
+        "fallback_reason": fallback_reason,
+        "optimization_quality_status": quality_status,
+    }
+
+
+def _build_legacy_policy_optimizer_run_metadata(
+    cfg: Any,
+    *,
+    optimization_status: str,
+    production_status: str,
+    analysis_end: str,
+    returns_frequency: str,
+    periods_per_year: int,
+    window_months: int,
+    secondary_window_months: int,
+    risk_tickers_all: list[str],
+    eligible_universe: list[str],
+    cash_proxy_ticker: str,
+    covariance_shrinkage: bool,
+    dual_covariance_enabled: bool,
+    young_diagnostics: dict | None,
+    per_ticker_young_caps: dict[str, float] | None,
+    soft_target_vol_annual: float | None,
+    soft_vol_penalty_lambda: float,
+    soft_target_return_annual: float | None,
+    soft_return_penalty_lambda: float,
+    liquidity_floor_pct: float,
+    current_vol_annual: float,
+    target_vol_annual: float,
+    cash_policy: str,
+    mandate_gate_passed: bool,
+    weights_written: bool,
+    estimator_returns_window: pd.DataFrame | None = None,
+) -> dict[str, Any]:
+    status_disclosure = _optimizer_status_disclosure(optimization_status)
+    objective_mode = status_disclosure["objective_mode"]
+    expected_returns_used = objective_mode == "max_return"
+    min_weight = (
+        float(getattr(cfg, "min_single_security_weight_pct", 0.0) or 0.0)
+        if getattr(cfg, "min_single_security_weight_pct", None) is not None
+        and float(getattr(cfg, "min_single_security_weight_pct") or 0.0) > 0
+        else MIN_WEIGHT_DEFAULT
+    )
+    bounds = _build_bounds(
+        list(eligible_universe),
+        len(eligible_universe),
+        min_weight,
+        getattr(cfg, "max_single_security_weight_pct", None),
+        per_ticker_young_caps,
+    )
+    resolved_bounds = {
+        t: {"min_weight": float(lo), "max_weight": float(hi)}
+        for t, (lo, hi) in zip(eligible_universe, bounds)
+    }
+    young_mode = young_diagnostics.get("mode") if isinstance(young_diagnostics, dict) else None
+    young_policy = getattr(cfg, "young_etf_optimization_policy", None) or {}
+    young_methodology = young_etf_methodology_disclosure(
+        enabled=bool(dual_covariance_enabled),
+        role="covariance_and_per_ticker_caps",
+        mode=young_mode,
+        policy=young_policy,
+        diagnostics=young_diagnostics,
+        per_ticker_caps=per_ticker_young_caps,
+    )
+    returns_disclosure = returns_panel_disclosure(estimator_returns_window)
+    config_fp = optimizer_config_fingerprint(
+        cfg,
+        extra={
+            "entrypoint": "run_optimization.py",
+            "objective_mode": objective_mode,
+            "window_months": int(window_months),
+            "secondary_window_months": int(secondary_window_months),
+            "returns_frequency": returns_frequency,
+        },
+    )
+    universe_fp = universe_fingerprint(eligible_universe)
+    input_fingerprints = {
+        "returns_panel_fingerprint": returns_disclosure["returns_panel_fingerprint"],
+        "config_fingerprint": config_fp,
+        "universe_fingerprint": universe_fp,
+    }
+
+    covariance_method = (
+        "dual_core_median_anchor"
+        if dual_covariance_enabled and young_mode == "dual_core_median_anchor"
+        else "fallback_full_inner_join"
+        if dual_covariance_enabled and young_mode == "fallback_full_inner_join"
+        else "ledoit_wolf_shrinkage"
+        if covariance_shrinkage
+        else "sample_covariance"
+    )
+    covariance_methodology = covariance_methodology_disclosure(
+        method=covariance_method,
+        source=(
+            "young_etf_dual_covariance"
+            if dual_covariance_enabled
+            else "sample_monthly_covariance"
+        ),
+        analysis_end=analysis_end,
+        window_months=int(window_months),
+        returns_panel_fingerprint=returns_disclosure["returns_panel_fingerprint"],
+        shrinkage_enabled=bool(covariance_shrinkage),
+        psd_repair_used=None,
+        psd_status=None,
+        young_etf=young_methodology,
+    )
+
+    return {
+        "schema_version": "legacy_policy_optimizer_run_metadata_v1",
+        "optimizer_role": "legacy_policy",
+        "entrypoint": "run_optimization.py",
+        "method_id": f"legacy_policy_{objective_mode}_v1",
+        "objective": {
+            "objective_mode": objective_mode,
+            "expected_returns_used": expected_returns_used,
+            "description": (
+                "maximize expected return with soft target-vol and target-return penalties"
+                if expected_returns_used
+                else "risk parity diagnostic mode"
+            ),
+            "soft_penalties": {
+                "target_vol_annual": soft_target_vol_annual,
+                "soft_vol_penalty_lambda": float(soft_vol_penalty_lambda),
+                "target_nominal_return_annual": soft_target_return_annual,
+                "soft_return_penalty_lambda": float(soft_return_penalty_lambda),
+            },
+        },
+        "input_window": {
+            "analysis_end": analysis_end,
+            "window_months": int(window_months),
+            "secondary_window_months": int(secondary_window_months),
+            "returns_frequency": returns_frequency,
+            "periods_per_year": int(periods_per_year),
+            "returns_panel_start": returns_disclosure["returns_panel_start"],
+            "returns_panel_end": returns_disclosure["returns_panel_end"],
+            "returns_panel_rows": returns_disclosure["returns_panel_rows"],
+        },
+        "input_fingerprints": input_fingerprints,
+        "expected_returns": {
+            "source": (
+                "young_etf_dual_covariance_mu"
+                if dual_covariance_enabled
+                else "sample_mean_monthly_simple_returns"
+            ),
+            "analysis_end": analysis_end,
+            "window_months": int(window_months),
+            "used_in_objective": expected_returns_used,
+            "returns_panel_fingerprint": returns_disclosure["returns_panel_fingerprint"],
+        },
+        "covariance": {
+            "source": (
+                "young_etf_dual_covariance"
+                if dual_covariance_enabled
+                else "sample_monthly_covariance"
+            ),
+            "method": covariance_method,
+            "analysis_end": analysis_end,
+            "shrinkage_enabled": bool(covariance_shrinkage),
+            "young_etf_dual_cov_enabled": bool(dual_covariance_enabled),
+            "young_etf_mode": young_mode,
+            "returns_panel_fingerprint": returns_disclosure["returns_panel_fingerprint"],
+            "methodology": covariance_methodology,
+            "methodology_summary": covariance_methodology["human_summary"],
+        },
+        "young_etf_methodology": young_methodology,
+        "universe": {
+            "configured_tickers": list(getattr(cfg, "tickers", []) or []),
+            "risk_universe": list(risk_tickers_all),
+            "eligible_universe": list(eligible_universe),
+            "cash_proxy_ticker": cash_proxy_ticker,
+            "cash_proxy_excluded_from_risk_optimizer": cash_proxy_ticker not in eligible_universe,
+            "universe_fingerprint": universe_fp,
+        },
+        "constraints": {
+            "long_only": True,
+            "fully_invested_risk_portfolio": True,
+            "min_single_security_weight_pct": getattr(cfg, "min_single_security_weight_pct", None),
+            "max_single_security_weight_pct": getattr(cfg, "max_single_security_weight_pct", None),
+            "resolved_bounds_by_ticker": resolved_bounds,
+            "per_ticker_young_caps": dict(per_ticker_young_caps or {}),
+        },
+        "cash_policy": {
+            "cash_proxy_ticker": cash_proxy_ticker,
+            "cash_policy": cash_policy,
+            "liquidity_floor_pct": float(liquidity_floor_pct),
+            "target_vol_annual": float(target_vol_annual),
+            "risk_portfolio_vol_annual": float(current_vol_annual),
+            "post_optimization_overlay": "ProLiquidity",
+        },
+        "solver": status_disclosure,
+        "release": {
+            "production_status": production_status,
+            "mandate_gate": "mandate_max_drawdown_full_history",
+            "mandate_gate_passed": bool(mandate_gate_passed),
+            "weights_written": bool(weights_written),
+        },
+    }
 
 
 def parse_args() -> argparse.Namespace:
@@ -1063,11 +1306,40 @@ def main() -> None:
         run_context="optimization",
     )
     input_assumptions = build_input_assumptions_from_analysis_setup(analysis_setup)
+    optimizer_run_metadata = _build_legacy_policy_optimizer_run_metadata(
+        cfg,
+        optimization_status=status,
+        production_status=production_status,
+        analysis_end=analysis_end_str,
+        returns_frequency=returns_frequency,
+        periods_per_year=ppy,
+        window_months=window_months,
+        secondary_window_months=secondary_window_months,
+        risk_tickers_all=risk_tickers_all,
+        eligible_universe=cols_primary,
+        cash_proxy_ticker=cash_proxy,
+        covariance_shrinkage=use_shrinkage,
+        dual_covariance_enabled=dual_enabled,
+        young_diagnostics=young_diagnostics,
+        per_ticker_young_caps=per_ticker_young_caps,
+        soft_target_vol_annual=float(tv) if tv is not None else None,
+        soft_vol_penalty_lambda=vol_lam,
+        soft_target_return_annual=float(tr) if tr is not None else None,
+        soft_return_penalty_lambda=ret_lam,
+        liquidity_floor_pct=liquidity_floor_pct,
+        current_vol_annual=current_vol,
+        target_vol_annual=target_vol,
+        cash_policy=cfg.cash_policy,
+        mandate_gate_passed=mandate_gate_passed,
+        weights_written=write_weights_gate,
+        estimator_returns_window=ret_primary[cols_primary] if cols_primary else ret_primary,
+    )
     run_result: dict = {
         "weights": rounded if write_weights_gate else {},
         "status": production_status,
         "analysis_setup": analysis_setup,
         "input_assumptions": input_assumptions,
+        "optimizer_run_metadata": optimizer_run_metadata,
         "mandate_check": mandate_check,
         "violations": violations,
         "rc_breaches": rc_breaches,

@@ -29,6 +29,10 @@ Plan: [Candidate Portfolio Factory Post-Audit Roadmap](exec_plans/2026-05-20_can
 Methodology map: [Candidate Factory Methodology Map](audits/2026-05-20_candidate_factory_methodology_map.md).
 Baseline: [Candidate Factory Baseline Snapshot](audits/2026-05-20_candidate_factory_baseline_snapshot.md).
 Note: RM-921 resumable factory is scheduled in Phase 14 Session 09 (RM-979), not deferred indefinitely.
+Optimization Engine governance (RM-990 -> RM-1002): **closed** as of 2026-05-21 (Sessions 00-12 complete).
+Plan: [Optimization Engine Post-Audit Roadmap](exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md).
+Methodology map: [Optimization Engine Methodology Map](audits/2026-05-20_optimization_engine_methodology_map.md).
+Baseline: [Optimization Engine Baseline Snapshot](audits/2026-05-20_optimization_engine_baseline_snapshot.md).
 ```
 
 New diagnostic layers must remain non-binding unless a canonical spec explicitly changes Selection or
@@ -391,6 +395,38 @@ Governed by the active
 | RM-980 | Done | Session 10 | Operational runbook factory UX. | RM-979. | [operational_runbook.md](operational_runbook.md), [candidate_factory.py](../src/candidate_factory.py) | §8 playbooks; contextual `next_recommended_command`; richer `candidate_factory_run.txt` | doc review + factory tests. |
 | RM-981 | Done | Session 11 | Concept registry DEC + wave closure (P5). | RM-980. | [DECISIONS.md](../DECISIONS.md), [candidate_portfolios_spec.md](specs/candidate_portfolios_spec.md), baseline snapshot | Phase 14 closed; DEC-2026-05-20-003; G9 closed | full governance bundle + `verify_docs`. |
 
+## Phase 15: Optimization Engine Governance
+
+Goal: make Block 5 (Optimization Engine) **audit-grade** by separating optimizer roles, objective
+formulas, estimators, constraints, failure handling, reproducibility metadata, and comparison
+readiness without adding new optimizers or changing formulas silently.
+
+Exit condition: methodology map and governance ExecPlan in repo; canonical Optimization Engine
+layer spec accepted; target-only objectives documented; policy and candidate optimizer disclosures
+are machine-readable; fallback and solver quality are explicit; comparison rows disclose optimizer
+methodology; verification bundle and baseline snapshot updated.
+
+Governed by the active
+[Optimization Engine Post-Audit Roadmap](exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md)
+(Sessions 00-12). Methodology baseline:
+[Optimization Engine Methodology Map](audits/2026-05-20_optimization_engine_methodology_map.md).
+
+| ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| RM-990 | Done | Session 00 | Project memory: methodology map link, ExecPlan, registers, ROADMAP Phase 15, baseline snapshot, TESTING stub. | 2026-05-20 methodology audit. | [methodology map](audits/2026-05-20_optimization_engine_methodology_map.md), [baseline snapshot](audits/2026-05-20_optimization_engine_baseline_snapshot.md), [governance ExecPlan](exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md) | Active handoff for Sessions 01-12 | `python scripts/verify_docs.py`. |
+| RM-991 | Done | Session 01 | Canonical `optimization_engine_layer_spec.md`. | RM-990. | docs/specs, `SPEC.md`, `OUTPUTS.md` | Block 5.1-5.11 source-of-truth spec | `python scripts/verify_docs.py`. |
+| RM-992 | Done | Session 02 | Target-only objective decision log. | RM-991. | `DECISIONS.md`, optimization spec appendix | Max Sharpe/drawdown/macro/tax-turnover concepts cannot drift into code silently | `python scripts/verify_docs.py`; target-name search. |
+| RM-993 | Done | Session 03 | Legacy policy optimizer disclosure. | RM-991. | `run_optimization.py`, `src/optimization.py`, policy spec | `run_result.json.optimizer_run_metadata` policy methodology block | focused legacy optimizer tests, Block 5 bundle, `verify_docs`. |
+| RM-994 | Done | Session 04 | Candidate optimizer reproducibility envelope. | RM-991. | `src/portfolio_variants.py`, candidate specs | `baseline_weights_metadata.json.optimizer_run_metadata` on MinVar/MaxDiv/CVaR/Robust MV optimizer candidates | MinVar/MaxDiv/CVaR/Robust MV tests; Block 5 bundle; `verify_docs`. |
+| RM-995 | Done | Session 05 | Comparison-level optimizer disclosure. | RM-994. | `src/candidate_comparison.py`, comparison spec | `construction_disclosure.optimizer_methodology` | `tests/test_candidate_comparison.py -q --basetemp=tmp\\pytest_session05_candidate_comparison`; `verify_docs`. |
+| RM-996 | Done | Session 06 | Formal fallback and failure policy. | RM-995. | optimizer, factory, comparison modules/specs | normalized fallback/failure quality fields now propagate through factory steps, comparison readiness, and Selection warnings | Block 5 focused bundles; `verify_docs`. |
+| RM-997 | Done | Session 07 | Robust scenario solver status contract. | RM-996. | `src/robust_scenario_optimization.py`, `run_robust_scenario_portfolio_report.py`, robust scenario/factory/comparison specs | normalized SLSQP solver quality is emitted in robust scenario summary and propagated through candidate metadata, factory evidence, and comparison disclosure | robust scenario, factory, comparison tests; `verify_docs`. |
+| RM-998 | Done | Session 08 | Explicit `analysis_end` and input fingerprints. | RM-994. | `run_optimization.py`, `src/portfolio_variants.py`, optimizer input fingerprint helper, specs/tests | legacy/candidate optimizer metadata includes estimator input fingerprints and candidate young-ETF covariance receives explicit `analysis_end` | focused legacy/candidate optimizer metadata tests; `verify_docs`. |
+| RM-999 | Done | Session 09 | Covariance and young ETF disclosure. | RM-998. | `run_optimization.py`, `src/portfolio_variants.py`, `src/candidate_comparison.py`, `src/io_export.py`, specs/tests | `optimizer_covariance_methodology_v1`, `optimizer_young_etf_methodology_v1`, comparison/IPS TXT notes | focused optimizer disclosure, comparison, IPS tests; `verify_docs`. |
+| RM-1000 | Done | Session 10 | Optimization readiness for candidate comparison. | RM-999. | [optimization_readiness.py](../src/optimization_readiness.py), [candidate_comparison.py](../src/candidate_comparison.py), comparison/layer specs | `construction_disclosure.optimization_readiness` + `fair_comparison_ready` for optimizer-backed rows | `tests/test_optimization_readiness.py` + comparison bundle; `verify_docs`. |
+| RM-1001 | Done | Session 11 | Golden contracts and Optimization governance bundle. | RM-993-RM-1000 stable. | [tests/fixtures](../tests/fixtures/), [optimization_engine_golden_inputs.py](../tests/optimization_engine_golden_inputs.py), [test_optimization_engine_contract.py](../tests/test_optimization_engine_contract.py), `TESTING.md` | Block 5 golden JSON + governance bundle (159 passed) | focused bundle + `verify_docs`. |
+| RM-1002 | Done | Session 12 | Wave closure and documentation sync. | RM-1001. | root docs, roadmap, ExecPlan, baseline | Phase 15 **Done** (`RM-990`–`RM-1002`); G1–G8/G10 closed; G9 accepted | governance bundle **159 passed** + `verify_docs`. |
+
 ## Audit Mapping
 
 | Audit ID | Roadmap handling |
@@ -428,8 +464,9 @@ Phase 7 (`RM-700` through `RM-710`) is **closed** as of 2026-05-18. Phase 8 (`RM
 `RM-808`) is **closed** as of 2026-05-18. Phase 9 (`RM-900` through `RM-911`) is **closed** as of
 2026-05-19. Phase 11 (`RM-930` through `RM-939`) is **closed** as of 2026-05-20. Phase 12
 (`RM-940` through `RM-950`) is **closed** as of 2026-05-20. Phase 13 (`RM-951` through `RM-961`) is
-**closed** as of 2026-05-20 (Sessions 00–11 complete). Phase 14 (`RM-970` through `RM-981`) is
-**closed** as of 2026-05-20 (Session 11 complete). Keep each future
+**closed** as of 2026-05-20 (Sessions 00-11 complete). Phase 14 (`RM-970` through `RM-981`) is
+**closed** as of 2026-05-20 (Session 11 complete). Phase 15 (`RM-990` through `RM-1002`) is
+**closed** as of 2026-05-21 (Session 12 complete). Keep each future
 project-level session in a separate chat unless the user explicitly changes that rule. Do not reopen
 closed MVP, post-audit, portfolio-first, Phase 9, Phase 11, or Phase 12 sessions unless the user
 explicitly requests plan amendments.

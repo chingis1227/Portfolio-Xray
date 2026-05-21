@@ -23,6 +23,10 @@ from src.candidate_robust_disclosure import (
     build_robust_scenario_prerequisites_disclosure,
     merge_robust_paths_into_step,
 )
+from src.optimization_status import (
+    optimizer_quality_from_solver_block,
+    optimization_quality_family,
+)
 from src.snapshot import (
     CANDIDATE_CONFIG_FINGERPRINT_KEY,
     compute_candidate_config_fingerprint,
@@ -221,6 +225,71 @@ def _command_strings(commands: list[list[str]]) -> list[str]:
 def _read_builder_summary(artifact_dir: Path) -> dict[str, Any] | None:
     summary = _load_json(artifact_dir / BUILDER_SUMMARY_FILENAME)
     return summary if summary else None
+
+
+def _optimizer_status_evidence(artifact_dir: Path) -> dict[str, Any]:
+    """Read optimizer/fallback quality evidence from builder artifacts."""
+    baseline = _load_json(artifact_dir / "baseline_weights_metadata.json")
+    if baseline:
+        metadata = baseline.get("optimizer_run_metadata")
+        if isinstance(metadata, dict):
+            solver = metadata.get("solver")
+            if isinstance(solver, dict):
+                quality = optimizer_quality_from_solver_block(solver)
+                fallback_used = bool(solver.get("fallback_used", False))
+                return {
+                    "optimization_status_source": "baseline_weights_metadata.json.optimizer_run_metadata",
+                    "optimization_quality_status": quality,
+                    "optimization_quality_family": optimization_quality_family(
+                        quality,
+                        fallback_used=fallback_used,
+                    ),
+                    "optimizer_fallback_used": fallback_used,
+                    "optimizer_fallback_reason": solver.get("fallback_reason"),
+                    "optimizer_solver_status": solver.get("status")
+                    or solver.get("solver_status"),
+                }
+
+    summary = _read_builder_summary(artifact_dir)
+    if summary:
+        solver_block = summary.get("solver")
+        if isinstance(solver_block, dict):
+            quality = optimizer_quality_from_solver_block(solver_block)
+            fallback_used = bool(solver_block.get("fallback_used", False))
+            return {
+                "optimization_status_source": "summary.json.solver",
+                "optimization_quality_status": quality,
+                "optimization_quality_family": optimization_quality_family(
+                    quality,
+                    fallback_used=fallback_used,
+                ),
+                "optimizer_fallback_used": fallback_used,
+                "optimizer_fallback_reason": solver_block.get("fallback_reason"),
+                "optimizer_solver_status": solver_block.get("status")
+                or solver_block.get("solver_status"),
+            }
+        if summary.get("solver_status") or summary.get("fallback_used") is not None:
+            solver = {
+                "solver_status": summary.get("solver_status"),
+                "solver_success": summary.get("solver_success"),
+                "fallback_used": summary.get("fallback_used", False),
+                "fallback_reason": summary.get("fallback_reason"),
+                "optimization_quality_status": summary.get("optimization_quality_status"),
+            }
+            quality = optimizer_quality_from_solver_block(solver)
+            fallback_used = bool(solver.get("fallback_used", False))
+            return {
+                "optimization_status_source": "summary.json",
+                "optimization_quality_status": quality,
+                "optimization_quality_family": optimization_quality_family(
+                    quality,
+                    fallback_used=fallback_used,
+                ),
+                "optimizer_fallback_used": fallback_used,
+                "optimizer_fallback_reason": solver.get("fallback_reason"),
+                "optimizer_solver_status": solver.get("solver_status"),
+            }
+    return {}
 
 
 def factory_reason_from_builder_summary(
@@ -983,8 +1052,13 @@ def _append_factory_step(
     output_dir_final: str,
 ) -> None:
     baseline_metadata: dict[str, Any] | None = None
+    artifact_root = step.get("artifact_root")
+    if artifact_root:
+        evidence = _optimizer_status_evidence(project_root / str(artifact_root))
+        for key, value in evidence.items():
+            if value is not None:
+                step[key] = value
     if candidate_id in ROBUST_MV_CANDIDATE_IDS:
-        artifact_root = step.get("artifact_root")
         if artifact_root:
             meta = _load_json(project_root / artifact_root / "baseline_weights_metadata.json")
             if meta:

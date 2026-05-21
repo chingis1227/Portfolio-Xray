@@ -18,6 +18,15 @@ from src.candidate_robust_disclosure import (
 )
 from src.config_schema import PortfolioConfig
 from src.io_export import REPORT_DECIMALS
+from src.optimization_readiness import build_optimization_readiness
+from src.optimization_status import (
+    optimizer_quality_from_solver_block,
+    optimization_quality_family,
+)
+from src.optimizer_methodology import (
+    covariance_methodology_summary,
+    young_etf_methodology_summary,
+)
 from src.snapshot import compute_candidate_config_fingerprint, snapshot_config_fingerprint
 from src.stress import crisis_replay_summary_from_paths
 
@@ -51,6 +60,12 @@ _FACTORY_STEP_EXCERPT_KEYS = (
     "builder_status",
     "builder_reason",
     "exit_code",
+    "optimization_status_source",
+    "optimization_quality_status",
+    "optimization_quality_family",
+    "optimizer_fallback_used",
+    "optimizer_fallback_reason",
+    "optimizer_solver_status",
     "freshness_status",
     "snapshot_analysis_end",
     "expected_analysis_end",
@@ -565,6 +580,190 @@ def _construction_disclosure_status(
     return "missing"
 
 
+def _optimizer_methodology_from_metadata(
+    optimizer_metadata: dict[str, Any],
+    *,
+    source: str,
+    factory_step: dict[str, Any],
+) -> dict[str, Any]:
+    if not optimizer_metadata:
+        return {}
+
+    solver = optimizer_metadata.get("solver")
+    if not isinstance(solver, dict):
+        solver = {}
+    input_window = optimizer_metadata.get("input_window")
+    if not isinstance(input_window, dict):
+        input_window = {}
+    constraints = optimizer_metadata.get("constraints")
+    if not isinstance(constraints, dict):
+        constraints = {}
+
+    freshness_keys = (
+        "freshness_status",
+        "snapshot_analysis_end",
+        "expected_analysis_end",
+        "expected_config_fingerprint",
+        "snapshot_config_fingerprint",
+    )
+    freshness = {
+        key: factory_step[key]
+        for key in freshness_keys
+        if key in factory_step and factory_step[key] is not None
+    }
+    if input_window.get("analysis_end") is not None:
+        freshness["optimizer_analysis_end"] = input_window.get("analysis_end")
+
+    methodology: dict[str, Any] = {
+        "source": source,
+        "source_schema_version": optimizer_metadata.get("schema_version"),
+        "optimizer_role": optimizer_metadata.get("optimizer_role"),
+        "candidate_only": bool(
+            optimizer_metadata.get(
+                "candidate_only",
+                optimizer_metadata.get("optimizer_role") == "candidate_only",
+            )
+        ),
+        "method_id": optimizer_metadata.get("method_id"),
+        "objective": optimizer_metadata.get("objective"),
+        "input_window": input_window,
+        "expected_return": optimizer_metadata.get("expected_return")
+        or optimizer_metadata.get("expected_returns"),
+        "covariance": optimizer_metadata.get("covariance"),
+        "young_etf_methodology": optimizer_metadata.get("young_etf_methodology"),
+        "constraints": constraints,
+        "solver": {
+            "name": solver.get("name"),
+            "success": solver.get("success")
+            if "success" in solver
+            else solver.get("solver_success"),
+            "status": solver.get("status") or solver.get("solver_status"),
+            "fallback_used": bool(solver.get("fallback_used", False)),
+            "fallback_reason": solver.get("fallback_reason"),
+            "optimization_quality_status": solver.get("optimization_quality_status"),
+        },
+    }
+    if freshness:
+        methodology["freshness"] = freshness
+    return methodology
+
+
+def _optimization_readiness_txt_line(cand: dict[str, Any]) -> str | None:
+    disclosure = cand.get("construction_disclosure")
+    if not isinstance(disclosure, dict):
+        return None
+    readiness = disclosure.get("optimization_readiness")
+    if not isinstance(readiness, dict):
+        return None
+    gaps = readiness.get("gaps") or []
+    gap_s = ", ".join(gaps) if gaps else "none"
+    return (
+        f"- {cand.get('display_name', cand.get('candidate_id', 'candidate'))}: "
+        f"readiness={readiness.get('overall_status', 'unknown')}; "
+        f"fair_comparison_ready={readiness.get('fair_comparison_ready')}; "
+        f"gaps={gap_s}."
+    )
+
+
+def _optimizer_methodology_txt_line(cand: dict[str, Any]) -> str | None:
+    disclosure = cand.get("construction_disclosure")
+    if not isinstance(disclosure, dict):
+        return None
+    methodology = disclosure.get("optimizer_methodology")
+    if not isinstance(methodology, dict):
+        return None
+    covariance = methodology.get("covariance")
+    if isinstance(covariance, dict):
+        covariance_methodology = (
+            covariance.get("methodology")
+            if isinstance(covariance.get("methodology"), dict)
+            else covariance
+        )
+    else:
+        covariance_methodology = {}
+    young = methodology.get("young_etf_methodology")
+    if not isinstance(young, dict) and isinstance(covariance_methodology, dict):
+        young = covariance_methodology.get("young_etf")
+    solver = methodology.get("solver") if isinstance(methodology.get("solver"), dict) else {}
+    return (
+        f"- {cand.get('display_name', cand.get('candidate_id', 'candidate'))}: "
+        f"{covariance_methodology_summary(covariance_methodology)} "
+        f"{young_etf_methodology_summary(young if isinstance(young, dict) else None)} "
+        f"optimizer_quality={solver.get('optimization_quality_status') or 'unknown'}."
+    )
+
+
+def _optimizer_quality_from_disclosure(disclosure: dict[str, Any]) -> dict[str, Any]:
+    """Project normalized optimizer quality from comparison construction disclosure."""
+    factory_step = disclosure.get("factory_step")
+    if isinstance(factory_step, dict) and factory_step.get("optimization_quality_status"):
+        quality = str(factory_step["optimization_quality_status"])
+        fallback_used = bool(factory_step.get("optimizer_fallback_used", False))
+        return {
+            "source": factory_step.get("optimization_status_source")
+            or "candidate_factory_run.json.steps[]",
+            "optimization_quality_status": quality,
+            "optimization_quality_family": factory_step.get("optimization_quality_family")
+            or optimization_quality_family(quality, fallback_used=fallback_used),
+            "fallback_used": fallback_used,
+            "fallback_reason": factory_step.get("optimizer_fallback_reason"),
+            "solver_status": factory_step.get("optimizer_solver_status"),
+        }
+
+    methodology = disclosure.get("optimizer_methodology")
+    if isinstance(methodology, dict):
+        solver = methodology.get("solver")
+        if isinstance(solver, dict):
+            quality = optimizer_quality_from_solver_block(solver)
+            fallback_used = bool(solver.get("fallback_used", False))
+            return {
+                "source": methodology.get("source"),
+                "optimization_quality_status": quality,
+                "optimization_quality_family": optimization_quality_family(
+                    quality,
+                    fallback_used=fallback_used,
+                ),
+                "fallback_used": fallback_used,
+                "fallback_reason": solver.get("fallback_reason"),
+                "solver_status": solver.get("status"),
+            }
+    return {}
+
+
+def _apply_factory_and_optimizer_quality_policy(
+    *,
+    status: str,
+    unavailable_reason: str | None,
+    warnings: list[str],
+    factory_step: dict[str, Any] | None,
+    construction_disclosure: dict[str, Any],
+) -> tuple[str, str | None, list[str]]:
+    """Apply Session 06 comparison boundary without recomputing optimizer outputs."""
+    out_status = status
+    out_reason = unavailable_reason
+    out_warnings = list(warnings)
+
+    factory_status = str((factory_step or {}).get("status") or "")
+    if factory_status in {"failed", "skipped_dependency"}:
+        reason_code = (factory_step or {}).get("reason_code") or factory_status
+        out_warnings.append(f"factory_step_not_successful:{reason_code}")
+        return "unavailable", str(reason_code), out_warnings
+
+    quality = _optimizer_quality_from_disclosure(construction_disclosure)
+    if quality:
+        construction_disclosure["optimizer_quality"] = quality
+        family = quality.get("optimization_quality_family")
+        q_status = quality.get("optimization_quality_status") or "unknown"
+        if family == "failed":
+            out_warnings.append(f"optimizer_quality_failed:{q_status}")
+            return "unavailable", "optimizer_quality_failed", out_warnings
+        if family == "approximate":
+            out_warnings.append(f"optimizer_quality_not_clean:{q_status}")
+            if out_status == "available":
+                out_status = "degraded"
+    return out_status, out_reason, out_warnings
+
+
 def construction_disclosure_from_folder(
     folder: Path,
     *,
@@ -582,12 +781,20 @@ def construction_disclosure_from_folder(
     baseline_metadata: dict[str, Any] = {}
     builder_summary: dict[str, Any] = {}
     main_row_excerpt: dict[str, Any] = {}
+    optimizer_metadata: dict[str, Any] = {}
+    optimizer_metadata_source: str | None = None
 
     if folder.is_dir():
         meta = _load_json(folder / BASELINE_WEIGHTS_METADATA_FILE)
         if meta:
             baseline_metadata = dict(meta)
             source_files.append(BASELINE_WEIGHTS_METADATA_FILE)
+            raw_optimizer_metadata = baseline_metadata.get("optimizer_run_metadata")
+            if isinstance(raw_optimizer_metadata, dict):
+                optimizer_metadata = raw_optimizer_metadata
+                optimizer_metadata_source = (
+                    f"{BASELINE_WEIGHTS_METADATA_FILE}.optimizer_run_metadata"
+                )
 
         summary = _load_json(folder / "summary.json")
         if summary:
@@ -598,6 +805,10 @@ def construction_disclosure_from_folder(
         if candidate_id == "policy":
             main_row_excerpt, policy_sources = _policy_construction_excerpt(folder)
             source_files.extend(s for s in policy_sources if s not in source_files)
+            run_result = _load_json(folder / "run_result.json")
+            if run_result and isinstance(run_result.get("optimizer_run_metadata"), dict):
+                optimizer_metadata = run_result["optimizer_run_metadata"]
+                optimizer_metadata_source = "run_result.json.optimizer_run_metadata"
         elif candidate_id in ("analysis_subject", "current"):
             main_row_excerpt, subject_sources = _subject_construction_excerpt(folder)
             source_files.extend(s for s in subject_sources if s not in source_files)
@@ -623,6 +834,12 @@ def construction_disclosure_from_folder(
         disclosure["main_row_excerpt"] = main_row_excerpt
     if factory_excerpt:
         disclosure["factory_step"] = factory_excerpt
+    if optimizer_metadata and optimizer_metadata_source:
+        disclosure["optimizer_methodology"] = _optimizer_methodology_from_metadata(
+            optimizer_metadata,
+            source=optimizer_metadata_source,
+            factory_step=factory_excerpt,
+        )
 
     robust_paths = factory_excerpt.get("robust_paths_disclosure")
     if robust_paths is None and is_robust_suite_candidate(candidate_id):
@@ -1064,6 +1281,26 @@ def _build_candidate_row(
         project_root=project_root,
         output_dir_final=out_rel,
     )
+    status, unavailable_reason, warnings = _apply_factory_and_optimizer_quality_policy(
+        status=status,
+        unavailable_reason=unavailable_reason,
+        warnings=warnings,
+        factory_step=factory_step,
+        construction_disclosure=construction_disclosure,
+    )
+
+    readiness = build_optimization_readiness(
+        folder,
+        role=row["role"],
+        construction_disclosure=construction_disclosure,
+        comparison_status=status,
+        unavailable_reason=unavailable_reason,
+        warnings=warnings,
+        expected_analysis_end=expected_analysis_end,
+        primary_snapshot_name=SNAPSHOT_FILES[PRIMARY_WINDOW],
+    )
+    if readiness:
+        construction_disclosure["optimization_readiness"] = _round_export_value(readiness)
 
     candidate: dict[str, Any] = {
         "candidate_id": row["candidate_id"],
@@ -1413,6 +1650,42 @@ def write_candidate_comparison_txt(
             f"{fit_s:>6}"
         )
         lines.append(line)
+
+    methodology_lines = [
+        line
+        for line in (
+            _optimizer_methodology_txt_line(cand)
+            for cand in comparison.get("candidates", [])
+        )
+        if line
+    ]
+    if methodology_lines:
+        lines.extend(
+            [
+                "",
+                "Optimizer methodology notes",
+                "-" * 72,
+                *methodology_lines,
+            ]
+        )
+
+    readiness_lines = [
+        line
+        for line in (
+            _optimization_readiness_txt_line(cand)
+            for cand in comparison.get("candidates", [])
+        )
+        if line
+    ]
+    if readiness_lines:
+        lines.extend(
+            [
+                "",
+                "Optimization readiness (optimizer-backed rows)",
+                "-" * 72,
+                *readiness_lines,
+            ]
+        )
 
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:

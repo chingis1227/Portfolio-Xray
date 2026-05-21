@@ -25,6 +25,84 @@ DEFAULT_WEIGHTS_REL = Path("Main portfolio") / "robust_optimization_weights.json
 OUT_DIR_NAME = "robust scenario portfolio"
 
 
+def _load_robust_optimization_summary(weights_path: Path) -> dict:
+    summary_path = weights_path.parent / "robust_optimization_v1_summary.json"
+    if not summary_path.is_file():
+        return {}
+    with summary_path.open(encoding="utf-8") as f:
+        raw = json.load(f)
+    return raw if isinstance(raw, dict) else {}
+
+
+def _robust_scenario_optimizer_run_metadata(
+    *,
+    weights_path: Path,
+    weights: dict[str, float],
+    summary: dict,
+) -> dict:
+    solver = summary.get("solver") if isinstance(summary.get("solver"), dict) else {}
+    sorted_returns = summary.get("sorted_scenario_returns_at_optimum")
+    scenario_count = len(sorted_returns) if isinstance(sorted_returns, list) else None
+    return {
+        "schema_version": "robust_scenario_optimizer_run_metadata_v1",
+        "optimizer_role": "candidate_only",
+        "candidate_only": True,
+        "method_id": "robust_scenario_optimization_v1",
+        "entrypoint": "run_robust_scenario_optimization.py",
+        "objective": {
+            "objective_mode": summary.get("objective_mode"),
+            "expected_returns_used": True,
+            "scenario_returns_used": True,
+        },
+        "input_window": {
+            "analysis_end": summary.get("analysis_end"),
+            "scenario_count": scenario_count,
+            "scenario_source": str(
+                (weights_path.parent / "scenario_library_normalized.json").resolve()
+            ),
+            "stress_source": str((weights_path.parent / "stress_report.json").resolve()),
+        },
+        "expected_return": {
+            "used": True,
+            "method": "base_historical.expected_returns_by_asset plus scenario coefficient matrix",
+        },
+        "covariance": {
+            "method": "base_historical.asset_covariance_monthly_equivalent",
+        },
+        "eligible_universe": sorted(weights.keys()),
+        "constraints": {
+            "active_constraints": ["long_only", "fully_invested", "box_bounds"],
+            "long_only": True,
+            "fully_invested": True,
+            "box_bounds": True,
+        },
+        "parameters": {
+            "lambdas": summary.get("lambdas") or {},
+        },
+        "solver": {
+            "name": solver.get("name"),
+            "success": solver.get("success"),
+            "status": solver.get("status"),
+            "raw_status": solver.get("raw_status"),
+            "message": solver.get("message") or summary.get("optimizer_message"),
+            "iterations": solver.get("iterations"),
+            "multi_start_count": solver.get("multi_start_count"),
+            "fallback_used": bool(solver.get("fallback_used", False)),
+            "fallback_reason": solver.get("fallback_reason"),
+            "optimization_quality_status": solver.get("optimization_quality_status")
+            or summary.get("optimization_quality_status"),
+        },
+        "output_summary": {
+            "weights_source": str(weights_path.resolve()),
+            "lower_half_mean": summary.get("lower_half_mean"),
+            "lower_half_k": summary.get("lower_half_k"),
+            "base_expected_return_monthly": summary.get("base_expected_return_monthly"),
+            "base_vol_monthly": summary.get("base_vol_monthly"),
+            "percentile_diagnostics_only": summary.get("percentile_diagnostics_only"),
+        },
+    }
+
+
 def _load_weights(path: Path) -> dict[str, float]:
     with path.open(encoding="utf-8") as f:
         raw = json.load(f)
@@ -79,6 +157,7 @@ def main() -> None:
 
     weights = _load_weights(weights_path)
     _validate_weights(weights)
+    robust_summary = _load_robust_optimization_summary(weights_path)
 
     out_dir = project_root / OUT_DIR_NAME
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -96,6 +175,12 @@ def main() -> None:
         "total_weight_sum": round(sum(weights.values()), 10),
         "long_only": True,
     }
+    if robust_summary:
+        meta_pre["optimizer_run_metadata"] = _robust_scenario_optimizer_run_metadata(
+            weights_path=weights_path,
+            weights=weights,
+            summary=robust_summary,
+        )
     with open(out_dir / "baseline_weights_metadata.json", "w", encoding="utf-8") as f:
         json.dump(meta_pre, f, indent=2, ensure_ascii=False)
 

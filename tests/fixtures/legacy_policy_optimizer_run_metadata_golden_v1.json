@@ -1,0 +1,165 @@
+{
+  "schema_version": "legacy_policy_optimizer_run_metadata_v1",
+  "optimizer_role": "legacy_policy",
+  "entrypoint": "run_optimization.py",
+  "method_id": "legacy_policy_max_return_v1",
+  "objective": {
+    "objective_mode": "max_return",
+    "expected_returns_used": true,
+    "description": "maximize expected return with soft target-vol and target-return penalties",
+    "soft_penalties": {
+      "target_vol_annual": 0.12,
+      "soft_vol_penalty_lambda": 12.0,
+      "target_nominal_return_annual": 0.06,
+      "soft_return_penalty_lambda": 8.0
+    }
+  },
+  "input_window": {
+    "analysis_end": "2026-04-30",
+    "window_months": 120,
+    "secondary_window_months": 60,
+    "returns_frequency": "monthly",
+    "periods_per_year": 12,
+    "returns_panel_start": "2026-02-28",
+    "returns_panel_end": "2026-04-30",
+    "returns_panel_rows": 3
+  },
+  "input_fingerprints": {
+    "returns_panel_fingerprint": "a1b2c3d4e5f6789012345678abcdef0123456789abcdef0123456789abcdef01",
+    "config_fingerprint": "fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321",
+    "universe_fingerprint": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  },
+  "expected_returns": {
+    "source": "sample_mean_monthly_simple_returns",
+    "analysis_end": "2026-04-30",
+    "window_months": 120,
+    "used_in_objective": true,
+    "returns_panel_fingerprint": "a1b2c3d4e5f6789012345678abcdef0123456789abcdef0123456789abcdef01"
+  },
+  "covariance": {
+    "source": "sample_monthly_covariance",
+    "method": "ledoit_wolf_shrinkage",
+    "analysis_end": "2026-04-30",
+    "shrinkage_enabled": true,
+    "young_etf_dual_cov_enabled": false,
+    "young_etf_mode": null,
+    "returns_panel_fingerprint": "a1b2c3d4e5f6789012345678abcdef0123456789abcdef0123456789abcdef01",
+    "methodology": {
+      "schema_version": "optimizer_covariance_methodology_v1",
+      "method": "ledoit_wolf_shrinkage",
+      "source": "sample_monthly_covariance",
+      "estimator": "ledoit_wolf_shrinkage_covariance",
+      "return_frequency": "monthly_simple",
+      "analysis_end": "2026-04-30",
+      "window_months": 120,
+      "join_policy": "inner_join_complete_cases",
+      "ddof": 1,
+      "shrinkage": {
+        "enabled": true,
+        "method": "ledoit_wolf"
+      },
+      "psd_repair": {
+        "used": null,
+        "status": null
+      },
+      "young_etf": {
+        "schema_version": "optimizer_young_etf_methodology_v1",
+        "enabled": false,
+        "role": "covariance_and_per_ticker_caps",
+        "mode": null,
+        "policy": {
+          "enabled": true
+        },
+        "eligible_tickers": [],
+        "ticker_buckets": {},
+        "per_ticker_caps": {},
+        "fallback_reason": null,
+        "core_effective_months": null,
+        "human_summary": "Young ETF policy disabled or not used for this optimizer."
+      },
+      "returns_panel_fingerprint": "a1b2c3d4e5f6789012345678abcdef0123456789abcdef0123456789abcdef01",
+      "does_not_change_formula": true,
+      "human_summary": "Covariance method=ledoit_wolf_shrinkage; join_policy=inner_join_complete_cases; shrinkage=True (ledoit_wolf); psd_repair=None; young ETF policy off/not used."
+    },
+    "methodology_summary": "Covariance method=ledoit_wolf_shrinkage; join_policy=inner_join_complete_cases; shrinkage=True (ledoit_wolf); psd_repair=None; young ETF policy off/not used."
+  },
+  "young_etf_methodology": {
+    "schema_version": "optimizer_young_etf_methodology_v1",
+    "enabled": false,
+    "role": "covariance_and_per_ticker_caps",
+    "mode": null,
+    "policy": {
+      "enabled": true
+    },
+    "eligible_tickers": [],
+    "ticker_buckets": {},
+    "per_ticker_caps": {},
+    "fallback_reason": null,
+    "core_effective_months": null,
+    "human_summary": "Young ETF policy disabled or not used for this optimizer."
+  },
+  "universe": {
+    "configured_tickers": [
+      "VOO",
+      "BND",
+      "GLD"
+    ],
+    "risk_universe": [
+      "VOO",
+      "BND",
+      "GLD"
+    ],
+    "eligible_universe": [
+      "VOO",
+      "BND",
+      "GLD"
+    ],
+    "cash_proxy_ticker": "BIL",
+    "cash_proxy_excluded_from_risk_optimizer": true,
+    "universe_fingerprint": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  },
+  "constraints": {
+    "long_only": true,
+    "fully_invested_risk_portfolio": true,
+    "min_single_security_weight_pct": 0.02,
+    "max_single_security_weight_pct": 0.35,
+    "resolved_bounds_by_ticker": {
+      "VOO": {
+        "min_weight": 0.02,
+        "max_weight": 0.35
+      },
+      "BND": {
+        "min_weight": 0.02,
+        "max_weight": 0.35
+      },
+      "GLD": {
+        "min_weight": 0.02,
+        "max_weight": 0.35
+      }
+    },
+    "per_ticker_young_caps": {}
+  },
+  "cash_policy": {
+    "cash_proxy_ticker": "BIL",
+    "cash_policy": "allowed",
+    "liquidity_floor_pct": 0.05,
+    "target_vol_annual": 0.12,
+    "risk_portfolio_vol_annual": 0.11,
+    "post_optimization_overlay": "ProLiquidity"
+  },
+  "solver": {
+    "raw_status": "OK | OBJECTIVE_MODE=max_return | SOFT_VOL_TARGET=0.1200 LAMBDA=12",
+    "objective_mode": "max_return",
+    "solver": "SLSQP",
+    "solver_success": true,
+    "fallback_used": false,
+    "fallback_reason": null,
+    "optimization_quality_status": "clean_solve"
+  },
+  "release": {
+    "production_status": "APPROVED",
+    "mandate_gate": "mandate_max_drawdown_full_history",
+    "mandate_gate_passed": true,
+    "weights_written": true
+  }
+}

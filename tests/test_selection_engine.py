@@ -167,6 +167,34 @@ def test_composite_winner_when_policy_unavailable() -> None:
     assert doc["decision_status"] == "selected_candidate"
 
 
+def test_selection_warns_when_favored_candidate_has_optimizer_fallback() -> None:
+    comp = _comparison_policy_current()
+    comp["candidates"][0]["status"] = "unavailable"
+    comp["candidates"][0]["unavailable_reason"] = "missing_snapshot"
+    comp["candidates"][2]["role"] = "optimizer_candidate"
+    comp["candidates"][2]["construction_disclosure"] = {
+        "optimizer_quality": {
+            "optimization_quality_status": "approximate_fallback",
+            "optimization_quality_family": "approximate",
+            "fallback_used": True,
+        }
+    }
+    doc = build_selection_decision(
+        comp,
+        health=_health_fixture(("equal_weight", 80, 1), ("current", 60, 2)),
+        robustness=_robust_fixture(("equal_weight", 75, 1), ("current", 55, 2)),
+    )
+    assert doc["favored_candidate_id"] == "equal_weight"
+    assert (
+        "favored_optimizer_quality_not_clean:equal_weight:approximate_fallback"
+        in doc["warnings"]
+    )
+    assert any(
+        "approximate optimizer solve" in note
+        for note in doc["rationale"]["data_quality_notes"]
+    )
+
+
 def test_analysis_subject_is_no_trade_baseline_and_disables_policy_default(tmp_path: Path) -> None:
     comp = _comparison_policy_current(output_dir="Main")
     comp["candidates"].insert(

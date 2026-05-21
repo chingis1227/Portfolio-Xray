@@ -18,6 +18,7 @@ from src.portfolio_variants import (
     build_equal_weight_baseline,
     build_maximum_diversification_constrained,
     build_maximum_diversification_unconstrained,
+    maximum_diversification_baseline_metadata_export,
 )
 from src.risk_contrib import cov_matrix_monthly
 from src.risk_parity_spinu import repair_covariance_psd
@@ -97,6 +98,18 @@ def test_build_maximum_diversification_three_assets_bounds_sum() -> None:
     assert diag.get("shrinkage_used") is False
     assert diag.get("diversification_ratio") is not None
     assert float(diag.get("diversification_ratio", 0.0)) >= 1.0 - 1e-6
+    meta = maximum_diversification_baseline_metadata_export(diag)
+    orm = meta["optimizer_run_metadata"]
+    assert orm["schema_version"] == "candidate_optimizer_run_metadata_v1"
+    assert orm["method_id"] == "maximum_diversification_constrained"
+    assert orm["input_window"]["analysis_end"] == end
+    assert orm["input_window"]["window_months"] == 120
+    assert orm["input_window"]["returns_panel_end"] == end
+    assert len(orm["input_fingerprints"]["returns_panel_fingerprint"]) == 64
+    assert len(orm["input_fingerprints"]["config_fingerprint"]) == 64
+    assert len(orm["input_fingerprints"]["universe_fingerprint"]) == 64
+    assert orm["constraints"]["bounds_used"]["H"]["min"] == 0.01
+    assert orm["solver"]["name"] == "SLSQP"
 
 
 def test_maximum_diversification_dr_ge_equal_weight_same_covariance() -> None:

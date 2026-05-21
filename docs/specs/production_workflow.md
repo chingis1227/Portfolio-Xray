@@ -28,6 +28,13 @@ When the mandate and other hard checks pass, weights are written. In `run_result
 
 `violations` may also contain stress diagnostics (**`FAIL_STRESS`** / `diagnostic_only` flag) for the PM — **not** a ban on using weights unless **FAIL_MANDATE** is present.
 
+`run_result.json.optimizer_run_metadata` is explanatory disclosure for the legacy policy optimizer.
+It records objective mode, input window, estimator sources, eligible universe, bounds/caps, cash
+policy, solver/fallback quality, and release status. Beginning with Optimization Engine Session 06,
+clean legacy solves use normalized quality `clean_solve`, while `OK_FALLBACK` maps to
+`approximate_fallback`. This does not introduce a new release gate or change the meanings of
+`APPROVED`, `OK_FALLBACK`, or `FAIL_MANDATE`.
+
 ---
 
 ## 3. Summary

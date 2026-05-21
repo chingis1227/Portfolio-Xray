@@ -504,6 +504,135 @@ def test_builder_fail_config_on_nonzero_exit_with_summary(tmp_path: Path) -> Non
     assert step["exit_code"] == 1
 
 
+def test_factory_step_surfaces_optimizer_fallback_quality(tmp_path: Path) -> None:
+    mv_dir = tmp_path / "minimum variance portfolio"
+    mv_dir.mkdir(parents=True)
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    fp = compute_candidate_config_fingerprint(cfg)
+
+    def runner(cmd, cwd):  # noqa: ANN001
+        (mv_dir / "snapshot_10y.json").write_text(
+            json.dumps(
+                {
+                    "analysis_end": None,
+                    "candidate_config_fingerprint": fp,
+                }
+            ),
+            encoding="utf-8",
+        )
+        (mv_dir / "baseline_weights_metadata.json").write_text(
+            json.dumps(
+                {
+                    "optimizer_run_metadata": {
+                        "schema_version": "candidate_optimizer_run_metadata_v1",
+                        "solver": {
+                            "success": True,
+                            "status": "OK_FALLBACK",
+                            "fallback_used": True,
+                            "fallback_reason": "fixture_retry",
+                            "optimization_quality_status": "approximate_fallback",
+                        },
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        return 0
+
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["minimum_variance"],
+        skip_existing=False,
+        runner=runner,
+    )
+    step = doc["steps"][0]
+    assert step["status"] == "succeeded"
+    assert step["optimization_status_source"] == (
+        "baseline_weights_metadata.json.optimizer_run_metadata"
+    )
+    assert step["optimization_quality_status"] == "approximate_fallback"
+    assert step["optimization_quality_family"] == "approximate"
+    assert step["optimizer_fallback_used"] is True
+    assert step["optimizer_fallback_reason"] == "fixture_retry"
+
+
+def test_robust_scenario_factory_step_surfaces_solver_quality(tmp_path: Path) -> None:
+    main = tmp_path / "Main portfolio"
+    main.mkdir()
+    (main / "scenario_library_normalized.json").write_text("{}", encoding="utf-8")
+    (main / "stress_report.json").write_text("{}", encoding="utf-8")
+    robust_dir = tmp_path / "robust scenario portfolio"
+    robust_dir.mkdir()
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    fp = compute_candidate_config_fingerprint(cfg)
+
+    def runner(cmd, cwd):  # noqa: ANN001
+        (robust_dir / "snapshot_10y.json").write_text(
+            json.dumps(
+                {
+                    "analysis_end": None,
+                    "candidate_config_fingerprint": fp,
+                }
+            ),
+            encoding="utf-8",
+        )
+        (robust_dir / "baseline_weights_metadata.json").write_text(
+            json.dumps(
+                {
+                    "optimizer_run_metadata": {
+                        "schema_version": "robust_scenario_optimizer_run_metadata_v1",
+                        "optimizer_role": "candidate_only",
+                        "method_id": "robust_scenario_optimization_v1",
+                        "solver": {
+                            "name": "SLSQP",
+                            "success": True,
+                            "status": "OK",
+                            "fallback_used": False,
+                            "fallback_reason": None,
+                            "optimization_quality_status": "clean_solve",
+                        },
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        return 0
+
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["robust_scenario"],
+        skip_existing=False,
+        runner=runner,
+    )
+    step = doc["steps"][0]
+    assert step["status"] == "succeeded"
+    assert step["optimization_status_source"] == (
+        "baseline_weights_metadata.json.optimizer_run_metadata"
+    )
+    assert step["optimization_quality_status"] == "clean_solve"
+    assert step["optimization_quality_family"] == "clean"
+    assert step["optimizer_fallback_used"] is False
+    assert step["optimizer_solver_status"] == "OK"
+
+
 def test_missing_snapshot_after_zero_exit(tmp_path: Path) -> None:
     cfg = validate_config(
         {

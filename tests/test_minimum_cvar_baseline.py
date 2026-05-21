@@ -21,6 +21,7 @@ from src.portfolio_variants import (
     _minimum_cvar_tail_effective_obs,
     build_minimum_cvar_constrained,
     build_minimum_cvar_uncapped,
+    minimum_cvar_baseline_metadata_export,
 )
 from src.windows import slice_window
 
@@ -146,6 +147,20 @@ def test_minimum_cvar_constrained_respects_bounds() -> None:
     assert res.diagnostics.get("optimizer_name") == "minimum_cvar_constrained"
     assert res.diagnostics.get("bounds_used") is not None
     assert res.diagnostics.get("constraint_summary") is not None
+    meta = minimum_cvar_baseline_metadata_export(res.diagnostics)
+    orm = meta["optimizer_run_metadata"]
+    assert orm["schema_version"] == "candidate_optimizer_run_metadata_v1"
+    assert orm["method_id"] == "minimum_cvar_constrained"
+    assert orm["input_window"]["analysis_end"] == end
+    assert orm["input_window"]["returns_panel_end"] == end
+    assert len(orm["input_fingerprints"]["returns_panel_fingerprint"]) == 64
+    assert len(orm["input_fingerprints"]["config_fingerprint"]) == 64
+    assert len(orm["input_fingerprints"]["universe_fingerprint"]) == 64
+    assert orm["parameters"]["cvar_confidence_level"] == 0.95
+    assert orm["solver"]["name"] == "HiGHS"
+    assert orm["constraints"]["constraint_summary"]["auxiliary_variables"] == (
+        "rockafellar_uryasev_z"
+    )
 
 
 def test_minimum_cvar_constrained_differs_from_uncapped_when_cap_binds() -> None:

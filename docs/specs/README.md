@@ -49,6 +49,9 @@ Top-level documents stay compact:
 | Candidate and benchmark portfolios | [candidate_portfolios_spec.md](candidate_portfolios_spec.md) |
 | Candidate portfolio factory orchestration | [candidate_factory_spec.md](candidate_factory_spec.md) |
 | Candidate Factory layer mapping (Block 4.1–4.9) | [candidate_factory_layer_spec.md](candidate_factory_layer_spec.md) |
+| Optimization Engine methodology map (Block 5 audit baseline) | [../audits/2026-05-20_optimization_engine_methodology_map.md](../audits/2026-05-20_optimization_engine_methodology_map.md) |
+| Optimization Engine layer (Block 5.1-5.11), roles, objective/estimator/constraint/status/output matrices | [optimization_engine_layer_spec.md](optimization_engine_layer_spec.md) |
+| Optimization Engine post-audit roadmap (Phase 15) | [../exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md](../exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md) |
 | Canonical multi-candidate comparison artifact | [candidate_comparison_spec.md](candidate_comparison_spec.md) |
 | Robustness Scorecard (diagnostic resilience scoring) | [robustness_scorecard_spec.md](robustness_scorecard_spec.md) |
 | Portfolio Health Score (diagnostic holistic quality scoring) | [portfolio_health_score_spec.md](portfolio_health_score_spec.md) |

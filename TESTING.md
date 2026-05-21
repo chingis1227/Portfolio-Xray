@@ -212,6 +212,92 @@ run, refresh baseline fingerprints per
 python run_portfolio_review.py --mode core
 ```
 
+## Optimization Engine Governance Wave Bundle (Phase 15)
+
+Governance wave (Phase 15, Sessions 00-12) is **closed** as of 2026-05-21 per
+[Optimization Engine Post-Audit Roadmap](docs/exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md).
+Methodology baseline:
+[docs/audits/2026-05-20_optimization_engine_methodology_map.md](docs/audits/2026-05-20_optimization_engine_methodology_map.md).
+Baseline checklist:
+[docs/audits/2026-05-20_optimization_engine_baseline_snapshot.md](docs/audits/2026-05-20_optimization_engine_baseline_snapshot.md).
+
+Session 00 is documentation-only:
+
+```bash
+python scripts/verify_docs.py
+```
+
+After code or output-contract sessions, run the focused Block 5 bundle:
+
+```bash
+python -m pytest tests/test_legacy_policy_optimizer_disclosure.py tests/test_optimization_fallback.py tests/test_config_weights_sync.py tests/test_young_etfs_dual_cov.py -q
+python -m pytest tests/test_minimum_variance_baseline.py tests/test_maximum_diversification_baseline.py tests/test_minimum_cvar_baseline.py -q
+python -m pytest tests/test_robust_mean_variance.py tests/test_robust_mv_calibration.py tests/test_robust_scenario_optimization.py -q
+python -m pytest tests/test_optimization_readiness.py tests/test_optimization_engine_contract.py tests/test_candidate_factory.py tests/test_candidate_comparison.py tests/test_candidate_factory_contract.py tests/test_candidate_comparison_contract.py -q
+python scripts/verify_docs.py
+```
+
+Golden contract fixtures (Session 11 / `RM-1001`):
+
+```bash
+python tests/optimization_engine_golden_inputs.py
+python -m pytest tests/test_optimization_engine_contract.py -q
+```
+
+- `tests/fixtures/legacy_policy_optimizer_run_metadata_golden_v1.json`
+- `tests/fixtures/candidate_optimizer_run_metadata_golden_v1.json`
+- `tests/fixtures/optimization_comparison_block5_golden_v1.json`
+- **Inputs:** `tests/optimization_engine_golden_inputs.py`
+- **Tests:** `tests/test_optimization_engine_contract.py`
+
+Run `python run_optimization.py` only when legacy policy outputs change. Run affected candidate or
+robust scripts only when their wrapper/output contract changes. Do not refresh generated artifacts
+for commit unless the session explicitly targets generated outputs.
+
+Session 05 comparison-level optimizer disclosure: confirm
+`test_optimizer_candidate_methodology_disclosure_from_baseline_metadata` and
+`test_policy_optimizer_methodology_disclosure_from_run_result` in `tests/test_candidate_comparison.py`
+pass after changes to `construction_disclosure.optimizer_methodology`.
+
+Session 06 fallback/failure policy: confirm
+`test_factory_step_surfaces_optimizer_fallback_quality` in `tests/test_candidate_factory.py`,
+`test_optimizer_fallback_quality_degrades_comparison_row` and
+`test_failed_factory_step_blocks_comparison_row_even_with_snapshot` in
+`tests/test_candidate_comparison.py`, and
+`test_selection_warns_when_favored_candidate_has_optimizer_fallback` in
+`tests/test_selection_engine.py`.
+
+Session 07 robust scenario solver disclosure: confirm
+`test_build_inputs_and_optimize_round_trip` in `tests/test_robust_scenario_optimization.py`,
+`test_robust_scenario_factory_step_surfaces_solver_quality` in `tests/test_candidate_factory.py`,
+and `test_robust_scenario_optimizer_methodology_disclosure` in
+`tests/test_candidate_comparison.py`.
+
+Session 08 estimator date/fingerprint disclosure: confirm
+`tests/test_legacy_policy_optimizer_disclosure.py`,
+`tests/test_minimum_variance_baseline.py`, `tests/test_maximum_diversification_baseline.py`,
+`tests/test_minimum_cvar_baseline.py`, and `tests/test_robust_mean_variance.py` cover
+`input_fingerprints`, return-panel start/end/row fields, and estimator `analysis_end` propagation.
+
+Session 09 covariance / Young ETF methodology disclosure: confirm
+`tests/test_legacy_policy_optimizer_disclosure.py`, `tests/test_minimum_variance_baseline.py`,
+`tests/test_robust_mean_variance.py`, `tests/test_candidate_comparison.py`, and
+`tests/test_io_export_ips_summary.py` cover `optimizer_covariance_methodology_v1`,
+`optimizer_young_etf_methodology_v1`, comparison-level passthrough, and human TXT summaries.
+
+Session 10 optimization comparison readiness: confirm
+`tests/test_optimization_readiness.py` and `test_block5_golden_post_audit_surface` in
+`tests/test_optimization_engine_contract.py` cover `optimizer_comparison_readiness_v1`,
+`fair_comparison_ready`, and Block 5 comparison disclosure keys.
+
+Session 11 golden contracts and governance bundle closure (2026-05-21): Block 5 governance bundle
+**159 passed** (`test_optimization_engine_contract.py` 9 tests included in comparison/factory line);
+`verify_docs` OK. Regenerate optimizer golden JSON only after intentional disclosure contract changes.
+
+Session 12 wave closure (2026-05-21): Phase 15 **Done** (`RM-990`–`RM-1002`); baseline snapshot,
+ROADMAP, ExecPlan register, `KNOWN_ISSUES` Block 5 gap index, `CHANGELOG`; governance bundle
+**159 passed**; `verify_docs` OK.
+
 ## Artifact Checks
 
 Generated outputs are evidence, not source, unless the task explicitly targets generated artifacts.

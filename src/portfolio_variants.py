@@ -62,6 +62,16 @@ import yaml
 from scipy.optimize import linprog, minimize
 
 from src.config_schema import PortfolioConfig
+from src.optimization_status import normalize_optimization_quality_status
+from src.optimizer_input_fingerprints import (
+    optimizer_config_fingerprint,
+    returns_panel_disclosure,
+    universe_fingerprint,
+)
+from src.optimizer_methodology import (
+    covariance_methodology_disclosure,
+    young_etf_methodology_disclosure,
+)
 from src.hrp_weights import hrp_long_only_weights
 from src.optimization import MIN_WEIGHT_DEFAULT, _build_bounds
 from src.risk_contrib import cov_matrix_monthly, rc_vol_window
@@ -159,11 +169,273 @@ MINIMUM_VARIANCE_SOLVER = "SLSQP"
 MINIMUM_VARIANCE_OBJECTIVE = "0.5 * w.T @ covariance @ w"
 MAXIMUM_DIVERSIFICATION_SOLVER = "SLSQP"
 MAXIMUM_DIVERSIFICATION_OBJECTIVE = "(sigma' w) / sqrt(w' Sigma w) on monthly Sigma; DR dimensionless"
+CANDIDATE_OPTIMIZER_RUN_METADATA_SCHEMA_VERSION = "candidate_optimizer_run_metadata_v1"
+
+
+def _copy_present(diagnostics: Dict[str, object], keys: Iterable[str]) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    for k in keys:
+        if k in diagnostics:
+            out[k] = diagnostics[k]
+    return out
+
+
+def _bounds_export(bounds: list[tuple[float, float]], cols: list[str]) -> Dict[str, Dict[str, float]]:
+    return {
+        str(cols[i]): {"min": float(bounds[i][0]), "max": float(bounds[i][1])}
+        for i in range(len(cols))
+    }
+
+
+def _optimization_quality_status(diagnostics: Dict[str, object]) -> str:
+    fallback_used = bool(diagnostics.get("fallback_used", False))
+    solver_success = diagnostics.get("solver_success")
+    solver_status = diagnostics.get("solver_status")
+    if solver_success is None:
+        solver_success = diagnostics.get("linprog_success")
+    if solver_status is None:
+        solver_status = diagnostics.get("linprog_status")
+    return normalize_optimization_quality_status(
+        "failed" if diagnostics.get("reason") else None,
+        solver_success=solver_success,
+        solver_status=solver_status,
+        fallback_used=fallback_used,
+    )
+
+
+OPTIMIZER_INPUT_FINGERPRINT_EXPORT_KEYS = (
+    "returns_panel_fingerprint",
+    "config_fingerprint",
+    "universe_fingerprint",
+    "returns_panel_rows",
+    "returns_panel_start",
+    "returns_panel_end",
+    "estimator_input_columns",
+)
+
+
+def _estimator_returns_window(
+    monthly_returns: pd.DataFrame,
+    analysis_end: str,
+    window_months: int,
+    cols: list[str],
+) -> pd.DataFrame:
+    available = [str(c) for c in cols if str(c) in monthly_returns.columns]
+    if not available:
+        return pd.DataFrame(index=pd.DatetimeIndex([]))
+    return slice_window(monthly_returns[available], analysis_end, window_months)
+
+
+def _attach_optimizer_input_fingerprints(
+    diagnostics: Dict[str, object],
+    cfg: PortfolioConfig,
+    monthly_returns: pd.DataFrame,
+    analysis_end: str,
+    window_months: int,
+    cols: list[str],
+    *,
+    extra_config: dict[str, Any] | None = None,
+    returns_window: pd.DataFrame | None = None,
+) -> None:
+    panel = returns_window if returns_window is not None else _estimator_returns_window(
+        monthly_returns, analysis_end, window_months, cols
+    )
+    disclosure = returns_panel_disclosure(panel)
+    diagnostics.update(disclosure)
+    diagnostics["estimator_input_columns"] = [str(c) for c in cols]
+    diagnostics["config_fingerprint"] = optimizer_config_fingerprint(
+        cfg,
+        extra={
+            "optimizer_name": diagnostics.get("optimizer_name"),
+            "analysis_end": str(analysis_end),
+            "window_months": int(window_months),
+            **(extra_config or {}),
+        },
+    )
+    diagnostics["universe_fingerprint"] = universe_fingerprint(cols)
+
+
+def _attach_young_etf_methodology_diagnostics(
+    diagnostics: Dict[str, object],
+    cfg: PortfolioConfig,
+    *,
+    young_mode: str | None,
+    young_diagnostics: dict[str, Any] | None,
+    per_ticker_caps: dict[str, float] | None,
+    role: str,
+) -> None:
+    policy = getattr(cfg, "young_etf_optimization_policy", None) or {}
+    diagnostics["young_etf_policy_enabled"] = bool(policy.get("enabled", True))
+    diagnostics["young_etf_policy_role"] = role
+    diagnostics["young_etf_policy"] = dict(policy)
+    diagnostics["young_etf_dual_mode"] = young_mode
+    if young_diagnostics is not None:
+        diagnostics["young_etf_diagnostics"] = young_diagnostics
+    if per_ticker_caps:
+        diagnostics["per_ticker_young_caps"] = dict(per_ticker_caps)
+
+
+def _candidate_optimizer_run_metadata(diagnostics: Dict[str, object]) -> Dict[str, Any]:
+    """Normalized candidate-only optimizer disclosure for baseline metadata exports."""
+    optimizer_name = diagnostics.get("optimizer_name")
+    objective = diagnostics.get("objective", diagnostics.get("objective_minimize"))
+    solver_success = diagnostics.get("solver_success")
+    solver_status = diagnostics.get("solver_status")
+    solver_message = diagnostics.get("solver_message")
+    if solver_success is None:
+        solver_success = diagnostics.get("linprog_success")
+    if solver_status is None:
+        solver_status = diagnostics.get("linprog_status")
+    if solver_message is None:
+        solver_message = diagnostics.get("linprog_message")
+
+    parameters = _copy_present(
+        diagnostics,
+        (
+            "robust_mv_lambda",
+            "cvar_confidence_level",
+            "tail_fraction",
+            "n_scenarios",
+            "tail_effective_obs",
+            "lambda_turnover",
+            "lambda_turnover_effective",
+            "l1_penalty_used",
+            "l1_reference_source",
+            "volatility_target_used",
+            "target_volatility",
+            "target_variance_monthly_cap",
+            "volatility_constraint_feasible",
+            "volatility_constraint_binding",
+        ),
+    )
+    expected_return_method = "not_used"
+    if optimizer_name in (
+        OPTIMIZER_NAME_ROBUST_MEAN_VARIANCE_CONSTRAINED,
+        OPTIMIZER_NAME_ROBUST_MEAN_VARIANCE_UNCAPPED,
+    ):
+        expected_return_method = str(diagnostics.get("mu_shrinkage_method") or "james_stein")
+    young_methodology = young_etf_methodology_disclosure(
+        enabled=bool(diagnostics.get("young_etf_policy_enabled", False)),
+        role=str(diagnostics.get("young_etf_policy_role") or "not_used"),
+        mode=diagnostics.get("young_etf_dual_mode"),
+        policy=diagnostics.get("young_etf_policy")
+        if isinstance(diagnostics.get("young_etf_policy"), dict)
+        else None,
+        diagnostics=diagnostics.get("young_etf_diagnostics")
+        if isinstance(diagnostics.get("young_etf_diagnostics"), dict)
+        else None,
+        per_ticker_caps=diagnostics.get("per_ticker_young_caps")
+        if isinstance(diagnostics.get("per_ticker_young_caps"), dict)
+        else None,
+    )
+    covariance_methodology = covariance_methodology_disclosure(
+        method=diagnostics.get("covariance_method"),
+        source=str(diagnostics.get("covariance_source") or "monthly_return_panel"),
+        analysis_end=diagnostics.get("analysis_end"),
+        window_months=diagnostics.get("window_months"),
+        returns_panel_fingerprint=diagnostics.get("returns_panel_fingerprint"),
+        shrinkage_enabled=diagnostics.get(
+            "shrinkage_used", diagnostics.get("shrinkage_applied")
+        ),
+        psd_repair_used=diagnostics.get("psd_repair_used"),
+        psd_status=diagnostics.get("psd_status"),
+        young_etf=young_methodology,
+    )
+
+    return {
+        "schema_version": CANDIDATE_OPTIMIZER_RUN_METADATA_SCHEMA_VERSION,
+        "optimizer_role": "candidate_only",
+        "candidate_only": True,
+        "method_id": optimizer_name,
+        "entrypoint_family": "candidate_portfolio_builder",
+        "objective": objective,
+        "input_window": {
+            "analysis_end": diagnostics.get("analysis_end"),
+            "window_months": diagnostics.get("window_months"),
+            "return_frequency": "monthly_simple",
+            "returns_panel_start": diagnostics.get("returns_panel_start"),
+            "returns_panel_end": diagnostics.get("returns_panel_end"),
+            "returns_panel_rows": diagnostics.get("returns_panel_rows"),
+        },
+        "input_fingerprints": {
+            "returns_panel_fingerprint": diagnostics.get("returns_panel_fingerprint"),
+            "config_fingerprint": diagnostics.get("config_fingerprint"),
+            "universe_fingerprint": diagnostics.get("universe_fingerprint"),
+        },
+        "expected_return": {
+            "uses_expected_returns": expected_return_method != "not_used",
+            "method": expected_return_method,
+            "analysis_end": diagnostics.get("analysis_end"),
+            "returns_panel_fingerprint": diagnostics.get("returns_panel_fingerprint"),
+        },
+        "covariance": {
+            "method": diagnostics.get("covariance_method"),
+            "analysis_end": diagnostics.get("analysis_end"),
+            "shrinkage_used": diagnostics.get(
+                "shrinkage_used", diagnostics.get("shrinkage_applied")
+            ),
+            "psd_repair_used": diagnostics.get("psd_repair_used"),
+            "psd_status": diagnostics.get("psd_status"),
+            "young_etf_dual_mode": diagnostics.get("young_etf_dual_mode"),
+            "returns_panel_fingerprint": diagnostics.get("returns_panel_fingerprint"),
+            "methodology": covariance_methodology,
+            "methodology_summary": covariance_methodology["human_summary"],
+        },
+        "young_etf_methodology": young_methodology,
+        "universe": {
+            "eligible_universe": diagnostics.get("eligible_universe")
+            or diagnostics.get("universe_eligible"),
+            "estimator_input_columns": diagnostics.get("estimator_input_columns"),
+            "universe_fingerprint": diagnostics.get("universe_fingerprint"),
+        },
+        "constraints": {
+            "active_constraints": diagnostics.get("active_constraints"),
+            "constraints_used": diagnostics.get("constraints_used"),
+            "constraints_not_used": diagnostics.get("constraints_not_used"),
+            "bounds_used": diagnostics.get("bounds_used"),
+            "constraint_summary": diagnostics.get("constraint_summary"),
+            "binding_constraints": diagnostics.get("binding_constraints"),
+        },
+        "solver": {
+            "name": diagnostics.get("solver"),
+            "success": solver_success,
+            "status": solver_status,
+            "message": solver_message,
+            "fallback_used": bool(diagnostics.get("fallback_used", False)),
+            "fallback_reason": diagnostics.get("fallback_reason"),
+            "optimization_quality_status": _optimization_quality_status(diagnostics),
+        },
+        "parameters": parameters,
+        "outputs": {
+            "final_weights": diagnostics.get("final_weights"),
+            "portfolio_variance": diagnostics.get("portfolio_variance"),
+            "annualized_volatility": diagnostics.get("annualized_volatility"),
+            "objective_value": diagnostics.get(
+                "objective_value", diagnostics.get("cvar_objective_value")
+            ),
+        },
+        "notes": {
+            "does_not_write_policy_weights": True,
+            "does_not_apply_proliquidity": True,
+            "does_not_apply_legacy_mandate_release_gate": True,
+        },
+    }
+
+
+def _metadata_with_candidate_optimizer_run_metadata(
+    diagnostics: Dict[str, object],
+    keys: Iterable[str],
+) -> Dict[str, Any]:
+    out = _copy_present(diagnostics, tuple(keys) + OPTIMIZER_INPUT_FINGERPRINT_EXPORT_KEYS)
+    out["optimizer_run_metadata"] = _candidate_optimizer_run_metadata(diagnostics)
+    return out
 
 MINIMUM_VARIANCE_METADATA_EXPORT_KEYS = (
     "optimizer_name",
     "solver",
     "objective",
+    "analysis_end",
+    "window_months",
     "minimum_variance_baseline_role",
     "minimum_variance_interpretation",
     "covariance_method",
@@ -180,24 +452,27 @@ MINIMUM_VARIANCE_METADATA_EXPORT_KEYS = (
     "max_weight",
     "min_weight",
     "active_constraints",
+    "bounds_used",
+    "constraint_summary",
     "fallback_used",
 )
 
 
 def minimum_variance_baseline_metadata_export(diagnostics: Dict[str, object]) -> Dict[str, Any]:
     """Structured fields for ``baseline_weights_metadata.json`` / summary blobs (constrained variant)."""
-    out: Dict[str, Any] = {}
-    for k in MINIMUM_VARIANCE_METADATA_EXPORT_KEYS:
-        if k in diagnostics:
-            out[k] = diagnostics[k]
-    return out
+    return _metadata_with_candidate_optimizer_run_metadata(
+        diagnostics, MINIMUM_VARIANCE_METADATA_EXPORT_KEYS
+    )
 
 
 MINIMUM_VARIANCE_UNCAPPED_METADATA_EXPORT_KEYS = (
     "optimizer_name",
+    "solver",
+    "objective",
+    "analysis_end",
+    "window_months",
     "constraints_used",
     "constraints_not_used",
-    "solver",
     "covariance_method",
     "shrinkage_used",
     "psd_repair_used",
@@ -208,22 +483,24 @@ MINIMUM_VARIANCE_UNCAPPED_METADATA_EXPORT_KEYS = (
     "solver_status",
     "solver_success",
     "solver_message",
+    "bounds_used",
+    "constraint_summary",
     "fallback_used",
 )
 
 
 def minimum_variance_uncapped_metadata_export(diagnostics: Dict[str, object]) -> Dict[str, Any]:
-    out: Dict[str, Any] = {}
-    for k in MINIMUM_VARIANCE_UNCAPPED_METADATA_EXPORT_KEYS:
-        if k in diagnostics:
-            out[k] = diagnostics[k]
-    return out
+    return _metadata_with_candidate_optimizer_run_metadata(
+        diagnostics, MINIMUM_VARIANCE_UNCAPPED_METADATA_EXPORT_KEYS
+    )
 
 
 MINIMUM_VARIANCE_ADVANCED_METADATA_EXPORT_KEYS = (
     "optimizer_name",
     "solver",
     "objective",
+    "analysis_end",
+    "window_months",
     "minimum_variance_baseline_role",
     "minimum_variance_interpretation",
     "lambda_turnover",
@@ -240,6 +517,8 @@ MINIMUM_VARIANCE_ADVANCED_METADATA_EXPORT_KEYS = (
     "volatility_constraint_binding",
     "volatility_constraint_feasible",
     "active_constraints",
+    "bounds_used",
+    "constraint_summary",
     "binding_constraints",
     "covariance_method",
     "shrinkage_used",
@@ -256,11 +535,9 @@ MINIMUM_VARIANCE_ADVANCED_METADATA_EXPORT_KEYS = (
 
 
 def minimum_variance_advanced_metadata_export(diagnostics: Dict[str, object]) -> Dict[str, Any]:
-    out: Dict[str, Any] = {}
-    for k in MINIMUM_VARIANCE_ADVANCED_METADATA_EXPORT_KEYS:
-        if k in diagnostics:
-            out[k] = diagnostics[k]
-    return out
+    return _metadata_with_candidate_optimizer_run_metadata(
+        diagnostics, MINIMUM_VARIANCE_ADVANCED_METADATA_EXPORT_KEYS
+    )
 
 
 def advanced_minimum_variance_weights_txt_label(diagnostics: Dict[str, object]) -> str:
@@ -277,6 +554,8 @@ MAXIMUM_DIVERSIFICATION_METADATA_EXPORT_KEYS = (
     "optimizer_name",
     "solver",
     "objective",
+    "analysis_end",
+    "window_months",
     "covariance_method",
     "shrinkage_used",
     "psd_repair_used",
@@ -293,17 +572,17 @@ MAXIMUM_DIVERSIFICATION_METADATA_EXPORT_KEYS = (
     "max_weight",
     "min_weight",
     "active_constraints",
+    "bounds_used",
+    "constraint_summary",
     "fallback_used",
 )
 
 
 def maximum_diversification_baseline_metadata_export(diagnostics: Dict[str, object]) -> Dict[str, Any]:
     """Structured fields for maximum-diversification ``baseline_weights_metadata.json``."""
-    out: Dict[str, Any] = {}
-    for k in MAXIMUM_DIVERSIFICATION_METADATA_EXPORT_KEYS:
-        if k in diagnostics:
-            out[k] = diagnostics[k]
-    return out
+    return _metadata_with_candidate_optimizer_run_metadata(
+        diagnostics, MAXIMUM_DIVERSIFICATION_METADATA_EXPORT_KEYS
+    )
 
 
 HIERARCHICAL_RISK_PARITY_METADATA_EXPORT_KEYS = (
@@ -337,6 +616,8 @@ MINIMUM_CVAR_METADATA_EXPORT_KEYS = (
     "optimizer_name",
     "solver",
     "objective",
+    "analysis_end",
+    "window_months",
     "cvar_confidence_level",
     "tail_fraction",
     "n_scenarios",
@@ -365,11 +646,9 @@ MINIMUM_CVAR_METADATA_EXPORT_KEYS = (
 
 def minimum_cvar_baseline_metadata_export(diagnostics: Dict[str, object]) -> Dict[str, Any]:
     """Structured fields for minimum-CVaR ``baseline_weights_metadata.json`` (uncapped or constrained)."""
-    out: Dict[str, Any] = {}
-    for k in MINIMUM_CVAR_METADATA_EXPORT_KEYS:
-        if k in diagnostics:
-            out[k] = diagnostics[k]
-    return out
+    return _metadata_with_candidate_optimizer_run_metadata(
+        diagnostics, MINIMUM_CVAR_METADATA_EXPORT_KEYS
+    )
 
 
 ROBUST_MV_METADATA_EXPORT_KEYS = (
@@ -378,6 +657,7 @@ ROBUST_MV_METADATA_EXPORT_KEYS = (
     "optimizer_name",
     "solver",
     "objective_minimize",
+    "analysis_end",
     "robust_mv_lambda",
     "mu_shrinkage_method",
     "covariance_method",
@@ -408,11 +688,9 @@ ROBUST_MV_METADATA_EXPORT_KEYS = (
 
 def robust_mean_variance_baseline_metadata_export(diagnostics: Dict[str, object]) -> Dict[str, Any]:
     """Structured fields for Robust Mean–Variance ``baseline_weights_metadata.json`` / summaries."""
-    out: Dict[str, Any] = {}
-    for k in ROBUST_MV_METADATA_EXPORT_KEYS:
-        if k in diagnostics:
-            out[k] = diagnostics[k]
-    return out
+    return _metadata_with_candidate_optimizer_run_metadata(
+        diagnostics, ROBUST_MV_METADATA_EXPORT_KEYS
+    )
 
 
 RISK_BUDGET_METADATA_EXPORT_KEYS = (
@@ -1346,13 +1624,15 @@ def _mv_covariance_for_eligible(
     bool,
     str | None,
     dict[str, float] | None,
+    dict[str, Any] | None,
 ] | None:
     """
     Shared monthly Σ for Minimum-Variance variants (eligible inner join, dual cov optional).
 
     Returns
     -------
-    (cov_psd, cols, covariance_method, shrinkage_used, psd_repair_applied, young_etf_dual_mode, per_ticker_young_caps)
+    (cov_psd, cols, covariance_method, shrinkage_used, psd_repair_applied,
+    young_etf_dual_mode, per_ticker_young_caps, young_etf_diagnostics)
     or None if fewer than two return rows after dropna.
 
     ``per_ticker_young_caps`` is ``None`` when dual covariance is disabled or no caps apply.
@@ -1371,6 +1651,7 @@ def _mv_covariance_for_eligible(
         use_shrinkage = bool(force_shrinkage)
     young_mode: str | None = None
     per_ticker_caps: dict[str, float] | None = None
+    young_diagnostics: dict[str, Any] | None = None
     if dual_enabled:
         cov_df, _mu, ydiag = build_dual_covariance_and_mu(
             monthly_returns,
@@ -1378,7 +1659,9 @@ def _mv_covariance_for_eligible(
             window_months,
             young_pol,
             use_shrinkage_on_core=use_shrinkage,
+            analysis_end=pd.Timestamp(analysis_end),
         )
+        young_diagnostics = ydiag
         cols = [str(c) for c in cov_df.columns]
         covariance_method = f"young_etf_dual:{ydiag.get('mode', '')}"
         m = ydiag.get("mode")
@@ -1394,7 +1677,16 @@ def _mv_covariance_for_eligible(
         covariance_method = "ledoit_wolf_monthly" if use_shrinkage else "sample_monthly_ddof1"
     cov_np_raw = cov_df.reindex(index=cols, columns=cols).fillna(0.0).values
     cov_np, psd_repaired = repair_covariance_psd(cov_np_raw)
-    return cov_np, cols, covariance_method, use_shrinkage, bool(psd_repaired), young_mode, per_ticker_caps
+    return (
+        cov_np,
+        cols,
+        covariance_method,
+        use_shrinkage,
+        bool(psd_repaired),
+        young_mode,
+        per_ticker_caps,
+        young_diagnostics,
+    )
 
 
 MV_UNCAPPED_CONSTRAINTS_USED = ("long_only", "no_short", "fully_invested")
@@ -2024,6 +2316,8 @@ def build_minimum_variance_constrained(
         "optimizer_name": OPTIMIZER_NAME_MINIMUM_VARIANCE_CONSTRAINED,
         "solver": MINIMUM_VARIANCE_SOLVER,
         "objective": MINIMUM_VARIANCE_OBJECTIVE,
+        "analysis_end": str(analysis_end),
+        "window_months": int(window_months),
         "minimum_variance_baseline_role": MV_BASELINE_ROLE_PRIMARY_LOWEST_VOL_UNDER_CONSTRAINTS,
         "minimum_variance_interpretation": (
             "Primary baseline for the lowest portfolio volatility achievable under the project's "
@@ -2059,11 +2353,30 @@ def build_minimum_variance_constrained(
                 "reason": "Insufficient history for covariance after inner join",
             },
         )
-    cov_np, cols, covariance_method, shrinkage_used, psd_repaired, young_mode, per_ticker_caps = cov_pack
+    (
+        cov_np,
+        cols,
+        covariance_method,
+        shrinkage_used,
+        psd_repaired,
+        young_mode,
+        per_ticker_caps,
+        young_diagnostics,
+    ) = cov_pack
     diagnostics["covariance_method"] = covariance_method
     diagnostics["shrinkage_used"] = bool(shrinkage_used)
     diagnostics["psd_repair_used"] = bool(psd_repaired)
-    diagnostics["young_etf_dual_mode"] = young_mode
+    _attach_young_etf_methodology_diagnostics(
+        diagnostics,
+        cfg,
+        young_mode=young_mode,
+        young_diagnostics=young_diagnostics,
+        per_ticker_caps=per_ticker_caps,
+        role="covariance_and_per_ticker_caps",
+    )
+    _attach_optimizer_input_fingerprints(
+        diagnostics, cfg, monthly_returns, analysis_end, window_months, cols
+    )
 
     min_w = (
         float(cfg.min_single_security_weight_pct)
@@ -2078,6 +2391,12 @@ def build_minimum_variance_constrained(
         cfg.max_single_security_weight_pct,
         per_ticker_caps,
     )
+    diagnostics["bounds_used"] = _bounds_export(bounds, cols)
+    diagnostics["constraint_summary"] = {
+        "sum_weights": "equality_1",
+        "box_source": "_build_bounds",
+        "young_caps_applied": isinstance(per_ticker_caps, dict) and len(per_ticker_caps) > 0,
+    }
 
     if not _budget_simplex_intersects_box(bounds):
         return BaselineWeightsResult(
@@ -2131,6 +2450,8 @@ def build_maximum_diversification_constrained(
         "optimizer_name": OPTIMIZER_NAME_MAXIMUM_DIVERSIFICATION_CONSTRAINED,
         "solver": MAXIMUM_DIVERSIFICATION_SOLVER,
         "objective": MAXIMUM_DIVERSIFICATION_OBJECTIVE,
+        "analysis_end": str(analysis_end),
+        "window_months": int(window_months),
         "active_constraints": [
             "equality: sum(weights) = 1",
             "box: per-asset bounds from feasibility cap and config (min_single / max_single / young caps)",
@@ -2159,11 +2480,30 @@ def build_maximum_diversification_constrained(
                 "reason": "Insufficient history for covariance after inner join",
             },
         )
-    cov_np, cols, covariance_method, shrinkage_used, psd_repaired, young_mode, per_ticker_caps = cov_pack
+    (
+        cov_np,
+        cols,
+        covariance_method,
+        shrinkage_used,
+        psd_repaired,
+        young_mode,
+        per_ticker_caps,
+        young_diagnostics,
+    ) = cov_pack
     diagnostics["covariance_method"] = covariance_method
     diagnostics["shrinkage_used"] = bool(shrinkage_used)
     diagnostics["psd_repair_used"] = bool(psd_repaired)
-    diagnostics["young_etf_dual_mode"] = young_mode
+    _attach_young_etf_methodology_diagnostics(
+        diagnostics,
+        cfg,
+        young_mode=young_mode,
+        young_diagnostics=young_diagnostics,
+        per_ticker_caps=per_ticker_caps,
+        role="covariance_and_per_ticker_caps",
+    )
+    _attach_optimizer_input_fingerprints(
+        diagnostics, cfg, monthly_returns, analysis_end, window_months, cols
+    )
 
     min_w = (
         float(cfg.min_single_security_weight_pct)
@@ -2178,6 +2518,12 @@ def build_maximum_diversification_constrained(
         cfg.max_single_security_weight_pct,
         per_ticker_caps,
     )
+    diagnostics["bounds_used"] = _bounds_export(bounds, cols)
+    diagnostics["constraint_summary"] = {
+        "sum_weights": "equality_1",
+        "box_source": "_build_bounds",
+        "young_caps_applied": isinstance(per_ticker_caps, dict) and len(per_ticker_caps) > 0,
+    }
 
     if not _budget_simplex_intersects_box(bounds):
         return BaselineWeightsResult(
@@ -2225,6 +2571,8 @@ def build_maximum_diversification_unconstrained(
         "optimizer_name": OPTIMIZER_NAME_MAXIMUM_DIVERSIFICATION_UNCONSTRAINED,
         "solver": MAXIMUM_DIVERSIFICATION_SOLVER,
         "objective": MAXIMUM_DIVERSIFICATION_OBJECTIVE,
+        "analysis_end": str(analysis_end),
+        "window_months": int(window_months),
         "active_constraints": [
             "equality: sum(weights) = 1",
             "long-only: weights >= 0",
@@ -2253,15 +2601,38 @@ def build_maximum_diversification_unconstrained(
                 "reason": "Insufficient history for covariance after inner join",
             },
         )
-    cov_np, cols, covariance_method, shrinkage_used, psd_repaired, young_mode, _per_ticker_caps = (
-        cov_pack
-    )
+    (
+        cov_np,
+        cols,
+        covariance_method,
+        shrinkage_used,
+        psd_repaired,
+        young_mode,
+        _per_ticker_caps,
+        young_diagnostics,
+    ) = cov_pack
     diagnostics["covariance_method"] = covariance_method
     diagnostics["shrinkage_used"] = bool(shrinkage_used)
     diagnostics["psd_repair_used"] = bool(psd_repaired)
-    diagnostics["young_etf_dual_mode"] = young_mode
+    _attach_young_etf_methodology_diagnostics(
+        diagnostics,
+        cfg,
+        young_mode=young_mode,
+        young_diagnostics=young_diagnostics,
+        per_ticker_caps=None,
+        role="covariance_only",
+    )
+    _attach_optimizer_input_fingerprints(
+        diagnostics, cfg, monthly_returns, analysis_end, window_months, cols
+    )
 
     bounds = [(0.0, 1.0)] * len(cols)
+    diagnostics["bounds_used"] = _bounds_export(bounds, cols)
+    diagnostics["constraint_summary"] = {
+        "sum_weights": "equality_1",
+        "box_source": "long_only_unit_box",
+        "young_caps_applied": False,
+    }
     if not _budget_simplex_intersects_box(bounds):
         return BaselineWeightsResult(
             weights={t: 0.0 for t in cfg.tickers},
@@ -2329,11 +2700,27 @@ def build_hierarchical_risk_parity_baseline(
                 "reason": "Insufficient history for covariance after inner join",
             },
         )
-    cov_np, cols, covariance_method, shrinkage_used, psd_repaired, young_mode, _caps = cov_pack
+    (
+        cov_np,
+        cols,
+        covariance_method,
+        shrinkage_used,
+        psd_repaired,
+        young_mode,
+        _caps,
+        young_diagnostics,
+    ) = cov_pack
     diagnostics["covariance_method"] = covariance_method
     diagnostics["shrinkage_used"] = bool(shrinkage_used)
     diagnostics["psd_repair_used"] = bool(psd_repaired)
-    diagnostics["young_etf_dual_mode"] = young_mode
+    _attach_young_etf_methodology_diagnostics(
+        diagnostics,
+        cfg,
+        young_mode=young_mode,
+        young_diagnostics=young_diagnostics,
+        per_ticker_caps=None,
+        role="covariance_only",
+    )
 
     try:
         w_arr, hrp_meta = hrp_long_only_weights(cov_np, prefer_ward=True)
@@ -2636,6 +3023,8 @@ def build_minimum_cvar_uncapped(
         "optimizer_name": OPTIMIZER_NAME_MINIMUM_CVAR_UNCAPPED,
         "solver": MINIMUM_CVAR_SOLVER,
         "objective": MINIMUM_CVAR_OBJECTIVE,
+        "analysis_end": str(analysis_end),
+        "window_months": int(window_months),
         "active_constraints": [
             "equality: sum(weights) = 1",
             "long-only: 0 <= w_i <= 1 per asset (no project caps)",
@@ -2671,11 +3060,27 @@ def build_minimum_cvar_uncapped(
                 "reason": "Insufficient history for covariance/scenarios after inner join",
             },
         )
-    cov_np, cols, covariance_method, shrinkage_used, psd_repaired, young_mode, _caps = cov_pack
+    (
+        cov_np,
+        cols,
+        covariance_method,
+        shrinkage_used,
+        psd_repaired,
+        young_mode,
+        _caps,
+        young_diagnostics,
+    ) = cov_pack
     diagnostics["covariance_method"] = covariance_method
     diagnostics["shrinkage_used"] = bool(shrinkage_used)
     diagnostics["psd_repair_used"] = bool(psd_repaired)
-    diagnostics["young_etf_dual_mode"] = young_mode
+    _attach_young_etf_methodology_diagnostics(
+        diagnostics,
+        cfg,
+        young_mode=young_mode,
+        young_diagnostics=young_diagnostics,
+        per_ticker_caps=None,
+        role="covariance_only",
+    )
 
     returns_slice = slice_window(
         monthly_returns[cols], analysis_end, window_months
@@ -2691,9 +3096,26 @@ def build_minimum_cvar_uncapped(
         )
     R = returns_slice[cols].to_numpy(dtype=float)
     scenario_dates = returns_slice.index
+    _attach_optimizer_input_fingerprints(
+        diagnostics,
+        cfg,
+        monthly_returns,
+        analysis_end,
+        window_months,
+        cols,
+        extra_config={"cvar_confidence_level": gamma},
+        returns_window=returns_slice[cols],
+    )
 
     n = len(cols)
     bounds = [(0.0, 1.0)] * n
+    diagnostics["bounds_used"] = _bounds_export(bounds, cols)
+    diagnostics["constraint_summary"] = {
+        "sum_weights": "equality_1",
+        "box_source": "long_only_unit_box",
+        "young_caps_applied": False,
+        "auxiliary_variables": "rockafellar_uryasev_z",
+    }
     if not _budget_simplex_intersects_box(bounds):
         return BaselineWeightsResult(
             weights={t: 0.0 for t in cfg.tickers},
@@ -2739,6 +3161,8 @@ def build_minimum_cvar_constrained(
         "optimizer_name": OPTIMIZER_NAME_MINIMUM_CVAR_CONSTRAINED,
         "solver": MINIMUM_CVAR_SOLVER,
         "objective": MINIMUM_CVAR_OBJECTIVE,
+        "analysis_end": str(analysis_end),
+        "window_months": int(window_months),
         "active_constraints": [
             "equality: sum(weights) = 1",
             "box: per-asset bounds from feasibility cap and config (min_single / max_single / young caps)",
@@ -2773,13 +3197,27 @@ def build_minimum_cvar_constrained(
                 "reason": "Insufficient history for covariance/scenarios after inner join",
             },
         )
-    cov_np, cols, covariance_method, shrinkage_used, psd_repaired, young_mode, per_ticker_caps = (
-        cov_pack
-    )
+    (
+        cov_np,
+        cols,
+        covariance_method,
+        shrinkage_used,
+        psd_repaired,
+        young_mode,
+        per_ticker_caps,
+        young_diagnostics,
+    ) = cov_pack
     diagnostics["covariance_method"] = covariance_method
     diagnostics["shrinkage_used"] = bool(shrinkage_used)
     diagnostics["psd_repair_used"] = bool(psd_repaired)
-    diagnostics["young_etf_dual_mode"] = young_mode
+    _attach_young_etf_methodology_diagnostics(
+        diagnostics,
+        cfg,
+        young_mode=young_mode,
+        young_diagnostics=young_diagnostics,
+        per_ticker_caps=per_ticker_caps,
+        role="covariance_and_per_ticker_caps",
+    )
 
     returns_slice = slice_window(
         monthly_returns[cols], analysis_end, window_months
@@ -2796,6 +3234,16 @@ def build_minimum_cvar_constrained(
     R = returns_slice[cols].to_numpy(dtype=float)
     scenario_dates = returns_slice.index
     n = len(cols)
+    _attach_optimizer_input_fingerprints(
+        diagnostics,
+        cfg,
+        monthly_returns,
+        analysis_end,
+        window_months,
+        cols,
+        extra_config={"cvar_confidence_level": gamma},
+        returns_window=returns_slice[cols],
+    )
 
     min_w = (
         float(cfg.min_single_security_weight_pct)
@@ -2810,14 +3258,13 @@ def build_minimum_cvar_constrained(
         cfg.max_single_security_weight_pct,
         per_ticker_caps,
     )
-    diagnostics["bounds_used"] = {
-        cols[i]: {"min": float(bounds[i][0]), "max": float(bounds[i][1])} for i in range(n)
-    }
+    diagnostics["bounds_used"] = _bounds_export(bounds, cols)
     young_applied = isinstance(per_ticker_caps, dict) and len(per_ticker_caps) > 0
     diagnostics["constraint_summary"] = {
         "sum_weights": "equality_1",
         "box_source": "_build_bounds",
         "young_caps_applied": young_applied,
+        "auxiliary_variables": "rockafellar_uryasev_z",
     }
 
     if not _budget_simplex_intersects_box(bounds):
@@ -2863,6 +3310,9 @@ def build_minimum_variance_uncapped_long_only(
         "constraints_used": list(MV_UNCAPPED_CONSTRAINTS_USED),
         "constraints_not_used": list(MV_UNCAPPED_CONSTRAINTS_NOT_USED),
         "solver": MINIMUM_VARIANCE_SOLVER,
+        "objective": MINIMUM_VARIANCE_OBJECTIVE,
+        "analysis_end": str(analysis_end),
+        "window_months": int(window_months),
     }
 
     if len(eligible) < 2:
@@ -2887,12 +3337,38 @@ def build_minimum_variance_uncapped_long_only(
                 "reason": "Insufficient history for covariance after inner join",
             },
         )
-    cov_np, cols, covariance_method, shrinkage_used, psd_repaired, young_mode, _caps = cov_pack
+    (
+        cov_np,
+        cols,
+        covariance_method,
+        shrinkage_used,
+        psd_repaired,
+        young_mode,
+        _caps,
+        young_diagnostics,
+    ) = cov_pack
     diagnostics["covariance_method"] = covariance_method
     diagnostics["shrinkage_used"] = bool(shrinkage_used)
     diagnostics["psd_repair_used"] = bool(psd_repaired)
+    _attach_young_etf_methodology_diagnostics(
+        diagnostics,
+        cfg,
+        young_mode=young_mode,
+        young_diagnostics=young_diagnostics,
+        per_ticker_caps=None,
+        role="covariance_only",
+    )
+    _attach_optimizer_input_fingerprints(
+        diagnostics, cfg, monthly_returns, analysis_end, window_months, cols
+    )
     n = len(cols)
     bounds = [(0.0, 1.0)] * n
+    diagnostics["bounds_used"] = _bounds_export(bounds, cols)
+    diagnostics["constraint_summary"] = {
+        "sum_weights": "equality_1",
+        "box_source": "long_only_unit_box",
+        "young_caps_applied": False,
+    }
     if not _budget_simplex_intersects_box(bounds):
         return BaselineWeightsResult(
             weights={t: 0.0 for t in cfg.tickers},
@@ -2977,6 +3453,8 @@ def build_minimum_variance_advanced_controls(
         "optimizer_name": OPTIMIZER_NAME_MINIMUM_VARIANCE_ADVANCED,
         "solver": MINIMUM_VARIANCE_SOLVER,
         "objective": MINIMUM_VARIANCE_OBJECTIVE,
+        "analysis_end": str(analysis_end),
+        "window_months": int(window_months),
         "minimum_variance_baseline_role": MV_BASELINE_ROLE_ADVANCED_CONTROLS_PURE_PATH,
         "minimum_variance_interpretation": (
             "Advanced minimum-variance controls variant (Ledoit–Wolf monthly Σ; optional maximum "
@@ -3040,11 +3518,39 @@ def build_minimum_variance_advanced_controls(
                 "reason": "Insufficient history for covariance after inner join",
             },
         )
-    cov_np, cols, covariance_method, shrinkage_used, psd_repaired, young_mode, per_ticker_caps = cov_pack
+    (
+        cov_np,
+        cols,
+        covariance_method,
+        shrinkage_used,
+        psd_repaired,
+        young_mode,
+        per_ticker_caps,
+        young_diagnostics,
+    ) = cov_pack
     diagnostics["covariance_method"] = covariance_method
     diagnostics["shrinkage_used"] = bool(shrinkage_used)
     diagnostics["psd_repair_used"] = bool(psd_repaired)
-    diagnostics["young_etf_dual_mode"] = young_mode
+    _attach_young_etf_methodology_diagnostics(
+        diagnostics,
+        cfg,
+        young_mode=young_mode,
+        young_diagnostics=young_diagnostics,
+        per_ticker_caps=per_ticker_caps,
+        role="covariance_and_per_ticker_caps",
+    )
+    _attach_optimizer_input_fingerprints(
+        diagnostics,
+        cfg,
+        monthly_returns,
+        analysis_end,
+        window_months,
+        cols,
+        extra_config={
+            "minimum_variance_turnover_lambda": lam_cfg,
+            "target_vol_annual": getattr(cfg, "target_vol_annual", None),
+        },
+    )
 
     min_w = (
         float(cfg.min_single_security_weight_pct)
@@ -3059,6 +3565,14 @@ def build_minimum_variance_advanced_controls(
         cfg.max_single_security_weight_pct,
         per_ticker_caps,
     )
+    diagnostics["bounds_used"] = _bounds_export(bounds, cols)
+    diagnostics["constraint_summary"] = {
+        "sum_weights": "equality_1",
+        "box_source": "_build_bounds",
+        "young_caps_applied": isinstance(per_ticker_caps, dict) and len(per_ticker_caps) > 0,
+        "volatility_cap_configured": v_max is not None,
+        "l1_turnover_configured": lam_cfg > 1e-18,
+    }
     if not _budget_simplex_intersects_box(bounds):
         diagnostics["lambda_turnover_effective"] = 0.0
         diagnostics["l1_disabled_reason"] = "Weight bounds infeasible; L1 not evaluated."
@@ -3364,6 +3878,7 @@ def _build_robust_mean_variance_core(
         "optimizer_name": opt_name,
         "solver": ROBUST_MV_SOLVER,
         "objective_minimize": ROBUST_MV_OBJECTIVE_MIN,
+        "analysis_end": str(analysis_end),
         "robust_mv_lambda": lam,
         "mu_shrinkage_method": "james_stein",
         "window_months": int(window_months),
@@ -3397,6 +3912,21 @@ def _build_robust_mean_variance_core(
                 ),
             },
         )
+    _attach_optimizer_input_fingerprints(
+        diagnostics,
+        cfg,
+        monthly_returns,
+        analysis_end,
+        window_months,
+        cols,
+        extra_config={
+            "robust_mv_lambda": lam,
+            "robust_mv_covariance_method": getattr(cfg, "robust_mv_covariance_method", None),
+            "robust_mv_mu_shrinkage_method": mu_method,
+            "constrained": constrained,
+        },
+        returns_window=returns_slice[cols],
+    )
 
     try:
         cov_method_key = normalize_robust_mv_covariance_method(
@@ -3433,6 +3963,8 @@ def _build_robust_mean_variance_core(
     diagnostics["shrinkage_intensity"] = float(mu_pack["shrinkage_intensity"])
 
     per_ticker_caps: dict[str, float] | None = None
+    young_mode_for_caps: str | None = None
+    young_diagnostics_for_caps: dict[str, Any] | None = None
     if constrained:
         young_pol = getattr(cfg, "young_etf_optimization_policy", None) or {}
         if bool(young_pol.get("enabled", True)):
@@ -3446,6 +3978,8 @@ def _build_robust_mean_variance_core(
                     analysis_end=pd.Timestamp(analysis_end),
                 )
                 del _cov_d, _mu_d
+                young_diagnostics_for_caps = ydiag
+                young_mode_for_caps = str(ydiag.get("mode")) if ydiag.get("mode") is not None else None
                 per_ticker_caps = per_ticker_young_weight_caps(
                     ydiag["tickers"],
                     float(young_pol.get("max_weight_candidate_or_new_pct", 0.02)),
@@ -3461,6 +3995,14 @@ def _build_robust_mean_variance_core(
                         "reason": f"Young-ETF dual policy setup failed for caps: {e}",
                     },
                 )
+        _attach_young_etf_methodology_diagnostics(
+            diagnostics,
+            cfg,
+            young_mode=young_mode_for_caps,
+            young_diagnostics=young_diagnostics_for_caps,
+            per_ticker_caps=per_ticker_caps,
+            role="per_ticker_caps_only",
+        )
 
         min_w = (
             float(cfg.min_single_security_weight_pct)

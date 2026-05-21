@@ -56,6 +56,30 @@ Title: Short title
 
 ## Active Issues
 
+### Block 5 governance gap index (Phase 15)
+
+Audit gaps **G1–G10** are defined in
+[Optimization Engine Methodology Map](docs/audits/2026-05-20_optimization_engine_methodology_map.md) §4.
+Phase 15 sessions **RM-991**–**RM-1002** close them per
+[Optimization Engine Post-Audit Roadmap](docs/exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md).
+Wave closed Session 12 (`RM-1002`), 2026-05-21.
+
+| Gap | Summary | Roadmap | Session |
+| --- | --- | --- | --- |
+| G1 | ~~No single Block 5 optimization-engine spec~~ | RM-991 | 01 — **closed** |
+| G2 | ~~Legacy policy disclosure weaker than candidate metadata~~ | RM-993 | 03 — **closed** |
+| G3 | ~~Comparison does not surface optimizer methodology~~ | RM-995 | 05 — **closed** |
+| G4 | ~~Fallback/approximate paths look like clean success~~ | RM-996 | 06 — **closed** |
+| G5 | ~~Freshness lacks config/universe/estimator fingerprint~~ | RM-998 | 08 — **closed** |
+| G6 | ~~Robust scenario lacks formal solver status~~ | RM-997 | 07 — **closed** |
+| G7 | ~~Young ETF / covariance methodology not in summaries~~ | RM-999 | 09 — **closed** |
+| G8 | ~~Target-only objectives (Max Sharpe, drawdown, macro, tax)~~ | RM-992 | 02 — **closed** (`DEC-2026-05-21-001`) |
+| G9 | Stress `FAIL_*` labels vs mandate/release semantics | — | **accepted** (Stress Lab / policy specs; not Block 5 optimizer scope) |
+| G10 | ~~X-Ray not a formal comparison-readiness gate~~ | RM-1000 | 10 — **closed** for required optimizer checks; optional `portfolio_xray` only (`KI-2026-05-21-001`) |
+| — | ~~No Block 5 golden disclosure fixtures~~ | RM-1001 | 11 — **closed** |
+
+---
+
 ### Block 4 governance gap index (Phase 14)
 
 Audit gaps **G1–G10** are defined in
@@ -178,6 +202,19 @@ Title: Full candidate factory refresh is operationally heavy for one-shot review
 - Remaining gap (G4): full `default_v1` menu is still sequential and heavy; use `core` default or `run_candidate_factory.py --resume` after interrupt (`RM-979`). Optional parallelism still open.
 - Source links: [run_portfolio_review.py](run_portfolio_review.py), [portfolio_review_workflow.py](src/portfolio_review_workflow.py), [candidate_factory.py](src/candidate_factory.py), [candidate_comparison.py](src/candidate_comparison.py), [operational_runbook.md](docs/operational_runbook.md), [methodology map G4](docs/audits/2026-05-20_candidate_factory_methodology_map.md).
 - Remove when: Full-run reliably completes within agreed operator time budget without manual staging, or parallelism ships with isolation guarantees.
+
+Issue ID: KI-2026-05-21-001
+Title: portfolio_xray.json optional in optimization comparison readiness (G10)
+
+- Status: accepted
+- Severity: low
+- Area: architecture
+- Risk: Fair-comparison readiness can pass without per-candidate X-Ray archetype/weakness signals in `candidate_comparison.json`.
+- Evidence: Methodology map G10; `optimizer_comparison_readiness_v1` treats `portfolio_xray` as optional; required checks are weights, snapshot, stress, disclosure, methodology, quality, freshness.
+- Current mitigation: Open `{artifact_root}/portfolio_xray.json` per candidate when X-Ray comparison is needed; readiness block documents missing optional X-Ray.
+- Next action: None in Phase 15; revisit only if product spec requires X-Ray on comparison rows.
+- Source links: [methodology map G10](docs/audits/2026-05-20_optimization_engine_methodology_map.md), [optimization_engine_layer_spec.md](docs/specs/optimization_engine_layer_spec.md), [optimization_readiness.py](src/optimization_readiness.py).
+- Remove when: A canonical spec requires X-Ray fields on optimizer comparison rows and implementation ships.
 
 ## Update Rules
 
