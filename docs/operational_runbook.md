@@ -138,7 +138,8 @@ python run_candidate_factory.py --profile default_v1 --resume
 `candidate_factory_manifest.json` under `{output_dir_final}/` records completed steps; `--resume`
 skips prior `succeeded` and fresh `skipped_existing` rows when `run_checksum` matches (profile,
 menu, `analysis_end`, `config_fingerprint`). Failed steps are retried. Use `--force` to ignore
-manifest skips. Optional parallel builders remain deferred ([ROADMAP.md](ROADMAP.md) `RM-921` non-resume scope).
+manifest skips. Parallel candidate builders remain deferred; current opt-in parallelism is limited
+to Phase 2 lightweight report generation in factory `standard` mode.
 
 ### Robust suite prerequisites (Block 4 — `robust_suite` profile)
 
@@ -299,12 +300,15 @@ python run_candidate_factory.py --profile core_v1 --then-compare
 python run_candidate_factory.py --candidates equal_weight,risk_parity --force
 python run_candidate_factory.py --profile default_v1 --fail-fast
 python run_candidate_factory.py --profile default_v1 --execution-mode standard --then-compare
+python run_candidate_factory.py --profile default_v1 --execution-mode standard --parallel-lightweight-reports --lightweight-report-workers 4 --then-compare
 python run_candidate_factory.py --execution-mode standard --selected-candidates-for-full-report equal_weight,risk_parity --pdf-mode final_only
 ```
 
 | Flag | When to use |
 | --- | --- |
 | `--execution-mode standard` | Default for `run_portfolio_review.py`: weights + lightweight snapshots (minutes, not ~1h+16 PDFs). |
+| `--parallel-lightweight-reports` | Advanced speed-up for eligible `standard` runs: run independent Phase 2 lightweight reports concurrently after weights exist. |
+| `--lightweight-report-workers` | Cap parallel lightweight report workers; omit for automatic `min(4, report count)`. |
 | `--full-candidate-reports` | Phase 3: full HTML/commentary/rolling betas for every candidate in this run. |
 | `--selected-candidates-for-full-report` | Phase 3 subset (e.g. two benchmarks for client memo). |
 | `--pdf-mode final_only` | One Pandoc pass after Phase 3 (not per candidate). |
@@ -320,6 +324,13 @@ python run_candidate_factory.py --execution-mode standard --selected-candidates-
 Portfolio-first review wraps the same factory via `run_portfolio_review.py` (core vs full profile).
 Use `run_portfolio_review.py --mode full --resume-candidates` to pass factory `--resume` through
 the portfolio-first path after an interrupted full review.
+
+Parallel lightweight report fallback is automatic and safe to leave requested. The factory writes
+`parallel_lightweight_report_summary.status: sequential_fallback` when the requested run is not
+eligible, with `fallback_reasons` such as `fail_fast`, `pdf_mode=per_candidate`,
+`full_candidate_reports`, or `execution_mode=legacy_full`. Use it for factory-only acceleration
+after confirming the run does not need fail-fast debugging, per-candidate PDF rebuilds, or Phase 3
+full report exports.
 
 ### 8.2 Process exit codes (`run_candidate_factory.py`)
 
@@ -442,6 +453,7 @@ python -m pytest tests/test_optimizer_fair_comparison_full_menu.py -q
 | --- | --- |
 | Which step failed and why? | `candidate_factory_run.txt` (summary + reason codes) or `steps[]` in JSON |
 | Resume state? | `candidate_factory_manifest.json` (`completed_steps`, `run_checksum`) |
+| Parallel report mode? | `candidate_factory_run.json` -> `parallel_lightweight_report_summary`; human line in `candidate_factory_run.txt` |
 | Fair comparison ready? | `candidate_comparison.json` → `construction_disclosure.optimization_readiness.fair_comparison_ready` |
 | Construction hypothesis? | Row `construction_disclosure` (not recomputed in factory) |
 | Robust λ / Main deps? | Step `robust_paths_disclosure` or §0 robust suite table |

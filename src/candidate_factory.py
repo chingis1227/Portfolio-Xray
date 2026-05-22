@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -68,6 +69,7 @@ MANIFEST_FILENAME = "candidate_factory_manifest.json"
 RESUME_COMPLETE_STATUSES = frozenset({"succeeded", "skipped_existing"})
 SNAPSHOT_MINIMUM = "snapshot_10y.json"
 FULL_REPORT_SKIP_MARKER = "report.html"
+DEFAULT_LIGHTWEIGHT_REPORT_WORKERS = 4
 POLICY_EXCLUDED_IDS = frozenset({"policy", "current"})
 SCRIPTS_WITH_CONFIG = frozenset(
     {
@@ -600,7 +602,7 @@ def _mark_weights_build_report_phase(artifact_dir: Path) -> None:
         handle.write("\n")
 
 
-def _execute_lightweight_report(
+def _run_lightweight_report_worker(
     *,
     cfg: PortfolioConfig,
     candidate_id: str,
@@ -610,19 +612,15 @@ def _execute_lightweight_report(
     entry_commands: list[str],
     analysis_end: str | None,
     config_fingerprint: str,
-    steps: list[dict[str, Any]],
-    summary: dict[str, int],
-    manifest: dict[str, Any],
-    manifest_dir: Path,
-    project_root: Path,
-    output_dir_final: str,
-    fail_fast: bool,
     weights_reused: bool,
     run_context: CandidateRunContext | None = None,
-) -> bool:
+) -> dict[str, Any]:
     """
     Phase 2: comparison-ready snapshots via ``lightweight_comparison`` report profile.
-    Returns False when fail-fast should stop the factory loop.
+
+    This worker is intentionally candidate-local: it may write files under
+    ``artifact_dir`` only and returns one factory step for the coordinator to
+    register. It must not mutate run-level ``steps`` / ``summary`` / manifests.
     """
     from run_report import run_portfolio_report_for_weights
 
@@ -647,22 +645,7 @@ def _execute_lightweight_report(
         )
         step["execution_action"] = "lightweight_report_failed"
         step["phases_completed"] = ["weights"] if weights_reused else ["weights"]
-        _append_factory_step(
-            steps,
-            step,
-            candidate_id=candidate_id,
-            project_root=project_root,
-            output_dir_final=output_dir_final,
-        )
-        _increment_summary(summary, "failed")
-        _persist_manifest_step(
-            manifest,
-            output_dir=manifest_dir,
-            candidate_id=candidate_id,
-            step=step,
-            project_root=project_root,
-        )
-        return not fail_fast
+        return step
 
     try:
         weights = json.loads(weights_path.read_text(encoding="utf-8"))
@@ -685,22 +668,7 @@ def _execute_lightweight_report(
             snapshot_config_fingerprint=None,
         )
         step["execution_action"] = "lightweight_report_failed"
-        _append_factory_step(
-            steps,
-            step,
-            candidate_id=candidate_id,
-            project_root=project_root,
-            output_dir_final=output_dir_final,
-        )
-        _increment_summary(summary, "failed")
-        _persist_manifest_step(
-            manifest,
-            output_dir=manifest_dir,
-            candidate_id=candidate_id,
-            step=step,
-            project_root=project_root,
-        )
-        return not fail_fast
+        return step
 
     if not isinstance(weights, dict) or not weights:
         step = _failed_step(
@@ -721,22 +689,7 @@ def _execute_lightweight_report(
             snapshot_config_fingerprint=None,
         )
         step["execution_action"] = "lightweight_report_failed"
-        _append_factory_step(
-            steps,
-            step,
-            candidate_id=candidate_id,
-            project_root=project_root,
-            output_dir_final=output_dir_final,
-        )
-        _increment_summary(summary, "failed")
-        _persist_manifest_step(
-            manifest,
-            output_dir=manifest_dir,
-            candidate_id=candidate_id,
-            step=step,
-            project_root=project_root,
-        )
-        return not fail_fast
+        return step
 
     timing = BuilderStepTiming()
     prior_timing = load_builder_runtime_timing(artifact_dir)
@@ -783,22 +736,7 @@ def _execute_lightweight_report(
         step["execution_action"] = "lightweight_report_failed"
         step["phases_completed"] = ["weights", "report"]
         merge_timing_into_step(step, timing.to_dict())
-        _append_factory_step(
-            steps,
-            step,
-            candidate_id=candidate_id,
-            project_root=project_root,
-            output_dir_final=output_dir_final,
-        )
-        _increment_summary(summary, "failed")
-        _persist_manifest_step(
-            manifest,
-            output_dir=manifest_dir,
-            candidate_id=candidate_id,
-            step=step,
-            project_root=project_root,
-        )
-        return not fail_fast
+        return step
 
     timing.end_report()
     persist_builder_runtime_timing(artifact_dir, timing)
@@ -824,22 +762,7 @@ def _execute_lightweight_report(
         step["execution_action"] = "lightweight_report_failed"
         step["phases_completed"] = ["weights", "report"]
         merge_timing_into_step(step, timing.to_dict())
-        _append_factory_step(
-            steps,
-            step,
-            candidate_id=candidate_id,
-            project_root=project_root,
-            output_dir_final=output_dir_final,
-        )
-        _increment_summary(summary, "failed")
-        _persist_manifest_step(
-            manifest,
-            output_dir=manifest_dir,
-            candidate_id=candidate_id,
-            step=step,
-            project_root=project_root,
-        )
-        return not fail_fast
+        return step
 
     stress_report = meta.get("stress_report") or {}
     summary_payload: dict[str, Any] = {
@@ -886,6 +809,21 @@ def _execute_lightweight_report(
         "report_profile": REPORT_PROFILE_LIGHTWEIGHT,
     }
     merge_timing_into_step(step, timing.to_dict())
+    return step
+
+
+def _record_lightweight_report_step(
+    *,
+    step: dict[str, Any],
+    candidate_id: str,
+    steps: list[dict[str, Any]],
+    summary: dict[str, int],
+    manifest: dict[str, Any],
+    manifest_dir: Path,
+    project_root: Path,
+    output_dir_final: str,
+) -> None:
+    """Coordinator-owned registration for a lightweight report worker result."""
     _append_factory_step(
         steps,
         step,
@@ -893,7 +831,7 @@ def _execute_lightweight_report(
         project_root=project_root,
         output_dir_final=output_dir_final,
     )
-    _increment_summary(summary, "succeeded")
+    _increment_summary(summary, str(step.get("status") or "failed"))
     _persist_manifest_step(
         manifest,
         output_dir=manifest_dir,
@@ -901,7 +839,212 @@ def _execute_lightweight_report(
         step=step,
         project_root=project_root,
     )
+
+
+def _execute_lightweight_report(
+    *,
+    cfg: PortfolioConfig,
+    candidate_id: str,
+    row: dict[str, str],
+    artifact_dir: Path,
+    artifact_root: str,
+    entry_commands: list[str],
+    analysis_end: str | None,
+    config_fingerprint: str,
+    steps: list[dict[str, Any]],
+    summary: dict[str, int],
+    manifest: dict[str, Any],
+    manifest_dir: Path,
+    project_root: Path,
+    output_dir_final: str,
+    fail_fast: bool,
+    weights_reused: bool,
+    run_context: CandidateRunContext | None = None,
+) -> bool:
+    """
+    Sequential Phase 2 coordinator.
+
+    The report work is isolated in ``_run_lightweight_report_worker`` so Session 2
+    can run those workers concurrently while this coordinator remains the only
+    writer of run-level factory state.
+    """
+    step = _run_lightweight_report_worker(
+        cfg=cfg,
+        candidate_id=candidate_id,
+        row=row,
+        artifact_dir=artifact_dir,
+        artifact_root=artifact_root,
+        entry_commands=entry_commands,
+        analysis_end=analysis_end,
+        config_fingerprint=config_fingerprint,
+        weights_reused=weights_reused,
+        run_context=run_context,
+    )
+    _record_lightweight_report_step(
+        step=step,
+        candidate_id=candidate_id,
+        steps=steps,
+        summary=summary,
+        manifest=manifest,
+        manifest_dir=manifest_dir,
+        project_root=project_root,
+        output_dir_final=output_dir_final,
+    )
+    if step.get("status") == "failed":
+        return not fail_fast
     return True
+
+
+def _lightweight_report_worker_crash_step(
+    *,
+    candidate_id: str,
+    row: dict[str, str],
+    artifact_root: str,
+    entry_commands: list[str],
+    analysis_end: str | None,
+    config_fingerprint: str,
+    exc: BaseException,
+) -> dict[str, Any]:
+    step = _failed_step(
+        candidate_id=candidate_id,
+        display_name=row["display_name"],
+        role=row["role"],
+        artifact_root=artifact_root,
+        status="failed",
+        reason_code="builder_failed",
+        message=f"Lightweight report worker crashed: {exc}",
+        entry_commands=entry_commands,
+        exit_code=None,
+        duration_seconds=0.0,
+        expected_analysis_end=analysis_end,
+        snapshot_analysis_end=None,
+        freshness_status="missing",
+        expected_config_fingerprint=config_fingerprint,
+        snapshot_config_fingerprint=None,
+    )
+    step["execution_action"] = "lightweight_report_failed"
+    step["phases_completed"] = ["weights", "report"]
+    step["report_profile"] = REPORT_PROFILE_LIGHTWEIGHT
+    return step
+
+
+def _register_parallel_lightweight_report_results(
+    pending_reports: list[dict[str, Any]],
+    *,
+    steps: list[dict[str, Any]],
+    summary: dict[str, int],
+    manifest: dict[str, Any],
+    manifest_dir: Path,
+    project_root: Path,
+    output_dir_final: str,
+) -> None:
+    """Register parallel lightweight report results in candidate menu order."""
+    for pending in pending_reports:
+        future = pending["future"]
+        try:
+            step = future.result()
+        except Exception as exc:  # noqa: BLE001 - convert worker crash to factory evidence
+            step = _lightweight_report_worker_crash_step(
+                candidate_id=pending["candidate_id"],
+                row=pending["row"],
+                artifact_root=pending["artifact_root"],
+                entry_commands=pending["entry_commands"],
+                analysis_end=pending["analysis_end"],
+                config_fingerprint=pending["config_fingerprint"],
+                exc=exc,
+            )
+        _record_lightweight_report_step(
+            step=step,
+            candidate_id=pending["candidate_id"],
+            steps=steps,
+            summary=summary,
+            manifest=manifest,
+            manifest_dir=manifest_dir,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+        )
+    pending_reports.clear()
+
+
+def _lightweight_report_worker_count(
+    requested_workers: int | None,
+    *,
+    candidate_count: int,
+) -> int:
+    if requested_workers is not None:
+        return max(1, int(requested_workers))
+    return max(1, min(DEFAULT_LIGHTWEIGHT_REPORT_WORKERS, candidate_count))
+
+
+def _parallel_lightweight_reports_effective(
+    *,
+    requested: bool,
+    execution_mode: str,
+    fail_fast: bool,
+    pdf_mode: str,
+    full_report_ids: list[str],
+) -> bool:
+    return (
+        requested
+        and execution_mode == "standard"
+        and not fail_fast
+        and pdf_mode != "per_candidate"
+        and not full_report_ids
+    )
+
+
+def _parallel_lightweight_report_fallback_reasons(
+    *,
+    requested: bool,
+    execution_mode: str,
+    fail_fast: bool,
+    pdf_mode: str,
+    full_report_ids: list[str],
+) -> list[str]:
+    if not requested:
+        return []
+    reasons: list[str] = []
+    if execution_mode != "standard":
+        reasons.append(f"execution_mode={execution_mode}")
+    if fail_fast:
+        reasons.append("fail_fast")
+    if pdf_mode == "per_candidate":
+        reasons.append("pdf_mode=per_candidate")
+    if full_report_ids:
+        reasons.append("full_candidate_reports")
+    return reasons
+
+
+def _parallel_lightweight_report_summary(
+    *,
+    requested: bool,
+    effective: bool,
+    workers: int,
+    submitted_candidate_ids: list[str],
+    registered_candidate_ids: list[str],
+    wall_clock_seconds: float | None,
+    fallback_reasons: list[str],
+) -> dict[str, Any] | None:
+    if not requested and not effective:
+        return None
+    if effective:
+        status = "parallel" if submitted_candidate_ids else "parallel_no_work"
+    else:
+        status = "sequential_fallback"
+    summary: dict[str, Any] = {
+        "requested": requested,
+        "effective": effective,
+        "status": status,
+        "workers": workers,
+        "submitted_count": len(submitted_candidate_ids),
+        "completed_count": len(registered_candidate_ids),
+        "submitted_candidate_ids": submitted_candidate_ids,
+        "registered_candidate_ids": registered_candidate_ids,
+        "fallback_reasons": fallback_reasons,
+    }
+    if wall_clock_seconds is not None:
+        summary["wall_clock_seconds"] = round(float(wall_clock_seconds), 3)
+    return summary
 
 
 def _mark_full_report_phase(artifact_dir: Path) -> None:
@@ -1577,6 +1720,8 @@ def run_candidate_factory(
     execution_mode: str = "legacy_full",
     full_candidate_reports: bool = False,
     selected_candidates_for_full_report: list[str] | None = None,
+    parallel_lightweight_reports: bool = False,
+    lightweight_report_workers: int | None = None,
     runner: Any | None = None,
 ) -> dict[str, Any]:
     try:
@@ -1610,6 +1755,36 @@ def run_candidate_factory(
     execution_mode_normalized = normalize_execution_mode(execution_mode)
     in_process_phase = uses_weights_only_phase(execution_mode_normalized)
     lightweight_report_phase = uses_lightweight_report_phase(execution_mode_normalized)
+    parallel_lightweight_reports_effective = _parallel_lightweight_reports_effective(
+        requested=parallel_lightweight_reports,
+        execution_mode=execution_mode_normalized,
+        fail_fast=fail_fast,
+        pdf_mode=pdf_mode_normalized,
+        full_report_ids=full_report_ids,
+    )
+    parallel_lightweight_report_fallback_reasons = (
+        _parallel_lightweight_report_fallback_reasons(
+            requested=parallel_lightweight_reports,
+            execution_mode=execution_mode_normalized,
+            fail_fast=fail_fast,
+            pdf_mode=pdf_mode_normalized,
+            full_report_ids=full_report_ids,
+        )
+    )
+    lightweight_report_worker_count = _lightweight_report_worker_count(
+        lightweight_report_workers,
+        candidate_count=len(candidate_ids),
+    )
+    lightweight_report_executor: ThreadPoolExecutor | None = (
+        ThreadPoolExecutor(max_workers=lightweight_report_worker_count)
+        if parallel_lightweight_reports_effective
+        else None
+    )
+    pending_lightweight_reports: list[dict[str, Any]] = []
+    parallel_lightweight_report_started_at: float | None = None
+    parallel_lightweight_report_wall_clock_seconds: float | None = None
+    parallel_lightweight_submitted_candidate_ids: list[str] = []
+    parallel_lightweight_registered_candidate_ids: list[str] = []
     subprocess_env = subprocess_env_for_pdf_mode(pdf_mode_normalized)
     run_context: CandidateRunContext | None = None
     output_dir_final = cfg.output_dir_final
@@ -2000,7 +2175,37 @@ def run_candidate_factory(
                         fail_fast_aborted = True
                     break
             if lightweight_report_phase:
-                if not _execute_lightweight_report(
+                report_weights_reused = weights_reused and not need_weights_build
+                if parallel_lightweight_reports_effective:
+                    assert lightweight_report_executor is not None
+                    if parallel_lightweight_report_started_at is None:
+                        parallel_lightweight_report_started_at = time.perf_counter()
+                    future: Future[dict[str, Any]] = lightweight_report_executor.submit(
+                        _run_lightweight_report_worker,
+                        cfg=cfg,
+                        candidate_id=candidate_id,
+                        row=row,
+                        artifact_dir=artifact_dir,
+                        artifact_root=artifact_root,
+                        entry_commands=entry_commands,
+                        analysis_end=analysis_end,
+                        config_fingerprint=config_fingerprint,
+                        weights_reused=report_weights_reused,
+                        run_context=run_context,
+                    )
+                    parallel_lightweight_submitted_candidate_ids.append(candidate_id)
+                    pending_lightweight_reports.append(
+                        {
+                            "candidate_id": candidate_id,
+                            "row": row,
+                            "artifact_root": artifact_root,
+                            "entry_commands": entry_commands,
+                            "analysis_end": analysis_end,
+                            "config_fingerprint": config_fingerprint,
+                            "future": future,
+                        }
+                    )
+                elif not _execute_lightweight_report(
                     cfg=cfg,
                     candidate_id=candidate_id,
                     row=row,
@@ -2016,7 +2221,7 @@ def run_candidate_factory(
                     project_root=project_root,
                     output_dir_final=output_dir_final,
                     fail_fast=fail_fast,
-                    weights_reused=weights_reused and not need_weights_build,
+                    weights_reused=report_weights_reused,
                     run_context=run_context,
                 ):
                     if fail_fast:
@@ -2214,6 +2419,38 @@ def run_candidate_factory(
             project_root=project_root,
         )
 
+    if pending_lightweight_reports:
+        _register_parallel_lightweight_report_results(
+            pending_lightweight_reports,
+            steps=steps,
+            summary=summary,
+            manifest=manifest,
+            manifest_dir=manifest_dir,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+        )
+        parallel_lightweight_registered_candidate_ids = [
+            str(s.get("candidate_id"))
+            for s in steps
+            if s.get("execution_action")
+            in {
+                "lightweight_report_built",
+                "lightweight_report_reused_weights",
+                "lightweight_report_failed",
+            }
+        ]
+        if parallel_lightweight_report_started_at is not None:
+            parallel_lightweight_report_wall_clock_seconds = (
+                time.perf_counter() - parallel_lightweight_report_started_at
+            )
+    if lightweight_report_executor is not None:
+        lightweight_report_executor.shutdown(wait=True)
+    if parallel_lightweight_reports_effective:
+        order = {candidate_id: idx for idx, candidate_id in enumerate(candidate_ids)}
+        steps.sort(key=lambda step: order.get(str(step.get("candidate_id")), len(order)))
+        if steps:
+            manifest["last_completed_candidate_id"] = steps[-1].get("candidate_id")
+
     if full_report_ids:
         if run_context is None:
             run_context = prepare_candidate_run_context(
@@ -2263,6 +2500,9 @@ def run_candidate_factory(
             "then_compare": False,
             "pdf_mode": pdf_mode_normalized,
             "execution_mode": execution_mode_normalized,
+            "parallel_lightweight_reports": parallel_lightweight_reports,
+            "parallel_lightweight_reports_effective": parallel_lightweight_reports_effective,
+            "lightweight_report_workers": lightweight_report_worker_count,
             "full_candidate_reports": bool(
                 full_candidate_reports or selected_candidates_for_full_report
             ),
@@ -2292,6 +2532,17 @@ def run_candidate_factory(
             }
         ),
     }
+    parallel_summary = _parallel_lightweight_report_summary(
+        requested=parallel_lightweight_reports,
+        effective=parallel_lightweight_reports_effective,
+        workers=lightweight_report_worker_count,
+        submitted_candidate_ids=parallel_lightweight_submitted_candidate_ids,
+        registered_candidate_ids=parallel_lightweight_registered_candidate_ids,
+        wall_clock_seconds=parallel_lightweight_report_wall_clock_seconds,
+        fallback_reasons=parallel_lightweight_report_fallback_reasons,
+    )
+    if parallel_summary is not None:
+        doc["parallel_lightweight_report_summary"] = parallel_summary
     doc["execution_summary"] = build_factory_execution_summary(doc)
     doc["timing_summary"] = build_timing_summary(doc.get("steps") or [])
     return doc
@@ -2595,6 +2846,21 @@ def build_factory_run_txt(doc: dict[str, Any]) -> str:
         lines.append(f"PDF mode: {options.get('pdf_mode')}")
     if options.get("execution_mode"):
         lines.append(f"Execution mode: {options.get('execution_mode')}")
+    parallel = doc.get("parallel_lightweight_report_summary") or {}
+    if parallel:
+        text = (
+            "Parallel lightweight reports: "
+            f"status={parallel.get('status')} "
+            f"workers={parallel.get('workers')} "
+            f"submitted={parallel.get('submitted_count')} "
+            f"completed={parallel.get('completed_count')}"
+        )
+        if parallel.get("wall_clock_seconds") is not None:
+            text += f" wall_clock_seconds={parallel.get('wall_clock_seconds')}"
+        reasons = parallel.get("fallback_reasons") or []
+        if reasons:
+            text += f" fallback_reasons={','.join(str(r) for r in reasons)}"
+        lines.append(text)
     if options.get("full_candidate_reports") or options.get(
         "selected_candidates_for_full_report"
     ):

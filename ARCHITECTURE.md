@@ -163,6 +163,11 @@ Main report artifacts
 | `run_candidate_factory.py` | Candidate factory orchestration (phased: weights → lightweight compare → optional full report export) | `candidate_factory_run.json` / `.txt`, per-candidate `candidate_manifest.json`, optional comparison tail |
 | `run_rebalance.py` | Rebalance-oriented utility flow | Rebalance outputs where configured |
 
+Factory `standard` mode builds candidate weights in menu order, then may run Phase 2
+`lightweight_comparison` reports concurrently when `--parallel-lightweight-reports` is requested
+and no fallback condition applies. Phase 3 full report export and candidate builders remain
+sequential.
+
 ## Candidate And Baseline Entry Points
 
 | Entry point | Candidate type | Architecture role |

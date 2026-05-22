@@ -14,6 +14,10 @@ Category: Fixed
 
 Category: Added
 
+- Candidate Factory Parallel Reports Session 4: operator/source-of-truth docs now describe
+  `--parallel-lightweight-reports`, `--lightweight-report-workers`, sequential fallback conditions,
+  and `parallel_lightweight_report_summary` in factory run outputs.
+
 - Candidate Factory Session 9: timing baseline audit
   `docs/audits/2026-05-22_candidate_factory_timing_baseline.md`; ExecPlan Sessions 0–9 marked
   Completed; verification bundle **102 passed** (factory/comparison/report_profile/run_context/manifest/compare_ew_rp/review).

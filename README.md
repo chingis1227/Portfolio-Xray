@@ -186,7 +186,11 @@ Default factory path for portfolio-first review: `--execution-mode standard` (we
 `--full-candidate-reports` or `--selected-candidates-for-full-report` for HTML/commentary/rolling
 betas on chosen candidates; pair with `--pdf-mode final_only` for one PDF rebuild after Phase 3.
 Factory default `--pdf-mode none` skips per-candidate Pandoc (~3 min saved per candidate); use
-`--pdf-mode per_candidate` only for legacy full PDF parity. Details live in [docs/specs/candidate_factory_spec.md](docs/specs/candidate_factory_spec.md), [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md), [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md), and [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md).
+`--pdf-mode per_candidate` only for legacy full PDF parity. Advanced factory-only runs can add
+`--parallel-lightweight-reports --lightweight-report-workers 4` to eligible `standard` runs; this
+parallelizes only Phase 2 `lightweight_comparison` report generation and falls back to sequential
+mode for fail-fast, per-candidate PDF, Phase 3 full reports, and non-`standard` execution modes.
+Details live in [docs/specs/candidate_factory_spec.md](docs/specs/candidate_factory_spec.md), [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md), [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md), and [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md).
 
 ## Key Inputs
 

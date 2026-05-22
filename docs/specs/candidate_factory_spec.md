@@ -27,6 +27,12 @@ factory by default (core and full); `--execution-mode legacy_full` for subproces
 `var_es_10y.csv` (metadata such as `method` = `historical` is not coerced to float); PDF rebuild
 after EW/RP runs is reliable.
 
+**Parallel lightweight reports (shipped, opt-in):**
+[Candidate Factory Parallel Lightweight Reports](../exec_plans/2026-05-22_candidate_factory_parallel_reports_plan.md)
+adds `--parallel-lightweight-reports` and `--lightweight-report-workers` for eligible
+`--execution-mode standard` runs. This is runtime orchestration only: formulas, weights,
+comparison semantics, stress scenarios, and full-report/PDF behavior are unchanged.
+
 ## Scope
 
 The Candidate Portfolio Factory:
@@ -195,7 +201,7 @@ snapshots via `run_portfolio_report_for_weights`.
 
 **Robust scenario chain:** factory runs optimization script first; on success runs portfolio report script. One factory step row may represent the chain; both commands appear in `entry_commands` array in the run summary.
 
-**Ordering within `default_v1`:** run `core_benchmarks` first, then `risk_budgets`, then `classic_optimizers`, then `robust_suite` (robust last because of policy-report dependencies and runtime). Session 11 may parallelize only if a future decision adds isolation guarantees; V1 is **sequential**.
+**Ordering within `default_v1`:** run `core_benchmarks` first, then `risk_budgets`, then `classic_optimizers`, then `robust_suite` (robust last because of policy-report dependencies and runtime). Candidate weight/build orchestration remains menu-ordered. In `standard` mode only, lightweight comparison reports may run concurrently when the operator opts in with `--parallel-lightweight-reports`; final step registration still follows candidate menu order.
 
 ### Operational limits and deferred improvements (RM-920–RM-922)
 
@@ -223,8 +229,9 @@ records `run_checksum` (profile, candidate menu, `analysis_end`, `config_fingerp
 per-step `completed_steps`. `python run_candidate_factory.py --resume` skips `succeeded` and
 fresh `skipped_existing` steps when the checksum matches; failed steps are retried. Manifest is
 updated after each step so an interrupted run can resume without redoing succeeded builders.
-Optional parallel builders remain future scope. Universe-file hashing and weight-source keys
-remain future scope.
+Parallel candidate **builders** remain future scope; shipped parallelism is limited to Phase 2
+`lightweight_comparison` report generation after candidate weights exist. Universe-file hashing and
+weight-source keys remain future scope.
 
 ## Canonical Factory Run Artifacts
 
@@ -256,7 +263,25 @@ remain future scope.
     "fail_fast": false,
     "resume": false,
     "then_compare": false,
-    "pdf_mode": "none"
+    "pdf_mode": "none",
+    "execution_mode": "standard",
+    "parallel_lightweight_reports": true,
+    "parallel_lightweight_reports_effective": true,
+    "lightweight_report_workers": 4,
+    "full_candidate_reports": false,
+    "selected_candidates_for_full_report": null
+  },
+  "parallel_lightweight_report_summary": {
+    "requested": true,
+    "effective": true,
+    "status": "parallel",
+    "workers": 4,
+    "submitted_count": 2,
+    "completed_count": 2,
+    "submitted_candidate_ids": ["equal_weight", "risk_parity"],
+    "registered_candidate_ids": ["equal_weight", "risk_parity"],
+    "fallback_reasons": [],
+    "wall_clock_seconds": 12.345
   },
   "timing_summary": {
     "steps_with_timing": 0,
@@ -562,6 +587,35 @@ Implementation: `src/report_profile.py`, factory `_execute_lightweight_report`.
 `robust_scenario` in-process: runs scenario optimization into `{output_dir_final}` then copies
 weights into `robust scenario portfolio/` (same prerequisites as subprocess chain).
 
+## Parallel lightweight reports (opt-in)
+
+`--parallel-lightweight-reports` applies only to Phase 2 `lightweight_comparison` reports in
+`--execution-mode standard`. Phase 1 candidate weights are still built and validated in candidate
+menu order. When a candidate needs a lightweight report, the factory may submit the candidate-owned
+report work to a `ThreadPoolExecutor`; the coordinator remains the only writer of run-level
+`candidate_factory_run.json`, `candidate_factory_manifest.json`, and summary counters.
+
+Eligibility:
+
+| Condition | Behavior |
+| --- | --- |
+| `--execution-mode standard`, no `--fail-fast`, `--pdf-mode` not `per_candidate`, no Phase 3 full reports | Parallel lightweight reports are effective. |
+| `--fail-fast` | Sequential fallback, because the run must stop immediately on the first failed candidate. |
+| `--pdf-mode per_candidate` | Sequential fallback, because per-candidate PDF side effects are outside the lightweight-report parallel scope. |
+| `--full-candidate-reports` or `--selected-candidates-for-full-report` | Sequential fallback, because Phase 3 full report export is outside the parallel scope. |
+| `--execution-mode fast` or `legacy_full` | Sequential/no-op fallback; there is no Phase 2 lightweight report batch to parallelize. |
+
+`--lightweight-report-workers N` caps the thread count. When omitted, the factory uses the smaller
+of `4` and the number of candidate reports to submit, with a minimum of `1`.
+
+When parallel mode is requested, `candidate_factory_run.json` includes
+`parallel_lightweight_report_summary`. `status` is `parallel` when reports were submitted,
+`parallel_no_work` when the mode was effective but no report needed to run, and
+`sequential_fallback` when a requested run was not eligible. `submitted_candidate_ids` and
+`registered_candidate_ids` are recorded in candidate menu order even if worker completion order
+differs. `candidate_factory_run.txt` prints the same status, worker count, submitted/completed
+counts, optional wall-clock seconds, and fallback reasons.
+
 ## CLI Contract
 
 Entry point at repository root:
@@ -571,6 +625,8 @@ python run_candidate_factory.py [--profile PROFILE] [--candidates ID,ID,...]
   [--skip-existing | --force] [--fail-fast] [--resume] [--then-compare]
   [--pdf-mode none|final_only|per_candidate]
   [--execution-mode fast|standard|legacy_full]
+  [--parallel-lightweight-reports]
+  [--lightweight-report-workers N]
   [--full-candidate-reports]
   [--selected-candidates-for-full-report ID,ID,...]
   [--config PATH]
@@ -587,6 +643,8 @@ python run_candidate_factory.py [--profile PROFILE] [--candidates ID,ID,...]
 | `--then-compare` | off | Run `run_compare_variants.py` after factory |
 | `--pdf-mode` | `none` | Per-candidate PDF policy for factory subprocesses (see Runtime PDF modes) |
 | `--execution-mode` | `legacy_full` | `fast`/`standard` = in-process phases; `legacy_full` = subprocess builders |
+| `--parallel-lightweight-reports` | off | Opt into concurrent Phase 2 `lightweight_comparison` reports for eligible `standard` runs; sequential fallback is automatic for `--fail-fast`, `--pdf-mode per_candidate`, Phase 3 full reports, and non-`standard` execution modes |
+| `--lightweight-report-workers` | auto | Maximum workers for `--parallel-lightweight-reports`; default is `min(4, submitted report count)` |
 | `--full-candidate-reports` | off | Phase 3: `report_profile=full` for every candidate in this run |
 | `--selected-candidates-for-full-report` | (none) | Phase 3 subset; enables Phase 3 when set without `--full-candidate-reports` |
 | `--config` | `config.yml` | Config path passed to builders |

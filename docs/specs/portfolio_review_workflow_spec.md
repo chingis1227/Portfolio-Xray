@@ -292,8 +292,11 @@ The portfolio-first **workflow order** is implemented. The default CLI uses **co
 | Long factory | Full rebuild can still take hours; use `--mode full --no-skip-existing` intentionally |
 
 Factory resume is available from both `run_candidate_factory.py --resume` and
-`run_portfolio_review.py --mode full --resume-candidates`. Optional parallelism remains deferred
-(`RM-921`). See
+`run_portfolio_review.py --mode full --resume-candidates`. Advanced factory-only runs can opt into
+parallel Phase 2 lightweight reports with `run_candidate_factory.py --execution-mode standard
+--parallel-lightweight-reports`; portfolio-first review keeps the documented core/full mode
+contract and does not enable that flag by default. Parallel candidate builders remain deferred.
+See
 [operational_runbook.md](../operational_runbook.md) and [candidate_factory_spec.md](candidate_factory_spec.md).
 
 ## Detailed Ownership

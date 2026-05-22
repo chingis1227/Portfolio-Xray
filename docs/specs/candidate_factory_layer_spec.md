@@ -45,7 +45,7 @@ Sub-blocks:
 config.yml
   -> prepare_candidate_run_context()  # one monthly load + factor/scenario cache (fast/standard)
        -> build_candidate_weights / write_candidate_weights (per candidate)
-       -> run_portfolio_report_for_weights(..., lightweight_comparison)  # standard Phase 2
+       -> run_portfolio_report_for_weights(..., lightweight_comparison)  # standard Phase 2; optionally parallel per candidate
        -> optional run_portfolio_report_for_weights(..., full)  # Phase 3 (--full-candidate-reports)
   OR legacy_full:
        -> run_<family>.py (16 script-backed candidates)
@@ -114,6 +114,7 @@ Owning spec: [candidate_comparison_spec.md](candidate_comparison_spec.md) (regis
 | `--force`, `--fail-fast`, `--then-compare` | Per [candidate_factory_spec.md](candidate_factory_spec.md) | **C** **S** |
 | Exit codes | `0` success/skip only; `1` any failed step; `2` validation error | **C** **S** |
 | Resumable manifest (`--resume`) | **Shipped** (RM-979 / Session 09; closes RM-921 resumable scope) | **C** **S** |
+| Parallel lightweight reports | Opt-in `--parallel-lightweight-reports` for eligible `standard` Phase 2 reports; builders and final registration remain menu-ordered | **C** **S** |
 
 Owning spec: [candidate_factory_spec.md](candidate_factory_spec.md).
 
@@ -272,6 +273,9 @@ Factory JSON: `generated_at`, `factory_profile_id`, `analysis_end`, `options`, `
 
 Per-step fields: `status`, `reason_code`, `builder_status`, `builder_reason`, `freshness_status`,
 `snapshot_analysis_end`, `expected_analysis_end`, `duration_sec`, `exit_code`, `entry_commands`.
+When `--parallel-lightweight-reports` is requested, the run summary may also include
+`parallel_lightweight_report_summary` with requested/effective status, fallback reasons, worker
+count, menu-ordered submitted/registered candidate ids, and optional parallel wall-clock seconds.
 
 ### 4.9 Candidate Readiness for Backtest, Stress, Evaluation, and Comparison
 
@@ -346,7 +350,8 @@ menu, factory CLI (post-audit Session 11 in prior roadmap).
 - No new `candidate_id` rows or optimizer formulas without spec + `DECISIONS.md`.
 - No mandate release, stress pass/fail changes, or automatic portfolio selection from factory output.
 - No recomputation of construction parameters inside comparison (passthrough only).
-- No parallel factory builders in V1.
+- No parallel factory builders in V1; shipped concurrency is limited to opt-in Phase 2
+  `lightweight_comparison` report generation after weights exist.
 
 ## Verification
 

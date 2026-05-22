@@ -19,7 +19,11 @@ artifact contracts.
 
 ## Current Pointer
 
-**Active:** None (project-level). Resume from [ROADMAP](../ROADMAP.md) or open a new ExecPlan when starting the next wave.
+**Active:** None — use [ROADMAP](../ROADMAP.md) for the next prioritized item unless the user starts a new ExecPlan.
+
+Completed (2026-05-22): [Candidate Factory Parallel Lightweight Reports](2026-05-22_candidate_factory_parallel_reports_plan.md)
+(Sessions 0–6 closed: opt-in parallel Phase 2 lightweight reports, fallback disclosure, operator docs,
+Session 5 two-candidate timing audit, Session 6 full `default_v1` timing audit; **parallel remains opt-in**.)
 
 Completed (2026-05-22): [Demo MVP Reliability Repair](2026-05-22_demo_mvp_reliability_plan.md)
 (artifact-based proof for the 8-ticker core demo path; multi-factor stress attribution restored when
@@ -84,6 +88,7 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-05-22 | [Candidate Factory Parallel Lightweight Reports](2026-05-22_candidate_factory_parallel_reports_plan.md) | Completed | Post-runtime-refactor audit of sequential `lightweight_comparison` bottleneck | Sessions 0–6 closed: opt-in parallel lightweight reports + fallback; Session 5/6 timing audits; **keep parallel opt-in** (see [Session 06 audit](../audits/2026-05-22_candidate_factory_parallel_reports_session06_timing_audit.md)). |
 | 2026-05-22 | [Demo MVP Reliability Repair](2026-05-22_demo_mvp_reliability_plan.md) | Completed | User-requested demo reliability repair | Fresh `run_portfolio_review.py --mode core --skip-pdf` proof-run completed; artifact checklist passed; caveat is disclosed candidate snapshot reuse unless full rebuild command is used. |
 | 2026-05-22 | [Candidate Factory Runtime Refactor Plan](2026-05-22_candidate_factory_runtime_refactor_plan.md) | Completed | Operator timing audit (report/PDF bottleneck, not optimizers) | Sessions 0–9 closed: `standard` factory path, timing baseline audit, pytest bundle 102 passed; `cli_lambda` fix in run context. |
 | 2026-05-21 | [Post-Deep-Audit Foundation & Downstream Readiness Plan](2026-05-21_post_deep_audit_foundation_plan.md) | Completed | [Blocks 1–5 Deep Audit Snapshot](../audits/2026-05-21_blocks_1_5_deep_audit_snapshot.md) | Sessions 01–10 closed 2026-05-22: Phase 17 Done; live full + resume (`RM-1029`); closure bundle **72 passed**. |

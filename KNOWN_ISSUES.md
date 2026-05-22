@@ -238,14 +238,14 @@ Title: Full candidate factory refresh is operationally heavy for one-shot review
 - Area: architecture
 - Risk: Full `--mode full` rebuild can still exceed session limits when many optimizer snapshots are stale; decision outputs must not be read as covering the full product menu when `candidate_menu.is_partial_menu` is true.
 - Resolution (2026-05-20, Session 09 / RM-939): Default `run_portfolio_review.py` uses `--mode core` and factory profile `core_v1`; `--mode full` runs `default_v1` explicitly. Comparison and decision-package outputs include `candidate_menu` partial-menu disclosure and refresh commands.
-- Remaining gap (G4): full `default_v1` menu is still sequential when every candidate needs Phase 3
-  full reports and PDFs; mitigated for portfolio-first review via `--execution-mode standard`
-  (compare-ready lightweight snapshots) and optional
-  `--selected-candidates-for-full-report` for deep-dive HTML/PDF on a subset. Use `core` default,
-  `--resume` after interrupt (`RM-979`), or `--pdf-mode final_only` with Phase 3 instead of
-  per-candidate Pandoc. Optional parallelism still open.
+- Remaining gap (G4): full `default_v1` menu is still operationally heavy when every candidate
+  needs Phase 3 full reports and PDFs, or when candidate weight builders themselves are slow.
+  Mitigated for portfolio-first review via `--execution-mode standard` (compare-ready lightweight
+  snapshots), opt-in `--parallel-lightweight-reports` for eligible Phase 2 reports,
+  `--selected-candidates-for-full-report` for deep-dive HTML/PDF on a subset, `--resume` after
+  interrupt (`RM-979`), and `--pdf-mode final_only` with Phase 3 instead of per-candidate Pandoc.
 - Source links: [run_portfolio_review.py](run_portfolio_review.py), [portfolio_review_workflow.py](src/portfolio_review_workflow.py), [candidate_factory.py](src/candidate_factory.py), [candidate_comparison.py](src/candidate_comparison.py), [operational_runbook.md](docs/operational_runbook.md), [methodology map G4](docs/audits/2026-05-20_candidate_factory_methodology_map.md).
-- Remove when: Full-run reliably completes within agreed operator time budget without manual staging, or parallelism ships with isolation guarantees.
+- Remove when: Full-run reliably completes within agreed operator time budget without manual staging, including the Phase 3/full-report cases that remain outside lightweight-report parallelism.
 
 Issue ID: KI-2026-05-21-001
 Title: portfolio_xray.json optional in optimization comparison readiness (G10)

@@ -405,6 +405,16 @@ After Blocks 1-5 reliability Session 03 (`RM-1012`), confirm
 `candidate_factory_run.json` steps are reported in `candidate_menu` but not treated as current row
 evidence.
 
+After Candidate Factory parallel lightweight report changes, confirm
+`test_parallel_lightweight_reports_overlap_and_keep_menu_order`,
+`test_parallel_lightweight_report_failure_continues_without_fail_fast`, and
+`test_parallel_lightweight_reports_requested_fail_fast_uses_sequential_fallback` in
+`tests/test_candidate_factory.py`. The focused command is:
+
+```bash
+python -m pytest tests/test_candidate_factory.py tests/test_candidate_manifest.py -q --basetemp='tmp\pytest_candidate_parallel'
+```
+
 Session 11 wave closure (2026-05-20): governance bundle **77 passed**; family spot-check **19 passed**;
 `verify_docs` OK. Phase 14 (`RM-970`–`RM-981`) complete.
 

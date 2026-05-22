@@ -331,6 +331,7 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Scenario Library and normalized scenario view | Implemented input-standardization/diagnostic layer |
 | Optimization Engine layer governance | Implemented source of truth; Sessions 03-04 add legacy policy and candidate optimizer disclosure without changing optimizer behavior |
 | Benchmark and candidate portfolio builders | Implemented comparison layer |
+| Candidate Factory runtime | Implemented; `standard` mode supports opt-in parallel Phase 2 `lightweight_comparison` reports while builders and Phase 3 full reports remain sequential |
 | Robust Mean-Variance and Scenario-Based Robust Optimization | Implemented benchmark/candidate layer |
 | Canonical candidate comparison | Implemented (`candidate_comparison.json` via [src/candidate_comparison.py](src/candidate_comparison.py)); includes `analysis_subject` baseline row when materialized |
 | Robustness Scorecard | Implemented diagnostic artifact (`robustness_scorecard.json` via [src/robustness_scorecard.py](src/robustness_scorecard.py)) |

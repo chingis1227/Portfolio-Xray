@@ -100,6 +100,21 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--parallel-lightweight-reports",
+        action="store_true",
+        help=(
+            "Opt into parallel lightweight_comparison reports in standard mode. "
+            "Automatically falls back to sequential behavior with --fail-fast, "
+            "--pdf-mode per_candidate, or Phase 3 full report export."
+        ),
+    )
+    parser.add_argument(
+        "--lightweight-report-workers",
+        type=int,
+        default=None,
+        help="Maximum workers for --parallel-lightweight-reports (default: 4 or candidate count).",
+    )
+    parser.add_argument(
         "--full-candidate-reports",
         action="store_true",
         help=(
@@ -153,6 +168,8 @@ def main(argv: list[str] | None = None) -> int:
             execution_mode=args.execution_mode,
             full_candidate_reports=full_reports,
             selected_candidates_for_full_report=selected_full,
+            parallel_lightweight_reports=args.parallel_lightweight_reports,
+            lightweight_report_workers=args.lightweight_report_workers,
         )
     except FactoryValidationError as exc:
         logger.error("%s", exc)

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 
 import pytest
 
+from src import candidate_factory as candidate_factory_module
 from src.candidate_factory import (
     MANIFEST_FILENAME,
     SCHEMA_VERSION,
@@ -1185,8 +1187,21 @@ def test_execution_mode_standard_runs_lightweight_report_phase(
         lambda cfg, project_root, no_cache=False: context,
     )
     report_calls: list[dict[str, object]] = []
+    manifest_writes: list[Path] = []
+    manifest_writes_during_report: list[tuple[int, int]] = []
+    original_write_factory_manifest = candidate_factory_module.write_factory_manifest
+
+    def tracking_write_factory_manifest(manifest: dict, output_dir: Path) -> Path:
+        manifest_writes.append(output_dir)
+        return original_write_factory_manifest(manifest, output_dir)
+
+    monkeypatch.setattr(
+        "src.candidate_factory.write_factory_manifest",
+        tracking_write_factory_manifest,
+    )
 
     def fake_report(*args, **kwargs):
+        writes_before = len(manifest_writes)
         report_calls.append(
             {
                 "profile": kwargs.get("report_profile"),
@@ -1222,6 +1237,7 @@ def test_execution_mode_standard_runs_lightweight_report_phase(
             json.dumps({"status": "DIAG_PASS", "analysis_end": context.analysis_end_str}),
             encoding="utf-8",
         )
+        manifest_writes_during_report.append((writes_before, len(manifest_writes)))
         return snap["metrics"], {"stress_report": {"status": "DIAG_PASS"}, "portfolio_valid": True}
 
     monkeypatch.setattr(
@@ -1248,6 +1264,8 @@ def test_execution_mode_standard_runs_lightweight_report_phase(
     assert report_calls
     assert all(c["profile"] == "lightweight_comparison" for c in report_calls)
     assert all(c["run_context"] is context for c in report_calls)
+    assert len(manifest_writes) == 3
+    assert manifest_writes_during_report == [(0, 0), (1, 1)]
     for cid in ("equal_weight", "risk_parity"):
         step = next(s for s in doc["steps"] if s["candidate_id"] == cid)
         assert step["status"] == "succeeded"
@@ -1256,6 +1274,198 @@ def test_execution_mode_standard_runs_lightweight_report_phase(
         art = tmp_path / step["artifact_root"]
         assert (art / "snapshot_10y.json").is_file()
         assert (art / "stress_report.json").is_file()
+
+
+def test_parallel_lightweight_reports_overlap_and_keep_menu_order(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    context = _synthetic_weights_context(["VOO", "BND", "GLD"])
+    monkeypatch.setattr(
+        "src.candidate_factory.prepare_candidate_run_context",
+        lambda cfg, project_root, no_cache=False: context,
+    )
+    barrier = threading.Barrier(2, timeout=3.0)
+    lock = threading.Lock()
+    active = 0
+    max_active = 0
+    started: list[str] = []
+    completed: list[str] = []
+    risk_parity_finished = threading.Event()
+
+    def fake_report(*args, **kwargs):
+        nonlocal active, max_active
+        cid = str(kwargs.get("weights_source")).split(".")[-1]
+        with lock:
+            started.append(cid)
+            active += 1
+            max_active = max(max_active, active)
+        try:
+            barrier.wait()
+            out = kwargs["output_dir_final"]
+            out.mkdir(parents=True, exist_ok=True)
+            snap = {
+                "analysis_end": context.analysis_end_str,
+                "window_label": "10y",
+                "metrics": {"cagr": 0.07, "vol_annual": 0.11},
+                "stress_suite_results": {"overall": "DIAG_PASS", "scenarios": []},
+                "RC_asset": [],
+                "final_weights_total": {"VOO": 0.5, "BND": 0.5},
+            }
+            (out / "snapshot_10y.json").write_text(json.dumps(snap), encoding="utf-8")
+            (out / "stress_report.json").write_text("{}", encoding="utf-8")
+            if cid == "risk_parity":
+                completed.append(cid)
+                risk_parity_finished.set()
+            else:
+                assert risk_parity_finished.wait(timeout=3.0)
+                completed.append(cid)
+            return snap["metrics"], {"stress_report": {}, "portfolio_valid": True}
+        finally:
+            with lock:
+                active -= 1
+
+    monkeypatch.setattr("run_report.run_portfolio_report_for_weights", fake_report)
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND", "GLD"],
+        }
+    )
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["equal_weight", "risk_parity"],
+        skip_existing=False,
+        execution_mode="standard",
+        parallel_lightweight_reports=True,
+        lightweight_report_workers=2,
+        runner=lambda cmd, cwd: pytest.fail("subprocess should not run"),
+    )
+
+    assert set(started) == {"equal_weight", "risk_parity"}
+    assert completed == ["risk_parity", "equal_weight"]
+    assert max_active == 2
+    assert doc["options"]["parallel_lightweight_reports_effective"] is True
+    parallel = doc["parallel_lightweight_report_summary"]
+    assert parallel["status"] == "parallel"
+    assert parallel["workers"] == 2
+    assert parallel["submitted_count"] == 2
+    assert parallel["completed_count"] == 2
+    assert parallel["submitted_candidate_ids"] == ["equal_weight", "risk_parity"]
+    assert parallel["registered_candidate_ids"] == ["equal_weight", "risk_parity"]
+    assert parallel["wall_clock_seconds"] >= 0
+    assert [s["candidate_id"] for s in doc["steps"]] == ["equal_weight", "risk_parity"]
+    assert [s["status"] for s in doc["steps"]] == ["succeeded", "succeeded"]
+    txt = build_factory_run_txt(doc)
+    assert "Parallel lightweight reports: status=parallel" in txt
+
+
+def test_parallel_lightweight_report_failure_continues_without_fail_fast(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    context = _synthetic_weights_context(["VOO", "BND", "GLD"])
+    monkeypatch.setattr(
+        "src.candidate_factory.prepare_candidate_run_context",
+        lambda cfg, project_root, no_cache=False: context,
+    )
+
+    def fake_report(*args, **kwargs):
+        cid = str(kwargs.get("weights_source")).split(".")[-1]
+        if cid == "equal_weight":
+            raise RuntimeError("fixture report failure")
+        out = kwargs["output_dir_final"]
+        out.mkdir(parents=True, exist_ok=True)
+        snap = {
+            "analysis_end": context.analysis_end_str,
+            "window_label": "10y",
+            "metrics": {"cagr": 0.07, "vol_annual": 0.11},
+            "stress_suite_results": {"overall": "DIAG_PASS", "scenarios": []},
+            "RC_asset": [],
+            "final_weights_total": {"VOO": 0.5, "BND": 0.5},
+        }
+        (out / "snapshot_10y.json").write_text(json.dumps(snap), encoding="utf-8")
+        (out / "stress_report.json").write_text("{}", encoding="utf-8")
+        return snap["metrics"], {"stress_report": {}, "portfolio_valid": True}
+
+    monkeypatch.setattr("run_report.run_portfolio_report_for_weights", fake_report)
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND", "GLD"],
+        }
+    )
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["equal_weight", "risk_parity"],
+        skip_existing=False,
+        execution_mode="standard",
+        parallel_lightweight_reports=True,
+        lightweight_report_workers=2,
+        runner=lambda cmd, cwd: pytest.fail("subprocess should not run"),
+    )
+
+    assert [s["candidate_id"] for s in doc["steps"]] == ["equal_weight", "risk_parity"]
+    assert [s["status"] for s in doc["steps"]] == ["failed", "succeeded"]
+    assert doc["steps"][0]["execution_action"] == "lightweight_report_failed"
+    assert doc["summary"]["failed"] == 1
+    assert doc["summary"]["succeeded"] == 1
+    assert factory_exit_code(doc) == 1
+
+
+def test_parallel_lightweight_reports_requested_fail_fast_uses_sequential_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    context = _synthetic_weights_context(["VOO", "BND", "GLD"])
+    monkeypatch.setattr(
+        "src.candidate_factory.prepare_candidate_run_context",
+        lambda cfg, project_root, no_cache=False: context,
+    )
+    calls: list[str] = []
+
+    def fake_report(*args, **kwargs):
+        cid = str(kwargs.get("weights_source")).split(".")[-1]
+        calls.append(cid)
+        raise RuntimeError("fixture report failure")
+
+    monkeypatch.setattr("run_report.run_portfolio_report_for_weights", fake_report)
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND", "GLD"],
+        }
+    )
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["equal_weight", "risk_parity"],
+        skip_existing=False,
+        fail_fast=True,
+        execution_mode="standard",
+        parallel_lightweight_reports=True,
+        lightweight_report_workers=2,
+        runner=lambda cmd, cwd: pytest.fail("subprocess should not run"),
+    )
+
+    assert calls == ["equal_weight"]
+    assert doc["options"]["parallel_lightweight_reports"] is True
+    assert doc["options"]["parallel_lightweight_reports_effective"] is False
+    parallel = doc["parallel_lightweight_report_summary"]
+    assert parallel["status"] == "sequential_fallback"
+    assert parallel["fallback_reasons"] == ["fail_fast"]
+    assert parallel["submitted_count"] == 0
+    assert parallel["completed_count"] == 0
+    assert [s["candidate_id"] for s in doc["steps"]] == ["equal_weight"]
+    assert doc["steps"][0]["status"] == "failed"
 
 
 def test_execution_mode_standard_builds_weights_without_subprocess(
