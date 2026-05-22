@@ -159,6 +159,19 @@ class FactorDefinition:
     stress_participates: bool = True
 
 
+def _empty_factor_series(reason: str) -> pd.Series:
+    series = pd.Series(dtype=float)
+    cleaned_reason = str(reason).encode("ascii", errors="ignore").decode("ascii").strip()
+    series.attrs["load_error"] = cleaned_reason or "factor_loader_failed"
+    return series
+
+
+def _with_empty_factor_reason(series: pd.Series, reason: str) -> pd.Series:
+    if series is None or series.empty:
+        return _empty_factor_series(reason)
+    return series
+
+
 def _week_end(series: pd.Series) -> pd.Series:
     """Resample to week-end (Friday)."""
     return series.resample("W-FRI").last().dropna()
@@ -202,93 +215,93 @@ def _fred_daily_pct_change(series_id: str, start: str, end: str) -> pd.Series:
     try:
         s = fetch_fred_series(series_id, start, end)
         if s.empty or len(s) < 2:
-            return pd.Series(dtype=float)
+            return _empty_factor_series(f"FRED:{series_id}:empty_or_too_short")
         d = _business_daily_last(s)
-        return d.pct_change().dropna()
-    except Exception:
-        return pd.Series(dtype=float)
+        return _with_empty_factor_reason(d.pct_change().dropna(), f"FRED:{series_id}:no_daily_pct_changes")
+    except Exception as exc:
+        return _empty_factor_series(f"FRED:{series_id}:{type(exc).__name__}:{exc}")
 
 
 def _fred_daily_decimal_diff(series_id: str, start: str, end: str) -> pd.Series:
     try:
         s = fetch_fred_series(series_id, start, end)
         if s.empty or len(s) < 2:
-            return pd.Series(dtype=float)
+            return _empty_factor_series(f"FRED:{series_id}:empty_or_too_short")
         d = _business_daily_last(s)
-        return (d / 100.0).diff().dropna()
-    except Exception:
-        return pd.Series(dtype=float)
+        return _with_empty_factor_reason((d / 100.0).diff().dropna(), f"FRED:{series_id}:no_daily_diffs")
+    except Exception as exc:
+        return _empty_factor_series(f"FRED:{series_id}:{type(exc).__name__}:{exc}")
 
 
 def _yahoo_daily_return(ticker: str, start: str, end: str) -> pd.Series:
     try:
         df = fetch_daily(ticker, start, end)
         if df.empty or "Close" not in df.columns:
-            return pd.Series(dtype=float)
+            return _empty_factor_series(f"Yahoo:{ticker}:empty_or_missing_close")
         r = df["Close"].astype(float).pct_change().dropna()
-        return r
-    except Exception:
-        return pd.Series(dtype=float)
+        return _with_empty_factor_reason(r, f"Yahoo:{ticker}:no_daily_returns")
+    except Exception as exc:
+        return _empty_factor_series(f"Yahoo:{ticker}:{type(exc).__name__}:{exc}")
 
 
 def _fred_weekly_pct_change(series_id: str, start: str, end: str) -> pd.Series:
     try:
         s = fetch_fred_series(series_id, start, end)
         if s.empty or len(s) < 2:
-            return pd.Series(dtype=float)
-        return _week_end(s).pct_change().dropna()
-    except Exception:
-        return pd.Series(dtype=float)
+            return _empty_factor_series(f"FRED:{series_id}:empty_or_too_short")
+        return _with_empty_factor_reason(_week_end(s).pct_change().dropna(), f"FRED:{series_id}:no_weekly_pct_changes")
+    except Exception as exc:
+        return _empty_factor_series(f"FRED:{series_id}:{type(exc).__name__}:{exc}")
 
 
 def _fred_monthly_pct_change(series_id: str, start: str, end: str) -> pd.Series:
     try:
         s = fetch_fred_series(series_id, start, end)
         if s.empty or len(s) < 2:
-            return pd.Series(dtype=float)
-        return _month_end(s).pct_change().dropna()
-    except Exception:
-        return pd.Series(dtype=float)
+            return _empty_factor_series(f"FRED:{series_id}:empty_or_too_short")
+        return _with_empty_factor_reason(_month_end(s).pct_change().dropna(), f"FRED:{series_id}:no_monthly_pct_changes")
+    except Exception as exc:
+        return _empty_factor_series(f"FRED:{series_id}:{type(exc).__name__}:{exc}")
 
 
 def _fred_weekly_decimal_diff(series_id: str, start: str, end: str) -> pd.Series:
     try:
         s = fetch_fred_series(series_id, start, end)
         if s.empty or len(s) < 2:
-            return pd.Series(dtype=float)
-        return (_week_end(s) / 100.0).diff().dropna()
-    except Exception:
-        return pd.Series(dtype=float)
+            return _empty_factor_series(f"FRED:{series_id}:empty_or_too_short")
+        return _with_empty_factor_reason((_week_end(s) / 100.0).diff().dropna(), f"FRED:{series_id}:no_weekly_diffs")
+    except Exception as exc:
+        return _empty_factor_series(f"FRED:{series_id}:{type(exc).__name__}:{exc}")
 
 
 def _fred_monthly_decimal_diff(series_id: str, start: str, end: str) -> pd.Series:
     try:
         s = fetch_fred_series(series_id, start, end)
         if s.empty or len(s) < 2:
-            return pd.Series(dtype=float)
-        return (_month_end(s) / 100.0).diff().dropna()
-    except Exception:
-        return pd.Series(dtype=float)
+            return _empty_factor_series(f"FRED:{series_id}:empty_or_too_short")
+        return _with_empty_factor_reason((_month_end(s) / 100.0).diff().dropna(), f"FRED:{series_id}:no_monthly_diffs")
+    except Exception as exc:
+        return _empty_factor_series(f"FRED:{series_id}:{type(exc).__name__}:{exc}")
 
 
 def _yahoo_weekly_return(ticker: str, start: str, end: str) -> pd.Series:
     try:
         df = fetch_daily(ticker, start, end)
         if not df.empty and "Close" in df.columns:
-            return _weekly_return(df["Close"])
-    except Exception:
-        pass
-    return pd.Series(dtype=float)
+            return _with_empty_factor_reason(_weekly_return(df["Close"]), f"Yahoo:{ticker}:no_weekly_returns")
+        return _empty_factor_series(f"Yahoo:{ticker}:empty_or_missing_close")
+    except Exception as exc:
+        return _empty_factor_series(f"Yahoo:{ticker}:{type(exc).__name__}:{exc}")
 
 
 def _yahoo_monthly_return(ticker: str, start: str, end: str) -> pd.Series:
     try:
         df = fetch_daily(ticker, start, end)
         if not df.empty and "Close" in df.columns:
-            return _monthly_return(df["Close"])
-    except Exception:
-        pass
-    return pd.Series(dtype=float)
+            return _with_empty_factor_reason(_monthly_return(df["Close"]), f"Yahoo:{ticker}:no_monthly_returns")
+        return _empty_factor_series(f"Yahoo:{ticker}:empty_or_missing_close")
+    except Exception as exc:
+        return _empty_factor_series(f"Yahoo:{ticker}:{type(exc).__name__}:{exc}")
 
 
 def fetch_equity_weekly(start: str, end: str) -> pd.Series:
@@ -302,7 +315,7 @@ def fetch_equity_weekly(start: str, end: str) -> pd.Series:
             return _weekly_return(s)
     except Exception:
         pass
-    return pd.Series(dtype=float)
+    return _empty_factor_series(f"equity_sources_empty:Yahoo:{ETF_EQUITY};FRED:{FRED_EQUITY_LEVEL}")
 
 
 def fetch_equity_monthly(start: str, end: str) -> pd.Series:
@@ -316,7 +329,7 @@ def fetch_equity_monthly(start: str, end: str) -> pd.Series:
             return _monthly_return(s)
     except Exception:
         pass
-    return pd.Series(dtype=float)
+    return _empty_factor_series(f"equity_sources_empty:Yahoo:{ETF_EQUITY};FRED:{FRED_EQUITY_LEVEL}")
 
 
 def fetch_real_rates_weekly(start: str, end: str) -> pd.Series:
@@ -383,20 +396,26 @@ def fetch_us_growth_weekly(start: str, end: str) -> pd.Series:
     try:
         s = fetch_fred_series(FRED_US_GROWTH, start, end)
         if s.empty or len(s) < 2:
-            return pd.Series(dtype=float)
-        return _shift_index_days(s, -1).diff().dropna()
-    except Exception:
-        return pd.Series(dtype=float)
+            return _empty_factor_series(f"FRED:{FRED_US_GROWTH}:empty_or_too_short")
+        return _with_empty_factor_reason(
+            _shift_index_days(s, -1).diff().dropna(),
+            f"FRED:{FRED_US_GROWTH}:no_weekly_diffs",
+        )
+    except Exception as exc:
+        return _empty_factor_series(f"FRED:{FRED_US_GROWTH}:{type(exc).__name__}:{exc}")
 
 
 def fetch_us_growth_monthly(start: str, end: str) -> pd.Series:
     try:
         s = fetch_fred_series(FRED_US_GROWTH, start, end)
         if s.empty or len(s) < 2:
-            return pd.Series(dtype=float)
-        return _month_end(_shift_index_days(s, -1)).diff().dropna()
-    except Exception:
-        return pd.Series(dtype=float)
+            return _empty_factor_series(f"FRED:{FRED_US_GROWTH}:empty_or_too_short")
+        return _with_empty_factor_reason(
+            _month_end(_shift_index_days(s, -1)).diff().dropna(),
+            f"FRED:{FRED_US_GROWTH}:no_monthly_diffs",
+        )
+    except Exception as exc:
+        return _empty_factor_series(f"FRED:{FRED_US_GROWTH}:{type(exc).__name__}:{exc}")
 
 
 def fetch_oil_weekly(start: str, end: str) -> pd.Series:
@@ -452,11 +471,11 @@ def fetch_us_growth_daily(start: str, end: str) -> pd.Series:
     try:
         s = fetch_fred_series(FRED_US_GROWTH, start, end)
         if s.empty or len(s) < 2:
-            return pd.Series(dtype=float)
+            return _empty_factor_series(f"FRED:{FRED_US_GROWTH}:empty_or_too_short")
         d = _business_daily_last(_shift_index_days(s, -1))
-        return d.diff().dropna()
-    except Exception:
-        return pd.Series(dtype=float)
+        return _with_empty_factor_reason(d.diff().dropna(), f"FRED:{FRED_US_GROWTH}:no_daily_diffs")
+    except Exception as exc:
+        return _empty_factor_series(f"FRED:{FRED_US_GROWTH}:{type(exc).__name__}:{exc}")
 
 
 def fetch_oil_daily(start: str, end: str) -> pd.Series:
@@ -573,29 +592,85 @@ def _build_factor_frame(
     require_complete_rows: bool = True,
 ) -> pd.DataFrame:
     data: dict[str, pd.Series] = {}
+    load_rows: dict[str, dict[str, Any]] = {}
     for spec in FACTOR_DEFINITIONS:
         loader = spec.monthly_loader if monthly else spec.weekly_loader
         try:
             series = loader(start, end)
-        except Exception:
-            series = pd.Series(dtype=float)
+            if series is None:
+                series = _empty_factor_series("loader_returned_none")
+        except Exception as exc:
+            series = _empty_factor_series(f"{type(exc).__name__}:{exc}")
+        cleaned = series.dropna() if isinstance(series, pd.Series) else pd.Series(dtype=float)
+        reason = None
+        status = "available"
+        if cleaned.empty:
+            status = "missing"
+            reason = str(getattr(series, "attrs", {}).get("load_error") or "loader_returned_empty")
+        load_rows[spec.column] = {
+            "factor": spec.column,
+            "beta_key": spec.beta_key,
+            "source": spec.source_label,
+            "status": status,
+            "reason": reason,
+            "observations_loaded": int(len(cleaned)),
+            "first_observation": str(pd.Timestamp(cleaned.index.min()).date()) if not cleaned.empty else None,
+            "last_observation": str(pd.Timestamp(cleaned.index.max()).date()) if not cleaned.empty else None,
+        }
         data[spec.column] = series if series is not None else pd.Series(dtype=float)
 
     ordered_cols = [spec.column for spec in FACTOR_DEFINITIONS]
     df = pd.DataFrame({col: data[col] for col in ordered_cols})
     df = df.dropna(how="all")
+    dropped_low_fill: list[str] = []
     if df.empty:
+        df.attrs["factor_load_diagnostics"] = {
+            "frequency": "monthly" if monthly else "weekly",
+            "require_complete_rows": bool(require_complete_rows),
+            "start": str(start),
+            "end": str(end),
+            "available_factors": [],
+            "missing_factors": ordered_cols,
+            "dropped_low_fill_factors": [],
+            "rows_before_complete_case": 0,
+            "rows_after_complete_case": 0,
+            "by_factor": load_rows,
+        }
         return df
     if not monthly:
         min_fill_ratio = 0.5
         cols_to_drop = [c for c in ordered_cols if c in df.columns and df[c].notna().sum() < len(df) * min_fill_ratio]
         if cols_to_drop:
+            dropped_low_fill = list(cols_to_drop)
             df = df.drop(columns=cols_to_drop)
+            for col in cols_to_drop:
+                row = load_rows.setdefault(col, {"factor": col})
+                row["status"] = "missing"
+                row["reason"] = "dropped_low_fill_ratio_lt_0.5"
         # Inner join across all columns drops early-history rows when any factor is missing.
         # Episode factor sums (historical stress fallback) sum each column with its own NaNs dropped,
         # so incomplete rows must be retained when require_complete_rows is False.
+        rows_before_complete_case = int(len(df))
         if require_complete_rows:
             df = df.dropna()
+        rows_after_complete_case = int(len(df))
+    else:
+        rows_before_complete_case = int(len(df))
+        rows_after_complete_case = int(len(df))
+    available = [c for c in ordered_cols if c in df.columns and df[c].notna().sum() > 0]
+    missing = [c for c in ordered_cols if c not in available]
+    df.attrs["factor_load_diagnostics"] = {
+        "frequency": "monthly" if monthly else "weekly",
+        "require_complete_rows": bool(require_complete_rows),
+        "start": str(start),
+        "end": str(end),
+        "available_factors": available,
+        "missing_factors": missing,
+        "dropped_low_fill_factors": dropped_low_fill,
+        "rows_before_complete_case": rows_before_complete_case,
+        "rows_after_complete_case": rows_after_complete_case,
+        "by_factor": load_rows,
+    }
     return df
 
 
@@ -2975,7 +3050,11 @@ def compute_asset_factor_betas_weekly(
 
     Y = asset_weekly.reindex(common)
     X = factors.reindex(common)
-    return estimate_betas(Y, X, factor_columns=factor_columns)
+    betas = estimate_betas(Y, X, factor_columns=factor_columns)
+    betas.attrs["factor_load_diagnostics"] = factors.attrs.get("factor_load_diagnostics")
+    betas.attrs["aligned_weekly_observations"] = int(len(common))
+    betas.attrs["factor_columns_used"] = list(_select_factor_columns(X, factor_columns))
+    return betas
 
 
 def compute_asset_factor_betas_from_daily_returns(
@@ -3030,10 +3109,41 @@ def compute_asset_factor_betas_from_daily_returns(
     if equity_proxy in returns.columns:
         equity_weekly = ((1.0 + returns[equity_proxy]).resample("W-FRI").prod(min_count=1) - 1.0).dropna()
         if not equity_weekly.empty:
+            factor_diag = factors.attrs.get("factor_load_diagnostics") if isinstance(factors, pd.DataFrame) else None
             if factors.empty:
                 factors = pd.DataFrame({"equity": equity_weekly})
             elif "equity" not in factors.columns:
                 factors = factors.join(equity_weekly.rename("equity"), how="outer")
+            if not isinstance(factor_diag, dict):
+                factor_diag = {
+                    "frequency": "weekly",
+                    "require_complete_rows": True,
+                    "start": str(start_dl),
+                    "end": str(end_dl),
+                    "available_factors": [],
+                    "missing_factors": list(FACTOR_COLUMN_ORDER),
+                    "dropped_low_fill_factors": [],
+                    "rows_before_complete_case": int(len(factors)),
+                    "rows_after_complete_case": int(len(factors.dropna(how="all"))),
+                    "by_factor": {},
+                }
+            by_factor = factor_diag.setdefault("by_factor", {})
+            by_factor["equity"] = {
+                "factor": "equity",
+                "beta_key": "beta_eq",
+                "source": f"cached_daily_returns:{equity_proxy}",
+                "status": "available",
+                "reason": None,
+                "observations_loaded": int(len(equity_weekly.dropna())),
+                "first_observation": str(pd.Timestamp(equity_weekly.index.min()).date()),
+                "last_observation": str(pd.Timestamp(equity_weekly.index.max()).date()),
+            }
+            available = [str(c) for c in FACTOR_COLUMN_ORDER if c in factors.columns and factors[c].notna().sum() > 0]
+            factor_diag["available_factors"] = available
+            factor_diag["missing_factors"] = [str(c) for c in FACTOR_COLUMN_ORDER if c not in available]
+            factor_diag["rows_before_complete_case"] = int(len(factors))
+            factor_diag["rows_after_complete_case"] = int(len(factors.dropna(how="all")))
+            factors.attrs["factor_load_diagnostics"] = factor_diag
     if asset_weekly.empty or factors.empty:
         return pd.DataFrame()
 
@@ -3046,7 +3156,11 @@ def compute_asset_factor_betas_from_daily_returns(
 
     Y = asset_weekly.reindex(common)
     X = factors.reindex(common)
-    return estimate_betas(Y, X, factor_columns=factor_columns)
+    betas = estimate_betas(Y, X, factor_columns=factor_columns)
+    betas.attrs["factor_load_diagnostics"] = factors.attrs.get("factor_load_diagnostics")
+    betas.attrs["aligned_weekly_observations"] = int(len(common))
+    betas.attrs["factor_columns_used"] = list(_select_factor_columns(X, factor_columns))
+    return betas
 
 
 def build_factor_matrix_monthly(
@@ -3798,14 +3912,34 @@ FACTOR_COVARIANCE_STRESS_EPISODES: tuple[tuple[str, str, str], ...] = (
 def _ordered_factor_frame(factors: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     """Return factor frame in canonical order; missing columns are explicit zero series."""
     if factors is None or factors.empty:
-        return pd.DataFrame(columns=list(FACTOR_COLUMN_ORDER)), list(FACTOR_COLUMN_ORDER)
+        out = pd.DataFrame(columns=list(FACTOR_COLUMN_ORDER))
+        if factors is not None:
+            out.attrs.update(getattr(factors, "attrs", {}) or {})
+        return out, list(FACTOR_COLUMN_ORDER)
     df = factors.copy()
-    df.index = pd.to_datetime(df.index).tz_localize(None)
+    try:
+        dt_index = pd.to_datetime(df.index, errors="coerce")
+        valid = pd.notna(dt_index)
+        if not bool(valid.all()):
+            df = df.loc[valid].copy()
+            dt_index = dt_index[valid]
+        if df.empty:
+            out = pd.DataFrame(columns=list(FACTOR_COLUMN_ORDER))
+            out.attrs.update(getattr(factors, "attrs", {}) or {})
+            out.attrs["factor_index_error"] = "no_valid_datetime_index_values"
+            return out, list(FACTOR_COLUMN_ORDER)
+        df.index = pd.DatetimeIndex(dt_index).tz_localize(None)
+    except Exception as exc:
+        out = pd.DataFrame(columns=list(FACTOR_COLUMN_ORDER))
+        out.attrs.update(getattr(factors, "attrs", {}) or {})
+        out.attrs["factor_index_error"] = f"{type(exc).__name__}:{exc}"
+        return out, list(FACTOR_COLUMN_ORDER)
     missing = [col for col in FACTOR_COLUMN_ORDER if col not in df.columns]
     for col in missing:
         df[col] = 0.0
     df = df.loc[:, list(FACTOR_COLUMN_ORDER)].sort_index()
     df = df.apply(pd.to_numeric, errors="coerce").dropna(how="all")
+    df.attrs.update(getattr(factors, "attrs", {}) or {})
     return df.fillna(0.0), missing
 
 
@@ -5174,12 +5308,28 @@ def factor_covariance_analytics(
     else:
         factors_raw = factor_returns.copy()
     factors, missing_factor_columns = _ordered_factor_frame(factors_raw)
+    if factors.empty:
+        reason = str(
+            factors.attrs.get("factor_index_error")
+            or "no_factor_rows_after_loading"
+        )
+        return {
+            "status": "unavailable",
+            "error": "insufficient_factor_history",
+            "unavailable_reason": reason,
+            "factor_order": list(FACTOR_COLUMN_ORDER),
+            "missing_factor_columns_zero_filled": missing_factor_columns,
+            "factor_load_diagnostics": factors.attrs.get("factor_load_diagnostics"),
+        }
     factors = factors.loc[factors.index <= end_ts + pd.Timedelta(days=6)]
     if len(factors) < 2:
         return {
+            "status": "unavailable",
             "error": "insufficient_factor_history",
+            "unavailable_reason": f"only_{len(factors)}_factor_rows_after_analysis_end_filter",
             "factor_order": list(FACTOR_COLUMN_ORDER),
             "missing_factor_columns_zero_filled": missing_factor_columns,
+            "factor_load_diagnostics": factors.attrs.get("factor_load_diagnostics"),
         }
 
     base_rows = factors.tail(FACTOR_COVARIANCE_BASE_WEEKS)
@@ -5210,10 +5360,12 @@ def factor_covariance_analytics(
     forecast_quality = _factor_covariance_forecast_quality(factors, beta_vec)
 
     return {
+        "status": "available",
         "method": "weekly_factor_covariance_regime_separated",
         "factor_order": list(FACTOR_COLUMN_ORDER),
         "beta_order": [FACTOR_TO_BETA_KEY.get(f, f"beta_{f}") for f in FACTOR_COLUMN_ORDER],
         "missing_factor_columns_zero_filled": missing_factor_columns,
+        "factor_load_diagnostics": factors.attrs.get("factor_load_diagnostics"),
         "exposure_vector": exposure,
         "base": _regime_block(
             label="base",

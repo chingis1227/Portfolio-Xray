@@ -1433,6 +1433,30 @@ def write_stress_commentary(
         f"Portfolio factor betas (weekly estimation; see stress spec): 5Y ~ {{{_fmt_beta_dict(fb5 if isinstance(fb5, dict) else {})}}}; "
         f"10Y ~ {{{_fmt_beta_dict(fb10 if isinstance(fb10, dict) else {})}}}."
     )
+    factor_meta = st.get("factor_diagnostics_meta") or {}
+    if isinstance(factor_meta, dict) and factor_meta:
+        scope = factor_meta.get("factor_attribution_scope") or "unknown"
+        keys = factor_meta.get("factor_beta_keys") or []
+        available = factor_meta.get("available_factors") or []
+        missing = factor_meta.get("missing_factors") or []
+        lines.append(
+            "Factor attribution scope: "
+            f"{scope}; beta keys={', '.join(str(k) for k in keys) if keys else 'none'}; "
+            f"available factors={', '.join(str(x) for x in available) if available else 'none'}; "
+            f"missing factors={', '.join(str(x) for x in missing) if missing else 'none'}."
+        )
+        if scope == "equity_only":
+            reasons = factor_meta.get("factor_missing_reasons") or {}
+            if isinstance(reasons, dict) and reasons:
+                parts = [
+                    f"{factor}: {reasons.get(factor)}"
+                    for factor in list(missing)[:6]
+                    if factor in reasons
+                ]
+                if parts:
+                    lines.append("Equity-only attribution reason: " + "; ".join(parts) + ".")
+        elif scope == "multi_factor":
+            lines.append("Stress attribution is multi-factor where scenario shocks map to available beta keys.")
     fr5 = st.get("factor_regression_5y")
     fr10 = st.get("factor_regression_10y")
     if isinstance(fr5, dict) and fr5:

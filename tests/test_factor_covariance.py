@@ -38,6 +38,25 @@ def test_factor_covariance_base_uses_5y_weekly_ddof_and_order() -> None:
     assert out["stress_overlay"]["classification"] == "hypothetical"
 
 
+def test_factor_covariance_empty_factor_frame_returns_explicit_skip_reason() -> None:
+    factors = pd.DataFrame(columns=list(sf.FACTOR_COLUMN_ORDER))
+    factors.attrs["factor_load_diagnostics"] = {
+        "available_factors": [],
+        "missing_factors": list(sf.FACTOR_COLUMN_ORDER),
+    }
+
+    out = sf.factor_covariance_analytics(
+        analysis_end_str="2026-02-28",
+        portfolio_betas={"beta_eq": 0.5},
+        factor_returns=factors,
+    )
+
+    assert out["status"] == "unavailable"
+    assert out["error"] == "insufficient_factor_history"
+    assert out["unavailable_reason"] == "no_factor_rows_after_loading"
+    assert out["factor_load_diagnostics"]["missing_factors"] == list(sf.FACTOR_COLUMN_ORDER)
+
+
 def test_factor_covariance_stress_overlay_deltas_and_zero_fill() -> None:
     factors = _factor_fixture()
     out = sf.factor_covariance_analytics(

@@ -72,6 +72,31 @@ def summarize_package_truthfulness(comparison: dict[str, Any] | None) -> dict[st
         user_lines.append(
             f"Intended menu scored {intended_scored} of {product_size} product-reference candidates."
         )
+    execution = menu.get("factory_execution_summary") or {}
+    if isinstance(execution, dict):
+        reused = int(
+            execution.get("reused_existing")
+            if execution.get("reused_existing") is not None
+            else execution.get("reused_existing_snapshot")
+            or 0
+        )
+        resumed = int(execution.get("resumed_from_manifest") or 0)
+        invoked = int(execution.get("builder_invoked") or 0)
+        build_steps = int(execution.get("build_steps_executed") or invoked)
+        in_process = int(execution.get("in_process_build_steps") or 0)
+        if reused or resumed:
+            user_lines.append(
+                f"Factory evidence: {build_steps} build step(s) executed "
+                f"({invoked} builder(s) invoked, {in_process} in-process), "
+                f"{reused} existing artifact step(s) reused, and {resumed} step(s) "
+                "resumed from manifest."
+            )
+        elif execution.get("no_skip_existing_requested"):
+            user_lines.append(
+                f"Factory evidence: --no-skip-existing requested and {build_steps} "
+                f"build step(s) executed ({invoked} builder(s) invoked, "
+                f"{in_process} in-process)."
+            )
 
     degraded_detail = [
         {

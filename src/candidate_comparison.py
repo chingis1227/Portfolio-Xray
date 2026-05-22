@@ -1626,6 +1626,9 @@ def build_candidate_menu(
     }
     if factory_run and factory_run.get("generated_at"):
         menu["factory_run_generated_at"] = factory_run["generated_at"]
+        execution_summary = factory_run.get("execution_summary")
+        if isinstance(execution_summary, dict):
+            menu["factory_execution_summary"] = execution_summary
     if factory_context is not None:
         menu["factory_evidence_status"] = factory_context.get("status")
         menu["factory_steps_used"] = bool(factory_context.get("steps_used"))

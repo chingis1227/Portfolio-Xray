@@ -4,10 +4,33 @@ Returns DataFrames with Date index and Close column; optional currency in attrs.
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import yfinance as yf
+
+_YFINANCE_CACHE_CONFIGURED = False
+
+
+def _configure_yfinance_cache() -> None:
+    """Keep yfinance's SQLite caches in the workspace to avoid OS cache path failures."""
+
+    global _YFINANCE_CACHE_CONFIGURED
+    if _YFINANCE_CACHE_CONFIGURED:
+        return
+    cache_dir = Path("cache") / "yfinance"
+    try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        if hasattr(yf, "set_tz_cache_location"):
+            yf.set_tz_cache_location(str(cache_dir))
+        yf_cache = getattr(yf, "cache", None)
+        if yf_cache is not None and hasattr(yf_cache, "set_cache_location"):
+            yf_cache.set_cache_location(str(cache_dir))
+    except Exception:
+        # yfinance can still download without its optional persistent caches.
+        pass
+    _YFINANCE_CACHE_CONFIGURED = True
 
 
 def fetch_daily(
@@ -29,6 +52,7 @@ def fetch_daily(
         DataFrame with DatetimeIndex and 'Close' (from Adj Close when available).
         .attrs may contain 'currency'.
     """
+    _configure_yfinance_cache()
     df = yf.download(
         ticker,
         start=start,

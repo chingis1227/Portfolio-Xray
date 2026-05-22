@@ -43,13 +43,16 @@ Primary data categories:
 Current external and local source families:
 
 - `yfinance` for adjusted close price data and Yahoo FX tickers.
+- Interactive Brokers TWS / IB Gateway via `ib_insync` for optional read-only quote and
+  historical-bar downloads through `market_data_provider`. `yfinance` remains available as the
+  default provider and as the fallback in `ibkr_yfinance_fallback` mode.
 - FRED through project data helpers for risk-free, macro, and selected factor inputs.
 - ECB / FX helpers where configured by the project.
 - Official CSV/API/keyed/manual macro sources where supported by the macro source resolver.
 - Local YAML config and metadata files.
 - Local cache files under `cache/` when cache is enabled.
 
-Future quote-data candidates to evaluate: EODHD as first priority, Tiingo for personal usage only, and Alpaca. These are not active project data sources yet.
+Future quote-data candidates to evaluate: EODHD as first priority, Tiingo for personal usage only, and Alpaca. These are not default project data sources yet.
 
 Source-specific behavior belongs in the relevant implementation modules and detailed specs. Any new source must document its expected format, frequency, failure mode, and fallback behavior.
 
@@ -68,6 +71,10 @@ Primary source files:
 Expected runtime structures:
 
 - Prices: time-indexed series or DataFrames by ticker, using adjusted close prices.
+- IBKR latest quotes: per-symbol records with price, source (`mid`, `last`, `close`, or
+  `marketPrice`), bid/ask/last/close fields, delayed/live mode disclosure, exchange, and currency.
+- IBKR historical bars: Date-indexed DataFrames with a `Close` column. These are IBKR adjusted
+  daily closes when `ADJUSTED_LAST` is available.
 - FX series: time-indexed daily series in the orientation required by `src/fx.py`.
 - Return panels: time-indexed DataFrames by ticker at the configured analysis frequency.
 - Risk-free series: time-indexed series resampled to the required metric/reporting frequency.
@@ -75,6 +82,18 @@ Expected runtime structures:
 - Taxonomy records: structured config rows with canonical tickers, classes, and validation status.
 
 Detailed field schemas are owned by the relevant config schema, taxonomy specs, and module-specific specs.
+
+Provider selection:
+
+- `market_data_provider: yfinance` keeps the legacy Yahoo pipeline.
+- `market_data_provider: ibkr` uses IBKR only and returns missing tickers as unavailable.
+- `market_data_provider: ibkr_yfinance_fallback` tries IBKR first and falls back to Yahoo per
+  missing ticker.
+- Daily and monthly cache keys include the resolved provider, so IBKR and Yahoo panels do not
+  silently reuse each other's cache.
+- yfinance's own SQLite metadata/cache files are pinned under `cache/yfinance/` by `src/data_yf.py`
+  so Yahoo factor proxies do not fail because the operating-system default cache directory is
+  unavailable.
 
 ## Core Data Rules
 
@@ -151,6 +170,12 @@ Factor data supports:
 - scenario analytics
 - regime factor analytics
 
+Factor proxy loaders attach diagnostics to factor matrices and stress beta outputs. When a proxy
+such as FRED rates, credit, inflation, USD, VIX, WEI, oil, or Yahoo commodity data cannot be loaded,
+`stress_report.json.factor_diagnostics_meta` records the available factors, missing factors, and
+per-factor reason. If only the cached benchmark/equity proxy is available, the run is disclosed as
+`factor_attribution_scope: equity_only` instead of being presented as a full multi-factor model.
+
 Macro data supports:
 
 - `macro_regime_diagnostics`
@@ -194,6 +219,7 @@ Core data modules:
 - `src/client_profiles.py`
 - `src/data_loader.py`
 - `src/data_yf.py`
+- `src/data_ibkr.py`
 - `src/data_fred.py`
 - `src/data_ecb.py`
 - `src/data_macro_sources.py`

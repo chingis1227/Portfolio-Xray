@@ -94,3 +94,8 @@ def test_cached_daily_returns_can_use_cached_equity_proxy_when_factor_matrix_emp
     assert list(betas.index) == ["AAA"]
     assert "beta_eq" in betas.columns
     assert abs(float(betas.loc["AAA", "beta_eq"]) - 0.8) < 0.05
+    diag = betas.attrs["factor_load_diagnostics"]
+    assert diag["available_factors"] == ["equity"]
+    assert "real_rates" in diag["missing_factors"]
+    assert diag["by_factor"]["equity"]["source"] == "cached_daily_returns:SPY"
+    assert betas.attrs["factor_columns_used"] == ["equity"]

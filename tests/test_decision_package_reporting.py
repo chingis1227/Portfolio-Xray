@@ -337,6 +337,14 @@ def test_partial_menu_and_degraded_optimizer_prominent_in_summary() -> None:
             "partial_menu_reason": "reduced_vs_product_menu",
             "intended_menu_profile_id": "core_v1",
             "product_menu_profile_id": "default_v1",
+            "factory_execution_summary": {
+                "build_steps_executed": 4,
+                "in_process_build_steps": 0,
+                "builder_invoked": 4,
+                "reused_existing": 1,
+                "reused_existing_snapshot": 1,
+                "resumed_from_manifest": 1,
+            },
         },
         "candidates": [
             {
@@ -381,6 +389,10 @@ def test_partial_menu_and_degraded_optimizer_prominent_in_summary() -> None:
     text = doc["summary_plain_en"]
     assert "Review scope (read first)" in text
     assert "optimizer shootout" in text.lower()
+    assert (
+        "Factory evidence: 4 build step(s) executed (4 builder(s) invoked, "
+        "0 in-process), 1 existing artifact step(s) reused"
+    ) in text
     assert doc["package_truthfulness"]["is_partial_menu"] is True
     assert doc["package_truthfulness"]["degraded_optimizer_count"] == 1
 

@@ -67,6 +67,8 @@ When `candidate_menu.is_partial_menu` is true and/or optimizer rows are `degrade
 - State that rankings are **not** a complete product-menu (`default_v1`) optimizer shootout.
 - List degraded optimizer display names as **diagnostic only — not eligible for favoring**.
 - Repeat partial-menu context under **Candidate menu** when `candidate_menu` is present.
+- If `candidate_menu.factory_execution_summary` shows reused existing snapshots or resumed
+  manifest steps, state the build/reuse counts so the package does not imply a full rebuild.
 
 The summary must remain consistent with Selection Engine favoring rules: degraded optimizer rows
 may appear in composite rankings but cannot be the favored profile.
