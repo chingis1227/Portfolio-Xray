@@ -85,6 +85,7 @@ Supporting keys on the same file (suite context, not separate sub-blocks):
 
 Written after `run_stress`; required on full report paths per workspace stress-factor rules:
 
+- `factor_diagnostics_meta` (availability/source/reason metadata for factor beta diagnostics; missing diagnostics must be visible to X-Ray and stress trust output)
 - `factor_regression_5y`, `factor_regression_10y` (HAC inference, multicollinearity, serial correlation)
 - `factor_betas_rolling_*`, `factor_betas_rolling_artifacts`, `factor_betas_stability`
 - `scenario_library_meta`, `scenario_library_normalized_meta`

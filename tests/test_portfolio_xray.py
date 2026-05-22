@@ -1135,6 +1135,51 @@ def test_archetype_v2_balanced_scorecard() -> None:
     assert balanced["fit"] == "primary"
 
 
+def test_factor_exposure_unavailable_has_structured_reason() -> None:
+    xray = build_portfolio_xray_v2(
+        analysis_setup=_analysis_setup(),
+        weights={"SPY": 0.5, "BND": 0.5},
+        rc_asset=[],
+        stress_report={
+            "factor_diagnostics_meta": {
+                "status": "unavailable",
+                "source": None,
+                "unavailable_reason": "cached_daily_returns_weekly_ols_no_aligned_betas",
+                "requested_tickers": ["SPY", "BND"],
+                "covered_tickers": [],
+                "analysis_end": "2026-04-30",
+            }
+        },
+        portfolio_valid=True,
+    )
+    section = xray["sections"]["factor_exposure"]
+    assert section["status"] == "unavailable"
+    assert section["items"][0]["type"] == "factor_exposure_unavailable"
+    assert "cached_daily_returns_weekly_ols_no_aligned_betas" in section["items"][0]["plain_english"]
+
+
+def test_factor_exposure_available_when_betas_exist() -> None:
+    xray = build_portfolio_xray_v2(
+        analysis_setup=_analysis_setup(),
+        weights={"SPY": 0.5, "BND": 0.5},
+        rc_asset=[],
+        stress_report={
+            "factor_betas_5y": {"beta_eq": 0.42, "beta_rr": 0.13},
+            "factor_diagnostics_meta": {
+                "status": "available",
+                "source": "cached_daily_returns_weekly_ols",
+                "requested_tickers": ["SPY", "BND"],
+                "covered_tickers": ["SPY", "BND"],
+                "analysis_end": "2026-04-30",
+            },
+        },
+        portfolio_valid=True,
+    )
+    section = xray["sections"]["factor_exposure"]
+    assert section["status"] in {"available", "partial"}
+    assert any(item.get("type") == "factor_exposure" for item in section["items"])
+
+
 def test_archetype_v2_duration_heavy_defensive() -> None:
     rows = {
         **_taxonomy_rows(),

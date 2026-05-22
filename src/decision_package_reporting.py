@@ -17,6 +17,7 @@ from src.package_truthfulness import (
     degraded_optimizer_detail_lines,
     summarize_package_truthfulness,
 )
+from src.text_sanitizer import ascii_safe_text
 
 SCHEMA_VERSION = "decision_package_report_v1"
 REPORT_TXT_MARKER = "## Decision package (non-executing)"
@@ -166,6 +167,45 @@ def _score_row(
     return None
 
 
+def _score_display_valid(row: dict[str, Any] | None, *, rank_key: str) -> bool:
+    if not row:
+        return False
+    if row.get("score_status") not in {"scored", "partial"}:
+        return False
+    try:
+        float(row.get("total_score"))
+    except (TypeError, ValueError):
+        return False
+    return row.get(rank_key) is not None
+
+
+def _score_display_suffix(row: dict[str, Any] | None) -> str:
+    if row and row.get("score_status") == "partial":
+        return " (partial score)"
+    return ""
+
+
+def _missing_favored_score_line(
+    *,
+    row: dict[str, Any] | None,
+    favored_id: str,
+    artifact_label: str,
+    rank_key: str,
+) -> str:
+    if row is None:
+        return f"  Favored profile {favored_id} missing from {artifact_label}."
+    status = row.get("score_status")
+    if status in {"scored", "partial"}:
+        missing: list[str] = []
+        if row.get("total_score") is None:
+            missing.append("total_score")
+        if row.get(rank_key) is None:
+            missing.append(rank_key)
+        detail = ", ".join(missing) if missing else "displayable score fields"
+        return f"  Favored profile {favored_id} missing {detail} in {artifact_label}."
+    return f"  Favored profile {favored_id} has score_status={status or 'missing'} in {artifact_label}."
+
+
 def _fmt_pct(v: Any) -> str:
     if v is None:
         return "—"
@@ -270,7 +310,7 @@ def build_decision_package_summary_lines(
             scored = [
                 r
                 for r in health.get("candidates", [])
-                if r.get("score_status") == "scored"
+                if _score_display_valid(r, rank_key="health_rank")
                 and r.get("candidate_id") not in BASELINE_CANDIDATE_IDS
             ]
             scored.sort(key=lambda r: r.get("health_rank") or 999)
@@ -294,13 +334,20 @@ def build_decision_package_summary_lines(
         lines.append("Not available (robustness_scorecard.json missing).")
     elif favored_id:
         row = _score_row(robustness, favored_id, rank_key="robustness_rank")
-        if row and row.get("score_status") == "scored":
+        if _score_display_valid(row, rank_key="robustness_rank"):
             lines.append(
                 f"  Favored profile: total {_fmt_num(row.get('total_score'))}, "
-                f"rank {row.get('robustness_rank')}"
+                f"rank {row.get('robustness_rank')}{_score_display_suffix(row)}"
             )
         else:
-            lines.append("  Favored profile not scored in robustness scorecard.")
+            lines.append(
+                _missing_favored_score_line(
+                    row=row,
+                    favored_id=str(favored_id),
+                    artifact_label="robustness_scorecard.json",
+                    rank_key="robustness_rank",
+                )
+            )
     else:
         lines.append("  No favored profile from selection.")
     lines.append("")
@@ -312,13 +359,20 @@ def build_decision_package_summary_lines(
         lines.append("Not available (portfolio_health_score.json missing).")
     elif favored_id:
         row = _score_row(health, favored_id, rank_key="health_rank")
-        if row and row.get("score_status") == "scored":
+        if _score_display_valid(row, rank_key="health_rank"):
             lines.append(
                 f"  Favored profile: total {_fmt_num(row.get('total_score'))}, "
-                f"rank {row.get('health_rank')}"
+                f"rank {row.get('health_rank')}{_score_display_suffix(row)}"
             )
         else:
-            lines.append("  Favored profile not scored in health score.")
+            lines.append(
+                _missing_favored_score_line(
+                    row=row,
+                    favored_id=str(favored_id),
+                    artifact_label="portfolio_health_score.json",
+                    rank_key="health_rank",
+                )
+            )
     else:
         lines.append("  No favored profile from selection.")
     lines.append("")
@@ -731,12 +785,12 @@ def write_decision_package_reporting_outputs(
 
     txt_path = out_dir / "decision_package_summary.txt"
     with open(txt_path, "w", encoding="utf-8") as f:
-        f.write(doc["summary_plain_en"])
+        f.write(ascii_safe_text(doc["summary_plain_en"]))
     paths["decision_package_summary_txt"] = txt_path
 
     if append_report_txt:
         report_path = out_dir / "report.txt"
-        if _append_summary_to_report_txt(report_path, doc["summary_plain_en"]):
+        if _append_summary_to_report_txt(report_path, ascii_safe_text(doc["summary_plain_en"])):
             paths["report_txt_appended"] = report_path
 
     return paths

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config_schema import PortfolioConfig
+from src.text_sanitizer import ascii_safe_text
 from src.rebalance import compute_trades
 from src.selection_engine import (
     _drawdown_improvement_pp,
@@ -324,7 +325,7 @@ def write_action_plan_txt(plan: dict[str, Any], path: Path) -> None:
     lines.append("See action_plan.json for full weight deltas and priority ordering.")
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
+        f.write(ascii_safe_text("\n".join(lines) + "\n"))
 
 
 def write_action_plan_outputs(

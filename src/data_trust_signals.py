@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from src.text_sanitizer import ascii_safe_text
+
 STRESS_DATA_TRUST_SUMMARY_VERSION = "stress_data_trust_summary_v1"
 INPUT_DATA_TRUST_SIGNALS_VERSION = "input_data_trust_signals_v1"
 XRAY_DATA_TRUST_SIGNALS_VERSION = "xray_data_trust_signals_v1"
@@ -52,8 +54,9 @@ def _episode_plain_english(row: dict[str, Any]) -> str:
     replay = _episode_replay_available(row)
     if quality == "insufficient_data":
         return (
-            f"{episode}: insufficient history for reliable historical stress; "
-            "episode PnL and replay are not decision-grade."
+            f"{episode}: insufficient aligned realized history for the selected holdings; "
+            "primary historical episode PnL/replay is unavailable. Any proxy waterfall belongs "
+            "only to scenario_library_normalized, not the primary realized historical stress."
         )
     if quality == "low_confidence":
         cov = f", coverage={float(coverage):.0%}" if isinstance(coverage, (int, float)) else ""
@@ -105,7 +108,12 @@ def _structure_data_quality_warnings(warnings: list[Any]) -> list[dict[str, Any]
                 {
                     "kind": "historical_episode",
                     "episode": episode_part,
-                    "plain_english": detail.replace("return_method=", "return method "),
+                    "plain_english": (
+                        f"{episode_part}: insufficient aligned realized history for the selected holdings; "
+                        "primary historical stress did not compute this as a pass/fail result."
+                        if "insufficient_data" in detail
+                        else detail.replace("return_method=", "return method ")
+                    ),
                     "detail": detail,
                 }
             )
@@ -198,7 +206,7 @@ def build_stress_data_trust_summary(
         "n_historical_episodes_flagged": n_flagged,
         "episode_flags": episode_flags,
         "promoted_warnings": structured_warnings,
-        "user_summary_lines": [line for line in user_summary_lines if line],
+        "user_summary_lines": [ascii_safe_text(line) for line in user_summary_lines if line],
         "does_not_change_stress_methodology": True,
     }
 

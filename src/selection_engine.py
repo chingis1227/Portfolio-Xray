@@ -19,6 +19,7 @@ from src.optimization_readiness import (
     favoring_ineligibility_reason,
 )
 from src.optimization_status import optimization_quality_family
+from src.text_sanitizer import ascii_safe_text
 
 SCHEMA_VERSION = "selection_decision_v1"
 WEIGHTS_PROFILE = "default_weights_reviewable"
@@ -818,7 +819,7 @@ def write_selection_decision_txt(decision: dict[str, Any], path: Path) -> None:
     lines.append("See selection_decision.json for composite ranking and rejected candidates.")
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
+        f.write(ascii_safe_text("\n".join(lines) + "\n"))
 
 
 def write_selection_decision_outputs(

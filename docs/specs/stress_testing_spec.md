@@ -151,7 +151,7 @@ For each scenario the production `run_stress` implementation outputs (see `scena
 - **top3_loss_assets** (tickers with largest negative PnL contribution in the scenario)
 - **loss_ok**, **pass** (equals **loss_ok**), **diagnostic_codes** (loss-related only on synthetic rows)
 - **`stress_cov_method`**, **`stress_cov_lambda`**, **`stress_cov_calibration_version`**, **`taxonomy_coverage`**, **`vol_mult_by_block`**, **`key_rho_overrides_used`** when the scenario uses synthetic stress covariance (null or empty when `stress_cov` is false)
-- **`synthetic_assumptions`** (synthetic rows): explicit fallback/proxy disclosure block with `version`, `beta_source`, `beta_coverage_ratio`, `beta_confidence`, `fallback_used`, `fallback_asset_count`, `beta_fallback_assets`, `proxy_method_for_missing_betas`, and `proxy_applied_to_assets`
+- **`synthetic_assumptions`** (synthetic rows): explicit fallback/proxy disclosure block with `version`, `beta_source`, `beta_data_source`, `beta_coverage_ratio`, `beta_confidence`, `fallback_used`, `fallback_reason`, `covered_assets`, `missing_assets`, `fallback_asset_count`, `beta_fallback_assets`, `proxy_method_for_missing_betas`, and `proxy_applied_to_assets`
 
 Raw scenario rows remain the primary stress contract. Any stability-adjusted factor overlay must be reported in separate top-level blocks and must not overwrite `scenario_results[*].pnl_by_factor_pct` or the raw scenario PnL fields.
 
@@ -266,6 +266,8 @@ If factor limits are set in config and violated -> **DIAG_BETA_*** / **DIAG_ATTE
 For backward compatibility, `factor_betas` may be present and should mirror `factor_betas_5y`.
 
 `factor_betas_5y`, `factor_betas_10y`, and `factor_betas` must not contain `beta_oil` in new outputs.
+
+`stress_report.json` must include `factor_diagnostics_meta` so missing factor diagnostics are explicit rather than silent. Fields: `status` (`available` or `unavailable`), `source` (`cached_daily_returns_weekly_ols`, `direct_yfinance_weekly_ols`, or null), `unavailable_reason`, `asset_beta_coverage_count`, `factor_beta_keys`, `requested_tickers`, `covered_tickers`, and `analysis_end`. Report generation should try cached/shared daily returns first, then the direct weekly OLS path, using the same weekly OLS estimator in both cases. If the canonical factor matrix is unavailable but the cached benchmark/equity proxy return series is present, the cached path may still compute equity-only weekly OLS betas and must disclose the cached beta source through `factor_diagnostics_meta` and `synthetic_assumptions.beta_data_source`.
 
 Each portfolio factor regression object (`factor_regression_5y`, `factor_regression_10y`) must report `r2`, `adj_r2`, and `idiosyncratic_risk`, where `idiosyncratic_risk = 1 - r2`. This is the residual share of portfolio-return variance not explained by the current factor model; it is diagnostic and measured at the full portfolio regression level, not per beta.
 

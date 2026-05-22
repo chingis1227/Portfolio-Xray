@@ -2978,6 +2978,77 @@ def compute_asset_factor_betas_weekly(
     return estimate_betas(Y, X, factor_columns=factor_columns)
 
 
+def compute_asset_factor_betas_from_daily_returns(
+    daily_returns: pd.DataFrame,
+    analysis_end_str: str,
+    window_weeks: int,
+    *,
+    buffer_weeks: int = FACTOR_DOWNLOAD_BUFFER_WEEKS,
+    min_aligned_weeks: int | None = None,
+    factor_columns: tuple[str, ...] | list[str] | None = None,
+    asset_tickers: list[str] | None = None,
+    equity_factor_ticker: str | None = None,
+) -> pd.DataFrame:
+    """
+    Per-asset factor betas from an already-loaded daily return panel.
+
+    This uses the same weekly OLS estimator as ``compute_asset_factor_betas_weekly``.
+    The only difference is the asset input source: callers can reuse the cached
+    daily return panel instead of redownloading asset prices.
+    """
+    if daily_returns is None or daily_returns.empty:
+        return pd.DataFrame()
+
+    wk = int(window_weeks)
+    if min_aligned_weeks is None:
+        min_aligned_weeks = max(52, min(104, wk // 4))
+
+    end_ts = pd.Timestamp(analysis_end_str)
+    start_ts = end_ts - pd.DateOffset(weeks=wk + int(buffer_weeks))
+    start_dl = start_ts.strftime("%Y-%m-%d")
+    end_dl = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+
+    returns = daily_returns.copy()
+    try:
+        returns.index = pd.to_datetime(returns.index)
+    except Exception:
+        return pd.DataFrame()
+    returns = returns.sort_index()
+    returns = returns.loc[start_ts:end_ts] if hasattr(returns.index, "slice_indexer") else returns
+    returns = returns.apply(pd.to_numeric, errors="coerce")
+    if returns.empty:
+        return pd.DataFrame()
+
+    asset_cols = [str(t) for t in (asset_tickers or list(returns.columns)) if str(t) in returns.columns]
+    if not asset_cols:
+        return pd.DataFrame()
+    asset_returns = returns[asset_cols]
+    asset_weekly = (1.0 + asset_returns).resample("W-FRI").prod(min_count=1) - 1.0
+    asset_weekly = asset_weekly.dropna(how="all")
+    factors = build_factor_matrix(start_dl, end_dl)
+    equity_proxy = (equity_factor_ticker or "SPY").strip()
+    if equity_proxy in returns.columns:
+        equity_weekly = ((1.0 + returns[equity_proxy]).resample("W-FRI").prod(min_count=1) - 1.0).dropna()
+        if not equity_weekly.empty:
+            if factors.empty:
+                factors = pd.DataFrame({"equity": equity_weekly})
+            elif "equity" not in factors.columns:
+                factors = factors.join(equity_weekly.rename("equity"), how="outer")
+    if asset_weekly.empty or factors.empty:
+        return pd.DataFrame()
+
+    common = asset_weekly.index.intersection(factors.index).sort_values()
+    common = common[common <= end_ts + pd.Timedelta(days=6)]
+    if len(common) > wk:
+        common = common[-wk:]
+    if len(common) < int(min_aligned_weeks):
+        return pd.DataFrame()
+
+    Y = asset_weekly.reindex(common)
+    X = factors.reindex(common)
+    return estimate_betas(Y, X, factor_columns=factor_columns)
+
+
 def build_factor_matrix_monthly(
     start: str,
     end: str,

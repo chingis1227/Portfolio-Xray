@@ -12,6 +12,12 @@ MOJIBAKE_SUBSTRINGS: tuple[str, ...] = (
     "вЂ",
     "\u0432\u0402",
     "\u00e2\u20ac",
+    "вЂ",
+    "О”",
+    "â€”",
+    "Î",
+    "Ð",
+    "\ufffd",
 )
 
 # Cyrillic letters in prose (exclude path-only lines).

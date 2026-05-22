@@ -429,6 +429,10 @@ def _synthetic_assumptions_block(
     *,
     fallback_assets: list[str],
     beta_coverage_ratio: float,
+    beta_data_source: str | None = None,
+    covered_assets: list[str] | None = None,
+    missing_assets: list[str] | None = None,
+    fallback_reason: str | None = None,
 ) -> dict[str, Any]:
     ratio = float(beta_coverage_ratio)
     if ratio >= 0.95:
@@ -440,10 +444,14 @@ def _synthetic_assumptions_block(
     fallback_used = bool(fallback_assets)
     return {
         "version": "synthetic_assumptions_v1",
-        "beta_source": "asset_factor_betas_weekly",
+        "beta_source": beta_data_source or "asset_factor_betas_weekly",
+        "beta_data_source": beta_data_source or "asset_factor_betas_weekly",
         "beta_coverage_ratio": round(ratio, 4),
         "beta_confidence": confidence,
         "fallback_used": fallback_used,
+        "fallback_reason": fallback_reason if fallback_used else None,
+        "covered_assets": list(covered_assets or []),
+        "missing_assets": list(missing_assets or fallback_assets),
         "fallback_asset_count": len(fallback_assets),
         "beta_fallback_assets": list(fallback_assets),
         "proxy_method_for_missing_betas": "equity_shock_proxy" if fallback_used else "none_required",
@@ -1134,6 +1142,7 @@ def run_stress(
     stress_cov_method: str = "taxonomy_blend_v1",
     scenario_overrides: dict[str, dict[str, float]] | None = None,
     hedge_assets: list[str] | None = None,
+    beta_data_source: str | None = None,
     **_: Any,
 ) -> dict[str, Any]:
     """
@@ -1192,6 +1201,7 @@ def run_stress(
         risk_on_corr = float(params.get("risk_on_corr", 0.90))
 
         fallback_assets, beta_coverage_ratio = _beta_coverage_meta(asset_betas, asset_cols)
+        covered_assets = [t for t in asset_cols if t not in set(fallback_assets)]
         r_asset = _scenario_return_per_asset(shock, asset_betas, asset_cols)
         r_asset = r_asset.reindex(asset_cols).fillna(0)
         pnl_i = w_vec * r_asset.values
@@ -1284,6 +1294,10 @@ def run_stress(
             "synthetic_assumptions": _synthetic_assumptions_block(
                 fallback_assets=fallback_assets,
                 beta_coverage_ratio=beta_coverage_ratio,
+                beta_data_source=beta_data_source,
+                covered_assets=covered_assets,
+                missing_assets=fallback_assets,
+                fallback_reason="missing_asset_factor_betas" if fallback_assets else None,
             ),
         }
         if scenario_id == "recession_severe":
@@ -1661,6 +1675,7 @@ def simulate_custom_shock(
     if w_vec.sum() > 0:
         w_vec = w_vec / w_vec.sum()
     fallback_assets, beta_coverage_ratio = _beta_coverage_meta(asset_betas, asset_cols)
+    covered_assets = [t for t in asset_cols if t not in set(fallback_assets)]
     r_asset = _scenario_return_per_asset(shock, asset_betas, asset_cols).reindex(asset_cols).fillna(0.0)
     pnl_i = w_vec * r_asset.values
     portfolio_pnl_pct = round(float(np.sum(pnl_i)), 4)
@@ -1680,6 +1695,9 @@ def simulate_custom_shock(
         "synthetic_assumptions": _synthetic_assumptions_block(
             fallback_assets=fallback_assets,
             beta_coverage_ratio=beta_coverage_ratio,
+            covered_assets=covered_assets,
+            missing_assets=fallback_assets,
+            fallback_reason="missing_asset_factor_betas" if fallback_assets else None,
         ),
     }
 

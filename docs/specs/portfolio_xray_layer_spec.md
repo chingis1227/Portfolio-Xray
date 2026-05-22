@@ -115,8 +115,10 @@ owning modules/specs:
 - Stress owner: `src/stress_factors.py`, `stress_report` factor blocks
 - Read-only panels: OLS/HAC `factor_regression_inference` from `factor_regression_5y/10y` (Session 04)
 - Kalman: `stress_report.factor_betas_kalman.latest` (legacy field names fallback only)
+- Unavailable diagnostics: when factor beta/decomposition evidence is absent, `factor_exposure` remains `status: unavailable` and includes a structured `factor_exposure_unavailable` item sourced from `stress_report.factor_diagnostics_meta` with the user-readable reason.
 - Tests: `test_portfolio_xray_factor_regression_inference_panel`,
-  `test_portfolio_xray_v2_kalman_reads_factor_betas_kalman_latest`
+  `test_portfolio_xray_v2_kalman_reads_factor_betas_kalman_latest`,
+  `test_factor_exposure_unavailable_has_structured_reason`
 
 ### 2.4 Hidden Exposure / Hidden Risk Detector
 

@@ -21,6 +21,7 @@ from src.portfolio_xray import (
     load_rc_vol_map_from_csv,
 )
 from src.stress_factors import BASE_BETA_ROW_ORDER, BETA_ROW_ORDER
+from src.text_sanitizer import ascii_safe_text
 
 # Missing-value tokens for exported commentary (English-only artifacts).
 _NA = "n/a"
@@ -1238,7 +1239,7 @@ def write_stress_commentary(
             ]
         )
         out_path = output_dir_final / "stress_commentary.txt"
-        out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        out_path.write_text(ascii_safe_text("\n".join(lines) + "\n"), encoding="utf-8")
         return out_path
 
     status = st.get("status", "N/A")
@@ -1671,7 +1672,7 @@ def write_stress_commentary(
     )
 
     out_path = output_dir_final / "stress_commentary.txt"
-    out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    out_path.write_text(ascii_safe_text("\n".join(lines) + "\n"), encoding="utf-8")
     return out_path
 
 
@@ -1905,5 +1906,5 @@ def write_portfolio_commentary(
 
     text = "\n".join(lines) + "\n"
     out_path = output_dir_final / "commentary.txt"
-    out_path.write_text(text, encoding="utf-8")
+    out_path.write_text(ascii_safe_text(text), encoding="utf-8")
     return out_path

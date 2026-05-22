@@ -1198,8 +1198,35 @@ def _factor_exposure_section(stress_report: dict[str, Any] | None) -> dict[str, 
     inference_items = _factor_regression_inference_items(stress_report)
     items.extend(inference_items)
     warnings = []
+    unavailable_item: dict[str, Any] | None = None
+    factor_meta = stress_report.get("factor_diagnostics_meta") if isinstance(stress_report, dict) else None
     if not items:
         warnings.append("factor betas and factor variance decomposition are missing")
+        reason = "factor_diagnostics_missing"
+        source = None
+        requested_tickers: list[Any] = []
+        covered_tickers: list[Any] = []
+        analysis_end = None
+        if isinstance(factor_meta, dict):
+            reason = str(factor_meta.get("unavailable_reason") or reason)
+            source = factor_meta.get("source")
+            requested_tickers = list(factor_meta.get("requested_tickers") or [])
+            covered_tickers = list(factor_meta.get("covered_tickers") or [])
+            analysis_end = factor_meta.get("analysis_end")
+        unavailable_item = {
+            "type": "factor_exposure_unavailable",
+            "assessment_status": "unavailable",
+            "reason_code": reason,
+            "plain_english": (
+                "Factor exposure diagnostics were not produced for this run. "
+                f"Reason: {reason}."
+            ),
+            "source": source,
+            "requested_tickers": requested_tickers,
+            "covered_tickers": covered_tickers,
+            "analysis_end": analysis_end,
+            "next_test": "Refresh cached daily/factor data and rerun the portfolio review.",
+        }
     elif not inference_items:
         warnings.append("factor regression inference panels missing from stress_report")
     n_obs = _factor_regression_n_obs(stress_report)
@@ -1213,7 +1240,9 @@ def _factor_exposure_section(stress_report: dict[str, Any] | None) -> dict[str, 
         for reg_key in ("factor_regression_5y", "factor_regression_10y"):
             if isinstance(stress_report.get(reg_key), dict):
                 sources.append(f"stress_report.{reg_key}")
-    return _section(
+    if isinstance(factor_meta, dict):
+        sources.append("stress_report.factor_diagnostics_meta")
+    section = _section(
         items=items,
         data_sources_used=sources,
         warnings=warnings,
@@ -1233,6 +1262,11 @@ def _factor_exposure_section(stress_report: dict[str, Any] | None) -> dict[str, 
         n_obs=n_obs,
         benchmark="n/a",
     )
+    if unavailable_item is not None:
+        section["status"] = "unavailable"
+        section["items"] = [unavailable_item]
+        section["unavailable_reason"] = unavailable_item
+    return section
 
 
 def _stress_scenarios(stress_report: dict[str, Any] | None) -> list[dict[str, Any]]:

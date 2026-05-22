@@ -6,12 +6,14 @@ from pathlib import Path
 import pytest
 
 from src.generated_output_qa import (
+    MOJIBAKE_SUBSTRINGS,
     PORTFOLIO_XRAY_COMMENTARY_REQUIRED_MARKERS,
     REPRESENTATIVE_REL_DIRS,
     scan_portfolio_first_summary_text,
     scan_portfolio_xray_report_text,
     scan_representative_outputs,
 )
+from src.text_sanitizer import ascii_safe_text
 
 
 def test_representative_output_dirs_exist() -> None:
@@ -75,3 +77,19 @@ def test_portfolio_first_summary_story_qa_rejects_legacy_markers() -> None:
     assert not result.ok()
     assert any(f.kind == "story_marker_missing" for f in result.findings)
     assert any(f.kind == "stale_story_marker" for f in result.findings)
+
+
+def test_mojibake_markers_cover_common_windows_corruption() -> None:
+    for marker in ("вЂ", "О”", "â€”", "Î", "Ð", "\ufffd"):
+        assert marker in MOJIBAKE_SUBSTRINGS
+
+
+def test_ascii_safe_text_replaces_fragile_symbols_and_mojibake() -> None:
+    text = "Monitoring — What Changed; Δw ≥ 1×; О”w=0.01; â€”; Î²"
+    safe = ascii_safe_text(text)
+    assert "Monitoring - What Changed" in safe
+    assert "delta w=0.01" in safe
+    assert ">=" in safe
+    assert "x" in safe
+    assert "â€”" not in safe
+    assert "Î" not in safe

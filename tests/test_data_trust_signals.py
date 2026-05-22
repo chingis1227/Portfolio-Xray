@@ -120,3 +120,28 @@ def test_xray_data_trust_signals_merge_section_and_stress_warnings() -> None:
     assert any("taxonomy" in line.lower() for line in lines)
     assert any("Stress data trust" in line for line in lines)
     assert trust.get("overall_trust") == "low"
+
+
+def test_historical_insufficient_data_warning_explains_aligned_history_boundary() -> None:
+    trust = build_stress_data_trust_summary(
+        historical_results=[
+            {
+                "episode": "dotcom",
+                "data_quality": "insufficient_data",
+                "n_obs": 0,
+                "coverage_ratio": 0.0,
+            }
+        ],
+        stress_conclusions={
+            "data_quality_warnings": [
+                "primary_historical_stress: realized_only_no_proxy",
+                "dotcom: insufficient_data (return_method=realized_portfolio_monthly)",
+            ],
+            "overall_confidence": "low",
+        },
+    )
+    lines = " ".join(trust.get("user_summary_lines") or [])
+    assert "insufficient aligned realized history" in lines
+    assert "scenario_library_normalized" in lines
+    warnings = trust.get("promoted_warnings") or []
+    assert any("proxy waterfalls" in w.get("plain_english", "") for w in warnings)

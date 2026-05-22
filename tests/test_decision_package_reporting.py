@@ -468,9 +468,13 @@ def test_decision_package_pdf_md_avoids_broken_latex_section_title() -> None:
 def test_decision_package_pdf_builds_when_pandoc_available(tmp_path: Path) -> None:
     from src.pdf_reports import _find_pandoc, _find_xelatex, build_decision_package_pdf_md, write_md_and_pdf
 
-    if not _find_pandoc() or not _find_xelatex():
-        import pytest
+    import pytest
 
+    try:
+        has_pdf_toolchain = bool(_find_pandoc() and _find_xelatex())
+    except PermissionError as exc:
+        pytest.skip(f"pdf toolchain probe blocked by OS permissions: {exc}")
+    if not has_pdf_toolchain:
         pytest.skip("pandoc/xelatex not available")
 
     summary = (
@@ -488,3 +492,79 @@ def test_decision_package_pdf_builds_when_pandoc_available(tmp_path: Path) -> No
     )
     assert ok
     assert (tmp_path / "decision_package.pdf").is_file()
+
+
+def test_favored_partial_scores_are_displayed_not_reported_unscored() -> None:
+    comp = _comparison()
+    comp["candidates"].append(
+        {
+            "candidate_id": "risk_parity",
+            "display_name": "Risk Parity",
+            "role": "optimizer",
+            "status": "available",
+            "metrics": {"10y": {"cagr": 0.07, "vol_annual": 0.10, "max_drawdown": -0.16}},
+            "stress": {"overall": "DIAG_PASS"},
+            "mandate": {"portfolio_valid": True},
+        }
+    )
+    selection = {
+        **_selection(),
+        "favored_candidate_id": "risk_parity",
+        "favored_display_name": "Risk Parity",
+    }
+    health = {
+        "schema_version": "portfolio_health_score_v1",
+        "candidates": [
+            {
+                "candidate_id": "risk_parity",
+                "score_status": "partial",
+                "total_score": 66,
+                "health_rank": 1,
+            }
+        ],
+    }
+    robust = {
+        "schema_version": "robustness_scorecard_v1",
+        "candidates": [
+            {
+                "candidate_id": "risk_parity",
+                "score_status": "partial",
+                "total_score": 63,
+                "robustness_rank": 1,
+            }
+        ],
+    }
+    doc = build_decision_package_report(
+        comparison=comp,
+        health=health,
+        robustness=robust,
+        selection=selection,
+        action=None,
+        monitoring_diff=None,
+        decision_journal=None,
+    )
+    text = doc["summary_plain_en"]
+    assert "not scored" not in text.lower()
+    assert "Favored profile: total 63.0, rank 1 (partial score)" in text
+    assert "Favored profile: total 66.0, rank 1 (partial score)" in text
+
+
+def test_missing_favored_score_reports_candidate_id_and_artifact() -> None:
+    comp = _comparison()
+    selection = {
+        **_selection(),
+        "favored_candidate_id": "risk_parity",
+        "favored_display_name": "Risk Parity",
+    }
+    doc = build_decision_package_report(
+        comparison=comp,
+        health={"schema_version": "portfolio_health_score_v1", "candidates": []},
+        robustness={"schema_version": "robustness_scorecard_v1", "candidates": []},
+        selection=selection,
+        action=None,
+        monitoring_diff=None,
+        decision_journal=None,
+    )
+    text = doc["summary_plain_en"]
+    assert "Favored profile risk_parity missing from robustness_scorecard.json." in text
+    assert "Favored profile risk_parity missing from portfolio_health_score.json." in text

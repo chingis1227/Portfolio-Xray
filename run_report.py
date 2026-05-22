@@ -97,6 +97,7 @@ from src.stress_factors import (
     compute_portfolio_factor_beta_oos_weekly,
     compute_portfolio_factor_beta_oos_monthly,
     compute_asset_factor_betas_weekly,
+    compute_asset_factor_betas_from_daily_returns,
     build_factor_matrix,
     build_factor_matrix_daily,
     build_factor_matrix_monthly,
@@ -593,10 +594,46 @@ def run_portfolio_report_for_weights(
     recession_factor_returns = pd.DataFrame()
     # Long history for historical episode factor sums (dotcom, etc.); recession calibration stays 2007+.
     scenario_episode_factor_returns = pd.DataFrame()
+    asset_betas_df = pd.DataFrame()
+    portfolio_betas_dict: dict[str, float] = {}
+    factor_diagnostics_meta: dict[str, Any] = {
+        "status": "unavailable",
+        "source": None,
+        "unavailable_reason": "factor_beta_setup_not_run",
+        "asset_beta_coverage_count": 0,
+        "requested_tickers": [],
+        "covered_tickers": [],
+        "analysis_end": analysis_end_str,
+    }
     try:
         beta_tickers = [t for t in tickers if weights.get(t, 0) > 0]
         if not beta_tickers:
             beta_tickers = list(tickers)
+        factor_diagnostics_meta["requested_tickers"] = list(beta_tickers)
+
+        def _factor_meta(
+            *,
+            status: str,
+            source: str | None,
+            reason: str | None,
+            betas_df: pd.DataFrame | None,
+        ) -> dict[str, Any]:
+            covered = []
+            if betas_df is not None and not betas_df.empty:
+                covered = [str(x) for x in betas_df.index]
+            beta_keys = []
+            if betas_df is not None and not betas_df.empty:
+                beta_keys = [str(c) for c in betas_df.columns]
+            return {
+                "status": status,
+                "source": source,
+                "unavailable_reason": reason,
+                "asset_beta_coverage_count": int(len(covered)),
+                "factor_beta_keys": beta_keys,
+                "requested_tickers": list(beta_tickers),
+                "covered_tickers": covered,
+                "analysis_end": analysis_end_str,
+            }
 
         def _portfolio_betas_weekly(window_weeks: int) -> tuple[pd.DataFrame, dict[str, float]]:
             asset_betas_win = compute_asset_factor_betas_weekly(
@@ -606,19 +643,120 @@ def run_portfolio_report_for_weights(
             )
             return asset_betas_win, portfolio_factor_betas(weights, asset_betas_win)
 
-        asset_betas_5y_df, portfolio_betas_5y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_5Y)
-        _asset_betas_10y_df, portfolio_betas_10y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_10Y)
-        diagnostic_betas_5y_extended = portfolio_factor_betas(
-            weights,
-            compute_asset_factor_betas_weekly(beta_tickers, analysis_end_str, FACTOR_WEEKS_5Y, factor_columns=FACTOR_COLUMN_ORDER),
-        )
-        diagnostic_betas_10y_extended = portfolio_factor_betas(
-            weights,
-            compute_asset_factor_betas_weekly(beta_tickers, analysis_end_str, FACTOR_WEEKS_10Y, factor_columns=FACTOR_COLUMN_ORDER),
-        )
+        beta_setup_reasons: list[str] = []
+        beta_source: str | None = None
+        asset_betas_5y_df = pd.DataFrame()
+        asset_betas_10y_df = pd.DataFrame()
+        try:
+            beta_daily_tickers = list(dict.fromkeys(list(beta_tickers) + [benchmark_base_ticker]))
+            daily_asset_returns_for_betas, _cash_returns_for_betas = load_daily_asset_returns_shared(
+                tickers=beta_daily_tickers,
+                benchmark_base_ticker=benchmark_base_ticker,
+                cash_proxy_ticker=cash_proxy_ticker,
+                investor_currency=investor_currency,
+                windows_months=windows_months,
+                assets_meta=assets_meta,
+                daily_cache_key=daily_cache_key,
+                analysis_end=analysis_end,
+                no_cache=no_cache,
+                local_benchmark_map=local_benchmark_map,
+            )
+            if daily_asset_returns_for_betas.empty:
+                beta_setup_reasons.append("cached_daily_returns_empty")
+            else:
+                asset_betas_5y_df = compute_asset_factor_betas_from_daily_returns(
+                    daily_asset_returns_for_betas,
+                    analysis_end_str,
+                    FACTOR_WEEKS_5Y,
+                    asset_tickers=beta_tickers,
+                    equity_factor_ticker=benchmark_base_ticker,
+                )
+                asset_betas_10y_df = compute_asset_factor_betas_from_daily_returns(
+                    daily_asset_returns_for_betas,
+                    analysis_end_str,
+                    FACTOR_WEEKS_10Y,
+                    asset_tickers=beta_tickers,
+                    equity_factor_ticker=benchmark_base_ticker,
+                )
+                diagnostic_betas_5y_extended = portfolio_factor_betas(
+                    weights,
+                    compute_asset_factor_betas_from_daily_returns(
+                        daily_asset_returns_for_betas,
+                        analysis_end_str,
+                        FACTOR_WEEKS_5Y,
+                        factor_columns=FACTOR_COLUMN_ORDER,
+                        asset_tickers=beta_tickers,
+                        equity_factor_ticker=benchmark_base_ticker,
+                    ),
+                )
+                diagnostic_betas_10y_extended = portfolio_factor_betas(
+                    weights,
+                    compute_asset_factor_betas_from_daily_returns(
+                        daily_asset_returns_for_betas,
+                        analysis_end_str,
+                        FACTOR_WEEKS_10Y,
+                        factor_columns=FACTOR_COLUMN_ORDER,
+                        asset_tickers=beta_tickers,
+                        equity_factor_ticker=benchmark_base_ticker,
+                    ),
+                )
+                if not asset_betas_5y_df.empty:
+                    beta_source = "cached_daily_returns_weekly_ols"
+                else:
+                    beta_setup_reasons.append("cached_daily_returns_weekly_ols_no_aligned_betas")
+        except Exception as e_cached:
+            beta_setup_reasons.append(f"cached_daily_returns_weekly_ols_error:{e_cached}")
+
+        if asset_betas_5y_df.empty:
+            try:
+                asset_betas_5y_df, portfolio_betas_5y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_5Y)
+                asset_betas_10y_df, portfolio_betas_10y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_10Y)
+                diagnostic_betas_5y_extended = portfolio_factor_betas(
+                    weights,
+                    compute_asset_factor_betas_weekly(
+                        beta_tickers,
+                        analysis_end_str,
+                        FACTOR_WEEKS_5Y,
+                        factor_columns=FACTOR_COLUMN_ORDER,
+                    ),
+                )
+                diagnostic_betas_10y_extended = portfolio_factor_betas(
+                    weights,
+                    compute_asset_factor_betas_weekly(
+                        beta_tickers,
+                        analysis_end_str,
+                        FACTOR_WEEKS_10Y,
+                        factor_columns=FACTOR_COLUMN_ORDER,
+                    ),
+                )
+                if not asset_betas_5y_df.empty:
+                    beta_source = "direct_yfinance_weekly_ols"
+                else:
+                    beta_setup_reasons.append("direct_yfinance_weekly_ols_no_aligned_betas")
+            except Exception as e_direct:
+                beta_setup_reasons.append(f"direct_yfinance_weekly_ols_error:{e_direct}")
+        else:
+            portfolio_betas_5y_dict = portfolio_factor_betas(weights, asset_betas_5y_df)
+            portfolio_betas_10y_dict = portfolio_factor_betas(weights, asset_betas_10y_df)
+
         # Keep stress engine input/backward compatibility aligned to 5Y betas.
         asset_betas_df = asset_betas_5y_df
         portfolio_betas_dict = portfolio_betas_5y_dict
+        if not asset_betas_df.empty:
+            factor_diagnostics_meta = _factor_meta(
+                status="available",
+                source=beta_source or "unknown_weekly_ols",
+                reason=None,
+                betas_df=asset_betas_df,
+            )
+        else:
+            reason = "; ".join(beta_setup_reasons) if beta_setup_reasons else "no_asset_factor_betas_computed"
+            factor_diagnostics_meta = _factor_meta(
+                status="unavailable",
+                source=None,
+                reason=reason,
+                betas_df=asset_betas_df,
+            )
         try:
             recession_factor_returns = build_factor_matrix("2007-01-01", analysis_end_str)
         except Exception as e:
@@ -639,6 +777,15 @@ def run_portfolio_report_for_weights(
         logger.warning(f"Stress factor/beta setup failed: {e}; stress report may use fallback only.")
         asset_betas_df = pd.DataFrame()
         portfolio_betas_dict = {}
+        factor_diagnostics_meta = {
+            "status": "unavailable",
+            "source": None,
+            "unavailable_reason": str(e),
+            "asset_beta_coverage_count": 0,
+            "requested_tickers": [t for t in tickers if weights.get(t, 0) > 0] or list(tickers),
+            "covered_tickers": [],
+            "analysis_end": analysis_end_str,
+        }
 
     hedge_assets = []
     for ticker in tickers:
@@ -660,6 +807,7 @@ def run_portfolio_report_for_weights(
         factor_returns=recession_factor_returns,
         scenario_overrides=getattr(cfg, "stress_scenario_overrides", None),
         hedge_assets=hedge_assets,
+        beta_data_source=factor_diagnostics_meta.get("source"),
     )
     stress_report["generated_at"] = run_timestamp
     stress_report["analysis_end"] = analysis_end_str
@@ -668,10 +816,17 @@ def run_portfolio_report_for_weights(
     stress_report["factor_betas"] = dict(stress_report["factor_betas_5y"])
     stress_report["asset_factor_betas"] = asset_factor_betas_dict_from_df(asset_betas_df)
     stress_report["asset_factor_betas_meta"] = {
-        "source": "compute_asset_factor_betas_weekly",
+        "source": factor_diagnostics_meta.get("source") or "unavailable",
         "window_weeks": int(FACTOR_WEEKS_5Y),
         "n_assets": int(len(asset_betas_df.index)) if asset_betas_df is not None and not asset_betas_df.empty else 0,
     }
+    stress_report["factor_diagnostics_meta"] = factor_diagnostics_meta
+    if factor_diagnostics_meta.get("status") != "available":
+        trust = stress_report.setdefault("data_trust_summary", {})
+        lines = list(trust.get("user_summary_lines") or [])
+        reason = factor_diagnostics_meta.get("unavailable_reason") or "factor diagnostics were not produced"
+        lines.append(f"Factor diagnostics unavailable: {reason}. Synthetic stress used disclosed fallback assumptions.")
+        trust["user_summary_lines"] = lines
     # Portfolio factor regression diagnostics (5Y/10Y): t/p/CI/R^2 on weekly data, same factor matrix definition.
     stress_report["factor_regression_5y"] = {}
     stress_report["factor_regression_10y"] = {}

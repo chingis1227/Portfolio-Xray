@@ -8,6 +8,7 @@ from src.action_engine import (
     TRANSACTION_COST_BPS,
     build_action_plan,
     write_action_plan_outputs,
+    write_action_plan_txt,
 )
 from src.config_schema import validate_config
 from src.selection_engine import build_selection_decision
@@ -150,6 +151,29 @@ def test_schema_and_always_writes(tmp_path: Path) -> None:
     assert "action_status" in plan
     assert "no_trades_reason" in plan
     assert plan["input_artifacts"]["selection_decision"] == "selection_decision.json"
+
+
+def test_action_plan_txt_uses_ascii_delta_weight(tmp_path: Path) -> None:
+    plan = {
+        "action_status": "review_required",
+        "selection_decision_status": "selected_candidate",
+        "target_display_name": "Risk Parity",
+        "turnover_half_sum_pct": 2.5,
+        "trades": [
+            {
+                "ticker": "SPY",
+                "direction": "BUY",
+                "delta_weight": 0.01,
+                "delta_pct": 1.0,
+            }
+        ],
+    }
+    path = tmp_path / "action_plan.txt"
+    write_action_plan_txt(plan, path)
+    text = path.read_text(encoding="utf-8")
+    assert "delta w=0.01" in text
+    assert "О”" not in text
+    assert "Δ" not in text
 
 
 def test_no_material_rebalance_empty_trades_with_weights(tmp_path: Path) -> None:
