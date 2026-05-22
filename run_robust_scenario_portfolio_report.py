@@ -235,11 +235,12 @@ def main() -> None:
         cv = project_root / "run_compare_variants.py"
         if cv.is_file():
             subprocess.run([sys.executable, str(cv)], cwd=str(project_root), check=False)
-        from src.pdf_reports import try_rebuild_pdfs_only
-
-        try_rebuild_pdfs_only(logger=logger)
     except Exception as e:
-        logger.warning("Comparison refresh / PDF rebuild skipped or failed: %s", e)
+        logger.warning("Comparison refresh skipped or failed: %s", e)
+
+    from src.variant_builder_runtime import maybe_rebuild_pdfs_only
+
+    maybe_rebuild_pdfs_only(logger=logger)
 
     print(f"Robust scenario portfolio report written under {out_dir}")
 

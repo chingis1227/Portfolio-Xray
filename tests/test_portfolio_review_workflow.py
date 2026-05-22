@@ -8,7 +8,9 @@ import pytest
 
 from src.config_schema import PortfolioConfig, validate_config
 from src.portfolio_review_workflow import (
+    REVIEW_DEFAULT_FACTORY_EXECUTION_MODE,
     build_portfolio_review_plan,
+    resolve_factory_execution_mode,
     resolve_review_candidate_profile,
     run_portfolio_review_plan,
 )
@@ -52,12 +54,24 @@ def test_resolve_review_candidate_profile_explicit_override() -> None:
     assert profile == "default_v1"
 
 
+def test_resolve_factory_execution_mode_defaults_to_standard() -> None:
+    assert resolve_factory_execution_mode() == "standard"
+    assert REVIEW_DEFAULT_FACTORY_EXECUTION_MODE == "standard"
+
+
+def test_resolve_factory_execution_mode_honors_explicit_override() -> None:
+    assert resolve_factory_execution_mode(factory_execution_mode="legacy_full") == "legacy_full"
+    assert resolve_factory_execution_mode(factory_execution_mode="fast") == "fast"
+
+
 def test_default_plan_uses_core_v1_factory_profile(tmp_path: Path) -> None:
     plan = build_portfolio_review_plan(_cfg(), project_root=tmp_path, skip_pdf=True)
     factory_argv = plan.steps[1].argv
     assert "--profile" in factory_argv
     assert "core_v1" in factory_argv
     assert "default_v1" not in factory_argv
+    assert "--execution-mode" in factory_argv
+    assert "standard" in factory_argv
 
 
 def test_full_mode_plan_uses_default_v1_profile(tmp_path: Path) -> None:
@@ -69,6 +83,21 @@ def test_full_mode_plan_uses_default_v1_profile(tmp_path: Path) -> None:
     )
     factory_argv = plan.steps[1].argv
     assert "default_v1" in factory_argv
+    idx = factory_argv.index("--execution-mode")
+    assert factory_argv[idx + 1] == "standard"
+
+
+def test_full_mode_legacy_factory_execution_override(tmp_path: Path) -> None:
+    plan = build_portfolio_review_plan(
+        _cfg(),
+        project_root=tmp_path,
+        review_mode="full",
+        factory_execution_mode="legacy_full",
+        skip_pdf=True,
+    )
+    factory_argv = plan.steps[1].argv
+    idx = factory_argv.index("--execution-mode")
+    assert factory_argv[idx + 1] == "legacy_full"
 
 
 def test_default_plan_materializes_subject_before_candidates(tmp_path: Path) -> None:

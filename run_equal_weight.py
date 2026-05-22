@@ -26,6 +26,11 @@ from src.portfolio_variants import (
     export_baseline_weights_txt,
 )
 from src.utils import setup_logging, logger
+from src.variant_builder_runtime import (
+    BuilderStepTiming,
+    maybe_rebuild_pdfs_after_variant,
+    persist_builder_runtime_timing,
+)
 from run_report import run_portfolio_report_for_weights
 
 
@@ -49,6 +54,9 @@ def main() -> None:
     from src.config import load_assets_metadata, resolve_cash_and_rf, resolve_local_benchmarks
     from src.data_loader import load_monthly_data_shared
     from datetime import datetime
+
+    timing = BuilderStepTiming()
+    timing.start_core()
 
     assets_meta = load_assets_metadata()
     cash_proxy_ticker, rf_source = resolve_cash_and_rf(cfg)
@@ -114,11 +122,14 @@ def main() -> None:
         print("Equal-Weight baseline infeasible, summary written.")
         return
 
+    timing.end_core()
+
     # Run full metrics/stress pipeline for Equal-Weight, using dedicated subfolders.
     output_dir_csv = out_dir / "results_csv"
     output_dir_csv.mkdir(parents=True, exist_ok=True)
 
     run_timestamp = datetime.now().isoformat()
+    timing.start_report()
     pm_summary, meta = run_portfolio_report_for_weights(
         cfg,
         eq_result.weights,
@@ -128,6 +139,7 @@ def main() -> None:
         backtest_mode_override=getattr(cfg, "backtest_mode", "dynamic_nan_safe"),
         no_cache=False,
     )
+    timing.end_report()
 
     # Build lightweight comparison-friendly summary.txt
     stress_report = meta.get("stress_report") or {}
@@ -168,12 +180,9 @@ def main() -> None:
 
     print(f"Equal-Weight baseline report written to {out_dir}")
 
-    try:
-        from src.pdf_reports import try_rebuild_pdfs_after_variant
-
-        try_rebuild_pdfs_after_variant(logger=logger)
-    except Exception as e:
-        logger.warning("PDF suite rebuild skipped: %s", e)
+    persist_builder_runtime_timing(out_dir, timing)
+    maybe_rebuild_pdfs_after_variant(logger=logger, timing=timing)
+    persist_builder_runtime_timing(out_dir, timing)
 
 
 if __name__ == "__main__":

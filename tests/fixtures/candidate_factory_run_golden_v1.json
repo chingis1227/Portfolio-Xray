@@ -1,6 +1,7 @@
 {
   "schema_version": "candidate_factory_run_v1",
   "diagnostic_only": true,
+  "run_status": "full_success",
   "generated_at": "2026-05-20T12:00:00+00:00",
   "factory_profile_id": "explicit_list",
   "project_root": "/golden/candidate_factory_project",
@@ -13,7 +14,11 @@
     "force": false,
     "fail_fast": false,
     "resume": false,
-    "then_compare": false
+    "then_compare": false,
+    "pdf_mode": "none",
+    "execution_mode": "legacy_full",
+    "full_candidate_reports": false,
+    "selected_candidates_for_full_report": []
   },
   "manifest": {
     "path": "/golden/candidate_factory_project/Main portfolio/candidate_factory_manifest.json",
@@ -27,6 +32,7 @@
       "role": "benchmark",
       "artifact_root": "equal-weight portfolio",
       "status": "succeeded",
+      "execution_action": "builder_invoked",
       "entry_commands": [
         "python run_equal_weight.py"
       ],
@@ -38,7 +44,12 @@
       "snapshot_analysis_end": "2026-04-30",
       "freshness_status": "fresh",
       "expected_config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5",
-      "snapshot_config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5"
+      "snapshot_config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5",
+      "total_seconds": 0.001,
+      "builder_core_seconds": null,
+      "report_seconds": null,
+      "pdf_seconds": null,
+      "candidate_manifest_path": "equal-weight portfolio\\candidate_manifest.json"
     },
     {
       "candidate_id": "risk_parity",
@@ -46,6 +57,7 @@
       "role": "benchmark",
       "artifact_root": "risk parity portfolio",
       "status": "succeeded",
+      "execution_action": "builder_invoked",
       "entry_commands": [
         "python run_risk_parity.py"
       ],
@@ -57,7 +69,12 @@
       "snapshot_analysis_end": "2026-04-30",
       "freshness_status": "fresh",
       "expected_config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5",
-      "snapshot_config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5"
+      "snapshot_config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5",
+      "total_seconds": 0.005,
+      "builder_core_seconds": null,
+      "report_seconds": null,
+      "pdf_seconds": null,
+      "candidate_manifest_path": "risk parity portfolio\\candidate_manifest.json"
     }
   ],
   "summary": {
@@ -71,5 +88,30 @@
     "resumed_from_manifest": 0
   },
   "warnings": [],
-  "next_recommended_command": "python run_compare_variants.py"
+  "next_recommended_command": "python run_compare_variants.py",
+  "execution_summary": {
+    "builder_invoked": 2,
+    "builder_invoked_succeeded": 2,
+    "builder_invoked_failed": 0,
+    "reused_existing_snapshot": 0,
+    "resumed_from_manifest": 0,
+    "skipped_dependency": 0,
+    "rebuilt_candidate_ids": [
+      "equal_weight",
+      "risk_parity"
+    ],
+    "failed_build_candidate_ids": [],
+    "reused_candidate_ids": [],
+    "resumed_candidate_ids": [],
+    "skipped_dependency_candidate_ids": [],
+    "no_skip_existing_requested": true,
+    "resume_requested": false
+  },
+  "timing_summary": {
+    "steps_with_timing": 2,
+    "builder_core_seconds": 0.0,
+    "report_seconds": 0.0,
+    "pdf_seconds": 0.0,
+    "total_seconds": 0.006
+  }
 }

@@ -42,10 +42,15 @@ Sub-blocks:
 ## Workflow position
 
 ```text
-config.yml + load_monthly_data_shared
-  -> run_<family>.py (16 script-backed candidates)
-       -> src/portfolio_variants.build_* (weights + diagnostics)
-       -> run_portfolio_report_for_weights (metrics, stress, snapshots, CSV, commentary)
+config.yml
+  -> prepare_candidate_run_context()  # one monthly load + factor/scenario cache (fast/standard)
+       -> build_candidate_weights / write_candidate_weights (per candidate)
+       -> run_portfolio_report_for_weights(..., lightweight_comparison)  # standard Phase 2
+       -> optional run_portfolio_report_for_weights(..., full)  # Phase 3 (--full-candidate-reports)
+  OR legacy_full:
+       -> run_<family>.py (16 script-backed candidates)
+            -> load_monthly_data_shared + portfolio_variants.build_*
+            -> run_portfolio_report_for_weights (full report per subprocess)
   -> run_candidate_factory.py (optional batch orchestration)
        -> {output_dir_final}/candidate_factory_run.json
   -> write_candidate_comparison_outputs / run_compare_variants.py
@@ -58,7 +63,7 @@ Portfolio-first orchestration:
 ```text
 run_portfolio_review.py
   -> materialize analysis_subject (diagnosis baseline)
-  -> run_candidate_factory.py (--profile core_v1 | default_v1, --then-compare)
+  -> run_candidate_factory.py (--profile core_v1 | default_v1, --execution-mode standard, --then-compare)
   -> PDF rebuild (portfolio-first subset unless --legacy-full-pdf)
 ```
 

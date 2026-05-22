@@ -24,6 +24,7 @@ FACTORY_TOP_LEVEL_REQUIRED = frozenset(
     {
         "schema_version",
         "diagnostic_only",
+        "run_status",
         "generated_at",
         "factory_profile_id",
         "project_root",
@@ -71,7 +72,17 @@ SUMMARY_REQUIRED = frozenset(
 )
 
 OPTIONS_REQUIRED = frozenset(
-    {"skip_existing", "force", "fail_fast", "resume", "then_compare"}
+    {
+        "skip_existing",
+        "force",
+        "fail_fast",
+        "resume",
+        "then_compare",
+        "pdf_mode",
+        "execution_mode",
+        "full_candidate_reports",
+        "selected_candidates_for_full_report",
+    }
 )
 
 BUILDER_REASON_CODES = frozenset(_BUILDER_STATUS_TO_REASON.values()) | {"builder_failed"}
@@ -118,6 +129,7 @@ def factory_contract_fingerprint(doc: dict[str, Any]) -> dict[str, Any]:
     return {
         "schema_version": doc["schema_version"],
         "factory_profile_id": doc["factory_profile_id"],
+        "run_status": doc.get("run_status"),
         "options_keys": sorted(doc["options"]),
         "summary_keys": sorted(doc["summary"]),
         "step_signatures": [

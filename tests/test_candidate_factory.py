@@ -14,10 +14,29 @@ from src.candidate_factory import (
     compute_next_recommended_command,
     factory_exit_code,
     factory_reason_from_builder_summary,
+    resolve_full_report_candidate_ids,
     resolve_profile_candidate_ids,
     run_candidate_factory,
     validate_candidate_ids,
     write_candidate_factory_outputs,
+)
+from src.report_profile import REPORT_PROFILE_FULL
+from src.candidate_run_context import CandidateRunContext
+from src.candidate_weights import (
+    CANDIDATE_WEIGHTS_BUILD_FILENAME,
+    build_candidate_weights,
+    write_candidate_weights,
+)
+from src.data_loader import MonthlyDataResult
+from src.portfolio_variants import (
+    build_equal_weight_baseline,
+    build_minimum_variance_baseline,
+    build_risk_parity_baseline,
+)
+from src.variant_builder_runtime import (
+    BUILDER_RUNTIME_TIMING_FILENAME,
+    ENV_SKIP_VARIANT_PDF,
+    subprocess_env_for_pdf_mode,
 )
 from src.config_schema import validate_config
 from src.snapshot import compute_candidate_config_fingerprint
@@ -676,7 +695,9 @@ def test_write_outputs_contract(tmp_path: Path) -> None:
     assert paths["candidate_factory_run_json"].is_file()
     loaded = json.loads(paths["candidate_factory_run_json"].read_text(encoding="utf-8"))
     assert loaded["schema_version"] == SCHEMA_VERSION
-    assert "Next:" in paths["candidate_factory_run_txt"].read_text(encoding="utf-8")
+    txt = paths["candidate_factory_run_txt"].read_text(encoding="utf-8")
+    assert "Next:" in txt
+    assert "Execution:" in txt
     assert "buy" not in build_factory_run_txt(doc).lower()
 
 
@@ -814,9 +835,17 @@ def test_resume_skips_prior_succeeded_without_rerun(tmp_path: Path) -> None:
     ew_step = second["steps"][0]
     rp_step = second["steps"][1]
     assert ew_step["resume_from_manifest"] is True
+    assert ew_step["execution_action"] == "resumed_from_manifest"
     assert ew_step["status"] == "succeeded"
+    assert rp_step["execution_action"] == "builder_invoked"
     assert rp_step["status"] == "succeeded"
     assert second["summary"]["resumed_from_manifest"] == 1
+    assert second["execution_summary"]["builder_invoked"] == 1
+    assert second["execution_summary"]["resumed_from_manifest"] == 1
+    assert any(
+        w.startswith("resume_manifest_reused_completed_step_despite_no_skip_existing:equal_weight")
+        for w in second["warnings"]
+    )
     assert second["manifest"]["resume_manifest_active"] is True
 
 
@@ -956,3 +985,506 @@ def test_factory_validation_unknown_candidates() -> None:
             project_root=Path("/tmp/unused"),
             explicit_candidates=["bogus_id"],
         )
+
+
+def test_factory_default_pdf_mode_none(tmp_path: Path) -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO"],
+        }
+    )
+
+    def runner(cmd, cwd, env=None):  # noqa: ANN001
+        assert env is not None
+        assert env.get(ENV_SKIP_VARIANT_PDF) == "1"
+        return 0
+
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["equal_weight"],
+        skip_existing=False,
+        runner=runner,
+    )
+    assert doc["options"]["pdf_mode"] == "none"
+
+
+def test_factory_pdf_mode_per_candidate_unsets_skip_env(tmp_path: Path) -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO"],
+        }
+    )
+    seen_env: dict[str, str] = {}
+
+    def runner(cmd, cwd, env=None):  # noqa: ANN001
+        seen_env.update(env or {})
+        return 0
+
+    run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["equal_weight"],
+        skip_existing=False,
+        pdf_mode="per_candidate",
+        runner=runner,
+    )
+    assert ENV_SKIP_VARIANT_PDF not in seen_env
+
+
+def test_subprocess_env_for_pdf_mode_final_only_sets_skip() -> None:
+    env = subprocess_env_for_pdf_mode("final_only")
+    assert env[ENV_SKIP_VARIANT_PDF] == "1"
+
+
+def test_factory_step_timing_from_builder_runtime_file(tmp_path: Path) -> None:
+    ew_dir = tmp_path / "equal-weight portfolio"
+    ew_dir.mkdir(parents=True)
+    timing = {
+        "builder_core_seconds": 0.5,
+        "report_seconds": 120.0,
+        "pdf_seconds": 0.0,
+        "total_seconds": 120.5,
+    }
+    (ew_dir / BUILDER_RUNTIME_TIMING_FILENAME).write_text(
+        json.dumps(timing), encoding="utf-8"
+    )
+    (ew_dir / "snapshot_10y.json").write_text("{}", encoding="utf-8")
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO"],
+        }
+    )
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["equal_weight"],
+        skip_existing=False,
+        runner=lambda cmd, cwd: 0,
+    )
+    step = doc["steps"][0]
+    assert step["builder_core_seconds"] == 0.5
+    assert step["report_seconds"] == 120.0
+    assert step["pdf_seconds"] == 0.0
+    assert step["total_seconds"] == 120.5
+    assert doc["timing_summary"]["steps_with_timing"] == 1
+    assert doc["timing_summary"]["report_seconds"] == 120.0
+    txt = build_factory_run_txt(doc)
+    assert "Timing (seconds):" in txt
+    assert "PDF mode: none" in txt
+
+
+def _synthetic_weights_context(tickers: list[str]) -> CandidateRunContext:
+    import numpy as np
+    import pandas as pd
+
+    from src.config_schema import PortfolioConfig
+
+    dates = pd.date_range("2015-01-31", periods=80, freq="ME")
+    rng = np.random.default_rng(7)
+    returns = pd.DataFrame(
+        {t: rng.normal(0.005, 0.02, len(dates)) for t in tickers},
+        index=dates,
+    )
+    end_ts = returns.index[-1]
+    end = end_ts.strftime("%Y-%m-%d")
+    n = len(tickers)
+    eq = 1.0 / n if n else 0.0
+    cfg = PortfolioConfig(
+        investor_currency="USD",
+        initial_investable_amount=100_000.0,
+        liquidity_need=0.0,
+        liquidity_need_months=6.0,
+        monthly_expenses=0.0,
+        portfolio_value=100_000.0,
+        cash_policy="allowed_for_scaling",
+        tickers=list(tickers),
+        weights={t: eq for t in tickers},
+        benchmark_base_ticker="VOO",
+        rf_source="FRED:DTB3",
+        cash_proxy_ticker="BIL",
+        local_benchmark_map=None,
+        allow_leverage=False,
+        allow_short_selling=False,
+        min_acceptable_return=None,
+        target_nominal_return_annual=None,
+        target_vol_annual=None,
+        target_max_drawdown_pct=None,
+        horizon_years=None,
+        client_profile=None,
+        max_single_security_weight_pct=None,
+        min_single_security_weight_pct=None,
+        N_rc=5,
+        donor_shift_mode="proportional",
+        windows_months=[36, 60, 120],
+        coverage_threshold=0.90,
+        output_dir="results_csv",
+        output_dir_final="Main portfolio",
+    )
+    monthly_data = MonthlyDataResult(
+        monthly_prices=(1 + returns).cumprod() * 100,
+        monthly_returns=returns,
+        monthly_log_returns=np.log1p(returns),
+        rf_monthly=pd.Series(0.001, index=dates),
+        benchmark_returns=pd.Series(rng.normal(0.005, 0.018, len(dates)), index=dates),
+        cash_returns=pd.Series(0.0, index=dates),
+        fx_series_used={},
+        analysis_end=end_ts,
+        analysis_end_str=end,
+        daily_cache_key="test_daily",
+        monthly_cache_key="test_monthly",
+    )
+    return CandidateRunContext(
+        cfg=cfg,
+        project_root=Path("."),
+        monthly_data=monthly_data,
+        assets_meta={},
+        cash_proxy_ticker="BIL",
+        rf_source="FRED:DTB3",
+        local_benchmark_map={},
+        report_tickers=list(tickers),
+        primary_window=len(dates),
+    )
+
+
+def test_build_candidate_weights_matches_direct_build_pilot_ids() -> None:
+    tickers = ["VOO", "BND", "GLD"]
+    context = _synthetic_weights_context(tickers)
+    for candidate_id, direct_fn in (
+        ("equal_weight", build_equal_weight_baseline),
+        ("risk_parity", build_risk_parity_baseline),
+        ("minimum_variance", build_minimum_variance_baseline),
+    ):
+        direct = direct_fn(
+            context.cfg,
+            context.monthly_returns,
+            context.analysis_end_str,
+            context.primary_window,
+        )
+        via_api = build_candidate_weights(context, candidate_id)
+        assert via_api.status == direct.status
+        assert via_api.weights == direct.weights
+
+
+def test_execution_mode_standard_runs_lightweight_report_phase(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    context = _synthetic_weights_context(["VOO", "BND", "GLD"])
+    monkeypatch.setattr(
+        "src.candidate_factory.prepare_candidate_run_context",
+        lambda cfg, project_root, no_cache=False: context,
+    )
+    report_calls: list[dict[str, object]] = []
+
+    def fake_report(*args, **kwargs):
+        report_calls.append(
+            {
+                "profile": kwargs.get("report_profile"),
+                "run_context": kwargs.get("run_context"),
+            }
+        )
+        profile = kwargs.get("report_profile")
+        out = kwargs["output_dir_final"]
+        out.mkdir(parents=True, exist_ok=True)
+        snap = {
+            "analysis_end": context.analysis_end_str,
+            "window_label": "10y",
+            "metrics": {
+                "cagr": 0.07,
+                "vol_annual": 0.11,
+                "max_drawdown": -0.15,
+                "sharpe": 0.8,
+                "sortino": 1.0,
+                "beta_portfolio": 0.7,
+                "correlation_benchmark": 0.9,
+            },
+            "stress_suite_results": {
+                "overall": "DIAG_PASS",
+                "fail_reason_code": None,
+                "failed_scenario": None,
+                "scenarios": [],
+            },
+            "RC_asset": [{"ticker": "VOO", "rc_vol": 0.5}, {"ticker": "BND", "rc_vol": 0.3}],
+            "final_weights_total": {"VOO": 0.33, "BND": 0.33, "GLD": 0.34},
+        }
+        (out / "snapshot_10y.json").write_text(json.dumps(snap), encoding="utf-8")
+        (out / "stress_report.json").write_text(
+            json.dumps({"status": "DIAG_PASS", "analysis_end": context.analysis_end_str}),
+            encoding="utf-8",
+        )
+        return snap["metrics"], {"stress_report": {"status": "DIAG_PASS"}, "portfolio_valid": True}
+
+    monkeypatch.setattr(
+        "run_report.run_portfolio_report_for_weights",
+        fake_report,
+    )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND", "GLD"],
+        }
+    )
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["equal_weight", "risk_parity"],
+        skip_existing=False,
+        execution_mode="standard",
+        runner=lambda cmd, cwd: pytest.fail("subprocess should not run"),
+    )
+    assert report_calls
+    assert all(c["profile"] == "lightweight_comparison" for c in report_calls)
+    assert all(c["run_context"] is context for c in report_calls)
+    for cid in ("equal_weight", "risk_parity"):
+        step = next(s for s in doc["steps"] if s["candidate_id"] == cid)
+        assert step["status"] == "succeeded"
+        assert step["phases_completed"] == ["weights", "report"]
+        assert step["report_profile"] == "lightweight_comparison"
+        art = tmp_path / step["artifact_root"]
+        assert (art / "snapshot_10y.json").is_file()
+        assert (art / "stress_report.json").is_file()
+
+
+def test_execution_mode_standard_builds_weights_without_subprocess(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    context = _synthetic_weights_context(["VOO", "BND", "GLD"])
+    monkeypatch.setattr(
+        "src.candidate_factory.prepare_candidate_run_context",
+        lambda cfg, project_root, no_cache=False: context,
+    )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND", "GLD"],
+        }
+    )
+    calls: list[list[str]] = []
+
+    monkeypatch.setattr(
+        "run_report.run_portfolio_report_for_weights",
+        lambda *a, **k: ({}, {"stress_report": {}, "portfolio_valid": True}),
+    )
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["equal_weight"],
+        skip_existing=False,
+        execution_mode="fast",
+        runner=lambda cmd, cwd: (calls.append(cmd) or 0),
+    )
+    assert not calls
+    step = doc["steps"][0]
+    assert step["status"] == "succeeded"
+    assert step["execution_action"] == "weights_built"
+    assert step["phases_completed"] == ["weights"]
+    assert doc["execution_summary"]["build_steps_executed"] == 1
+    assert doc["execution_summary"]["in_process_build_steps"] == 1
+    assert doc["execution_summary"]["rebuilt_candidate_ids"] == ["equal_weight"]
+    art = tmp_path / step["artifact_root"]
+    assert (art / "weights.json").is_file()
+    assert (art / CANDIDATE_WEIGHTS_BUILD_FILENAME).is_file()
+    assert not (art / "snapshot_10y.json").is_file()
+    assert doc["options"]["execution_mode"] == "fast"
+
+
+def test_weights_build_manifest_skip_existing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    context = _synthetic_weights_context(["VOO", "BND"])
+    monkeypatch.setattr(
+        "src.candidate_factory.prepare_candidate_run_context",
+        lambda cfg, project_root, no_cache=False: context,
+    )
+    subject_dir = tmp_path / "Main portfolio" / "analysis_subject"
+    subject_dir.mkdir(parents=True)
+    (subject_dir / "run_metadata.json").write_text(
+        json.dumps({"run_info": {"analysis_end_date": context.analysis_end_str}}),
+        encoding="utf-8",
+    )
+    ew_dir = tmp_path / "equal-weight portfolio"
+    ew_dir.mkdir(parents=True)
+    fp = compute_candidate_config_fingerprint(
+        validate_config(
+            {
+                "investor_currency": "USD",
+                "analysis_mode": "optimize_from_universe",
+                "output_dir_final": "Main portfolio",
+                "tickers": ["VOO", "BND"],
+            }
+        )
+    )
+    write_candidate_weights(
+        context,
+        "equal_weight",
+        build_candidate_weights(context, "equal_weight"),
+        artifact_dir=ew_dir,
+        config_fingerprint=fp,
+    )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    calls: list[list[str]] = []
+
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["equal_weight"],
+        skip_existing=True,
+        execution_mode="fast",
+        runner=lambda cmd, cwd: (calls.append(cmd) or 0),
+    )
+    assert not calls
+    step = doc["steps"][0]
+    assert step["status"] == "skipped_existing"
+    assert step["execution_action"] == "reused_existing_weights"
+    assert doc["execution_summary"]["reused_existing"] == 1
+    assert doc["execution_summary"]["reused_existing_weights"] == 1
+    assert doc["execution_summary"]["reused_candidate_ids"] == ["equal_weight"]
+
+
+def test_resolve_full_report_candidate_ids_selected_subset() -> None:
+    ids = resolve_full_report_candidate_ids(
+        ["equal_weight", "risk_parity", "minimum_variance"],
+        full_candidate_reports=False,
+        selected=["equal_weight", "risk_parity"],
+    )
+    assert ids == ["equal_weight", "risk_parity"]
+
+
+def test_resolve_full_report_candidate_ids_unknown_raises() -> None:
+    with pytest.raises(FactoryValidationError, match="Unknown candidate"):
+        resolve_full_report_candidate_ids(
+            ["equal_weight"],
+            full_candidate_reports=False,
+            selected=["not_a_real_id"],
+        )
+
+
+def test_full_candidate_reports_runs_full_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    context = _synthetic_weights_context(["VOO", "BND", "GLD"])
+    monkeypatch.setattr(
+        "src.candidate_factory.prepare_candidate_run_context",
+        lambda cfg, project_root, no_cache=False: context,
+    )
+    report_calls: list[str] = []
+
+    def fake_report(*args, **kwargs):
+        profile = kwargs.get("report_profile")
+        report_calls.append(str(profile))
+        out = kwargs["output_dir_final"]
+        out.mkdir(parents=True, exist_ok=True)
+        snap = {
+            "analysis_end": context.analysis_end_str,
+            "window_label": "10y",
+            "metrics": {"cagr": 0.07, "vol_annual": 0.11},
+            "stress_suite_results": {"overall": "DIAG_PASS", "scenarios": []},
+            "RC_asset": [],
+            "final_weights_total": {"VOO": 0.5, "BND": 0.5},
+        }
+        (out / "snapshot_10y.json").write_text(json.dumps(snap), encoding="utf-8")
+        (out / "stress_report.json").write_text("{}", encoding="utf-8")
+        if profile == REPORT_PROFILE_FULL:
+            (out / "report.html").write_text("<html></html>", encoding="utf-8")
+        return snap["metrics"], {"stress_report": {}, "portfolio_valid": True}
+
+    monkeypatch.setattr(
+        "run_report.run_portfolio_report_for_weights",
+        fake_report,
+    )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND", "GLD"],
+        }
+    )
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["equal_weight", "risk_parity"],
+        skip_existing=False,
+        execution_mode="standard",
+        selected_candidates_for_full_report=["equal_weight"],
+        runner=lambda cmd, cwd: pytest.fail("subprocess should not run"),
+    )
+    assert report_calls.count("lightweight_comparison") == 2
+    assert report_calls.count(REPORT_PROFILE_FULL) == 1
+    full_steps = [
+        s
+        for s in doc["steps"]
+        if s.get("execution_action") in ("full_report_built", "full_report_skipped_existing")
+    ]
+    assert len(full_steps) == 1
+    assert full_steps[0]["candidate_id"] == "equal_weight"
+    assert full_steps[0]["execution_action"] == "full_report_built"
+    assert doc["options"]["selected_candidates_for_full_report"] == ["equal_weight"]
+
+
+def test_full_report_skips_existing_report_html(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    context = _synthetic_weights_context(["VOO", "BND"])
+    monkeypatch.setattr(
+        "src.candidate_factory.prepare_candidate_run_context",
+        lambda cfg, project_root, no_cache=False: context,
+    )
+    ew_dir = tmp_path / "equal-weight portfolio"
+    ew_dir.mkdir(parents=True)
+    (ew_dir / "weights.json").write_text(
+        json.dumps({"VOO": 0.5, "BND": 0.5}), encoding="utf-8"
+    )
+    (ew_dir / "report.html").write_text("<html>existing</html>", encoding="utf-8")
+
+    monkeypatch.setattr(
+        "run_report.run_portfolio_report_for_weights",
+        lambda *a, **k: pytest.fail("report should be skipped"),
+    )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        explicit_candidates=["equal_weight"],
+        skip_existing=True,
+        execution_mode="fast",
+        full_candidate_reports=True,
+        runner=lambda cmd, cwd: pytest.fail("subprocess"),
+    )
+    step = next(
+        s
+        for s in doc["steps"]
+        if s.get("execution_action") == "full_report_skipped_existing"
+    )
+    assert step["candidate_id"] == "equal_weight"

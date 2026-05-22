@@ -36,6 +36,10 @@ from src.config import (
     get_mar_from_config,
     portfolio_total_tickers,
 )
+from src.candidate_run_context import (
+    CandidateRunContext,
+    asset_betas_for_candidate_weights,
+)
 from src.config_schema import ConfigValidationError, PortfolioConfig
 from src.data_loader import (
     load_daily_asset_returns_shared,
@@ -124,6 +128,7 @@ from src.stress_factors import (
     asset_daily_returns_from_daily,
 )
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
+from src.report_profile import is_lightweight_comparison, normalize_report_profile
 from src.windows import slice_window, truncate_to_analysis_end
 from src.returns_frequency import (
     MACRO_REGIME_FREQUENCY_DEFAULT,
@@ -260,6 +265,8 @@ def run_portfolio_report_for_weights(
     no_cache: bool = False,
     weights_source: str | None = None,
     portfolio_role_override: str | None = None,
+    report_profile: str | None = None,
+    run_context: CandidateRunContext | None = None,
 ) -> tuple[dict | None, dict]:
     """
     Core metrics/stress/report pipeline, parameterized by explicit weights and output dirs.
@@ -268,7 +275,16 @@ def run_portfolio_report_for_weights(
     Equal-Weight and Risk-Parity weights must be built as baseline portfolios
     without RC caps / weight caps / discretionary overlays
     or hidden policy filters.
+
+    ``report_profile``:
+    - ``full`` (default): all CSV/HTML/PNG/commentary artifacts.
+    - ``lightweight_comparison``: same metrics/stress/snapshots; skips presentation-heavy
+      exports (rolling beta plots, HTML report, commentary, optional asset snapshot).
+
+    ``run_context``: optional factory shared context (one monthly load + factor/scenario cache).
     """
+    profile = normalize_report_profile(report_profile)
+    lightweight = is_lightweight_comparison(profile)
     investor_currency = cfg.investor_currency
     benchmark_base_ticker = cfg.benchmark_base_ticker
     windows_months = cfg.windows_months
@@ -296,18 +312,23 @@ def run_portfolio_report_for_weights(
     if cfg.target_nominal_return_annual is not None:
         logger.info(f"Target return: {cfg.target_nominal_return_annual:.2%}")
 
-    data = load_monthly_data_shared(
-        tickers=tickers,
-        benchmark_base_ticker=benchmark_base_ticker,
-        cash_proxy_ticker=cash_proxy_ticker,
-        rf_source=rf_source,
-        investor_currency=investor_currency,
-        windows_months=windows_months,
-        assets_meta=assets_meta,
-        no_cache=no_cache,
-        local_benchmark_map=local_benchmark_map,
-        returns_frequency=freq_res.configured,
-    )
+    if run_context is not None:
+        data = run_context.monthly_data
+        no_cache = run_context.no_cache
+    else:
+        data = load_monthly_data_shared(
+            tickers=tickers,
+            benchmark_base_ticker=benchmark_base_ticker,
+            cash_proxy_ticker=cash_proxy_ticker,
+            rf_source=rf_source,
+            investor_currency=investor_currency,
+            windows_months=windows_months,
+            assets_meta=assets_meta,
+            no_cache=no_cache,
+            local_benchmark_map=local_benchmark_map,
+            returns_frequency=freq_res.configured,
+            data_provider=getattr(cfg, "market_data_provider", None),
+        )
     monthly_prices = data.monthly_prices
     monthly_returns = data.monthly_returns
     monthly_log_returns = data.monthly_log_returns
@@ -601,6 +622,14 @@ def run_portfolio_report_for_weights(
         "source": None,
         "unavailable_reason": "factor_beta_setup_not_run",
         "asset_beta_coverage_count": 0,
+        "factor_beta_keys": [],
+        "factor_attribution_scope": "unavailable",
+        "available_factors": [],
+        "missing_factors": [],
+        "factor_missing_reasons": {},
+        "factor_columns_used": [],
+        "aligned_weekly_observations": None,
+        "factor_load_diagnostics": None,
         "requested_tickers": [],
         "covered_tickers": [],
         "analysis_end": analysis_end_str,
@@ -624,12 +653,57 @@ def run_portfolio_report_for_weights(
             beta_keys = []
             if betas_df is not None and not betas_df.empty:
                 beta_keys = [str(c) for c in betas_df.columns]
+            factor_load_diagnostics = (
+                getattr(betas_df, "attrs", {}).get("factor_load_diagnostics")
+                if betas_df is not None
+                else None
+            )
+            factor_columns_used = (
+                list(getattr(betas_df, "attrs", {}).get("factor_columns_used") or [])
+                if betas_df is not None
+                else []
+            )
+            available_factors = []
+            missing_factors = []
+            factor_missing_reasons: dict[str, str] = {}
+            if isinstance(factor_load_diagnostics, dict):
+                available_factors = [
+                    str(x) for x in factor_load_diagnostics.get("available_factors") or []
+                ]
+                missing_factors = [
+                    str(x) for x in factor_load_diagnostics.get("missing_factors") or []
+                ]
+                by_factor = factor_load_diagnostics.get("by_factor") or {}
+                if isinstance(by_factor, dict):
+                    for factor_name in missing_factors:
+                        row = by_factor.get(factor_name) or {}
+                        factor_missing_reasons[factor_name] = str(
+                            row.get("reason") or "not_available"
+                        )
+            if beta_keys and set(beta_keys) == {"beta_eq"}:
+                attribution_scope = "equity_only"
+            elif beta_keys:
+                attribution_scope = "multi_factor"
+            else:
+                attribution_scope = "unavailable"
             return {
                 "status": status,
                 "source": source,
                 "unavailable_reason": reason,
                 "asset_beta_coverage_count": int(len(covered)),
                 "factor_beta_keys": beta_keys,
+                "factor_attribution_scope": attribution_scope,
+                "available_factors": available_factors,
+                "missing_factors": missing_factors,
+                "factor_missing_reasons": factor_missing_reasons,
+                "factor_columns_used": factor_columns_used,
+                "aligned_weekly_observations": (
+                    int(getattr(betas_df, "attrs", {}).get("aligned_weekly_observations"))
+                    if betas_df is not None
+                    and getattr(betas_df, "attrs", {}).get("aligned_weekly_observations") is not None
+                    else None
+                ),
+                "factor_load_diagnostics": factor_load_diagnostics,
                 "requested_tickers": list(beta_tickers),
                 "covered_tickers": covered,
                 "analysis_end": analysis_end_str,
@@ -647,37 +721,23 @@ def run_portfolio_report_for_weights(
         beta_source: str | None = None
         asset_betas_5y_df = pd.DataFrame()
         asset_betas_10y_df = pd.DataFrame()
-        try:
-            beta_daily_tickers = list(dict.fromkeys(list(beta_tickers) + [benchmark_base_ticker]))
-            daily_asset_returns_for_betas, _cash_returns_for_betas = load_daily_asset_returns_shared(
-                tickers=beta_daily_tickers,
+        factory_factor = (
+            run_context.factor_stress
+            if run_context is not None and run_context.factor_stress is not None
+            else None
+        )
+        if factory_factor is not None:
+            beta_setup_reasons.extend(list(factory_factor.beta_setup_reasons))
+            recession_factor_returns = factory_factor.recession_factor_returns
+            scenario_episode_factor_returns = factory_factor.scenario_episode_factor_returns
+            asset_betas_5y_df, asset_betas_10y_df, beta_source = asset_betas_for_candidate_weights(
+                factory_factor,
+                beta_tickers=beta_tickers,
                 benchmark_base_ticker=benchmark_base_ticker,
-                cash_proxy_ticker=cash_proxy_ticker,
-                investor_currency=investor_currency,
-                windows_months=windows_months,
-                assets_meta=assets_meta,
-                daily_cache_key=daily_cache_key,
-                analysis_end=analysis_end,
-                no_cache=no_cache,
-                local_benchmark_map=local_benchmark_map,
+                analysis_end_str=analysis_end_str,
             )
-            if daily_asset_returns_for_betas.empty:
-                beta_setup_reasons.append("cached_daily_returns_empty")
-            else:
-                asset_betas_5y_df = compute_asset_factor_betas_from_daily_returns(
-                    daily_asset_returns_for_betas,
-                    analysis_end_str,
-                    FACTOR_WEEKS_5Y,
-                    asset_tickers=beta_tickers,
-                    equity_factor_ticker=benchmark_base_ticker,
-                )
-                asset_betas_10y_df = compute_asset_factor_betas_from_daily_returns(
-                    daily_asset_returns_for_betas,
-                    analysis_end_str,
-                    FACTOR_WEEKS_10Y,
-                    asset_tickers=beta_tickers,
-                    equity_factor_ticker=benchmark_base_ticker,
-                )
+            daily_asset_returns_for_betas = factory_factor.daily_asset_returns_for_betas
+            if not daily_asset_returns_for_betas.empty:
                 diagnostic_betas_5y_extended = portfolio_factor_betas(
                     weights,
                     compute_asset_factor_betas_from_daily_returns(
@@ -700,12 +760,73 @@ def run_portfolio_report_for_weights(
                         equity_factor_ticker=benchmark_base_ticker,
                     ),
                 )
-                if not asset_betas_5y_df.empty:
-                    beta_source = "cached_daily_returns_weekly_ols"
+        else:
+            try:
+                beta_daily_tickers = list(
+                    dict.fromkeys(list(beta_tickers) + [benchmark_base_ticker])
+                )
+                daily_asset_returns_for_betas, _cash_returns_for_betas = (
+                    load_daily_asset_returns_shared(
+                        tickers=beta_daily_tickers,
+                        benchmark_base_ticker=benchmark_base_ticker,
+                        cash_proxy_ticker=cash_proxy_ticker,
+                        investor_currency=investor_currency,
+                        windows_months=windows_months,
+                        assets_meta=assets_meta,
+                        daily_cache_key=daily_cache_key,
+                        analysis_end=analysis_end,
+                        no_cache=no_cache,
+                        local_benchmark_map=local_benchmark_map,
+                        data_provider=getattr(cfg, "market_data_provider", None),
+                    )
+                )
+                if daily_asset_returns_for_betas.empty:
+                    beta_setup_reasons.append("cached_daily_returns_empty")
                 else:
-                    beta_setup_reasons.append("cached_daily_returns_weekly_ols_no_aligned_betas")
-        except Exception as e_cached:
-            beta_setup_reasons.append(f"cached_daily_returns_weekly_ols_error:{e_cached}")
+                    asset_betas_5y_df = compute_asset_factor_betas_from_daily_returns(
+                        daily_asset_returns_for_betas,
+                        analysis_end_str,
+                        FACTOR_WEEKS_5Y,
+                        asset_tickers=beta_tickers,
+                        equity_factor_ticker=benchmark_base_ticker,
+                    )
+                    asset_betas_10y_df = compute_asset_factor_betas_from_daily_returns(
+                        daily_asset_returns_for_betas,
+                        analysis_end_str,
+                        FACTOR_WEEKS_10Y,
+                        asset_tickers=beta_tickers,
+                        equity_factor_ticker=benchmark_base_ticker,
+                    )
+                    diagnostic_betas_5y_extended = portfolio_factor_betas(
+                        weights,
+                        compute_asset_factor_betas_from_daily_returns(
+                            daily_asset_returns_for_betas,
+                            analysis_end_str,
+                            FACTOR_WEEKS_5Y,
+                            factor_columns=FACTOR_COLUMN_ORDER,
+                            asset_tickers=beta_tickers,
+                            equity_factor_ticker=benchmark_base_ticker,
+                        ),
+                    )
+                    diagnostic_betas_10y_extended = portfolio_factor_betas(
+                        weights,
+                        compute_asset_factor_betas_from_daily_returns(
+                            daily_asset_returns_for_betas,
+                            analysis_end_str,
+                            FACTOR_WEEKS_10Y,
+                            factor_columns=FACTOR_COLUMN_ORDER,
+                            asset_tickers=beta_tickers,
+                            equity_factor_ticker=benchmark_base_ticker,
+                        ),
+                    )
+                    if not asset_betas_5y_df.empty:
+                        beta_source = "cached_daily_returns_weekly_ols"
+                    else:
+                        beta_setup_reasons.append(
+                            "cached_daily_returns_weekly_ols_no_aligned_betas"
+                        )
+            except Exception as e_cached:
+                beta_setup_reasons.append(f"cached_daily_returns_weekly_ols_error:{e_cached}")
 
         if asset_betas_5y_df.empty:
             try:
@@ -757,22 +878,26 @@ def run_portfolio_report_for_weights(
                 reason=reason,
                 betas_df=asset_betas_df,
             )
-        try:
-            recession_factor_returns = build_factor_matrix("2007-01-01", analysis_end_str)
-        except Exception as e:
-            logger.warning(f"Recession factor calibration setup failed: {e}; recession severe will use fallback.")
-        try:
-            scenario_episode_factor_returns = build_factor_matrix(
-                "1990-01-01",
-                analysis_end_str,
-                require_complete_rows=False,
-            )
-        except Exception as e_long:
-            logger.warning(
-                "Long-window factor matrix (1990+) for historical episode fallback failed: %s",
-                e_long,
-            )
-            scenario_episode_factor_returns = pd.DataFrame()
+        if factory_factor is None:
+            try:
+                recession_factor_returns = build_factor_matrix("2007-01-01", analysis_end_str)
+            except Exception as e:
+                logger.warning(
+                    f"Recession factor calibration setup failed: {e}; "
+                    "recession severe will use fallback."
+                )
+            try:
+                scenario_episode_factor_returns = build_factor_matrix(
+                    "1990-01-01",
+                    analysis_end_str,
+                    require_complete_rows=False,
+                )
+            except Exception as e_long:
+                logger.warning(
+                    "Long-window factor matrix (1990+) for historical episode fallback failed: %s",
+                    e_long,
+                )
+                scenario_episode_factor_returns = pd.DataFrame()
     except Exception as e:
         logger.warning(f"Stress factor/beta setup failed: {e}; stress report may use fallback only.")
         asset_betas_df = pd.DataFrame()
@@ -782,6 +907,16 @@ def run_portfolio_report_for_weights(
             "source": None,
             "unavailable_reason": str(e),
             "asset_beta_coverage_count": 0,
+            "factor_beta_keys": [],
+            "factor_attribution_scope": "unavailable",
+            "available_factors": [],
+            "missing_factors": list(FACTOR_COLUMN_ORDER),
+            "factor_missing_reasons": {
+                str(factor): str(e) for factor in FACTOR_COLUMN_ORDER
+            },
+            "factor_columns_used": [],
+            "aligned_weekly_observations": None,
+            "factor_load_diagnostics": None,
             "requested_tickers": [t for t in tickers if weights.get(t, 0) > 0] or list(tickers),
             "covered_tickers": [],
             "analysis_end": analysis_end_str,
@@ -827,28 +962,66 @@ def run_portfolio_report_for_weights(
         reason = factor_diagnostics_meta.get("unavailable_reason") or "factor diagnostics were not produced"
         lines.append(f"Factor diagnostics unavailable: {reason}. Synthetic stress used disclosed fallback assumptions.")
         trust["user_summary_lines"] = lines
+    else:
+        scope = factor_diagnostics_meta.get("factor_attribution_scope")
+        trust = stress_report.setdefault("data_trust_summary", {})
+        lines = list(trust.get("user_summary_lines") or [])
+        if scope == "equity_only":
+            missing = factor_diagnostics_meta.get("missing_factors") or []
+            reasons = factor_diagnostics_meta.get("factor_missing_reasons") or {}
+            reason_bits = [
+                f"{factor}: {reasons.get(factor, 'not_available')}"
+                for factor in list(missing)[:6]
+            ]
+            suffix = f" Missing factor reasons: {'; '.join(reason_bits)}." if reason_bits else ""
+            lines.append(
+                "Factor attribution is equity-only because non-equity factor proxies were not available."
+                + suffix
+            )
+        elif scope == "multi_factor":
+            keys = ", ".join(str(k) for k in factor_diagnostics_meta.get("factor_beta_keys") or [])
+            lines.append(f"Factor attribution uses multi-factor betas: {keys}.")
+        trust["user_summary_lines"] = lines
     # Portfolio factor regression diagnostics (5Y/10Y): t/p/CI/R^2 on weekly data, same factor matrix definition.
     stress_report["factor_regression_5y"] = {}
     stress_report["factor_regression_10y"] = {}
     factor_regression_5y_extended: dict[str, Any] = {}
     factor_regression_10y_extended: dict[str, Any] = {}
+
+    def _factor_regression_unavailable_reason(window_label: str) -> str:
+        scope = factor_diagnostics_meta.get("factor_attribution_scope") or "unknown"
+        available = factor_diagnostics_meta.get("available_factors") or []
+        missing = factor_diagnostics_meta.get("missing_factors") or []
+        return (
+            f"{window_label} factor regression unavailable: no aligned multi-factor weekly "
+            f"regression panel; factor_attribution_scope={scope}; "
+            f"available_factors={','.join(str(x) for x in available) if available else 'none'}; "
+            f"missing_factors={','.join(str(x) for x in missing) if missing else 'none'}"
+        )
+
     try:
-        stress_report["factor_regression_5y"] = portfolio_factor_regression_weekly(
+        regression_5y = portfolio_factor_regression_weekly(
             weights=weights,
             tickers=tickers,
             analysis_end_str=analysis_end_str,
             window_weeks=FACTOR_WEEKS_5Y,
         )
+        stress_report["factor_regression_5y"] = regression_5y
+        if not regression_5y:
+            stress_report["factor_regression_5y_error"] = _factor_regression_unavailable_reason("5Y")
     except Exception as e:
         stress_report["factor_regression_5y_error"] = str(e)
         logger.warning(f"Factor regression diagnostics (5Y) failed: {e}")
     try:
-        stress_report["factor_regression_10y"] = portfolio_factor_regression_weekly(
+        regression_10y = portfolio_factor_regression_weekly(
             weights=weights,
             tickers=tickers,
             analysis_end_str=analysis_end_str,
             window_weeks=FACTOR_WEEKS_10Y,
         )
+        stress_report["factor_regression_10y"] = regression_10y
+        if not regression_10y:
+            stress_report["factor_regression_10y_error"] = _factor_regression_unavailable_reason("10Y")
     except Exception as e:
         stress_report["factor_regression_10y_error"] = str(e)
         logger.warning(f"Factor regression diagnostics (10Y) failed: {e}")
@@ -873,7 +1046,11 @@ def run_portfolio_report_for_weights(
 
     # Rolling beta stability (diagnostic): 3Y/5Y/10Y weekly + monthly betas, OOS checks, and severity.
     rb: dict[str, pd.DataFrame] = {}
+    if lightweight:
+        stress_report["factor_betas_rolling_skip_reason"] = "lightweight_comparison_profile"
     try:
+        if lightweight:
+            raise RuntimeError("skip_rolling_betas_lightweight_profile")
         rolling_windows = {"3y": FACTOR_WEEKS_3Y, "5y": FACTOR_WEEKS_5Y, "10y": FACTOR_WEEKS_10Y}
         rolling_windows_months = {"3y": FACTOR_MONTHS_3Y, "5y": FACTOR_MONTHS_5Y, "10y": FACTOR_MONTHS_10Y}
         rb = compute_portfolio_rolling_factor_betas_weekly(
@@ -994,11 +1171,16 @@ def run_portfolio_report_for_weights(
             "plot_png_by_window": plot_png_by_window,
         }
     except Exception as e:
-        stress_report["factor_betas_rolling_error"] = str(e)
-        logger.warning(f"Rolling factor betas diagnostics failed: {e}")
+        if not lightweight or str(e) != "skip_rolling_betas_lightweight_profile":
+            stress_report["factor_betas_rolling_error"] = str(e)
+            logger.warning(f"Rolling factor betas diagnostics failed: {e}")
 
     # Kalman factor betas: diagnostic-only current regime estimate, does not replace raw 5Y/10Y OLS betas.
+    if lightweight:
+        stress_report["factor_betas_kalman_skip_reason"] = "lightweight_comparison_profile"
     try:
+        if lightweight:
+            raise RuntimeError("skip_kalman_lightweight_profile")
         attach_kalman_factor_betas_to_stress_report(
             stress_report,
             weights=weights,
@@ -1008,8 +1190,9 @@ def run_portfolio_report_for_weights(
             window_weeks=FACTOR_WEEKS_10Y,
         )
     except Exception as e:
-        stress_report["factor_betas_kalman_error"] = str(e)
-        logger.warning(f"Kalman factor betas diagnostics failed: {e}")
+        if not lightweight or str(e) != "skip_kalman_lightweight_profile":
+            stress_report["factor_betas_kalman_error"] = str(e)
+            logger.warning(f"Kalman factor betas diagnostics failed: {e}")
 
     # Factor covariance analytics: explicit base / stress_empirical / stress_overlay regimes.
     try:
@@ -1037,7 +1220,7 @@ def run_portfolio_report_for_weights(
             "stress_overlay": "factor_covariance_stress_overlay_weekly.csv",
         }.items():
             df = _matrix_df(regime, "matrix")
-            if not df.empty:
+            if not lightweight and not df.empty:
                 df.round(6).to_csv(output_dir_csv / fname)
 
         for regime, fname in {
@@ -1046,7 +1229,7 @@ def run_portfolio_report_for_weights(
             "stress_overlay": "factor_correlation_stress_overlay_weekly.csv",
         }.items():
             df = _matrix_df(regime, "correlations")
-            if not df.empty:
+            if not lightweight and not df.empty:
                 df.round(6).to_csv(output_dir_csv / fname)
 
         for regime, fname in {
@@ -1055,34 +1238,50 @@ def run_portfolio_report_for_weights(
             "stress_overlay": "portfolio_factor_rc_stress_overlay.csv",
         }.items():
             rows = ((factor_cov.get("portfolio_factor_rc") or {}).get(regime) or [])
-            if rows:
+            if not lightweight and rows:
                 pd.DataFrame(rows).round(6).to_csv(output_dir_csv / fname, index=False)
 
-        overlay_deltas = ((factor_cov.get("stress_overlay") or {}).get("overlay_deltas") or [])
-        if overlay_deltas:
-            pd.DataFrame(overlay_deltas).round(6).to_csv(output_dir_csv / "factor_covariance_overlay_deltas.csv", index=False)
+        if not lightweight:
+            overlay_deltas = ((factor_cov.get("stress_overlay") or {}).get("overlay_deltas") or [])
+            if overlay_deltas:
+                pd.DataFrame(overlay_deltas).round(6).to_csv(
+                    output_dir_csv / "factor_covariance_overlay_deltas.csv", index=False
+                )
 
-        stability = factor_cov.get("covariance_stability_check") or {}
-        stability_rows = []
-        for row in stability.get("by_pair") or []:
-            stability_rows.append({"type": "pair", **row})
-        for row in stability.get("by_factor_variance") or []:
-            stability_rows.append({"type": "factor_variance", **row})
-        if stability_rows:
-            pd.DataFrame(stability_rows).round(6).to_csv(output_dir_csv / "factor_covariance_stability_check.csv", index=False)
+            stability = factor_cov.get("covariance_stability_check") or {}
+            stability_rows = []
+            for row in stability.get("by_pair") or []:
+                stability_rows.append({"type": "pair", **row})
+            for row in stability.get("by_factor_variance") or []:
+                stability_rows.append({"type": "factor_variance", **row})
+            if stability_rows:
+                pd.DataFrame(stability_rows).round(6).to_csv(
+                    output_dir_csv / "factor_covariance_stability_check.csv", index=False
+                )
 
-        forecast_quality = factor_cov.get("forecast_quality") or {}
-        forecast_rows = forecast_quality.get("rows") if isinstance(forecast_quality, dict) else []
-        if forecast_rows:
-            flat_rows = []
-            for row in forecast_rows:
-                if not isinstance(row, dict):
-                    continue
-                flat_rows.append({k: v for k, v in row.items() if k != "worst_corr_error_pair"})
-            if flat_rows:
-                pd.DataFrame(flat_rows).round(6).to_csv(output_dir_csv / "factor_covariance_forecast_quality.csv", index=False)
+            forecast_quality = factor_cov.get("forecast_quality") or {}
+            forecast_rows = (
+                forecast_quality.get("rows") if isinstance(forecast_quality, dict) else []
+            )
+            if forecast_rows:
+                flat_rows = []
+                for row in forecast_rows:
+                    if not isinstance(row, dict):
+                        continue
+                    flat_rows.append(
+                        {k: v for k, v in row.items() if k != "worst_corr_error_pair"}
+                    )
+                if flat_rows:
+                    pd.DataFrame(flat_rows).round(6).to_csv(
+                        output_dir_csv / "factor_covariance_forecast_quality.csv", index=False
+                    )
     except Exception as e:
         stress_report["factor_covariance_error"] = str(e)
+        stress_report["factor_covariance"] = {
+            "status": "unavailable",
+            "error": "factor_covariance_analytics_exception",
+            "unavailable_reason": str(e),
+        }
         logger.warning(f"Factor covariance analytics failed: {e}")
 
     try:
@@ -1093,21 +1292,26 @@ def run_portfolio_report_for_weights(
             factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
         )
         stress_report["macro_regime_diagnostics"] = macro_regimes
-        for fname, df in macro_regime_csv_frames(macro_regimes).items():
-            if not df.empty:
-                df.round(6).to_csv(output_dir_csv / fname, index=False)
-        quality_summary = (macro_regimes or {}).get("regime_label_quality_check")
-        if isinstance(quality_summary, dict) and quality_summary:
-            (output_dir_final / "regime_label_quality_summary.json").write_text(
-                json.dumps(quality_summary, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
+        if not lightweight:
+            for fname, df in macro_regime_csv_frames(macro_regimes).items():
+                if not df.empty:
+                    df.round(6).to_csv(output_dir_csv / fname, index=False)
+            quality_summary = (macro_regimes or {}).get("regime_label_quality_check")
+            if isinstance(quality_summary, dict) and quality_summary:
+                (output_dir_final / "regime_label_quality_summary.json").write_text(
+                    json.dumps(quality_summary, ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
     except Exception as e:
         stress_report["macro_regime_diagnostics_error"] = str(e)
         logger.warning(f"Macro regime diagnostics failed: {e}")
 
     regime_factor_analytics_full = None
+    if lightweight:
+        stress_report["regime_factor_analytics_skip_reason"] = "lightweight_comparison_profile"
     try:
+        if lightweight:
+            raise RuntimeError("skip_regime_factor_analytics_lightweight_profile")
         mr = stress_report.get("macro_regime_diagnostics") or {}
         lm = mr.get("labels_monthly") or []
         if not isinstance(mr, dict) or mr.get("error") or not lm:
@@ -1280,8 +1484,9 @@ def run_portfolio_report_for_weights(
                     "regime_factor_analytics_daily_series_unavailable"
                 )
     except Exception as e:
-        stress_report["regime_factor_analytics_error"] = str(e)
-        logger.warning(f"Regime factor analytics failed: {e}")
+        if not lightweight or str(e) != "skip_regime_factor_analytics_lightweight_profile":
+            stress_report["regime_factor_analytics_error"] = str(e)
+            logger.warning(f"Regime factor analytics failed: {e}")
 
     try:
         stress_report["diagnostic_oil_beta"] = build_diagnostic_oil_beta(
@@ -1609,6 +1814,7 @@ def run_portfolio_report_for_weights(
             analysis_end=analysis_end,
             no_cache=no_cache,
             local_benchmark_map=local_benchmark_map,
+            data_provider=getattr(cfg, "market_data_provider", None),
         )
         if cash_returns_daily.empty or len(cash_returns_daily.index) == 0:
             cash_returns_daily = pd.Series(0.0, index=daily_asset_returns.index)
@@ -1653,12 +1859,12 @@ def run_portfolio_report_for_weights(
             ret_slice, rf_slice, 12, mar=mar_period, returns_frequency=returns_frequency
         )
         rvol = rolling_vol_annual(ret_slice, 12, returns_frequency=returns_frequency)
-        # Export rolling series to CSV
-        rs36.round(3).to_csv(output_dir_csv / f"rolling_sharpe_36m_{suffix}.csv", header=True)
-        rs12.round(3).to_csv(output_dir_csv / f"rolling_sharpe_12m_{suffix}.csv", header=True)
-        rsort36.round(3).to_csv(output_dir_csv / f"rolling_sortino_36m_{suffix}.csv", header=True)
-        rsort12.round(3).to_csv(output_dir_csv / f"rolling_sortino_12m_{suffix}.csv", header=True)
-        rvol.round(3).to_csv(output_dir_csv / f"rolling_vol_12m_{suffix}.csv", header=True)
+        if not lightweight:
+            rs36.round(3).to_csv(output_dir_csv / f"rolling_sharpe_36m_{suffix}.csv", header=True)
+            rs12.round(3).to_csv(output_dir_csv / f"rolling_sharpe_12m_{suffix}.csv", header=True)
+            rsort36.round(3).to_csv(output_dir_csv / f"rolling_sortino_36m_{suffix}.csv", header=True)
+            rsort12.round(3).to_csv(output_dir_csv / f"rolling_sortino_12m_{suffix}.csv", header=True)
+            rvol.round(3).to_csv(output_dir_csv / f"rolling_vol_12m_{suffix}.csv", header=True)
         beta_corr_block: dict[str, dict] = {}
         if len(bench_slice.dropna()) >= 12:
             rb36 = rolling_beta(
@@ -1673,18 +1879,19 @@ def run_portfolio_report_for_weights(
             rc12 = rolling_correlation(
                 ret_slice, bench_slice, 12, returns_frequency=returns_frequency
             )
-            rb36.round(3).to_csv(output_dir_csv / f"rolling_beta_36m_{suffix}.csv", header=True)
-            rb12.round(3).to_csv(output_dir_csv / f"rolling_beta_12m_{suffix}.csv", header=True)
-            rc36.round(3).to_csv(output_dir_csv / f"rolling_correlation_36m_{suffix}.csv", header=True)
-            rc12.round(3).to_csv(output_dir_csv / f"rolling_correlation_12m_{suffix}.csv", header=True)
+            if not lightweight:
+                rb36.round(3).to_csv(output_dir_csv / f"rolling_beta_36m_{suffix}.csv", header=True)
+                rb12.round(3).to_csv(output_dir_csv / f"rolling_beta_12m_{suffix}.csv", header=True)
+                rc36.round(3).to_csv(output_dir_csv / f"rolling_correlation_36m_{suffix}.csv", header=True)
+                rc12.round(3).to_csv(output_dir_csv / f"rolling_correlation_12m_{suffix}.csv", header=True)
             beta_corr_block = rolling_beta_correlation_block(
                 ret_slice, bench_slice, returns_frequency=returns_frequency
             )
-        # Drawdown structure (JSON -> final)
         dd_struct = drawdown_structure(ret_slice)
-        import json as _json
-        with open(output_dir_final / f"drawdown_structure_{suffix}.json", "w", encoding="utf-8") as _f:
-            _json.dump(dd_struct, _f, indent=2, default=str)
+        if not lightweight:
+            import json as _json
+            with open(output_dir_final / f"drawdown_structure_{suffix}.json", "w", encoding="utf-8") as _f:
+                _json.dump(dd_struct, _f, indent=2, default=str)
         # VaR / ES 95% and 99% on daily simple returns (metrics_spec historical tail risk)
         tail_risk = {"metric_available": False, "unavailable_reason": "daily_portfolio_returns_unavailable"}
         if portfolio_returns_daily is not None and len(portfolio_returns_daily.dropna()) >= 2:
@@ -1699,25 +1906,26 @@ def run_portfolio_report_for_weights(
         var_99 = flat_tail.get("var_99")
         es_95 = flat_tail.get("es_95")
         es_99 = flat_tail.get("es_99")
-        pd.DataFrame(
-            [
-                {
-                    "method": tail_risk.get("method"),
-                    "frequency": tail_risk.get("frequency"),
-                    "window_months": tail_risk.get("window_months", wm),
-                    "window_label": suffix,
-                    "n_obs": tail_risk.get("n_obs"),
-                    "var_95": var_95,
-                    "var_99": var_99,
-                    "es_95": es_95,
-                    "es_99": es_99,
-                    "metric_available": tail_risk.get("metric_available"),
-                }
-            ]
-        ).round(3).to_csv(output_dir_csv / f"var_es_{suffix}.csv", index=False)
-        # EEE (crisis beta * 100%) (CSV)
+        if not lightweight:
+            pd.DataFrame(
+                [
+                    {
+                        "method": tail_risk.get("method"),
+                        "frequency": tail_risk.get("frequency"),
+                        "window_months": tail_risk.get("window_months", wm),
+                        "window_label": suffix,
+                        "n_obs": tail_risk.get("n_obs"),
+                        "var_95": var_95,
+                        "var_99": var_99,
+                        "es_95": es_95,
+                        "es_99": es_99,
+                        "metric_available": tail_risk.get("metric_available"),
+                    }
+                ]
+            ).round(3).to_csv(output_dir_csv / f"var_es_{suffix}.csv", index=False)
         eee = effective_equity_exposure(ret_slice, bench_slice, 0.10) if len(bench_slice.dropna()) >= 12 else None
-        pd.DataFrame([{"eee_10pct": eee}]).round(3).to_csv(output_dir_csv / f"eee_{suffix}.csv", index=False)
+        if not lightweight:
+            pd.DataFrame([{"eee_10pct": eee}]).round(3).to_csv(output_dir_csv / f"eee_{suffix}.csv", index=False)
         # Vol-of-vol
         vol_of_vol = float(rvol.std()) if len(rvol.dropna()) >= 2 else None
         rel_vol_of_vol = float(rvol.std() / rvol.mean()) if len(rvol.dropna()) >= 2 and rvol.mean() and rvol.mean() != 0 else None
@@ -1829,9 +2037,10 @@ def run_portfolio_report_for_weights(
         key = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
         if i < len(asset_metrics_all):
             asset_metrics_by_window[key] = asset_metrics_all[i]
-    snapshot_assets = build_snapshot_assets(asset_metrics_by_window, run_timestamp)
-    save_snapshot(snapshot_assets, output_dir_final / "snapshot_assets.json")
-    logger.info("Asset snapshot: %s", output_dir_final / "snapshot_assets.json")
+    if not lightweight:
+        snapshot_assets = build_snapshot_assets(asset_metrics_by_window, run_timestamp)
+        save_snapshot(snapshot_assets, output_dir_final / "snapshot_assets.json")
+        logger.info("Asset snapshot: %s", output_dir_final / "snapshot_assets.json")
 
     config_fingerprint = compute_candidate_config_fingerprint(cfg)
 
@@ -1871,58 +2080,59 @@ def run_portfolio_report_for_weights(
         save_snapshot(snap_w, output_dir_final / f"snapshot_{label}.json")
         logger.info("Snapshot %s: %s", label, output_dir_final / f"snapshot_{label}.json")
 
-    # Index of snapshot files
+    snapshot_index_entries: dict[str, str] = {
+        "3y": "snapshot_3y.json",
+        "5y": "snapshot_5y.json",
+        "10y": "snapshot_10y.json",
+    }
+    if not lightweight:
+        snapshot_index_entries = {
+            "assets": "snapshot_assets.json",
+            **snapshot_index_entries,
+        }
     save_snapshot(
-        {
-            "timestamp": run_timestamp,
-            "snapshots": {
-                "assets": "snapshot_assets.json",
-                "3y": "snapshot_3y.json",
-                "5y": "snapshot_5y.json",
-                "10y": "snapshot_10y.json",
-            },
-        },
+        {"timestamp": run_timestamp, "snapshots": snapshot_index_entries},
         output_dir_final / "snapshot_index.json",
     )
 
-    # Text and HTML reports aggregating all snapshots (read from output_dir_final)
-    write_report_txt(str(output_dir_final))
-    html_path = write_report_html(str(output_dir_final))
-    logger.info("HTML report: %s", html_path)
+    if not lightweight:
+        write_report_txt(str(output_dir_final))
+        html_path = write_report_html(str(output_dir_final))
+        logger.info("HTML report: %s", html_path)
 
-    # commentary.txt: always align with this run (summary/stress/CSV)
-    try:
-        cpath = write_portfolio_commentary(
-            output_dir_final,
-            output_dir_csv=output_dir_csv,
-            portfolio_metrics_10y=portfolio_metrics_summary,
-            stress_report=stress_report,
-            portfolio_valid=portfolio_valid,
-            analysis_end=analysis_end_str,
-            frequency_disclosure=stress_report.get("frequency_disclosure"),
-            analysis_setup=analysis_setup,
-        )
-        if cpath:
-            logger.info("commentary.txt: %s", cpath)
-    except Exception as e:
-        logger.warning("commentary.txt generation failed: %s", e)
+        try:
+            cpath = write_portfolio_commentary(
+                output_dir_final,
+                output_dir_csv=output_dir_csv,
+                portfolio_metrics_10y=portfolio_metrics_summary,
+                stress_report=stress_report,
+                portfolio_valid=portfolio_valid,
+                analysis_end=analysis_end_str,
+                frequency_disclosure=stress_report.get("frequency_disclosure"),
+                analysis_setup=analysis_setup,
+            )
+            if cpath:
+                logger.info("commentary.txt: %s", cpath)
+        except Exception as e:
+            logger.warning("commentary.txt generation failed: %s", e)
 
-    try:
-        spath = write_stress_commentary(
-            output_dir_final,
-            stress_report=stress_report,
-            analysis_end=analysis_end_str,
-        )
-        if spath:
-            logger.info("stress_commentary.txt: %s", spath)
-    except Exception as e:
-        logger.warning("stress_commentary.txt generation failed: %s", e)
+        try:
+            spath = write_stress_commentary(
+                output_dir_final,
+                stress_report=stress_report,
+                analysis_end=analysis_end_str,
+            )
+            if spath:
+                logger.info("stress_commentary.txt: %s", spath)
+        except Exception as e:
+            logger.warning("stress_commentary.txt generation failed: %s", e)
 
     meta = {
         "stress_report": stress_report,
         "portfolio_valid": portfolio_valid,
         "daily_cache_key": daily_cache_key,
         "monthly_cache_key": monthly_cache_key,
+        "report_profile": profile,
     }
     return portfolio_metrics_summary, meta
 

@@ -45,17 +45,31 @@ def _read_series_csv(path: Path) -> dict[str, float]:
     return {str(k): float(v) for k, v in s.items()}
 
 
-def _read_one_row_csv(path: Path) -> dict[str, float]:
+_VAR_ES_METRIC_COLUMNS = frozenset({"var_95", "var_99", "es_95", "es_99"})
+
+
+def _read_one_row_csv(path: Path, *, numeric_columns: frozenset[str] | None = None) -> dict[str, float]:
     df = pd.read_csv(path)
     if df.empty:
         return {}
     row = df.iloc[0].to_dict()
     out: dict[str, float] = {}
     for k, v in row.items():
+        key = str(k)
+        if numeric_columns is not None and key not in numeric_columns:
+            continue
         if pd.isna(v):
             continue
-        out[str(k)] = float(v)
+        try:
+            out[key] = float(v)
+        except (TypeError, ValueError):
+            continue
     return out
+
+
+def _read_var_es_metrics_csv(path: Path) -> dict[str, float]:
+    """Read tail-risk metrics only; skip categorical metadata (e.g. method='historical')."""
+    return _read_one_row_csv(path, numeric_columns=_VAR_ES_METRIC_COLUMNS)
 
 
 def _round_scalar(v: Any, ndigits: int = 3) -> Any:
@@ -147,7 +161,7 @@ def _load_variant_payload(project_root: Path, folder_name: str) -> dict[str, Any
     snapshot = _read_json(snapshot_path)
     weights = _read_json(weights_path)
     rc_asset = _read_series_csv(rc_asset_csv) if rc_asset_csv.exists() else {}
-    var_es = _read_one_row_csv(var_es_csv) if var_es_csv.exists() else {}
+    var_es = _read_var_es_metrics_csv(var_es_csv) if var_es_csv.exists() else {}
     eee = _read_one_row_csv(eee_csv) if eee_csv.exists() else {}
 
     return {

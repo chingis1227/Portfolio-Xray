@@ -132,7 +132,7 @@ Registered in Session 01 (`RM-971`).
 | G1 | ~~Builder `FAIL_*` collapses to generic factory reason~~ | RM-972 | 02 — **closed** |
 | G2 | ~~Freshness is `analysis_end` only; no config fingerprint~~ | RM-976 Done | — |
 | G3 | ~~`freshness_status: unchecked` can skip without review date~~ | RM-973 | 03 — **closed** |
-| G4 | Full `default_v1` run is operationally heavy | RM-920 (mitigated); `--resume` (`RM-979`); operator playbooks (`RM-980`, runbook §8) | — |
+| G4 | Full `default_v1` run is operationally heavy | RM-920 (mitigated); `execution-mode standard` + optional Phase 3 full reports (`RM-1022` Session 8); `--resume` (`RM-979`); runbook §8 | 08 |
 | G5 | ~~No resumable factory checkpoint~~ | RM-979 Done (closes RM-921 resumable scope) | — |
 | G6 | ~~No `construction_disclosure` on comparison rows~~ | RM-974 Done | — |
 | G7 | Per-candidate `portfolio_xray.json` not in comparison contract | — | No Phase 14 code session |
@@ -238,7 +238,12 @@ Title: Full candidate factory refresh is operationally heavy for one-shot review
 - Area: architecture
 - Risk: Full `--mode full` rebuild can still exceed session limits when many optimizer snapshots are stale; decision outputs must not be read as covering the full product menu when `candidate_menu.is_partial_menu` is true.
 - Resolution (2026-05-20, Session 09 / RM-939): Default `run_portfolio_review.py` uses `--mode core` and factory profile `core_v1`; `--mode full` runs `default_v1` explicitly. Comparison and decision-package outputs include `candidate_menu` partial-menu disclosure and refresh commands.
-- Remaining gap (G4): full `default_v1` menu is still sequential and heavy; use `core` default or `run_candidate_factory.py --resume` after interrupt (`RM-979`). Optional parallelism still open.
+- Remaining gap (G4): full `default_v1` menu is still sequential when every candidate needs Phase 3
+  full reports and PDFs; mitigated for portfolio-first review via `--execution-mode standard`
+  (compare-ready lightweight snapshots) and optional
+  `--selected-candidates-for-full-report` for deep-dive HTML/PDF on a subset. Use `core` default,
+  `--resume` after interrupt (`RM-979`), or `--pdf-mode final_only` with Phase 3 instead of
+  per-candidate Pandoc. Optional parallelism still open.
 - Source links: [run_portfolio_review.py](run_portfolio_review.py), [portfolio_review_workflow.py](src/portfolio_review_workflow.py), [candidate_factory.py](src/candidate_factory.py), [candidate_comparison.py](src/candidate_comparison.py), [operational_runbook.md](docs/operational_runbook.md), [methodology map G4](docs/audits/2026-05-20_candidate_factory_methodology_map.md).
 - Remove when: Full-run reliably completes within agreed operator time budget without manual staging, or parallelism ships with isolation guarantees.
 

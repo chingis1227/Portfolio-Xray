@@ -497,12 +497,9 @@ def main() -> None:
 
     logger.info("Wrote %s, %s, selected_* under %s", csv_path, json_path, root)
 
-    try:
-        from src.pdf_reports import try_rebuild_pdfs_after_variant
+    from src.variant_builder_runtime import maybe_rebuild_pdfs_after_variant
 
-        try_rebuild_pdfs_after_variant(logger=logger)
-    except Exception as e:
-        logger.warning("PDF suite rebuild skipped: %s", e)
+    maybe_rebuild_pdfs_after_variant(logger=logger)
 
 
 if __name__ == "__main__":

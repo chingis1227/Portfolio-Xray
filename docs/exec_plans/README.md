@@ -19,8 +19,15 @@ artifact contracts.
 
 ## Current Pointer
 
-**Active:** None (no project-level ExecPlan marked active). Resume from [ROADMAP.md](../ROADMAP.md)
-and completed plan handoffs below.
+**Active:** None (project-level). Resume from [ROADMAP](../ROADMAP.md) or open a new ExecPlan when starting the next wave.
+
+Completed (2026-05-22): [Demo MVP Reliability Repair](2026-05-22_demo_mvp_reliability_plan.md)
+(artifact-based proof for the 8-ticker core demo path; multi-factor stress attribution restored when
+network factor proxies are available; generated-output QA passed).
+
+Completed (2026-05-22): [Candidate Factory Runtime Refactor Plan](2026-05-22_candidate_factory_runtime_refactor_plan.md)
+(Sessions 0–9; phased factory `standard` + timing baseline audit; handoff:
+[Candidate Factory Timing Baseline](../audits/2026-05-22_candidate_factory_timing_baseline.md)).
 
 Completed (2026-05-22): [Post-Deep-Audit Foundation & Downstream Readiness Plan](2026-05-21_post_deep_audit_foundation_plan.md)
 (Sessions 01–10; Phase 17 `RM-1020`–`RM-1029` Done). Handoff: live core/full E2E gates,
@@ -77,6 +84,8 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-05-22 | [Demo MVP Reliability Repair](2026-05-22_demo_mvp_reliability_plan.md) | Completed | User-requested demo reliability repair | Fresh `run_portfolio_review.py --mode core --skip-pdf` proof-run completed; artifact checklist passed; caveat is disclosed candidate snapshot reuse unless full rebuild command is used. |
+| 2026-05-22 | [Candidate Factory Runtime Refactor Plan](2026-05-22_candidate_factory_runtime_refactor_plan.md) | Completed | Operator timing audit (report/PDF bottleneck, not optimizers) | Sessions 0–9 closed: `standard` factory path, timing baseline audit, pytest bundle 102 passed; `cli_lambda` fix in run context. |
 | 2026-05-21 | [Post-Deep-Audit Foundation & Downstream Readiness Plan](2026-05-21_post_deep_audit_foundation_plan.md) | Completed | [Blocks 1–5 Deep Audit Snapshot](../audits/2026-05-21_blocks_1_5_deep_audit_snapshot.md) | Sessions 01–10 closed 2026-05-22: Phase 17 Done; live full + resume (`RM-1029`); closure bundle **72 passed**. |
 | 2026-05-21 | [Blocks 1-5 MVP Core Reliability Plan](2026-05-21_blocks_1_5_mvp_core_reliability_plan.md) | Completed | User-requested operational audit of Blocks 1-5 | Sessions 01-09 closed 2026-05-21: Phase 16 Done; offline bundle **125 passed**; subject materialization live smoke; `tests/conftest.py` fixture import fix. |
 | 2026-05-20 | [Optimization Engine Post-Audit Roadmap](2026-05-20_optimization_engine_post_audit_roadmap.md) | Completed | [Optimization Engine Methodology Map](../audits/2026-05-20_optimization_engine_methodology_map.md) | Sessions 00-12 closed 2026-05-21: G1-G8/G10 governance gaps; DEC-2026-05-21-001; golden contracts; Phase 15 Done. |

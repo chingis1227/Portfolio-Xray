@@ -6,6 +6,27 @@ It does not own metric formulas, optimizer mathematics, stress scenarios, compar
 
 Implementation: **`run_candidate_factory.py`** and **`src/candidate_factory.py`** (post-audit Session 11, 2026-05-17). This spec is the contract.
 
+**Active runtime refactor (orchestration only, no formula changes):**
+[Candidate Factory Runtime Refactor Plan](../exec_plans/2026-05-22_candidate_factory_runtime_refactor_plan.md)
+— phased weights / lightweight report / PDF modes. **Session 1 (shipped):** factory default
+`--pdf-mode none` sets `PORTFOLIO_SKIP_VARIANT_PDF=1` on builder subprocesses; per-step timing
+buckets in `candidate_factory_run.json`. **Session 2 (shipped):** `--execution-mode fast|standard`
+runs Phase 1 weights in-process via `src/candidate_weights.py` (no `run_*.py` subprocess, no
+report). **Session 3 (shipped):** `report_profile=lightweight_comparison` in
+`run_portfolio_report_for_weights`; factory `--execution-mode standard` Phase 2 report.
+**Session 4 (shipped):** `CandidateRunContext` shared monthly + factor/scenario cache.
+**Session 5 (shipped):** per-candidate `candidate_manifest.json` readiness JSON;
+run-level `run_status` (`full_success`, `partial_success`, `all_failed`, `aborted_fail_fast`).
+**Session 6 (shipped):** `run_portfolio_review.py` forwards `--execution-mode standard` to the
+factory by default (core and full); `--execution-mode legacy_full` for subprocess parity.
+
+**Session 8 (shipped):** optional Phase 3 full report export via `--full-candidate-reports` and
+`--selected-candidates-for-full-report`; `report_profile=full` for HTML/commentary/rolling betas;
+`--pdf-mode final_only` triggers one variant PDF rebuild after Phase 3.
+**Session 7 (shipped):** `run_compare_ew_rp.py` parses only numeric tail-risk columns from
+`var_es_10y.csv` (metadata such as `method` = `historical` is not coerced to float); PDF rebuild
+after EW/RP runs is reliable.
+
 ## Scope
 
 The Candidate Portfolio Factory:
@@ -190,8 +211,9 @@ many candidates are stale. That is an **operational** limitation, not a broken c
 
 | Mode | CLI | Factory profile | Intended scope |
 | --- | --- | --- | --- |
-| **core-run** | `python run_portfolio_review.py` (default `--mode core`) | `core_v1` | Benchmarks + risk budgets (6 script-backed candidates) + compare + decision package |
-| **full-run** | `python run_portfolio_review.py --mode full` | `default_v1` | Full menu including classic optimizers and robust suite (16 candidates) |
+| **core-run** | `python run_portfolio_review.py` (default `--mode core`) | `core_v1` | Benchmarks + risk budgets (6 candidates); factory `execution_mode=standard` |
+| **full-run** | `python run_portfolio_review.py --mode full` | `default_v1` | Full menu (16 candidates); factory `execution_mode=standard` (phased weights + lightweight report) |
+| **full-run (legacy builders)** | `python run_portfolio_review.py --mode full --execution-mode legacy_full` | `default_v1` | Subprocess `run_*.py` chain for parity/debug |
 
 `--candidate-profile` overrides `--mode` when an explicit profile is required. Partial-menu disclosure
 is emitted in `candidate_comparison.json` → `candidate_menu` and in the decision-package summary.
@@ -220,6 +242,7 @@ remain future scope.
 {
   "schema_version": "candidate_factory_run_v1",
   "diagnostic_only": true,
+  "run_status": "full_success",
   "generated_at": "ISO-8601",
   "factory_profile_id": "default_v1",
   "project_root": ".",
@@ -232,7 +255,15 @@ remain future scope.
     "force": false,
     "fail_fast": false,
     "resume": false,
-    "then_compare": false
+    "then_compare": false,
+    "pdf_mode": "none"
+  },
+  "timing_summary": {
+    "steps_with_timing": 0,
+    "builder_core_seconds": 0.0,
+    "report_seconds": 0.0,
+    "pdf_seconds": 0.0,
+    "total_seconds": 0.0
   },
   "manifest": {
     "path": "Main portfolio/candidate_factory_manifest.json",
@@ -249,6 +280,27 @@ remain future scope.
     "rebuilt_stale": 0,
     "resumed_from_manifest": 0
   },
+  "execution_summary": {
+    "build_steps_executed": 0,
+    "build_steps_succeeded": 0,
+    "build_steps_failed": 0,
+    "in_process_build_steps": 0,
+    "builder_invoked": 0,
+    "builder_invoked_succeeded": 0,
+    "builder_invoked_failed": 0,
+    "reused_existing": 0,
+    "reused_existing_snapshot": 0,
+    "reused_existing_weights": 0,
+    "resumed_from_manifest": 0,
+    "skipped_dependency": 0,
+    "rebuilt_candidate_ids": [],
+    "failed_build_candidate_ids": [],
+    "reused_candidate_ids": [],
+    "resumed_candidate_ids": [],
+    "skipped_dependency_candidate_ids": [],
+    "no_skip_existing_requested": false,
+    "resume_requested": false
+  },
   "warnings": [],
   "next_recommended_command": "python run_compare_variants.py"
 }
@@ -263,9 +315,14 @@ remain future scope.
 | `role` | string | From registry |
 | `artifact_root` | string | Expected output folder |
 | `status` | string | `succeeded` \| `failed` \| `skipped_existing` \| `skipped_dependency` \| `skipped_profile` |
+| `execution_action` | string | What happened operationally, including `builder_invoked`, `builder_invoked_failed`, `weights_built`, `weights_built_failed`, `lightweight_report_built`, `lightweight_report_reused_weights`, `lightweight_report_failed`, `full_report_built`, `full_report_failed`, `full_report_skipped_existing`, `reused_existing_snapshot`, `reused_existing_weights`, `resumed_from_manifest`, `skipped_dependency`, or `failed_before_build`. |
 | `entry_commands` | array of strings | Commands attempted (repr for audit) |
 | `exit_code` | int or null | Last command exit code when applicable |
-| `duration_seconds` | number | Wall time for the step |
+| `duration_seconds` | number | Wall time for the step (factory subprocess, all paths) |
+| `builder_core_seconds` | number or null | From `builder_runtime_timing.json` when present |
+| `report_seconds` | number or null | From `builder_runtime_timing.json` when present |
+| `pdf_seconds` | number or null | From `builder_runtime_timing.json` when present (often `0` under `--pdf-mode none`) |
+| `total_seconds` | number or null | Bucket sum when timing file present; else mirrors `duration_seconds` |
 | `reason_code` | string or null | Machine code when not succeeded |
 | `message` | string or null | Short English explanation |
 | `builder_status` | string or null | Optional; raw `status` from `{artifact_root}/summary.json` when a builder FAIL_* was mapped (Session 02) |
@@ -295,6 +352,12 @@ Written incrementally during a factory run and read on `--resume`.
 | `updated_at` | ISO-8601 timestamp |
 
 Resume skips a prior `succeeded` or fresh `skipped_existing` entry only when `run_checksum` matches the current run and the candidate snapshot is still fresh.
+
+If `--resume` reuses a completed manifest step while `--no-skip-existing` is also requested, the
+factory must write an explicit warning
+`resume_manifest_reused_completed_step_despite_no_skip_existing:{candidate_id}:builder_not_rerun`.
+This prevents reports from implying that a full rebuild occurred when the resume manifest actually
+reused a candidate.
 
 ### Reason codes (V1)
 
@@ -347,6 +410,38 @@ above, so robust scenario SLSQP status is visible separately from factory orches
 
 Human-readable `.txt` summarizes profile, counts, failed IDs, and the next recommended command. Wording must stay **diagnostic** (no buy/sell, no "recommended portfolio").
 
+### Run status (`run_status`, Session 5)
+
+Top-level `run_status` summarizes whether the factory run completed with partial failures:
+
+| Value | Meaning |
+| --- | --- |
+| `full_success` | No `failed` steps |
+| `partial_success` | Mix of `succeeded` / `skipped_existing` and `failed` (default `continue_on_error`) |
+| `all_failed` | Every counted step `failed` (no productive rows) |
+| `aborted_fail_fast` | `--fail-fast` stopped the loop after the first `failed` step |
+
+Exit code remains `1` when `summary.failed > 0` (including partial success). Operators use
+`run_status` and per-candidate manifests for API/resume UX without parsing every factory step.
+
+### Per-candidate manifest (`candidate_manifest_v1`, Session 5)
+
+After each factory step, `{artifact_root}/candidate_manifest.json` records readiness for
+comparison and partial phase failure (weights without `snapshot_10y.json`).
+
+| Field | Description |
+| --- | --- |
+| `schema_version` | `candidate_manifest_v1` |
+| `candidate_id`, `display_name`, `role`, `artifact_root` | Registry identity |
+| `factory_step` | Copy of orchestration status, `execution_action`, `phases_completed`, `report_profile` |
+| `review_context` | Expected vs snapshot `analysis_end` / config fingerprint, `freshness_status` |
+| `artifacts` | Booleans: `weights_present`, `snapshot_10y_present`, `stress_report_present`, … |
+| `comparison_readiness` | `status` (`ready`, `weights_only`, `not_ready`, `skipped_dependency`), `ready_for_comparison` |
+| `partial_failure` | Optional when weights exist but report/snapshot failed |
+
+Factory steps may include `candidate_manifest_path` (relative to project root, POSIX slashes).
+Implementation: `src/candidate_manifest.py`; written from `_persist_manifest_step`.
+
 ## Integration with Comparison and Decision Package
 
 After factory completes (or after manual builders):
@@ -364,13 +459,121 @@ old successful step cannot be read as proof that the current comparison was refr
 
 If `--then-compare` is set and comparison fails, factory run summary should add warning `comparison_failed` with nested error message; factory step statuses remain authoritative for builders.
 
+## Runtime PDF modes (Session 1)
+
+Factory orchestration controls **per-candidate** Pandoc rebuilds only. Standalone
+`python run_equal_weight.py` (and siblings) keep today's default full PDF behavior unless
+`PORTFOLIO_SKIP_VARIANT_PDF=1` is set in the environment.
+
+| `--pdf-mode` | Subprocess env | Per-candidate `try_rebuild_pdfs_after_variant` |
+| --- | --- | --- |
+| `none` (default) | `PORTFOLIO_SKIP_VARIANT_PDF=1` | Skipped in each `run_*.py` |
+| `final_only` | `PORTFOLIO_SKIP_VARIANT_PDF=1` | Skipped during factory loop; one-shot final PDF rebuild is future scope (Session 8+) |
+| `per_candidate` | env unset | Legacy behavior (~181s per candidate when Pandoc succeeds) |
+
+Implementation: `src/variant_builder_runtime.py` (`maybe_rebuild_pdfs_after_variant` /
+`maybe_rebuild_pdfs_only`); factory passes env via `subprocess_env_for_pdf_mode` in
+`src/candidate_factory.py`.
+
+## Per-step timing buckets (Session 1)
+
+When a builder writes `{artifact_root}/builder_runtime_timing.json`, factory steps include:
+
+| Field | Description |
+| --- | --- |
+| `builder_core_seconds` | Data load + weight construction (wall clock) |
+| `report_seconds` | `run_portfolio_report_for_weights` (wall clock) |
+| `pdf_seconds` | Variant PDF rebuild (0 when skipped) |
+| `total_seconds` | Sum of buckets when file present; else factory falls back to `duration_seconds` |
+
+Run-level `timing_summary` aggregates timing buckets across steps that expose timing fields.
+Run-level `execution_summary` separately discloses build/reuse counts across legacy subprocess
+builders and in-process `fast` / `standard` phases. Human summary in `candidate_factory_run.txt`.
+
+## Execution modes and Phase 1 weights (Session 2)
+
+| `--execution-mode` | Builder path | Report | Typical use |
+| --- | --- | --- | --- |
+| `legacy_full` (default) | Subprocess each `run_*.py` | Full (inside builder) | Parity / debug |
+| `fast` | In-process `build_candidate_weights` | None (Phase 1 only) | API / weights refresh |
+| `standard` | In-process weights (Phase 1) | `lightweight_comparison` (Phase 2) | Portfolio-first review default (`run_portfolio_review.py`) |
+
+**Phase 3 (optional, Session 8):** after Phases 1–2 (or when `weights.json` already exists), export
+`report_profile=full` for all candidates in the run (`--full-candidate-reports`) or a subset
+(`--selected-candidates-for-full-report`). Skip when `report.html` exists and `--skip-existing`
+(unless `--force`). Factory step `execution_action`: `full_report_built`, `full_report_failed`,
+`full_report_skipped_existing`. With `--pdf-mode per_candidate`, Pandoc runs after each Phase 3
+candidate; with `final_only`, one `full_report_final_pdf_rebuild` step after all Phase 3 targets.
+
+Implementation: `src/candidate_run_context.py` (`prepare_candidate_run_context`,
+`FactoryFactorStressInputs`), `src/candidate_weights.py` (`build_candidate_weights`,
+`write_candidate_weights`). One shared `load_monthly_data_shared` and one invariant factor/scenario
+preload per factory run when mode is `fast` or `standard`.
+
+### Shared run context (Session 4)
+
+`CandidateRunContext` holds data reused across all candidates in one factory invocation.
+`run_portfolio_report_for_weights(..., run_context=...)` skips reloading monthly data and reuses
+cached factor matrices when the context provides `factor_stress`.
+
+| Input | Scope | Notes |
+| --- | --- | --- |
+| `monthly_data` (`load_monthly_data_shared`) | **Invariant** | Same `config.yml` tickers, `analysis_end`, FX/rf/benchmark |
+| `assets_meta`, `cash_proxy`, `rf_source`, `local_benchmark_map` | **Invariant** | Resolved once in `prepare_candidate_run_context` |
+| `report_tickers` | **Invariant** | `portfolio_total_tickers` on full config universe |
+| `robust_mv_lambda` resolution | **Invariant** | Shared by `robust_mv_*` weight builders |
+| Daily returns panel for factor betas | **Invariant** | `load_daily_asset_returns_shared` once per run |
+| `recession_factor_returns`, `scenario_episode_factor_returns` | **Invariant** | `build_factor_matrix` once per `analysis_end` |
+| Asset factor betas 5Y/10Y (universe) | **Invariant** | Precomputed on full `report_tickers`; sliced per candidate |
+| Portfolio weights | **Candidate-dependent** | Each `weights.json` |
+| Portfolio returns / snapshots / stress PnL | **Candidate-dependent** | From weights + shared monthly panel |
+| `beta_tickers` (positive-weight legs) | **Candidate-dependent** | Subset of universe; portfolio betas recomputed |
+| Scenario library JSON under candidate folder | **Candidate-dependent** | Built per report output dir |
+| `robust_scenario` Main prerequisites | **Invariant path** | Reads `{output_dir_final}/scenario_library_normalized.json` once per run |
+
+Per-candidate artifacts (minimum):
+
+- `weights.json`, `weights.txt`, `summary.json`
+- `baseline_weights_metadata.json` when the family exports metadata
+- `candidate_weights_build.json` (`candidate_weights_build_v1`) with `analysis_end`,
+  `config_fingerprint`, `status`, `phases_completed: ["weights"]`
+- `builder_runtime_timing.json` with `report_seconds: 0` (core only)
+
+Factory step `execution_action` values: `weights_built`, `weights_built_failed`,
+`reused_existing_weights`, `reused_existing_snapshot`, `lightweight_report_built`,
+`lightweight_report_reused_weights`, `lightweight_report_failed`. Skip-existing:
+`fast` — fresh `candidate_weights_build.json`; `standard` — fresh `snapshot_10y.json`
+(weights-only skip when snapshot stale/missing).
+
+## Report profiles (Session 3)
+
+`run_portfolio_report_for_weights(..., report_profile=...)`:
+
+| Profile | Snapshots / stress | Skipped (presentation) |
+| --- | --- | --- |
+| `full` (default) | All windows + `stress_report.json` | — |
+| `lightweight_comparison` | Same metric/stress builders as `full` | HTML report, commentary, stress_commentary, rolling beta CSV/PNG/HTML, `snapshot_assets.json`, most optional CSV exports |
+
+Comparison reads `snapshot_10y.json` metrics and `stress_report.json` / snapshot stress suite;
+rows should be `available` (not `degraded` from `summary.json`-only) when Phase 2 completes.
+
+Implementation: `src/report_profile.py`, factory `_execute_lightweight_report`.
+
+`robust_scenario` in-process: runs scenario optimization into `{output_dir_final}` then copies
+weights into `robust scenario portfolio/` (same prerequisites as subprocess chain).
+
 ## CLI Contract
 
 Entry point at repository root:
 
 ```bash
 python run_candidate_factory.py [--profile PROFILE] [--candidates ID,ID,...]
-  [--skip-existing | --force] [--fail-fast] [--resume] [--then-compare] [--config PATH]
+  [--skip-existing | --force] [--fail-fast] [--resume] [--then-compare]
+  [--pdf-mode none|final_only|per_candidate]
+  [--execution-mode fast|standard|legacy_full]
+  [--full-candidate-reports]
+  [--selected-candidates-for-full-report ID,ID,...]
+  [--config PATH]
 ```
 
 | Flag | Default | Behavior |
@@ -382,6 +585,10 @@ python run_candidate_factory.py [--profile PROFILE] [--candidates ID,ID,...]
 | `--fail-fast` | off | Stop factory on first failed step |
 | `--resume` | off | Skip prior `succeeded` / fresh `skipped_existing` steps when manifest checksum matches |
 | `--then-compare` | off | Run `run_compare_variants.py` after factory |
+| `--pdf-mode` | `none` | Per-candidate PDF policy for factory subprocesses (see Runtime PDF modes) |
+| `--execution-mode` | `legacy_full` | `fast`/`standard` = in-process phases; `legacy_full` = subprocess builders |
+| `--full-candidate-reports` | off | Phase 3: `report_profile=full` for every candidate in this run |
+| `--selected-candidates-for-full-report` | (none) | Phase 3 subset; enables Phase 3 when set without `--full-candidate-reports` |
 | `--config` | `config.yml` | Config path passed to builders |
 
 Exit codes:

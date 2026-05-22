@@ -129,6 +129,18 @@ python run_report.py --backtest-mode dynamic_nan_safe
 python run_report.py --materialize-analysis-subject
 ```
 
+Optional read-only Interactive Brokers market data smoke check, with TWS / IB Gateway already open
+and API sockets enabled:
+
+```bash
+python run_ibkr_market_data.py --symbols VOO,SPY --port 7497 --market-data-type 3
+python run_ibkr_market_data.py --symbols VOO --history-symbol VOO --history-duration "1 M"
+python run_ibkr_market_data.py --symbols SPY,QQQ,GLD,SLV,BND,SCHD,SCHP,TLT --history-all --provider ibkr --start 2026-05-01 --end 2026-05-22
+```
+
+Set `market_data_provider: ibkr_yfinance_fallback` in `config.yml` to make the main data loader try
+IBKR first and use Yahoo Finance only for missing tickers. Use `yfinance` to keep the legacy source.
+
 `run_optimization.py` reads config, loads market data, builds optimizer inputs, runs the legacy
 policy optimizer, applies release checks, and writes optimized weights and run metadata. It remains
 callable for compatibility, but it is not the default starting point for the portfolio-first
@@ -168,7 +180,13 @@ python run_robust_scenario_optimization.py
 python run_robust_scenario_portfolio_report.py
 ```
 
-Use `run_candidate_factory.py` to orchestrate multiple candidate builders before comparison. Details live in [docs/specs/candidate_factory_spec.md](docs/specs/candidate_factory_spec.md), [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md), [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md), and [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md).
+Use `run_candidate_factory.py` to orchestrate multiple candidate builders before comparison.
+Default factory path for portfolio-first review: `--execution-mode standard` (weights +
+`lightweight_comparison` snapshots for compare, no per-candidate Pandoc). Optional Phase 3:
+`--full-candidate-reports` or `--selected-candidates-for-full-report` for HTML/commentary/rolling
+betas on chosen candidates; pair with `--pdf-mode final_only` for one PDF rebuild after Phase 3.
+Factory default `--pdf-mode none` skips per-candidate Pandoc (~3 min saved per candidate); use
+`--pdf-mode per_candidate` only for legacy full PDF parity. Details live in [docs/specs/candidate_factory_spec.md](docs/specs/candidate_factory_spec.md), [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md), [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md), and [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md).
 
 ## Key Inputs
 

@@ -158,12 +158,9 @@ def main() -> None:
         f.write(f"Solver: {rb_result.diagnostics.get('solver')} (fallback: {rb_result.diagnostics.get('fallback_used')})\n")
 
     logger.info("Risk budget (asset) baseline report written to %s", out_dir)
-    try:
-        from src.pdf_reports import try_rebuild_pdfs_after_variant
+    from src.variant_builder_runtime import maybe_rebuild_pdfs_after_variant
 
-        try_rebuild_pdfs_after_variant(logger=logger)
-    except Exception as e:
-        logger.warning("PDF suite rebuild skipped: %s", e)
+    maybe_rebuild_pdfs_after_variant(logger=logger)
 
 
 if __name__ == "__main__":

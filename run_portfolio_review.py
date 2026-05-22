@@ -12,6 +12,7 @@ from pathlib import Path
 
 from src.config import load_validated_config
 from src.config_schema import ConfigValidationError
+from src.candidate_weights import EXECUTION_MODES
 from src.portfolio_review_workflow import (
     DEFAULT_REVIEW_MODE,
     REVIEW_MODES,
@@ -89,6 +90,17 @@ def main(argv: list[str] | None = None) -> int:
         help="Pass --fail-fast to candidate factory.",
     )
     parser.add_argument(
+        "--execution-mode",
+        type=str,
+        default=None,
+        choices=sorted(EXECUTION_MODES),
+        help=(
+            "Factory execution mode (default when omitted: standard — in-process weights "
+            "plus lightweight_comparison report, no per-candidate PDF). Use legacy_full "
+            "for subprocess run_*.py parity/debug."
+        ),
+    )
+    parser.add_argument(
         "--skip-compare",
         action="store_true",
         help="Do not run comparison / decision-package writers.",
@@ -137,6 +149,7 @@ def main(argv: list[str] | None = None) -> int:
         skip_compare=args.skip_compare,
         skip_pdf=args.skip_pdf,
         legacy_full_pdf=args.legacy_full_pdf,
+        factory_execution_mode=args.execution_mode,
     )
 
     print(

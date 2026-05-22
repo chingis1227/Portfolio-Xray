@@ -78,6 +78,45 @@ def main(argv: list[str] | None = None) -> int:
         help="Run comparison and decision package after factory completes.",
     )
     parser.add_argument(
+        "--pdf-mode",
+        type=str,
+        default="none",
+        choices=["none", "final_only", "per_candidate"],
+        help=(
+            "Per-candidate PDF rebuild policy for factory subprocess builders "
+            "(default: none — sets PORTFOLIO_SKIP_VARIANT_PDF=1). "
+            "Standalone run_*.py scripts are unchanged unless this env is set."
+        ),
+    )
+    parser.add_argument(
+        "--execution-mode",
+        type=str,
+        default="legacy_full",
+        choices=["fast", "standard", "legacy_full"],
+        help=(
+            "fast: in-process weights only. standard: weights + lightweight_comparison "
+            "report (snapshots for compare, no per-candidate PDF). legacy_full: full "
+            "subprocess run_*.py chain (default)."
+        ),
+    )
+    parser.add_argument(
+        "--full-candidate-reports",
+        action="store_true",
+        help=(
+            "After the main factory phases, export full report_profile artifacts "
+            "(HTML, commentary, rolling betas) for all candidates in this run."
+        ),
+    )
+    parser.add_argument(
+        "--selected-candidates-for-full-report",
+        type=str,
+        default=None,
+        help=(
+            "Comma-separated candidate ids for Phase 3 full report export. "
+            "Implies --full-candidate-reports when set."
+        ),
+    )
+    parser.add_argument(
         "--config",
         type=str,
         default=None,
@@ -96,6 +135,8 @@ def main(argv: list[str] | None = None) -> int:
 
     explicit = _parse_candidates(args.candidates)
     profile_id = "explicit_list" if explicit is not None else args.profile
+    selected_full = _parse_candidates(args.selected_candidates_for_full_report)
+    full_reports = bool(args.full_candidate_reports or selected_full)
 
     try:
         doc = run_candidate_factory(
@@ -108,6 +149,10 @@ def main(argv: list[str] | None = None) -> int:
             fail_fast=args.fail_fast,
             resume=args.resume,
             config_path=config_path if config_path.is_file() else None,
+            pdf_mode=args.pdf_mode,
+            execution_mode=args.execution_mode,
+            full_candidate_reports=full_reports,
+            selected_candidates_for_full_report=selected_full,
         )
     except FactoryValidationError as exc:
         logger.error("%s", exc)

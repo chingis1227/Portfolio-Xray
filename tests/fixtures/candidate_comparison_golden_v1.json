@@ -111,7 +111,66 @@
       "recommendation_status": null,
       "construction_disclosure": {
         "disclosure_status": "missing",
-        "source_files": []
+        "source_files": [],
+        "optimization_readiness": {
+          "schema_version": "optimizer_comparison_readiness_v1",
+          "role": "policy",
+          "overall_status": "failed",
+          "comparison_row_status": "unavailable",
+          "unavailable_reason": "legacy_policy_not_default_portfolio_first_candidate",
+          "fair_comparison_ready": false,
+          "required_checks": {
+            "weights": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "missing"
+            },
+            "snapshot_10y": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "stress_summary": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "construction_disclosure": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "source": "disclosure_status=missing",
+              "detail": "missing"
+            },
+            "optimizer_methodology": {
+              "present": false,
+              "required_for_fair_comparison": false
+            },
+            "optimizer_quality": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "unknown"
+            },
+            "freshness": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "freshness_unknown; expected_analysis_end=2026-04-30"
+            }
+          },
+          "optional_checks": {
+            "portfolio_xray": {
+              "present": false,
+              "required_for_fair_comparison": false
+            }
+          },
+          "gaps": [
+            "weights",
+            "snapshot_10y",
+            "stress_summary",
+            "construction_disclosure",
+            "optimizer_quality",
+            "freshness"
+          ],
+          "optimization_quality_status": "unknown",
+          "optimization_quality_family": "unknown"
+        }
       },
       "metrics": {},
       "stress": {},
@@ -294,7 +353,67 @@
       "recommendation_status": null,
       "construction_disclosure": {
         "disclosure_status": "missing",
-        "source_files": []
+        "source_files": [],
+        "optimization_readiness": {
+          "schema_version": "optimizer_comparison_readiness_v1",
+          "role": "optimizer_candidate",
+          "overall_status": "failed",
+          "comparison_row_status": "unavailable",
+          "unavailable_reason": "missing_artifact_folder",
+          "fair_comparison_ready": false,
+          "required_checks": {
+            "weights": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "missing"
+            },
+            "snapshot_10y": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "stress_summary": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "construction_disclosure": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "source": "disclosure_status=missing",
+              "detail": "missing"
+            },
+            "optimizer_methodology": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "optimizer_quality": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "unknown"
+            },
+            "freshness": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "freshness_unknown; expected_analysis_end=2026-04-30"
+            }
+          },
+          "optional_checks": {
+            "portfolio_xray": {
+              "present": false,
+              "required_for_fair_comparison": false
+            }
+          },
+          "gaps": [
+            "weights",
+            "snapshot_10y",
+            "stress_summary",
+            "construction_disclosure",
+            "optimizer_methodology",
+            "optimizer_quality",
+            "freshness"
+          ],
+          "optimization_quality_status": "unknown",
+          "optimization_quality_family": "unknown"
+        }
       },
       "metrics": {},
       "stress": {},
@@ -320,7 +439,67 @@
       "recommendation_status": null,
       "construction_disclosure": {
         "disclosure_status": "missing",
-        "source_files": []
+        "source_files": [],
+        "optimization_readiness": {
+          "schema_version": "optimizer_comparison_readiness_v1",
+          "role": "optimizer_candidate",
+          "overall_status": "failed",
+          "comparison_row_status": "unavailable",
+          "unavailable_reason": "missing_artifact_folder",
+          "fair_comparison_ready": false,
+          "required_checks": {
+            "weights": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "missing"
+            },
+            "snapshot_10y": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "stress_summary": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "construction_disclosure": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "source": "disclosure_status=missing",
+              "detail": "missing"
+            },
+            "optimizer_methodology": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "optimizer_quality": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "unknown"
+            },
+            "freshness": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "freshness_unknown; expected_analysis_end=2026-04-30"
+            }
+          },
+          "optional_checks": {
+            "portfolio_xray": {
+              "present": false,
+              "required_for_fair_comparison": false
+            }
+          },
+          "gaps": [
+            "weights",
+            "snapshot_10y",
+            "stress_summary",
+            "construction_disclosure",
+            "optimizer_methodology",
+            "optimizer_quality",
+            "freshness"
+          ],
+          "optimization_quality_status": "unknown",
+          "optimization_quality_family": "unknown"
+        }
       },
       "metrics": {},
       "stress": {},
@@ -346,7 +525,67 @@
       "recommendation_status": null,
       "construction_disclosure": {
         "disclosure_status": "missing",
-        "source_files": []
+        "source_files": [],
+        "optimization_readiness": {
+          "schema_version": "optimizer_comparison_readiness_v1",
+          "role": "optimizer_candidate",
+          "overall_status": "failed",
+          "comparison_row_status": "unavailable",
+          "unavailable_reason": "missing_artifact_folder",
+          "fair_comparison_ready": false,
+          "required_checks": {
+            "weights": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "missing"
+            },
+            "snapshot_10y": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "stress_summary": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "construction_disclosure": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "source": "disclosure_status=missing",
+              "detail": "missing"
+            },
+            "optimizer_methodology": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "optimizer_quality": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "unknown"
+            },
+            "freshness": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "freshness_unknown; expected_analysis_end=2026-04-30"
+            }
+          },
+          "optional_checks": {
+            "portfolio_xray": {
+              "present": false,
+              "required_for_fair_comparison": false
+            }
+          },
+          "gaps": [
+            "weights",
+            "snapshot_10y",
+            "stress_summary",
+            "construction_disclosure",
+            "optimizer_methodology",
+            "optimizer_quality",
+            "freshness"
+          ],
+          "optimization_quality_status": "unknown",
+          "optimization_quality_family": "unknown"
+        }
       },
       "metrics": {},
       "stress": {},
@@ -372,7 +611,67 @@
       "recommendation_status": null,
       "construction_disclosure": {
         "disclosure_status": "missing",
-        "source_files": []
+        "source_files": [],
+        "optimization_readiness": {
+          "schema_version": "optimizer_comparison_readiness_v1",
+          "role": "optimizer_candidate",
+          "overall_status": "failed",
+          "comparison_row_status": "unavailable",
+          "unavailable_reason": "missing_artifact_folder",
+          "fair_comparison_ready": false,
+          "required_checks": {
+            "weights": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "missing"
+            },
+            "snapshot_10y": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "stress_summary": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "construction_disclosure": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "source": "disclosure_status=missing",
+              "detail": "missing"
+            },
+            "optimizer_methodology": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "optimizer_quality": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "unknown"
+            },
+            "freshness": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "freshness_unknown; expected_analysis_end=2026-04-30"
+            }
+          },
+          "optional_checks": {
+            "portfolio_xray": {
+              "present": false,
+              "required_for_fair_comparison": false
+            }
+          },
+          "gaps": [
+            "weights",
+            "snapshot_10y",
+            "stress_summary",
+            "construction_disclosure",
+            "optimizer_methodology",
+            "optimizer_quality",
+            "freshness"
+          ],
+          "optimization_quality_status": "unknown",
+          "optimization_quality_family": "unknown"
+        }
       },
       "metrics": {},
       "stress": {},
@@ -398,7 +697,67 @@
       "recommendation_status": null,
       "construction_disclosure": {
         "disclosure_status": "missing",
-        "source_files": []
+        "source_files": [],
+        "optimization_readiness": {
+          "schema_version": "optimizer_comparison_readiness_v1",
+          "role": "optimizer_candidate",
+          "overall_status": "failed",
+          "comparison_row_status": "unavailable",
+          "unavailable_reason": "missing_artifact_folder",
+          "fair_comparison_ready": false,
+          "required_checks": {
+            "weights": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "missing"
+            },
+            "snapshot_10y": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "stress_summary": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "construction_disclosure": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "source": "disclosure_status=missing",
+              "detail": "missing"
+            },
+            "optimizer_methodology": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "optimizer_quality": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "unknown"
+            },
+            "freshness": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "freshness_unknown; expected_analysis_end=2026-04-30"
+            }
+          },
+          "optional_checks": {
+            "portfolio_xray": {
+              "present": false,
+              "required_for_fair_comparison": false
+            }
+          },
+          "gaps": [
+            "weights",
+            "snapshot_10y",
+            "stress_summary",
+            "construction_disclosure",
+            "optimizer_methodology",
+            "optimizer_quality",
+            "freshness"
+          ],
+          "optimization_quality_status": "unknown",
+          "optimization_quality_family": "unknown"
+        }
       },
       "metrics": {},
       "stress": {},
@@ -424,7 +783,67 @@
       "recommendation_status": null,
       "construction_disclosure": {
         "disclosure_status": "missing",
-        "source_files": []
+        "source_files": [],
+        "optimization_readiness": {
+          "schema_version": "optimizer_comparison_readiness_v1",
+          "role": "optimizer_candidate",
+          "overall_status": "failed",
+          "comparison_row_status": "unavailable",
+          "unavailable_reason": "missing_artifact_folder",
+          "fair_comparison_ready": false,
+          "required_checks": {
+            "weights": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "missing"
+            },
+            "snapshot_10y": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "stress_summary": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "construction_disclosure": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "source": "disclosure_status=missing",
+              "detail": "missing"
+            },
+            "optimizer_methodology": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "optimizer_quality": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "unknown"
+            },
+            "freshness": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "freshness_unknown; expected_analysis_end=2026-04-30"
+            }
+          },
+          "optional_checks": {
+            "portfolio_xray": {
+              "present": false,
+              "required_for_fair_comparison": false
+            }
+          },
+          "gaps": [
+            "weights",
+            "snapshot_10y",
+            "stress_summary",
+            "construction_disclosure",
+            "optimizer_methodology",
+            "optimizer_quality",
+            "freshness"
+          ],
+          "optimization_quality_status": "unknown",
+          "optimization_quality_family": "unknown"
+        }
       },
       "metrics": {},
       "stress": {},
@@ -450,7 +869,67 @@
       "recommendation_status": null,
       "construction_disclosure": {
         "disclosure_status": "missing",
-        "source_files": []
+        "source_files": [],
+        "optimization_readiness": {
+          "schema_version": "optimizer_comparison_readiness_v1",
+          "role": "optimizer_candidate",
+          "overall_status": "failed",
+          "comparison_row_status": "unavailable",
+          "unavailable_reason": "missing_artifact_folder",
+          "fair_comparison_ready": false,
+          "required_checks": {
+            "weights": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "missing"
+            },
+            "snapshot_10y": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "stress_summary": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "construction_disclosure": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "source": "disclosure_status=missing",
+              "detail": "missing"
+            },
+            "optimizer_methodology": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "optimizer_quality": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "unknown"
+            },
+            "freshness": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "freshness_unknown; expected_analysis_end=2026-04-30"
+            }
+          },
+          "optional_checks": {
+            "portfolio_xray": {
+              "present": false,
+              "required_for_fair_comparison": false
+            }
+          },
+          "gaps": [
+            "weights",
+            "snapshot_10y",
+            "stress_summary",
+            "construction_disclosure",
+            "optimizer_methodology",
+            "optimizer_quality",
+            "freshness"
+          ],
+          "optimization_quality_status": "unknown",
+          "optimization_quality_family": "unknown"
+        }
       },
       "metrics": {},
       "stress": {},
@@ -616,6 +1095,66 @@
           "lambda_source_label": "missing \u2014 run run_robust_mv_lambda_calibration.py before robust MV builders",
           "robust_mv_lambda": null,
           "lambda_ready_for_build": false
+        },
+        "optimization_readiness": {
+          "schema_version": "optimizer_comparison_readiness_v1",
+          "role": "optimizer_candidate",
+          "overall_status": "failed",
+          "comparison_row_status": "unavailable",
+          "unavailable_reason": "missing_artifact_folder",
+          "fair_comparison_ready": false,
+          "required_checks": {
+            "weights": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "missing"
+            },
+            "snapshot_10y": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "stress_summary": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "construction_disclosure": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "source": "disclosure_status=missing",
+              "detail": "missing"
+            },
+            "optimizer_methodology": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "optimizer_quality": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "unknown"
+            },
+            "freshness": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "freshness_unknown; expected_analysis_end=2026-04-30"
+            }
+          },
+          "optional_checks": {
+            "portfolio_xray": {
+              "present": false,
+              "required_for_fair_comparison": false
+            }
+          },
+          "gaps": [
+            "weights",
+            "snapshot_10y",
+            "stress_summary",
+            "construction_disclosure",
+            "optimizer_methodology",
+            "optimizer_quality",
+            "freshness"
+          ],
+          "optimization_quality_status": "unknown",
+          "optimization_quality_family": "unknown"
         }
       },
       "metrics": {},
@@ -654,6 +1193,66 @@
           "lambda_source_label": "missing \u2014 run run_robust_mv_lambda_calibration.py before robust MV builders",
           "robust_mv_lambda": null,
           "lambda_ready_for_build": false
+        },
+        "optimization_readiness": {
+          "schema_version": "optimizer_comparison_readiness_v1",
+          "role": "optimizer_candidate",
+          "overall_status": "failed",
+          "comparison_row_status": "unavailable",
+          "unavailable_reason": "missing_artifact_folder",
+          "fair_comparison_ready": false,
+          "required_checks": {
+            "weights": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "missing"
+            },
+            "snapshot_10y": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "stress_summary": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "construction_disclosure": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "source": "disclosure_status=missing",
+              "detail": "missing"
+            },
+            "optimizer_methodology": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "optimizer_quality": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "unknown"
+            },
+            "freshness": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "freshness_unknown; expected_analysis_end=2026-04-30"
+            }
+          },
+          "optional_checks": {
+            "portfolio_xray": {
+              "present": false,
+              "required_for_fair_comparison": false
+            }
+          },
+          "gaps": [
+            "weights",
+            "snapshot_10y",
+            "stress_summary",
+            "construction_disclosure",
+            "optimizer_methodology",
+            "optimizer_quality",
+            "freshness"
+          ],
+          "optimization_quality_status": "unknown",
+          "optimization_quality_family": "unknown"
         }
       },
       "metrics": {},
@@ -702,6 +1301,66 @@
             "stress_report.json"
           ],
           "recommended_before_factory": "python run_report.py (after policy weights exist) or python run_optimization.py (includes report when reporting enabled)"
+        },
+        "optimization_readiness": {
+          "schema_version": "optimizer_comparison_readiness_v1",
+          "role": "robust_candidate",
+          "overall_status": "failed",
+          "comparison_row_status": "unavailable",
+          "unavailable_reason": "missing_artifact_folder",
+          "fair_comparison_ready": false,
+          "required_checks": {
+            "weights": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "missing"
+            },
+            "snapshot_10y": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "stress_summary": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "construction_disclosure": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "source": "disclosure_status=missing",
+              "detail": "missing"
+            },
+            "optimizer_methodology": {
+              "present": false,
+              "required_for_fair_comparison": true
+            },
+            "optimizer_quality": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "unknown"
+            },
+            "freshness": {
+              "present": false,
+              "required_for_fair_comparison": true,
+              "detail": "freshness_unknown; expected_analysis_end=2026-04-30"
+            }
+          },
+          "optional_checks": {
+            "portfolio_xray": {
+              "present": false,
+              "required_for_fair_comparison": false
+            }
+          },
+          "gaps": [
+            "weights",
+            "snapshot_10y",
+            "stress_summary",
+            "construction_disclosure",
+            "optimizer_methodology",
+            "optimizer_quality",
+            "freshness"
+          ],
+          "optimization_quality_status": "unknown",
+          "optimization_quality_family": "unknown"
         }
       },
       "metrics": {},
@@ -745,7 +1404,77 @@
     },
     "refresh_command_core": "python run_portfolio_review.py --mode core",
     "refresh_command_full": "python run_portfolio_review.py --mode full --no-skip-existing",
-    "factory_run_generated_at": "2026-05-20T12:00:00+00:00"
+    "factory_run_generated_at": "2026-05-20T12:00:00+00:00",
+    "factory_execution_summary": {
+      "builder_invoked": 2,
+      "builder_invoked_succeeded": 2,
+      "builder_invoked_failed": 0,
+      "reused_existing_snapshot": 0,
+      "resumed_from_manifest": 0,
+      "skipped_dependency": 0,
+      "rebuilt_candidate_ids": [
+        "equal_weight",
+        "risk_parity"
+      ],
+      "failed_build_candidate_ids": [],
+      "reused_candidate_ids": [],
+      "resumed_candidate_ids": [],
+      "skipped_dependency_candidate_ids": [],
+      "no_skip_existing_requested": true,
+      "resume_requested": false
+    },
+    "factory_evidence_status": "current",
+    "factory_steps_used": true,
+    "factory_evidence_warnings": [],
+    "factory_run_analysis_end": "2026-04-30",
+    "factory_run_config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5"
+  },
+  "review_bundle_context": {
+    "version": "review_bundle_context_v1",
+    "review_bundle_fingerprint": "e33fe3bb0d9cfb5df85c0acfb28546d768766ee3fb68c8c246bd598e4e05245b",
+    "bundle_parts": {
+      "analysis_subject": {
+        "materialized": true,
+        "artifact_root": "Main portfolio/analysis_subject",
+        "run_metadata_present": true,
+        "snapshot_config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5",
+        "analysis_subject_id": "starter",
+        "analysis_subject_type": "model_portfolio"
+      },
+      "factory_run": {
+        "present": true,
+        "generated_at": "2026-05-20T12:00:00+00:00",
+        "factory_profile_id": "explicit_list",
+        "config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5",
+        "factory_evidence_status": "current"
+      },
+      "comparison": {
+        "generated_at": "2026-05-22T16:34:23.418562+00:00",
+        "config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5",
+        "comparison_rebuild_source": "standalone",
+        "review_mode": "full",
+        "comparison_baseline_candidate_id": "analysis_subject"
+      }
+    },
+    "fingerprint_alignment": {
+      "subject_vs_comparison_config": "match",
+      "factory_vs_comparison_config": "match",
+      "all_aligned": true,
+      "mismatch_reasons": []
+    },
+    "mode_subject_consistency": {
+      "source_analysis_mode": "optimize_from_universe",
+      "analysis_subject_type": "model_portfolio",
+      "product_input_case": null,
+      "portfolio_role": "model_portfolio",
+      "is_consistent": true,
+      "mismatch_codes": [],
+      "informational_notices": [],
+      "interpretation_en": "analysis_subject.type=model_portfolio config analysis_mode=optimize_from_universe analysis_portfolio.portfolio_role=model_portfolio"
+    },
+    "user_summary_lines": [
+      "Review bundle fingerprint e33fe3bb0d9cfb5d... links subject, factory, and comparison artifacts for this run (see review_bundle_context in candidate_comparison.json)."
+    ]
   },
   "legacy_artifacts": {
     "portfolio_comparison_json": null,

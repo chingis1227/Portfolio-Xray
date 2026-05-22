@@ -107,8 +107,15 @@ def normalize_factory_run(doc: dict[str, Any]) -> dict[str, Any]:
             f"{GOLDEN_PROJECT_ROOT}/Main portfolio/candidate_factory_manifest.json"
         )
     options = out.get("options")
-    if isinstance(options, dict) and "resume" not in options:
-        options["resume"] = False
+    if "run_status" not in out:
+        out["run_status"] = "full_success"
+    if isinstance(options, dict):
+        if "resume" not in options:
+            options["resume"] = False
+        if "pdf_mode" not in options:
+            options["pdf_mode"] = "none"
+        if "execution_mode" not in options:
+            options["execution_mode"] = "legacy_full"
     for index, step in enumerate(out.get("steps", [])):
         step["duration_seconds"] = round(1.0 + index * 0.01, 3)
         commands = []

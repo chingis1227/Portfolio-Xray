@@ -317,6 +317,7 @@ Outputs:
 Current implementation:
 
 - Multiple candidate builders exist as `run_*.py` scripts, and `run_candidate_factory.py` orchestrates configured builder sets before optional comparison.
+- Portfolio-first factory default (`--execution-mode standard`): fast compare-ready snapshots without per-candidate HTML/PDF; operators may add Phase 3 full reports for selected candidates (`--selected-candidates-for-full-report`) when client-facing commentary or rolling-factor charts are required.
 - In the portfolio-first contract, candidates are generated after `analysis_subject` diagnostics; the old policy optimizer is not a default candidate.
 
 Target additions:

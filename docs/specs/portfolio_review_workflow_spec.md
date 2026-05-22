@@ -283,8 +283,9 @@ The portfolio-first **workflow order** is implemented. The default CLI uses **co
 | Topic | Behavior |
 | --- | --- |
 | End-to-end command | `run_portfolio_review.py` chains subject → factory → compare → portfolio-first PDFs |
-| **Core-run** (default) | `--mode core` → factory profile `core_v1` (benchmarks + risk budgets) |
-| **Full-run** | `--mode full` → factory profile `default_v1` (all script-backed candidates) |
+| **Core-run** (default) | `--mode core` → factory profile `core_v1`; factory `--execution-mode standard` (phased weights + lightweight_comparison) |
+| **Full-run** | `--mode full` → factory profile `default_v1`; factory `--execution-mode standard` by default |
+| **Full-run (legacy builders)** | `--mode full --execution-mode legacy_full` → subprocess `run_*.py` per candidate (parity/debug) |
 | **Full-run recovery** | `--mode full --resume-candidates` passes factory `--resume` through the portfolio-first orchestrator |
 | Stale snapshots | Comparison marks non-matching `analysis_end` as `unavailable` |
 | Partial menu | `candidate_comparison.json` includes `candidate_menu`; decision-package summary repeats scope and refresh commands |

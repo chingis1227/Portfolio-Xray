@@ -4,6 +4,56 @@ This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.
 
+Date: 2026-05-22
+
+Category: Fixed
+
+- Candidate Factory Session 9: `prepare_candidate_run_context` passes `cli_lambda=None` to
+  `resolve_robust_mv_lambda_for_baseline` (unblocks live `--execution-mode standard` factory runs);
+  regression test in `tests/test_candidate_run_context.py`.
+
+Category: Added
+
+- Candidate Factory Session 9: timing baseline audit
+  `docs/audits/2026-05-22_candidate_factory_timing_baseline.md`; ExecPlan Sessions 0–9 marked
+  Completed; verification bundle **102 passed** (factory/comparison/report_profile/run_context/manifest/compare_ew_rp/review).
+
+Category: Added
+
+- Candidate Factory Session 8: Phase 3 full report export (`--full-candidate-reports`,
+  `--selected-candidates-for-full-report`) with `report_profile=full`; `final_only` PDF rebuild
+  after Phase 3; KNOWN_ISSUES G4 operator guidance; tests in `tests/test_candidate_factory.py`.
+
+Category: Fixed
+
+- Candidate Factory Session 7: `run_compare_ew_rp.py` reads only numeric columns from `var_es_10y.csv` (skips `method` = `historical` and other metadata) so EW/RP compare and PDF rebuild no longer raise on tail-risk CSV layout; `tests/test_compare_ew_rp.py`.
+
+Category: Changed
+
+- Candidate Factory Session 6: `run_portfolio_review.py` forwards factory `--execution-mode standard` by default for core and full review (phased weights + lightweight_comparison); `--execution-mode legacy_full` for subprocess parity; tests in `tests/test_portfolio_review_workflow.py`.
+
+Category: Added
+
+- Candidate Factory Session 5: `{artifact_root}/candidate_manifest.json` (`candidate_manifest_v1`) with comparison readiness and optional `partial_failure`; factory `run_status` on `candidate_factory_run.json`; tests in `tests/test_candidate_manifest.py`.
+
+Category: Added
+
+- Candidate Factory Session 4: `src/candidate_run_context.py` with `CandidateRunContext` / `FactoryFactorStressInputs`; factory `fast`/`standard` modes reuse one monthly load and invariant factor/scenario inputs; `run_portfolio_report_for_weights(..., run_context=...)`; tests in `tests/test_candidate_run_context.py`.
+
+Category: Added
+
+- Candidate Factory Session 3: `report_profile` (`full` | `lightweight_comparison`) on `run_portfolio_report_for_weights`; factory `--execution-mode standard` Phase 2 emits compare-ready `snapshot_10y.json` and `stress_report.json` without HTML/PNG/commentary; tests in `tests/test_report_profile.py`.
+
+Category: Added
+
+- Candidate Factory Session 2: `src/candidate_weights.py` with in-process `build_candidate_weights` / `write_candidate_weights` for all sixteen registry families; factory `--execution-mode fast|standard` (Phase 1 weights only, default remains `legacy_full`).
+
+Category: Changed
+
+- `run_candidate_factory.py` and `candidate_factory_spec.md` document execution modes, report profiles, `candidate_weights_build.json`, and skip-existing semantics for `fast` vs `standard`.
+
+---
+
 ## How To Use
 
 - Add entries only for meaningful project changes: behavior, formulas, data flow, configs, commands, outputs, docs structure, source-of-truth rules, or user-facing workflows.
@@ -41,7 +91,22 @@ Omit empty categories.
 
 ## 2026-05-22
 
+### Fixed
+
+- Hardened the portfolio-first demo path: factor proxy failures now disclose available/missing
+  factors, factor covariance returns an explicit unavailable reason instead of a Timestamp warning,
+  and candidate factory summaries disclose rebuilt vs reused/resumed candidates.
+
 ### Added
+
+- Candidate factory Session 1 runtime: `--pdf-mode` on `run_candidate_factory.py` (default `none`);
+  `PORTFOLIO_SKIP_VARIANT_PDF` gating in per-candidate `run_*.py` via
+  [src/variant_builder_runtime.py](src/variant_builder_runtime.py); per-step timing buckets and
+  run-level `timing_summary` in `candidate_factory_run.json` / `.txt`.
+- Active ExecPlan [docs/exec_plans/2026-05-22_candidate_factory_runtime_refactor_plan.md](docs/exec_plans/2026-05-22_candidate_factory_runtime_refactor_plan.md) (Session 0): phased candidate factory runtime refactor plan (weights vs report vs PDF); documentation only, no runtime behavior change yet.
+
+- Interactive Brokers market data provider path: `src/data_ibkr.py`, `src/data_provider.py`,
+  `market_data_provider`, provider-aware cache keys, `run_ibkr_market_data.py`, docs, and tests.
 
 - Phase 17 Session 09 (`RM-1028`): Blocks 8–10 package truthfulness —
   `src/package_truthfulness.py`; decision package **Review scope (read first)** banner and JSON

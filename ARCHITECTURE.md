@@ -160,7 +160,7 @@ Main report artifacts
 | `run_report.py` | Main report and diagnostics flow | `stress_report.json`, scenario libraries, CSV/JSON/HTML/TXT/PDF-style artifacts |
 | `run_view_after_optimization.py` | Approved post-optimization tactical tilt protocol | Tilted view outputs without changing policy rules outside the protocol |
 | `run_compare_variants.py` | Variant comparison flow | Comparison and downstream decision-package artifacts across policy and benchmark portfolios |
-| `run_candidate_factory.py` | Candidate factory orchestration | `candidate_factory_run.json` / `.txt`, optional comparison tail |
+| `run_candidate_factory.py` | Candidate factory orchestration (phased: weights → lightweight compare → optional full report export) | `candidate_factory_run.json` / `.txt`, per-candidate `candidate_manifest.json`, optional comparison tail |
 | `run_rebalance.py` | Rebalance-oriented utility flow | Rebalance outputs where configured |
 
 ## Candidate And Baseline Entry Points

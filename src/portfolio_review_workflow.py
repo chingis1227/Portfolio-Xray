@@ -15,12 +15,15 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 from src.candidate_factory import REVIEW_MODE_PROFILES
+from src.candidate_weights import normalize_execution_mode
 from src.config_schema import PortfolioConfig
 
 RunSubprocess = Callable[..., subprocess.CompletedProcess[Any]]
 
 REVIEW_MODES = frozenset(REVIEW_MODE_PROFILES.keys())
 DEFAULT_REVIEW_MODE = "core"
+# Phased factory (weights + lightweight_comparison) — default for portfolio-first review.
+REVIEW_DEFAULT_FACTORY_EXECUTION_MODE = "standard"
 
 
 @dataclass(frozen=True)
@@ -51,6 +54,16 @@ def resolve_review_candidate_profile(
     return mode, REVIEW_MODE_PROFILES[mode]
 
 
+def resolve_factory_execution_mode(
+    *,
+    factory_execution_mode: str | None = None,
+) -> str:
+    """Return factory --execution-mode for review-orchestrated runs."""
+    if factory_execution_mode:
+        return normalize_execution_mode(factory_execution_mode)
+    return REVIEW_DEFAULT_FACTORY_EXECUTION_MODE
+
+
 def build_portfolio_review_plan(
     cfg: PortfolioConfig,
     *,
@@ -67,11 +80,15 @@ def build_portfolio_review_plan(
     skip_compare: bool = False,
     skip_pdf: bool = False,
     legacy_full_pdf: bool = False,
+    factory_execution_mode: str | None = None,
 ) -> PortfolioReviewPlan:
     """Build ordered CLI steps for the portfolio-first review workflow."""
     resolved_mode, factory_profile = resolve_review_candidate_profile(
         review_mode=review_mode,
         candidate_profile=candidate_profile,
+    )
+    resolved_execution_mode = resolve_factory_execution_mode(
+        factory_execution_mode=factory_execution_mode,
     )
     py = _python(project_root)
     cache_flags: list[str] = ["--no-cache"] if no_cache else []
@@ -113,14 +130,15 @@ def build_portfolio_review_plan(
             factory_argv.append("--resume")
         if fail_fast:
             factory_argv.append("--fail-fast")
+        factory_argv.extend(["--execution-mode", resolved_execution_mode])
         if not skip_compare:
             # Comparison rebuild uses factory_then_compare context (in-memory factory doc,
             # factory JSON written before compare) — see candidate_comparison.py P17-G6 / RM-1025.
             factory_argv.append("--then-compare")
             compare_via_factory = True
         factory_label = (
-            f"Candidate factory ({factory_profile}, review_mode={resolved_mode}) "
-            "without legacy policy optimization"
+            f"Candidate factory ({factory_profile}, review_mode={resolved_mode}, "
+            f"execution_mode={resolved_execution_mode}) without legacy policy optimization"
         )
         add("candidates", factory_label, factory_argv)
 

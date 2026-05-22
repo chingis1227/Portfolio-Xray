@@ -21,11 +21,12 @@ python run_portfolio_review.py --skip-candidates
 python run_portfolio_review.py --candidate-profile default_v1
 ```
 
-| Review mode | Command | Factory profile | Typical use |
-| --- | --- | --- | --- |
-| **Core** (default) | `python run_portfolio_review.py` or `--mode core` | `core_v1` (benchmarks + risk budgets, 6 builders) | Routine monthly review within normal session limits |
-| **Full** | `python run_portfolio_review.py --mode full` | `default_v1` (16 builders incl. optimizers + robust) | Explicit refresh when all script-backed candidates are needed |
-| **Full resume** | `python run_portfolio_review.py --mode full --resume-candidates` | `default_v1` with factory `--resume` | Recovery after an interrupted full factory run |
+| Review mode | Command | Factory profile | Factory execution | Typical use |
+| --- | --- | --- | --- | --- |
+| **Core** (default) | `python run_portfolio_review.py` or `--mode core` | `core_v1` | `standard` (phased; no per-candidate PDF) | Routine monthly review within normal session limits |
+| **Full** | `python run_portfolio_review.py --mode full` | `default_v1` | `standard` | Full menu refresh (compare-ready snapshots; much faster than legacy subprocess chain) |
+| **Full resume** | `python run_portfolio_review.py --mode full --resume-candidates` | `default_v1` | `standard` + `--resume` | Recovery after an interrupted full factory run |
+| **Full (legacy builders)** | `... --mode full --execution-mode legacy_full` | `default_v1` | `legacy_full` | Parity/debug with subprocess `run_*.py` and full per-candidate reports |
 
 | Stage | Purpose | Primary command | Key artifacts |
 | --- | --- | --- | --- |
@@ -297,10 +298,16 @@ python run_candidate_factory.py --profile default_v1 --resume
 python run_candidate_factory.py --profile core_v1 --then-compare
 python run_candidate_factory.py --candidates equal_weight,risk_parity --force
 python run_candidate_factory.py --profile default_v1 --fail-fast
+python run_candidate_factory.py --profile default_v1 --execution-mode standard --then-compare
+python run_candidate_factory.py --execution-mode standard --selected-candidates-for-full-report equal_weight,risk_parity --pdf-mode final_only
 ```
 
 | Flag | When to use |
 | --- | --- |
+| `--execution-mode standard` | Default for `run_portfolio_review.py`: weights + lightweight snapshots (minutes, not ~1h+16 PDFs). |
+| `--full-candidate-reports` | Phase 3: full HTML/commentary/rolling betas for every candidate in this run. |
+| `--selected-candidates-for-full-report` | Phase 3 subset (e.g. two benchmarks for client memo). |
+| `--pdf-mode final_only` | One Pandoc pass after Phase 3 (not per candidate). |
 | `--profile core_v1` | Six benchmark/risk-budget builders (routine). |
 | `--profile default_v1` | Full 16-builder menu (optimizers + robust). |
 | `--candidates ID,...` | Subset or custom order; sets profile to `explicit_list`. |

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import time
@@ -32,12 +33,41 @@ from src.snapshot import (
     compute_candidate_config_fingerprint,
     snapshot_config_fingerprint,
 )
+from src.text_sanitizer import ascii_safe_text
+from src.candidate_manifest import (
+    compute_factory_run_status,
+    write_candidate_manifest,
+)
+from src.candidate_run_context import CandidateRunContext, prepare_candidate_run_context
+from src.candidate_weights import (
+    CANDIDATE_WEIGHTS_BUILD_FILENAME,
+    build_candidate_weights,
+    candidate_weights_success,
+    uses_lightweight_report_phase,
+    uses_weights_only_phase,
+    weights_build_freshness,
+    write_candidate_weights,
+    normalize_execution_mode,
+)
+from src.report_profile import REPORT_PROFILE_FULL, REPORT_PROFILE_LIGHTWEIGHT
+from src.variant_builder_runtime import (
+    ENV_SKIP_VARIANT_PDF,
+    BuilderStepTiming,
+    build_timing_summary,
+    load_builder_runtime_timing,
+    maybe_rebuild_pdfs_after_variant,
+    merge_timing_into_step,
+    normalize_pdf_mode,
+    persist_builder_runtime_timing,
+    subprocess_env_for_pdf_mode,
+)
 
 SCHEMA_VERSION = "candidate_factory_run_v1"
 MANIFEST_SCHEMA_VERSION = "candidate_factory_manifest_v1"
 MANIFEST_FILENAME = "candidate_factory_manifest.json"
 RESUME_COMPLETE_STATUSES = frozenset({"succeeded", "skipped_existing"})
 SNAPSHOT_MINIMUM = "snapshot_10y.json"
+FULL_REPORT_SKIP_MARKER = "report.html"
 POLICY_EXCLUDED_IDS = frozenset({"policy", "current"})
 SCRIPTS_WITH_CONFIG = frozenset(
     {
@@ -119,6 +149,29 @@ _BUILDER_STATUS_TO_REASON: dict[str, str] = {
     "FAIL_NUMERICAL": "builder_fail_numerical",
     "FAIL_NO_ASSETS": "builder_fail_no_assets",
 }
+
+
+def resolve_full_report_candidate_ids(
+    candidate_ids: list[str],
+    *,
+    full_candidate_reports: bool,
+    selected: list[str] | None,
+) -> list[str]:
+    """
+    Phase 3 targets: explicit ``selected`` list, or all ``candidate_ids`` when
+    ``full_candidate_reports`` is True. Empty when neither is requested.
+    """
+    if selected:
+        unknown = [cid for cid in selected if cid not in candidate_ids]
+        if unknown:
+            raise FactoryValidationError(
+                "Unknown candidate id(s) for full report export: "
+                + ", ".join(unknown)
+            )
+        return list(selected)
+    if full_candidate_reports:
+        return list(candidate_ids)
+    return []
 
 
 def registry_row(candidate_id: str) -> dict[str, str] | None:
@@ -360,18 +413,25 @@ def _run_subprocess_chain(
     *,
     project_root: Path,
     runner: Any | None = None,
+    subprocess_env: dict[str, str] | None = None,
 ) -> tuple[int, str | None]:
     stderr_parts: list[str] = []
     last_code = 0
     for cmd in commands:
         if runner is not None:
-            code = int(runner(cmd, cwd=str(project_root)))
+            try:
+                code = int(
+                    runner(cmd, cwd=str(project_root), env=subprocess_env)
+                )
+            except TypeError:
+                code = int(runner(cmd, cwd=str(project_root)))
         else:
             proc = subprocess.run(
                 cmd,
                 cwd=str(project_root),
                 capture_output=True,
                 text=True,
+                env=subprocess_env,
             )
             code = proc.returncode
             if proc.stderr:
@@ -381,6 +441,937 @@ def _run_subprocess_chain(
             return code, tail
     tail = "\n".join(stderr_parts)[-2000:] if stderr_parts else None
     return 0, tail
+
+
+def _execute_weights_only_build(
+    *,
+    candidate_id: str,
+    row: dict[str, str],
+    artifact_dir: Path,
+    artifact_root: str,
+    entry_commands: list[str],
+    context: CandidateRunContext,
+    analysis_end: str | None,
+    config_fingerprint: str,
+    steps: list[dict[str, Any]],
+    summary: dict[str, int],
+    manifest: dict[str, Any],
+    manifest_dir: Path,
+    project_root: Path,
+    output_dir_final: str,
+    fail_fast: bool,
+    record_factory_step: bool = True,
+) -> bool:
+    """
+    Phase 1 weights build in-process. Returns False if factory loop should stop (fail-fast).
+
+    When ``record_factory_step`` is False (standard mode before Phase 2 report), the caller
+    records a single combined factory step after the report phase.
+    """
+    timing = BuilderStepTiming()
+    timing.start_core()
+    result = build_candidate_weights(context, candidate_id)
+    timing.end_core()
+    write_out = write_candidate_weights(
+        context,
+        candidate_id,
+        result,
+        artifact_dir=artifact_dir,
+        config_fingerprint=config_fingerprint,
+    )
+    persist_builder_runtime_timing(artifact_dir, timing)
+    duration = timing.total_seconds
+    builder_timing = load_builder_runtime_timing(artifact_dir)
+    weights_freshness, weights_end, weights_fp = weights_build_freshness(
+        artifact_dir,
+        expected_analysis_end=analysis_end,
+        expected_config_fingerprint=config_fingerprint,
+    )
+
+    if not write_out.get("success") and not candidate_weights_success(result, candidate_id):
+        mapped = factory_reason_from_builder_summary(
+            {"status": result.status, "reason": result.diagnostics.get("reason")}
+        )
+        if mapped:
+            reason_code, message, builder_status, builder_reason = mapped
+        else:
+            reason_code = "builder_failed"
+            message = f"Weight build status {result.status}."
+            builder_status = result.status
+            builder_reason = str(result.diagnostics.get("reason") or "")
+        step = _failed_step(
+            candidate_id=candidate_id,
+            display_name=row["display_name"],
+            role=row["role"],
+            artifact_root=artifact_root,
+            status="failed",
+            reason_code=reason_code,
+            message=message,
+            entry_commands=entry_commands,
+            exit_code=0,
+            duration_seconds=duration,
+            expected_analysis_end=analysis_end,
+            snapshot_analysis_end=None,
+            freshness_status=weights_freshness,
+            expected_config_fingerprint=config_fingerprint,
+            snapshot_config_fingerprint=weights_fp,
+            builder_status=builder_status,
+            builder_reason=builder_reason,
+        )
+        step["execution_action"] = "weights_built_failed"
+        step["phases_completed"] = ["weights"]
+        merge_timing_into_step(step, builder_timing)
+        if record_factory_step:
+            _append_factory_step(
+                steps,
+                step,
+                candidate_id=candidate_id,
+                project_root=project_root,
+                output_dir_final=output_dir_final,
+            )
+            _increment_summary(summary, "failed")
+            _persist_manifest_step(
+                manifest,
+                output_dir=manifest_dir,
+                candidate_id=candidate_id,
+                step=step,
+                project_root=project_root,
+            )
+        return not fail_fast
+
+    step = {
+        "candidate_id": candidate_id,
+        "display_name": row["display_name"],
+        "role": row["role"],
+        "artifact_root": artifact_root,
+        "status": "succeeded",
+        "execution_action": "weights_built",
+        "entry_commands": entry_commands,
+        "exit_code": 0,
+        "duration_seconds": duration,
+        "reason_code": None,
+        "message": None,
+        "expected_analysis_end": analysis_end,
+        "snapshot_analysis_end": weights_end,
+        "freshness_status": weights_freshness,
+        "expected_config_fingerprint": config_fingerprint,
+        "snapshot_config_fingerprint": weights_fp,
+        "phases_completed": ["weights"],
+        "builder_status": result.status,
+    }
+    merge_timing_into_step(step, builder_timing)
+    if record_factory_step:
+        _append_factory_step(
+            steps,
+            step,
+            candidate_id=candidate_id,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+        )
+        _increment_summary(summary, "succeeded")
+        _persist_manifest_step(
+            manifest,
+            output_dir=manifest_dir,
+            candidate_id=candidate_id,
+            step=step,
+            project_root=project_root,
+        )
+    return True
+
+
+def _mark_weights_build_report_phase(artifact_dir: Path) -> None:
+    path = artifact_dir / CANDIDATE_WEIGHTS_BUILD_FILENAME
+    if not path.is_file():
+        return
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if not isinstance(manifest, dict):
+        return
+    phases = list(manifest.get("phases_completed") or [])
+    for label in ("weights", "report"):
+        if label not in phases:
+            phases.append(label)
+    manifest["phases_completed"] = phases
+    manifest["report_profile"] = REPORT_PROFILE_LIGHTWEIGHT
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(manifest, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
+
+
+def _execute_lightweight_report(
+    *,
+    cfg: PortfolioConfig,
+    candidate_id: str,
+    row: dict[str, str],
+    artifact_dir: Path,
+    artifact_root: str,
+    entry_commands: list[str],
+    analysis_end: str | None,
+    config_fingerprint: str,
+    steps: list[dict[str, Any]],
+    summary: dict[str, int],
+    manifest: dict[str, Any],
+    manifest_dir: Path,
+    project_root: Path,
+    output_dir_final: str,
+    fail_fast: bool,
+    weights_reused: bool,
+    run_context: CandidateRunContext | None = None,
+) -> bool:
+    """
+    Phase 2: comparison-ready snapshots via ``lightweight_comparison`` report profile.
+    Returns False when fail-fast should stop the factory loop.
+    """
+    from run_report import run_portfolio_report_for_weights
+
+    weights_path = artifact_dir / "weights.json"
+    if not weights_path.is_file():
+        step = _failed_step(
+            candidate_id=candidate_id,
+            display_name=row["display_name"],
+            role=row["role"],
+            artifact_root=artifact_root,
+            status="failed",
+            reason_code="builder_failed",
+            message="weights.json missing before lightweight report phase.",
+            entry_commands=entry_commands,
+            exit_code=None,
+            duration_seconds=0.0,
+            expected_analysis_end=analysis_end,
+            snapshot_analysis_end=None,
+            freshness_status="missing",
+            expected_config_fingerprint=config_fingerprint,
+            snapshot_config_fingerprint=None,
+        )
+        step["execution_action"] = "lightweight_report_failed"
+        step["phases_completed"] = ["weights"] if weights_reused else ["weights"]
+        _append_factory_step(
+            steps,
+            step,
+            candidate_id=candidate_id,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+        )
+        _increment_summary(summary, "failed")
+        _persist_manifest_step(
+            manifest,
+            output_dir=manifest_dir,
+            candidate_id=candidate_id,
+            step=step,
+            project_root=project_root,
+        )
+        return not fail_fast
+
+    try:
+        weights = json.loads(weights_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        step = _failed_step(
+            candidate_id=candidate_id,
+            display_name=row["display_name"],
+            role=row["role"],
+            artifact_root=artifact_root,
+            status="failed",
+            reason_code="builder_failed",
+            message=f"Could not read weights.json: {exc}",
+            entry_commands=entry_commands,
+            exit_code=None,
+            duration_seconds=0.0,
+            expected_analysis_end=analysis_end,
+            snapshot_analysis_end=None,
+            freshness_status="missing",
+            expected_config_fingerprint=config_fingerprint,
+            snapshot_config_fingerprint=None,
+        )
+        step["execution_action"] = "lightweight_report_failed"
+        _append_factory_step(
+            steps,
+            step,
+            candidate_id=candidate_id,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+        )
+        _increment_summary(summary, "failed")
+        _persist_manifest_step(
+            manifest,
+            output_dir=manifest_dir,
+            candidate_id=candidate_id,
+            step=step,
+            project_root=project_root,
+        )
+        return not fail_fast
+
+    if not isinstance(weights, dict) or not weights:
+        step = _failed_step(
+            candidate_id=candidate_id,
+            display_name=row["display_name"],
+            role=row["role"],
+            artifact_root=artifact_root,
+            status="failed",
+            reason_code="builder_failed",
+            message="weights.json is empty or not an object.",
+            entry_commands=entry_commands,
+            exit_code=None,
+            duration_seconds=0.0,
+            expected_analysis_end=analysis_end,
+            snapshot_analysis_end=None,
+            freshness_status="missing",
+            expected_config_fingerprint=config_fingerprint,
+            snapshot_config_fingerprint=None,
+        )
+        step["execution_action"] = "lightweight_report_failed"
+        _append_factory_step(
+            steps,
+            step,
+            candidate_id=candidate_id,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+        )
+        _increment_summary(summary, "failed")
+        _persist_manifest_step(
+            manifest,
+            output_dir=manifest_dir,
+            candidate_id=candidate_id,
+            step=step,
+            project_root=project_root,
+        )
+        return not fail_fast
+
+    timing = BuilderStepTiming()
+    prior_timing = load_builder_runtime_timing(artifact_dir)
+    if prior_timing:
+        timing.builder_core_seconds = float(prior_timing.get("builder_core_seconds") or 0.0)
+
+    output_dir_csv = artifact_dir / "results_csv"
+    output_dir_csv.mkdir(parents=True, exist_ok=True)
+    run_timestamp = datetime.now(timezone.utc).isoformat()
+    timing.start_report()
+    try:
+        pm_summary, meta = run_portfolio_report_for_weights(
+            cfg,
+            weights,
+            run_timestamp=run_timestamp,
+            output_dir_csv=output_dir_csv,
+            output_dir_final=artifact_dir,
+            backtest_mode_override=getattr(cfg, "backtest_mode", "dynamic_nan_safe"),
+            no_cache=run_context.no_cache if run_context else False,
+            weights_source=f"candidate_factory.{candidate_id}",
+            report_profile=REPORT_PROFILE_LIGHTWEIGHT,
+            run_context=run_context,
+        )
+    except Exception as exc:
+        timing.end_report()
+        persist_builder_runtime_timing(artifact_dir, timing)
+        step = _failed_step(
+            candidate_id=candidate_id,
+            display_name=row["display_name"],
+            role=row["role"],
+            artifact_root=artifact_root,
+            status="failed",
+            reason_code="builder_failed",
+            message=f"Lightweight report failed: {exc}",
+            entry_commands=entry_commands,
+            exit_code=None,
+            duration_seconds=timing.total_seconds,
+            expected_analysis_end=analysis_end,
+            snapshot_analysis_end=None,
+            freshness_status="missing",
+            expected_config_fingerprint=config_fingerprint,
+            snapshot_config_fingerprint=None,
+        )
+        step["execution_action"] = "lightweight_report_failed"
+        step["phases_completed"] = ["weights", "report"]
+        merge_timing_into_step(step, timing.to_dict())
+        _append_factory_step(
+            steps,
+            step,
+            candidate_id=candidate_id,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+        )
+        _increment_summary(summary, "failed")
+        _persist_manifest_step(
+            manifest,
+            output_dir=manifest_dir,
+            candidate_id=candidate_id,
+            step=step,
+            project_root=project_root,
+        )
+        return not fail_fast
+
+    timing.end_report()
+    persist_builder_runtime_timing(artifact_dir, timing)
+    snapshot_path = artifact_dir / SNAPSHOT_MINIMUM
+    if not snapshot_path.is_file():
+        step = _failed_step(
+            candidate_id=candidate_id,
+            display_name=row["display_name"],
+            role=row["role"],
+            artifact_root=artifact_root,
+            status="failed",
+            reason_code="builder_failed",
+            message=f"{SNAPSHOT_MINIMUM} missing after lightweight report.",
+            entry_commands=entry_commands,
+            exit_code=None,
+            duration_seconds=timing.total_seconds,
+            expected_analysis_end=analysis_end,
+            snapshot_analysis_end=None,
+            freshness_status="missing",
+            expected_config_fingerprint=config_fingerprint,
+            snapshot_config_fingerprint=None,
+        )
+        step["execution_action"] = "lightweight_report_failed"
+        step["phases_completed"] = ["weights", "report"]
+        merge_timing_into_step(step, timing.to_dict())
+        _append_factory_step(
+            steps,
+            step,
+            candidate_id=candidate_id,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+        )
+        _increment_summary(summary, "failed")
+        _persist_manifest_step(
+            manifest,
+            output_dir=manifest_dir,
+            candidate_id=candidate_id,
+            step=step,
+            project_root=project_root,
+        )
+        return not fail_fast
+
+    stress_report = meta.get("stress_report") or {}
+    summary_payload: dict[str, Any] = {
+        "portfolio_type": row.get("display_name") or candidate_id,
+        "status": "OK",
+        "metrics_10y": pm_summary,
+        "stress_status": stress_report.get("status"),
+        "stress_fail_reason": stress_report.get("fail_reason_code")
+        or stress_report.get("skip_reason"),
+        "portfolio_valid": meta.get("portfolio_valid"),
+        "report_profile": REPORT_PROFILE_LIGHTWEIGHT,
+    }
+    with open(artifact_dir / "summary.json", "w", encoding="utf-8") as handle:
+        json.dump(summary_payload, handle, indent=2, ensure_ascii=False)
+
+    _mark_weights_build_report_phase(artifact_dir)
+    freshness, snapshot_end, snapshot_fp = _snapshot_freshness(
+        snapshot_path,
+        expected_analysis_end=analysis_end,
+        expected_config_fingerprint=config_fingerprint,
+    )
+    duration = timing.total_seconds
+    execution_action = (
+        "lightweight_report_reused_weights" if weights_reused else "lightweight_report_built"
+    )
+    step = {
+        "candidate_id": candidate_id,
+        "display_name": row["display_name"],
+        "role": row["role"],
+        "artifact_root": artifact_root,
+        "status": "succeeded",
+        "execution_action": execution_action,
+        "entry_commands": entry_commands,
+        "exit_code": 0,
+        "duration_seconds": duration,
+        "reason_code": None,
+        "message": None,
+        "expected_analysis_end": analysis_end,
+        "snapshot_analysis_end": snapshot_end,
+        "freshness_status": freshness,
+        "expected_config_fingerprint": config_fingerprint,
+        "snapshot_config_fingerprint": snapshot_fp,
+        "phases_completed": ["weights", "report"],
+        "report_profile": REPORT_PROFILE_LIGHTWEIGHT,
+    }
+    merge_timing_into_step(step, timing.to_dict())
+    _append_factory_step(
+        steps,
+        step,
+        candidate_id=candidate_id,
+        project_root=project_root,
+        output_dir_final=output_dir_final,
+    )
+    _increment_summary(summary, "succeeded")
+    _persist_manifest_step(
+        manifest,
+        output_dir=manifest_dir,
+        candidate_id=candidate_id,
+        step=step,
+        project_root=project_root,
+    )
+    return True
+
+
+def _mark_full_report_phase(artifact_dir: Path) -> None:
+    path = artifact_dir / CANDIDATE_WEIGHTS_BUILD_FILENAME
+    if not path.is_file():
+        return
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if not isinstance(manifest, dict):
+        return
+    phases = list(manifest.get("phases_completed") or [])
+    for label in ("weights", "report", "full_report"):
+        if label not in phases:
+            phases.append(label)
+    manifest["phases_completed"] = phases
+    manifest["report_profile"] = REPORT_PROFILE_FULL
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(manifest, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
+
+
+def _rebuild_variant_pdfs_without_skip_env(
+    *,
+    timing: BuilderStepTiming | None = None,
+) -> None:
+    """Run variant PDF rebuild even when factory subprocesses set PORTFOLIO_SKIP_VARIANT_PDF."""
+    prior = os.environ.get(ENV_SKIP_VARIANT_PDF)
+    os.environ.pop(ENV_SKIP_VARIANT_PDF, None)
+    try:
+        maybe_rebuild_pdfs_after_variant(timing=timing)
+    finally:
+        if prior is not None:
+            os.environ[ENV_SKIP_VARIANT_PDF] = prior
+
+
+def _execute_full_report(
+    *,
+    cfg: PortfolioConfig,
+    candidate_id: str,
+    row: dict[str, str],
+    artifact_dir: Path,
+    artifact_root: str,
+    entry_commands: list[str],
+    analysis_end: str | None,
+    config_fingerprint: str,
+    steps: list[dict[str, Any]],
+    summary: dict[str, int],
+    manifest: dict[str, Any],
+    manifest_dir: Path,
+    project_root: Path,
+    output_dir_final: str,
+    fail_fast: bool,
+    pdf_mode: str,
+    run_context: CandidateRunContext | None = None,
+) -> bool:
+    """
+    Phase 3: full ``report_profile`` (HTML, commentary, rolling betas, etc.) for one candidate.
+    """
+    from run_report import run_portfolio_report_for_weights
+
+    weights_path = artifact_dir / "weights.json"
+    if not weights_path.is_file():
+        step = _failed_step(
+            candidate_id=candidate_id,
+            display_name=row["display_name"],
+            role=row["role"],
+            artifact_root=artifact_root,
+            status="failed",
+            reason_code="builder_failed",
+            message="weights.json missing before full report export.",
+            entry_commands=entry_commands,
+            exit_code=None,
+            duration_seconds=0.0,
+            expected_analysis_end=analysis_end,
+            snapshot_analysis_end=None,
+            freshness_status="missing",
+            expected_config_fingerprint=config_fingerprint,
+            snapshot_config_fingerprint=None,
+        )
+        step["execution_action"] = "full_report_failed"
+        step["phases_completed"] = ["full_report"]
+        step["report_profile"] = REPORT_PROFILE_FULL
+        _append_factory_step(
+            steps,
+            step,
+            candidate_id=candidate_id,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+        )
+        _increment_summary(summary, "failed")
+        _persist_manifest_step(
+            manifest,
+            output_dir=manifest_dir,
+            candidate_id=candidate_id,
+            step=step,
+            project_root=project_root,
+        )
+        return not fail_fast
+
+    try:
+        weights = json.loads(weights_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        step = _failed_step(
+            candidate_id=candidate_id,
+            display_name=row["display_name"],
+            role=row["role"],
+            artifact_root=artifact_root,
+            status="failed",
+            reason_code="builder_failed",
+            message=f"Could not read weights.json: {exc}",
+            entry_commands=entry_commands,
+            exit_code=None,
+            duration_seconds=0.0,
+            expected_analysis_end=analysis_end,
+            snapshot_analysis_end=None,
+            freshness_status="missing",
+            expected_config_fingerprint=config_fingerprint,
+            snapshot_config_fingerprint=None,
+        )
+        step["execution_action"] = "full_report_failed"
+        step["report_profile"] = REPORT_PROFILE_FULL
+        _append_factory_step(
+            steps,
+            step,
+            candidate_id=candidate_id,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+        )
+        _increment_summary(summary, "failed")
+        _persist_manifest_step(
+            manifest,
+            output_dir=manifest_dir,
+            candidate_id=candidate_id,
+            step=step,
+            project_root=project_root,
+        )
+        return not fail_fast
+
+    if not isinstance(weights, dict) or not weights:
+        step = _failed_step(
+            candidate_id=candidate_id,
+            display_name=row["display_name"],
+            role=row["role"],
+            artifact_root=artifact_root,
+            status="failed",
+            reason_code="builder_failed",
+            message="weights.json is empty or not an object.",
+            entry_commands=entry_commands,
+            exit_code=None,
+            duration_seconds=0.0,
+            expected_analysis_end=analysis_end,
+            snapshot_analysis_end=None,
+            freshness_status="missing",
+            expected_config_fingerprint=config_fingerprint,
+            snapshot_config_fingerprint=None,
+        )
+        step["execution_action"] = "full_report_failed"
+        step["report_profile"] = REPORT_PROFILE_FULL
+        _append_factory_step(
+            steps,
+            step,
+            candidate_id=candidate_id,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+        )
+        _increment_summary(summary, "failed")
+        _persist_manifest_step(
+            manifest,
+            output_dir=manifest_dir,
+            candidate_id=candidate_id,
+            step=step,
+            project_root=project_root,
+        )
+        return not fail_fast
+
+    timing = BuilderStepTiming()
+    prior_timing = load_builder_runtime_timing(artifact_dir)
+    if prior_timing:
+        timing.builder_core_seconds = float(prior_timing.get("builder_core_seconds") or 0.0)
+        timing.report_seconds = float(prior_timing.get("report_seconds") or 0.0)
+
+    output_dir_csv = artifact_dir / "results_csv"
+    output_dir_csv.mkdir(parents=True, exist_ok=True)
+    run_timestamp = datetime.now(timezone.utc).isoformat()
+    timing.start_report()
+    try:
+        pm_summary, meta = run_portfolio_report_for_weights(
+            cfg,
+            weights,
+            run_timestamp=run_timestamp,
+            output_dir_csv=output_dir_csv,
+            output_dir_final=artifact_dir,
+            backtest_mode_override=getattr(cfg, "backtest_mode", "dynamic_nan_safe"),
+            no_cache=run_context.no_cache if run_context else False,
+            weights_source=f"candidate_factory.{candidate_id}.full_report",
+            report_profile=REPORT_PROFILE_FULL,
+            run_context=run_context,
+        )
+    except Exception as exc:
+        timing.end_report()
+        persist_builder_runtime_timing(artifact_dir, timing)
+        step = _failed_step(
+            candidate_id=candidate_id,
+            display_name=row["display_name"],
+            role=row["role"],
+            artifact_root=artifact_root,
+            status="failed",
+            reason_code="builder_failed",
+            message=f"Full report export failed: {exc}",
+            entry_commands=entry_commands,
+            exit_code=None,
+            duration_seconds=timing.total_seconds,
+            expected_analysis_end=analysis_end,
+            snapshot_analysis_end=None,
+            freshness_status="missing",
+            expected_config_fingerprint=config_fingerprint,
+            snapshot_config_fingerprint=None,
+        )
+        step["execution_action"] = "full_report_failed"
+        step["phases_completed"] = ["full_report"]
+        step["report_profile"] = REPORT_PROFILE_FULL
+        merge_timing_into_step(step, timing.to_dict())
+        _append_factory_step(
+            steps,
+            step,
+            candidate_id=candidate_id,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+        )
+        _increment_summary(summary, "failed")
+        _persist_manifest_step(
+            manifest,
+            output_dir=manifest_dir,
+            candidate_id=candidate_id,
+            step=step,
+            project_root=project_root,
+        )
+        return not fail_fast
+
+    timing.end_report()
+    if normalize_pdf_mode(pdf_mode) == "per_candidate":
+        _rebuild_variant_pdfs_without_skip_env(timing=timing)
+
+    persist_builder_runtime_timing(artifact_dir, timing)
+    snapshot_path = artifact_dir / SNAPSHOT_MINIMUM
+    if not snapshot_path.is_file():
+        step = _failed_step(
+            candidate_id=candidate_id,
+            display_name=row["display_name"],
+            role=row["role"],
+            artifact_root=artifact_root,
+            status="failed",
+            reason_code="builder_failed",
+            message=f"{SNAPSHOT_MINIMUM} missing after full report export.",
+            entry_commands=entry_commands,
+            exit_code=None,
+            duration_seconds=timing.total_seconds,
+            expected_analysis_end=analysis_end,
+            snapshot_analysis_end=None,
+            freshness_status="missing",
+            expected_config_fingerprint=config_fingerprint,
+            snapshot_config_fingerprint=None,
+        )
+        step["execution_action"] = "full_report_failed"
+        step["phases_completed"] = ["full_report"]
+        step["report_profile"] = REPORT_PROFILE_FULL
+        merge_timing_into_step(step, timing.to_dict())
+        _append_factory_step(
+            steps,
+            step,
+            candidate_id=candidate_id,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+        )
+        _increment_summary(summary, "failed")
+        _persist_manifest_step(
+            manifest,
+            output_dir=manifest_dir,
+            candidate_id=candidate_id,
+            step=step,
+            project_root=project_root,
+        )
+        return not fail_fast
+
+    stress_report = meta.get("stress_report") or {}
+    summary_payload: dict[str, Any] = {
+        "portfolio_type": row.get("display_name") or candidate_id,
+        "status": "OK",
+        "metrics_10y": pm_summary,
+        "stress_status": stress_report.get("status"),
+        "stress_fail_reason": stress_report.get("fail_reason_code")
+        or stress_report.get("skip_reason"),
+        "portfolio_valid": meta.get("portfolio_valid"),
+        "report_profile": REPORT_PROFILE_FULL,
+    }
+    with open(artifact_dir / "summary.json", "w", encoding="utf-8") as handle:
+        json.dump(summary_payload, handle, indent=2, ensure_ascii=False)
+
+    _mark_full_report_phase(artifact_dir)
+    freshness, snapshot_end, snapshot_fp = _snapshot_freshness(
+        snapshot_path,
+        expected_analysis_end=analysis_end,
+        expected_config_fingerprint=config_fingerprint,
+    )
+    duration = timing.total_seconds
+    step = {
+        "candidate_id": candidate_id,
+        "display_name": row["display_name"],
+        "role": row["role"],
+        "artifact_root": artifact_root,
+        "status": "succeeded",
+        "execution_action": "full_report_built",
+        "entry_commands": entry_commands,
+        "exit_code": 0,
+        "duration_seconds": duration,
+        "reason_code": None,
+        "message": None,
+        "expected_analysis_end": analysis_end,
+        "snapshot_analysis_end": snapshot_end,
+        "freshness_status": freshness,
+        "expected_config_fingerprint": config_fingerprint,
+        "snapshot_config_fingerprint": snapshot_fp,
+        "phases_completed": ["weights", "report", "full_report"],
+        "report_profile": REPORT_PROFILE_FULL,
+    }
+    merge_timing_into_step(step, timing.to_dict())
+    _append_factory_step(
+        steps,
+        step,
+        candidate_id=candidate_id,
+        project_root=project_root,
+        output_dir_final=output_dir_final,
+    )
+    _increment_summary(summary, "succeeded")
+    _persist_manifest_step(
+        manifest,
+        output_dir=manifest_dir,
+        candidate_id=candidate_id,
+        step=step,
+        project_root=project_root,
+    )
+    return True
+
+
+def _run_full_candidate_reports_phase(
+    *,
+    cfg: PortfolioConfig,
+    full_report_ids: list[str],
+    steps: list[dict[str, Any]],
+    summary: dict[str, int],
+    manifest: dict[str, Any],
+    manifest_dir: Path,
+    project_root: Path,
+    output_dir_final: str,
+    analysis_end: str | None,
+    config_fingerprint: str,
+    skip_existing: bool,
+    force: bool,
+    fail_fast: bool,
+    pdf_mode: str,
+    run_context: CandidateRunContext | None,
+) -> bool:
+    """
+    Phase 3 loop. Returns False when fail-fast should mark the run aborted after this phase.
+    """
+    if not full_report_ids:
+        return True
+
+    fail_fast_aborted = False
+    for candidate_id in full_report_ids:
+        row = registry_row(candidate_id)
+        if row is None:
+            continue
+        artifact_root = row["artifact_root"]
+        artifact_dir = project_root / artifact_root
+        scripts = CANDIDATE_ENTRY_SCRIPTS.get(candidate_id, [])
+        entry_commands = [
+            f"{sys.executable} {script}" for script in scripts
+        ] if scripts else []
+
+        if (
+            skip_existing
+            and not force
+            and (artifact_dir / FULL_REPORT_SKIP_MARKER).is_file()
+        ):
+            step = {
+                "candidate_id": candidate_id,
+                "display_name": row["display_name"],
+                "role": row["role"],
+                "artifact_root": artifact_root,
+                "status": "skipped_existing",
+                "execution_action": "full_report_skipped_existing",
+                "entry_commands": entry_commands,
+                "exit_code": 0,
+                "duration_seconds": 0.0,
+                "reason_code": None,
+                "message": f"{FULL_REPORT_SKIP_MARKER} present; full report export skipped.",
+                "expected_analysis_end": analysis_end,
+                "snapshot_analysis_end": None,
+                "freshness_status": "fresh",
+                "expected_config_fingerprint": config_fingerprint,
+                "snapshot_config_fingerprint": None,
+                "phases_completed": ["full_report"],
+                "report_profile": REPORT_PROFILE_FULL,
+            }
+            _append_factory_step(
+                steps,
+                step,
+                candidate_id=candidate_id,
+                project_root=project_root,
+                output_dir_final=output_dir_final,
+            )
+            _increment_summary(summary, "skipped_existing")
+            _persist_manifest_step(
+                manifest,
+                output_dir=manifest_dir,
+                candidate_id=candidate_id,
+                step=step,
+                project_root=project_root,
+            )
+            continue
+
+        if not _execute_full_report(
+            cfg=cfg,
+            candidate_id=candidate_id,
+            row=row,
+            artifact_dir=artifact_dir,
+            artifact_root=artifact_root,
+            entry_commands=entry_commands,
+            analysis_end=analysis_end,
+            config_fingerprint=config_fingerprint,
+            steps=steps,
+            summary=summary,
+            manifest=manifest,
+            manifest_dir=manifest_dir,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+            fail_fast=fail_fast,
+            pdf_mode=pdf_mode,
+            run_context=run_context,
+        ):
+            fail_fast_aborted = True
+            break
+
+    if normalize_pdf_mode(pdf_mode) == "final_only" and not fail_fast_aborted:
+        final_timing = BuilderStepTiming()
+        _rebuild_variant_pdfs_without_skip_env(timing=final_timing)
+        steps.append(
+            {
+                "candidate_id": "__factory_pdf_final__",
+                "display_name": "Factory final PDF rebuild",
+                "role": "orchestration",
+                "artifact_root": "",
+                "status": "succeeded",
+                "execution_action": "full_report_final_pdf_rebuild",
+                "entry_commands": [],
+                "exit_code": 0,
+                "duration_seconds": final_timing.pdf_seconds,
+                "reason_code": None,
+                "message": None,
+                "pdf_mode": "final_only",
+                "full_report_targets": list(full_report_ids),
+            }
+        )
+        summary["total"] = summary.get("total", 0) + 1
+        summary["succeeded"] = summary.get("succeeded", 0) + 1
+
+    return not fail_fast_aborted
 
 
 def _empty_summary() -> dict[str, int]:
@@ -525,6 +1516,7 @@ def _synthesize_step_from_manifest(
         "role": row["role"],
         "artifact_root": row["artifact_root"],
         "status": status,
+        "execution_action": "resumed_from_manifest",
         "entry_commands": entry_commands,
         "exit_code": None,
         "duration_seconds": 0.0,
@@ -545,10 +1537,20 @@ def _persist_manifest_step(
     output_dir: Path,
     candidate_id: str,
     step: dict[str, Any],
+    project_root: Path | None = None,
 ) -> None:
     manifest["completed_steps"][candidate_id] = manifest_step_record(step)
     manifest["last_completed_candidate_id"] = candidate_id
     write_factory_manifest(manifest, output_dir)
+    artifact_root = step.get("artifact_root")
+    if project_root is not None and artifact_root:
+        manifest_path = write_candidate_manifest(project_root / str(artifact_root), step)
+        if manifest_path is not None:
+            try:
+                rel = manifest_path.relative_to(project_root)
+                step["candidate_manifest_path"] = rel.as_posix()
+            except ValueError:
+                step["candidate_manifest_path"] = manifest_path.as_posix()
 
 
 def _increment_summary(summary: dict[str, int], status: str) -> None:
@@ -571,6 +1573,10 @@ def run_candidate_factory(
     fail_fast: bool = False,
     resume: bool = False,
     config_path: Path | None = None,
+    pdf_mode: str = "none",
+    execution_mode: str = "legacy_full",
+    full_candidate_reports: bool = False,
+    selected_candidates_for_full_report: list[str] | None = None,
     runner: Any | None = None,
 ) -> dict[str, Any]:
     try:
@@ -590,10 +1596,22 @@ def run_candidate_factory(
             f"Unknown candidate id(s): {', '.join(unknown)}"
         )
 
+    full_report_ids = resolve_full_report_candidate_ids(
+        candidate_ids,
+        full_candidate_reports=full_candidate_reports,
+        selected=selected_candidates_for_full_report,
+    )
+
     steps: list[dict[str, Any]] = []
     summary = _empty_summary()
     warnings: list[str] = []
     python_exe = sys.executable
+    pdf_mode_normalized = normalize_pdf_mode(pdf_mode)
+    execution_mode_normalized = normalize_execution_mode(execution_mode)
+    in_process_phase = uses_weights_only_phase(execution_mode_normalized)
+    lightweight_report_phase = uses_lightweight_report_phase(execution_mode_normalized)
+    subprocess_env = subprocess_env_for_pdf_mode(pdf_mode_normalized)
+    run_context: CandidateRunContext | None = None
     output_dir_final = cfg.output_dir_final
     analysis_end = _resolve_analysis_end(project_root, output_dir_final)
     config_fingerprint = compute_candidate_config_fingerprint(cfg)
@@ -637,6 +1655,8 @@ def run_candidate_factory(
         ),
     )
 
+    fail_fast_aborted = False
+
     for candidate_id in candidate_ids:
         row = registry_row(candidate_id)
         if row is None:
@@ -661,9 +1681,14 @@ def run_candidate_factory(
             )
             _increment_summary(summary, "failed")
             _persist_manifest_step(
-                manifest, output_dir=manifest_dir, candidate_id=candidate_id, step=step
+                manifest,
+                output_dir=manifest_dir,
+                candidate_id=candidate_id,
+                step=step,
+                project_root=project_root,
             )
             if fail_fast:
+                fail_fast_aborted = True
                 break
             continue
 
@@ -693,9 +1718,14 @@ def run_candidate_factory(
             )
             _increment_summary(summary, "failed")
             _persist_manifest_step(
-                manifest, output_dir=manifest_dir, candidate_id=candidate_id, step=step
+                manifest,
+                output_dir=manifest_dir,
+                candidate_id=candidate_id,
+                step=step,
+                project_root=project_root,
             )
             if fail_fast:
+                fail_fast_aborted = True
                 break
             continue
 
@@ -732,15 +1762,109 @@ def run_candidate_factory(
                 )
                 _increment_summary(summary, step["status"])
                 summary["resumed_from_manifest"] += 1
+                if not skip_existing:
+                    warnings.append(
+                        "resume_manifest_reused_completed_step_despite_no_skip_existing:"
+                        f"{candidate_id}:builder_not_rerun"
+                    )
                 _persist_manifest_step(
                     manifest,
                     output_dir=manifest_dir,
                     candidate_id=candidate_id,
                     step=step,
+                    project_root=project_root,
                 )
                 continue
 
-        if skip_existing and not force and snapshot_path.is_file():
+        if in_process_phase and skip_existing and not force:
+            snap_freshness, snap_end, snap_fp = _snapshot_freshness(
+                snapshot_path,
+                expected_analysis_end=analysis_end,
+                expected_config_fingerprint=config_fingerprint,
+            )
+            if lightweight_report_phase and snap_freshness == "fresh":
+                step = _failed_step(
+                    candidate_id=candidate_id,
+                    display_name=row["display_name"],
+                    role=row["role"],
+                    artifact_root=artifact_root,
+                    status="skipped_existing",
+                    reason_code="skipped_existing",
+                    message="snapshot_10y.json already fresh; weights and report skipped.",
+                    entry_commands=entry_commands,
+                    exit_code=None,
+                    duration_seconds=0.0,
+                    expected_analysis_end=analysis_end,
+                    snapshot_analysis_end=snap_end,
+                    freshness_status=snap_freshness,
+                    expected_config_fingerprint=config_fingerprint,
+                    snapshot_config_fingerprint=snap_fp,
+                )
+                step["execution_action"] = "reused_existing_snapshot"
+                step["phases_completed"] = ["weights", "report"]
+                step["report_profile"] = REPORT_PROFILE_LIGHTWEIGHT
+                _append_factory_step(
+                    steps,
+                    step,
+                    candidate_id=candidate_id,
+                    project_root=project_root,
+                    output_dir_final=output_dir_final,
+                )
+                _increment_summary(summary, "skipped_existing")
+                _persist_manifest_step(
+                    manifest,
+                    output_dir=manifest_dir,
+                    candidate_id=candidate_id,
+                    step=step,
+                    project_root=project_root,
+                )
+                continue
+            if not lightweight_report_phase:
+                w_freshness, w_end, w_fp = weights_build_freshness(
+                    artifact_dir,
+                    expected_analysis_end=analysis_end,
+                    expected_config_fingerprint=config_fingerprint,
+                )
+                if w_freshness == "fresh":
+                    step = _failed_step(
+                        candidate_id=candidate_id,
+                        display_name=row["display_name"],
+                        role=row["role"],
+                        artifact_root=artifact_root,
+                        status="skipped_existing",
+                        reason_code="skipped_existing",
+                        message=(
+                            "candidate_weights_build.json already fresh; "
+                            "weights step skipped."
+                        ),
+                        entry_commands=entry_commands,
+                        exit_code=None,
+                        duration_seconds=0.0,
+                        expected_analysis_end=analysis_end,
+                        snapshot_analysis_end=w_end,
+                        freshness_status=w_freshness,
+                        expected_config_fingerprint=config_fingerprint,
+                        snapshot_config_fingerprint=w_fp,
+                    )
+                    step["execution_action"] = "reused_existing_weights"
+                    _append_factory_step(
+                        steps,
+                        step,
+                        candidate_id=candidate_id,
+                        project_root=project_root,
+                        output_dir_final=output_dir_final,
+                    )
+                    _increment_summary(summary, "skipped_existing")
+                    _persist_manifest_step(
+                        manifest,
+                        output_dir=manifest_dir,
+                        candidate_id=candidate_id,
+                        step=step,
+                        project_root=project_root,
+                    )
+                    continue
+
+        if skip_existing and not force and snapshot_path.is_file() and not in_process_phase:
             freshness, snapshot_end, snapshot_fp = _snapshot_freshness(
                 snapshot_path,
                 expected_analysis_end=analysis_end,
@@ -777,6 +1901,7 @@ def run_candidate_factory(
                     output_dir=manifest_dir,
                     candidate_id=candidate_id,
                     step=step,
+                    project_root=project_root,
                 )
                 continue
             if freshness == "unchecked":
@@ -830,15 +1955,84 @@ def run_candidate_factory(
             )
             _increment_summary(summary, "skipped_dependency")
             _persist_manifest_step(
-                manifest, output_dir=manifest_dir, candidate_id=candidate_id, step=step
+                manifest,
+                output_dir=manifest_dir,
+                candidate_id=candidate_id,
+                step=step,
+                project_root=project_root,
             )
+            continue
+
+        if in_process_phase:
+            weights_reused = False
+            if skip_existing and not force:
+                w_freshness, _, _ = weights_build_freshness(
+                    artifact_dir,
+                    expected_analysis_end=analysis_end,
+                    expected_config_fingerprint=config_fingerprint,
+                )
+                weights_reused = w_freshness == "fresh"
+            need_weights_build = force or not weights_reused
+            if need_weights_build:
+                if run_context is None:
+                    run_context = prepare_candidate_run_context(
+                        cfg, project_root=project_root
+                    )
+                if not _execute_weights_only_build(
+                    candidate_id=candidate_id,
+                    row=row,
+                    artifact_dir=artifact_dir,
+                    artifact_root=artifact_root,
+                    entry_commands=entry_commands,
+                    context=run_context,
+                    analysis_end=analysis_end,
+                    config_fingerprint=config_fingerprint,
+                    steps=steps,
+                    summary=summary,
+                    manifest=manifest,
+                    manifest_dir=manifest_dir,
+                    project_root=project_root,
+                    output_dir_final=output_dir_final,
+                    fail_fast=fail_fast,
+                    record_factory_step=not lightweight_report_phase,
+                ):
+                    if fail_fast:
+                        fail_fast_aborted = True
+                    break
+            if lightweight_report_phase:
+                if not _execute_lightweight_report(
+                    cfg=cfg,
+                    candidate_id=candidate_id,
+                    row=row,
+                    artifact_dir=artifact_dir,
+                    artifact_root=artifact_root,
+                    entry_commands=entry_commands,
+                    analysis_end=analysis_end,
+                    config_fingerprint=config_fingerprint,
+                    steps=steps,
+                    summary=summary,
+                    manifest=manifest,
+                    manifest_dir=manifest_dir,
+                    project_root=project_root,
+                    output_dir_final=output_dir_final,
+                    fail_fast=fail_fast,
+                    weights_reused=weights_reused and not need_weights_build,
+                    run_context=run_context,
+                ):
+                    if fail_fast:
+                        fail_fast_aborted = True
+                    break
             continue
 
         t0 = time.perf_counter()
         exit_code, stderr_tail = _run_subprocess_chain(
-            commands, project_root=project_root, runner=runner
+            commands,
+            project_root=project_root,
+            runner=runner,
+            subprocess_env=subprocess_env,
         )
         duration = round(time.perf_counter() - t0, 3)
+        builder_timing = load_builder_runtime_timing(artifact_dir)
 
         if exit_code != 0 or not snapshot_path.is_file():
             reason_code, message, builder_status, builder_reason = _post_build_failure_details(
@@ -866,6 +2060,7 @@ def run_candidate_factory(
                 builder_status=builder_status,
                 builder_reason=builder_reason,
             )
+            merge_timing_into_step(step, builder_timing)
             _append_factory_step(
                 steps,
                 step,
@@ -875,9 +2070,14 @@ def run_candidate_factory(
             )
             _increment_summary(summary, "failed")
             _persist_manifest_step(
-                manifest, output_dir=manifest_dir, candidate_id=candidate_id, step=step
+                manifest,
+                output_dir=manifest_dir,
+                candidate_id=candidate_id,
+                step=step,
+                project_root=project_root,
             )
             if fail_fast:
+                fail_fast_aborted = True
                 break
             continue
 
@@ -916,9 +2116,14 @@ def run_candidate_factory(
             )
             _increment_summary(summary, "failed")
             _persist_manifest_step(
-                manifest, output_dir=manifest_dir, candidate_id=candidate_id, step=step
+                manifest,
+                output_dir=manifest_dir,
+                candidate_id=candidate_id,
+                step=step,
+                project_root=project_root,
             )
             if fail_fast:
+                fail_fast_aborted = True
                 break
             continue
         if freshness == "stale_config":
@@ -952,9 +2157,14 @@ def run_candidate_factory(
             )
             _increment_summary(summary, "failed")
             _persist_manifest_step(
-                manifest, output_dir=manifest_dir, candidate_id=candidate_id, step=step
+                manifest,
+                output_dir=manifest_dir,
+                candidate_id=candidate_id,
+                step=step,
+                project_root=project_root,
             )
             if fail_fast:
+                fail_fast_aborted = True
                 break
             continue
 
@@ -964,6 +2174,7 @@ def run_candidate_factory(
             "role": row["role"],
             "artifact_root": artifact_root,
             "status": "succeeded",
+            "execution_action": "builder_invoked",
             "entry_commands": entry_commands,
             "exit_code": exit_code,
             "duration_seconds": duration,
@@ -975,6 +2186,7 @@ def run_candidate_factory(
             "expected_config_fingerprint": config_fingerprint,
             "snapshot_config_fingerprint": snapshot_fp,
         }
+        merge_timing_into_step(step, builder_timing)
         _append_factory_step(
             steps,
             step,
@@ -995,13 +2207,47 @@ def run_candidate_factory(
         ):
             summary["rebuilt_stale"] += 1
         _persist_manifest_step(
-            manifest, output_dir=manifest_dir, candidate_id=candidate_id, step=step
+            manifest,
+            output_dir=manifest_dir,
+            candidate_id=candidate_id,
+            step=step,
+            project_root=project_root,
         )
 
+    if full_report_ids:
+        if run_context is None:
+            run_context = prepare_candidate_run_context(
+                cfg, project_root, no_cache=False
+            )
+        if not _run_full_candidate_reports_phase(
+            cfg=cfg,
+            full_report_ids=full_report_ids,
+            steps=steps,
+            summary=summary,
+            manifest=manifest,
+            manifest_dir=manifest_dir,
+            project_root=project_root,
+            output_dir_final=output_dir_final,
+            analysis_end=analysis_end,
+            config_fingerprint=config_fingerprint,
+            skip_existing=skip_existing,
+            force=force,
+            fail_fast=fail_fast,
+            pdf_mode=pdf_mode_normalized,
+            run_context=run_context,
+        ):
+            fail_fast_aborted = True
+
     manifest_path = write_factory_manifest(manifest, manifest_dir)
+    run_status = compute_factory_run_status(
+        summary,
+        fail_fast=fail_fast,
+        fail_fast_aborted=fail_fast_aborted,
+    )
     doc: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "diagnostic_only": True,
+        "run_status": run_status,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "factory_profile_id": factory_profile_id,
         "project_root": str(project_root),
@@ -1015,6 +2261,12 @@ def run_candidate_factory(
             "fail_fast": fail_fast,
             "resume": resume,
             "then_compare": False,
+            "pdf_mode": pdf_mode_normalized,
+            "execution_mode": execution_mode_normalized,
+            "full_candidate_reports": bool(
+                full_candidate_reports or selected_candidates_for_full_report
+            ),
+            "selected_candidates_for_full_report": selected_candidates_for_full_report,
         },
         "manifest": {
             "path": str(manifest_path),
@@ -1040,6 +2292,8 @@ def run_candidate_factory(
             }
         ),
     }
+    doc["execution_summary"] = build_factory_execution_summary(doc)
+    doc["timing_summary"] = build_timing_summary(doc.get("steps") or [])
     return doc
 
 
@@ -1094,12 +2348,21 @@ def _failed_step(
     builder_status: str | None = None,
     builder_reason: str | None = None,
 ) -> dict[str, Any]:
+    if status == "skipped_existing":
+        execution_action = "reused_existing_snapshot"
+    elif status == "skipped_dependency":
+        execution_action = "skipped_dependency"
+    elif status == "failed" and entry_commands:
+        execution_action = "builder_invoked_failed"
+    else:
+        execution_action = "failed_before_build"
     step: dict[str, Any] = {
         "candidate_id": candidate_id,
         "display_name": display_name,
         "role": role,
         "artifact_root": artifact_root,
         "status": status,
+        "execution_action": execution_action,
         "entry_commands": entry_commands,
         "exit_code": exit_code,
         "duration_seconds": duration_seconds,
@@ -1150,6 +2413,20 @@ def compute_next_recommended_command(doc: dict[str, Any]) -> str:
     if summary.get("failed", 0) > 0:
         return _factory_resume_cli_command(doc)
 
+    options = doc.get("options") or {}
+    if (
+        options.get("execution_mode") == "standard"
+        and not options.get("full_candidate_reports")
+        and not options.get("selected_candidates_for_full_report")
+        and summary.get("succeeded", 0) > 0
+    ):
+        return (
+            f"python run_candidate_factory.py --profile {profile_id} "
+            "--execution-mode standard "
+            "--selected-candidates-for-full-report equal_weight,risk_parity "
+            "# optional deep-dive HTML/PDF for selected candidates"
+        )
+
     if any(w.startswith("comparison_failed:") for w in warnings):
         return "python run_compare_variants.py"
 
@@ -1179,6 +2456,103 @@ def compute_next_recommended_command(doc: dict[str, Any]) -> str:
     return "python run_compare_variants.py"
 
 
+def build_factory_execution_summary(doc: dict[str, Any]) -> dict[str, Any]:
+    """Human/audit disclosure of which candidates were built vs reused."""
+    steps = [s for s in doc.get("steps") or [] if isinstance(s, dict)]
+    build_success_actions = {
+        "builder_invoked",
+        "weights_built",
+        "lightweight_report_built",
+        "lightweight_report_reused_weights",
+        "full_report_built",
+        "full_report_final_pdf_rebuild",
+    }
+    build_failed_actions = {
+        "builder_invoked_failed",
+        "weights_built_failed",
+        "lightweight_report_failed",
+        "full_report_failed",
+    }
+    in_process_build_actions = build_success_actions | build_failed_actions
+    in_process_build_actions.discard("builder_invoked")
+    in_process_build_actions.discard("builder_invoked_failed")
+    reuse_actions = {
+        "reused_existing_snapshot",
+        "reused_existing_weights",
+        "full_report_skipped_existing",
+    }
+
+    def _candidate_ids_for(actions: set[str]) -> list[str]:
+        ids: list[str] = []
+        seen: set[str] = set()
+        for step in steps:
+            if step.get("execution_action") not in actions:
+                continue
+            candidate_id = str(step.get("candidate_id"))
+            if candidate_id in seen:
+                continue
+            ids.append(candidate_id)
+            seen.add(candidate_id)
+        return ids
+
+    build_success_ids = _candidate_ids_for(build_success_actions)
+    failed_build_ids = _candidate_ids_for(build_failed_actions)
+    built_ids = [
+        str(s.get("candidate_id"))
+        for s in steps
+        if s.get("execution_action") == "builder_invoked"
+    ]
+    failed_builder_ids = [
+        str(s.get("candidate_id"))
+        for s in steps
+        if s.get("execution_action") == "builder_invoked_failed"
+    ]
+    reused_existing_ids = _candidate_ids_for(reuse_actions)
+    reused_snapshot_ids = _candidate_ids_for({"reused_existing_snapshot"})
+    reused_weights_ids = _candidate_ids_for({"reused_existing_weights"})
+    resumed_ids = [
+        str(s.get("candidate_id"))
+        for s in steps
+        if s.get("execution_action") == "resumed_from_manifest"
+    ]
+    skipped_dependency_ids = [
+        str(s.get("candidate_id"))
+        for s in steps
+        if s.get("execution_action") == "skipped_dependency"
+    ]
+    return {
+        "build_steps_executed": sum(
+            1
+            for s in steps
+            if s.get("execution_action") in build_success_actions | build_failed_actions
+        ),
+        "build_steps_succeeded": sum(
+            1 for s in steps if s.get("execution_action") in build_success_actions
+        ),
+        "build_steps_failed": sum(
+            1 for s in steps if s.get("execution_action") in build_failed_actions
+        ),
+        "in_process_build_steps": sum(
+            1 for s in steps if s.get("execution_action") in in_process_build_actions
+        ),
+        "builder_invoked": len(built_ids) + len(failed_builder_ids),
+        "builder_invoked_succeeded": len(built_ids),
+        "builder_invoked_failed": len(failed_builder_ids),
+        "reused_existing": len(reused_existing_ids),
+        "reused_existing_snapshot": len(reused_snapshot_ids),
+        "reused_existing_weights": len(reused_weights_ids),
+        "resumed_from_manifest": len(resumed_ids),
+        "skipped_dependency": len(skipped_dependency_ids),
+        "rebuilt_candidate_ids": build_success_ids,
+        "failed_build_candidate_ids": failed_build_ids,
+        "reused_candidate_ids": reused_existing_ids,
+        "resumed_candidate_ids": resumed_ids,
+        "skipped_dependency_candidate_ids": skipped_dependency_ids,
+        "no_skip_existing_requested": not bool((doc.get("options") or {}).get("skip_existing", True)),
+        "resume_requested": bool((doc.get("options") or {}).get("resume", False)),
+    }
+
+
 def build_factory_run_txt(doc: dict[str, Any]) -> str:
     lines = [
         "Candidate Portfolio Factory Run",
@@ -1187,6 +2561,10 @@ def build_factory_run_txt(doc: dict[str, Any]) -> str:
         "",
     ]
     summary = doc.get("summary") or {}
+    execution = doc.get("execution_summary") or build_factory_execution_summary(doc)
+    run_status = doc.get("run_status")
+    if run_status:
+        lines.append(f"Run status: {run_status}")
     lines.append(
         "Summary: "
         f"total={summary.get('total', 0)} "
@@ -1197,6 +2575,50 @@ def build_factory_run_txt(doc: dict[str, Any]) -> str:
         f"rebuilt_stale={summary.get('rebuilt_stale', 0)} "
         f"resumed_from_manifest={summary.get('resumed_from_manifest', 0)}"
     )
+    if run_status == "partial_success":
+        lines.append(
+            "Partial failure: one or more candidates failed; remaining steps continued "
+            "(use --fail-fast to stop on first failure)."
+        )
+    lines.append(
+        "Execution: "
+        f"build_steps_executed={execution.get('build_steps_executed', 0)} "
+        f"builder_invoked={execution.get('builder_invoked', 0)} "
+        f"in_process_build_steps={execution.get('in_process_build_steps', 0)} "
+        f"reused_existing={execution.get('reused_existing', 0)} "
+        f"reused_existing_snapshot={execution.get('reused_existing_snapshot', 0)} "
+        f"resumed_from_manifest={execution.get('resumed_from_manifest', 0)} "
+        f"skipped_dependency={execution.get('skipped_dependency', 0)}"
+    )
+    options = doc.get("options") or {}
+    if options.get("pdf_mode"):
+        lines.append(f"PDF mode: {options.get('pdf_mode')}")
+    if options.get("execution_mode"):
+        lines.append(f"Execution mode: {options.get('execution_mode')}")
+    if options.get("full_candidate_reports") or options.get(
+        "selected_candidates_for_full_report"
+    ):
+        targets = options.get("selected_candidates_for_full_report")
+        if targets:
+            lines.append(f"Full report export: {', '.join(targets)}")
+        else:
+            lines.append("Full report export: all candidates in this run")
+    timing = doc.get("timing_summary") or {}
+    if timing.get("steps_with_timing", 0) > 0:
+        lines.append(
+            "Timing (seconds): "
+            f"core={timing.get('builder_core_seconds', 0)} "
+            f"report={timing.get('report_seconds', 0)} "
+            f"pdf={timing.get('pdf_seconds', 0)} "
+            f"total={timing.get('total_seconds', 0)} "
+            f"(steps_with_timing={timing.get('steps_with_timing', 0)})"
+        )
+    if execution.get("no_skip_existing_requested"):
+        lines.append(
+            "--no-skip-existing requested: rows with build execution actions were "
+            "rebuilt; rows with resumed_from_manifest were not rerun because resume "
+            "was active."
+        )
     manifest = doc.get("manifest") or {}
     if manifest.get("resume_manifest_active"):
         lines.append("Resume: prior manifest applied (completed steps not rerun).")
@@ -1253,7 +2675,7 @@ def write_candidate_factory_outputs(
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(doc, f, indent=2)
         f.write("\n")
-    txt_path.write_text(build_factory_run_txt(doc), encoding="utf-8")
+    txt_path.write_text(ascii_safe_text(build_factory_run_txt(doc)), encoding="utf-8")
     written: dict[str, Path] = {
         "candidate_factory_run_json": json_path,
         "candidate_factory_run_txt": txt_path,
