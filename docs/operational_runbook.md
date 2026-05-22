@@ -4,6 +4,8 @@ Short guide for the portfolio-first review command and for legacy policy optimiz
 See `docs/specs/production_workflow.md` for legacy policy status and gate semantics. Blocks 1-5
 MVP core reliability handoff:
 [Blocks 1-5 MVP Core Reliability Plan](exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md).
+Phase 17 live E2E gates:
+[Post-Deep-Audit Foundation Plan](exec_plans/2026-05-21_post_deep_audit_foundation_plan.md) Session 02 (`RM-1021` core) and Session 10 (`RM-1029` full + resume).
 
 ## 0. Portfolio-First Review Workflow
 
@@ -57,6 +59,54 @@ python -m pytest tests/test_blocks_1_5_mvp_smoke.py -q --basetemp='tmp\pytest_bl
 
 Full verification matrix: [TESTING.md](../TESTING.md) Blocks 1-5 section; output map:
 [OUTPUTS.md](../OUTPUTS.md) Blocks 1-5 MVP Output Acceptance.
+
+### Live core E2E gate (Phase 17, RM-1021)
+
+Use when closing Session 02 or proving networked Blocks 1-5 core review end-to-end. Requires
+market data download (Yahoo/FRED); not part of default offline pytest.
+
+| Step | Command | Pass criterion |
+| --- | --- | --- |
+| 1 | `python run_portfolio_review.py --mode core --skip-pdf` | Exit code `0`; subject + factory + comparison stages complete |
+| 2 | `python scripts/verify_live_core_e2e.py` | Prints `live core E2E validation: OK` |
+| 3 | `python -m pytest tests/test_blocks_1_5_mvp_smoke.py -q` | Offline smoke still passes (regression guard) |
+
+Combined run + verify:
+
+```bash
+python scripts/verify_live_core_e2e.py --run
+```
+
+Optional pytest marker after step 1:
+
+```bash
+python -m pytest tests/test_blocks_1_5_live_core_e2e.py --live-core -q
+```
+
+Artifact checks (step 2): `{output_dir_final}/analysis_subject/` has `run_metadata.json`,
+`portfolio_xray.json`, and `stress_report.json`; `candidate_comparison.json` exists with
+`candidate_menu.review_mode == "core"`; `candidate_factory_run.json` has `factory_profile_id ==
+"core_v1"`. See [TESTING.md](../TESTING.md) Blocks 1-5 Live Core E2E for the full table.
+
+### Live full + resume E2E gate (Phase 17, RM-1029)
+
+Use when closing Phase 17 or proving networked **full** review (`default_v1`, 16 builders).
+Requires market data; not part of default offline pytest.
+
+| Step | Command | Pass criterion |
+| --- | --- | --- |
+| 1 | `python run_portfolio_review.py --mode full --skip-pdf` | Exit code `0`; subject + `default_v1` factory + comparison complete |
+| 2 | `python scripts/verify_live_full_e2e.py` | Prints `live full E2E validation: OK` |
+| 3 (after interrupt) | `python run_portfolio_review.py --mode full --resume-candidates --skip-pdf` then `python scripts/verify_live_full_e2e.py --resume-candidates` | Manifest present; factory profile `default_v1`; `review_mode == full` |
+
+Combined:
+
+```bash
+python scripts/verify_live_full_e2e.py --run
+python scripts/verify_live_full_e2e.py --run --resume-candidates
+```
+
+Phase 17 offline closure bundle: [TESTING.md](../TESTING.md) Phase 17 Post-Deep-Audit Closure Bundle.
 
 ### Runtime limits and partial menus
 
@@ -348,13 +398,44 @@ diagnostic; factory `reason_code` is the stable machine label for comparison and
 1. Factory exit 0 but no `candidate_comparison.json` — run `python run_compare_variants.py` or factory `--then-compare`.
 2. Warning `comparison_failed:` — read nested message; fix comparison inputs; rerun compare only.
 
-### 8.6 Artifacts to open first
+### 8.6 Optimizer fair comparison readiness (P17-G3 / RM-1023)
+
+After upgrading comparison readiness logic or optimizer disclosure, **rebuild optimizer candidate
+folders** so `baseline_weights_metadata.json` includes `optimizer_run_metadata` (with
+`input_fingerprints.config_fingerprint`) and each `snapshot_10y.json` includes
+`candidate_config_fingerprint` plus comparison blocks (`RC_asset`, `final_weights_total`,
+`stress_suite_results` or sibling `stress_report.json`).
+
+**Operator refresh (full menu):**
+
+```bash
+python run_portfolio_review.py --mode full --no-skip-existing --skip-pdf
+```
+
+Or factory-only:
+
+```bash
+python run_candidate_factory.py --profile default_v1 --no-skip-existing --then-compare
+```
+
+**Trust rule:** Selection favoring (Phase 17 Session 03) uses
+`construction_disclosure.optimization_readiness.fair_comparison_ready`. Rows stay `degraded` when
+optimizer metadata, clean solver quality, snapshot/config freshness, or diversification blocks are
+missing — not eligible for favoring even if metrics exist.
+
+**Offline gate (≥3 fair-ready optimizers on synthetic full-menu seed):**
+
+```bash
+python -m pytest tests/test_optimizer_fair_comparison_full_menu.py -q
+```
+
+### 8.7 Artifacts to open first
 
 | Question | Open |
 | --- | --- |
 | Which step failed and why? | `candidate_factory_run.txt` (summary + reason codes) or `steps[]` in JSON |
 | Resume state? | `candidate_factory_manifest.json` (`completed_steps`, `run_checksum`) |
-| Fair comparison ready? | `candidate_comparison.json` row `availability` / `unavailable_reason` |
+| Fair comparison ready? | `candidate_comparison.json` → `construction_disclosure.optimization_readiness.fair_comparison_ready` |
 | Construction hypothesis? | Row `construction_disclosure` (not recomputed in factory) |
 | Robust λ / Main deps? | Step `robust_paths_disclosure` or §0 robust suite table |
 

@@ -44,8 +44,14 @@ def _assert_decision_package_chain(out_dir: Path) -> None:
 
     with open(out_dir / "selection_decision.json", encoding="utf-8") as f:
         selection = json.load(f)
-    assert selection.get("favored_candidate_id") or selection.get("selected_candidate_id")
-    assert selection.get("decision_status")
+    favored = selection.get("favored_candidate_id") or selection.get("selected_candidate_id")
+    status = selection.get("decision_status")
+    assert status
+    if favored:
+        assert status in ("selected_candidate", "no_material_rebalance")
+    else:
+        assert status == "inconclusive"
+        assert "no_favor_eligible_candidates" in (selection.get("warnings") or [])
 
     with open(out_dir / "decision_package_summary.json", encoding="utf-8") as f:
         package = json.load(f)

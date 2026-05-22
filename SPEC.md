@@ -155,6 +155,7 @@ Main report artifacts
 | Optimization Engine methodology map (Block 5 audit baseline; gaps G1-G10) | [docs/audits/2026-05-20_optimization_engine_methodology_map.md](docs/audits/2026-05-20_optimization_engine_methodology_map.md) |
 | Optimization Engine governance ExecPlan (Phase 15 Sessions 00–12; closed 2026-05-21) | [docs/exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md](docs/exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md) |
 | Canonical candidate comparison artifact | [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md) |
+| Downstream decision readiness (Blocks 6–7 eligibility guards) | [docs/specs/downstream_decision_readiness_spec.md](docs/specs/downstream_decision_readiness_spec.md), [src/downstream_decision_readiness.py](src/downstream_decision_readiness.py) |
 | Robustness Scorecard (diagnostic; `src/robustness_scorecard.py`) | [docs/specs/robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md) |
 | Portfolio Health Score | [docs/specs/portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md), [src/portfolio_health_score.py](src/portfolio_health_score.py) |
 | Selection Engine and No-Trade Recommendation | [docs/specs/selection_engine_spec.md](docs/specs/selection_engine_spec.md), [src/selection_engine.py](src/selection_engine.py) |

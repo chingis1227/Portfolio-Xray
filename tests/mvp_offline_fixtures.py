@@ -84,10 +84,19 @@ def seed_variant_snapshot(
     *,
     with_run_metadata: bool = False,
     portfolio_role: str = "generated_policy_portfolio",
+    final_weights_total: dict[str, float] | None = None,
 ) -> Path:
     folder = root / folder_name
     folder.mkdir(parents=True, exist_ok=True)
-    write_json(folder / "snapshot_10y.json", snapshot_10y(metrics))
+    weights = final_weights_total or {"VOO": 0.5, "BND": 0.5}
+    write_json(
+        folder / "snapshot_10y.json",
+        snapshot_10y(
+            metrics,
+            rc_asset=_rc_rows(weights),
+            final_weights_total=weights,
+        ),
+    )
     if with_run_metadata:
         write_json(folder / "run_metadata.json", run_metadata(portfolio_role))
     return folder

@@ -248,6 +248,45 @@ def test_explicit_current_analysis_subject_sets_report_weights_and_metadata() ->
     assert setup["analysis_portfolio"]["portfolio_role"] == "user_current_portfolio"
 
 
+def test_explicit_analysis_subject_rejects_unknown_ticker() -> None:
+    with pytest.raises(ConfigValidationError, match="unknown="):
+        validate_config(
+            {
+                "investor_currency": "USD",
+                "tickers": ["VOO", "NOTAREALTICKER"],
+                "analysis_subject": {
+                    "type": "current_portfolio",
+                    "weights": {"VOO": "50%", "NOTAREALTICKER": "50%"},
+                },
+            }
+        )
+
+
+def test_explicit_analysis_subject_accepts_stock_universe_ticker() -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "tickers": ["AAPL"],
+            "analysis_subject": {
+                "type": "model_portfolio",
+                "weights": {"AAPL": "100%"},
+            },
+        }
+    )
+    assert cfg.analysis_subject["type"] == "model_portfolio"
+
+
+def test_legacy_config_without_analysis_subject_does_not_preflight_unknown_ticker() -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "tickers": ["VOO", "NOTAREALTICKER"],
+            "weights": {"VOO": 0.5, "NOTAREALTICKER": 0.5},
+        }
+    )
+    assert cfg.analysis_subject == {}
+
+
 def test_five_ticker_current_analysis_subject_accepts_valid_weights() -> None:
     cfg = validate_config(
         {
@@ -442,9 +481,10 @@ def test_invalid_weighted_analysis_subject_requires_weights(subject_type: str) -
         )
 
 
-def test_input_assumptions_spec_documents_unknown_ticker_policy_conflict() -> None:
+def test_input_assumptions_spec_documents_ticker_preflight_policy() -> None:
     text = Path("docs/specs/input_assumptions_spec.md").read_text(encoding="utf-8")
 
     assert "analysis_setup" in text
-    assert "MVP product mode rejects unknown tickers" in text
-    assert "current repo mode" in text
+    assert "preflight_explicit_analysis_subject_tickers" in text
+    assert "Explicit `analysis_subject`" in text
+    assert "Legacy compatibility paths" in text

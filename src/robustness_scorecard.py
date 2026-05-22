@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config_schema import PortfolioConfig
+from src.downstream_decision_readiness import may_load_candidate_stress_report
 from src.stress_artifacts import resolve_candidate_stress_report_path
 
 SCHEMA_VERSION = "robustness_scorecard_v1"
@@ -149,6 +150,9 @@ def _resolve_stress_scenarios(
     else:
         scenarios = []
         source = "comparison"
+
+    if not may_load_candidate_stress_report(cand):
+        return scenarios, source if scenarios else "comparison"
 
     report_path = resolve_candidate_stress_report_path(
         cand,

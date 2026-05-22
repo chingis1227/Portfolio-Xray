@@ -265,6 +265,41 @@ def test_display_priority_summary_fields() -> None:
     assert summary["current_total_score"] is not None
 
 
+def test_partial_menu_run_warning() -> None:
+    comp = _comparison_three_candidates()
+    comp["candidate_menu"] = {
+        "is_partial_menu": True,
+        "partial_menu_reason": "incomplete_intended_menu",
+        "intended_menu_profile_id": "core_v1",
+        "product_menu_profile_id": "default_v1",
+    }
+    doc = build_portfolio_health_score(comp, robustness_scorecard=_robustness_fixture())
+    assert "partial_candidate_menu" in doc["warnings"]
+    assert any(w.startswith("partial_menu_context:") for w in doc["warnings"])
+
+
+def test_degraded_optimizer_candidate_warning() -> None:
+    comp = _comparison_three_candidates()
+    comp["candidates"].append(
+        {
+            "candidate_id": "mv_degraded",
+            "display_name": "MV Optimizer",
+            "status": "degraded",
+            "role": "optimizer_candidate",
+            "metrics": {"10y": {"cagr": 0.09, "vol_annual": 0.11, "max_drawdown": -0.18, "sharpe": 0.6}},
+            "stress": {"overall": "DIAG_PASS", "scenarios": []},
+            "drawdown": {"max_drawdown": -0.18},
+            "diversification": comp["candidates"][0]["diversification"],
+            "weight_concentration": comp["candidates"][0]["weight_concentration"],
+            "mandate": {"portfolio_valid": True},
+            "warnings": [],
+        }
+    )
+    doc = build_portfolio_health_score(comp, robustness_scorecard=_robustness_fixture())
+    row = next(c for c in doc["candidates"] if c["candidate_id"] == "mv_degraded")
+    assert "degraded_optimizer_diagnostic_only_not_favored" in row["warnings"]
+
+
 def test_write_outputs(tmp_path: Path) -> None:
     cfg = validate_config(
         {

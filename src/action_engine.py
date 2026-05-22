@@ -168,6 +168,9 @@ def build_action_plan(
 ) -> dict[str, Any]:
     """Build action_plan_v1 from comparison and selection artifacts."""
     warnings: list[str] = []
+    menu = comparison.get("candidate_menu") or {}
+    if menu.get("is_partial_menu"):
+        warnings.append("partial_candidate_menu_action_context")
     by_id = _candidates_by_id(comparison)
     decision_status = str(selection.get("decision_status") or "inconclusive")
     favored_id = selection.get("favored_candidate_id")

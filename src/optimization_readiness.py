@@ -290,3 +290,40 @@ def build_optimization_readiness(
         "optimization_quality_status": quality_status,
         "optimization_quality_family": quality_family,
     }
+
+
+FAVORING_OPTIMIZER_ROLES = frozenset({"optimizer_candidate", "robust_candidate"})
+
+
+def is_optimizer_backed_for_favoring(cand: dict[str, Any]) -> bool:
+    """True when selection must enforce fair-comparison readiness before favoring."""
+    return cand.get("role") in FAVORING_OPTIMIZER_ROLES
+
+
+def fair_comparison_ready_from_candidate(cand: dict[str, Any]) -> bool:
+    disclosure = cand.get("construction_disclosure") or {}
+    readiness = disclosure.get("optimization_readiness") or {}
+    return readiness.get("fair_comparison_ready") is True
+
+
+def candidate_eligible_for_favoring(cand: dict[str, Any]) -> bool:
+    """Whether a row may become the favored selection target (Phase 17 RM-1022)."""
+    if cand.get("status") != "available":
+        return False
+    if is_optimizer_backed_for_favoring(cand):
+        return fair_comparison_ready_from_candidate(cand)
+    return True
+
+
+def favoring_ineligibility_reason(cand: dict[str, Any]) -> str | None:
+    """Machine reason when candidate_eligible_for_favoring is false; None when eligible."""
+    status = cand.get("status")
+    if status == "unavailable":
+        return "unavailable"
+    if status == "degraded":
+        return "degraded_excluded_from_favoring"
+    if status != "available":
+        return "status_not_available"
+    if is_optimizer_backed_for_favoring(cand) and not fair_comparison_ready_from_candidate(cand):
+        return "optimizer_not_fair_comparison_ready"
+    return None

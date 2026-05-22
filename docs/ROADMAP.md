@@ -37,6 +37,10 @@ Blocks 1-5 MVP core reliability (RM-1010 -> RM-1018): **closed** as of 2026-05-2
 Plan: [Blocks 1-5 MVP Core Reliability Plan](exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md).
 Scope: harden the existing portfolio-first MVP core without adding UI, new optimizer methodology,
 new stress methodology, new constraints, or new candidate behavior.
+Post-deep-audit foundation (RM-1020 -> RM-1029): **closed** as of 2026-05-22 (Session 10 complete).
+Plan: [Post-Deep-Audit Foundation Plan](exec_plans/2026-05-21_post_deep_audit_foundation_plan.md).
+Audit: [Blocks 1-5 Deep Audit Snapshot](audits/2026-05-21_blocks_1_5_deep_audit_snapshot.md).
+Scope: live E2E, selection/health guards, optimizer fairness backfill, preflight, freshness, downstream readiness; no formula/UI changes.
 ```
 
 New diagnostic layers must remain non-binding unless a canonical spec explicitly changes Selection or
@@ -460,6 +464,36 @@ Governed by the active
 | RM-1017 | Done | Session 08 | Documentation handoff and operator runbook cleanup. | RM-1013-RM-1016. | `README.md`, `SPEC.md`, `OUTPUTS.md`, `TESTING.md`, `docs/operational_runbook.md` | Root docs explain Blocks 1-5 MVP core, core/full/resume paths, trust artifacts, factory-evidence boundaries, and offline acceptance without chat context | `python scripts/verify_docs.py` OK. |
 | RM-1018 | Done | Session 09 | Representative run and closure. | RM-1011-RM-1017. | tests, `tests/conftest.py`, roadmap, known issues, changelog, ExecPlan | Phase 16 **Done**; closure verdict: MVP core reliability objectives met under plan scope | Offline bundle **125 passed**; `verify_docs` OK; dry-run core/full resume OK; live core subject materialization OK. |
 
+## Phase 17: Post-Deep-Audit Foundation & Downstream Readiness
+
+Goal: after the second-level Blocks 1–5 audit, close trust gaps that can mislead Blocks 6–10:
+live core proof, selection/health eligibility for `degraded` rows and partial menus, optimizer
+fair-comparison metadata on disk, ticker preflight, factory/comparison timestamp semantics, review
+bundle disclosure, and guarded downstream integration.
+
+Exit condition: operators can run core review with documented live acceptance; decision artifacts
+do not favor `degraded` optimizers; full-menu refresh yields multiple fair-ready optimizer rows;
+Blocks 6–10 consume comparison under documented eligibility rules; Phase 17 closed in ExecPlan and
+roadmap.
+
+Governed by the active
+[Post-Deep-Audit Foundation Plan](exec_plans/2026-05-21_post_deep_audit_foundation_plan.md)
+(Sessions 01–10). Audit input:
+[Blocks 1–5 Deep Audit Snapshot](audits/2026-05-21_blocks_1_5_deep_audit_snapshot.md).
+
+| ID | Status | Session | Work item | Prerequisites | Owning docs/code | Artifact or output | Verification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| RM-1020 | Done | Session 01 | ExecPlan, audit snapshot, registers. | Phase 16 closed; deep audit complete. | This ExecPlan, audit snapshot, ExecPlan register, ROADMAP, `KNOWN_ISSUES.md`, `CHANGELOG.md` | Active handoff for Sessions 02–10 | `python scripts/verify_docs.py`. |
+| RM-1021 | Done | Session 02 | Live core E2E gate. | RM-1020. | `src/live_core_e2e.py`, `scripts/verify_live_core_e2e.py`, `TESTING.md`, `docs/operational_runbook.md`, live marker test | Documented live core acceptance + validator | `verify_live_core_e2e.py --run` OK; offline smoke 6 passed; `--live-core` pytest 1 passed. |
+| RM-1022 | Done | Session 03 | Selection/health partial menu + degraded guards. | RM-1020. | `selection_engine.py`, `portfolio_health_score.py`, specs, tests | No favored `degraded` optimizer; partial menu warnings | selection/health pytest; MVP + portfolio-first E2E. |
+| RM-1023 | Done | Session 04 | Optimizer fairness metadata backfill. | RM-1022 recommended. | Optimizer builders, `portfolio_variants.py`, golden fixtures, runbook | ≥3 fair-ready optimizer rows on fresh full run or golden | `test_optimizer_fair_comparison_full_menu.py` (3 passed); Block 5 bundle. |
+| RM-1024 | Done | Session 05 | Block 1 ticker/universe preflight. | RM-1020. | `config_schema.py`, `analysis_setup.py`, input spec | Bad ticker fails before report | `test_input_assumptions.py` + MVP smoke **26 passed**. |
+| RM-1025 | Done | Session 06 | Factory vs comparison timestamp semantics. | RM-1020. | `candidate_comparison.py`, `run_candidate_factory.py`, `candidate_factory.py`, workflow, tests | Same-run review → `factory_evidence_status: current` when context matches | `test_candidate_comparison.py` (skew + stale); `verify_docs`. |
+| RM-1026 | Done | Session 07 | Review bundle disclosure. | RM-1025 recommended. | `review_bundle_context.py`, `candidate_comparison.py`, `input_assumptions.py`, specs, tests | `review_bundle_context` + input trust lines | `test_review_bundle_context.py` + comparison contract; `verify_docs`. |
+| RM-1027 | Done | Session 08 | Blocks 6–7 guarded integration. | RM-1022, RM-1026. | `downstream_decision_readiness_spec.md`, `downstream_decision_readiness.py`, health/robustness stress guards, tests | Offline integration test for guarded stress handoff | `test_blocks_6_7_downstream_integration.py` + `verify_docs`. |
+| RM-1028 | Done | Session 09 | Blocks 8–10 package truthfulness. | RM-1022, RM-1027. | `package_truthfulness.py`, `decision_package_reporting.py`, `action_engine.py`, tests | Package cannot imply full-menu optimizer winner after core-only | `test_blocks_8_10_downstream_integration.py` + package truthfulness bundle; `verify_docs`. |
+| RM-1029 | Done | Session 10 | Live full resume + Phase 17 closure. | RM-1021–RM-1028. | `live_full_e2e.py`, `verify_live_full_e2e.py`, ExecPlan, ROADMAP, CHANGELOG, KNOWN_ISSUES | Phase 17 **Done** | `verify_live_full_e2e.py --run` OK; resume `resumed_from_manifest=16`; closure **72 passed**; `verify_docs` OK. |
+
 ## Audit Mapping
 
 | Audit ID | Roadmap handling |
@@ -500,10 +534,12 @@ Phase 7 (`RM-700` through `RM-710`) is **closed** as of 2026-05-18. Phase 8 (`RM
 **closed** as of 2026-05-20 (Sessions 00-11 complete). Phase 14 (`RM-970` through `RM-981`) is
 **closed** as of 2026-05-20 (Session 11 complete). Phase 15 (`RM-990` through `RM-1002`) is
 **closed** as of 2026-05-21 (Session 12 complete). Phase 16 (`RM-1010` through `RM-1018`) is
-**closed** as of 2026-05-21 (Session 09 complete). Keep each future
-project-level session in a separate chat unless the user explicitly changes that rule. Do not reopen
-closed MVP, post-audit, portfolio-first, Phase 9, Phase 11, or Phase 12 sessions unless the user
-explicitly requests plan amendments.
+**closed** as of 2026-05-21 (Session 09 complete). Phase 17 (`RM-1020` through `RM-1029`) is
+**closed** as of 2026-05-22 (Session 10 complete) — see
+[Post-Deep-Audit Foundation Plan](exec_plans/2026-05-21_post_deep_audit_foundation_plan.md).
+Keep each future project-level session in a separate chat unless the user explicitly changes that
+rule. Do not reopen closed MVP, post-audit, portfolio-first, Phase 9, Phase 11, Phase 12, Phase 16,
+or Phase 17 sessions unless the user explicitly requests plan amendments.
 
 ## Implemented Decision Artifacts
 

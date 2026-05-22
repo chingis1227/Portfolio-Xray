@@ -20,6 +20,7 @@ outcome.
 
 | Date | Audit | Status | Follow-up plan | Outcome |
 | --- | --- | --- | --- | --- |
+| 2026-05-21 | [Blocks 1–5 Deep Audit Snapshot](2026-05-21_blocks_1_5_deep_audit_snapshot.md) | Active input | [Post-Deep-Audit Foundation Plan](../exec_plans/2026-05-21_post_deep_audit_foundation_plan.md) | Second-level audit after Phase 16; P0/P1 gaps P17-G1–G14; Sessions 02–10 remediation. |
 | 2026-05-20 | [Optimization Engine Baseline Snapshot](2026-05-20_optimization_engine_baseline_snapshot.md) | Historical | [Optimization Engine Post-Audit Roadmap](../exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md) | Session 00 checklist; Phase 15 Sessions 01-12 closure; golden contracts; artifact fingerprints TBD until representative optimizer run. |
 | 2026-05-20 | [Optimization Engine Methodology Map](2026-05-20_optimization_engine_methodology_map.md) | Historical | [Optimization Engine Post-Audit Roadmap](../exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md) | Block 5 map (5.1-5.11); Phase 15 governance wave closed Sessions 00-12 (G1-G8/G10 + golden/readiness). |
 | 2026-05-20 | [Candidate Factory Baseline Snapshot](2026-05-20_candidate_factory_baseline_snapshot.md) | Historical | [Candidate Portfolio Factory Post-Audit Roadmap](../exec_plans/2026-05-20_candidate_factory_post_audit_roadmap.md) | Session 00 checklist; Phase 14 Sessions 01-11 closure; artifact fingerprints TBD until representative review run. |

@@ -665,6 +665,20 @@ def _validate_analysis_subject(cfg: dict[str, Any]) -> None:
             f"missing={missing_from_config}"
         )
 
+    from src.analysis_setup import preflight_explicit_analysis_subject_tickers
+
+    cash_proxy_for_preflight: str | None = None
+    try:
+        from src.config import resolve_cash_and_rf
+
+        cash_proxy_for_preflight, _ = resolve_cash_and_rf(cfg)
+    except ConfigValidationError:
+        pass
+    preflight_explicit_analysis_subject_tickers(
+        tickers,
+        extra_allowed=[cash_proxy_for_preflight] if cash_proxy_for_preflight else None,
+    )
+
     subject_id = str(raw.get("id") or "analysis_subject").strip() or "analysis_subject"
     display_name = str(raw.get("display_name") or "").strip()
     weights = dict(raw.get("weights") or {})

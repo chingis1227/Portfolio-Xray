@@ -115,15 +115,20 @@ def main(argv: list[str] | None = None) -> int:
 
     doc["options"]["then_compare"] = args.then_compare
 
+    out_dir = project_root / cfg.output_dir_final
+    written = write_candidate_factory_outputs(doc, output_dir=out_dir)
+
     if args.then_compare:
-        paths, err = run_then_compare(cfg, project_root=project_root)
+        paths, err = run_then_compare(
+            cfg,
+            project_root=project_root,
+            factory_run=doc,
+        )
         if err:
             doc.setdefault("warnings", []).append(f"comparison_failed: {err}")
         elif paths:
             doc["comparison_outputs"] = {k: str(v) for k, v in paths.items()}
-
-    out_dir = project_root / cfg.output_dir_final
-    written = write_candidate_factory_outputs(doc, output_dir=out_dir)
+            write_candidate_factory_outputs(doc, output_dir=out_dir)
     logger.info("Factory run summary: %s", written["candidate_factory_run_json"])
 
     code = factory_exit_code(doc)

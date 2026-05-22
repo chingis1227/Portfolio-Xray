@@ -19,7 +19,14 @@ artifact contracts.
 
 ## Current Pointer
 
-**Active:** None (resume from [ROADMAP](../ROADMAP.md) for the next backlog row).
+**Active:** None (no project-level ExecPlan marked active). Resume from [ROADMAP.md](../ROADMAP.md)
+and completed plan handoffs below.
+
+Completed (2026-05-22): [Post-Deep-Audit Foundation & Downstream Readiness Plan](2026-05-21_post_deep_audit_foundation_plan.md)
+(Sessions 01–10; Phase 17 `RM-1020`–`RM-1029` Done). Handoff: live core/full E2E gates,
+selection/health/degraded guards, optimizer fairness offline gate, review bundle disclosure,
+downstream readiness + package truthfulness; closure bundle **72 passed**; live full + resume
+documented in Session 10.
 
 Completed (2026-05-21): [Blocks 1-5 MVP Core Reliability Plan](2026-05-21_blocks_1_5_mvp_core_reliability_plan.md)
 (Sessions 01-09; Phase 16 `RM-1010`-`RM-1018` Done). Handoff: hardened `analysis_subject` weight
@@ -70,6 +77,7 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-05-21 | [Post-Deep-Audit Foundation & Downstream Readiness Plan](2026-05-21_post_deep_audit_foundation_plan.md) | Completed | [Blocks 1–5 Deep Audit Snapshot](../audits/2026-05-21_blocks_1_5_deep_audit_snapshot.md) | Sessions 01–10 closed 2026-05-22: Phase 17 Done; live full + resume (`RM-1029`); closure bundle **72 passed**. |
 | 2026-05-21 | [Blocks 1-5 MVP Core Reliability Plan](2026-05-21_blocks_1_5_mvp_core_reliability_plan.md) | Completed | User-requested operational audit of Blocks 1-5 | Sessions 01-09 closed 2026-05-21: Phase 16 Done; offline bundle **125 passed**; subject materialization live smoke; `tests/conftest.py` fixture import fix. |
 | 2026-05-20 | [Optimization Engine Post-Audit Roadmap](2026-05-20_optimization_engine_post_audit_roadmap.md) | Completed | [Optimization Engine Methodology Map](../audits/2026-05-20_optimization_engine_methodology_map.md) | Sessions 00-12 closed 2026-05-21: G1-G8/G10 governance gaps; DEC-2026-05-21-001; golden contracts; Phase 15 Done. |
 | 2026-05-20 | [Candidate Portfolio Factory Post-Audit Roadmap](2026-05-20_candidate_factory_post_audit_roadmap.md) | Completed | [Candidate Factory Methodology Map](../audits/2026-05-20_candidate_factory_methodology_map.md) | Sessions 00-11 closed 2026-05-20: G1-G10 governance gaps; DEC-2026-05-20-003 concept registry; Phase 14 Done. |

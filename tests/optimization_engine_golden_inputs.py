@@ -29,6 +29,9 @@ _FIXTURES = Path(__file__).resolve().parent / "fixtures"
 LEGACY_METADATA_GOLDEN_PATH = _FIXTURES / "legacy_policy_optimizer_run_metadata_golden_v1.json"
 CANDIDATE_METADATA_GOLDEN_PATH = _FIXTURES / "candidate_optimizer_run_metadata_golden_v1.json"
 COMPARISON_BLOCK5_GOLDEN_PATH = _FIXTURES / "optimization_comparison_block5_golden_v1.json"
+COMPARISON_FULL_MENU_FAIR_READY_GOLDEN_PATH = (
+    _FIXTURES / "optimization_comparison_full_menu_fair_ready_golden_v1.json"
+)
 
 GOLDEN_ANALYSIS_END = "2026-04-30"
 GOLDEN_RETURNS_PANEL_FINGERPRINT = (
@@ -261,15 +264,36 @@ def build_golden_comparison_block5() -> dict[str, Any]:
         }
 
 
-def write_golden_fixtures() -> tuple[Path, Path, Path]:
+def build_full_menu_fair_ready_golden() -> dict[str, Any]:
+    """Fingerprint of fair-ready optimizer rows after full-menu offline seed (RM-1023)."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "optimizer_fair_comparison_fixtures",
+        Path(__file__).resolve().parent / "optimizer_fair_comparison_fixtures.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    with tempfile.TemporaryDirectory(prefix="oe_full_menu_") as tmp:
+        root = Path(tmp)
+        mod.seed_full_menu_optimizer_artifacts(root)
+        cfg = mod.fixture_portfolio_config()
+        doc = build_candidate_comparison(cfg, project_root=root)
+        return mod.full_menu_fair_ready_fingerprint(doc)
+
+
+def write_golden_fixtures() -> tuple[Path, Path, Path, Path]:
     _FIXTURES.mkdir(parents=True, exist_ok=True)
     legacy_path = LEGACY_METADATA_GOLDEN_PATH
     candidate_path = CANDIDATE_METADATA_GOLDEN_PATH
     block5_path = COMPARISON_BLOCK5_GOLDEN_PATH
+    full_menu_path = COMPARISON_FULL_MENU_FAIR_READY_GOLDEN_PATH
     _write_json(legacy_path, build_golden_legacy_policy_metadata())
     _write_json(candidate_path, build_golden_candidate_optimizer_metadata())
     _write_json(block5_path, build_golden_comparison_block5())
-    return legacy_path, candidate_path, block5_path
+    _write_json(full_menu_path, build_full_menu_fair_ready_golden())
+    return legacy_path, candidate_path, block5_path, full_menu_path
 
 
 if __name__ == "__main__":

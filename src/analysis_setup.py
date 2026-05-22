@@ -1,10 +1,11 @@
 """Resolved Analysis Setup contract for the input and assumptions layer."""
 from __future__ import annotations
 
-from typing import Any
+from pathlib import Path
+from typing import Any, Iterable
 
 from src.client_profiles import get_profile_defaults
-from src.config_schema import PortfolioConfig
+from src.config_schema import ConfigValidationError, PortfolioConfig
 from src.returns_frequency import (
     normalize_returns_frequency,
     resolve_returns_frequencies,
@@ -95,6 +96,71 @@ def _clean_tickers(tickers: list[str] | None) -> list[str]:
         if ticker and ticker not in out:
             out.append(ticker)
     return out
+
+
+def _upper_ticker(value: Any) -> str:
+    return str(value or "").strip().upper()
+
+
+_KNOWN_TAXONOMY_TICKERS: frozenset[str] | None = None
+
+
+def _load_taxonomy_ticker_set(path: Path, loader_name: str) -> set[str]:
+    if not path.is_file():
+        return set()
+    if loader_name == "etf":
+        from src.etf_universe import UniverseValidationError, load_etf_universe
+
+        loader = load_etf_universe
+        label = "ETF"
+    else:
+        from src.stock_universe import UniverseValidationError, load_stock_universe
+
+        loader = load_stock_universe
+        label = "stock"
+    try:
+        records = loader(path)
+    except UniverseValidationError as exc:
+        raise ConfigValidationError(
+            f"Cannot preflight analysis_subject tickers: {label} universe invalid ({path}): {exc}"
+        ) from exc
+    return {_upper_ticker(row.get("ticker")) for row in records if _upper_ticker(row.get("ticker"))}
+
+
+def _known_taxonomy_tickers() -> frozenset[str]:
+    global _KNOWN_TAXONOMY_TICKERS
+    if _KNOWN_TAXONOMY_TICKERS is not None:
+        return _KNOWN_TAXONOMY_TICKERS
+    from src.etf_universe import DEFAULT_UNIVERSE_PATH as ETF_PATH
+    from src.stock_universe import DEFAULT_UNIVERSE_PATH as STOCK_PATH
+
+    known = _load_taxonomy_ticker_set(ETF_PATH, "etf") | _load_taxonomy_ticker_set(STOCK_PATH, "stock")
+    if not known:
+        raise ConfigValidationError(
+            "Cannot preflight analysis_subject tickers: neither ETF nor stock taxonomy file is available."
+        )
+    _KNOWN_TAXONOMY_TICKERS = frozenset(known)
+    return _KNOWN_TAXONOMY_TICKERS
+
+
+def preflight_explicit_analysis_subject_tickers(
+    tickers: list[str] | None,
+    *,
+    extra_allowed: Iterable[str] | None = None,
+) -> None:
+    """Reject unknown tickers for explicit portfolio-first subjects before report runs."""
+    clean = [_upper_ticker(t) for t in _clean_tickers(tickers)]
+    allowed = set(_known_taxonomy_tickers())
+    for raw in extra_allowed or []:
+        token = _upper_ticker(raw)
+        if token:
+            allowed.add(token)
+    unknown = sorted({t for t in clean if t and t not in allowed})
+    if unknown:
+        raise ConfigValidationError(
+            "analysis_subject tickers must be listed in config/etf_universe.yml or "
+            f"config/stock_universe.yml; unknown={unknown}"
+        )
 
 
 def _default_subject_display(subject_type: str) -> str:
@@ -442,11 +508,6 @@ def _validation_result(
     ]
     conflicts: list[dict[str, Any]] = [
         {
-            "code": "UNKNOWN_TICKER_POLICY",
-            "target_mvp_mode": "reject_unknown_tickers",
-            "current_repo_mode": "taxonomy diagnostics warn on unknown tickers unless SPEC is updated",
-        },
-        {
             "code": "UNIVERSE_ONLY_BASELINE_POLICY",
             "target_mvp_mode": "create equal_weight_initial_baseline before diagnostics",
             "current_repo_mode": "optimize_from_universe is optimizer-first; run_report requires fixed/generated weights unless SPEC/code is updated",
@@ -691,6 +752,7 @@ __all__ = [
     "ANALYSIS_SUBJECT_VERSION",
     "build_analysis_setup",
     "positive_weights",
+    "preflight_explicit_analysis_subject_tickers",
     "resolve_analysis_subject",
     "weight_status",
 ]

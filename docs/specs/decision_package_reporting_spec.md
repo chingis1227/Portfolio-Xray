@@ -55,23 +55,40 @@ Location: `{output_dir_final}/` (default `Main portfolio/`).
 
 If a file is missing, the corresponding summary section uses `availability: not_available` in JSON and a plain-English skip line in TXT.
 
+## Package truthfulness (Phase 17 RM-1028)
+
+`decision_package_summary.json` must include `package_truthfulness` (`package_truthfulness_v1`)
+built by [src/package_truthfulness.py](../../src/package_truthfulness.py) from
+`candidate_comparison.json`.
+
+When `candidate_menu.is_partial_menu` is true and/or optimizer rows are `degraded`:
+
+- Place a **Review scope (read first)** banner immediately after the header disclaimer.
+- State that rankings are **not** a complete product-menu (`default_v1`) optimizer shootout.
+- List degraded optimizer display names as **diagnostic only — not eligible for favoring**.
+- Repeat partial-menu context under **Candidate menu** when `candidate_menu` is present.
+
+The summary must remain consistent with Selection Engine favoring rules: degraded optimizer rows
+may appear in composite rankings but cannot be the favored profile.
+
 ## Summary section order (TXT)
 
 Fixed order for V1:
 
 1. **Header** — analysis end, investor currency, non-executing disclaimer.
-2. **Comparison highlights** — the portfolio-first starting portfolio first (`analysis_subject`
+2. **Review scope (read first)** — when partial menu and/or degraded optimizers apply (RM-1028).
+3. **Comparison highlights** — the portfolio-first starting portfolio first (`analysis_subject`
    when available, then legacy `current` fallback), followed by top scored candidate alternatives by
    health rank when scores exist. Legacy policy/current status may appear only in an explicitly
    labeled compatibility block, and is omitted when
    `current_vs_policy_status.workflow_profile` is `portfolio_first_review`.
-3. **Robustness** — favored candidate robustness total and rank when scored.
-4. **Health** — favored candidate health total and rank when scored.
-5. **Selection** — decision status line and favored profile; No-Trade summary **only when** `no_trade.evaluated` is true or `decision_status` is `no_material_rebalance` with a populated `no_trade` block. Portfolio-first wording says "starting portfolio"; current-vs-policy wording is compatibility-only. When `decision_status` is `mandate_risk_reduction` and `favored_candidate_id` is null, the section must state that mandate risk-reduction gates blocked selection and include the plain-English mandate notes from `selection_decision.rationale` (see [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md)).
-6. **Action** — action status, turnover, top priority trades (max 5) or no-trades reason; when current-vs-policy No-Trade was not actionable, use skip wording instead of a No-Trade headline.
-7. **Monitoring** — diff status and `summary_plain_en`; explicit message when no prior snapshot.
-8. **Journal** — pointer to `decision_journal.json` and latest/history copies.
-9. **Artifact index** — relative filenames for all V1 decision JSON files.
+4. **Robustness** — favored candidate robustness total and rank when scored.
+5. **Health** — favored candidate health total and rank when scored.
+6. **Selection** — decision status line and favored profile; No-Trade summary **only when** `no_trade.evaluated` is true or `decision_status` is `no_material_rebalance` with a populated `no_trade` block. Portfolio-first wording says "starting portfolio"; current-vs-policy wording is compatibility-only. When `decision_status` is `mandate_risk_reduction` and `favored_candidate_id` is null, the section must state that mandate risk-reduction gates blocked selection and include the plain-English mandate notes from `selection_decision.rationale` (see [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md)).
+7. **Action** — action status, turnover, top priority trades (max 5) or no-trades reason; when current-vs-policy No-Trade was not actionable, use skip wording instead of a No-Trade headline.
+8. **Monitoring** — diff status and `summary_plain_en`; explicit message when no prior snapshot.
+9. **Journal** — pointer to `decision_journal.json` and latest/history copies.
+10. **Artifact index** — relative filenames for all V1 decision JSON files.
 
 ## Client-safe wording
 
@@ -126,8 +143,11 @@ run_compare_variants.py
 
 ## Verification
 
+- `tests/test_package_truthfulness.py` — trust context and review-scope banner.
+- `tests/test_blocks_8_10_downstream_integration.py` — selection/action/package chain with
+  partial menu + degraded optimizer (offline).
 - `tests/test_decision_package_reporting.py` — section presence, missing-input behavior,
-  portfolio-first subject wording, and client-safe lines.
+  portfolio-first subject wording, partial/degraded banner, and client-safe lines.
 - `tests/test_generated_output_language.py` — generated-output language QA plus portfolio-first
   summary story markers.
 - After a comparison smoke run: `decision_package_summary.txt` and `.json` exist under `output_dir_final`.

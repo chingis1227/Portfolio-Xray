@@ -12,6 +12,11 @@ from pathlib import Path
 from typing import Any
 
 from src.config_schema import PortfolioConfig
+from src.package_truthfulness import (
+    build_review_scope_banner_lines,
+    degraded_optimizer_detail_lines,
+    summarize_package_truthfulness,
+)
 
 SCHEMA_VERSION = "decision_package_report_v1"
 REPORT_TXT_MARKER = "## Decision package (non-executing)"
@@ -132,7 +137,18 @@ def _selection_warning_line(raw: Any) -> str:
         "no_trade_skipped_missing_weights": "No-Trade materiality could not be evaluated because weights were missing.",
         "no_trade_not_actionable": "No-Trade materiality was not actionable for this run.",
         "partial_score_inputs": "Selection used partial score inputs.",
+        "partial_candidate_menu": (
+            "Partial candidate menu; rankings and selection apply only to the intended menu profile."
+        ),
+        "no_favor_eligible_candidates": (
+            "No alternative met favoring eligibility (available status; "
+            "optimizer rows also require fair-comparison-ready)."
+        ),
     }
+    if text.startswith("policy_excluded_from_favoring:"):
+        return "Policy profile was excluded from favoring because it is degraded or not comparison-ready."
+    if text.startswith("favored_optimizer_quality_not_clean:"):
+        return "Favored optimizer used approximate solve or fallback quality."
     return labels.get(text, text)
 
 
@@ -213,6 +229,10 @@ def build_decision_package_summary_lines(
         "It is not trade advice and does not execute orders.",
         "",
     ]
+    banner = build_review_scope_banner_lines(comparison)
+    if banner:
+        lines.extend(banner)
+        lines.append("")
     show_legacy_workflow_status = (
         workflow_status
         and workflow_status.get("user_message_en")
@@ -234,6 +254,10 @@ def build_decision_package_summary_lines(
         if menu_lines:
             lines.append("Candidate menu")
             lines.extend(menu_lines)
+            lines.append("")
+        degraded_lines = degraded_optimizer_detail_lines(comparison)
+        if degraded_lines:
+            lines.extend(degraded_lines)
             lines.append("")
         by_id = _candidates_by_id(comparison)
         baseline_id = _preferred_baseline_id(comparison, selection)
@@ -574,6 +598,9 @@ def build_decision_package_report(
             "journal": _section_status(decision_journal is not None),
         },
         "candidate_menu": (comparison or {}).get("candidate_menu"),
+        "package_truthfulness": (
+            summarize_package_truthfulness(comparison) if comparison else None
+        ),
         "input_artifacts": {
             "candidate_comparison": "candidate_comparison.json" if comparison else None,
             "robustness_scorecard": "robustness_scorecard.json" if robustness else None,

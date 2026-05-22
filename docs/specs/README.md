@@ -53,6 +53,7 @@ Top-level documents stay compact:
 | Optimization Engine layer (Block 5.1-5.11), roles, objective/estimator/constraint/status/output matrices | [optimization_engine_layer_spec.md](optimization_engine_layer_spec.md) |
 | Optimization Engine post-audit roadmap (Phase 15) | [../exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md](../exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md) |
 | Canonical multi-candidate comparison artifact | [candidate_comparison_spec.md](candidate_comparison_spec.md) |
+| Downstream decision readiness (Blocks 6–7 handoff, eligibility guards) | [downstream_decision_readiness_spec.md](downstream_decision_readiness_spec.md) |
 | Robustness Scorecard (diagnostic resilience scoring) | [robustness_scorecard_spec.md](robustness_scorecard_spec.md) |
 | Portfolio Health Score (diagnostic holistic quality scoring) | [portfolio_health_score_spec.md](portfolio_health_score_spec.md) |
 | Selection Engine and No-Trade Recommendation (formal decision contract) | [selection_engine_spec.md](selection_engine_spec.md) |

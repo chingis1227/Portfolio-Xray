@@ -14,6 +14,10 @@ from pathlib import Path
 from typing import Any
 
 from src.config_schema import PortfolioConfig
+from src.optimization_readiness import (
+    candidate_eligible_for_favoring,
+    favoring_ineligibility_reason,
+)
 from src.optimization_status import optimization_quality_family
 
 SCHEMA_VERSION = "selection_decision_v1"
@@ -409,6 +413,78 @@ def _evaluate_no_trade(
     return is_no_trade, block
 
 
+def _favoring_rejection_note(reason_code: str | None) -> str:
+    notes = {
+        "degraded_excluded_from_favoring": (
+            "Degraded comparison row; retained for diagnostics but excluded from favoring."
+        ),
+        "optimizer_not_fair_comparison_ready": (
+            "Optimizer row is not fair-comparison-ready; excluded from favoring."
+        ),
+        "status_not_available": "Row status does not allow favoring.",
+        "unavailable": "Artifacts not available for comparison.",
+    }
+    return notes.get(reason_code or "", "Not eligible to become the favored profile.")
+
+
+def _append_partial_menu_warnings(
+    comparison: dict[str, Any],
+    *,
+    warnings: list[str],
+    rationale: dict[str, Any],
+) -> None:
+    menu = comparison.get("candidate_menu") or {}
+    if not menu.get("is_partial_menu"):
+        return
+    warnings.append("partial_candidate_menu")
+    reason = menu.get("partial_menu_reason") or "incomplete intended menu"
+    intended = menu.get("intended_menu_profile_id") or "—"
+    product = menu.get("product_menu_profile_id") or "—"
+    rationale.setdefault("data_quality_notes", []).append(
+        "Partial candidate menu "
+        f"({reason}; intended profile {intended} vs product reference {product}). "
+        "Selection and health rankings apply only to scored candidates in the intended menu, "
+        "not a full product optimizer shootout."
+    )
+
+
+def _pick_favored_candidate(
+    composite: list[dict[str, Any]],
+    by_id: dict[str, dict[str, Any]],
+    *,
+    baseline_id: str | None,
+    warnings: list[str],
+    rationale: dict[str, Any],
+) -> tuple[str | None, str | None]:
+    policy = by_id.get("policy")
+    if baseline_id != "analysis_subject" and policy:
+        if candidate_eligible_for_favoring(policy):
+            m_pts, _ = _mandate_component(policy)
+            if m_pts > 0:
+                return "policy", policy.get("display_name", "Policy Portfolio")
+        else:
+            reason = favoring_ineligibility_reason(policy)
+            if reason:
+                warnings.append(f"policy_excluded_from_favoring:{reason}")
+                rationale.setdefault("data_quality_notes", []).append(
+                    _favoring_rejection_note(reason)
+                )
+
+    for row in composite:
+        cid = row["candidate_id"]
+        cand = by_id.get(cid) or {}
+        if candidate_eligible_for_favoring(cand):
+            return cid, row.get("display_name", cid)
+
+    if composite:
+        warnings.append("no_favor_eligible_candidates")
+        rationale.setdefault("data_quality_notes", []).append(
+            "No alternative met favoring eligibility (status available; "
+            "optimizer rows also require fair-comparison-ready)."
+        )
+    return None, None
+
+
 def _build_rejected(
     composite: list[dict[str, Any]],
     favored_id: str | None,
@@ -423,16 +499,18 @@ def _build_rejected(
             continue
         if cid == baseline_id or cid in BASELINE_CANDIDATE_IDS:
             continue
-        if cand.get("status") == "unavailable":
+        ineligibility = favoring_ineligibility_reason(cand)
+        if ineligibility:
             rejected.append(
                 {
                     "candidate_id": cid,
                     "display_name": cand.get("display_name", cid),
-                    "reason_code": "unavailable",
-                    "short_note": cand.get("unavailable_reason") or "Artifacts not available for comparison.",
+                    "reason_code": ineligibility,
+                    "short_note": _favoring_rejection_note(ineligibility),
                 }
             )
-        elif cid not in ranked_ids and cand.get("status") in ELIGIBLE_STATUSES:
+            continue
+        if cid not in ranked_ids and cand.get("status") in ELIGIBLE_STATUSES:
             rejected.append(
                 {
                     "candidate_id": cid,
@@ -542,23 +620,6 @@ def build_selection_decision(
     for i, row in enumerate(composite, start=1):
         row["rank"] = i
 
-    policy = by_id.get("policy")
-    favored_id: str | None = None
-    favored_display: str | None = None
-
-    if baseline_id != "analysis_subject" and policy and policy.get("status") in ELIGIBLE_STATUSES:
-        m_pts, _ = _mandate_component(policy)
-        if m_pts > 0:
-            favored_id = "policy"
-            favored_display = policy.get("display_name", "Policy Portfolio")
-
-    if favored_id is None and composite:
-        winner = composite[0]
-        favored_id = winner["candidate_id"]
-        favored_display = winner["display_name"]
-
-    rejected = _build_rejected(composite, favored_id, by_id, baseline_id=baseline_id)
-
     rationale: dict[str, Any] = {
         "summary": "",
         "selection_bullets": [],
@@ -566,6 +627,19 @@ def build_selection_decision(
         "tradeoff_bullets": [],
         "data_quality_notes": [],
     }
+
+    _append_partial_menu_warnings(comparison, warnings=warnings, rationale=rationale)
+
+    favored_id, favored_display = _pick_favored_candidate(
+        composite,
+        by_id,
+        baseline_id=baseline_id,
+        warnings=warnings,
+        rationale=rationale,
+    )
+
+    rejected = _build_rejected(composite, favored_id, by_id, baseline_id=baseline_id)
+    policy = by_id.get("policy")
     no_trade_block: dict[str, Any] | None = None
     decision_status: str
 
@@ -596,10 +670,16 @@ def build_selection_decision(
             rationale["selection_bullets"].append(
                 "Policy (optimized) profile is the default favored target when mandate fit allows."
             )
-        elif composite and composite[0]["candidate_id"] == favored_id:
-            rationale["selection_bullets"].append(
-                f"Highest composite selection score among eligible alternatives ({composite[0]['selection_score']:.1f})."
+        else:
+            favored_row = next(
+                (row for row in composite if row.get("candidate_id") == favored_id),
+                None,
             )
+            if favored_row:
+                rationale["selection_bullets"].append(
+                    "Highest composite selection score among favor-eligible alternatives "
+                    f"({favored_row['selection_score']:.1f})."
+                )
 
         if current_ok and favored_id != baseline_id:
             w_tgt = _resolve_weights(target, project_root=project_root)

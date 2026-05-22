@@ -26,6 +26,10 @@ Use the narrowest reliable check first. Broaden only when the change touches sha
 | Offline MVP pipeline smoke | File-first decision chain (comparison through decision package) or cross-module orchestration regressions | `python -m pytest tests/test_mvp_pipeline_offline.py -q` |
 | Portfolio-first offline E2E smoke | Portfolio-first subject diagnostics, comparison, and decision package regressions across subject types | `python -m pytest tests/test_portfolio_first_e2e_offline.py -q` |
 | Blocks 1-5 five-ticker MVP smoke | First-five-block contract from explicit weighted subject input through diagnostics, X-Ray, stress, current factory evidence, and comparison baseline | `python -m pytest tests/test_blocks_1_5_mvp_smoke.py -q` |
+| Blocks 1-5 live core E2E (networked) | Operator or CI proof that `run_portfolio_review.py --mode core` materializes subject + comparison with `candidate_menu.review_mode == core` | Run orchestrator, then `python scripts/verify_live_core_e2e.py` or `python -m pytest tests/test_blocks_1_5_live_core_e2e.py --live-core -q` |
+| Blocks 1-5 live full + resume E2E (networked) | Operator proof that `--mode full` (and optional `--resume-candidates`) completes `default_v1` factory + comparison | `python scripts/verify_live_full_e2e.py --run` or `--run --resume-candidates`; then `pytest tests/test_blocks_1_5_live_full_e2e.py --live-full -q` |
+| Blocks 6–7 downstream integration (offline) | Guarded backtest/stress handoff from `candidate_comparison.json` (degraded optimizer stress embed-only) | `python -m pytest tests/test_blocks_6_7_downstream_integration.py tests/test_downstream_decision_readiness.py -q` |
+| Blocks 8–10 package truthfulness (offline) | Partial menu + degraded optimizer disclosure in selection/action/decision package | `python -m pytest tests/test_blocks_8_10_downstream_integration.py tests/test_package_truthfulness.py tests/test_decision_package_reporting.py -q` |
 | Blocks 1-5 data trust signals | Stress/input/X-Ray trust summaries for episode quality, taxonomy warnings, and young-ETF policy disclosure | `python -m pytest tests/test_data_trust_signals.py -q` |
 | Portfolio-first workflow orchestration | `run_portfolio_review.py` plan building or step ordering | `python -m pytest tests/test_portfolio_review_workflow.py -q` |
 | MVP workflow orchestration | `run_mvp_workflow.py` plan building or step ordering | `python -m pytest tests/test_mvp_workflow.py -q` |
@@ -137,6 +141,120 @@ authoritative; `candidate_comparison.json` uses `analysis_subject` as baseline w
 `candidate_menu.factory_evidence_status: current`. Output acceptance checklist:
 [OUTPUTS.md](OUTPUTS.md) Blocks 1-5 section; operator commands:
 [docs/operational_runbook.md](docs/operational_runbook.md) section 0.
+
+## Blocks 1-5 Live Core E2E (Phase 17, RM-1021)
+
+Governed by [Post-Deep-Audit Foundation Plan](docs/exec_plans/2026-05-21_post_deep_audit_foundation_plan.md)
+Session 02. This gate is **networked** and **not** part of default `python -m pytest`; offline
+`test_blocks_1_5_mvp_smoke.py` remains the executable closure gate for routine CI.
+
+**Operator sequence:**
+
+```bash
+python run_portfolio_review.py --mode core --skip-pdf
+python scripts/verify_live_core_e2e.py
+python -m pytest tests/test_blocks_1_5_mvp_smoke.py -q --basetemp='tmp\pytest_blocks_1_5_smoke'
+```
+
+Or run and verify in one step:
+
+```bash
+python scripts/verify_live_core_e2e.py --run
+```
+
+**Pass criteria (artifact validation):**
+
+| Check | Location |
+| --- | --- |
+| Subject diagnosis | `{output_dir_final}/analysis_subject/run_metadata.json`, `portfolio_xray.json`, `stress_report.json` |
+| X-Ray sections | All seven `XRAY_SECTION_KEYS` in `portfolio_xray.json` |
+| Stress blocks | `stress_scorecard_v1`, `stress_conclusions`, `historical_methodology`, `hedge_gap_analysis` in subject `stress_report.json` |
+| Comparison | `{output_dir_final}/candidate_comparison.json` present |
+| Core menu | `candidate_menu.review_mode == "core"` |
+| Factory profile | `candidate_factory_run.json` → `factory_profile_id == "core_v1"` |
+
+`factory_evidence_status: current` is expected after `run_portfolio_review.py` or
+`run_candidate_factory.py --then-compare` (RM-1025). Validator warnings surface non-`current`
+factory evidence when factory and comparison contexts diverge.
+
+**Pytest marker (after a live run):**
+
+```bash
+python -m pytest tests/test_blocks_1_5_live_core_e2e.py --live-core -q
+```
+
+Enable via env: `PORTFOLIO_LIVE_CORE_E2E=1`. Offline validator unit test:
+`tests/test_live_core_e2e_validation.py`.
+
+Implementation: `src/live_core_e2e.py`, `scripts/verify_live_core_e2e.py`.
+
+## Blocks 1-5 Live Full + Resume E2E (Phase 17, RM-1029)
+
+Governed by [Post-Deep-Audit Foundation Plan](docs/exec_plans/2026-05-21_post_deep_audit_foundation_plan.md)
+Session 10. Networked; not part of default `python -m pytest`. Use after Sessions 02–09 gates pass.
+
+**Operator sequence (full menu):**
+
+```bash
+python run_portfolio_review.py --mode full --skip-pdf
+python scripts/verify_live_full_e2e.py
+```
+
+**Recovery after interrupt:**
+
+```bash
+python run_portfolio_review.py --mode full --resume-candidates --skip-pdf
+python scripts/verify_live_full_e2e.py --resume-candidates
+```
+
+Combined run + verify:
+
+```bash
+python scripts/verify_live_full_e2e.py --run
+python scripts/verify_live_full_e2e.py --run --resume-candidates
+```
+
+**Pass criteria (artifact validation):**
+
+| Check | Location |
+| --- | --- |
+| Subject diagnosis | Same as live core table above |
+| Comparison | `candidate_comparison.json` present |
+| Full menu | `candidate_menu.review_mode == "full"` |
+| Factory profile | `candidate_factory_run.json` → `factory_profile_id == "default_v1"` |
+| Full menu scope | Factory `steps` length should match `default_v1` menu (16); warnings if partial |
+| Resume (when flagged) | `candidate_factory_manifest.json` present; factory summary may show `resumed_from_manifest` |
+
+`is_partial_menu: true` is a **warning**, not a hard failure — decision package must disclose scope
+(`package_truthfulness`, RM-1028).
+
+**Pytest marker (after a live run):**
+
+```bash
+python -m pytest tests/test_blocks_1_5_live_full_e2e.py --live-full -q
+```
+
+Enable via env: `PORTFOLIO_LIVE_FULL_E2E=1`. Offline validator unit tests:
+`tests/test_live_full_e2e_validation.py`.
+
+Implementation: `src/live_full_e2e.py`, `scripts/verify_live_full_e2e.py`.
+
+## Phase 17 Post-Deep-Audit Closure Bundle (RM-1029)
+
+Run when closing Session 10 / Phase 17 without prior chat context. Combines Blocks 1–5 smoke,
+portfolio-first offline E2E, downstream 6–10 guards, and doc verification.
+
+```bash
+python -m pytest tests/test_blocks_1_5_mvp_smoke.py tests/test_live_core_e2e_validation.py tests/test_live_full_e2e_validation.py -q --basetemp='tmp\pytest_phase17_blocks_1_5'
+python -m pytest tests/test_portfolio_first_e2e_offline.py tests/test_mvp_pipeline_offline.py -q --basetemp='tmp\pytest_phase17_portfolio_first'
+python -m pytest tests/test_selection_engine.py tests/test_portfolio_health_score.py tests/test_optimization_readiness.py -q --basetemp='tmp\pytest_phase17_selection'
+python -m pytest tests/test_optimizer_fair_comparison_full_menu.py tests/test_downstream_decision_readiness.py tests/test_blocks_6_7_downstream_integration.py -q --basetemp='tmp\pytest_phase17_downstream_67'
+python -m pytest tests/test_package_truthfulness.py tests/test_blocks_8_10_downstream_integration.py tests/test_decision_package_reporting.py -q --basetemp='tmp\pytest_phase17_downstream_810'
+python scripts/verify_docs.py
+```
+
+Live proof (operator, not CI default): `python scripts/verify_live_core_e2e.py --run` and
+`python scripts/verify_live_full_e2e.py --run` (or `--run --resume-candidates` after interrupt).
 
 ## Change-To-Check Matrix
 
@@ -319,8 +437,15 @@ After code or output-contract sessions, run the focused Block 5 bundle:
 python -m pytest tests/test_legacy_policy_optimizer_disclosure.py tests/test_optimization_fallback.py tests/test_config_weights_sync.py tests/test_young_etfs_dual_cov.py -q
 python -m pytest tests/test_minimum_variance_baseline.py tests/test_maximum_diversification_baseline.py tests/test_minimum_cvar_baseline.py -q
 python -m pytest tests/test_robust_mean_variance.py tests/test_robust_mv_calibration.py tests/test_robust_scenario_optimization.py -q
-python -m pytest tests/test_optimization_readiness.py tests/test_optimization_engine_contract.py tests/test_candidate_factory.py tests/test_candidate_comparison.py tests/test_candidate_factory_contract.py tests/test_candidate_comparison_contract.py -q
+python -m pytest tests/test_optimization_readiness.py tests/test_optimizer_fair_comparison_full_menu.py tests/test_optimization_engine_contract.py tests/test_candidate_factory.py tests/test_candidate_comparison.py tests/test_candidate_factory_contract.py tests/test_candidate_comparison_contract.py -q
 python scripts/verify_docs.py
+```
+
+Phase 17 Session 04 (`RM-1023`) — full-menu optimizer fair-comparison offline gate (builder metadata +
+snapshot `candidate_config_fingerprint`; expects ≥3 `fair_comparison_ready` optimizer rows):
+
+```bash
+python -m pytest tests/test_optimizer_fair_comparison_full_menu.py -q
 ```
 
 Golden contract fixtures (Session 11 / `RM-1001`):
@@ -333,8 +458,9 @@ python -m pytest tests/test_optimization_engine_contract.py -q
 - `tests/fixtures/legacy_policy_optimizer_run_metadata_golden_v1.json`
 - `tests/fixtures/candidate_optimizer_run_metadata_golden_v1.json`
 - `tests/fixtures/optimization_comparison_block5_golden_v1.json`
+- `tests/fixtures/optimization_comparison_full_menu_fair_ready_golden_v1.json` (RM-1023)
 - **Inputs:** `tests/optimization_engine_golden_inputs.py`
-- **Tests:** `tests/test_optimization_engine_contract.py`
+- **Tests:** `tests/test_optimization_engine_contract.py`, `tests/test_optimizer_fair_comparison_full_menu.py`
 
 Run `python run_optimization.py` only when legacy policy outputs change. Run affected candidate or
 robust scripts only when their wrapper/output contract changes. Do not refresh generated artifacts

@@ -1,0 +1,10 @@
+{
+  "fair_ready_optimizer_ids": [
+    "maximum_diversification",
+    "minimum_cvar_constrained",
+    "minimum_variance",
+    "robust_mv_constrained"
+  ],
+  "fair_ready_count": 4,
+  "menu_profile": null
+}

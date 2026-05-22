@@ -304,6 +304,87 @@ def test_mandate_block_selection_explains_missing_favored_profile() -> None:
     assert rationale_text_is_client_safe(text)
 
 
+def _truth_test_optimizer(
+    cid: str,
+    *,
+    status: str = "degraded",
+    fair_ready: bool = False,
+) -> dict:
+    return {
+        "candidate_id": cid,
+        "display_name": cid.replace("_", " ").title(),
+        "role": "optimizer_candidate",
+        "status": status,
+        "metrics": {"10y": {"cagr": 0.08, "vol_annual": 0.11, "max_drawdown": -0.2}},
+        "stress": {"overall": "DIAG_PASS"},
+        "mandate": {"portfolio_valid": True},
+        "construction_disclosure": {
+            "optimization_readiness": {"fair_comparison_ready": fair_ready},
+        },
+    }
+
+
+def test_partial_menu_and_degraded_optimizer_prominent_in_summary() -> None:
+    from src.selection_engine import build_selection_decision
+
+    comparison = {
+        "analysis_end": "2026-04-30",
+        "investor_currency": "USD",
+        "comparison_baseline_candidate_id": "analysis_subject",
+        "candidate_menu": {
+            "review_mode": "core",
+            "is_partial_menu": True,
+            "partial_menu_reason": "reduced_vs_product_menu",
+            "intended_menu_profile_id": "core_v1",
+            "product_menu_profile_id": "default_v1",
+        },
+        "candidates": [
+            {
+                "candidate_id": "analysis_subject",
+                "display_name": "Starter",
+                "role": "analysis_subject",
+                "status": "available",
+                "metrics": {"10y": {"cagr": 0.06, "vol_annual": 0.12, "max_drawdown": -0.2}},
+                "stress": {"overall": "DIAG_PASS"},
+                "mandate": {"portfolio_valid": True},
+            },
+            _truth_test_optimizer("degraded_opt"),
+            _truth_test_optimizer("fair_opt", status="available", fair_ready=True),
+        ],
+    }
+    health = {
+        "schema_version": "portfolio_health_score_v1",
+        "candidates": [
+            {"candidate_id": "degraded_opt", "total_score": 90, "score_status": "scored", "health_rank": 1},
+            {"candidate_id": "fair_opt", "total_score": 75, "score_status": "scored", "health_rank": 2},
+            {"candidate_id": "analysis_subject", "total_score": 60, "score_status": "scored", "health_rank": 3},
+        ],
+    }
+    robust = {
+        "schema_version": "robustness_scorecard_v1",
+        "candidates": [
+            {"candidate_id": "degraded_opt", "total_score": 88, "score_status": "scored", "robustness_rank": 1},
+            {"candidate_id": "fair_opt", "total_score": 72, "score_status": "scored", "robustness_rank": 2},
+            {"candidate_id": "analysis_subject", "total_score": 58, "score_status": "scored", "robustness_rank": 3},
+        ],
+    }
+    selection = build_selection_decision(comparison, health=health, robustness=robust)
+    doc = build_decision_package_report(
+        comparison=comparison,
+        health=health,
+        robustness=robust,
+        selection=selection,
+        action=_action(),
+        monitoring_diff=_monitoring(),
+        decision_journal=_journal(),
+    )
+    text = doc["summary_plain_en"]
+    assert "Review scope (read first)" in text
+    assert "optimizer shootout" in text.lower()
+    assert doc["package_truthfulness"]["is_partial_menu"] is True
+    assert doc["package_truthfulness"]["degraded_optimizer_count"] == 1
+
+
 def test_missing_artifacts_marked_not_available() -> None:
     doc = build_decision_package_report(
         comparison=None,

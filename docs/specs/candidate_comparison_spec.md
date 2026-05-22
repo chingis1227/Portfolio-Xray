@@ -90,7 +90,34 @@ factory summary matches the current comparison context closely enough for `steps
 candidate rows. `factory_evidence_warnings` carries machine-readable reasons such as
 `factory_summary_missing`, `factory_summary_stale_analysis_end:...`,
 `factory_summary_stale_config_fingerprint:...`, and
-`factory_summary_stale_vs_existing_comparison:...`.
+`factory_summary_stale_vs_existing_comparison:...`, and
+`factory_summary_timing_skew_accepted:delta_seconds=N` when analysis context matches and the
+factory summary trails the on-disk comparison timestamp by at most
+`FACTORY_COMPARISON_TIMING_SKEW_SECONDS` (120s, standalone rebuild only).
+
+`run_candidate_factory.py --then-compare` writes `candidate_factory_run.json` before comparison,
+passes the in-memory factory document into the comparison builder, and sets rebuild source
+`factory_then_compare` so clock ordering within the same orchestrated leg does not mark evidence
+stale when `analysis_end` and `config_fingerprint` still match.
+
+### `review_bundle_context` block (Phase 17 Session 07 / RM-1026)
+
+Required on newly built `candidate_comparison.json` documents. Correlates subject sidecar,
+factory summary, and comparison under one `review_bundle_fingerprint` and surfaces
+`analysis_mode` vs `analysis_subject.type` interpretation (legacy `optimize_from_universe`
+with explicit `current_portfolio` subject is informational, not a blocking error).
+
+| Field | Description |
+| --- | --- |
+| `version` | Always `review_bundle_context_v1`. |
+| `review_bundle_fingerprint` | SHA-256 of canonical bundle parts (`analysis_end`, comparison/subject/factory fingerprints, subject id/type, `review_mode`). |
+| `bundle_parts` | `analysis_subject`, `factory_run`, `comparison` artifact summaries (paths, timestamps, fingerprints). |
+| `fingerprint_alignment` | `subject_vs_comparison_config`, `factory_vs_comparison_config`, `all_aligned`, `mismatch_reasons[]`. |
+| `mode_subject_consistency` | `source_analysis_mode`, `analysis_subject_type`, `is_consistent`, `mismatch_codes[]`, `informational_notices[]`, `interpretation_en`. |
+| `user_summary_lines[]` | Plain-English lines for commentary and `input_assumptions` trust handoff. |
+
+Run-level `warnings` may include `review_bundle_alignment:*` or `review_bundle_mode_subject:*`
+when alignment or mode/subject checks fail.
 
 ### Required top-level fields
 
@@ -110,6 +137,7 @@ candidate rows. `factory_evidence_warnings` carries machine-readable reasons suc
 | `legacy_artifacts` | object | Paths to pre-canonical comparison files, if present. |
 | `warnings` | array | Run-level warnings (stale artifacts, mixed analysis dates, partial coverage, partial menu). |
 | `candidate_menu` | object | Intended vs product menu disclosure (counts, `is_partial_menu`, refresh commands) plus factory-evidence freshness. Optional until comparison is rebuilt; required for new portfolio-first runs after Session 09. |
+| `review_bundle_context` | object | Review bundle fingerprint and mode/subject disclosure (`review_bundle_context_v1`). Required on new comparison builds after Phase 17 Session 07. |
 
 ## Candidate Object Contract
 

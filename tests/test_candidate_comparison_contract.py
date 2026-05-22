@@ -40,6 +40,17 @@ COMPARISON_TOP_LEVEL_REQUIRED = frozenset(
     }
 )
 
+REVIEW_BUNDLE_REQUIRED = frozenset(
+    {
+        "version",
+        "review_bundle_fingerprint",
+        "bundle_parts",
+        "fingerprint_alignment",
+        "mode_subject_consistency",
+        "user_summary_lines",
+    }
+)
+
 CANDIDATE_ROW_REQUIRED = frozenset(
     {
         "candidate_id",
@@ -104,6 +115,13 @@ def assert_candidate_menu_contract(doc: dict[str, Any]) -> None:
     assert MENU_REQUIRED <= set(menu)
 
 
+def assert_review_bundle_contract(doc: dict[str, Any]) -> None:
+    bundle = doc.get("review_bundle_context")
+    assert isinstance(bundle, dict)
+    assert REVIEW_BUNDLE_REQUIRED <= set(bundle)
+    assert bundle["version"] == "review_bundle_context_v1"
+
+
 def comparison_contract_fingerprint(doc: dict[str, Any]) -> dict[str, Any]:
     candidates = doc["candidates"]
     return {
@@ -160,6 +178,11 @@ def test_golden_comparison_candidates_contract(golden_fixture: dict[str, Any]) -
 
 def test_golden_comparison_menu_contract(golden_fixture: dict[str, Any]) -> None:
     assert_candidate_menu_contract(golden_fixture)
+
+
+def test_live_comparison_includes_review_bundle_contract() -> None:
+    live = normalize_comparison(build_golden_comparison())
+    assert_review_bundle_contract(live)
 
 
 def test_golden_comparison_post_audit_surface(golden_fixture: dict[str, Any]) -> None:

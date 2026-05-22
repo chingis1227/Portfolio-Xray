@@ -39,7 +39,81 @@ Category: Removed
 
 Omit empty categories.
 
+## 2026-05-22
+
+### Added
+
+- Phase 17 Session 09 (`RM-1028`): Blocks 8–10 package truthfulness —
+  `src/package_truthfulness.py`; decision package **Review scope (read first)** banner and JSON
+  `package_truthfulness`; action plan `partial_candidate_menu_action_context` warning;
+  `tests/test_package_truthfulness.py`, `tests/test_blocks_8_10_downstream_integration.py`.
+- Phase 17 Session 08 (`RM-1027`): Blocks 6–7 downstream readiness —
+  `docs/specs/downstream_decision_readiness_spec.md`, `src/downstream_decision_readiness.py`;
+  guarded stress artifact load in `portfolio_health_score.py` and `robustness_scorecard.py`;
+  `tests/test_downstream_decision_readiness.py`, `tests/test_blocks_6_7_downstream_integration.py`.
+- Phase 17 Session 07 (`RM-1026`): review bundle disclosure — `src/review_bundle_context.py`;
+  `candidate_comparison.json` → `review_bundle_context` (`review_bundle_fingerprint`, alignment,
+  `mode_subject_consistency`, `user_summary_lines`); `input_assumptions` → `review_bundle_disclosure`
+  and merged `data_trust_signals.user_summary_lines`; specs and `test_review_bundle_context.py`.
+- Phase 17 Session 06 (`RM-1025`): factory vs comparison timestamp semantics —
+  `comparison_rebuild_source` (`factory_then_compare` / `standalone`), in-memory factory handoff,
+  factory JSON written before `--then-compare`, 120s standalone timing-skew tolerance when
+  `analysis_end` and `config_fingerprint` match; tests and `candidate_comparison_spec.md` update.
+- Phase 17 Session 05 (`RM-1024`): Block 1 ticker preflight — explicit `analysis_subject`
+  tickers must exist in ETF or stock taxonomy (`preflight_explicit_analysis_subject_tickers`);
+  config validation fails before report; legacy paths remain warn-only via
+  `etf_universe_validation.json`.
+- Phase 17 Session 04 (`RM-1023`): offline full-menu optimizer fair-comparison gate —
+  `tests/optimizer_fair_comparison_fixtures.py`, `tests/test_optimizer_fair_comparison_full_menu.py`,
+  golden `tests/fixtures/optimization_comparison_full_menu_fair_ready_golden_v1.json`; runbook §8.6
+  rebuild guidance for on-disk optimizer artifacts.
+- Phase 17 Session 03 (`RM-1022`): selection favoring guards —
+  `candidate_eligible_for_favoring` in `src/optimization_readiness.py`; degraded rows and
+  non-fair-ready optimizers excluded from `favored_candidate_id`; `partial_candidate_menu`
+  warnings in selection, health score, and decision-package summary labels; specs and focused
+  pytest coverage.
+- Phase 17 Session 02 (`RM-1021`): live core E2E gate — `src/live_core_e2e.py`,
+  `scripts/verify_live_core_e2e.py`, pytest marker `tests/test_blocks_1_5_live_core_e2e.py`
+  (`--live-core` / `PORTFOLIO_LIVE_CORE_E2E=1`), offline validator
+  `tests/test_live_core_e2e_validation.py`; documented in `TESTING.md` and
+  `docs/operational_runbook.md`. Live run `verify_live_core_e2e.py --run` validated subject +
+  comparison with `review_mode: core`.
+
+### Changed
+
+- Closed P17-G9 in `KNOWN_ISSUES.md` (Blocks 6–7 guarded handoff spec and implementation).
+- Closed P17-G7 and P17-G8 in `KNOWN_ISSUES.md` (mode/subject interpretation and review bundle
+  fingerprint via `review_bundle_context` / input trust lines).
+- Closed P17-G6 in `KNOWN_ISSUES.md` (false `factory_evidence_status: stale` on same-run review).
+- Closed P17-G5 in `KNOWN_ISSUES.md` (unknown tickers hard-rejected for explicit
+  `analysis_subject`).
+- Closed P17-G3 in `KNOWN_ISSUES.md` (fair-ready optimizer rows provable offline; operator refresh
+  via `--no-skip-existing` documented).
+- Closed P17-G1 in `KNOWN_ISSUES.md`; P17-G2 notes partial menu warnings until Session 09
+  (`RM-1028`).
+- Closed P17-G4 in `KNOWN_ISSUES.md` (live core proof is operator-gated; offline
+  `test_blocks_1_5_mvp_smoke.py` remains default CI closure).
+
+## 2026-05-22
+
+### Added
+
+- Phase 17 Session 10 (`RM-1029`): live full + resume E2E gate — `src/live_full_e2e.py`,
+  `scripts/verify_live_full_e2e.py`, pytest marker `--live-full`, offline validators; Phase 17
+  closure bundle in `TESTING.md`; runbook § live full.
+
+### Changed
+
+- Phase 17 Session 10 (`RM-1029`): Phase 17 wave **closed** — live full orchestrator proof
+  (`review_mode: full`, 16 `default_v1` steps, `factory_evidence_status: current`); resume proof
+  (`resumed_from_manifest: 16`); offline closure bundle **72 passed**; `verify_docs` OK; ExecPlan
+  register Active cleared; `KNOWN_ISSUES.md` Phase 17 index marked closed.
+
 ## 2026-05-21
+
+### Added
+
+- Phase 17 Session 01 (`RM-1020`): post-deep-audit project memory — [Post-Deep-Audit Foundation Plan](docs/exec_plans/2026-05-21_post_deep_audit_foundation_plan.md), [Blocks 1–5 Deep Audit Snapshot](docs/audits/2026-05-21_blocks_1_5_deep_audit_snapshot.md), Phase 17 roadmap rows `RM-1021`–`RM-1029`, ExecPlan register Active pointer, Phase 17 gap index in `KNOWN_ISSUES.md`; documentation-only.
 
 ### Changed
 

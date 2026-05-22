@@ -1276,11 +1276,20 @@ def run_then_compare(
     cfg: PortfolioConfig,
     *,
     project_root: Path,
+    factory_run: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Path] | None, str | None]:
-    from src.candidate_comparison import write_candidate_comparison_outputs
+    from src.candidate_comparison import (
+        COMPARISON_REBUILD_FACTORY_THEN_COMPARE,
+        write_candidate_comparison_outputs,
+    )
 
     try:
-        paths = write_candidate_comparison_outputs(cfg, project_root=project_root)
+        paths = write_candidate_comparison_outputs(
+            cfg,
+            project_root=project_root,
+            factory_run=factory_run,
+            comparison_rebuild_source=COMPARISON_REBUILD_FACTORY_THEN_COMPARE,
+        )
         return paths, None
     except Exception as exc:  # noqa: BLE001 — surface comparison failure in factory summary
         return None, str(exc)

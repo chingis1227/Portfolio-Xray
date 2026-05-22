@@ -4,6 +4,10 @@ This document owns the **Portfolio Health Score** contract: a transparent, diagn
 
 It does not own metric formulas, stress scenario definitions, candidate construction, robustness scoring logic, or selection logic. Those remain in [metrics_specification.md](metrics_specification.md), [stress_testing_spec.md](stress_testing_spec.md), [candidate_comparison_spec.md](candidate_comparison_spec.md), [robustness_scorecard_spec.md](robustness_scorecard_spec.md), and [selection_engine_spec.md](selection_engine_spec.md).
 
+Blocks 6–7 eligibility (fair backtest compare, stress artifact load) is defined in
+[downstream_decision_readiness_spec.md](downstream_decision_readiness_spec.md); health score must not
+load `stress_report.json` for degraded optimizer-backed rows.
+
 ## Scope
 
 The Portfolio Health Score:
@@ -42,14 +46,15 @@ runs without an available `analysis_subject` keep the old `current`, then `polic
 
 Recorded for Session 12:
 
-1. **Candidate set:** score every `available` / `degraded` row in `candidate_comparison.json`; `unavailable` -> `not_scored`.
-2. **Display priority:** portfolio-first reports and TXT summaries show `analysis_subject` as the
+1. **Candidate set:** score every `available` / `degraded` row in `candidate_comparison.json`; `unavailable` -> `not_scored`. Degraded optimizer rows remain scored for diagnostics but carry warning `degraded_optimizer_diagnostic_only_not_favored` (Selection excludes them from favoring; RM-1022).
+2. **Partial menu:** when `candidate_menu.is_partial_menu` is true, emit run warning `partial_candidate_menu` and `partial_menu_context:*` so health rankings are not read as a full product optimizer shootout.
+3. **Display priority:** portfolio-first reports and TXT summaries show `analysis_subject` as the
    priority row when it exists. Legacy current-vs-policy reports show `current` and `policy` before
    benchmarks when both exist.
-3. **Normalization:** primary sub-scores use **within-run percentile ranks**; **`mandate_and_model_risk`** and parts of **`liquidity_implementation`** use **absolute** artifact status.
-4. **Robustness boundary:** do **not** re-implement the six Robustness Scorecard components; optional **`resilience_reference`** (10%) ingests `robustness_scorecard.json` `total_score` when present.
-5. **Component weights:** product-concept defaults as **`default_weights_reviewable`** (sum = 1.0); may be revised after validation.
-6. **Primary window:** **10y** for metrics and drawdown; stress inputs follow [stress_testing_spec.md](stress_testing_spec.md) ids available in comparison or linked artifacts.
+4. **Normalization:** primary sub-scores use **within-run percentile ranks**; **`mandate_and_model_risk`** and parts of **`liquidity_implementation`** use **absolute** artifact status.
+5. **Robustness boundary:** do **not** re-implement the six Robustness Scorecard components; optional **`resilience_reference`** (10%) ingests `robustness_scorecard.json` `total_score` when present.
+6. **Component weights:** product-concept defaults as **`default_weights_reviewable`** (sum = 1.0); may be revised after validation.
+7. **Primary window:** **10y** for metrics and drawdown; stress inputs follow [stress_testing_spec.md](stress_testing_spec.md) ids available in comparison or linked artifacts.
 
 ## Canonical Artifacts
 

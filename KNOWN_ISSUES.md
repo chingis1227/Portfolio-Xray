@@ -68,6 +68,33 @@ Sessions 02-07; representative verification and offline acceptance bundle closed
 required every closure session.
 
 ---
+### Phase 17 post-deep-audit gap index (closed)
+
+Wave **closed** 2026-05-22 (Session 10 / `RM-1029`). Source:
+[Blocks 1–5 Deep Audit Snapshot](docs/audits/2026-05-21_blocks_1_5_deep_audit_snapshot.md).
+Plan: [Post-Deep-Audit Foundation Plan](docs/exec_plans/2026-05-21_post_deep_audit_foundation_plan.md).
+
+| Gap | Summary | Roadmap | Target session |
+| --- | --- | --- | --- |
+| P17-G1 | ~~Selection/health rank `degraded` rows~~ | RM-1022 | **closed** Session 03 (favoring requires `available`; optimizers require `fair_comparison_ready`) |
+| P17-G2 | ~~Core vs full menu misinterpretation~~ | RM-1022, RM-1028 | **closed** Session 03 + 09 (selection warnings + decision package review-scope banner) |
+| P17-G3 | ~~Most optimizer rows not fair-comparison-ready on disk~~ | RM-1023 | **closed** Session 04 (offline full-menu gate; rebuild per runbook §8.6) |
+| P17-G4 | ~~No live core E2E in automated closure~~ | RM-1021 | **closed** Session 02 (operator/`--live-core` gate; offline smoke remains default CI) |
+| P17-G5 | ~~Invalid ticker not blocked at Block 1~~ | RM-1024 | **closed** Session 05 (explicit `analysis_subject` hard-rejects unknown tickers in `validate_config`) |
+| P17-G6 | ~~False stale factory vs comparison timing~~ | RM-1025 | **closed** Session 06 (`factory_then_compare` context + write-before-compare ordering) |
+| P17-G7 | ~~`analysis_mode` vs subject type confusion~~ | RM-1026 | **closed** Session 07 (`review_bundle_context` + `input_assumptions` trust lines) |
+| P17-G8 | ~~No single review bundle fingerprint~~ | RM-1026 | **closed** Session 07 (`review_bundle_fingerprint` in comparison) |
+| P17-G9 | ~~Blocks 6–7 lack guarded handoff spec~~ | RM-1027 | **closed** Session 08 (`downstream_decision_readiness_spec.md`, `src/downstream_decision_readiness.py`, health/robustness stress guards) |
+| P17-G10 | ~~Decision package vs partial/degraded~~ | RM-1028 | **closed** Session 09 (`package_truthfulness`, review-scope banner, action context warning) |
+| P17-G11 | Full factory heavy | — | accepted (runbook) |
+| P17-G12 | X-Ray G7 deferred displays | — | Phase 12 accepted |
+| P17-G13 | X-Ray optional in comparison readiness | KI-2026-05-21-001 | accepted |
+| P17-G14 | `robust_scenario` Main stress dependency | RM-977 docs | accepted |
+
+Remediation sessions 02–10 closed P17-G1–G10; G11–G14 remain **accepted** per ExecPlan closure.
+Live full + resume E2E is documented (`scripts/verify_live_full_e2e.py`); operator-run, not default CI.
+
+---
 ### Block 5 governance gap index (Phase 15)
 
 Audit gaps **G1–G10** are defined in

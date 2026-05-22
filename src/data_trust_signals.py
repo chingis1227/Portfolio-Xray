@@ -217,9 +217,9 @@ def _validation_trust_signals(validation_result: dict[str, Any] | None) -> list[
                     "severity": "medium",
                     "code": code,
                     "plain_english": (
-                        "Unknown tickers are warned in taxonomy diagnostics rather than hard-rejected "
-                        "in the current repo mode; review X-Ray allocation warnings before trusting "
-                        "sector or risk-bucket views."
+                        "Legacy run metadata: unknown tickers were warn-only on this path. "
+                        "Explicit analysis_subject inputs now fail at config validation; "
+                        "review X-Ray allocation warnings on older artifacts."
                     ),
                 }
             )

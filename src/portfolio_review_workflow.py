@@ -114,6 +114,8 @@ def build_portfolio_review_plan(
         if fail_fast:
             factory_argv.append("--fail-fast")
         if not skip_compare:
+            # Comparison rebuild uses factory_then_compare context (in-memory factory doc,
+            # factory JSON written before compare) — see candidate_comparison.py P17-G6 / RM-1025.
             factory_argv.append("--then-compare")
             compare_via_factory = True
         factory_label = (

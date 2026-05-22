@@ -167,7 +167,7 @@ def test_composite_winner_when_policy_unavailable() -> None:
     assert doc["decision_status"] == "selected_candidate"
 
 
-def test_selection_warns_when_favored_candidate_has_optimizer_fallback() -> None:
+def test_approximate_optimizer_not_favored_skips_to_next_eligible() -> None:
     comp = _comparison_policy_current()
     comp["candidates"][0]["status"] = "unavailable"
     comp["candidates"][0]["unavailable_reason"] = "missing_snapshot"
@@ -177,22 +177,19 @@ def test_selection_warns_when_favored_candidate_has_optimizer_fallback() -> None
             "optimization_quality_status": "approximate_fallback",
             "optimization_quality_family": "approximate",
             "fallback_used": True,
-        }
+        },
+        "optimization_readiness": {"fair_comparison_ready": False},
     }
     doc = build_selection_decision(
         comp,
         health=_health_fixture(("equal_weight", 80, 1), ("current", 60, 2)),
         robustness=_robust_fixture(("equal_weight", 75, 1), ("current", 55, 2)),
     )
-    assert doc["favored_candidate_id"] == "equal_weight"
-    assert (
-        "favored_optimizer_quality_not_clean:equal_weight:approximate_fallback"
-        in doc["warnings"]
-    )
-    assert any(
-        "approximate optimizer solve" in note
-        for note in doc["rationale"]["data_quality_notes"]
-    )
+    assert doc["favored_candidate_id"] != "equal_weight"
+    assert doc["decision_status"] == "inconclusive"
+    assert "no_favor_eligible_candidates" in doc["warnings"]
+    rejected = {r["candidate_id"]: r["reason_code"] for r in doc["rejected_candidates"]}
+    assert rejected.get("equal_weight") == "optimizer_not_fair_comparison_ready"
 
 
 def test_analysis_subject_is_no_trade_baseline_and_disables_policy_default(tmp_path: Path) -> None:
@@ -390,6 +387,75 @@ def test_rationale_no_forbidden_patterns() -> None:
     assert rationale_text_is_client_safe(summary)
     for bullet in doc["rationale"].get("selection_bullets", []):
         assert rationale_text_is_client_safe(bullet)
+
+
+def _optimizer_cand(
+    cid: str,
+    *,
+    status: str = "available",
+    fair_ready: bool = True,
+    display: str | None = None,
+) -> dict:
+    cand = _cand(
+        cid,
+        display=display or cid.replace("_", " ").title(),
+        role="optimizer_candidate",
+        status=status,
+        artifact_root=f"{cid}_dir",
+    )
+    cand["construction_disclosure"] = {
+        "optimization_readiness": {"fair_comparison_ready": fair_ready},
+        "optimizer_quality": {
+            "optimization_quality_status": "clean",
+            "optimization_quality_family": "clean",
+        },
+    }
+    return cand
+
+
+def test_degraded_optimizer_not_favored_picks_fair_ready_alternative() -> None:
+    comp = _comparison_policy_current()
+    comp["candidates"][0]["status"] = "unavailable"
+    comp["candidates"][2] = _optimizer_cand("degraded_opt", status="degraded", fair_ready=False)
+    comp["candidates"].append(_optimizer_cand("fair_opt", fair_ready=True))
+    doc = build_selection_decision(
+        comp,
+        health=_health_fixture(
+            ("degraded_opt", 95, 1),
+            ("fair_opt", 70, 2),
+            ("current", 60, 3),
+        ),
+        robustness=_robust_fixture(
+            ("degraded_opt", 94, 1),
+            ("fair_opt", 68, 2),
+            ("current", 55, 3),
+        ),
+    )
+    assert doc["favored_candidate_id"] == "fair_opt"
+    assert doc["composite_ranking"][0]["candidate_id"] == "degraded_opt"
+    rejected = {r["candidate_id"]: r["reason_code"] for r in doc["rejected_candidates"]}
+    assert rejected.get("degraded_opt") == "degraded_excluded_from_favoring"
+
+
+def test_partial_menu_warning_in_selection() -> None:
+    comp = _comparison_policy_current()
+    comp["candidate_menu"] = {
+        "is_partial_menu": True,
+        "partial_menu_reason": "reduced_vs_product_menu",
+        "intended_menu_profile_id": "core_v1",
+        "product_menu_profile_id": "default_v1",
+    }
+    doc = build_selection_decision(
+        comp,
+        health=_health_fixture(
+            ("policy", 72, 1), ("current", 68, 2), ("equal_weight", 60, 3)
+        ),
+        robustness=_robust_fixture(
+            ("policy", 70, 1), ("current", 67, 2), ("equal_weight", 55, 3)
+        ),
+    )
+    assert "partial_candidate_menu" in doc["warnings"]
+    assert any("Partial candidate menu" in note for note in doc["rationale"]["data_quality_notes"])
 
 
 def test_write_outputs(tmp_path: Path) -> None:

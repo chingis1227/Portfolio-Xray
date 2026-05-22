@@ -89,20 +89,34 @@ Recorded defaults when the user continues the plan without overrides:
 
 ## Eligible Candidates
 
-| `status` | Selection participation |
-| --- | --- |
-| `available` | Full participation. |
-| `degraded` | Participate with warnings propagated to decision. |
-| `unavailable` | Excluded from ranking; may appear in `rejected_candidates` with `reason: unavailable`. |
-| `not_scored` (health/robustness) | Excluded from composite; if all non-current are `not_scored`, `inconclusive`. |
+| `status` | Composite ranking | Favored target |
+| --- | --- | --- |
+| `available` | Full participation when mandate and scores allow. | Allowed when favoring rules below pass. |
+| `degraded` | May appear in `composite_ranking` for diagnostic transparency. | **Never** favored (Phase 17 RM-1022). |
+| `unavailable` | Excluded from ranking; may appear in `rejected_candidates` with `reason_code: unavailable`. | Never favored. |
+| `not_scored` (health/robustness) | Excluded from composite; if all non-baseline are `not_scored`, `inconclusive`. | Never favored. |
+
+### Favoring eligibility (Phase 17 RM-1022)
+
+A candidate may become `favored_candidate_id` only when:
+
+1. `status` is **`available`** (degraded rows are never favored).
+2. For `optimizer_candidate` / `robust_candidate` rows, `construction_disclosure.optimization_readiness.fair_comparison_ready` is **`true`** (see [optimization_engine_layer_spec.md](optimization_engine_layer_spec.md)).
+3. Mandate hard-exclusion rules in this spec still apply (`portfolio_valid === false`, etc.).
+
+Baseline rows (`analysis_subject`, `current`) remain eligible for No-Trade materiality when
+`available` or `degraded`; they are never favored targets.
+
+When `candidate_menu.is_partial_menu` is true, the decision must emit warning
+`partial_candidate_menu` and a plain-English `data_quality_notes` line that rankings apply only to
+the **intended** menu profile, not the full product optimizer menu.
 
 Optimization Engine Session 06 adds a quality boundary for optimizer candidates. If comparison
 marks a candidate `degraded` because `construction_disclosure.optimizer_quality` is
-`approximate_fallback` or `approximate_solver`, Selection may still rank it as degraded evidence,
-but if it becomes the favored target the decision must add warning
-`favored_optimizer_quality_not_clean:{candidate_id}:{status}` and a plain-English data-quality note.
-Candidates marked `unavailable` because of failed factory or failed optimizer quality remain
-excluded like other unavailable rows.
+`approximate_fallback` or `approximate_solver`, Selection may still list it in `composite_ranking`,
+but it cannot be favored. If a clean `available` optimizer row is favored, no extra quality warning
+is required beyond `fair_comparison_ready`. Candidates marked `unavailable` because of failed
+factory or failed optimizer quality remain excluded like other unavailable rows.
 
 **Role rules (V1):**
 

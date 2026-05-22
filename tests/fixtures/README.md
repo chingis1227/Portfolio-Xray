@@ -16,6 +16,19 @@
 - **Inputs:** `tests/optimization_engine_golden_inputs.py`
 - **Tests:** `tests/test_optimization_engine_contract.py`
 
+## Full-menu optimizer fair-comparison golden (`RM-1023`)
+
+- **File:** `optimization_comparison_full_menu_fair_ready_golden_v1.json` — sorted
+  `fair_ready_optimizer_ids` after offline `default_v1` optimizer seed with builder metadata.
+- **Regenerate** (also via `python tests/optimization_engine_golden_inputs.py`):
+
+  ```bash
+  python -m pytest tests/test_optimizer_fair_comparison_full_menu.py -q
+  ```
+
+- **Inputs:** `tests/optimizer_fair_comparison_fixtures.py`
+- **Tests:** `tests/test_optimizer_fair_comparison_full_menu.py`
+
 ## Portfolio X-Ray golden contract (`RM-949`)
 
 - **File:** `portfolio_xray_golden_v2.json` — committed reference output for `build_portfolio_xray_v2`.

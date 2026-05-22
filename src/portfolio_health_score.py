@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from src.config_schema import PortfolioConfig
+from src.optimization_readiness import is_optimizer_backed_for_favoring
+from src.downstream_decision_readiness import may_load_candidate_stress_report
 from src.stress_artifacts import resolve_candidate_stress_report_path
 
 SCHEMA_VERSION = "portfolio_health_score_v1"
@@ -146,6 +148,9 @@ def _resolve_stress_scenarios(
     scenarios = stress.get("scenarios")
     if isinstance(scenarios, list) and scenarios:
         return [s for s in scenarios if isinstance(s, dict)]
+
+    if not may_load_candidate_stress_report(cand):
+        return []
 
     report_path = resolve_candidate_stress_report_path(
         cand,
@@ -868,6 +873,16 @@ def build_portfolio_health_score(
     if not scored:
         run_warnings.append("no_scored_candidates")
 
+    menu = comparison.get("candidate_menu") or {}
+    if menu.get("is_partial_menu"):
+        run_warnings.append("partial_candidate_menu")
+        reason = menu.get("partial_menu_reason") or "incomplete intended menu"
+        intended = menu.get("intended_menu_profile_id") or "—"
+        product = menu.get("product_menu_profile_id") or "—"
+        run_warnings.append(
+            f"partial_menu_context:{intended}_vs_{product}:{reason}"
+        )
+
     if robustness_scorecard is None:
         run_warnings.append("robustness_scorecard_missing")
 
@@ -959,6 +974,11 @@ def build_portfolio_health_score(
             score_status = "partial"
 
         cand_warnings = list(cand.get("warnings") or [])
+        if (
+            cand.get("status") == "degraded"
+            and is_optimizer_backed_for_favoring(cand)
+        ):
+            cand_warnings.append("degraded_optimizer_diagnostic_only_not_favored")
         for comp in components.values():
             cand_warnings.extend(comp.get("warnings") or [])
 

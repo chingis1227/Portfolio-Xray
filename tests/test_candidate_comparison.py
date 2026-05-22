@@ -6,6 +6,8 @@ from pathlib import Path
 import yaml
 
 from src.candidate_comparison import (
+    COMPARISON_REBUILD_FACTORY_THEN_COMPARE,
+    COMPARISON_REBUILD_STANDALONE,
     SCHEMA_VERSION,
     build_candidate_comparison,
     build_candidate_menu,
@@ -349,6 +351,14 @@ def test_analysis_setup_summary_prefers_analysis_subject_sidecar_metadata(
     assert summary["analysis_subject_type"] == "current_portfolio"
     assert summary["analysis_subject_display_name"] == "Client current portfolio"
     assert summary["portfolio_role"] == "user_current_portfolio"
+    bundle = doc["review_bundle_context"]
+    assert bundle["version"] == "review_bundle_context_v1"
+    assert bundle["review_bundle_fingerprint"]
+    assert bundle["mode_subject_consistency"]["is_consistent"] is True
+    assert bundle["mode_subject_consistency"]["informational_notices"]
+    assert not any(
+        w.startswith("review_bundle_mode_subject:") for w in doc.get("warnings", [])
+    )
 
 
 def test_policy_row_is_legacy_only_when_analysis_subject_exists(tmp_path: Path) -> None:
@@ -1059,6 +1069,133 @@ def test_stale_factory_summary_not_used_after_fresh_comparison_rebuild(
     assert any(
         w.startswith("factory_summary_stale_vs_existing_comparison:")
         for w in doc["warnings"]
+    )
+
+
+def test_factory_then_compare_same_review_context_not_stale_on_seconds_skew(
+    tmp_path: Path,
+) -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    fp = compute_candidate_config_fingerprint(cfg)
+    main = tmp_path / "Main portfolio"
+    subject = main / "analysis_subject"
+    subject.mkdir(parents=True)
+    with open(subject / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.06, "vol_annual": 0.1}, cfg=cfg), f)
+    with open(subject / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(_run_metadata("model_portfolio"), f)
+
+    eq = tmp_path / "equal-weight portfolio"
+    eq.mkdir()
+    with open(eq / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y(
+                {"cagr": 0.08, "vol_annual": 0.12, "max_drawdown": -0.2},
+                cfg=cfg,
+            ),
+            f,
+        )
+
+    factory_run = {
+        "factory_profile_id": "core_v1",
+        "generated_at": "2026-05-21T10:00:00+00:00",
+        "analysis_end": "2026-04-30",
+        "config_fingerprint": fp,
+        "steps": [
+            {
+                "candidate_id": "equal_weight",
+                "status": "succeeded",
+                "reason_code": None,
+            }
+        ],
+    }
+    with open(main / "candidate_factory_run.json", "w", encoding="utf-8") as f:
+        json.dump(factory_run, f)
+    with open(main / "candidate_comparison.json", "w", encoding="utf-8") as f:
+        json.dump({"generated_at": "2026-05-21T10:00:03+00:00"}, f)
+
+    doc = build_candidate_comparison(
+        cfg,
+        project_root=tmp_path,
+        factory_run=factory_run,
+        comparison_rebuild_source=COMPARISON_REBUILD_FACTORY_THEN_COMPARE,
+    )
+    menu = doc["candidate_menu"]
+    assert menu["factory_evidence_status"] == "current"
+    assert menu["factory_steps_used"] is True
+    assert not any(
+        w.startswith("factory_summary_stale_vs_existing_comparison:")
+        for w in menu["factory_evidence_warnings"]
+    )
+
+
+def test_standalone_comparison_accepts_timing_skew_within_tolerance(
+    tmp_path: Path,
+) -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+        }
+    )
+    fp = compute_candidate_config_fingerprint(cfg)
+    main = tmp_path / "Main portfolio"
+    subject = main / "analysis_subject"
+    subject.mkdir(parents=True)
+    with open(subject / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(_snapshot_10y({"cagr": 0.06, "vol_annual": 0.1}, cfg=cfg), f)
+    with open(subject / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(_run_metadata("model_portfolio"), f)
+
+    eq = tmp_path / "equal-weight portfolio"
+    eq.mkdir()
+    with open(eq / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y(
+                {"cagr": 0.08, "vol_annual": 0.12, "max_drawdown": -0.2},
+                cfg=cfg,
+            ),
+            f,
+        )
+
+    with open(main / "candidate_factory_run.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "factory_profile_id": "core_v1",
+                "generated_at": "2026-05-21T10:00:00+00:00",
+                "analysis_end": "2026-04-30",
+                "config_fingerprint": fp,
+                "steps": [
+                    {
+                        "candidate_id": "equal_weight",
+                        "status": "succeeded",
+                        "reason_code": None,
+                    }
+                ],
+            },
+            f,
+        )
+    with open(main / "candidate_comparison.json", "w", encoding="utf-8") as f:
+        json.dump({"generated_at": "2026-05-21T10:00:45+00:00"}, f)
+
+    doc = build_candidate_comparison(
+        cfg,
+        project_root=tmp_path,
+        comparison_rebuild_source=COMPARISON_REBUILD_STANDALONE,
+    )
+    menu = doc["candidate_menu"]
+    assert menu["factory_evidence_status"] == "current"
+    assert menu["factory_steps_used"] is True
+    assert any(
+        w.startswith("factory_summary_timing_skew_accepted:")
+        for w in menu["factory_evidence_warnings"]
     )
 
 

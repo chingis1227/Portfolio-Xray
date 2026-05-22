@@ -391,3 +391,30 @@ def test_comparison_txt_includes_readiness_section(tmp_path: Path) -> None:
     text = txt_path.read_text(encoding="utf-8")
     assert "Optimization readiness (optimizer-backed rows)" in text
     assert "fair_comparison_ready=" in text
+
+
+def test_candidate_favoring_eligibility_helpers() -> None:
+    from src.optimization_readiness import (
+        candidate_eligible_for_favoring,
+        favoring_ineligibility_reason,
+    )
+
+    available_clean = {
+        "status": "available",
+        "role": "optimizer_candidate",
+        "construction_disclosure": {
+            "optimization_readiness": {"fair_comparison_ready": True},
+        },
+    }
+    assert candidate_eligible_for_favoring(available_clean) is True
+    assert favoring_ineligibility_reason(available_clean) is None
+
+    degraded = {**available_clean, "status": "degraded"}
+    assert candidate_eligible_for_favoring(degraded) is False
+    assert favoring_ineligibility_reason(degraded) == "degraded_excluded_from_favoring"
+
+    not_ready = {
+        "status": "available",
+        "role": "benchmark",
+    }
+    assert candidate_eligible_for_favoring(not_ready) is True

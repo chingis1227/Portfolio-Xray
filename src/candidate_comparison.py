@@ -30,6 +30,7 @@ from src.optimizer_methodology import (
     covariance_methodology_summary,
     young_etf_methodology_summary,
 )
+from src.review_bundle_context import build_review_bundle_context_v1
 from src.snapshot import compute_candidate_config_fingerprint, snapshot_config_fingerprint
 from src.stress import crisis_replay_summary_from_paths
 
@@ -43,6 +44,10 @@ PORTFOLIO_FIRST_POLICY_LEGACY_REASON = "legacy_policy_not_default_portfolio_firs
 PORTFOLIO_FIRST_POLICY_LEGACY_WARNING = "legacy_policy_reference_optional_portfolio_first"
 MENU_BASELINE_IDS = frozenset({"analysis_subject", "policy", "current"})
 PRODUCT_MENU_PROFILE_ID = "default_v1"
+# Max seconds factory may trail on-disk comparison when analysis context still matches (P17-G6).
+FACTORY_COMPARISON_TIMING_SKEW_SECONDS = 120
+COMPARISON_REBUILD_STANDALONE = "standalone"
+COMPARISON_REBUILD_FACTORY_THEN_COMPARE = "factory_then_compare"
 BASELINE_WEIGHTS_METADATA_FILE = "baseline_weights_metadata.json"
 _SUMMARY_BUILDER_EXCERPT_KEYS = (
     "status",
@@ -953,6 +958,29 @@ def _main_portfolio_role(main_dir: Path) -> str | None:
     return None
 
 
+def _collect_subject_bundle_artifacts(
+    main_dir: Path,
+    *,
+    output_dir_final_rel: str,
+) -> dict[str, Any]:
+    """Subject sidecar paths and snapshot fingerprint for review_bundle_context."""
+    subject_dir = analysis_subject_sidecar_dir(main_dir)
+    sidecar_present = subject_dir.is_dir()
+    snap = _load_json(subject_dir / SNAPSHOT_FILES[PRIMARY_WINDOW]) if sidecar_present else None
+    snap_fp = snapshot_config_fingerprint(snap) if snap else None
+    artifact_root = (
+        f"{output_dir_final_rel}/{ANALYSIS_SUBJECT_SIDECAR_SUBDIR}" if sidecar_present else None
+    )
+    return {
+        "sidecar_present": sidecar_present,
+        "artifact_root": artifact_root,
+        "run_metadata_present": (subject_dir / "run_metadata.json").is_file()
+        if sidecar_present
+        else False,
+        "snapshot_config_fingerprint": snap_fp,
+    }
+
+
 def _resolve_analysis_end(main_dir: Path, cfg: PortfolioConfig) -> str:
     subject_dir = analysis_subject_sidecar_dir(main_dir)
     for name in ("snapshot_10y.json", "snapshot_5y.json", "snapshot_3y.json"):
@@ -1240,12 +1268,34 @@ def _existing_comparison_generated_at(main_dir: Path) -> str | None:
     return None
 
 
+def _factory_context_matches_comparison(
+    factory_run: dict[str, Any],
+    *,
+    analysis_end: str | None,
+    expected_config_fingerprint: str | None,
+) -> bool:
+    factory_analysis_end = factory_run.get("analysis_end")
+    if analysis_end and factory_analysis_end and str(factory_analysis_end) != str(analysis_end):
+        return False
+    if analysis_end and not factory_analysis_end:
+        return False
+    factory_fp = factory_run.get("config_fingerprint")
+    if (
+        expected_config_fingerprint
+        and factory_fp
+        and str(factory_fp) != str(expected_config_fingerprint)
+    ):
+        return False
+    return True
+
+
 def _assess_factory_run_context(
     factory_run: dict[str, Any] | None,
     *,
     analysis_end: str | None,
     expected_config_fingerprint: str | None,
     existing_comparison_generated_at: str | None,
+    comparison_rebuild_source: str = COMPARISON_REBUILD_STANDALONE,
 ) -> dict[str, Any]:
     """Decide whether factory steps are current enough to annotate comparison rows."""
     if not factory_run:
@@ -1276,12 +1326,31 @@ def _assess_factory_run_context(
         status = "not_authoritative"
     else:
         existing_dt = _parse_iso_datetime(existing_comparison_generated_at)
+        context_matches = _factory_context_matches_comparison(
+            factory_run,
+            analysis_end=analysis_end,
+            expected_config_fingerprint=expected_config_fingerprint,
+        )
         if existing_dt and factory_dt <= existing_dt:
-            warnings.append(
-                "factory_summary_stale_vs_existing_comparison:"
-                f"{generated_at}<={existing_comparison_generated_at}"
-            )
-            status = "stale"
+            delta_seconds = int((existing_dt - factory_dt).total_seconds())
+            if (
+                comparison_rebuild_source == COMPARISON_REBUILD_FACTORY_THEN_COMPARE
+                and context_matches
+            ):
+                pass
+            elif (
+                context_matches
+                and 0 <= delta_seconds <= FACTORY_COMPARISON_TIMING_SKEW_SECONDS
+            ):
+                warnings.append(
+                    f"factory_summary_timing_skew_accepted:delta_seconds={delta_seconds}"
+                )
+            else:
+                warnings.append(
+                    "factory_summary_stale_vs_existing_comparison:"
+                    f"{generated_at}<={existing_comparison_generated_at}"
+                )
+                status = "stale"
 
     factory_analysis_end = factory_run.get("analysis_end")
     if analysis_end and factory_analysis_end and str(factory_analysis_end) != str(analysis_end):
@@ -1598,6 +1667,8 @@ def build_candidate_comparison(
     cfg: PortfolioConfig,
     *,
     project_root: Path | None = None,
+    factory_run: dict[str, Any] | None = None,
+    comparison_rebuild_source: str = COMPARISON_REBUILD_STANDALONE,
 ) -> dict[str, Any]:
     """Assemble the canonical comparison document (does not write files)."""
     project_root = project_root or Path.cwd()
@@ -1621,12 +1692,14 @@ def build_candidate_comparison(
 
     analysis_end = _resolve_analysis_end(main_dir, cfg)
     expected_config_fingerprint = compute_candidate_config_fingerprint(cfg)
-    factory_run = _load_factory_run(main_dir)
+    if factory_run is None:
+        factory_run = _load_factory_run(main_dir)
     factory_context = _assess_factory_run_context(
         factory_run,
         analysis_end=analysis_end or None,
         expected_config_fingerprint=expected_config_fingerprint,
         existing_comparison_generated_at=_existing_comparison_generated_at(main_dir),
+        comparison_rebuild_source=comparison_rebuild_source,
     )
     factory_steps_by_id = (
         _factory_steps_by_candidate_id(factory_run)
@@ -1667,6 +1740,37 @@ def build_candidate_comparison(
 
     out_rel = str(getattr(cfg, "output_dir_final", "Main portfolio")).replace("\\", "/")
     setup_summary = _analysis_setup_summary_from_main(main_dir, cfg)
+    comparison_generated_at = datetime.now(timezone.utc).isoformat()
+    comparison_config_fingerprint = (
+        str(factory_run.get("config_fingerprint"))
+        if (
+            factory_context.get("steps_used")
+            and factory_run
+            and factory_run.get("config_fingerprint")
+        )
+        else expected_config_fingerprint
+    )
+    review_bundle_context = build_review_bundle_context_v1(
+        analysis_end=analysis_end or None,
+        comparison_config_fingerprint=comparison_config_fingerprint,
+        comparison_generated_at=comparison_generated_at,
+        comparison_rebuild_source=comparison_rebuild_source,
+        setup_summary=setup_summary,
+        candidate_menu=candidate_menu,
+        subject_artifacts=_collect_subject_bundle_artifacts(main_dir, output_dir_final_rel=out_rel),
+        factory_run=factory_run,
+        factory_context=factory_context,
+    )
+    bundle_warnings: list[str] = []
+    if not review_bundle_context.get("fingerprint_alignment", {}).get("all_aligned"):
+        for reason in review_bundle_context.get("fingerprint_alignment", {}).get(
+            "mismatch_reasons"
+        ) or []:
+            bundle_warnings.append(f"review_bundle_alignment:{reason}")
+    for code in review_bundle_context.get("mode_subject_consistency", {}).get(
+        "mismatch_codes"
+    ) or []:
+        bundle_warnings.append(f"review_bundle_mode_subject:{code}")
     sidecar = current_sidecar_dir(output_dir_final)
     if sidecar_meets_minimum(sidecar):
         setup_summary = dict(setup_summary)
@@ -1676,17 +1780,9 @@ def build_candidate_comparison(
         "schema_version": SCHEMA_VERSION,
         "diagnostic_only": True,
         "comparison_baseline_candidate_id": "analysis_subject",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": comparison_generated_at,
         "analysis_end": analysis_end,
-        "config_fingerprint": (
-            str(factory_run.get("config_fingerprint"))
-            if (
-                factory_context.get("steps_used")
-                and factory_run
-                and factory_run.get("config_fingerprint")
-            )
-            else expected_config_fingerprint
-        ),
+        "config_fingerprint": comparison_config_fingerprint,
         "investor_currency": str(getattr(cfg, "investor_currency", "USD")),
         "output_dir_final": out_rel,
         "analysis_setup_summary": setup_summary,
@@ -1694,8 +1790,9 @@ def build_candidate_comparison(
         "primary_window": PRIMARY_WINDOW,
         "candidates": candidates,
         "candidate_menu": candidate_menu,
+        "review_bundle_context": review_bundle_context,
         "legacy_artifacts": legacy,
-        "warnings": run_warnings + menu_warnings,
+        "warnings": run_warnings + menu_warnings + bundle_warnings,
     }
     return _round_export_value(doc)
 
@@ -1845,10 +1942,17 @@ def write_candidate_comparison_outputs(
     project_root: Path | None = None,
     write_legacy: bool = True,
     write_txt: bool = True,
+    factory_run: dict[str, Any] | None = None,
+    comparison_rebuild_source: str = COMPARISON_REBUILD_STANDALONE,
 ) -> dict[str, Path]:
     """Build and write canonical (and optional legacy) comparison artifacts."""
     project_root = project_root or Path.cwd()
-    comparison = build_candidate_comparison(cfg, project_root=project_root)
+    comparison = build_candidate_comparison(
+        cfg,
+        project_root=project_root,
+        factory_run=factory_run,
+        comparison_rebuild_source=comparison_rebuild_source,
+    )
     out_dir = project_root / str(getattr(cfg, "output_dir_final", "Main portfolio"))
     out_dir.mkdir(parents=True, exist_ok=True)
 

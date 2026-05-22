@@ -53,6 +53,15 @@ It does not change data policy, NaN handling, or optimizer formulas.
 | `user_summary_lines[]` | Short lines for run metadata and commentary handoff. |
 | `does_not_change_data_policy` | Always `true`. |
 
+### `review_bundle_disclosure` (RM-1026)
+
+`input_assumptions_v1` may include `review_bundle_disclosure` with
+`mode_subject_consistency` projected from the same resolver as
+`candidate_comparison.json` → `review_bundle_context`. When present,
+`data_trust_signals.user_summary_lines` merges review-bundle notices (for example
+legacy `analysis_mode=optimize_from_universe` while diagnosing an explicit
+`current_portfolio` subject) ahead of generic trust lines.
+
 ## `analysis_subject` Config Object
 
 `analysis_subject` is the canonical portfolio-first input object. When it is present and valid, it
@@ -216,9 +225,24 @@ governed by `metrics_specification.md`, `DATA.md`, and config resolution code.
 
 ## Ticker Validation Policy
 
-MVP product mode rejects unknown tickers. Users should select tickers only from the supported taxonomy universe so the system can avoid missing asset classes, missing stress classifications, and broken reports.
+Users should select tickers only from the supported taxonomy universe so the system can avoid missing asset classes, missing stress classifications, and broken reports.
 
-In current repo mode, existing taxonomy behavior remains warning-based unless SPEC is updated. ETF and stock taxonomy validation may report unknown tickers, but taxonomy remains annotation/diagnostics infrastructure and does not silently rewrite the configured ticker universe.
+### Explicit `analysis_subject` (Block 1 preflight)
+
+When `analysis_subject` is present with a supported `type`, config validation **must fail before**
+report or portfolio-review runs if any subject ticker is absent from both `config/etf_universe.yml`
+and `config/stock_universe.yml`. The cash proxy ticker resolved for the run (for example `BIL` for
+USD) is treated as allowed even when it is not part of the subject ticker list.
+
+Failure mode: `ConfigValidationError` with `unknown=[...]` listing tickers not found in either
+taxonomy file. This is enforced in `validate_config` via `preflight_explicit_analysis_subject_tickers`
+in `src/analysis_setup.py`.
+
+### Legacy compatibility paths
+
+Configs without explicit `analysis_subject` keep warning-based taxonomy checks during
+optimization/report (`etf_universe_validation.json`). ETF and stock taxonomy remain
+annotation/diagnostics infrastructure and do not silently rewrite the configured ticker universe.
 
 ## Mandate And Constraint Inputs
 
