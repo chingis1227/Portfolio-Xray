@@ -677,12 +677,16 @@ required order is already canonical in the portfolio review workflow spec.
 
 ### Candidate Flow
 
+Portfolio-first comparison baseline is **`analysis_subject`**, not legacy policy weights at
+`output_dir_final` root. A **`policy`** row may still appear in `candidate_comparison.json` for
+legacy compatibility when policy artifacts exist on disk; it is not the default review baseline.
+
 ```text
 1. Load config and eligible universe
 2. Build candidate-specific weights
 3. Save candidate weights and metadata
 4. Run the same report pipeline for candidate weights
-5. Compare candidate against policy and other variants
+5. Compare analysis_subject against candidates (legacy policy row optional)
 ```
 
 ## Inputs And Outputs

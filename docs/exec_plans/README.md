@@ -19,7 +19,11 @@ artifact contracts.
 
 ## Current Pointer
 
-**Active:** None (project-level). Most recent closure: [Site/API Default Output Refactor](2026-05-23_site_api_default_output_refactor_plan.md) (Sessions 0–7, 2026-05-23).
+**Active:** None.
+
+Most recent closure: [Core / Full Artifact and Documentation Confusion Remediation](2026-05-23_core_full_artifact_documentation_confusion_plan.md) (Sessions 00–06, 2026-05-24). Origin audit: [Core/full confusion audit](../audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md) — remediation status in audit § «Remediation status».
+
+Previous closure: [Site/API Default Output Refactor](2026-05-23_site_api_default_output_refactor_plan.md) (Sessions 0–7, 2026-05-23).
 
 Completed (2026-05-22): [Candidate Factory Parallel Lightweight Reports](2026-05-22_candidate_factory_parallel_reports_plan.md)
 (Sessions 0–6 closed: opt-in parallel Phase 2 lightweight reports, fallback disclosure, operator docs,
@@ -88,6 +92,7 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-05-23 | [Core / Full Artifact and Documentation Confusion Remediation](2026-05-23_core_full_artifact_documentation_confusion_plan.md) | Completed | [Core/full confusion audit](../audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md) | Sessions 00–06 closed 2026-05-24 (`RM-1100`–`RM-1106`): docs-only remediation (OUTPUTS, WORKFLOW, runbook, audits, ARCHITECTURE, agents, glossary, audit remediation status); `verify_docs.py` OK each session. |
 | 2026-05-23 | [Site/API Default Output Refactor](2026-05-23_site_api_default_output_refactor_plan.md) | Completed | Internal discovery (Session 0) | Sessions 0–7 closed: `site_api` default, `output_manifest.json`, explicit export/PDF paths; pytest **38 passed**; [Session 07 closure](../audits/2026-05-23_site_api_default_output_session07_closure_report.md). |
 | 2026-05-23 | [Candidate Factory Shared Evidence](2026-05-23_candidate_factory_shared_evidence_plan.md) | Completed | [Shared evidence audit](../audits/2026-05-23_candidate_factory_shared_evidence_audit.md) | Sessions 0–6 closed: shared context v2–v5, report timing, pytest **106** passed; full-menu timing **−28.1%** `report_seconds` (below −35% goal — [Session 06 audit](../audits/2026-05-23_candidate_factory_shared_evidence_session06_timing_audit.md)); RM-982 Done; Session 7 deferred. |
 | 2026-05-22 | [Candidate Factory Parallel Lightweight Reports](2026-05-22_candidate_factory_parallel_reports_plan.md) | Completed | Post-runtime-refactor audit of sequential `lightweight_comparison` bottleneck | Sessions 0–6 closed: opt-in parallel lightweight reports + fallback; Session 5/6 timing audits; **keep parallel opt-in** (see [Session 06 audit](../audits/2026-05-22_candidate_factory_parallel_reports_session06_timing_audit.md)). |

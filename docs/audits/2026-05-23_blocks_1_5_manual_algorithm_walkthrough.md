@@ -28,6 +28,12 @@ This is a **manual walkthrough**: what the system does step by step for the proo
 
 **Core mode does not prove full mode.** This document’s proof path is `--mode core` (factory profile `core_v1`, six candidates). Full menu (`default_v1`, sixteen candidates including classic optimizers and robust suite) is **available in code** but **not proven** by the documented core command unless a separate full run is executed and evidenced.
 
+**Documentation note (2026-05-24):** glossary **Blocks 1–5 deliverable** vs **Decision package**;
+`candidate_factory_run.json` vs `candidate_comparison.json` scope — [GLOSSARY.md](../../GLOSSARY.md),
+[candidate_comparison_spec.md](../specs/candidate_comparison_spec.md),
+[portfolio_review_workflow_spec.md](../specs/portfolio_review_workflow_spec.md) (cross-links),
+[core/full artifact confusion audit](2026-05-23_core_full_artifact_documentation_confusion_audit.md).
+
 ---
 
 ## 1. Input data

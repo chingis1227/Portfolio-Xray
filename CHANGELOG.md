@@ -4,7 +4,68 @@ This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.
 
+Date: 2026-05-24
+
+Category: Added
+
+- Core/full artifact confusion remediation Session 06 closure (`RM-1106`): remediation status in
+  [confusion audit](docs/audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md);
+  ExecPlan
+  [2026-05-23_core_full_artifact_documentation_confusion_plan.md](docs/exec_plans/2026-05-23_core_full_artifact_documentation_confusion_plan.md)
+  marked **Completed**; [exec_plans/README.md](docs/exec_plans/README.md) Active pointer cleared;
+  [audits/README.md](docs/audits/README.md) confusion audit row → Historical.
+
+Date: 2026-05-24
+
+Category: Added
+
+- Core/full artifact confusion remediation Session 05 (`RM-1105`): [GLOSSARY.md](GLOSSARY.md) Blocks 1–5
+  vs decision package and factory/comparison evidence terms; factory vs comparison scope note in
+  [candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md); cross-links in
+  [portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md); walkthrough notes
+  in both Blocks 1–5 walkthrough audits; [SPEC.md](SPEC.md) artifact-boundary pointer.
+
+Date: 2026-05-24
+
+Category: Added
+
+- Core/full artifact confusion remediation Session 04 (`RM-1104`): [ARCHITECTURE.md](ARCHITECTURE.md)
+  Candidate Flow baseline (`analysis_subject`; legacy `policy` row optional); [.cursor/rules/portfolio_run_scope.mdc](.cursor/rules/portfolio_run_scope.mdc)
+  portfolio-first PDF default vs legacy rebuild scope; [AGENTS.md](AGENTS.md) Main Commands clarify
+  default review does not refresh `pdf files/` (`--with-pdf` / `--legacy-full-pdf`).
+
+Date: 2026-05-24
+
+Category: Added
+
+- Core/full artifact confusion remediation Session 03 (`RM-1103`): command matrix split in
+  [OUTPUTS.md](OUTPUTS.md) (core `core_v1` review vs standalone/full `default_v1` factory); §20 disk
+  caveat in [Blocks 1–5 verification report](docs/audits/2026-05-22_blocks_1_5_verification_report.md);
+  [README.md](README.md) PDF one-liner and aligned summary table; [audits/README.md](docs/audits/README.md)
+  Blocks 1–5 row updated.
+
+Date: 2026-05-24
+
+Category: Added
+
+- Core/full artifact confusion remediation Session 02 (`RM-1102`): portfolio-first operator checklist
+  in [WORKFLOW.md](WORKFLOW.md); [operational_runbook.md](docs/operational_runbook.md) §8 cross-links
+  to checklist and §0.1; [OUTPUTS.md](OUTPUTS.md) Read this first links to WORKFLOW + §8.
+
 Date: 2026-05-23
+
+Category: Added
+
+- Core/full artifact and documentation confusion remediation Session 01 (`RM-1101`): P0 Read this first
+  in [OUTPUTS.md](OUTPUTS.md) and runbook §0.1.
+
+Category: Added
+
+- Core/full artifact and documentation confusion remediation Session 00 (`RM-1100`): active ExecPlan
+  [2026-05-23_core_full_artifact_documentation_confusion_plan.md](docs/exec_plans/2026-05-23_core_full_artifact_documentation_confusion_plan.md)
+  from audit
+  [2026-05-23_core_full_artifact_documentation_confusion_audit.md](docs/audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md);
+  docs-only Sessions 03–06 pending (command matrix, ARCHITECTURE, glossary, closure).
 
 Category: Added
 

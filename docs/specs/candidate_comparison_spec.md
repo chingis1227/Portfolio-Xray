@@ -25,6 +25,26 @@ only and are not default candidate evidence; the `policy` row remains in the reg
 as `unavailable` with `unavailable_reason:
 legacy_policy_not_default_portfolio_first_candidate`.
 
+### Factory run vs comparison scope (operator note)
+
+`candidate_factory_run.json` and `candidate_comparison.json` answer **different questions** and must
+not be read as the same scope:
+
+| Artifact | Question it answers | Typical pitfall |
+| --- | --- | --- |
+| `candidate_factory_run.json` | What did the **last factory orchestration** attempt (profile, steps, reuse)? | Assuming six `core_v1` steps mean comparison contains only six scored families |
+| `candidate_comparison.json` | What candidate evidence exists **on disk** for this `analysis_end` / bundle context? | Treating 16+ rows as proof the last run was `--mode full` when optimizers were reused from disk |
+
+The comparison builder scans the product registry and existing variant folders; it does **not** limit
+rows to the last factory `steps[]` unless freshness/unavailability rules mark them unavailable.
+`candidate_menu` (and, when present, `factory_evidence_status` / `factory_steps_used`) carries the
+intended menu versus scored evidence. Glossary:
+[GLOSSARY.md](../../GLOSSARY.md) (**Candidate factory run evidence**, **Candidate comparison
+evidence**). Confusion audit:
+[2026-05-23 core/full artifact audit](../audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md)
+§4.2, §8. Portfolio-first workflow:
+[portfolio_review_workflow_spec.md](portfolio_review_workflow_spec.md).
+
 ## Product Boundary
 
 - Comparison output is **evidence for decision support**, not a recommendation.

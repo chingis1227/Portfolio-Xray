@@ -27,6 +27,17 @@ Blocks 1-5 MVP core reliability (input validation, factory freshness, resumabili
 readiness disclosure, offline smoke, data-trust summaries) is governed by the active
 [Blocks 1-5 MVP Core Reliability Plan](docs/exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md).
 
+**Artifact and audit-scope boundaries:** the portfolio-first CLI writes Blocks 1–5 diagnostics and
+the V1 decision package in one orchestrated path, but Blocks 1–5 audits/walkthroughs **exclude**
+Selection, Action, Monitoring, and Journal interpretation. `candidate_factory_run.json` records
+last factory orchestration; `candidate_comparison.json` aggregates on-disk candidate evidence (may
+be wider than the last factory run). Operator definitions:
+[GLOSSARY.md](GLOSSARY.md) (**Blocks 1–5 deliverable**, **Decision package**, factory/comparison
+evidence terms); confusion register:
+[2026-05-23 core/full artifact confusion audit](docs/audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md);
+remediation plan:
+[2026-05-23 core/full artifact documentation confusion plan](docs/exec_plans/2026-05-23_core_full_artifact_documentation_confusion_plan.md).
+
 It supports:
 
 - config validation and profile-derived targets

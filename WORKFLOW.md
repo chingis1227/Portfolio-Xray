@@ -54,6 +54,40 @@ Before changing behavior, check the owning source of truth:
 
 Do not invent formulas, estimators, scenarios, constraints, statuses, or data rules when a spec exists.
 
+## Portfolio-First Operator Checklist
+
+Use this path when running or reviewing `python run_portfolio_review.py` (portfolio-first review).
+It complements the generic workflow above and the artifact map in [OUTPUTS.md](OUTPUTS.md#read-this-first).
+Factory recovery and reason codes: [operational runbook §8](docs/operational_runbook.md#8-candidate-portfolio-factory-operator-playbook).
+
+**Before the run**
+
+| Step | Action |
+| --- | --- |
+| 1 | Confirm `config.yml` → `analysis_subject` (weights for `current_portfolio` / `model_portfolio` when used). |
+| 2 | Choose mode: **core** (default, six candidates, `core_v1`) vs **full** (`default_v1`, 16 builders). See [portfolio review workflow spec](docs/specs/portfolio_review_workflow_spec.md). |
+| 3 | Optional: `python run_portfolio_review.py --dry-run` to inspect stage order without builders. |
+| 4 | Run: `python run_portfolio_review.py` or `--mode full`; add `--no-cache` on first data load if needed. Default is JSON-only (`site_api`); PDFs require `--with-pdf` or `--legacy-full-pdf`. |
+
+**After the run — before trusting comparison or decision JSON**
+
+| Step | Check | Why |
+| --- | --- | --- |
+| 1 | Command / mode used | Default is **core** (`core_v1`), not full optimizer menu. |
+| 2 | Open `{output_dir_final}/analysis_subject/` first | Subject X-Ray, stress, and `run_metadata.json` for the **reviewed** portfolio. |
+| 3 | Do **not** use root `run_result.json`, `portfolio_weights.yml`, or root `stress_report.json` / `portfolio_xray.json` as the subject | Those are **legacy policy** artifacts when present — often different weights than `analysis_subject/`. |
+| 4 | `candidate_factory_run.json` → `factory_profile_id` | Must match the mode you intended (`core_v1` vs `default_v1`). |
+| 5 | Same file → `steps[]` statuses | Many `skipped_existing` rows mean **reused snapshots**, not a fresh rebuild of that candidate. |
+| 6 | `candidate_comparison.json` → `candidate_menu` | Read `is_partial_menu`, `intended_menu_size`, `review_mode`, and `factory_execution_summary` (including reuse counts) **before** rankings. |
+| 7 | Compare factory step count vs comparison row count | Comparison scans **disk**; scored optimizers may come from **earlier** full runs while the last factory was core-only. |
+| 8 | Presentation files (TXT, HTML, PNG, PDF) | May be **stale** after a JSON-only review; absence of PDF does not mean failure. |
+
+**Then** open comparison rows, scorecard, selection, and decision-package JSON. For partial menus and resume,
+follow [runbook §8.5](docs/operational_runbook.md#85-scenario-playbooks) and [§0.1 layout](docs/operational_runbook.md#01-read-this-first-main-portfolio-layout).
+
+Confusion sources and audit context:
+[2026-05-23 core/full artifact audit](docs/audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md).
+
 ## 3. Planning
 
 Use [PLANS.md](PLANS.md) and a checked-in ExecPlan under `docs/exec_plans/` when work is large, risky, multi-step, or architectural.

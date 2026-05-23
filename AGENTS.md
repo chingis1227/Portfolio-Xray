@@ -54,11 +54,12 @@ python -m pytest
 Run portfolio-first review:
 
 ```bash
-python run_portfolio_review.py [--mode core|full] [--dry-run] [--skip-candidates] [--candidate-profile PROFILE] [--candidates ID,ID,...] [--legacy-full-pdf]
+python run_portfolio_review.py [--mode core|full] [--dry-run] [--skip-candidates] [--candidate-profile PROFILE] [--candidates ID,ID,...] [--with-pdf] [--legacy-full-pdf]
 ```
 
-Default PDF rebuild is portfolio-first only (`analysis_subject` + decision package). Use
-`--legacy-full-pdf` to regenerate the full legacy variant PDF suite.
+Default output profile is `site_api` (JSON/cache only); a routine review **does not** refresh
+`pdf files/`. Use `--with-pdf` for portfolio-first decision PDFs (`analysis_subject` + decision
+package). Use `--legacy-full-pdf` to regenerate the full legacy variant PDF suite.
 
 Run legacy policy optimization:
 

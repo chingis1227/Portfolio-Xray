@@ -45,6 +45,13 @@ This document covers **Blocks 1–5 only**:
 
 Blocks 6+ artifacts such as `decision_package_summary.json`, `action_plan.json`, and `selection_decision.json` may exist under `Main portfolio/` from prior runs but are **not** part of the Blocks 1–5 algorithm described here.
 
+**Documentation note (2026-05-24):** glossary terms **Blocks 1–5 deliverable** vs **Decision package**
+and factory/comparison evidence boundaries live in [GLOSSARY.md](../../GLOSSARY.md). The same
+`run_portfolio_review.py` command can write decision JSON without making those files part of this
+walkthrough’s scope. `candidate_factory_run.json` ≠ `candidate_comparison.json` scope — see
+[candidate_comparison_spec.md](../specs/candidate_comparison_spec.md) and the
+[core/full artifact confusion audit](2026-05-23_core_full_artifact_documentation_confusion_audit.md).
+
 ---
 
 ## 1. Executive summary

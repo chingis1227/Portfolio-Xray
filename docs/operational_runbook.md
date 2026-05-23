@@ -9,6 +9,35 @@ Phase 17 live E2E gates:
 
 ## 0. Portfolio-First Review Workflow
 
+### 0.1 Read this first — Main portfolio layout
+
+Before opening stress, weights, or comparison JSON under `Main portfolio/`, confirm **which portfolio**
+you are looking at. The folder often holds **two unrelated trees** from different workflows.
+
+| Path | Workflow | Trust for portfolio-first review |
+| --- | --- | --- |
+| `{output_dir_final}/analysis_subject/` | `run_portfolio_review.py` subject materialization | **Yes** — starting portfolio, Blocks 1–3 diagnostics |
+| `{output_dir_final}/run_result.json`, `portfolio_weights.yml` | `run_optimization.py` legacy policy optimizer | **No** — policy weights and release metadata only |
+| Root `portfolio_xray.json`, `stress_report.json`, `run_metadata.json` | Legacy policy report path (`run_optimization.py --with-report` or standalone `run_report.py` on policy weights) | **No** — do not substitute for `analysis_subject/` files |
+
+**Do not mix:** subject weights in `analysis_subject/run_metadata.json` vs policy weights in root
+`run_result.json` / `portfolio_weights.yml` are frequently **different portfolios** (different SPY
+allocations, cash, and stress context). Treating root policy artifacts as “the reviewed portfolio”
+is the most common operator error after a routine `python run_portfolio_review.py --mode core`.
+
+**Stale exports:** default review uses `site_api` (JSON + cache). TXT, HTML, PNG, and CSV under
+`analysis_subject/` or candidate folders, and PDFs under `pdf files/`, may remain from an earlier
+`full_report` / `legacy_export` run. Absence of a fresh PDF does **not** mean the JSON review failed;
+presence of a PDF does **not** prove it matches the latest JSON.
+
+**Factory vs comparison scope:** `candidate_factory_run.json` → `factory_profile_id` and step status
+describe the **last factory run** (e.g. `core_v1`, six steps, `skipped_existing`). `candidate_comparison.json`
+may score **more rows** (optimizers, legacy `policy`, reused snapshots). Always read `candidate_menu`
+(`is_partial_menu`, `intended_menu_size`, `factory_execution_summary`) before interpreting rankings.
+
+Full output map: [OUTPUTS.md § Read this first](../OUTPUTS.md#read-this-first). Audit:
+[Core / Full Artifact and Documentation Confusion Audit](audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md).
+
 The portfolio-first path starts with the resolved `analysis_subject`, writes its diagnostics first,
 and only then builds or compares candidate portfolios.
 
@@ -167,7 +196,7 @@ If either file is missing, the factory step is `skipped_dependency` (whole facto
 
 Inspect `candidate_factory_run.json` → `steps[]` → `robust_paths_disclosure` and `candidate_comparison.json` → `construction_disclosure.robust_paths` when λ source or Main prerequisites are unclear.
 
-**Operator playbook (reason codes, exit codes, recovery):** see [section 8](#8-candidate-portfolio-factory-operator-playbook) below.
+**Operator playbook (reason codes, exit codes, recovery):** see [section 8](#8-candidate-portfolio-factory-operator-playbook) below (after the [portfolio-first operator checklist](../../WORKFLOW.md#portfolio-first-operator-checklist)).
 
 ## 1. Legacy File-First MVP Policy Workflow
 
@@ -288,7 +317,15 @@ For a deliberate legacy policy run, use `python run_optimization.py` and inspect
 ## 8. Candidate Portfolio Factory operator playbook
 
 Use this section when interpreting `candidate_factory_run.json`, `candidate_factory_run.txt`, or the
-factory CLI exit code. Canonical field definitions: [candidate_factory_spec.md](specs/candidate_factory_spec.md).
+factory CLI exit code.
+
+**Portfolio-first order (do this first):** complete the
+[WORKFLOW.md portfolio-first operator checklist](../../WORKFLOW.md#portfolio-first-operator-checklist),
+then [§0.1 Read this first](#01-read-this-first-main-portfolio-layout) (subject vs legacy policy root,
+stale exports, factory vs comparison scope). Only after `factory_profile_id` and `candidate_menu`
+match your intended review mode, use the CLI tables and playbooks below.
+
+Canonical field definitions: [candidate_factory_spec.md](specs/candidate_factory_spec.md).
 Layer handoff: [candidate_factory_layer_spec.md](specs/candidate_factory_layer_spec.md).
 
 ### 8.1 Standalone factory CLI
@@ -407,9 +444,10 @@ diagnostic; factory `reason_code` is the stable machine label for comparison and
 
 **Partial menu / core vs full (G4, RM-920)**
 
-1. Read `candidate_comparison.json` → `candidate_menu` (`is_partial_menu`, `intended_candidate_ids`, `available_candidate_ids`).
+1. Read `candidate_comparison.json` → `candidate_menu` (`is_partial_menu`, `intended_candidate_ids`, `available_candidate_ids`, `factory_execution_summary`).
 2. Do not treat rankings as covering `default_v1` when only `core_v1` ran.
 3. For full menu: `python run_portfolio_review.py --mode full`.
+4. Checklist cross-ref: [WORKFLOW.md § Portfolio-First Operator Checklist](../../WORKFLOW.md#portfolio-first-operator-checklist) steps 4–7.
 
 **Comparison not updated**
 

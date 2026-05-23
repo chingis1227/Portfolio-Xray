@@ -400,6 +400,34 @@ Term heading
 - Area: workflow
 - Canonical source: [docs/specs/portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md)
 
+### Blocks 1–5 deliverable
+
+- Definition: The diagnostic and candidate-prep scope covered by Blocks 1–5 audits and walkthroughs: input and assumptions, Portfolio X-Ray, Stress Test Lab, Candidate Portfolio Factory, and optimization-engine / candidate-generation readiness. It ends before Selection Engine, Action Plan, Monitoring, and Decision Journal are interpreted as the audit subject.
+- Area: workflow
+- Canonical source: [docs/audits/2026-05-23_blocks_1_5_actual_algorithm_walkthrough.md](docs/audits/2026-05-23_blocks_1_5_actual_algorithm_walkthrough.md)
+- Notes: `python run_portfolio_review.py` still writes downstream decision JSON in the same CLI leg; those files are **not** part of Blocks 1–5 audit scope even when present on disk. See **Decision package**.
+
+### Decision package
+
+- Definition: The V1 generated decision-support bundle written after `candidate_comparison.json`: robustness scorecard, Portfolio Health Score, selection/no-trade, action plan, monitoring diff, decision journal, and decision-package summary (plus optional PDF when export is requested).
+- Area: workflow
+- Canonical source: [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md) (downstream wiring), [OUTPUTS.md](OUTPUTS.md)
+- Notes: Same orchestrated review command can produce both Blocks 1–5 evidence and decision-package JSON. Audits that say “Blocks 1–5 only” exclude this layer by **audit scope**, not by CLI omission.
+
+### Candidate factory run evidence
+
+- Definition: Orchestration record in `candidate_factory_run.json` describing the **last** factory execution: profile (`core_v1` / `default_v1`), per-step status (`succeeded`, `skipped_existing`, …), timing, and pointers to comparison outputs.
+- Area: outputs
+- Canonical source: [docs/specs/candidate_factory_spec.md](docs/specs/candidate_factory_spec.md)
+- Notes: Describes what the factory **last orchestrated**, not every row scored in comparison. A `core_v1` run with reuse does not prove the full `default_v1` menu was rebuilt.
+
+### Candidate comparison evidence
+
+- Definition: Aggregated diagnostic table in `candidate_comparison.json` built by scanning **existing** per-candidate artifacts on disk, annotated with `candidate_menu` and `review_bundle_context`.
+- Area: outputs
+- Canonical source: [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md)
+- Notes: Row set can be **wider** than the last factory run when snapshots were reused or prior full-menu folders remain. Read `candidate_menu.is_partial_menu` and `factory_evidence_status` before treating rankings as full-menu proof.
+
 ### CLI/file-driven
 
 - Definition: Operating model where main workflows are run through command-line scripts and generated files rather than a production API or full UI.

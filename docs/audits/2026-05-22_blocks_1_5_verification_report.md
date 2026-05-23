@@ -155,7 +155,15 @@ Current portfolio evidenced in `run_metadata.json`:
 
 ## 20. Can Blocks 1-5 alone be shown as a reliable MVP diagnostic-and-optimization demo?
 
+**Disk caveat (snapshot at write time):** claims in this section about factory scope (e.g. a
+**16-candidate** / `default_v1` run) describe evidence **at the time this report was written**, not
+guaranteed current disk state. Before demo or audit reuse, open
+`{output_dir_final}/candidate_factory_run.json` and confirm `factory_profile_id`, `steps[]`, and
+`execution_summary.reused_existing`. A routine **`core_v1`** review leaves a six-step factory record
+while `candidate_comparison.json` may still list optimizer rows reused from earlier **`default_v1`**
+runs — read `candidate_menu` before treating comparison as full-menu proof.
+
 - Status: PARTIAL
-- Evidence: Positive evidence is present in `run_metadata.json` for resolved 8-ticker inputs and assumptions, `portfolio_xray.json` for diagnostics, `stress_report.json` for synthetic stress and partial historical stress, `candidate_factory_run.json` for a fresh 16-candidate factory run, and `candidate_comparison.json` for full-mode candidate readiness. Limiting evidence is also explicit: `portfolio_xray.sections.factor_exposure.status="partial"`, `stress_report.data_trust_summary.overall_trust="low"`, `historical_results` cannot compute `dotcom` or `2008`, and `candidate_menu` does not fully separate core vs full candidate membership.
+- Evidence: Positive evidence is present in `run_metadata.json` for resolved 8-ticker inputs and assumptions, `portfolio_xray.json` for diagnostics, `stress_report.json` for synthetic stress and partial historical stress, `candidate_factory_run.json` for a fresh 16-candidate factory run *(snapshot at write time; re-verify `factory_profile_id` on disk)*, and `candidate_comparison.json` for full-mode candidate readiness. Limiting evidence is also explicit: `portfolio_xray.sections.factor_exposure.status="partial"`, `stress_report.data_trust_summary.overall_trust="low"`, `historical_results` cannot compute `dotcom` or `2008`, and `candidate_menu` does not fully separate core vs full candidate membership.
 - Problem if any: Blocks 1-5 can support a credible MVP diagnostic-and-optimization demo only if the demo clearly states the limitations: factor exposure is partial, old historical stress episodes are unavailable for this current portfolio, and core/full menu separation is not fully explicit in the artifacts.
 - Fix needed if any: Before calling it fully reliable as a standalone MVP demo, add fuller factor coverage or clearer factor-missing disclosure, add explicit core/full menu membership, and decide whether old historical stress should remain realized-only with disclosure or get a governed fallback in the primary historical stress artifact.

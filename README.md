@@ -8,22 +8,27 @@ Product concept documents describe target direction only. Current behavior is go
 
 Default execution is site/API-first: JSON contracts and cache are written for backend/UI
 consumption, while CSV/TXT/HTML/PNG/PDF/Markdown/CSS presentation artifacts are disabled unless an
-explicit export/report profile is selected.
+explicit export/report profile is selected. Default `run_portfolio_review.py` / `site_api` runs do
+**not** refresh `pdf files/` — use `--with-pdf`, `--legacy-full-pdf`, or an explicit export profile
+when client PDFs must match the latest JSON.
 
-| Use case | Command |
-| --- | --- |
-| Default site/API report | `python run_report.py` |
-| Portfolio review site/API (JSON + `output_manifest.json`) | `python run_portfolio_review.py` |
-| Core review (six candidates) | `python run_portfolio_review.py --mode core` |
-| Candidate factory site/API | `python run_candidate_factory.py --profile default_v1 --then-compare` |
-| Compare / decision package only | `python run_compare_variants.py` |
-| Legacy policy optimize only (no report) | `python run_optimization.py` |
-| Legacy policy + site/API report | `python run_optimization.py --with-report` |
-| Full report exports | `python run_report.py --output-profile full_report` |
-| Legacy export + PDF sidecars | `python run_report.py --output-profile legacy_export` |
-| Portfolio-first PDF export | `python run_portfolio_review.py --with-pdf` |
-| Full legacy PDF suite | `python run_portfolio_review.py --legacy-full-pdf` or `python rebuild_pdf_reports.py` |
-| Benchmark/timing run | `python run_candidate_factory.py --profile default_v1 --then-compare --parallel-lightweight-reports` |
+Routine review uses **`--mode core`** (factory profile **`core_v1`**, six candidates). Full menu
+(**`default_v1`**, 16 builders) requires **`--mode full`** or standalone factory. See
+[OUTPUTS.md](OUTPUTS.md) for the full command matrix.
+
+| Use case | Command | Factory profile |
+| --- | --- | --- |
+| Portfolio review site/API (**core**, default) | `python run_portfolio_review.py` or `--mode core` | `core_v1` |
+| Full review (16 builders) | `python run_portfolio_review.py --mode full` | `default_v1` |
+| Full menu factory + compare (standalone) | `python run_candidate_factory.py --profile default_v1 --then-compare` | `default_v1` |
+| Compare / decision package only | `python run_compare_variants.py` | — |
+| Legacy policy optimize only (no report) | `python run_optimization.py` | — |
+| Legacy policy + site/API report | `python run_optimization.py --with-report` | — |
+| Full report exports | `python run_report.py --output-profile full_report` | — |
+| Legacy export + PDF sidecars | `python run_report.py --output-profile legacy_export` | — |
+| Portfolio-first PDF export | `python run_portfolio_review.py --with-pdf` | same as mode |
+| Full legacy PDF suite | `python run_portfolio_review.py --legacy-full-pdf` or `python rebuild_pdf_reports.py` | — |
+| Benchmark/timing run | `python run_candidate_factory.py --profile default_v1 --then-compare --parallel-lightweight-reports` | `default_v1` |
 
 Each site/API run writes `output_manifest.json` under `output_dir_final` (machine-readable index of
 JSON paths, disabled presentation classes, and per-type artifact counts). Cache under `cache/` is

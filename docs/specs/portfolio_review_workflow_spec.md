@@ -316,6 +316,22 @@ contract and does not enable that flag by default. Parallel candidate builders r
 See
 [operational_runbook.md](../operational_runbook.md) and [candidate_factory_spec.md](candidate_factory_spec.md).
 
+## Scope boundaries and cross-links (operator)
+
+The same `run_portfolio_review.py` command produces JSON for Blocks 1–5 diagnostics **and** the V1
+decision package. Audits titled “Blocks 1–5” describe the diagnostic/candidate-prep path only;
+`selection_decision.json`, `action_plan.json`, and related files are **downstream** of that audit
+scope even when written in the same run.
+
+| Topic | Where to read |
+| --- | --- |
+| Blocks 1–5 vs decision package (audit vs CLI) | [GLOSSARY.md](../../GLOSSARY.md) — **Blocks 1–5 deliverable**, **Decision package** |
+| Last factory scope vs comparison row set | [candidate_comparison_spec.md](candidate_comparison_spec.md) — factory run vs comparison scope; [GLOSSARY.md](../../GLOSSARY.md) — factory/comparison evidence terms |
+| Subject vs legacy policy artifacts at `Main portfolio/` | [OUTPUTS.md](../../OUTPUTS.md) — Read this first; [operational_runbook.md](../operational_runbook.md) §0.1 |
+| Core path walkthrough (code-accurate) | [2026-05-23 Blocks 1–5 actual algorithm walkthrough](../audits/2026-05-23_blocks_1_5_actual_algorithm_walkthrough.md) |
+| Manual step-by-step walkthrough | [2026-05-23 Blocks 1–5 manual algorithm walkthrough](../audits/2026-05-23_blocks_1_5_manual_algorithm_walkthrough.md) |
+| Artifact confusion register | [2026-05-23 core/full artifact confusion audit](../audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md) |
+
 ## Detailed Ownership
 
 | Area | Source |

@@ -18,22 +18,67 @@ presentation assets are export/report artifacts only and must be requested expli
 `full_report`, `legacy_export`, or PDF export commands. CSV exporters remain supported for audit,
 Excel review, debugging, and legacy reporting, but CSV is not produced by default.
 
+## Read this first
+
+When `{output_dir_final}` is `Main portfolio/` (typical), **two artifact trees coexist**. They describe
+**different portfolios** — do not merge them when interpreting a portfolio-first review.
+
+| Location | Meaning | Authoritative for |
+| --- | --- | --- |
+| `{output_dir_final}/analysis_subject/` | Portfolio-first **subject** diagnosed before candidates | Starting weights, Blocks 1–3 diagnostics (X-Ray, stress, snapshots, `run_metadata.json`) for the reviewed portfolio |
+| `{output_dir_final}/` root — `run_result.json`, `portfolio_weights.yml`, root `portfolio_xray.json`, `stress_report.json`, `run_metadata.json` | **Legacy policy optimization** (`run_optimization.py`, optionally `--with-report`) | Policy release checks and historical policy runs only — **not** the portfolio-first subject |
+
+**Operator rules:**
+
+1. After `python run_portfolio_review.py`, open **`analysis_subject/` first**; candidate comparison uses that baseline.
+2. Do **not** mix subject weights/diagnostics with root policy weights or root stress/X-Ray files.
+3. Default `site_api` review writes **JSON + cache only**. TXT, HTML, PNG, CSV under `analysis_subject/` or variant folders, and PDFs under `pdf files/`, may be **stale** from earlier export runs unless you explicitly requested `--with-pdf`, `--legacy-full-pdf`, or `--output-profile full_report` / `legacy_export`.
+4. `candidate_factory_run.json` records the **last factory orchestration** (profile, steps, reuse). `candidate_comparison.json` aggregates **evidence scanned from disk** — wider than the last factory run when snapshots are reused. Read `candidate_menu` before trusting rankings.
+
+Operator detail: [WORKFLOW.md § Portfolio-First Operator Checklist](WORKFLOW.md#portfolio-first-operator-checklist);
+[docs/operational_runbook.md §0.1](docs/operational_runbook.md#01-read-this-first-main-portfolio-layout);
+factory playbooks: [runbook §8](docs/operational_runbook.md#8-candidate-portfolio-factory-operator-playbook).
+Confusion audit:
+[2026-05-23 core/full artifact audit](docs/audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md).
+
 ## Command Matrix
+
+**Review default vs full menu:** routine portfolio review (`run_portfolio_review.py` with no mode
+flag, or `--mode core`) runs factory profile **`core_v1`** (six candidates). The full optimizer and
+robust menu (**`default_v1`**, 16 builders) runs only with **`--mode full`** on review, or via
+standalone **`run_candidate_factory.py --profile default_v1`**. Do not treat a **`core_v1`** review
+as proof that the full menu was built.
+
+### Portfolio-first review (orchestrated)
+
+| Use case | Command | Factory profile |
+| --- | --- | --- |
+| Portfolio review site/API (**core**, default) | `python run_portfolio_review.py` or `--mode core` | `core_v1` |
+| Full review (16 builders + compare) | `python run_portfolio_review.py --mode full` | `default_v1` |
+| Compare / decision package only (no subject/factory) | `python run_compare_variants.py` | — |
+| Portfolio-first PDF export | `python run_portfolio_review.py --with-pdf` | same as mode |
+| Full legacy PDF suite | `python run_portfolio_review.py --legacy-full-pdf` or `python rebuild_pdf_reports.py` | — |
+
+### Standalone candidate factory
+
+Use when refreshing candidates without a full portfolio review, or when resuming a factory run.
+Profile must match the menu you intend to score (`core_v1` vs `default_v1`).
+
+| Use case | Command | Factory profile |
+| --- | --- | --- |
+| Full menu factory + compare | `python run_candidate_factory.py --profile default_v1 --then-compare` | `default_v1` |
+| Core menu factory + compare | `python run_candidate_factory.py --profile core_v1 --then-compare` | `core_v1` |
+| Benchmark/timing run (parallel Phase 2) | `python run_candidate_factory.py --profile default_v1 --then-compare --parallel-lightweight-reports` | `default_v1` |
+
+### Legacy policy and report exports
 
 | Use case | Command |
 | --- | --- |
 | Default site/API report | `python run_report.py` |
-| Portfolio review site/API | `python run_portfolio_review.py` |
-| Core review (six candidates) | `python run_portfolio_review.py --mode core` |
-| Candidate factory site/API | `python run_candidate_factory.py --profile default_v1 --then-compare` |
-| Compare / decision package only | `python run_compare_variants.py` |
 | Legacy policy optimize only | `python run_optimization.py` |
 | Legacy policy + site/API report | `python run_optimization.py --with-report` |
 | Legacy/full report exports | `python run_report.py --output-profile full_report` |
 | Legacy export + PDF-capable sidecars | `python run_report.py --output-profile legacy_export` |
-| Portfolio-first PDF export | `python run_portfolio_review.py --with-pdf` |
-| Full legacy PDF suite | `python run_portfolio_review.py --legacy-full-pdf` or `python rebuild_pdf_reports.py` |
-| Benchmark/timing run | `python run_candidate_factory.py --profile default_v1 --then-compare --parallel-lightweight-reports` |
 
 ## Output Policy
 
