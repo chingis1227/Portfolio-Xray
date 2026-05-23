@@ -12,9 +12,52 @@ Generated outputs are evidence and deliverables, not source files, unless a task
 
 Source files define behavior. Generated files show the result of a run.
 
+Default execution is now site/API-first: JSON contracts and required cache are the machine-readable
+source of truth for new workflows. CSV, TXT, HTML, PNG, PDF, Markdown PDF sidecars, and CSS/visual
+presentation assets are export/report artifacts only and must be requested explicitly through
+`full_report`, `legacy_export`, or PDF export commands. CSV exporters remain supported for audit,
+Excel review, debugging, and legacy reporting, but CSV is not produced by default.
+
+## Command Matrix
+
+| Use case | Command |
+| --- | --- |
+| Default site/API report | `python run_report.py` |
+| Portfolio review site/API | `python run_portfolio_review.py` |
+| Core review (six candidates) | `python run_portfolio_review.py --mode core` |
+| Candidate factory site/API | `python run_candidate_factory.py --profile default_v1 --then-compare` |
+| Compare / decision package only | `python run_compare_variants.py` |
+| Legacy policy optimize only | `python run_optimization.py` |
+| Legacy policy + site/API report | `python run_optimization.py --with-report` |
+| Legacy/full report exports | `python run_report.py --output-profile full_report` |
+| Legacy export + PDF-capable sidecars | `python run_report.py --output-profile legacy_export` |
+| Portfolio-first PDF export | `python run_portfolio_review.py --with-pdf` |
+| Full legacy PDF suite | `python run_portfolio_review.py --legacy-full-pdf` or `python rebuild_pdf_reports.py` |
+| Benchmark/timing run | `python run_candidate_factory.py --profile default_v1 --then-compare --parallel-lightweight-reports` |
+
+## Output Policy
+
+Central routing: `src/output_policy.py`. Default profile: `site_api`.
+
+| Profile | JSON contracts | Cache | CSV / TXT / HTML / PNG | PDF / Markdown sidecars / CSS |
+| --- | --- | --- | --- | --- |
+| `site_api` (default) | Yes | Yes | No | No |
+| `core_json` | Yes | Yes | No | No |
+| `lightweight_comparison` | Yes | Yes | No | No |
+| `full_report` | Yes | Yes | Yes | No |
+| `legacy_export` | Yes | Yes | Yes | Yes |
+
+`output_manifest.json` (`output_manifest_v1`) is written under `output_dir_final` after report,
+factory, compare, and portfolio-review runs. It indexes `output_profile`, required JSON paths,
+`disabled_artifact_classes`, optional `cache_keys`, and `artifact_counts_by_type` for UI/API
+consumers. Cache under `cache/` is internal infrastructure, not a client-facing contract.
+
+CSV exporters remain in source for audit, Excel review, debugging, and legacy reporting; they are
+not invoked unless `full_report`, `legacy_export`, or an explicit PDF/export command requests them.
+
 ## Main Output Flow
 
-The current implementation is report-first and CLI/file-driven.
+The current implementation is site/API-first and CLI/file-driven.
 
 Portfolio-first output flow contract:
 
@@ -40,7 +83,9 @@ Compatibility commands:
 
 ```bash
 python run_optimization.py
+python run_optimization.py --with-report
 python run_report.py
+python run_report.py --output-profile full_report
 ```
 
 ## Output Producers
@@ -49,7 +94,7 @@ python run_report.py
 | --- | --- | --- |
 | Portfolio-first subject materialization | Subject diagnostics before candidates | `{output_dir_final}/analysis_subject/` snapshots, metadata, X-Ray, and diagnostics from `run_report.py --materialize-analysis-subject` |
 | `run_optimization.py` | Legacy policy optimization and release checks | `portfolio_weights.yml`, `run_result.json`, run metadata under `output_dir_final` |
-| `run_report.py` | Main report and diagnostics flow | `stress_report.json`, `portfolio_xray.json`, metrics CSV, scenario libraries, commentary, HTML/PDF-style artifacts |
+| `run_report.py` | Main report and diagnostics flow | JSON contracts by default (`stress_report.json`, `portfolio_xray.json`, snapshots, scenario libraries); CSV/TXT/HTML/PNG/PDF only with `full_report` / `legacy_export` |
 | Candidate portfolio scripts | Build fixed benchmark/candidate weights and run the report pipeline | Candidate output folders with the same report contract after weights are fixed |
 | Robust/scenario scripts | Build robust candidate weights or reports from existing report artifacts | Robust/scenario JSON, CSV, and candidate report folders |
 | Taxonomy scripts | Validate/list/export taxonomy diagnostics | Taxonomy validation/list/export artifacts where configured |
@@ -65,7 +110,7 @@ python run_report.py
 | `output/` | Auxiliary runtime output folder where configured | Generated |
 | `cache/` | Cached data/runtime material | Generated |
 | Candidate portfolio folders | Outputs for Equal Weight, Risk Parity, MinVar, CVaR, Robust MV, robust scenario, and other variants | Generated |
-| `pdf files/` | Generated PDF-style report artifacts | Generated; portfolio-first review rebuilds `Main portfolio_decision_package.pdf` and `analysis_subject_*` PDFs by default (`rebuild_pdf_reports.py --portfolio-first`); full legacy variant PDFs require `--legacy-full-pdf` or bare `rebuild_pdf_reports.py` |
+| `pdf files/` | Generated PDF-style report artifacts | Generated only when explicitly requested (`run_portfolio_review.py --with-pdf`, `--legacy-full-pdf`, `run_report.py --output-profile legacy_export`, or `rebuild_pdf_reports.py`); default site/API review does not write PDFs |
 | `pdf_md_sources/` | Generated Markdown sidecars used for PDF-style report builds | Generated |
 | `portfolio_weights.yml` | Optimizer-produced weights | Generated runtime output, not normal manual input |
 
@@ -77,15 +122,20 @@ Root documentation files such as `README.md`, `SPEC.md`, `DATA.md`, `TESTING.md`
 | --- | --- | --- |
 | YAML | Optimizer-produced weights and source configs | `config.yml` is source config; `portfolio_weights.yml` is generated output |
 | JSON | Run metadata, stress reports, scenario libraries, diagnostics, candidate metadata | Preserve structured fields and explicit warnings/metadata for degraded diagnostics |
-| CSV | Metrics, stress tables, factor/regime/scenario diagnostics | Tabular exports; numeric rounding only at final export/report stage |
-| TXT | Human-readable commentary and stress commentary | Generated commentary files are English-only UTF-8 |
-| HTML | Snapshots, dashboards, and generated visual report surfaces | Follow [DESIGN.md](DESIGN.md) for visual/interface work |
-| PDF-style artifacts | Client/report packages where configured | Generated deliverables; source behavior stays in code and specs |
-| Markdown sidecars | Intermediate report text for PDF-style builds | Generated when produced under `pdf_md_sources/` |
+| CSV | Metrics, stress tables, factor/regime/scenario diagnostics | Export-only (`full_report` / `legacy_export`); numeric rounding only at final export stage |
+| TXT | Human-readable commentary and stress commentary | Export-only; English-only UTF-8 when enabled |
+| HTML | Snapshots, dashboards, and generated visual report surfaces | Export-only; follow [DESIGN.md](DESIGN.md) for visual/interface work |
+| PDF-style artifacts | Client/report packages | Export-only (`legacy_export`, explicit PDF rebuild, or `--with-pdf`) |
+| Markdown sidecars | Intermediate report text for PDF-style builds | Export-only under `pdf_md_sources/` when PDF pipeline runs |
 
 ## Primary Artifacts
 
+Default `site_api` runs produce the JSON rows below (plus cache). CSV, TXT, HTML, PNG, PDF, and
+Markdown sidecar rows apply only when an export profile or explicit PDF command enables them.
+
 Common project artifacts include:
+
+- `output_manifest.json` — UI/API index (`output_manifest_v1`; profile, paths, disabled classes, counts)
 
 - `portfolio_weights.yml`
 - `run_result.json`

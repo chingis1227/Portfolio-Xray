@@ -20,6 +20,7 @@ from src.candidate_factory import (
 )
 from src.config import load_validated_config
 from src.config_schema import ConfigValidationError
+from src.output_policy import OUTPUT_PROFILE_VALUES, output_policy_for_profile
 from src.utils import logger, setup_logging
 
 
@@ -91,12 +92,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--execution-mode",
         type=str,
-        default="legacy_full",
+        default="standard",
         choices=["fast", "standard", "legacy_full"],
         help=(
             "fast: in-process weights only. standard: weights + lightweight_comparison "
-            "report (snapshots for compare, no per-candidate PDF). legacy_full: full "
-            "subprocess run_*.py chain (default)."
+            "report (snapshots for compare, no per-candidate PDF; default). legacy_full: full "
+            "subprocess run_*.py chain for explicit parity/debug."
+        ),
+    )
+    parser.add_argument(
+        "--output-profile",
+        type=str,
+        default="site_api",
+        choices=sorted(OUTPUT_PROFILE_VALUES),
+        help=(
+            "Output policy (default: site_api JSON/cache only). Use full_report or "
+            "legacy_export for explicit export/report artifacts."
         ),
     )
     parser.add_argument(
@@ -152,6 +163,7 @@ def main(argv: list[str] | None = None) -> int:
     profile_id = "explicit_list" if explicit is not None else args.profile
     selected_full = _parse_candidates(args.selected_candidates_for_full_report)
     full_reports = bool(args.full_candidate_reports or selected_full)
+    output_policy = output_policy_for_profile(args.output_profile)
 
     try:
         doc = run_candidate_factory(
@@ -166,6 +178,7 @@ def main(argv: list[str] | None = None) -> int:
             config_path=config_path if config_path.is_file() else None,
             pdf_mode=args.pdf_mode,
             execution_mode=args.execution_mode,
+            output_profile=args.output_profile,
             full_candidate_reports=full_reports,
             selected_candidates_for_full_report=selected_full,
             parallel_lightweight_reports=args.parallel_lightweight_reports,
@@ -178,19 +191,28 @@ def main(argv: list[str] | None = None) -> int:
     doc["options"]["then_compare"] = args.then_compare
 
     out_dir = project_root / cfg.output_dir_final
-    written = write_candidate_factory_outputs(doc, output_dir=out_dir)
+    written = write_candidate_factory_outputs(
+        doc,
+        output_dir=out_dir,
+        write_txt=output_policy.write_txt,
+    )
 
     if args.then_compare:
         paths, err = run_then_compare(
             cfg,
             project_root=project_root,
             factory_run=doc,
+            output_profile=args.output_profile,
         )
         if err:
             doc.setdefault("warnings", []).append(f"comparison_failed: {err}")
         elif paths:
             doc["comparison_outputs"] = {k: str(v) for k, v in paths.items()}
-            write_candidate_factory_outputs(doc, output_dir=out_dir)
+            write_candidate_factory_outputs(
+                doc,
+                output_dir=out_dir,
+                write_txt=output_policy.write_txt,
+            )
     logger.info("Factory run summary: %s", written["candidate_factory_run_json"])
 
     code = factory_exit_code(doc)

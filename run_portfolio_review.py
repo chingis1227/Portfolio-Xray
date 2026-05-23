@@ -13,6 +13,7 @@ from pathlib import Path
 from src.config import load_validated_config
 from src.config_schema import ConfigValidationError
 from src.candidate_weights import EXECUTION_MODES
+from src.output_policy import OUTPUT_PROFILE_VALUES
 from src.portfolio_review_workflow import (
     DEFAULT_REVIEW_MODE,
     REVIEW_MODES,
@@ -105,7 +106,22 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Do not run comparison / decision-package writers.",
     )
-    parser.add_argument("--skip-pdf", action="store_true", help="Skip rebuild_pdf_reports.py.")
+    parser.add_argument(
+        "--output-profile",
+        choices=sorted(OUTPUT_PROFILE_VALUES),
+        default="site_api",
+        help="Output policy (default: site_api JSON/cache only).",
+    )
+    parser.add_argument(
+        "--with-pdf",
+        action="store_true",
+        help="Explicitly rebuild the narrow portfolio-first PDF subset after JSON workflow.",
+    )
+    parser.add_argument(
+        "--skip-pdf",
+        action="store_true",
+        help="Deprecated compatibility flag; PDF is skipped by default unless --with-pdf or --legacy-full-pdf is used.",
+    )
     parser.add_argument(
         "--legacy-full-pdf",
         action="store_true",
@@ -133,6 +149,11 @@ def main(argv: list[str] | None = None) -> int:
         review_mode=args.mode,
         candidate_profile=args.candidate_profile,
     )
+    effective_output_profile = (
+        "legacy_export"
+        if (args.with_pdf or args.legacy_full_pdf) and args.output_profile == "site_api"
+        else args.output_profile
+    )
 
     plan = build_portfolio_review_plan(
         cfg,
@@ -147,9 +168,10 @@ def main(argv: list[str] | None = None) -> int:
         resume_candidates=args.resume_candidates,
         fail_fast=args.fail_fast,
         skip_compare=args.skip_compare,
-        skip_pdf=args.skip_pdf,
+        skip_pdf=(args.skip_pdf or not (args.with_pdf or args.legacy_full_pdf)),
         legacy_full_pdf=args.legacy_full_pdf,
         factory_execution_mode=args.execution_mode,
+        output_profile=effective_output_profile,
     )
 
     print(

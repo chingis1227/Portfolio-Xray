@@ -65,7 +65,8 @@ Input & assumptions
 -> Monitoring / Decision Journal
 ```
 
-The current implementation is report-first and CLI/file-driven. Supported partial utility UIs exist
+The current implementation is site/API-first (JSON contracts + cache by default) and
+CLI/file-driven. Supported partial utility UIs exist
 (`config_ui/` for config editing, `results_dashboard/` for read-only result viewing). A full product
 workspace UI remains TBD.
 
@@ -693,16 +694,33 @@ required order is already canonical in the portfolio review workflow spec.
 | Legacy optimization | Returns, covariance, constraints, targets | Weights, status, run metadata |
 | Release checks | Weights, returns, mandate | Approved or blocked release |
 | Metrics | Weights, returns, benchmark, risk-free | Asset/portfolio metrics and RC_vol |
-| Stress diagnostics | Weights, returns, factors, scenarios | Stress report and stress CSVs |
-| Scenario library | Stress and regime analytics | Scenario library JSON/CSVs |
+| Stress diagnostics | Weights, returns, factors, scenarios | `stress_report.json` (CSVs in export profiles only) |
+| Scenario library | Stress and regime analytics | Scenario library JSON (CSVs in export profiles only) |
 | Candidate builders | Universe, returns, covariance, variant settings | Candidate weights and metadata |
-| Reporting | Metrics, stress, scenarios, commentary inputs | CSV/JSON/HTML/TXT/PDF-style artifacts |
+| Reporting | Metrics, stress, scenarios, commentary inputs | JSON contracts by default; CSV/HTML/TXT/PNG/PDF only in `full_report` / `legacy_export` |
 | Comparison/action | Current and candidate outputs | Comparison, scores, selection, action, monitoring, journal, rebalance, tilt artifacts |
 
 ## Generated Artifacts
 
 Generated artifacts are outputs, not source files, unless a task explicitly targets them.
 Use [OUTPUTS.md](OUTPUTS.md) for the root output/reporting map and generated-vs-source rules.
+
+Default execution is site/API-first. JSON contracts and required cache are the backend/UI source of
+truth; CSV, TXT, HTML, PNG, PDF, Markdown PDF sidecars, and CSS/visual assets are explicit
+export/report outputs only. The central policy lives in `src/output_policy.py`; entrypoints expose
+`--output-profile` where export behavior is needed. Each major run writes `output_manifest.json`
+under `output_dir_final` as the UI/API artifact index.
+
+| Profile | JSON + cache | CSV/TXT/HTML/PNG | PDF / Markdown sidecars |
+| --- | --- | --- | --- |
+| `site_api` (default) | Yes | No | No |
+| `core_json` | Yes | No | No |
+| `lightweight_comparison` | Yes | No | No |
+| `full_report` | Yes | Yes | No |
+| `legacy_export` | Yes | Yes | Yes |
+
+Command matrix (operator entrypoints): see [OUTPUTS.md](OUTPUTS.md#command-matrix) and
+[README.md](README.md).
 
 Common generated paths:
 

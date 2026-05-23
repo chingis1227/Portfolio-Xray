@@ -730,6 +730,7 @@ def write_decision_package_reporting_outputs(
     pareto_dominance: dict[str, Any] | None = None,
     regret_analysis: dict[str, Any] | None = None,
     append_report_txt: bool = True,
+    write_txt: bool = True,
 ) -> dict[str, Path]:
     project_root = project_root or Path.cwd()
     out_dir = project_root / str(getattr(cfg, "output_dir_final", "Main portfolio"))
@@ -783,12 +784,13 @@ def write_decision_package_reporting_outputs(
         json.dump(doc, f, indent=2, ensure_ascii=False)
     paths["decision_package_summary_json"] = json_path
 
-    txt_path = out_dir / "decision_package_summary.txt"
-    with open(txt_path, "w", encoding="utf-8") as f:
-        f.write(ascii_safe_text(doc["summary_plain_en"]))
-    paths["decision_package_summary_txt"] = txt_path
+    if write_txt:
+        txt_path = out_dir / "decision_package_summary.txt"
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(ascii_safe_text(doc["summary_plain_en"]))
+        paths["decision_package_summary_txt"] = txt_path
 
-    if append_report_txt:
+    if write_txt and append_report_txt:
         report_path = out_dir / "report.txt"
         if _append_summary_to_report_txt(report_path, ascii_safe_text(doc["summary_plain_en"])):
             paths["report_txt_appended"] = report_path

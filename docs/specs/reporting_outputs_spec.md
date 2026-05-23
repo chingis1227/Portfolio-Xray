@@ -7,6 +7,35 @@ This document owns the detailed report and artifact contract. The root output ma
 `run_report.py` and shared report helpers produce decision-ready artifacts for the portfolio-first
 `analysis_subject`, legacy policy portfolio, and candidate portfolios.
 
+Default report execution uses the `site_api` output profile: JSON contracts and required cache only.
+CSV, TXT, HTML, PNG, PDF, Markdown PDF sidecars, and CSS/visual assets are disabled by default and
+are available only through explicit `full_report`, `legacy_export`, or PDF export commands. CSV
+export code remains supported for audit, Excel review, debugging, and legacy reporting; CSV is not a
+source of truth.
+
+### Output profiles (`src/output_policy.py`)
+
+| Profile | JSON + cache | Presentation exports |
+| --- | --- | --- |
+| `site_api` (CLI default) | Yes | None |
+| `core_json` | Yes | None |
+| `lightweight_comparison` | Yes | None |
+| `full_report` | Yes | CSV, TXT, HTML, PNG |
+| `legacy_export` | Yes | CSV, TXT, HTML, PNG, PDF, Markdown sidecars, CSS |
+
+`run_report.py` accepts `--output-profile`. Legacy `report_profile=full` maps to `full_report` when
+`--output-profile` is omitted. Each completed report run writes `output_manifest.json`
+(`output_manifest_v1`) under `output_dir_final`.
+
+### Command matrix (reporting)
+
+| Use case | Command |
+| --- | --- |
+| Site/API report | `python run_report.py` |
+| Full tabular + commentary export | `python run_report.py --output-profile full_report` |
+| Legacy export + PDF sidecars | `python run_report.py --output-profile legacy_export` |
+| Materialize portfolio-first subject | `python run_report.py --materialize-analysis-subject` |
+
 Primary report responsibilities:
 
 - load fixed weights for the target portfolio
@@ -18,23 +47,30 @@ Primary report responsibilities:
 - summarize asset allocation and risk contribution diagnostics
 - build scenario libraries where inputs are available
 - emit an explanatory Portfolio Diagnostic Verdict without scores or recommendations
-- export CSV, JSON, HTML, TXT, and PDF-style artifacts
+- export JSON by default, with CSV/HTML/TXT/PNG/PDF-style artifacts only in explicit export profiles
 - generate English-only UTF-8 commentary files
 
 ## Primary Outputs
 
-Common outputs include:
+### Always (site/API profiles)
 
+- `output_manifest.json` — artifact index for UI/API consumers
 - `run_result.json`
 - `stress_report.json`
 - `run_metadata.json`
 - `portfolio_xray.json`
-- metric CSV files under `results_csv/`
-- stress and scenario CSV files under `results_csv/`
-- `commentary.txt`
-- `stress_commentary.txt`
-- generated HTML snapshots
-- PDF-style reports under configured output folders
+- window snapshots (`snapshot_3y.json`, `snapshot_5y.json`, `snapshot_10y.json`, …)
+- `scenario_library.json` / `scenario_library_normalized.json` when inputs allow
+
+### Export profiles only (`full_report`, `legacy_export`)
+
+- metric and diagnostic CSV files under `results_csv/`
+- `commentary.txt`, `stress_commentary.txt`
+- generated HTML snapshots and rolling-factor PNG/HTML when stress inputs succeed
+- PDF-style reports and Markdown sidecars when `legacy_export` or explicit PDF rebuild runs
+
+### Decision package (after compare; JSON required, TXT export-only)
+
 - decision-package artifacts under `output_dir_final`: `candidate_comparison.json`,
   `robustness_scorecard.json`, `portfolio_health_score.json`, `selection_decision.json`,
   `tradeoff_explanation.json`, `model_risk_diagnostics.json`, `action_plan.json`,
@@ -97,11 +133,10 @@ Compact report/PDF-facing summaries are defined in
 The per-artifact JSON/TXT files above remain the authoritative structured contracts; the summary is a
 read-only projection for reports and PDF rebuild.
 
-Portfolio-first review (`run_portfolio_review.py`) rebuilds a narrow PDF subset by default:
-decision package plus `analysis_subject/` sidecar outputs. Legacy Equal-Weight, Risk-Parity, policy
-Main, and optimizer baseline PDFs are not refreshed unless the user passes
-`--legacy-full-pdf` or runs bare `rebuild_pdf_reports.py`. See
-[portfolio_review_workflow_spec.md](portfolio_review_workflow_spec.md).
+Portfolio-first review (`run_portfolio_review.py`) uses `site_api` by default and does **not**
+rebuild PDFs. Pass `--with-pdf` for the narrow portfolio-first PDF subset (decision package plus
+`analysis_subject/` sidecar). Pass `--legacy-full-pdf` or run bare `rebuild_pdf_reports.py` for the
+full legacy variant PDF suite. See [portfolio_review_workflow_spec.md](portfolio_review_workflow_spec.md).
 
 ## Portfolio X-Ray Summary
 

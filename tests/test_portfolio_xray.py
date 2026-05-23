@@ -621,6 +621,30 @@ def test_hidden_risk_detector_v2_low_risk_portfolio_mostly_below_threshold() -> 
     assert hidden["flagged_count"] == 0
 
 
+def test_resolve_rc_asset_prefers_snapshot_json_before_csv(tmp_path: Path) -> None:
+    snap = {
+        "RC_asset_all": [
+            {"ticker": "SPY", "rc_pct": 0.4},
+            {"ticker": "TLT", "rc_pct": 0.35},
+            {"ticker": "HYG", "rc_pct": 0.25},
+        ]
+    }
+    (tmp_path / "snapshot_10y.json").write_text(json.dumps(snap), encoding="utf-8")
+    csv_dir = tmp_path / "results_csv"
+    csv_dir.mkdir()
+    pd.DataFrame({"rc_vol": {"SPY": 0.9, "TLT": 0.1}}).to_csv(csv_dir / "rc_vol_10y.csv")
+
+    rows, sources = resolve_rc_asset_for_xray(
+        [],
+        output_dir_final=tmp_path,
+        output_dir_csv=csv_dir,
+    )
+    by_ticker = {row["ticker"]: row["rc_pct"] for row in rows}
+
+    assert by_ticker["SPY"] == 0.4
+    assert any("snapshot_10y.json" in source for source in sources)
+
+
 def test_resolve_rc_asset_prefers_full_csv_over_snapshot_top5(tmp_path: Path) -> None:
     csv_dir = tmp_path / "results_csv"
     csv_dir.mkdir()

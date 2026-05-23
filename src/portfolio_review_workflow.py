@@ -17,6 +17,7 @@ from typing import Any, Callable, Sequence
 from src.candidate_factory import REVIEW_MODE_PROFILES
 from src.candidate_weights import normalize_execution_mode
 from src.config_schema import PortfolioConfig
+from src.output_policy import DEFAULT_OUTPUT_PROFILE
 
 RunSubprocess = Callable[..., subprocess.CompletedProcess[Any]]
 
@@ -78,9 +79,10 @@ def build_portfolio_review_plan(
     resume_candidates: bool = False,
     fail_fast: bool = False,
     skip_compare: bool = False,
-    skip_pdf: bool = False,
+    skip_pdf: bool = True,
     legacy_full_pdf: bool = False,
     factory_execution_mode: str | None = None,
+    output_profile: str = DEFAULT_OUTPUT_PROFILE,
 ) -> PortfolioReviewPlan:
     """Build ordered CLI steps for the portfolio-first review workflow."""
     resolved_mode, factory_profile = resolve_review_candidate_profile(
@@ -90,6 +92,8 @@ def build_portfolio_review_plan(
     resolved_execution_mode = resolve_factory_execution_mode(
         factory_execution_mode=factory_execution_mode,
     )
+    if legacy_full_pdf:
+        skip_pdf = False
     py = _python(project_root)
     cache_flags: list[str] = ["--no-cache"] if no_cache else []
     steps: list[PortfolioReviewStep] = []
@@ -108,6 +112,8 @@ def build_portfolio_review_plan(
             py,
             str(project_root / "run_report.py"),
             "--materialize-analysis-subject",
+            "--output-profile",
+            output_profile,
             *cache_flags,
         ],
     )
@@ -131,6 +137,7 @@ def build_portfolio_review_plan(
         if fail_fast:
             factory_argv.append("--fail-fast")
         factory_argv.extend(["--execution-mode", resolved_execution_mode])
+        factory_argv.extend(["--output-profile", output_profile])
         if not skip_compare:
             # Comparison rebuild uses factory_then_compare context (in-memory factory doc,
             # factory JSON written before compare) — see candidate_comparison.py P17-G6 / RM-1025.
@@ -146,7 +153,7 @@ def build_portfolio_review_plan(
         add(
             "comparison",
             "Candidate comparison and decision package",
-            [py, str(project_root / "run_compare_variants.py")],
+            [py, str(project_root / "run_compare_variants.py"), "--output-profile", output_profile],
         )
 
     if not skip_pdf:
@@ -198,7 +205,7 @@ def summarize_plan(
     lines = [
         "Portfolio review workflow: analysis_subject-first",
         f"Review mode: {review_mode}{profile_note}",
-        "Stages: input -> subject diagnostics -> candidates -> comparison -> action",
+        "Stages: input -> " + " -> ".join(step.stage for step in plan.steps),
     ]
     for step in plan.steps:
         lines.append(f"  - [{step.stage}] {step.label}")

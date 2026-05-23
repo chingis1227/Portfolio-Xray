@@ -8,6 +8,14 @@ Date: 2026-05-23
 
 Category: Added
 
+- Site/API Default Output Refactor Sessions 0–7: `src/output_policy.py` with `site_api` default;
+  `output_manifest.json`; presentation exports gated; entrypoint defaults on report, review, factory,
+  optimization; Session 07 closure
+  (`docs/audits/2026-05-23_site_api_default_output_session07_closure_report.md`); verification bundle
+  **38 passed**.
+
+Category: Added
+
 - Candidate Factory Shared Evidence Sessions 1–5 (RM-982): factory `CandidateRunContext` v2–v5
   (invariant asset metrics/corr/cov, extended betas, weekly factor frames, prepared synthetic stress);
   optional `report_timing` blocks and factory aggregate; Session 6 closure audit

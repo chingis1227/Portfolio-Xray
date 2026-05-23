@@ -9,6 +9,7 @@ import pytest
 import yaml
 
 from src.candidate_comparison import write_candidate_comparison_outputs
+from src.output_policy import artifact_counts_by_type
 from mvp_offline_fixtures import (
     MVP_DECISION_PACKAGE_ARTIFACTS,
     load_mvp_config,
@@ -70,6 +71,11 @@ def test_mvp_offline_decision_package_pipeline(monkeypatch: pytest.MonkeyPatch, 
 
     assert paths["candidate_comparison_json"] == out_dir / "candidate_comparison.json"
     _assert_decision_package_chain(out_dir)
+    manifest = json.loads((out_dir / "output_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["output_profile"] == "site_api"
+    counts = artifact_counts_by_type(out_dir)
+    for key in ("csv", "txt", "html", "png", "pdf", "markdown_pdf_sidecars", "css_visual_assets"):
+        assert counts[key] == 0, key
 
 
 def test_mvp_offline_config_yaml_entry(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

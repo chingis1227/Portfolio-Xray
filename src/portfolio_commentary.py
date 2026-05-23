@@ -16,9 +16,10 @@ import pandas as pd
 
 from src.portfolio_xray import (
     build_portfolio_xray_v2,
-    load_portfolio_windows_from_dir,
     format_portfolio_xray_commentary,
+    load_portfolio_windows_from_dir,
     load_rc_vol_map_from_csv,
+    load_rc_vol_map_from_snapshot,
 )
 from src.stress_factors import BASE_BETA_ROW_ORDER, BETA_ROW_ORDER
 from src.text_sanitizer import ascii_safe_text
@@ -63,31 +64,16 @@ def _fmt_float(x: Any, digits: int = 3) -> str:
     return f"{v:.{digits}f}"
 
 
-def _load_rc_top5(output_dir_csv: Path) -> list[tuple[str, float]]:
-    """Top 5 assets by RC_vol from rc_vol_10y.csv (fallback 5y, 3y)."""
-    for suffix in ("10y", "5y", "3y"):
-        path = output_dir_csv / f"rc_vol_{suffix}.csv"
-        if not path.is_file():
-            continue
-        try:
-            df = pd.read_csv(path, index_col=0)
-            if df.shape[1] < 1:
-                continue
-            col = df.columns[0]
-            s = df[col].dropna()
-            # drop non-ticker rows
-            s = s[s.index.astype(str).str.len() > 0]
-            s = s.sort_values(ascending=False)
-            out: list[tuple[str, float]] = []
-            for t, val in s.head(5).items():
-                try:
-                    out.append((str(t), float(val)))
-                except (TypeError, ValueError):
-                    continue
-            if out:
-                return out
-        except Exception:
-            continue
+def _load_rc_top5(
+    output_dir_final: Path,
+    output_dir_csv: Path | None = None,
+) -> list[tuple[str, float]]:
+    """Top 5 assets by RC_vol from snapshot JSON, then legacy rc_vol_*.csv."""
+    rc_map, _ = load_rc_vol_map_from_snapshot(output_dir_final)
+    if not rc_map and output_dir_csv is not None:
+        rc_map, _ = load_rc_vol_map_from_csv(output_dir_csv)
+    if rc_map:
+        return sorted(rc_map.items(), key=lambda item: (-item[1], item[0]))[:5]
     return []
 
 
@@ -1712,7 +1698,7 @@ def write_portfolio_commentary(
     analysis_setup: dict[str, Any] | None = None,
 ) -> Path | None:
     """
-    Write commentary.txt under output_dir_final using metrics + stress + rc_vol CSV.
+    Write commentary.txt under output_dir_final using metrics + stress + RC JSON/CSV.
     All numbers come from the passed dicts / files from this run.
     """
     output_dir_final = Path(output_dir_final)
@@ -1724,8 +1710,7 @@ def write_portfolio_commentary(
     sources = [
         "summary.txt (if present)",
         "stress_report.json",
-        "results_csv/portfolio_metrics_10y.csv",
-        "results_csv/rc_vol_10y.csv",
+        "snapshot_10y.json (RC_asset / RC_asset_all)",
         "run_metadata.json / analysis_setup",
         "report.txt",
     ]
@@ -1752,11 +1737,11 @@ def write_portfolio_commentary(
     failed_test = st.get("failed_test")
     worst_loss = st.get("worst_scenario_loss_pct")
 
-    rc_top = _load_rc_top5(output_dir_csv)
+    rc_top = _load_rc_top5(output_dir_final, output_dir_csv)
     rc_lines = (
         ", ".join(f"{t} {_fmt_pct(r, 1)}" for t, r in rc_top)
         if rc_top
-        else "n/a (no rc_vol_*.csv or empty)"
+        else "n/a (no RC evidence in snapshot JSON or rc_vol CSV)"
     )
 
     client_gate = "PASS" if portfolio_valid else "FAIL"
@@ -1787,7 +1772,11 @@ def write_portfolio_commentary(
         portfolio_windows=portfolio_windows or None,
         portfolio_analytics=portfolio_analytics_10y if isinstance(portfolio_analytics_10y, dict) else None,
         drawdown_structure=drawdown_structure_10y if isinstance(drawdown_structure_10y, dict) else None,
-        rc_vol_map=load_rc_vol_map_from_csv(output_dir_csv)[0],
+        rc_vol_map=(
+            load_rc_vol_map_from_snapshot(output_dir_final)[0]
+            or load_rc_vol_map_from_csv(output_dir_csv)[0]
+        ),
+        output_dir_final=output_dir_final,
         output_dir_csv=output_dir_csv,
     )
 
@@ -1908,7 +1897,7 @@ def write_portfolio_commentary(
         )
     if not rc_top:
         lines.append(
-            "RC_vol top-5 not extracted from CSV — verify results_csv/rc_vol_10y.csv exists after the run."
+            "RC_vol top-5 not extracted — verify snapshot_10y.json RC_asset/RC_asset_all or rc_vol CSV after the run."
         )
     lines.append("")
 

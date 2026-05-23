@@ -356,7 +356,13 @@ def _build_robust_scenario_weights(context: CandidateWeightsContext) -> Baseline
     warm.append(np.ones(len(inputs.ticker_order)) / len(inputs.ticker_order))
 
     result = run_robust_scenario_optimization(inputs, bounds=bounds, warm_starts=warm)
-    export_robust_optimization_outputs(result, inputs, output_dir=final_dir, comparisons={})
+    export_robust_optimization_outputs(
+        result,
+        inputs,
+        output_dir=final_dir,
+        comparisons={},
+        write_export_artifacts=False,
+    )
 
     weights_vec = result.get("weights_vec")
     if weights_vec is None:
@@ -420,6 +426,7 @@ def write_candidate_weights(
     *,
     artifact_dir: Path,
     config_fingerprint: str | None = None,
+    write_txt: bool = False,
 ) -> dict[str, Any]:
     """
     Persist weights artifacts under ``artifact_dir`` (same contract as ``run_*.py`` builders).
@@ -462,12 +469,13 @@ def write_candidate_weights(
             diagnostics=result.diagnostics,
             prefer_diagnostics_rc=spec.rc_from_diagnostics,
         )
-    export_baseline_weights_txt(
-        result.weights,
-        rc_series=rc_series,
-        label=portfolio_label,
-        output_dir=artifact_dir,
-    )
+    if write_txt:
+        export_baseline_weights_txt(
+            result.weights,
+            rc_series=rc_series,
+            label=portfolio_label,
+            output_dir=artifact_dir,
+        )
 
     summary: dict[str, Any] = {
         "portfolio_type": portfolio_label,
@@ -490,7 +498,7 @@ def write_candidate_weights(
     if candidate_id == "robust_scenario":
         success = result.status in SUCCESS_STATUSES_WITH_APPROXIMATE
 
-    if not success:
+    if write_txt and not success:
         with open(artifact_dir / "summary.txt", "w", encoding="utf-8") as handle:
             handle.write(f"{portfolio_label} — infeasible or failed baseline\n")
             handle.write(f"Status: {result.status}\n")

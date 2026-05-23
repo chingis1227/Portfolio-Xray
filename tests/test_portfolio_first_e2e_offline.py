@@ -205,6 +205,8 @@ def test_portfolio_first_offline_e2e_subject_to_decision_package(
     assert journal["assumptions"]["analysis_subject_type"] == expected_type
     assert journal["expected_improvement"]["baseline_candidate_id"] == "analysis_subject"
 
-    summary_text = (out_dir / "decision_package_summary.txt").read_text(encoding="utf-8")
+    package = _load(out_dir / "decision_package_summary.json")
+    summary_text = package.get("summary_plain_en") or ""
     assert "Starting portfolio:" in summary_text
     assert favored_display in summary_text
+    assert not (out_dir / "decision_package_summary.txt").is_file()

@@ -70,6 +70,7 @@ from src.snapshot import (
     compute_candidate_config_fingerprint,
     print_snapshot,
     save_snapshot,
+    _xray_summary_from_output_dir,
     write_report_html,
     write_report_txt,
 )
@@ -134,7 +135,18 @@ from src.stress_factors import (
 )
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
 from src.report_timing import ReportTimingCollector
-from src.report_profile import is_lightweight_comparison, normalize_report_profile
+from src.report_profile import (
+    REPORT_PROFILE_FULL,
+    REPORT_PROFILE_LIGHTWEIGHT,
+    is_lightweight_comparison,
+    normalize_report_profile,
+)
+from src.output_policy import (
+    OUTPUT_PROFILE_VALUES,
+    output_policy_for_profile,
+    profile_from_legacy_report_profile,
+    write_output_manifest,
+)
 from src.windows import slice_window, truncate_to_analysis_end
 from src.returns_frequency import (
     MACRO_REGIME_FREQUENCY_DEFAULT,
@@ -208,6 +220,16 @@ def parse_args() -> argparse.Namespace:
             "before candidate generation."
         ),
     )
+    parser.add_argument(
+        "--output-profile",
+        type=str,
+        default=None,
+        choices=sorted(OUTPUT_PROFILE_VALUES),
+        help=(
+            "Output profile (default: site_api). site_api/core_json write JSON/cache only; "
+            "full_report enables CSV/TXT/HTML/PNG exports; legacy_export also allows PDF sidecars."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -272,6 +294,7 @@ def run_portfolio_report_for_weights(
     weights_source: str | None = None,
     portfolio_role_override: str | None = None,
     report_profile: str | None = None,
+    output_profile: str | None = None,
     run_context: CandidateRunContext | None = None,
     enable_report_timing: bool | None = None,
 ) -> tuple[dict | None, dict]:
@@ -283,10 +306,16 @@ def run_portfolio_report_for_weights(
     without RC caps / weight caps / discretionary overlays
     or hidden policy filters.
 
-    ``report_profile``:
-    - ``full`` (default): all CSV/HTML/PNG/commentary artifacts.
-    - ``lightweight_comparison``: same metrics/stress/snapshots; skips presentation-heavy
-      exports (rolling beta plots, HTML report, commentary, optional asset snapshot).
+    ``output_profile``:
+    - ``site_api`` / ``core_json`` (default): JSON contracts and cache only.
+    - ``lightweight_comparison``: comparison-ready JSON snapshots/stress only.
+    - ``full_report``: CSV/TXT/HTML/PNG export surfaces.
+    - ``legacy_export``: full legacy export profile; PDF rebuild is still an explicit caller action.
+
+    ``report_profile`` is the older calculation/export selector and is still accepted for
+    compatibility. When ``output_profile`` is omitted, ``report_profile=full`` maps to
+    ``full_report`` and ``report_profile=lightweight_comparison`` maps to JSON-only
+    lightweight comparison.
 
     ``run_context``: optional factory shared context (one monthly load + factor/scenario cache).
 
@@ -294,8 +323,23 @@ def run_portfolio_report_for_weights(
     (also enabled by env ``PORTFOLIO_REPORT_TIMING=1``). Default off for non-factory runs.
     """
     report_timing = ReportTimingCollector.for_run(enable_report_timing=enable_report_timing)
-    profile = normalize_report_profile(report_profile)
+    resolved_output_profile = output_profile or profile_from_legacy_report_profile(report_profile)
+    output_policy = output_policy_for_profile(resolved_output_profile)
+    output_dir_final.mkdir(parents=True, exist_ok=True)
+    if output_policy.write_csv:
+        output_dir_csv.mkdir(parents=True, exist_ok=True)
+    effective_report_profile = (
+        report_profile
+        if report_profile is not None
+        else (
+            REPORT_PROFILE_LIGHTWEIGHT
+            if output_policy.lightweight_calculation_path
+            else REPORT_PROFILE_FULL
+        )
+    )
+    profile = normalize_report_profile(effective_report_profile)
     lightweight = is_lightweight_comparison(profile)
+    csv_export_dir = output_dir_csv if output_policy.write_csv else None
     factory_factor = (
         run_context.factor_stress
         if run_context is not None and run_context.factor_stress is not None
@@ -451,7 +495,7 @@ def run_portfolio_report_for_weights(
     # =========================================================================
 
     with report_timing.block("save_inputs"):
-        if not lightweight:
+        if output_policy.write_csv:
             save_inputs(
                 output_dir_csv,
                 monthly_prices,
@@ -515,7 +559,8 @@ def run_portfolio_report_for_weights(
                 tickers,
             )
             for wm, rows in zip(windows_months, asset_metrics_all):
-                export_asset_metrics_csv(rows, wm, output_dir_csv)
+                if output_policy.write_csv:
+                    export_asset_metrics_csv(rows, wm, output_dir_csv)
         else:
             for wm in windows_months:
                 rows = []
@@ -557,7 +602,8 @@ def run_portfolio_report_for_weights(
                     )
                     rows.append(row)
                 asset_metrics_all.append(rows)
-                export_asset_metrics_csv(rows, wm, output_dir_csv)
+                if output_policy.write_csv:
+                    export_asset_metrics_csv(rows, wm, output_dir_csv)
 
     # =========================================================================
     # STEP 7: Compute portfolio metrics per window
@@ -579,7 +625,8 @@ def run_portfolio_report_for_weights(
                 returns_frequency=returns_frequency,
             )
             portfolio_metrics_list.append(pm)
-        export_portfolio_metrics_csv(portfolio_metrics_list, output_dir_csv)
+        if output_policy.write_csv:
+            export_portfolio_metrics_csv(portfolio_metrics_list, output_dir_csv)
 
         # Map window_months to human-readable keys for snapshot (3y/5y/10y)
         portfolio_windows: dict[str, dict] = {}
@@ -636,7 +683,8 @@ def run_portfolio_report_for_weights(
                 rc_for_snapshot = rc
             suffix = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
             rc_filename = f"rc_vol_{suffix}.csv"
-            export_rc_vol_csv(rc, output_dir_csv / rc_filename)
+            if output_policy.write_csv:
+                export_rc_vol_csv(rc, output_dir_csv / rc_filename)
             # Store per-window RC for snapshot windows section
             if wm in (36, 60, 120):
                 key = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
@@ -655,7 +703,8 @@ def run_portfolio_report_for_weights(
                         corr_matrix = None
             if corr_matrix is None:
                 corr_matrix = returns_slice.corr()
-            export_correlation_matrix_csv(corr_matrix, wm, output_dir_csv)
+            if output_policy.write_csv:
+                export_correlation_matrix_csv(corr_matrix, wm, output_dir_csv)
             if wm in (36, 60, 120):
                 key = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
                 corr_csv_by_window[key] = f"correlation_matrix_{suffix}.csv"
@@ -1140,30 +1189,32 @@ def run_portfolio_report_for_weights(
             analysis_end_str=analysis_end_str,
             rolling_windows_months=rolling_windows_months,
         )
-        # Save rolling beta time series CSV files
         csv_paths: dict[str, str] = {}
-        for lbl, df_rb in rb.items():
-            if df_rb is None or df_rb.empty:
-                continue
-            p = output_dir_csv / f"rolling_factor_betas_{lbl}.csv"
-            df_rb.round(4).to_csv(p, index=True)
-            csv_paths[lbl] = p.name
+        if output_policy.write_csv:
+            for lbl, df_rb in rb.items():
+                if df_rb is None or df_rb.empty:
+                    continue
+                p = output_dir_csv / f"rolling_factor_betas_{lbl}.csv"
+                df_rb.round(4).to_csv(p, index=True)
+                csv_paths[lbl] = p.name
 
         monthly_csv_paths: dict[str, str] = {}
-        for lbl, df_rb in rb_monthly.items():
-            if df_rb is None or df_rb.empty:
-                continue
-            p = output_dir_csv / f"rolling_factor_betas_monthly_{lbl}.csv"
-            df_rb.round(4).to_csv(p, index=True)
-            monthly_csv_paths[lbl] = p.name
+        if output_policy.write_csv:
+            for lbl, df_rb in rb_monthly.items():
+                if df_rb is None or df_rb.empty:
+                    continue
+                p = output_dir_csv / f"rolling_factor_betas_monthly_{lbl}.csv"
+                df_rb.round(4).to_csv(p, index=True)
+                monthly_csv_paths[lbl] = p.name
 
         summary_df = rolling_beta_summary(rb)
         summary_csv_name = ""
         summary_struct: dict[str, dict[str, dict[str, float | int]]] = {}
         if not summary_df.empty:
-            summary_csv = output_dir_csv / "rolling_factor_betas_summary.csv"
-            summary_df.round(4).to_csv(summary_csv, index=False)
-            summary_csv_name = summary_csv.name
+            if output_policy.write_csv:
+                summary_csv = output_dir_csv / "rolling_factor_betas_summary.csv"
+                summary_df.round(4).to_csv(summary_csv, index=False)
+                summary_csv_name = summary_csv.name
             for _, row in summary_df.iterrows():
                 w = str(row["window"])
                 b = str(row["beta"])
@@ -1179,9 +1230,10 @@ def run_portfolio_report_for_weights(
         monthly_summary_csv_name = ""
         monthly_summary_struct: dict[str, dict[str, dict[str, float | int]]] = {}
         if not monthly_summary_df.empty:
-            monthly_summary_csv = output_dir_csv / "rolling_factor_betas_monthly_summary.csv"
-            monthly_summary_df.round(4).to_csv(monthly_summary_csv, index=False)
-            monthly_summary_csv_name = monthly_summary_csv.name
+            if output_policy.write_csv:
+                monthly_summary_csv = output_dir_csv / "rolling_factor_betas_monthly_summary.csv"
+                monthly_summary_df.round(4).to_csv(monthly_summary_csv, index=False)
+                monthly_summary_csv_name = monthly_summary_csv.name
             for _, row in monthly_summary_df.iterrows():
                 w = str(row["window"])
                 b = str(row["beta"])
@@ -1218,17 +1270,18 @@ def run_portfolio_report_for_weights(
         )
         stability_csv_name = ""
         stability_df = factor_beta_stability_rows(stability)
-        if not stability_df.empty:
+        if not stability_df.empty and output_policy.write_csv:
             stability_csv = output_dir_csv / "factor_beta_stability.csv"
             stability_df.round(4).to_csv(stability_csv, index=False)
             stability_csv_name = stability_csv.name
 
         plot_name = ""
         plot_png_by_window: dict[str, str] = {}
-        if rb:
+        if rb and output_policy.write_html:
             plot_path = output_dir_final / "rolling_factor_betas.html"
             write_rolling_betas_plot_html(rb, plot_path)
             plot_name = plot_path.name
+        if rb and output_policy.write_png:
             plot_png_by_window = write_rolling_betas_plot_pngs(rb, output_dir_final)
 
         stress_report["factor_betas_rolling_windows_weeks"] = rolling_windows
@@ -1261,7 +1314,7 @@ def run_portfolio_report_for_weights(
             weights=weights,
             tickers=tickers,
             analysis_end_str=analysis_end_str,
-            output_dir_csv=output_dir_csv,
+            output_dir_csv=csv_export_dir,
             window_weeks=FACTOR_WEEKS_10Y,
         )
     except Exception as e:
@@ -1296,7 +1349,7 @@ def run_portfolio_report_for_weights(
             "stress_overlay": "factor_covariance_stress_overlay_weekly.csv",
         }.items():
             df = _matrix_df(regime, "matrix")
-            if not lightweight and not df.empty:
+            if output_policy.write_csv and not df.empty:
                 df.round(6).to_csv(output_dir_csv / fname)
 
         for regime, fname in {
@@ -1305,7 +1358,7 @@ def run_portfolio_report_for_weights(
             "stress_overlay": "factor_correlation_stress_overlay_weekly.csv",
         }.items():
             df = _matrix_df(regime, "correlations")
-            if not lightweight and not df.empty:
+            if output_policy.write_csv and not df.empty:
                 df.round(6).to_csv(output_dir_csv / fname)
 
         for regime, fname in {
@@ -1314,10 +1367,10 @@ def run_portfolio_report_for_weights(
             "stress_overlay": "portfolio_factor_rc_stress_overlay.csv",
         }.items():
             rows = ((factor_cov.get("portfolio_factor_rc") or {}).get(regime) or [])
-            if not lightweight and rows:
+            if output_policy.write_csv and rows:
                 pd.DataFrame(rows).round(6).to_csv(output_dir_csv / fname, index=False)
 
-        if not lightweight:
+        if output_policy.write_csv:
             overlay_deltas = ((factor_cov.get("stress_overlay") or {}).get("overlay_deltas") or [])
             if overlay_deltas:
                 pd.DataFrame(overlay_deltas).round(6).to_csv(
@@ -1372,7 +1425,7 @@ def run_portfolio_report_for_weights(
         stress_report["macro_regime_diagnostics"] = macro_regimes
         if not lightweight:
             for fname, df in macro_regime_csv_frames(macro_regimes).items():
-                if not df.empty:
+                if output_policy.write_csv and not df.empty:
                     df.round(6).to_csv(output_dir_csv / fname, index=False)
             quality_summary = (macro_regimes or {}).get("regime_label_quality_check")
             if isinstance(quality_summary, dict) and quality_summary:
@@ -1489,7 +1542,7 @@ def run_portfolio_report_for_weights(
                     encoding="utf-8",
                 )
                 for fname, df in regime_factor_analytics_csv_frames(rfa_payload).items():
-                    if df is not None and not df.empty:
+                    if output_policy.write_csv and df is not None and not df.empty:
                         num_cols = df.select_dtypes(include=[np.number]).columns
                         if len(num_cols):
                             df = df.copy()
@@ -1546,7 +1599,7 @@ def run_portfolio_report_for_weights(
                         encoding="utf-8",
                     )
                     for fname, df in regime_portfolio_metrics_csv_frames(rpm_full).items():
-                        if df is not None and not df.empty:
+                        if output_policy.write_csv and df is not None and not df.empty:
                             num_cols = df.select_dtypes(include=[np.number]).columns
                             if len(num_cols):
                                 df = df.copy()
@@ -1594,7 +1647,7 @@ def run_portfolio_report_for_weights(
         for warning in factor_decomp.get("warnings") or []:
             logger.warning(f"Factor variance decomposition warning: {warning}")
         rows = factor_decomp.get("rows") or []
-        if rows:
+        if output_policy.write_csv and rows:
             export_rows = []
             cross = factor_decomp.get("cross_check") or {}
             for row in rows:
@@ -1704,13 +1757,13 @@ def run_portfolio_report_for_weights(
                             }
                         )
 
-        if summary_rows:
+        if output_policy.write_csv and summary_rows:
             pd.DataFrame(summary_rows).round(8).to_csv(output_dir_csv / "portfolio_pca_summary_5y.csv", index=False)
-        if component_rows:
+        if output_policy.write_csv and component_rows:
             pd.DataFrame(component_rows).round(8).to_csv(output_dir_csv / "portfolio_pca_components_5y.csv", index=False)
-        if rolling_rows:
+        if output_policy.write_csv and rolling_rows:
             pd.DataFrame(rolling_rows).round(8).to_csv(output_dir_csv / "portfolio_pca_rolling_pc1.csv", index=False)
-        if corr_rows:
+        if output_policy.write_csv and corr_rows:
             pd.DataFrame(corr_rows).round(8).to_csv(output_dir_csv / "portfolio_pca_pc1_factor_correlations.csv", index=False)
     except Exception as e:
         stress_report["portfolio_pca_error"] = str(e)
@@ -1765,7 +1818,7 @@ def run_portfolio_report_for_weights(
 
     try:
         historical_paths = stress_report.get("historical_episode_paths") or []
-        for item in historical_paths:
+        for item in (historical_paths if output_policy.write_csv else []):
             if not isinstance(item, dict):
                 continue
             episode = str(item.get("episode") or "").strip()
@@ -1802,7 +1855,7 @@ def run_portfolio_report_for_weights(
             else None,
             cash_proxy_ticker=cash_proxy_ticker,
             analysis_end_str=analysis_end_str,
-            output_dir_csv=output_dir_csv,
+            output_dir_csv=csv_export_dir,
         )
         stress_report["stress_scenario_analytics"] = {k: v for k, v in ssa.items() if k != "csv_export"}
     except Exception as e:
@@ -1827,7 +1880,7 @@ def run_portfolio_report_for_weights(
             factor_returns_weekly=_scenario_lib_factor_weekly,
             cash_proxy_ticker=cash_proxy_ticker,
             output_dir_final=output_dir_final,
-            output_dir_csv=output_dir_csv,
+            output_dir_csv=csv_export_dir,
         )
         stress_report["scenario_library_meta"] = {
             "version": sl.get("version"),
@@ -1840,7 +1893,7 @@ def run_portfolio_report_for_weights(
             sln = build_scenario_library_normalized(
                 sl,
                 output_dir_final=output_dir_final,
-                output_dir_csv=output_dir_csv,
+                output_dir_csv=csv_export_dir,
                 monthly_returns=monthly_returns,
                 weights=weights,
                 tickers=tickers,
@@ -1958,7 +2011,7 @@ def run_portfolio_report_for_weights(
             ret_slice, rf_slice, 12, mar=mar_period, returns_frequency=returns_frequency
         )
         rvol = rolling_vol_annual(ret_slice, 12, returns_frequency=returns_frequency)
-        if not lightweight:
+        if output_policy.write_csv:
             rs36.round(3).to_csv(output_dir_csv / f"rolling_sharpe_36m_{suffix}.csv", header=True)
             rs12.round(3).to_csv(output_dir_csv / f"rolling_sharpe_12m_{suffix}.csv", header=True)
             rsort36.round(3).to_csv(output_dir_csv / f"rolling_sortino_36m_{suffix}.csv", header=True)
@@ -1978,7 +2031,7 @@ def run_portfolio_report_for_weights(
             rc12 = rolling_correlation(
                 ret_slice, bench_slice, 12, returns_frequency=returns_frequency
             )
-            if not lightweight:
+            if output_policy.write_csv:
                 rb36.round(3).to_csv(output_dir_csv / f"rolling_beta_36m_{suffix}.csv", header=True)
                 rb12.round(3).to_csv(output_dir_csv / f"rolling_beta_12m_{suffix}.csv", header=True)
                 rc36.round(3).to_csv(output_dir_csv / f"rolling_correlation_36m_{suffix}.csv", header=True)
@@ -2005,7 +2058,7 @@ def run_portfolio_report_for_weights(
         var_99 = flat_tail.get("var_99")
         es_95 = flat_tail.get("es_95")
         es_99 = flat_tail.get("es_99")
-        if not lightweight:
+        if output_policy.write_csv:
             pd.DataFrame(
                 [
                     {
@@ -2023,7 +2076,7 @@ def run_portfolio_report_for_weights(
                 ]
             ).round(3).to_csv(output_dir_csv / f"var_es_{suffix}.csv", index=False)
         eee = effective_equity_exposure(ret_slice, bench_slice, 0.10) if len(bench_slice.dropna()) >= 12 else None
-        if not lightweight:
+        if output_policy.write_csv:
             pd.DataFrame([{"eee_10pct": eee}]).round(3).to_csv(output_dir_csv / f"eee_{suffix}.csv", index=False)
         # Vol-of-vol
         vol_of_vol = float(rvol.std()) if len(rvol.dropna()) >= 2 else None
@@ -2195,13 +2248,17 @@ def run_portfolio_report_for_weights(
         {"timestamp": run_timestamp, "snapshots": snapshot_index_entries},
         output_dir_final / "snapshot_index.json",
     )
+    _xray_summary_from_output_dir(output_dir_final)
     report_timing.end_block("snapshots")
 
-    if not lightweight:
-        write_report_txt(str(output_dir_final))
-        html_path = write_report_html(str(output_dir_final))
-        logger.info("HTML report: %s", html_path)
+    if output_policy.write_txt or output_policy.write_html:
+        if output_policy.write_txt:
+            write_report_txt(str(output_dir_final))
+        if output_policy.write_html:
+            html_path = write_report_html(str(output_dir_final))
+            logger.info("HTML report: %s", html_path)
 
+    if output_policy.write_txt:
         try:
             cpath = write_portfolio_commentary(
                 output_dir_final,
@@ -2235,7 +2292,24 @@ def run_portfolio_report_for_weights(
         "daily_cache_key": daily_cache_key,
         "monthly_cache_key": monthly_cache_key,
         "report_profile": profile,
+        "output_profile": output_policy.profile,
+        "output_policy_disabled_artifact_classes": output_policy.disabled_artifact_classes,
     }
+    manifest_path = write_output_manifest(
+        output_dir_final,
+        policy=output_policy,
+        run_kind=str(portfolio_role_override or "portfolio_report"),
+        generated_paths={
+            "run_metadata": output_dir_final / "run_metadata.json",
+            "data_policy": output_dir_final / "data_policy.json",
+            "portfolio_xray": output_dir_final / "portfolio_xray.json",
+            "stress_report": output_dir_final / "stress_report.json",
+            "snapshot_10y": output_dir_final / "snapshot_10y.json",
+            "snapshot_index": output_dir_final / "snapshot_index.json",
+        },
+        cache_keys={"daily": daily_cache_key, "monthly": monthly_cache_key},
+    )
+    meta["output_manifest"] = manifest_path
     timing_payload = report_timing.to_dict()
     if timing_payload:
         meta["report_timing"] = timing_payload
@@ -2248,6 +2322,7 @@ def run_materialize_current_report(
     run_timestamp: str,
     backtest_mode: str,
     no_cache: bool,
+    output_profile: str | None = None,
 ) -> None:
     """Write current portfolio diagnostics to output_dir_final/current_portfolio/ sidecar."""
     from src.candidate_comparison import CURRENT_SIDECAR_SUBDIR, positive_current_weights
@@ -2268,7 +2343,7 @@ def run_materialize_current_report(
 
     output_dir_final = ensure_output_dir(Path(getattr(cfg, "output_dir_final", "Main portfolio")))
     sidecar_final = ensure_output_dir(output_dir_final / CURRENT_SIDECAR_SUBDIR)
-    sidecar_csv = ensure_output_dir(sidecar_final / "results_csv")
+    sidecar_csv = sidecar_final / "results_csv"
 
     logger.info(
         "Materializing current portfolio to %s (policy artifacts on Main root are not modified).",
@@ -2285,6 +2360,7 @@ def run_materialize_current_report(
         no_cache=no_cache,
         weights_source="config.current_weights",
         portfolio_role_override="user_current_portfolio",
+        output_profile=output_profile,
     )
 
 
@@ -2338,6 +2414,7 @@ def run_materialize_analysis_subject_report(
     run_timestamp: str,
     backtest_mode: str,
     no_cache: bool,
+    output_profile: str | None = None,
 ) -> None:
     """Write resolved analysis_subject diagnostics to output_dir_final/analysis_subject/."""
     materialization = resolve_analysis_subject_materialization(cfg)
@@ -2349,7 +2426,7 @@ def run_materialize_analysis_subject_report(
 
     output_dir_final = ensure_output_dir(Path(getattr(cfg, "output_dir_final", "Main portfolio")))
     subject_final = ensure_output_dir(output_dir_final / "analysis_subject")
-    subject_csv = ensure_output_dir(subject_final / "results_csv")
+    subject_csv = subject_final / "results_csv"
     subject = materialization["subject"]
 
     logger.info(
@@ -2369,6 +2446,7 @@ def run_materialize_analysis_subject_report(
         no_cache=no_cache,
         weights_source=str(materialization["weights_source"] or "analysis_subject"),
         portfolio_role_override="analysis_subject",
+        output_profile=output_profile,
     )
 
 
@@ -2399,6 +2477,7 @@ def main() -> None:
             run_timestamp=run_timestamp,
             backtest_mode=args.backtest_mode,
             no_cache=args.no_cache,
+            output_profile=args.output_profile,
         )
         cleanup_old_cache(keep_versions=3)
         sidecar = Path(getattr(cfg, "output_dir_final", "Main portfolio")) / "analysis_subject"
@@ -2413,6 +2492,7 @@ def main() -> None:
             run_timestamp=run_timestamp,
             backtest_mode=args.backtest_mode,
             no_cache=args.no_cache,
+            output_profile=args.output_profile,
         )
         cleanup_old_cache(keep_versions=3)
         sidecar = Path(getattr(cfg, "output_dir_final", "Main portfolio")) / "current_portfolio"
@@ -2430,7 +2510,10 @@ def main() -> None:
         )
         raise SystemExit(1)
 
-    output_dir_csv = ensure_output_dir(Path(cfg.output_dir))
+    output_policy = output_policy_for_profile(args.output_profile)
+    output_dir_csv = Path(cfg.output_dir)
+    if output_policy.write_csv:
+        output_dir_csv = ensure_output_dir(output_dir_csv)
     output_dir_final = ensure_output_dir(Path(getattr(cfg, "output_dir_final", "Main portfolio")))
 
     try:
@@ -2449,17 +2532,19 @@ def main() -> None:
         output_dir_final=output_dir_final,
         backtest_mode_override=args.backtest_mode,
         no_cache=args.no_cache,
+        output_profile=args.output_profile,
     )
 
     cleanup_old_cache(keep_versions=3)
 
     print("\nDone.")
+    if output_policy.write_csv:
+        print(
+            "  CSV in %s: asset_metrics, portfolio_metrics, rc_vol, correlation_matrix, rolling_*, var_es, eee, inputs/"
+            % output_dir_csv
+        )
     print(
-        "  CSV in %s: asset_metrics, portfolio_metrics, rc_vol, correlation_matrix, rolling_*, var_es, eee, inputs/"
-        % output_dir_csv
-    )
-    print(
-        "  Final results in %s: portfolio_weights.yml, all JSON (snapshot_*, stress_report, run_metadata, data_policy, drawdown_structure), report.txt, report.html, commentary.txt"
+        "  Final results in %s: JSON contracts (snapshot_*, stress_report, run_metadata, data_policy, portfolio_xray, output_manifest)"
         % output_dir_final
     )
 
@@ -2497,12 +2582,13 @@ def main() -> None:
             "Portfolio valid = False (e.g. MaxDD exceeds mandate). Report and files written; no exit (production workflow)."
         )
 
-    try:
+    if output_policy.write_pdf:
         from src.pdf_reports import try_rebuild_pdfs_after_main_report
 
-        try_rebuild_pdfs_after_main_report(logger=logger)
-    except Exception as e:
-        logger.warning("PDF suite rebuild skipped: %s", e)
+        try:
+            try_rebuild_pdfs_after_main_report(logger=logger)
+        except Exception as e:
+            logger.warning("PDF suite rebuild skipped: %s", e)
 
 
 if __name__ == "__main__":

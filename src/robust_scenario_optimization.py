@@ -371,6 +371,7 @@ def export_robust_optimization_outputs(
     *,
     output_dir: Path,
     comparisons: dict[str, dict[str, float]] | None = None,
+    write_export_artifacts: bool = True,
 ) -> dict[str, str]:
     output_dir.mkdir(parents=True, exist_ok=True)
     weights_dict = {inputs.ticker_order[i]: round(float(result["weights_vec"][i]), 6) for i in range(len(inputs.ticker_order))}
@@ -409,10 +410,11 @@ def export_robust_optimization_outputs(
     p_wj.write_text(json.dumps(weights_dict, indent=2), encoding="utf-8")
     paths["robust_optimization_weights.json"] = str(p_wj)
 
-    lines = [f"{t}: {weights_dict[t]}" for t in inputs.ticker_order]
-    p_wt = output_dir / "robust_optimization_weights.txt"
-    p_wt.write_text("\n".join(lines), encoding="utf-8")
-    paths["robust_optimization_weights.txt"] = str(p_wt)
+    if write_export_artifacts:
+        lines = [f"{t}: {weights_dict[t]}" for t in inputs.ticker_order]
+        p_wt = output_dir / "robust_optimization_weights.txt"
+        p_wt.write_text("\n".join(lines), encoding="utf-8")
+        paths["robust_optimization_weights.txt"] = str(p_wt)
 
     scen_df = pd.DataFrame(
         {
@@ -422,19 +424,22 @@ def export_robust_optimization_outputs(
             "return_at_optimum": result["scenario_returns"],
         }
     )
-    p_so = output_dir / "robust_optimization_scenario_outcomes.csv"
-    scen_df.to_csv(p_so, index=False)
-    paths["robust_optimization_scenario_outcomes.csv"] = str(p_so)
+    if write_export_artifacts:
+        p_so = output_dir / "robust_optimization_scenario_outcomes.csv"
+        scen_df.to_csv(p_so, index=False)
+        paths["robust_optimization_scenario_outcomes.csv"] = str(p_so)
 
     cand_df = pd.DataFrame({"scenario_id": inputs.scenario_ids, "role": inputs.scenario_roles})
-    p_cand = output_dir / "robust_optimization_candidate_scenarios.csv"
-    cand_df.to_csv(p_cand, index=False)
-    paths["robust_optimization_candidate_scenarios.csv"] = str(p_cand)
+    if write_export_artifacts:
+        p_cand = output_dir / "robust_optimization_candidate_scenarios.csv"
+        cand_df.to_csv(p_cand, index=False)
+        paths["robust_optimization_candidate_scenarios.csv"] = str(p_cand)
 
     diag_df = pd.DataFrame([{"metric": "lower_half_mean", "value": result["lower_half_mean"]}])
-    p_diag = output_dir / "robust_optimization_diagnostics.csv"
-    diag_df.to_csv(p_diag, index=False)
-    paths["robust_optimization_diagnostics.csv"] = str(p_diag)
+    if write_export_artifacts:
+        p_diag = output_dir / "robust_optimization_diagnostics.csv"
+        diag_df.to_csv(p_diag, index=False)
+        paths["robust_optimization_diagnostics.csv"] = str(p_diag)
 
     return paths
 

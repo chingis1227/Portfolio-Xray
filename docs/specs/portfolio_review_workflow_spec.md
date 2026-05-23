@@ -280,13 +280,30 @@ sections are edited.
 
 The portfolio-first **workflow order** is implemented. The default CLI uses **core-run** scope.
 
+### Command matrix (portfolio-first)
+
+| Use case | Command |
+| --- | --- |
+| Default site/API review | `python run_portfolio_review.py` |
+| Core menu (six candidates) | `python run_portfolio_review.py --mode core` |
+| Full menu (16 candidates) | `python run_portfolio_review.py --mode full` |
+| Resume interrupted full factory | `python run_portfolio_review.py --mode full --resume-candidates` |
+| Subject only (skip factory) | `python run_portfolio_review.py --skip-candidates` |
+| Explicit PDF (narrow subset) | `python run_portfolio_review.py --with-pdf` |
+| Full legacy PDF suite | `python run_portfolio_review.py --legacy-full-pdf` |
+| Export profile override | `python run_portfolio_review.py --output-profile full_report` |
+
+Writes `output_manifest.json` under `output_dir_final`. Output policy: `src/output_policy.py`;
+artifact map: [OUTPUTS.md](../../OUTPUTS.md).
+
 | Topic | Behavior |
 | --- | --- |
-| End-to-end command | `run_portfolio_review.py` chains subject → factory → compare → portfolio-first PDFs |
-| **Core-run** (default) | `--mode core` → factory profile `core_v1`; factory `--execution-mode standard` (phased weights + lightweight_comparison) |
+| End-to-end command | `run_portfolio_review.py` chains subject → factory → compare in `site_api` JSON/cache mode |
+| **Core-run** (default) | `--mode core` → factory profile `core_v1`; factory `--execution-mode standard` (phased weights + lightweight_comparison); no PDF by default |
 | **Full-run** | `--mode full` → factory profile `default_v1`; factory `--execution-mode standard` by default |
 | **Full-run (legacy builders)** | `--mode full --execution-mode legacy_full` → subprocess `run_*.py` per candidate (parity/debug) |
 | **Full-run recovery** | `--mode full --resume-candidates` passes factory `--resume` through the portfolio-first orchestrator |
+| **Portfolio-first PDF export** | `--with-pdf` explicitly enables the narrow portfolio-first PDF rebuild after export-capable artifacts are written |
 | Stale snapshots | Comparison marks non-matching `analysis_end` as `unavailable` |
 | Partial menu | `candidate_comparison.json` includes `candidate_menu`; decision-package summary repeats scope and refresh commands |
 | Long factory | Full rebuild can still take hours; use `--mode full --no-skip-existing` intentionally |

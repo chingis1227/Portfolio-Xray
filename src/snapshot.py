@@ -98,6 +98,14 @@ def _rc_asset_top(rc_series: pd.Series, top_n: int = TOP_RC_N) -> list[dict[str,
     return [{"ticker": str(t), "rc_pct": round(float(v), REPORT_DECIMALS)} for t, v in s.items()]
 
 
+def rc_asset_rows_from_series(rc_series: pd.Series | None) -> list[dict[str, Any]]:
+    """Full per-asset RC_vol rows for JSON contracts (snapshot / site_api consumers)."""
+    if rc_series is None or rc_series.empty:
+        return []
+    s = rc_series.dropna().sort_values(ascending=False)
+    return [{"ticker": str(t), "rc_pct": round(float(v), REPORT_DECIMALS)} for t, v in s.items()]
+
+
 def _constraints_status(
     *,
     target_vol_annual: float | None,
@@ -433,6 +441,7 @@ def build_snapshot_for_window(
     else:
         risk_weights = {t: round(w, REPORT_DECIMALS) for t, w in final_weights_risk_portfolio.items() if w > 0}
     rc_asset_top = _rc_asset_top(rc_series) if rc_series is not None else []
+    rc_asset_all = rc_asset_rows_from_series(rc_series) if rc_series is not None else []
     metrics = None
     if portfolio_metrics:
         metrics = {
@@ -454,6 +463,8 @@ def build_snapshot_for_window(
         "rc_vol_csv": rc_vol_csv,
         "correlation_matrix_csv": correlation_matrix_csv,
     }
+    if rc_asset_all:
+        snapshot["RC_asset_all"] = rc_asset_all
     if analytics:
         snapshot["analytics"] = analytics
     if candidate_config_fingerprint:
@@ -632,6 +643,7 @@ def _xray_summary_from_output_dir(out: Path) -> dict[str, Any] | None:
         portfolio_windows=portfolio_windows or None,
         portfolio_analytics=snapshot.get("analytics") if isinstance(snapshot, dict) else None,
         drawdown_structure=snapshot.get("drawdown_structure") if isinstance(snapshot, dict) else None,
+        output_dir_final=out,
         output_dir_csv=csv_dir if csv_dir.is_dir() else None,
     )
     try:

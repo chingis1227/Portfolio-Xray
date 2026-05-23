@@ -8,17 +8,33 @@ See docs/specs/candidate_comparison_spec.md.
 """
 
 from pathlib import Path
+import argparse
 
 from src.candidate_comparison import write_candidate_comparison_outputs
 from src.config import load_validated_config
+from src.output_policy import OUTPUT_PROFILE_VALUES
 from src.utils import setup_logging, logger
 
 
 def main() -> None:
     setup_logging()
+    parser = argparse.ArgumentParser(
+        description="Write candidate comparison and decision JSON contracts."
+    )
+    parser.add_argument(
+        "--output-profile",
+        choices=sorted(OUTPUT_PROFILE_VALUES),
+        default="site_api",
+        help="Output policy (default: site_api JSON-only; use full_report for TXT/legacy exports).",
+    )
+    args = parser.parse_args()
     cfg = load_validated_config()
     project_root = Path(__file__).resolve().parent
-    paths = write_candidate_comparison_outputs(cfg, project_root=project_root)
+    paths = write_candidate_comparison_outputs(
+        cfg,
+        project_root=project_root,
+        output_profile=args.output_profile,
+    )
     logger.info(
         "Comparison written: %s (legacy: %s; scorecard: %s)",
         paths.get("candidate_comparison_json"),

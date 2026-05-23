@@ -16,6 +16,7 @@ from src.report_profile import (
     REPORT_PROFILE_LIGHTWEIGHT,
     normalize_report_profile,
 )
+from src.output_policy import artifact_counts_by_type, output_policy_for_profile
 
 
 def test_normalize_report_profile_defaults_to_full() -> None:
@@ -26,6 +27,19 @@ def test_normalize_report_profile_defaults_to_full() -> None:
 def test_normalize_report_profile_rejects_unknown() -> None:
     with pytest.raises(ValueError, match="Invalid report_profile"):
         normalize_report_profile("turbo")
+
+
+def test_output_policy_defaults_to_site_api_json_only() -> None:
+    policy = output_policy_for_profile(None)
+    assert policy.profile == "site_api"
+    assert policy.write_json is True
+    assert policy.write_csv is False
+    assert policy.write_txt is False
+    assert policy.write_html is False
+    assert policy.write_png is False
+    assert policy.write_pdf is False
+    assert policy.write_markdown_sidecars is False
+    assert policy.write_css_visual_assets is False
 
 
 def _monthly_panel(tickers: list[str], n_months: int = 130) -> MonthlyDataResult:
@@ -205,3 +219,61 @@ def test_lightweight_artifacts_yield_available_comparison_row(
     assert status == "available"
     assert reason is None
     assert "stress.overall" not in missing
+
+
+def test_default_site_api_profile_writes_no_presentation_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    report_cfg: object,
+    report_weights: dict[str, float],
+) -> None:
+    tickers = list(report_weights)
+    panel = _monthly_panel(tickers)
+    _install_report_mocks(monkeypatch, panel)
+    out = tmp_path / "site_api"
+    run_portfolio_report_for_weights(
+        report_cfg,
+        report_weights,
+        run_timestamp="2026-05-22T12:00:00+00:00",
+        output_dir_csv=out / "results_csv",
+        output_dir_final=out,
+        no_cache=True,
+    )
+
+    assert (out / "snapshot_10y.json").is_file()
+    assert (out / "stress_report.json").is_file()
+    assert (out / "run_metadata.json").is_file()
+    assert (out / "portfolio_xray.json").is_file()
+    assert (out / "output_manifest.json").is_file()
+    counts = artifact_counts_by_type(out)
+    for key in ("csv", "txt", "html", "png", "pdf", "markdown_pdf_sidecars", "css_visual_assets"):
+        assert counts[key] == 0
+    snap = json.loads((out / "snapshot_10y.json").read_text(encoding="utf-8"))
+    assert snap.get("RC_asset_all")
+
+
+def test_site_api_with_full_report_profile_writes_no_presentation_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    report_cfg: object,
+    report_weights: dict[str, float],
+) -> None:
+    tickers = list(report_weights)
+    panel = _monthly_panel(tickers)
+    _install_report_mocks(monkeypatch, panel)
+    out = tmp_path / "site_api_full"
+    run_portfolio_report_for_weights(
+        report_cfg,
+        report_weights,
+        run_timestamp="2026-05-22T12:00:00+00:00",
+        output_dir_csv=out / "results_csv",
+        output_dir_final=out,
+        no_cache=True,
+        report_profile=REPORT_PROFILE_FULL,
+        output_profile="site_api",
+    )
+    stress = json.loads((out / "stress_report.json").read_text(encoding="utf-8"))
+    assert stress.get("factor_betas_rolling_summary") or stress.get("factor_betas_rolling_skip_reason")
+    counts = artifact_counts_by_type(out)
+    for key in ("csv", "txt", "html", "png", "pdf", "markdown_pdf_sidecars", "css_visual_assets"):
+        assert counts[key] == 0

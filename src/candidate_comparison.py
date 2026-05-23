@@ -33,6 +33,7 @@ from src.optimizer_methodology import (
 from src.review_bundle_context import build_review_bundle_context_v1
 from src.snapshot import compute_candidate_config_fingerprint, snapshot_config_fingerprint
 from src.stress import crisis_replay_summary_from_paths
+from src.output_policy import output_policy_for_profile, write_output_manifest
 
 SCHEMA_VERSION = "candidate_comparison_v1"
 WINDOWS = ("3y", "5y", "10y")
@@ -1943,13 +1944,19 @@ def write_candidate_comparison_outputs(
     cfg: PortfolioConfig,
     *,
     project_root: Path | None = None,
-    write_legacy: bool = True,
-    write_txt: bool = True,
+    write_legacy: bool | None = None,
+    write_txt: bool | None = None,
+    output_profile: str | None = None,
     factory_run: dict[str, Any] | None = None,
     comparison_rebuild_source: str = COMPARISON_REBUILD_STANDALONE,
 ) -> dict[str, Path]:
     """Build and write canonical (and optional legacy) comparison artifacts."""
     project_root = project_root or Path.cwd()
+    output_policy = output_policy_for_profile(output_profile)
+    if write_txt is None:
+        write_txt = output_policy.write_txt
+    if write_legacy is None:
+        write_legacy = output_policy.write_legacy_comparison
     comparison = build_candidate_comparison(
         cfg,
         project_root=project_root,
@@ -2023,7 +2030,7 @@ def write_candidate_comparison_outputs(
     )
 
     rob_paths = write_robustness_scorecard_outputs(
-        cfg, project_root=project_root, comparison=comparison
+        cfg, project_root=project_root, comparison=comparison, write_txt=write_txt
     )
     paths.update(rob_paths)
     robustness_doc = build_robustness_scorecard(comparison, project_root=project_root)
@@ -2033,6 +2040,7 @@ def write_candidate_comparison_outputs(
             project_root=project_root,
             comparison=comparison,
             robustness_scorecard=robustness_doc,
+            write_txt=write_txt,
         )
     )
 
@@ -2048,6 +2056,7 @@ def write_candidate_comparison_outputs(
         comparison=comparison,
         health=health_doc,
         robustness=robustness_doc,
+        write_txt=write_txt,
     )
     paths.update(sel_paths)
 
@@ -2066,6 +2075,7 @@ def write_candidate_comparison_outputs(
             selection=selection_doc,
             health=health_doc,
             robustness=robustness_doc,
+            write_txt=write_txt,
         )
     )
 
@@ -2083,6 +2093,7 @@ def write_candidate_comparison_outputs(
             health=health_doc,
             robustness=robustness_doc,
             model_risk=model_risk_doc,
+            write_txt=write_txt,
         )
     )
 
@@ -2094,6 +2105,7 @@ def write_candidate_comparison_outputs(
             project_root=project_root,
             comparison=comparison,
             selection=selection_doc,
+            write_txt=write_txt,
         )
     )
 
@@ -2109,6 +2121,7 @@ def write_candidate_comparison_outputs(
             comparison=comparison,
             selection=selection_doc,
             pareto=pareto_doc,
+            write_txt=write_txt,
         )
     )
 
@@ -2120,6 +2133,7 @@ def write_candidate_comparison_outputs(
             comparison,
             project_root=project_root,
             selection=selection_doc,
+            write_txt=write_txt,
         )
     )
     status_json = paths.get("current_vs_policy_status_json")
@@ -2134,6 +2148,7 @@ def write_candidate_comparison_outputs(
             comparison=comparison,
             selection=selection_doc,
             workflow_status=workflow_status,
+            write_txt=write_txt,
         )
     )
 
@@ -2149,6 +2164,7 @@ def write_candidate_comparison_outputs(
             robustness=robustness_doc,
             selection=selection_doc,
             action=action_doc,
+            write_txt=write_txt,
         )
     )
 
@@ -2166,6 +2182,7 @@ def write_candidate_comparison_outputs(
         monitoring_diff=monitoring_doc,
         health=health_doc,
         robustness=robustness_doc,
+        write_txt=write_txt,
     )
     paths.update(journal_paths)
 
@@ -2208,8 +2225,19 @@ def write_candidate_comparison_outputs(
             assumption_sensitivity=assumption_doc,
             pareto_dominance=pareto_doc,
             regret_analysis=regret_doc,
+            write_txt=write_txt,
+            append_report_txt=write_txt,
         )
     )
+
+    manifest_path = write_output_manifest(
+        out_dir,
+        policy=output_policy,
+        run_kind="candidate_comparison",
+        generated_paths={key: value for key, value in paths.items() if key.endswith("_json")},
+        extra={"comparison_rebuild_source": comparison_rebuild_source},
+    )
+    paths["output_manifest_json"] = manifest_path
 
     return paths
 

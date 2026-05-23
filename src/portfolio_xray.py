@@ -838,6 +838,43 @@ def _as_rc_map(rc_asset: Any) -> dict[str, float]:
     return {row["ticker"]: row["value"] for row in _rc_items(rc_asset, limit=10_000)}
 
 
+def load_rc_vol_map_from_snapshot(
+    output_dir: Path | str | None,
+) -> tuple[dict[str, float], str | None]:
+    """Load per-asset RC_vol from snapshot JSON (10Y preferred, then 5Y/3Y).
+
+    Uses ``RC_asset_all`` when present, else ``RC_asset`` top rows.
+    """
+    if output_dir is None:
+        return {}, None
+    base = Path(output_dir)
+    for name in ("snapshot_10y.json", "snapshot_5y.json", "snapshot_3y.json"):
+        path = base / name
+        if not path.is_file():
+            continue
+        try:
+            import json
+
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            continue
+        if not isinstance(data, dict):
+            continue
+        rows = data.get("RC_asset_all") or data.get("RC_asset") or []
+        merged: dict[str, float] = {}
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            ticker = str(row.get("ticker") or "").strip()
+            value = _as_float(row.get("rc_pct", row.get("value")))
+            if ticker and value is not None:
+                merged[ticker] = value
+        if merged:
+            return merged, name
+    return {}, None
+
+
 def load_rc_vol_map_from_csv(
     output_dir_csv: Path | str | None,
 ) -> tuple[dict[str, float], str | None]:
@@ -875,10 +912,11 @@ def resolve_rc_asset_for_xray(
     rc_asset: Any,
     *,
     rc_vol_map: dict[str, float] | None = None,
+    output_dir_final: Path | str | None = None,
     output_dir_csv: Path | str | None = None,
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """
-    Prefer full RC_vol CSV evidence; use snapshot RC_asset rows only to fill gaps.
+    Prefer in-memory RC map, then snapshot JSON, then CSV export files.
 
     Returns (rc_asset rows for X-Ray builders, data_sources_used additions).
     """
@@ -887,7 +925,11 @@ def resolve_rc_asset_for_xray(
     if rc_vol_map:
         merged = {str(k): float(v) for k, v in rc_vol_map.items() if _as_float(v) is not None}
         sources.append("rc_vol_map")
-    elif output_dir_csv is not None:
+    elif output_dir_final is not None:
+        merged, snap_name = load_rc_vol_map_from_snapshot(output_dir_final)
+        if merged and snap_name:
+            sources.append(snap_name)
+    if not merged and output_dir_csv is not None:
         merged, rc_filename = load_rc_vol_map_from_csv(output_dir_csv)
         if merged and rc_filename:
             sources.append(f"{Path(output_dir_csv)}/{rc_filename}")
@@ -3281,6 +3323,7 @@ def build_portfolio_xray_v2(
     taxonomy_rows: dict[str, dict[str, Any]] | None = None,
     taxonomy_sources: dict[str, str] | None = None,
     rc_vol_map: dict[str, float] | None = None,
+    output_dir_final: Path | str | None = None,
     output_dir_csv: Path | str | None = None,
 ) -> dict[str, Any]:
     """Build Portfolio X-Ray v2 from existing pipeline outputs and diagnostics.
@@ -3289,12 +3332,13 @@ def build_portfolio_xray_v2(
     RC_vol, factor betas, VaR/ES, stress PnL, or stress pass/fail using alternate
     formulas. It only summarizes the inputs passed by the report pipeline.
 
-    Risk Budget View prefers full ``rc_vol_*`` CSV evidence (via ``rc_vol_map`` or
-    ``output_dir_csv``) over display-oriented ``snapshot.RC_asset`` top-N rows.
+    Risk Budget View prefers ``rc_vol_map``, then snapshot JSON (``RC_asset_all`` /
+    ``RC_asset``), then legacy ``rc_vol_*`` CSV exports when present.
     """
     rc_asset_resolved, rc_sources = resolve_rc_asset_for_xray(
         rc_asset,
         rc_vol_map=rc_vol_map,
+        output_dir_final=output_dir_final,
         output_dir_csv=output_dir_csv,
     )
     legacy_summary = build_portfolio_xray_summary(
@@ -4112,5 +4156,6 @@ __all__ = [
     "format_portfolio_xray_text",
     "load_portfolio_windows_from_dir",
     "load_rc_vol_map_from_csv",
+    "load_rc_vol_map_from_snapshot",
     "resolve_rc_asset_for_xray",
 ]

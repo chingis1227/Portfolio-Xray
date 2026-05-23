@@ -51,6 +51,7 @@ from src.candidate_weights import (
     normalize_execution_mode,
 )
 from src.report_profile import REPORT_PROFILE_FULL, REPORT_PROFILE_LIGHTWEIGHT
+from src.output_policy import output_policy_for_profile, write_output_manifest
 from src.report_timing import aggregate_report_timing_from_steps
 from src.variant_builder_runtime import (
     ENV_SKIP_VARIANT_PDF,
@@ -463,6 +464,7 @@ def _execute_weights_only_build(
     project_root: Path,
     output_dir_final: str,
     fail_fast: bool,
+    write_txt: bool,
     record_factory_step: bool = True,
 ) -> bool:
     """
@@ -481,6 +483,7 @@ def _execute_weights_only_build(
         result,
         artifact_dir=artifact_dir,
         config_fingerprint=config_fingerprint,
+        write_txt=write_txt,
     )
     persist_builder_runtime_timing(artifact_dir, timing)
     duration = timing.total_seconds
@@ -614,6 +617,7 @@ def _run_lightweight_report_worker(
     analysis_end: str | None,
     config_fingerprint: str,
     weights_reused: bool,
+    output_profile: str | None = None,
     run_context: CandidateRunContext | None = None,
 ) -> dict[str, Any]:
     """
@@ -712,6 +716,7 @@ def _run_lightweight_report_worker(
             no_cache=run_context.no_cache if run_context else False,
             weights_source=f"candidate_factory.{candidate_id}",
             report_profile=REPORT_PROFILE_LIGHTWEIGHT,
+            output_profile=output_profile,
             run_context=run_context,
             enable_report_timing=True,
         )
@@ -869,6 +874,7 @@ def _execute_lightweight_report(
     output_dir_final: str,
     fail_fast: bool,
     weights_reused: bool,
+    output_profile: str | None = None,
     run_context: CandidateRunContext | None = None,
 ) -> bool:
     """
@@ -888,6 +894,7 @@ def _execute_lightweight_report(
         analysis_end=analysis_end,
         config_fingerprint=config_fingerprint,
         weights_reused=weights_reused,
+        output_profile=output_profile,
         run_context=run_context,
     )
     _record_lightweight_report_step(
@@ -1110,10 +1117,11 @@ def _execute_full_report(
     output_dir_final: str,
     fail_fast: bool,
     pdf_mode: str,
+    output_profile: str | None = None,
     run_context: CandidateRunContext | None = None,
 ) -> bool:
     """
-    Phase 3: full ``report_profile`` (HTML, commentary, rolling betas, etc.) for one candidate.
+    Phase 3: full ``report_profile`` export; presentation artifacts follow ``output_profile``.
     """
     from run_report import run_portfolio_report_for_weights
 
@@ -1253,6 +1261,7 @@ def _execute_full_report(
             no_cache=run_context.no_cache if run_context else False,
             weights_source=f"candidate_factory.{candidate_id}.full_report",
             report_profile=REPORT_PROFILE_FULL,
+            output_profile=output_profile,
             run_context=run_context,
             enable_report_timing=True,
         )
@@ -1419,6 +1428,7 @@ def _run_full_candidate_reports_phase(
     force: bool,
     fail_fast: bool,
     pdf_mode: str,
+    output_profile: str | None,
     run_context: CandidateRunContext | None,
 ) -> bool:
     """
@@ -1498,6 +1508,7 @@ def _run_full_candidate_reports_phase(
             output_dir_final=output_dir_final,
             fail_fast=fail_fast,
             pdf_mode=pdf_mode,
+            output_profile=output_profile,
             run_context=run_context,
         ):
             fail_fast_aborted = True
@@ -1730,6 +1741,7 @@ def run_candidate_factory(
     config_path: Path | None = None,
     pdf_mode: str = "none",
     execution_mode: str = "legacy_full",
+    output_profile: str | None = None,
     full_candidate_reports: bool = False,
     selected_candidates_for_full_report: list[str] | None = None,
     parallel_lightweight_reports: bool = False,
@@ -1765,6 +1777,7 @@ def run_candidate_factory(
     python_exe = sys.executable
     pdf_mode_normalized = normalize_pdf_mode(pdf_mode)
     execution_mode_normalized = normalize_execution_mode(execution_mode)
+    output_policy = output_policy_for_profile(output_profile)
     in_process_phase = uses_weights_only_phase(execution_mode_normalized)
     lightweight_report_phase = uses_lightweight_report_phase(execution_mode_normalized)
     parallel_lightweight_reports_effective = _parallel_lightweight_reports_effective(
@@ -2181,6 +2194,7 @@ def run_candidate_factory(
                     project_root=project_root,
                     output_dir_final=output_dir_final,
                     fail_fast=fail_fast,
+                    write_txt=output_policy.write_txt,
                     record_factory_step=not lightweight_report_phase,
                 ):
                     if fail_fast:
@@ -2203,6 +2217,7 @@ def run_candidate_factory(
                         analysis_end=analysis_end,
                         config_fingerprint=config_fingerprint,
                         weights_reused=report_weights_reused,
+                        output_profile=output_policy.profile,
                         run_context=run_context,
                     )
                     parallel_lightweight_submitted_candidate_ids.append(candidate_id)
@@ -2234,6 +2249,7 @@ def run_candidate_factory(
                     output_dir_final=output_dir_final,
                     fail_fast=fail_fast,
                     weights_reused=report_weights_reused,
+                    output_profile=output_policy.profile,
                     run_context=run_context,
                 ):
                     if fail_fast:
@@ -2483,6 +2499,7 @@ def run_candidate_factory(
             force=force,
             fail_fast=fail_fast,
             pdf_mode=pdf_mode_normalized,
+            output_profile=output_policy.profile,
             run_context=run_context,
         ):
             fail_fast_aborted = True
@@ -2512,6 +2529,7 @@ def run_candidate_factory(
             "then_compare": False,
             "pdf_mode": pdf_mode_normalized,
             "execution_mode": execution_mode_normalized,
+            "output_profile": output_policy.profile,
             "parallel_lightweight_reports": parallel_lightweight_reports,
             "parallel_lightweight_reports_effective": parallel_lightweight_reports_effective,
             "lightweight_report_workers": lightweight_report_worker_count,
@@ -2950,22 +2968,35 @@ def write_candidate_factory_outputs(
     doc: dict[str, Any],
     *,
     output_dir: Path,
+    write_txt: bool = True,
 ) -> dict[str, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / "candidate_factory_run.json"
-    txt_path = output_dir / "candidate_factory_run.txt"
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(doc, f, indent=2)
         f.write("\n")
-    txt_path.write_text(ascii_safe_text(build_factory_run_txt(doc)), encoding="utf-8")
     written: dict[str, Path] = {
         "candidate_factory_run_json": json_path,
-        "candidate_factory_run_txt": txt_path,
     }
+    if write_txt:
+        txt_path = output_dir / "candidate_factory_run.txt"
+        txt_path.write_text(ascii_safe_text(build_factory_run_txt(doc)), encoding="utf-8")
+        written["candidate_factory_run_txt"] = txt_path
     manifest_block = doc.get("manifest") or {}
     manifest_path = manifest_block.get("path")
     if manifest_path:
         written["candidate_factory_manifest_json"] = Path(manifest_path)
+    policy = output_policy_for_profile((doc.get("options") or {}).get("output_profile"))
+    written["output_manifest_json"] = write_output_manifest(
+        output_dir,
+        policy=policy,
+        run_kind="candidate_factory",
+        generated_paths={
+            "candidate_factory_run": json_path,
+            "candidate_factory_manifest": written.get("candidate_factory_manifest_json"),
+        },
+        extra={"factory_profile_id": doc.get("factory_profile_id")},
+    )
     return written
 
 
@@ -2981,6 +3012,7 @@ def run_then_compare(
     *,
     project_root: Path,
     factory_run: dict[str, Any] | None = None,
+    output_profile: str | None = None,
 ) -> tuple[dict[str, Path] | None, str | None]:
     from src.candidate_comparison import (
         COMPARISON_REBUILD_FACTORY_THEN_COMPARE,
@@ -2993,6 +3025,7 @@ def run_then_compare(
             project_root=project_root,
             factory_run=factory_run,
             comparison_rebuild_source=COMPARISON_REBUILD_FACTORY_THEN_COMPARE,
+            output_profile=output_profile,
         )
         return paths, None
     except Exception as exc:  # noqa: BLE001 — surface comparison failure in factory summary

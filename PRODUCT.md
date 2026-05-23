@@ -6,7 +6,22 @@ This document describes Portfolio X-Ray / Portfolio MRI from the user experience
 
 It is a product UX document. It does not replace [SPEC.md](SPEC.md), metric formulas, stress scenario definitions, investment policy logic, configuration schemas, or current implementation behavior.
 
-Product priority: report-first before full UI, unless a future product decision changes this to TBD.
+Product priority: site/API-first runtime contracts before full UI. Structured JSON plus internal
+cache are the default backend/UI contract. CSV/TXT/HTML/PNG/PDF/Markdown/CSS outputs remain
+available for explicit export, debugging, audit, Excel review, and legacy reporting, but are not part
+of the normal default execution path.
+
+| User intent | CLI (default = JSON only) |
+| --- | --- |
+| Full portfolio review | `python run_portfolio_review.py` |
+| Quick core review | `python run_portfolio_review.py --mode core` |
+| Refresh candidate menu + compare | `python run_candidate_factory.py --profile default_v1 --then-compare` |
+| Client PDF package | `python run_portfolio_review.py --with-pdf` |
+| Legacy policy optimize + report | `python run_optimization.py --with-report` |
+| Spreadsheet-style audit export | `python run_report.py --output-profile full_report` |
+
+Artifact index for UI/API: `output_manifest.json` under `output_dir_final`. Details:
+[OUTPUTS.md](OUTPUTS.md).
 
 Related documents:
 
@@ -524,14 +539,14 @@ Outputs:
 
 Formats:
 
-- HTML.
-- TXT / Markdown-style commentary.
-- CSV/JSON diagnostics.
-- PDF-style reports where configured.
+- JSON (default machine-readable contract for UI/API).
+- HTML, TXT, CSV, PNG, PDF, and Markdown sidecars (explicit export/report modes only).
 
 Current implementation:
 
-- The reporting pipeline exports CSV, JSON, HTML, TXT, and PDF-style artifacts. After comparison, the file-first decision package summary is implemented as `decision_package_summary.json` / `.txt`, with PDF-facing output where configured.
+- Default runs emit JSON decision and diagnostic contracts plus `output_manifest.json`; cache is internal.
+- CSV, HTML, TXT, PNG, and PDF-style artifacts require `full_report`, `legacy_export`, or explicit PDF flags (`run_portfolio_review.py --with-pdf`, `rebuild_pdf_reports.py`).
+- After comparison, `decision_package_summary.json` is the compact decision-package index; optional `.txt` and PDF projections exist only in export modes.
 
 Target additions:
 

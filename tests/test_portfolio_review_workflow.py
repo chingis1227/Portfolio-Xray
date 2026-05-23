@@ -101,13 +101,16 @@ def test_full_mode_legacy_factory_execution_override(tmp_path: Path) -> None:
 
 
 def test_default_plan_materializes_subject_before_candidates(tmp_path: Path) -> None:
-    plan = build_portfolio_review_plan(_cfg(), project_root=tmp_path, skip_pdf=True)
+    plan = build_portfolio_review_plan(_cfg(), project_root=tmp_path)
 
     assert [step.stage for step in plan.steps] == ["diagnosis", "candidates"]
     assert "run_report.py" in " ".join(plan.steps[0].argv)
     assert "--materialize-analysis-subject" in plan.steps[0].argv
+    assert "--output-profile" in plan.steps[0].argv
+    assert "site_api" in plan.steps[0].argv
     assert "run_candidate_factory.py" in " ".join(plan.steps[1].argv)
     assert "--then-compare" in plan.steps[1].argv
+    assert "--output-profile" in plan.steps[1].argv
     assert "run_optimization.py" not in _argv_text(plan)
 
 
@@ -176,8 +179,15 @@ def test_dry_run_does_not_execute(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
     assert run_portfolio_review_plan(plan, project_root=tmp_path, dry_run=True) == 0
 
 
-def test_default_pdf_step_is_portfolio_first_scope(tmp_path: Path) -> None:
+def test_default_plan_skips_pdf_step(tmp_path: Path) -> None:
     plan = build_portfolio_review_plan(_cfg(), project_root=tmp_path)
+
+    assert all(step.stage != "action" for step in plan.steps)
+    assert "rebuild_pdf_reports.py" not in _argv_text(plan)
+
+
+def test_explicit_pdf_step_is_portfolio_first_scope(tmp_path: Path) -> None:
+    plan = build_portfolio_review_plan(_cfg(), project_root=tmp_path, skip_pdf=False)
     pdf_step = plan.steps[-1]
 
     assert pdf_step.stage == "action"

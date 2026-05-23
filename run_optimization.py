@@ -319,7 +319,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--write-config", action="store_true", help="Write optimized weights to config.yml")
     parser.add_argument("--profile", type=str, default=None, help="Override client_profile")
     parser.add_argument("--config", type=str, default=None, help="Path to config YAML (default: config.yml)")
-    parser.add_argument("--no-report", action="store_true", help="Skip run_report.py after optimization")
+    parser.add_argument(
+        "--with-report",
+        action="store_true",
+        help="Explicitly run run_report.py after optimization (disabled by default for site/API mode)",
+    )
+    parser.add_argument(
+        "--output-profile",
+        type=str,
+        default="site_api",
+        choices=["site_api", "core_json", "lightweight_comparison", "full_report", "legacy_export"],
+        help="Output profile passed to run_report.py when --with-report is used.",
+    )
+    parser.add_argument("--no-report", action="store_true", help="Deprecated; report is skipped by default")
     return parser.parse_args()
 
 
@@ -1428,28 +1440,23 @@ def main() -> None:
     print("Snapshot saved to %s" % (out_final / "snapshot.json"))
 
     project_root = Path(__file__).resolve().parent
-    if not args.no_report:
-        report_cmd = [sys.executable, "run_report.py"]
+    if args.with_report and not args.no_report:
+        report_cmd = [sys.executable, "run_report.py", "--output-profile", args.output_profile]
         if args.no_cache:
             report_cmd.append("--no-cache")
         try:
             subprocess.run(report_cmd, cwd=project_root, check=True)
         except subprocess.CalledProcessError as e:
             logger.warning("Report failed (exit %s). Weights saved. %s", e.returncode, e)
-        try:
-            from src.pdf_reports import try_rebuild_pdfs_after_main_report
+        if args.output_profile == "legacy_export":
+            try:
+                from src.pdf_reports import try_rebuild_pdfs_after_main_report
 
-            try_rebuild_pdfs_after_main_report(logger=logger)
-        except Exception as ex:
-            logger.warning("PDF rebuild: %s", ex)
+                try_rebuild_pdfs_after_main_report(logger=logger)
+            except Exception as ex:
+                logger.warning("PDF rebuild: %s", ex)
     else:
-        logger.info("Skipping run_report.py (--no-report).")
-        try:
-            from src.pdf_reports import try_rebuild_pdfs_after_main_report
-
-            try_rebuild_pdfs_after_main_report(logger=logger)
-        except Exception as ex:
-            logger.warning("PDF rebuild: %s", ex)
+        logger.info("Skipping run_report.py and PDF rebuild by default; use --with-report for export/report artifacts.")
 
     if args.write_config:
         config_path = Path(__file__).resolve().parent / "config.yml"

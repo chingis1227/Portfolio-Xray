@@ -6,6 +6,30 @@ Its purpose is decision support, not black-box allocation. The system helps a us
 
 Product concept documents describe target direction only. Current behavior is governed by [SPEC.md](SPEC.md), [RULES.md](RULES.md), [DATA.md](DATA.md), [OUTPUTS.md](OUTPUTS.md), and detailed specs under [docs/specs/](docs/specs/README.md).
 
+Default execution is site/API-first: JSON contracts and cache are written for backend/UI
+consumption, while CSV/TXT/HTML/PNG/PDF/Markdown/CSS presentation artifacts are disabled unless an
+explicit export/report profile is selected.
+
+| Use case | Command |
+| --- | --- |
+| Default site/API report | `python run_report.py` |
+| Portfolio review site/API (JSON + `output_manifest.json`) | `python run_portfolio_review.py` |
+| Core review (six candidates) | `python run_portfolio_review.py --mode core` |
+| Candidate factory site/API | `python run_candidate_factory.py --profile default_v1 --then-compare` |
+| Compare / decision package only | `python run_compare_variants.py` |
+| Legacy policy optimize only (no report) | `python run_optimization.py` |
+| Legacy policy + site/API report | `python run_optimization.py --with-report` |
+| Full report exports | `python run_report.py --output-profile full_report` |
+| Legacy export + PDF sidecars | `python run_report.py --output-profile legacy_export` |
+| Portfolio-first PDF export | `python run_portfolio_review.py --with-pdf` |
+| Full legacy PDF suite | `python run_portfolio_review.py --legacy-full-pdf` or `python rebuild_pdf_reports.py` |
+| Benchmark/timing run | `python run_candidate_factory.py --profile default_v1 --then-compare --parallel-lightweight-reports` |
+
+Each site/API run writes `output_manifest.json` under `output_dir_final` (machine-readable index of
+JSON paths, disabled presentation classes, and per-type artifact counts). Cache under `cache/` is
+internal; CSV/TXT/HTML/PNG/PDF/Markdown/CSS are export-only unless an explicit profile or PDF flag
+is used. See [OUTPUTS.md](OUTPUTS.md) for the full command matrix and artifact policy.
+
 ## Current Scope
 
 Implemented today:
@@ -21,7 +45,7 @@ Implemented today:
 - Benchmark/candidate portfolios including Equal Weight, Risk Parity, HRP, Minimum Variance, Maximum Diversification, Minimum CVaR, Robust Mean-Variance, and Scenario-Based Robust Optimization.
 - Candidate Portfolio Factory orchestration through `run_candidate_factory.py`.
 - Canonical candidate comparison and V1 decision artifacts through `run_compare_variants.py`: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, trade-off/model-risk diagnostics, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Action Plan, current-vs-policy status, Monitoring / What Changed, generated Decision Journal, and decision package summary.
-- CSV, JSON, HTML, TXT, and PDF-style generated artifacts.
+- JSON generated artifacts by default; CSV, HTML, TXT, PNG, and PDF-style artifacts remain explicit export/report outputs.
 - ETF and stock taxonomy validation as annotation/diagnostic layers.
 - Partial utility UIs: `config_ui/` (local config editor) and `results_dashboard/` (read-only results viewer). These are supported utility surfaces, not the full product workspace.
 
@@ -50,10 +74,10 @@ full-review commands:
 
 ```bash
 python run_portfolio_review.py
-python run_portfolio_review.py --mode core --skip-pdf
+python run_portfolio_review.py --mode core
 python run_portfolio_review.py --dry-run
-python run_portfolio_review.py --mode full --skip-pdf
-python run_portfolio_review.py --mode full --resume-candidates --skip-pdf
+python run_portfolio_review.py --mode full
+python run_portfolio_review.py --mode full --resume-candidates
 python run_portfolio_review.py --skip-candidates
 python run_portfolio_review.py --candidate-profile core_benchmarks
 python run_portfolio_review.py --candidates equal_weight,risk_parity
@@ -76,10 +100,10 @@ Candidate Factory, and Optimization Engine (optimizer-backed candidates for comp
 active reliability plan is
 [Blocks 1-5 MVP Core Reliability Plan](docs/exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md).
 
-Routine command (no PDF rebuild):
+Routine command (site/API JSON/cache output; no PDF rebuild):
 
 ```bash
-python run_portfolio_review.py --mode core --skip-pdf
+python run_portfolio_review.py --mode core
 ```
 
 Offline acceptance gate (five tickers, explicit weights, no network):
@@ -93,11 +117,15 @@ Weighted `current_portfolio` / `model_portfolio` subjects must not have a positi
 details: [docs/operational_runbook.md](docs/operational_runbook.md) section 0; verification matrix:
 [TESTING.md](TESTING.md).
 
-The existing legacy policy flow remains callable for compatibility and historical policy runs:
+The existing legacy policy flow remains callable for compatibility and historical policy runs.
+By default, `run_optimization.py` writes policy weights and JSON metadata only; it does **not**
+invoke `run_report.py` unless `--with-report` is passed:
 
 ```bash
 python run_optimization.py
+python run_optimization.py --with-report
 python run_report.py
+python run_report.py --output-profile full_report
 ```
 
 Optional single command for the legacy file-first MVP policy path:
@@ -118,6 +146,7 @@ python run_optimization.py --write-config
 python run_optimization.py --config PATH
 python run_optimization.py --profile NAME
 python run_optimization.py --no-report
+python run_optimization.py --with-report --output-profile legacy_export
 ```
 
 Report options:

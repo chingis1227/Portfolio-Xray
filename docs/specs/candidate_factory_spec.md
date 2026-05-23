@@ -33,6 +33,25 @@ adds `--parallel-lightweight-reports` and `--lightweight-report-workers` for eli
 `--execution-mode standard` runs. This is runtime orchestration only: formulas, weights,
 comparison semantics, stress scenarios, and full-report/PDF behavior are unchanged.
 
+## Output policy (site/API default)
+
+Factory and downstream compare honor `src/output_policy.py`. CLI default: `--output-profile site_api`
+(JSON contracts + cache only; no CSV/TXT/HTML/PNG/PDF by default). Pass `--output-profile full_report`
+or `legacy_export` for explicit presentation exports. Phase 2/3 reports receive the same profile via
+`run_portfolio_report_for_weights(..., output_profile=...)`. Factory completion writes
+`output_manifest.json` under `output_dir_final`.
+
+| Use case | Command |
+| --- | --- |
+| Site/API factory + compare | `python run_candidate_factory.py --profile default_v1 --then-compare` |
+| Core benchmarks only | `python run_candidate_factory.py --profile core_benchmarks --then-compare` |
+| Full export per candidate | `python run_candidate_factory.py --profile default_v1 --output-profile full_report` |
+| Timing / parallel Phase 2 | add `--parallel-lightweight-reports` (standard mode only) |
+
+`--execution-mode standard` (default) builds weights in-process and runs `lightweight_comparison`
+reports for compare-ready snapshots without per-candidate PDF. PDF modes (`--pdf-mode`) are orthogonal
+to `output_profile`; Pandoc runs only when PDF flags or `legacy_export` request it.
+
 ## Scope
 
 The Candidate Portfolio Factory:
@@ -110,7 +129,7 @@ Use only when the intended baseline is generated legacy policy weights.
 
 | Step | Command | Purpose |
 | --- | --- | --- |
-| 0 Policy | `python run_optimization.py` then `python run_report.py` | Legacy policy weights and Main diagnostics |
+| 0 Policy | `python run_optimization.py --with-report` (or optimize then `run_report.py`) | Legacy policy weights and Main diagnostics |
 | 0b Current (optional) | `python run_report.py --materialize-current` | Current sidecar for No-Trade versus current |
 | 1 Factory | `python run_candidate_factory.py --profile default_v1` | Build or refresh candidate artifact folders |
 | 2 Compare | `python run_compare_variants.py` | Compatibility comparison and decision package |
@@ -217,8 +236,8 @@ many candidates are stale. That is an **operational** limitation, not a broken c
 
 | Mode | CLI | Factory profile | Intended scope |
 | --- | --- | --- | --- |
-| **core-run** | `python run_portfolio_review.py` (default `--mode core`) | `core_v1` | Benchmarks + risk budgets (6 candidates); factory `execution_mode=standard` |
-| **full-run** | `python run_portfolio_review.py --mode full` | `default_v1` | Full menu (16 candidates); factory `execution_mode=standard` (phased weights + lightweight report) |
+| **core-run** | `python run_portfolio_review.py` (default `--mode core`) | `core_v1` | Benchmarks + risk budgets (6 candidates); factory `execution_mode=standard`; site/API JSON output |
+| **full-run** | `python run_portfolio_review.py --mode full` | `default_v1` | Full menu (16 candidates); factory `execution_mode=standard` (phased weights + lightweight report); site/API JSON output |
 | **full-run (legacy builders)** | `python run_portfolio_review.py --mode full --execution-mode legacy_full` | `default_v1` | Subprocess `run_*.py` chain for parity/debug |
 
 `--candidate-profile` overrides `--mode` when an explicit profile is required. Partial-menu disclosure
@@ -239,7 +258,7 @@ weight-source keys remain future scope.
 | --- | --- |
 | File name | `candidate_factory_run.json` |
 | Location | `{output_dir_final}/candidate_factory_run.json` |
-| Companion (optional) | `{output_dir_final}/candidate_factory_run.txt` |
+| Companion (export-only) | `{output_dir_final}/candidate_factory_run.txt` |
 | Resume manifest | `{output_dir_final}/candidate_factory_manifest.json` (`candidate_factory_manifest_v1`) |
 | Schema version | `candidate_factory_run_v1` |
 
