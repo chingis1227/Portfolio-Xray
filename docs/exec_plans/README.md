@@ -19,7 +19,7 @@ artifact contracts.
 
 ## Current Pointer
 
-**Active:** None — use [ROADMAP](../ROADMAP.md) for the next prioritized item unless the user starts a new ExecPlan.
+**Active:** None (project-level). Most recent closure: [Candidate Factory Shared Evidence](2026-05-23_candidate_factory_shared_evidence_plan.md) (Sessions 0–6, 2026-05-23).
 
 Completed (2026-05-22): [Candidate Factory Parallel Lightweight Reports](2026-05-22_candidate_factory_parallel_reports_plan.md)
 (Sessions 0–6 closed: opt-in parallel Phase 2 lightweight reports, fallback disclosure, operator docs,
@@ -88,6 +88,7 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-05-23 | [Candidate Factory Shared Evidence](2026-05-23_candidate_factory_shared_evidence_plan.md) | Completed | [Shared evidence audit](../audits/2026-05-23_candidate_factory_shared_evidence_audit.md) | Sessions 0–6 closed: shared context v2–v5, report timing, pytest **106** passed; full-menu timing **−28.1%** `report_seconds` (below −35% goal — [Session 06 audit](../audits/2026-05-23_candidate_factory_shared_evidence_session06_timing_audit.md)); RM-982 Done; Session 7 deferred. |
 | 2026-05-22 | [Candidate Factory Parallel Lightweight Reports](2026-05-22_candidate_factory_parallel_reports_plan.md) | Completed | Post-runtime-refactor audit of sequential `lightweight_comparison` bottleneck | Sessions 0–6 closed: opt-in parallel lightweight reports + fallback; Session 5/6 timing audits; **keep parallel opt-in** (see [Session 06 audit](../audits/2026-05-22_candidate_factory_parallel_reports_session06_timing_audit.md)). |
 | 2026-05-22 | [Demo MVP Reliability Repair](2026-05-22_demo_mvp_reliability_plan.md) | Completed | User-requested demo reliability repair | Fresh `run_portfolio_review.py --mode core --skip-pdf` proof-run completed; artifact checklist passed; caveat is disclosed candidate snapshot reuse unless full rebuild command is used. |
 | 2026-05-22 | [Candidate Factory Runtime Refactor Plan](2026-05-22_candidate_factory_runtime_refactor_plan.md) | Completed | Operator timing audit (report/PDF bottleneck, not optimizers) | Sessions 0–9 closed: `standard` factory path, timing baseline audit, pytest bundle 102 passed; `cli_lambda` fix in run context. |

@@ -556,6 +556,44 @@ cached factor matrices when the context provides `factor_stress`.
 | Scenario library JSON under candidate folder | **Candidate-dependent** | Built per report output dir |
 | `robust_scenario` Main prerequisites | **Invariant path** | Reads `{output_dir_final}/scenario_library_normalized.json` once per run |
 
+### Shared Evidence Context v2 (shipped — RM-982)
+
+**Status:** Shipped (Sessions 1–6, 2026-05-23). Closed in
+[Shared Evidence ExecPlan](../exec_plans/2026-05-23_candidate_factory_shared_evidence_plan.md).
+Timing evidence:
+[Session 06 timing audit](../audits/2026-05-23_candidate_factory_shared_evidence_session06_timing_audit.md).
+
+**Purpose:** extend Session 4 `CandidateRunContext` so Phase 2 `lightweight_comparison` does not
+recompute invariant evidence 16× per `default_v1` menu. Orchestration and caching only — formulas,
+stress scenario definitions, and comparison semantics unchanged.
+
+**Evidence:** [Shared evidence audit](../audits/2026-05-23_candidate_factory_shared_evidence_audit.md)
+(pre-implementation map); post-ship timing in Session 06 audit above.
+
+| Input | Scope (v2 target) | Session | Notes |
+| --- | --- | --- | --- |
+| `monthly_data`, daily universe, universe betas 5Y/10Y, recession/scenario factors | **Invariant** | 4 (shipped) | Existing `FactoryFactorStressInputs` |
+| Asset metrics all tickers × windows | **Invariant** | 2 | Precompute in context; per-candidate CSV export may remain |
+| Correlation matrices (returns only) | **Invariant** | 2 | RC_vol still per candidate |
+| Monthly `cov_base` for stress | **Invariant** | 2 | Pass into `run_stress` optionally |
+| Extended-column universe betas (`FACTOR_COLUMN_ORDER`) | **Invariant** | 3 | Remove per-candidate OLS rebuild |
+| Daily panel for tail VaR/ES | **Invariant** | 3 | Reuse context daily; no second `load_daily_asset_returns_shared` |
+| Weekly asset returns R + factor matrix X (5Y/10Y) | **Invariant** | 4 | Shared frames for regression/decomposition/PCA |
+| Prepared synthetic stress `r_asset` per scenario | **Invariant** | 5 | Candidate PnL = `w @ r_asset` + existing RC/historical legs |
+| `save_inputs` monthly panel copy | **Optional skip** | 3 | Lightweight may omit duplicate `results_csv/inputs/` |
+| Portfolio returns, metrics, stress PnL, snapshots | **Candidate-dependent** | — | Unchanged |
+| Per-candidate `stress_report.json`, scenario library | **Candidate-dependent** | — | Assembly from shared + weights |
+
+**Parity contract:** `tests/test_report_profile.py` (full vs lightweight); Session 06
+comparison-critical fields (`weights.json`, stress status/PnL summaries) must match pre-change
+baseline within documented tolerance.
+
+**Timing (measured 2026-05-23):** sequential Phase 2 `report_seconds` sum **857.7 s** vs pre-change
+baseline **1192.9 s** (**−28.1%** on full `default_v1` menu, warm cache, isolated tmp smoke).
+ExecPlan target was −35% to −55%; gap documented in Session 06 audit (remaining:
+`macro_regime`, `daily_tail_risk`, `portfolio_pca` per candidate). Re-run:
+`python scripts/shared_evidence_session06_timing_smoke.py`.
+
 Per-candidate artifacts (minimum):
 
 - `weights.json`, `weights.txt`, `summary.json`

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -387,6 +388,129 @@ def _attach_recession_validation(
     out = dict(calibration)
     out["model_vs_realized"] = rows
     return out
+
+
+PREPARED_SYNTHETIC_STRESS_SCHEMA = "prepared_synthetic_stress_v1"
+
+
+@dataclass(frozen=True)
+class PreparedSyntheticStressInputs:
+    """
+    Factory-invariant synthetic stress legs: per-scenario asset returns and stressed covariances.
+
+    ``recession_severe`` is excluded (portfolio-beta calibration remains per candidate).
+    """
+
+    r_asset_by_scenario: dict[str, pd.Series]
+    cov_stress_by_scenario: dict[str, pd.DataFrame]
+    cov_meta_by_scenario: dict[str, dict[str, Any]]
+    fallback_assets: tuple[str, ...]
+    beta_coverage_ratio: float
+    covered_assets: tuple[str, ...]
+    universe_asset_cols: tuple[str, ...]
+    stress_cov_method: str = "taxonomy_blend_v1"
+    schema_version: str = PREPARED_SYNTHETIC_STRESS_SCHEMA
+
+
+def prepared_synthetic_stress_usable(
+    prepared: PreparedSyntheticStressInputs | None,
+    *,
+    asset_cols: list[str],
+    stress_cov_method: str = "taxonomy_blend_v1",
+) -> bool:
+    """True when precomputed synthetic legs cover this candidate's assets and cov method."""
+    if prepared is None or not prepared.r_asset_by_scenario:
+        return False
+    if str(stress_cov_method) != str(prepared.stress_cov_method):
+        return False
+    col_set = set(prepared.universe_asset_cols)
+    return bool(col_set) and set(asset_cols).issubset(col_set)
+
+
+def build_prepared_synthetic_stress_inputs(
+    *,
+    asset_cols: list[str],
+    asset_betas: pd.DataFrame,
+    cov_base: pd.DataFrame,
+    cash_proxy_ticker: str | None = None,
+    stress_cov_method: str = "taxonomy_blend_v1",
+) -> PreparedSyntheticStressInputs | None:
+    """
+    Precompute static SCENARIOS ``r_asset`` vectors and stressed covariances for one factory run.
+    """
+    if not asset_cols or cov_base is None or cov_base.empty or asset_betas is None or asset_betas.empty:
+        return None
+    try:
+        cov_aligned = cov_base.loc[asset_cols, asset_cols]
+    except (KeyError, ValueError):
+        return None
+    if cov_aligned.empty or len(cov_aligned) < 2:
+        return None
+
+    cash_u = (cash_proxy_ticker or "").strip().upper()
+    risk_on = [t for t in asset_cols if str(t).strip().upper() != cash_u]
+    fallback_assets, beta_coverage_ratio = _beta_coverage_meta(asset_betas, asset_cols)
+    covered_assets = tuple(t for t in asset_cols if t not in set(fallback_assets))
+
+    r_asset_by_scenario: dict[str, pd.Series] = {}
+    cov_stress_by_scenario: dict[str, pd.DataFrame] = {}
+    cov_meta_by_scenario: dict[str, dict[str, Any]] = {}
+
+    for scenario_id, params in SCENARIOS.items():
+        shock = {
+            k: v
+            for k, v in params.items()
+            if k.startswith("shock_") and isinstance(v, (int, float))
+        }
+        r_asset = _scenario_return_per_asset(shock, asset_betas, asset_cols)
+        r_asset_by_scenario[scenario_id] = r_asset.reindex(asset_cols).fillna(0)
+
+        use_stress_cov = bool(params.get("stress_cov", False))
+        if not use_stress_cov:
+            continue
+        vol_mult = float(params.get("vol_mult", 1.0))
+        risk_on_corr = float(params.get("risk_on_corr", 0.90))
+        if stress_cov_method == "uniform_legacy":
+            cov_s = _stress_covariance(cov_aligned, risk_on, vol_mult, risk_on_corr=risk_on_corr)
+            cov_meta = {
+                "stress_cov_method": "uniform_legacy",
+                "stress_cov_lambda": None,
+                "stress_cov_calibration_version": None,
+                "taxonomy_coverage": {},
+                "vol_mult_by_block": None,
+                "key_rho_overrides_used": None,
+            }
+        else:
+            cov_s, cov_diag = stress_covariance_taxonomy_blend(
+                cov_aligned,
+                asset_cols,
+                scenario_id,
+                cash_proxy_ticker=cash_proxy_ticker,
+            )
+            cov_meta = {
+                "stress_cov_method": cov_diag.get("stress_cov_method", "taxonomy_blend_v1"),
+                "stress_cov_lambda": cov_diag.get("stress_cov_lambda"),
+                "stress_cov_calibration_version": cov_diag.get("stress_cov_calibration_version"),
+                "taxonomy_coverage": cov_diag.get("taxonomy_coverage") or {},
+                "vol_mult_by_block": cov_diag.get("vol_mult_by_block"),
+                "key_rho_overrides_used": cov_diag.get("key_rho_overrides_used"),
+            }
+        cov_stress_by_scenario[scenario_id] = cov_s
+        cov_meta_by_scenario[scenario_id] = cov_meta
+
+    if not r_asset_by_scenario:
+        return None
+
+    return PreparedSyntheticStressInputs(
+        r_asset_by_scenario=r_asset_by_scenario,
+        cov_stress_by_scenario=cov_stress_by_scenario,
+        cov_meta_by_scenario=cov_meta_by_scenario,
+        fallback_assets=tuple(fallback_assets),
+        beta_coverage_ratio=beta_coverage_ratio,
+        covered_assets=covered_assets,
+        universe_asset_cols=tuple(asset_cols),
+        stress_cov_method=stress_cov_method,
+    )
 
 
 def _scenario_return_per_asset(
@@ -1143,6 +1267,8 @@ def run_stress(
     scenario_overrides: dict[str, dict[str, float]] | None = None,
     hedge_assets: list[str] | None = None,
     beta_data_source: str | None = None,
+    cov_base: pd.DataFrame | None = None,
+    prepared_synthetic: PreparedSyntheticStressInputs | None = None,
     **_: Any,
 ) -> dict[str, Any]:
     """
@@ -1163,11 +1289,23 @@ def run_stress(
 
     max_dd_limit = abs(target_max_drawdown_pct) if target_max_drawdown_pct is not None else 0.25
 
-    cov_base = cov_matrix_monthly(returns_sub, ddof=1)
+    if cov_base is not None and not cov_base.empty:
+        try:
+            cov_base = cov_base.loc[asset_cols, asset_cols]
+        except (KeyError, ValueError):
+            cov_base = cov_matrix_monthly(returns_sub, ddof=1)
+    else:
+        cov_base = cov_matrix_monthly(returns_sub, ddof=1)
     risk_on = [t for t in asset_cols if str(t).strip().upper() != cash_u]
 
     w_vec = np.array([weights.get(t, 0.0) for t in asset_cols])
     w_vec = w_vec / w_vec.sum() if w_vec.sum() > 0 else w_vec
+
+    use_prepared_synthetic = prepared_synthetic_stress_usable(
+        prepared_synthetic,
+        asset_cols=asset_cols,
+        stress_cov_method=stress_cov_method,
+    )
 
     scenario_results = []
     worst_loss = 0.0
@@ -1200,15 +1338,35 @@ def run_stress(
         use_stress_cov = bool(params.get("stress_cov", False))
         risk_on_corr = float(params.get("risk_on_corr", 0.90))
 
-        fallback_assets, beta_coverage_ratio = _beta_coverage_meta(asset_betas, asset_cols)
-        covered_assets = [t for t in asset_cols if t not in set(fallback_assets)]
-        r_asset = _scenario_return_per_asset(shock, asset_betas, asset_cols)
-        r_asset = r_asset.reindex(asset_cols).fillna(0)
+        prepared_row = (
+            use_prepared_synthetic
+            and scenario_id != "recession_severe"
+            and prepared_synthetic is not None
+            and scenario_id in prepared_synthetic.r_asset_by_scenario
+        )
+        if prepared_row:
+            fallback_assets = list(prepared_synthetic.fallback_assets)
+            beta_coverage_ratio = float(prepared_synthetic.beta_coverage_ratio)
+            covered_assets = [t for t in asset_cols if t not in set(fallback_assets)]
+            r_asset = prepared_synthetic.r_asset_by_scenario[scenario_id].reindex(asset_cols).fillna(0)
+        else:
+            fallback_assets, beta_coverage_ratio = _beta_coverage_meta(asset_betas, asset_cols)
+            covered_assets = [t for t in asset_cols if t not in set(fallback_assets)]
+            r_asset = _scenario_return_per_asset(shock, asset_betas, asset_cols)
+            r_asset = r_asset.reindex(asset_cols).fillna(0)
         pnl_i = w_vec * r_asset.values
         portfolio_pnl_pct = float(np.sum(pnl_i))
 
         if use_stress_cov:
-            if stress_cov_method == "uniform_legacy":
+            if (
+                prepared_row
+                and prepared_synthetic is not None
+                and scenario_id in prepared_synthetic.cov_stress_by_scenario
+            ):
+                cov_full = prepared_synthetic.cov_stress_by_scenario[scenario_id]
+                cov_s = cov_full.loc[asset_cols, asset_cols]
+                cov_meta = dict(prepared_synthetic.cov_meta_by_scenario.get(scenario_id) or {})
+            elif stress_cov_method == "uniform_legacy":
                 cov_s = _stress_covariance(cov_base, risk_on, vol_mult, risk_on_corr=risk_on_corr)
                 cov_meta = {
                     "stress_cov_method": "uniform_legacy",

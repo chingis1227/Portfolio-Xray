@@ -355,6 +355,7 @@ def load_monthly_returns(cfg, args) -> tuple[pd.DataFrame, str, pd.Timestamp, st
         no_cache=args.no_cache,
         local_benchmark_map=None,
         returns_frequency=getattr(cfg, "returns_frequency", None),
+        data_provider=getattr(cfg, "market_data_provider", None),
     )
     return data.monthly_returns, data.analysis_end_str, data.analysis_end, data.returns_frequency
 

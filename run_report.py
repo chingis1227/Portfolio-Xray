@@ -39,6 +39,11 @@ from src.config import (
 from src.candidate_run_context import (
     CandidateRunContext,
     asset_betas_for_candidate_weights,
+    daily_panel_for_candidate_report,
+    extended_diagnostic_betas_for_candidate,
+    invariant_metrics_usable_for_report,
+    slice_asset_metrics_for_tickers,
+    weekly_factor_frames_for_candidate,
 )
 from src.config_schema import ConfigValidationError, PortfolioConfig
 from src.data_loader import (
@@ -86,7 +91,7 @@ from src.portfolio_analytics import (
 from src.optimization import get_risk_portfolio_tickers
 from src.portfolio_dynamic import portfolio_returns_nan_safe
 from src.risk_contrib import cov_matrix_monthly, rc_vol_window
-from src.stress import run_stress
+from src.stress import prepared_synthetic_stress_usable, run_stress
 from src.stress_factors import (
     FACTOR_COLUMN_ORDER,
     FACTOR_TRADING_DAYS_10Y,
@@ -128,6 +133,7 @@ from src.stress_factors import (
     asset_daily_returns_from_daily,
 )
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
+from src.report_timing import ReportTimingCollector
 from src.report_profile import is_lightweight_comparison, normalize_report_profile
 from src.windows import slice_window, truncate_to_analysis_end
 from src.returns_frequency import (
@@ -267,6 +273,7 @@ def run_portfolio_report_for_weights(
     portfolio_role_override: str | None = None,
     report_profile: str | None = None,
     run_context: CandidateRunContext | None = None,
+    enable_report_timing: bool | None = None,
 ) -> tuple[dict | None, dict]:
     """
     Core metrics/stress/report pipeline, parameterized by explicit weights and output dirs.
@@ -282,9 +289,18 @@ def run_portfolio_report_for_weights(
       exports (rolling beta plots, HTML report, commentary, optional asset snapshot).
 
     ``run_context``: optional factory shared context (one monthly load + factor/scenario cache).
+
+    ``enable_report_timing``: when ``True``, record per-block seconds in ``meta["report_timing"]``
+    (also enabled by env ``PORTFOLIO_REPORT_TIMING=1``). Default off for non-factory runs.
     """
+    report_timing = ReportTimingCollector.for_run(enable_report_timing=enable_report_timing)
     profile = normalize_report_profile(report_profile)
     lightweight = is_lightweight_comparison(profile)
+    factory_factor = (
+        run_context.factor_stress
+        if run_context is not None and run_context.factor_stress is not None
+        else None
+    )
     investor_currency = cfg.investor_currency
     benchmark_base_ticker = cfg.benchmark_base_ticker
     windows_months = cfg.windows_months
@@ -434,43 +450,45 @@ def run_portfolio_report_for_weights(
     # STEP 5: Persist inputs (for reproducibility)
     # =========================================================================
 
-    save_inputs(
-        output_dir_csv,
-        monthly_prices,
-        monthly_returns,
-        rf_monthly,
-        benchmark_returns,
-        cash_returns,
-        fx_series_used,
-        monthly_returns_raw=monthly_returns_raw,
-        analysis_end=analysis_end_str,
-    )
-
-    export_data_policy(
-        output_dir_final,
-        backtest_mode=backtest_mode,
-        first_available_month=first_available_month,
-        inner_join_months_used=inner_join_months_used,
-        n_months_redistributed=backtest_diagnostics.get("n_months_redistributed") if backtest_diagnostics else None,
-        n_months_cash_fallback=backtest_diagnostics.get("n_months_cash_fallback") if backtest_diagnostics else None,
-    )
-
-    # Log data availability summary
-    logger.info("=" * 50)
-    logger.info("Data availability summary:")
-    for ticker in tickers:
-        r = monthly_returns.get(ticker)
-        if r is None or r.dropna().empty:
-            warn_skipped_asset(ticker, "no return data")
-        else:
-            r_clean = r.dropna()
-            info_data_summary(
-                ticker,
-                len(r_clean),
-                r_clean.index.min().strftime("%Y-%m"),
-                r_clean.index.max().strftime("%Y-%m"),
+    with report_timing.block("save_inputs"):
+        if not lightweight:
+            save_inputs(
+                output_dir_csv,
+                monthly_prices,
+                monthly_returns,
+                rf_monthly,
+                benchmark_returns,
+                cash_returns,
+                fx_series_used,
+                monthly_returns_raw=monthly_returns_raw,
+                analysis_end=analysis_end_str,
             )
-    logger.info("=" * 50)
+
+        export_data_policy(
+            output_dir_final,
+            backtest_mode=backtest_mode,
+            first_available_month=first_available_month,
+            inner_join_months_used=inner_join_months_used,
+            n_months_redistributed=backtest_diagnostics.get("n_months_redistributed") if backtest_diagnostics else None,
+            n_months_cash_fallback=backtest_diagnostics.get("n_months_cash_fallback") if backtest_diagnostics else None,
+        )
+
+        # Log data availability summary
+        logger.info("=" * 50)
+        logger.info("Data availability summary:")
+        for ticker in tickers:
+            r = monthly_returns.get(ticker)
+            if r is None or r.dropna().empty:
+                warn_skipped_asset(ticker, "no return data")
+            else:
+                r_clean = r.dropna()
+                info_data_summary(
+                    ticker,
+                    len(r_clean),
+                    r_clean.index.min().strftime("%Y-%m"),
+                    r_clean.index.max().strftime("%Y-%m"),
+                )
+        logger.info("=" * 50)
 
     # =========================================================================
     # STEP 6: Compute asset metrics per window
@@ -480,88 +498,110 @@ def run_portfolio_report_for_weights(
     analysis_end_ts = pd.Timestamp(analysis_end_str)
 
     asset_metrics_all: list[list[dict]] = []
-    for wm in windows_months:
-        rows = []
-        for ticker in tickers:
-            r_simple = monthly_returns.get(ticker)
-            r_log = monthly_log_returns.get(ticker)
-            if r_simple is None or r_log is None:
-                warn_skipped_asset(ticker, "no return data")
-                continue
-            if coverage_ratio(r_simple, analysis_end_ts, wm) < coverage_threshold:
-                warn_skipped_asset(
-                    ticker,
-                    "coverage in %d-month window < %.0f%%" % (wm, coverage_threshold * 100),
-                )
-                continue
-
-            # Get local benchmark returns for Beta_local
-            local_bench_ticker = local_benchmark_map.get(ticker)
-            local_bench_returns = None
-            if local_bench_ticker and local_bench_ticker != benchmark_base_ticker:
-                local_bench_returns = monthly_returns.get(local_bench_ticker)
-                if local_bench_returns is None:
-                    logger.warning(
-                        f"Local benchmark {local_bench_ticker} for {ticker} not found, "
-                        f"using base benchmark {benchmark_base_ticker}"
-                    )
-
-            row = asset_metrics_one_window(
-                ticker,
-                r_simple,
-                r_log,
-                rf_monthly,
-                benchmark_returns,
-                analysis_end,
-                wm,
-                mar=mar_period,
-                local_benchmark_returns=local_bench_returns,
-                periods_per_year=ppy,
+    use_invariant_metrics = (
+        run_context is not None
+        and invariant_metrics_usable_for_report(
+            run_context.invariant_metrics,
+            tickers=tickers,
+            windows_months=windows_months,
+        )
+    )
+    with report_timing.block("asset_metrics"):
+        if use_invariant_metrics and run_context is not None:
+            inv = run_context.invariant_metrics
+            assert inv is not None
+            asset_metrics_all = slice_asset_metrics_for_tickers(
+                inv.asset_metrics_all,
+                tickers,
             )
-            rows.append(row)
-        asset_metrics_all.append(rows)
-        export_asset_metrics_csv(rows, wm, output_dir_csv)
+            for wm, rows in zip(windows_months, asset_metrics_all):
+                export_asset_metrics_csv(rows, wm, output_dir_csv)
+        else:
+            for wm in windows_months:
+                rows = []
+                for ticker in tickers:
+                    r_simple = monthly_returns.get(ticker)
+                    r_log = monthly_log_returns.get(ticker)
+                    if r_simple is None or r_log is None:
+                        warn_skipped_asset(ticker, "no return data")
+                        continue
+                    if coverage_ratio(r_simple, analysis_end_ts, wm) < coverage_threshold:
+                        warn_skipped_asset(
+                            ticker,
+                            "coverage in %d-month window < %.0f%%" % (wm, coverage_threshold * 100),
+                        )
+                        continue
+
+                    # Get local benchmark returns for Beta_local
+                    local_bench_ticker = local_benchmark_map.get(ticker)
+                    local_bench_returns = None
+                    if local_bench_ticker and local_bench_ticker != benchmark_base_ticker:
+                        local_bench_returns = monthly_returns.get(local_bench_ticker)
+                        if local_bench_returns is None:
+                            logger.warning(
+                                f"Local benchmark {local_bench_ticker} for {ticker} not found, "
+                                f"using base benchmark {benchmark_base_ticker}"
+                            )
+
+                    row = asset_metrics_one_window(
+                        ticker,
+                        r_simple,
+                        r_log,
+                        rf_monthly,
+                        benchmark_returns,
+                        analysis_end,
+                        wm,
+                        mar=mar_period,
+                        local_benchmark_returns=local_bench_returns,
+                        periods_per_year=ppy,
+                    )
+                    rows.append(row)
+                asset_metrics_all.append(rows)
+                export_asset_metrics_csv(rows, wm, output_dir_csv)
 
     # =========================================================================
     # STEP 7: Compute portfolio metrics per window
     # =========================================================================
 
     portfolio_metrics_list = []
-    for wm in windows_months:
-        pm = portfolio_metrics_one_window(
-            portfolio_returns,
-            rf_monthly,
-            analysis_end,
-            wm,
-            benchmark_returns=benchmark_returns,
-            mar=mar_period,
-            periods_per_year=ppy,
-            benchmark_ticker=benchmark_base_ticker,
-            risk_free_source=rf_source,
-            returns_frequency=returns_frequency,
-        )
-        portfolio_metrics_list.append(pm)
-    export_portfolio_metrics_csv(portfolio_metrics_list, output_dir_csv)
+    with report_timing.block("portfolio_metrics"):
+        for wm in windows_months:
+            pm = portfolio_metrics_one_window(
+                portfolio_returns,
+                rf_monthly,
+                analysis_end,
+                wm,
+                benchmark_returns=benchmark_returns,
+                mar=mar_period,
+                periods_per_year=ppy,
+                benchmark_ticker=benchmark_base_ticker,
+                risk_free_source=rf_source,
+                returns_frequency=returns_frequency,
+            )
+            portfolio_metrics_list.append(pm)
+        export_portfolio_metrics_csv(portfolio_metrics_list, output_dir_csv)
 
-    # Map window_months to human-readable keys for snapshot (3y/5y/10y)
-    portfolio_windows: dict[str, dict] = {}
-    for pm in portfolio_metrics_list:
-        wm = pm.get("window_months", 0)
-        if wm == 36:
-            key = "3y"
-        elif wm == 60:
-            key = "5y"
-        elif wm == 120:
-            key = "10y"
-        else:
-            key = f"{int(wm)}m" if isinstance(wm, (int, float)) else "unknown"
-        portfolio_windows[key] = pm
+        # Map window_months to human-readable keys for snapshot (3y/5y/10y)
+        portfolio_windows: dict[str, dict] = {}
+        for pm in portfolio_metrics_list:
+            wm = pm.get("window_months", 0)
+            if wm == 36:
+                key = "3y"
+            elif wm == 60:
+                key = "5y"
+            elif wm == 120:
+                key = "10y"
+            else:
+                key = f"{int(wm)}m" if isinstance(wm, (int, float)) else "unknown"
+            portfolio_windows[key] = pm
 
-    # Get longest window portfolio metrics for target comparison
-    portfolio_metrics_summary = None
-    if portfolio_metrics_list:
-        longest_window_metrics = max(portfolio_metrics_list, key=lambda x: x.get("window_months", 0))
-        portfolio_metrics_summary = longest_window_metrics
+        # Get longest window portfolio metrics for target comparison
+        portfolio_metrics_summary = None
+        if portfolio_metrics_list:
+            longest_window_metrics = max(
+                portfolio_metrics_list, key=lambda x: x.get("window_months", 0)
+            )
+            portfolio_metrics_summary = longest_window_metrics
 
     # =========================================================================
     # STEP 8: Compute RC_vol and correlation matrix per window
@@ -572,37 +612,53 @@ def run_portfolio_report_for_weights(
     rc_by_window: dict[str, pd.Series] = {}
     rc_csv_by_window: dict[str, str] = {}
     corr_csv_by_window: dict[str, str] = {}
-    for wm in windows_months:
-        if not asset_cols:
-            logger.warning(f"RC_vol: no assets available for calculation")
-            continue
-        returns_slice = slice_window(monthly_returns[asset_cols], analysis_end, wm)
-        weights_slice = slice_window(weights_used.reindex(columns=asset_cols).fillna(0), analysis_end, wm)
-        returns_slice = returns_slice.dropna(how="all")
-        if returns_slice.empty or len(returns_slice) < 2:
-            window_label = f"{wm // 12}Y" if wm >= 12 else f"{wm}M"
-            logger.warning(f"RC_vol ({window_label}): insufficient data ( {len(returns_slice)} months available)")
-            continue
+    use_invariant_corr = use_invariant_metrics
+    with report_timing.block("rc_corr"):
+        for wm in windows_months:
+            if not asset_cols:
+                logger.warning(f"RC_vol: no assets available for calculation")
+                continue
+            returns_slice = slice_window(monthly_returns[asset_cols], analysis_end, wm)
+            weights_slice = slice_window(
+                weights_used.reindex(columns=asset_cols).fillna(0), analysis_end, wm
+            )
+            returns_slice = returns_slice.dropna(how="all")
+            if returns_slice.empty or len(returns_slice) < 2:
+                window_label = f"{wm // 12}Y" if wm >= 12 else f"{wm}M"
+                logger.warning(
+                    f"RC_vol ({window_label}): insufficient data ( {len(returns_slice)} months available)"
+                )
+                continue
 
-        # RC_vol
-        rc = rc_vol_window(returns_slice, weights_slice, ddof=1)
-        if wm == 60:
-            rc_for_snapshot = rc
-        suffix = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
-        rc_filename = f"rc_vol_{suffix}.csv"
-        export_rc_vol_csv(rc, output_dir_csv / rc_filename)
-        # Store per-window RC for snapshot windows section
-        if wm in (36, 60, 120):
-            key = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
-            rc_by_window[key] = rc
-            rc_csv_by_window[key] = rc_filename
+            # RC_vol
+            rc = rc_vol_window(returns_slice, weights_slice, ddof=1)
+            if wm == 60:
+                rc_for_snapshot = rc
+            suffix = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
+            rc_filename = f"rc_vol_{suffix}.csv"
+            export_rc_vol_csv(rc, output_dir_csv / rc_filename)
+            # Store per-window RC for snapshot windows section
+            if wm in (36, 60, 120):
+                key = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
+                rc_by_window[key] = rc
+                rc_csv_by_window[key] = rc_filename
 
-        # Correlation matrix
-        corr_matrix = returns_slice.corr()
-        export_correlation_matrix_csv(corr_matrix, wm, output_dir_csv)
-        if wm in (36, 60, 120):
-            key = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
-            corr_csv_by_window[key] = f"correlation_matrix_{suffix}.csv"
+            # Correlation matrix (invariant across candidates when factory context provides it)
+            corr_matrix: pd.DataFrame | None = None
+            if use_invariant_corr and run_context is not None:
+                inv = run_context.invariant_metrics
+                if inv is not None and wm in inv.correlation_by_window:
+                    cached = inv.correlation_by_window[wm]
+                    try:
+                        corr_matrix = cached.loc[asset_cols, asset_cols]
+                    except KeyError:
+                        corr_matrix = None
+            if corr_matrix is None:
+                corr_matrix = returns_slice.corr()
+            export_correlation_matrix_csv(corr_matrix, wm, output_dir_csv)
+            if wm in (36, 60, 120):
+                key = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
+                corr_csv_by_window[key] = f"correlation_matrix_{suffix}.csv"
 
     # =========================================================================
     # STEP 9: Stress testing (per docs/docs/stress_testing_spec.md)
@@ -634,6 +690,7 @@ def run_portfolio_report_for_weights(
         "covered_tickers": [],
         "analysis_end": analysis_end_str,
     }
+    report_timing.start_block("factor_betas")
     try:
         beta_tickers = [t for t in tickers if weights.get(t, 0) > 0]
         if not beta_tickers:
@@ -721,11 +778,6 @@ def run_portfolio_report_for_weights(
         beta_source: str | None = None
         asset_betas_5y_df = pd.DataFrame()
         asset_betas_10y_df = pd.DataFrame()
-        factory_factor = (
-            run_context.factor_stress
-            if run_context is not None and run_context.factor_stress is not None
-            else None
-        )
         if factory_factor is not None:
             beta_setup_reasons.extend(list(factory_factor.beta_setup_reasons))
             recession_factor_returns = factory_factor.recession_factor_returns
@@ -738,27 +790,14 @@ def run_portfolio_report_for_weights(
             )
             daily_asset_returns_for_betas = factory_factor.daily_asset_returns_for_betas
             if not daily_asset_returns_for_betas.empty:
-                diagnostic_betas_5y_extended = portfolio_factor_betas(
-                    weights,
-                    compute_asset_factor_betas_from_daily_returns(
-                        daily_asset_returns_for_betas,
-                        analysis_end_str,
-                        FACTOR_WEEKS_5Y,
-                        factor_columns=FACTOR_COLUMN_ORDER,
-                        asset_tickers=beta_tickers,
-                        equity_factor_ticker=benchmark_base_ticker,
-                    ),
-                )
-                diagnostic_betas_10y_extended = portfolio_factor_betas(
-                    weights,
-                    compute_asset_factor_betas_from_daily_returns(
-                        daily_asset_returns_for_betas,
-                        analysis_end_str,
-                        FACTOR_WEEKS_10Y,
-                        factor_columns=FACTOR_COLUMN_ORDER,
-                        asset_tickers=beta_tickers,
-                        equity_factor_ticker=benchmark_base_ticker,
-                    ),
+                diagnostic_betas_5y_extended, diagnostic_betas_10y_extended = (
+                    extended_diagnostic_betas_for_candidate(
+                        factory_factor,
+                        weights=weights,
+                        beta_tickers=beta_tickers,
+                        benchmark_base_ticker=benchmark_base_ticker,
+                        analysis_end_str=analysis_end_str,
+                    )
                 )
         else:
             try:
@@ -921,7 +960,10 @@ def run_portfolio_report_for_weights(
             "covered_tickers": [],
             "analysis_end": analysis_end_str,
         }
+    finally:
+        report_timing.end_block("factor_betas")
 
+    report_timing.start_block("run_stress")
     hedge_assets = []
     for ticker in tickers:
         meta = assets_meta.get(ticker) if isinstance(assets_meta, dict) else None
@@ -930,6 +972,24 @@ def run_portfolio_report_for_weights(
         roles = [str(x).lower() for x in (meta.get("risk_role") or [])]
         if any(r in {"crisis_hedge", "defensive", "inflation_hedge", "tail_hedge"} for r in roles):
             hedge_assets.append(str(ticker))
+
+    stress_cov_base: pd.DataFrame | None = None
+    if use_invariant_metrics and run_context is not None:
+        inv = run_context.invariant_metrics
+        if inv is not None and not inv.stress_cov_base.empty:
+            stress_cov_base = inv.stress_cov_base
+
+    stress_cov_method = str(getattr(cfg, "stress_cov_method", None) or "taxonomy_blend_v1")
+    prepared_synthetic = None
+    if use_invariant_metrics and run_context is not None:
+        prepared = run_context.prepared_synthetic_stress
+        asset_cols_for_stress = [t for t in tickers if t in monthly_returns.columns]
+        if prepared_synthetic_stress_usable(
+            prepared,
+            asset_cols=asset_cols_for_stress,
+            stress_cov_method=stress_cov_method,
+        ):
+            prepared_synthetic = prepared
 
     stress_report = run_stress(
         tickers=tickers,
@@ -943,6 +1003,9 @@ def run_portfolio_report_for_weights(
         scenario_overrides=getattr(cfg, "stress_scenario_overrides", None),
         hedge_assets=hedge_assets,
         beta_data_source=factor_diagnostics_meta.get("source"),
+        cov_base=stress_cov_base,
+        stress_cov_method=stress_cov_method,
+        prepared_synthetic=prepared_synthetic,
     )
     stress_report["generated_at"] = run_timestamp
     stress_report["analysis_end"] = analysis_end_str
@@ -982,7 +1045,14 @@ def run_portfolio_report_for_weights(
             keys = ", ".join(str(k) for k in factor_diagnostics_meta.get("factor_beta_keys") or [])
             lines.append(f"Factor attribution uses multi-factor betas: {keys}.")
         trust["user_summary_lines"] = lines
+    report_timing.end_block("run_stress")
     # Portfolio factor regression diagnostics (5Y/10Y): t/p/CI/R^2 on weekly data, same factor matrix definition.
+    report_timing.start_block("factor_regression")
+    shared_weekly_frames = (
+        weekly_factor_frames_for_candidate(factory_factor, tickers=tickers)
+        if factory_factor is not None
+        else None
+    )
     stress_report["factor_regression_5y"] = {}
     stress_report["factor_regression_10y"] = {}
     factor_regression_5y_extended: dict[str, Any] = {}
@@ -1005,6 +1075,7 @@ def run_portfolio_report_for_weights(
             tickers=tickers,
             analysis_end_str=analysis_end_str,
             window_weeks=FACTOR_WEEKS_5Y,
+            shared_frames=shared_weekly_frames,
         )
         stress_report["factor_regression_5y"] = regression_5y
         if not regression_5y:
@@ -1018,6 +1089,7 @@ def run_portfolio_report_for_weights(
             tickers=tickers,
             analysis_end_str=analysis_end_str,
             window_weeks=FACTOR_WEEKS_10Y,
+            shared_frames=shared_weekly_frames,
         )
         stress_report["factor_regression_10y"] = regression_10y
         if not regression_10y:
@@ -1032,6 +1104,7 @@ def run_portfolio_report_for_weights(
             analysis_end_str=analysis_end_str,
             window_weeks=FACTOR_WEEKS_5Y,
             factor_columns=FACTOR_COLUMN_ORDER,
+            shared_frames=shared_weekly_frames,
         )
         factor_regression_10y_extended = portfolio_factor_regression_weekly(
             weights=weights,
@@ -1039,10 +1112,12 @@ def run_portfolio_report_for_weights(
             analysis_end_str=analysis_end_str,
             window_weeks=FACTOR_WEEKS_10Y,
             factor_columns=FACTOR_COLUMN_ORDER,
+            shared_frames=shared_weekly_frames,
         )
     except Exception as e:
         stress_report["diagnostic_oil_beta_regression_error"] = str(e)
         logger.warning(f"Extended Oil diagnostic regression failed: {e}")
+    report_timing.end_block("factor_regression")
 
     # Rolling beta stability (diagnostic): 3Y/5Y/10Y weekly + monthly betas, OOS checks, and severity.
     rb: dict[str, pd.DataFrame] = {}
@@ -1195,6 +1270,7 @@ def run_portfolio_report_for_weights(
             logger.warning(f"Kalman factor betas diagnostics failed: {e}")
 
     # Factor covariance analytics: explicit base / stress_empirical / stress_overlay regimes.
+    report_timing.start_block("factor_covariance")
     try:
         factor_cov = factor_covariance_analytics(
             analysis_end_str=analysis_end_str,
@@ -1283,7 +1359,9 @@ def run_portfolio_report_for_weights(
             "unavailable_reason": str(e),
         }
         logger.warning(f"Factor covariance analytics failed: {e}")
+    report_timing.end_block("factor_covariance")
 
+    report_timing.start_block("macro_regime")
     try:
         macro_regimes = macro_regime_diagnostics(
             weights=weights,
@@ -1305,6 +1383,7 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["macro_regime_diagnostics_error"] = str(e)
         logger.warning(f"Macro regime diagnostics failed: {e}")
+    report_timing.end_block("macro_regime")
 
     regime_factor_analytics_full = None
     if lightweight:
@@ -1502,12 +1581,14 @@ def run_portfolio_report_for_weights(
         logger.warning(f"Diagnostic Oil beta block failed: {e}")
 
     # Factor variance decomposition: 5Y weekly factor shares plus residual risk.
+    report_timing.start_block("factor_decomposition")
     try:
         factor_decomp = factor_variance_decomposition_weekly(
             weights=weights,
             tickers=tickers,
             analysis_end_str=analysis_end_str,
             window_weeks=FACTOR_WEEKS_5Y,
+            shared_frames=shared_weekly_frames,
         )
         stress_report["factor_variance_decomposition"] = factor_decomp
         for warning in factor_decomp.get("warnings") or []:
@@ -1539,8 +1620,10 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["factor_variance_decomposition_error"] = str(e)
         logger.warning(f"Factor variance decomposition failed: {e}")
+    report_timing.end_block("factor_decomposition")
 
     # Portfolio PCA diagnostics: hidden statistical risk concentration, diagnostic only.
+    report_timing.start_block("portfolio_pca")
     try:
         pca = portfolio_pca_diagnostics(
             weights=weights,
@@ -1632,6 +1715,7 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["portfolio_pca_error"] = str(e)
         logger.warning(f"Portfolio PCA diagnostics failed: {e}")
+    report_timing.end_block("portfolio_pca")
 
     # Out-of-sample explainability in historical episodes: beta * realized factor shocks.
     try:
@@ -1730,6 +1814,7 @@ def run_portfolio_report_for_weights(
         if recession_factor_returns is not None and not recession_factor_returns.empty
         else None
     )
+    report_timing.start_block("scenario_library")
     try:
         sl = build_scenario_library(
             stress_report,
@@ -1788,6 +1873,7 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["scenario_library_error"] = str(e)
         logger.warning(f"Scenario library v1 failed: {e}")
+    report_timing.end_block("scenario_library")
     stress_report["frequency_disclosure"] = frequency_disclosure_from_resolution(
         freq_res,
         factor_stress_frequency=FACTOR_STRESS_FREQUENCY_DEFAULT,
@@ -1795,27 +1881,40 @@ def run_portfolio_report_for_weights(
     )
     stress_report["periods_per_year"] = ppy
 
-    export_stress_report(stress_report, output_dir_final)
+    with report_timing.block("export_stress"):
+        export_stress_report(stress_report, output_dir_final)
     logger.info(f"Stress status: {stress_report.get('status', 'N/A')}")
 
     # =========================================================================
     # STEP 9b: Portfolio analytics per window (rolling Sharpe/Sortino, drawdown, VaR/ES, EEE)
     # =========================================================================
+    report_timing.start_block("daily_tail_risk")
     portfolio_returns_daily: pd.Series | None = None
     try:
-        daily_asset_returns, cash_returns_daily = load_daily_asset_returns_shared(
-            tickers=tickers,
-            benchmark_base_ticker=benchmark_base_ticker,
-            cash_proxy_ticker=cash_proxy_ticker,
-            investor_currency=investor_currency,
-            windows_months=windows_months,
-            assets_meta=assets_meta,
-            daily_cache_key=daily_cache_key,
-            analysis_end=analysis_end,
-            no_cache=no_cache,
-            local_benchmark_map=local_benchmark_map,
-            data_provider=getattr(cfg, "market_data_provider", None),
-        )
+        daily_asset_returns: pd.DataFrame | None = None
+        cash_returns_daily: pd.Series | None = None
+        if factory_factor is not None:
+            shared_daily = daily_panel_for_candidate_report(
+                factory_factor,
+                tickers=tickers,
+                cash_proxy_ticker=cash_proxy_ticker,
+            )
+            if shared_daily is not None:
+                daily_asset_returns, cash_returns_daily = shared_daily
+        if daily_asset_returns is None:
+            daily_asset_returns, cash_returns_daily = load_daily_asset_returns_shared(
+                tickers=tickers,
+                benchmark_base_ticker=benchmark_base_ticker,
+                cash_proxy_ticker=cash_proxy_ticker,
+                investor_currency=investor_currency,
+                windows_months=windows_months,
+                assets_meta=assets_meta,
+                daily_cache_key=daily_cache_key,
+                analysis_end=analysis_end,
+                no_cache=no_cache,
+                local_benchmark_map=local_benchmark_map,
+                data_provider=getattr(cfg, "market_data_provider", None),
+            )
         if cash_returns_daily.empty or len(cash_returns_daily.index) == 0:
             cash_returns_daily = pd.Series(0.0, index=daily_asset_returns.index)
         else:
@@ -1946,6 +2045,7 @@ def run_portfolio_report_for_weights(
             "es_99": es_99,
             "eee_10pct": eee,
         }
+    report_timing.end_block("daily_tail_risk")
 
     # =========================================================================
     # STEP 10: Export run metadata
@@ -2004,6 +2104,7 @@ def run_portfolio_report_for_weights(
     )
 
     # Snapshots: one for assets, three by window (3y / 5y / 10y)
+    report_timing.start_block("snapshots")
     snapshot_window = 60 if 60 in windows_months else (windows_months[0] if windows_months else 60)
     max_dd_ok = mandate_chk.get("pass") if cfg.target_max_drawdown_pct is not None else None
     snapshot = build_snapshot(
@@ -2094,6 +2195,7 @@ def run_portfolio_report_for_weights(
         {"timestamp": run_timestamp, "snapshots": snapshot_index_entries},
         output_dir_final / "snapshot_index.json",
     )
+    report_timing.end_block("snapshots")
 
     if not lightweight:
         write_report_txt(str(output_dir_final))
@@ -2134,6 +2236,9 @@ def run_portfolio_report_for_weights(
         "monthly_cache_key": monthly_cache_key,
         "report_profile": profile,
     }
+    timing_payload = report_timing.to_dict()
+    if timing_payload:
+        meta["report_timing"] = timing_payload
     return portfolio_metrics_summary, meta
 
 

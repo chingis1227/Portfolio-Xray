@@ -4,6 +4,17 @@ This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.
 
+Date: 2026-05-23
+
+Category: Added
+
+- Candidate Factory Shared Evidence Sessions 1–5 (RM-982): factory `CandidateRunContext` v2–v5
+  (invariant asset metrics/corr/cov, extended betas, weekly factor frames, prepared synthetic stress);
+  optional `report_timing` blocks and factory aggregate; Session 6 closure audit
+  (`docs/audits/2026-05-23_candidate_factory_shared_evidence_session06_timing_audit.md`);
+  full-menu sequential `report_seconds` **−28.1%** vs 1192.9 s baseline (below −35% goal);
+  verification bundle **106 passed**; `scripts/shared_evidence_session06_timing_smoke.py`.
+
 Date: 2026-05-22
 
 Category: Fixed

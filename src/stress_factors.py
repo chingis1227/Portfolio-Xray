@@ -807,6 +807,37 @@ def asset_weekly_returns_from_daily(
     return df.dropna(how="all")
 
 
+def asset_weekly_returns_from_daily_returns(
+    daily_returns: pd.DataFrame,
+    start: str,
+    end: str,
+    *,
+    tickers: list[str] | None = None,
+) -> pd.DataFrame:
+    """
+    Build week-end simple returns from a daily return panel (compound within week).
+
+    Uses the same W-FRI resample as ``compute_asset_factor_betas_from_daily_returns``.
+    """
+    if daily_returns is None or daily_returns.empty:
+        return pd.DataFrame()
+    returns = daily_returns.copy()
+    try:
+        returns.index = pd.to_datetime(returns.index)
+    except Exception:
+        return pd.DataFrame()
+    returns = returns.sort_index()
+    if hasattr(returns.index, "slice_indexer"):
+        returns = returns.loc[start:end]
+    returns = returns.apply(pd.to_numeric, errors="coerce")
+    cols = [str(t) for t in (tickers or list(returns.columns)) if str(t) in returns.columns]
+    if not cols:
+        return pd.DataFrame()
+    asset_returns = returns[cols]
+    asset_weekly = (1.0 + asset_returns).resample("W-FRI").prod(min_count=1) - 1.0
+    return asset_weekly.dropna(how="all")
+
+
 def estimate_betas(
     asset_returns: pd.DataFrame,
     factor_returns: pd.DataFrame,
@@ -1747,6 +1778,131 @@ def factor_multicollinearity_diagnostics(
         return {**base, "error": str(ex)}
 
 
+@dataclass(frozen=True)
+class PortfolioFactorWeeklyFrames:
+    """
+    Pre-aligned weekly asset returns and factor matrix for one analysis end.
+
+    Built once per factory run; per-candidate work is y = R @ w and OLS inference.
+    """
+
+    asset_weekly: pd.DataFrame
+    factors: pd.DataFrame
+    analysis_end_str: str
+    buffer_weeks: int
+    universe_tickers: tuple[str, ...]
+
+
+def build_portfolio_factor_weekly_frames(
+    *,
+    daily_returns: pd.DataFrame,
+    analysis_end_str: str,
+    universe_tickers: list[str],
+    max_window_weeks: int = FACTOR_WEEKS_10Y,
+    buffer_weeks: int = FACTOR_DOWNLOAD_BUFFER_WEEKS,
+) -> PortfolioFactorWeeklyFrames | None:
+    """
+    Download/build weekly R and X once for the longest regression window (10Y + buffer).
+    """
+    tickers = [str(t).strip() for t in universe_tickers if t and str(t).strip()]
+    if not tickers or daily_returns is None or daily_returns.empty:
+        return None
+
+    wk = int(max_window_weeks)
+    end_ts = pd.Timestamp(analysis_end_str)
+    end_dl = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    start_ts = end_ts - pd.DateOffset(weeks=wk + int(buffer_weeks))
+    start_dl = start_ts.strftime("%Y-%m-%d")
+
+    asset_weekly = asset_weekly_returns_from_daily_returns(
+        daily_returns, start_dl, end_dl, tickers=tickers
+    )
+    factors = build_factor_matrix(start_dl, end_dl)
+    if asset_weekly.empty or factors.empty:
+        return None
+
+    common = asset_weekly.index.intersection(factors.index).sort_values()
+    common = common[common <= end_ts + pd.Timedelta(days=6)]
+    if len(common) < 10:
+        return None
+
+    asset_aligned = asset_weekly.reindex(common)
+    factors_aligned = factors.reindex(common)
+    return PortfolioFactorWeeklyFrames(
+        asset_weekly=asset_aligned,
+        factors=factors_aligned,
+        analysis_end_str=analysis_end_str,
+        buffer_weeks=int(buffer_weeks),
+        universe_tickers=tuple(tickers),
+    )
+
+
+def weekly_factor_frames_cover_tickers(
+    frames: PortfolioFactorWeeklyFrames | None,
+    tickers: list[str],
+) -> bool:
+    if frames is None or frames.asset_weekly.empty:
+        return False
+    needed = {str(t).strip() for t in tickers if t and str(t).strip()}
+    if not needed:
+        return False
+    return needed.issubset(set(frames.asset_weekly.columns))
+
+
+def _portfolio_factor_weekly_ols_rows_from_frames(
+    *,
+    frames: PortfolioFactorWeeklyFrames,
+    weights: dict[str, float],
+    tickers: list[str],
+    window_weeks: int,
+    factor_columns: tuple[str, ...] | list[str] | None = None,
+) -> dict[str, Any]:
+    """Portfolio OLS rows from pre-built weekly asset/factor frames (y = R @ w)."""
+    wk = int(window_weeks)
+    end_ts = pd.Timestamp(frames.analysis_end_str)
+    factor_cols = _select_factor_columns(frames.factors, factor_columns)
+    if not factor_cols:
+        return {"error": "missing_factor_columns", "n_obs": 0}
+
+    use = [t for t in tickers if float(weights.get(t, 0.0)) > 0]
+    if not use:
+        use = list(tickers)
+    use = [str(t).strip() for t in use if t and str(t).strip()]
+    if not use:
+        return {"error": "no_tickers", "n_obs": 0}
+    missing = [t for t in use if t not in frames.asset_weekly.columns]
+    if missing:
+        return {"error": "missing_asset_columns", "n_obs": 0, "missing": missing}
+
+    common = frames.asset_weekly.index
+    if len(common) > wk:
+        common = common[-wk:]
+    if len(common) < 10:
+        return {"error": "insufficient_common_rows", "n_obs": int(len(common))}
+
+    y_frame = frames.asset_weekly.reindex(common).loc[:, use]
+    x_frame = frames.factors.reindex(common).loc[:, factor_cols].dropna()
+    y_frame = y_frame.reindex(x_frame.index)
+    if x_frame.empty or len(x_frame) < 10:
+        return {"error": "insufficient_factor_rows", "n_obs": int(len(x_frame))}
+
+    w_vec = np.array([float(weights.get(t, 0.0)) for t in y_frame.columns], dtype=float)
+    y_port = (np.nan_to_num(y_frame.values, nan=0.0) * w_vec.reshape(1, -1)).sum(axis=1)
+
+    valid = ~(np.isnan(y_port) | np.isnan(x_frame.values).any(axis=1))
+    if valid.sum() < 10:
+        return {"error": "insufficient_valid_rows", "n_obs": int(valid.sum())}
+
+    return {
+        "y": y_port[valid].astype(float),
+        "X": x_frame.values[valid].astype(float),
+        "factor_cols": list(x_frame.columns),
+        "dates": [pd.Timestamp(x).strftime("%Y-%m-%d") for x in x_frame.index[valid]],
+        "n_obs": int(valid.sum()),
+        "window_weeks": int(wk),
+    }
+
+
 def _portfolio_factor_weekly_ols_rows(
     *,
     weights: dict[str, float],
@@ -1755,8 +1911,19 @@ def _portfolio_factor_weekly_ols_rows(
     window_weeks: int,
     buffer_weeks: int = FACTOR_DOWNLOAD_BUFFER_WEEKS,
     factor_columns: tuple[str, ...] | list[str] | None = None,
+    shared_frames: PortfolioFactorWeeklyFrames | None = None,
 ) -> dict[str, Any]:
     """Return the exact weekly portfolio/factor rows used by portfolio OLS."""
+    if shared_frames is not None and weekly_factor_frames_cover_tickers(shared_frames, tickers):
+        if shared_frames.analysis_end_str == analysis_end_str:
+            return _portfolio_factor_weekly_ols_rows_from_frames(
+                frames=shared_frames,
+                weights=weights,
+                tickers=tickers,
+                window_weeks=window_weeks,
+                factor_columns=factor_columns,
+            )
+
     from src.data_yf import download_all
 
     wk = int(window_weeks)
@@ -1827,6 +1994,7 @@ def portfolio_factor_regression_weekly(
     buffer_weeks: int = FACTOR_DOWNLOAD_BUFFER_WEEKS,
     alpha: float = 0.05,
     factor_columns: tuple[str, ...] | list[str] | None = None,
+    shared_frames: PortfolioFactorWeeklyFrames | None = None,
 ) -> dict[str, Any]:
     """
     Portfolio-level factor regression (weekly) with inference.
@@ -1846,6 +2014,7 @@ def portfolio_factor_regression_weekly(
         window_weeks=window_weeks,
         buffer_weeks=buffer_weeks,
         factor_columns=factor_columns,
+        shared_frames=shared_frames,
     )
     if rows.get("error"):
         return {}
@@ -4868,12 +5037,14 @@ def factor_variance_decomposition_weekly(
     analysis_end_str: str,
     window_weeks: int = FACTOR_WEEKS_5Y,
     rolling_windows_weeks: dict[str, int] | None = None,
+    shared_frames: PortfolioFactorWeeklyFrames | None = None,
 ) -> dict[str, Any]:
     rows = _portfolio_factor_weekly_ols_rows(
         weights=weights,
         tickers=tickers,
         analysis_end_str=analysis_end_str,
         window_weeks=window_weeks,
+        shared_frames=shared_frames,
     )
     if rows.get("error"):
         return _factor_variance_decomposition_unavailable(
@@ -4890,6 +5061,7 @@ def factor_variance_decomposition_weekly(
             tickers=tickers,
             analysis_end_str=analysis_end_str,
             window_weeks=int(weeks),
+            shared_frames=shared_frames,
         )
         if snap_rows.get("error"):
             continue

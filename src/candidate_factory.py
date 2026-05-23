@@ -51,6 +51,7 @@ from src.candidate_weights import (
     normalize_execution_mode,
 )
 from src.report_profile import REPORT_PROFILE_FULL, REPORT_PROFILE_LIGHTWEIGHT
+from src.report_timing import aggregate_report_timing_from_steps
 from src.variant_builder_runtime import (
     ENV_SKIP_VARIANT_PDF,
     BuilderStepTiming,
@@ -712,6 +713,7 @@ def _run_lightweight_report_worker(
             weights_source=f"candidate_factory.{candidate_id}",
             report_profile=REPORT_PROFILE_LIGHTWEIGHT,
             run_context=run_context,
+            enable_report_timing=True,
         )
     except Exception as exc:
         timing.end_report()
@@ -808,8 +810,16 @@ def _run_lightweight_report_worker(
         "phases_completed": ["weights", "report"],
         "report_profile": REPORT_PROFILE_LIGHTWEIGHT,
     }
+    _attach_report_timing_to_step(step, meta)
     merge_timing_into_step(step, timing.to_dict())
     return step
+
+
+def _attach_report_timing_to_step(step: dict[str, Any], meta: dict[str, Any]) -> None:
+    """Copy per-block report timings from ``run_portfolio_report_for_weights`` meta when present."""
+    raw = meta.get("report_timing")
+    if isinstance(raw, dict) and raw:
+        step["report_timing"] = raw
 
 
 def _record_lightweight_report_step(
@@ -1244,6 +1254,7 @@ def _execute_full_report(
             weights_source=f"candidate_factory.{candidate_id}.full_report",
             report_profile=REPORT_PROFILE_FULL,
             run_context=run_context,
+            enable_report_timing=True,
         )
     except Exception as exc:
         timing.end_report()
@@ -1372,6 +1383,7 @@ def _execute_full_report(
         "phases_completed": ["weights", "report", "full_report"],
         "report_profile": REPORT_PROFILE_FULL,
     }
+    _attach_report_timing_to_step(step, meta)
     merge_timing_into_step(step, timing.to_dict())
     _append_factory_step(
         steps,
@@ -2544,7 +2556,11 @@ def run_candidate_factory(
     if parallel_summary is not None:
         doc["parallel_lightweight_report_summary"] = parallel_summary
     doc["execution_summary"] = build_factory_execution_summary(doc)
-    doc["timing_summary"] = build_timing_summary(doc.get("steps") or [])
+    timing_summary = build_timing_summary(doc.get("steps") or [])
+    report_timing_aggregate = aggregate_report_timing_from_steps(doc.get("steps") or [])
+    if report_timing_aggregate.get("candidates_with_report_timing"):
+        timing_summary["report_timing_aggregate"] = report_timing_aggregate
+    doc["timing_summary"] = timing_summary
     return doc
 
 
