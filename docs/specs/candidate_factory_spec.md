@@ -153,6 +153,8 @@ Profiles select which registry `candidate_id` values the factory attempts. IDs m
 | `classic_optimizers` | `minimum_variance`, `minimum_variance_uncapped`, `minimum_variance_advanced`, `maximum_diversification`, `maximum_diversification_uncapped`, `minimum_cvar_constrained`, `minimum_cvar_uncapped` | Traditional optimizer candidates |
 | `robust_suite` | `robust_mv_constrained`, `robust_mv_uncapped`, `robust_scenario` | Robust benchmarks only |
 | `default_v1` | All sixteen script-backed IDs (union of rows above) | Standard product comparison arena |
+| `core_v1` | Same six ids as `core_benchmarks` + `risk_budgets` (menu order) | Regression / sequential lightweight core menu |
+| `core_fast` | Same six ids as `core_v1` | Routine core menu with parallel Phase 2 lightweight reports by default (4 workers); disable via `--no-parallel-lightweight-reports` |
 | `explicit_list` | User-supplied `--candidates id1,id2,...` | Ad hoc reruns |
 
 `policy` and `current` are **never** started by factory profiles; they use the workflows in [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md) and policy runners.
@@ -237,6 +239,7 @@ many candidates are stale. That is an **operational** limitation, not a broken c
 | Mode | CLI | Factory profile | Intended scope |
 | --- | --- | --- | --- |
 | **core-run** | `python run_portfolio_review.py` (default `--mode core`) | `core_v1` | Benchmarks + risk budgets (6 candidates); factory `execution_mode=standard`; site/API JSON output |
+| **core-fast-run** (Wave 2 — [Performance Wave 2 ExecPlan](../exec_plans/2026-05-24_blocks_1_5_performance_wave2_plan.md)) | `python run_portfolio_review.py --mode core` or `python run_candidate_factory.py --profile core_fast` | `core_fast` | **Same six candidate ids as `core_v1`**. Orchestration only: shared `ReviewRunContext` on subject + factory, fast `analysis_subject` (`lightweight_comparison` + context), **parallel Phase 2 lightweight reports by default** (4 workers; `--no-parallel-lightweight-reports` on review/factory CLI to disable), shared macro/PCA caches, 10Y-only lightweight tail/snapshot trims. **Acceptance: E2E ≤ 300 s warm cache.** Regression profile `core_v1` remains sequential (`--candidate-profile core_v1`). |
 | **full-run** | `python run_portfolio_review.py --mode full` | `default_v1` | Full menu (16 candidates); factory `execution_mode=standard` (phased weights + lightweight report); site/API JSON output |
 | **full-run (legacy builders)** | `python run_portfolio_review.py --mode full --execution-mode legacy_full` | `default_v1` | Subprocess `run_*.py` chain for parity/debug |
 
@@ -634,7 +637,7 @@ Factory step `execution_action` values: `weights_built`, `weights_built_failed`,
 | Profile | Snapshots / stress | Skipped (presentation) |
 | --- | --- | --- |
 | `full` (default) | All windows + `stress_report.json` | — |
-| `lightweight_comparison` | Same metric/stress builders as `full` | HTML report, commentary, stress_commentary, rolling beta CSV/PNG/HTML, `snapshot_assets.json`, most optional CSV exports |
+| `lightweight_comparison` | `snapshot_10y.json` + `stress_report.json` (10Y window only: tail-risk loop and snapshot writes; `snapshot_index.json` lists 10Y only) | HTML report, commentary, stress_commentary, rolling beta CSV/PNG/HTML, `snapshot_assets.json`, `snapshot_3y.json`, `snapshot_5y.json`, most optional CSV exports |
 
 Comparison reads `snapshot_10y.json` metrics and `stress_report.json` / snapshot stress suite;
 rows should be `available` (not `degraded` from `summary.json`-only) when Phase 2 completes.

@@ -8,6 +8,8 @@ import pytest
 
 from src import candidate_factory as candidate_factory_module
 from src.candidate_factory import (
+    CORE_FAST_PROFILE_ID,
+    CORE_V1_CANDIDATE_ORDER,
     MANIFEST_FILENAME,
     SCHEMA_VERSION,
     FactoryValidationError,
@@ -17,6 +19,7 @@ from src.candidate_factory import (
     factory_exit_code,
     factory_reason_from_builder_summary,
     resolve_full_report_candidate_ids,
+    resolve_parallel_lightweight_report_options,
     resolve_profile_candidate_ids,
     run_candidate_factory,
     validate_candidate_ids,
@@ -58,6 +61,50 @@ def test_core_v1_profile_has_six_lightweight_candidates() -> None:
     assert "hierarchical_risk_parity" in ids
     assert "minimum_variance" not in ids
     assert "robust_scenario" not in ids
+
+
+def test_core_fast_profile_matches_core_v1_candidate_order() -> None:
+    core_v1 = resolve_profile_candidate_ids(profile_id="core_v1", explicit_candidates=None)
+    core_fast = resolve_profile_candidate_ids(
+        profile_id=CORE_FAST_PROFILE_ID, explicit_candidates=None
+    )
+    assert core_fast == core_v1
+    assert core_fast == list(CORE_V1_CANDIDATE_ORDER)
+
+
+def test_review_mode_for_factory_profile_core_and_legacy() -> None:
+    from src.candidate_factory import (
+        CORE_FAST_PROFILE_ID,
+        review_mode_for_factory_profile,
+    )
+
+    assert review_mode_for_factory_profile(CORE_FAST_PROFILE_ID) == "core"
+    assert review_mode_for_factory_profile("core_v1") == "core"
+    assert review_mode_for_factory_profile("default_v1") == "full"
+    assert review_mode_for_factory_profile("unknown") is None
+
+
+def test_resolve_parallel_lightweight_report_options_core_fast_default() -> None:
+    requested, workers, applied = resolve_parallel_lightweight_report_options(
+        profile_id=CORE_FAST_PROFILE_ID,
+    )
+    assert requested is True
+    assert workers == 4
+    assert applied is True
+
+    requested, workers, applied = resolve_parallel_lightweight_report_options(
+        profile_id="core_v1",
+    )
+    assert requested is False
+    assert workers is None
+    assert applied is False
+
+    requested, workers, applied = resolve_parallel_lightweight_report_options(
+        profile_id=CORE_FAST_PROFILE_ID,
+        parallel_lightweight_reports=False,
+    )
+    assert requested is False
+    assert applied is False
 
 
 def test_validate_unknown_candidate() -> None:
@@ -1274,6 +1321,208 @@ def test_execution_mode_standard_runs_lightweight_report_phase(
         art = tmp_path / step["artifact_root"]
         assert (art / "snapshot_10y.json").is_file()
         assert (art / "stress_report.json").is_file()
+
+
+def _comparison_critical_snapshot_fields(snap: dict) -> dict:
+    return {
+        "analysis_end": snap.get("analysis_end"),
+        "window_label": snap.get("window_label"),
+        "metrics": snap.get("metrics"),
+        "stress_suite_results": snap.get("stress_suite_results"),
+        "RC_asset": snap.get("RC_asset"),
+        "final_weights_total": snap.get("final_weights_total"),
+    }
+
+
+def _install_standard_factory_report_fake(
+    monkeypatch: pytest.MonkeyPatch,
+    context: CandidateRunContext,
+    *,
+    per_candidate_metrics: dict[str, dict] | None = None,
+) -> None:
+    per_candidate_metrics = per_candidate_metrics or {}
+
+    def fake_report(*args, **kwargs):
+        cid = str(kwargs.get("weights_source")).split(".")[-1]
+        out = kwargs["output_dir_final"]
+        out.mkdir(parents=True, exist_ok=True)
+        metrics = per_candidate_metrics.get(
+            cid,
+            {
+                "cagr": 0.07,
+                "vol_annual": 0.11,
+                "max_drawdown": -0.15,
+                "sharpe": 0.8,
+                "sortino": 1.0,
+                "beta_portfolio": 0.7,
+                "correlation_benchmark": 0.9,
+            },
+        )
+        snap = {
+            "analysis_end": context.analysis_end_str,
+            "window_label": "10y",
+            "metrics": metrics,
+            "stress_suite_results": {
+                "overall": "DIAG_PASS",
+                "fail_reason_code": None,
+                "failed_scenario": None,
+                "scenarios": [],
+            },
+            "RC_asset": [{"ticker": "VOO", "rc_vol": 0.5}, {"ticker": "BND", "rc_vol": 0.3}],
+            "final_weights_total": {"VOO": 0.5, "BND": 0.5},
+        }
+        (out / "snapshot_10y.json").write_text(json.dumps(snap), encoding="utf-8")
+        (out / "stress_report.json").write_text(
+            json.dumps({"status": "DIAG_PASS", "analysis_end": context.analysis_end_str}),
+            encoding="utf-8",
+        )
+        return snap["metrics"], {"stress_report": {"status": "DIAG_PASS"}, "portfolio_valid": True}
+
+    monkeypatch.setattr("run_report.run_portfolio_report_for_weights", fake_report)
+
+
+def test_core_fast_profile_enables_parallel_lightweight_by_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    context = _synthetic_weights_context(["VOO", "BND", "GLD"])
+    monkeypatch.setattr(
+        "src.candidate_factory.prepare_candidate_run_context",
+        lambda cfg, project_root, no_cache=False: context,
+    )
+    _install_standard_factory_report_fake(monkeypatch, context)
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND", "GLD"],
+        }
+    )
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        profile_id=CORE_FAST_PROFILE_ID,
+        skip_existing=False,
+        execution_mode="standard",
+        runner=lambda cmd, cwd: pytest.fail("subprocess should not run"),
+    )
+
+    assert doc["factory_profile_id"] == CORE_FAST_PROFILE_ID
+    assert doc["options"]["parallel_lightweight_reports"] is True
+    assert doc["options"]["parallel_lightweight_reports_profile_default"] is True
+    assert doc["options"]["parallel_lightweight_reports_effective"] is True
+    assert doc["options"]["lightweight_report_workers"] == 4
+    parallel = doc["parallel_lightweight_report_summary"]
+    assert parallel is not None
+    assert parallel["status"] == "parallel"
+    assert parallel["workers"] == 4
+    assert parallel["submitted_count"] == len(CORE_V1_CANDIDATE_ORDER)
+
+
+def test_core_v1_profile_stays_sequential_without_explicit_parallel_flag(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    context = _synthetic_weights_context(["VOO", "BND", "GLD"])
+    monkeypatch.setattr(
+        "src.candidate_factory.prepare_candidate_run_context",
+        lambda cfg, project_root, no_cache=False: context,
+    )
+    _install_standard_factory_report_fake(monkeypatch, context)
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND", "GLD"],
+        }
+    )
+    doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        profile_id="core_v1",
+        skip_existing=False,
+        execution_mode="standard",
+        runner=lambda cmd, cwd: pytest.fail("subprocess should not run"),
+    )
+
+    assert doc["options"]["parallel_lightweight_reports"] is False
+    assert doc["options"]["parallel_lightweight_reports_profile_default"] is False
+    assert doc["options"]["parallel_lightweight_reports_effective"] is False
+    assert doc.get("parallel_lightweight_report_summary") is None
+
+
+def test_core_fast_parallel_matches_core_v1_sequential_comparison_fields(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tickers = ["VOO", "BND", "GLD"]
+    context = _synthetic_weights_context(tickers)
+    monkeypatch.setattr(
+        "src.candidate_factory.prepare_candidate_run_context",
+        lambda cfg, project_root, no_cache=False: context,
+    )
+    per_candidate_metrics = {
+        cid: {
+            "cagr": 0.05 + 0.01 * idx,
+            "vol_annual": 0.10 + 0.01 * idx,
+            "max_drawdown": -0.12,
+            "sharpe": 0.7 + 0.05 * idx,
+            "sortino": 0.9,
+            "beta_portfolio": 0.6,
+            "correlation_benchmark": 0.85,
+        }
+        for idx, cid in enumerate(CORE_V1_CANDIDATE_ORDER)
+    }
+    _install_standard_factory_report_fake(
+        monkeypatch, context, per_candidate_metrics=per_candidate_metrics
+    )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": tickers,
+        }
+    )
+
+    def _snapshots_by_candidate(doc: dict) -> dict[str, dict]:
+        out: dict[str, dict] = {}
+        for step in doc["steps"]:
+            if step["status"] != "succeeded":
+                continue
+            art = tmp_path / step["artifact_root"]
+            snap = json.loads((art / "snapshot_10y.json").read_text(encoding="utf-8"))
+            out[step["candidate_id"]] = _comparison_critical_snapshot_fields(snap)
+        return out
+
+    sequential_doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        profile_id="core_v1",
+        skip_existing=False,
+        execution_mode="standard",
+        parallel_lightweight_reports=False,
+        runner=lambda cmd, cwd: pytest.fail("subprocess should not run"),
+    )
+    parallel_doc = run_candidate_factory(
+        cfg,
+        project_root=tmp_path,
+        profile_id=CORE_FAST_PROFILE_ID,
+        skip_existing=False,
+        execution_mode="standard",
+        runner=lambda cmd, cwd: pytest.fail("subprocess should not run"),
+    )
+
+    assert sequential_doc["summary"]["succeeded"] == len(CORE_V1_CANDIDATE_ORDER)
+    assert parallel_doc["summary"]["succeeded"] == len(CORE_V1_CANDIDATE_ORDER)
+    assert parallel_doc["options"]["parallel_lightweight_reports_effective"] is True
+
+    sequential_snaps = _snapshots_by_candidate(sequential_doc)
+    parallel_snaps = _snapshots_by_candidate(parallel_doc)
+    assert set(sequential_snaps) == set(CORE_V1_CANDIDATE_ORDER)
+    assert sequential_snaps == parallel_snaps
 
 
 def test_parallel_lightweight_reports_overlap_and_keep_menu_order(

@@ -1352,6 +1352,51 @@ def portfolio_pca_diagnostics(
     return out
 
 
+def portfolio_pca_diagnostics_with_weekly_frames(
+    *,
+    weights: dict[str, float],
+    tickers: list[str],
+    shared_frames: PortfolioFactorWeeklyFrames,
+    window_weeks: int = FACTOR_WEEKS_5Y,
+    factor_returns: pd.DataFrame | None = None,
+) -> dict[str, Any]:
+    """Portfolio PCA from pre-built weekly asset/factor frames; no network access."""
+    use = [str(t).strip() for t in tickers if str(t).strip() and float(weights.get(t, 0.0)) > 0.0]
+    if not use:
+        use = [str(t).strip() for t in tickers if str(t).strip()]
+    if len(use) < 2:
+        return _portfolio_pca_unavailable(
+            "insufficient_tickers",
+            window_weeks=int(window_weeks),
+            included_assets=use,
+            excluded_assets=[],
+            n_assets=len(use),
+            n_obs=0,
+        )
+
+    if not weekly_factor_frames_cover_tickers(shared_frames, use):
+        missing = [t for t in use if t not in shared_frames.asset_weekly.columns]
+        return _portfolio_pca_unavailable(
+            "missing_weekly_asset_columns",
+            window_weeks=int(window_weeks),
+            included_assets=[t for t in use if t not in missing],
+            excluded_assets=missing,
+            n_assets=max(0, len(use) - len(missing)),
+            n_obs=0,
+        )
+
+    weekly = shared_frames.asset_weekly.loc[:, use]
+    factors = factor_returns
+    if factors is None or factors.empty:
+        factors = shared_frames.factors if not shared_frames.factors.empty else None
+
+    return portfolio_pca_diagnostics_from_weekly_returns(
+        weekly,
+        factor_returns=factors if factors is not None and not factors.empty else None,
+        window_weeks=window_weeks,
+    )
+
+
 def _ols_with_inference(
     y: np.ndarray,
     X: np.ndarray,
@@ -4615,6 +4660,125 @@ def macro_regime_diagnostics_from_frames(
             if persistence_months is not None
             else MACRO_PERSISTENCE_MONTHS_DEFAULT
         ),
+    )
+
+
+def macro_regime_diagnostics_with_panel(
+    *,
+    weights: dict[str, float],
+    tickers: list[str],
+    analysis_end_str: str,
+    indicator_panel: pd.DataFrame,
+    indicator_meta: dict[str, Any],
+    factor_returns: pd.DataFrame | None = None,
+    factor_returns_monthly: pd.DataFrame | None = None,
+    neutral_band: float = 0.20,
+    months_back: int = 420,
+    scoring_method: str | None = None,
+    clipped_z_max_abs: float | None = None,
+    persistence_months: int | None = None,
+) -> dict[str, Any]:
+    """Run macro regime diagnostics using a pre-fetched indicator panel.
+
+    Portfolio return aggregation remains weight-dependent; only ``fetch_macro_indicators``
+    is skipped when the review run supplies a shared panel.
+    """
+
+    from src.stress_factors_macro import (
+        MACRO_CLIPPED_Z_MAX_ABS_DEFAULT,
+        MACRO_COMPOSITE_LEVEL_WEIGHT,
+        MACRO_COMPOSITE_MOMENTUM_WEIGHT,
+        MACRO_PERSISTENCE_MONTHS_DEFAULT,
+        MACRO_REGIME_LOOK_AHEAD_CAVEAT,
+        MACRO_REGIME_METHOD_VERSION,
+        MACRO_REGIME_METHOD_DISCLAIMER,
+        MACRO_REGIME_SCORE_LAG_MONTHS,
+        MACRO_SCORE_MIN_PERIODS,
+        MACRO_SCORE_WINDOW_MONTHS,
+        MACRO_SCORING_METHOD_DEFAULT,
+        _build_monthly_portfolio_and_factors,
+        macro_two_axis_diagnostics_from_frames,
+        _macro_helpers,
+    )
+
+    helpers = _macro_helpers()
+    factor_order = list(helpers["_macro_order"]())
+    method_norm = (scoring_method or MACRO_SCORING_METHOD_DEFAULT).strip().lower()
+    if method_norm not in {"discrete", "clipped_z"}:
+        raise ValueError(
+            f"Unsupported macro scoring method: {scoring_method!r}; "
+            "expected 'discrete' or 'clipped_z'."
+        )
+    persistence_norm = max(1, int(persistence_months or 1))
+    base_payload = {
+        "axis_model": {
+            "version": MACRO_REGIME_METHOD_VERSION,
+            "frequency": "monthly",
+            "neutral_band_abs": float(neutral_band),
+            "score_blend": {
+                "momentum": MACRO_COMPOSITE_MOMENTUM_WEIGHT,
+                "level": MACRO_COMPOSITE_LEVEL_WEIGHT,
+            },
+            "look_ahead_protection": "lag_1m",
+            "look_ahead_caveat": MACRO_REGIME_LOOK_AHEAD_CAVEAT,
+            "score_window_months": int(MACRO_SCORE_WINDOW_MONTHS),
+            "score_min_periods": int(MACRO_SCORE_MIN_PERIODS),
+            "scoring_method": method_norm,
+            "clipped_z_max_abs": (
+                float(clipped_z_max_abs) if method_norm == "clipped_z" else None
+            ),
+            "persistence_months": persistence_norm,
+        },
+        "method_disclaimer": MACRO_REGIME_METHOD_DISCLAIMER,
+        "factor_order": factor_order,
+        "beta_order": helpers["_macro_beta_keys"](),
+    }
+
+    effective_factor_returns_monthly = factor_returns_monthly
+    if effective_factor_returns_monthly is None and factor_returns is not None:
+        effective_factor_returns_monthly = factor_returns
+
+    try:
+        port_monthly, factors_monthly, _start_ts, _end_ts = _build_monthly_portfolio_and_factors(
+            weights=weights,
+            tickers=tickers,
+            analysis_end_str=analysis_end_str,
+            factor_returns_monthly=effective_factor_returns_monthly,
+            months_back=months_back,
+        )
+    except Exception as exc:
+        logger.warning("macro_regime_diagnostics_with_panel: monthly inputs failed: %s", exc)
+        return {
+            **base_payload,
+            "error": f"build_monthly_inputs_failed: {exc}",
+            "coverage_tier": "insufficient",
+            "coverage_ratio": 0.0,
+            "score_lag_months": int(MACRO_REGIME_SCORE_LAG_MONTHS),
+        }
+
+    if port_monthly.empty or factors_monthly.empty:
+        return {
+            **base_payload,
+            "error": "empty_monthly_inputs",
+            "coverage_tier": "insufficient",
+            "coverage_ratio": 0.0,
+            "score_lag_months": int(MACRO_REGIME_SCORE_LAG_MONTHS),
+        }
+
+    return macro_two_axis_diagnostics_from_frames(
+        port_monthly,
+        factors_monthly,
+        indicator_panel,
+        indicator_meta or {},
+        analysis_end_str,
+        neutral_band=neutral_band,
+        scoring_method=method_norm,
+        clipped_z_max_abs=(
+            clipped_z_max_abs
+            if clipped_z_max_abs is not None
+            else MACRO_CLIPPED_Z_MAX_ABS_DEFAULT
+        ),
+        persistence_months=persistence_norm,
     )
 
 

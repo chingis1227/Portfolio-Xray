@@ -57,8 +57,8 @@ def main(argv: list[str] | None = None) -> int:
         type=str,
         default=None,
         help=(
-            "Override factory profile (e.g. core_v1, default_v1). "
-            "When omitted, profile follows --mode."
+            "Override factory profile (e.g. core_v1 for sequential regression, "
+            "default_v1). When omitted, profile follows --mode (core → core_fast)."
         ),
     )
     parser.add_argument(
@@ -131,6 +131,14 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--no-parallel-lightweight-reports",
+        action="store_true",
+        help=(
+            "Disable parallel Phase 2 lightweight reports in candidate factory "
+            "(overrides core_fast profile default; debugging)."
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print planned commands without executing them.",
@@ -172,6 +180,7 @@ def main(argv: list[str] | None = None) -> int:
         legacy_full_pdf=args.legacy_full_pdf,
         factory_execution_mode=args.execution_mode,
         output_profile=effective_output_profile,
+        no_parallel_lightweight_reports=args.no_parallel_lightweight_reports,
     )
 
     print(

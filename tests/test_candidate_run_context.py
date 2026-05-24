@@ -11,13 +11,18 @@ from src.candidate_run_context import (
     CandidateRunContext,
     FactoryFactorStressInputs,
     FactoryInvariantMetrics,
+    REVIEW_RUN_CONTEXT_SCHEMA,
     SCHEMA_VERSION,
+    ReviewRunContext,
     build_factory_factor_stress_inputs,
     build_factory_invariant_metrics,
+    coerce_factory_run_context,
     daily_panel_for_candidate_report,
     extended_diagnostic_betas_for_candidate,
     invariant_metrics_usable_for_report,
+    load_review_macro_panel,
     prepare_candidate_run_context,
+    prepare_review_run_context,
     slice_asset_metrics_for_tickers,
     weekly_factor_frames_for_candidate,
 )
@@ -270,6 +275,243 @@ def test_run_report_skips_monthly_reload_with_run_context(
         report_profile="lightweight_comparison",
         run_context=run_context,
     )
+    assert load_calls == []
+
+
+def _mock_macro_panel(n: int = 160) -> tuple[pd.DataFrame, dict[str, object]]:
+    idx = pd.date_range("2010-01-31", periods=n, freq="ME")
+    panel = pd.DataFrame(
+        {
+            "payems__level": np.linspace(-1.0, 1.0, n),
+            "payems__momentum": np.linspace(-0.5, 0.5, n),
+        },
+        index=idx,
+    )
+    meta = {
+        "available_indicators": ["payems"],
+        "unavailable_indicators": [],
+        "data_sources_used": {"payems": "stub"},
+    }
+    return panel, meta
+
+
+def _install_macro_build_mocks(monkeypatch: pytest.MonkeyPatch) -> None:
+    idx = pd.date_range("2015-01-31", periods=80, freq="ME")
+
+    def fake_build(**kwargs):
+        port = pd.Series(0.005, index=idx)
+        factors = pd.DataFrame({"equity": 0.01, "rates": -0.002}, index=idx)
+        return port, factors, idx[0], idx[-1]
+
+    monkeypatch.setattr(
+        "src.stress_factors_macro._build_monthly_portfolio_and_factors",
+        fake_build,
+    )
+
+
+def test_prepare_review_run_context_schema_and_slots(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    panel = MagicMock()
+    panel.monthly_returns = pd.DataFrame()
+    panel.analysis_end_str = "2024-12-31"
+    panel.analysis_end = pd.Timestamp("2024-12-31")
+    macro_panel, macro_meta = _mock_macro_panel()
+
+    monkeypatch.setattr(
+        "src.candidate_run_context.load_monthly_data_shared",
+        lambda **kwargs: panel,
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.build_factory_factor_stress_inputs",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.build_factory_invariant_metrics",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.resolve_robust_mv_lambda_for_baseline",
+        lambda **kwargs: (None, "none"),
+    )
+    monkeypatch.setattr("src.candidate_run_context.load_assets_metadata", lambda: {})
+    monkeypatch.setattr(
+        "src.candidate_run_context.resolve_cash_and_rf",
+        lambda cfg: ("BIL", "FRED:DTB3"),
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.resolve_local_benchmarks",
+        lambda *a, **k: {},
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.portfolio_total_tickers",
+        lambda *a, **k: ["VOO"],
+    )
+    monkeypatch.setattr(
+        "src.stress_factors_macro.fetch_macro_indicators",
+        lambda *a, **k: (macro_panel.copy(), dict(macro_meta)),
+    )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO"],
+        }
+    )
+    ctx = prepare_review_run_context(cfg, project_root=Path("."))
+    assert ctx.schema_version == REVIEW_RUN_CONTEXT_SCHEMA
+    assert ctx.macro_panel is not None
+    assert not ctx.macro_panel.empty
+    assert ctx.macro_panel_meta is not None
+    assert isinstance(ctx.factory_context, CandidateRunContext)
+    assert coerce_factory_run_context(ctx) is ctx.factory_context
+
+
+def test_prepare_review_run_context_loads_monthly_daily_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    load_calls: list[str] = []
+    panel = _monthly_panel(["VOO", "BND"], n_months=130)
+    daily_returns = panel.monthly_returns / 4.0
+
+    monkeypatch.setattr(
+        "src.candidate_run_context.load_monthly_data_shared",
+        lambda **kwargs: (load_calls.append("monthly") or panel),
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.load_daily_asset_returns_shared",
+        lambda **kwargs: (load_calls.append("daily") or (daily_returns, panel.cash_returns)),
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.build_factor_matrix",
+        lambda *a, **k: pd.DataFrame(
+            {"beta_eq": [0.01] * len(daily_returns.index)},
+            index=daily_returns.index,
+        ),
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.compute_asset_factor_betas_from_daily_returns",
+        lambda *a, **k: pd.DataFrame({"beta_eq": [0.8]}, index=["VOO", "BND"]),
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.build_portfolio_factor_weekly_frames",
+        lambda **kwargs: MagicMock(
+            asset_weekly=daily_returns,
+            factors=pd.DataFrame(index=daily_returns.index),
+            analysis_end_str=panel.analysis_end_str,
+            buffer_weeks=4,
+            universe_tickers=tuple(["VOO", "BND"]),
+        ),
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.resolve_robust_mv_lambda_for_baseline",
+        lambda **kwargs: (None, "none"),
+    )
+    monkeypatch.setattr("src.candidate_run_context.load_assets_metadata", lambda: {})
+    monkeypatch.setattr(
+        "src.candidate_run_context.resolve_cash_and_rf",
+        lambda cfg: ("BIL", "FRED:DTB3"),
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.resolve_local_benchmarks",
+        lambda *a, **k: {},
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.portfolio_total_tickers",
+        lambda *a, **k: ["VOO", "BND", "BIL"],
+    )
+    macro_panel, macro_meta = _mock_macro_panel()
+    monkeypatch.setattr(
+        "src.stress_factors_macro.fetch_macro_indicators",
+        lambda *a, **k: (macro_panel.copy(), dict(macro_meta)),
+    )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO", "BND"],
+            "windows_months": [36, 60, 120],
+            "cash_proxy_ticker": "BIL",
+        }
+    )
+    review_ctx = prepare_review_run_context(cfg, project_root=Path("."))
+    assert load_calls == ["monthly", "daily"]
+    assert review_ctx.weekly_asset_returns is not None
+    assert not review_ctx.weekly_asset_returns.empty
+
+
+def test_two_report_entrypoints_reuse_review_context_without_reload(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from run_report import run_portfolio_report_for_weights
+
+    tickers = ["VOO", "BND", "GLD"]
+    panel = _monthly_panel(tickers)
+    load_calls: list[str] = []
+
+    def guarded_load(**kwargs):
+        load_calls.append("monthly")
+        return panel
+
+    monkeypatch.setattr("run_report.load_monthly_data_shared", guarded_load)
+    _install_report_mocks(monkeypatch, panel)
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": tickers,
+            "windows_months": [36, 60, 120],
+            "cash_proxy_ticker": "BIL",
+        }
+    )
+    weights_a = {"VOO": 0.4, "BND": 0.4, "GLD": 0.2}
+    weights_b = {"VOO": 0.5, "BND": 0.3, "GLD": 0.2}
+    factory_ctx = CandidateRunContext(
+        cfg=cfg,
+        project_root=tmp_path,
+        monthly_data=panel,
+        assets_meta={},
+        cash_proxy_ticker="BIL",
+        rf_source="FRED:DTB3",
+        local_benchmark_map={},
+        report_tickers=tickers + ["BIL"],
+        primary_window=120,
+        factor_stress=FactoryFactorStressInputs(
+            daily_asset_returns_for_betas=panel.monthly_returns / 4.0,
+            cash_returns_daily=panel.cash_returns.reindex(panel.monthly_returns.index).fillna(0),
+            asset_betas_5y_universe=pd.DataFrame(),
+            asset_betas_10y_universe=pd.DataFrame(),
+            asset_betas_5y_extended_universe=pd.DataFrame(),
+            asset_betas_10y_extended_universe=pd.DataFrame(),
+            recession_factor_returns=pd.DataFrame(),
+            scenario_episode_factor_returns=pd.DataFrame(),
+            beta_source=None,
+        ),
+    )
+    review_ctx = ReviewRunContext(factory_context=factory_ctx)
+
+    for idx, weights in enumerate((weights_a, weights_b)):
+        out_csv = tmp_path / f"results_csv_{idx}"
+        out_final = tmp_path / f"out_{idx}"
+        out_csv.mkdir(parents=True)
+        out_final.mkdir(parents=True)
+        run_portfolio_report_for_weights(
+            cfg,
+            weights,
+            run_timestamp="2026-05-24T00:00:00Z",
+            output_dir_csv=out_csv,
+            output_dir_final=out_final,
+            report_profile="lightweight_comparison",
+            run_context=review_ctx,
+        )
+
     assert load_calls == []
 
 
@@ -830,6 +1072,388 @@ def test_build_factory_factor_stress_inputs_when_daily_empty(
 
 def test_prepare_candidate_run_context_schema_v4() -> None:
     assert SCHEMA_VERSION == "candidate_run_context_v5"
+
+
+def test_fetch_macro_indicators_called_once_for_subject_and_candidates(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from run_report import run_portfolio_report_for_weights
+
+    tickers = ["VOO", "BND", "GLD"]
+    panel = _monthly_panel(tickers)
+    macro_panel, macro_meta = _mock_macro_panel()
+    fetch_calls: list[tuple[str, str]] = []
+
+    def counting_fetch(start: str, end: str, **kwargs):
+        fetch_calls.append((start, end))
+        return macro_panel.copy(), dict(macro_meta)
+
+    monkeypatch.setattr("src.stress_factors_macro.fetch_macro_indicators", counting_fetch)
+    monkeypatch.setattr(
+        "src.candidate_run_context.load_monthly_data_shared",
+        lambda **kwargs: panel,
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.build_factory_factor_stress_inputs",
+        lambda **kwargs: FactoryFactorStressInputs(
+            daily_asset_returns_for_betas=panel.monthly_returns / 4.0,
+            cash_returns_daily=panel.cash_returns.reindex(panel.monthly_returns.index).fillna(0),
+            asset_betas_5y_universe=pd.DataFrame({"beta_eq": [0.8]}, index=["VOO"]),
+            asset_betas_10y_universe=pd.DataFrame({"beta_eq": [0.75]}, index=["VOO"]),
+            asset_betas_5y_extended_universe=pd.DataFrame(),
+            asset_betas_10y_extended_universe=pd.DataFrame(),
+            recession_factor_returns=pd.DataFrame(),
+            scenario_episode_factor_returns=pd.DataFrame(),
+            beta_source="cached_daily_returns_weekly_ols",
+        ),
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.build_factory_invariant_metrics",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.resolve_robust_mv_lambda_for_baseline",
+        lambda **kwargs: (None, "none"),
+    )
+    monkeypatch.setattr("src.candidate_run_context.load_assets_metadata", lambda: {})
+    monkeypatch.setattr(
+        "src.candidate_run_context.resolve_cash_and_rf",
+        lambda cfg: ("BIL", "FRED:DTB3"),
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.resolve_local_benchmarks",
+        lambda *a, **k: {},
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.portfolio_total_tickers",
+        lambda *a, **k: tickers + ["BIL"],
+    )
+    monkeypatch.setattr("run_report.load_monthly_data_shared", lambda **kwargs: panel)
+    _install_report_mocks(monkeypatch, panel)
+    _install_macro_build_mocks(monkeypatch)
+    monkeypatch.setattr(
+        "run_report.macro_regime_diagnostics",
+        lambda **kwargs: pytest.fail("legacy macro_regime_diagnostics must not run"),
+    )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": tickers,
+            "windows_months": [36, 60, 120],
+            "cash_proxy_ticker": "BIL",
+        }
+    )
+    review_ctx = prepare_review_run_context(cfg, project_root=tmp_path)
+    assert len(fetch_calls) == 1
+
+    weight_sets = [
+        {"VOO": 0.40, "BND": 0.40, "GLD": 0.20},
+        {"VOO": 0.50, "BND": 0.30, "GLD": 0.20},
+        {"VOO": 0.30, "BND": 0.50, "GLD": 0.20},
+        {"VOO": 0.25, "BND": 0.25, "GLD": 0.50},
+        {"VOO": 0.60, "BND": 0.20, "GLD": 0.20},
+        {"VOO": 0.20, "BND": 0.60, "GLD": 0.20},
+        {"VOO": 0.33, "BND": 0.33, "GLD": 0.34},
+    ]
+    for idx, weights in enumerate(weight_sets):
+        run_root = tmp_path / f"subject_candidate_run_{idx}"
+        out_csv = run_root / "results_csv"
+        out_final = run_root / "out"
+        out_csv.mkdir(parents=True, exist_ok=True)
+        out_final.mkdir(parents=True, exist_ok=True)
+        run_portfolio_report_for_weights(
+            cfg,
+            weights,
+            run_timestamp="2026-05-24T00:00:00Z",
+            output_dir_csv=out_csv,
+            output_dir_final=out_final,
+            report_profile="lightweight_comparison",
+            run_context=review_ctx,
+        )
+
+    assert len(fetch_calls) == 1
+
+
+def test_macro_cached_path_preserves_stress_and_snapshot_parity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import json
+
+    from run_report import run_portfolio_report_for_weights
+
+    tickers = ["VOO", "BND", "GLD"]
+    panel = _monthly_panel(tickers)
+    macro_panel, macro_meta = _mock_macro_panel()
+    weights = {"VOO": 0.40, "BND": 0.40, "GLD": 0.20}
+
+    monkeypatch.setattr(
+        "src.stress_factors_macro.fetch_macro_indicators",
+        lambda *a, **k: (macro_panel.copy(), dict(macro_meta)),
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.load_monthly_data_shared",
+        lambda **kwargs: panel,
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.build_factory_factor_stress_inputs",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.build_factory_invariant_metrics",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.resolve_robust_mv_lambda_for_baseline",
+        lambda **kwargs: (None, "none"),
+    )
+    monkeypatch.setattr("src.candidate_run_context.load_assets_metadata", lambda: {})
+    monkeypatch.setattr(
+        "src.candidate_run_context.resolve_cash_and_rf",
+        lambda cfg: ("BIL", "FRED:DTB3"),
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.resolve_local_benchmarks",
+        lambda *a, **k: {},
+    )
+    monkeypatch.setattr(
+        "src.candidate_run_context.portfolio_total_tickers",
+        lambda *a, **k: tickers + ["BIL"],
+    )
+    monkeypatch.setattr("run_report.load_monthly_data_shared", lambda **kwargs: panel)
+    _install_report_mocks(monkeypatch, panel)
+    _install_macro_build_mocks(monkeypatch)
+    from src.stress_factors import (
+        macro_regime_diagnostics,
+        macro_regime_diagnostics_with_panel,
+    )
+
+    monkeypatch.setattr("run_report.macro_regime_diagnostics", macro_regime_diagnostics)
+    monkeypatch.setattr(
+        "run_report.macro_regime_diagnostics_with_panel",
+        macro_regime_diagnostics_with_panel,
+    )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": tickers,
+            "windows_months": [36, 60, 120],
+            "cash_proxy_ticker": "BIL",
+        }
+    )
+    review_ctx = prepare_review_run_context(cfg, project_root=tmp_path)
+    factory_ctx = CandidateRunContext(
+        cfg=cfg,
+        project_root=tmp_path,
+        monthly_data=panel,
+        assets_meta={},
+        cash_proxy_ticker="BIL",
+        rf_source="FRED:DTB3",
+        local_benchmark_map={},
+        report_tickers=tickers + ["BIL"],
+        primary_window=120,
+    )
+
+    cached_out = tmp_path / "cached"
+    legacy_out = tmp_path / "legacy"
+    for out in (cached_out, legacy_out):
+        (out / "results_csv").mkdir(parents=True)
+
+    run_portfolio_report_for_weights(
+        cfg,
+        weights,
+        run_timestamp="2026-05-24T00:00:00Z",
+        output_dir_csv=cached_out / "results_csv",
+        output_dir_final=cached_out,
+        report_profile="lightweight_comparison",
+        run_context=review_ctx,
+    )
+    run_portfolio_report_for_weights(
+        cfg,
+        weights,
+        run_timestamp="2026-05-24T00:00:00Z",
+        output_dir_csv=legacy_out / "results_csv",
+        output_dir_final=legacy_out,
+        report_profile="lightweight_comparison",
+        run_context=factory_ctx,
+    )
+
+    cached_stress = json.loads((cached_out / "stress_report.json").read_text(encoding="utf-8"))
+    legacy_stress = json.loads((legacy_out / "stress_report.json").read_text(encoding="utf-8"))
+    cached_macro = cached_stress.get("macro_regime_diagnostics") or {}
+    legacy_macro = legacy_stress.get("macro_regime_diagnostics") or {}
+
+    assert cached_macro.get("axis_model", {}).get("version") == "macro_two_axis_v1"
+    assert legacy_macro.get("axis_model", {}).get("version") == "macro_two_axis_v1"
+    assert "macro_regime_diagnostics_error" not in cached_stress
+    assert "macro_regime_diagnostics_error" not in legacy_stress
+    for key in ("coverage_tier", "coverage_ratio", "method_disclaimer", "score_lag_months"):
+        assert cached_macro.get(key) == legacy_macro.get(key)
+
+    cached_snap = json.loads((cached_out / "snapshot_10y.json").read_text(encoding="utf-8"))
+    legacy_snap = json.loads((legacy_out / "snapshot_10y.json").read_text(encoding="utf-8"))
+    assert cached_snap["metrics"] == legacy_snap["metrics"]
+
+
+def _synthetic_weekly_frames(
+    tickers: list[str],
+    *,
+    analysis_end_str: str = "2024-12-31",
+    n_weeks: int = 280,
+) -> sf.PortfolioFactorWeeklyFrames:
+    idx = pd.date_range(end=analysis_end_str, periods=n_weeks, freq="W-FRI")
+    rng = np.random.default_rng(7)
+    common = rng.normal(scale=0.02, size=len(idx))
+    asset_weekly = pd.DataFrame(
+        {t: common + rng.normal(scale=0.01, size=len(idx)) for t in tickers},
+        index=idx,
+    )
+    factors = pd.DataFrame(
+        rng.normal(scale=0.02, size=(len(idx), len(sf.BASE_FACTOR_COLUMN_ORDER))),
+        index=idx,
+        columns=list(sf.BASE_FACTOR_COLUMN_ORDER),
+    )
+    return sf.PortfolioFactorWeeklyFrames(
+        asset_weekly=asset_weekly,
+        factors=factors,
+        analysis_end_str=analysis_end_str,
+        buffer_weeks=sf.FACTOR_DOWNLOAD_BUFFER_WEEKS,
+        universe_tickers=tuple(tickers),
+    )
+
+
+def test_portfolio_pca_with_weekly_frames_matches_from_weekly_returns() -> None:
+    tickers = ["VOO", "BND", "GLD"]
+    frames = _synthetic_weekly_frames(tickers)
+    weights = {"VOO": 0.40, "BND": 0.40, "GLD": 0.20}
+
+    wrapped = sf.portfolio_pca_diagnostics_with_weekly_frames(
+        weights=weights,
+        tickers=tickers + ["BIL"],
+        shared_frames=frames,
+        window_weeks=sf.FACTOR_WEEKS_5Y,
+        factor_returns=frames.factors,
+    )
+    direct = sf.portfolio_pca_diagnostics_from_weekly_returns(
+        frames.asset_weekly.loc[:, tickers],
+        factor_returns=frames.factors,
+        window_weeks=sf.FACTOR_WEEKS_5Y,
+    )
+
+    assert wrapped.get("status") == direct.get("status") == "available"
+    for layer in ("raw", "residual"):
+        w_cov = ((wrapped.get(layer) or {}).get("covariance_pca") or {})
+        d_cov = ((direct.get(layer) or {}).get("covariance_pca") or {})
+        if w_cov.get("status") == "available":
+            assert w_cov.get("pc1_explained_variance_ratio") == pytest.approx(
+                d_cov.get("pc1_explained_variance_ratio")
+            )
+            assert w_cov.get("effective_number_of_bets") == pytest.approx(
+                d_cov.get("effective_number_of_bets")
+            )
+
+
+def test_portfolio_pca_skips_download_all_with_shared_weekly_frames(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import json
+
+    from run_report import run_portfolio_report_for_weights
+
+    tickers = ["VOO", "BND", "GLD"]
+    panel = _monthly_panel(tickers)
+    frames = _synthetic_weekly_frames(tickers + ["BIL"], analysis_end_str=panel.analysis_end_str)
+    download_calls: list[str] = []
+
+    def fail_download(*_args, **_kwargs):
+        download_calls.append("download_all")
+        raise AssertionError("download_all must not run when shared weekly frames cover tickers")
+
+    import src.data_yf as data_yf
+
+    monkeypatch.setattr(data_yf, "download_all", fail_download)
+    monkeypatch.setattr("run_report.load_monthly_data_shared", lambda **kwargs: panel)
+    _install_report_mocks(monkeypatch, panel)
+    _install_macro_build_mocks(monkeypatch)
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "output_dir_final": "Main portfolio",
+            "tickers": tickers,
+            "windows_months": [36, 60, 120],
+            "cash_proxy_ticker": "BIL",
+        }
+    )
+    weights = {"VOO": 0.40, "BND": 0.40, "GLD": 0.20}
+    factory_ctx = CandidateRunContext(
+        cfg=cfg,
+        project_root=tmp_path,
+        monthly_data=panel,
+        assets_meta={},
+        cash_proxy_ticker="BIL",
+        rf_source="FRED:DTB3",
+        local_benchmark_map={},
+        report_tickers=tickers + ["BIL"],
+        primary_window=120,
+        factor_stress=FactoryFactorStressInputs(
+            daily_asset_returns_for_betas=panel.monthly_returns / 4.0,
+            cash_returns_daily=panel.cash_returns.reindex(panel.monthly_returns.index).fillna(0),
+            asset_betas_5y_universe=pd.DataFrame({"beta_eq": [0.8]}, index=["VOO"]),
+            asset_betas_10y_universe=pd.DataFrame({"beta_eq": [0.75]}, index=["VOO"]),
+            asset_betas_5y_extended_universe=pd.DataFrame(),
+            asset_betas_10y_extended_universe=pd.DataFrame(),
+            recession_factor_returns=frames.factors,
+            scenario_episode_factor_returns=pd.DataFrame(),
+            weekly_factor_frames=frames,
+            beta_source="cached_daily_returns_weekly_ols",
+        ),
+    )
+    review_ctx = ReviewRunContext(factory_context=factory_ctx)
+
+    out_final = tmp_path / "pca_cached"
+    out_csv = out_final / "results_csv"
+    out_csv.mkdir(parents=True)
+
+    run_portfolio_report_for_weights(
+        cfg,
+        weights,
+        run_timestamp="2026-05-24T00:00:00Z",
+        output_dir_csv=out_csv,
+        output_dir_final=out_final,
+        report_profile="lightweight_comparison",
+        run_context=review_ctx,
+    )
+
+    assert download_calls == []
+    stress = json.loads((out_final / "stress_report.json").read_text(encoding="utf-8"))
+    pca = stress.get("portfolio_pca") or {}
+    assert pca.get("status") == "available"
+    assert "portfolio_pca_error" not in stress
+
+
+def test_load_review_macro_panel_uses_shared_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[tuple[str, str]] = []
+
+    def capture_fetch(start: str, end: str, **kwargs):
+        seen.append((start, end))
+        return _mock_macro_panel()
+
+    monkeypatch.setattr("src.stress_factors_macro.fetch_macro_indicators", capture_fetch)
+    load_review_macro_panel("2024-12-31")
+    assert len(seen) == 1
+    start, end = seen[0]
+    assert start < "2024-12-31"
+    assert end >= "2024-12-31"
 
 
 def _monthly_panel_from_cfg(cfg: object) -> object:

@@ -184,9 +184,21 @@ def test_snapshot_metrics_match_full_and_lightweight_profiles(
         metrics_by_profile[profile] = _metric_fields_from_snapshot(snap["metrics"])
 
     assert metrics_by_profile[REPORT_PROFILE_FULL] == metrics_by_profile[REPORT_PROFILE_LIGHTWEIGHT]
-    assert (tmp_path / REPORT_PROFILE_LIGHTWEIGHT / "stress_report.json").is_file()
-    assert not (tmp_path / REPORT_PROFILE_LIGHTWEIGHT / "report.html").is_file()
-    assert not (tmp_path / REPORT_PROFILE_LIGHTWEIGHT / "commentary.txt").is_file()
+    lw_out = tmp_path / REPORT_PROFILE_LIGHTWEIGHT
+    assert (lw_out / "snapshot_10y.json").is_file()
+    assert not (lw_out / "snapshot_3y.json").is_file()
+    assert not (lw_out / "snapshot_5y.json").is_file()
+    assert not (lw_out / "snapshot_assets.json").is_file()
+    snap_index = json.loads((lw_out / "snapshot_index.json").read_text(encoding="utf-8"))
+    assert snap_index.get("snapshots") == {"10y": "snapshot_10y.json"}
+    full_out = tmp_path / REPORT_PROFILE_FULL
+    assert (full_out / "snapshot_3y.json").is_file()
+    assert (full_out / "snapshot_5y.json").is_file()
+    assert (full_out / "snapshot_10y.json").is_file()
+    assert (full_out / "snapshot_assets.json").is_file()
+    assert (lw_out / "stress_report.json").is_file()
+    assert not (lw_out / "report.html").is_file()
+    assert not (lw_out / "commentary.txt").is_file()
 
 
 def test_lightweight_artifacts_yield_available_comparison_row(
@@ -219,6 +231,11 @@ def test_lightweight_artifacts_yield_available_comparison_row(
     assert status == "available"
     assert reason is None
     assert "stress.overall" not in missing
+    assert (out / "snapshot_10y.json").is_file()
+    assert not (out / "snapshot_3y.json").is_file()
+    assert not (out / "snapshot_5y.json").is_file()
+    snap_index = json.loads((out / "snapshot_index.json").read_text(encoding="utf-8"))
+    assert snap_index.get("snapshots") == {"10y": "snapshot_10y.json"}
 
 
 def test_default_site_api_profile_writes_no_presentation_artifacts(

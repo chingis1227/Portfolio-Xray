@@ -299,7 +299,8 @@ artifact map: [OUTPUTS.md](../../OUTPUTS.md).
 | Topic | Behavior |
 | --- | --- |
 | End-to-end command | `run_portfolio_review.py` chains subject → factory → compare in `site_api` JSON/cache mode |
-| **Core-run** (default) | `--mode core` → factory profile `core_v1`; factory `--execution-mode standard` (phased weights + lightweight_comparison); no PDF by default |
+| **Core-run** (default, Wave 2 `core_fast`) | `--mode core` → factory profile `core_fast`; factory `--execution-mode standard` (phased weights + lightweight_comparison, parallel Phase 2 by default); `ReviewRunContext` on subject + factory; no PDF by default. Disable parallel: `--no-parallel-lightweight-reports`. Regression sequential menu: `--candidate-profile core_v1`. **Acceptance: E2E ≤ 300 s warm cache** ([ExecPlan](../exec_plans/2026-05-24_blocks_1_5_performance_wave2_plan.md)). |
+| **Core-fast-run** (standalone factory) | `python run_candidate_factory.py --profile core_fast` — same six ids as `core_v1`; parallel lightweight reports by default unless `--no-parallel-lightweight-reports`. |
 | **Full-run** | `--mode full` → factory profile `default_v1`; factory `--execution-mode standard` by default |
 | **Full-run (legacy builders)** | `--mode full --execution-mode legacy_full` → subprocess `run_*.py` per candidate (parity/debug) |
 | **Full-run recovery** | `--mode full --resume-candidates` passes factory `--resume` through the portfolio-first orchestrator |
@@ -311,8 +312,9 @@ artifact map: [OUTPUTS.md](../../OUTPUTS.md).
 Factory resume is available from both `run_candidate_factory.py --resume` and
 `run_portfolio_review.py --mode full --resume-candidates`. Advanced factory-only runs can opt into
 parallel Phase 2 lightweight reports with `run_candidate_factory.py --execution-mode standard
---parallel-lightweight-reports`; portfolio-first review keeps the documented core/full mode
-contract and does not enable that flag by default. Parallel candidate builders remain deferred.
+--parallel-lightweight-reports` or profile `core_fast`; portfolio-first `--mode core` uses
+`core_fast` (parallel on by default). Disable via `run_portfolio_review.py
+--no-parallel-lightweight-reports`. Parallel candidate builders remain deferred.
 See
 [operational_runbook.md](../operational_runbook.md) and [candidate_factory_spec.md](candidate_factory_spec.md).
 

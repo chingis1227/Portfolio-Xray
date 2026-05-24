@@ -90,7 +90,7 @@ offline:
 - rejects missing, negative, and overallocated explicit subject weights before report generation;
 - seeds synthetic `analysis_subject` diagnostics with `run_metadata.json`, `input_assumptions`,
   `snapshot_10y.json`, `portfolio_xray.json`, and `stress_report.json`;
-- seeds current `core_v1` `candidate_factory_run.json` evidence and matching candidate snapshots;
+- seeds offline `core_v1` `candidate_factory_run.json` evidence (plan argv uses `core_fast`; fixture profile unchanged);
 - runs `write_candidate_comparison_outputs` and confirms `analysis_subject` is the baseline and
   current factory steps are used for candidate construction disclosure;
 - blocks live Yahoo/FRED calls so the gate cannot silently depend on network data.
@@ -136,7 +136,7 @@ Session 09 closure (2026-05-21): single-command bundle above reported **125 pass
 
 **What the offline smoke proves:** five-ticker explicit weighted `analysis_subject`; config rejects
 missing, negative, and overallocated weights; subject `run_metadata`, `input_assumptions`,
-`portfolio_xray.json`, and `stress_report.json` exist; current `core_v1` factory evidence is
+`portfolio_xray.json`, and `stress_report.json` exist; current `core_fast` factory evidence is
 authoritative; `candidate_comparison.json` uses `analysis_subject` as baseline with
 `candidate_menu.factory_evidence_status: current`. Output acceptance checklist:
 [OUTPUTS.md](OUTPUTS.md) Blocks 1-5 section; operator commands:
@@ -171,7 +171,7 @@ python scripts/verify_live_core_e2e.py --run
 | Stress blocks | `stress_scorecard_v1`, `stress_conclusions`, `historical_methodology`, `hedge_gap_analysis` in subject `stress_report.json` |
 | Comparison | `{output_dir_final}/candidate_comparison.json` present |
 | Core menu | `candidate_menu.review_mode == "core"` |
-| Factory profile | `candidate_factory_run.json` → `factory_profile_id == "core_v1"` |
+| Factory profile | `candidate_factory_run.json` → `factory_profile_id == "core_fast"` |
 
 `factory_evidence_status: current` is expected after `run_portfolio_review.py` or
 `run_candidate_factory.py --then-compare` (RM-1025). Validator warnings surface non-`current`

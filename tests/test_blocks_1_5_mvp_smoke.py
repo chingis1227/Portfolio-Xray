@@ -58,7 +58,7 @@ def test_five_ticker_blocks_1_5_mvp_smoke_gate(
     assert [step.stage for step in plan.steps] == ["diagnosis", "candidates"]
     assert "--materialize-analysis-subject" in plan.steps[0].argv
     assert "--profile" in plan.steps[1].argv
-    assert "core_v1" in plan.steps[1].argv
+    assert "core_fast" in plan.steps[1].argv
 
     subject_dir = seeded["analysis_subject_dir"]
     run_metadata = _load_json(subject_dir / "run_metadata.json")
@@ -79,7 +79,7 @@ def test_five_ticker_blocks_1_5_mvp_smoke_gate(
         assert key in stress
 
     factory = _load_json(seeded["main_dir"] / "candidate_factory_run.json")
-    assert factory["factory_profile_id"] == "core_v1"
+    assert factory["factory_profile_id"] == "core_fast"
     assert factory["analysis_end"] == DEFAULT_ANALYSIS_END
     assert factory["config_fingerprint"] == seeded["config_fingerprint"]
     assert [step["candidate_id"] for step in factory["steps"]] == seeded["core_candidate_ids"]

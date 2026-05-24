@@ -52,7 +52,8 @@ python run_portfolio_review.py --candidate-profile default_v1
 
 | Review mode | Command | Factory profile | Factory execution | Typical use |
 | --- | --- | --- | --- | --- |
-| **Core** (default) | `python run_portfolio_review.py` or `--mode core` | `core_v1` | `standard` (phased; no per-candidate PDF) | Routine monthly review within normal session limits |
+| **Core** (default) | `python run_portfolio_review.py` or `--mode core` | `core_fast` | `standard` (phased; parallel lightweight reports by default; no per-candidate PDF) | Routine monthly review within normal session limits |
+| **Core (sequential regression)** | `... --candidate-profile core_v1` | `core_v1` | `standard` (sequential Phase 2) | Parity/debug vs pre–Wave 2 core menu |
 | **Full** | `python run_portfolio_review.py --mode full` | `default_v1` | `standard` | Full menu refresh (compare-ready snapshots; much faster than legacy subprocess chain) |
 | **Full resume** | `python run_portfolio_review.py --mode full --resume-candidates` | `default_v1` | `standard` + `--resume` | Recovery after an interrupted full factory run |
 | **Full (legacy builders)** | `... --mode full --execution-mode legacy_full` | `default_v1` | `legacy_full` | Parity/debug with subprocess `run_*.py` and full per-candidate reports |
@@ -75,7 +76,7 @@ Use this checklist when validating the first-five product blocks without prior c
 | Step | Action | Pass criterion |
 | --- | --- | --- |
 | 1 | Configure `analysis_subject` with five tickers and explicit weights summing to `1.0` for `current_portfolio` / `model_portfolio` | Config validation accepts; overallocated positive sums above `1.0` fail before reports |
-| 2 | Run routine review | `python run_portfolio_review.py --mode core --skip-pdf` completes subject materialization, `core_v1` factory, and comparison |
+| 2 | Run routine review | `python run_portfolio_review.py --mode core --skip-pdf` completes subject materialization, `core_fast` factory, and comparison |
 | 3 | Open subject folder first | `{output_dir_final}/analysis_subject/` contains `run_metadata.json`, `portfolio_xray.json`, `stress_report.json` |
 | 4 | Read trust summaries | `data_trust_summary` / `data_trust_signals` and commentary `user_summary_lines` surface data-quality and young-ETF warnings when present |
 | 5 | Confirm factory evidence | `candidate_comparison.json` → `candidate_menu.factory_evidence_status` is `current`, or warnings explain stale/missing factory evidence |
@@ -116,7 +117,7 @@ python -m pytest tests/test_blocks_1_5_live_core_e2e.py --live-core -q
 Artifact checks (step 2): `{output_dir_final}/analysis_subject/` has `run_metadata.json`,
 `portfolio_xray.json`, and `stress_report.json`; `candidate_comparison.json` exists with
 `candidate_menu.review_mode == "core"`; `candidate_factory_run.json` has `factory_profile_id ==
-"core_v1"`. See [TESTING.md](../TESTING.md) Blocks 1-5 Live Core E2E for the full table.
+"core_fast"`. See [TESTING.md](../TESTING.md) Blocks 1-5 Live Core E2E for the full table.
 
 ### Live full + resume E2E gate (Phase 17, RM-1029)
 

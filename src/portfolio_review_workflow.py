@@ -83,6 +83,7 @@ def build_portfolio_review_plan(
     legacy_full_pdf: bool = False,
     factory_execution_mode: str | None = None,
     output_profile: str = DEFAULT_OUTPUT_PROFILE,
+    no_parallel_lightweight_reports: bool = False,
 ) -> PortfolioReviewPlan:
     """Build ordered CLI steps for the portfolio-first review workflow."""
     resolved_mode, factory_profile = resolve_review_candidate_profile(
@@ -105,17 +106,22 @@ def build_portfolio_review_plan(
     if getattr(cfg, "analysis_subject", None):
         subject_type = str((cfg.analysis_subject or {}).get("type") or subject_type)
 
+    subject_argv = [
+        py,
+        str(project_root / "run_report.py"),
+        "--materialize-analysis-subject",
+        "--output-profile",
+        output_profile,
+        "--review-mode",
+        resolved_mode,
+        *cache_flags,
+    ]
+    if resolved_mode == "core":
+        subject_argv.append("--use-review-run-context")
     add(
         "diagnosis",
         f"Materialize {subject_type} diagnostics",
-        [
-            py,
-            str(project_root / "run_report.py"),
-            "--materialize-analysis-subject",
-            "--output-profile",
-            output_profile,
-            *cache_flags,
-        ],
+        subject_argv,
     )
 
     compare_via_factory = False
@@ -138,6 +144,8 @@ def build_portfolio_review_plan(
             factory_argv.append("--fail-fast")
         factory_argv.extend(["--execution-mode", resolved_execution_mode])
         factory_argv.extend(["--output-profile", output_profile])
+        if no_parallel_lightweight_reports:
+            factory_argv.append("--no-parallel-lightweight-reports")
         if not skip_compare:
             # Comparison rebuild uses factory_then_compare context (in-memory factory doc,
             # factory JSON written before compare) — see candidate_comparison.py P17-G6 / RM-1025.

@@ -54,7 +54,7 @@ python -m pytest
 Run portfolio-first review:
 
 ```bash
-python run_portfolio_review.py [--mode core|full] [--dry-run] [--skip-candidates] [--candidate-profile PROFILE] [--candidates ID,ID,...] [--with-pdf] [--legacy-full-pdf]
+python run_portfolio_review.py [--mode core|full] [--dry-run] [--skip-candidates] [--candidate-profile PROFILE] [--candidates ID,ID,...] [--no-parallel-lightweight-reports] [--with-pdf] [--legacy-full-pdf]
 ```
 
 Default output profile is `site_api` (JSON/cache only); a routine review **does not** refresh

@@ -38,7 +38,10 @@ from src.config import (
 )
 from src.candidate_run_context import (
     CandidateRunContext,
+    ReviewRunContext,
     asset_betas_for_candidate_weights,
+    coerce_factory_run_context,
+    prepare_review_run_context,
     daily_panel_for_candidate_report,
     extended_diagnostic_betas_for_candidate,
     invariant_metrics_usable_for_report,
@@ -119,7 +122,10 @@ from src.stress_factors import (
     factor_variance_decomposition_weekly,
     macro_regime_csv_frames,
     macro_regime_diagnostics,
+    macro_regime_diagnostics_with_panel,
     portfolio_pca_diagnostics,
+    portfolio_pca_diagnostics_with_weekly_frames,
+    weekly_factor_frames_cover_tickers,
     factor_beta_oos_stability_diagnostics,
     factor_beta_stability_diagnostics,
     factor_beta_stability_rows,
@@ -230,6 +236,29 @@ def parse_args() -> argparse.Namespace:
             "full_report enables CSV/TXT/HTML/PNG exports; legacy_export also allows PDF sidecars."
         ),
     )
+    parser.add_argument(
+        "--review-mode",
+        type=str,
+        choices=("core", "full"),
+        default=None,
+        help=(
+            "Portfolio review mode for --materialize-analysis-subject: core uses "
+            "lightweight_comparison + shared ReviewRunContext; full uses full report profile."
+        ),
+    )
+    parser.add_argument(
+        "--use-review-run-context",
+        action="store_true",
+        help=(
+            "Preload ReviewRunContext (shared monthly/macro/PCA) before analysis_subject report. "
+            "Default when --review-mode core."
+        ),
+    )
+    parser.add_argument(
+        "--no-review-run-context",
+        action="store_true",
+        help="Disable shared ReviewRunContext even when --review-mode core.",
+    )
     return parser.parse_args()
 
 
@@ -295,7 +324,7 @@ def run_portfolio_report_for_weights(
     portfolio_role_override: str | None = None,
     report_profile: str | None = None,
     output_profile: str | None = None,
-    run_context: CandidateRunContext | None = None,
+    run_context: CandidateRunContext | ReviewRunContext | None = None,
     enable_report_timing: bool | None = None,
 ) -> tuple[dict | None, dict]:
     """
@@ -317,11 +346,13 @@ def run_portfolio_report_for_weights(
     ``full_report`` and ``report_profile=lightweight_comparison`` maps to JSON-only
     lightweight comparison.
 
-    ``run_context``: optional factory shared context (one monthly load + factor/scenario cache).
+    ``run_context``: optional factory or review shared context (one monthly load + factor/scenario cache).
 
     ``enable_report_timing``: when ``True``, record per-block seconds in ``meta["report_timing"]``
     (also enabled by env ``PORTFOLIO_REPORT_TIMING=1``). Default off for non-factory runs.
     """
+    review_run_context = run_context if isinstance(run_context, ReviewRunContext) else None
+    run_context = coerce_factory_run_context(run_context)
     report_timing = ReportTimingCollector.for_run(enable_report_timing=enable_report_timing)
     resolved_output_profile = output_profile or profile_from_legacy_report_profile(report_profile)
     output_policy = output_policy_for_profile(resolved_output_profile)
@@ -1416,12 +1447,29 @@ def run_portfolio_report_for_weights(
 
     report_timing.start_block("macro_regime")
     try:
-        macro_regimes = macro_regime_diagnostics(
-            weights=weights,
-            tickers=tickers,
-            analysis_end_str=analysis_end_str,
-            factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
+        cached_macro_panel = (
+            review_run_context.macro_panel
+            if review_run_context is not None
+            and review_run_context.macro_panel is not None
+            and not review_run_context.macro_panel.empty
+            else None
         )
+        if cached_macro_panel is not None:
+            macro_regimes = macro_regime_diagnostics_with_panel(
+                weights=weights,
+                tickers=tickers,
+                analysis_end_str=analysis_end_str,
+                indicator_panel=cached_macro_panel,
+                indicator_meta=review_run_context.macro_panel_meta or {},
+                factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
+            )
+        else:
+            macro_regimes = macro_regime_diagnostics(
+                weights=weights,
+                tickers=tickers,
+                analysis_end_str=analysis_end_str,
+                factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
+            )
         stress_report["macro_regime_diagnostics"] = macro_regimes
         if not lightweight:
             for fname, df in macro_regime_csv_frames(macro_regimes).items():
@@ -1678,13 +1726,32 @@ def run_portfolio_report_for_weights(
     # Portfolio PCA diagnostics: hidden statistical risk concentration, diagnostic only.
     report_timing.start_block("portfolio_pca")
     try:
-        pca = portfolio_pca_diagnostics(
-            weights=weights,
-            tickers=tickers,
-            analysis_end_str=analysis_end_str,
-            window_weeks=FACTOR_WEEKS_5Y,
-            factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
-        )
+        pca_use_tickers = [
+            str(t).strip()
+            for t in tickers
+            if str(t).strip() and float(weights.get(t, 0.0)) > 0.0
+        ]
+        if len(pca_use_tickers) < 2:
+            pca_use_tickers = [str(t).strip() for t in tickers if str(t).strip()]
+        if (
+            shared_weekly_frames is not None
+            and weekly_factor_frames_cover_tickers(shared_weekly_frames, pca_use_tickers)
+        ):
+            pca = portfolio_pca_diagnostics_with_weekly_frames(
+                weights=weights,
+                tickers=tickers,
+                shared_frames=shared_weekly_frames,
+                window_weeks=FACTOR_WEEKS_5Y,
+                factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
+            )
+        else:
+            pca = portfolio_pca_diagnostics(
+                weights=weights,
+                tickers=tickers,
+                analysis_end_str=analysis_end_str,
+                window_weeks=FACTOR_WEEKS_5Y,
+                factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
+            )
         stress_report["portfolio_pca"] = pca
 
         summary_rows = []
@@ -1995,6 +2062,8 @@ def run_portfolio_report_for_weights(
     analytics_by_window: dict[str, dict] = {}
     for wm in windows_months:
         suffix = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
+        if lightweight and suffix != "10y":
+            continue
         ret_slice = slice_window(portfolio_returns, analysis_end, wm).dropna()
         rf_slice = slice_window(rf_monthly, analysis_end, wm).reindex(ret_slice.index).fillna(0)
         bench_slice = slice_window(benchmark_returns, analysis_end, wm).reindex(ret_slice.index).dropna()
@@ -2198,8 +2267,10 @@ def run_portfolio_report_for_weights(
 
     config_fingerprint = compute_candidate_config_fingerprint(cfg)
 
-    # 2) Three snapshots by window (3y, 5y, 10y)
+    # 2) Snapshots by window (3y, 5y, 10y); lightweight_comparison writes 10y only
     for label in ("3y", "5y", "10y"):
+        if lightweight and label != "10y":
+            continue
         if label not in portfolio_windows:
             continue
         pm = portfolio_windows[label]
@@ -2234,15 +2305,14 @@ def run_portfolio_report_for_weights(
         save_snapshot(snap_w, output_dir_final / f"snapshot_{label}.json")
         logger.info("Snapshot %s: %s", label, output_dir_final / f"snapshot_{label}.json")
 
-    snapshot_index_entries: dict[str, str] = {
-        "3y": "snapshot_3y.json",
-        "5y": "snapshot_5y.json",
-        "10y": "snapshot_10y.json",
-    }
-    if not lightweight:
+    if lightweight:
+        snapshot_index_entries: dict[str, str] = {"10y": "snapshot_10y.json"}
+    else:
         snapshot_index_entries = {
             "assets": "snapshot_assets.json",
-            **snapshot_index_entries,
+            "3y": "snapshot_3y.json",
+            "5y": "snapshot_5y.json",
+            "10y": "snapshot_10y.json",
         }
     save_snapshot(
         {"timestamp": run_timestamp, "snapshots": snapshot_index_entries},
@@ -2408,6 +2478,31 @@ def resolve_analysis_subject_materialization(cfg: PortfolioConfig) -> dict[str, 
     }
 
 
+def resolve_analysis_subject_report_profile(
+    *,
+    review_mode: str | None = None,
+    report_profile: str | None = None,
+) -> str:
+    """Map portfolio review mode to analysis_subject report_profile (orchestration only)."""
+    if report_profile is not None:
+        return normalize_report_profile(report_profile)
+    mode = (review_mode or "core").strip().lower()
+    if mode == "full":
+        return REPORT_PROFILE_FULL
+    return REPORT_PROFILE_LIGHTWEIGHT
+
+
+def should_use_review_run_context_for_subject(
+    *,
+    review_mode: str | None = None,
+    use_review_run_context: bool | None = None,
+) -> bool:
+    if use_review_run_context is not None:
+        return use_review_run_context
+    mode = (review_mode or "core").strip().lower()
+    return mode == "core"
+
+
 def run_materialize_analysis_subject_report(
     cfg: PortfolioConfig,
     *,
@@ -2415,7 +2510,12 @@ def run_materialize_analysis_subject_report(
     backtest_mode: str,
     no_cache: bool,
     output_profile: str | None = None,
-) -> None:
+    review_run_context: ReviewRunContext | None = None,
+    report_profile: str | None = None,
+    review_mode: str | None = None,
+    project_root: Path | None = None,
+    use_review_run_context: bool | None = None,
+) -> ReviewRunContext | None:
     """Write resolved analysis_subject diagnostics to output_dir_final/analysis_subject/."""
     materialization = resolve_analysis_subject_materialization(cfg)
     if materialization["status"] != "resolved":
@@ -2429,11 +2529,31 @@ def run_materialize_analysis_subject_report(
     subject_csv = subject_final / "results_csv"
     subject = materialization["subject"]
 
+    resolved_profile = resolve_analysis_subject_report_profile(
+        review_mode=review_mode,
+        report_profile=report_profile,
+    )
+    want_shared_context = should_use_review_run_context_for_subject(
+        review_mode=review_mode,
+        use_review_run_context=use_review_run_context,
+    )
+    shared_context = review_run_context
+    if want_shared_context and shared_context is None:
+        root = project_root or Path(__file__).resolve().parent
+        logger.info("Preparing ReviewRunContext for analysis_subject materialization.")
+        shared_context = prepare_review_run_context(
+            cfg,
+            project_root=root,
+            no_cache=no_cache,
+        )
+
     logger.info(
-        "Materializing analysis_subject (%s, role=%s) to %s.",
+        "Materializing analysis_subject (%s, role=%s) to %s (report_profile=%s, shared_context=%s).",
         subject.get("type"),
         subject.get("portfolio_role"),
         subject_final,
+        resolved_profile,
+        want_shared_context,
     )
 
     run_portfolio_report_for_weights(
@@ -2447,7 +2567,11 @@ def run_materialize_analysis_subject_report(
         weights_source=str(materialization["weights_source"] or "analysis_subject"),
         portfolio_role_override="analysis_subject",
         output_profile=output_profile,
+        report_profile=resolved_profile,
+        run_context=shared_context if want_shared_context else None,
+        enable_report_timing=want_shared_context,
     )
+    return shared_context if want_shared_context else None
 
 
 def main() -> None:
@@ -2472,12 +2596,23 @@ def main() -> None:
         raise SystemExit(1)
 
     if args.materialize_analysis_subject:
+        if args.use_review_run_context and args.no_review_run_context:
+            logger.error("Use only one of --use-review-run-context / --no-review-run-context.")
+            raise SystemExit(1)
+        subject_use_context: bool | None = None
+        if args.no_review_run_context:
+            subject_use_context = False
+        elif args.use_review_run_context:
+            subject_use_context = True
         run_materialize_analysis_subject_report(
             cfg,
             run_timestamp=run_timestamp,
             backtest_mode=args.backtest_mode,
             no_cache=args.no_cache,
             output_profile=args.output_profile,
+            review_mode=args.review_mode,
+            project_root=Path(__file__).resolve().parent,
+            use_review_run_context=subject_use_context,
         )
         cleanup_old_cache(keep_versions=3)
         sidecar = Path(getattr(cfg, "output_dir_final", "Main portfolio")) / "analysis_subject"

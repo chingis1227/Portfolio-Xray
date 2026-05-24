@@ -54,6 +54,7 @@ from src.utils import coverage_ratio, logger
 from src.windows import slice_window, truncate_to_analysis_end
 
 SCHEMA_VERSION = "candidate_run_context_v5"
+REVIEW_RUN_CONTEXT_SCHEMA = "review_run_context_v1"
 
 # Re-export for factory/report callers
 FactoryWeeklyFactorFrames = PortfolioFactorWeeklyFrames
@@ -129,6 +130,84 @@ class CandidateRunContext:
     @property
     def analysis_end(self) -> pd.Timestamp:
         return self.monthly_data.analysis_end
+
+
+@dataclass
+class ReviewRunContext:
+    """
+    Shared review-run context for portfolio-first ``core_fast`` orchestration.
+
+    Wraps one ``CandidateRunContext`` (monthly/daily/factor weekly frames) and
+    reserves slots for review-wide caches filled in later Wave 2 sessions.
+    """
+
+    factory_context: CandidateRunContext
+    macro_panel: pd.DataFrame | None = None
+    macro_panel_meta: dict[str, Any] | None = None
+    schema_version: str = REVIEW_RUN_CONTEXT_SCHEMA
+
+    @property
+    def cfg(self) -> PortfolioConfig:
+        return self.factory_context.cfg
+
+    @property
+    def project_root(self) -> Path:
+        return self.factory_context.project_root
+
+    @property
+    def monthly_data(self) -> MonthlyDataResult:
+        return self.factory_context.monthly_data
+
+    @property
+    def monthly_returns(self) -> pd.DataFrame:
+        return self.factory_context.monthly_returns
+
+    @property
+    def analysis_end_str(self) -> str:
+        return self.factory_context.analysis_end_str
+
+    @property
+    def analysis_end(self) -> pd.Timestamp:
+        return self.factory_context.analysis_end
+
+    @property
+    def factor_stress(self) -> FactoryFactorStressInputs | None:
+        return self.factory_context.factor_stress
+
+    @property
+    def invariant_metrics(self) -> FactoryInvariantMetrics | None:
+        return self.factory_context.invariant_metrics
+
+    @property
+    def prepared_synthetic_stress(self) -> PreparedSyntheticStressInputs | None:
+        return self.factory_context.prepared_synthetic_stress
+
+    @property
+    def weekly_factor_frames(self) -> PortfolioFactorWeeklyFrames | None:
+        fs = self.factory_context.factor_stress
+        return fs.weekly_factor_frames if fs is not None else None
+
+    @property
+    def weekly_asset_returns(self) -> pd.DataFrame | None:
+        frames = self.weekly_factor_frames
+        if frames is None or frames.asset_weekly.empty:
+            return None
+        return frames.asset_weekly
+
+    @property
+    def no_cache(self) -> bool:
+        return self.factory_context.no_cache
+
+
+def coerce_factory_run_context(
+    run_context: CandidateRunContext | ReviewRunContext | None,
+) -> CandidateRunContext | None:
+    """Normalize review or factory context for report/factory entrypoints."""
+    if run_context is None:
+        return None
+    if isinstance(run_context, ReviewRunContext):
+        return run_context.factory_context
+    return run_context
 
 
 def build_factory_factor_stress_inputs(
@@ -490,6 +569,66 @@ def prepare_candidate_run_context(
         invariant_metrics=invariant_metrics,
         prepared_synthetic_stress=prepared_synthetic_stress,
         no_cache=no_cache,
+    )
+
+
+def macro_panel_fetch_window(
+    analysis_end_str: str,
+    *,
+    months_back: int = 420,
+) -> tuple[str, str]:
+    """Date window for ``fetch_macro_indicators`` aligned with macro_two_axis production path."""
+    end_ts = pd.Timestamp(analysis_end_str)
+    panel_start = (end_ts - pd.DateOffset(months=int(months_back) + 12)).strftime("%Y-%m-%d")
+    panel_end = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    return panel_start, panel_end
+
+
+def load_review_macro_panel(
+    analysis_end_str: str,
+    *,
+    months_back: int = 420,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Fetch the monthly macro indicator panel once per review run."""
+    from src.stress_factors_macro import fetch_macro_indicators
+
+    panel_start, panel_end = macro_panel_fetch_window(
+        analysis_end_str,
+        months_back=months_back,
+    )
+    return fetch_macro_indicators(panel_start, panel_end)
+
+
+def prepare_review_run_context(
+    cfg: PortfolioConfig,
+    *,
+    project_root: Path,
+    no_cache: bool = False,
+) -> ReviewRunContext:
+    """
+    Load shared monthly/daily panels, weekly factor frames, and macro indicator panel
+    once per review run.
+    """
+    factory_context = prepare_candidate_run_context(
+        cfg,
+        project_root=project_root,
+        no_cache=no_cache,
+        preload_factor_stress=True,
+        preload_invariant_metrics=True,
+    )
+    macro_panel: pd.DataFrame | None = None
+    macro_panel_meta: dict[str, Any] | None = None
+    try:
+        macro_panel, macro_panel_meta = load_review_macro_panel(
+            factory_context.analysis_end_str,
+        )
+    except Exception as exc:
+        logger.warning("Review context: macro panel preload failed: %s", exc)
+        macro_panel_meta = {"preload_error": str(exc)}
+    return ReviewRunContext(
+        factory_context=factory_context,
+        macro_panel=macro_panel,
+        macro_panel_meta=macro_panel_meta,
     )
 
 

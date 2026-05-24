@@ -39,7 +39,12 @@ from src.candidate_manifest import (
     compute_factory_run_status,
     write_candidate_manifest,
 )
-from src.candidate_run_context import CandidateRunContext, prepare_candidate_run_context
+from src.candidate_run_context import (
+    CandidateRunContext,
+    ReviewRunContext,
+    coerce_factory_run_context,
+    prepare_candidate_run_context,
+)
 from src.candidate_weights import (
     CANDIDATE_WEIGHTS_BUILD_FILENAME,
     build_candidate_weights,
@@ -66,6 +71,7 @@ from src.variant_builder_runtime import (
 )
 
 SCHEMA_VERSION = "candidate_factory_run_v1"
+FactoryRunContextLike = CandidateRunContext | ReviewRunContext
 MANIFEST_SCHEMA_VERSION = "candidate_factory_manifest_v1"
 MANIFEST_FILENAME = "candidate_factory_manifest.json"
 RESUME_COMPLETE_STATUSES = frozenset({"succeeded", "skipped_existing"})
@@ -112,11 +118,32 @@ CORE_V1_CANDIDATE_ORDER: list[str] = (
     FACTORY_PROFILES["core_benchmarks"] + FACTORY_PROFILES["risk_budgets"]
 )
 
+# Wave 2 routine core menu: same six ids as core_v1; parallel lightweight reports by default.
+CORE_FAST_PROFILE_ID = "core_fast"
+
 PRODUCT_MENU_PROFILE_ID = "default_v1"
+CORE_V1_PROFILE_ID = "core_v1"
+
 REVIEW_MODE_PROFILES: dict[str, str] = {
-    "core": "core_v1",
+    "core": CORE_FAST_PROFILE_ID,
     "full": "default_v1",
 }
+
+# Sequential regression profile; same review_mode as core_fast for comparison disclosure.
+REVIEW_MODE_LEGACY_FACTORY_PROFILES: dict[str, str] = {
+    CORE_V1_PROFILE_ID: "core",
+}
+
+
+def review_mode_for_factory_profile(profile_id: str) -> str | None:
+    """Map factory profile id to portfolio-first review mode, if known."""
+    pid = str(profile_id or "").strip()
+    if not pid:
+        return None
+    for mode, mapped in REVIEW_MODE_PROFILES.items():
+        if mapped == pid:
+            return mode
+    return REVIEW_MODE_LEGACY_FACTORY_PROFILES.get(pid)
 
 CANDIDATE_ENTRY_SCRIPTS: dict[str, list[str]] = {
     "equal_weight": ["run_equal_weight.py"],
@@ -194,7 +221,7 @@ def resolve_profile_candidate_ids(
         return list(explicit_candidates)
     if profile_id == "default_v1":
         return list(DEFAULT_V1_CANDIDATE_ORDER)
-    if profile_id == "core_v1":
+    if profile_id in ("core_v1", CORE_FAST_PROFILE_ID):
         return list(CORE_V1_CANDIDATE_ORDER)
     if profile_id == "explicit_list":
         return []
@@ -618,7 +645,7 @@ def _run_lightweight_report_worker(
     config_fingerprint: str,
     weights_reused: bool,
     output_profile: str | None = None,
-    run_context: CandidateRunContext | None = None,
+    run_context: FactoryRunContextLike | None = None,
 ) -> dict[str, Any]:
     """
     Phase 2: comparison-ready snapshots via ``lightweight_comparison`` report profile.
@@ -875,7 +902,7 @@ def _execute_lightweight_report(
     fail_fast: bool,
     weights_reused: bool,
     output_profile: str | None = None,
-    run_context: CandidateRunContext | None = None,
+    run_context: FactoryRunContextLike | None = None,
 ) -> bool:
     """
     Sequential Phase 2 coordinator.
@@ -981,6 +1008,46 @@ def _register_parallel_lightweight_report_results(
             output_dir_final=output_dir_final,
         )
     pending_reports.clear()
+
+
+def profile_parallel_lightweight_reports_by_default(profile_id: str) -> bool:
+    """``core_fast`` enables parallel Phase 2 lightweight reports unless overridden."""
+    return profile_id == CORE_FAST_PROFILE_ID
+
+
+def profile_uses_review_run_context(profile_id: str) -> bool:
+    """Routine core-fast factory runs share ``ReviewRunContext`` (macro/PCA/monthly caches)."""
+    return profile_id == CORE_FAST_PROFILE_ID
+
+
+def resolve_parallel_lightweight_report_options(
+    *,
+    profile_id: str,
+    parallel_lightweight_reports: bool | None = None,
+    lightweight_report_workers: int | None = None,
+) -> tuple[bool, int | None, bool]:
+    """
+    Resolve parallel lightweight report flags for a factory profile.
+
+    Returns ``(requested, workers, profile_default_applied)``. When
+    ``parallel_lightweight_reports`` is ``None``, ``core_fast`` requests parallel
+    execution with ``DEFAULT_LIGHTWEIGHT_REPORT_WORKERS`` unless workers are set explicitly.
+    """
+    profile_default = profile_parallel_lightweight_reports_by_default(profile_id)
+    if parallel_lightweight_reports is None:
+        requested = profile_default
+        profile_default_applied = profile_default
+    else:
+        requested = bool(parallel_lightweight_reports)
+        profile_default_applied = False
+    workers = lightweight_report_workers
+    if (
+        profile_default_applied
+        and requested
+        and workers is None
+    ):
+        workers = DEFAULT_LIGHTWEIGHT_REPORT_WORKERS
+    return requested, workers, profile_default_applied
 
 
 def _lightweight_report_worker_count(
@@ -1118,7 +1185,7 @@ def _execute_full_report(
     fail_fast: bool,
     pdf_mode: str,
     output_profile: str | None = None,
-    run_context: CandidateRunContext | None = None,
+    run_context: FactoryRunContextLike | None = None,
 ) -> bool:
     """
     Phase 3: full ``report_profile`` export; presentation artifacts follow ``output_profile``.
@@ -1429,7 +1496,7 @@ def _run_full_candidate_reports_phase(
     fail_fast: bool,
     pdf_mode: str,
     output_profile: str | None,
-    run_context: CandidateRunContext | None,
+    run_context: FactoryRunContextLike | None,
 ) -> bool:
     """
     Phase 3 loop. Returns False when fail-fast should mark the run aborted after this phase.
@@ -1744,9 +1811,10 @@ def run_candidate_factory(
     output_profile: str | None = None,
     full_candidate_reports: bool = False,
     selected_candidates_for_full_report: list[str] | None = None,
-    parallel_lightweight_reports: bool = False,
+    parallel_lightweight_reports: bool | None = None,
     lightweight_report_workers: int | None = None,
     runner: Any | None = None,
+    shared_run_context: FactoryRunContextLike | None = None,
 ) -> dict[str, Any]:
     try:
         candidate_ids = resolve_profile_candidate_ids(
@@ -1755,6 +1823,16 @@ def run_candidate_factory(
         )
     except FactoryValidationError:
         raise
+
+    (
+        parallel_lightweight_reports,
+        lightweight_report_workers,
+        parallel_lightweight_reports_profile_default,
+    ) = resolve_parallel_lightweight_report_options(
+        profile_id=profile_id,
+        parallel_lightweight_reports=parallel_lightweight_reports,
+        lightweight_report_workers=lightweight_report_workers,
+    )
 
     if profile_id == "explicit_list" and not candidate_ids:
         raise FactoryValidationError("explicit_list profile requires --candidates")
@@ -1811,7 +1889,8 @@ def run_candidate_factory(
     parallel_lightweight_submitted_candidate_ids: list[str] = []
     parallel_lightweight_registered_candidate_ids: list[str] = []
     subprocess_env = subprocess_env_for_pdf_mode(pdf_mode_normalized)
-    run_context: CandidateRunContext | None = None
+    report_run_context: FactoryRunContextLike | None = shared_run_context
+    run_context: CandidateRunContext | None = coerce_factory_run_context(shared_run_context)
     output_dir_final = cfg.output_dir_final
     analysis_end = _resolve_analysis_end(project_root, output_dir_final)
     config_fingerprint = compute_candidate_config_fingerprint(cfg)
@@ -2178,6 +2257,8 @@ def run_candidate_factory(
                     run_context = prepare_candidate_run_context(
                         cfg, project_root=project_root
                     )
+                    if report_run_context is None:
+                        report_run_context = run_context
                 if not _execute_weights_only_build(
                     candidate_id=candidate_id,
                     row=row,
@@ -2218,7 +2299,7 @@ def run_candidate_factory(
                         config_fingerprint=config_fingerprint,
                         weights_reused=report_weights_reused,
                         output_profile=output_policy.profile,
-                        run_context=run_context,
+                        run_context=report_run_context,
                     )
                     parallel_lightweight_submitted_candidate_ids.append(candidate_id)
                     pending_lightweight_reports.append(
@@ -2250,7 +2331,7 @@ def run_candidate_factory(
                     fail_fast=fail_fast,
                     weights_reused=report_weights_reused,
                     output_profile=output_policy.profile,
-                    run_context=run_context,
+                    run_context=report_run_context,
                 ):
                     if fail_fast:
                         fail_fast_aborted = True
@@ -2500,7 +2581,7 @@ def run_candidate_factory(
             fail_fast=fail_fast,
             pdf_mode=pdf_mode_normalized,
             output_profile=output_policy.profile,
-            run_context=run_context,
+            run_context=report_run_context,
         ):
             fail_fast_aborted = True
 
@@ -2531,6 +2612,9 @@ def run_candidate_factory(
             "execution_mode": execution_mode_normalized,
             "output_profile": output_policy.profile,
             "parallel_lightweight_reports": parallel_lightweight_reports,
+            "parallel_lightweight_reports_profile_default": (
+                parallel_lightweight_reports_profile_default
+            ),
             "parallel_lightweight_reports_effective": parallel_lightweight_reports_effective,
             "lightweight_report_workers": lightweight_report_worker_count,
             "full_candidate_reports": bool(

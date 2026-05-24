@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from src.config_schema import PortfolioConfig, validate_config
+from src.candidate_factory import CORE_FAST_PROFILE_ID
 from src.portfolio_review_workflow import (
     REVIEW_DEFAULT_FACTORY_EXECUTION_MODE,
     build_portfolio_review_plan,
@@ -36,7 +37,7 @@ def _argv_text(plan) -> str:  # noqa: ANN001
 def test_resolve_review_candidate_profile_defaults_to_core() -> None:
     mode, profile = resolve_review_candidate_profile()
     assert mode == "core"
-    assert profile == "core_v1"
+    assert profile == CORE_FAST_PROFILE_ID
 
 
 def test_resolve_review_candidate_profile_full_mode() -> None:
@@ -64,14 +65,39 @@ def test_resolve_factory_execution_mode_honors_explicit_override() -> None:
     assert resolve_factory_execution_mode(factory_execution_mode="fast") == "fast"
 
 
-def test_default_plan_uses_core_v1_factory_profile(tmp_path: Path) -> None:
+def test_default_plan_uses_core_fast_factory_profile(tmp_path: Path) -> None:
     plan = build_portfolio_review_plan(_cfg(), project_root=tmp_path, skip_pdf=True)
     factory_argv = plan.steps[1].argv
     assert "--profile" in factory_argv
-    assert "core_v1" in factory_argv
+    assert CORE_FAST_PROFILE_ID in factory_argv
+    assert "core_v1" not in factory_argv
     assert "default_v1" not in factory_argv
     assert "--execution-mode" in factory_argv
     assert "standard" in factory_argv
+    assert "--no-parallel-lightweight-reports" not in factory_argv
+
+
+def test_core_mode_plan_uses_core_v1_when_profile_overridden(tmp_path: Path) -> None:
+    plan = build_portfolio_review_plan(
+        _cfg(),
+        project_root=tmp_path,
+        candidate_profile="core_v1",
+        skip_pdf=True,
+    )
+    factory_argv = plan.steps[1].argv
+    assert "core_v1" in factory_argv
+    assert CORE_FAST_PROFILE_ID not in factory_argv
+
+
+def test_no_parallel_lightweight_reports_forwarded_to_factory(tmp_path: Path) -> None:
+    plan = build_portfolio_review_plan(
+        _cfg(),
+        project_root=tmp_path,
+        no_parallel_lightweight_reports=True,
+        skip_pdf=True,
+    )
+    factory_argv = plan.steps[1].argv
+    assert "--no-parallel-lightweight-reports" in factory_argv
 
 
 def test_full_mode_plan_uses_default_v1_profile(tmp_path: Path) -> None:
@@ -108,6 +134,22 @@ def test_default_plan_materializes_subject_before_candidates(tmp_path: Path) -> 
     assert "--materialize-analysis-subject" in plan.steps[0].argv
     assert "--output-profile" in plan.steps[0].argv
     assert "site_api" in plan.steps[0].argv
+    assert "--review-mode" in plan.steps[0].argv
+    assert "core" in plan.steps[0].argv
+    assert "--use-review-run-context" in plan.steps[0].argv
+
+
+def test_full_mode_plan_materializes_subject_with_full_review_mode(tmp_path: Path) -> None:
+    plan = build_portfolio_review_plan(
+        _cfg(),
+        project_root=tmp_path,
+        review_mode="full",
+        skip_pdf=True,
+    )
+    subject_argv = plan.steps[0].argv
+    idx = subject_argv.index("--review-mode")
+    assert subject_argv[idx + 1] == "full"
+    assert "--use-review-run-context" not in subject_argv
     assert "run_candidate_factory.py" in " ".join(plan.steps[1].argv)
     assert "--then-compare" in plan.steps[1].argv
     assert "--output-profile" in plan.steps[1].argv

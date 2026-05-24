@@ -14,10 +14,12 @@ from src.candidate_factory import (
     FactoryValidationError,
     build_factory_run_txt,
     factory_exit_code,
+    profile_uses_review_run_context,
     run_candidate_factory,
     run_then_compare,
     write_candidate_factory_outputs,
 )
+from src.candidate_run_context import prepare_review_run_context
 from src.config import load_validated_config
 from src.config_schema import ConfigValidationError
 from src.output_policy import OUTPUT_PROFILE_VALUES, output_policy_for_profile
@@ -110,13 +112,24 @@ def main(argv: list[str] | None = None) -> int:
             "legacy_export for explicit export/report artifacts."
         ),
     )
-    parser.add_argument(
+    parallel_group = parser.add_mutually_exclusive_group()
+    parallel_group.add_argument(
         "--parallel-lightweight-reports",
         action="store_true",
+        default=None,
         help=(
-            "Opt into parallel lightweight_comparison reports in standard mode. "
-            "Automatically falls back to sequential behavior with --fail-fast, "
-            "--pdf-mode per_candidate, or Phase 3 full report export."
+            "Force parallel lightweight_comparison reports in standard mode. "
+            "Profile core_fast enables parallel by default when this flag is omitted. "
+            "Falls back to sequential with --fail-fast, --pdf-mode per_candidate, "
+            "or Phase 3 full report export."
+        ),
+    )
+    parallel_group.add_argument(
+        "--no-parallel-lightweight-reports",
+        action="store_true",
+        default=None,
+        help=(
+            "Disable parallel lightweight reports (overrides core_fast profile default)."
         ),
     )
     parser.add_argument(
@@ -164,6 +177,17 @@ def main(argv: list[str] | None = None) -> int:
     selected_full = _parse_candidates(args.selected_candidates_for_full_report)
     full_reports = bool(args.full_candidate_reports or selected_full)
     output_policy = output_policy_for_profile(args.output_profile)
+    if args.parallel_lightweight_reports:
+        parallel_lightweight_reports: bool | None = True
+    elif args.no_parallel_lightweight_reports:
+        parallel_lightweight_reports = False
+    else:
+        parallel_lightweight_reports = None
+
+    shared_run_context = None
+    if profile_uses_review_run_context(profile_id):
+        logger.info("Preparing ReviewRunContext for core_fast factory run.")
+        shared_run_context = prepare_review_run_context(cfg, project_root=project_root)
 
     try:
         doc = run_candidate_factory(
@@ -181,8 +205,9 @@ def main(argv: list[str] | None = None) -> int:
             output_profile=args.output_profile,
             full_candidate_reports=full_reports,
             selected_candidates_for_full_report=selected_full,
-            parallel_lightweight_reports=args.parallel_lightweight_reports,
+            parallel_lightweight_reports=parallel_lightweight_reports,
             lightweight_report_workers=args.lightweight_report_workers,
+            shared_run_context=shared_run_context,
         )
     except FactoryValidationError as exc:
         logger.error("%s", exc)

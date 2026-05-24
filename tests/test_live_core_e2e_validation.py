@@ -22,4 +22,4 @@ def test_validate_live_core_artifacts_accepts_seeded_core_workspace(
     result = validate_live_core_artifacts(main)
     assert result.ok, "\n".join(result.messages())
     assert result.evidence["review_mode"] == "core"
-    assert result.evidence["factory_profile_id"] == "core_v1"
+    assert result.evidence["factory_profile_id"] == "core_fast"

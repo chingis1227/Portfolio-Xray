@@ -6,6 +6,93 @@ It records what was added, changed, removed, fixed, or deprecated at a project l
 
 Date: 2026-05-24
 
+Category: Changed
+
+- Performance Wave 2 **closed** Session 8 (`RM-983`): `core_fast_parallel` E2E **210.7 s** warm cache
+  (target ≤ 300 s; baseline `core_v1` 542.5 s). Extended
+  `scripts/blocks_1_5_e2e_timing_audit.py` with `core_fast_parallel` scenario and acceptance gate;
+  post-wave table in [E2E timing audit](docs/audits/2026-05-24_blocks_1_5_e2e_timing_audit.md).
+  Parity bundle **138 passed**; `verify_docs.py` OK.
+
+Date: 2026-05-24
+
+Category: Changed
+
+- Performance Wave 2 Session 7 (`RM-983`): `--mode core` routes to factory profile `core_fast`
+  (parallel lightweight reports by default, `ReviewRunContext` on factory via
+  `run_candidate_factory.py`); `--no-parallel-lightweight-reports` on `run_portfolio_review.py`;
+  regression sequential menu via `--candidate-profile core_v1`. Tests:
+  `tests/test_portfolio_review_workflow.py`; live core E2E expects `core_fast`.
+
+Date: 2026-05-24
+
+Category: Added
+
+- Performance Wave 2 Session 5 (`RM-983`): core `analysis_subject` materialization uses
+  `lightweight_comparison` + `ReviewRunContext` (`run_materialize_analysis_subject_report`,
+  `run_report.py --review-mode core --use-review-run-context`, portfolio review diagnosis step);
+  `--mode full` uses full report profile without shared context. Tests:
+  `tests/test_analysis_subject_materialization.py`, `tests/test_portfolio_review_workflow.py`.
+
+Date: 2026-05-24
+
+Category: Added
+
+- Performance Wave 2 Session 4 (`RM-983`): `lightweight_comparison` skips 3Y/5Y tail-risk loop
+  iterations and writes `snapshot_10y.json` only (`snapshot_index.json` lists 10Y only); `full_report`
+  unchanged (3Y/5Y/10Y + assets). Tests: `tests/test_report_profile.py` **6 passed**.
+
+Date: 2026-05-24
+
+Category: Added
+
+- Performance Wave 2 Session 3 (`RM-983`): `portfolio_pca_diagnostics_with_weekly_frames` in
+  `src/stress_factors.py`; `run_report.py` PCA block reuses factory/review `weekly_factor_frames`
+  (no per-report `download_all` when frames cover tickers; legacy path unchanged as fallback).
+  Tests: `tests/test_candidate_run_context.py` **25 passed** (`download_all` skip + PCA parity).
+
+Date: 2026-05-24
+
+Category: Added
+
+- Performance Wave 2 Session 2 (`RM-983`): macro indicator panel cached on `ReviewRunContext`
+  (`load_review_macro_panel`, `macro_panel_fetch_window`); `macro_regime_diagnostics_with_panel` in
+  `src/stress_factors.py`; `run_report.py` macro block uses cached panel when `ReviewRunContext` is
+  present; candidate factory passes full review context to report workers via `report_run_context`.
+  Tests: `tests/test_candidate_run_context.py` **23 passed** (fetch-once + macro/snapshot parity).
+
+Date: 2026-05-24
+
+Category: Added
+
+- Performance Wave 2 Session 1 (`RM-983`): `ReviewRunContext` (`review_run_context_v1`) and
+  `prepare_review_run_context` in `src/candidate_run_context.py`; `coerce_factory_run_context` for
+  report/factory entrypoints; optional `shared_run_context` on `run_candidate_factory`. Macro/PCA cache
+  slots reserved; no review workflow wiring yet. Tests: `tests/test_candidate_run_context.py` **20 passed**.
+
+Date: 2026-05-24
+
+Category: Added
+
+- Performance Wave 2 Session 6 (`RM-983`): factory profile `core_fast` (same six candidate ids as
+  `core_v1`) with parallel Phase 2 lightweight reports enabled by default (4 workers);
+  `resolve_parallel_lightweight_report_options`; CLI `--no-parallel-lightweight-reports`;
+  `core_v1` remains sequential. Tests: `tests/test_candidate_factory.py` **48 passed**.
+
+Date: 2026-05-24
+
+Category: Added
+
+- Performance Wave 2 Session 0 (`RM-983`): [ExecPlan](docs/exec_plans/2026-05-24_blocks_1_5_performance_wave2_plan.md)
+  Active; baseline locked from [E2E timing audit](docs/audits/2026-05-24_blocks_1_5_e2e_timing_audit.md)
+  (`core_v1` E2E **542.5 s**); `core_fast` contract stubs in
+  [candidate_factory_spec.md](docs/specs/candidate_factory_spec.md) and
+  [portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md); register updates in
+  [exec_plans/README.md](docs/exec_plans/README.md) and [ROADMAP.md](docs/ROADMAP.md). No runtime code
+  changes (Sessions 1–8 pending).
+
+Date: 2026-05-24
+
 Category: Added
 
 - Core/full artifact confusion remediation Session 06 closure (`RM-1106`): remediation status in

@@ -322,7 +322,7 @@ def seed_blocks_1_5_mvp_smoke_workspace(root: Path, cfg: Any) -> dict[str, Any]:
             "schema_version": "candidate_factory_run_v1",
             "diagnostic_only": True,
             "generated_at": "2026-05-21T12:00:00+00:00",
-            "factory_profile_id": "core_v1",
+            "factory_profile_id": "core_fast",
             "project_root": ".",
             "output_dir_final": output_dir_final,
             "config_path": "config.yml",
