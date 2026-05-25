@@ -65,6 +65,7 @@ def compute_daily_cache_key(
     start_date: str,
     end_date: str,
     data_date: str,
+    data_provider: str = "yfinance",
 ) -> str:
     """
     Compute cache key for daily prices.
@@ -81,6 +82,7 @@ def compute_daily_cache_key(
         "start": start_date,
         "end": end_date,
         "data_date": data_date,
+        "data_provider": str(data_provider).strip().lower(),
     }
     return _compute_hash(payload)
 
@@ -96,6 +98,7 @@ def compute_monthly_cache_key(
     asset_metadata_fingerprint: str,
     extra_tickers: list[str] | None = None,
     returns_frequency: str = "monthly",
+    data_provider: str = "yfinance",
 ) -> str:
     """
     Compute cache key for monthly data.
@@ -123,6 +126,7 @@ def compute_monthly_cache_key(
         "data_month": data_month,
         "asset_metadata_fingerprint": str(asset_metadata_fingerprint),
         "returns_frequency": str(returns_frequency).strip().lower(),
+        "data_provider": str(data_provider).strip().lower(),
     }
     return _compute_hash(payload)
 

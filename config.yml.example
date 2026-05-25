@@ -168,6 +168,7 @@ windows_months: [36, 60, 120]
 # Main return panel is always monthly per metrics_specification.md (default: monthly).
 # Non-monthly values are retained for disclosure only and do not change main metrics/optimizer panels.
 returns_frequency: monthly  # monthly | weekly | daily
+market_data_provider: yfinance  # yfinance | ibkr | ibkr_yfinance_fallback
 coverage_threshold: 0.9
 output_dir: results_csv
 output_dir_final: "Main portfolio"

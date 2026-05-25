@@ -94,3 +94,4 @@ output_dir_final: "Main portfolio"
 # Return panel cadence for metrics, optimizer covariance/μ, correlation, RC_vol, NaN-safe backtest.
 # Omit to use implicit default monthly. See config.yml.example Section 6 for full analysis block.
 returns_frequency: monthly  # monthly | weekly | daily (non-monthly is disclosure-only; main metrics stay monthly)
+market_data_provider: ibkr_yfinance_fallback  # yfinance | ibkr | ibkr_yfinance_fallback

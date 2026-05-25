@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from src import data_loader
-from src.cache import compute_asset_metadata_fingerprint, compute_monthly_cache_key
+from src.cache import compute_asset_metadata_fingerprint, compute_daily_cache_key, compute_monthly_cache_key
 
 
 def _cached_monthly_data() -> dict:
@@ -57,6 +57,32 @@ def test_monthly_cache_key_changes_when_asset_currency_metadata_changes() -> Non
     assert usd_key != eur_key
 
 
+def test_cache_keys_change_when_market_data_provider_changes() -> None:
+    daily_yf = compute_daily_cache_key(["SPY"], "2026-01-01", "2026-05-22", "2026-05-22")
+    daily_ibkr = compute_daily_cache_key(
+        ["SPY"],
+        "2026-01-01",
+        "2026-05-22",
+        "2026-05-22",
+        data_provider="ibkr_yfinance_fallback",
+    )
+    monthly_args = {
+        "tickers": ["SPY"],
+        "investor_currency": "USD",
+        "benchmark": "SPY",
+        "cash_proxy": "BIL",
+        "rf_source": "FRED:DTB3",
+        "windows_months": [36],
+        "data_month": "2026-04",
+        "asset_metadata_fingerprint": compute_asset_metadata_fingerprint({"SPY": "USD", "BIL": "USD"}),
+    }
+    monthly_yf = compute_monthly_cache_key(**monthly_args)
+    monthly_ibkr = compute_monthly_cache_key(**monthly_args, data_provider="ibkr_yfinance_fallback")
+
+    assert daily_yf != daily_ibkr
+    assert monthly_yf != monthly_ibkr
+
+
 def test_load_monthly_data_shared_threads_asset_metadata_fingerprint(monkeypatch, tmp_path) -> None:
     captured: dict = {}
 
@@ -77,6 +103,7 @@ def test_load_monthly_data_shared_threads_asset_metadata_fingerprint(monkeypatch
         investor_currency="USD",
         windows_months=[36],
         assets_meta={"ABC": {"currency": "EUR"}},
+        data_provider="ibkr_yfinance_fallback",
     )
 
     expected_fingerprint = compute_asset_metadata_fingerprint(
@@ -87,4 +114,5 @@ def test_load_monthly_data_shared_threads_asset_metadata_fingerprint(monkeypatch
         }
     )
     assert captured["asset_metadata_fingerprint"] == expected_fingerprint
+    assert captured["data_provider"] == "ibkr_yfinance_fallback"
     assert result.monthly_cache_key == "captured-monthly-key"

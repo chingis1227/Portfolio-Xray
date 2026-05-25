@@ -73,6 +73,7 @@ class PortfolioConfig:
     output_dir: str  # CSV only (e.g. results_csv)
     output_dir_final: str  # Weights, JSON, report (e.g. Main portfolio)
     returns_frequency: str = "monthly"  # monthly | weekly | daily (disclosure only when not monthly; main metrics stay monthly)
+    market_data_provider: str = "yfinance"  # yfinance | ibkr | ibkr_yfinance_fallback
     # Backtest mode: "dynamic_nan_safe" (default, policy-compliant) | "simple" (opt-in, simplified NaN handling)
     backtest_mode: str = "dynamic_nan_safe"
 
@@ -172,6 +173,7 @@ class PortfolioConfig:
             "robust_scenario_optimization": dict(self.robust_scenario_optimization or {}),
             "windows_months": self.windows_months,
             "returns_frequency": self.returns_frequency,
+            "market_data_provider": self.market_data_provider,
             "coverage_threshold": self.coverage_threshold,
             "output_dir": self.output_dir,
             "output_dir_final": self.output_dir_final,
@@ -431,6 +433,11 @@ def _inject_optional_defaults(cfg: dict[str, Any]) -> None:
         cfg["returns_frequency"] = "monthly"
     else:
         cfg["returns_frequency"] = str(raw_rf).strip().lower()
+    raw_provider = cfg.get("market_data_provider")
+    if raw_provider is None:
+        cfg["market_data_provider"] = "yfinance"
+    else:
+        cfg["market_data_provider"] = str(raw_provider).strip().lower().replace("-", "_")
     # Robust Mean–Variance baseline defaults (λ omitted unless explicitly present in YAML)
     if not cfg.get("robust_mv_covariance_method"):
         cfg["robust_mv_covariance_method"] = "ledoit_wolf"
@@ -1042,6 +1049,16 @@ def _validate_returns_frequency(cfg: dict[str, Any]) -> None:
         )
 
 
+def _validate_market_data_provider(cfg: dict[str, Any]) -> None:
+    raw = cfg.get("market_data_provider", "yfinance")
+    try:
+        from src.data_provider import normalize_market_data_provider
+
+        cfg["market_data_provider"] = normalize_market_data_provider(str(raw))
+    except ValueError as exc:
+        raise ConfigValidationError(str(exc)) from exc
+
+
 def _validate_portfolio_value(cfg: dict[str, Any]) -> None:
     """Validate portfolio_value optional, non-negative when set."""
     val = cfg.get("portfolio_value")
@@ -1132,6 +1149,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
     _validate_optimization_soft_penalty_lambdas(cfg)
     _validate_backtest_mode(cfg)
     _validate_returns_frequency(cfg)
+    _validate_market_data_provider(cfg)
     _validate_robust_mv_params(cfg)
     _validate_risk_budgeting(cfg)
     _validate_robust_scenario_optimization(cfg)
@@ -1202,6 +1220,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
         liquidity_floor_pct=_parse_float_optional(cfg.get("liquidity_floor_pct")),
         windows_months=list(cfg["windows_months"]),
         returns_frequency=str(cfg.get("returns_frequency", "monthly")).strip().lower(),
+        market_data_provider=str(cfg.get("market_data_provider", "yfinance")).strip().lower(),
         coverage_threshold=cfg.get("coverage_threshold", 0.90),
         output_dir=cfg["output_dir"],
         output_dir_final=cfg.get("output_dir_final", DEFAULT_OUTPUT_DIR_FINAL),

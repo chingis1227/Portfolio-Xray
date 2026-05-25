@@ -30,7 +30,8 @@ from src.cache import (
 from src.config import get_asset_currency, resolve_cash_and_rf
 from src.data_ecb import fetch_estr
 from src.data_fred import fetch_fred_series
-from src.data_yf import download_all, infer_currency_from_ticker
+from src.data_provider import download_all_prices, normalize_market_data_provider
+from src.data_yf import infer_currency_from_ticker
 from src.fx import convert_prices_to_investor_currency
 from src.returns_frequency import (
     ReturnsFrequency,
@@ -73,6 +74,7 @@ def load_monthly_data_shared(
     no_cache: bool = False,
     local_benchmark_map: dict[str, str] | None = None,
     returns_frequency: str | None = None,
+    data_provider: str | None = None,
 ) -> MonthlyDataResult:
     """
     Load or build prices/returns, rf, benchmark, cash at the main-metrics cadence (monthly).
@@ -85,6 +87,7 @@ def load_monthly_data_shared(
     """
     freq_res = resolve_returns_frequencies(returns_frequency)
     rf_mode = freq_res.main_metrics
+    resolved_data_provider = normalize_market_data_provider(data_provider)
     if freq_res.forced_to_monthly:
         logger.warning(main_metrics_frequency_override_note(freq_res))
     local_bench_tickers = list(local_benchmark_map.values()) if local_benchmark_map else []
@@ -108,6 +111,7 @@ def load_monthly_data_shared(
         start_date=start_str,
         end_date=end_str,
         data_date=current_date,
+        data_provider=resolved_data_provider,
     )
     daily_cache_path = get_daily_cache_path(daily_cache_key)
     monthly_cache_key = compute_monthly_cache_key(
@@ -121,6 +125,7 @@ def load_monthly_data_shared(
         asset_metadata_fingerprint=asset_metadata_fingerprint,
         extra_tickers=local_bench_tickers if local_bench_tickers else None,
         returns_frequency=rf_mode,
+        data_provider=resolved_data_provider,
     )
     monthly_cache_path = get_monthly_cache_path(monthly_cache_key)
 
@@ -154,8 +159,15 @@ def load_monthly_data_shared(
             daily = load_daily_prices(daily_cache_path)
 
         if daily is None:
-            logger.info("Loading data from Yahoo Finance...")
-            daily_raw = download_all(all_tickers, start_str, end_str, currency_by_ticker)
+            logger.info("Loading data via market data provider: %s", resolved_data_provider)
+            provider_result = download_all_prices(
+                all_tickers,
+                start_str,
+                end_str,
+                currency_by_ticker,
+                provider=resolved_data_provider,
+            )
+            daily_raw = provider_result.prices
             daily = {t: df for t, df in daily_raw.items() if not df.empty and "Close" in df.columns}
             save_cache_meta(
                 daily_cache_path,
@@ -164,6 +176,8 @@ def load_monthly_data_shared(
                     "start": start_str,
                     "end": end_str,
                     "data_date": current_date,
+                    "data_provider": resolved_data_provider,
+                    "provider_by_ticker": provider_result.provider_by_ticker,
                 },
             )
             save_daily_prices(daily_cache_path, daily)
@@ -228,6 +242,7 @@ def load_monthly_data_shared(
                 "asset_metadata_fingerprint": asset_metadata_fingerprint,
                 "asset_currency_by_ticker": currency_by_ticker,
                 "returns_frequency": rf_mode,
+                "data_provider": resolved_data_provider,
             },
         )
         save_monthly_data(
@@ -274,6 +289,7 @@ def load_daily_asset_returns_shared(
     analysis_end: pd.Timestamp,
     no_cache: bool = False,
     local_benchmark_map: dict[str, str] | None = None,
+    data_provider: str | None = None,
 ) -> tuple[pd.DataFrame, pd.Series]:
     """
     Daily simple returns in investor currency for portfolio tickers and cash proxy.
@@ -282,6 +298,7 @@ def load_daily_asset_returns_shared(
     ``analysis_end`` for analysis-effective tail-risk panels.
     """
     local_bench_tickers = list(local_benchmark_map.values()) if local_benchmark_map else []
+    resolved_data_provider = normalize_market_data_provider(data_provider)
     all_tickers = list(
         dict.fromkeys(list(tickers) + [benchmark_base_ticker, cash_proxy_ticker] + local_bench_tickers)
     )
@@ -302,8 +319,15 @@ def load_daily_asset_returns_shared(
         daily = load_daily_prices(daily_cache_path)
 
     if daily is None:
-        logger.info("Loading daily prices for tail-risk panel from Yahoo Finance...")
-        daily_raw = download_all(all_tickers, start_str, end_str, currency_by_ticker)
+        logger.info("Loading daily prices for tail-risk panel via market data provider: %s", resolved_data_provider)
+        provider_result = download_all_prices(
+            all_tickers,
+            start_str,
+            end_str,
+            currency_by_ticker,
+            provider=resolved_data_provider,
+        )
+        daily_raw = provider_result.prices
         daily = {t: df for t, df in daily_raw.items() if not df.empty and "Close" in df.columns}
         save_cache_meta(
             daily_cache_path,
@@ -312,6 +336,8 @@ def load_daily_asset_returns_shared(
                 "start": start_str,
                 "end": end_str,
                 "data_date": get_current_date(),
+                "data_provider": resolved_data_provider,
+                "provider_by_ticker": provider_result.provider_by_ticker,
             },
         )
         save_daily_prices(daily_cache_path, daily)
