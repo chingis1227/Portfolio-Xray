@@ -400,7 +400,7 @@ Term heading
 - Definition: Target product state where the current portfolio has been diagnosed, but no candidate has been generated yet.
 - Area: product
 - Canonical source: [SPEC.md](SPEC.md), [PRODUCT.md](PRODUCT.md)
-- Notes: Target/TBD unless an owning spec and implementation verify it.
+- Notes: Target/TBD as a formal UX/workflow state unless an owning spec and implementation verify it. Existing diagnostics may support this state as evidence, but the product state itself must not be claimed as implemented without verification.
 
 ### Problem Classification
 
@@ -411,24 +411,45 @@ Term heading
 
 ### Candidate Launchpad
 
-- Definition: Target product layer that presents suggested improvement paths or benchmark tests as entry points for candidate generation.
+- Definition: Target product layer that presents reasonable paths to test or benchmark checks as entry points for candidate generation.
 - Area: product
 - Canonical source: [SPEC.md](SPEC.md), [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md)
-- Notes: Launchpad cards are target UX concepts, not generated candidate portfolios unless implemented by an owning spec/code path.
+- Notes: Launchpad cards are target UX concepts, not generated candidate portfolios and not investment recommendations unless implemented by an owning spec/code path. Existing candidate factory capabilities remain backend implementation capabilities.
 
 ### Portfolio Alternatives Builder
 
 - Definition: Target product layer for user-triggered generation of a selected candidate portfolio from a goal, method, constraints, and parameters.
 - Area: product
 - Canonical source: [SPEC.md](SPEC.md), [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md)
-- Notes: Existing candidate builders and factory remain current backend capabilities; the user-triggered builder UX is Target/TBD unless verified.
+- Notes: Existing candidate builders and factory remain current backend capabilities; the user-triggered builder UX is Target/TBD unless verified. Candidate portfolios are investment hypotheses to compare against the current portfolio, not automatic recommendations.
+
+### Current vs Candidate Comparison
+
+- Definition: Product-facing comparison mode that evaluates the current portfolio against one selected candidate hypothesis.
+- Area: product
+- Canonical source: [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md), [SPEC.md](SPEC.md)
+- Notes: Target MVP comparison language. Current implementation may produce broader candidate comparison artifacts; do not rename `candidate_comparison.json` or existing comparison contracts without a migration plan.
+
+### Reasonable paths to test
+
+- Definition: Decision-support wording for a small set of candidate directions or benchmark checks that are worth testing against the current portfolio evidence.
+- Area: product
+- Canonical source: [PRODUCT.md](PRODUCT.md), [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md)
+- Notes: Use instead of recommendation-like language such as automatic suggestions or best-portfolio claims. A reasonable path to test is an investment hypothesis, not trade advice.
+
+### Advanced / Later Product Backlog
+
+- Definition: Product concepts that may be useful but are not part of Core MVP UX unless separately specified, implemented, tested, documented, and approved.
+- Area: product
+- Canonical source: [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md), [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md)
+- Notes: A feature may be implemented as backend or generated evidence and still be Advanced / Later for product UX. Do not delete or demote verified implementation capabilities solely because they are outside Core MVP.
 
 ### Decision Verdict
 
 - Definition: Target product language for the final action/no-action conclusion, such as keep current portfolio, rebalance, partial rebalance, test another candidate, no material rebalance, or evidence insufficient.
 - Area: product
 - Canonical source: [SPEC.md](SPEC.md), [PRODUCT.md](PRODUCT.md)
-- Notes: Current implemented contract remains Selection Engine / No-Trade until specs are changed; do not rename schemas or fields without a migration plan.
+- Notes: Current implemented contract remains Selection Engine / No-Trade until specs are changed; do not rename schemas, output files, public fields, or technical contracts without a migration plan. Product-facing docs may map Selection/No-Trade evidence to Decision Verdict language.
 
 ### AI Commentary
 

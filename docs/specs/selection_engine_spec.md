@@ -6,6 +6,8 @@ It does not own metric formulas, stress scenario definitions, candidate construc
 
 Implementation: [src/selection_engine.py](../../src/selection_engine.py) (`selection_decision_v1`). This document is the contract.
 
+Product terminology boundary: product-facing docs may refer to this decision layer as `Decision Verdict`, but this spec continues to own the current `Selection Engine`, `selection_decision.json`, and No-Trade technical contracts until a separate migration changes them.
+
 ## Scope
 
 The Selection Engine:

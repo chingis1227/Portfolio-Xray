@@ -6,6 +6,8 @@ It does not own metric formulas, optimizer mathematics, stress scenarios, compar
 
 Implementation: **`run_candidate_factory.py`** and **`src/candidate_factory.py`** (post-audit Session 11, 2026-05-17). This spec is the contract.
 
+Product terminology boundary: the factory is a current backend orchestration capability for building candidate evidence. Product-facing `Candidate Launchpad` or `Portfolio Alternatives Builder` UX must not be inferred from this spec unless separately specified and implemented.
+
 **Active runtime refactor (orchestration only, no formula changes):**
 [Candidate Factory Runtime Refactor Plan](../exec_plans/2026-05-22_candidate_factory_runtime_refactor_plan.md)
 — phased weights / lightweight report / PDF modes. **Session 1 (shipped):** factory default

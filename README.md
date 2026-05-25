@@ -1,8 +1,8 @@
-# Portfolio X-Ray & Optimization Terminal
+# Portfolio MRI / Portfolio X-Ray
 
-Portfolio X-Ray & Optimization Terminal, also described as Portfolio MRI, is a Python portfolio research, optimization, diagnostics, and reporting system.
+Portfolio MRI / Portfolio X-Ray is a Python portfolio diagnostics and investment decision-support system. The current implementation remains CLI/file-driven and report-oriented, with optimization and candidate builders available as supporting research infrastructure.
 
-Its purpose is decision support, not black-box allocation. The system helps a user understand portfolio exposures, hidden risks, stress behavior, candidate allocations, robustness trade-offs, and generated report artifacts.
+Its purpose is diagnosis before action, not black-box allocation. The system helps a user understand the current portfolio first: exposures, hidden risks, stress behavior, candidate allocation hypotheses, robustness trade-offs, and generated report artifacts.
 
 Product concept documents describe target direction only. Current behavior is governed by [SPEC.md](SPEC.md), [RULES.md](RULES.md), [DATA.md](DATA.md), [OUTPUTS.md](OUTPUTS.md), and detailed specs under [docs/specs/](docs/specs/README.md). Documentation migration records and archived legacy copies are retained for traceability; active behavior remains governed by the canonical specs and code.
 
@@ -49,7 +49,7 @@ Implemented today:
 - Stress diagnostics, stress commentary, factor diagnostics, macro/regime diagnostics, PCA, scenario libraries, and robustness diagnostics.
 - Benchmark/candidate portfolios including Equal Weight, Risk Parity, HRP, Minimum Variance, Maximum Diversification, Minimum CVaR, Robust Mean-Variance, and Scenario-Based Robust Optimization.
 - Candidate Portfolio Factory orchestration through `run_candidate_factory.py`.
-- Canonical candidate comparison and V1 decision artifacts through `run_compare_variants.py`: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, trade-off/model-risk diagnostics, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Action Plan, current-vs-policy status, Monitoring / What Changed, generated Decision Journal, and decision package summary.
+- Canonical candidate comparison and current generated V1 decision artifacts through `run_compare_variants.py`: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, trade-off/model-risk diagnostics, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Action Plan, current-vs-policy status, Monitoring / What Changed, generated Decision Journal, and decision package summary. These are implementation artifacts and backend/advanced evidence where applicable, not a statement that every artifact is Core MVP product UI.
 - JSON generated artifacts by default; CSV, HTML, TXT, PNG, and PDF-style artifacts remain explicit export/report outputs.
 - ETF and stock taxonomy validation as annotation/diagnostic layers.
 - Partial utility UIs: `config_ui/` (local config editor) and `results_dashboard/` (read-only results viewer). These are supported utility surfaces, not the full product workspace.
@@ -101,8 +101,7 @@ default path. Inspect subject diagnostics before interpreting candidate or decis
 
 ### Blocks 1-5 MVP core (first five product blocks)
 
-Blocks 1-5 are the practical MVP core: Input and Assumptions, Portfolio X-Ray, Stress Lab,
-Candidate Factory, and Optimization Engine (optimizer-backed candidates for comparison only). The
+Blocks 1-5 are the practical implementation core for the current file-first workflow: Input and Assumptions, Portfolio X-Ray, Stress Lab, Candidate Factory, and Optimization Engine. Optimizer-backed candidates are supporting hypotheses for comparison, not black-box recommendations. The
 active reliability plan is
 [Blocks 1-5 MVP Core Reliability Plan](docs/exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md).
 

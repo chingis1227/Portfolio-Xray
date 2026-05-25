@@ -168,6 +168,12 @@ Classification, Candidate Launchpad, Portfolio Alternatives Builder, Decision Ve
 AI Commentary, do not create new artifact contracts until an owning spec and implementation define
 their concrete files, schemas, and output policy.
 
+Output terminology boundary: product-facing `Decision Verdict` language may map to current generated
+Selection/No-Trade evidence, but it does not rename `selection_decision.json`, Selection Engine
+contracts, No-Trade artifacts, or any existing output fields. Advanced/backend generated artifacts
+such as robustness scorecard, Portfolio Health Score, Selection/No-Trade, action, monitoring, and
+journal outputs may remain current implementation outputs without becoming Core MVP product UI.
+
 ## Output Formats
 
 | Format | Used for | Rules |

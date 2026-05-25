@@ -2,6 +2,8 @@
 
 This document owns the **Robustness Scorecard** contract: a transparent, diagnostic-only resilience score for each portfolio candidate in a comparison run.
 
+Product exposure boundary: this is a current generated diagnostic/backend artifact. It must not be treated as the primary Core MVP product output or as an automatic recommendation unless a separate product/spec migration explicitly promotes that exposure.
+
 It does not own metric formulas, stress scenario definitions, candidate construction, or selection logic. Those remain in [metrics_specification.md](metrics_specification.md), [stress_testing_spec.md](stress_testing_spec.md), [candidate_comparison_spec.md](candidate_comparison_spec.md), and [selection_engine_spec.md](selection_engine_spec.md).
 
 ## Scope

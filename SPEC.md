@@ -14,6 +14,8 @@ Product concept documents can describe target direction. They do not change form
 
 The documentation migration replaced the active business, product, diagnostic concept, and architecture docs while archiving their prior versions under `docs/archive/documentation_migration_2026_05_25/`. Product and architecture docs still do not override this implementation contract; target modules remain non-binding until promoted into owning specs and code.
 
+Terminology boundary: product-facing documents may describe the target decision layer as `Decision Verdict`, but the current technical contracts remain `Selection Engine`, `selection_decision.json`, and No-Trade artifacts until a separate schema/output migration is specified and implemented. This file must preserve current implementation truth and must not rename contracts to match product language.
+
 ## Implementation Scope
 
 The current implementation is a report-first, CLI/file-driven portfolio analytics system.

@@ -2,6 +2,8 @@
 
 This directory contains the detailed source-of-truth documents for module-specific behavior.
 
+These specs describe current implementation contracts. Product-facing Portfolio MRI language in `PRODUCT.md` or `ARCHITECTURE.md` may map these contracts into target UX concepts, but it does not rename schemas, output files, formulas, fields, statuses, or generated artifact contracts.
+
 Top-level documents stay compact:
 
 - [../../RULES.md](../../RULES.md) maps project principles and source-of-truth ownership.

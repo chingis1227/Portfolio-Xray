@@ -11,9 +11,9 @@ Update this file only when agent-specific operating instructions, source-of-trut
 
 ## Project Summary
 
-Portfolio X-Ray & Optimization Terminal / Portfolio MRI is a Python portfolio decision-support and reporting system. It diagnoses portfolio exposures, hidden risks, stress behavior, candidate allocations, robustness checks, decision artifacts, and report outputs.
+Portfolio MRI / Portfolio X-Ray is a Python portfolio diagnostics and investment decision-support system. It is diagnosis-first and current-portfolio-first: it helps inspect exposures, hidden risks, stress behavior, candidate allocation hypotheses, robustness checks, decision artifacts, and report outputs. It is not a black-box optimizer; optimization and candidate builders are supporting implementation capabilities.
 
-The current implementation is report-first and CLI/file-driven. V1 decision artifacts are implemented as generated files: candidate comparison, robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, Action Plan, Monitoring / What Changed, and generated Decision Journal. Full UI, saved analysis workspaces, richer report/PDF decision packaging, and advanced product workflows remain future scope until separately specified and implemented.
+The current implementation is report-first and CLI/file-driven. V1 decision artifacts are implemented as generated files: candidate comparison, robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, Action Plan, Monitoring / What Changed, and generated Decision Journal. These are current generated artifacts and backend/advanced evidence where applicable, not a claim that every artifact is Core MVP product UI. Full UI, saved analysis workspaces, richer report/PDF decision packaging, and advanced product workflows remain future scope until separately specified and implemented.
 
 Main portfolio-first flow:
 
