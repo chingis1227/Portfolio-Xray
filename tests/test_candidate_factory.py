@@ -14,6 +14,8 @@ from src.candidate_factory import (
     SCHEMA_VERSION,
     FactoryValidationError,
     build_factory_run_txt,
+    candidate_factory_product_boundary,
+    candidate_factory_profile_classification,
     compute_factory_run_checksum,
     compute_next_recommended_command,
     factory_exit_code,
@@ -70,6 +72,34 @@ def test_core_fast_profile_matches_core_v1_candidate_order() -> None:
     )
     assert core_fast == core_v1
     assert core_fast == list(CORE_V1_CANDIDATE_ORDER)
+
+
+def test_candidate_factory_product_boundary_is_not_default_ux() -> None:
+    boundary = candidate_factory_product_boundary()
+    assert boundary["runtime_surface"] == "backend_advanced_research"
+    assert boundary["default_product_ux"] is False
+    assert boundary["preserve_batch_factory"] is True
+    assert boundary["product_front_door"] == "run_portfolio_review.py"
+    assert boundary["one_candidate_product_wrapper"] == "src.portfolio_alternatives_builder"
+
+
+def test_candidate_factory_profile_product_classification() -> None:
+    assert (
+        candidate_factory_profile_classification(CORE_FAST_PROFILE_ID)
+        == "backend_routine_core_batch"
+    )
+    assert (
+        candidate_factory_profile_classification("default_v1")
+        == "advanced_research_full_batch"
+    )
+    assert (
+        candidate_factory_profile_classification("robust_suite")
+        == "advanced_research_subset_batch"
+    )
+    assert (
+        candidate_factory_profile_classification("custom_profile")
+        == "advanced_research_custom_batch"
+    )
 
 
 def test_review_mode_for_factory_profile_core_and_legacy() -> None:

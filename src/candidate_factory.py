@@ -123,6 +123,24 @@ CORE_FAST_PROFILE_ID = "core_fast"
 
 PRODUCT_MENU_PROFILE_ID = "default_v1"
 CORE_V1_PROFILE_ID = "core_v1"
+CANDIDATE_FACTORY_PRODUCT_BOUNDARY = {
+    "runtime_surface": "backend_advanced_research",
+    "default_product_ux": False,
+    "preserve_batch_factory": True,
+    "product_front_door": "run_portfolio_review.py",
+    "one_candidate_product_wrapper": "src.portfolio_alternatives_builder",
+}
+
+FACTORY_PROFILE_PRODUCT_CLASSIFICATION: dict[str, str] = {
+    CORE_FAST_PROFILE_ID: "backend_routine_core_batch",
+    CORE_V1_PROFILE_ID: "backend_legacy_core_batch",
+    "default_v1": "advanced_research_full_batch",
+    "explicit_list": "advanced_research_explicit_batch",
+    "core_benchmarks": "advanced_research_subset_batch",
+    "risk_budgets": "advanced_research_subset_batch",
+    "classic_optimizers": "advanced_research_subset_batch",
+    "robust_suite": "advanced_research_subset_batch",
+}
 
 REVIEW_MODE_PROFILES: dict[str, str] = {
     "core": CORE_FAST_PROFILE_ID,
@@ -144,6 +162,23 @@ def review_mode_for_factory_profile(profile_id: str) -> str | None:
         if mapped == pid:
             return mode
     return REVIEW_MODE_LEGACY_FACTORY_PROFILES.get(pid)
+
+
+def candidate_factory_product_boundary() -> dict[str, Any]:
+    """Return the product boundary for the batch candidate factory.
+
+    This is static metadata for tests/docs. It is not written to generated JSON
+    contracts and does not affect candidate execution.
+    """
+
+    return dict(CANDIDATE_FACTORY_PRODUCT_BOUNDARY)
+
+
+def candidate_factory_profile_classification(profile_id: str) -> str:
+    """Classify a factory profile for product-surface routing."""
+
+    pid = str(profile_id or "").strip()
+    return FACTORY_PROFILE_PRODUCT_CLASSIFICATION.get(pid, "advanced_research_custom_batch")
 
 CANDIDATE_ENTRY_SCRIPTS: dict[str, list[str]] = {
     "equal_weight": ["run_equal_weight.py"],

@@ -166,6 +166,8 @@ from src.returns_frequency import (
     resolve_returns_frequencies,
 )
 from src.portfolio_commentary import write_portfolio_commentary, write_stress_commentary
+from src.candidate_launchpad import write_candidate_launchpad_outputs
+from src.problem_classification import write_problem_classification_outputs
 from src.regime_factor_analytics import (
     regime_factor_analytics,
     regime_factor_analytics_csv_frames,
@@ -2318,7 +2320,30 @@ def run_portfolio_report_for_weights(
         {"timestamp": run_timestamp, "snapshots": snapshot_index_entries},
         output_dir_final / "snapshot_index.json",
     )
-    _xray_summary_from_output_dir(output_dir_final)
+    xray_summary = _xray_summary_from_output_dir(output_dir_final)
+    problem_classification_doc = None
+    try:
+        problem_classification_path = write_problem_classification_outputs(
+            output_dir=output_dir_final,
+            portfolio_xray=xray_summary,
+            stress_report=stress_report,
+            analysis_end=analysis_end_str,
+        )
+        try:
+            with open(problem_classification_path, encoding="utf-8") as f:
+                problem_classification_doc = json.load(f)
+        except Exception:
+            problem_classification_doc = None
+    except Exception as e:
+        logger.warning("problem_classification.json generation failed: %s", e)
+    try:
+        write_candidate_launchpad_outputs(
+            output_dir=output_dir_final,
+            problem_classification=problem_classification_doc,
+            analysis_end=analysis_end_str,
+        )
+    except Exception as e:
+        logger.warning("candidate_launchpad.json generation failed: %s", e)
     report_timing.end_block("snapshots")
 
     if output_policy.write_txt or output_policy.write_html:
@@ -2373,6 +2398,8 @@ def run_portfolio_report_for_weights(
             "run_metadata": output_dir_final / "run_metadata.json",
             "data_policy": output_dir_final / "data_policy.json",
             "portfolio_xray": output_dir_final / "portfolio_xray.json",
+            "problem_classification": output_dir_final / "problem_classification.json",
+            "candidate_launchpad": output_dir_final / "candidate_launchpad.json",
             "stress_report": output_dir_final / "stress_report.json",
             "snapshot_10y": output_dir_final / "snapshot_10y.json",
             "snapshot_index": output_dir_final / "snapshot_index.json",

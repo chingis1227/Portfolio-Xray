@@ -15,6 +15,11 @@ from src.portfolio_review_workflow import (
     resolve_review_candidate_profile,
     run_portfolio_review_plan,
 )
+from src.workflow_state import (
+    WORKFLOW_STATE_DIAGNOSIS_ONLY,
+    WORKFLOW_STATE_MULTIPLE_CANDIDATES,
+    WORKFLOW_STATE_ONE_CANDIDATE,
+)
 
 
 def _cfg(**overrides) -> PortfolioConfig:
@@ -75,6 +80,9 @@ def test_default_plan_uses_core_fast_factory_profile(tmp_path: Path) -> None:
     assert "--execution-mode" in factory_argv
     assert "standard" in factory_argv
     assert "--no-parallel-lightweight-reports" not in factory_argv
+    assert plan.workflow_state.state == WORKFLOW_STATE_MULTIPLE_CANDIDATES
+    assert plan.workflow_state.candidate_count == 6
+    assert plan.workflow_state.source == "factory_profile"
 
 
 def test_core_mode_plan_uses_core_v1_when_profile_overridden(tmp_path: Path) -> None:
@@ -111,6 +119,8 @@ def test_full_mode_plan_uses_default_v1_profile(tmp_path: Path) -> None:
     assert "default_v1" in factory_argv
     idx = factory_argv.index("--execution-mode")
     assert factory_argv[idx + 1] == "standard"
+    assert plan.workflow_state.state == WORKFLOW_STATE_MULTIPLE_CANDIDATES
+    assert plan.workflow_state.candidate_count == 16
 
 
 def test_full_mode_legacy_factory_execution_override(tmp_path: Path) -> None:
@@ -168,6 +178,8 @@ def test_skip_candidates_compares_existing_artifacts(tmp_path: Path) -> None:
     assert "run_compare_variants.py" in " ".join(plan.steps[1].argv)
     assert "run_candidate_factory.py" not in _argv_text(plan)
     assert "run_optimization.py" not in _argv_text(plan)
+    assert plan.workflow_state.state == WORKFLOW_STATE_DIAGNOSIS_ONLY
+    assert plan.workflow_state.source == "skip_candidates"
 
 
 def test_candidate_options_are_forwarded_without_policy_step(tmp_path: Path) -> None:
@@ -192,6 +204,22 @@ def test_candidate_options_are_forwarded_without_policy_step(tmp_path: Path) -> 
     assert "--fail-fast" in argv
     assert "--then-compare" not in argv
     assert "run_optimization.py" not in _argv_text(plan)
+    assert plan.workflow_state.state == WORKFLOW_STATE_MULTIPLE_CANDIDATES
+    assert plan.workflow_state.candidate_count == 2
+    assert plan.workflow_state.comparison_expected is False
+
+
+def test_single_candidate_plan_records_one_candidate_state(tmp_path: Path) -> None:
+    plan = build_portfolio_review_plan(
+        _cfg(),
+        project_root=tmp_path,
+        candidate_ids="equal_weight",
+        skip_pdf=True,
+    )
+
+    assert plan.workflow_state.state == WORKFLOW_STATE_ONE_CANDIDATE
+    assert plan.workflow_state.candidate_count == 1
+    assert plan.workflow_state.candidate_ids == ("equal_weight",)
 
 
 def test_full_mode_resume_candidates_forwards_factory_resume(tmp_path: Path) -> None:

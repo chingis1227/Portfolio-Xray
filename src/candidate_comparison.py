@@ -1598,12 +1598,9 @@ def build_candidate_menu(
 
     resolved_review_mode = review_mode
     if not resolved_review_mode:
-        from src.candidate_factory import REVIEW_MODE_PROFILES
+        from src.candidate_factory import review_mode_for_factory_profile
 
-        for mode, profile in REVIEW_MODE_PROFILES.items():
-            if profile == run_profile:
-                resolved_review_mode = mode
-                break
+        resolved_review_mode = review_mode_for_factory_profile(str(run_profile))
 
     refresh_core = "python run_portfolio_review.py --mode core"
     refresh_full = "python run_portfolio_review.py --mode full --no-skip-existing"
@@ -1727,12 +1724,9 @@ def build_candidate_comparison(
     review_mode: str | None = None
     if factory_run:
         profile = str(factory_run.get("factory_profile_id") or "")
-        from src.candidate_factory import REVIEW_MODE_PROFILES
+        from src.candidate_factory import review_mode_for_factory_profile
 
-        for mode, mapped in REVIEW_MODE_PROFILES.items():
-            if mapped == profile:
-                review_mode = mode
-                break
+        review_mode = review_mode_for_factory_profile(profile)
 
     candidate_menu = build_candidate_menu(
         candidates,
@@ -2065,6 +2059,16 @@ def write_candidate_comparison_outputs(
     if sel_json and sel_json.is_file():
         selection_doc = _load_json(sel_json)
 
+    from src.current_vs_candidate import write_current_vs_candidate_outputs
+
+    paths.update(
+        write_current_vs_candidate_outputs(
+            output_dir=out_dir,
+            comparison=comparison,
+            selection=selection_doc,
+        )
+    )
+
     from src.tradeoff_and_model_risk import write_tradeoff_and_model_risk_outputs
 
     paths.update(
@@ -2151,10 +2155,40 @@ def write_candidate_comparison_outputs(
             write_txt=write_txt,
         )
     )
+    action_doc = _load_json(paths.get("action_plan_json") or out_dir / "action_plan.json")
+    current_vs_candidate_doc = _load_json(
+        paths.get("current_vs_candidate_json") or out_dir / "current_vs_candidate.json"
+    )
+
+    from src.decision_verdict import write_decision_verdict_outputs
+
+    paths.update(
+        write_decision_verdict_outputs(
+            output_dir=out_dir,
+            selection=selection_doc,
+            current_vs_candidate=current_vs_candidate_doc,
+            action=action_doc,
+        )
+    )
+    decision_verdict_doc = _load_json(
+        paths.get("decision_verdict_json") or out_dir / "decision_verdict.json"
+    )
+
+    from src.ai_commentary_context import write_ai_commentary_context_outputs
+
+    paths.update(
+        write_ai_commentary_context_outputs(
+            output_dir=out_dir,
+            comparison=comparison,
+            current_vs_candidate=current_vs_candidate_doc,
+            selection=selection_doc,
+            decision_verdict=decision_verdict_doc,
+            action=action_doc,
+        )
+    )
 
     from src.monitoring import write_monitoring_outputs
 
-    action_doc = _load_json(paths.get("action_plan_json") or out_dir / "action_plan.json")
     paths.update(
         write_monitoring_outputs(
             cfg,
@@ -2173,6 +2207,20 @@ def write_candidate_comparison_outputs(
     monitoring_doc = _load_json(
         paths.get("monitoring_diff_json") or out_dir / "monitoring_diff.json"
     )
+    problem_classification_doc = _load_json(out_dir / "problem_classification.json")
+
+    from src.light_monitoring_summary import write_what_changed_summary_outputs
+
+    paths.update(
+        write_what_changed_summary_outputs(
+            output_dir=out_dir,
+            monitoring_diff=monitoring_doc,
+            decision_verdict=decision_verdict_doc,
+            problem_classification=problem_classification_doc,
+            current_vs_candidate=current_vs_candidate_doc,
+        )
+    )
+
     journal_paths = write_decision_journal_outputs(
         cfg,
         project_root=project_root,

@@ -18,6 +18,7 @@ from src.candidate_factory import REVIEW_MODE_PROFILES
 from src.candidate_weights import normalize_execution_mode
 from src.config_schema import PortfolioConfig
 from src.output_policy import DEFAULT_OUTPUT_PROFILE
+from src.workflow_state import WorkflowStateAssessment, resolve_workflow_state
 
 RunSubprocess = Callable[..., subprocess.CompletedProcess[Any]]
 
@@ -37,6 +38,7 @@ class PortfolioReviewStep:
 @dataclass(frozen=True)
 class PortfolioReviewPlan:
     steps: tuple[PortfolioReviewStep, ...]
+    workflow_state: WorkflowStateAssessment
 
 
 def _python(project_root: Path) -> str:
@@ -173,7 +175,14 @@ def build_portfolio_review_plan(
             label = "Rebuild portfolio-first PDFs (subject + decision package)"
         add("action", label, pdf_argv)
 
-    return PortfolioReviewPlan(steps=tuple(steps))
+    workflow_state = resolve_workflow_state(
+        candidate_ids=candidate_ids,
+        factory_profile=None if skip_candidates else factory_profile,
+        skip_candidates=skip_candidates,
+        skip_compare=skip_compare,
+    )
+
+    return PortfolioReviewPlan(steps=tuple(steps), workflow_state=workflow_state)
 
 
 def run_portfolio_review_plan(
@@ -213,6 +222,12 @@ def summarize_plan(
     lines = [
         "Portfolio review workflow: analysis_subject-first",
         f"Review mode: {review_mode}{profile_note}",
+        (
+            "Workflow state: "
+            f"{plan.workflow_state.state} "
+            f"(candidate_count={plan.workflow_state.candidate_count}, "
+            f"source={plan.workflow_state.source})"
+        ),
         "Stages: input -> " + " -> ".join(step.stage for step in plan.steps),
     ]
     for step in plan.steps:
