@@ -10,7 +10,7 @@ from typing import Any
 from src.portfolio_xray import XRAY_SECTION_KEYS
 
 LIVE_CORE_REVIEW_MODE = "core"
-LIVE_CORE_FACTORY_PROFILE = "core_v1"
+LIVE_CORE_FACTORY_PROFILE = "core_fast"
 
 _SUBJECT_REQUIRED_FILES = (
     "run_metadata.json",
