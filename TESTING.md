@@ -36,6 +36,54 @@ Use the narrowest reliable check first. Broaden only when the change touches sha
 
 `pytest.ini` limits test discovery to `tests/`, so `python -m pytest` is the repository-level test command.
 
+## Post-Architecture Alignment Checks
+
+Use this matrix for diagnosis-first / decision-support architecture work after the 2026-05-25
+alignment audit. The goal is to choose the narrowest reliable check for the changed layer without
+refreshing generated outputs unless the session explicitly targets generated artifacts.
+
+### Change-type verification
+
+| Change type | Use when | Minimum checks | Do not do by default |
+| --- | --- | --- | --- |
+| Docs-only wording / source-of-truth cleanup | Editing product, architecture, output, workflow, or spec wording without changing executable examples or schemas | Targeted `rg` searches for the old/conflicting terms; optional `python -m pytest tests/test_docs_links.py -q` when links changed | Do not run portfolio refresh commands or rewrite generated outputs |
+| AI Commentary contract wording | Locking grounding-only vs generated AI prose in active docs | `rg -n -i "generates? AI Commentary|implemented AI Commentary|LLM" README.md PRODUCT.md ARCHITECTURE.md SPEC.md OUTPUTS.md docs/DIAGNOSTIC_PRODUCT_CONCEPT.md docs/specs/ai_commentary_grounding_spec.md docs/specs/reporting_outputs_spec.md GLOSSARY.md`; confirm hits are negated, refer to grounding context, or point to `RM-ARCH-010` backlog | Do not treat `commentary.txt` presence as proof of LLM AI Commentary |
+| Command matrix / CLI documentation | Editing documented commands, profiles, or examples | Targeted `rg` over owning docs; add the focused CLI/workflow tests only if behavior claims changed: `tests/test_portfolio_review_workflow.py`, `tests/test_candidate_factory_contract.py` | Do not change CLI defaults or schemas in a docs-only session |
+| Output-contract wording | Reclassifying outputs or editing generated-vs-source policy without changing JSON fields | Targeted `rg` over `OUTPUTS.md`, `docs/specs/README.md`, and owning specs; add owning contract tests only if schema text changed | Do not regenerate `Main portfolio/` or candidate folders unless the session is a generated-output refresh |
+| Product adapter code | Changing a diagnosis-first adapter module or its JSON shape | Run the focused adapter tests listed below, plus adjacent comparison/manifest tests when the adapter reads those artifacts | Do not rename existing lower-level contracts unless a separate migration plan exists |
+| Runtime orchestration | Changing `run_portfolio_review.py`, `src/portfolio_review_workflow.py`, candidate factory invocation, or compare sequencing | `python -m pytest tests/test_portfolio_review_workflow.py tests/test_candidate_factory_contract.py tests/test_candidate_comparison_contract.py -q`; add offline E2E smoke when subject/comparison flow can regress | Do not run live networked E2E unless explicitly needed and approved |
+| Generated-output refresh | Session explicitly approves refreshing generated files | Run the approved narrow CLI command, then inspect `output_manifest.json`, product-bundle JSON presence, and `candidate_menu` scope; classify generated diffs separately | Do not mix generated-output diffs with docs/code migration commits |
+
+### Diagnosis-first adapter test map
+
+| Layer / artifact | Owning tests | Add adjacent tests when |
+| --- | --- | --- |
+| Problem Classification / `problem_classification.json` | `python -m pytest tests/test_problem_classification.py -q` | Add `tests/test_portfolio_xray.py` or stress tests if evidence extraction from X-Ray/stress changes |
+| Candidate Launchpad / `candidate_launchpad.json` | `python -m pytest tests/test_candidate_launchpad.py -q` | Add Problem Classification tests if problem-to-card mapping inputs change |
+| Portfolio Alternatives Builder / one-candidate delegation plan | `python -m pytest tests/test_portfolio_alternatives_builder.py -q` | Add candidate factory contract tests if delegated command/profile/candidate IDs change |
+| Current vs Candidate / `current_vs_candidate.json` | `python -m pytest tests/test_current_vs_candidate.py -q` | Add `tests/test_candidate_comparison.py tests/test_candidate_comparison_contract.py` if comparison row semantics change |
+| Decision Verdict / `decision_verdict.json` | `python -m pytest tests/test_decision_verdict.py -q` | Add `tests/test_selection_engine.py` and action tests if Selection/No-Trade or action-plan evidence changes |
+| AI Commentary grounding / `ai_commentary_context.json` | `python -m pytest tests/test_ai_commentary_context.py -q` | Add Decision Verdict and Current-vs-Candidate tests if grounding inputs change |
+| Light Monitoring / `what_changed_summary.json` | `python -m pytest tests/test_light_monitoring_summary.py -q` | Add monitoring tests if `monitoring_diff.json` snapshots/diff logic changes |
+| Product bundle integration after compare | Run all adapter tests together: `python -m pytest tests/test_problem_classification.py tests/test_candidate_launchpad.py tests/test_portfolio_alternatives_builder.py tests/test_current_vs_candidate.py tests/test_decision_verdict.py tests/test_ai_commentary_context.py tests/test_light_monitoring_summary.py -q` | Add offline portfolio-first E2E if runtime flow or generated artifact ordering changes |
+
+### Output-bundle acceptance checks
+
+For a generated-output refresh session only, inspect the refreshed `output_dir_final` and confirm:
+
+- product-facing bundle: `problem_classification.json`, `candidate_launchpad.json`,
+  `current_vs_candidate.json`, `decision_verdict.json`, `ai_commentary_context.json`,
+  `what_changed_summary.json`;
+- technical contracts: `candidate_comparison.json`, `selection_decision.json`,
+  `candidate_factory_run.json` when candidates ran, and `output_manifest.json`;
+- product surfaces do not present `portfolio_health_score.json`, `robustness_scorecard.json`,
+  `assumption_sensitivity.json`, `pareto_dominance.json`, or `regret_analysis.json` as the main
+  answer unless a later approved spec changes that boundary.
+
+If any artifact is absent, report whether it is expected for the workflow state
+(`diagnosis_only`, `one_candidate`, `multiple_candidates`) or whether it requires code/spec
+verification. Do not infer success from stale generated files.
+
 ## Offline MVP Pipeline Smoke
 
 Use this when touching `write_candidate_comparison_outputs`, selection/action/monitoring/journal writers, or any step in the file-first decision chain that feeds `decision_package_summary.json`.
@@ -266,6 +314,7 @@ Live proof (operator, not CI default): `python scripts/verify_live_core_e2e.py -
 | Stress scenarios | Scenario PnL drift, mandate/stress boundary confusion, missing historical fields, bad covariance taxonomy, changed diagnostic-only behavior | Stress Lab wave bundle (see above): `tests/test_stress_mandate_pass.py`, `tests/test_stress_historical_fields.py`, `tests/test_stress_covariance_taxonomy.py`, `tests/test_stress_scenario_analytics.py`, plus scorecard/hedge-gap/coverage/synthetic/simulator/artifacts/commentary contract tests | Run `python run_report.py --materialize-analysis-subject` if `stress_report.json`, stress CSVs, or commentary output changes |
 | Factor / macro analytics | Factor matrix drift, regression diagnostics broken, macro regime label instability, publication-lag mistakes, diagnostic blocks affecting policy | Factor tests: `tests/test_factor_matrix_builders.py`, `tests/test_factor_beta_stability.py`, `tests/test_factor_beta_adjusted_overlay.py`, `tests/test_factor_beta_kalman.py`, `tests/test_factor_covariance.py`, `tests/test_factor_oos_explainability.py`, `tests/test_factor_regression_hac.py`, `tests/test_factor_regression_heteroskedasticity.py`, `tests/test_factor_regression_serial.py`, `tests/test_factor_variance_decomposition.py`; macro tests: `tests/test_macro_regimes.py`, `tests/test_macro_primary_regime.py`, `tests/test_macro_indicators.py`, `tests/test_macro_scoring_modes.py`, `tests/test_macro_source_resolver.py`, `tests/test_macro_regime_label_quality.py`, `tests/test_macro_neutral_band_sensitivity.py`; regime tests: `tests/test_regime_factor_analytics.py`, `tests/test_regime_portfolio_metrics.py` | Run full pytest and `python run_report.py` when exported `stress_report.json` blocks or CSV artifacts change |
 | Reports / outputs | Broken JSON/CSV schema, missing commentary, bad report rendering, stale generated files, changed user-facing artifacts | Portfolio X-Ray wave bundle (see below) when `portfolio_xray.json` or X-Ray report surfaces change; otherwise `tests/test_portfolio_commentary.py` plus affected output tests such as `tests/test_scenario_library.py`, `tests/test_scenario_library_normalized.py`, `tests/test_stress_scenario_analytics.py`, `tests/test_regime_portfolio_metrics.py`, `tests/test_portfolio_pca.py` | Run `python run_report.py`; run `python rebuild_pdf_reports.py` only when PDF rebuild behavior or PDF-style artifacts are the target |
+| Diagnosis-first product adapters | Broken product-bundle JSON, stale mapping from deterministic evidence, AI/commentary accidentally treated as calculator, technical artifacts promoted as product answer | Use the Post-Architecture Alignment adapter map above: focused tests for Problem Classification, Candidate Launchpad, Alternatives Builder, Current-vs-Candidate, Decision Verdict, AI grounding, and Light Monitoring | Add candidate comparison, selection, monitoring, or offline E2E tests when adapter inputs or runtime ordering change |
 | Config / schema | Invalid config accepted, valid config rejected, config/weights desync, taxonomy validation drift | `tests/test_config_weights_sync.py`, `tests/test_returns_frequency.py`; add `tests/test_etf_universe.py` or `tests/test_stock_universe.py` for taxonomy config changes | Run affected CLI such as `python run_etf_universe.py`, `python run_stock_universe.py`, `python run_optimization.py`, or `python run_report.py` when user-facing config workflows change |
 | Documentation-only change | Broken links, stale source-of-truth maps, obsolete commands, copied concept text treated as binding | Markdown link check; stale-reference search with `rg`; no `pytest` required unless executable examples, commands, or documented behavior changed | Run relevant CLI/test command if docs change executable examples or acceptance criteria |
 
@@ -558,6 +607,11 @@ python -m pytest tests/test_docs_links.py -q
 - Confirm changed command examples are real entrypoints or real test commands.
 
 `scripts/verify_docs.py` scans source Markdown under the repo root, `docs/`, and `.cursor/` agents/rules. It checks local file links (repo-root and file-relative), forbidden stale canonical paths, and that `config_ui` does not reintroduce removed editable fields. Planned future spec filenames listed in `src/docs_verify.py` are allowed until those specs are created.
+
+**Archive link hygiene:** `docs/archive/**` is included in the scan. From
+`docs/archive/documentation_migration_2026_05_25/`, use `../../../` for repo-root files (for example
+`SPEC.md`) and `../../specs/` for canonical specs. Fix broken relative paths only; do not rewrite
+historical archive product meaning.
 - Keep [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) non-binding: ideas from that document do not require code tests unless they are promoted into `SPEC.md`, `DATA.md`, `docs/specs/*.md`, or implementation work.
 
 ## Source-Of-Truth Links

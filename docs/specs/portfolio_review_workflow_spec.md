@@ -95,6 +95,31 @@ The invariant is simple: candidate generation, candidate comparison, and decisio
 be presented as the main review outcome until `analysis_subject` diagnostics are available or the run
 has failed with a clear diagnostic blocker.
 
+## Workflow State Metadata
+
+Session 03 of the code migration adds explicit workflow-state metadata to the in-memory
+`PortfolioReviewPlan`. This is orchestration metadata only; it does not change CLI flags, command
+ordering, generated artifact schemas, formulas, or candidate generation behavior.
+
+The state is classified by [workflow_state_spec.md](workflow_state_spec.md) as one of:
+
+- `diagnosis_only`
+- `one_candidate`
+- `multiple_candidates`
+
+Current interpretations:
+
+- default `run_portfolio_review.py --mode core` resolves to `multiple_candidates` because it uses
+  the `core_fast` factory profile;
+- `--mode full` resolves to `multiple_candidates` because it uses `default_v1`;
+- `--candidates equal_weight` resolves to `one_candidate`;
+- `--skip-candidates` resolves to `diagnosis_only` in the plan because no new candidate scope is
+  requested by the current command. Existing on-disk artifacts may still be compared by the
+  comparison step, but that artifact scope is not inferred by the orchestrator.
+
+This metadata is intended for later diagnosis-first product layers. It must not be interpreted as a
+new generated output contract.
+
 ## Input Resolution Contract
 
 Runtime input resolution is owned by [input_assumptions_spec.md](input_assumptions_spec.md). Session

@@ -26,9 +26,9 @@ Input portfolio
 -> Monitoring / What Changed
 ```
 
-This target flow is product direction. Current implementation status must be checked against
-`SPEC.md`, `OUTPUTS.md`, `docs/specs/*.md`, and code before any target step is described as
-implemented.
+This target flow is product direction. Several steps now have additive backend/file artifacts, while
+full product UI and saved-workspace behavior remain future scope. Current implementation status is
+owned by `SPEC.md`, `OUTPUTS.md`, `docs/specs/*.md`, and code.
 
 ## 2. Product Principles
 
@@ -213,7 +213,9 @@ Target output:
 
 Implementation status:
 
-Problem Classification is target product direction unless verified in current specs/code.
+Problem Classification is implemented as an additive diagnostic artifact
+(`problem_classification.json`) that translates existing X-Ray and stress evidence into problems and
+reasonable paths to test. It does not calculate new metrics, build candidates, or issue a decision.
 
 ### 4.5 Candidate Launchpad
 
@@ -240,7 +242,9 @@ Target behavior:
 
 Implementation status:
 
-Candidate Launchpad is target product direction unless verified in current specs/code.
+Candidate Launchpad is implemented as an additive data artifact (`candidate_launchpad.json`) that
+turns Problem Classification output into hypothesis cards. Cards are not portfolios, contain no
+weights, and do not execute builders.
 
 ### 4.6 Portfolio Alternatives Builder
 
@@ -290,9 +294,12 @@ Advanced settings to keep out of core MVP unless separately approved:
 
 Implementation status:
 
-On-demand user-triggered candidate generation is target direction unless verified in current
-implementation. Existing automatic or batch candidate capabilities should be preserved and
-classified as current capability, advanced mode, research mode, or legacy as appropriate.
+The backend wrapper is implemented as a one-candidate delegation plan in
+`src/portfolio_alternatives_builder.py`. It maps selected Launchpad methods to existing candidate
+factory commands without changing formulas. Full user-facing builder UI/service and default
+user-triggered generation remain target product work. Existing automatic or batch candidate
+capabilities should be preserved and classified as current capability, advanced mode, research mode,
+or legacy as appropriate.
 
 ### 4.7 Candidate Shortlist / Comparison Arena
 
@@ -313,7 +320,9 @@ force the user into a full 16-candidate research table by default.
 
 Implementation status:
 
-Requires code/spec verification before claiming shortlist behavior exists.
+Current-vs-candidate projection is implemented as `current_vs_candidate.json`, built from the
+canonical comparison and optional Selection evidence. A full interactive shortlist arena remains
+target product work; the canonical multi-candidate comparison contract remains unchanged.
 
 ### 4.8 Current vs Candidate Comparison
 
@@ -381,8 +390,9 @@ Decision Verdict is not simply "pick the best portfolio." It answers whether the
 
 Implementation status:
 
-Current Selection Engine / decision artifact behavior must be verified before replacing terms or
-schemas. Decision Verdict is target product language unless promoted into canonical specs.
+Decision Verdict is implemented as an additive product-facing mapping artifact
+(`decision_verdict.json`) over the current Selection Engine / No-Trade evidence. It does not replace
+or rename `selection_decision.json`, Selection Engine statuses, or existing schemas.
 
 ### 4.10 AI Commentary
 
@@ -409,8 +419,9 @@ AI Commentary must be grounded in deterministic outputs and should not invent ca
 
 Implementation status:
 
-Requires code/spec verification before claiming current AI Commentary scope, inputs, or output
-contracts.
+AI Commentary grounding is implemented as `ai_commentary_context.json`: a deterministic evidence
+bundle and guardrail contract for a later commentary layer. Generated natural-language AI commentary
+is not implemented by this artifact and remains future scope.
 
 ### 4.11 Monitoring / What Changed
 
@@ -458,7 +469,9 @@ Outputs:
 
 Implementation status:
 
-Requires code/spec verification.
+Current generated artifacts can support diagnosis review, and workflow-state metadata exists for
+diagnosis-only / one-candidate / multiple-candidate intent. A formal diagnosis-only product UI state
+and saved workspace flow remain target product work.
 
 ## 6. Core MVP vs Advanced / Later
 
@@ -587,7 +600,8 @@ Preferred client-facing language:
 | --- | --- |
 | Portfolio X-Ray | What you really own |
 | Stress Test Lab | Where it can break |
-| Candidate Factory | Better allocation alternatives |
+| Candidate Launchpad / Alternatives Builder | Better allocation alternatives |
+| Candidate Factory | Backend tool that builds alternative evidence |
 | Optimization method | Way to test an improvement hypothesis |
 | Candidate Comparison | What improves and what gets worse |
 | Selection Engine | What to do now / Decision Verdict |
@@ -599,7 +613,7 @@ separate migration plan.
 
 ## 10. Relationship To Current Implementation
 
-This draft is target product direction.
+This document describes target product direction and current product-facing boundaries.
 
 Current implementation must be verified through:
 
@@ -611,17 +625,20 @@ Current implementation must be verified through:
 - `docs/specs/*.md`
 - current code
 
-Do not claim these as current without verification:
+Current additive artifacts verified by current specs/code include Problem Classification, Candidate
+Launchpad, the Portfolio Alternatives Builder backend delegation plan, Current-vs-Candidate adapter,
+Decision Verdict mapping, AI Commentary grounding context, and the light What Changed summary.
 
-- Problem Classification module.
-- Candidate Launchpad.
-- Portfolio Alternatives Builder UI/service.
-- User-triggered candidate generation as default behavior.
-- Diagnosis-only state.
+Do not overstate these as current product capabilities:
+
+- Full Portfolio Alternatives Builder UI/service.
+- User-triggered one-candidate generation as the default behavior.
+- Formal diagnosis-only UX/workflow state beyond current generated artifacts.
 - Current-vs-candidate as the only/main implemented comparison mode.
-- Decision Verdict replacing Selection Engine.
-- AI Commentary scope and grounding.
-- Any new JSON field, CLI flag, output file, or folder contract.
+- Decision Verdict replacing or renaming Selection Engine contracts.
+- Generated natural-language AI Commentary.
+- Any new JSON field, CLI flag, output file, schema, or folder contract not verified in `SPEC.md`,
+  `OUTPUTS.md`, detailed specs, and code.
 
 ## 11. Product Non-Goals
 
@@ -637,23 +654,26 @@ The product should not:
 
 ## 12. Open Product Questions
 
-- Which target modules should become implemented contracts first: Problem Classification, Candidate
-  Launchpad, Alternatives Builder, or Decision Verdict?
-- Should current Selection Engine schemas be preserved and mapped to Decision Verdict language, or
-  should a new schema be introduced later?
+- Which implemented additive artifacts should be promoted into the first interactive product UI:
+  Problem Classification, Candidate Launchpad, Alternatives Builder, Current-vs-Candidate, or
+  Decision Verdict?
+- Should current Selection Engine schemas continue to be preserved and mapped to Decision Verdict
+  language, or should a new schema be introduced later through an explicit migration?
 - How many reasonable paths to test should be shown in MVP: 2 or 3?
 - Which candidate methods are available in core MVP vs full research mode?
 - What is the minimum evidence threshold for "no material rebalance recommended"?
-- What AI Commentary inputs and guardrails should be canonical?
+- Resolved for current phase: AI Commentary remains **grounding-context only** (`ai_commentary_context.json`).
+  Generated natural-language AI Commentary requires a separate future spec (`RM-ARCH-010` in
+  [docs/ROADMAP.md](docs/ROADMAP.md)); do not implement or document LLM prose as shipped until approved.
 - Which monitoring signals belong in MVP vs later advisor workspace?
 
 ## 13. Source-Of-Truth Relationship
 
-Until reviewed and approved:
+For conflicts:
 
-- `PRODUCT.md` is a draft.
-- Existing `PRODUCT.md` remains the current product document.
-- `SPEC.md` and `docs/specs/*.md` remain authoritative for implemented behavior.
+- `PRODUCT.md` defines product direction and product-facing language.
+- `SPEC.md`, `OUTPUTS.md`, `docs/specs/*.md`, and current code remain authoritative for implemented
+  behavior, generated contracts, formulas, schemas, and CLI behavior.
 - `OUTPUTS.md` remains authoritative for generated outputs.
 - Product concepts become binding only after source-of-truth docs, code, and verification are
   updated through the normal workflow.

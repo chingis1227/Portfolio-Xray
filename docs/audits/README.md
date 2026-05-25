@@ -4,6 +4,11 @@ This directory stores project audits as historical project memory. Audits are ev
 inputs; they do not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `TESTING.md`, detailed specs, or
 current code behavior.
 
+Portfolio MRI documentation alignment note: older audits may use prior product language such as
+optimizer-first framing, recommendation wording, Macro Dashboard, Selection Engine, Portfolio Health
+Score, or Robustness Scorecard emphasis. Preserve those files as snapshot-at-time evidence; do not
+treat them as current product direction unless an active canonical doc or current spec confirms it.
+
 Use this register to understand which audits exist, what each audit produced, and which plan followed
 from it. When a new audit is created, add it here with its date, status, related plan, and short
 outcome.
@@ -20,6 +25,7 @@ outcome.
 
 | Date | Audit | Status | Follow-up plan | Outcome |
 | --- | --- | --- | --- | --- |
+| 2026-05-25 | [Full Project Architecture Alignment Audit](2026-05-25_full_project_architecture_alignment_audit.md) | **Historical** (superseded by closure) | [Post-Audit Portfolio MRI Architecture Alignment Roadmap](../exec_plans/2026-05-25_post_architecture_alignment_roadmap.md) (**Completed**) | Deep source/code/output alignment audit for diagnosis-first architecture. Remediation closed Sessions 01–12; [Session 12 closure report](2026-05-25_post_architecture_alignment_session12_closure_report.md). |
 | 2026-05-24 | [Blocks 1–5 E2E Timing Audit](2026-05-24_blocks_1_5_e2e_timing_audit.md) | **Active input** | [Performance Wave 2 ExecPlan](../exec_plans/2026-05-24_blocks_1_5_performance_wave2_plan.md) (`RM-983`) | Fresh `site_api` E2E: default core **542.5 s** (6 cand + subject + decision); full menu **973.1 s**; PDF **0 s**; factory `report_seconds` **853.2 s** vs Shared Evidence **857.7 s**; pytest **80 passed**. Session 0 baseline lock 2026-05-24. |
 | 2026-05-23 | [Core / Full Artifact and Documentation Confusion Audit](2026-05-23_core_full_artifact_documentation_confusion_audit.md) | Historical | [Confusion remediation ExecPlan](../exec_plans/2026-05-23_core_full_artifact_documentation_confusion_plan.md) (Completed) | Read-only audit; remediation closed 2026-05-24 (Sessions 01–06): OUTPUTS/runbook/WORKFLOW, command matrix, agents, glossary — see audit § «Remediation status». |
 | 2026-05-23 | [Site/API Default Output Session 07 Closure Report](2026-05-23_site_api_default_output_session07_closure_report.md) | Historical | [Site/API Default Output Refactor](../exec_plans/2026-05-23_site_api_default_output_refactor_plan.md) (Completed) | Sessions 0–7 closed; acceptance **10/10**; pytest **38 passed**; risks and next steps documented. |

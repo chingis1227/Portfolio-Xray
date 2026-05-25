@@ -94,9 +94,8 @@ Target responsibility:
 
 Current implementation mapping:
 
-- Likely maps to current config validation, `analysis_subject`, input assumptions, client profiles,
-  and data setup modules.
-- Requires code/spec verification before claiming exact current behavior.
+- Maps to current config validation, `analysis_subject`, input assumptions, client profiles, and
+  data setup modules. Exact UI behavior remains future scope.
 
 Architecture boundary:
 
@@ -151,7 +150,9 @@ Target responsibility:
 
 Current implementation mapping:
 
-- Requires code/spec verification. Treat as target module until verified.
+- Implemented as an additive diagnostic artifact (`problem_classification.json`) via
+  `src/problem_classification.py`. It translates existing Portfolio X-Ray and stress evidence into
+  problems and reasonable paths to test without changing formulas or making decisions.
 
 Architecture boundary:
 
@@ -168,8 +169,9 @@ Target responsibility:
 
 Current implementation mapping:
 
-- Requires code/spec verification. Existing candidate factory may supply methods, but Launchpad is
-  target UX/product orchestration unless implemented elsewhere.
+- Implemented as an additive data artifact (`candidate_launchpad.json`) via
+  `src/candidate_launchpad.py`. Existing candidate factory methods may be suggested by cards, but
+  Launchpad cards do not generate portfolios or weights.
 
 Architecture boundary:
 
@@ -196,8 +198,9 @@ Potential backend reuse:
 
 Current implementation mapping:
 
-- Existing candidate builders and factory are current capabilities, but on-demand user-triggered
-  builder UX requires code/spec verification.
+- Existing candidate builders and factory are current capabilities. A backend one-candidate wrapper
+  exists in `src/portfolio_alternatives_builder.py` and returns a delegated factory command plan.
+  Full on-demand user-triggered builder UI/service remains target product work.
 
 Architecture boundary:
 
@@ -226,8 +229,9 @@ Target evidence:
 
 Current implementation mapping:
 
-- Existing candidate comparison specs and artifacts likely provide reusable evidence, but the
-  current-vs-selected-candidate product shape requires verification.
+- Existing candidate comparison specs and artifacts provide reusable evidence. An additive
+  `current_vs_candidate.json` adapter exists via `src/current_vs_candidate.py`; full interactive
+  current-vs-selected-candidate UI remains target product work.
 
 Architecture boundary:
 
@@ -252,8 +256,9 @@ Target verdicts:
 
 Current implementation mapping:
 
-- Existing Selection Engine / No-Trade specs and generated artifacts may map to this layer.
-- Do not rename current schemas or fields without a migration plan.
+- Implemented as an additive mapping artifact (`decision_verdict.json`) via
+  `src/decision_verdict.py`. Existing Selection Engine / No-Trade specs and generated artifacts feed
+  this layer. Do not rename current schemas or fields without a migration plan.
 
 Architecture boundary:
 
@@ -276,7 +281,13 @@ Architecture boundary:
 
 Current implementation mapping:
 
-- Requires code/spec verification for current availability, inputs, and outputs.
+- Implemented as deterministic grounding context (`ai_commentary_context.json`) via
+  `src/ai_commentary_context.py`. Generated natural-language AI Commentary remains target product
+  work; AI is not a calculation or decision source.
+- Deterministic `commentary.txt`, `stress_commentary.txt`, and decision-package summaries from
+  `src/portfolio_commentary.py` / `src/decision_package_reporting.py` are report-pipeline exports.
+  They are not LLM-generated AI Commentary and must not be cited as proof that the AI Commentary
+  product layer is fully implemented.
 
 ### 4.10 Monitoring / What Changed Layer
 
@@ -288,8 +299,9 @@ Target responsibility:
 
 Current implementation mapping:
 
-- Existing monitoring specs/artifacts may map to a light generated implementation.
-- Full workspace monitoring remains target/advanced unless current specs say otherwise.
+- Existing monitoring specs/artifacts implement backend monitoring. A light product-facing
+  `what_changed_summary.json` projection exists via `src/light_monitoring_summary.py`. Full
+  workspace monitoring remains target/advanced.
 
 ## 5. Current To Target Mapping
 
@@ -448,24 +460,34 @@ Own:
 - human-readable explanation
 - advisor/client narrative
 - report packaging
+- deterministic grounding context for future AI Commentary (`ai_commentary_context.json`)
 
 Must not:
 
 - become the source of calculations
 - contradict JSON/spec evidence
+- be described as LLM-generated AI Commentary when only rule-based report text or grounding JSON exists
 
-## 10. Requires Code/Spec Verification
+## 10. Current Additive Artifacts And Remaining Verification Boundaries
 
-Do not claim these as current implementation until verified:
+Current additive artifacts verified by current specs/code:
 
-- Problem Classification as a concrete module or artifact.
-- Candidate Launchpad state and outputs.
-- Portfolio Alternatives Builder as UI/service.
+- Problem Classification as `problem_classification.json`.
+- Candidate Launchpad as `candidate_launchpad.json`.
+- Portfolio Alternatives Builder backend delegation plan.
+- Current-vs-Candidate adapter as `current_vs_candidate.json`.
+- Decision Verdict additive mapping as `decision_verdict.json`.
+- AI Commentary grounding context as `ai_commentary_context.json`.
+- Light Monitoring / What Changed projection as `what_changed_summary.json`.
+
+Do not claim these as current implementation without a later spec/code change:
+
+- Full Portfolio Alternatives Builder UI/service.
 - User-triggered one-candidate generation as the default path.
-- Diagnosis-only state as a formal run state.
-- Current-vs-selected-candidate as the main implemented comparison mode.
-- Decision Verdict replacing or aliasing Selection Engine contracts.
-- AI Commentary inputs, grounding, and output contracts.
+- Diagnosis-only state as a formal product UI/workflow state beyond current metadata/artifacts.
+- Current-vs-selected-candidate as the only/main implemented comparison mode.
+- Decision Verdict replacing or renaming Selection Engine contracts.
+- Generated natural-language AI Commentary.
 - Candidate shortlist schema.
 - Any new CLI flags, JSON fields, output files, or folder layout.
 - Any change to current command behavior.
@@ -474,14 +496,12 @@ Do not claim these as current implementation until verified:
 
 Potential future architecture work, not part of this documentation draft:
 
-- Introduce explicit workflow state: diagnosed/no candidate, one candidate, multiple-candidate
-  shortlist.
-- Add a Problem Classification service or artifact based on X-Ray and stress evidence.
-- Add Candidate Launchpad routing from problems to reasonable paths to test.
-- Wrap existing candidate builders in a Portfolio Alternatives Builder interface.
-- Add current-vs-selected-candidate presentation layer.
-- Map existing Selection Engine outputs to Decision Verdict language without breaking schemas.
-- Add AI Commentary grounding rules and evidence references.
+- Build full product UI/workspace flows around the current workflow-state metadata and generated
+  artifacts.
+- Promote the Portfolio Alternatives Builder backend plan into a user-facing UI/service if approved.
+- Add current-vs-selected-candidate presentation as the primary product surface while preserving the
+  canonical comparison contract.
+- Add generated natural-language AI Commentary only after a separate grounding/prompt/output spec.
 - Keep batch candidate factory as advanced/research/backend mode.
 - Preserve legacy policy flow and generated outputs during migration.
 
@@ -497,7 +517,8 @@ When replacing the current `ARCHITECTURE.md`, use this order:
 4. Move macro, robust research, full multi-candidate comparison, and advanced decision diagnostics
    into advanced/research unless current specs require core positioning.
 5. Keep legacy policy flow as compatibility, not product front door.
-6. Mark all unverified target modules as `Requires code/spec verification`.
+6. Mark any remaining unverified target modules as `Requires code/spec verification`; do not apply
+   that label to additive artifacts already verified in current specs/code.
 7. Do not rename public files, generated fields, or CLI flags in architecture docs without an
    approved migration plan.
 

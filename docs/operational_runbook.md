@@ -31,7 +31,7 @@ is the most common operator error after a routine `python run_portfolio_review.p
 presence of a PDF does **not** prove it matches the latest JSON.
 
 **Factory vs comparison scope:** `candidate_factory_run.json` → `factory_profile_id` and step status
-describe the **last factory run** (e.g. `core_v1`, six steps, `skipped_existing`). `candidate_comparison.json`
+describe the **last factory run** (e.g. `core_fast`, six steps, `skipped_existing`). `candidate_comparison.json`
 may score **more rows** (optimizers, legacy `policy`, reused snapshots). Always read `candidate_menu`
 (`is_partial_menu`, `intended_menu_size`, `factory_execution_summary`) before interpreting rankings.
 
@@ -47,7 +47,7 @@ python run_portfolio_review.py --dry-run
 python run_portfolio_review.py --mode full --no-skip-existing
 python run_portfolio_review.py --mode full --resume-candidates
 python run_portfolio_review.py --skip-candidates
-python run_portfolio_review.py --candidate-profile default_v1
+python run_portfolio_review.py --candidate-profile core_v1
 ```
 
 | Review mode | Command | Factory profile | Factory execution | Typical use |
@@ -334,6 +334,7 @@ Layer handoff: [candidate_factory_layer_spec.md](specs/candidate_factory_layer_s
 ```bash
 python run_candidate_factory.py
 python run_candidate_factory.py --profile default_v1 --resume
+python run_candidate_factory.py --profile core_fast --then-compare
 python run_candidate_factory.py --profile core_v1 --then-compare
 python run_candidate_factory.py --candidates equal_weight,risk_parity --force
 python run_candidate_factory.py --profile default_v1 --fail-fast
@@ -350,7 +351,8 @@ python run_candidate_factory.py --execution-mode standard --selected-candidates-
 | `--full-candidate-reports` | Phase 3: full HTML/commentary/rolling betas for every candidate in this run. |
 | `--selected-candidates-for-full-report` | Phase 3 subset (e.g. two benchmarks for client memo). |
 | `--pdf-mode final_only` | One Pandoc pass after Phase 3 (not per candidate). |
-| `--profile core_v1` | Six benchmark/risk-budget builders (routine). |
+| `--profile core_fast` | Six benchmark/risk-budget builders for routine core runs; parallel lightweight reports by default. |
+| `--profile core_v1` | Same six builders as `core_fast`, retained for sequential regression/parity checks. |
 | `--profile default_v1` | Full 16-builder menu (optimizers + robust). |
 | `--candidates ID,...` | Subset or custom order; sets profile to `explicit_list`. |
 | `--skip-existing` (default) | Reuse fresh `snapshot_10y.json` per candidate. |
@@ -446,7 +448,7 @@ diagnostic; factory `reason_code` is the stable machine label for comparison and
 **Partial menu / core vs full (G4, RM-920)**
 
 1. Read `candidate_comparison.json` → `candidate_menu` (`is_partial_menu`, `intended_candidate_ids`, `available_candidate_ids`, `factory_execution_summary`).
-2. Do not treat rankings as covering `default_v1` when only `core_v1` ran.
+2. Do not treat rankings as covering `default_v1` when only `core_fast` or regression `core_v1` ran.
 3. For full menu: `python run_portfolio_review.py --mode full`.
 4. Checklist cross-ref: [WORKFLOW.md § Portfolio-First Operator Checklist](../../WORKFLOW.md#portfolio-first-operator-checklist) steps 4–7.
 

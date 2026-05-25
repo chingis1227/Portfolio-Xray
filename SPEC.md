@@ -51,22 +51,26 @@ It supports:
 - factor, macro/regime, PCA, scenario-library, and robustness diagnostics
 - benchmark and candidate portfolio reports
 - canonical candidate comparison and V1 decision artifacts: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, trade-off and model-risk diagnostics, Assumption Sensitivity, Action Plan, Monitoring / What Changed, generated Decision Journal, current-vs-policy status, and candidate factory run summary
+- additive diagnosis-first artifacts and adapters: Problem Classification, Candidate Launchpad,
+  Portfolio Alternatives Builder backend delegation plan, Current-vs-Candidate adapter, Decision
+  Verdict mapping, AI Commentary grounding context, and light What Changed summary
 - decision package report summary (`decision_package_summary.txt` / `.json`, optional `report.txt` append, decision-package PDF after comparison)
 - CSV, JSON, HTML, TXT, and PDF-style report artifacts
 
-Target product areas remain TBD until separately specified and implemented:
+Target product areas that remain TBD until separately specified and implemented:
 
 - full interactive UI and saved analysis workspaces
-- explicit diagnosis-only product state beyond current generated artifacts
-- Problem Classification as a formal product/service layer
-- Candidate Launchpad and user-triggered Portfolio Alternatives Builder UX
-- current-vs-selected-candidate UX as the primary interactive comparison mode
-- Decision Verdict product language replacing or aliasing current Selection Engine terminology
-- AI Commentary as a formally specified explanation layer
+- formal diagnosis-only product state beyond current generated artifacts and workflow-state metadata
+- full Candidate Launchpad / Portfolio Alternatives Builder UI and user-triggered candidate
+  generation as the default product behavior
+- current-vs-selected-candidate UX as the primary interactive comparison mode beyond the current
+  additive JSON adapter
+- Decision Verdict replacing or renaming current Selection Engine terminology
+- generated natural-language AI Commentary beyond the current grounding context
 - user-maintained journal/workflow layers beyond the generated V1 Decision Journal
 
-These target areas must not be described as current implementation unless the relevant source code,
-generated artifacts, and owning specs verify that status.
+Do not describe target UI/schema migration work as current implementation unless the relevant source
+code, generated artifacts, and owning specs verify that status.
 
 ## Main Workflows
 
@@ -355,7 +359,7 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Scenario Library and normalized scenario view | Implemented input-standardization/diagnostic layer |
 | Optimization Engine layer governance | Implemented source of truth; Sessions 03-04 add legacy policy and candidate optimizer disclosure without changing optimizer behavior |
 | Benchmark and candidate portfolio builders | Implemented comparison layer |
-| Candidate Factory runtime | Implemented; `standard` mode supports opt-in parallel Phase 2 `lightweight_comparison` reports while builders and Phase 3 full reports remain sequential |
+| Candidate Factory runtime | Implemented backend/advanced/research infrastructure; `standard` mode supports opt-in parallel Phase 2 `lightweight_comparison` reports while builders and Phase 3 full reports remain sequential; not the default product UX |
 | Robust Mean-Variance and Scenario-Based Robust Optimization | Implemented benchmark/candidate layer |
 | Canonical candidate comparison | Implemented (`candidate_comparison.json` via [src/candidate_comparison.py](src/candidate_comparison.py)); includes `analysis_subject` baseline row when materialized |
 | Robustness Scorecard | Implemented diagnostic artifact (`robustness_scorecard.json` via [src/robustness_scorecard.py](src/robustness_scorecard.py)) |
@@ -364,19 +368,19 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Generated CSV/JSON/HTML/TXT/PDF-style reports | Implemented |
 | Full interactive UI | Target/TBD |
 | Diagnosis-only product state as formal UX/workflow state | Target/TBD; current generated artifacts may support diagnosis review, but a formal product state requires code/spec verification |
-| Problem Classification | Target/TBD; do not claim implemented until an owning spec/code artifact exists |
-| Candidate Launchpad | Target/TBD; do not claim implemented until an owning spec/code artifact exists |
-| Portfolio Alternatives Builder as user-triggered candidate UX | Target/TBD; existing candidate builders/factory remain current backend capabilities |
-| Current-vs-selected-candidate as primary interactive UX | Target/TBD; current comparison artifacts remain governed by candidate comparison specs |
-| Decision Verdict product language | Target/TBD as terminology; current implemented contract remains Selection Engine / No-Trade until specs are changed |
-| AI Commentary formal explanation layer | Target/TBD; any current commentary behavior must be verified against code/specs before being claimed |
+| Problem Classification | Implemented diagnostic artifact (`problem_classification.json` via [src/problem_classification.py](src/problem_classification.py)); translates existing X-Ray/stress evidence into problems and paths to test without changing formulas or making decisions |
+| Candidate Launchpad | Implemented data artifact (`candidate_launchpad.json` via [src/candidate_launchpad.py](src/candidate_launchpad.py)); translates Problem Classification into hypothesis cards only, not portfolios or builder execution |
+| Portfolio Alternatives Builder as user-triggered candidate UX | Backend wrapper implemented (`PortfolioAlternativeBuildPlan` via [src/portfolio_alternatives_builder.py](src/portfolio_alternatives_builder.py)); returns one-candidate factory delegation plans, while full UX remains Target/TBD and batch factory remains backend/advanced/research |
+| Current-vs-selected-candidate as primary interactive UX | Adapter artifact implemented (`current_vs_candidate.json` via [src/current_vs_candidate.py](src/current_vs_candidate.py)); interactive UX remains Target/TBD, canonical comparison remains unchanged |
+| Decision Verdict product language | Implemented additive mapping artifact (`decision_verdict.json` via [src/decision_verdict.py](src/decision_verdict.py)); current technical contract remains Selection Engine / No-Trade |
+| AI Commentary formal explanation layer | Grounding context only (`ai_commentary_context.json` via [src/ai_commentary_context.py](src/ai_commentary_context.py); no LLM). Deterministic `commentary.txt` / stress commentary are separate report exports. Generated natural-language AI commentary remains Target/TBD (`RM-ARCH-010` in [docs/ROADMAP.md](docs/ROADMAP.md)) |
 | Formal Selection Engine and No-Trade | Implemented (`selection_decision.json` via [src/selection_engine.py](src/selection_engine.py)); portfolio-first baseline is `analysis_subject`, with legacy fallback to `current` |
 | Trade-off Explanation and Model Risk Diagnostics | Implemented ([src/tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py); [tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md)) |
 | Assumption Sensitivity | Implemented ([src/assumption_sensitivity.py](src/assumption_sensitivity.py); [assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md)) |
 | Pareto / Dominance Check | Implemented ([src/pareto_dominance.py](src/pareto_dominance.py); [pareto_dominance_spec.md](docs/specs/pareto_dominance_spec.md)) |
 | Regret Analysis | Implemented ([regret_analysis_spec.md](docs/specs/regret_analysis_spec.md); `src/regret_analysis.py`, `regret_analysis.json` / `.txt`) |
 | Action Engine and Rebalancing Advisor | Implemented (`action_plan.json` via [src/action_engine.py](src/action_engine.py)) |
-| Monitoring / What Changed | Implemented (V1) - [monitoring_spec.md](docs/specs/monitoring_spec.md), `src/monitoring.py` |
+| Monitoring / What Changed | Implemented (V1) - [monitoring_spec.md](docs/specs/monitoring_spec.md), `src/monitoring.py`; light product summary implemented as `what_changed_summary.json` via [src/light_monitoring_summary.py](src/light_monitoring_summary.py) |
 | Decision Journal | Implemented (V1) - [decision_journal_spec.md](docs/specs/decision_journal_spec.md), `src/decision_journal.py` |
 
 ## Implementation Contract

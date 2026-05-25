@@ -119,6 +119,9 @@ Rules:
 - Prefer existing helpers and repo patterns over parallel implementations.
 - Do not change formulas, scenarios, optimizer logic, outputs, or tests unless the task requires it.
 - Do not treat generated outputs as source unless the task explicitly targets them.
+- Do not run generated-output refresh commands unless the active task explicitly approves generated
+  artifact changes. When approved, keep generated diffs separate from docs/source/code and follow
+  [OUTPUTS.md](OUTPUTS.md#generated-output-refresh-policy).
 - Do not revert unrelated user changes or dirty working-tree files.
 - Preserve diagnostic-only boundaries unless a canonical spec changes them.
 - Keep assumptions explicit in code, configs, reports, or docs.

@@ -150,11 +150,12 @@ UX rule:
 The first screen should stay simple. Advanced assumptions should be visible in disclosure or
 advanced settings, not forced into the initial user input.
 
-Requires code/spec verification:
+Current implementation boundary:
 
-- Exact current `analysis_subject` behavior.
-- Exact current required fields.
-- Any UI behavior.
+- `analysis_subject` exists as the current portfolio-first runtime contract in specs/code.
+- Exact current required fields and generated contract details are owned by `SPEC.md`, `OUTPUTS.md`,
+  detailed specs, and code.
+- Any full UI behavior remains target product work.
 
 ### 5.2 Portfolio X-Ray
 
@@ -388,6 +389,12 @@ Boundary:
 
 AI Commentary explains evidence. It does not create the evidence.
 
+Implementation status:
+
+- Implemented now: `ai_commentary_context.json` grounding context only (`src/ai_commentary_context.py`; no LLM).
+- Implemented now (separate): deterministic `commentary.txt` / `stress_commentary.txt` and decision-package summaries from structured evidence via `src/portfolio_commentary.py` and `src/decision_package_reporting.py`. These are report-pipeline prose, not the target AI Commentary product layer.
+- Not implemented: generated natural-language AI Commentary. Requires a separate future spec (see roadmap backlog) with prompts, provider policy, output contract, and guardrail tests.
+
 ### 5.10 Monitoring / What Changed
 
 Purpose:
@@ -431,7 +438,8 @@ Target outputs:
 
 Implementation status:
 
-Requires code/spec verification.
+Current generated artifacts and workflow-state metadata can support this state, but a formal
+diagnosis-only product UI/workspace state remains target product work.
 
 ## 7. Candidate State Model
 
@@ -602,18 +610,27 @@ From comparison and verdict:
 
 ## 11. Current Implementation Guardrails
 
-This document is target product direction.
+This document is target product direction and should be read alongside current implementation
+contracts.
 
-Do not claim these as implemented without verification:
+Current additive artifacts verified by current specs/code include:
 
-- Problem Classification module.
-- Candidate Launchpad.
-- Portfolio Alternatives Builder UI/service.
+- Problem Classification artifact (`problem_classification.json`).
+- Candidate Launchpad artifact (`candidate_launchpad.json`).
+- Portfolio Alternatives Builder backend delegation plan.
+- Current-vs-Candidate adapter (`current_vs_candidate.json`).
+- Decision Verdict additive mapping (`decision_verdict.json`).
+- AI Commentary grounding context (`ai_commentary_context.json`).
+- Light What Changed summary (`what_changed_summary.json`).
+
+Do not overstate these as implemented product capabilities:
+
+- Full Portfolio Alternatives Builder UI/service.
 - User-triggered one-candidate generation as default behavior.
-- Diagnosis-only state.
+- Formal diagnosis-only product UI state beyond current metadata/artifacts.
 - Current-vs-candidate as the only or main implemented comparison mode.
-- Decision Verdict replacing Selection Engine.
-- AI Commentary scope, inputs, and output contracts.
+- Decision Verdict replacing or renaming Selection Engine.
+- Generated natural-language AI Commentary.
 - Any new JSON field, CLI flag, schema, output file, or folder contract.
 
 Current implementation truth must come from:

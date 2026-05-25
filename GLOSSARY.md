@@ -453,10 +453,24 @@ Term heading
 
 ### AI Commentary
 
-- Definition: Target explanation layer that turns deterministic JSON evidence, diagnostics, comparisons, and verdict rationale into readable commentary.
+- Definition: Target product explanation layer that turns deterministic JSON evidence, diagnostics, comparisons, and verdict rationale into readable client-facing language.
 - Area: product
-- Canonical source: [SPEC.md](SPEC.md), [PRODUCT.md](PRODUCT.md)
-- Notes: AI Commentary should explain evidence, not create metrics, data-quality statuses, stress results, or unsupported verdicts.
+- Canonical source: [SPEC.md](SPEC.md), [PRODUCT.md](PRODUCT.md), [docs/specs/ai_commentary_grounding_spec.md](docs/specs/ai_commentary_grounding_spec.md)
+- Notes: AI Commentary must explain evidence, not create metrics, data-quality statuses, stress results, unsupported verdicts, or binding trade instructions. It is not a calculation or decision source.
+
+### AI Commentary grounding context
+
+- Definition: Current implemented additive artifact `ai_commentary_context.json` produced by `src/ai_commentary_context.py`. It lists allowed source artifacts, forbidden claim categories, evidence references, and guardrails for any future commentary generator.
+- Area: product / outputs
+- Canonical source: [docs/specs/ai_commentary_grounding_spec.md](docs/specs/ai_commentary_grounding_spec.md), [OUTPUTS.md](OUTPUTS.md)
+- Notes: No LLM is called. This artifact is not generated natural-language AI Commentary. Do not describe it as if the product already writes final AI prose.
+
+### Deterministic portfolio commentary
+
+- Definition: Rule-based English text in `commentary.txt`, `stress_commentary.txt`, and related report/package summaries produced by `src/portfolio_commentary.py` and `src/decision_package_reporting.py` from structured metrics and JSON evidence.
+- Area: reporting
+- Canonical source: [OUTPUTS.md](OUTPUTS.md), `.cursor/rules/portfolio-commentary.mdc`
+- Notes: This is legacy/report pipeline prose, not the target AI Commentary product layer and not LLM-generated commentary. Product-facing AI Commentary remains Target/TBD until a separate approved generation spec exists.
 
 ### Report-first
 

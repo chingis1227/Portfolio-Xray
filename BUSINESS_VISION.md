@@ -199,7 +199,7 @@ The target MVP should feel like a guided portfolio review:
 8. System compares current portfolio vs candidate.
 9. System explains what improves, what worsens, turnover/cost implications, and evidence quality.
 10. System produces a Decision Verdict.
-11. System generates AI Commentary and a decision-ready report.
+11. System materializes AI Commentary grounding context (`ai_commentary_context.json`) and deterministic decision-ready report text from existing JSON evidence. Generated natural-language AI Commentary (LLM prose) is not part of the current implementation.
 12. System records what should be monitored next.
 
 ## 10. MVP Verdict Types

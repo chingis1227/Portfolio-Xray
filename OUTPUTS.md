@@ -46,16 +46,18 @@ Confusion audit:
 ## Command Matrix
 
 **Review default vs full menu:** routine portfolio review (`run_portfolio_review.py` with no mode
-flag, or `--mode core`) runs factory profile **`core_v1`** (six candidates). The full optimizer and
-robust menu (**`default_v1`**, 16 builders) runs only with **`--mode full`** on review, or via
-standalone **`run_candidate_factory.py --profile default_v1`**. Do not treat a **`core_v1`** review
-as proof that the full menu was built.
+flag, or `--mode core`) runs factory profile **`core_fast`** (same six candidate ids as `core_v1`,
+with parallel lightweight reports by default). The sequential **`core_v1`** profile is retained for
+regression/parity checks via `--candidate-profile core_v1`. The full optimizer and robust menu
+(**`default_v1`**, 16 builders) runs only with **`--mode full`** on review, or via standalone
+**`run_candidate_factory.py --profile default_v1`**. Do not treat a **`core_fast`** review as proof
+that the full menu was built.
 
 ### Portfolio-first review (orchestrated)
 
 | Use case | Command | Factory profile |
 | --- | --- | --- |
-| Portfolio review site/API (**core**, default) | `python run_portfolio_review.py` or `--mode core` | `core_v1` |
+| Portfolio review site/API (**core**, default) | `python run_portfolio_review.py` or `--mode core` | `core_fast` |
 | Full review (16 builders + compare) | `python run_portfolio_review.py --mode full` | `default_v1` |
 | Compare / decision package only (no subject/factory) | `python run_compare_variants.py` | — |
 | Portfolio-first PDF export | `python run_portfolio_review.py --with-pdf` | same as mode |
@@ -64,12 +66,14 @@ as proof that the full menu was built.
 ### Standalone candidate factory
 
 Use when refreshing candidates without a full portfolio review, or when resuming a factory run.
-Profile must match the menu you intend to score (`core_v1` vs `default_v1`).
+Profile must match the menu you intend to score (`core_fast` for routine core, `core_v1` for
+sequential regression/parity, or `default_v1` for the full menu).
 
 | Use case | Command | Factory profile |
 | --- | --- | --- |
 | Full menu factory + compare | `python run_candidate_factory.py --profile default_v1 --then-compare` | `default_v1` |
-| Core menu factory + compare | `python run_candidate_factory.py --profile core_v1 --then-compare` | `core_v1` |
+| Core menu factory + compare | `python run_candidate_factory.py --profile core_fast --then-compare` | `core_fast` |
+| Core sequential regression factory + compare | `python run_candidate_factory.py --profile core_v1 --then-compare` | `core_v1` |
 | Benchmark/timing run (parallel Phase 2) | `python run_candidate_factory.py --profile default_v1 --then-compare --parallel-lightweight-reports` | `default_v1` |
 
 ### Legacy policy and report exports
@@ -163,16 +167,58 @@ python run_report.py --output-profile full_report
 
 Root documentation files such as `README.md`, `SPEC.md`, `DATA.md`, `TESTING.md`, `WORKFLOW.md`, `RULES.md`, `GLOSSARY.md`, `KNOWN_ISSUES.md`, `DECISIONS.md`, `CHANGELOG.md`, this file, `DOCUMENTATION_MIGRATION_PLAN.md`, `DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md`, and archived legacy Markdown files are source/planning documentation, not generated outputs.
 
-Target product concepts from the documentation migration, including diagnosis-only state, Problem
-Classification, Candidate Launchpad, Portfolio Alternatives Builder, Decision Verdict language, and
-AI Commentary, do not create new artifact contracts until an owning spec and implementation define
-their concrete files, schemas, and output policy.
+Target product concepts from the documentation migration do not create new artifact contracts until
+an owning spec and implementation define their concrete files, schemas, and output policy. This now
+includes additive contracts for Problem Classification, Candidate Launchpad, current-vs-candidate,
+Decision Verdict mapping, and AI Commentary grounding context; any remaining product UX around those
+concepts is still not implemented unless a specific owning spec says so.
 
 Output terminology boundary: product-facing `Decision Verdict` language may map to current generated
 Selection/No-Trade evidence, but it does not rename `selection_decision.json`, Selection Engine
 contracts, No-Trade artifacts, or any existing output fields. Advanced/backend generated artifacts
 such as robustness scorecard, Portfolio Health Score, Selection/No-Trade, action, monitoring, and
 journal outputs may remain current implementation outputs without becoming Core MVP product UI.
+
+## Product-Facing Output Bundle Policy
+
+Default product surfaces should present the diagnosis-first bundle first. Technical, advanced, and
+legacy artifacts may be linked as evidence or drill-downs, but they should not be promoted as the
+main product answer unless a later approved spec changes the boundary.
+
+| Category | Artifacts | Product rule |
+| --- | --- | --- |
+| **Core MVP product bundle** | `problem_classification.json`, `candidate_launchpad.json`, `current_vs_candidate.json`, `decision_verdict.json`, `ai_commentary_context.json`, `what_changed_summary.json` | Product-facing diagnosis-first flow: explain the current problem, possible hypotheses, current-vs-candidate trade-offs, verdict, commentary grounding, and light change summary. `ai_commentary_context.json` is grounding-only (no LLM). `commentary.txt`, `stress_commentary.txt`, and PDF exports remain deterministic report-pipeline prose, not generated AI Commentary. These are adapters/mappings over deterministic evidence; they do not rename lower-level contracts. |
+| **Technical comparison / decision contracts** | `candidate_comparison.json`, `selection_decision.json`, `candidate_factory_run.json`, `candidate_factory_manifest.json`, per-candidate `candidate_manifest.json`, `output_manifest.json` | Machine-readable evidence and orchestration contracts. UI/API code may depend on them, but client-facing language should translate them into the product bundle where possible. |
+| **Advanced / research evidence** | `portfolio_health_score.json`, `robustness_scorecard.json`, `assumption_sensitivity.json`, `pareto_dominance.json`, `regret_analysis.json`, `tradeoff_explanation.json`, `model_risk_diagnostics.json` | Useful diagnostics for drill-down, research, review, and confidence checks. Do not frame these as the main Portfolio MRI answer or as automatic recommendations. |
+| **Action / monitoring / journal evidence** | `action_plan.json`, `monitoring_diff.json`, `decision_journal.json`, `decision_package_summary.json` | Current generated evidence for implementation review, change tracking, and reporting. Product-facing summaries should route through `decision_verdict.json` and `what_changed_summary.json` where available. |
+| **Legacy / compatibility artifacts** | `run_result.json`, `portfolio_weights.yml`, root legacy `portfolio_xray.json` / `stress_report.json` from policy runs, `current_vs_policy_status.json`, `portfolio_comparison.json`, `ew_rp_comparison.json` | Preserve for compatibility and historical workflows. Do not treat them as the portfolio-first subject or main diagnosis-first output unless the active workflow explicitly targets the legacy path. |
+| **Generated/export artifacts, not source-of-truth** | CSV/TXT/HTML/PNG/PDF/Markdown sidecars, candidate folders, cache, report exports | Generated output only. They may be refreshed by approved runs, but they are not source documentation or implementation contracts. |
+
+No files are deleted, renamed, or schema-migrated by this policy. It is a presentation and
+documentation boundary over current generated artifacts.
+
+### Runtime product flow (portfolio-first)
+
+After `python run_portfolio_review.py`, product/UI consumers should present the Core MVP bundle
+first and treat other JSON as drill-down evidence. A separate merged `product_bundle.json` is **not**
+required; each bundle artifact has its own writer and schema.
+
+| Bundle artifact | Writer (code) | Default path after portfolio-first review |
+| --- | --- | --- |
+| `problem_classification.json` | `write_problem_classification_outputs` in `run_report.py` | `{output_dir_final}/analysis_subject/problem_classification.json` |
+| `candidate_launchpad.json` | `write_candidate_launchpad_outputs` in `run_report.py` | `{output_dir_final}/analysis_subject/candidate_launchpad.json` |
+| `current_vs_candidate.json` | `write_current_vs_candidate_outputs` in compare chain | `{output_dir_final}/current_vs_candidate.json` |
+| `decision_verdict.json` | `write_decision_verdict_outputs` | `{output_dir_final}/decision_verdict.json` |
+| `ai_commentary_context.json` | `write_ai_commentary_context_outputs` | `{output_dir_final}/ai_commentary_context.json` |
+| `what_changed_summary.json` | `write_what_changed_summary_outputs` | `{output_dir_final}/what_changed_summary.json` |
+
+Compare (`write_candidate_comparison_outputs`) still writes technical and advanced contracts
+(`candidate_comparison.json`, `selection_decision.json`, health/robustness/Pareto/regret, action,
+monitoring, journal, decision-package projections). Default `site_api` runs omit CSV/TXT/PDF unless
+export flags are set. `output_manifest.json` lists generated paths for orchestration; it is not the
+product-facing answer—filter with the bundle table above. Known follow-up (backlog `RM-ARCH-011`):
+compare should resolve diagnosis bundle paths from `analysis_subject/` when root copies are absent,
+and pass problem/launchpad into `ai_commentary_context` grounding.
 
 ## Output Formats
 
@@ -217,19 +263,24 @@ Common project artifacts include:
 - stress, factor, macro, regime, and scenario CSV files under `results_csv/`
 - `results_csv/crisis_replay_{episode}.csv` (path-level historical replay export)
 - `results_csv/crisis_replay_{episode}_asset_contrib.csv` (static-weight asset episode attribution)
-- `commentary.txt`
-- `stress_commentary.txt`
+- `commentary.txt` (deterministic rule-based portfolio commentary from structured metrics/JSON; not LLM-generated AI Commentary; see `src/portfolio_commentary.py`)
+- `stress_commentary.txt` (deterministic stress commentary; not LLM-generated AI Commentary)
 - generated HTML snapshots
 - generated PDF-style reports
 - candidate portfolio output folders
 - `{output_dir_final}/analysis_subject/` (portfolio-first subject diagnostics from `run_report.py --materialize-analysis-subject`; see [portfolio review workflow spec](docs/specs/portfolio_review_workflow_spec.md))
-- `candidate_factory_run.json`, optional `candidate_factory_run.txt`, and `candidate_factory_manifest.json` (under `output_dir_final`; factory orchestration from `run_candidate_factory.py`; `--resume` reads the manifest; top-level `run_status` and `execution_summary` disclose partial failure vs full success; `execution_action` per step; contract in [candidate factory spec](docs/specs/candidate_factory_spec.md); methodology map [§4](docs/audits/2026-05-20_candidate_factory_methodology_map.md))
+- `candidate_factory_run.json`, optional `candidate_factory_run.txt`, and `candidate_factory_manifest.json` (under `output_dir_final`; backend/advanced/research factory orchestration from `run_candidate_factory.py`; `--resume` reads the manifest; top-level `run_status` and `execution_summary` disclose partial failure vs full success; `execution_action` per step; contract in [candidate factory spec](docs/specs/candidate_factory_spec.md); methodology map [§4](docs/audits/2026-05-20_candidate_factory_methodology_map.md))
+- `problem_classification.json` (under each report output folder where `portfolio_xray.json` and `stress_report.json` are available; diagnostic-only evidence translation from X-Ray/stress into top portfolio problems and reasonable paths to test; contract in [problem classification spec](docs/specs/problem_classification_spec.md))
+- `candidate_launchpad.json` (under each report output folder where `problem_classification.json` is written; diagnostic-only hypothesis-card layer for choosing what to test next; cards are not portfolios and contain no weights; contract in [candidate launchpad spec](docs/specs/candidate_launchpad_spec.md))
 - `candidate_factory_run.json.parallel_lightweight_report_summary` (optional; present when `--parallel-lightweight-reports` is requested or effective; records requested/effective status, fallback reasons, worker count, menu-ordered submitted/registered candidate ids, and optional wall-clock seconds for Phase 2 lightweight report generation)
 - `{artifact_root}/candidate_manifest.json` per script-backed candidate folder (`candidate_manifest_v1`; factory-written readiness: comparison gates, artifact presence, optional `partial_failure` when weights succeeded but report/snapshot did not; see [candidate factory spec](docs/specs/candidate_factory_spec.md) Session 5)
 - `candidate_comparison.json` (under `output_dir_final`; includes the portfolio-first `analysis_subject` baseline row when materialized; `candidate_menu` reports `factory_evidence_status`, `factory_steps_used`, `factory_evidence_warnings`, and `factory_execution_summary` for `candidate_factory_run.json` freshness and rebuild/reuse disclosure; per-row `construction_disclosure` passthrough including `optimizer_methodology`, `optimizer_quality`, and `optimization_readiness` (`fair_comparison_ready` checklist) for optimizer-backed rows when artifacts exist; optimizer-backed rows with missing methodology/quality or `unknown` quality degrade instead of ordinary `available` evidence; see [candidate comparison spec](docs/specs/candidate_comparison_spec.md))
+- `current_vs_candidate.json` (under `output_dir_final`; product-facing current-vs-selected-candidate or shortlist adapter built from `candidate_comparison.json` and optional `selection_decision.json`; does not replace the canonical comparison contract; see [current vs candidate spec](docs/specs/current_vs_candidate_spec.md))
 - `robustness_scorecard.json` and optional `robustness_scorecard.txt` (under `output_dir_final`; written by `run_compare_variants.py` / `write_candidate_comparison_outputs`; see [robustness scorecard spec](docs/specs/robustness_scorecard_spec.md))
 - `portfolio_health_score.json` and optional `portfolio_health_score.txt` (under `output_dir_final`; Session 13; see [portfolio health score spec](docs/specs/portfolio_health_score_spec.md))
 - `selection_decision.json` and optional `selection_decision.txt` (under `output_dir_final`; contract in [selection engine spec](docs/specs/selection_engine_spec.md))
+- `decision_verdict.json` (under `output_dir_final`; product-facing mapping over `selection_decision.json`, optional `current_vs_candidate.json`, and `action_plan.json`; does not rename or replace Selection Engine contracts; see [decision verdict spec](docs/specs/decision_verdict_spec.md))
+- `ai_commentary_context.json` (under `output_dir_final`; deterministic grounding contract for future AI Commentary, written after Decision Verdict; does not call an LLM or calculate metrics; see [AI commentary grounding spec](docs/specs/ai_commentary_grounding_spec.md))
 - `tradeoff_explanation.json` and optional `tradeoff_explanation.txt` (under `output_dir_final`; [src/tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py); [trade-off and model risk spec](docs/specs/tradeoff_and_model_risk_spec.md))
 - `model_risk_diagnostics.json` and optional `model_risk_diagnostics.txt` (under `output_dir_final`; same module and spec)
 - `assumption_sensitivity.json` and `assumption_sensitivity.txt` (under `output_dir_final` after compare; [assumption sensitivity spec](docs/specs/assumption_sensitivity_spec.md))
@@ -237,6 +288,7 @@ Common project artifacts include:
 - `regret_analysis.json` and `regret_analysis.txt` (under `output_dir_final` after compare; [regret analysis spec](docs/specs/regret_analysis_spec.md); implementation post-audit Session 19)
 - `action_plan.json` and optional `action_plan.txt` (under `output_dir_final`; contract in [action engine spec](docs/specs/action_engine_spec.md))
 - `monitoring_diff.json` and optional `monitoring_diff.txt` (under `output_dir_final`; [monitoring spec](docs/specs/monitoring_spec.md); compares to prior `monitoring/latest/analysis_snapshot.json`)
+- `what_changed_summary.json` (under `output_dir_final`; light product-facing Monitoring / What Changed projection over `monitoring_diff.json`, optional Decision Verdict and diagnosis context; does not replace monitoring snapshots/diff; see [light monitoring summary spec](docs/specs/light_monitoring_summary_spec.md))
 - `monitoring/latest/analysis_snapshot.json` and `monitoring/history/analysis_snapshot_{analysis_end}.json` (generated monitoring snapshots; same spec)
 - `decision_journal.json` and optional `decision_journal.txt` (under `output_dir_final`; written by `write_candidate_comparison_outputs`; see [decision journal spec](docs/specs/decision_journal_spec.md))
 - `journal/latest/decision_journal.json` and `journal/history/decision_journal_{analysis_end}.json` (generated journal copies; same spec)
@@ -300,6 +352,38 @@ session explicitly targets generated artifacts. Offline gate:
 - If generated outputs are refreshed by a run, commit them only when the task explicitly targets generated artifacts.
 - Keep output names and folders stable unless a spec or explicit task changes them.
 
+## Generated Output Refresh Policy
+
+Generated-output refreshes are separate work from source/docs/spec migration. A refresh can be useful
+to prove that current code writes the product-facing bundle, but it also creates large noisy diffs in
+portfolio folders, report exports, manifests, caches, and PDF sidecars. Do not run refresh commands
+unless the active session explicitly approves generated-output changes.
+
+When a refresh is approved, prefer the narrowest portfolio-first command that produces the needed
+evidence:
+
+| Refresh intent | Preferred command | Expected checks |
+| --- | --- | --- |
+| Verify routine diagnosis-first bundle without PDFs | `python run_portfolio_review.py --mode core` using default `site_api` output | Inspect `{output_dir_final}/analysis_subject/`, `candidate_comparison.json`, product-bundle JSON, and `output_manifest.json`; do not expect `pdf files/` to refresh. |
+| Verify subject diagnostics only | `python run_portfolio_review.py --skip-candidates` or the narrow report command that materializes the subject | Inspect `analysis_subject/portfolio_xray.json`, `analysis_subject/stress_report.json`, `problem_classification.json`, and `candidate_launchpad.json` where applicable. |
+| Verify full research menu | `python run_portfolio_review.py --mode full` only when full 16-candidate evidence is explicitly required | Inspect `candidate_factory_run.json.factory_profile_id == default_v1`, `candidate_menu`, and generated diffs separately from source/docs. |
+| Verify PDF/report packaging | Add `--with-pdf`, `--legacy-full-pdf`, or an explicit export profile only when PDF/export artifacts are the task target | Inspect generated PDF/Markdown sidecars separately; do not mix with ordinary JSON/cache refreshes. |
+
+After any approved refresh:
+
+1. Run `git status --short` and classify generated diffs separately from source/docs/config/code.
+2. Confirm the product-facing bundle expected for the workflow state:
+   `problem_classification.json`, `candidate_launchpad.json`, `current_vs_candidate.json`,
+   `decision_verdict.json`, `ai_commentary_context.json`, and `what_changed_summary.json`.
+3. Confirm technical manifests and comparison evidence:
+   `output_manifest.json`, `candidate_comparison.json`, `selection_decision.json`, and
+   `candidate_factory_run.json` when candidates ran.
+4. Treat missing files as either expected for the workflow state (`diagnosis_only`, `one_candidate`,
+   `multiple_candidates`) or as requiring code/spec verification. Do not infer success from stale
+   files already present on disk.
+5. Do not stage or commit generated outputs automatically. Commit them only when the user explicitly
+   asks for generated artifacts to be included.
+
 ## Detailed Ownership
 
 | Area | Governing document |
@@ -307,20 +391,26 @@ session explicitly targets generated artifacts. Offline gate:
 | Current implementation output contract | [SPEC.md](SPEC.md) |
 | Portfolio-first workflow order and `analysis_subject` output role | [docs/specs/portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md) |
 | Portfolio X-Ray JSON and seven-section diagnostic output | [docs/specs/portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) |
+| Problem Classification JSON | [docs/specs/problem_classification_spec.md](docs/specs/problem_classification_spec.md) |
+| Candidate Launchpad JSON | [docs/specs/candidate_launchpad_spec.md](docs/specs/candidate_launchpad_spec.md) |
 | High-level report and artifact contract | [docs/specs/reporting_outputs_spec.md](docs/specs/reporting_outputs_spec.md) |
 | Candidate factory run summary JSON | [docs/specs/candidate_factory_spec.md](docs/specs/candidate_factory_spec.md) |
 | Candidate Factory layer handoff (Block 4.1–4.9) | [docs/specs/candidate_factory_layer_spec.md](docs/specs/candidate_factory_layer_spec.md) |
 | Block 4 methodology map and governance gaps G1–G10 | [docs/audits/2026-05-20_candidate_factory_methodology_map.md](docs/audits/2026-05-20_candidate_factory_methodology_map.md) |
 | Canonical candidate comparison JSON | [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md) |
+| Current-vs-candidate JSON | [docs/specs/current_vs_candidate_spec.md](docs/specs/current_vs_candidate_spec.md) |
 | Robustness Scorecard JSON | [docs/specs/robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md) |
 | Portfolio Health Score JSON | [docs/specs/portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md) |
 | Selection decision JSON | [docs/specs/selection_engine_spec.md](docs/specs/selection_engine_spec.md) |
+| Decision Verdict JSON | [docs/specs/decision_verdict_spec.md](docs/specs/decision_verdict_spec.md) |
+| AI Commentary grounding context JSON | [docs/specs/ai_commentary_grounding_spec.md](docs/specs/ai_commentary_grounding_spec.md) |
 | Trade-off explanation and model risk diagnostics JSON | [docs/specs/tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md) |
 | Assumption sensitivity JSON | [docs/specs/assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md) |
 | Pareto / Dominance JSON | [docs/specs/pareto_dominance_spec.md](docs/specs/pareto_dominance_spec.md) |
 | Regret Analysis JSON | [docs/specs/regret_analysis_spec.md](docs/specs/regret_analysis_spec.md) |
 | Current-vs-policy workflow and status JSON | [docs/specs/current_vs_policy_workflow_spec.md](docs/specs/current_vs_policy_workflow_spec.md) |
 | Monitoring snapshot and diff JSON | [docs/specs/monitoring_spec.md](docs/specs/monitoring_spec.md) |
+| Light Monitoring / What Changed summary JSON | [docs/specs/light_monitoring_summary_spec.md](docs/specs/light_monitoring_summary_spec.md) |
 | Metric formulas, windows, estimators, rounding | [docs/specs/metrics_specification.md](docs/specs/metrics_specification.md) |
 | Optimization Engine roles, current optimizer output disclosure, and target-only optimizer boundaries | [docs/specs/optimization_engine_layer_spec.md](docs/specs/optimization_engine_layer_spec.md) |
 | Stress, factor, macro, regime, and stress CSV/JSON artifacts | [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) |

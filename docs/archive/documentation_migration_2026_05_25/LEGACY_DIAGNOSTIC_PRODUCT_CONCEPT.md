@@ -1137,14 +1137,14 @@ The system separates decision quality from outcome quality and creates a discipl
 
 This product concept should guide future planning and documentation, but the current implementation remains governed by:
 
-- [SPEC.md](../SPEC.md)
-- [Portfolio Construction Policy](specs/portfolio_construction_policy.md)
-- [Metrics Specification](specs/metrics_specification.md)
-- [Stress Testing Spec](specs/stress_testing_spec.md)
-- [Feasibility Constraints](specs/feasibility_constraints_spec.md)
-- [Data Policy](specs/data_policy_spec.md)
-- [Production Workflow](specs/production_workflow.md)
-- [PLANS.md](../PLANS.md)
-- [AGENTS.md](../AGENTS.md)
+- [SPEC.md](../../../SPEC.md)
+- [Portfolio Construction Policy](../../specs/portfolio_construction_policy.md)
+- [Metrics Specification](../../specs/metrics_specification.md)
+- [Stress Testing Spec](../../specs/stress_testing_spec.md)
+- [Feasibility Constraints](../../specs/feasibility_constraints_spec.md)
+- [Data Policy](../../specs/data_policy_spec.md)
+- [Production Workflow](../../specs/production_workflow.md)
+- [PLANS.md](../../../PLANS.md)
+- [AGENTS.md](../../../AGENTS.md)
 
 Any implementation change derived from this concept must be specified separately, planned when needed, documented in the relevant source-of-truth file, and verified through the project verification loop.

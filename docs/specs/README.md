@@ -4,6 +4,15 @@ This directory contains the detailed source-of-truth documents for module-specif
 
 These specs describe current implementation contracts. Product-facing Portfolio MRI language in `PRODUCT.md` or `ARCHITECTURE.md` may map these contracts into target UX concepts, but it does not rename schemas, output files, formulas, fields, statuses, or generated artifact contracts.
 
+Output category boundary: the product-facing diagnosis-first bundle is
+`problem_classification.json`, `candidate_launchpad.json`, `current_vs_candidate.json`,
+`decision_verdict.json`, `ai_commentary_context.json`, and `what_changed_summary.json`.
+`candidate_comparison.json`, `selection_decision.json`, factory manifests, and `output_manifest.json`
+remain technical contracts. Health, robustness, assumption sensitivity, Pareto/dominance, regret,
+trade-off, and model-risk artifacts are advanced/research evidence unless a later approved spec
+promotes a specific surface. See [../../OUTPUTS.md](../../OUTPUTS.md) and
+[reporting_outputs_spec.md](reporting_outputs_spec.md) for the full output bundle policy.
+
 Top-level documents stay compact:
 
 - [../../RULES.md](../../RULES.md) maps project principles and source-of-truth ownership.
@@ -23,6 +32,10 @@ Top-level documents stay compact:
 | Area | Spec |
 | --- | --- |
 | Portfolio-first review workflow, `analysis_subject` baseline, and `run_portfolio_review.py` orchestration | [portfolio_review_workflow_spec.md](portfolio_review_workflow_spec.md) |
+| Diagnosis-first workflow state classification (`diagnosis_only`, `one_candidate`, `multiple_candidates`) | [workflow_state_spec.md](workflow_state_spec.md) |
+| Problem Classification diagnostic artifact and evidence-to-problem mapping | [problem_classification_spec.md](problem_classification_spec.md) |
+| Candidate Launchpad data artifact and problem-to-hypothesis card mapping | [candidate_launchpad_spec.md](candidate_launchpad_spec.md) |
+| Portfolio Alternatives Builder one-candidate wrapper over existing candidate builders | [portfolio_alternatives_builder_spec.md](portfolio_alternatives_builder_spec.md) |
 | Portfolio X-Ray diagnostics, seven-section current-portfolio diagnostic layer, and `portfolio_xray.json` contract | [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) |
 | Portfolio X-Ray layer (Block 2.1-2.7) | [portfolio_xray_layer_spec.md](portfolio_xray_layer_spec.md) |
 | Portfolio X-Ray methodology map (Block 2 audit baseline) | [../audits/2026-05-20_portfolio_xray_methodology_map.md](../audits/2026-05-20_portfolio_xray_methodology_map.md) |
@@ -55,10 +68,13 @@ Top-level documents stay compact:
 | Optimization Engine layer (Block 5.1-5.11), roles, objective/estimator/constraint/status/output matrices | [optimization_engine_layer_spec.md](optimization_engine_layer_spec.md) |
 | Optimization Engine post-audit roadmap (Phase 15) | [../exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md](../exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md) |
 | Canonical multi-candidate comparison artifact | [candidate_comparison_spec.md](candidate_comparison_spec.md) |
+| Current-vs-candidate product comparison adapter | [current_vs_candidate_spec.md](current_vs_candidate_spec.md) |
 | Downstream decision readiness (Blocks 6–7 handoff, eligibility guards) | [downstream_decision_readiness_spec.md](downstream_decision_readiness_spec.md) |
 | Robustness Scorecard (diagnostic resilience scoring) | [robustness_scorecard_spec.md](robustness_scorecard_spec.md) |
 | Portfolio Health Score (diagnostic holistic quality scoring) | [portfolio_health_score_spec.md](portfolio_health_score_spec.md) |
 | Selection Engine and No-Trade Recommendation (formal decision contract) | [selection_engine_spec.md](selection_engine_spec.md) |
+| Product-facing Decision Verdict mapping over Selection/No-Trade evidence | [decision_verdict_spec.md](decision_verdict_spec.md) |
+| AI Commentary grounding context (current contract; not LLM prose) | [ai_commentary_grounding_spec.md](ai_commentary_grounding_spec.md) |
 | Trade-off Explanation and Model Risk Diagnostics | [tradeoff_and_model_risk_spec.md](tradeoff_and_model_risk_spec.md) |
 | Assumption Sensitivity (selection stability under perturbations) | [assumption_sensitivity_spec.md](assumption_sensitivity_spec.md) |
 | Pareto / Dominance Check (multi-criteria candidate pruning) | [pareto_dominance_spec.md](pareto_dominance_spec.md) |
@@ -66,6 +82,7 @@ Top-level documents stay compact:
 | Current-vs-policy workflow and No-Trade actionability | [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md) |
 | Action Engine and Rebalancing Advisor (implementation plan) | [action_engine_spec.md](action_engine_spec.md) |
 | Monitoring snapshots and What Changed diff | [monitoring_spec.md](monitoring_spec.md) |
+| Light Monitoring / What Changed product summary | [light_monitoring_summary_spec.md](light_monitoring_summary_spec.md) |
 | Decision Journal (generated decision record) | [decision_journal_spec.md](decision_journal_spec.md) |
 | Robust Mean-Variance baselines and lambda calibration | [robust_mv_spec.md](robust_mv_spec.md) |
 | Scenario-Based Robust Optimization | [robust_scenario_optimization_spec.md](robust_scenario_optimization_spec.md) |

@@ -11,6 +11,22 @@ spec and implementation are updated.
 
 ## Current Development Rule
 
+Current product direction is diagnosis-first and decision-support oriented: Input Portfolio ->
+Portfolio X-Ray -> Stress Test Lab -> Problem Classification -> Candidate Launchpad -> Portfolio
+Alternatives Builder -> Current vs Candidate Comparison -> Decision Verdict -> AI Commentary
+grounding -> Monitoring / What Changed. Optimizers, candidate factories, scorecards, and full
+multi-candidate research remain implementation/advanced evidence unless an active canonical spec
+explicitly promotes a surface to Core MVP.
+
+Active alignment work: **closed** 2026-05-25 — [Post-Audit Portfolio MRI Architecture Alignment Roadmap](exec_plans/2026-05-25_post_architecture_alignment_roadmap.md) (Sessions 01–12), based on the [Full Project Architecture Alignment Audit](audits/2026-05-25_full_project_architecture_alignment_audit.md). Closure: [Session 12 closure report](audits/2026-05-25_post_architecture_alignment_session12_closure_report.md). Older phases below are retained as historical project memory and implementation traceability; they do not override the current diagnosis-first product direction.
+
+Architecture-alignment backlog (diagnosis-first docs; not a code milestone until approved):
+
+| ID | Status | Scope | Notes |
+| --- | --- | --- | --- |
+| RM-ARCH-010 | Backlog | Natural-language AI Commentary generation spec | Requires separate spec (provider, prompts, output schema, citation rules, guardrail tests). Current implementation stops at `ai_commentary_context.json` per [ai_commentary_grounding_spec.md](specs/ai_commentary_grounding_spec.md). Do not add LLM calls until this row is accepted and implemented. |
+| RM-ARCH-011 | Backlog | Product bundle runtime wiring (no merged bundle file) | From Session 11 architecture alignment: resolve `analysis_subject/` paths for problem/launchpad in compare + `what_changed_summary`; pass problem/launchpad into `write_ai_commentary_context_outputs`; optionally add `artifact_categories` to `output_manifest_v1`. Do **not** add a merged `product_bundle.json` unless a later spec approves it. Requires separate implementation ExecPlan. |
+
 Post-audit stabilization (RM-610 through RM-623, Sessions 02–20) is **complete** as of 2026-05-17.
 The file-first V1 decision pipeline is implemented end-to-end through `write_candidate_comparison_outputs`.
 Do not add new major analytics without an accepted spec and roadmap row. Current active backlog:

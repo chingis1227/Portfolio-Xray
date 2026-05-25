@@ -76,6 +76,20 @@ Primary report responsibilities:
   `tradeoff_explanation.json`, `model_risk_diagnostics.json`, `action_plan.json`,
   `monitoring_diff.json`, and `decision_journal.json`
 
+### Product-facing output bundle vs evidence artifacts
+
+The reporting pipeline may write many JSON contracts after report or comparison runs. Product
+surfaces should present the diagnosis-first bundle before lower-level technical and advanced
+evidence. This categorization does not rename files, fields, schemas, or owning specs.
+
+| Category | Artifacts | Intended consumer |
+| --- | --- | --- |
+| **Core MVP product bundle** | `problem_classification.json`, `candidate_launchpad.json`, `current_vs_candidate.json`, `decision_verdict.json`, `ai_commentary_context.json`, `what_changed_summary.json` | Product/UI/API surfaces that explain the diagnosis-first flow. `ai_commentary_context.json` is deterministic grounding for a future commentary generator only; it is not generated AI prose and does not replace `commentary.txt` / PDF report text. |
+| **Technical contracts** | `candidate_comparison.json`, `selection_decision.json`, `candidate_factory_run.json`, `candidate_factory_manifest.json`, `candidate_manifest.json`, `output_manifest.json` | Pipeline orchestration, API indexing, and deterministic evidence joins. |
+| **Advanced / research evidence** | `portfolio_health_score.json`, `robustness_scorecard.json`, `assumption_sensitivity.json`, `pareto_dominance.json`, `regret_analysis.json`, `tradeoff_explanation.json`, `model_risk_diagnostics.json` | Drill-down review, robustness/research analysis, and confidence diagnostics. |
+| **Action / monitoring / journal evidence** | `action_plan.json`, `monitoring_diff.json`, `decision_journal.json`, `decision_package_summary.json` | Implementation review, audit trail, reporting projection, and change tracking. |
+| **Legacy / compatibility** | `run_result.json`, `portfolio_weights.yml`, `current_vs_policy_status.json`, `portfolio_comparison.json`, `ew_rp_comparison.json` | Legacy policy workflows and backwards-compatible readers. |
+
 `run_result.json` and `run_metadata.json` expose `analysis_setup`, the resolved runtime contract governed by [input_assumptions_spec.md](input_assumptions_spec.md). They also expose `input_assumptions`, the reporting/reproducibility view projected from `analysis_setup`.
 
 Variant folders follow the same report contract after their candidate weights are fixed.
@@ -100,7 +114,8 @@ decision-support package under `output_dir_final` after candidate report folders
 package is generated evidence and workflow output; it does not rewrite optimizer weights, rerun
 candidate builders, execute trades, or override stress pass/fail.
 
-The V1 artifact chain is:
+The V1 artifact chain is technical evidence. Product consumers should prefer the product-facing
+bundle above when it exists and use this chain for traceability, drill-down, and compatibility:
 
 1. `candidate_comparison.json` / `.txt` - diagnostic table centered on the portfolio-first
    `analysis_subject` baseline when materialized, followed by supported candidate alternatives.
@@ -120,6 +135,10 @@ The V1 artifact chain is:
    generated What Changed evidence versus the prior run.
 8. `decision_journal.json` / `.txt` plus `journal/latest/` and `journal/history/` copies - generated
    decision record and artifact index for the run.
+
+Product-facing adapters written around this chain include `current_vs_candidate.json`,
+`decision_verdict.json`, `ai_commentary_context.json`, and `what_changed_summary.json`. Earlier
+report-stage adapters include `problem_classification.json` and `candidate_launchpad.json`.
 
 Compact report/PDF-facing summaries are defined in
 [decision_package_reporting_spec.md](decision_package_reporting_spec.md) and implemented in

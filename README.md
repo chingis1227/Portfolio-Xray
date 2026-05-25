@@ -12,15 +12,16 @@ explicit export/report profile is selected. Default `run_portfolio_review.py` / 
 **not** refresh `pdf files/` — use `--with-pdf`, `--legacy-full-pdf`, or an explicit export profile
 when client PDFs must match the latest JSON.
 
-Routine review uses **`--mode core`** (factory profile **`core_v1`**, six candidates). Full menu
-(**`default_v1`**, 16 builders) requires **`--mode full`** or standalone factory. See
-[OUTPUTS.md](OUTPUTS.md) for the full command matrix.
+Routine review uses **`--mode core`** (factory profile **`core_fast`**, six candidates with parallel
+lightweight reports by default). The sequential **`core_v1`** profile is retained for regression /
+parity checks via `--candidate-profile core_v1`. Full menu (**`default_v1`**, 16 builders) requires
+**`--mode full`** or standalone factory. See [OUTPUTS.md](OUTPUTS.md) for the full command matrix.
 
 | Use case | Command | Factory profile |
 | --- | --- | --- |
-| Portfolio review site/API (**core**, default) | `python run_portfolio_review.py` or `--mode core` | `core_v1` |
+| Portfolio review site/API (**core**, default) | `python run_portfolio_review.py` or `--mode core` | `core_fast` |
 | Full review (16 builders) | `python run_portfolio_review.py --mode full` | `default_v1` |
-| Full menu factory + compare (standalone) | `python run_candidate_factory.py --profile default_v1 --then-compare` | `default_v1` |
+| Full menu factory + compare (standalone advanced/research) | `python run_candidate_factory.py --profile default_v1 --then-compare` | `default_v1` |
 | Compare / decision package only | `python run_compare_variants.py` | — |
 | Legacy policy optimize only (no report) | `python run_optimization.py` | — |
 | Legacy policy + site/API report | `python run_optimization.py --with-report` | — |
@@ -50,6 +51,7 @@ Implemented today:
 - Benchmark/candidate portfolios including Equal Weight, Risk Parity, HRP, Minimum Variance, Maximum Diversification, Minimum CVaR, Robust Mean-Variance, and Scenario-Based Robust Optimization.
 - Candidate Portfolio Factory orchestration through `run_candidate_factory.py`.
 - Canonical candidate comparison and current generated V1 decision artifacts through `run_compare_variants.py`: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, trade-off/model-risk diagnostics, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Action Plan, current-vs-policy status, Monitoring / What Changed, generated Decision Journal, and decision package summary. These are implementation artifacts and backend/advanced evidence where applicable, not a statement that every artifact is Core MVP product UI.
+- Additive diagnosis-first artifacts and adapters: Problem Classification (`problem_classification.json`), Candidate Launchpad (`candidate_launchpad.json`), Current-vs-Candidate (`current_vs_candidate.json`), Decision Verdict (`decision_verdict.json`), AI Commentary grounding context (`ai_commentary_context.json`), and light What Changed summary (`what_changed_summary.json`). These are current backend/file artifacts and product-facing mappings where specified; full interactive UX around them remains future scope.
 - JSON generated artifacts by default; CSV, HTML, TXT, PNG, and PDF-style artifacts remain explicit export/report outputs.
 - ETF and stock taxonomy validation as annotation/diagnostic layers.
 - Partial utility UIs: `config_ui/` (local config editor) and `results_dashboard/` (read-only results viewer). These are supported utility surfaces, not the full product workspace.
@@ -57,7 +59,12 @@ Implemented today:
 Target/TBD areas:
 
 - Full interactive UI and saved analysis workspaces.
-- Target product modules from the documentation migration: diagnosis-only state, Problem Classification, Candidate Launchpad, user-triggered Portfolio Alternatives Builder, current-vs-selected-candidate UX, Decision Verdict product language, and AI Commentary as a formal explanation layer.
+- Formal diagnosis-only product state beyond current generated artifacts.
+- Full user-triggered Portfolio Alternatives Builder UX/service beyond the current backend one-candidate delegation plan.
+- Current-vs-selected-candidate as the primary interactive UI beyond the current additive JSON adapter.
+- Natural-language AI Commentary generation beyond the current deterministic grounding context
+  (`ai_commentary_context.json`). Rule-based `commentary.txt` / `stress_commentary.txt` are current
+  report exports, not LLM AI Commentary (see [AI commentary grounding spec](docs/specs/ai_commentary_grounding_spec.md)).
 - Polished product UI and workspace flows around the existing file-first Candidate Portfolio Factory, current-vs-policy workflow, comparison, and decision package artifacts.
 - More deliberately designed client-facing report packages beyond the current file-first summary/PDF-style surfaces.
 - Advanced UX modules around the implemented file-first V1 artifacts.
@@ -91,7 +98,8 @@ python run_portfolio_review.py --candidates equal_weight,risk_parity
 
 | Review mode | Factory profile | Typical use |
 | --- | --- | --- |
-| **Core** (default) | `core_v1` (six lightweight builders) | Routine monthly review |
+| **Core** (default) | `core_fast` (same six ids as `core_v1`, parallel lightweight reports by default) | Routine monthly review |
+| **Core regression** | `core_v1` via `--candidate-profile core_v1` | Sequential parity/debug run |
 | **Full** | `default_v1` (16 builders incl. optimizers + robust) | Explicit refresh of the full candidate menu |
 | **Full resume** | `default_v1` with factory `--resume` | Recovery after an interrupted full factory run |
 
@@ -101,7 +109,12 @@ default path. Inspect subject diagnostics before interpreting candidate or decis
 
 ### Blocks 1-5 MVP core (first five product blocks)
 
-Blocks 1-5 are the practical implementation core for the current file-first workflow: Input and Assumptions, Portfolio X-Ray, Stress Lab, Candidate Factory, and Optimization Engine. Optimizer-backed candidates are supporting hypotheses for comparison, not black-box recommendations. The
+Blocks 1-5 are the practical reliability core for the current file-first implementation: Input and
+Assumptions, Portfolio X-Ray, Stress Lab, candidate hypothesis building, and optimizer-backed
+candidate methods. This is not the Core MVP product story. Product-facing UX should route through
+diagnosis, Candidate Launchpad, Alternatives Builder, comparison, and verdict language, while the
+Candidate Factory remains backend/advanced/research orchestration. Optimizer-backed candidates are
+supporting hypotheses for comparison, not black-box recommendations. The
 active reliability plan is
 [Blocks 1-5 MVP Core Reliability Plan](docs/exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md).
 
@@ -193,7 +206,8 @@ future accepted spec reactivates it for that role.
 Common candidate commands:
 
 ```bash
-python run_candidate_factory.py --then-compare
+python run_candidate_factory.py --profile core_fast --then-compare
+python run_candidate_factory.py --profile default_v1 --then-compare  # advanced/research full menu
 python run_equal_weight.py
 python run_equal_weight_by_asset_class.py
 python run_risk_parity.py
@@ -214,7 +228,9 @@ python run_robust_scenario_optimization.py
 python run_robust_scenario_portfolio_report.py
 ```
 
-Use `run_candidate_factory.py` to orchestrate multiple candidate builders before comparison.
+Use `run_candidate_factory.py` to orchestrate multiple candidate builders before comparison as a
+backend/advanced/research operation. Do not present standalone batch factory runs as the core product
+UX; product-facing flows should start from diagnosis and user-selected hypotheses.
 Default factory path for portfolio-first review: `--execution-mode standard` (weights +
 `lightweight_comparison` snapshots for compare, no per-candidate Pandoc). Optional Phase 3:
 `--full-candidate-reports` or `--selected-candidates-for-full-report` for HTML/commentary/rolling

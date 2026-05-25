@@ -8,6 +8,30 @@ Implementation: **`run_candidate_factory.py`** and **`src/candidate_factory.py`*
 
 Product terminology boundary: the factory is a current backend orchestration capability for building candidate evidence. Product-facing `Candidate Launchpad` or `Portfolio Alternatives Builder` UX must not be inferred from this spec unless separately specified and implemented.
 
+## Portfolio MRI product boundary (2026-05-25 code migration Session 11)
+
+The batch Candidate Portfolio Factory is preserved as implemented infrastructure, but it is not the
+default product UX.
+
+| Surface | Classification | Notes |
+| --- | --- | --- |
+| `run_portfolio_review.py` default review | Product/front-door orchestrator | Materializes `analysis_subject` first, then may call the factory as backend plumbing. |
+| Candidate Launchpad | Product-facing hypothesis cards | Does not build portfolios and contains no weights. |
+| Portfolio Alternatives Builder | Product-facing one-candidate wrapper | Returns a delegated one-candidate factory command plan. |
+| `run_candidate_factory.py --profile core_fast` | Backend routine core batch | Used by default portfolio review orchestration; still not a standalone product UI. |
+| `run_candidate_factory.py --profile core_v1` | Backend legacy core batch | Sequential core profile retained for compatibility/regression. |
+| `run_candidate_factory.py --profile default_v1` | Advanced/research full batch | Builds the full 16-candidate research menu; not the default product experience. |
+| Family profiles and explicit candidate lists | Advanced/research subset batch | Useful for research, debugging, refresh, and backend operations. |
+
+Implementation helpers:
+
+- `candidate_factory_product_boundary()` returns static boundary metadata for tests/docs.
+- `candidate_factory_profile_classification(profile_id)` classifies profiles without changing
+  execution behavior or generated JSON contracts.
+
+These helpers are not written into `candidate_factory_run.json`. They exist only to prevent future
+sessions from confusing the batch factory with product-facing Launchpad or Alternatives Builder UX.
+
 **Active runtime refactor (orchestration only, no formula changes):**
 [Candidate Factory Runtime Refactor Plan](../exec_plans/2026-05-22_candidate_factory_runtime_refactor_plan.md)
 — phased weights / lightweight report / PDF modes. **Session 1 (shipped):** factory default
@@ -45,10 +69,16 @@ or `legacy_export` for explicit presentation exports. Phase 2/3 reports receive 
 
 | Use case | Command |
 | --- | --- |
-| Site/API factory + compare | `python run_candidate_factory.py --profile default_v1 --then-compare` |
+| Core menu factory + compare | `python run_candidate_factory.py --profile core_fast --then-compare` |
+| Core sequential regression factory + compare | `python run_candidate_factory.py --profile core_v1 --then-compare` |
+| Full menu factory + compare (advanced/research) | `python run_candidate_factory.py --profile default_v1 --then-compare` |
 | Core benchmarks only | `python run_candidate_factory.py --profile core_benchmarks --then-compare` |
 | Full export per candidate | `python run_candidate_factory.py --profile default_v1 --output-profile full_report` |
 | Timing / parallel Phase 2 | add `--parallel-lightweight-reports` (standard mode only) |
+
+These commands are backend/advanced/research operations. Routine product usage should start from
+`run_portfolio_review.py` or a future product surface that delegates to the one-candidate Alternatives
+Builder wrapper.
 
 `--execution-mode standard` (default) builds weights in-process and runs `lightweight_comparison`
 reports for compare-ready snapshots without per-candidate PDF. PDF modes (`--pdf-mode`) are orthogonal
@@ -98,7 +128,7 @@ Recorded defaults when the post-audit plan continues without overrides:
 
 1. **Orchestrate before compare:** V1 adopts a factory layer; comparison remains read-only aggregation.
 2. **No formula duplication:** each `candidate_id` maps to one existing entry script (or a documented two-step chain); Session 11 must subprocess or import those scripts, not copy optimization code.
-3. **Default profile `default_v1`:** all **sixteen** script-backed registry rows (every row except `policy` and `current`).
+3. **Standalone factory CLI default profile `default_v1`:** all **sixteen** script-backed registry rows (every row except `policy` and `current`). This is a technical CLI default for factory-only advanced/research runs; it is not the default product UX and is not the default `run_portfolio_review.py --mode core` profile.
 4. **Skip-existing default with freshness:** when `{artifact_root}/snapshot_10y.json` exists, skip rerunning that candidate only when its `analysis_end` matches the review `analysis_end`; otherwise attempt a rebuild unless `--force` or dependency rules dictate a different outcome.
 5. **Failure policy `continue_on_error`:** one failed candidate does not abort the whole factory run; failures appear in the run summary and as `unavailable` / `degraded` in comparison.
 6. **Run summary location:** `{output_dir_final}/candidate_factory_run.json` and optional `candidate_factory_run.txt`.
@@ -119,8 +149,8 @@ Recorded defaults when the post-audit plan continues without overrides:
 
 | Step | Command | Purpose |
 | --- | --- | --- |
-| 0 Subject | `python run_portfolio_review.py` | Materialize `analysis_subject`, build candidates, and compare through the orchestrator |
-| 1 Factory only (advanced) | `python run_candidate_factory.py --profile default_v1` | Build or refresh candidate artifact folders after subject diagnostics exist |
+| 0 Subject | `python run_portfolio_review.py` | Materialize `analysis_subject`, build the default core hypothesis set through backend factory plumbing, and compare through the orchestrator |
+| 1 Factory only (advanced) | `python run_candidate_factory.py --profile default_v1` | Build or refresh the full research candidate artifact set after subject diagnostics exist |
 | 2 Compare only (advanced) | `python run_compare_variants.py` | Rebuild `candidate_comparison.json` + decision package from existing artifacts |
 
 Factory may implement `--then-compare` to run step 2 automatically after step 1.
@@ -133,7 +163,7 @@ Use only when the intended baseline is generated legacy policy weights.
 | --- | --- | --- |
 | 0 Policy | `python run_optimization.py --with-report` (or optimize then `run_report.py`) | Legacy policy weights and Main diagnostics |
 | 0b Current (optional) | `python run_report.py --materialize-current` | Current sidecar for No-Trade versus current |
-| 1 Factory | `python run_candidate_factory.py --profile default_v1` | Build or refresh candidate artifact folders |
+| 1 Factory | `python run_candidate_factory.py --profile default_v1` | Advanced/legacy compatibility refresh of candidate artifact folders |
 | 2 Compare | `python run_compare_variants.py` | Compatibility comparison and decision package |
 
 ### B. Benchmarks-only refresh
@@ -154,7 +184,7 @@ Profiles select which registry `candidate_id` values the factory attempts. IDs m
 | `risk_budgets` | `risk_budget_by_asset`, `risk_budget_by_asset_class`, `hierarchical_risk_parity` | Risk-budget family |
 | `classic_optimizers` | `minimum_variance`, `minimum_variance_uncapped`, `minimum_variance_advanced`, `maximum_diversification`, `maximum_diversification_uncapped`, `minimum_cvar_constrained`, `minimum_cvar_uncapped` | Traditional optimizer candidates |
 | `robust_suite` | `robust_mv_constrained`, `robust_mv_uncapped`, `robust_scenario` | Robust benchmarks only |
-| `default_v1` | All sixteen script-backed IDs (union of rows above) | Standard product comparison arena |
+| `default_v1` | All sixteen script-backed IDs (union of rows above) | Advanced/research full menu for backend refresh, timing, parity, and evidence generation; not the default product UX |
 | `core_v1` | Same six ids as `core_benchmarks` + `risk_budgets` (menu order) | Regression / sequential lightweight core menu |
 | `core_fast` | Same six ids as `core_v1` | Routine core menu with parallel Phase 2 lightweight reports by default (4 workers); disable via `--no-parallel-lightweight-reports` |
 | `explicit_list` | User-supplied `--candidates id1,id2,...` | Ad hoc reruns |
@@ -240,9 +270,10 @@ many candidates are stale. That is an **operational** limitation, not a broken c
 
 | Mode | CLI | Factory profile | Intended scope |
 | --- | --- | --- | --- |
-| **core-run** | `python run_portfolio_review.py` (default `--mode core`) | `core_v1` | Benchmarks + risk budgets (6 candidates); factory `execution_mode=standard`; site/API JSON output |
-| **core-fast-run** (Wave 2 — [Performance Wave 2 ExecPlan](../exec_plans/2026-05-24_blocks_1_5_performance_wave2_plan.md)) | `python run_portfolio_review.py --mode core` or `python run_candidate_factory.py --profile core_fast` | `core_fast` | **Same six candidate ids as `core_v1`**. Orchestration only: shared `ReviewRunContext` on subject + factory, fast `analysis_subject` (`lightweight_comparison` + context), **parallel Phase 2 lightweight reports by default** (4 workers; `--no-parallel-lightweight-reports` on review/factory CLI to disable), shared macro/PCA caches, 10Y-only lightweight tail/snapshot trims. **Acceptance: E2E ≤ 300 s warm cache.** Regression profile `core_v1` remains sequential (`--candidate-profile core_v1`). |
-| **full-run** | `python run_portfolio_review.py --mode full` | `default_v1` | Full menu (16 candidates); factory `execution_mode=standard` (phased weights + lightweight report); site/API JSON output |
+| **core-run** (default, Wave 2 — [Performance Wave 2 ExecPlan](../exec_plans/2026-05-24_blocks_1_5_performance_wave2_plan.md)) | `python run_portfolio_review.py` or `python run_portfolio_review.py --mode core` | `core_fast` | Same six candidate ids as `core_v1`; factory `execution_mode=standard`; shared `ReviewRunContext`; parallel Phase 2 lightweight reports by default; site/API JSON output. Disable parallel with `--no-parallel-lightweight-reports`. Acceptance: E2E ≤ 300 s warm cache. |
+| **core sequential regression** | `python run_portfolio_review.py --candidate-profile core_v1` or `python run_candidate_factory.py --profile core_v1` | `core_v1` | Same six candidate ids as `core_fast`, but sequential Phase 2. Retained for parity/debug vs pre-Wave 2 core menu. |
+| **core-fast factory only** | `python run_candidate_factory.py --profile core_fast` | `core_fast` | Standalone backend routine core batch with the same default parallel lightweight-report behavior as portfolio-first core review. |
+| **full-run** | `python run_portfolio_review.py --mode full` | `default_v1` | Explicit full-menu refresh (16 candidates) for advanced/research evidence; factory `execution_mode=standard` (phased weights + lightweight report); site/API JSON output |
 | **full-run (legacy builders)** | `python run_portfolio_review.py --mode full --execution-mode legacy_full` | `default_v1` | Subprocess `run_*.py` chain for parity/debug |
 
 `--candidate-profile` overrides `--mode` when an explicit profile is required. Partial-menu disclosure
@@ -696,7 +727,7 @@ python run_candidate_factory.py [--profile PROFILE] [--candidates ID,ID,...]
 
 | Flag | Default | Behavior |
 | --- | --- | --- |
-| `--profile` | `default_v1` | Select factory profile |
+| `--profile` | `default_v1` | Select factory profile. This standalone CLI default is the full advanced/research menu, not the product default core review profile. |
 | `--candidates` | (none) | Overrides profile with explicit list |
 | `--skip-existing` | on | Skip when `snapshot_10y.json` exists |
 | `--force` | off | Rerun even when snapshot exists |
