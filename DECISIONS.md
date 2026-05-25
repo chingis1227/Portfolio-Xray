@@ -60,6 +60,20 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-05-25-001
+Title: Documentation migration uses draft-first target documents
+
+- Status: accepted
+- Date: 2026-05-25
+- Decision: The documentation migration uses a draft-first, archive-before-replace process for business, product, diagnostic concept, and architecture docs. The approved draft content has been merged into `BUSINESS_VISION.md`, `PRODUCT.md`, `docs/DIAGNOSTIC_PRODUCT_CONCEPT.md`, and `ARCHITECTURE.md`; pre-migration versions are archived under `docs/archive/documentation_migration_2026_05_25/`. Migration records do not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, current code behavior, formulas, schemas, generated-output contracts, or existing implementation capabilities.
+- Context: New DOCX product concept drafts redefine the target product around diagnosis-first decision support, current-vs-candidate comparison, no-trade verdicts, and AI commentary as explanation. Directly rewriting current source-of-truth files would risk claiming target behavior as current implementation or deleting useful advanced/legacy capabilities.
+- Rationale: A draft-first migration lets the project map target product direction safely while preserving current implementation truth, output contracts, operator rules, and advanced/legacy capabilities.
+- Alternatives considered: Rewrite current docs directly (rejected because it risks source-of-truth drift); treat DOCX concepts as immediately binding (rejected because product concepts do not verify code behavior); avoid migration entirely (rejected because current product narrative needs alignment with the new direction).
+- Assumptions: Existing capabilities absent from the DOCX drafts should be classified as `Preserve`, `Advanced`, `Legacy`, or `Requires Review`, not deleted by default. Target modules such as Problem Classification, Candidate Launchpad, Portfolio Alternatives Builder, Decision Verdict language, and AI Commentary require code/spec verification before being stated as current implementation.
+- Consequences: Agents and contributors may consult the migration plan, session audit, and archived legacy docs as traceability inputs only. Current behavior remains governed by canonical specs and code. Future product/architecture changes require review, stale-reference checks, and explicit verification of any implementation claims.
+- Related documents: [DOCUMENTATION_MIGRATION_PLAN.md](DOCUMENTATION_MIGRATION_PLAN.md), [DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md](DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md), [BUSINESS_VISION.md](BUSINESS_VISION.md), [PRODUCT.md](PRODUCT.md), [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md), [ARCHITECTURE.md](ARCHITECTURE.md), [SPEC.md](SPEC.md), [WORKFLOW.md](WORKFLOW.md), [OUTPUTS.md](OUTPUTS.md).
+- Review trigger: Revisit when a target module is promoted to an owning spec, when archived legacy material must be restored, or when the migration strategy changes away from archive-before-replace governance.
+
 Decision ID: DEC-2026-05-21-002
 Title: Optimizer fallback quality is not clean success
 

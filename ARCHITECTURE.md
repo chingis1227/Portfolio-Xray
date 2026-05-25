@@ -1,825 +1,515 @@
 # Architecture
 
-## Status
+This document is part of the active project documentation after the documentation migration. It describes target direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
 
-This document describes the current system architecture and the target product architecture boundaries for Portfolio X-Ray & Optimization Terminal / Portfolio MRI.
+## 1. Architecture Status
 
-It is an architecture map, not a formula specification. It does not override [SPEC.md](SPEC.md), metric formulas, stress scenario definitions, investment policy logic, data policy, configuration schemas, or current code behavior.
+Portfolio MRI currently has a Python, CLI/file-driven, site/API-first backend architecture. The
+target product architecture is a diagnosis-first decision-support workflow.
 
-Related documents:
+This document uses four labels:
 
-- [README.md](README.md) for project overview, commands, and documentation map.
-- [RULES.md](RULES.md) for high-level principles and source-of-truth ownership.
-- [WORKFLOW.md](WORKFLOW.md) for task flow, verification, documentation sync, and commit process.
-- [SPEC.md](SPEC.md) for canonical technical sources of truth.
-- [DATA.md](DATA.md) for data sources, structures, pipeline, quality rules, and data documentation sync triggers.
-- [OUTPUTS.md](OUTPUTS.md) for generated outputs, report artifacts, folders, and source-vs-generated boundaries.
-- [GLOSSARY.md](GLOSSARY.md) for shared project terminology.
-- [DECISIONS.md](DECISIONS.md) for key project decisions and rationale.
-- [Detailed Specifications](docs/specs/README.md) for module-specific behavior.
-- [Portfolio Review Workflow](docs/specs/portfolio_review_workflow_spec.md) for the portfolio-first
-  `analysis_subject` workflow and legacy policy boundary.
-- [Business Vision](BUSINESS_VISION.md) for business goals and target users.
-- [Product](PRODUCT.md) for user flow, screens, and feature behavior.
-- [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) for living target product architecture ideas; non-binding until promoted to specs.
-- [Portfolio Construction Policy](docs/specs/portfolio_construction_policy.md) for the main investment policy.
+- **Current implementation:** supported by current specs/code and safe to describe as implemented
+  only after verification.
+- **Target architecture:** desired product architecture that may require future implementation.
+- **Advanced / research:** useful capabilities that should not be the core MVP user journey.
+- **Legacy / compatibility:** older or compatibility flows that remain operationally useful but are
+  not the target product front door.
 
-## Architecture Summary
+## 2. Current Runtime Architecture
 
-The current project is a Python-based portfolio diagnostics, optimization, comparison, and reporting
-system.
+Current runtime truth must be verified against `SPEC.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`,
+`docs/specs/*.md`, and code.
 
-Portfolio-first target execution chain:
+High-level current runtime:
 
 ```text
-analysis_subject
--> validation and assumptions
--> Portfolio X-Ray and diagnostics
--> stress / factor / macro / scenario diagnostics
--> candidate generation
--> comparison and decision artifacts
--> report / monitoring / journal
+config / analysis_subject
+-> validation and resolved assumptions
+-> data loading, FX, risk-free, benchmark, return panels
+-> current portfolio diagnostics / analysis_subject materialization
+-> stress, factor, scenario, macro/regime diagnostics where enabled
+-> candidate builders / candidate factory
+-> candidate diagnostics and comparison
+-> generated decision artifacts where implemented
+-> JSON/cache default outputs and optional export/report artifacts
 ```
 
-Legacy compatibility execution chain:
+Current implementation characteristics:
+
+- CLI and file driven.
+- JSON/cache are the normal site/API-first contract.
+- CSV/TXT/HTML/PNG/PDF/Markdown/CSS outputs are explicit export/report artifacts, not the default
+  source of truth.
+- `analysis_subject/` should be inspected before interpreting candidate or decision artifacts in
+  portfolio-first review runs.
+- Legacy policy optimization remains callable as compatibility infrastructure.
+- Detailed module contracts live under `docs/specs/*.md`.
+
+Current main entrypoints:
+
+| Entrypoint | Current role | Architecture label |
+| --- | --- | --- |
+| `run_portfolio_review.py` | Portfolio-first review orchestration. | Current implementation |
+| `run_candidate_factory.py` | Candidate factory orchestration and optional comparison. | Current implementation / may become advanced or research UX in target |
+| `run_compare_variants.py` | Compare variants and write downstream decision artifacts. | Current implementation |
+| `run_report.py` | Report and diagnostics pipeline. | Current implementation |
+| `run_optimization.py` | Legacy policy optimization compatibility. | Legacy / compatibility |
+| `run_view_after_optimization.py` | Approved post-optimization tilt view. | Legacy / specialized compatibility |
+
+Do not rename, remove, or demote these operational entrypoints without a separate approved
+migration plan.
+
+## 3. Target Product Architecture
+
+Target product architecture:
 
 ```text
-config.yml
--> data loading / validation
--> optimization
--> weight release checks
--> report and diagnostics
--> generated artifacts
-```
-
-Target product chain:
-
-```text
-Input & assumptions
+Input portfolio
 -> Portfolio X-Ray
 -> Stress Test Lab
--> Candidate Portfolio Factory
--> Candidate comparison
--> Recommendation / no-trade
--> Report export
--> Monitoring / Decision Journal
+-> Problem Classification
+-> Candidate Launchpad
+-> Portfolio Alternatives Builder
+-> Current vs Candidate Comparison
+-> Decision Verdict
+-> AI Commentary
+-> Monitoring / What Changed
 ```
 
-The current implementation is site/API-first (JSON contracts + cache by default) and
-CLI/file-driven. Supported partial utility UIs exist
-(`config_ui/` for config editing, `results_dashboard/` for read-only result viewing). A full product
-workspace UI remains TBD.
+This target architecture changes the user-facing product shape, not automatically the existing
+backend capabilities. Existing backend modules may be reused, wrapped, reclassified, or preserved as
+advanced/legacy infrastructure.
 
-## System Boundaries
+## 4. Target Architecture Layers
 
-### In Scope Today
+### 4.1 Input Portfolio Layer
 
-- Canonical portfolio-first workflow contract: resolve and diagnose `analysis_subject` before
-  candidates or decision artifacts; runtime transition is active.
-- Portfolio-first CLI orchestration that materializes the subject before candidate generation.
-- Config-driven portfolio universe and analysis settings.
-- Market data loading, FX conversion, and return panel construction.
-- Legacy main policy optimization.
-- Portfolio weight output and mandate release checks.
-- Portfolio metrics and dynamic backtesting.
-- Risk contribution diagnostics.
-- Stress testing and stress commentary.
-- Factor diagnostics, factor covariance analytics, PCA, macro regime diagnostics, scenario libraries, and regime analytics.
-- Benchmark and alternative portfolio builders.
-- Candidate Portfolio Factory orchestration.
-- Canonical candidate comparison and V1 decision artifacts: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, trade-off/model-risk diagnostics, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Action Plan, current-vs-policy status, Monitoring / What Changed, generated Decision Journal, and decision package summary.
-- CSV, JSON, HTML, TXT, and PDF-style report artifacts.
-- Partial utility UIs (`config_ui/`, `results_dashboard/`) for config editing and read-only results.
+Target responsibility:
 
-### Target / TBD
+- Accept the current portfolio as the default MVP starting point.
+- Keep first-screen input simple: tickers/instruments, current weights, investor currency.
+- Resolve system defaults for benchmark, cash proxy, risk-free source, FX logic, market data
+  provider, analysis windows, and quality thresholds.
 
-- Full interactive product UI.
-- User workspace and saved analyses.
-- Portfolio Comparison Arena UI.
-- Product UX around the existing file-first Candidate Portfolio Factory and current-vs-policy workflow.
-- Dashboard surfaces for implemented diagnostics such as Assumption Sensitivity, Pareto / Dominance, Regret Analysis, and trade-off/model-risk.
-- More polished report/PDF packaging beyond the current file-first decision package summary and PDF-style surfaces.
-- Monitoring UI and user-maintained journal workflow beyond generated V1 artifacts.
-- API / white-label integration.
+Current implementation mapping:
 
-## High-Level Data Flow
+- Likely maps to current config validation, `analysis_subject`, input assumptions, client profiles,
+  and data setup modules.
+- Requires code/spec verification before claiming exact current behavior.
 
-Portfolio-first flow:
+Architecture boundary:
 
-```text
-Analysis subject input
-  -> Subject resolver and assumptions
-  -> Subject report diagnostics
-  -> Candidate builders
-  -> Candidate report diagnostics
-  -> Subject-centered comparison
-  -> Selection / Action / Monitoring / Journal
-  -> Report package
-```
+- This layer collects and resolves inputs.
+- It does not generate candidate weights.
+- It does not decide whether to rebalance.
 
-Legacy policy flow:
+### 4.2 Portfolio X-Ray Layer
 
-```text
-Configuration
-  -> Data loaders
-  -> Return panels
-  -> Optimization inputs
-  -> Main policy optimizer
-  -> ProLiquidity / release checks
-  -> Portfolio weights
-  -> Report pipeline
-  -> Metrics / stress / factor / regime / scenario diagnostics
-  -> Commentary and export artifacts
-```
+Target responsibility:
 
-Benchmark variants follow a parallel flow:
+- Diagnose current portfolio structure and hidden risk.
+- Produce allocation, metrics, risk contribution, factor exposure, hidden risk, weakness map, and
+  data-trust signals where supported.
 
-```text
-Configuration + eligible universe + return panels
-  -> variant builder
-  -> fixed candidate weights
-  -> same report pipeline
-  -> variant output folder
-```
+Current implementation mapping:
 
-Scenario-based robust optimization follows an additive flow:
+- Maps to existing Portfolio X-Ray / diagnostics specs and generated artifacts where implemented.
+- Exact sections, fields, thresholds, and statuses require verification against current specs/code.
 
-```text
-Main report artifacts
-  -> scenario_library_normalized.json + stress_report.json
-  -> scenario robust optimizer
-  -> robust scenario candidate weights
-  -> robust scenario portfolio report
-```
+Architecture boundary:
 
-## Main Runtime Entry Points
+- Diagnostic layer only.
+- Does not issue final investment verdict.
 
-| Entry point | Role | Primary outputs |
+### 4.3 Stress Test Lab Layer
+
+Target responsibility:
+
+- Evaluate current portfolio behavior under historical and synthetic stress scenarios.
+- Identify worst scenarios, loss contributors, helpful offsets, hedge gaps, and stress evidence
+  quality.
+
+Current implementation mapping:
+
+- Maps to stress testing, scenario library, hedge gap, crisis replay, and factor diagnostics specs
+  where implemented.
+
+Architecture boundary:
+
+- Reports vulnerability and evidence quality.
+- Does not fabricate history when data is insufficient.
+- Does not generate trades.
+
+### 4.4 Problem Classification Layer
+
+Target responsibility:
+
+- Convert X-Ray and Stress Test Lab outputs into 2-3 user-understandable portfolio problems.
+- Examples: high volatility, high drawdown, concentration, weak hedge behavior, poor
+  diversification, current portfolio acceptable.
+
+Current implementation mapping:
+
+- Requires code/spec verification. Treat as target module until verified.
+
+Architecture boundary:
+
+- Translates evidence into improvement directions.
+- Does not directly construct candidate weights.
+- Does not guarantee that a candidate must be generated.
+
+### 4.5 Candidate Launchpad Layer
+
+Target responsibility:
+
+- Show recommended improvement paths and quick benchmark tests.
+- Let the user choose what hypothesis to test.
+
+Current implementation mapping:
+
+- Requires code/spec verification. Existing candidate factory may supply methods, but Launchpad is
+  target UX/product orchestration unless implemented elsewhere.
+
+Architecture boundary:
+
+- Launchpad cards are not portfolios.
+- They open or prefill the Alternatives Builder.
+
+### 4.6 Portfolio Alternatives Builder Layer
+
+Target responsibility:
+
+- Generate one selected candidate from a goal, method, constraints, and parameters.
+- Preserve candidate as a hypothesis with evidence and provenance.
+
+Potential backend reuse:
+
+- Equal Weight.
+- Equal Weight by Asset Class.
+- Risk Parity.
+- Hierarchical Risk Parity.
+- Minimum Variance.
+- Minimum CVaR.
+- Maximum Diversification.
+- Robust Mean Variance.
+
+Current implementation mapping:
+
+- Existing candidate builders and factory are current capabilities, but on-demand user-triggered
+  builder UX requires code/spec verification.
+
+Architecture boundary:
+
+- Builder creates candidate hypotheses.
+- It should not be framed as automatically finding the perfect portfolio.
+- Batch generation can remain advanced/research or backend automation.
+
+### 4.7 Current vs Candidate Comparison Layer
+
+Target responsibility:
+
+- Compare current portfolio against one selected candidate first.
+- If multiple candidates exist, compare only the generated shortlist.
+
+Target evidence:
+
+- Return/risk.
+- Volatility.
+- Drawdown.
+- Stress loss.
+- Risk concentration.
+- Factor exposure changes.
+- Hedge gap changes.
+- Turnover and transaction-cost assumptions where available.
+- Data/model confidence.
+
+Current implementation mapping:
+
+- Existing candidate comparison specs and artifacts likely provide reusable evidence, but the
+  current-vs-selected-candidate product shape requires verification.
+
+Architecture boundary:
+
+- Evidence-first comparison.
+- Scores support but do not replace trade-off explanation.
+
+### 4.8 Decision Verdict Layer
+
+Target responsibility:
+
+- Decide whether action is justified under the assumptions and evidence.
+
+Target verdicts:
+
+- Keep current portfolio.
+- Rebalance to selected candidate.
+- Partial rebalance / minor adjustments.
+- Candidate improves risk but cost/turnover is too high.
+- Test another candidate.
+- No material rebalance recommended.
+- Evidence insufficient.
+
+Current implementation mapping:
+
+- Existing Selection Engine / No-Trade specs and generated artifacts may map to this layer.
+- Do not rename current schemas or fields without a migration plan.
+
+Architecture boundary:
+
+- Verdict answers "should the user act?"
+- It does not always pick a winner.
+- It should disclose data/model limits.
+
+### 4.9 AI Commentary Layer
+
+Target responsibility:
+
+- Explain deterministic JSON evidence and verdict in client-friendly language.
+
+Architecture boundary:
+
+- AI does not calculate metrics.
+- AI does not set data-quality statuses.
+- AI does not create unsupported investment evidence.
+- AI should cite or derive from generated evidence.
+
+Current implementation mapping:
+
+- Requires code/spec verification for current availability, inputs, and outputs.
+
+### 4.10 Monitoring / What Changed Layer
+
+Target responsibility:
+
+- Track changes after the verdict.
+- Surface risk contributor changes, worst scenario changes, drift, new warnings, retest triggers,
+  and assumption changes.
+
+Current implementation mapping:
+
+- Existing monitoring specs/artifacts may map to a light generated implementation.
+- Full workspace monitoring remains target/advanced unless current specs say otherwise.
+
+## 5. Current To Target Mapping
+
+| Current / existing area | Target architecture role | Classification |
 | --- | --- | --- |
-| `run_portfolio_review.py` | Portfolio-first review orchestration | `{output_dir_final}/analysis_subject/`, candidate factory/comparison outputs |
-| `run_optimization.py` | Legacy policy optimization compatibility flow | `portfolio_weights.yml`, `run_result.json`, diagnostics under `output_dir_final` |
-| `run_report.py` | Main report and diagnostics flow | `stress_report.json`, scenario libraries, CSV/JSON/HTML/TXT/PDF-style artifacts |
-| `run_view_after_optimization.py` | Approved post-optimization tactical tilt protocol | Tilted view outputs without changing policy rules outside the protocol |
-| `run_compare_variants.py` | Variant comparison flow | Comparison and downstream decision-package artifacts across policy and benchmark portfolios |
-| `run_candidate_factory.py` | Candidate factory orchestration (phased: weights → lightweight compare → optional full report export) | `candidate_factory_run.json` / `.txt`, per-candidate `candidate_manifest.json`, optional comparison tail |
-| `run_rebalance.py` | Rebalance-oriented utility flow | Rebalance outputs where configured |
+| Config validation, `analysis_subject`, input assumptions | Input Portfolio Layer and system defaults | Preserve / Current |
+| Portfolio X-Ray diagnostics | Portfolio X-Ray Layer | Preserve / Current where implemented |
+| Stress, factor, scenario diagnostics | Stress Test Lab Layer | Preserve / Current where implemented |
+| Candidate factory | Backend candidate capability; target UX should route through Launchpad/Builder | Preserve; Core backend or Advanced UX depending mode |
+| Optimization engine / optimizer-backed candidates | Internal construction methods | Preserve / Advanced / Requires Review |
+| Candidate comparison | Current-vs-candidate and shortlist comparison evidence | Preserve; target UX adaptation requires review |
+| Selection Engine / No-Trade | Decision Verdict backend evidence | Preserve; rename/reframe requires review |
+| Action Engine / Rebalancing Advisor | Light action summary or later action layer | Preserve / Advanced / Later |
+| Monitoring / Decision Journal | Light monitoring/commentary or full later workflow | Preserve / Advanced depending scope |
+| Macro regime diagnostics | Optional overlay, not core MVP dependency | Preserve / Advanced |
+| Assumption Sensitivity, Pareto, Regret, Model Risk | Research/advanced evidence | Preserve / Advanced |
+| Legacy policy optimizer | Compatibility infrastructure | Preserve / Legacy |
+| PDF/report sidecars | Export/presentation | Preserve / Legacy/export, not source of truth |
 
-Factory `standard` mode builds candidate weights in menu order, then may run Phase 2
-`lightweight_comparison` reports concurrently when `--parallel-lightweight-reports` is requested
-and no fallback condition applies. Phase 3 full report export and candidate builders remain
-sequential.
+## 6. Advanced / Later Product Backlog
 
-## Candidate And Baseline Entry Points
+These capabilities should remain available or documented when supported, but should not be required
+for the core MVP user journey unless a canonical spec says otherwise. Do not describe them as
+implemented unless verified in `SPEC.md`, `docs/specs/*.md`, or code.
 
-| Entry point | Candidate type | Architecture role |
-| --- | --- | --- |
-| `run_equal_weight.py` | Equal Weight by assets | Benchmark candidate |
-| `run_equal_weight_by_asset_class.py` | Equal Weight by asset class | Benchmark candidate using taxonomy buckets |
-| `run_risk_parity.py` | Risk Parity | Benchmark candidate |
-| `run_risk_budget_by_asset_class.py` | Risk Budgeting by class | Benchmark candidate |
-| `run_risk_budget_by_asset.py` | Risk Budgeting by asset | Benchmark candidate |
-| `run_hierarchical_risk_parity.py` | HRP | Benchmark candidate |
-| `run_minimum_variance.py` | Constrained Minimum Variance | Benchmark candidate under policy-like bounds |
-| `run_minimum_variance_uncapped.py` | Uncapped long-only Minimum Variance | Benchmark candidate |
-| `run_minimum_variance_advanced.py` | Advanced Minimum Variance controls | Benchmark candidate with advanced controls |
-| `run_maximum_diversification.py` | Constrained Maximum Diversification | Benchmark candidate |
-| `run_maximum_diversification_unconstrained.py` | Unconstrained long-only Maximum Diversification | Benchmark candidate |
-| `run_minimum_cvar_uncapped.py` | Uncapped Minimum CVaR | Benchmark candidate |
-| `run_minimum_cvar_constrained.py` | Constrained Minimum CVaR | Benchmark candidate |
-| `run_robust_mv_lambda_calibration.py` | Robust MV lambda calibration | Calibration and candidate-selection support |
-| `run_robust_mean_variance_uncapped.py` | Robust Mean-Variance uncapped | Benchmark candidate |
-| `run_robust_mean_variance_constrained.py` | Robust Mean-Variance constrained | Benchmark candidate |
-| `run_robust_scenario_optimization.py` | Scenario-Based Robust Optimization | Additive robust scenario candidate builder |
-| `run_robust_scenario_portfolio_report.py` | Robust scenario candidate report | Full report for robust scenario weights |
-
-These entry points create comparison portfolios. They do not replace the diagnosed
-`analysis_subject` in the portfolio-first workflow, and they do not replace the legacy policy
-optimizer unless a future canonical spec changes that rule.
-
-## Module Layers
-
-### 1. Configuration And Validation
-
-Purpose:
-
-Load and validate the analysis setup.
-
-Key files:
-
-- `config.yml`
-- `config.yml.example`
-- `config/client_profiles.yml`
-- `assets.yml`
-- `src/config.py`
-- `src/config_schema.py`
-- `src/analysis_setup.py`
-- `src/input_assumptions.py`
-- `src/client_profiles.py`
-
-Inputs:
-
-- Analysis mode.
-- Tickers.
-- Optional current weights for existing-portfolio diagnostics.
-- Investor currency.
-- Benchmark.
-- Risk profile.
-- Targets and constraints.
-- Output directories.
-- Return frequency.
-- Feature settings.
-
-Outputs:
-
-- Validated config object.
-- Resolved profile values.
-- Cash and risk-free configuration.
-- Validation errors for invalid setup.
-
-Notes:
-
-- Final production weights are not manually authored as the normal workflow.
-- Existing-portfolio diagnostics may use user-supplied `current_weights` in `analysis_mode=analyze_current_weights`.
-- Client profiles fill targets; they do not replace the optimizer.
-
-### 2. Universe Taxonomy And Metadata
-
-Purpose:
-
-Annotate and validate ETF/stock metadata without changing optimizer membership in V1.
-
-Key files:
-
-- `config/etf_universe.yml`
-- `config/stock_universe.yml`
-- `src/etf_universe.py`
-- `src/stock_universe.py`
-- `run_etf_universe.py`
-- `run_stock_universe.py`
-
-Inputs:
-
-- Active config ticker list.
-- ETF taxonomy.
-- Stock taxonomy.
-- Optional asset metadata.
-
-Outputs:
-
-- Universe diagnostics.
-- Taxonomy warnings.
-- CSV/JSON exports.
-- `etf_universe_validation.json` where applicable.
-
-Boundary:
-
-Taxonomy is annotation-only in V1. It does not select tickers, change optimizer eligibility, or change weights.
-
-### 3. Data Loading, FX, And Return Panels
-
-Purpose:
-
-Load adjusted prices, convert currencies, align calendars, and build return panels.
-
-Key files:
-
-- `src/data_loader.py`
-- `src/data_yf.py`
-- `src/data_fred.py`
-- `src/data_ecb.py`
-- `src/fx.py`
-- `src/returns.py`
-- `src/returns_frequency.py`
-- `src/resample.py`
-- `src/windows.py`
-- `src/cache.py`
-
-Inputs:
-
-- Tickers.
-- Benchmark.
-- Cash proxy.
-- Risk-free source.
-- Investor currency.
-- Return frequency.
-- Analysis windows.
-- Cache settings.
-
-Outputs:
-
-- Adjusted price data.
-- FX-adjusted price data.
-- Return panels.
-- `analysis_end`.
-- Frequency disclosure.
-- Risk-free series.
-
-Core rules:
-
-- Use adjusted close prices.
-- Convert FX before returns.
-- Use effective month-end for monthly returns.
-- Use inner joins where specs require synchronous observations.
-- Follow `returns_frequency` for the main investor return panel.
-
-### 4. Legacy Main Policy Optimization
-
-Purpose:
-
-Generate policy portfolio weights under the legacy compatibility investment policy path.
-
-Key files:
-
-- `run_optimization.py`
-- `src/optimization.py`
-- `src/young_etfs_dual_cov.py`
-- `src/robustness.py`
-- `src/policy_math/`
-
-Inputs:
-
-- Validated config.
-- Eligible risk tickers.
-- Return panel.
-- Expected returns.
-- Covariance matrix.
-- Weight bounds.
-- Target volatility and return soft objective settings.
-- Cash and liquidity settings.
-
-Outputs:
-
-- Risk asset weights.
-- Cash-adjusted final weights.
-- Optimization status.
-- Robustness diagnostics.
-- Release status.
-- `portfolio_weights.yml` when release is allowed.
-- `run_result.json`.
+- Macro Risk Dashboard / Macro Overlay.
+- Strategy Backtest as a separate block.
+- Scenario & Stress Evaluation for Candidates.
+- Full multi-candidate ranking / advanced research comparison.
+- Out-of-sample / walk-forward analysis.
+- Full Crisis Replay UI.
+- What Happens If? Simulator.
+- Portfolio Health Score / Robustness Scorecard as primary product modules.
+- Assumption Sensitivity / Assumption Testing Mode.
+- Pareto Frontier / Dominance Check.
+- Regret Analysis.
+- Model Risk Diagnostics.
+- Rebalancing Advisor / Action Plan as full modules.
+- Advanced Monitoring / full portfolio health monitoring.
+- Macro regime monitoring.
+- Advanced breach engine.
+- Multi-client monitoring workspace.
+- Max Sharpe.
+- Custom Constraints.
+- Advisor Custom Candidate.
+- Tax-aware optimization.
+- Turnover-aware optimization objective.
+- Tactical Tilt.
+- Full custom constraints UI.
+- Multi-client workspace / saved workspaces.
+- White-label / API integration.
+- Full PDF report design.
+- Advanced Parameter Builder settings.
+- Asset X-Ray / Asset Diagnostics.
+- Client-Fit Check / questionnaire.
+- Portfolio Archetype Classification is an optional later diagnostic layer that can classify the
+  portfolio by behavior, such as Equity Growth Portfolio, Balanced 60/40-like, Credit Carry
+  Portfolio, Duration-heavy Defensive, Inflation-sensitive, or Pseudo-diversified Portfolio. It
+  should not be part of the core MVP flow until explicitly implemented and approved.
 
 Architecture rule:
 
-The policy optimizer remains callable and tested, but the portfolio-first workflow does not use it
-as the default starting portfolio or default candidate. Benchmark variants are comparison tools.
+Advanced/later does not mean delete. It means keep separate from the core decision path.
 
-### 5. Release Checks And Mandate Gates
+## 7. Legacy / Compatibility Architecture
 
-Purpose:
+Legacy paths should be preserved unless a future approved plan removes them.
 
-Decide whether optimized weights can be released.
+Legacy / compatibility includes:
 
-Key files:
+- `run_optimization.py` policy optimization flow.
+- `run_report.py` legacy report behavior where used outside portfolio-first review.
+- Full legacy PDF/export suite.
+- Existing generated output folders and sidecars.
+- Historical policy/current comparison concepts where still supported.
 
-- `run_optimization.py`
-- `src/metrics_asset.py`
-- `src/optimization.py`
-- `docs/specs/production_workflow.md`
-- `docs/specs/portfolio_construction_policy.md`
+Architecture rule:
 
-Inputs:
+Legacy does not mean incorrect. It means not the target product front door.
 
-- Final candidate weights.
-- Return history.
-- Client targets.
-- Mandate maximum drawdown.
-- Stress diagnostics where applicable.
+## 8. Target Data Flow
 
-Outputs:
-
-- `APPROVED`, `OK_FALLBACK`, `FAIL_DATA`, or `FAIL_MANDATE` style statuses.
-- Violations and next actions.
-- Released or blocked weights.
-
-Boundary:
-
-Historical mandate max drawdown can block release. Diagnostic stress outputs do not block release unless a canonical spec explicitly changes that behavior.
-
-### 6. Portfolio Metrics And Backtest
-
-Purpose:
-
-Measure portfolio and asset behavior.
-
-Key files:
-
-- `src/metrics_asset.py`
-- `src/metrics_portfolio.py`
-- `src/metrics_daily.py`
-- `src/portfolio_dynamic.py`
-- `src/portfolio_analytics.py`
-- `src/risk_contrib.py`
-
-Inputs:
-
-- Portfolio weights.
-- Return panels.
-- Benchmark returns.
-- Risk-free series.
-- Analysis windows.
-- Backtest mode.
-
-Outputs:
-
-- Asset metrics.
-- Portfolio metrics.
-- Drawdown and recovery metrics.
-- Rolling metrics where implemented.
-- Dynamic NaN-safe portfolio returns.
-- RC_vol diagnostics.
-
-Boundary:
-
-Metric definitions are governed by [Metrics Specification](docs/specs/metrics_specification.md). Architecture docs must not redefine formulas.
-
-### 7. Stress, Factor, Regime, And Scenario Diagnostics
-
-Purpose:
-
-Diagnose crisis behavior, factor exposures, macro regimes, and scenario readiness.
-
-Key files:
-
-- `src/stress.py`
-- `src/stress_factors.py`
-- `src/stress_covariance_taxonomy.py`
-- `src/stress_scenario_analytics.py`
-- `src/stress_factors_macro.py`
-- `src/data_macro_sources.py`
-- `src/regime_factor_analytics.py`
-- `src/regime_portfolio_metrics.py`
-- `src/historical_stress_fallback.py`
-- `src/scenario_library.py`
-- `src/scenario_library_normalized.py`
-
-Inputs:
-
-- Portfolio weights.
-- Return panels.
-- Factor data.
-- Macro data.
-- Stress scenario definitions.
-- Taxonomy metadata.
-- Historical stress proxy map.
-
-Outputs:
-
-- `stress_report.json`.
-- Factor betas and regression diagnostics.
-- Factor covariance analytics.
-- Portfolio PCA diagnostics.
-- Macro regime diagnostics.
-- Regime factor analytics.
-- Regime portfolio metrics.
-- Stress scenario analytics.
-- `scenario_library.json`.
-- `scenario_library_normalized.json`.
-- CSV diagnostics under `results_csv/`.
-
-Boundary:
-
-These diagnostics contextualize portfolio behavior. They do not directly control optimizer weights unless a canonical spec explicitly defines such a path.
-
-### 8. Candidate Portfolio Builders
-
-Purpose:
-
-Build alternative portfolios for comparison.
-
-Key files:
-
-- `src/portfolio_variants.py`
-- `src/candidate_factory.py`
-- `src/risk_parity_spinu.py`
-- `src/risk_budgeting.py`
-- `src/risk_budgeting_presets.py`
-- `src/hrp_weights.py`
-- `src/robust_mv.py`
-- `src/robust_mv_calibration.py`
-- `src/robust_mv_lambda_resolve.py`
-- `src/robust_scenario_optimization.py`
-
-Inputs:
-
-- Eligible universe.
-- Return panels.
-- Covariance matrices.
-- Taxonomy metadata.
-- Variant-specific config.
-- Scenario library artifacts for robust scenario optimization.
-
-Outputs:
-
-- Candidate weights.
-- Candidate metadata.
-- `candidate_factory_run.json` / `.txt` when the factory orchestration runs.
-- Variant output folders.
-- Full variant reports where supported.
-
-Boundary:
-
-Candidate builders support comparison and decision-making. They are not the main production policy engine.
-
-### 9. Reporting, Commentary, And Exports
-
-Purpose:
-
-Convert analytics into human-readable and machine-readable artifacts.
-
-Key files:
-
-- `run_report.py`
-- `src/snapshot.py`
-- `src/portfolio_commentary.py`
-- `src/decision_package_reporting.py`
-- `src/pdf_reports.py`
-- `src/io_export.py`
-
-Inputs:
-
-- Portfolio weights.
-- Metrics.
-- Stress report.
-- Scenario libraries.
-- Variant metadata.
-- Output directory settings.
-
-Outputs:
-
-- CSV files.
-- JSON files.
-- HTML snapshots.
-- `commentary.txt`.
-- `stress_commentary.txt`.
-- `decision_package_summary.json` / `.txt` after comparison when decision-package reporting runs.
-- PDF-style report artifacts where configured.
-
-Product priority:
-
-Report-first before full UI, unless a future product decision changes this to TBD.
-
-### 10. Comparison And Action Layer
-
-Purpose:
-
-Compare portfolios and translate selected decisions into actions.
-
-Key files:
-
-- `run_compare_variants.py`
-- `run_compare_ew_rp.py`
-- `run_rebalance.py`
-- `src/candidate_comparison.py`
-- `src/robustness_scorecard.py`
-- `src/portfolio_health_score.py`
-- `src/selection_engine.py`
-- `src/tradeoff_and_model_risk.py`
-- `src/assumption_sensitivity.py`
-- `src/pareto_dominance.py`
-- `src/regret_analysis.py`
-- `src/action_engine.py`
-- `src/current_vs_policy.py`
-- `src/monitoring.py`
-- `src/decision_journal.py`
-- `src/decision_package_reporting.py`
-- `src/rebalance.py`
-- `src/view_after_optimization.py`
-
-Inputs:
-
-- Current weights.
-- Candidate weights.
-- Metrics and diagnostics.
-- Constraints and mandate settings.
-- Previous monitoring snapshots where available.
-
-Outputs:
-
-- `candidate_comparison.json` / `.txt`.
-- `robustness_scorecard.json` / `.txt`.
-- `portfolio_health_score.json` / `.txt`.
-- `selection_decision.json` / `.txt`.
-- `tradeoff_explanation.json` / `.txt`.
-- `model_risk_diagnostics.json` / `.txt`.
-- `assumption_sensitivity.json` / `.txt`.
-- `pareto_dominance.json` / `.txt`.
-- `regret_analysis.json` / `.txt`.
-- `action_plan.json` / `.txt`.
-- `current_vs_policy_status.json` / `.txt` when current weights are supplied.
-- `monitoring_diff.json` / `.txt`.
-- `decision_journal.json` / `.txt`.
-- `decision_package_summary.json` / `.txt`.
-- Rebalance deltas.
-- Tactical tilt view where approved.
-- Latest/history monitoring and journal copies.
-
-TBD:
-
-- Full Portfolio Comparison Arena UI.
-- Product UI flows around existing comparison and decision-package outputs.
-- More deliberately designed client-facing report packages.
-- Full user-maintained Decision Journal workflow.
-
-Boundary:
-
-The file-first V1 decision artifacts are generated outputs. They support decision review, but they do
-not change optimizer formulas, mandate gates, or production weight release unless a canonical spec says
-so.
-
-## Main Flow Details
-
-### Portfolio-First Review Flow
+Target MVP data flow:
 
 ```text
-1. Load config
-2. Resolve analysis_subject, assumptions, mandate, and validation result
-3. Build data and return panels
-4. Materialize diagnostics for analysis_subject
-5. Generate allowed non-policy candidates
-6. Materialize candidate diagnostics
-7. Compare analysis_subject versus candidates
-8. Write Selection / No-Trade, Action, Monitoring, Journal, and report package artifacts
+Portfolio input
+  -> input validation and system defaults
+  -> market data / FX / benchmark / risk-free resolution
+  -> return panels and quality checks
+  -> current portfolio diagnostics
+  -> stress and factor diagnostics
+  -> problem classification
+  -> selected candidate generation
+  -> current-vs-candidate comparison
+  -> decision verdict
+  -> AI commentary grounded in evidence
+  -> monitoring snapshot / what changed
 ```
 
-Runtime support for this flow is implemented by the active portfolio-first transition sessions. The
-required order is already canonical in the portfolio review workflow spec.
+Source-of-truth rule:
 
-### Legacy Policy Compatibility Flow
+- Code and canonical specs own calculations.
+- JSON artifacts own machine-readable run evidence.
+- AI and PDF/report outputs explain evidence; they do not replace it.
 
-```text
-1. Load config
-2. Resolve profile, cash proxy, benchmark, and risk-free settings
-3. Validate taxonomy diagnostics where available
-4. Load adjusted market data and FX-adjust prices
-5. Build return panel and analysis_end
-6. Build optimization inputs
-7. Run legacy policy optimizer
-8. Apply ProLiquidity / cash policy
-9. Run mandate and release checks
-10. Write weights and run metadata if allowed
-11. Run report pipeline
-12. Export metrics, stress, commentary, and report artifacts
-```
+## 9. Target Module Boundaries
 
-### Report Flow
+### Calculation Modules
 
-```text
-1. Read config and weights
-2. Load data and return panels
-3. Compute portfolio and asset metrics
-4. Compute dynamic backtest outputs
-5. Compute RC_vol diagnostics
-6. Run stress diagnostics
-7. Run factor, macro, regime, PCA, and scenario diagnostics
-8. Build scenario library artifacts
-9. Generate commentary and snapshots
-10. Export CSV/JSON/HTML/TXT/PDF-style artifacts
-```
+Own:
 
-### Candidate Flow
+- returns
+- metrics
+- risk contribution
+- factor exposures
+- stress PnL
+- candidate weights
+- comparison evidence
 
-Portfolio-first comparison baseline is **`analysis_subject`**, not legacy policy weights at
-`output_dir_final` root. A **`policy`** row may still appear in `candidate_comparison.json` for
-legacy compatibility when policy artifacts exist on disk; it is not the default review baseline.
+Must not:
 
-```text
-1. Load config and eligible universe
-2. Build candidate-specific weights
-3. Save candidate weights and metadata
-4. Run the same report pipeline for candidate weights
-5. Compare analysis_subject against candidates (legacy policy row optional)
-```
+- write unsupported narrative conclusions
+- hide degraded data quality
+- silently fabricate missing history
 
-## Inputs And Outputs
+### Product Orchestration Modules
 
-| Layer | Inputs | Outputs |
-| --- | --- | --- |
-| Configuration | YAML config, profiles, metadata, `analysis_subject` | Validated config, subject, profile-derived targets |
-| Data | Tickers, FX, benchmark, risk-free source | Prices, returns, analysis_end, frequency disclosure |
-| Legacy optimization | Returns, covariance, constraints, targets | Weights, status, run metadata |
-| Release checks | Weights, returns, mandate | Approved or blocked release |
-| Metrics | Weights, returns, benchmark, risk-free | Asset/portfolio metrics and RC_vol |
-| Stress diagnostics | Weights, returns, factors, scenarios | `stress_report.json` (CSVs in export profiles only) |
-| Scenario library | Stress and regime analytics | Scenario library JSON (CSVs in export profiles only) |
-| Candidate builders | Universe, returns, covariance, variant settings | Candidate weights and metadata |
-| Reporting | Metrics, stress, scenarios, commentary inputs | JSON contracts by default; CSV/HTML/TXT/PNG/PDF only in `full_report` / `legacy_export` |
-| Comparison/action | Current and candidate outputs | Comparison, scores, selection, action, monitoring, journal, rebalance, tilt artifacts |
+Own:
 
-## Generated Artifacts
+- workflow state
+- diagnosis-only state
+- candidate launch actions
+- candidate shortlist
+- current-vs-candidate routing
 
-Generated artifacts are outputs, not source files, unless a task explicitly targets them.
-Use [OUTPUTS.md](OUTPUTS.md) for the root output/reporting map and generated-vs-source rules.
+Requires future implementation verification.
 
-Default execution is site/API-first. JSON contracts and required cache are the backend/UI source of
-truth; CSV, TXT, HTML, PNG, PDF, Markdown PDF sidecars, and CSS/visual assets are explicit
-export/report outputs only. The central policy lives in `src/output_policy.py`; entrypoints expose
-`--output-profile` where export behavior is needed. Each major run writes `output_manifest.json`
-under `output_dir_final` as the UI/API artifact index.
+### Decision Modules
 
-| Profile | JSON + cache | CSV/TXT/HTML/PNG | PDF / Markdown sidecars |
-| --- | --- | --- | --- |
-| `site_api` (default) | Yes | No | No |
-| `core_json` | Yes | No | No |
-| `lightweight_comparison` | Yes | No | No |
-| `full_report` | Yes | Yes | No |
-| `legacy_export` | Yes | Yes | Yes |
+Own:
 
-Command matrix (operator entrypoints): see [OUTPUTS.md](OUTPUTS.md#command-matrix) and
-[README.md](README.md).
+- verdict evidence
+- no-trade reasoning
+- confidence / evidence quality
+- action/no-action classification
 
-Common generated paths:
+Must not:
 
-- `Main portfolio/`
-- `results_csv/`
-- `output/`
-- `cache/`
-- `portfolio_weights.yml`
-- `equal-weight portfolio/`
-- `risk parity portfolio/`
-- `minimum variance portfolio/`
-- `maximum diversification portfolio/`
-- `minimum cvar constrained portfolio/`
-- `robust mean variance constrained portfolio/`
-- `robust scenario portfolio/`
-- `pdf files/`
-- `pdf_md_sources/`
+- ignore model/data limitations
+- always force a rebalance
 
-## Dependency Direction
+### Commentary / Report Modules
 
-Preferred dependency direction:
+Own:
 
-```text
-Config/data helpers
--> math and analytics modules
--> optimization and candidate builders
--> reporting/export modules
--> CLI entry points
-```
+- human-readable explanation
+- advisor/client narrative
+- report packaging
 
-Guidelines:
+Must not:
 
-- Shared formulas belong in existing metric, optimization, stress, or risk modules, not in CLI scripts.
-- CLI scripts should orchestrate modules rather than duplicate business logic.
-- Reporting should consume analytics outputs rather than recompute inconsistent metrics.
-- Product concept documents should guide planning but not redefine formulas.
+- become the source of calculations
+- contradict JSON/spec evidence
 
-## Architecture Boundaries
+## 10. Requires Code/Spec Verification
 
-### Current Policy Boundaries
+Do not claim these as current implementation until verified:
 
-- The portfolio-first workflow starts from `analysis_subject` diagnostics before candidate generation
-  or decision artifacts.
-- The legacy policy optimizer is preserved, but it is not the default portfolio-first starting point
-  or default candidate.
-- The active optimizer universe comes from `config.yml`.
-- ETF and stock taxonomy are annotation-only in V1.
-- Final production weights come from the optimizer and approved post-processing protocols.
-- RC_vol is diagnostic unless a canonical spec changes it.
-- Stress, macro regime, PCA, Kalman, and scenario analytics are diagnostic unless a canonical spec changes them.
-- Benchmark variants are comparison tools.
+- Problem Classification as a concrete module or artifact.
+- Candidate Launchpad state and outputs.
+- Portfolio Alternatives Builder as UI/service.
+- User-triggered one-candidate generation as the default path.
+- Diagnosis-only state as a formal run state.
+- Current-vs-selected-candidate as the main implemented comparison mode.
+- Decision Verdict replacing or aliasing Selection Engine contracts.
+- AI Commentary inputs, grounding, and output contracts.
+- Candidate shortlist schema.
+- Any new CLI flags, JSON fields, output files, or folder layout.
+- Any change to current command behavior.
 
-### Target Product Boundaries
+## 11. Future Implementation Implications
 
-- Product UI is report-first before full UI.
-- Macro Dashboard is a diagnostic overlay after portfolio and candidate stress evaluation.
-- Macro Dashboard contextualizes regime vulnerability without directly controlling optimizer weights.
-- Selection Engine, Health Score, No-Trade Recommendation, Monitoring, and Decision Journal have file-first V1 implementations. Full UI/workspace surfaces and user-maintained workflows around them remain target product work.
+Potential future architecture work, not part of this documentation draft:
 
-## Source Of Truth
+- Introduce explicit workflow state: diagnosed/no candidate, one candidate, multiple-candidate
+  shortlist.
+- Add a Problem Classification service or artifact based on X-Ray and stress evidence.
+- Add Candidate Launchpad routing from problems to reasonable paths to test.
+- Wrap existing candidate builders in a Portfolio Alternatives Builder interface.
+- Add current-vs-selected-candidate presentation layer.
+- Map existing Selection Engine outputs to Decision Verdict language without breaking schemas.
+- Add AI Commentary grounding rules and evidence references.
+- Keep batch candidate factory as advanced/research/backend mode.
+- Preserve legacy policy flow and generated outputs during migration.
 
-When architecture and implementation conflict, current code and canonical specs remain authoritative until a planned change updates them.
+Each item needs an ExecPlan or focused implementation plan before code changes.
 
-Primary sources:
+## 12. Migration Strategy For Current `ARCHITECTURE.md`
 
-- [RULES.md](RULES.md)
-- [WORKFLOW.md](WORKFLOW.md)
-- [SPEC.md](SPEC.md)
-- [Portfolio Review Workflow](docs/specs/portfolio_review_workflow_spec.md)
-- [OUTPUTS.md](OUTPUTS.md)
-- [DATA.md](DATA.md)
-- [TESTING.md](TESTING.md)
-- [Portfolio Construction Policy](docs/specs/portfolio_construction_policy.md)
-- [Metrics Specification](docs/specs/metrics_specification.md)
-- [Stress Testing Spec](docs/specs/stress_testing_spec.md)
-- [Feasibility Constraints](docs/specs/feasibility_constraints_spec.md)
-- [Data Policy](docs/specs/data_policy_spec.md)
-- [Production Workflow](docs/specs/production_workflow.md)
-- [DECISIONS.md](DECISIONS.md)
-- [CHANGELOG.md](CHANGELOG.md)
-- [PLANS.md](PLANS.md)
-- [AGENTS.md](AGENTS.md)
+When replacing the current `ARCHITECTURE.md`, use this order:
 
-Product sources:
+1. Preserve current runtime entrypoints and command descriptions.
+2. Preserve current source-of-truth links.
+3. Move target architecture into a clearly marked target section.
+4. Move macro, robust research, full multi-candidate comparison, and advanced decision diagnostics
+   into advanced/research unless current specs require core positioning.
+5. Keep legacy policy flow as compatibility, not product front door.
+6. Mark all unverified target modules as `Requires code/spec verification`.
+7. Do not rename public files, generated fields, or CLI flags in architecture docs without an
+   approved migration plan.
 
-- [Business Vision](BUSINESS_VISION.md)
-- [Product](PRODUCT.md)
-- [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md)
+## 13. Non-Goals
 
-## Open Architecture Questions
+This architecture draft does not:
 
-- What is the first product UI surface: static report package, local dashboard, or web app?
-- Where should persistent analysis state live once the product moves beyond file-driven CLI runs?
-- What is the formal data model for saved analyses, candidates, decisions, and monitoring snapshots?
-- How should candidate generation be orchestrated before comparison?
-- How should implemented V1 decision artifacts be packaged for reports, PDFs, and future UI surfaces?
-- Which outputs should become stable API contracts?
-- What should be batch-oriented for advisors and family offices?
+- Change code.
+- Change CLI behavior.
+- Change output contracts.
+- Change formulas.
+- Change optimizer behavior.
+- Delete legacy flows.
+- Rename generated schemas.
+- Claim target UX exists today.

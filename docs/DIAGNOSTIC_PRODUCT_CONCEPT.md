@@ -1,1150 +1,651 @@
 # Diagnostic Product Concept
 
-This document is a living product blueprint, not a binding implementation spec.
+This document is part of the active project documentation after the documentation migration. It is a product concept and target architecture guide, not a canonical implementation spec. It does not override `../SPEC.md`, `../RULES.md`, `../OUTPUTS.md`, `../DATA.md`, `../TESTING.md`, `specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
 
-## Status
-
-This document describes the target product concept and target architecture for Portfolio X-Ray / Portfolio MRI. It is an evolving draft: sections may be added, edited, renamed, or removed as the project changes.
-
-It is a product and architecture guide, not a canonical implementation specification. It does not replace `SPEC.md`, `RULES.md`, `DATA.md`, `docs/specs/*`, metric formulas, stress scenario definitions, investment policy logic, data rules, configuration schemas, source code behavior, or existing implementation contracts.
-
-If this document mentions a metric, stress scenario, assumption, optimization method, UI block, or product module, that mention does not automatically require the current codebase to change. Implementation details must still be governed by the canonical specs and changed through normal planning, documentation sync, and verification.
-
-Ideas from this document become binding only after they are promoted into the relevant canonical source of truth, such as `SPEC.md`, `DATA.md`, `docs/specs/*.md`, `ARCHITECTURE.md`, or an ExecPlan under `docs/exec_plans/`, and then implemented and verified.
-
-Use this document for product direction, terminology, and future planning. Do not use it as the sole authority for current formulas, scenarios, optimizer policy, data handling, outputs, or code behavior.
-
-## Concept Name
+## 1. Concept Name And Identity
 
 Working names:
 
-- Portfolio X-Ray & Optimization Terminal
-- Portfolio Research & Decision System
 - Portfolio MRI
+- Portfolio X-Ray
+- Portfolio Research & Decision System
 
-The system is a decision support product, not a machine that produces perfect portfolio weights.
+Preferred product identity:
+
+> Portfolio MRI is a portfolio diagnostics and investment decision-support system.
+
+The product is not a black-box optimizer. It helps an advisor or sophisticated investor understand
+the current portfolio, identify hidden risks, test a reasonable improvement hypothesis, compare
+trade-offs, and reach a defensible investment verdict.
 
 Core user outcome:
 
-> I understand what is really inside my portfolio, where hidden risk lives, how it may behave in a crisis, and which better allocation alternatives are available.
+> I understand what is really inside my portfolio, where risk is concentrated, where it can break,
+> which improvement hypothesis is worth testing, and whether I should rebalance or do nothing.
 
-Core workflow:
+## 2. Target Users
+
+### Primary ICP — Independent Investment Advisors / Financial Advisors
+
+Advisors who manage or advise client portfolios of roughly `$250k-$5m` and need professional
+portfolio risk reviews before client meetings.
+
+Primary job:
+
+- Diagnose the client portfolio quickly.
+- Explain hidden risk, stress behavior, and trade-offs.
+- Support a rebalance, partial rebalance, no-trade, or further-review conversation.
+- Produce a client-ready narrative.
+
+### Secondary ICP — Sophisticated Self-Directed Investors
+
+Serious self-directed investors with meaningful portfolios, roughly `$100k-$1m+`, who already use
+broker analytics, Portfolio Visualizer, Excel, Koyfin, Python, or similar tools.
+
+Primary job:
+
+- Understand real portfolio risk.
+- See hidden concentrations and factor exposures.
+- Test whether a candidate allocation actually improves the current portfolio.
+- Avoid acting on attractive but fragile analytics.
+
+### Preserved / Later Segments
+
+HNWI, family offices, wealth managers, white-label users, and multi-client operators remain valid
+project directions. They should be preserved as secondary, advanced, or later packaging unless the
+business strategy explicitly promotes them to the primary ICP.
+
+## 3. Product Philosophy
+
+### Diagnosis Before Action
+
+The product must explain the current portfolio before suggesting changes. A user should first see
+what they own, where the risk sits, which exposures dominate, and where the portfolio is vulnerable.
+
+### Current Portfolio First
+
+The target MVP starts from the user's current portfolio. Candidate portfolios are evaluated against
+the actual current allocation, not against an abstract optimizer output.
+
+### Problem Before Method
+
+The product should not start with an optimizer menu. It should first classify the portfolio problem:
+high volatility, high drawdown risk, concentration, weak hedge behavior, poor diversification, or
+current portfolio acceptable.
+
+### Candidate As Hypothesis
+
+A candidate portfolio is an investment hypothesis:
 
 ```text
-Diagnose -> Generate candidates -> Stress-test -> Compare robustness -> Choose / explain
+Candidate = diagnosed problem + improvement goal + construction method + constraints + evidence + trade-off
 ```
 
-The product helps the user diagnose a portfolio, compare alternatives, understand trade-offs, and make a defensible investment decision.
+The candidate is not "the best portfolio." It is a structured test of whether a diagnosed problem
+can be improved.
 
-## Target Segments
+### Guided, Not Prescriptive
 
-### Private Investors / HNWI
+The system should guide the user through evidence and trade-offs. It should not claim to replace
+advisor responsibility, tax analysis, suitability review, liquidity planning, or final investment
+judgment.
 
-Users with roughly $100k to $5m in investable assets.
+### No-Trade As A Valid Verdict
 
-Pain points:
+If the improvement is weak, turnover is too high, evidence quality is poor, or model risk is too
+large, the right conclusion may be to leave the current portfolio unchanged.
 
-- Portfolios assembled ad hoc across ETFs, stocks, bonds, crypto, and cash.
-- Poor understanding of real risk.
-- Unclear behavior under 2008, 2020, 2022, or similar stress events.
-- Need for an intelligent, professional report.
+### AI Commentary As Explanation Layer
 
-Product message:
+AI can explain deterministic outputs in plain language. It should not be the source of metrics,
+stress results, data-quality statuses, candidate freshness, optimizer readiness, or verdict
+evidence.
 
-> Upload your portfolio and get an institutional risk X-ray in minutes.
+## 4. Target MVP Product Chain
 
-### Family Offices / Wealth Managers
+```text
+Input portfolio
+-> Portfolio X-Ray
+-> Stress Test Lab
+-> Problem Classification
+-> Candidate Launchpad
+-> Portfolio Alternatives Builder
+-> Current vs Candidate Comparison
+-> Decision Verdict
+-> AI Commentary
+-> Monitoring / What Changed
+```
 
-Pain points:
+This replaces the older 24-block product concept as the core MVP story. Older modules should be
+reclassified as core, advanced/later, legacy, or requires review rather than deleted.
 
-- Need to explain risk to clients quickly.
-- Need to compare portfolios.
-- Need polished reports.
-- Need defensible rebalance rationale.
+## 5. Core MVP Blocks
 
-Product message:
-
-> White-label institutional portfolio diagnostics for client reporting.
-
-### Investment Advisors
-
-Pain points:
-
-- Need to look rigorous and prepared before client meetings.
-- Need to automate portfolio analytics.
-- Need professional PDF-style outputs.
-
-Product message:
-
-> Generate professional portfolio risk reports before every client meeting.
-
-### Sophisticated Retail Investors
-
-Pain points:
-
-- Already use Portfolio Visualizer, Koyfin, Excel, or Python.
-- Want deeper factor analysis, stress tests, macro context, backtests, and robustness checks.
-
-Product message:
-
-> Portfolio Visualizer, but deeper, more institutional, and macro-aware.
-
-## Target Product Chain
-
-The intended product chain is:
-
-1. Input & Assumptions Layer
-2. Portfolio X-Ray / Portfolio Diagnostics Layer
-3. Stress Test Lab
-4. Candidate Portfolio Factory / Portfolio Menu
-5. Optimization Engine
-6. Strategy Backtest
-7. Scenario & Stress Evaluation for Candidates
-8. Macro Highlight / Macro Risk Dashboard
-9. Candidate Comparison Layer
-10. Portfolio Comparison Arena
-11. Portfolio Health Score
-12. Robustness Score / Robustness Scorecard
-13. Selection Engine
-14. Assumption Sensitivity
-15. Pareto Frontier / Dominance Check
-16. Regret Analysis
-17. Trade-off Explanation
-18. Model Risk Diagnostics
-19. Action Engine
-20. Rebalancing Advisor
-21. No-Trade Recommendation
-22. AI Portfolio Commentary
-23. Monitoring / What Changed
-24. Decision Journal
-
-## 1. Input & Assumptions Layer
-
-This layer defines the analysis base.
-
-### 1.1 Portfolio Input
-
-The user or system defines:
-
-- Asset universe.
-- Concrete tickers or instruments.
-- Current weights when an existing portfolio is analyzed.
-- No current weights when the task is to build a portfolio from a universe.
-- Portfolio currency.
-- Benchmark.
-- Risk profile.
-- Investment horizon.
+### 5.1 Input Portfolio
 
 Purpose:
 
-The system must know exactly which assets it is analyzing and whether an existing portfolio already exists.
+Capture the portfolio that should be diagnosed.
 
-### 1.2 Mandate Builder
+Target MVP user-facing inputs:
 
-The user defines investment goals and constraints, such as:
+- Tickers / instruments.
+- Current weights.
+- Investor currency.
 
-- Minimum and maximum asset weight.
-- Minimum and maximum asset class weight.
-- Target volatility.
-- Maximum drawdown.
-- Target or minimum return.
-- Maximum CVaR.
-- Maximum turnover.
-- Liquidity constraints.
-- Maximum equity beta.
-- Whether shorting, leverage, or cash are allowed.
+System-resolved inputs and assumptions:
 
-Purpose:
+- `analysis_subject = current_portfolio`
+- benchmark / base benchmark
+- cash proxy
+- risk-free source
+- FX logic
+- market data provider
+- data windows
+- quality thresholds
+- calculation defaults
 
-The system formalizes the client investment policy so it does not produce technically optimal but practically unacceptable portfolios.
+UX rule:
 
-### 1.3 Assumption Engine
+The first screen should stay simple. Advanced assumptions should be visible in disclosure or
+advanced settings, not forced into the initial user input.
 
-The user or system defines calculation assumptions, such as:
+Requires code/spec verification:
 
-- Data window: 3Y, 5Y, 10Y, or another configured window.
-- Data frequency: daily, weekly, monthly.
-- Expected return method.
-- Covariance method.
-- Risk-free rate source for the portfolio currency.
-- Transaction costs.
-- Rebalance frequency.
-- Missing data logic.
-- Cash proxy.
-- Stress severity.
-- FX assumptions.
+- Exact current `analysis_subject` behavior.
+- Exact current required fields.
+- Any UI behavior.
+
+### 5.2 Portfolio X-Ray
 
 Purpose:
 
-The same portfolio can produce materially different conclusions under different windows, frequencies, and estimators. Assumptions must be explicit.
+Show what is really inside the current portfolio.
 
-### Layer Result
+Target outputs:
 
-The system has the full input set:
+- Allocation breakdown.
+- Asset class / region / currency / sector / risk role breakdown where available.
+- Portfolio metrics.
+- Risk contribution.
+- Factor exposure.
+- Hidden exposure / hidden risk detector.
+- Risk budget view.
+- Weakness map.
+- Data trust signals.
 
-- Universe.
-- Weights when available.
-- Currency.
-- Benchmark.
-- Risk profile.
-- Client goals.
-- Constraints.
-- Calculation assumptions.
+Questions answered:
 
-## 2. Portfolio X-Ray / Portfolio Diagnostics Layer
+- What do I actually own?
+- What is the real economic exposure?
+- Which risk factors dominate?
+- Which assets contribute more risk than their capital weight suggests?
+- Which holdings duplicate the same risk?
+- Is diversification real or only visual?
 
-This is the first analytical layer after portfolio input. The system does not optimize or recommend changes yet. It shows what the portfolio really contains, how it behaves, where risk comes from, and where weaknesses exist.
+Boundary:
 
-### 2.1 Asset Allocation
+Portfolio X-Ray is diagnostic. It should not be framed as the decision engine.
 
-The system shows structure by:
-
-- Asset.
-- Asset class.
-- Region.
-- Currency.
-- Sector.
-- Risk bucket.
-
-Purpose:
-
-The user first sees what they actually hold and how capital is distributed.
-
-### 2.2 Portfolio Metrics / Risk Diagnostics
-
-The system can show metrics such as:
-
-- Return.
-- Volatility.
-- Sharpe.
-- Sortino.
-- Drawdown.
-- Rolling metrics.
-- VaR / ES.
-- Downside deviation.
-- Skew / kurtosis.
-- Beta.
-- Downside beta.
-- Upside beta.
-- Correlation breakdown.
-- Liquidity risk.
-- Concentration risk.
+### 5.3 Stress Test Lab
 
 Purpose:
 
-The user sees portfolio behavior across return, risk, drawdowns, volatility, and tail losses.
+Show how the current portfolio may behave in bad markets.
 
-Implementation note:
+Target outputs:
 
-This list is product-level. Current implemented metrics are governed by `docs/specs/metrics_specification.md` and related source code.
+- Synthetic stress scenarios.
+- Historical stress scenarios where data supports them.
+- Worst scenario.
+- Loss contributors.
+- Assets that help offset losses.
+- Hedge gap analysis.
+- Stress data-quality disclosure.
 
-### 2.3 Factor Exposure / Factor Sensitivity
+Questions answered:
 
-The system shows sensitivity to factors such as:
+- Where can the portfolio break?
+- Which assets hurt most in stress?
+- Which assets help?
+- Which market risks should be tested through a candidate hypothesis?
+- Is there enough data to support the stress conclusion?
 
-- Equity.
-- Rates.
-- Inflation.
-- Credit.
-- USD.
-- Commodity.
-- Volatility / VIX.
-- Growth.
+Boundary:
+
+The system should report insufficient data honestly. It should not fabricate crisis evidence.
+
+### 5.4 Problem Classification
 
 Purpose:
 
-The user sees the real factor bets of the portfolio, not only asset labels.
+Translate diagnostics into 2-3 understandable improvement directions.
 
-### 2.4 Hidden Exposure / Hidden Risk Detector
+Target problem labels:
 
-The system looks for hidden risks, such as:
-
-- Hidden equity beta.
-- Duration concentration.
-- Credit risk.
-- Liquidity risk.
-- Correlation concentration.
+- High volatility.
+- High drawdown.
+- High equity beta.
+- High concentration.
+- Poor diversification.
 - Weak hedge behavior.
-- Tail risk.
+- Poor rates-up behavior.
+- Weak crisis resilience.
+- Low return/risk efficiency.
+- High turnover required.
+- Current portfolio already acceptable.
 
-Core idea:
+Target output:
 
-> What you think you own vs what you actually own.
+- Top diagnosed problems.
+- Evidence behind each problem.
+- Reasonable paths to test.
+- Indication that no candidate is needed when the current portfolio is acceptable.
 
-Purpose:
+Implementation status:
 
-A portfolio can look diversified by holdings while being concentrated in one underlying source of risk.
+Target direction unless verified against code/specs.
 
-### 2.5 Portfolio Archetype Classification
-
-The system classifies portfolio behavior into archetypes, for example:
-
-- Equity Growth Portfolio.
-- Balanced 60/40-like.
-- Credit Carry Portfolio.
-- Duration-heavy Defensive.
-- Inflation-sensitive.
-- Pseudo-diversified Portfolio.
-
-Example output:
-
-> Portfolio looks diversified by holdings, but behaves like an equity-growth portfolio with hidden credit beta.
+### 5.5 Candidate Launchpad
 
 Purpose:
 
-The user gets a plain-language description of portfolio behavior, not only tables.
+Let the user choose which improvement hypothesis to test.
 
-### 2.6 Risk Budget View
+Target launchpad cards:
 
-The system compares:
+- Reduce volatility.
+- Reduce drawdown.
+- Improve diversification.
+- Reduce concentration.
+- Improve crisis resilience.
+- Improve return/risk balance.
+- Compare against simple benchmark.
+- Keep current portfolio and monitor.
 
-- How much capital is allocated to each asset.
-- How much risk each asset contributes.
-- How much stress loss each asset contributes.
+Important distinction:
 
-Example:
+Launchpad cards are not portfolios. They are entry points into the Portfolio Alternatives Builder.
 
-> Asset A = 10% weight, but 27% of risk. Asset B = 20% weight, but only 6% of risk.
+Implementation status:
 
-Purpose:
+Target direction unless verified against code/specs.
 
-The user sees the difference between capital weight and actual risk contribution.
-
-### 2.7 Portfolio Weakness Map
-
-The system maps vulnerabilities such as:
-
-- Recession risk.
-- Inflation risk.
-- Rates risk.
-- Credit risk.
-- Liquidity risk.
-- USD risk.
-- Equity crash risk.
-- Commodity shock risk.
-- Volatility spike risk.
-
-Each risk can be classified as low, medium, or high.
+### 5.6 Portfolio Alternatives Builder
 
 Purpose:
 
-The user quickly sees which market environments are most dangerous for the portfolio.
+Generate one selected candidate portfolio from a chosen goal and method.
 
-### Layer Result
+Target simple-mode fields:
 
-The Portfolio X-Ray layer answers:
+- Goal.
+- Suggested method, editable by user.
+- Constraint preset.
+- Max asset weight.
+- Optional min asset weight.
+- Optional volatility target.
+- Rebalancing frequency.
+- Transaction cost assumption.
+- Generate candidate.
 
-- What is really inside the portfolio?
-- How does it behave?
-- Where does risk come from?
-- What hidden exposures exist?
-- Where are the portfolio's weak points?
+Potential methods:
 
-## 3. Stress Test Lab
-
-This is one of the central product screens. Its purpose is to understand how the current portfolio behaves in adverse market environments.
-
-### 3.1 Scenario Library
-
-Scenario Library provides a common set of historical and synthetic scenarios for portfolio stress evaluation.
-
-Evaluation dimensions can include:
-
-- Portfolio loss.
-- Drawdown.
-- CVaR.
-- Contribution to loss.
-- Worst scenario.
-- Mandate pass / fail.
-
-### 3.1.1 Historical Scenarios
-
-Examples:
-
-- Dotcom.
-- Global Financial Crisis 2008.
-- COVID crash 2020.
-- Inflation / rates shock 2022.
-- Banking stress 2023.
-- China slowdown.
-- Oil shock.
-- USD spike.
-- Volatility shock.
-
-Implementation note:
-
-This is a target product list. Current implemented historical scenarios are governed by `docs/specs/stress_testing_spec.md` and current code.
-
-### 3.1.2 Synthetic Scenarios
-
-Examples:
-
-- Equity -20%.
-- Equity -35%.
-- Rates +150 bps.
-- Rates -150 bps.
-- Credit spreads +300 bps.
-- Inflation surprise.
-- USD +10%.
-- Oil +40%.
-- Liquidity shock.
-- Crypto -50%.
-- Severe recession.
-- Severe stagflation.
-
-Implementation note:
-
-This is a target product list. Current implemented synthetic scenarios are governed by `docs/specs/stress_testing_spec.md` and current code.
-
-### 3.2 Stress Conclusions
-
-The output should be more than PnL. It should include:
-
-- Expected portfolio loss.
-- Top loss contributors.
-- Top risk contributors.
-- Assets that helped.
-- Correlation breakdown.
-- Pass / fail relative to mandate.
-- Recovery estimate.
-- Hedge gap.
-
-Example:
-
-> In a 2008-like shock, portfolio loses -24.6%. 68% of the loss comes from equity and credit-sensitive assets. Treasuries hedge only partially because duration exposure is too low.
-
-### 3.3 What Happens If? Simulator
-
-Target interactive feature:
-
-The user moves sliders and immediately sees portfolio impact.
-
-Example inputs:
-
-- S&P 500: -20%.
-- Rates: +100 bps.
-- Credit spreads: +200 bps.
-- USD: +8%.
-- Oil: +30%.
-- VIX: +20 points.
-
-Example outputs:
-
-- Portfolio loss.
-- Top contributors.
-- Hedge effectiveness.
-- Broken assumptions.
-
-Purpose:
-
-This answers the investor's core question:
-
-> What happens to my portfolio if the market goes wrong?
-
-### 3.4 Crisis Replay
-
-Target feature:
-
-> Replay 2008 with your portfolio.
-
-The system shows month-by-month:
-
-- Portfolio decline.
-- Assets pulling the portfolio down.
-- Assets providing protection.
-- Maximum drawdown timing.
-- Recovery time.
-
-Example:
-
-> Your portfolio entered crisis with 0.88 equity beta and reached -31% drawdown after 9 months.
-
-### 3.5 Hedge Gap Analysis
-
-The system identifies hedge gaps, for example:
-
-- Equity crash hedge: acceptable.
-- Rates-up hedge: weak.
-- Stagflation hedge: poor.
-- Liquidity shock protection: poor.
-- USD spike protection: medium.
-
-Example:
-
-> The main hedge gap is inflation/rates shock, not normal equity volatility.
-
-### 3.6 Current Portfolio Stress Scorecard
-
-The stress scorecard shows:
-
-- Which scenarios the current portfolio survives.
-- Where maximum loss occurs.
-- Which assets drive losses.
-- Which assets protect.
-- Where hedge gaps appear.
-
-For the current portfolio, it can capture:
-
-- Base return / risk.
-- Max drawdown.
-- Stress PnL.
-- CVaR / tail loss.
-- Worst scenario.
-- Asset risk contribution.
-- Factor risk contribution.
-- Mandate pass / fail.
-
-Purpose:
-
-The stress lab turns stress testing into a diagnosis of where the portfolio survives, where it breaks, why losses occur, and which assets are sources of risk or protection.
-
-## 4. Candidate Portfolio Factory / Portfolio Menu
-
-After diagnosing the current portfolio, macro context, and stress behavior, the system generates alternatives.
-
-Purpose:
-
-The system does not search for one ideal portfolio. It creates candidate portfolios that can be compared.
-
-Target candidates:
-
-- Current Portfolio.
 - Equal Weight.
 - Equal Weight by Asset Class.
 - Risk Parity.
-- HRP.
+- Hierarchical Risk Parity.
 - Minimum Variance.
-- Maximum Diversification.
 - Minimum CVaR.
-- Robust Mean-Variance.
-- Custom Constraints.
-- Tactical Tilt variant when enabled.
-
-Each candidate is a hypothesis:
-
-- One may distribute capital better.
-- One may distribute risk better.
-- One may reduce volatility.
-- One may protect against tail risk.
-- One may pass mandate constraints better.
-
-Layer output:
-
-- Candidate list.
-- Candidate weights.
-- Construction method.
-- Base parameters.
-- Constraint fit.
-- Preparation for backtest, stress evaluation, and comparison.
-
-## 5. Optimization Engine
-
-The Optimization Engine builds candidate portfolios. The user action can be simplified as "Improve Portfolio", but the system should return alternatives rather than one absolute answer.
-
-Target optimization variants:
-
-- Minimum Volatility.
-- Max Sharpe.
-- Max Return under Risk Constraint.
-- Minimum CVaR.
-- Risk Parity.
-- HRP.
 - Maximum Diversification.
-- Robust Mean-Variance.
-- Drawdown-controlled.
-- Macro-resilient.
-- Stress-test optimized.
-- Tax-aware / turnover-aware in later versions.
+- Robust Mean Variance.
 
-Core logic:
+UX rule:
 
-Optimization is not the final decision. It creates candidates that must be tested, compared, and explained.
+The product should present methods as ways to test an improvement hypothesis, not as the starting
+point of the product.
 
-Example:
+Implementation status:
 
-> This portfolio has the highest expected return, but breaks in a 2008-like stress. This portfolio has lower expected return, but survives recession and stagflation better.
+User-triggered on-demand candidate generation is target direction unless verified against current
+code/specs. Existing automatic/batch capabilities should be preserved as current infrastructure,
+advanced mode, research mode, or legacy as appropriate.
 
-## 6. Strategy Backtest
+### 5.7 Current vs Candidate Comparison
 
-After candidate generation, the system checks how each portfolio would have behaved historically.
+Purpose:
 
-Backtest can apply to:
+Show whether the selected candidate improves the current portfolio and what it costs.
 
-- Current portfolio.
-- Each candidate.
-- Benchmark.
-- 60/40.
-- Custom strategy.
+Target comparison dimensions:
 
-Backtest output can include:
-
-- Growth of a starting amount.
-- CAGR.
+- Return / risk.
 - Volatility.
-- Sharpe.
-- Sortino.
-- Max drawdown.
-- Time to recovery.
-- Worst month.
-- Worst year.
-- Rolling returns.
-- Rolling drawdowns.
-- Rolling Sharpe.
-- Calendar-year returns.
-
-Rebalancing options:
-
-- Monthly.
-- Quarterly.
-- Semiannual.
-- Annual.
-- Drift-based.
-- No rebalance.
-
-Out-of-sample examples:
-
-- Optimize on 2014-2019, test on 2020-2025.
-- Rolling optimization / walk-forward analysis.
-
-Purpose:
-
-Backtest evaluates historical behavior, but it does not replace the final decision.
-
-## 7. Scenario & Stress Evaluation For Candidates
-
-Each candidate is run through the same stress scenarios.
-
-Purpose:
-
-All candidates must be evaluated under the same conditions for comparison to be fair.
-
-For each candidate, the system can capture:
-
-- Base return / risk.
-- Max drawdown.
-- Stress PnL.
-- CVaR / tail loss.
+- Drawdown.
+- Tail risk where available.
+- Stress loss.
 - Worst scenario.
-- Asset risk contribution.
-- Factor risk contribution.
-- Mandate pass / fail.
-
-The analysis should exist both at portfolio level and asset level.
-
-Layer result:
-
-The system shows which candidate survives adverse environments better and why.
-
-## 8. Macro Highlight / Macro Risk Dashboard
-
-This is an informational and diagnostic layer over the portfolio. It does not predict markets, control optimization, or determine weights by itself.
-
-It answers:
-
-- Where are we in the macro environment?
-- In which regimes is the portfolio most vulnerable?
-- In which regimes has the portfolio historically benefited?
-- Which risks are currently most relevant?
-
-### 8.1 Current Macro Regime
-
-Example:
-
-> Current regime: Stagflation pressure / low confidence transition.
-
-Indicators can include:
-
-- Growth momentum.
-- Inflation pressure.
-- Rates pressure.
-- Credit spreads.
-- Risk sentiment.
-- Liquidity.
-
-### 8.2 Macro Risk Dashboard
-
-The dashboard can show:
-
-- Current macro regime.
-- Regime confidence.
-- Growth score.
-- Inflation score.
-- Liquidity condition.
-- Portfolio fit to current regime.
-- Historical performance by regime.
-- Best/worst assets by regime.
-- Recommended watchpoints.
-
-Example:
-
-> Your portfolio historically performs best in reflation and worst in stagflation.
-
-### 8.3 Regime Fit Score
-
-Example:
-
-```text
-Goldilocks: 82/100
-Reflation: 76/100
-Stagflation: 41/100
-Recession disinflation: 58/100
-```
-
-Example output:
-
-> Portfolio is strong in goldilocks/reflation, but weak in stagflation.
-
-### 8.4 Role Of Macro Overlay
-
-Macro is a context layer:
-
-- Current regime diagnostics.
-- Risk warnings.
-- Permission or restriction for tactical tilt.
-- Scenario-weight adjustment in evaluation.
-
-Example:
-
-If the current regime is reflation with low confidence, an aggressive tilt may not be applied, while diagnostics pay closer attention to inflation, stagflation, and rates shocks.
-
-## 9. Candidate Comparison Layer
-
-After backtest and stress evaluation, all candidates are summarized in one comparison format.
-
-Minimum comparison table:
-
-- Return.
-- Volatility.
-- Sharpe.
-- Max drawdown.
-- CVaR.
-- Worst stress.
-- Top asset risk contribution.
-- Top factor risk contribution.
+- Risk concentration.
+- Factor exposure changes.
+- Hedge gap changes.
 - Turnover.
-- Mandate fit.
+- Transaction cost impact where available.
+- Data quality and model confidence.
+
+Questions answered:
+
+- What improves?
+- What worsens?
+- Is the improvement material?
+- Is turnover justified?
+- Does the candidate solve the diagnosed problem?
+- Is the evidence strong enough to act?
+
+### 5.8 Decision Verdict
 
 Purpose:
 
-This layer makes different optimizers and portfolio variants comparable.
+Answer whether action is justified.
 
-## 10. Portfolio Comparison Arena
+Target verdicts:
 
-The user compares two to five portfolios side by side, for example:
+- Keep current portfolio.
+- Rebalance to selected candidate.
+- Partial rebalance / minor adjustments.
+- Candidate improves risk but turnover or cost is too high.
+- Test another candidate.
+- No material rebalance recommended.
+- Evidence insufficient due to data quality, model limits, or missing assumptions.
 
-- Current.
-- Optimized.
-- Risk Parity.
-- Minimum CVaR.
-- Benchmark.
-- Custom candidate.
+Boundary:
 
-The system should show a verdict, not only charts.
+Decision Verdict should not be framed as "the system always selects the winner." The central
+question is whether the user should act.
 
-Example:
+Implementation status:
 
-> Optimized portfolio improves expected drawdown resilience but sacrifices 1.4 percentage points of CAGR. Risk parity has better crisis behavior but underperforms in bull markets.
+Requires code/spec verification before replacing or renaming current Selection Engine contracts.
 
-Purpose:
-
-The user sees where each portfolio wins, where it loses, and what compromise it offers.
-
-## 11. Portfolio Health Score
-
-Portfolio Health Score is a quick overall quality score.
-
-It can apply to:
-
-- Current portfolio.
-- Each candidate.
-- Final selected portfolio.
-
-Example:
-
-```text
-Portfolio Health Score: 73 / 100
-```
-
-Components can include:
-
-- Diversification score.
-- Drawdown resilience.
-- Factor balance.
-- Macro regime fit.
-- Liquidity score.
-- Concentration score.
-- Stress-test score.
-- Risk-adjusted return score.
-
-Important:
-
-The score must not be a magic number. It must explain why the score is high or low.
-
-Example:
-
-> Score reduced mainly due to high equity risk concentration, weak stagflation resilience, and high downside beta.
-
-## 12. Robustness Score / Robustness Scorecard
-
-Robustness Score evaluates candidate resilience.
-
-Example:
-
-```text
-Current Portfolio: 62 / 100
-Risk Parity: 78 / 100
-Minimum CVaR: 81 / 100
-Robust Mean-Variance: 76 / 100
-```
-
-Possible indicators:
-
-- Downside protection.
-- Stress resilience.
-- Diversification / risk contribution.
-- Return efficiency.
-- Factor stability.
-- Mandate fit.
-
-Example target weighting:
-
-- 25% downside protection: MaxDD, downside volatility, ES / CVaR, recovery time.
-- 20% stress resilience: 2008, 2020, 2022, rates shock, liquidity shock, stagflation shock.
-- 20% diversification / RC: asset, asset class, and factor risk concentration.
-- 15% return efficiency: CAGR, Sharpe, Sortino, return per unit of risk.
-- 10% factor stability: factor betas, rolling beta, Kalman beta, factor concentration.
-- 10% mandate fit: MaxDD, volatility, liquidity, weight limits, and other constraints.
-
-Implementation note:
-
-These weights are conceptual and TBD unless a future spec formalizes them.
-
-## 13. Selection Engine
-
-Selection Engine answers:
-
-> Which candidate should be chosen, and why?
-
-The decision is multi-criteria, not based on one metric.
-
-Conceptual formula:
-
-```text
-Final Score =
-  expected return
-  + downside resilience
-  + stress survival
-  + diversification
-  + factor concentration
-  + mandate fit
-  - turnover penalty
-  - complexity penalty
-```
-
-The system considers:
-
-- Expected return.
-- Downside resilience.
-- Stress survival.
-- Diversification.
-- Factor concentration.
-- Mandate fit.
-- Turnover penalty.
-- Complexity penalty.
+### 5.9 AI Commentary
 
 Purpose:
 
-A portfolio with slightly lower expected return but better stress resilience and lower concentration may be better than an aggressive portfolio with strong historical return.
+Translate evidence into an understandable narrative.
 
-## 14. Assumption Sensitivity
+Target commentary should explain:
 
-Purpose:
-
-Checks whether the winning candidate survives changes in assumptions.
-
-Test dimensions can include:
-
-- 3Y / 5Y / 10Y covariance.
-- Expected returns +/- 20-30%.
-- Stress severity.
-- Rebalance frequency.
-- Transaction costs.
-- Correlation stress.
-
-Example output:
-
-> Portfolio A wins in 78% of assumption variants.
-
-## 15. Pareto Frontier / Dominance Check
-
-This block removes weak candidates.
-
-A portfolio is dominated if it has:
-
-- Lower return.
-- Higher risk.
-- Worse drawdown.
-- Worse CVaR.
-- Higher turnover.
-- No compensating advantage.
-
-Example:
-
-> Candidate D is dominated. No clear reason to choose.
-
-Purpose:
-
-Not every generated candidate deserves serious consideration.
-
-## 16. Regret Analysis
-
-Regret Analysis shows the cost of choosing wrong.
-
-Main question:
-
-> If the user chooses portfolio A, how badly can it lose to B or C in scenarios where those portfolios are better?
-
-Metrics can include:
-
-- Average regret.
-- Worst-case regret.
-- Regret by scenario.
-- Regret by regime.
-
-Example:
-
-> Portfolio A has strong base-case return, but high regret in stagflation and liquidity shock.
-
-Purpose:
-
-The system helps choose a more resilient decision, not only the prettiest base-case portfolio.
-
-## 17. Trade-off Explanation
-
-Trade-off Explanation describes the price paid for improvement.
-
-Example:
-
-> Optimized portfolio reduces MaxDD from -28% to -21%, improves CVaR by 18%, but lowers CAGR from 8.4% to 7.6% and requires 22% turnover.
-
-The system shows:
-
-- What improves.
-- What worsens.
-- Cost of change.
-- Required turnover.
-- Risk reduced.
-- Return sacrificed.
-
-Purpose:
-
-The user understands not only what is better, but what they pay for the improvement.
-
-## 18. Model Risk Diagnostics
-
-This is the system's self-criticism layer.
-
-Warnings can include:
-
-- Expected returns unstable.
-- Covariance unstable.
-- Low factor model R2.
-- High multicollinearity.
-- Insufficient stress / regime data.
-- Optimizer result too concentrated.
-- Solution sensitive to window choice.
-
-Purpose:
-
-The system is honest about where conclusions are reliable and where caution is required.
-
-## 19. Action Engine
-
-Action Engine turns the selected decision into concrete action.
-
-Example:
-
-> To move to Portfolio B, reduce SPY by 6%, increase TLT by 4%, and add 2% GLD. Turnover = 12%. Expected MaxDD improvement = 4 percentage points; CVaR improvement = 11%.
-
-Outputs:
-
-- Target weights.
-- Buy / sell / hold.
-- Delta vs current.
-- Turnover.
-- Expected risk improvement.
-- Expected cost.
-- Priority trades.
-
-Key metric:
-
-```text
-Risk improvement per 1% turnover
-```
-
-Purpose:
-
-Not all trades are equally useful. The system shows which changes provide the most risk improvement for the least turnover.
-
-## 20. Rebalancing Advisor
-
-Rebalancing Advisor makes Action Engine practical.
-
-It shows:
-
-- Current weights.
-- Target weights.
-- Difference.
-- What to buy.
-- What to sell.
-- Turnover.
-- Estimated transaction impact.
-- Risk improvement after rebalance.
-
-Example:
-
-> Reduce equity ETF by 6%, increase short-term Treasuries by 4%, increase gold by 2%. Expected max drawdown improves from -27% to -21%.
-
-Purpose:
-
-The user gets a concrete path from current allocation to target allocation.
-
-## 21. No-Trade Recommendation
-
-No-Trade Recommendation is an explicit refusal to recommend unnecessary changes.
-
-If improvement is small and turnover is high, the system should say:
-
-> No material rebalance recommended.
-
-Example:
-
-```text
-Score improvement: +2 points
-Turnover: 18%
-Drawdown improvement: 0.7%
-Recommendation: Not worth rebalancing.
-```
-
-Purpose:
-
-The system should not always recommend trades. Sometimes the right decision is to do nothing.
-
-## 22. AI Portfolio Commentary
-
-AI Portfolio Commentary turns analytics into readable investment language.
-
-It summarizes:
-
-- Portfolio diagnostics.
-- Main risks.
-- Hidden exposures.
-- Macro context.
+- Portfolio diagnosis.
+- Key risks.
 - Stress behavior.
-- Candidate comparison.
-- Selected variant.
-- Trade-offs.
-- Actions.
-- No-trade recommendation when applicable.
+- Reasonable path to test.
+- Candidate logic.
+- Current-vs-candidate trade-offs.
+- Decision verdict.
+- No-trade rationale if applicable.
+- What to monitor next.
 
-Example:
+Boundary:
 
-> The portfolio is growth-oriented, with high dependence on equity beta and moderate diversification across asset classes. Its main weakness is stagflation and rate-shock sensitivity. The current allocation is not fragile in normal markets, but losses become concentrated during liquidity shocks.
+AI Commentary explains evidence. It does not create the evidence.
 
-Purpose:
-
-The user receives a coherent institutional-style explanation, not only tables and charts.
-
-## 23. Monitoring / What Changed
-
-Monitoring turns a one-time analysis into an ongoing process.
-
-The system shows what changed since the last analysis:
-
-- Risk score worsened.
-- Equity beta increased.
-- Worst scenario changed.
-- Top risk contributor changed.
-- Macro regime changed.
-- Mandate breach appeared.
-- Correlation concentration increased.
-
-Example:
-
-> Since last month, stress loss increased mainly due to higher equity-credit correlation.
+### 5.10 Monitoring / What Changed
 
 Purpose:
 
-The user sees whether the portfolio improved, worsened, or needs a new decision.
+Track what should be watched after the verdict.
 
-## 24. Decision Journal
+Target MVP monitoring can remain light:
 
-Decision Journal records the investment process.
+- Key risk contributor changes.
+- Worst stress scenario changes.
+- Weight drift.
+- New warnings or breaches.
+- Candidate retest triggers.
+- Assumption changes.
 
-Stored fields can include:
+Advanced monitoring can include multi-client workspaces, macro regime monitoring, breach engines,
+and full decision history.
 
-- Analysis date.
-- Selected portfolio.
-- Rejected alternatives.
-- Assumptions.
-- Expected improvement.
-- Accepted risks.
-- Macro context.
-- Rationale.
+## 6. Diagnosis-Only State
 
-Post-review question:
+The target MVP should support:
 
-> Was the decision good based on what was known at the time?
+```text
+Portfolio diagnosed.
+No candidate generated yet.
+Reasonable paths to test available.
+Quick benchmark tests available.
+```
 
-Purpose:
+This state matters because a user may only need diagnosis and stress review before deciding whether
+to test a candidate.
 
-The system separates decision quality from outcome quality and creates a disciplined investment decision history.
+Target outputs:
 
-## Questions The Product Should Answer
+- Portfolio X-Ray.
+- Stress & Risk Diagnosis.
+- Top problems.
+- Weakness map.
+- Reasonable paths to test.
+- Clear statement that no candidate has been generated.
 
-- What exactly is being analyzed?
-- What goals and constraints does the client have?
-- What assumptions is the analysis based on?
-- What is really inside the portfolio?
-- How is the portfolio distributed by assets, classes, currencies, regions, and factors?
-- How does the portfolio behave by return, risk, and drawdown?
-- Where is the main risk?
-- Which assets contribute disproportionately to risk?
-- What hidden exposures exist?
-- What behavioral archetype does the portfolio match?
+Implementation status:
+
+Requires code/spec verification.
+
+## 7. Candidate State Model
+
+Target candidate progression:
+
+```text
+0 candidates -> diagnosis only
+1 candidate  -> current vs candidate comparison
+2+ candidates -> shortlist / comparison arena
+```
+
+Target candidate record:
+
+- candidate id
+- name
+- source
+- goal
+- method
+- parameters
+- constraints
+- weights
+- created-from problem
+- status
+- evidence / quality fields
+
+Exact fields and schemas require code/spec verification.
+
+## 8. Core, Advanced, Legacy, Requires Review
+
+### Core MVP
+
+- Input current portfolio.
+- Portfolio X-Ray.
+- Stress Test Lab.
+- Problem Classification.
+- Candidate Launchpad.
+- Portfolio Alternatives Builder simple mode.
+- Current-vs-candidate comparison.
+- Decision Verdict.
+- AI Commentary as explanation.
+- Light Monitoring / What Changed.
+
+### Advanced / Later Product Backlog
+
+These items are not Core MVP requirements. Do not describe them as implemented unless verified in
+`SPEC.md`, `docs/specs/*.md`, or code. Preserve existing capabilities as `Current`, `Advanced`,
+`Legacy`, or `Requires Review` as appropriate.
+
+- Macro Risk Dashboard / Macro Overlay.
+- Strategy Backtest as a separate block.
+- Scenario & Stress Evaluation for Candidates.
+- Full multi-candidate ranking / advanced research comparison.
+- Out-of-sample / walk-forward analysis.
+- Full Crisis Replay UI.
+- What Happens If? Simulator.
+- Portfolio Health Score / Robustness Scorecard as primary product modules.
+- Assumption Sensitivity / Assumption Testing Mode.
+- Pareto Frontier / Dominance Check.
+- Regret Analysis.
+- Model Risk Diagnostics.
+- Rebalancing Advisor / Action Plan as full modules.
+- Advanced Monitoring / full portfolio health monitoring.
+- Macro regime monitoring.
+- Advanced breach engine.
+- Multi-client monitoring workspace.
+- Max Sharpe.
+- Custom Constraints.
+- Advisor Custom Candidate.
+- Tax-aware optimization.
+- Turnover-aware optimization objective.
+- Tactical Tilt.
+- Full custom constraints UI.
+- Multi-client workspace / saved workspaces.
+- White-label / API integration.
+- Full PDF report design.
+- Advanced Parameter Builder settings.
+- Asset X-Ray / Asset Diagnostics.
+- Client-Fit Check / questionnaire.
+- Portfolio Archetype Classification is an optional later diagnostic layer that can classify the
+  portfolio by behavior, such as Equity Growth Portfolio, Balanced 60/40-like, Credit Carry
+  Portfolio, Duration-heavy Defensive, Inflation-sensitive, or Pseudo-diversified Portfolio. It
+  should not be part of the core MVP flow until explicitly implemented and approved.
+
+### Legacy / Compatibility
+
+- Legacy policy optimization flow.
+- Legacy policy/report entrypoints.
+- Existing PDF/report export sidecars.
+- Batch candidate generation where used as current infrastructure or research mode.
+
+### Requires Review
+
+- Any claim that target modules exist today.
+- Any schema rename.
+- Any CLI behavior change.
+- Any generated-output contract change.
+- Any public terminology migration that could confuse existing operators.
+
+## 9. Old 24-Block Concept Reclassification
+
+The older concept listed 24 product blocks. Reclassify them as follows:
+
+| Old concept block | New classification |
+| --- | --- |
+| Input & Assumptions Layer | Core MVP, simplified first screen plus system defaults. |
+| Portfolio X-Ray / Diagnostics | Core MVP. |
+| Portfolio Archetype Classification | Advanced / Later optional diagnostic layer; not part of core Portfolio X-Ray until explicitly implemented and approved. |
+| Stress Test Lab | Core MVP. |
+| Candidate Portfolio Factory / Portfolio Menu | Reframed as Candidate Launchpad + Alternatives Builder; current batch factory preserved as implementation/advanced/research as applicable. |
+| Optimization Engine | Internal candidate construction capability; not the product front door. |
+| Strategy Backtest | Advanced / Later unless required by current specs. |
+| Scenario & Stress Evaluation for Candidates | Advanced / Later or research mode. |
+| Macro Highlight / Macro Risk Dashboard | Advanced / Later optional diagnostic overlay. |
+| Candidate Comparison Layer | Core when current-vs-candidate; full multi-candidate comparison is advanced/research unless current core behavior requires it. |
+| Portfolio Comparison Arena | Advanced when multi-candidate; core only for generated shortlist. |
+| Portfolio Health Score | Supporting evidence; not the main product answer. |
+| Robustness Score / Scorecard | Supporting / Advanced evidence; not the main product answer. |
+| Selection Engine | Reframe as Decision Verdict language after code/spec review. |
+| Assumption Sensitivity | Advanced / Later. |
+| Pareto Frontier / Dominance Check | Advanced / Later. |
+| Regret Analysis | Advanced / Later. |
+| Trade-off Explanation | Core, inside Current vs Candidate Comparison and Verdict. |
+| Model Risk Diagnostics | Advanced / supporting evidence; core only as simple confidence/disclosure. |
+| Action Engine | Later or light action summary unless current specs require generated artifacts. |
+| Rebalancing Advisor | Later / advanced; core can show high-level rebalance/no-trade verdict. |
+| No-Trade Recommendation | Core MVP. |
+| AI Portfolio Commentary | Core explanation layer, not calculation source. |
+| Monitoring / What Changed | Core light version; full monitoring later. |
+| Decision Journal | Light version inside commentary or later full journal. |
+
+## 10. Product Questions The System Should Answer
+
+From diagnosis:
+
+- What is actually in the current portfolio?
+- What is the real economic exposure?
+- Where are capital and risk concentrated?
+- Which factors dominate the portfolio?
+- Which assets contribute most to total risk?
+- Where does weight differ from risk contribution?
+- Which hidden exposures exist?
+- Is diversification real?
 - Where is the portfolio most vulnerable?
-- Where does the portfolio break in stress scenarios?
-- Which assets pull the portfolio down in crisis?
-- Which assets actually protect the portfolio?
-- Where is the hedge gap?
-- Which alternative portfolios can be built?
-- How do alternatives behave historically?
-- How do alternatives pass the same stress tests?
-- Which alternative is better, and why?
-- How robust is the selected variant to assumption changes?
-- Which candidates can be rejected as weak?
-- What is the cost of choosing wrong?
-- What trade-off does the investor accept?
-- How much can the user trust the calculations and conclusions?
-- What exactly should be bought, sold, or changed?
-- Is changing the portfolio worth it?
-- How can the decision be explained to a client in plain investment language?
-- What changed since the last analysis?
-- Why was this exact decision made?
-- Was the decision high-quality from a process perspective?
 
-## Relationship To Current Implementation
+From stress:
 
-This product concept should guide future planning and documentation, but the current implementation remains governed by:
+- How does the portfolio behave in historical and synthetic stress scenarios?
+- Which assets drive losses?
+- Which assets help offset losses?
+- Where is the main hedge gap?
+- Which stress problem should be tested through an alternative?
 
-- [SPEC.md](../SPEC.md)
-- [Portfolio Construction Policy](specs/portfolio_construction_policy.md)
-- [Metrics Specification](specs/metrics_specification.md)
-- [Stress Testing Spec](specs/stress_testing_spec.md)
-- [Feasibility Constraints](specs/feasibility_constraints_spec.md)
-- [Data Policy](specs/data_policy_spec.md)
-- [Production Workflow](specs/production_workflow.md)
-- [PLANS.md](../PLANS.md)
-- [AGENTS.md](../AGENTS.md)
+From candidate generation:
 
-Any implementation change derived from this concept must be specified separately, planned when needed, documented in the relevant source-of-truth file, and verified through the project verification loop.
+- Which diagnosed problem deserves a candidate hypothesis?
+- Which improvement path is reasonable?
+- Which construction method fits the selected hypothesis?
+- What constraints and parameters are appropriate?
+- Was the candidate actually generated from the diagnosed problem?
+
+From comparison and verdict:
+
+- What improves and what worsens versus the current portfolio?
+- Is the improvement material?
+- Is turnover/cost justified?
+- Is the evidence reliable enough?
+- Should the user keep, rebalance, test another candidate, no-trade, or mark evidence insufficient?
+
+## 11. Current Implementation Guardrails
+
+This document is target product direction.
+
+Do not claim these as implemented without verification:
+
+- Problem Classification module.
+- Candidate Launchpad.
+- Portfolio Alternatives Builder UI/service.
+- User-triggered one-candidate generation as default behavior.
+- Diagnosis-only state.
+- Current-vs-candidate as the only or main implemented comparison mode.
+- Decision Verdict replacing Selection Engine.
+- AI Commentary scope, inputs, and output contracts.
+- Any new JSON field, CLI flag, schema, output file, or folder contract.
+
+Current implementation truth must come from:
+
+- `SPEC.md`
+- `RULES.md`
+- `OUTPUTS.md`
+- `DATA.md`
+- `TESTING.md`
+- `docs/specs/*.md`
+- current source code
+
+## 12. Non-Goals
+
+The product concept should not:
+
+- Promise perfect weights.
+- Force a rebalance recommendation.
+- Hide model limits or data-quality issues.
+- Present AI as the calculation engine.
+- Make macro dashboard mandatory for MVP.
+- Make full multi-candidate research mode the default UX.
+- Delete existing advanced or legacy backend capabilities because they are not core UX.
+- Rename public schemas, CLI flags, or generated fields without a migration plan.
+
+## 13. Migration Note
+
+If this document is approved, merge it into `docs/DIAGNOSTIC_PRODUCT_CONCEPT.md` only after:
+
+1. Reviewing the current concept file.
+2. Preserving non-binding status language.
+3. Preserving advanced/later capabilities as project memory.
+4. Checking all implementation claims against current specs/code.
+5. Updating links from `PRODUCT.md`, `ARCHITECTURE.md`, and `README.md` only after the replacement is
+   approved.

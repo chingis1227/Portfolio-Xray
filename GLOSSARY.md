@@ -388,6 +388,55 @@ Term heading
 - Area: product
 - Canonical source: [RULES.md](RULES.md)
 
+### Documentation migration record
+
+- Definition: A planning, audit, or archived legacy Markdown file from the documentation migration; it can explain migration history but does not override current implementation contracts.
+- Area: docs
+- Canonical source: [DECISIONS.md](DECISIONS.md)
+- Notes: Current behavior remains governed by `SPEC.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, detailed specs, and code until a draft is approved and merged.
+
+### Diagnosis-only state
+
+- Definition: Target product state where the current portfolio has been diagnosed, but no candidate has been generated yet.
+- Area: product
+- Canonical source: [SPEC.md](SPEC.md), [PRODUCT.md](PRODUCT.md)
+- Notes: Target/TBD unless an owning spec and implementation verify it.
+
+### Problem Classification
+
+- Definition: Target product layer that converts Portfolio X-Ray and Stress Test Lab evidence into a small number of user-understandable portfolio problems and improvement paths.
+- Area: product
+- Canonical source: [SPEC.md](SPEC.md), [PRODUCT.md](PRODUCT.md), [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md)
+- Notes: Target/TBD unless an owning spec and implementation verify it.
+
+### Candidate Launchpad
+
+- Definition: Target product layer that presents suggested improvement paths or benchmark tests as entry points for candidate generation.
+- Area: product
+- Canonical source: [SPEC.md](SPEC.md), [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md)
+- Notes: Launchpad cards are target UX concepts, not generated candidate portfolios unless implemented by an owning spec/code path.
+
+### Portfolio Alternatives Builder
+
+- Definition: Target product layer for user-triggered generation of a selected candidate portfolio from a goal, method, constraints, and parameters.
+- Area: product
+- Canonical source: [SPEC.md](SPEC.md), [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md)
+- Notes: Existing candidate builders and factory remain current backend capabilities; the user-triggered builder UX is Target/TBD unless verified.
+
+### Decision Verdict
+
+- Definition: Target product language for the final action/no-action conclusion, such as keep current portfolio, rebalance, partial rebalance, test another candidate, no material rebalance, or evidence insufficient.
+- Area: product
+- Canonical source: [SPEC.md](SPEC.md), [PRODUCT.md](PRODUCT.md)
+- Notes: Current implemented contract remains Selection Engine / No-Trade until specs are changed; do not rename schemas or fields without a migration plan.
+
+### AI Commentary
+
+- Definition: Target explanation layer that turns deterministic JSON evidence, diagnostics, comparisons, and verdict rationale into readable commentary.
+- Area: product
+- Canonical source: [SPEC.md](SPEC.md), [PRODUCT.md](PRODUCT.md)
+- Notes: AI Commentary should explain evidence, not create metrics, data-quality statuses, stress results, or unsupported verdicts.
+
 ### Report-first
 
 - Definition: Current implementation mode where the project prioritizes CLI/file-driven reports and artifacts before a full interactive UI.

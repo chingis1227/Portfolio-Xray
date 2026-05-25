@@ -12,6 +12,8 @@ Update this file when the general implementation contract, workflows, inputs/out
 
 Product concept documents can describe target direction. They do not change formulas, scenarios, optimizer policy, data rules, output contracts, or code behavior until this spec and the relevant detailed specs are updated.
 
+The documentation migration replaced the active business, product, diagnostic concept, and architecture docs while archiving their prior versions under `docs/archive/documentation_migration_2026_05_25/`. Product and architecture docs still do not override this implementation contract; target modules remain non-binding until promoted into owning specs and code.
+
 ## Implementation Scope
 
 The current implementation is a report-first, CLI/file-driven portfolio analytics system.
@@ -53,7 +55,16 @@ It supports:
 Target product areas remain TBD until separately specified and implemented:
 
 - full interactive UI and saved analysis workspaces
+- explicit diagnosis-only product state beyond current generated artifacts
+- Problem Classification as a formal product/service layer
+- Candidate Launchpad and user-triggered Portfolio Alternatives Builder UX
+- current-vs-selected-candidate UX as the primary interactive comparison mode
+- Decision Verdict product language replacing or aliasing current Selection Engine terminology
+- AI Commentary as a formally specified explanation layer
 - user-maintained journal/workflow layers beyond the generated V1 Decision Journal
+
+These target areas must not be described as current implementation unless the relevant source code,
+generated artifacts, and owning specs verify that status.
 
 ## Main Workflows
 
@@ -350,6 +361,13 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | ETF and stock taxonomy | Implemented annotation-only V1 |
 | Generated CSV/JSON/HTML/TXT/PDF-style reports | Implemented |
 | Full interactive UI | Target/TBD |
+| Diagnosis-only product state as formal UX/workflow state | Target/TBD; current generated artifacts may support diagnosis review, but a formal product state requires code/spec verification |
+| Problem Classification | Target/TBD; do not claim implemented until an owning spec/code artifact exists |
+| Candidate Launchpad | Target/TBD; do not claim implemented until an owning spec/code artifact exists |
+| Portfolio Alternatives Builder as user-triggered candidate UX | Target/TBD; existing candidate builders/factory remain current backend capabilities |
+| Current-vs-selected-candidate as primary interactive UX | Target/TBD; current comparison artifacts remain governed by candidate comparison specs |
+| Decision Verdict product language | Target/TBD as terminology; current implemented contract remains Selection Engine / No-Trade until specs are changed |
+| AI Commentary formal explanation layer | Target/TBD; any current commentary behavior must be verified against code/specs before being claimed |
 | Formal Selection Engine and No-Trade | Implemented (`selection_decision.json` via [src/selection_engine.py](src/selection_engine.py)); portfolio-first baseline is `analysis_subject`, with legacy fallback to `current` |
 | Trade-off Explanation and Model Risk Diagnostics | Implemented ([src/tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py); [tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md)) |
 | Assumption Sensitivity | Implemented ([src/assumption_sensitivity.py](src/assumption_sensitivity.py); [assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md)) |

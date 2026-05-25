@@ -54,6 +54,8 @@ Before changing behavior, check the owning source of truth:
 
 Do not invent formulas, estimators, scenarios, constraints, statuses, or data rules when a spec exists.
 
+Documentation migration records such as `DOCUMENTATION_MIGRATION_PLAN.md`, `DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md`, and archived legacy docs are planning and traceability inputs only. Verify every current-implementation claim against `SPEC.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, and code before changing source docs.
+
 ## Portfolio-First Operator Checklist
 
 Use this path when running or reviewing `python run_portfolio_review.py` (portfolio-first review).
@@ -139,6 +141,15 @@ Update the owning docs when behavior changes:
 - [WORKFLOW.md](WORKFLOW.md): task process itself.
 
 Do not duplicate long formulas or implementation details in top-level docs when an owning spec exists.
+
+For documentation migration work:
+
+- Prefer draft-first replacement and archive old source-of-truth files before replacing them.
+- Keep target product language separate from current implementation contracts.
+- Mark unimplemented or unverified target concepts as `Target/TBD` or `Requires code/spec verification`.
+- Do not demote or delete existing implementation capabilities only because they are absent from a
+  product concept draft; classify them as `Preserve`, `Advanced`, `Legacy`, or `Requires Review`.
+- Check `git diff` before reporting completion and state which existing docs changed.
 
 ## 6. Verification
 

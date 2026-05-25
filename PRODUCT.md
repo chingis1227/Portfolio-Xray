@@ -1,707 +1,659 @@
 # Product
 
-## Status
+This document is part of the active project documentation after the documentation migration. It describes target direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
 
-This document describes Portfolio X-Ray / Portfolio MRI from the user experience perspective: user flow, primary screens, key features, and expected user outputs.
+## 1. Product Summary
 
-It is a product UX document. It does not replace [SPEC.md](SPEC.md), metric formulas, stress scenario definitions, investment policy logic, configuration schemas, or current implementation behavior.
+Portfolio MRI / Portfolio X-Ray is a portfolio diagnostics and investment decision-support product.
 
-Product priority: site/API-first runtime contracts before full UI. Structured JSON plus internal
-cache are the default backend/UI contract. CSV/TXT/HTML/PNG/PDF/Markdown/CSS outputs remain
-available for explicit export, debugging, audit, Excel review, and legacy reporting, but are not part
-of the normal default execution path.
+The user does not start by choosing an optimizer. The user starts by submitting a current portfolio.
+The product diagnoses what is inside that portfolio, where risk is hidden, how it behaves under
+stress, what problem should be tested, which candidate hypothesis is reasonable, and whether the
+trade-off justifies action.
 
-| User intent | CLI (default = JSON only) |
-| --- | --- |
-| Full portfolio review | `python run_portfolio_review.py` |
-| Quick core review | `python run_portfolio_review.py --mode core` |
-| Refresh candidate menu + compare | `python run_candidate_factory.py --profile default_v1 --then-compare` |
-| Client PDF package | `python run_portfolio_review.py --with-pdf` |
-| Legacy policy optimize + report | `python run_optimization.py --with-report` |
-| Spreadsheet-style audit export | `python run_report.py --output-profile full_report` |
-
-Artifact index for UI/API: `output_manifest.json` under `output_dir_final`. Details:
-[OUTPUTS.md](OUTPUTS.md).
-
-Related documents:
-
-- [RULES.md](RULES.md) for high-level principles and source-of-truth ownership.
-- [WORKFLOW.md](WORKFLOW.md) for how product changes move from task to implementation, verification, docs sync, and commit.
-- [OUTPUTS.md](OUTPUTS.md) for generated reports, artifacts, folders, and output-format ownership.
-- [GLOSSARY.md](GLOSSARY.md) for shared product and technical terminology.
-- [Business Vision](BUSINESS_VISION.md) for the business goal, audience, value proposition, and monetization direction.
-- [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) for living target product architecture ideas; non-binding until promoted to specs.
-- [README.md](README.md) for current project overview and commands.
-- [SPEC.md](SPEC.md) for canonical technical source-of-truth links.
-- [Portfolio Review Workflow](docs/specs/portfolio_review_workflow_spec.md) for the
-  `analysis_subject`-first product workflow.
-
-## Product Summary
-
-Portfolio MRI helps a user move from a portfolio input to a decision-ready investment view.
-
-Primary user flow:
+Target MVP flow:
 
 ```text
-Create analysis
--> Define analysis_subject and assumptions
--> Review Portfolio X-Ray
--> Run Stress Test Lab
--> Generate candidate portfolios
--> Compare candidates
--> Review recommendation or no-trade conclusion
--> Export report
--> Monitor changes over time
+Input portfolio
+-> Portfolio X-Ray
+-> Stress Test Lab
+-> Problem Classification
+-> Candidate Launchpad
+-> Portfolio Alternatives Builder
+-> Current vs Candidate Comparison
+-> Decision Verdict
+-> AI Commentary
+-> Monitoring / What Changed
 ```
 
-The product should feel like a structured portfolio review workflow, not a collection of disconnected metrics.
+This target flow is product direction. Current implementation status must be checked against
+`SPEC.md`, `OUTPUTS.md`, `docs/specs/*.md`, and code before any target step is described as
+implemented.
 
-## UX Principles
+## 2. Product Principles
 
-- Diagnostic first: show what the current portfolio really is before recommending changes.
-- Explain trade-offs: every recommendation should state what improves, what worsens, and what it costs.
-- Keep assumptions visible: users should know which data window, benchmark, currency, constraints, and methods are being used.
-- Compare alternatives fairly: candidates should be evaluated under the same metric, backtest, and stress framework.
-- Support no-trade outcomes: the product should be able to conclude that changing the portfolio is not worth it.
-- Separate product concept from implementation: target UX does not override current code or specs.
+- **Diagnosis before action.** The system must explain the current portfolio before proposing any
+  change.
+- **Current portfolio first.** User-supplied current weights are the starting point for the target
+  MVP review flow.
+- **Problems before methods.** The user should see "reduce drawdown" or "improve diversification"
+  before seeing "Minimum Variance" or "Risk Parity."
+- **Candidate equals hypothesis.** A candidate portfolio is a testable investment hypothesis, not an
+  automatic recommendation.
+- **Guided, not prescriptive.** The product guides the user toward a defensible decision; it does
+  not pretend to replace advisor responsibility.
+- **No-trade is valid.** The correct verdict may be to leave the portfolio unchanged.
+- **AI explains, code calculates.** AI Commentary explains deterministic outputs and JSON evidence;
+  it does not invent metrics, statuses, stress results, or verdict evidence.
+- **Core view before appendix.** The main UX should show the decision-relevant evidence first and
+  move advanced metrics to drill-down or appendix views.
+- **Current vs target separation.** Product concepts do not override current implementation
+  contracts.
 
-## Primary User Roles
+## 3. Primary Users
 
-### Investor
-
-Goal:
-
-Understand real portfolio risk and decide whether to improve the allocation.
-
-Expected output:
-
-A clear diagnosis, stress view, candidate comparison, and recommendation or no-trade conclusion.
-
-### Advisor
-
-Goal:
-
-Prepare a professional portfolio review before a client meeting.
-
-Expected output:
-
-A client-ready report with portfolio diagnosis, key risks, stress behavior, candidate comparison, and action rationale.
-
-### Wealth Manager / Family Office User
+### Independent Investment Advisor / Financial Advisor
 
 Goal:
 
-Run consistent diagnostics across multiple portfolios.
+Prepare a professional, client-ready portfolio risk review before a meeting.
 
-Expected output:
+Expected product output:
 
-Repeatable portfolio reviews, comparable outputs, and governance-friendly decision records.
+- Clear portfolio diagnosis.
+- Top hidden risks.
+- Stress behavior and hedge gaps.
+- One or more reasonable improvement hypotheses.
+- Current-vs-candidate trade-off explanation.
+- Rebalance, no-trade, test-another-candidate, or evidence-insufficient verdict.
+- Client-friendly commentary.
 
-## Core User Flow
+### Sophisticated Self-Directed Investor
 
-### 1. Create Analysis
+Goal:
+
+Understand the real risk of a personal portfolio and decide whether changing allocation is worth
+the cost and uncertainty.
+
+Expected product output:
+
+- Institutional-style Portfolio X-Ray.
+- Stress testing.
+- Plain-language explanation of what matters.
+- Candidate hypothesis only when useful.
+- Decision-ready conclusion.
+
+### Secondary / Later Users
+
+Family offices, wealth managers, HNWI users, multi-client operators, and white-label use cases
+remain important but should be treated as secondary, advanced, or later product packaging unless the
+business strategy explicitly promotes them.
+
+## 4. Core MVP User Flow
+
+### 4.1 Input Portfolio
 
 User goal:
 
-Start a new portfolio review.
+Submit the current portfolio for diagnosis.
 
-Inputs:
-
-- Analysis name.
-- Portfolio owner or client name, if applicable.
-- Analysis date.
-- Analysis type: current portfolio review, candidate construction, comparison, or monitoring review.
-
-Outputs:
-
-- A new analysis workspace.
-- Initial status: incomplete inputs.
-
-Current implementation:
-
-- The current project is primarily CLI and file-driven through `config.yml` and generated artifacts.
-- The portfolio-first workflow contract starts from `analysis_subject`; runtime migration is active.
-- `run_optimization.py` and `run_report.py` remain existing compatibility entrypoints during the transition.
-
-Target status:
-
-- Product UI / workspace is TBD.
-
-### 2. Portfolio Input
-
-User goal:
-
-Define what is being analyzed.
-
-Inputs:
+Target MVP inputs:
 
 - Tickers or instruments.
-- Current weights, if analyzing an existing portfolio.
-- Analysis subject type: `current_portfolio`, `model_portfolio`, or `universe_baseline`.
+- Current weights.
 - Investor currency.
-- Benchmark.
-- Risk profile.
-- Investment horizon.
-- Optional asset metadata.
 
-Key UX requirements:
+System-level inputs and defaults:
 
-- Clearly show whether the user is analyzing an existing weighted portfolio or building from a universe.
-- Validate tickers and missing metadata.
-- Surface unknown assets, missing prices, short history, and taxonomy gaps.
-- Keep current weights separate from optimized target weights.
-- Treat `analysis_subject` as the portfolio diagnosed first before candidates.
+- `analysis_subject = current_portfolio`
+- benchmark / base benchmark
+- cash proxy
+- risk-free source
+- FX logic
+- market data provider
+- calculation windows and quality thresholds
 
-Outputs:
+Target UX rule:
 
-- Validated portfolio universe.
-- Current portfolio weights when supplied.
-- Warnings for missing data or taxonomy gaps.
+Do not overload the first screen with advanced assumptions. The first screen should ask for the
+minimum needed to diagnose the current portfolio. System defaults should remain visible in an
+assumptions/disclosure area.
 
-Current implementation:
+Current implementation notes:
 
-- `config.yml` defines the active universe and settings.
-- `analysis_mode` separates build-from-universe runs from existing-portfolio diagnostics.
-- `current_weights` can be used for existing-portfolio diagnostics in `analysis_mode=analyze_current_weights`.
-- The accepted portfolio-first contract defines `analysis_subject`; explicit runtime resolver work is
-  planned in the active transition.
-- ETF and stock taxonomy are annotation and validation layers.
-- Final production weights are generated by optimization, not manually entered as final policy weights.
+- Requires code/spec verification before claiming exact current UI behavior.
+- Existing CLI/config fields and `analysis_subject` behavior are governed by current specs and code.
 
-### 3. Mandate & Assumptions
+### 4.2 Portfolio X-Ray
 
 User goal:
 
-Define the rules and assumptions for the analysis.
+Understand what the portfolio really contains and where risk lives.
 
-Inputs:
+Target sections:
 
-- Risk profile.
-- Target volatility.
-- Maximum drawdown.
-- Target or minimum return.
-- Liquidity floor.
-- Cash policy.
-- Weight limits.
-- Return frequency.
-- Data windows.
-- Benchmark.
-- Risk-free source.
-- Missing data policy.
-
-Key UX requirements:
-
-- Make constraints and assumptions visible before results are shown.
-- Distinguish hard gates, soft objectives, and diagnostic-only metrics.
-- Warn when a setting affects interpretation, such as non-monthly return frequency with weekly factor diagnostics.
-
-Outputs:
-
-- Analysis assumptions summary.
-- Mandate summary.
-- Feasibility warnings.
-
-Current implementation:
-
-- Current assumptions are controlled by `config.yml`, `config/client_profiles.yml`, and canonical specs.
-- `analysis_setup` is the resolved input-layer runtime contract; the structured `input_assumptions` artifact is its reporting view for active input mode, resolved market assumptions, mandate inputs, calculation settings, and current V1 gaps.
-
-### 4. Portfolio X-Ray
-
-User goal:
-
-Understand what the current portfolio really contains and how it behaves.
-
-Primary screen sections:
-
-- Allocation breakdown.
+- Asset allocation.
+- Asset class / region / currency / risk role breakdown where available.
 - Portfolio metrics.
 - Risk contribution.
 - Factor exposure.
-- Hidden exposure warnings.
+- Hidden exposure / hidden risk detector.
+- Risk budget view.
 - Weakness map.
-- Portfolio archetype.
+- Data trust signals.
 
-Key outputs:
-
-- Asset allocation view.
-- Asset class, region, currency, sector, or risk bucket breakdown where available.
-- Return, volatility, Sharpe, Sortino, drawdown, beta, and other implemented metrics.
-- Top risk contributors.
-- Hidden risk narrative.
-- Plain-language portfolio diagnosis.
-
-User questions answered:
+Questions answered:
 
 - What do I actually own?
-- Where is my risk concentrated?
-- Which assets contribute more risk than their weight suggests?
-- Does the portfolio behave like its labels imply?
+- What is the real economic exposure?
+- Which assets dominate risk?
+- Where does risk contribution differ from capital weight?
+- Are different holdings actually duplicating the same risk?
+- Is diversification real or only visual?
 
-Current implementation:
+Product rule:
 
-- Portfolio metrics, risk contribution, factor diagnostics, commentary, and snapshots exist in the reporting pipeline.
+X-Ray diagnoses. It does not recommend a rebalance by itself.
 
-Target additions:
-
-- Portfolio Archetype Classification is implemented in `portfolio_xray.json` (V2 evidence scorecard with conflicts); structured report/HTML surfaces ship via Session 08 formatters in `src/portfolio_xray.py`.
-- Formal Weakness Map UI is TBD.
-
-### 5. Stress Test Lab
+### 4.3 Stress Test Lab
 
 User goal:
 
-Understand how the portfolio behaves in bad market environments.
+Understand where the current portfolio may break.
 
-Primary screen sections:
+Target sections:
 
-- Scenario Library.
-- Current Portfolio Stress Scorecard.
-- Historical crisis replay.
-- Synthetic scenario results.
-- Loss contribution.
+- Synthetic stress scenarios.
+- Historical stress scenarios where data supports them.
+- Worst scenario.
+- Stress loss contributors.
+- Assets or sleeves that help offset losses.
 - Hedge gap analysis.
-- What Happens If? simulator.
+- Stress data-quality disclosure.
 
-Key outputs:
+Questions answered:
 
-- Worst stress scenario.
-- Portfolio loss by scenario.
-- Top asset loss contributors.
-- Top factor contributors.
-- Assets that helped.
-- Mandate pass / fail where applicable.
-- Hedge gap summary.
+- How does the portfolio behave in bad markets?
+- Which assets hurt most under stress?
+- Which assets help?
+- Where is the main hedge gap?
+- Which market risks require further testing through a candidate?
 
-User questions answered:
+Product rule:
 
-- Where does this portfolio break?
-- Which assets pull it down in crisis?
-- Which assets actually hedge?
-- Is the main weakness equity, rates, inflation, credit, liquidity, USD, commodity, or another risk?
+Stress Test Lab should show vulnerability and evidence quality. It should not fabricate historical
+evidence when data is insufficient.
 
-Current implementation:
-
-- Stress reports, scenario libraries, stress commentary, factor diagnostics, and stress scenario analytics exist.
-
-Target additions:
-
-- Interactive What Happens If? simulator is TBD.
-- Full visual crisis replay is TBD.
-
-### 6. Candidate Portfolio Factory
+### 4.4 Problem Classification
 
 User goal:
 
-Generate alternative portfolios for comparison.
+Translate diagnostics into a small number of actionable improvement directions.
 
-Candidate types:
+Target problem examples:
 
-- Analysis Subject.
-- Current Portfolio.
-- Model Portfolio.
-- Universe Baseline.
-- Legacy policy optimized portfolio only when explicitly enabled by a future canonical spec.
+- High volatility.
+- High drawdown risk.
+- High equity beta.
+- High concentration.
+- Poor diversification.
+- Weak hedge behavior.
+- Poor rates-up behavior.
+- Weak crisis resilience.
+- Low return/risk efficiency.
+- High turnover required.
+- Current portfolio already acceptable.
+
+Target output:
+
+- Top 2-3 diagnosed problems.
+- Evidence behind each problem.
+- Reasonable paths to test.
+- Clear indication when current portfolio is acceptable.
+
+Implementation status:
+
+Problem Classification is target product direction unless verified in current specs/code.
+
+### 4.5 Candidate Launchpad
+
+User goal:
+
+Choose what kind of improvement to test.
+
+Target cards:
+
+- Reduce volatility.
+- Reduce drawdown.
+- Improve diversification.
+- Reduce concentration.
+- Improve crisis resilience.
+- Improve return/risk balance.
+- Compare against simple benchmark.
+- Keep current portfolio and monitor.
+
+Target behavior:
+
+- Cards are not portfolios.
+- Cards are entry points into the Portfolio Alternatives Builder.
+- Each card should explain why it is suggested, using diagnosis and stress evidence.
+
+Implementation status:
+
+Candidate Launchpad is target product direction unless verified in current specs/code.
+
+### 4.6 Portfolio Alternatives Builder
+
+User goal:
+
+Generate a selected candidate portfolio from a chosen hypothesis.
+
+Target simple-mode fields:
+
+- Goal.
+- Suggested method, editable by user.
+- Constraint preset.
+- Max asset weight.
+- Optional min asset weight.
+- Optional volatility target.
+- Rebalancing frequency.
+- Transaction cost assumption.
+- Generate candidate.
+
+Candidate construction methods may include:
+
 - Equal Weight.
 - Equal Weight by Asset Class.
 - Risk Parity.
-- Risk Budgeting.
-- HRP.
+- Hierarchical Risk Parity.
 - Minimum Variance.
-- Maximum Diversification.
 - Minimum CVaR.
-- Robust Mean-Variance.
-- Scenario-Based Robust Optimization.
-- Custom constraints.
-- Tactical tilt where enabled.
+- Maximum Diversification.
+- Robust Mean Variance.
 
-Key UX requirements:
+Product language rule:
 
-- Explain each candidate as a construction hypothesis.
-- Show whether the candidate is policy, benchmark, diagnostic, or custom.
-- Avoid implying that every candidate is a production recommendation.
+Client-facing UX should emphasize the goal and trade-off, not just the optimizer name.
 
-Outputs:
+Advanced settings to keep out of core MVP unless separately approved:
 
-- Candidate list.
-- Candidate weights.
-- Construction method.
-- Candidate metadata.
-- Feasibility or mandate notes.
+- Full asset-class bounds.
+- Custom risk budgets.
+- Robust MV lambda controls.
+- Advanced CVaR controls.
+- Estimator selection.
+- Covariance method selection.
+- Expected return method selection.
+- Leverage / short settings.
+- Tax-aware settings.
+- Complex universe builder.
 
-Current implementation:
+Implementation status:
 
-- Multiple candidate builders exist as `run_*.py` scripts, and `run_candidate_factory.py` orchestrates configured builder sets before optional comparison.
-- Portfolio-first factory default (`--execution-mode standard`): fast compare-ready snapshots without per-candidate HTML/PDF; operators may add Phase 3 full reports for selected candidates (`--selected-candidates-for-full-report`) when client-facing commentary or rolling-factor charts are required.
-- In the portfolio-first contract, candidates are generated after `analysis_subject` diagnostics; the old policy optimizer is not a default candidate.
+On-demand user-triggered candidate generation is target direction unless verified in current
+implementation. Existing automatic or batch candidate capabilities should be preserved and
+classified as current capability, advanced mode, research mode, or legacy as appropriate.
 
-Target additions:
-
-- Unified candidate selection UI and workspace UX are TBD.
-
-### 7. Strategy Backtest
+### 4.7 Candidate Shortlist / Comparison Arena
 
 User goal:
 
-Compare how the current portfolio and candidates behaved historically.
+See generated hypotheses in one place.
 
-Primary screen sections:
+Target behavior:
 
-- Growth of capital.
-- Rolling return and risk.
-- Drawdown history.
-- Calendar return table.
-- Recovery and underwater periods.
-- Benchmark comparison.
+- Zero candidates: diagnosis-only state.
+- One candidate: current portfolio vs candidate.
+- Two or more candidates: shortlist comparison.
 
-Key outputs:
+Product rule:
 
-- CAGR.
+The target core UX compares only candidates the user created or explicitly selected. It should not
+force the user into a full 16-candidate research table by default.
+
+Implementation status:
+
+Requires code/spec verification before claiming shortlist behavior exists.
+
+### 4.8 Current vs Candidate Comparison
+
+User goal:
+
+Understand whether the selected candidate is meaningfully better and at what cost.
+
+Target comparison dimensions:
+
+- Return / risk.
 - Volatility.
-- Sharpe.
-- Sortino.
 - Max drawdown.
-- Time to recovery.
-- Worst month / year where implemented.
-- Rolling metrics where implemented.
-
-User questions answered:
-
-- Did the candidate improve historical behavior?
-- Did lower risk come with lower return?
-- Did the strategy only look good in one period?
-
-Current implementation:
-
-- Backtest and reporting outputs exist in the current pipeline.
-
-Target additions:
-
-- Full user-facing backtest screen is TBD.
-- Walk-forward / out-of-sample UX is TBD.
-
-### 8. Macro Risk Dashboard
-
-User goal:
-
-Understand the macro context and where the portfolio is vulnerable by regime.
-
-Primary screen sections:
-
-- Current macro regime.
-- Growth score.
-- Inflation score.
-- Regime confidence.
-- Portfolio fit by regime.
-- Best and worst regimes.
-- Watchpoints.
-
-Key outputs:
-
-- Current regime label.
-- Confidence / coverage warnings.
-- Regime-specific performance and risk where implemented.
-- Macro risk narrative.
-
-User questions answered:
-
-- What macro environment are we in?
-- Which regimes are dangerous for this portfolio?
-- Is the current portfolio exposed to the wrong risks for the current environment?
-
-Current implementation:
-
-- Macro regime diagnostics, regime factor analytics, and regime portfolio metrics exist as diagnostic outputs.
-- Macro Dashboard is positioned as a diagnostic overlay after portfolio and candidate stress evaluation; it contextualizes regime vulnerability without directly controlling optimizer weights.
-
-Target additions:
-
-- Productized macro dashboard UI is TBD.
-
-### 9. Candidate Comparison Arena
-
-User goal:
-
-Compare two to five portfolios side by side and understand the trade-offs.
-
-Primary screen sections:
-
-- Candidate selector.
-- Summary comparison table.
-- Risk/return chart.
-- Drawdown comparison.
-- Stress comparison.
-- Risk contribution comparison.
-- Turnover and action comparison.
-- Verdict panel.
-
-Minimum comparison dimensions:
-
-- Return.
-- Volatility.
-- Sharpe.
-- Max drawdown.
-- CVaR or tail loss where implemented.
-- Worst stress.
-- Top asset risk contributor.
-- Top factor risk contributor.
+- Tail risk where available.
+- Stress loss.
+- Worst scenario.
+- Risk contribution and concentration.
+- Factor exposure changes.
+- Hedge gap changes.
 - Turnover.
-- Mandate fit.
+- Transaction cost impact where available.
+- Data quality and model confidence.
 
-Key outputs:
+Questions answered:
 
-- Clear winner by dimension.
-- Areas where each candidate is stronger.
-- Areas where each candidate is weaker.
-- Dominated candidates where applicable.
-- Trade-off explanation.
+- What improves?
+- What worsens?
+- Is the improvement material?
+- Is turnover justified?
+- Is the result robust enough to act on?
+- Does the candidate solve the diagnosed problem?
 
-User questions answered:
+Product rule:
 
-- Which portfolio is better, and in what sense?
-- What do I give up if I choose the more robust portfolio?
-- Which candidates should be rejected?
+Comparison should be evidence-first. Scores can support the conclusion, but the product should not
+be "score says winner."
 
-Current implementation:
-
-- Canonical file-first comparison exists through `run_compare_variants.py` and `src/candidate_comparison.py`. It emits `candidate_comparison.json` / `.txt` and downstream V1 artifacts when inputs are available, including robustness, health, selection, trade-off/model-risk, assumption sensitivity, Pareto / dominance, regret, action, current-vs-policy status, monitoring, journal, and decision-package summary outputs.
-
-Target additions:
-
-- Full Portfolio Comparison Arena UI is TBD.
-- Unified product UX around the file-first factory, current-vs-policy, Pareto, regret, and trade-off artifacts remains future product work.
-
-### 10. Recommendation & Action
+### 4.9 Decision Verdict
 
 User goal:
 
-Receive a decision-ready conclusion.
+Know what action is justified.
 
-Possible outcomes:
+Target verdict examples:
 
-- Rebalance recommended.
+- Keep current portfolio.
+- Rebalance to selected candidate.
+- Partial rebalance / minor adjustments.
+- Candidate improves risk but turnover or cost is too high.
+- Test another candidate.
 - No material rebalance recommended.
-- More data or assumption review required.
-- Mandate breach requires risk reduction.
-- Candidate comparison is inconclusive.
+- Evidence insufficient due to data quality, model limits, or missing assumptions.
 
-Primary screen sections:
+One-screen target summary:
 
-- Recommended portfolio or no-trade conclusion.
-- Rationale.
-- Trade-off explanation.
-- Target weights.
-- Buy / sell / hold.
-- Delta vs current.
-- Turnover.
-- Expected risk improvement.
-- Model risk warnings.
+- Portfolio status.
+- Main risk.
+- Selected candidate or keep-current baseline.
+- Recommended action.
+- Confidence.
+- Reason confidence is not higher.
 
-Key outputs:
+Product rule:
 
-- Recommendation summary.
-- Action list.
-- No-trade explanation where applicable.
-- Risk improvement per turnover where available.
-- Decision rationale.
+Decision Verdict is not simply "pick the best portfolio." It answers whether the user should act.
 
-User questions answered:
+Implementation status:
 
-- What should I do?
-- Why is this recommendation reasonable?
-- What is the cost of changing?
-- Is doing nothing better?
+Current Selection Engine / decision artifact behavior must be verified before replacing terms or
+schemas. Decision Verdict is target product language unless promoted into canonical specs.
 
-Current implementation:
-
-- V1 Selection/No-Trade, trade-off/model-risk, and Action artifacts are implemented. `src/selection_engine.py` emits `selection_decision.json` / `.txt`; [tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py) emits `tradeoff_explanation.json` / `.txt` and `model_risk_diagnostics.json` / `.txt`; `src/action_engine.py` emits `action_plan.json` / `.txt`; mechanical rebalance helpers remain available through `src/rebalance.py`.
-
-Target additions:
-
-- Risk improvement per 1% turnover is TBD.
-
-### 11. Report Export
+### 4.10 AI Commentary
 
 User goal:
 
-Produce a professional artifact for review, client communication, or decision records.
+Read a clear explanation of the diagnosis, stress results, trade-offs, and verdict.
+
+Target commentary should cover:
+
+- Portfolio diagnosis.
+- Key problems.
+- Stress behavior.
+- Reasonable path to test.
+- Candidate logic.
+- Current-vs-candidate comparison.
+- Trade-offs.
+- Decision verdict.
+- No-trade rationale if applicable.
+- What to monitor next.
+
+Product rule:
+
+AI Commentary must be grounded in deterministic outputs and should not invent calculations.
+
+Implementation status:
+
+Requires code/spec verification before claiming current AI Commentary scope, inputs, or output
+contracts.
+
+### 4.11 Monitoring / What Changed
+
+User goal:
+
+Know what changed since the last review and what needs attention.
+
+Target monitoring dimensions:
+
+- Portfolio health / status change.
+- Risk contributor changes.
+- Worst stress scenario changes.
+- Weight drift.
+- New breaches or warnings.
+- Candidate retest triggers.
+- Assumption changes.
+
+MVP status:
+
+Monitoring can stay light in the core MVP. Full multi-client monitoring, macro regime monitoring,
+advanced breach engines, and workspace-level tracking are later/advanced unless current specs say
+otherwise.
+
+## 5. Diagnosis-Only State
+
+The target product should support a state where the user has not generated any candidate.
+
+State:
+
+```text
+Portfolio diagnosed.
+No candidate generated yet.
+Reasonable paths to test available.
+Quick benchmark tests available.
+```
 
 Outputs:
 
-- Portfolio summary.
 - Portfolio X-Ray.
-- Stress scorecard.
-- Candidate comparison.
-- Recommendation or no-trade conclusion.
-- Assumptions.
-- Model risk warnings.
-- Appendix with technical metrics where needed.
+- Stress & Risk Diagnosis.
+- Top problems.
+- Weakness map.
+- Reasonable paths to test.
+- No candidate generated yet.
 
-Formats:
+Implementation status:
 
-- JSON (default machine-readable contract for UI/API).
-- HTML, TXT, CSV, PNG, PDF, and Markdown sidecars (explicit export/report modes only).
+Requires code/spec verification.
 
-Current implementation:
+## 6. Core MVP vs Advanced / Later
 
-- Default runs emit JSON decision and diagnostic contracts plus `output_manifest.json`; cache is internal.
-- CSV, HTML, TXT, PNG, and PDF-style artifacts require `full_report`, `legacy_export`, or explicit PDF flags (`run_portfolio_review.py --with-pdf`, `rebuild_pdf_reports.py`).
-- After comparison, `decision_package_summary.json` is the compact decision-package index; optional `.txt` and PDF projections exist only in export modes.
+### Core MVP
 
-Target additions:
+- Current portfolio input.
+- Portfolio X-Ray.
+- Stress Test Lab.
+- Problem Classification.
+- Reasonable paths to test.
+- User-triggered selected candidate generation.
+- Current-vs-candidate comparison.
+- Decision Verdict.
+- AI Commentary as explanation.
+- Light Monitoring / What Changed.
 
-- More deliberately designed client-facing report packages and interactive report UX are TBD.
+### Advanced / Later Product Backlog
 
-### 12. Monitoring / What Changed
+These items are not Core MVP requirements. Do not describe them as implemented unless verified in
+`SPEC.md`, `docs/specs/*.md`, or code. Preserve existing capabilities as `Current`, `Advanced`,
+`Legacy`, or `Requires Review` as appropriate.
 
-User goal:
+- Macro Risk Dashboard / Macro Overlay.
+- Strategy Backtest as a separate block.
+- Scenario & Stress Evaluation for Candidates.
+- Full multi-candidate ranking / advanced research comparison.
+- Out-of-sample / walk-forward analysis.
+- Full Crisis Replay UI.
+- What Happens If? Simulator.
+- Portfolio Health Score / Robustness Scorecard as primary product modules.
+- Assumption Sensitivity / Assumption Testing Mode.
+- Pareto Frontier / Dominance Check.
+- Regret Analysis.
+- Model Risk Diagnostics.
+- Rebalancing Advisor / Action Plan as full modules.
+- Advanced Monitoring / full portfolio health monitoring.
+- Macro regime monitoring.
+- Advanced breach engine.
+- Multi-client monitoring workspace.
+- Max Sharpe.
+- Custom Constraints.
+- Advisor Custom Candidate.
+- Tax-aware optimization.
+- Turnover-aware optimization objective.
+- Tactical Tilt.
+- Full custom constraints UI.
+- Multi-client workspace / saved workspaces.
+- White-label / API integration.
+- Full PDF report design.
+- Advanced Parameter Builder settings.
+- Asset X-Ray / Asset Diagnostics.
+- Client-Fit Check / questionnaire.
+- Portfolio Archetype Classification is an optional later diagnostic layer that can classify the
+  portfolio by behavior, such as Equity Growth Portfolio, Balanced 60/40-like, Credit Carry
+  Portfolio, Duration-heavy Defensive, Inflation-sensitive, or Pseudo-diversified Portfolio. It
+  should not be part of the core MVP flow until explicitly implemented and approved.
 
-Track how portfolio risk changes over time.
+Advanced/later does not mean delete. Preserve existing capabilities and reclassify them carefully.
 
-Primary screen sections:
+### Legacy / Compatibility
 
-- Change since last analysis.
-- New risk warnings.
-- Changed worst scenario.
-- Changed top risk contributor.
-- Changed macro regime.
-- Mandate status change.
-- Rebalance trigger.
+- Legacy policy optimization flow.
+- Existing explicit export/report artifacts.
+- Older PDF/report sidecars.
+- Full batch candidate generation if used as current infrastructure or research mode.
 
-Key outputs:
+Legacy does not mean broken. It means not the main target product UX.
 
-- What changed.
-- Why it changed.
-- Whether action is needed.
+## 7. User Outputs
 
-Current implementation:
+Target core user outputs:
 
-- V1 monitoring snapshots and `monitoring_diff.json` after `run_compare_variants.py` (see [monitoring spec](docs/specs/monitoring_spec.md)). Full product UI for monitoring remains TBD.
+- Portfolio diagnosis summary.
+- Top hidden risks.
+- Stress behavior summary.
+- Main hedge gaps.
+- Reasonable paths to test.
+- Generated candidate hypothesis.
+- Current-vs-candidate comparison.
+- Trade-off explanation.
+- Decision Verdict.
+- AI Commentary.
+- Monitoring triggers.
 
-### 13. Decision Journal
+Advanced / export outputs:
 
-User goal:
+- Detailed metrics appendix.
+- Full candidate comparison table.
+- Scorecards.
+- Backtest details.
+- Scenario details.
+- Data-quality appendix.
+- PDF / DOCX / report package where supported.
 
-Record why a decision was made.
+Current generated-output contracts are governed by `OUTPUTS.md` and detailed specs.
 
-Stored fields:
+## 8. Empty And Error States
 
-- Analysis date.
-- Selected portfolio.
-- Rejected alternatives.
-- Assumptions.
-- Expected improvement.
-- Accepted risks.
-- Macro context.
-- Rationale.
-- Follow-up review date.
+Target product should clearly handle:
 
-Key output:
+- Missing tickers.
+- Invalid weights.
+- Weights sum greater than allowed.
+- Negative weights where not allowed.
+- Unknown taxonomy.
+- Missing price data.
+- Insufficient history.
+- Insufficient factor data.
+- Stress scenario unavailable.
+- Candidate generation failed.
+- Candidate evidence stale.
+- Candidate improves one dimension but worsens another.
+- Evidence insufficient for a confident verdict.
 
-- Decision record.
+Product rule:
 
-Current implementation:
+Insufficient data is not a product failure if it is truthful and clearly explained.
 
-- V1 implemented in [decision journal spec](docs/specs/decision_journal_spec.md) and [src/decision_journal.py](src/decision_journal.py) (generated-only, non-executing `decision_journal.json`).
+Exact statuses and failure codes require code/spec verification.
 
-## Feature Inventory
+## 9. Product Language
 
-| Feature | Product Status | Implementation Status |
-| --- | --- | --- |
-| Portfolio input | Core | File/config-driven today |
-| Mandate and assumptions | Core | Implemented through config/specs |
-| Portfolio X-Ray | Core | Partially implemented through reports |
-| Stress Test Lab | Core | Reports/diagnostics available; UI remains future scope |
-| Candidate Portfolio Factory | Core | Implemented through scripts and `run_candidate_factory.py`, unified UX TBD |
-| Strategy Backtest | Core | Implemented in reporting pipeline, UX TBD |
-| Macro Risk Dashboard | Important | Diagnostics available; product UI remains future scope |
-| Candidate Comparison Arena | Core target | File-first comparison and downstream decision artifacts available; full UI remains future scope |
-| Portfolio Health Score | Implemented (diagnostic) | [portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md), [src/portfolio_health_score.py](src/portfolio_health_score.py) |
-| Robustness Scorecard | Implemented (diagnostic) | Spec: [robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md); code: `src/robustness_scorecard.py` |
-| Selection Engine | Implemented | [selection_engine_spec.md](docs/specs/selection_engine_spec.md), [src/selection_engine.py](src/selection_engine.py) |
-| Assumption Sensitivity | Implemented (V1) | [assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md); `src/assumption_sensitivity.py` after trade-off in compare pipeline |
-| Pareto / Dominance Check | Implemented (V1) | [src/pareto_dominance.py](src/pareto_dominance.py); [pareto_dominance_spec.md](docs/specs/pareto_dominance_spec.md) |
-| Regret Analysis | Implemented (V1) | [regret_analysis_spec.md](docs/specs/regret_analysis_spec.md); `src/regret_analysis.py` |
-| Trade-off Explanation | Implemented | `tradeoff_explanation_v1` via [tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py) |
-| Action Engine | Implemented (V1) | `action_plan.json` via [src/action_engine.py](src/action_engine.py); mechanical trades via [src/rebalance.py](src/rebalance.py) |
-| Rebalancing Advisor | Implemented (V1) | `action_plan.txt` companion summary |
-| No-Trade Recommendation | Implemented (V1) | Same module as Selection Engine; `no_material_rebalance` outcome |
-| AI Portfolio Commentary | Core | Implemented in report/commentary form |
-| Monitoring / What Changed | Implemented (V1) | [monitoring_spec.md](docs/specs/monitoring_spec.md), [src/monitoring.py](src/monitoring.py) |
-| Decision Journal | Implemented (V1) | `decision_journal.json` via [decision_journal.py](src/decision_journal.py); user-maintained journal workflow remains TBD |
+Preferred client-facing language:
 
-## User Outputs
+| Internal / technical | Client-facing framing |
+| --- | --- |
+| Portfolio X-Ray | What you really own |
+| Stress Test Lab | Where it can break |
+| Candidate Factory | Better allocation alternatives |
+| Optimization method | Way to test an improvement hypothesis |
+| Candidate Comparison | What improves and what gets worse |
+| Selection Engine | What to do now / Decision Verdict |
+| Decision Journal | Why this decision was made |
+| No-trade | No material rebalance recommended |
 
-At the end of a complete analysis, the user should receive:
+Do not rename public CLI flags, JSON fields, generated schemas, or canonical specs without a
+separate migration plan.
 
-- A validated portfolio and assumptions summary.
-- A Portfolio X-Ray diagnosis.
-- A stress test scorecard.
-- A candidate portfolio menu.
-- A backtest and stress comparison of candidates.
-- A recommendation, no-trade conclusion, or inconclusive status.
-- A trade-off explanation.
-- Actionable rebalance details where applicable.
-- A professional report.
-- A generated decision record from the V1 Decision Journal.
+## 10. Relationship To Current Implementation
 
-## Empty / Error States
+This draft is target product direction.
 
-The product should handle:
+Current implementation must be verified through:
 
-- Missing or invalid tickers.
-- Missing price history.
-- Short-history assets.
-- Missing current weights.
-- Invalid weight totals.
-- Unsupported currency or missing FX data.
-- Missing benchmark.
-- Infeasible mandate constraints.
-- Failed optimization.
-- Failed mandate release.
-- Insufficient stress or factor data.
+- `SPEC.md`
+- `RULES.md`
+- `OUTPUTS.md`
+- `DATA.md`
+- `TESTING.md`
+- `docs/specs/*.md`
+- current code
 
-Expected behavior:
+Do not claim these as current without verification:
 
-- Explain the blocker in plain language.
-- Identify what the user can fix.
-- Preserve partial diagnostics when safe.
-- Avoid presenting invalid recommendations.
+- Problem Classification module.
+- Candidate Launchpad.
+- Portfolio Alternatives Builder UI/service.
+- User-triggered candidate generation as default behavior.
+- Diagnosis-only state.
+- Current-vs-candidate as the only/main implemented comparison mode.
+- Decision Verdict replacing Selection Engine.
+- AI Commentary scope and grounding.
+- Any new JSON field, CLI flag, output file, or folder contract.
 
-## Product Non-Goals
+## 11. Product Non-Goals
 
-- Do not present optimizer output as guaranteed best portfolio.
-- Do not present generated policy optimization before the user's `analysis_subject` has been
-  diagnosed in the portfolio-first workflow.
-- Do not hide model risk or assumption sensitivity.
-- Do not make stress diagnostics binding unless a canonical spec says so.
-- Do not treat target UX lists as automatic implementation changes.
-- Do not replace formulas, policy logic, or scenario definitions from canonical specs.
+The product should not:
 
-## Open Product Questions
+- Promise perfect weights.
+- Always recommend trading.
+- Hide model limits, data gaps, or uncertainty.
+- Treat AI as a calculation engine.
+- Make advanced research modules mandatory for the core MVP.
+- Present a giant optimizer menu before diagnosis.
+- Delete legacy/advanced backend capability just because it is not the target user-facing MVP.
 
-- What is the first real UI surface: dashboard, static report, local app, or web app?
-- Should the initial product be investor-first, advisor-first, or report-first?
-- What minimum comparison set is required for launch?
-- How should monitoring frequency work?
-- What fields and review workflow are required for a user-maintained Decision Journal beyond generated V1 records?
+## 12. Open Product Questions
 
-## Source Of Truth Relationship
+- Which target modules should become implemented contracts first: Problem Classification, Candidate
+  Launchpad, Alternatives Builder, or Decision Verdict?
+- Should current Selection Engine schemas be preserved and mapped to Decision Verdict language, or
+  should a new schema be introduced later?
+- How many reasonable paths to test should be shown in MVP: 2 or 3?
+- Which candidate methods are available in core MVP vs full research mode?
+- What is the minimum evidence threshold for "no material rebalance recommended"?
+- What AI Commentary inputs and guardrails should be canonical?
+- Which monitoring signals belong in MVP vs later advisor workspace?
 
-Product UX should be driven by this document, [Business Vision](BUSINESS_VISION.md), and [Diagnostic Product Concept](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md).
+## 13. Source-Of-Truth Relationship
 
-Current behavior remains governed by:
+Until reviewed and approved:
 
-- [RULES.md](RULES.md)
-- [WORKFLOW.md](WORKFLOW.md)
-- [README.md](README.md)
-- [SPEC.md](SPEC.md)
-- [Portfolio Review Workflow](docs/specs/portfolio_review_workflow_spec.md)
-- [OUTPUTS.md](OUTPUTS.md)
-- [DATA.md](DATA.md)
-- [Portfolio Construction Policy](docs/specs/portfolio_construction_policy.md)
-- [Metrics Specification](docs/specs/metrics_specification.md)
-- [Stress Testing Spec](docs/specs/stress_testing_spec.md)
-- [Data Policy](docs/specs/data_policy_spec.md)
-- [PLANS.md](PLANS.md)
-- [AGENTS.md](AGENTS.md)
+- `PRODUCT.md` is a draft.
+- Existing `PRODUCT.md` remains the current product document.
+- `SPEC.md` and `docs/specs/*.md` remain authoritative for implemented behavior.
+- `OUTPUTS.md` remains authoritative for generated outputs.
+- Product concepts become binding only after source-of-truth docs, code, and verification are
+  updated through the normal workflow.

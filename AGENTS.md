@@ -36,6 +36,7 @@ Legacy policy weights are optimizer outputs, not manual user inputs. User-suppli
 Manual post-optimization tilt is allowed only through View After Optimization.
 
 Product concept documents guide direction but do not override `SPEC.md`, canonical formulas, stress scenarios, policy logic, data rules, output contracts, or current code behavior.
+Documentation migration records and archived legacy docs are retained for traceability only. They do not override current implementation contracts, canonical specs, or code.
 
 ## Main Commands
 
@@ -106,6 +107,7 @@ Key sources:
 - [docs/specs/](docs/specs/README.md) for detailed module-specific behavior.
 - [PLANS.md](PLANS.md) for ExecPlan requirements on large or risky work.
 - [DESIGN.md](DESIGN.md) for UI, dashboard, generated HTML, and visual-interface work.
+- [DOCUMENTATION_MIGRATION_PLAN.md](DOCUMENTATION_MIGRATION_PLAN.md), [DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md](DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md), and `docs/archive/documentation_migration_2026_05_25/` for documentation migration traceability only; verify current-implementation claims against `SPEC.md`, detailed specs, and code before treating them as implemented.
 
 Do not invent formulas, estimators, scenarios, constraints, statuses, or data rules when a canonical spec exists.
 
@@ -120,6 +122,9 @@ Do not invent formulas, estimators, scenarios, constraints, statuses, or data ru
 - Round only at final export/report stage when governed by metric specs.
 - Preserve full precision during calculations.
 - Do not treat generated outputs as source unless the task explicitly targets generated artifacts; use [OUTPUTS.md](OUTPUTS.md) for output boundaries.
+- Do not demote or delete existing implementation capabilities only because they are absent from a
+  product concept draft; classify them as `Preserve`, `Advanced`, `Legacy`, or `Requires Review`
+  unless a canonical spec or explicit task says otherwise.
 
 ## Documentation And Verification
 

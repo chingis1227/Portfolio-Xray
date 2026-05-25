@@ -12,6 +12,8 @@ Generated outputs are evidence and deliverables, not source files, unless a task
 
 Source files define behavior. Generated files show the result of a run.
 
+Documentation migration records such as `DOCUMENTATION_MIGRATION_PLAN.md`, `DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md`, and archived legacy Markdown files are source/planning documents, not generated run outputs. They do not define output contracts.
+
 Default execution is now site/API-first: JSON contracts and required cache are the machine-readable
 source of truth for new workflows. CSV, TXT, HTML, PNG, PDF, Markdown PDF sidecars, and CSS/visual
 presentation assets are export/report artifacts only and must be requested explicitly through
@@ -159,7 +161,12 @@ python run_report.py --output-profile full_report
 | `pdf_md_sources/` | Generated Markdown sidecars used for PDF-style report builds | Generated |
 | `portfolio_weights.yml` | Optimizer-produced weights | Generated runtime output, not normal manual input |
 
-Root documentation files such as `README.md`, `SPEC.md`, `DATA.md`, `TESTING.md`, `WORKFLOW.md`, `RULES.md`, `GLOSSARY.md`, `KNOWN_ISSUES.md`, `DECISIONS.md`, `CHANGELOG.md`, and this file are source documentation, not generated outputs.
+Root documentation files such as `README.md`, `SPEC.md`, `DATA.md`, `TESTING.md`, `WORKFLOW.md`, `RULES.md`, `GLOSSARY.md`, `KNOWN_ISSUES.md`, `DECISIONS.md`, `CHANGELOG.md`, this file, `DOCUMENTATION_MIGRATION_PLAN.md`, `DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md`, and archived legacy Markdown files are source/planning documentation, not generated outputs.
+
+Target product concepts from the documentation migration, including diagnosis-only state, Problem
+Classification, Candidate Launchpad, Portfolio Alternatives Builder, Decision Verdict language, and
+AI Commentary, do not create new artifact contracts until an owning spec and implementation define
+their concrete files, schemas, and output policy.
 
 ## Output Formats
 

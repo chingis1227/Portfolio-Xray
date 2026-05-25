@@ -4,7 +4,7 @@ Portfolio X-Ray & Optimization Terminal, also described as Portfolio MRI, is a P
 
 Its purpose is decision support, not black-box allocation. The system helps a user understand portfolio exposures, hidden risks, stress behavior, candidate allocations, robustness trade-offs, and generated report artifacts.
 
-Product concept documents describe target direction only. Current behavior is governed by [SPEC.md](SPEC.md), [RULES.md](RULES.md), [DATA.md](DATA.md), [OUTPUTS.md](OUTPUTS.md), and detailed specs under [docs/specs/](docs/specs/README.md).
+Product concept documents describe target direction only. Current behavior is governed by [SPEC.md](SPEC.md), [RULES.md](RULES.md), [DATA.md](DATA.md), [OUTPUTS.md](OUTPUTS.md), and detailed specs under [docs/specs/](docs/specs/README.md). Documentation migration records and archived legacy copies are retained for traceability; active behavior remains governed by the canonical specs and code.
 
 Default execution is site/API-first: JSON contracts and cache are written for backend/UI
 consumption, while CSV/TXT/HTML/PNG/PDF/Markdown/CSS presentation artifacts are disabled unless an
@@ -57,6 +57,7 @@ Implemented today:
 Target/TBD areas:
 
 - Full interactive UI and saved analysis workspaces.
+- Target product modules from the documentation migration: diagnosis-only state, Problem Classification, Candidate Launchpad, user-triggered Portfolio Alternatives Builder, current-vs-selected-candidate UX, Decision Verdict product language, and AI Commentary as a formal explanation layer.
 - Polished product UI and workspace flows around the existing file-first Candidate Portfolio Factory, current-vs-policy workflow, comparison, and decision package artifacts.
 - More deliberately designed client-facing report packages beyond the current file-first summary/PDF-style surfaces.
 - Advanced UX modules around the implemented file-first V1 artifacts.
@@ -315,6 +316,8 @@ Detailed report/output behavior lives in [docs/specs/reporting_outputs_spec.md](
 | `CHANGELOG.md` | Concise history of meaningful project changes. |
 | `ARCHITECTURE.md` | Architecture map, module layers, flows, inputs, outputs, and boundaries. |
 | `PRODUCT.md` | Target product flow, UX behavior, screens, and product modules. |
+| `DOCUMENTATION_MIGRATION_PLAN.md` | Documentation migration plan and session roadmap; draft/planning only. |
+| `docs/archive/documentation_migration_2026_05_25/` | Archived pre-migration versions of replaced documentation. |
 | `docs/ROADMAP.md` | Ordered development roadmap, backlog phases, prerequisites, and audit-to-session mapping. |
 | `BUSINESS_VISION.md` | Business vision, users, value proposition, and long-term direction. |
 | `DESIGN.md` | UI, dashboard, HTML, and visual design rules. |
@@ -365,6 +368,7 @@ Start with [RULES.md](RULES.md), then use [SPEC.md](SPEC.md) as the implementati
 | Roadmap and backlog | [docs/ROADMAP.md](docs/ROADMAP.md) |
 | Input and assumptions | [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md) |
 | Product direction | [PRODUCT.md](PRODUCT.md), [BUSINESS_VISION.md](BUSINESS_VISION.md), [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) |
+| Documentation migration records | [DOCUMENTATION_MIGRATION_PLAN.md](DOCUMENTATION_MIGRATION_PLAN.md), [DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md](DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md), and archived legacy docs |
 | Planning protocol | [PLANS.md](PLANS.md) |
 | Design rules | [DESIGN.md](DESIGN.md) |
 
