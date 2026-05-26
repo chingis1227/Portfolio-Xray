@@ -18,16 +18,21 @@
 
 ## 0. Mandate vs diagnostic suite
 
-| Layer | What | Stops weight release? |
-|-------|------|------------------------|
-| **Mandate** | Realized portfolio max drawdown on **full overlapping monthly history** vs `target_max_drawdown_pct` | **Yes** -> **FAIL_MANDATE** (`run_optimization.py`) |
-| **Stress suite** (`run_stress`) | Synthetic factor shocks (whole portfolio), calibrated `recession_severe`, historical **episodes** (dotcom / 2008 / 2020 / 2022 / banking_2023), RC concentration as **numbers only** (Top1 / Top3) | **No** -> **DIAG_ATTENTION** only for synthetic **Loss** or historical episode breach; **DIAG_PASS_WITH_WARNING** only for non-RC warnings (e.g. borderline history, data) where implemented |
+| Layer | What | Stops weight release? | Core MVP portfolio-first? |
+|-------|------|------------------------|---------------------------|
+| **Mandate** | Realized portfolio max drawdown on **full overlapping monthly history** vs `target_max_drawdown_pct` | **Yes** -> **FAIL_MANDATE** (`run_optimization.py`) | **No** — legacy/advanced optimization governance only |
+| **Stress suite — mandate mode** (`loss_gate_mode="mandate"`, legacy `optimize_from_universe` reports) | Synthetic/historical rows vs client `max_dd_limit`; suite status **DIAG_*** | **No** (diagnostic reporting) | **No** |
+| **Stress suite — diagnostic mode** (`loss_gate_mode="diagnostic"`, `analysis_mode=analyze_current_weights`) | Scenario PnL, drawdown, contributors, hedge gaps, data quality; status **ok** / **warning** / **insufficient_data**; row `pass`/`loss_ok` omitted | **No** | **Yes** — Block 3 Core MVP |
 
-Scenario and episode checks below are **for PM reporting**; they do not replace the mandate gate.
+Scenario and episode checks below are **for PM reporting** in legacy mandate mode; they do not replace the mandate gate and **do not apply** to Core MVP portfolio-first stress (`loss_gate_mode="diagnostic"`).
+
+**Core MVP product rule:** Block 1 Input, Blocks 2.1–2.6 X-Ray, and Block 3 Stress Test Lab do **not** require or compare against client profile targets (horizon, liquidity, target return/vol/MaxDD, suitability). Those fields remain in config/`resolved_mandate` for legacy/advanced paths only (Client-Fit Check / optimization — Target/TBD).
 
 ---
 
 ## 1. Pass criteria (per synthetic scenario)
+
+**Legacy mandate mode only** (`loss_gate_mode="mandate"`). In Core MVP diagnostic mode, skip this section; report `portfolio_pnl_pct` and severity without row `pass`/`loss_ok`.
 
 - **`pass=true`** iff **Loss (mandate) test** passes: **Portfolio_PnL_% >= -MaxDD_limit** (same `max_dd_limit` as historical/synthetic loss gate in `run_stress`). Violation -> row **`diagnostic_codes`** includes **DIAG_LOSS_*** and contributes to suite **DIAG_ATTENTION**.
 - **RC concentration:** **`top1_rc_asset`**, **`top1_rc_pct`**, **`top3_rc_assets`**, **`top3_rc_sum_pct`** are reported for transparency; they **do not** set `pass`, **do not** add **DIAG_RC_*** codes, and **do not** change suite status.

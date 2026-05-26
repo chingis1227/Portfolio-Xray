@@ -58,6 +58,11 @@ Orchestration entry points:
 
 Portfolio-first primary path: `Main portfolio/analysis_subject/stress_report.json` (**A**).
 
+**Core MVP stress contract:** when `analysis_mode=analyze_current_weights`, `run_stress` uses
+`loss_gate_mode="diagnostic"`: suite status `ok` | `warning` | `insufficient_data`; scenario rows
+omit mandate `pass`/`loss_ok`; `max_dd_limit` is null. Legacy `optimize_from_universe` reports keep
+`loss_gate_mode="mandate"` and DIAG_* statuses for backward compatibility.
+
 ## Current contract
 
 Primary artifact: `stress_report.json` in each portfolio output folder.
@@ -73,7 +78,8 @@ Primary artifact: `stress_report.json` in each portfolio output folder.
 | `stress_scorecard_v1` | 3.6 scorecard | `stress_scorecard_v1` |
 | `stress_conclusions` | 3.2 conclusions | `stress_conclusions_v1` |
 | `hedge_gap_analysis` | 3.5 hedge gap | `stress_scenario_hedge_evidence_v2` |
-| `status`, `fail_reason_code`, `failed_scenario`, `failed_test` | suite gate | diagnostic-only vs mandate |
+| `status`, `fail_reason_code`, `failed_scenario`, `failed_test` | suite gate | diagnostic-only vs mandate (legacy mandate mode only; Core MVP uses `ok`/`warning`/`insufficient_data`) |
+| `loss_gate_mode` | Core MVP vs legacy | `diagnostic` (portfolio-first) or `mandate` (legacy) |
 
 Supporting keys on the same file (suite context, not separate sub-blocks):
 
@@ -178,7 +184,7 @@ Tests: `tests/test_scenario_library.py`, `tests/test_scenario_library_normalized
 | Element | Rule | Provenance |
 | --- | --- | --- |
 | Frequency | Monthly simple returns, static weights at analysis date | **C** **S** metrics_spec |
-| Pass/fail | Episode `max_dd` vs `max_dd_limit` | **C** **S** §9 |
+| Pass/fail | Episode `max_dd` vs `max_dd_limit` | **C** **S** §9 | Legacy mandate mode only |
 | Primary path | **Realized only** in `run_stress`; no proxy substitution | **C** **S** §9.3; DEC-2026-05-20-001 |
 | Row disclosure | `return_method`, `proxy_used` on each `historical_results` row | **C** **S** Session 02 |
 | Methodology block | `historical_methodology` (`historical_methodology_v1`) | **C** **S** §9.3 |
@@ -201,7 +207,7 @@ Tests: `tests/test_stress_historical_fields.py`, `tests/test_stress_mandate_pass
 | Portfolio factor PnL | `shock_k * beta_portfolio_k` (six production factors) | **C** **S** §2 |
 | RC diagnostics | `taxonomy_blend_v1` on stressed covariance; **does not** change scenario PnL | **C** **S** §2.2, §10 |
 | `recession_severe` | Calibrated from 2008/2020 weekly factor sums | **C** **S** §2.1 |
-| Pass/fail | `portfolio_pnl_pct >= -max_dd_limit` → `DIAG_LOSS_*` if fail | **C** **S** §1, §5 |
+| Pass/fail | `portfolio_pnl_pct >= -max_dd_limit` → `DIAG_LOSS_*` if fail | **C** **S** §1, §5 | Legacy mandate mode only |
 | Not in `run_stress` | `crypto_shock`, `volatility_shock` — deferred ([DEC-2026-05-20-002](../../DECISIONS.md), [proposal](../proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md)); X-Ray weakness only | **C** **S** §2.3 |
 
 Tests: `tests/test_stress_mandate_pass.py`, `tests/test_stress_covariance_taxonomy.py`,

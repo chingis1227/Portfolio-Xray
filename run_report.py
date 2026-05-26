@@ -95,7 +95,12 @@ from src.portfolio_analytics import (
 from src.optimization import get_risk_portfolio_tickers
 from src.portfolio_dynamic import portfolio_returns_nan_safe
 from src.risk_contrib import cov_matrix_monthly, rc_vol_window
-from src.stress import prepared_synthetic_stress_usable, run_stress
+from src.stress import (
+    LOSS_GATE_MODE_DIAGNOSTIC,
+    LOSS_GATE_MODE_MANDATE,
+    prepared_synthetic_stress_usable,
+    run_stress,
+)
 from src.stress_factors import (
     FACTOR_COLUMN_ORDER,
     FACTOR_TRADING_DAYS_10Y,
@@ -1073,13 +1078,20 @@ def run_portfolio_report_for_weights(
         ):
             prepared_synthetic = prepared
 
+    loss_gate_mode = (
+        LOSS_GATE_MODE_DIAGNOSTIC
+        if getattr(cfg, "analysis_mode", "") == "analyze_current_weights"
+        else LOSS_GATE_MODE_MANDATE
+    )
     stress_report = run_stress(
         tickers=tickers,
         weights=weights,
         monthly_returns=monthly_returns,
         asset_betas=asset_betas_df,
         portfolio_betas=portfolio_betas_dict,
-        target_max_drawdown_pct=cfg.target_max_drawdown_pct,
+        target_max_drawdown_pct=cfg.target_max_drawdown_pct
+        if loss_gate_mode == LOSS_GATE_MODE_MANDATE
+        else None,
         cash_proxy_ticker=cash_proxy_ticker,
         factor_returns=recession_factor_returns,
         scenario_overrides=getattr(cfg, "stress_scenario_overrides", None),
@@ -1088,6 +1100,7 @@ def run_portfolio_report_for_weights(
         cov_base=stress_cov_base,
         stress_cov_method=stress_cov_method,
         prepared_synthetic=prepared_synthetic,
+        loss_gate_mode=loss_gate_mode,
     )
     stress_report["generated_at"] = run_timestamp
     stress_report["analysis_end"] = analysis_end_str

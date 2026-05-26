@@ -29,6 +29,10 @@ _NA = "n/a"
 _MDASH = "\u2014"
 
 
+def _stress_uses_mandate_gate(st: dict[str, Any]) -> bool:
+    return str(st.get("loss_gate_mode") or "mandate") == "mandate"
+
+
 def _folder_portfolio_label(output_dir_final: Path) -> str:
     name = output_dir_final.name.strip().lower()
     if name == "main portfolio":
@@ -1243,10 +1247,19 @@ def write_stress_commentary(
         f"Overall stress bundle status in stress_report: {status}. "
         f"Primary code (primary / fail_reason): {primary}. "
         f"diagnostic_codes: {dc_str}.",
-        "Synthetic scenarios and historical episodes in this file are PM diagnostics: they inform interpretation "
-        "but do not by themselves release or block weights; mandate drawdown and client gates are enforced "
-        "separately (mandate_check / IPS, full-history backtest).",
     ]
+    if _stress_uses_mandate_gate(st):
+        exec_para.append(
+            "Synthetic scenarios and historical episodes in this file are PM diagnostics: they inform interpretation "
+            "but do not by themselves release or block weights; mandate drawdown and client gates are enforced "
+            "separately (mandate_check / IPS, full-history backtest)."
+        )
+    else:
+        exec_para.append(
+            "Portfolio-first Core MVP stress: scenario rows report diagnostic facts only (PnL, drawdown, "
+            "contributors, hedge gaps, data quality). No client mandate pass/fail or target comparison is applied "
+            "in this stress bundle (loss_gate_mode=diagnostic)."
+        )
     if warn:
         exec_para.append(f"Report warning_code: {warn}.")
     wl = (
@@ -1379,7 +1392,12 @@ def write_stress_commentary(
         source = "stress_scorecard_v1.synthetic_scenarios" if syn_scorecard else "scenario_results"
         lines.append(
             f"Synthetic scenarios ({source}): factor shocks to the portfolio as a whole; "
-            "pass reflects the mandate PnL threshold (loss_ok). Top1 / Top3 RC are concentration diagnostics, "
+            + (
+                "pass reflects the mandate PnL threshold (loss_ok). "
+                if _stress_uses_mandate_gate(st)
+                else "pass/loss_ok are omitted — diagnostic facts only (no client mandate gate). "
+            )
+            + "Top1 / Top3 RC are concentration diagnostics, "
             "not an extra pass/fail gate in stress_report. See pnl_by_asset_pct / pnl_by_factor_pct in JSON."
         )
         for row in display_syn:
@@ -1487,16 +1505,16 @@ def write_stress_commentary(
         lines.append("")
 
     lines.append("Risk Structure")
-    caps_line = []
-    if mdd_lim is not None:
-        caps_line.append(
+    if _stress_uses_mandate_gate(st) and mdd_lim is not None:
+        lines.append(
             f"Drawdown threshold for scenario loss test (max_dd_limit in JSON)={_fmt_pct(mdd_lim)}"
         )
-    lines.append(
-        "; ".join(caps_line)
-        if caps_line
-        else "max_dd_limit is not set in stress_report or n/a."
-    )
+    elif not _stress_uses_mandate_gate(st):
+        lines.append(
+            "Client mandate max drawdown is not applied to stress scenario pass/fail in this Core MVP bundle."
+        )
+    else:
+        lines.append("max_dd_limit is not set in stress_report or n/a.")
     if scen_rows:
         triples = [(r.get("scenario_id"), r.get("top1_rc_asset"), r.get("top1_rc_pct")) for r in scen_rows]
         tops = ", ".join(
@@ -1589,18 +1607,25 @@ def write_stress_commentary(
 
     lines.append("Strengths")
     str_lines: list[str] = []
-    if scen_rows:
-        if all(row.get("loss_ok") is True for row in scen_rows):
-            str_lines.append(
-                "All synthetic scenarios have loss_ok=true — portfolio loss within loss-test thresholds."
-            )
-        if any(row.get("pass") is True for row in scen_rows):
-            str_lines.append("At least one scenario has pass=true on mandate PnL.")
-    for h in hist:
-        if h.get("pass") is True:
-            str_lines.append(f"Historical episode {h.get('episode')} is marked pass=true.")
-    if status in ("DIAG_PASS", "DIAG_PASS_WITH_WARNING", "PASS", "PASS_WITH_WARNING"):
-        str_lines.append(f"Bundle status {status} — not at DIAG_ATTENTION.")
+    if _stress_uses_mandate_gate(st):
+        if scen_rows:
+            if all(row.get("loss_ok") is True for row in scen_rows):
+                str_lines.append(
+                    "All synthetic scenarios have loss_ok=true — portfolio loss within loss-test thresholds."
+                )
+            if any(row.get("pass") is True for row in scen_rows):
+                str_lines.append("At least one scenario has pass=true on mandate PnL.")
+        for h in hist:
+            if h.get("pass") is True:
+                str_lines.append(f"Historical episode {h.get('episode')} is marked pass=true.")
+        if status in ("DIAG_PASS", "DIAG_PASS_WITH_WARNING", "PASS", "PASS_WITH_WARNING"):
+            str_lines.append(f"Bundle status {status} — not at DIAG_ATTENTION.")
+    else:
+        if status == "ok":
+            str_lines.append("Stress data quality status is ok — review scenario magnitudes for context.")
+        worst_pnl = st.get("worst_scenario_loss_pct")
+        if worst_pnl is not None:
+            str_lines.append(f"Worst synthetic portfolio PnL recorded: {_fmt_pct(worst_pnl)}.")
     if not str_lines:
         str_lines.append("Few obvious positive flags in JSON — see Weaknesses.")
     lines.extend(str_lines)
@@ -1608,10 +1633,20 @@ def write_stress_commentary(
 
     lines.append("Weaknesses")
     wk: list[str] = []
-    if status == "DIAG_ATTENTION":
+    if _stress_uses_mandate_gate(st) and status == "DIAG_ATTENTION":
         wk.append(
             f"DIAG_ATTENTION: diagnostic codes recorded ({dc_str}); review scenario_results and historical_results."
         )
+    elif not _stress_uses_mandate_gate(st):
+        if status == "warning":
+            wk.append(
+                f"Stress bundle warning ({warn or 'data quality'}): review historical coverage and scenario magnitudes."
+            )
+        elif status == "insufficient_data":
+            wk.append("Stress bundle insufficient_data: historical episode overlap or inputs are too sparse for full diagnosis.")
+        worst_pnl = st.get("worst_scenario_loss_pct")
+        if isinstance(worst_pnl, (int, float)) and float(worst_pnl) < -0.15:
+            wk.append(f"Large synthetic loss in at least one scenario (worst ~ {_fmt_pct(worst_pnl)}).")
     if warn:
         wk.append(
             f"warning_code={warn} (see stress_report for borderline historical data or other warnings)."

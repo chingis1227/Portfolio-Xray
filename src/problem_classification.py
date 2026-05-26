@@ -313,7 +313,8 @@ def _collect_stress(problems: dict[str, dict[str, Any]], stress_report: dict[str
         )
 
     overall_status = str(scorecard.get("overall_status") or stress_report.get("status") or "")
-    if overall_status in {"DIAG_ATTENTION", "FAIL_STRESS", "FAIL"}:
+    loss_gate_mode = str(stress_report.get("loss_gate_mode") or "mandate")
+    if loss_gate_mode == "mandate" and overall_status in {"DIAG_ATTENTION", "FAIL_STRESS", "FAIL"}:
         _add_problem(
             problems,
             "weak_crisis_resilience",
@@ -324,6 +325,20 @@ def _collect_stress(problems: dict[str, dict[str, Any]], stress_report: dict[str
                 "source_section": "stress_scorecard_v1",
                 "source_field": "overall_status",
                 "status": overall_status,
+            },
+        )
+    elif loss_gate_mode == "diagnostic" and overall_status == "insufficient_data":
+        _add_problem(
+            problems,
+            "weak_crisis_resilience",
+            severity="moderate",
+            confidence=confidence,
+            evidence={
+                "source_artifact": "stress_report.json",
+                "source_section": "stress_scorecard_v1",
+                "source_field": "overall_status",
+                "status": overall_status,
+                "note": "data_quality_only_not_mandate_gate",
             },
         )
 

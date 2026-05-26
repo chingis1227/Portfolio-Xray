@@ -155,6 +155,12 @@ HISTORICAL_EPISODES = [
 HISTORICAL_PRIMARY_RETURN_METHOD = "realized_portfolio_monthly"
 HISTORICAL_METHODOLOGY_VERSION = "historical_methodology_v1"
 
+# Core MVP portfolio-first stress uses diagnostic-only statuses (no client mandate loss gate).
+LOSS_GATE_MODE_MANDATE = "mandate"
+LOSS_GATE_MODE_DIAGNOSTIC = "diagnostic"
+STRESS_SUITE_STATUSES_MANDATE = frozenset({"DIAG_PASS", "DIAG_PASS_WITH_WARNING", "DIAG_ATTENTION"})
+STRESS_SUITE_STATUSES_DIAGNOSTIC = frozenset({"ok", "warning", "insufficient_data"})
+
 _SCENARIO_SUFFIX = {
     "equity_shock": "EQUITY_SHOCK",
     "credit_shock": "CREDIT_SHOCK",
@@ -695,6 +701,43 @@ def _build_historical_data_quality_warnings(historical_results: list[dict[str, A
     return warnings
 
 
+def _loss_severity_absolute(pnl_pct: float | None) -> str:
+    """Magnitude-only severity for Core MVP (no client mandate threshold)."""
+    if pnl_pct is None or not isinstance(pnl_pct, (int, float)):
+        return "unknown"
+    p = float(pnl_pct)
+    if p <= -0.25:
+        return "high"
+    if p <= -0.10:
+        return "moderate"
+    return "low"
+
+
+def _normalize_loss_gate_mode(loss_gate_mode: str | None) -> str:
+    mode = str(loss_gate_mode or LOSS_GATE_MODE_MANDATE).strip().lower()
+    if mode not in {LOSS_GATE_MODE_MANDATE, LOSS_GATE_MODE_DIAGNOSTIC}:
+        return LOSS_GATE_MODE_MANDATE
+    return mode
+
+
+def _resolve_diagnostic_suite_status(
+    historical_results: list[dict[str, Any]],
+    *,
+    hist_inconclusive: bool,
+) -> tuple[str, str | None]:
+    """Portfolio-first stress bundle status from data quality only."""
+    bad_qualities = {"insufficient_data", "low_confidence"}
+    n_bad = sum(1 for h in historical_results if str(h.get("data_quality") or "") in bad_qualities)
+    n_hist = len(historical_results)
+    if n_hist and n_bad >= max(1, (n_hist + 1) // 2):
+        return "insufficient_data", _build_warning_code("DATA_INSUFFICIENT")
+    if hist_inconclusive:
+        return "warning", _build_warning_code("HIST_BORDERLINE")
+    if n_bad > 0:
+        return "warning", _build_warning_code("DATA_INSUFFICIENT")
+    return "ok", None
+
+
 def _loss_severity_vs_limit(pnl_pct: float | None, max_dd_limit: float, *, loss_ok: bool | None = None) -> str:
     """Diagnostic loss severity relative to mandate MaxDD (does not change pass/fail)."""
     if pnl_pct is None:
@@ -735,20 +778,30 @@ def _aggregate_stress_confidence(
     return inv.get(worst, "medium")
 
 
-def _scorecard_synthetic_row(row: dict[str, Any], max_dd_limit: float) -> dict[str, Any]:
+def _scorecard_synthetic_row(
+    row: dict[str, Any],
+    max_dd_limit: float | None,
+    *,
+    loss_gate_mode: str = LOSS_GATE_MODE_MANDATE,
+) -> dict[str, Any]:
     pnl = row.get("portfolio_pnl_pct")
     loss_ok = row.get("loss_ok")
     beta_cov = row.get("beta_coverage_ratio")
+    pnl_f = float(pnl) if isinstance(pnl, (int, float)) else None
+    if loss_gate_mode == LOSS_GATE_MODE_DIAGNOSTIC:
+        severity = _loss_severity_absolute(pnl_f)
+    else:
+        severity = _loss_severity_vs_limit(
+            pnl_f,
+            float(max_dd_limit or 0.25),
+            loss_ok=loss_ok if isinstance(loss_ok, bool) else None,
+        )
     return {
         "scenario_id": row.get("scenario_id"),
         "portfolio_pnl_pct": pnl,
         "pass": row.get("pass"),
         "loss_ok": loss_ok,
-        "loss_severity": _loss_severity_vs_limit(
-            float(pnl) if isinstance(pnl, (int, float)) else None,
-            max_dd_limit,
-            loss_ok=loss_ok if isinstance(loss_ok, bool) else None,
-        ),
+        "loss_severity": severity,
         "beta_coverage_ratio": beta_cov,
         "beta_confidence": _beta_coverage_confidence(
             float(beta_cov) if isinstance(beta_cov, (int, float)) else None
@@ -762,15 +815,29 @@ def _scorecard_synthetic_row(row: dict[str, Any], max_dd_limit: float) -> dict[s
     }
 
 
-def _scorecard_historical_row(row: dict[str, Any], max_dd_limit: float) -> dict[str, Any]:
+def _scorecard_historical_row(
+    row: dict[str, Any],
+    max_dd_limit: float | None,
+    *,
+    loss_gate_mode: str = LOSS_GATE_MODE_MANDATE,
+) -> dict[str, Any]:
     max_dd = row.get("max_dd")
     pnl = row.get("pnl_real_episode")
     passed = row.get("pass")
     severity = "unknown"
-    if isinstance(max_dd, (int, float)):
-        severity = _loss_severity_vs_limit(float(max_dd), max_dd_limit, loss_ok=passed if isinstance(passed, bool) else None)
+    if loss_gate_mode == LOSS_GATE_MODE_DIAGNOSTIC:
+        if isinstance(max_dd, (int, float)):
+            severity = _loss_severity_absolute(float(max_dd))
+        elif isinstance(pnl, (int, float)):
+            severity = _loss_severity_absolute(float(pnl))
+    elif isinstance(max_dd, (int, float)):
+        severity = _loss_severity_vs_limit(
+            float(max_dd),
+            float(max_dd_limit or 0.25),
+            loss_ok=passed if isinstance(passed, bool) else None,
+        )
     elif isinstance(pnl, (int, float)):
-        severity = _loss_severity_vs_limit(float(pnl), max_dd_limit)
+        severity = _loss_severity_vs_limit(float(pnl), float(max_dd_limit or 0.25))
     return {
         "episode": row.get("episode"),
         "pnl_real_episode": pnl,
@@ -791,12 +858,19 @@ def _build_stress_scorecard_v1(
     status: str,
     primary_diagnostic_code: str | None,
     warning_code: str | None,
-    max_dd_limit: float,
+    max_dd_limit: float | None,
     scenario_results: list[dict[str, Any]],
     historical_results: list[dict[str, Any]],
+    loss_gate_mode: str = LOSS_GATE_MODE_MANDATE,
 ) -> dict[str, Any]:
-    synthetic = [_scorecard_synthetic_row(row, max_dd_limit) for row in scenario_results]
-    historical = [_scorecard_historical_row(row, max_dd_limit) for row in historical_results]
+    synthetic = [
+        _scorecard_synthetic_row(row, max_dd_limit, loss_gate_mode=loss_gate_mode)
+        for row in scenario_results
+    ]
+    historical = [
+        _scorecard_historical_row(row, max_dd_limit, loss_gate_mode=loss_gate_mode)
+        for row in historical_results
+    ]
     return {
         "version": "stress_scorecard_v1",
         "overall_status": status,
@@ -872,38 +946,54 @@ def _build_stress_conclusions(
     worst_historical_row: dict[str, Any] | None,
     helped_assets: list[dict[str, Any]],
     historical_results: list[dict[str, Any]],
-    max_dd_limit: float,
+    max_dd_limit: float | None,
     hedge_gap_analysis: dict[str, Any],
     overall_confidence: str,
+    loss_gate_mode: str = LOSS_GATE_MODE_MANDATE,
 ) -> dict[str, Any]:
     ws_pnl = worst_scenario_row.get("portfolio_pnl_pct") if isinstance(worst_scenario_row, dict) else None
     ws_loss_ok = worst_scenario_row.get("loss_ok") if isinstance(worst_scenario_row, dict) else None
     wh_max_dd = worst_historical_row.get("max_dd") if isinstance(worst_historical_row, dict) else None
     top_factor_drivers, helped_factors = _worst_scenario_factor_drivers(worst_scenario_row)
+    ws_pnl_f = float(ws_pnl) if isinstance(ws_pnl, (int, float)) else None
+    if loss_gate_mode == LOSS_GATE_MODE_DIAGNOSTIC:
+        ws_severity = _loss_severity_absolute(ws_pnl_f)
+        wh_severity = (
+            _loss_severity_absolute(float(wh_max_dd))
+            if isinstance(wh_max_dd, (int, float))
+            else "unknown"
+        )
+    else:
+        ws_severity = _loss_severity_vs_limit(
+            ws_pnl_f,
+            float(max_dd_limit or 0.25),
+            loss_ok=ws_loss_ok if isinstance(ws_loss_ok, bool) else None,
+        )
+        wh_severity = (
+            _loss_severity_vs_limit(
+                float(wh_max_dd),
+                float(max_dd_limit or 0.25),
+                loss_ok=worst_historical_row.get("pass")
+                if isinstance(worst_historical_row, dict) and isinstance(worst_historical_row.get("pass"), bool)
+                else None,
+            )
+            if isinstance(wh_max_dd, (int, float))
+            else "unknown"
+        )
     return {
         "version": "stress_conclusions_v1",
         "overall_confidence": overall_confidence,
         "worst_synthetic_scenario": {
             "scenario_id": worst_scenario_row.get("scenario_id") if isinstance(worst_scenario_row, dict) else None,
             "portfolio_pnl_pct": ws_pnl,
-            "loss_severity": _loss_severity_vs_limit(
-                float(ws_pnl) if isinstance(ws_pnl, (int, float)) else None,
-                max_dd_limit,
-                loss_ok=ws_loss_ok if isinstance(ws_loss_ok, bool) else None,
-            ),
+            "loss_severity": ws_severity,
             "pass": worst_scenario_row.get("pass") if isinstance(worst_scenario_row, dict) else None,
         },
         "worst_historical_episode": {
             "episode": worst_historical_row.get("episode") if isinstance(worst_historical_row, dict) else None,
             "pnl_real_episode": worst_historical_row.get("pnl_real_episode") if isinstance(worst_historical_row, dict) else None,
             "max_dd": wh_max_dd,
-            "loss_severity": _loss_severity_vs_limit(
-                float(wh_max_dd) if isinstance(wh_max_dd, (int, float)) else None,
-                max_dd_limit,
-                loss_ok=worst_historical_row.get("pass") if isinstance(worst_historical_row, dict) else None,
-            )
-            if isinstance(wh_max_dd, (int, float))
-            else "unknown",
+            "loss_severity": wh_severity,
             "data_quality": worst_historical_row.get("data_quality") if isinstance(worst_historical_row, dict) else None,
         },
         "top_loss_assets_worst_scenario": (worst_scenario_row or {}).get("top3_loss_assets")
@@ -1269,25 +1359,30 @@ def run_stress(
     beta_data_source: str | None = None,
     cov_base: pd.DataFrame | None = None,
     prepared_synthetic: PreparedSyntheticStressInputs | None = None,
+    loss_gate_mode: str = LOSS_GATE_MODE_MANDATE,
     **_: Any,
 ) -> dict[str, Any]:
     """
-    Diagnostic stress suite (non-blocking). Status: DIAG_PASS | DIAG_PASS_WITH_WARNING | DIAG_ATTENTION.
+    Diagnostic stress suite (non-blocking).
 
-    Synthetic scenarios: factor shocks to the **whole portfolio**; **pass** = portfolio PnL ≥ −mandate MaxDD
-    (same as loss_ok). Top1/Top3 RC (variance shares) are informational fields on each scenario row.
-
-    Historical episodes: same row fields; pass = episode max drawdown vs mandate (see spec).
+    ``loss_gate_mode="mandate"`` (legacy): suite status DIAG_*; row pass/loss_ok vs client MaxDD.
+    ``loss_gate_mode="diagnostic"`` (Core MVP portfolio-first): status ok/warning/insufficient_data;
+    no mandate pass/fail on scenario rows.
     """
+    gate_mode = _normalize_loss_gate_mode(loss_gate_mode)
+    use_mandate_gate = gate_mode == LOSS_GATE_MODE_MANDATE
     cash_u = (cash_proxy_ticker or "").strip().upper()
     asset_cols = [t for t in tickers if t in monthly_returns.columns]
     if not asset_cols:
-        return _empty_report("No return data for stress")
+        return _empty_report("No return data for stress", loss_gate_mode=gate_mode)
     returns_sub = monthly_returns[asset_cols].dropna(how="all")
     if len(returns_sub) < 2:
-        return _empty_report("Insufficient return history")
+        return _empty_report("Insufficient return history", loss_gate_mode=gate_mode)
 
-    max_dd_limit = abs(target_max_drawdown_pct) if target_max_drawdown_pct is not None else 0.25
+    if use_mandate_gate:
+        max_dd_limit = abs(target_max_drawdown_pct) if target_max_drawdown_pct is not None else 0.25
+    else:
+        max_dd_limit = None
 
     if cov_base is not None and not cov_base.empty:
         try:
@@ -1412,14 +1507,18 @@ def run_stress(
         pnl_contrib = pd.Series(pnl_i, index=asset_cols)
         top3_loss_assets = list(pnl_contrib.sort_values().head(3).index)
 
-        loss_ok = portfolio_pnl_pct >= -max_dd_limit
-        scenario_pass = loss_ok
-
-        loss_diags: list[str] = []
-        if not loss_ok:
-            c = _build_diagnostic_code("Loss", scenario_id)
-            if c:
-                loss_diags.append(c)
+        if use_mandate_gate:
+            loss_ok = portfolio_pnl_pct >= -float(max_dd_limit)
+            scenario_pass = loss_ok
+            loss_diags: list[str] = []
+            if not loss_ok:
+                c = _build_diagnostic_code("Loss", scenario_id)
+                if c:
+                    loss_diags.append(c)
+        else:
+            loss_ok = None
+            scenario_pass = None
+            loss_diags = []
 
         if portfolio_pnl_pct < worst_loss:
             worst_loss = portfolio_pnl_pct
@@ -1502,7 +1601,12 @@ def run_stress(
             port_dd = port_eq / port_eq.cummax() - 1
             max_dd = float(port_dd.min())
             pnl_real_episode = float(port_eq.iloc[-1] - 1.0) if len(port_eq) else None
-            pass_dd = max_dd >= -max_dd_limit
+            if use_mandate_gate:
+                pass_dd = max_dd >= -float(max_dd_limit)
+                hist_diag = _build_diagnostic_code("Historical", ep_id) if pass_dd is False else None
+            else:
+                pass_dd = None
+                hist_diag = None
 
             vol_ep = float(port_ret.std(ddof=1)) if len(port_ret) >= 2 else np.nan
             vol_annualized_episode = round(float(vol_ep * np.sqrt(12)), 4) if np.isfinite(vol_ep) else None
@@ -1526,7 +1630,7 @@ def run_stress(
                 "vol_annualized_episode": vol_annualized_episode,
                 "volatility_spike_ratio": round(float(vol_spike), 4) if np.isfinite(vol_spike) else None,
                 "pass": pass_dd,
-                "diagnostic_code": _build_diagnostic_code("Historical", ep_id) if pass_dd is False else None,
+                "diagnostic_code": hist_diag,
                 "n_obs": n_obs,
                 "n_expected_obs": n_expected_obs,
                 "coverage_ratio": round(coverage_ratio, 4) if coverage_ratio is not None else None,
@@ -1593,41 +1697,56 @@ def run_stress(
             seen_codes.add(code)
             diagnostic_codes.append(code)
 
-    for s in scenario_results:
-        for c in s.get("diagnostic_codes") or []:
-            _push_diag(c)
-    for h in historical_results:
-        if h.get("pass") is False:
-            _push_diag(h.get("diagnostic_code") or _build_diagnostic_code("Historical", str(h.get("episode", ""))))
+    if use_mandate_gate:
+        for s in scenario_results:
+            for c in s.get("diagnostic_codes") or []:
+                _push_diag(c)
+        for h in historical_results:
+            if h.get("pass") is False:
+                _push_diag(h.get("diagnostic_code") or _build_diagnostic_code("Historical", str(h.get("episode", ""))))
 
     hist_inconclusive = any(h.get("pass") is None and h.get("max_dd") is None for h in historical_results)
 
-    primary_diagnostic_code = diagnostic_codes[0] if diagnostic_codes else None
+    primary_diagnostic_code: str | None = None
     failed_test: str | None = None
     failed_scenario: str | None = None
-    if primary_diagnostic_code:
-        if primary_diagnostic_code.startswith("DIAG_HIST_"):
-            failed_test = "Historical"
-            failed_scenario = primary_diagnostic_code.replace("DIAG_HIST_", "", 1)
-        elif primary_diagnostic_code.startswith("DIAG_LOSS_"):
-            failed_test = "Loss"
-            failed_scenario = next(
-                (x["scenario_id"] for x in scenario_results if primary_diagnostic_code in (x.get("diagnostic_codes") or [])),
-                None,
-            )
+    warning_code: str | None = None
+    fail_reason_code: str | None = None
 
-    if diagnostic_codes:
-        status = "DIAG_ATTENTION"
-        fail_reason_code = primary_diagnostic_code
-        warning_code = None
-    elif hist_inconclusive:
-        status = "DIAG_PASS_WITH_WARNING"
-        fail_reason_code = None
-        warning_code = _build_warning_code("HIST_BORDERLINE")
+    if use_mandate_gate:
+        primary_diagnostic_code = diagnostic_codes[0] if diagnostic_codes else None
+        if primary_diagnostic_code:
+            if primary_diagnostic_code.startswith("DIAG_HIST_"):
+                failed_test = "Historical"
+                failed_scenario = primary_diagnostic_code.replace("DIAG_HIST_", "", 1)
+            elif primary_diagnostic_code.startswith("DIAG_LOSS_"):
+                failed_test = "Loss"
+                failed_scenario = next(
+                    (x["scenario_id"] for x in scenario_results if primary_diagnostic_code in (x.get("diagnostic_codes") or [])),
+                    None,
+                )
+
+        if diagnostic_codes:
+            status = "DIAG_ATTENTION"
+            fail_reason_code = primary_diagnostic_code
+            warning_code = None
+        elif hist_inconclusive:
+            status = "DIAG_PASS_WITH_WARNING"
+            fail_reason_code = None
+            warning_code = _build_warning_code("HIST_BORDERLINE")
+        else:
+            status = "DIAG_PASS"
+            fail_reason_code = None
+            warning_code = None
     else:
-        status = "DIAG_PASS"
+        status, warning_code = _resolve_diagnostic_suite_status(
+            historical_results,
+            hist_inconclusive=hist_inconclusive,
+        )
         fail_reason_code = None
-        warning_code = None
+        primary_diagnostic_code = None
+        failed_test = None
+        failed_scenario = None
 
     worst_scenario_row = None
     if scenario_results:
@@ -1657,6 +1776,7 @@ def run_stress(
         max_dd_limit=max_dd_limit,
         scenario_results=scenario_results,
         historical_results=historical_results,
+        loss_gate_mode=gate_mode,
     )
     stress_conclusions = _build_stress_conclusions(
         worst_scenario_row=worst_scenario_row if isinstance(worst_scenario_row, dict) else None,
@@ -1666,6 +1786,7 @@ def run_stress(
         max_dd_limit=max_dd_limit,
         hedge_gap_analysis=hedge_gap_analysis,
         overall_confidence=stress_scorecard_v1.get("overall_confidence", "medium"),
+        loss_gate_mode=gate_mode,
     )
     data_trust_summary = build_stress_data_trust_summary(
         historical_results=historical_results,
@@ -1676,6 +1797,7 @@ def run_stress(
 
     return {
         "status": status,
+        "loss_gate_mode": gate_mode,
         "diagnostic_codes": diagnostic_codes,
         "primary_diagnostic_code": primary_diagnostic_code,
         "fail_reason_code": fail_reason_code,
@@ -1697,13 +1819,21 @@ def run_stress(
     }
 
 
-def _empty_report(reason: str) -> dict[str, Any]:
+def _empty_report(reason: str, *, loss_gate_mode: str = LOSS_GATE_MODE_MANDATE) -> dict[str, Any]:
+    gate_mode = _normalize_loss_gate_mode(loss_gate_mode)
+    if gate_mode == LOSS_GATE_MODE_DIAGNOSTIC:
+        empty_status = "insufficient_data"
+        empty_warning = _build_warning_code("DATA_INSUFFICIENT")
+    else:
+        empty_status = "DIAG_PASS_WITH_WARNING"
+        empty_warning = _build_warning_code("DATA_INSUFFICIENT")
     return {
-        "status": "DIAG_PASS_WITH_WARNING",
+        "status": empty_status,
+        "loss_gate_mode": gate_mode,
         "diagnostic_codes": [],
         "primary_diagnostic_code": None,
         "fail_reason_code": None,
-        "warning_code": _build_warning_code("DATA_INSUFFICIENT"),
+        "warning_code": empty_warning,
         "worst_scenario_loss_pct": None,
         "failed_scenario": None,
         "failed_test": None,
@@ -1716,8 +1846,8 @@ def _empty_report(reason: str) -> dict[str, Any]:
         "recession_calibration": {},
         "stress_scorecard_v1": {
             "version": "stress_scorecard_v1",
-            "overall_status": "DIAG_PASS_WITH_WARNING",
-            "overall_reason": "WARN_DATA_INSUFFICIENT",
+            "overall_status": empty_status,
+            "overall_reason": empty_warning,
             "overall_confidence": "low",
             "max_dd_limit": None,
             "n_synthetic_scenarios": 0,

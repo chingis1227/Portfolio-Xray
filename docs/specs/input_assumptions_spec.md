@@ -155,10 +155,12 @@ vol target, return objective) — interpretive, not auto-trading.
 **Fields:** `client_profile`, `target_nominal_return_annual`, `target_vol_annual`,
 `target_max_drawdown_pct`, `min_acceptable_return`, `horizon_years`.
 
-**Core MVP:** not required for `run_portfolio_review` diagnosis. `horizon_years` remains report/context
-only in V1 (does not change optimizer or stress gates).
+**Core MVP:** not required for `run_portfolio_review` diagnosis. Must not gate or label Blocks 1–3
+product outputs. `horizon_years` remains report/context only in V1 (does not change optimizer or
+stress gates in Core MVP).
 
-**Future placement:** Client-Fit Check / Client Sheet; may prefill Candidate Builder constraints.
+**Future placement:** Client-Fit Check / Client Sheet / Advanced Mandate layer after core diagnosis;
+may prefill Candidate Builder constraints.
 
 ### 1.5 Mandate / Constraints (later — Candidate Builder; Core MVP defaults only)
 
@@ -169,8 +171,9 @@ only in V1 (does not change optimizer or stress gates).
 
 **Core MVP defaults (no user prompt):** `allow_leverage = false`, `allow_short_selling = false`.
 Current portfolio is diagnosed **as-is**; concentration is an X-Ray finding, not a first-input block.
+Mandate targets and constraint comparison must not appear in Core MVP X-Ray or Stress Lab outputs.
 
-**Future placement:** Portfolio Alternatives Builder parameters.
+**Future placement:** Portfolio Alternatives Builder parameters; Advanced Mandate / Client-Fit Check.
 
 ### 1.6 Technical Assumptions (backend / config defaults)
 

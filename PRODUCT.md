@@ -114,6 +114,11 @@ Target MVP inputs:
 - Current weights.
 - Investor currency.
 
+**Core MVP boundary:** client profile, mandate targets (return, vol, max drawdown), horizon,
+liquidity needs, suitability limits, and constraint comparison are **not** required and must not
+drive Block 1–3 product-facing conclusions. Those fields remain in config / Advanced settings for
+legacy optimization and future Client-Fit Check only.
+
 System-level inputs and defaults:
 
 - `analysis_subject = current_portfolio`
@@ -193,7 +198,9 @@ Questions answered:
 Product rule:
 
 Stress Test Lab should show vulnerability and evidence quality. It should not fabricate historical
-evidence when data is insufficient.
+evidence when data is insufficient. **Core MVP:** stress reports diagnostic facts only
+(`loss_gate_mode="diagnostic"`) — no client mandate pass/fail on scenario rows. Legacy mandate
+comparison (`loss_gate_mode="mandate"`, DIAG_* statuses) applies only to legacy/advanced report paths.
 
 #### 4.3.1 Scenario Library (Block 3.1)
 

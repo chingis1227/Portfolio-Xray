@@ -8,6 +8,14 @@ Date: 2026-05-26
 
 Category: Changed
 
+- **Core MVP mandate boundary**: portfolio-first Block 1–3 no longer use client mandate/profile
+  targets for product-facing pass/fail. Stress Lab adds `loss_gate_mode=diagnostic` for
+  `analyze_current_weights` (status ok/warning/insufficient_data; no row pass/loss_ok vs MaxDD).
+  Legacy `loss_gate_mode=mandate` + DIAG_* preserved for optimization reports. Docs: `PRODUCT.md`,
+  `input_assumptions_spec.md`, `stress_testing_spec.md` §0, `stress_lab_layer_spec.md`, `SPEC.md`.
+
+Category: Changed
+
 - **Block 3.1 Scenario Library — official product definition**: fixed active historical
   (`dotcom`, `2008`, `2020`, `2022`, `banking_2023`) and synthetic (eight `*_shock` +
   `recession_severe`) sets documented in [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md)

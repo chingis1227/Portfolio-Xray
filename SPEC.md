@@ -417,13 +417,13 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Blocks 1-5 MVP core reliability (Phase 16) | **Done** (Sessions 01-09, `RM-1010`-`RM-1018`); offline acceptance bundle and operator runbook govern routine verification |
 | Main CLI optimization and report pipeline | Implemented |
 | Input and Assumptions Layer | Implemented CLI/file-driven V1; Core MVP three-field surface, MVP defaults injection, real-cash holdings, `input_surface` / `field_tiers` export ([input_assumptions_spec.md](docs/specs/input_assumptions_spec.md); [Input Layer MVP Migration](docs/exec_plans/2026-05-26_input_layer_mvp_migration.md) Sessions 01–09) |
-| Portfolio X-Ray Core MVP (Blocks 2.1–2.6) | Blocks 2.1–2.6 **implemented** on `portfolio_xray.json` ([portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md), [Block 2.6 acceptance audit](docs/audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md)) |
+| Portfolio X-Ray Core MVP (Blocks 2.1–2.6) | Blocks 2.1–2.6 **implemented** on `portfolio_xray.json`; **no client mandate / profile target comparison** in product blocks ([portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md)) |
 | Risk Budget View (Block 2.5) | Product block `block_2_5_risk_budget_view` **implemented** (Sessions 00–08, 2026-05-26); legacy `sections.risk_budget_view` preserved ([portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.5.1) |
 | Portfolio Weakness Map (Block 2.6) | Product block `block_2_6_portfolio_weakness_map` **implemented** (Sessions 00–08, 2026-05-26); pre-stress over Blocks 2.1–2.5; legacy `sections.weakness_map` preserved ([portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.6.1, [acceptance audit](docs/audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md)) |
 | Portfolio Archetype Classification (Block 2.7) | Legacy section implemented (`sections.portfolio_archetype`); **postponed** for product — advanced/backlog, not Core MVP ([portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.7) |
 | Config validation and profile-derived targets | Implemented |
 | Portfolio metrics, backtests, risk contribution | Implemented |
-| Stress testing and stress commentary | Implemented diagnostic/reporting layer |
+| Stress testing and stress commentary | Implemented diagnostic/reporting layer; Core MVP uses `loss_gate_mode=diagnostic` (no mandate pass/fail) |
 | Scenario Library (Block 3.1) | Fixed historical (5) + synthetic (8) scenario set; [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.1 |
 | Factor diagnostics, PCA, macro/regime diagnostics, scenario analytics | Implemented diagnostic-only layer |
 | Scenario Library and normalized scenario view | Implemented input-standardization/diagnostic layer (Block 3.1 sidecars) |

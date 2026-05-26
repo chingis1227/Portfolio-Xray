@@ -16,6 +16,13 @@ Portfolio X-Ray covers the current `analysis_subject` before candidates and the 
 
 **Current Core MVP (Block 2 product contracts):**
 
+Portfolio-first Blocks 2.1–2.6 diagnose the **current portfolio as a portfolio**. They must **not**
+compare metrics to client mandate targets (target return/vol/MaxDD, horizon, liquidity, suitability)
+or read `resolved_mandate` for product-facing labels. Client profile / mandate comparison belongs to
+later Client-Fit Check / Advanced Mandate layers.
+
+**Current Core MVP (Block 2 product contracts — modules):**
+
 - 2.1 Asset Allocation — `block_2_1_asset_allocation`
 - 2.2 Portfolio Metrics / Risk Diagnostics — `block_2_2_portfolio_metrics`
 - 2.3 Factor Exposure / Factor Sensitivity — `block_2_3_factor_exposure`
