@@ -8,6 +8,15 @@ Date: 2026-05-26
 
 Category: Changed
 
+- **Block 3.1 Scenario Library — official product definition**: fixed active historical
+  (`dotcom`, `2008`, `2020`, `2022`, `banking_2023`) and synthetic (eight `*_shock` +
+  `recession_severe`) sets documented in [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md)
+  §3.1, [scenario_library_spec.md](docs/specs/scenario_library_spec.md), `PRODUCT.md` §4.3.1,
+  `GLOSSARY.md`, `SPEC.md`; cross-ref in [stress_testing_spec.md](docs/specs/stress_testing_spec.md)
+  §2; ID registry comments in `src/scenario_library.py`. No new scenarios; IDs unchanged in code.
+
+Category: Changed
+
 - **Block 2.6 Portfolio Weakness Map MVP closed** (ExecPlan Sessions 00–08,
   `DEC-2026-05-26-006`): product-facing `block_2_6_portfolio_weakness_map` on
   `portfolio_xray.json` aggregates Blocks 2.1–2.5 into nine pre-stress risk hypotheses

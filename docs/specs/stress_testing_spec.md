@@ -39,6 +39,11 @@ Scenario and episode checks below are **for PM reporting**; they do not replace 
 
 ## 2. Mandatory scenarios
 
+**Block 3.1 product set:** The scenarios in this section are the **fixed active Scenario Library**
+for Stress Test Lab (historical §9 + synthetic below). Official product definition:
+[stress_lab_layer_spec.md](stress_lab_layer_spec.md) §3.1. Do not add IDs here without
+`DECISIONS.md`.
+
 | # | Scenario            | Description / shocks |
 |---|---------------------|----------------------|
 | 1 | **Equity shock**    | Broad equity -40%. shock_eq = -0.40; others 0. |

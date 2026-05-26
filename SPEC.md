@@ -424,8 +424,9 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Config validation and profile-derived targets | Implemented |
 | Portfolio metrics, backtests, risk contribution | Implemented |
 | Stress testing and stress commentary | Implemented diagnostic/reporting layer |
+| Scenario Library (Block 3.1) | Fixed historical (5) + synthetic (8) scenario set; [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.1 |
 | Factor diagnostics, PCA, macro/regime diagnostics, scenario analytics | Implemented diagnostic-only layer |
-| Scenario Library and normalized scenario view | Implemented input-standardization/diagnostic layer |
+| Scenario Library and normalized scenario view | Implemented input-standardization/diagnostic layer (Block 3.1 sidecars) |
 | Optimization Engine layer governance | Implemented source of truth; Sessions 03-04 add legacy policy and candidate optimizer disclosure without changing optimizer behavior |
 | Benchmark and candidate portfolio builders | Implemented comparison layer |
 | Candidate Factory runtime | Implemented backend/advanced/research infrastructure; `standard` mode supports opt-in parallel Phase 2 `lightweight_comparison` reports while builders and Phase 3 full reports remain sequential; not the default product UX |

@@ -2,6 +2,29 @@
 
 This document owns the contract for Scenario Library v1 and Scenario Library Normalized View v1.
 
+**Product placement:** Scenario Library is **Block 3.1** inside **Block 3 (Stress Test Lab)**.
+Official product definition and fixed active scenario IDs:
+[stress_lab_layer_spec.md](stress_lab_layer_spec.md) §3.1. This file owns build artifacts and
+normalization rules; it does not redefine the active scenario set.
+
+## Block 3.1 — active scenario set (fixed)
+
+Scenario Library is the unified set of test scenarios for portfolio stress evaluation. The active
+sets below are **closed** unless changed via [stress_testing_spec.md](stress_testing_spec.md) and
+`DECISIONS.md`.
+
+### 3.1.1 Historical scenarios
+
+Real market crises and stress periods: `dotcom`, `2008`, `2020`, `2022`, `banking_2023`.
+
+### 3.1.2 Synthetic scenarios
+
+Predefined factor shocks: `equity_shock`, `credit_shock`, `rates_shock`, `inflation_stagflation`,
+`liquidity_shock`, `usd_shock`, `commodity_shock`, `recession_severe`.
+
+**Code single source for IDs:** `HISTORICAL_SCENARIO_IDS` and `SYNTHETIC_SCENARIO_IDS` in
+`src/scenario_library.py` (must match `HISTORICAL_EPISODES` / `run_stress` in `src/stress.py`).
+
 ## Scenario Library v1
 
 `src/scenario_library.py` implements `scenario_library_v1`.
@@ -40,10 +63,8 @@ Primary outputs:
 - normalized summary and warning artifacts where implemented
 - `stress_report.scenario_library_normalized_meta`
 
-Current canonical scenario ids are sourced from `src/stress.py` and include synthetic
-`equity_shock`, `credit_shock`, `rates_shock`, `inflation_stagflation`, `liquidity_shock`,
-`usd_shock`, `commodity_shock`, `recession_severe`, plus historical `dotcom`, `2008`, `2020`,
-`2022`, and `banking_2023`.
+Canonical scenario IDs are the fixed Block 3.1 sets in §Block 3.1 above (not extensible by
+library build alone).
 
 ## Historical Stress Fallback
 

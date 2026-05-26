@@ -115,12 +115,52 @@ Crisis replay CSV (**A**): `results_csv/crisis_replay_{episode}.csv`,
 
 ### 3.1 Scenario Library
 
-**Question:** Which scenarios exist, with what inputs, shocks, and readiness metadata?
+**Official product definition (Block 3.1 only).** Scenario Library is the unified set of test
+scenarios for portfolio stress evaluation inside Block 3 (Stress Test Lab). It includes historical
+and synthetic scenarios and allows the system to evaluate portfolio resilience under consistent
+stress-testing conditions. This section defines **3.1 only**; other Block 3 sub-blocks (stress
+results, hedge gap, scorecard, and related diagnostics) are documented separately below.
+
+**Product boundary:** Block 3.1 is carried by `stress_report.json` scenario rows and Scenario
+Library sidecars (`scenario_library.json`, `scenario_library_normalized.json`). There is **no**
+`block_3_1_*` key on `portfolio_xray.json`.
+
+#### 3.1.1 Historical Scenarios
+
+Historical scenarios test how the **current portfolio** behaves during real market crises and stress
+periods (realized monthly returns, static weights at analysis date).
+
+**Active historical scenario set (fixed — do not add, rename, or extend without spec +
+`DECISIONS.md`):**
+
+`dotcom` · `2008` · `2020` · `2022` · `banking_2023`
+
+Code registry: `HISTORICAL_EPISODES` in `src/stress.py`; canonical IDs:
+`HISTORICAL_SCENARIO_IDS` in `src/scenario_library.py`. Contract:
+`tests/test_stress_scenario_coverage_contract.py`.
+
+#### 3.1.2 Synthetic Scenarios
+
+Synthetic scenarios test the portfolio against predefined market shocks and factor stress
+conditions (linear factor-beta shock engine).
+
+**Active synthetic scenario set (fixed — do not add, rename, or extend without spec +
+`DECISIONS.md`):**
+
+`equity_shock` · `credit_shock` · `rates_shock` · `inflation_stagflation` · `liquidity_shock` ·
+`usd_shock` · `commodity_shock` · `recession_severe`
+
+Code registry: seven fixed vectors in `SCENARIOS` plus calibrated `recession_severe` merged in
+`run_stress` (`src/stress.py`); canonical IDs: `SYNTHETIC_SCENARIO_IDS` in
+`src/scenario_library.py`. Shock math and pass/fail: [stress_testing_spec.md](stress_testing_spec.md)
+§2. **Not** in the active suite: `crypto_shock`, `volatility_shock` (deferred §2.3).
+
+**Implementation question:** Which scenarios exist, with what inputs, shocks, and readiness metadata?
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
-| Synthetic IDs (8) | `equity_shock`, `credit_shock`, `rates_shock`, `inflation_stagflation`, `liquidity_shock`, `usd_shock`, `commodity_shock`, `recession_severe` | **C** `SCENARIOS` **S** §2 |
-| Historical IDs (5) | `dotcom`, `2008`, `2020`, `2022`, `banking_2023` | **C** `HISTORICAL_EPISODES` **S** §9 |
+| Synthetic IDs (8) | Fixed set in §3.1.2 above | **C** `SCENARIOS` + `run_stress` **S** §2 |
+| Historical IDs (5) | Fixed set in §3.1.1 above | **C** `HISTORICAL_EPISODES` **S** §9 |
 | Shock sizes | Hard-coded; override via `config.stress_scenario_overrides` | **C** **S** §2 |
 | Library build | `scenario_library_v1` in `src/scenario_library.py` | **C** **S** [scenario_library_spec.md](scenario_library_spec.md) |
 | Normalized view | Readiness + proxy waterfall for library only | **C** **S** scenario_library_spec |
@@ -131,7 +171,7 @@ Core implementation: `src/stress.py`, `src/scenario_library.py`, `src/scenario_l
 Tests: `tests/test_scenario_library.py`, `tests/test_scenario_library_normalized.py`,
 `tests/test_stress_scenario_coverage_contract.py`, `tests/test_stress_synthetic_assumptions_contract.py`.
 
-#### 3.1.1 Historical Scenarios
+#### 3.1.1 Historical Scenarios — implementation
 
 **Question:** How did the portfolio behave in past crises (realized)?
 
@@ -150,7 +190,7 @@ Misleading-risk note: null episodes mean insufficient overlap (young ETFs), not 
 
 Tests: `tests/test_stress_historical_fields.py`, `tests/test_stress_mandate_pass.py`.
 
-#### 3.1.2 Synthetic Scenarios
+#### 3.1.2 Synthetic Scenarios — implementation
 
 **Question:** What happens under hypothetical factor shocks?
 

@@ -25,6 +25,9 @@ SCENARIO_LIBRARY_VERSION = "scenario_library_v1"
 WEEKLY_TO_MONTHLY_VARIANCE_FACTOR = 12.0 / 52.0
 DAILY_ANNUAL_TO_MONTHLY_COV_FACTOR = 1.0 / 12.0
 
+# Block 3.1.2 — fixed active synthetic scenario IDs (Stress Test Lab Scenario Library).
+# Must match SCENARIOS + recession_severe in src/stress.py run_stress. Do not extend without
+# docs/specs/stress_lab_layer_spec.md §3.1 and DECISIONS.md.
 SYNTHETIC_SCENARIO_IDS: tuple[str, ...] = (
     "equity_shock",
     "credit_shock",
@@ -35,6 +38,9 @@ SYNTHETIC_SCENARIO_IDS: tuple[str, ...] = (
     "commodity_shock",
     "recession_severe",
 )
+# Block 3.1.1 — fixed active historical scenario IDs (Stress Test Lab Scenario Library).
+# Must match HISTORICAL_EPISODES in src/stress.py. Do not extend without
+# docs/specs/stress_lab_layer_spec.md §3.1 and DECISIONS.md.
 HISTORICAL_SCENARIO_IDS: tuple[str, ...] = ("dotcom", "2008", "2020", "2022", "banking_2023")
 
 

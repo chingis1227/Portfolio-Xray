@@ -378,9 +378,13 @@ Term heading
 
 ### Scenario Library
 
-- Definition: Standardized scenario collection used for diagnostics and scenario-aware workflows.
+- Definition: Block 3.1 inside Stress Test Lab — the unified, fixed set of historical and synthetic
+  test scenarios for portfolio stress evaluation (`dotcom`, `2008`, `2020`, `2022`, `banking_2023`;
+  `equity_shock`, `credit_shock`, `rates_shock`, `inflation_stagflation`, `liquidity_shock`,
+  `usd_shock`, `commodity_shock`, `recession_severe`).
 - Area: stress
-- Canonical source: [docs/specs/scenario_library_spec.md](docs/specs/scenario_library_spec.md)
+- Canonical source: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.1;
+  build contract: [docs/specs/scenario_library_spec.md](docs/specs/scenario_library_spec.md)
 
 ### Scenario Library Normalized View
 

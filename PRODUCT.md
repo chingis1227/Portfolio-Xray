@@ -195,6 +195,22 @@ Product rule:
 Stress Test Lab should show vulnerability and evidence quality. It should not fabricate historical
 evidence when data is insufficient.
 
+#### 4.3.1 Scenario Library (Block 3.1)
+
+Scenario Library is the unified set of test scenarios for portfolio stress evaluation. It includes
+historical and synthetic scenarios and allows consistent stress-testing conditions.
+
+**Historical scenarios (fixed):** `dotcom`, `2008`, `2020`, `2022`, `banking_2023` — real crisis
+periods; realized portfolio behavior where data supports it.
+
+**Synthetic scenarios (fixed):** `equity_shock`, `credit_shock`, `rates_shock`,
+`inflation_stagflation`, `liquidity_shock`, `usd_shock`, `commodity_shock`, `recession_severe` —
+predefined factor shocks.
+
+Canonical spec: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.1.
+Do not add or rename scenarios without spec and `DECISIONS.md`. Other Block 3 sections (stress
+results, hedge gap, scorecard) are separate from 3.1.
+
 ### 4.4 Problem Classification
 
 User goal:
