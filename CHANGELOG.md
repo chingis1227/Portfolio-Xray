@@ -8,6 +8,79 @@ Date: 2026-05-26
 
 Category: Changed
 
+- **Block 2.6 Portfolio Weakness Map MVP closed** (ExecPlan Sessions 00–08,
+  `DEC-2026-05-26-006`): product-facing `block_2_6_portfolio_weakness_map` on
+  `portfolio_xray.json` aggregates Blocks 2.1–2.5 into nine pre-stress risk hypotheses
+  (0–100 score, severity, evidence, `next_tests`); excludes stress PnL/attribution;
+  legacy `sections.weakness_map` preserved. Evidence:
+  [acceptance audit](docs/audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md);
+  live demo rates_up **65** Medium, equity_crash **36** Low; pytest **35 passed**;
+  `validate_one_candidate_demo.py` **PASS**.
+
+Date: 2026-05-26
+
+Category: Changed
+
+- **Block 2.5 Risk Budget View MVP closed** (ExecPlan Sessions 00–08,
+  `DEC-2026-05-26-005`): product-facing `block_2_5_risk_budget_view` on
+  `portfolio_xray.json` compares capital weights to RC_vol, top1/top3 RC, risk
+  overweight/underweight lists, and taxonomy bucket RC; excludes stress PnL;
+  legacy `sections.risk_budget_view` preserved. Evidence:
+  [acceptance audit](docs/audits/2026-05-26_block_2_5_risk_budget_acceptance_audit.md);
+  live demo SCHD top1 RC 19.5%, SLV +9.5 pp risk-overweight; pytest **44 passed**;
+  `validate_one_candidate_demo.py` **PASS**.
+
+Date: 2026-05-26
+
+Category: Changed
+
+- **Block 2.5 Risk Budget View product contract (Session 01, docs):** Core MVP extended to Blocks
+  2.1–2.5; normative §2.5.1 `block_2_5_risk_budget_view` in
+  [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md); archetype
+  renumbered to §2.6 (legacy only). Updated [portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md),
+  [SPEC.md](SPEC.md), [OUTPUTS.md](OUTPUTS.md), [DECISIONS.md](DECISIONS.md) (DEC-2026-05-26-005),
+  [GLOSSARY.md](GLOSSARY.md). Implementation Sessions 02–05 pending.
+
+Date: 2026-05-26
+
+Category: Changed
+
+- **Full pytest suite contract drift registered (6 failures):** post–Block 2.4 full run
+  (1037 passed / 6 failed) failures tracked as separate tech debt **KI-2026-05-26-001** … **006** in
+  [KNOWN_ISSUES.md](KNOWN_ISSUES.md) and [TESTING.md](TESTING.md); not Block 2.4 regressions.
+
+Date: 2026-05-26
+
+Category: Planning
+
+- **Block 2.5 Risk Budget View MVP ExecPlan (Session 00):** Active plan
+  [2026-05-26_block_2_5_risk_budget_view_plan.md](docs/exec_plans/2026-05-26_block_2_5_risk_budget_view_plan.md);
+  audit confirms legacy `sections.risk_budget_view` (with stress fields) and no
+  `block_2_5_risk_budget_view` yet; product Block 2.5 = risk budget (archetype stays legacy section).
+
+Date: 2026-05-26
+
+Category: Changed
+
+- **Portfolio Archetype Classification (Block 2.5) demoted from Core MVP docs:** product diagnosis
+  remains Blocks 1 + 2.1–2.4 only; `sections.portfolio_archetype` stays on full X-Ray builds for
+  legacy/formatters; no `block_2_5_*` module. Specs: [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.5,
+  [portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md), [SPEC.md](SPEC.md).
+
+Date: 2026-05-26
+
+Category: Changed
+
+- **Block 2.4 Hidden Exposure / Hidden Risk Detector MVP added**:
+  product-facing `block_2_4_hidden_exposure` on `portfolio_xray.json` reads completed
+  Blocks 2.1, 2.2, and 2.3 only, emits six structured rule-based alerts with `heuristic_v1`
+  scoring/evidence, keeps Weak Hedge Behavior preliminary without Stress Lab, and preserves legacy
+  `sections.hidden_risk_detector`.
+
+Date: 2026-05-26
+
+Category: Changed
+
 - **Block 2.3 Factor Exposure / Factor Sensitivity MVP added** (`DEC-2026-05-26-004`):
   product-facing `block_2_3_factor_exposure` on `portfolio_xray.json` adapts existing
   `stress_report` factor diagnostics only, validates production factor/beta naming, degrades missing

@@ -354,6 +354,46 @@ Title: Trade-off Explanation and Model Risk Diagnostics V1 — separate diagnost
 - Related documents: [docs/specs/tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md), [docs/specs/selection_engine_spec.md](docs/specs/selection_engine_spec.md), [docs/specs/decision_package_reporting_spec.md](docs/specs/decision_package_reporting_spec.md), [OUTPUTS.md](OUTPUTS.md), [docs/ROADMAP.md](docs/ROADMAP.md) RM-616.
 - Review trigger: Revisit if trade-off should run after action for turnover parity, or if concentration thresholds should become mandate-binding.
 
+Decision ID: DEC-2026-05-26-005
+Title: Block 2.5 Risk Budget View is Core MVP; product block excludes stress PnL
+
+- Status: accepted
+- Date: 2026-05-26
+- Decision: Product **Block 2.5 = Risk Budget View** (`block_2_5_risk_budget_view` on
+  `portfolio_xray.json`). Core MVP product diagnosis extends to Blocks 2.1–2.6. Portfolio Archetype
+  remains legacy `sections.portfolio_archetype` only (§2.7; forbidden: `block_2_5_portfolio_archetype`).
+  The product block compares capital weights to RC_vol and taxonomy risk-budget buckets; it must not
+  include stress scenario PnL fields. Legacy `sections.risk_budget_view` stays unchanged and may still
+  expose stress loss contribution for formatters.
+- Context: [Block 2.5 Risk Budget View MVP](docs/exec_plans/2026-05-26_block_2_5_risk_budget_view_plan.md)
+  Session 01; supersedes doc numbering that assigned product 2.5 to archetype (2026-05-26 archetype demotion pass).
+- Rationale: Operators need a stable product surface for “who drives portfolio risk?” separate from
+  capital allocation (2.1) and hidden-risk heuristics (2.4); Stress Test Lab owns scenario PnL.
+- Alternatives considered: Keep risk budget as legacy-only §2.6 (rejected — user-approved Core MVP 2.5);
+  include stress PnL on product block (rejected — Stress Lab boundary); promote archetype as Block 2.5
+  (rejected — postponed product module).
+- Assumptions: Implementation lands Sessions 02–05; RC resolution stays in `build_portfolio_xray_v2`
+  via `resolve_rc_asset_for_xray`; Block 2.5 module receives resolved rows only.
+- Consequences: [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.5.1;
+  planned `src/block_2_5_risk_budget_view.py`; [OUTPUTS.md](OUTPUTS.md) Block 2 row; [SPEC.md](SPEC.md) status matrix.
+- Related documents: [portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md) §2.5,
+  [metrics_specification.md](docs/specs/metrics_specification.md) (RC_vol).
+- Review trigger: Revisit if UI requires stress PnL on the product block or if legacy `sections.risk_budget_view` can be retired.
+
+Decision ID: DEC-2026-05-26-006
+Title: Block 2.6 Portfolio Weakness Map is Core MVP; product block is pre-stress only
+
+- Status: accepted
+- Date: 2026-05-26
+- Decision: Promote Portfolio Weakness Map as Core MVP **Block 2.6** (`block_2_6_portfolio_weakness_map` on `portfolio_xray.json`). The product block is a pre-stress hypothesis map: it aggregates signals from Blocks 2.1–2.5 into a 0–100 vulnerability score per risk type plus plain-English explanation and `next_tests` suggestions. It must **not** read `stress_report.json`, scenario PnL, pass/fail, or loss attribution. Legacy `sections.weakness_map` remains for backward compatibility and may remain stress-coupled.
+- Context: A legacy Weakness Map section exists under `sections.weakness_map`, but it reads stress artifacts directly (scenario PnL and attribution) and exposes qualitative severity bands without a stable 0–100 scoring contract and explainable weights. Core MVP needs a product-facing “what to test next” surface that stays clearly separated from Stress Test Lab outcomes.
+- Rationale: Keeps Portfolio X-Ray diagnosis-first and lightweight, avoids duplicating Stress Lab logic, and preserves an interpretable handoff: X-Ray suggests what to test; Stress Lab computes losses and evidence quality.
+- Alternatives considered: Keep weakness map as legacy-only (rejected — requested product surface); compute scenario losses inside X-Ray (rejected — violates Stress Lab ownership); replace legacy section entirely (rejected — breaks compatibility and formatters).
+- Assumptions: Block 2.6 can be implemented as a read-only adapter over Blocks 2.1–2.5 with explicit `heuristic_v1` rule weights and evidence rows; Stress Lab continues to own all loss numbers and pass/fail status.
+- Consequences: `portfolio_xray_diagnostics_spec.md` adds §2.6.1 contract; `portfolio_xray_layer_spec.md`, `SPEC.md`, `OUTPUTS.md`, and `GLOSSARY.md` align Core MVP as Blocks 2.1–2.6; Archetype remains legacy-only (§2.7).
+- Related documents: [Block 2.6 Weakness Map ExecPlan](docs/exec_plans/2026-05-26_block_2_6_portfolio_weakness_map_plan.md), [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.6.1, [stress_testing_spec.md](docs/specs/stress_testing_spec.md) (Stress Lab ownership).
+- Review trigger: Revisit if the product requires scenario loss numbers on the X-Ray weakness surface or if `sections.weakness_map` can be retired after a formatter migration.
+
 Decision ID: DEC-2026-05-26-004
 Title: Block 2.3 Factor Exposure is a stress_report adapter, not a factor engine
 

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Run or verify the Phase 17 live full + resume E2E gate (RM-1029)."""
+"""Run or verify the Phase 17 live full + resume E2E gate (RM-1029).
+
+Validates the portfolio-first Full review surface including Blocks 2.1–2.6.
+"""
 from __future__ import annotations
 
 import argparse

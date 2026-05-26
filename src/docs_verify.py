@@ -37,6 +37,9 @@ ALLOW_MISSING_PATHS: frozenset[str] = frozenset(
         "tests/test_input_layer_mvp_regression.py",
         "tests/fixtures/mvp_portfolios/minimal_usd_no_cash.yml",
         "tests/fixtures/mvp_portfolios/minimal_usd_with_cash.yml",
+        # Block 2.5 Risk Budget View MVP (ExecPlan 2026-05-26; Sessions 07–08)
+        "tests/test_block_2_5_pipeline_integration.py",
+        "docs/audits/2026-05-26_block_2_5_risk_budget_acceptance_audit.md",
     }
 )
 

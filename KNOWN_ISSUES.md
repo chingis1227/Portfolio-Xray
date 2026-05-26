@@ -56,6 +56,26 @@ Title: Short title
 
 ## Active Issues
 
+### Full pytest suite contract drift index (2026-05-26)
+
+Recorded after `python -m pytest` on the Block 2.4 closure path: **1037 passed**, **6 failed**, **2 skipped**
+(live E2E markers). Failures are **pre-existing contract drift / tech debt**, not regressions from
+`src/block_2_4_hidden_exposure.py`. Do not treat a green Block 2.4 focused run as proof of full-suite green
+until these rows are closed or explicitly re-accepted.
+
+| ID | Failing test | Drift summary | Owning area |
+| --- | --- | --- | --- |
+| KI-2026-05-26-001 | `tests/test_candidate_comparison.py::test_current_unavailable_in_optimize_mode` | `current` row `status` is `degraded`; test expects `unavailable` + `missing_current_report` | candidate comparison |
+| KI-2026-05-26-002 | `tests/test_candidate_factory_contract.py::test_live_factory_build_matches_golden_document` | `factory_contract_fingerprint` `options_keys` mismatch (live vs golden fixture) | candidate factory |
+| KI-2026-05-26-003 | `tests/test_current_vs_policy_workflow.py::test_combined_context_both_available` | `current.artifact_root` does not end with `current_portfolio`; combined-context path contract drift | current vs policy |
+| KI-2026-05-26-004 | `tests/test_current_vs_policy_workflow.py::test_current_weights_without_sidecar` | Same as KI-001: `degraded` vs `unavailable` when sidecar missing | current vs policy |
+| KI-2026-05-26-005 | `tests/test_factor_covariance.py::test_factor_covariance_empty_factor_frame_returns_explicit_skip_reason` | Empty factor frame returns `status: available`; test expects `unavailable` | factor / macro |
+| KI-2026-05-26-006 | `tests/test_mvp_workflow.py::test_policy_current_adds_materialize_when_weights_set` | MVP plan argv lacks `--materialize-current` for policy+current workflow | MVP workflow |
+
+Issue entries: KI-2026-05-26-001 through KI-2026-05-26-006 (below).
+
+---
+
 ### Blocks 1-5 MVP core reliability gap index (Phase 16)
 
 Wave **closed** 2026-05-21 (Session 09 / `RM-1018`). See
@@ -246,6 +266,84 @@ Title: Full candidate factory refresh is operationally heavy for one-shot review
   interrupt (`RM-979`), and `--pdf-mode final_only` with Phase 3 instead of per-candidate Pandoc.
 - Source links: [run_portfolio_review.py](run_portfolio_review.py), [portfolio_review_workflow.py](src/portfolio_review_workflow.py), [candidate_factory.py](src/candidate_factory.py), [candidate_comparison.py](src/candidate_comparison.py), [operational_runbook.md](docs/operational_runbook.md), [methodology map G4](docs/audits/2026-05-20_candidate_factory_methodology_map.md).
 - Remove when: Full-run reliably completes within agreed operator time budget without manual staging, including the Phase 3/full-report cases that remain outside lightweight-report parallelism.
+
+Issue ID: KI-2026-05-26-001
+Title: Current row in optimize mode reported as degraded instead of unavailable
+
+- Status: open
+- Severity: medium
+- Area: testing
+- Risk: Comparison and downstream selection treat a non-materialized current portfolio as partially usable (`degraded`) when product contract expects hard `unavailable` with `missing_current_report`.
+- Evidence: `python -m pytest tests/test_candidate_comparison.py::test_current_unavailable_in_optimize_mode` fails (2026-05-26 full suite); actual `cur["status"] == "degraded"`.
+- Current mitigation: Focused suites that do not assert strict unavailable semantics still pass; operators must not infer current is compare-ready from `degraded` alone.
+- Next action: Align `src/candidate_comparison.py` current-row status with spec/tests, or update spec + tests if `degraded` is the new canonical signal (document `unavailable_reason`).
+- Source links: [tests/test_candidate_comparison.py](tests/test_candidate_comparison.py), [candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [DECISIONS.md](DECISIONS.md) (portfolio-first subject).
+- Remove when: `test_current_unavailable_in_optimize_mode` passes and comparison spec matches behavior.
+
+Issue ID: KI-2026-05-26-002
+Title: Candidate factory live build golden fingerprint drift (options_keys)
+
+- Status: open
+- Severity: low
+- Area: testing
+- Risk: Factory contract regressions can slip through if golden `options_keys` are stale; CI/full suite noise hides real breaks.
+- Evidence: `python -m pytest tests/test_candidate_factory_contract.py::test_live_factory_build_matches_golden_document` fails (2026-05-26 full suite); `options_keys` differ between live `normalize_factory_run(build_golden_factory_run())` and golden fixture (e.g. `lightweight_report_workers` vs `pdf_mode`).
+- Current mitigation: Run `tests/test_candidate_factory.py` and factory-focused contract tests; regenerate golden via `tests/candidate_factory_golden_inputs.py` when options surface is intentionally changed.
+- Next action: Regenerate golden fixture and/or narrow fingerprint to stable contract fields; document new factory CLI options in spec.
+- Source links: [tests/test_candidate_factory_contract.py](tests/test_candidate_factory_contract.py), [docs/exec_plans/2026-05-25_code_migration_to_diagnosis_first_portfolio_mri.md](docs/exec_plans/2026-05-25_code_migration_to_diagnosis_first_portfolio_mri.md) (Session 12 noted same drift).
+- Remove when: `test_live_factory_build_matches_golden_document` passes after intentional golden refresh.
+
+Issue ID: KI-2026-05-26-003
+Title: Combined current vs policy artifact_root path convention drift
+
+- Status: open
+- Severity: medium
+- Area: architecture
+- Risk: `build_current_vs_policy_status` and no-trade workflow may assume `current_portfolio` sidecar paths that comparison no longer emits, breaking combined-context completeness checks.
+- Evidence: `tests/test_current_vs_policy_workflow.py::test_combined_context_both_available` fails; `cur["artifact_root"].endswith("current_portfolio")` is False (2026-05-26 full suite).
+- Current mitigation: Portfolio-first review paths that materialize subject explicitly may still work on disk; do not rely on comparison `artifact_root` suffix alone without verification.
+- Next action: Reconcile `candidate_comparison` current `artifact_root` with `CURRENT_SIDECAR_SUBDIR` / materialization helpers and `analysis_setup_summary.current_materialization_root`.
+- Source links: [tests/test_current_vs_policy_workflow.py](tests/test_current_vs_policy_workflow.py), [src/candidate_comparison.py](src/candidate_comparison.py), [portfolio_review_workflow.py](src/portfolio_review_workflow.py).
+- Remove when: `test_combined_context_both_available` passes and path contract is documented in spec.
+
+Issue ID: KI-2026-05-26-004
+Title: Current without sidecar should be unavailable, not degraded
+
+- Status: open
+- Severity: medium
+- Area: testing
+- Risk: No-trade and current-vs-policy status may mark workflows actionable when current evidence was never materialized to a sidecar report tree.
+- Evidence: `tests/test_current_vs_policy_workflow.py::test_current_weights_without_sidecar` fails (2026-05-26 full suite); `cur["status"] == "degraded"` vs expected `unavailable` / `missing_current_report`.
+- Current mitigation: Same as KI-2026-05-26-001; treat missing sidecar as operator action required before trusting current row.
+- Next action: Fix with KI-2026-05-26-001/003 in one comparison + materialization alignment pass; verify `build_current_vs_policy_status` `skip_reason == current_not_materialized`.
+- Source links: [tests/test_current_vs_policy_workflow.py](tests/test_current_vs_policy_workflow.py), KI-2026-05-26-001, KI-2026-05-26-003.
+- Remove when: `test_current_weights_without_sidecar` passes.
+
+Issue ID: KI-2026-05-26-005
+Title: Factor covariance empty factor frame should return unavailable
+
+- Status: open
+- Severity: medium
+- Area: factor_macro
+- Risk: Downstream commentary and diagnostics may show factor-covariance analytics as available when no factors loaded, masking data-quality failure.
+- Evidence: `tests/test_factor_covariance.py::test_factor_covariance_empty_factor_frame_returns_explicit_skip_reason` fails (2026-05-26 full suite); `out["status"] == "available"`.
+- Current mitigation: Inspect `factor_load_diagnostics` and missing-factor lists in reports when factors are sparse.
+- Next action: Align `factor_covariance_analytics` empty-input branch in `src/stress_factors.py` (or owning module) with spec/tests for explicit `unavailable` + skip reason.
+- Source links: [tests/test_factor_covariance.py](tests/test_factor_covariance.py), [docs/exec_plans/2026-04-29_factor_covariance_forecast_quality.md](docs/exec_plans/2026-04-29_factor_covariance_forecast_quality.md).
+- Remove when: Empty-frame test passes and export/commentary reflects skip reason.
+
+Issue ID: KI-2026-05-26-006
+Title: MVP workflow policy+current plan missing materialize-current step
+
+- Status: open
+- Severity: medium
+- Area: architecture
+- Risk: `run_mvp_workflow.py` policy+current profile may skip automatic current materialization when `current_weights` are set, leaving comparison/workflow tests and operators without the expected CLI hook.
+- Evidence: `tests/test_mvp_workflow.py::test_policy_current_adds_materialize_when_weights_set` fails (2026-05-26 full suite); joined plan argv lacks `--materialize-current`.
+- Current mitigation: Run materialization explicitly via portfolio-review or materialize script before compare when using MVP workflow.
+- Next action: Add `--materialize-current` to `build_mvp_workflow_plan` for `WORKFLOW_POLICY_CURRENT` when weights present, or update test/spec if materialization moved to another entrypoint.
+- Source links: [tests/test_mvp_workflow.py](tests/test_mvp_workflow.py), [run_mvp_workflow.py](run_mvp_workflow.py), [src/mvp_workflow.py](src/mvp_workflow.py) if present.
+- Remove when: `test_policy_current_adds_materialize_when_weights_set` passes.
 
 Issue ID: KI-2026-05-21-001
 Title: portfolio_xray.json optional in optimization comparison readiness (G10)

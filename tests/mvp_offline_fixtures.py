@@ -273,6 +273,18 @@ def minimal_blocks_1_5_portfolio_xray() -> dict[str, Any]:
             taxonomy_rows={},
             taxonomy_sources={},
         ),
+        "block_2_2_portfolio_metrics": {
+            "block": "2.2_portfolio_metrics",
+            "status": "unavailable",
+            "metadata": {},
+        },
+        "block_2_3_factor_exposure": {"block": "2.3_factor_exposure", "status": "unavailable"},
+        "block_2_4_hidden_exposure": {"block": "2.4_hidden_exposure", "status": "unavailable"},
+        "block_2_5_risk_budget_view": {"block": "2.5_risk_budget_view", "status": "unavailable"},
+        "block_2_6_portfolio_weakness_map": {
+            "block": "2.6_portfolio_weakness_map",
+            "status": "unavailable",
+        },
         "sections": {
             key: {"status": "available", "data_sources_used": ["offline_smoke_fixture"]}
             for key in XRAY_SECTION_KEYS
@@ -729,6 +741,27 @@ def seed_block_2_2_subject_dir(
     corr_df.to_csv(results_csv_dir / "correlation_matrix_10y.csv")
 
     return {"snapshot": snap, "analytics": a, "drawdown": d, "metrics": m, "correlation_tickers": t}
+
+
+def seed_block_2_5_subject_dir(
+    subject_dir: Path,
+    *,
+    tickers: list[str] | None = None,
+    analysis_setup: dict[str, Any] | None = None,
+    weights: dict[str, float] | None = None,
+    metrics: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Seed offline ``analysis_subject/`` inputs for Block 2.5 pipeline tests.
+
+    Reuses Block 2.2 snapshot seeding (includes ``RC_asset`` rows aligned to weights).
+    """
+    return seed_block_2_2_subject_dir(
+        subject_dir,
+        tickers=tickers,
+        analysis_setup=analysis_setup,
+        weights=weights,
+        metrics=metrics,
+    )
 
 
 def seed_cash5pct_block_2_2_subject_dir(

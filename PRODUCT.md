@@ -535,10 +535,13 @@ These items are not Core MVP requirements. Do not describe them as implemented u
 - Advanced Parameter Builder settings.
 - Asset X-Ray / Asset Diagnostics.
 - Client-Fit Check / questionnaire.
-- Portfolio Archetype Classification is an optional later diagnostic layer that can classify the
-  portfolio by behavior, such as Equity Growth Portfolio, Balanced 60/40-like, Credit Carry
-  Portfolio, Duration-heavy Defensive, Inflation-sensitive, or Pseudo-diversified Portfolio. It
-  should not be part of the core MVP flow until explicitly implemented and approved.
+- Portfolio Archetype Classification is an optional later / advanced diagnostic layer (not Core MVP).
+  Examples: Equity Growth Portfolio, Balanced 60/40-like, Credit Carry Portfolio, Duration-heavy
+  Defensive, Inflation-sensitive, Pseudo-diversified Portfolio. Legacy
+  `sections.portfolio_archetype` may still be emitted on full X-Ray report builds for compatibility;
+  product-facing diagnosis uses Portfolio X-Ray Blocks 2.1–2.6 (including Weakness Map as Block 2.6).
+  Do not add `block_2_5_portfolio_archetype` or promote archetype in the six-file bundle without
+  explicit product migration.
 
 Advanced/later does not mean delete. Preserve existing capabilities and reclassify them carefully.
 

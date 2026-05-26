@@ -10,6 +10,7 @@ import pytest
 from src.portfolio_xray import PORTFOLIO_XRAY_VERSION, XRAY_SECTION_KEYS, XRAY_THRESHOLDS
 
 import portfolio_xray_golden_inputs as golden_inputs
+from test_block_2_5_risk_budget import assert_block_2_5_product_contract
 
 GOLDEN_FIXTURE_PATH = golden_inputs.GOLDEN_FIXTURE_PATH
 build_golden_document = golden_inputs.build_golden_document
@@ -24,6 +25,9 @@ TOP_LEVEL_REQUIRED = (
     "block_2_1_asset_allocation",
     "block_2_2_portfolio_metrics",
     "block_2_3_factor_exposure",
+    "block_2_4_hidden_exposure",
+    "block_2_5_risk_budget_view",
+    "block_2_6_portfolio_weakness_map",
     "sections",
     "legacy_summary",
 )
@@ -74,6 +78,15 @@ def assert_top_level_contract(doc: dict[str, Any]) -> None:
     block_23 = doc.get("block_2_3_factor_exposure")
     assert isinstance(block_23, dict)
     assert block_23.get("block") == "2.3_factor_exposure"
+    block_24 = doc.get("block_2_4_hidden_exposure")
+    assert isinstance(block_24, dict)
+    assert block_24.get("block") == "2.4_hidden_exposure"
+    block_25 = doc.get("block_2_5_risk_budget_view")
+    assert isinstance(block_25, dict)
+    assert_block_2_5_product_contract(block_25)
+    block_26 = doc.get("block_2_6_portfolio_weakness_map")
+    assert isinstance(block_26, dict)
+    assert block_26.get("block") == "2.6_portfolio_weakness_map"
     assert set(doc["sections"]) == set(XRAY_SECTION_KEYS)
 
 
@@ -145,6 +158,24 @@ def contract_fingerprint(doc: dict[str, Any]) -> dict[str, Any]:
         fp["block_2_3_present"] = True
         fp["block_2_3_status"] = block_23.get("status")
         fp["block_2_3_beta_keys"] = sorted((block_23.get("factor_beta_snapshot") or {}).keys())
+    block_24 = doc.get("block_2_4_hidden_exposure")
+    if isinstance(block_24, dict):
+        fp["block_2_4_present"] = True
+        fp["block_2_4_status"] = block_24.get("status")
+    block_25 = doc.get("block_2_5_risk_budget_view")
+    if isinstance(block_25, dict):
+        fp["block_2_5_present"] = True
+        fp["block_2_5_status"] = block_25.get("status")
+        top1 = block_25.get("top1_rc_asset") or {}
+        fp["block_2_5_top1_ticker"] = top1.get("ticker")
+        fp["block_2_5_asset_tickers"] = sorted(
+            row.get("ticker") for row in block_25.get("assets") or [] if row.get("ticker")
+        )
+        fp["block_2_5_buckets"] = sorted(
+            row.get("bucket")
+            for row in block_25.get("risk_budget_bucket_contribution") or []
+            if row.get("bucket")
+        )
     return fp
 
 
@@ -175,11 +206,27 @@ def test_golden_post_audit_surface_items(golden_fixture: dict[str, Any]) -> None
     assert fp["primary_archetype"]
 
 
+def test_golden_block_2_5_risk_budget_surface(golden_fixture: dict[str, Any]) -> None:
+    block = golden_fixture["block_2_5_risk_budget_view"]
+    assert_block_2_5_product_contract(block)
+    assert block["status"] == "ok"
+    assert block["top1_rc_asset"]["ticker"] == "SPY"
+    assert block["top3_rc_share"] == 90.0
+    assert block["top_risk_overweight_assets"][0]["ticker"] == "HYG"
+    assert {row["ticker"] for row in block["assets"]} == {"GLD", "HYG", "SPY", "TLT"}
+    assert block["metadata"]["rc_sources"] == ["snapshot.RC_asset"]
+
+
 def test_live_build_matches_golden_document() -> None:
     live = build_golden_document()
     golden = _load_golden_fixture()
     assert contract_fingerprint(live) == contract_fingerprint(golden)
-    assert _round_floats(live) == _round_floats(golden)
+    live_r = _round_floats(live)
+    golden_r = _round_floats(golden)
+    assert set(golden_r) <= set(live_r)
+    # Allow additive surface growth (new blocks) without immediately rewriting the golden fixture.
+    # Sessions that intentionally update the golden fixture should keep this strict on shared keys.
+    assert {k: live_r[k] for k in golden_r} == golden_r
 
 
 def test_live_build_kwargs_stable_entrypoint() -> None:

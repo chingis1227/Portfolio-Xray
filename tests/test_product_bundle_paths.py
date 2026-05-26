@@ -7,11 +7,17 @@ from pathlib import Path
 
 from src.block_2_2_portfolio_metrics import BLOCK_2_2_ID
 from src.block_2_3_factor_exposure import BLOCK_2_3_ID
+from src.block_2_4_hidden_exposure import BLOCK_2_4_ID
+from src.block_2_5_risk_budget_view import BLOCK_2_5_ID
+from src.block_2_6_portfolio_weakness_map import BLOCK_2_6_ID
 from src.product_bundle_paths import (
     ADVANCED_EVIDENCE_MANIFEST_KEYS,
     LEGACY_COMPATIBILITY_MANIFEST_KEYS,
     PORTFOLIO_XRAY_BLOCK_2_2_KEY,
     PORTFOLIO_XRAY_BLOCK_2_3_KEY,
+    PORTFOLIO_XRAY_BLOCK_2_4_KEY,
+    PORTFOLIO_XRAY_BLOCK_2_5_KEY,
+    PORTFOLIO_XRAY_BLOCK_2_6_KEY,
     PRODUCT_BUNDLE_MANIFEST_KEYS,
     build_generated_paths_by_category,
     build_output_manifest_discovery_extra,
@@ -24,6 +30,9 @@ from src.product_bundle_paths import (
     product_bundle_generated_paths_for_manifest,
     portfolio_xray_has_block_2_2,
     portfolio_xray_has_block_2_3,
+    portfolio_xray_has_block_2_4,
+    portfolio_xray_has_block_2_5,
+    portfolio_xray_has_block_2_6,
     product_bundle_manifest_extra,
     resolve_candidate_launchpad_path,
     resolve_problem_classification_path,
@@ -235,9 +244,15 @@ def test_product_bundle_manifest_extra_declares_primary_surface() -> None:
     assert xray_note["product_capital_structure_key"] == "block_2_1_asset_allocation"
     assert xray_note["product_portfolio_behavior_key"] == PORTFOLIO_XRAY_BLOCK_2_2_KEY
     assert xray_note["product_factor_exposure_key"] == PORTFOLIO_XRAY_BLOCK_2_3_KEY
+    assert xray_note["product_hidden_exposure_key"] == PORTFOLIO_XRAY_BLOCK_2_4_KEY
+    assert xray_note["product_risk_budget_key"] == PORTFOLIO_XRAY_BLOCK_2_5_KEY
+    assert xray_note["product_weakness_map_key"] == PORTFOLIO_XRAY_BLOCK_2_6_KEY
     assert "portfolio_xray.json" in xray_note["note"]
     assert "Block 2.2" in xray_note["note"]
     assert "Block 2.3" in xray_note["note"]
+    assert "Block 2.4" in xray_note["note"]
+    assert "Block 2.5" in xray_note["note"]
+    assert "Block 2.6" in xray_note["note"]
 
 
 def test_portfolio_xray_has_block_2_2_detects_product_contract() -> None:
@@ -255,6 +270,33 @@ def test_portfolio_xray_has_block_2_3_detects_product_contract() -> None:
     assert not portfolio_xray_has_block_2_3({PORTFOLIO_XRAY_BLOCK_2_3_KEY: {"block": "wrong"}})
     assert portfolio_xray_has_block_2_3(
         {PORTFOLIO_XRAY_BLOCK_2_3_KEY: {"block": BLOCK_2_3_ID}}
+    )
+
+
+def test_portfolio_xray_has_block_2_4_detects_product_contract() -> None:
+    assert not portfolio_xray_has_block_2_4(None)
+    assert not portfolio_xray_has_block_2_4({})
+    assert not portfolio_xray_has_block_2_4({PORTFOLIO_XRAY_BLOCK_2_4_KEY: {"block": "wrong"}})
+    assert portfolio_xray_has_block_2_4(
+        {PORTFOLIO_XRAY_BLOCK_2_4_KEY: {"block": BLOCK_2_4_ID}}
+    )
+
+
+def test_portfolio_xray_has_block_2_5_detects_product_contract() -> None:
+    assert not portfolio_xray_has_block_2_5(None)
+    assert not portfolio_xray_has_block_2_5({})
+    assert not portfolio_xray_has_block_2_5({PORTFOLIO_XRAY_BLOCK_2_5_KEY: {"block": "wrong"}})
+    assert portfolio_xray_has_block_2_5(
+        {PORTFOLIO_XRAY_BLOCK_2_5_KEY: {"block": BLOCK_2_5_ID}}
+    )
+
+
+def test_portfolio_xray_has_block_2_6_detects_product_contract() -> None:
+    assert not portfolio_xray_has_block_2_6(None)
+    assert not portfolio_xray_has_block_2_6({})
+    assert not portfolio_xray_has_block_2_6({PORTFOLIO_XRAY_BLOCK_2_6_KEY: {"block": "wrong"}})
+    assert portfolio_xray_has_block_2_6(
+        {PORTFOLIO_XRAY_BLOCK_2_6_KEY: {"block": BLOCK_2_6_ID}}
     )
 
 

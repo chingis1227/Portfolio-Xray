@@ -12,15 +12,25 @@ audit gaps are tracked in
 
 ## Scope
 
-Portfolio X-Ray covers the current `analysis_subject` before candidates and the decision package:
+Portfolio X-Ray covers the current `analysis_subject` before candidates and the decision package.
 
-- 2.1 Asset Allocation
-- 2.2 Portfolio Metrics / Risk Diagnostics
-- 2.3 Factor Exposure / Factor Sensitivity
-- 2.4 Hidden Exposure / Hidden Risk Detector
-- 2.5 Portfolio Archetype Classification
-- 2.6 Risk Budget View
-- 2.7 Portfolio Weakness Map
+**Current Core MVP (Block 2 product contracts):**
+
+- 2.1 Asset Allocation — `block_2_1_asset_allocation`
+- 2.2 Portfolio Metrics / Risk Diagnostics — `block_2_2_portfolio_metrics`
+- 2.3 Factor Exposure / Factor Sensitivity — `block_2_3_factor_exposure`
+- 2.4 Hidden Exposure / Hidden Risk Detector — `block_2_4_hidden_exposure`
+- 2.5 Risk Budget View — `block_2_5_risk_budget_view` (§2.5.1; **implemented** 2026-05-26)
+- 2.6 Portfolio Weakness Map — `block_2_6_portfolio_weakness_map` (§2.6.1; implemented)
+
+**Advanced / backlog / legacy-section (not Core MVP; no `block_2_7_*` modules):**
+
+- 2.7 Portfolio Archetype Classification — legacy `sections.portfolio_archetype` only (forbidden: `block_2_5_portfolio_archetype`, `block_2_6_portfolio_archetype`, `block_2_7_portfolio_archetype`)
+
+Legacy `sections.risk_budget_view` remains for formatters; product consumers use `block_2_5_risk_budget_view`.
+
+See [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) Scope table for exposure
+boundaries. Portfolio-first operators and UI must not treat 2.6–2.7 as required product diagnosis.
 
 ## Workflow position
 
@@ -54,22 +64,27 @@ Required top-level fields (v2):
 - `block_2_1_asset_allocation`: product Block 2.1 capital structure contract
 - `block_2_2_portfolio_metrics`: product Block 2.2 portfolio behavior contract
 - `block_2_3_factor_exposure`: product Block 2.3 factor sensitivity contract
-- `sections`: seven keys in fixed order (see `XRAY_SECTION_KEYS` in code)
+- `block_2_4_hidden_exposure`: product Block 2.4 hidden exposure / hidden risk contract
+- `block_2_5_risk_budget_view`: product Block 2.5 risk budget contract (§2.5.1; wired Session 05+)
+- `block_2_6_portfolio_weakness_map`: product Block 2.6 weakness-map hypothesis contract (§2.6.1; implemented)
+- `sections`: seven keys in fixed order (see `XRAY_SECTION_KEYS` in code); **Core MVP consumers use
+  `block_2_1`–`block_2_5` only**. Keys 2.6–2.7 in `sections` are legacy/advanced compatibility;
+  `sections.risk_budget_view` is legacy compatibility for formatters.
 - `legacy_summary`: backward-compatible v1-style summary
 - `data_trust_signals` (`xray_data_trust_signals_v1`, RM-1016): rollup of section `warnings` plus
   optional `stress_report.data_trust_summary` lines for commentary; does not change X-Ray formulas.
 
-Section JSON keys (stable; match `sections` in the artifact):
+Section JSON keys (stable; match `sections` in the artifact). **Product block numbers** (2.1–2.7) follow the diagnostics spec Scope table; **`XRAY_SECTION_KEYS` iteration order** in code keeps `portfolio_archetype` before `risk_budget_view` for backward compatibility.
 
-| Block | `sections` key |
-| --- | --- |
-| 2.1 | `asset_allocation` |
-| 2.2 | `risk_diagnostics` |
-| 2.3 | `factor_exposure` |
-| 2.4 | `hidden_risk_detector` |
-| 2.5 | `portfolio_archetype` |
-| 2.6 | `risk_budget_view` |
-| 2.7 | `weakness_map` |
+| Product block | `sections` key | Top-level product key |
+| --- | --- | --- |
+| 2.1 | `asset_allocation` | `block_2_1_asset_allocation` |
+| 2.2 | `risk_diagnostics` | `block_2_2_portfolio_metrics` |
+| 2.3 | `factor_exposure` | `block_2_3_factor_exposure` |
+| 2.4 | `hidden_risk_detector` | `block_2_4_hidden_exposure` |
+| 2.5 | `risk_budget_view` | `block_2_5_risk_budget_view` |
+| 2.6 | `weakness_map` | `block_2_6_portfolio_weakness_map` |
+| 2.7 | `portfolio_archetype` | — (legacy/advanced; not Core MVP) |
 
 Common section envelope (where implemented): `status`, `data_sources_used`, `method`, `frequency`,
 `window`, `n_obs`, `benchmark`, `items`, `warnings`, `limitations`, `confidence`.
@@ -81,13 +96,13 @@ owning modules/specs:
 
 | Input | Typical source | Used by |
 | --- | --- | --- |
-| Weights, `analysis_setup` | config / snapshot | 2.1, 2.6, 2.4 |
+| Weights, `analysis_setup` | config / snapshot | 2.1, 2.5, 2.4 |
 | `portfolio_metrics`, multi-window snapshots | `snapshot_{3y,5y,10y}.json` | 2.2 |
-| `portfolio_analytics`, `drawdown_structure` | snapshot / report analytics | 2.2, 2.4, 2.5, 2.7 |
-| `stress_report.json` | `src/stress.py` / `src/stress_factors.py` export | 2.3, 2.6, 2.7 |
-| `rc_vol_{10y,5y,3y}.csv` | `results_csv/` via `load_rc_vol_map_from_csv` | 2.6, 2.4 |
-| Taxonomy YAML | `config/etf_universe.yml`, `config/stock_universe.yml` | 2.1, 2.4, 2.7 |
-| `XRAY_THRESHOLDS` | `src/portfolio_xray.py` | 2.4, 2.5, 2.7 (rule thresholds only) |
+| `portfolio_analytics`, `drawdown_structure` | snapshot / report analytics | 2.2, 2.4, 2.6, 2.7 |
+| `stress_report.json` | `src/stress.py` / `src/stress_factors.py` export | 2.3, 2.7 (legacy `risk_budget_view` stress rows only) |
+| `rc_vol_{10y,5y,3y}.csv` | `results_csv/` via `load_rc_vol_map_from_csv` | 2.5, 2.4 (legacy + product) |
+| Taxonomy YAML | `config/etf_universe.yml`, `config/stock_universe.yml` | 2.1, 2.4, 2.5, 2.7 |
+| `XRAY_THRESHOLDS` | `src/portfolio_xray.py` | 2.4, 2.6, 2.7 (rule thresholds only) |
 
 ## Sub-block implementation map
 
@@ -139,34 +154,53 @@ owning modules/specs:
 
 ### 2.4 Hidden Exposure / Hidden Risk Detector
 
-- Core implementation: `src/portfolio_xray.py` — `_hidden_risk_section`,
-  `_hidden_risk_section_confidence`
-- Spec ownership: diagnostics spec §2.4
-- Rule engine: category order `HIDDEN_RISK_CATEGORY_ORDER`; thresholds from `XRAY_THRESHOLDS`
-- Tests: hidden-risk flagged / below-threshold / unavailable cases in `tests/test_portfolio_xray.py`
-- Drift guard: `tests/test_portfolio_xray_threshold_registry.py`
+- Legacy section implementation: `src/portfolio_xray.py` -> `_hidden_risk_section`,
+  `_hidden_risk_section_confidence` -> `sections.hidden_risk_detector` (preserved for compatibility)
+- **Block 2.4 product contract (MVP):** `src/block_2_4_hidden_exposure.py` section 
+  `build_block_2_4_hidden_exposure` -> top-level `block_2_4_hidden_exposure` on
+  `portfolio_xray.json` (wired from `build_portfolio_xray_v2`; ExecPlan active 2026-05-26)
+- Spec ownership: diagnostics spec section 2.4 and section 2.4.1
+- Architecture boundary: Block 2.4 reads only completed product Blocks 2.1, 2.2, and 2.3. It does
+  not change those block shapes, does not read generated files, does not optimize, does not generate
+  candidates, does not run Stress Lab, and does not recalculate factor models.
+- Rule engine: six product alerts with explicit `heuristic_v1` signal weights and structured
+  evidence items; Weak Hedge Behavior is preliminary until Stress Lab evidence is reviewed.
+- Tests: `tests/test_block_2_4_hidden_exposure.py` plus legacy hidden-risk tests in
+  `tests/test_portfolio_xray.py`
+- Drift guard: legacy `XRAY_THRESHOLDS` remains covered by
+  `tests/test_portfolio_xray_threshold_registry.py`; Block 2.4 heuristic weights live in
+  `src/block_2_4_hidden_exposure.py::ALERT_RULES`.
 
-### 2.5 Portfolio Archetype Classification
+### 2.5 Risk Budget View
 
-- Core implementation: `src/portfolio_xray.py` — `_portfolio_archetype_section`
-- Spec ownership: diagnostics spec §2.5
-- Build order: **after** `weakness_map` so `conflicting_signals` can reference regime tensions
-- Tests: archetype scorecard / conflict tests in `tests/test_portfolio_xray.py`
-
-### 2.6 Risk Budget View
-
-- Core implementation: `src/portfolio_xray.py` — `_risk_budget_section`,
-  `resolve_rc_asset_for_xray`, `load_rc_vol_map_from_csv`
-- Spec ownership: diagnostics spec §2.6; RC formula in [metrics_specification.md](metrics_specification.md)
+- **Block 2.5 product contract (MVP):** planned `src/block_2_5_risk_budget_view.py` —
+  `build_block_2_5_risk_budget_view` → top-level `block_2_5_risk_budget_view` (ExecPlan active
+  2026-05-26; contract §2.5.1 Session 01; wire Session 05)
+- Spec ownership: diagnostics spec §2.5, §2.5.1; RC formula in [metrics_specification.md](metrics_specification.md)
+- Architecture boundary: reads `block_2_1`, resolved `rc_asset_rows` + `rc_sources`, optional wire-time
+  `taxonomy_rows` only; must not recompute RC, read `stress_report` for core fields, or include stress PnL on the product block
+- Legacy implementation: `src/portfolio_xray.py` — `_risk_budget_section`,
+  `resolve_rc_asset_for_xray`, `load_rc_vol_map_from_csv` → `sections.risk_budget_view` (unchanged; may include stress fields)
 - Evidence priority: full `rc_vol_10y.csv` → `rc_vol_5y.csv` → `rc_vol_3y.csv` → snapshot `RC_asset` top-N gap-fill
-- Stress loss contrib: min `pnl_by_asset_pct` across scenarios (read-only)
-- Deferred: factor RC, drawdown contribution, ES contribution by asset (methodology map G7)
-- Tests: `test_resolve_rc_asset_prefers_full_csv_over_snapshot_top5`, provenance metadata test
+- ExecPlan: [2026-05-26_block_2_5_risk_budget_view_plan.md](../exec_plans/2026-05-26_block_2_5_risk_budget_view_plan.md)
+- Tests (planned): `tests/test_block_2_5_risk_budget.py`, `tests/test_block_2_5_pipeline_integration.py`; legacy RC tests in `tests/test_portfolio_xray.py`
 
-### 2.7 Portfolio Weakness Map
+### 2.6 Portfolio Weakness Map
 
-- Core implementation: `src/portfolio_xray.py` — `_weakness_map_section`, `WEAKNESS_SCENARIO_MAP`
-- Spec ownership: diagnostics spec §2.7; scenario names in [stress_testing_spec.md](stress_testing_spec.md)
+- **Product status:** Core MVP product block (implemented) — `block_2_6_portfolio_weakness_map` (diagnostic-only; no stress PnL or attribution)
+- Implementation: `src/block_2_6_portfolio_weakness_map.py` → top-level `block_2_6_portfolio_weakness_map` on `portfolio_xray.json` (wired from `build_portfolio_xray_v2` after Block 2.5). Acceptance: [Block 2.6 acceptance audit](../audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md).
+- Legacy implementation: `src/portfolio_xray.py` — `_weakness_map_section`, `WEAKNESS_SCENARIO_MAP` → `sections.weakness_map` (compatibility-only; may read stress artifacts)
+- Spec ownership: diagnostics spec §2.6 and §2.6.1
+- Boundary: product block must not read `stress_report.json`; legacy section may still exist for formatters until migration
+
+### 2.7 Portfolio Archetype Classification
+
+- **Product status:** advanced / backlog / later — **not** Core MVP; **no** product `block_*` module (forbidden: `block_2_5_portfolio_archetype`)
+- Legacy implementation: `src/portfolio_xray.py` — `_portfolio_archetype_section` →
+  `sections.portfolio_archetype` (preserved for formatters and golden contract)
+- Spec ownership: diagnostics spec §2.7 (postponed product exposure)
+- Build order: **after** `weakness_map` so `conflicting_signals` can reference regime tensions
+- Tests: archetype scorecard / conflict tests in `tests/test_portfolio_xray.py` (legacy section only)
 - V2 fields: `exposure_present`, `adverse_evidence`, `severity`, `confidence`, `scenario_coverage`, drivers
 - `volatility_spike` weakness row: **factor-only (Option B, `RM-948`)** — `beta_vix` + historical `es_95`; no synthetic scenario mapping
 - Tests: weakness V2, crypto conditional, low-risk not overstated in `tests/test_portfolio_xray.py`

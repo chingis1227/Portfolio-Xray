@@ -25,9 +25,15 @@ governed by `SPEC.md`, `OUTPUTS.md`, detailed specs, and code.
 
 ## Current Pointer
 
-**Active:** None.
+**Active:** None (Block 2.6 Weakness Map MVP closed 2026-05-26). Next product work: pick from [ROADMAP](../ROADMAP.md) or a new ExecPlan.
 
-**Most recent closure:** [Block 2.3 Factor Exposure / Factor Sensitivity MVP](2026-05-26_block_2_3_factor_exposure_plan.md) (adapter-only product block over `stress_report` factor diagnostics; closed 2026-05-26). Evidence: live diagnosis + one-candidate + `validate_one_candidate_demo.py` PASS; focused pytest bundles **9 + 6 + 56 + 46 + 31 passed**; docs verification OK.
+**Most recent closure:** [Block 2.6 Portfolio Weakness Map MVP](2026-05-26_block_2_6_portfolio_weakness_map_plan.md) (product block `block_2_6_portfolio_weakness_map`; closed 2026-05-26). Evidence: [acceptance audit](../audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md); closure pytest **35 passed**; live nine risk types on subject X-Ray (`rates_up` 65 Medium).
+
+Previous closure: [Block 2.5 Risk Budget View MVP](2026-05-26_block_2_5_risk_budget_view_plan.md) (product block `block_2_5_risk_budget_view`; closed 2026-05-26). Evidence: [acceptance audit](../audits/2026-05-26_block_2_5_risk_budget_acceptance_audit.md); closure pytest **44 passed**; live `run_portfolio_review.py` on root `config.yml` with 8-ticker weight/RC/gap table.
+
+Previous closure: [Block 2.4 Hidden Exposure / Hidden Risk Detector MVP](2026-05-26_block_2_4_hidden_exposure_plan.md) (six-alert product block `block_2_4_hidden_exposure`; closed 2026-05-26). Evidence: focused pytest **62 passed** on closure bundle; live `run_portfolio_review.py --candidates equal_weight` with Block 2.4 on subject X-Ray.
+
+Previous closure: [Block 2.3 Factor Exposure / Factor Sensitivity MVP](2026-05-26_block_2_3_factor_exposure_plan.md) (adapter-only product block over `stress_report` factor diagnostics; closed 2026-05-26). Evidence: live diagnosis + one-candidate + `validate_one_candidate_demo.py` PASS; focused pytest bundles **9 + 6 + 56 + 46 + 31 passed**; docs verification OK.
 
 Previous closure: [Block 2.2 Portfolio Metrics / Risk Diagnostics MVP](2026-05-26_block_2_2_portfolio_metrics_plan.md) (Sessions 01???08, 2026-05-26). Evidence: [Block 2.2 acceptance audit](../audits/2026-05-26_block_2_2_portfolio_metrics_acceptance_audit.md); live diagnosis + one-candidate + `validate_one_candidate_demo.py` PASS; pytest closure bundle **48 passed**; bundle/runtime regression **16 passed**.
 
@@ -112,6 +118,9 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-05-26 | [Block 2.6 Portfolio Weakness Map MVP](2026-05-26_block_2_6_portfolio_weakness_map_plan.md) | **Completed** | User brief Block 2.6 (9 risk types, rule-based scoring over Blocks 2.1–2.5; no mini Stress Lab) | Sessions 00–08 closed 2026-05-26: `block_2_6_portfolio_weakness_map` on portfolio-first X-Ray; [acceptance audit](../audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md); pytest **35 passed**; live nine risk types. |
+| 2026-05-26 | [Block 2.5 Risk Budget View MVP](2026-05-26_block_2_5_risk_budget_view_plan.md) | **Completed** | User brief Block 2.5 (weight vs RC, buckets; no stress PnL); Blocks 2.1–2.4 prerequisite | Sessions 00–08 closed 2026-05-26: `block_2_5_risk_budget_view` on portfolio-first X-Ray; [acceptance audit](../audits/2026-05-26_block_2_5_risk_budget_acceptance_audit.md); pytest **44 passed**; live demo 8 tickers. |
+| 2026-05-26 | [Block 2.4 Hidden Exposure / Hidden Risk Detector MVP](2026-05-26_block_2_4_hidden_exposure_plan.md) | **Completed** | Product brief Block 2.4 | `block_2_4_hidden_exposure` on portfolio-first X-Ray; legacy `sections.hidden_risk_detector` preserved; closure pytest **62 passed**. |
 | 2026-05-26 | [Block 2.3 Factor Exposure / Factor Sensitivity MVP](2026-05-26_block_2_3_factor_exposure_plan.md) | **Completed** | Product brief Block 2.3; Block 2.1/2.2 prerequisites | Adapter-only architecture (`DEC-2026-05-26-004`): top-level `block_2_3_factor_exposure` on portfolio-first X-Ray; missing fields degrade and are fixed upstream in `stress_report` generation; live diagnosis + one-candidate PASS; focused pytest bundles **9 + 6 + 56 + 46 + 31 passed**. |
 | 2026-05-26 | [Block 2.2 Portfolio Metrics / Risk Diagnostics MVP](2026-05-26_block_2_2_portfolio_metrics_plan.md) | **Completed** | Product brief Block 2.2; Block 2.1 prerequisite | Sessions 01–08 closed 2026-05-26: `block_2_2_portfolio_metrics` on portfolio-first X-Ray; live demo + real-cash fixture; [acceptance audit](../audits/2026-05-26_block_2_2_portfolio_metrics_acceptance_audit.md); pytest **48+16 passed**. |
 | 2026-05-26 | [Block 2.1 Asset Allocation MVP](2026-05-26_block_2_1_asset_allocation_plan.md) | **Completed** | Portfolio X-Ray §2.1 product brief; Session 01 code/doc audit | Sessions 01–08 closed 2026-05-26: `block_2_1_asset_allocation` on portfolio-first X-Ray; live demo + fixture real-cash proof; [acceptance audit](../audits/2026-05-26_block_2_1_asset_allocation_acceptance_audit.md); pytest **44 passed**. |

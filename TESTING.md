@@ -38,6 +38,24 @@ Use the narrowest reliable check first. Broaden only when the change touches sha
 
 `pytest.ini` limits test discovery to `tests/`, so `python -m pytest` is the repository-level test command.
 
+### Known full-suite failures (contract drift, not Block 2.4)
+
+As of **2026-05-26**, `python -m pytest` may report **6 failures** while **1037+** tests pass. These are
+tracked as separate tech debt in [KNOWN_ISSUES.md](KNOWN_ISSUES.md) (index **Full pytest suite contract
+drift**, IDs **KI-2026-05-26-001** … **006**). They are unrelated to Block 2.4 Hidden Exposure.
+
+| Test | Issue ID |
+| --- | --- |
+| `tests/test_candidate_comparison.py::test_current_unavailable_in_optimize_mode` | KI-2026-05-26-001 |
+| `tests/test_candidate_factory_contract.py::test_live_factory_build_matches_golden_document` | KI-2026-05-26-002 |
+| `tests/test_current_vs_policy_workflow.py::test_combined_context_both_available` | KI-2026-05-26-003 |
+| `tests/test_current_vs_policy_workflow.py::test_current_weights_without_sidecar` | KI-2026-05-26-004 |
+| `tests/test_factor_covariance.py::test_factor_covariance_empty_factor_frame_returns_explicit_skip_reason` | KI-2026-05-26-005 |
+| `tests/test_mvp_workflow.py::test_policy_current_adds_materialize_when_weights_set` | KI-2026-05-26-006 |
+
+Until closed: use focused pytest for the changed layer; treat full-suite green as **not** a release gate
+without reconciling or re-accepting the six rows above.
+
 ## Post-Architecture Alignment Checks
 
 Use this matrix for diagnosis-first / decision-support architecture work after the 2026-05-25

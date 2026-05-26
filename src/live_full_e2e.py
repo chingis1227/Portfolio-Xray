@@ -1,4 +1,4 @@
-"""Live full E2E acceptance checks for portfolio-first Blocks 1-5 (Phase 17 RM-1029)."""
+"""Live full E2E acceptance checks for portfolio-first Blocks 1-6 (Phase 17 RM-1029)."""
 
 from __future__ import annotations
 
@@ -14,6 +14,9 @@ from src.product_bundle_paths import (
     portfolio_xray_has_block_2_1,
     portfolio_xray_has_block_2_2,
     portfolio_xray_has_block_2_3,
+    portfolio_xray_has_block_2_4,
+    portfolio_xray_has_block_2_5,
+    portfolio_xray_has_block_2_6,
 )
 
 LIVE_FULL_REVIEW_MODE = "full"
@@ -106,6 +109,21 @@ def validate_live_full_artifacts(
     if not portfolio_xray_has_block_2_3(xray):
         result.errors.append(
             "portfolio_xray.json missing block_2_3_factor_exposure product contract"
+        )
+        result.ok = False
+    if not portfolio_xray_has_block_2_4(xray):
+        result.errors.append(
+            "portfolio_xray.json missing block_2_4_hidden_exposure product contract"
+        )
+        result.ok = False
+    if not portfolio_xray_has_block_2_5(xray):
+        result.errors.append(
+            "portfolio_xray.json missing block_2_5_risk_budget_view product contract"
+        )
+        result.ok = False
+    if not portfolio_xray_has_block_2_6(xray):
+        result.errors.append(
+            "portfolio_xray.json missing block_2_6_portfolio_weakness_map product contract"
         )
         result.ok = False
 

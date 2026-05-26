@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Run or verify the Phase 17 live core E2E gate (RM-1021)."""
+"""Run or verify the Phase 17 live core E2E gate (RM-1021).
+
+Validates the portfolio-first Core MVP surface including Blocks 2.1–2.6.
+"""
 from __future__ import annotations
 
 import argparse

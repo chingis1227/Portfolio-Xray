@@ -712,6 +712,1083 @@
       "no_rebalance_recommendations": true
     }
   },
+  "block_2_4_hidden_exposure": {
+    "block": "2.4_hidden_exposure",
+    "block_id": "2.4",
+    "block_name": "Hidden Exposure / Hidden Risk Detector",
+    "status": "ok",
+    "summary": "Hidden exposure diagnostics completed using rule-based evidence from Blocks 2.1, 2.2, and 2.3.",
+    "alerts": {
+      "hidden_equity_beta": {
+        "status": "Medium",
+        "score": 57,
+        "evidence": [
+          {
+            "metric": "beta_portfolio",
+            "value": 0.85,
+            "threshold": {
+              "moderate_gte": 0.7,
+              "high_gte": 1.0
+            },
+            "direction": "above_threshold",
+            "source": "block_2_2",
+            "interpretation": "Portfolio beta to the configured benchmark."
+          },
+          {
+            "metric": "downside_beta",
+            "value": 0.9,
+            "threshold": {
+              "moderate_gte": 0.9,
+              "high_gte": 1.2
+            },
+            "direction": "above_threshold",
+            "source": "block_2_2",
+            "interpretation": "Downside beta checks if market sensitivity rises in weak markets."
+          },
+          {
+            "metric": "rolling_correlation",
+            "value": null,
+            "threshold": {
+              "moderate_gte": 0.7,
+              "high_gte": 0.85
+            },
+            "direction": "missing",
+            "source": "block_2_2",
+            "interpretation": "Latest rolling correlation to the configured benchmark."
+          },
+          {
+            "metric": "beta_eq",
+            "value": 0.72,
+            "threshold": {
+              "moderate_gte": 0.35,
+              "high_gte": 0.65
+            },
+            "direction": "above_threshold",
+            "source": "block_2_3",
+            "interpretation": "5Y equity factor beta from Block 2.3."
+          },
+          {
+            "metric": "beta_eq_confidence",
+            "value": "significant",
+            "threshold": "significant_or_weak_evidence",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Factor confidence qualifies the equity beta evidence."
+          }
+        ],
+        "explanation": "The detector checks whether portfolio behavior is more equity-like than labels alone suggest.",
+        "why_it_matters": "A diversified-looking portfolio can still fall like an equity portfolio in risk-off markets.",
+        "next_tests": [
+          "equity_shock",
+          "liquidity_shock",
+          "recession_severe"
+        ],
+        "confidence": "high",
+        "data_quality_warnings": [],
+        "insufficient_evidence_reasons": [
+          "rolling_correlation missing"
+        ],
+        "calculation_notes": [
+          "ruleset=heuristic_v1",
+          "score is a weighted average of available signal scores",
+          "evaluable_signal_weight=0.8",
+          "equity beta thresholds are heuristic_v1 product diagnostics"
+        ]
+      },
+      "duration_concentration": {
+        "status": "Medium",
+        "score": 49,
+        "evidence": [
+          {
+            "metric": "rates_or_duration_weight",
+            "value": 0.3,
+            "threshold": {
+              "moderate_gte": 0.25,
+              "high_gte": 0.45
+            },
+            "direction": "above_threshold",
+            "source": "block_2_1",
+            "interpretation": "Capital weight tagged to rates/duration main risk factor."
+          },
+          {
+            "metric": "fixed_income_weight",
+            "value": 0.45,
+            "threshold": {
+              "moderate_gte": 0.35,
+              "high_gte": 0.55
+            },
+            "direction": "above_threshold",
+            "source": "block_2_1",
+            "interpretation": "Fixed income allocation can carry duration exposure."
+          },
+          {
+            "metric": "beta_rr",
+            "value": null,
+            "threshold": {
+              "moderate_gte": 0.25,
+              "high_gte": 0.5
+            },
+            "direction": "missing",
+            "source": "block_2_3",
+            "interpretation": "Real-rates factor beta."
+          }
+        ],
+        "explanation": "The detector checks whether fixed income, rates labels, or real-rate beta create hidden duration sensitivity.",
+        "why_it_matters": "The main vulnerability may be rate sensitivity rather than headline equity exposure.",
+        "next_tests": [
+          "rates_shock",
+          "inflation_stagflation"
+        ],
+        "confidence": "medium",
+        "data_quality_warnings": [],
+        "insufficient_evidence_reasons": [
+          "beta_rr missing"
+        ],
+        "calculation_notes": [
+          "ruleset=heuristic_v1",
+          "score is a weighted average of available signal scores",
+          "evaluable_signal_weight=0.65",
+          "duration thresholds are heuristic_v1 because live duration is not available in Block 2.1"
+        ]
+      },
+      "credit_liquidity_risk": {
+        "status": "Medium",
+        "score": 43,
+        "evidence": [
+          {
+            "metric": "credit_liquidity_weight",
+            "value": 0.15,
+            "threshold": {
+              "moderate_gte": 0.2,
+              "high_gte": 0.35
+            },
+            "direction": "below_threshold",
+            "source": "block_2_1",
+            "interpretation": "Capital weight tagged to credit or liquidity main risk factors."
+          },
+          {
+            "metric": "risk_on_or_carry_weight",
+            "value": 0.325,
+            "threshold": {
+              "moderate_gte": 0.2,
+              "high_gte": 0.35
+            },
+            "direction": "above_threshold",
+            "source": "block_2_1",
+            "interpretation": "Risk-role labels that indicate carry, liquidity, or risk-on behavior."
+          },
+          {
+            "metric": "beta_credit",
+            "value": 0.31,
+            "threshold": {
+              "moderate_gte": 0.25,
+              "high_gte": 0.5
+            },
+            "direction": "above_threshold",
+            "source": "block_2_3",
+            "interpretation": "Credit factor beta."
+          },
+          {
+            "metric": "downside_beta",
+            "value": 0.9,
+            "threshold": {
+              "moderate_gte": 0.9,
+              "high_gte": 1.2
+            },
+            "direction": "above_threshold",
+            "source": "block_2_2",
+            "interpretation": "Downside beta can reveal risk-on behavior in bad markets."
+          }
+        ],
+        "explanation": "The detector checks whether income, carry, credit, or liquidity-sensitive exposure behaves like risk-on risk.",
+        "why_it_matters": "Bond or income exposure can amplify losses when credit spreads and liquidity conditions worsen.",
+        "next_tests": [
+          "credit_shock",
+          "liquidity_shock",
+          "recession_severe"
+        ],
+        "confidence": "high",
+        "data_quality_warnings": [],
+        "insufficient_evidence_reasons": [],
+        "calculation_notes": [
+          "ruleset=heuristic_v1",
+          "score is a weighted average of available signal scores",
+          "evaluable_signal_weight=1.0",
+          "credit/liquidity thresholds are heuristic_v1 product diagnostics"
+        ]
+      },
+      "correlation_concentration": {
+        "status": "Low",
+        "score": 16,
+        "evidence": [
+          {
+            "metric": "highest_pair_correlation",
+            "value": null,
+            "threshold": {
+              "moderate_gte": 0.75,
+              "high_gte": 0.9
+            },
+            "direction": "missing",
+            "source": "block_2_2",
+            "interpretation": "Highest pairwise holding correlation from Block 2.2."
+          },
+          {
+            "metric": "duplicate_exposure_weight",
+            "value": 0.0,
+            "threshold": {
+              "moderate_gte": 0.1,
+              "high_gte": 0.2
+            },
+            "direction": "below_threshold",
+            "source": "block_2_1",
+            "interpretation": "Duplicate exposure flags indicate holdings that may overlap economically."
+          },
+          {
+            "metric": "dominant_main_risk_factor_weight",
+            "value": 0.45,
+            "threshold": {
+              "moderate_gte": 0.6,
+              "high_gte": 0.75
+            },
+            "direction": "below_threshold",
+            "source": "block_2_1",
+            "interpretation": "Dominant main-risk-factor allocation from taxonomy-derived breakdown."
+          }
+        ],
+        "explanation": "The detector checks whether different holdings or labels still move together.",
+        "why_it_matters": "Many tickers do not guarantee diversification if they share the same behavior or risk driver.",
+        "next_tests": [
+          "equity_shock",
+          "recession_severe",
+          "liquidity_shock"
+        ],
+        "confidence": "medium",
+        "data_quality_warnings": [],
+        "insufficient_evidence_reasons": [
+          "highest_pair_correlation missing"
+        ],
+        "calculation_notes": [
+          "ruleset=heuristic_v1",
+          "score is a weighted average of available signal scores",
+          "evaluable_signal_weight=0.55",
+          "correlation concentration thresholds are heuristic_v1 product diagnostics"
+        ]
+      },
+      "weak_hedge_behavior": {
+        "status": "Medium",
+        "score": 55,
+        "evidence": [
+          {
+            "metric": "hedge_labeled_weight",
+            "value": 0.25,
+            "threshold": {
+              "moderate_gte": 0.15,
+              "high_gte": 0.3
+            },
+            "direction": "above_threshold",
+            "source": "block_2_1",
+            "interpretation": "Capital weight with defensive/crisis/inflation hedge risk roles."
+          },
+          {
+            "metric": "downside_beta",
+            "value": 0.9,
+            "threshold": {
+              "moderate_gte": 0.9,
+              "high_gte": 1.2
+            },
+            "direction": "above_threshold",
+            "source": "block_2_2",
+            "interpretation": "High downside beta may mean hedge labels are not enough by themselves."
+          },
+          {
+            "metric": "rolling_correlation",
+            "value": null,
+            "threshold": {
+              "moderate_gte": 0.7,
+              "high_gte": 0.85
+            },
+            "direction": "missing",
+            "source": "block_2_2",
+            "interpretation": "High rolling correlation with benchmark weakens preliminary hedge confidence."
+          },
+          {
+            "metric": "equity_or_credit_beta",
+            "value": 0.72,
+            "threshold": {
+              "moderate_gte": 0.35,
+              "high_gte": 0.65
+            },
+            "direction": "above_threshold",
+            "source": "block_2_3",
+            "interpretation": "Residual equity/credit sensitivity can dominate hedge-labeled sleeves."
+          }
+        ],
+        "explanation": "The detector gives a preliminary read on whether hedge-labeled exposure is likely to offset risk.",
+        "why_it_matters": "A hedge label is not enough; protection must be checked later against stress and crisis behavior.",
+        "next_tests": [
+          "equity_shock",
+          "recession_severe",
+          "liquidity_shock",
+          "inflation_stagflation"
+        ],
+        "confidence": "medium",
+        "data_quality_warnings": [
+          "preliminary_without_stress_lab"
+        ],
+        "insufficient_evidence_reasons": [
+          "rolling_correlation missing"
+        ],
+        "calculation_notes": [
+          "ruleset=heuristic_v1",
+          "score is a weighted average of available signal scores",
+          "evaluable_signal_weight=0.75",
+          "weak hedge behavior is preliminary_without_stress_lab",
+          "does not claim actual hedge failure without stress contribution data",
+          "weak hedge thresholds are heuristic_v1 product diagnostics"
+        ]
+      },
+      "tail_risk": {
+        "status": "Medium",
+        "score": 47,
+        "evidence": [
+          {
+            "metric": "es_95",
+            "value": -0.03,
+            "threshold": {
+              "moderate_lte": -0.015,
+              "high_lte": -0.025
+            },
+            "direction": "above_threshold",
+            "source": "portfolio_analytics",
+            "interpretation": "Daily historical ES95 from Block 2.2 tail diagnostics."
+          },
+          {
+            "metric": "es_99",
+            "value": -0.04,
+            "threshold": {
+              "moderate_lte": -0.025,
+              "high_lte": -0.04
+            },
+            "direction": "above_threshold",
+            "source": "portfolio_analytics",
+            "interpretation": "Daily historical ES99 from Block 2.2 tail diagnostics."
+          },
+          {
+            "metric": "eee_10",
+            "value": 42.5,
+            "threshold": {
+              "moderate_lte": -0.03,
+              "high_lte": -0.06
+            },
+            "direction": "below_threshold",
+            "source": "portfolio_analytics",
+            "interpretation": "Expected exceedance estimate at 10% when available."
+          },
+          {
+            "metric": "skewness",
+            "value": -0.2,
+            "threshold": {
+              "moderate_lte": -0.5,
+              "high_lte": -1.0
+            },
+            "direction": "below_threshold",
+            "source": "block_2_2",
+            "interpretation": "Negative skewness can indicate left-tail asymmetry."
+          },
+          {
+            "metric": "kurtosis",
+            "value": 1.1,
+            "threshold": {
+              "moderate_gte": 4.0,
+              "high_gte": 7.0
+            },
+            "direction": "below_threshold",
+            "source": "block_2_2",
+            "interpretation": "High kurtosis can indicate fat tails."
+          },
+          {
+            "metric": "count_drawdowns_gt_10",
+            "value": 1.0,
+            "threshold": {
+              "moderate_gte": 1.0,
+              "high_gte": 3.0
+            },
+            "direction": "above_threshold",
+            "source": "block_2_2",
+            "interpretation": "Count of drawdowns deeper than 10%."
+          },
+          {
+            "metric": "count_drawdowns_gt_20",
+            "value": 1.0,
+            "threshold": {
+              "moderate_gte": 1.0,
+              "high_gte": 2.0
+            },
+            "direction": "above_threshold",
+            "source": "block_2_2",
+            "interpretation": "Count of drawdowns deeper than 20%."
+          },
+          {
+            "metric": "downside_beta",
+            "value": 0.9,
+            "threshold": {
+              "moderate_gte": 0.9,
+              "high_gte": 1.2
+            },
+            "direction": "above_threshold",
+            "source": "block_2_2",
+            "interpretation": "Downside beta adds tail-behavior context."
+          }
+        ],
+        "explanation": "The detector checks whether rare but large losses are visible in tail and drawdown diagnostics.",
+        "why_it_matters": "Ordinary volatility can look acceptable while expected shortfall and drawdowns remain material.",
+        "next_tests": [
+          "recession_severe",
+          "equity_shock",
+          "liquidity_shock"
+        ],
+        "confidence": "high",
+        "data_quality_warnings": [],
+        "insufficient_evidence_reasons": [],
+        "calculation_notes": [
+          "ruleset=heuristic_v1",
+          "score is a weighted average of available signal scores",
+          "evaluable_signal_weight=1.0",
+          "tail risk thresholds are heuristic_v1 product diagnostics"
+        ]
+      }
+    },
+    "top_hidden_risks": [
+      {
+        "alert_id": "hidden_equity_beta",
+        "status": "Medium",
+        "score": 57,
+        "confidence": "high"
+      },
+      {
+        "alert_id": "weak_hedge_behavior",
+        "status": "Medium",
+        "score": 55,
+        "confidence": "medium"
+      },
+      {
+        "alert_id": "duration_concentration",
+        "status": "Medium",
+        "score": 49,
+        "confidence": "medium"
+      }
+    ],
+    "data_quality_warnings": [],
+    "diagnostics_meta": {
+      "method": "rule_based_hidden_exposure_detector",
+      "version": "v1",
+      "ruleset": "heuristic_v1",
+      "threshold_policy": "heuristic_v1",
+      "signal_weights": {
+        "hidden_equity_beta": {
+          "beta_portfolio": 0.25,
+          "downside_beta": 0.25,
+          "rolling_correlation": 0.2,
+          "beta_eq": 0.3
+        },
+        "duration_concentration": {
+          "rates_or_duration_weight": 0.45,
+          "fixed_income_weight": 0.2,
+          "beta_rr": 0.35
+        },
+        "credit_liquidity_risk": {
+          "credit_liquidity_weight": 0.35,
+          "risk_on_or_carry_weight": 0.2,
+          "beta_credit": 0.25,
+          "downside_beta": 0.2
+        },
+        "correlation_concentration": {
+          "highest_pair_correlation": 0.45,
+          "duplicate_exposure_weight": 0.25,
+          "dominant_main_risk_factor_weight": 0.3
+        },
+        "weak_hedge_behavior": {
+          "hedge_labeled_weight": 0.25,
+          "downside_beta": 0.3,
+          "rolling_correlation": 0.25,
+          "equity_or_credit_beta": 0.2
+        },
+        "tail_risk": {
+          "es_95": 0.22,
+          "es_99": 0.16,
+          "eee_10": 0.1,
+          "skewness": 0.1,
+          "kurtosis": 0.1,
+          "count_drawdowns_gt_10": 0.1,
+          "count_drawdowns_gt_20": 0.08,
+          "downside_beta": 0.14
+        }
+      },
+      "status_bands": {
+        "Low": [
+          0,
+          39
+        ],
+        "Medium": [
+          40,
+          69
+        ],
+        "High": [
+          70,
+          100
+        ]
+      },
+      "does_not_optimize": true,
+      "does_not_generate_candidates": true,
+      "does_not_run_stress_lab": true,
+      "does_not_recalculate_factor_models": true,
+      "input_blocks": [
+        "block_2_1_asset_allocation",
+        "block_2_2_portfolio_metrics",
+        "block_2_3_factor_exposure"
+      ]
+    }
+  },
+  "block_2_5_risk_budget_view": {
+    "block": "2.5_risk_budget_view",
+    "block_id": "2.5_risk_budget_view",
+    "block_name": "Risk Budget View",
+    "status": "ok",
+    "summary": "Largest RC_vol contributor is SPY at 40.000% of portfolio variance risk (weight vs risk gap -5.000 pp). Top three holdings account for 90.000% of variance risk. Largest risk-overweight vs capital is HYG (+15.000 pp).",
+    "data_quality_warnings": [],
+    "metadata": {
+      "rc_sources": [
+        "snapshot.RC_asset"
+      ],
+      "rc_window": "10Y display subset (snapshot.RC_asset top-N)",
+      "rule_version": "rc_adapter_v1",
+      "diagnostic_only": true
+    },
+    "top1_rc_asset": {
+      "ticker": "SPY",
+      "weight_pct": 45.0,
+      "rc_pct": 40.0,
+      "weight_vs_risk_gap_pp": -5.0
+    },
+    "top3_rc_assets": [
+      {
+        "ticker": "SPY",
+        "weight_pct": 45.0,
+        "rc_pct": 40.0,
+        "weight_vs_risk_gap_pp": -5.0
+      },
+      {
+        "ticker": "HYG",
+        "weight_pct": 15.0,
+        "rc_pct": 30.0,
+        "weight_vs_risk_gap_pp": 15.0
+      },
+      {
+        "ticker": "TLT",
+        "weight_pct": 30.0,
+        "rc_pct": 20.0,
+        "weight_vs_risk_gap_pp": -10.0
+      }
+    ],
+    "top3_rc_share": 90.0,
+    "top_risk_overweight_assets": [
+      {
+        "ticker": "HYG",
+        "weight_pct": 15.0,
+        "rc_pct": 30.0,
+        "weight_vs_risk_gap_pp": 15.0
+      }
+    ],
+    "top_risk_underweight_assets": [
+      {
+        "ticker": "TLT",
+        "weight_pct": 30.0,
+        "rc_pct": 20.0,
+        "weight_vs_risk_gap_pp": -10.0
+      },
+      {
+        "ticker": "SPY",
+        "weight_pct": 45.0,
+        "rc_pct": 40.0,
+        "weight_vs_risk_gap_pp": -5.0
+      }
+    ],
+    "risk_budget_bucket_contribution": [
+      {
+        "bucket": "equity",
+        "weight_pct": 45.0,
+        "rc_pct": 40.0,
+        "gap_pp": -5.0
+      },
+      {
+        "bucket": "credit",
+        "weight_pct": 15.0,
+        "rc_pct": 30.0,
+        "gap_pp": 15.0
+      },
+      {
+        "bucket": "fixed_income",
+        "weight_pct": 30.0,
+        "rc_pct": 20.0,
+        "gap_pp": -10.0
+      },
+      {
+        "bucket": "real_assets",
+        "weight_pct": 10.0,
+        "rc_pct": 10.0,
+        "gap_pp": 0.0
+      }
+    ],
+    "assets": [
+      {
+        "ticker": "SPY",
+        "weight_pct": 45.0,
+        "rc_vol": 0.4,
+        "risk_contribution_pct": 40.0,
+        "weight_vs_risk_gap": -0.05,
+        "weight_vs_risk_gap_pp": -5.0
+      },
+      {
+        "ticker": "HYG",
+        "weight_pct": 15.0,
+        "rc_vol": 0.3,
+        "risk_contribution_pct": 30.0,
+        "weight_vs_risk_gap": 0.15,
+        "weight_vs_risk_gap_pp": 15.0
+      },
+      {
+        "ticker": "TLT",
+        "weight_pct": 30.0,
+        "rc_vol": 0.2,
+        "risk_contribution_pct": 20.0,
+        "weight_vs_risk_gap": -0.1,
+        "weight_vs_risk_gap_pp": -10.0
+      },
+      {
+        "ticker": "GLD",
+        "weight_pct": 10.0,
+        "rc_vol": 0.1,
+        "risk_contribution_pct": 10.0,
+        "weight_vs_risk_gap": 0.0,
+        "weight_vs_risk_gap_pp": 0.0
+      }
+    ]
+  },
+  "block_2_6_portfolio_weakness_map": {
+    "block": "2.6_portfolio_weakness_map",
+    "block_id": "2.6",
+    "block_name": "Portfolio Weakness Map",
+    "status": "partial",
+    "summary": "Portfolio weakness map is partial; some risk types have insufficient evidence.",
+    "data_quality_warnings": [],
+    "metadata": {
+      "rule_version": "heuristic_v1",
+      "stress_lab_separation": "no_stress_pnl_or_attribution",
+      "inputs": [
+        "block_2_1",
+        "block_2_2",
+        "block_2_3",
+        "block_2_4",
+        "block_2_5"
+      ],
+      "forbidden_stress_keys_detected": []
+    },
+    "risk_types": [
+      {
+        "risk_type": "equity_crash",
+        "risk_title": "Equity crash risk",
+        "score_0_100": 49,
+        "severity": "Medium",
+        "confidence": "high",
+        "evidence": [
+          {
+            "metric": "equity_weight",
+            "value": 0.45,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_1",
+            "interpretation": "Higher equity weight typically increases sensitivity to equity drawdowns."
+          },
+          {
+            "metric": "downside_beta",
+            "value": 0.9,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_2",
+            "interpretation": "Downside beta indicates whether market sensitivity rises in weak markets."
+          },
+          {
+            "metric": "top1_rc_share",
+            "value": null,
+            "threshold_key": "top1_rc_moderate",
+            "direction": "missing",
+            "source": "block_2_5",
+            "interpretation": "Single-position risk concentration can amplify an equity drawdown profile."
+          },
+          {
+            "metric": "hidden_equity_beta_score",
+            "value": 57,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_4",
+            "interpretation": "Hidden-equity-beta alert summarizes multi-signal equity-like behavior."
+          }
+        ],
+        "explanation": "This score is a pre-stress heuristic based on already-computed portfolio diagnostics. It does not estimate scenario losses or attribution. Use the suggested next tests to validate this hypothesis in Stress Test Lab.",
+        "why_it_matters": "Equity crashes can dominate multi-asset portfolios when equity exposure is high or when diversifiers behave like equity in risk-off markets.",
+        "next_tests": [
+          "equity_shock",
+          "recession_severe",
+          "liquidity_shock"
+        ],
+        "limitations": []
+      },
+      {
+        "risk_type": "rates_up",
+        "risk_title": "Rates up / duration risk",
+        "score_0_100": 48,
+        "severity": "Medium",
+        "confidence": "medium",
+        "evidence": [
+          {
+            "metric": "rates_duration_weight",
+            "value": 0.3,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_1",
+            "interpretation": "Rates/duration-tagged capital weight is a first-order proxy for duration sensitivity."
+          },
+          {
+            "metric": "beta_rr",
+            "value": null,
+            "threshold_key": "factor_beta_moderate_abs",
+            "direction": "missing",
+            "source": "block_2_3",
+            "interpretation": "Real-rates factor beta (when available) adds behavior-based evidence."
+          },
+          {
+            "metric": "duration_concentration_score",
+            "value": 49,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_4",
+            "interpretation": "Duration concentration alert summarizes multiple proxies for rate sensitivity."
+          },
+          {
+            "metric": "top1_rc_share",
+            "value": null,
+            "threshold_key": "top1_rc_moderate",
+            "direction": "missing",
+            "source": "block_2_5",
+            "interpretation": "Concentration can make rate sensitivity hinge on a single sleeve."
+          }
+        ],
+        "explanation": "This score is a pre-stress heuristic based on already-computed portfolio diagnostics. It does not estimate scenario losses or attribution. Use the suggested next tests to validate this hypothesis in Stress Test Lab.",
+        "why_it_matters": "Rate shocks can hurt duration-sensitive sleeves even when the headline allocation looks balanced.",
+        "next_tests": [
+          "rates_shock",
+          "inflation_stagflation"
+        ],
+        "limitations": []
+      },
+      {
+        "risk_type": "inflation_shock",
+        "risk_title": "Inflation shock risk",
+        "score_0_100": 19,
+        "severity": "Low",
+        "confidence": "medium",
+        "evidence": [
+          {
+            "metric": "inflation_linked_rc_pct",
+            "value": 0.0,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_5",
+            "interpretation": "Inflation-linked sleeves can change inflation-shock sensitivity depending on construction."
+          },
+          {
+            "metric": "commodity_weight",
+            "value": 0.1,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_1",
+            "interpretation": "Commodity allocation can be a partial inflation hedge but may add cyclical risk."
+          },
+          {
+            "metric": "real_assets_weight",
+            "value": 0.0,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_1",
+            "interpretation": "Real assets can be an inflation hedge but can also behave like equities in stress."
+          }
+        ],
+        "explanation": "This score is a pre-stress heuristic based on already-computed portfolio diagnostics. It does not estimate scenario losses or attribution. Use the suggested next tests to validate this hypothesis in Stress Test Lab.",
+        "why_it_matters": "Inflation shocks can pressure both bonds and equities while changing the role of real assets and inflation-linked exposure.",
+        "next_tests": [
+          "inflation_stagflation",
+          "commodity_shock"
+        ],
+        "limitations": [
+          "inflation model evidence is limited in Core MVP; treat as a hypothesis only"
+        ]
+      },
+      {
+        "risk_type": "credit_spreads",
+        "risk_title": "Credit spreads widening",
+        "score_0_100": 34,
+        "severity": "Low",
+        "confidence": "medium",
+        "evidence": [
+          {
+            "metric": "credit_liquidity_weight",
+            "value": 0.15,
+            "threshold_key": "credit_weight_high",
+            "direction": "present",
+            "source": "block_2_1",
+            "interpretation": "Credit/liquidity-tagged capital weight proxies spread and carry exposure."
+          },
+          {
+            "metric": "credit_rc_pct",
+            "value": null,
+            "threshold_key": "credit_weight_high",
+            "direction": "missing",
+            "source": "block_2_5",
+            "interpretation": "Credit risk contribution captures how much portfolio variance is driven by credit sleeves."
+          },
+          {
+            "metric": "credit_liquidity_risk_score",
+            "value": 43,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_4",
+            "interpretation": "Credit/liquidity hidden-risk alert aggregates multiple proxies for risk-on credit behavior."
+          }
+        ],
+        "explanation": "This score is a pre-stress heuristic based on already-computed portfolio diagnostics. It does not estimate scenario losses or attribution. Use the suggested next tests to validate this hypothesis in Stress Test Lab.",
+        "why_it_matters": "Credit spreads can widen quickly when growth slows or liquidity tightens, harming credit and carry-like exposures.",
+        "next_tests": [
+          "credit_shock",
+          "liquidity_shock",
+          "recession_severe"
+        ],
+        "limitations": []
+      },
+      {
+        "risk_type": "liquidity_shock",
+        "risk_title": "Liquidity shock risk",
+        "score_0_100": 28,
+        "severity": "Low",
+        "confidence": "medium",
+        "evidence": [
+          {
+            "metric": "credit_rc_pct",
+            "value": null,
+            "threshold_key": "liquidity_risk_weight_high",
+            "direction": "missing",
+            "source": "block_2_5",
+            "interpretation": "Liquidity events often propagate through credit and spread-sensitive sleeves."
+          },
+          {
+            "metric": "correlation_concentration_score",
+            "value": 16,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_4",
+            "interpretation": "Higher correlation concentration can reduce diversification in liquidity stress."
+          },
+          {
+            "metric": "credit_liquidity_risk_score",
+            "value": 43,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_4",
+            "interpretation": "Credit/liquidity hidden-risk alert acts as a proxy for liquidity fragility."
+          }
+        ],
+        "explanation": "This score is a pre-stress heuristic based on already-computed portfolio diagnostics. It does not estimate scenario losses or attribution. Use the suggested next tests to validate this hypothesis in Stress Test Lab.",
+        "why_it_matters": "Liquidity shocks can force correlated drawdowns across risk assets, especially when credit and carry exposures are material.",
+        "next_tests": [
+          "liquidity_shock",
+          "credit_shock",
+          "recession_severe"
+        ],
+        "limitations": [
+          "liquidity is proxied by taxonomy and credit/carry indicators only (no bid/ask data)"
+        ]
+      },
+      {
+        "risk_type": "usd_shock",
+        "risk_title": "USD shock risk",
+        "score_0_100": null,
+        "severity": "Unavailable",
+        "confidence": "unavailable",
+        "evidence": [
+          {
+            "metric": "usd_sensitivity",
+            "value": null,
+            "threshold_key": null,
+            "direction": "missing",
+            "source": "block_2_2",
+            "interpretation": "No direct USD beta is available in Core MVP blocks."
+          }
+        ],
+        "explanation": "This score is a pre-stress heuristic based on already-computed portfolio diagnostics. It does not estimate scenario losses or attribution. Required upstream evidence is missing or incomplete.",
+        "why_it_matters": "Large USD moves can reprice non-USD assets and change the effective risk balance of a global portfolio.",
+        "next_tests": [
+          "usd_shock"
+        ],
+        "limitations": [
+          "FX sensitivity is not directly estimated in Blocks 2.1\u20132.5; rely on Stress Test Lab for validation",
+          "insufficient evidence to score this risk type reliably"
+        ]
+      },
+      {
+        "risk_type": "commodity_shock",
+        "risk_title": "Commodity shock risk",
+        "score_0_100": 20,
+        "severity": "Low",
+        "confidence": "high",
+        "evidence": [
+          {
+            "metric": "commodity_weight",
+            "value": 0.1,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_1",
+            "interpretation": "Capital in commodity sleeves can drive sensitivity to commodity shocks."
+          },
+          {
+            "metric": "real_assets_weight",
+            "value": 0.0,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_1",
+            "interpretation": "Real assets can move with commodities depending on the sleeve construction."
+          },
+          {
+            "metric": "commodity_rc_pct",
+            "value": 0.0,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_5",
+            "interpretation": "Commodity risk contribution is a variance proxy for commodity sensitivity."
+          },
+          {
+            "metric": "real_assets_rc_pct",
+            "value": null,
+            "threshold_key": null,
+            "direction": "missing",
+            "source": "block_2_5",
+            "interpretation": "Real-assets risk contribution adds a variance proxy for real-asset sensitivity."
+          }
+        ],
+        "explanation": "This score is a pre-stress heuristic based on already-computed portfolio diagnostics. It does not estimate scenario losses or attribution. Use the suggested next tests to validate this hypothesis in Stress Test Lab.",
+        "why_it_matters": "Commodity shocks can impact inflation expectations, real asset hedges, and sector exposures.",
+        "next_tests": [
+          "commodity_shock",
+          "inflation_stagflation"
+        ],
+        "limitations": []
+      },
+      {
+        "risk_type": "volatility_spike",
+        "risk_title": "Volatility spike risk",
+        "score_0_100": 34,
+        "severity": "Low",
+        "confidence": "medium",
+        "evidence": [
+          {
+            "metric": "tail_risk_score",
+            "value": 47,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_4",
+            "interpretation": "Tail risk alert score proxies left-tail vulnerability."
+          },
+          {
+            "metric": "correlation_concentration_score",
+            "value": 16,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_4",
+            "interpretation": "Correlation concentration can worsen the impact of volatility spikes."
+          },
+          {
+            "metric": "equity_rc_pct",
+            "value": null,
+            "threshold_key": null,
+            "direction": "missing",
+            "source": "block_2_5",
+            "interpretation": "High equity risk contribution can amplify volatility spike sensitivity."
+          }
+        ],
+        "explanation": "This score is a pre-stress heuristic based on already-computed portfolio diagnostics. It does not estimate scenario losses or attribution. Use the suggested next tests to validate this hypothesis in Stress Test Lab.",
+        "why_it_matters": "Volatility spikes can magnify drawdowns and reveal hidden correlation or leverage-like behavior.",
+        "next_tests": [
+          "volatility_spike",
+          "liquidity_shock"
+        ],
+        "limitations": [
+          "volatility spike is proxied by tail/correlation diagnostics only"
+        ]
+      },
+      {
+        "risk_type": "recession",
+        "risk_title": "Recession risk",
+        "score_0_100": null,
+        "severity": "Unavailable",
+        "confidence": "unavailable",
+        "evidence": [
+          {
+            "metric": "equity_rc_pct",
+            "value": null,
+            "threshold_key": null,
+            "direction": "missing",
+            "source": "block_2_5",
+            "interpretation": "Recessions often hit equity and cyclically sensitive sleeves."
+          },
+          {
+            "metric": "credit_rc_pct",
+            "value": null,
+            "threshold_key": null,
+            "direction": "missing",
+            "source": "block_2_5",
+            "interpretation": "Credit risk contribution can increase recession vulnerability through spread widening."
+          },
+          {
+            "metric": "downside_beta",
+            "value": 0.9,
+            "threshold_key": null,
+            "direction": "present",
+            "source": "block_2_2",
+            "interpretation": "Downside beta provides a behavior-based proxy for recession sensitivity."
+          }
+        ],
+        "explanation": "This score is a pre-stress heuristic based on already-computed portfolio diagnostics. It does not estimate scenario losses or attribution. Required upstream evidence is missing or incomplete.",
+        "why_it_matters": "Recessions can combine equity drawdowns, credit deterioration, and weaker diversification across risk sleeves.",
+        "next_tests": [
+          "recession_severe",
+          "credit_shock",
+          "equity_shock"
+        ],
+        "limitations": [
+          "insufficient evidence to score this risk type reliably"
+        ]
+      }
+    ],
+    "next_tests_global": [
+      "equity_shock",
+      "recession_severe",
+      "liquidity_shock",
+      "rates_shock",
+      "inflation_stagflation",
+      "commodity_shock",
+      "credit_shock",
+      "usd_shock",
+      "volatility_spike"
+    ]
+  },
   "sections": {
     "asset_allocation": {
       "status": "available",

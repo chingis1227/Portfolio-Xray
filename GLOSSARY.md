@@ -508,9 +508,30 @@ Term heading
 - Area: workflow
 - Canonical source: [docs/specs/portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md)
 
+### Risk Budget View (Block 2.5)
+
+- Definition: Diagnostic view comparing capital weights to volatility risk contribution (RC_vol) per holding and by taxonomy risk-budget bucket; surfaces risk overweight/underweight vs capital.
+- Area: diagnostics
+- Canonical source: [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.5, §2.5.1
+- Notes: Core MVP product key `block_2_5_risk_budget_view` is implemented. Legacy `sections.risk_budget_view` may include stress PnL; the product block must not.
+
+### Portfolio Weakness Map (Block 2.6)
+
+- Definition: Diagnostic hypothesis map that highlights where the current portfolio is likely fragile and which Stress Test Lab scenarios are worth running next; it does not compute scenario losses or attribution.
+- Area: diagnostics
+- Canonical source: [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.6, §2.6.1
+- Notes: Core MVP product key is `block_2_6_portfolio_weakness_map`. Legacy `sections.weakness_map` may still exist for compatibility and may include stress-coupled fields; product/UI should prefer the product block and the Stress Lab for loss numbers.
+
+### Portfolio Archetype Classification
+
+- Definition: Rule-based behavior label for a portfolio (e.g. Equity Growth, Balanced 60/40-like, Pseudo-diversified) with evidence scorecard and conflict caveats.
+- Area: diagnostics
+- Canonical source: [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.7
+- Notes: Legacy `sections.portfolio_archetype` may appear on full `portfolio_xray.json` builds. **Not** current Core MVP — product-facing X-Ray is Blocks 2.1–2.6; no product `block_*` for archetype (forbidden: `block_2_5_portfolio_archetype`, `block_2_6_portfolio_archetype`, `block_2_7_portfolio_archetype`).
+
 ### Blocks 1–5 deliverable
 
-- Definition: The diagnostic and candidate-prep scope covered by Blocks 1–5 audits and walkthroughs: input and assumptions, Portfolio X-Ray, Stress Test Lab, Candidate Portfolio Factory, and optimization-engine / candidate-generation readiness. It ends before Selection Engine, Action Plan, Monitoring, and Decision Journal are interpreted as the audit subject.
+- Definition: The diagnostic and candidate-prep scope covered by Blocks 1–5 audits and walkthroughs: input and assumptions, Portfolio X-Ray (**Core MVP: Blocks 2.1–2.6** on `portfolio_xray.json`), Stress Test Lab, Candidate Portfolio Factory, and optimization-engine / candidate-generation readiness. It ends before Selection Engine, Action Plan, Monitoring, and Decision Journal are interpreted as the audit subject.
 - Area: workflow
 - Canonical source: [docs/audits/2026-05-23_blocks_1_5_actual_algorithm_walkthrough.md](docs/audits/2026-05-23_blocks_1_5_actual_algorithm_walkthrough.md)
 - Notes: `python run_portfolio_review.py` still writes downstream decision JSON in the same CLI leg; those files are **not** part of Blocks 1–5 audit scope even when present on disk. See **Decision package**.

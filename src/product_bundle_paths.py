@@ -15,12 +15,18 @@ from typing import Any, Literal
 from src.block_2_1_asset_allocation import BLOCK_2_1_ID
 from src.block_2_2_portfolio_metrics import BLOCK_2_2_ID
 from src.block_2_3_factor_exposure import BLOCK_2_3_ID
+from src.block_2_4_hidden_exposure import BLOCK_2_4_ID
+from src.block_2_5_risk_budget_view import BLOCK_2_5_ID
+from src.block_2_6_portfolio_weakness_map import BLOCK_2_6_ID
 from src.candidate_launchpad import CANDIDATE_LAUNCHPAD_FILENAME
 from src.problem_classification import PROBLEM_CLASSIFICATION_FILENAME
 
 PORTFOLIO_XRAY_BLOCK_2_1_KEY = "block_2_1_asset_allocation"
 PORTFOLIO_XRAY_BLOCK_2_2_KEY = "block_2_2_portfolio_metrics"
 PORTFOLIO_XRAY_BLOCK_2_3_KEY = "block_2_3_factor_exposure"
+PORTFOLIO_XRAY_BLOCK_2_4_KEY = "block_2_4_hidden_exposure"
+PORTFOLIO_XRAY_BLOCK_2_5_KEY = "block_2_5_risk_budget_view"
+PORTFOLIO_XRAY_BLOCK_2_6_KEY = "block_2_6_portfolio_weakness_map"
 
 ANALYSIS_SUBJECT_SIDECAR_SUBDIR = "analysis_subject"
 
@@ -328,6 +334,30 @@ def portfolio_xray_has_block_2_3(doc: dict[str, Any] | None) -> bool:
     return isinstance(block, dict) and block.get("block") == BLOCK_2_3_ID
 
 
+def portfolio_xray_has_block_2_4(doc: dict[str, Any] | None) -> bool:
+    """True when ``portfolio_xray.json`` carries the Block 2.4 product contract."""
+    if not isinstance(doc, dict):
+        return False
+    block = doc.get(PORTFOLIO_XRAY_BLOCK_2_4_KEY)
+    return isinstance(block, dict) and block.get("block") == BLOCK_2_4_ID
+
+
+def portfolio_xray_has_block_2_5(doc: dict[str, Any] | None) -> bool:
+    """True when ``portfolio_xray.json`` carries the Block 2.5 product contract."""
+    if not isinstance(doc, dict):
+        return False
+    block = doc.get(PORTFOLIO_XRAY_BLOCK_2_5_KEY)
+    return isinstance(block, dict) and block.get("block") == BLOCK_2_5_ID
+
+
+def portfolio_xray_has_block_2_6(doc: dict[str, Any] | None) -> bool:
+    """True when ``portfolio_xray.json`` carries the Block 2.6 product contract."""
+    if not isinstance(doc, dict):
+        return False
+    block = doc.get(PORTFOLIO_XRAY_BLOCK_2_6_KEY)
+    return isinstance(block, dict) and block.get("block") == BLOCK_2_6_ID
+
+
 def subject_diagnostics_manifest_note() -> dict[str, Any]:
     """Manifest disclosure: product X-Ray blocks live inside ``portfolio_xray.json``."""
     return {
@@ -336,8 +366,12 @@ def subject_diagnostics_manifest_note() -> dict[str, Any]:
             "product_capital_structure_key": PORTFOLIO_XRAY_BLOCK_2_1_KEY,
             "product_portfolio_behavior_key": PORTFOLIO_XRAY_BLOCK_2_2_KEY,
             "product_factor_exposure_key": PORTFOLIO_XRAY_BLOCK_2_3_KEY,
+            "product_hidden_exposure_key": PORTFOLIO_XRAY_BLOCK_2_4_KEY,
+            "product_risk_budget_key": PORTFOLIO_XRAY_BLOCK_2_5_KEY,
+            "product_weakness_map_key": PORTFOLIO_XRAY_BLOCK_2_6_KEY,
             "note": (
-                "Block 2.1 capital allocation, Block 2.2 portfolio metrics, and Block 2.3 factor exposure are nested under "
+                "Block 2.1 capital allocation, Block 2.2 portfolio metrics, Block 2.3 factor exposure, "
+                "Block 2.4 hidden exposure, Block 2.5 risk budget view, and Block 2.6 weakness map are nested under "
                 "portfolio_xray.json (analysis_subject/ on portfolio-first runs), not separate "
                 "bundle files."
             ),
@@ -398,6 +432,9 @@ __all__ = [
     "PORTFOLIO_XRAY_BLOCK_2_1_KEY",
     "PORTFOLIO_XRAY_BLOCK_2_2_KEY",
     "PORTFOLIO_XRAY_BLOCK_2_3_KEY",
+    "PORTFOLIO_XRAY_BLOCK_2_4_KEY",
+    "PORTFOLIO_XRAY_BLOCK_2_5_KEY",
+    "PORTFOLIO_XRAY_BLOCK_2_6_KEY",
     "ADVANCED_EVIDENCE_MANIFEST_KEYS",
     "ARTIFACT_CATEGORY_ORDER",
     "DiagnosisResolution",
@@ -419,6 +456,9 @@ __all__ = [
     "portfolio_xray_has_block_2_1",
     "portfolio_xray_has_block_2_2",
     "portfolio_xray_has_block_2_3",
+    "portfolio_xray_has_block_2_4",
+    "portfolio_xray_has_block_2_5",
+    "portfolio_xray_has_block_2_6",
     "product_bundle_generated_paths_for_manifest",
     "product_bundle_manifest_extra",
     "resolve_candidate_launchpad_path",

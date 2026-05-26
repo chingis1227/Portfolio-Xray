@@ -13,6 +13,9 @@ from src.analysis_setup import resolved_analysis_weights
 from src.block_2_1_asset_allocation import build_block_2_1_asset_allocation, enrich_taxonomy_with_real_cash
 from src.block_2_2_portfolio_metrics import build_block_2_2_portfolio_metrics
 from src.block_2_3_factor_exposure import build_block_2_3_factor_exposure
+from src.block_2_4_hidden_exposure import build_block_2_4_hidden_exposure
+from src.block_2_5_risk_budget_view import build_block_2_5_risk_budget_view
+from src.block_2_6_portfolio_weakness_map import build_block_2_6_portfolio_weakness_map
 from src.real_cash import collect_real_cash_tickers
 from src.data_trust_signals import build_xray_data_trust_signals
 from src.io_export import REPORT_DECIMALS
@@ -27,14 +30,16 @@ DIAGNOSTIC_ONLY_DISCLAIMER = (
     "or provide trade instructions."
 )
 
+# Core MVP product blocks: block_2_1 .. block_2_5 (separate modules). Legacy sections below
+# (portfolio_archetype, risk_budget_view, weakness_map) remain for formatters / golden compatibility.
 XRAY_SECTION_KEYS = (
     "asset_allocation",
     "risk_diagnostics",
     "factor_exposure",
     "hidden_risk_detector",
-    "portfolio_archetype",
-    "risk_budget_view",
-    "weakness_map",
+    "portfolio_archetype",  # 2.5 legacy/advanced — not Core MVP
+    "risk_budget_view",  # 2.6 legacy/advanced — not Core MVP
+    "weakness_map",  # 2.7 legacy/advanced — not Core MVP
 )
 
 XRAY_SECTION_TITLES = {
@@ -2740,6 +2745,7 @@ def _portfolio_archetype_section(
     portfolio_analytics: dict[str, Any] | None = None,
     hidden_risk_section: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Legacy Block 2.5 section (advanced/backlog). Not Core MVP; no block_2_5_* product contract."""
     scorecard = _build_archetype_scorecard(
         allocation_section=allocation_section,
         rc_asset=rc_asset,
@@ -3417,6 +3423,25 @@ def build_portfolio_xray_v2(
         analysis_setup=analysis_setup,
         weights=weight_map,
     )
+    block_2_4_hidden_exposure = build_block_2_4_hidden_exposure(
+        block_2_1_asset_allocation,
+        block_2_2_portfolio_metrics,
+        block_2_3_factor_exposure,
+    )
+    block_2_5_risk_budget_view = build_block_2_5_risk_budget_view(
+        block_2_1_asset_allocation,
+        rc_asset_rows=rc_asset_resolved,
+        rc_sources=rc_sources,
+        taxonomy_rows=tax_rows,
+    )
+    block_2_6_portfolio_weakness_map = build_block_2_6_portfolio_weakness_map(
+        block_2_1_asset_allocation,
+        block_2_2_portfolio_metrics,
+        block_2_3_factor_exposure,
+        block_2_4_hidden_exposure,
+        block_2_5_risk_budget_view,
+        thresholds=dict(XRAY_THRESHOLDS),
+    )
     sections = {
         "asset_allocation": allocation,
         "risk_diagnostics": _risk_diagnostics_section(
@@ -3476,6 +3501,9 @@ def build_portfolio_xray_v2(
         "block_2_1_asset_allocation": block_2_1_asset_allocation,
         "block_2_2_portfolio_metrics": block_2_2_portfolio_metrics,
         "block_2_3_factor_exposure": block_2_3_factor_exposure,
+        "block_2_4_hidden_exposure": block_2_4_hidden_exposure,
+        "block_2_5_risk_budget_view": block_2_5_risk_budget_view,
+        "block_2_6_portfolio_weakness_map": block_2_6_portfolio_weakness_map,
         "sections": sections_out,
         "legacy_summary": legacy_summary,
         "data_trust_signals": build_xray_data_trust_signals(

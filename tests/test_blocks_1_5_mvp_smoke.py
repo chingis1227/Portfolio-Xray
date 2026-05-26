@@ -16,7 +16,10 @@ from src.product_bundle_paths import (
     portfolio_xray_has_block_2_1,
     portfolio_xray_has_block_2_2,
     portfolio_xray_has_block_2_3,
+    portfolio_xray_has_block_2_4,
+    portfolio_xray_has_block_2_5,
 )
+from test_block_2_5_risk_budget import assert_block_2_5_product_contract
 from mvp_offline_fixtures import (
     DEFAULT_ANALYSIS_END,
     FIVE_TICKER_MVP_TICKERS,
@@ -76,6 +79,8 @@ def test_five_ticker_blocks_1_5_mvp_smoke_gate(
     assert portfolio_xray_has_block_2_1(xray)
     assert portfolio_xray_has_block_2_2(xray)
     assert portfolio_xray_has_block_2_3(xray)
+    assert portfolio_xray_has_block_2_4(xray)
+    assert portfolio_xray_has_block_2_5(xray)
     assert (xray["block_2_1_asset_allocation"]["portfolio_composition_snapshot"]["total_holdings"]) == 5
     assert (xray["block_2_2_portfolio_metrics"]["metadata"]["primary_window_months"]) == 120
     assert set(xray["block_2_3_factor_exposure"]["factor_beta_snapshot"]) == {
@@ -88,6 +93,10 @@ def test_five_ticker_blocks_1_5_mvp_smoke_gate(
         "beta_vix",
         "beta_us_growth",
     }
+    block_25 = xray["block_2_5_risk_budget_view"]
+    assert_block_2_5_product_contract(block_25)
+    assert block_25["status"] in {"ok", "partial"}
+    assert len(block_25["assets"]) == 5
 
     stress = _load_json(subject_dir / "stress_report.json")
     for key in (
