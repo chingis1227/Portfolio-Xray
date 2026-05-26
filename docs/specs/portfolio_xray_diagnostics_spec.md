@@ -71,6 +71,7 @@ Generated report surfaces should render the X-Ray as structured sections and tab
   "thresholds": {},
   "block_2_1_asset_allocation": {},
   "block_2_2_portfolio_metrics": {},
+  "block_2_3_factor_exposure": {},
   "sections": {},
   "legacy_summary": {}
 }
@@ -79,6 +80,8 @@ Generated report surfaces should render the X-Ray as structured sections and tab
 The current implementation uses `version: portfolio_xray_v2`. `block_2_1_asset_allocation` is the product-facing Block 2.1 contract (§2.1.1); it is populated on portfolio-first materialize paths when `build_portfolio_xray_v2` runs (ExecPlan closed Session 08, 2026-05-26). Older on-disk `portfolio_xray.json` files may lack the key until re-materialized.
 
 `block_2_2_portfolio_metrics` is the product-facing Block 2.2 contract (§2.2.1); populated when `build_portfolio_xray_v2` runs (builder Session 03, 2026-05-26). Older on-disk files may omit the key until re-materialized. Legacy `sections.risk_diagnostics` remains for golden tests and formatters.
+
+`block_2_3_factor_exposure` is the product-facing Block 2.3 contract (§2.3.1); populated when `build_portfolio_xray_v2` runs. It is an adapter over `stress_report` factor diagnostics and must not trigger OLS, Kalman, variance-decomposition, data-loading, candidate, or Stress Lab calculations. Older on-disk files may omit the key until re-materialized. Legacy `sections.factor_exposure` remains for golden tests and formatters.
 
 The current implementation may include additional fields for backward compatibility. New fields should be additive unless a future migration is explicitly planned.
 
@@ -545,17 +548,16 @@ Question answered: Which factors is the portfolio sensitive to?
 
 Target factor coverage:
 
-- equity
-- rates
-- inflation
-- credit
-- USD
-- commodities
-- volatility / VIX
-- growth-style or growth proxy factors
-- PCA/common factor evidence where available
+- `equity` (`beta_eq`)
+- `real_rates` (`beta_rr`)
+- `inflation` (`beta_inf`)
+- `credit` (`beta_credit`)
+- `USD` (`beta_usd`)
+- `commodity` (`beta_cmd`)
+- `VIX_volatility` (`beta_vix`)
+- `us_growth` (`beta_us_growth`)
 
-Current status: partially implemented. Supporting factor/stress/PCA artifacts exist, but X-Ray does not yet expose all evidence consistently. Kalman betas are read from `stress_report.factor_betas_kalman.latest` (legacy `latest_betas_capped` / `latest_betas` only as fallback).
+Current status: top-level product contract implemented as `block_2_3_factor_exposure`; legacy `sections.factor_exposure` remains for backward compatibility. Kalman betas are read from `stress_report.factor_betas_kalman.latest` (legacy `latest_betas_capped` / `latest_betas` only as fallback).
 
 Section-level provenance (`RM-943`): `frequency=weekly`, `window` describes 5Y/10Y week counts, `n_obs` from `factor_regression_10y` then `factor_regression_5y` when present, `benchmark=n/a`.
 
@@ -572,6 +574,48 @@ Classical OLS `ols_t` / `ols_p` / `ols_ci_*` are diagnostic-only. Summaries:
 blocks are absent, emit warning `factor regression inference panels missing from stress_report`.
 
 Canonical factor behavior remains in [factor_diagnostics_spec.md](factor_diagnostics_spec.md) and stress behavior in [stress_testing_spec.md](stress_testing_spec.md).
+
+#### 2.3.1 Block 2.3 product contract (`block_2_3_factor_exposure`)
+
+Status: **implemented** (ExecPlan [Block 2.3 Factor Exposure MVP](../exec_plans/2026-05-26_block_2_3_factor_exposure_plan.md)). **Implementation:** `src/block_2_3_factor_exposure.py` -> `build_block_2_3_factor_exposure`, wired from `build_portfolio_xray_v2`.
+
+Purpose: give portfolio-first consumers a stable, product-facing answer to “Which market factors actually drive the behavior of the current portfolio?” Diagnostic-only: no optimizer, no candidate generation, no Stress Lab scenario shock logic, no stress pass/fail, and no rebalance recommendation.
+
+**Architecture boundary:** Block 2.3 is a read-only adapter over existing `stress_report` factor diagnostics. It must not trigger OLS/HAC regressions, Kalman calculations, factor variance decomposition, data loading, or fallback calculations. Missing fields such as `factor_betas_5y` produce `partial` / `unavailable` output with warnings; the missing data must be fixed upstream in stress report generation / `src/stress_factors.py`.
+
+**Artifact placement:** top-level key `block_2_3_factor_exposure` on `portfolio_xray.json` under the active output folder (portfolio-first: `{output_dir_final}/analysis_subject/portfolio_xray.json`). Do **not** introduce a separate `factor_exposure.json` in the six-file product bundle.
+
+**Backward compatibility:** `sections.factor_exposure` remains required and unchanged in shape until an explicit migration. Report formatters and golden contract tests may continue to use the legacy section; UI/API should prefer `block_2_3_factor_exposure`.
+
+**Top-level envelope:**
+
+```json
+{
+  "block": "2.3_factor_exposure",
+  "block_id": "2.3",
+  "block_name": "Factor Exposure / Factor Sensitivity",
+  "status": "available | partial | unavailable",
+  "factor_universe": ["equity", "real_rates", "inflation", "credit", "USD", "commodity", "VIX_volatility", "us_growth"],
+  "factor_beta_snapshot": {},
+  "factor_betas_5y": {},
+  "factor_betas_10y": {},
+  "kalman_current_beta": {},
+  "factor_significance_confidence": {},
+  "factor_variance_contribution": {},
+  "factor_risk_ranking": [],
+  "factor_exposure_summary": {},
+  "data_quality_warnings": [],
+  "factor_diagnostics_meta": {},
+  "naming_validation": {},
+  "stress_lab_separation": {}
+}
+```
+
+**Required beta keys:** every exported beta map must contain exactly the production keys `beta_eq`, `beta_rr`, `beta_inf`, `beta_credit`, `beta_usd`, `beta_cmd`, `beta_vix`, and `beta_us_growth`; unavailable values are `null`.
+
+**Naming validation:** the block validates expected production factor names and beta keys. Internal or legacy stress-layer names such as `usd` and `vix` may be normalized to product names `USD` and `VIX_volatility`; unknown or extra beta keys (for example `beta_oil`) must produce warnings and must not enter the production beta snapshot.
+
+**Stress Lab separation:** Block 2.3 reports sensitivity only. It may say a sensitivity should be checked later in Stress Lab, but it must not calculate shocked outcomes, reuse scenario pass/fail logic as factor diagnosis, or say to rebalance.
 
 ### 2.4 Hidden Exposure / Hidden Risk Detector
 

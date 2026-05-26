@@ -51,6 +51,9 @@ Required top-level fields (v2):
 - `diagnostic_only_disclaimer`
 - `analysis_setup_summary`
 - `thresholds`: copy of `XRAY_THRESHOLDS` (canonical registry in diagnostics spec §8)
+- `block_2_1_asset_allocation`: product Block 2.1 capital structure contract
+- `block_2_2_portfolio_metrics`: product Block 2.2 portfolio behavior contract
+- `block_2_3_factor_exposure`: product Block 2.3 factor sensitivity contract
 - `sections`: seven keys in fixed order (see `XRAY_SECTION_KEYS` in code)
 - `legacy_summary`: backward-compatible v1-style summary
 - `data_trust_signals` (`xray_data_trust_signals_v1`, RM-1016): rollup of section `warnings` plus
@@ -81,7 +84,7 @@ owning modules/specs:
 | Weights, `analysis_setup` | config / snapshot | 2.1, 2.6, 2.4 |
 | `portfolio_metrics`, multi-window snapshots | `snapshot_{3y,5y,10y}.json` | 2.2 |
 | `portfolio_analytics`, `drawdown_structure` | snapshot / report analytics | 2.2, 2.4, 2.5, 2.7 |
-| `stress_report.json` | `src/stress.py` export | 2.3, 2.6, 2.7 |
+| `stress_report.json` | `src/stress.py` / `src/stress_factors.py` export | 2.3, 2.6, 2.7 |
 | `rc_vol_{10y,5y,3y}.csv` | `results_csv/` via `load_rc_vol_map_from_csv` | 2.6, 2.4 |
 | Taxonomy YAML | `config/etf_universe.yml`, `config/stock_universe.yml` | 2.1, 2.4, 2.7 |
 | `XRAY_THRESHOLDS` | `src/portfolio_xray.py` | 2.4, 2.5, 2.7 (rule thresholds only) |
@@ -118,17 +121,21 @@ owning modules/specs:
 
 ### 2.3 Factor Exposure / Factor Sensitivity
 
-- Core implementation: `src/portfolio_xray.py` — `_factor_exposure_section`
+- Legacy section implementation: `src/portfolio_xray.py` — `_factor_exposure_section` -> `sections.factor_exposure`
+- **Block 2.3 product contract (MVP):** `src/block_2_3_factor_exposure.py` — `build_block_2_3_factor_exposure` -> top-level `block_2_3_factor_exposure` on `portfolio_xray.json` (wired from `build_portfolio_xray_v2`; ExecPlan active 2026-05-26)
 - Spec ownership: diagnostics spec §2.3;
   [factor_diagnostics_spec.md](factor_diagnostics_spec.md),
   [stress_testing_spec.md](stress_testing_spec.md) §8 (betas, inference)
 - Stress owner: `src/stress_factors.py`, `stress_report` factor blocks
+- Architecture boundary: Block 2.3 reads existing `stress_report` fields only and must not trigger OLS/HAC, Kalman, variance-decomposition, data-loading, candidate, or Stress Lab calculations. Missing fields degrade to `partial` / `unavailable`; upstream stress-report generation owns the fix.
 - Read-only panels: OLS/HAC `factor_regression_inference` from `factor_regression_5y/10y` (Session 04)
 - Kalman: `stress_report.factor_betas_kalman.latest` (legacy field names fallback only)
 - Unavailable diagnostics: when factor beta/decomposition evidence is absent, `factor_exposure` remains `status: unavailable` and includes a structured `factor_exposure_unavailable` item sourced from `stress_report.factor_diagnostics_meta` with the user-readable reason.
 - Tests: `test_portfolio_xray_factor_regression_inference_panel`,
   `test_portfolio_xray_v2_kalman_reads_factor_betas_kalman_latest`,
-  `test_factor_exposure_unavailable_has_structured_reason`
+  `test_factor_exposure_unavailable_has_structured_reason`,
+  `tests/test_block_2_3_factor_exposure.py`,
+  `tests/test_block_2_3_pipeline_integration.py`
 
 ### 2.4 Hidden Exposure / Hidden Risk Detector
 

@@ -23,6 +23,7 @@ TOP_LEVEL_REQUIRED = (
     "thresholds",
     "block_2_1_asset_allocation",
     "block_2_2_portfolio_metrics",
+    "block_2_3_factor_exposure",
     "sections",
     "legacy_summary",
 )
@@ -70,6 +71,9 @@ def assert_top_level_contract(doc: dict[str, Any]) -> None:
     block_22 = doc.get("block_2_2_portfolio_metrics")
     assert isinstance(block_22, dict)
     assert block_22.get("block") == "2.2_portfolio_metrics"
+    block_23 = doc.get("block_2_3_factor_exposure")
+    assert isinstance(block_23, dict)
+    assert block_23.get("block") == "2.3_factor_exposure"
     assert set(doc["sections"]) == set(XRAY_SECTION_KEYS)
 
 
@@ -136,6 +140,11 @@ def contract_fingerprint(doc: dict[str, Any]) -> dict[str, Any]:
         fp["block_2_2_primary_window_months"] = (block_22.get("metadata") or {}).get(
             "primary_window_months"
         )
+    block_23 = doc.get("block_2_3_factor_exposure")
+    if isinstance(block_23, dict):
+        fp["block_2_3_present"] = True
+        fp["block_2_3_status"] = block_23.get("status")
+        fp["block_2_3_beta_keys"] = sorted((block_23.get("factor_beta_snapshot") or {}).keys())
     return fp
 
 

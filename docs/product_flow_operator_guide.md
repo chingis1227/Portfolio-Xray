@@ -43,7 +43,7 @@ Read in this order after a portfolio-first run (new chat, demo prep, or code rev
 | Step | What to open | Why |
 | --- | --- | --- |
 | 1 | `{output_dir_final}/analysis_subject/run_metadata.json` | Subject type, weights source, `input_assumptions.input_surface` / `field_tiers`, analysis window |
-| 2 | `analysis_subject/portfolio_xray.json` | Blocks 1–2 diagnostics; for capital structure prefer `block_2_1_asset_allocation` when present (§2.1.1 in [portfolio_xray_diagnostics_spec.md](specs/portfolio_xray_diagnostics_spec.md)); legacy seven sections remain for full X-Ray |
+| 2 | `analysis_subject/portfolio_xray.json` | Blocks 1–2 diagnostics; prefer product blocks `block_2_1_asset_allocation`, `block_2_2_portfolio_metrics`, and `block_2_3_factor_exposure` when present (§2.1.1–§2.3.1 in [portfolio_xray_diagnostics_spec.md](specs/portfolio_xray_diagnostics_spec.md)); legacy seven sections remain for full X-Ray |
 | 3 | `analysis_subject/stress_report.json` | Block 3 stress scenarios and factor context |
 | 4 | `analysis_subject/problem_classification.json` | Top problems and test paths (product bundle #1) |
 | 5 | `analysis_subject/candidate_launchpad.json` | Suggested hypotheses / methods (product bundle #2) |

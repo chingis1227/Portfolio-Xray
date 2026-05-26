@@ -12,6 +12,7 @@ import pandas as pd
 from src.analysis_setup import resolved_analysis_weights
 from src.block_2_1_asset_allocation import build_block_2_1_asset_allocation, enrich_taxonomy_with_real_cash
 from src.block_2_2_portfolio_metrics import build_block_2_2_portfolio_metrics
+from src.block_2_3_factor_exposure import build_block_2_3_factor_exposure
 from src.real_cash import collect_real_cash_tickers
 from src.data_trust_signals import build_xray_data_trust_signals
 from src.io_export import REPORT_DECIMALS
@@ -3411,6 +3412,11 @@ def build_portfolio_xray_v2(
         output_dir_csv=output_dir_csv,
         weights=weight_map,
     )
+    block_2_3_factor_exposure = build_block_2_3_factor_exposure(
+        stress_report=stress_report,
+        analysis_setup=analysis_setup,
+        weights=weight_map,
+    )
     sections = {
         "asset_allocation": allocation,
         "risk_diagnostics": _risk_diagnostics_section(
@@ -3469,6 +3475,7 @@ def build_portfolio_xray_v2(
         "thresholds": dict(XRAY_THRESHOLDS),
         "block_2_1_asset_allocation": block_2_1_asset_allocation,
         "block_2_2_portfolio_metrics": block_2_2_portfolio_metrics,
+        "block_2_3_factor_exposure": block_2_3_factor_exposure,
         "sections": sections_out,
         "legacy_summary": legacy_summary,
         "data_trust_signals": build_xray_data_trust_signals(

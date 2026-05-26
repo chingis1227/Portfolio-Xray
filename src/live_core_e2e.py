@@ -8,7 +8,11 @@ from pathlib import Path
 from typing import Any
 
 from src.portfolio_xray import XRAY_SECTION_KEYS
-from src.product_bundle_paths import portfolio_xray_has_block_2_1, portfolio_xray_has_block_2_2
+from src.product_bundle_paths import (
+    portfolio_xray_has_block_2_1,
+    portfolio_xray_has_block_2_2,
+    portfolio_xray_has_block_2_3,
+)
 
 LIVE_CORE_REVIEW_MODE = "core"
 LIVE_CORE_FACTORY_PROFILE = "core_fast"
@@ -126,6 +130,14 @@ def validate_live_core_artifacts(
         result.evidence["block_2_2_primary_window_months"] = meta_22.get(
             "primary_window_months"
         )
+    if not portfolio_xray_has_block_2_3(xray):
+        result.errors.append(
+            "portfolio_xray.json missing block_2_3_factor_exposure product contract"
+        )
+        result.ok = False
+    else:
+        block_23 = xray["block_2_3_factor_exposure"]
+        result.evidence["block_2_3_status"] = block_23.get("status")
 
     stress = _load_json(subject_dir / "stress_report.json")
     for key in _STRESS_REQUIRED_KEYS:

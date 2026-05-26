@@ -6,6 +6,8 @@ This document owns the detailed contract for factor diagnostic outputs. The deta
 
 Factor diagnostics are diagnostic-only unless another canonical spec explicitly makes a field binding. They must not replace optimizer inputs, mandate gates, stress pass/fail logic, or weight release.
 
+Portfolio X-Ray Block 2.3 (`block_2_3_factor_exposure`) is a product-facing adapter over these diagnostics. It must read existing `stress_report.json` fields and must not trigger OLS/HAC regressions, Kalman calculations, factor variance decomposition, or data loading. If `stress_report.json` is missing required fields, Block 2.3 reports `partial` or `unavailable` with warnings; the missing calculation is fixed upstream in stress report generation / `src/stress_factors.py`.
+
 ## Production And Extended Factor Registries
 
 Production factor outputs use:
@@ -20,6 +22,8 @@ Production factor outputs use:
 - `us_growth`
 
 `commodity` is the production commodity factor.
+
+Product-facing Block 2.3 names are `equity`, `real_rates`, `inflation`, `credit`, `USD`, `commodity`, `VIX_volatility`, and `us_growth`. The corresponding beta keys are `beta_eq`, `beta_rr`, `beta_inf`, `beta_credit`, `beta_usd`, `beta_cmd`, `beta_vix`, and `beta_us_growth`. Internal stress-layer names such as `usd` and `vix` are normalized at the adapter boundary and should not be exposed as product names.
 
 Extended diagnostic and stress analytics may use production factors plus `oil`. `beta_oil` is deprecated and must not appear in new production beta, rolling stability, OOS, adjusted overlay, or base variance-decomposition outputs. Oil exposure is surfaced through `diagnostic_oil_beta` or stress-layer metrics and must be labeled diagnostic/stress-only.
 

@@ -10,7 +10,11 @@ from typing import Any
 from src.candidate_factory import DEFAULT_V1_CANDIDATE_ORDER
 from src.live_core_e2e import _STRESS_REQUIRED_KEYS, _SUBJECT_REQUIRED_FILES, _load_json
 from src.portfolio_xray import XRAY_SECTION_KEYS
-from src.product_bundle_paths import portfolio_xray_has_block_2_1, portfolio_xray_has_block_2_2
+from src.product_bundle_paths import (
+    portfolio_xray_has_block_2_1,
+    portfolio_xray_has_block_2_2,
+    portfolio_xray_has_block_2_3,
+)
 
 LIVE_FULL_REVIEW_MODE = "full"
 LIVE_FULL_FACTORY_PROFILE = "default_v1"
@@ -97,6 +101,11 @@ def validate_live_full_artifacts(
     if not portfolio_xray_has_block_2_2(xray):
         result.errors.append(
             "portfolio_xray.json missing block_2_2_portfolio_metrics product contract"
+        )
+        result.ok = False
+    if not portfolio_xray_has_block_2_3(xray):
+        result.errors.append(
+            "portfolio_xray.json missing block_2_3_factor_exposure product contract"
         )
         result.ok = False
 

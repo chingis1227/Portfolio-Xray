@@ -354,6 +354,38 @@ Title: Trade-off Explanation and Model Risk Diagnostics V1 — separate diagnost
 - Related documents: [docs/specs/tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md), [docs/specs/selection_engine_spec.md](docs/specs/selection_engine_spec.md), [docs/specs/decision_package_reporting_spec.md](docs/specs/decision_package_reporting_spec.md), [OUTPUTS.md](OUTPUTS.md), [docs/ROADMAP.md](docs/ROADMAP.md) RM-616.
 - Review trigger: Revisit if trade-off should run after action for turnover parity, or if concentration thresholds should become mandate-binding.
 
+Decision ID: DEC-2026-05-26-004
+Title: Block 2.3 Factor Exposure is a stress_report adapter, not a factor engine
+
+- Status: accepted
+- Date: 2026-05-26
+- Decision: Expose Block 2.3 as top-level `block_2_3_factor_exposure` on `portfolio_xray.json`
+  (portfolio-first: `analysis_subject/portfolio_xray.json`). Block 2.3 reads existing
+  `stress_report` factor diagnostics only and must not trigger OLS/HAC regressions, Kalman beta
+  calculations, factor variance decomposition, data loading, candidate generation, or Stress Lab
+  shocks. Missing fields produce `partial` / `unavailable` plus warnings; upstream
+  `stress_report` generation / `src/stress_factors.py` owns the fix.
+- Context: [Block 2.3 Factor Exposure MVP](docs/exec_plans/2026-05-26_block_2_3_factor_exposure_plan.md);
+  follows Block 2.1 (`DEC-2026-05-26-002`) and Block 2.2 (`DEC-2026-05-26-003`).
+- Rationale: Portfolio X-Ray is diagnosis-first and should expose factor sensitivity in product
+  language without creating a second independent factor calculation engine or mixing sensitivity
+  diagnosis with Stress Lab shock outcomes.
+- Alternatives considered: Recompute missing factor fields inside X-Ray (rejected — duplicate
+  methodology and hidden fallback); embed stress-shock interpretation inside Block 2.3 (rejected —
+  belongs to Stress Lab); standalone `factor_exposure.json` bundle artifact (rejected — Block 2
+  product surface stays inside `portfolio_xray.json`).
+- Assumptions: Existing `stress_report` fields remain the canonical factor diagnostics source:
+  `factor_betas_5y`, `factor_betas_10y`, `factor_regression_5y`,
+  `factor_regression_10y`, `factor_betas_kalman`, `factor_variance_decomposition`,
+  and `factor_diagnostics_meta`.
+- Consequences: [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md)
+  §2.3.1; implementation `src/block_2_3_factor_exposure.py`; tests
+  `tests/test_block_2_3_factor_exposure.py` and `tests/test_block_2_3_pipeline_integration.py`.
+- Related documents: [factor_diagnostics_spec.md](docs/specs/factor_diagnostics_spec.md),
+  [OUTPUTS.md](OUTPUTS.md) Block 2 row, [portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md) §2.3.
+- Review trigger: Revisit only if the canonical stress-report factor diagnostics move to a new
+  upstream artifact or if a future spec intentionally retires legacy `sections.factor_exposure`.
+
 Decision ID: DEC-2026-05-26-003
 Title: Block 2.2 Portfolio Metrics product contract on portfolio_xray.json
 

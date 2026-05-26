@@ -25,9 +25,11 @@ governed by `SPEC.md`, `OUTPUTS.md`, detailed specs, and code.
 
 ## Current Pointer
 
-**Active:** *(none — pick a deferred or new plan below, or start a new ExecPlan per [PLANS.md](../../PLANS.md)).*
+**Active:** None.
 
-**Most recent closure:** [Block 2.2 Portfolio Metrics / Risk Diagnostics MVP](2026-05-26_block_2_2_portfolio_metrics_plan.md) (Sessions 01–08, 2026-05-26). Evidence: [Block 2.2 acceptance audit](../audits/2026-05-26_block_2_2_portfolio_metrics_acceptance_audit.md); live diagnosis + one-candidate + `validate_one_candidate_demo.py` PASS; pytest closure bundle **48 passed**; bundle/runtime regression **16 passed**.
+**Most recent closure:** [Block 2.3 Factor Exposure / Factor Sensitivity MVP](2026-05-26_block_2_3_factor_exposure_plan.md) (adapter-only product block over `stress_report` factor diagnostics; closed 2026-05-26). Evidence: live diagnosis + one-candidate + `validate_one_candidate_demo.py` PASS; focused pytest bundles **9 + 6 + 56 + 46 + 31 passed**; docs verification OK.
+
+Previous closure: [Block 2.2 Portfolio Metrics / Risk Diagnostics MVP](2026-05-26_block_2_2_portfolio_metrics_plan.md) (Sessions 01???08, 2026-05-26). Evidence: [Block 2.2 acceptance audit](../audits/2026-05-26_block_2_2_portfolio_metrics_acceptance_audit.md); live diagnosis + one-candidate + `validate_one_candidate_demo.py` PASS; pytest closure bundle **48 passed**; bundle/runtime regression **16 passed**.
 
 Previous closure: [Block 2.1 Asset Allocation MVP](2026-05-26_block_2_1_asset_allocation_plan.md) (Sessions 01–08, 2026-05-26). Evidence: [Block 2.1 acceptance audit](../audits/2026-05-26_block_2_1_asset_allocation_acceptance_audit.md); pytest closure bundle **44 passed**.
 
@@ -110,6 +112,7 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-05-26 | [Block 2.3 Factor Exposure / Factor Sensitivity MVP](2026-05-26_block_2_3_factor_exposure_plan.md) | **Completed** | Product brief Block 2.3; Block 2.1/2.2 prerequisites | Adapter-only architecture (`DEC-2026-05-26-004`): top-level `block_2_3_factor_exposure` on portfolio-first X-Ray; missing fields degrade and are fixed upstream in `stress_report` generation; live diagnosis + one-candidate PASS; focused pytest bundles **9 + 6 + 56 + 46 + 31 passed**. |
 | 2026-05-26 | [Block 2.2 Portfolio Metrics / Risk Diagnostics MVP](2026-05-26_block_2_2_portfolio_metrics_plan.md) | **Completed** | Product brief Block 2.2; Block 2.1 prerequisite | Sessions 01–08 closed 2026-05-26: `block_2_2_portfolio_metrics` on portfolio-first X-Ray; live demo + real-cash fixture; [acceptance audit](../audits/2026-05-26_block_2_2_portfolio_metrics_acceptance_audit.md); pytest **48+16 passed**. |
 | 2026-05-26 | [Block 2.1 Asset Allocation MVP](2026-05-26_block_2_1_asset_allocation_plan.md) | **Completed** | Portfolio X-Ray §2.1 product brief; Session 01 code/doc audit | Sessions 01–08 closed 2026-05-26: `block_2_1_asset_allocation` on portfolio-first X-Ray; live demo + fixture real-cash proof; [acceptance audit](../audits/2026-05-26_block_2_1_asset_allocation_acceptance_audit.md); pytest **44 passed**. |
 | 2026-05-26 | [Input Layer MVP Migration](2026-05-26_input_layer_mvp_migration.md) | **Completed** (contract **frozen**) | User Input Layer redesign brief | Sessions 01–10 closed; live one-candidate PASS (audit §5); `DEC-2026-05-26-001`; no input redesign unless bug. Next: Blocks 2–5 / product-flow layers. |

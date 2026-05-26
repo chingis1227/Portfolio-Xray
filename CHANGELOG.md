@@ -6,6 +6,15 @@ It records what was added, changed, removed, fixed, or deprecated at a project l
 
 Date: 2026-05-26
 
+Category: Changed
+
+- **Block 2.3 Factor Exposure / Factor Sensitivity MVP added** (`DEC-2026-05-26-004`):
+  product-facing `block_2_3_factor_exposure` on `portfolio_xray.json` adapts existing
+  `stress_report` factor diagnostics only, validates production factor/beta naming, degrades missing
+  fields to partial/unavailable with warnings, and stays separate from Stress Lab calculations.
+
+Date: 2026-05-26
+
 Category: Fixed
 
 - **Block 2.2 drawdown_structure wiring:** `build_block_2_2_portfolio_metrics` now reads

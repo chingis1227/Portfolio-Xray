@@ -425,6 +425,293 @@
       "rel_vol_of_vol": 0.35
     }
   },
+  "block_2_3_factor_exposure": {
+    "block": "2.3_factor_exposure",
+    "block_id": "2.3",
+    "block_name": "Factor Exposure / Factor Sensitivity",
+    "analysis_subject": "unknown",
+    "analysis_mode": "unknown",
+    "investor_currency": "USD",
+    "status": "partial",
+    "factor_universe": [
+      "equity",
+      "real_rates",
+      "inflation",
+      "credit",
+      "USD",
+      "commodity",
+      "VIX_volatility",
+      "us_growth"
+    ],
+    "factor_beta_snapshot": {
+      "beta_eq": 0.72,
+      "beta_rr": null,
+      "beta_inf": null,
+      "beta_credit": 0.31,
+      "beta_usd": null,
+      "beta_cmd": 0.18,
+      "beta_vix": null,
+      "beta_us_growth": null
+    },
+    "factor_betas_5y": {
+      "status": "partial",
+      "window_months": 60,
+      "frequency": "weekly",
+      "betas": {
+        "beta_eq": 0.72,
+        "beta_rr": null,
+        "beta_inf": null,
+        "beta_credit": 0.31,
+        "beta_usd": null,
+        "beta_cmd": 0.18,
+        "beta_vix": null,
+        "beta_us_growth": null
+      },
+      "observations_used": 250,
+      "missing_beta_keys": [
+        "beta_rr",
+        "beta_inf",
+        "beta_usd",
+        "beta_vix",
+        "beta_us_growth"
+      ],
+      "extra_beta_keys": []
+    },
+    "factor_betas_10y": {
+      "status": "partial",
+      "window_months": 120,
+      "frequency": "weekly",
+      "betas": {
+        "beta_eq": 0.55,
+        "beta_rr": null,
+        "beta_inf": null,
+        "beta_credit": 0.2,
+        "beta_usd": null,
+        "beta_cmd": 0.12,
+        "beta_vix": null,
+        "beta_us_growth": null
+      },
+      "observations_used": 480,
+      "missing_beta_keys": [
+        "beta_rr",
+        "beta_inf",
+        "beta_usd",
+        "beta_vix",
+        "beta_us_growth"
+      ],
+      "extra_beta_keys": []
+    },
+    "kalman_current_beta": {
+      "available": true,
+      "reason": null,
+      "betas": {
+        "beta_eq": 0.81,
+        "beta_rr": null,
+        "beta_inf": null,
+        "beta_credit": 0.42,
+        "beta_usd": null,
+        "beta_cmd": null,
+        "beta_vix": null,
+        "beta_us_growth": null
+      },
+      "method": "kalman_dynamic_beta",
+      "latest_date": null,
+      "notes": []
+    },
+    "factor_significance_confidence": {
+      "beta_eq": {
+        "status": "significant",
+        "t_stat": 3.1,
+        "p_value": 0.002,
+        "hac_used": true,
+        "comment": "equity sensitivity has stronger statistical evidence in the available weekly regression."
+      },
+      "beta_rr": {
+        "status": "unavailable",
+        "t_stat": null,
+        "p_value": null,
+        "hac_used": false,
+        "comment": "real_rates sensitivity is unavailable because the required regression evidence is missing."
+      },
+      "beta_inf": {
+        "status": "unavailable",
+        "t_stat": null,
+        "p_value": null,
+        "hac_used": false,
+        "comment": "inflation sensitivity is unavailable because the required regression evidence is missing."
+      },
+      "beta_credit": {
+        "status": "significant",
+        "t_stat": 2.0,
+        "p_value": 0.05,
+        "hac_used": true,
+        "comment": "credit sensitivity has stronger statistical evidence in the available weekly regression."
+      },
+      "beta_usd": {
+        "status": "unavailable",
+        "t_stat": null,
+        "p_value": null,
+        "hac_used": false,
+        "comment": "USD sensitivity is unavailable because the required regression evidence is missing."
+      },
+      "beta_cmd": {
+        "status": "weak_evidence",
+        "t_stat": null,
+        "p_value": null,
+        "hac_used": false,
+        "comment": "commodity sensitivity is present but evidence is marginal; interpret as diagnostic, not as an action signal."
+      },
+      "beta_vix": {
+        "status": "unavailable",
+        "t_stat": null,
+        "p_value": null,
+        "hac_used": false,
+        "comment": "VIX_volatility sensitivity is unavailable because the required regression evidence is missing."
+      },
+      "beta_us_growth": {
+        "status": "unavailable",
+        "t_stat": null,
+        "p_value": null,
+        "hac_used": false,
+        "comment": "us_growth sensitivity is unavailable because the required regression evidence is missing."
+      }
+    },
+    "factor_variance_contribution": {
+      "status": "available",
+      "method": "stress_report.factor_variance_decomposition",
+      "r_squared": null,
+      "contributions": {
+        "equity": 0.833,
+        "real_rates": null,
+        "inflation": null,
+        "credit": 0.167,
+        "USD": null,
+        "commodity": null,
+        "VIX_volatility": null,
+        "us_growth": null
+      },
+      "raw_contributions": {
+        "equity": 0.4,
+        "real_rates": null,
+        "inflation": null,
+        "credit": 0.08,
+        "USD": null,
+        "commodity": null,
+        "VIX_volatility": null,
+        "us_growth": null
+      },
+      "reason": null,
+      "method_notes": [
+        "Contributions are adapted from stress_report.factor_variance_decomposition, using gross total variance share when available.",
+        "Values are normalized across production factors for product ranking; residual risk is not included in this normalized factor list."
+      ]
+    },
+    "factor_risk_ranking": [
+      {
+        "rank": 1,
+        "factor": "equity",
+        "beta_name": "beta_eq",
+        "beta": 0.72,
+        "contribution": 0.833,
+        "confidence": "significant",
+        "ranking_metric": "variance_contribution",
+        "ranking_score": 0.833,
+        "interpretation": "The portfolio shows sensitivity to equity risk. In risk-off markets, its behavior may be driven more by equity beta than by the number of holdings."
+      },
+      {
+        "rank": 2,
+        "factor": "credit",
+        "beta_name": "beta_credit",
+        "beta": 0.31,
+        "contribution": 0.167,
+        "confidence": "significant",
+        "ranking_metric": "variance_contribution",
+        "ranking_score": 0.167,
+        "interpretation": "The portfolio may carry credit or liquidity-sensitive risk, especially if income assets behave like risk-on exposure during market stress."
+      },
+      {
+        "rank": 3,
+        "factor": "commodity",
+        "beta_name": "beta_cmd",
+        "beta": 0.18,
+        "contribution": null,
+        "confidence": "weak_evidence",
+        "ranking_metric": "absolute_beta_adjusted_by_confidence",
+        "ranking_score": 0.117,
+        "interpretation": "Commodity sensitivity may provide inflation linkage or introduce cyclical exposure depending on sign and stability."
+      }
+    ],
+    "factor_exposure_summary": {
+      "dominant_factor": "equity",
+      "top_3_factors": [
+        "equity",
+        "credit",
+        "commodity"
+      ],
+      "client_summary": "The strongest available factor signal is equity. The portfolio shows sensitivity to equity risk. In risk-off markets, its behavior may be driven more by equity beta than by the number of holdings.",
+      "diagnostic_interpretation": "This is a diagnostic read from existing factor evidence. It indicates sensitivity, not a recommendation; related shocks should be checked separately in Stress Lab."
+    },
+    "data_quality_warnings": [
+      "factor_betas_5y is missing production beta keys: beta_rr, beta_inf, beta_usd, beta_vix, beta_us_growth.",
+      "factor_betas_10y is missing production beta keys: beta_rr, beta_inf, beta_usd, beta_vix, beta_us_growth."
+    ],
+    "factor_diagnostics_meta": {
+      "min_observations_required": 30,
+      "observations_used_5y": 250,
+      "observations_used_10y": 480,
+      "missing_factor_data": [],
+      "missing_portfolio_return_data": false,
+      "cash_handling": "real_cash_has_zero_return_and_no_price_series",
+      "frequency": "weekly",
+      "method_notes": [
+        "Block 2.3 adapts existing stress_report factor diagnostics and does not trigger calculations.",
+        "Missing factor diagnostics must be fixed upstream in stress_report generation or src/stress_factors.py.",
+        "Block 2.3 is separate from Stress Lab: it reports sensitivity, not shocked outcomes."
+      ],
+      "source_fields": [
+        "stress_report.factor_betas_5y",
+        "stress_report.factor_betas_10y",
+        "stress_report.factor_regression_5y",
+        "stress_report.factor_regression_10y",
+        "stress_report.factor_betas_kalman",
+        "stress_report.factor_variance_decomposition",
+        "stress_report.factor_diagnostics_meta"
+      ]
+    },
+    "naming_validation": {
+      "expected_factor_universe": [
+        "equity",
+        "real_rates",
+        "inflation",
+        "credit",
+        "USD",
+        "commodity",
+        "VIX_volatility",
+        "us_growth"
+      ],
+      "expected_beta_keys": [
+        "beta_eq",
+        "beta_rr",
+        "beta_inf",
+        "beta_credit",
+        "beta_usd",
+        "beta_cmd",
+        "beta_vix",
+        "beta_us_growth"
+      ],
+      "status": "warnings",
+      "warnings": [
+        "factor_betas_5y is missing production beta keys: beta_rr, beta_inf, beta_usd, beta_vix, beta_us_growth.",
+        "factor_betas_10y is missing production beta keys: beta_rr, beta_inf, beta_usd, beta_vix, beta_us_growth."
+      ]
+    },
+    "stress_lab_separation": {
+      "block_2_3_answers": "What factors is the portfolio sensitive to?",
+      "stress_lab_answers": "What happens if those factors receive a stress shock?",
+      "no_scenario_shocks_in_this_block": true,
+      "no_rebalance_recommendations": true
+    }
+  },
   "sections": {
     "asset_allocation": {
       "status": "available",

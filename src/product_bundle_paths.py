@@ -14,11 +14,13 @@ from typing import Any, Literal
 
 from src.block_2_1_asset_allocation import BLOCK_2_1_ID
 from src.block_2_2_portfolio_metrics import BLOCK_2_2_ID
+from src.block_2_3_factor_exposure import BLOCK_2_3_ID
 from src.candidate_launchpad import CANDIDATE_LAUNCHPAD_FILENAME
 from src.problem_classification import PROBLEM_CLASSIFICATION_FILENAME
 
 PORTFOLIO_XRAY_BLOCK_2_1_KEY = "block_2_1_asset_allocation"
 PORTFOLIO_XRAY_BLOCK_2_2_KEY = "block_2_2_portfolio_metrics"
+PORTFOLIO_XRAY_BLOCK_2_3_KEY = "block_2_3_factor_exposure"
 
 ANALYSIS_SUBJECT_SIDECAR_SUBDIR = "analysis_subject"
 
@@ -318,15 +320,24 @@ def portfolio_xray_has_block_2_2(doc: dict[str, Any] | None) -> bool:
     return isinstance(block, dict) and block.get("block") == BLOCK_2_2_ID
 
 
+def portfolio_xray_has_block_2_3(doc: dict[str, Any] | None) -> bool:
+    """True when ``portfolio_xray.json`` carries the Block 2.3 product contract."""
+    if not isinstance(doc, dict):
+        return False
+    block = doc.get(PORTFOLIO_XRAY_BLOCK_2_3_KEY)
+    return isinstance(block, dict) and block.get("block") == BLOCK_2_3_ID
+
+
 def subject_diagnostics_manifest_note() -> dict[str, Any]:
-    """Manifest disclosure: Block 2.1/2.2 product contracts live inside ``portfolio_xray.json``."""
+    """Manifest disclosure: product X-Ray blocks live inside ``portfolio_xray.json``."""
     return {
         "portfolio_xray_json": {
             "contract_version": "portfolio_xray_v2",
             "product_capital_structure_key": PORTFOLIO_XRAY_BLOCK_2_1_KEY,
             "product_portfolio_behavior_key": PORTFOLIO_XRAY_BLOCK_2_2_KEY,
+            "product_factor_exposure_key": PORTFOLIO_XRAY_BLOCK_2_3_KEY,
             "note": (
-                "Block 2.1 capital allocation and Block 2.2 portfolio metrics are nested under "
+                "Block 2.1 capital allocation, Block 2.2 portfolio metrics, and Block 2.3 factor exposure are nested under "
                 "portfolio_xray.json (analysis_subject/ on portfolio-first runs), not separate "
                 "bundle files."
             ),
@@ -386,6 +397,7 @@ def load_diagnosis_bundle_docs(output_dir_final: Path) -> dict[str, Any]:
 __all__ = [
     "PORTFOLIO_XRAY_BLOCK_2_1_KEY",
     "PORTFOLIO_XRAY_BLOCK_2_2_KEY",
+    "PORTFOLIO_XRAY_BLOCK_2_3_KEY",
     "ADVANCED_EVIDENCE_MANIFEST_KEYS",
     "ARTIFACT_CATEGORY_ORDER",
     "DiagnosisResolution",
@@ -406,6 +418,7 @@ __all__ = [
     "product_bundle_artifact_categories",
     "portfolio_xray_has_block_2_1",
     "portfolio_xray_has_block_2_2",
+    "portfolio_xray_has_block_2_3",
     "product_bundle_generated_paths_for_manifest",
     "product_bundle_manifest_extra",
     "resolve_candidate_launchpad_path",
