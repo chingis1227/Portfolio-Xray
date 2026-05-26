@@ -1,6 +1,6 @@
 # Diagnostic Product Concept
 
-This document is part of the active project documentation after the documentation migration. It is a product concept and target architecture guide, not a canonical implementation spec. It does not override `../SPEC.md`, `../RULES.md`, `../OUTPUTS.md`, `../DATA.md`, `../TESTING.md`, `specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
+This document is part of the active project documentation after the documentation migration. It records the **“ДИАГНОСТИКА 2” canonical product concept** and target architecture guide, but it is not a canonical implementation spec. It does not override `../SPEC.md`, `../RULES.md`, `../OUTPUTS.md`, `../DATA.md`, `../TESTING.md`, `specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
 
 ## 1. Concept Name And Identity
 
@@ -17,6 +17,30 @@ Preferred product identity:
 The product is not a black-box optimizer. It helps an advisor or sophisticated investor understand
 the current portfolio, identify hidden risks, test a reasonable improvement hypothesis, compare
 trade-offs, and reach a defensible investment verdict.
+
+Canonical current product flow:
+
+```text
+Input portfolio
+-> Portfolio X-Ray
+-> Stress Test Lab
+-> Problem Classification
+-> Candidate Launchpad
+-> Portfolio Alternatives Builder
+-> Current vs Candidate Comparison
+-> Decision Verdict
+-> AI Commentary / grounding
+-> Monitoring / What Changed
+```
+
+“ДИАГНОСТИКА 2 НА ПОТОМ” is backlog / advanced / later. Features from that later document must not
+be treated as the current Core MVP product flow just because some implementation exists. Portfolio
+Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate arena,
+Assumption Sensitivity, Pareto/Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan
+/ Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens
+If UI, Client-Fit Check, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer
+objective, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF
+report product are advanced/backend/legacy/future unless explicitly promoted by canonical specs.
 
 Core user outcome:
 
@@ -495,7 +519,7 @@ These items are not Core MVP requirements. Do not describe them as implemented u
 - Out-of-sample / walk-forward analysis.
 - Full Crisis Replay UI.
 - What Happens If? Simulator.
-- Portfolio Health Score / Robustness Scorecard as primary product modules.
+- Portfolio Health Score / Robustness Scorecard as standalone/current primary product modules (not current Core MVP; advanced/backend/backlog only).
 - Assumption Sensitivity / Assumption Testing Mode.
 - Pareto Frontier / Dominance Check.
 - Regret Analysis.

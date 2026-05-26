@@ -1,8 +1,25 @@
 # Portfolio MRI / Portfolio X-Ray
 
-Portfolio MRI / Portfolio X-Ray is a Python portfolio diagnostics and investment decision-support system. The current implementation remains CLI/file-driven and report-oriented, with optimization and candidate builders available as supporting research infrastructure.
+Portfolio MRI / Portfolio X-Ray is a Python portfolio diagnostics and investment decision-support system. The **canonical current product truth is “ДИАГНОСТИКА 2”**: diagnosis-first, current-portfolio-first, decision-support oriented, and not optimizer-first.
 
-Its purpose is diagnosis before action, not black-box allocation. The system helps a user understand the current portfolio first: exposures, hidden risks, stress behavior, candidate allocation hypotheses, robustness trade-offs, and generated report artifacts.
+Canonical current product flow:
+
+```text
+Input portfolio
+-> Portfolio X-Ray
+-> Stress Test Lab
+-> Problem Classification
+-> Candidate Launchpad
+-> Portfolio Alternatives Builder
+-> Current vs Candidate Comparison
+-> Decision Verdict
+-> AI Commentary / grounding
+-> Monitoring / What Changed
+```
+
+Its purpose is diagnosis before action, not black-box allocation. The system helps a user understand the current portfolio first, identify problems, test a selected candidate hypothesis when useful, compare trade-offs, and reach a defensible verdict.
+
+The implementation remains CLI/file-driven and still contains older optimizer/report/scorecard-heavy infrastructure. That infrastructure is support code unless explicitly promoted by current specs. In particular, Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client-Fit Check, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objectives, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product are **advanced / backend / legacy / future-backlog**, not the current Core MVP product flow.
 
 Product concept documents describe target direction only. Current behavior is governed by [SPEC.md](SPEC.md), [RULES.md](RULES.md), [DATA.md](DATA.md), [OUTPUTS.md](OUTPUTS.md), and detailed specs under [docs/specs/](docs/specs/README.md). Documentation migration records and archived legacy copies are retained for traceability; active behavior remains governed by the canonical specs and code.
 
@@ -12,15 +29,18 @@ explicit export/report profile is selected. Default `run_portfolio_review.py` / 
 **not** refresh `pdf files/` — use `--with-pdf`, `--legacy-full-pdf`, or an explicit export profile
 when client PDFs must match the latest JSON.
 
-Routine review uses **`--mode core`** (factory profile **`core_fast`**, six candidates with parallel
-lightweight reports by default). The sequential **`core_v1`** profile is retained for regression /
-parity checks via `--candidate-profile core_v1`. Full menu (**`default_v1`**, 16 builders) requires
-**`--mode full`** or standalone factory. See [OUTPUTS.md](OUTPUTS.md) for the full command matrix.
+Runtime note: today `run_portfolio_review.py` still has a `--mode core` backend batch path
+(`core_fast`, six candidates). That is current code behavior, but it is not the canonical product
+story. For the “ДИАГНОСТИКА 2” product shape, prefer diagnosis-first output and explicit
+one-hypothesis runs such as `python run_portfolio_review.py --candidates equal_weight`. Full menu
+(`default_v1`, 16 builders) is advanced/research only. See [OUTPUTS.md](OUTPUTS.md) for the full
+command matrix.
 
 | Use case | Command | Factory profile |
 | --- | --- | --- |
-| Portfolio review site/API (**core**, default) | `python run_portfolio_review.py` or `--mode core` | `core_fast` |
-| Full review (16 builders) | `python run_portfolio_review.py --mode full` | `default_v1` |
+| Portfolio diagnosis / site/API backend run | `python run_portfolio_review.py` or `--mode core` | current code: `core_fast` backend batch |
+| **Canonical product demo** (one selected hypothesis) | `python run_portfolio_review.py --candidates equal_weight` | explicit candidate id |
+| Full advanced/research review (16 builders) | `python run_portfolio_review.py --mode full` | `default_v1` |
 | Full menu factory + compare (standalone advanced/research) | `python run_candidate_factory.py --profile default_v1 --then-compare` | `default_v1` |
 | Compare / decision package only | `python run_compare_variants.py` | — |
 | Legacy policy optimize only (no report) | `python run_optimization.py` | — |
@@ -38,21 +58,24 @@ is used. See [OUTPUTS.md](OUTPUTS.md) for the full command matrix and artifact p
 
 ## Current Scope
 
-Implemented today:
+Current Core MVP product layer:
 
 - Canonical portfolio-first workflow contract through `analysis_subject`; runtime transition is active
   and governed by [portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md).
 - Portfolio-first CLI orchestration through `run_portfolio_review.py`.
+- Additive diagnosis-first product-bundle artifacts and adapters: Problem Classification (`problem_classification.json`), Candidate Launchpad (`candidate_launchpad.json`), Current-vs-Candidate (`current_vs_candidate.json`), Decision Verdict (`decision_verdict.json`), AI Commentary grounding context (`ai_commentary_context.json`), and light What Changed summary (`what_changed_summary.json`). These are the current “ДИАГНОСТИКА 2” product-facing files where implemented.
+- JSON generated artifacts by default; CSV, HTML, TXT, PNG, and PDF-style artifacts remain explicit export/report outputs.
+
+Implemented backend / advanced / legacy support:
+
 - Legacy CLI/file-driven policy optimization compatibility through `run_optimization.py`.
 - Portfolio reporting and diagnostics through `run_report.py`.
 - Input and Assumptions Layer V1 through `analysis_mode`, `tickers`, optional `current_weights`, profile/target fields, and technical calculation settings in `config.yml`.
 - Portfolio metrics, dynamic NaN-safe backtesting, and risk contribution diagnostics.
 - Stress diagnostics, stress commentary, factor diagnostics, macro/regime diagnostics, PCA, scenario libraries, and robustness diagnostics.
 - Benchmark/candidate portfolios including Equal Weight, Risk Parity, HRP, Minimum Variance, Maximum Diversification, Minimum CVaR, Robust Mean-Variance, and Scenario-Based Robust Optimization.
-- Candidate Portfolio Factory orchestration through `run_candidate_factory.py`.
-- Canonical candidate comparison and current generated V1 decision artifacts through `run_compare_variants.py`: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, trade-off/model-risk diagnostics, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Action Plan, current-vs-policy status, Monitoring / What Changed, generated Decision Journal, and decision package summary. These are implementation artifacts and backend/advanced evidence where applicable, not a statement that every artifact is Core MVP product UI.
-- Additive diagnosis-first artifacts and adapters: Problem Classification (`problem_classification.json`), Candidate Launchpad (`candidate_launchpad.json`), Current-vs-Candidate (`current_vs_candidate.json`), Decision Verdict (`decision_verdict.json`), AI Commentary grounding context (`ai_commentary_context.json`), and light What Changed summary (`what_changed_summary.json`). These are current backend/file artifacts and product-facing mappings where specified; full interactive UX around them remains future scope.
-- JSON generated artifacts by default; CSV, HTML, TXT, PNG, and PDF-style artifacts remain explicit export/report outputs.
+- Candidate Portfolio Factory orchestration through `run_candidate_factory.py` as backend/advanced/research infrastructure.
+- Canonical candidate comparison and generated V1 decision-support artifacts through `run_compare_variants.py`: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, trade-off/model-risk diagnostics, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Action Plan, current-vs-policy status, Monitoring / What Changed, generated Decision Journal, and decision package summary. These are **not** the current Core MVP product flow; they are advanced/backend/technical/generated support unless explicitly requested.
 - ETF and stock taxonomy validation as annotation/diagnostic layers.
 - Partial utility UIs: `config_ui/` (local config editor) and `results_dashboard/` (read-only results viewer). These are supported utility surfaces, not the full product workspace.
 
@@ -71,14 +94,20 @@ Target/TBD areas:
 
 ## Main Pipeline
 
-Portfolio-first is the binding product workflow contract:
+“ДИАГНОСТИКА 2” is the binding product workflow contract:
 
 ```text
-analysis_subject
+current portfolio / analysis_subject
 -> Portfolio X-Ray diagnostics
--> stress / factor / macro diagnostics
--> candidate generation
--> comparison and decision artifacts
+-> Stress Test Lab
+-> Problem Classification
+-> Candidate Launchpad
+-> Portfolio Alternatives Builder
+-> one selected candidate or generated shortlist
+-> Current vs Candidate Comparison
+-> Decision Verdict
+-> AI Commentary grounding
+-> Monitoring / What Changed
 ```
 
 The portfolio-first orchestrator is implemented and governed by

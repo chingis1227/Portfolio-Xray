@@ -1,10 +1,10 @@
 # Business Vision
 
-This document is part of the active project documentation after the documentation migration. It describes target direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
+This document is part of the active project documentation after the documentation migration. It describes the current canonical business direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
 
 ## 1. Business Positioning
 
-Portfolio MRI / Portfolio X-Ray is a portfolio diagnostics and investment decision-support system.
+Portfolio MRI / Portfolio X-Ray is a portfolio diagnostics and investment decision-support system. The **canonical current product truth is “ДИАГНОСТИКА 2”**.
 
 It helps advisors and sophisticated investors understand what is really inside a portfolio, where
 risk is concentrated, how the portfolio may behave under stress, which alternative allocation
@@ -22,9 +22,16 @@ Input portfolio
 -> Portfolio Alternatives Builder
 -> Current vs Candidate Comparison
 -> Decision Verdict
--> AI Commentary
+-> AI Commentary / grounding
 -> Monitoring / What Changed
 ```
+
+“ДИАГНОСТИКА 2 НА ПОТОМ” is backlog / advanced / later. Health Score, Robustness Scorecard, macro
+dashboards, full multi-candidate arenas, full Action Plan / Rebalancing Advisor, full Decision
+Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client-Fit Check, Asset X-Ray,
+Max Sharpe, tax-aware optimization, turnover-aware optimizer objectives, tactical tilt, full custom
+constraints UI, multi-client workspace, and polished PDF report product are not the current Core MVP
+business promise unless explicitly promoted by canonical specs.
 
 ## 2. One-Sentence Positioning
 
@@ -282,7 +289,7 @@ them as implemented unless verified in `SPEC.md`, `docs/specs/*.md`, or code.
 - Out-of-sample / walk-forward analysis.
 - Full Crisis Replay UI.
 - What Happens If? Simulator.
-- Portfolio Health Score / Robustness Scorecard as primary product modules.
+- Portfolio Health Score / Robustness Scorecard as standalone/current primary product modules (not current Core MVP; advanced/backend/backlog only).
 - Assumption Sensitivity / Assumption Testing Mode.
 - Pareto Frontier / Dominance Check.
 - Regret Analysis.

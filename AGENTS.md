@@ -11,14 +11,37 @@ Update this file only when agent-specific operating instructions, source-of-trut
 
 ## Project Summary
 
-Portfolio MRI / Portfolio X-Ray is a Python portfolio diagnostics and investment decision-support system. It is diagnosis-first and current-portfolio-first: it helps inspect exposures, hidden risks, stress behavior, candidate allocation hypotheses, robustness checks, decision artifacts, and report outputs. It is not a black-box optimizer; optimization and candidate builders are supporting implementation capabilities.
+Portfolio MRI / Portfolio X-Ray is being reset around the **“ДИАГНОСТИКА 2” canonical product truth**. The current product is a Python portfolio diagnostics and investment decision-support system that is diagnosis-first, current-portfolio-first, and not optimizer-first.
 
-The current implementation is report-first and CLI/file-driven. V1 decision artifacts are implemented as generated files: candidate comparison, robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, Action Plan, Monitoring / What Changed, and generated Decision Journal. These are current generated artifacts and backend/advanced evidence where applicable, not a claim that every artifact is Core MVP product UI. Full UI, saved analysis workspaces, richer report/PDF decision packaging, and advanced product workflows remain future scope until separately specified and implemented.
+Canonical current product flow:
+
+```text
+Input portfolio
+-> Portfolio X-Ray
+-> Stress Test Lab
+-> Problem Classification
+-> Candidate Launchpad
+-> Portfolio Alternatives Builder
+-> Current vs Candidate Comparison
+-> Decision Verdict
+-> AI Commentary / grounding
+-> Monitoring / What Changed
+```
+
+The current implementation is still CLI/file-driven and partly carries older optimizer/report/scorecard-heavy infrastructure. Treat that older infrastructure as support code unless a task explicitly targets it.
+
+Do **not** describe these as the current Core MVP product flow: Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto/Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If simulator UI, Client-Fit Check, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, full custom constraints UI, multi-client workspace, or polished PDF report product.
+
+If those capabilities exist in code or generated outputs, classify them as `Advanced`, `Backend evidence`, `Technical artifact`, `Legacy`, `Generated support artifact`, or `Future/backlog`; do not treat existence in code as current product truth.
 
 Main portfolio-first flow:
 
-1. `python run_portfolio_review.py`
+1. `python run_portfolio_review.py` for current portfolio diagnosis / product-bundle generation.
 2. inspect `{output_dir_final}/analysis_subject/` before interpreting candidate or decision artifacts
+3. for the current product demo path, prefer an explicit one-hypothesis run such as `python run_portfolio_review.py --candidates equal_weight`
+
+Product-flow operator map (read order, six-file bundle paths, demo vs core commands, anti-patterns):
+[docs/product_flow_operator_guide.md](docs/product_flow_operator_guide.md).
 
 Legacy policy compatibility flow:
 
@@ -35,7 +58,7 @@ Legacy policy weights are optimizer outputs, not manual user inputs. User-suppli
 `analysis_subject` weights are allowed for `current_portfolio` and `model_portfolio` diagnostics.
 Manual post-optimization tilt is allowed only through View After Optimization.
 
-Product concept documents guide direction but do not override `SPEC.md`, canonical formulas, stress scenarios, policy logic, data rules, output contracts, or current code behavior.
+Product concept documents guide direction but do not override `SPEC.md`, canonical formulas, stress scenarios, policy logic, data rules, output contracts, or current code behavior. The current canonical product direction is “ДИАГНОСТИКА 2”; “ДИАГНОСТИКА 2 НА ПОТОМ” features are backlog/advanced/later unless explicitly promoted by specs and implementation.
 Documentation migration records and archived legacy docs are retained for traceability only. They do not override current implementation contracts, canonical specs, or code.
 
 ## Main Commands

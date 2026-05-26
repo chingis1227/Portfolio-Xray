@@ -1,11 +1,11 @@
 # Architecture
 
-This document is part of the active project documentation after the documentation migration. It describes target direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
+This document is part of the active project documentation after the documentation migration. It describes the current canonical product architecture direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
 
 ## 1. Architecture Status
 
 Portfolio MRI currently has a Python, CLI/file-driven, site/API-first backend architecture. The
-target product architecture is a diagnosis-first decision-support workflow.
+canonical current product architecture is **“ДИАГНОСТИКА 2”**: a diagnosis-first, current-portfolio-first decision-support workflow.
 
 This document uses four labels:
 
@@ -15,6 +15,15 @@ This document uses four labels:
 - **Advanced / research:** useful capabilities that should not be the core MVP user journey.
 - **Legacy / compatibility:** older or compatibility flows that remain operationally useful but are
   not the target product front door.
+
+Architecture truth reset: older optimizer/report/scorecard-heavy capabilities may remain in code,
+but they are not the current Core MVP architecture. Portfolio Health Score, Robustness Scorecard,
+Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity,
+Pareto/Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor,
+full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client-Fit Check,
+Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt,
+full custom constraints UI, multi-client workspace, and polished PDF report product are
+advanced/backend/legacy/future unless explicitly promoted.
 
 ## 2. Current Runtime Architecture
 
@@ -60,9 +69,9 @@ Current main entrypoints:
 Do not rename, remove, or demote these operational entrypoints without a separate approved
 migration plan.
 
-## 3. Target Product Architecture
+## 3. Canonical Product Architecture
 
-Target product architecture:
+Canonical “ДИАГНОСТИКА 2” product architecture:
 
 ```text
 Input portfolio
@@ -73,11 +82,11 @@ Input portfolio
 -> Portfolio Alternatives Builder
 -> Current vs Candidate Comparison
 -> Decision Verdict
--> AI Commentary
+-> AI Commentary / grounding
 -> Monitoring / What Changed
 ```
 
-This target architecture changes the user-facing product shape, not automatically the existing
+This architecture changes the user-facing product shape, not automatically the existing
 backend capabilities. Existing backend modules may be reused, wrapped, reclassified, or preserved as
 advanced/legacy infrastructure.
 
@@ -334,7 +343,7 @@ implemented unless verified in `SPEC.md`, `docs/specs/*.md`, or code.
 - Out-of-sample / walk-forward analysis.
 - Full Crisis Replay UI.
 - What Happens If? Simulator.
-- Portfolio Health Score / Robustness Scorecard as primary product modules.
+- Portfolio Health Score / Robustness Scorecard as standalone/current primary product modules (not current Core MVP; advanced/backend/backlog only).
 - Assumption Sensitivity / Assumption Testing Mode.
 - Pareto Frontier / Dominance Check.
 - Regret Analysis.

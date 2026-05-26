@@ -1,6 +1,6 @@
 # SPEC.md
 
-This file is the compact technical entry point and implementation contract for Portfolio X-Ray & Optimization Terminal / Portfolio MRI.
+This file is the compact technical entry point and implementation contract for Portfolio MRI / Portfolio X-Ray.
 
 It defines what must work in the current product, which workflows are binding, which inputs and outputs are expected, which edge cases must be handled, and where detailed technical rules live. Do not duplicate long formulas or module-specific details here when an owning spec exists.
 
@@ -10,15 +10,38 @@ Update this file when the general implementation contract, workflows, inputs/out
 
 `SPEC.md` is the canonical implementation entry point. It has higher authority than product concept documents such as [BUSINESS_VISION.md](BUSINESS_VISION.md), [PRODUCT.md](PRODUCT.md), and [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) when the question is current implementation behavior.
 
-Product concept documents can describe target direction. They do not change formulas, scenarios, optimizer policy, data rules, output contracts, or code behavior until this spec and the relevant detailed specs are updated.
+The current canonical product truth is **ДИАГНОСТИКА 2**. Product concept documents can describe target direction, but the active product interpretation must follow this distinction:
+
+- current Core MVP = diagnosis-first/current-portfolio-first ДИАГНОСТИКА 2 flow;
+- ДИАГНОСТИКА 2 НА ПОТОМ = backlog / advanced / later;
+- older optimizer/report/scorecard-heavy modules may remain implemented as backend evidence, technical artifacts, generated support, legacy compatibility, or advanced research, but they are not the current Core MVP product flow unless explicitly promoted by specs and code.
+
+They do not change formulas, scenarios, optimizer policy, data rules, output contracts, or code behavior until this spec and the relevant detailed specs are updated.
 
 The documentation migration replaced the active business, product, diagnostic concept, and architecture docs while archiving their prior versions under `docs/archive/documentation_migration_2026_05_25/`. Product and architecture docs still do not override this implementation contract; target modules remain non-binding until promoted into owning specs and code.
 
-Terminology boundary: product-facing documents may describe the target decision layer as `Decision Verdict`, but the current technical contracts remain `Selection Engine`, `selection_decision.json`, and No-Trade artifacts until a separate schema/output migration is specified and implemented. This file must preserve current implementation truth and must not rename contracts to match product language.
+Terminology boundary: product-facing documents should describe the current user-facing decision layer as `Decision Verdict`. The technical contracts remain `Selection Engine`, `selection_decision.json`, and No-Trade artifacts until a separate schema/output migration is specified and implemented. Those technical contracts are backend evidence, not the canonical product language.
+
+## Canonical Product Scope
+
+Canonical current product flow:
+
+```text
+Input portfolio
+-> Portfolio X-Ray
+-> Stress Test Lab
+-> Problem Classification
+-> Candidate Launchpad
+-> Portfolio Alternatives Builder
+-> Current vs Candidate Comparison
+-> Decision Verdict
+-> AI Commentary / grounding
+-> Monitoring / What Changed
+```
+
+This is the ДИАГНОСТИКА 2 product truth. The implementation is still CLI/file-driven and partially report-first, but current product surfaces must be interpreted through this flow, not through the older optimization/scorecard/report package.
 
 ## Implementation Scope
-
-The current implementation is a report-first, CLI/file-driven portfolio analytics system.
 
 The canonical portfolio-first workflow contract is [Portfolio Review Workflow
 Specification](docs/specs/portfolio_review_workflow_spec.md): resolve `analysis_subject`, diagnose
@@ -31,18 +54,33 @@ Blocks 1-5 MVP core reliability (input validation, factory freshness, resumabili
 readiness disclosure, offline smoke, data-trust summaries) is governed by the active
 [Blocks 1-5 MVP Core Reliability Plan](docs/exec_plans/2026-05-21_blocks_1_5_mvp_core_reliability_plan.md).
 
-**Artifact and audit-scope boundaries:** the portfolio-first CLI writes Blocks 1–5 diagnostics and
-the V1 decision package in one orchestrated path, but Blocks 1–5 audits/walkthroughs **exclude**
-Selection, Action, Monitoring, and Journal interpretation. `candidate_factory_run.json` records
-last factory orchestration; `candidate_comparison.json` aggregates on-disk candidate evidence (may
-be wider than the last factory run). Operator definitions:
+**Artifact and audit-scope boundaries:** the portfolio-first CLI may still write Blocks 1-5
+diagnostics and the older V1 decision-support package in one orchestrated path. That does not make
+every generated file part of the current Core MVP product. Blocks 1-5 audits/walkthroughs
+**exclude** Selection, Action, Monitoring, and Journal interpretation unless the task explicitly
+targets those backend/advanced artifacts. `candidate_factory_run.json` records last factory
+orchestration; `candidate_comparison.json` aggregates on-disk candidate evidence (may be wider than
+the last factory run). Operator definitions:
 [GLOSSARY.md](GLOSSARY.md) (**Blocks 1–5 deliverable**, **Decision package**, factory/comparison
 evidence terms); confusion register:
 [2026-05-23 core/full artifact confusion audit](docs/audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md);
 remediation plan:
 [2026-05-23 core/full artifact documentation confusion plan](docs/exec_plans/2026-05-23_core_full_artifact_documentation_confusion_plan.md).
 
-It supports:
+Current Core MVP product layer:
+
+- portfolio-first `analysis_subject` diagnosis
+- Portfolio X-Ray diagnostics
+- Stress Test Lab evidence
+- Problem Classification
+- Candidate Launchpad
+- Portfolio Alternatives Builder backend delegation plan
+- Current-vs-Candidate adapter
+- Decision Verdict mapping
+- AI Commentary grounding context
+- light What Changed summary
+
+Implemented backend / advanced / legacy support:
 
 - config validation and profile-derived targets
 - market data loading, FX conversion, and return panel construction
@@ -50,10 +88,7 @@ It supports:
 - portfolio metrics, dynamic backtesting, risk contribution diagnostics, and stress diagnostics
 - factor, macro/regime, PCA, scenario-library, and robustness diagnostics
 - benchmark and candidate portfolio reports
-- canonical candidate comparison and V1 decision artifacts: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, trade-off and model-risk diagnostics, Assumption Sensitivity, Action Plan, Monitoring / What Changed, generated Decision Journal, current-vs-policy status, and candidate factory run summary
-- additive diagnosis-first artifacts and adapters: Problem Classification, Candidate Launchpad,
-  Portfolio Alternatives Builder backend delegation plan, Current-vs-Candidate adapter, Decision
-  Verdict mapping, AI Commentary grounding context, and light What Changed summary
+- canonical candidate comparison and V1 decision-support artifacts: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, trade-off and model-risk diagnostics, Assumption Sensitivity, Action Plan, technical Monitoring, generated Decision Journal, current-vs-policy status, and candidate factory run summary. These are not current Core MVP product flow; they are advanced/backend/technical/generated support unless explicitly requested.
 - decision package report summary (`decision_package_summary.txt` / `.json`, optional `report.txt` append, decision-package PDF after comparison)
 - CSV, JSON, HTML, TXT, and PDF-style report artifacts
 
@@ -68,28 +103,39 @@ Target product areas that remain TBD until separately specified and implemented:
 - Decision Verdict replacing or renaming current Selection Engine terminology
 - generated natural-language AI Commentary beyond the current grounding context
 - user-maintained journal/workflow layers beyond the generated V1 Decision Journal
+- Portfolio Health Score / Robustness Scorecard as standalone/current primary product modules (not current Core MVP; advanced/backend/backlog only)
+- Macro Dashboard / Macro Overlay as a product module
+- full multi-candidate ranking/arena as default product UX
+- full Action Plan / Rebalancing Advisor as product module
+- advanced monitoring workspace
+- Crisis Replay UI, What Happens If UI, Client-Fit Check, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt as product UX, full custom constraints UI, multi-client workspace, and polished PDF report product
 
 Do not describe target UI/schema migration work as current implementation unless the relevant source
 code, generated artifacts, and owning specs verify that status.
 
 ## Main Workflows
 
-Portfolio-first review workflow (binding transition contract):
+Portfolio-first review workflow (binding transition contract, interpreted through ДИАГНОСТИКА 2):
 
 ```text
-analysis_subject
+analysis_subject / current portfolio
 -> resolved assumptions and validation
--> subject diagnostics / Portfolio X-Ray
--> stress, factor, macro, and scenario diagnostics
--> allowed candidate generation
--> candidate diagnostics
--> comparison: analysis_subject versus candidates
--> keep / rebalance / review / no-trade decision artifacts
--> action plan, monitoring, journal, and report package
+-> Portfolio X-Ray
+-> Stress Test Lab
+-> Problem Classification
+-> Candidate Launchpad
+-> Portfolio Alternatives Builder
+-> selected candidate or generated shortlist
+-> Current vs Candidate Comparison
+-> Decision Verdict
+-> AI Commentary grounding
+-> Monitoring / What Changed
 ```
 
 The subject must be diagnosed before candidate generation or candidate decision artifacts are
-presented as the main result. Supported subject types are `current_portfolio`, `model_portfolio`,
+presented as the main result. Technical comparison, scorecard, selection, action, monitoring diff,
+journal, and report package artifacts may exist, but they must not be presented as the current Core
+MVP answer. Supported subject types are `current_portfolio`, `model_portfolio`,
 and `universe_baseline`; details live in
 [portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md).
 

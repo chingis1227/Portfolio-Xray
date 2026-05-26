@@ -1,17 +1,17 @@
 # Product
 
-This document is part of the active project documentation after the documentation migration. It describes target direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
+This document is part of the active project documentation after the documentation migration. It describes the current canonical product direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
 
 ## 1. Product Summary
 
-Portfolio MRI / Portfolio X-Ray is a portfolio diagnostics and investment decision-support product.
+Portfolio MRI / Portfolio X-Ray is a portfolio diagnostics and investment decision-support product. The **canonical current product truth is “ДИАГНОСТИКА 2”**.
 
 The user does not start by choosing an optimizer. The user starts by submitting a current portfolio.
 The product diagnoses what is inside that portfolio, where risk is hidden, how it behaves under
 stress, what problem should be tested, which candidate hypothesis is reasonable, and whether the
 trade-off justifies action.
 
-Target MVP flow:
+Current Core MVP product flow:
 
 ```text
 Input portfolio
@@ -22,13 +22,24 @@ Input portfolio
 -> Portfolio Alternatives Builder
 -> Current vs Candidate Comparison
 -> Decision Verdict
--> AI Commentary
+-> AI Commentary / grounding
 -> Monitoring / What Changed
 ```
 
-This target flow is product direction. Several steps now have additive backend/file artifacts, while
-full product UI and saved-workspace behavior remain future scope. Current implementation status is
-owned by `SPEC.md`, `OUTPUTS.md`, `docs/specs/*.md`, and code.
+This flow is the product truth agents should use when explaining the project. Several steps now have
+additive backend/file artifacts, while full product UI and saved-workspace behavior remain future
+scope. Current implementation status is owned by `SPEC.md`, `OUTPUTS.md`, `docs/specs/*.md`, and
+code.
+
+“ДИАГНОСТИКА 2 НА ПОТОМ” is backlog / advanced / later. The following must not be described as the
+current Core MVP product flow even if code or generated artifacts exist: Portfolio Health Score,
+Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena,
+Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Model Risk Diagnostics, full Action
+Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What
+Happens If UI, Client-Fit Check, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware
+optimizer objective, tactical tilt, full custom constraints UI, multi-client workspace, and polished
+PDF report product. Existing implementations of these belong to advanced/backend/legacy/generated
+support unless explicitly promoted by a canonical spec.
 
 ## 2. Product Principles
 
@@ -501,7 +512,7 @@ These items are not Core MVP requirements. Do not describe them as implemented u
 - Out-of-sample / walk-forward analysis.
 - Full Crisis Replay UI.
 - What Happens If? Simulator.
-- Portfolio Health Score / Robustness Scorecard as primary product modules.
+- Portfolio Health Score / Robustness Scorecard as standalone/current primary product modules (not current Core MVP; advanced/backend/backlog only).
 - Assumption Sensitivity / Assumption Testing Mode.
 - Pareto Frontier / Dominance Check.
 - Regret Analysis.

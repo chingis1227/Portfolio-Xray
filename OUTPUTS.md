@@ -1,6 +1,6 @@
 # OUTPUTS.md
 
-This file is the root map for generated outputs, report artifacts, output folders, and output-format ownership in Portfolio X-Ray & Optimization Terminal / Portfolio MRI.
+This file is the root map for generated outputs, report artifacts, output folders, and output-format ownership in Portfolio MRI / Portfolio X-Ray.
 
 It explains what the project creates, where it is written, which formats are used, which files are source vs generated, and which detailed specs own the behavior. It does not replace metric formulas, stress logic, scenario definitions, or implementation contracts.
 
@@ -11,6 +11,23 @@ Update this file when output folders, artifact names, formats, report sections, 
 Generated outputs are evidence and deliverables, not source files, unless a task explicitly targets generated artifacts.
 
 Source files define behavior. Generated files show the result of a run.
+
+The canonical current product truth is **ДИАГНОСТИКА 2**. Output interpretation must follow this product boundary:
+
+```text
+Input portfolio
+-> Portfolio X-Ray
+-> Stress Test Lab
+-> Problem Classification
+-> Candidate Launchpad
+-> Portfolio Alternatives Builder
+-> Current vs Candidate Comparison
+-> Decision Verdict
+-> AI Commentary / grounding
+-> Monitoring / What Changed
+```
+
+Only the six-file product bundle listed below is the current Core MVP product-facing output layer. Older/generated artifacts such as Health Score, Robustness Scorecard, Selection Engine outputs, Action Plan, Decision Journal, macro dashboards, full candidate arenas, sensitivity/Pareto/regret, and PDF/report packages may exist, but they are advanced/backend/legacy/generated support unless a task explicitly targets them.
 
 Documentation migration records such as `DOCUMENTATION_MIGRATION_PLAN.md`, `DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md`, and archived legacy Markdown files are source/planning documents, not generated run outputs. They do not define output contracts.
 
@@ -45,21 +62,23 @@ Confusion audit:
 
 ## Command Matrix
 
-**Review default vs full menu:** routine portfolio review (`run_portfolio_review.py` with no mode
-flag, or `--mode core`) runs factory profile **`core_fast`** (same six candidate ids as `core_v1`,
-with parallel lightweight reports by default). The sequential **`core_v1`** profile is retained for
+**Review default vs full menu:** current code still lets routine portfolio review (`run_portfolio_review.py` with no mode
+flag, or `--mode core`) run factory profile **`core_fast`** (same six candidate ids as `core_v1`,
+with parallel lightweight reports by default). Treat this as current backend behavior, not as the
+canonical ДИАГНОСТИКА 2 product story. The canonical product shape is diagnosis-first and then
+explicit one-hypothesis or shortlist comparison. The sequential **`core_v1`** profile is retained for
 regression/parity checks via `--candidate-profile core_v1`. The full optimizer and robust menu
 (**`default_v1`**, 16 builders) runs only with **`--mode full`** on review, or via standalone
-**`run_candidate_factory.py --profile default_v1`**. Do not treat a **`core_fast`** review as proof
-that the full menu was built.
+**`run_candidate_factory.py --profile default_v1`**, and is advanced/research only.
 
 ### Portfolio-first review (orchestrated)
 
 | Use case | Command | Factory profile |
 | --- | --- | --- |
-| Portfolio review site/API (**core**, default) | `python run_portfolio_review.py` or `--mode core` | `core_fast` |
-| Full review (16 builders + compare) | `python run_portfolio_review.py --mode full` | `default_v1` |
-| Compare / decision package only (no subject/factory) | `python run_compare_variants.py` | — |
+| Portfolio diagnosis / site/API backend run | `python run_portfolio_review.py` or `--mode core` | current code: `core_fast` backend batch |
+| **Canonical product demo** (one candidate -> compare -> verdict) | `python run_portfolio_review.py --candidates equal_weight` (or another factory id) | explicit id only; not `core_fast` menu |
+| Full advanced/research review (16 builders + compare) | `python run_portfolio_review.py --mode full` | `default_v1` |
+| Compare / technical decision package only (no subject/factory) | `python run_compare_variants.py` | ? |
 | Portfolio-first PDF export | `python run_portfolio_review.py --with-pdf` | same as mode |
 | Full legacy PDF suite | `python run_portfolio_review.py --legacy-full-pdf` or `python rebuild_pdf_reports.py` | — |
 
@@ -108,15 +127,17 @@ not invoked unless `full_report`, `legacy_export`, or an explicit PDF/export com
 
 ## Main Output Flow
 
-The current implementation is site/API-first and CLI/file-driven.
+The current implementation is site/API-first and CLI/file-driven, but product-facing output should
+be interpreted through the ДИАГНОСТИКА 2 bundle first.
 
 Portfolio-first output flow contract:
 
 ```text
 analysis_subject
 -> subject diagnostics
--> candidate outputs
--> subject-centered comparison and decision package
+-> problem classification / candidate launchpad
+-> selected candidate or generated shortlist
+-> current-vs-candidate / decision verdict / AI grounding / what changed
 ```
 
 The portfolio-first orchestrator (`run_portfolio_review.py`) follows this order by default. The
@@ -177,7 +198,7 @@ Output terminology boundary: product-facing `Decision Verdict` language may map 
 Selection/No-Trade evidence, but it does not rename `selection_decision.json`, Selection Engine
 contracts, No-Trade artifacts, or any existing output fields. Advanced/backend generated artifacts
 such as robustness scorecard, Portfolio Health Score, Selection/No-Trade, action, monitoring, and
-journal outputs may remain current implementation outputs without becoming Core MVP product UI.
+journal outputs may remain current implementation outputs without becoming Core MVP product UI. Do not call them the current product just because they are generated.
 
 ## Product-Facing Output Bundle Policy
 
@@ -216,9 +237,10 @@ Compare (`write_candidate_comparison_outputs`) still writes technical and advanc
 (`candidate_comparison.json`, `selection_decision.json`, health/robustness/Pareto/regret, action,
 monitoring, journal, decision-package projections). Default `site_api` runs omit CSV/TXT/PDF unless
 export flags are set. `output_manifest.json` lists generated paths for orchestration; it is not the
-product-facing answer—filter with the bundle table above. Known follow-up (backlog `RM-ARCH-011`):
-compare should resolve diagnosis bundle paths from `analysis_subject/` when root copies are absent,
-and pass problem/launchpad into `ai_commentary_context` grounding.
+product-facing answer—filter with the bundle table above. After compare (and report when diagnosis
+artifacts exist), `generated_paths` includes resolved keys for all six bundle JSON files
+(`problem_classification_json` through `what_changed_summary_json`; diagnosis paths prefer
+`analysis_subject/`). `artifact_categories` groups `product_bundle` vs `technical_comparison` keys.
 
 ## Output Formats
 
@@ -239,7 +261,7 @@ Markdown sidecar rows apply only when an export profile or explicit PDF command 
 
 Common project artifacts include:
 
-- `output_manifest.json` — UI/API index (`output_manifest_v1`; profile, paths, disabled classes, counts)
+- `output_manifest.json` — UI/API index (`output_manifest_v1`; profile, paths, `artifact_categories`, disabled classes, counts; six product-bundle path keys when present)
 
 - `portfolio_weights.yml`
 - `run_result.json`
