@@ -32,6 +32,8 @@ Use the narrowest reliable check first. Broaden only when the change touches sha
 | Blocks 8–10 package truthfulness (offline) | Partial menu + degraded optimizer disclosure in selection/action/decision package | `python -m pytest tests/test_blocks_8_10_downstream_integration.py tests/test_package_truthfulness.py tests/test_decision_package_reporting.py -q` |
 | Blocks 1-5 data trust signals | Stress/input/X-Ray trust summaries for episode quality, taxonomy warnings, and young-ETF policy disclosure | `python -m pytest tests/test_data_trust_signals.py -q` |
 | Portfolio-first workflow orchestration | `run_portfolio_review.py` plan building or step ordering | `python -m pytest tests/test_portfolio_review_workflow.py -q` |
+| One-candidate product demo (Session 07) | After `run_portfolio_review.py --candidates equal_weight` or runtime-truth scoping changes | `python -m pytest tests/test_one_candidate_demo_validation.py -q`; live disk gate: `python scripts/validate_one_candidate_demo.py` |
+| Runtime truth product vs research boundaries (Session 08) | Runtime mode routing, `advanced_package` gating, or compare/verdict scoping changes | `python -m pytest tests/test_runtime_mode_regression_boundaries.py tests/test_portfolio_review_workflow.py tests/test_candidate_comparison.py tests/test_one_candidate_demo_validation.py -q` |
 | MVP workflow orchestration | `run_mvp_workflow.py` plan building or step ordering | `python -m pytest tests/test_mvp_workflow.py -q` |
 
 `pytest.ini` limits test discovery to `tests/`, so `python -m pytest` is the repository-level test command.
@@ -65,7 +67,8 @@ refreshing generated outputs unless the session explicitly targets generated art
 | Decision Verdict / `decision_verdict.json` | `python -m pytest tests/test_decision_verdict.py -q` | Add `tests/test_selection_engine.py` and action tests if Selection/No-Trade or action-plan evidence changes |
 | AI Commentary grounding / `ai_commentary_context.json` | `python -m pytest tests/test_ai_commentary_context.py -q` | Add Decision Verdict and Current-vs-Candidate tests if grounding inputs change |
 | Light Monitoring / `what_changed_summary.json` | `python -m pytest tests/test_light_monitoring_summary.py -q` | Add monitoring tests if `monitoring_diff.json` snapshots/diff logic changes |
-| Product bundle integration after compare | Run all adapter tests together: `python -m pytest tests/test_problem_classification.py tests/test_candidate_launchpad.py tests/test_portfolio_alternatives_builder.py tests/test_current_vs_candidate.py tests/test_decision_verdict.py tests/test_ai_commentary_context.py tests/test_light_monitoring_summary.py -q` | Add offline portfolio-first E2E if runtime flow or generated artifact ordering changes |
+| Product bundle integration after compare | `python -m pytest tests/test_product_bundle_paths.py tests/test_product_bundle_integration.py tests/test_ai_commentary_context.py tests/test_light_monitoring_summary.py tests/test_portfolio_review_workflow.py tests/test_portfolio_alternatives_builder.py -q` (offline gate + RM-ARCH-011 path tests + workflow; 46 tests as of 2026-05-26 Session 08) | Extend when compare ordering, sidecar paths, or bundle schemas change; also run adapter unit bundle below |
+| Product bundle adapter unit tests | `python -m pytest tests/test_problem_classification.py tests/test_candidate_launchpad.py tests/test_portfolio_alternatives_builder.py tests/test_current_vs_candidate.py tests/test_decision_verdict.py tests/test_ai_commentary_context.py tests/test_light_monitoring_summary.py -q` | Add offline portfolio-first E2E if runtime flow or generated artifact ordering changes |
 
 ### Output-bundle acceptance checks
 

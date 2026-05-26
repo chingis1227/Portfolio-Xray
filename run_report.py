@@ -2390,21 +2390,30 @@ def run_portfolio_report_for_weights(
         "output_profile": output_policy.profile,
         "output_policy_disabled_artifact_classes": output_policy.disabled_artifact_classes,
     }
-    manifest_path = write_output_manifest(
+    from src.product_bundle_paths import (
+        build_output_manifest_discovery_extra,
+        build_product_first_generated_paths,
+    )
+
+    report_manifest_paths = build_product_first_generated_paths(
         output_dir_final,
-        policy=output_policy,
-        run_kind=str(portfolio_role_override or "portfolio_report"),
-        generated_paths={
+        {
             "run_metadata": output_dir_final / "run_metadata.json",
             "data_policy": output_dir_final / "data_policy.json",
             "portfolio_xray": output_dir_final / "portfolio_xray.json",
-            "problem_classification": output_dir_final / "problem_classification.json",
-            "candidate_launchpad": output_dir_final / "candidate_launchpad.json",
             "stress_report": output_dir_final / "stress_report.json",
             "snapshot_10y": output_dir_final / "snapshot_10y.json",
             "snapshot_index": output_dir_final / "snapshot_index.json",
         },
+    )
+
+    manifest_path = write_output_manifest(
+        output_dir_final,
+        policy=output_policy,
+        run_kind=str(portfolio_role_override or "portfolio_report"),
+        generated_paths=report_manifest_paths,
         cache_keys={"daily": daily_cache_key, "monthly": monthly_cache_key},
+        extra=build_output_manifest_discovery_extra(report_manifest_paths),
     )
     meta["output_manifest"] = manifest_path
     timing_payload = report_timing.to_dict()

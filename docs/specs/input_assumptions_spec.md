@@ -4,6 +4,24 @@ This document owns the current contract for the product's first layer: portfolio
 
 The resolved runtime contract is `analysis_setup` (`analysis_setup_v1`). `input_assumptions` is the exported/reporting representation of `analysis_setup`; it is not a separate source object for business logic.
 
+## Contract freeze (2026-05-26)
+
+The **Input Layer MVP** contract in this spec (Core MVP three-field surface, real-cash holdings,
+`input_surface` / `field_tiers` export, MVP normalization) is **frozen** as of ExecPlan closure
+[Input Layer MVP Migration](../exec_plans/2026-05-26_input_layer_mvp_migration.md) Session 10.
+
+- **Do not** reopen input-layer redesign, new first-screen fields, or tier reclassification unless a
+  **documented bug** breaks acceptance (regression in `tests/test_input_layer_mvp_regression.py`,
+  `tests/test_real_cash.py`, or live Block 1 disclosure).
+- **Allowed without reopening:** bug fixes, clarifications that match implemented behavior, EUR or
+  non-USD parity work explicitly scoped in a new ExecPlan.
+- **Next product work** belongs to downstream layers (Portfolio X-Ray, Stress Lab, Problem
+  Classification, Candidate Launchpad, compare/verdict adapters) — see
+  [product_flow_operator_guide.md](../product_flow_operator_guide.md).
+
+Evidence: [Input Layer MVP acceptance audit](../audits/2026-05-26_input_layer_mvp_acceptance_audit.md);
+live one-candidate verification 2026-05-26 in audit §5.
+
 ## Scope
 
 The Input and Assumptions Layer defines what the user or system must know before optimization, reporting, stress diagnostics, candidate generation, or recommendation logic runs.
@@ -21,6 +39,165 @@ It covers:
 - the structured `input_assumptions` summary exported from `analysis_setup` in run artifacts
 
 It does not own metric formulas, risk-free conversion formulas, NaN handling formulas, feasibility formulas, stress scenario definitions, candidate construction methods, or production release statuses. Those remain in their dedicated specs.
+
+## Core MVP Input Surface
+
+The **Core MVP** portfolio-first product path (`run_portfolio_review.py`, diagnosis and optional
+one-candidate compare) requires **only** these user-supplied inputs:
+
+| User input | Config keys | Required for Core MVP |
+| --- | --- | --- |
+| Instruments | `tickers` | Yes |
+| Allocation | `weights`, `current_weights`, or `analysis_subject.weights` | Yes (at least one positive weight map) |
+| Reporting currency | `investor_currency` | Yes |
+
+Everything else in this document is either **system-resolved**, **legacy/advanced config**, or a
+**later product layer** (Client-Fit Check, Risk Guardrail, Candidate Builder, Assumption Testing).
+Core MVP must not fail config validation when optional later-layer fields are omitted.
+
+**Config UI (`config_ui/`):** the web form exposes the three Core MVP groups on the first screen
+(currency, tickers, weights). Legacy optimizer, mandate, and liquidity fields live under
+**Advanced settings** (collapsed by default). Saving in Core MVP mode writes compact YAML aligned
+with `config.yml.example` Section 1 plus preserved technical run settings.
+
+**Internal defaults (not first-screen user fields):** for Core MVP the system assumes
+`analysis_subject.type = current_portfolio` and `analysis_mode = analyze_current_weights` when
+the user supplies a current allocation (implementation: Session 02+ in
+[Input Layer MVP Migration ExecPlan](../exec_plans/2026-05-26_input_layer_mvp_migration.md)).
+Users may still set these keys explicitly in YAML for clarity or legacy tooling.
+
+**Export-only artifact:** `input_assumptions` remains a reporting projection of `analysis_setup`.
+Downstream calculation, stress, and comparison logic must consume `analysis_setup` or canonical
+runtime inputs (`PortfolioConfig`, resolved weights), not treat `input_assumptions` as a second
+source of truth.
+
+## Input Layer Structure (canonical product)
+
+The Input and Assumptions Layer is organized into six logical blocks. Only **§1.1** and **§1.2**
+(partly) are required for Core MVP user-facing input; the rest are deferred or backend-only.
+
+### 1.1 Portfolio Input
+
+**Purpose:** Capture the factual portfolio under diagnosis — which instruments, what weights, and
+in which currency results are shown.
+
+**Core MVP user fields:**
+
+- `tickers` — instrument list (risk assets and explicit cash labels; see Real Cash Holdings).
+- `weights` / `current_weights` / `analysis_subject.weights` — allocation; percent strings allowed.
+- `investor_currency` — USD, EUR, JPY, CHF (non-USD/EUR may require explicit cash proxy and RF in config until broader defaults exist).
+
+**Not on first screen (deferred or internal):**
+
+| Field | Tier | Notes |
+| --- | --- | --- |
+| `analysis_subject` (`type`, `id`, `display_name`) | `system_default` / internal | Injected for Core MVP when weights supplied |
+| `analysis_mode` | `system_default` / internal | `analyze_current_weights` for Core MVP |
+| `portfolio_value` | `client_fit_later` | Liquidity / action / rebalancing |
+| `initial_investable_amount` | `client_fit_later` | Same |
+| `beta_local_mapping` | `assumption_testing` | Asset-level diagnostic override |
+
+**Example (Core MVP):** VOO 45%, QQQ 20%, TLT 15%, GLD 10%, Cash USD 10%, `investor_currency: USD`.
+
+#### Real Cash Holdings (normative)
+
+If the user enters **real cash** as a portfolio holding (for example `Cash USD`, `Cash EUR`,
+`CASH`, or equivalent labels accepted by the implementation), the system **must**:
+
+- treat it as an explicit portfolio position in weights;
+- use **0%** return, **0%** volatility, and **0** drawdown for that position;
+- **not** download a price series for that label;
+- include it in reported allocation and diagnostics as actual cash;
+- **not** replace it with `cash_proxy_ticker` (for example BIL or PEU).
+
+`cash_proxy_ticker` is a **technical** setting only: risk-free rate for Sharpe/excess metrics,
+NaN-safe backtest miss fill, and alternative candidate modeling. It is **not** the same as user-entered
+bank cash. If both an ETF cash proxy (e.g. BIL) and `Cash USD` appear, they are distinct positions.
+
+Implementation status: enforced in `src/real_cash.py` (Session 03,
+[Input Layer MVP Migration ExecPlan](../exec_plans/2026-05-26_input_layer_mvp_migration.md)).
+
+### 1.2 System Defaults / Market and Calculation Base
+
+**Purpose:** Provide a consistent market and calculation base for X-Ray, metrics, stress, and
+reports after the user chooses `investor_currency`.
+
+**System-resolved (user not asked on first screen for USD/EUR Core MVP):**
+
+- `risk_free_source` / `rf_source`
+- `cash_proxy_ticker`
+- `base_benchmark_ticker` / `benchmark_base_ticker`
+- FX and local-currency conversion rules per [metrics_specification.md](metrics_specification.md) and [DATA.md](../../DATA.md)
+- `market_data_provider` (config default)
+
+Resolution is implemented in `src/config.py` (`resolve_cash_and_rf`, benchmark defaults by currency).
+Unsupported currencies must still set cash proxy and risk-free explicitly.
+
+### 1.3 Liquidity and Cash Context (later — not Core MVP input)
+
+**Purpose (future):** Cash adequacy and practical suitability — life floor, expense coverage,
+whether a candidate violates liquidity needs.
+
+**Fields (optional / later layers):** `liquidity_need` (legacy derived flag), `liquidity_need_months`,
+`monthly_expenses`, `cash_policy`.
+
+**Core MVP:** not required. If the user already holds cash in the portfolio (§1.1 Real Cash), that
+position is diagnosed as-is. `cash_policy` (vol scaling via cash, required floor, prohibited) applies
+to **Candidate Builder / optimization** later, not to mandatory first-screen input.
+
+**Future placement:** optional Risk Guardrail / Client-Fit Check before or after Candidate Builder.
+
+### 1.4 Client Profile and Objectives (later — not Core MVP input)
+
+**Purpose (future):** Compare realized portfolio behavior to stated goals (drawdown tolerance,
+vol target, return objective) — interpretive, not auto-trading.
+
+**Fields:** `client_profile`, `target_nominal_return_annual`, `target_vol_annual`,
+`target_max_drawdown_pct`, `min_acceptable_return`, `horizon_years`.
+
+**Core MVP:** not required for `run_portfolio_review` diagnosis. `horizon_years` remains report/context
+only in V1 (does not change optimizer or stress gates).
+
+**Future placement:** Client-Fit Check / Client Sheet; may prefill Candidate Builder constraints.
+
+### 1.5 Mandate / Constraints (later — Candidate Builder; Core MVP defaults only)
+
+**Purpose (future):** Limit how **alternative** portfolios are generated (caps, leverage, shorts).
+
+**Fields:** `allow_leverage`, `allow_short_selling`, `max_single_security_weight_pct`,
+`min_single_security_weight_pct`, asset-class bounds, turnover/CVaR limits (where configured).
+
+**Core MVP defaults (no user prompt):** `allow_leverage = false`, `allow_short_selling = false`.
+Current portfolio is diagnosed **as-is**; concentration is an X-Ray finding, not a first-input block.
+
+**Future placement:** Portfolio Alternatives Builder parameters.
+
+### 1.6 Technical Assumptions (backend / config defaults)
+
+**Purpose:** Define run windows, data quality, backtest mode, robustness checks, and output folders.
+
+**Fields:** `windows_months`, `returns_frequency`, `coverage_threshold`, `backtest_mode`,
+`optimization_windows_months`, `primary_window_months`, `secondary_window_months`, `robustness_policy`,
+`covariance_shrinkage`, `young_etf_optimization_policy`, `output_dir`, `output_dir_final`,
+`market_data_provider`.
+
+**Core MVP:** not user-required on first screen; values come from config defaults and
+`validate_config` injection. Non-monthly `returns_frequency` is disclosure-only for the main metrics
+panel per [metrics_specification.md](metrics_specification.md).
+
+**Future placement:** Assumption Testing / Sensitivity Mode (advanced).
+
+## Field Classification Reference
+
+| Tier | Meaning | Examples |
+| --- | --- | --- |
+| `core_mvp` | Required user input for portfolio-first Core MVP | `tickers`, weights, `investor_currency` |
+| `system_default` | Resolved from currency/config; may be injected | `analysis_subject`, `analysis_mode`, RF, benchmark, cash proxy |
+| `client_fit_later` | Client-Fit Check / Client Sheet | `client_profile`, targets, `horizon_years`, `portfolio_value` |
+| `risk_guardrail_later` | Liquidity suitability after diagnosis | `liquidity_need_months`, `monthly_expenses` |
+| `candidate_builder` | Alternative portfolio construction | `max_single_security_weight_pct`, `cash_policy` for scaling |
+| `assumption_testing` | Sensitivity / advanced | `beta_local_mapping`, window overrides |
+| `legacy_advanced` | Legacy policy optimizer / full config UI | full mandate + liquidity + `optimize_from_universe` batch |
 
 ## Resolved Analysis Setup Contract
 
@@ -61,6 +238,37 @@ It does not change data policy, NaN handling, or optimizer formulas.
 `data_trust_signals.user_summary_lines` merges review-bundle notices (for example
 legacy `analysis_mode=optimize_from_universe` while diagnosing an explicit
 `current_portfolio` subject) ahead of generic trust lines.
+
+### `input_surface` (Input Layer MVP Session 06)
+
+`input_assumptions_v1` includes `input_surface` (`input_surface_v1`): export-only disclosure of
+which product input surface applies and whether Core MVP first-screen requirements are met.
+
+| Field | Description |
+| --- | --- |
+| `profile` | `core_mvp` when diagnosing a user-supplied allocation (`analyze_current_weights` or explicit current/model subject); otherwise `legacy_advanced`. |
+| `product_path` | `portfolio_first_diagnosis` vs `legacy_policy_or_universe_baseline`. |
+| `first_screen` | Per-group status for tickers, allocation, and `investor_currency` (required/supplied/source). |
+| `core_mvp_requirements_met` | `true` when all three first-screen groups are supplied. |
+| `system_injected` | Resolved `analysis_mode`, `analysis_subject` type, `resolution_source`, and whether a `compat.*` resolver applied. |
+| `real_cash` | Holdings summary from `analysis_portfolio.cash_handling` (distinct from `cash_proxy_ticker`). |
+| `notes` | Plain-English disclosure lines for operators and Block 1 acceptance. |
+
+### `field_tiers` (Input Layer MVP Session 06)
+
+`input_assumptions_v1` includes `field_tiers` (`field_tiers_v1`): the static tier registry from
+**Field Classification Reference** plus a per-run `run_disclosure` block.
+
+| Field | Description |
+| --- | --- |
+| `tier_definitions` | Short meaning of each tier (`core_mvp`, `system_default`, `client_fit_later`, …). |
+| `registry` | Config field → tier map (canonical classification; not a second source of truth for logic). |
+| `run_disclosure.core_mvp` | Which first-screen groups were user-supplied and whether requirements are met. |
+| `run_disclosure.populated_by_tier` | Fields with values on this run, grouped by tier. |
+| `run_disclosure.user_configured_fields` | Fields with user or profile preset sources (deferred layers). |
+| `run_disclosure.deferred_tiers_with_values` | Later-layer tiers that still have values on this run. |
+
+Implementation: `build_input_surface` and `build_field_tiers` in `src/input_assumptions.py`.
 
 ## `analysis_subject` Config Object
 
@@ -185,43 +393,42 @@ Current repo compatibility:
 - `analysis_mode=optimize_from_universe` without explicit `analysis_subject` maps to the existing construction workflow and resolves a universe-baseline subject for metadata.
 - legacy `weights` remains supported for fixed-report compatibility and resolves as a model-portfolio subject when not generated from `portfolio_weights.yml`.
 
-## User Inputs
+## User Inputs (compatibility index)
 
-Core user-controlled inputs include:
+For **Core MVP**, see **§ Core MVP Input Surface** and **§1.1 Portfolio Input**. The list below
+indexes all config keys historically grouped as “user inputs”; tier labels refer to
+**Field Classification Reference**.
 
-- `analysis_mode`
-- `tickers`
-- `current_weights`, when analyzing an existing portfolio
-- `investor_currency`
-- `initial_investable_amount`
-- `portfolio_value`
-- `liquidity_need_months`
-- `monthly_expenses`
-- `cash_policy`
-- `client_profile`
-- manual target overrides
-- `allow_leverage`
-- `allow_short_selling`
-- position caps and floors
-- `horizon_years`
+| Field | Tier (Core MVP) |
+| --- | --- |
+| `tickers` | `core_mvp` |
+| `weights`, `current_weights`, `analysis_subject.weights` | `core_mvp` |
+| `investor_currency` | `core_mvp` |
+| `analysis_mode`, `analysis_subject` | `system_default` (may be injected) |
+| `initial_investable_amount`, `portfolio_value` | `client_fit_later` |
+| `liquidity_need_months`, `monthly_expenses`, `liquidity_need` | `risk_guardrail_later` |
+| `cash_policy` | `candidate_builder` |
+| `client_profile`, target overrides, `horizon_years` | `client_fit_later` |
+| `allow_leverage`, `allow_short_selling`, position caps/floors | `candidate_builder` / defaults |
+| `risk_free_source`, `cash_proxy_ticker`, `base_benchmark_ticker` | `system_default` |
+| `windows_months`, `returns_frequency`, … | `assumption_testing` / backend defaults |
 
-`horizon_years` is currently report/context only. It is validated and exported, but it does not change optimizer objective, constraints, windows, stress tests, or release status in V1.
+`horizon_years` is report/context only in V1: validated and exported, but does not change optimizer
+objective, constraints, windows, stress tests, or release status.
 
 ## System-Resolved Inputs
 
-The system resolves:
+See **§1.2 System Defaults**. Implementation summary:
 
-- cash proxy ticker from `cash_proxy_ticker`, otherwise from supported currency defaults: USD uses
-  `BIL` and EUR uses `PEU`
-- risk-free source from `risk_free_source`, otherwise from supported currency defaults: USD uses
-  `FRED:DTB3` and EUR uses ECB `€STR`
+- cash proxy ticker from `cash_proxy_ticker`, otherwise currency defaults (USD → `BIL`, EUR → `PEU`)
+- risk-free source from `risk_free_source`, otherwise currency defaults (USD → `FRED:DTB3`, EUR → ECB €STR)
 - base benchmark from `base_benchmark_ticker` or currency defaults
 - local benchmark map from config overrides plus defaults
-- profile-derived target values from `config/client_profiles.yml`
+- profile-derived targets from `config/client_profiles.yml` when `client_profile` is set (not required for Core MVP)
 
-Unsupported investor currencies may still use benchmark defaults, but they must set both
+Unsupported investor currencies may still use benchmark defaults, but must set both
 `cash_proxy_ticker` and `risk_free_source` explicitly. Risk-free and benchmark behavior remains
-governed by `metrics_specification.md`, `DATA.md`, and config resolution code.
+governed by [metrics_specification.md](metrics_specification.md), [DATA.md](../../DATA.md), and `src/config.py`.
 
 ## Ticker Validation Policy
 
@@ -246,7 +453,7 @@ annotation/diagnostics infrastructure and do not silently rewrite the configured
 
 ## Mandate And Constraint Inputs
 
-`client_profile` fills targets only. Profile values may set:
+See **§1.5 Mandate / Constraints**. `client_profile` fills targets only when set. Profile values may set:
 
 - `target_nominal_return_annual`
 - `target_vol_annual`
@@ -260,7 +467,7 @@ Feasibility formulas for weight caps and floors are owned by `feasibility_constr
 
 ## Technical Calculation Assumptions
 
-Technical analysis settings include:
+See **§1.6 Technical Assumptions**. Technical analysis settings include:
 
 - `windows_months`
 - `returns_frequency`: `monthly`, `weekly`, or `daily`
@@ -317,13 +524,16 @@ The `input_assumptions` artifact is explanatory and reproducibility-oriented. It
 
 ## Current V1 Gaps
 
-The following product concept items are not implemented in this layer yet:
+The following remain open relative to this spec and the
+[Input Layer MVP Migration ExecPlan](../exec_plans/2026-05-26_input_layer_mvp_migration.md):
 
-- interactive UI input controls
-- user-facing range pickers for every target and technical setting
+- **Real cash holdings** in metrics and data pipeline (Session 03; rule is normative in §1.1) — implemented; see §1.1
+- **Field tier metadata** on exported `input_assumptions` (Session 06) — implemented; see `input_surface` and `field_tiers`
+- interactive UI range pickers for every target and technical setting
 - transaction cost / rebalance cost model
 - investment horizon effects on optimizer policy
-- formal assumption sensitivity module (specified in [assumption_sensitivity_spec.md](assumption_sensitivity_spec.md); implementation Session 15)
-- formal selection engine or no-trade logic
+- formal assumption sensitivity module ([assumption_sensitivity_spec.md](assumption_sensitivity_spec.md))
+- Client-Fit Check and Risk Guardrail product surfaces (§1.3–1.4)
+- formal selection engine or no-trade logic beyond existing product adapters
 
-These items require separate specs and implementation work before they become binding.
+These items require implementation work in their owning sessions before they become fully binding in code.

@@ -12,7 +12,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, Literal, Sequence
 
 from src.candidate_factory import REVIEW_MODE_PROFILES
 from src.candidate_weights import normalize_execution_mode
@@ -27,6 +27,20 @@ DEFAULT_REVIEW_MODE = "core"
 # Phased factory (weights + lightweight_comparison) — default for portfolio-first review.
 REVIEW_DEFAULT_FACTORY_EXECUTION_MODE = "standard"
 
+RuntimeMode = Literal[
+    "product_diagnosis_only",
+    "product_one_candidate",
+    "product_shortlist",
+    "research_batch",
+    "legacy_policy",
+]
+
+RUNTIME_MODE_PRODUCT_DIAGNOSIS_ONLY: RuntimeMode = "product_diagnosis_only"
+RUNTIME_MODE_PRODUCT_ONE_CANDIDATE: RuntimeMode = "product_one_candidate"
+RUNTIME_MODE_PRODUCT_SHORTLIST: RuntimeMode = "product_shortlist"
+RUNTIME_MODE_RESEARCH_BATCH: RuntimeMode = "research_batch"
+RUNTIME_MODE_LEGACY_POLICY: RuntimeMode = "legacy_policy"
+
 
 @dataclass(frozen=True)
 class PortfolioReviewStep:
@@ -39,6 +53,7 @@ class PortfolioReviewStep:
 class PortfolioReviewPlan:
     steps: tuple[PortfolioReviewStep, ...]
     workflow_state: WorkflowStateAssessment
+    runtime_mode: RuntimeMode
 
 
 def _python(project_root: Path) -> str:
@@ -67,6 +82,36 @@ def resolve_factory_execution_mode(
     return REVIEW_DEFAULT_FACTORY_EXECUTION_MODE
 
 
+def _parse_candidate_ids(candidate_ids: str | None) -> tuple[str, ...]:
+    if not candidate_ids:
+        return ()
+    return tuple(part.strip() for part in candidate_ids.split(",") if part.strip())
+
+
+def resolve_portfolio_review_runtime_mode(
+    *,
+    skip_candidates: bool = False,
+    skip_compare: bool = False,
+    review_mode: str = DEFAULT_REVIEW_MODE,
+    candidate_profile: str | None = None,
+    candidate_ids: str | None = None,
+) -> RuntimeMode:
+    """Classify the review run without changing its execution behavior.
+
+    This is a routing label for the Documentation/Runtime Truth Reset. It is deliberately
+    conservative: existing profile-based candidate runs are classified as research batch until
+    later sessions change default behavior.
+    """
+    parsed_candidate_ids = _parse_candidate_ids(candidate_ids)
+    if len(parsed_candidate_ids) == 1:
+        return RUNTIME_MODE_PRODUCT_ONE_CANDIDATE
+    if len(parsed_candidate_ids) > 1:
+        return RUNTIME_MODE_PRODUCT_SHORTLIST
+    if skip_candidates and skip_compare:
+        return RUNTIME_MODE_PRODUCT_DIAGNOSIS_ONLY
+    return RUNTIME_MODE_RESEARCH_BATCH
+
+
 def build_portfolio_review_plan(
     cfg: PortfolioConfig,
     *,
@@ -91,6 +136,13 @@ def build_portfolio_review_plan(
     resolved_mode, factory_profile = resolve_review_candidate_profile(
         review_mode=review_mode,
         candidate_profile=candidate_profile,
+    )
+    runtime_mode = resolve_portfolio_review_runtime_mode(
+        skip_candidates=skip_candidates,
+        skip_compare=skip_compare,
+        review_mode=resolved_mode,
+        candidate_profile=candidate_profile,
+        candidate_ids=candidate_ids,
     )
     resolved_execution_mode = resolve_factory_execution_mode(
         factory_execution_mode=factory_execution_mode,
@@ -182,7 +234,11 @@ def build_portfolio_review_plan(
         skip_compare=skip_compare,
     )
 
-    return PortfolioReviewPlan(steps=tuple(steps), workflow_state=workflow_state)
+    return PortfolioReviewPlan(
+        steps=tuple(steps),
+        workflow_state=workflow_state,
+        runtime_mode=runtime_mode,
+    )
 
 
 def run_portfolio_review_plan(
@@ -222,6 +278,7 @@ def summarize_plan(
     lines = [
         "Portfolio review workflow: analysis_subject-first",
         f"Review mode: {review_mode}{profile_note}",
+        f"Runtime mode: {plan.runtime_mode}",
         (
             "Workflow state: "
             f"{plan.workflow_state.state} "

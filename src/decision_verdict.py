@@ -150,7 +150,11 @@ def build_decision_verdict(
         ),
         "rationale_summary": rationale_summary,
         "source_artifacts": {
-            "selection_decision": "selection_decision.json" if isinstance(selection, dict) else None,
+            "selection_decision": (
+                selection.get("source_artifact", "selection_decision.json")
+                if isinstance(selection, dict) and not selection.get("support_only")
+                else None
+            ),
             "current_vs_candidate": "current_vs_candidate.json"
             if isinstance(current_vs_candidate, dict)
             else None,

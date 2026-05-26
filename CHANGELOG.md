@@ -4,6 +4,17 @@ This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.
 
+Date: 2026-05-26
+
+Category: Changed
+
+- **Input Layer MVP Migration closed and frozen** (`DEC-2026-05-26-001`): Core MVP three-field
+  input, real cash, `input_surface` / `field_tiers` export; ExecPlan Sessions 01–10 complete.
+  Live verification: `run_portfolio_review.py --candidates equal_weight` + `validate_one_candidate_demo.py`
+  PASS. Contract freeze in [input_assumptions_spec.md](docs/specs/input_assumptions_spec.md);
+  evidence [acceptance audit](docs/audits/2026-05-26_input_layer_mvp_acceptance_audit.md) §5.
+  Active product focus moves to downstream Blocks 2–5 / product bundle layers (not more input redesign).
+
 Date: 2026-05-24
 
 Category: Changed

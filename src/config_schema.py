@@ -681,16 +681,28 @@ def _validate_analysis_subject(cfg: dict[str, Any]) -> None:
         cash_proxy_for_preflight, _ = resolve_cash_and_rf(cfg)
     except ConfigValidationError:
         pass
+    from src.real_cash import collect_real_cash_tickers
+
+    preflight_extra = collect_real_cash_tickers(
+        tickers=tickers,
+        weights=raw.get("weights"),
+    )
+    if cash_proxy_for_preflight:
+        preflight_extra.append(str(cash_proxy_for_preflight))
     preflight_explicit_analysis_subject_tickers(
         tickers,
-        extra_allowed=[cash_proxy_for_preflight] if cash_proxy_for_preflight else None,
+        extra_allowed=preflight_extra or None,
     )
 
     subject_id = str(raw.get("id") or "analysis_subject").strip() or "analysis_subject"
     display_name = str(raw.get("display_name") or "").strip()
     weights = dict(raw.get("weights") or {})
 
+    from src.real_cash import collect_real_cash_tickers
+
     allowed_weight_tickers = set(tickers)
+    for label in collect_real_cash_tickers(tickers=tickers, weights=weights):
+        allowed_weight_tickers.add(label)
     try:
         from src.config import resolve_cash_and_rf
 
@@ -1131,6 +1143,9 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
     cfg = _normalize_config_keys(cfg)
     cfg = _normalize_percent_fields(cfg)
     _inject_optional_defaults(cfg)
+    from src.mvp_input import apply_mvp_input_defaults
+
+    apply_mvp_input_defaults(cfg)
 
     _validate_required(cfg)
     _validate_booleans(cfg)

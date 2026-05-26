@@ -66,16 +66,17 @@ Factory recovery and reason codes: [operational runbook §8](docs/operational_ru
 
 | Step | Action |
 | --- | --- |
-| 1 | Confirm `config.yml` → `analysis_subject` (weights for `current_portfolio` / `model_portfolio` when used). |
-| 2 | Choose mode: **core** (default, six candidates, `core_v1`) vs **full** (`default_v1`, 16 builders). See [portfolio review workflow spec](docs/specs/portfolio_review_workflow_spec.md). |
-| 3 | Optional: `python run_portfolio_review.py --dry-run` to inspect stage order without builders. |
-| 4 | Run: `python run_portfolio_review.py` or `--mode full`; add `--no-cache` on first data load if needed. Default is JSON-only (`site_api`); PDFs require `--with-pdf` or `--legacy-full-pdf`. |
+| 1 | **Core MVP config:** confirm `tickers`, `current_weights` or `weights`, and `investor_currency` in `config.yml` (copy from `config.yml.example` Section 1 or `tests/fixtures/mvp_portfolios/`). Explicit `analysis_subject` is optional — weights alone inject `current_portfolio` + `analyze_current_weights`. For `model_portfolio` / `universe_baseline`, set `analysis_subject` explicitly. Real cash (`Cash USD`) is a separate holding from `cash_proxy_ticker`. See [input_assumptions_spec.md](docs/specs/input_assumptions_spec.md). |
+| 2 | Choose path: **routine core** (default, six candidates, `core_fast`) vs **full** (`default_v1`, 16 builders) vs **product demo** (one candidate). See [portfolio review workflow spec](docs/specs/portfolio_review_workflow_spec.md). |
+| 3 | Product demo only: `python run_portfolio_review.py --candidates equal_weight` (or another factory id). From Launchpad `candidate_method_id`, use the same factory id via Alternatives Builder delegation ([operator guide](docs/product_flow_operator_guide.md#launchpad-method--one-candidate-alternatives-builder) or `python scripts/run_one_candidate_from_method.py --method equal_weight`). Routine `run_portfolio_review.py` / `--mode core` stays six-candidate for regression — do not substitute for the demo path. Runbook: [Product demo (one candidate)](docs/operational_runbook.md#product-demo-one-candidate). |
+| 4 | Optional: `python run_portfolio_review.py --dry-run` (add `--candidates <id>` when validating the one-candidate plan). |
+| 5 | Run: `python run_portfolio_review.py` or `--mode full` for research batch; use step 3 command for product demo. Add `--no-cache` on first data load if needed. Default is JSON-only (`site_api`); PDFs require `--with-pdf` or `--legacy-full-pdf`. |
 
 **After the run — before trusting comparison or decision JSON**
 
 | Step | Check | Why |
 | --- | --- | --- |
-| 1 | Command / mode used | Default is **core** (`core_v1`), not full optimizer menu. |
+| 1 | Command / mode used | Default is **core** (`core_fast`, six candidates). Product demo uses `--candidates <id>` (`one_candidate`). Full menu is `--mode full` (`default_v1`). |
 | 2 | Open `{output_dir_final}/analysis_subject/` first | Subject X-Ray, stress, and `run_metadata.json` for the **reviewed** portfolio. |
 | 3 | Do **not** use root `run_result.json`, `portfolio_weights.yml`, or root `stress_report.json` / `portfolio_xray.json` as the subject | Those are **legacy policy** artifacts when present — often different weights than `analysis_subject/`. |
 | 4 | `candidate_factory_run.json` → `factory_profile_id` | Must match the mode you intended (`core_v1` vs `default_v1`). |

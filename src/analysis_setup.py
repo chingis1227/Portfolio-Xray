@@ -149,12 +149,17 @@ def preflight_explicit_analysis_subject_tickers(
     extra_allowed: Iterable[str] | None = None,
 ) -> None:
     """Reject unknown tickers for explicit portfolio-first subjects before report runs."""
+    from src.real_cash import is_real_cash_ticker
+
     clean = [_upper_ticker(t) for t in _clean_tickers(tickers)]
     allowed = set(_known_taxonomy_tickers())
     for raw in extra_allowed or []:
         token = _upper_ticker(raw)
         if token:
             allowed.add(token)
+    for raw in _clean_tickers(tickers):
+        if is_real_cash_ticker(raw):
+            allowed.add(_upper_ticker(raw))
     unknown = sorted({t for t in clean if t and t not in allowed})
     if unknown:
         raise ConfigValidationError(
@@ -467,22 +472,30 @@ def _analysis_portfolio(
             "target MVP universe-only baseline; current CLI report flow still requires fixed or generated weights"
         )
 
+    from src.real_cash import enrich_cash_handling
+
     cash_proxy = str(cash_proxy_ticker or getattr(cfg, "cash_proxy_ticker", "") or "")
     positive = positive_weights(resolved_weights)
     total = float(sum(positive.values()))
     cash_weight = float(positive.get(cash_proxy, 0.0)) if cash_proxy else 0.0
+
+    cash_handling = enrich_cash_handling(
+        {
+            "cash_proxy_ticker": cash_proxy or None,
+            "cash_proxy_weight": _round_weight(cash_weight),
+            "unallocated_weight_gap": _round_weight(max(0.0, 1.0 - total)),
+            "cash_proxy_is_explicit_weight": bool(cash_proxy and cash_proxy in positive),
+        },
+        resolved_weights=positive,
+        cash_proxy_ticker=cash_proxy or None,
+    )
 
     return {
         "portfolio_role": role,
         "weight_source": effective_source,
         "weights": _rounded_weight_map(resolved_weights),
         "weight_status": weight_status(resolved_weights),
-        "cash_handling": {
-            "cash_proxy_ticker": cash_proxy or None,
-            "cash_proxy_weight": _round_weight(cash_weight),
-            "unallocated_weight_gap": _round_weight(max(0.0, 1.0 - total)),
-            "cash_proxy_is_explicit_weight": bool(cash_proxy and cash_proxy in positive),
-        },
+        "cash_handling": cash_handling,
         "recommendation_status": recommendation_status,
         "notes": notes,
     }

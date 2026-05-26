@@ -1,7 +1,7 @@
 """Exported Input & Assumptions view projected from Analysis Setup."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from src.analysis_setup import build_analysis_setup, weight_status
 from src.config_schema import PortfolioConfig
@@ -13,11 +13,375 @@ from src.review_bundle_context import (
 )
 
 
+INPUT_SURFACE_VERSION = "input_surface_v1"
+FIELD_TIERS_VERSION = "field_tiers_v1"
+
+InputSurfaceProfile = Literal["core_mvp", "legacy_advanced"]
+
+TIER_DEFINITIONS: dict[str, str] = {
+    "core_mvp": "Required user input for portfolio-first Core MVP (tickers, weights, investor_currency).",
+    "system_default": "Resolved from currency/config or injected for Core MVP (RF, benchmark, cash proxy, analysis_subject).",
+    "client_fit_later": "Client-Fit Check / objectives (profile, targets, horizon, portfolio value).",
+    "risk_guardrail_later": "Liquidity suitability after diagnosis (months, expenses).",
+    "candidate_builder": "Alternative portfolio construction (caps, cash_policy, leverage flags).",
+    "assumption_testing": "Sensitivity / advanced technical settings (windows, frequency overrides).",
+    "legacy_advanced": "Legacy policy optimizer and full config UI advanced panel.",
+}
+
+FIELD_TIER_REGISTRY: dict[str, str] = {
+    "tickers": "core_mvp",
+    "weights": "core_mvp",
+    "current_weights": "core_mvp",
+    "analysis_subject.weights": "core_mvp",
+    "investor_currency": "core_mvp",
+    "analysis_mode": "system_default",
+    "analysis_subject": "system_default",
+    "analysis_subject.type": "system_default",
+    "analysis_subject.id": "system_default",
+    "analysis_subject.display_name": "system_default",
+    "analysis_subject.tickers": "system_default",
+    "initial_investable_amount": "client_fit_later",
+    "portfolio_value": "client_fit_later",
+    "client_profile": "client_fit_later",
+    "target_nominal_return_annual": "client_fit_later",
+    "target_vol_annual": "client_fit_later",
+    "target_max_drawdown_pct": "client_fit_later",
+    "min_acceptable_return": "client_fit_later",
+    "horizon_years": "client_fit_later",
+    "liquidity_need_months": "risk_guardrail_later",
+    "monthly_expenses": "risk_guardrail_later",
+    "liquidity_need": "risk_guardrail_later",
+    "cash_policy": "candidate_builder",
+    "allow_leverage": "candidate_builder",
+    "allow_short_selling": "candidate_builder",
+    "max_single_security_weight_pct": "candidate_builder",
+    "min_single_security_weight_pct": "candidate_builder",
+    "risk_free_source": "system_default",
+    "rf_source": "system_default",
+    "cash_proxy_ticker": "system_default",
+    "base_benchmark_ticker": "system_default",
+    "benchmark_base_ticker": "system_default",
+    "local_benchmark_map": "system_default",
+    "market_data_provider": "assumption_testing",
+    "windows_months": "assumption_testing",
+    "returns_frequency": "assumption_testing",
+    "coverage_threshold": "assumption_testing",
+    "backtest_mode": "assumption_testing",
+    "primary_window_months": "assumption_testing",
+    "secondary_window_months": "assumption_testing",
+    "optimization_windows_months": "assumption_testing",
+    "robustness_policy": "assumption_testing",
+    "covariance_shrinkage": "assumption_testing",
+    "young_etf_optimization_policy": "assumption_testing",
+    "output_dir": "assumption_testing",
+    "output_dir_final": "assumption_testing",
+    "beta_local_mapping": "assumption_testing",
+    "N_rc": "legacy_advanced",
+    "donor_shift_mode": "legacy_advanced",
+    "optimization_soft_vol_penalty_lambda": "legacy_advanced",
+    "optimization_soft_return_penalty_lambda": "legacy_advanced",
+    "minimum_variance_turnover_lambda": "legacy_advanced",
+    "strict_stress_gate": "legacy_advanced",
+}
+
+
 def _mandate_value(analysis_setup: dict[str, Any], key: str) -> Any:
     entry = (analysis_setup.get("resolved_mandate") or {}).get(key)
     if isinstance(entry, dict):
         return entry.get("value")
     return entry
+
+
+def _mandate_entry_source(analysis_setup: dict[str, Any], key: str) -> str | None:
+    entry = (analysis_setup.get("resolved_mandate") or {}).get(key)
+    if isinstance(entry, dict):
+        return str(entry.get("source") or "")
+    return None
+
+
+def _mandate_entry_populated(analysis_setup: dict[str, Any], key: str) -> bool:
+    source = _mandate_entry_source(analysis_setup, key)
+    if source in (None, "", "not_set"):
+        return False
+    value = _mandate_value(analysis_setup, key)
+    if value is None:
+        return False
+    if isinstance(value, (int, float)) and key in (
+        "liquidity_need_months",
+        "monthly_expenses",
+        "portfolio_value",
+    ):
+        return float(value) > 0
+    if isinstance(value, bool) and key in ("allow_leverage", "allow_short_selling"):
+        return value is True
+    if isinstance(value, str) and key == "cash_policy":
+        return value.strip().lower() not in ("", "none")
+    return True
+
+
+def _positive_weight_sum(status: dict[str, Any] | None) -> bool:
+    if not isinstance(status, dict):
+        return False
+    if status.get("has_weights"):
+        return True
+    try:
+        return float(status.get("weight_sum") or 0.0) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _user_allocation_supplied(analysis_setup: dict[str, Any]) -> bool:
+    portfolio_input = analysis_setup.get("portfolio_input") or {}
+    analysis_subject = analysis_setup.get("analysis_subject") or {}
+    subject_type = str(analysis_subject.get("type") or "")
+
+    if portfolio_input.get("current_weights_provided"):
+        return True
+    if subject_type in ("current_portfolio", "model_portfolio"):
+        return _positive_weight_sum(analysis_subject.get("weight_status"))
+    return False
+
+
+def _infer_input_surface_profile(analysis_setup: dict[str, Any]) -> InputSurfaceProfile:
+    portfolio_input = analysis_setup.get("portfolio_input") or {}
+    analysis_subject = analysis_setup.get("analysis_subject") or {}
+    analysis_mode = str(portfolio_input.get("source_analysis_mode") or "")
+    subject_type = str(analysis_subject.get("type") or "")
+
+    has_user_allocation = _user_allocation_supplied(analysis_setup)
+    if analysis_mode == "analyze_current_weights" and has_user_allocation:
+        return "core_mvp"
+    if subject_type in ("current_portfolio", "model_portfolio") and has_user_allocation:
+        return "core_mvp"
+    return "legacy_advanced"
+
+
+def _allocation_source_label(analysis_setup: dict[str, Any]) -> str:
+    portfolio_input = analysis_setup.get("portfolio_input") or {}
+    analysis_subject = analysis_setup.get("analysis_subject") or {}
+    analysis_portfolio = analysis_setup.get("analysis_portfolio") or {}
+
+    if portfolio_input.get("current_weights_provided"):
+        return "current_weights"
+    weight_source = str(
+        analysis_subject.get("weight_source")
+        or analysis_portfolio.get("weight_source")
+        or "unknown"
+    )
+    if weight_source.startswith("config.analysis_subject"):
+        return "analysis_subject.weights"
+    if weight_source == "config.current_weights":
+        return "current_weights"
+    if weight_source == "config.weights":
+        return "weights"
+    return weight_source
+
+
+def build_input_surface(analysis_setup: dict[str, Any]) -> dict[str, Any]:
+    """Disclose which product input surface applies and what the user supplied on the first screen."""
+    portfolio_input = analysis_setup.get("portfolio_input") or {}
+    analysis_subject = analysis_setup.get("analysis_subject") or {}
+    analysis_portfolio = analysis_setup.get("analysis_portfolio") or {}
+    cash_handling = analysis_portfolio.get("cash_handling") or {}
+
+    profile = _infer_input_surface_profile(analysis_setup)
+    resolution_source = str(analysis_subject.get("resolution_source") or "")
+    compat_injected = resolution_source.startswith("compat.")
+
+    allocation_supplied = _user_allocation_supplied(analysis_setup)
+    ticker_count = int(portfolio_input.get("selected_ticker_count") or 0)
+
+    notes: list[str] = []
+    if profile == "core_mvp":
+        notes.append(
+            "Core MVP portfolio-first path: only tickers, allocation, and investor_currency are "
+            "required on the first screen; other fields are system-resolved or deferred layers."
+        )
+    else:
+        notes.append(
+            "Legacy or optimizer-first path: universe baseline or policy optimization may apply; "
+            "see analysis_mode and analysis_subject for weight semantics."
+        )
+    if compat_injected:
+        notes.append(
+            f"Compatibility resolver applied analysis_subject from {resolution_source}."
+        )
+
+    return {
+        "version": INPUT_SURFACE_VERSION,
+        "profile": profile,
+        "product_path": (
+            "portfolio_first_diagnosis"
+            if profile == "core_mvp"
+            else "legacy_policy_or_universe_baseline"
+        ),
+        "first_screen": {
+            "tickers": {
+                "tier": "core_mvp",
+                "required": True,
+                "supplied": ticker_count > 0,
+                "configured_ticker_count": ticker_count,
+            },
+            "allocation": {
+                "tier": "core_mvp",
+                "required": True,
+                "supplied": allocation_supplied,
+                "source": _allocation_source_label(analysis_setup),
+            },
+            "investor_currency": {
+                "tier": "core_mvp",
+                "required": True,
+                "supplied": bool(str(portfolio_input.get("investor_currency") or "").strip()),
+                "value": portfolio_input.get("investor_currency"),
+            },
+        },
+        "core_mvp_requirements_met": (
+            ticker_count > 0
+            and allocation_supplied
+            and bool(str(portfolio_input.get("investor_currency") or "").strip())
+        ),
+        "system_injected": {
+            "analysis_mode": portfolio_input.get("source_analysis_mode"),
+            "analysis_subject_type": analysis_subject.get("type"),
+            "resolution_source": resolution_source or None,
+            "compat_resolver_applied": compat_injected,
+        },
+        "real_cash": {
+            "holdings": list(cash_handling.get("real_cash_holdings") or []),
+            "weight_total": cash_handling.get("real_cash_weight_total", 0.0),
+            "distinct_from_cash_proxy": bool(cash_handling.get("real_cash_distinct_from_cash_proxy")),
+            "return_assumption": cash_handling.get("real_cash_return_assumption"),
+        },
+        "notes": notes,
+    }
+
+
+def build_field_tiers(
+    analysis_setup: dict[str, Any],
+    *,
+    input_surface: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Export field tier registry plus per-run populated/disclosure summary."""
+    portfolio_input = analysis_setup.get("portfolio_input") or {}
+    resolved_mandate = analysis_setup.get("resolved_mandate") or {}
+    resolved_assumptions = analysis_setup.get("resolved_assumptions") or {}
+    profile = _infer_input_surface_profile(analysis_setup)
+
+    user_configured: list[str] = []
+    populated_by_tier: dict[str, list[str]] = {tier: [] for tier in TIER_DEFINITIONS}
+
+    def _mark(field: str, *, tier: str | None = None, user_configured_flag: bool = False) -> None:
+        resolved_tier = tier or FIELD_TIER_REGISTRY.get(field, "legacy_advanced")
+        if field not in populated_by_tier[resolved_tier]:
+            populated_by_tier[resolved_tier].append(field)
+        if user_configured_flag and field not in user_configured:
+            user_configured.append(field)
+
+    if portfolio_input.get("selected_ticker_count", 0) > 0:
+        _mark("tickers")
+    if portfolio_input.get("current_weights_provided"):
+        _mark("current_weights", user_configured_flag=True)
+    if _user_allocation_supplied(analysis_setup):
+        _mark("analysis_subject.weights", user_configured_flag=True)
+    if str(portfolio_input.get("investor_currency") or "").strip():
+        _mark("investor_currency")
+
+    _mark("analysis_mode")
+    if (analysis_setup.get("analysis_subject") or {}).get("type"):
+        _mark("analysis_subject.type")
+
+    client_profile = resolved_mandate.get("client_profile")
+    if client_profile:
+        _mark("client_profile", user_configured_flag=True)
+
+    if resolved_assumptions.get("base_benchmark_ticker"):
+        _mark("base_benchmark_ticker")
+    cash_proxy = (resolved_assumptions.get("cash_proxy") or {}).get("ticker")
+    if cash_proxy:
+        _mark("cash_proxy_ticker")
+    rf = (resolved_assumptions.get("risk_free_rate") or {}).get("source")
+    if rf:
+        _mark("risk_free_source")
+
+    for key in (
+        "client_profile",
+        "target_nominal_return_annual",
+        "target_vol_annual",
+        "target_max_drawdown_pct",
+        "min_acceptable_return",
+        "max_single_security_weight_pct",
+        "min_single_security_weight_pct",
+        "allow_leverage",
+        "allow_short_selling",
+        "cash_policy",
+        "liquidity_need_months",
+        "monthly_expenses",
+        "portfolio_value",
+    ):
+        if not _mandate_entry_populated(analysis_setup, key):
+            continue
+        _mark(key, user_configured_flag=_mandate_entry_source(analysis_setup, key) in (
+            "user_override_or_config",
+            "profile_preset",
+        ))
+
+    horizon = (portfolio_input.get("investment_horizon_years") or {}).get("value")
+    if horizon is not None:
+        _mark("horizon_years", user_configured_flag=True)
+
+    if resolved_assumptions.get("analysis_windows"):
+        _mark("windows_months")
+    if resolved_assumptions.get("configured_return_frequency"):
+        freq = resolved_assumptions.get("configured_return_frequency")
+        if freq and freq != "monthly":
+            _mark("returns_frequency", user_configured_flag=True)
+    if resolved_assumptions.get("missing_data_policy"):
+        _mark("backtest_mode")
+    if resolved_assumptions.get("coverage_threshold") is not None:
+        _mark("coverage_threshold")
+    if resolved_assumptions.get("covariance_method") == "sample_covariance_with_ledoit_wolf_shrinkage":
+        _mark("covariance_shrinkage", user_configured_flag=True)
+    young = resolved_assumptions.get("young_etf_optimization_policy") or {}
+    if isinstance(young, dict) and young.get("enabled"):
+        _mark("young_etf_optimization_policy", user_configured_flag=True)
+
+    deferred_tiers_present = [
+        tier
+        for tier in (
+            "client_fit_later",
+            "risk_guardrail_later",
+            "candidate_builder",
+            "assumption_testing",
+            "legacy_advanced",
+        )
+        if populated_by_tier.get(tier)
+    ]
+
+    surface = input_surface if input_surface is not None else build_input_surface(analysis_setup)
+    first_screen = surface.get("first_screen") or {}
+    core_user_supplied = [
+        key
+        for key in ("tickers", "allocation", "investor_currency")
+        if isinstance(first_screen.get(key), dict) and first_screen[key].get("supplied")
+    ]
+
+    return {
+        "version": FIELD_TIERS_VERSION,
+        "tier_definitions": dict(TIER_DEFINITIONS),
+        "registry": dict(FIELD_TIER_REGISTRY),
+        "run_disclosure": {
+            "input_surface_profile": profile,
+            "core_mvp": {
+                "required_field_keys": ["tickers", "allocation", "investor_currency"],
+                "user_supplied": core_user_supplied,
+                "requirements_met": surface.get("core_mvp_requirements_met"),
+            },
+            "populated_by_tier": populated_by_tier,
+            "user_configured_fields": sorted(user_configured),
+            "deferred_tiers_with_values": deferred_tiers_present,
+            "client_profile": resolved_mandate.get("client_profile"),
+        },
+    }
 
 
 def build_input_assumptions_from_analysis_setup(analysis_setup: dict[str, Any]) -> dict[str, Any]:
@@ -30,6 +394,9 @@ def build_input_assumptions_from_analysis_setup(analysis_setup: dict[str, Any]) 
     current_weights_status = portfolio_input.get("current_weights")
     if not isinstance(current_weights_status, dict):
         current_weights_status = weight_status({})
+
+    input_surface = build_input_surface(analysis_setup)
+    field_tiers = build_field_tiers(analysis_setup, input_surface=input_surface)
 
     return {
         "version": "input_assumptions_v1",
@@ -140,6 +507,8 @@ def build_input_assumptions_from_analysis_setup(analysis_setup: dict[str, Any]) 
             ),
             validation_result=validation_result,
         ),
+        "input_surface": input_surface,
+        "field_tiers": field_tiers,
     }
 
 
@@ -193,6 +562,12 @@ def build_input_assumptions_summary(
 
 
 __all__ = [
+    "FIELD_TIER_REGISTRY",
+    "FIELD_TIERS_VERSION",
+    "INPUT_SURFACE_VERSION",
+    "TIER_DEFINITIONS",
+    "build_field_tiers",
     "build_input_assumptions_from_analysis_setup",
     "build_input_assumptions_summary",
+    "build_input_surface",
 ]

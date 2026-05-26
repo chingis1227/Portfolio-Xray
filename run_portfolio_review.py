@@ -3,8 +3,8 @@ from __future__ import annotations
 """
 Portfolio-first review CLI.
 
-Runs existing entrypoints in the portfolio-first order:
-analysis_subject diagnostics -> candidates -> comparison -> report package.
+    Runs existing entrypoints in the portfolio-first order. By default this is now
+    the diagnosis-only product path; candidate generation/comparison is explicit.
 """
 
 import argparse
@@ -25,6 +25,44 @@ from src.portfolio_review_workflow import (
 from src.utils import logger, setup_logging
 
 
+def resolve_candidate_execution_flags(
+    *,
+    skip_candidates: bool = False,
+    skip_compare: bool = False,
+    candidates: str | None = None,
+    with_candidates: bool = False,
+    mode: str = DEFAULT_REVIEW_MODE,
+    candidate_profile: str | None = None,
+    no_skip_existing: bool = False,
+    force_candidates: bool = False,
+    resume_candidates: bool = False,
+    fail_fast: bool = False,
+) -> tuple[bool, bool, bool]:
+    """Return (effective_skip_candidates, effective_skip_compare, run_candidates).
+
+    Plain ``run_portfolio_review.py`` is the product diagnosis-only path. Candidate
+    generation is explicit via selected candidates, full/research mode, profile
+    override, or candidate factory control flags.
+    """
+    explicit_candidate_request = bool(candidates)
+    explicit_batch_request = (
+        with_candidates
+        or mode == "full"
+        or bool(candidate_profile)
+        or no_skip_existing
+        or force_candidates
+        or resume_candidates
+        or fail_fast
+    )
+    run_candidates = (
+        not skip_candidates
+        and (explicit_candidate_request or explicit_batch_request)
+    )
+    effective_skip_candidates = not run_candidates
+    effective_skip_compare = skip_compare or not run_candidates
+    return effective_skip_candidates, effective_skip_compare, run_candidates
+
+
 def main(argv: list[str] | None = None) -> int:
     setup_logging()
     parser = argparse.ArgumentParser(
@@ -41,15 +79,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--skip-candidates",
         action="store_true",
-        help="Skip candidate factory and compare existing candidate artifacts instead.",
+        help="Skip candidate factory. In the default product path this is already true.",
+    )
+    parser.add_argument(
+        "--with-candidates",
+        action="store_true",
+        help=(
+            "Run the backend candidate factory using the resolved profile. "
+            "Use --candidates for the canonical one-candidate product path."
+        ),
     )
     parser.add_argument(
         "--mode",
         choices=sorted(REVIEW_MODES),
         default=DEFAULT_REVIEW_MODE,
         help=(
-            "Review scope: core = benchmarks + risk budgets (default routine path); "
-            "full = entire default_v1 menu including optimizers and robust suite."
+            "Review scope when candidates are requested: core = backend core_fast batch; "
+            "full = advanced/research default_v1 menu including optimizers and robust suite."
         ),
     )
     parser.add_argument(
@@ -162,12 +208,26 @@ def main(argv: list[str] | None = None) -> int:
         if (args.with_pdf or args.legacy_full_pdf) and args.output_profile == "site_api"
         else args.output_profile
     )
+    effective_skip_candidates, effective_skip_compare, run_candidates = (
+        resolve_candidate_execution_flags(
+            skip_candidates=args.skip_candidates,
+            skip_compare=args.skip_compare,
+            candidates=args.candidates,
+            with_candidates=args.with_candidates,
+            mode=args.mode,
+            candidate_profile=args.candidate_profile,
+            no_skip_existing=args.no_skip_existing,
+            force_candidates=args.force_candidates,
+            resume_candidates=args.resume_candidates,
+            fail_fast=args.fail_fast,
+        )
+    )
 
     plan = build_portfolio_review_plan(
         cfg,
         project_root=project_root,
         no_cache=args.no_cache,
-        skip_candidates=args.skip_candidates,
+        skip_candidates=effective_skip_candidates,
         review_mode=review_mode,
         candidate_profile=args.candidate_profile,
         candidate_ids=args.candidates,
@@ -175,7 +235,7 @@ def main(argv: list[str] | None = None) -> int:
         force_candidates=args.force_candidates,
         resume_candidates=args.resume_candidates,
         fail_fast=args.fail_fast,
-        skip_compare=args.skip_compare,
+        skip_compare=effective_skip_compare,
         skip_pdf=(args.skip_pdf or not (args.with_pdf or args.legacy_full_pdf)),
         legacy_full_pdf=args.legacy_full_pdf,
         factory_execution_mode=args.execution_mode,
@@ -187,7 +247,13 @@ def main(argv: list[str] | None = None) -> int:
         summarize_plan(
             plan,
             review_mode=review_mode,
-            factory_profile=factory_profile if not args.candidates else "explicit_list",
+            factory_profile=(
+                "none"
+                if not run_candidates
+                else factory_profile
+                if not args.candidates
+                else "explicit_list"
+            ),
         )
     )
     code = run_portfolio_review_plan(plan, project_root=project_root, dry_run=args.dry_run)

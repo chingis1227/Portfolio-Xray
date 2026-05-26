@@ -370,7 +370,7 @@ src/data_trust_signals.py
 | **Stale generated outputs** | **Open** | On-disk portfolio/PDF artifacts do not reflect latest product-bundle policy (`problem_classification.json`, etc. under `analysis_subject/`). Requires **approved refresh session** per `OUTPUTS.md` / Session 07 policy — not a docs blocker. |
 | **verify_docs / archive links** | **Closed** | `python scripts/verify_docs.py` → OK; `tests/test_docs_links.py` → 6 passed (verified this audit). |
 | **RM-ARCH-010** (LLM AI Commentary spec) | **Open (backlog)** | Intentionally deferred; not a dirty-tree blocker. |
-| **RM-ARCH-011** (product bundle runtime wiring) | **Open (backlog)** | Sidecar paths / ai_commentary inputs; separate implementation ExecPlan. |
+| **RM-ARCH-011** (product bundle runtime wiring) | **Done** (2026-05-26) | Closed in [Product Flow MVP Backend ExecPlan](docs/exec_plans/2026-05-25_product_flow_mvp_backend_plan.md) Sessions 02–08; see [ROADMAP](docs/ROADMAP.md). |
 | **config / IBKR review** | **Open** | `config.yml` points to `ibkr_yfinance_fallback`; provider modules untracked; must not ship accidentally with docs commit. |
 | **Failing tests** | **Not observed** | Spot-check: docs links + problem_classification + test_data_cache_key → **14 passed**. Full suite not run in this audit. |
 | **Uncommitted docs/specs** | **Open** | 36+ documentation files still dirty; blocks stable baseline until allowlisted commits. |

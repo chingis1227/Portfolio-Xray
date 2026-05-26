@@ -248,35 +248,53 @@ Main report artifacts
 Primary source inputs:
 
 - `config.yml`
-- `config.yml.example`
-- `config/client_profiles.yml`
+- `config.yml.example` (MVP-first Section 1; legacy mandate/optimizer in Sections 4–7)
+- `config/client_profiles.yml` (legacy optimizer profiles; not required for Core MVP diagnosis)
 - `assets.yml`
 - `config/etf_universe.yml`
 - `config/stock_universe.yml`
 - optional historical stress proxy map and external data source settings
+- `tests/fixtures/mvp_portfolios/` minimal USD fixtures for validation and offline tests
 
 The data-layer map is [DATA.md](DATA.md). Keep it aligned when data sources, expected structures, data pipeline, NaN handling, FX logic, benchmarks, risk-free inputs, factor/macro inputs, config fields, or data validation rules change.
 
-Primary runtime inputs:
+**Core MVP user-facing config** (portfolio-first `run_portfolio_review.py`; canonical detail in
+[input_assumptions_spec.md](docs/specs/input_assumptions_spec.md) § Core MVP Input Surface):
+
+| Required user input | Config keys |
+| --- | --- |
+| Instruments | `tickers` |
+| Allocation | `weights`, `current_weights`, or `analysis_subject.weights` (positive map) |
+| Reporting currency | `investor_currency` |
+
+`validate_config` calls `apply_mvp_input_defaults` (`src/mvp_input.py`): when the user supplies
+`current_weights` or non-generated `weights` without explicit `analysis_subject`, the system
+injects `analysis_subject.type = current_portfolio` and
+`analysis_mode = analyze_current_weights`. For USD/EUR Core MVP, `risk_free_source`,
+`cash_proxy_ticker`, and `base_benchmark_ticker` resolve via `src/config.py` when omitted.
+`client_profile`, liquidity floors, `portfolio_value`, and mandate caps are **not** required for
+the diagnosis path; they remain `legacy_advanced` tiers for `run_optimization.py` and full mandate
+runs.
+
+**Real cash holdings:** labels such as `Cash USD` are explicit zero-return positions in weights;
+they must not be replaced by `cash_proxy_ticker` (BIL/PEU). Implementation: `src/real_cash.py`.
+
+Primary runtime inputs (resolved after validation):
 
 - `analysis_subject` for the portfolio-first review workflow: the current, model, or
   universe-baseline portfolio diagnosed before candidates; explicit config is resolved in
   `analysis_setup.analysis_subject`
 - resolved `analysis_setup` for the input and assumptions layer
-- ticker universe
-- investor currency
-- benchmark and local benchmark settings
-- cash proxy and risk-free source
-- return frequency
-- optimization targets and constraints
-- output directories and cache settings
-- optional profile name
+- ticker universe and investor currency
+- benchmark, cash proxy, and risk-free source (user override or currency defaults)
+- return frequency, optimization targets/constraints, output paths (technical defaults for Core MVP)
+- optional profile name (legacy optimizer)
 
 Generated weights are not normal user input. The legacy policy workflow writes
 `portfolio_weights.yml` and `run_result.json` when release is allowed, but generated policy weights
 are not the default `analysis_subject` in the portfolio-first workflow.
 
-`analysis_setup` is the resolved runtime contract for portfolio input, mandate, assumptions, and validation metadata. `input_assumptions` is an exported/reporting view of that contract, not a separate business-logic source.
+`analysis_setup` is the resolved runtime contract for portfolio input, mandate, assumptions, and validation metadata. `input_assumptions` is an exported/reporting view of that contract (including `input_surface` and `field_tiers` disclosure), not a separate business-logic source. Downstream analytics consume `analysis_setup` or `PortfolioConfig`, not `input_assumptions` alone.
 
 ## Outputs
 
@@ -397,7 +415,7 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Portfolio-first review workflow (`analysis_subject` first) | Implemented; `run_portfolio_review.py` is the default entrypoint |
 | Blocks 1-5 MVP core reliability (Phase 16) | **Done** (Sessions 01-09, `RM-1010`-`RM-1018`); offline acceptance bundle and operator runbook govern routine verification |
 | Main CLI optimization and report pipeline | Implemented |
-| Input and Assumptions Layer | Implemented CLI/file-driven V1 |
+| Input and Assumptions Layer | Implemented CLI/file-driven V1; Core MVP three-field surface, MVP defaults injection, real-cash holdings, `input_surface` / `field_tiers` export ([input_assumptions_spec.md](docs/specs/input_assumptions_spec.md); [Input Layer MVP Migration](docs/exec_plans/2026-05-26_input_layer_mvp_migration.md) Sessions 01–09) |
 | Config validation and profile-derived targets | Implemented |
 | Portfolio metrics, backtests, risk contribution | Implemented |
 | Stress testing and stress commentary | Implemented diagnostic/reporting layer |

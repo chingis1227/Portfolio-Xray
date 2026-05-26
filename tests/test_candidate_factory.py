@@ -40,6 +40,7 @@ from src.portfolio_variants import (
     build_minimum_variance_baseline,
     build_risk_parity_baseline,
 )
+from src.product_bundle_paths import PRODUCT_BUNDLE_MANIFEST_KEYS
 from src.variant_builder_runtime import (
     BUILDER_RUNTIME_TIMING_FILENAME,
     ENV_SKIP_VARIANT_PDF,
@@ -778,6 +779,55 @@ def test_write_outputs_contract(tmp_path: Path) -> None:
     assert "Next:" in txt
     assert "Execution:" in txt
     assert "buy" not in build_factory_run_txt(doc).lower()
+
+
+def test_write_outputs_preserves_product_manifest_after_then_compare(tmp_path: Path) -> None:
+    out = tmp_path / "Main portfolio"
+    (out / "analysis_subject").mkdir(parents=True)
+    for rel in (
+        "analysis_subject/problem_classification.json",
+        "analysis_subject/candidate_launchpad.json",
+        "current_vs_candidate.json",
+        "decision_verdict.json",
+        "ai_commentary_context.json",
+        "what_changed_summary.json",
+        "candidate_comparison.json",
+    ):
+        path = out / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}", encoding="utf-8")
+
+    doc = {
+        "schema_version": SCHEMA_VERSION,
+        "factory_profile_id": "explicit_list",
+        "steps": [{"candidate_id": "equal_weight", "status": "succeeded"}],
+        "summary": {"failed": 0},
+        "warnings": [],
+        "options": {"then_compare": True},
+        "comparison_outputs": {
+            "candidate_comparison_json": str(out / "candidate_comparison.json"),
+            "current_vs_candidate_json": str(out / "current_vs_candidate.json"),
+        },
+    }
+
+    write_candidate_factory_outputs(doc, output_dir=out, write_txt=False)
+
+    manifest = json.loads((out / "output_manifest.json").read_text(encoding="utf-8"))
+    generated = manifest["generated_paths"]
+    assert manifest["run_kind"] == "candidate_factory"
+    assert manifest["primary_output_surface"] == "product_bundle"
+    assert list(generated)[: len(PRODUCT_BUNDLE_MANIFEST_KEYS)] == list(
+        PRODUCT_BUNDLE_MANIFEST_KEYS
+    )
+    assert generated["candidate_factory_run_json"].endswith("candidate_factory_run.json")
+    assert generated["candidate_comparison_json"].endswith("candidate_comparison.json")
+    by_category = manifest.get("generated_paths_by_category") or {}
+    assert by_category["product_bundle"]
+    assert by_category["orchestration"]["candidate_factory_run_json"].endswith(
+        "candidate_factory_run.json"
+    )
+    discovery = manifest.get("product_discovery") or {}
+    assert discovery.get("product_bundle_complete") is True
 
 
 def test_compute_next_recommended_command_suggests_resume_on_failure() -> None:

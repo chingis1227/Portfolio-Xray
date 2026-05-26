@@ -10,8 +10,11 @@ from src.analysis_setup import build_analysis_setup
 from src.config import load_validated_config
 from src.config_schema import ConfigValidationError, validate_config
 from src.input_assumptions import (
+    FIELD_TIER_REGISTRY,
+    build_field_tiers,
     build_input_assumptions_from_analysis_setup,
     build_input_assumptions_summary,
+    build_input_surface,
 )
 from src.io_export import export_run_metadata
 
@@ -37,7 +40,7 @@ def test_analyze_current_weights_maps_current_weights_to_report_weights() -> Non
     assert cfg.analysis_mode == "analyze_current_weights"
     assert cfg.current_weights == {"VOO": 0.6, "BND": 0.4}
     assert cfg.weights == {"VOO": 0.6, "BND": 0.4}
-    assert cfg.weights_source == "config.current_weights"
+    assert cfg.weights_source == "config.analysis_subject.weights"
 
 
 def test_analyze_current_weights_does_not_merge_stale_generated_weights(tmp_path: Path) -> None:
@@ -59,7 +62,7 @@ def test_analyze_current_weights_does_not_merge_stale_generated_weights(tmp_path
     cfg = load_validated_config(config_path)
 
     assert cfg.weights == {"VOO": 0.7, "BND": 0.3}
-    assert cfg.weights_source == "config.current_weights"
+    assert cfg.weights_source == "config.analysis_subject.weights"
 
 
 def test_input_assumptions_summary_contains_input_mode_and_known_gap() -> None:
@@ -86,10 +89,10 @@ def test_input_assumptions_summary_contains_input_mode_and_known_gap() -> None:
         run_context="report",
     )
 
-    assert summary["portfolio_input"]["analysis_mode"] == "optimize_from_universe"
+    assert summary["portfolio_input"]["analysis_mode"] == "analyze_current_weights"
     assert summary["source_analysis_setup_version"] == "analysis_setup_v1"
-    assert summary["analysis_subject"]["type"] == "model_portfolio"
-    assert summary["analysis_subject"]["resolution_source"] == "compat.legacy_fixed_weights"
+    assert summary["analysis_subject"]["type"] == "current_portfolio"
+    assert summary["analysis_subject"]["resolution_source"] == "config.analysis_subject"
     assert summary["portfolio_input"]["reported_weights"]["status"] == "fully_invested"
     assert summary["currency_and_market"]["cash_proxy_ticker"] == "BIL"
     assert summary["mandate_and_constraints"]["horizon_role"] == "report_context_only_not_optimizer_constraint"
@@ -97,6 +100,67 @@ def test_input_assumptions_summary_contains_input_mode_and_known_gap() -> None:
     assert summary["calculation_assumptions"]["configured_returns_frequency"] == "weekly"
     assert summary["calculation_assumptions"]["main_metrics_returns_frequency_forced"] is True
     assert summary["current_v1_gaps"]["transaction_costs"] == "not_implemented"
+    assert summary["input_surface"]["version"] == "input_surface_v1"
+    assert summary["input_surface"]["profile"] == "core_mvp"
+    assert summary["input_surface"]["core_mvp_requirements_met"] is True
+    assert summary["field_tiers"]["version"] == "field_tiers_v1"
+    assert "tickers" in summary["field_tiers"]["registry"]
+    assert summary["field_tiers"]["run_disclosure"]["core_mvp"]["requirements_met"] is True
+
+
+def test_input_surface_core_mvp_from_mvp_fixture() -> None:
+    fixture_path = (
+        Path(__file__).resolve().parent / "fixtures" / "mvp_portfolios" / "minimal_usd_no_cash.yml"
+    )
+    with open(fixture_path, encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+    cfg = validate_config(raw)
+    setup = build_analysis_setup(cfg, cash_proxy_ticker="BIL", rf_source="FRED:DTB3")
+    surface = build_input_surface(setup)
+
+    assert surface["profile"] == "core_mvp"
+    assert surface["product_path"] == "portfolio_first_diagnosis"
+    assert surface["first_screen"]["tickers"]["supplied"] is True
+    assert surface["first_screen"]["allocation"]["supplied"] is True
+    assert surface["first_screen"]["investor_currency"]["value"] == "USD"
+
+
+def test_input_surface_legacy_universe_only() -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "analysis_mode": "optimize_from_universe",
+            "tickers": ["VOO", "BND", "GLD"],
+        }
+    )
+    setup = build_analysis_setup(cfg, cash_proxy_ticker="BIL", rf_source="FRED:DTB3")
+    surface = build_input_surface(setup)
+
+    assert surface["profile"] == "legacy_advanced"
+    assert surface["first_screen"]["allocation"]["supplied"] is False
+
+
+def test_field_tiers_registry_covers_core_mvp_keys() -> None:
+    for key in ("tickers", "current_weights", "investor_currency"):
+        assert FIELD_TIER_REGISTRY[key] == "core_mvp"
+
+
+def test_field_tiers_marks_deferred_client_fit_when_profile_set() -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "tickers": ["VOO", "BND"],
+            "weights": {"VOO": 0.5, "BND": 0.5},
+            "client_profile": "balanced",
+            "horizon_years": 10,
+        }
+    )
+    setup = build_analysis_setup(cfg, cash_proxy_ticker="BIL", rf_source="FRED:DTB3")
+    tiers = build_field_tiers(setup)
+
+    assert "client_fit_later" in tiers["run_disclosure"]["deferred_tiers_with_values"]
+    assert "client_profile" in tiers["run_disclosure"]["populated_by_tier"]["client_fit_later"]
+    assert "horizon_years" in tiers["run_disclosure"]["user_configured_fields"]
 
 
 def test_export_run_metadata_includes_input_assumptions(tmp_path: Path) -> None:
@@ -131,6 +195,8 @@ def test_export_run_metadata_includes_input_assumptions(tmp_path: Path) -> None:
     assert data["input_assumptions"]["version"] == "input_assumptions_v1"
     assert data["input_assumptions"]["source_analysis_setup_version"] == "analysis_setup_v1"
     assert data["input_assumptions"]["portfolio_input"]["reported_weights_source"] == "config.weights"
+    assert data["input_assumptions"]["input_surface"]["profile"] == "core_mvp"
+    assert data["input_assumptions"]["field_tiers"]["version"] == "field_tiers_v1"
 
 
 def test_analysis_setup_contract_shape_and_projection() -> None:
@@ -177,6 +243,8 @@ def test_analysis_setup_contract_shape_and_projection() -> None:
     assert projection["source_analysis_setup_version"] == "analysis_setup_v1"
     assert projection["analysis_subject"]["type"] == "current_portfolio"
     assert projection["portfolio_input"]["analysis_portfolio_role"] == "user_current_portfolio"
+    assert projection["input_surface"]["profile"] == "core_mvp"
+    assert projection["field_tiers"]["run_disclosure"]["input_surface_profile"] == "core_mvp"
 
 
 def test_universe_only_analysis_setup_creates_equal_weight_baseline_not_recommendation() -> None:
@@ -276,15 +344,15 @@ def test_explicit_analysis_subject_accepts_stock_universe_ticker() -> None:
     assert cfg.analysis_subject["type"] == "model_portfolio"
 
 
-def test_legacy_config_without_analysis_subject_does_not_preflight_unknown_ticker() -> None:
-    cfg = validate_config(
-        {
-            "investor_currency": "USD",
-            "tickers": ["VOO", "NOTAREALTICKER"],
-            "weights": {"VOO": 0.5, "NOTAREALTICKER": 0.5},
-        }
-    )
-    assert cfg.analysis_subject == {}
+def test_mvp_weights_without_analysis_subject_preflights_unknown_ticker() -> None:
+    with pytest.raises(ConfigValidationError, match="unknown="):
+        validate_config(
+            {
+                "investor_currency": "USD",
+                "tickers": ["VOO", "NOTAREALTICKER"],
+                "weights": {"VOO": 0.5, "NOTAREALTICKER": 0.5},
+            }
+        )
 
 
 def test_five_ticker_current_analysis_subject_accepts_valid_weights() -> None:

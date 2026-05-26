@@ -14,6 +14,8 @@ from src.candidate_comparison import (
     build_candidate_menu_warnings,
     build_legacy_portfolio_comparison,
     candidate_registry_ids,
+    product_candidate_ids_from_factory_run,
+    scoped_product_comparison,
     write_candidate_comparison_outputs,
     write_candidate_comparison_txt,
 )
@@ -610,6 +612,130 @@ def test_write_outputs_and_legacy_subset(tmp_path: Path) -> None:
     legacy = build_legacy_portfolio_comparison(doc)
     assert set(legacy.keys()) == {"policy", "equal_weight", "risk_parity", "robust_scenario"}
     assert legacy["equal_weight"]["metrics"]["cagr"] == 0.08
+
+
+def test_product_candidate_ids_from_explicit_factory_run() -> None:
+    ids = product_candidate_ids_from_factory_run(
+        {
+            "factory_profile_id": "explicit_list",
+            "steps": [
+                {"candidate_id": "equal_weight"},
+                {"candidate_id": "risk_parity"},
+                {"candidate_id": "equal_weight"},
+            ],
+        }
+    )
+
+    assert ids == ("equal_weight", "risk_parity")
+
+
+def test_product_candidate_ids_ignores_batch_factory_run() -> None:
+    assert (
+        product_candidate_ids_from_factory_run(
+            {
+                "factory_profile_id": "core_fast",
+                "steps": [{"candidate_id": "equal_weight"}],
+            }
+        )
+        == ()
+    )
+
+
+def test_scoped_product_comparison_filters_unselected_candidates() -> None:
+    comparison = {
+        "comparison_baseline_candidate_id": "analysis_subject",
+        "warnings": [],
+        "candidates": [
+            {"candidate_id": "analysis_subject", "status": "available"},
+            {"candidate_id": "equal_weight", "status": "available"},
+            {"candidate_id": "risk_parity", "status": "available"},
+        ],
+    }
+
+    scoped = scoped_product_comparison(comparison, ["equal_weight"])
+
+    assert [row["candidate_id"] for row in scoped["candidates"]] == [
+        "analysis_subject",
+        "equal_weight",
+    ]
+    assert scoped["product_candidate_scope"]["candidate_ids"] == ["equal_weight"]
+    assert "product_scope_explicit_candidates" in scoped["warnings"]
+
+
+def test_write_outputs_scopes_product_adapters_to_explicit_factory_candidate(tmp_path: Path) -> None:
+    main = tmp_path / "Main portfolio"
+    subject = main / "analysis_subject"
+    subject.mkdir(parents=True)
+    with open(subject / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y({"cagr": 0.07, "vol_annual": 0.12, "max_drawdown": -0.2}),
+            f,
+        )
+    with open(subject / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(_run_metadata("user_current_portfolio"), f)
+
+    eq = tmp_path / "equal-weight portfolio"
+    eq.mkdir()
+    with open(eq / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y({"cagr": 0.075, "vol_annual": 0.10, "max_drawdown": -0.16}),
+            f,
+        )
+    rp = tmp_path / "risk-parity portfolio"
+    rp.mkdir()
+    with open(rp / "snapshot_10y.json", "w", encoding="utf-8") as f:
+        json.dump(
+            _snapshot_10y({"cagr": 0.09, "vol_annual": 0.08, "max_drawdown": -0.10}),
+            f,
+        )
+
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "output_dir_final": "Main portfolio",
+            "tickers": ["VOO"],
+            "analysis_subject": {"type": "current_portfolio", "weights": {"VOO": 1.0}},
+        }
+    )
+    factory_run = {
+        "factory_profile_id": "explicit_list",
+        "generated_at": "2026-05-26T10:00:00+00:00",
+        "steps": [{"candidate_id": "equal_weight", "execution_action": "succeeded"}],
+    }
+
+    paths = write_candidate_comparison_outputs(
+        cfg,
+        project_root=tmp_path,
+        factory_run=factory_run,
+        write_txt=False,
+    )
+
+    with open(paths["candidate_comparison_json"], encoding="utf-8") as f:
+        comparison = json.load(f)
+    with open(paths["current_vs_candidate_json"], encoding="utf-8") as f:
+        current_vs_candidate = json.load(f)
+    with open(paths["decision_verdict_json"], encoding="utf-8") as f:
+        decision_verdict = json.load(f)
+
+    assert comparison["product_candidate_scope"]["candidate_ids"] == ["equal_weight"]
+    assert any(row["candidate_id"] == "risk_parity" for row in comparison["candidates"])
+    assert current_vs_candidate["selected_candidate_ids"] == ["equal_weight"]
+    assert decision_verdict["selected_candidate_id"] == "equal_weight"
+    assert decision_verdict["source_artifacts"]["selection_decision"] is None
+    assert "selection_decision_json" not in paths
+    assert "portfolio_health_score_json" not in paths
+    assert "robustness_scorecard_json" not in paths
+    assert "action_plan_json" not in paths
+    assert "decision_journal_json" not in paths
+    assert "monitoring_diff_json" not in paths
+    with open(paths["output_manifest_json"], encoding="utf-8") as f:
+        manifest = json.load(f)
+    assert manifest["advanced_package_generated"] is False
+    by_category = manifest.get("generated_paths_by_category") or {}
+    assert "portfolio_health_score_json" not in by_category.get("advanced_evidence", {})
+    discovery = manifest.get("product_discovery") or {}
+    assert discovery.get("product_bundle_paths", {}).get("current_vs_candidate_json")
+    assert discovery.get("product_bundle_paths", {}).get("decision_verdict_json")
 
 
 def test_build_candidate_menu_flags_reduced_core_scope() -> None:

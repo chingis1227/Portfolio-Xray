@@ -228,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
             project_root=project_root,
             factory_run=doc,
             output_profile=args.output_profile,
+            advanced_package=doc.get("factory_profile_id") != "explicit_list",
         )
         if err:
             doc.setdefault("warnings", []).append(f"comparison_failed: {err}")

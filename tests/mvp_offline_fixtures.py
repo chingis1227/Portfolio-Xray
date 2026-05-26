@@ -9,10 +9,12 @@ from typing import Any
 import yaml
 
 from src.analysis_setup import build_analysis_setup
-from src.config_schema import validate_config
+from src.config_schema import PortfolioConfig, validate_config
 from src.input_assumptions import build_input_assumptions_from_analysis_setup
 from src.portfolio_xray import PORTFOLIO_XRAY_VERSION, XRAY_SECTION_KEYS
 from src.snapshot import compute_candidate_config_fingerprint
+
+MVP_FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "mvp_portfolios"
 
 DEFAULT_ANALYSIS_END = "2026-04-30"
 FIVE_TICKER_MVP_TICKERS = ["VOO", "BND", "GLD", "QQQ", "VNQ"]
@@ -56,7 +58,46 @@ def snapshot_10y(
     return snap
 
 
-def run_metadata(portfolio_role: str = "generated_policy_portfolio") -> dict[str, Any]:
+def load_mvp_fixture_yaml(name: str) -> dict[str, Any]:
+    """Load a Core MVP portfolio YAML fixture from ``tests/fixtures/mvp_portfolios/``."""
+    path = MVP_FIXTURE_DIR / name
+    with open(path, encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+    if not isinstance(raw, dict):
+        raise TypeError(f"fixture {name!r} must be a mapping")
+    return raw
+
+
+def validate_mvp_fixture(name: str) -> PortfolioConfig:
+    """Validate a Core MVP fixture through ``validate_config`` (includes MVP defaults)."""
+    return validate_config(load_mvp_fixture_yaml(name))
+
+
+def eight_ticker_demo_mvp_config_dict(*, output_dir_final: str = "Main portfolio") -> dict[str, Any]:
+    """Eight-ticker USD demo config (``minimal_usd_no_cash.yml``) for offline integration tests."""
+    raw = load_mvp_fixture_yaml("minimal_usd_no_cash.yml")
+    raw = dict(raw)
+    raw["output_dir_final"] = output_dir_final
+    return raw
+
+
+def five_ticker_mvp_core_input_dict(*, output_dir_final: str = "Main portfolio") -> dict[str, Any]:
+    """Five-ticker Core MVP input using ``current_weights`` only (no explicit ``analysis_subject``)."""
+    return {
+        "investor_currency": "USD",
+        "output_dir_final": output_dir_final,
+        "tickers": list(FIVE_TICKER_MVP_TICKERS),
+        "current_weights": dict(FIVE_TICKER_MVP_WEIGHTS),
+    }
+
+
+def run_metadata(
+    portfolio_role: str = "generated_policy_portfolio",
+    *,
+    analysis_setup: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if analysis_setup is not None:
+        return build_offline_run_metadata(analysis_setup)
     return {
         "run_info": {"analysis_end_date": DEFAULT_ANALYSIS_END},
         "portfolio_valid": True,
@@ -68,6 +109,16 @@ def run_metadata(portfolio_role: str = "generated_policy_portfolio") -> dict[str
                 "recommendation_status": "generated_policy_output_released",
             },
         },
+    }
+
+
+def build_offline_run_metadata(analysis_setup: dict[str, Any]) -> dict[str, Any]:
+    """``run_metadata.json`` payload with ``input_assumptions`` for portfolio-first sidecars."""
+    return {
+        "run_info": {"analysis_end_date": DEFAULT_ANALYSIS_END},
+        "portfolio_valid": True,
+        "analysis_setup": analysis_setup,
+        "input_assumptions": build_input_assumptions_from_analysis_setup(analysis_setup),
     }
 
 
@@ -103,32 +154,51 @@ def seed_variant_snapshot(
 
 
 def seed_minimal_mvp_workspace(root: Path) -> Path:
-    """Seed policy + legacy comparison variants with synthetic 10y snapshots only."""
+    """Seed current-portfolio Main + EW/RP variant snapshots for offline comparison tests."""
+    cfg = validate_config(minimal_mvp_config_dict())
+    weights = {str(k): float(v) for k, v in (cfg.weights or {}).items()}
     main = seed_variant_snapshot(
         root,
         "Main portfolio",
         {"cagr": 0.09, "vol_annual": 0.11, "max_drawdown": -0.15, "sharpe": 0.6},
-        with_run_metadata=True,
+        final_weights_total=weights,
     )
+    setup = build_analysis_setup(
+        cfg,
+        portfolio_weights=weights,
+        weights_source=cfg.weights_source,
+        portfolio_role_override="analysis_subject",
+        cash_proxy_ticker="BIL",
+        rf_source="FRED:DTB3",
+        analysis_end=DEFAULT_ANALYSIS_END,
+        windows_months=[36, 60, 120],
+        returns_frequency="monthly",
+        periods_per_year=12,
+        run_context="report",
+    )
+    write_json(main / "run_metadata.json", build_offline_run_metadata(setup))
     seed_variant_snapshot(
         root,
         "equal-weight portfolio",
         {"cagr": 0.08, "vol_annual": 0.12, "max_drawdown": -0.2, "sharpe": 0.5},
+        final_weights_total=weights,
     )
     seed_variant_snapshot(
         root,
         "risk parity portfolio",
         {"cagr": 0.075, "vol_annual": 0.105, "max_drawdown": -0.18, "sharpe": 0.55},
+        final_weights_total=weights,
     )
     return main
 
 
 def minimal_mvp_config_dict(*, output_dir_final: str = "Main portfolio") -> dict[str, Any]:
+    """Two-ticker Core MVP config (``current_weights`` only) for fast offline comparison tests."""
     return {
         "investor_currency": "USD",
-        "analysis_mode": "optimize_from_universe",
         "output_dir_final": output_dir_final,
         "tickers": ["VOO", "BND"],
+        "current_weights": {"VOO": 0.5, "BND": 0.5},
     }
 
 
@@ -255,15 +325,7 @@ def seed_blocks_1_5_mvp_smoke_workspace(root: Path, cfg: Any) -> dict[str, Any]:
         run_context="report",
     )
 
-    write_json(
-        subject / "run_metadata.json",
-        {
-            "run_info": {"analysis_end_date": DEFAULT_ANALYSIS_END},
-            "portfolio_valid": True,
-            "analysis_setup": setup,
-            "input_assumptions": build_input_assumptions_from_analysis_setup(setup),
-        },
-    )
+    write_json(subject / "run_metadata.json", build_offline_run_metadata(setup))
     write_json(
         subject / "snapshot_10y.json",
         snapshot_10y(
@@ -354,6 +416,95 @@ def seed_blocks_1_5_mvp_smoke_workspace(root: Path, cfg: Any) -> dict[str, Any]:
         "config_fingerprint": config_fingerprint,
         "core_candidate_ids": list(CORE_V1_CANDIDATE_ORDER),
     }
+
+
+def seed_analysis_subject_diagnosis_bundle(subject_dir: Path) -> None:
+    """Write Portfolio X-Ray, stress, problem classification, and launchpad under analysis_subject/."""
+    from src.candidate_launchpad import write_candidate_launchpad_outputs
+    from src.problem_classification import write_problem_classification_outputs
+
+    subject_dir.mkdir(parents=True, exist_ok=True)
+    xray = minimal_blocks_1_5_portfolio_xray()
+    stress = minimal_blocks_1_5_stress_report()
+    write_json(subject_dir / "portfolio_xray.json", xray)
+    write_json(subject_dir / "stress_report.json", stress)
+    problem_path = write_problem_classification_outputs(
+        output_dir=subject_dir,
+        portfolio_xray=xray,
+        stress_report=stress,
+        analysis_end=DEFAULT_ANALYSIS_END,
+    )
+    with open(problem_path, encoding="utf-8") as f:
+        problem_doc = json.load(f)
+    write_candidate_launchpad_outputs(
+        output_dir=subject_dir,
+        problem_classification=problem_doc,
+        analysis_end=DEFAULT_ANALYSIS_END,
+    )
+
+
+def seed_product_bundle_offline_workspace(root: Path, cfg: Any) -> dict[str, Any]:
+    """Offline workspace: materialized analysis_subject + diagnosis bundle + one candidate."""
+    from src.candidate_factory import registry_row
+
+    output_dir_final = str(getattr(cfg, "output_dir_final", "Main portfolio"))
+    main = root / output_dir_final
+    subject = main / "analysis_subject"
+    weights = {str(k): float(v) for k, v in (cfg.weights or {}).items()}
+    config_fingerprint = compute_candidate_config_fingerprint(cfg)
+    setup = build_analysis_setup(
+        cfg,
+        portfolio_weights=weights,
+        weights_source=cfg.weights_source,
+        portfolio_role_override="analysis_subject",
+        cash_proxy_ticker="BIL",
+        rf_source="FRED:DTB3",
+        analysis_end=DEFAULT_ANALYSIS_END,
+        windows_months=[36, 60, 120],
+        returns_frequency="monthly",
+        periods_per_year=12,
+        run_context="report",
+    )
+    write_json(subject / "run_metadata.json", build_offline_run_metadata(setup))
+    write_json(
+        subject / "snapshot_10y.json",
+        snapshot_10y(
+            {"cagr": 0.058, "vol_annual": 0.13, "max_drawdown": -0.24, "sharpe": 0.34},
+            rc_asset=_rc_rows(weights),
+            final_weights_total=weights,
+            candidate_config_fingerprint=config_fingerprint,
+        ),
+    )
+    seed_analysis_subject_diagnosis_bundle(subject)
+
+    candidate_id = "equal_weight"
+    row = registry_row(candidate_id) or {}
+    artifact_root = str(row.get("artifact_root") or "equal-weight portfolio")
+    _seed_candidate_snapshot(
+        root,
+        artifact_root,
+        metrics={"cagr": 0.075, "vol_annual": 0.105, "max_drawdown": -0.16, "sharpe": 0.55},
+        weights=weights,
+        config_fingerprint=config_fingerprint,
+    )
+    return {
+        "main_dir": main,
+        "analysis_subject_dir": subject,
+        "analysis_setup": setup,
+        "config_fingerprint": config_fingerprint,
+        "candidate_id": candidate_id,
+    }
+
+
+# (relative path under output_dir_final, expected schema_version)
+PRODUCT_BUNDLE_ARTIFACTS: tuple[tuple[str, str], ...] = (
+    ("analysis_subject/problem_classification.json", "problem_classification_v1"),
+    ("analysis_subject/candidate_launchpad.json", "candidate_launchpad_v1"),
+    ("current_vs_candidate.json", "current_vs_candidate_v1"),
+    ("decision_verdict.json", "decision_verdict_v1"),
+    ("ai_commentary_context.json", "ai_commentary_context_v1"),
+    ("what_changed_summary.json", "what_changed_summary_v1"),
+)
 
 
 # (filename, expected schema_version)

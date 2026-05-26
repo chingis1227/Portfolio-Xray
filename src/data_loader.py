@@ -40,6 +40,11 @@ from src.returns_frequency import (
     resolve_returns_frequencies,
     rf_series_annual_pct_to_returns_frequency,
 )
+from src.real_cash import (
+    collect_real_cash_tickers,
+    inject_real_cash_return_panels,
+    partition_market_data_tickers,
+)
 from src.utils import logger
 from src.windows import get_analysis_end, truncate_to_analysis_end
 
@@ -91,7 +96,12 @@ def load_monthly_data_shared(
     if freq_res.forced_to_monthly:
         logger.warning(main_metrics_frequency_override_note(freq_res))
     local_bench_tickers = list(local_benchmark_map.values()) if local_benchmark_map else []
-    all_tickers = list(set(tickers + [benchmark_base_ticker, cash_proxy_ticker] + local_bench_tickers))
+    panel_tickers = list(
+        dict.fromkeys(list(tickers) + [benchmark_base_ticker, cash_proxy_ticker] + local_bench_tickers)
+    )
+    real_cash_tickers = collect_real_cash_tickers(tickers=panel_tickers)
+    all_tickers, _panel_real_cash = partition_market_data_tickers(panel_tickers)
+    real_cash_tickers = list(dict.fromkeys(real_cash_tickers + _panel_real_cash))
 
     currency_by_ticker = {}
     for t in all_tickers:
@@ -148,6 +158,12 @@ def load_monthly_data_shared(
         monthly_prices = monthly_data["monthly_prices"]
         monthly_returns = monthly_data["monthly_returns"]
         monthly_log_returns = monthly_data["monthly_log_returns"]
+        monthly_prices, monthly_returns, monthly_log_returns = inject_real_cash_return_panels(
+            monthly_prices,
+            monthly_returns,
+            monthly_log_returns,
+            real_cash_tickers,
+        )
         rf_monthly = monthly_data["rf_monthly"]
         benchmark_returns = monthly_data["benchmark_returns"]
         cash_returns = monthly_data["cash_returns"]
@@ -200,6 +216,12 @@ def load_monthly_data_shared(
             prices_inv,
             freq=rf_mode,
             tickers=all_tickers,
+        )
+        monthly_prices, monthly_returns, monthly_log_returns = inject_real_cash_return_panels(
+            monthly_prices,
+            monthly_returns,
+            monthly_log_returns,
+            real_cash_tickers,
         )
 
         logger.info(f"Loading risk-free rate from {rf_source}...")
@@ -299,9 +321,12 @@ def load_daily_asset_returns_shared(
     """
     local_bench_tickers = list(local_benchmark_map.values()) if local_benchmark_map else []
     resolved_data_provider = normalize_market_data_provider(data_provider)
-    all_tickers = list(
+    panel_tickers = list(
         dict.fromkeys(list(tickers) + [benchmark_base_ticker, cash_proxy_ticker] + local_bench_tickers)
     )
+    real_cash_tickers = collect_real_cash_tickers(tickers=panel_tickers)
+    all_tickers, _panel_real_cash = partition_market_data_tickers(panel_tickers)
+    real_cash_tickers = list(dict.fromkeys(real_cash_tickers + _panel_real_cash))
     currency_by_ticker = {}
     for t in all_tickers:
         currency_by_ticker[t] = get_asset_currency(t, assets_meta, infer_currency_from_ticker(t))
@@ -354,10 +379,16 @@ def load_daily_asset_returns_shared(
         fx_cache=fx_cache,
         ffill_fx=True,
     )
-    _, daily_returns, _ = build_levels_and_returns_from_daily_prices(
+    _, daily_returns, daily_log = build_levels_and_returns_from_daily_prices(
         prices_inv,
         freq="daily",
         tickers=all_tickers,
+    )
+    _, daily_returns, _ = inject_real_cash_return_panels(
+        pd.DataFrame(),
+        daily_returns,
+        daily_log,
+        real_cash_tickers,
     )
     daily_returns = truncate_to_analysis_end(daily_returns, analysis_end)
     cash_col = cash_proxy_ticker if cash_proxy_ticker in daily_returns.columns else None

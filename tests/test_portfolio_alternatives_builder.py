@@ -127,3 +127,39 @@ def test_run_portfolio_alternative_plan_dry_run_does_not_execute(tmp_path: Path)
         raise AssertionError("runner must not be called in dry-run mode")
 
     assert run_portfolio_alternative_plan(plan, project_root=tmp_path, runner=_boom) is None
+
+
+def test_equal_weight_launchpad_method_maps_to_documented_product_commands(
+    tmp_path: Path,
+) -> None:
+    """Session 05: equal_weight from Launchpad → factory plan and review --candidates only.
+
+    Documented in docs/product_flow_operator_guide.md; no new run_portfolio_review flags.
+    """
+    request = request_from_launchpad_card(
+        {
+            "card_id": "launchpad_demo_equal_weight",
+            "goal": "Simple diversification baseline",
+            "suggested_methods": [{"candidate_method_id": "equal_weight"}],
+        },
+    )
+    plan = build_portfolio_alternative_plan(
+        request,
+        project_root=tmp_path,
+        python_executable="python",
+    )
+
+    assert plan.candidate_method_id == "equal_weight"
+    assert plan.candidate_id == "equal_weight"
+    assert Path(plan.command[1]).name == "run_candidate_factory.py"
+    assert plan.command[2:6] == ("--candidates", "equal_weight", "--execution-mode", "standard")
+    assert "--then-compare" in plan.command
+    assert "--output-profile" in plan.command
+    assert "site_api" in plan.command
+
+    factory_argv = list(plan.command[2:])
+    assert factory_argv.index("--candidates") == 0
+    assert factory_argv[factory_argv.index("--candidates") + 1] == "equal_weight"
+    assert factory_argv.index("--execution-mode") >= 0
+    assert factory_argv[factory_argv.index("--execution-mode") + 1] == "standard"
+    assert "--then-compare" in factory_argv

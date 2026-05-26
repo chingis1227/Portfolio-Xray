@@ -6,14 +6,21 @@ from pathlib import Path
 
 import pytest
 
+from run_portfolio_review import resolve_candidate_execution_flags
 from src.config_schema import PortfolioConfig, validate_config
 from src.candidate_factory import CORE_FAST_PROFILE_ID
 from src.portfolio_review_workflow import (
     REVIEW_DEFAULT_FACTORY_EXECUTION_MODE,
+    RUNTIME_MODE_PRODUCT_DIAGNOSIS_ONLY,
+    RUNTIME_MODE_PRODUCT_ONE_CANDIDATE,
+    RUNTIME_MODE_PRODUCT_SHORTLIST,
+    RUNTIME_MODE_RESEARCH_BATCH,
     build_portfolio_review_plan,
     resolve_factory_execution_mode,
+    resolve_portfolio_review_runtime_mode,
     resolve_review_candidate_profile,
     run_portfolio_review_plan,
+    summarize_plan,
 )
 from src.workflow_state import (
     WORKFLOW_STATE_DIAGNOSIS_ONLY,
@@ -70,6 +77,67 @@ def test_resolve_factory_execution_mode_honors_explicit_override() -> None:
     assert resolve_factory_execution_mode(factory_execution_mode="fast") == "fast"
 
 
+def test_cli_default_execution_flags_are_product_diagnosis_only() -> None:
+    skip_candidates, skip_compare, run_candidates = resolve_candidate_execution_flags()
+
+    assert run_candidates is False
+    assert skip_candidates is True
+    assert skip_compare is True
+
+
+def test_cli_explicit_candidate_execution_flags_run_one_candidate_product_path() -> None:
+    skip_candidates, skip_compare, run_candidates = resolve_candidate_execution_flags(
+        candidates="equal_weight"
+    )
+
+    assert run_candidates is True
+    assert skip_candidates is False
+    assert skip_compare is False
+
+
+def test_cli_with_candidates_execution_flags_run_backend_batch() -> None:
+    skip_candidates, skip_compare, run_candidates = resolve_candidate_execution_flags(
+        with_candidates=True
+    )
+
+    assert run_candidates is True
+    assert skip_candidates is False
+    assert skip_compare is False
+
+
+def test_cli_full_mode_execution_flags_run_research_batch() -> None:
+    skip_candidates, skip_compare, run_candidates = resolve_candidate_execution_flags(mode="full")
+
+    assert run_candidates is True
+    assert skip_candidates is False
+    assert skip_compare is False
+
+
+def test_resolve_portfolio_review_runtime_mode_classifies_current_default_as_research_batch() -> None:
+    assert resolve_portfolio_review_runtime_mode() == RUNTIME_MODE_RESEARCH_BATCH
+
+
+def test_resolve_portfolio_review_runtime_mode_classifies_diagnosis_only() -> None:
+    assert (
+        resolve_portfolio_review_runtime_mode(skip_candidates=True, skip_compare=True)
+        == RUNTIME_MODE_PRODUCT_DIAGNOSIS_ONLY
+    )
+
+
+def test_resolve_portfolio_review_runtime_mode_classifies_one_candidate() -> None:
+    assert (
+        resolve_portfolio_review_runtime_mode(candidate_ids="equal_weight")
+        == RUNTIME_MODE_PRODUCT_ONE_CANDIDATE
+    )
+
+
+def test_resolve_portfolio_review_runtime_mode_classifies_shortlist() -> None:
+    assert (
+        resolve_portfolio_review_runtime_mode(candidate_ids="equal_weight,risk_parity")
+        == RUNTIME_MODE_PRODUCT_SHORTLIST
+    )
+
+
 def test_default_plan_uses_core_fast_factory_profile(tmp_path: Path) -> None:
     plan = build_portfolio_review_plan(_cfg(), project_root=tmp_path, skip_pdf=True)
     factory_argv = plan.steps[1].argv
@@ -83,6 +151,7 @@ def test_default_plan_uses_core_fast_factory_profile(tmp_path: Path) -> None:
     assert plan.workflow_state.state == WORKFLOW_STATE_MULTIPLE_CANDIDATES
     assert plan.workflow_state.candidate_count == 6
     assert plan.workflow_state.source == "factory_profile"
+    assert plan.runtime_mode == RUNTIME_MODE_RESEARCH_BATCH
 
 
 def test_core_mode_plan_uses_core_v1_when_profile_overridden(tmp_path: Path) -> None:
@@ -180,6 +249,21 @@ def test_skip_candidates_compares_existing_artifacts(tmp_path: Path) -> None:
     assert "run_optimization.py" not in _argv_text(plan)
     assert plan.workflow_state.state == WORKFLOW_STATE_DIAGNOSIS_ONLY
     assert plan.workflow_state.source == "skip_candidates"
+    assert plan.runtime_mode == RUNTIME_MODE_RESEARCH_BATCH
+
+
+def test_skip_candidates_and_skip_compare_is_product_diagnosis_only(tmp_path: Path) -> None:
+    plan = build_portfolio_review_plan(
+        _cfg(),
+        project_root=tmp_path,
+        skip_candidates=True,
+        skip_compare=True,
+        skip_pdf=True,
+    )
+
+    assert [step.stage for step in plan.steps] == ["diagnosis"]
+    assert plan.workflow_state.state == WORKFLOW_STATE_DIAGNOSIS_ONLY
+    assert plan.runtime_mode == RUNTIME_MODE_PRODUCT_DIAGNOSIS_ONLY
 
 
 def test_candidate_options_are_forwarded_without_policy_step(tmp_path: Path) -> None:
@@ -207,9 +291,34 @@ def test_candidate_options_are_forwarded_without_policy_step(tmp_path: Path) -> 
     assert plan.workflow_state.state == WORKFLOW_STATE_MULTIPLE_CANDIDATES
     assert plan.workflow_state.candidate_count == 2
     assert plan.workflow_state.comparison_expected is False
+    assert plan.runtime_mode == RUNTIME_MODE_PRODUCT_SHORTLIST
 
 
-def test_single_candidate_plan_records_one_candidate_state(tmp_path: Path) -> None:
+def test_official_one_candidate_product_path_equal_weight(tmp_path: Path) -> None:
+    """Canonical product demo: ``run_portfolio_review.py --candidates equal_weight``.
+
+    Session 04 contract: one factory id, ``--then-compare``, workflow state ``one_candidate``.
+    """
+    plan = build_portfolio_review_plan(
+        _cfg(),
+        project_root=tmp_path,
+        candidate_ids="equal_weight",
+        skip_pdf=True,
+    )
+    factory_argv = plan.steps[1].argv
+
+    assert "--candidates" in factory_argv
+    assert "equal_weight" in factory_argv
+    assert "--then-compare" in factory_argv
+    assert "run_optimization.py" not in _argv_text(plan)
+    assert plan.workflow_state.state == WORKFLOW_STATE_ONE_CANDIDATE
+    assert plan.workflow_state.candidate_count == 1
+    assert plan.workflow_state.candidate_ids == ("equal_weight",)
+    assert plan.workflow_state.comparison_expected is True
+    assert plan.runtime_mode == RUNTIME_MODE_PRODUCT_ONE_CANDIDATE
+
+
+def test_summarize_plan_discloses_runtime_mode(tmp_path: Path) -> None:
     plan = build_portfolio_review_plan(
         _cfg(),
         project_root=tmp_path,
@@ -217,9 +326,9 @@ def test_single_candidate_plan_records_one_candidate_state(tmp_path: Path) -> No
         skip_pdf=True,
     )
 
-    assert plan.workflow_state.state == WORKFLOW_STATE_ONE_CANDIDATE
-    assert plan.workflow_state.candidate_count == 1
-    assert plan.workflow_state.candidate_ids == ("equal_weight",)
+    summary = summarize_plan(plan, review_mode="core", factory_profile="explicit_list")
+
+    assert "Runtime mode: product_one_candidate" in summary
 
 
 def test_full_mode_resume_candidates_forwards_factory_resume(tmp_path: Path) -> None:

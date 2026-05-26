@@ -1,0 +1,13 @@
+# Core MVP fixture: USD portfolio, eight risk tickers, no explicit cash holding.
+# Tickers and weights match the repository demo config.yml (Session 04).
+investor_currency: USD
+tickers: [SPY, QQQ, GLD, SLV, BND, SCHD, SCHP, TLT]
+current_weights:
+  SPY: 0.10
+  QQQ: 0.13
+  GLD: 0.09
+  SLV: 0.09
+  BND: 0.16
+  SCHD: 0.17
+  SCHP: 0.13
+  TLT: 0.13

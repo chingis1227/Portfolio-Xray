@@ -25,9 +25,13 @@ governed by `SPEC.md`, `OUTPUTS.md`, detailed specs, and code.
 
 ## Current Pointer
 
-**Active:** none (as of 2026-05-25 Session 12 closure).
+**Active:** None (resume from [ROADMAP](../ROADMAP.md) or open a new ExecPlan). Operator entry: [Product flow operator guide](../product_flow_operator_guide.md). Input contract: [input_assumptions_spec.md](../specs/input_assumptions_spec.md) § Core MVP.
 
-**Most recent closure:** [Post-Audit Portfolio MRI Architecture Alignment Roadmap](2026-05-25_post_architecture_alignment_roadmap.md) (Sessions 01–12, 2026-05-25). Origin audit: [Full Project Architecture Alignment Audit](../audits/2026-05-25_full_project_architecture_alignment_audit.md). Evidence: [Session 12 closure report](../audits/2026-05-25_post_architecture_alignment_session12_closure_report.md) — docs alignment closed; dirty tree and generated refresh deferred; backlog `RM-ARCH-010` / `RM-ARCH-011`.
+**Most recent closure:** [Input Layer MVP Migration](2026-05-26_input_layer_mvp_migration.md) (Sessions 01–10, 2026-05-26). Evidence: [Input Layer MVP acceptance audit](../audits/2026-05-26_input_layer_mvp_acceptance_audit.md); pytest **36 passed**; dry-run + materialize + `validate_one_candidate_demo.py` PASS.
+
+Previous closure: [Product Flow MVP Backend Plan](2026-05-25_product_flow_mvp_backend_plan.md) (Sessions 01–08, 2026-05-26). Origin audit: [Product-Flow Validation Audit](../audits/2026-05-25_product_flow_validation_audit.md) (Session 08 closure). Evidence: offline bundle gate + `RM-ARCH-011` Done; live [demo baseline snapshot](../audits/2026-05-25_product_flow_demo_baseline_snapshot.md); pytest **46 passed** (Session 08). Deferred: Session 09 / `RM-ARCH-010` LLM.
+
+Previous closure: [Post-Audit Portfolio MRI Architecture Alignment Roadmap](2026-05-25_post_architecture_alignment_roadmap.md) (Sessions 01–12, 2026-05-25). Evidence: [Session 12 closure report](../audits/2026-05-25_post_architecture_alignment_session12_closure_report.md).
 
 Previous closure: [Blocks 1–5 Performance Wave 2 (core_fast ≤ 5 min)](2026-05-24_blocks_1_5_performance_wave2_plan.md) (Sessions 0–8, 2026-05-24; `RM-983` **Done**). Session 8 gate: **`core_fast` E2E 210.7 s** (target ≤ 300 s). Evidence: [E2E timing audit §6](../audits/2026-05-24_blocks_1_5_e2e_timing_audit.md).
 
@@ -102,6 +106,8 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-05-26 | [Input Layer MVP Migration](2026-05-26_input_layer_mvp_migration.md) | **Completed** (contract **frozen**) | User Input Layer redesign brief | Sessions 01–10 closed; live one-candidate PASS (audit §5); `DEC-2026-05-26-001`; no input redesign unless bug. Next: Blocks 2–5 / product-flow layers. |
+| 2026-05-25 | [Product Flow MVP Backend Plan](2026-05-25_product_flow_mvp_backend_plan.md) | **Completed** | [Product-Flow Validation Audit](../audits/2026-05-25_product_flow_validation_audit.md) | Sessions 01–08 closed 2026-05-26: demo-ready MVP backend (offline gate, `RM-ARCH-011` Done, operator guide, live bundle snapshot, audit closure). Session 09 / `RM-ARCH-010` deferred. |
 | 2026-05-25 | [Post-Audit Portfolio MRI Architecture Alignment Roadmap](2026-05-25_post_architecture_alignment_roadmap.md) | **Completed** | [Full Project Architecture Alignment Audit](../audits/2026-05-25_full_project_architecture_alignment_audit.md) | Sessions 01–12 closed 2026-05-25: diagnosis-first docs alignment, output bundle policy, AI grounding lock, runtime filtering-first boundary; [Session 12 closure](../audits/2026-05-25_post_architecture_alignment_session12_closure_report.md). Deferred: dirty tree, generated refresh, `RM-ARCH-010`, `RM-ARCH-011`. |
 | 2026-05-24 | [Blocks 1–5 Performance Wave 2 (core_fast ≤ 5 min)](2026-05-24_blocks_1_5_performance_wave2_plan.md) | **Completed** | [2026-05-24 E2E timing audit](../audits/2026-05-24_blocks_1_5_e2e_timing_audit.md) §6 | Sessions 0–8 closed 2026-05-24 (`RM-983`): `core_fast` E2E **210.7 s** (gate ≤ 300 s); parity **138 passed**; timing harness `core_fast_parallel`. |
 | 2026-05-23 | [Core / Full Artifact and Documentation Confusion Remediation](2026-05-23_core_full_artifact_documentation_confusion_plan.md) | Completed | [Core/full confusion audit](../audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md) | Sessions 00–06 closed 2026-05-24 (`RM-1100`–`RM-1106`): docs-only remediation (OUTPUTS, WORKFLOW, runbook, audits, ARCHITECTURE, agents, glossary, audit remediation status); `verify_docs.py` OK each session. |

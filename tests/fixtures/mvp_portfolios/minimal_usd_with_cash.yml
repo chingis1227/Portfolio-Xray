@@ -1,0 +1,14 @@
+# Core MVP fixture: same eight risk tickers plus explicit bank cash (Cash USD).
+# Cash USD is a zero-return holding; BIL is not substituted (see input_assumptions_spec).
+investor_currency: USD
+tickers: [SPY, QQQ, GLD, SLV, BND, SCHD, SCHP, TLT, Cash USD]
+current_weights:
+  SPY: 0.09
+  QQQ: 0.12
+  GLD: 0.08
+  SLV: 0.08
+  BND: 0.14
+  SCHD: 0.16
+  SCHP: 0.12
+  TLT: 0.11
+  Cash USD: 0.10

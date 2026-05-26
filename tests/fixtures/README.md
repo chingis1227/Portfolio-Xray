@@ -1,5 +1,18 @@
 # Test fixtures
 
+## Core MVP portfolio YAML (`Input Layer MVP Session 04`)
+
+- **Directory:** `mvp_portfolios/`
+- **Files:**
+  - `minimal_usd_no_cash.yml` — eight-ticker USD demo weights, no explicit bank cash
+  - `minimal_usd_with_cash.yml` — same universe plus `Cash USD` holding
+- **Tests:** `tests/test_mvp_portfolio_fixtures.py`, `tests/test_mvp_portfolio_review_materialization.py`
+- **Offline helpers:** `tests/mvp_offline_fixtures.py` (`validate_mvp_fixture`, `build_offline_run_metadata`)
+
+```bash
+python -m pytest tests/test_mvp_portfolio_fixtures.py tests/test_mvp_portfolio_review_materialization.py -q
+```
+
 ## Optimization Engine golden contracts (`RM-1001`)
 
 - **Files:**

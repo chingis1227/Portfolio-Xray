@@ -240,7 +240,10 @@ export flags are set. `output_manifest.json` lists generated paths for orchestra
 product-facing answer—filter with the bundle table above. After compare (and report when diagnosis
 artifacts exist), `generated_paths` includes resolved keys for all six bundle JSON files
 (`problem_classification_json` through `what_changed_summary_json`; diagnosis paths prefer
-`analysis_subject/`). `artifact_categories` groups `product_bundle` vs `technical_comparison` keys.
+`analysis_subject/`). `artifact_categories` groups keys by surface (`product_bundle`, `technical_comparison`,
+`subject_diagnostics`, `advanced_evidence`, `orchestration`, `legacy_compatibility`,
+`generated_export`). `generated_paths_by_category` lists resolved paths per category;
+`product_discovery.product_bundle_paths` lists the six Core MVP files for UI/API consumers.
 
 ## Output Formats
 
@@ -321,7 +324,7 @@ Common project artifacts include:
 
 `portfolio_xray.json` is a generated, diagnostic-only Portfolio X-Ray artifact. It summarizes existing report pipeline outputs and in-memory diagnostics; it does not optimize, change weights, change mandate gates, change stress pass/fail status, or make portfolio selection decisions. Its section and disclosure contract is owned by [docs/specs/portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md). Human-readable surfaces are rendered from this JSON via `format_portfolio_xray_text` (`report.txt`), `format_portfolio_xray_html` (`report.html`), and `format_portfolio_xray_commentary` (`commentary.txt` compact block).
 
-`run_result.json` and `run_metadata.json` include an `analysis_setup` block, the resolved runtime contract for the input and assumptions layer. They also include `input_assumptions`, the reporting view projected from `analysis_setup`, summarizing the input mode, tickers, fixed/current weight status, resolved market assumptions, mandate inputs, calculation settings, and known V1 gaps. Legacy policy `run_result.json` also includes `optimizer_run_metadata` (`legacy_policy_optimizer_run_metadata_v1`) with objective, estimator, window, input fingerprints, universe, bounds/caps, cash policy, solver/fallback, release-gate disclosure, covariance methodology, and Young ETF methodology. Optimizer candidate `baseline_weights_metadata.json` exports for Minimum Variance, Maximum Diversification, Minimum CVaR, and Robust Mean-Variance include `optimizer_run_metadata` (`candidate_optimizer_run_metadata_v1`) with candidate-only role, method/objective, input window, input fingerprints, estimator/constraint, solver/fallback, parameter, output-summary disclosure, covariance methodology, and Young ETF methodology while preserving legacy top-level metadata fields. Materialized Robust Scenario candidate metadata may include `optimizer_run_metadata` (`robust_scenario_optimizer_run_metadata_v1`) copied from `robust_optimization_v1_summary.json`, including SLSQP solver/fallback quality. `candidate_comparison.json` copies the comparison-ready subset to `construction_disclosure.optimizer_methodology` when those upstream metadata blocks exist and projects normalized fallback/failure quality to `construction_disclosure.optimizer_quality` when metadata or factory evidence is available. `candidate_comparison.txt` and legacy `ips_summary.txt` include compact optimizer methodology notes when source metadata is present.
+`run_result.json` and `run_metadata.json` include an `analysis_setup` block, the resolved runtime contract for the input and assumptions layer. They also include `input_assumptions`, the reporting view projected from `analysis_setup`, summarizing the input mode, tickers, fixed/current weight status, resolved market assumptions, mandate inputs, calculation settings, Core MVP `input_surface` / `field_tiers` disclosure, real-cash handling when present, and known V1 gaps. Legacy policy `run_result.json` also includes `optimizer_run_metadata` (`legacy_policy_optimizer_run_metadata_v1`) with objective, estimator, window, input fingerprints, universe, bounds/caps, cash policy, solver/fallback, release-gate disclosure, covariance methodology, and Young ETF methodology. Optimizer candidate `baseline_weights_metadata.json` exports for Minimum Variance, Maximum Diversification, Minimum CVaR, and Robust Mean-Variance include `optimizer_run_metadata` (`candidate_optimizer_run_metadata_v1`) with candidate-only role, method/objective, input window, input fingerprints, estimator/constraint, solver/fallback, parameter, output-summary disclosure, covariance methodology, and Young ETF methodology while preserving legacy top-level metadata fields. Materialized Robust Scenario candidate metadata may include `optimizer_run_metadata` (`robust_scenario_optimizer_run_metadata_v1`) copied from `robust_optimization_v1_summary.json`, including SLSQP solver/fallback quality. `candidate_comparison.json` copies the comparison-ready subset to `construction_disclosure.optimizer_methodology` when those upstream metadata blocks exist and projects normalized fallback/failure quality to `construction_disclosure.optimizer_quality` when metadata or factory evidence is available. `candidate_comparison.txt` and legacy `ips_summary.txt` include compact optimizer methodology notes when source metadata is present.
 
 The exact artifact set can vary by config, available data, candidate type, and enabled report features.
 
@@ -353,7 +356,7 @@ When validating the first-five-block MVP core (offline smoke or a representative
 
 | Block | Minimum artifacts | Trust checks |
 | --- | --- | --- |
-| 1 Input | `run_metadata.json` with `analysis_setup` and `input_assumptions` | Explicit current/model weights sum to at most `1.0`; partial sums disclose cash remainder |
+| 1 Input | `run_metadata.json` with `analysis_setup` and `input_assumptions` | Explicit current/model weights sum to at most `1.0`; partial sums disclose cash remainder; `input_assumptions.input_surface` lists Core MVP user fields; `field_tiers` classifies deferred/legacy keys; real-cash labels in `analysis_setup.cash_handling.real_cash_holdings` when used (not substituted by `cash_proxy_ticker`) |
 | 2 X-Ray | `portfolio_xray.json` (seven sections) | `data_trust_signals.user_summary_lines` when data-quality warnings exist |
 | 3 Stress | `stress_report.json` with scorecard, conclusions, historical methodology, hedge gap | `data_trust_summary.user_summary_lines` for episode/taxonomy/young-ETF warnings |
 | 4 Factory | `candidate_factory_run.json` at review root | Comparison `candidate_menu.factory_evidence_status` must be `current` or explicitly not authoritative |
@@ -361,8 +364,9 @@ When validating the first-five-block MVP core (offline smoke or a representative
 | 5 Optimizers | Candidate folders + comparison rows | Optimizer-backed rows are `available` only when readiness-critical evidence is complete; otherwise `degraded` with warning codes |
 
 Generated outputs remain evidence, not source files. Do not commit routine run refreshes unless a
-session explicitly targets generated artifacts. Offline gate:
-`tests/test_blocks_1_5_mvp_smoke.py` ([TESTING.md](TESTING.md)).
+session explicitly targets generated artifacts. Offline gates:
+`tests/test_blocks_1_5_mvp_smoke.py` ([TESTING.md](TESTING.md)); Input Layer MVP regression:
+`tests/test_input_layer_mvp_regression.py` (minimal fixtures, disclosure chain, real cash, product bundle).
 
 ## Output Rules
 

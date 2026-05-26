@@ -57,6 +57,10 @@ from src.candidate_weights import (
 )
 from src.report_profile import REPORT_PROFILE_FULL, REPORT_PROFILE_LIGHTWEIGHT
 from src.output_policy import output_policy_for_profile, write_output_manifest
+from src.product_bundle_paths import (
+    build_product_first_generated_paths,
+    build_output_manifest_discovery_extra,
+)
 from src.report_timing import aggregate_report_timing_from_steps
 from src.variant_builder_runtime import (
     ENV_SKIP_VARIANT_PDF,
@@ -3106,15 +3110,33 @@ def write_candidate_factory_outputs(
     if manifest_path:
         written["candidate_factory_manifest_json"] = Path(manifest_path)
     policy = output_policy_for_profile((doc.get("options") or {}).get("output_profile"))
+    comparison_outputs = {
+        str(key): Path(value)
+        for key, value in (doc.get("comparison_outputs") or {}).items()
+        if value
+    }
+    generated_paths: dict[str, str | Path | None] = {
+        "candidate_factory_run_json": json_path,
+        "candidate_factory_manifest_json": written.get("candidate_factory_manifest_json"),
+        "candidate_factory_run": json_path,
+        "candidate_factory_manifest": written.get("candidate_factory_manifest_json"),
+    }
+    generated_paths.update(comparison_outputs)
+    manifest_generated_paths = build_product_first_generated_paths(
+        output_dir, generated_paths
+    )
     written["output_manifest_json"] = write_output_manifest(
         output_dir,
         policy=policy,
         run_kind="candidate_factory",
-        generated_paths={
-            "candidate_factory_run": json_path,
-            "candidate_factory_manifest": written.get("candidate_factory_manifest_json"),
-        },
-        extra={"factory_profile_id": doc.get("factory_profile_id")},
+        generated_paths=manifest_generated_paths,
+        extra=build_output_manifest_discovery_extra(
+            manifest_generated_paths,
+            extra={
+                "factory_profile_id": doc.get("factory_profile_id"),
+                "then_compare": bool((doc.get("options") or {}).get("then_compare")),
+            },
+        ),
     )
     return written
 
@@ -3132,6 +3154,7 @@ def run_then_compare(
     project_root: Path,
     factory_run: dict[str, Any] | None = None,
     output_profile: str | None = None,
+    advanced_package: bool | None = None,
 ) -> tuple[dict[str, Path] | None, str | None]:
     from src.candidate_comparison import (
         COMPARISON_REBUILD_FACTORY_THEN_COMPARE,
@@ -3145,6 +3168,7 @@ def run_then_compare(
             factory_run=factory_run,
             comparison_rebuild_source=COMPARISON_REBUILD_FACTORY_THEN_COMPARE,
             output_profile=output_profile,
+            advanced_package=advanced_package,
         )
         return paths, None
     except Exception as exc:  # noqa: BLE001 — surface comparison failure in factory summary

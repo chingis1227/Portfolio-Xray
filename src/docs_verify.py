@@ -30,6 +30,13 @@ ALLOW_MISSING_PATHS: frozenset[str] = frozenset(
         "docs/specs/action_engine_spec.md",
         "docs/specs/monitoring_spec.md",
         "docs/specs/decision_journal_spec.md",
+        # Input Layer MVP migration (ExecPlan 2026-05-26; created in Sessions 02–08)
+        "src/mvp_input.py",
+        "tests/test_mvp_input_defaults.py",
+        "tests/test_mvp_portfolio_fixtures.py",
+        "tests/test_input_layer_mvp_regression.py",
+        "tests/fixtures/mvp_portfolios/minimal_usd_no_cash.yml",
+        "tests/fixtures/mvp_portfolios/minimal_usd_with_cash.yml",
     }
 )
 

@@ -354,6 +354,31 @@ Title: Trade-off Explanation and Model Risk Diagnostics V1 — separate diagnost
 - Related documents: [docs/specs/tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md), [docs/specs/selection_engine_spec.md](docs/specs/selection_engine_spec.md), [docs/specs/decision_package_reporting_spec.md](docs/specs/decision_package_reporting_spec.md), [OUTPUTS.md](OUTPUTS.md), [docs/ROADMAP.md](docs/ROADMAP.md) RM-616.
 - Review trigger: Revisit if trade-off should run after action for turnover parity, or if concentration thresholds should become mandate-binding.
 
+Decision ID: DEC-2026-05-26-001
+Title: Input Layer MVP contract frozen (Core MVP three-field surface)
+
+- Status: accepted
+- Date: 2026-05-26
+- Decision: Freeze the Input Layer MVP contract after ExecPlan Sessions 01–10. Core MVP user input
+  remains tickers + weights/`current_weights` + `investor_currency`; real cash is distinct from
+  `cash_proxy_ticker`; `input_surface` / `field_tiers` export is mandatory on diagnosis materialize.
+  Do not reopen input redesign unless a regression bug is filed.
+- Context: [Input Layer MVP Migration](docs/exec_plans/2026-05-26_input_layer_mvp_migration.md) closed;
+  live `run_portfolio_review.py --candidates equal_weight` + validator PASS (2026-05-26).
+- Rationale: Prevents endless first-screen churn; shifts active product work to Blocks 2–5 and
+  product-bundle layers already wired behind portfolio-first review.
+- Alternatives considered: Continue input UX iteration in parallel with X-Ray (rejected — splits
+  focus); delete legacy config keys now (rejected — optimizer/research still need them under
+  `field_tiers.legacy_advanced`).
+- Assumptions: Bug fixes and spec clarifications remain allowed; EUR fixture parity is a separate
+  scoped task if needed.
+- Consequences: Canonical behavior in [input_assumptions_spec.md](docs/specs/input_assumptions_spec.md)
+  § Contract freeze; regression gate `tests/test_input_layer_mvp_regression.py`.
+- Related documents: [acceptance audit](docs/audits/2026-05-26_input_layer_mvp_acceptance_audit.md),
+  [OUTPUTS.md](OUTPUTS.md) Block 1, [product_flow_operator_guide.md](docs/product_flow_operator_guide.md).
+- Review trigger: Reopen only on failed Block 1 acceptance, broken real-cash handling, or explicit
+  new ExecPlan for non-USD Core MVP parity.
+
 Decision ID: DEC-2026-05-17-007
 Title: Candidate Portfolio Factory V1 — orchestrate before compare
 

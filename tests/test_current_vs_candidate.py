@@ -60,6 +60,18 @@ def test_build_current_vs_candidate_uses_selection_favored_candidate() -> None:
     assert dimensions["cagr"]["direction"] == "worse"
 
 
+def test_build_current_vs_candidate_explicit_ids_override_selection_favored_candidate() -> None:
+    doc = build_current_vs_candidate(
+        _comparison(),
+        selection={"favored_candidate_id": "risk_parity"},
+        candidate_ids=["equal_weight"],
+    )
+
+    assert doc["view_mode"] == "one_candidate"
+    assert doc["selected_candidate_ids"] == ["equal_weight"]
+    assert doc["comparisons"][0]["candidate_id"] == "equal_weight"
+
+
 def test_build_current_vs_candidate_supports_shortlist() -> None:
     doc = build_current_vs_candidate(
         _comparison(),

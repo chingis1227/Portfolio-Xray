@@ -24,11 +24,22 @@ OBJECTIVE_MODES = (OBJECTIVE_MODE_MAX_RETURN, OBJECTIVE_MODE_RISK_PARITY)
 
 
 def get_risk_portfolio_tickers(tickers: list[str], cash_proxy_ticker: str | None = None) -> list[str]:
-    """Return tickers excluding the cash proxy (e.g. BIL). All remaining tickers are in the optimization universe."""
-    if not cash_proxy_ticker:
-        return list(tickers)
-    c = str(cash_proxy_ticker).strip().upper()
-    return [t for t in tickers if str(t).strip().upper() != c]
+    """Return tickers excluding the cash proxy (e.g. BIL) and explicit real-cash labels."""
+    from src.real_cash import is_real_cash_ticker
+
+    proxy_upper = str(cash_proxy_ticker or "").strip().upper()
+    out: list[str] = []
+    for t in tickers:
+        token = str(t).strip()
+        if not token:
+            continue
+        upper = token.upper()
+        if proxy_upper and upper == proxy_upper:
+            continue
+        if is_real_cash_ticker(token):
+            continue
+        out.append(token)
+    return out
 
 
 def _build_bounds(

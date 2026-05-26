@@ -7,9 +7,12 @@ Usage:
 
 Then open http://localhost:5000 in browser.
 
-Flow: set parameters in the form → Save config.yml (writes to config.yml) →
-optionally Run optimization (runs run_optimization.py using current config).
-Same config file and same code as when running from the command line.
+Core MVP first screen: investor_currency, tickers, and weights (or current_weights).
+Advanced settings (legacy optimizer, mandate, liquidity) are collapsed by default.
+
+Flow: set Core MVP inputs → Save config.yml → optionally run portfolio review
+(``run_portfolio_review.py``) or legacy optimization from Advanced settings.
+Same config file and validation as CLI entrypoints.
 """
 from __future__ import annotations
 
@@ -42,8 +45,18 @@ app = Flask(
 CONFIG_PATH = PROJECT_ROOT / "config.yml"
 
 # Default values (aligned with config_schema; UI form uses benchmark_base_ticker, rf_source)
+# Technical keys preserved when writing compact Core MVP YAML.
+MVP_PRESERVE_KEYS = (
+    "output_dir",
+    "output_dir_final",
+    "returns_frequency",
+    "market_data_provider",
+    "windows_months",
+    "coverage_threshold",
+)
+
 DEFAULTS = {
-    "analysis_mode": "optimize_from_universe",
+    "analysis_mode": "analyze_current_weights",
     "investor_currency": "USD",
     "initial_investable_amount": 1000,
     "liquidity_need": 0,
@@ -254,34 +267,51 @@ def index():
     )
 
 
+def _parse_analysis_mode(data) -> str:
+    mode = (data.get("analysis_mode") or "analyze_current_weights").strip().lower()
+    if mode not in ("optimize_from_universe", "analyze_current_weights"):
+        return "analyze_current_weights"
+    return mode
+
+
+def _parse_tickers_and_weights(data, *, analysis_mode: str) -> tuple[list[str], dict[str, float]]:
+    """Parse ticker rows; weights map only for Core MVP / analyze_current_weights."""
+    tickers: list[str] = []
+    current_weights: dict[str, float] = {}
+    ticker_entries = data.getlist("ticker[]")
+    current_weight_entries = data.getlist("current_weight[]")
+    if not current_weight_entries:
+        current_weight_entries = data.getlist("weight[]")
+    parse_weights = analysis_mode == "analyze_current_weights"
+    for i, t in enumerate(ticker_entries):
+        t = t.strip().upper()
+        if not t:
+            continue
+        tickers.append(t)
+        if not parse_weights:
+            continue
+        raw_weight = current_weight_entries[i] if i < len(current_weight_entries) else ""
+        w_val = parse_percent(raw_weight)
+        if w_val is not None:
+            current_weights[t] = w_val
+    return tickers, current_weights
+
+
+def _merge_preserved_technical(config: dict, current: dict) -> None:
+    """Keep backend run settings when writing compact Core MVP YAML."""
+    for key in MVP_PRESERVE_KEYS:
+        if key in current and current.get(key) is not None:
+            config[key] = current[key]
+
+
 @app.route("/generate", methods=["POST"])
 def generate_config():
     """Generate config.yml from form data."""
     data = request.form
     current = load_current_config()
-    analysis_mode = (data.get("analysis_mode") or "optimize_from_universe").strip().lower()
-    if analysis_mode not in ("optimize_from_universe", "analyze_current_weights"):
-        analysis_mode = "optimize_from_universe"
-    
-    # Parse tickers and current weights. Generated policy weights are never loaded
-    # into editable form fields and are never written back as manual source config.
-    tickers = []
-    current_weights = {}
-    
-    ticker_entries = data.getlist("ticker[]")
-    current_weight_entries = data.getlist("current_weight[]")
-    if not current_weight_entries:
-        current_weight_entries = data.getlist("weight[]")
-    
-    for i, t in enumerate(ticker_entries):
-        t = t.strip().upper()
-        if t:
-            tickers.append(t)
-            if analysis_mode == "analyze_current_weights":
-                raw_weight = current_weight_entries[i] if i < len(current_weight_entries) else ""
-                w_val = parse_percent(raw_weight)
-                if w_val is not None:
-                    current_weights[t] = w_val
+    analysis_mode = _parse_analysis_mode(data)
+    tickers, current_weights = _parse_tickers_and_weights(data, analysis_mode=analysis_mode)
+    compact_mvp = analysis_mode == "analyze_current_weights"
     
     # Build config dict
     config = {
@@ -316,9 +346,14 @@ def generate_config():
         "output_dir": data.get("output_dir", "output"),
         "output_dir_final": current.get("output_dir_final") or "Main portfolio",
     }
+    if compact_mvp:
+        _merge_preserved_technical(config, current)
 
-    # Generate YAML content
-    yaml_content = generate_yaml_with_comments(config)
+    yaml_content = (
+        generate_mvp_yaml_with_comments(config)
+        if compact_mvp
+        else generate_yaml_with_comments(config)
+    )
     
     return jsonify({
         "success": True,
@@ -349,8 +384,9 @@ def save_config():
     return jsonify({"success": True, "path": str(CONFIG_PATH)})
 
 
-# Timeout for optimization run (seconds)
+# Timeout for subprocess runs (seconds)
 OPTIMIZATION_TIMEOUT = 600
+PORTFOLIO_REVIEW_TIMEOUT = 900
 
 
 @app.route("/run-optimization", methods=["POST"])
@@ -400,6 +436,101 @@ def run_optimization():
             "stderr": "",
             "exit_code": -1,
         })
+
+
+@app.route("/run-portfolio-review", methods=["POST"])
+def run_portfolio_review():
+    """Run portfolio-first review using current config.yml (Core MVP path)."""
+    review_script = PROJECT_ROOT / "run_portfolio_review.py"
+    if not review_script.is_file():
+        return jsonify({
+            "success": False,
+            "error": "run_portfolio_review.py not found in project root",
+            "stdout": "",
+            "stderr": "",
+            "exit_code": -1,
+        })
+
+    dry_run = request.json.get("dry_run", True) if request.is_json else True
+    cmd = [sys.executable, str(review_script)]
+    if dry_run:
+        cmd.append("--dry-run")
+
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=PORTFOLIO_REVIEW_TIMEOUT,
+            env={**os.environ},
+        )
+        return jsonify({
+            "success": result.returncode == 0,
+            "stdout": result.stdout or "",
+            "stderr": result.stderr or "",
+            "exit_code": result.returncode,
+            "dry_run": dry_run,
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            "success": False,
+            "error": f"Portfolio review timed out after {PORTFOLIO_REVIEW_TIMEOUT} seconds",
+            "stdout": "",
+            "stderr": "",
+            "exit_code": -1,
+            "dry_run": dry_run,
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "stdout": "",
+            "stderr": "",
+            "exit_code": -1,
+            "dry_run": dry_run,
+        })
+
+
+def generate_mvp_yaml_with_comments(config: dict) -> str:
+    """Compact Core MVP YAML (Section 1 + preserved technical run settings)."""
+    lines = [
+        "# =============================================================================",
+        "# Portfolio MRI — Core MVP (generated by Config UI)",
+        "# Required: investor_currency, tickers, current_weights.",
+        "# See config.yml.example for legacy optimizer and mandate settings.",
+        "# =============================================================================",
+        "",
+        f"investor_currency: {config['investor_currency']}",
+        "",
+        "tickers:",
+    ]
+    for t in config["tickers"]:
+        lines.append(f"  - {t}")
+    lines.append("")
+    lines.append("# Allocation for portfolio-first diagnosis (percent strings allowed in UI).")
+    if config.get("current_weights"):
+        lines.append("current_weights:")
+        for t, w in config["current_weights"].items():
+            lines.append(f"  {t}: {w}")
+    else:
+        lines.append("current_weights: {}")
+    lines.append("")
+    lines.append("# Optional explicit bank cash, e.g. Cash USD: 0.10 (zero return; not BIL proxy).")
+    lines.append("")
+    lines.append("# Technical run settings (backend; not Core MVP first-screen fields)")
+    if config.get("output_dir") is not None:
+        lines.append(f"output_dir: {config['output_dir']}")
+    lines.append(f"output_dir_final: \"{config.get('output_dir_final', 'Main portfolio')}\"")
+    if config.get("returns_frequency"):
+        lines.append(f"returns_frequency: {config['returns_frequency']}")
+    if config.get("market_data_provider"):
+        lines.append(f"market_data_provider: {config['market_data_provider']}")
+    if config.get("windows_months"):
+        lines.append(f"windows_months: {config['windows_months']}")
+    if config.get("coverage_threshold") is not None:
+        lines.append(f"coverage_threshold: {config['coverage_threshold']}")
+    return "\n".join(lines)
 
 
 def generate_yaml_with_comments(config: dict) -> str:

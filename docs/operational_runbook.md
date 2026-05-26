@@ -48,6 +48,7 @@ python run_portfolio_review.py --mode full --no-skip-existing
 python run_portfolio_review.py --mode full --resume-candidates
 python run_portfolio_review.py --skip-candidates
 python run_portfolio_review.py --candidate-profile core_v1
+python run_portfolio_review.py --candidates equal_weight
 ```
 
 | Review mode | Command | Factory profile | Factory execution | Typical use |
@@ -68,6 +69,47 @@ python run_portfolio_review.py --candidate-profile core_v1
 
 The default portfolio-first command does not call `run_optimization.py`. The old policy workflow
 below remains available for compatibility and historical policy runs.
+
+### Product demo (one candidate)
+
+**Official one-candidate product path** (no extra CLI flags — use existing `--candidates`):
+
+```bash
+python run_portfolio_review.py --candidates equal_weight
+```
+
+Replace `equal_weight` with any supported candidate id from the factory registry (for example
+`risk_parity`, `minimum_variance`) when testing another hypothesis from Candidate Launchpad.
+
+| Path | Command | Factory behavior | Workflow state |
+| --- | --- | --- | --- |
+| **Routine research / Blocks 1–5 regression** | `python run_portfolio_review.py` or `--mode core` | Profile **`core_fast`** — **six** candidates | `multiple_candidates` |
+| **Product demo (one hypothesis)** | `python run_portfolio_review.py --candidates <id>` | Single builder + `--then-compare` | `one_candidate` |
+
+Do **not** use the default six-candidate core run when the goal is a product demo of
+diagnose → one alternative → compare → verdict. Explicit `--candidates` is required.
+
+Dry-run check (no subprocess builders):
+
+```bash
+python run_portfolio_review.py --candidates equal_weight --dry-run
+```
+
+Pass criteria: plan includes subject materialization, one factory step with
+`run_candidate_factory.py --candidates equal_weight ... --then-compare`, and resolved workflow
+state **`one_candidate`**.
+
+Live demo (network + disk): same command without `--dry-run`; see
+[Product Flow MVP Backend Plan](exec_plans/2026-05-25_product_flow_mvp_backend_plan.md) Session 07.
+
+**From Candidate Launchpad method id:** map `candidate_method_id` → `--candidates <factory_id>` via
+Portfolio Alternatives Builder (no extra review flags). Full table, `PortfolioAlternativeBuildPlan`
+example, and optional helper:
+[Product flow operator guide — Launchpad method → one candidate](product_flow_operator_guide.md#launchpad-method--one-candidate-alternatives-builder).
+
+```bash
+python scripts/run_one_candidate_from_method.py --method equal_weight
+```
 
 ### Blocks 1-5 MVP acceptance (operator checklist)
 

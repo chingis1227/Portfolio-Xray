@@ -148,6 +148,30 @@ Term heading
 - Area: input and assumptions
 - Canonical source: [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md)
 
+### Core MVP input surface
+
+- Definition: The minimal user-facing config for portfolio-first diagnosis: `tickers`, `current_weights` or `weights`, and `investor_currency`. System defaults supply USD/EUR risk-free, cash proxy, benchmark, and inject `current_portfolio` / `analyze_current_weights` when weights are present without explicit `analysis_subject`.
+- Area: input and assumptions
+- Canonical source: [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md)
+
+### Real cash holding
+
+- Definition: An explicit bank-cash position in portfolio weights (for example `Cash USD`) with zero return, zero volatility, and no price download; distinct from `cash_proxy_ticker`, which is a technical proxy for metrics and NaN-safe backtest fill only.
+- Area: input and assumptions
+- Canonical source: [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md) § Real Cash Holdings
+
+### Input surface
+
+- Definition: Export-only list in `input_assumptions` describing which config fields the user supplied on the Core MVP first screen versus system-resolved or deferred tiers; not a second runtime contract.
+- Area: input and assumptions
+- Canonical source: [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md)
+
+### Field tiers
+
+- Definition: Export-only classification in `input_assumptions` (`core_mvp`, `system_default`, `legacy_advanced`, `client_fit_later`, etc.) that documents which config keys are required, injected, or deferred for the diagnosis path.
+- Area: input and assumptions
+- Canonical source: [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md)
+
 ### Policy portfolio
 
 - Definition: A portfolio produced by the legacy policy optimization workflow; it is not the default starting portfolio in the portfolio-first workflow.
@@ -520,9 +544,9 @@ Term heading
 
 ### Config
 
-- Definition: Project input settings, usually in `config.yml`, that define tickers, currency, benchmark, targets, windows, output paths, and feature settings.
+- Definition: Project input settings in `config.yml`. For Core MVP portfolio-first runs, only tickers, weights (`current_weights` or `weights`), and `investor_currency` are required; benchmark, risk-free, and cash proxy default by currency unless overridden. Legacy optimizer paths may also use client profile, targets, liquidity, and mandate fields from `config.yml.example` Sections 4–7.
 - Area: data
-- Canonical source: [DATA.md](DATA.md)
+- Canonical source: [DATA.md](DATA.md), [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md)
 
 ### Output directory final
 

@@ -1,333 +1,291 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio Config UI</title>
+    <title>Portfolio Config — Core MVP</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='design.css') }}">
 </head>
 <body>
     <div class="container">
-        <h1>Portfolio Config UI</h1>
-        
+        <h1>Portfolio Config</h1>
+        <p class="mvp-intro">
+            Core MVP needs three inputs: <strong>reporting currency</strong>, <strong>instruments</strong>,
+            and <strong>weights</strong>. Risk-free rate, cash proxy, and benchmark resolve from currency.
+            Use <em>Advanced settings</em> for legacy optimization, client profile, and liquidity.
+        </p>
+
         <form id="configForm">
-            <div class="grid">
-                <!-- Column 1 -->
-                <div>
-                    <!-- Core Settings -->
-                    <div class="card">
-                        <h2>Core Settings</h2>
-                        
-                        <div class="form-group">
-                            <label>Investor Currency</label>
-                            <select name="investor_currency" id="investorCurrency">
-                                <option value="USD" {{ 'selected' if config.investor_currency == 'USD' }}>USD (US Dollar)</option>
-                                <option value="EUR" {{ 'selected' if config.investor_currency == 'EUR' }}>EUR (Euro)</option>
-                                <option value="JPY" {{ 'selected' if config.investor_currency == 'JPY' }}>JPY (Japanese Yen)</option>
-                                <option value="CHF" {{ 'selected' if config.investor_currency == 'CHF' }}>CHF (Swiss Franc)</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Initial Investable Amount</label>
-                            <input type="number" name="initial_investable_amount" 
-                                   value="{{ config.initial_investable_amount }}" placeholder="1000">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Liquidity Need (legacy)</label>
-                            <input type="number" name="liquidity_need" 
-                                   value="{{ config.liquidity_need }}" placeholder="0">
-                            <div class="help-text">Legacy field. Prefer liquidity_need_months + monthly_expenses below.</div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Liquidity need (months of expenses)</label>
-                            <input type="number" name="liquidity_need_months" min="0" step="any"
-                                   value="{{ config.get('liquidity_need_months', 0) }}"
-                                   placeholder="0">
-                            <div class="help-text">Life liquidity amount = months × monthly_expenses. Any non-negative number (e.g. 2, 2.5). 0 = life-liquidity disabled.</div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Monthly expenses (investor currency)</label>
-                            <input type="number" step="0.01" name="monthly_expenses" 
-                                   value="{{ config.get('monthly_expenses', '') }}" placeholder="0">
-                            <div class="help-text">Used only if liquidity_need_months &gt; 0. Liquidity = liquidity_need_months × monthly_expenses.</div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Portfolio value (optional)</label>
-                            <input type="number" step="0.01" name="portfolio_value" 
-                                   value="{{ config.get('portfolio_value', '') }}" placeholder="e.g. 1000">
-                            <div class="help-text">Current portfolio market value. If empty or not set, initial_investable_amount is used.</div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Cash policy</label>
-                            <select name="cash_policy">
-                                <option value="allowed_for_scaling" {{ 'selected' if config.get('cash_policy', 'allowed_for_scaling') == 'allowed_for_scaling' }}>allowed_for_scaling (default)</option>
-                                <option value="required_floor" {{ 'selected' if config.get('cash_policy') == 'required_floor' }}>required_floor</option>
-                                <option value="prohibited" {{ 'selected' if config.get('cash_policy') == 'prohibited' }}>prohibited</option>
-                            </select>
-                            <div class="help-text">allowed_for_scaling: floor may be 0, vol-scaling allowed. required_floor: at least life floor. prohibited: no cash.</div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Base Benchmark Ticker</label>
-                            <select name="benchmark_base_ticker" id="benchmarkTicker">
-                                <option value="SPY" {{ 'selected' if config.benchmark_base_ticker == 'SPY' }}>SPY (S&P 500)</option>
-                                <option value="VGK" {{ 'selected' if config.benchmark_base_ticker == 'VGK' }}>VGK (Europe)</option>
-                                <option value="EWJ" {{ 'selected' if config.benchmark_base_ticker == 'EWJ' }}>EWJ (Japan)</option>
-                                <option value="EWL" {{ 'selected' if config.benchmark_base_ticker == 'EWL' }}>EWL (Switzerland)</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <!-- Analysis Mode -->
-                    <div class="card">
-                        <h2>Analysis Mode</h2>
-                        <div class="form-group">
-                            <label>Mode</label>
-                            <select name="analysis_mode" id="analysisMode">
-                                <option value="optimize_from_universe" {{ 'selected' if config.get('analysis_mode', 'optimize_from_universe') == 'optimize_from_universe' }}>Optimize from ticker universe</option>
-                                <option value="analyze_current_weights" {{ 'selected' if config.get('analysis_mode') == 'analyze_current_weights' }}>Analyze current portfolio weights</option>
-                            </select>
-                            <div class="help-text" id="analysisModeHelp"></div>
-                        </div>
-                    </div>
-
-                    <!-- Portfolio Input -->
-                    <div class="card">
-                        <h2>Portfolio Input</h2>
-                        
-                        <div id="tickersContainer">
-                            {% for tw in ticker_weights %}
-                            <div class="ticker-row">
-                                <input type="text" name="ticker[]" value="{{ tw.ticker }}" placeholder="Ticker (e.g., VOO)">
-                                <input type="text" class="current-weight-input" name="current_weight[]"
-                                       value="{{ (tw.current_weight * 100)|round(1) ~ '%' if tw.current_weight is not none else '' }}"
-                                       placeholder="Current weight (e.g., 20%)">
-                                <button type="button" class="btn-remove" onclick="removeTickerRow(this)">×</button>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        
-                        <div class="weight-sum" id="weightSum">Total: 0%</div>
-                        
-                        <button type="button" class="btn-add" onclick="addTickerRow()">+ Add Ticker</button>
-
-                        {% if generated_weight_rows %}
-                        <div class="generated-output">
-                            <label>Generated policy weights</label>
-                            <div class="help-text">Read-only output from {{ generated_weights_path }}. These weights are not saved back as manual config weights.</div>
-                            <table class="generated-weights-table">
-                                <thead>
-                                    <tr>
-                                        <th>Ticker</th>
-                                        <th>Weight</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for row in generated_weight_rows %}
-                                    <tr>
-                                        <td>{{ row.ticker }}</td>
-                                        <td>{{ row.weight }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% endif %}
+            <section class="mvp-panel" aria-label="Core MVP input">
+                <div class="card">
+                    <h2>Reporting currency</h2>
+                    <div class="form-group">
+                        <label for="investorCurrency">Investor currency</label>
+                        <select name="investor_currency" id="investorCurrency">
+                            <option value="USD" {{ 'selected' if config.investor_currency == 'USD' }}>USD (US Dollar)</option>
+                            <option value="EUR" {{ 'selected' if config.investor_currency == 'EUR' }}>EUR (Euro)</option>
+                            <option value="JPY" {{ 'selected' if config.investor_currency == 'JPY' }}>JPY (Japanese Yen)</option>
+                            <option value="CHF" {{ 'selected' if config.investor_currency == 'CHF' }}>CHF (Swiss Franc)</option>
+                        </select>
+                        <div class="help-text">USD and EUR defaults include risk-free, cash proxy, and benchmark unless overridden in Advanced.</div>
                     </div>
                 </div>
-                
-                <!-- Column 2 -->
-                <div>
-                    <!-- Constraints -->
-                    <div class="card">
-                        <h2>Constraints</h2>
-                        
-                        <div class="form-group">
-                            <label>Allow Leverage</label>
-                            <div class="toggle-group">
-                                <div class="toggle {{ 'active' if not config.allow_leverage }}" onclick="toggleOption(this, 'allow_leverage', 'false')">
-                                    <input type="radio" name="allow_leverage" value="false" {{ 'checked' if not config.allow_leverage }}>
-                                    <span>No</span>
-                                </div>
-                                <div class="toggle {{ 'active' if config.allow_leverage }}" onclick="toggleOption(this, 'allow_leverage', 'true')">
-                                    <input type="radio" name="allow_leverage" value="true" {{ 'checked' if config.allow_leverage }}>
-                                    <span>Yes</span>
-                                </div>
+
+                <div class="card">
+                    <h2>Portfolio holdings</h2>
+                    <div class="help-text mvp-holdings-help">
+                        Enter each ticker and weight (e.g. 20% or 0.20). Add labels such as <code>Cash USD</code> for explicit bank cash (zero return; not the BIL proxy).
+                    </div>
+                    <div id="tickersContainer">
+                        {% for tw in ticker_weights %}
+                        <div class="ticker-row">
+                            <input type="text" name="ticker[]" value="{{ tw.ticker }}" placeholder="Ticker (e.g. VOO)">
+                            <input type="text" class="current-weight-input" name="current_weight[]"
+                                   value="{{ (tw.current_weight * 100)|round(1) ~ '%' if tw.current_weight is not none else ((tw.weight * 100)|round(1) ~ '%' if tw.weight is not none else '') }}"
+                                   placeholder="Weight (e.g. 20%)">
+                            <button type="button" class="btn-remove" onclick="removeTickerRow(this)" aria-label="Remove row">×</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="weight-sum" id="weightSum">Total: 0%</div>
+                    <button type="button" class="btn-add" onclick="addTickerRow()">+ Add holding</button>
+
+                    {% if generated_weight_rows %}
+                    <div class="generated-output">
+                        <label>Generated policy weights (read-only)</label>
+                        <div class="help-text">From {{ generated_weights_path }} — not written back as manual config weights.</div>
+                        <table class="generated-weights-table">
+                            <thead>
+                                <tr><th>Ticker</th><th>Weight</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for row in generated_weight_rows %}
+                                <tr><td>{{ row.ticker }}</td><td>{{ row.weight }}</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <div class="actions mvp-actions">
+                <button type="button" class="btn btn-secondary" onclick="previewConfig()">Preview YAML</button>
+                <button type="button" class="btn btn-primary" onclick="generateAndSave()">Save config.yml</button>
+                <button type="button" class="btn btn-accent" onclick="saveAndRunPortfolioReview(true)" id="btnReviewDry">Save and dry-run review</button>
+                <button type="button" class="btn btn-secondary" onclick="saveAndRunPortfolioReview(false)" id="btnReviewFull">Save and run review</button>
+            </div>
+
+            <details class="advanced-panel" id="advancedSettings">
+                <summary>Advanced settings (legacy optimizer, mandate, liquidity)</summary>
+                <div class="advanced-inner grid">
+                    <div>
+                        <div class="card">
+                            <h2>Analysis mode</h2>
+                            <div class="form-group">
+                                <label for="analysisMode">Mode</label>
+                                <select name="analysis_mode" id="analysisMode">
+                                    <option value="analyze_current_weights" {{ 'selected' if config.get('analysis_mode', 'analyze_current_weights') == 'analyze_current_weights' }}>Analyze current portfolio (Core MVP)</option>
+                                    <option value="optimize_from_universe" {{ 'selected' if config.get('analysis_mode') == 'optimize_from_universe' }}>Optimize from ticker universe (legacy)</option>
+                                </select>
+                                <div class="help-text" id="analysisModeHelp"></div>
                             </div>
                         </div>
-                        
-                        <div class="form-group">
-                            <label>Allow Short Selling</label>
-                            <div class="toggle-group">
-                                <div class="toggle {{ 'active' if not config.allow_short_selling }}" onclick="toggleOption(this, 'allow_short_selling', 'false')">
-                                    <input type="radio" name="allow_short_selling" value="false" {{ 'checked' if not config.allow_short_selling }}>
-                                    <span>No</span>
-                                </div>
-                                <div class="toggle {{ 'active' if config.allow_short_selling }}" onclick="toggleOption(this, 'allow_short_selling', 'true')">
-                                    <input type="radio" name="allow_short_selling" value="true" {{ 'checked' if config.allow_short_selling }}>
-                                    <span>Yes</span>
-                                </div>
+
+                        <div class="card">
+                            <h2>Liquidity and cash policy</h2>
+                            <div class="form-group">
+                                <label>Initial investable amount</label>
+                                <input type="number" name="initial_investable_amount"
+                                       value="{{ config.initial_investable_amount }}" placeholder="1000">
+                            </div>
+                            <div class="form-group">
+                                <label>Liquidity need (legacy flag)</label>
+                                <input type="number" name="liquidity_need"
+                                       value="{{ config.liquidity_need }}" placeholder="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Liquidity need (months of expenses)</label>
+                                <input type="number" name="liquidity_need_months" min="0" step="any"
+                                       value="{{ config.get('liquidity_need_months', 0) }}" placeholder="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Monthly expenses (investor currency)</label>
+                                <input type="number" step="0.01" name="monthly_expenses"
+                                       value="{{ config.get('monthly_expenses', '') }}" placeholder="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Portfolio value (optional)</label>
+                                <input type="number" step="0.01" name="portfolio_value"
+                                       value="{{ config.get('portfolio_value', '') }}" placeholder="e.g. 1000">
+                            </div>
+                            <div class="form-group">
+                                <label>Cash policy</label>
+                                <select name="cash_policy">
+                                    <option value="allowed_for_scaling" {{ 'selected' if config.get('cash_policy', 'allowed_for_scaling') == 'allowed_for_scaling' }}>allowed_for_scaling</option>
+                                    <option value="required_floor" {{ 'selected' if config.get('cash_policy') == 'required_floor' }}>required_floor</option>
+                                    <option value="prohibited" {{ 'selected' if config.get('cash_policy') == 'prohibited' }}>prohibited</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Base benchmark ticker</label>
+                                <select name="benchmark_base_ticker" id="benchmarkTicker">
+                                    <option value="SPY" {{ 'selected' if config.benchmark_base_ticker == 'SPY' }}>SPY (S&P 500)</option>
+                                    <option value="VGK" {{ 'selected' if config.benchmark_base_ticker == 'VGK' }}>VGK (Europe)</option>
+                                    <option value="EWJ" {{ 'selected' if config.benchmark_base_ticker == 'EWJ' }}>EWJ (Japan)</option>
+                                    <option value="EWL" {{ 'selected' if config.benchmark_base_ticker == 'EWL' }}>EWL (Switzerland)</option>
+                                </select>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Targets -->
-                    <div class="card">
-                        <h2>Risk & Return Targets</h2>
-                        
-                        <div class="form-group">
-                            <label>Client profile</label>
-                            <select name="client_profile">
-                                <option value="">— none (set manually) —</option>
-                                <option value="ultra_conservative" {{ 'selected' if config.get('client_profile') == 'ultra_conservative' }}>1. Ultra Conservative</option>
-                                <option value="conservative" {{ 'selected' if config.get('client_profile') == 'conservative' }}>2. Conservative</option>
-                                <option value="balanced" {{ 'selected' if config.get('client_profile') == 'balanced' }}>3. Balanced</option>
-                                <option value="growth" {{ 'selected' if config.get('client_profile') == 'growth' }}>4. Growth</option>
-                                <option value="aggressive" {{ 'selected' if config.get('client_profile') == 'aggressive' }}>5. Aggressive</option>
-                            </select>
-                            <div class="help-text">If set, missing target fields are filled from config/client_profiles.yml (midpoints). You can override manually.</div>
+
+                    <div>
+                        <div class="card">
+                            <h2>Constraints</h2>
+                            <div class="form-group">
+                                <label>Allow leverage</label>
+                                <div class="toggle-group">
+                                    <div class="toggle {{ 'active' if not config.allow_leverage }}" onclick="toggleOption(this, 'allow_leverage', 'false')">
+                                        <input type="radio" name="allow_leverage" value="false" {{ 'checked' if not config.allow_leverage }}>
+                                        <span>No</span>
+                                    </div>
+                                    <div class="toggle {{ 'active' if config.allow_leverage }}" onclick="toggleOption(this, 'allow_leverage', 'true')">
+                                        <input type="radio" name="allow_leverage" value="true" {{ 'checked' if config.allow_leverage }}>
+                                        <span>Yes</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Allow short selling</label>
+                                <div class="toggle-group">
+                                    <div class="toggle {{ 'active' if not config.allow_short_selling }}" onclick="toggleOption(this, 'allow_short_selling', 'false')">
+                                        <input type="radio" name="allow_short_selling" value="false" {{ 'checked' if not config.allow_short_selling }}>
+                                        <span>No</span>
+                                    </div>
+                                    <div class="toggle {{ 'active' if config.allow_short_selling }}" onclick="toggleOption(this, 'allow_short_selling', 'true')">
+                                        <input type="radio" name="allow_short_selling" value="true" {{ 'checked' if config.allow_short_selling }}>
+                                        <span>Yes</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        
-                        {% if client_profiles_reminder %}
-                        <div class="form-group profile-table-wrap">
-                            <label class="label-accent">Reminder: Client profiles (return, vol, max drawdown)</label>
-                            <div>
+
+                        <div class="card">
+                            <h2>Risk and return targets</h2>
+                            <div class="form-group">
+                                <label>Client profile</label>
+                                <select name="client_profile">
+                                    <option value="">— none (manual targets) —</option>
+                                    <option value="ultra_conservative" {{ 'selected' if config.get('client_profile') == 'ultra_conservative' }}>Ultra conservative</option>
+                                    <option value="conservative" {{ 'selected' if config.get('client_profile') == 'conservative' }}>Conservative</option>
+                                    <option value="balanced" {{ 'selected' if config.get('client_profile') == 'balanced' }}>Balanced</option>
+                                    <option value="growth" {{ 'selected' if config.get('client_profile') == 'growth' }}>Growth</option>
+                                    <option value="aggressive" {{ 'selected' if config.get('client_profile') == 'aggressive' }}>Aggressive</option>
+                                </select>
+                            </div>
+                            {% if client_profiles_reminder %}
+                            <div class="form-group profile-table-wrap">
+                                <label class="label-accent">Client profile reference</label>
                                 <table class="profile-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Profile</th>
-                                            <th>Return</th>
-                                            <th>Vol</th>
-                                            <th>MaxDD</th>
-                                        </tr>
-                                    </thead>
+                                    <thead><tr><th>Profile</th><th>Return</th><th>Vol</th><th>Max DD</th></tr></thead>
                                     <tbody>
                                         {% for p in client_profiles_reminder %}
-                                        <tr>
-                                            <td>{{ p.name }}</td>
-                                            <td>{{ p.return_range }}</td>
-                                            <td>{{ p.vol_range }}</td>
-                                            <td>{{ p.max_dd }}</td>
-                                        </tr>
+                                        <tr><td>{{ p.name }}</td><td>{{ p.return_range }}</td><td>{{ p.vol_range }}</td><td>{{ p.max_dd }}</td></tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>
                             </div>
+                            {% endif %}
+                            <div class="form-group">
+                                <label>Target annual return</label>
+                                <input type="text" name="target_nominal_return_annual"
+                                       value="{{ (config.target_nominal_return_annual * 100)|round(1) ~ '%' if config.target_nominal_return_annual else '' }}"
+                                       placeholder="e.g. 6%">
+                            </div>
+                            <div class="form-group">
+                                <label>Minimum acceptable return (MAR)</label>
+                                <input type="text" name="min_acceptable_return"
+                                       value="{{ (config.min_acceptable_return * 100)|round(1) ~ '%' if config.min_acceptable_return else '' }}"
+                                       placeholder="e.g. 2%">
+                            </div>
+                            <div class="form-group">
+                                <label>Target annual volatility</label>
+                                <input type="text" name="target_vol_annual"
+                                       value="{{ (config.target_vol_annual * 100)|round(1) ~ '%' if config.target_vol_annual else '' }}"
+                                       placeholder="e.g. 15%">
+                            </div>
+                            <div class="form-group">
+                                <label>Target max drawdown</label>
+                                <input type="text" name="target_max_drawdown_pct"
+                                       value="{{ (config.target_max_drawdown_pct * 100)|round(1) ~ '%' if config.target_max_drawdown_pct else '' }}"
+                                       placeholder="e.g. -20%">
+                            </div>
+                            <div class="form-group">
+                                <label>Investment horizon (years)</label>
+                                <input type="number" step="0.5" name="horizon_years"
+                                       value="{{ config.horizon_years if config.horizon_years else '' }}"
+                                       placeholder="e.g. 10">
+                            </div>
                         </div>
-                        {% endif %}
-                        
-                        <div class="form-group">
-                            <label>Target Annual Return</label>
-                            <input type="text" name="target_nominal_return_annual" 
-                                   value="{{ (config.target_nominal_return_annual * 100)|round(1) ~ '%' if config.target_nominal_return_annual else '' }}"
-                                   placeholder="from profile or e.g. 6%">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Minimum Acceptable Return (MAR)</label>
-                            <input type="text" name="min_acceptable_return"
-                                   value="{{ (config.min_acceptable_return * 100)|round(1) ~ '%' if config.min_acceptable_return else '' }}"
-                                   placeholder="e.g., 2% or 0.02">
-                            <div class="help-text">Used for Sortino ratio. Leave empty for risk-free rate</div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Target Annual Volatility</label>
-                            <input type="text" name="target_vol_annual"
-                                   value="{{ (config.target_vol_annual * 100)|round(1) ~ '%' if config.target_vol_annual else '' }}"
-                                   placeholder="e.g., 15% or 0.15">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Target Max Drawdown</label>
-                            <input type="text" name="target_max_drawdown_pct"
-                                   value="{{ (config.target_max_drawdown_pct * 100)|round(1) ~ '%' if config.target_max_drawdown_pct else '' }}"
-                                   placeholder="e.g., -20% or -0.20">
-                            <div class="help-text">Must be negative!</div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Investment Horizon (years)</label>
-                            <input type="number" step="0.5" name="horizon_years"
-                                   value="{{ config.horizon_years if config.horizon_years else '' }}"
-                                   placeholder="e.g., 10">
-                        </div>
-                    </div>
-                    
-                    <!-- Weight Constraints -->
-                    <div class="card">
-                        <h2>Weight Constraints</h2>
-                        
-                        <div class="form-group">
-                            <label>Max Single Security Weight</label>
-                            <input type="text" name="max_single_security_weight_pct"
-                                   value="{{ (config.max_single_security_weight_pct * 100)|round(1) ~ '%' if config.max_single_security_weight_pct else '' }}"
-                                   placeholder="e.g., 40%">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Min Single Security Weight</label>
-                            <input type="text" name="min_single_security_weight_pct"
-                                   value="{{ (config.min_single_security_weight_pct * 100)|round(1) ~ '%' if config.min_single_security_weight_pct else '' }}"
-                                   placeholder="e.g., 2%">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>N_rc (donor; Shift Mode: proportional or equal)</label>
-                            <input type="number" min="1" name="N_rc" value="{{ config.get('N_rc', 3) }}" placeholder="3">
-                            <div class="help-text">When cash_policy=prohibited and vol &gt; target: number of top RC_vol donors. Recipient preference: VOO, VT, VTI if present, else lowest single-name vol. Shift Mode below.</div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Donor (Shift Mode)</label>
-                            <select name="donor_shift_mode">
-                                <option value="proportional" {{ 'selected' if config.get('donor_shift_mode', 'proportional') == 'proportional' }}>proportional</option>
-                                <option value="equal" {{ 'selected' if config.get('donor_shift_mode') == 'equal' }}>equal (Yes)</option>
-                            </select>
-                            <div class="help-text">How to remove weight from donors: proportional by weight, or equal (Yes).</div>
+
+                        <div class="card">
+                            <h2>Weight constraints</h2>
+                            <div class="form-group">
+                                <label>Max single security weight</label>
+                                <input type="text" name="max_single_security_weight_pct"
+                                       value="{{ (config.max_single_security_weight_pct * 100)|round(1) ~ '%' if config.max_single_security_weight_pct else '' }}"
+                                       placeholder="e.g. 40%">
+                            </div>
+                            <div class="form-group">
+                                <label>Min single security weight</label>
+                                <input type="text" name="min_single_security_weight_pct"
+                                       value="{{ (config.min_single_security_weight_pct * 100)|round(1) ~ '%' if config.min_single_security_weight_pct else '' }}"
+                                       placeholder="e.g. 2%">
+                            </div>
+                            <div class="form-group">
+                                <label>N_rc (donor count)</label>
+                                <input type="number" min="1" name="N_rc" value="{{ config.get('N_rc', 3) }}" placeholder="3">
+                            </div>
+                            <div class="form-group">
+                                <label>Donor shift mode</label>
+                                <select name="donor_shift_mode">
+                                    <option value="proportional" {{ 'selected' if config.get('donor_shift_mode', 'proportional') == 'proportional' }}>proportional</option>
+                                    <option value="equal" {{ 'selected' if config.get('donor_shift_mode') == 'equal' }}>equal</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <div class="actions">
-                <button type="button" class="btn btn-secondary" onclick="previewConfig()">Preview YAML</button>
-                <button type="button" class="btn btn-primary" onclick="generateAndSave()">Save config.yml</button>
-                <button type="button" class="btn btn-secondary" onclick="runOptimization()" id="btnRunOpt">Run optimization</button>
-                <button type="button" class="btn btn-accent" onclick="saveAndRunOptimization()" id="btnSaveRun">Save and run optimization</button>
-            </div>
+
+                <div class="actions advanced-actions">
+                    <button type="button" class="btn btn-secondary" onclick="runOptimization()" id="btnRunOpt">Run optimization</button>
+                    <button type="button" class="btn btn-accent" onclick="saveAndRunOptimization()" id="btnSaveRun">Save and run optimization</button>
+                </div>
+            </details>
         </form>
     </div>
-    
-    <!-- Preview Modal -->
+
     <div class="modal" id="previewModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>config.yml Preview</h3>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
+                <h3>config.yml preview</h3>
+                <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
                 <pre class="yaml-preview" id="yamlPreview"></pre>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="copyToClipboard()">Copy to Clipboard</button>
-                <button class="btn btn-primary" onclick="saveFromModal()">Save to File</button>
+                <button class="btn btn-secondary" onclick="copyToClipboard()">Copy</button>
+                <button class="btn btn-primary" onclick="saveFromModal()">Save to file</button>
             </div>
         </div>
     </div>
-    
-    <!-- Optimization output modal -->
+
     <div class="modal" id="optimizationModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="optimizationModalTitle">Optimization</h3>
-                <button class="modal-close" onclick="closeOptimizationModal()">&times;</button>
+                <h3 id="optimizationModalTitle">Command output</h3>
+                <button class="modal-close" onclick="closeOptimizationModal()" aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
                 <p id="optimizationStatus" class="help-text"></p>
@@ -339,111 +297,85 @@
             </div>
         </div>
     </div>
-    
-    <!-- Toast -->
+
     <div class="toast" id="toast"></div>
-    
+
     <script>
         let currentYaml = '';
-        
-        // Toggle option buttons
-        function toggleOption(elem, name, value) {
+
+        function toggleOption(elem) {
             const group = elem.parentElement;
             group.querySelectorAll('.toggle').forEach(t => t.classList.remove('active'));
             elem.classList.add('active');
             elem.querySelector('input').checked = true;
         }
-        
-        // Add ticker row
+
         function addTickerRow() {
             const container = document.getElementById('tickersContainer');
             const row = document.createElement('div');
             row.className = 'ticker-row';
             row.innerHTML = `
-                <input type="text" name="ticker[]" placeholder="Ticker (e.g., VOO)">
-                <input type="text" class="current-weight-input" name="current_weight[]" placeholder="Current weight (e.g., 20%)">
-                <button type="button" class="btn-remove" onclick="removeTickerRow(this)">×</button>
+                <input type="text" name="ticker[]" placeholder="Ticker (e.g. VOO)">
+                <input type="text" class="current-weight-input" name="current_weight[]" placeholder="Weight (e.g. 20%)">
+                <button type="button" class="btn-remove" onclick="removeTickerRow(this)" aria-label="Remove row">×</button>
             `;
             container.appendChild(row);
             updateWeightSum();
-            updateAnalysisModeUI();
         }
-        
-        // Remove ticker row
+
         function removeTickerRow(btn) {
             btn.parentElement.remove();
             updateWeightSum();
         }
-        
-        // Update weight sum
+
         function updateWeightSum() {
             const weights = document.querySelectorAll('input[name="current_weight[]"]');
             let sum = 0;
             weights.forEach(w => {
-                let val = w.value.trim();
+                const val = w.value.trim();
                 if (val.endsWith('%')) {
                     sum += parseFloat(val) || 0;
                 } else if (val) {
-                    sum += (parseFloat(val) || 0) * 100;
+                    const n = parseFloat(val);
+                    sum += n <= 1 ? n * 100 : n;
                 }
             });
             document.getElementById('weightSum').textContent = `Total: ${sum.toFixed(1)}%`;
         }
-        
-        // Listen for weight changes
+
         document.addEventListener('input', function(e) {
-            if (e.target.name === 'current_weight[]') {
-                updateWeightSum();
-            }
+            if (e.target.name === 'current_weight[]') updateWeightSum();
         });
 
         function getAnalysisMode() {
             const modeEl = document.getElementById('analysisMode');
-            return modeEl ? modeEl.value : 'optimize_from_universe';
+            return modeEl ? modeEl.value : 'analyze_current_weights';
         }
 
         function updateAnalysisModeUI() {
-            const isCurrentMode = getAnalysisMode() === 'analyze_current_weights';
+            const isOptimize = getAnalysisMode() === 'optimize_from_universe';
             const helpEl = document.getElementById('analysisModeHelp');
-            const weightSumEl = document.getElementById('weightSum');
             const btnRun = document.getElementById('btnRunOpt');
             const btnSaveRun = document.getElementById('btnSaveRun');
-
-            document.querySelectorAll('.current-weight-input').forEach(input => {
-                input.style.display = isCurrentMode ? '' : 'none';
-            });
-
-            if (weightSumEl) {
-                weightSumEl.style.display = isCurrentMode ? '' : 'none';
-                if (isCurrentMode) updateWeightSum();
-            }
             if (helpEl) {
-                helpEl.textContent = isCurrentMode
-                    ? 'Use this for diagnosing an existing portfolio. Current weights are saved as current_weights; optimization is disabled in this mode.'
-                    : 'Use this for the normal policy workflow. The optimizer writes generated weights to portfolio_weights.yml; ticker rows are the investable universe only.';
+                helpEl.textContent = isOptimize
+                    ? 'Legacy policy path: ticker rows are the investable universe; optimizer writes portfolio_weights.yml.'
+                    : 'Core MVP: weights are saved as current_weights for run_portfolio_review.py diagnosis.';
             }
-            if (btnRun) btnRun.disabled = isCurrentMode;
-            if (btnSaveRun) btnSaveRun.disabled = isCurrentMode;
+            if (btnRun) btnRun.disabled = !isOptimize;
+            if (btnSaveRun) btnSaveRun.disabled = !isOptimize;
         }
-        
-        // Update benchmark when currency changes
+
         document.getElementById('investorCurrency').addEventListener('change', function() {
             const benchmarks = {{ currency_benchmarks | tojson }};
             const benchmark = benchmarks[this.value];
-            if (benchmark) {
-                document.getElementById('benchmarkTicker').value = benchmark;
-            }
+            const el = document.getElementById('benchmarkTicker');
+            if (benchmark && el) el.value = benchmark;
         });
-        
-        // Preview config
+
         async function previewConfig() {
             const formData = new FormData(document.getElementById('configForm'));
-            
-            const response = await fetch('/generate', {
-                method: 'POST',
-                body: formData
-            });
-            
+            const response = await fetch('/generate', { method: 'POST', body: formData });
             const result = await response.json();
             if (result.success) {
                 currentYaml = result.yaml;
@@ -451,125 +383,103 @@
                 document.getElementById('previewModal').classList.add('show');
             }
         }
-        
-        // Close modal
+
         function closeModal() {
             document.getElementById('previewModal').classList.remove('show');
         }
-        
-        // Copy to clipboard
+
         function copyToClipboard() {
             navigator.clipboard.writeText(currentYaml);
-            showToast('Copied to clipboard!');
+            showToast('Copied to clipboard');
         }
-        
-        // Save from modal
+
         async function saveFromModal() {
             await saveConfig(currentYaml);
             closeModal();
         }
-        
-        // Generate and save directly
+
         async function generateAndSave() {
             const formData = new FormData(document.getElementById('configForm'));
-            
-            const response = await fetch('/generate', {
-                method: 'POST',
-                body: formData
-            });
-            
+            const response = await fetch('/generate', { method: 'POST', body: formData });
             const result = await response.json();
-            if (result.success) {
-                await saveConfig(result.yaml);
-            }
+            if (result.success) await saveConfig(result.yaml);
         }
-        
-        // Save config (returns true if saved successfully)
+
         async function saveConfig(yaml) {
             const response = await fetch('/save', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({yaml: yaml})
             });
-            
             const result = await response.json();
             if (result.success) {
-                showToast('Saved to config.yml!');
+                showToast('Saved to config.yml');
                 return true;
-            } else {
-                showToast(result.error || 'Validation failed', true);
-                return false;
             }
+            showToast(result.error || 'Validation failed', true);
+            return false;
         }
-        
+
         function closeOptimizationModal() {
             document.getElementById('optimizationModal').classList.remove('show');
         }
-        
-        async function runOptimization() {
-            if (getAnalysisMode() === 'analyze_current_weights') {
-                showToast('Optimization is disabled for analyze_current_weights mode.', true);
-                return;
-            }
-            const modal = document.getElementById('optimizationModal');
+
+        function showCommandModal(title, statusText) {
+            document.getElementById('optimizationModalTitle').textContent = title;
+            document.getElementById('optimizationStatus').textContent = statusText;
+            document.getElementById('optimizationOutput').textContent = '';
+            document.getElementById('optimizationOutput').classList.remove('error');
+            document.getElementById('optimizationStderr').style.display = 'none';
+            document.getElementById('optimizationStderr').textContent = '';
+            document.getElementById('optimizationModal').classList.add('show');
+        }
+
+        function renderCommandResult(result, successTitle, failTitle) {
             const titleEl = document.getElementById('optimizationModalTitle');
             const statusEl = document.getElementById('optimizationStatus');
             const outputEl = document.getElementById('optimizationOutput');
             const stderrEl = document.getElementById('optimizationStderr');
+            if (result.error) {
+                titleEl.textContent = failTitle;
+                statusEl.textContent = result.error;
+            } else {
+                titleEl.textContent = result.success ? successTitle : failTitle;
+                statusEl.textContent = result.success
+                    ? (result.dry_run ? 'Dry-run completed.' : 'Exit code: ' + result.exit_code)
+                    : 'Exit code: ' + result.exit_code;
+            }
+            outputEl.textContent = result.stdout || '(no output)';
+            outputEl.classList.toggle('error', !result.success);
+            if (result.stderr) {
+                stderrEl.textContent = result.stderr;
+                stderrEl.style.display = 'block';
+            }
+        }
+
+        async function runOptimization() {
+            if (getAnalysisMode() !== 'optimize_from_universe') {
+                showToast('Switch Analysis mode to optimize_from_universe in Advanced settings.', true);
+                return;
+            }
+            showCommandModal('Running optimization…', 'Running run_optimization.py (may take a minute).');
             const btnRun = document.getElementById('btnRunOpt');
             const btnSaveRun = document.getElementById('btnSaveRun');
-            
-            titleEl.textContent = 'Running optimization…';
-            statusEl.textContent = 'Running run_optimization.py (this may take a minute).';
-            outputEl.textContent = '';
-            outputEl.classList.remove('error');
-            stderrEl.style.display = 'none';
-            stderrEl.textContent = '';
-            btnRun.disabled = true;
-            btnSaveRun.disabled = true;
-            modal.classList.add('show');
-            
+            if (btnRun) btnRun.disabled = true;
+            if (btnSaveRun) btnSaveRun.disabled = true;
             try {
                 const response = await fetch('/run-optimization', { method: 'POST' });
                 const result = await response.json();
-                
-                if (result.error) {
-                    titleEl.textContent = 'Optimization error';
-                    statusEl.textContent = result.error;
-                    outputEl.textContent = result.stdout || '(no output)';
-                    if (result.stderr) {
-                        stderrEl.textContent = result.stderr;
-                        stderrEl.style.display = 'block';
-                    }
-                    outputEl.classList.add('error');
-                } else {
-                    titleEl.textContent = result.success ? 'Optimization completed' : 'Optimization failed';
-                    statusEl.textContent = result.success
-                        ? 'Weights written to portfolio_weights.yml. You can run the report next.'
-                        : 'Exit code: ' + result.exit_code;
-                    outputEl.textContent = result.stdout || '(no output)';
-                    if (result.stderr) {
-                        stderrEl.textContent = result.stderr;
-                        stderrEl.style.display = 'block';
-                    }
-                    if (!result.success) outputEl.classList.add('error');
-                    if (result.success) showToast('Optimization finished successfully.');
-                }
+                renderCommandResult(result, 'Optimization completed', 'Optimization failed');
+                if (result.success) showToast('Optimization finished.');
             } catch (err) {
-                titleEl.textContent = 'Request failed';
-                statusEl.textContent = err.message || 'Network or server error.';
-                outputEl.textContent = String(err);
-                outputEl.classList.add('error');
+                renderCommandResult({ success: false, error: err.message, stdout: String(err), stderr: '' }, '', 'Request failed');
             }
-            
-            btnRun.disabled = false;
-            btnSaveRun.disabled = false;
             updateAnalysisModeUI();
         }
-        
+
         async function saveAndRunOptimization() {
-            if (getAnalysisMode() === 'analyze_current_weights') {
-                showToast('Switch to optimize_from_universe before running optimization.', true);
+            if (getAnalysisMode() !== 'optimize_from_universe') {
+                showToast('Enable optimize_from_universe in Advanced settings first.', true);
                 return;
             }
             const formData = new FormData(document.getElementById('configForm'));
@@ -583,8 +493,44 @@
             if (!saved) return;
             await runOptimization();
         }
-        
-        // Show toast (optional isError for validation errors)
+
+        async function saveAndRunPortfolioReview(dryRun) {
+            const formData = new FormData(document.getElementById('configForm'));
+            const gen = await fetch('/generate', { method: 'POST', body: formData });
+            const genResult = await gen.json();
+            if (!genResult.success) {
+                showToast('Failed to generate config', true);
+                return;
+            }
+            const saved = await saveConfig(genResult.yaml);
+            if (!saved) return;
+
+            const label = dryRun ? 'Portfolio review (dry-run)…' : 'Portfolio review…';
+            showCommandModal(label, dryRun ? 'Running run_portfolio_review.py --dry-run' : 'Running run_portfolio_review.py');
+            const btnDry = document.getElementById('btnReviewDry');
+            const btnFull = document.getElementById('btnReviewFull');
+            if (btnDry) btnDry.disabled = true;
+            if (btnFull) btnFull.disabled = true;
+            try {
+                const response = await fetch('/run-portfolio-review', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ dry_run: dryRun })
+                });
+                const result = await response.json();
+                renderCommandResult(
+                    result,
+                    dryRun ? 'Dry-run completed' : 'Portfolio review completed',
+                    dryRun ? 'Dry-run failed' : 'Portfolio review failed'
+                );
+                if (result.success) showToast(dryRun ? 'Dry-run finished.' : 'Review finished.');
+            } catch (err) {
+                renderCommandResult({ success: false, error: err.message, stdout: String(err), stderr: '' }, '', 'Request failed');
+            }
+            if (btnDry) btnDry.disabled = false;
+            if (btnFull) btnFull.disabled = false;
+        }
+
         function showToast(message, isError) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
@@ -595,22 +541,18 @@
                 toast.classList.remove('error');
             }, isError ? 6000 : 3000);
         }
-        
-        document.getElementById('analysisMode').addEventListener('change', updateAnalysisModeUI);
 
-        // Initial mode state and weight sum
+        const analysisModeEl = document.getElementById('analysisMode');
+        if (analysisModeEl) analysisModeEl.addEventListener('change', updateAnalysisModeUI);
         updateAnalysisModeUI();
         updateWeightSum();
-        
-        // Close modals on escape
+
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeModal();
                 closeOptimizationModal();
             }
         });
-        
-        // Close modal on backdrop click
         document.getElementById('previewModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });

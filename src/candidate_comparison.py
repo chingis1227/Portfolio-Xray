@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import json
 import math
+import copy
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 from src.candidate_robust_disclosure import (
     build_robust_paths_disclosure,
@@ -1527,6 +1528,114 @@ def _load_factory_run(main_dir: Path) -> dict[str, Any] | None:
     return _load_json(main_dir / "candidate_factory_run.json")
 
 
+def product_candidate_ids_from_factory_run(factory_run: dict[str, Any] | None) -> tuple[str, ...]:
+    """Return explicit product candidate ids from an explicit-list factory run."""
+    if not isinstance(factory_run, dict):
+        return ()
+    if str(factory_run.get("factory_profile_id") or "") != "explicit_list":
+        return ()
+    ids: list[str] = []
+    seen: set[str] = set()
+    for step in factory_run.get("steps") or []:
+        if not isinstance(step, dict):
+            continue
+        cid = str(step.get("candidate_id") or "").strip()
+        if not cid or cid in seen:
+            continue
+        seen.add(cid)
+        ids.append(cid)
+    return tuple(ids)
+
+
+def scoped_product_comparison(
+    comparison: dict[str, Any],
+    candidate_ids: Sequence[str] | None,
+) -> dict[str, Any]:
+    """Project a comparison document to baseline plus explicit product candidate ids."""
+    explicit = tuple(str(cid).strip() for cid in (candidate_ids or ()) if str(cid).strip())
+    if not explicit:
+        return comparison
+    baseline_id = str(comparison.get("comparison_baseline_candidate_id") or "analysis_subject")
+    keep = {baseline_id, "analysis_subject", "current", *explicit}
+    scoped = copy.deepcopy(comparison)
+    scoped["candidates"] = [
+        row
+        for row in comparison.get("candidates", [])
+        if isinstance(row, dict) and str(row.get("candidate_id") or "") in keep
+    ]
+    scoped["product_candidate_scope"] = {
+        "scope_type": "explicit_candidates",
+        "candidate_ids": list(explicit),
+        "baseline_candidate_id": baseline_id,
+        "excludes_unselected_candidates": True,
+    }
+    warnings = list(scoped.get("warnings") or [])
+    if "product_scope_explicit_candidates" not in warnings:
+        warnings.append("product_scope_explicit_candidates")
+    scoped["warnings"] = warnings
+    return scoped
+
+
+def product_support_selection_decision(
+    comparison: dict[str, Any],
+    current_vs_candidate: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Build minimal product support for Decision Verdict without advanced ranking."""
+    selected_ids = (
+        current_vs_candidate.get("selected_candidate_ids")
+        if isinstance(current_vs_candidate, dict)
+        else None
+    )
+    selected_id = str(selected_ids[0]) if isinstance(selected_ids, list) and selected_ids else None
+    by_id = {
+        str(row.get("candidate_id")): row
+        for row in comparison.get("candidates", [])
+        if isinstance(row, dict) and row.get("candidate_id")
+    }
+    selected = by_id.get(selected_id or "")
+    baseline_id = str(comparison.get("comparison_baseline_candidate_id") or "analysis_subject")
+    status = "selected_candidate" if selected_id and selected else "data_review_required"
+    warnings = ["advanced_selection_engine_gated"]
+    if not selected:
+        warnings.append("selected_candidate_missing_from_comparison")
+    return {
+        "schema_version": "product_support_selection_v1",
+        "formal_decision": False,
+        "support_only": True,
+        "non_executing": True,
+        "analysis_end": comparison.get("analysis_end"),
+        "investor_currency": comparison.get("investor_currency"),
+        "output_dir_final": comparison.get("output_dir_final"),
+        "decision_status": status,
+        "baseline_candidate_id": baseline_id,
+        "baseline_display_name": (by_id.get(baseline_id) or {}).get("display_name"),
+        "favored_candidate_id": selected_id if selected else None,
+        "favored_display_name": (selected or {}).get("display_name") if selected else None,
+        "rationale": {
+            "summary": (
+                "Product candidate hypothesis selected for current-vs-candidate review; "
+                "advanced Selection Engine ranking is gated from the Core MVP product path."
+            )
+            if selected
+            else "Selected candidate evidence is unavailable; review comparison inputs.",
+            "selection_bullets": [],
+            "no_trade_bullets": [],
+            "tradeoff_bullets": [],
+            "data_quality_notes": warnings,
+        },
+        "no_trade": None,
+        "warnings": warnings,
+        "input_artifacts": {
+            "candidate_comparison": "candidate_comparison.json",
+            "current_vs_candidate": "current_vs_candidate.json",
+            "portfolio_health_score": None,
+            "robustness_scorecard": None,
+        },
+        "missing_inputs": [],
+        "source_artifact": None,
+    }
+
+
 def build_candidate_menu(
     candidates: list[dict[str, Any]],
     *,
@@ -1734,6 +1843,7 @@ def build_candidate_comparison(
         factory_context=factory_context,
         review_mode=review_mode,
     )
+    product_candidate_ids = product_candidate_ids_from_factory_run(factory_run)
     menu_warnings = build_candidate_menu_warnings(candidate_menu)
 
     out_rel = str(getattr(cfg, "output_dir_final", "Main portfolio")).replace("\\", "/")
@@ -1788,6 +1898,14 @@ def build_candidate_comparison(
         "primary_window": PRIMARY_WINDOW,
         "candidates": candidates,
         "candidate_menu": candidate_menu,
+        "product_candidate_scope": {
+            "scope_type": "explicit_candidates",
+            "candidate_ids": list(product_candidate_ids),
+            "baseline_candidate_id": "analysis_subject",
+            "excludes_unselected_candidates": True,
+        }
+        if product_candidate_ids
+        else None,
         "review_bundle_context": review_bundle_context,
         "legacy_artifacts": legacy,
         "warnings": run_warnings + menu_warnings + bundle_warnings,
@@ -1943,6 +2061,7 @@ def write_candidate_comparison_outputs(
     output_profile: str | None = None,
     factory_run: dict[str, Any] | None = None,
     comparison_rebuild_source: str = COMPARISON_REBUILD_STANDALONE,
+    advanced_package: bool | None = None,
 ) -> dict[str, Path]:
     """Build and write canonical (and optional legacy) comparison artifacts."""
     project_root = project_root or Path.cwd()
@@ -1957,6 +2076,16 @@ def write_candidate_comparison_outputs(
         factory_run=factory_run,
         comparison_rebuild_source=comparison_rebuild_source,
     )
+    product_candidate_ids = tuple(
+        str(cid)
+        for cid in (
+            (comparison.get("product_candidate_scope") or {}).get("candidate_ids") or []
+        )
+        if str(cid).strip()
+    )
+    product_comparison = scoped_product_comparison(comparison, product_candidate_ids)
+    if advanced_package is None:
+        advanced_package = not bool(product_candidate_ids)
     out_dir = project_root / str(getattr(cfg, "output_dir_final", "Main portfolio"))
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -2017,148 +2146,162 @@ def write_candidate_comparison_outputs(
             f.write("\n".join(lines))
         paths["portfolio_comparison_txt"] = legacy_txt
 
-    from src.portfolio_health_score import write_portfolio_health_score_outputs
-    from src.robustness_scorecard import (
-        build_robustness_scorecard,
-        write_robustness_scorecard_outputs,
-    )
+    health_doc = None
+    robustness_doc = None
+    selection_doc = None
+    if advanced_package:
+        from src.portfolio_health_score import write_portfolio_health_score_outputs
+        from src.robustness_scorecard import (
+            build_robustness_scorecard,
+            write_robustness_scorecard_outputs,
+        )
 
-    rob_paths = write_robustness_scorecard_outputs(
-        cfg, project_root=project_root, comparison=comparison, write_txt=write_txt
-    )
-    paths.update(rob_paths)
-    robustness_doc = build_robustness_scorecard(comparison, project_root=project_root)
-    paths.update(
-        write_portfolio_health_score_outputs(
+        rob_paths = write_robustness_scorecard_outputs(
+            cfg, project_root=project_root, comparison=comparison, write_txt=write_txt
+        )
+        paths.update(rob_paths)
+        robustness_doc = build_robustness_scorecard(comparison, project_root=project_root)
+        paths.update(
+            write_portfolio_health_score_outputs(
+                cfg,
+                project_root=project_root,
+                comparison=product_comparison,
+                robustness_scorecard=robustness_doc,
+                write_txt=write_txt,
+            )
+        )
+
+        from src.selection_engine import write_selection_decision_outputs
+
+        health_path = paths.get("portfolio_health_score_json")
+        if health_path and health_path.is_file():
+            health_doc = _load_json(health_path)
+        sel_paths = write_selection_decision_outputs(
             cfg,
             project_root=project_root,
-            comparison=comparison,
-            robustness_scorecard=robustness_doc,
+            comparison=product_comparison,
+            health=health_doc,
+            robustness=robustness_doc,
             write_txt=write_txt,
         )
-    )
+        paths.update(sel_paths)
 
-    from src.selection_engine import write_selection_decision_outputs
-
-    health_path = paths.get("portfolio_health_score_json")
-    health_doc = None
-    if health_path and health_path.is_file():
-        health_doc = _load_json(health_path)
-    sel_paths = write_selection_decision_outputs(
-        cfg,
-        project_root=project_root,
-        comparison=comparison,
-        health=health_doc,
-        robustness=robustness_doc,
-        write_txt=write_txt,
-    )
-    paths.update(sel_paths)
-
-    selection_doc = None
-    sel_json = paths.get("selection_decision_json")
-    if sel_json and sel_json.is_file():
-        selection_doc = _load_json(sel_json)
+        sel_json = paths.get("selection_decision_json")
+        if sel_json and sel_json.is_file():
+            selection_doc = _load_json(sel_json)
 
     from src.current_vs_candidate import write_current_vs_candidate_outputs
 
     paths.update(
         write_current_vs_candidate_outputs(
             output_dir=out_dir,
-            comparison=comparison,
+            comparison=product_comparison,
             selection=selection_doc,
+            candidate_ids=product_candidate_ids or None,
         )
     )
-
-    from src.tradeoff_and_model_risk import write_tradeoff_and_model_risk_outputs
-
-    paths.update(
-        write_tradeoff_and_model_risk_outputs(
-            cfg,
-            project_root=project_root,
-            comparison=comparison,
-            selection=selection_doc,
-            health=health_doc,
-            robustness=robustness_doc,
-            write_txt=write_txt,
-        )
-    )
-
-    model_risk_doc = _load_json(
-        paths.get("model_risk_diagnostics_json") or out_dir / "model_risk_diagnostics.json"
-    )
-    from src.assumption_sensitivity import write_assumption_sensitivity_outputs
-
-    paths.update(
-        write_assumption_sensitivity_outputs(
-            cfg,
-            project_root=project_root,
-            comparison=comparison,
-            selection=selection_doc,
-            health=health_doc,
-            robustness=robustness_doc,
-            model_risk=model_risk_doc,
-            write_txt=write_txt,
-        )
-    )
-
-    from src.pareto_dominance import write_pareto_dominance_outputs
-
-    paths.update(
-        write_pareto_dominance_outputs(
-            cfg,
-            project_root=project_root,
-            comparison=comparison,
-            selection=selection_doc,
-            write_txt=write_txt,
-        )
-    )
-
-    pareto_doc = _load_json(
-        paths.get("pareto_dominance_json") or out_dir / "pareto_dominance.json"
-    )
-    from src.regret_analysis import write_regret_analysis_outputs
-
-    paths.update(
-        write_regret_analysis_outputs(
-            cfg,
-            project_root=project_root,
-            comparison=comparison,
-            selection=selection_doc,
-            pareto=pareto_doc,
-            write_txt=write_txt,
-        )
-    )
-
-    from src.current_vs_policy import write_current_vs_policy_status_outputs
-
-    paths.update(
-        write_current_vs_policy_status_outputs(
-            cfg,
-            comparison,
-            project_root=project_root,
-            selection=selection_doc,
-            write_txt=write_txt,
-        )
-    )
-    status_json = paths.get("current_vs_policy_status_json")
-    workflow_status = _load_json(status_json) if status_json else None
-
-    from src.action_engine import write_action_plan_outputs
-
-    paths.update(
-        write_action_plan_outputs(
-            cfg,
-            project_root=project_root,
-            comparison=comparison,
-            selection=selection_doc,
-            workflow_status=workflow_status,
-            write_txt=write_txt,
-        )
-    )
-    action_doc = _load_json(paths.get("action_plan_json") or out_dir / "action_plan.json")
     current_vs_candidate_doc = _load_json(
         paths.get("current_vs_candidate_json") or out_dir / "current_vs_candidate.json"
     )
+    if not advanced_package:
+        selection_doc = product_support_selection_decision(
+            product_comparison,
+            current_vs_candidate_doc,
+        )
+
+    model_risk_doc = None
+    pareto_doc = None
+    workflow_status = None
+    action_doc = None
+    monitoring_doc = None
+    if advanced_package:
+        from src.tradeoff_and_model_risk import write_tradeoff_and_model_risk_outputs
+
+        paths.update(
+            write_tradeoff_and_model_risk_outputs(
+                cfg,
+                project_root=project_root,
+                comparison=product_comparison,
+                selection=selection_doc,
+                health=health_doc,
+                robustness=robustness_doc,
+                write_txt=write_txt,
+            )
+        )
+
+        model_risk_doc = _load_json(
+            paths.get("model_risk_diagnostics_json") or out_dir / "model_risk_diagnostics.json"
+        )
+        from src.assumption_sensitivity import write_assumption_sensitivity_outputs
+
+        paths.update(
+            write_assumption_sensitivity_outputs(
+                cfg,
+                project_root=project_root,
+                comparison=product_comparison,
+                selection=selection_doc,
+                health=health_doc,
+                robustness=robustness_doc,
+                model_risk=model_risk_doc,
+                write_txt=write_txt,
+            )
+        )
+
+        from src.pareto_dominance import write_pareto_dominance_outputs
+
+        paths.update(
+            write_pareto_dominance_outputs(
+                cfg,
+                project_root=project_root,
+                comparison=product_comparison,
+                selection=selection_doc,
+                write_txt=write_txt,
+            )
+        )
+
+        pareto_doc = _load_json(
+            paths.get("pareto_dominance_json") or out_dir / "pareto_dominance.json"
+        )
+        from src.regret_analysis import write_regret_analysis_outputs
+
+        paths.update(
+            write_regret_analysis_outputs(
+                cfg,
+                project_root=project_root,
+                comparison=product_comparison,
+                selection=selection_doc,
+                pareto=pareto_doc,
+                write_txt=write_txt,
+            )
+        )
+
+        from src.current_vs_policy import write_current_vs_policy_status_outputs
+
+        paths.update(
+            write_current_vs_policy_status_outputs(
+                cfg,
+                product_comparison,
+                project_root=project_root,
+                selection=selection_doc,
+                write_txt=write_txt,
+            )
+        )
+        status_json = paths.get("current_vs_policy_status_json")
+        workflow_status = _load_json(status_json) if status_json else None
+
+        from src.action_engine import write_action_plan_outputs
+
+        paths.update(
+            write_action_plan_outputs(
+                cfg,
+                project_root=project_root,
+                comparison=product_comparison,
+                selection=selection_doc,
+                workflow_status=workflow_status,
+                write_txt=write_txt,
+            )
+        )
+        action_doc = _load_json(paths.get("action_plan_json") or out_dir / "action_plan.json")
 
     from src.decision_verdict import write_decision_verdict_outputs
 
@@ -2175,40 +2318,47 @@ def write_candidate_comparison_outputs(
     )
 
     from src.ai_commentary_context import write_ai_commentary_context_outputs
+    from src.product_bundle_paths import (
+        build_output_manifest_discovery_extra,
+        build_product_first_generated_paths,
+        load_diagnosis_bundle_docs,
+    )
+
+    diagnosis_bundle = load_diagnosis_bundle_docs(out_dir)
+    problem_classification_doc = diagnosis_bundle.get("problem_classification")
+    candidate_launchpad_doc = diagnosis_bundle.get("candidate_launchpad")
 
     paths.update(
         write_ai_commentary_context_outputs(
             output_dir=out_dir,
-            comparison=comparison,
+            comparison=product_comparison,
             current_vs_candidate=current_vs_candidate_doc,
             selection=selection_doc,
             decision_verdict=decision_verdict_doc,
             action=action_doc,
+            problem_classification=problem_classification_doc,
+            candidate_launchpad=candidate_launchpad_doc,
         )
     )
 
-    from src.monitoring import write_monitoring_outputs
+    if advanced_package:
+        from src.monitoring import write_monitoring_outputs
 
-    paths.update(
-        write_monitoring_outputs(
-            cfg,
-            project_root=project_root,
-            comparison=comparison,
-            health=health_doc,
-            robustness=robustness_doc,
-            selection=selection_doc,
-            action=action_doc,
-            write_txt=write_txt,
+        paths.update(
+            write_monitoring_outputs(
+                cfg,
+                project_root=project_root,
+                comparison=product_comparison,
+                health=health_doc,
+                robustness=robustness_doc,
+                selection=selection_doc,
+                action=action_doc,
+                write_txt=write_txt,
+            )
         )
-    )
-
-    from src.decision_journal import write_decision_journal_outputs
-
-    monitoring_doc = _load_json(
-        paths.get("monitoring_diff_json") or out_dir / "monitoring_diff.json"
-    )
-    problem_classification_doc = _load_json(out_dir / "problem_classification.json")
-
+        monitoring_doc = _load_json(
+            paths.get("monitoring_diff_json") or out_dir / "monitoring_diff.json"
+        )
     from src.light_monitoring_summary import write_what_changed_summary_outputs
 
     paths.update(
@@ -2221,69 +2371,87 @@ def write_candidate_comparison_outputs(
         )
     )
 
-    journal_paths = write_decision_journal_outputs(
-        cfg,
-        project_root=project_root,
-        comparison=comparison,
-        selection=selection_doc,
-        action=action_doc,
-        monitoring_diff=monitoring_doc,
-        health=health_doc,
-        robustness=robustness_doc,
-        write_txt=write_txt,
-    )
-    paths.update(journal_paths)
+    if advanced_package:
+        from src.decision_journal import write_decision_journal_outputs
 
-    from src.decision_package_reporting import write_decision_package_reporting_outputs
-
-    journal_doc = _load_json(
-        paths.get("decision_journal_json") or out_dir / "decision_journal.json"
-    )
-    tradeoff_doc = _load_json(
-        paths.get("tradeoff_explanation_json") or out_dir / "tradeoff_explanation.json"
-    )
-    if model_risk_doc is None:
-        model_risk_doc = _load_json(
-            paths.get("model_risk_diagnostics_json") or out_dir / "model_risk_diagnostics.json"
-        )
-    assumption_doc = _load_json(
-        paths.get("assumption_sensitivity_json") or out_dir / "assumption_sensitivity.json"
-    )
-    if pareto_doc is None:
-        pareto_doc = _load_json(
-            paths.get("pareto_dominance_json") or out_dir / "pareto_dominance.json"
-        )
-    regret_doc = _load_json(
-        paths.get("regret_analysis_json") or out_dir / "regret_analysis.json"
-    )
-    paths.update(
-        write_decision_package_reporting_outputs(
+        journal_paths = write_decision_journal_outputs(
             cfg,
             project_root=project_root,
-            comparison=comparison,
-            health=health_doc,
-            robustness=robustness_doc,
+            comparison=product_comparison,
             selection=selection_doc,
             action=action_doc,
             monitoring_diff=monitoring_doc,
-            decision_journal=journal_doc,
-            workflow_status=workflow_status,
-            tradeoff=tradeoff_doc,
-            model_risk=model_risk_doc,
-            assumption_sensitivity=assumption_doc,
-            pareto_dominance=pareto_doc,
-            regret_analysis=regret_doc,
+            health=health_doc,
+            robustness=robustness_doc,
             write_txt=write_txt,
-            append_report_txt=write_txt,
         )
+        paths.update(journal_paths)
+
+        from src.decision_package_reporting import write_decision_package_reporting_outputs
+
+        journal_doc = _load_json(
+            paths.get("decision_journal_json") or out_dir / "decision_journal.json"
+        )
+        tradeoff_doc = _load_json(
+            paths.get("tradeoff_explanation_json") or out_dir / "tradeoff_explanation.json"
+        )
+        if model_risk_doc is None:
+            model_risk_doc = _load_json(
+                paths.get("model_risk_diagnostics_json") or out_dir / "model_risk_diagnostics.json"
+            )
+        assumption_doc = _load_json(
+            paths.get("assumption_sensitivity_json") or out_dir / "assumption_sensitivity.json"
+        )
+        if pareto_doc is None:
+            pareto_doc = _load_json(
+                paths.get("pareto_dominance_json") or out_dir / "pareto_dominance.json"
+            )
+        regret_doc = _load_json(
+            paths.get("regret_analysis_json") or out_dir / "regret_analysis.json"
+        )
+        paths.update(
+            write_decision_package_reporting_outputs(
+                cfg,
+                project_root=project_root,
+                comparison=comparison,
+                health=health_doc,
+                robustness=robustness_doc,
+                selection=selection_doc,
+                action=action_doc,
+                monitoring_diff=monitoring_doc,
+                decision_journal=journal_doc,
+                workflow_status=workflow_status,
+                tradeoff=tradeoff_doc,
+                model_risk=model_risk_doc,
+                assumption_sensitivity=assumption_doc,
+                pareto_dominance=pareto_doc,
+                regret_analysis=regret_doc,
+                write_txt=write_txt,
+                append_report_txt=write_txt,
+            )
+        )
+
+    technical_generated_paths = {
+        key: value for key, value in paths.items() if key.endswith("_json")
+    }
+    manifest_generated_paths = build_product_first_generated_paths(
+        out_dir,
+        technical_generated_paths,
     )
 
+    manifest_extra = build_output_manifest_discovery_extra(
+        manifest_generated_paths,
+        extra={
+            "comparison_rebuild_source": comparison_rebuild_source,
+            "advanced_package_generated": bool(advanced_package),
+        },
+    )
     manifest_path = write_output_manifest(
         out_dir,
         policy=output_policy,
         run_kind="candidate_comparison",
-        generated_paths={key: value for key, value in paths.items() if key.endswith("_json")},
-        extra={"comparison_rebuild_source": comparison_rebuild_source},
+        generated_paths=manifest_generated_paths,
+        extra=manifest_extra,
     )
     paths["output_manifest_json"] = manifest_path
 
@@ -2301,7 +2469,9 @@ __all__ = [
     "candidate_registry_ids",
     "current_sidecar_dir",
     "positive_current_weights",
+    "product_candidate_ids_from_factory_run",
     "resolve_current_artifact_folder",
+    "scoped_product_comparison",
     "sidecar_meets_minimum",
     "write_candidate_comparison_outputs",
     "write_candidate_comparison_txt",

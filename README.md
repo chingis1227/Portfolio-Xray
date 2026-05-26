@@ -70,7 +70,7 @@ Implemented backend / advanced / legacy support:
 
 - Legacy CLI/file-driven policy optimization compatibility through `run_optimization.py`.
 - Portfolio reporting and diagnostics through `run_report.py`.
-- Input and Assumptions Layer V1 through `analysis_mode`, `tickers`, optional `current_weights`, profile/target fields, and technical calculation settings in `config.yml`.
+- Input and Assumptions Layer V1: Core MVP needs only `tickers`, `current_weights` or `weights`, and `investor_currency` in `config.yml` (USD market defaults injected; optional real-cash labels such as `Cash USD`; legacy mandate/profile fields remain for optimizer paths). See [input_assumptions_spec.md](docs/specs/input_assumptions_spec.md).
 - Portfolio metrics, dynamic NaN-safe backtesting, and risk contribution diagnostics.
 - Stress diagnostics, stress commentary, factor diagnostics, macro/regime diagnostics, PCA, scenario libraries, and robustness diagnostics.
 - Benchmark/candidate portfolios including Equal Weight, Risk Parity, HRP, Minimum Variance, Maximum Diversification, Minimum CVaR, Robust Mean-Variance, and Scenario-Based Robust Optimization.
@@ -275,25 +275,31 @@ Details live in [docs/specs/candidate_factory_spec.md](docs/specs/candidate_fact
 
 | File | Purpose |
 | --- | --- |
-| `config.yml` | Active local config: tickers, investor currency, benchmark, client profile, targets, windows, cash policy, return frequency, output paths, and feature settings. |
-| `config.yml.example` | Reference config template. |
-| `config/client_profiles.yml` | Client risk profile defaults. |
+| `config.yml` | Active local config. **Core MVP (portfolio-first):** `tickers`, `current_weights` or `weights`, and `investor_currency` only. USD risk-free, cash proxy, and benchmark resolve when omitted. Optional explicit bank cash (`Cash USD`, …) is a zero-return holding, not `cash_proxy_ticker`. Legacy optimizer/mandate fields (`client_profile`, liquidity, targets) stay in `config.yml.example` Sections 4–7 and are not required for `run_portfolio_review.py`. |
+| `config.yml.example` | MVP-first template (Section 1 = Core MVP; Sections 4–7 = legacy/advanced). |
+| `config/client_profiles.yml` | Client risk profile defaults (legacy optimizer / mandate; not Core MVP). |
 | `config/etf_universe.yml` | ETF taxonomy source of truth for annotation and validation. |
 | `config/stock_universe.yml` | Stock taxonomy source of truth for stock metadata validation. |
 | `config/historical_stress_proxy_map.yml` | Historical stress fallback proxy map and thresholds. |
 | `assets.yml` | Optional asset metadata. |
+| `tests/fixtures/mvp_portfolios/*.yml` | Minimal USD validation fixtures (`minimal_usd_no_cash`, `minimal_usd_with_cash`). |
 
 Portfolio-first input semantics live in
 [docs/specs/portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md):
 `analysis_subject` is the portfolio diagnosed before candidates, with supported types
 `current_portfolio`, `model_portfolio`, and `universe_baseline`.
 
-Analysis setup and legacy input mode details live in
-[docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md). Default
-compatibility `analysis_mode` is `optimize_from_universe`; use
-`analysis_mode: analyze_current_weights` plus `current_weights` to diagnose an existing
-fixed-weight portfolio with `run_report.py`. New portfolio-first configs may use explicit
-`analysis_subject` with type `current_portfolio`, `model_portfolio`, or `universe_baseline`.
+Core MVP input contract, field tiers, real cash, and export disclosure (`input_surface`,
+`field_tiers` in `input_assumptions`) live in
+[docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md). When you supply
+`current_weights` or non-generated `weights` without an explicit `analysis_subject`, validation
+injects `analysis_subject.type = current_portfolio` and
+`analysis_mode = analyze_current_weights` (`src/mvp_input.py`). Legacy policy compatibility still
+uses `analysis_mode: optimize_from_universe` when no user weights are supplied. Explicit
+`analysis_subject` blocks remain supported for `model_portfolio`, `universe_baseline`, or custom ids.
+
+Local **config UI** (`config_ui/`) mirrors the three Core MVP fields on the first screen; legacy
+optimizer and mandate controls sit under collapsed Advanced settings.
 
 Data rules are governed by [DATA.md](DATA.md) and [docs/specs/data_policy_spec.md](docs/specs/data_policy_spec.md).
 

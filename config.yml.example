@@ -1,190 +1,131 @@
 # =============================================================================
-# Portfolio Metrics Standard — Example Configuration
-# Copy to config.yml and adjust. All portfolio assumptions are controlled here.
-# =============================================================================
-
-# =============================================================================
-# SECTION 1: CORE SETTINGS
-# =============================================================================
-# investor_currency: на выбор — USD (доллар), EUR (евро), JPY (йена), CHF (франк).
-
-investor_currency: USD
-initial_investable_amount: 1000
-liquidity_need: 0
-
-# ---------- Liquidity (life floor): liquidity_amount = liquidity_need_months × monthly_expenses ----------
-# Months of expenses to cover (0 = life floor off). Any non-negative number, including decimal (e.g. 2, 2.5).
-liquidity_need_months: 0
-# Monthly expenses in investor_currency. Used only if liquidity_need_months > 0.
-monthly_expenses: 0
-# Current portfolio market value in investor_currency. If null or not set, initial_investable_amount is used.
-portfolio_value: null
-
-# ---------- Cash policy (choose one) ----------
-# allowed_for_scaling (default) | required_floor | prohibited
-# - allowed_for_scaling: floor may be 0; cash can be used for vol scaling toward target_vol_annual.
-# - required_floor: cash at least liquidity floor; vol-scaling cash allowed.
-# - prohibited: no cash; TargetVol only via RiskPortfolio restructuring.
-cash_policy: allowed_for_scaling
-
-# =============================================================================
-# SECTION 2: RISK-FREE AND BENCHMARK
-# =============================================================================
-# Optional: if omitted, defaults are injected (base_benchmark_ticker from investor_currency;
-# risk_free_source and cash_proxy_ticker from currency in code).
-# cash_proxy_ticker: from investor_currency (e.g. BIL for USD, PEU for EUR). Set explicitly or by default.
-# base_benchmark_ticker: if missing, set from currency (USD->SPY, EUR->VGK, JPY->EWJ, CHF->EWL).
-
-risk_free_source: FRED:DTB3
-cash_proxy_ticker: BIL
-base_benchmark_ticker: SPY
-beta_local_mapping: {}
-
-# =============================================================================
-# SECTION 3: PORTFOLIO INPUT MODE, TICKERS, AND WEIGHTS
-# =============================================================================
-# analysis_subject is the portfolio diagnosed first in the portfolio-first workflow.
-# Supported types:
-# - current_portfolio: user current allocation; requires analysis_subject.weights.
-# - model_portfolio: user model/proposed allocation; requires analysis_subject.weights.
-# - universe_baseline: ticker-only diagnostic baseline; system creates equal weights.
-# If analysis_subject is set, it takes priority over legacy analysis_mode/weights inference.
-# Portfolio-first command:
-#   python run_portfolio_review.py
+# Portfolio MRI / Portfolio X-Ray — Example Configuration
+# Copy to config.yml and adjust.
 #
-# analysis_mode:
-# - optimize_from_universe (legacy compatibility): user supplies tickers; policy weights are produced by run_optimization.py.
-# - analyze_current_weights: user supplies current_weights; run_report.py diagnoses the existing portfolio.
-# tickers: list of instruments (cash proxy, e.g. BIL, is excluded from the risk optimization universe).
-# current_weights: optional existing-portfolio weights, used only when analysis_mode=analyze_current_weights.
-# weights: legacy fixed report weights / generated policy weights. Do not hand-edit as final policy output.
-
-analysis_subject:
-  type: universe_baseline
-  id: analysis_subject
-  display_name: Universe Baseline
-  # tickers omitted => use top-level tickers.
-  # weights omitted for universe_baseline; current_portfolio/model_portfolio require weights.
-  #
-  # Example current_portfolio:
-  # type: current_portfolio
-  # display_name: Current Portfolio
-  # weights: {VOO: 0.45, QQQ: 0.20, GLD: 0.10, BND: 0.20, VT: 0.05}
-  #
-  # Example model_portfolio:
-  # type: model_portfolio
-  # display_name: Proposed Model Portfolio
-  # weights: {VOO: 0.40, QQQ: 0.20, GLD: 0.15, BND: 0.20, VT: 0.05}
-
-analysis_mode: optimize_from_universe
-tickers: [VOO, QQQ, GLD, BND, VT]
-
-current_weights: {}
-weights: {}
+# Core MVP (portfolio-first diagnosis): only Section 1 is required.
+#   python run_portfolio_review.py
+#   python run_portfolio_review.py --candidates equal_weight
+#
+# Legacy policy optimization and full mandate controls: Sections 4–7.
+# =============================================================================
 
 # =============================================================================
-# SECTION 4: PORTFOLIO ASSUMPTIONS AND TARGETS
+# SECTION 1 — CORE MVP INPUT (required for diagnosis-first product flow)
 # =============================================================================
-# client_profile: optional. ultra_conservative | conservative | balanced | growth | aggressive.
-# If set, missing targets are filled from config/client_profiles.yml. Override manually as needed.
-# Reminder: 1 Ultra Conservative  2 Conservative  3 Balanced  4 Growth  5 Aggressive (full table in Config UI).
+# User-facing fields per docs/specs/input_assumptions_spec.md § Core MVP Input Surface.
+# System injects analysis_subject.type=current_portfolio and
+# analysis_mode=analyze_current_weights when you supply current_weights or weights.
 
-client_profile: null
+investor_currency: USD  # USD | EUR | JPY | CHF
 
-# allow_leverage, allow_short_selling: на выбор true / false.
-# Поля в процентах — можно вводить в процентах (15%) или десятичной дробью (0.15):
-#   min_acceptable_return, target_nominal_return_annual, target_vol_annual,
-#   target_max_drawdown_pct. null допустим.
-# horizon_years: число лет (10, 3, 0.5 и т.д.); null допустим.
+tickers: [SPY, QQQ, GLD, SLV, BND, SCHD, SCHP, TLT]
 
-allow_leverage: false
-allow_short_selling: false
-min_acceptable_return: null
-target_nominal_return_annual: 0.1
-target_vol_annual: 0.15
-target_max_drawdown_pct: -0.3
-horizon_years: 10.0
+# Allocation: use current_weights (preferred) or weights. Percent strings allowed.
+current_weights:
+  SPY: 0.10
+  QQQ: 0.13
+  GLD: 0.09
+  SLV: 0.09
+  BND: 0.16
+  SCHD: 0.17
+  SCHP: 0.13
+  TLT: 0.13
 
-# =============================================================================
-# SECTION 5: OPTIMIZATION CONSTRAINTS
-# =============================================================================
-# If max_single_security_weight_pct or min_single_security_weight_pct is null or 0,
-# max weight per name defaults from docs/docs/feasibility_constraints_spec.md (formula by N).
+# Optional explicit bank cash (zero return; not replaced by cash_proxy_ticker):
+# tickers: [VOO, BND, Cash USD]
+# current_weights: {VOO: 0.45, BND: 0.45, Cash USD: 0.10}
 
-max_single_security_weight_pct: null
-min_single_security_weight_pct: null
-
-# Alpha-shift (when cash_policy = prohibited and vol > target_vol_annual): top N_rc donors by RC_vol.
-N_rc: 3
-# Donor (Shift Mode): proportional or equal — you can set equal.
-donor_shift_mode: proportional
-
-# Advanced Minimum-Variance (run_minimum_variance_advanced.py) — not the primary lowest-volatility-
-# under-constrained-box baseline (that is run_minimum_variance.py / minimum_variance_constrained).
-# - Optional max vol cap from target_vol_annual: monthly variance w'Σw ≤ target_vol_annual²/12.
-# - minimum_variance_turnover_lambda (default 0): pure MinVar on the advanced path when 0.
-#   When > 0 and current portfolio weights (cfg / merged portfolio_weights.yml) are valid on the
-#   eligible universe, L1 vs current weights is applied (rebalance-aware / turnover-controlled; equal-weight never used).
-# - minimum_variance_l1_experimental: legacy field; ignored by Advanced MinVar (L1 is governed only by lambda).
-minimum_variance_turnover_lambda: 0
-minimum_variance_l1_experimental: false
-
-# Minimum CVaR baselines (run_minimum_cvar_uncapped.py / run_minimum_cvar_constrained.py):
-# confidence level gamma in (0,1) for Rockafellar–Uryasev tail mass (1-gamma); default 0.95.
-minimum_cvar_confidence_level: 0.95
-
-# Robust Mean–Variance baselines (run_robust_mean_variance_uncapped.py / run_robust_mean_variance_constrained.py):
-# IPS-aligned λ is selected only via ``python run_robust_mv_lambda_calibration.py`` (writes ``analysis_robust_mv_lambda_calibration/selected_lambda.txt``).
-# Baseline CLIs read that file by default; use ``--robust-mv-lambda FLOAT`` to override.
-# Programmatic tests may ``replace(cfg, robust_mv_lambda=…)``.
-# Do not put robust_mv_lambda in YAML — omit entirely so PortfolioConfig keeps λ unset until calibration / CLI / replace().
-# - robust_mv_covariance_method: ledoit_wolf | oas (monthly Σ shrinkage).
-# - robust_mv_mu_shrinkage_method: james_stein (only supported value in v1).
-robust_mv_covariance_method: ledoit_wolf  # ledoit_wolf | oas
-robust_mv_mu_shrinkage_method: james_stein
-
-# Risk budgeting baselines (run_risk_budget_by_asset_class.py / run_risk_budget_by_asset.py).
-# Class method: use preset and optional ``targets`` (bucket -> weight, sum 1). Per-asset: set ``asset_targets`` (ticker -> weight, sum 1 on tickers subset of config).
-risk_budgeting:
-  preset: balanced
-  targets: {}
-  missing_taxonomy: exclude   # exclude | unknown
-  drop_empty_buckets: false
-  asset_targets: {}
-
-# Optional: RMV λ calibration tool (`run_robust_mv_lambda_calibration.py`) — not part of PortfolioConfig validation.
-# Uncomment to cap synthetic-scenario RC concentration when classifying mandate fits.
-# robust_mv_calibration:
-#   max_top1_rc_pct: 0.45      # e.g. cap on max top1_rc_pct across mandatory synthetic scenarios
-#   max_top3_rc_sum_pct: 0.85
+# USD defaults (risk-free, cash proxy, benchmark) are injected when omitted.
+# Non-USD may require explicit risk_free_source and cash_proxy_ticker — see Section 2.
 
 # =============================================================================
-# SECTION 6: ANALYSIS SETTINGS
+# SECTION 2 — SYSTEM / MARKET DEFAULTS (optional overrides)
 # =============================================================================
-# output_dir: только CSV (по умолчанию results_csv).
-# output_dir_final: веса, все JSON, report (по умолчанию Main portfolio).
+# Normally leave commented for USD Core MVP. Uncomment to override currency defaults.
 
-windows_months: [36, 60, 120]
-# Main return panel is always monthly per metrics_specification.md (default: monthly).
-# Non-monthly values are retained for disclosure only and do not change main metrics/optimizer panels.
-returns_frequency: monthly  # monthly | weekly | daily
-market_data_provider: yfinance  # yfinance | ibkr | ibkr_yfinance_fallback
-coverage_threshold: 0.9
-output_dir: results_csv
-output_dir_final: "Main portfolio"
+# risk_free_source: FRED:DTB3
+# cash_proxy_ticker: BIL
+# base_benchmark_ticker: SPY
+# beta_local_mapping: {}
 
-# Dual-horizon optimization robustness (10Y primary + 5Y secondary validation)
-# Primary portfolio is always from primary_window_months; 5Y run is consistency check only.
-optimization_windows_months: [120, 60]
-primary_window_months: 120
-secondary_window_months: 60
-robustness_policy:
-  enabled: true
-  max_weight_change_allowed: 0.10   # 10pp absolute per asset vs 10Y solution
-  max_asset_rc_dev_allowed: 0.05    # 5pp RC deviation per asset vs 10Y RC
-  min_effective_months: 36          # if join leaves < 36 months, FLAG_SHORT_SAMPLE
+# =============================================================================
+# SECTION 3 — EXPLICIT analysis_subject (optional; advanced clarity)
+# =============================================================================
+# If omitted, Core MVP infers current_portfolio from current_weights/weights.
+# Use this block when you need model_portfolio, universe_baseline, or custom ids.
 
-# Backtest mode (default: dynamic_nan_safe):
-# - dynamic_nan_safe: policy-compliant (global redistribution among risk tickers, RC-gated fallback to cash)
-# - simple: opt-in simplified mode, no redistribution / RC-gating
-backtest_mode: dynamic_nan_safe
+# analysis_subject:
+#   type: current_portfolio
+#   id: analysis_subject
+#   display_name: Current Portfolio
+#   weights: {VOO: 0.45, QQQ: 0.20, GLD: 0.10, BND: 0.20, VT: 0.05}
+
+# Legacy compatibility (optimizer path only when no user weights):
+# analysis_mode: optimize_from_universe
+
+# =============================================================================
+# SECTION 4 — CLIENT FIT / LIQUIDITY (later product layers; not Core MVP)
+# =============================================================================
+
+# initial_investable_amount: 1000
+# liquidity_need_months: 0
+# monthly_expenses: 0
+# portfolio_value: null
+# cash_policy: allowed_for_scaling  # allowed_for_scaling | required_floor | prohibited
+
+# =============================================================================
+# SECTION 5 — CLIENT PROFILE AND TARGETS (legacy optimizer / mandate)
+# =============================================================================
+
+# client_profile: null  # ultra_conservative | conservative | balanced | growth | aggressive
+
+# allow_leverage: false
+# allow_short_selling: false
+# min_acceptable_return: null
+# target_nominal_return_annual: 0.1
+# target_vol_annual: 0.15
+# target_max_drawdown_pct: -0.3
+# horizon_years: 10.0
+
+# =============================================================================
+# SECTION 6 — OPTIMIZATION CONSTRAINTS (legacy policy path)
+# =============================================================================
+
+# max_single_security_weight_pct: null
+# min_single_security_weight_pct: null
+# N_rc: 3
+# donor_shift_mode: proportional
+# minimum_variance_turnover_lambda: 0
+# minimum_variance_l1_experimental: false
+# minimum_cvar_confidence_level: 0.95
+# robust_mv_covariance_method: ledoit_wolf
+# robust_mv_mu_shrinkage_method: james_stein
+
+# risk_budgeting:
+#   preset: balanced
+#   targets: {}
+#   missing_taxonomy: exclude
+#   drop_empty_buckets: false
+#   asset_targets: {}
+
+# =============================================================================
+# SECTION 7 — ANALYSIS AND OUTPUT SETTINGS (technical; optional)
+# =============================================================================
+
+# windows_months: [36, 60, 120]
+# returns_frequency: monthly  # monthly | weekly | daily (non-monthly is disclosure-only)
+# market_data_provider: yfinance  # yfinance | ibkr | ibkr_yfinance_fallback
+# coverage_threshold: 0.9
+# output_dir: results_csv
+# output_dir_final: "Main portfolio"
+
+# optimization_windows_months: [120, 60]
+# primary_window_months: 120
+# secondary_window_months: 60
+# robustness_policy:
+#   enabled: true
+#   max_weight_change_allowed: 0.10
+#   max_asset_rc_dev_allowed: 0.05
+#   min_effective_months: 36
+
+# backtest_mode: dynamic_nan_safe
