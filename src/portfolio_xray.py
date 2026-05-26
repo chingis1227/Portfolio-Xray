@@ -9,6 +9,10 @@ from typing import Any
 
 import pandas as pd
 
+from src.analysis_setup import resolved_analysis_weights
+from src.block_2_1_asset_allocation import build_block_2_1_asset_allocation, enrich_taxonomy_with_real_cash
+from src.block_2_2_portfolio_metrics import build_block_2_2_portfolio_metrics
+from src.real_cash import collect_real_cash_tickers
 from src.data_trust_signals import build_xray_data_trust_signals
 from src.io_export import REPORT_DECIMALS
 from src.stress_factors import BASE_BETA_ROW_ORDER
@@ -685,7 +689,7 @@ def build_portfolio_xray_summary(
     ap = _analysis_portfolio(analysis_setup)
     pi = _portfolio_input(analysis_setup)
     ra = _resolved_assumptions(analysis_setup)
-    weight_map = dict(weights or ap.get("weights") or {})
+    weight_map = resolved_analysis_weights(analysis_setup, weights=weights)
     top_weight = _top_items(weight_map, limit=3)
     top_rc = _rc_items(rc_asset, limit=3)
     cash_proxy = None
@@ -696,7 +700,13 @@ def build_portfolio_xray_summary(
         cash_handling = ap.get("cash_handling")
         if isinstance(cash_handling, dict):
             cash_proxy = cash_handling.get("cash_proxy_ticker")
-    cash_weight = _as_float(weight_map.get(str(cash_proxy))) if cash_proxy else None
+    real_cash_labels = collect_real_cash_tickers(weights=weight_map)
+    if real_cash_labels:
+        cash_weight = sum(_as_float(weight_map.get(label)) or 0.0 for label in real_cash_labels)
+    elif cash_proxy:
+        cash_weight = _as_float(weight_map.get(str(cash_proxy)))
+    else:
+        cash_weight = None
     top_weight_first = top_weight[0] if top_weight else None
     top_rc_first = top_rc[0] if top_rc else None
     top3_weight_sum = sum(row["value"] for row in top_weight)
@@ -795,6 +805,31 @@ def _taxonomy_lookup(
     rows = {str(k).upper(): v for k, v in taxonomy_rows.items() if isinstance(v, dict)}
     sources = {str(k).upper(): str(v) for k, v in (taxonomy_sources or {}).items()}
     return rows, sources, []
+
+
+def _resolved_taxonomy_for_xray(
+    weight_map: dict[str, float],
+    taxonomy_rows: dict[str, dict[str, Any]] | None,
+    taxonomy_sources: dict[str, str] | None,
+    analysis_setup: dict[str, Any] | None,
+) -> tuple[dict[str, dict[str, Any]], dict[str, str]]:
+    """Merged universe taxonomy plus synthetic rows for real-cash holdings."""
+    if taxonomy_rows is None:
+        rows, sources, _ = _load_default_taxonomy()
+    else:
+        rows = {str(k).upper(): v for k, v in taxonomy_rows.items() if isinstance(v, dict)}
+        sources = {str(k).upper(): str(v) for k, v in (taxonomy_sources or {}).items()}
+    investor_currency = "USD"
+    if isinstance(analysis_setup, dict):
+        portfolio_input = analysis_setup.get("portfolio_input")
+        if isinstance(portfolio_input, dict) and portfolio_input.get("investor_currency"):
+            investor_currency = str(portfolio_input["investor_currency"])
+    return enrich_taxonomy_with_real_cash(
+        weight_map,
+        rows,
+        sources,
+        investor_currency=investor_currency,
+    )
 
 
 def _row_for_ticker(ticker: str, rows: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
@@ -3349,12 +3384,32 @@ def build_portfolio_xray_v2(
         portfolio_valid=portfolio_valid,
         portfolio_metrics=portfolio_metrics,
     )
-    ap = _analysis_portfolio(analysis_setup)
-    weight_map = dict(weights or ap.get("weights") or {})
+    weight_map = resolved_analysis_weights(analysis_setup, weights=weights)
+    tax_rows, tax_sources = _resolved_taxonomy_for_xray(
+        weight_map,
+        taxonomy_rows,
+        taxonomy_sources,
+        analysis_setup,
+    )
     allocation, _ = _allocation_section(
         weights=weight_map,
-        taxonomy_rows=taxonomy_rows,
-        taxonomy_sources=taxonomy_sources,
+        taxonomy_rows=tax_rows,
+        taxonomy_sources=tax_sources,
+    )
+    block_2_1_asset_allocation = build_block_2_1_asset_allocation(
+        analysis_setup=analysis_setup,
+        weights=weight_map,
+        taxonomy_rows=tax_rows,
+        taxonomy_sources=tax_sources,
+    )
+    block_2_2_portfolio_metrics = build_block_2_2_portfolio_metrics(
+        analysis_setup=analysis_setup,
+        portfolio_metrics=portfolio_metrics,
+        portfolio_analytics=portfolio_analytics,
+        drawdown_structure=drawdown_structure,
+        portfolio_windows=portfolio_windows,
+        output_dir_csv=output_dir_csv,
+        weights=weight_map,
     )
     sections = {
         "asset_allocation": allocation,
@@ -3369,7 +3424,7 @@ def build_portfolio_xray_v2(
             weights=weight_map,
             rc_asset=rc_asset_resolved,
             stress_report=stress_report,
-            taxonomy_rows=taxonomy_rows,
+            taxonomy_rows=tax_rows,
             portfolio_analytics=portfolio_analytics,
         ),
         "risk_budget_view": _risk_budget_section(
@@ -3385,7 +3440,7 @@ def build_portfolio_xray_v2(
         stress_report=stress_report,
         allocation_section=sections["asset_allocation"],
         weights=weight_map,
-        taxonomy_rows=taxonomy_rows,
+        taxonomy_rows=tax_rows,
     )
     sections["portfolio_archetype"] = _portfolio_archetype_section(
         allocation_section=sections["asset_allocation"],
@@ -3412,6 +3467,8 @@ def build_portfolio_xray_v2(
         "diagnostic_only_disclaimer": DIAGNOSTIC_ONLY_DISCLAIMER,
         "analysis_setup_summary": legacy_summary["analysis_setup_summary"],
         "thresholds": dict(XRAY_THRESHOLDS),
+        "block_2_1_asset_allocation": block_2_1_asset_allocation,
+        "block_2_2_portfolio_metrics": block_2_2_portfolio_metrics,
         "sections": sections_out,
         "legacy_summary": legacy_summary,
         "data_trust_signals": build_xray_data_trust_signals(

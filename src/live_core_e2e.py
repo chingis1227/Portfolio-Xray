@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from src.portfolio_xray import XRAY_SECTION_KEYS
+from src.product_bundle_paths import portfolio_xray_has_block_2_1, portfolio_xray_has_block_2_2
 
 LIVE_CORE_REVIEW_MODE = "core"
 LIVE_CORE_FACTORY_PROFILE = "core_fast"
@@ -105,6 +106,26 @@ def validate_live_core_artifacts(
                 f"portfolio_xray.json missing sections: {', '.join(missing_sections)}"
             )
             result.ok = False
+    if not portfolio_xray_has_block_2_1(xray):
+        result.errors.append(
+            "portfolio_xray.json missing block_2_1_asset_allocation product contract"
+        )
+        result.ok = False
+    else:
+        block = xray["block_2_1_asset_allocation"]
+        total = (block.get("portfolio_composition_snapshot") or {}).get("total_holdings")
+        result.evidence["block_2_1_total_holdings"] = total
+    if not portfolio_xray_has_block_2_2(xray):
+        result.errors.append(
+            "portfolio_xray.json missing block_2_2_portfolio_metrics product contract"
+        )
+        result.ok = False
+    else:
+        block_22 = xray["block_2_2_portfolio_metrics"]
+        meta_22 = block_22.get("metadata") or {}
+        result.evidence["block_2_2_primary_window_months"] = meta_22.get(
+            "primary_window_months"
+        )
 
     stress = _load_json(subject_dir / "stress_report.json")
     for key in _STRESS_REQUIRED_KEYS:

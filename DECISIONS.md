@@ -354,6 +354,58 @@ Title: Trade-off Explanation and Model Risk Diagnostics V1 — separate diagnost
 - Related documents: [docs/specs/tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md), [docs/specs/selection_engine_spec.md](docs/specs/selection_engine_spec.md), [docs/specs/decision_package_reporting_spec.md](docs/specs/decision_package_reporting_spec.md), [OUTPUTS.md](OUTPUTS.md), [docs/ROADMAP.md](docs/ROADMAP.md) RM-616.
 - Review trigger: Revisit if trade-off should run after action for turnover parity, or if concentration thresholds should become mandate-binding.
 
+Decision ID: DEC-2026-05-26-003
+Title: Block 2.2 Portfolio Metrics product contract on portfolio_xray.json
+
+- Status: accepted
+- Date: 2026-05-26
+- Decision: Expose Block 2.2 as top-level `block_2_2_portfolio_metrics` on `portfolio_xray.json`
+  (portfolio-first: `analysis_subject/portfolio_xray.json`). Keep legacy `sections.risk_diagnostics`
+  unchanged. Primary metrics horizon is 10Y (120M) when `snapshot_10y.json` metrics exist, else best
+  available snapshot. Map internal `metric_quality` to `data_quality_warnings` only (never expose raw
+  `metric_quality` on the product block). Rolling core_view uses `series_ref` to existing
+  `results_csv/` files; full correlation matrix stays CSV-only via `full_matrix_ref`.
+- Context: [Block 2.2 Portfolio Metrics / Risk Diagnostics MVP](docs/exec_plans/2026-05-26_block_2_2_portfolio_metrics_plan.md)
+  Session 02; follows Block 2.1 (`DEC-2026-05-26-002`) and frozen Input Layer (`DEC-2026-05-26-001`).
+- Rationale: Operators already read `portfolio_xray.json` for X-Ray; a stable product JSON avoids
+  parsing internal `items[]`; aligns with diagnosis-first flow and Block 2.1 pattern.
+- Alternatives considered: Embed metrics only in `sections.risk_diagnostics` (rejected — unstable for
+  UI); standalone `portfolio_metrics.json` in six-file bundle (rejected); expose `metric_quality` to
+  UI (rejected — internal diagnostics only).
+- Assumptions: Builder ships Session 03+; pre-implementation on-disk runs lack Block 2.2 until
+  re-materialized; `downside_deviation` and top-3 correlation pairs land with the builder (Session 03).
+- Consequences: [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md)
+  §2.2.1; planned `src/block_2_2_portfolio_metrics.py`, `tests/test_block_2_2_portfolio_metrics.py`;
+  acceptance audit `docs/audits/2026-05-26_block_2_2_portfolio_metrics_acceptance_audit.md` (Session 08).
+- Related documents: [OUTPUTS.md](OUTPUTS.md) Block 2 row, [portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md) §2.2.
+- Review trigger: Revisit if UI requires embedded full correlation matrix or retires legacy section.
+
+Decision ID: DEC-2026-05-26-002
+Title: Block 2.1 Asset Allocation product contract on portfolio_xray.json
+
+- Status: accepted
+- Date: 2026-05-26
+- Decision: Expose Block 2.1 as top-level `block_2_1_asset_allocation` on `portfolio_xray.json`
+  (portfolio-first: `analysis_subject/portfolio_xray.json`). Keep legacy `sections.asset_allocation`
+  items unchanged. Capital-concentration thresholds live in `ALLOCATION_CONCENTRATION_THRESHOLDS`
+  (separate from `XRAY_THRESHOLDS`). Real cash uses synthetic taxonomy, never `cash_proxy_ticker`.
+- Context: [Block 2.1 Asset Allocation MVP](docs/exec_plans/2026-05-26_block_2_1_asset_allocation_plan.md)
+  Session 02; follows frozen Input Layer (`DEC-2026-05-26-001`).
+- Rationale: Operator guide already reads `portfolio_xray.json` for Block 2; a stable product JSON
+  avoids parsing internal `items[]`; six-file bundle stays unchanged.
+- Alternatives considered: Standalone `asset_allocation.json` (rejected — extra manifest surface);
+  replace `sections.asset_allocation` only (rejected — breaks golden contract tests and formatters).
+- Assumptions: *(superseded 2026-05-26 Session 08)* — builder shipped; portfolio-first materialize
+  paths populate the key; pre-2026-05-26 on-disk runs may lack Block 2.1 until re-materialized.
+- Consequences: [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md)
+  §2.1.1–§2.1.2; drift tests `tests/test_block_2_1_threshold_registry.py`,
+  `tests/test_block_2_1_asset_allocation.py`, `tests/test_block_2_1_pipeline_integration.py`;
+  live E2E gates in `src/live_core_e2e.py` / `src/live_full_e2e.py`. Closure:
+  [Block 2.1 acceptance audit](docs/audits/2026-05-26_block_2_1_asset_allocation_acceptance_audit.md),
+  ExecPlan Sessions 01–08 **Completed**.
+- Related documents: [OUTPUTS.md](OUTPUTS.md) Block 2 row, [portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md) §2.1.
+- Review trigger: Revisit if UI requires a separate bundle file or if legacy section can be retired.
+
 Decision ID: DEC-2026-05-26-001
 Title: Input Layer MVP contract frozen (Core MVP three-field surface)
 

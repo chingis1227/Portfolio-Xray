@@ -5,7 +5,8 @@
 - **Directory:** `mvp_portfolios/`
 - **Files:**
   - `minimal_usd_no_cash.yml` — eight-ticker USD demo weights, no explicit bank cash
-  - `minimal_usd_with_cash.yml` — same universe plus `Cash USD` holding
+  - `minimal_usd_with_cash.yml` — same universe plus `Cash USD` holding (10% cash)
+  - `demo_usd_asset_allocation_with_cash_5pct.yml` — `config.yml` tickers rescaled ×0.95 plus 5% `Cash USD` (Block 2.1)
 - **Tests:** `tests/test_mvp_portfolio_fixtures.py`, `tests/test_mvp_portfolio_review_materialization.py`
 - **Offline helpers:** `tests/mvp_offline_fixtures.py` (`validate_mvp_fixture`, `build_offline_run_metadata`)
 

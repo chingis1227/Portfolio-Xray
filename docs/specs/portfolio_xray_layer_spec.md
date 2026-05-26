@@ -90,21 +90,31 @@ owning modules/specs:
 
 ### 2.1 Asset Allocation
 
-- Core implementation: `src/portfolio_xray.py` — `_allocation_section`
-- Spec ownership: [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) §2.1
-- Taxonomy helpers: `src/risk_budgeting.py` (`risk_budget_bucket_from_row`)
-- Tests: `test_portfolio_xray_weight_concentration_in_asset_allocation`, taxonomy partial / unknown weight warnings
+- Legacy section builder: `src/portfolio_xray.py` — `_allocation_section` → `sections.asset_allocation`
+- **Block 2.1 product contract (MVP):** `src/block_2_1_asset_allocation.py` — `build_block_2_1_asset_allocation` → top-level `block_2_1_asset_allocation` on `portfolio_xray.json` (wired from `build_portfolio_xray_v2`; ExecPlan **Completed** 2026-05-26)
+- Spec ownership: [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) §2.1, §2.1.1, §2.1.2
+- Taxonomy helpers: `src/risk_budgeting.py` (`load_merged_universe_rows`, `risk_budget_bucket_from_row`); real cash: `src/real_cash.py` + synthetic row in Block 2.1 builder
+- Weight source: `src/analysis_setup.py` — `resolved_analysis_weights` (explicit snapshot weights override; else `analysis_portfolio.weights` from Input Layer)
+- ExecPlan (completed): [2026-05-26_block_2_1_asset_allocation_plan.md](../exec_plans/2026-05-26_block_2_1_asset_allocation_plan.md); acceptance [audit](../audits/2026-05-26_block_2_1_asset_allocation_acceptance_audit.md)
+- Tests (legacy): `test_portfolio_xray_weight_concentration_in_asset_allocation`, taxonomy partial / unknown weight warnings
+- Tests (Block 2.1 MVP): `tests/test_block_2_1_asset_allocation.py`, `tests/test_block_2_1_threshold_registry.py`, `tests/test_block_2_1_pipeline_integration.py`
 
 ### 2.2 Portfolio Metrics / Risk Diagnostics
 
-- Core implementation: `src/portfolio_xray.py` — `_risk_diagnostics_section`
-- Spec ownership: diagnostics spec §2.2; formulas in [metrics_specification.md](metrics_specification.md)
-- Metrics owner: `src/metrics_portfolio.py`, snapshot `metrics` blocks
+- Legacy section builder: `src/portfolio_xray.py` — `_risk_diagnostics_section` → `sections.risk_diagnostics`
+- **Block 2.2 product contract (MVP):** `src/block_2_2_portfolio_metrics.py` — `build_block_2_2_portfolio_metrics` → top-level `block_2_2_portfolio_metrics` on `portfolio_xray.json` (wired from `build_portfolio_xray_v2`; ExecPlan **Active**, builder Session 03, 2026-05-26)
+- Spec ownership: [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) §2.2, §2.2.1; formulas in [metrics_specification.md](metrics_specification.md)
+- Metrics owner: `src/metrics_portfolio.py` — `portfolio_metrics_one_window` → snapshot `metrics` (Session 03 adds `downside_deviation`)
+- Analytics owner: `src/portfolio_analytics.py` — `drawdown_structure`, `compute_tail_risk_historical`, `rolling_summary`; snapshot `analytics`, `drawdown_structure`
+- Report pipeline: `run_report.py` STEP 7–8 (metrics, RC/corr CSV, rolling CSV, tail risk)
 - Tail risk: daily historical VaR/ES via `portfolio_analytics.tail_risk` (not recomputed in X-Ray)
-- Multi-window panel: `load_portfolio_windows_from_dir` + `multi_window_metrics` item (Session 05)
-- Tests: `test_portfolio_xray_section_provenance_metadata`,
+- Correlation matrix CSV: `src/io_export.py` — `correlation_matrix_{3y,5y,10y}.csv` under `results_csv/`; Block 2.2 top-3 pairs from primary matrix (Session 03)
+- Multi-window panel (legacy only): `load_portfolio_windows_from_dir` + `multi_window_metrics` item
+- ExecPlan (active): [2026-05-26_block_2_2_portfolio_metrics_plan.md](../exec_plans/2026-05-26_block_2_2_portfolio_metrics_plan.md); acceptance audit planned Session 08
+- Tests (legacy): `test_portfolio_xray_section_provenance_metadata`,
   `test_portfolio_xray_multi_window_metrics_panel`, `test_portfolio_xray_ttr_in_primary_risk_metrics`,
   `tests/test_portfolio_metrics_deepening.py`, `tests/test_tail_risk.py`
+- Tests (Block 2.2 MVP, planned): `tests/test_block_2_2_portfolio_metrics.py`, pipeline/E2E gates Session 07+
 
 ### 2.3 Factor Exposure / Factor Sensitivity
 

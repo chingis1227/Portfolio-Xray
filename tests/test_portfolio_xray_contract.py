@@ -21,6 +21,8 @@ TOP_LEVEL_REQUIRED = (
     "diagnostic_only_disclaimer",
     "analysis_setup_summary",
     "thresholds",
+    "block_2_1_asset_allocation",
+    "block_2_2_portfolio_metrics",
     "sections",
     "legacy_summary",
 )
@@ -62,6 +64,12 @@ def assert_top_level_contract(doc: dict[str, Any]) -> None:
     assert isinstance(doc["legacy_summary"], dict)
     assert set(doc["thresholds"]) == set(XRAY_THRESHOLDS)
     assert doc["thresholds"] == XRAY_THRESHOLDS
+    block = doc.get("block_2_1_asset_allocation")
+    assert isinstance(block, dict)
+    assert block.get("block") == "2.1_asset_allocation"
+    block_22 = doc.get("block_2_2_portfolio_metrics")
+    assert isinstance(block_22, dict)
+    assert block_22.get("block") == "2.2_portfolio_metrics"
     assert set(doc["sections"]) == set(XRAY_SECTION_KEYS)
 
 
@@ -116,6 +124,18 @@ def contract_fingerprint(doc: dict[str, Any]) -> dict[str, Any]:
     archetype_items = sections["portfolio_archetype"]["items"]
     if archetype_items:
         fp["primary_archetype"] = archetype_items[0].get("primary_archetype")
+    block = doc.get("block_2_1_asset_allocation")
+    if isinstance(block, dict):
+        fp["block_2_1_present"] = True
+        fp["block_2_1_total_holdings"] = (block.get("portfolio_composition_snapshot") or {}).get(
+            "total_holdings"
+        )
+    block_22 = doc.get("block_2_2_portfolio_metrics")
+    if isinstance(block_22, dict):
+        fp["block_2_2_present"] = True
+        fp["block_2_2_primary_window_months"] = (block_22.get("metadata") or {}).get(
+            "primary_window_months"
+        )
     return fp
 
 

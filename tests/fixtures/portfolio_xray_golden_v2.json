@@ -53,6 +53,378 @@
     "es_95_moderate": -0.015,
     "es_95_high": -0.025
   },
+  "block_2_1_asset_allocation": {
+    "block": "2.1_asset_allocation",
+    "analysis_subject": "unknown",
+    "analysis_mode": "unknown",
+    "investor_currency": "USD",
+    "portfolio_composition_snapshot": {
+      "total_holdings": 4,
+      "top1_holding": {
+        "ticker": "SPY",
+        "weight_pct": 45.0
+      },
+      "top3_holdings": [
+        {
+          "ticker": "SPY",
+          "weight_pct": 45.0
+        },
+        {
+          "ticker": "TLT",
+          "weight_pct": 30.0
+        },
+        {
+          "ticker": "HYG",
+          "weight_pct": 15.0
+        }
+      ],
+      "top3_weight_pct": 90.0,
+      "dominant_asset_class": {
+        "name": "equity",
+        "weight_pct": 45.0
+      },
+      "dominant_risk_role": {
+        "name": "risk_on",
+        "weight_pct": 27.5
+      },
+      "dominant_main_risk_factor": {
+        "name": "equity",
+        "weight_pct": 45.0
+      },
+      "dominant_region": {
+        "name": "US",
+        "weight_pct": 90.0
+      },
+      "dominant_currency": {
+        "name": "USD",
+        "weight_pct": 100.0
+      }
+    },
+    "capital_allocation_breakdown": {
+      "by_asset": [
+        {
+          "name": "SPY",
+          "weight_pct": 45.0
+        },
+        {
+          "name": "TLT",
+          "weight_pct": 30.0
+        },
+        {
+          "name": "HYG",
+          "weight_pct": 15.0
+        },
+        {
+          "name": "GLD",
+          "weight_pct": 10.0
+        }
+      ],
+      "by_asset_class": [
+        {
+          "name": "equity",
+          "weight_pct": 45.0
+        },
+        {
+          "name": "fixed_income",
+          "weight_pct": 45.0
+        },
+        {
+          "name": "commodity",
+          "weight_pct": 10.0
+        }
+      ],
+      "by_main_risk_factor": [
+        {
+          "name": "equity",
+          "weight_pct": 45.0
+        },
+        {
+          "name": "real_rates",
+          "weight_pct": 30.0
+        },
+        {
+          "name": "credit",
+          "weight_pct": 15.0
+        },
+        {
+          "name": "commodity",
+          "weight_pct": 10.0
+        }
+      ],
+      "by_risk_role": [
+        {
+          "name": "risk_on",
+          "weight_pct": 27.5
+        },
+        {
+          "name": "growth",
+          "weight_pct": 22.5
+        },
+        {
+          "name": "defensive",
+          "weight_pct": 15.0
+        },
+        {
+          "name": "duration",
+          "weight_pct": 15.0
+        },
+        {
+          "name": "crisis_hedge",
+          "weight_pct": 5.0
+        },
+        {
+          "name": "inflation_hedge",
+          "weight_pct": 5.0
+        },
+        {
+          "name": "carry",
+          "weight_pct": 5.0
+        },
+        {
+          "name": "income",
+          "weight_pct": 5.0
+        }
+      ],
+      "by_region": [
+        {
+          "name": "US",
+          "weight_pct": 90.0
+        },
+        {
+          "name": "Global",
+          "weight_pct": 10.0
+        }
+      ],
+      "by_currency": [
+        {
+          "name": "USD",
+          "weight_pct": 100.0
+        }
+      ]
+    },
+    "concentration_flags": [
+      {
+        "flag_id": "top_holding_concentration",
+        "severity": "medium",
+        "metric": "top1_weight",
+        "dimension": null,
+        "label": null,
+        "threshold": 0.2,
+        "observed": 0.45,
+        "message": "Top holding weight is 45.000% (medium diagnostic threshold 20.000%)."
+      },
+      {
+        "flag_id": "top_holding_concentration",
+        "severity": "high",
+        "metric": "top1_weight",
+        "dimension": null,
+        "label": null,
+        "threshold": 0.3,
+        "observed": 0.45,
+        "message": "Top holding weight is 45.000% (high diagnostic threshold 30.000%)."
+      },
+      {
+        "flag_id": "top3_concentration",
+        "severity": "medium",
+        "metric": "top3_weight",
+        "dimension": null,
+        "label": null,
+        "threshold": 0.5,
+        "observed": 0.9,
+        "message": "Top three holdings sum to 90.000% (medium diagnostic threshold 50.000%)."
+      },
+      {
+        "flag_id": "top3_concentration",
+        "severity": "high",
+        "metric": "top3_weight",
+        "dimension": null,
+        "label": null,
+        "threshold": 0.65,
+        "observed": 0.9,
+        "message": "Top three holdings sum to 90.000% (high diagnostic threshold 65.000%)."
+      },
+      {
+        "flag_id": "single_region_dominance",
+        "severity": "medium",
+        "metric": "region_weight",
+        "dimension": "region",
+        "label": "US",
+        "threshold": 0.7,
+        "observed": 0.9,
+        "message": "US region concentration is 90.000% (medium diagnostic threshold 70.000%)."
+      },
+      {
+        "flag_id": "single_region_dominance",
+        "severity": "high",
+        "metric": "region_weight",
+        "dimension": "region",
+        "label": "US",
+        "threshold": 0.85,
+        "observed": 0.9,
+        "message": "US region concentration is 90.000% (high diagnostic threshold 85.000%)."
+      },
+      {
+        "flag_id": "single_currency_dominance",
+        "severity": "medium",
+        "metric": "currency_exposure_weight",
+        "dimension": "currency_exposure",
+        "label": "USD",
+        "threshold": 0.7,
+        "observed": 1.0,
+        "message": "USD currency exposure concentration is 100.000% (medium diagnostic threshold 70.000%)."
+      },
+      {
+        "flag_id": "single_currency_dominance",
+        "severity": "high",
+        "metric": "currency_exposure_weight",
+        "dimension": "currency_exposure",
+        "label": "USD",
+        "threshold": 0.85,
+        "observed": 1.0,
+        "message": "USD currency exposure concentration is 100.000% (high diagnostic threshold 85.000%)."
+      }
+    ],
+    "duplicate_exposure_flags": [],
+    "actual_economic_exposure_summary": {
+      "headline": "The portfolio's economic structure is capital is weighted toward equity (45.000%) and main risk factor exposure is equity (45.000%).",
+      "key_points": [
+        "Largest holding: SPY at 45.000% of capital.",
+        "Dominant region label: US (90.000%).",
+        "Asset class mix (top buckets): equity 45.000%, fixed_income 45.000%, commodity 10.000%.",
+        "Top holding weight is 45.000% (high diagnostic threshold 30.000%).",
+        "Top three holdings sum to 90.000% (high diagnostic threshold 65.000%)."
+      ]
+    },
+    "data_quality_warnings": [],
+    "metadata": {
+      "source": "core_mvp_input",
+      "cash_treatment": "market_tickers_only",
+      "cash_proxy_used_for_real_cash": false,
+      "taxonomy_sources": [
+        "test_taxonomy"
+      ],
+      "allocation_concentration_thresholds": {
+        "top_holding_concentration_medium": 0.2,
+        "top_holding_concentration_high": 0.3,
+        "top3_concentration_medium": 0.5,
+        "top3_concentration_high": 0.65,
+        "single_asset_class_dominance_medium": 0.6,
+        "single_asset_class_dominance_high": 0.75,
+        "single_main_risk_factor_dominance_medium": 0.6,
+        "single_main_risk_factor_dominance_high": 0.75,
+        "single_region_dominance_medium": 0.7,
+        "single_region_dominance_high": 0.85,
+        "single_currency_dominance_medium": 0.7,
+        "single_currency_dominance_high": 0.85
+      }
+    }
+  },
+  "block_2_2_portfolio_metrics": {
+    "block": "2.2_portfolio_metrics",
+    "analysis_subject": "unknown",
+    "analysis_mode": "unknown",
+    "investor_currency": "USD",
+    "portfolio_behavior_snapshot": {
+      "headline": "The portfolio delivered 0.080 CAGR with a -0.220 maximum drawdown over the primary diagnostic window.",
+      "key_points": [
+        "Realized CAGR 0.080 with annualized volatility 0.100 over the primary window.",
+        "Sharpe ratio 0.600; Sortino 0.630.",
+        "Maximum drawdown -0.220; deepest episode recovered within sample.",
+        "Daily historical VaR/ES tail metrics are available for this run.",
+        "Base-benchmark beta 0.850 on monthly aligned returns."
+      ],
+      "overall_behavior_label": "moderate"
+    },
+    "return_risk_metrics": {
+      "portfolio_cagr": 0.08,
+      "vol_annual": 0.1,
+      "sharpe": 0.6,
+      "sortino": 0.63,
+      "treynor": 0.12,
+      "skewness": -0.2,
+      "kurtosis": 1.1
+    },
+    "drawdown_diagnostics": {
+      "max_drawdown": -0.22,
+      "ttr_months": 2.0,
+      "recovered": true,
+      "drawdown_depth": -0.22,
+      "drawdown_length": 8,
+      "recovery_months": 4,
+      "recovery_median": 3.0,
+      "recovery_p90": 4.0,
+      "pct_time_underwater": 0.12,
+      "longest_underwater": 10,
+      "count_drawdowns_gt_5": 2,
+      "count_drawdowns_gt_10": 1,
+      "count_drawdowns_gt_20": 1
+    },
+    "tail_risk_diagnostics": {
+      "var_95": -0.02,
+      "var_99": -0.03,
+      "es_95": -0.03,
+      "es_99": -0.04,
+      "downside_deviation": 0.065,
+      "eee_10": 42.5
+    },
+    "benchmark_dependence": {
+      "benchmark_ticker": "SPY",
+      "beta_portfolio": 0.85,
+      "beta_base": 0.85,
+      "corr_base": 0.72,
+      "downside_beta": 0.9,
+      "upside_beta": 0.75
+    },
+    "rolling_diagnostics": {
+      "core_view": {
+        "rolling_sharpe_36m": {
+          "available": true,
+          "latest": 0.55,
+          "series_ref": "rolling_sharpe_36m_10y.csv"
+        },
+        "rolling_volatility_12m": {
+          "available": true,
+          "latest": 0.11,
+          "series_ref": "rolling_vol_12m_10y.csv"
+        },
+        "rolling_beta_or_correlation": {
+          "available": true,
+          "latest": null,
+          "latest_beta": 0.82,
+          "latest_correlation": null,
+          "series_ref": "rolling_beta_36m_10y.csv"
+        }
+      },
+      "advanced_available": {
+        "rolling_sharpe_12m": true,
+        "rolling_sortino_36m": false,
+        "rolling_sortino_12m": false,
+        "rolling_beta_36m": true,
+        "rolling_beta_12m": false,
+        "rolling_correlation_36m": false,
+        "rolling_correlation_12m": false
+      }
+    },
+    "correlation_breakdown": {
+      "top3_highest_correlation_pairs": [],
+      "top3_lowest_correlation_pairs": [],
+      "full_matrix_available": false,
+      "full_matrix_ref": null
+    },
+    "data_quality_warnings": [
+      "Correlation breakdown is limited because the primary-window correlation matrix is missing."
+    ],
+    "metadata": {
+      "source": "core_mvp_input",
+      "cash_treatment": "market_tickers_only",
+      "cash_proxy_used_for_real_cash": false,
+      "metric_quality_internal_only": true,
+      "primary_window_months": 120,
+      "primary_window_label": "10Y (120M)",
+      "vol_of_vol": 0.04,
+      "rel_vol_of_vol": 0.35
+    }
+  },
   "sections": {
     "asset_allocation": {
       "status": "available",
@@ -323,11 +695,11 @@
           "sharpe": 0.6,
           "sortino": 0.63,
           "beta_portfolio": 0.85,
-          "corr_base": null,
-          "downside_beta": null,
-          "upside_beta": null,
-          "skewness": null,
-          "kurtosis": null,
+          "corr_base": 0.72,
+          "downside_beta": 0.9,
+          "upside_beta": 0.75,
+          "skewness": -0.2,
+          "kurtosis": 1.1,
           "treynor": 0.12,
           "max_drawdown": -0.22,
           "ttr_months": 2.0,
@@ -403,7 +775,49 @@
           "window_label": "10y",
           "metric_available": true,
           "var_95": -0.02,
-          "es_95": -0.03
+          "var_99": -0.03,
+          "es_95": -0.03,
+          "es_99": -0.04
+        },
+        {
+          "type": "crisis_equity_exposure",
+          "eee_10pct": 42.5
+        },
+        {
+          "type": "rolling_metrics",
+          "rolling_sharpe_36m": {
+            "last": 0.55,
+            "mean": 0.5,
+            "p10": 0.3,
+            "p90": 0.7
+          },
+          "rolling_sharpe_12m": {
+            "last": 0.48,
+            "mean": 0.45,
+            "p10": 0.2,
+            "p90": 0.65
+          },
+          "rolling_vol_12m": {
+            "last": 0.11,
+            "mean": 0.1,
+            "p10": 0.08,
+            "p90": 0.13
+          },
+          "rolling_beta_36m": {
+            "last": 0.82,
+            "mean": 0.8,
+            "p10": 0.6,
+            "p90": 0.95
+          }
+        },
+        {
+          "type": "drawdown_structure",
+          "summary": {
+            "recovery_median_months": 3.0,
+            "recovery_p90_months": 4.0,
+            "pct_time_underwater": 0.12,
+            "longest_underwater_months": 10
+          }
         }
       ],
       "limitations": [
@@ -1661,5 +2075,14 @@
         "This is an explanatory diagnostic summary, not a score, recommendation, selection decision, or trade instruction."
       ]
     }
+  },
+  "data_trust_signals": {
+    "version": "xray_data_trust_signals_v1",
+    "overall_trust": "high",
+    "n_section_warnings": 0,
+    "signals": [],
+    "stress_data_trust_summary_version": null,
+    "user_summary_lines": [],
+    "does_not_change_xray_methodology": true
   }
 }

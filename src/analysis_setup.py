@@ -55,6 +55,27 @@ def positive_weights(weights: dict[str, float] | None) -> dict[str, float]:
     return out
 
 
+def resolved_analysis_weights(
+    analysis_setup: dict[str, Any] | None,
+    *,
+    weights: dict[str, Any] | None = None,
+) -> dict[str, float]:
+    """Positive capital weights for diagnostics and Block 2.1.
+
+    Non-empty explicit ``weights`` win (e.g. snapshot ``final_weights_total``);
+    otherwise ``analysis_setup['analysis_portfolio']['weights']`` from Input Layer.
+    """
+    explicit = positive_weights(dict(weights) if weights is not None else None)
+    if explicit:
+        return explicit
+    if not isinstance(analysis_setup, dict):
+        return {}
+    portfolio = analysis_setup.get("analysis_portfolio")
+    if not isinstance(portfolio, dict):
+        return {}
+    return positive_weights(portfolio.get("weights"))
+
+
 def weight_status(weights: dict[str, float] | None) -> dict[str, Any]:
     """Serializable status for a weight map without changing the weights."""
     positive = positive_weights(weights)
@@ -767,5 +788,6 @@ __all__ = [
     "positive_weights",
     "preflight_explicit_analysis_subject_tickers",
     "resolve_analysis_subject",
+    "resolved_analysis_weights",
     "weight_status",
 ]

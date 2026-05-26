@@ -12,8 +12,13 @@ import json
 from pathlib import Path
 from typing import Any, Literal
 
+from src.block_2_1_asset_allocation import BLOCK_2_1_ID
+from src.block_2_2_portfolio_metrics import BLOCK_2_2_ID
 from src.candidate_launchpad import CANDIDATE_LAUNCHPAD_FILENAME
 from src.problem_classification import PROBLEM_CLASSIFICATION_FILENAME
+
+PORTFOLIO_XRAY_BLOCK_2_1_KEY = "block_2_1_asset_allocation"
+PORTFOLIO_XRAY_BLOCK_2_2_KEY = "block_2_2_portfolio_metrics"
 
 ANALYSIS_SUBJECT_SIDECAR_SUBDIR = "analysis_subject"
 
@@ -297,6 +302,38 @@ def discover_paths_by_category(manifest: dict[str, Any]) -> dict[str, dict[str, 
     return build_generated_paths_by_category(generated)
 
 
+def portfolio_xray_has_block_2_1(doc: dict[str, Any] | None) -> bool:
+    """True when ``portfolio_xray.json`` carries the Block 2.1 product contract."""
+    if not isinstance(doc, dict):
+        return False
+    block = doc.get(PORTFOLIO_XRAY_BLOCK_2_1_KEY)
+    return isinstance(block, dict) and block.get("block") == BLOCK_2_1_ID
+
+
+def portfolio_xray_has_block_2_2(doc: dict[str, Any] | None) -> bool:
+    """True when ``portfolio_xray.json`` carries the Block 2.2 product contract."""
+    if not isinstance(doc, dict):
+        return False
+    block = doc.get(PORTFOLIO_XRAY_BLOCK_2_2_KEY)
+    return isinstance(block, dict) and block.get("block") == BLOCK_2_2_ID
+
+
+def subject_diagnostics_manifest_note() -> dict[str, Any]:
+    """Manifest disclosure: Block 2.1/2.2 product contracts live inside ``portfolio_xray.json``."""
+    return {
+        "portfolio_xray_json": {
+            "contract_version": "portfolio_xray_v2",
+            "product_capital_structure_key": PORTFOLIO_XRAY_BLOCK_2_1_KEY,
+            "product_portfolio_behavior_key": PORTFOLIO_XRAY_BLOCK_2_2_KEY,
+            "note": (
+                "Block 2.1 capital allocation and Block 2.2 portfolio metrics are nested under "
+                "portfolio_xray.json (analysis_subject/ on portfolio-first runs), not separate "
+                "bundle files."
+            ),
+        },
+    }
+
+
 def product_bundle_manifest_extra() -> dict[str, Any]:
     """Common manifest metadata that makes the Core MVP surface explicit."""
     return {
@@ -307,6 +344,7 @@ def product_bundle_manifest_extra() -> dict[str, Any]:
             "merged_product_bundle_json": False,
             "advanced_artifacts_are_product_surface": False,
         },
+        "subject_diagnostics_contract": subject_diagnostics_manifest_note(),
         "artifact_categories": product_bundle_artifact_categories(),
     }
 
@@ -346,6 +384,8 @@ def load_diagnosis_bundle_docs(output_dir_final: Path) -> dict[str, Any]:
 
 
 __all__ = [
+    "PORTFOLIO_XRAY_BLOCK_2_1_KEY",
+    "PORTFOLIO_XRAY_BLOCK_2_2_KEY",
     "ADVANCED_EVIDENCE_MANIFEST_KEYS",
     "ARTIFACT_CATEGORY_ORDER",
     "DiagnosisResolution",
@@ -364,8 +404,11 @@ __all__ = [
     "load_diagnosis_bundle_docs",
     "manifest_key_category",
     "product_bundle_artifact_categories",
+    "portfolio_xray_has_block_2_1",
+    "portfolio_xray_has_block_2_2",
     "product_bundle_generated_paths_for_manifest",
     "product_bundle_manifest_extra",
     "resolve_candidate_launchpad_path",
+    "subject_diagnostics_manifest_note",
     "resolve_problem_classification_path",
 ]

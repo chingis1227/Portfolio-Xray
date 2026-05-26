@@ -1,0 +1,14 @@
+# Block 2.1 demo fixture: repository config.yml eight tickers rescaled ×0.95 plus 5% Cash USD.
+# Preserves root config.yml unchanged; used for allocation / X-Ray regression (ExecPlan Session 05).
+investor_currency: USD
+tickers: [SPY, QQQ, GLD, SLV, BND, SCHD, SCHP, TLT, Cash USD]
+current_weights:
+  SPY: 0.095
+  QQQ: 0.1235
+  GLD: 0.0855
+  SLV: 0.0855
+  BND: 0.152
+  SCHD: 0.1615
+  SCHP: 0.1235
+  TLT: 0.1235
+  Cash USD: 0.05

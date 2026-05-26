@@ -6,6 +6,73 @@ It records what was added, changed, removed, fixed, or deprecated at a project l
 
 Date: 2026-05-26
 
+Category: Fixed
+
+- **Block 2.2 drawdown_structure wiring:** `build_block_2_2_portfolio_metrics` now reads
+  `drawdown_structure` from `portfolio_analytics` when the top-level snapshot key is absent (live
+  lightweight path). Extended `drawdown_diagnostics` fields populate on live X-Ray; MDD/TTR unchanged.
+  Evidence: [bugfix audit](docs/audits/2026-05-26_block_2_2_drawdown_wiring_bugfix.md); **6** Block 2.2
+  tests passed; live demo `pct_time_underwater` **0.567**, counts **4 / 1 / 0**.
+
+Date: 2026-05-26
+
+Category: Changed
+
+- **Block 2.2 Portfolio Metrics / Risk Diagnostics MVP closed** (ExecPlan Sessions 01–08,
+  `DEC-2026-05-26-003`): product-facing `block_2_2_portfolio_metrics` on
+  `analysis_subject/portfolio_xray.json` for diagnosis and one-candidate runs; live demo
+  (`config.yml` 10Y: CAGR 9.9%, vol 9.6%, Sharpe 0.799, MDD -19.8%, beta 0.513); real-cash
+  fixture proof via pytest. Evidence:
+  [acceptance audit](docs/audits/2026-05-26_block_2_2_portfolio_metrics_acceptance_audit.md);
+  closure pytest **48 passed**; bundle/runtime **16 passed**; `validate_one_candidate_demo.py` PASS.
+
+Date: 2026-05-26
+
+Category: Changed
+
+- **Block 2.1 Asset Allocation MVP closed** (ExecPlan Sessions 01–08, `DEC-2026-05-26-002`):
+  product-facing `block_2_1_asset_allocation` on `analysis_subject/portfolio_xray.json` for diagnosis
+  and one-candidate runs; live demo (`config.yml`: SCHD top1 17.0%, top3 46.0%); real-cash fixture
+  proof (5% `Cash USD`, SCHD 16.15%, top3 43.7%). Evidence:
+  [acceptance audit](docs/audits/2026-05-26_block_2_1_asset_allocation_acceptance_audit.md);
+  closure pytest **44 passed**; `validate_one_candidate_demo.py` PASS.
+
+Date: 2026-05-26
+
+Category: Changed
+
+- **Block 2.1 pipeline integration** (ExecPlan Session 07): `analysis_subject/portfolio_xray.json`
+  on portfolio-first materialize paths includes `block_2_1_asset_allocation`; `output_manifest.json`
+  documents nested Block 2.1 via `subject_diagnostics_contract`; live/offline gates and
+  `tests/test_block_2_1_pipeline_integration.py`.
+
+Date: 2026-05-26
+
+Category: Changed
+
+- **Block 2.1 Input Layer connection** (ExecPlan Session 04): `resolved_analysis_weights` in
+  `src/analysis_setup.py`; Portfolio X-Ray and legacy `cash_weight` use `analysis_portfolio.weights`
+  and real-cash holdings (not `cash_proxy_ticker`). Regression on `minimal_usd_with_cash.yml`.
+
+Date: 2026-05-26
+
+Category: Changed
+
+- **Block 2.1 Asset Allocation builder shipped** (ExecPlan Session 03): `src/block_2_1_asset_allocation.py`
+  builds `block_2_1_asset_allocation` on `portfolio_xray.json`; real-cash synthetic taxonomy;
+  concentration and duplicate-exposure flags. Tests: `tests/test_block_2_1_asset_allocation.py`.
+
+Date: 2026-05-26
+
+Category: Changed
+
+- **Block 2.1 Asset Allocation product contract specified** (`DEC-2026-05-26-002`): Added
+  `portfolio_xray_diagnostics_spec.md` §2.1.1 (`block_2_1_asset_allocation` JSON contract) and §2.1.2
+  (`ALLOCATION_CONCENTRATION_THRESHOLDS`). Implementation in `src/block_2_1_asset_allocation.py` follows
+  ExecPlan Session 03+. Docs: layer spec, OUTPUTS Block 2 row.
+
+Date: 2026-05-26
+
 Category: Changed
 
 - **Input Layer MVP Migration closed and frozen** (`DEC-2026-05-26-001`): Core MVP three-field

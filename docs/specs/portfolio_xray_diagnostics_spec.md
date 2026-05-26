@@ -64,15 +64,21 @@ Generated report surfaces should render the X-Ray as structured sections and tab
 
 ```json
 {
-  "version": "portfolio_xray_v1",
+  "version": "portfolio_xray_v2",
   "diagnostic_only": true,
   "diagnostic_only_disclaimer": "...",
   "analysis_setup_summary": {},
   "thresholds": {},
+  "block_2_1_asset_allocation": {},
+  "block_2_2_portfolio_metrics": {},
   "sections": {},
   "legacy_summary": {}
 }
 ```
+
+The current implementation uses `version: portfolio_xray_v2`. `block_2_1_asset_allocation` is the product-facing Block 2.1 contract (§2.1.1); it is populated on portfolio-first materialize paths when `build_portfolio_xray_v2` runs (ExecPlan closed Session 08, 2026-05-26). Older on-disk `portfolio_xray.json` files may lack the key until re-materialized.
+
+`block_2_2_portfolio_metrics` is the product-facing Block 2.2 contract (§2.2.1); populated when `build_portfolio_xray_v2` runs (builder Session 03, 2026-05-26). Older on-disk files may omit the key until re-materialized. Legacy `sections.risk_diagnostics` remains for golden tests and formatters.
 
 The current implementation may include additional fields for backward compatibility. New fields should be additive unless a future migration is explicitly planned.
 
@@ -133,6 +139,173 @@ Post-audit Session 07 (`RM-947`):
 - Formulas align with `candidate_comparison` `weight_concentration` for cross-artifact consistency.
 - `legacy_summary.asset_allocation_summary` mirrors top-1/top-3/HHI fields for text overview lines.
 
+#### 2.1.1 Block 2.1 product contract (`block_2_1_asset_allocation`)
+
+Status: **implemented** (ExecPlan [Block 2.1 Asset Allocation MVP](../exec_plans/2026-05-26_block_2_1_asset_allocation_plan.md) **Completed** Sessions 01–08, 2026-05-26). **Implementation:** `src/block_2_1_asset_allocation.py`, wired from `build_portfolio_xray_v2` in `src/portfolio_xray.py`. Acceptance: [Block 2.1 acceptance audit](../audits/2026-05-26_block_2_1_asset_allocation_acceptance_audit.md).
+
+Purpose: give portfolio-first consumers a **stable, product-facing** capital-allocation answer without parsing heterogeneous `sections.asset_allocation.items[]`. Diagnostic-only: no optimization, candidate selection, mandate gates, or trade instructions.
+
+**Artifact placement:** top-level key `block_2_1_asset_allocation` on `portfolio_xray.json` under the active output folder (portfolio-first: `{output_dir_final}/analysis_subject/portfolio_xray.json`). Do **not** introduce a separate `asset_allocation.json` in the six-file product bundle.
+
+**Backward compatibility:** `sections.asset_allocation` (items model) and `legacy_summary.asset_allocation_summary` remain required and unchanged in shape until an explicit migration. Report formatters may continue to use the legacy section; UI/API should prefer `block_2_1_asset_allocation`.
+
+**Weight basis:** positive capital weights from resolved `analysis_setup` / analyzed weights (same as `_positive_weights` in `src/portfolio_xray.py`). No ETF look-through. Weights sum to at most `1.0`; partial sums disclose cash remainder via Input Layer, not via substituting `cash_proxy_ticker`.
+
+**Real cash:** user labels such as `Cash USD`, `CASH`, `Cash EUR` are portfolio holdings with synthetic taxonomy (`taxonomy_source`: `real_cash_synthetic_v1`). They must appear in `by_asset` and `by_currency`. They must **not** be mapped to `cash_proxy_ticker` (e.g. BIL) for allocation. See [input_assumptions_spec.md](input_assumptions_spec.md) real-cash rule.
+
+**Core MVP breakdown dimensions** (product contract): `by_asset`, `by_asset_class`, `by_main_risk_factor`, `by_risk_role`, `by_region`, `by_currency`.
+
+**Deferred from core product contract** (may remain in legacy `sections.asset_allocation` items only): `sector`, `subtype`, `thematic_tags`, `secondary_risk_factor`, `duration_bucket`, `credit_quality`, full taxonomy table export.
+
+**Top-level envelope:**
+
+```json
+{
+  "block": "2.1_asset_allocation",
+  "analysis_subject": "current_portfolio",
+  "analysis_mode": "analyze_current_weights",
+  "investor_currency": "USD",
+  "portfolio_composition_snapshot": {},
+  "capital_allocation_breakdown": {},
+  "concentration_flags": [],
+  "duplicate_exposure_flags": [],
+  "actual_economic_exposure_summary": {},
+  "data_quality_warnings": [],
+  "metadata": {}
+}
+```
+
+**Field contract**
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `block` | string | yes | Constant `2.1_asset_allocation` |
+| `analysis_subject` | string | yes | From `analysis_setup` (Core MVP default `current_portfolio`) |
+| `analysis_mode` | string | yes | From `analysis_setup` (Core MVP default `analyze_current_weights`) |
+| `investor_currency` | string | yes | ISO-style code from setup |
+| `portfolio_composition_snapshot` | object | yes | Fast diagnosis panel (below) |
+| `capital_allocation_breakdown` | object | yes | Aggregated weights (below) |
+| `concentration_flags` | array | yes | May be empty; structured flags (below) |
+| `duplicate_exposure_flags` | array | yes | May be empty; taxonomy duplicate groups (below) |
+| `actual_economic_exposure_summary` | object | yes | Rule-based English summary (below) |
+| `data_quality_warnings` | array of string | yes | Unknown taxonomy, missing fields, real-cash notes |
+| `metadata` | object | yes | Provenance (below) |
+
+**`portfolio_composition_snapshot`**
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `total_holdings` | integer | Count of tickers with positive weight |
+| `top1_holding` | object | `{ "ticker": string, "weight_pct": number }` |
+| `top3_holdings` | array | Up to 3 objects `{ "ticker", "weight_pct" }`, descending weight |
+| `top3_weight_pct` | number | Sum of top-3 weights as **percent** (0–100 scale) |
+| `dominant_asset_class` | object \| null | `{ "name": string, "weight_pct": number }` — argmax on breakdown |
+| `dominant_risk_role` | object \| null | Same; multi-tag roles split weight evenly across tags |
+| `dominant_main_risk_factor` | object \| null | Same |
+| `dominant_region` | object \| null | Same |
+| `dominant_currency` | object \| null | Same; uses `currency_exposure` labels |
+
+Dominant ties: choose lexicographically smallest `name` among tied maxima.
+
+**`capital_allocation_breakdown`**
+
+Each key maps to an array of `{ "name": string, "weight_pct": number }` sorted by descending `weight_pct`, then `name`. Internal aggregation uses weight fractions 0–1; **export** `weight_pct` = fraction × 100, rounded to 3 decimals at export only ([metrics_specification.md](metrics_specification.md) rounding rule).
+
+| Key | Source dimension |
+| --- | --- |
+| `by_asset` | Ticker label (preserves user casing for display; match keys case-insensitively) |
+| `by_asset_class` | Taxonomy `asset_class` |
+| `by_main_risk_factor` | Taxonomy `main_risk_factor` |
+| `by_risk_role` | Taxonomy `risk_role` (list; split weight) |
+| `by_region` | Taxonomy `region` |
+| `by_currency` | Taxonomy `currency_exposure` |
+
+**`concentration_flags` item**
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `flag_id` | string | One of §2.1.2 `flag_id` values |
+| `severity` | string | `medium` or `high` |
+| `metric` | string | e.g. `top1_weight`, `top3_weight`, `asset_class_weight` |
+| `dimension` | string \| null | Breakdown dimension when applicable (e.g. `asset_class`) |
+| `label` | string \| null | Dominant bucket name when applicable |
+| `threshold` | number | Threshold as fraction 0–1 (moderate or high per rule) |
+| `observed` | number | Observed fraction 0–1 |
+| `message` | string | Short English diagnostic sentence |
+
+At most one flag per `(flag_id, severity)` per run; emit **high** when high threshold breached even if medium also breached.
+
+**`duplicate_exposure_flags` item**
+
+Emitted when the portfolio holds **two or more** positive-weight tickers sharing the same non-empty `duplicate_group_id` in merged taxonomy.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `duplicate_group_id` | string | Taxonomy group id |
+| `tickers` | array of string | Held tickers in group |
+| `combined_weight` | number | Sum of weights (fraction 0–1) |
+| `combined_weight_pct` | number | Export percent |
+| `canonical_ticker` | string \| null | From taxonomy when present |
+| `severity` | string | `medium` if combined ≥ 10%; `high` if combined ≥ 20% (diagnostic-only) |
+| `message` | string | English diagnostic sentence |
+
+**`actual_economic_exposure_summary`**
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `headline` | string | One sentence: dominant structure in plain English |
+| `key_points` | array of string | 2–5 bullets: concentration, dominants, duplicate exposure, unknown taxonomy, real cash |
+
+No buy/sell language. Describe economic labels from taxonomy, not ticker symbols only.
+
+**`metadata`**
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `source` | string | `core_mvp_input` for portfolio-first Core MVP path |
+| `cash_treatment` | string | `real_cash_position_if_present` when any real-cash holding; else `market_tickers_only` |
+| `cash_proxy_used_for_real_cash` | boolean | Must be `false` when real cash present |
+| `taxonomy_sources` | array of string | e.g. `config/etf_universe.yml`, `real_cash_synthetic_v1` |
+| `allocation_concentration_thresholds` | object | Copy of §2.1.2 registry at export (optional but recommended) |
+
+**Synthetic real-cash taxonomy row** (when holding present):
+
+| Field | Value |
+| --- | --- |
+| `asset_class` | `cash` |
+| `region` | `US` if label implies USD; else `unknown` |
+| `currency_exposure` | parsed from label (`USD` for `Cash USD` / `CASH USD`) |
+| `risk_role` | `["cash", "liquidity", "defensive"]` |
+| `main_risk_factor` | `cash` |
+| `taxonomy_source` | `real_cash_synthetic_v1` |
+
+#### 2.1.2 Block 2.1 concentration thresholds (`ALLOCATION_CONCENTRATION_THRESHOLDS`)
+
+Status: canonical registry (Block 2.1 MVP, 2026-05-26). Separate from §8 `XRAY_THRESHOLDS` (risk/RC/hidden-risk rules).
+
+**Sources of truth**
+
+| Layer | Location |
+| --- | --- |
+| Spec (this section) | Numeric values, `flag_id`, severity bands |
+| Runtime | `src/block_2_1_asset_allocation.py::ALLOCATION_CONCENTRATION_THRESHOLDS` |
+| Export | `block_2_1_asset_allocation.metadata.allocation_concentration_thresholds` |
+
+**Change policy:** update this section and `tests/test_block_2_1_threshold_registry.py` in the same change as runtime thresholds. Do not change values without a spec decision in [DECISIONS.md](../../DECISIONS.md) or the active Block 2.1 ExecPlan decision log.
+
+**Comparator:** `gte_share` — flag when observed capital-weight share ≥ threshold (fraction 0–1).
+
+| `flag_id` | Medium threshold | High threshold | Observed metric |
+| --- | ---: | ---: | --- |
+| `top_holding_concentration` | 0.20 | 0.30 | Top-1 ticker weight |
+| `top3_concentration` | 0.50 | 0.65 | Sum of top-3 ticker weights |
+| `single_asset_class_dominance` | 0.60 | 0.75 | Max `asset_class` bucket |
+| `single_main_risk_factor_dominance` | 0.60 | 0.75 | Max `main_risk_factor` bucket |
+| `single_region_dominance` | 0.70 | 0.85 | Max `region` bucket |
+| `single_currency_dominance` | 0.70 | 0.85 | Max `currency_exposure` bucket |
+
+Duplicate-group severity (§2.1.1) is fixed: medium ≥ 10% combined weight; high ≥ 20% combined weight — not part of this numeric registry table.
+
 ### 2.2 Portfolio Metrics / Risk Diagnostics
 
 Question answered: How has the portfolio behaved historically, and what risk did it take?
@@ -165,6 +338,206 @@ Post-audit Session 05 (`RM-945`):
 Section-level provenance (post-audit Session 03, `RM-943`): `risk_diagnostics` exposes `method`, `frequency` (`mixed` when monthly metrics and daily tail risk coexist), `window`, `n_obs`, and `benchmark` (from `metric_quality` / tail window labels). When the multi-window panel is present, `window` lists the panel horizons and `data_sources_used` includes `snapshot_{3y,5y,10y}.json metrics` for loaded files.
 
 Canonical formula ownership remains in [metrics_specification.md](metrics_specification.md). This spec owns how those metrics are grouped, disclosed, and interpreted in the X-Ray layer.
+
+#### 2.2.1 Block 2.2 product contract (`block_2_2_portfolio_metrics`)
+
+Status: **implemented** (builder Session 03, 2026-05-26). ExecPlan [Block 2.2 Portfolio Metrics / Risk Diagnostics MVP](../exec_plans/2026-05-26_block_2_2_portfolio_metrics_plan.md). **Implementation:** `src/block_2_2_portfolio_metrics.py` → `build_block_2_2_portfolio_metrics`, wired from `build_portfolio_xray_v2`. Acceptance audit: planned `docs/audits/2026-05-26_block_2_2_portfolio_metrics_acceptance_audit.md` (Session 08).
+
+Purpose: give portfolio-first consumers a **stable, product-facing** answer for how the current portfolio behaved as one investment organism — return, risk, risk-adjusted efficiency, drawdowns, tail losses, benchmark dependence, rolling stability summaries, and correlation breakdown — **without** parsing heterogeneous `sections.risk_diagnostics.items[]`. Diagnostic-only: no optimization, candidates, scorecards, mandate gates, or trade instructions.
+
+**Artifact placement:** top-level key `block_2_2_portfolio_metrics` on `portfolio_xray.json` under the active output folder (portfolio-first: `{output_dir_final}/analysis_subject/portfolio_xray.json`). Do **not** introduce a separate `portfolio_metrics.json` in the six-file product bundle.
+
+**Backward compatibility:** `sections.risk_diagnostics` (items model), including `portfolio_metrics`, `multi_window_metrics`, `tail_risk`, `rolling_metrics`, and `drawdown_structure` items, remains required and unchanged in shape until an explicit migration. Report formatters and golden contract tests may continue to use the legacy section; UI/API should prefer `block_2_2_portfolio_metrics`.
+
+**Computation boundary:** Block 2.2 **maps** upstream snapshot/report outputs only. Canonical formulas remain in [metrics_specification.md](metrics_specification.md), [data_policy_spec.md](data_policy_spec.md), and owning modules (`src/metrics_portfolio.py`, `src/portfolio_analytics.py`, `run_report.py`). The builder must not recompute metrics inside `portfolio_xray.py`.
+
+**Primary horizon:** **10Y (120M)** when `snapshot_10y.json` provides `metrics` (and supporting `analytics` / `drawdown_structure` when present); else **5Y (60M)** from `snapshot_5y.json`; else **3Y (36M)** from `snapshot_3y.json`; else the single `portfolio_metrics` dict passed into `build_portfolio_xray_v2`. Export `metadata.primary_window_months` and `metadata.primary_window_label` accordingly (`120` / `10Y (120M)`, etc.).
+
+**Portfolio returns path:** monthly portfolio metrics use **NaN-safe** portfolio returns (`portfolio_returns_nan_safe` per data policy). **Real cash** holdings (e.g. `Cash USD`) contribute **0%** return via the existing path; do **not** substitute `cash_proxy_ticker` for real cash in Block 2.2. See [input_assumptions_spec.md](input_assumptions_spec.md) real-cash rule (same as Block 2.1).
+
+**Metric quality:** internal `metric_quality` objects on snapshot metrics are **not** exported on this block. Map coverage gaps to short English strings in `data_quality_warnings` only (see **Warning rule** below).
+
+**Top-level envelope:**
+
+```json
+{
+  "block": "2.2_portfolio_metrics",
+  "analysis_subject": "current_portfolio",
+  "analysis_mode": "analyze_current_weights",
+  "investor_currency": "USD",
+  "portfolio_behavior_snapshot": {
+    "headline": null,
+    "key_points": [],
+    "overall_behavior_label": null
+  },
+  "return_risk_metrics": {},
+  "drawdown_diagnostics": {},
+  "tail_risk_diagnostics": {},
+  "benchmark_dependence": {},
+  "rolling_diagnostics": {
+    "core_view": {},
+    "advanced_available": {}
+  },
+  "correlation_breakdown": {},
+  "data_quality_warnings": [],
+  "metadata": {}
+}
+```
+
+**Field contract (top level)**
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `block` | string | yes | Constant `2.2_portfolio_metrics` |
+| `analysis_subject` | string | yes | From `analysis_setup` (Core MVP default `current_portfolio`) |
+| `analysis_mode` | string | yes | From `analysis_setup` (Core MVP default `analyze_current_weights`) |
+| `investor_currency` | string | yes | ISO-style code from setup |
+| `portfolio_behavior_snapshot` | object | yes | Rule-based English synthesis (below); may use null headline until copy rules land |
+| `return_risk_metrics` | object | yes | Primary-window return/risk/efficiency metrics (below) |
+| `drawdown_diagnostics` | object | yes | Drawdown and underwater structure (below) |
+| `tail_risk_diagnostics` | object | yes | Daily historical tail metrics when available (below) |
+| `benchmark_dependence` | object | yes | Base-benchmark sensitivity (below) |
+| `rolling_diagnostics` | object | yes | Core rolling summaries + advanced flags (below) |
+| `correlation_breakdown` | object | yes | Top pairs + full-matrix ref (below) |
+| `data_quality_warnings` | array of string | yes | User-facing only; may be empty |
+| `metadata` | object | yes | Provenance and horizon (below) |
+
+**`portfolio_behavior_snapshot`**
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `headline` | string \| null | One sentence on realized behavior (return vs risk, drawdown, tail); no buy/sell language |
+| `key_points` | array of string | 2–5 bullets: Sharpe/Sortino context, max drawdown / recovery, tail availability, benchmark beta, correlation concentration |
+| `overall_behavior_label` | string \| null | Optional coarse label (e.g. `balanced`, `drawdown_sensitive`) — diagnostic only, not a score |
+
+**`return_risk_metrics`** (primary window; numeric fields rounded to **3 decimals** at export per metrics spec)
+
+| Field | Upstream (primary) | Notes |
+| --- | --- | --- |
+| `portfolio_cagr` | `metrics.cagr` | Monthly simple, calendar window |
+| `vol_annual` | `metrics.vol_annual` | |
+| `sharpe` | `metrics.sharpe` | |
+| `sortino` | `metrics.sortino` | |
+| `treynor` | `metrics.treynor` | When benchmark available |
+| `skewness` | `metrics.skewness` | Monthly log-return skew |
+| `kurtosis` | `metrics.kurtosis` | Monthly log-return kurtosis |
+
+**`drawdown_diagnostics`**
+
+| Field | Upstream | Notes |
+| --- | --- | --- |
+| `max_drawdown` | `metrics.max_drawdown` | Same window as primary metrics |
+| `ttr_months` | `metrics.ttr_months` | Time to recovery from deepest drawdown in window |
+| `recovered` | `metrics.recovered` | Boolean per metrics spec §6.9 |
+| `drawdown_depth` | deepest `drawdowns[].depth` | From `drawdown_structure.drawdowns` (negative fraction); null if no drawdowns |
+| `drawdown_length` | matching `length_months` | Months of deepest episode |
+| `recovery_months` | matching `recovery_months` | Null if not recovered within sample |
+| `recovery_median` | `summary.recovery_median_months` | Across episodes with recovery |
+| `recovery_p90` | `summary.recovery_p90_months` | |
+| `pct_time_underwater` | `summary.pct_time_underwater` | Fraction of months below prior peak |
+| `longest_underwater` | `summary.longest_underwater_months` | Integer months |
+| `count_drawdowns_gt_5` | `by_threshold[">5%"].count` | |
+| `count_drawdowns_gt_10` | `by_threshold[">10%"].count` | |
+| `count_drawdowns_gt_20` | `by_threshold[">20%"].count` | |
+
+**`tail_risk_diagnostics`**
+
+| Field | Upstream | Notes |
+| --- | --- | --- |
+| `var_95` | `analytics.tail_risk.var_95` or flat `analytics.var_95` | Daily historical when `tail_risk` present |
+| `var_99` | same pattern | |
+| `es_95` | same pattern | Expected shortfall |
+| `es_99` | same pattern | |
+| `downside_deviation` | `metrics.downside_deviation` | Annualized; added to `portfolio_metrics_one_window` in Session 03 |
+| `eee_10` | `analytics.eee_10pct` | Crisis equity exposure diagnostic |
+
+When `tail_risk.metric_available` is `false`, leave tail fields `null` and add a `data_quality_warnings` entry (do not copy raw `unavailable_reason` codes to UI).
+
+**`benchmark_dependence`**
+
+| Field | Upstream | Notes |
+| --- | --- | --- |
+| `benchmark_ticker` | `metrics.metric_quality.benchmark_ticker` | Base benchmark proxy per investor currency |
+| `beta_portfolio` | `metrics.beta_portfolio` | Same as Beta_base in metrics spec |
+| `beta_base` | `metrics.beta_portfolio` | **Alias** for product readers (`beta_portfolio` remains canonical in snapshots) |
+| `corr_base` | `metrics.corr_base` | |
+| `downside_beta` | `metrics.downside_beta` | |
+| `upside_beta` | `metrics.upside_beta` | |
+
+**`rolling_diagnostics.core_view`**
+
+Core MVP exposes three rolling panels. Each panel uses `rolling_summary` shape from analytics (`last`, `mean`, `p10`, `p90` internally); product export exposes **`latest`** = `last`. **`series_ref`** is the filename under `results_csv/` for the primary horizon suffix (`10y`, `5y`, or `3y` matching primary window), e.g. `rolling_sharpe_36m_10y.csv`.
+
+| Panel key | Analytics source | `series_ref` pattern (primary suffix) |
+| --- | --- | --- |
+| `rolling_sharpe_36m` | `analytics.rolling_sharpe_36m` | `rolling_sharpe_36m_{suffix}.csv` |
+| `rolling_volatility_12m` | `analytics.rolling_vol_12m` | `rolling_vol_12m_{suffix}.csv` |
+| `rolling_beta_or_correlation` | `analytics.rolling_beta_36m` and/or `analytics.rolling_correlation_36m` | Prefer beta: `rolling_beta_36m_{suffix}.csv`; when beta missing use `rolling_correlation_36m_{suffix}.csv` |
+
+Each panel object:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `available` | boolean | `true` when upstream summary exists and `latest` is non-null |
+| `latest` | number \| null | Sharpe or vol panel |
+| `latest_beta` | number \| null | Only on `rolling_beta_or_correlation` |
+| `latest_correlation` | number \| null | Only on `rolling_beta_or_correlation` |
+| `series_ref` | string \| null | CSV basename only (not absolute path) |
+
+**`rolling_diagnostics.advanced_available`**
+
+Boolean flags only (no series embedded). Keys: `rolling_sharpe_12m`, `rolling_sortino_36m`, `rolling_sortino_12m`, `rolling_beta_36m`, `rolling_beta_12m`, `rolling_correlation_36m`, `rolling_correlation_12m`. Set `true` when the corresponding `analytics` rolling summary exists. Optional advanced metrics `vol_of_vol` / `rel_vol_of_vol` from `run_report.py` analytics may be added later without changing core_view shape.
+
+**`correlation_breakdown`**
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `top3_highest_correlation_pairs` | array | Up to 3 pair objects (below), descending correlation |
+| `top3_lowest_correlation_pairs` | array | Up to 3 pair objects, ascending correlation among valid pairs |
+| `full_matrix_available` | boolean | `true` when primary-window `correlation_matrix_{suffix}.csv` exists on disk |
+| `full_matrix_ref` | string \| null | Basename e.g. `correlation_matrix_10y.csv` — advanced drill-down only |
+
+**Correlation pair object** (off-diagonal, upper triangle, `ticker_a` lexicographically before `ticker_b`):
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `ticker_a` | string | |
+| `ticker_b` | string | |
+| `correlation` | number | Pearson, monthly simple returns, ddof=1; 3-decimal export |
+
+Exclude pairs where either ticker is absent from the matrix. Do not emit duplicate (B,A) rows.
+
+**Warning rule (`data_quality_warnings`)**
+
+Append short **English** strings when any of the following hold (non-exhaustive):
+
+- Primary metrics missing or mostly NaN.
+- `metric_quality.n_obs` materially below `metadata.primary_window_months` (short history).
+- Tail risk unavailable (`tail_risk.metric_available` false).
+- Correlation matrix missing (no top pairs; `full_matrix_available` false).
+- Real cash present (informational: returns use 0% cash contribution).
+
+Example: *"Analysis is limited because of short history / incomplete data."* Do **not** expose the raw `metric_quality` object or internal codes (`DIAG_*`, `FAIL_*`) on this block.
+
+**`metadata`**
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `source` | string | `core_mvp_input` for portfolio-first Core MVP path |
+| `cash_treatment` | string | `real_cash_position_if_present` when any real-cash holding; else `market_tickers_only` |
+| `cash_proxy_used_for_real_cash` | boolean | Must be `false` when real cash present |
+| `metric_quality_internal_only` | boolean | Must be `true` |
+| `primary_window_months` | integer | 36, 60, or 120 |
+| `primary_window_label` | string | e.g. `10Y (120M)` |
+
+Optional Session 03+ keys (recommended): `vol_of_vol`, `rel_vol_of_vol` as numbers when analytics provides them (advanced, not in core_view).
+
+**Non-goals (Block 2.2 product contract)**
+
+- Full correlation matrix embedded in JSON (use `full_matrix_ref` + existing CSV).
+- New chart/HTML/PDF rendering (series live on disk under `results_csv/`).
+- Regime-conditional portfolio metrics (`regime_portfolio_metrics` in stress report).
+- User-facing `metric_quality` blobs.
 
 ### 2.3 Factor Exposure / Factor Sensitivity
 

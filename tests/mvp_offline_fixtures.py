@@ -11,6 +11,7 @@ import yaml
 from src.analysis_setup import build_analysis_setup
 from src.config_schema import PortfolioConfig, validate_config
 from src.input_assumptions import build_input_assumptions_from_analysis_setup
+from src.block_2_1_asset_allocation import build_block_2_1_asset_allocation
 from src.portfolio_xray import PORTFOLIO_XRAY_VERSION, XRAY_SECTION_KEYS
 from src.snapshot import compute_candidate_config_fingerprint
 
@@ -262,14 +263,33 @@ def minimal_blocks_1_5_stress_report() -> dict[str, Any]:
 
 
 def minimal_blocks_1_5_portfolio_xray() -> dict[str, Any]:
+    """Offline stub when ``run_metadata`` / snapshot are not seeded for X-Ray rebuild."""
     return {
         "version": PORTFOLIO_XRAY_VERSION,
         "diagnostic_only": True,
+        "block_2_1_asset_allocation": build_block_2_1_asset_allocation(
+            analysis_setup=None,
+            weights={},
+            taxonomy_rows={},
+            taxonomy_sources={},
+        ),
         "sections": {
             key: {"status": "available", "data_sources_used": ["offline_smoke_fixture"]}
             for key in XRAY_SECTION_KEYS
         },
     }
+
+
+def refresh_analysis_subject_portfolio_xray(subject_dir: Path) -> dict[str, Any]:
+    """Rebuild ``portfolio_xray.json`` the same way ``run_report`` does after snapshots."""
+    from src.snapshot import _xray_summary_from_output_dir
+
+    subject_dir.mkdir(parents=True, exist_ok=True)
+    xray = _xray_summary_from_output_dir(subject_dir)
+    if isinstance(xray, dict) and xray.get("version") == PORTFOLIO_XRAY_VERSION:
+        return xray
+    write_json(subject_dir / "portfolio_xray.json", minimal_blocks_1_5_portfolio_xray())
+    return json.loads((subject_dir / "portfolio_xray.json").read_text(encoding="utf-8"))
 
 
 def _rc_rows(weights: dict[str, float]) -> list[dict[str, Any]]:
@@ -336,7 +356,7 @@ def seed_blocks_1_5_mvp_smoke_workspace(root: Path, cfg: Any) -> dict[str, Any]:
         ),
     )
     write_json(subject / "stress_report.json", minimal_blocks_1_5_stress_report())
-    write_json(subject / "portfolio_xray.json", minimal_blocks_1_5_portfolio_xray())
+    refresh_analysis_subject_portfolio_xray(subject)
 
     candidate_weights = _decimal_five_ticker_weights()
     candidate_metrics = {
@@ -424,10 +444,10 @@ def seed_analysis_subject_diagnosis_bundle(subject_dir: Path) -> None:
     from src.problem_classification import write_problem_classification_outputs
 
     subject_dir.mkdir(parents=True, exist_ok=True)
-    xray = minimal_blocks_1_5_portfolio_xray()
-    stress = minimal_blocks_1_5_stress_report()
-    write_json(subject_dir / "portfolio_xray.json", xray)
-    write_json(subject_dir / "stress_report.json", stress)
+    if not (subject_dir / "stress_report.json").is_file():
+        write_json(subject_dir / "stress_report.json", minimal_blocks_1_5_stress_report())
+    stress = json.loads((subject_dir / "stress_report.json").read_text(encoding="utf-8"))
+    xray = refresh_analysis_subject_portfolio_xray(subject_dir)
     problem_path = write_problem_classification_outputs(
         output_dir=subject_dir,
         portfolio_xray=xray,
@@ -494,6 +514,258 @@ def seed_product_bundle_offline_workspace(root: Path, cfg: Any) -> dict[str, Any
         "config_fingerprint": config_fingerprint,
         "candidate_id": candidate_id,
     }
+
+
+# ---------------------------------------------------------------------------
+# Block 2.2 offline seed helpers
+# ---------------------------------------------------------------------------
+
+
+def minimal_block_2_2_metrics(
+    window_months: int = 120,
+    *,
+    cagr: float = 0.072,
+    vol: float = 0.112,
+    sharpe: float = 0.52,
+    sortino: float = 0.58,
+    mdd: float = -0.21,
+    ttr_months: float = 6.0,
+    recovered: bool = True,
+    beta_portfolio: float = 0.80,
+    downside_deviation: float = 0.078,
+    corr_base: float = 0.75,
+    downside_beta: float = 0.88,
+    upside_beta: float = 0.71,
+    skewness: float = -0.15,
+    kurtosis: float = 1.05,
+    benchmark_ticker: str = "SPY",
+) -> dict[str, Any]:
+    """Minimal realistic Block 2.2 window metrics dict for offline unit tests."""
+    return {
+        "window_months": window_months,
+        "cagr": cagr,
+        "vol_annual": vol,
+        "sharpe": sharpe,
+        "sortino": sortino,
+        "treynor": round(sharpe * 0.12, 4),
+        "beta_portfolio": beta_portfolio,
+        "max_drawdown": mdd,
+        "ttr_months": ttr_months,
+        "recovered": recovered,
+        "downside_deviation": downside_deviation,
+        "corr_base": corr_base,
+        "downside_beta": downside_beta,
+        "upside_beta": upside_beta,
+        "skewness": skewness,
+        "kurtosis": kurtosis,
+        "metric_quality": {
+            "n_obs": window_months,
+            "frequency": "monthly",
+            "benchmark_ticker": benchmark_ticker,
+            "risk_free_source": "FRED:DTB3",
+            "window_months": window_months,
+            "analysis_end": DEFAULT_ANALYSIS_END,
+        },
+    }
+
+
+def minimal_block_2_2_analytics() -> dict[str, Any]:
+    """Minimal portfolio analytics dict for Block 2.2 offline unit tests.
+
+    Covers: tail_risk, rolling_sharpe_36m, rolling_vol_12m, rolling_beta_36m,
+    advanced rolling summaries, eee_10pct, vol_of_vol, rel_vol_of_vol.
+    """
+    return {
+        "tail_risk": {
+            "method": "historical",
+            "frequency": "daily",
+            "window_label": "10y",
+            "metric_available": True,
+            "var_95": -0.019,
+            "var_99": -0.029,
+            "es_95": -0.028,
+            "es_99": -0.038,
+        },
+        "rolling_sharpe_36m": {"last": 0.50, "mean": 0.47, "p10": 0.28, "p90": 0.68},
+        "rolling_vol_12m": {"last": 0.108, "mean": 0.11, "p10": 0.082, "p90": 0.136},
+        "rolling_beta_36m": {"last": 0.78, "mean": 0.77, "p10": 0.58, "p90": 0.93},
+        "rolling_correlation_36m": {"last": 0.74, "mean": 0.72, "p10": 0.55, "p90": 0.87},
+        "rolling_sharpe_12m": {"last": 0.44, "mean": 0.42, "p10": 0.19, "p90": 0.62},
+        "rolling_sortino_36m": {"last": 0.55, "mean": 0.52, "p10": 0.31, "p90": 0.74},
+        "rolling_sortino_12m": {"last": 0.49, "mean": 0.47, "p10": 0.22, "p90": 0.66},
+        "rolling_beta_12m": {"last": 0.81, "mean": 0.79, "p10": 0.60, "p90": 0.96},
+        "rolling_correlation_12m": {"last": 0.76, "mean": 0.74, "p10": 0.57, "p90": 0.89},
+        "eee_10pct": 38.0,
+        "vol_of_vol": 0.038,
+        "rel_vol_of_vol": 0.32,
+    }
+
+
+def minimal_block_2_2_drawdown_structure() -> dict[str, Any]:
+    """Minimal drawdown_structure dict for Block 2.2 offline unit tests."""
+    return {
+        "drawdowns": [
+            {"depth": -0.21, "length_months": 9, "recovery_months": 5},
+            {"depth": -0.09, "length_months": 4, "recovery_months": 3},
+            {"depth": -0.06, "length_months": 2, "recovery_months": 2},
+        ],
+        "summary": {
+            "recovery_median_months": 3.0,
+            "recovery_p90_months": 5.0,
+            "pct_time_underwater": 0.14,
+            "longest_underwater_months": 11,
+        },
+        "by_threshold": {
+            ">5%": {"count": 3, "recovery_median": 3.0, "recovery_p90": 5.0},
+            ">10%": {"count": 1, "recovery_median": 5.0, "recovery_p90": 5.0},
+            ">20%": {"count": 1, "recovery_median": 5.0, "recovery_p90": 5.0},
+        },
+    }
+
+
+def minimal_block_2_2_correlation_matrix(tickers: list[str] | None = None) -> dict[str, Any]:
+    """Minimal 3×3 (or n×n) correlation matrix as a nested dict.
+
+    The default three-ticker matrix is tuned for deterministic top-pair tests:
+    highest pair = (BND, TLT) at 0.92; lowest pair = (GLD, SPY) at 0.05.
+    """
+    t = tickers or ["SPY", "BND", "GLD"]
+    n = len(t)
+    # Identity diagonal; off-diagonal rounded plausible values
+    _off: dict[tuple[int, int], float] = {
+        (0, 1): 0.55,
+        (0, 2): 0.05,
+        (1, 2): 0.92,
+    }
+    mat: list[list[float]] = []
+    for i in range(n):
+        row: list[float] = []
+        for j in range(n):
+            if i == j:
+                row.append(1.0)
+            else:
+                lo, hi = (i, j) if i < j else (j, i)
+                row.append(_off.get((lo, hi), 0.30))
+        mat.append(row)
+    return {"tickers": t, "matrix": mat}
+
+
+def snapshot_10y_with_block_2_2(
+    *,
+    metrics: dict[str, Any] | None = None,
+    analytics: dict[str, Any] | None = None,
+    drawdown: dict[str, Any] | None = None,
+    rc_asset: list[dict[str, Any]] | None = None,
+    final_weights_total: dict[str, float] | None = None,
+    stress_overall: str = "PASS",
+) -> dict[str, Any]:
+    """``snapshot_10y`` extended with Block 2.2 analytics/drawdown seeds.
+
+    Drop-in replacement for ``snapshot_10y`` when Block 2.2 unit tests need
+    ``analytics`` and ``drawdown_structure`` embedded in the snapshot payload.
+    """
+    m = metrics if metrics is not None else minimal_block_2_2_metrics()
+    snap = snapshot_10y(
+        m,
+        rc_asset=rc_asset,
+        final_weights_total=final_weights_total,
+        stress_overall=stress_overall,
+    )
+    snap["analytics"] = analytics if analytics is not None else minimal_block_2_2_analytics()
+    snap["drawdown_structure"] = drawdown if drawdown is not None else minimal_block_2_2_drawdown_structure()
+    return snap
+
+
+def seed_block_2_2_subject_dir(
+    subject_dir: Path,
+    *,
+    tickers: list[str] | None = None,
+    analysis_setup: dict[str, Any] | None = None,
+    weights: dict[str, float] | None = None,
+    metrics: dict[str, Any] | None = None,
+    analytics: dict[str, Any] | None = None,
+    drawdown: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Seed an offline ``analysis_subject/`` directory for Block 2.2 unit tests.
+
+    Writes:
+    - ``snapshot_10y.json`` (extended with analytics + drawdown_structure)
+    - ``run_metadata.json`` (if *analysis_setup* is provided)
+    - ``correlation_matrix_10y.csv`` (deterministic 3×4-ticker matrix)
+
+    Returns the seed payloads for inspection in tests.
+    """
+    import pandas as pd
+
+    subject_dir.mkdir(parents=True, exist_ok=True)
+    t = tickers or ["SPY", "BND", "GLD"]
+    w = weights or {tick: round(1.0 / len(t), 4) for tick in t}
+    m = metrics if metrics is not None else minimal_block_2_2_metrics()
+    a = analytics if analytics is not None else minimal_block_2_2_analytics()
+    d = drawdown if drawdown is not None else minimal_block_2_2_drawdown_structure()
+
+    snap = snapshot_10y_with_block_2_2(
+        metrics=m,
+        analytics=a,
+        drawdown=d,
+        rc_asset=_rc_rows(w),
+        final_weights_total=w,
+    )
+    write_json(subject_dir / "snapshot_10y.json", snap)
+
+    if analysis_setup is not None:
+        write_json(subject_dir / "run_metadata.json", build_offline_run_metadata(analysis_setup))
+
+    # Write deterministic correlation CSV for top-pair tests
+    corr_info = minimal_block_2_2_correlation_matrix(t)
+    corr_df = pd.DataFrame(
+        corr_info["matrix"],
+        index=corr_info["tickers"],
+        columns=corr_info["tickers"],
+    )
+    # results_csv lives alongside subject_dir (sibling of analysis_subject/)
+    results_csv_dir = subject_dir.parent / "results_csv"
+    results_csv_dir.mkdir(parents=True, exist_ok=True)
+    corr_df.to_csv(results_csv_dir / "correlation_matrix_10y.csv")
+
+    return {"snapshot": snap, "analytics": a, "drawdown": d, "metrics": m, "correlation_tickers": t}
+
+
+def seed_cash5pct_block_2_2_subject_dir(
+    subject_dir: Path,
+) -> dict[str, Any]:
+    """Seed a Block 2.2 offline workspace from the 5%-Cash-USD fixture.
+
+    Uses ``demo_usd_asset_allocation_with_cash_5pct.yml`` tickers and weights;
+    seeds ``snapshot_10y.json`` with Block 2.2 analytics/drawdown and
+    ``run_metadata.json`` with full ``analysis_setup`` including ``cash_handling``.
+    """
+    raw = load_mvp_fixture_yaml("demo_usd_asset_allocation_with_cash_5pct.yml")
+    cfg = validate_mvp_fixture("demo_usd_asset_allocation_with_cash_5pct.yml")
+    weights = {str(k): float(v) for k, v in (cfg.weights or {}).items()}
+    market_tickers = [t for t in weights if t != "Cash USD"]
+    setup = build_analysis_setup(
+        cfg,
+        portfolio_weights=weights,
+        weights_source=cfg.weights_source,
+        portfolio_role_override="analysis_subject",
+        cash_proxy_ticker="BIL",
+        rf_source="FRED:DTB3",
+        analysis_end=DEFAULT_ANALYSIS_END,
+        windows_months=[36, 60, 120],
+        returns_frequency="monthly",
+        periods_per_year=12,
+        run_context="report",
+    )
+    # Cash USD earns 0% — metrics are realistic for the 8-market-ticker basket
+    m = minimal_block_2_2_metrics(cagr=0.068, vol=0.105, sharpe=0.49, mdd=-0.19)
+    return seed_block_2_2_subject_dir(
+        subject_dir,
+        tickers=market_tickers,
+        analysis_setup=setup,
+        weights=weights,
+        metrics=m,
+    )
 
 
 # (relative path under output_dir_final, expected schema_version)

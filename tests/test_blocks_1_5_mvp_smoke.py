@@ -12,6 +12,7 @@ from src.candidate_comparison import write_candidate_comparison_outputs
 from src.config_schema import ConfigValidationError, validate_config
 from src.portfolio_review_workflow import build_portfolio_review_plan
 from src.portfolio_xray import XRAY_SECTION_KEYS
+from src.product_bundle_paths import portfolio_xray_has_block_2_1, portfolio_xray_has_block_2_2
 from mvp_offline_fixtures import (
     DEFAULT_ANALYSIS_END,
     FIVE_TICKER_MVP_TICKERS,
@@ -68,6 +69,10 @@ def test_five_ticker_blocks_1_5_mvp_smoke_gate(
 
     xray = _load_json(subject_dir / "portfolio_xray.json")
     assert set(xray["sections"]) == set(XRAY_SECTION_KEYS)
+    assert portfolio_xray_has_block_2_1(xray)
+    assert portfolio_xray_has_block_2_2(xray)
+    assert (xray["block_2_1_asset_allocation"]["portfolio_composition_snapshot"]["total_holdings"]) == 5
+    assert (xray["block_2_2_portfolio_metrics"]["metadata"]["primary_window_months"]) == 120
 
     stress = _load_json(subject_dir / "stress_report.json")
     for key in (

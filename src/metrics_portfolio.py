@@ -14,6 +14,7 @@ from src.metrics_asset import (
     cagr_from_equity,
     corr_base,
     downside_beta,
+    downside_deviation_annual,
     kurtosis_log,
     max_drawdown,
     sharpe,
@@ -103,6 +104,7 @@ def portfolio_metrics_one_window(
             "skewness": np.nan,
             "kurtosis": np.nan,
             "treynor": np.nan,
+            "downside_deviation": np.nan,
             "max_drawdown": np.nan,
             "ttr_months": np.nan,
             "recovered": False,
@@ -142,6 +144,9 @@ def portfolio_metrics_one_window(
         "skewness": skewness_log(lr_slice),
         "kurtosis": kurtosis_log(lr_slice),
         "treynor": treynor_val,
+        "downside_deviation": downside_deviation_annual(
+            r_slice, rf_slice, mar=mar, periods_per_year=periods_per_year
+        ),
         "max_drawdown": max_drawdown(r_slice)[0],
         "ttr_months": ttr_months if ttr_months is not None else np.nan,
         "recovered": recovered,

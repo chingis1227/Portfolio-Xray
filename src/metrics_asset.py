@@ -92,6 +92,23 @@ def sortino(
     return float((excess.mean() * k) / dd_annual)
 
 
+def downside_deviation_annual(
+    monthly_simple_returns: pd.Series,
+    rf_monthly: pd.Series,
+    mar: float | None = None,
+    *,
+    periods_per_year: int = 12,
+) -> float:
+    """Annualized downside deviation vs MAR (default MAR = rf per period). Same grid as Sortino."""
+    r, rf = _align(monthly_simple_returns, rf_monthly)
+    if len(r) < 2:
+        return np.nan
+    mar_use = rf if mar is None else mar
+    downside = np.minimum(0, r - mar_use)
+    dd_period = float(np.sqrt(np.mean(np.asarray(downside) ** 2)))
+    return float(dd_period * np.sqrt(float(periods_per_year)))
+
+
 def beta_base(
     asset_returns: pd.Series,
     benchmark_returns: pd.Series,
