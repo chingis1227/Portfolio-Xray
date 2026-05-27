@@ -2454,6 +2454,25 @@ def run_portfolio_report_for_weights(
             "snapshot_index": output_dir_final / "snapshot_index.json",
         },
     )
+    # Core MVP Blocks 1-3 diagnosis-only manifest surface:
+    # keep subject diagnostics only; do not publish candidate/comparison/decision keys
+    # as active product-facing paths in analysis_subject site_api/core_json outputs.
+    if str(portfolio_role_override or "") == "analysis_subject" and output_policy.profile in {
+        "site_api",
+        "core_json",
+        "lightweight_comparison",
+    }:
+        for blocked_key in (
+            "candidate_launchpad_json",
+            "candidate_comparison_json",
+            "current_vs_candidate_json",
+            "decision_verdict_json",
+            "selection_decision_json",
+            "what_changed_summary_json",
+            "candidate_factory_run_json",
+            "candidate_factory_manifest_json",
+        ):
+            report_manifest_paths.pop(blocked_key, None)
 
     manifest_path = write_output_manifest(
         output_dir_final,

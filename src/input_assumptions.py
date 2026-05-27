@@ -370,10 +370,26 @@ def build_field_tiers(
         if isinstance(first_screen.get(key), dict) and first_screen[key].get("supplied")
     ]
 
+    registry_payload: dict[str, Any] = dict(FIELD_TIER_REGISTRY)
+    if profile == "core_mvp":
+        registry_payload = {
+            "_scope": {
+                "tier": "legacy_advanced",
+                "product_surface": False,
+                "not_required_for_core_mvp": True,
+                "consumer_guidance": (
+                    "Field tier registry contains deferred/client-fit/legacy mapping hints. "
+                    "For Core MVP product-facing surface use input_surface.core_mvp + "
+                    "run_disclosure.core_mvp only."
+                ),
+            },
+            **registry_payload,
+        }
+
     return {
         "version": FIELD_TIERS_VERSION,
         "tier_definitions": dict(TIER_DEFINITIONS),
-        "registry": dict(FIELD_TIER_REGISTRY),
+        "registry": registry_payload,
         "run_disclosure": {
             "input_surface_profile": profile,
             "core_mvp": {
