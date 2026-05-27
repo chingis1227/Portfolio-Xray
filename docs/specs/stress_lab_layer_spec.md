@@ -64,8 +64,9 @@ Portfolio-first primary path: `Main portfolio/analysis_subject/stress_report.jso
 
 **Core MVP stress contract:** when `analysis_mode=analyze_current_weights`, `run_stress` uses
 `loss_gate_mode="diagnostic"`: suite status `ok` | `warning` | `insufficient_data`; scenario rows
-omit mandate `pass`/`loss_ok`; `max_dd_limit` is null. Legacy `optimize_from_universe` reports keep
-`loss_gate_mode="mandate"` and DIAG_* statuses for backward compatibility.
+and historical rows omit mandate `pass`/`loss_ok`/`diagnostic_code(s)`; `max_dd_limit` is null.
+Legacy `optimize_from_universe` reports keep `loss_gate_mode="mandate"` and DIAG_* statuses for
+backward compatibility.
 
 ## Current contract
 
@@ -228,7 +229,7 @@ and how trustworthy is the evidence — without parsing raw scenario rows?
 | Synthetic source | Adapt `scenario_results[]` rows; do not recompute scenario PnL | **C** **S** §12.1 |
 | Historical source | Adapt `historical_results[]`; derive asset loss contribution from `historical_episode_paths[]` where available | **C** **S** Session 01 |
 | Worst selectors | `worst_synthetic` by minimum `portfolio_loss_pct`; `worst_historical` by minimum `drawdown_pct` among available historical rows | **C** **S** §12.1 |
-| Diagnostic boundary | In `loss_gate_mode="diagnostic"`, Block 3.2 product rows omit mandate fields (`pass`, `loss_ok`, `diagnostic_code`) | **S** Session 01 |
+| Diagnostic boundary | In `loss_gate_mode="diagnostic"`, Block 3.2 product rows and raw evidence arrays omit mandate fields (`pass`, `loss_ok`, `diagnostic_code`, `diagnostic_codes`) | **S** Session 01 |
 | Relationship to conclusions | `stress_conclusions` remains a backward-compatible worst-case rollup for snapshot/comparison/commentary consumers | **C** **S** Session 01 |
 
 | Element | Rule | Provenance |

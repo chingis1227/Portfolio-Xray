@@ -29,27 +29,32 @@ explicit export/report profile is selected. Default `run_portfolio_review.py` / 
 **not** refresh `pdf files/` — use `--with-pdf`, `--legacy-full-pdf`, or an explicit export profile
 when client PDFs must match the latest JSON.
 
-Runtime note: today `run_portfolio_review.py` still has a `--mode core` backend batch path
-(`core_fast`, six candidates). That is current code behavior, but it is not the canonical product
-story. For the “ДИАГНОСТИКА 2” product shape, prefer diagnosis-first output and explicit
-one-hypothesis runs such as `python run_portfolio_review.py --candidates equal_weight`. Full menu
-(`default_v1`, 16 builders) is advanced/research only. See [OUTPUTS.md](OUTPUTS.md) for the full
-command matrix.
+Runtime note: default `run_portfolio_review.py` is now diagnosis-only. Candidate factory and compare
+are explicit: use `--candidates <id>` for one-hypothesis/shortlist product runs, `--with-candidates`
+for backend core batch (`core_fast`), and `--mode full` for advanced/research full menu (`default_v1`).
+See [OUTPUTS.md](OUTPUTS.md) for the full command matrix.
 
-| Use case | Command | Factory profile |
+| Use case (primary product runtime) | Command | Factory profile |
 | --- | --- | --- |
-| Portfolio diagnosis / site/API backend run | `python run_portfolio_review.py` or `--mode core` | current code: `core_fast` backend batch |
+| Portfolio diagnosis / site/API backend run | `python run_portfolio_review.py` | none (diagnosis-only) |
 | **Canonical product demo** (one selected hypothesis) | `python run_portfolio_review.py --candidates equal_weight` | explicit candidate id |
+| Core backend candidate batch (advanced/research) | `python run_portfolio_review.py --with-candidates` | `core_fast` |
 | Full advanced/research review (16 builders) | `python run_portfolio_review.py --mode full` | `default_v1` |
 | Full menu factory + compare (standalone advanced/research) | `python run_candidate_factory.py --profile default_v1 --then-compare` | `default_v1` |
 | Compare / decision package only | `python run_compare_variants.py` | — |
-| Legacy policy optimize only (no report) | `python run_optimization.py` | — |
-| Legacy policy + site/API report | `python run_optimization.py --with-report` | — |
-| Full report exports | `python run_report.py --output-profile full_report` | — |
-| Legacy export + PDF sidecars | `python run_report.py --output-profile legacy_export` | — |
 | Portfolio-first PDF export | `python run_portfolio_review.py --with-pdf` | same as mode |
-| Full legacy PDF suite | `python run_portfolio_review.py --legacy-full-pdf` or `python rebuild_pdf_reports.py` | — |
 | Benchmark/timing run | `python run_candidate_factory.py --profile default_v1 --then-compare --parallel-lightweight-reports` | `default_v1` |
+
+Legacy compatibility runtime (not Core MVP default):
+
+| Legacy use case | Command |
+| --- | --- |
+| Legacy policy optimize only (no report) | `python run_optimization.py` |
+| Legacy policy + site/API report | `python run_optimization.py --with-report` |
+| Full report exports | `python run_report.py --output-profile full_report` |
+| Legacy export + PDF sidecars | `python run_report.py --output-profile legacy_export` |
+| Legacy policy workflow wrapper | `python run_mvp_workflow.py --workflow policy-only` |
+| Full legacy PDF suite | `python run_portfolio_review.py --legacy-full-pdf` or `python rebuild_pdf_reports.py` |
 
 Each site/API run writes `output_manifest.json` under `output_dir_final` (machine-readable index of
 JSON paths, disabled presentation classes, and per-type artifact counts). Cache under `cache/` is
@@ -127,7 +132,8 @@ python run_portfolio_review.py --candidates equal_weight,risk_parity
 
 | Review mode | Factory profile | Typical use |
 | --- | --- | --- |
-| **Core** (default) | `core_fast` (same six ids as `core_v1`, parallel lightweight reports by default) | Routine monthly review |
+| **Diagnosis-only** (default) | none | Routine monthly diagnosis of current `analysis_subject` |
+| **Core batch** | `core_fast` (same six ids as `core_v1`, parallel lightweight reports by default) | Advanced backend/research batch via `--with-candidates` |
 | **Core regression** | `core_v1` via `--candidate-profile core_v1` | Sequential parity/debug run |
 | **Full** | `default_v1` (16 builders incl. optimizers + robust) | Explicit refresh of the full candidate menu |
 | **Full resume** | `default_v1` with factory `--resume` | Recovery after an interrupted full factory run |

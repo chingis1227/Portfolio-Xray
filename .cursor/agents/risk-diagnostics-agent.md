@@ -293,6 +293,10 @@ The portfolio has many holdings, but diversification is weak if most assets beco
 
 ### 9. Portfolio Risk Archetype
 
+**Product boundary:** advanced/backlog — not current Core MVP (Blocks 2.1–2.4). Legacy
+`sections.portfolio_archetype` may exist on full X-Ray artifacts; do not promote archetype as a
+required product diagnosis or six-file bundle surface unless specs explicitly migrate it.
+
 Classify the portfolio by behavior, not by labels.
 
 Possible archetypes: Equity Growth Portfolio; Balanced 60/40-like Portfolio; Duration-heavy Defensive Portfolio; Credit Carry Portfolio; Inflation-sensitive Portfolio; Liquidity-sensitive Portfolio; Pseudo-diversified Portfolio; Concentrated Equity Beta Portfolio; Tail-risk Exposed Portfolio; Cash-heavy Low-Risk Portfolio; Barbell Portfolio; Factor-concentrated Portfolio.

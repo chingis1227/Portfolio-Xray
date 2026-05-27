@@ -109,13 +109,12 @@ The state is classified by [workflow_state_spec.md](workflow_state_spec.md) as o
 
 Current interpretations:
 
-- default `run_portfolio_review.py --mode core` resolves to `multiple_candidates` because it uses
-  the `core_fast` factory profile;
-- `--mode full` resolves to `multiple_candidates` because it uses `default_v1`;
+- default `run_portfolio_review.py` resolves to `diagnosis_only`;
+- `--skip-candidates` also resolves to `diagnosis_only`;
 - `--candidates equal_weight` resolves to `one_candidate`;
-- `--skip-candidates` resolves to `diagnosis_only` in the plan because no new candidate scope is
-  requested by the current command. Existing on-disk artifacts may still be compared by the
-  comparison step, but that artifact scope is not inferred by the orchestrator.
+- multiple explicit ids (`--candidates equal_weight,risk_parity`) resolve to `multiple_candidates`;
+- `--with-candidates`, `--mode full`, or explicit `--candidate-profile ...` resolve to
+  research-batch behavior.
 
 This metadata is intended for later diagnosis-first product layers. It must not be interpreted as a
 new generated output contract.
@@ -303,14 +302,14 @@ sections are edited.
 
 ## Operational Model (Session 09 — RM-939)
 
-The portfolio-first **workflow order** is implemented. The default CLI uses **core-run** scope.
+The portfolio-first **workflow order** is implemented. The default CLI is diagnosis-only.
 
 ### Command matrix (portfolio-first)
 
 | Use case | Command |
 | --- | --- |
 | Default site/API review | `python run_portfolio_review.py` |
-| Core menu (six candidates) | `python run_portfolio_review.py --mode core` |
+| Core backend candidate batch (six candidates) | `python run_portfolio_review.py --with-candidates` |
 | Full menu (16 candidates) | `python run_portfolio_review.py --mode full` |
 | Resume interrupted full factory | `python run_portfolio_review.py --mode full --resume-candidates` |
 | Subject only (skip factory) | `python run_portfolio_review.py --skip-candidates` |
@@ -324,7 +323,8 @@ artifact map: [OUTPUTS.md](../../OUTPUTS.md).
 | Topic | Behavior |
 | --- | --- |
 | End-to-end command | `run_portfolio_review.py` chains subject → factory → compare in `site_api` JSON/cache mode |
-| **Core-run** (default, Wave 2 `core_fast`) | `--mode core` → factory profile `core_fast`; factory `--execution-mode standard` (phased weights + lightweight_comparison, parallel Phase 2 by default); `ReviewRunContext` on subject + factory; no PDF by default. Disable parallel: `--no-parallel-lightweight-reports`. Regression sequential menu: `--candidate-profile core_v1`. **Acceptance: E2E ≤ 300 s warm cache** ([ExecPlan](../exec_plans/2026-05-24_blocks_1_5_performance_wave2_plan.md)). |
+| **Default run** | diagnosis-only; materialize `analysis_subject` in `site_api` mode; no factory, no compare, no PDF by default |
+| **Core-run** (advanced backend batch, Wave 2 `core_fast`) | `--with-candidates` → factory profile `core_fast`; factory `--execution-mode standard` (phased weights + lightweight_comparison, parallel Phase 2 by default); `ReviewRunContext` on subject + factory; no PDF by default. Disable parallel: `--no-parallel-lightweight-reports`. Regression sequential menu: `--candidate-profile core_v1`. **Acceptance: E2E ≤ 300 s warm cache** ([ExecPlan](../exec_plans/2026-05-24_blocks_1_5_performance_wave2_plan.md)). |
 | **Core-fast-run** (standalone factory) | `python run_candidate_factory.py --profile core_fast` — same six ids as `core_v1`; parallel lightweight reports by default unless `--no-parallel-lightweight-reports`. |
 | **Full-run** | `--mode full` → factory profile `default_v1`; factory `--execution-mode standard` by default |
 | **Full-run (legacy builders)** | `--mode full --execution-mode legacy_full` → subprocess `run_*.py` per candidate (parity/debug) |

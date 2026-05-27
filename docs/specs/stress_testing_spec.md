@@ -159,9 +159,12 @@ For each scenario the production `run_stress` implementation outputs (see `scena
 - **shock_vector** (the factor shock values used for that scenario)
 - **top1_rc_asset**, **top1_rc_pct**, **top3_rc_assets**, **top3_rc_sum_pct** (RC_vol - share of portfolio variance under base or stress covariance)
 - **top3_loss_assets** (tickers with largest negative PnL contribution in the scenario)
-- **loss_ok**, **pass** (equals **loss_ok**), **diagnostic_codes** (loss-related only on synthetic rows)
 - **`stress_cov_method`**, **`stress_cov_lambda`**, **`stress_cov_calibration_version`**, **`taxonomy_coverage`**, **`vol_mult_by_block`**, **`key_rho_overrides_used`** when the scenario uses synthetic stress covariance (null or empty when `stress_cov` is false)
 - **`synthetic_assumptions`** (synthetic rows): explicit fallback/proxy disclosure block with `version`, `beta_source`, `beta_data_source`, `beta_coverage_ratio`, `beta_confidence`, `fallback_used`, `fallback_reason`, `covered_assets`, `missing_assets`, `fallback_asset_count`, `beta_fallback_assets`, `proxy_method_for_missing_betas`, and `proxy_applied_to_assets`
+
+Legacy mandate mode (`loss_gate_mode="mandate"`) additionally exposes **loss_ok**, **pass** (equals
+**loss_ok**), and **diagnostic_codes** on synthetic rows. Core MVP diagnostic mode omits those
+mandate fields from raw `scenario_results`.
 
 Raw scenario rows remain the primary stress contract. Any stability-adjusted factor overlay must be reported in separate top-level blocks and must not overwrite `scenario_results[*].pnl_by_factor_pct` or the raw scenario PnL fields.
 
@@ -958,6 +961,12 @@ Betas: **weekly** changes/returns for reporting outputs in Section8 (`factor_bet
 - **diagnostic_codes:** ordered list of **Loss** + **Historical** **DIAG_*** issues.
 - **warning_code** (when **DIAG_PASS_WITH_WARNING**): e.g. **WARN_HIST_BORDERLINE**, **WARN_DATA_INSUFFICIENT** (no RC-only warning code in current builds).
 
+The `DIAG_*`, `primary_diagnostic_code`, and mandate pass/fail fields above are legacy mandate-mode
+compatibility semantics. Core MVP diagnostic mode (`loss_gate_mode="diagnostic"`) uses
+`ok` / `warning` / `insufficient_data`, leaves top-level mandate diagnostic code fields empty, and
+does not expose row-level `pass`, `loss_ok`, `diagnostic_code`, or `diagnostic_codes` in raw
+scenario/historical rows.
+
 View After Optimization does not stop on stress status; stress output is diagnostic only.
 
 ### 12.1 Stress Scorecard and Conclusions
@@ -973,14 +982,14 @@ boundary) and `crisis_replay_summary` (compact list derived from `historical_epi
 daily `rows`). Comparison `stress` blocks copy the same keys from the snapshot when present, then
 fill from `stress_report.json` when missing.
 
-**`stress_scorecard_v1`** (version string `stress_scorecard_v1`):
+**`stress_scorecard_v1`** (version string `stress_scorecard_v1`; legacy/compatibility rollup):
 
 | Field | Description |
 | --- | --- |
 | `overall_status` | Same as top-level `status` (`DIAG_PASS` / `DIAG_PASS_WITH_WARNING` / `DIAG_ATTENTION`). |
 | `overall_reason` | `primary_diagnostic_code` or `warning_code`. |
 | `overall_confidence` | `low` \| `medium` \| `high` — worst of beta-coverage and historical `data_quality` signals. |
-| `max_dd_limit` | Mandate drawdown threshold used for synthetic `loss_ok` and severity. |
+| `max_dd_limit` | Mandate drawdown threshold used for synthetic `loss_ok` and severity in legacy mandate mode. |
 | `n_synthetic_scenarios` / `n_historical_episodes` | Row counts (must match array lengths). |
 | `synthetic_scenarios[]` | Per-scenario: `scenario_id`, `portfolio_pnl_pct`, `pass`, `loss_ok`, `loss_severity`, `beta_coverage_ratio`, `beta_confidence`, `top3_loss_assets`, `top1_rc_asset`, `top1_rc_pct`, `top3_rc_assets`, `top3_rc_sum_pct`, `diagnostic_codes`. |
 | `historical_episodes[]` | Per-episode: `episode`, `pnl_real_episode`, `max_dd`, `pass`, `loss_severity`, `data_quality`, `coverage_ratio`, `n_obs`, `diagnostic_code`, `return_method`, `proxy_used`. |
@@ -999,19 +1008,22 @@ fill from `stress_report.json` when missing.
 | `helped_assets_worst_synthetic` | Positive-contribution assets for the worst synthetic scenario (up to three). |
 | `diagnosis_method` | Template-based deterministic interpretation only; no LLM-generated text in this block. |
 
-For `loss_gate_mode="diagnostic"`, `stress_results_v1.synthetic[]` and
-`stress_results_v1.historical[]` must not reintroduce mandate fields (`pass`, `loss_ok`,
-`diagnostic_code`, `diagnostic_codes`) as product fields. Legacy gate fields remain in evidence
-arrays (`scenario_results`, `historical_results`) for compatibility.
+For `loss_gate_mode="diagnostic"`, `stress_results_v1.synthetic[]`,
+`stress_results_v1.historical[]`, and the raw evidence arrays (`scenario_results`,
+`historical_results`) must not reintroduce mandate fields (`pass`, `loss_ok`, `diagnostic_code`,
+`diagnostic_codes`). Legacy gate fields remain available only in `loss_gate_mode="mandate"` runs for
+backward compatibility.
 
 Historical loss contribution in `stress_results_v1.historical[]` is derived from
 `historical_episode_paths[].asset_pnl_contrib_episode` when available. If episode contribution
 cannot be derived (insufficient overlap/path data), the row must emit explicit availability
 metadata (`availability: unavailable` with reason), not silent omission.
 
-**`loss_severity`** (synthetic and historical): `low` \| `moderate` \| `high` \| `unknown`. Relative to
-`max_dd_limit`: **high** when mandate loss gate fails (`loss_ok` false or `max_dd` below limit);
-**moderate** when PnL/max_dd is between −50% and −100% of the limit; otherwise **low**.
+**`loss_severity`** (synthetic and historical): `low` \| `moderate` \| `high` \| `unknown`. In legacy
+mandate mode it is relative to `max_dd_limit`: **high** when mandate loss gate fails (`loss_ok` false
+or `max_dd` below limit), **moderate** when PnL/max_dd is between −50% and −100% of the limit, and
+otherwise **low**. In Core MVP diagnostic mode it is a diagnostic severity label only and does not
+imply mandate pass/fail.
 
 **`beta_confidence`**: `high` (coverage ≥ 0.95), `medium` (≥ 0.75), `low` otherwise.
 

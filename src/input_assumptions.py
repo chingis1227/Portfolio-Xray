@@ -3,7 +3,12 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from src.analysis_setup import build_analysis_setup, weight_status
+from src.analysis_setup import (
+    CORE_MVP_REQUIRED_INPUT_GROUPS,
+    LEGACY_ADVANCED_MANDATE_FIELDS,
+    build_analysis_setup,
+    weight_status,
+)
 from src.config_schema import PortfolioConfig
 from src.data_trust_signals import build_input_data_trust_signals
 from src.review_bundle_context import (
@@ -397,11 +402,29 @@ def build_input_assumptions_from_analysis_setup(analysis_setup: dict[str, Any]) 
 
     input_surface = build_input_surface(analysis_setup)
     field_tiers = build_field_tiers(analysis_setup, input_surface=input_surface)
+    core_surface = analysis_setup.get("core_mvp_input_surface")
+    if not isinstance(core_surface, dict):
+        core_surface = {
+            "required_user_input_groups": list(CORE_MVP_REQUIRED_INPUT_GROUPS),
+            "core_mvp_requirements_met": input_surface.get("core_mvp_requirements_met"),
+        }
 
     return {
         "version": "input_assumptions_v1",
         "source_analysis_setup_version": analysis_setup.get("version"),
         "run_context": analysis_setup.get("run_context"),
+        "core_mvp_input_contract": {
+            "source": "analysis_setup.core_mvp_input_surface",
+            "product_surface": True,
+            "required_user_input_groups": list(CORE_MVP_REQUIRED_INPUT_GROUPS),
+            "fields": dict(core_surface.get("fields") or {}),
+            "core_mvp_requirements_met": core_surface.get("core_mvp_requirements_met"),
+            "excluded_legacy_advanced_fields": list(LEGACY_ADVANCED_MANDATE_FIELDS),
+            "consumer_guidance": (
+                "Core MVP UI/API consumers should use input_surface, field_tiers, and this "
+                "core_mvp_input_contract. mandate_and_constraints is legacy/advanced disclosure only."
+            ),
+        },
         "portfolio_input": {
             "analysis_mode": portfolio_input.get("source_analysis_mode"),
             "product_input_case": portfolio_input.get("product_input_case"),
@@ -443,6 +466,15 @@ def build_input_assumptions_from_analysis_setup(analysis_setup: dict[str, Any]) 
             "local_benchmark_map": dict(resolved_assumptions.get("local_benchmark_map") or {}),
         },
         "mandate_and_constraints": {
+            "_scope": {
+                "tier": "legacy_advanced",
+                "product_surface": False,
+                "not_required_for_core_mvp": True,
+                "consumer_guidance": (
+                    "Do not use this block as the Core MVP input surface. It is retained for "
+                    "legacy optimizer/client-fit/liquidity compatibility only."
+                ),
+            },
             "client_profile": (analysis_setup.get("resolved_mandate") or {}).get("client_profile"),
             "target_nominal_return_annual": _mandate_value(analysis_setup, "target_nominal_return_annual"),
             "target_vol_annual": _mandate_value(analysis_setup, "target_vol_annual"),

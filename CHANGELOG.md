@@ -8,6 +8,46 @@ Date: 2026-05-27
 
 Category: Changed
 
+- **Core MVP Runtime Integration and Entrypoint Audit (Sessions 1–7, closed):** Locked
+  portfolio-first runtime contract (`run_portfolio_review.py` default = diagnosis-only;
+  `--candidates` = one-candidate product path; batch/full = research/advanced). Added ExecPlan
+  [core_mvp_runtime_integration_and_entrypoint_audit_plan.md](docs/exec_plans/core_mvp_runtime_integration_and_entrypoint_audit_plan.md),
+  legacy-runtime doc isolation (README/OUTPUTS/operator guide), boundary regressions
+  (`tests/test_core_mvp_blocks_1_3_boundaries.py`, materialization E2E smoke), and live canonical
+  acceptance in isolated temp output (`VOO/QQQ/TLT/GLD/Cash USD`).
+
+- **Core MVP Blocks 1-3 cleanup Session 6:** Completed final live portfolio-first acceptance run
+  for the cleanup plan. Fresh `Main portfolio/analysis_subject` outputs passed the JSON acceptance
+  probe for Block 1 minimal input, Block 2 product keys 2.1-2.6, Block 3 product keys, diagnostic
+  stress raw-field cleanliness, and Scenario Library sidecar/meta alignment. Added acceptance audit:
+  [docs/audits/2026-05-27_core_mvp_blocks_1_3_cleanup_acceptance_audit.md](docs/audits/2026-05-27_core_mvp_blocks_1_3_cleanup_acceptance_audit.md).
+  Targeted Core MVP suite passed; full repository pytest currently has 9 failures outside this
+  cleanup acceptance surface.
+
+- **Core MVP Blocks 1-3 cleanup Session 5:** Aligned source documentation and comments with the
+  cleaned Core MVP boundaries: minimal Block 1 product input contract, Block 2 product blocks 2.1-2.6
+  over `legacy_summary`, diagnostic-mode Stress Lab raw-field behavior, and Scenario Library
+  `scenario_library_meta` + sidecar artifact pattern. No generated artifacts were hand-edited.
+
+- **Core MVP Blocks 1-3 cleanup Session 1:** Added `core_mvp_input_surface` on `analysis_setup_v1`
+  and `core_mvp_input_contract` on `input_assumptions_v1` so Block 1 exposes a clean Core MVP input
+  contract (tickers, allocation, investor currency) while retaining mandate/client/liquidity fields
+  as legacy/advanced disclosure only. Real-cash behavior unchanged.
+
+- **Core MVP Blocks 1-3 cleanup Session 2:** Marked `portfolio_xray.json.legacy_summary` as
+  legacy/report-formatter compatibility (`_scope.product_surface=false`), removed the old
+  `mandate_gate` verdict field from live builds in favor of legacy compatibility metadata, and
+  corrected the Core MVP Block 2 comment to Blocks 2.1-2.6. Product-facing Blocks 2.1-2.6 unchanged.
+
+- **Core MVP Blocks 1-3 cleanup Session 3:** In `loss_gate_mode=diagnostic`, raw Stress Lab evidence
+  rows no longer emit mandate fields (`pass`, `loss_ok`, `diagnostic_code(s)`). Legacy mandate mode
+  keeps those fields gated behind `loss_gate_mode=mandate`; Block 3 product keys remain unchanged.
+
+- **Core MVP Blocks 1-3 cleanup Session 4:** Added consolidated regression coverage for Core MVP
+  Blocks 1-3 boundaries (`tests/test_core_mvp_blocks_1_3_boundaries.py`): minimal Block 1 input
+  contract + real cash, clean Block 2 product blocks, clean Block 3 diagnostic raw/product outputs,
+  and gated legacy mandate stress mode.
+
 - **Block 3.4 Current Portfolio Stress Scorecard MVP:** Added a new Core MVP diagnostic-only product key
   `current_portfolio_stress_scorecard_v1` on `stress_report.json`, built as an adapter over Blocks
   3.1–3.3 (`stress_results_v1` + `hedge_gap_analysis_v1`). Wired it in `src/stress.py`, `run_report.py`,

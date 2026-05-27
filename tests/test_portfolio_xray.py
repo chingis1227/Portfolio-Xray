@@ -77,6 +77,11 @@ def test_portfolio_xray_summary_answers_core_questions_without_score() -> None:
     assert "Capital concentration: TLT 30.0%, BND 20.0%, SPY 10.0%" in text
     assert "Risk concentration by RC_vol: SLV 40.0%, TLT 30.0%, GLD 20.0%" in text
     assert "Main diagnostic concern: rates_shock sensitivity" in text
+    assert summary["_scope"]["product_surface"] is False
+    assert "mandate_gate" not in summary["portfolio_diagnostic_verdict"]
+    assert summary["portfolio_diagnostic_verdict"]["legacy_policy_compatibility"]["status"] == "legacy_valid"
+    assert "Mandate gate:" not in text
+    assert "Legacy policy compatibility status: legacy_valid" in text
     assert "not a score, recommendation, selection decision, or trade instruction" in text
     assert "score" in text.lower()
 

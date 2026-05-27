@@ -5,7 +5,8 @@ Synthetic scenarios are factor shocks applied to the whole portfolio. Outputs:
 portfolio PnL, per-asset PnL, optional per-factor portfolio PnL from betas, and
 RC concentration as diagnostics only.
 
-Synthetic **pass** = portfolio PnL vs client mandate max drawdown (same threshold as loss_ok).
+Legacy mandate mode only: synthetic **pass** = portfolio PnL vs client mandate max drawdown
+(same threshold as loss_ok).
 RC Top1/Top3 (share of variance) are reported per scenario for diagnostics only; they do not affect status.
 Mandate MaxDD on full history is enforced in run_optimization (FAIL_MANDATE), not here.
 """
@@ -1372,7 +1373,7 @@ def run_stress(
 
     ``loss_gate_mode="mandate"`` (legacy): suite status DIAG_*; row pass/loss_ok vs client MaxDD.
     ``loss_gate_mode="diagnostic"`` (Core MVP portfolio-first): status ok/warning/insufficient_data;
-    no mandate pass/fail on scenario rows.
+    no mandate pass/fail fields on raw scenario or historical rows.
     """
     gate_mode = _normalize_loss_gate_mode(loss_gate_mode)
     use_mandate_gate = gate_mode == LOSS_GATE_MODE_MANDATE
@@ -1542,9 +1543,6 @@ def run_stress(
             "top3_rc_assets": top3_assets,
             "top3_rc_sum_pct": round(top3_rc_sum_pct, 4),
             "top3_loss_assets": top3_loss_assets,
-            "loss_ok": loss_ok,
-            "pass": scenario_pass,
-            "diagnostic_codes": loss_diags,
             "stress_cov_method": cov_meta.get("stress_cov_method"),
             "stress_cov_lambda": cov_meta.get("stress_cov_lambda"),
             "stress_cov_calibration_version": cov_meta.get("stress_cov_calibration_version"),
@@ -1562,6 +1560,14 @@ def run_stress(
                 fallback_reason="missing_asset_factor_betas" if fallback_assets else None,
             ),
         }
+        if use_mandate_gate:
+            row.update(
+                {
+                    "loss_ok": loss_ok,
+                    "pass": scenario_pass,
+                    "diagnostic_codes": loss_diags,
+                }
+            )
         if scenario_id == "recession_severe":
             row["calibration_source_episode"] = params.get("calibration_source_episode")
             row["vol_mult"] = round(vol_mult, 4)
@@ -1584,7 +1590,7 @@ def run_stress(
             n_obs = int(len(sub))
             coverage_ratio, quality = _historical_data_quality(n_obs, n_expected_obs)
             if sub.empty or len(sub) < 2:
-                historical_results.append({
+                hist_row = {
                     "episode": ep_id,
                     "episode_start": start,
                     "episode_end": end,
@@ -1592,14 +1598,15 @@ def run_stress(
                     "pnl_real_episode": None,
                     "vol_annualized_episode": None,
                     "volatility_spike_ratio": None,
-                    "pass": None,
-                    "diagnostic_code": None,
                     "n_obs": n_obs,
                     "n_expected_obs": n_expected_obs,
                     "coverage_ratio": round(coverage_ratio, 4) if coverage_ratio is not None else None,
                     "data_quality": quality,
                     **_historical_row_disclosure_fields(),
-                })
+                }
+                if use_mandate_gate:
+                    hist_row.update({"pass": None, "diagnostic_code": None})
+                historical_results.append(hist_row)
                 continue
             port_ret = sub.dot(w_vec)
             port_eq = (1 + port_ret).cumprod()
@@ -1626,7 +1633,7 @@ def run_stress(
             else:
                 vol_spike = np.nan
 
-            historical_results.append({
+            hist_row = {
                 "episode": ep_id,
                 "episode_start": start,
                 "episode_end": end,
@@ -1634,14 +1641,15 @@ def run_stress(
                 "pnl_real_episode": round(float(pnl_real_episode), 4) if pnl_real_episode is not None else None,
                 "vol_annualized_episode": vol_annualized_episode,
                 "volatility_spike_ratio": round(float(vol_spike), 4) if np.isfinite(vol_spike) else None,
-                "pass": pass_dd,
-                "diagnostic_code": hist_diag,
                 "n_obs": n_obs,
                 "n_expected_obs": n_expected_obs,
                 "coverage_ratio": round(coverage_ratio, 4) if coverage_ratio is not None else None,
                 "data_quality": quality,
                 **_historical_row_disclosure_fields(),
-            })
+            }
+            if use_mandate_gate:
+                hist_row.update({"pass": pass_dd, "diagnostic_code": hist_diag})
+            historical_results.append(hist_row)
             path_rows = []
             for dt in port_ret.index:
                 idx = port_ret.index.get_loc(dt)
@@ -1671,7 +1679,7 @@ def run_stress(
                 }
             )
         except Exception:
-            historical_results.append({
+            hist_row = {
                 "episode": ep_id,
                 "episode_start": start,
                 "episode_end": end,
@@ -1679,14 +1687,15 @@ def run_stress(
                 "pnl_real_episode": None,
                 "vol_annualized_episode": None,
                 "volatility_spike_ratio": None,
-                "pass": None,
-                "diagnostic_code": None,
                 "n_obs": 0,
                 "n_expected_obs": 0,
                 "coverage_ratio": None,
                 "data_quality": "insufficient_data",
                 **_historical_row_disclosure_fields(),
-            })
+            }
+            if use_mandate_gate:
+                hist_row.update({"pass": None, "diagnostic_code": None})
+            historical_results.append(hist_row)
 
     recession_calibration = _attach_recession_validation(
         recession_calibration,

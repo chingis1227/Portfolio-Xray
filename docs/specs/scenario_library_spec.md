@@ -45,6 +45,10 @@ Primary report outputs:
 - `scenario_library_warnings.csv`
 - `stress_report.scenario_library_meta`
 
+`scenario_library_v1` is the implementation/version name and sidecar artifact contract. The Core
+MVP `stress_report.json` does not expose a top-level `scenario_library_v1` key; it links to the
+sidecar through `scenario_library_meta` (and related embedded summaries where present).
+
 ## Scenario Library Normalized View v1
 
 `src/scenario_library_normalized.py` implements `scenario_library_normalized_v1`.

@@ -247,6 +247,13 @@ legacy `analysis_mode=optimize_from_universe` while diagnosing an explicit
 `input_assumptions_v1` includes `input_surface` (`input_surface_v1`): export-only disclosure of
 which product input surface applies and whether Core MVP first-screen requirements are met.
 
+`analysis_setup_v1` also includes `core_mvp_input_surface` (`core_mvp_input_surface_v1`), and
+`input_assumptions_v1` mirrors it as `core_mvp_input_contract`. These are the Core MVP UI/API-facing
+Block 1 input contracts: tickers, allocation, and `investor_currency` only. Legacy/client-fit fields
+(`resolved_mandate`, `mandate_and_constraints`, profile targets, liquidity, portfolio value, and
+`horizon_years`) are retained only as `legacy_advanced` disclosure and are not Core MVP product
+surface.
+
 | Field | Description |
 | --- | --- |
 | `profile` | `core_mvp` when diagnosing a user-supplied allocation (`analyze_current_weights` or explicit current/model subject); otherwise `legacy_advanced`. |

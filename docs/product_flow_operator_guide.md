@@ -30,8 +30,10 @@ Copy from `config.yml.example` Section 1 or fixtures under `tests/fixtures/mvp_p
 `client_profile`, liquidity, `portfolio_value`, and mandate caps are **not** required for
 `run_portfolio_review.py`. Optional web editor: `python config_ui/app.py` (three fields + Advanced).
 
-After validation, open `analysis_subject/run_metadata.json` → `input_assumptions.input_surface` and
-`field_tiers` to see what was user-supplied vs system-resolved. Real cash must appear in
+After validation, open `analysis_subject/run_metadata.json` → `analysis_setup.core_mvp_input_surface`
+and `input_assumptions.core_mvp_input_contract` for the minimal Core MVP product input contract.
+Use `input_assumptions.input_surface` and `field_tiers` only as disclosure of system-resolved,
+deferred, and legacy/advanced fields. Real cash must appear in
 `analysis_setup.cash_handling.real_cash_holdings`, not as a substitute for `cash_proxy_ticker`.
 
 ---
@@ -42,8 +44,8 @@ Read in this order after a portfolio-first run (new chat, demo prep, or code rev
 
 | Step | What to open | Why |
 | --- | --- | --- |
-| 1 | `{output_dir_final}/analysis_subject/run_metadata.json` | Subject type, weights source, `input_assumptions.input_surface` / `field_tiers`, analysis window |
-| 2 | `analysis_subject/portfolio_xray.json` | Blocks 1–2 diagnostics; prefer product blocks `block_2_1_asset_allocation`, `block_2_2_portfolio_metrics`, and `block_2_3_factor_exposure` when present (§2.1.1–§2.3.1 in [portfolio_xray_diagnostics_spec.md](specs/portfolio_xray_diagnostics_spec.md)); legacy seven sections remain for full X-Ray |
+| 1 | `{output_dir_final}/analysis_subject/run_metadata.json` | Subject type, weights source, `analysis_setup.core_mvp_input_surface` / `input_assumptions.core_mvp_input_contract`, analysis window |
+| 2 | `analysis_subject/portfolio_xray.json` | Blocks 1–2 diagnostics; prefer product blocks `block_2_1_asset_allocation` through `block_2_6_portfolio_weakness_map` when present (§2.1.1–§2.6.1 in [portfolio_xray_diagnostics_spec.md](specs/portfolio_xray_diagnostics_spec.md)); legacy seven sections remain for full X-Ray formatters |
 | 3 | `analysis_subject/stress_report.json` | Block 3 stress scenarios and factor context |
 | 4 | `analysis_subject/problem_classification.json` | Top problems and test paths (product bundle #1) |
 | 5 | `analysis_subject/candidate_launchpad.json` | Suggested hypotheses / methods (product bundle #2) |
@@ -67,8 +69,11 @@ Do **not** start from root `portfolio_xray.json` / `stress_report.json` unless t
 | --- | --- | --- |
 | **Product demo (one hypothesis)** | `python run_portfolio_review.py --candidates equal_weight` | Official MVP path; workflow `one_candidate`. Swap id per Launchpad. |
 | Dry-run demo plan | `python run_portfolio_review.py --candidates equal_weight --dry-run` | No builders; verify factory argv + `--then-compare` |
-| Routine Blocks 1–5 regression | `python run_portfolio_review.py` or `--mode core` | **`core_fast` — six candidates**; not a product demo |
-| Diagnosis only (no factory) | `python run_portfolio_review.py --skip-candidates` | Subject + problem + launchpad; no compare bundle tail |
+| Routine diagnosis-first review | `python run_portfolio_review.py` | Default product runtime; diagnosis-only (`analysis_subject/`), no factory, no compare |
+| Explicit diagnosis only | `python run_portfolio_review.py --skip-candidates` | Same diagnosis-only behavior as default; explicit flag for clarity in scripts |
+| Backend candidate batch (advanced/research) | `python run_portfolio_review.py --with-candidates` | Runs candidate factory batch with resolved profile (`core_fast`) and compare |
+| Full candidate menu (advanced/research) | `python run_portfolio_review.py --mode full` | Runs `default_v1` full menu and compare |
+| Legacy policy runtime (compatibility-only) | `python run_optimization.py`, `python run_report.py`, or `python run_mvp_workflow.py --workflow ...` | Keep callable for historical/policy workflows; not Core MVP default product runtime |
 | Factory + compare (subject already on disk) | `python run_candidate_factory.py --candidates equal_weight --execution-mode standard --then-compare` | Same factory id as review `--candidates` |
 | Launchpad method → command (print) | `python scripts/run_one_candidate_from_method.py --method equal_weight` | Optional; `--run` executes factory only |
 | Offline regression (no network) | `python -m pytest tests/test_product_bundle_integration.py tests/test_product_bundle_paths.py -q --basetemp=tmp/pytest_product_bundle` | See [TESTING.md](../TESTING.md) |
@@ -111,7 +116,8 @@ and What Changed resolve via `src/product_bundle_paths.py` (legacy root copies s
 | Do not | Do instead |
 | --- | --- |
 | Use **Portfolio Health Score** or **robustness scorecard** as the main product answer | Lead with `decision_verdict.json` + `current_vs_candidate.json`; treat scores as supporting evidence |
-| Run default `--mode core` for a **one-hypothesis demo** | `python run_portfolio_review.py --candidates <id>` |
+| Start a Core MVP demo from `run_optimization.py`, `run_report.py`, or `run_mvp_workflow.py` | Start from `python run_portfolio_review.py` and read `analysis_subject/` first |
+| Run `--with-candidates` or `--mode full` for a **one-hypothesis demo** | `python run_portfolio_review.py --candidates <id>` |
 | Add `--candidate-method` on `run_portfolio_review.py` | `--candidates <factory_id>` only |
 | Treat `ai_commentary_context.json` as finished client prose | Grounding stub; LLM is `RM-ARCH-010` / deferred |
 | Read root policy `stress_report.json` / `portfolio_xray.json` after portfolio-first review | Open `analysis_subject/` copies first |

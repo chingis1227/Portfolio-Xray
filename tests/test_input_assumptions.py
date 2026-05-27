@@ -95,6 +95,15 @@ def test_input_assumptions_summary_contains_input_mode_and_known_gap() -> None:
     assert summary["analysis_subject"]["resolution_source"] == "config.analysis_subject"
     assert summary["portfolio_input"]["reported_weights"]["status"] == "fully_invested"
     assert summary["currency_and_market"]["cash_proxy_ticker"] == "BIL"
+    assert summary["core_mvp_input_contract"]["product_surface"] is True
+    assert summary["core_mvp_input_contract"]["required_user_input_groups"] == [
+        "tickers",
+        "allocation",
+        "investor_currency",
+    ]
+    assert "client_profile" in summary["core_mvp_input_contract"]["excluded_legacy_advanced_fields"]
+    assert summary["mandate_and_constraints"]["_scope"]["product_surface"] is False
+    assert summary["mandate_and_constraints"]["_scope"]["not_required_for_core_mvp"] is True
     assert summary["mandate_and_constraints"]["horizon_role"] == "report_context_only_not_optimizer_constraint"
     assert summary["calculation_assumptions"]["returns_frequency"] == "monthly"
     assert summary["calculation_assumptions"]["configured_returns_frequency"] == "weekly"
@@ -118,6 +127,14 @@ def test_input_surface_core_mvp_from_mvp_fixture() -> None:
     setup = build_analysis_setup(cfg, cash_proxy_ticker="BIL", rf_source="FRED:DTB3")
     surface = build_input_surface(setup)
 
+    assert setup["core_mvp_input_surface"]["required_user_input_groups"] == [
+        "tickers",
+        "allocation",
+        "investor_currency",
+    ]
+    assert setup["core_mvp_input_surface"]["core_mvp_requirements_met"] is True
+    assert "target_max_drawdown_pct" in setup["core_mvp_input_surface"]["excluded_legacy_advanced_fields"]
+    assert setup["resolved_mandate"]["_scope"]["core_mvp_product_surface"] is False
     assert surface["profile"] == "core_mvp"
     assert surface["product_path"] == "portfolio_first_diagnosis"
     assert surface["first_screen"]["tickers"]["supplied"] is True

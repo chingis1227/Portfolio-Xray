@@ -62,21 +62,19 @@ Confusion audit:
 
 ## Command Matrix
 
-**Review default vs full menu:** current code still lets routine portfolio review (`run_portfolio_review.py` with no mode
-flag, or `--mode core`) run factory profile **`core_fast`** (same six candidate ids as `core_v1`,
-with parallel lightweight reports by default). Treat this as current backend behavior, not as the
-canonical ДИАГНОСТИКА 2 product story. The canonical product shape is diagnosis-first and then
-explicit one-hypothesis or shortlist comparison. The sequential **`core_v1`** profile is retained for
-regression/parity checks via `--candidate-profile core_v1`. The full optimizer and robust menu
-(**`default_v1`**, 16 builders) runs only with **`--mode full`** on review, or via standalone
-**`run_candidate_factory.py --profile default_v1`**, and is advanced/research only.
+**Review default vs full menu:** default `run_portfolio_review.py` is now diagnosis-only and does not
+run candidate factory or compare unless candidate execution is explicitly requested. Use
+`--candidates <id>` for product one-candidate/shortlist flows, `--with-candidates` for backend
+core batch (`core_fast`), and `--mode full` (or `--candidate-profile default_v1`) for the full
+advanced/research menu.
 
 ### Portfolio-first review (orchestrated)
 
 | Use case | Command | Factory profile |
 | --- | --- | --- |
-| Portfolio diagnosis / site/API backend run | `python run_portfolio_review.py` or `--mode core` | current code: `core_fast` backend batch |
+| Portfolio diagnosis / site/API backend run | `python run_portfolio_review.py` | none (diagnosis-only) |
 | **Canonical product demo** (one candidate -> compare -> verdict) | `python run_portfolio_review.py --candidates equal_weight` (or another factory id) | explicit id only; not `core_fast` menu |
+| Core backend candidate batch (advanced/research) | `python run_portfolio_review.py --with-candidates` | `core_fast` |
 | Full advanced/research review (16 builders + compare) | `python run_portfolio_review.py --mode full` | `default_v1` |
 | Compare / technical decision package only (no subject/factory) | `python run_compare_variants.py` | ? |
 | Portfolio-first PDF export | `python run_portfolio_review.py --with-pdf` | same as mode |
@@ -99,11 +97,12 @@ sequential regression/parity, or `default_v1` for the full menu).
 
 | Use case | Command |
 | --- | --- |
-| Default site/API report | `python run_report.py` |
+| Legacy report orchestration (JSON-first) | `python run_report.py` |
 | Legacy policy optimize only | `python run_optimization.py` |
-| Legacy policy + site/API report | `python run_optimization.py --with-report` |
-| Legacy/full report exports | `python run_report.py --output-profile full_report` |
+| Legacy policy + report orchestration | `python run_optimization.py --with-report` |
+| Legacy full report exports | `python run_report.py --output-profile full_report` |
 | Legacy export + PDF-capable sidecars | `python run_report.py --output-profile legacy_export` |
+| Legacy policy workflow wrapper | `python run_mvp_workflow.py --workflow policy-only` (or `policy-current` / `full-decision`) |
 
 ## Output Policy
 
@@ -140,8 +139,9 @@ analysis_subject
 -> current-vs-candidate / decision verdict / AI grounding / what changed
 ```
 
-The portfolio-first orchestrator (`run_portfolio_review.py`) follows this order by default. The
-legacy policy output flow remains callable for compatibility only:
+The portfolio-first orchestrator (`run_portfolio_review.py`) follows this order by default in
+diagnosis-only mode. Candidate generation/compare are opt-in (`--candidates`, `--with-candidates`,
+`--mode full`). The legacy policy output flow remains callable for compatibility only:
 
 ```text
 config.yml
@@ -167,6 +167,7 @@ python run_report.py --output-profile full_report
 | Portfolio-first subject materialization | Subject diagnostics before candidates | `{output_dir_final}/analysis_subject/` snapshots, metadata, X-Ray, and diagnostics from `run_report.py --materialize-analysis-subject` |
 | `run_optimization.py` | Legacy policy optimization and release checks | `portfolio_weights.yml`, `run_result.json`, run metadata under `output_dir_final` |
 | `run_report.py` | Main report and diagnostics flow | JSON contracts by default (`stress_report.json`, `portfolio_xray.json`, snapshots, scenario libraries); CSV/TXT/HTML/PNG/PDF only with `full_report` / `legacy_export` |
+| `run_mvp_workflow.py` | Legacy wrapper over policy/report stages | Legacy policy/current/full-decision orchestration outputs; compatibility-only entrypoint |
 | Candidate portfolio scripts | Build fixed benchmark/candidate weights and run the report pipeline | Candidate output folders with the same report contract after weights are fixed |
 | Robust/scenario scripts | Build robust candidate weights or reports from existing report artifacts | Robust/scenario JSON, CSV, and candidate report folders |
 | Taxonomy scripts | Validate/list/export taxonomy diagnostics | Taxonomy validation/list/export artifacts where configured |
@@ -325,9 +326,9 @@ Common project artifacts include:
 - `{output_dir_final}/current_portfolio/` (sidecar folder for materialized current-portfolio snapshots when using the combined current-vs-policy workflow; does not replace policy artifacts on Main root)
 - legacy `portfolio_comparison.json` and `ew_rp_comparison.json` (subset comparisons; superseded by canonical contract)
 
-`portfolio_xray.json` is a generated, diagnostic-only Portfolio X-Ray artifact. It summarizes existing report pipeline outputs and in-memory diagnostics; it does not optimize, change weights, change mandate gates, change stress pass/fail status, or make portfolio selection decisions. Its section and disclosure contract is owned by [docs/specs/portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md). Product Block 2.3 (`block_2_3_factor_exposure`) is an adapter over existing `stress_report` factor diagnostics; missing factor fields are reported as partial/unavailable and fixed upstream, not recalculated inside X-Ray. Product Block 2.4 (`block_2_4_hidden_exposure`) is an additive rule-based hidden exposure detector over completed Blocks 2.1, 2.2, and 2.3 only; its `heuristic_v1` alerts do not run Stress Lab, candidates, optimizer, or factor-model recalculation. Product Block 2.5 (`block_2_5_risk_budget_view`, §2.5.1) compares capital weights to RC_vol and taxonomy risk-budget buckets; it must not recompute RC, read `stress_report` for core fields, or include stress PnL on the product block (legacy `sections.risk_budget_view` may still expose stress fields). Human-readable surfaces are rendered from this JSON via `format_portfolio_xray_text` (`report.txt`), `format_portfolio_xray_html` (`report.html`), and `format_portfolio_xray_commentary` (`commentary.txt` compact block).
+`portfolio_xray.json` is a generated, diagnostic-only Portfolio X-Ray artifact. It summarizes existing report pipeline outputs and in-memory diagnostics; it does not optimize, change weights, change mandate gates, change stress pass/fail status, or make portfolio selection decisions. Its section and disclosure contract is owned by [docs/specs/portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md). Product Block 2.3 (`block_2_3_factor_exposure`) is an adapter over existing `stress_report` factor diagnostics; missing factor fields are reported as partial/unavailable and fixed upstream, not recalculated inside X-Ray. Product Block 2.4 (`block_2_4_hidden_exposure`) is an additive rule-based hidden exposure detector over completed Blocks 2.1, 2.2, and 2.3 only; its `heuristic_v1` alerts do not run Stress Lab, candidates, optimizer, or factor-model recalculation. Product Block 2.5 (`block_2_5_risk_budget_view`, §2.5.1) compares capital weights to RC_vol and taxonomy risk-budget buckets; it must not recompute RC, read `stress_report` for core fields, or include stress PnL on the product block (legacy `sections.risk_budget_view` may still expose stress fields). Product Block 2.6 (`block_2_6_portfolio_weakness_map`, §2.6.1) reads completed Blocks 2.1–2.5 and emits pre-stress weakness hypotheses only. Core MVP UI/API consumers should prefer top-level product blocks 2.1–2.6; `sections.*` and `legacy_summary` remain compatibility surfaces, and `legacy_summary._scope.product_surface=false`. Human-readable surfaces are rendered from this JSON via `format_portfolio_xray_text` (`report.txt`), `format_portfolio_xray_html` (`report.html`), and `format_portfolio_xray_commentary` (`commentary.txt` compact block).
 
-`run_result.json` and `run_metadata.json` include an `analysis_setup` block, the resolved runtime contract for the input and assumptions layer. They also include `input_assumptions`, the reporting view projected from `analysis_setup`, summarizing the input mode, tickers, fixed/current weight status, resolved market assumptions, mandate inputs, calculation settings, Core MVP `input_surface` / `field_tiers` disclosure, real-cash handling when present, and known V1 gaps. Legacy policy `run_result.json` also includes `optimizer_run_metadata` (`legacy_policy_optimizer_run_metadata_v1`) with objective, estimator, window, input fingerprints, universe, bounds/caps, cash policy, solver/fallback, release-gate disclosure, covariance methodology, and Young ETF methodology. Optimizer candidate `baseline_weights_metadata.json` exports for Minimum Variance, Maximum Diversification, Minimum CVaR, and Robust Mean-Variance include `optimizer_run_metadata` (`candidate_optimizer_run_metadata_v1`) with candidate-only role, method/objective, input window, input fingerprints, estimator/constraint, solver/fallback, parameter, output-summary disclosure, covariance methodology, and Young ETF methodology while preserving legacy top-level metadata fields. Materialized Robust Scenario candidate metadata may include `optimizer_run_metadata` (`robust_scenario_optimizer_run_metadata_v1`) copied from `robust_optimization_v1_summary.json`, including SLSQP solver/fallback quality. `candidate_comparison.json` copies the comparison-ready subset to `construction_disclosure.optimizer_methodology` when those upstream metadata blocks exist and projects normalized fallback/failure quality to `construction_disclosure.optimizer_quality` when metadata or factory evidence is available. `candidate_comparison.txt` and legacy `ips_summary.txt` include compact optimizer methodology notes when source metadata is present.
+`run_result.json` and `run_metadata.json` include an `analysis_setup` block, the resolved runtime contract for the input and assumptions layer. They also include `input_assumptions`, the reporting view projected from `analysis_setup`, summarizing the input mode, tickers, fixed/current weight status, resolved market assumptions, mandate inputs, calculation settings, Core MVP `input_surface` / `field_tiers` disclosure, real-cash handling when present, and known V1 gaps. For Core MVP product consumers, the minimal input contract is `analysis_setup.core_mvp_input_surface` mirrored as `input_assumptions.core_mvp_input_contract`; legacy/client/mandate disclosure fields are not required product input. Legacy policy `run_result.json` also includes `optimizer_run_metadata` (`legacy_policy_optimizer_run_metadata_v1`) with objective, estimator, window, input fingerprints, universe, bounds/caps, cash policy, solver/fallback, release-gate disclosure, covariance methodology, and Young ETF methodology. Optimizer candidate `baseline_weights_metadata.json` exports for Minimum Variance, Maximum Diversification, Minimum CVaR, and Robust Mean-Variance include `optimizer_run_metadata` (`candidate_optimizer_run_metadata_v1`) with candidate-only role, method/objective, input window, input fingerprints, estimator/constraint, solver/fallback, parameter, output-summary disclosure, covariance methodology, and Young ETF methodology while preserving legacy top-level metadata fields. Materialized Robust Scenario candidate metadata may include `optimizer_run_metadata` (`robust_scenario_optimizer_run_metadata_v1`) copied from `robust_optimization_v1_summary.json`, including SLSQP solver/fallback quality. `candidate_comparison.json` copies the comparison-ready subset to `construction_disclosure.optimizer_methodology` when those upstream metadata blocks exist and projects normalized fallback/failure quality to `construction_disclosure.optimizer_quality` when metadata or factory evidence is available. `candidate_comparison.txt` and legacy `ips_summary.txt` include compact optimizer methodology notes when source metadata is present.
 
 The exact artifact set can vary by config, available data, candidate type, and enabled report features.
 
@@ -354,14 +355,14 @@ readiness notes in `candidate_comparison.txt` for optimizer-backed comparison ro
 ## Blocks 1-5 MVP Output Acceptance
 
 When validating the first-five-block MVP core (offline smoke or a representative
-`run_portfolio_review.py --mode core --skip-pdf` run), inspect generated artifacts under
+`run_portfolio_review.py` (default diagnosis-only) or explicit candidate-mode run, inspect generated artifacts under
 `{output_dir_final}/analysis_subject/` before candidate or decision outputs:
 
 | Block | Minimum artifacts | Trust checks |
 | --- | --- | --- |
-| 1 Input | `run_metadata.json` with `analysis_setup` and `input_assumptions` | Explicit current/model weights sum to at most `1.0`; partial sums disclose cash remainder; `input_assumptions.input_surface` lists Core MVP user fields; `field_tiers` classifies deferred/legacy keys; real-cash labels in `analysis_setup.cash_handling.real_cash_holdings` when used (not substituted by `cash_proxy_ticker`) |
+| 1 Input | `run_metadata.json` with `analysis_setup` and `input_assumptions` | Explicit current/model weights sum to at most `1.0`; partial sums disclose cash remainder; `analysis_setup.core_mvp_input_surface` and `input_assumptions.core_mvp_input_contract` expose the minimal Core MVP product input contract; `input_assumptions.input_surface` / `field_tiers` disclose deferred/legacy keys; real-cash labels in `analysis_setup.cash_handling.real_cash_holdings` when used (not substituted by `cash_proxy_ticker`) |
 | 2 X-Ray | `portfolio_xray.json` (seven sections + product blocks `block_2_1_asset_allocation` … `block_2_6_portfolio_weakness_map`) | `data_trust_signals.user_summary_lines` when data-quality warnings exist; prefer product blocks for UI/API: capital structure (§2.1.1), portfolio behavior (§2.2.1), factor sensitivity (§2.3.1), hidden exposure (§2.4.1), risk budget (§2.5.1), weakness map (§2.6.1 in [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md)); Blocks 2.3–2.6 are read-only adapters over upstream evidence; legacy `sections.*` remain for formatters until migration |
-| 3 Stress | `stress_report.json` with `stress_results_v1`, `hedge_gap_analysis_v1` (when implemented), scorecard, conclusions, historical methodology, legacy `hedge_gap_analysis` | `data_trust_summary.user_summary_lines` for episode/taxonomy/young-ETF warnings |
+| 3 Stress | `stress_report.json` with `scenario_library_meta` plus sidecar `scenario_library.json`, `stress_results_v1`, `hedge_gap_analysis_v1`, `current_portfolio_stress_scorecard_v1`, historical methodology, and legacy compatibility rollups | `data_trust_summary.user_summary_lines` for episode/taxonomy/young-ETF warnings; Core MVP diagnostic mode must not expose row-level mandate `pass` / `loss_ok` / `diagnostic_code(s)` in product rows or raw evidence arrays |
 | 4 Factory | `candidate_factory_run.json` at review root | Comparison `candidate_menu.factory_evidence_status` must be `current` or explicitly not authoritative |
 | 4–5 Bundle | `candidate_comparison.json` → `review_bundle_context` | `review_bundle_fingerprint` and `mode_subject_consistency` link subject/factory/comparison; read `user_summary_lines` when `analysis_mode` label differs from `analysis_subject.type` |
 | 5 Optimizers | Candidate folders + comparison rows | Optimizer-backed rows are `available` only when readiness-critical evidence is complete; otherwise `degraded` with warning codes |

@@ -30,8 +30,8 @@ DIAGNOSTIC_ONLY_DISCLAIMER = (
     "or provide trade instructions."
 )
 
-# Core MVP product blocks: block_2_1 .. block_2_5 (separate modules). Legacy sections below
-# (portfolio_archetype, risk_budget_view, weakness_map) remain for formatters / golden compatibility.
+# Core MVP product blocks: block_2_1 .. block_2_6 (separate modules). Legacy sections below
+# remain for formatters / golden compatibility and are not the Core MVP product surface.
 XRAY_SECTION_KEYS = (
     "asset_allocation",
     "risk_diagnostics",
@@ -729,17 +729,43 @@ def build_portfolio_xray_summary(
     stress = _stress_status(stress_report)
     metric_mdd = (portfolio_metrics or {}).get("max_drawdown") if isinstance(portfolio_metrics, dict) else None
     metric_vol = (portfolio_metrics or {}).get("vol_annual") if isinstance(portfolio_metrics, dict) else None
+    legacy_policy_status = (
+        "legacy_valid"
+        if portfolio_valid is True
+        else "legacy_invalid"
+        if portfolio_valid is False
+        else "not_evaluated"
+    )
 
     verdict_lines = [
         f"Analyzed portfolio role: {role}; weight source: {weight_source}.",
         f"Capital concentration: {_join_items(top_weight)}.",
         f"Risk concentration by RC_vol: {_join_items(top_rc)}.",
         f"Main diagnostic concern: {concern}.",
-        f"Mandate gate: {'PASS' if portfolio_valid is True else 'FAIL' if portfolio_valid is False else 'n/a'}; stress status: {stress}.",
+        (
+            f"Legacy policy compatibility status: {legacy_policy_status}; stress status: {stress}. "
+            "This compatibility status is not part of Core MVP product diagnosis."
+        ),
         "This is an explanatory diagnostic summary, not a score, recommendation, selection decision, or trade instruction.",
     ]
 
     return {
+        "_scope": {
+            "tier": "legacy_compatibility",
+            "product_surface": False,
+            "core_mvp_product_keys": [
+                "block_2_1_asset_allocation",
+                "block_2_2_portfolio_metrics",
+                "block_2_3_factor_exposure",
+                "block_2_4_hidden_exposure",
+                "block_2_5_risk_budget_view",
+                "block_2_6_portfolio_weakness_map",
+            ],
+            "consumer_guidance": (
+                "Core MVP UI/API consumers should read product blocks 2.1-2.6. "
+                "This legacy summary is retained for text/report compatibility only."
+            ),
+        },
         "analysis_setup_summary": {
             "portfolio_role": role,
             "weight_source": weight_source,
@@ -774,7 +800,11 @@ def build_portfolio_xray_summary(
         },
         "portfolio_diagnostic_verdict": {
             "main_diagnostic_concern": concern,
-            "mandate_gate": "PASS" if portfolio_valid is True else "FAIL" if portfolio_valid is False else "n/a",
+            "legacy_policy_compatibility": {
+                "status": legacy_policy_status,
+                "source": "legacy_portfolio_valid",
+                "core_mvp_product_surface": False,
+            },
             "stress_status": stress,
             "vol_annual": metric_vol,
             "max_drawdown": metric_mdd,

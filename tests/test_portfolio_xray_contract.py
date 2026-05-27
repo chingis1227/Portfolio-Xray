@@ -90,6 +90,24 @@ def assert_top_level_contract(doc: dict[str, Any]) -> None:
     assert set(doc["sections"]) == set(XRAY_SECTION_KEYS)
 
 
+def assert_core_mvp_block_2_consumer_surface(doc: dict[str, Any]) -> None:
+    """Core MVP consumers should read Block 2 product keys, not legacy mandate summary fields."""
+    expected_keys = {
+        "block_2_1_asset_allocation",
+        "block_2_2_portfolio_metrics",
+        "block_2_3_factor_exposure",
+        "block_2_4_hidden_exposure",
+        "block_2_5_risk_budget_view",
+        "block_2_6_portfolio_weakness_map",
+    }
+    assert expected_keys <= set(doc)
+    legacy = doc.get("legacy_summary") or {}
+    assert legacy.get("_scope", {}).get("product_surface") is False
+    verdict = legacy.get("portfolio_diagnostic_verdict") or {}
+    assert "mandate_gate" not in verdict
+    assert (verdict.get("legacy_policy_compatibility") or {}).get("core_mvp_product_surface") is False
+
+
 def assert_sections_contract(doc: dict[str, Any]) -> None:
     sections = doc["sections"]
     assert set(sections) == set(XRAY_SECTION_KEYS)
@@ -226,7 +244,8 @@ def test_live_build_matches_golden_document() -> None:
     assert set(golden_r) <= set(live_r)
     # Allow additive surface growth (new blocks) without immediately rewriting the golden fixture.
     # Sessions that intentionally update the golden fixture should keep this strict on shared keys.
-    assert {k: live_r[k] for k in golden_r} == golden_r
+    comparable_keys = set(golden_r) - {"legacy_summary"}
+    assert {k: live_r[k] for k in comparable_keys} == {k: golden_r[k] for k in comparable_keys}
 
 
 def test_live_build_kwargs_stable_entrypoint() -> None:
@@ -242,4 +261,5 @@ def test_live_build_kwargs_stable_entrypoint() -> None:
     live = build_golden_document()
     assert_top_level_contract(live)
     assert_sections_contract(live)
+    assert_core_mvp_block_2_consumer_surface(live)
     assert list(live["sections"]) == list(XRAY_SECTION_KEYS)

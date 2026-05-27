@@ -74,10 +74,12 @@ Required top-level fields (v2):
 - `block_2_4_hidden_exposure`: product Block 2.4 hidden exposure / hidden risk contract
 - `block_2_5_risk_budget_view`: product Block 2.5 risk budget contract (§2.5.1; wired Session 05+)
 - `block_2_6_portfolio_weakness_map`: product Block 2.6 weakness-map hypothesis contract (§2.6.1; implemented)
-- `sections`: seven keys in fixed order (see `XRAY_SECTION_KEYS` in code); **Core MVP consumers use
-  `block_2_1`–`block_2_5` only**. Keys 2.6–2.7 in `sections` are legacy/advanced compatibility;
-  `sections.risk_budget_view` is legacy compatibility for formatters.
-- `legacy_summary`: backward-compatible v1-style summary
+- `sections`: seven keys in fixed order (see `XRAY_SECTION_KEYS` in code). Core MVP UI/API
+  consumers should use the top-level product blocks `block_2_1_asset_allocation` through
+  `block_2_6_portfolio_weakness_map`; `sections.*` remain legacy/report-formatter compatibility.
+  `sections.portfolio_archetype` (2.7) is advanced/backlog, not Core MVP.
+- `legacy_summary`: backward-compatible v1-style summary; `_scope.product_surface=false` and not
+  part of the Core MVP product consumer surface.
 - `data_trust_signals` (`xray_data_trust_signals_v1`, RM-1016): rollup of section `warnings` plus
   optional `stress_report.data_trust_summary` lines for commentary; does not change X-Ray formulas.
 

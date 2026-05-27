@@ -171,7 +171,13 @@ Confirm or define: holdings; weights; investor currency; benchmark; risk profile
 
 **Purpose:** Show what is really inside the portfolio before recommending changes.
 
-Answer: allocation (asset, class, region, currency, sector); capital weight vs risk contribution; factor exposure; hidden risks; archetype; disproportionate risk contributors.
+**Core MVP (current):** Blocks 2.1–2.4 — allocation, portfolio metrics/risk diagnostics, factor exposure,
+hidden exposure. **Later/advanced (not Core MVP):** archetype classification (2.5), full weakness map
+(2.7), risk-budget drill-down (2.6) — do not require them on the default diagnosis screen.
+
+Answer: allocation (asset, class, region, currency, sector); capital weight vs risk contribution;
+factor exposure; hidden risks; disproportionate risk contributors (Core MVP). Archetype-style one-liners
+are target UX for a future migration, not the current product contract.
 
 **Components:** stacked allocation; weight vs RC bars; factor bars; RC leaderboard; weakness heatmap; "What this means" card.
 

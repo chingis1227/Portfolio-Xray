@@ -41,9 +41,9 @@ def test_diagnostic_mode_skips_mandate_pass_fail() -> None:
     assert out["status"] not in {"DIAG_PASS", "DIAG_ATTENTION", "DIAG_PASS_WITH_WARNING"}
     assert not out.get("fail_reason_code")
     for row in out["scenario_results"]:
-        assert row.get("pass") is None
-        assert row.get("loss_ok") is None
-        assert not row.get("diagnostic_codes")
+        assert _MANDATE_PRODUCT_KEYS.isdisjoint(row.keys())
+    for row in out["historical_results"]:
+        assert _MANDATE_PRODUCT_KEYS.isdisjoint(row.keys())
 
 
 def test_diagnostic_mode_includes_hedge_gap_analysis_v1_without_mandate_fields() -> None:

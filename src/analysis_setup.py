@@ -15,6 +15,19 @@ from src.returns_frequency import (
 ANALYSIS_SETUP_VERSION = "analysis_setup_v1"
 ANALYSIS_SUBJECT_VERSION = "analysis_subject_v1"
 ANALYSIS_SUBJECT_TYPES = ("current_portfolio", "model_portfolio", "universe_baseline")
+CORE_MVP_INPUT_SURFACE_VERSION = "core_mvp_input_surface_v1"
+CORE_MVP_REQUIRED_INPUT_GROUPS = ("tickers", "allocation", "investor_currency")
+LEGACY_ADVANCED_MANDATE_FIELDS = (
+    "client_profile",
+    "target_nominal_return_annual",
+    "target_vol_annual",
+    "target_max_drawdown_pct",
+    "min_acceptable_return",
+    "liquidity_need_months",
+    "monthly_expenses",
+    "portfolio_value",
+    "horizon_years",
+)
 
 _SUBJECT_DEFAULT_DISPLAY = {
     "current_portfolio": "Current Portfolio",
@@ -95,6 +108,42 @@ def weight_status(weights: dict[str, float] | None) -> dict[str, Any]:
         "positive_weight_count": len(positive),
         "weight_sum": _round_weight(total),
         "cash_remainder": _round_weight(max(0.0, 1.0 - total)),
+    }
+
+
+def _core_mvp_input_surface(
+    *,
+    cfg: PortfolioConfig,
+    analysis_subject: dict[str, Any],
+    analysis_portfolio: dict[str, Any],
+    product_input_case: str,
+) -> dict[str, Any]:
+    """Minimal Core MVP input surface, separated from legacy mandate assumptions."""
+    weight_map = positive_weights(analysis_portfolio.get("weights"))
+    return {
+        "version": CORE_MVP_INPUT_SURFACE_VERSION,
+        "product_path": "portfolio_first_diagnosis",
+        "required_user_input_groups": list(CORE_MVP_REQUIRED_INPUT_GROUPS),
+        "fields": {
+            "tickers": list(cfg.tickers),
+            "allocation": {
+                "weight_source": analysis_portfolio.get("weight_source"),
+                "weight_status": weight_status(weight_map),
+                "analysis_subject_type": analysis_subject.get("type"),
+            },
+            "investor_currency": cfg.investor_currency,
+        },
+        "core_mvp_requirements_met": (
+            len(list(cfg.tickers)) > 0
+            and bool(weight_map)
+            and bool(str(cfg.investor_currency or "").strip())
+        ),
+        "product_input_case": product_input_case,
+        "excluded_legacy_advanced_fields": list(LEGACY_ADVANCED_MANDATE_FIELDS),
+        "notes": [
+            "Core MVP Blocks 1-3 consume this minimal input surface for portfolio-first diagnostics.",
+            "Client profile, mandate targets, liquidity, portfolio value, and horizon remain legacy/advanced context only.",
+        ],
     }
 
 
@@ -657,7 +706,22 @@ def build_analysis_setup(
         },
         "analysis_subject": analysis_subject,
         "analysis_portfolio": analysis_portfolio,
+        "core_mvp_input_surface": _core_mvp_input_surface(
+            cfg=cfg,
+            analysis_subject=analysis_subject,
+            analysis_portfolio=analysis_portfolio,
+            product_input_case=product_input_case,
+        ),
         "resolved_mandate": {
+            "_scope": {
+                "tier": "legacy_advanced",
+                "core_mvp_product_surface": False,
+                "not_required_for_core_mvp": True,
+                "description": (
+                    "Client profile, mandate targets, liquidity, portfolio value, and horizon are "
+                    "legacy/advanced context. Core MVP Blocks 1-3 use core_mvp_input_surface instead."
+                ),
+            },
             "client_profile": cfg.client_profile,
             "target_nominal_return_annual": _mandate_entry(
                 cfg,
@@ -784,6 +848,9 @@ def build_analysis_setup(
 __all__ = [
     "ANALYSIS_SETUP_VERSION",
     "ANALYSIS_SUBJECT_VERSION",
+    "CORE_MVP_INPUT_SURFACE_VERSION",
+    "CORE_MVP_REQUIRED_INPUT_GROUPS",
+    "LEGACY_ADVANCED_MANDATE_FIELDS",
     "build_analysis_setup",
     "positive_weights",
     "preflight_explicit_analysis_subject_tickers",

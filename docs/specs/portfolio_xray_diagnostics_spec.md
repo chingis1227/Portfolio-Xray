@@ -155,6 +155,9 @@ Post-audit Session 07 (`RM-947`):
   - `weight_hhi`: Herfindahl–Hirschman index \(\sum_i w_i^2\) on positive capital weights, rounded to 3 decimals at export; omitted when only one positive holding (trivial HHI = 1)
 - Formulas align with `candidate_comparison` `weight_concentration` for cross-artifact consistency.
 - `legacy_summary.asset_allocation_summary` mirrors top-1/top-3/HHI fields for text overview lines.
+- `legacy_summary` is a legacy/report-formatter compatibility surface (`_scope.product_surface=false`);
+  Core MVP UI/API consumers must read top-level product blocks 2.1-2.6 instead of legacy summary
+  verdict fields.
 
 #### 2.1.1 Block 2.1 product contract (`block_2_1_asset_allocation`)
 
@@ -164,7 +167,7 @@ Purpose: give portfolio-first consumers a **stable, product-facing** capital-all
 
 **Artifact placement:** top-level key `block_2_1_asset_allocation` on `portfolio_xray.json` under the active output folder (portfolio-first: `{output_dir_final}/analysis_subject/portfolio_xray.json`). Do **not** introduce a separate `asset_allocation.json` in the six-file product bundle.
 
-**Backward compatibility:** `sections.asset_allocation` (items model) and `legacy_summary.asset_allocation_summary` remain required and unchanged in shape until an explicit migration. Report formatters may continue to use the legacy section; UI/API should prefer `block_2_1_asset_allocation`.
+**Backward compatibility:** `sections.asset_allocation` (items model) and `legacy_summary.asset_allocation_summary` remain required and unchanged in shape until an explicit migration. Report formatters may continue to use the legacy section; UI/API should prefer `block_2_1_asset_allocation`. `legacy_summary` is not the Core MVP product surface and must not be used for mandate/pass-fail product conclusions.
 
 **Weight basis:** positive capital weights from resolved `analysis_setup` / analyzed weights (same as `_positive_weights` in `src/portfolio_xray.py`). No ETF look-through. Weights sum to at most `1.0`; partial sums disclose cash remainder via Input Layer, not via substituting `cash_proxy_ticker`.
 

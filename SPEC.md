@@ -295,7 +295,7 @@ Generated weights are not normal user input. The legacy policy workflow writes
 `portfolio_weights.yml` and `run_result.json` when release is allowed, but generated policy weights
 are not the default `analysis_subject` in the portfolio-first workflow.
 
-`analysis_setup` is the resolved runtime contract for portfolio input, mandate, assumptions, and validation metadata. `input_assumptions` is an exported/reporting view of that contract (including `input_surface` and `field_tiers` disclosure), not a separate business-logic source. Downstream analytics consume `analysis_setup` or `PortfolioConfig`, not `input_assumptions` alone.
+`analysis_setup` is the resolved runtime contract for portfolio input, mandate, assumptions, and validation metadata. `input_assumptions` is an exported/reporting view of that contract (including `input_surface` and `field_tiers` disclosure), not a separate business-logic source. For Core MVP product consumers, the minimal portfolio-first input surface is `analysis_setup.core_mvp_input_surface` mirrored as `input_assumptions.core_mvp_input_contract`: tickers/instruments, weights/current_weights, and investor_currency. Legacy mandate/client/profile fields remain only advanced/compatibility disclosure and are not required Core MVP input. Downstream analytics consume `analysis_setup` or `PortfolioConfig`, not `input_assumptions` alone.
 
 ## Outputs
 
@@ -416,14 +416,14 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Portfolio-first review workflow (`analysis_subject` first) | Implemented; `run_portfolio_review.py` is the default entrypoint |
 | Blocks 1-5 MVP core reliability (Phase 16) | **Done** (Sessions 01-09, `RM-1010`-`RM-1018`); offline acceptance bundle and operator runbook govern routine verification |
 | Main CLI optimization and report pipeline | Implemented |
-| Input and Assumptions Layer | Implemented CLI/file-driven V1; Core MVP three-field surface, MVP defaults injection, real-cash holdings, `input_surface` / `field_tiers` export ([input_assumptions_spec.md](docs/specs/input_assumptions_spec.md); [Input Layer MVP Migration](docs/exec_plans/2026-05-26_input_layer_mvp_migration.md) Sessions 01–09) |
+| Input and Assumptions Layer | Implemented CLI/file-driven V1; Core MVP three-field surface, MVP defaults injection, real-cash holdings, `core_mvp_input_surface` / `core_mvp_input_contract` product contract plus `input_surface` / `field_tiers` disclosure ([input_assumptions_spec.md](docs/specs/input_assumptions_spec.md); [Input Layer MVP Migration](docs/exec_plans/2026-05-26_input_layer_mvp_migration.md) Sessions 01–09) |
 | Portfolio X-Ray Core MVP (Blocks 2.1–2.6) | Blocks 2.1–2.6 **implemented** on `portfolio_xray.json`; **no client mandate / profile target comparison** in product blocks ([portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md)) |
 | Risk Budget View (Block 2.5) | Product block `block_2_5_risk_budget_view` **implemented** (Sessions 00–08, 2026-05-26); legacy `sections.risk_budget_view` preserved ([portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.5.1) |
 | Portfolio Weakness Map (Block 2.6) | Product block `block_2_6_portfolio_weakness_map` **implemented** (Sessions 00–08, 2026-05-26); pre-stress over Blocks 2.1–2.5; legacy `sections.weakness_map` preserved ([portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.6.1, [acceptance audit](docs/audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md)) |
 | Portfolio Archetype Classification (Block 2.7) | Legacy section implemented (`sections.portfolio_archetype`); **postponed** for product — advanced/backlog, not Core MVP ([portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.7) |
 | Config validation and profile-derived targets | Implemented |
 | Portfolio metrics, backtests, risk contribution | Implemented |
-| Stress testing and stress commentary | Implemented diagnostic/reporting layer; Core MVP uses `loss_gate_mode=diagnostic` (no mandate pass/fail) |
+| Stress testing and stress commentary | Implemented diagnostic/reporting layer; Core MVP uses `loss_gate_mode=diagnostic` (no mandate pass/fail, and raw scenario/historical rows omit `pass` / `loss_ok` / `diagnostic_code(s)`) |
 | Scenario Library (Block 3.1) | Fixed historical (5) + synthetic (8) scenario set; [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.1 |
 | Stress Results (Block 3.2) | Product-facing `stress_results_v1` contract on `stress_report.json`; `stress_conclusions` preserved as compatibility rollup ([stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.1) |
 | Hedge Gap Analysis (Block 3.3) | Product contract `hedge_gap_analysis_v1` on `stress_report.json` (contribution-based offset coverage; legacy `hedge_gap_analysis` retained) — builder scaffold **Implemented** Session 02 (`src/hedge_gap_analysis_block.py`; wiring Session 05+) ([hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md), [stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.2.2) |

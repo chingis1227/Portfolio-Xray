@@ -139,8 +139,25 @@ def test_mvp_disclosure_chain_core_mvp_requirements_met(fixture_name: str) -> No
     )
     assumptions = build_input_assumptions_from_analysis_setup(setup)
 
+    assert setup["core_mvp_input_surface"]["required_user_input_groups"] == [
+        "tickers",
+        "allocation",
+        "investor_currency",
+    ]
+    assert setup["core_mvp_input_surface"]["core_mvp_requirements_met"] is True
+    assert set(setup["core_mvp_input_surface"]["fields"]) == {
+        "tickers",
+        "allocation",
+        "investor_currency",
+    }
+    for key in DEFERRED_CONFIG_KEYS:
+        assert key not in setup["core_mvp_input_surface"]["fields"]
     assert assumptions["input_surface"]["profile"] == "core_mvp"
     assert assumptions["input_surface"]["core_mvp_requirements_met"] is True
+    assert assumptions["core_mvp_input_contract"]["product_surface"] is True
+    for key in DEFERRED_CONFIG_KEYS:
+        assert key not in assumptions["core_mvp_input_contract"]["fields"]
+    assert assumptions["mandate_and_constraints"]["_scope"]["product_surface"] is False
     assert assumptions["field_tiers"]["run_disclosure"]["core_mvp"]["requirements_met"] is True
     assert assumptions["analysis_subject"]["type"] == "current_portfolio"
     assert assumptions["analysis_subject"]["resolution_source"] == "config.analysis_subject"
