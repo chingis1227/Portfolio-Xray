@@ -1,0 +1,11 @@
+# Fixture matrix FX4: inflation-sensitive portfolio (Core MVP Blocks 1-3 audit).
+# Purpose: commodity/inflation tilt with equity and international diversification.
+investor_currency: USD
+tickers: [PDBC, GLD, XLE, TIP, SPY, VXUS]
+current_weights:
+  PDBC: 0.22
+  GLD: 0.18
+  XLE: 0.18
+  TIP: 0.17
+  SPY: 0.15
+  VXUS: 0.10

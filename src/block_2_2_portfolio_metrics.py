@@ -422,12 +422,13 @@ def build_block_2_2_portfolio_metrics(
 
     tail_fields, tail_available = _tail_risk_fields(analytics)
     data_quality_warnings: list[str] = []
+    informational_disclosures: list[str] = []
 
     weight_map = resolved_analysis_weights(analysis_setup, weights=weights)
     real_cash_labels = _real_cash_labels(analysis_setup, weight_map=weight_map)
     if real_cash_labels:
-        data_quality_warnings.append(
-            "Real cash holdings contribute 0% return in portfolio metrics (cash_proxy_ticker is not substituted)."
+        informational_disclosures.append(
+            "Cash holdings are handled as real cash positions (zero return/volatility, no market price download) and remain distinct from cash proxy ETFs."
         )
 
     n_obs = _metric_quality_n_obs(metrics)
@@ -558,6 +559,7 @@ def build_block_2_2_portfolio_metrics(
             "full_matrix_ref": matrix_ref,
         },
         "data_quality_warnings": data_quality_warnings,
+        "informational_disclosures": informational_disclosures,
         "metadata": metadata,
     }
 

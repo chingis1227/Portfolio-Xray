@@ -1,0 +1,11 @@
+# Fixture matrix FX2: equity-heavy growth portfolio (Core MVP Blocks 1-3 audit).
+# Purpose: concentrated risk-on growth and tech sensitivity.
+investor_currency: USD
+tickers: [QQQ, VOO, SMH, VUG, VXUS, GLD]
+current_weights:
+  QQQ: 0.28
+  VOO: 0.22
+  SMH: 0.18
+  VUG: 0.14
+  VXUS: 0.10
+  GLD: 0.08

@@ -23,6 +23,7 @@ Final product verdict for the requested question:
 Rationale:
 - Block 1 validation passes on all fixtures (7/7), including taxonomy validation and real-cash handling checks.
 - Block 2 and Block 3 are consistently present, but remain partial on all fixtures (7/7 partial for each block), mainly due to known incompleteness in factor/episode subcomponents.
+- FXM-005 is no longer treated as a warning/error issue: real-cash messaging is now an informational disclosure describing expected policy behavior.
 - Step 6 no longer reports product-facing active contamination (`product_facing_active_contamination = 0` on all fixtures after fix); remaining findings are legacy-compat scoped or harmless null fields.
 - Entry-point safety preflight remains `ok` (no forbidden optimizer/candidate/mandate invocation patterns detected in `run_materialize_analysis_subject_report`).
 
@@ -101,6 +102,14 @@ Common partial drivers:
 Separation check:
 - No scenario-loss leakage detected inside Block 2.3 (`stress_leakage_keys=[]`, separation flag true).
 
+Real-cash reporting classification update (FXM-005):
+- For `fx1`, `fx5`, `fx7`, `Cash USD` is now documented as informational disclosure (not warning), with expected policy semantics:
+  - real-cash position (outside ETF/stock taxonomy failure logic),
+  - 0% expected return,
+  - 0% expected volatility,
+  - no price download dependency.
+- Interpretation: this is normal behavior under real-cash policy, not a data-quality degradation.
+
 ---
 
 ## F. Factor Diagnostics (Block 2.3)
@@ -176,7 +185,7 @@ Interpretation:
 | P0 | FXM-002 | all | Step6 / Block1 disclosure | `output/fixture_matrix_runs/<fixture_id>/analysis_subject/run_metadata.json` (`input_assumptions.field_tiers.registry.client_profile`) | Active `client_profile` registry value was detected as product-facing contamination (pre-fix). | Field-tier registry was treated as product-facing payload by contamination contract. | **Resolved (2026-05-27):** deferred registry is now explicitly scoped non-product (`_scope.product_surface=false`) for Core MVP profile. |
 | P1 | FXM-003 | all | Block2.3 | `output/fixture_matrix_runs/<fixture_id>/analysis_subject/portfolio_xray.json` (`block_2_3_factor_exposure`) | `factor_betas_10y` partial due to missing `beta_credit`; Kalman beta unavailable. | Incomplete long-window factor diagnostics and unavailable Kalman dependency/module path. | Complete 10Y factor key coverage for `beta_credit`; gate or implement Kalman module with explicit availability policy. |
 | P1 | FXM-004 | all | Block3 synthetic stress | `output/fixture_matrix_runs/<fixture_id>/analysis_subject/stress_report.json` (`stress_results_v1.synthetic_scenarios.recession_severe`) | `recession_severe` often partial due to missing hedge-gap coverage fields. | Hedge gap linkage not fully populated for severe synthetic scenario mapping. | Ensure `hedge_gap_analysis_v1` linkage and coverage ratio computation are emitted for all synthetic scenarios, including `recession_severe`. |
-| P2 | FXM-005 | fx1,fx5,fx7 | Block2 with real cash | `output/fixture_matrix_runs/<fixture_id>/analysis_subject/portfolio_xray.json` warnings | Real cash appears as 0% return contribution with synthetic taxonomy warnings. | Current real-cash policy intentionally excludes proxy substitution; warnings are expected but noisy for product UX. | Keep model behavior unchanged; improve warning wording/classification to separate expected policy behavior from degradations. |
+| P2 | FXM-005 | fx1,fx5,fx7 | Block2 with real cash | `output/fixture_matrix_runs/<fixture_id>/analysis_subject/portfolio_xray.json` informational disclosures | **Resolved (2026-05-27):** real-cash text is no longer classified as warning/error. `Cash USD` is disclosed as expected real-cash policy behavior (0% return, 0% volatility, no price download). | Report layer previously classified expected real-cash behavior as warning-style noise. | No further action required for MVP acceptance; keep as informational disclosure and preserve existing real-cash math/policy boundary. |
 | P2 | FXM-006 | all | Block3 historical episodes | `output/fixture_matrix_runs/<fixture_id>/analysis_subject/stress_report.json` (`dotcom`,`2008`) | Historical scenarios present but often unavailable due to insufficient history (`episode_metrics_missing`). | Young ETF history and episode data depth constraints. | Preserve explicit unavailable diagnostics; optionally add portfolio-age gating metadata in report layer to pre-announce expected unavailability. |
 | P3 | FXM-007 | fx1,fx5 | Block1 evidence trace | `output/fixture_matrix_runs/step3_block1_validation.json` (`run_log_checked=false`) | Download-exclusion evidence via run logs is incomplete in some fixtures. | Runs reused existing outputs (`skipped_existing`), so per-fixture materialize logs were absent. | Re-run fixture matrix without `--skip-existing` when collecting final acceptance evidence pack. |
 
@@ -185,4 +194,5 @@ Interpretation:
 Conclusion:
 - Blocks 1–3 show strong structural coverage and useful diagnostics across realistic fixtures.
 - P0 blockers (`FXM-001`, `FXM-002`) are resolved and Step 6 no longer reports active contamination.
-- Final verdict can be upgraded to **Yes, with limitations**; remaining limitations are P1/P2/P3 and remain documented unchanged.
+- FXM-005 is resolved at report-layer classification level and now treated as informational disclosure, not a warning/error.
+- Final verdict remains **Yes, with limitations**; remaining material limitations are FXM-003/004/006/007.

@@ -522,6 +522,7 @@ def build_block_2_3_factor_exposure(
     subject_type, analysis_mode, investor_currency = _setup_context(analysis_setup)
     stress = stress_report if isinstance(stress_report, dict) else {}
     data_quality_warnings: list[str] = []
+    informational_disclosures: list[str] = []
     if not isinstance(stress_report, dict):
         data_quality_warnings.append("stress_report is missing; Block 2.3 cannot calculate factor diagnostics.")
 
@@ -540,8 +541,8 @@ def build_block_2_3_factor_exposure(
     weight_map = resolved_analysis_weights(analysis_setup, weights=weights)
     real_cash_labels = collect_real_cash_tickers(weights=weight_map)
     if real_cash_labels:
-        data_quality_warnings.append(
-            "Real cash holdings contribute 0% return to upstream portfolio returns and are not replaced by cash_proxy_ticker."
+        informational_disclosures.append(
+            "Cash holdings are treated as real cash positions with zero return/volatility and no price download; this is an expected input policy, not missing data."
         )
 
     betas_5y = _beta_map(raw_5y)
@@ -621,6 +622,7 @@ def build_block_2_3_factor_exposure(
         "factor_risk_ranking": ranking,
         "factor_exposure_summary": _summary(ranking, status),
         "data_quality_warnings": list(dict.fromkeys(data_quality_warnings)),
+        "informational_disclosures": list(dict.fromkeys(informational_disclosures)),
         "factor_diagnostics_meta": meta,
         "naming_validation": {
             "expected_factor_universe": list(PRODUCTION_FACTOR_UNIVERSE),

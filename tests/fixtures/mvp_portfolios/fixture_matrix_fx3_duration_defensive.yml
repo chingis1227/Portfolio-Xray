@@ -1,0 +1,11 @@
+# Fixture matrix FX3: duration-heavy defensive portfolio (Core MVP Blocks 1-3 audit).
+# Purpose: rates/duration-heavy defensive profile with limited equity.
+investor_currency: USD
+tickers: [TLT, IEF, BND, TIP, LQD, SPY]
+current_weights:
+  TLT: 0.28
+  IEF: 0.22
+  BND: 0.20
+  TIP: 0.12
+  LQD: 0.10
+  SPY: 0.08

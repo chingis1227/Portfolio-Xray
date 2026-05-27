@@ -30,6 +30,7 @@ BLOCK_2_2_TOP_LEVEL_KEYS = frozenset(
         "rolling_diagnostics",
         "correlation_breakdown",
         "data_quality_warnings",
+        "informational_disclosures",
         "metadata",
     }
 )
@@ -40,6 +41,7 @@ def assert_block_2_2_product_contract(block: dict[str, Any]) -> None:
     assert set(block) >= BLOCK_2_2_TOP_LEVEL_KEYS
     assert block["block"] == BLOCK_2_2_ID
     assert isinstance(block["data_quality_warnings"], list)
+    assert isinstance(block["informational_disclosures"], list)
 
     behavior = block["portfolio_behavior_snapshot"]
     assert set(behavior) >= {"headline", "key_points", "overall_behavior_label"}
@@ -244,7 +246,7 @@ def test_block_2_2_xray_from_snapshot_with_nested_drawdown_only(tmp_path: Any) -
     _assert_extended_drawdown_populated(block["drawdown_diagnostics"])
 
 
-def test_block_2_2_real_cash_treatment_surfaces_warning_and_metadata(tmp_path: Any) -> None:
+def test_block_2_2_real_cash_treatment_surfaces_informational_disclosure_and_metadata(tmp_path: Any) -> None:
     payload = seed_cash5pct_block_2_2_subject_dir(tmp_path / "analysis_subject")
     # Re-read analysis_setup from written run_metadata.json to avoid relying on helper internals.
     import json
@@ -262,5 +264,5 @@ def test_block_2_2_real_cash_treatment_surfaces_warning_and_metadata(tmp_path: A
     )
     assert_block_2_2_product_contract(doc)
     assert doc["metadata"]["cash_treatment"] == "real_cash_position_if_present"
-    assert any("Real cash holdings contribute 0% return" in w for w in doc["data_quality_warnings"])
+    assert any("real cash positions" in w.lower() for w in doc["informational_disclosures"])
 

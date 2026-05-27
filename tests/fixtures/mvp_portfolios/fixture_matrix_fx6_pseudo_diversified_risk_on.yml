@@ -1,0 +1,13 @@
+# Fixture matrix FX6: pseudo-diversified risk-on portfolio (Core MVP Blocks 1-3 audit).
+# Purpose: many tickers with high overlapping equity beta exposure.
+investor_currency: USD
+tickers: [SPY, QQQ, SCHD, VTI, VOO, VUG, SMH, XLK]
+current_weights:
+  SPY: 0.18
+  QQQ: 0.16
+  SCHD: 0.12
+  VTI: 0.14
+  VOO: 0.12
+  VUG: 0.10
+  SMH: 0.10
+  XLK: 0.08

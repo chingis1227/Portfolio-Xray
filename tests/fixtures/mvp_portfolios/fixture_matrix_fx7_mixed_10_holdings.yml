@@ -1,0 +1,15 @@
+# Fixture matrix FX7: mixed 10-holding portfolio (Core MVP Blocks 1-3 audit).
+# Purpose: broad 10-asset mix across equity, duration, credit, commodity, and real cash.
+investor_currency: USD
+tickers: [SPY, VXUS, EEM, BND, TLT, TIP, GLD, PDBC, HYG, Cash USD]
+current_weights:
+  SPY: 0.14
+  VXUS: 0.10
+  EEM: 0.09
+  BND: 0.13
+  TLT: 0.10
+  TIP: 0.09
+  GLD: 0.10
+  PDBC: 0.09
+  HYG: 0.08
+  Cash USD: 0.08

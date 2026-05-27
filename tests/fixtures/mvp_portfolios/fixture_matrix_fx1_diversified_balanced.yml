@@ -1,0 +1,12 @@
+# Fixture matrix FX1: diversified balanced portfolio (Core MVP Blocks 1-3 audit).
+# Purpose: broad multi-asset baseline with real cash handling.
+investor_currency: USD
+tickers: [SPY, VXUS, BND, TLT, GLD, PDBC, Cash USD]
+current_weights:
+  SPY: 0.25
+  VXUS: 0.15
+  BND: 0.20
+  TLT: 0.10
+  GLD: 0.10
+  PDBC: 0.10
+  Cash USD: 0.10

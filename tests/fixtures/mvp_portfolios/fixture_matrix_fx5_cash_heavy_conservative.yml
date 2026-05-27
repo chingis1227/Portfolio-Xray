@@ -1,0 +1,10 @@
+# Fixture matrix FX5: cash-heavy conservative portfolio (Core MVP Blocks 1-3 audit).
+# Purpose: explicit real cash plus short-duration defensive instruments.
+investor_currency: USD
+tickers: [Cash USD, BIL, BND, IEF, SPY]
+current_weights:
+  Cash USD: 0.45
+  BIL: 0.20
+  BND: 0.18
+  IEF: 0.12
+  SPY: 0.05

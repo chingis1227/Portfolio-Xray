@@ -407,6 +407,7 @@ def build_block_2_1_asset_allocation(
     )
 
     data_quality_warnings: list[str] = []
+    informational_disclosures: list[str] = []
     real_cash_labels = collect_real_cash_tickers(weights=weight_map)
 
     if not weight_map:
@@ -457,8 +458,8 @@ def build_block_2_1_asset_allocation(
             f"{_weight_pct_fraction(unknown_weight):.3f}% of capital weight lacks ETF/stock taxonomy coverage."
         )
     if real_cash_labels:
-        data_quality_warnings.append(
-            "Real cash holdings use synthetic taxonomy (real_cash_synthetic_v1), not cash_proxy_ticker."
+        informational_disclosures.append(
+            "Cash holdings are treated as real cash positions with zero return, zero volatility, and no price download; this is expected policy behavior and not a taxonomy failure."
         )
 
     sorted_holdings = sorted(holdings, key=lambda x: (-x[1], x[0]))
@@ -536,6 +537,7 @@ def build_block_2_1_asset_allocation(
         "duplicate_exposure_flags": duplicate_flags,
         "actual_economic_exposure_summary": economic,
         "data_quality_warnings": data_quality_warnings,
+        "informational_disclosures": informational_disclosures,
         "metadata": metadata,
     }
 
