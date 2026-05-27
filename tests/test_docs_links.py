@@ -5,6 +5,7 @@ from src.docs_verify import (
     collect_source_markdown_files,
     find_broken_local_links,
     find_forbidden_references,
+    find_operational_runbook_architecture_violations,
     find_removed_config_ui_fields,
     verify_docs,
 )
@@ -32,6 +33,11 @@ def test_cursor_agent_docs_do_not_reference_removed_canonical_paths() -> None:
 
 def test_cursor_agent_local_file_references_exist() -> None:
     failures = find_broken_local_links(collect_cursor_markdown_files())
+    assert not failures, "\n".join(failures)
+
+
+def test_operational_runbook_architecture_contract() -> None:
+    failures = find_operational_runbook_architecture_violations()
     assert not failures, "\n".join(failures)
 
 

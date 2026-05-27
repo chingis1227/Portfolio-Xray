@@ -754,7 +754,7 @@ def test_build_candidate_menu_flags_reduced_core_scope() -> None:
     assert menu["is_reduced_vs_product_menu"] is True
     assert menu["is_partial_menu"] is True
     assert menu["partial_menu_reason"] in (
-        "reduced_menu_scope_vs_product_default_v1",
+        "reduced_menu_scope_vs_full_menu_default_v1",
         "reduced_menu_scope_and_unavailable_intended_candidates",
     )
 

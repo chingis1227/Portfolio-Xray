@@ -91,8 +91,17 @@ Target/TBD areas:
 - Full user-triggered Portfolio Alternatives Builder UX/service beyond the current backend one-candidate delegation plan.
 - Current-vs-selected-candidate as the primary interactive UI beyond the current additive JSON adapter.
 - Natural-language AI Commentary generation beyond the current deterministic grounding context
-  (`ai_commentary_context.json`). Rule-based `commentary.txt` / `stress_commentary.txt` are current
-  report exports, not LLM AI Commentary (see [AI commentary grounding spec](docs/specs/ai_commentary_grounding_spec.md)).
+  (`ai_commentary_context.json`). Rule-based `commentary.txt` / `stress_commentary.txt` are legacy
+  report exports (`full_report` / legacy policy paths), not LLM AI Commentary (see
+  [AI commentary grounding spec](docs/specs/ai_commentary_grounding_spec.md)).
+
+**Narrative layers (do not conflate):**
+
+| Layer | Artifact | Default `site_api` review |
+| --- | --- | --- |
+| AI Commentary contract | `ai_commentary_context.json` | Written at diagnosis materialize; refreshed post-compare |
+| Rule-based report export | `commentary.txt`, `stress_commentary.txt` | Not written (`write_txt=false`) |
+| Client PDF | `pdf files/` | Not written unless `--with-pdf` / legacy rebuild |
 - Polished product UI and workspace flows around the existing file-first Candidate Portfolio Factory, current-vs-policy workflow, comparison, and decision package artifacts.
 - More deliberately designed client-facing report packages beyond the current file-first summary/PDF-style surfaces.
 - Advanced UX modules around the implemented file-first V1 artifacts.

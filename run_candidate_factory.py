@@ -32,16 +32,42 @@ def _parse_candidates(raw: str | None) -> list[str] | None:
     return [part.strip() for part in raw.split(",") if part.strip()]
 
 
+def _warn_standalone_full_menu_default(profile_id: str, explicit_candidates: list[str] | None) -> None:
+    """Log when CLI runs the research full-menu profile without an explicit candidate list."""
+    if explicit_candidates is not None:
+        return
+    if profile_id != "default_v1":
+        return
+    logger.warning(
+        "Standalone factory default profile is default_v1 (full research menu, 16 builders). "
+        "This is not the Core MVP product entry. Prefer: "
+        "python run_portfolio_review.py --candidates <id> "
+        "or run_portfolio_review.py --with-candidates for core_fast batch."
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     setup_logging()
     parser = argparse.ArgumentParser(
-        description="Run candidate portfolio builders in a controlled factory profile."
+        description=(
+            "Run candidate portfolio builders in a controlled factory profile. "
+            "Backend/research CLI — not the default Core MVP diagnosis path "
+            "(use run_portfolio_review.py for portfolio-first review)."
+        ),
+        epilog=(
+            "Default --profile default_v1 runs the full research menu (~16 builders). "
+            "For product demo, use run_portfolio_review.py --candidates <id> instead."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "--profile",
         type=str,
         default="default_v1",
-        help="Factory profile id (default: default_v1).",
+        help=(
+            "Factory profile id (default: default_v1 = full research menu). "
+            "Not the Core MVP default; use run_portfolio_review.py for diagnosis-first flow."
+        ),
     )
     parser.add_argument(
         "--candidates",
@@ -174,6 +200,7 @@ def main(argv: list[str] | None = None) -> int:
 
     explicit = _parse_candidates(args.candidates)
     profile_id = "explicit_list" if explicit is not None else args.profile
+    _warn_standalone_full_menu_default(profile_id, explicit)
     selected_full = _parse_candidates(args.selected_candidates_for_full_report)
     full_reports = bool(args.full_candidate_reports or selected_full)
     output_policy = output_policy_for_profile(args.output_profile)

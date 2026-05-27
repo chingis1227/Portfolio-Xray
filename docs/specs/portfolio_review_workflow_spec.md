@@ -119,6 +119,93 @@ Current interpretations:
 This metadata is intended for later diagnosis-first product layers. It must not be interpreted as a
 new generated output contract.
 
+### Runtime mode (`runtime_mode`)
+
+`PortfolioReviewPlan.runtime_mode` is a routing label set by `resolve_portfolio_review_runtime_mode()`
+in `src/portfolio_review_workflow.py`. It does not change CLI execution by itself; dry-run and live
+runs print it in `summarize_plan()`.
+
+| `runtime_mode` | Typical command | Factory runs? | Compare runs? |
+| --- | --- | --- | --- |
+| `product_diagnosis_only` | `python run_portfolio_review.py` (default) | No | No |
+| `product_one_candidate` | `python run_portfolio_review.py --candidates <id>` | Yes (explicit list) | Yes (`--then-compare`) |
+| `product_shortlist` | `python run_portfolio_review.py --candidates id1,id2,...` | Yes | Yes |
+| `research_batch` | `--with-candidates`, `--mode full`, `--candidate-profile ...`, resume/force flags | Yes (profile-driven menu) | Yes |
+| `legacy_policy` | `run_optimization.py` / legacy wrappers (not portfolio-first default) | Policy path | Separate contract |
+
+### `--mode` vs candidate execution
+
+`--mode` (`core` | `full`) selects the **factory profile and subject `review-mode`** only when the
+plan actually runs the candidate factory. Plain `run_portfolio_review.py` keeps `--mode core` as the
+default label on subject materialization but sets **factory profile: none** because
+`resolve_candidate_execution_flags()` does not run candidates unless the operator explicitly
+requests them.
+
+| Flag / argument | Effect on candidates |
+| --- | --- |
+| (none) | Diagnosis-only — no factory, no compare |
+| `--skip-candidates` | Same as default (explicit) |
+| `--candidates <id>` or comma list | Factory for listed ids + compare |
+| `--with-candidates` | Factory with profile from `--mode` (`core` → `core_fast`, six builders) |
+| `--mode full` | Factory with `default_v1` (16 builders) |
+| `--candidate-profile <name>` | Factory with named profile (implies candidates run) |
+
+**Important:** `--mode core` alone does **not** invoke `core_fast`. Use `--with-candidates` for the
+backend six-candidate batch, or `--candidates <id>` for the canonical one-hypothesis product path.
+
+When candidates run, profile resolution follows `resolve_review_candidate_profile()`:
+
+- `--mode core` (default) → `core_fast` unless `--candidate-profile` overrides (e.g. `core_v1`).
+- `--mode full` → `default_v1`.
+
+### Command decision tree (operator)
+
+```text
+Need current-portfolio diagnosis only?
+  └─ yes → python run_portfolio_review.py
+           (runtime_mode=product_diagnosis_only, workflow_state=diagnosis_only)
+
+Need one Launchpad hypothesis vs current?
+  └─ yes → python run_portfolio_review.py --candidates <factory_id>
+           (runtime_mode=product_one_candidate, workflow_state=one_candidate)
+
+Need backend six-candidate batch + compare (research / Blocks 1–5 regression)?
+  └─ yes → python run_portfolio_review.py --with-candidates
+           (runtime_mode=research_batch, workflow_state=multiple_candidates, profile core_fast)
+
+Need full 16-builder menu?
+  └─ yes → python run_portfolio_review.py --mode full
+           (runtime_mode=research_batch, workflow_state=multiple_candidates, profile default_v1)
+```
+
+Dry-run transcripts (2026-05-27, representative):
+
+```text
+python run_portfolio_review.py --dry-run
+  Review mode: core (factory profile: none)
+  Runtime mode: product_diagnosis_only
+  Workflow state: diagnosis_only (candidate_count=0, source=skip_candidates)
+  Stages: input -> diagnosis
+
+python run_portfolio_review.py --candidates equal_weight --dry-run
+  Review mode: core (factory profile: explicit_list)
+  Runtime mode: product_one_candidate
+  Workflow state: one_candidate (candidate_count=1, source=candidate_ids)
+  Stages: input -> diagnosis -> candidates
+
+python run_portfolio_review.py --with-candidates --dry-run
+  Review mode: core (factory profile: core_fast)
+  Runtime mode: research_batch
+  Workflow state: multiple_candidates (candidate_count=6, source=factory_profile)
+  Stages: input -> diagnosis -> candidates
+
+python run_portfolio_review.py --mode full --dry-run
+  Review mode: full (factory profile: default_v1)
+  Runtime mode: research_batch
+  Workflow state: multiple_candidates (candidate_count=16, source=factory_profile)
+  Stages: input -> diagnosis -> candidates
+```
+
 ## Input Resolution Contract
 
 Runtime input resolution is owned by [input_assumptions_spec.md](input_assumptions_spec.md). Session
@@ -337,9 +424,11 @@ artifact map: [OUTPUTS.md](../../OUTPUTS.md).
 Factory resume is available from both `run_candidate_factory.py --resume` and
 `run_portfolio_review.py --mode full --resume-candidates`. Advanced factory-only runs can opt into
 parallel Phase 2 lightweight reports with `run_candidate_factory.py --execution-mode standard
---parallel-lightweight-reports` or profile `core_fast`; portfolio-first `--mode core` uses
-`core_fast` (parallel on by default). Disable via `run_portfolio_review.py
---no-parallel-lightweight-reports`. Parallel candidate builders remain deferred.
+--parallel-lightweight-reports` or profile `core_fast`. Portfolio-first **`--with-candidates`**
+(or any run that resolves factory profile `core_fast`) uses `core_fast` with parallel Phase 2 on by
+default; **`--mode core` without a candidate trigger does not run the factory**. Disable parallel via
+`run_portfolio_review.py --no-parallel-lightweight-reports`. Parallel candidate builders remain
+deferred.
 See
 [operational_runbook.md](../operational_runbook.md) and [candidate_factory_spec.md](candidate_factory_spec.md).
 

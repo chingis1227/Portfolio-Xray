@@ -14,6 +14,8 @@ from typing import Any
 
 AI_COMMENTARY_CONTEXT_VERSION = "ai_commentary_context_v1"
 AI_COMMENTARY_CONTEXT_FILENAME = "ai_commentary_context.json"
+PURPOSE_GROUNDED_DECISION_CONTEXT = "grounded_ai_commentary_context"
+PURPOSE_DIAGNOSIS_GROUNDING_ONLY = "diagnosis_grounding_only"
 
 ALLOWED_SOURCE_ARTIFACTS: tuple[str, ...] = (
     "portfolio_xray.json",
@@ -214,6 +216,104 @@ def _decision_refs(
     return refs
 
 
+def _xray_refs(portfolio_xray: dict[str, Any] | None) -> list[dict[str, Any]]:
+    refs: list[dict[str, Any]] = []
+    if not isinstance(portfolio_xray, dict):
+        return refs
+    _append_reference(
+        refs,
+        artifact="portfolio_xray.json",
+        field_path="version",
+        value=portfolio_xray.get("version"),
+    )
+    _append_reference(
+        refs,
+        artifact="portfolio_xray.json",
+        field_path="diagnostic_only",
+        value=portfolio_xray.get("diagnostic_only"),
+    )
+    block_2_6 = portfolio_xray.get("block_2_6_portfolio_weakness_map")
+    if isinstance(block_2_6, dict):
+        _append_reference(
+            refs,
+            artifact="portfolio_xray.json",
+            field_path="block_2_6_portfolio_weakness_map.status",
+            value=block_2_6.get("status"),
+            summary=str(block_2_6.get("summary") or "")[:240] or None,
+        )
+    legacy = portfolio_xray.get("legacy_summary")
+    if isinstance(legacy, dict):
+        scope = legacy.get("_scope")
+        if isinstance(scope, dict) and scope.get("product_surface") is not None:
+            _append_reference(
+                refs,
+                artifact="portfolio_xray.json",
+                field_path="legacy_summary._scope.product_surface",
+                value=scope.get("product_surface"),
+            )
+    return refs
+
+
+def _stress_refs(stress_report: dict[str, Any] | None) -> list[dict[str, Any]]:
+    refs: list[dict[str, Any]] = []
+    if not isinstance(stress_report, dict):
+        return refs
+    _append_reference(
+        refs,
+        artifact="stress_report.json",
+        field_path="status",
+        value=stress_report.get("status"),
+    )
+    _append_reference(
+        refs,
+        artifact="stress_report.json",
+        field_path="loss_gate_mode",
+        value=stress_report.get("loss_gate_mode"),
+    )
+    primary = (
+        stress_report.get("primary_diagnostic_code")
+        or stress_report.get("fail_reason_code")
+        or stress_report.get("skip_reason")
+    )
+    if primary is not None:
+        _append_reference(
+            refs,
+            artifact="stress_report.json",
+            field_path="primary_diagnostic_code",
+            value=primary,
+        )
+    worst = stress_report.get("worst_scenario_loss_pct")
+    if worst is not None:
+        _append_reference(
+            refs,
+            artifact="stress_report.json",
+            field_path="worst_scenario_loss_pct",
+            value=worst,
+        )
+    scorecard = stress_report.get("stress_scorecard_v1")
+    if isinstance(scorecard, dict):
+        _append_reference(
+            refs,
+            artifact="stress_report.json",
+            field_path="stress_scorecard_v1.overall_status",
+            value=scorecard.get("overall_status"),
+        )
+    return refs
+
+
+def _is_post_compare_context(
+    *,
+    comparison: dict[str, Any] | None,
+    current_vs_candidate: dict[str, Any] | None,
+    selection: dict[str, Any] | None,
+    decision_verdict: dict[str, Any] | None,
+) -> bool:
+    return all(
+        isinstance(doc, dict)
+        for doc in (comparison, current_vs_candidate, selection, decision_verdict)
+    )
+
+
 def _monitoring_refs(monitoring_diff: dict[str, Any] | None) -> list[dict[str, Any]]:
     refs: list[dict[str, Any]] = []
     if not isinstance(monitoring_diff, dict):
@@ -233,8 +333,17 @@ def _warnings(
     current_vs_candidate: dict[str, Any] | None,
     selection: dict[str, Any] | None,
     decision_verdict: dict[str, Any] | None,
+    portfolio_xray: dict[str, Any] | None = None,
+    stress_report: dict[str, Any] | None = None,
+    diagnosis_only: bool = False,
 ) -> list[str]:
     warnings: list[str] = []
+    if diagnosis_only:
+        if not isinstance(portfolio_xray, dict):
+            warnings.append("missing_diagnosis_source:portfolio_xray.json")
+        if not isinstance(stress_report, dict):
+            warnings.append("missing_diagnosis_source:stress_report.json")
+        return warnings
     required = {
         "candidate_comparison.json": comparison,
         "current_vs_candidate.json": current_vs_candidate,
@@ -268,21 +377,41 @@ def build_ai_commentary_context(
     problem_classification: dict[str, Any] | None = None,
     candidate_launchpad: dict[str, Any] | None = None,
     monitoring_diff: dict[str, Any] | None = None,
+    portfolio_xray: dict[str, Any] | None = None,
+    stress_report: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the deterministic evidence contract for future AI Commentary."""
 
+    post_compare = _is_post_compare_context(
+        comparison=comparison,
+        current_vs_candidate=current_vs_candidate,
+        selection=selection,
+        decision_verdict=decision_verdict,
+    )
+    diagnosis_only = not post_compare
+
     evidence_references: list[dict[str, Any]] = []
+    evidence_references.extend(_xray_refs(portfolio_xray))
+    evidence_references.extend(_stress_refs(stress_report))
     evidence_references.extend(_problem_refs(problem_classification))
     evidence_references.extend(_launchpad_refs(candidate_launchpad))
-    evidence_references.extend(_comparison_refs(comparison, current_vs_candidate))
-    evidence_references.extend(_decision_refs(selection, decision_verdict, action))
+    if post_compare:
+        evidence_references.extend(_comparison_refs(comparison, current_vs_candidate))
+        evidence_references.extend(_decision_refs(selection, decision_verdict, action))
     evidence_references.extend(_monitoring_refs(monitoring_diff))
+
+    purpose = (
+        PURPOSE_DIAGNOSIS_GROUNDING_ONLY
+        if diagnosis_only
+        else PURPOSE_GROUNDED_DECISION_CONTEXT
+    )
 
     return {
         "schema_version": AI_COMMENTARY_CONTEXT_VERSION,
         "diagnostic_only": True,
         "generated_at": _utc_now_iso(),
-        "purpose": "grounded_ai_commentary_context",
+        "purpose": purpose,
+        "grounding_phase": "diagnosis_only" if diagnosis_only else "post_compare",
         "allowed_source_artifacts": list(ALLOWED_SOURCE_ARTIFACTS),
         "forbidden_claim_categories": list(FORBIDDEN_CLAIM_CATEGORIES),
         "required_grounding_rules": list(REQUIRED_GROUNDING_RULES),
@@ -296,6 +425,8 @@ def build_ai_commentary_context(
         },
         "evidence_references": evidence_references,
         "source_artifacts": {
+            "portfolio_xray": _source_name("portfolio_xray.json", portfolio_xray),
+            "stress_report": _source_name("stress_report.json", stress_report),
             "problem_classification": _source_name("problem_classification.json", problem_classification),
             "candidate_launchpad": _source_name("candidate_launchpad.json", candidate_launchpad),
             "candidate_comparison": _source_name("candidate_comparison.json", comparison),
@@ -316,6 +447,9 @@ def build_ai_commentary_context(
             current_vs_candidate=current_vs_candidate,
             selection=selection,
             decision_verdict=decision_verdict,
+            portfolio_xray=portfolio_xray,
+            stress_report=stress_report,
+            diagnosis_only=diagnosis_only,
         ),
     }
 
@@ -331,6 +465,8 @@ def write_ai_commentary_context_outputs(
     problem_classification: dict[str, Any] | None = None,
     candidate_launchpad: dict[str, Any] | None = None,
     monitoring_diff: dict[str, Any] | None = None,
+    portfolio_xray: dict[str, Any] | None = None,
+    stress_report: dict[str, Any] | None = None,
 ) -> dict[str, Path]:
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -343,6 +479,8 @@ def write_ai_commentary_context_outputs(
         problem_classification=problem_classification,
         candidate_launchpad=candidate_launchpad,
         monitoring_diff=monitoring_diff,
+        portfolio_xray=portfolio_xray,
+        stress_report=stress_report,
     )
     path = out / AI_COMMENTARY_CONTEXT_FILENAME
     with open(path, "w", encoding="utf-8") as f:

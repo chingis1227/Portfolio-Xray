@@ -33,6 +33,11 @@ def _stress_uses_mandate_gate(st: dict[str, Any]) -> bool:
     return str(st.get("loss_gate_mode") or "mandate") == "mandate"
 
 
+def _include_client_maxdd_gate_narrative(st: dict[str, Any]) -> bool:
+    """Mandate PASS/FAIL gate wording is legacy policy export only (loss_gate_mode=mandate)."""
+    return _stress_uses_mandate_gate(st)
+
+
 def _folder_portfolio_label(output_dir_final: Path) -> str:
     name = output_dir_final.name.strip().lower()
     if name == "main portfolio":
@@ -1787,20 +1792,33 @@ def write_stress_commentary(
         for row in scen_rows:
             sid = row.get("scenario_id")
             pnl = row.get("portfolio_pnl_pct")
-            lines.append(
-                f"{sid}: PnL ~ {_fmt_pct(pnl)}, pass={row.get('pass')} (mandate loss); "
-                f"RC shares — Metric-by-Metric."
-            )
+            if _stress_uses_mandate_gate(st):
+                lines.append(
+                    f"{sid}: PnL ~ {_fmt_pct(pnl)}, pass={row.get('pass')} (mandate loss); "
+                    f"RC shares — Metric-by-Metric."
+                )
+            else:
+                lines.append(
+                    f"{sid}: PnL ~ {_fmt_pct(pnl)} (diagnostic fact; no mandate pass/fail); "
+                    f"RC shares — Metric-by-Metric."
+                )
     else:
         lines.append("No scenario_results.")
     lines.append("")
 
     lines.append("Final Conclusion")
-    lines.append(
-        f"{label}: stress bundle {status} ({primary}). "
-        f"Synthetic losses and RC diagnostics reflect the current holdings and covariance from this run; "
-        f"align weight-release decisions with mandate_check and run_result — use this file as PM scenario reference."
-    )
+    if _stress_uses_mandate_gate(st):
+        lines.append(
+            f"{label}: stress bundle {status} ({primary}). "
+            f"Synthetic losses and RC diagnostics reflect the current holdings and covariance from this run; "
+            f"align weight-release decisions with mandate_check and run_result — use this file as PM scenario reference."
+        )
+    else:
+        lines.append(
+            f"{label}: stress bundle {status} ({primary}). "
+            f"Synthetic losses and RC diagnostics reflect the current holdings and covariance from this run; "
+            f"diagnostic stress only (loss_gate_mode=diagnostic) — no client mandate pass/fail in this bundle."
+        )
 
     out_path = output_dir_final / "stress_commentary.txt"
     out_path.write_text(ascii_safe_text("\n".join(lines) + "\n"), encoding="utf-8")
@@ -1865,9 +1883,12 @@ def write_portfolio_commentary(
         else "n/a (no RC evidence in snapshot JSON or rc_vol CSV)"
     )
 
-    client_gate = "PASS" if portfolio_valid else "FAIL"
-    if portfolio_valid is None:
-        client_gate = _NA
+    use_mandate_gate = _include_client_maxdd_gate_narrative(st)
+    client_gate = _NA
+    if use_mandate_gate:
+        client_gate = "PASS" if portfolio_valid else "FAIL"
+        if portfolio_valid is None:
+            client_gate = _NA
 
     ae = analysis_end or _MDASH
     scen_lines = _scenario_snippets(st)
@@ -1930,8 +1951,14 @@ def write_portfolio_commentary(
         )
         + (f"; worst_scenario_loss_pct ~ {_fmt_pct(worst_loss)}" if worst_loss is not None else "")
         + ".",
-        f"Client MaxDD gate (portfolio_valid): {client_gate}.",
     ]
+    if use_mandate_gate:
+        exec_lines.append(f"Client MaxDD gate (portfolio_valid): {client_gate}.")
+    else:
+        exec_lines.append(
+            "Client MaxDD mandate gate is not evaluated in this diagnostic stress bundle "
+            "(loss_gate_mode=diagnostic); portfolio_valid is omitted from narrative."
+        )
     if trust_lines:
         exec_lines.append("Data trust: " + " ".join(trust_lines[:3]))
 
@@ -1988,18 +2015,26 @@ def write_portfolio_commentary(
 
     lines.append("Strengths")
     _stress_clear = stress_status in ("PASS", "DIAG_PASS", "DIAG_PASS_WITH_WARNING", "PASS_WITH_WARNING")
-    if _stress_clear and client_gate == "PASS":
+    if use_mandate_gate:
+        if _stress_clear and client_gate == "PASS":
+            lines.append(
+                "Stress diagnostics show no critical flags (or warnings only); mandate MaxDD gate PASS — "
+                "realized drawdown vs client threshold does not conflict in this run."
+            )
+        elif client_gate == "PASS":
+            lines.append(
+                "Mandate MaxDD gate PASS: realized drawdown on full overlapping history is within tolerance "
+                "(see run_metadata / mandate_check)."
+            )
+        else:
+            lines.append("Review client gate and/or stress status — see Weaknesses below.")
+    elif stress_status in ("ok", "warning", "DIAG_PASS", "DIAG_PASS_WITH_WARNING", "PASS_WITH_WARNING"):
         lines.append(
-            "Stress diagnostics show no critical flags (or warnings only); mandate MaxDD gate PASS — "
-            "realized drawdown vs client threshold does not conflict in this run."
-        )
-    elif client_gate == "PASS":
-        lines.append(
-            "Mandate MaxDD gate PASS: realized drawdown on full overlapping history is within tolerance "
-            "(see run_metadata / mandate_check)."
+            "Stress bundle reports no blocking diagnostic attention flag on the primary status field; "
+            "review scenario magnitudes and data-quality warnings in stress_report.json."
         )
     else:
-        lines.append("Review client gate and/or stress status — see Weaknesses below.")
+        lines.append("Review stress status and scenario detail — see Weaknesses below.")
     if sharpe is not None and float(sharpe) >= 1.0:
         lines.append(
             f"Sharpe >= 1.0 ({_fmt_float(sharpe)}) on this window — relatively strong risk-adjusted compensation historically."
@@ -2012,7 +2047,7 @@ def write_portfolio_commentary(
             f"Stress diagnostics: {stress_status} — {fail_reason}. "
             f"(Does not block release by itself; named scenario: {failed_scenario or _MDASH}; test: {failed_test or _MDASH}.)"
         )
-    if client_gate == "FAIL":
+    if use_mandate_gate and client_gate == "FAIL":
         lines.append(
             "Client MaxDD gate FAIL — historical max drawdown exceeds mandate (see run_metadata / snapshot)."
         )
@@ -2034,9 +2069,14 @@ def write_portfolio_commentary(
     lines.append("")
 
     lines.append("Final Conclusion")
+    gate_phrase = (
+        f"client gate {client_gate}"
+        if use_mandate_gate
+        else "diagnostic stress (no client mandate gate in commentary)"
+    )
     lines.append(
         f"{label}: the 10Y return/risk profile is summarized by CAGR ~ {_fmt_pct(cagr)}, vol ~ {_fmt_pct(vol)}, MaxDD ~ {_fmt_pct(mdd)}. "
-        f"Stress {stress_status} ({fail_reason}); client gate {client_gate}. "
+        f"Stress {stress_status} ({fail_reason}); {gate_phrase}. "
         f"To compare variants, use the same files in sibling folders (Equal-Weight / Risk Parity / Main portfolio) after a synchronized run."
     )
 

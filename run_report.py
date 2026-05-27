@@ -2358,14 +2358,40 @@ def run_portfolio_report_for_weights(
             problem_classification_doc = None
     except Exception as e:
         logger.warning("problem_classification.json generation failed: %s", e)
+    candidate_launchpad_doc = None
     try:
-        write_candidate_launchpad_outputs(
+        launchpad_path = write_candidate_launchpad_outputs(
             output_dir=output_dir_final,
             problem_classification=problem_classification_doc,
             analysis_end=analysis_end_str,
         )
+        try:
+            with open(launchpad_path, encoding="utf-8") as f:
+                candidate_launchpad_doc = json.load(f)
+        except Exception:
+            candidate_launchpad_doc = None
     except Exception as e:
         logger.warning("candidate_launchpad.json generation failed: %s", e)
+    try:
+        from src.ai_commentary_context import write_ai_commentary_context_outputs
+
+        ai_paths = write_ai_commentary_context_outputs(
+            output_dir=output_dir_final,
+            comparison=None,
+            current_vs_candidate=None,
+            selection=None,
+            decision_verdict=None,
+            problem_classification=problem_classification_doc,
+            candidate_launchpad=candidate_launchpad_doc,
+            portfolio_xray=xray_summary,
+            stress_report=stress_report,
+        )
+        logger.info(
+            "ai_commentary_context.json (diagnosis grounding): %s",
+            ai_paths.get("ai_commentary_context_json"),
+        )
+    except Exception as e:
+        logger.warning("ai_commentary_context.json generation failed: %s", e)
     report_timing.end_block("snapshots")
 
     if output_policy.write_txt or output_policy.write_html:

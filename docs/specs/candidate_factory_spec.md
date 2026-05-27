@@ -32,6 +32,13 @@ Implementation helpers:
 These helpers are not written into `candidate_factory_run.json`. They exist only to prevent future
 sessions from confusing the batch factory with product-facing Launchpad or Alternatives Builder UX.
 
+**Comparison menu baseline (Session 3, architecture audit):** `src/candidate_comparison.py` uses
+`FULL_MENU_RESEARCH_PROFILE_ID` (`default_v1`) only as the sixteen-candidate **research reference**
+in `candidate_menu` (legacy JSON key `product_menu_profile_id`). Core MVP product truth is
+**selected-candidate-first** (`run_portfolio_review.py --candidates <id>`). A one-candidate demo may
+set `partial_menu_reason` to `reduced_menu_scope_vs_full_menu_default_v1`; that is expected and does
+not mean the run failed.
+
 **Active runtime refactor (orchestration only, no formula changes):**
 [Candidate Factory Runtime Refactor Plan](../exec_plans/2026-05-22_candidate_factory_runtime_refactor_plan.md)
 — phased weights / lightweight report / PDF modes. **Session 1 (shipped):** factory default

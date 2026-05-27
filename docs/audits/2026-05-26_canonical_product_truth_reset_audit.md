@@ -1,5 +1,11 @@
 # Canonical Product Truth Reset Audit
 
+> **Status note (2026-05-27):** Historical snapshot. Findings that said default
+> `run_portfolio_review.py` runs a batch candidate factory were valid at audit time but are now stale
+> for current runtime. Current default behavior is diagnosis-only unless candidates are explicitly
+> requested. See `docs/specs/portfolio_review_workflow_spec.md` and
+> `docs/exec_plans/final_architecture_consistency_audit_plan.md` for the updated architecture baseline.
+
 Date: 2026-05-26  
 Repository: Portfolio MRI / Portfolio X-Ray  
 Branch observed: `change-the-project`  

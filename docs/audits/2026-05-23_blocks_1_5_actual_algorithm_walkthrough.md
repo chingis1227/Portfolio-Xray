@@ -1,5 +1,10 @@
 # Blocks 1–5 Actual Algorithm Walkthrough
 
+> **Status note (2026-05-27):** Historical walkthrough. Some command examples in this file predate
+> the diagnosis-only default runtime change. For current default runtime behavior, use
+> `docs/specs/portfolio_review_workflow_spec.md`, `docs/product_flow_operator_guide.md`, and
+> `docs/exec_plans/final_architecture_consistency_audit_plan.md`.
+
 Date: 2026-05-23  
 Evidence basis: current repository code, canonical specs under `docs/specs/`, and generated artifacts from the proof portfolio on disk (`Main portfolio/`). Target product concepts (including `docs/DIAGNOSTIC_PRODUCT_CONCEPT.md`) are cited only where explicitly non-binding.
 

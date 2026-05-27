@@ -79,3 +79,22 @@ def test_write_decision_verdict_outputs(tmp_path: Path) -> None:
     assert path == tmp_path / "decision_verdict.json"
     doc = json.loads(path.read_text(encoding="utf-8"))
     assert doc["verdict_id"] == "test_another_candidate_or_review_evidence"
+    assert doc["verdict_family"] == "core_compare"
+
+
+def test_decision_verdict_mandate_maps_policy_family() -> None:
+    doc = build_decision_verdict(
+        selection={
+            "decision_status": "mandate_risk_reduction",
+            "warnings": ["mandate_risk_reduction"],
+            "rationale": {
+                "summary": "Mandate constraints require risk reduction.",
+                "risk_reduction_notes": ["Policy profile fails mandate validation."],
+            },
+        }
+    )
+
+    assert doc["verdict_id"] == "risk_reduction_required"
+    assert doc["verdict_family"] == "policy_mandate"
+    assert doc["selection_decision_status"] == "mandate_risk_reduction"
+    assert "mandate" in doc["recommended_action"].lower()

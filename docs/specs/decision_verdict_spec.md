@@ -44,6 +44,7 @@ Top-level shape:
   "generated_at": "ISO-8601 UTC timestamp",
   "verdict_id": "no_material_rebalance_recommended",
   "verdict_label": "No material rebalance recommended",
+  "verdict_family": "core_compare",
   "selection_decision_status": "no_material_rebalance",
   "baseline_candidate_id": "analysis_subject",
   "selected_candidate_id": "risk_parity",
@@ -68,6 +69,15 @@ Top-level shape:
 | `mandate_risk_reduction` | `risk_reduction_required` |
 
 Unknown technical statuses map to `evidence_insufficient`.
+
+### `verdict_family` (UI filtering)
+
+| `verdict_family` | When | Core MVP note |
+| --- | --- | --- |
+| `core_compare` | Default for all compare outcomes except mandate reduction | Standard Decision Verdict for portfolio-first one-candidate demos |
+| `policy_mandate` | `selection_decision_status` is `mandate_risk_reduction` | **Legacy policy-path** semantics from mandate breach on comparison rows (`portfolio_valid === false`). Filter or label separately in Core MVP UI; not emitted on diagnosis-only runs. |
+
+`mandate_risk_reduction` originates in the Selection Engine when legacy policy/current comparison rows show mandate validation failure. Decision Verdict maps it to `risk_reduction_required` without changing Selection formulas. See [selection_engine_spec.md](selection_engine_spec.md) § Mandate Risk Reduction.
 
 ## Boundary With Selection Engine
 

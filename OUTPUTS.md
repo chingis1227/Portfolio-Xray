@@ -225,14 +225,14 @@ After `python run_portfolio_review.py`, product/UI consumers should present the 
 first and treat other JSON as drill-down evidence. A separate merged `product_bundle.json` is **not**
 required; each bundle artifact has its own writer and schema.
 
-| Bundle artifact | Writer (code) | Default path after portfolio-first review |
-| --- | --- | --- |
-| `problem_classification.json` | `write_problem_classification_outputs` in `run_report.py` | `{output_dir_final}/analysis_subject/problem_classification.json` |
-| `candidate_launchpad.json` | `write_candidate_launchpad_outputs` in `run_report.py` | `{output_dir_final}/analysis_subject/candidate_launchpad.json` |
-| `current_vs_candidate.json` | `write_current_vs_candidate_outputs` in compare chain | `{output_dir_final}/current_vs_candidate.json` |
-| `decision_verdict.json` | `write_decision_verdict_outputs` | `{output_dir_final}/decision_verdict.json` |
-| `ai_commentary_context.json` | `write_ai_commentary_context_outputs` | `{output_dir_final}/ai_commentary_context.json` |
-| `what_changed_summary.json` | `write_what_changed_summary_outputs` | `{output_dir_final}/what_changed_summary.json` |
+| Bundle artifact | Writer (code) | Default path | When present |
+| --- | --- | --- | --- |
+| `problem_classification.json` | `write_problem_classification_outputs` in `run_report.py` | `{output_dir_final}/analysis_subject/problem_classification.json` | After default diagnosis / materialize (#1) |
+| `candidate_launchpad.json` | `write_candidate_launchpad_outputs` in `run_report.py` | `{output_dir_final}/analysis_subject/candidate_launchpad.json` | After default diagnosis / materialize (#2) |
+| `current_vs_candidate.json` | `write_current_vs_candidate_outputs` in compare chain | `{output_dir_final}/current_vs_candidate.json` | After compare only (#3) |
+| `decision_verdict.json` | `write_decision_verdict_outputs` | `{output_dir_final}/decision_verdict.json` | After compare only (#4) |
+| `ai_commentary_context.json` | `write_ai_commentary_context_outputs` | `{output_dir_final}/ai_commentary_context.json` | After compare only (#5) |
+| `what_changed_summary.json` | `write_what_changed_summary_outputs` | `{output_dir_final}/what_changed_summary.json` | After compare only (#6); optional if no prior snapshot |
 
 Compare (`write_candidate_comparison_outputs`) still writes technical and advanced contracts
 (`candidate_comparison.json`, `selection_decision.json`, health/robustness/Pareto/regret, action,
@@ -244,7 +244,11 @@ artifacts exist), `generated_paths` includes resolved keys for all six bundle JS
 `analysis_subject/`). `artifact_categories` groups keys by surface (`product_bundle`, `technical_comparison`,
 `subject_diagnostics`, `advanced_evidence`, `orchestration`, `legacy_compatibility`,
 `generated_export`). `generated_paths_by_category` lists resolved paths per category;
-`product_discovery.product_bundle_paths` lists the six Core MVP files for UI/API consumers.
+`product_discovery.product_bundle_paths` lists resolved Core MVP files on disk;
+`product_bundle_phase` is `diagnosis_only` (bundle #1–2), `post_compare_partial`, or `complete`
+(all six). `product_bundle_complete` is true only when `product_bundle_phase` is `complete`.
+`artifact_categories.product_bundle` lists all six manifest key names (schema catalog); resolved
+paths appear in `generated_paths_by_category.product_bundle` only for files that exist.
 
 ## Output Formats
 

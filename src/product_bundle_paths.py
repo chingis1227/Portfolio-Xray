@@ -1,9 +1,14 @@
-"""Resolve diagnosis bundle paths for product-flow consumers (RM-ARCH-011).
+"""Resolve Core MVP product bundle paths for portfolio-first consumers (RM-ARCH-011).
 
-Portfolio-first runs write ``problem_classification.json`` and
-``candidate_launchpad.json`` under ``{output_dir_final}/analysis_subject/``.
-Legacy runs may keep copies at the variant root. Compare, AI commentary
-grounding, and What Changed must read the sidecar first.
+Bundle phases (six JSON files, no merged ``product_bundle.json``):
+
+- **After diagnosis / materialize (#1–2):** ``problem_classification.json``,
+  ``candidate_launchpad.json`` under ``{output_dir_final}/analysis_subject/``.
+- **After compare only (#3–6):** ``current_vs_candidate.json``, ``decision_verdict.json``,
+  ``ai_commentary_context.json``, ``what_changed_summary.json`` at variant root.
+
+``output_manifest.json`` → ``product_discovery`` exposes which keys exist on disk;
+``product_bundle_complete`` is true only when all six are present.
 """
 
 from __future__ import annotations
@@ -66,13 +71,21 @@ def _load_json(path: Path | None) -> dict[str, Any] | None:
     return doc if isinstance(doc, dict) else None
 
 
-PRODUCT_BUNDLE_MANIFEST_KEYS: tuple[str, ...] = (
+PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS: tuple[str, ...] = (
     "problem_classification_json",
     "candidate_launchpad_json",
+)
+
+PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS: tuple[str, ...] = (
     "current_vs_candidate_json",
     "decision_verdict_json",
     "ai_commentary_context_json",
     "what_changed_summary_json",
+)
+
+PRODUCT_BUNDLE_MANIFEST_KEYS: tuple[str, ...] = (
+    *PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS,
+    *PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS,
 )
 
 TECHNICAL_COMPARISON_MANIFEST_KEYS: tuple[str, ...] = (
@@ -259,19 +272,55 @@ def build_generated_paths_by_category(
     return {category: paths for category, paths in buckets.items() if paths}
 
 
+def _product_bundle_phase(
+    diagnosis_paths: dict[str, str],
+    post_compare_paths: dict[str, str],
+) -> str:
+    diagnosis_complete = len(diagnosis_paths) == len(PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS)
+    post_compare_count = len(post_compare_paths)
+    if diagnosis_complete and post_compare_count == len(PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS):
+        return "complete"
+    if diagnosis_complete and post_compare_count == 0:
+        return "diagnosis_only"
+    if diagnosis_complete or post_compare_count:
+        return "post_compare_partial"
+    return "absent"
+
+
 def build_product_discovery_block(
     generated_paths: dict[str, str | Path | None] | None,
 ) -> dict[str, Any]:
-    """Product-consumer manifest block: bundle paths first, no filename guessing."""
+    """Product-consumer manifest block: resolved bundle paths and presence phase."""
     clean = _normalize_generated_paths_map(generated_paths)
     product_paths = {
         key: clean[key] for key in PRODUCT_BUNDLE_MANIFEST_KEYS if key in clean
     }
+    diagnosis_paths = {
+        key: clean[key]
+        for key in PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS
+        if key in clean
+    }
+    post_compare_paths = {
+        key: clean[key]
+        for key in PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS
+        if key in clean
+    }
+    diagnosis_complete = len(diagnosis_paths) == len(PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS)
+    post_compare_complete = len(post_compare_paths) == len(
+        PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS
+    )
     return {
         "primary_output_surface": "product_bundle",
         "product_bundle_paths": product_paths,
-        "product_bundle_complete": len(product_paths) == len(PRODUCT_BUNDLE_MANIFEST_KEYS),
+        "product_bundle_complete": diagnosis_complete and post_compare_complete,
+        "diagnosis_bundle_paths": diagnosis_paths,
+        "diagnosis_bundle_complete": diagnosis_complete,
+        "post_compare_bundle_paths": post_compare_paths,
+        "post_compare_bundle_complete": post_compare_complete,
+        "product_bundle_phase": _product_bundle_phase(diagnosis_paths, post_compare_paths),
         "read_order": list(PRODUCT_BUNDLE_MANIFEST_KEYS),
+        "diagnosis_read_order": list(PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS),
+        "post_compare_read_order": list(PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS),
     }
 
 
@@ -386,6 +435,12 @@ def product_bundle_manifest_extra() -> dict[str, Any]:
         "product_bundle_manifest_keys": list(PRODUCT_BUNDLE_MANIFEST_KEYS),
         "product_bundle_contract": {
             "artifact_count": len(PRODUCT_BUNDLE_MANIFEST_KEYS),
+            "diagnosis_artifact_keys": list(PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS),
+            "post_compare_artifact_keys": list(PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS),
+            "diagnosis_present_after": "portfolio_review diagnosis or run_report materialize",
+            "post_compare_present_after": (
+                "candidate factory + compare (--candidates, --with-candidates, --mode full)"
+            ),
             "merged_product_bundle_json": False,
             "advanced_artifacts_are_product_surface": False,
         },
@@ -411,20 +466,28 @@ def build_output_manifest_discovery_extra(
 
 
 def load_diagnosis_bundle_docs(output_dir_final: Path) -> dict[str, Any]:
-    """Load problem classification and launchpad from resolved on-disk paths."""
+    """Load diagnosis-phase JSON from resolved on-disk paths (subject sidecar first)."""
     problem_path, problem_resolution = _resolve_artifact_path(
         output_dir_final, PROBLEM_CLASSIFICATION_FILENAME
     )
     launchpad_path, launchpad_resolution = _resolve_artifact_path(
         output_dir_final, CANDIDATE_LAUNCHPAD_FILENAME
     )
+    xray_path, xray_resolution = _resolve_artifact_path(output_dir_final, "portfolio_xray.json")
+    stress_path, stress_resolution = _resolve_artifact_path(output_dir_final, "stress_report.json")
     return {
         "problem_classification": _load_json(problem_path),
         "candidate_launchpad": _load_json(launchpad_path),
+        "portfolio_xray": _load_json(xray_path),
+        "stress_report": _load_json(stress_path),
         "problem_classification_path": problem_path,
         "candidate_launchpad_path": launchpad_path,
+        "portfolio_xray_path": xray_path,
+        "stress_report_path": stress_path,
         "problem_classification_resolution": problem_resolution,
         "candidate_launchpad_resolution": launchpad_resolution,
+        "portfolio_xray_resolution": xray_resolution,
+        "stress_report_resolution": stress_resolution,
     }
 
 
@@ -441,7 +504,9 @@ __all__ = [
     "GENERATED_EXPORT_MANIFEST_SUFFIXES",
     "LEGACY_COMPATIBILITY_MANIFEST_KEYS",
     "ORCHESTRATION_MANIFEST_KEYS",
+    "PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS",
     "PRODUCT_BUNDLE_MANIFEST_KEYS",
+    "PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS",
     "SUBJECT_DIAGNOSTICS_MANIFEST_KEYS",
     "TECHNICAL_COMPARISON_MANIFEST_KEYS",
     "build_generated_paths_by_category",

@@ -23,7 +23,7 @@ you are looking at. The folder often holds **two unrelated trees** from differen
 **Do not mix:** subject weights in `analysis_subject/run_metadata.json` vs policy weights in root
 `run_result.json` / `portfolio_weights.yml` are frequently **different portfolios** (different SPY
 allocations, cash, and stress context). Treating root policy artifacts as “the reviewed portfolio”
-is the most common operator error after a routine `python run_portfolio_review.py --mode core`.
+is the most common operator error after a routine `python run_portfolio_review.py`.
 
 **Stale exports:** default review uses `site_api` (JSON + cache). TXT, HTML, PNG, and CSV under
 `analysis_subject/` or candidate folders, and PDFs under `pdf files/`, may remain from an earlier
@@ -53,7 +53,8 @@ python run_portfolio_review.py --candidates equal_weight
 
 | Review mode | Command | Factory profile | Factory execution | Typical use |
 | --- | --- | --- | --- | --- |
-| **Core** (default) | `python run_portfolio_review.py` or `--mode core` | `core_fast` | `standard` (phased; parallel lightweight reports by default; no per-candidate PDF) | Routine monthly review within normal session limits |
+| **Diagnosis-only** (default) | `python run_portfolio_review.py` | none | no factory stage | Routine current-portfolio diagnosis and product Block 1-3 refresh; `runtime_mode=product_diagnosis_only`, `workflow_state=diagnosis_only` |
+| **Core batch** (advanced/research) | `python run_portfolio_review.py --with-candidates` | `core_fast` | `standard` (phased; parallel lightweight reports by default; no per-candidate PDF) | Backend batch refresh; `runtime_mode=research_batch`, `workflow_state=multiple_candidates` (6). `--mode core` alone does **not** run the factory |
 | **Core (sequential regression)** | `... --candidate-profile core_v1` | `core_v1` | `standard` (sequential Phase 2) | Parity/debug vs pre–Wave 2 core menu |
 | **Full** | `python run_portfolio_review.py --mode full` | `default_v1` | `standard` | Full menu refresh (compare-ready snapshots; much faster than legacy subprocess chain) |
 | **Full resume** | `python run_portfolio_review.py --mode full --resume-candidates` | `default_v1` | `standard` + `--resume` | Recovery after an interrupted full factory run |
@@ -64,6 +65,23 @@ python run_portfolio_review.py --candidates equal_weight
 | **Subject diagnosis** | Diagnose the starting portfolio before alternatives | `run_report.py --materialize-analysis-subject` via `run_portfolio_review.py` | `{output_dir_final}/analysis_subject/` |
 | **Candidates** | Build non-policy comparison alternatives | `run_candidate_factory.py` via `run_portfolio_review.py` | Candidate output folders, `candidate_factory_run.json` |
 | **Comparison** | Merge available subject/candidate evidence | `run_compare_variants.py` via factory `--then-compare` or directly | `candidate_comparison.json` (`candidate_menu` block) and decision-package artifacts |
+
+### 0.1a Runtime mode and dry-run verification
+
+`run_portfolio_review.py --dry-run` prints `Runtime mode`, `Workflow state`, and `Stages` without
+running subprocess builders. Use it to confirm the plan before a long networked run.
+
+| Command | `runtime_mode` | `workflow_state` | Stages |
+| --- | --- | --- | --- |
+| `python run_portfolio_review.py --dry-run` | `product_diagnosis_only` | `diagnosis_only` | `input -> diagnosis` |
+| `... --candidates equal_weight --dry-run` | `product_one_candidate` | `one_candidate` | `input -> diagnosis -> candidates` |
+| `... --with-candidates --dry-run` | `research_batch` | `multiple_candidates` (6) | `input -> diagnosis -> candidates` |
+| `... --mode full --dry-run` | `research_batch` | `multiple_candidates` (16) | `input -> diagnosis -> candidates` |
+
+Decision tree and binding spec:
+[portfolio_review_workflow_spec.md](specs/portfolio_review_workflow_spec.md) (Runtime mode and command decision tree).
+Product bundle files #3–6 exist only after a run that reaches compare (see
+[product_flow_operator_guide.md](product_flow_operator_guide.md) — Product bundle path map).
 | **Package** | Refresh portfolio-first PDFs | `rebuild_pdf_reports.py --portfolio-first` via `run_portfolio_review.py` unless `--skip-pdf` is set | `Main portfolio_decision_package.pdf`, `analysis_subject_*` PDFs when sidecar outputs exist |
 | **Package (legacy)** | Full EW/RP/policy/baseline PDF suite | `run_portfolio_review.py --legacy-full-pdf` or `rebuild_pdf_reports.py` without `--portfolio-first` | All PDFs under `pdf files/` |
 
@@ -83,11 +101,12 @@ Replace `equal_weight` with any supported candidate id from the factory registry
 
 | Path | Command | Factory behavior | Workflow state |
 | --- | --- | --- | --- |
-| **Routine research / Blocks 1–5 regression** | `python run_portfolio_review.py` or `--mode core` | Profile **`core_fast`** — **six** candidates | `multiple_candidates` |
+| **Routine diagnosis-first review** | `python run_portfolio_review.py` | no candidate factory | `diagnosis_only` |
+| **Routine research / Blocks 1–5 regression** | `python run_portfolio_review.py --with-candidates` | Profile **`core_fast`** — **six** candidates | `multiple_candidates` |
 | **Product demo (one hypothesis)** | `python run_portfolio_review.py --candidates <id>` | Single builder + `--then-compare` | `one_candidate` |
 
-Do **not** use the default six-candidate core run when the goal is a product demo of
-diagnose → one alternative → compare → verdict. Explicit `--candidates` is required.
+Do **not** use core batch mode when the goal is a product demo of diagnose → one alternative →
+compare → verdict. Explicit `--candidates` is required.
 
 Dry-run check (no subprocess builders):
 
@@ -118,7 +137,7 @@ Use this checklist when validating the first-five product blocks without prior c
 | Step | Action | Pass criterion |
 | --- | --- | --- |
 | 1 | Configure `analysis_subject` with five tickers and explicit weights summing to `1.0` for `current_portfolio` / `model_portfolio` | Config validation accepts; overallocated positive sums above `1.0` fail before reports |
-| 2 | Run routine review | `python run_portfolio_review.py --mode core --skip-pdf` completes subject materialization, `core_fast` factory, and comparison |
+| 2 | Run routine diagnosis | `python run_portfolio_review.py` completes subject materialization (`analysis_subject`) in diagnosis-only mode |
 | 3 | Open subject folder first | `{output_dir_final}/analysis_subject/` contains `run_metadata.json`, `portfolio_xray.json`, `stress_report.json` |
 | 4 | Read trust summaries | `data_trust_summary` / `data_trust_signals` and commentary `user_summary_lines` surface data-quality and young-ETF warnings when present |
 | 5 | Confirm factory evidence | `candidate_comparison.json` → `candidate_menu.factory_evidence_status` is `current`, or warnings explain stale/missing factory evidence |
@@ -140,7 +159,7 @@ market data download (Yahoo/FRED); not part of default offline pytest.
 
 | Step | Command | Pass criterion |
 | --- | --- | --- |
-| 1 | `python run_portfolio_review.py --mode core --skip-pdf` | Exit code `0`; subject + factory + comparison stages complete |
+| 1 | `python run_portfolio_review.py --with-candidates --mode core --skip-pdf` | Exit code `0`; subject + factory + comparison stages complete |
 | 2 | `python scripts/verify_live_core_e2e.py` | Prints `live core E2E validation: OK` |
 | 3 | `python -m pytest tests/test_blocks_1_5_mvp_smoke.py -q` | Offline smoke still passes (regression guard) |
 
@@ -185,7 +204,8 @@ Phase 17 offline closure bundle: [TESTING.md](../TESTING.md) Phase 17 Post-Deep-
 
 | Situation | What happens | What to do |
 | --- | --- | --- |
-| Routine review | Core mode builds six lightweight candidates; compare + decision package finish in one session when snapshots are fresh | `python run_portfolio_review.py` |
+| Routine review | Default mode refreshes only subject diagnostics (no factory, no compare) | `python run_portfolio_review.py` |
+| Core backend batch requested | Core mode builds six lightweight candidates; compare + decision package can finish in one session when snapshots are fresh | `python run_portfolio_review.py --with-candidates` |
 | Snapshots already match review `analysis_end` | Factory mostly `skipped_existing`; core path is fast | Default core command |
 | Need all optimizers / robust suite | Full mode runs all 16 `default_v1` builders; can take hours when stale | `python run_portfolio_review.py --mode full --no-skip-existing` |
 | Session/agent timeout | Subject may refresh; factory may not finish; compare may run on incomplete intended menu | Rerun `python run_portfolio_review.py --mode full --resume-candidates`; then read `candidate_factory_run.json`, `candidate_comparison.json` → `candidate_menu`, and row `unavailable_reason` |

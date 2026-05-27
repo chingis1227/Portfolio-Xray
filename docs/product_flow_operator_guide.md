@@ -49,10 +49,10 @@ Read in this order after a portfolio-first run (new chat, demo prep, or code rev
 | 3 | `analysis_subject/stress_report.json` | Block 3 stress scenarios and factor context |
 | 4 | `analysis_subject/problem_classification.json` | Top problems and test paths (product bundle #1) |
 | 5 | `analysis_subject/candidate_launchpad.json` | Suggested hypotheses / methods (product bundle #2) |
-| 6 | `current_vs_candidate.json` | Current vs selected or shortlist (product bundle #3) |
-| 7 | `decision_verdict.json` | Primary product answer: hold / adjust / no-trade framing (bundle #4) |
-| 8 | `ai_commentary_context.json` | Grounding for future LLM prose — **not** client-facing copy (bundle #5) |
-| 9 | `what_changed_summary.json` | Monitoring delta vs prior snapshot when available (bundle #6) |
+| 6 | `current_vs_candidate.json` | Current vs selected or shortlist (product bundle #3) — **after compare only** |
+| 7 | `decision_verdict.json` | Primary product answer: hold / adjust / no-trade framing (bundle #4) — **after compare only** |
+| 8 | `ai_commentary_context.json` | Grounding for future LLM prose — **not** client-facing copy (bundle #5) — **after compare only** |
+| 9 | `what_changed_summary.json` | Monitoring delta vs prior snapshot when available (bundle #6) — **after compare only** (may be absent if no prior snapshot) |
 | 10 | `output_manifest.json` → `generated_paths` / `artifact_categories` | Resolved paths; confirms sidecar vs legacy root |
 | 11 (drill-down only) | `candidate_comparison.json`, `selection_decision.json`, health/robustness/Pareto | Technical comparison and advanced evidence — not the default UI story |
 
@@ -83,6 +83,21 @@ Do **not** start from root `portfolio_xray.json` / `stress_report.json` unless t
 Replace `equal_weight` with any supported factory id (`risk_parity`, `minimum_variance`, …).
 Method allowlist: `supported_candidate_methods()` in `src/portfolio_alternatives_builder.py`.
 
+### Runtime labels (`--dry-run`)
+
+Use dry-run to confirm stages before a long networked run. Labels come from
+`summarize_plan()` (`src/portfolio_review_workflow.py`).
+
+| Command | `runtime_mode` | `workflow_state` | Stages |
+| --- | --- | --- | --- |
+| `python run_portfolio_review.py --dry-run` | `product_diagnosis_only` | `diagnosis_only` | `input -> diagnosis` |
+| `... --candidates equal_weight --dry-run` | `product_one_candidate` | `one_candidate` | `input -> diagnosis -> candidates` |
+| `... --with-candidates --dry-run` | `research_batch` | `multiple_candidates` (6) | `input -> diagnosis -> candidates` |
+| `... --mode full --dry-run` | `research_batch` | `multiple_candidates` (16) | `input -> diagnosis -> candidates` |
+
+Full decision tree and transcript examples:
+[portfolio_review_workflow_spec.md](specs/portfolio_review_workflow_spec.md) (Runtime mode and command decision tree).
+
 ---
 
 ## Product bundle path map
@@ -90,20 +105,24 @@ Method allowlist: `supported_candidate_methods()` in `src/portfolio_alternatives
 Six JSON files form the **Core MVP product bundle**. There is **no** merged `product_bundle.json`.
 Paths are relative to `{output_dir_final}` (typically `Main portfolio/`).
 
-| # | Artifact | Default path | Schema (offline gate) | Primary reader question |
-| --- | --- | --- | --- | --- |
-| 1 | `problem_classification.json` | `analysis_subject/problem_classification.json` | `problem_classification_v1` | What is wrong with the current portfolio? |
-| 2 | `candidate_launchpad.json` | `analysis_subject/candidate_launchpad.json` | `candidate_launchpad_v1` | What hypotheses should we test next? |
-| 3 | `current_vs_candidate.json` | `current_vs_candidate.json` | `current_vs_candidate_v1` | How does current compare to the candidate? |
-| 4 | `decision_verdict.json` | `decision_verdict.json` | `decision_verdict_v1` | What is the recommended decision posture? |
-| 5 | `ai_commentary_context.json` | `ai_commentary_context.json` | `ai_commentary_context_v1` | Grounding only (`purpose=grounded_ai_commentary_context`; no LLM in V1) |
-| 6 | `what_changed_summary.json` | `what_changed_summary.json` | `what_changed_summary_v1` | What changed since the last review? |
+| # | Artifact | Default path | When present | Schema (offline gate) | Primary reader question |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `problem_classification.json` | `analysis_subject/problem_classification.json` | After default diagnosis / materialize | `problem_classification_v1` | What is wrong with the current portfolio? |
+| 2 | `candidate_launchpad.json` | `analysis_subject/candidate_launchpad.json` | After default diagnosis / materialize | `candidate_launchpad_v1` | What hypotheses should we test next? |
+| 3 | `current_vs_candidate.json` | `current_vs_candidate.json` | After `--candidates`, `--with-candidates`, or `--mode full` (compare stage) | `current_vs_candidate_v1` | How does current compare to the candidate? |
+| 4 | `decision_verdict.json` | `decision_verdict.json` | Same as #3 | `decision_verdict_v1` | What is the recommended decision posture? |
+| 5 | `ai_commentary_context.json` | `ai_commentary_context.json` | Same as #3 | `ai_commentary_context_v1` | Grounding only (`purpose=grounded_ai_commentary_context`; no LLM in V1) |
+| 6 | `what_changed_summary.json` | `what_changed_summary.json` | Same as #3; file optional if no prior snapshot | `what_changed_summary_v1` | What changed since the last review? |
 
 **RM-ARCH-011 sidecar rule:** diagnosis files **prefer** `analysis_subject/`; compare, AI commentary,
 and What Changed resolve via `src/product_bundle_paths.py` (legacy root copies still work).
 
-**Manifest keys** (after compare): `problem_classification_json` … `what_changed_summary_json` in
-`output_manifest.json` → `generated_paths`; grouped under `artifact_categories.product_bundle`.
+**Manifest keys:** `problem_classification_json` … `what_changed_summary_json` in
+`output_manifest.json` → `generated_paths` / `product_discovery.product_bundle_paths`.
+`product_discovery.product_bundle_phase` is `diagnosis_only` after default review (#1–2 only),
+`complete` after compare (all six), or `post_compare_partial` when some post-compare files exist.
+`product_bundle_complete` is true only when phase is `complete`. `artifact_categories.product_bundle`
+lists all six key names; resolved paths appear only for files on disk.
 
 **Technical comparison** (same run, not bundle): `candidate_comparison.json`, `selection_decision.json`,
 `portfolio_health_score.json`, `robustness_scorecard.json`, Pareto/regret, action plan, journal — see

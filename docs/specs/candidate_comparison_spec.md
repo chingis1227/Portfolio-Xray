@@ -98,10 +98,12 @@ Recorded for the canonical comparison contract (development Session 08, 2026-05-
 
 ### `candidate_menu` block (Session 09; factory evidence addendum RM-1012)
 
-When present, describes the **intended** factory menu versus the **product** reference menu
-(`default_v1`), scored counts, partial-menu flags, unavailable-reason summary, and refresh commands.
-Downstream decision-package reporting must surface `is_partial_menu` when true so selection ranks are
-not read as covering the full product menu.
+When present, describes the **intended** factory menu versus the **full-menu research baseline**
+(`default_v1` via `full_menu_baseline_profile_id` / legacy `product_menu_profile_id`), scored counts,
+partial-menu flags, unavailable-reason summary, and refresh commands. This baseline is **not** the
+Core MVP product default (explicit `--candidates <id>` / selected-candidate-first). Downstream
+decision-package reporting must surface `is_partial_menu` when true so selection ranks are not read
+as covering the full sixteen-candidate research menu.
 
 Beginning with Blocks 1-5 reliability Session 03 (`RM-1012`), this block also reports whether
 `candidate_factory_run.json` is current evidence for the comparison. `factory_evidence_status` is

@@ -85,7 +85,8 @@ Top-level fields:
 - `schema_version`: `ai_commentary_context_v1`
 - `diagnostic_only`: `true`
 - `generated_at`: UTC timestamp
-- `purpose`: `grounded_ai_commentary_context`
+- `purpose`: `grounded_ai_commentary_context` (post-compare) or `diagnosis_grounding_only` (diagnosis-only)
+- `grounding_phase`: `diagnosis_only` | `post_compare`
 - `allowed_source_artifacts`: list of readable source artifact filenames
 - `forbidden_claim_categories`: list of forbidden claim types
 - `required_grounding_rules`: list of rules for any future commentary generator
@@ -109,7 +110,29 @@ The context may include compact excerpts such as candidate IDs, statuses,
 dimension counts, verdict IDs, and no-trade metadata. It must not create new
 calculated metrics.
 
+### Diagnosis artifacts (summary fields only)
+
+When `portfolio_xray.json` and/or `stress_report.json` are available, the writer
+must emit top-level summary references (not full block bodies), for example:
+
+- `portfolio_xray.json`: `version`, `diagnostic_only`, `block_2_6_portfolio_weakness_map.status` / `.summary`
+- `stress_report.json`: `status`, `loss_gate_mode`, `primary_diagnostic_code`, `worst_scenario_loss_pct`, `stress_scorecard_v1.overall_status`
+
+### Grounding phases
+
+| Phase | When | `purpose` | Compare-source warnings |
+| --- | --- | --- | --- |
+| Diagnosis-only | After materialize / before compare | `diagnosis_grounding_only` | No `missing_required_source:*` for compare bundle |
+| Post-compare | After `decision_verdict.json` | `grounded_ai_commentary_context` | Warn when comparison / current-vs-candidate / selection / verdict missing |
+
+Diagnosis-only `ai_commentary_context.json` may be written under `analysis_subject/` during
+`run_report.py --materialize-analysis-subject`. The post-compare file at variant root replaces
+or supplements it after candidate comparison.
+
 ## Integration
+
+`run_report.py` (materialize path) writes diagnosis-only `ai_commentary_context.json` when
+problem classification and launchpad are produced.
 
 `src.candidate_comparison.write_candidate_comparison_outputs()` writes
 `ai_commentary_context.json` after:
@@ -139,7 +162,18 @@ deterministic report modules (`src/portfolio_commentary.py`, `src/decision_packa
 They are English narrative exports over structured evidence, not the target AI Commentary product
 layer and not LLM output.
 
-Product docs must not describe those files as proof that generated AI Commentary already exists.
+| Layer | Artifact | When written | Role |
+| --- | --- | --- | --- |
+| AI Commentary contract | `ai_commentary_context.json` | Diagnosis materialize + post-compare | Grounding only; no LLM |
+| Legacy report export | `commentary.txt`, `stress_commentary.txt` | `output_profile` with `write_txt` (e.g. `full_report`) | Rule-based narrative; not AI Commentary |
+| Client PDF | `pdf files/*.pdf` | `--with-pdf` / legacy rebuild | Sanitized summary of exports |
+
+Mandate PASS/FAIL and `mandate_check` wording in `commentary.txt` / `stress_commentary.txt` applies
+only when `stress_report.json` has `loss_gate_mode=mandate` (legacy policy path). Core MVP
+diagnostic materialize uses `loss_gate_mode=diagnostic`; those exports are omitted on default
+`site_api` (`write_txt=false`).
+
+Product docs must not describe `commentary.txt` as proof that generated AI Commentary already exists.
 The Core MVP bundle includes `ai_commentary_context.json` as the current AI Commentary contract:
 grounding and guardrails only.
 

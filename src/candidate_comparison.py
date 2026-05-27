@@ -49,7 +49,10 @@ ANALYSIS_SUBJECT_SIDECAR_SUBDIR = "analysis_subject"
 PORTFOLIO_FIRST_POLICY_LEGACY_REASON = "legacy_policy_not_default_portfolio_first_candidate"
 PORTFOLIO_FIRST_POLICY_LEGACY_WARNING = "legacy_policy_reference_optional_portfolio_first"
 MENU_BASELINE_IDS = frozenset({"analysis_subject", "policy", "current"})
-PRODUCT_MENU_PROFILE_ID = "default_v1"
+# Full 16-candidate research menu (`default_v1`) — comparison baseline only, not Core MVP product default.
+# Canonical product path is explicit `--candidates <id>` (selected-candidate-first).
+FULL_MENU_RESEARCH_PROFILE_ID = "default_v1"
+PRODUCT_MENU_PROFILE_ID = FULL_MENU_RESEARCH_PROFILE_ID  # backward-compat alias
 # Max seconds factory may trail on-disk comparison when analysis context still matches (P17-G6).
 FACTORY_COMPARISON_TIMING_SKEW_SECONDS = 120
 COMPARISON_REBUILD_STANDALONE = "standalone"
@@ -1655,9 +1658,10 @@ def build_candidate_menu(
     review_mode: str | None = None,
 ) -> dict[str, Any]:
     """
-    Summarize intended vs product candidate menus for comparison and decision outputs.
+    Summarize intended vs full-menu research baseline for comparison disclosure.
 
-    See docs/specs/candidate_comparison_spec.md (candidate_menu block).
+    ``product_menu_profile_id`` in JSON is the full-menu research profile (`default_v1`), not the
+    Core MVP product default (explicit selected candidate). See candidate_comparison_spec.md.
     """
     by_id = {c["candidate_id"]: c for c in candidates if c.get("candidate_id")}
     run_profile = (factory_run or {}).get("factory_profile_id") or review_mode
@@ -1666,10 +1670,10 @@ def build_candidate_menu(
 
         run_profile = REVIEW_MODE_PROFILES.get(str(run_profile), str(run_profile))
     if run_profile in (None, "", "explicit_list"):
-        run_profile = PRODUCT_MENU_PROFILE_ID
+        run_profile = FULL_MENU_RESEARCH_PROFILE_ID
 
     intended_ids = _factory_menu_candidate_ids(str(run_profile))
-    product_ids = _factory_menu_candidate_ids(PRODUCT_MENU_PROFILE_ID)
+    product_ids = _factory_menu_candidate_ids(FULL_MENU_RESEARCH_PROFILE_ID)
 
     def _status_counts(ids: list[str]) -> dict[str, int]:
         counts: dict[str, int] = {
@@ -1703,14 +1707,14 @@ def build_candidate_menu(
         reason = str(row.get("unavailable_reason") or "unknown")
         unavailable_summary[reason] = unavailable_summary.get(reason, 0) + 1
 
-    is_reduced_vs_product = str(run_profile) != PRODUCT_MENU_PROFILE_ID
+    is_reduced_vs_product = str(run_profile) != FULL_MENU_RESEARCH_PROFILE_ID
     is_incomplete_intended_menu = intended_scored < len(intended_ids)
     is_partial_menu = is_reduced_vs_product or is_incomplete_intended_menu
 
     if is_reduced_vs_product and is_incomplete_intended_menu:
         partial_reason = "reduced_menu_scope_and_unavailable_intended_candidates"
     elif is_reduced_vs_product:
-        partial_reason = "reduced_menu_scope_vs_product_default_v1"
+        partial_reason = "reduced_menu_scope_vs_full_menu_default_v1"
     elif is_incomplete_intended_menu:
         partial_reason = "unavailable_intended_candidates"
     else:
@@ -1725,7 +1729,9 @@ def build_candidate_menu(
     refresh_core = "python run_portfolio_review.py --mode core"
     refresh_full = "python run_portfolio_review.py --mode full --no-skip-existing"
     menu: dict[str, Any] = {
-        "product_menu_profile_id": PRODUCT_MENU_PROFILE_ID,
+        "full_menu_baseline_profile_id": FULL_MENU_RESEARCH_PROFILE_ID,
+        "full_menu_baseline_semantics": "advanced_research_full_batch",
+        "product_menu_profile_id": FULL_MENU_RESEARCH_PROFILE_ID,
         "product_menu_size": len(product_ids),
         "intended_menu_profile_id": str(run_profile),
         "intended_menu_size": len(intended_ids),
@@ -2338,6 +2344,8 @@ def write_candidate_comparison_outputs(
     diagnosis_bundle = load_diagnosis_bundle_docs(out_dir)
     problem_classification_doc = diagnosis_bundle.get("problem_classification")
     candidate_launchpad_doc = diagnosis_bundle.get("candidate_launchpad")
+    portfolio_xray_doc = diagnosis_bundle.get("portfolio_xray")
+    stress_report_doc = diagnosis_bundle.get("stress_report")
 
     paths.update(
         write_ai_commentary_context_outputs(
@@ -2349,6 +2357,8 @@ def write_candidate_comparison_outputs(
             action=action_doc,
             problem_classification=problem_classification_doc,
             candidate_launchpad=candidate_launchpad_doc,
+            portfolio_xray=portfolio_xray_doc,
+            stress_report=stress_report_doc,
         )
     )
 

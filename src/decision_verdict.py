@@ -38,6 +38,15 @@ STATUS_TO_VERDICT: dict[str, tuple[str, str]] = {
     ),
 }
 
+# UI filtering: Core MVP compare outcomes vs legacy policy mandate semantics.
+STATUS_TO_VERDICT_FAMILY: dict[str, str] = {
+    "selected_candidate": "core_compare",
+    "no_material_rebalance": "core_compare",
+    "inconclusive": "core_compare",
+    "data_review_required": "core_compare",
+    "mandate_risk_reduction": "policy_mandate",
+}
+
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
@@ -123,12 +132,15 @@ def build_decision_verdict(
     rationale = (selection or {}).get("rationale") if isinstance(selection, dict) else None
     rationale_summary = rationale.get("summary") if isinstance(rationale, dict) else None
 
+    verdict_family = STATUS_TO_VERDICT_FAMILY.get(status, "core_compare")
+
     return {
         "schema_version": DECISION_VERDICT_VERSION,
         "diagnostic_only": False,
         "generated_at": _utc_now_iso(),
         "verdict_id": verdict_id,
         "verdict_label": verdict_label,
+        "verdict_family": verdict_family,
         "selection_decision_status": status,
         "baseline_candidate_id": baseline_id,
         "selected_candidate_id": favored_id,

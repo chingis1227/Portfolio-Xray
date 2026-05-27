@@ -87,6 +87,60 @@ def test_write_portfolio_commentary_creates_file(tmp_path: Path) -> None:
         shutil.rmtree(root, ignore_errors=True)
 
 
+def test_write_portfolio_commentary_diagnostic_stress_omits_mandate_gate(tmp_path: Path) -> None:
+    root = _test_output_dir(tmp_path, "commentary_diag")
+    try:
+        final = root / "analysis_subject"
+        csv_dir = final / "results_csv"
+        csv_dir.mkdir(parents=True)
+        pd.DataFrame(
+            [{"window_months": 120, "cagr": 0.08, "vol_annual": 0.07, "sharpe": 0.9, "sortino": 1.2,
+              "beta_portfolio": 0.5, "max_drawdown": -0.1}]
+        ).to_csv(csv_dir / "portfolio_metrics_10y.csv", index=False)
+        stress = {
+            "status": "ok",
+            "loss_gate_mode": "diagnostic",
+            "worst_scenario_loss_pct": -0.2,
+            "scenario_results": [
+                {"scenario_id": "equity_shock", "portfolio_pnl_pct": -0.05},
+            ],
+        }
+        out = write_portfolio_commentary(
+            final,
+            output_dir_csv=csv_dir,
+            portfolio_metrics_10y={"cagr": 0.08, "vol_annual": 0.07, "max_drawdown": -0.1, "sharpe": 0.9},
+            stress_report=stress,
+            portfolio_valid=False,
+            analysis_end="2026-02-28",
+        )
+        text = out.read_text(encoding="utf-8")
+        assert "Client MaxDD gate" not in text
+        assert "mandate MaxDD gate PASS" not in text
+        assert "mandate MaxDD gate FAIL" not in text
+        assert "loss_gate_mode=diagnostic" in text
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_write_stress_commentary_diagnostic_omits_mandate_reference(tmp_path: Path) -> None:
+    root = _test_output_dir(tmp_path, "stress_commentary_diag")
+    try:
+        final = root / "analysis_subject"
+        final.mkdir(parents=True)
+        stress = {
+            "status": "ok",
+            "loss_gate_mode": "diagnostic",
+            "scenario_results": [{"scenario_id": "equity_shock", "portfolio_pnl_pct": -0.1}],
+        }
+        out = write_stress_commentary(final, stress_report=stress, analysis_end="2026-02-28")
+        text = out.read_text(encoding="utf-8")
+        assert "mandate_check" not in text
+        assert "no mandate pass/fail" in text.lower()
+        assert "pass=" not in text or "diagnostic fact" in text
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 def test_write_stress_commentary_from_stress_report(tmp_path: Path) -> None:
     root = _test_output_dir(tmp_path, "stress_commentary")
     try:

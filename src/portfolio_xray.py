@@ -47,9 +47,23 @@ XRAY_SECTION_TITLES = {
     "risk_diagnostics": "Portfolio Metrics / Risk Diagnostics",
     "factor_exposure": "Factor Exposure / Factor Sensitivity",
     "hidden_risk_detector": "Hidden Exposure / Hidden Risk Detector",
-    "portfolio_archetype": "Portfolio Archetype Classification",
-    "risk_budget_view": "Risk Budget View",
-    "weakness_map": "Portfolio Weakness Map",
+    "portfolio_archetype": "Portfolio Archetype Classification (legacy — not Core MVP)",
+    "risk_budget_view": "Risk Budget View (legacy section)",
+    "weakness_map": "Portfolio Weakness Map (legacy section)",
+}
+
+# Legacy ``sections.*`` keys — not Core MVP product blocks (see portfolio_xray_diagnostics_spec).
+XRAY_LEGACY_SECTION_SCOPE: dict[str, str] = {
+    "portfolio_archetype": (
+        "Advanced / legacy diagnostic (spec §2.7) — not Core MVP. "
+        "Product Block 2.5 is block_2_5_risk_budget_view."
+    ),
+    "risk_budget_view": (
+        "Legacy sections.risk_budget_view — prefer block_2_5_risk_budget_view for Core MVP."
+    ),
+    "weakness_map": (
+        "Legacy sections.weakness_map — prefer block_2_6_portfolio_weakness_map for Core MVP."
+    ),
 }
 
 # Named thresholds for transparent diagnostic rules. Canonical registry:
@@ -3752,9 +3766,16 @@ def _xray_text_table(headers: list[str], rows: list[list[str]]) -> list[str]:
     return lines
 
 
+def _xray_legacy_section_scope_line(section_key: str) -> str | None:
+    return XRAY_LEGACY_SECTION_SCOPE.get(section_key)
+
+
 def _xray_section_text_block(section_key: str, section: dict[str, Any]) -> list[str]:
     title = XRAY_SECTION_TITLES.get(section_key, section_key)
     lines = ["", title, _xray_section_meta_phrase(section)]
+    scope = _xray_legacy_section_scope_line(section_key)
+    if scope:
+        lines.append(scope)
     for warning in section.get("warnings") or []:
         lines.append(f"Warning: {warning}")
     items = section.get("items") or []
@@ -4053,6 +4074,9 @@ def _xray_section_html_block(section_key: str, section: dict[str, Any]) -> list[
         f"<h3>{_html_esc(title)}</h3>",
         f'<p class="xray-meta">{_html_esc(_xray_section_meta_phrase(section))}</p>',
     ]
+    scope = _xray_legacy_section_scope_line(section_key)
+    if scope:
+        parts.append(f'<p class="xray-scope">{_html_esc(scope)}</p>')
     for warning in section.get("warnings") or []:
         parts.append(f'<p class="xray-warning"><strong>Warning:</strong> {_html_esc(warning)}</p>')
     items = section.get("items") or []
@@ -4206,7 +4230,8 @@ def format_portfolio_xray_commentary(xray: dict[str, Any]) -> str:
     if archetype_items:
         a = archetype_items[0]
         lines.append(
-            f"Archetype lens: {a.get('primary_archetype')} "
+            "Archetype lens (legacy §2.7 — not Core MVP; product Block 2.5 is risk budget view): "
+            f"{a.get('primary_archetype')} "
             f"(confidence {a.get('confidence')}); "
             f"secondary {a.get('secondary_archetype') or 'none'}."
         )

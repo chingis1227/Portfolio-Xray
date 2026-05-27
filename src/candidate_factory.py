@@ -125,7 +125,9 @@ CORE_V1_CANDIDATE_ORDER: list[str] = (
 # Wave 2 routine core menu: same six ids as core_v1; parallel lightweight reports by default.
 CORE_FAST_PROFILE_ID = "core_fast"
 
-PRODUCT_MENU_PROFILE_ID = "default_v1"
+# Full research menu profile — standalone factory CLI default; not Core MVP product default.
+FULL_MENU_RESEARCH_PROFILE_ID = "default_v1"
+PRODUCT_MENU_PROFILE_ID = FULL_MENU_RESEARCH_PROFILE_ID  # backward-compat alias
 CORE_V1_PROFILE_ID = "core_v1"
 CANDIDATE_FACTORY_PRODUCT_BOUNDARY = {
     "runtime_surface": "backend_advanced_research",

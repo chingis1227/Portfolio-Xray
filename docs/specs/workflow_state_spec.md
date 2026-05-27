@@ -86,10 +86,14 @@ when it wants to classify already-existing comparison artifacts.
 
 Expected interpretations:
 
-- default `run_portfolio_review.py` core plan with `core_fast` factory profile -> `multiple_candidates`;
+- default `run_portfolio_review.py` (no candidate flags) -> `diagnosis_only` (`factory profile: none`);
+- `run_portfolio_review.py --with-candidates` or `--mode full` -> `multiple_candidates` (profile-driven count);
 - explicit `--candidates equal_weight` plan -> `one_candidate`;
 - explicit comma-separated candidate list with more than one id -> `multiple_candidates`;
 - `--skip-candidates` plan that only compares existing artifacts -> `diagnosis_only` with warning `comparison_candidate_scope_unknown`, unless a caller separately supplies artifact candidate ids to `resolve_workflow_state()`.
+
+**Note:** `--mode core` is the default review-mode label on subject materialization; it does **not**
+by itself select `core_fast` or change workflow state away from `diagnosis_only`.
 
 ## Migration Boundary
 

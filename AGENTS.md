@@ -11,7 +11,7 @@ Update this file only when agent-specific operating instructions, source-of-trut
 
 ## Project Summary
 
-Portfolio MRI / Portfolio X-Ray is being reset around the **“ДИАГНОСТИКА 2” canonical product truth**. The current product is a Python portfolio diagnostics and investment decision-support system that is diagnosis-first, current-portfolio-first, and not optimizer-first.
+Portfolio MRI / Portfolio X-Ray is aligned around the **“ДИАГНОСТИКА 2” canonical product truth**. The current product is a Python portfolio diagnostics and investment decision-support system that is diagnosis-first, current-portfolio-first, and not optimizer-first.
 
 Canonical current product flow:
 

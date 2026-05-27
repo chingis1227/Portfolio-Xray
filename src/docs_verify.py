@@ -107,18 +107,56 @@ ROOT_DOC_FILES: tuple[Path, ...] = tuple(
 )
 
 
+OPERATIONAL_RUNBOOK_PATH = REPO_ROOT / "docs" / "operational_runbook.md"
+
+# Positive anchors: default portfolio review must stay diagnosis-only in the runbook.
+OPERATIONAL_RUNBOOK_REQUIRED_SNIPPETS: tuple[str, ...] = (
+    "**Diagnosis-only** (default)",
+    "runtime_mode=product_diagnosis_only",
+    "input -> diagnosis",
+    "| none | no factory stage |",
+)
+
+# Stale batch-default wording that must not reappear in the operator runbook.
+OPERATIONAL_RUNBOOK_FORBIDDEN_PATTERNS: tuple[tuple[str, str], ...] = (
+    (
+        r"\*\*Core\s*\(default\)\*\*.*run_portfolio_review\.py.*core_fast",
+        "runbook must not label plain run_portfolio_review.py as Core (default) with core_fast",
+    ),
+    (
+        r"run_portfolio_review\.py`\s*\|\s*`core_fast`\s*\|.*\(default\)",
+        "runbook must not map default command to core_fast factory profile",
+    ),
+    (
+        r"run_portfolio_review\.py(?:[^\n]*)\(default\)(?:[^\n]*)(?:six|6)\s+candidates",
+        "runbook must not describe default review as a six-candidate batch",
+    ),
+)
+
+
 @dataclass
 class DocsVerifyResult:
     broken_links: list[str] = field(default_factory=list)
     forbidden_refs: list[str] = field(default_factory=list)
     removed_fields: list[str] = field(default_factory=list)
+    architecture_doc_violations: list[str] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
-        return not (self.broken_links or self.forbidden_refs or self.removed_fields)
+        return not (
+            self.broken_links
+            or self.forbidden_refs
+            or self.removed_fields
+            or self.architecture_doc_violations
+        )
 
     def messages(self) -> list[str]:
-        return [*self.broken_links, *self.forbidden_refs, *self.removed_fields]
+        return [
+            *self.broken_links,
+            *self.forbidden_refs,
+            *self.removed_fields,
+            *self.architecture_doc_violations,
+        ]
 
 
 def _normalize_ref(raw_ref: str) -> str | None:
@@ -248,6 +286,24 @@ def find_forbidden_references(
     return failures
 
 
+def find_operational_runbook_architecture_violations(
+    runbook_path: Path = OPERATIONAL_RUNBOOK_PATH,
+) -> list[str]:
+    """Guard against reintroducing batch-default portfolio review wording in the runbook."""
+    if not runbook_path.is_file():
+        return [f"missing operational runbook at {runbook_path.relative_to(REPO_ROOT)}"]
+    text = runbook_path.read_text(encoding="utf-8")
+    rel = runbook_path.relative_to(REPO_ROOT)
+    failures: list[str] = []
+    for snippet in OPERATIONAL_RUNBOOK_REQUIRED_SNIPPETS:
+        if snippet not in text:
+            failures.append(f"{rel} missing required architecture snippet: {snippet!r}")
+    for pattern, message in OPERATIONAL_RUNBOOK_FORBIDDEN_PATTERNS:
+        if re.search(pattern, text, flags=re.IGNORECASE):
+            failures.append(f"{rel}: {message}")
+    return failures
+
+
 def find_removed_config_ui_fields() -> list[str]:
     form = REPO_ROOT / "config_ui" / "templates" / "config_form.html"
     if not form.exists():
@@ -270,4 +326,9 @@ def verify_docs(
         broken_links=find_broken_local_links(paths),
         forbidden_refs=find_forbidden_references(paths),
         removed_fields=find_removed_config_ui_fields() if not include_cursor_only else [],
+        architecture_doc_violations=(
+            find_operational_runbook_architecture_violations()
+            if not include_cursor_only
+            else []
+        ),
     )

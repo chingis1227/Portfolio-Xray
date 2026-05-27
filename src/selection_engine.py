@@ -1,6 +1,13 @@
 """
 Selection Engine and No-Trade Recommendation (formal, non-executing decision record).
 
+Advanced / compare-path backend evidence. Core MVP product UI should prefer
+``decision_verdict.json`` (see ``src/decision_verdict.py``).
+
+The ``mandate_risk_reduction`` outcome is a **legacy policy-path** status when
+comparison rows include mandate breach signals (``portfolio_valid`` false on
+baseline or policy). It does not apply on diagnosis-only runs.
+
 See docs/specs/selection_engine_spec.md.
 """
 
@@ -233,6 +240,13 @@ def _check_mandate_risk_reduction(
     *,
     baseline_id: str | None = None,
 ) -> tuple[bool, list[str]]:
+    """Return mandate breach requiring risk reduction (legacy policy compare path).
+
+    Used only when ``candidate_comparison.json`` includes policy/current rows with
+    mandate validation fields. Portfolio-first ``analysis_subject`` baselines may
+    trigger reduction on subject breach; policy-row checks are skipped when the
+    baseline is ``analysis_subject`` (Core MVP one-candidate demos).
+    """
     notes: list[str] = []
     baseline_id = baseline_id or _baseline_candidate_id(by_id)
     current = by_id.get(baseline_id or "current")

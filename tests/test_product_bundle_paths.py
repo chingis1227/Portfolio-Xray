@@ -13,6 +13,8 @@ from src.block_2_6_portfolio_weakness_map import BLOCK_2_6_ID
 from src.product_bundle_paths import (
     ADVANCED_EVIDENCE_MANIFEST_KEYS,
     LEGACY_COMPATIBILITY_MANIFEST_KEYS,
+    PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS,
+    PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS,
     PORTFOLIO_XRAY_BLOCK_2_2_KEY,
     PORTFOLIO_XRAY_BLOCK_2_3_KEY,
     PORTFOLIO_XRAY_BLOCK_2_4_KEY,
@@ -169,11 +171,56 @@ def test_build_output_manifest_discovery_extra_includes_product_discovery() -> N
     discovery = extra["product_discovery"]
     assert discovery["primary_output_surface"] == "product_bundle"
     assert discovery["product_bundle_complete"] is False
+    assert discovery["product_bundle_phase"] == "post_compare_partial"
+    assert discovery["diagnosis_bundle_complete"] is False
+    assert discovery["post_compare_bundle_complete"] is False
     assert discovery["product_bundle_paths"]["current_vs_candidate_json"].endswith(
         "current_vs_candidate.json"
     )
     assert "product_bundle" in extra["generated_paths_by_category"]
     assert "technical_comparison" in extra["generated_paths_by_category"]
+
+
+def test_build_product_discovery_diagnosis_only_phase(tmp_path: Path) -> None:
+    subject = tmp_path / "analysis_subject"
+    seed_analysis_subject_diagnosis_bundle(subject)
+    from src.product_bundle_paths import build_product_discovery_block
+
+    discovery = build_product_discovery_block(
+        product_bundle_generated_paths_for_manifest(tmp_path)
+    )
+    assert discovery["product_bundle_phase"] == "diagnosis_only"
+    assert discovery["diagnosis_bundle_complete"] is True
+    assert discovery["post_compare_bundle_complete"] is False
+    assert discovery["product_bundle_complete"] is False
+    assert set(discovery["diagnosis_bundle_paths"]) == set(PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS)
+    assert discovery["post_compare_bundle_paths"] == {}
+
+
+def test_build_product_discovery_complete_phase(tmp_path: Path) -> None:
+    subject = tmp_path / "analysis_subject"
+    seed_analysis_subject_diagnosis_bundle(subject)
+    for name in ("current_vs_candidate.json", "decision_verdict.json", "ai_commentary_context.json", "what_changed_summary.json"):
+        (tmp_path / name).write_text("{}", encoding="utf-8")
+    from src.product_bundle_paths import build_product_discovery_block
+
+    discovery = build_product_discovery_block(
+        product_bundle_generated_paths_for_manifest(tmp_path)
+    )
+    assert discovery["product_bundle_phase"] == "complete"
+    assert discovery["product_bundle_complete"] is True
+    assert set(discovery["post_compare_bundle_paths"]) == set(
+        PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS
+    )
+
+
+def test_product_bundle_manifest_extra_declares_diagnosis_vs_post_compare() -> None:
+    extra = product_bundle_manifest_extra()
+    contract = extra["product_bundle_contract"]
+    assert contract["diagnosis_artifact_keys"] == list(PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS)
+    assert contract["post_compare_artifact_keys"] == list(
+        PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS
+    )
 
 
 def test_discover_product_bundle_paths_prefers_product_discovery_block() -> None:

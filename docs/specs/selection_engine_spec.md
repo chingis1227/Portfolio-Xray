@@ -144,6 +144,13 @@ Exactly one `decision_status` per run:
 | `data_review_required` | Critical inputs missing or degraded beyond safe decision. | "Decision requires data review before acting on results." |
 | `mandate_risk_reduction` | Current or policy shows mandate breach requiring risk reduction before allocation change. | "Mandate constraints require risk reduction; allocation change is not advised until resolved." |
 
+**Core MVP boundary:** `mandate_risk_reduction` is a **legacy policy-path** outcome. It applies only when
+`candidate_comparison.json` includes mandate validation on **policy** or legacy **current** rows
+(`mandate.portfolio_valid === false`). Portfolio-first runs with baseline `analysis_subject` and no
+policy row typically never emit this status. Core MVP UI should treat it as advanced/legacy policy
+semantics; product-facing filtering may use `decision_verdict.json` → `verdict_family: policy_mandate`.
+Diagnosis-only runs do not produce `selection_decision.json`.
+
 `no_trade` object is present when `decision_status` is `no_material_rebalance`; otherwise `no_trade` may be `null` or omitted.
 
 ## Selection Model (V1)
@@ -261,6 +268,8 @@ Emit `mandate_risk_reduction` when **any** of:
 - `run_result.json` / comparison projects `fail_reason_code` tied to mandate MaxDD on the active portfolio role.
 
 This status **does not** select an aggressive alternative. List `risk_reduction_notes` with plain English references to mandate fields (not raw codes in PDF-facing strings).
+
+**Classification:** legacy **policy compare path** — not part of the Core MVP diagnosis-only default. Prefer filtering via `decision_verdict.json` → `verdict_family: policy_mandate` when presenting product UI.
 
 ## Top-Level JSON Contract
 

@@ -26,7 +26,7 @@ Use the narrowest reliable check first. Broaden only when the change touches sha
 | Offline MVP pipeline smoke | File-first decision chain (comparison through decision package) or cross-module orchestration regressions | `python -m pytest tests/test_mvp_pipeline_offline.py -q` |
 | Portfolio-first offline E2E smoke | Portfolio-first subject diagnostics, comparison, and decision package regressions across subject types | `python -m pytest tests/test_portfolio_first_e2e_offline.py -q` |
 | Blocks 1-5 five-ticker MVP smoke | First-five-block contract from explicit weighted subject input through diagnostics, X-Ray, stress, current factory evidence, and comparison baseline | `python -m pytest tests/test_blocks_1_5_mvp_smoke.py -q` |
-| Blocks 1-5 live core E2E (networked) | Operator or CI proof that `run_portfolio_review.py --mode core` materializes subject + comparison with `candidate_menu.review_mode == core` | Run orchestrator, then `python scripts/verify_live_core_e2e.py` or `python -m pytest tests/test_blocks_1_5_live_core_e2e.py --live-core -q` |
+| Blocks 1-5 live core E2E (networked) | Operator or CI proof that `run_portfolio_review.py --with-candidates` materializes subject + `core_fast` factory + comparison with `candidate_menu.review_mode == core` | Run orchestrator, then `python scripts/verify_live_core_e2e.py` or `python -m pytest tests/test_blocks_1_5_live_core_e2e.py --live-core -q` |
 | Blocks 1-5 live full + resume E2E (networked) | Operator proof that `--mode full` (and optional `--resume-candidates`) completes `default_v1` factory + comparison | `python scripts/verify_live_full_e2e.py --run` or `--run --resume-candidates`; then `pytest tests/test_blocks_1_5_live_full_e2e.py --live-full -q` |
 | Blocks 6–7 downstream integration (offline) | Guarded backtest/stress handoff from `candidate_comparison.json` (degraded optimizer stress embed-only) | `python -m pytest tests/test_blocks_6_7_downstream_integration.py tests/test_downstream_decision_readiness.py -q` |
 | Blocks 8–10 package truthfulness (offline) | Partial menu + degraded optimizer disclosure in selection/action/decision package | `python -m pytest tests/test_blocks_8_10_downstream_integration.py tests/test_package_truthfulness.py tests/test_decision_package_reporting.py -q` |
@@ -34,6 +34,7 @@ Use the narrowest reliable check first. Broaden only when the change touches sha
 | Portfolio-first workflow orchestration | `run_portfolio_review.py` plan building or step ordering | `python -m pytest tests/test_portfolio_review_workflow.py -q` |
 | One-candidate product demo (Session 07) | After `run_portfolio_review.py --candidates equal_weight` or runtime-truth scoping changes | `python -m pytest tests/test_one_candidate_demo_validation.py -q`; live disk gate: `python scripts/validate_one_candidate_demo.py` |
 | Runtime truth product vs research boundaries (Session 08) | Runtime mode routing, `advanced_package` gating, or compare/verdict scoping changes | `python -m pytest tests/test_runtime_mode_regression_boundaries.py tests/test_portfolio_review_workflow.py tests/test_candidate_comparison.py tests/test_one_candidate_demo_validation.py -q` |
+| Architecture consistency guards (Session 06) | Default diagnosis-only CLI, dry-run stage contracts, `site_api` TXT boundary, runbook batch-default doc drift | `python -m pytest tests/test_architecture_consistency.py tests/test_runtime_mode_regression_boundaries.py tests/test_docs_links.py -q`; `python scripts/verify_docs.py` |
 | MVP workflow orchestration | `run_mvp_workflow.py` plan building or step ordering | `python -m pytest tests/test_mvp_workflow.py -q` |
 
 `pytest.ini` limits test discovery to `tests/`, so `python -m pytest` is the repository-level test command.
@@ -180,7 +181,9 @@ context. Governed by
 **Routine CLI (representative live run, Session 09):**
 
 ```bash
-python run_portfolio_review.py --mode core --skip-pdf
+python run_portfolio_review.py
+python run_portfolio_review.py --with-candidates --skip-pdf
+python run_portfolio_review.py --candidates equal_weight --skip-pdf
 python run_portfolio_review.py --dry-run --mode full --resume-candidates --skip-pdf
 ```
 
@@ -220,7 +223,7 @@ Session 02. This gate is **networked** and **not** part of default `python -m py
 **Operator sequence:**
 
 ```bash
-python run_portfolio_review.py --mode core --skip-pdf
+python run_portfolio_review.py --with-candidates --skip-pdf
 python scripts/verify_live_core_e2e.py
 python -m pytest tests/test_blocks_1_5_mvp_smoke.py -q --basetemp='tmp\pytest_blocks_1_5_smoke'
 ```
@@ -365,7 +368,8 @@ Common existing entrypoints:
 
 ```bash
 python run_portfolio_review.py
-python run_portfolio_review.py --mode core --skip-pdf
+python run_portfolio_review.py --candidates equal_weight --skip-pdf
+python run_portfolio_review.py --with-candidates --skip-pdf
 python run_portfolio_review.py --mode full --resume-candidates --skip-pdf
 python run_report.py
 python run_optimization.py  # legacy policy compatibility
@@ -515,7 +519,7 @@ run, refresh baseline fingerprints per
 [docs/audits/2026-05-20_candidate_factory_baseline_snapshot.md](docs/audits/2026-05-20_candidate_factory_baseline_snapshot.md):
 
 ```bash
-python run_portfolio_review.py --mode core
+python run_portfolio_review.py --with-candidates
 ```
 
 ## Optimization Engine Governance Wave Bundle (Phase 15)
