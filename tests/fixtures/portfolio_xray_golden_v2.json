@@ -296,6 +296,7 @@
       ]
     },
     "data_quality_warnings": [],
+    "informational_disclosures": [],
     "metadata": {
       "source": "core_mvp_input",
       "cash_treatment": "market_tickers_only",
@@ -414,6 +415,7 @@
     "data_quality_warnings": [
       "Correlation breakdown is limited because the primary-window correlation matrix is missing."
     ],
+    "informational_disclosures": [],
     "metadata": {
       "source": "core_mvp_input",
       "cash_treatment": "market_tickers_only",
@@ -452,6 +454,30 @@
       "beta_cmd": 0.18,
       "beta_vix": null,
       "beta_us_growth": null
+    },
+    "factor_betas_3y": {
+      "status": "partial",
+      "window_months": 36,
+      "frequency": "weekly",
+      "betas": {
+        "beta_eq": 0.68,
+        "beta_rr": null,
+        "beta_inf": null,
+        "beta_credit": 0.28,
+        "beta_usd": null,
+        "beta_cmd": 0.16,
+        "beta_vix": null,
+        "beta_us_growth": null
+      },
+      "observations_used": 150,
+      "missing_beta_keys": [
+        "beta_rr",
+        "beta_inf",
+        "beta_usd",
+        "beta_vix",
+        "beta_us_growth"
+      ],
+      "extra_beta_keys": []
     },
     "factor_betas_5y": {
       "status": "partial",
@@ -518,62 +544,172 @@
       "latest_date": null,
       "notes": []
     },
+    "factor_kalman_uncertainty": {
+      "beta_eq": {
+        "kalman_uncertainty_label": "low",
+        "kalman_note": "Current beta estimate appears relatively stable.",
+        "unavailable_reason": null
+      },
+      "beta_rr": {
+        "kalman_uncertainty_label": "unavailable",
+        "kalman_note": "Kalman beta is unavailable or skipped for this factor.",
+        "unavailable_reason": "kalman_beta_missing_for_factor"
+      },
+      "beta_inf": {
+        "kalman_uncertainty_label": "unavailable",
+        "kalman_note": "Kalman beta is unavailable or skipped for this factor.",
+        "unavailable_reason": "kalman_beta_missing_for_factor"
+      },
+      "beta_credit": {
+        "kalman_uncertainty_label": "moderate",
+        "kalman_note": "Current beta is useful but should be read together with 5Y/10Y beta.",
+        "unavailable_reason": null
+      },
+      "beta_usd": {
+        "kalman_uncertainty_label": "unavailable",
+        "kalman_note": "Kalman beta is unavailable or skipped for this factor.",
+        "unavailable_reason": "kalman_beta_missing_for_factor"
+      },
+      "beta_cmd": {
+        "kalman_uncertainty_label": "unavailable",
+        "kalman_note": "Kalman beta is unavailable or skipped for this factor.",
+        "unavailable_reason": "kalman_beta_missing_for_factor"
+      },
+      "beta_vix": {
+        "kalman_uncertainty_label": "unavailable",
+        "kalman_note": "Kalman beta is unavailable or skipped for this factor.",
+        "unavailable_reason": "kalman_beta_missing_for_factor"
+      },
+      "beta_us_growth": {
+        "kalman_uncertainty_label": "unavailable",
+        "kalman_note": "Kalman beta is unavailable or skipped for this factor.",
+        "unavailable_reason": "kalman_beta_missing_for_factor"
+      }
+    },
+    "factor_beta_stability": {
+      "beta_eq": {
+        "beta_stability_label": "moderately_changed",
+        "unavailable_reason": null,
+        "windows_available": 3
+      },
+      "beta_rr": {
+        "beta_stability_label": "unavailable",
+        "unavailable_reason": "insufficient_beta_windows",
+        "windows_available": 0
+      },
+      "beta_inf": {
+        "beta_stability_label": "unavailable",
+        "unavailable_reason": "insufficient_beta_windows",
+        "windows_available": 0
+      },
+      "beta_credit": {
+        "beta_stability_label": "moderately_changed",
+        "unavailable_reason": null,
+        "windows_available": 3
+      },
+      "beta_usd": {
+        "beta_stability_label": "unavailable",
+        "unavailable_reason": "insufficient_beta_windows",
+        "windows_available": 0
+      },
+      "beta_cmd": {
+        "beta_stability_label": "stable",
+        "unavailable_reason": null,
+        "windows_available": 3
+      },
+      "beta_vix": {
+        "beta_stability_label": "unavailable",
+        "unavailable_reason": "insufficient_beta_windows",
+        "windows_available": 0
+      },
+      "beta_us_growth": {
+        "beta_stability_label": "unavailable",
+        "unavailable_reason": "insufficient_beta_windows",
+        "windows_available": 0
+      }
+    },
+    "factor_signal_confidence": {
+      "beta_eq": {
+        "signal_confidence": "significant",
+        "confidence_reason": "HAC p-value below 0.05 and beta is available across 3Y/5Y/10Y windows.",
+        "inference_source": "hac_newey_west",
+        "regression_window": "5y"
+      },
+      "beta_rr": {
+        "signal_confidence": "unavailable",
+        "confidence_reason": "Unavailable because the factor beta is missing for the 5Y snapshot (real_rates).",
+        "inference_source": "unavailable",
+        "regression_window": "5y"
+      },
+      "beta_inf": {
+        "signal_confidence": "unavailable",
+        "confidence_reason": "Unavailable because the factor beta is missing for the 5Y snapshot (inflation).",
+        "inference_source": "unavailable",
+        "regression_window": "5y"
+      },
+      "beta_credit": {
+        "signal_confidence": "significant",
+        "confidence_reason": "HAC p-value below 0.05 and beta is available across 3Y/5Y/10Y windows.",
+        "inference_source": "hac_newey_west",
+        "regression_window": "5y"
+      },
+      "beta_usd": {
+        "signal_confidence": "unavailable",
+        "confidence_reason": "Unavailable because the factor beta is missing for the 5Y snapshot (USD).",
+        "inference_source": "unavailable",
+        "regression_window": "5y"
+      },
+      "beta_cmd": {
+        "signal_confidence": "weak_evidence",
+        "confidence_reason": "Signal is visible but regression t-stat is below the strong-significance threshold.",
+        "inference_source": "unavailable",
+        "regression_window": "5y"
+      },
+      "beta_vix": {
+        "signal_confidence": "unavailable",
+        "confidence_reason": "Unavailable because the factor beta is missing for the 5Y snapshot (VIX_volatility).",
+        "inference_source": "unavailable",
+        "regression_window": "5y"
+      },
+      "beta_us_growth": {
+        "signal_confidence": "unavailable",
+        "confidence_reason": "Unavailable because the factor beta is missing for the 5Y snapshot (us_growth).",
+        "inference_source": "unavailable",
+        "regression_window": "5y"
+      }
+    },
     "factor_significance_confidence": {
       "beta_eq": {
         "status": "significant",
-        "t_stat": 3.1,
-        "p_value": 0.002,
-        "hac_used": true,
-        "comment": "equity sensitivity has stronger statistical evidence in the available weekly regression."
+        "confidence_reason": "HAC p-value below 0.05 and beta is available across 3Y/5Y/10Y windows."
       },
       "beta_rr": {
         "status": "unavailable",
-        "t_stat": null,
-        "p_value": null,
-        "hac_used": false,
-        "comment": "real_rates sensitivity is unavailable because the required regression evidence is missing."
+        "confidence_reason": "Unavailable because the factor beta is missing for the 5Y snapshot (real_rates)."
       },
       "beta_inf": {
         "status": "unavailable",
-        "t_stat": null,
-        "p_value": null,
-        "hac_used": false,
-        "comment": "inflation sensitivity is unavailable because the required regression evidence is missing."
+        "confidence_reason": "Unavailable because the factor beta is missing for the 5Y snapshot (inflation)."
       },
       "beta_credit": {
         "status": "significant",
-        "t_stat": 2.0,
-        "p_value": 0.05,
-        "hac_used": true,
-        "comment": "credit sensitivity has stronger statistical evidence in the available weekly regression."
+        "confidence_reason": "HAC p-value below 0.05 and beta is available across 3Y/5Y/10Y windows."
       },
       "beta_usd": {
         "status": "unavailable",
-        "t_stat": null,
-        "p_value": null,
-        "hac_used": false,
-        "comment": "USD sensitivity is unavailable because the required regression evidence is missing."
+        "confidence_reason": "Unavailable because the factor beta is missing for the 5Y snapshot (USD)."
       },
       "beta_cmd": {
         "status": "weak_evidence",
-        "t_stat": null,
-        "p_value": null,
-        "hac_used": false,
-        "comment": "commodity sensitivity is present but evidence is marginal; interpret as diagnostic, not as an action signal."
+        "confidence_reason": "Signal is visible but regression t-stat is below the strong-significance threshold."
       },
       "beta_vix": {
         "status": "unavailable",
-        "t_stat": null,
-        "p_value": null,
-        "hac_used": false,
-        "comment": "VIX_volatility sensitivity is unavailable because the required regression evidence is missing."
+        "confidence_reason": "Unavailable because the factor beta is missing for the 5Y snapshot (VIX_volatility)."
       },
       "beta_us_growth": {
         "status": "unavailable",
-        "t_stat": null,
-        "p_value": null,
-        "hac_used": false,
-        "comment": "us_growth sensitivity is unavailable because the required regression evidence is missing."
+        "confidence_reason": "Unavailable because the factor beta is missing for the 5Y snapshot (us_growth)."
       }
     },
     "factor_variance_contribution": {
@@ -648,13 +784,42 @@
         "credit",
         "commodity"
       ],
-      "client_summary": "The strongest available factor signal is equity. The portfolio shows sensitivity to equity risk. In risk-off markets, its behavior may be driven more by equity beta than by the number of holdings.",
+      "factor_highlights": [
+        {
+          "factor": "equity",
+          "beta_name": "beta_eq",
+          "signal_confidence": "significant",
+          "beta_stability_label": "moderately_changed",
+          "kalman_uncertainty_label": "low",
+          "kalman_alignment": "differs_from_5y_10y"
+        },
+        {
+          "factor": "credit",
+          "beta_name": "beta_credit",
+          "signal_confidence": "significant",
+          "beta_stability_label": "moderately_changed",
+          "kalman_uncertainty_label": "moderate",
+          "kalman_alignment": "differs_from_5y_10y"
+        },
+        {
+          "factor": "commodity",
+          "beta_name": "beta_cmd",
+          "signal_confidence": "weak_evidence",
+          "beta_stability_label": "stable",
+          "kalman_uncertainty_label": "unavailable",
+          "kalman_alignment": "kalman_unavailable"
+        }
+      ],
+      "main_caveat": "Main caveat: current Kalman beta for credit differs from longer windows with only moderate reliability.",
+      "client_summary": "The portfolio appears most driven by equity, credit, and commodity exposure. Equity: the factor signal is statistically significant; beta moves materially across 3Y/5Y/10Y windows; current Kalman beta differs from the 5Y/10Y baseline. Credit: the factor signal is statistically significant; beta moves materially across 3Y/5Y/10Y windows; current Kalman beta differs from the 5Y/10Y baseline and Kalman uncertainty is elevated. Commodity: exposure is visible but the factor signal is statistically weak; beta is stable across 3Y/5Y/10Y windows. Main caveat: current Kalman beta for credit differs from longer windows with only moderate reliability.",
       "diagnostic_interpretation": "This is a diagnostic read from existing factor evidence. It indicates sensitivity, not a recommendation; related shocks should be checked separately in Stress Lab."
     },
     "data_quality_warnings": [
+      "factor_betas_3y is missing production beta keys: beta_rr, beta_inf, beta_usd, beta_vix, beta_us_growth.",
       "factor_betas_5y is missing production beta keys: beta_rr, beta_inf, beta_usd, beta_vix, beta_us_growth.",
       "factor_betas_10y is missing production beta keys: beta_rr, beta_inf, beta_usd, beta_vix, beta_us_growth."
     ],
+    "informational_disclosures": [],
     "factor_diagnostics_meta": {
       "min_observations_required": 30,
       "observations_used_5y": 250,
@@ -666,11 +831,18 @@
       "method_notes": [
         "Block 2.3 adapts existing stress_report factor diagnostics and does not trigger calculations.",
         "Missing factor diagnostics must be fixed upstream in stress_report generation or src/stress_factors.py.",
-        "Block 2.3 is separate from Stress Lab: it reports sensitivity, not shocked outcomes."
+        "Block 2.3 is separate from Stress Lab: it reports sensitivity, not shocked outcomes.",
+        "signal_confidence reflects OLS/HAC weekly regression evidence only; Kalman uncertainty is reported separately in factor_kalman_uncertainty.",
+        "factor_kalman_uncertainty reads stress_report.factor_betas_kalman.uncertainty_by_beta only; Block 2.3 does not compute Kalman posteriors.",
+        "factor_beta_stability compares point-in-time factor_betas_3y/5y/10y only; rolling summaries are not used.",
+        "Full regression diagnostics (SE, CI, VIF, residual tests) remain in stress_report.json only."
       ],
+      "observations_used_3y": 150,
       "source_fields": [
+        "stress_report.factor_betas_3y",
         "stress_report.factor_betas_5y",
         "stress_report.factor_betas_10y",
+        "stress_report.factor_regression_3y",
         "stress_report.factor_regression_5y",
         "stress_report.factor_regression_10y",
         "stress_report.factor_betas_kalman",
@@ -701,6 +873,7 @@
       ],
       "status": "warnings",
       "warnings": [
+        "factor_betas_3y is missing production beta keys: beta_rr, beta_inf, beta_usd, beta_vix, beta_us_growth.",
         "factor_betas_5y is missing production beta keys: beta_rr, beta_inf, beta_usd, beta_vix, beta_us_growth.",
         "factor_betas_10y is missing production beta keys: beta_rr, beta_inf, beta_usd, beta_vix, beta_us_growth."
       ]
@@ -3354,6 +3527,19 @@
     }
   },
   "legacy_summary": {
+    "_scope": {
+      "tier": "legacy_compatibility",
+      "product_surface": false,
+      "core_mvp_product_keys": [
+        "block_2_1_asset_allocation",
+        "block_2_2_portfolio_metrics",
+        "block_2_3_factor_exposure",
+        "block_2_4_hidden_exposure",
+        "block_2_5_risk_budget_view",
+        "block_2_6_portfolio_weakness_map"
+      ],
+      "consumer_guidance": "Core MVP UI/API consumers should read product blocks 2.1-2.6. This legacy summary is retained for text/report compatibility only."
+    },
     "analysis_setup_summary": {
       "portfolio_role": "generated_policy_portfolio",
       "weight_source": "Main portfolio/portfolio_weights.yml",
@@ -3426,7 +3612,11 @@
     },
     "portfolio_diagnostic_verdict": {
       "main_diagnostic_concern": "recession_severe sensitivity",
-      "mandate_gate": "PASS",
+      "legacy_policy_compatibility": {
+        "status": "legacy_valid",
+        "source": "legacy_portfolio_valid",
+        "core_mvp_product_surface": false
+      },
       "stress_status": "DIAG_PASS_WITH_WARNING",
       "vol_annual": 0.1,
       "max_drawdown": -0.22,
@@ -3435,7 +3625,7 @@
         "Capital concentration: SPY 45.0%, TLT 30.0%, HYG 15.0%.",
         "Risk concentration by RC_vol: SPY 40.0%, HYG 30.0%, TLT 20.0%.",
         "Main diagnostic concern: recession_severe sensitivity.",
-        "Mandate gate: PASS; stress status: DIAG_PASS_WITH_WARNING.",
+        "Legacy policy compatibility status: legacy_valid; stress status: DIAG_PASS_WITH_WARNING. This compatibility status is not part of Core MVP product diagnosis.",
         "This is an explanatory diagnostic summary, not a score, recommendation, selection decision, or trade instruction."
       ]
     }

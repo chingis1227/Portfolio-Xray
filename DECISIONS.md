@@ -457,12 +457,16 @@ Title: Block 2.3 Factor Exposure is a stress_report adapter, not a factor engine
   belongs to Stress Lab); standalone `factor_exposure.json` bundle artifact (rejected — Block 2
   product surface stays inside `portfolio_xray.json`).
 - Assumptions: Existing `stress_report` fields remain the canonical factor diagnostics source:
-  `factor_betas_5y`, `factor_betas_10y`, `factor_regression_5y`,
-  `factor_regression_10y`, `factor_betas_kalman`, `factor_variance_decomposition`,
-  and `factor_diagnostics_meta`.
+  `factor_betas_3y`, `factor_betas_5y`, `factor_betas_10y`, `factor_regression_3y`,
+  `factor_regression_5y`, `factor_regression_10y`, `factor_betas_kalman` (including
+  `uncertainty_by_beta`), `factor_variance_decomposition`, and `factor_diagnostics_meta`.
+  Core MVP product fields (`factor_signal_confidence`, `factor_kalman_uncertainty`,
+  `factor_beta_stability`, `factor_exposure_summary`) are adapter outputs only; full regression
+  statistics stay in `stress_report.json`.
 - Consequences: [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md)
   §2.3.1; implementation `src/block_2_3_factor_exposure.py`; tests
-  `tests/test_block_2_3_factor_exposure.py` and `tests/test_block_2_3_pipeline_integration.py`.
+  `tests/test_block_2_3_factor_exposure.py`, `tests/test_block_2_3_pipeline_integration.py`, and
+  `tests/test_portfolio_xray_contract.py` (golden regenerated via `tests/portfolio_xray_golden_inputs.py`).
 - Related documents: [factor_diagnostics_spec.md](docs/specs/factor_diagnostics_spec.md),
   [OUTPUTS.md](OUTPUTS.md) Block 2 row, [portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md) §2.3.
 - Review trigger: Revisit only if the canonical stress-report factor diagnostics move to a new

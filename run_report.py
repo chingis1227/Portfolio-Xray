@@ -759,6 +759,7 @@ def run_portfolio_report_for_weights(
     # STEP 9: Stress testing (per docs/docs/stress_testing_spec.md)
     # =========================================================================
 
+    portfolio_betas_3y_dict: dict[str, float] = {}
     portfolio_betas_5y_dict: dict[str, float] = {}
     portfolio_betas_10y_dict: dict[str, float] = {}
     diagnostic_betas_5y_extended: dict[str, float] = {}
@@ -871,6 +872,7 @@ def run_portfolio_report_for_weights(
 
         beta_setup_reasons: list[str] = []
         beta_source: str | None = None
+        asset_betas_3y_df = pd.DataFrame()
         asset_betas_5y_df = pd.DataFrame()
         asset_betas_10y_df = pd.DataFrame()
         if factory_factor is not None:
@@ -931,6 +933,13 @@ def run_portfolio_report_for_weights(
                         asset_tickers=beta_tickers,
                         equity_factor_ticker=benchmark_base_ticker,
                     )
+                    asset_betas_3y_df = compute_asset_factor_betas_from_daily_returns(
+                        daily_asset_returns_for_betas,
+                        analysis_end_str,
+                        FACTOR_WEEKS_3Y,
+                        asset_tickers=beta_tickers,
+                        equity_factor_ticker=benchmark_base_ticker,
+                    )
                     diagnostic_betas_5y_extended = portfolio_factor_betas(
                         weights,
                         compute_asset_factor_betas_from_daily_returns(
@@ -966,6 +975,7 @@ def run_portfolio_report_for_weights(
             try:
                 asset_betas_5y_df, portfolio_betas_5y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_5Y)
                 asset_betas_10y_df, portfolio_betas_10y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_10Y)
+                asset_betas_3y_df, portfolio_betas_3y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_3Y)
                 diagnostic_betas_5y_extended = portfolio_factor_betas(
                     weights,
                     compute_asset_factor_betas_weekly(
@@ -993,6 +1003,13 @@ def run_portfolio_report_for_weights(
         else:
             portfolio_betas_5y_dict = portfolio_factor_betas(weights, asset_betas_5y_df)
             portfolio_betas_10y_dict = portfolio_factor_betas(weights, asset_betas_10y_df)
+            if not asset_betas_3y_df.empty:
+                portfolio_betas_3y_dict = portfolio_factor_betas(weights, asset_betas_3y_df)
+        if not portfolio_betas_3y_dict:
+            try:
+                _, portfolio_betas_3y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_3Y)
+            except Exception as e_3y:
+                beta_setup_reasons.append(f"factor_betas_3y_weekly_ols_error:{e_3y}")
 
         # Keep stress engine input/backward compatibility aligned to 5Y betas.
         asset_betas_df = asset_betas_5y_df
@@ -1112,6 +1129,7 @@ def run_portfolio_report_for_weights(
     )
     stress_report["generated_at"] = run_timestamp
     stress_report["analysis_end"] = analysis_end_str
+    stress_report["factor_betas_3y"] = {k: round(v, 4) for k, v in (portfolio_betas_3y_dict or {}).items()}
     stress_report["factor_betas_5y"] = {k: round(v, 4) for k, v in (portfolio_betas_5y_dict or {}).items()}
     stress_report["factor_betas_10y"] = {k: round(v, 4) for k, v in (portfolio_betas_10y_dict or {}).items()}
     stress_report["factor_betas"] = dict(stress_report["factor_betas_5y"])
@@ -1156,6 +1174,7 @@ def run_portfolio_report_for_weights(
         if factory_factor is not None
         else None
     )
+    stress_report["factor_regression_3y"] = {}
     stress_report["factor_regression_5y"] = {}
     stress_report["factor_regression_10y"] = {}
     factor_regression_5y_extended: dict[str, Any] = {}
@@ -1172,6 +1191,20 @@ def run_portfolio_report_for_weights(
             f"missing_factors={','.join(str(x) for x in missing) if missing else 'none'}"
         )
 
+    try:
+        regression_3y = portfolio_factor_regression_weekly(
+            weights=weights,
+            tickers=tickers,
+            analysis_end_str=analysis_end_str,
+            window_weeks=FACTOR_WEEKS_3Y,
+            shared_frames=shared_weekly_frames,
+        )
+        stress_report["factor_regression_3y"] = regression_3y
+        if not regression_3y:
+            stress_report["factor_regression_3y_error"] = _factor_regression_unavailable_reason("3Y")
+    except Exception as e:
+        stress_report["factor_regression_3y_error"] = str(e)
+        logger.warning(f"Factor regression diagnostics (3Y) failed: {e}")
     try:
         regression_5y = portfolio_factor_regression_weekly(
             weights=weights,

@@ -54,11 +54,17 @@ DERIVED_REQUIRED_FIELDS = {
 
 BLOCK_23_REQUIRED_FIELDS = [
     "factor_universe",
+    "factor_betas_3y",
     "factor_betas_5y",
     "factor_betas_10y",
     "kalman_current_beta",
+    "factor_kalman_uncertainty",
+    "factor_beta_stability",
+    "factor_signal_confidence",
     "factor_significance_confidence",
     "factor_variance_contribution",
+    "factor_exposure_summary",
+    "factor_risk_ranking",
     "stress_lab_separation",
 ]
 
@@ -147,22 +153,63 @@ def _classify_warning_domains(warnings: list[str]) -> dict[str, int]:
 
 
 def _check_block_23(block: dict[str, Any]) -> dict[str, Any]:
+    b3 = block.get("factor_betas_3y") or {}
     b5 = block.get("factor_betas_5y") or {}
     b10 = block.get("factor_betas_10y") or {}
     kalman = block.get("kalman_current_beta") or {}
+    kalman_unc = block.get("factor_kalman_uncertainty") or {}
+    stability = block.get("factor_beta_stability") or {}
+    signal = block.get("factor_signal_confidence") or {}
     signif = block.get("factor_significance_confidence") or {}
     variance = block.get("factor_variance_contribution") or {}
+    summary = block.get("factor_exposure_summary") or {}
     stress_sep = block.get("stress_lab_separation") or {}
 
+    kalman_uncertainty_present = False
+    beta_stability_present = False
+    product_summary_present = False
+    if isinstance(kalman_unc, dict) and kalman_unc:
+        kalman_uncertainty_present = all(
+            isinstance(kalman_unc.get(beta_key), dict)
+            and kalman_unc[beta_key].get("kalman_uncertainty_label")
+            for beta_key in (
+                "beta_eq",
+                "beta_rr",
+                "beta_inf",
+                "beta_credit",
+                "beta_usd",
+                "beta_cmd",
+                "beta_vix",
+                "beta_us_growth",
+            )
+            if beta_key in kalman_unc
+        )
+    if isinstance(stability, dict) and stability:
+        beta_stability_present = all(
+            isinstance(stability.get(beta_key), dict) and stability[beta_key].get("beta_stability_label")
+            for beta_key in stability
+        )
+    if isinstance(summary, dict) and summary.get("client_summary"):
+        product_summary_present = isinstance(summary.get("factor_highlights"), list)
+
     significance_present = False
-    if isinstance(signif, dict) and signif:
-        # at least one factor entry has explicit significance diagnostics
-        for _, payload in signif.items():
-            if isinstance(payload, dict) and any(
-                key in payload for key in ("status", "t_stat", "p_value", "hac_used", "comment")
-            ):
+    raw_stats_leakage: list[str] = []
+    if isinstance(signal, dict) and signal:
+        for beta_key, payload in signal.items():
+            if not isinstance(payload, dict):
+                continue
+            if payload.get("signal_confidence") and payload.get("confidence_reason"):
                 significance_present = True
-                break
+            for banned in ("t_stat", "p_value", "hac_used", "ci_low", "ci_high", "se"):
+                if banned in payload:
+                    raw_stats_leakage.append(f"{beta_key}.{banned}")
+    if isinstance(signif, dict) and signif:
+        for beta_key, payload in signif.items():
+            if not isinstance(payload, dict):
+                continue
+            for banned in ("t_stat", "p_value", "hac_used", "comment"):
+                if banned in payload:
+                    raw_stats_leakage.append(f"legacy.{beta_key}.{banned}")
 
     # Ensure Block 2.3 does not contain raw stress/scenario payloads.
     leakage_hits: list[str] = []
@@ -176,13 +223,20 @@ def _check_block_23(block: dict[str, Any]) -> dict[str, Any]:
                 break
 
     return {
+        "factor_betas_available_3y": b3.get("status"),
         "factor_betas_available_5y": b5.get("status"),
         "factor_betas_available_10y": b10.get("status"),
+        "factor_betas_3y_unavailable_reason": b3.get("unavailable_reason"),
+        "missing_factors_3y": b3.get("missing_beta_keys") or [],
         "missing_factors_5y": b5.get("missing_beta_keys") or [],
         "missing_factors_10y": b10.get("missing_beta_keys") or [],
         "kalman_available": kalman.get("available"),
         "kalman_reason": kalman.get("reason"),
+        "kalman_uncertainty_present": kalman_uncertainty_present,
+        "beta_stability_present": beta_stability_present,
+        "product_summary_present": product_summary_present,
         "significance_outputs_present": significance_present,
+        "signal_confidence_raw_stats_leakage": sorted(set(raw_stats_leakage)),
         "variance_contribution_status": variance.get("status"),
         "variance_contribution_method": variance.get("method"),
         "stress_separation_flag": stress_sep.get("no_scenario_shocks_in_this_block"),

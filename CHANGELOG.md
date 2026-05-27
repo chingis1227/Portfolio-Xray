@@ -8,6 +8,14 @@ Date: 2026-05-27
 
 Category: Changed
 
+- **Block 2.3 Core MVP upgrade (Sessions 2–7, product surface):** Extended
+  `block_2_3_factor_exposure` with `factor_betas_3y`, `factor_signal_confidence` (HAC→OLS fallback,
+  no raw p/t in product JSON), `factor_kalman_uncertainty`, `factor_beta_stability` (3Y/5Y/10Y point
+  betas only), and narrative `factor_exposure_summary` (`factor_highlights`, `main_caveat`). Upstream
+  `factor_betas_3y` / `factor_regression_3y` in `run_report.py` and `run_optimization.py`. Fixture-matrix
+  Block 2.3 validator and golden `portfolio_xray_golden_v2.json` updated. Full regression package remains
+  in `stress_report.json` only ([portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.3.1).
+
 - **Kalman weekly path + real cash:** `_portfolio_factor_weekly_ols_rows` no longer downloads
   real-cash labels (e.g. `Cash USD`) via yfinance; cash receives zero weekly returns in-panel.
   Hardened `fetch_daily` for duplicate/MultiIndex columns. Block 2.3 maps

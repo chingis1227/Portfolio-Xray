@@ -614,9 +614,13 @@ Purpose: give portfolio-first consumers a stable, product-facing answer to “Wh
   "status": "available | partial | unavailable",
   "factor_universe": ["equity", "real_rates", "inflation", "credit", "USD", "commodity", "VIX_volatility", "us_growth"],
   "factor_beta_snapshot": {},
+  "factor_betas_3y": {},
   "factor_betas_5y": {},
   "factor_betas_10y": {},
   "kalman_current_beta": {},
+  "factor_kalman_uncertainty": {},
+  "factor_beta_stability": {},
+  "factor_signal_confidence": {},
   "factor_significance_confidence": {},
   "factor_variance_contribution": {},
   "factor_risk_ranking": [],
@@ -633,6 +637,37 @@ Purpose: give portfolio-first consumers a stable, product-facing answer to “Wh
 **Naming validation:** the block validates expected production factor names and beta keys. Internal or legacy stress-layer names such as `usd` and `vix` may be normalized to product names `USD` and `VIX_volatility`; unknown or extra beta keys (for example `beta_oil`) must produce warnings and must not enter the production beta snapshot.
 
 **Stress Lab separation:** Block 2.3 reports sensitivity only. It may say a sensitivity should be checked later in Stress Lab, but it must not calculate shocked outcomes, reuse scenario pass/fail logic as factor diagnosis, or say to rebalance.
+
+**OLS/HAC signal confidence (product surface):** `factor_signal_confidence` is keyed by production beta names. Each row exposes `signal_confidence` (`significant`, `weak_evidence`, `unstable_low_confidence`, `unavailable`), a short `confidence_reason`, `inference_source` (`hac_newey_west` or `ols_classic`), and `regression_window` (`5y` primary, `10y` fallback). Classification prefers HAC p/t from `factor_regression_5y` and falls back to classic OLS p/t only when HAC is missing. Raw t-stats, p-values, confidence intervals, VIF, and residual diagnostics must **not** appear in Block 2.3; they remain in `stress_report.json` for audit/advanced mode. `factor_significance_confidence` is a legacy alias exposing `status` (= `signal_confidence`) and `confidence_reason` for Block 2.4. Kalman reliability is **not** `signal_confidence`; see `factor_kalman_uncertainty` below.
+
+**Kalman uncertainty (product surface):** `factor_kalman_uncertainty` is keyed by production beta names (`beta_eq` … `beta_us_growth`). Each row exposes `kalman_uncertainty_label` (`low`, `moderate`, `high`, or `unavailable`), a short `kalman_note`, and `unavailable_reason` when the label is `unavailable`. Values are adapted from `stress_report.factor_betas_kalman.uncertainty_by_beta` (thresholds per [stress_testing_spec.md](stress_testing_spec.md)); upstream `unknown` or missing entries map to `unavailable` with an explicit reason. Current Kalman betas remain in `kalman_current_beta.betas` (from `factor_betas_kalman.latest` with legacy fallbacks). Block 2.3 must not compute Kalman posteriors or uncertainty classes.
+
+**Beta stability (product surface):** `factor_beta_stability` is keyed by production beta names. Each row exposes `beta_stability_label` (`stable`, `moderately_changed`, `unstable`, or `unavailable`), `windows_available` (count of non-null 3Y/5Y/10Y point betas), and `unavailable_reason` when fewer than two windows are present. Classification uses only `factor_betas_3y`, `factor_betas_5y`, and `factor_betas_10y` point snapshots — not `factor_betas_rolling_summary`. Deterministic rules in `src/block_2_3_factor_exposure.py`: sign disagreement among material betas → `unstable`; large cross-window gaps (abs ≥ 0.25 or relative ≥ 0.75) → `unstable`; moderate gaps (abs ≥ 0.12 or relative ≥ 0.35) with consistent sign → `moderately_changed`; otherwise `stable`.
+
+**Product summary (`factor_exposure_summary`):** `client_summary` is a short English narrative built only from computed Block 2.3 fields (top 1–3 ranked factors, `signal_confidence`, `beta_stability_label`, Kalman alignment vs 5Y/10Y, and `kalman_uncertainty_label`). Structured `factor_highlights` mirrors the same evidence per top factor; `main_caveat` surfaces the primary weak-signal / high-Kalman-uncertainty / unstable-beta caveat when present. No raw regression statistics; no buy/sell language.
+
+**Backend vs product boundary (Core MVP upgrade, closed 2026-05-27):**
+
+| Layer | Location | Content |
+| --- | --- | --- |
+| Product | `portfolio_xray.json` → `block_2_3_factor_exposure` | Betas (3Y/5Y/10Y), `factor_signal_confidence`, `factor_kalman_uncertainty`, `factor_beta_stability`, variance contribution, ranking, `factor_exposure_summary` |
+| Backend / audit | `stress_report.json` | Full OLS/HAC inference, VIF, residual tests, rolling summaries, multicollinearity, episode OOS blocks |
+
+Block 2.3 must remain an **adapter only** (`src/block_2_3_factor_exposure.py`). `signal_confidence` describes OLS/HAC factor-signal strength; `kalman_uncertainty_label` describes Kalman current-beta reliability only — never interchange these labels.
+
+**Verification (Block 2.3 Core MVP upgrade):**
+
+```bash
+python -m pytest tests/test_block_2_3_factor_exposure.py tests/test_block_2_3_pipeline_integration.py tests/test_portfolio_xray_contract.py -q
+python tests/portfolio_xray_golden_inputs.py
+python scripts/verify_docs.py
+```
+
+Optional fixture-matrix Block 2 check when `output/fixture_matrix_runs/*/analysis_subject/portfolio_xray.json` exists:
+
+```bash
+python scripts/validate_core_mvp_block2_fixture_matrix.py
+```
 
 ### 2.4 Hidden Exposure / Hidden Risk Detector
 

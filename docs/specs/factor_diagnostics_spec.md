@@ -8,6 +8,14 @@ Factor diagnostics are diagnostic-only unless another canonical spec explicitly 
 
 Portfolio X-Ray Block 2.3 (`block_2_3_factor_exposure`) is a product-facing adapter over these diagnostics. It must read existing `stress_report.json` fields and must not trigger OLS/HAC regressions, Kalman calculations, factor variance decomposition, or data loading. If `stress_report.json` is missing required fields, Block 2.3 reports `partial` or `unavailable` with warnings; the missing calculation is fixed upstream in stress report generation / `src/stress_factors.py`.
 
+Block 2.3 exposes `factor_signal_confidence` for normal weekly OLS/HAC factor betas (HAC preferred, OLS fallback). Full regression inference remains in `stress_report.factor_regression_*` only; Block 2.3 must not surface raw p-values, t-stats, or multicollinearity/residual diagnostics in the Core MVP product JSON.
+
+Block 2.3 exposes `factor_kalman_uncertainty` separately from `factor_signal_confidence`. Each production beta row carries `kalman_uncertainty_label` (`low`, `moderate`, `high`, or `unavailable`), `kalman_note`, and `unavailable_reason` when applicable. Labels are adapted from `factor_betas_kalman.uncertainty_by_beta` only; Block 2.3 must not recompute posterior std or uncertainty classes. Current Kalman betas remain under `kalman_current_beta`.
+
+Block 2.3 exposes `factor_beta_stability` from point-in-time `factor_betas_3y`, `factor_betas_5y`, and `factor_betas_10y` only (not rolling beta summaries). Each row has `beta_stability_label` (`stable`, `moderately_changed`, `unstable`, `unavailable`) and `unavailable_reason` when fewer than two window betas exist.
+
+`factor_exposure_summary.client_summary` is a concise product narrative derived only from Block 2.3 computed fields (ranking, signal confidence, beta stability, Kalman alignment/uncertainty). Full regression diagnostics remain in `stress_report.json`.
+
 ## Production And Extended Factor Registries
 
 Production factor outputs use:

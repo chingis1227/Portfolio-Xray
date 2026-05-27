@@ -43,6 +43,8 @@ def golden_build_kwargs() -> dict[str, Any]:
     """Keyword arguments for ``build_portfolio_xray_v2`` that exercise the post-audit contract."""
     stress = {
         **_rich_stress_report(),
+        "factor_betas_3y": {"beta_eq": 0.68, "beta_credit": 0.28, "beta_cmd": 0.16},
+        "factor_regression_3y": _sample_factor_regression_block(n_obs=150, r2=0.48),
         "factor_regression_5y": _sample_factor_regression_block(n_obs=250, r2=0.50),
         "factor_regression_10y": _sample_factor_regression_block(
             n_obs=480, r2=0.55, betas={"beta_eq": 0.55, "beta_cmd": 0.12}
@@ -50,6 +52,7 @@ def golden_build_kwargs() -> dict[str, Any]:
         "factor_betas_kalman": {
             "status": "available",
             "latest": {"beta_eq": 0.81, "beta_credit": 0.42},
+            "uncertainty_by_beta": {"beta_eq": "low", "beta_credit": "moderate"},
         },
     }
     metrics = _window_metrics(

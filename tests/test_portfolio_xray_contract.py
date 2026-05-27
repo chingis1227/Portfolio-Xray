@@ -176,6 +176,11 @@ def contract_fingerprint(doc: dict[str, Any]) -> dict[str, Any]:
         fp["block_2_3_present"] = True
         fp["block_2_3_status"] = block_23.get("status")
         fp["block_2_3_beta_keys"] = sorted((block_23.get("factor_beta_snapshot") or {}).keys())
+        fp["block_2_3_has_factor_kalman_uncertainty"] = "factor_kalman_uncertainty" in block_23
+        fp["block_2_3_has_factor_beta_stability"] = "factor_beta_stability" in block_23
+        fp["block_2_3_has_factor_highlights"] = bool(
+            (block_23.get("factor_exposure_summary") or {}).get("factor_highlights")
+        )
     block_24 = doc.get("block_2_4_hidden_exposure")
     if isinstance(block_24, dict):
         fp["block_2_4_present"] = True

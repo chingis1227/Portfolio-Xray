@@ -273,6 +273,7 @@ If factor limits are set in config and violated -> **DIAG_BETA_*** / **DIAG_ATTE
 
 **Output windows (mandatory):**
 
+- **3Y window (~156 weekly observations, Friday week-ends after inner join):** `factor_betas_3y` (point-in-time portfolio OLS betas for Block 2.3; not the rolling median in `factor_betas_rolling_summary`)
 - **5Y window (~260 weekly observations, Friday week-ends after inner join):** `factor_betas_5y`
 - **10Y window (~520 weekly observations):** `factor_betas_10y`
 

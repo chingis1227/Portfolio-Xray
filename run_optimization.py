@@ -662,6 +662,7 @@ def main() -> None:
 
     asset_betas_df = pd.DataFrame()
     portfolio_betas_dict: dict = {}
+    portfolio_betas_3y_dict: dict = {}
     portfolio_betas_5y_dict: dict = {}
     portfolio_betas_10y_dict: dict = {}
     recession_factor_returns = pd.DataFrame()
@@ -684,6 +685,7 @@ def main() -> None:
 
         asset_betas_5y_df, portfolio_betas_5y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_5Y)
         _asset_betas_10y_df, portfolio_betas_10y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_10Y)
+        _asset_betas_3y_df, portfolio_betas_3y_dict = _portfolio_betas_weekly(FACTOR_WEEKS_3Y)
         diagnostic_betas_5y_extended = portfolio_factor_betas(
             final_weights,
             compute_asset_factor_betas_weekly(beta_tickers, analysis_end_str, FACTOR_WEEKS_5Y, factor_columns=FACTOR_COLUMN_ORDER),
@@ -713,6 +715,7 @@ def main() -> None:
     )
 
     if portfolio_betas_5y_dict:
+        stress_report["factor_betas_3y"] = {k: round(v, 4) for k, v in portfolio_betas_3y_dict.items()}
         stress_report["factor_betas_5y"] = {k: round(v, 4) for k, v in portfolio_betas_5y_dict.items()}
         stress_report["factor_betas_10y"] = {k: round(v, 4) for k, v in portfolio_betas_10y_dict.items()}
         stress_report["factor_betas"] = dict(stress_report["factor_betas_5y"])
@@ -761,10 +764,20 @@ def main() -> None:
             write_rolling_betas_plot_pngs,
         )
 
+        stress_report["factor_regression_3y"] = {}
         stress_report["factor_regression_5y"] = {}
         stress_report["factor_regression_10y"] = {}
         factor_regression_5y_extended: dict[str, Any] = {}
         factor_regression_10y_extended: dict[str, Any] = {}
+        try:
+            stress_report["factor_regression_3y"] = portfolio_factor_regression_weekly(
+                weights=final_weights,
+                tickers=stress_tickers,
+                analysis_end_str=analysis_end_str,
+                window_weeks=FACTOR_WEEKS_3Y,
+            )
+        except Exception as e:
+            stress_report["factor_regression_3y_error"] = str(e)
         try:
             stress_report["factor_regression_5y"] = portfolio_factor_regression_weekly(
                 weights=final_weights,
