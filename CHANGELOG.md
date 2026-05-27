@@ -4,6 +4,25 @@ This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.
 
+Date: 2026-05-27
+
+Category: Changed
+
+- **Block 3.2 Stress Results MVP (Session 08, closure):** Live portfolio-first proof on root
+  `config.yml` — `Main portfolio/analysis_subject/stress_report.json` ships `stress_results_v1`
+  (8 synthetic + 5 historical rows, `loss_gate_mode: diagnostic`, envelope worst synthetic
+  `recession_severe` / worst historical `2022` aligned with `stress_conclusions`). Acceptance:
+  [docs/audits/2026-05-27_block_3_2_stress_results_acceptance_audit.md](docs/audits/2026-05-27_block_3_2_stress_results_acceptance_audit.md);
+  ExecPlan **Completed**; Block 3.2 pytest bundle **75 passed**.
+
+- **Block 3.2 Stress Results MVP (Session 07, tests):** Contract and regression closure for
+  `stress_results_v1` on `stress_report.json` — builder contract tests
+  (`tests/test_stress_results_block_contract.py`), diagnostic-mode Block 3.2 gates
+  (`tests/test_stress_diagnostic_mode.py`), scenario-library alignment
+  (`tests/test_stress_scenario_coverage_contract.py`), Stress Lab governance bundle + dedicated
+  Block 3.2 bundle in [TESTING.md](TESTING.md); live core E2E requires `stress_results_v1`.
+  Implementation Sessions 02–06 delivered builder, wiring, and downstream mirror.
+
 Date: 2026-05-26
 
 Category: Changed

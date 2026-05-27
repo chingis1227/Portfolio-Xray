@@ -47,6 +47,20 @@ def test_canonical_synthetic_and_historical_ids_in_stress_report() -> None:
     assert "banking_2023" in hist_ids
 
 
+def test_stress_results_v1_matches_canonical_scenario_library() -> None:
+    out = _long_history_run()
+    block = out.get("stress_results_v1")
+    assert isinstance(block, dict)
+    assert block.get("version") == "stress_results_v1"
+    library = block.get("scenario_library") or {}
+    assert library.get("synthetic_ids") == list(SYNTHETIC_SCENARIO_IDS)
+    assert library.get("historical_ids") == list(HISTORICAL_SCENARIO_IDS)
+    syn_ids = [row["scenario_id"] for row in block.get("synthetic_scenarios") or []]
+    hist_ids = [row["episode"] for row in block.get("historical_episodes") or []]
+    assert syn_ids == list(SYNTHETIC_SCENARIO_IDS)
+    assert hist_ids == list(HISTORICAL_SCENARIO_IDS)
+
+
 def test_usd_and_commodity_shock_use_dedicated_taxonomy_calibration() -> None:
     out = _long_history_run()
     by_id = {r["scenario_id"]: r for r in out["scenario_results"]}

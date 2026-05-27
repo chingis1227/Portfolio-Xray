@@ -25,9 +25,11 @@ governed by `SPEC.md`, `OUTPUTS.md`, detailed specs, and code.
 
 ## Current Pointer
 
-**Active:** None (Block 2.6 Weakness Map MVP closed 2026-05-26). Next product work: pick from [ROADMAP](../ROADMAP.md) or a new ExecPlan.
+**Active:** *(none — pick next plan from [ROADMAP](../ROADMAP.md) or user brief.)*
 
-**Most recent closure:** [Block 2.6 Portfolio Weakness Map MVP](2026-05-26_block_2_6_portfolio_weakness_map_plan.md) (product block `block_2_6_portfolio_weakness_map`; closed 2026-05-26). Evidence: [acceptance audit](../audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md); closure pytest **35 passed**; live nine risk types on subject X-Ray (`rates_up` 65 Medium).
+**Most recent closure:** [Block 3.2 Stress Results MVP](2026-05-27_block_3_2_stress_results_plan.md) (product block `stress_results_v1` on subject `stress_report.json`; closed 2026-05-27). Evidence: [acceptance audit](../audits/2026-05-27_block_3_2_stress_results_acceptance_audit.md); closure pytest **75 passed**; live 8 synthetic + 5 historical diagnosis rows (`recession_severe` / `2022` worst).
+
+Previous closure: [Block 2.6 Portfolio Weakness Map MVP](2026-05-26_block_2_6_portfolio_weakness_map_plan.md) (product block `block_2_6_portfolio_weakness_map`; closed 2026-05-26). Evidence: [acceptance audit](../audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md); closure pytest **35 passed**; live nine risk types on subject X-Ray (`rates_up` 65 Medium).
 
 Previous closure: [Block 2.5 Risk Budget View MVP](2026-05-26_block_2_5_risk_budget_view_plan.md) (product block `block_2_5_risk_budget_view`; closed 2026-05-26). Evidence: [acceptance audit](../audits/2026-05-26_block_2_5_risk_budget_acceptance_audit.md); closure pytest **44 passed**; live `run_portfolio_review.py` on root `config.yml` with 8-ticker weight/RC/gap table.
 
@@ -118,6 +120,7 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-05-27 | [Block 3.2 Stress Results MVP](2026-05-27_block_3_2_stress_results_plan.md) | **Completed** | Block 3.1 prerequisite; Stress Lab product brief §3.2 | Sessions 00–08 closed 2026-05-27: `stress_results_v1` on subject `stress_report.json`; `stress_conclusions` preserved; [acceptance audit](../audits/2026-05-27_block_3_2_stress_results_acceptance_audit.md); pytest **75 passed**; live worst synthetic `recession_severe` / historical `2022`. |
 | 2026-05-26 | [Block 2.6 Portfolio Weakness Map MVP](2026-05-26_block_2_6_portfolio_weakness_map_plan.md) | **Completed** | User brief Block 2.6 (9 risk types, rule-based scoring over Blocks 2.1–2.5; no mini Stress Lab) | Sessions 00–08 closed 2026-05-26: `block_2_6_portfolio_weakness_map` on portfolio-first X-Ray; [acceptance audit](../audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md); pytest **35 passed**; live nine risk types. |
 | 2026-05-26 | [Block 2.5 Risk Budget View MVP](2026-05-26_block_2_5_risk_budget_view_plan.md) | **Completed** | User brief Block 2.5 (weight vs RC, buckets; no stress PnL); Blocks 2.1–2.4 prerequisite | Sessions 00–08 closed 2026-05-26: `block_2_5_risk_budget_view` on portfolio-first X-Ray; [acceptance audit](../audits/2026-05-26_block_2_5_risk_budget_acceptance_audit.md); pytest **44 passed**; live demo 8 tickers. |
 | 2026-05-26 | [Block 2.4 Hidden Exposure / Hidden Risk Detector MVP](2026-05-26_block_2_4_hidden_exposure_plan.md) | **Completed** | Product brief Block 2.4 | `block_2_4_hidden_exposure` on portfolio-first X-Ray; legacy `sections.hidden_risk_detector` preserved; closure pytest **62 passed**. |

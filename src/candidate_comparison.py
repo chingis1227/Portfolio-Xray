@@ -32,7 +32,11 @@ from src.optimizer_methodology import (
     young_etf_methodology_summary,
 )
 from src.review_bundle_context import build_review_bundle_context_v1
-from src.snapshot import compute_candidate_config_fingerprint, snapshot_config_fingerprint
+from src.snapshot import (
+    _stress_results_mirror_for_snapshot,
+    compute_candidate_config_fingerprint,
+    snapshot_config_fingerprint,
+)
 from src.stress import crisis_replay_summary_from_paths
 from src.output_policy import output_policy_for_profile, write_output_manifest
 
@@ -357,6 +361,9 @@ def _stress_from_artifacts(folder: Path, snap_10y: dict[str, Any] | None) -> dic
             hg_suite = suite.get("hedge_gap_analysis")
             if isinstance(hg_suite, dict) and hg_suite:
                 stress["hedge_gap_analysis"] = hg_suite
+            stress_results = suite.get("stress_results")
+            if isinstance(stress_results, dict) and stress_results:
+                stress["stress_results"] = stress_results
 
     summary = _load_json(folder / "summary.json")
     if stress.get("overall") is None and summary:
@@ -386,6 +393,10 @@ def _stress_from_artifacts(folder: Path, snap_10y: dict[str, Any] | None) -> dic
             paths = stress_report.get("historical_episode_paths")
             if isinstance(paths, list) and paths:
                 stress["crisis_replay_summary"] = crisis_replay_summary_from_paths(paths)
+        if "stress_results" not in stress:
+            mirror = _stress_results_mirror_for_snapshot(stress_report)
+            if mirror:
+                stress["stress_results"] = mirror
         stress["source_file"] = "stress_report.json"
     elif snap_10y:
         stress["source_file"] = SNAPSHOT_FILES[PRIMARY_WINDOW]

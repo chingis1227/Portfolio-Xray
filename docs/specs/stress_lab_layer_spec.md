@@ -19,7 +19,7 @@ result?
 Sub-blocks:
 
 - 3.1 Scenario Library (historical + synthetic)
-- 3.2 Stress Conclusions
+- 3.2 Stress Results
 - 3.3 What Happens If API foundation (no UI)
 - 3.4 Crisis Replay
 - 3.5 Hedge Gap Analysis
@@ -76,7 +76,8 @@ Primary artifact: `stress_report.json` in each portfolio output folder.
 | `historical_methodology` | 3.1.1 boundary | `historical_methodology_v1` |
 | `historical_episode_paths` | 3.4 crisis replay | `crisis_replay_v2` per episode |
 | `stress_scorecard_v1` | 3.6 scorecard | `stress_scorecard_v1` |
-| `stress_conclusions` | 3.2 conclusions | `stress_conclusions_v1` |
+| `stress_results_v1` | 3.2 stress results | `stress_results_v1` |
+| `stress_conclusions` | 3.2 conclusions rollup | `stress_conclusions_v1` |
 | `hedge_gap_analysis` | 3.5 hedge gap | `stress_scenario_hedge_evidence_v2` |
 | `status`, `fail_reason_code`, `failed_scenario`, `failed_test` | suite gate | diagnostic-only vs mandate (legacy mandate mode only; Core MVP uses `ok`/`warning`/`insufficient_data`) |
 | `loss_gate_mode` | Core MVP vs legacy | `diagnostic` (portfolio-first) or `mandate` (legacy) |
@@ -213,9 +214,20 @@ Tests: `tests/test_stress_historical_fields.py`, `tests/test_stress_mandate_pass
 Tests: `tests/test_stress_mandate_pass.py`, `tests/test_stress_covariance_taxonomy.py`,
 `tests/test_stress_simulator_contract.py`.
 
-### 3.2 Stress Conclusions
+### 3.2 Stress Results
 
-**Question:** Worst case, drivers, confidence, hedge status — without parsing all scenario rows?
+**Question:** For each active stress scenario, what happened, what drove losses, what offset them,
+and how trustworthy is the evidence — without parsing raw scenario rows?
+
+| Element | Rule | Provenance |
+| --- | --- | --- |
+| Contract key | `stress_results_v1` on `stress_report.json` | **S** Session 01 |
+| Product rows | `synthetic[]` (8) + `historical[]` (5), using canonical Scenario Library IDs and stable order | **S** Session 01 |
+| Synthetic source | Adapt `scenario_results[]` rows; do not recompute scenario PnL | **C** **S** §12.1 |
+| Historical source | Adapt `historical_results[]`; derive asset loss contribution from `historical_episode_paths[]` where available | **C** **S** Session 01 |
+| Worst selectors | `worst_synthetic` by minimum `portfolio_loss_pct`; `worst_historical` by minimum `drawdown_pct` among available historical rows | **C** **S** §12.1 |
+| Diagnostic boundary | In `loss_gate_mode="diagnostic"`, Block 3.2 product rows omit mandate fields (`pass`, `loss_ok`, `diagnostic_code`) | **S** Session 01 |
+| Relationship to conclusions | `stress_conclusions` remains a backward-compatible worst-case rollup for snapshot/comparison/commentary consumers | **C** **S** Session 01 |
 
 | Element | Rule | Provenance |
 | --- | --- | --- |

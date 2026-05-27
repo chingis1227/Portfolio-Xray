@@ -100,12 +100,14 @@ def test_five_ticker_blocks_1_5_mvp_smoke_gate(
 
     stress = _load_json(subject_dir / "stress_report.json")
     for key in (
+        "stress_results_v1",
         "stress_scorecard_v1",
         "stress_conclusions",
         "historical_methodology",
         "hedge_gap_analysis",
     ):
         assert key in stress
+    assert stress["stress_results_v1"].get("version") == "stress_results_v1"
 
     factory = _load_json(seeded["main_dir"] / "candidate_factory_run.json")
     assert factory["factory_profile_id"] == "core_fast"

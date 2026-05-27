@@ -101,6 +101,7 @@ from src.stress import (
     prepared_synthetic_stress_usable,
     run_stress,
 )
+from src.stress_results_block import attach_stress_results_v1
 from src.stress_factors import (
     FACTOR_COLUMN_ORDER,
     FACTOR_TRADING_DAYS_10Y,
@@ -1897,6 +1898,8 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["factor_beta_adjusted_overlay_error"] = str(e)
         logger.warning(f"Factor beta adjusted overlay failed: {e}")
+
+    attach_stress_results_v1(stress_report)
 
     try:
         historical_paths = stress_report.get("historical_episode_paths") or []

@@ -1164,6 +1164,54 @@ def _append_portfolio_pca_section(lines: list[str], st: dict[str, Any]) -> None:
     lines.append("")
 
 
+def _append_stress_results_v1_section(lines: list[str], st: dict[str, Any]) -> None:
+    """Minimal Block 3.2 pointer from stress_results_v1 (per-scenario product layer)."""
+    block = st.get("stress_results_v1")
+    if not isinstance(block, dict) or block.get("version") != "stress_results_v1":
+        return
+
+    lines.append(
+        "Block 3.2 stress results (stress_results_v1 in stress_report.json): per-scenario loss "
+        "contribution, factor attribution, and template diagnosis summaries; "
+        "stress_conclusions remains the worst-case rollup."
+    )
+    envelope = block.get("envelope") or {}
+    if not isinstance(envelope, dict):
+        envelope = {}
+    ws = envelope.get("worst_synthetic") or {}
+    wh = envelope.get("worst_historical") or {}
+    if isinstance(ws, dict) and ws.get("scenario_id"):
+        lines.append(
+            f"Block 3.2 worst synthetic: {ws.get('scenario_id')} "
+            f"(portfolio loss {_fmt_pct(ws.get('portfolio_loss_pct'))})."
+        )
+    if isinstance(wh, dict) and wh.get("episode"):
+        lines.append(
+            f"Block 3.2 worst historical: {wh.get('episode')} "
+            f"(drawdown {_fmt_pct(wh.get('drawdown_pct'))}, "
+            f"return {_fmt_pct(wh.get('portfolio_loss_pct'))})."
+        )
+
+    syn_rows = block.get("synthetic_scenarios") or []
+    hist_rows = block.get("historical_episodes") or []
+    ws_id = ws.get("scenario_id") if isinstance(ws, dict) else None
+    wh_id = wh.get("episode") if isinstance(wh, dict) else None
+    if ws_id:
+        for row in syn_rows:
+            if isinstance(row, dict) and row.get("scenario_id") == ws_id:
+                summary = row.get("diagnosis_summary_en")
+                if isinstance(summary, str) and summary.strip():
+                    lines.append(f"Block 3.2 worst synthetic diagnosis: {summary.strip()}")
+                break
+    if wh_id:
+        for row in hist_rows:
+            if isinstance(row, dict) and row.get("episode") == wh_id:
+                summary = row.get("diagnosis_summary_en")
+                if isinstance(summary, str) and summary.strip():
+                    lines.append(f"Block 3.2 worst historical diagnosis: {summary.strip()}")
+                break
+
+
 def write_stress_commentary(
     output_dir_final: Path,
     *,
@@ -1697,6 +1745,7 @@ def write_stress_commentary(
             "Confidence for scenario interpretation: "
             f"{conclusions.get('overall_confidence', _MDASH)}."
         )
+    _append_stress_results_v1_section(lines, st)
     if scen_rows:
         for row in scen_rows:
             sid = row.get("scenario_id")
@@ -1943,6 +1992,7 @@ def write_portfolio_commentary(
         lines.append("Scenario detail in stress_report.json is missing or not parsed.")
     if worst_loss is not None:
         lines.append(f"Worst scenario portfolio loss (worst_scenario_loss_pct): ~ {_fmt_pct(worst_loss)}.")
+    _append_stress_results_v1_section(lines, st)
     lines.append("")
 
     lines.append("Final Conclusion")

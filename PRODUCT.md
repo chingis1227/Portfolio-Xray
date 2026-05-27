@@ -218,6 +218,27 @@ Canonical spec: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_laye
 Do not add or rename scenarios without spec and `DECISIONS.md`. Other Block 3 sections (stress
 results, hedge gap, scorecard) are separate from 3.1.
 
+#### 4.3.2 Stress Results (Block 3.2)
+
+Stress Results is the product-facing Block 3.2 contract on `stress_report.json`:
+`stress_results_v1`.
+
+It answers, per active scenario, what happened to the portfolio, what drove loss, what helped
+offset loss, and how strong the evidence is, without requiring consumers to parse raw evidence
+arrays.
+
+Product boundary:
+
+- `stress_results_v1` is a Stress Lab artifact on `stress_report.json` (not on
+  `portfolio_xray.json`).
+- Core MVP diagnostic mode reports facts and interpretation only (`loss_gate_mode="diagnostic"`):
+  no client mandate pass/fail fields on Block 3.2 product rows.
+- `stress_conclusions` remains a compatibility worst-case rollup for snapshot/comparison/commentary
+  consumers and does not replace `stress_results_v1`.
+
+Canonical specs: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.2,
+[docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.1.
+
 ### 4.4 Problem Classification
 
 User goal:

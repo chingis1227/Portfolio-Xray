@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import pandas as pd
 
+from src.scenario_library import HISTORICAL_SCENARIO_IDS, SYNTHETIC_SCENARIO_IDS
 from src.stress import LOSS_GATE_MODE_DIAGNOSTIC, LOSS_GATE_MODE_MANDATE, run_stress
+
+_MANDATE_PRODUCT_KEYS = frozenset({"pass", "loss_ok", "diagnostic_codes", "diagnostic_code"})
 
 
 def _long_history_run(**kwargs: object) -> dict:
@@ -60,3 +63,42 @@ def test_mandate_mode_still_applies_loss_gate() -> None:
     assert out["max_dd_limit"] == 0.05
     assert out["status"] in {"DIAG_PASS", "DIAG_PASS_WITH_WARNING", "DIAG_ATTENTION"}
     assert any(row.get("loss_ok") is not None for row in out["scenario_results"])
+
+
+def test_diagnostic_mode_includes_stress_results_v1() -> None:
+    out = _long_history_run()
+    block = out.get("stress_results_v1")
+    assert isinstance(block, dict)
+    assert block.get("version") == "stress_results_v1"
+    assert block.get("loss_gate_mode") == LOSS_GATE_MODE_DIAGNOSTIC
+
+
+def test_diagnostic_stress_results_v1_covers_canonical_scenarios() -> None:
+    out = _long_history_run()
+    block = out["stress_results_v1"]
+    syn_ids = [row["scenario_id"] for row in block["synthetic_scenarios"]]
+    hist_ids = [row["episode"] for row in block["historical_episodes"]]
+    assert syn_ids == list(SYNTHETIC_SCENARIO_IDS)
+    assert hist_ids == list(HISTORICAL_SCENARIO_IDS)
+
+
+def test_diagnostic_stress_results_v1_omits_mandate_fields_on_product_rows() -> None:
+    out = _long_history_run()
+    block = out["stress_results_v1"]
+    for row in block["synthetic_scenarios"] + block["historical_episodes"]:
+        assert _MANDATE_PRODUCT_KEYS.isdisjoint(row.keys())
+        for sub in ("loss_contribution", "factor_attribution", "risk_contribution"):
+            nested = row.get(sub)
+            if isinstance(nested, dict):
+                assert _MANDATE_PRODUCT_KEYS.isdisjoint(nested.keys())
+
+
+def test_diagnostic_stress_results_v1_worst_ids_match_stress_conclusions() -> None:
+    out = _long_history_run()
+    conclusions = out.get("stress_conclusions") or {}
+    block = out["stress_results_v1"]
+    env = block.get("envelope") or {}
+    worst_syn = conclusions.get("worst_synthetic_scenario") or {}
+    worst_hist = conclusions.get("worst_historical_episode") or {}
+    assert env.get("worst_synthetic", {}).get("scenario_id") == worst_syn.get("scenario_id")
+    assert env.get("worst_historical", {}).get("episode") == worst_hist.get("episode")

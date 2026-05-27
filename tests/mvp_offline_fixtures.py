@@ -14,6 +14,7 @@ from src.input_assumptions import build_input_assumptions_from_analysis_setup
 from src.block_2_1_asset_allocation import build_block_2_1_asset_allocation
 from src.portfolio_xray import PORTFOLIO_XRAY_VERSION, XRAY_SECTION_KEYS
 from src.snapshot import compute_candidate_config_fingerprint
+from src.stress_results_block import empty_stress_results_v1
 
 MVP_FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "mvp_portfolios"
 
@@ -232,6 +233,10 @@ def minimal_blocks_1_5_stress_report() -> dict[str, Any]:
     return {
         "schema_version": "stress_report_v1",
         "analysis_end": DEFAULT_ANALYSIS_END,
+        "stress_results_v1": empty_stress_results_v1(
+            "offline_fixture",
+            loss_gate_mode="diagnostic",
+        ),
         "stress_scorecard_v1": {
             "overall_status": "PASS",
             "score": 82,

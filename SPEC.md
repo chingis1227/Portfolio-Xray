@@ -425,6 +425,7 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Portfolio metrics, backtests, risk contribution | Implemented |
 | Stress testing and stress commentary | Implemented diagnostic/reporting layer; Core MVP uses `loss_gate_mode=diagnostic` (no mandate pass/fail) |
 | Scenario Library (Block 3.1) | Fixed historical (5) + synthetic (8) scenario set; [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.1 |
+| Stress Results (Block 3.2) | Product-facing `stress_results_v1` contract on `stress_report.json`; `stress_conclusions` preserved as compatibility rollup ([stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.1) |
 | Factor diagnostics, PCA, macro/regime diagnostics, scenario analytics | Implemented diagnostic-only layer |
 | Scenario Library and normalized scenario view | Implemented input-standardization/diagnostic layer (Block 3.1 sidecars) |
 | Optimization Engine layer governance | Implemented source of truth; Sessions 03-04 add legacy policy and candidate optimizer disclosure without changing optimizer behavior |

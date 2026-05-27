@@ -146,6 +146,19 @@ def _constraints_status(
     return status
 
 
+def _stress_results_mirror_for_snapshot(stress_report: dict[str, Any]) -> dict[str, Any]:
+    """Compact Block 3.2 mirror (envelope + gate mode) for snapshot and comparison consumers."""
+    block = stress_report.get("stress_results_v1")
+    if not isinstance(block, dict):
+        return {}
+    envelope = block.get("envelope")
+    return {
+        "version": block.get("version"),
+        "loss_gate_mode": block.get("loss_gate_mode"),
+        "envelope": envelope if isinstance(envelope, dict) else {},
+    }
+
+
 def _stress_suite_results_for_snapshot(stress_report: dict[str, Any], portfolio_params: dict[str, Any] | None) -> dict[str, Any]:
     """Format stress_suite_results section; include per-scenario violations and portfolio_params."""
     overall = stress_report.get("status", "N/A")
@@ -188,6 +201,7 @@ def _stress_suite_results_for_snapshot(stress_report: dict[str, Any], portfolio_
         if isinstance(historical_methodology, dict)
         else {},
         "crisis_replay_summary": crisis_summary,
+        "stress_results": _stress_results_mirror_for_snapshot(stress_report),
     }
 
 

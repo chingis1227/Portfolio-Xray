@@ -985,6 +985,30 @@ fill from `stress_report.json` when missing.
 | `synthetic_scenarios[]` | Per-scenario: `scenario_id`, `portfolio_pnl_pct`, `pass`, `loss_ok`, `loss_severity`, `beta_coverage_ratio`, `beta_confidence`, `top3_loss_assets`, `top1_rc_asset`, `top1_rc_pct`, `top3_rc_assets`, `top3_rc_sum_pct`, `diagnostic_codes`. |
 | `historical_episodes[]` | Per-episode: `episode`, `pnl_real_episode`, `max_dd`, `pass`, `loss_severity`, `data_quality`, `coverage_ratio`, `n_obs`, `diagnostic_code`, `return_method`, `proxy_used`. |
 
+**`stress_results_v1`** (version string `stress_results_v1`; Block 3.2 product-facing contract):
+
+| Field | Description |
+| --- | --- |
+| `version` | `stress_results_v1` |
+| `loss_gate_mode` | Copy of top-level `loss_gate_mode`; `diagnostic` for Core MVP portfolio-first reports. |
+| `scenario_library` | Canonical IDs: `synthetic_ids` and `historical_ids` copied from Scenario Library contracts. |
+| `synthetic[]` | Per-scenario product rows in canonical synthetic ID order. Required row fields: `scenario_id`, `portfolio_loss_pct`, `loss_contribution`, `factor_attribution`, `risk_contribution`, `drawdown_pct`, `availability`, optional `diagnosis_summary_en`. |
+| `historical[]` | Per-episode product rows in canonical historical ID order. Required row fields: `episode`, `portfolio_loss_pct`, `drawdown_pct`, `loss_contribution`, `factor_attribution`, `risk_contribution`, `data_quality`, `coverage_ratio`, `n_obs`, `return_method`, `proxy_used`, optional `diagnosis_summary_en`. |
+| `worst_synthetic` | Worst synthetic row selector by minimum `portfolio_loss_pct`. |
+| `worst_historical` | Worst historical row selector by minimum `drawdown_pct` (`max_dd`), not by episode return. |
+| `helped_assets_worst_synthetic` | Positive-contribution assets for the worst synthetic scenario (up to three). |
+| `diagnosis_method` | Template-based deterministic interpretation only; no LLM-generated text in this block. |
+
+For `loss_gate_mode="diagnostic"`, `stress_results_v1.synthetic[]` and
+`stress_results_v1.historical[]` must not reintroduce mandate fields (`pass`, `loss_ok`,
+`diagnostic_code`, `diagnostic_codes`) as product fields. Legacy gate fields remain in evidence
+arrays (`scenario_results`, `historical_results`) for compatibility.
+
+Historical loss contribution in `stress_results_v1.historical[]` is derived from
+`historical_episode_paths[].asset_pnl_contrib_episode` when available. If episode contribution
+cannot be derived (insufficient overlap/path data), the row must emit explicit availability
+metadata (`availability: unavailable` with reason), not silent omission.
+
 **`loss_severity`** (synthetic and historical): `low` \| `moderate` \| `high` \| `unknown`. Relative to
 `max_dd_limit`: **high** when mandate loss gate fails (`loss_ok` false or `max_dd` below limit);
 **moderate** when PnL/max_dd is between −50% and −100% of the limit; otherwise **low**.

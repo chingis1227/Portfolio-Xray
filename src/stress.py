@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 
 from src.data_trust_signals import build_stress_data_trust_summary
+from src.stress_results_block import attach_stress_results_v1, empty_stress_results_v1
 from src.metrics_asset import time_to_recovery
 from src.risk_contrib import cov_matrix_monthly, percentage_contributions_variance
 from src.stress_factors import get_factor_display_name
@@ -1795,7 +1796,7 @@ def run_stress(
         historical_episode_paths=historical_episode_paths,
     )
 
-    return {
+    report: dict[str, Any] = {
         "status": status,
         "loss_gate_mode": gate_mode,
         "diagnostic_codes": diagnostic_codes,
@@ -1817,6 +1818,8 @@ def run_stress(
         "data_trust_summary": data_trust_summary,
         "hedge_gap_analysis": hedge_gap_analysis,
     }
+    attach_stress_results_v1(report)
+    return report
 
 
 def _empty_report(reason: str, *, loss_gate_mode: str = LOSS_GATE_MODE_MANDATE) -> dict[str, Any]:
@@ -1898,6 +1901,7 @@ def _empty_report(reason: str, *, loss_gate_mode: str = LOSS_GATE_MODE_MANDATE) 
             },
             historical_episode_paths=[],
         ),
+        "stress_results_v1": empty_stress_results_v1(reason, loss_gate_mode=gate_mode),
         "skip_reason": reason,
     }
 

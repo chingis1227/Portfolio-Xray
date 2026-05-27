@@ -237,7 +237,7 @@ python scripts/verify_live_core_e2e.py --run
 | --- | --- |
 | Subject diagnosis | `{output_dir_final}/analysis_subject/run_metadata.json`, `portfolio_xray.json`, `stress_report.json` |
 | X-Ray sections | All seven `XRAY_SECTION_KEYS` in `portfolio_xray.json` |
-| Stress blocks | `stress_scorecard_v1`, `stress_conclusions`, `historical_methodology`, `hedge_gap_analysis` in subject `stress_report.json` |
+| Stress blocks | `stress_results_v1`, `stress_scorecard_v1`, `stress_conclusions`, `historical_methodology`, `hedge_gap_analysis` in subject `stress_report.json` |
 | Comparison | `{output_dir_final}/candidate_comparison.json` present |
 | Core menu | `candidate_menu.review_mode == "core"` |
 | Factory profile | `candidate_factory_run.json` → `factory_profile_id == "core_fast"` |
@@ -403,7 +403,19 @@ Methodology baseline (historical):
 Re-run this bundle after Block 3 contract or downstream integration changes.
 
 ```bash
-python -m pytest tests/test_stress_scorecard_contract.py tests/test_stress_hedge_gap_contract.py tests/test_stress_scenario_coverage_contract.py tests/test_stress_synthetic_assumptions_contract.py tests/test_stress_simulator_contract.py tests/test_stress_mandate_pass.py tests/test_stress_scenario_analytics.py tests/test_stress_historical_fields.py tests/test_stress_covariance_taxonomy.py tests/test_stress_artifacts_priority.py tests/test_stress_downstream_integration.py tests/test_portfolio_commentary.py tests/test_io_export_ips_summary.py -q
+python -m pytest tests/test_stress_results_block_contract.py tests/test_stress_diagnostic_mode.py tests/test_stress_scorecard_contract.py tests/test_stress_hedge_gap_contract.py tests/test_stress_scenario_coverage_contract.py tests/test_stress_synthetic_assumptions_contract.py tests/test_stress_simulator_contract.py tests/test_stress_mandate_pass.py tests/test_stress_scenario_analytics.py tests/test_stress_historical_fields.py tests/test_stress_covariance_taxonomy.py tests/test_stress_artifacts_priority.py tests/test_stress_downstream_integration.py tests/test_portfolio_commentary.py tests/test_io_export_ips_summary.py -q
+python scripts/verify_docs.py
+```
+
+## Block 3.2 Stress Results regression bundle
+
+Governed by [Block 3.2 Stress Results ExecPlan](docs/exec_plans/2026-05-27_block_3_2_stress_results_plan.md)
+(Session 07 closure). Re-run after `stress_results_v1` builder, diagnostic-mode, or downstream
+commentary/snapshot mirror changes.
+
+```bash
+python -m pytest tests/test_stress_results_block_contract.py tests/test_stress_diagnostic_mode.py tests/test_stress_scenario_coverage_contract.py tests/test_stress_downstream_integration.py -q
+python -m pytest tests/test_stress_scorecard_contract.py tests/test_stress_hedge_gap_contract.py -q
 python scripts/verify_docs.py
 ```
 

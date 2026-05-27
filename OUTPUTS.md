@@ -276,6 +276,7 @@ Common project artifacts include:
   `record_custom_shock_run` / `write_custom_shock_runs`; not written by `run_stress` or default
   `run_report.py` paths; envelope `custom_shock_runs_v1` per stress spec §12.3
 - `stress_report.json.stress_scorecard_v1` (unified stress scorecard block)
+- `stress_report.json.stress_results_v1` (Block 3.2 product-facing per-scenario stress results)
 - `stress_report.json.stress_conclusions` (aggregated stress conclusions)
 - `stress_report.json.hedge_gap_analysis` (hedge gap diagnostic block)
 - `stress_report.json.historical_episode_paths` (path-level crisis replay block)
@@ -358,7 +359,7 @@ When validating the first-five-block MVP core (offline smoke or a representative
 | --- | --- | --- |
 | 1 Input | `run_metadata.json` with `analysis_setup` and `input_assumptions` | Explicit current/model weights sum to at most `1.0`; partial sums disclose cash remainder; `input_assumptions.input_surface` lists Core MVP user fields; `field_tiers` classifies deferred/legacy keys; real-cash labels in `analysis_setup.cash_handling.real_cash_holdings` when used (not substituted by `cash_proxy_ticker`) |
 | 2 X-Ray | `portfolio_xray.json` (seven sections + product blocks `block_2_1_asset_allocation` … `block_2_6_portfolio_weakness_map`) | `data_trust_signals.user_summary_lines` when data-quality warnings exist; prefer product blocks for UI/API: capital structure (§2.1.1), portfolio behavior (§2.2.1), factor sensitivity (§2.3.1), hidden exposure (§2.4.1), risk budget (§2.5.1), weakness map (§2.6.1 in [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md)); Blocks 2.3–2.6 are read-only adapters over upstream evidence; legacy `sections.*` remain for formatters until migration |
-| 3 Stress | `stress_report.json` with scorecard, conclusions, historical methodology, hedge gap | `data_trust_summary.user_summary_lines` for episode/taxonomy/young-ETF warnings |
+| 3 Stress | `stress_report.json` with `stress_results_v1`, scorecard, conclusions, historical methodology, hedge gap | `data_trust_summary.user_summary_lines` for episode/taxonomy/young-ETF warnings |
 | 4 Factory | `candidate_factory_run.json` at review root | Comparison `candidate_menu.factory_evidence_status` must be `current` or explicitly not authoritative |
 | 4–5 Bundle | `candidate_comparison.json` → `review_bundle_context` | `review_bundle_fingerprint` and `mode_subject_consistency` link subject/factory/comparison; read `user_summary_lines` when `analysis_mode` label differs from `analysis_subject.type` |
 | 5 Optimizers | Candidate folders + comparison rows | Optimizer-backed rows are `available` only when readiness-critical evidence is complete; otherwise `degraded` with warning codes |

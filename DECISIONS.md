@@ -60,6 +60,20 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-05-27-001
+Title: Block 3.2 is Stress Results with compatibility conclusions
+
+- Status: accepted
+- Date: 2026-05-27
+- Decision: Define Block 3.2 product contract as `stress_results_v1` on `stress_report.json` and rename the Block 3.2 product/spec section to **Stress Results**. Keep `stress_conclusions` (`stress_conclusions_v1`) as a backward-compatible worst-case rollup for existing snapshot/comparison/commentary consumers.
+- Context: Block 3.2 product brief requires per-scenario diagnosis output (what happened, drivers, offsets, trust) without forcing downstream consumers to parse raw `scenario_results` / `historical_results`. Existing contracts exposed scorecard/conclusions but lacked a dedicated per-scenario product-facing block.
+- Rationale: A dedicated `stress_results_v1` block clarifies product boundary and supports stable downstream consumption while preserving compatibility with current consumers already tied to `stress_conclusions`.
+- Alternatives considered: Replace `stress_conclusions` entirely (rejected because it would break existing consumers); keep only scorecard and raw arrays (rejected because product-facing per-scenario interpretation would remain fragmented).
+- Assumptions: Canonical scenario IDs stay fixed by Scenario Library; Core MVP portfolio-first mode remains `loss_gate_mode="diagnostic"` and Block 3.2 product rows must not reintroduce mandate pass/fail fields.
+- Consequences: Stress docs/specs/testing/output inventories must reference `stress_results_v1` as the Block 3.2 product contract; `stress_conclusions` remains present as compatibility rollup until an explicit migration removes it.
+- Related documents: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md), [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md), [PRODUCT.md](PRODUCT.md), [OUTPUTS.md](OUTPUTS.md), [TESTING.md](TESTING.md), [docs/exec_plans/2026-05-27_block_3_2_stress_results_plan.md](docs/exec_plans/2026-05-27_block_3_2_stress_results_plan.md).
+- Review trigger: Revisit when downstream consumers migrate fully to `stress_results_v1` and `stress_conclusions` can be deprecated safely.
+
 Decision ID: DEC-2026-05-25-001
 Title: Documentation migration uses draft-first target documents
 

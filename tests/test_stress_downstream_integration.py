@@ -71,6 +71,10 @@ def test_snapshot_stress_suite_includes_governance_fields() -> None:
     assert "top_factor_drivers_worst_scenario" in conclusions
     hg = section.get("hedge_gap_analysis") or {}
     assert "by_risk_type" in hg
+    stress_results = section.get("stress_results") or {}
+    assert stress_results.get("version") == "stress_results_v1"
+    assert isinstance(stress_results.get("envelope"), dict)
+    assert "worst_synthetic" in (stress_results.get("envelope") or {})
 
 
 def test_candidate_comparison_stress_merges_snapshot_and_report(tmp_path: Path) -> None:
@@ -90,6 +94,7 @@ def test_candidate_comparison_stress_merges_snapshot_and_report(tmp_path: Path) 
     assert isinstance(stress.get("crisis_replay_summary"), list)
     assert stress.get("conclusions", {}).get("version") == "stress_conclusions_v1"
     assert "by_risk_type" in (stress.get("hedge_gap_analysis") or {})
+    assert stress.get("stress_results", {}).get("version") == "stress_results_v1"
 
 
 def test_stress_commentary_includes_methodology_and_crisis_replay(tmp_path: Path) -> None:
@@ -103,3 +108,6 @@ def test_stress_commentary_includes_methodology_and_crisis_replay(tmp_path: Path
     assert "realized_portfolio_monthly" in text or "primary_path=realized_only" in text
     if out.get("historical_episode_paths"):
         assert "Crisis replay (path-level, crisis_replay_v2)" in text
+    assert "Block 3.2 stress results (stress_results_v1" in text
+    assert "Block 3.2 worst synthetic:" in text
+    assert "Block 3.2 worst historical:" in text
