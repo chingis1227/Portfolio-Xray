@@ -239,6 +239,17 @@ Product boundary:
 Canonical specs: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.2,
 [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.1.
 
+#### 4.3.4 Current Portfolio Stress Scorecard (Block 3.4)
+
+Block 3.4 is the product-facing **current-portfolio** stress scorecard on `stress_report.json`:
+`current_portfolio_stress_scorecard_v1`. It summarizes Blocks 3.1–3.3 into a single diagnosis:
+worst synthetic loss, worst historical drawdown, loss/risk contributors, factor drivers, helped vs
+hurt assets, offset coverage ratio, and the main hedge gap.
+
+Product boundary: diagnostic-only summary (no client mandate pass/fail, no suitability logic, no
+DIAG_* status language inside the Block 3.4 key). It does not create new scenarios and does not
+recompute scenario PnL.
+
 #### 4.3.3 Hedge Gap Analysis (Block 3.3)
 
 Hedge Gap Analysis is the product-facing Block 3.3 contract on `stress_report.json`:

@@ -74,6 +74,20 @@ Title: Block 3.3 is contribution-based Hedge Gap Analysis with legacy hedge bloc
 - Related documents: [docs/specs/hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md), [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md), [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.2.2, [PRODUCT.md](PRODUCT.md) §4.3.3, [docs/exec_plans/2026-05-27_block_3_3_hedge_gap_analysis_plan.md](docs/exec_plans/2026-05-27_block_3_3_hedge_gap_analysis_plan.md).
 - Review trigger: Revisit when downstream consumers migrate to `hedge_gap_analysis_v1` and legacy `hedge_gap_analysis` / `hedge_gap_status` coupling can be deprecated.
 
+Decision ID: DEC-2026-05-27-003
+Title: Block 3.4 Core MVP is a new current-portfolio stress scorecard key
+
+- Status: accepted
+- Date: 2026-05-27
+- Decision: Implement Block 3.4 Core MVP Current Portfolio Stress Scorecard as a new top-level key on `stress_report.json`: `current_portfolio_stress_scorecard_v1`, built as a diagnostic-only adapter over Blocks 3.1–3.3 (`scenario_results` / `historical_results`, `stress_results_v1`, `hedge_gap_analysis_v1`).
+- Context: Existing `stress_scorecard_v1` is used by legacy/compat consumers and includes mandate-mode semantics and fields (`DIAG_*` overall statuses, `pass`/`loss_ok` on rows) that are explicitly forbidden in Core MVP diagnostic scorecard output.
+- Rationale: A new key keeps backward compatibility for legacy scorecard consumers while delivering a clean product-facing Core MVP summary with explicit linkage to `stress_results_v1` and `hedge_gap_analysis_v1`.
+- Alternatives considered: Repurpose `stress_scorecard_v1` as the Core MVP scorecard (rejected — breaks existing contract tests and would mix mandate-mode semantics into a diagnostic-only product layer).
+- Assumptions: Block 3.2 remains the canonical selector for worst synthetic and worst historical; Block 3.3 remains the canonical source for offset coverage and main hedge gap; Core MVP portfolio-first path uses `loss_gate_mode="diagnostic"`.
+- Consequences: Specs and output maps must reference `current_portfolio_stress_scorecard_v1` as Block 3.4. Add dedicated contract tests for the new key and include them in the Stress Lab regression bundle.
+- Related documents: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.4, [OUTPUTS.md](OUTPUTS.md), [TESTING.md](TESTING.md), [docs/exec_plans/2026-05-27_block_3_4_current_portfolio_stress_scorecard_plan.md](docs/exec_plans/2026-05-27_block_3_4_current_portfolio_stress_scorecard_plan.md).
+- Review trigger: Revisit when downstream consumers move from `stress_scorecard_v1` to the Core MVP scorecard key and legacy mandate-mode fields can be more clearly isolated.
+
 Decision ID: DEC-2026-05-27-001
 Title: Block 3.2 is Stress Results with compatibility conclusions
 

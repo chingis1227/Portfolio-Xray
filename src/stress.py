@@ -22,6 +22,9 @@ import numpy as np
 import pandas as pd
 
 from src.data_trust_signals import build_stress_data_trust_summary
+from src.current_portfolio_stress_scorecard_block import (
+    attach_current_portfolio_stress_scorecard_v1,
+)
 from src.hedge_gap_analysis_block import attach_hedge_gap_analysis_v1
 from src.stress_results_block import attach_stress_results_v1, empty_stress_results_v1
 from src.metrics_asset import time_to_recovery
@@ -1821,6 +1824,7 @@ def run_stress(
     }
     attach_stress_results_v1(report)
     attach_hedge_gap_analysis_v1(report)
+    attach_current_portfolio_stress_scorecard_v1(report)
     return report
 
 
@@ -1907,6 +1911,7 @@ def _empty_report(reason: str, *, loss_gate_mode: str = LOSS_GATE_MODE_MANDATE) 
         "skip_reason": reason,
     }
     attach_hedge_gap_analysis_v1(report)
+    attach_current_portfolio_stress_scorecard_v1(report)
     return report
 
 

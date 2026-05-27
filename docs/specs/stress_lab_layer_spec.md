@@ -21,7 +21,7 @@ Core MVP sub-blocks:
 - 3.1 Scenario Library (historical + synthetic)
 - 3.2 Stress Results (`stress_results_v1`)
 - 3.3 Hedge Gap Analysis (`hedge_gap_analysis_v1`)
-- 3.4 Current Portfolio Stress Scorecard (`stress_scorecard_v1`)
+- 3.4 Current Portfolio Stress Scorecard (`current_portfolio_stress_scorecard_v1`)
 
 Deferred / advanced (not Core MVP product blocks; implementation remains):
 
@@ -81,7 +81,8 @@ Primary artifact: `stress_report.json` in each portfolio output folder.
 | `stress_results_v1` | 3.2 stress results | `stress_results_v1` |
 | `stress_conclusions` | 3.2 conclusions rollup | `stress_conclusions_v1` |
 | `hedge_gap_analysis_v1` | 3.3 hedge gap (Core MVP) | `hedge_gap_analysis_v1` — **S** scaffold Session 02; wiring Session 05+ |
-| `stress_scorecard_v1` | 3.4 scorecard | `stress_scorecard_v1` |
+| `current_portfolio_stress_scorecard_v1` | 3.4 scorecard (Core MVP) | `current_portfolio_stress_scorecard_v1` (adapter over 3.1–3.3; diagnostic-only) |
+| `stress_scorecard_v1` | legacy scorecard | `stress_scorecard_v1` (legacy/compat; includes mandate-mode semantics) |
 | `hedge_gap_analysis` | legacy hedge gap | `stress_scenario_hedge_evidence_v2` (backward compatibility) |
 | `historical_episode_paths` | deferred crisis replay | `crisis_replay_v2` per episode |
 | `status`, `fail_reason_code`, `failed_scenario`, `failed_test` | suite gate | diagnostic-only vs mandate (legacy mandate mode only; Core MVP uses `ok`/`warning`/`insufficient_data`) |
@@ -265,16 +266,18 @@ Planned implementation: `src/hedge_gap_analysis_block.py` (Session 02+). Tests (
 
 ### 3.4 Current Portfolio Stress Scorecard
 
-**Question:** Unified machine-readable stress summary for snapshots and comparison?
+**Question:** Unified machine-readable stress summary for the **current portfolio** that connects Blocks 3.1–3.3 into a single diagnostic scorecard (no mandate pass/fail).
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
-| Contract | `stress_scorecard_v1`: synthetic + historical rows, severity, confidence | **C** **S** §12.1 |
-| Scope | Any portfolio passed to `run_stress` (subject, candidates, variants) | **C** |
-| Consumers | `snapshot.py`, `portfolio_commentary.py`, `candidate_comparison.py`; health/robustness use simplified overall | **C** |
-| Factor “why” | Scorecard rows: RC + loss assets; factor drivers via `stress_conclusions` (Session 04) | **C** **A** |
+| Contract (Core MVP) | `current_portfolio_stress_scorecard_v1`: summary over `stress_results_v1` + `hedge_gap_analysis_v1` | **C** (2026-05-27) |
+| Worst synthetic | Minimum synthetic `portfolio_pnl_pct` (via Block 3.2 envelope) | **S** Block 3.2 |
+| Worst historical | Minimum `max_dd` (via Block 3.2 envelope) | **S** Block 3.2 |
+| Offset coverage + main hedge gap | Use Block 3.3 `hedge_gap_analysis_v1` summary and main-area helped/hurt lists | **S** Block 3.3 |
+| Diagnostic boundary | No client mandate comparison, no DIAG_* language, no `pass` / `loss_ok` inside the Block 3.4 product key | **S** Core MVP |
+| Legacy/compat | `stress_scorecard_v1` remains as legacy scorecard (mandate-mode semantics, older consumers) | **C** |
 
-Tests: `tests/test_stress_scorecard_contract.py`, `tests/test_stress_artifacts_priority.py`.
+Tests: `tests/test_current_portfolio_stress_scorecard_v1_contract.py`, plus existing Stress Lab contract bundles.
 
 ## Deferred / advanced sub-blocks (not Core MVP)
 

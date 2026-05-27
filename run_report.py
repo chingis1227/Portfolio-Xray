@@ -102,6 +102,9 @@ from src.stress import (
     run_stress,
 )
 from src.hedge_gap_analysis_block import attach_hedge_gap_analysis_v1
+from src.current_portfolio_stress_scorecard_block import (
+    attach_current_portfolio_stress_scorecard_v1,
+)
 from src.stress_results_block import attach_stress_results_v1
 from src.stress_factors import (
     FACTOR_COLUMN_ORDER,
@@ -1902,6 +1905,7 @@ def run_portfolio_report_for_weights(
 
     attach_stress_results_v1(stress_report)
     attach_hedge_gap_analysis_v1(stress_report)
+    attach_current_portfolio_stress_scorecard_v1(stress_report)
 
     try:
         historical_paths = stress_report.get("historical_episode_paths") or []

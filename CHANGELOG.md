@@ -8,6 +8,12 @@ Date: 2026-05-27
 
 Category: Changed
 
+- **Block 3.4 Current Portfolio Stress Scorecard MVP:** Added a new Core MVP diagnostic-only product key
+  `current_portfolio_stress_scorecard_v1` on `stress_report.json`, built as an adapter over Blocks
+  3.1–3.3 (`stress_results_v1` + `hedge_gap_analysis_v1`). Wired it in `src/stress.py`, `run_report.py`,
+  and `run_optimization.py`; added contract tests (`tests/test_current_portfolio_stress_scorecard_v1_contract.py`).
+  Decision recorded as `DEC-2026-05-27-003`.
+
 - **Block 3.3 Hedge Gap Analysis MVP (Session 07, tests):** Extended `tests/test_hedge_gap_analysis_v1_contract.py`
   and `tests/test_stress_diagnostic_mode.py` for `hedge_gap_analysis_v1` diagnostic-mode coverage,
   activated the Block 3.3 regression bundle in `TESTING.md`, and recorded this session in the ExecPlan

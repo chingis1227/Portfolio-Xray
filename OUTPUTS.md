@@ -275,6 +275,7 @@ Common project artifacts include:
 - `custom_shock_runs.json` (optional, opt-in only): versioned audit trail for
   `record_custom_shock_run` / `write_custom_shock_runs`; not written by `run_stress` or default
   `run_report.py` paths; envelope `custom_shock_runs_v1` per stress spec §12.3
+- `stress_report.json.current_portfolio_stress_scorecard_v1` (Block 3.4 Core MVP current-portfolio stress scorecard; summary adapter over Blocks 3.1–3.3)
 - `stress_report.json.stress_scorecard_v1` (unified stress scorecard block)
 - `stress_report.json.stress_results_v1` (Block 3.2 product-facing per-scenario stress results)
 - `stress_report.json.hedge_gap_analysis_v1` (Block 3.3 product-facing hedge gap analysis; **Target** Session 02+)
