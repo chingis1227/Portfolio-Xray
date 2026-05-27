@@ -679,6 +679,28 @@ def _load_json_if_exists(path: Path) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
+def _correlation_matrix_from_snapshot(out: Path, snapshot: dict[str, Any]) -> tuple[pd.DataFrame | None, str | None]:
+    """
+    Load the primary-window correlation matrix referenced by snapshot JSON.
+
+    `site_api` / JSON-only runs may not write CSV, so this is best-effort only;
+    runtime callers can pass an in-memory matrix directly to `build_portfolio_xray_v2`.
+    """
+    ref = snapshot.get("correlation_matrix_csv") if isinstance(snapshot, dict) else None
+    if not ref:
+        return None, None
+    path = out / "results_csv" / str(ref)
+    if not path.is_file():
+        return None, str(ref)
+    try:
+        frame = pd.read_csv(path, index_col=0)
+    except Exception:
+        return None, str(ref)
+    if frame.empty:
+        return None, str(ref)
+    return frame, str(ref)
+
+
 def _xray_summary_from_output_dir(out: Path) -> dict[str, Any] | None:
     metadata = _load_json_if_exists(out / "run_metadata.json") or {}
     snapshot = _load_json_if_exists(out / "snapshot_10y.json") or _load_json_if_exists(out / "snapshot_5y.json") or {}
@@ -688,6 +710,7 @@ def _xray_summary_from_output_dir(out: Path) -> dict[str, Any] | None:
         return None
     csv_dir = out / "results_csv"
     portfolio_windows = load_portfolio_windows_from_dir(out)
+    corr_matrix, corr_ref = _correlation_matrix_from_snapshot(out, snapshot)
     xray = build_portfolio_xray_v2(
         analysis_setup=analysis_setup if isinstance(analysis_setup, dict) else None,
         weights=snapshot.get("final_weights_total") if isinstance(snapshot, dict) else None,
@@ -698,6 +721,8 @@ def _xray_summary_from_output_dir(out: Path) -> dict[str, Any] | None:
         portfolio_windows=portfolio_windows or None,
         portfolio_analytics=snapshot.get("analytics") if isinstance(snapshot, dict) else None,
         drawdown_structure=snapshot.get("drawdown_structure") if isinstance(snapshot, dict) else None,
+        correlation_matrix=corr_matrix,
+        correlation_matrix_ref=corr_ref,
         output_dir_final=out,
         output_dir_csv=csv_dir if csv_dir.is_dir() else None,
     )

@@ -264,7 +264,7 @@ Product boundary:
 - `hedge_gap_analysis_v1` is a Stress Lab artifact on `stress_report.json` (not on
   `portfolio_xray.json`).
 - Evidence is read from Block 3.1 / Block 3.2 outputs; Block 3.3 does not recompute scenario PnL.
-- Seven product risk types map 1:1 to seven synthetic scenarios; `recession_severe` is excluded
+- Eight product protection areas map 1:1 to eight synthetic scenarios (includes `recession_severe_protection`)
   from Block 3.3 v1 rows.
 - Core MVP diagnostic mode (`loss_gate_mode="diagnostic"`) reports offset facts and English
   interpretation only — no client mandate pass/fail on Block 3.3 rows.

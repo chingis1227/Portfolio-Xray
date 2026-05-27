@@ -8,6 +8,38 @@ Date: 2026-05-27
 
 Category: Changed
 
+- **Kalman weekly path + real cash:** `_portfolio_factor_weekly_ols_rows` no longer downloads
+  real-cash labels (e.g. `Cash USD`) via yfinance; cash receives zero weekly returns in-panel.
+  Hardened `fetch_daily` for duplicate/MultiIndex columns. Block 2.3 maps
+  `factor_betas_kalman_error` to precise unavailable reasons. Fixture-matrix validators use
+  `scripts/core_mvp_validation_contract.py` (Core MVP rollup vs optional diagnostics).
+
+- **Block 3.3 Hedge Gap — eighth protection area:** Added `recession_severe_protection` →
+  `recession_severe` to `BLOCK_3_3_RISK_SCENARIO_MAP` (`src/hedge_gap_analysis_block.py`) so
+  `hedge_gap_analysis_v1.by_risk_type` emits offset coverage and hurt/helped fields for severe
+  recession alongside the existing seven mappings. Scorecard `main_hedge_gap` / offset summary
+  already select the weakest ratio across all rows and now include severe recession when it is
+  the weakest. Updated [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md),
+  [stress_testing_spec.md](docs/specs/stress_testing_spec.md), fixture-matrix audit FXM-004, and
+  hedge-gap contract tests (`n_risk_types` = 8).
+
+- **Block 2.2 correlation breakdown:** Passed the runtime primary-window correlation matrix into
+  Portfolio X-Ray / Block 2.2 directly, so JSON-only `site_api` runs can populate top high/low
+  correlation pairs without writing CSV solely for this block. CSV references remain supported for
+  full/export profiles and legacy reloads.
+
+- **Analysis-subject Kalman diagnostics:** Kept candidate `lightweight_comparison` reports on the
+  fast skip path, but enabled Kalman factor beta diagnostics for product-facing `analysis_subject`
+  JSON bundles (`site_api` / `core_json`). This fixes the misleading Core MVP Block 2.3
+  `kalman_module_not_available` outcome for current-portfolio diagnostics when factor rows are
+  available.
+
+- **Credit factor 10Y fallback:** Added a disclosed fallback for the credit spread factor:
+  primary FRED `BAMLH0A0HYM2` HY OAS remains first choice, but when its history is too short
+  for the requested factor window the factor matrix uses FRED `BAA10Y` as a longer-history
+  spread proxy. Factor diagnostics now expose `fallback_used`, `primary_source`, and
+  `fallback_reason`; future data work should review a better long-history HY/OAS source.
+
 - **Core MVP Runtime Integration and Entrypoint Audit (Sessions 1–7, closed):** Locked
   portfolio-first runtime contract (`run_portfolio_review.py` default = diagnosis-only;
   `--candidates` = one-candidate product path; batch/full = research/advanced). Added ExecPlan

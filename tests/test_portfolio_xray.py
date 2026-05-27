@@ -938,6 +938,34 @@ def test_portfolio_xray_v2_kalman_reads_factor_betas_kalman_latest() -> None:
     assert exposure["beta_credit"] == 0.42
 
 
+def test_portfolio_xray_v2_passes_in_memory_correlation_matrix_to_block_2_2() -> None:
+    corr = pd.DataFrame(
+        [[1.0, 0.2, 0.8], [0.2, 1.0, -0.1], [0.8, -0.1, 1.0]],
+        index=["SPY", "BND", "GLD"],
+        columns=["SPY", "BND", "GLD"],
+    )
+
+    xray = build_portfolio_xray_v2(
+        analysis_setup=_analysis_setup("user_current_portfolio"),
+        weights={"SPY": 0.5, "BND": 0.3, "GLD": 0.2},
+        rc_asset=[],
+        stress_report={},
+        portfolio_valid=True,
+        portfolio_metrics={"window_months": 120, "cagr": 0.08, "vol_annual": 0.1},
+        correlation_matrix=corr,
+        correlation_matrix_ref="runtime:correlation_matrix_10y",
+    )
+
+    block = xray["block_2_2_portfolio_metrics"]
+    assert block["correlation_breakdown"]["full_matrix_available"] is True
+    assert block["correlation_breakdown"]["top3_highest_correlation_pairs"][0] == {
+        "ticker_a": "GLD",
+        "ticker_b": "SPY",
+        "correlation": 0.8,
+    }
+    assert not any("correlation matrix is missing" in w.lower() for w in block["data_quality_warnings"])
+
+
 def test_load_rc_vol_map_from_csv_fallback_window(tmp_path: Path) -> None:
     csv_dir = tmp_path / "results_csv"
     csv_dir.mkdir()

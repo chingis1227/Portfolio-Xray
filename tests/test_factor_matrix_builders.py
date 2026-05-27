@@ -64,6 +64,46 @@ def test_build_factor_matrix_includes_vix_us_growth_oil_and_shifts_wei_to_friday
     assert np.isclose(out.loc[pd.Timestamp("2024-01-12"), "oil"], expected_oil.loc[pd.Timestamp("2024-01-12")])
 
 
+def test_credit_factor_falls_back_to_baa10y_when_hy_oas_history_is_short(monkeypatch) -> None:
+    daily_idx = pd.date_range("2020-01-01", "2024-12-31", freq="B")
+    short_credit_idx = pd.date_range("2024-01-01", "2024-12-31", freq="B")
+
+    daily_close_map = {
+        "SPY": pd.Series(np.linspace(100.0, 180.0, len(daily_idx)), index=daily_idx),
+        "DBC": pd.Series(np.linspace(20.0, 30.0, len(daily_idx)), index=daily_idx),
+    }
+    fred_map = {
+        sf.FRED_REAL_10Y: pd.Series(np.linspace(1.00, 1.60, len(daily_idx)), index=daily_idx),
+        sf.FRED_BREAKEVEN_10Y: pd.Series(np.linspace(2.00, 2.25, len(daily_idx)), index=daily_idx),
+        sf.FRED_HY_SPREAD: pd.Series(np.linspace(4.00, 4.30, len(short_credit_idx)), index=short_credit_idx),
+        sf.FRED_CREDIT_SPREAD_FALLBACK: pd.Series(np.linspace(1.50, 2.10, len(daily_idx)), index=daily_idx),
+        sf.FRED_DXY: pd.Series(np.linspace(100.0, 105.0, len(daily_idx)), index=daily_idx),
+        sf.FRED_VIX: pd.Series(np.linspace(14.0, 20.0, len(daily_idx)), index=daily_idx),
+        sf.FRED_WTI_OIL: pd.Series(np.linspace(70.0, 80.0, len(daily_idx)), index=daily_idx),
+        sf.FRED_US_GROWTH: pd.Series(
+            np.linspace(1.0, 1.6, len(pd.date_range("2020-01-04", "2024-12-28", freq="W-SAT"))),
+            index=pd.date_range("2020-01-04", "2024-12-28", freq="W-SAT"),
+        ),
+    }
+
+    monkeypatch.setattr(
+        sf,
+        "fetch_daily",
+        lambda ticker, *_args, **_kwargs: pd.DataFrame({"Close": daily_close_map[ticker]}),
+    )
+    monkeypatch.setattr(sf, "fetch_fred_series", lambda series_id, *_args, **_kwargs: fred_map[series_id].copy())
+
+    out = sf.build_factor_matrix("2020-01-01", "2024-12-31")
+    diag = out.attrs["factor_load_diagnostics"]["by_factor"]["credit"]
+
+    assert "credit" in out.columns
+    assert diag["status"] == "available"
+    assert diag["source"] == f"FRED:{sf.FRED_CREDIT_SPREAD_FALLBACK}"
+    assert diag["primary_source"] == f"FRED:{sf.FRED_HY_SPREAD}"
+    assert diag["fallback_used"] is True
+    assert "insufficient coverage" in diag["fallback_reason"]
+
+
 def test_base_factor_contract_excludes_oil_but_extended_registry_keeps_it() -> None:
     assert sf.BASE_FACTOR_COLUMN_ORDER == (
         "equity",

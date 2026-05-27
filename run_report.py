@@ -92,6 +92,7 @@ from src.portfolio_analytics import (
     rolling_vol_annual,
     tail_risk_flat_fields,
 )
+from src.portfolio_xray import build_portfolio_xray_v2
 from src.optimization import get_risk_portfolio_tickers
 from src.portfolio_dynamic import portfolio_returns_nan_safe
 from src.risk_contrib import cov_matrix_monthly, rc_vol_window
@@ -702,6 +703,7 @@ def run_portfolio_report_for_weights(
     rc_by_window: dict[str, pd.Series] = {}
     rc_csv_by_window: dict[str, str] = {}
     corr_csv_by_window: dict[str, str] = {}
+    corr_by_window: dict[str, pd.DataFrame] = {}
     use_invariant_corr = use_invariant_metrics
     with report_timing.block("rc_corr"):
         for wm in windows_months:
@@ -750,6 +752,7 @@ def run_portfolio_report_for_weights(
                 export_correlation_matrix_csv(corr_matrix, wm, output_dir_csv)
             if wm in (36, 60, 120):
                 key = "3y" if wm == 36 else "5y" if wm == 60 else "10y"
+                corr_by_window[key] = corr_matrix
                 corr_csv_by_window[key] = f"correlation_matrix_{suffix}.csv"
 
     # =========================================================================
@@ -1355,10 +1358,18 @@ def run_portfolio_report_for_weights(
             logger.warning(f"Rolling factor betas diagnostics failed: {e}")
 
     # Kalman factor betas: diagnostic-only current regime estimate, does not replace raw 5Y/10Y OLS betas.
-    if lightweight:
+    # Candidate lightweight reports skip Kalman for runtime, but the product-facing
+    # analysis_subject bundle keeps it because Block 2.3 is the canonical current-portfolio
+    # factor-exposure surface.
+    skip_kalman_for_lightweight = should_skip_kalman_for_lightweight_run(
+        lightweight=lightweight,
+        portfolio_role_override=portfolio_role_override,
+        output_profile=output_policy.profile,
+    )
+    if skip_kalman_for_lightweight:
         stress_report["factor_betas_kalman_skip_reason"] = "lightweight_comparison_profile"
     try:
-        if lightweight:
+        if skip_kalman_for_lightweight:
             raise RuntimeError("skip_kalman_lightweight_profile")
         attach_kalman_factor_betas_to_stress_report(
             stress_report,
@@ -2342,7 +2353,34 @@ def run_portfolio_report_for_weights(
         {"timestamp": run_timestamp, "snapshots": snapshot_index_entries},
         output_dir_final / "snapshot_index.json",
     )
-    xray_summary = _xray_summary_from_output_dir(output_dir_final)
+    primary_corr_matrix = None
+    primary_corr_ref = None
+    for _corr_window in ("10y", "5y", "3y"):
+        _corr_frame = corr_by_window.get(_corr_window)
+        if _corr_frame is not None and not _corr_frame.empty:
+            primary_corr_matrix = _corr_frame
+            primary_corr_ref = corr_csv_by_window.get(_corr_window) or f"runtime:correlation_matrix_{_corr_window}"
+            break
+    xray_summary = build_portfolio_xray_v2(
+        analysis_setup=analysis_setup,
+        weights=weights,
+        rc_asset=snapshot.get("RC_asset") if isinstance(snapshot, dict) else None,
+        stress_report=stress_report,
+        portfolio_valid=portfolio_valid,
+        portfolio_metrics=(snapshot.get("metrics") if isinstance(snapshot, dict) else None),
+        portfolio_windows=portfolio_windows or None,
+        portfolio_analytics=(snapshot.get("analytics") if isinstance(snapshot, dict) else None),
+        drawdown_structure=(snapshot.get("drawdown_structure") if isinstance(snapshot, dict) else None),
+        correlation_matrix=primary_corr_matrix,
+        correlation_matrix_ref=primary_corr_ref,
+        output_dir_final=output_dir_final,
+        output_dir_csv=csv_export_dir,
+    )
+    try:
+        with open(output_dir_final / "portfolio_xray.json", "w", encoding="utf-8") as f:
+            json.dump(xray_summary, f, indent=2, ensure_ascii=False, default=str)
+    except Exception:
+        xray_summary = _xray_summary_from_output_dir(output_dir_final)
     problem_classification_doc = None
     try:
         problem_classification_path = write_problem_classification_outputs(
@@ -2604,6 +2642,20 @@ def should_use_review_run_context_for_subject(
         return use_review_run_context
     mode = (review_mode or "core").strip().lower()
     return mode == "core"
+
+
+def should_skip_kalman_for_lightweight_run(
+    *,
+    lightweight: bool,
+    portfolio_role_override: str | None = None,
+    output_profile: str | None = None,
+) -> bool:
+    """Skip Kalman for candidate lightweight reports, but keep it for analysis_subject JSON bundles."""
+    analysis_subject_json_bundle = (
+        str(portfolio_role_override or "") == "analysis_subject"
+        and str(output_profile or "") in {"site_api", "core_json", "lightweight_comparison"}
+    )
+    return bool(lightweight and not analysis_subject_json_bundle)
 
 
 def run_materialize_analysis_subject_report(

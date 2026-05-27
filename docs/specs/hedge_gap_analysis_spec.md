@@ -36,8 +36,8 @@ Session 02 scaffold; per-risk offset math Session 03+; `run_stress` wiring Sessi
 
 ### Risk type → scenario mapping (v1 — frozen)
 
-Seven product risk types map 1:1 to seven synthetic scenarios. **`recession_severe` is excluded**
-from Block 3.3 v1 rows (eighth synthetic remains in Scenario Library and Block 3.2 only).
+Eight product protection areas map 1:1 to eight synthetic scenarios (seven fixed vectors plus
+calibrated `recession_severe`).
 
 | `risk_type` | `linked_scenario_id` |
 | --- | --- |
@@ -48,6 +48,7 @@ from Block 3.3 v1 rows (eighth synthetic remains in Scenario Library and Block 3
 | `usd_spike_protection` | `usd_shock` |
 | `credit_shock_protection` | `credit_shock` |
 | `commodity_inflation_shock_protection` | `commodity_shock` |
+| `recession_severe_protection` | `recession_severe` |
 
 Registry constant (implementation): `BLOCK_3_3_RISK_SCENARIO_MAP` in `src/hedge_gap_analysis_block.py`.
 Do **not** reuse legacy weakness-bucket ids (`recession`, `inflation`, …) or
@@ -120,9 +121,9 @@ positives and negatives from the full per-scenario map.
 | `loss_gate_mode` | Copy of report `loss_gate_mode` |
 | `diagnosis_method` | `contribution_based_offset_coverage_v1` |
 | `scenario_library` | `synthetic_ids` linkage copy from Block 3.2 / Scenario Library (for contract tests) |
-| `by_risk_type` | Seven rows per mapping table (or explicit unavailable rows) |
+| `by_risk_type` | Eight rows per mapping table (or explicit unavailable rows) |
 | `summary` | See above |
-| `n_risk_types` | Length of `by_risk_type` (expect 7 when map complete) |
+| `n_risk_types` | Length of `by_risk_type` (expect 8 when map complete) |
 
 **Forbidden on Block 3.3 product rows:** `pass`, `loss_ok`, `gap_detected`, `status` (legacy taxonomy),
 `max_dd_limit`, mandate comparison fields.

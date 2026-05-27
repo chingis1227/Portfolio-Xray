@@ -172,6 +172,34 @@ def test_build_block_2_2_contract_and_top_correlation_pairs_from_csv(tmp_path: A
     assert lowest[0] == {"ticker_a": "GLD", "ticker_b": "SPY", "correlation": 0.05}
 
 
+def test_build_block_2_2_top_correlation_pairs_from_in_memory_matrix() -> None:
+    corr = pd.DataFrame(
+        [[1.0, 0.55, 0.05], [0.55, 1.0, 0.92], [0.05, 0.92, 1.0]],
+        index=["SPY", "BND", "GLD"],
+        columns=["SPY", "BND", "GLD"],
+    )
+
+    doc = build_block_2_2_portfolio_metrics(
+        analysis_setup=_mvp_analysis_setup(),
+        portfolio_metrics=minimal_block_2_2_metrics(),
+        portfolio_analytics=minimal_block_2_2_analytics(),
+        drawdown_structure=minimal_block_2_2_drawdown_structure(),
+        output_dir_csv=None,
+        correlation_matrix=corr,
+        correlation_matrix_ref="runtime:correlation_matrix_10y",
+        weights={"SPY": 0.5, "BND": 0.5},
+    )
+
+    assert doc["correlation_breakdown"]["full_matrix_available"] is True
+    assert doc["correlation_breakdown"]["full_matrix_ref"] == "runtime:correlation_matrix_10y"
+    assert doc["correlation_breakdown"]["top3_highest_correlation_pairs"][0] == {
+        "ticker_a": "BND",
+        "ticker_b": "GLD",
+        "correlation": 0.92,
+    }
+    assert not any("correlation matrix is missing" in w.lower() for w in doc["data_quality_warnings"])
+
+
 def test_build_block_2_2_missing_correlation_matrix_adds_warning() -> None:
     doc = build_block_2_2_portfolio_metrics(
         analysis_setup=_mvp_analysis_setup(),

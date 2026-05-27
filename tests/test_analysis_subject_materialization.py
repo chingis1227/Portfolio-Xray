@@ -225,6 +225,25 @@ def test_run_materialize_analysis_subject_core_passes_lightweight_and_context(
     assert analysis_subject_meets_minimum(tmp_path / "Main portfolio") is True
 
 
+def test_analysis_subject_lightweight_profile_still_allows_kalman_path() -> None:
+    assert (
+        run_report.should_skip_kalman_for_lightweight_run(
+            lightweight=True,
+            portfolio_role_override="analysis_subject",
+            output_profile="site_api",
+        )
+        is False
+    )
+    assert (
+        run_report.should_skip_kalman_for_lightweight_run(
+            lightweight=True,
+            portfolio_role_override="candidate",
+            output_profile="lightweight_comparison",
+        )
+        is True
+    )
+
+
 def test_run_materialize_analysis_subject_full_uses_full_profile_without_context(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

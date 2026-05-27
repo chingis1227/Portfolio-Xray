@@ -395,12 +395,23 @@ def _risk_ranking(
 def _kalman_current_beta(stress_report: dict[str, Any]) -> dict[str, Any]:
     kalman = stress_report.get("factor_betas_kalman")
     if not isinstance(kalman, dict):
+        kalman_error = str(stress_report.get("factor_betas_kalman_error") or "").strip()
+        skip_reason = str(stress_report.get("factor_betas_kalman_skip_reason") or "").strip()
+        if skip_reason:
+            reason = "kalman_skipped_by_profile"
+            notes = [f"Kalman skipped: {skip_reason}."]
+        elif kalman_error:
+            reason = "kalman_computation_failed"
+            notes = [f"Kalman computation failed upstream: {kalman_error}"]
+        else:
+            reason = "kalman_not_in_stress_report"
+            notes = ["Kalman beta diagnostics are missing from stress_report; Block 2.3 does not calculate them."]
         return {
             "available": False,
-            "reason": "kalman_module_not_available",
+            "reason": reason,
             "betas": {key: None for key in PRODUCTION_BETA_KEYS},
             "method": "kalman_dynamic_beta",
-            "notes": ["Kalman beta diagnostics are missing from stress_report; Block 2.3 does not calculate them."],
+            "notes": notes,
         }
     raw = kalman.get("latest")
     if not isinstance(raw, dict) or not raw:
@@ -554,7 +565,9 @@ def build_block_2_3_factor_exposure(
         data_quality_warnings.append(f"Factor variance contribution unavailable: {reason}.")
     kalman = _kalman_current_beta(stress)
     if not kalman.get("available"):
-        data_quality_warnings.append(f"Kalman current beta unavailable: {kalman.get('reason')}.")
+        informational_disclosures.append(
+            f"Kalman current beta unavailable (optional diagnostic): {kalman.get('reason')}."
+        )
 
     ranking = _risk_ranking(
         betas_5y=betas_5y,

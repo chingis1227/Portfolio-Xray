@@ -2,7 +2,9 @@
 Stress testing: factor data (FRED + Yahoo) and beta estimation.
 Primary stress-report factor betas use weekly returns/changes (see FACTOR_WEEKS_5Y / FACTOR_WEEKS_10Y).
 Monthly helpers remain for legacy / diagnostics only.
-Factors: equity (S&P/SPY), real rates (DFII10 Δ), inflation (T10YIE Δ), credit (BAMLH0A0HYM2 Δ), USD (DTWEXBGS), commodities (DBC/PDBC).
+Factors: equity (S&P/SPY), real rates (DFII10 Δ), inflation (T10YIE Δ),
+credit (BAMLH0A0HYM2 Δ; BAA10Y Δ fallback when HY OAS history is too short),
+USD (DTWEXBGS), commodities (DBC/PDBC).
 """
 from __future__ import annotations
 
@@ -19,6 +21,7 @@ from scipy import stats
 from src.data_fred import fetch_fred_series
 from src.data_yf import fetch_daily
 from src.pandas_compat import MONTH_END_FREQ
+from src.real_cash import is_real_cash_ticker, partition_market_data_tickers
 
 _LOG = logging.getLogger(__name__)
 
@@ -138,6 +141,7 @@ FRED_EQUITY_LEVEL = "SP500"
 FRED_REAL_10Y = "DFII10"
 FRED_BREAKEVEN_10Y = "T10YIE"
 FRED_HY_SPREAD = "BAMLH0A0HYM2"
+FRED_CREDIT_SPREAD_FALLBACK = "BAA10Y"
 FRED_DXY = "DTWEXBGS"
 FRED_VIX = "VIXCLS"
 FRED_US_GROWTH = "WEI"
@@ -274,6 +278,26 @@ def _fred_weekly_decimal_diff(series_id: str, start: str, end: str) -> pd.Series
         return _empty_factor_series(f"FRED:{series_id}:{type(exc).__name__}:{exc}")
 
 
+def _series_with_factor_source(
+    series: pd.Series,
+    *,
+    source: str,
+    fallback_used: bool = False,
+    fallback_reason: str | None = None,
+    primary_source: str | None = None,
+) -> pd.Series:
+    """Attach source metadata to a factor series without changing its values."""
+    out = series.copy()
+    out.attrs.update(getattr(series, "attrs", {}) or {})
+    out.attrs["factor_source"] = source
+    out.attrs["fallback_used"] = bool(fallback_used)
+    if fallback_reason:
+        out.attrs["fallback_reason"] = str(fallback_reason)
+    if primary_source:
+        out.attrs["primary_source"] = str(primary_source)
+    return out
+
+
 def _fred_monthly_decimal_diff(series_id: str, start: str, end: str) -> pd.Series:
     try:
         s = fetch_fred_series(series_id, start, end)
@@ -351,12 +375,60 @@ def fetch_inflation_surprise_monthly(start: str, end: str) -> pd.Series:
 
 
 def fetch_credit_spread_weekly(start: str, end: str) -> pd.Series:
-    """Weekly change in HY spread (FRED BAMLH0A0HYM2). Percent -> decimal (e.g. 4.0% -> 0.04)."""
-    return _fred_weekly_decimal_diff(FRED_HY_SPREAD, start, end)
+    """
+    Weekly change in credit spread. Percent -> decimal (e.g. 4.0% -> 0.04).
+
+    Primary source is HY OAS (FRED BAMLH0A0HYM2). That public FRED series can have
+    short live history in some environments; when it does not cover the requested
+    factor window well enough, fall back to the longer Baa corporate spread over
+    10Y Treasury (FRED BAA10Y). The fallback preserves the same direction and
+    units (spread widening as positive decimal change) but is disclosed in factor
+    diagnostics so product text can distinguish HY OAS from the Baa spread proxy.
+    """
+    primary = _fred_weekly_decimal_diff(FRED_HY_SPREAD, start, end)
+    primary_non_na = int(primary.dropna().shape[0]) if isinstance(primary, pd.Series) else 0
+    requested_week_rows = max(1, int(len(pd.date_range(start, end, freq="W-FRI"))))
+    primary_fill_ratio = primary_non_na / float(requested_week_rows)
+    if primary_non_na >= 52 and primary_fill_ratio >= 0.5:
+        return _series_with_factor_source(primary, source=f"FRED:{FRED_HY_SPREAD}")
+
+    fallback = _fred_weekly_decimal_diff(FRED_CREDIT_SPREAD_FALLBACK, start, end)
+    if isinstance(fallback, pd.Series) and not fallback.dropna().empty:
+        return _series_with_factor_source(
+            fallback,
+            source=f"FRED:{FRED_CREDIT_SPREAD_FALLBACK}",
+            fallback_used=True,
+            fallback_reason=(
+                f"primary FRED:{FRED_HY_SPREAD} insufficient coverage "
+                f"({primary_non_na}/{requested_week_rows} weekly observations)"
+            ),
+            primary_source=f"FRED:{FRED_HY_SPREAD}",
+        )
+
+    return _series_with_factor_source(primary, source=f"FRED:{FRED_HY_SPREAD}")
 
 
 def fetch_credit_spread_monthly(start: str, end: str) -> pd.Series:
-    return _fred_monthly_decimal_diff(FRED_HY_SPREAD, start, end)
+    primary = _fred_monthly_decimal_diff(FRED_HY_SPREAD, start, end)
+    primary_non_na = int(primary.dropna().shape[0]) if isinstance(primary, pd.Series) else 0
+    requested_month_rows = max(1, int(len(pd.date_range(start, end, freq=MONTH_END_FREQ))))
+    primary_fill_ratio = primary_non_na / float(requested_month_rows)
+    if primary_non_na >= 24 and primary_fill_ratio >= 0.5:
+        return _series_with_factor_source(primary, source=f"FRED:{FRED_HY_SPREAD}")
+
+    fallback = _fred_monthly_decimal_diff(FRED_CREDIT_SPREAD_FALLBACK, start, end)
+    if isinstance(fallback, pd.Series) and not fallback.dropna().empty:
+        return _series_with_factor_source(
+            fallback,
+            source=f"FRED:{FRED_CREDIT_SPREAD_FALLBACK}",
+            fallback_used=True,
+            fallback_reason=(
+                f"primary FRED:{FRED_HY_SPREAD} insufficient coverage "
+                f"({primary_non_na}/{requested_month_rows} monthly observations)"
+            ),
+            primary_source=f"FRED:{FRED_HY_SPREAD}",
+        )
+    return _series_with_factor_source(primary, source=f"FRED:{FRED_HY_SPREAD}")
 
 
 def fetch_usd_weekly(start: str, end: str) -> pd.Series:
@@ -486,7 +558,7 @@ FACTOR_DEFINITIONS: tuple[FactorDefinition, ...] = (
     FactorDefinition("equity", "beta_eq", "Equity", "SPY or FRED:SP500", lambda start, end: fetch_equity_weekly(start, end), lambda start, end: fetch_equity_monthly(start, end), True),
     FactorDefinition("real_rates", "beta_rr", "Real rates", "FRED:DFII10", lambda start, end: fetch_real_rates_weekly(start, end), lambda start, end: fetch_real_rates_monthly(start, end), True),
     FactorDefinition("inflation", "beta_inf", "Inflation", "FRED:T10YIE", lambda start, end: fetch_inflation_surprise_weekly(start, end), lambda start, end: fetch_inflation_surprise_monthly(start, end), True),
-    FactorDefinition("credit", "beta_credit", "Credit (HY)", "FRED:BAMLH0A0HYM2", lambda start, end: fetch_credit_spread_weekly(start, end), lambda start, end: fetch_credit_spread_monthly(start, end), True),
+    FactorDefinition("credit", "beta_credit", "Credit spread", "FRED:BAMLH0A0HYM2; fallback FRED:BAA10Y", lambda start, end: fetch_credit_spread_weekly(start, end), lambda start, end: fetch_credit_spread_monthly(start, end), True),
     FactorDefinition("usd", "beta_usd", "USD", "FRED:DTWEXBGS", lambda start, end: fetch_usd_weekly(start, end), lambda start, end: fetch_usd_monthly(start, end), True),
     FactorDefinition("commodity", "beta_cmd", "Commodity", "DBC", lambda start, end: fetch_commodity_weekly(start, end), lambda start, end: fetch_commodity_monthly(start, end), True),
     FactorDefinition("vix", "beta_vix", "VIX", "FRED:VIXCLS", lambda start, end: fetch_vix_weekly(start, end), lambda start, end: fetch_vix_monthly(start, end), False),
@@ -610,7 +682,10 @@ def _build_factor_frame(
         load_rows[spec.column] = {
             "factor": spec.column,
             "beta_key": spec.beta_key,
-            "source": spec.source_label,
+            "source": str(getattr(series, "attrs", {}).get("factor_source") or spec.source_label),
+            "primary_source": getattr(series, "attrs", {}).get("primary_source"),
+            "fallback_used": bool(getattr(series, "attrs", {}).get("fallback_used") or False),
+            "fallback_reason": getattr(series, "attrs", {}).get("fallback_reason"),
             "status": status,
             "reason": reason,
             "observations_loaded": int(len(cleaned)),
@@ -1915,7 +1990,8 @@ def _portfolio_factor_weekly_ols_rows_from_frames(
     use = [str(t).strip() for t in use if t and str(t).strip()]
     if not use:
         return {"error": "no_tickers", "n_obs": 0}
-    missing = [t for t in use if t not in frames.asset_weekly.columns]
+    download_tickers, real_cash_tickers = partition_market_data_tickers(use)
+    missing = [t for t in download_tickers if t not in frames.asset_weekly.columns]
     if missing:
         return {"error": "missing_asset_columns", "n_obs": 0, "missing": missing}
 
@@ -1925,7 +2001,10 @@ def _portfolio_factor_weekly_ols_rows_from_frames(
     if len(common) < 10:
         return {"error": "insufficient_common_rows", "n_obs": int(len(common))}
 
-    y_frame = frames.asset_weekly.reindex(common).loc[:, use]
+    y_frame = frames.asset_weekly.reindex(common).loc[:, download_tickers].copy()
+    for cash_label in real_cash_tickers:
+        y_frame[cash_label] = 0.0
+    y_frame = y_frame.reindex(columns=use)
     x_frame = frames.factors.reindex(common).loc[:, factor_cols].dropna()
     y_frame = y_frame.reindex(x_frame.index)
     if x_frame.empty or len(x_frame) < 10:
@@ -1984,15 +2063,20 @@ def _portfolio_factor_weekly_ols_rows(
     if not use:
         return {"error": "no_tickers", "n_obs": 0}
 
-    daily = download_all(use, start_dl, end_dl)
+    download_tickers, real_cash_tickers = partition_market_data_tickers(use)
+    daily = download_all(download_tickers, start_dl, end_dl)
     daily_prices: dict[str, pd.Series] = {}
-    for t in use:
+    for t in download_tickers:
         df = daily.get(t)
         if df is None or df.empty or "Close" not in df.columns:
             continue
         daily_prices[t] = df["Close"].copy()
 
     asset_weekly = asset_weekly_returns_from_daily(daily_prices, start_dl, end_dl)
+    for cash_label in real_cash_tickers:
+        if asset_weekly.empty:
+            asset_weekly = pd.DataFrame(index=pd.DatetimeIndex([], name="date"))
+        asset_weekly[cash_label] = 0.0
     factors = build_factor_matrix(start_dl, end_dl)
     if asset_weekly.empty or factors.empty:
         return {"error": "empty_weekly_inputs", "n_obs": 0}
@@ -2473,10 +2557,14 @@ def compute_portfolio_kalman_factor_betas_weekly(
         index=pd.to_datetime(rows["dates"]),
         name="portfolio_return",
     )
+    x_values = np.asarray(rows["X"], dtype=float)
+    factor_cols = list(rows["factor_cols"])
+    if x_values.ndim == 1:
+        x_values = x_values.reshape(-1, len(factor_cols))
     factors = pd.DataFrame(
-        np.asarray(rows["X"], dtype=float),
+        x_values,
         index=pd.to_datetime(rows["dates"]),
-        columns=list(rows["factor_cols"]),
+        columns=factor_cols,
     )
     report, history_df, latest_df = kalman_factor_betas_from_frames(
         y,

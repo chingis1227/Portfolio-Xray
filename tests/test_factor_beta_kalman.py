@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from src import stress_factors as sf
 
@@ -100,6 +101,46 @@ def test_kalman_inner_alignment_drops_missing_rows() -> None:
 
     assert report["status"] == "available"
     assert report["n_observations"] == 78
+
+
+def test_portfolio_weekly_ols_rows_skips_real_cash_download(monkeypatch: pytest.MonkeyPatch) -> None:
+    downloaded: list[str] = []
+
+    def fake_download_all(tickers: list[str], *_args, **_kwargs) -> dict[str, pd.DataFrame]:
+        downloaded.extend(tickers)
+        idx = pd.date_range("2020-01-03", periods=120, freq="W-FRI")
+        close = pd.Series(100.0 + np.arange(len(idx)) * 0.01, index=idx)
+        return {t: pd.DataFrame({"Close": close}) for t in tickers}
+
+    def fake_build_factor_matrix(_start: str, _end: str) -> pd.DataFrame:
+        idx = pd.date_range("2020-01-03", periods=120, freq="W-FRI")
+        vals = np.random.default_rng(1).normal(scale=0.01, size=(len(idx), len(sf.FACTOR_COLUMN_ORDER)))
+        return pd.DataFrame(vals, index=idx, columns=list(sf.FACTOR_COLUMN_ORDER))
+
+    def fake_asset_weekly(daily_prices: dict[str, pd.Series], *_args) -> pd.DataFrame:
+        idx = next(iter(daily_prices.values())).index
+        weekly_idx = pd.date_range(idx.min(), idx.max(), freq="W-FRI")
+        out = pd.DataFrame(
+            {t: np.full(len(weekly_idx), 0.001) for t in daily_prices},
+            index=weekly_idx,
+        )
+        return out
+
+    monkeypatch.setattr("src.data_yf.download_all", fake_download_all)
+    monkeypatch.setattr(sf, "build_factor_matrix", fake_build_factor_matrix)
+    monkeypatch.setattr(sf, "asset_weekly_returns_from_daily", fake_asset_weekly)
+
+    rows = sf._portfolio_factor_weekly_ols_rows(
+        weights={"VOO": 0.9, "Cash USD": 0.1},
+        tickers=["VOO", "Cash USD"],
+        analysis_end_str="2020-06-30",
+        window_weeks=52,
+        factor_columns=sf.FACTOR_COLUMN_ORDER,
+    )
+
+    assert rows.get("error") is None
+    assert "Cash USD" not in downloaded
+    assert rows.get("n_obs", 0) >= 10
 
 
 def test_kalman_too_few_observations_returns_unavailable() -> None:

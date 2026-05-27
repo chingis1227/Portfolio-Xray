@@ -168,6 +168,20 @@ def test_block_2_3_missing_factor_betas_5y_degrades_without_recompute(monkeypatc
     assert any("factor_betas_5y missing" in warning for warning in block["data_quality_warnings"])
 
 
+def test_block_2_3_kalman_error_maps_to_precise_unavailable_reason() -> None:
+    stress = _stress_report()
+    stress.pop("factor_betas_kalman", None)
+    stress["factor_betas_kalman_error"] = "Length mismatch: Expected axis has 2 elements, new values have 1 elements"
+    block = build_block_2_3_factor_exposure(stress_report=stress, analysis_setup=_analysis_setup())
+
+    kalman = block["kalman_current_beta"]
+    assert kalman["available"] is False
+    assert kalman["reason"] == "kalman_computation_failed"
+    assert any("Length mismatch" in note for note in kalman["notes"])
+    assert not any("Kalman current beta unavailable" in w for w in block["data_quality_warnings"])
+    assert any("Kalman current beta unavailable" in d for d in block["informational_disclosures"])
+
+
 def test_block_2_3_unavailable_when_stress_report_missing() -> None:
     block = build_block_2_3_factor_exposure(stress_report=None, analysis_setup=None, weights={})
 
@@ -196,7 +210,7 @@ def test_block_2_3_real_cash_warning_and_no_cash_proxy_substitution() -> None:
         weights={"VOO": 0.9, "Cash USD": 0.1},
     )
 
-    assert any("Real cash" in warning for warning in block["data_quality_warnings"])
+    assert any("real cash" in note.lower() for note in block["informational_disclosures"])
     assert block["factor_diagnostics_meta"]["cash_handling"] == "real_cash_has_zero_return_and_no_price_series"
     assert "BIL" not in block["factor_beta_snapshot"]
 

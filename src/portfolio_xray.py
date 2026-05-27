@@ -3409,6 +3409,8 @@ def build_portfolio_xray_v2(
     taxonomy_rows: dict[str, dict[str, Any]] | None = None,
     taxonomy_sources: dict[str, str] | None = None,
     rc_vol_map: dict[str, float] | None = None,
+    correlation_matrix: pd.DataFrame | None = None,
+    correlation_matrix_ref: str | None = None,
     output_dir_final: Path | str | None = None,
     output_dir_csv: Path | str | None = None,
 ) -> dict[str, Any]:
@@ -3460,6 +3462,8 @@ def build_portfolio_xray_v2(
         drawdown_structure=drawdown_structure,
         portfolio_windows=portfolio_windows,
         output_dir_csv=output_dir_csv,
+        correlation_matrix=correlation_matrix,
+        correlation_matrix_ref=correlation_matrix_ref,
         weights=weight_map,
     )
     block_2_3_factor_exposure = build_block_2_3_factor_exposure(

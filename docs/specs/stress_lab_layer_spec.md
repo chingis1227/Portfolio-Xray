@@ -256,7 +256,7 @@ Tests: `tests/test_stress_scorecard_contract.py`, `tests/test_portfolio_commenta
 | Contract key | `hedge_gap_analysis_v1` on `stress_report.json` | **S** Block 3.3 Session 01 |
 | Diagnosis method | Contribution-based offset coverage from signed `pnl_by_asset_pct`; **no** taxonomy hedge pre-labeling | **S** [hedge_gap_analysis_spec.md](hedge_gap_analysis_spec.md) |
 | Evidence source | Block 3.1 `scenario_results[]` and/or Block 3.2 `stress_results_v1.synthetic_scenarios[]` (`loss_contribution.pnl_by_asset_pct`); **no** stress PnL recompute | **S** Session 01 |
-| Risk types | Seven product `risk_type` rows, 1:1 with seven synthetic scenarios (`recession_severe` excluded from v1 rows) | **S** ExecPlan Block 3.3 |
+| Risk types | Eight product `risk_type` rows, 1:1 with eight synthetic scenarios (includes `recession_severe_protection`) | **S** ExecPlan Block 3.3 |
 | Key metric | `offset_coverage_ratio` = positive help / gross hurt when gross hurt > 0 | **S** Session 01 |
 | Summary | `main_hedge_gap`, `weakest_protection_area`, `strongest_protection_area`, portfolio `diagnosis_summary_en` | **S** Session 01 (builder Session 04+) |
 | Diagnostic boundary | `loss_gate_mode="diagnostic"`; no mandate pass/fail on Block 3.3 product rows | **S** Core MVP |

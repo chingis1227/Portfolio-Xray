@@ -13,11 +13,22 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.core_mvp_validation_contract import (
+    BLOCK2_CORE_MVP_ROLLUP_KEYS,
+    BLOCK2_OPTIONAL_DIAGNOSTIC_KEYS,
+    core_mvp_block2_block_status,
+    core_mvp_block2_fixture_status,
+    is_informational_block23_warning,
+)
 
 BLOCK_KEYS = [
     "block_2_1_asset_allocation",
@@ -208,28 +219,34 @@ def _validate_fixture(portfolio_xray_path: Path) -> dict[str, Any]:
         warnings = _to_warning_texts(block.get("data_quality_warnings"))
         warning_domains = _classify_warning_domains(warnings)
 
+        core_mvp_status = core_mvp_block2_block_status(
+            block,
+            block_key,
+            missing_fields=missing_fields,
+            warnings=warnings,
+        )
         block_row: dict[str, Any] = {
             "status": status,
+            "core_mvp_status": core_mvp_status,
+            "product_status": status,
             "missing_fields": missing_fields,
             "warnings": warnings,
             "warning_domains": warning_domains,
+            "optional_diagnostic_block": block_key in BLOCK2_OPTIONAL_DIAGNOSTIC_KEYS,
         }
         if block_key == "block_2_3_factor_exposure":
             block_row["special_checks"] = _check_block_23(block)
+            block_row["informational_warnings"] = [w for w in warnings if is_informational_block23_warning(w)]
             if block_row["special_checks"]["stress_leakage_keys"]:
                 # leakage in Block 2.3 is a hard failure
                 block_row["status"] = "failed"
+                block_row["core_mvp_status"] = "failed"
 
         result["block_results"][block_key] = block_row
 
-    # Fixture rollup status
-    statuses = [v["status"] for v in result["block_results"].values()]
-    if "failed" in statuses:
-        result["status"] = "failed"
-    elif any(s in {"partial", "unavailable"} for s in statuses):
-        result["status"] = "partial"
-    else:
-        result["status"] = "ok"
+    result["status"] = core_mvp_block2_fixture_status(result["block_results"])
+    result["core_mvp_rollup_blocks"] = list(BLOCK2_CORE_MVP_ROLLUP_KEYS)
+    result["optional_diagnostic_blocks"] = list(BLOCK2_OPTIONAL_DIAGNOSTIC_KEYS)
 
     return result
 
@@ -274,10 +291,22 @@ def main() -> int:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "step": "step_4_block_2_validation",
         "output_root": str(output_root),
+        "validation_contract": "core_mvp_blocks_1_3_v2",
         "counts": {
             "ok": sum(1 for r in results if r["status"] == "ok"),
             "partial": sum(1 for r in results if r["status"] == "partial"),
             "failed": sum(1 for r in results if r["status"] == "failed"),
+        },
+        "product_status_counts": {
+            "partial": sum(
+                1
+                for r in results
+                if any(
+                    (br.get("product_status") or br.get("status")) == "partial"
+                    for br in (r.get("block_results") or {}).values()
+                    if isinstance(br, dict)
+                )
+            ),
         },
         "results": results,
     }

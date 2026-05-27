@@ -6,7 +6,7 @@ Builds the product-facing Block 3.3 layer from stress evidence already on
 
 This module must not import ``src.stress`` (mirror Block 3.2 isolation).
 
-Session 02 (scaffold): registry, seven unavailable placeholder rows, attach stub.
+Session 02 (scaffold): registry, eight unavailable placeholder rows, attach stub.
 Session 03: per-risk hurt/helped extraction and offset_coverage_ratio.
 Session 04: summary + diagnosis_summary_en templates (implemented).
 Session 05: attach_hedge_gap_analysis_v1 wired from run_stress, _empty_report, run_report, run_optimization.
@@ -23,7 +23,7 @@ _DIAGNOSIS_METHOD = "contribution_based_offset_coverage_v1"
 _LOSS_GATE_MODE_DIAGNOSTIC = "diagnostic"
 _LOSS_GATE_MODE_MANDATE = "mandate"
 
-# Frozen v1 product map — seven risk types; recession_severe excluded (Block 3.2 only).
+# Frozen v1 product map — eight protection areas (seven fixed synthetics + recession_severe).
 BLOCK_3_3_RISK_SCENARIO_MAP: dict[str, str] = {
     "equity_crash_protection": "equity_shock",
     "rates_up_shock_protection": "rates_shock",
@@ -32,6 +32,7 @@ BLOCK_3_3_RISK_SCENARIO_MAP: dict[str, str] = {
     "usd_spike_protection": "usd_shock",
     "credit_shock_protection": "credit_shock",
     "commodity_inflation_shock_protection": "commodity_shock",
+    "recession_severe_protection": "recession_severe",
 }
 
 _RISK_TYPE_LABEL_EN: dict[str, str] = {
@@ -42,6 +43,7 @@ _RISK_TYPE_LABEL_EN: dict[str, str] = {
     "usd_spike_protection": "USD spike",
     "credit_shock_protection": "credit shock",
     "commodity_inflation_shock_protection": "commodity inflation shock",
+    "recession_severe_protection": "severe recession",
 }
 
 _SCENARIO_LABEL_EN: dict[str, str] = {
@@ -52,6 +54,7 @@ _SCENARIO_LABEL_EN: dict[str, str] = {
     "usd_shock": "USD shock",
     "credit_shock": "credit shock",
     "commodity_shock": "commodity shock",
+    "recession_severe": "severe recession",
 }
 
 

@@ -66,9 +66,16 @@ def fetch_daily(
         return pd.DataFrame(columns=["Close"]).rename_axis("Date")
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
+    # yfinance can return duplicate level-0 names; keep a single price column.
+    if getattr(df.columns, "duplicated", None) is not None and df.columns.duplicated().any():
+        df = df.loc[:, ~df.columns.duplicated()].copy()
     price_col = "Adj Close" if "Adj Close" in df.columns else "Close"
-    df = df[[price_col]].copy()
-    df.columns = ["Close"]
+    if price_col not in df.columns:
+        return pd.DataFrame(columns=["Close"]).rename_axis("Date")
+    price_series = df[price_col]
+    if isinstance(price_series, pd.DataFrame):
+        price_series = price_series.iloc[:, 0]
+    df = pd.DataFrame({"Close": pd.to_numeric(price_series, errors="coerce")})
     df = df.dropna(subset=["Close"])
     df.index = pd.to_datetime(df.index).tz_localize(None)
     df = df.rename_axis("Date")

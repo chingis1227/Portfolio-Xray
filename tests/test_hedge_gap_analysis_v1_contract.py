@@ -85,14 +85,14 @@ def test_scenario_library_linkage() -> None:
 
 def test_n_risk_types_matches_by_risk_type_length() -> None:
     out = _build()
-    assert out["n_risk_types"] == 7
+    assert out["n_risk_types"] == 8
     assert out["n_risk_types"] == len(out["by_risk_type"])
 
 
-def test_block_3_3_risk_scenario_map_seven_entries() -> None:
-    assert len(BLOCK_3_3_RISK_SCENARIO_MAP) == 7
+def test_block_3_3_risk_scenario_map_eight_entries() -> None:
+    assert len(BLOCK_3_3_RISK_SCENARIO_MAP) == 8
     assert set(BLOCK_3_3_RISK_SCENARIO_MAP.values()).issubset(set(SYNTHETIC_SCENARIO_IDS))
-    assert "recession_severe" not in BLOCK_3_3_RISK_SCENARIO_MAP.values()
+    assert BLOCK_3_3_RISK_SCENARIO_MAP["recession_severe_protection"] == "recession_severe"
 
 
 def test_by_risk_type_stable_order_and_ids() -> None:
@@ -185,7 +185,7 @@ def test_attach_hedge_gap_analysis_v1_writes_block() -> None:
     block = report.get("hedge_gap_analysis_v1")
     assert isinstance(block, dict)
     assert block["version"] == BLOCK_3_3_VERSION
-    assert block["n_risk_types"] == 7
+    assert block["n_risk_types"] == 8
 
 
 # ---------------------------------------------------------------------------
@@ -224,10 +224,10 @@ def test_empty_hedge_gap_analysis_v1_gate_mode() -> None:
     assert out_man["loss_gate_mode"] == "mandate"
 
 
-def test_empty_hedge_gap_analysis_v1_still_has_seven_rows() -> None:
+def test_empty_hedge_gap_analysis_v1_still_has_eight_rows() -> None:
     out = empty_hedge_gap_analysis_v1()
-    assert out["n_risk_types"] == 7
-    assert len(out["by_risk_type"]) == 7
+    assert out["n_risk_types"] == 8
+    assert len(out["by_risk_type"]) == 8
     assert out["scenario_library"]["synthetic_ids"] == list(SYNTHETIC_SCENARIO_IDS)
 
 
@@ -399,7 +399,7 @@ def test_prefers_stress_results_v1_pnl_over_scenario_results() -> None:
     assert [a["ticker"] for a in row["assets_helped"]] == ["NEW_POS"]
 
 
-def test_all_seven_mapped_scenarios_available_when_evidence_complete() -> None:
+def test_all_eight_mapped_scenarios_available_when_evidence_complete() -> None:
     scenario_rows = [
         _scenario_row(
             sid,
@@ -419,6 +419,44 @@ def test_all_seven_mapped_scenarios_available_when_evidence_complete() -> None:
 # ---------------------------------------------------------------------------
 # Session 04 — summary + diagnosis_summary_en
 # ---------------------------------------------------------------------------
+
+
+def test_recession_severe_protection_row_when_evidence_present() -> None:
+    rows = [
+        _scenario_row(
+            "recession_severe",
+            portfolio_pnl_pct=-0.22,
+            pnl_by_asset_pct={"QQQ": -0.12, "TLT": 0.04, "BND": 0.02},
+        ),
+    ]
+    out = _build_with_scenarios(rows)
+    row = _row_by_risk(out, "recession_severe_protection")
+    assert row["linked_scenario_id"] == "recession_severe"
+    assert row["data_availability"] == "available"
+    assert row["offset_coverage_ratio"] == pytest.approx((0.04 + 0.02) / 0.12)
+    assert [a["ticker"] for a in row["assets_hurt"]] == ["QQQ"]
+    assert {a["ticker"] for a in row["assets_helped"]} == {"TLT", "BND"}
+
+
+def test_main_hedge_gap_can_select_recession_severe_when_weakest_offset() -> None:
+    rows = [
+        _scenario_row(
+            "equity_shock",
+            portfolio_pnl_pct=-0.08,
+            pnl_by_asset_pct={"A": -0.06, "H": 0.03},
+        ),
+        _scenario_row(
+            "recession_severe",
+            portfolio_pnl_pct=-0.22,
+            pnl_by_asset_pct={"A": -0.20, "H": 0.01},
+        ),
+    ]
+    out = _build_with_scenarios(rows)
+    main = out["summary"]["main_hedge_gap"]
+    assert main is not None
+    assert main["risk_type"] == "recession_severe_protection"
+    assert main["linked_scenario_id"] == "recession_severe"
+    assert out["summary"]["weakest_protection_area"] == "recession_severe_protection"
 
 
 def test_main_hedge_gap_selects_minimum_offset_ratio() -> None:
@@ -522,7 +560,7 @@ def test_portfolio_diagnosis_summary_en_when_main_gap_exists() -> None:
 def test_data_quality_warnings_when_rows_unavailable() -> None:
     out = _build()
     warnings = out["summary"]["data_quality_warnings"]
-    assert "7_risk_type_rows_scenario_row_missing" in warnings
+    assert "8_risk_type_rows_scenario_row_missing" in warnings
     assert "all_risk_type_rows_unavailable" in warnings
 
 
@@ -577,8 +615,8 @@ def test_run_stress_includes_hedge_gap_analysis_v1() -> None:
     assert isinstance(block, dict)
     assert block.get("version") == BLOCK_3_3_VERSION
     assert block.get("loss_gate_mode") == "diagnostic"
-    assert block.get("n_risk_types") == 7
-    assert len(block.get("by_risk_type") or []) == 7
+    assert block.get("n_risk_types") == 8
+    assert len(block.get("by_risk_type") or []) == 8
 
 
 def test_run_stress_hedge_gap_reads_stress_results_v1_evidence() -> None:
@@ -623,6 +661,6 @@ def test_run_stress_empty_report_includes_hedge_gap_analysis_v1() -> None:
     block = out.get("hedge_gap_analysis_v1")
     assert isinstance(block, dict)
     assert block.get("version") == BLOCK_3_3_VERSION
-    assert block.get("n_risk_types") == 7
+    assert block.get("n_risk_types") == 8
     assert block["scenario_library"]["synthetic_ids"] == list(SYNTHETIC_SCENARIO_IDS)
     assert block["scenario_library"]["version"] == SCENARIO_LIBRARY_VERSION

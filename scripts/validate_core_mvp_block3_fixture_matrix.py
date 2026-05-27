@@ -13,11 +13,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.core_mvp_validation_contract import core_mvp_block3_fixture_status, core_mvp_block3_scenario_status
 
 EXPECTED_HISTORICAL = ["dotcom", "2008", "2020", "2022", "banking_2023"]
 EXPECTED_SYNTHETIC = [
@@ -239,13 +244,26 @@ def _validate_fixture(stress_report_path: Path) -> dict[str, Any]:
             )
         )
 
-    all_statuses = [r["status"] for r in row["scenario_results"]["synthetic"] + row["scenario_results"]["historical"]]
-    if row["missing_block3_keys"] or "failed" in all_statuses:
-        row["status"] = "failed"
-    elif missing_syn or missing_hist or "partial" in all_statuses or "unavailable" in all_statuses:
-        row["status"] = "partial"
-    else:
-        row["status"] = "ok"
+    scenario_rows = row["scenario_results"]["synthetic"] + row["scenario_results"]["historical"]
+    audit_statuses = [r["status"] for r in scenario_rows]
+    core_statuses = [core_mvp_block3_scenario_status(r) for r in scenario_rows]
+    row["core_mvp_scenario_statuses"] = {
+        "audit": audit_statuses,
+        "core_mvp": core_statuses,
+    }
+    row["status"] = core_mvp_block3_fixture_status(
+        missing_block3_keys=row["missing_block3_keys"],
+        missing_synthetic=missing_syn,
+        missing_historical=missing_hist,
+        scenario_rows=scenario_rows,
+    )
+    row["audit_status"] = (
+        "failed"
+        if row["missing_block3_keys"] or "failed" in audit_statuses
+        else "partial"
+        if missing_syn or missing_hist or "partial" in audit_statuses or "unavailable" in audit_statuses
+        else "ok"
+    )
 
     return row
 
@@ -287,10 +305,16 @@ def main() -> int:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "step": "step_5_block_3_validation",
         "output_root": str(output_root),
+        "validation_contract": "core_mvp_blocks_1_3_v2",
         "counts": {
             "ok": sum(1 for r in results if r["status"] == "ok"),
             "partial": sum(1 for r in results if r["status"] == "partial"),
             "failed": sum(1 for r in results if r["status"] == "failed"),
+        },
+        "audit_status_counts": {
+            "ok": sum(1 for r in results if r.get("audit_status") == "ok"),
+            "partial": sum(1 for r in results if r.get("audit_status") == "partial"),
+            "failed": sum(1 for r in results if r.get("audit_status") == "failed"),
         },
         "results": results,
     }

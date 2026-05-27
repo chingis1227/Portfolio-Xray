@@ -943,7 +943,12 @@ Legacy scalars such as `vol_mult = 1.25`, `vol_mult = 1.50`, `vol_mult = 1.60`, 
 - **Equity (S&P):** FRED:SP500 or ETF proxy SPY (total return preferred).
 - **10Y real yield:** FRED:DFII10; use delta(DFII10).
 - **Inflation surprise:** FRED:T10YIE; use delta(T10YIE) as proxy.
-- **Credit spread (HY):** FRED:BAMLH0A0HYM2; use delta(spread).
+- **Credit spread:** primary FRED:BAMLH0A0HYM2 HY OAS; use delta(spread). If the primary HY
+  series has insufficient history for the requested factor window, use FRED:BAA10Y
+  (Baa corporate spread over 10Y Treasury) as a longer-history fallback and disclose
+  `fallback_used`, `primary_source`, and `fallback_reason` in factor diagnostics. This
+  fallback preserves spread-widening direction and decimal-delta units, but it is a proxy;
+  future data work should review a longer-history HY/OAS-grade source if available.
 - **USD:** FRED:DTWEXBGS; use delta or % change.
 - **Commodity:** ETF proxy DBC; use weekly/month-end percent change.
 - **VIX:** FRED:VIXCLS; use weekly/month-end percent change.
@@ -1110,12 +1115,13 @@ already-computed stress evidence from Block 3.1 (`scenario_results[]`) and Block
 | `loss_gate_mode` | Copy of top-level `loss_gate_mode`; `diagnostic` for Core MVP portfolio-first reports |
 | `diagnosis_method` | `contribution_based_offset_coverage_v1` |
 | `scenario_library` | Synthetic ID linkage for contract alignment with Scenario Library |
-| `by_risk_type[]` | Seven rows: product `risk_type`, `linked_scenario_id`, hurt/helped asset lists, `offset_coverage_ratio`, `loss_concentration`, `data_availability`, `diagnosis_summary_en` |
+| `by_risk_type[]` | Eight rows: product `risk_type`, `linked_scenario_id`, hurt/helped asset lists, `offset_coverage_ratio`, `loss_concentration`, `data_availability`, `diagnosis_summary_en` |
 | `summary` | `main_hedge_gap`, `weakest_protection_area`, `strongest_protection_area`, `diagnosis_summary_en`, `data_quality_warnings` |
-| `n_risk_types` | Length of `by_risk_type` (7 when map complete) |
+| `n_risk_types` | Length of `by_risk_type` (8 when map complete) |
 
-**Per-row linkage (v1):** one synthetic scenario per product risk type; `recession_severe` is not a
-Block 3.3 row. Mapping table: [hedge_gap_analysis_spec.md](hedge_gap_analysis_spec.md).
+**Per-row linkage (v1):** one synthetic scenario per product protection area (including
+`recession_severe_protection` → `recession_severe`). Mapping table:
+[hedge_gap_analysis_spec.md](hedge_gap_analysis_spec.md).
 
 **`offset_coverage_ratio`:** `positive_contribution_from_assets_helped / gross_loss_from_assets_hurt`
 when gross loss from hurt assets is strictly positive; otherwise `null` with explicit
