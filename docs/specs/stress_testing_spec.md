@@ -1048,6 +1048,13 @@ These blocks are diagnostic summaries over existing scenario rows and do not alt
 
 ### 12.2 Hedge gap diagnostic
 
+Block 3.3 Core MVP product contract: **`hedge_gap_analysis_v1`** (contribution-based offset coverage;
+seven synthetic-linked risk types; no taxonomy hedge labels). Normative field rules:
+[hedge_gap_analysis_spec.md](hedge_gap_analysis_spec.md) §Block 3.3. Implementation: Session 02+
+(`src/hedge_gap_analysis_block.py`). Legacy taxonomy block remains §12.2.1.
+
+#### 12.2.1 Legacy `hedge_gap_analysis` (taxonomy hedge labels)
+
 `stress_report.json.hedge_gap_analysis` records stress-evidence of hedge weakness. **Aggregate (v1):**
 worst synthetic scenario globally (minimum `portfolio_pnl_pct`). **Per risk type (v2):** for each
 weakness bucket mapped via `HEDGE_GAP_SCENARIO_BY_RISK` (aligned with X-Ray `WEAKNESS_SCENARIO_MAP`),
@@ -1078,6 +1085,35 @@ passed into `run_stress` from `run_report.py`.
 See `hedge_gap_analysis_spec.md` for per-type status taxonomy and mapping table.
 
 This diagnostic does not alter mandate gates, optimizer behavior, or stress pass/fail.
+
+#### 12.2.2 Block 3.3 `hedge_gap_analysis_v1` (Core MVP)
+
+`stress_report.json.hedge_gap_analysis_v1` is the product-facing Block 3.3 contract. It reads
+already-computed stress evidence from Block 3.1 (`scenario_results[]`) and Block 3.2
+(`stress_results_v1`) and must not re-run the stress engine or pre-label hedge assets.
+
+| Field | Description |
+| --- | --- |
+| `version` | `hedge_gap_analysis_v1` |
+| `loss_gate_mode` | Copy of top-level `loss_gate_mode`; `diagnostic` for Core MVP portfolio-first reports |
+| `diagnosis_method` | `contribution_based_offset_coverage_v1` |
+| `scenario_library` | Synthetic ID linkage for contract alignment with Scenario Library |
+| `by_risk_type[]` | Seven rows: product `risk_type`, `linked_scenario_id`, hurt/helped asset lists, `offset_coverage_ratio`, `loss_concentration`, `data_availability`, `diagnosis_summary_en` |
+| `summary` | `main_hedge_gap`, `weakest_protection_area`, `strongest_protection_area`, `diagnosis_summary_en`, `data_quality_warnings` |
+| `n_risk_types` | Length of `by_risk_type` (7 when map complete) |
+
+**Per-row linkage (v1):** one synthetic scenario per product risk type; `recession_severe` is not a
+Block 3.3 row. Mapping table: [hedge_gap_analysis_spec.md](hedge_gap_analysis_spec.md).
+
+**`offset_coverage_ratio`:** `positive_contribution_from_assets_helped / gross_loss_from_assets_hurt`
+when gross loss from hurt assets is strictly positive; otherwise `null` with explicit
+`data_availability_reason`.
+
+For `loss_gate_mode="diagnostic"`, Block 3.3 product rows must not include mandate pass/fail,
+`gap_detected`, legacy aggregate `status`, or client limit comparison fields.
+
+`stress_conclusions.hedge_gap_status` continues to mirror **legacy** `hedge_gap_analysis.status`
+only until a separate migration retires that coupling.
 
 ### 12.3 Simulator API foundation (no UI)
 

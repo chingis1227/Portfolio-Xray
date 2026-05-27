@@ -216,7 +216,7 @@ predefined factor shocks.
 
 Canonical spec: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.1.
 Do not add or rename scenarios without spec and `DECISIONS.md`. Other Block 3 sections (stress
-results, hedge gap, scorecard) are separate from 3.1.
+results, hedge gap analysis, scorecard) are separate from 3.1.
 
 #### 4.3.2 Stress Results (Block 3.2)
 
@@ -238,6 +238,31 @@ Product boundary:
 
 Canonical specs: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.2,
 [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.1.
+
+#### 4.3.3 Hedge Gap Analysis (Block 3.3)
+
+Hedge Gap Analysis is the product-facing Block 3.3 contract on `stress_report.json`:
+`hedge_gap_analysis_v1`.
+
+It answers, for each key market risk type mapped to a synthetic stress scenario: whether assets that
+helped offset losses from assets that hurt, where protection is weakest, and what the main hedge
+gap is — using signed per-asset scenario contributions only (no pre-labeling holdings as hedges).
+
+Product boundary:
+
+- `hedge_gap_analysis_v1` is a Stress Lab artifact on `stress_report.json` (not on
+  `portfolio_xray.json`).
+- Evidence is read from Block 3.1 / Block 3.2 outputs; Block 3.3 does not recompute scenario PnL.
+- Seven product risk types map 1:1 to seven synthetic scenarios; `recession_severe` is excluded
+  from Block 3.3 v1 rows.
+- Core MVP diagnostic mode (`loss_gate_mode="diagnostic"`) reports offset facts and English
+  interpretation only — no client mandate pass/fail on Block 3.3 rows.
+- Legacy `hedge_gap_analysis` (`stress_scenario_hedge_evidence_v2`, taxonomy hedge labels) remains
+  for backward compatibility; Core MVP operators read `hedge_gap_analysis_v1`.
+
+Canonical specs: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.3,
+[docs/specs/hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md),
+[docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.2.2.
 
 ### 4.4 Problem Classification
 

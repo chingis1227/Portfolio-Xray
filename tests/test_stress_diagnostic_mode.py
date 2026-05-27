@@ -46,6 +46,16 @@ def test_diagnostic_mode_skips_mandate_pass_fail() -> None:
         assert not row.get("diagnostic_codes")
 
 
+def test_diagnostic_mode_includes_hedge_gap_analysis_v1_without_mandate_fields() -> None:
+    out = _long_history_run()
+    block = out.get("hedge_gap_analysis_v1")
+    assert isinstance(block, dict)
+    assert block.get("version") == "hedge_gap_analysis_v1"
+    assert block.get("loss_gate_mode") == LOSS_GATE_MODE_DIAGNOSTIC
+    for row in block.get("by_risk_type") or []:
+        assert _MANDATE_PRODUCT_KEYS.isdisjoint(row.keys())
+
+
 def test_mandate_mode_still_applies_loss_gate() -> None:
     idx = pd.date_range("1995-01-31", periods=360, freq="ME")
     monthly_returns = pd.DataFrame({"AAA": [0.008] * len(idx), "BBB": [0.006] * len(idx)}, index=idx)
@@ -63,6 +73,12 @@ def test_mandate_mode_still_applies_loss_gate() -> None:
     assert out["max_dd_limit"] == 0.05
     assert out["status"] in {"DIAG_PASS", "DIAG_PASS_WITH_WARNING", "DIAG_ATTENTION"}
     assert any(row.get("loss_ok") is not None for row in out["scenario_results"])
+    block = out.get("hedge_gap_analysis_v1")
+    assert isinstance(block, dict)
+    assert block.get("version") == "hedge_gap_analysis_v1"
+    assert block.get("loss_gate_mode") == LOSS_GATE_MODE_MANDATE
+    for row in block.get("by_risk_type") or []:
+        assert _MANDATE_PRODUCT_KEYS.isdisjoint(row.keys())
 
 
 def test_diagnostic_mode_includes_stress_results_v1() -> None:

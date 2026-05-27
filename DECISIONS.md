@@ -60,6 +60,20 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-05-27-002
+Title: Block 3.3 is contribution-based Hedge Gap Analysis with legacy hedge block retained
+
+- Status: accepted
+- Date: 2026-05-27
+- Decision: Define Block 3.3 Core MVP product contract as `hedge_gap_analysis_v1` on `stress_report.json` (contribution-based `offset_coverage_ratio` per seven synthetic-linked risk types; no taxonomy hedge pre-labeling). Renumber Stress Lab Core MVP to 3.1 Scenario Library, 3.2 Stress Results, 3.3 Hedge Gap, 3.4 Scorecard; defer What Happens If simulator and Crisis Replay to advanced/deferred sub-blocks. Keep legacy `hedge_gap_analysis` (`stress_scenario_hedge_evidence_v2`) unchanged for backward compatibility.
+- Context: Product brief requires hedge-gap diagnosis from signed scenario asset contributions without re-running stress or labeling hedge assets. Legacy block is often `not_applicable` when no hedge `risk_role` labels exist. Stress Lab layer spec previously numbered hedge gap as §3.5 and simulator as §3.3.
+- Rationale: A dedicated v1 block gives stable product semantics (offset coverage, main hedge gap) aligned with Block 3.2 evidence; legacy block preserves `stress_conclusions.hedge_gap_status` and existing contract tests without a breaking migration in this wave.
+- Alternatives considered: Extend legacy `hedge_gap_analysis` in place (rejected — taxonomy coupling and different risk-type ids); place Block 3.3 on `portfolio_xray.json` (rejected — Stress Lab boundary); include `recession_severe` as an eighth v1 row (rejected — product brief lists seven protection areas).
+- Assumptions: Block 3.2 `stress_results_v1` remains the preferred read path for per-scenario `pnl_by_asset_pct`; Core MVP stays `loss_gate_mode="diagnostic"`; historical episodes stay out of v1 `by_risk_type[]` until a canonical episode→risk map exists.
+- Consequences: Specs, PRODUCT §4.3.3, OUTPUTS, and TESTING must reference `hedge_gap_analysis_v1`; implementation follows ExecPlan Sessions 02–08; `stress_conclusions.hedge_gap_status` still mirrors legacy status until explicitly migrated.
+- Related documents: [docs/specs/hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md), [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md), [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.2.2, [PRODUCT.md](PRODUCT.md) §4.3.3, [docs/exec_plans/2026-05-27_block_3_3_hedge_gap_analysis_plan.md](docs/exec_plans/2026-05-27_block_3_3_hedge_gap_analysis_plan.md).
+- Review trigger: Revisit when downstream consumers migrate to `hedge_gap_analysis_v1` and legacy `hedge_gap_analysis` / `hedge_gap_status` coupling can be deprecated.
+
 Decision ID: DEC-2026-05-27-001
 Title: Block 3.2 is Stress Results with compatibility conclusions
 

@@ -40,6 +40,10 @@ ALLOW_MISSING_PATHS: frozenset[str] = frozenset(
         # Block 2.5 Risk Budget View MVP (ExecPlan 2026-05-26; Sessions 07–08)
         "tests/test_block_2_5_pipeline_integration.py",
         "docs/audits/2026-05-26_block_2_5_risk_budget_acceptance_audit.md",
+        # Block 3.3 Hedge Gap Analysis MVP (ExecPlan 2026-05-27; Sessions 02–08)
+        "src/hedge_gap_analysis_block.py",
+        "tests/test_hedge_gap_analysis_v1_contract.py",
+        "docs/audits/2026-05-27_block_3_3_hedge_gap_acceptance_audit.md",
     }
 )
 

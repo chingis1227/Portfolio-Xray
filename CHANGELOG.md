@@ -8,6 +8,26 @@ Date: 2026-05-27
 
 Category: Changed
 
+- **Block 3.3 Hedge Gap Analysis MVP (Session 07, tests):** Extended `tests/test_hedge_gap_analysis_v1_contract.py`
+  and `tests/test_stress_diagnostic_mode.py` for `hedge_gap_analysis_v1` diagnostic-mode coverage,
+  activated the Block 3.3 regression bundle in `TESTING.md`, and recorded this session in the ExecPlan
+  without changing runtime hedge-gap behavior.
+
+- **Block 3.3 Hedge Gap Analysis MVP (Session 02, scaffold):** Added
+  `src/hedge_gap_analysis_block.py` (`build_hedge_gap_analysis_v1`, `empty_hedge_gap_analysis_v1`,
+  `attach_hedge_gap_analysis_v1` stub, `BLOCK_3_3_RISK_SCENARIO_MAP` with seven risk types) and
+  `tests/test_hedge_gap_analysis_v1_contract.py`. Placeholder `by_risk_type[]` rows only; no
+  `run_stress` wiring until Session 05.
+
+- **Block 3.3 Hedge Gap Analysis MVP (Session 01, docs):** Product contract
+  `hedge_gap_analysis_v1` on `stress_report.json` (contribution-based offset coverage, seven
+  synthetic-linked risk types, diagnostic-only). Stress Lab Core MVP renumbered to 3.3 Hedge Gap /
+  3.4 Scorecard; simulator and crisis replay marked deferred/advanced. Docs:
+  [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md),
+  [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md),
+  [stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.2.2,
+  [PRODUCT.md](PRODUCT.md) §4.3.3; `DEC-2026-05-27-002`. No runtime code yet.
+
 - **Block 3.2 Stress Results MVP (Session 08, closure):** Live portfolio-first proof on root
   `config.yml` — `Main portfolio/analysis_subject/stress_report.json` ships `stress_results_v1`
   (8 synthetic + 5 historical rows, `loss_gate_mode: diagnostic`, envelope worst synthetic

@@ -1212,6 +1212,42 @@ def _append_stress_results_v1_section(lines: list[str], st: dict[str, Any]) -> N
                 break
 
 
+def _append_hedge_gap_analysis_v1_section(lines: list[str], st: dict[str, Any]) -> None:
+    """Minimal Block 3.3 pointer from hedge_gap_analysis_v1 (contribution-based offset coverage)."""
+    block = st.get("hedge_gap_analysis_v1")
+    if not isinstance(block, dict) or block.get("version") != "hedge_gap_analysis_v1":
+        return
+
+    summary = block.get("summary") or {}
+    if not isinstance(summary, dict):
+        summary = {}
+    main = summary.get("main_hedge_gap") or {}
+    if not isinstance(main, dict):
+        main = {}
+
+    lines.append(
+        "Block 3.3 hedge gap (hedge_gap_analysis_v1 in stress_report.json): contribution-based offset coverage "
+        "per mapped synthetic risk type; no taxonomy hedge labels and no mandate pass/fail on these rows."
+    )
+    weakest = summary.get("weakest_protection_area")
+    strongest = summary.get("strongest_protection_area")
+    ratio = main.get("offset_coverage_ratio")
+    scenario_id = main.get("linked_scenario_id")
+    loss = main.get("portfolio_loss_pct")
+    if weakest:
+        lines.append(
+            "Block 3.3 summary: "
+            f"weakest_protection_area={weakest}, "
+            f"strongest_protection_area={strongest or _MDASH}, "
+            f"main_gap_scenario={scenario_id or _MDASH}, "
+            f"offset_coverage~{_fmt_pct(ratio, 1) if ratio is not None else _NA}, "
+            f"portfolio_loss~{_fmt_pct(loss, 1) if loss is not None else _NA}."
+        )
+    diag = summary.get("diagnosis_summary_en")
+    if isinstance(diag, str) and diag.strip():
+        lines.append(f"Block 3.3 diagnosis: {diag.strip()}")
+
+
 def write_stress_commentary(
     output_dir_final: Path,
     *,
@@ -1746,6 +1782,7 @@ def write_stress_commentary(
             f"{conclusions.get('overall_confidence', _MDASH)}."
         )
     _append_stress_results_v1_section(lines, st)
+    _append_hedge_gap_analysis_v1_section(lines, st)
     if scen_rows:
         for row in scen_rows:
             sid = row.get("scenario_id")
@@ -1993,6 +2030,7 @@ def write_portfolio_commentary(
     if worst_loss is not None:
         lines.append(f"Worst scenario portfolio loss (worst_scenario_loss_pct): ~ {_fmt_pct(worst_loss)}.")
     _append_stress_results_v1_section(lines, st)
+    _append_hedge_gap_analysis_v1_section(lines, st)
     lines.append("")
 
     lines.append("Final Conclusion")

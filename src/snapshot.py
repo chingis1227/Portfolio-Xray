@@ -159,6 +159,46 @@ def _stress_results_mirror_for_snapshot(stress_report: dict[str, Any]) -> dict[s
     }
 
 
+def _hedge_gap_analysis_v1_mirror_for_snapshot(stress_report: dict[str, Any]) -> dict[str, Any]:
+    """
+    Compact Block 3.3 mirror for snapshot consumers.
+
+    Keep it small: summary + linkage fields only (avoid large per-asset lists).
+    """
+    block = stress_report.get("hedge_gap_analysis_v1")
+    if not isinstance(block, dict) or block.get("version") != "hedge_gap_analysis_v1":
+        return {}
+    summary = block.get("summary") if isinstance(block.get("summary"), dict) else {}
+    main = summary.get("main_hedge_gap") if isinstance(summary.get("main_hedge_gap"), dict) else None
+    out: dict[str, Any] = {
+        "version": block.get("version"),
+        "loss_gate_mode": block.get("loss_gate_mode"),
+        "diagnosis_method": block.get("diagnosis_method"),
+        "n_risk_types": block.get("n_risk_types"),
+        "summary": {
+            "weakest_protection_area": summary.get("weakest_protection_area"),
+            "strongest_protection_area": summary.get("strongest_protection_area"),
+            "main_hedge_gap": (
+                {
+                    "risk_type": main.get("risk_type"),
+                    "linked_scenario_id": main.get("linked_scenario_id"),
+                    "offset_coverage_ratio": main.get("offset_coverage_ratio"),
+                    "portfolio_loss_pct": main.get("portfolio_loss_pct"),
+                }
+                if isinstance(main, dict)
+                else None
+            ),
+            "data_quality_warnings": summary.get("data_quality_warnings")
+            if isinstance(summary.get("data_quality_warnings"), list)
+            else [],
+        },
+    }
+    diag = summary.get("diagnosis_summary_en")
+    if isinstance(diag, str) and diag.strip():
+        out["summary"]["diagnosis_summary_en"] = diag.strip()
+    return out
+
+
 def _stress_suite_results_for_snapshot(stress_report: dict[str, Any], portfolio_params: dict[str, Any] | None) -> dict[str, Any]:
     """Format stress_suite_results section; include per-scenario violations and portfolio_params."""
     overall = stress_report.get("status", "N/A")
@@ -197,6 +237,7 @@ def _stress_suite_results_for_snapshot(stress_report: dict[str, Any], portfolio_
         "scorecard": stress_report.get("stress_scorecard_v1") or {},
         "conclusions": stress_report.get("stress_conclusions") or {},
         "hedge_gap_analysis": stress_report.get("hedge_gap_analysis") or {},
+        "hedge_gap_analysis_v1": _hedge_gap_analysis_v1_mirror_for_snapshot(stress_report),
         "historical_methodology": historical_methodology
         if isinstance(historical_methodology, dict)
         else {},

@@ -1215,9 +1215,11 @@ def main() -> None:
     _stress_out.mkdir(parents=True, exist_ok=True)
     try:
         from src.io_export import export_stress_report
+        from src.hedge_gap_analysis_block import attach_hedge_gap_analysis_v1
         from src.stress_results_block import attach_stress_results_v1
 
         attach_stress_results_v1(stress_report)
+        attach_hedge_gap_analysis_v1(stress_report)
         freq_res = resolve_returns_frequencies(returns_frequency)
         stress_report["frequency_disclosure"] = frequency_disclosure_from_resolution(
             freq_res,

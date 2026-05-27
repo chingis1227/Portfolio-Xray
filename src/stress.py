@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 
 from src.data_trust_signals import build_stress_data_trust_summary
+from src.hedge_gap_analysis_block import attach_hedge_gap_analysis_v1
 from src.stress_results_block import attach_stress_results_v1, empty_stress_results_v1
 from src.metrics_asset import time_to_recovery
 from src.risk_contrib import cov_matrix_monthly, percentage_contributions_variance
@@ -1819,6 +1820,7 @@ def run_stress(
         "hedge_gap_analysis": hedge_gap_analysis,
     }
     attach_stress_results_v1(report)
+    attach_hedge_gap_analysis_v1(report)
     return report
 
 
@@ -1830,7 +1832,7 @@ def _empty_report(reason: str, *, loss_gate_mode: str = LOSS_GATE_MODE_MANDATE) 
     else:
         empty_status = "DIAG_PASS_WITH_WARNING"
         empty_warning = _build_warning_code("DATA_INSUFFICIENT")
-    return {
+    report: dict[str, Any] = {
         "status": empty_status,
         "loss_gate_mode": gate_mode,
         "diagnostic_codes": [],
@@ -1904,6 +1906,8 @@ def _empty_report(reason: str, *, loss_gate_mode: str = LOSS_GATE_MODE_MANDATE) 
         "stress_results_v1": empty_stress_results_v1(reason, loss_gate_mode=gate_mode),
         "skip_reason": reason,
     }
+    attach_hedge_gap_analysis_v1(report)
+    return report
 
 
 CUSTOM_SHOCK_SIMULATOR_VERSION = "custom_shock_simulator_v1"

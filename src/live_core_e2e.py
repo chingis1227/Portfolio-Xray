@@ -28,6 +28,7 @@ _SUBJECT_REQUIRED_FILES = (
 
 _STRESS_REQUIRED_KEYS = (
     "stress_results_v1",
+    "hedge_gap_analysis_v1",
     "stress_scorecard_v1",
     "stress_conclusions",
     "historical_methodology",

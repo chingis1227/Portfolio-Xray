@@ -2,7 +2,7 @@
 
 Status: active source-of-truth for Block 3 (Stress Test Lab) implementation boundary.
 
-This document maps sub-blocks 3.1 to 3.6 into current code contracts. It is diagnostic-only and
+This document maps Core MVP sub-blocks 3.1 to 3.4 and deferred/advanced Stress Lab capabilities into current code contracts. It is diagnostic-only and
 does not override mandate gates from production workflow, optimizer weights, or candidate selection.
 
 Detailed scenario math, pass/fail gates, factor inference, and field-level JSON rules live in
@@ -16,14 +16,18 @@ Stress Lab answers: where can the portfolio break, under which scenarios, why do
 which assets pull it down, which protect it, where are hedge gaps, and how much can we trust the
 result?
 
-Sub-blocks:
+Core MVP sub-blocks:
 
 - 3.1 Scenario Library (historical + synthetic)
-- 3.2 Stress Results
-- 3.3 What Happens If API foundation (no UI)
-- 3.4 Crisis Replay
-- 3.5 Hedge Gap Analysis
-- 3.6 Current Portfolio Stress Scorecard
+- 3.2 Stress Results (`stress_results_v1`)
+- 3.3 Hedge Gap Analysis (`hedge_gap_analysis_v1`)
+- 3.4 Current Portfolio Stress Scorecard (`stress_scorecard_v1`)
+
+Deferred / advanced (not Core MVP product blocks; implementation remains):
+
+- What Happens If custom shock simulator API (no UI; no default artifact)
+- Crisis Replay (month-by-month historical paths)
+- Legacy `hedge_gap_analysis` (`stress_scenario_hedge_evidence_v2`, taxonomy hedge labels)
 
 ## Provenance legend
 
@@ -67,18 +71,19 @@ omit mandate `pass`/`loss_ok`; `max_dd_limit` is null. Legacy `optimize_from_uni
 
 Primary artifact: `stress_report.json` in each portfolio output folder.
 
-### Core blocks from `run_stress` (Block 3.1–3.6)
+### Core blocks from `run_stress` (Block 3.1–3.4 product + evidence)
 
 | JSON key | Sub-block | Version / method |
 | --- | --- | --- |
 | `scenario_results` | 3.1.2 synthetic | rows with `synthetic_assumptions` |
 | `historical_results` | 3.1.1 historical | per-episode `return_method`, `proxy_used` |
 | `historical_methodology` | 3.1.1 boundary | `historical_methodology_v1` |
-| `historical_episode_paths` | 3.4 crisis replay | `crisis_replay_v2` per episode |
-| `stress_scorecard_v1` | 3.6 scorecard | `stress_scorecard_v1` |
 | `stress_results_v1` | 3.2 stress results | `stress_results_v1` |
 | `stress_conclusions` | 3.2 conclusions rollup | `stress_conclusions_v1` |
-| `hedge_gap_analysis` | 3.5 hedge gap | `stress_scenario_hedge_evidence_v2` |
+| `hedge_gap_analysis_v1` | 3.3 hedge gap (Core MVP) | `hedge_gap_analysis_v1` — **S** scaffold Session 02; wiring Session 05+ |
+| `stress_scorecard_v1` | 3.4 scorecard | `stress_scorecard_v1` |
+| `hedge_gap_analysis` | legacy hedge gap | `stress_scenario_hedge_evidence_v2` (backward compatibility) |
+| `historical_episode_paths` | deferred crisis replay | `crisis_replay_v2` per episode |
 | `status`, `fail_reason_code`, `failed_scenario`, `failed_test` | suite gate | diagnostic-only vs mandate (legacy mandate mode only; Core MVP uses `ok`/`warning`/`insufficient_data`) |
 | `loss_gate_mode` | Core MVP vs legacy | `diagnostic` (portfolio-first) or `mandate` (legacy) |
 
@@ -103,11 +108,6 @@ Library sidecars (**A**): `scenario_library.json`, `scenario_library_normalized.
 Crisis replay CSV (**A**): `results_csv/crisis_replay_{episode}.csv`,
 `crisis_replay_{episode}_asset_contrib.csv` — see [crisis_replay_spec.md](crisis_replay_spec.md).
 
-### 3.3 simulator (no default artifact)
-
-`simulate_custom_shock` / `shock_vector_from_scenario` in `src/stress.py`; optional
-`custom_shock_runs.json` via `record_custom_shock_run` (**C** G9 closed Session 09).
-
 ## Upstream inputs (do not redefine in Stress Lab)
 
 | Input | Owner | Used by |
@@ -115,7 +115,8 @@ Crisis replay CSV (**A**): `results_csv/crisis_replay_{episode}.csv`,
 | Monthly asset returns, `analysis_end` | `metrics_specification.md`, `data_policy_spec.md` | 3.1.1 historical |
 | Weekly asset/portfolio factor betas | `src/stress_factors.py`, `stress_testing_spec.md` §2, §8 | 3.1.2 synthetic |
 | `SCENARIOS`, `HISTORICAL_EPISODES` | `src/stress.py` | 3.1 |
-| Taxonomy `risk_role` | `config/*_universe.yml` | 3.5 hedge labels |
+| Taxonomy `risk_role` | `config/*_universe.yml` | legacy `hedge_gap_analysis` labels only (not Block 3.3 v1) |
+| `stress_results_v1`, `scenario_results` | `run_stress` / Block 3.2 | 3.3 hedge gap v1 evidence (contribution-based) |
 | `config.stress_scenario_overrides` | config schema | 3.1.2 shock overrides |
 
 ## Sub-block implementation map
@@ -244,7 +245,42 @@ Core implementation: `src/stress.py` (`_build_stress_conclusions`), `src/portfol
 
 Tests: `tests/test_stress_scorecard_contract.py`, `tests/test_portfolio_commentary.py`.
 
-### 3.3 What Happens If API (no UI)
+### 3.3 Hedge Gap Analysis (Core MVP)
+
+**Question:** For each key market risk type, did assets that helped offset losses from assets that hurt in the mapped synthetic scenario — where is protection weak, and what is the main hedge gap?
+
+| Element | Rule | Provenance |
+| --- | --- | --- |
+| Contract key | `hedge_gap_analysis_v1` on `stress_report.json` | **S** Block 3.3 Session 01 |
+| Diagnosis method | Contribution-based offset coverage from signed `pnl_by_asset_pct`; **no** taxonomy hedge pre-labeling | **S** [hedge_gap_analysis_spec.md](hedge_gap_analysis_spec.md) |
+| Evidence source | Block 3.1 `scenario_results[]` and/or Block 3.2 `stress_results_v1.synthetic_scenarios[]` (`loss_contribution.pnl_by_asset_pct`); **no** stress PnL recompute | **S** Session 01 |
+| Risk types | Seven product `risk_type` rows, 1:1 with seven synthetic scenarios (`recession_severe` excluded from v1 rows) | **S** ExecPlan Block 3.3 |
+| Key metric | `offset_coverage_ratio` = positive help / gross hurt when gross hurt > 0 | **S** Session 01 |
+| Summary | `main_hedge_gap`, `weakest_protection_area`, `strongest_protection_area`, portfolio `diagnosis_summary_en` | **S** Session 01 (builder Session 04+) |
+| Diagnostic boundary | `loss_gate_mode="diagnostic"`; no mandate pass/fail on Block 3.3 product rows | **S** Core MVP |
+| Legacy block | `hedge_gap_analysis` (`stress_scenario_hedge_evidence_v2`) retained unchanged for compatibility | **C** **S** §12.2.1 |
+
+Planned implementation: `src/hedge_gap_analysis_block.py` (Session 02+). Tests (Session 07+):
+`tests/test_hedge_gap_analysis_v1_contract.py`.
+
+### 3.4 Current Portfolio Stress Scorecard
+
+**Question:** Unified machine-readable stress summary for snapshots and comparison?
+
+| Element | Rule | Provenance |
+| --- | --- | --- |
+| Contract | `stress_scorecard_v1`: synthetic + historical rows, severity, confidence | **C** **S** §12.1 |
+| Scope | Any portfolio passed to `run_stress` (subject, candidates, variants) | **C** |
+| Consumers | `snapshot.py`, `portfolio_commentary.py`, `candidate_comparison.py`; health/robustness use simplified overall | **C** |
+| Factor “why” | Scorecard rows: RC + loss assets; factor drivers via `stress_conclusions` (Session 04) | **C** **A** |
+
+Tests: `tests/test_stress_scorecard_contract.py`, `tests/test_stress_artifacts_priority.py`.
+
+## Deferred / advanced sub-blocks (not Core MVP)
+
+These capabilities remain in code and specs but are **not** numbered Core MVP product blocks after Block 3.4.
+
+### What Happens If API (no UI)
 
 **Question:** Custom shock vectors with the same math as built-in scenarios?
 
@@ -258,7 +294,7 @@ Tests: `tests/test_stress_scorecard_contract.py`, `tests/test_portfolio_commenta
 
 Tests: `tests/test_stress_simulator_contract.py` (PnL equivalence to built-in rows).
 
-### 3.4 Crisis Replay
+### Crisis Replay
 
 **Question:** Month-by-month crisis path, recovery, and static asset contribution — not aggregate only?
 
@@ -274,35 +310,19 @@ Tests: `tests/test_stress_simulator_contract.py` (PnL equivalence to built-in ro
 
 Tests: `tests/test_stress_historical_fields.py`.
 
-### 3.5 Hedge Gap Analysis
+### Legacy hedge gap (`hedge_gap_analysis`)
 
-**Question:** Do hedge-labeled holdings fail to protect in mapped stress scenarios?
-
-| Element | Rule | Provenance |
-| --- | --- | --- |
-| Method | `stress_scenario_hedge_evidence_v2` (aggregate + `by_risk_type[]`) | **C** **S** [hedge_gap_analysis_spec.md](hedge_gap_analysis_spec.md) |
-| Hedge labels | Taxonomy `risk_role`: crisis_hedge, defensive, inflation_hedge, tail_hedge | **C** **S** §12.2 |
-| Evaluation | Global worst synthetic + per `risk_type` via `HEDGE_GAP_SCENARIO_BY_RISK` (aligned with X-Ray `WEAKNESS_SCENARIO_MAP`) | **C** **S** Session 05 |
-| Status values | `gap_detected` \| `no_gap_detected` \| `insufficient_data` \| `not_applicable` | **C** **S** |
-| N/A disclosure | `status_reason` / `status_reason_en`; `no_hedge_labels` → `not_applicable` (not ambiguous `insufficient_data`) | **C** **S** Session 03 |
-| Aggregate flag | `any_risk_type_gap_detected` | **C** Session 05 |
-
-Core implementation: `src/stress.py` (`_build_hedge_gap_analysis`).
-
-Tests: `tests/test_stress_hedge_gap_contract.py`.
-
-### 3.6 Current Portfolio Stress Scorecard
-
-**Question:** Unified machine-readable stress summary for snapshots and comparison?
+**Question:** Do taxonomy hedge-labeled holdings fail to protect in mapped stress scenarios?
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
-| Contract | `stress_scorecard_v1`: synthetic + historical rows, severity, confidence | **C** **S** §12.1 |
-| Scope | Any portfolio passed to `run_stress` (subject, candidates, variants) | **C** |
-| Consumers | `snapshot.py`, `portfolio_commentary.py`, `candidate_comparison.py`; health/robustness use simplified overall | **C** |
-| Factor “why” | Scorecard rows: RC + loss assets; factor drivers via `stress_conclusions` (Session 04) | **C** **A** |
+| Method | `stress_scenario_hedge_evidence_v2` (aggregate + `by_risk_type[]`) | **C** **S** [hedge_gap_analysis_spec.md](hedge_gap_analysis_spec.md) §Legacy |
+| Hedge labels | Taxonomy `risk_role`: crisis_hedge, defensive, inflation_hedge, tail_hedge | **C** **S** §12.2.1 |
+| Evaluation | Global worst synthetic + per weakness bucket via `HEDGE_GAP_SCENARIO_BY_RISK` | **C** **S** |
+| Core MVP operators | Read **`hedge_gap_analysis_v1`** (Block 3.3), not this block | **S** Block 3.3 |
 
-Tests: `tests/test_stress_scorecard_contract.py`, `tests/test_stress_artifacts_priority.py`.
+Core implementation: `src/stress.py` (`_build_hedge_gap_analysis`). Tests:
+`tests/test_stress_hedge_gap_contract.py`.
 
 ## Report surfaces
 
@@ -325,7 +345,7 @@ Sessions 01–06 fields are wired in **Session 10** into `snapshot_10y.stress_su
 
 - `stress_conclusions` (factor drivers, worst historical by `max_dd`, `data_quality_warnings`)
 - `historical_methodology` + per-row `return_method` / `proxy_used` in commentary historical lines
-- `hedge_gap_analysis` (`by_risk_type[]`, `status_reason*`) in snapshot, comparison, commentary
+- `hedge_gap_analysis` and (when present) `hedge_gap_analysis_v1` in snapshot, comparison, commentary
 - `crisis_replay_summary` in snapshot/comparison; full `historical_episode_paths` in commentary
 
 Health/robustness scorecards continue to use simplified `stress.overall` and abbreviated scenarios;
@@ -354,7 +374,7 @@ Active ExecPlan:
 | 04 | RM-955 | Factor drivers in conclusions — **Done** |
 | 05 | RM-956 | Hedge gap v2 by risk type — **Done** |
 | 06 | RM-957 | Crisis replay v2 — **Done** |
-| 07 | RM-958 | Layer spec handoff (3.1–3.6 provenance) — **Done** |
+| 07 | RM-958 | Layer spec handoff (3.1–3.4 Core MVP + deferred sub-blocks) — **Done** |
 | 08 | RM-959 | Crypto/vol scenarios — **Done** (deferred, proposal + DEC-2026-05-20-002) |
 | 09 | RM-960 | Custom shock artifact (`custom_shock_runs.json`) — **Done** |
 | 10 | RM-961 | Downstream integration — **Done** |

@@ -237,7 +237,7 @@ python scripts/verify_live_core_e2e.py --run
 | --- | --- |
 | Subject diagnosis | `{output_dir_final}/analysis_subject/run_metadata.json`, `portfolio_xray.json`, `stress_report.json` |
 | X-Ray sections | All seven `XRAY_SECTION_KEYS` in `portfolio_xray.json` |
-| Stress blocks | `stress_results_v1`, `stress_scorecard_v1`, `stress_conclusions`, `historical_methodology`, `hedge_gap_analysis` in subject `stress_report.json` |
+| Stress blocks | `stress_results_v1`, `hedge_gap_analysis_v1`, `stress_scorecard_v1`, `stress_conclusions`, `historical_methodology`, legacy `hedge_gap_analysis` |
 | Comparison | `{output_dir_final}/candidate_comparison.json` present |
 | Core menu | `candidate_menu.review_mode == "core"` |
 | Factory profile | `candidate_factory_run.json` → `factory_profile_id == "core_fast"` |
@@ -416,6 +416,16 @@ commentary/snapshot mirror changes.
 ```bash
 python -m pytest tests/test_stress_results_block_contract.py tests/test_stress_diagnostic_mode.py tests/test_stress_scenario_coverage_contract.py tests/test_stress_downstream_integration.py -q
 python -m pytest tests/test_stress_scorecard_contract.py tests/test_stress_hedge_gap_contract.py -q
+python scripts/verify_docs.py
+```
+
+## Block 3.3 Hedge Gap Analysis regression bundle
+
+Governed by [Block 3.3 Hedge Gap Analysis ExecPlan](docs/exec_plans/2026-05-27_block_3_3_hedge_gap_analysis_plan.md).
+Re-run after `hedge_gap_analysis_v1` builder, wiring, or downstream mirror changes (Session 07+).
+
+```bash
+python -m pytest tests/test_hedge_gap_analysis_v1_contract.py tests/test_stress_results_block_contract.py tests/test_stress_scenario_coverage_contract.py tests/test_stress_diagnostic_mode.py tests/test_stress_hedge_gap_contract.py tests/test_stress_downstream_integration.py -q
 python scripts/verify_docs.py
 ```
 

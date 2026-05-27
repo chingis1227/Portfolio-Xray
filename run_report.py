@@ -101,6 +101,7 @@ from src.stress import (
     prepared_synthetic_stress_usable,
     run_stress,
 )
+from src.hedge_gap_analysis_block import attach_hedge_gap_analysis_v1
 from src.stress_results_block import attach_stress_results_v1
 from src.stress_factors import (
     FACTOR_COLUMN_ORDER,
@@ -1900,6 +1901,7 @@ def run_portfolio_report_for_weights(
         logger.warning(f"Factor beta adjusted overlay failed: {e}")
 
     attach_stress_results_v1(stress_report)
+    attach_hedge_gap_analysis_v1(stress_report)
 
     try:
         historical_paths = stress_report.get("historical_episode_paths") or []

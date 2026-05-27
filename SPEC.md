@@ -214,7 +214,7 @@ Main report artifacts
 | Feasibility and weight constraints | [docs/specs/feasibility_constraints_spec.md](docs/specs/feasibility_constraints_spec.md) |
 | Data policy, NaN handling, young ETFs, return panels, backtest handling | [docs/specs/data_policy_spec.md](docs/specs/data_policy_spec.md) |
 | Stress scenarios and stress diagnostics | [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) |
-| Stress Lab layer mapping (Block 3.1-3.6), provenance, and handoff index | [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) |
+| Stress Lab layer mapping (Block 3.1–3.4 Core MVP + deferred sub-blocks), provenance, and handoff index | [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) |
 | Stress Lab methodology map (Block 3 audit baseline) | [docs/audits/2026-05-20_stress_lab_methodology_map.md](docs/audits/2026-05-20_stress_lab_methodology_map.md) |
 | Hedge gap analysis contract | [docs/specs/hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md) |
 | Crisis replay path contract | [docs/specs/crisis_replay_spec.md](docs/specs/crisis_replay_spec.md) |
@@ -426,6 +426,7 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Stress testing and stress commentary | Implemented diagnostic/reporting layer; Core MVP uses `loss_gate_mode=diagnostic` (no mandate pass/fail) |
 | Scenario Library (Block 3.1) | Fixed historical (5) + synthetic (8) scenario set; [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.1 |
 | Stress Results (Block 3.2) | Product-facing `stress_results_v1` contract on `stress_report.json`; `stress_conclusions` preserved as compatibility rollup ([stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.1) |
+| Hedge Gap Analysis (Block 3.3) | Product contract `hedge_gap_analysis_v1` on `stress_report.json` (contribution-based offset coverage; legacy `hedge_gap_analysis` retained) — builder scaffold **Implemented** Session 02 (`src/hedge_gap_analysis_block.py`; wiring Session 05+) ([hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md), [stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.2.2) |
 | Factor diagnostics, PCA, macro/regime diagnostics, scenario analytics | Implemented diagnostic-only layer |
 | Scenario Library and normalized scenario view | Implemented input-standardization/diagnostic layer (Block 3.1 sidecars) |
 | Optimization Engine layer governance | Implemented source of truth; Sessions 03-04 add legacy policy and candidate optimizer disclosure without changing optimizer behavior |
