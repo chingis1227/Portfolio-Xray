@@ -185,6 +185,12 @@ Common generated paths include:
 - `.pytest_cache/`
 - generated PDFs and generated markdown report sources
 
+## Specialized agents (routing)
+
+| Task | Agent |
+| --- | --- |
+| New ticker / ETF or stock universe / stress block EQ–CA onboarding | `.cursor/agents/asset-taxonomy-stress-classification-agent.md` |
+
 ## Editing Guidance
 
 - Use `rg` or `rg --files` for searches when available.

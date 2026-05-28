@@ -170,7 +170,7 @@ python run_report.py --output-profile full_report
 | `run_mvp_workflow.py` | Legacy wrapper over policy/report stages | Legacy policy/current/full-decision orchestration outputs; compatibility-only entrypoint |
 | Candidate portfolio scripts | Build fixed benchmark/candidate weights and run the report pipeline | Candidate output folders with the same report contract after weights are fixed |
 | Robust/scenario scripts | Build robust candidate weights or reports from existing report artifacts | Robust/scenario JSON, CSV, and candidate report folders |
-| Taxonomy scripts | Validate/list/export taxonomy diagnostics | Taxonomy validation/list/export artifacts where configured |
+| Taxonomy scripts | Validate/list/export taxonomy diagnostics; onboarding report for new tickers (`scripts/taxonomy_onboard_report.py`) | Taxonomy validation/list/export artifacts where configured; onboarding report is operator stdout/JSON only (not written by `run_portfolio_review.py` by default) |
 | PDF rebuild helpers | Rebuild PDF-style artifacts from report-sidecar content | `pdf files/` and `pdf_md_sources/` artifacts |
 
 ## Common Output Locations

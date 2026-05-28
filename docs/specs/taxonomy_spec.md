@@ -30,7 +30,14 @@ Implementation files:
 
 Stock taxonomy V1 is CLI-only unless a future canonical spec wires it into optimization/report membership. It does not alter portfolio composition or weights.
 
+## Onboarding new tickers
+
+One-time operator workflow for new instruments (universe YAML edits, stress block EQ/CR/ND/TI/CO/CA, validators, onboarding report): [asset_taxonomy_onboarding_spec.md](asset_taxonomy_onboarding_spec.md).  
+CLI: `python scripts/taxonomy_onboard_report.py --tickers TICK1,TICK2`.  
+Cursor agent: `.cursor/agents/asset-taxonomy-stress-classification-agent.md`.
+
 ## Related Specs
 
 - Portfolio policy boundary: [portfolio_construction_policy.md](portfolio_construction_policy.md)
 - Stress taxonomy covariance behavior: [stress_testing_spec.md](stress_testing_spec.md)
+- Asset taxonomy onboarding: [asset_taxonomy_onboarding_spec.md](asset_taxonomy_onboarding_spec.md)

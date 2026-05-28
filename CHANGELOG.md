@@ -8,6 +8,12 @@ Date: 2026-05-28
 
 Category: Added
 
+- **Asset taxonomy onboarding:** Cursor agent
+  `.cursor/agents/asset-taxonomy-stress-classification-agent.md`,
+  [asset_taxonomy_onboarding_spec.md](docs/specs/asset_taxonomy_onboarding_spec.md),
+  `src/taxonomy_stress_blocks.py`, `scripts/taxonomy_onboard_report.py`,
+  `tests/test_taxonomy_onboard_report.py`.
+
 - **Core MVP historical stress replay (Session 7):** Live acceptance on subject
   `stress_report.json`; [acceptance audit](docs/audits/2026-05-28_core_mvp_historical_stress_replay_acceptance_audit.md);
   gate `scripts/verify_core_mvp_historical_stress_replay.py`; ExecPlan closed.

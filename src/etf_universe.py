@@ -125,7 +125,7 @@ REGIONS = {
 CURRENCY_EXPOSURES = {"USD", "EUR", "JPY", "GBP", "CNY", "CAD", "AUD", "CHF", "local_EM", "hedged", "mixed"}
 DURATION_BUCKETS = {"cash", "short", "intermediate", "long", "ultra_long", "floating", "none"}
 CREDIT_QUALITIES = {"Treasury", "Agency", "IG", "HY", "EM_debt", "Mixed", "Unrated", "none"}
-DATA_SOURCES = {"manual_seed", "issuer", "yahoo", "inferred"}
+DATA_SOURCES = {"manual_seed", "issuer", "yahoo", "inferred", "public_listing_ingestion"}
 
 REQUIRED_FIELDS = {
     "ticker",

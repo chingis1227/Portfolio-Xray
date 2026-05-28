@@ -90,6 +90,8 @@ Top-level documents stay compact:
 | Reporting outputs and artifacts | [reporting_outputs_spec.md](reporting_outputs_spec.md) |
 | Decision package report/PDF summary | [decision_package_reporting_spec.md](decision_package_reporting_spec.md) |
 | ETF and stock taxonomy | [taxonomy_spec.md](taxonomy_spec.md) |
+| Asset taxonomy onboarding (new tickers, stress blocks, report CLI) | [asset_taxonomy_onboarding_spec.md](asset_taxonomy_onboarding_spec.md) |
+| US universe ingestion (public listings → draft taxonomy) | [universe_ingestion_spec.md](universe_ingestion_spec.md) |
 | ETF taxonomy schema | [etf_universe_spec.md](etf_universe_spec.md) |
 | Stock taxonomy schema | [stock_universe_spec.md](stock_universe_spec.md) |
 | View After Optimization | [view_after_optimization_spec.md](view_after_optimization_spec.md) |

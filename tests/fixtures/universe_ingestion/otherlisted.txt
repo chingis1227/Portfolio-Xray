@@ -1,0 +1,4 @@
+ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|Test Issue|NASDAQ Symbol
+MSFT|Microsoft Corporation|N|MSFT|N|100|N|MSFT
+SPY|SPDR S&P 500 ETF Trust|P|SPY|Y|100|N|
+File Creation Time: 05012026120000
