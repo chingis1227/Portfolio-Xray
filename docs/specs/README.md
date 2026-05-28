@@ -53,6 +53,7 @@ Top-level documents stay compact:
 | Concise history of meaningful project changes | [../../CHANGELOG.md](../../CHANGELOG.md) |
 | Detailed data policy, NaN handling, young ETFs, return panels | [data_policy_spec.md](data_policy_spec.md) |
 | Stress scenarios and stress diagnostics | [stress_testing_spec.md](stress_testing_spec.md) |
+| Core MVP historical stress replay (direct history only; Stress Lab) | [core_mvp_historical_stress_replay_spec.md](core_mvp_historical_stress_replay_spec.md) |
 | Deferred stress scenario proposals (governance) | [../proposals/README.md](../proposals/README.md) |
 | Stress Lab layer (Block 3.1-3.6), provenance map, and handoff index | [stress_lab_layer_spec.md](stress_lab_layer_spec.md) |
 | Stress Lab methodology map (Block 3 audit baseline) | [../audits/2026-05-20_stress_lab_methodology_map.md](../audits/2026-05-20_stress_lab_methodology_map.md) |

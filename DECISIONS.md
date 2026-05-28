@@ -60,6 +60,20 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-05-28-001
+Title: Core MVP historical stress replay is direct-history-only on the product surface
+
+- Status: accepted
+- Date: 2026-05-28
+- Decision: On portfolio-first diagnostic stress reports (`loss_gate_mode="diagnostic"`), populate `stress_report.json.historical_stress_replay_v1` (`policy: direct_history_only`) and merge its fields into Block 3.2 `stress_results_v1.historical_episodes[]`. A position counts only when its own ticker has usable direct monthly returns in the episode window (`min_coverage_ratio` 0.45, dates from `HISTORICAL_EPISODES`). Do not substitute missing positions with ETF proxies, asset-class proxies, factor replay, or index/company proxies in these outputs. Portfolio-level `portfolio_loss_pct` / `drawdown_pct` on Block 3.2 historical rows are allowed only when `portfolio_level_result_available` is true (full direct coverage). Partial or unavailable replay must surface explicit unavailable weight, positions, and English `user_note` / `diagnosis_summary_en`; legacy `historical_results` realized PnL must not override cleared portfolio metrics.
+- Context: Modern portfolios include young ETFs and stocks without dot-com/2008 history; showing a single portfolio loss from legacy realized paths misstates coverage. Normalized-library proxy waterfall (`historical_stress_fallback`, `config/historical_stress_proxy_map.yml`) remains for advanced/library consumers only (DEC-2026-05-20-001 boundary unchanged for primary `run_stress` `historical_results`).
+- Rationale: Stress Test Lab must show honest crisis replay for the current book without false full-portfolio precision; direct-only product copy aligns with user trust and Block 3.2 diagnostic boundary.
+- Alternatives considered: Reuse proxy waterfall in Core MVP replay (rejected — false precision); hide historical episodes when coverage is partial (rejected — hides the limitation); replace `historical_results` entirely in `run_stress` (deferred — breaking change for legacy mandate and conclusions rollups).
+- Assumptions: `run_report.py` attaches replay before `attach_stress_results_v1`; cash proxy ticker is excluded from risk-weight coverage math per stress conventions; factor attribution on historical rows remains model-based overlay when enrichment exists.
+- Consequences: Normative spec [core_mvp_historical_stress_replay_spec.md](docs/specs/core_mvp_historical_stress_replay_spec.md); implementation in `src/core_mvp_historical_stress_replay.py`; contract tests in `tests/test_core_mvp_historical_stress_replay_contract.py`; `data_trust_summary` may cite replay `diagnosis_summary_en` for partial episodes.
+- Related documents: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.1.1, §3.2, [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) §9.4, [docs/exec_plans/2026-05-28_core_mvp_historical_stress_replay_plan.md](docs/exec_plans/2026-05-28_core_mvp_historical_stress_replay_plan.md), DEC-2026-05-20-001.
+- Review trigger: Revisit if product requires Core MVP Stress Lab to show proxy-assisted historical fills on the same rows as honest replay, or if primary `run_stress` historical_results adopts per-asset proxy paths.
+
 Decision ID: DEC-2026-05-27-002
 Title: Block 3.3 is contribution-based Hedge Gap Analysis with legacy hedge block retained
 

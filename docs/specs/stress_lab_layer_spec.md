@@ -77,8 +77,9 @@ Primary artifact: `stress_report.json` in each portfolio output folder.
 | JSON key | Sub-block | Version / method |
 | --- | --- | --- |
 | `scenario_results` | 3.1.2 synthetic | rows with `synthetic_assumptions` |
-| `historical_results` | 3.1.1 historical | per-episode `return_method`, `proxy_used` |
+| `historical_results` | 3.1.1 historical | per-episode `return_method`, `proxy_used` (legacy realized portfolio path; DEC-2026-05-20-001) |
 | `historical_methodology` | 3.1.1 boundary | `historical_methodology_v1` |
+| `historical_stress_replay_v1` | 3.1.1 Core MVP honest replay | `core_mvp_historical_stress_replay_v1`; `policy: direct_history_only` — **C** [core_mvp_historical_stress_replay_spec.md](core_mvp_historical_stress_replay_spec.md); DEC-2026-05-28-001 |
 | `stress_results_v1` | 3.2 stress results | `stress_results_v1` |
 | `stress_conclusions` | 3.2 conclusions rollup | `stress_conclusions_v1` |
 | `hedge_gap_analysis_v1` | 3.3 hedge gap (Core MVP) | `hedge_gap_analysis_v1` — **S** scaffold Session 02; wiring Session 05+ |
@@ -195,10 +196,15 @@ Tests: `tests/test_scenario_library.py`, `tests/test_scenario_library_normalized
 | Data quality | `n_obs`, `coverage_ratio`, `data_quality` buckets | **C** **S** §9.2 |
 | Factor attribution on rows | Model-based enrichment (5Y betas × realized factor shock); not causal | **C** **S** §8.7 |
 | Proxy elsewhere | Normalized library waterfall only (direct → proxy → class → factor replay) | **C** **S** historical_stress_fallback |
+| Core MVP honest replay | `historical_stress_replay_v1` on portfolio-first diagnostic runs (`loss_gate_mode="diagnostic"`); per-position direct coverage; no proxy fields on product surface | **C** **S** [core_mvp_historical_stress_replay_spec.md](core_mvp_historical_stress_replay_spec.md); DEC-2026-05-28-001 |
 
 Misleading-risk note: null episodes mean insufficient overlap (young ETFs), not zero loss (**A**).
+On Core MVP paths, `portfolio_loss_pct` / `drawdown_pct` on Block 3.2 historical rows follow
+`historical_stress_replay_v1` (`portfolio_level_result_available`); legacy `historical_results`
+realized PnL must not restore full-portfolio metrics when replay is partial or unavailable.
 
-Tests: `tests/test_stress_historical_fields.py`, `tests/test_stress_mandate_pass.py`.
+Tests: `tests/test_stress_historical_fields.py`, `tests/test_stress_mandate_pass.py`,
+`tests/test_core_mvp_historical_stress_replay*.py`, `tests/test_stress_results_historical_replay_contract.py`.
 
 #### 3.1.2 Synthetic Scenarios — implementation
 
@@ -228,6 +234,7 @@ and how trustworthy is the evidence — without parsing raw scenario rows?
 | Product rows | `synthetic[]` (8) + `historical[]` (5), using canonical Scenario Library IDs and stable order | **S** Session 01 |
 | Synthetic source | Adapt `scenario_results[]` rows; do not recompute scenario PnL | **C** **S** §12.1 |
 | Historical source | Adapt `historical_results[]`; derive asset loss contribution from `historical_episode_paths[]` where available | **C** **S** Session 01 |
+| Core MVP replay merge | When `historical_stress_replay_v1` is present, copy replay fields onto each `historical_episodes[]` row (`replay_status`, coverage %, `user_note`, `diagnosis_summary_en`, unavailable/available positions, episode dates). Portfolio loss/DD on product rows only when `portfolio_level_result_available` | **C** **S** [core_mvp_historical_stress_replay_spec.md](core_mvp_historical_stress_replay_spec.md); `src/stress_results_block.py` |
 | Worst selectors | `worst_synthetic` by minimum `portfolio_loss_pct`; `worst_historical` by minimum `drawdown_pct` among available historical rows | **C** **S** §12.1 |
 | Diagnostic boundary | In `loss_gate_mode="diagnostic"`, Block 3.2 product rows and raw evidence arrays omit mandate fields (`pass`, `loss_ok`, `diagnostic_code`, `diagnostic_codes`) | **S** Session 01 |
 | Relationship to conclusions | `stress_conclusions` remains a backward-compatible worst-case rollup for snapshot/comparison/commentary consumers | **C** **S** Session 01 |
@@ -243,9 +250,12 @@ and how trustworthy is the evidence — without parsing raw scenario rows?
 | Hedge status mirror | `hedge_gap_status` from `hedge_gap_analysis.status` | **C** **S** §12.1 |
 | Warnings | `data_quality_warnings` includes historical methodology flags | **C** Session 02 |
 
-Core implementation: `src/stress.py` (`_build_stress_conclusions`), `src/portfolio_commentary.py`.
+Core implementation: `src/stress_results_block.py`, `src/stress.py` (`_build_stress_conclusions`),
+`src/core_mvp_historical_stress_replay.py` (replay block; wired from `run_report.py` on diagnostic runs).
 
-Tests: `tests/test_stress_scorecard_contract.py`, `tests/test_portfolio_commentary.py`.
+Tests: `tests/test_stress_results_block_contract.py`, `tests/test_stress_results_historical_replay_contract.py`,
+`tests/test_core_mvp_historical_stress_replay_contract.py`, `tests/test_stress_scorecard_contract.py`,
+`tests/test_portfolio_commentary.py`.
 
 ### 3.3 Hedge Gap Analysis (Core MVP)
 

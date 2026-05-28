@@ -4,6 +4,41 @@ This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.
 
+Date: 2026-05-28
+
+Category: Added
+
+- **Core MVP historical stress replay (Session 7):** Live acceptance on subject
+  `stress_report.json`; [acceptance audit](docs/audits/2026-05-28_core_mvp_historical_stress_replay_acceptance_audit.md);
+  gate `scripts/verify_core_mvp_historical_stress_replay.py`; ExecPlan closed.
+
+- **Core MVP historical stress replay (Session 6):** Documentation sync — `DEC-2026-05-28-001`,
+  `stress_lab_layer_spec.md`, `stress_testing_spec.md` §9.4, `OUTPUTS.md`, `TESTING.md`.
+
+- **Core MVP historical stress replay (Session 5):** Contract tests cases A–D on replay and Block
+  3.2 merge (`tests/test_core_mvp_historical_stress_replay_contract.py`); Block 3.2 copies
+  `episode_start` / `episode_end` from replay.
+
+- **Core MVP historical stress replay (Session 4):** English `diagnosis_summary_en` templates on
+  replay episodes (`format_episode_diagnosis_summary_en`); Block 3.2 uses replay narrative when
+  `portfolio_level_result_available` is false; `data_trust_summary` prefers replay diagnosis text.
+
+- **Core MVP historical stress replay (Session 3):** Wired `historical_stress_replay_v1` on
+  portfolio-first diagnostic runs (`run_report.py`); Block 3.2 `historical_episodes[]` merges replay
+  fields; partial replay omits portfolio loss/DD. Tests: `tests/test_stress_results_historical_replay_contract.py`.
+
+- **Core MVP historical stress replay (Session 2):** `build_historical_stress_replay_v1` and
+  `build_episode_replay` in `src/core_mvp_historical_stress_replay.py` (direct history only;
+  portfolio loss/DD only when all risk positions covered). Tests:
+  `tests/test_core_mvp_historical_stress_replay.py`.
+
+- **Core MVP historical stress replay (Session 1):** Normative spec
+  [docs/specs/core_mvp_historical_stress_replay_spec.md](docs/specs/core_mvp_historical_stress_replay_spec.md)
+  (direct history only; no proxies in Core MVP). New module
+  `src/core_mvp_historical_stress_replay.py` with episode registry, `min_coverage_ratio` 0.45,
+  and direct-coverage helpers. `config/historical_stress_proxy_map.yml` labeled Advanced/Legacy only.
+  Tests: `tests/test_core_mvp_historical_stress_replay_config.py`.
+
 Date: 2026-05-27
 
 Category: Changed

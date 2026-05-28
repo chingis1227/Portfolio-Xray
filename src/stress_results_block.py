@@ -69,12 +69,13 @@ def build_stress_results_v1(
     stress_conclusions: dict[str, Any],
     loss_gate_mode: str,
     helped_assets_worst_synthetic: list[dict[str, Any]] | None = None,
+    historical_stress_replay_v1: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the Block 3.2 product layer from stress engine evidence dicts."""
     gate_mode = _normalize_gate_mode(loss_gate_mode)
+    replay_by_id = _replay_episodes_by_scenario_id(historical_stress_replay_v1)
 
     worst_synthetic = _select_worst_synthetic(scenario_results, stress_conclusions)
-    worst_historical = _select_worst_historical(historical_results, stress_conclusions)
     worst_synthetic_id = (
         worst_synthetic.get("scenario_id") if isinstance(worst_synthetic, dict) else None
     )
@@ -92,6 +93,12 @@ def build_stress_results_v1(
     historical_episodes = _build_historical_episodes(
         historical_results,
         historical_episode_paths,
+        replay_by_scenario_id=replay_by_id,
+    )
+    worst_historical = _select_worst_historical(
+        historical_results,
+        stress_conclusions,
+        historical_episodes=historical_episodes,
     )
     envelope = _build_envelope(
         worst_synthetic=worst_synthetic,
@@ -129,6 +136,7 @@ def attach_stress_results_v1(stress_report: dict[str, Any]) -> None:
         stress_conclusions=conclusions,
         loss_gate_mode=str(stress_report.get("loss_gate_mode") or _LOSS_GATE_MODE_MANDATE),
         helped_assets_worst_synthetic=helped if isinstance(helped, list) else None,
+        historical_stress_replay_v1=stress_report.get("historical_stress_replay_v1"),
     )
 
 
@@ -417,9 +425,42 @@ def _format_diagnosis_summary_en_synthetic(
     return " ".join(parts)
 
 
+def _replay_episodes_by_scenario_id(
+    historical_stress_replay_v1: dict[str, Any] | None,
+) -> dict[str, dict[str, Any]]:
+    if not isinstance(historical_stress_replay_v1, dict):
+        return {}
+    episodes = historical_stress_replay_v1.get("episodes")
+    if not isinstance(episodes, list):
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for row in episodes:
+        if isinstance(row, dict) and row.get("scenario_id"):
+            out[str(row["scenario_id"])] = row
+    return out
+
+
+_CORE_MVP_REPLAY_FIELD_KEYS = (
+    "scenario_id",
+    "scenario_name",
+    "episode_start",
+    "episode_end",
+    "replay_status",
+    "direct_coverage_weight_pct",
+    "unavailable_weight_pct",
+    "unavailable_positions",
+    "available_history_assets",
+    "portfolio_level_result_available",
+    "user_note",
+    "limitation_summary",
+)
+
+
 def _build_historical_episodes(
     historical_results: list[dict[str, Any]],
     historical_episode_paths: list[dict[str, Any]],
+    *,
+    replay_by_scenario_id: dict[str, dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     by_episode = {
         str(row.get("episode")): row
@@ -435,39 +476,87 @@ def _build_historical_episodes(
     for episode_id in HISTORICAL_SCENARIO_IDS:
         evidence = by_episode.get(episode_id)
         path = paths_by_episode.get(episode_id)
+        replay = (replay_by_scenario_id or {}).get(episode_id)
         rows.append(
             _build_historical_episode_row(
                 episode_id,
                 evidence,
                 path,
+                replay=replay,
             )
         )
     return rows
+
+
+def _merge_core_mvp_replay_fields(row: dict[str, Any], replay: dict[str, Any]) -> None:
+    for key in _CORE_MVP_REPLAY_FIELD_KEYS:
+        if key in replay:
+            row[key] = replay[key]
 
 
 def _build_historical_episode_row(
     episode_id: str,
     evidence: dict[str, Any] | None,
     path: dict[str, Any] | None,
+    *,
+    replay: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if not isinstance(evidence, dict):
-        return _unavailable_historical_row(episode_id, reason="episode_evidence_missing")
+        row = _unavailable_historical_row(episode_id, reason="episode_evidence_missing")
+        if isinstance(replay, dict):
+            _merge_core_mvp_replay_fields(row, replay)
+        return row
 
     portfolio_loss = evidence.get("pnl_real_episode")
     drawdown = evidence.get("max_dd")
+    if isinstance(replay, dict) and replay.get("portfolio_level_result_available"):
+        portfolio_loss = replay.get("portfolio_loss_pct", portfolio_loss)
+        drawdown = replay.get("drawdown_pct", drawdown)
+    elif isinstance(replay, dict):
+        portfolio_loss = None
+        drawdown = None
+
     loss_contribution = _build_loss_contribution_historical(evidence, path)
     factor_attribution = _build_factor_attribution_historical(evidence)
     assets_helped = _derive_helped_assets_from_contrib(
         loss_contribution.get("pnl_by_asset_pct") or {}
     )
 
-    row_available = portfolio_loss is not None or drawdown is not None
-    return {
+    if isinstance(replay, dict) and replay.get("portfolio_level_result_available"):
+        row_available = True
+        reason_en = None
+    elif isinstance(replay, dict) and replay.get("replay_status") == "partial_unavailable":
+        row_available = False
+        reason_en = replay.get("limitation_summary") or replay.get("user_note")
+    else:
+        row_available = portfolio_loss is not None or drawdown is not None
+        reason_en = None if row_available else "episode_metrics_missing"
+
+    block_diagnosis = _format_diagnosis_summary_en_historical(
+        episode_id=episode_id,
+        portfolio_loss_pct=portfolio_loss,
+        drawdown_pct=drawdown,
+        top_factor_drivers=factor_attribution.get("top_factor_drivers") or [],
+        top3_loss_assets=loss_contribution.get("top3_loss_assets") or [],
+        assets_helped=assets_helped,
+        user_note_fallback=(replay.get("user_note") if isinstance(replay, dict) else None),
+    )
+    if isinstance(replay, dict) and replay.get("portfolio_level_result_available") is False:
+        replay_diagnosis = replay.get("diagnosis_summary_en")
+        diagnosis_summary_en = (
+            str(replay_diagnosis).strip()
+            if isinstance(replay_diagnosis, str) and replay_diagnosis.strip()
+            else block_diagnosis
+        )
+    else:
+        diagnosis_summary_en = block_diagnosis
+
+    row: dict[str, Any] = {
         "episode": episode_id,
         "portfolio_loss_pct": portfolio_loss,
         "drawdown_pct": drawdown,
         "availability": "available" if row_available else "unavailable",
-        "reason_en": None if row_available else "episode_metrics_missing",
+        "reason_en": reason_en,
         "data_quality": evidence.get("data_quality"),
         "coverage_ratio": evidence.get("coverage_ratio"),
         "n_obs": evidence.get("n_obs"),
@@ -480,15 +569,11 @@ def _build_historical_episode_row(
             "reason_en": _HISTORICAL_RC_NOT_APPLICABLE_REASON,
         },
         "assets_helped": assets_helped,
-        "diagnosis_summary_en": _format_diagnosis_summary_en_historical(
-            episode_id=episode_id,
-            portfolio_loss_pct=portfolio_loss,
-            drawdown_pct=drawdown,
-            top_factor_drivers=factor_attribution.get("top_factor_drivers") or [],
-            top3_loss_assets=loss_contribution.get("top3_loss_assets") or [],
-            assets_helped=assets_helped,
-        ),
+        "diagnosis_summary_en": diagnosis_summary_en,
     }
+    if isinstance(replay, dict):
+        _merge_core_mvp_replay_fields(row, replay)
+    return row
 
 
 def _unavailable_historical_row(episode_id: str, *, reason: str) -> dict[str, Any]:
@@ -675,10 +760,13 @@ def _format_diagnosis_summary_en_historical(
     top_factor_drivers: list[dict[str, Any]],
     top3_loss_assets: list[dict[str, Any]],
     assets_helped: list[dict[str, Any]],
+    user_note_fallback: str | None = None,
 ) -> str | None:
     loss_text = _format_pct_for_text(portfolio_loss_pct)
     dd_text = _format_pct_for_text(drawdown_pct)
     if loss_text is None and dd_text is None:
+        if user_note_fallback:
+            return str(user_note_fallback).strip() or None
         return None
 
     label = _episode_label_en(episode_id)
@@ -838,6 +926,8 @@ def _select_worst_synthetic(
 def _select_worst_historical(
     historical_results: list[dict[str, Any]],
     stress_conclusions: dict[str, Any],
+    *,
+    historical_episodes: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     worst_id = (
         stress_conclusions.get("worst_historical_episode", {}).get("episode")
@@ -848,6 +938,22 @@ def _select_worst_historical(
         for row in historical_results:
             if row.get("episode") == worst_id:
                 return row
+
+    if historical_episodes:
+        replay_candidates = [
+            r
+            for r in historical_episodes
+            if r.get("portfolio_level_result_available") and r.get("drawdown_pct") is not None
+        ]
+        if replay_candidates:
+            best = min(replay_candidates, key=lambda r: float(r["drawdown_pct"]))
+            episode_id = best.get("episode")
+            for row in historical_results:
+                if row.get("episode") == episode_id:
+                    merged = dict(row)
+                    merged["max_dd"] = best.get("drawdown_pct")
+                    merged["pnl_real_episode"] = best.get("portfolio_loss_pct")
+                    return merged
 
     candidates = [r for r in historical_results if r.get("max_dd") is not None]
     if not candidates:

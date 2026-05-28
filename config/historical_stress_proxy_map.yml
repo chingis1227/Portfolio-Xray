@@ -1,5 +1,12 @@
-# Historical stress fallback v1 — ticker proxies and asset-class representatives for episodes
-# where direct ETF history is incomplete. Used by src/historical_stress_fallback.py (normalized view).
+# Advanced / Legacy — NOT Core MVP Stress Test Lab
+#
+# Historical stress fallback v1: ticker proxies, asset-class representatives, and factor replay
+# tiers for robust scenario optimization and scenario_library_normalized consumers only.
+#
+# Core MVP historical replay (src/core_mvp_historical_stress_replay.py) uses DIRECT history only
+# and must NOT load this file. See docs/specs/core_mvp_historical_stress_replay_spec.md.
+#
+# Used by: src/historical_stress_fallback.py (normalized / advanced path).
 
 min_coverage_ratio: 0.45
 

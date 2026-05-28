@@ -106,6 +106,7 @@ from src.hedge_gap_analysis_block import attach_hedge_gap_analysis_v1
 from src.current_portfolio_stress_scorecard_block import (
     attach_current_portfolio_stress_scorecard_v1,
 )
+from src.core_mvp_historical_stress_replay import attach_core_mvp_historical_stress_replay_v1
 from src.stress_results_block import attach_stress_results_v1
 from src.stress_factors import (
     FACTOR_COLUMN_ORDER,
@@ -1946,6 +1947,34 @@ def run_portfolio_report_for_weights(
     except Exception as e:
         stress_report["factor_beta_adjusted_overlay_error"] = str(e)
         logger.warning(f"Factor beta adjusted overlay failed: {e}")
+
+    if loss_gate_mode == LOSS_GATE_MODE_DIAGNOSTIC:
+        try:
+            attach_core_mvp_historical_stress_replay_v1(
+                stress_report,
+                weights=weights,
+                monthly_returns=monthly_returns,
+                cash_proxy_ticker=cash_proxy_ticker,
+            )
+            trust = stress_report.setdefault("data_trust_summary", {})
+            trust_lines = list(trust.get("user_summary_lines") or [])
+            replay_block = stress_report.get("historical_stress_replay_v1") or {}
+            for ep in replay_block.get("episodes") or []:
+                if not isinstance(ep, dict):
+                    continue
+                if ep.get("replay_status") in {"partial_unavailable", "unavailable"}:
+                    sid = ep.get("scenario_id") or ep.get("scenario_name") or "historical"
+                    summary = (
+                        ep.get("diagnosis_summary_en")
+                        or ep.get("limitation_summary")
+                        or ep.get("user_note")
+                    )
+                    if summary:
+                        trust_lines.append(f"Historical replay ({sid}): {summary}")
+            trust["user_summary_lines"] = trust_lines
+        except Exception as e:
+            stress_report["historical_stress_replay_v1_error"] = str(e)
+            logger.warning("Core MVP historical stress replay failed: %s", e)
 
     attach_stress_results_v1(stress_report)
     attach_hedge_gap_analysis_v1(stress_report)

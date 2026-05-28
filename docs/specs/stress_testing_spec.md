@@ -884,6 +884,27 @@ Top-level block on `stress_report.json` (same on empty/skip reports):
 one line per episode with `data_quality` ∉ {`reliable`, `usable_with_gaps`} (including
 `return_method` on episode lines).
 
+### 9.4 Core MVP historical stress replay (`historical_stress_replay_v1`)
+
+Portfolio-first diagnostic reports (`loss_gate_mode="diagnostic"`, e.g. `run_report.py` with
+`analysis_mode=analyze_current_weights`) attach **`historical_stress_replay_v1`** before Block 3.2
+is built. This block is separate from primary `historical_results` (DEC-2026-05-20-001): it answers
+**which current positions have usable direct history** per canonical episode, not substitute proxies.
+
+| Field | Description |
+| --- | --- |
+| `version` | `core_mvp_historical_stress_replay_v1` |
+| `policy` | `direct_history_only` |
+| `episodes[]` | One row per `HISTORICAL_EPISODES` id: `replay_status` (`full_replay` \| `partial_unavailable` \| `unavailable`), coverage %, unavailable/available positions, `user_note`, `diagnosis_summary_en`, portfolio metrics only when all risk weight has direct history |
+
+Block 3.2 `stress_results_v1.historical_episodes[]` merges replay fields when the block is present.
+Portfolio-level loss and drawdown on product rows follow `portfolio_level_result_available`; partial
+replay must not restore metrics from legacy `historical_results` realized PnL.
+
+Normative contract: [core_mvp_historical_stress_replay_spec.md](core_mvp_historical_stress_replay_spec.md).
+Decision: DEC-2026-05-28-001. Implementation: `src/core_mvp_historical_stress_replay.py`,
+`src/stress_results_block.py`, `run_report.py` (`attach_core_mvp_historical_stress_replay_v1`).
+
 ---
 
 ## 10. Stress covariance (for RC in stress)
@@ -1008,7 +1029,7 @@ fill from `stress_report.json` when missing.
 | `loss_gate_mode` | Copy of top-level `loss_gate_mode`; `diagnostic` for Core MVP portfolio-first reports. |
 | `scenario_library` | Canonical IDs: `synthetic_ids` and `historical_ids` copied from Scenario Library contracts. |
 | `synthetic[]` | Per-scenario product rows in canonical synthetic ID order. Required row fields: `scenario_id`, `portfolio_loss_pct`, `loss_contribution`, `factor_attribution`, `risk_contribution`, `drawdown_pct`, `availability`, optional `diagnosis_summary_en`. |
-| `historical[]` | Per-episode product rows in canonical historical ID order. Required row fields: `episode`, `portfolio_loss_pct`, `drawdown_pct`, `loss_contribution`, `factor_attribution`, `risk_contribution`, `data_quality`, `coverage_ratio`, `n_obs`, `return_method`, `proxy_used`, optional `diagnosis_summary_en`. |
+| `historical[]` | Per-episode product rows in canonical historical ID order. Required row fields: `episode`, `portfolio_loss_pct`, `drawdown_pct`, `loss_contribution`, `factor_attribution`, `risk_contribution`, `data_quality`, `coverage_ratio`, `n_obs`, `return_method`, `proxy_used`, optional `diagnosis_summary_en`. When `historical_stress_replay_v1` is present, rows also carry Core MVP replay fields (`replay_status`, `direct_coverage_weight_pct`, `unavailable_weight_pct`, `unavailable_positions`, `available_history_assets`, `portfolio_level_result_available`, `user_note`, `episode_start`, `episode_end`, `limitation_summary`) per [core_mvp_historical_stress_replay_spec.md](core_mvp_historical_stress_replay_spec.md). |
 | `worst_synthetic` | Worst synthetic row selector by minimum `portfolio_loss_pct`. |
 | `worst_historical` | Worst historical row selector by minimum `drawdown_pct` (`max_dd`), not by episode return. |
 | `helped_assets_worst_synthetic` | Positive-contribution assets for the worst synthetic scenario (up to three). |
