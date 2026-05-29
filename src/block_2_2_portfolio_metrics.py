@@ -196,16 +196,24 @@ def _threshold_count(drawdown_structure: dict[str, Any] | None, threshold_label:
         return None
 
 
-def _tail_risk_fields(analytics: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+def _tail_risk_fields(analytics: dict[str, Any]) -> tuple[dict[str, Any], bool, dict[str, Any] | None]:
     tail = analytics.get("tail_risk")
     if isinstance(tail, dict):
-        available = tail.get("metric_available") is not False
-        return {
+        values = {
             "var_95": _round_metric(tail.get("var_95")),
             "var_99": _round_metric(tail.get("var_99")),
             "es_95": _round_metric(tail.get("es_95")),
             "es_99": _round_metric(tail.get("es_99")),
-        }, available
+        }
+        explicit = tail.get("metric_available")
+        has_values = any(v is not None for v in values.values())
+        if explicit is False:
+            return values, False, tail
+        if explicit is True and has_values:
+            return values, True, tail
+        if has_values:
+            return values, True, tail
+        return values, False, tail
     flat = {
         "var_95": _round_metric(analytics.get("var_95")),
         "var_99": _round_metric(analytics.get("var_99")),
@@ -213,7 +221,31 @@ def _tail_risk_fields(analytics: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         "es_99": _round_metric(analytics.get("es_99")),
     }
     has_any = any(v is not None for v in flat.values())
-    return flat, has_any
+    return flat, has_any, None
+
+
+def _build_tail_risk_diagnostics(
+    analytics: dict[str, Any],
+    metrics: dict[str, Any],
+) -> tuple[dict[str, Any], bool]:
+    tail_values, tail_available, tail_meta = _tail_risk_fields(analytics)
+    diag: dict[str, Any] = {
+        **tail_values,
+        "downside_deviation": _round_metric(metrics.get("downside_deviation")),
+        "eee_10": _round_metric(analytics.get("eee_10pct")),
+        "metric_available": tail_available,
+        "method": tail_meta.get("method") if isinstance(tail_meta, dict) else None,
+        "frequency": tail_meta.get("frequency") if isinstance(tail_meta, dict) else None,
+        "window": tail_meta.get("window_label") if isinstance(tail_meta, dict) else None,
+        "window_months": tail_meta.get("window_months") if isinstance(tail_meta, dict) else None,
+        "n_obs": tail_meta.get("n_obs") if isinstance(tail_meta, dict) else None,
+    }
+    limitations: list[str] = []
+    if isinstance(tail_meta, dict) and tail_meta.get("unavailable_reason"):
+        limitations.append(str(tail_meta["unavailable_reason"]))
+    if limitations:
+        diag["limitations"] = limitations
+    return diag, tail_available
 
 
 def _rolling_panel(
@@ -438,7 +470,7 @@ def build_block_2_2_portfolio_metrics(
         dd_struct = nested if isinstance(nested, dict) else {}
     depth, length_months, recovery_months = _deepest_drawdown_episode(dd_struct)
 
-    tail_fields, tail_available = _tail_risk_fields(analytics)
+    tail_diag, tail_available = _build_tail_risk_diagnostics(analytics, metrics)
     data_quality_warnings: list[str] = []
     informational_disclosures: list[str] = []
 
@@ -505,11 +537,6 @@ def build_block_2_2_portfolio_metrics(
         "count_drawdowns_gt_5": _threshold_count(dd_struct, ">5%"),
         "count_drawdowns_gt_10": _threshold_count(dd_struct, ">10%"),
         "count_drawdowns_gt_20": _threshold_count(dd_struct, ">20%"),
-    }
-    tail_diag = {
-        **tail_fields,
-        "downside_deviation": _round_metric(metrics.get("downside_deviation")),
-        "eee_10": _round_metric(analytics.get("eee_10pct")),
     }
     benchmark_dep = {
         "benchmark_ticker": _benchmark_ticker(metrics),

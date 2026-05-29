@@ -80,7 +80,19 @@ def assert_block_2_2_product_contract(block: dict[str, Any]) -> None:
     }
 
     tail = block["tail_risk_diagnostics"]
-    assert set(tail) >= {"var_95", "var_99", "es_95", "es_99", "downside_deviation", "eee_10"}
+    assert set(tail) >= {
+        "var_95",
+        "var_99",
+        "es_95",
+        "es_99",
+        "downside_deviation",
+        "eee_10",
+        "metric_available",
+        "method",
+        "frequency",
+        "window",
+        "n_obs",
+    }
 
     bench = block["benchmark_dependence"]
     assert set(bench) >= {
@@ -176,6 +188,14 @@ def test_build_block_2_2_contract_and_top_correlation_pairs_from_csv(tmp_path: A
     assert highest[0] == {"ticker_a": "BND", "ticker_b": "GLD", "correlation": 0.92}
     assert lowest[0] == {"ticker_a": "GLD", "ticker_b": "SPY", "correlation": 0.05}
     assert doc["correlation_breakdown"]["avg_pairwise_correlation"] == 0.507
+    tail = doc["tail_risk_diagnostics"]
+    assert tail["metric_available"] is True
+    assert tail["var_95"] == -0.019
+    assert tail["es_95"] == -0.028
+    assert tail["method"] == "historical"
+    assert tail["frequency"] == "daily"
+    assert tail["window"] == "10y"
+    assert not any("tail risk" in w.lower() for w in doc["data_quality_warnings"])
 
 
 def test_avg_pairwise_correlation_helper() -> None:

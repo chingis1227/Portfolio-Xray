@@ -604,6 +604,8 @@ def minimal_block_2_2_analytics() -> dict[str, Any]:
             "method": "historical",
             "frequency": "daily",
             "window_label": "10y",
+            "window_months": 120,
+            "n_obs": 520,
             "metric_available": True,
             "var_95": -0.019,
             "var_99": -0.029,

@@ -6,6 +6,10 @@ It records what was added, changed, removed, fixed, or deprecated at a project l
 
 Date: 2026-05-29
 
+Category: Fixed
+
+- **Core MVP X-Ray tail-risk wiring:** `run_report.py` now passes per-window snapshot analytics (`snapshot_10y` → `5y` → `3y`) into `build_portfolio_xray_v2` via `resolve_xray_snapshot_inputs` in `src/snapshot.py`, so `analytics.tail_risk` reaches Block 2.2 `tail_risk_diagnostics` and Block 2.4 `tail_risk` alert evidence. Block 2.2 product contract adds `metric_available`, method/frequency/window metadata. Tests: `tests/test_xray_tail_risk_wiring.py`.
+
 Category: Added
 
 - **Blocks 1–3 post-audit plan (Session 10 / Phase D):** Block 5 compare/verdict — product contracts for `current_vs_candidate_v1` and `decision_verdict_v1` in `scripts/core_mvp_validation_contract.py`; live E2E Block 5 gates in `src/live_core_e2e.py` (`product_one_candidate`); `tests/test_block_5_decision_compare_contract.py`. Decision [DEC-2026-05-29-012](DECISIONS.md). Evidence: [Session 10 audit](docs/audits/2026-05-29_block_5_session_10_current_vs_candidate_decision_verdict.md).

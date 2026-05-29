@@ -765,6 +765,90 @@ def _load_json_if_exists(path: Path) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
+PRIMARY_XRAY_WINDOW_ORDER: tuple[str, ...] = ("10y", "5y", "3y")
+
+
+def _analytics_tail_risk_available(analytics: dict[str, Any] | None) -> bool:
+    if not isinstance(analytics, dict):
+        return False
+    tail = analytics.get("tail_risk")
+    if isinstance(tail, dict):
+        if tail.get("metric_available") is False:
+            return False
+        if tail.get("metric_available") is True:
+            return any(tail.get(k) is not None for k in ("var_95", "es_95", "var_99", "es_99"))
+    return any(analytics.get(k) is not None for k in ("var_95", "es_95", "var_99", "es_99"))
+
+
+def resolve_primary_window_snapshot(
+    snapshots_by_window: dict[str, dict[str, Any]] | None,
+    *,
+    output_dir: Path | str | None = None,
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Pick 10y → 5y → 3y window snapshot for Core MVP X-Ray wiring."""
+    if snapshots_by_window:
+        for label in PRIMARY_XRAY_WINDOW_ORDER:
+            snap = snapshots_by_window.get(label)
+            if isinstance(snap, dict) and snap:
+                return snap, label
+    if output_dir is not None:
+        out = Path(output_dir)
+        for label in PRIMARY_XRAY_WINDOW_ORDER:
+            snap = _load_json_if_exists(out / f"snapshot_{label}.json")
+            if isinstance(snap, dict) and snap:
+                return snap, label
+    return None, None
+
+
+def resolve_xray_snapshot_inputs(
+    snapshots_by_window: dict[str, dict[str, Any]] | None,
+    *,
+    fallback_snapshot: dict[str, Any] | None = None,
+    output_dir: Path | str | None = None,
+) -> dict[str, Any]:
+    """
+    Resolve portfolio metrics / analytics / RC inputs for ``build_portfolio_xray_v2``.
+
+    Prefers per-window snapshots (10y → 5y → 3y) so ``analytics.tail_risk`` reaches Block 2.2.
+    Falls back to aggregate ``build_snapshot`` output when no window snapshot exists.
+    """
+    primary, primary_label = resolve_primary_window_snapshot(
+        snapshots_by_window,
+        output_dir=output_dir,
+    )
+    base = fallback_snapshot if isinstance(fallback_snapshot, dict) else {}
+    src = primary if primary else base
+
+    analytics: dict[str, Any] | None = None
+    if isinstance(src.get("analytics"), dict):
+        analytics = src["analytics"]
+    if not _analytics_tail_risk_available(analytics) and snapshots_by_window:
+        for label in PRIMARY_XRAY_WINDOW_ORDER:
+            snap = snapshots_by_window.get(label)
+            if not isinstance(snap, dict):
+                continue
+            cand = snap.get("analytics")
+            if _analytics_tail_risk_available(cand):
+                analytics = cand
+                src = snap
+                primary_label = label
+                break
+
+    drawdown_structure = None
+    if isinstance(analytics, dict):
+        nested_dd = analytics.get("drawdown_structure")
+        if isinstance(nested_dd, dict) and nested_dd:
+            drawdown_structure = nested_dd
+
+    return {
+        "primary_window_label": primary_label,
+        "rc_asset": src.get("RC_asset") if isinstance(src, dict) else base.get("RC_asset"),
+        "portfolio_metrics": src.get("metrics") if isinstance(src, dict) else base.get("metrics"),
+        "portfolio_analytics": analytics,
+        "drawdown_structure": drawdown_structure,
+    }
+
+
 def _correlation_matrix_from_snapshot(out: Path, snapshot: dict[str, Any]) -> tuple[pd.DataFrame | None, str | None]:
     """
     Load the primary-window correlation matrix referenced by snapshot JSON.
@@ -789,24 +873,38 @@ def _correlation_matrix_from_snapshot(out: Path, snapshot: dict[str, Any]) -> tu
 
 def _xray_summary_from_output_dir(out: Path) -> dict[str, Any] | None:
     metadata = _load_json_if_exists(out / "run_metadata.json") or {}
-    snapshot = _load_json_if_exists(out / "snapshot_10y.json") or _load_json_if_exists(out / "snapshot_5y.json") or {}
+    snapshots_by_window = {
+        label: snap
+        for label in PRIMARY_XRAY_WINDOW_ORDER
+        if isinstance(snap := _load_json_if_exists(out / f"snapshot_{label}.json"), dict) and snap
+    }
+    fallback_snapshot = _load_json_if_exists(out / "snapshot_10y.json") or _load_json_if_exists(
+        out / "snapshot_5y.json"
+    ) or {}
+    xray_inputs = resolve_xray_snapshot_inputs(
+        snapshots_by_window or None,
+        fallback_snapshot=fallback_snapshot if fallback_snapshot else None,
+        output_dir=out,
+    )
+    primary_snap, _ = resolve_primary_window_snapshot(snapshots_by_window or None, output_dir=out)
+    snapshot = primary_snap if primary_snap else fallback_snapshot
     stress_report = _load_json_if_exists(out / "stress_report.json")
     analysis_setup = metadata.get("analysis_setup")
     if not isinstance(analysis_setup, dict) and not snapshot:
         return None
     csv_dir = out / "results_csv"
     portfolio_windows = load_portfolio_windows_from_dir(out)
-    corr_matrix, corr_ref = _correlation_matrix_from_snapshot(out, snapshot)
+    corr_matrix, corr_ref = _correlation_matrix_from_snapshot(out, snapshot if isinstance(snapshot, dict) else {})
     xray = build_portfolio_xray_v2(
         analysis_setup=analysis_setup if isinstance(analysis_setup, dict) else None,
         weights=snapshot.get("final_weights_total") if isinstance(snapshot, dict) else None,
-        rc_asset=snapshot.get("RC_asset") if isinstance(snapshot, dict) else None,
+        rc_asset=xray_inputs.get("rc_asset"),
         stress_report=stress_report,
         portfolio_valid=metadata.get("portfolio_valid") if isinstance(metadata, dict) else None,
-        portfolio_metrics=snapshot.get("metrics") if isinstance(snapshot, dict) else None,
+        portfolio_metrics=xray_inputs.get("portfolio_metrics"),
         portfolio_windows=portfolio_windows or None,
-        portfolio_analytics=snapshot.get("analytics") if isinstance(snapshot, dict) else None,
-        drawdown_structure=snapshot.get("drawdown_structure") if isinstance(snapshot, dict) else None,
+        portfolio_analytics=xray_inputs.get("portfolio_analytics"),
+        drawdown_structure=xray_inputs.get("drawdown_structure"),
         correlation_matrix=corr_matrix,
         correlation_matrix_ref=corr_ref,
         output_dir_final=out,

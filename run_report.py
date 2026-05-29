@@ -72,6 +72,7 @@ from src.snapshot import (
     build_snapshot_for_window,
     compute_candidate_config_fingerprint,
     print_snapshot,
+    resolve_xray_snapshot_inputs,
     save_snapshot,
     _xray_summary_from_output_dir,
     write_report_html,
@@ -2380,6 +2381,8 @@ def run_portfolio_report_for_weights(
 
     config_fingerprint = compute_candidate_config_fingerprint(cfg)
 
+    snapshots_by_window: dict[str, dict[str, Any]] = {}
+
     # 2) Snapshots by window (3y, 5y, 10y); lightweight_comparison writes 10y only
     for label in ("3y", "5y", "10y"):
         if lightweight and label != "10y":
@@ -2416,6 +2419,7 @@ def run_portfolio_report_for_weights(
             candidate_config_fingerprint=config_fingerprint,
         )
         save_snapshot(snap_w, output_dir_final / f"snapshot_{label}.json")
+        snapshots_by_window[label] = snap_w
         logger.info("Snapshot %s: %s", label, output_dir_final / f"snapshot_{label}.json")
 
     if lightweight:
@@ -2439,16 +2443,20 @@ def run_portfolio_report_for_weights(
             primary_corr_matrix = _corr_frame
             primary_corr_ref = corr_csv_by_window.get(_corr_window) or f"runtime:correlation_matrix_{_corr_window}"
             break
+    xray_inputs = resolve_xray_snapshot_inputs(
+        snapshots_by_window,
+        fallback_snapshot=snapshot if isinstance(snapshot, dict) else None,
+    )
     xray_summary = build_portfolio_xray_v2(
         analysis_setup=analysis_setup,
         weights=weights,
-        rc_asset=snapshot.get("RC_asset") if isinstance(snapshot, dict) else None,
+        rc_asset=xray_inputs.get("rc_asset"),
         stress_report=stress_report,
         portfolio_valid=portfolio_valid,
-        portfolio_metrics=(snapshot.get("metrics") if isinstance(snapshot, dict) else None),
+        portfolio_metrics=xray_inputs.get("portfolio_metrics"),
         portfolio_windows=portfolio_windows or None,
-        portfolio_analytics=(snapshot.get("analytics") if isinstance(snapshot, dict) else None),
-        drawdown_structure=(snapshot.get("drawdown_structure") if isinstance(snapshot, dict) else None),
+        portfolio_analytics=xray_inputs.get("portfolio_analytics"),
+        drawdown_structure=xray_inputs.get("drawdown_structure"),
         correlation_matrix=primary_corr_matrix,
         correlation_matrix_ref=primary_corr_ref,
         output_dir_final=output_dir_final,
