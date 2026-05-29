@@ -32,10 +32,11 @@ when client PDFs must match the latest JSON.
 Runtime note: default `run_portfolio_review.py` is now diagnosis-only. Candidate factory and compare
 are explicit: use `--candidates <id>` for one-hypothesis/shortlist product runs, `--with-candidates`
 for backend core batch (`core_fast`), and `--mode full` for advanced/research full menu (`default_v1`).
-See [OUTPUTS.md](OUTPUTS.md) for the full command matrix.
+See [OUTPUTS.md](OUTPUTS.md) for the full command matrix and [docs/runtime_entrypoints.md](docs/runtime_entrypoints.md) for active vs legacy CLI entrypoints.
 
 | Use case (primary product runtime) | Command | Factory profile |
 | --- | --- | --- |
+| **Core diagnostics only** (Blocks 1-3: Input, X-Ray, Stress) | `python run_core_diagnostics.py` | none |
 | Portfolio diagnosis / site/API backend run | `python run_portfolio_review.py` | none (diagnosis-only) |
 | **Canonical product demo** (one selected hypothesis) | `python run_portfolio_review.py --candidates equal_weight` | explicit candidate id |
 | Core backend candidate batch (advanced/research) | `python run_portfolio_review.py --with-candidates` | `core_fast` |

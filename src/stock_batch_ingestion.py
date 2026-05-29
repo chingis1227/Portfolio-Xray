@@ -429,7 +429,8 @@ def prepare_batch2_index_tags(
     for ticker, cap in caps.items():
         if ticker in by_ticker:
             by_ticker[ticker].market_cap_usd = cap or 0.0
-    ranked = sorted(non_prod, key=lambda t: caps.get(t, 0.0), reverse=True)
+    # Only use names with a valid Yahoo market cap for ranking/slot assignment.
+    ranked = [t for t in sorted(non_prod, key=lambda t: caps.get(t, 0.0), reverse=True) if (caps.get(t, 0.0) or 0.0) > 0]
     r1000_slots = max(0, r1000_target_total - len(production_tickers))
     assigned = 0
     for ticker in ranked:
@@ -668,16 +669,9 @@ def _merge_ready(
     *,
     min_accepted: int | None = None,
 ) -> bool:
+    """True when accepted rows are merge-safe; rejected rows do not block merge."""
+    del rejected  # screened out; merge uses accepted_tickers only
     if needs_review:
-        return False
-    blocking_rejects = {
-        "missing_sector",
-        "missing_industry",
-        "missing_index_membership",
-        "duplicate_in_batch",
-        "invalid_schema",
-    }
-    if any(str(r.get("reject_reason")) in blocking_rejects for r in rejected):
         return False
     for row in accepted:
         if str(row.get("sector") or "") in ("", "Unknown"):
@@ -755,22 +749,26 @@ def run_stock_batch1_pipeline(
     all_members: list[IndexMember] = []
 
     if offline:
-        prod = load_stock_universe(production_stock_path)
-        for row in prod:
-            t = _upper_ticker(row.get("ticker"))
-            if not t:
-                continue
-            all_members.append(
-                IndexMember(
-                    ticker=t,
-                    name=str(row.get("company_name") or t),
-                    sector=str(row.get("sector") or ""),
-                    industry=str(row.get("industry") or ""),
-                    index_tags={"SP500"},
-                    source="production_offline",
+        # Offline mode is used for deterministic tests. If explicit index CSV inputs are
+        # provided, do not seed the pool with the full production universe (it can crowd
+        # out the intended "new" sample tickers under small max_tickers limits).
+        if not (r1000_csv or r3000_csv):
+            prod = load_stock_universe(production_stock_path)
+            for row in prod:
+                t = _upper_ticker(row.get("ticker"))
+                if not t:
+                    continue
+                all_members.append(
+                    IndexMember(
+                        ticker=t,
+                        name=str(row.get("company_name") or t),
+                        sector=str(row.get("sector") or ""),
+                        industry=str(row.get("industry") or ""),
+                        index_tags={"SP500"},
+                        source="production_offline",
+                    )
                 )
-            )
-        data_sources.append("production_offline")
+            data_sources.append("production_offline")
     else:
         try:
             sp500 = fetch_sp500_wikipedia(sp500_source)
@@ -1019,12 +1017,13 @@ def run_stock_batch2_pipeline(
         skip_r1000_market_cap=True,
     )
     data_sources.append("batch2_market_cap_rank_tags")
+    tag_slots = max(max_tickers, min(max_tickers + 400, 1100))
     prepare_batch2_index_tags(
         by_ticker,
         production_tickers,
-        max_new=max_tickers,
+        max_new=tag_slots,
         r2000_min_market_cap_usd=r2000_min_market_cap_usd,
-        cap_fetch_limit=max(900, prefill_r3000_caps or 900),
+        cap_fetch_limit=max(1200, prefill_r3000_caps or 0, tag_slots + 300),
     )
 
     candidates = select_batch2_candidates(

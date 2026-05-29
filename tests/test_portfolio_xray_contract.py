@@ -13,6 +13,8 @@ from src.portfolio_xray import PORTFOLIO_XRAY_VERSION, XRAY_SECTION_KEYS, XRAY_T
 
 import portfolio_xray_golden_inputs as golden_inputs
 from test_block_2_5_risk_budget import assert_block_2_5_product_contract
+from test_block_2_6_portfolio_weakness_map import assert_block_2_6_product_contract
+from src.block_2_6_portfolio_weakness_map import RISK_TYPES, RULE_VERSION
 
 GOLDEN_FIXTURE_PATH = golden_inputs.GOLDEN_FIXTURE_PATH
 build_golden_document = golden_inputs.build_golden_document
@@ -88,7 +90,7 @@ def assert_top_level_contract(doc: dict[str, Any]) -> None:
     assert_block_2_5_product_contract(block_25)
     block_26 = doc.get("block_2_6_portfolio_weakness_map")
     assert isinstance(block_26, dict)
-    assert block_26.get("block") == "2.6_portfolio_weakness_map"
+    assert_block_2_6_product_contract(block_26)
     assert set(doc["sections"]) == set(XRAY_SECTION_KEYS)
 
 
@@ -216,6 +218,26 @@ def contract_fingerprint(doc: dict[str, Any]) -> dict[str, Any]:
             for row in block_25.get("risk_budget_bucket_contribution") or []
             if row.get("bucket")
         )
+    block_26 = doc.get("block_2_6_portfolio_weakness_map")
+    if isinstance(block_26, dict):
+        fp["block_2_6_present"] = True
+        fp["block_2_6_status"] = block_26.get("status")
+        fp["block_2_6_ruleset"] = (block_26.get("metadata") or {}).get("rule_version")
+        fp["block_2_6_risk_types"] = [r.get("risk_type") for r in block_26.get("risk_types") or []]
+        fp["block_2_6_usd_severity"] = next(
+            (
+                r.get("severity")
+                for r in block_26.get("risk_types") or []
+                if r.get("risk_type") == "usd_shock"
+            ),
+            None,
+        )
+        fp["block_2_6_blocked_upstream_count"] = len(
+            ((block_26.get("metadata") or {}).get("diagnostics_meta") or {}).get(
+                "blocked_upstream_fields"
+            )
+            or []
+        )
     return fp
 
 
@@ -278,6 +300,18 @@ def test_golden_block_2_5_risk_budget_surface(golden_fixture: dict[str, Any]) ->
     assert block["top_risk_overweight_assets"][0]["ticker"] == "HYG"
     assert {row["ticker"] for row in block["assets"]} == {"GLD", "HYG", "SPY", "TLT"}
     assert block["metadata"]["rc_sources"] == ["snapshot.RC_asset"]
+
+
+def test_golden_block_2_6_portfolio_weakness_map_surface(golden_fixture: dict[str, Any]) -> None:
+    block = golden_fixture["block_2_6_portfolio_weakness_map"]
+    assert_block_2_6_product_contract(block)
+    assert block["metadata"]["rule_version"] == RULE_VERSION
+    assert tuple(r["risk_type"] for r in block["risk_types"]) == RISK_TYPES
+    usd = next(r for r in block["risk_types"] if r["risk_type"] == "usd_shock")
+    assert usd["severity"] in {"Low", "Medium", "High", "Unavailable"}
+    equity = next(r for r in block["risk_types"] if r["risk_type"] == "equity_shock")
+    assert equity["severity"] in {"Low", "Medium", "High"}
+    assert equity["score_0_100"] is not None
 
 
 def test_live_build_matches_golden_document() -> None:

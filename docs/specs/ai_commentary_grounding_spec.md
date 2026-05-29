@@ -92,6 +92,8 @@ Top-level fields:
 - `required_grounding_rules`: list of rules for any future commentary generator
 - `commentary_topics`: topic-to-grounding guidance map
 - `evidence_references`: material source references with artifact and field path
+- `hedge_gap_context`: optional Block 3.3 hedge-gap grounding slice (see below)
+- `current_portfolio_stress_scorecard_context`: optional Block 3.4 stress scorecard grounding slice (see below)
 - `source_artifacts`: presence map for the inputs actually available
 - `guardrails`: booleans proving this layer does not call an LLM, calculate
   metrics, alter selection/verdict, or execute trades
@@ -116,7 +118,48 @@ When `portfolio_xray.json` and/or `stress_report.json` are available, the writer
 must emit top-level summary references (not full block bodies), for example:
 
 - `portfolio_xray.json`: `version`, `diagnostic_only`, `block_2_6_portfolio_weakness_map.status` / `.summary`
-- `stress_report.json`: `status`, `loss_gate_mode`, `primary_diagnostic_code`, `worst_scenario_loss_pct`, `stress_scorecard_v1.overall_status`
+- `stress_report.json`: `status`, `loss_gate_mode`, `primary_diagnostic_code`, `worst_scenario_loss_pct`
+- `stress_report.json` (v1-primary): `current_portfolio_stress_scorecard_v1.block_status`, `stress_diagnosis.headline`, `stress_diagnosis.diagnosis_confidence`, worst-scenario selectors — see `current_portfolio_stress_scorecard_context`
+- Legacy only when Block 3.4 missing/unavailable: `stress_scorecard_v1.overall_status`
+
+### `current_portfolio_stress_scorecard_context` (Block 3.4 Session 10)
+
+Optional top-level object on `ai_commentary_context.json`. Compact Block 3.4 stress scorecard grounding.
+
+| Field | Description |
+| --- | --- |
+| `version` | `current_portfolio_stress_scorecard_context_v1` |
+| `stress_scorecard_source` | `current_portfolio_stress_scorecard_v1` when Block 3.4 `block_status` is not `unavailable`; otherwise `stress_scorecard_v1` (legacy fallback) |
+| `legacy_fallback_used` | `true` when legacy mandate scorecard was used because v1 is missing or unavailable |
+| `headline`, `diagnosis_confidence` | From Block 3.4 `stress_diagnosis` / nested `ai_commentary_context` |
+| `forbidden_legacy_field_paths` | Field paths that must not be cited when v1-primary (e.g. `stress_scorecard_v1.overall_status`) |
+
+**Source priority:** read `current_portfolio_stress_scorecard_context` and cite
+`stress_report.json` → `current_portfolio_stress_scorecard_v1`. Use legacy
+`stress_scorecard_v1.overall_status` only when v1 is missing or `block_status = unavailable`.
+
+`commentary_topics.stress_scorecard` documents this boundary for future LLM layers.
+
+### `hedge_gap_context` (Block 3.3 Session 09)
+
+Optional top-level object on `ai_commentary_context.json`. Compact hedge-gap grounding for a future
+commentary generator — not a second hedge-gap calculation.
+
+| Field | Description |
+| --- | --- |
+| `version` | `hedge_gap_context_v1` |
+| `hedge_gap_source` | `hedge_gap_analysis_v1` when v1 is present and `block_status` is not `unavailable`; otherwise `stress_conclusions.hedge_gap_status` (legacy fallback) or comparison-only source |
+| `legacy_fallback_used` | `true` when legacy `hedge_gap_status` was used because v1 is missing or unavailable |
+| `block_status`, `ruleset_version`, `protection_profile`, main-gap fields | Copied from `stress_report.json` → `hedge_gap_analysis_v1.summary` when v1-primary |
+| `bridges_applied` | Optional map from v1 `bridge_meta` (2.4 / 2.6 confirmation bridges) |
+| `comparison` | Compact slice of `candidate_comparison.json` → `hedge_gap_comparison` when post-compare |
+
+**Source priority:** read `hedge_gap_context` and cite `stress_report.json` → `hedge_gap_analysis_v1`.
+Use legacy `stress_conclusions.hedge_gap_status` and taxonomy `hedge_gap_analysis` only when v1 is
+missing or `block_status = unavailable`. For candidate peer context, cite
+`candidate_comparison.json` → `hedge_gap_comparison` when present.
+
+`commentary_topics.hedge_gap` documents this boundary for future LLM layers.
 
 ### Grounding phases
 

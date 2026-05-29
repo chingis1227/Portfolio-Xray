@@ -122,6 +122,90 @@ def test_write_portfolio_commentary_diagnostic_stress_omits_mandate_gate(tmp_pat
         shutil.rmtree(root, ignore_errors=True)
 
 
+def test_write_stress_commentary_prefers_scorecard_v1_over_legacy(tmp_path: Path) -> None:
+    from src.current_portfolio_stress_scorecard_block import BLOCK_3_4_VERSION, build_current_portfolio_stress_scorecard_v1
+    from src.hedge_gap_analysis_block import empty_hedge_gap_analysis_v1
+    from src.stress_results_block import build_stress_results_v1
+
+    root = _test_output_dir(tmp_path, "stress_commentary_scorecard_v1")
+    try:
+        final = root / "analysis_subject"
+        final.mkdir(parents=True)
+        stress_results = build_stress_results_v1(
+            scenario_results=[{"scenario_id": "equity_shock", "portfolio_pnl_pct": -0.18}],
+            historical_results=[],
+            historical_episode_paths=[],
+            stress_conclusions={},
+            loss_gate_mode="diagnostic",
+        )
+        stress = {
+            "status": "ok",
+            "loss_gate_mode": "diagnostic",
+            "stress_results_v1": stress_results,
+            "hedge_gap_analysis_v1": empty_hedge_gap_analysis_v1("fixture"),
+            "stress_scorecard_v1": {
+                "overall_status": "DIAG_FAIL",
+                "overall_reason": "legacy_only",
+            },
+            "scenario_results": [{"scenario_id": "equity_shock", "portfolio_pnl_pct": -0.18}],
+        }
+        stress[BLOCK_3_4_VERSION] = build_current_portfolio_stress_scorecard_v1(stress)
+        out = write_stress_commentary(final, stress_report=stress, analysis_end="2026-02-28")
+        text = out.read_text(encoding="utf-8")
+        assert "Block 3.4 stress scorecard (current_portfolio_stress_scorecard_v1)" in text
+        assert "Block 3.4 stress headline:" in text
+        assert "Scorecard snapshot: overall=DIAG_FAIL" not in text
+        assert "mandate-style overall_status is not used" in text
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_write_stress_commentary_exec_summary_prefers_hedge_gap_v1(tmp_path: Path) -> None:
+    root = _test_output_dir(tmp_path, "stress_commentary_hedge_v1")
+    try:
+        final = root / "analysis_subject"
+        final.mkdir(parents=True)
+        stress = {
+            "status": "ok",
+            "loss_gate_mode": "diagnostic",
+            "stress_conclusions": {"hedge_gap_status": "not_applicable"},
+            "hedge_gap_analysis": {
+                "status": "not_applicable",
+                "status_reason_en": "No hedge labels in taxonomy.",
+            },
+            "hedge_gap_analysis_v1": {
+                "version": "hedge_gap_analysis_v1",
+                "block_status": "ok",
+                "summary": {
+                    "protection_profile": "mostly_weak_protection",
+                    "weakest_protection_area": "equity_crash_protection",
+                    "main_hedge_gap": {
+                        "linked_scenario_id": "equity_shock",
+                        "protection_status": "no_protection",
+                        "offset_coverage_ratio": 0.0,
+                        "portfolio_loss_pct": -0.12,
+                    },
+                    "diagnosis_summary_en": "Equity crash shows no internal offset.",
+                },
+                "by_risk_type": [
+                    {
+                        "risk_type": "equity_crash_protection",
+                        "protection_status": "no_protection",
+                    }
+                ],
+            },
+            "scenario_results": [{"scenario_id": "equity_shock", "portfolio_pnl_pct": -0.12}],
+        }
+        out = write_stress_commentary(final, stress_report=stress, analysis_end="2026-02-28")
+        text = out.read_text(encoding="utf-8")
+        assert "Block 3.3 hedge gap (hedge_gap_analysis_v1)" in text
+        assert "Equity crash shows no internal offset" in text
+        assert "Hedge gap: not applicable" not in text
+        assert "Hedge gap (legacy): not applicable" not in text
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 def test_write_stress_commentary_diagnostic_omits_mandate_reference(tmp_path: Path) -> None:
     root = _test_output_dir(tmp_path, "stress_commentary_diag")
     try:

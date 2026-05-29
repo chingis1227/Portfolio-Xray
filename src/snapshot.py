@@ -170,20 +170,32 @@ def _hedge_gap_analysis_v1_mirror_for_snapshot(stress_report: dict[str, Any]) ->
         return {}
     summary = block.get("summary") if isinstance(block.get("summary"), dict) else {}
     main = summary.get("main_hedge_gap") if isinstance(summary.get("main_hedge_gap"), dict) else None
+    by_risk = [row for row in (block.get("by_risk_type") or []) if isinstance(row, dict)]
+    n_weak = sum(
+        1
+        for row in by_risk
+        if str(row.get("protection_status") or "") in {"weak_protection", "no_protection"}
+    )
     out: dict[str, Any] = {
         "version": block.get("version"),
+        "block_status": block.get("block_status"),
+        "ruleset_version": block.get("ruleset_version"),
         "loss_gate_mode": block.get("loss_gate_mode"),
         "diagnosis_method": block.get("diagnosis_method"),
         "n_risk_types": block.get("n_risk_types"),
         "summary": {
+            "protection_profile": summary.get("protection_profile"),
             "weakest_protection_area": summary.get("weakest_protection_area"),
             "strongest_protection_area": summary.get("strongest_protection_area"),
+            "main_gap_score": summary.get("main_gap_score"),
             "main_hedge_gap": (
                 {
                     "risk_type": main.get("risk_type"),
                     "linked_scenario_id": main.get("linked_scenario_id"),
                     "offset_coverage_ratio": main.get("offset_coverage_ratio"),
                     "portfolio_loss_pct": main.get("portfolio_loss_pct"),
+                    "protection_status": main.get("protection_status"),
+                    "main_gap_score": main.get("main_gap_score") or summary.get("main_gap_score"),
                 }
                 if isinstance(main, dict)
                 else None
@@ -193,6 +205,15 @@ def _hedge_gap_analysis_v1_mirror_for_snapshot(stress_report: dict[str, Any]) ->
             else [],
         },
     }
+    if n_weak:
+        out["n_weak_protection_rows"] = n_weak
+    bridge_meta = block.get("bridge_meta")
+    if isinstance(bridge_meta, dict):
+        out["bridges_applied"] = {
+            key: bool(bridge_meta.get(key))
+            for key in ("block_2_4_hidden_exposure", "block_2_6_portfolio_weakness_map")
+            if key in bridge_meta
+        }
     diag = summary.get("diagnosis_summary_en")
     if isinstance(diag, str) and diag.strip():
         out["summary"]["diagnosis_summary_en"] = diag.strip()

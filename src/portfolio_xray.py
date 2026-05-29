@@ -18,6 +18,10 @@ from src.block_2_4_hidden_exposure import (
     build_block_2_4_legacy_enrichment,
     build_block_2_4_stress_enrichment,
 )
+from src.hedge_gap_analysis_block import (
+    apply_hidden_exposure_confirmation_bridge,
+    apply_weakness_map_confirmation_bridge,
+)
 from src.block_2_5_risk_budget_view import build_block_2_5_risk_budget_view
 from src.block_2_6_portfolio_weakness_map import build_block_2_6_portfolio_weakness_map
 from src.real_cash import collect_real_cash_tickers
@@ -3362,6 +3366,8 @@ def _weakness_map_section(
     )
     if section_missing:
         section["missing_input_warnings"] = section_missing
+    section["legacy"] = True
+    section["product_surface"] = False
     return section
 
 
@@ -3487,6 +3493,8 @@ def build_portfolio_xray_v2(
         ),
         legacy_enrichment=build_block_2_4_legacy_enrichment(stress_report),
     )
+    if isinstance(stress_report, dict):
+        apply_hidden_exposure_confirmation_bridge(stress_report, block_2_4_hidden_exposure)
     block_2_5_risk_budget_view = build_block_2_5_risk_budget_view(
         block_2_1_asset_allocation,
         rc_asset_rows=rc_asset_resolved,
@@ -3501,6 +3509,8 @@ def build_portfolio_xray_v2(
         block_2_5_risk_budget_view,
         thresholds=dict(XRAY_THRESHOLDS),
     )
+    if isinstance(stress_report, dict):
+        apply_weakness_map_confirmation_bridge(stress_report, block_2_6_portfolio_weakness_map)
     sections = {
         "asset_allocation": allocation,
         "risk_diagnostics": _risk_diagnostics_section(
@@ -3783,6 +3793,69 @@ def _xray_text_table(headers: list[str], rows: list[list[str]]) -> list[str]:
 
 def _xray_legacy_section_scope_line(section_key: str) -> str | None:
     return XRAY_LEGACY_SECTION_SCOPE.get(section_key)
+
+
+def _block_2_6_weakness_table_rows(block_2_6: dict[str, Any] | None) -> tuple[list[str], list[list[str]]] | None:
+    if not isinstance(block_2_6, dict):
+        return None
+    risks = block_2_6.get("risk_types") or []
+    if not isinstance(risks, list) or not risks:
+        return None
+    rows: list[list[str]] = []
+    for risk in risks:
+        if not isinstance(risk, dict):
+            continue
+        diagnosis = str(risk.get("short_diagnosis") or risk.get("explanation") or "")[:120]
+        rows.append(
+            [
+                str(risk.get("risk_type") or ""),
+                str(risk.get("severity") or "n/a"),
+                str(risk.get("score_0_100") if risk.get("score_0_100") is not None else "n/a"),
+                diagnosis,
+            ]
+        )
+    if not rows:
+        return None
+    return ["Risk type", "Severity", "Score", "Diagnosis"], rows
+
+
+def _block_2_6_text_section_lines(block_2_6: dict[str, Any] | None) -> list[str]:
+    if not isinstance(block_2_6, dict):
+        return []
+    lines = [
+        "",
+        "Portfolio Weakness Map (product Block 2.6 — pre-stress hypotheses)",
+        str(block_2_6.get("summary") or "No summary available."),
+    ]
+    status = block_2_6.get("status")
+    if status:
+        lines.append(f"Status: {status}")
+    meta = block_2_6.get("metadata") if isinstance(block_2_6.get("metadata"), dict) else {}
+    if meta.get("rule_version"):
+        lines.append(f"Ruleset: {meta.get('rule_version')}")
+    table = _block_2_6_weakness_table_rows(block_2_6)
+    if table:
+        headers, rows = table
+        lines.extend(_xray_text_table(headers, rows))
+    return lines
+
+
+def _block_2_6_html_section(block_2_6: dict[str, Any] | None) -> list[str]:
+    if not isinstance(block_2_6, dict):
+        return []
+    parts = [
+        '<section class="xray-section" id="xray-block-2-6-weakness-map">',
+        "<h3>Portfolio Weakness Map (product Block 2.6)</h3>",
+        f"<p>{_html_esc(block_2_6.get('summary') or '')}</p>",
+        '<p class="xray-scope">Pre-stress hypotheses only; validate in Stress Test Lab. '
+        "Legacy sections.weakness_map is not the product surface.</p>",
+    ]
+    table = _block_2_6_weakness_table_rows(block_2_6)
+    if table:
+        headers, rows = table
+        parts.append(_xray_html_table_wrapped("Block 2.6 vulnerability hypotheses", headers, rows))
+    parts.append("</section>")
+    return parts
 
 
 def _xray_section_text_block(section_key: str, section: dict[str, Any]) -> list[str]:
@@ -4129,6 +4202,7 @@ def _format_portfolio_xray_v2_text(xray: dict[str, Any]) -> str:
         "============================================================",
     ]
     lines.extend(_xray_legacy_overview_lines(xray))
+    lines.extend(_block_2_6_text_section_lines(xray.get("block_2_6_portfolio_weakness_map")))
     sections = xray.get("sections") or {}
     for key in XRAY_SECTION_KEYS:
         section = sections.get(key) or {}
@@ -4212,6 +4286,7 @@ def format_portfolio_xray_html(xray: dict[str, Any]) -> str:
         for key in XRAY_SECTION_KEYS
     )
     parts.append(f'<nav class="xray-section-nav" aria-label="X-Ray sections">{nav_links}</nav>')
+    parts.extend(_block_2_6_html_section(xray.get("block_2_6_portfolio_weakness_map")))
 
     sections = xray.get("sections") or {}
     for key in XRAY_SECTION_KEYS:
@@ -4265,16 +4340,18 @@ def format_portfolio_xray_commentary(xray: dict[str, Any]) -> str:
             preview += f", +{len(flagged) - 6} more"
         lines.append(f"Hidden risks flagged: {preview}.")
 
-    weaknesses = [
-        item
-        for item in (sections.get("weakness_map") or {}).get("items") or []
-        if item.get("severity") in {"high", "medium"} and item.get("adverse_evidence")
-    ]
-    if weaknesses:
-        preview = ", ".join(
-            f"{item.get('risk')} ({item.get('severity')})" for item in weaknesses[:5]
-        )
-        lines.append(f"Elevated scenario vulnerabilities: {preview}.")
+    block_26 = xray.get("block_2_6_portfolio_weakness_map")
+    if isinstance(block_26, dict):
+        elevated = [
+            risk
+            for risk in block_26.get("risk_types") or []
+            if isinstance(risk, dict) and risk.get("severity") in {"High", "Medium"}
+        ]
+        if elevated:
+            preview = ", ".join(
+                f"{risk.get('risk_type')} ({risk.get('severity')})" for risk in elevated[:5]
+            )
+            lines.append(f"Pre-stress vulnerability hypotheses (Block 2.6): {preview}.")
 
     trust = xray.get("data_trust_signals")
     if isinstance(trust, dict):

@@ -73,6 +73,7 @@ def _rebuild_and_write(
     report.setdefault("summary", {})
     min_acc = MIN_BATCH2_ACCEPTED if batch_num == 2 else None
     merge_ready = _merge_ready(accepted, rejected, needs_review, min_accepted=min_acc)
+    prod_before = int(report.get("production_count_before") or 0)
     report["summary"].update(
         {
             "accepted_candidates": len(accepted),
@@ -86,6 +87,7 @@ def _rebuild_and_write(
             ),
             "merge_ready": merge_ready,
             "recommended_new_tickers": len(accepted),
+            "production_count_after_merge_planned": prod_before + len(accepted),
         }
     )
     report["reject_reason_counts"] = dict(reject_reasons)

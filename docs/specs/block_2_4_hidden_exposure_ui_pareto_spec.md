@@ -1,6 +1,6 @@
 # Block 2.4 Hidden Exposure — UI Pareto Layer Specification
 
-Status: **Target / UX contract** (presentation layer only; backend `block_2_4_hidden_exposure` institutional v2 is **implemented**).
+Status: **Implemented** (presentation layer; backend `block_2_4_hidden_exposure` institutional v2 unchanged). Presenter: `src/block_2_4_hidden_exposure_ui.py`.
 
 Related:
 
@@ -428,15 +428,13 @@ Illustrative UI payloads (not backend JSON). Values inspired by live demo book (
 
 ---
 
-## 7. Suggested implementation placement (non-normative)
+## 7. Implementation placement
 
-Recommended module path when coding the presenter (out of scope for this spec unless explicitly scheduled):
-
-- `src/block_2_4_hidden_exposure_ui.py` — pure functions: `build_hidden_risk_cards_pareto(block_2_4: dict) -> dict`
+- `src/block_2_4_hidden_exposure_ui.py` — `build_hidden_risk_cards_pareto(block_2_4: dict) -> dict` (`hidden_risk_cards_pareto_v1`).
 - API/site layer consumes Pareto view model; never exposes raw `evidence[].threshold` objects on default screen.
-- Unit tests: golden Pareto snapshots from `tests/fixtures/portfolio_xray_golden_v2.json` Block 2.4.
+- Unit tests: `tests/test_block_2_4_hidden_exposure_ui.py` (golden Block 2.4 from `tests/fixtures/portfolio_xray_golden_v2.json`).
 
-No change to `build_block_2_4_hidden_exposure` required for V1 of this layer.
+No change to `build_block_2_4_hidden_exposure` required for this layer.
 
 ---
 

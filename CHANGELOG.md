@@ -8,6 +8,32 @@ Date: 2026-05-29
 
 Category: Added
 
+- **Runtime entrypoints:** `run_core_diagnostics.py` (Blocks 1-3 only via `--core-diagnostics-only`); active CLI matrix in [docs/runtime_entrypoints.md](docs/runtime_entrypoints.md); legacy optimizer/policy runners under `legacy/runners/` with root wrappers; tests `tests/test_core_diagnostics_entrypoint.py`.
+
+Category: Added
+
+- **Block 3.4 institutional upgrade Session 09:** `candidate_comparison_targets` on Block 3.4; Candidate Comparison `stress.current_portfolio_stress_scorecard_v1` v1-primary + top-level `stress_scorecard_comparison`; [Session 09 audit](docs/audits/2026-05-29_block_3_4_session_09_candidate_comparison.md); pytest **47 passed**.
+- **Block 3.4 institutional upgrade Session 08:** `problem_classification_signals` on `current_portfolio_stress_scorecard_v1`; Problem Classification v1-primary worst-scenario path with `stress_scorecard_source`; [Session 08 audit](docs/audits/2026-05-29_block_3_4_session_08_problem_classification.md); pytest **46 passed**.
+- **Block 3.4 institutional upgrade Session 01:** Frozen v1.1 contract in [current_portfolio_stress_scorecard_spec.md](docs/specs/current_portfolio_stress_scorecard_spec.md) (`current_portfolio_stress_scorecard_rules_v1_1`, `diagnosis_confidence`, `next_decision_uses[]`, mandate boundary, 2.4/2.6 degradation, product language); [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.4 linked; [Session 01 audit](docs/audits/2026-05-29_block_3_4_session_01_contract_v1_1.md); no code changes; pytest **4 passed**.
+- **Block 2.4 UI Pareto presenter:** `src/block_2_4_hidden_exposure_ui.py` (`build_hidden_risk_cards_pareto`); `tests/test_block_2_4_hidden_exposure_ui.py`; fixes `verify_docs.py` link check for [block_2_4_hidden_exposure_ui_pareto_spec.md](docs/specs/block_2_4_hidden_exposure_ui_pareto_spec.md).
+- **Block 3.3 institutional upgrade Session 12 (closure):** Acceptance audit — gap matrix G1–G10 closed; fixture matrix 7/7; pytest **106 passed** (extended bundle); ExecPlan **Completed**; evidence: [acceptance audit](docs/audits/2026-05-29_block_3_3_institutional_upgrade_acceptance_audit.md).
+- **Block 3.3 institutional upgrade Session 11:** Documentation sync — SPEC/OUTPUTS/TESTING/CHANGELOG/DECISIONS (`DEC-2026-05-29-003`); expanded Block 3.3 regression bundle; Session 11 audit.
+- **Block 3.3 institutional upgrade Session 10:** Materialization — snapshot `stress_suite_results.hedge_gap_analysis_v1` mirror, scorecard `hedge_gap_*` linkage, `check_hedge_gap_analysis_v1` in Core MVP validator, live E2E gate; [Session 10 audit](docs/audits/2026-05-29_block_3_3_session_10_materialization.md).
+- **Block 3.3 institutional upgrade Session 09:** AI Commentary — `hedge_gap_context` on `ai_commentary_context.json`; v1-primary stress commentary executive summary; [Session 09 audit](docs/audits/2026-05-29_block_3_3_session_09_ai_commentary.md).
+- **Block 3.3 institutional upgrade Session 08:** Candidate Comparison adds `hedge_gap_comparison` and per-candidate `stress.hedge_gap_analysis_v1` when v1 stress blocks exist on baseline and peers.
+- **Block 3.3 institutional upgrade Session 07:** Problem Classification uses `hedge_gap_analysis_v1` as primary hedge-gap path; legacy `hedge_gap_status` fallback only; `hedge_gap_source` on `problem_classification.json`.
+- **Block 3.3 institutional upgrade Session 06:** Block 2.6 bridge — `weakness_map_confirmation[]` on `hedge_gap_analysis_v1`, optional `attach_hedge_gap_analysis_v1(..., block_2_6_portfolio_weakness_map=...)`, wired from `build_portfolio_xray_v2` (read-only on 2.6); dual-bridge clears pre-stress limitation flags.
+- **Block 3.3 institutional upgrade Session 05:** Block 2.4 bridge — `hidden_exposure_confirmation[]` on `hedge_gap_analysis_v1`, per-row `confirmation_status`, `weak_hedge_behavior.hedge_gap_bridge`, wired from `build_portfolio_xray_v2`; Block 2.4 adds `partially_confirmed` / `not_confirmed`; contract tests **66+** passed.
+- **Block 3.3 institutional upgrade Session 04:** Main hedge gap selection v2 — weighted `main_gap_score` (offset deficit × loss severity × concentration boost), `selection_reason_code` / `selection_reason_en`, ruleset bump to `hedge_gap_rules_v1_2`; [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md) §summary updated; contract tests **63 passed**.
+- **Block 3.3 institutional upgrade Session 03:** Calculation hardening — finite PnL parsing, safe offset ratio, deterministic hurt/helped split, parametrized `protection_status` tests; contract tests **60 passed**.
+- **Block 3.3 institutional upgrade Session 02:** Product contract v1.1 on `hedge_gap_analysis_v1` (`ruleset_version`, `block_status`, `scenario_coverage`, row aliases, `protection_status`, `client_diagnosis_en`, enriched `summary`); [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md) updated; contract tests **47 passed**.
+
+Category: Added
+
+- **Block 2.6 heuristic_v2 closure (Sessions 00–09):** Product `block_2_6_portfolio_weakness_map` uses eight canonical Stress Lab `risk_type` ids, `heuristic_v2` rule tables, Block 2.4 v2 evidence, narrative fields (`short_diagnosis`, `why_status`, `key_evidence`, `linked_assets`), stress-boundary tests, Problem Classification / AI grounding SSOT, and legacy `sections.weakness_map` tagged non-product. Evidence: [heuristic_v2 acceptance audit](docs/audits/2026-05-29_block_2_6_weakness_map_heuristic_v2_acceptance_audit.md), [UI Pareto spec](docs/specs/block_2_6_weakness_map_ui_pareto_spec.md), `DEC-2026-05-29-001`; closure pytest **68 passed**.
+
+Category: Added
+
 - **Block 2.4 UI Pareto layer spec:** [block_2_4_hidden_exposure_ui_pareto_spec.md](docs/specs/block_2_4_hidden_exposure_ui_pareto_spec.md) — Hidden Risk Cards contract (6 alerts), backend→UI mapping, prioritization, mocks, acceptance criteria; presentation-only (no backend change).
 
 Category: Added

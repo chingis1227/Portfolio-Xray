@@ -197,7 +197,7 @@ owning modules/specs:
 ### 2.6 Portfolio Weakness Map
 
 - **Product status:** Core MVP product block (implemented) — `block_2_6_portfolio_weakness_map` (diagnostic-only; no stress PnL or attribution)
-- Implementation: `src/block_2_6_portfolio_weakness_map.py` → top-level `block_2_6_portfolio_weakness_map` on `portfolio_xray.json` (wired from `build_portfolio_xray_v2` after Block 2.5). Acceptance: [Block 2.6 acceptance audit](../audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md).
+- Implementation: `src/block_2_6_portfolio_weakness_map.py` → top-level `block_2_6_portfolio_weakness_map` on `portfolio_xray.json` (`heuristic_v2`, eight canonical Stress Lab risk ids; wired from `build_portfolio_xray_v2` after Block 2.5). Acceptance: [heuristic_v2 acceptance audit](../audits/2026-05-29_block_2_6_weakness_map_heuristic_v2_acceptance_audit.md) (v1: [MVP audit](../audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md)).
 - Legacy implementation: `src/portfolio_xray.py` — `_weakness_map_section`, `WEAKNESS_SCENARIO_MAP` → `sections.weakness_map` (compatibility-only; may read stress artifacts)
 - Spec ownership: diagnostics spec §2.6 and §2.6.1
 - Boundary: product block must not read `stress_report.json`; legacy section may still exist for formatters until migration

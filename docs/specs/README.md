@@ -38,6 +38,7 @@ Top-level documents stay compact:
 | Portfolio Alternatives Builder one-candidate wrapper over existing candidate builders | [portfolio_alternatives_builder_spec.md](portfolio_alternatives_builder_spec.md) |
 | Portfolio X-Ray diagnostics, seven-section current-portfolio diagnostic layer, and `portfolio_xray.json` contract | [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) |
 | Block 2.4 Hidden Exposure UI Pareto cards (presentation layer over `block_2_4_hidden_exposure`) | [block_2_4_hidden_exposure_ui_pareto_spec.md](block_2_4_hidden_exposure_ui_pareto_spec.md) |
+| Block 2.6 Portfolio Weakness Map UI Pareto cards (presentation layer over `block_2_6_portfolio_weakness_map`) | [block_2_6_weakness_map_ui_pareto_spec.md](block_2_6_weakness_map_ui_pareto_spec.md) |
 | Portfolio X-Ray layer (Block 2.1-2.7) | [portfolio_xray_layer_spec.md](portfolio_xray_layer_spec.md) |
 | Portfolio X-Ray methodology map (Block 2 audit baseline) | [../audits/2026-05-20_portfolio_xray_methodology_map.md](../audits/2026-05-20_portfolio_xray_methodology_map.md) |
 | Metrics, estimators, windows, returns, FX, beta, drawdown, RC_vol, rounding | [metrics_specification.md](metrics_specification.md) |
@@ -62,6 +63,7 @@ Top-level documents stay compact:
 | Macro regime diagnostics | [macro_regime_spec.md](macro_regime_spec.md) |
 | Scenario Library and normalized scenario view | [scenario_library_spec.md](scenario_library_spec.md) |
 | Hedge gap analysis contract | [hedge_gap_analysis_spec.md](hedge_gap_analysis_spec.md) |
+| Current Portfolio Stress Scorecard (Block 3.4) | [current_portfolio_stress_scorecard_spec.md](current_portfolio_stress_scorecard_spec.md) |
 | Crisis replay path contract | [crisis_replay_spec.md](crisis_replay_spec.md) |
 | Candidate and benchmark portfolios | [candidate_portfolios_spec.md](candidate_portfolios_spec.md) |
 | Candidate portfolio factory orchestration | [candidate_factory_spec.md](candidate_factory_spec.md) |

@@ -36,9 +36,12 @@ If those capabilities exist in code or generated outputs, classify them as `Adva
 
 Main portfolio-first flow:
 
-1. `python run_portfolio_review.py` for current portfolio diagnosis / product-bundle generation.
-2. inspect `{output_dir_final}/analysis_subject/` before interpreting candidate or decision artifacts
-3. for the current product demo path, prefer an explicit one-hypothesis run such as `python run_portfolio_review.py --candidates equal_weight`
+1. `python run_core_diagnostics.py` for Blocks 1-3 only (Input, X-Ray, Stress; no candidates or Blocks 4+).
+2. `python run_portfolio_review.py` for current portfolio diagnosis / full product-bundle generation.
+3. inspect `{output_dir_final}/analysis_subject/` before interpreting candidate or decision artifacts
+4. for the current product demo path, prefer an explicit one-hypothesis run such as `python run_portfolio_review.py --candidates equal_weight`
+
+Runtime entrypoint matrix: [docs/runtime_entrypoints.md](docs/runtime_entrypoints.md). Legacy optimizer/policy scripts live under `legacy/runners/` with root wrappers.
 
 Product-flow operator map (read order, six-file bundle paths, demo vs core commands, anti-patterns):
 [docs/product_flow_operator_guide.md](docs/product_flow_operator_guide.md).
@@ -73,6 +76,12 @@ Run tests:
 
 ```bash
 python -m pytest
+```
+
+Run core diagnostics (Blocks 1-3 only):
+
+```bash
+python run_core_diagnostics.py [--no-cache] [--dry-run]
 ```
 
 Run portfolio-first review:

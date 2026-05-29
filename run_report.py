@@ -180,6 +180,11 @@ from src.returns_frequency import (
 from src.portfolio_commentary import write_portfolio_commentary, write_stress_commentary
 from src.candidate_launchpad import write_candidate_launchpad_outputs
 from src.problem_classification import write_problem_classification_outputs
+from src.product_bundle_scope import (
+    DEFAULT_PRODUCT_BUNDLE_SCOPE,
+    is_core_blocks_1_3_only,
+    normalize_product_bundle_scope,
+)
 from src.regime_factor_analytics import (
     regime_factor_analytics,
     regime_factor_analytics_csv_frames,
@@ -273,6 +278,14 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Disable shared ReviewRunContext even when --review-mode core.",
     )
+    parser.add_argument(
+        "--core-diagnostics-only",
+        action="store_true",
+        help=(
+            "Blocks 1-3 only: write input/X-Ray/stress JSON; skip Problem Classification, "
+            "Candidate Launchpad, and AI Commentary product adapters."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -338,6 +351,7 @@ def run_portfolio_report_for_weights(
     portfolio_role_override: str | None = None,
     report_profile: str | None = None,
     output_profile: str | None = None,
+    product_bundle_scope: str | None = None,
     run_context: CandidateRunContext | ReviewRunContext | None = None,
     enable_report_timing: bool | None = None,
 ) -> tuple[dict | None, dict]:
@@ -367,6 +381,8 @@ def run_portfolio_report_for_weights(
     """
     review_run_context = run_context if isinstance(run_context, ReviewRunContext) else None
     run_context = coerce_factory_run_context(run_context)
+    bundle_scope = normalize_product_bundle_scope(product_bundle_scope)
+    core_blocks_only = is_core_blocks_1_3_only(bundle_scope)
     report_timing = ReportTimingCollector.for_run(enable_report_timing=enable_report_timing)
     resolved_output_profile = output_profile or profile_from_legacy_report_profile(report_profile)
     output_policy = output_policy_for_profile(resolved_output_profile)
@@ -2438,60 +2454,73 @@ def run_portfolio_report_for_weights(
         output_dir_final=output_dir_final,
         output_dir_csv=csv_export_dir,
     )
+    with report_timing.block("export_stress_hedge_gap_bridge"):
+        attach_current_portfolio_stress_scorecard_v1(
+            stress_report,
+            portfolio_xray=xray_summary,
+        )
+        export_stress_report(stress_report, output_dir_final)
     try:
         with open(output_dir_final / "portfolio_xray.json", "w", encoding="utf-8") as f:
             json.dump(xray_summary, f, indent=2, ensure_ascii=False, default=str)
     except Exception:
         xray_summary = _xray_summary_from_output_dir(output_dir_final)
     problem_classification_doc = None
-    try:
-        problem_classification_path = write_problem_classification_outputs(
-            output_dir=output_dir_final,
-            portfolio_xray=xray_summary,
-            stress_report=stress_report,
-            analysis_end=analysis_end_str,
-        )
-        try:
-            with open(problem_classification_path, encoding="utf-8") as f:
-                problem_classification_doc = json.load(f)
-        except Exception:
-            problem_classification_doc = None
-    except Exception as e:
-        logger.warning("problem_classification.json generation failed: %s", e)
     candidate_launchpad_doc = None
-    try:
-        launchpad_path = write_candidate_launchpad_outputs(
-            output_dir=output_dir_final,
-            problem_classification=problem_classification_doc,
-            analysis_end=analysis_end_str,
-        )
+    if not core_blocks_only:
         try:
-            with open(launchpad_path, encoding="utf-8") as f:
-                candidate_launchpad_doc = json.load(f)
-        except Exception:
-            candidate_launchpad_doc = None
-    except Exception as e:
-        logger.warning("candidate_launchpad.json generation failed: %s", e)
-    try:
-        from src.ai_commentary_context import write_ai_commentary_context_outputs
+            problem_classification_path = write_problem_classification_outputs(
+                output_dir=output_dir_final,
+                portfolio_xray=xray_summary,
+                stress_report=stress_report,
+                analysis_end=analysis_end_str,
+            )
+            try:
+                with open(problem_classification_path, encoding="utf-8") as f:
+                    problem_classification_doc = json.load(f)
+            except Exception:
+                problem_classification_doc = None
+        except Exception as e:
+            logger.warning("problem_classification.json generation failed: %s", e)
+        try:
+            launchpad_path = write_candidate_launchpad_outputs(
+                output_dir=output_dir_final,
+                problem_classification=problem_classification_doc,
+                analysis_end=analysis_end_str,
+            )
+            try:
+                with open(launchpad_path, encoding="utf-8") as f:
+                    candidate_launchpad_doc = json.load(f)
+            except Exception:
+                candidate_launchpad_doc = None
+        except Exception as e:
+            logger.warning("candidate_launchpad.json generation failed: %s", e)
+        try:
+            from src.ai_commentary_context import write_ai_commentary_context_outputs
 
-        ai_paths = write_ai_commentary_context_outputs(
-            output_dir=output_dir_final,
-            comparison=None,
-            current_vs_candidate=None,
-            selection=None,
-            decision_verdict=None,
-            problem_classification=problem_classification_doc,
-            candidate_launchpad=candidate_launchpad_doc,
-            portfolio_xray=xray_summary,
-            stress_report=stress_report,
-        )
+            ai_paths = write_ai_commentary_context_outputs(
+                output_dir=output_dir_final,
+                comparison=None,
+                current_vs_candidate=None,
+                selection=None,
+                decision_verdict=None,
+                problem_classification=problem_classification_doc,
+                candidate_launchpad=candidate_launchpad_doc,
+                portfolio_xray=xray_summary,
+                stress_report=stress_report,
+            )
+            logger.info(
+                "ai_commentary_context.json (diagnosis grounding): %s",
+                ai_paths.get("ai_commentary_context_json"),
+            )
+        except Exception as e:
+            logger.warning("ai_commentary_context.json generation failed: %s", e)
+    else:
         logger.info(
-            "ai_commentary_context.json (diagnosis grounding): %s",
-            ai_paths.get("ai_commentary_context_json"),
+            "Skipping product adapters (problem_classification, candidate_launchpad, "
+            "ai_commentary_context); product_bundle_scope=%s",
+            bundle_scope,
         )
-    except Exception as e:
-        logger.warning("ai_commentary_context.json generation failed: %s", e)
     report_timing.end_block("snapshots")
 
     if output_policy.write_txt or output_policy.write_html:
@@ -2536,6 +2565,7 @@ def run_portfolio_report_for_weights(
         "monthly_cache_key": monthly_cache_key,
         "report_profile": profile,
         "output_profile": output_policy.profile,
+        "product_bundle_scope": bundle_scope,
         "output_policy_disabled_artifact_classes": output_policy.disabled_artifact_classes,
     }
     from src.product_bundle_paths import (
@@ -2562,7 +2592,7 @@ def run_portfolio_report_for_weights(
         "core_json",
         "lightweight_comparison",
     }:
-        for blocked_key in (
+        blocked_manifest_keys = (
             "candidate_launchpad_json",
             "candidate_comparison_json",
             "current_vs_candidate_json",
@@ -2571,7 +2601,14 @@ def run_portfolio_report_for_weights(
             "what_changed_summary_json",
             "candidate_factory_run_json",
             "candidate_factory_manifest_json",
-        ):
+        )
+        if core_blocks_only:
+            blocked_manifest_keys = (
+                *blocked_manifest_keys,
+                "problem_classification_json",
+                "ai_commentary_context_json",
+            )
+        for blocked_key in blocked_manifest_keys:
             report_manifest_paths.pop(blocked_key, None)
 
     manifest_path = write_output_manifest(
@@ -2732,6 +2769,7 @@ def run_materialize_analysis_subject_report(
     review_mode: str | None = None,
     project_root: Path | None = None,
     use_review_run_context: bool | None = None,
+    core_diagnostics_only: bool = False,
 ) -> ReviewRunContext | None:
     """Write resolved analysis_subject diagnostics to output_dir_final/analysis_subject/."""
     materialization = resolve_analysis_subject_materialization(cfg)
@@ -2773,6 +2811,13 @@ def run_materialize_analysis_subject_report(
         want_shared_context,
     )
 
+    from src.product_bundle_scope import PRODUCT_BUNDLE_SCOPE_CORE_BLOCKS_1_3
+
+    bundle_scope = (
+        PRODUCT_BUNDLE_SCOPE_CORE_BLOCKS_1_3
+        if core_diagnostics_only
+        else DEFAULT_PRODUCT_BUNDLE_SCOPE
+    )
     run_portfolio_report_for_weights(
         cfg,
         materialization["weights"],
@@ -2785,6 +2830,7 @@ def run_materialize_analysis_subject_report(
         portfolio_role_override="analysis_subject",
         output_profile=output_profile,
         report_profile=resolved_profile,
+        product_bundle_scope=bundle_scope,
         run_context=shared_context if want_shared_context else None,
         enable_report_timing=want_shared_context,
     )
@@ -2830,12 +2876,18 @@ def main() -> None:
             review_mode=args.review_mode,
             project_root=Path(__file__).resolve().parent,
             use_review_run_context=subject_use_context,
+            core_diagnostics_only=args.core_diagnostics_only,
         )
         cleanup_old_cache(keep_versions=3)
         sidecar = Path(getattr(cfg, "output_dir_final", "Main portfolio")) / "analysis_subject"
-        print("\nDone (analysis_subject materialization).")
-        print(f"  Analysis subject artifacts: {sidecar}")
-        print("  Next: generate or compare candidate portfolios after subject diagnostics exist.")
+        if args.core_diagnostics_only:
+            print("\nDone (core diagnostics Blocks 1-3).")
+            print(f"  Core diagnostic artifacts: {sidecar}")
+            print("  Next: python run_portfolio_review.py for full product workflow.")
+        else:
+            print("\nDone (analysis_subject materialization).")
+            print(f"  Analysis subject artifacts: {sidecar}")
+            print("  Next: generate or compare candidate portfolios after subject diagnostics exist.")
         return
 
     if args.materialize_current:

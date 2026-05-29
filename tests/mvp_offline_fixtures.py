@@ -14,6 +14,8 @@ from src.input_assumptions import build_input_assumptions_from_analysis_setup
 from src.block_2_1_asset_allocation import build_block_2_1_asset_allocation
 from src.portfolio_xray import PORTFOLIO_XRAY_VERSION, XRAY_SECTION_KEYS
 from src.snapshot import compute_candidate_config_fingerprint
+from src.current_portfolio_stress_scorecard_block import build_current_portfolio_stress_scorecard_v1
+from src.hedge_gap_analysis_block import empty_hedge_gap_analysis_v1
 from src.stress_results_block import empty_stress_results_v1
 
 MVP_FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "mvp_portfolios"
@@ -230,9 +232,11 @@ def five_ticker_mvp_config_dict(*, output_dir_final: str = "Main portfolio") -> 
 
 
 def minimal_blocks_1_5_stress_report() -> dict[str, Any]:
-    return {
+    report: dict[str, Any] = {
         "schema_version": "stress_report_v1",
+        "status": "ok",
         "analysis_end": DEFAULT_ANALYSIS_END,
+        "loss_gate_mode": "diagnostic",
         "stress_results_v1": empty_stress_results_v1(
             "offline_fixture",
             loss_gate_mode="diagnostic",
@@ -242,29 +246,32 @@ def minimal_blocks_1_5_stress_report() -> dict[str, Any]:
             "score": 82,
             "worst_scenario_id": "equity_shock",
         },
-        "stress_conclusions": [
-            {
-                "severity": "info",
-                "message": "Offline smoke fixture stress diagnostics are present.",
-            }
-        ],
+        "stress_conclusions": {
+            "hedge_gap_status": "not_applicable",
+            "overall_confidence": "medium",
+            "version": "stress_conclusions_v1",
+        },
         "historical_methodology": {
-            "schema_version": "historical_methodology_v1",
+            "version": "historical_methodology_v1",
             "method": "offline_fixture",
             "episodes_evaluated": 1,
+            "proxy_used_in_primary_stress": False,
         },
         "hedge_gap_analysis": {
-            "status": "available",
-            "aggregate": {"hedge_gap_score": 0.18},
+            "status": "not_applicable",
+            "status_reason": "no_hedge_labels",
             "by_risk_type": [],
         },
         "scenario_results": [
-            {"scenario_id": "equity_shock", "portfolio_pnl_pct": -0.05, "pass": True}
+            {"scenario_id": "equity_shock", "portfolio_pnl_pct": -0.05},
         ],
-        "historical_episodes": [
-            {"episode_id": "global_financial_crisis", "portfolio_pnl_pct": -0.12}
-        ],
+        "historical_results": [],
     }
+    report["hedge_gap_analysis_v1"] = empty_hedge_gap_analysis_v1("offline_fixture")
+    report["current_portfolio_stress_scorecard_v1"] = build_current_portfolio_stress_scorecard_v1(
+        report
+    )
+    return report
 
 
 def minimal_blocks_1_5_portfolio_xray() -> dict[str, Any]:

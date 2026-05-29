@@ -45,6 +45,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Use Yahoo market-cap ranking for R1000 tags (slow; risks rate limits)",
     )
+    p.add_argument(
+        "--min-cap-usd",
+        type=float,
+        default=2e9,
+        help="Min market cap (USD) for liquid R3000 band (default: 2B)",
+    )
     p.add_argument("--format", choices=("text", "json"), default="text")
     return p.parse_args()
 
@@ -60,6 +66,7 @@ def main() -> int:
         dry_run=args.dry_run,
         skip_r1000_market_cap=not args.with_r1000_market_cap,
         prefill_r3000_caps=args.prefill_r3000_caps,
+        r2000_min_market_cap_usd=args.min_cap_usd,
     )
     report = result.review_report
     if args.format == "json":

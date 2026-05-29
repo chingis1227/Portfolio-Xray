@@ -1089,7 +1089,7 @@ These blocks are diagnostic summaries over existing scenario rows and do not alt
 
 Block 3.3 Core MVP product contract: **`hedge_gap_analysis_v1`** (contribution-based offset coverage;
 seven synthetic-linked risk types; no taxonomy hedge labels). Normative field rules:
-[hedge_gap_analysis_spec.md](hedge_gap_analysis_spec.md) §Block 3.3. Implementation: Session 02+
+[hedge_gap_analysis_spec.md](hedge_gap_analysis_spec.md) §Block 3.3. **Implemented** (`src/hedge_gap_analysis_block.py`; institutional upgrade closed 2026-05-29).
 (`src/hedge_gap_analysis_block.py`). Legacy taxonomy block remains §12.2.1.
 
 #### 12.2.1 Legacy `hedge_gap_analysis` (taxonomy hedge labels)

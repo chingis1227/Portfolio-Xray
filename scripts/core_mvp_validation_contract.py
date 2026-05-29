@@ -103,6 +103,35 @@ BLOCK24_FORBIDDEN_EMBEDDED_STRESS_KEYS = frozenset(
     }
 )
 
+BLOCK33_VERSION = "hedge_gap_analysis_v1"
+BLOCK33_RULESET_VERSION = "hedge_gap_rules_v1_2"
+BLOCK33_BLOCK_STATUS_VALUES = frozenset({"ok", "partial", "unavailable"})
+BLOCK33_EXPECTED_RISK_TYPE_COUNT = 8
+
+BLOCK33_REQUIRED_TOP_LEVEL_FIELDS = (
+    "version",
+    "ruleset_version",
+    "block_status",
+    "loss_gate_mode",
+    "diagnosis_method",
+    "scenario_library",
+    "scenario_coverage",
+    "by_risk_type",
+    "summary",
+    "n_risk_types",
+)
+
+BLOCK33_FORBIDDEN_PRODUCT_KEYS = frozenset(
+    {
+        "pass",
+        "loss_ok",
+        "gap_detected",
+        "status",
+        "max_dd_limit",
+        "mandate_pass",
+    }
+)
+
 
 def block_2_4_product_contract_violations(block: dict[str, Any] | None) -> list[str]:
     """Return Block 2.4 institutional v2 product-contract violations (empty = pass)."""
@@ -216,6 +245,126 @@ def block_2_4_product_contract_violations(block: dict[str, Any] | None) -> list[
 def assert_block_2_4_product_contract(block: dict[str, Any]) -> None:
     """Raise AssertionError when Block 2.4 institutional v2 contract is violated."""
     violations = block_2_4_product_contract_violations(block)
+    if violations:
+        raise AssertionError("; ".join(violations))
+
+
+def hedge_gap_analysis_v1_product_contract_violations(
+    block: dict[str, Any] | None,
+) -> list[str]:
+    """Return Block 3.3 institutional product-contract violations (empty = pass)."""
+    if not isinstance(block, dict):
+        return ["hedge_gap_analysis_v1: block is missing or not an object"]
+
+    violations: list[str] = []
+    prefix = "hedge_gap_analysis_v1"
+
+    if block.get("version") != BLOCK33_VERSION:
+        violations.append(
+            f"{prefix}: version expected {BLOCK33_VERSION!r}, got {block.get('version')!r}"
+        )
+
+    missing_top = [field for field in BLOCK33_REQUIRED_TOP_LEVEL_FIELDS if field not in block]
+    if missing_top:
+        violations.append(f"{prefix}: missing top-level fields: {', '.join(missing_top)}")
+
+    if block.get("ruleset_version") != BLOCK33_RULESET_VERSION:
+        violations.append(
+            f"{prefix}: ruleset_version expected {BLOCK33_RULESET_VERSION!r}, "
+            f"got {block.get('ruleset_version')!r}"
+        )
+
+    block_status = str(block.get("block_status") or "").strip().lower()
+    if block_status not in BLOCK33_BLOCK_STATUS_VALUES:
+        violations.append(f"{prefix}: invalid block_status {block.get('block_status')!r}")
+
+    if block.get("diagnosis_method") != "contribution_based_offset_coverage_v1":
+        violations.append(
+            f"{prefix}: diagnosis_method expected contribution_based_offset_coverage_v1, "
+            f"got {block.get('diagnosis_method')!r}"
+        )
+
+    by_risk = block.get("by_risk_type")
+    if not isinstance(by_risk, list):
+        violations.append(f"{prefix}: by_risk_type must be a list")
+    elif len(by_risk) != BLOCK33_EXPECTED_RISK_TYPE_COUNT:
+        violations.append(
+            f"{prefix}: by_risk_type length expected {BLOCK33_EXPECTED_RISK_TYPE_COUNT}, "
+            f"got {len(by_risk)}"
+        )
+
+    n_risk_types = block.get("n_risk_types")
+    if isinstance(by_risk, list) and n_risk_types != len(by_risk):
+        violations.append(
+            f"{prefix}: n_risk_types ({n_risk_types!r}) must match len(by_risk_type) ({len(by_risk)})"
+        )
+
+    summary = block.get("summary")
+    if not isinstance(summary, dict):
+        violations.append(f"{prefix}: summary must be an object")
+
+    if block_status == "ok" and isinstance(by_risk, list):
+        available = sum(
+            1 for row in by_risk if isinstance(row, dict) and row.get("data_availability") == "available"
+        )
+        if available == 0:
+            violations.append(f"{prefix}: block_status ok but no available by_risk_type rows")
+
+    if isinstance(by_risk, list):
+        for idx, row in enumerate(by_risk):
+            if not isinstance(row, dict):
+                violations.append(f"{prefix}.by_risk_type[{idx}]: row must be an object")
+                continue
+            forbidden = sorted(BLOCK33_FORBIDDEN_PRODUCT_KEYS & set(row))
+            if forbidden:
+                violations.append(
+                    f"{prefix}.by_risk_type[{idx}]: forbidden legacy keys: {', '.join(forbidden)}"
+                )
+
+    for key in block:
+        if key in BLOCK33_FORBIDDEN_PRODUCT_KEYS:
+            violations.append(f"{prefix}: forbidden legacy key at top level: {key}")
+
+    return violations
+
+
+def check_hedge_gap_analysis_v1(block: dict[str, Any] | None) -> dict[str, Any]:
+    """Structured Block 3.3 checks for fixture-matrix and live E2E validators."""
+    violations = hedge_gap_analysis_v1_product_contract_violations(block)
+    summary = (block or {}).get("summary") if isinstance((block or {}).get("summary"), dict) else {}
+    main = summary.get("main_hedge_gap") if isinstance(summary.get("main_hedge_gap"), dict) else {}
+    bridge_meta = (block or {}).get("bridge_meta") if isinstance((block or {}).get("bridge_meta"), dict) else {}
+    by_risk = (block or {}).get("by_risk_type") if isinstance((block or {}).get("by_risk_type"), list) else []
+    n_weak = sum(
+        1
+        for row in by_risk
+        if isinstance(row, dict)
+        and str(row.get("protection_status") or "") in {"weak_protection", "no_protection"}
+    )
+    return {
+        "product_contract_ok": not violations,
+        "contract_violations": violations,
+        "block_status": (block or {}).get("block_status"),
+        "ruleset_version": (block or {}).get("ruleset_version"),
+        "protection_profile": summary.get("protection_profile"),
+        "main_hedge_gap_risk_type": main.get("risk_type"),
+        "main_hedge_gap_protection_status": main.get("protection_status"),
+        "n_weak_protection_rows": n_weak if by_risk else None,
+        "bridges_applied": {
+            key: bool(bridge_meta.get(key))
+            for key in ("block_2_4_hidden_exposure", "block_2_6_portfolio_weakness_map")
+            if key in bridge_meta
+        }
+        if bridge_meta
+        else None,
+        "has_hidden_exposure_confirmation": isinstance((block or {}).get("hidden_exposure_confirmation"), list),
+        "has_weakness_map_confirmation": isinstance((block or {}).get("weakness_map_confirmation"), list),
+    }
+
+
+def assert_hedge_gap_analysis_v1_product_contract(block: dict[str, Any]) -> None:
+    """Raise AssertionError when Block 3.3 institutional product contract is violated."""
+    violations = hedge_gap_analysis_v1_product_contract_violations(block)
     if violations:
         raise AssertionError("; ".join(violations))
 

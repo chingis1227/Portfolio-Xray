@@ -31,6 +31,7 @@ Use the narrowest reliable check first. Broaden only when the change touches sha
 | Blocks 6–7 downstream integration (offline) | Guarded backtest/stress handoff from `candidate_comparison.json` (degraded optimizer stress embed-only) | `python -m pytest tests/test_blocks_6_7_downstream_integration.py tests/test_downstream_decision_readiness.py -q` |
 | Blocks 8–10 package truthfulness (offline) | Partial menu + degraded optimizer disclosure in selection/action/decision package | `python -m pytest tests/test_blocks_8_10_downstream_integration.py tests/test_package_truthfulness.py tests/test_decision_package_reporting.py -q` |
 | Blocks 1-5 data trust signals | Stress/input/X-Ray trust summaries for episode quality, taxonomy warnings, and young-ETF policy disclosure | `python -m pytest tests/test_data_trust_signals.py -q` |
+| Core diagnostics entrypoint (Blocks 1-3) | `run_core_diagnostics.py`, `--core-diagnostics-only`, or `product_bundle_scope` | `python -m pytest tests/test_core_diagnostics_entrypoint.py -q` |
 | Portfolio-first workflow orchestration | `run_portfolio_review.py` plan building or step ordering | `python -m pytest tests/test_portfolio_review_workflow.py -q` |
 | One-candidate product demo (Session 07) | After `run_portfolio_review.py --candidates equal_weight` or runtime-truth scoping changes | `python -m pytest tests/test_one_candidate_demo_validation.py -q`; live disk gate: `python scripts/validate_one_candidate_demo.py` |
 | Runtime truth product vs research boundaries (Session 08) | Runtime mode routing, `advanced_package` gating, or compare/verdict scoping changes | `python -m pytest tests/test_runtime_mode_regression_boundaries.py tests/test_portfolio_review_workflow.py tests/test_candidate_comparison.py tests/test_one_candidate_demo_validation.py -q` |
@@ -483,11 +484,13 @@ python scripts/verify_docs.py
 
 ## Block 3.3 Hedge Gap Analysis regression bundle
 
-Governed by [Block 3.3 Hedge Gap Analysis ExecPlan](docs/exec_plans/2026-05-27_block_3_3_hedge_gap_analysis_plan.md).
-Re-run after `hedge_gap_analysis_v1` builder, wiring, or downstream mirror changes (Session 07+).
+Governed by [Block 3.3 Hedge Gap Analysis MVP](docs/exec_plans/2026-05-27_block_3_3_hedge_gap_analysis_plan.md) (**Completed**)
+and [Block 3.3 Institutional Upgrade](docs/exec_plans/2026-05-29_block_3_3_hedge_gap_institutional_upgrade_plan.md) (Sessions 02–10 implementation; Session 11 docs).
+
+Re-run after `hedge_gap_analysis_v1` builder, scoring/bridge logic, snapshot or scorecard mirrors, Core MVP validator, or downstream consumers (`problem_classification`, `candidate_comparison`, `ai_commentary_context`) change.
 
 ```bash
-python -m pytest tests/test_hedge_gap_analysis_v1_contract.py tests/test_stress_results_block_contract.py tests/test_stress_scenario_coverage_contract.py tests/test_stress_diagnostic_mode.py tests/test_stress_hedge_gap_contract.py tests/test_stress_downstream_integration.py -q
+python -m pytest tests/test_hedge_gap_analysis_v1_contract.py tests/test_hedge_gap_materialization.py tests/test_hedge_gap_candidate_comparison.py tests/test_problem_classification.py tests/test_ai_commentary_context.py tests/test_stress_results_block_contract.py tests/test_stress_scenario_coverage_contract.py tests/test_stress_diagnostic_mode.py tests/test_stress_hedge_gap_contract.py tests/test_stress_downstream_integration.py tests/test_live_core_e2e_validation.py -q
 python scripts/verify_docs.py
 ```
 

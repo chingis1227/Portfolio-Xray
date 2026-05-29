@@ -1045,7 +1045,7 @@ Legacy section provenance (`RM-943`): `frequency=mixed`, `window` may list stres
 
 #### 2.6.1 Block 2.6 product contract (`block_2_6_portfolio_weakness_map`)
 
-Status: **implemented** (Block 2.6 MVP closed 2026-05-26). **Implementation:** `src/block_2_6_portfolio_weakness_map.py` wired from `build_portfolio_xray_v2` after Block 2.5. Acceptance: [Block 2.6 acceptance audit](../audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md). This product block answers:
+Status: **implemented** — **`heuristic_v2`** closed 2026-05-29 (v1 MVP closed 2026-05-26: [Block 2.6 MVP acceptance audit](../audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md); v2: [heuristic_v2 acceptance audit](../audits/2026-05-29_block_2_6_weakness_map_heuristic_v2_acceptance_audit.md), [UI Pareto spec](block_2_6_weakness_map_ui_pareto_spec.md), `DEC-2026-05-29-001`). Implementation: `src/block_2_6_portfolio_weakness_map.py` wired from `build_portfolio_xray_v2` after Block 2.5. This product block answers:
 *"Where is this portfolio likely fragile, and what should we test next?"* It does **not** compute stress PnL, pass/fail, or loss attribution.
 
 **Architecture boundary (hard):**
@@ -1058,23 +1058,23 @@ Status: **implemented** (Block 2.6 MVP closed 2026-05-26). **Implementation:** `
 
 **Backward compatibility:** keep `sections.weakness_map` unchanged in shape until an explicit migration. Report formatters and golden tests may continue to use legacy `sections.weakness_map`; UI/API should prefer `block_2_6_portfolio_weakness_map`.
 
-**Risk types (exact MVP list, nine):**
+**Risk types (Core MVP v2, canonical Stress Lab-aligned set, eight):**
 
-- `equity_crash`
-- `rates_up`
-- `inflation_shock`
-- `credit_spreads`
+- `equity_shock`
+- `credit_shock`
+- `rates_shock`
+- `inflation_stagflation`
 - `liquidity_shock`
 - `usd_shock`
 - `commodity_shock`
-- `volatility_spike`
-- `recession`
+- `recession_severe`
+
+Legacy weakness ids (`equity_crash`, `rates_up`, `inflation_shock`, `credit_spreads`, `liquidity_shock`, `usd_shock`, `commodity_shock`, `volatility_spike`, `recession`) remain only for backward compatibility in `sections.weakness_map` and may be surfaced as an alias map in `block_2_6_portfolio_weakness_map.metadata.legacy_risk_aliases` (read-only diagnostic aid).
 
 **Scoring semantics:**
 
-- `score_0_100`: integer 0–100 (higher = more vulnerable / more worth testing).
+- `score_0_100`: integer 0–100 (higher = more vulnerable / more worth testing). Scoring rules **`heuristic_v2`** are openly documented and must be explainable via exported rule weights and evidence rows.
 - `severity`: `Low` (0–39), `Medium` (40–69), `High` (70–100), or `Unavailable` when evidence is insufficient (`score_0_100=null`).
-- Scores are **heuristic_v1** and must be explainable via exported rule weights and evidence rows.
 - If evidence is insufficient or conflicting, prefer `Unavailable` / `low confidence` over a confident `Low/Medium/High`.
 
 **Top-level envelope:**
@@ -1088,29 +1088,60 @@ Status: **implemented** (Block 2.6 MVP closed 2026-05-26). **Implementation:** `
   "summary": "",
   "data_quality_warnings": [],
   "metadata": {
-    "rule_version": "heuristic_v1",
+    "rule_version": "heuristic_v2",
     "stress_lab_separation": "no_stress_pnl_or_attribution",
-    "inputs": ["block_2_1", "block_2_2", "block_2_3", "block_2_4", "block_2_5"]
+    "inputs": ["block_2_1", "block_2_2", "block_2_3", "block_2_4", "block_2_5"],
+    "legacy_risk_aliases": {
+      "equity_crash": "equity_shock",
+      "rates_up": "rates_shock",
+      "inflation_shock": "inflation_stagflation",
+      "credit_spreads": "credit_shock",
+      "liquidity_shock": "liquidity_shock",
+      "usd_shock": "usd_shock",
+      "commodity_shock": "commodity_shock",
+      "volatility_spike": null,
+      "recession": "recession_severe"
+    },
+    "diagnostics_meta": {
+      "method": "rule_based_portfolio_weakness_map",
+      "version": "v2",
+      "ruleset": "heuristic_v2",
+      "status_bands": {"Low": [0, 39], "Medium": [40, 69], "High": [70, 100]},
+      "confidence_model": "v2",
+      "input_blocks": ["block_2_1", "block_2_2", "block_2_3", "block_2_4", "block_2_5"],
+      "blocked_upstream_fields": [],
+      "notes": [
+        "Does not read stress_report.json or Stress Lab loss/attribution blocks.",
+        "Uses Block 2.3 factor_variance_contribution as exported by the Factor Exposure block."
+      ]
+    }
   },
   "risk_types": [],
   "next_tests_global": []
 }
 ```
 
-**`risk_types[]` item contract:**
+**`risk_types[]` item contract (backend JSON):**
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `risk_type` | string | yes | One of the nine ids above |
+| `risk_type` | string | yes | One of the eight canonical ids above |
 | `risk_title` | string | yes | Short English label (display) |
 | `score_0_100` | integer \| null | yes | Null when Unavailable |
 | `severity` | string | yes | `Low` \| `Medium` \| `High` \| `Unavailable` |
 | `confidence` | string | yes | `high` \| `medium` \| `low` \| `unavailable` |
 | `evidence` | array | yes | Structured evidence rows (below) |
-| `explanation` | string | yes | 2–4 English sentences; no numbers invented; no Stress PnL claims |
-| `why_it_matters` | string | yes | One paragraph, plain English |
-| `next_tests` | array of string | yes | Scenario ids/names to run in Stress Lab (no PnL) |
-| `limitations` | array of string | yes | Missing signals, taxonomy gaps, short history |
+| `short_diagnosis` | string | yes | 1–2 English sentences summarising the current status (“High because …”) |
+| `why_status` | string | yes | Plain-English explanation of why the severity band (Low/Medium/High/Unavailable) was chosen, tied to top signals |
+| `why_it_matters` | string | yes | One short paragraph, plain English, no Stress PnL claims |
+| `key_evidence` | array | yes | 3–5 short bullet-style items derived from `evidence` that are suitable for UI/report display |
+| `linked_assets` | array | yes | Up to 3 `{ticker, weight_pct, source}` entries identifying key contributors; may be empty when unavailable |
+| `next_tests` | array of string | yes | Scenario ids to run in Stress Lab (subset of `SYNTHETIC_SCENARIO_IDS`) |
+| `limitations` | array of string | yes | Missing signals, taxonomy gaps, short history, or model caveats for this risk |
+| `data_quality_warnings` | array of string | yes | Per-risk data quality issues (e.g. missing factor betas, short history) |
+| `confidence_reason` | string \| null | yes | Short English explanation for `confidence` (why high/medium/low/unavailable) |
+| `signal_scores` | object \| null | no | Optional backend diagnostics: per-signal 0–100 scores and weights, not for default UI |
+| `explanation` | string | deprecated | Transitional alias for `short_diagnosis`; scheduled for removal after v2 migration |
 
 **Evidence row contract (`evidence[]`):**
 

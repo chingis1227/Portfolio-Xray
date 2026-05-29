@@ -31,8 +31,10 @@ mapped synthetic stress scenario, where is protection weak, and what is the main
 - Built **after** `attach_stress_results_v1` on the same report dict.
 - `loss_gate_mode` copied from top-level report (`diagnostic` for Core MVP portfolio-first runs).
 
-Module: `src/hedge_gap_analysis_block.py` (`BLOCK_3_3_VERSION = "hedge_gap_analysis_v1"`).
-Session 02 scaffold; per-risk offset math Session 03+; `run_stress` wiring Session 05+.
+Module: `src/hedge_gap_analysis_block.py` (`BLOCK_3_3_VERSION = "hedge_gap_analysis_v1"`,
+`RULESET_VERSION = "hedge_gap_rules_v1_2"` — bump from `hedge_gap_rules_v1_1` when main-gap
+selection scoring changes).
+MVP Sessions 02–08 (2026-05-27); institutional upgrade Sessions 02–12 (**Completed** 2026-05-29) — [acceptance audit](../audits/2026-05-29_block_3_3_institutional_upgrade_acceptance_audit.md).
 
 ### Risk type → scenario mapping (v1 — frozen)
 
@@ -79,15 +81,37 @@ positives and negatives from the full per-scenario map.
 | `linked_episode` | Always `null` in v1 | — |
 | `scenario_type` | Always `"synthetic"` in v1 | — |
 | `portfolio_loss_pct` | Linked scenario portfolio loss | Scenario row missing |
-| `assets_hurt` | Tickers with `pnl_by_asset_pct < 0`, sorted most negative first; `{ticker, pnl_pct}` | No `pnl_by_asset_pct` dict |
-| `assets_helped` | Tickers with `pnl_by_asset_pct > 0`, sorted largest positive first | Same |
+| `assets_hurt` | Tickers with `pnl_by_asset_pct < 0` (zeros excluded), sorted most negative first, ticker tie-break A→Z; `{ticker, pnl_pct}` | No `pnl_by_asset_pct` dict |
+| `assets_helped` | Tickers with `pnl_by_asset_pct > 0` (zeros excluded), sorted largest positive first, ticker tie-break A→Z | Same |
 | `gross_loss_from_assets_hurt` | `sum(abs(pnl_pct))` over hurt assets | No hurt assets |
 | `positive_contribution_from_assets_helped` | `sum(pnl_pct)` over helped assets | No helped assets (ratio may still be 0) |
-| `offset_coverage_ratio` | `positive_contribution / gross_loss` when `gross_loss > 0`; else `null` | `gross_loss == 0` or missing contrib |
+| `offset_coverage_ratio` | `positive_contribution / gross_loss` when `gross_loss > 0` and both terms finite; `0.0` when offset is zero; else `null` | `gross_loss == 0` or missing contrib |
 | `loss_concentration` | `top3_share_of_gross_loss`: sum of abs top-3 hurt / `gross_loss` | `gross_loss` unavailable |
 | `data_availability` | `available` \| `insufficient_data` \| `unavailable` | See reason codes below |
 | `data_availability_reason` | Machine code when not `available` | — |
 | `diagnosis_summary_en` | Template English from computed fields | Missing portfolio loss |
+| `protection_type` | Product alias of `risk_type` (same string) | — |
+| `scenario_id` | Product alias of `linked_scenario_id` | — |
+| `top3_loss_assets` | First three `assets_hurt` entries | No hurt assets |
+| `top3_helped_assets` | First three `assets_helped` entries | No helped assets |
+| `protection_status` | See taxonomy below | `unavailable` when row not `available` |
+| `confirmation_status` | `not_applicable` until bridges run; after Block 2.4 bridge: `confirmed` \| `partially_confirmed` \| `not_confirmed` \| `preliminary` | — |
+| `confidence` | `high` \| `medium` \| `low` \| `unavailable` | From contribution completeness |
+| `confidence_reason` | Machine-readable confidence driver | — |
+| `limitations` | Per-row limitation strings (`[]` when none) | — |
+| `client_diagnosis_en` | Shorter advisor-facing template | Same gates as `diagnosis_summary_en` |
+| `next_decision_use` | Downstream hint (`candidate_hedge_gap_compare`, …) | — |
+
+#### `protection_status` taxonomy (per row)
+
+| Value | Rule |
+| --- | --- |
+| `strong_protection` | `offset_coverage_ratio >= 0.60` and portfolio loss &lt; 0 |
+| `partial_protection` | `0.25 <= ratio < 0.60` and portfolio loss &lt; 0 |
+| `weak_protection` | `0 < ratio < 0.25` and portfolio loss &lt; 0 |
+| `no_protection` | `ratio == 0` and portfolio loss &lt; 0 |
+| `not_needed_or_no_loss` | `portfolio_loss_pct >= 0` |
+| `unavailable` | Row not `data_availability == available` |
 
 **Formula:** `offset_coverage_ratio = positive_contribution_from_assets_helped / gross_loss_from_assets_hurt`
 (example: hurt gross 12%, helped +2.5% → ratio ≈ 0.208 → ~21% in narrative).
@@ -105,11 +129,39 @@ positives and negatives from the full per-scenario map.
 
 | Field | Derive rule |
 | --- | --- |
-| `main_hedge_gap` | Among rows with numeric `offset_coverage_ratio`: minimum ratio (weakest offset); tie-break by more negative `portfolio_loss_pct` |
+| `main_hedge_gap` | Compact row for the selected main gap (includes `main_gap_score` when scored) |
 | `weakest_protection_area` | `risk_type` of `main_hedge_gap` |
 | `strongest_protection_area` | Maximum `offset_coverage_ratio` when ≥2 rows have ratio; else `null` |
-| `diagnosis_summary_en` | Portfolio-level template (main gap + contrast vs stronger areas) |
+| `main_gap_score` | Weighted severity score of the selected row (higher = worse gap); `null` on legacy fallback |
+| `selection_reason_code` | `weighted_gap_score_v2_loss_scenarios` \| `weighted_gap_score_v2_no_loss_fallback` \| `fallback_min_offset_ratio` \| `no_ratio_rows` |
+| `selection_reason_en` | English explanation of how `main_hedge_gap` was chosen |
+| `diagnosis_summary_en` | Portfolio-level template (main gap + contrast vs stronger areas + selection reason) |
 | `data_quality_warnings` | Missing contrib, scenario missing, all ratios unavailable, etc. |
+| `average_offset_coverage_ratio` | Mean of numeric row ratios when present; else `null` |
+| `protection_profile` | `mostly_weak_protection` \| `mostly_adequate_protection` \| `mixed_protection` \| `unavailable` |
+| `client_summary_en` | Shorter portfolio-level advisor template | No main gap |
+| `limitations` | Portfolio-level limitations (includes data-quality warnings) |
+| `main_hedge_gap_scenario_id` | `main_hedge_gap.linked_scenario_id` | No main gap |
+| `main_hedge_gap_offset_coverage_ratio` | From `main_hedge_gap` | No main gap |
+| `main_hedge_gap_portfolio_loss_pct` | From `main_hedge_gap` | No main gap |
+| `main_assets_hurt` / `main_assets_helped` | Full lists for main-gap risk row | No main gap |
+
+#### Main hedge gap selection (ruleset v1.2)
+
+Among rows with numeric `offset_coverage_ratio`, prefer rows with `portfolio_loss_pct < 0`.
+If none are losing, use all ratio rows.
+
+**Primary (v1.2):** maximize `main_gap_score` per candidate row:
+
+`main_gap_score = offset_deficit × loss_severity × concentration_multiplier`
+
+- `offset_deficit = 1 - min(max(offset_coverage_ratio, 0), 1)`
+- `loss_severity = abs(portfolio_loss_pct)` when `portfolio_loss_pct < 0`
+- `concentration_multiplier = 1 + 0.25 × min(top3_share_of_gross_loss, 1)` (0 when concentration unknown)
+
+**Tie-break (higher wins):** larger `main_gap_score`, then larger `abs(portfolio_loss_pct)`, then lower `offset_coverage_ratio`, then `risk_type` A→Z.
+
+**Fallback:** when no score can be computed, minimum `offset_coverage_ratio` with tie-break by more negative `portfolio_loss_pct` (`selection_reason_code = fallback_min_offset_ratio`).
 
 ### Top-level block shape
 
@@ -118,12 +170,48 @@ positives and negatives from the full per-scenario map.
 | Field | Description |
 | --- | --- |
 | `version` | `hedge_gap_analysis_v1` |
+| `ruleset_version` | `hedge_gap_rules_v1_2` (bump when status/scoring logic changes) |
+| `block_status` | `ok` \| `partial` \| `unavailable` (from row availability) |
 | `loss_gate_mode` | Copy of report `loss_gate_mode` |
 | `diagnosis_method` | `contribution_based_offset_coverage_v1` |
 | `scenario_library` | `synthetic_ids` linkage copy from Block 3.2 / Scenario Library (for contract tests) |
+| `scenario_coverage` | `{n_available, n_total, fraction_available}` |
 | `by_risk_type` | Eight rows per mapping table (or explicit unavailable rows) |
 | `summary` | See above |
 | `n_risk_types` | Length of `by_risk_type` (expect 8 when map complete) |
+| `hidden_exposure_confirmation` | Array of Block 2.4 alert ↔ stress offset confirmation rows (Session 05); empty until Portfolio X-Ray bridge runs |
+| `weakness_map_confirmation` | Array of Block 2.6 canonical `risk_type` (scenario id) ↔ hedge-gap row confirmations (Session 06); empty until Portfolio X-Ray bridge runs |
+| `bridge_meta` | `{block_2_4_hidden_exposure, block_2_6_portfolio_weakness_map, ruleset, n_alerts_linked, n_weakness_rows_linked}` when bridges applied |
+
+#### `hidden_exposure_confirmation[]` row (Session 05)
+
+| Field | Description |
+| --- | --- |
+| `alert_id` | Block 2.4 alert id (`hidden_equity_beta`, `weak_hedge_behavior`, …) |
+| `alert_status` / `alert_score` | Copied from Block 2.4 alert |
+| `confirmation_status` | Aggregate vs linked hedge-gap rows |
+| `confirmation_reason_code` | Machine-readable bridge outcome |
+| `confirmation_reason_en` | English explanation |
+| `linked_risk_types` / `linked_scenario_ids` | Protection areas used for confirmation |
+| `risk_type_confirmations` | Per-row `{risk_type, confirmation_status, offset_coverage_ratio, protection_status, …}` |
+
+Bridge runs in `build_portfolio_xray_v2` after Block 2.4 is built (no `src.block_2_4` import in Block 3.3).
+`attach_hedge_gap_analysis_v1(..., block_2_4_hidden_exposure=...)` may apply the same bridge when a 2.4 dict is already available.
+
+#### `weakness_map_confirmation[]` row (Session 06)
+
+| Field | Description |
+| --- | --- |
+| `risk_type` | Block 2.6 canonical scenario id (`equity_shock`, …) |
+| `linked_protection_type` | Block 3.3 protection row id (`equity_crash_protection`, …) |
+| `linked_scenario_id` | Same as `risk_type` (Stress Lab synthetic id) |
+| `weakness_severity` / `weakness_score_0_100` | Copied from Block 2.6 risk row |
+| `confirmation_status` | Aggregate stress offset confirmation vs pre-stress weakness |
+| `confirmation_reason_code` / `confirmation_reason_en` | Machine and English bridge outcome |
+| `protection_status` / `offset_coverage_ratio` / `portfolio_loss_pct` | Copied from linked hedge-gap row when available |
+
+Block 2.6 bridge runs in `build_portfolio_xray_v2` after Block 2.6 is built (read-only; must not mutate Block 2.6).
+`attach_hedge_gap_analysis_v1(..., block_2_6_portfolio_weakness_map=...)` may apply the same bridge when a 2.6 dict is already available.
 
 **Forbidden on Block 3.3 product rows:** `pass`, `loss_ok`, `gap_detected`, `status` (legacy taxonomy),
 `max_dd_limit`, mandate comparison fields.

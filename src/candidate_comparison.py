@@ -41,6 +41,13 @@ from src.stress import crisis_replay_summary_from_paths
 from src.output_policy import output_policy_for_profile, write_output_manifest
 
 SCHEMA_VERSION = "candidate_comparison_v1"
+HEDGE_GAP_COMPARISON_VERSION = "hedge_gap_comparison_v1"
+HEDGE_GAP_V1_VERSION = "hedge_gap_analysis_v1"
+SCORECARD_V1_BLOCK = "current_portfolio_stress_scorecard_v1"
+SCORECARD_V1_VERSION = "current_portfolio_stress_scorecard_v1"
+STRESS_SCORECARD_COMPARISON_VERSION = "stress_scorecard_comparison_v1"
+STRESS_SCORECARD_SOURCE_LEGACY = "stress_scorecard_v1"
+_WEAK_HEDGE_PROTECTION_STATUSES = frozenset({"weak_protection", "no_protection"})
 WINDOWS = ("3y", "5y", "10y")
 PRIMARY_WINDOW = "10y"
 SNAPSHOT_FILES = {"3y": "snapshot_3y.json", "5y": "snapshot_5y.json", "10y": "snapshot_10y.json"}
@@ -330,6 +337,435 @@ def _load_window_metrics(
     return None, [], None
 
 
+def _load_hedge_gap_analysis_v1_block(folder: Path) -> dict[str, Any] | None:
+    """Load Block 3.3 hedge gap from candidate artifacts (full report preferred over snapshot mirror)."""
+    stress_report = _load_json(folder / "stress_report.json")
+    if isinstance(stress_report, dict):
+        block = stress_report.get("hedge_gap_analysis_v1")
+        if isinstance(block, dict) and block.get("version") == HEDGE_GAP_V1_VERSION:
+            return block
+    snap_10y = _load_json(folder / SNAPSHOT_FILES[PRIMARY_WINDOW])
+    if isinstance(snap_10y, dict):
+        suite = snap_10y.get("stress_suite_results") or {}
+        mirror = suite.get("hedge_gap_analysis_v1")
+        if isinstance(mirror, dict) and mirror.get("version") == HEDGE_GAP_V1_VERSION:
+            return mirror
+    return None
+
+
+def _hedge_gap_v1_comparison_row(block: dict[str, Any]) -> dict[str, Any] | None:
+    if block.get("version") != HEDGE_GAP_V1_VERSION:
+        return None
+    summary = block.get("summary") if isinstance(block.get("summary"), dict) else {}
+    main = summary.get("main_hedge_gap") if isinstance(summary.get("main_hedge_gap"), dict) else {}
+    by_risk = [row for row in (block.get("by_risk_type") or []) if isinstance(row, dict)]
+    n_weak = sum(
+        1
+        for row in by_risk
+        if str(row.get("protection_status") or "") in _WEAK_HEDGE_PROTECTION_STATUSES
+    )
+    row: dict[str, Any] = {
+        "block_status": block.get("block_status"),
+        "ruleset_version": block.get("ruleset_version"),
+        "protection_profile": summary.get("protection_profile"),
+        "weakest_protection_area": summary.get("weakest_protection_area"),
+        "strongest_protection_area": summary.get("strongest_protection_area"),
+        "main_hedge_gap_risk_type": main.get("risk_type"),
+        "main_hedge_gap_scenario_id": main.get("linked_scenario_id")
+        or summary.get("main_hedge_gap_scenario_id"),
+        "main_hedge_gap_offset_coverage_ratio": main.get("offset_coverage_ratio")
+        if main.get("offset_coverage_ratio") is not None
+        else summary.get("main_hedge_gap_offset_coverage_ratio"),
+        "main_hedge_gap_portfolio_loss_pct": main.get("portfolio_loss_pct")
+        if main.get("portfolio_loss_pct") is not None
+        else summary.get("main_hedge_gap_portfolio_loss_pct"),
+        "main_hedge_gap_protection_status": main.get("protection_status"),
+        "main_gap_score": summary.get("main_gap_score"),
+        "n_weak_protection_rows": n_weak if by_risk else None,
+    }
+    diag = summary.get("diagnosis_summary_en")
+    if isinstance(diag, str) and diag.strip():
+        row["diagnosis_summary_en"] = diag.strip()
+    return row
+
+
+def _hedge_gap_v1_stress_compact(block: dict[str, Any]) -> dict[str, Any]:
+    """Compact hedge-gap slice for per-candidate ``stress`` (not the full v1 block)."""
+    row = _hedge_gap_v1_comparison_row(block)
+    return row if isinstance(row, dict) else {}
+
+
+def _load_scorecard_v1_block(folder: Path) -> dict[str, Any] | None:
+    """Load Block 3.4 stress scorecard from candidate artifacts."""
+    stress_report = _load_json(folder / "stress_report.json")
+    if isinstance(stress_report, dict):
+        block = stress_report.get(SCORECARD_V1_BLOCK)
+        if isinstance(block, dict) and block.get("version") == SCORECARD_V1_VERSION:
+            return block
+    snap_10y = _load_json(folder / SNAPSHOT_FILES[PRIMARY_WINDOW])
+    if isinstance(snap_10y, dict):
+        suite = snap_10y.get("stress_suite_results") or {}
+        mirror = suite.get(SCORECARD_V1_BLOCK)
+        if isinstance(mirror, dict) and mirror.get("version") == SCORECARD_V1_VERSION:
+            return mirror
+    return None
+
+
+def _scorecard_v1_comparison_row(block: dict[str, Any]) -> dict[str, Any] | None:
+    if block.get("version") != SCORECARD_V1_VERSION:
+        return None
+    if str(block.get("block_status") or "") == "unavailable":
+        return None
+
+    targets = block.get("candidate_comparison_targets")
+    targets = targets if isinstance(targets, dict) else {}
+    worst_syn = block.get("worst_synthetic_scenario")
+    worst_syn = worst_syn if isinstance(worst_syn, dict) else {}
+    worst_hist = block.get("worst_historical_scenario")
+    worst_hist = worst_hist if isinstance(worst_hist, dict) else {}
+    hedge_sum = block.get("hedge_gap_summary")
+    hedge_sum = hedge_sum if isinstance(hedge_sum, dict) else {}
+    signals = block.get("problem_classification_signals")
+    signals = signals if isinstance(signals, dict) else {}
+    stress_diagnosis = block.get("stress_diagnosis")
+    stress_diagnosis = stress_diagnosis if isinstance(stress_diagnosis, dict) else {}
+
+    row: dict[str, Any] = {
+        "block_status": block.get("block_status"),
+        "ruleset_version": block.get("ruleset_version"),
+        "worst_synthetic_scenario_id": targets.get("worst_synthetic_scenario_id")
+        or worst_syn.get("scenario_id"),
+        "worst_historical_episode": worst_hist.get("episode"),
+        "worst_synthetic_portfolio_loss_pct": worst_syn.get("portfolio_loss_pct"),
+        "worst_historical_drawdown_pct": worst_hist.get("drawdown_pct"),
+        "stress_severity": signals.get("stress_severity"),
+        "diagnosis_confidence": stress_diagnosis.get("diagnosis_confidence"),
+        "main_hedge_gap_scenario_id": targets.get("main_hedge_gap_scenario_id")
+        or hedge_sum.get("main_hedge_gap_scenario_id"),
+        "compare_offset_coverage": targets.get("compare_offset_coverage"),
+        "main_hedge_gap_offset_coverage_ratio": hedge_sum.get("offset_coverage_ratio"),
+        "legacy_fallback_used": block.get("legacy_fallback_used"),
+    }
+    headline = stress_diagnosis.get("headline")
+    if isinstance(headline, str) and headline.strip():
+        row["headline_en"] = headline.strip()
+    return row
+
+
+def _scorecard_v1_stress_compact(block: dict[str, Any]) -> dict[str, Any]:
+    """Compact Block 3.4 slice for per-candidate ``stress``."""
+    row = _scorecard_v1_comparison_row(block)
+    return row if isinstance(row, dict) else {}
+
+
+def _format_stress_scorecard_pairwise_summary_en(
+    *,
+    baseline_candidate_id: str,
+    candidate_id: str,
+    loss_delta: float | None,
+    offset_delta: float | None,
+    compare_offset: bool,
+) -> str:
+    parts = [
+        f"Stress scorecard comparison for {candidate_id} vs baseline {baseline_candidate_id}."
+    ]
+    if loss_delta is not None:
+        direction = "less" if loss_delta > 0 else "deeper" if loss_delta < 0 else "unchanged"
+        parts.append(
+            f"Worst synthetic portfolio loss is {direction} by "
+            f"{abs(loss_delta) * 100:.1f} percentage points."
+        )
+    if compare_offset and offset_delta is not None:
+        direction = "higher" if offset_delta > 0 else "lower" if offset_delta < 0 else "unchanged"
+        parts.append(
+            f"Main-scenario internal offset coverage is {direction} by "
+            f"{abs(offset_delta) * 100:.1f} percentage points."
+        )
+    return " ".join(parts)
+
+
+def _build_stress_scorecard_pairwise(
+    baseline_row: dict[str, Any],
+    candidate_row: dict[str, Any],
+    *,
+    baseline_candidate_id: str,
+    candidate_id: str,
+) -> dict[str, Any]:
+    b_loss = _as_float(baseline_row.get("worst_synthetic_portfolio_loss_pct"))
+    c_loss = _as_float(candidate_row.get("worst_synthetic_portfolio_loss_pct"))
+    b_ratio = _as_float(baseline_row.get("main_hedge_gap_offset_coverage_ratio"))
+    c_ratio = _as_float(candidate_row.get("main_hedge_gap_offset_coverage_ratio"))
+    loss_delta = round(c_loss - b_loss, 3) if b_loss is not None and c_loss is not None else None
+    offset_delta = (
+        round(c_ratio - b_ratio, 3) if b_ratio is not None and c_ratio is not None else None
+    )
+    compare_offset = bool(
+        baseline_row.get("compare_offset_coverage") and candidate_row.get("compare_offset_coverage")
+    )
+    return {
+        "baseline_candidate_id": baseline_candidate_id,
+        "candidate_id": candidate_id,
+        "worst_synthetic_loss_pct_delta": loss_delta,
+        "offset_coverage_ratio_delta": offset_delta if compare_offset else None,
+        "compare_offset_coverage": compare_offset,
+        "candidate_improved_worst_synthetic_loss": (
+            loss_delta is not None and loss_delta > 0
+        ),
+        "candidate_improved_offset_coverage": (
+            compare_offset and offset_delta is not None and offset_delta > 0
+        ),
+        "comparison_summary_en": _format_stress_scorecard_pairwise_summary_en(
+            baseline_candidate_id=baseline_candidate_id,
+            candidate_id=candidate_id,
+            loss_delta=loss_delta,
+            offset_delta=offset_delta,
+            compare_offset=compare_offset,
+        ),
+    }
+
+
+def build_stress_scorecard_comparison(
+    candidates: list[dict[str, Any]],
+    *,
+    baseline_candidate_id: str,
+    cfg: PortfolioConfig,
+    project_root: Path,
+    output_dir_final: Path,
+    analysis_mode: str,
+) -> dict[str, Any]:
+    """Build top-level stress scorecard comparison when baseline and ≥1 peer have Block 3.4."""
+    registry_by_id = {str(row["candidate_id"]): row for row in _REGISTRY_ROWS}
+    out_rel = str(getattr(cfg, "output_dir_final", "Main portfolio")).replace("\\", "/")
+    rows_by_id: dict[str, dict[str, Any]] = {}
+
+    for cand in candidates:
+        cid = str(cand.get("candidate_id") or "")
+        if not cid or cand.get("status") not in {"available", "degraded"}:
+            continue
+        reg = registry_by_id.get(cid)
+        if not reg:
+            continue
+        folder = _artifact_folder(
+            reg,
+            output_dir_final=output_dir_final,
+            project_root=project_root,
+            analysis_mode=analysis_mode,
+            output_dir_final_rel=out_rel,
+        )
+        block = _load_scorecard_v1_block(folder)
+        if not isinstance(block, dict):
+            continue
+        row = _scorecard_v1_comparison_row(block)
+        if row:
+            rows_by_id[cid] = row
+
+    if baseline_candidate_id not in rows_by_id:
+        return {
+            "version": STRESS_SCORECARD_COMPARISON_VERSION,
+            "status": "unavailable",
+            "baseline_candidate_id": baseline_candidate_id,
+            "stress_scorecard_source": SCORECARD_V1_VERSION,
+            "reason_code": "baseline_stress_scorecard_v1_missing",
+            "comparison_candidate_ids": [],
+            "candidates": {},
+            "pairwise": [],
+        }
+
+    comparison_ids = sorted(cid for cid in rows_by_id if cid != baseline_candidate_id)
+    if not comparison_ids:
+        return {
+            "version": STRESS_SCORECARD_COMPARISON_VERSION,
+            "status": "unavailable",
+            "baseline_candidate_id": baseline_candidate_id,
+            "stress_scorecard_source": SCORECARD_V1_VERSION,
+            "reason_code": "no_peer_candidate_with_stress_scorecard_v1",
+            "comparison_candidate_ids": [],
+            "candidates": {baseline_candidate_id: rows_by_id[baseline_candidate_id]},
+            "pairwise": [],
+        }
+
+    baseline_row = rows_by_id[baseline_candidate_id]
+    pairwise = [
+        _build_stress_scorecard_pairwise(
+            baseline_row,
+            rows_by_id[cid],
+            baseline_candidate_id=baseline_candidate_id,
+            candidate_id=cid,
+        )
+        for cid in comparison_ids
+    ]
+    return {
+        "version": STRESS_SCORECARD_COMPARISON_VERSION,
+        "status": "ok",
+        "baseline_candidate_id": baseline_candidate_id,
+        "stress_scorecard_source": SCORECARD_V1_VERSION,
+        "comparison_candidate_ids": comparison_ids,
+        "candidates": rows_by_id,
+        "pairwise": pairwise,
+    }
+
+
+def _format_hedge_gap_pairwise_summary_en(
+    *,
+    baseline_candidate_id: str,
+    candidate_id: str,
+    offset_delta: float | None,
+    gap_score_delta: float | None,
+) -> str:
+    if offset_delta is None and gap_score_delta is None:
+        return (
+            f"Hedge-gap comparison for {candidate_id} vs {baseline_candidate_id}: "
+            f"offset coverage deltas are unavailable."
+        )
+    parts = [f"Hedge-gap comparison for {candidate_id} vs baseline {baseline_candidate_id}."]
+    if offset_delta is not None:
+        direction = "higher" if offset_delta > 0 else "lower" if offset_delta < 0 else "unchanged"
+        parts.append(
+            f"Main-scenario internal offset coverage is {direction} by "
+            f"{abs(offset_delta) * 100:.1f} percentage points."
+        )
+    if gap_score_delta is not None:
+        if gap_score_delta < 0:
+            parts.append("Weighted main hedge-gap score improved (lower is better).")
+        elif gap_score_delta > 0:
+            parts.append("Weighted main hedge-gap score worsened (higher is worse).")
+        else:
+            parts.append("Weighted main hedge-gap score is unchanged.")
+    return " ".join(parts)
+
+
+def _build_hedge_gap_pairwise(
+    baseline_row: dict[str, Any],
+    candidate_row: dict[str, Any],
+    *,
+    baseline_candidate_id: str,
+    candidate_id: str,
+) -> dict[str, Any]:
+    b_ratio = _as_float(baseline_row.get("main_hedge_gap_offset_coverage_ratio"))
+    c_ratio = _as_float(candidate_row.get("main_hedge_gap_offset_coverage_ratio"))
+    b_score = _as_float(baseline_row.get("main_gap_score"))
+    c_score = _as_float(candidate_row.get("main_gap_score"))
+    offset_delta = (
+        round(c_ratio - b_ratio, 3) if b_ratio is not None and c_ratio is not None else None
+    )
+    gap_score_delta = (
+        round(c_score - b_score, 3) if b_score is not None and c_score is not None else None
+    )
+    return {
+        "baseline_candidate_id": baseline_candidate_id,
+        "candidate_id": candidate_id,
+        "offset_coverage_ratio_delta": offset_delta,
+        "main_gap_score_delta": gap_score_delta,
+        "protection_profile_unchanged": baseline_row.get("protection_profile")
+        == candidate_row.get("protection_profile"),
+        "candidate_improved_offset_coverage": (
+            offset_delta is not None and offset_delta > 0
+        ),
+        "candidate_improved_main_gap_score": (
+            gap_score_delta is not None and gap_score_delta < 0
+        ),
+        "comparison_summary_en": _format_hedge_gap_pairwise_summary_en(
+            baseline_candidate_id=baseline_candidate_id,
+            candidate_id=candidate_id,
+            offset_delta=offset_delta,
+            gap_score_delta=gap_score_delta,
+        ),
+    }
+
+
+def build_hedge_gap_comparison(
+    candidates: list[dict[str, Any]],
+    *,
+    baseline_candidate_id: str,
+    cfg: PortfolioConfig,
+    project_root: Path,
+    output_dir_final: Path,
+    analysis_mode: str,
+) -> dict[str, Any]:
+    """Build top-level hedge-gap comparison when baseline and ≥1 peer have v1 stress blocks."""
+    registry_by_id = {str(row["candidate_id"]): row for row in _REGISTRY_ROWS}
+    out_rel = str(getattr(cfg, "output_dir_final", "Main portfolio")).replace("\\", "/")
+    rows_by_id: dict[str, dict[str, Any]] = {}
+
+    for cand in candidates:
+        cid = str(cand.get("candidate_id") or "")
+        if not cid or cand.get("status") not in {"available", "degraded"}:
+            continue
+        reg = registry_by_id.get(cid)
+        if not reg:
+            continue
+        folder = _artifact_folder(
+            reg,
+            output_dir_final=output_dir_final,
+            project_root=project_root,
+            analysis_mode=analysis_mode,
+            output_dir_final_rel=out_rel,
+        )
+        block = _load_hedge_gap_analysis_v1_block(folder)
+        if not isinstance(block, dict):
+            continue
+        row = _hedge_gap_v1_comparison_row(block)
+        if row:
+            rows_by_id[cid] = row
+
+    if baseline_candidate_id not in rows_by_id:
+        return {
+            "version": HEDGE_GAP_COMPARISON_VERSION,
+            "status": "unavailable",
+            "baseline_candidate_id": baseline_candidate_id,
+            "hedge_gap_source": HEDGE_GAP_V1_VERSION,
+            "reason_code": "baseline_hedge_gap_v1_missing",
+            "comparison_candidate_ids": [],
+            "candidates": {},
+            "pairwise": [],
+        }
+
+    comparison_ids = sorted(cid for cid in rows_by_id if cid != baseline_candidate_id)
+    if not comparison_ids:
+        return {
+            "version": HEDGE_GAP_COMPARISON_VERSION,
+            "status": "unavailable",
+            "baseline_candidate_id": baseline_candidate_id,
+            "hedge_gap_source": HEDGE_GAP_V1_VERSION,
+            "reason_code": "no_peer_candidate_with_hedge_gap_v1",
+            "comparison_candidate_ids": [],
+            "candidates": {baseline_candidate_id: rows_by_id[baseline_candidate_id]},
+            "pairwise": [],
+        }
+
+    baseline_row = rows_by_id[baseline_candidate_id]
+    pairwise = [
+        _build_hedge_gap_pairwise(
+            baseline_row,
+            rows_by_id[cid],
+            baseline_candidate_id=baseline_candidate_id,
+            candidate_id=cid,
+        )
+        for cid in comparison_ids
+    ]
+    return {
+        "version": HEDGE_GAP_COMPARISON_VERSION,
+        "status": "ok",
+        "baseline_candidate_id": baseline_candidate_id,
+        "hedge_gap_source": HEDGE_GAP_V1_VERSION,
+        "comparison_candidate_ids": comparison_ids,
+        "candidates": rows_by_id,
+        "pairwise": pairwise,
+    }
+
+
+def _as_float(value: Any) -> float | None:
+    try:
+        if value is None:
+            return None
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    if math.isnan(out) or math.isinf(out):
+        return None
+    return out
+
+
 def _stress_from_artifacts(folder: Path, snap_10y: dict[str, Any] | None) -> dict[str, Any]:
     stress: dict[str, Any] = {}
     if snap_10y:
@@ -349,9 +785,17 @@ def _stress_from_artifacts(folder: Path, snap_10y: dict[str, Any] | None) -> dic
                     for s in scenarios[:8]
                     if isinstance(s, dict)
                 ]
+            sc_v1_suite = suite.get(SCORECARD_V1_BLOCK)
+            if isinstance(sc_v1_suite, dict) and sc_v1_suite.get("version") == SCORECARD_V1_VERSION:
+                compact_sc = _scorecard_v1_stress_compact(sc_v1_suite)
+                if compact_sc:
+                    stress["current_portfolio_stress_scorecard_v1"] = compact_sc
+                    stress["stress_scorecard_source"] = SCORECARD_V1_VERSION
             scorecard = suite.get("scorecard")
-            if isinstance(scorecard, dict) and scorecard:
+            if isinstance(scorecard, dict) and scorecard and "scorecard" not in stress:
                 stress["scorecard"] = scorecard
+                if stress.get("stress_scorecard_source") is None:
+                    stress["stress_scorecard_source"] = STRESS_SCORECARD_SOURCE_LEGACY
             conclusions = suite.get("conclusions")
             if isinstance(conclusions, dict) and conclusions:
                 stress["conclusions"] = conclusions
@@ -364,6 +808,11 @@ def _stress_from_artifacts(folder: Path, snap_10y: dict[str, Any] | None) -> dic
             hg_suite = suite.get("hedge_gap_analysis")
             if isinstance(hg_suite, dict) and hg_suite:
                 stress["hedge_gap_analysis"] = hg_suite
+            hg_v1_suite = suite.get("hedge_gap_analysis_v1")
+            if isinstance(hg_v1_suite, dict) and hg_v1_suite.get("version") == HEDGE_GAP_V1_VERSION:
+                compact_v1 = _hedge_gap_v1_stress_compact(hg_v1_suite)
+                if compact_v1:
+                    stress["hedge_gap_analysis_v1"] = compact_v1
             stress_results = suite.get("stress_results")
             if isinstance(stress_results, dict) and stress_results:
                 stress["stress_results"] = stress_results
@@ -382,12 +831,25 @@ def _stress_from_artifacts(folder: Path, snap_10y: dict[str, Any] | None) -> dic
             stress["analysis_end"] = stress_report.get("analysis_end")
         if stress.get("generated_at") is None:
             stress["generated_at"] = stress_report.get("generated_at")
+        sc_v1_report = stress_report.get(SCORECARD_V1_BLOCK)
+        if isinstance(sc_v1_report, dict) and sc_v1_report.get("version") == SCORECARD_V1_VERSION:
+            compact_sc = _scorecard_v1_stress_compact(sc_v1_report)
+            if compact_sc:
+                stress["current_portfolio_stress_scorecard_v1"] = compact_sc
+                stress["stress_scorecard_source"] = SCORECARD_V1_VERSION
         if "scorecard" not in stress and isinstance(stress_report.get("stress_scorecard_v1"), dict):
             stress["scorecard"] = stress_report.get("stress_scorecard_v1")
+            if stress.get("stress_scorecard_source") is None:
+                stress["stress_scorecard_source"] = STRESS_SCORECARD_SOURCE_LEGACY
         if "conclusions" not in stress and isinstance(stress_report.get("stress_conclusions"), dict):
             stress["conclusions"] = stress_report.get("stress_conclusions")
         if isinstance(stress_report.get("hedge_gap_analysis"), dict):
             stress["hedge_gap_analysis"] = stress_report.get("hedge_gap_analysis")
+        hg_v1_report = stress_report.get("hedge_gap_analysis_v1")
+        if isinstance(hg_v1_report, dict) and hg_v1_report.get("version") == HEDGE_GAP_V1_VERSION:
+            compact_v1 = _hedge_gap_v1_stress_compact(hg_v1_report)
+            if compact_v1:
+                stress["hedge_gap_analysis_v1"] = compact_v1
         if "historical_methodology" not in stress:
             hm = stress_report.get("historical_methodology")
             if isinstance(hm, dict) and hm:
@@ -403,6 +865,21 @@ def _stress_from_artifacts(folder: Path, snap_10y: dict[str, Any] | None) -> dic
         stress["source_file"] = "stress_report.json"
     elif snap_10y:
         stress["source_file"] = SNAPSHOT_FILES[PRIMARY_WINDOW]
+
+    if "hedge_gap_analysis_v1" not in stress:
+        block = _load_hedge_gap_analysis_v1_block(folder)
+        if isinstance(block, dict):
+            compact_v1 = _hedge_gap_v1_stress_compact(block)
+            if compact_v1:
+                stress["hedge_gap_analysis_v1"] = compact_v1
+
+    if SCORECARD_V1_BLOCK not in stress:
+        block = _load_scorecard_v1_block(folder)
+        if isinstance(block, dict):
+            compact_sc = _scorecard_v1_stress_compact(block)
+            if compact_sc:
+                stress["current_portfolio_stress_scorecard_v1"] = compact_sc
+                stress["stress_scorecard_source"] = SCORECARD_V1_VERSION
 
     return stress
 
@@ -1927,6 +2404,26 @@ def build_candidate_comparison(
         "legacy_artifacts": legacy,
         "warnings": run_warnings + menu_warnings + bundle_warnings,
     }
+    hedge_gap_comparison = build_hedge_gap_comparison(
+        candidates,
+        baseline_candidate_id=str(doc["comparison_baseline_candidate_id"]),
+        cfg=cfg,
+        project_root=project_root,
+        output_dir_final=output_dir_final,
+        analysis_mode=analysis_mode,
+    )
+    if isinstance(hedge_gap_comparison, dict):
+        doc["hedge_gap_comparison"] = hedge_gap_comparison
+    stress_scorecard_comparison = build_stress_scorecard_comparison(
+        candidates,
+        baseline_candidate_id=str(doc["comparison_baseline_candidate_id"]),
+        cfg=cfg,
+        project_root=project_root,
+        output_dir_final=output_dir_final,
+        analysis_mode=analysis_mode,
+    )
+    if isinstance(stress_scorecard_comparison, dict):
+        doc["stress_scorecard_comparison"] = stress_scorecard_comparison
     return _round_export_value(doc)
 
 
@@ -2485,6 +2982,8 @@ __all__ = [
     "CURRENT_SIDECAR_SUBDIR",
     "analysis_subject_sidecar_dir",
     "build_candidate_comparison",
+    "build_hedge_gap_comparison",
+    "build_stress_scorecard_comparison",
     "build_legacy_portfolio_comparison",
     "construction_disclosure_from_folder",
     "candidate_registry_ids",

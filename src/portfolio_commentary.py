@@ -1217,6 +1217,157 @@ def _append_stress_results_v1_section(lines: list[str], st: dict[str, Any]) -> N
                 break
 
 
+def _scorecard_v1_block(st: dict[str, Any]) -> dict[str, Any] | None:
+    block = st.get("current_portfolio_stress_scorecard_v1")
+    if isinstance(block, dict) and block.get("version") == "current_portfolio_stress_scorecard_v1":
+        if str(block.get("block_status") or "") != "unavailable":
+            return block
+    return None
+
+
+def _append_scorecard_v1_exec_summary(exec_para: list[str], block: dict[str, Any]) -> None:
+    """Executive-summary lines from current_portfolio_stress_scorecard_v1 (Block 3.4, v1-primary)."""
+    stress_diagnosis = block.get("stress_diagnosis") or {}
+    if not isinstance(stress_diagnosis, dict):
+        stress_diagnosis = {}
+    nested = block.get("ai_commentary_context") or {}
+    if not isinstance(nested, dict):
+        nested = {}
+
+    headline = nested.get("headline") or stress_diagnosis.get("headline")
+    confidence = nested.get("diagnosis_confidence") or stress_diagnosis.get("diagnosis_confidence")
+    worst_syn = block.get("worst_synthetic_scenario") or {}
+    worst_hist = block.get("worst_historical_scenario") or {}
+    if not isinstance(worst_syn, dict):
+        worst_syn = {}
+    if not isinstance(worst_hist, dict):
+        worst_hist = {}
+
+    exec_para.append(
+        "Block 3.4 stress scorecard (current_portfolio_stress_scorecard_v1): diagnostic executive "
+        f"stress diagnosis (block_status={block.get('block_status', _MDASH)}, "
+        f"diagnosis_confidence={confidence or _MDASH})."
+    )
+    if isinstance(headline, str) and headline.strip():
+        exec_para.append(f"Block 3.4 stress headline: {headline.strip()}")
+    syn_id = worst_syn.get("scenario_id")
+    syn_loss = worst_syn.get("portfolio_loss_pct")
+    if syn_id:
+        exec_para.append(
+            f"Block 3.4 worst synthetic: {syn_id} "
+            f"(portfolio loss ~ {_fmt_pct(syn_loss, 1) if syn_loss is not None else _NA})."
+        )
+    hist_ep = worst_hist.get("episode")
+    hist_dd = worst_hist.get("drawdown_pct")
+    if hist_ep:
+        exec_para.append(
+            f"Block 3.4 worst historical episode: {hist_ep} "
+            f"(drawdown ~ {_fmt_pct(hist_dd, 1) if hist_dd is not None else _NA})."
+        )
+    summary = stress_diagnosis.get("diagnosis_summary_en")
+    if isinstance(summary, str) and summary.strip():
+        exec_para.append(f"Block 3.4 stress diagnosis: {summary.strip()}")
+
+
+def _append_hedge_gap_v1_exec_summary(exec_para: list[str], block: dict[str, Any]) -> None:
+    """Executive-summary lines from hedge_gap_analysis_v1 (Block 3.3, v1-primary)."""
+    summary = block.get("summary") or {}
+    if not isinstance(summary, dict):
+        summary = {}
+    main = summary.get("main_hedge_gap") or {}
+    if not isinstance(main, dict):
+        main = {}
+
+    profile = summary.get("protection_profile", _MDASH)
+    weakest = summary.get("weakest_protection_area", _MDASH)
+    ratio = main.get("offset_coverage_ratio")
+    scenario_id = main.get("linked_scenario_id")
+    loss = main.get("portfolio_loss_pct")
+    protection = main.get("protection_status", _MDASH)
+
+    exec_para.append(
+        "Block 3.3 hedge gap (hedge_gap_analysis_v1): contribution-based internal offset coverage "
+        f"(protection_profile={profile}, weakest={weakest}, main_gap_scenario={scenario_id or _MDASH}, "
+        f"protection_status={protection}, "
+        f"offset_coverage~{_fmt_pct(ratio, 1) if ratio is not None else _NA}, "
+        f"portfolio_loss~{_fmt_pct(loss, 1) if loss is not None else _NA})."
+    )
+    diag = summary.get("diagnosis_summary_en")
+    if isinstance(diag, str) and diag.strip():
+        exec_para.append(f"Block 3.3 hedge gap diagnosis: {diag.strip()}")
+
+    weak_rows = [
+        str(row.get("risk_type"))
+        for row in (block.get("by_risk_type") or [])
+        if isinstance(row, dict)
+        and str(row.get("protection_status") or "") in {"weak_protection", "no_protection"}
+    ]
+    if weak_rows:
+        exec_para.append(
+            "Block 3.3 weak protection areas: " + ", ".join(weak_rows[:6]) + "."
+        )
+
+
+def _append_hedge_gap_exec_summary_lines(exec_para: list[str], st: dict[str, Any]) -> None:
+    """Prefer Block 3.3 v1; legacy taxonomy hedge_gap_analysis only when v1 is unavailable."""
+    v1 = st.get("hedge_gap_analysis_v1")
+    if isinstance(v1, dict) and v1.get("version") == "hedge_gap_analysis_v1":
+        if str(v1.get("block_status") or "") != "unavailable":
+            _append_hedge_gap_v1_exec_summary(exec_para, v1)
+            return
+
+    hedge_gap = st.get("hedge_gap_analysis") or {}
+    if not isinstance(hedge_gap, dict) or not hedge_gap:
+        return
+
+    hg_status = hedge_gap.get("status", _MDASH)
+    if hg_status == "not_applicable":
+        reason_en = hedge_gap.get("status_reason_en") or hedge_gap.get("status_reason", _MDASH)
+        gap_line = f"Hedge gap (legacy): not applicable — {reason_en}"
+    elif hg_status == "insufficient_data":
+        reason_en = hedge_gap.get("status_reason_en") or hedge_gap.get("status_reason", _MDASH)
+        gap_line = (
+            "Hedge gap (legacy): insufficient data — "
+            f"{reason_en} "
+            f"(worst scenario={hedge_gap.get('worst_scenario_id', _MDASH)}, "
+            f"portfolio PnL={_fmt_pct(hedge_gap.get('worst_scenario_portfolio_pnl_pct'))})."
+        )
+    else:
+        gap_line = (
+            "Hedge gap (legacy): "
+            f"{hg_status} "
+            f"(worst scenario={hedge_gap.get('worst_scenario_id', _MDASH)}, "
+            f"portfolio PnL={_fmt_pct(hedge_gap.get('worst_scenario_portfolio_pnl_pct'))})."
+        )
+        if hg_status == "gap_detected":
+            failing = hedge_gap.get("hedge_assets_negative_in_worst_scenario") or []
+            if isinstance(failing, list) and failing:
+                parts = []
+                for row in failing:
+                    if isinstance(row, dict) and row.get("ticker"):
+                        parts.append(f"{row['ticker']} ({_fmt_pct(row.get('pnl_pct'))})")
+                if parts:
+                    gap_line += f" Weak hedges in worst scenario: {', '.join(parts)}."
+    exec_para.append(gap_line)
+    by_risk = hedge_gap.get("by_risk_type") or []
+    if isinstance(by_risk, list) and by_risk:
+        gap_types = [
+            str(r.get("risk_type"))
+            for r in by_risk
+            if isinstance(r, dict) and r.get("gap_detected")
+        ]
+        if gap_types:
+            exec_para.append(
+                "Hedge gap by risk type (legacy mapped scenarios): gap detected for "
+                + ", ".join(gap_types)
+                + "."
+            )
+        elif hedge_gap.get("any_risk_type_gap_detected") is False:
+            exec_para.append(
+                "Hedge gap by risk type (legacy): no mapped weakness bucket shows hedge gap evidence."
+            )
+
+
 def _append_hedge_gap_analysis_v1_section(lines: list[str], st: dict[str, Any]) -> None:
     """Minimal Block 3.3 pointer from hedge_gap_analysis_v1 (contribution-based offset coverage)."""
     block = st.get("hedge_gap_analysis_v1")
@@ -1411,74 +1562,56 @@ def write_stress_commentary(
             f"proxy_in_primary={hist_method.get('proxy_used_in_primary_stress', _MDASH)}; "
             "normalized-library proxy waterfall is separate."
         )
-    hedge_gap = st.get("hedge_gap_analysis") or {}
-    if isinstance(hedge_gap, dict) and hedge_gap:
-        hg_status = hedge_gap.get("status", _MDASH)
-        if hg_status == "not_applicable":
-            reason_en = hedge_gap.get("status_reason_en") or hedge_gap.get("status_reason", _MDASH)
-            gap_line = f"Hedge gap: not applicable — {reason_en}"
-        elif hg_status == "insufficient_data":
-            reason_en = hedge_gap.get("status_reason_en") or hedge_gap.get("status_reason", _MDASH)
-            gap_line = (
-                "Hedge gap: insufficient data — "
-                f"{reason_en} "
-                f"(worst scenario={hedge_gap.get('worst_scenario_id', _MDASH)}, "
-                f"portfolio PnL={_fmt_pct(hedge_gap.get('worst_scenario_portfolio_pnl_pct'))})."
-            )
-        else:
-            gap_line = (
-                "Hedge gap status: "
-                f"{hg_status} "
-                f"(worst scenario={hedge_gap.get('worst_scenario_id', _MDASH)}, "
-                f"portfolio PnL={_fmt_pct(hedge_gap.get('worst_scenario_portfolio_pnl_pct'))})."
-            )
-            if hg_status == "gap_detected":
-                failing = hedge_gap.get("hedge_assets_negative_in_worst_scenario") or []
-                if isinstance(failing, list) and failing:
-                    parts = []
-                    for row in failing:
-                        if isinstance(row, dict) and row.get("ticker"):
-                            parts.append(f"{row['ticker']} ({_fmt_pct(row.get('pnl_pct'))})")
-                    if parts:
-                        gap_line += f" Weak hedges in worst scenario: {', '.join(parts)}."
-        exec_para.append(gap_line)
-        by_risk = hedge_gap.get("by_risk_type") or []
-        if isinstance(by_risk, list) and by_risk:
-            gap_types = [
-                str(r.get("risk_type"))
-                for r in by_risk
-                if isinstance(r, dict) and r.get("gap_detected")
-            ]
-            if gap_types:
-                exec_para.append(
-                    "Hedge gap by risk type (mapped scenarios): gap detected for "
-                    + ", ".join(gap_types)
-                    + "."
-                )
-            elif hedge_gap.get("any_risk_type_gap_detected") is False:
-                exec_para.append(
-                    "Hedge gap by risk type: no mapped weakness bucket shows hedge gap evidence."
-                )
+    scorecard_v1 = _scorecard_v1_block(st)
+    if scorecard_v1 is not None:
+        _append_scorecard_v1_exec_summary(exec_para, scorecard_v1)
+    _append_hedge_gap_exec_summary_lines(exec_para, st)
     lines.extend(exec_para)
     lines.append("")
 
     lines.append("Metric-by-Metric Interpretation")
     scorecard = st.get("stress_scorecard_v1") or {}
     scen_rows = st.get("scenario_results") or []
+    stress_results = st.get("stress_results_v1") or {}
+    syn_results_rows = (
+        stress_results.get("synthetic_scenarios")
+        if isinstance(stress_results, dict)
+        else None
+    ) or []
     syn_scorecard = (
         scorecard.get("synthetic_scenarios")
         if isinstance(scorecard, dict)
         else None
     ) or []
-    if isinstance(scorecard, dict) and scorecard:
+    if scorecard_v1 is not None:
+        stress_diagnosis = scorecard_v1.get("stress_diagnosis") or {}
+        if not isinstance(stress_diagnosis, dict):
+            stress_diagnosis = {}
         lines.append(
-            f"Scorecard snapshot: overall={scorecard.get('overall_status', _MDASH)}, "
+            "Block 3.4 stress scorecard (current_portfolio_stress_scorecard_v1): "
+            f"block_status={scorecard_v1.get('block_status', _MDASH)}, "
+            f"diagnosis_confidence={stress_diagnosis.get('diagnosis_confidence', _MDASH)}; "
+            "mandate-style overall_status is not used for this diagnostic layer."
+        )
+        headline = stress_diagnosis.get("headline")
+        if isinstance(headline, str) and headline.strip():
+            lines.append(f"Block 3.4 headline: {headline.strip()}")
+    elif isinstance(scorecard, dict) and scorecard:
+        lines.append(
+            f"Scorecard snapshot (legacy stress_scorecard_v1): overall={scorecard.get('overall_status', _MDASH)}, "
             f"reason={scorecard.get('overall_reason', _MDASH)}, "
             f"confidence={scorecard.get('overall_confidence', _MDASH)}."
         )
-    display_syn = syn_scorecard if syn_scorecard else scen_rows
+    if syn_results_rows:
+        display_syn = syn_results_rows
+        source = "stress_results_v1.synthetic_scenarios"
+    elif syn_scorecard:
+        display_syn = syn_scorecard
+        source = "stress_scorecard_v1.synthetic_scenarios"
+    else:
+        display_syn = scen_rows
+        source = "scenario_results"
     if display_syn:
-        source = "stress_scorecard_v1.synthetic_scenarios" if syn_scorecard else "scenario_results"
         lines.append(
             f"Synthetic scenarios ({source}): factor shocks to the portfolio as a whole; "
             + (

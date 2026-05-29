@@ -71,6 +71,11 @@ def test_snapshot_stress_suite_includes_governance_fields() -> None:
     assert "top_factor_drivers_worst_scenario" in conclusions
     hg = section.get("hedge_gap_analysis") or {}
     assert "by_risk_type" in hg
+    hg_v1 = section.get("hedge_gap_analysis_v1") or {}
+    assert hg_v1.get("version") == "hedge_gap_analysis_v1"
+    assert hg_v1.get("block_status") in {"ok", "partial", "unavailable"}
+    assert hg_v1.get("ruleset_version")
+    assert isinstance((hg_v1.get("summary") or {}).get("protection_profile"), (str, type(None)))
     stress_results = section.get("stress_results") or {}
     assert stress_results.get("version") == "stress_results_v1"
     assert isinstance(stress_results.get("envelope"), dict)
@@ -94,7 +99,17 @@ def test_candidate_comparison_stress_merges_snapshot_and_report(tmp_path: Path) 
     assert isinstance(stress.get("crisis_replay_summary"), list)
     assert stress.get("conclusions", {}).get("version") == "stress_conclusions_v1"
     assert "by_risk_type" in (stress.get("hedge_gap_analysis") or {})
+    assert isinstance(stress.get("hedge_gap_analysis_v1"), dict)
     assert stress.get("stress_results", {}).get("version") == "stress_results_v1"
+    compact_v1 = stress.get("hedge_gap_analysis_v1") or {}
+    assert compact_v1.get("block_status") in {"ok", "partial", "unavailable"}
+    assert compact_v1.get("ruleset_version") == (out.get("hedge_gap_analysis_v1") or {}).get(
+        "ruleset_version"
+    )
+    scorecard_v1 = stress.get("current_portfolio_stress_scorecard_v1") or {}
+    assert isinstance(scorecard_v1, dict)
+    assert stress.get("stress_scorecard_source") == "current_portfolio_stress_scorecard_v1"
+    assert scorecard_v1.get("block_status") in {"ok", "partial", "unavailable"}
 
 
 def test_stress_commentary_includes_methodology_and_crisis_replay(tmp_path: Path) -> None:

@@ -1020,11 +1020,12 @@ def test_block_2_4_session_09_xray_wires_legacy_enrichment_meta() -> None:
 
 
 def test_block_2_4_session_08_xray_wires_stress_enrichment_meta() -> None:
+    stress_report = _stress_report_with_hedge_gap()
     xray = build_portfolio_xray_v2(
         analysis_setup={"analysis_portfolio": {"portfolio_role": "test"}},
         weights={"SPY": 0.45, "BND": 0.4, "HYG": 0.15},
         rc_asset=[],
-        stress_report=_stress_report_with_hedge_gap(),
+        stress_report=stress_report,
         portfolio_valid=True,
         portfolio_metrics={"beta_portfolio": 0.8, "downside_beta": 1.0},
         taxonomy_rows=_taxonomy(),
@@ -1032,6 +1033,13 @@ def test_block_2_4_session_08_xray_wires_stress_enrichment_meta() -> None:
     meta = xray["block_2_4_hidden_exposure"]["diagnostics_meta"]
     assert meta["stress_enrichment_wire_time"] is True
     assert "hedge_gap_analysis_v1" in meta["stress_enrichment_sources"]
-    assert xray["block_2_4_hidden_exposure"]["alerts"]["weak_hedge_behavior"]["confirmation_status"] == (
-        "confirmed"
-    )
+    assert meta["hedge_gap_bridge_wire_time"] is True
+    weak = xray["block_2_4_hidden_exposure"]["alerts"]["weak_hedge_behavior"]
+    assert weak["confirmation_status"] in {"confirmed", "partially_confirmed"}
+    assert isinstance(weak.get("hedge_gap_bridge"), dict)
+    hedge_gap = stress_report.get("hedge_gap_analysis_v1") or {}
+    assert isinstance(hedge_gap.get("hidden_exposure_confirmation"), list)
+    assert isinstance(hedge_gap.get("weakness_map_confirmation"), list)
+    assert len(hedge_gap.get("weakness_map_confirmation") or []) == 8
+    bridge_meta = hedge_gap.get("bridge_meta") or {}
+    assert bridge_meta.get("block_2_6_portfolio_weakness_map") is True

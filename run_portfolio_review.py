@@ -18,10 +18,12 @@ from src.portfolio_review_workflow import (
     DEFAULT_REVIEW_MODE,
     REVIEW_MODES,
     build_portfolio_review_plan,
+    resolve_portfolio_review_runtime_mode,
     resolve_review_candidate_profile,
     run_portfolio_review_plan,
     summarize_plan,
 )
+from src.runtime_entrypoint_labels import print_portfolio_review_banner
 from src.utils import logger, setup_logging
 
 
@@ -222,6 +224,19 @@ def main(argv: list[str] | None = None) -> int:
             fail_fast=args.fail_fast,
         )
     )
+
+    runtime_mode = resolve_portfolio_review_runtime_mode(
+        skip_candidates=effective_skip_candidates,
+        skip_compare=effective_skip_compare,
+        review_mode=review_mode,
+        candidate_profile=args.candidate_profile,
+        candidate_ids=args.candidates,
+    )
+    print_portfolio_review_banner(
+        runtime_mode=runtime_mode,
+        candidates=(args.candidates.split(",")[0].strip() if args.candidates else None),
+    )
+    print()
 
     plan = build_portfolio_review_plan(
         cfg,

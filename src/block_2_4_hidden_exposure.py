@@ -49,6 +49,8 @@ EVIDENCE_SOURCES = {
 CONFIRMATION_STATUSES = {
     "preliminary",
     "confirmed",
+    "partially_confirmed",
+    "not_confirmed",
     "unavailable",
     "not_applicable",
 }

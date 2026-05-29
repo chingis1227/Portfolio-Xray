@@ -105,9 +105,12 @@ def test_five_ticker_blocks_1_5_mvp_smoke_gate(
         "stress_conclusions",
         "historical_methodology",
         "hedge_gap_analysis",
+        "hedge_gap_analysis_v1",
+        "current_portfolio_stress_scorecard_v1",
     ):
         assert key in stress
     assert stress["stress_results_v1"].get("version") == "stress_results_v1"
+    assert stress["hedge_gap_analysis_v1"].get("version") == "hedge_gap_analysis_v1"
 
     factory = _load_json(seeded["main_dir"] / "candidate_factory_run.json")
     assert factory["factory_profile_id"] == "core_fast"

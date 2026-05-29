@@ -53,9 +53,16 @@ Top-level shape:
     "primary_problem_id": "high_volatility",
     "current_portfolio_acceptable": false
   },
-  "warnings": []
+  "warnings": [],
+  "hedge_gap_source": "hedge_gap_analysis_v1",
+  "stress_scorecard_source": "current_portfolio_stress_scorecard_v1"
 }
 ```
+
+`hedge_gap_source` is optional when neither v1 nor legacy hedge-gap evidence was evaluated (e.g. missing `stress_report.json`).
+
+`stress_scorecard_source` records which stress scorecard path was used for worst-scenario problems:
+`current_portfolio_stress_scorecard_v1` (primary) or `stress_scorecard_v1` / `stress_conclusions` (legacy fallback).
 
 Each `problems[]` row contains:
 
@@ -88,14 +95,41 @@ The artifact returns at most three problem rows. If no high-priority problem is 
 
 Problem Classification may use existing evidence from:
 
-- Portfolio X-Ray `weakness_map`;
+- Portfolio X-Ray product block `block_2_6_portfolio_weakness_map` (canonical pre-stress weakness hypotheses; canonical `risk_type` → `problem_id` map in `src/problem_classification.py`);
 - Portfolio X-Ray `risk_diagnostics`;
 - Portfolio X-Ray `asset_allocation`;
 - Portfolio X-Ray `factor_exposure`;
-- stress conclusions;
-- stress scorecard status and confidence.
+- Block 3.4 `current_portfolio_stress_scorecard_v1` on `stress_report.json` (primary stress scorecard path), including `problem_classification_signals` and worst-scenario selectors;
+- stress conclusions and legacy `stress_scorecard_v1` (fallback only when Block 3.4 is missing or `block_status = unavailable`);
+- Block 3.3 `hedge_gap_analysis_v1` on `stress_report.json` (primary hedge-gap path).
+
+### Hedge gap (Block 3.3 v1 primary)
+
+When `stress_report.json` contains `hedge_gap_analysis_v1` with `version = hedge_gap_analysis_v1` and `block_status` is not `unavailable`, Problem Classification evaluates hedge weakness from v1 only:
+
+- `summary.protection_profile` (`mostly_weak_protection`, mixed profile with weak `main_hedge_gap`, …);
+- `summary.main_hedge_gap.protection_status` (`weak_protection`, `no_protection`, …);
+- count of `by_risk_type[]` rows in weak/no-protection states.
+
+Evidence for `weak_hedge_behavior` must cite `source_section: hedge_gap_analysis_v1` and include compact v1 summary fields (main gap scenario, offset ratio, protection status, `reason_codes`).
+
+**Legacy fallback:** use `stress_conclusions.hedge_gap_status` only when v1 is missing or `block_status = unavailable`. Legacy path sets `evidence_path: legacy_fallback`.
+
+Top-level `hedge_gap_source` on `problem_classification.json` records which path was used: `hedge_gap_analysis_v1` or `stress_conclusions.hedge_gap_status`.
+
+### Stress scorecard (Block 3.4 v1 primary)
+
+When `stress_report.json` contains `current_portfolio_stress_scorecard_v1` with `version = current_portfolio_stress_scorecard_v1` and `block_status` is not `unavailable`, Problem Classification evaluates `weak_crisis_resilience` and `high_drawdown_risk` from Block 3.4 worst selectors (and `problem_classification_signals` for compact hints). Evidence must cite `source_section: current_portfolio_stress_scorecard_v1`.
+
+**Legacy fallback:** use `stress_conclusions.worst_synthetic_scenario` / `worst_historical_episode` and legacy mandate rollup on `stress_scorecard_v1.overall_status` only when Block 3.4 is missing or unavailable. Legacy stress paths set `evidence_path: legacy_fallback`.
+
+Mandate-mode `overall_status` rollup still reads legacy `stress_scorecard_v1` even when Block 3.4 is primary (`evidence_path: legacy_mandate_rollup`).
+
+Top-level `stress_scorecard_source` records which path was used: `current_portfolio_stress_scorecard_v1` or `stress_scorecard_v1`.
 
 Every problem row must include at least one evidence reference. The classifier must expose source-missing warnings instead of implying full confidence.
+
+Legacy `sections.weakness_map` is **not** a product source for Problem Classification after Block 2.6 v2 Session 07 (it remains stress-coupled for formatters/golden compatibility only). When present, `problem_classification.json` includes `weakness_map_source: "block_2_6_portfolio_weakness_map"`.
 
 ## Product Boundary
 

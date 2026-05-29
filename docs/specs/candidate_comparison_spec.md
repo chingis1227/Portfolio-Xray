@@ -141,6 +141,44 @@ with explicit `current_portfolio` subject is informational, not a blocking error
 Run-level `warnings` may include `review_bundle_alignment:*` or `review_bundle_mode_subject:*`
 when alignment or mode/subject checks fail.
 
+### `hedge_gap_comparison` block (Block 3.3 Session 08)
+
+Optional top-level block on `candidate_comparison.json`. Emitted when the comparison baseline and at
+least one peer candidate folder both expose `hedge_gap_analysis_v1` on `stress_report.json` (or a
+snapshot mirror with `version = hedge_gap_analysis_v1`).
+
+| Field | Description |
+| --- | --- |
+| `version` | `hedge_gap_comparison_v1` |
+| `status` | `ok` when baseline + ≥1 peer have v1; `unavailable` with `reason_code` otherwise |
+| `baseline_candidate_id` | Usually `analysis_subject` |
+| `hedge_gap_source` | Always `hedge_gap_analysis_v1` when present |
+| `comparison_candidate_ids` | Peer ids with v1 rows (sorted) |
+| `candidates` | Map of candidate id → compact v1 summary (protection profile, main gap, weak-row count) |
+| `pairwise[]` | Per-peer deltas vs baseline (`offset_coverage_ratio_delta`, `main_gap_score_delta`, English `comparison_summary_en`) |
+
+Legacy `stress.hedge_gap_analysis` on candidate rows remains for backward compatibility; new
+integrations must read `hedge_gap_comparison` and/or `stress.hedge_gap_analysis_v1`.
+
+### `stress_scorecard_comparison` block (Block 3.4 Session 09)
+
+Optional top-level block on `candidate_comparison.json`. Emitted when the comparison baseline and at
+least one peer candidate folder both expose `current_portfolio_stress_scorecard_v1` on
+`stress_report.json` (or a snapshot mirror with `version = current_portfolio_stress_scorecard_v1`).
+
+| Field | Description |
+| --- | --- |
+| `version` | `stress_scorecard_comparison_v1` |
+| `status` | `ok` when baseline + ≥1 peer have Block 3.4; `unavailable` with `reason_code` otherwise |
+| `baseline_candidate_id` | Usually `analysis_subject` |
+| `stress_scorecard_source` | Always `current_portfolio_stress_scorecard_v1` when present |
+| `comparison_candidate_ids` | Peer ids with v1 rows (sorted) |
+| `candidates` | Map of candidate id → compact Block 3.4 summary (worst synthetic/historical ids, stress severity, diagnosis confidence, offset targets) |
+| `pairwise[]` | Per-peer deltas vs baseline (`worst_synthetic_loss_pct_delta`, optional `offset_coverage_ratio_delta` when `compare_offset_coverage`, English `comparison_summary_en`) |
+
+Legacy `stress.scorecard` on candidate rows remains for backward compatibility; new integrations
+must read `stress_scorecard_comparison` and/or `stress.current_portfolio_stress_scorecard_v1`.
+
 ### Required top-level fields
 
 | Field | Type | Description |
@@ -160,6 +198,8 @@ when alignment or mode/subject checks fail.
 | `warnings` | array | Run-level warnings (stale artifacts, mixed analysis dates, partial coverage, partial menu). |
 | `candidate_menu` | object | Intended vs product menu disclosure (counts, `is_partial_menu`, refresh commands) plus factory-evidence freshness. Optional until comparison is rebuilt; required for new portfolio-first runs after Session 09. |
 | `review_bundle_context` | object | Review bundle fingerprint and mode/subject disclosure (`review_bundle_context_v1`). Required on new comparison builds after Phase 17 Session 07. |
+| `hedge_gap_comparison` | object | Block 3.3 hedge-gap peer comparison (`hedge_gap_comparison_v1`) when baseline and ≥1 peer have v1 stress blocks. |
+| `stress_scorecard_comparison` | object | Block 3.4 stress scorecard peer comparison (`stress_scorecard_comparison_v1`) when baseline and ≥1 peer have Block 3.4 on stress reports. |
 
 ## Candidate Object Contract
 
@@ -410,8 +450,11 @@ Keyed by `3y`, `5y`, `10y`. Each window object may include:
 | `overall` | `snapshot_*`.stress_suite_results.overall or `summary.json`.stress_status |
 | `fail_reason_code`, `failed_scenario` | stress suite or `stress_report.json` |
 | `scenarios` | optional abbreviated list from snapshot stress suite |
-| `scorecard`, `conclusions` | `stress_suite_results` or `stress_report.json` (`stress_scorecard_v1`, `stress_conclusions`) |
-| `hedge_gap_analysis` | `stress_suite_results` or `stress_report.json` (aggregate + `by_risk_type[]`) |
+| `scorecard`, `conclusions` | **Legacy** — `stress_suite_results` or `stress_report.json` (`stress_scorecard_v1`, `stress_conclusions`) when Block 3.4 is missing |
+| `current_portfolio_stress_scorecard_v1` | **Core MVP** — compact Block 3.4 slice from `stress_report.json` (preferred) or snapshot mirror; includes `candidate_comparison_targets` fields |
+| `stress_scorecard_source` | `current_portfolio_stress_scorecard_v1` or `stress_scorecard_v1` (legacy fallback) |
+| `hedge_gap_analysis` | **Legacy** — `stress_suite_results` or `stress_report.json` (aggregate + `by_risk_type[]`) |
+| `hedge_gap_analysis_v1` | **Core MVP** — compact Block 3.3 slice from `stress_report.json` (preferred) or snapshot `stress_suite_results.hedge_gap_analysis_v1` mirror |
 | `historical_methodology` | `stress_suite_results` or `stress_report.json` (`historical_methodology_v1`) |
 | `crisis_replay_summary` | `stress_suite_results` or compact projection of `historical_episode_paths` (no daily rows) |
 
