@@ -138,7 +138,8 @@ bundle above when it exists and use this chain for traceability, drill-down, and
 
 Product-facing adapters written around this chain include `current_vs_candidate.json`,
 `decision_verdict.json`, `ai_commentary_context.json`, and `what_changed_summary.json`. Earlier
-report-stage adapters include `problem_classification.json` and `candidate_launchpad.json`.
+report-stage adapters include `problem_classification.json` and `candidate_launchpad.json`
+(V1 shipped; V2 contract: [block_4_diagnosis_v2_spec.md](block_4_diagnosis_v2_spec.md)).
 
 Compact report/PDF-facing summaries are defined in
 [decision_package_reporting_spec.md](decision_package_reporting_spec.md) and implemented in

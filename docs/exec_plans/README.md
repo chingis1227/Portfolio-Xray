@@ -25,7 +25,9 @@ governed by `SPEC.md`, `OUTPUTS.md`, detailed specs, and code.
 
 ## Current Pointer
 
-**Active:** [Blocks 1–3 Post-Audit Development Plan](2026-05-29_blocks_1_3_post_audit_development_plan.md) — Phase A **closed** 2026-05-29 (Session 06); optional 07–08; Phase D next. Closure: [foundation closure audit](../audits/2026-05-29_blocks_1_3_foundation_closure_audit.md) (`READY_FOR_DECISION_WORKFLOW`). Operator contract: [runtime_artifact_contract.md](../runtime_artifact_contract.md).
+**Completed:** [Block 4 v2 Evidence-to-Problem Translation](2026-05-29_block_4_v2_evidence_to_problem_plan.md) — Sessions 00–14 closed 2026-05-29. Evidence: [Session 14 institutional closure](../audits/2026-05-29_block_4_v2_session_14_institutional_closure.md); pytest **109 passed** (closure bundle); decision `DEC-2026-05-29-013`.
+
+**Previous (Phase A closed):** [Blocks 1–3 Post-Audit Development Plan](2026-05-29_blocks_1_3_post_audit_development_plan.md) — Phase A **closed** 2026-05-29 (Session 06); optional 07–08; Phase D Sessions 09–10 closed. Closure: [foundation closure audit](../audits/2026-05-29_blocks_1_3_foundation_closure_audit.md) (`READY_FOR_DECISION_WORKFLOW`). Operator contract: [runtime_artifact_contract.md](../runtime_artifact_contract.md).
 
 **Previous closure:** Block 3.4 institutional upgrade **Completed** 2026-05-29.
 
@@ -134,6 +136,7 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-05-29 | [Block 4 v2 Evidence-to-Problem Translation](2026-05-29_block_4_v2_evidence_to_problem_plan.md) | **Completed** | [Session 00 gap audit](../audits/2026-05-29_block_4_v2_session_00_gap_audit.md) | Sessions 00–14 closed; [Session 14 closure](../audits/2026-05-29_block_4_v2_session_14_institutional_closure.md); pytest **109 passed**. |
 | 2026-05-29 | [Block 3.4 Current Portfolio Stress Scorecard Institutional Upgrade](2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md) | **Completed** | [Session 00 baseline](../audits/2026-05-29_block_3_4_session_00_baseline_audit.md); MVP prerequisite | Sessions 00–13 closed 2026-05-29: Phase 2 **ACCEPTED**; G1–G15 closed; pytest **142 passed** (extended); [acceptance audit](../audits/2026-05-29_block_3_4_institutional_upgrade_acceptance_audit.md). |
 | 2026-05-28 | [Core MVP Historical Stress Replay](2026-05-28_core_mvp_historical_stress_replay_plan.md) | **Completed** | Stress Lab honest coverage for young books / partial history | Sessions 1–7 closed 2026-05-28: `historical_stress_replay_v1` direct-only; [acceptance audit](../audits/2026-05-28_core_mvp_historical_stress_replay_acceptance_audit.md); pytest **35 passed**; `scripts/verify_core_mvp_historical_stress_replay.py`. |
 | 2026-05-27 | [Final Architecture Consistency Audit Plan](final_architecture_consistency_audit_plan.md) | **Completed** | Read-only architecture discrepancy map (2026-05-27) | Sessions 1–7 closed 2026-05-27: runbook/runtime alignment, JSON bundle rules, AI grounding, legacy labels, `test_architecture_consistency.py`, Session 7 acceptance (diagnosis + one-candidate demo PASS). |

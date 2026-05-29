@@ -682,27 +682,12 @@ def core_mvp_block3_fixture_status(
 
 
 # ---------------------------------------------------------------------------
-# Block 4 — Problem Classification + Candidate Launchpad (Decision entry)
+# Block 4 v2 — Problem Classification + Candidate Launchpad (Decision entry)
+# Spec: docs/specs/block_4_diagnosis_v2_spec.md
+# V1 product validators removed Session 14 (DEC-2026-05-29-013). Legacy builders
+# src/problem_classification.py and src/candidate_launchpad.py remain for unit tests.
 # ---------------------------------------------------------------------------
 
-PROBLEM_CLASSIFICATION_VERSION = "problem_classification_v1"
-CANDIDATE_LAUNCHPAD_VERSION = "candidate_launchpad_v1"
-
-PROBLEM_CLASSIFICATION_V1_IDS = frozenset(
-    {
-        "high_drawdown_risk",
-        "high_volatility",
-        "high_concentration",
-        "poor_diversification",
-        "weak_hedge_behavior",
-        "weak_crisis_resilience",
-        "high_equity_beta",
-        "data_review_required",
-        "current_portfolio_acceptable",
-    }
-)
-
-PROBLEM_CLASSIFICATION_SEVERITY = frozenset({"low", "moderate", "high", "unknown"})
 PROBLEM_CLASSIFICATION_CONFIDENCE = frozenset({"low", "medium", "high"})
 
 LAUNCHPAD_KNOWN_METHOD_IDS = frozenset(
@@ -733,243 +718,413 @@ LAUNCHPAD_KNOWN_GOALS = frozenset(
     }
 )
 
+PROBLEM_CLASSIFICATION_V2_VERSION = "problem_classification_v2"
+CANDIDATE_LAUNCHPAD_V2_VERSION = "candidate_launchpad_v2"
+BLOCK_4_V2_RULESET_VERSION = "block_4_v2_2026_06"
 
-def problem_classification_v1_product_contract_violations(
+PROBLEM_CLASSIFICATION_V2_IDS = frozenset(
+    {
+        "high_volatility",
+        "high_drawdown",
+        "high_equity_beta",
+        "high_concentration",
+        "poor_diversification",
+        "weak_hedge_behavior",
+        "poor_rates_up_behavior",
+        "weak_crisis_resilience",
+        "high_tail_risk",
+        "credit_liquidity_fragility",
+        "duration_rates_vulnerability",
+        "low_return_risk_efficiency",
+        "current_portfolio_acceptable",
+        "evidence_insufficient_data_quality",
+        "evidence_insufficient_conflicting_signals",
+    }
+)
+
+PROBLEM_CLASSIFICATION_V2_SEVERITY = frozenset({"low", "medium", "high", "unavailable"})
+PROBLEM_CLASSIFICATION_V2_STATUS = frozenset({"ok", "partial", "unavailable"})
+NO_TRADE_OUTCOMES = frozenset({"proceed_to_launchpad", "monitor", "do_not_act_yet"})
+RECOMMENDED_NEXT_STEPS = frozenset(
+    {
+        "select_launchpad_card",
+        "monitor_quarterly",
+        "rerun_diagnostics",
+        "resolve_data",
+    }
+)
+
+BLOCK_4_V2_ACTION_PATH_IDS = frozenset(
+    {
+        "reduce_volatility",
+        "reduce_drawdown_risk",
+        "improve_diversification",
+        "reduce_concentration",
+        "improve_crisis_resilience",
+        "reduce_equity_beta",
+        "reduce_duration_rates_sensitivity",
+        "improve_hedge_behavior",
+        "reduce_tail_risk",
+        "reduce_credit_liquidity_risk",
+        "improve_return_risk_balance",
+        "compare_against_simple_benchmark",
+        "keep_current_portfolio_and_monitor",
+        "test_another_candidate",
+        "evidence_insufficient_do_not_act_yet",
+    }
+)
+
+STRESS_CONFIRMATION_VALUES = frozenset(
+    {"confirmed", "contradicted", "pre_stress_only", "unavailable"}
+)
+MATERIALITY_VALUES = frozenset({"high", "medium", "low", "none"})
+EVIDENCE_PATH_VALUES = frozenset({"primary", "legacy_fallback", "pre_stress_only"})
+
+LAUNCHPAD_V2_DISCLAIMER_PREFIX = "This card suggests a hypothesis to test, not a buy or sell instruction."
+
+
+def _validate_evidence_ref(row: Any, prefix: str) -> list[str]:
+    violations: list[str] = []
+    if not isinstance(row, dict):
+        return [f"{prefix}: evidence ref must be an object"]
+    for key in (
+        "evidence_id",
+        "source_block",
+        "source_artifact",
+        "signal",
+        "interpretation_en",
+        "why_relevant_to_problem_en",
+        "evidence_path",
+    ):
+        if not str(row.get(key) or "").strip():
+            violations.append(f"{prefix}: missing {key}")
+    path = str(row.get("evidence_path") or "")
+    if path and path not in EVIDENCE_PATH_VALUES:
+        violations.append(f"{prefix}: invalid evidence_path {path!r}")
+    return violations
+
+
+def _validate_problem_row_v2(row: Any, prefix: str) -> list[str]:
+    violations: list[str] = []
+    if not isinstance(row, dict):
+        return [f"{prefix}: must be an object"]
+    pid = str(row.get("problem_id") or "").strip()
+    if not pid:
+        violations.append(f"{prefix}: missing problem_id")
+    elif pid not in PROBLEM_CLASSIFICATION_V2_IDS:
+        violations.append(f"{prefix}: unknown problem_id {pid!r}")
+    severity = str(row.get("severity") or "").strip().lower()
+    if severity not in PROBLEM_CLASSIFICATION_V2_SEVERITY:
+        violations.append(f"{prefix}: invalid severity {row.get('severity')!r}")
+    confidence = str(row.get("confidence") or "").strip().lower()
+    if confidence not in PROBLEM_CLASSIFICATION_CONFIDENCE:
+        violations.append(f"{prefix}: invalid confidence {row.get('confidence')!r}")
+    for text_key in ("label_en", "short_diagnosis_en", "why_it_matters_en"):
+        if not str(row.get(text_key) or "").strip():
+            violations.append(f"{prefix}: missing {text_key}")
+    action_id = str(row.get("suggested_action_path_id") or "").strip()
+    if not action_id:
+        violations.append(f"{prefix}: missing suggested_action_path_id")
+    elif action_id not in BLOCK_4_V2_ACTION_PATH_IDS:
+        violations.append(f"{prefix}: unknown suggested_action_path_id {action_id!r}")
+    evidence_refs = row.get("evidence_refs")
+    if not isinstance(evidence_refs, list) or not evidence_refs:
+        violations.append(f"{prefix}: must include non-empty evidence_refs[]")
+    else:
+        for idx, ref in enumerate(evidence_refs):
+            violations.extend(_validate_evidence_ref(ref, f"{prefix}.evidence_refs[{idx}]"))
+    neg = row.get("negative_evidence_refs")
+    if neg is not None and not isinstance(neg, list):
+        violations.append(f"{prefix}: negative_evidence_refs must be a list")
+    scoring = row.get("scoring")
+    if not isinstance(scoring, dict):
+        violations.append(f"{prefix}: scoring must be an object")
+    else:
+        sc = str(scoring.get("stress_confirmation") or "")
+        if sc and sc not in STRESS_CONFIRMATION_VALUES:
+            violations.append(f"{prefix}: invalid scoring.stress_confirmation {sc!r}")
+        mat = str(scoring.get("materiality") or "")
+        if mat and mat not in MATERIALITY_VALUES:
+            violations.append(f"{prefix}: invalid scoring.materiality {mat!r}")
+    paths = row.get("reasonable_paths_to_test")
+    if not isinstance(paths, list) or not paths:
+        violations.append(f"{prefix}: must include reasonable_paths_to_test[]")
+    return violations
+
+
+def problem_classification_v2_product_contract_violations(
     doc: dict[str, Any] | None,
 ) -> list[str]:
-    """Return Problem Classification v1 product-contract violations (empty = pass)."""
+    """Return Problem Classification v2 product-contract violations (empty = pass)."""
     if not isinstance(doc, dict):
-        return [f"{PROBLEM_CLASSIFICATION_VERSION}: document is missing or not an object"]
+        return [f"{PROBLEM_CLASSIFICATION_V2_VERSION}: document is missing or not an object"]
 
-    prefix = PROBLEM_CLASSIFICATION_VERSION
+    prefix = PROBLEM_CLASSIFICATION_V2_VERSION
     violations: list[str] = []
 
-    if doc.get("schema_version") != PROBLEM_CLASSIFICATION_VERSION:
+    if doc.get("schema_version") != PROBLEM_CLASSIFICATION_V2_VERSION:
         violations.append(
-            f"{prefix}: schema_version expected {PROBLEM_CLASSIFICATION_VERSION!r}, "
+            f"{prefix}: schema_version expected {PROBLEM_CLASSIFICATION_V2_VERSION!r}, "
             f"got {doc.get('schema_version')!r}"
         )
     if doc.get("diagnostic_only") is not True:
         violations.append(f"{prefix}: diagnostic_only must be true")
+    if doc.get("diagnosis_mode") != "current_portfolio_problem_classification":
+        violations.append(f"{prefix}: invalid diagnosis_mode")
+    if doc.get("ruleset_version") != BLOCK_4_V2_RULESET_VERSION:
+        violations.append(
+            f"{prefix}: ruleset_version expected {BLOCK_4_V2_RULESET_VERSION!r}, "
+            f"got {doc.get('ruleset_version')!r}"
+        )
+    status = str(doc.get("status") or "")
+    if status not in PROBLEM_CLASSIFICATION_V2_STATUS:
+        violations.append(f"{prefix}: invalid status {doc.get('status')!r}")
+
+    primary = doc.get("primary_problem")
+    violations.extend(_validate_problem_row_v2(primary, f"{prefix}.primary_problem"))
+
+    secondary = doc.get("secondary_problems")
+    if not isinstance(secondary, list):
+        violations.append(f"{prefix}: secondary_problems must be a list")
+        secondary = []
+    elif len(secondary) > 2:
+        violations.append(f"{prefix}: at most 2 secondary_problems allowed")
+    else:
+        for idx, row in enumerate(secondary):
+            violations.extend(_validate_problem_row_v2(row, f"{prefix}.secondary_problems[{idx}]"))
+
+    rejected = doc.get("rejected_problems")
+    if not isinstance(rejected, list):
+        violations.append(f"{prefix}: rejected_problems must be a list")
+
+    suggested = doc.get("suggested_actions")
+    if not isinstance(suggested, list):
+        violations.append(f"{prefix}: suggested_actions must be a list")
+
+    no_trade = doc.get("no_trade_or_monitoring_view")
+    if not isinstance(no_trade, dict):
+        violations.append(f"{prefix}: no_trade_or_monitoring_view must be an object")
+    else:
+        outcome = str(no_trade.get("outcome") or "")
+        if outcome not in NO_TRADE_OUTCOMES:
+            violations.append(f"{prefix}: invalid no_trade outcome {outcome!r}")
+        if not str(no_trade.get("headline_en") or "").strip():
+            violations.append(f"{prefix}: no_trade headline_en required")
+        step = str(no_trade.get("recommended_next_step") or "")
+        if step not in RECOMMENDED_NEXT_STEPS:
+            violations.append(f"{prefix}: invalid recommended_next_step {step!r}")
+        if "launchpad_suppressed" not in no_trade:
+            violations.append(f"{prefix}: no_trade launchpad_suppressed required")
+
+    dq = doc.get("data_quality_warnings")
+    if not isinstance(dq, list):
+        violations.append(f"{prefix}: data_quality_warnings must be a list")
+
+    meta = doc.get("diagnostics_meta")
+    if not isinstance(meta, dict):
+        violations.append(f"{prefix}: diagnostics_meta must be an object")
+    else:
+        for key in ("evidence_signal_count", "problems_evaluated", "problems_activated"):
+            if key not in meta:
+                violations.append(f"{prefix}: diagnostics_meta missing {key}")
 
     problems = doc.get("problems")
     if not isinstance(problems, list):
-        violations.append(f"{prefix}: problems must be a list")
-        return violations
-
-    if len(problems) > 3:
-        violations.append(f"{prefix}: at most 3 problems allowed, got {len(problems)}")
-
-    problem_ids: list[str] = []
-    for idx, row in enumerate(problems):
-        if not isinstance(row, dict):
-            violations.append(f"{prefix}: problems[{idx}] must be an object")
-            continue
-        pid = str(row.get("problem_id") or "").strip()
-        if not pid:
-            violations.append(f"{prefix}: problems[{idx}] missing problem_id")
-        elif pid not in PROBLEM_CLASSIFICATION_V1_IDS:
-            violations.append(f"{prefix}: problems[{idx}] unknown problem_id {pid!r}")
-        else:
-            problem_ids.append(pid)
-        severity = str(row.get("severity") or "").strip().lower()
-        if severity not in PROBLEM_CLASSIFICATION_SEVERITY:
-            violations.append(f"{prefix}: problems[{idx}] invalid severity {row.get('severity')!r}")
-        confidence = str(row.get("confidence") or "").strip().lower()
-        if confidence not in PROBLEM_CLASSIFICATION_CONFIDENCE:
-            violations.append(
-                f"{prefix}: problems[{idx}] invalid confidence {row.get('confidence')!r}"
-            )
-        evidence = row.get("evidence")
-        if not isinstance(evidence, list) or not evidence:
-            violations.append(f"{prefix}: problems[{idx}] must include non-empty evidence[]")
-        paths = row.get("reasonable_paths_to_test")
-        if not isinstance(paths, list) or not paths:
-            violations.append(
-                f"{prefix}: problems[{idx}] must include reasonable_paths_to_test[]"
-            )
+        violations.append(f"{prefix}: problems compatibility shim must be a list")
+    elif len(problems) > 3:
+        violations.append(f"{prefix}: problems shim at most 3 rows")
 
     summary = doc.get("summary")
     if not isinstance(summary, dict):
         violations.append(f"{prefix}: summary must be an object")
-    else:
-        primary = summary.get("primary_problem_id")
-        if primary is not None and problem_ids and str(primary) not in problem_ids:
-            violations.append(
-                f"{prefix}: summary.primary_problem_id {primary!r} not in problems[]"
-            )
-        if summary.get("n_problems") != len(problems):
-            violations.append(
-                f"{prefix}: summary.n_problems must equal len(problems) "
-                f"({summary.get('n_problems')!r} vs {len(problems)})"
-            )
+    elif isinstance(primary, dict):
+        primary_id = primary.get("problem_id")
+        if summary.get("primary_problem_id") != primary_id:
+            violations.append(f"{prefix}: summary.primary_problem_id mismatch")
         acceptable = summary.get("current_portfolio_acceptable")
-        if acceptable is True and problem_ids != ["current_portfolio_acceptable"]:
-            violations.append(
-                f"{prefix}: current_portfolio_acceptable true but problems are not only acceptable row"
-            )
-        if acceptable is False and problem_ids == ["current_portfolio_acceptable"]:
-            violations.append(
-                f"{prefix}: current_portfolio_acceptable false but only acceptable problem emitted"
-            )
+        if acceptable is True and primary_id != "current_portfolio_acceptable":
+            violations.append(f"{prefix}: current_portfolio_acceptable inconsistent with primary")
+        if isinstance(no_trade, dict) and summary.get("no_trade_outcome") != no_trade.get("outcome"):
+            violations.append(f"{prefix}: summary.no_trade_outcome mismatch")
 
     return violations
 
 
-def candidate_launchpad_v1_product_contract_violations(
+def candidate_launchpad_v2_product_contract_violations(
     doc: dict[str, Any] | None,
 ) -> list[str]:
-    """Return Candidate Launchpad v1 product-contract violations (empty = pass)."""
+    """Return Candidate Launchpad v2 product-contract violations (empty = pass)."""
     if not isinstance(doc, dict):
-        return [f"{CANDIDATE_LAUNCHPAD_VERSION}: document is missing or not an object"]
+        return [f"{CANDIDATE_LAUNCHPAD_V2_VERSION}: document is missing or not an object"]
 
-    prefix = CANDIDATE_LAUNCHPAD_VERSION
+    prefix = CANDIDATE_LAUNCHPAD_V2_VERSION
     violations: list[str] = []
 
-    if doc.get("schema_version") != CANDIDATE_LAUNCHPAD_VERSION:
+    if doc.get("schema_version") != CANDIDATE_LAUNCHPAD_V2_VERSION:
         violations.append(
-            f"{prefix}: schema_version expected {CANDIDATE_LAUNCHPAD_VERSION!r}, "
+            f"{prefix}: schema_version expected {CANDIDATE_LAUNCHPAD_V2_VERSION!r}, "
             f"got {doc.get('schema_version')!r}"
         )
     if doc.get("diagnostic_only") is not True:
         violations.append(f"{prefix}: diagnostic_only must be true")
+    if doc.get("ruleset_version") != BLOCK_4_V2_RULESET_VERSION:
+        violations.append(
+            f"{prefix}: ruleset_version expected {BLOCK_4_V2_RULESET_VERSION!r}, "
+            f"got {doc.get('ruleset_version')!r}"
+        )
+    outcome = str(doc.get("launchpad_outcome") or "")
+    if outcome not in NO_TRADE_OUTCOMES:
+        violations.append(f"{prefix}: invalid launchpad_outcome {outcome!r}")
 
     cards = doc.get("cards")
     if not isinstance(cards, list):
         violations.append(f"{prefix}: cards must be a list")
         return violations
-
-    if not cards:
-        violations.append(f"{prefix}: cards must be non-empty")
+    if len(cards) > 4:
+        violations.append(f"{prefix}: at most 4 cards allowed")
+    if not cards and outcome != "do_not_act_yet":
+        violations.append(f"{prefix}: cards must be non-empty unless do_not_act_yet")
 
     card_ids: list[str] = []
     for idx, card in enumerate(cards):
+        cp = f"{prefix}.cards[{idx}]"
         if not isinstance(card, dict):
-            violations.append(f"{prefix}: cards[{idx}] must be an object")
+            violations.append(f"{cp}: must be an object")
             continue
         card_id = str(card.get("card_id") or "").strip()
         if not card_id:
-            violations.append(f"{prefix}: cards[{idx}] missing card_id")
+            violations.append(f"{cp}: missing card_id")
         else:
             card_ids.append(card_id)
-        goal = card.get("goal")
-        if not isinstance(goal, str) or not goal.strip():
-            violations.append(f"{prefix}: cards[{idx}] missing goal")
-        elif goal not in LAUNCHPAD_KNOWN_GOALS:
-            violations.append(f"{prefix}: cards[{idx}] unknown goal {goal!r}")
+        for key in (
+            "title",
+            "goal",
+            "description",
+            "why_this_path_en",
+            "what_this_tests_en",
+            "expected_tradeoff_to_check_en",
+            "when_to_skip_this_test_en",
+        ):
+            if not str(card.get(key) or "").strip():
+                violations.append(f"{cp}: missing {key}")
+        disclaimer = str(card.get("not_a_recommendation_disclaimer_en") or "")
+        if not disclaimer.startswith(LAUNCHPAD_V2_DISCLAIMER_PREFIX):
+            violations.append(f"{cp}: invalid not_a_recommendation_disclaimer_en")
         if card.get("generates_portfolio") is not False:
-            violations.append(f"{prefix}: cards[{idx}] generates_portfolio must be false")
+            violations.append(f"{cp}: generates_portfolio must be false")
         if "weights" in card:
-            violations.append(f"{prefix}: cards[{idx}] must not include weights")
+            violations.append(f"{cp}: must not include weights")
+        if "priority_rank" not in card:
+            violations.append(f"{cp}: missing priority_rank")
         methods = card.get("suggested_methods")
         if not isinstance(methods, list):
-            violations.append(f"{prefix}: cards[{idx}] suggested_methods must be a list")
+            violations.append(f"{cp}: suggested_methods must be a list")
         else:
+            method_ids = []
             for midx, method in enumerate(methods):
                 if not isinstance(method, dict):
-                    violations.append(
-                        f"{prefix}: cards[{idx}].suggested_methods[{midx}] must be an object"
-                    )
+                    violations.append(f"{cp}.suggested_methods[{midx}] must be an object")
                     continue
                 method_id = str(method.get("candidate_method_id") or "").strip()
                 if not method_id:
-                    violations.append(
-                        f"{prefix}: cards[{idx}].suggested_methods[{midx}] missing candidate_method_id"
-                    )
+                    violations.append(f"{cp}.suggested_methods[{midx}] missing candidate_method_id")
                 elif method_id not in LAUNCHPAD_KNOWN_METHOD_IDS:
-                    violations.append(
-                        f"{prefix}: cards[{idx}] unknown candidate_method_id {method_id!r}"
-                    )
+                    violations.append(f"{cp}: unknown candidate_method_id {method_id!r}")
+                else:
+                    method_ids.append(method_id)
+            default_method = card.get("default_method")
+            if method_ids and not default_method:
+                violations.append(f"{cp}: default_method required when suggested_methods non-empty")
+            if default_method and str(default_method) not in method_ids:
+                violations.append(f"{cp}: default_method must appear in suggested_methods")
+        constraints = card.get("simple_constraints")
+        if not isinstance(constraints, list):
+            violations.append(f"{cp}: simple_constraints must be a list")
 
     summary = doc.get("summary")
     if not isinstance(summary, dict):
         violations.append(f"{prefix}: summary must be an object")
     else:
         if summary.get("n_cards") != len(cards):
-            violations.append(
-                f"{prefix}: summary.n_cards must equal len(cards) "
-                f"({summary.get('n_cards')!r} vs {len(cards)})"
-            )
+            violations.append(f"{prefix}: summary.n_cards mismatch")
+        if summary.get("launchpad_outcome") != outcome:
+            violations.append(f"{prefix}: summary.launchpad_outcome mismatch")
         primary = summary.get("primary_card_id")
         if primary is not None and card_ids and str(primary) != card_ids[0]:
-            violations.append(
-                f"{prefix}: summary.primary_card_id must match first card "
-                f"({primary!r} vs {card_ids[0]!r})"
-            )
-        has_gen = summary.get("has_portfolio_generating_options")
-        expected_gen = any(
-            isinstance(card, dict) and bool(card.get("suggested_methods")) for card in cards
-        )
-        if has_gen is not None and bool(has_gen) != expected_gen:
-            violations.append(
-                f"{prefix}: summary.has_portfolio_generating_options inconsistent with cards"
-            )
+            violations.append(f"{prefix}: summary.primary_card_id must match first card")
 
     return violations
 
 
-def block_4_diagnosis_handoff_violations(
+def block_4_v2_diagnosis_handoff_violations(
     problem_classification: dict[str, Any] | None,
     candidate_launchpad: dict[str, Any] | None,
 ) -> list[str]:
-    """Cross-artifact Block 4 handoff: Launchpad cards trace to Problem Classification."""
+    """Cross-artifact Block 4 v2 handoff."""
     if not isinstance(problem_classification, dict) or not isinstance(candidate_launchpad, dict):
-        return ["block_4_handoff: both problem_classification and candidate_launchpad required"]
+        return ["block_4_v2_handoff: both artifacts required"]
 
     violations: list[str] = []
-    prefix = "block_4_handoff"
+    prefix = "block_4_v2_handoff"
+
+    if problem_classification.get("schema_version") != PROBLEM_CLASSIFICATION_V2_VERSION:
+        violations.append(f"{prefix}: problem_classification must be v2")
+    if candidate_launchpad.get("schema_version") != CANDIDATE_LAUNCHPAD_V2_VERSION:
+        violations.append(f"{prefix}: candidate_launchpad must be v2")
 
     pc_end = problem_classification.get("analysis_end")
     lp_end = candidate_launchpad.get("analysis_end")
     if pc_end and lp_end and str(pc_end) != str(lp_end):
-        violations.append(
-            f"{prefix}: analysis_end mismatch ({pc_end!r} vs {lp_end!r})"
-        )
+        violations.append(f"{prefix}: analysis_end mismatch")
 
-    problem_ids = {
+    primary = problem_classification.get("primary_problem")
+    primary = primary if isinstance(primary, dict) else {}
+    secondary = problem_classification.get("secondary_problems")
+    secondary = secondary if isinstance(secondary, list) else []
+    allowed_ids = {str(primary.get("problem_id"))} if primary.get("problem_id") else set()
+    allowed_ids.update(
         str(row.get("problem_id"))
-        for row in (problem_classification.get("problems") or [])
+        for row in secondary
         if isinstance(row, dict) and row.get("problem_id")
-    }
+    )
+
+    no_trade = problem_classification.get("no_trade_or_monitoring_view") or {}
+    pc_outcome = no_trade.get("outcome") if isinstance(no_trade, dict) else None
+    if candidate_launchpad.get("launchpad_outcome") != pc_outcome:
+        violations.append(f"{prefix}: launchpad_outcome mismatch with PC no_trade outcome")
+
     for idx, card in enumerate(candidate_launchpad.get("cards") or []):
         if not isinstance(card, dict):
             continue
         source_id = card.get("source_problem_id")
         if source_id is None:
             continue
-        if str(source_id) not in problem_ids:
+        if str(source_id) not in allowed_ids:
             violations.append(
-                f"{prefix}: cards[{idx}] source_problem_id {source_id!r} not in problems[]"
+                f"{prefix}: cards[{idx}] source_problem_id {source_id!r} not in primary/secondary"
             )
-
-    source_artifacts = candidate_launchpad.get("source_artifacts") or {}
-    if source_artifacts.get("problem_classification") != "problem_classification.json":
-        violations.append(
-            f"{prefix}: source_artifacts.problem_classification must be problem_classification.json"
-        )
 
     return violations
 
 
-def check_problem_classification_v1(doc: dict[str, Any] | None) -> dict[str, Any]:
-    violations = problem_classification_v1_product_contract_violations(doc)
-    problems = (doc or {}).get("problems") if isinstance(doc, dict) else []
-    problems = problems if isinstance(problems, list) else []
+def check_problem_classification_v2(doc: dict[str, Any] | None) -> dict[str, Any]:
+    violations = problem_classification_v2_product_contract_violations(doc)
     summary = (doc or {}).get("summary") if isinstance(doc, dict) else {}
     summary = summary if isinstance(summary, dict) else {}
+    primary = (doc or {}).get("primary_problem") if isinstance(doc, dict) else {}
+    primary = primary if isinstance(primary, dict) else {}
     return {
         "product_contract_ok": not violations,
         "contract_violations": violations,
-        "n_problems": len(problems),
-        "primary_problem_id": summary.get("primary_problem_id"),
-        "current_portfolio_acceptable": summary.get("current_portfolio_acceptable"),
-        "hedge_gap_source": (doc or {}).get("hedge_gap_source"),
-        "stress_scorecard_source": (doc or {}).get("stress_scorecard_source"),
+        "primary_problem_id": primary.get("problem_id") or summary.get("primary_problem_id"),
+        "no_trade_outcome": summary.get("no_trade_outcome"),
+        "n_secondary": summary.get("n_secondary"),
+        "n_rejected": summary.get("n_rejected"),
     }
 
 
-def check_candidate_launchpad_v1(doc: dict[str, Any] | None) -> dict[str, Any]:
-    violations = candidate_launchpad_v1_product_contract_violations(doc)
+def check_candidate_launchpad_v2(doc: dict[str, Any] | None) -> dict[str, Any]:
+    violations = candidate_launchpad_v2_product_contract_violations(doc)
     cards = (doc or {}).get("cards") if isinstance(doc, dict) else []
     cards = cards if isinstance(cards, list) else []
     summary = (doc or {}).get("summary") if isinstance(doc, dict) else {}
@@ -978,16 +1133,16 @@ def check_candidate_launchpad_v1(doc: dict[str, Any] | None) -> dict[str, Any]:
         "product_contract_ok": not violations,
         "contract_violations": violations,
         "n_cards": len(cards),
+        "launchpad_outcome": (doc or {}).get("launchpad_outcome") if isinstance(doc, dict) else None,
         "primary_card_id": summary.get("primary_card_id"),
-        "has_portfolio_generating_options": summary.get("has_portfolio_generating_options"),
     }
 
 
-def check_block_4_diagnosis_handoff(
+def check_block_4_v2_diagnosis_handoff(
     problem_classification: dict[str, Any] | None,
     candidate_launchpad: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    violations = block_4_diagnosis_handoff_violations(
+    violations = block_4_v2_diagnosis_handoff_violations(
         problem_classification, candidate_launchpad
     )
     return {

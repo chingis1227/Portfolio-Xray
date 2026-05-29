@@ -2,11 +2,13 @@
 
 This document owns the V1 Candidate Launchpad data artifact for the diagnosis-first Portfolio MRI migration.
 
-Implementation: `src/candidate_launchpad.py`.
+**Target contract (V2 — shipped):** [block_4_diagnosis_v2_spec.md](block_4_diagnosis_v2_spec.md) §5 — extended card fields (`title`, `default_method`, trade-offs, skip rules, disclaimer).
+
+Implementation: `src/block_4/launchpad_cards.py` (V2 canonical); `src/candidate_launchpad.py` (legacy unit tests).
 
 Canonical artifact: `candidate_launchpad.json`.
 
-Status: implemented as an additive data layer in code migration Session 05. It translates Problem Classification output into hypothesis cards. It does not generate portfolios.
+Status: **legacy V1** — canonical contract is [block_4_diagnosis_v2_spec.md](block_4_diagnosis_v2_spec.md) §5. Production writer: `src/block_4/launchpad_cards.py`. V1 product validators removed Session 14.
 
 ## Scope
 
@@ -106,7 +108,7 @@ Focused tests:
 python -m pytest tests/test_candidate_launchpad.py tests/test_block_4_decision_entry_contract.py
 ```
 
-Product contract (Session 09): `candidate_launchpad_v1_product_contract_violations` / `check_candidate_launchpad_v1` and `block_4_diagnosis_handoff_violations` in `scripts/core_mvp_validation_contract.py`; live E2E via `validate_live_core_artifacts`.
+Product contract (Session 14 / v2 freeze): `candidate_launchpad_v2_product_contract_violations` / `check_candidate_launchpad_v2` and `block_4_v2_diagnosis_handoff_violations` in `scripts/core_mvp_validation_contract.py`; live E2E via `validate_live_core_artifacts`.
 
 Recommended adjacent checks:
 

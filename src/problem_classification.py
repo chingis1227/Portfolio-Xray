@@ -1,8 +1,8 @@
 """Problem Classification artifact for diagnosis-first Portfolio MRI.
 
-This module translates existing deterministic Portfolio X-Ray and Stress Test
-Lab evidence into user-understandable portfolio problems. It does not calculate
-new metrics, optimize, rank candidates, or issue a rebalance verdict.
+Legacy V1 builder (``problem_classification_v1``). Production pipeline uses
+``src/block_4/diagnosis_builder.py`` (``problem_classification_v2``) since Block 4 v2
+Session 10. Retained for unit tests and migration reference only.
 """
 
 from __future__ import annotations

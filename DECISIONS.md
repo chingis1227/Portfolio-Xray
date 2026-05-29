@@ -60,6 +60,20 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-05-29-013
+Title: Block 4 v2 additive migration with transitional V1 compatibility shim
+
+- Status: accepted (implemented — Session 14 closure 2026-05-29)
+- Date: 2026-05-29
+- Decision: Upgrade Block 4 entry from thin `problem_classification_v1` to structured `problem_classification_v2` (evidence extraction → scoring → severity/confidence → prioritization → actions → launchpad) via additive schema bump on the same filenames (`analysis_subject/problem_classification.json`, `candidate_launchpad.json`). During Sessions 10–13, dual validation ran; compatibility shim (`problems[]` mirror, severity `medium` → `moderate`) retained. **Session 14:** V1 product validators removed; v2 is canonical for live E2E and decision-entry tests; legacy V1 builders remain for unit tests only. Block 4 remains read-only over Blocks 2–3.
+- Context: [Block 4 v2 Session 00 gap audit](docs/audits/2026-05-29_block_4_v2_session_00_gap_audit.md); V1 accepted Session 09 but uses legacy `sections.*` readers, severity-only prioritization, and 9 problem IDs vs 15-target taxonomy.
+- Rationale: Institutional diagnosis requires auditable evidence_refs and honest no-trade outcomes without breaking operators mid-migration.
+- Alternatives considered: In-place V1 rewrite without schema_version bump (rejected — silent contract drift); separate bundle files (rejected — six-file product bundle unchanged); big-bang cutover without shim (rejected — breaks Session 09 E2E gates).
+- Assumptions: Blocks 2.1–2.6 and 3.3–3.4 product blocks remain stable evidence sources; core-only hygiene continues to omit Block 4 artifacts.
+- Consequences: ExecPlan [Block 4 v2 Evidence-to-Problem](docs/exec_plans/2026-05-29_block_4_v2_evidence_to_problem_plan.md) **Completed**; `src/block_4/` package; `config/block_4_thresholds.yml`; [Session 14 closure audit](docs/audits/2026-05-29_block_4_v2_session_14_institutional_closure.md).
+- Related documents: DEC-2026-05-29-011, [problem_classification_spec.md](docs/specs/problem_classification_spec.md), [candidate_launchpad_spec.md](docs/specs/candidate_launchpad_spec.md).
+- Review trigger: Closed Session 14 — v2 is canonical; revisit only on breaking schema bump.
+
 Decision ID: DEC-2026-05-29-012
 Title: Block 5 compare/verdict validated via product contracts and live E2E (Session 10)
 
@@ -84,7 +98,7 @@ Title: Block 4 decision entry validated via product contracts and live E2E (Sess
 - Rationale: Decision Workflow UI and operators need the same “fail loud on contract drift” standard as Blocks 1–3; offline tests alone are insufficient without live profile integration.
 - Alternatives considered: Only document specs without validators (rejected — regression risk); merge Block 4 into a separate script (rejected — duplicate subject checks).
 - Assumptions: `run_report.py` continues to write PC then Launchpad on non–core-only materialize; core-only runs remain without Block 4 subject files.
-- Consequences: `tests/test_block_4_decision_entry_contract.py`; live E2E evidence keys `block_4_*`; Session 10+ can extend the same pattern to root compare/verdict artifacts.
+- Consequences: `tests/test_block_4_decision_entry_contract.py`; live E2E evidence keys `block_4_*`; Session 10+ extended compare/verdict on same pattern. **Superseded for live gates (Session 14):** v2 validators replace v1 per `DEC-2026-05-29-013`.
 - Related documents: [Session 09 audit](docs/audits/2026-05-29_block_4_session_09_problem_classification_launchpad.md), [problem_classification_spec.md](docs/specs/problem_classification_spec.md), [candidate_launchpad_spec.md](docs/specs/candidate_launchpad_spec.md), DEC-2026-05-29-010.
 - Review trigger: Revisit if Block 4 schema version bumps or Launchpad gains portfolio-generating cards in product V1.
 

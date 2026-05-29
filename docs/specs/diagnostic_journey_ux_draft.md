@@ -26,7 +26,7 @@ Portfolio Setup (Block 1)
 | 1 Portfolio Setup | `#setup` | `run_metadata.json`, `input_assumptions` (via run_metadata), weights from `analysis_setup` | CTA: Run Portfolio X-Ray |
 | 2 Portfolio X-Ray | `#xray` | `portfolio_xray.json` (`block_2_1` … `block_2_6`) | CTA: Run Stress Test Lab |
 | 3 Stress Test Lab | `#stress` | `stress_report.json` (`stress_results_v1`, `hedge_gap_analysis_v1`, `current_portfolio_stress_scorecard_v1`) | CTA: View suggested improvement paths |
-| 4 Problem bridge | `#bridge` | `problem_classification.json`, `candidate_launchpad.json` when present; else deterministic fallback from stress/X-Ray | CTA: Open Candidate Launchpad (disabled until wired) |
+| 4 Problem bridge | `#bridge` | `problem_classification.json` (`problem_classification_v2`), `candidate_launchpad.json` (`candidate_launchpad_v2`); else deterministic fallback from stress/X-Ray | CTA: Open Candidate Launchpad (disabled until wired) |
 
 ## Block 2 information hierarchy
 
@@ -66,7 +66,7 @@ Portfolio Setup (Block 1)
 
 - UI **must not invent** metrics; missing fields show safe placeholders (`—`, “Data unavailable”).  
 - `portfolio_xray.json` and `stress_report.json` under `{output_dir_final}/analysis_subject/` are the primary contracts.  
-- Block 4 artifacts are optional; bridge cards fall back to scorecard + hedge gap + weakness map heuristics.  
+- Block 4 artifacts use v2 schemas when present; bridge reads `primary_problem`, `no_trade_or_monitoring_view`, and Launchpad `suggested_methods` / `why_this_path_en` / `what_this_tests_en`.  
 
 ## Running the prototype
 

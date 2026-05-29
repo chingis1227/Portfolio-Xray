@@ -463,26 +463,18 @@ def seed_blocks_1_5_mvp_smoke_workspace(root: Path, cfg: Any) -> dict[str, Any]:
 
 
 def seed_analysis_subject_diagnosis_bundle(subject_dir: Path) -> None:
-    """Write Portfolio X-Ray, stress, problem classification, and launchpad under analysis_subject/."""
-    from src.candidate_launchpad import write_candidate_launchpad_outputs
-    from src.problem_classification import write_problem_classification_outputs
+    """Write Portfolio X-Ray, stress, Block 4 v2 diagnosis under analysis_subject/."""
+    from src.block_4.diagnosis_builder import write_block_4_diagnosis_outputs
 
     subject_dir.mkdir(parents=True, exist_ok=True)
     if not (subject_dir / "stress_report.json").is_file():
         write_json(subject_dir / "stress_report.json", minimal_blocks_1_5_stress_report())
     stress = json.loads((subject_dir / "stress_report.json").read_text(encoding="utf-8"))
     xray = refresh_analysis_subject_portfolio_xray(subject_dir)
-    problem_path = write_problem_classification_outputs(
+    write_block_4_diagnosis_outputs(
         output_dir=subject_dir,
         portfolio_xray=xray,
         stress_report=stress,
-        analysis_end=DEFAULT_ANALYSIS_END,
-    )
-    with open(problem_path, encoding="utf-8") as f:
-        problem_doc = json.load(f)
-    write_candidate_launchpad_outputs(
-        output_dir=subject_dir,
-        problem_classification=problem_doc,
         analysis_end=DEFAULT_ANALYSIS_END,
     )
 
@@ -817,8 +809,8 @@ def seed_cash5pct_block_2_2_subject_dir(
 
 # (relative path under output_dir_final, expected schema_version)
 PRODUCT_BUNDLE_ARTIFACTS: tuple[tuple[str, str], ...] = (
-    ("analysis_subject/problem_classification.json", "problem_classification_v1"),
-    ("analysis_subject/candidate_launchpad.json", "candidate_launchpad_v1"),
+    ("analysis_subject/problem_classification.json", "problem_classification_v2"),
+    ("analysis_subject/candidate_launchpad.json", "candidate_launchpad_v2"),
     ("current_vs_candidate.json", "current_vs_candidate_v1"),
     ("decision_verdict.json", "decision_verdict_v1"),
     ("ai_commentary_context.json", "ai_commentary_context_v1"),

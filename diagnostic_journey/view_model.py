@@ -382,7 +382,9 @@ def build_diagnostic_journey_view_model(
         "next_use": next_use_human,
     }
 
+    bridge_diagnosis = _bridge_diagnosis_from_problem(problem)
     bridge_cards = _bridge_cards(launchpad, problem, block3_hedge, block2_risk, block2_weakness)
+    no_trade_note = _bridge_no_trade_note(bridge_diagnosis)
 
     return {
         "project_root": str(root),
@@ -408,8 +410,9 @@ def build_diagnostic_journey_view_model(
             "title": "Diagnosis complete — suggested next paths",
             "subtitle": "No candidate generated yet. These are testable hypotheses, not recommendations.",
             "optional_note": "You can stop here. Diagnosis-only output is already valid. Candidate testing is optional.",
+            "diagnosis": bridge_diagnosis,
             "cards": bridge_cards[:3],
-            "no_trade_note": "No-trade and keep current portfolio remain valid outcomes.",
+            "no_trade_note": no_trade_note,
         },
     }
 
@@ -482,8 +485,74 @@ def _bridge_cards(
     return cards
 
 
+def _launchpad_method_ids(card: dict[str, Any]) -> list[str]:
+    methods_raw = card.get("suggested_methods") or card.get("candidate_methods") or card.get("methods") or []
+    ids: list[str] = []
+    for row in methods_raw:
+        if isinstance(row, dict):
+            method_id = row.get("candidate_method_id") or row.get("method_id")
+            if method_id:
+                ids.append(str(method_id))
+        elif row:
+            ids.append(str(row))
+    default_method = card.get("default_method")
+    if default_method and str(default_method) not in ids:
+        ids.insert(0, str(default_method))
+    return ids
+
+
+def _bridge_diagnosis_from_problem(problem: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(problem, dict):
+        return {}
+    schema = str(problem.get("schema_version") or "")
+    if schema == "problem_classification_v2":
+        primary = problem.get("primary_problem") if isinstance(problem.get("primary_problem"), dict) else {}
+        no_trade = (
+            problem.get("no_trade_or_monitoring_view")
+            if isinstance(problem.get("no_trade_or_monitoring_view"), dict)
+            else {}
+        )
+        return {
+            "schema_version": schema,
+            "primary_problem_id": primary.get("problem_id"),
+            "primary_headline": primary.get("short_diagnosis_en") or primary.get("label_en"),
+            "why_it_matters": primary.get("why_it_matters_en"),
+            "no_trade_outcome": no_trade.get("outcome"),
+            "no_trade_headline": no_trade.get("headline_en"),
+            "recommended_next_step": no_trade.get("recommended_next_step"),
+        }
+    summary = problem.get("summary") if isinstance(problem.get("summary"), dict) else {}
+    problems = problem.get("problems") if isinstance(problem.get("problems"), list) else []
+    primary_id = summary.get("primary_problem_id")
+    primary_row: dict[str, Any] = {}
+    for row in problems:
+        if isinstance(row, dict) and row.get("problem_id") == primary_id:
+            primary_row = row
+            break
+    if not primary_row and problems and isinstance(problems[0], dict):
+        primary_row = problems[0]
+    if not primary_row:
+        return {"schema_version": schema or "problem_classification_v1"}
+    return {
+        "schema_version": schema or "problem_classification_v1",
+        "primary_problem_id": primary_row.get("problem_id"),
+        "primary_headline": primary_row.get("label") or primary_row.get("problem_id"),
+    }
+
+
+def _bridge_no_trade_note(diagnosis: dict[str, Any]) -> str:
+    headline = str(diagnosis.get("no_trade_headline") or "").strip()
+    if headline:
+        return headline
+    outcome = str(diagnosis.get("no_trade_outcome") or "").strip()
+    if outcome == "monitor":
+        return "Monitor quarterly — rebalance only if the diagnosis changes materially."
+    if outcome == "do_not_act_yet":
+        return "Do not act yet — resolve evidence gaps before testing candidates."
+    return "No-trade and keep current portfolio remain valid outcomes."
+
+
 def _bridge_card_from_launchpad(card: dict[str, Any]) -> dict[str, Any]:
-    methods = card.get("candidate_methods") or card.get("methods") or []
     method_labels = {
         "minimum_cvar_constrained": "Minimum CVaR (constrained)",
         "robust_scenario": "Robust scenario candidate",
@@ -491,12 +560,44 @@ def _bridge_card_from_launchpad(card: dict[str, Any]) -> dict[str, Any]:
         "risk_parity": "Risk parity",
         "equal_weight_by_asset_class": "Equal weight by asset class",
         "equal_weight": "Equal weight",
+        "maximum_diversification": "Maximum diversification",
+        "risk_budget_by_asset": "Risk budget by asset",
+        "robust_mv_constrained": "Robust MV (constrained)",
     }
-    tests = ", ".join(method_labels.get(str(m), P.human_token(m)) for m in methods[:2]) or "See launchpad"
+    method_ids = _launchpad_method_ids(card)
+    tests_from_methods = ", ".join(
+        method_labels.get(method_id, P.human_token(method_id)) for method_id in method_ids[:2]
+    )
+    suggested_test = P.clean_technical_text(
+        str(card.get("what_this_tests_en") or tests_from_methods or "See launchpad card")
+    )
+    rationale = card.get("rationale") if isinstance(card.get("rationale"), dict) else {}
+    why = P.clean_technical_text(
+        str(
+            card.get("why_this_path_en")
+            or card.get("why")
+            or card.get("description")
+            or ""
+        )
+    )
+    if not why and rationale:
+        severity = rationale.get("severity")
+        confidence = rationale.get("confidence")
+        if severity or confidence:
+            why = f"Severity {severity or '—'}, confidence {confidence or '—'}."
+    goal = P.clean_technical_text(
+        str(
+            card.get("expected_tradeoff_to_check_en")
+            or card.get("goal_description")
+            or card.get("description")
+            or card.get("goal")
+            or ""
+        )
+    )
     return {
-        "title": card.get("goal") or card.get("title") or "Improvement hypothesis",
-        "why": P.clean_technical_text(str(card.get("why") or card.get("rationale") or "")),
-        "suggested_test": tests,
-        "goal": P.clean_technical_text(str(card.get("goal_description") or card.get("description") or "")),
+        "title": card.get("title") or card.get("goal") or "Improvement hypothesis",
+        "why": why or "See launchpad rationale.",
+        "suggested_test": suggested_test,
+        "goal": goal,
         "cta": "Open in Builder",
     }

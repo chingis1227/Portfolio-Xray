@@ -1,0 +1,69 @@
+# Block 4 v2 — evidence-to-problem scoring thresholds (Session 05).
+# Bump version when changing activation, materiality, severity, or confidence rules.
+
+version: block_4_thresholds_v1
+ruleset_version: block_4_v2_2026_06
+
+activation:
+  raw_score_min: 0.35
+  min_required_signal_strength: 0.12
+
+scoring_weights:
+  required: 0.55
+  supporting: 0.30
+  required_peak: 0.15
+  negative_penalty_factor: 0.18
+  negative_block_threshold: 0.55
+
+materiality_bands:
+  high_min: 0.65
+  medium_min: 0.45
+  low_min: 0.25
+
+stress_confirmation_multipliers:
+  confirmed: 1.12
+  pre_stress_only: 0.88
+  contradicted: 0.55
+  unavailable: 0.95
+
+signal_strength:
+  vol_baseline: 0.10
+  vol_range: 0.12
+  max_drawdown_floor: 0.08
+  max_drawdown_range: 0.18
+  sharpe_reference: 0.55
+  beta_reference: 0.65
+  beta_range: 0.55
+  top_weight_baseline_pct: 12.0
+  top_weight_range_pct: 35.0
+  rc_top1_baseline_pct: 20.0
+  rc_top1_range_pct: 35.0
+  offset_coverage_strong: 0.55
+  stress_loss_floor: 0.05
+  stress_loss_range: 0.15
+  es_95_floor: 0.012
+  es_95_range: 0.018
+  rates_loss_floor: 0.03
+  rates_loss_range: 0.12
+  severity_boost_high: 0.15
+  severity_boost_medium: 0.08
+
+severity:
+  high_decision_score_min: 0.60
+  medium_decision_score_min: 0.42
+  high_requires_materiality: high
+  inactive_band: unavailable
+  monitor_band: low
+  evidence_quality_band: high
+  conflict_band: medium
+
+confidence:
+  confirmed_stress_tier: high
+  pre_stress_only_tier: low
+  contradicted_tier: low
+  unavailable_stress_tier: medium
+  legacy_fallback_cap: medium
+  partial_data_cap: low
+  data_trust_cap: low
+  inactive_tier: low
+  acceptable_tier: medium

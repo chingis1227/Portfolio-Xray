@@ -27,8 +27,8 @@ Default output folder: `{output_dir_final}` from `config.yml` (demo: `Main portf
 | `stress_report.json` (3.2–3.4 v1 primary) | **Required** | **Required** | **Required** |
 | `snapshot_10y.json`, `snapshot_index.json` | **Required** | **Required** | **Required** |
 | `output_manifest.json` | **Required** | **Required** | **Required** |
-| `problem_classification.json` | **Absent** (pruned on core-only — Session 04) | **Required** (contract: Session 09) | **Required** |
-| `candidate_launchpad.json` | **Absent** (pruned on core-only — Session 04) | **Required** (contract: Session 09) | **Required** |
+| `problem_classification.json` | **Absent** (pruned on core-only — Session 04) | **Required** (`problem_classification_v2` — Session 12) | **Required** |
+| `candidate_launchpad.json` | **Absent** (pruned on core-only — Session 04) | **Required** (`candidate_launchpad_v2` — Session 12) | **Required** |
 | `ai_commentary_context.json` | **Absent** (pruned on core-only — Session 04) | **Required** (diagnosis phase) | **Required** (post-compare refresh) |
 
 Core-only runs invoke `apply_core_blocks_product_bundle_hygiene` after materialize (Session 04).

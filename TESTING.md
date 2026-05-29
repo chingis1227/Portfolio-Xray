@@ -113,6 +113,42 @@ python scripts/validate_block_2_4_live.py --refresh-xray
 
 Evidence: [Session 13 audit](docs/audits/2026-05-29_block_2_4_session_13_institutional_closure.md).
 
+## Block 4 v2 Evidence-to-Problem Translation (ExecPlan Sessions 00–13)
+
+Primary contract: [block_4_diagnosis_v2_spec.md](docs/specs/block_4_diagnosis_v2_spec.md). Decision: `DEC-2026-05-29-013`.
+
+Regression bundle (migration through Session 13):
+
+```bash
+python -m pytest tests/test_block_4_diagnosis_builder.py \
+  tests/test_block_4_no_trade_gate.py \
+  tests/test_block_4_launchpad_cards.py \
+  tests/test_block_4_action_path_mapping.py \
+  tests/test_block_4_problem_prioritization.py \
+  tests/test_block_4_severity_confidence.py \
+  tests/test_block_4_problem_scoring.py \
+  tests/test_block_4_evidence_extraction.py \
+  tests/test_block_4_problem_taxonomy.py \
+  tests/test_block_4_v2_contract.py \
+  tests/test_block_4_v2_archetype_fixtures.py \
+  tests/test_block_4_v2_live_validation.py \
+  tests/test_block_4_decision_entry_contract.py \
+  tests/test_diagnostic_journey_view_model.py -q
+```
+
+Live product validation (Session 12+):
+
+```bash
+python scripts/validate_block_4_live.py --refresh-diagnosis
+```
+
+Diagnostic journey bridge (Session 13): `tests/test_diagnostic_journey_view_model.py` asserts v2
+`primary_problem` / Launchpad `suggested_methods` mapping in `diagnostic_journey/view_model.py`.
+
+Evidence: [Session 12 live validation](docs/audits/2026-05-29_block_4_v2_session_12_live_product_validation.md),
+[Session 13 documentation sync](docs/audits/2026-05-29_block_4_v2_session_13_documentation_sync.md),
+[Session 14 institutional closure](docs/audits/2026-05-29_block_4_v2_session_14_institutional_closure.md).
+
 ## Post-Architecture Alignment Checks
 
 Use this matrix for diagnosis-first / decision-support architecture work after the 2026-05-25

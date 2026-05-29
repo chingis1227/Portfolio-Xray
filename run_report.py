@@ -179,8 +179,10 @@ from src.returns_frequency import (
     resolve_returns_frequencies,
 )
 from src.portfolio_commentary import write_portfolio_commentary, write_stress_commentary
-from src.candidate_launchpad import write_candidate_launchpad_outputs
-from src.problem_classification import write_problem_classification_outputs
+from src.block_4.diagnosis_builder import (
+    block_4_manifest_extra,
+    write_block_4_diagnosis_outputs,
+)
 from src.product_bundle_scope import (
     DEFAULT_PRODUCT_BUNDLE_SCOPE,
     is_core_blocks_1_3_only,
@@ -2477,32 +2479,22 @@ def run_portfolio_report_for_weights(
     candidate_launchpad_doc = None
     if not core_blocks_only:
         try:
-            problem_classification_path = write_problem_classification_outputs(
+            block_4_write = write_block_4_diagnosis_outputs(
                 output_dir=output_dir_final,
                 portfolio_xray=xray_summary,
                 stress_report=stress_report,
                 analysis_end=analysis_end_str,
             )
-            try:
-                with open(problem_classification_path, encoding="utf-8") as f:
-                    problem_classification_doc = json.load(f)
-            except Exception:
-                problem_classification_doc = None
-        except Exception as e:
-            logger.warning("problem_classification.json generation failed: %s", e)
-        try:
-            launchpad_path = write_candidate_launchpad_outputs(
-                output_dir=output_dir_final,
-                problem_classification=problem_classification_doc,
-                analysis_end=analysis_end_str,
+            problem_classification_doc = block_4_write.diagnosis.problem_classification
+            candidate_launchpad_doc = block_4_write.diagnosis.candidate_launchpad
+            logger.info(
+                "Block 4 v2 diagnosis: %s (primary=%s, outcome=%s)",
+                block_4_write.problem_classification_path,
+                block_4_write.diagnosis.primary_problem_id,
+                block_4_write.diagnosis.gate.outcome,
             )
-            try:
-                with open(launchpad_path, encoding="utf-8") as f:
-                    candidate_launchpad_doc = json.load(f)
-            except Exception:
-                candidate_launchpad_doc = None
         except Exception as e:
-            logger.warning("candidate_launchpad.json generation failed: %s", e)
+            logger.warning("Block 4 v2 diagnosis generation failed: %s", e)
         try:
             from src.ai_commentary_context import write_ai_commentary_context_outputs
 
@@ -2619,13 +2611,18 @@ def run_portfolio_report_for_weights(
         for blocked_key in blocked_manifest_keys:
             report_manifest_paths.pop(blocked_key, None)
 
+    manifest_extra = build_output_manifest_discovery_extra(report_manifest_paths)
+    manifest_extra.update(
+        block_4_manifest_extra(problem_classification_doc, candidate_launchpad_doc)
+    )
+
     manifest_path = write_output_manifest(
         output_dir_final,
         policy=output_policy,
         run_kind=str(portfolio_role_override or "portfolio_report"),
         generated_paths=report_manifest_paths,
         cache_keys={"daily": daily_cache_key, "monthly": monthly_cache_key},
-        extra=build_output_manifest_discovery_extra(report_manifest_paths),
+        extra=manifest_extra,
     )
     meta["output_manifest"] = manifest_path
     timing_payload = report_timing.to_dict()

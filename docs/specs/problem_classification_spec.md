@@ -2,11 +2,13 @@
 
 This document owns the V1 deterministic Problem Classification artifact for the diagnosis-first Portfolio MRI migration.
 
-Implementation: `src/problem_classification.py`.
+**Target contract (V2 — shipped):** [block_4_diagnosis_v2_spec.md](block_4_diagnosis_v2_spec.md) — primary schema `problem_classification_v2`; writer `src/block_4/diagnosis_builder.py`.
+
+Implementation: `src/block_4/diagnosis_builder.py` (V2 canonical); `src/problem_classification.py` (legacy unit tests).
 
 Canonical artifact: `problem_classification.json`.
 
-Status: implemented as an additive diagnostic artifact in code migration Session 04. It is a thin evidence translation layer over existing Portfolio X-Ray and Stress Test Lab artifacts.
+Status: **legacy V1** — canonical contract is [block_4_diagnosis_v2_spec.md](block_4_diagnosis_v2_spec.md). Production writer: `src/block_4/diagnosis_builder.py`. V1 product validators removed Session 14 (`DEC-2026-05-29-013`).
 
 ## Scope
 
@@ -151,7 +153,7 @@ Focused tests:
 python -m pytest tests/test_problem_classification.py tests/test_block_4_decision_entry_contract.py
 ```
 
-Product contract (Session 09): `problem_classification_v1_product_contract_violations` / `check_problem_classification_v1` in `scripts/core_mvp_validation_contract.py`; enforced on live diagnosis runs via `validate_live_core_artifacts` (`diagnosis_only`, `product_one_candidate`).
+Product contract (Session 14 / v2 freeze): `problem_classification_v2_product_contract_violations` / `check_problem_classification_v2` in `scripts/core_mvp_validation_contract.py`; enforced on live diagnosis runs via `validate_live_core_artifacts` (`diagnosis_only`, `product_one_candidate`). V1 validators removed Session 14.
 
 Recommended adjacent regression checks:
 

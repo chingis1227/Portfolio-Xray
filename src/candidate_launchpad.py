@@ -1,8 +1,8 @@
 """Candidate Launchpad data layer for diagnosis-first Portfolio MRI.
 
-Launchpad cards translate Problem Classification output into improvement
-hypotheses a user may choose to test. Cards are not portfolios: they contain
-no weights, do not run builders, and do not select a candidate.
+Legacy V1 builder (``candidate_launchpad_v1``). Production pipeline uses
+``src/block_4/launchpad_cards.py`` (``candidate_launchpad_v2``) since Block 4 v2
+Session 10. Retained for unit tests and migration reference only.
 """
 
 from __future__ import annotations

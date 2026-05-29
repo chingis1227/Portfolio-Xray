@@ -1,0 +1,77 @@
+{
+  "version": "block_4_archetype_manifest_v1",
+  "ruleset_version": "block_4_v2_2026_06",
+  "description": "Ten portfolio archetype fixtures for Block 4 v2 end-to-end diagnosis regression (Session 11).",
+  "archetypes": [
+    {
+      "archetype_id": "concentrated_equity",
+      "label_en": "Concentrated equity growth book",
+      "expected_primary_ids": ["high_concentration"],
+      "expected_outcomes": ["proceed_to_launchpad"],
+      "launchpad_may_proceed": true
+    },
+    {
+      "archetype_id": "balanced_60_40",
+      "label_en": "Balanced 60/40-style portfolio",
+      "expected_primary_ids": ["current_portfolio_acceptable"],
+      "expected_outcomes": ["monitor", "proceed_to_launchpad"],
+      "launchpad_may_proceed": false
+    },
+    {
+      "archetype_id": "duration_heavy_bonds",
+      "label_en": "Duration-heavy bond portfolio",
+      "expected_primary_ids": ["duration_rates_vulnerability", "poor_rates_up_behavior"],
+      "expected_outcomes": ["proceed_to_launchpad"],
+      "launchpad_may_proceed": true
+    },
+    {
+      "archetype_id": "high_credit_carry",
+      "label_en": "High credit carry book",
+      "expected_primary_ids": ["credit_liquidity_fragility", "weak_crisis_resilience"],
+      "expected_outcomes": ["proceed_to_launchpad"],
+      "launchpad_may_proceed": true
+    },
+    {
+      "archetype_id": "pseudo_diversified_equity_etfs",
+      "label_en": "Pseudo-diversified equity ETF sleeve",
+      "expected_primary_ids": ["poor_diversification", "high_equity_beta"],
+      "expected_outcomes": ["proceed_to_launchpad"],
+      "launchpad_may_proceed": true
+    },
+    {
+      "archetype_id": "cash_heavy_conservative",
+      "label_en": "Cash-heavy conservative book",
+      "expected_primary_ids": ["current_portfolio_acceptable"],
+      "expected_outcomes": ["monitor", "proceed_to_launchpad"],
+      "launchpad_may_proceed": false
+    },
+    {
+      "archetype_id": "weak_hedge",
+      "label_en": "Weak crisis hedge / stress gap",
+      "expected_primary_ids": ["weak_crisis_resilience", "weak_hedge_behavior"],
+      "expected_outcomes": ["proceed_to_launchpad"],
+      "launchpad_may_proceed": true
+    },
+    {
+      "archetype_id": "insufficient_data",
+      "label_en": "Partial upstream sections / data quality",
+      "expected_primary_ids": ["evidence_insufficient_data_quality"],
+      "expected_outcomes": ["do_not_act_yet"],
+      "launchpad_may_proceed": false
+    },
+    {
+      "archetype_id": "conflicting_signals",
+      "label_en": "High vol vs mild stress tension",
+      "expected_primary_ids": ["evidence_insufficient_conflicting_signals"],
+      "expected_outcomes": ["do_not_act_yet"],
+      "launchpad_may_proceed": false
+    },
+    {
+      "archetype_id": "acceptable_no_action",
+      "label_en": "Broad low-risk acceptable book",
+      "expected_primary_ids": ["current_portfolio_acceptable"],
+      "expected_outcomes": ["monitor"],
+      "launchpad_may_proceed": false
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+"""Block 4 v2 — Evidence-to-Problem Translation Layer."""
+
+from src.block_4.evidence_extraction import (
+    EvidenceExtractionResult,
+    EvidenceSignal,
+    extract_evidence_signals,
+)
+from src.block_4.problem_scoring import (
+    ProblemScoreRow,
+    ProblemScoringBlock,
+    ProblemScoringResult,
+    SCORING_RULESET_VERSION,
+    score_problems,
+)
+from src.block_4.action_path_mapping import (
+    ACTION_PATH_MAPPING_RULESET_VERSION,
+    ActionPathMappingResult,
+    SuggestedActionRow,
+    build_problem_row,
+    build_suggested_actions,
+    map_action_paths,
+)
+from src.block_4.diagnosis_builder import (
+    BLOCK_4_DIAGNOSIS_FACADE_VERSION,
+    PROBLEM_CLASSIFICATION_V2_VERSION,
+    Block4DiagnosisResult,
+    Block4DiagnosisWriteResult,
+    block_4_manifest_extra,
+    build_block_4_diagnosis,
+    write_block_4_diagnosis_outputs,
+)
+from src.block_4.launchpad_cards import (
+    CANDIDATE_LAUNCHPAD_V2_VERSION,
+    LAUNCHPAD_BUILD_RULESET_VERSION,
+    LAUNCHPAD_V2_DISCLAIMER_EN,
+    LaunchpadCardsResult,
+    build_candidate_launchpad_v2_document,
+    build_launchpad_cards,
+)
+from src.block_4.no_trade_gate import (
+    NO_TRADE_GATE_RULESET_VERSION,
+    NoTradeGateResult,
+    build_diagnosis_summary,
+    evaluate_no_trade_gate,
+    gate_from_primary_problem_id,
+)
+from src.block_4.problem_prioritization import (
+    PRIORITIZATION_RULESET_VERSION,
+    ProblemPrioritizationResult,
+    RejectedProblemRow,
+    prioritize_problems,
+)
+from src.block_4.severity_confidence import (
+    apply_severity_and_confidence,
+    classify_confidence,
+    classify_severity,
+)
+from src.block_4.thresholds import (
+    Block4Thresholds,
+    get_block_4_thresholds,
+    load_block_4_thresholds,
+)
+from src.block_4.problem_taxonomy import (
+    ACTION_PATH_REGISTRY,
+    BLOCK_2_6_RISK_TYPE_TO_PROBLEM_IDS_V2,
+    PROBLEM_ID_V1_TO_V2,
+    PROBLEM_REGISTRY,
+    ROOT_CAUSE_ELEVATION_RULES,
+    all_action_path_ids,
+    all_problem_ids,
+    get_action_path,
+    get_problem_definition,
+    method_suggestions_for_problem,
+    reasonable_paths_for_problem,
+    resolve_problem_id_v2,
+)
+
+__all__ = [
+    "EvidenceExtractionResult",
+    "EvidenceSignal",
+    "extract_evidence_signals",
+    "ProblemScoreRow",
+    "ProblemScoringBlock",
+    "ProblemScoringResult",
+    "SCORING_RULESET_VERSION",
+    "score_problems",
+    "ACTION_PATH_MAPPING_RULESET_VERSION",
+    "ActionPathMappingResult",
+    "SuggestedActionRow",
+    "build_problem_row",
+    "build_suggested_actions",
+    "map_action_paths",
+    "BLOCK_4_DIAGNOSIS_FACADE_VERSION",
+    "PROBLEM_CLASSIFICATION_V2_VERSION",
+    "Block4DiagnosisResult",
+    "Block4DiagnosisWriteResult",
+    "block_4_manifest_extra",
+    "build_block_4_diagnosis",
+    "write_block_4_diagnosis_outputs",
+    "CANDIDATE_LAUNCHPAD_V2_VERSION",
+    "LAUNCHPAD_BUILD_RULESET_VERSION",
+    "LAUNCHPAD_V2_DISCLAIMER_EN",
+    "LaunchpadCardsResult",
+    "build_candidate_launchpad_v2_document",
+    "build_launchpad_cards",
+    "NO_TRADE_GATE_RULESET_VERSION",
+    "NoTradeGateResult",
+    "build_diagnosis_summary",
+    "evaluate_no_trade_gate",
+    "gate_from_primary_problem_id",
+    "PRIORITIZATION_RULESET_VERSION",
+    "ProblemPrioritizationResult",
+    "RejectedProblemRow",
+    "prioritize_problems",
+    "apply_severity_and_confidence",
+    "classify_confidence",
+    "classify_severity",
+    "Block4Thresholds",
+    "get_block_4_thresholds",
+    "load_block_4_thresholds",
+    "ACTION_PATH_REGISTRY",
+    "BLOCK_2_6_RISK_TYPE_TO_PROBLEM_IDS_V2",
+    "PROBLEM_ID_V1_TO_V2",
+    "PROBLEM_REGISTRY",
+    "ROOT_CAUSE_ELEVATION_RULES",
+    "all_action_path_ids",
+    "all_problem_ids",
+    "get_action_path",
+    "get_problem_definition",
+    "method_suggestions_for_problem",
+    "reasonable_paths_for_problem",
+    "resolve_problem_id_v2",
+]

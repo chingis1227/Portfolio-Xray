@@ -8,6 +8,18 @@ Date: 2026-05-29
 
 Category: Added
 
+- **Block 4 v2 Session 14 (closure):** V1 product validators removed from `scripts/core_mvp_validation_contract.py`; decision-entry tests migrated to v2; ExecPlan **Completed**; evidence: [Session 14 acceptance audit](docs/audits/2026-05-29_block_4_v2_session_14_institutional_closure.md); pytest **109 passed** (Block 4 closure bundle).
+
+Category: Added
+
+- **Block 4 v2 Session 13:** Documentation sync (SPEC, OUTPUTS, TESTING, operator guide, diagnostic journey v2 bridge); evidence: [Session 13 audit](docs/audits/2026-05-29_block_4_v2_session_13_documentation_sync.md).
+
+Category: Added
+
+- **Block 4 v2 Session 12:** Live product validation — `scripts/validate_block_4_live.py`, live E2E v2 gates in `src/live_core_e2e.py`; evidence: [Session 12 audit](docs/audits/2026-05-29_block_4_v2_session_12_live_product_validation.md).
+
+Category: Added
+
 - **Blocks 1–3 diagnostic journey UX draft:** Flask prototype `diagnostic_journey/` (port 5006) — guided Setup → X-Ray → Stress Lab → problem bridge; `diagnostic_journey/presentation.py` translates JSON into advisor-ready copy (human labels, formatted %, no raw backend keys at top level); spec [diagnostic_journey_ux_draft.md](docs/specs/diagnostic_journey_ux_draft.md). Tests: `tests/test_diagnostic_journey_view_model.py`.
 
 Category: Fixed

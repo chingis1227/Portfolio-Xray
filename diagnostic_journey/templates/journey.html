@@ -389,6 +389,16 @@
       <p class="section-lead">{{ vm.bridge.subtitle }}</p>
       <p class="note-box accent">{{ vm.bridge.optional_note }}</p>
 
+      {% if vm.bridge.diagnosis and vm.bridge.diagnosis.primary_headline %}
+      <article class="diagnosis-callout">
+        <h3>Primary portfolio problem</h3>
+        <p class="diagnosis-headline">{{ vm.bridge.diagnosis.primary_headline }}</p>
+        {% if vm.bridge.diagnosis.why_it_matters %}
+        <p class="diagnosis-detail">{{ vm.bridge.diagnosis.why_it_matters }}</p>
+        {% endif %}
+      </article>
+      {% endif %}
+
       {% for card in vm.bridge.cards %}
       <article class="hypothesis-card">
         <h3>{{ card.title }}</h3>
