@@ -220,6 +220,68 @@ def _hedge_gap_analysis_v1_mirror_for_snapshot(stress_report: dict[str, Any]) ->
     return out
 
 
+def _current_portfolio_stress_scorecard_v1_mirror_for_snapshot(
+    stress_report: dict[str, Any],
+) -> dict[str, Any]:
+    """Compact Block 3.4 mirror for snapshot and comparison consumers."""
+    block = stress_report.get("current_portfolio_stress_scorecard_v1")
+    if not isinstance(block, dict) or block.get("version") != "current_portfolio_stress_scorecard_v1":
+        return {}
+
+    stress_diagnosis = block.get("stress_diagnosis")
+    stress_diagnosis = stress_diagnosis if isinstance(stress_diagnosis, dict) else {}
+    hedge_gap_summary = block.get("hedge_gap_summary")
+    hedge_gap_summary = hedge_gap_summary if isinstance(hedge_gap_summary, dict) else {}
+    worst_syn = block.get("worst_synthetic_scenario")
+    worst_syn = worst_syn if isinstance(worst_syn, dict) else {}
+    worst_hist = block.get("worst_historical_scenario")
+    worst_hist = worst_hist if isinstance(worst_hist, dict) else {}
+
+    mirror: dict[str, Any] = {
+        "version": block.get("version"),
+        "block_status": block.get("block_status"),
+        "ruleset_version": block.get("ruleset_version"),
+        "scorecard_scope": block.get("scorecard_scope"),
+        "legacy_fallback_used": block.get("legacy_fallback_used"),
+        "loss_gate_mode": block.get("loss_gate_mode"),
+        "stress_diagnosis": {
+            "headline": stress_diagnosis.get("headline"),
+            "diagnosis_confidence": stress_diagnosis.get("diagnosis_confidence"),
+        },
+        "worst_synthetic_scenario": {
+            "availability": worst_syn.get("availability"),
+            "scenario_id": worst_syn.get("scenario_id"),
+            "portfolio_loss_pct": worst_syn.get("portfolio_loss_pct"),
+        },
+        "worst_historical_scenario": {
+            "availability": worst_hist.get("availability"),
+            "episode": worst_hist.get("episode"),
+            "drawdown_pct": worst_hist.get("drawdown_pct"),
+        },
+        "hedge_gap_summary": {
+            "availability": hedge_gap_summary.get("availability"),
+            "main_hedge_gap_scenario_id": hedge_gap_summary.get("main_hedge_gap_scenario_id"),
+            "main_hedge_gap_risk_type": hedge_gap_summary.get("main_hedge_gap_risk_type"),
+            "offset_coverage_ratio": hedge_gap_summary.get("offset_coverage_ratio"),
+            "protection_profile": hedge_gap_summary.get("protection_profile"),
+        },
+        "next_decision_uses": block.get("next_decision_uses"),
+    }
+    summary_en = stress_diagnosis.get("diagnosis_summary_en")
+    if isinstance(summary_en, str) and summary_en.strip():
+        mirror["stress_diagnosis"]["diagnosis_summary_en"] = summary_en.strip()[:240]
+    if block.get("protection_profile") is not None:
+        mirror["protection_profile"] = block.get("protection_profile")
+    if block.get("hedge_gap_block_status") is not None:
+        mirror["hedge_gap_block_status"] = block.get("hedge_gap_block_status")
+    if block.get("hedge_gap_ruleset_version") is not None:
+        mirror["hedge_gap_ruleset_version"] = block.get("hedge_gap_ruleset_version")
+    signals = block.get("problem_classification_signals")
+    if isinstance(signals, dict) and signals.get("stress_severity"):
+        mirror["stress_severity"] = signals.get("stress_severity")
+    return mirror
+
+
 def _stress_suite_results_for_snapshot(stress_report: dict[str, Any], portfolio_params: dict[str, Any] | None) -> dict[str, Any]:
     """Format stress_suite_results section; include per-scenario violations and portfolio_params."""
     overall = stress_report.get("status", "N/A")
@@ -259,6 +321,9 @@ def _stress_suite_results_for_snapshot(stress_report: dict[str, Any], portfolio_
         "conclusions": stress_report.get("stress_conclusions") or {},
         "hedge_gap_analysis": stress_report.get("hedge_gap_analysis") or {},
         "hedge_gap_analysis_v1": _hedge_gap_analysis_v1_mirror_for_snapshot(stress_report),
+        "current_portfolio_stress_scorecard_v1": _current_portfolio_stress_scorecard_v1_mirror_for_snapshot(
+            stress_report
+        ),
         "historical_methodology": historical_methodology
         if isinstance(historical_methodology, dict)
         else {},

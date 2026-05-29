@@ -25,9 +25,11 @@ governed by `SPEC.md`, `OUTPUTS.md`, detailed specs, and code.
 
 ## Current Pointer
 
-**Active:** [Block 3.4 Current Portfolio Stress Scorecard Institutional Upgrade](2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md) — Session 09 closed 2026-05-29; next Session 10 (AI Commentary). Evidence: [Session 09 audit](../audits/2026-05-29_block_3_4_session_09_candidate_comparison.md); pytest **47 passed** (scorecard + CC bundle).
+**Active:** *(none)* — Block 3.4 institutional upgrade **Completed** 2026-05-29. Start new work from [SPEC.md](../../SPEC.md), [docs/ROADMAP.md](../ROADMAP.md), or a new ExecPlan under `docs/exec_plans/`.
 
-**Most recent closure:** [Block 3.3 Hedge Gap Analysis Institutional Upgrade](2026-05-29_block_3_3_hedge_gap_institutional_upgrade_plan.md) (2026-05-29): v1.1 contract, `hedge_gap_rules_v1_2` scoring, 2.4/2.6 bridges, v1-primary downstream; pytest **106 passed**; evidence: [institutional upgrade acceptance audit](../audits/2026-05-29_block_3_3_institutional_upgrade_acceptance_audit.md).
+**Most recent closure:** [Block 3.4 Current Portfolio Stress Scorecard Institutional Upgrade](2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md) (2026-05-29): v1.1 contract, `stress_diagnosis`, downstream v1-primary, live-output gates; pytest **67** (closure) / **142** (extended); fixture matrix **7/7**; evidence: [institutional upgrade acceptance audit](../audits/2026-05-29_block_3_4_institutional_upgrade_acceptance_audit.md).
+
+**Previous closure:** [Block 3.3 Hedge Gap Analysis Institutional Upgrade](2026-05-29_block_3_3_hedge_gap_institutional_upgrade_plan.md) (2026-05-29): v1.1 contract, `hedge_gap_rules_v1_2` scoring, 2.4/2.6 bridges, v1-primary downstream; pytest **106 passed**; evidence: [institutional upgrade acceptance audit](../audits/2026-05-29_block_3_3_institutional_upgrade_acceptance_audit.md).
 
 **Previous closure:** [Block 2.6 Portfolio Weakness Map heuristic_v2](2026-05-29_block_2_6_weakness_map_heuristic_v2_plan.md) (2026-05-29): `heuristic_v2`, eight canonical Stress Lab risk ids, narrative + stress boundary + downstream SSOT; pytest **68 passed**; evidence: [heuristic_v2 acceptance audit](../audits/2026-05-29_block_2_6_weakness_map_heuristic_v2_acceptance_audit.md).
 
@@ -130,7 +132,7 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
-| 2026-05-29 | [Block 3.4 Current Portfolio Stress Scorecard Institutional Upgrade](2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md) | **Active** | [Session 00 baseline](../audits/2026-05-29_block_3_4_session_00_baseline_audit.md); MVP prerequisite | Session 00 closed 2026-05-29: gap matrix G1–G15, consumer inventory, pytest **4 passed**; Sessions 01–13 remaining. |
+| 2026-05-29 | [Block 3.4 Current Portfolio Stress Scorecard Institutional Upgrade](2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md) | **Completed** | [Session 00 baseline](../audits/2026-05-29_block_3_4_session_00_baseline_audit.md); MVP prerequisite | Sessions 00–13 closed 2026-05-29: Phase 2 **ACCEPTED**; G1–G15 closed; pytest **142 passed** (extended); [acceptance audit](../audits/2026-05-29_block_3_4_institutional_upgrade_acceptance_audit.md). |
 | 2026-05-28 | [Core MVP Historical Stress Replay](2026-05-28_core_mvp_historical_stress_replay_plan.md) | **Completed** | Stress Lab honest coverage for young books / partial history | Sessions 1–7 closed 2026-05-28: `historical_stress_replay_v1` direct-only; [acceptance audit](../audits/2026-05-28_core_mvp_historical_stress_replay_acceptance_audit.md); pytest **35 passed**; `scripts/verify_core_mvp_historical_stress_replay.py`. |
 | 2026-05-27 | [Final Architecture Consistency Audit Plan](final_architecture_consistency_audit_plan.md) | **Completed** | Read-only architecture discrepancy map (2026-05-27) | Sessions 1–7 closed 2026-05-27: runbook/runtime alignment, JSON bundle rules, AI grounding, legacy labels, `test_architecture_consistency.py`, Session 7 acceptance (diagnosis + one-candidate demo PASS). |
 | 2026-05-27 | [Core MVP Runtime Integration and Entrypoint Audit Plan](core_mvp_runtime_integration_and_entrypoint_audit_plan.md) | **Completed** | Runtime entrypoint confusion + factor/stress boundary audit | Sessions 1–7 closed 2026-05-27; diagnosis-only default + boundary pytest bundle **25 passed**. |

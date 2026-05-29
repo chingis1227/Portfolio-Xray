@@ -88,6 +88,20 @@ Title: Block 3.3 institutional upgrade — v1-primary downstream and main-gap sc
 - Related documents: [docs/exec_plans/2026-05-29_block_3_3_hedge_gap_institutional_upgrade_plan.md](docs/exec_plans/2026-05-29_block_3_3_hedge_gap_institutional_upgrade_plan.md), [docs/specs/hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md), DEC-2026-05-27-002, [docs/audits/2026-05-29_block_3_3_session_11_documentation_sync.md](docs/audits/2026-05-29_block_3_3_session_11_documentation_sync.md).
 - Review trigger: Revisit when legacy `hedge_gap_analysis` / `stress_conclusions.hedge_gap_status` can be deprecated or when main-gap scoring rules change (`ruleset_version` bump).
 
+Decision ID: DEC-2026-05-29-005
+Title: Block 3.4 institutional upgrade — v1-primary downstream and live-output gates
+
+- Status: accepted
+- Date: 2026-05-29
+- Decision: Complete Phase 2 institutional upgrade on `current_portfolio_stress_scorecard_v1`: v1.1 product fields (`stress_diagnosis`, summaries, `stress_coverage`, optional `pre_stress_confirmation_summary`), downstream signal blocks, v1-primary consumers (Problem Classification with `stress_scorecard_source` and `problem_classification_signals`, `candidate_comparison.stress_scorecard_comparison`, `ai_commentary_context.current_portfolio_stress_scorecard_context`, snapshot mirror, `scripts/core_mvp_validation_contract.check_current_portfolio_stress_scorecard_v1` with live-output gates). Legacy `stress_scorecard_v1` remains for explicit mandate rollup only; `legacy_fallback_used` must be a boolean on Block 3.4.
+- Context: MVP Block 3.4 (DEC-2026-05-27-003) and frozen contract (DEC-2026-05-29-004) defined the key; Sessions 02–11 implemented builders and migrations; documentation and top-level SPEC/OUTPUTS still described Phase 2 as in progress until Session 12.
+- Rationale: Institutional executive stress diagnosis requires a single v1 read path for classification, comparison, commentary grounding, and Core MVP validation — without recomputing stress or emitting mandate pass/fail inside Block 3.4.
+- Alternatives considered: Repurpose `stress_scorecard_v1` as the only scorecard (rejected — mandate semantics); drop legacy scorecard in Phase 2 (deferred — mandate path); drive Block 3.4 from X-Ray only (rejected — Stress Lab boundary).
+- Assumptions: Worst selectors remain on Block 3.2 envelope; hedge gap evidence remains `hedge_gap_analysis_v1` only; optional 2.4/2.6 bridges do not downgrade `block_status`.
+- Consequences: SPEC/OUTPUTS/TESTING document Block 3.4 as **Implemented**; regression bundle includes materialization, downstream integration, and live E2E validator tests; Session 13 acceptance audit closed the institutional upgrade ExecPlan ([acceptance audit](docs/audits/2026-05-29_block_3_4_institutional_upgrade_acceptance_audit.md)); legacy deprecation waits until all external consumers drop `stress_scorecard_v1`-only paths.
+- Related documents: [docs/exec_plans/2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md](docs/exec_plans/2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md), [docs/specs/current_portfolio_stress_scorecard_spec.md](docs/specs/current_portfolio_stress_scorecard_spec.md), DEC-2026-05-29-004, DEC-2026-05-27-003, [docs/audits/2026-05-29_block_3_4_session_12_documentation_sync.md](docs/audits/2026-05-29_block_3_4_session_12_documentation_sync.md).
+- Review trigger: Revisit when `stress_scorecard_v1` can be deprecated for all Core MVP consumers or when diagnosis_confidence / worst-selector rules change (`ruleset_version` bump).
+
 Decision ID: DEC-2026-05-29-004
 Title: Block 3.4 institutional upgrade — frozen v1.1 scorecard contract (Session 01)
 
@@ -98,8 +112,8 @@ Title: Block 3.4 institutional upgrade — frozen v1.1 scorecard contract (Sessi
 - Rationale: A dedicated frozen spec separates diagnostic Core MVP scorecard from legacy mandate scorecard, mirrors Block 3.3 institutional upgrade pattern, and gives implementers a single contract before code changes.
 - Alternatives considered: Extend `stress_lab_layer_spec.md` only without a dedicated spec (rejected — insufficient depth for v1.1 field rules); merge Block 3.4 into Block 3.2 envelope (rejected — product layer and downstream hooks are distinct); remove `stress_scorecard_v1` in Phase 2 (rejected — mandate path and explicit fallback required).
 - Assumptions: Worst synthetic/historical selectors remain owned by Block 3.2 envelope; hedge gap evidence remains `hedge_gap_analysis_v1` only; `block_status` for 3.4 is derived from stress blocks, not from optional X-Ray bridges.
-- Consequences: SPEC indexes dedicated spec; Phase 2 ExecPlan Session 01 closed; Sessions 02+ implement against the spec matrix; acceptance at Session 13 requires live-output gates in the spec.
-- Related documents: [docs/exec_plans/2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md](docs/exec_plans/2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md), [docs/audits/2026-05-29_block_3_4_session_01_contract_v1_1.md](docs/audits/2026-05-29_block_3_4_session_01_contract_v1_1.md), DEC-2026-05-27-004 (MVP scorecard key).
+- Consequences: SPEC indexes dedicated spec; Phase 2 ExecPlan Session 01 closed; Sessions 02–11 implemented against the spec matrix (see DEC-2026-05-29-005); Session 12 synced SPEC/OUTPUTS/TESTING; acceptance at Session 13 requires live-output gates in the spec.
+- Related documents: [docs/exec_plans/2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md](docs/exec_plans/2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md), [docs/audits/2026-05-29_block_3_4_session_01_contract_v1_1.md](docs/audits/2026-05-29_block_3_4_session_01_contract_v1_1.md), DEC-2026-05-27-003 (MVP scorecard key), DEC-2026-05-29-005.
 - Review trigger: Revisit when `stress_scorecard_v1` can be deprecated for all Core MVP consumers or when diagnosis_confidence rules change (`ruleset_version` bump).
 
 Decision ID: DEC-2026-05-28-001
@@ -140,9 +154,9 @@ Title: Block 3.4 Core MVP is a new current-portfolio stress scorecard key
 - Rationale: A new key keeps backward compatibility for legacy scorecard consumers while delivering a clean product-facing Core MVP summary with explicit linkage to `stress_results_v1` and `hedge_gap_analysis_v1`.
 - Alternatives considered: Repurpose `stress_scorecard_v1` as the Core MVP scorecard (rejected — breaks existing contract tests and would mix mandate-mode semantics into a diagnostic-only product layer).
 - Assumptions: Block 3.2 remains the canonical selector for worst synthetic and worst historical; Block 3.3 remains the canonical source for offset coverage and main hedge gap; Core MVP portfolio-first path uses `loss_gate_mode="diagnostic"`.
-- Consequences: Specs and output maps must reference `current_portfolio_stress_scorecard_v1` as Block 3.4. Add dedicated contract tests for the new key and include them in the Stress Lab regression bundle.
-- Related documents: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.4, [OUTPUTS.md](OUTPUTS.md), [TESTING.md](TESTING.md), [docs/exec_plans/2026-05-27_block_3_4_current_portfolio_stress_scorecard_plan.md](docs/exec_plans/2026-05-27_block_3_4_current_portfolio_stress_scorecard_plan.md).
-- Review trigger: Revisit when downstream consumers move from `stress_scorecard_v1` to the Core MVP scorecard key and legacy mandate-mode fields can be more clearly isolated.
+- Consequences: Specs and output maps reference `current_portfolio_stress_scorecard_v1` as Block 3.4. MVP ExecPlan Sessions 02–06 and institutional upgrade Sessions 02–11 (see DEC-2026-05-29-004, DEC-2026-05-29-005) delivered v1.1 fields and v1-primary downstream migration; `stress_scorecard_v1` remains for mandate rollup only.
+- Related documents: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.4, [docs/specs/current_portfolio_stress_scorecard_spec.md](docs/specs/current_portfolio_stress_scorecard_spec.md), [OUTPUTS.md](OUTPUTS.md), [TESTING.md](TESTING.md), [docs/exec_plans/2026-05-27_block_3_4_current_portfolio_stress_scorecard_plan.md](docs/exec_plans/2026-05-27_block_3_4_current_portfolio_stress_scorecard_plan.md), [docs/exec_plans/2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md](docs/exec_plans/2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md), DEC-2026-05-29-005.
+- Review trigger: Revisit when legacy `stress_scorecard_v1` can be deprecated for all Core MVP consumers (partially satisfied — Core MVP consumers migrated; legacy block retained).
 
 Decision ID: DEC-2026-05-27-001
 Title: Block 3.2 is Stress Results with compatibility conclusions

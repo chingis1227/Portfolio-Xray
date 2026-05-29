@@ -9,6 +9,7 @@ from typing import Any
 
 from scripts.core_mvp_validation_contract import (
     check_block_2_4_hidden_exposure,
+    check_current_portfolio_stress_scorecard_v1,
     check_hedge_gap_analysis_v1,
 )
 from src.portfolio_xray import XRAY_SECTION_KEYS
@@ -33,6 +34,7 @@ _SUBJECT_REQUIRED_FILES = (
 _STRESS_REQUIRED_KEYS = (
     "stress_results_v1",
     "hedge_gap_analysis_v1",
+    "current_portfolio_stress_scorecard_v1",
     "stress_scorecard_v1",
     "stress_conclusions",
     "historical_methodology",
@@ -226,13 +228,29 @@ def validate_live_core_artifacts(
         result.ok = False
 
     scorecard = stress.get("current_portfolio_stress_scorecard_v1")
-    if isinstance(scorecard, dict):
-        result.evidence["block_3_4_scorecard_version"] = scorecard.get("version")
-        main_gap = scorecard.get("main_hedge_gap")
-        if isinstance(main_gap, dict) and main_gap.get("availability") == "available":
-            nested = main_gap.get("main_hedge_gap")
-            if isinstance(nested, dict):
-                result.evidence["scorecard_main_hedge_gap_risk_type"] = nested.get("risk_type")
+    scorecard_checks = check_current_portfolio_stress_scorecard_v1(
+        scorecard if isinstance(scorecard, dict) else None
+    )
+    result.evidence["block_3_4_block_status"] = scorecard_checks.get("block_status")
+    result.evidence["block_3_4_ruleset_version"] = scorecard_checks.get("ruleset_version")
+    result.evidence["block_3_4_diagnosis_confidence"] = scorecard_checks.get("diagnosis_confidence")
+    result.evidence["block_3_4_legacy_fallback_used"] = scorecard_checks.get("legacy_fallback_used")
+    result.evidence["block_3_4_headline_present"] = scorecard_checks.get("headline_present")
+    result.evidence["block_3_4_main_hedge_gap_scenario_id"] = scorecard_checks.get(
+        "main_hedge_gap_scenario_id"
+    )
+    result.evidence["block_3_4_next_decision_uses_count"] = scorecard_checks.get(
+        "next_decision_uses_count"
+    )
+    if not scorecard_checks.get("product_contract_ok"):
+        violations = scorecard_checks.get("contract_violations") or []
+        preview = "; ".join(str(row) for row in violations[:3])
+        suffix = "..." if len(violations) > 3 else ""
+        result.errors.append(
+            "current_portfolio_stress_scorecard_v1 institutional product contract violated: "
+            f"{preview}{suffix}"
+        )
+        result.ok = False
 
     comparison_path = out / "candidate_comparison.json"
     if not comparison_path.is_file():

@@ -466,8 +466,26 @@ Methodology baseline (historical):
 Re-run this bundle after Block 3 contract or downstream integration changes.
 
 ```bash
-python -m pytest tests/test_current_portfolio_stress_scorecard_v1_contract.py tests/test_stress_results_block_contract.py tests/test_stress_diagnostic_mode.py tests/test_stress_scorecard_contract.py tests/test_stress_hedge_gap_contract.py tests/test_stress_scenario_coverage_contract.py tests/test_stress_synthetic_assumptions_contract.py tests/test_stress_simulator_contract.py tests/test_stress_mandate_pass.py tests/test_stress_scenario_analytics.py tests/test_stress_historical_fields.py tests/test_stress_covariance_taxonomy.py tests/test_stress_artifacts_priority.py tests/test_stress_downstream_integration.py tests/test_portfolio_commentary.py tests/test_io_export_ips_summary.py -q
+python -m pytest tests/test_current_portfolio_stress_scorecard_v1_contract.py tests/test_stress_scorecard_materialization.py tests/test_stress_results_block_contract.py tests/test_stress_diagnostic_mode.py tests/test_stress_scorecard_contract.py tests/test_stress_hedge_gap_contract.py tests/test_stress_scenario_coverage_contract.py tests/test_stress_synthetic_assumptions_contract.py tests/test_stress_simulator_contract.py tests/test_stress_mandate_pass.py tests/test_stress_scenario_analytics.py tests/test_stress_historical_fields.py tests/test_stress_covariance_taxonomy.py tests/test_stress_artifacts_priority.py tests/test_stress_downstream_integration.py tests/test_problem_classification.py tests/test_ai_commentary_context.py tests/test_portfolio_commentary.py tests/test_io_export_ips_summary.py -q
 python scripts/verify_docs.py
+```
+
+## Block 3.4 Current Portfolio Stress Scorecard regression bundle
+
+Governed by [Block 3.4 MVP](docs/exec_plans/2026-05-27_block_3_4_current_portfolio_stress_scorecard_plan.md) (**Completed**)
+and [Block 3.4 Institutional Upgrade](docs/exec_plans/2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md) (Sessions 02–11 implementation; Session 12 docs).
+
+Re-run after `current_portfolio_stress_scorecard_v1` builder, pre-stress bridges, snapshot mirror, Core MVP validator (`check_current_portfolio_stress_scorecard_v1`), or downstream consumers (`problem_classification`, `candidate_comparison`, `ai_commentary_context`, `portfolio_commentary` stress commentary) change.
+
+```bash
+python -m pytest tests/test_current_portfolio_stress_scorecard_v1_contract.py tests/test_stress_scorecard_materialization.py tests/test_problem_classification.py tests/test_ai_commentary_context.py tests/test_stress_downstream_integration.py tests/test_live_core_e2e_validation.py tests/test_portfolio_commentary.py -q
+python scripts/verify_docs.py
+```
+
+Closure bundle (matches ExecPlan Sessions 10–13 verification):
+
+```bash
+python -m pytest tests/test_current_portfolio_stress_scorecard_v1_contract.py tests/test_problem_classification.py tests/test_ai_commentary_context.py tests/test_stress_downstream_integration.py tests/test_live_core_e2e_validation.py -q
 ```
 
 ## Block 3.2 Stress Results regression bundle

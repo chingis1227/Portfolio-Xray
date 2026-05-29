@@ -369,6 +369,195 @@ def assert_hedge_gap_analysis_v1_product_contract(block: dict[str, Any]) -> None
         raise AssertionError("; ".join(violations))
 
 
+BLOCK34_VERSION = "current_portfolio_stress_scorecard_v1"
+BLOCK34_RULESET_VERSION = "current_portfolio_stress_scorecard_rules_v1_1"
+BLOCK34_BLOCK_STATUS_VALUES = frozenset({"ok", "partial", "unavailable"})
+BLOCK34_SCORECARD_SCOPE = "current_portfolio_diagnostic"
+
+BLOCK34_REQUIRED_TOP_LEVEL_FIELDS = (
+    "version",
+    "block",
+    "ruleset_version",
+    "block_status",
+    "scorecard_scope",
+    "legacy_fallback_used",
+    "stress_diagnosis",
+    "next_decision_uses",
+    "worst_synthetic_scenario",
+    "worst_historical_scenario",
+    "hedge_gap_summary",
+)
+
+BLOCK34_FORBIDDEN_PRODUCT_KEYS = frozenset(
+    {
+        "pass",
+        "loss_ok",
+        "max_dd_limit",
+        "diagnostic_codes",
+        "primary_diagnostic_code",
+        "fail_reason_code",
+        "failed_scenario",
+        "failed_test",
+        "overall_status",
+    }
+)
+
+
+def _scorecard_v1_forbidden_keys_walk(obj: object) -> list[str]:
+    found: list[str] = []
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if key in BLOCK34_FORBIDDEN_PRODUCT_KEYS:
+                found.append(key)
+            found.extend(_scorecard_v1_forbidden_keys_walk(value))
+    elif isinstance(obj, list):
+        for item in obj:
+            found.extend(_scorecard_v1_forbidden_keys_walk(item))
+    return found
+
+
+def current_portfolio_stress_scorecard_v1_live_output_violations(block: dict[str, Any]) -> list[str]:
+    """Session 11 live-output gates when block_status is ok or partial."""
+    prefix = BLOCK34_VERSION
+    violations: list[str] = []
+    block_status = str(block.get("block_status") or "").strip().lower()
+    if block_status not in {"ok", "partial"}:
+        return violations
+
+    stress_diagnosis = block.get("stress_diagnosis")
+    if not isinstance(stress_diagnosis, dict):
+        violations.append(f"{prefix}: stress_diagnosis must be an object when block_status is {block_status}")
+        stress_diagnosis = {}
+
+    headline = stress_diagnosis.get("headline")
+    if not isinstance(headline, str) or not headline.strip():
+        violations.append(
+            f"{prefix}: stress_diagnosis.headline must be non-empty when block_status is {block_status}"
+        )
+
+    confidence = stress_diagnosis.get("diagnosis_confidence")
+    if confidence is None or str(confidence).strip().lower() == "unavailable":
+        violations.append(
+            f"{prefix}: stress_diagnosis.diagnosis_confidence must be present when block_status is {block_status}"
+        )
+
+    if not isinstance(block.get("legacy_fallback_used"), bool):
+        violations.append(f"{prefix}: legacy_fallback_used must be explicit true or false")
+
+    next_uses = block.get("next_decision_uses")
+    if not isinstance(next_uses, list) or not next_uses:
+        violations.append(
+            f"{prefix}: next_decision_uses must be non-empty when block_status is {block_status}"
+        )
+
+    hg_status = str(block.get("hedge_gap_block_status") or "").strip().lower()
+    hedge_summary = block.get("hedge_gap_summary")
+    hedge_summary = hedge_summary if isinstance(hedge_summary, dict) else {}
+    if hg_status in {"ok", "partial"} or hedge_summary.get("availability") == "available":
+        gap_sid = hedge_summary.get("main_hedge_gap_scenario_id")
+        if gap_sid is None or str(gap_sid).strip() == "":
+            violations.append(
+                f"{prefix}: hedge_gap_summary.main_hedge_gap_scenario_id required when hedge gap v1 is available"
+            )
+
+    from src.current_portfolio_stress_scorecard_block import collect_forbidden_english_phrases
+
+    phrases = collect_forbidden_english_phrases(block)
+    for phrase in phrases:
+        violations.append(f"{prefix}: forbidden English phrase: {phrase!r}")
+
+    return violations
+
+
+def current_portfolio_stress_scorecard_v1_product_contract_violations(
+    block: dict[str, Any] | None,
+) -> list[str]:
+    """Return Block 3.4 institutional product-contract violations (empty = pass)."""
+    if not isinstance(block, dict):
+        return [f"{BLOCK34_VERSION}: block is missing or not an object"]
+
+    violations: list[str] = []
+    prefix = BLOCK34_VERSION
+
+    if block.get("version") != BLOCK34_VERSION:
+        violations.append(
+            f"{prefix}: version expected {BLOCK34_VERSION!r}, got {block.get('version')!r}"
+        )
+
+    missing_top = [field for field in BLOCK34_REQUIRED_TOP_LEVEL_FIELDS if field not in block]
+    if missing_top:
+        violations.append(f"{prefix}: missing top-level fields: {', '.join(missing_top)}")
+
+    if block.get("block") != "3.4":
+        violations.append(f"{prefix}: block id expected '3.4', got {block.get('block')!r}")
+
+    if block.get("ruleset_version") != BLOCK34_RULESET_VERSION:
+        violations.append(
+            f"{prefix}: ruleset_version expected {BLOCK34_RULESET_VERSION!r}, "
+            f"got {block.get('ruleset_version')!r}"
+        )
+
+    block_status = str(block.get("block_status") or "").strip().lower()
+    if block_status not in BLOCK34_BLOCK_STATUS_VALUES:
+        violations.append(f"{prefix}: invalid block_status {block.get('block_status')!r}")
+
+    if block.get("scorecard_scope") != BLOCK34_SCORECARD_SCOPE:
+        violations.append(
+            f"{prefix}: scorecard_scope expected {BLOCK34_SCORECARD_SCOPE!r}, "
+            f"got {block.get('scorecard_scope')!r}"
+        )
+
+    forbidden_keys = _scorecard_v1_forbidden_keys_walk(block)
+    if forbidden_keys:
+        violations.append(
+            f"{prefix}: forbidden mandate-style keys: {', '.join(sorted(set(forbidden_keys)))}"
+        )
+
+    violations.extend(current_portfolio_stress_scorecard_v1_live_output_violations(block))
+
+    return violations
+
+
+def check_current_portfolio_stress_scorecard_v1(block: dict[str, Any] | None) -> dict[str, Any]:
+    """Structured Block 3.4 checks for fixture-matrix and live E2E validators."""
+    violations = current_portfolio_stress_scorecard_v1_product_contract_violations(block)
+    stress_diagnosis = (block or {}).get("stress_diagnosis")
+    stress_diagnosis = stress_diagnosis if isinstance(stress_diagnosis, dict) else {}
+    hedge_summary = (block or {}).get("hedge_gap_summary")
+    hedge_summary = hedge_summary if isinstance(hedge_summary, dict) else {}
+    worst_syn = (block or {}).get("worst_synthetic_scenario")
+    worst_syn = worst_syn if isinstance(worst_syn, dict) else {}
+    signals = (block or {}).get("problem_classification_signals")
+    signals = signals if isinstance(signals, dict) else {}
+    ai_ctx = (block or {}).get("ai_commentary_context")
+    ai_ctx = ai_ctx if isinstance(ai_ctx, dict) else {}
+    return {
+        "product_contract_ok": not violations,
+        "contract_violations": violations,
+        "block_status": (block or {}).get("block_status"),
+        "ruleset_version": (block or {}).get("ruleset_version"),
+        "legacy_fallback_used": (block or {}).get("legacy_fallback_used"),
+        "diagnosis_confidence": stress_diagnosis.get("diagnosis_confidence"),
+        "headline_present": bool(
+            isinstance(stress_diagnosis.get("headline"), str) and stress_diagnosis.get("headline", "").strip()
+        ),
+        "main_hedge_gap_scenario_id": hedge_summary.get("main_hedge_gap_scenario_id"),
+        "worst_synthetic_scenario_id": worst_syn.get("scenario_id"),
+        "stress_severity": signals.get("stress_severity"),
+        "next_decision_uses_count": len((block or {}).get("next_decision_uses") or [])
+        if isinstance((block or {}).get("next_decision_uses"), list)
+        else None,
+        "ai_commentary_context_available": ai_ctx.get("availability") == "available",
+    }
+
+
+def assert_current_portfolio_stress_scorecard_v1_product_contract(block: dict[str, Any]) -> None:
+    """Raise AssertionError when Block 3.4 institutional product contract is violated."""
+    violations = current_portfolio_stress_scorecard_v1_product_contract_violations(block)
+    if violations:
+        raise AssertionError("; ".join(violations))
+
+
 def check_block_2_4_hidden_exposure(block: dict[str, Any] | None) -> dict[str, Any]:
     """Structured Block 2.4 checks for fixture-matrix validators."""
     violations = block_2_4_product_contract_violations(block)

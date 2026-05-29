@@ -242,13 +242,18 @@ Canonical specs: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_lay
 #### 4.3.4 Current Portfolio Stress Scorecard (Block 3.4)
 
 Block 3.4 is the product-facing **current-portfolio** stress scorecard on `stress_report.json`:
-`current_portfolio_stress_scorecard_v1`. It summarizes Blocks 3.1–3.3 into a single diagnosis:
-worst synthetic loss, worst historical drawdown, loss/risk contributors, factor drivers, helped vs
-hurt assets, offset coverage ratio, and the main hedge gap.
+`current_portfolio_stress_scorecard_v1` (ruleset `current_portfolio_stress_scorecard_rules_v1_1`).
+It summarizes Blocks 3.1–3.3 into executive stress diagnosis: worst synthetic/historical selectors,
+`stress_diagnosis` (headline, confidence, resilience lists), loss/risk summaries, factor drivers,
+`hedge_gap_summary`, optional pre-stress confirmation from Blocks 2.4/2.6, and compact downstream
+signals for Problem Classification, Candidate Comparison, and AI Commentary.
 
-Product boundary: diagnostic-only summary (no client mandate pass/fail, no suitability logic, no
-DIAG_* status language inside the Block 3.4 key). It does not create new scenarios and does not
-recompute scenario PnL.
+Product boundary: diagnostic-only summary (no client mandate pass/fail inside Block 3.4, no
+suitability logic, no DIAG_* status language in the Block 3.4 key). Legacy `stress_scorecard_v1`
+remains for explicit mandate rollup only. It does not create new scenarios and does not recompute
+scenario PnL.
+
+Canonical spec: [docs/specs/current_portfolio_stress_scorecard_spec.md](docs/specs/current_portfolio_stress_scorecard_spec.md).
 
 #### 4.3.3 Hedge Gap Analysis (Block 3.3)
 

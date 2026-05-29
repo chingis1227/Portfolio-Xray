@@ -1,6 +1,6 @@
 # Block 3.4 Current Portfolio Stress Scorecard — Institutional Upgrade (Phase 2)
 
-**Status: Active** — Session 10 closed 2026-05-29. Next: Session 11 (Materialization + E2E validators).
+**Status: Completed** — Session 13 closed 2026-05-29. Evidence: [institutional upgrade acceptance audit](../audits/2026-05-29_block_3_4_institutional_upgrade_acceptance_audit.md).
 
 Baseline: [Session 00 baseline audit](../audits/2026-05-29_block_3_4_session_00_baseline_audit.md).  
 Contract: [current_portfolio_stress_scorecard_spec.md](../specs/current_portfolio_stress_scorecard_spec.md) (frozen Session 01).
@@ -58,11 +58,29 @@ Block 3.4 is a read-only adapter over Blocks **3.1–3.3** stress evidence.
 - [x] (2026-05-29) **Session 08 — problem_classification_signals + PC migration** → [audit](../audits/2026-05-29_block_3_4_session_08_problem_classification.md); pytest **46 passed**
 - [x] (2026-05-29) **Session 09 — candidate_comparison_targets + CC migration** → [audit](../audits/2026-05-29_block_3_4_session_09_candidate_comparison.md); pytest **47 passed**
 - [x] (2026-05-29) **Session 10 — AI Commentary grounding** → [audit](../audits/2026-05-29_block_3_4_session_10_ai_commentary.md); pytest **67 passed** (closure bundle)
-- [ ] Session 11 — Materialization + E2E validators + live-output gates
-- [ ] Session 12 — Documentation sync
-- [ ] Session 13 — Acceptance audit + plan closure
+- [x] (2026-05-29) **Session 11 — Materialization + E2E validators + live-output gates** → [audit](../audits/2026-05-29_block_3_4_session_11_materialization.md); pytest **71 passed** (closure bundle)
+- [x] (2026-05-29) **Session 12 — Documentation sync** → [audit](../audits/2026-05-29_block_3_4_session_12_documentation_sync.md); `verify_docs` OK; pytest **71 passed** (doc-sync bundle)
+- [x] (2026-05-29) **Session 13 — Acceptance audit + plan closure** → [acceptance audit](../audits/2026-05-29_block_3_4_institutional_upgrade_acceptance_audit.md); fixture matrix **7/7**; pytest **67** (closure) / **142** (extended); ExecPlan **Completed**
 
 ## Surprises & Discoveries
+
+### Session 13 (2026-05-29)
+
+- Observation: Acceptance closed test/fixture locked without committed `analysis_subject/stress_report.json`; Block 3 matrix **7/7** includes `current_portfolio_stress_scorecard_v1` validation.
+  Evidence: [acceptance audit](../audits/2026-05-29_block_3_4_institutional_upgrade_acceptance_audit.md) §6.
+
+### Session 12 (2026-05-29)
+
+- Observation: Top-level SPEC/OUTPUTS still described Block 3.4 v1.1 as “rolling out” through Session 11 despite Sessions 02–11 code closure; Session 12 aligned status to **Implemented** without code changes.
+  Evidence: [Session 12 audit](../audits/2026-05-29_block_3_4_session_12_documentation_sync.md); `DEC-2026-05-29-005`.
+
+### Session 11 (2026-05-29)
+
+- Observation: `validate_live_core_artifacts` now requires `current_portfolio_stress_scorecard_v1` and runs `check_current_portfolio_stress_scorecard_v1` (live-output gates when `block_status` ∈ `{ok, partial}`).
+  Evidence: `tests/test_stress_scorecard_materialization.py`; offline smoke scorecard may remain `unavailable` without failing structural contract.
+
+- Observation: `snapshot_10y.stress_suite_results.current_portfolio_stress_scorecard_v1` mirrors compact Block 3.4 fields (diagnosis, worst selectors, hedge-gap summary, `next_decision_uses`).
+  Evidence: `test_snapshot_scorecard_v1_mirror_includes_institutional_fields`.
 
 ### Session 10 (2026-05-29)
 
@@ -163,7 +181,13 @@ Block 3.4 is a read-only adapter over Blocks **3.1–3.3** stress evidence.
 
 ## Outcomes & Retrospective
 
-*(Open — complete at Session 13.)*
+**Closed 2026-05-29 (Session 13).**
+
+- Delivered `current_portfolio_stress_scorecard_rules_v1_1` on `stress_report.json` with executive `stress_diagnosis`, structured summaries, optional pre-stress bridges, and downstream signal blocks.
+- Migrated Problem Classification, Candidate Comparison, AI Commentary grounding, snapshot mirror, and Core MVP validation to v1-primary paths; legacy `stress_scorecard_v1` remains for mandate rollup only.
+- Fifteen baseline gaps (G1–G15) closed; **40** contract tests + materialization/downstream/live E2E coverage; Block 3 fixture matrix **7/7**.
+- **Deferred:** retirement of `stress_scorecard_v1`; committed live `analysis_subject` refresh left to operators (G15).
+- **Evidence:** [acceptance audit](../audits/2026-05-29_block_3_4_institutional_upgrade_acceptance_audit.md); `DEC-2026-05-29-004`, `DEC-2026-05-29-005`.
 
 ## Gap matrix (baseline → target)
 

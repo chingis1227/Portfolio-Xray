@@ -25,7 +25,9 @@ outcome.
 
 | Date | Audit | Status | Follow-up plan | Outcome |
 | --- | --- | --- | --- | --- |
-| 2026-05-29 | [Block 3.4 Session 01 Contract v1.1](2026-05-29_block_3_4_session_01_contract_v1_1.md) | **Active input** | Block 3.4 institutional upgrade | Session 01 closure: frozen `current_portfolio_stress_scorecard_rules_v1_1` in dedicated spec; layer spec §3.4 linked; pytest **4 passed**; no code changes. |
+| 2026-05-29 | [Block 3.4 Institutional Upgrade Acceptance Audit](2026-05-29_block_3_4_institutional_upgrade_acceptance_audit.md) | **Historical** (closure) | — | Session 13 closure: Phase 2 **ACCEPTED**; G1–G15 closed; fixture matrix **7/7**; pytest **142 passed** (extended); ExecPlan **Completed**. |
+| 2026-05-29 | [Block 3.4 Session 12 Documentation Sync](2026-05-29_block_3_4_session_12_documentation_sync.md) | **Historical** | Block 3.4 institutional upgrade (**Completed**) | Session 12 closure: SPEC/OUTPUTS/TESTING/CHANGELOG/DECISIONS sync; `DEC-2026-05-29-005`; pytest **71 passed**. |
+| 2026-05-29 | [Block 3.4 Session 01 Contract v1.1](2026-05-29_block_3_4_session_01_contract_v1_1.md) | **Historical** | Block 3.4 institutional upgrade | Session 01 closure: frozen `current_portfolio_stress_scorecard_rules_v1_1` in dedicated spec; layer spec §3.4 linked; pytest **4 passed**; no code changes. |
 | 2026-05-29 | [Block 3.4 Session 00 Baseline Audit](2026-05-29_block_3_4_session_00_baseline_audit.md) | **Historical** | Block 3.4 institutional upgrade | Session 00 closure: MVP vs v1.1 gap matrix; legacy consumers mapped; pytest **4 passed**. |
 | 2026-05-29 | [Block 3.3 Institutional Upgrade Acceptance Audit](2026-05-29_block_3_3_institutional_upgrade_acceptance_audit.md) | **Historical** (closure) | — | Session 12 closure: Phase 2 **ACCEPTED**; G1–G10 closed; fixture matrix **7/7**; pytest **106 passed**; ExecPlan **Completed**. |
 | 2026-05-29 | [Block 3.3 Session 11 Documentation Sync](2026-05-29_block_3_3_session_11_documentation_sync.md) | **Historical** | Block 3.3 institutional upgrade (**Completed**) | Session 11 closure: SPEC/OUTPUTS/TESTING/CHANGELOG/DECISIONS sync; `DEC-2026-05-29-003`; pytest **98 passed**. |
