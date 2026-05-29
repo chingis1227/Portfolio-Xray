@@ -322,6 +322,24 @@ def top_correlation_pairs(
     return highest, lowest
 
 
+def avg_pairwise_correlation(corr: pd.DataFrame) -> float | None:
+    """Mean off-diagonal Pearson correlation (upper triangle, ddof=0)."""
+    columns = [str(c) for c in corr.columns]
+    values: list[float] = []
+    for i in range(len(columns)):
+        for j in range(i + 1, len(columns)):
+            try:
+                value = float(corr.iloc[i, j])
+            except (TypeError, ValueError):
+                continue
+            if math.isnan(value):
+                continue
+            values.append(value)
+    if not values:
+        return None
+    return round(sum(values) / len(values), REPORT_DECIMALS)
+
+
 def _behavior_snapshot(
     *,
     metrics: dict[str, Any],
@@ -454,8 +472,10 @@ def build_block_2_2_portfolio_metrics(
     )
     highest_pairs: list[dict[str, Any]] = []
     lowest_pairs: list[dict[str, Any]] = []
+    avg_pairwise: float | None = None
     if corr_frame is not None:
         highest_pairs, lowest_pairs = top_correlation_pairs(corr_frame, n=3)
+        avg_pairwise = avg_pairwise_correlation(corr_frame)
     else:
         data_quality_warnings.append(
             "Correlation breakdown is limited because the primary-window correlation matrix is missing."
@@ -555,6 +575,7 @@ def build_block_2_2_portfolio_metrics(
         "correlation_breakdown": {
             "top3_highest_correlation_pairs": highest_pairs,
             "top3_lowest_correlation_pairs": lowest_pairs,
+            "avg_pairwise_correlation": avg_pairwise,
             "full_matrix_available": corr_frame is not None,
             "full_matrix_ref": matrix_ref,
         },
@@ -566,6 +587,7 @@ def build_block_2_2_portfolio_metrics(
 
 __all__ = [
     "BLOCK_2_2_ID",
+    "avg_pairwise_correlation",
     "build_block_2_2_portfolio_metrics",
     "top_correlation_pairs",
 ]

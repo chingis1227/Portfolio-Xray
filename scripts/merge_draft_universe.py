@@ -28,6 +28,18 @@ def parse_args() -> argparse.Namespace:
         default="output/universe_ingestion",
         help="Folder with draft_etf_universe.yml, draft_stock_universe.yml, needs_review.csv",
     )
+    p.add_argument(
+        "--stock-batch-dir",
+        default=None,
+        help="Stock batch folder (draft_stock_universe_batchN.yml + accepted tickers filter)",
+    )
+    p.add_argument(
+        "--stock-batch",
+        type=int,
+        choices=(1, 2),
+        default=None,
+        help="Stock batch number (sets default dir to output/stock_batchN_live)",
+    )
     p.add_argument("--etf-universe", default="config/etf_universe.yml")
     p.add_argument("--stock-universe", default="config/stock_universe.yml")
     p.add_argument(
@@ -71,13 +83,60 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     ingestion_dir = Path(args.ingestion_dir)
+    stock_batch_num = args.stock_batch
+    stock_batch_dir = Path(args.stock_batch_dir) if args.stock_batch_dir else None
+    if stock_batch_dir is None and stock_batch_num is not None:
+        stock_batch_dir = Path(f"output/stock_batch{stock_batch_num}_live")
     draft_etf = ingestion_dir / "draft_etf_universe.yml"
     draft_stock = ingestion_dir / "draft_stock_universe.yml"
     needs_review = ingestion_dir / "needs_review.csv"
+    stock_batch_mode = False
+    report_path: Path | None = None
+    batch_label = "Stock Batch"
+    if stock_batch_dir:
+        bn = stock_batch_num
+        if bn is None:
+            for n in (2, 1):
+                if (stock_batch_dir / f"stock_batch{n}_review_report.json").is_file():
+                    bn = n
+                    break
+            bn = bn or 1
+        batch_label = f"Stock Batch {bn}"
+        draft_stock = stock_batch_dir / f"draft_stock_universe_batch{bn}.yml"
+        nr_csv = stock_batch_dir / (
+            "needs_review_stocks.csv" if bn == 1 else f"needs_review_stocks_batch{bn}.csv"
+        )
+        needs_review = nr_csv
+        stock_batch_mode = True
+        report_path = stock_batch_dir / f"stock_batch{bn}_review_report.json"
+        if report_path.is_file():
+            import json as _json
+
+            batch_report = _json.loads(report_path.read_text(encoding="utf-8"))
+            summary = batch_report.get("summary") or {}
+            if not summary.get("merge_ready"):
+                print(f"{batch_label} merge blocked: merge_ready=false.", file=sys.stderr)
+                if summary.get("needs_review_candidates", 0) > 0:
+                    print("  Reason: needs_review > 0", file=sys.stderr)
+                if summary.get("missing_sector_industry", 0) > 0:
+                    print(
+                        f"  Reason: missing sector/industry on draft rows ({summary.get('missing_sector_industry')})",
+                        file=sys.stderr,
+                    )
+                return 2
 
     tickers_filter = None
     if args.tickers:
         tickers_filter = {t.strip().upper() for t in args.tickers.split(",") if t.strip()}
+
+    if stock_batch_dir and not args.include_stocks:
+        args.include_stocks = True
+
+    if stock_batch_dir and tickers_filter is None and report_path and report_path.is_file():
+        import json as _json
+
+        batch_report = _json.loads(report_path.read_text(encoding="utf-8"))
+        tickers_filter = {t.upper() for t in batch_report.get("accepted_tickers") or []}
 
     plan, meta = build_merge_plan(
         draft_etf_path=draft_etf,
@@ -87,10 +146,11 @@ def main() -> int:
         production_stock_path=Path(args.stock_universe),
         tickers_filter=tickers_filter,
         include_needs_review=args.include_needs_review,
-        include_etfs=args.include_etfs,
-        include_stocks=args.include_stocks,
+        include_etfs=args.include_etfs and not stock_batch_mode,
+        include_stocks=args.include_stocks or bool(stock_batch_dir),
         enrich_stocks_yahoo=args.enrich_stocks_yahoo,
         enrich_stocks_yahoo_limit=args.enrich_stocks_yahoo_limit,
+        stock_batch_mode=stock_batch_mode,
     )
     report = merge_plan_to_report(plan, meta)
     report["confirmed"] = args.confirm

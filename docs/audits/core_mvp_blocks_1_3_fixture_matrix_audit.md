@@ -104,7 +104,7 @@ Common partial drivers (pre-2026-05-27 evening fixes; superseded by validation c
 Fixture validators (`validate_core_mvp_block2_fixture_matrix.py`, `validate_core_mvp_block3_fixture_matrix.py`) now use `scripts/core_mvp_validation_contract.py` to separate:
 
 - **Required Core MVP rollup (Block 2):** `block_2_1`, `block_2_2`, `block_2_3`, `block_2_5`
-- **Optional diagnostic blocks:** `block_2_4`, `block_2_6` (product status may remain `partial` when some rule-based alerts are `Unavailable`; Core MVP contract status is `ok` when required fields exist)
+- **Optional diagnostic blocks:** `block_2_4`, `block_2_6` (product status may remain `partial` when some rule-based alerts are `Unavailable`; Core MVP contract status is `ok` when required fields exist). Block 2.4 additionally runs institutional v2 contract checks via `check_block_2_4_hidden_exposure` (Session 11).
 - **Block 2.3 informational only:** variance-decomposition name normalization, optional Kalman, real-cash disclosure
 - **Block 3 Core MVP:** required product keys + scenario menu coverage; per-scenario enrichments (hedge gap, factor attribution, helped/hurt) are optional for rollup
 

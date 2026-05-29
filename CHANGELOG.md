@@ -4,6 +4,68 @@ This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.
 
+Date: 2026-05-29
+
+Category: Added
+
+- **Block 2.4 UI Pareto layer spec:** [block_2_4_hidden_exposure_ui_pareto_spec.md](docs/specs/block_2_4_hidden_exposure_ui_pareto_spec.md) — Hidden Risk Cards contract (6 alerts), backend→UI mapping, prioritization, mocks, acceptance criteria; presentation-only (no backend change).
+
+Category: Added
+
+- **Block 2.4 Session 13 (institutional upgrade closure):** Matrix v2 sign-off ([completion matrix](docs/audits/2026-05-29_block_2_4_completion_matrix_v2_signoff.md)); institutional upgrade ExecPlan **Completed**; Sessions 01–13 closed. Evidence: [Session 13 audit](docs/audits/2026-05-29_block_2_4_session_13_institutional_closure.md).
+
+Category: Added
+
+- **Block 2.4 Session 12 (institutional upgrade):** Live demo validation on `Main portfolio/analysis_subject/portfolio_xray.json` (`heuristic_v2`, six alerts); `scripts/validate_block_2_4_live.py` with `--refresh-xray`; `live_core_e2e` Block 2.4 v2 contract checks. Evidence: [Session 12 audit](docs/audits/2026-05-29_block_2_4_session_12_live_demo_regression.md).
+
+Category: Added
+
+- **Block 2.4 Session 11 (institutional upgrade):** Shared Block 2.4 v2 product contract in `scripts/core_mvp_validation_contract.py`; `check_block_2_4_hidden_exposure` wired into `validate_core_mvp_block2_fixture_matrix.py`; `tests/test_core_mvp_block2_4_contract.py`; boundaries/contract tests use shared validator.
+
+Category: Added
+
+- **Block 2.4 Session 10 (institutional upgrade):** Matrix row coverage tests (`tests/test_block_2_4_matrix_coverage.py`, 69 parametrized ✅ v2 rows + deferred registry/limitation checks); `assert_block_2_4_product_contract` and golden Block 2.4 v2 surface test in `tests/test_portfolio_xray_contract.py`; expanded `contract_fingerprint` Block 2.4 fields; golden fixture regenerated.
+
+Category: Added
+
+- **Block 2.4 Session 09 (institutional upgrade):** Legacy PCA wire-time cross-ref on `correlation_concentration` via `build_block_2_4_legacy_enrichment` (`portfolio_pca` PC1 raw/residual, factor residual share); limitations point to `sections.hidden_risk_detector`; scores unchanged under `heuristic_v2`. Tests, spec §2.4.1, OUTPUTS note, and golden fixture updated.
+
+Category: Added
+
+- **Block 2.4 Session 08 (institutional upgrade):** Block 3 wire-time stress enrichment for `weak_hedge_behavior` (`confirmation_status`, `hedge_gap_analysis_v1` summary, worst-scenario hedge offset check, `factor_oos_mae_5y` evidence) and `duration_concentration` stagflation/commodity cross-ref; `build_block_2_4_stress_enrichment` wired from `build_portfolio_xray_v2`. Scores unchanged under `heuristic_v2`. Tests and spec §2.4.1 updated; golden fixture regenerated.
+
+Category: Added
+
+- **Block 2.4 Session 07 (institutional upgrade):** `tail_risk` scored signals from Block 2.2 — `var_95/99`, `downside_deviation`, `max_drawdown`, underwater persistence (`pct_time_underwater`, `longest_underwater_months`, `unrecovered_drawdown`), `count_drawdowns_gt_5`; vol instability evidence (`vol_of_vol`, `rel_vol_of_vol`, `rolling_volatility_12m_latest`). Tests and spec §2.4.1 updated; golden fixture regenerated.
+
+Category: Added
+
+- **Block 2.4 Session 06 (institutional upgrade):** `heuristic_v2` ruleset with confidence model v2 (factor penalties, cross-signal agreement, Block 2.2 warning propagation); High status capped to Medium when confidence is low; `weak_hedge_behavior` preliminary confidence cap. Tests and spec §2.4.1 updated; golden fixture regenerated.
+
+Category: Added
+
+- **Block 2.4 Session 05 (institutional upgrade):** Factor concentration sub-signals from Block 2.3 (`factor_variance_contribution`, `factor_risk_ranking`, `production_factor_confidence`, `production_factor_betas_5y`, `factor_beta_stability`, `kalman_current_betas`, supplemental `beta_inf`/`beta_usd`/`beta_cmd`/`beta_vix`/`beta_rr`/`beta_us_growth`) distributed across alerts; evidence-only under `heuristic_v1`. Tests and spec §2.4.1 updated.
+
+Category: Added
+
+- **Block 2.4 Session 04 (institutional upgrade):** Block 2.2 exports `correlation_breakdown.avg_pairwise_correlation`; Block 2.4 wires lowest-pair / average / `lack_of_diversifying_pairs` evidence on `correlation_concentration` and `equity_like_high_correlation_pairs` on `hidden_equity_beta` (evidence-only, `heuristic_v1` scores unchanged). Removed `avg_pairwise_correlation` from blocked-upstream registry. Tests and spec §2.2.1 / §2.4.1 updated.
+
+Category: Added
+
+- **Block 2.4 Session 03 (institutional upgrade):** Mandatory `contributing_assets[]` (max 3) per alert from Block 2.1 `by_asset` + wire-time `taxonomy_rows`; `portfolio_xray.py` passes taxonomy into `build_block_2_4_hidden_exposure`. Tests and spec §2.4.1 updated.
+
+Category: Added
+
+- **Block 2.4 Session 02 (institutional upgrade):** Taxonomy/currency sub-signals from Block 2.1 `concentration_flags` and `by_currency`; `investor_currency_mismatch` evidence on `correlation_concentration`; equity/risk-on evidence on `hidden_equity_beta`. Tests extended; spec §2.4.1 updated.
+
+Category: Fixed
+
+- **Block 2.4 Session 01 (institutional upgrade):** `correlation_concentration.duplicate_exposure_weight` now reads Block 2.1 `combined_weight` / `combined_weight_pct`; per-alert `limitations[]` and `confidence_reason`; `diagnostics_meta.blocked_upstream_fields` scaffold; duplicate group evidence rows. Tests in `tests/test_block_2_4_hidden_exposure.py`; spec §2.4.1 updated.
+
+Category: Added
+
+- **Stock Batch 1 pipeline:** Index-based controlled US stock expansion — `src/stock_batch_ingestion.py`, `scripts/build_stock_batch1.py`, merge path `--stock-batch-dir` on `scripts/merge_draft_universe.py`; production `index_membership` extended to `SP500` / `R1000` / `R3000`; tests `tests/test_stock_batch_ingestion.py`; spec updates in `universe_ingestion_spec.md` and `stock_universe_spec.md`.
+
 Date: 2026-05-28
 
 Category: Added

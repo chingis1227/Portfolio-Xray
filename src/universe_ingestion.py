@@ -704,16 +704,27 @@ def _normalize_yahoo_sector(sector: str | None) -> str:
     return _YAHOO_SECTOR_TO_GICS.get(s, s)
 
 
-def enrich_stock_sector_yahoo(ticker: str) -> dict[str, str]:
+def enrich_stock_sector_yahoo(ticker: str, *, max_retries: int = 3) -> dict[str, str]:
     """Fetch sector/industry for one ticker via yfinance (best-effort)."""
+    import time
+
     try:
         import yfinance as yf
     except ImportError:
         return {"sector": "Unknown", "industry": "Unknown", "source": "yahoo_unavailable"}
-    try:
-        info = yf.Ticker(ticker).info or {}
-    except Exception:
-        return {"sector": "Unknown", "industry": "Unknown", "source": "yahoo_error"}
+    info: dict = {}
+    for attempt in range(max_retries):
+        try:
+            info = yf.Ticker(ticker).info or {}
+            break
+        except Exception as exc:
+            msg = str(exc).lower()
+            if "too many requests" in msg or "rate limit" in msg:
+                time.sleep(min(60.0, 5.0 * (2**attempt)))
+                continue
+            return {"sector": "Unknown", "industry": "Unknown", "source": "yahoo_error"}
+    else:
+        return {"sector": "Unknown", "industry": "Unknown", "source": "yahoo_rate_limited"}
     sector = _normalize_yahoo_sector(info.get("sector"))
     industry = str(info.get("industry") or "Unknown").strip() or "Unknown"
     if sector == "Unknown" and industry == "Unknown":

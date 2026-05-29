@@ -57,6 +57,61 @@ drift**, IDs **KI-2026-05-26-001** … **006**). They are unrelated to Block 2.4
 Until closed: use focused pytest for the changed layer; treat full-suite green as **not** a release gate
 without reconciling or re-accepting the six rows above.
 
+### Block 2.4 Hidden Exposure institutional upgrade (Sessions 01–13, **closed**)
+
+After Block 2.4 contract, scoring, enrichment, or golden changes:
+
+```bash
+python -m pytest tests/test_block_2_4_hidden_exposure.py tests/test_block_2_4_matrix_coverage.py tests/test_portfolio_xray_contract.py -q
+```
+
+Regenerate golden when `portfolio_xray.json` contract changes intentionally:
+
+```bash
+python tests/portfolio_xray_golden_inputs.py
+python -m pytest tests/test_portfolio_xray_contract.py -q
+```
+
+Session 10 closure (2026-05-29): **129 passed** in the bundle above; matrix coverage in
+`tests/test_block_2_4_matrix_coverage.py` maps implementable ✅ v2 rows from the Session 00
+completion matrix. Evidence: [Session 10 audit](docs/audits/2026-05-29_block_2_4_session_10_tests_golden.md).
+
+After Session 11 Core MVP contract wiring, also run:
+
+```bash
+python -m pytest tests/test_core_mvp_block2_4_contract.py tests/test_core_mvp_blocks_1_3_boundaries.py -q
+python scripts/validate_core_mvp_block2_fixture_matrix.py
+```
+
+Session 11 closure (2026-05-29): shared Block 2.4 v2 validator in
+`scripts/core_mvp_validation_contract.py`; fixture-matrix Block 2 script reports
+`special_checks.contract_violations`. Evidence:
+[Session 11 audit](docs/audits/2026-05-29_block_2_4_session_11_core_mvp_validation.md).
+
+After Session 12 live demo, validate materialized subject Block 2.4:
+
+```bash
+python run_portfolio_review.py --skip-candidates
+python scripts/validate_block_2_4_live.py --refresh-xray
+```
+
+If `portfolio_xray.json` predates the institutional upgrade, `--refresh-xray` rebuilds it
+from existing `snapshot_10y.json` / `stress_report.json` / `run_metadata.json` via
+`build_portfolio_xray_v2` (same builder as materialization). Evidence:
+[Session 12 audit](docs/audits/2026-05-29_block_2_4_session_12_live_demo_regression.md).
+
+Session 13 closure (2026-05-29): institutional upgrade **complete** — matrix v2 sign-off
+([completion matrix](docs/audits/2026-05-29_block_2_4_completion_matrix_v2_signoff.md)),
+ExecPlan [2026-05-29_block_2_4_institutional_upgrade_plan.md](docs/exec_plans/2026-05-29_block_2_4_institutional_upgrade_plan.md)
+(**Completed**). Canonical closure bundle:
+
+```bash
+python -m pytest tests/test_core_mvp_block2_4_contract.py tests/test_block_2_4_hidden_exposure.py tests/test_block_2_4_matrix_coverage.py tests/test_portfolio_xray_contract.py tests/test_core_mvp_blocks_1_3_boundaries.py -q
+python scripts/validate_block_2_4_live.py --refresh-xray
+```
+
+Evidence: [Session 13 audit](docs/audits/2026-05-29_block_2_4_session_13_institutional_closure.md).
+
 ## Post-Architecture Alignment Checks
 
 Use this matrix for diagnosis-first / decision-support architecture work after the 2026-05-25
@@ -342,6 +397,7 @@ Live proof (operator, not CI default): `python scripts/verify_live_core_e2e.py -
 | Config / schema | Invalid config accepted, valid config rejected, config/weights desync, taxonomy validation drift | `tests/test_config_weights_sync.py`, `tests/test_returns_frequency.py`; add `tests/test_etf_universe.py` or `tests/test_stock_universe.py` for taxonomy config changes | Run affected CLI such as `python run_etf_universe.py`, `python run_stock_universe.py`, `python run_optimization.py`, or `python run_report.py` when user-facing config workflows change |
 | Taxonomy onboarding (new tickers, stress blocks) | New rows in `etf_universe.yml` / `stock_universe.yml`, stress RC block mapping, onboarding report CLI | `tests/test_taxonomy_onboard_report.py`; adjacent `tests/test_stress_covariance_taxonomy.py` when block rules change | `python run_etf_universe.py validate`; `python run_stock_universe.py validate`; `python scripts/taxonomy_onboard_report.py --tickers TICK1,TICK2` |
 | US universe ingestion (draft scale-up) | New/changed parsing, cleaning, ETF classifier, draft YAML, ingestion report | `python -m pytest tests/test_universe_ingestion.py tests/test_universe_merge.py -q` | Live: `python scripts/ingest_us_listed_universe.py --output-dir output/universe_ingestion_live`; merge preview: `python scripts/merge_draft_universe.py --ingestion-dir output/universe_ingestion_live`; confirm merge only after review: `--confirm` |
+| Stock Batch 1 (index-based stock expansion) | New/changed `src/stock_batch_ingestion.py`, stock merge gates, `scripts/build_stock_batch1.py` | `python -m pytest tests/test_stock_batch_ingestion.py tests/test_stock_universe.py -q` | Offline build: `python scripts/build_stock_batch1.py --offline --output-dir output/stock_batch1`; live: omit `--offline`; merge preview: `python scripts/merge_draft_universe.py --stock-batch-dir output/stock_batch1`; confirm only when `merge_ready` in `stock_batch1_review_report.json` |
 | Documentation-only change | Broken links, stale source-of-truth maps, obsolete commands, copied concept text treated as binding | Markdown link check; stale-reference search with `rg`; no `pytest` required unless executable examples, commands, or documented behavior changed | Run relevant CLI/test command if docs change executable examples or acceptance criteria |
 
 For explicit `analysis_subject` weight validation changes, use the focused input assumptions check

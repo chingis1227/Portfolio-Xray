@@ -409,6 +409,7 @@
     "correlation_breakdown": {
       "top3_highest_correlation_pairs": [],
       "top3_lowest_correlation_pairs": [],
+      "avg_pairwise_correlation": null,
       "full_matrix_available": false,
       "full_matrix_ref": null
     },
@@ -941,12 +942,165 @@
             "interpretation": "5Y equity factor beta from Block 2.3."
           },
           {
+            "metric": "equity_weight",
+            "value": 0.45,
+            "threshold": {
+              "moderate_gte": 0.35,
+              "high_gte": 0.55
+            },
+            "direction": "above_threshold",
+            "source": "block_2_1",
+            "interpretation": "Equity asset-class weight from Block 2.1 capital breakdown."
+          },
+          {
+            "metric": "risk_on_weight",
+            "value": 0.275,
+            "threshold": {
+              "moderate_gte": 0.2,
+              "high_gte": 0.35
+            },
+            "direction": "above_threshold",
+            "source": "block_2_1",
+            "interpretation": "Risk-on role weight from Block 2.1 taxonomy-derived breakdown."
+          },
+          {
             "metric": "beta_eq_confidence",
             "value": "significant",
             "threshold": "significant_or_weak_evidence",
             "direction": "present",
             "source": "block_2_3",
             "interpretation": "Factor confidence qualifies the equity beta evidence."
+          },
+          {
+            "metric": "factor_variance_contribution",
+            "value": {
+              "equity": 0.833,
+              "real_rates": null,
+              "inflation": null,
+              "credit": 0.167,
+              "USD": null,
+              "commodity": null,
+              "VIX_volatility": null,
+              "us_growth": null
+            },
+            "threshold": "normalized_gross_variance_share_by_factor",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Normalized factor variance contribution shares from Block 2.3 (adapted from stress_report factor_variance_decomposition)."
+          },
+          {
+            "metric": "dominant_factor_variance_share",
+            "value": {
+              "factor": "equity",
+              "share": 0.833
+            },
+            "threshold": {
+              "moderate_gte": 0.25,
+              "high_gte": 0.4
+            },
+            "direction": "above_threshold",
+            "source": "block_2_3",
+            "interpretation": "Dominant factor by normalized variance contribution share."
+          },
+          {
+            "metric": "factor_risk_ranking",
+            "value": [
+              {
+                "rank": 1,
+                "factor": "equity",
+                "beta_name": "beta_eq",
+                "beta": 0.72,
+                "contribution": 0.833,
+                "confidence": "significant",
+                "ranking_metric": "variance_contribution",
+                "ranking_score": 0.833,
+                "interpretation": "The portfolio shows sensitivity to equity risk. In risk-off markets, its behavior may be driven more by equity beta than by the number of holdings."
+              },
+              {
+                "rank": 2,
+                "factor": "credit",
+                "beta_name": "beta_credit",
+                "beta": 0.31,
+                "contribution": 0.167,
+                "confidence": "significant",
+                "ranking_metric": "variance_contribution",
+                "ranking_score": 0.167,
+                "interpretation": "The portfolio may carry credit or liquidity-sensitive risk, especially if income assets behave like risk-on exposure during market stress."
+              },
+              {
+                "rank": 3,
+                "factor": "commodity",
+                "beta_name": "beta_cmd",
+                "beta": 0.18,
+                "contribution": null,
+                "confidence": "weak_evidence",
+                "ranking_metric": "absolute_beta_adjusted_by_confidence",
+                "ranking_score": 0.117,
+                "interpretation": "Commodity sensitivity may provide inflation linkage or introduce cyclical exposure depending on sign and stability."
+              }
+            ],
+            "threshold": "top3_by_variance_contribution_or_abs_beta",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Top factor risk ranking rows from Block 2.3 (variance contribution preferred)."
+          },
+          {
+            "metric": "production_factor_confidence",
+            "value": {
+              "beta_eq": "significant",
+              "beta_rr": "unavailable",
+              "beta_inf": "unavailable",
+              "beta_credit": "significant",
+              "beta_usd": "unavailable",
+              "beta_cmd": "weak_evidence",
+              "beta_vix": "unavailable",
+              "beta_us_growth": "unavailable"
+            },
+            "threshold": "significant_weak_evidence_or_unstable_low_confidence",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Factor signal confidence for all production betas from Block 2.3 factor_significance_confidence (OLS/HAC evidence only)."
+          },
+          {
+            "metric": "production_factor_betas_5y",
+            "value": {
+              "beta_eq": 0.72,
+              "beta_credit": 0.31,
+              "beta_cmd": 0.18
+            },
+            "threshold": "all_production_beta_keys",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Full production factor beta snapshot from Block 2.3; score weights still use a subset until heuristic_v2."
+          },
+          {
+            "metric": "factor_beta_stability",
+            "value": {
+              "beta_eq": {
+                "beta_stability_label": "moderately_changed",
+                "unavailable_reason": null,
+                "windows_available": 3
+              },
+              "beta_us_growth": {
+                "beta_stability_label": "unavailable",
+                "unavailable_reason": "insufficient_beta_windows",
+                "windows_available": 0
+              }
+            },
+            "threshold": "stable_moderately_changed_unstable_across_3y_5y_10y",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Point-in-time 3Y/5Y/10Y beta stability labels from Block 2.3 (not rolling beta summaries)."
+          },
+          {
+            "metric": "kalman_current_betas",
+            "value": {
+              "beta_eq": 0.81
+            },
+            "threshold": "informational_dynamic_beta",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Kalman current factor betas from Block 2.3 (evidence only; does not replace 5Y score weights under heuristic_v1)."
           }
         ],
         "explanation": "The detector checks whether portfolio behavior is more equity-like than labels alone suggest.",
@@ -956,17 +1110,35 @@
           "liquidity_shock",
           "recession_severe"
         ],
-        "confidence": "high",
-        "data_quality_warnings": [],
+        "confidence": "medium",
+        "limitations": [
+          "Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
+        ],
+        "data_quality_warnings": [
+          "Correlation breakdown is limited because the primary-window correlation matrix is missing."
+        ],
         "insufficient_evidence_reasons": [
           "rolling_correlation missing"
         ],
         "calculation_notes": [
-          "ruleset=heuristic_v1",
-          "score is a weighted average of available signal scores",
+          "ruleset=heuristic_v2",
+          "confidence_model=v2",
+          "score is a weighted average of available signal scores (renormalized by evaluable weight)",
           "evaluable_signal_weight=0.8",
-          "equity beta thresholds are heuristic_v1 product diagnostics"
-        ]
+          "cross_signal_agreement=agree",
+          "equity beta thresholds are heuristic_v2 product diagnostics"
+        ],
+        "contributing_assets": [
+          {
+            "ticker": "SPY",
+            "weight_pct": 0.45,
+            "expected_role": "growth",
+            "behavior_flag": "equity_aligned",
+            "source": "block_2_1"
+          }
+        ],
+        "confirmation_status": "not_applicable",
+        "confidence_reason": "Medium confidence (model v2): evaluable signal weight 0.8; cross-signal agreement=agree. Data-quality warnings: Correlation breakdown is limited because the primary-window correlation matrix is missing.. Missing scored signals: rolling_correlation missing."
       },
       "duration_concentration": {
         "status": "Medium",
@@ -1004,6 +1176,98 @@
             "direction": "missing",
             "source": "block_2_3",
             "interpretation": "Real-rates factor beta."
+          },
+          {
+            "metric": "factor_variance_contribution",
+            "value": {
+              "equity": 0.833,
+              "real_rates": null,
+              "inflation": null,
+              "credit": 0.167,
+              "USD": null,
+              "commodity": null,
+              "VIX_volatility": null,
+              "us_growth": null
+            },
+            "threshold": "normalized_gross_variance_share_by_factor",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Normalized factor variance contribution shares from Block 2.3 (adapted from stress_report factor_variance_decomposition)."
+          },
+          {
+            "metric": "dominant_factor_variance_share",
+            "value": {
+              "factor": "equity",
+              "share": 0.833
+            },
+            "threshold": {
+              "moderate_gte": 0.25,
+              "high_gte": 0.4
+            },
+            "direction": "above_threshold",
+            "source": "block_2_3",
+            "interpretation": "Dominant factor by normalized variance contribution share."
+          },
+          {
+            "metric": "factor_risk_ranking",
+            "value": [
+              {
+                "rank": 1,
+                "factor": "equity",
+                "beta_name": "beta_eq",
+                "beta": 0.72,
+                "contribution": 0.833,
+                "confidence": "significant",
+                "ranking_metric": "variance_contribution",
+                "ranking_score": 0.833,
+                "interpretation": "The portfolio shows sensitivity to equity risk. In risk-off markets, its behavior may be driven more by equity beta than by the number of holdings."
+              },
+              {
+                "rank": 2,
+                "factor": "credit",
+                "beta_name": "beta_credit",
+                "beta": 0.31,
+                "contribution": 0.167,
+                "confidence": "significant",
+                "ranking_metric": "variance_contribution",
+                "ranking_score": 0.167,
+                "interpretation": "The portfolio may carry credit or liquidity-sensitive risk, especially if income assets behave like risk-on exposure during market stress."
+              },
+              {
+                "rank": 3,
+                "factor": "commodity",
+                "beta_name": "beta_cmd",
+                "beta": 0.18,
+                "contribution": null,
+                "confidence": "weak_evidence",
+                "ranking_metric": "absolute_beta_adjusted_by_confidence",
+                "ranking_score": 0.117,
+                "interpretation": "Commodity sensitivity may provide inflation linkage or introduce cyclical exposure depending on sign and stability."
+              }
+            ],
+            "threshold": "top3_by_variance_contribution_or_abs_beta",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Top factor risk ranking rows from Block 2.3 (variance contribution preferred)."
+          },
+          {
+            "metric": "factor_beta_stability",
+            "value": {
+              "beta_rr": {
+                "beta_stability_label": "unavailable",
+                "unavailable_reason": "insufficient_beta_windows",
+                "windows_available": 0
+              },
+              "beta_inf": {
+                "beta_stability_label": "unavailable",
+                "unavailable_reason": "insufficient_beta_windows",
+                "windows_available": 0
+              }
+            },
+            "threshold": "stable_moderately_changed_unstable_across_3y_5y_10y",
+            "direction": "below_threshold",
+            "source": "block_2_3",
+            "interpretation": "Point-in-time 3Y/5Y/10Y beta stability labels from Block 2.3 (not rolling beta summaries)."
           }
         ],
         "explanation": "The detector checks whether fixed income, rates labels, or real-rate beta create hidden duration sensitivity.",
@@ -1013,16 +1277,40 @@
           "inflation_stagflation"
         ],
         "confidence": "medium",
+        "limitations": [
+          "duration_bucket is not aggregated in Block 2.1; rates sensitivity uses main_risk_factor and fixed_income proxies only.",
+          "Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
+        ],
         "data_quality_warnings": [],
         "insufficient_evidence_reasons": [
           "beta_rr missing"
         ],
         "calculation_notes": [
-          "ruleset=heuristic_v1",
-          "score is a weighted average of available signal scores",
+          "ruleset=heuristic_v2",
+          "confidence_model=v2",
+          "score is a weighted average of available signal scores (renormalized by evaluable weight)",
           "evaluable_signal_weight=0.65",
-          "duration thresholds are heuristic_v1 because live duration is not available in Block 2.1"
-        ]
+          "cross_signal_agreement=agree",
+          "duration thresholds are heuristic_v2 because live duration is not available in Block 2.1"
+        ],
+        "contributing_assets": [
+          {
+            "ticker": "TLT",
+            "weight_pct": 0.3,
+            "expected_role": "real_rates",
+            "behavior_flag": "rates_duration_exposure",
+            "source": "block_2_1"
+          },
+          {
+            "ticker": "HYG",
+            "weight_pct": 0.15,
+            "expected_role": "credit",
+            "behavior_flag": "rates_duration_exposure",
+            "source": "block_2_1"
+          }
+        ],
+        "confirmation_status": "not_applicable",
+        "confidence_reason": "Medium confidence (model v2): evaluable signal weight 0.65; cross-signal agreement=agree. Limitations: duration_bucket is not aggregated in Block 2.1; rates sensitivity uses main_risk_factor and fixed_income proxies only.. Missing scored signals: beta_rr missing."
       },
       "credit_liquidity_risk": {
         "status": "Medium",
@@ -1071,6 +1359,132 @@
             "direction": "above_threshold",
             "source": "block_2_2",
             "interpretation": "Downside beta can reveal risk-on behavior in bad markets."
+          },
+          {
+            "metric": "region_concentration_flags",
+            "value": [
+              {
+                "flag_id": "single_region_dominance",
+                "severity": "medium",
+                "metric": "region_weight",
+                "dimension": "region",
+                "label": "US",
+                "threshold": 0.7,
+                "observed": 0.9,
+                "message": "US region concentration is 90.000% (medium diagnostic threshold 70.000%)."
+              },
+              {
+                "flag_id": "single_region_dominance",
+                "severity": "high",
+                "metric": "region_weight",
+                "dimension": "region",
+                "label": "US",
+                "threshold": 0.85,
+                "observed": 0.9,
+                "message": "US region concentration is 90.000% (high diagnostic threshold 85.000%)."
+              }
+            ],
+            "threshold": "concentration_flag_present",
+            "direction": "present",
+            "source": "block_2_1",
+            "interpretation": "Block 2.1 concentration flags for single-region dominance."
+          },
+          {
+            "metric": "factor_variance_contribution",
+            "value": {
+              "equity": 0.833,
+              "real_rates": null,
+              "inflation": null,
+              "credit": 0.167,
+              "USD": null,
+              "commodity": null,
+              "VIX_volatility": null,
+              "us_growth": null
+            },
+            "threshold": "normalized_gross_variance_share_by_factor",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Normalized factor variance contribution shares from Block 2.3 (adapted from stress_report factor_variance_decomposition)."
+          },
+          {
+            "metric": "dominant_factor_variance_share",
+            "value": {
+              "factor": "equity",
+              "share": 0.833
+            },
+            "threshold": {
+              "moderate_gte": 0.25,
+              "high_gte": 0.4
+            },
+            "direction": "above_threshold",
+            "source": "block_2_3",
+            "interpretation": "Dominant factor by normalized variance contribution share."
+          },
+          {
+            "metric": "factor_risk_ranking",
+            "value": [
+              {
+                "rank": 1,
+                "factor": "equity",
+                "beta_name": "beta_eq",
+                "beta": 0.72,
+                "contribution": 0.833,
+                "confidence": "significant",
+                "ranking_metric": "variance_contribution",
+                "ranking_score": 0.833,
+                "interpretation": "The portfolio shows sensitivity to equity risk. In risk-off markets, its behavior may be driven more by equity beta than by the number of holdings."
+              },
+              {
+                "rank": 2,
+                "factor": "credit",
+                "beta_name": "beta_credit",
+                "beta": 0.31,
+                "contribution": 0.167,
+                "confidence": "significant",
+                "ranking_metric": "variance_contribution",
+                "ranking_score": 0.167,
+                "interpretation": "The portfolio may carry credit or liquidity-sensitive risk, especially if income assets behave like risk-on exposure during market stress."
+              },
+              {
+                "rank": 3,
+                "factor": "commodity",
+                "beta_name": "beta_cmd",
+                "beta": 0.18,
+                "contribution": null,
+                "confidence": "weak_evidence",
+                "ranking_metric": "absolute_beta_adjusted_by_confidence",
+                "ranking_score": 0.117,
+                "interpretation": "Commodity sensitivity may provide inflation linkage or introduce cyclical exposure depending on sign and stability."
+              }
+            ],
+            "threshold": "top3_by_variance_contribution_or_abs_beta",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Top factor risk ranking rows from Block 2.3 (variance contribution preferred)."
+          },
+          {
+            "metric": "factor_beta_stability",
+            "value": {
+              "beta_credit": {
+                "beta_stability_label": "moderately_changed",
+                "unavailable_reason": null,
+                "windows_available": 3
+              }
+            },
+            "threshold": "stable_moderately_changed_unstable_across_3y_5y_10y",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Point-in-time 3Y/5Y/10Y beta stability labels from Block 2.3 (not rolling beta summaries)."
+          },
+          {
+            "metric": "kalman_current_betas",
+            "value": {
+              "beta_credit": 0.42
+            },
+            "threshold": "informational_dynamic_beta",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Kalman current factor betas from Block 2.3 (evidence only; does not replace 5Y score weights under heuristic_v1)."
           }
         ],
         "explanation": "The detector checks whether income, carry, credit, or liquidity-sensitive exposure behaves like risk-on risk.",
@@ -1080,15 +1494,39 @@
           "liquidity_shock",
           "recession_severe"
         ],
-        "confidence": "high",
+        "confidence": "low",
+        "limitations": [
+          "credit_quality and credit-sensitive subtype weights are not aggregated in Block 2.1 product output.",
+          "Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
+        ],
         "data_quality_warnings": [],
         "insufficient_evidence_reasons": [],
         "calculation_notes": [
-          "ruleset=heuristic_v1",
-          "score is a weighted average of available signal scores",
+          "ruleset=heuristic_v2",
+          "confidence_model=v2",
+          "score is a weighted average of available signal scores (renormalized by evaluable weight)",
           "evaluable_signal_weight=1.0",
-          "credit/liquidity thresholds are heuristic_v1 product diagnostics"
-        ]
+          "cross_signal_agreement=conflict",
+          "credit/liquidity thresholds are heuristic_v2 product diagnostics"
+        ],
+        "contributing_assets": [
+          {
+            "ticker": "HYG",
+            "weight_pct": 0.15,
+            "expected_role": "carry",
+            "behavior_flag": "credit_liquidity_sensitive",
+            "source": "block_2_1"
+          },
+          {
+            "ticker": "SPY",
+            "weight_pct": 0.45,
+            "expected_role": "growth",
+            "behavior_flag": "credit_liquidity_sensitive",
+            "source": "block_2_1"
+          }
+        ],
+        "confirmation_status": "not_applicable",
+        "confidence_reason": "Low confidence (model v2): evaluable signal weight 1.0; cross-signal agreement=conflict. Limitations: credit_quality and credit-sensitive subtype weights are not aggregated in Block 2.1 product output.."
       },
       "correlation_concentration": {
         "status": "Low",
@@ -1126,6 +1564,182 @@
             "direction": "below_threshold",
             "source": "block_2_1",
             "interpretation": "Dominant main-risk-factor allocation from taxonomy-derived breakdown."
+          },
+          {
+            "metric": "dominant_currency_weight",
+            "value": 1.0,
+            "threshold": {
+              "moderate_gte": 0.7,
+              "high_gte": 0.85
+            },
+            "direction": "above_threshold",
+            "source": "block_2_1",
+            "interpretation": "Dominant currency exposure (USD) from Block 2.1 by_currency breakdown."
+          },
+          {
+            "metric": "usd_exposure_weight",
+            "value": 1.0,
+            "threshold": {
+              "moderate_gte": 0.7,
+              "high_gte": 0.85
+            },
+            "direction": "above_threshold",
+            "source": "block_2_1",
+            "interpretation": "USD-labeled currency exposure weight from Block 2.1."
+          },
+          {
+            "metric": "single_currency_dominance_flags",
+            "value": [
+              {
+                "flag_id": "single_currency_dominance",
+                "severity": "medium",
+                "metric": "currency_exposure_weight",
+                "dimension": "currency_exposure",
+                "label": "USD",
+                "threshold": 0.7,
+                "observed": 1.0,
+                "message": "USD currency exposure concentration is 100.000% (medium diagnostic threshold 70.000%)."
+              },
+              {
+                "flag_id": "single_currency_dominance",
+                "severity": "high",
+                "metric": "currency_exposure_weight",
+                "dimension": "currency_exposure",
+                "label": "USD",
+                "threshold": 0.85,
+                "observed": 1.0,
+                "message": "USD currency exposure concentration is 100.000% (high diagnostic threshold 85.000%)."
+              }
+            ],
+            "threshold": "concentration_flag_present",
+            "direction": "present",
+            "source": "block_2_1",
+            "interpretation": "Block 2.1 concentration flags for single-currency dominance."
+          },
+          {
+            "metric": "investor_currency_mismatch",
+            "value": false,
+            "threshold": {
+              "investor_currency": "USD",
+              "dominant_currency_exposure": "USD"
+            },
+            "direction": "below_threshold",
+            "source": "block_2_2",
+            "interpretation": "Whether investor reporting currency differs from the dominant currency-exposure label in Block 2.1."
+          },
+          {
+            "metric": "factor_variance_contribution",
+            "value": {
+              "equity": 0.833,
+              "real_rates": null,
+              "inflation": null,
+              "credit": 0.167,
+              "USD": null,
+              "commodity": null,
+              "VIX_volatility": null,
+              "us_growth": null
+            },
+            "threshold": "normalized_gross_variance_share_by_factor",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Normalized factor variance contribution shares from Block 2.3 (adapted from stress_report factor_variance_decomposition)."
+          },
+          {
+            "metric": "dominant_factor_variance_share",
+            "value": {
+              "factor": "equity",
+              "share": 0.833
+            },
+            "threshold": {
+              "moderate_gte": 0.25,
+              "high_gte": 0.4
+            },
+            "direction": "above_threshold",
+            "source": "block_2_3",
+            "interpretation": "Dominant factor by normalized variance contribution share."
+          },
+          {
+            "metric": "factor_risk_ranking",
+            "value": [
+              {
+                "rank": 1,
+                "factor": "equity",
+                "beta_name": "beta_eq",
+                "beta": 0.72,
+                "contribution": 0.833,
+                "confidence": "significant",
+                "ranking_metric": "variance_contribution",
+                "ranking_score": 0.833,
+                "interpretation": "The portfolio shows sensitivity to equity risk. In risk-off markets, its behavior may be driven more by equity beta than by the number of holdings."
+              },
+              {
+                "rank": 2,
+                "factor": "credit",
+                "beta_name": "beta_credit",
+                "beta": 0.31,
+                "contribution": 0.167,
+                "confidence": "significant",
+                "ranking_metric": "variance_contribution",
+                "ranking_score": 0.167,
+                "interpretation": "The portfolio may carry credit or liquidity-sensitive risk, especially if income assets behave like risk-on exposure during market stress."
+              },
+              {
+                "rank": 3,
+                "factor": "commodity",
+                "beta_name": "beta_cmd",
+                "beta": 0.18,
+                "contribution": null,
+                "confidence": "weak_evidence",
+                "ranking_metric": "absolute_beta_adjusted_by_confidence",
+                "ranking_score": 0.117,
+                "interpretation": "Commodity sensitivity may provide inflation linkage or introduce cyclical exposure depending on sign and stability."
+              }
+            ],
+            "threshold": "top3_by_variance_contribution_or_abs_beta",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Top factor risk ranking rows from Block 2.3 (variance contribution preferred)."
+          },
+          {
+            "metric": "legacy_pca_pc1_raw",
+            "value": {
+              "pc1_explained_variance_ratio": 0.66,
+              "legacy_section": "correlation_or_common_factor_concentration",
+              "threshold_keys": [
+                "pca_pc1_moderate",
+                "pca_pc1_high"
+              ]
+            },
+            "threshold": "pca_pc1_moderate_high_legacy",
+            "direction": "above_threshold",
+            "source": "portfolio_analytics",
+            "interpretation": "Raw covariance PCA PC1 from stress_report.portfolio_pca (legacy hidden_risk_detector cross-ref; not scored in Block 2.4)."
+          },
+          {
+            "metric": "legacy_pca_pc1_residual",
+            "value": {
+              "pc1_explained_variance_ratio": 0.52,
+              "legacy_section": "residual_pca_concentration",
+              "threshold_keys": [
+                "pca_pc1_moderate",
+                "pca_pc1_high"
+              ]
+            },
+            "threshold": "pca_pc1_moderate_high_legacy",
+            "direction": "present",
+            "source": "portfolio_analytics",
+            "interpretation": "Residual PCA PC1 after named factors (legacy hidden_risk_detector cross-ref; not scored in Block 2.4)."
+          },
+          {
+            "metric": "legacy_factor_residual_share",
+            "value": {
+              "residual_share": 0.7,
+              "legacy_section": "residual_pca_concentration"
+            },
+            "threshold": "informational_factor_variance_decomposition",
+            "direction": "present",
+            "source": "portfolio_analytics",
+            "interpretation": "Factor-adjusted residual variance share from stress_report (informational legacy cross-ref only)."
           }
         ],
         "explanation": "The detector checks whether different holdings or labels still move together.",
@@ -1136,16 +1750,51 @@
           "liquidity_shock"
         ],
         "confidence": "medium",
-        "data_quality_warnings": [],
+        "limitations": [
+          "Full FX factor decomposition is not in Core MVP; currency evidence uses Block 2.1 by_currency and concentration_flags only.",
+          "PCA common-factor cluster concentration is not scored in Block 2.4 product alerts; when portfolio_pca is available, interpret legacy sections.hidden_risk_detector categories 'correlation_or_common_factor_concentration' and 'residual_pca_concentration' (wire-time cross-ref evidence only).",
+          "Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
+        ],
+        "data_quality_warnings": [
+          "Correlation breakdown is limited because the primary-window correlation matrix is missing."
+        ],
         "insufficient_evidence_reasons": [
           "highest_pair_correlation missing"
         ],
         "calculation_notes": [
-          "ruleset=heuristic_v1",
-          "score is a weighted average of available signal scores",
+          "ruleset=heuristic_v2",
+          "confidence_model=v2",
+          "score is a weighted average of available signal scores (renormalized by evaluable weight)",
           "evaluable_signal_weight=0.55",
-          "correlation concentration thresholds are heuristic_v1 product diagnostics"
-        ]
+          "cross_signal_agreement=agree",
+          "correlation concentration thresholds are heuristic_v2 product diagnostics",
+          "legacy_pca_cross_ref_wire_time=sections.hidden_risk_detector"
+        ],
+        "contributing_assets": [
+          {
+            "ticker": "SPY",
+            "weight_pct": 0.45,
+            "expected_role": "growth",
+            "behavior_flag": "largest_capital_weight_fallback",
+            "source": "block_2_1"
+          },
+          {
+            "ticker": "TLT",
+            "weight_pct": 0.3,
+            "expected_role": "defensive",
+            "behavior_flag": "largest_capital_weight_fallback",
+            "source": "block_2_1"
+          },
+          {
+            "ticker": "HYG",
+            "weight_pct": 0.15,
+            "expected_role": "carry",
+            "behavior_flag": "largest_capital_weight_fallback",
+            "source": "block_2_1"
+          }
+        ],
+        "confirmation_status": "not_applicable",
+        "confidence_reason": "Medium confidence (model v2): evaluable signal weight 0.55; cross-signal agreement=agree. Data-quality warnings: Correlation breakdown is limited because the primary-window correlation matrix is missing.. Limitations: Full FX factor decomposition is not in Core MVP; currency evidence uses Block 2.1 by_currency and concentration_flags only.; PCA common-factor cluster concentration is not scored in Block 2.4 product alerts; when portfolio_pca is available, interpret legacy sections.hidden_risk_detector categories 'correlation_or_common_factor_concentration' and 'residual_pca_concentration' (wire-time cross-ref evidence only).. Missing scored signals: highest_pair_correlation missing."
       },
       "weak_hedge_behavior": {
         "status": "Medium",
@@ -1194,6 +1843,105 @@
             "direction": "above_threshold",
             "source": "block_2_3",
             "interpretation": "Residual equity/credit sensitivity can dominate hedge-labeled sleeves."
+          },
+          {
+            "metric": "factor_variance_contribution",
+            "value": {
+              "equity": 0.833,
+              "real_rates": null,
+              "inflation": null,
+              "credit": 0.167,
+              "USD": null,
+              "commodity": null,
+              "VIX_volatility": null,
+              "us_growth": null
+            },
+            "threshold": "normalized_gross_variance_share_by_factor",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Normalized factor variance contribution shares from Block 2.3 (adapted from stress_report factor_variance_decomposition)."
+          },
+          {
+            "metric": "dominant_factor_variance_share",
+            "value": {
+              "factor": "equity",
+              "share": 0.833
+            },
+            "threshold": {
+              "moderate_gte": 0.25,
+              "high_gte": 0.4
+            },
+            "direction": "above_threshold",
+            "source": "block_2_3",
+            "interpretation": "Dominant factor by normalized variance contribution share."
+          },
+          {
+            "metric": "factor_beta_stability",
+            "value": {
+              "beta_usd": {
+                "beta_stability_label": "unavailable",
+                "unavailable_reason": "insufficient_beta_windows",
+                "windows_available": 0
+              },
+              "beta_cmd": {
+                "beta_stability_label": "stable",
+                "unavailable_reason": null,
+                "windows_available": 3
+              },
+              "beta_vix": {
+                "beta_stability_label": "unavailable",
+                "unavailable_reason": "insufficient_beta_windows",
+                "windows_available": 0
+              },
+              "beta_rr": {
+                "beta_stability_label": "unavailable",
+                "unavailable_reason": "insufficient_beta_windows",
+                "windows_available": 0
+              }
+            },
+            "threshold": "stable_moderately_changed_unstable_across_3y_5y_10y",
+            "direction": "below_threshold",
+            "source": "block_2_3",
+            "interpretation": "Point-in-time 3Y/5Y/10Y beta stability labels from Block 2.3 (not rolling beta summaries)."
+          },
+          {
+            "metric": "beta_cmd",
+            "value": 0.18,
+            "threshold": {
+              "moderate_abs_gte": 0.35,
+              "high_abs_gte": 0.5
+            },
+            "direction": "below_threshold",
+            "source": "block_2_3",
+            "interpretation": "5Y beta_cmd from Block 2.3 factor_beta_snapshot (informational under heuristic_v1)."
+          },
+          {
+            "metric": "worst_scenario_hedge_offset_check",
+            "value": {
+              "worst_scenario_id": "recession_severe",
+              "portfolio_pnl_pct": -0.14,
+              "hedge_assets_negative_with_portfolio_loss": [
+                {
+                  "ticker": "GLD",
+                  "pnl_pct": -0.01
+                }
+              ]
+            },
+            "threshold": "hedge_labeled_assets_must_help_when_portfolio_loses",
+            "direction": "conflicting",
+            "source": "block_3_stress",
+            "interpretation": "Whether hedge-labeled holdings offset portfolio loss in the worst available synthetic scenario."
+          },
+          {
+            "metric": "factor_oos_mae_5y",
+            "value": 0.03,
+            "threshold": {
+              "moderate_gte": 0.05,
+              "high_gte": 0.1
+            },
+            "direction": "below_threshold",
+            "source": "block_3_stress",
+            "interpretation": "Factor beta shock out-of-sample mean absolute error (5Y beta) from stress_report."
           }
         ],
         "explanation": "The detector gives a preliminary read on whether hedge-labeled exposure is likely to offset risk.",
@@ -1205,24 +1953,51 @@
           "inflation_stagflation"
         ],
         "confidence": "medium",
+        "limitations": [
+          "Hedge effectiveness is preliminary without Stress Lab confirmation; this alert does not claim actual hedge failure.",
+          "Stress Lab wire-time evidence supports a weak-hedge hypothesis; this remains diagnostic-only and is not a mandate or trade instruction.",
+          "Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
+        ],
         "data_quality_warnings": [
-          "preliminary_without_stress_lab"
+          "Correlation breakdown is limited because the primary-window correlation matrix is missing."
         ],
         "insufficient_evidence_reasons": [
           "rolling_correlation missing"
         ],
         "calculation_notes": [
-          "ruleset=heuristic_v1",
-          "score is a weighted average of available signal scores",
+          "ruleset=heuristic_v2",
+          "confidence_model=v2",
+          "score is a weighted average of available signal scores (renormalized by evaluable weight)",
           "evaluable_signal_weight=0.75",
-          "weak hedge behavior is preliminary_without_stress_lab",
-          "does not claim actual hedge failure without stress contribution data",
-          "weak hedge thresholds are heuristic_v1 product diagnostics"
-        ]
+          "cross_signal_agreement=agree",
+          "factor_confidence_penalty=weak_factor_evidence",
+          "weak hedge thresholds are heuristic_v2 product diagnostics",
+          "offset factor betas (usd/cmd/vix/rr) are informational evidence only under heuristic_v2",
+          "stress_enrichment_wire_time=block_3_summary",
+          "stress_evidence_supports_weak_hedge_hypothesis"
+        ],
+        "contributing_assets": [
+          {
+            "ticker": "TLT",
+            "weight_pct": 0.3,
+            "expected_role": "defensive",
+            "behavior_flag": "hedge_labeled",
+            "source": "block_2_1"
+          },
+          {
+            "ticker": "GLD",
+            "weight_pct": 0.1,
+            "expected_role": "crisis_hedge",
+            "behavior_flag": "hedge_labeled",
+            "source": "block_2_1"
+          }
+        ],
+        "confirmation_status": "confirmed",
+        "confidence_reason": "Medium confidence (model v2): evaluable signal weight 0.75; cross-signal agreement=agree. Factor signal confidence penalty: weak_factor_evidence. Data-quality warnings: Correlation breakdown is limited because the primary-window correlation matrix is missing.. Limitations: Hedge effectiveness is preliminary without Stress Lab confirmation; this alert does not claim actual hedge failure.; Stress Lab wire-time evidence supports a weak-hedge hypothesis; this remains diagnostic-only and is not a mandate or trade instruction.. Missing scored signals: rolling_correlation missing."
       },
       "tail_risk": {
         "status": "Medium",
-        "score": 47,
+        "score": 49,
         "evidence": [
           {
             "metric": "es_95",
@@ -1247,37 +2022,92 @@
             "interpretation": "Daily historical ES99 from Block 2.2 tail diagnostics."
           },
           {
-            "metric": "eee_10",
-            "value": 42.5,
+            "metric": "var_95",
+            "value": -0.02,
             "threshold": {
-              "moderate_lte": -0.03,
-              "high_lte": -0.06
+              "moderate_lte": -0.012,
+              "high_lte": -0.02
             },
-            "direction": "below_threshold",
-            "source": "portfolio_analytics",
-            "interpretation": "Expected exceedance estimate at 10% when available."
+            "direction": "above_threshold",
+            "source": "block_2_2",
+            "interpretation": "Daily historical VaR95 from Block 2.2 tail diagnostics."
           },
           {
-            "metric": "skewness",
-            "value": -0.2,
+            "metric": "var_99",
+            "value": -0.03,
             "threshold": {
-              "moderate_lte": -0.5,
-              "high_lte": -1.0
+              "moderate_lte": -0.02,
+              "high_lte": -0.035
+            },
+            "direction": "above_threshold",
+            "source": "block_2_2",
+            "interpretation": "Daily historical VaR99 from Block 2.2 tail diagnostics."
+          },
+          {
+            "metric": "downside_deviation",
+            "value": 0.065,
+            "threshold": {
+              "moderate_gte": 0.08,
+              "high_gte": 0.12
             },
             "direction": "below_threshold",
             "source": "block_2_2",
-            "interpretation": "Negative skewness can indicate left-tail asymmetry."
+            "interpretation": "Annualized downside deviation from Block 2.2."
           },
           {
-            "metric": "kurtosis",
-            "value": 1.1,
+            "metric": "max_drawdown",
+            "value": -0.22,
             "threshold": {
-              "moderate_gte": 4.0,
-              "high_gte": 7.0
+              "moderate_lte": -0.12,
+              "high_lte": -0.2
+            },
+            "direction": "above_threshold",
+            "source": "block_2_2",
+            "interpretation": "Maximum drawdown depth from Block 2.2 drawdown diagnostics."
+          },
+          {
+            "metric": "pct_time_underwater",
+            "value": 0.12,
+            "threshold": {
+              "moderate_gte": 0.25,
+              "high_gte": 0.45
             },
             "direction": "below_threshold",
             "source": "block_2_2",
-            "interpretation": "High kurtosis can indicate fat tails."
+            "interpretation": "Share of months spent below prior peak equity."
+          },
+          {
+            "metric": "longest_underwater_months",
+            "value": 10.0,
+            "threshold": {
+              "moderate_gte": 12.0,
+              "high_gte": 24.0
+            },
+            "direction": "below_threshold",
+            "source": "block_2_2",
+            "interpretation": "Longest underwater spell in months from Block 2.2."
+          },
+          {
+            "metric": "unrecovered_drawdown",
+            "value": 0.0,
+            "threshold": {
+              "moderate_gte": 0.5,
+              "high_gte": 1.0
+            },
+            "direction": "below_threshold",
+            "source": "block_2_2",
+            "interpretation": "1.0 when deepest drawdown is not yet recovered; 0.0 when recovered."
+          },
+          {
+            "metric": "count_drawdowns_gt_5",
+            "value": 2.0,
+            "threshold": {
+              "moderate_gte": 1.0,
+              "high_gte": 3.0
+            },
+            "direction": "above_threshold",
+            "source": "block_2_2",
+            "interpretation": "Count of drawdowns deeper than 5%."
           },
           {
             "metric": "count_drawdowns_gt_10",
@@ -1291,17 +2121,6 @@
             "interpretation": "Count of drawdowns deeper than 10%."
           },
           {
-            "metric": "count_drawdowns_gt_20",
-            "value": 1.0,
-            "threshold": {
-              "moderate_gte": 1.0,
-              "high_gte": 2.0
-            },
-            "direction": "above_threshold",
-            "source": "block_2_2",
-            "interpretation": "Count of drawdowns deeper than 20%."
-          },
-          {
             "metric": "downside_beta",
             "value": 0.9,
             "threshold": {
@@ -1311,6 +2130,171 @@
             "direction": "above_threshold",
             "source": "block_2_2",
             "interpretation": "Downside beta adds tail-behavior context."
+          },
+          {
+            "metric": "factor_variance_contribution",
+            "value": {
+              "equity": 0.833,
+              "real_rates": null,
+              "inflation": null,
+              "credit": 0.167,
+              "USD": null,
+              "commodity": null,
+              "VIX_volatility": null,
+              "us_growth": null
+            },
+            "threshold": "normalized_gross_variance_share_by_factor",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Normalized factor variance contribution shares from Block 2.3 (adapted from stress_report factor_variance_decomposition)."
+          },
+          {
+            "metric": "dominant_factor_variance_share",
+            "value": {
+              "factor": "equity",
+              "share": 0.833
+            },
+            "threshold": {
+              "moderate_gte": 0.25,
+              "high_gte": 0.4
+            },
+            "direction": "above_threshold",
+            "source": "block_2_3",
+            "interpretation": "Dominant factor by normalized variance contribution share."
+          },
+          {
+            "metric": "factor_risk_ranking",
+            "value": [
+              {
+                "rank": 1,
+                "factor": "equity",
+                "beta_name": "beta_eq",
+                "beta": 0.72,
+                "contribution": 0.833,
+                "confidence": "significant",
+                "ranking_metric": "variance_contribution",
+                "ranking_score": 0.833,
+                "interpretation": "The portfolio shows sensitivity to equity risk. In risk-off markets, its behavior may be driven more by equity beta than by the number of holdings."
+              },
+              {
+                "rank": 2,
+                "factor": "credit",
+                "beta_name": "beta_credit",
+                "beta": 0.31,
+                "contribution": 0.167,
+                "confidence": "significant",
+                "ranking_metric": "variance_contribution",
+                "ranking_score": 0.167,
+                "interpretation": "The portfolio may carry credit or liquidity-sensitive risk, especially if income assets behave like risk-on exposure during market stress."
+              },
+              {
+                "rank": 3,
+                "factor": "commodity",
+                "beta_name": "beta_cmd",
+                "beta": 0.18,
+                "contribution": null,
+                "confidence": "weak_evidence",
+                "ranking_metric": "absolute_beta_adjusted_by_confidence",
+                "ranking_score": 0.117,
+                "interpretation": "Commodity sensitivity may provide inflation linkage or introduce cyclical exposure depending on sign and stability."
+              }
+            ],
+            "threshold": "top3_by_variance_contribution_or_abs_beta",
+            "direction": "present",
+            "source": "block_2_3",
+            "interpretation": "Top factor risk ranking rows from Block 2.3 (variance contribution preferred)."
+          },
+          {
+            "metric": "factor_beta_stability",
+            "value": {
+              "beta_vix": {
+                "beta_stability_label": "unavailable",
+                "unavailable_reason": "insufficient_beta_windows",
+                "windows_available": 0
+              }
+            },
+            "threshold": "stable_moderately_changed_unstable_across_3y_5y_10y",
+            "direction": "below_threshold",
+            "source": "block_2_3",
+            "interpretation": "Point-in-time 3Y/5Y/10Y beta stability labels from Block 2.3 (not rolling beta summaries)."
+          },
+          {
+            "metric": "drawdown_recovered",
+            "value": true,
+            "threshold": "false_elevates_unrecovered_drawdown_score",
+            "direction": "below_threshold",
+            "source": "block_2_2",
+            "interpretation": "Whether the deepest drawdown episode has recovered per Block 2.2."
+          },
+          {
+            "metric": "recovery_months",
+            "value": 4.0,
+            "threshold": "informational_only",
+            "direction": "present",
+            "source": "block_2_2",
+            "interpretation": "Months to recover from the deepest drawdown episode when available."
+          },
+          {
+            "metric": "vol_of_vol",
+            "value": 0.04,
+            "threshold": {
+              "moderate_gte": 0.15,
+              "high_gte": 0.25
+            },
+            "direction": "below_threshold",
+            "source": "block_2_2",
+            "interpretation": "vol_of_vol from Block 2.2 metadata; proxy for volatility instability (not a formal regime-change detector)."
+          },
+          {
+            "metric": "rel_vol_of_vol",
+            "value": 0.35,
+            "threshold": {
+              "moderate_gte": 0.15,
+              "high_gte": 0.25
+            },
+            "direction": "above_threshold",
+            "source": "block_2_2",
+            "interpretation": "rel_vol_of_vol from Block 2.2 metadata; proxy for volatility instability (not a formal regime-change detector)."
+          },
+          {
+            "metric": "rolling_volatility_12m_latest",
+            "value": 0.11,
+            "threshold": "informational_latest_panel",
+            "direction": "present",
+            "source": "block_2_2",
+            "interpretation": "Latest 12-month rolling annualized volatility from Block 2.2 panel (full series in referenced CSV)."
+          },
+          {
+            "metric": "eee_10",
+            "value": 42.5,
+            "threshold": "informational_only",
+            "direction": "present",
+            "source": "block_2_2",
+            "interpretation": "Expected exceedance estimate at 10% when available."
+          },
+          {
+            "metric": "skewness",
+            "value": -0.2,
+            "threshold": "informational_only",
+            "direction": "present",
+            "source": "block_2_2",
+            "interpretation": "Negative skewness can indicate left-tail asymmetry."
+          },
+          {
+            "metric": "kurtosis",
+            "value": 1.1,
+            "threshold": "informational_only",
+            "direction": "present",
+            "source": "block_2_2",
+            "interpretation": "High kurtosis can indicate fat tails."
+          },
+          {
+            "metric": "count_drawdowns_gt_20",
+            "value": 1.0,
+            "threshold": "informational_only",
+            "direction": "present",
+            "source": "block_2_2",
+            "interpretation": "Count of drawdowns deeper than 20%."
           }
         ],
         "explanation": "The detector checks whether rare but large losses are visible in tail and drawdown diagnostics.",
@@ -1320,15 +2304,48 @@
           "equity_shock",
           "liquidity_shock"
         ],
-        "confidence": "high",
+        "confidence": "low",
+        "limitations": [
+          "Rolling Sharpe instability is not exported in Block 2.2 product surface; vol_of_vol and rel_vol_of_vol are used as volatility-regime proxy evidence only.",
+          "Formal sudden volatility-regime detection is outside Core MVP; interpret rolling volatility latest as indicative, not a regime classifier.",
+          "Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
+        ],
         "data_quality_warnings": [],
         "insufficient_evidence_reasons": [],
         "calculation_notes": [
-          "ruleset=heuristic_v1",
-          "score is a weighted average of available signal scores",
+          "ruleset=heuristic_v2",
+          "confidence_model=v2",
+          "score is a weighted average of available signal scores (renormalized by evaluable weight)",
           "evaluable_signal_weight=1.0",
-          "tail risk thresholds are heuristic_v1 product diagnostics"
-        ]
+          "cross_signal_agreement=conflict",
+          "tail risk scored signals renormalized in Session 07 (var, drawdown persistence, underwater)",
+          "tail risk thresholds are heuristic_v2 product diagnostics"
+        ],
+        "contributing_assets": [
+          {
+            "ticker": "SPY",
+            "weight_pct": 0.45,
+            "expected_role": "equity",
+            "behavior_flag": "largest_capital_weight",
+            "source": "block_2_1"
+          },
+          {
+            "ticker": "TLT",
+            "weight_pct": 0.3,
+            "expected_role": "fixed_income",
+            "behavior_flag": "largest_capital_weight",
+            "source": "block_2_1"
+          },
+          {
+            "ticker": "HYG",
+            "weight_pct": 0.15,
+            "expected_role": "fixed_income",
+            "behavior_flag": "largest_capital_weight",
+            "source": "block_2_1"
+          }
+        ],
+        "confirmation_status": "not_applicable",
+        "confidence_reason": "Low confidence (model v2): evaluable signal weight 1.0; cross-signal agreement=conflict. Limitations: Rolling Sharpe instability is not exported in Block 2.2 product surface; vol_of_vol and rel_vol_of_vol are used as volatility-regime proxy evidence only.; Formal sudden volatility-regime detection is outside Core MVP; interpret rolling volatility latest as indicative, not a regime classifier.."
       }
     },
     "top_hidden_risks": [
@@ -1336,7 +2353,7 @@
         "alert_id": "hidden_equity_beta",
         "status": "Medium",
         "score": 57,
-        "confidence": "high"
+        "confidence": "medium"
       },
       {
         "alert_id": "weak_hedge_behavior",
@@ -1351,12 +2368,15 @@
         "confidence": "medium"
       }
     ],
-    "data_quality_warnings": [],
+    "data_quality_warnings": [
+      "Correlation breakdown is limited because the primary-window correlation matrix is missing."
+    ],
     "diagnostics_meta": {
       "method": "rule_based_hidden_exposure_detector",
-      "version": "v1",
-      "ruleset": "heuristic_v1",
-      "threshold_policy": "heuristic_v1",
+      "version": "v2",
+      "ruleset": "heuristic_v2",
+      "threshold_policy": "heuristic_v2",
+      "confidence_model": "v2",
       "signal_weights": {
         "hidden_equity_beta": {
           "beta_portfolio": 0.25,
@@ -1387,14 +2407,18 @@
           "equity_or_credit_beta": 0.2
         },
         "tail_risk": {
-          "es_95": 0.22,
-          "es_99": 0.16,
-          "eee_10": 0.1,
-          "skewness": 0.1,
-          "kurtosis": 0.1,
-          "count_drawdowns_gt_10": 0.1,
-          "count_drawdowns_gt_20": 0.08,
-          "downside_beta": 0.14
+          "es_95": 0.1,
+          "es_99": 0.08,
+          "var_95": 0.1,
+          "var_99": 0.08,
+          "downside_deviation": 0.08,
+          "max_drawdown": 0.12,
+          "pct_time_underwater": 0.1,
+          "longest_underwater_months": 0.08,
+          "unrecovered_drawdown": 0.08,
+          "count_drawdowns_gt_5": 0.05,
+          "count_drawdowns_gt_10": 0.05,
+          "downside_beta": 0.08
         }
       },
       "status_bands": {
@@ -1419,6 +2443,73 @@
         "block_2_1_asset_allocation",
         "block_2_2_portfolio_metrics",
         "block_2_3_factor_exposure"
+      ],
+      "blocked_upstream_fields": [
+        {
+          "field": "duration_bucket",
+          "reason": "Not aggregated in Block 2.1 Core MVP product surface.",
+          "owner_block": "block_2_1",
+          "target_session": "04b"
+        },
+        {
+          "field": "credit_quality",
+          "reason": "Not aggregated in Block 2.1 Core MVP product surface.",
+          "owner_block": "block_2_1",
+          "target_session": "04b"
+        },
+        {
+          "field": "by_subtype",
+          "reason": "Credit-sensitive subtype weights are not in Block 2.1 breakdown.",
+          "owner_block": "block_2_1",
+          "target_session": "04b"
+        },
+        {
+          "field": "issuer",
+          "reason": "Issuer concentration is not aggregated in Block 2.1.",
+          "owner_block": "block_2_1",
+          "target_session": "04b"
+        },
+        {
+          "field": "thematic_primary",
+          "reason": "Thematic overlap is not aggregated in Block 2.1.",
+          "owner_block": "block_2_1",
+          "target_session": "04b"
+        },
+        {
+          "field": "rolling_correlation_instability",
+          "reason": "Rolling correlation instability summary is not in Block 2.2 product surface.",
+          "owner_block": "block_2_2",
+          "target_session": "04b"
+        },
+        {
+          "field": "rolling_rates_beta",
+          "reason": "Rolling rates beta is not in Block 2.2/2.3 product surface.",
+          "owner_block": "block_2_2",
+          "target_session": "04b"
+        },
+        {
+          "field": "asset_level_credit_equity_correlation",
+          "reason": "Asset-level credit-equity correlation is outside Core MVP product blocks.",
+          "owner_block": "n/a",
+          "target_session": "overengineer"
+        },
+        {
+          "field": "per_asset_tail_es",
+          "reason": "Per-asset tail ES is not in Block 2.2 product surface.",
+          "owner_block": "block_2_2",
+          "target_session": "advanced"
+        }
+      ],
+      "stress_enrichment_wire_time": true,
+      "stress_enrichment_sources": [
+        "scenario_results_worst_loss",
+        "factor_beta_shock_oos"
+      ],
+      "legacy_enrichment_wire_time": true,
+      "legacy_enrichment_sources": [
+        "portfolio_pca.raw",
+        "portfolio_pca.residual",
+        "factor_variance_decomposition"
       ]
     }
   },
@@ -1867,13 +2958,13 @@
       {
         "risk_type": "volatility_spike",
         "risk_title": "Volatility spike risk",
-        "score_0_100": 34,
+        "score_0_100": 35,
         "severity": "Low",
         "confidence": "medium",
         "evidence": [
           {
             "metric": "tail_risk_score",
-            "value": 47,
+            "value": 49,
             "threshold_key": null,
             "direction": "present",
             "source": "block_2_4",

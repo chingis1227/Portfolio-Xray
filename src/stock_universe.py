@@ -20,7 +20,7 @@ from src.etf_universe import (
 
 DEFAULT_UNIVERSE_PATH = Path(__file__).resolve().parent.parent / "config" / "stock_universe.yml"
 ASSET_CLASSES = {"equity"}
-INDEX_MEMBERSHIP_VALUES = {"SP500"}
+INDEX_MEMBERSHIP_VALUES = {"SP500", "R1000", "R3000"}
 
 REQUIRED_FIELDS = {
     "ticker",
@@ -233,11 +233,11 @@ def _validate_record(record: dict[str, Any], idx: int) -> tuple[list[dict[str, A
                 errors.append(
                     _issue("invalid_enum", f"Invalid index_membership value: {value!r}", ticker, field="index_membership", value=value)
                 )
-        if membership != ["SP500"]:
+        if len(membership) != 1 or membership[0] not in INDEX_MEMBERSHIP_VALUES:
             errors.append(
                 _issue(
                     "invalid_index_membership",
-                    "V1 stock universe requires index_membership=[SP500]",
+                    "Stock universe requires exactly one primary index_membership tag (SP500, R1000, or R3000)",
                     ticker,
                     field="index_membership",
                     value=membership,

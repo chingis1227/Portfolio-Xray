@@ -13,7 +13,7 @@ from typing import Any, Literal
 import yaml
 
 from src.etf_universe import load_etf_universe, validate_etf_universe
-from src.stock_universe import load_stock_universe, validate_stock_universe
+from src.stock_universe import INDEX_MEMBERSHIP_VALUES, load_stock_universe, validate_stock_universe
 from src.universe_ingestion import enrich_draft_stocks, load_production_stock_sector_lookup
 
 MergeKind = Literal["etf", "stock"]
@@ -57,6 +57,7 @@ class MergePlan:
     etf_skipped_needs_review: list[str] = field(default_factory=list)
     stock_skipped_needs_review: list[str] = field(default_factory=list)
     stock_skipped_not_sp500: list[str] = field(default_factory=list)
+    stock_skipped_invalid_index: list[str] = field(default_factory=list)
     stock_skipped_unknown_sector: list[str] = field(default_factory=list)
     etf_conflicts: list[dict[str, Any]] = field(default_factory=list)
     stock_conflicts: list[dict[str, Any]] = field(default_factory=list)
@@ -86,6 +87,7 @@ def build_merge_plan(
     include_stocks: bool = False,
     enrich_stocks_yahoo: bool = False,
     enrich_stocks_yahoo_limit: int | None = None,
+    stock_batch_mode: bool = False,
 ) -> tuple[MergePlan, dict[str, Any]]:
     """Compute merge plan without writing production files."""
     draft_etfs = load_draft_universe_yaml(draft_etf_path) if include_etfs else []
@@ -134,7 +136,14 @@ def build_merge_plan(
             plan.stock_skipped_needs_review.append(t)
             continue
         membership = row.get("index_membership") or []
-        if membership != ["SP500"]:
+        if stock_batch_mode:
+            if (
+                len(membership) != 1
+                or membership[0] not in INDEX_MEMBERSHIP_VALUES
+            ):
+                plan.stock_skipped_invalid_index.append(t)
+                continue
+        elif membership != ["SP500"]:
             plan.stock_skipped_not_sp500.append(t)
             continue
         if str(row.get("sector") or "") in ("", "Unknown") or str(row.get("industry") or "") in ("", "Unknown"):
@@ -171,6 +180,7 @@ def merge_plan_to_report(plan: MergePlan, meta: dict[str, Any]) -> dict[str, Any
             "etf_skipped_needs_review": len(plan.etf_skipped_needs_review),
             "stock_skipped_needs_review": len(plan.stock_skipped_needs_review),
             "stock_skipped_not_sp500": len(plan.stock_skipped_not_sp500),
+            "stock_skipped_invalid_index": len(plan.stock_skipped_invalid_index),
             "stock_skipped_unknown_sector": len(plan.stock_skipped_unknown_sector),
             "etf_conflicts": len(plan.etf_conflicts),
             "stock_conflicts": len(plan.stock_conflicts),
@@ -263,6 +273,7 @@ def format_merge_plan_text(report: dict[str, Any]) -> str:
         f"  ETF skipped (already exists): {s.get('etf_skipped_existing', 0)}",
         f"  ETF conflicts: {s.get('etf_conflicts', 0)}",
         f"  Stock skipped (not SP500): {s.get('stock_skipped_not_sp500', 0)}",
+        f"  Stock skipped (invalid index): {s.get('stock_skipped_invalid_index', 0)}",
         f"  Stock skipped (unknown sector): {s.get('stock_skipped_unknown_sector', 0)}",
     ]
     sample = report.get("etf_to_add_tickers") or []

@@ -9,6 +9,7 @@ import pytest
 import yaml
 
 from run_report import run_materialize_analysis_subject_report
+from scripts.core_mvp_validation_contract import assert_block_2_4_product_contract
 from src.config_schema import validate_config
 from src.real_cash import partition_market_data_tickers
 
@@ -183,6 +184,7 @@ def test_core_mvp_blocks_1_3_fixture_matrix_materialize_and_validate(tmp_path: P
 
         # Block 2: required X-Ray keys.
         assert REQUIRED_BLOCK2_KEYS <= set(portfolio_xray.keys()), f"{fixture_id}: missing Block 2 keys"
+        assert_block_2_4_product_contract(portfolio_xray["block_2_4_hidden_exposure"])
 
         # Block 3: required Stress keys and canonical scenario IDs.
         assert REQUIRED_BLOCK3_KEYS <= set(stress_report.keys()), f"{fixture_id}: missing Block 3 keys"

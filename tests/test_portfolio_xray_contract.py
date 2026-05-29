@@ -1,4 +1,4 @@
-"""Golden JSON and schema contract tests for portfolio_xray.json (Session 09 / RM-949)."""
+"""Golden JSON and schema contract tests for portfolio_xray.json (Session 10 / RM-949)."""
 from __future__ import annotations
 
 import json
@@ -7,6 +7,8 @@ from typing import Any
 
 import pytest
 
+from scripts.core_mvp_validation_contract import assert_block_2_4_product_contract
+from src.block_2_4_hidden_exposure import ALERT_IDS, BLOCK_2_4_ID, CONFIRMATION_STATUSES
 from src.portfolio_xray import PORTFOLIO_XRAY_VERSION, XRAY_SECTION_KEYS, XRAY_THRESHOLDS
 
 import portfolio_xray_golden_inputs as golden_inputs
@@ -80,7 +82,7 @@ def assert_top_level_contract(doc: dict[str, Any]) -> None:
     assert block_23.get("block") == "2.3_factor_exposure"
     block_24 = doc.get("block_2_4_hidden_exposure")
     assert isinstance(block_24, dict)
-    assert block_24.get("block") == "2.4_hidden_exposure"
+    assert_block_2_4_product_contract(block_24)
     block_25 = doc.get("block_2_5_risk_budget_view")
     assert isinstance(block_25, dict)
     assert_block_2_5_product_contract(block_25)
@@ -185,6 +187,21 @@ def contract_fingerprint(doc: dict[str, Any]) -> dict[str, Any]:
     if isinstance(block_24, dict):
         fp["block_2_4_present"] = True
         fp["block_2_4_status"] = block_24.get("status")
+        meta_24 = block_24.get("diagnostics_meta") or {}
+        fp["block_2_4_ruleset"] = meta_24.get("ruleset")
+        fp["block_2_4_alert_ids"] = list(block_24.get("alerts") or {})
+        fp["block_2_4_blocked_upstream_count"] = len(meta_24.get("blocked_upstream_fields") or [])
+        fp["block_2_4_weak_hedge_confirmation"] = (
+            (block_24.get("alerts") or {}).get("weak_hedge_behavior") or {}
+        ).get("confirmation_status")
+        corr_metrics = {
+            row.get("metric")
+            for row in (block_24.get("alerts") or {})
+            .get("correlation_concentration", {})
+            .get("evidence", [])
+        }
+        fp["block_2_4_has_avg_pairwise_correlation"] = "avg_pairwise_correlation" in corr_metrics
+        fp["block_2_4_has_legacy_pca_cross_ref"] = "legacy_pca_pc1_raw" in corr_metrics
     block_25 = doc.get("block_2_5_risk_budget_view")
     if isinstance(block_25, dict):
         fp["block_2_5_present"] = True
@@ -227,6 +244,29 @@ def test_golden_post_audit_surface_items(golden_fixture: dict[str, Any]) -> None
     assert fp["has_multi_window_metrics"] is True
     assert fp["volatility_spike_evidence_mode"] == "factor_only"
     assert fp["primary_archetype"]
+
+
+def test_golden_block_2_4_hidden_exposure_surface(golden_fixture: dict[str, Any]) -> None:
+    block = golden_fixture["block_2_4_hidden_exposure"]
+    assert_block_2_4_product_contract(block)
+    assert block["status"] == "ok"
+    assert block["diagnostics_meta"]["ruleset"] == "heuristic_v2"
+    assert block["alerts"]["weak_hedge_behavior"]["confirmation_status"] in CONFIRMATION_STATUSES
+    corr_metrics = {row["metric"] for row in block["alerts"]["correlation_concentration"]["evidence"]}
+    b22_avg = (
+        (golden_fixture.get("block_2_2_portfolio_metrics") or {})
+        .get("correlation_breakdown", {})
+        .get("avg_pairwise_correlation")
+    )
+    if b22_avg is not None:
+        assert "avg_pairwise_correlation" in corr_metrics
+    assert "legacy_pca_pc1_raw" in corr_metrics
+    tail_metrics = {row["metric"] for row in block["alerts"]["tail_risk"]["evidence"]}
+    assert "var_95" in tail_metrics
+    assert "pct_time_underwater" in tail_metrics
+    for alert_id in ALERT_IDS:
+        assert "contributing_assets" in block["alerts"][alert_id]
+        assert "limitations" in block["alerts"][alert_id]
 
 
 def test_golden_block_2_5_risk_budget_surface(golden_fixture: dict[str, Any]) -> None:

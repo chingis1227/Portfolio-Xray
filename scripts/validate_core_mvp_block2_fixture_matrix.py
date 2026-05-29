@@ -25,6 +25,8 @@ if str(REPO_ROOT) not in sys.path:
 from scripts.core_mvp_validation_contract import (
     BLOCK2_CORE_MVP_ROLLUP_KEYS,
     BLOCK2_OPTIONAL_DIAGNOSTIC_KEYS,
+    BLOCK24_REQUIRED_TOP_LEVEL_FIELDS,
+    check_block_2_4_hidden_exposure,
     core_mvp_block2_block_status,
     core_mvp_block2_fixture_status,
     is_informational_block23_warning,
@@ -50,6 +52,7 @@ DERIVED_REQUIRED_FIELDS = {
         "return_risk_metrics",
         "drawdown_diagnostics",
     ],
+    "block_2_4_hidden_exposure": list(BLOCK24_REQUIRED_TOP_LEVEL_FIELDS),
 }
 
 BLOCK_23_REQUIRED_FIELDS = [
@@ -295,6 +298,12 @@ def _validate_fixture(portfolio_xray_path: Path) -> dict[str, Any]:
                 # leakage in Block 2.3 is a hard failure
                 block_row["status"] = "failed"
                 block_row["core_mvp_status"] = "failed"
+        if block_key == "block_2_4_hidden_exposure":
+            block_row["special_checks"] = check_block_2_4_hidden_exposure(block)
+            if block_row["special_checks"]["contract_violations"]:
+                block_row["status"] = "partial"
+                block_row["core_mvp_status"] = "partial"
+                block_row["product_status"] = "partial"
 
         result["block_results"][block_key] = block_row
 

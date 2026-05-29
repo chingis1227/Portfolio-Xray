@@ -4,7 +4,8 @@ from typing import Any
 
 import pandas as pd
 
-from portfolio_xray_golden_inputs import build_golden_document
+import portfolio_xray_golden_inputs as golden_inputs
+from scripts.core_mvp_validation_contract import assert_block_2_4_product_contract
 from src.analysis_setup import build_analysis_setup
 from src.config import resolve_cash_and_rf
 from src.config_schema import validate_config
@@ -110,12 +111,14 @@ def test_block_1_core_mvp_contract_is_minimal_and_real_cash_safe() -> None:
 
 
 def test_block_2_product_blocks_are_clean_consumer_surface() -> None:
-    xray = build_golden_document()
+    xray = golden_inputs.build_golden_document()
 
     assert set(BLOCK_2_PRODUCT_KEYS) <= set(xray)
     for key in BLOCK_2_PRODUCT_KEYS:
         found = sorted(set(_find_forbidden_keys(xray[key])))
         assert not found, f"{key} contains forbidden Core MVP contamination keys: {found}"
+
+    assert_block_2_4_product_contract(xray["block_2_4_hidden_exposure"])
 
     legacy = xray.get("legacy_summary") or {}
     assert legacy.get("_scope", {}).get("product_surface") is False

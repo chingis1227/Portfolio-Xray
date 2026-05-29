@@ -141,6 +141,36 @@ python scripts/merge_draft_universe.py --ingestion-dir output/universe_ingestion
   --include-stocks --enrich-stocks-yahoo --confirm
 ```
 
+### Stock Batch 1 (index-based, up to 1000 names)
+
+Controlled expansion from index membership (not bulk Nasdaq listing merge):
+
+```bash
+# Build draft + review artifacts (no production writes)
+python scripts/build_stock_batch1.py --output-dir output/stock_batch1
+
+# Preview merge for accepted new tickers only
+python scripts/merge_draft_universe.py --stock-batch-dir output/stock_batch1
+
+# Apply merge after explicit review (blocked if stock_batch1_review_report.json merge_ready=false)
+python scripts/merge_draft_universe.py --stock-batch-dir output/stock_batch1 --confirm
+
+# Post-merge validation
+python run_stock_universe.py validate
+python scripts/taxonomy_onboard_report.py --tickers TICK1,TICK2 --format text
+```
+
+Sources (live run):
+
+| Field | Source |
+| --- | --- |
+| S&P 500 | Wikipedia GICS table |
+| Russell 1000 | iShares IWB holdings CSV (or local `--r1000-csv`) |
+| Russell 3000 | iShares IWV holdings CSV (or local `--r3000-csv`) |
+| Sector/industry | Index file / Wikipedia GICS; production lookup; optional Yahoo (`yfinance`) |
+
+Artifacts: `draft_stock_universe_batch1.yml`, `stock_batch1_review_report.json`, `needs_review_stocks.csv`, `stock_batch1_accepted_tickers.txt`.
+
 Stock sector/industry enrichment:
 
 - Automatic cross-reference from production `stock_universe.yml` during ingestion

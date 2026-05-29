@@ -13,7 +13,11 @@ from src.analysis_setup import resolved_analysis_weights
 from src.block_2_1_asset_allocation import build_block_2_1_asset_allocation, enrich_taxonomy_with_real_cash
 from src.block_2_2_portfolio_metrics import build_block_2_2_portfolio_metrics
 from src.block_2_3_factor_exposure import build_block_2_3_factor_exposure
-from src.block_2_4_hidden_exposure import build_block_2_4_hidden_exposure
+from src.block_2_4_hidden_exposure import (
+    build_block_2_4_hidden_exposure,
+    build_block_2_4_legacy_enrichment,
+    build_block_2_4_stress_enrichment,
+)
 from src.block_2_5_risk_budget_view import build_block_2_5_risk_budget_view
 from src.block_2_6_portfolio_weakness_map import build_block_2_6_portfolio_weakness_map
 from src.real_cash import collect_real_cash_tickers
@@ -3475,6 +3479,13 @@ def build_portfolio_xray_v2(
         block_2_1_asset_allocation,
         block_2_2_portfolio_metrics,
         block_2_3_factor_exposure,
+        taxonomy_rows=tax_rows,
+        stress_enrichment=build_block_2_4_stress_enrichment(
+            stress_report,
+            block_2_1=block_2_1_asset_allocation,
+            taxonomy_rows=tax_rows,
+        ),
+        legacy_enrichment=build_block_2_4_legacy_enrichment(stress_report),
     )
     block_2_5_risk_budget_view = build_block_2_5_risk_budget_view(
         block_2_1_asset_allocation,

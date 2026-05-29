@@ -13,7 +13,11 @@ from mvp_offline_fixtures import (
     snapshot_10y,
     write_json,
 )
-from src.block_2_2_portfolio_metrics import BLOCK_2_2_ID, build_block_2_2_portfolio_metrics
+from src.block_2_2_portfolio_metrics import (
+    BLOCK_2_2_ID,
+    avg_pairwise_correlation,
+    build_block_2_2_portfolio_metrics,
+)
 
 
 BLOCK_2_2_TOP_LEVEL_KEYS = frozenset(
@@ -111,6 +115,7 @@ def assert_block_2_2_product_contract(block: dict[str, Any]) -> None:
     assert set(corr) >= {
         "top3_highest_correlation_pairs",
         "top3_lowest_correlation_pairs",
+        "avg_pairwise_correlation",
         "full_matrix_available",
         "full_matrix_ref",
     }
@@ -170,6 +175,16 @@ def test_build_block_2_2_contract_and_top_correlation_pairs_from_csv(tmp_path: A
     lowest = doc["correlation_breakdown"]["top3_lowest_correlation_pairs"]
     assert highest[0] == {"ticker_a": "BND", "ticker_b": "GLD", "correlation": 0.92}
     assert lowest[0] == {"ticker_a": "GLD", "ticker_b": "SPY", "correlation": 0.05}
+    assert doc["correlation_breakdown"]["avg_pairwise_correlation"] == 0.507
+
+
+def test_avg_pairwise_correlation_helper() -> None:
+    corr = pd.DataFrame(
+        [[1.0, 0.55, 0.05], [0.55, 1.0, 0.92], [0.05, 0.92, 1.0]],
+        index=["SPY", "BND", "GLD"],
+        columns=["SPY", "BND", "GLD"],
+    )
+    assert avg_pairwise_correlation(corr) == 0.507
 
 
 def test_build_block_2_2_top_correlation_pairs_from_in_memory_matrix() -> None:
@@ -197,6 +212,7 @@ def test_build_block_2_2_top_correlation_pairs_from_in_memory_matrix() -> None:
         "ticker_b": "GLD",
         "correlation": 0.92,
     }
+    assert doc["correlation_breakdown"]["avg_pairwise_correlation"] == 0.507
     assert not any("correlation matrix is missing" in w.lower() for w in doc["data_quality_warnings"])
 
 

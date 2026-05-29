@@ -514,6 +514,7 @@ Boolean flags only (no series embedded). Keys: `rolling_sharpe_12m`, `rolling_so
 | --- | --- | --- |
 | `top3_highest_correlation_pairs` | array | Up to 3 pair objects (below), descending correlation |
 | `top3_lowest_correlation_pairs` | array | Up to 3 pair objects, ascending correlation among valid pairs |
+| `avg_pairwise_correlation` | number \| null | Mean off-diagonal Pearson correlation (upper triangle); `null` when matrix unavailable |
 | `full_matrix_available` | boolean | `true` when primary-window `correlation_matrix_{suffix}.csv` exists on disk |
 | `full_matrix_ref` | string \| null | Basename e.g. `correlation_matrix_10y.csv` — advanced drill-down only |
 
@@ -675,7 +676,7 @@ Question answered: What risks are not obvious from headline allocation?
 
 #### 2.4.1 Block 2.4 product contract (`block_2_4_hidden_exposure`)
 
-Status: **implemented** (ExecPlan [Block 2.4 Hidden Exposure](../exec_plans/2026-05-26_block_2_4_hidden_exposure_plan.md)). **Implementation:** `src/block_2_4_hidden_exposure.py` -> `build_block_2_4_hidden_exposure`, wired from `build_portfolio_xray_v2`.
+Status: **implemented** — Core MVP (ExecPlan [Block 2.4 Hidden Exposure](../exec_plans/2026-05-26_block_2_4_hidden_exposure_plan.md), 2026-05-26) and institutional upgrade **Completed** (ExecPlan [Block 2.4 institutional upgrade](../exec_plans/2026-05-29_block_2_4_institutional_upgrade_plan.md), Sessions 01–13 closed 2026-05-29; matrix sign-off: [audit](../audits/2026-05-29_block_2_4_completion_matrix_v2_signoff.md)). **Implementation:** `src/block_2_4_hidden_exposure.py` -> `build_block_2_4_hidden_exposure`, wired from `build_portfolio_xray_v2`.
 
 **Artifact placement:** top-level key `block_2_4_hidden_exposure` on `portfolio_xray.json` under the active output folder (portfolio-first: `{output_dir_final}/analysis_subject/portfolio_xray.json`). Do **not** introduce a separate `hidden_exposure.json` in the six-file product bundle.
 
@@ -690,9 +691,54 @@ Status: **implemented** (ExecPlan [Block 2.4 Hidden Exposure](../exec_plans/2026
 - `alerts`: exactly `hidden_equity_beta`, `duration_concentration`, `credit_liquidity_risk`, `correlation_concentration`, `weak_hedge_behavior`, and `tail_risk`
 - `top_hidden_risks`
 - `data_quality_warnings`
-- `diagnostics_meta`
+- `diagnostics_meta` (includes `blocked_upstream_fields[]` registry for upstream dimensions deferred to later sessions)
 
-Each alert contains `status`, `score`, `evidence`, `explanation`, `why_it_matters`, `next_tests`, `confidence`, `data_quality_warnings`, `insufficient_evidence_reasons`, and `calculation_notes`. Alert status is `Low`, `Medium`, `High`, or `Unavailable`. Scores map to `Low` 0–39, `Medium` 40–69, and `High` 70–100. `Unavailable` uses `score: null`.
+Each alert contains `status`, `score`, `evidence`, `explanation`, `why_it_matters`, `next_tests`, `confidence`, `confidence_reason`, `confirmation_status`, `limitations`, `data_quality_warnings`, `insufficient_evidence_reasons`, and `calculation_notes`. `limitations` is always present (`[]` when none). Alert status is `Low`, `Medium`, `High`, or `Unavailable`. Scores map to `Low` 0–39, `Medium` 40–69, and `High` 70–100. `Unavailable` uses `score: null`.
+
+**Duplicate exposure (Block 2.1):** `correlation_concentration.duplicate_exposure_weight` must read `combined_weight` or `combined_weight_pct` from `duplicate_exposure_flags` (primary keys). Legacy keys (`observed`, `group_weight`, `weight`, `duplicate_weight`) are fallback only. When flags exist, include informational evidence `duplicate_exposure_groups` with `duplicate_group_id`, `tickers`, `canonical_ticker`, and resolved `combined_weight`.
+
+**Blocked upstream registry:** `diagnostics_meta.blocked_upstream_fields` lists `{field, reason, owner_block, target_session}` for product dimensions not yet surfaced in Blocks 2.1–2.3 (e.g. `duration_bucket`, `credit_quality`, `rolling_correlation_instability`). Alerts must cite related rows in `limitations[]` where applicable rather than silently omitting the dimension.
+
+**Taxonomy / currency sub-signals (Session 02+):** informational evidence only under `heuristic_v2` score weights (unchanged from Session 02–05 informational wiring). Block 2.1 `concentration_flags` and `capital_allocation_breakdown.by_currency` feed:
+
+| Alert | Evidence metrics (when upstream present) |
+| --- | --- |
+| `hidden_equity_beta` | `equity_weight`, `risk_on_weight` |
+| `duration_concentration` | `main_risk_factor_dominance_flags` |
+| `credit_liquidity_risk` | `region_concentration_flags`, `asset_class_concentration_flags` |
+| `correlation_concentration` | `dominant_currency_weight`, `usd_exposure_weight`, `single_currency_dominance_flags`, `investor_currency_mismatch` (Block 2.2 `investor_currency` vs dominant `by_currency` label) |
+| `correlation_concentration` | `top3_lowest_correlation_pairs`, `lowest_pair_correlation`, `avg_pairwise_correlation`, `lack_of_diversifying_pairs` (Block 2.2 `correlation_breakdown`; informational only under `heuristic_v2`) |
+| `hidden_equity_beta` | `equity_like_high_correlation_pairs` (pairs involving equity-like non-equity taxonomy labels; requires `taxonomy_rows` at wire time) |
+
+**Factor concentration sub-signals (Session 05+):** informational evidence from Block 2.3 only (score weights unchanged in Session 05–06; evidence-only). Distributed across alerts:
+
+| Alert | Evidence metrics (when Block 2.3 present) |
+| --- | --- |
+| `hidden_equity_beta` | `production_factor_betas_5y`, `production_factor_confidence`, `factor_variance_contribution`, `dominant_factor_variance_share`, `factor_risk_ranking`, `factor_beta_stability`, `kalman_current_betas`, supplemental `beta_us_growth` |
+| `duration_concentration` | `beta_inf`, variance/ranking/stability/Kalman for rates/inflation (`beta_rr`, `beta_inf`) |
+| `credit_liquidity_risk` | variance/ranking/stability/Kalman for credit-related betas |
+| `correlation_concentration` | `factor_variance_contribution`, `factor_risk_ranking` |
+| `weak_hedge_behavior` | offset betas `beta_usd`, `beta_cmd`, `beta_vix`, `beta_rr` (+ Kalman/stability for same keys) |
+| `tail_risk` | `beta_vix`, variance/ranking/stability/Kalman for `beta_vix` |
+
+**Tail / drawdown / vol instability (Session 07+):** `tail_risk` scored signals renormalized in `heuristic_v2` to include Block 2.2 tail and drawdown persistence:
+
+| Scored signal | Block 2.2 source |
+| --- | --- |
+| `var_95`, `var_99` | `tail_risk_diagnostics` |
+| `downside_deviation` | `tail_risk_diagnostics` |
+| `max_drawdown`, `pct_time_underwater`, `longest_underwater_months` | `drawdown_diagnostics` |
+| `unrecovered_drawdown` | `drawdown_diagnostics.recovered` (1.0 when not recovered) |
+| `count_drawdowns_gt_5`, `count_drawdowns_gt_10` | `drawdown_diagnostics` |
+| `es_95`, `es_99`, `downside_beta` | tail / benchmark dependence (unchanged) |
+
+Informational evidence only: `eee_10`, `skewness`, `kurtosis`, `count_drawdowns_gt_20`, `recovery_months`, `drawdown_recovered`, `vol_of_vol`, `rel_vol_of_vol` (`metadata`), `rolling_volatility_12m_latest` (`rolling_diagnostics.core_view`). `limitations[]` documents missing rolling Sharpe instability export and vol-of-vol as proxy only.
+
+`correlation_concentration` documents FX decomposition limits in `limitations[]`.
+
+**Contributing assets (Session 03+):** each alert includes mandatory `contributing_assets[]` (max 3). Built from Block 2.1 `capital_allocation_breakdown.by_asset` and `taxonomy_rows` passed at wire time from `build_portfolio_xray_v2` (empty array when none qualify). Schema per row: `ticker`, `weight_pct` (fraction 0–1), `expected_role`, `behavior_flag`, `source` (`block_2_1`). Per-alert selection uses taxonomy-aware filters (equity-like labels, rates/FI, credit/carry, duplicate/correlation tickers, hedge roles, largest weights for tail). All alerts document that per-asset factor betas are not computed in Block 2.4.
+
+**User-facing display (UI Pareto layer — separate from backend):** the JSON contract above is the full machine-readable source of truth and must remain complete in `portfolio_xray.json`. Client UI and reports must **not** show all fields by default. The presentation contract is [block_2_4_hidden_exposure_ui_pareto_spec.md](block_2_4_hidden_exposure_ui_pareto_spec.md): **Pareto view** per alert — (1) risk level (`status`), (2) short diagnosis, (3) key evidence (max 3–5), (4) linked assets (max 3 from `contributing_assets`), (5) `next_tests`. Keep `score`, `confidence`, `confidence_reason`, `limitations`, `data_quality_warnings`, full `evidence`, thresholds, `diagnostics_meta`, and `blocked_upstream_fields` for advanced/expandable UI only.
 
 Each evidence item is structured:
 
@@ -703,9 +749,30 @@ Each evidence item is structured:
 - `source`: `block_2_1`, `block_2_2`, `block_2_3`, `taxonomy`, or `portfolio_analytics`
 - `interpretation`
 
-**Scoring policy:** signal weights and thresholds are explicit in `src/block_2_4_hidden_exposure.py::ALERT_RULES`. They are exported in `diagnostics_meta.signal_weights` and marked as `heuristic_v1`. If evidence is too weak, the alert must return `Unavailable` or low confidence rather than a strong Low/Medium/High conclusion.
+**Scoring policy (Session 06+):** signal weights and thresholds are explicit in `src/block_2_4_hidden_exposure.py::ALERT_RULES`. Alert scores are a weighted average over available scored signals, renormalized by evaluable weight. `diagnostics_meta.ruleset` and `threshold_policy` are `heuristic_v2`. **Confidence model v2** (`diagnostics_meta.confidence_model = "v2"`) combines evaluable signal weight, per-alert `data_quality_warnings` (including propagated Block 2.2 history warnings), factor `factor_significance_confidence` penalties, and cross-signal agreement across Blocks 2.1–2.3. **Never emit High status when confidence is low** (status capped to Medium, score capped at 69). `weak_hedge_behavior` confidence is capped at medium while `preliminary_without_stress_lab` applies. If evidence is too weak, the alert must return `Unavailable` or low confidence rather than a strong Low/Medium/High conclusion.
 
 **Weak Hedge Behavior limitation:** this alert is preliminary before Stress Lab. Without stress contribution evidence it must include `preliminary_without_stress_lab` and must not claim actual hedge failure. It may only point to Stress Lab scenarios in `next_tests`.
+
+**Weak hedge stress enrichment (Session 08+):** optional Block 3 wire-time summary via `build_block_2_4_stress_enrichment(stress_report, block_2_1=..., taxonomy_rows=...)` passed into `build_block_2_4_hidden_exposure` from `build_portfolio_xray_v2`. Block 2.4 still does **not** run Stress Lab (`does_not_run_stress_lab` remains true). When enrichment is available:
+
+| Field / behavior | Rule |
+| --- | --- |
+| `confirmation_status` | `preliminary` without enrichment; `confirmed` when Block 3 summary is wired; `unavailable` when alert is Unavailable; `not_applicable` for other alerts |
+| `weak_hedge_behavior` evidence | Informational `hedge_gap_summary`, `hedge_gap_by_risk_type`, `worst_scenario_hedge_offset_check`, `factor_oos_mae_5y` with `source=block_3_stress` |
+| `duration_concentration` evidence | Informational `stagflation_offset_coverage`, `commodity_shock_offset_coverage` cross-ref from Block 3.3 |
+| Scores | Unchanged under `heuristic_v2` (evidence-only wiring) |
+| `diagnostics_meta` | `stress_enrichment_wire_time`, `stress_enrichment_sources[]` |
+
+Each alert includes mandatory `confirmation_status` (Session 08+).
+
+**Legacy PCA cross-ref (Session 09+):** optional wire-time summary via `build_block_2_4_legacy_enrichment(stress_report)` passed into `build_block_2_4_hidden_exposure` from `build_portfolio_xray_v2`. Block 2.4 still does **not** run Stress Lab or score PCA in product alerts. When enrichment is available:
+
+| Field / behavior | Rule |
+| --- | --- |
+| `correlation_concentration` evidence | Informational `legacy_pca_pc1_raw`, `legacy_pca_pc1_residual`, `legacy_factor_residual_share` with `source=portfolio_analytics` |
+| `correlation_concentration` limitations | Documents that PCA cluster concentration is scored in legacy `sections.hidden_risk_detector` (`correlation_or_common_factor_concentration`, `residual_pca_concentration`), not in Block 2.4 |
+| Scores | Unchanged under `heuristic_v2` (evidence-only wiring) |
+| `diagnostics_meta` | `legacy_enrichment_wire_time`, `legacy_enrichment_sources[]` |
 
 Target categories:
 

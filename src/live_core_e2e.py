@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from scripts.core_mvp_validation_contract import check_block_2_4_hidden_exposure
 from src.portfolio_xray import XRAY_SECTION_KEYS
 from src.product_bundle_paths import (
     portfolio_xray_has_block_2_1,
@@ -151,6 +152,27 @@ def validate_live_core_artifacts(
     else:
         block_24 = xray["block_2_4_hidden_exposure"]
         result.evidence["block_2_4_status"] = block_24.get("status")
+        block_24_checks = check_block_2_4_hidden_exposure(block_24)
+        result.evidence["block_2_4_ruleset"] = block_24_checks.get("ruleset")
+        result.evidence["block_2_4_confidence_model"] = block_24_checks.get(
+            "confidence_model"
+        )
+        result.evidence["block_2_4_alert_count"] = block_24_checks.get("alert_count")
+        if not block_24_checks.get("institutional_v2_surface_ok"):
+            violations = block_24_checks.get("contract_violations") or []
+            preview = "; ".join(str(row) for row in violations[:3])
+            suffix = "..." if len(violations) > 3 else ""
+            result.errors.append(
+                "block_2_4_hidden_exposure institutional v2 contract violated: "
+                f"{preview}{suffix}"
+            )
+            result.ok = False
+        elif not block_24_checks.get("stress_boundary_ok"):
+            result.errors.append(
+                "block_2_4_hidden_exposure stress boundary check failed "
+                "(does_not_run_stress_lab or forbidden embedded stress keys)"
+            )
+            result.ok = False
     if not portfolio_xray_has_block_2_5(xray):
         result.errors.append(
             "portfolio_xray.json missing block_2_5_risk_budget_view product contract"

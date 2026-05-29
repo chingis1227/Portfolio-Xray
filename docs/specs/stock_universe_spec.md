@@ -48,7 +48,8 @@ Forbidden fields:
 - `risk_role` must be a non-empty list and uses the same enum as ETF taxonomy.
 - `main_risk_factor` must use the same production factor enum as ETF taxonomy and must equal `equity` in V1.
 - `secondary_risk_factors` must use the same factor enum as ETF taxonomy, with optional `tag:*` values.
-- `index_membership` must be a non-empty list; V1 seed records use `SP500`.
+- `index_membership` must be a non-empty list with exactly one primary tag: `SP500`, `R1000`, or `R3000`.
+- V1 seed records use `SP500`. Stock Batch 1 expansion may add `R1000` / `R3000` via the controlled batch pipeline.
 
 ## V1 Seed Defaults
 

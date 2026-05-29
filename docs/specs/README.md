@@ -37,6 +37,7 @@ Top-level documents stay compact:
 | Candidate Launchpad data artifact and problem-to-hypothesis card mapping | [candidate_launchpad_spec.md](candidate_launchpad_spec.md) |
 | Portfolio Alternatives Builder one-candidate wrapper over existing candidate builders | [portfolio_alternatives_builder_spec.md](portfolio_alternatives_builder_spec.md) |
 | Portfolio X-Ray diagnostics, seven-section current-portfolio diagnostic layer, and `portfolio_xray.json` contract | [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) |
+| Block 2.4 Hidden Exposure UI Pareto cards (presentation layer over `block_2_4_hidden_exposure`) | [block_2_4_hidden_exposure_ui_pareto_spec.md](block_2_4_hidden_exposure_ui_pareto_spec.md) |
 | Portfolio X-Ray layer (Block 2.1-2.7) | [portfolio_xray_layer_spec.md](portfolio_xray_layer_spec.md) |
 | Portfolio X-Ray methodology map (Block 2 audit baseline) | [../audits/2026-05-20_portfolio_xray_methodology_map.md](../audits/2026-05-20_portfolio_xray_methodology_map.md) |
 | Metrics, estimators, windows, returns, FX, beta, drawdown, RC_vol, rounding | [metrics_specification.md](metrics_specification.md) |
