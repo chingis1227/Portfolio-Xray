@@ -6,6 +6,10 @@ It records what was added, changed, removed, fixed, or deprecated at a project l
 
 Date: 2026-05-29
 
+Category: Added
+
+- **Blocks 1–3 diagnostic journey UX draft:** Flask prototype `diagnostic_journey/` (port 5006) — guided Setup → X-Ray → Stress Lab → problem bridge; `diagnostic_journey/presentation.py` translates JSON into advisor-ready copy (human labels, formatted %, no raw backend keys at top level); spec [diagnostic_journey_ux_draft.md](docs/specs/diagnostic_journey_ux_draft.md). Tests: `tests/test_diagnostic_journey_view_model.py`.
+
 Category: Fixed
 
 - **Core MVP X-Ray tail-risk wiring:** `run_report.py` now passes per-window snapshot analytics (`snapshot_10y` → `5y` → `3y`) into `build_portfolio_xray_v2` via `resolve_xray_snapshot_inputs` in `src/snapshot.py`, so `analytics.tail_risk` reaches Block 2.2 `tail_risk_diagnostics` and Block 2.4 `tail_risk` alert evidence. Block 2.2 product contract adds `metric_available`, method/frequency/window metadata. Tests: `tests/test_xray_tail_risk_wiring.py`.

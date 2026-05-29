@@ -240,6 +240,7 @@ All **web interfaces, dashboards, and UI** in this repository must follow this d
 |--------|----------|--------|
 | Config web UI | `config_ui/` (Flask) | `static/design.css` is the source of truth for component styles. |
 | **Results dashboard** | `results_dashboard/app.py` (Flask) | `static/dashboard.css` + shared `design.css` (via `/design-assets/`); read-only key metrics from `output_dir_final`. |
+| **Diagnostic journey (Blocks 1–3 UX draft)** | `diagnostic_journey/app.py` (Flask, port 5006) | `static/journey.css` + shared `design.css`; guided flow from `analysis_subject/` JSON ([spec](docs/specs/diagnostic_journey_ux_draft.md)). |
 | Generated HTML report | `write_report_html` in `src/snapshot.py` | Uses the same design tokens in embedded CSS (no separate network dependency). |
 | Rolling factor betas (Plotly HTML) | `write_rolling_betas_plot_html` in `src/stress_factors.py` | Page chrome + chart fonts/colors aligned with tokens. |
 

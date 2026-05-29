@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portfolio diagnostic report</title>
+  <link rel="stylesheet" href="{{ design_css_href }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='journey.css') }}" />
+</head>
+<body>
+  <div class="journey-page">
+    <p class="journey-brand">Portfolio MRI</p>
+    <h1 class="journey-title">Current portfolio diagnostic report</h1>
+    {% if vm.analysis_end %}
+    <p class="journey-meta">Analysis as of {{ vm.analysis_end }} · Diagnosis-first · No recommendation generated</p>
+    {% else %}
+    <p class="journey-meta">Diagnosis-first review · No recommendation generated</p>
+    {% endif %}
+
+    {% if not vm.has_data %}
+    <div class="journey-error">
+      <p><strong>Diagnostic bundle not found.</strong> Run core diagnostics or portfolio review, then reload this page.</p>
+    </div>
+    {% else %}
+
+    <nav class="journey-nav" aria-label="Diagnostic steps">
+      <a href="#setup">Setup</a>
+      <a href="#xray">X-Ray</a>
+      <a href="#stress">Stress Lab</a>
+      <a href="#bridge">Next paths</a>
+    </nav>
+
+    <!-- PAGE 1 -->
+    <section id="setup" class="journey-section" aria-labelledby="h-setup">
+      <p class="section-eyebrow">Step 1</p>
+      <h2 id="h-setup">{{ vm.block1.title }}</h2>
+      <p class="section-lead">{{ vm.block1.lead }}</p>
+
+      <div class="surface-card">
+        <div class="status-grid">
+          <div class="status-chip"><span class="label">Holdings</span><span class="value">{{ vm.block1.holdings_count }}</span></div>
+          <div class="status-chip"><span class="label">Allocation</span><span class="value">{{ vm.block1.weight_total }}</span></div>
+          <div class="status-chip"><span class="label">Base currency</span><span class="value">{{ vm.block1.investor_currency }}</span></div>
+          <div class="status-chip ok"><span class="label">Validation</span><span class="value">{{ vm.block1.validation_status }}</span></div>
+          <div class="status-chip"><span class="label">Mode</span><span class="value" style="font-size:0.85rem">Diagnosis only</span></div>
+          <div class="status-chip"><span class="label">Cash position</span><span class="value" style="font-size:0.85rem">{{ vm.block1.cash_position }}</span></div>
+        </div>
+
+        <table class="holdings-table" aria-label="Holdings">
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>Weight</th>
+              <th>Asset class</th>
+              <th>Risk role</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in vm.block1.holdings %}
+            <tr>
+              <td>{{ row.ticker }}</td>
+              <td>{{ row.weight_pct }}</td>
+              <td>{{ row.asset_class }}</td>
+              <td>{{ row.risk_role }}</td>
+              <td>{{ row.status }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div class="note-box muted"><strong>{{ vm.block1.no_reco_note }}</strong></div>
+
+        <h3>What happens next</h3>
+        <ol class="steps-list">
+          {% for step in vm.block1.next_steps %}
+          <li>{{ step }}</li>
+          {% endfor %}
+        </ol>
+
+        <details class="drill">
+          <summary>Calculation assumptions</summary>
+          <dl style="display:grid;grid-template-columns:140px 1fr;gap:8px 16px;margin-top:12px;color:var(--rui-mid)">
+            <dt>Benchmark</dt><dd>{{ vm.block1.assumptions.benchmark }}</dd>
+            <dt>Risk-free</dt><dd>{{ vm.block1.assumptions.risk_free }}</dd>
+            <dt>Returns</dt><dd>{{ vm.block1.assumptions.return_frequency }}</dd>
+            <dt>Windows</dt><dd>{{ vm.block1.assumptions.analysis_window }}</dd>
+            <dt>Cash</dt><dd>{{ vm.block1.assumptions.cash_treatment }}</dd>
+            <dt>FX</dt><dd>{{ vm.block1.assumptions.fx }}</dd>
+          </dl>
+        </details>
+
+        <div class="cta-row">
+          <a class="btn-primary" href="#xray">Run Portfolio X-Ray</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 2 -->
+    <section id="xray" class="journey-section" aria-labelledby="h-xray">
+      <p class="section-eyebrow">Step 2</p>
+      <h2 id="h-xray">Portfolio X-Ray</h2>
+      {% if not vm.has_xray %}
+      <div class="note-box warn">Portfolio X-Ray is not available for this run. Complete diagnostics first.</div>
+      {% else %}
+
+      <div class="surface-card surface-card--white">
+        <h3>{{ vm.block2_exec.title }}</h3>
+        <p class="section-subtitle">{{ vm.block2_exec.subtitle }}</p>
+        <p class="lead-diagnosis">{{ vm.block2_exec.main_diagnosis }}</p>
+        <div class="finding-grid">
+          {% for f in vm.block2_exec.findings %}
+          <div class="finding-item">
+            <strong>{{ f.title }}</strong>
+            <span>{{ f.body }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="surface-card">
+        <h3>What you own</h3>
+        <p class="lead-diagnosis">{{ vm.block2_own.diagnosis }}</p>
+        <div class="kpi-grid">
+          <div class="kpi-cell"><div class="k">Holdings</div><div class="v">{{ vm.block2_own.total_holdings }}</div></div>
+          <div class="kpi-cell"><div class="k">Top holding</div><div class="v" style="font-size:0.95rem">{{ vm.block2_own.top_holding }}</div></div>
+          <div class="kpi-cell"><div class="k">Top 3 weight</div><div class="v">{{ vm.block2_own.top3_weight }}</div></div>
+          <div class="kpi-cell"><div class="k">Dominant class</div><div class="v" style="font-size:0.9rem">{{ vm.block2_own.dominant_asset_class }}</div></div>
+          <div class="kpi-cell"><div class="k">Region</div><div class="v" style="font-size:0.9rem">{{ vm.block2_own.dominant_region }}</div></div>
+          <div class="kpi-cell"><div class="k">Currency</div><div class="v" style="font-size:0.9rem">{{ vm.block2_own.dominant_currency }}</div></div>
+        </div>
+        <p class="note-box accent">{{ vm.block2_own.interpretation }}</p>
+        <details class="drill"><summary>Full allocation breakdown</summary>
+          <ul class="evidence-list">
+            {% for b in vm.block2_own.drilldown.by_asset_class %}
+            <li>{{ b.name }}: {{ b.weight }}</li>
+            {% endfor %}
+          </ul>
+        </details>
+      </div>
+
+      <div class="surface-card">
+        <h3>How the portfolio behaved</h3>
+        <p class="note-box muted" style="margin-top:0">{{ vm.block2_behave.behavior_label }}</p>
+        <p class="lead-diagnosis">{{ vm.block2_behave.diagnosis }}</p>
+        <div class="kpi-grid">
+          <div class="kpi-cell"><div class="k">CAGR</div><div class="v">{{ vm.block2_behave.cagr }}</div></div>
+          <div class="kpi-cell"><div class="k">Volatility</div><div class="v">{{ vm.block2_behave.vol }}</div></div>
+          <div class="kpi-cell"><div class="k">Sharpe</div><div class="v">{{ vm.block2_behave.sharpe }}</div></div>
+          <div class="kpi-cell"><div class="k">Max drawdown</div><div class="v">{{ vm.block2_behave.max_drawdown }}</div></div>
+          <div class="kpi-cell"><div class="k">Benchmark beta</div><div class="v">{{ vm.block2_behave.beta }}</div></div>
+          <div class="kpi-cell"><div class="k">Longest underwater</div><div class="v" style="font-size:1rem">{{ vm.block2_behave.longest_underwater }}</div></div>
+        </div>
+        <details class="drill"><summary>Advanced metrics &amp; data quality</summary>
+          <p style="color:var(--rui-mid);margin-top:8px">Tail risk, rolling metrics, and correlation detail are available in the technical diagnostic export.</p>
+        </details>
+      </div>
+
+      <div class="surface-card">
+        <h3>What factors drive it</h3>
+        <p class="lead-diagnosis">{{ vm.block2_factors.diagnosis }}</p>
+        {% for d in vm.block2_factors.drivers %}
+        <div class="factor-row">
+          <div class="name">{{ loop.index }}. {{ d.name }}</div>
+          <div class="meta">Exposure: {{ d.exposure }} · {{ d.confidence }}</div>
+          <div class="interp">{{ d.interpretation }}</div>
+        </div>
+        {% endfor %}
+        <p class="note-box muted">{{ vm.block2_factors.confidence_note }}</p>
+        <details class="drill"><summary>Regression statistics &amp; methodology</summary>
+          <p style="color:var(--rui-mid);margin-top:8px">Multi-window betas, HAC inference, and model diagnostics are retained in the technical export only.</p>
+        </details>
+      </div>
+
+      <div class="surface-card">
+        <h3>Hidden risk alerts</h3>
+        <p class="section-subtitle">{{ vm.block2_hidden.note }}</p>
+        <div class="alert-grid">
+          {% for alert in vm.block2_hidden.alerts %}
+          <article class="alert-card">
+            <span class="sev-badge {{ alert.level_class }}">{{ alert.level }}</span>
+            <h4>{{ alert.title }}</h4>
+            <p>{{ alert.diagnosis }}</p>
+            <ul class="evidence-list">
+              {% for e in alert.evidence %}<li>{{ e }}</li>{% endfor %}
+            </ul>
+            {% if alert.linked_assets %}
+            <p style="font-size:0.8rem;margin-top:10px"><strong>Linked assets:</strong> {{ alert.linked_assets|join(', ') }}</p>
+            {% endif %}
+            {% if alert.next_tests %}
+            <p style="font-size:0.8rem"><strong>Next stress tests:</strong> {{ alert.next_tests|join(', ') }}</p>
+            {% endif %}
+          </article>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="surface-card">
+        <h3>Who creates risk</h3>
+        <p class="lead-diagnosis">{{ vm.block2_risk.diagnosis }}</p>
+        <div class="kpi-grid">
+          <div class="kpi-cell"><div class="k">Top contributor</div><div class="v" style="font-size:1rem">{{ vm.block2_risk.top_contributor }}</div></div>
+          <div class="kpi-cell"><div class="k">Top 3 share of risk</div><div class="v">{{ vm.block2_risk.top3_share }}</div></div>
+          <div class="kpi-cell"><div class="k">Largest risk overweight</div><div class="v" style="font-size:1rem">{{ vm.block2_risk.largest_gap }}</div></div>
+        </div>
+        <p class="note-box muted">{{ vm.block2_risk.disclaimer }}</p>
+      </div>
+
+      <div class="surface-card">
+        <h3>{{ vm.block2_weakness.title }}</h3>
+        <p class="section-subtitle">{{ vm.block2_weakness.subtitle }}</p>
+        <div class="note-box warn">{{ vm.block2_weakness.pre_stress_note }}</div>
+        {% if not vm.block2_weakness.has_high %}
+        <p class="note-box muted">{{ vm.block2_weakness.no_high_note }}</p>
+        {% endif %}
+        <div class="weakness-grid">
+          {% for sev in ['High', 'Medium', 'Low'] %}
+          <div class="weakness-col">
+            <h4>{{ sev }}</h4>
+            {% for w in vm.block2_weakness.groups[sev] %}
+            <article class="alert-card">
+              <span class="sev-badge {{ w.severity_class }}">{{ w.severity }}</span>
+              <h4>{{ w.label }}</h4>
+              <p>{{ w.diagnosis }}</p>
+              <ul class="evidence-list">{% for e in w.evidence %}<li>{{ e }}</li>{% endfor %}</ul>
+              <p style="font-size:0.78rem;color:var(--rui-muted)"><strong>Next test:</strong> {{ w.next_test }}</p>
+            </article>
+            {% else %}
+            <p style="font-size:0.85rem;color:var(--rui-muted)">None at this severity.</p>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+        <details class="drill"><summary>Scores, evidence, and limitations</summary>
+          <p style="color:var(--rui-mid);margin-top:8px">Rule scores and full evidence chains are available in the technical diagnostic export.</p>
+        </details>
+      </div>
+
+      <div class="cta-row">
+        <a class="btn-primary" href="#stress">Run Stress Test Lab</a>
+      </div>
+      {% endif %}
+    </section>
+
+    <!-- PAGE 3 -->
+    <section id="stress" class="journey-section" aria-labelledby="h-stress">
+      <p class="section-eyebrow">Step 3</p>
+      <h2 id="h-stress">Stress Test Lab</h2>
+      <p class="section-lead">Defined stress scenarios show how the portfolio might behave under adverse assumptions. This is not a forecast.</p>
+
+      {% if not vm.has_stress %}
+      <div class="note-box warn">Stress Lab output is not available for this run.</div>
+      {% else %}
+
+      <div class="surface-card surface-card--white">
+        <h3>{{ vm.block3_summary.title }}</h3>
+        <p class="lead-diagnosis">{{ vm.block3_summary.diagnosis }}</p>
+        <div class="kpi-grid">
+          <div class="kpi-cell"><div class="k">Worst synthetic</div><div class="v" style="font-size:0.95rem">{{ vm.block3_summary.worst_synthetic }}</div></div>
+          <div class="kpi-cell"><div class="k">Portfolio loss</div><div class="v">{{ vm.block3_summary.portfolio_loss }}</div></div>
+          <div class="kpi-cell"><div class="k">Offset coverage</div><div class="v">{{ vm.block3_summary.offset_coverage }}</div></div>
+          <div class="kpi-cell"><div class="k">Main hedge gap</div><div class="v" style="font-size:0.85rem">{{ vm.block3_summary.main_hedge_gap }}</div></div>
+        </div>
+        {% if vm.block3_summary.worst_historical %}
+        <p style="font-size:0.9rem;color:var(--rui-mid);margin-bottom:16px"><strong>Worst historical episode:</strong> {{ vm.block3_summary.worst_historical }}</p>
+        {% endif %}
+        <div class="two-col">
+          <div class="col-block">
+            <h4>Assets hurt</h4>
+            {% for a in vm.block3_summary.hurt %}
+            <div class="asset-line hurt"><span>{{ a.ticker }}</span><span class="pct">{{ a.contribution }}</span></div>
+            {% endfor %}
+          </div>
+          <div class="col-block">
+            <h4>Assets helped</h4>
+            {% for a in vm.block3_summary.helped %}
+            <div class="asset-line helped"><span>{{ a.ticker }}</span><span class="pct">{{ a.contribution }}</span></div>
+            {% else %}
+            <p style="font-size:0.88rem;color:var(--rui-muted)">No asset materially helped in this scenario.</p>
+            {% endfor %}
+          </div>
+        </div>
+        <p class="note-box accent">{{ vm.block3_summary.interpretation }}</p>
+      </div>
+
+      <div class="surface-card">
+        <h3>Scenario overview</h3>
+        <p style="font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--rui-muted)">Most damaging</p>
+        {% for s in vm.block3_scenarios.most_damaging %}
+        <div class="scenario-line">
+          <span>{{ s.label }}</span>
+          <span class="loss">{{ s.loss }}</span>
+          <span class="hint">{{ s.hint }}</span>
+        </div>
+        {% endfor %}
+        {% if vm.block3_scenarios.less_damaging %}
+        <p style="font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--rui-muted);margin-top:20px">Relatively less damaging</p>
+        {% for s in vm.block3_scenarios.less_damaging %}
+        <div class="scenario-line">
+          <span>{{ s.label }}</span>
+          <span class="loss">{{ s.loss }}</span>
+          <span class="hint">{{ s.hint }}</span>
+        </div>
+        {% endfor %}
+        {% endif %}
+        <details class="drill"><summary>Full scenario tables &amp; limitations</summary>
+          <p style="color:var(--rui-mid);margin-top:8px">Complete synthetic and historical scenario tables, plus data-quality notes, are in the technical stress export.</p>
+        </details>
+      </div>
+
+      <div class="surface-card surface-card--white">
+        <h3>{{ vm.block3_assets.title }}</h3>
+        <p class="section-subtitle">{{ vm.block3_assets.subtitle }} · Scenario: {{ vm.block3_assets.scenario }}</p>
+        <div class="two-col">
+          <div class="col-block">
+            <h4>Hurt</h4>
+            {% for a in vm.block3_assets.hurt %}
+            <div class="asset-line hurt"><span>{{ a.ticker }}</span><span class="pct">{{ a.contribution }}</span></div>
+            {% endfor %}
+          </div>
+          <div class="col-block">
+            <h4>Helped</h4>
+            {% for a in vm.block3_assets.helped %}
+            <div class="asset-line helped"><span>{{ a.ticker }}</span><span class="pct">{{ a.contribution }}</span></div>
+            {% endfor %}
+          </div>
+        </div>
+        <p class="note-box accent">{{ vm.block3_assets.interpretation }}</p>
+      </div>
+
+      <div class="surface-card">
+        <h3>Hedge gap analysis</h3>
+        <div class="kpi-grid">
+          <div class="kpi-cell"><div class="k">Protection status</div><div class="v" style="font-size:0.9rem">{{ vm.block3_hedge.protection_status }}</div></div>
+          <div class="kpi-cell"><div class="k">Coverage ratio</div><div class="v">{{ vm.block3_hedge.offset_coverage }}</div></div>
+          <div class="kpi-cell"><div class="k">Gross loss (hurt)</div><div class="v" style="font-size:0.9rem">{{ vm.block3_hedge.gross_loss_label }}</div></div>
+          <div class="kpi-cell"><div class="k">Helped offset</div><div class="v" style="font-size:0.9rem">{{ vm.block3_hedge.positive_help_label }}</div></div>
+        </div>
+        <p class="lead-diagnosis">{{ vm.block3_hedge.interpretation }}</p>
+        <details class="drill"><summary>Methodology &amp; calculation details</summary>
+          <p style="color:var(--rui-mid);margin-top:8px">Contribution-based offset coverage and scenario linkage are documented in the technical stress export.</p>
+        </details>
+      </div>
+
+      <div class="surface-card surface-card--white">
+        <h3>Stress scorecard</h3>
+        <dl class="score-row">
+          <dt>Main stress weakness</dt>
+          <dd>{{ vm.block3_scorecard.main_weakness }}</dd>
+        </dl>
+        <dl class="score-row">
+          <dt>Confirmed X-Ray risks</dt>
+          <dd>
+            <ul class="evidence-list">
+              {% for c in vm.block3_scorecard.confirmed %}<li>{{ c }}</li>{% endfor %}
+            </ul>
+          </dd>
+        </dl>
+        {% if vm.block3_scorecard.not_confirmed %}
+        <dl class="score-row">
+          <dt>Not confirmed</dt>
+          <dd>{{ vm.block3_scorecard.not_confirmed|join(', ') }}</dd>
+        </dl>
+        {% endif %}
+        <dl class="score-row">
+          <dt>Main failure mode</dt>
+          <dd>{{ vm.block3_scorecard.failure_mode }}</dd>
+        </dl>
+        <dl class="score-row">
+          <dt>Main hedge gap</dt>
+          <dd>{{ vm.block3_scorecard.hedge_gap_line }}</dd>
+        </dl>
+        <dl class="score-row">
+          <dt>Next decision use</dt>
+          <dd>{{ vm.block3_scorecard.next_use }}</dd>
+        </dl>
+      </div>
+
+      <div class="cta-row">
+        <a class="btn-primary" href="#bridge">View suggested improvement paths</a>
+      </div>
+      {% endif %}
+    </section>
+
+    <!-- PAGE 4 -->
+    <section id="bridge" class="journey-section" aria-labelledby="h-bridge">
+      <p class="section-eyebrow">Step 4</p>
+      <h2 id="h-bridge">{{ vm.bridge.title }}</h2>
+      <p class="section-lead">{{ vm.bridge.subtitle }}</p>
+      <p class="note-box accent">{{ vm.bridge.optional_note }}</p>
+
+      {% for card in vm.bridge.cards %}
+      <article class="hypothesis-card">
+        <h3>{{ card.title }}</h3>
+        <dl>
+          <dt>Why</dt><dd>{{ card.why }}</dd>
+          <dt>Suggested test</dt><dd>{{ card.suggested_test }}</dd>
+          <dt>Goal</dt><dd>{{ card.goal }}</dd>
+        </dl>
+        <span class="btn-ghost">{{ card.cta }}</span>
+      </article>
+      {% endfor %}
+
+      <p class="cta-hint">{{ vm.bridge.no_trade_note }}</p>
+    </section>
+
+    {% endif %}
+  </div>
+  <script>
+    (function () {
+      var links = document.querySelectorAll(".journey-nav a");
+      var sections = [];
+      links.forEach(function (a) {
+        var el = document.getElementById(a.getAttribute("href").slice(1));
+        if (el) sections.push({ link: a, el: el });
+      });
+      function onScroll() {
+        var y = window.scrollY + 96;
+        var current = sections[0];
+        sections.forEach(function (s) {
+          if (s.el.offsetTop <= y) current = s;
+        });
+        links.forEach(function (l) { l.classList.remove("is-active"); });
+        if (current) current.link.classList.add("is-active");
+      }
+      window.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+    })();
+  </script>
+</body>
+</html>
