@@ -210,7 +210,12 @@ def test_product_one_candidate_compare_contract_excludes_advanced_package(
     with open(paths["candidate_comparison_json"], encoding="utf-8") as handle:
         comparison = json.load(handle)
     assert comparison["product_candidate_scope"]["candidate_ids"] == ["equal_weight"]
-    assert any(row["candidate_id"] == "risk_parity" for row in comparison["candidates"])
+    product_ids = {row["candidate_id"] for row in comparison["candidates"]}
+    assert product_ids >= {"analysis_subject", "equal_weight"}
+    assert "risk_parity" not in product_ids
+    with open(paths["candidate_comparison_registry_json"], encoding="utf-8") as handle:
+        registry = json.load(handle)
+    assert any(row["candidate_id"] == "risk_parity" for row in registry["candidates"])
 
 
 def test_research_batch_compare_contract_preserves_advanced_package(tmp_path: Path) -> None:
@@ -278,6 +283,10 @@ def test_product_shortlist_scopes_both_explicit_candidates(tmp_path: Path) -> No
         "equal_weight",
         "risk_parity",
     }
+    product_ids = {row["candidate_id"] for row in comparison["candidates"]}
+    assert product_ids >= {"analysis_subject", "equal_weight", "risk_parity"}
+    assert "minimum_variance" not in product_ids
+    assert paths["candidate_comparison_registry_json"].is_file()
 
 
 def test_product_bundle_schema_versions_in_product_mode(tmp_path: Path) -> None:
@@ -315,10 +324,14 @@ def test_stale_higher_rank_candidate_does_not_override_product_verdict(tmp_path:
         factory_run=_explicit_factory_run("equal_weight"),
         write_txt=False,
     )
+    with open(paths["candidate_comparison_registry_json"], encoding="utf-8") as handle:
+        registry = json.load(handle)
+    rp_rows = [r for r in registry["candidates"] if r["candidate_id"] == "risk_parity"]
+    assert rp_rows, "fixture must include risk_parity in full registry comparison"
+
     with open(paths["candidate_comparison_json"], encoding="utf-8") as handle:
         comparison = json.load(handle)
-    rp_rows = [r for r in comparison["candidates"] if r["candidate_id"] == "risk_parity"]
-    assert rp_rows, "fixture must include risk_parity in full comparison"
+    assert "risk_parity" not in {row["candidate_id"] for row in comparison["candidates"]}
 
     with open(paths["decision_verdict_json"], encoding="utf-8") as handle:
         verdict = json.load(handle)

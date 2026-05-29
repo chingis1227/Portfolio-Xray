@@ -15,7 +15,10 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.config import load_validated_config  # noqa: E402
-from src.live_core_e2e import validate_live_core_artifacts  # noqa: E402
+from src.live_core_e2e import (  # noqa: E402
+    detect_live_core_e2e_profile,
+    validate_live_core_artifacts,
+)
 
 
 def _run_live_core(skip_pdf: bool = True) -> int:
@@ -47,6 +50,16 @@ def main() -> int:
         default=None,
         help="Override output_dir_final (default: from config.yml).",
     )
+    parser.add_argument(
+        "--profile",
+        type=str,
+        default=None,
+        help=(
+            "Force validator profile (core_blocks_1_3, diagnosis_only, "
+            "product_one_candidate, research_batch_core_fast). "
+            "Default: auto-detect from artifacts."
+        ),
+    )
     args = parser.parse_args()
 
     if args.run:
@@ -57,7 +70,9 @@ def main() -> int:
 
     cfg = load_validated_config(REPO_ROOT / "config.yml")
     output_dir = args.output_dir or (REPO_ROOT / cfg.output_dir_final)
-    result = validate_live_core_artifacts(output_dir)
+    detected = detect_live_core_e2e_profile(output_dir)
+    print(f"detected_profile={detected}")
+    result = validate_live_core_artifacts(output_dir, profile=args.profile)
     for line in result.messages():
         print(line)
     if result.ok:

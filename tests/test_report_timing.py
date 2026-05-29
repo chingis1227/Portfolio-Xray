@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 
 import numpy as np
@@ -20,6 +21,22 @@ from src.report_timing import (
     aggregate_report_timing_from_steps,
     portfolio_report_timing_enabled,
 )
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_run_report_timing_blocks_registered_in_module() -> None:
+    """Every report_timing.block name in run_report.py must be in REPORT_TIMING_BLOCK_KEYS."""
+    run_report_text = (REPO_ROOT / "run_report.py").read_text(encoding="utf-8")
+    used = set(re.findall(r'report_timing\.block\("([^"]+)"\)', run_report_text))
+    assert used, "expected at least one report_timing.block(...) in run_report.py"
+    missing = sorted(used - set(REPORT_TIMING_BLOCK_KEYS))
+    assert not missing, (
+        "report_timing blocks used in run_report.py but missing from "
+        f"REPORT_TIMING_BLOCK_KEYS: {missing}"
+    )
+
+
 def _monthly_panel(tickers: list[str], n_months: int = 130) -> MonthlyDataResult:
     rng = np.random.default_rng(42)
     dates = pd.date_range("2015-01-31", periods=n_months, freq="ME")

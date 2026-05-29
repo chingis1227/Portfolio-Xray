@@ -32,6 +32,7 @@ REPORT_TIMING_BLOCK_KEYS: tuple[str, ...] = (
     "daily_tail_risk",
     "snapshots",
     "export_stress",
+    "export_stress_hedge_gap_bridge",
 )
 
 

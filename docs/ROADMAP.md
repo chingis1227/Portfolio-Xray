@@ -18,6 +18,8 @@ grounding -> Monitoring / What Changed. Optimizers, candidate factories, scoreca
 multi-candidate research remain implementation/advanced evidence unless an active canonical spec
 explicitly promotes a surface to Core MVP.
 
+**Active (2026-05-29):** [Blocks 1–3 post-audit development plan](exec_plans/2026-05-29_blocks_1_3_post_audit_development_plan.md) — Phase D in progress: Session 10 **done** (Block 5 Current vs Candidate + Decision Verdict contracts + live E2E). Phase A closed (`READY_FOR_DECISION_WORKFLOW`). Next: Sessions 11–12 (AI commentary / decision package). Operator contract: [runtime_artifact_contract.md](runtime_artifact_contract.md).
+
 Active alignment work: **closed** 2026-05-25 — [Post-Audit Portfolio MRI Architecture Alignment Roadmap](exec_plans/2026-05-25_post_architecture_alignment_roadmap.md) (Sessions 01–12), based on the [Full Project Architecture Alignment Audit](audits/2026-05-25_full_project_architecture_alignment_audit.md). Closure: [Session 12 closure report](audits/2026-05-25_post_architecture_alignment_session12_closure_report.md). Older phases below are retained as historical project memory and implementation traceability; they do not override the current diagnosis-first product direction.
 
 Architecture-alignment backlog (diagnosis-first docs; not a code milestone until approved):

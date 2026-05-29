@@ -101,7 +101,9 @@ def test_diagnosis_only_materialize_site_api_writes_no_commentary_or_root_verdic
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Default site_api materialize must not emit rule-based TXT or post-compare root JSON."""
+    """Default site_api materialize must not emit rule-based TXT; root compare is tombstoned."""
+    from src.product_bundle_hygiene import NO_CANDIDATE_TOMBSTONE
+
     cfg = validate_mvp_fixture("minimal_usd_no_cash.yml")
     cfg.output_dir_final = str(tmp_path / "Main portfolio")
     variant_root = tmp_path / "Main portfolio"
@@ -150,9 +152,11 @@ def test_diagnosis_only_materialize_site_api_writes_no_commentary_or_root_verdic
         assert not (subject_dir / name).exists(), f"site_api must not write {name}"
 
     for name in POST_COMPARE_ROOT_ARTIFACTS:
-        assert not (variant_root / name).exists(), (
-            f"diagnosis-only materialize must not write root {name}"
-        )
+        path = variant_root / name
+        assert path.is_file(), f"diagnosis-only materialize must write tombstone {name}"
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        assert doc.get("tombstone") == NO_CANDIDATE_TOMBSTONE, name
+        assert doc.get("artifact_status") == "not_authoritative", name
 
 
 def test_diagnosis_only_plan_matches_cli_default_flags(tmp_path: Path) -> None:

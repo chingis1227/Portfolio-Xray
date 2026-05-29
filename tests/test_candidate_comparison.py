@@ -718,7 +718,16 @@ def test_write_outputs_scopes_product_adapters_to_explicit_factory_candidate(tmp
         decision_verdict = json.load(f)
 
     assert comparison["product_candidate_scope"]["candidate_ids"] == ["equal_weight"]
-    assert any(row["candidate_id"] == "risk_parity" for row in comparison["candidates"])
+    assert comparison["full_comparison_registry_artifact"] == "candidate_comparison_registry.json"
+    product_ids = {row["candidate_id"] for row in comparison["candidates"]}
+    assert product_ids >= {"analysis_subject", "equal_weight"}
+    assert "risk_parity" not in product_ids
+    registry_path = paths["candidate_comparison_registry_json"]
+    assert registry_path.is_file()
+    with open(registry_path, encoding="utf-8") as f:
+        registry = json.load(f)
+    assert registry["registry_artifact_role"] == "full_on_disk_candidate_scan"
+    assert any(row["candidate_id"] == "risk_parity" for row in registry["candidates"])
     assert current_vs_candidate["selected_candidate_ids"] == ["equal_weight"]
     assert decision_verdict["selected_candidate_id"] == "equal_weight"
     assert decision_verdict["source_artifacts"]["selection_decision"] is None

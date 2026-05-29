@@ -60,6 +60,8 @@ Top-level shape:
 - `one_candidate` when one candidate is compared;
 - `shortlist` when two or more selected candidates are compared.
 
+When a diagnosis-only portfolio review completes, root `current_vs_candidate.json` may be a **`no_candidate_v1` tombstone** (`tombstone`, `artifact_status: not_authoritative`) written by `apply_diagnosis_only_product_bundle_hygiene` — not a live comparison adapter output.
+
 Each `comparisons[]` row contains candidate identity, status, artifact root, dimension deltas, data quality, and source files.
 
 ## Baseline and Candidate Selection
@@ -94,15 +96,18 @@ No new metric formulas are introduced. Deltas are simple candidate minus baselin
 
 ## Verification
 
+Product contract (Session 10): `check_current_vs_candidate_v1`, `check_block_5_compare_handoff` in `scripts/core_mvp_validation_contract.py`; live gate `block_5_*` in `validate_live_core_artifacts` for profile `product_one_candidate`. Evidence: [Session 10 audit](../audits/2026-05-29_block_5_session_10_current_vs_candidate_decision_verdict.md).
+
 Focused tests:
 
 ```text
-.\.venv\Scripts\python.exe -m pytest tests\test_current_vs_candidate.py
+python -m pytest tests/test_block_5_decision_compare_contract.py tests/test_current_vs_candidate.py -q
 ```
 
 Recommended adjacent checks:
 
 ```text
-.\.venv\Scripts\python.exe -m pytest tests\test_current_vs_candidate.py tests\test_candidate_comparison_contract.py tests\test_selection_engine.py
-.\.venv\Scripts\python.exe run_portfolio_review.py --dry-run
+python -m pytest tests/test_block_5_decision_compare_contract.py tests/test_live_core_e2e_validation.py tests/test_current_vs_candidate.py tests/test_decision_verdict.py -q
+python run_portfolio_review.py --candidates equal_weight
+python scripts/verify_live_core_e2e.py --profile product_one_candidate
 ```

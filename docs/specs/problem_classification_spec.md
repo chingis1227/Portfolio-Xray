@@ -148,12 +148,15 @@ The artifact is included in the output manifest as `problem_classification`.
 Focused tests:
 
 ```text
-.\.venv\Scripts\python.exe -m pytest tests\test_problem_classification.py
+python -m pytest tests/test_problem_classification.py tests/test_block_4_decision_entry_contract.py
 ```
+
+Product contract (Session 09): `problem_classification_v1_product_contract_violations` / `check_problem_classification_v1` in `scripts/core_mvp_validation_contract.py`; enforced on live diagnosis runs via `validate_live_core_artifacts` (`diagnosis_only`, `product_one_candidate`).
 
 Recommended adjacent regression checks:
 
 ```text
-.\.venv\Scripts\python.exe -m pytest tests\test_problem_classification.py tests\test_portfolio_review_workflow.py
-.\.venv\Scripts\python.exe run_portfolio_review.py --dry-run
+python -m pytest tests/test_problem_classification.py tests/test_candidate_launchpad.py tests/test_block_4_decision_entry_contract.py tests/test_live_core_e2e_validation.py -q
+python run_portfolio_review.py
+python scripts/verify_live_core_e2e.py --profile diagnosis_only
 ```

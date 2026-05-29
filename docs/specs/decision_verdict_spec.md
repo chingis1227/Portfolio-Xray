@@ -89,15 +89,18 @@ Selection Engine remains the technical source of truth for favored candidate and
 
 ## Verification
 
+Product contract (Session 10): `check_decision_verdict_v1`, `check_block_5_compare_handoff` in `scripts/core_mvp_validation_contract.py`; live gate `block_5_*` in `validate_live_core_artifacts` for profile `product_one_candidate`. Evidence: [Session 10 audit](../audits/2026-05-29_block_5_session_10_current_vs_candidate_decision_verdict.md).
+
 Focused tests:
 
 ```text
-.\.venv\Scripts\python.exe -m pytest tests\test_decision_verdict.py
+python -m pytest tests/test_block_5_decision_compare_contract.py tests/test_decision_verdict.py -q
 ```
 
 Recommended adjacent checks:
 
 ```text
-.\.venv\Scripts\python.exe -m pytest tests\test_decision_verdict.py tests\test_selection_engine.py tests\test_action_engine.py
-.\.venv\Scripts\python.exe run_portfolio_review.py --dry-run
+python -m pytest tests/test_block_5_decision_compare_contract.py tests/test_live_core_e2e_validation.py tests/test_current_vs_candidate.py tests/test_decision_verdict.py -q
+python run_portfolio_review.py --candidates equal_weight
+python scripts/verify_live_core_e2e.py --profile product_one_candidate
 ```

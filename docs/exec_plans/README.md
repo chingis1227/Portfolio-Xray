@@ -25,7 +25,9 @@ governed by `SPEC.md`, `OUTPUTS.md`, detailed specs, and code.
 
 ## Current Pointer
 
-**Active:** *(none)* — Block 3.4 institutional upgrade **Completed** 2026-05-29. Start new work from [SPEC.md](../../SPEC.md), [docs/ROADMAP.md](../ROADMAP.md), or a new ExecPlan under `docs/exec_plans/`.
+**Active:** [Blocks 1–3 Post-Audit Development Plan](2026-05-29_blocks_1_3_post_audit_development_plan.md) — Phase A **closed** 2026-05-29 (Session 06); optional 07–08; Phase D next. Closure: [foundation closure audit](../audits/2026-05-29_blocks_1_3_foundation_closure_audit.md) (`READY_FOR_DECISION_WORKFLOW`). Operator contract: [runtime_artifact_contract.md](../runtime_artifact_contract.md).
+
+**Previous closure:** Block 3.4 institutional upgrade **Completed** 2026-05-29.
 
 **Most recent closure:** [Block 3.4 Current Portfolio Stress Scorecard Institutional Upgrade](2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md) (2026-05-29): v1.1 contract, `stress_diagnosis`, downstream v1-primary, live-output gates; pytest **67** (closure) / **142** (extended); fixture matrix **7/7**; evidence: [institutional upgrade acceptance audit](../audits/2026-05-29_block_3_4_institutional_upgrade_acceptance_audit.md).
 

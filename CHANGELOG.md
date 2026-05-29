@@ -8,6 +8,38 @@ Date: 2026-05-29
 
 Category: Added
 
+- **Blocks 1–3 post-audit plan (Session 10 / Phase D):** Block 5 compare/verdict — product contracts for `current_vs_candidate_v1` and `decision_verdict_v1` in `scripts/core_mvp_validation_contract.py`; live E2E Block 5 gates in `src/live_core_e2e.py` (`product_one_candidate`); `tests/test_block_5_decision_compare_contract.py`. Decision [DEC-2026-05-29-012](DECISIONS.md). Evidence: [Session 10 audit](docs/audits/2026-05-29_block_5_session_10_current_vs_candidate_decision_verdict.md).
+
+Category: Added
+
+- **Blocks 1–3 post-audit plan (Session 09 / Phase D):** Block 4 decision entry — product contracts for `problem_classification_v1` and `candidate_launchpad_v1` in `scripts/core_mvp_validation_contract.py`; live E2E Block 4 gates in `src/live_core_e2e.py`; `tests/test_block_4_decision_entry_contract.py`. Decision [DEC-2026-05-29-011](DECISIONS.md). Evidence: [Session 09 audit](docs/audits/2026-05-29_block_4_session_09_problem_classification_launchpad.md).
+
+Category: Added
+
+- **Blocks 1–3 post-audit plan (Session 06):** Phase A closure — live re-run of three canonical CLIs; `validate_live_core_artifacts` OK for `core_blocks_1_3`, `diagnosis_only`, `product_one_candidate`; verdict **`READY_FOR_DECISION_WORKFLOW`**. Evidence: [foundation closure audit](docs/audits/2026-05-29_blocks_1_3_foundation_closure_audit.md). Decision [DEC-2026-05-29-010](DECISIONS.md). Pytest bundle **261 passed**, 1 skipped.
+
+Category: Fixed
+
+- **Blocks 1–3 post-audit plan (Session 05):** Live core E2E validator profiles — `detect_live_core_e2e_profile` and profile-specific checks in `src/live_core_e2e.py` (`core_blocks_1_3`, `diagnosis_only`, `product_one_candidate`, `research_batch_core_fast`); `scripts/verify_live_core_e2e.py` prints detected profile and accepts `--profile`. Decision [DEC-2026-05-29-009](DECISIONS.md).
+
+Category: Fixed
+
+- **Blocks 1–3 post-audit plan (Session 04):** Core-only materialize runs `apply_core_blocks_product_bundle_hygiene` — removes stale Block 4+ JSON under `analysis_subject/` (`problem_classification`, `candidate_launchpad`, `ai_commentary_context`) and deletes root post-compare/decision files. Decision [DEC-2026-05-29-008](DECISIONS.md).
+
+Category: Fixed
+
+- **Blocks 1–3 post-audit plan (Session 03):** Diagnosis-only materialize runs `apply_diagnosis_only_product_bundle_hygiene` — root `current_vs_candidate.json`, `decision_verdict.json`, and `candidate_comparison.json` get explicit `no_candidate_v1` tombstones; stale advanced compare files removed. Decision [DEC-2026-05-29-007](DECISIONS.md).
+
+Category: Fixed
+
+- **Blocks 1–3 post-audit plan (Session 02):** For `explicit_list` factory runs, product `candidate_comparison.json` now writes scoped baseline + selected candidate rows only; full on-disk registry scan moves to optional `candidate_comparison_registry.json`. Decision [DEC-2026-05-29-006](DECISIONS.md).
+
+Category: Added
+
+- **Blocks 1–3 post-audit plan (Session 00–01):** Active ExecPlan [2026-05-29_blocks_1_3_post_audit_development_plan.md](docs/exec_plans/2026-05-29_blocks_1_3_post_audit_development_plan.md); operator [runtime_artifact_contract.md](docs/runtime_artifact_contract.md); Session 01 regression `test_run_report_timing_blocks_registered_in_module` (timing block keys parity with `run_report.py`).
+
+Category: Added
+
 - **Runtime entrypoints:** `run_core_diagnostics.py` (Blocks 1-3 only via `--core-diagnostics-only`); active CLI matrix in [docs/runtime_entrypoints.md](docs/runtime_entrypoints.md); legacy optimizer/policy runners under `legacy/runners/` with root wrappers; tests `tests/test_core_diagnostics_entrypoint.py`.
 
 Category: Added

@@ -679,3 +679,659 @@ def core_mvp_block3_fixture_status(
     if any(s == "partial" for s in statuses):
         return "partial"
     return "ok"
+
+
+# ---------------------------------------------------------------------------
+# Block 4 — Problem Classification + Candidate Launchpad (Decision entry)
+# ---------------------------------------------------------------------------
+
+PROBLEM_CLASSIFICATION_VERSION = "problem_classification_v1"
+CANDIDATE_LAUNCHPAD_VERSION = "candidate_launchpad_v1"
+
+PROBLEM_CLASSIFICATION_V1_IDS = frozenset(
+    {
+        "high_drawdown_risk",
+        "high_volatility",
+        "high_concentration",
+        "poor_diversification",
+        "weak_hedge_behavior",
+        "weak_crisis_resilience",
+        "high_equity_beta",
+        "data_review_required",
+        "current_portfolio_acceptable",
+    }
+)
+
+PROBLEM_CLASSIFICATION_SEVERITY = frozenset({"low", "moderate", "high", "unknown"})
+PROBLEM_CLASSIFICATION_CONFIDENCE = frozenset({"low", "medium", "high"})
+
+LAUNCHPAD_KNOWN_METHOD_IDS = frozenset(
+    {
+        "minimum_variance",
+        "risk_parity",
+        "equal_weight",
+        "minimum_cvar_constrained",
+        "equal_weight_by_asset_class",
+        "maximum_diversification",
+        "risk_budget_by_asset",
+        "robust_mv_constrained",
+        "robust_scenario",
+    }
+)
+
+LAUNCHPAD_KNOWN_GOALS = frozenset(
+    {
+        "Reduce volatility",
+        "Reduce drawdown",
+        "Improve diversification",
+        "Reduce concentration",
+        "Improve crisis resilience",
+        "Improve return/risk balance",
+        "Compare against simple benchmark",
+        "Keep current portfolio and monitor",
+        "Review data quality",
+    }
+)
+
+
+def problem_classification_v1_product_contract_violations(
+    doc: dict[str, Any] | None,
+) -> list[str]:
+    """Return Problem Classification v1 product-contract violations (empty = pass)."""
+    if not isinstance(doc, dict):
+        return [f"{PROBLEM_CLASSIFICATION_VERSION}: document is missing or not an object"]
+
+    prefix = PROBLEM_CLASSIFICATION_VERSION
+    violations: list[str] = []
+
+    if doc.get("schema_version") != PROBLEM_CLASSIFICATION_VERSION:
+        violations.append(
+            f"{prefix}: schema_version expected {PROBLEM_CLASSIFICATION_VERSION!r}, "
+            f"got {doc.get('schema_version')!r}"
+        )
+    if doc.get("diagnostic_only") is not True:
+        violations.append(f"{prefix}: diagnostic_only must be true")
+
+    problems = doc.get("problems")
+    if not isinstance(problems, list):
+        violations.append(f"{prefix}: problems must be a list")
+        return violations
+
+    if len(problems) > 3:
+        violations.append(f"{prefix}: at most 3 problems allowed, got {len(problems)}")
+
+    problem_ids: list[str] = []
+    for idx, row in enumerate(problems):
+        if not isinstance(row, dict):
+            violations.append(f"{prefix}: problems[{idx}] must be an object")
+            continue
+        pid = str(row.get("problem_id") or "").strip()
+        if not pid:
+            violations.append(f"{prefix}: problems[{idx}] missing problem_id")
+        elif pid not in PROBLEM_CLASSIFICATION_V1_IDS:
+            violations.append(f"{prefix}: problems[{idx}] unknown problem_id {pid!r}")
+        else:
+            problem_ids.append(pid)
+        severity = str(row.get("severity") or "").strip().lower()
+        if severity not in PROBLEM_CLASSIFICATION_SEVERITY:
+            violations.append(f"{prefix}: problems[{idx}] invalid severity {row.get('severity')!r}")
+        confidence = str(row.get("confidence") or "").strip().lower()
+        if confidence not in PROBLEM_CLASSIFICATION_CONFIDENCE:
+            violations.append(
+                f"{prefix}: problems[{idx}] invalid confidence {row.get('confidence')!r}"
+            )
+        evidence = row.get("evidence")
+        if not isinstance(evidence, list) or not evidence:
+            violations.append(f"{prefix}: problems[{idx}] must include non-empty evidence[]")
+        paths = row.get("reasonable_paths_to_test")
+        if not isinstance(paths, list) or not paths:
+            violations.append(
+                f"{prefix}: problems[{idx}] must include reasonable_paths_to_test[]"
+            )
+
+    summary = doc.get("summary")
+    if not isinstance(summary, dict):
+        violations.append(f"{prefix}: summary must be an object")
+    else:
+        primary = summary.get("primary_problem_id")
+        if primary is not None and problem_ids and str(primary) not in problem_ids:
+            violations.append(
+                f"{prefix}: summary.primary_problem_id {primary!r} not in problems[]"
+            )
+        if summary.get("n_problems") != len(problems):
+            violations.append(
+                f"{prefix}: summary.n_problems must equal len(problems) "
+                f"({summary.get('n_problems')!r} vs {len(problems)})"
+            )
+        acceptable = summary.get("current_portfolio_acceptable")
+        if acceptable is True and problem_ids != ["current_portfolio_acceptable"]:
+            violations.append(
+                f"{prefix}: current_portfolio_acceptable true but problems are not only acceptable row"
+            )
+        if acceptable is False and problem_ids == ["current_portfolio_acceptable"]:
+            violations.append(
+                f"{prefix}: current_portfolio_acceptable false but only acceptable problem emitted"
+            )
+
+    return violations
+
+
+def candidate_launchpad_v1_product_contract_violations(
+    doc: dict[str, Any] | None,
+) -> list[str]:
+    """Return Candidate Launchpad v1 product-contract violations (empty = pass)."""
+    if not isinstance(doc, dict):
+        return [f"{CANDIDATE_LAUNCHPAD_VERSION}: document is missing or not an object"]
+
+    prefix = CANDIDATE_LAUNCHPAD_VERSION
+    violations: list[str] = []
+
+    if doc.get("schema_version") != CANDIDATE_LAUNCHPAD_VERSION:
+        violations.append(
+            f"{prefix}: schema_version expected {CANDIDATE_LAUNCHPAD_VERSION!r}, "
+            f"got {doc.get('schema_version')!r}"
+        )
+    if doc.get("diagnostic_only") is not True:
+        violations.append(f"{prefix}: diagnostic_only must be true")
+
+    cards = doc.get("cards")
+    if not isinstance(cards, list):
+        violations.append(f"{prefix}: cards must be a list")
+        return violations
+
+    if not cards:
+        violations.append(f"{prefix}: cards must be non-empty")
+
+    card_ids: list[str] = []
+    for idx, card in enumerate(cards):
+        if not isinstance(card, dict):
+            violations.append(f"{prefix}: cards[{idx}] must be an object")
+            continue
+        card_id = str(card.get("card_id") or "").strip()
+        if not card_id:
+            violations.append(f"{prefix}: cards[{idx}] missing card_id")
+        else:
+            card_ids.append(card_id)
+        goal = card.get("goal")
+        if not isinstance(goal, str) or not goal.strip():
+            violations.append(f"{prefix}: cards[{idx}] missing goal")
+        elif goal not in LAUNCHPAD_KNOWN_GOALS:
+            violations.append(f"{prefix}: cards[{idx}] unknown goal {goal!r}")
+        if card.get("generates_portfolio") is not False:
+            violations.append(f"{prefix}: cards[{idx}] generates_portfolio must be false")
+        if "weights" in card:
+            violations.append(f"{prefix}: cards[{idx}] must not include weights")
+        methods = card.get("suggested_methods")
+        if not isinstance(methods, list):
+            violations.append(f"{prefix}: cards[{idx}] suggested_methods must be a list")
+        else:
+            for midx, method in enumerate(methods):
+                if not isinstance(method, dict):
+                    violations.append(
+                        f"{prefix}: cards[{idx}].suggested_methods[{midx}] must be an object"
+                    )
+                    continue
+                method_id = str(method.get("candidate_method_id") or "").strip()
+                if not method_id:
+                    violations.append(
+                        f"{prefix}: cards[{idx}].suggested_methods[{midx}] missing candidate_method_id"
+                    )
+                elif method_id not in LAUNCHPAD_KNOWN_METHOD_IDS:
+                    violations.append(
+                        f"{prefix}: cards[{idx}] unknown candidate_method_id {method_id!r}"
+                    )
+
+    summary = doc.get("summary")
+    if not isinstance(summary, dict):
+        violations.append(f"{prefix}: summary must be an object")
+    else:
+        if summary.get("n_cards") != len(cards):
+            violations.append(
+                f"{prefix}: summary.n_cards must equal len(cards) "
+                f"({summary.get('n_cards')!r} vs {len(cards)})"
+            )
+        primary = summary.get("primary_card_id")
+        if primary is not None and card_ids and str(primary) != card_ids[0]:
+            violations.append(
+                f"{prefix}: summary.primary_card_id must match first card "
+                f"({primary!r} vs {card_ids[0]!r})"
+            )
+        has_gen = summary.get("has_portfolio_generating_options")
+        expected_gen = any(
+            isinstance(card, dict) and bool(card.get("suggested_methods")) for card in cards
+        )
+        if has_gen is not None and bool(has_gen) != expected_gen:
+            violations.append(
+                f"{prefix}: summary.has_portfolio_generating_options inconsistent with cards"
+            )
+
+    return violations
+
+
+def block_4_diagnosis_handoff_violations(
+    problem_classification: dict[str, Any] | None,
+    candidate_launchpad: dict[str, Any] | None,
+) -> list[str]:
+    """Cross-artifact Block 4 handoff: Launchpad cards trace to Problem Classification."""
+    if not isinstance(problem_classification, dict) or not isinstance(candidate_launchpad, dict):
+        return ["block_4_handoff: both problem_classification and candidate_launchpad required"]
+
+    violations: list[str] = []
+    prefix = "block_4_handoff"
+
+    pc_end = problem_classification.get("analysis_end")
+    lp_end = candidate_launchpad.get("analysis_end")
+    if pc_end and lp_end and str(pc_end) != str(lp_end):
+        violations.append(
+            f"{prefix}: analysis_end mismatch ({pc_end!r} vs {lp_end!r})"
+        )
+
+    problem_ids = {
+        str(row.get("problem_id"))
+        for row in (problem_classification.get("problems") or [])
+        if isinstance(row, dict) and row.get("problem_id")
+    }
+    for idx, card in enumerate(candidate_launchpad.get("cards") or []):
+        if not isinstance(card, dict):
+            continue
+        source_id = card.get("source_problem_id")
+        if source_id is None:
+            continue
+        if str(source_id) not in problem_ids:
+            violations.append(
+                f"{prefix}: cards[{idx}] source_problem_id {source_id!r} not in problems[]"
+            )
+
+    source_artifacts = candidate_launchpad.get("source_artifacts") or {}
+    if source_artifacts.get("problem_classification") != "problem_classification.json":
+        violations.append(
+            f"{prefix}: source_artifacts.problem_classification must be problem_classification.json"
+        )
+
+    return violations
+
+
+def check_problem_classification_v1(doc: dict[str, Any] | None) -> dict[str, Any]:
+    violations = problem_classification_v1_product_contract_violations(doc)
+    problems = (doc or {}).get("problems") if isinstance(doc, dict) else []
+    problems = problems if isinstance(problems, list) else []
+    summary = (doc or {}).get("summary") if isinstance(doc, dict) else {}
+    summary = summary if isinstance(summary, dict) else {}
+    return {
+        "product_contract_ok": not violations,
+        "contract_violations": violations,
+        "n_problems": len(problems),
+        "primary_problem_id": summary.get("primary_problem_id"),
+        "current_portfolio_acceptable": summary.get("current_portfolio_acceptable"),
+        "hedge_gap_source": (doc or {}).get("hedge_gap_source"),
+        "stress_scorecard_source": (doc or {}).get("stress_scorecard_source"),
+    }
+
+
+def check_candidate_launchpad_v1(doc: dict[str, Any] | None) -> dict[str, Any]:
+    violations = candidate_launchpad_v1_product_contract_violations(doc)
+    cards = (doc or {}).get("cards") if isinstance(doc, dict) else []
+    cards = cards if isinstance(cards, list) else []
+    summary = (doc or {}).get("summary") if isinstance(doc, dict) else {}
+    summary = summary if isinstance(summary, dict) else {}
+    return {
+        "product_contract_ok": not violations,
+        "contract_violations": violations,
+        "n_cards": len(cards),
+        "primary_card_id": summary.get("primary_card_id"),
+        "has_portfolio_generating_options": summary.get("has_portfolio_generating_options"),
+    }
+
+
+def check_block_4_diagnosis_handoff(
+    problem_classification: dict[str, Any] | None,
+    candidate_launchpad: dict[str, Any] | None,
+) -> dict[str, Any]:
+    violations = block_4_diagnosis_handoff_violations(
+        problem_classification, candidate_launchpad
+    )
+    return {
+        "handoff_ok": not violations,
+        "contract_violations": violations,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Block 5 — Current vs Candidate + Decision Verdict (compare path)
+# ---------------------------------------------------------------------------
+
+CURRENT_VS_CANDIDATE_VERSION = "current_vs_candidate_v1"
+DECISION_VERDICT_VERSION = "decision_verdict_v1"
+
+CURRENT_VS_VIEW_MODES = frozenset({"diagnosis_only", "one_candidate", "shortlist"})
+
+SELECTION_DECISION_STATUSES = frozenset(
+    {
+        "selected_candidate",
+        "no_material_rebalance",
+        "inconclusive",
+        "data_review_required",
+        "mandate_risk_reduction",
+    }
+)
+
+DECISION_VERDICT_IDS = frozenset(
+    {
+        "rebalance_to_selected_candidate",
+        "no_material_rebalance_recommended",
+        "test_another_candidate_or_review_evidence",
+        "evidence_insufficient",
+        "risk_reduction_required",
+    }
+)
+
+DECISION_VERDICT_FAMILIES = frozenset({"core_compare", "policy_mandate"})
+
+DECISION_CONFIDENCE_VALUES = frozenset({"low", "medium", "high"})
+
+_STATUS_TO_VERDICT_ID: dict[str, str] = {
+    "selected_candidate": "rebalance_to_selected_candidate",
+    "no_material_rebalance": "no_material_rebalance_recommended",
+    "inconclusive": "test_another_candidate_or_review_evidence",
+    "data_review_required": "evidence_insufficient",
+    "mandate_risk_reduction": "risk_reduction_required",
+}
+
+_STATUS_TO_VERDICT_FAMILY: dict[str, str] = {
+    "selected_candidate": "core_compare",
+    "no_material_rebalance": "core_compare",
+    "inconclusive": "core_compare",
+    "data_review_required": "core_compare",
+    "mandate_risk_reduction": "policy_mandate",
+}
+
+
+def _is_no_candidate_tombstone(doc: dict[str, Any] | None) -> bool:
+    return isinstance(doc, dict) and doc.get("tombstone") == "no_candidate_v1"
+
+
+def current_vs_candidate_v1_product_contract_violations(
+    doc: dict[str, Any] | None,
+) -> list[str]:
+    """Return Current vs Candidate v1 product-contract violations (empty = pass)."""
+    if not isinstance(doc, dict):
+        return [f"{CURRENT_VS_CANDIDATE_VERSION}: document is missing or not an object"]
+    if _is_no_candidate_tombstone(doc):
+        return [f"{CURRENT_VS_CANDIDATE_VERSION}: tombstone artifact is not a live compare output"]
+
+    prefix = CURRENT_VS_CANDIDATE_VERSION
+    violations: list[str] = []
+
+    if doc.get("schema_version") != CURRENT_VS_CANDIDATE_VERSION:
+        violations.append(
+            f"{prefix}: schema_version expected {CURRENT_VS_CANDIDATE_VERSION!r}, "
+            f"got {doc.get('schema_version')!r}"
+        )
+    if doc.get("diagnostic_only") is not True:
+        violations.append(f"{prefix}: diagnostic_only must be true")
+
+    view_mode = str(doc.get("view_mode") or "").strip()
+    if view_mode not in CURRENT_VS_VIEW_MODES:
+        violations.append(f"{prefix}: invalid view_mode {doc.get('view_mode')!r}")
+
+    selected = doc.get("selected_candidate_ids")
+    if not isinstance(selected, list):
+        violations.append(f"{prefix}: selected_candidate_ids must be a list")
+        selected = []
+
+    comparisons = doc.get("comparisons")
+    if not isinstance(comparisons, list):
+        violations.append(f"{prefix}: comparisons must be a list")
+        comparisons = []
+
+    baseline = doc.get("baseline")
+    if not isinstance(baseline, dict):
+        violations.append(f"{prefix}: baseline must be an object")
+
+    if view_mode == "one_candidate":
+        if len(selected) != 1:
+            violations.append(
+                f"{prefix}: view_mode one_candidate requires exactly one selected_candidate_id"
+            )
+        if len(comparisons) != 1:
+            violations.append(
+                f"{prefix}: view_mode one_candidate requires exactly one comparisons[] row"
+            )
+        elif selected and comparisons[0].get("candidate_id") != selected[0]:
+            violations.append(
+                f"{prefix}: comparisons[0].candidate_id must match selected_candidate_ids[0]"
+            )
+    elif view_mode == "shortlist":
+        if len(selected) < 2:
+            violations.append(
+                f"{prefix}: view_mode shortlist requires at least two selected_candidate_ids"
+            )
+        if len(comparisons) < 2:
+            violations.append(f"{prefix}: view_mode shortlist requires at least two comparisons[] rows")
+    elif view_mode == "diagnosis_only":
+        if selected:
+            violations.append(f"{prefix}: diagnosis_only view_mode must have empty selected_candidate_ids")
+        if comparisons:
+            violations.append(f"{prefix}: diagnosis_only view_mode must have empty comparisons[]")
+
+    for idx, row in enumerate(comparisons):
+        if not isinstance(row, dict):
+            violations.append(f"{prefix}: comparisons[{idx}] must be an object")
+            continue
+        if not row.get("candidate_id"):
+            violations.append(f"{prefix}: comparisons[{idx}] missing candidate_id")
+        dimensions = row.get("dimensions")
+        if not isinstance(dimensions, list) or not dimensions:
+            violations.append(f"{prefix}: comparisons[{idx}] must include dimensions[]")
+        else:
+            for didx, dim in enumerate(dimensions):
+                if not isinstance(dim, dict):
+                    violations.append(
+                        f"{prefix}: comparisons[{idx}].dimensions[{didx}] must be an object"
+                    )
+                    continue
+                if not dim.get("field") or not dim.get("label"):
+                    violations.append(
+                        f"{prefix}: comparisons[{idx}].dimensions[{didx}] missing field or label"
+                    )
+                if dim.get("direction") not in {"improved", "worse", "flat", "unknown"}:
+                    violations.append(
+                        f"{prefix}: comparisons[{idx}].dimensions[{didx}] invalid direction"
+                    )
+
+    source = doc.get("source_artifacts") or {}
+    if source.get("candidate_comparison") != "candidate_comparison.json":
+        violations.append(
+            f"{prefix}: source_artifacts.candidate_comparison must be candidate_comparison.json"
+        )
+
+    return violations
+
+
+def decision_verdict_v1_product_contract_violations(
+    doc: dict[str, Any] | None,
+) -> list[str]:
+    """Return Decision Verdict v1 product-contract violations (empty = pass)."""
+    if not isinstance(doc, dict):
+        return [f"{DECISION_VERDICT_VERSION}: document is missing or not an object"]
+    if _is_no_candidate_tombstone(doc):
+        return [f"{DECISION_VERDICT_VERSION}: tombstone artifact is not a live verdict output"]
+
+    prefix = DECISION_VERDICT_VERSION
+    violations: list[str] = []
+
+    if doc.get("schema_version") != DECISION_VERDICT_VERSION:
+        violations.append(
+            f"{prefix}: schema_version expected {DECISION_VERDICT_VERSION!r}, "
+            f"got {doc.get('schema_version')!r}"
+        )
+    if doc.get("diagnostic_only") is not False:
+        violations.append(f"{prefix}: diagnostic_only must be false")
+
+    status = str(doc.get("selection_decision_status") or "").strip()
+    if status not in SELECTION_DECISION_STATUSES:
+        violations.append(f"{prefix}: invalid selection_decision_status {status!r}")
+
+    verdict_id = str(doc.get("verdict_id") or "").strip()
+    if verdict_id not in DECISION_VERDICT_IDS:
+        violations.append(f"{prefix}: invalid verdict_id {verdict_id!r}")
+    elif status in _STATUS_TO_VERDICT_ID and verdict_id != _STATUS_TO_VERDICT_ID[status]:
+        violations.append(
+            f"{prefix}: verdict_id {verdict_id!r} inconsistent with selection_decision_status {status!r}"
+        )
+
+    family = str(doc.get("verdict_family") or "").strip()
+    if family not in DECISION_VERDICT_FAMILIES:
+        violations.append(f"{prefix}: invalid verdict_family {family!r}")
+    elif status in _STATUS_TO_VERDICT_FAMILY and family != _STATUS_TO_VERDICT_FAMILY[status]:
+        violations.append(
+            f"{prefix}: verdict_family {family!r} inconsistent with selection_decision_status {status!r}"
+        )
+
+    confidence = str(doc.get("confidence") or "").strip().lower()
+    if confidence not in DECISION_CONFIDENCE_VALUES:
+        violations.append(f"{prefix}: invalid confidence {doc.get('confidence')!r}")
+
+    if not isinstance(doc.get("verdict_label"), str) or not str(doc.get("verdict_label")).strip():
+        violations.append(f"{prefix}: verdict_label must be non-empty")
+
+    guardrails = doc.get("guardrails")
+    if not isinstance(guardrails, dict):
+        violations.append(f"{prefix}: guardrails must be an object")
+    else:
+        for key in (
+            "does_not_rename_selection_engine_contract",
+            "does_not_change_selection_formulas",
+            "does_not_execute_trades",
+        ):
+            if guardrails.get(key) is not True:
+                violations.append(f"{prefix}: guardrails.{key} must be true")
+
+    no_trade = doc.get("no_trade")
+    if not isinstance(no_trade, dict):
+        violations.append(f"{prefix}: no_trade must be an object")
+
+    return violations
+
+
+def block_5_compare_handoff_violations(
+    comparison: dict[str, Any] | None,
+    current_vs_candidate: dict[str, Any] | None,
+    decision_verdict: dict[str, Any] | None,
+    *,
+    selection: dict[str, Any] | None = None,
+) -> list[str]:
+    """Cross-artifact Block 5 handoff: comparison → current_vs_candidate → decision_verdict."""
+    if not isinstance(comparison, dict):
+        return ["block_5_handoff: candidate_comparison required"]
+    if not isinstance(current_vs_candidate, dict) or not isinstance(decision_verdict, dict):
+        return ["block_5_handoff: current_vs_candidate and decision_verdict required"]
+    if _is_no_candidate_tombstone(comparison) or _is_no_candidate_tombstone(current_vs_candidate):
+        return ["block_5_handoff: tombstone artifacts cannot form compare handoff"]
+    if _is_no_candidate_tombstone(decision_verdict):
+        return ["block_5_handoff: decision_verdict tombstone cannot form compare handoff"]
+
+    violations: list[str] = []
+    prefix = "block_5_handoff"
+
+    scope = comparison.get("product_candidate_scope") or {}
+    scope_ids = {
+        str(cid)
+        for cid in (scope.get("candidate_ids") or [])
+        if str(cid).strip()
+    }
+    selected = [
+        str(cid) for cid in (current_vs_candidate.get("selected_candidate_ids") or []) if str(cid).strip()
+    ]
+    if scope_ids and selected and any(cid not in scope_ids for cid in selected):
+        violations.append(
+            f"{prefix}: selected_candidate_ids {selected!r} outside product_candidate_scope"
+        )
+
+    view_mode = str(current_vs_candidate.get("view_mode") or "")
+    if view_mode not in {"one_candidate", "shortlist"}:
+        violations.append(
+            f"{prefix}: product compare path requires view_mode one_candidate or shortlist"
+        )
+
+    verdict_selected = decision_verdict.get("selected_candidate_id")
+    if selected and verdict_selected is not None and str(verdict_selected) not in selected:
+        violations.append(
+            f"{prefix}: decision_verdict.selected_candidate_id {verdict_selected!r} "
+            f"not in current_vs_candidate.selected_candidate_ids"
+        )
+
+    baseline_cvc = (current_vs_candidate.get("baseline") or {}).get("candidate_id")
+    baseline_verdict = decision_verdict.get("baseline_candidate_id")
+    if baseline_cvc and baseline_verdict and str(baseline_cvc) != str(baseline_verdict):
+        violations.append(
+            f"{prefix}: baseline mismatch ({baseline_cvc!r} vs {baseline_verdict!r})"
+        )
+
+    comparison_end = comparison.get("analysis_end")
+    cvc_end = current_vs_candidate.get("analysis_end")
+    if comparison_end and cvc_end and str(comparison_end) != str(cvc_end):
+        violations.append(
+            f"{prefix}: analysis_end mismatch comparison vs current_vs_candidate"
+        )
+
+    if isinstance(selection, dict):
+        favored = selection.get("favored_candidate_id")
+        if favored and verdict_selected and str(favored) != str(verdict_selected):
+            violations.append(
+                f"{prefix}: selection.favored_candidate_id {favored!r} "
+                f"!= decision_verdict.selected_candidate_id {verdict_selected!r}"
+            )
+
+    verdict_sources = decision_verdict.get("source_artifacts") or {}
+    if verdict_sources.get("current_vs_candidate") != "current_vs_candidate.json":
+        violations.append(
+            f"{prefix}: decision_verdict.source_artifacts.current_vs_candidate must be set"
+        )
+
+    return violations
+
+
+def check_current_vs_candidate_v1(doc: dict[str, Any] | None) -> dict[str, Any]:
+    violations = current_vs_candidate_v1_product_contract_violations(doc)
+    return {
+        "product_contract_ok": not violations,
+        "contract_violations": violations,
+        "view_mode": (doc or {}).get("view_mode") if isinstance(doc, dict) else None,
+        "n_comparisons": len((doc or {}).get("comparisons") or [])
+        if isinstance(doc, dict) and isinstance(doc.get("comparisons"), list)
+        else 0,
+        "selected_candidate_ids": list((doc or {}).get("selected_candidate_ids") or [])
+        if isinstance(doc, dict)
+        else [],
+    }
+
+
+def check_decision_verdict_v1(doc: dict[str, Any] | None) -> dict[str, Any]:
+    violations = decision_verdict_v1_product_contract_violations(doc)
+    return {
+        "product_contract_ok": not violations,
+        "contract_violations": violations,
+        "verdict_id": (doc or {}).get("verdict_id") if isinstance(doc, dict) else None,
+        "verdict_family": (doc or {}).get("verdict_family") if isinstance(doc, dict) else None,
+        "selection_decision_status": (doc or {}).get("selection_decision_status")
+        if isinstance(doc, dict)
+        else None,
+        "confidence": (doc or {}).get("confidence") if isinstance(doc, dict) else None,
+    }
+
+
+def check_block_5_compare_handoff(
+    comparison: dict[str, Any] | None,
+    current_vs_candidate: dict[str, Any] | None,
+    decision_verdict: dict[str, Any] | None,
+    *,
+    selection: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    violations = block_5_compare_handoff_violations(
+        comparison, current_vs_candidate, decision_verdict, selection=selection
+    )
+    return {
+        "handoff_ok": not violations,
+        "contract_violations": violations,
+    }

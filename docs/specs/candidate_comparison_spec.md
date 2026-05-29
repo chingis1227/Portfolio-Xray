@@ -567,7 +567,7 @@ The comparison builder must:
 6. Copy `analysis_setup_summary` from `{output_dir_final}/analysis_subject/run_metadata.json` when present; otherwise fall back to Main `run_metadata.json`, Main `run_result.json`, then config.
 7. Resolve comparison `analysis_end` from `{output_dir_final}/analysis_subject/` snapshots or metadata first, then Main snapshots or metadata, then config. Use that date to enforce candidate snapshot freshness.
 8. When `analysis_subject` is available, gate the `policy` row as portfolio-first legacy evidence with `legacy_policy_not_default_portfolio_first_candidate`; this prevents Health Score and Selection from ranking stale root policy artifacts as normal alternatives.
-9. Write `candidate_comparison.json` to `output_dir_final`.
+9. Write `candidate_comparison.json` to `output_dir_final`. When `candidate_factory_run.json` uses `factory_profile_id: explicit_list`, write the **product-scoped** document (via `scoped_product_comparison`) to `candidate_comparison.json` and emit the full on-disk scan as optional `candidate_comparison_registry.json` (DEC-2026-05-29-006). Batch/research paths write the full registry to `candidate_comparison.json` unchanged.
 10. Optionally refresh legacy `portfolio_comparison.json` for backward compatibility (subset: policy, equal_weight, risk_parity, robust_scenario).
 
 The builder must **not** call the optimizer or candidate scripts; it only reads artifacts.

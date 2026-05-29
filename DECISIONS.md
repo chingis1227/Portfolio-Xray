@@ -60,6 +60,104 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-05-29-012
+Title: Block 5 compare/verdict validated via product contracts and live E2E (Session 10)
+
+- Status: accepted
+- Date: 2026-05-29
+- Decision: Current vs Candidate (`current_vs_candidate_v1`) and Decision Verdict (`decision_verdict_v1`) at `{output_dir_final}/` are gated by shared product-contract validators in `scripts/core_mvp_validation_contract.py` and enforced in `validate_live_core_artifacts` for `product_one_candidate` when compare artifacts exist (handoff from scoped `candidate_comparison.json`; tombstone `no_candidate_v1` cannot form a live compare handoff).
+- Context: Phase D Session 10 after Session 09 Block 4 closure; Block 5 builders existed but lacked the same institutional contract + live profile gates as Blocks 3–4.
+- Rationale: One-candidate product path must expose authoritative root compare/verdict JSON with fail-loud drift detection before Sessions 11–12 extend decision-package grounding.
+- Alternatives considered: Validate only in offline unit tests (rejected — no operator workspace proof); merge verdict into `candidate_comparison.json` only (rejected — separate product contracts per spec).
+- Assumptions: `write_candidate_comparison_outputs()` continues to emit CVC + verdict after factory compare on `explicit_list` runs; diagnosis-only runs keep tombstone and omit Block 5 handoff.
+- Consequences: `tests/test_block_5_decision_compare_contract.py`; live E2E evidence keys `block_5_*`; Session 11+ can add AI commentary / package validators on the same pattern.
+- Related documents: [Session 10 audit](docs/audits/2026-05-29_block_5_session_10_current_vs_candidate_decision_verdict.md), [current_vs_candidate_spec.md](docs/specs/current_vs_candidate_spec.md), [decision_verdict_spec.md](docs/specs/decision_verdict_spec.md), DEC-2026-05-29-011.
+- Review trigger: Revisit if Block 5 schema version bumps or product adds multi-candidate shortlist compare as default Core MVP path.
+
+Decision ID: DEC-2026-05-29-011
+Title: Block 4 decision entry validated via product contracts and live E2E (Session 09)
+
+- Status: accepted
+- Date: 2026-05-29
+- Decision: Problem Classification (`problem_classification_v1`) and Candidate Launchpad (`candidate_launchpad_v1`) under `analysis_subject/` are gated by shared product-contract validators in `scripts/core_mvp_validation_contract.py` and enforced in `validate_live_core_artifacts` for `diagnosis_only` and `product_one_candidate` profiles (handoff + schema + no weights on cards).
+- Context: Phase D Session 09 after Phase A `READY_FOR_DECISION_WORKFLOW`; Block 4 logic existed but lacked institutional contract checks comparable to Blocks 3.3/3.4.
+- Rationale: Decision Workflow UI and operators need the same “fail loud on contract drift” standard as Blocks 1–3; offline tests alone are insufficient without live profile integration.
+- Alternatives considered: Only document specs without validators (rejected — regression risk); merge Block 4 into a separate script (rejected — duplicate subject checks).
+- Assumptions: `run_report.py` continues to write PC then Launchpad on non–core-only materialize; core-only runs remain without Block 4 subject files.
+- Consequences: `tests/test_block_4_decision_entry_contract.py`; live E2E evidence keys `block_4_*`; Session 10+ can extend the same pattern to root compare/verdict artifacts.
+- Related documents: [Session 09 audit](docs/audits/2026-05-29_block_4_session_09_problem_classification_launchpad.md), [problem_classification_spec.md](docs/specs/problem_classification_spec.md), [candidate_launchpad_spec.md](docs/specs/candidate_launchpad_spec.md), DEC-2026-05-29-010.
+- Review trigger: Revisit if Block 4 schema version bumps or Launchpad gains portfolio-generating cards in product V1.
+
+Decision ID: DEC-2026-05-29-010
+Title: Blocks 1–3 diagnostic foundation ready for Decision Workflow (Phase A closure)
+
+- Status: accepted
+- Date: 2026-05-29
+- Decision: After ExecPlan Phase A Sessions 01–06, the project treats Blocks 1–3 runtime artifact scope as **frozen for Decision Workflow entry**: verdict **`READY_FOR_DECISION_WORKFLOW`**; operators use [runtime_artifact_contract.md](docs/runtime_artifact_contract.md) and `scripts/verify_live_core_e2e.py` (auto-detect or `--profile`) after each canonical CLI. Pre-decision audit `NOT_READY_RUNTIME_CONTRACT_MISMATCH` is superseded by [foundation closure audit](docs/audits/2026-05-29_blocks_1_3_foundation_closure_audit.md).
+- Context: Pre-decision audit (2026-05-29) blocked Decision Workflow on R2–R5 (stale compare, 19-row menu, core-only leakage, E2E false failures). Sessions 02–05 implemented fixes; Session 06 re-ran three CLIs and re-scored acceptance criteria 1–18.
+- Rationale: Live evidence on demo portfolio plus **261** pytest passes demonstrates product-scoped comparison and hygiene; downstream Blocks 4–7 consumers can treat root compare JSON as authoritative when tombstone / scope metadata match the active CLI mode.
+- Alternatives considered: Keep `NOT_READY` until R6/R7 polish (rejected — P2 UX/scoring gaps do not invalidate runtime contract); skip live re-run and rely on offline tests only (rejected — audit required operator workspace proof).
+- Assumptions: Research batches with `core_fast` still use `research_batch_core_fast` profile; optional R6/R7 remain non-blocking backlog.
+- Consequences: Phase D (Decision workflow Sessions 09–12) may proceed; ExecPlan Phase A marked complete; `docs/audits/README.md` active closure pointer updated.
+- Related documents: [docs/exec_plans/2026-05-29_blocks_1_3_post_audit_development_plan.md](docs/exec_plans/2026-05-29_blocks_1_3_post_audit_development_plan.md), DEC-2026-05-29-006 through DEC-2026-05-29-009, [docs/audits/2026-05-29_blocks_1_3_foundation_closure_audit.md](docs/audits/2026-05-29_blocks_1_3_foundation_closure_audit.md).
+- Review trigger: Re-open if a canonical CLI regresses artifact contract without a spec change, or if product introduces a fifth runtime mode without validator profile.
+
+Decision ID: DEC-2026-05-29-009
+Title: Live core E2E validator uses runtime artifact profiles (R5)
+
+- Status: accepted
+- Date: 2026-05-29
+- Decision: `validate_live_core_artifacts` auto-detects one of four profiles from on-disk layout and applies profile-specific root checks: `core_blocks_1_3` (no Block 4+ subject or root compare files), `diagnosis_only` (`no_candidate_v1` tombstones, diagnosis bundle present, no factory), `product_one_candidate` (`explicit_list` factory + scoped `product_candidate_scope`), `research_batch_core_fast` (legacy RM-1021 `core_fast` menu gate). Callers may override with `profile=`. `scripts/verify_live_core_e2e.py` prints `detected_profile` and supports `--profile`.
+- Context: Pre-decision audit R5 — validator assumed every workspace was a `core_fast` batch compare (`review_mode=core`, 19-row menu), so one-candidate and diagnosis-only workspaces failed after Sessions 02–04 fixes.
+- Rationale: Operator acceptance must match the three canonical CLIs in [runtime_artifact_contract.md](docs/runtime_artifact_contract.md) without false failures on scoped comparison or tombstones.
+- Alternatives considered: Re-run only `core_fast` before validate (rejected — wrong product contract); drop comparison checks entirely (rejected — loses regression signal); separate scripts per mode (rejected — duplicated subject Block 1–3 checks).
+- Assumptions: Profile detection prioritizes `candidate_factory_run.factory_profile_id` when present; tombstone `no_candidate_v1` marks diagnosis-only compare roots.
+- Consequences: `tests/test_live_core_e2e_validation.py` covers all four profiles; DEC-2026-05-29-006 consequence (live E2E alignment) closed; Session 06 re-audit can require `verify_live_core_e2e.py` after each CLI on a clean tree.
+- Related documents: [docs/exec_plans/2026-05-29_blocks_1_3_post_audit_development_plan.md](docs/exec_plans/2026-05-29_blocks_1_3_post_audit_development_plan.md), [docs/runtime_artifact_contract.md](docs/runtime_artifact_contract.md), [src/live_core_e2e.py](src/live_core_e2e.py), DEC-2026-05-29-006.
+- Review trigger: Revisit if a fifth profile (e.g. `default_v1` research batch) needs first-class validation separate from `research_batch_core_fast`.
+
+Decision ID: DEC-2026-05-29-008
+Title: Core Blocks 1–3 runs prune stale Block 4+ subject and root compare JSON
+
+- Status: accepted
+- Date: 2026-05-29
+- Decision: After successful `run_materialize_analysis_subject_report` with `core_diagnostics_only=True` (`product_bundle_scope=core_blocks_1_3`), call `apply_core_blocks_product_bundle_hygiene` to **delete** stale `analysis_subject/{problem_classification,candidate_launchpad,ai_commentary_context}.json` and all root post-compare/decision JSON (compare, verdict, factory, selection, advanced package). Core-only root artifacts remain **absent** (not tombstoned). Blocks 1–3 subject JSON (`portfolio_xray`, `stress_report`, snapshots, manifest) is untouched.
+- Context: Pre-decision audit R4 — `run_core_diagnostics.py` refreshed Blocks 1–3 but left Block 4+ product JSON from prior full review looking authoritative on disk while manifest excluded those keys.
+- Rationale: Operators and validators must not read stale Problem Classification / Launchpad / compare files after a core-only run; deletion matches runtime contract “Absent” for core mode root artifacts.
+- Alternatives considered: Tombstone Block 4+ subject files (rejected — core mode contract is absence, not “not authoritative” sentinel); rely on manifest only (rejected — files remained on disk); prune in a separate CLI step (rejected — hygiene must be automatic on materialize).
+- Assumptions: Diagnosis-only path continues to use Session 03 tombstones at variant root; one-candidate compare overwrites root JSON normally.
+- Consequences: `apply_core_blocks_product_bundle_hygiene` in `src/product_bundle_hygiene.py`; tests in `tests/test_product_bundle_hygiene.py`; runtime artifact contract Session 04 rows updated.
+- Related documents: [docs/exec_plans/2026-05-29_blocks_1_3_post_audit_development_plan.md](docs/exec_plans/2026-05-29_blocks_1_3_post_audit_development_plan.md), [docs/runtime_artifact_contract.md](docs/runtime_artifact_contract.md), DEC-2026-05-29-007.
+- Review trigger: Revisit if core-only should retain diagnosis-only tombstones at root for UI consistency.
+
+Decision ID: DEC-2026-05-29-007
+Title: Diagnosis-only runs tombstone stale post-compare root JSON
+
+- Status: accepted
+- Date: 2026-05-29
+- Decision: After successful `run_materialize_analysis_subject_report` on the diagnosis-only product path (not `core_diagnostics_only`), call `apply_diagnosis_only_product_bundle_hygiene` on `{output_dir_final}` to write explicit `no_candidate_v1` tombstones to `current_vs_candidate.json`, `decision_verdict.json`, and `candidate_comparison.json`, and remove stale advanced compare artifacts (`selection_decision.json`, registry, health/robustness, action/journal, etc.). Tombstones carry `artifact_status: not_authoritative` and `workflow_state: diagnosis_only`. Core-only runs (`core_blocks_1_3`) do **not** invoke hygiene (Session 04 handles subject-side prune).
+- Context: Pre-decision audit R3 — default `run_portfolio_review.py` left stale `decision_verdict.json` / `current_vs_candidate.json` from prior one-candidate runs, misleading operators and UI consumers.
+- Rationale: Explicit tombstones remove absent-file vs stale-file ambiguity while preserving a machine-readable signal that no candidate was selected for this run.
+- Alternatives considered: Silent delete only (rejected — UI may interpret missing files as “not yet run”); leave stale files (rejected — audit failure); tombstone only verdict without comparison file (rejected — comparison menu was the primary misread surface before Session 02 scoping).
+- Assumptions: One-candidate and research-batch runs still overwrite tombstones via `write_candidate_comparison_outputs`; hygiene runs only at end of non-core materialization.
+- Consequences: `tests/test_product_bundle_hygiene.py`, updated architecture consistency test, runtime artifact contract Session 03 rows; operators must check `tombstone` / `artifact_status` before treating root compare JSON as authoritative on diagnosis-only runs. Core-only prune is separate (DEC-2026-05-29-008).
+- Related documents: [docs/exec_plans/2026-05-29_blocks_1_3_post_audit_development_plan.md](docs/exec_plans/2026-05-29_blocks_1_3_post_audit_development_plan.md), [docs/runtime_artifact_contract.md](docs/runtime_artifact_contract.md), [src/product_bundle_hygiene.py](src/product_bundle_hygiene.py), DEC-2026-05-29-006.
+- Review trigger: Revisit if product UI prefers absent files over tombstones, or if hygiene should also run from a standalone CLI flag.
+
+Decision ID: DEC-2026-05-29-006
+Title: Product candidate comparison scopes JSON write for explicit-list factory runs
+
+- Status: accepted
+- Date: 2026-05-29
+- Decision: When `candidate_factory_run.json` uses `factory_profile_id: explicit_list`, `write_candidate_comparison_outputs` writes the **product-scoped** comparison document (baseline + `product_candidate_scope.candidate_ids` only) to `candidate_comparison.json`. The full on-disk candidate scan remains available as `candidate_comparison_registry.json` with cross-reference fields (`full_comparison_registry_artifact` on product doc; `product_comparison_artifact` on registry doc). Batch / research compare paths (`advanced_package=True`, no explicit-list scope) continue to write the full registry to `candidate_comparison.json` unchanged.
+- Context: Pre-decision foundation audit (2026-05-29) found one-candidate CLI runs left **19-row** `candidate_comparison.json` while product adapters (`current_vs_candidate`, `decision_verdict`) were already scoped — operators could misread the comparison menu as the product answer (gap R2).
+- Rationale: Core MVP one-candidate and shortlist UX must not require filtering stale on-disk variant folders; advanced multi-candidate research still needs the full registry artifact without breaking existing compare consumers.
+- Alternatives considered: Filter rows only in UI adapters while leaving JSON full (rejected — stale file remains authoritative on disk); omit full registry entirely (rejected — research and debugging still need on-disk scan); tombstone-only without scoped rewrite (deferred to Session 03 for diagnosis-only stale compare).
+- Assumptions: `scoped_product_comparison` and `product_candidate_ids_from_factory_run` remain the scoping source; `current_vs_candidate.json` and product verdict paths already consume scoped comparison in memory.
+- Consequences: Operators read `candidate_comparison.json` as product truth for explicit-list runs; use `candidate_comparison_registry.json` for full menu / research. Update OUTPUTS, runtime artifact contract, and comparison regression tests; live E2E profile alignment closed in Session 05 ([DEC-2026-05-29-009](DECISIONS.md)).
+- Related documents: [docs/exec_plans/2026-05-29_blocks_1_3_post_audit_development_plan.md](docs/exec_plans/2026-05-29_blocks_1_3_post_audit_development_plan.md), [docs/runtime_artifact_contract.md](docs/runtime_artifact_contract.md), [docs/audits/2026-05-29_blocks_1_3_pre_decision_diagnostic_foundation_audit.md](docs/audits/2026-05-29_blocks_1_3_pre_decision_diagnostic_foundation_audit.md), [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [src/candidate_comparison.py](src/candidate_comparison.py).
+- Review trigger: Revisit if product menu must also scope `candidate_menu` counts in the same write, or if registry artifact should move under an `advanced_evidence/` subfolder.
+
 Decision ID: DEC-2026-05-29-001
 Title: Block 2.6 uses canonical Stress Lab risk ids and heuristic_v2 scoring
 

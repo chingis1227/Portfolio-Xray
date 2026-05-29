@@ -103,12 +103,15 @@ No CLI behavior changes in Session 05.
 Focused tests:
 
 ```text
-.\.venv\Scripts\python.exe -m pytest tests\test_candidate_launchpad.py
+python -m pytest tests/test_candidate_launchpad.py tests/test_block_4_decision_entry_contract.py
 ```
+
+Product contract (Session 09): `candidate_launchpad_v1_product_contract_violations` / `check_candidate_launchpad_v1` and `block_4_diagnosis_handoff_violations` in `scripts/core_mvp_validation_contract.py`; live E2E via `validate_live_core_artifacts`.
 
 Recommended adjacent checks:
 
 ```text
-.\.venv\Scripts\python.exe -m pytest tests\test_candidate_launchpad.py tests\test_problem_classification.py tests\test_portfolio_review_workflow.py
-.\.venv\Scripts\python.exe run_portfolio_review.py --dry-run
+python -m pytest tests/test_candidate_launchpad.py tests/test_problem_classification.py tests/test_block_4_decision_entry_contract.py tests/test_live_core_e2e_validation.py -q
+python run_portfolio_review.py
+python scripts/verify_live_core_e2e.py --profile diagnosis_only
 ```

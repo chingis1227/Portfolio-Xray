@@ -2597,21 +2597,34 @@ def write_candidate_comparison_outputs(
         )
         if str(cid).strip()
     )
+    is_product_scoped = bool(product_candidate_ids)
     product_comparison = scoped_product_comparison(comparison, product_candidate_ids)
     if advanced_package is None:
-        advanced_package = not bool(product_candidate_ids)
+        advanced_package = not is_product_scoped
+    product_doc = product_comparison if is_product_scoped else comparison
+    if is_product_scoped:
+        product_doc["full_comparison_registry_artifact"] = "candidate_comparison_registry.json"
     out_dir = project_root / str(getattr(cfg, "output_dir_final", "Main portfolio"))
     out_dir.mkdir(parents=True, exist_ok=True)
 
     paths: dict[str, Path] = {}
     json_path = out_dir / "candidate_comparison.json"
     with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(comparison, f, indent=2, ensure_ascii=False)
+        json.dump(product_doc, f, indent=2, ensure_ascii=False)
     paths["candidate_comparison_json"] = json_path
+
+    if is_product_scoped:
+        registry_path = out_dir / "candidate_comparison_registry.json"
+        registry_doc = copy.deepcopy(comparison)
+        registry_doc["registry_artifact_role"] = "full_on_disk_candidate_scan"
+        registry_doc["product_comparison_artifact"] = "candidate_comparison.json"
+        with open(registry_path, "w", encoding="utf-8") as f:
+            json.dump(registry_doc, f, indent=2, ensure_ascii=False)
+        paths["candidate_comparison_registry_json"] = registry_path
 
     if write_txt:
         txt_path = out_dir / "candidate_comparison.txt"
-        write_candidate_comparison_txt(comparison, txt_path)
+        write_candidate_comparison_txt(product_doc, txt_path)
         paths["candidate_comparison_txt"] = txt_path
 
     if write_legacy:

@@ -2834,6 +2834,43 @@ def run_materialize_analysis_subject_report(
         run_context=shared_context if want_shared_context else None,
         enable_report_timing=want_shared_context,
     )
+    if core_diagnostics_only:
+        from src.product_bundle_hygiene import apply_core_blocks_product_bundle_hygiene
+
+        prune = apply_core_blocks_product_bundle_hygiene(
+            output_dir_final,
+            subject_dir=subject_final,
+        )
+        logger.info(
+            "Core Blocks 1–3 product bundle hygiene (removed subject=%d, root=%d stale files).",
+            len(prune.get("removed_subject_block4") or []),
+            len(prune.get("removed_root_post_compare") or []),
+        )
+    else:
+        analysis_end_str: str | None = None
+        try:
+            with open(subject_final / "run_metadata.json", encoding="utf-8") as f:
+                run_meta = json.load(f)
+            if isinstance(run_meta, dict):
+                analysis_end_str = run_meta.get("analysis_end") or (
+                    (run_meta.get("analysis_setup") or {}).get("analysis_end")
+                    if isinstance(run_meta.get("analysis_setup"), dict)
+                    else None
+                )
+        except Exception:
+            analysis_end_str = None
+        from src.product_bundle_hygiene import apply_diagnosis_only_product_bundle_hygiene
+
+        hygiene = apply_diagnosis_only_product_bundle_hygiene(
+            output_dir_final,
+            analysis_end=analysis_end_str,
+            investor_currency=str(getattr(cfg, "investor_currency", "USD")),
+        )
+        logger.info(
+            "Diagnosis-only product bundle hygiene (tombstone=%s, removed=%d stale files).",
+            hygiene.get("tombstone"),
+            len(hygiene.get("removed_stale") or []),
+        )
     return shared_context if want_shared_context else None
 
 
