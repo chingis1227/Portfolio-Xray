@@ -46,6 +46,8 @@ def test_build_block_4_diagnosis_golden_contract() -> None:
     assert pc["problems"]
     assert pc["problems"][0]["label"] == pc["problems"][0]["label_en"]
     assert pc["summary"]["no_trade_outcome"] == pc["no_trade_or_monitoring_view"]["outcome"]
+    assert pc["next_diagnostic_step"]["type"] == "targeted_hypothesis_test"
+    assert "Decision Verdict" in pc["next_diagnostic_step"]["decision_boundary"]
     assert pc["diagnostics_meta"]["block_4_facade_version"] == BLOCK_4_DIAGNOSIS_FACADE_VERSION
 
     assert not problem_classification_v3_product_contract_violations(pc)
@@ -117,6 +119,48 @@ def test_data_quality_diagnosis_status_partial_or_unavailable() -> None:
     result = build_block_4_diagnosis(portfolio_xray=xray, stress_report={}, analysis_end="2026-04-30")
 
     assert result.problem_classification["primary_problem"]["problem_id"] == "evidence_insufficient_data_quality"
+    assert result.problem_classification["next_diagnostic_step"]["type"] == "data_quality_improvement"
+    assert "Equal Weight" in result.problem_classification["next_diagnostic_step"]["reason"]
     assert result.problem_classification["status"] in {"partial", "unavailable", "ok"}
     assert result.gate.outcome == "do_not_act_yet"
     assert check_candidate_launchpad_v3(result.candidate_launchpad)["product_contract_ok"] is True
+
+
+def test_mixed_or_acceptable_diagnosis_exposes_reference_next_step() -> None:
+    result = build_block_4_diagnosis(
+        portfolio_xray={
+            "block_2_2_portfolio_metrics": {
+                "status": "ok",
+                "return_risk_metrics": {"vol_annual": 0.08, "sharpe": 0.9, "sortino": 1.1},
+                "drawdown_diagnostics": {"max_drawdown": -0.05, "recovered": True},
+                "tail_risk_diagnostics": {"es_95": -0.008},
+                "benchmark_dependence": {"beta_portfolio": 0.4},
+            },
+            "block_2_3_factor_exposure": {
+                "status": "ok",
+                "factor_betas_5y": {"betas": {"beta_eq": 0.4}},
+            },
+        },
+        stress_report=_hedge_gap_stress(
+            hedge_gap_analysis_v1={
+                "version": "hedge_gap_analysis_v1",
+                "block_status": "ok",
+                "summary": {
+                    "main_hedge_gap": {
+                        "protection_status": "strong_protection",
+                        "offset_coverage_ratio": 0.75,
+                        "portfolio_loss_pct": -0.02,
+                    }
+                },
+                "by_risk_type": [],
+            },
+            scenario_results=[{"scenario_id": "equity_shock", "portfolio_pnl_pct": -0.02}],
+        ),
+        analysis_end="2026-04-30",
+    )
+
+    step = result.problem_classification["next_diagnostic_step"]
+    assert result.primary_problem_id == "current_portfolio_acceptable"
+    assert step["type"] == "reference_comparison"
+    assert step["candidate_method_ids"] == ["equal_weight", "risk_parity"]
+    assert "Immediate rebalance is not justified" in step["reason"]

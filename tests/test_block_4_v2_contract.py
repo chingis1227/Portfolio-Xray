@@ -14,6 +14,11 @@ from scripts.core_mvp_validation_contract import (
     problem_classification_v3_product_contract_violations,
 )
 
+_DECISION_BOUNDARY = (
+    "This is not a rebalance recommendation. Actual rebalance decision is made only after "
+    "Current vs Candidate Comparison and Decision Verdict."
+)
+
 
 def _evidence_ref(**overrides: object) -> dict:
     base = {
@@ -114,6 +119,12 @@ def _minimal_problem_classification_v3() -> dict:
         "materiality": "high",
         "actionability": primary_diagnosis["actionability"],
         "suggested_hypothesis": primary_diagnosis["suggested_hypothesis"],
+        "next_diagnostic_step": {
+            "type": "targeted_hypothesis_test",
+            "label": "Test improve crisis resilience",
+            "reason": "The primary diagnosis is Weak crisis resilience; test the targeted hypothesis first.",
+            "decision_boundary": _DECISION_BOUNDARY,
+        },
         "success_criteria": primary_diagnosis["success_criteria"],
         "backend_audit": {"scoring_is_backend_audit_metadata": True},
         "primary_problem": primary,
@@ -177,7 +188,16 @@ def _minimal_launchpad_v2(*, source_problem_id: str = "weak_crisis_resilience") 
                     "evidence": [_evidence_ref()],
                 },
                 "hypothesis_to_test": "Test whether crisis resilience improves enough to beat current.",
-                "suggested_methods": [{"candidate_method_id": "minimum_cvar_constrained"}],
+                "card_type": "targeted_hypothesis_test",
+                "launch_status": "hypothesis_test",
+                "is_rebalance_recommendation": False,
+                "why_this_test": "This test is linked to the current diagnosis: Weak crisis resilience.",
+                "suggested_methods": [
+                    {
+                        "candidate_method_id": "minimum_cvar_constrained",
+                        "method_role": "targeted_hypothesis",
+                    }
+                ],
                 "success_criteria": [
                     "Lower worst synthetic or historical stress loss versus the current portfolio.",
                     "Improve offset coverage in the main hedge-gap scenario.",
@@ -193,6 +213,7 @@ def _minimal_launchpad_v2(*, source_problem_id: str = "weak_crisis_resilience") 
                 "not_a_recommendation_disclaimer_en": (
                     "This card suggests a hypothesis to test, not a buy or sell instruction."
                 ),
+                "decision_boundary": _DECISION_BOUNDARY,
                 "when_to_skip_this_test_en": "Skip if stress losses are not material.",
                 "when_to_skip": "Skip if stress losses are not material.",
                 "priority_rank": 1,

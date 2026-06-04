@@ -105,9 +105,9 @@ def test_acceptable_portfolio_suppresses_candidate_methods() -> None:
     _, _, _, mapping = _pipeline(xray, stress)
 
     assert mapping.primary_problem["problem_id"] == "current_portfolio_acceptable"
-    assert mapping.primary_problem["suggested_action_path_id"] == "keep_current_portfolio_and_monitor"
+    assert mapping.primary_problem["suggested_action_path_id"] == "compare_against_simple_benchmark"
     assert mapping.primary_problem["candidate_method_suggestions"] == []
-    assert mapping.suggested_actions[0].action_path_id == "keep_current_portfolio_and_monitor"
+    assert mapping.suggested_actions[0].action_path_id == "compare_against_simple_benchmark"
 
 
 def test_data_quality_problem_maps_do_not_act_path() -> None:

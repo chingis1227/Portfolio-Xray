@@ -19,9 +19,11 @@ if str(REPO_ROOT) not in sys.path:
 
 from scripts.core_mvp_validation_contract import (  # noqa: E402
     check_block_4_v3_diagnosis_handoff,
+    check_builder_prefill,
     check_candidate_launchpad_v3,
     check_problem_classification_v3,
 )
+from src.portfolio_alternatives_builder import build_builder_prefill_from_launchpad_card  # noqa: E402
 from src.block_4.diagnosis_builder import write_block_4_diagnosis_outputs  # noqa: E402
 from src.candidate_launchpad import CANDIDATE_LAUNCHPAD_FILENAME  # noqa: E402
 from src.config import load_validated_config  # noqa: E402
@@ -101,10 +103,32 @@ def validate_block_4_live(subject_dir: Path) -> dict[str, Any]:
     pc_checks = check_problem_classification_v3(pc)
     lp_checks = check_candidate_launchpad_v3(lp)
     handoff = check_block_4_v3_diagnosis_handoff(pc, lp)
+    cards = lp.get("cards") if isinstance(lp.get("cards"), list) else []
+    primary_card = cards[0] if cards and isinstance(cards[0], dict) else None
+    if primary_card is not None:
+        builder_prefill = build_builder_prefill_from_launchpad_card(
+            primary_card,
+            next_diagnostic_step=pc.get("next_diagnostic_step")
+            if isinstance(pc.get("next_diagnostic_step"), dict)
+            else None,
+        )
+        builder_prefill_checks = check_builder_prefill(builder_prefill)
+    else:
+        builder_prefill = None
+        builder_prefill_checks = {
+            "product_contract_ok": lp.get("launchpad_outcome") == "do_not_act_yet",
+            "contract_violations": []
+            if lp.get("launchpad_outcome") == "do_not_act_yet"
+            else ["portfolio_alternatives_builder_prefill: no primary Launchpad card to validate"],
+            "builder_mode": None,
+            "source_card_id": None,
+            "candidate_generation_allowed": None,
+        }
     ok = (
         bool(pc_checks.get("product_contract_ok"))
         and bool(lp_checks.get("product_contract_ok"))
         and bool(handoff.get("handoff_ok"))
+        and bool(builder_prefill_checks.get("product_contract_ok"))
     )
     return {
         "ok": ok,
@@ -112,6 +136,8 @@ def validate_block_4_live(subject_dir: Path) -> dict[str, Any]:
         "problem_classification": pc_checks,
         "candidate_launchpad": lp_checks,
         "handoff": handoff,
+        "builder_prefill": builder_prefill_checks,
+        "builder_prefill_preview": builder_prefill,
     }
 
 
@@ -156,6 +182,7 @@ def main() -> int:
     pc = result["problem_classification"]
     lp = result["candidate_launchpad"]
     handoff = result["handoff"]
+    builder_prefill = result["builder_prefill"]
 
     print(f"subject_dir={subject_dir}")
     print(f"primary_problem_id={pc.get('primary_problem_id')}")
@@ -165,7 +192,13 @@ def main() -> int:
     print(f"n_cards={lp.get('n_cards')}")
     print(f"launchpad_outcome={lp.get('launchpad_outcome')}")
     print(f"primary_card_id={lp.get('primary_card_id')}")
-    print(f"product_contract_ok={pc.get('product_contract_ok') and lp.get('product_contract_ok')}")
+    print(f"builder_mode={builder_prefill.get('builder_mode')}")
+    print(f"builder_source_card_id={builder_prefill.get('source_card_id')}")
+    print(f"builder_candidate_generation_allowed={builder_prefill.get('candidate_generation_allowed')}")
+    print(
+        "product_contract_ok="
+        f"{pc.get('product_contract_ok') and lp.get('product_contract_ok') and builder_prefill.get('product_contract_ok')}"
+    )
     print(f"handoff_ok={handoff.get('handoff_ok')}")
 
     for label, checks in (("problem_classification_v3", pc), ("candidate_launchpad_v3", lp)):
@@ -179,6 +212,12 @@ def main() -> int:
     if handoff_violations:
         print("block_4_v3_handoff violations:")
         for row in handoff_violations:
+            print(f"  - {row}")
+
+    builder_violations = builder_prefill.get("contract_violations") or []
+    if builder_violations:
+        print("portfolio_alternatives_builder_prefill violations:")
+        for row in builder_violations:
             print(f"  - {row}")
 
     if result["ok"]:

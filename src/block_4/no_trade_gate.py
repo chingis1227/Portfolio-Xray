@@ -25,6 +25,7 @@ STEP_SELECT_LAUNCHPAD = "select_launchpad_card"
 STEP_MONITOR = "monitor_quarterly"
 STEP_RERUN = "rerun_diagnostics"
 STEP_RESOLVE_DATA = "resolve_data"
+STEP_COMPARE_REFERENCE = "compare_reference_benchmarks"
 
 _EVIDENCE_INSUFFICIENT_IDS = frozenset(
     {
@@ -183,17 +184,21 @@ def gate_from_primary_problem_id(primary_problem_id: str) -> NoTradeGateResult:
     if primary_problem_id == "mixed_evidence_no_action":
         return NoTradeGateResult(
             outcome=OUTCOME_DO_NOT_ACT,
-            headline_en="No dominant actionable problem is confirmed; no rebalance is justified yet.",
+            headline_en=(
+                "No immediate rebalance is justified; compare against simple reference benchmarks."
+            ),
             reasons=("Usable evidence is mixed, but no root-cause diagnosis is strong enough to act on.",),
-            recommended_next_step=STEP_MONITOR,
+            recommended_next_step=STEP_COMPARE_REFERENCE,
             launchpad_suppressed=True,
         )
     if primary_problem_id == "current_portfolio_acceptable":
         return NoTradeGateResult(
             outcome=OUTCOME_MONITOR,
-            headline_en="No material problem exceeded activation thresholds; monitoring is appropriate.",
+            headline_en=(
+                "No immediate rebalance is justified; monitor and compare against simple references."
+            ),
             reasons=("No actionable problem crossed materiality gates.",),
-            recommended_next_step=STEP_MONITOR,
+            recommended_next_step=STEP_COMPARE_REFERENCE,
             launchpad_suppressed=True,
         )
     return NoTradeGateResult(
@@ -237,9 +242,9 @@ def _gate_mixed_evidence(
         reasons.append("Several hypotheses were not selected because the evidence did not dominate")
     return NoTradeGateResult(
         outcome=OUTCOME_DO_NOT_ACT,
-        headline_en="No dominant actionable problem is confirmed; no rebalance is justified yet.",
+        headline_en="No immediate rebalance is justified; compare against simple reference benchmarks.",
         reasons=tuple(reasons),
-        recommended_next_step=STEP_MONITOR,
+        recommended_next_step=STEP_COMPARE_REFERENCE,
         launchpad_suppressed=True,
     )
 
@@ -250,9 +255,9 @@ def _gate_acceptable(primary: dict[str, Any]) -> NoTradeGateResult:
         reasons.append("Primary severity is in the monitor band")
     return NoTradeGateResult(
         outcome=OUTCOME_MONITOR,
-        headline_en="No material problem exceeded activation thresholds; monitoring is appropriate.",
+        headline_en="No immediate rebalance is justified; monitor and compare against simple references.",
         reasons=tuple(reasons),
-        recommended_next_step=STEP_MONITOR,
+        recommended_next_step=STEP_COMPARE_REFERENCE,
         launchpad_suppressed=True,
     )
 

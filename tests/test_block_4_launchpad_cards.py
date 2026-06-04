@@ -165,8 +165,19 @@ def test_acceptable_portfolio_suppresses_builder_methods() -> None:
     assert result.launchpad_outcome == "monitor"
     assert result.launchpad_suppressed is True
     assert len(result.cards) <= 2
-    for card in result.cards:
-        assert not card["suggested_methods"] or card["goal"] == "Compare against simple benchmark"
+    reference_cards = [card for card in result.cards if card["card_type"] == "reference_benchmark_test"]
+    assert reference_cards
+    reference_card = reference_cards[0]
+    assert reference_card["launch_status"] == "reference_test"
+    assert reference_card["is_rebalance_recommendation"] is False
+    assert "Current vs Candidate Comparison and Decision Verdict" in reference_card["decision_boundary"]
+    method_ids = [row["candidate_method_id"] for row in reference_card["suggested_methods"]]
+    assert method_ids == ["equal_weight", "risk_parity"]
+    assert {row["method_role"] for row in reference_card["suggested_methods"]} == {
+        "reference_benchmark"
+    }
+    assert "Equal Weight" in reference_card["why_this_test"]
+    assert "Risk Parity" in reference_card["why_this_test"]
 
 
 def test_data_quality_primary_emits_do_not_act_outcome() -> None:
@@ -177,7 +188,28 @@ def test_data_quality_primary_emits_do_not_act_outcome() -> None:
     assert launchpad["launchpad_outcome"] == "do_not_act_yet"
     assert launchpad["cards"]
     assert all(not card["suggested_methods"] for card in launchpad["cards"])
+    assert all(card["card_type"] != "reference_benchmark_test" for card in launchpad["cards"])
     assert not candidate_launchpad_v3_product_contract_violations(launchpad)
+
+
+def test_actionable_problem_keeps_targeted_card_before_reference_tests() -> None:
+    xray = _load_golden_xray()
+    stress = _hedge_gap_stress()
+    evidence, scoring, _, mapping = _pipeline(xray, stress)
+    launchpad = build_candidate_launchpad_v3_document(
+        mapping,
+        scoring=scoring,
+        evidence=evidence,
+        analysis_end="2026-04-30",
+        generated_at="2026-05-29T12:00:00Z",
+    )
+
+    first = launchpad["cards"][0]
+    assert first["source_problem_id"] == "weak_crisis_resilience"
+    assert first["card_type"] == "targeted_hypothesis_test"
+    assert first["launch_status"] == "hypothesis_test"
+    assert first["default_method"] != "equal_weight"
+    assert first["default_method"] != "risk_parity"
 
 
 def test_cards_include_v2_narrative_fields() -> None:

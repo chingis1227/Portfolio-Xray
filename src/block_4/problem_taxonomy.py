@@ -647,33 +647,33 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
     ),
     "current_portfolio_acceptable": ProblemDefinition(
         problem_id="current_portfolio_acceptable",
-        label_en="Current portfolio already acceptable",
+        label_en="Acceptable portfolio; benchmark test available",
         problem_id_legacy=None,
         technical_definition_en=(
             "No material problem exceeds activation threshold after scoring and materiality gates."
         ),
         portfolio_manager_interpretation_en=(
-            "No confirmed problem requires a candidate test now. Monitoring is a valid institutional outcome."
+            "No confirmed problem requires an immediate rebalance. Monitoring is valid, and a simple reference comparison can test whether the current allocation is materially better than transparent alternatives."
         ),
         required_evidence_signals=("no_material_problem",),
         supporting_evidence_signals=(),
         negative_evidence_signals=(),
-        primary_action_path_id="keep_current_portfolio_and_monitor",
-        secondary_action_path_ids=("compare_against_simple_benchmark",),
+        primary_action_path_id="compare_against_simple_benchmark",
+        secondary_action_path_ids=("keep_current_portfolio_and_monitor",),
         default_candidate_method_ids=(),
-        launchpad_card_title_en="Keep Current Portfolio and Monitor",
+        launchpad_card_title_en="Compare Against Simple References",
         launchpad_what_this_tests_en=(
-            "Track diagnostics over time without generating a candidate portfolio."
+            "Whether the current allocation is materially better than Equal Weight and Risk Parity references."
         ),
-        launchpad_tradeoff_en="Stability vs opportunity cost of exploration.",
-        launchpad_skip_when_en="N/A — this is the monitor path.",
+        launchpad_tradeoff_en="Diagnostic clarity vs time spent testing alternatives when no issue is material.",
+        launchpad_skip_when_en="Skip if the user only wants monitoring and no reference comparison.",
         do_not_overreact_reason_en=(
             "Absence of a flagged problem does not guarantee future safety; monitoring remains appropriate."
         ),
-        when_not_to_select_as_primary_en="N/A — this is the no-problem outcome.",
+        when_not_to_select_as_primary_en="N/A - this is the acceptable-portfolio outcome.",
         common_false_positive_en="Thresholds too loose missing mild issues.",
         common_false_negative_en="Over-triggering on cosmetic metric breaches.",
-        downstream_comparison_focus_en="Optional benchmark compare only if user requests.",
+        downstream_comparison_focus_en="Reference comparison only; do not imply a rebalance.",
         suppress_launchpad_methods=True,
         diagnosis_role="outcome",
     ),
@@ -713,28 +713,28 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
     ),
     "mixed_evidence_no_action": ProblemDefinition(
         problem_id="mixed_evidence_no_action",
-        label_en="Mixed evidence — no action justified yet",
+        label_en="Mixed evidence - reference test available",
         problem_id_legacy=None,
         technical_definition_en=(
             "Usable diagnostic evidence contains tensions, but no dominant actionable root-cause diagnosis "
             "is confirmed strongly enough to justify a rebalance."
         ),
         portfolio_manager_interpretation_en=(
-            "The current evidence does not justify forcing a trade. The right conclusion is to avoid a "
-            "rebalance for now, monitor the tension, and optionally test a simple benchmark reference."
+            "The current evidence does not justify forcing a trade. The right next diagnostic step is to "
+            "avoid an immediate rebalance while comparing against simple benchmark references."
         ),
         required_evidence_signals=("conflicting_signal_bundle",),
         supporting_evidence_signals=(),
         negative_evidence_signals=(),
-        primary_action_path_id="evidence_insufficient_do_not_act_yet",
-        secondary_action_path_ids=("compare_against_simple_benchmark", "keep_current_portfolio_and_monitor"),
+        primary_action_path_id="compare_against_simple_benchmark",
+        secondary_action_path_ids=("keep_current_portfolio_and_monitor",),
         default_candidate_method_ids=(),
-        launchpad_card_title_en="No Dominant Actionable Problem",
+        launchpad_card_title_en="Compare Against Simple References",
         launchpad_what_this_tests_en=(
-            "Monitor the mixed evidence and, only if useful, compare against a transparent benchmark reference."
+            "Whether the current allocation is materially better than Equal Weight and Risk Parity despite mixed evidence."
         ),
-        launchpad_tradeoff_en="Avoiding unnecessary turnover vs opportunity cost of not exploring alternatives.",
-        launchpad_skip_when_en="Skip portfolio-generating methods unless a material root-cause diagnosis appears.",
+        launchpad_tradeoff_en="Avoiding unnecessary turnover vs checking whether simple references expose a real weakness.",
+        launchpad_skip_when_en="Skip rebalance interpretation; use this only as a diagnostic benchmark test.",
         do_not_overreact_reason_en=(
             "Mixed evidence is a warning, not proof that the portfolio is broken."
         ),
@@ -743,7 +743,7 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
         ),
         common_false_positive_en="Mild tension between pre-stress and stress paths treated as a major conflict.",
         common_false_negative_en="Treating mixed evidence as multiple separate action problems.",
-        downstream_comparison_focus_en="Optional benchmark reference only; do not imply a rebalance.",
+        downstream_comparison_focus_en="Reference comparison only; do not imply a rebalance.",
         suppress_launchpad_methods=True,
         diagnosis_role="outcome",
     ),

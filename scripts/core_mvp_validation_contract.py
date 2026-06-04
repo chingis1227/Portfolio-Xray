@@ -752,6 +752,7 @@ RECOMMENDED_NEXT_STEPS = frozenset(
         "monitor_quarterly",
         "rerun_diagnostics",
         "resolve_data",
+        "compare_reference_benchmarks",
     }
 )
 
@@ -782,6 +783,68 @@ MATERIALITY_VALUES = frozenset({"high", "medium", "low", "none"})
 EVIDENCE_PATH_VALUES = frozenset({"primary", "legacy_fallback", "pre_stress_only"})
 
 LAUNCHPAD_V3_DISCLAIMER_PREFIX = "This card suggests a hypothesis to test, not a buy or sell instruction."
+
+BUILDER_PREFILL_ALLOWED_MODES = frozenset(
+    {
+        "guided_from_diagnosis",
+        "blocked_data_quality",
+        "monitor_only",
+        "custom_builder_entry",
+    }
+)
+
+BUILDER_PREFILL_ALLOWED_METHOD_ROLES = frozenset(
+    {
+        "targeted_candidate_method",
+        "reference_benchmark",
+        "custom_user_selected",
+    }
+)
+
+BUILDER_PREFILL_REQUIRED_FIELDS = frozenset(
+    {
+        "builder_mode",
+        "source",
+        "source_diagnosis_id",
+        "source_card_id",
+        "goal",
+        "hypothesis_to_test",
+        "next_diagnostic_step",
+        "suggested_method",
+        "alternative_methods",
+        "suggested_methods",
+        "constraint_preset",
+        "max_asset_weight",
+        "min_asset_weight",
+        "volatility_target",
+        "success_criteria",
+        "tradeoff_to_watch",
+        "when_to_skip",
+        "card_type",
+        "launch_status",
+        "method_role",
+        "is_rebalance_recommendation",
+        "decision_boundary",
+        "candidate_generation_allowed",
+    }
+)
+
+
+def _non_empty_text(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _candidate_method_ids_from_rows(rows: Any) -> list[str]:
+    if not isinstance(rows, list):
+        return []
+    method_ids: list[str] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        method_id = str(row.get("candidate_method_id") or "").strip()
+        if method_id:
+            method_ids.append(method_id)
+    return method_ids
 
 
 def _validate_evidence_ref(row: Any, prefix: str) -> list[str]:
@@ -963,10 +1026,21 @@ def problem_classification_v3_product_contract_violations(
         "confidence_explanation",
         "actionability",
         "suggested_hypothesis",
+        "next_diagnostic_step",
         "success_criteria",
     ):
         if key not in doc:
             violations.append(f"{prefix}: missing top-level {key}")
+
+    next_step = doc.get("next_diagnostic_step")
+    if not isinstance(next_step, dict):
+        violations.append(f"{prefix}: next_diagnostic_step must be an object")
+    else:
+        for key in ("type", "label", "reason", "decision_boundary"):
+            if not str(next_step.get(key) or "").strip():
+                violations.append(f"{prefix}: next_diagnostic_step missing {key}")
+        if "rebalance recommendation" not in str(next_step.get("decision_boundary") or "").lower():
+            violations.append(f"{prefix}: next_diagnostic_step decision_boundary must block rebalance interpretation")
 
     secondary = doc.get("secondary_problems")
     if not isinstance(secondary, list):
@@ -1091,19 +1165,40 @@ def candidate_launchpad_v3_product_contract_violations(
             "when_to_skip_this_test_en",
             "source_diagnosis_id",
             "hypothesis_to_test",
+            "card_type",
+            "launch_status",
+            "why_this_test",
             "tradeoff_to_watch",
             "when_to_skip",
+            "decision_boundary",
         ):
             if not str(card.get(key) or "").strip():
                 violations.append(f"{cp}: missing {key}")
+        if card.get("is_rebalance_recommendation") is not False:
+            violations.append(f"{cp}: is_rebalance_recommendation must be false")
+        if "rebalance recommendation" not in str(card.get("decision_boundary") or "").lower():
+            violations.append(f"{cp}: decision_boundary must block rebalance interpretation")
         success = card.get("success_criteria")
         if not isinstance(success, list) or not success:
             violations.append(f"{cp}: success_criteria must be a non-empty list")
+        card_type = str(card.get("card_type") or "").strip()
+        source_diagnosis = str(
+            card.get("source_diagnosis_id") or card.get("source_problem_id") or ""
+        ).strip()
+        launch_status = str(card.get("launch_status") or "").strip()
+        is_data_quality_card = (
+            source_diagnosis == "evidence_insufficient_data_quality"
+            or "data_quality" in card_id
+            or "data_quality" in launch_status
+            or "resolve_data" in launch_status
+        )
         disclaimer = str(card.get("not_a_recommendation_disclaimer_en") or "")
         if not disclaimer.startswith(LAUNCHPAD_V3_DISCLAIMER_PREFIX):
             violations.append(f"{cp}: invalid not_a_recommendation_disclaimer_en")
         if card.get("generates_portfolio") is not False:
             violations.append(f"{cp}: generates_portfolio must be false")
+        if card.get("candidate_generation_allowed") is True:
+            violations.append(f"{cp}: candidate_generation_allowed must not be true on Launchpad cards")
         if "weights" in card:
             violations.append(f"{cp}: must not include weights")
         if "priority_rank" not in card:
@@ -1124,11 +1219,25 @@ def candidate_launchpad_v3_product_contract_violations(
                     violations.append(f"{cp}: unknown candidate_method_id {method_id!r}")
                 else:
                     method_ids.append(method_id)
+                method_role = str(method.get("method_role") or "").strip()
+                if not method_role:
+                    violations.append(f"{cp}.suggested_methods[{midx}] missing method_role")
+                elif method_id in {"equal_weight", "risk_parity"} and card_type == "reference_benchmark_test" and method_role != "reference_benchmark":
+                    violations.append(f"{cp}.suggested_methods[{midx}] EW/RP reference methods must use method_role reference_benchmark")
             default_method = card.get("default_method")
             if method_ids and not default_method:
                 violations.append(f"{cp}: default_method required when suggested_methods non-empty")
             if default_method and str(default_method) not in method_ids:
                 violations.append(f"{cp}: default_method must appear in suggested_methods")
+            if is_data_quality_card:
+                if method_ids:
+                    violations.append(f"{cp}: data-quality cards must not provide candidate methods")
+                if any(method_id in {"equal_weight", "risk_parity"} for method_id in method_ids):
+                    violations.append(f"{cp}: data-quality cards must not provide EW/RP comparisons")
+                if default_method:
+                    violations.append(f"{cp}: data-quality cards must not set default_method")
+                if card_type == "reference_benchmark_test":
+                    violations.append(f"{cp}: data-quality cards must not be reference benchmark tests")
         constraints = card.get("simple_constraints")
         if not isinstance(constraints, list):
             violations.append(f"{cp}: simple_constraints must be a list")
@@ -1146,6 +1255,159 @@ def candidate_launchpad_v3_product_contract_violations(
             violations.append(f"{prefix}: summary.primary_card_id must match first card")
 
     return violations
+
+
+def builder_prefill_product_contract_violations(
+    prefill: dict[str, Any] | None,
+) -> list[str]:
+    """Return Portfolio Alternatives Builder prefill contract violations (empty = pass).
+
+    Builder prefill is a diagnostic handoff object, not a generated candidate.
+    It must preserve the Launchpad decision boundary and must not allow data
+    quality cards to become unreliable EW/RP or candidate-generation setups.
+    """
+
+    prefix = "portfolio_alternatives_builder_prefill"
+    if not isinstance(prefill, dict):
+        return [f"{prefix}: document is missing or not an object"]
+
+    violations: list[str] = []
+    missing = sorted(BUILDER_PREFILL_REQUIRED_FIELDS - set(prefill))
+    if missing:
+        violations.append(f"{prefix}: missing fields: {', '.join(missing)}")
+
+    mode = str(prefill.get("builder_mode") or "").strip()
+    if mode not in BUILDER_PREFILL_ALLOWED_MODES:
+        violations.append(f"{prefix}: invalid builder_mode {prefill.get('builder_mode')!r}")
+
+    source = str(prefill.get("source") or "").strip()
+    if source not in {"candidate_launchpad_v3", "custom_builder_entry"}:
+        violations.append(f"{prefix}: invalid source {prefill.get('source')!r}")
+
+    for key in (
+        "source_diagnosis_id",
+        "source_card_id",
+        "goal",
+        "hypothesis_to_test",
+        "card_type",
+        "launch_status",
+    ):
+        if mode != "custom_builder_entry" and not _non_empty_text(prefill.get(key)):
+            violations.append(f"{prefix}: missing {key}")
+
+    decision_boundary = str(prefill.get("decision_boundary") or "").strip()
+    if not decision_boundary:
+        violations.append(f"{prefix}: missing decision_boundary")
+    elif "rebalance recommendation" not in decision_boundary.lower():
+        violations.append(f"{prefix}: decision_boundary must block rebalance interpretation")
+
+    if prefill.get("is_rebalance_recommendation") is not False:
+        violations.append(f"{prefix}: is_rebalance_recommendation must be false")
+
+    allowed = prefill.get("candidate_generation_allowed")
+    if not isinstance(allowed, bool):
+        violations.append(f"{prefix}: candidate_generation_allowed must be a boolean")
+
+    suggested_methods = prefill.get("suggested_methods")
+    if not isinstance(suggested_methods, list):
+        violations.append(f"{prefix}: suggested_methods must be a list")
+        suggested_methods = []
+    else:
+        for idx, method in enumerate(suggested_methods):
+            mp = f"{prefix}.suggested_methods[{idx}]"
+            if not isinstance(method, dict):
+                violations.append(f"{mp}: must be an object")
+                continue
+            method_id = str(method.get("candidate_method_id") or "").strip()
+            if not method_id:
+                violations.append(f"{mp}: missing candidate_method_id")
+            elif method_id not in LAUNCHPAD_KNOWN_METHOD_IDS:
+                violations.append(f"{mp}: unknown candidate_method_id {method_id!r}")
+
+    method_ids = _candidate_method_ids_from_rows(suggested_methods)
+    suggested_method = prefill.get("suggested_method")
+    if suggested_method is not None:
+        suggested_method_text = str(suggested_method).strip()
+        if suggested_method_text not in method_ids:
+            violations.append(f"{prefix}: suggested_method must appear in suggested_methods")
+
+    alternative_methods = prefill.get("alternative_methods")
+    if not isinstance(alternative_methods, list):
+        violations.append(f"{prefix}: alternative_methods must be a list")
+        alternative_methods = []
+    for method_id in alternative_methods:
+        if str(method_id) not in method_ids:
+            violations.append(f"{prefix}: alternative_methods must be drawn from suggested_methods")
+
+    role = prefill.get("method_role")
+    if role is not None:
+        role_text = str(role).strip()
+        if role_text not in BUILDER_PREFILL_ALLOWED_METHOD_ROLES:
+            violations.append(f"{prefix}: invalid method_role {role!r}")
+
+    success = prefill.get("success_criteria")
+    if mode == "guided_from_diagnosis" and (
+        not isinstance(success, list) or not success
+    ):
+        violations.append(f"{prefix}: guided prefill success_criteria must be a non-empty list")
+
+    card_type = str(prefill.get("card_type") or "").strip()
+    source_diagnosis = str(prefill.get("source_diagnosis_id") or "").strip()
+    is_data_quality_prefill = (
+        mode == "blocked_data_quality"
+        or source_diagnosis == "evidence_insufficient_data_quality"
+    )
+
+    if card_type == "reference_benchmark_test":
+        reference_methods = {"equal_weight", "risk_parity"} & set(method_ids)
+        if not reference_methods:
+            violations.append(f"{prefix}: reference benchmark prefill must include EW/RP methods")
+        if role != "reference_benchmark":
+            violations.append(f"{prefix}: reference benchmark prefill method_role must be reference_benchmark")
+        for idx, method in enumerate(suggested_methods):
+            if not isinstance(method, dict):
+                continue
+            method_id = str(method.get("candidate_method_id") or "").strip()
+            method_role = str(method.get("method_role") or "").strip()
+            if method_id in {"equal_weight", "risk_parity"} and method_role != "reference_benchmark":
+                violations.append(
+                    f"{prefix}.suggested_methods[{idx}]: EW/RP reference methods must use method_role reference_benchmark"
+                )
+
+    if is_data_quality_prefill:
+        if allowed is True:
+            violations.append(f"{prefix}: data-quality prefill must not allow candidate generation")
+        if method_ids:
+            violations.append(f"{prefix}: data-quality prefill must not provide candidate methods")
+        if set(method_ids) & {"equal_weight", "risk_parity"}:
+            violations.append(f"{prefix}: data-quality prefill must not provide EW/RP comparisons")
+        if prefill.get("suggested_method") is not None:
+            violations.append(f"{prefix}: data-quality prefill must not set suggested_method")
+    elif mode == "guided_from_diagnosis":
+        if allowed is not True:
+            violations.append(f"{prefix}: guided prefill must allow explicit candidate generation")
+        if not method_ids:
+            violations.append(f"{prefix}: guided prefill must provide candidate methods")
+        if role is None:
+            violations.append(f"{prefix}: guided prefill must set method_role")
+    else:
+        if allowed is True:
+            violations.append(f"{prefix}: non-guided prefill must not allow candidate generation")
+
+    return violations
+
+
+def check_builder_prefill(prefill: dict[str, Any] | None) -> dict[str, Any]:
+    violations = builder_prefill_product_contract_violations(prefill)
+    return {
+        "product_contract_ok": not violations,
+        "contract_violations": violations,
+        "builder_mode": (prefill or {}).get("builder_mode") if isinstance(prefill, dict) else None,
+        "source_card_id": (prefill or {}).get("source_card_id") if isinstance(prefill, dict) else None,
+        "candidate_generation_allowed": (prefill or {}).get("candidate_generation_allowed")
+        if isinstance(prefill, dict)
+        else None,
+    }
 
 
 def block_4_v3_diagnosis_handoff_violations(

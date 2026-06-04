@@ -66,7 +66,7 @@ Portfolio Setup (Block 1)
 
 - UI **must not invent** metrics; missing fields show safe placeholders (`—`, “Data unavailable”).  
 - `portfolio_xray.json` and `stress_report.json` under `{output_dir_final}/analysis_subject/` are the primary contracts.  
-- Block 4 artifacts use v2 schemas when present; bridge reads `primary_problem`, `no_trade_or_monitoring_view`, and Launchpad `suggested_methods` / `why_this_path_en` / `what_this_tests_en`.  
+- Block 4 artifacts use current v3 schemas when present; bridge reads `primary_diagnosis`, `no_trade_or_monitoring_view`, `next_diagnostic_step`, and Launchpad `card_type` / `suggested_methods` / `why_this_path_en` / `what_this_tests_en`. Reference benchmark cards are diagnostic tests, not rebalance recommendations.
 
 ## Running the prototype
 

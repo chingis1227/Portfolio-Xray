@@ -33,6 +33,7 @@ Input portfolio
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
+-> Candidate Generation
 -> Current vs Candidate Comparison
 -> Decision Verdict
 -> AI Commentary / grounding
@@ -74,7 +75,8 @@ Current Core MVP product layer:
 - Stress Test Lab evidence
 - Problem Classification
 - Candidate Launchpad
-- Portfolio Alternatives Builder backend delegation plan
+- Portfolio Alternatives Builder Launchpad-card prefill and backend delegation plan
+- explicit user-triggered Candidate Generation
 - Current-vs-Candidate adapter
 - Decision Verdict mapping
 - AI Commentary grounding context
@@ -126,6 +128,7 @@ analysis_subject / current portfolio
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
+-> explicit user-triggered Candidate Generation
 -> selected candidate or generated shortlist
 -> Current vs Candidate Comparison
 -> Decision Verdict
@@ -445,8 +448,8 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Candidate Launchpad | **Implemented (v3)** — `candidate_launchpad_v3` via [src/block_4/launchpad_cards.py](src/block_4/launchpad_cards.py). Legacy V1: [src/candidate_launchpad.py](src/candidate_launchpad.py) (unit tests only) |
 
 
-Block 4 v3 is diagnosis-first: user-facing output must lead with `primary_diagnosis`, root cause, evidence, confidence, actionability, and success criteria; scoring remains backend audit metadata.
-| Portfolio Alternatives Builder as user-triggered candidate UX | Backend wrapper implemented (`PortfolioAlternativeBuildPlan` via [src/portfolio_alternatives_builder.py](src/portfolio_alternatives_builder.py)); returns one-candidate factory delegation plans, while full UX remains Target/TBD and batch factory remains backend/advanced/research |
+Block 4 v3 is diagnosis-first: user-facing output must lead with `primary_diagnosis`, root cause, evidence, confidence, actionability, `next_diagnostic_step`, and success criteria; scoring remains backend audit metadata. Mixed or acceptable outcomes say no immediate rebalance is justified but still expose Equal Weight / Risk Parity as reference benchmark tests, not recommendations; Launchpad cards can pre-fill Portfolio Alternatives Builder setup, but candidate generation is explicit and Decision Verdict remains the downstream layer that decides whether an actual rebalance is justified.
+| Portfolio Alternatives Builder as user-triggered candidate UX | Builder prefill and backend wrapper implemented (`build_builder_prefill_from_launchpad_card` and `PortfolioAlternativeBuildPlan` via [src/portfolio_alternatives_builder.py](src/portfolio_alternatives_builder.py)); consumes Launchpad v3 cards, preserves the decision boundary and `is_rebalance_recommendation: false`, and returns one-candidate factory delegation plans only when explicitly requested; full UI remains Target/TBD and batch factory remains backend/advanced/research |
 | Current-vs-selected-candidate as primary interactive UX | Adapter artifact implemented (`current_vs_candidate.json` via [src/current_vs_candidate.py](src/current_vs_candidate.py)); interactive UX remains Target/TBD, canonical comparison remains unchanged |
 | Decision Verdict product language | Implemented additive mapping artifact (`decision_verdict.json` via [src/decision_verdict.py](src/decision_verdict.py)); current technical contract remains Selection Engine / No-Trade |
 | AI Commentary formal explanation layer | Grounding context only (`ai_commentary_context.json` via [src/ai_commentary_context.py](src/ai_commentary_context.py); no LLM). Deterministic `commentary.txt` / stress commentary are separate report exports. Generated natural-language AI commentary remains Target/TBD (`RM-ARCH-010` in [docs/ROADMAP.md](docs/ROADMAP.md)) |

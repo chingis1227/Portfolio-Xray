@@ -19,6 +19,7 @@ from src.block_4.evidence_extraction import (
     extract_evidence_signals,
 )
 from src.block_4.launchpad_cards import (
+    DECISION_BOUNDARY_EN,
     build_candidate_launchpad_v3_document,
     success_criteria_for_action_path,
 )
@@ -97,6 +98,7 @@ def build_block_4_diagnosis(
         prioritization=prioritization,
         gate=gate,
     )
+    next_diagnostic_step = _next_diagnostic_step(mapping.primary_problem, gate)
 
     cfg = get_block_4_thresholds()
     problem_classification: dict[str, Any] = {
@@ -122,6 +124,7 @@ def build_block_4_diagnosis(
         "materiality": primary_diagnosis.get("materiality"),
         "actionability": primary_diagnosis.get("actionability"),
         "suggested_hypothesis": primary_diagnosis.get("suggested_hypothesis"),
+        "next_diagnostic_step": next_diagnostic_step,
         "success_criteria": primary_diagnosis.get("success_criteria", []),
         "backend_audit": {
             "primary_problem": mapping.primary_problem,
@@ -430,6 +433,40 @@ def _suggested_hypothesis(primary: dict[str, Any], gate: NoTradeGateResult) -> s
             "Monitor the evidence or use a simple benchmark only as a reference point."
         )
     return f"Test whether {action} improves {label} versus the current portfolio."
+
+
+def _next_diagnostic_step(primary: dict[str, Any], gate: NoTradeGateResult) -> dict[str, Any]:
+    primary_id = str(primary.get("problem_id") or "")
+    if primary_id == "evidence_insufficient_data_quality":
+        return {
+            "type": "data_quality_improvement",
+            "label": "Resolve data quality before candidate comparison",
+            "reason": (
+                "Diagnostic evidence is not reliable enough to compare Equal Weight, Risk Parity, "
+                "or any other candidate."
+            ),
+            "decision_boundary": DECISION_BOUNDARY_EN,
+        }
+    if primary_id in {"mixed_evidence_no_action", "current_portfolio_acceptable"}:
+        return {
+            "type": "reference_comparison",
+            "label": "Compare against Equal Weight and Risk Parity",
+            "reason": (
+                "Immediate rebalance is not justified, but the current allocation should be tested "
+                "against simple reference portfolios."
+            ),
+            "candidate_method_ids": ["equal_weight", "risk_parity"],
+            "decision_boundary": DECISION_BOUNDARY_EN,
+        }
+
+    action = str(primary.get("suggested_action_path_id") or "").replace("_", " ")
+    label = str(primary.get("label_en") or primary_id.replace("_", " "))
+    return {
+        "type": "targeted_hypothesis_test",
+        "label": f"Test {action}",
+        "reason": f"The primary diagnosis is {label}; test the targeted hypothesis before references.",
+        "decision_boundary": DECISION_BOUNDARY_EN,
+    }
 
 
 def _mixed_evidence_note(scoring: ProblemScoringResult, primary_id: str) -> dict[str, Any] | None:

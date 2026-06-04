@@ -58,6 +58,155 @@ class PortfolioAlternativeRequest:
     transaction_cost_assumption: float | None = None
 
 
+def build_builder_prefill_from_launchpad_card(
+    card: Mapping[str, Any],
+    *,
+    next_diagnostic_step: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build a UI-safe Builder prefill object from one Launchpad v3 card.
+
+    The returned object is diagnostic setup only: it does not build a candidate
+    plan, run subprocesses, write weights, or recommend a rebalance.
+    """
+
+    suggested_methods = _launchpad_method_rows(card.get("suggested_methods"))
+    method_ids = _candidate_method_ids(suggested_methods)
+    suggested_method = _pick_suggested_method(card.get("default_method"), method_ids)
+    selected_method_row = _method_row_for_id(suggested_methods, suggested_method)
+    card_type = _optional_string(card.get("card_type"))
+    launch_status = _optional_string(card.get("launch_status"))
+    builder_mode = _builder_mode_for_card(
+        card,
+        suggested_method=suggested_method,
+        card_type=card_type,
+        launch_status=launch_status,
+    )
+    candidate_generation_allowed = (
+        suggested_method is not None and builder_mode == "guided_from_diagnosis"
+    )
+
+    return {
+        "builder_mode": builder_mode,
+        "source": "candidate_launchpad_v3",
+        "source_diagnosis_id": _optional_string(
+            card.get("source_diagnosis_id") or card.get("source_problem_id")
+        ),
+        "source_card_id": _optional_string(card.get("card_id")),
+        "goal": _optional_string(card.get("goal")),
+        "hypothesis_to_test": _optional_string(card.get("hypothesis_to_test")),
+        "next_diagnostic_step": (
+            dict(next_diagnostic_step) if next_diagnostic_step is not None else None
+        ),
+        "suggested_method": suggested_method,
+        "alternative_methods": [method_id for method_id in method_ids if method_id != suggested_method],
+        "suggested_methods": suggested_methods,
+        "constraint_preset": _optional_string(card.get("constraint_preset")),
+        "max_asset_weight": card.get("max_asset_weight"),
+        "min_asset_weight": card.get("min_asset_weight"),
+        "volatility_target": card.get("volatility_target"),
+        "success_criteria": list(card.get("success_criteria") or []),
+        "tradeoff_to_watch": _optional_string(
+            card.get("tradeoff_to_watch") or card.get("expected_tradeoff_to_check_en")
+        ),
+        "when_to_skip": _optional_string(
+            card.get("when_to_skip") or card.get("when_to_skip_this_test_en")
+        ),
+        "card_type": card_type,
+        "launch_status": launch_status,
+        "method_role": _builder_method_role(selected_method_row, card_type),
+        "is_rebalance_recommendation": False,
+        "decision_boundary": _optional_string(card.get("decision_boundary")),
+        "candidate_generation_allowed": candidate_generation_allowed,
+    }
+
+
+def _launchpad_method_rows(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        return []
+    return [dict(item) for item in value if isinstance(item, Mapping)]
+
+
+def _candidate_method_ids(method_rows: Sequence[Mapping[str, Any]]) -> list[str]:
+    method_ids: list[str] = []
+    for row in method_rows:
+        method_id = str(row.get("candidate_method_id") or "").strip()
+        if method_id:
+            method_ids.append(method_id)
+    return method_ids
+
+
+def _pick_suggested_method(default_method: Any, method_ids: Sequence[str]) -> str | None:
+    default_id = str(default_method or "").strip()
+    if default_id:
+        return default_id
+    if method_ids:
+        return method_ids[0]
+    return None
+
+
+def _method_row_for_id(
+    method_rows: Sequence[Mapping[str, Any]],
+    method_id: str | None,
+) -> Mapping[str, Any] | None:
+    if method_id is None:
+        return None
+    for row in method_rows:
+        if str(row.get("candidate_method_id") or "").strip() == method_id:
+            return row
+    return None
+
+
+def _builder_method_role(
+    method_row: Mapping[str, Any] | None,
+    card_type: str | None,
+) -> str | None:
+    if method_row is None:
+        return None
+    role = str(method_row.get("method_role") or "").strip()
+    if role == "reference_benchmark" or card_type == "reference_benchmark_test":
+        return "reference_benchmark"
+    if role in {"targeted_hypothesis", "targeted_candidate_method", ""}:
+        return "targeted_candidate_method"
+    return role
+
+
+def _builder_mode_for_card(
+    card: Mapping[str, Any],
+    *,
+    suggested_method: str | None,
+    card_type: str | None,
+    launch_status: str | None,
+) -> str:
+    if suggested_method is not None:
+        return "guided_from_diagnosis"
+    if _is_data_quality_card(card, card_type=card_type, launch_status=launch_status):
+        return "blocked_data_quality"
+    return "monitor_only"
+
+
+def _is_data_quality_card(
+    card: Mapping[str, Any],
+    *,
+    card_type: str | None,
+    launch_status: str | None,
+) -> bool:
+    searchable_values = (
+        card.get("card_id"),
+        card.get("goal"),
+        card.get("source_diagnosis_id"),
+        card.get("source_problem_id"),
+        card_type,
+        launch_status,
+    )
+    text = " ".join(str(value or "").lower() for value in searchable_values)
+    return any(marker in text for marker in ("data_quality", "data quality", "insufficient"))
+
+
+def _optional_string(value: Any) -> str | None:
+    text = str(value or "").strip()
+    return text or None
+
+
 @dataclass(frozen=True)
 class PortfolioAlternativeBuildPlan:
     """Execution plan for one existing candidate-builder path."""

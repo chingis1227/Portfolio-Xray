@@ -60,17 +60,31 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-06-04-002
+Title: Launchpad cards prefill Portfolio Alternatives Builder but do not generate or recommend candidates
+
+- Status: accepted
+- Date: 2026-06-04
+- Decision: Treat `candidate_launchpad_v3` cards as the canonical source for Portfolio Alternatives Builder prefill. The Builder copies the diagnosis, hypothesis, success criteria, tradeoff, skip rule, method role, and decision boundary into a setup object, but candidate generation requires a separate explicit user action and no Launchpad-derived setup is a rebalance recommendation.
+- Context: Block 4 v3 cards already carried enough diagnostic context for the next product step, while the previous Builder path only extracted method id, goal, and source card id.
+- Rationale: Users need a guided handoff from diagnosis to a test setup without confusing a hypothesis test or benchmark comparison with a trading recommendation.
+- Alternatives considered: Auto-generate a candidate whenever a Launchpad card is selected (rejected because it blurs user consent and generation cost); keep Builder as method-id-only (rejected because it drops diagnosis and decision-boundary context); promote Equal Weight / Risk Parity cards to recommendations (rejected because they are reference benchmarks only).
+- Assumptions: Decision Verdict remains the only downstream product layer that can justify action after Current vs Candidate Comparison; batch candidate factory remains backend/advanced/research infrastructure.
+- Consequences: Builder prefill supports `guided_from_diagnosis`, `monitor_only`, and `blocked_data_quality` modes; `candidate_generation_allowed` only controls whether an explicit generate action may be shown; Launchpad-derived prefill preserves `is_rebalance_recommendation: false`.
+- Related documents: [block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md), [candidate_launchpad_spec.md](docs/specs/candidate_launchpad_spec.md), [portfolio_alternatives_builder_spec.md](docs/specs/portfolio_alternatives_builder_spec.md), [Block 4 to Portfolio Alternatives Builder Handoff](docs/exec_plans/2026-06-04_block_4_portfolio_alternatives_builder_handoff.md).
+- Review trigger: Revisit if Builder becomes a persistent UI artifact, starts writing generated setup files, or if Decision Verdict semantics are migrated to a new schema.
+
 Decision ID: DEC-2026-06-04-001
 Title: Block 4 v3 diagnosis-first contract replaces score-heavy v2 product path
 
 - Status: accepted (implemented)
 - Date: 2026-06-04
-- Decision: Use `problem_classification_v3` and `candidate_launchpad_v3` as the current Block 4 product contracts on the same filenames. Block 4 must present one clear investment diagnosis/outcome with root cause, supporting symptoms, max-five key evidence, why-not-other-problems, confidence/materiality/actionability, and launchpad success criteria.
+- Decision: Use `problem_classification_v3` and `candidate_launchpad_v3` as the current Block 4 product contracts on the same filenames. Block 4 must present one clear investment diagnosis/outcome with root cause, supporting symptoms, max-five key evidence, why-not-other-problems, confidence/materiality/actionability, `next_diagnostic_step`, and launchpad success criteria.
 - Context: User review found the prior Block 4 contract too score-heavy and product-risky when mixed evidence could become the primary verdict.
 - Rationale: Portfolio MRI should read as a professional current-portfolio diagnosis, not as a scoring dashboard. Root-cause triage gives a clearer investment thesis and prevents symptoms such as volatility or drawdown from becoming shallow primary conclusions when stress evidence identifies a deeper issue.
 - Alternatives considered: Keep v2 schema and add more score weights (rejected — increases opacity); keep conflict as a normal primary verdict (rejected — sounds like the system failed); preserve v2 as a current legacy product path (rejected — current product contract should be unambiguous).
 - Assumptions: Blocks 1-3 evidence and formulas remain unchanged; scoring remains useful as backend audit metadata but should not dominate user-facing output.
-- Consequences: Current validators are `check_problem_classification_v3`, `check_candidate_launchpad_v3`, and `check_block_4_v3_diagnosis_handoff`; `mixed_evidence_no_action` replaces the old conflict-as-primary behavior; Launchpad cards require success criteria.
+- Consequences: Current validators are `check_problem_classification_v3`, `check_candidate_launchpad_v3`, and `check_block_4_v3_diagnosis_handoff`; `mixed_evidence_no_action` replaces the old conflict-as-primary behavior; Launchpad cards require success criteria. Block 4 must always expose a next diagnostic step: targeted hypothesis test for actionable diagnoses, data-quality improvement for unreliable evidence, or Equal Weight / Risk Parity reference benchmark tests for mixed or acceptable outcomes. These reference tests are not rebalance recommendations; Decision Verdict remains the downstream rebalance decision boundary.
 - Related documents: [block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md), [Block 4 v3 Investment Diagnosis Plan](docs/exec_plans/2026-06-04_block_4_v3_investment_diagnosis_plan.md).
 - Review trigger: Revisit only on a future breaking schema bump or validated historical model replacing the expert-rule triage.
 
