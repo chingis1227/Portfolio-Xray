@@ -142,17 +142,41 @@ lists all six key names; resolved paths appear only for files on disk.
 | Read root policy `stress_report.json` / `portfolio_xray.json` after portfolio-first review | Open `analysis_subject/` copies first |
 | Assume PDFs refreshed after routine review | Default `site_api` is JSON-only; use `--with-pdf` when PDFs matter |
 | Trust `candidate_comparison.json` rankings without `candidate_menu` | Check `factory_evidence_status`, reuse warnings, optimizer `degraded` rows |
-| Treat Alternatives Builder plan output as weights | Run factory/compare; read verdict + bundle |
+| Treat Alternatives Builder prefill or plan output as weights | Builder prefill is setup only; explicitly run factory/compare, then read verdict + bundle |
 | Commit or cite gitignored `Main portfolio/` as spec proof | Session 07 live demo snapshot audit, or offline pytest fixtures |
 
 ---
 
 ## Launchpad method → one candidate (Alternatives Builder)
 
-Candidate Launchpad cards suggest a `candidate_method_id` (for example `equal_weight` on a
-diversification card). **Portfolio Alternatives Builder** does not run optimizers itself; it returns
-a `PortfolioAlternativeBuildPlan` that delegates to existing factory plumbing
-(`src/portfolio_alternatives_builder.py`).
+Candidate Launchpad cards suggest a diagnostic test or reference comparison. **Portfolio Alternatives
+Builder** first consumes a selected card as Builder prefill: it copies the diagnosis, hypothesis,
+success criteria, tradeoff, skip rule, method role, and decision boundary into setup fields. It does
+not recommend a rebalance and does not generate candidates automatically.
+
+If the user explicitly asks to generate a candidate, Builder can also return a
+`PortfolioAlternativeBuildPlan` that delegates one selected `candidate_method_id` to existing factory
+plumbing (`src/portfolio_alternatives_builder.py`).
+
+
+### Builder prefill from a Launchpad card
+
+Use `build_builder_prefill_from_launchpad_card(card, next_diagnostic_step=...)` when the UI or an
+API consumer opens Builder from `analysis_subject/candidate_launchpad.json`.
+
+| Prefill field | Operator meaning |
+| --- | --- |
+| `builder_mode` | `guided_from_diagnosis`, `monitor_only`, or `blocked_data_quality` for Launchpad-derived cards |
+| `source_diagnosis_id` / `source_card_id` | Traceability back to Problem Classification and Launchpad |
+| `hypothesis_to_test` / `success_criteria` | What the candidate or benchmark must prove to be useful |
+| `suggested_method` / `alternative_methods` | Candidate method ids to show in Builder setup; no weights are created |
+| `method_role` | `targeted_candidate_method` for diagnosis tests or `reference_benchmark` for EW/RP comparisons |
+| `decision_boundary` | Must remain visible; actual rebalance decisions wait for compare + Decision Verdict |
+| `candidate_generation_allowed` | Whether an explicit generate button may be shown; never auto-generation |
+
+Data-quality and monitor cards should keep `candidate_generation_allowed: false`. Reference benchmark
+cards may expose Equal Weight / Risk Parity as comparison methods only; do not describe them as a
+recommended allocation.
 
 ### `PortfolioAlternativeBuildPlan` fields
 

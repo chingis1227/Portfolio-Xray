@@ -123,6 +123,8 @@ Session 02 next-step regression focus:
 - Mixed/acceptable outcomes expose Equal Weight / Risk Parity only as `reference_benchmark_test` Launchpad cards.
 - Data-quality blockers do not emit unreliable Equal Weight / Risk Parity reference comparisons.
 - Actionable diagnoses keep the targeted hypothesis card before any reference benchmark tests.
+- Launchpad-to-Builder handoff preserves diagnosis, success criteria, tradeoff, skip rule, decision boundary, and `is_rebalance_recommendation: false`.
+- Builder prefill never generates candidates automatically; data-quality and monitor cards keep `candidate_generation_allowed: false`.
 
 Regression bundle:
 
@@ -147,6 +149,12 @@ Live product validation (Session 12+):
 
 ```bash
 python scripts/validate_block_4_live.py --refresh-diagnosis
+```
+
+Launchpad-to-Builder handoff checks:
+
+```bash
+python -m pytest tests/test_portfolio_alternatives_builder.py tests/test_candidate_launchpad_builder_handoff.py -q
 ```
 
 Diagnostic journey bridge: `tests/test_diagnostic_journey_view_model.py` asserts v3
@@ -180,7 +188,7 @@ refreshing generated outputs unless the session explicitly targets generated art
 | --- | --- | --- |
 | Problem Classification / `problem_classification.json` | `python -m pytest tests/test_problem_classification.py -q` | Add `tests/test_portfolio_xray.py` or stress tests if evidence extraction from X-Ray/stress changes |
 | Candidate Launchpad / `candidate_launchpad.json` | `python -m pytest tests/test_candidate_launchpad.py -q` | Add Problem Classification tests if problem-to-card mapping inputs change |
-| Portfolio Alternatives Builder / one-candidate delegation plan | `python -m pytest tests/test_portfolio_alternatives_builder.py -q` | Add candidate factory contract tests if delegated command/profile/candidate IDs change |
+| Portfolio Alternatives Builder / Launchpad prefill and one-candidate delegation plan | `python -m pytest tests/test_portfolio_alternatives_builder.py tests/test_candidate_launchpad_builder_handoff.py -q` | Add candidate factory contract tests if delegated command/profile/candidate IDs change |
 | Current vs Candidate / `current_vs_candidate.json` | `python -m pytest tests/test_current_vs_candidate.py -q` | Add `tests/test_candidate_comparison.py tests/test_candidate_comparison_contract.py` if comparison row semantics change |
 | Decision Verdict / `decision_verdict.json` | `python -m pytest tests/test_decision_verdict.py -q` | Add `tests/test_selection_engine.py` and action tests if Selection/No-Trade or action-plan evidence changes |
 | AI Commentary grounding / `ai_commentary_context.json` | `python -m pytest tests/test_ai_commentary_context.py -q` | Add Decision Verdict and Current-vs-Candidate tests if grounding inputs change |

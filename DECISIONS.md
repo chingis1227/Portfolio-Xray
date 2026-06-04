@@ -60,6 +60,20 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-06-04-002
+Title: Launchpad cards prefill Portfolio Alternatives Builder but do not generate or recommend candidates
+
+- Status: accepted
+- Date: 2026-06-04
+- Decision: Treat `candidate_launchpad_v3` cards as the canonical source for Portfolio Alternatives Builder prefill. The Builder copies the diagnosis, hypothesis, success criteria, tradeoff, skip rule, method role, and decision boundary into a setup object, but candidate generation requires a separate explicit user action and no Launchpad-derived setup is a rebalance recommendation.
+- Context: Block 4 v3 cards already carried enough diagnostic context for the next product step, while the previous Builder path only extracted method id, goal, and source card id.
+- Rationale: Users need a guided handoff from diagnosis to a test setup without confusing a hypothesis test or benchmark comparison with a trading recommendation.
+- Alternatives considered: Auto-generate a candidate whenever a Launchpad card is selected (rejected because it blurs user consent and generation cost); keep Builder as method-id-only (rejected because it drops diagnosis and decision-boundary context); promote Equal Weight / Risk Parity cards to recommendations (rejected because they are reference benchmarks only).
+- Assumptions: Decision Verdict remains the only downstream product layer that can justify action after Current vs Candidate Comparison; batch candidate factory remains backend/advanced/research infrastructure.
+- Consequences: Builder prefill supports `guided_from_diagnosis`, `monitor_only`, and `blocked_data_quality` modes; `candidate_generation_allowed` only controls whether an explicit generate action may be shown; Launchpad-derived prefill preserves `is_rebalance_recommendation: false`.
+- Related documents: [block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md), [candidate_launchpad_spec.md](docs/specs/candidate_launchpad_spec.md), [portfolio_alternatives_builder_spec.md](docs/specs/portfolio_alternatives_builder_spec.md), [Block 4 to Portfolio Alternatives Builder Handoff](docs/exec_plans/2026-06-04_block_4_portfolio_alternatives_builder_handoff.md).
+- Review trigger: Revisit if Builder becomes a persistent UI artifact, starts writing generated setup files, or if Decision Verdict semantics are migrated to a new schema.
+
 Decision ID: DEC-2026-06-04-001
 Title: Block 4 v3 diagnosis-first contract replaces score-heavy v2 product path
 

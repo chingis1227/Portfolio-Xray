@@ -5,13 +5,19 @@ score-heavy contract as the current product path.
 
 Block 4 is an investment diagnosis handoff, not a scoring dashboard. Blocks 1-3
 produce evidence; Block 4 converts that evidence into one clear current-portfolio
-diagnosis and a small set of hypotheses to test next.
+diagnosis and a small set of hypotheses to test next. It identifies the
+diagnosis and the `next_diagnostic_step`; Candidate Launchpad exposes that step
+as testable cards; Portfolio Alternatives Builder consumes a selected card only
+to pre-fill a candidate setup. Candidate generation is downstream and requires
+an explicit user action.
 
 Block 4 must never end with an empty path. It may conclude that no immediate
 rebalance is justified, but it still emits a `next_diagnostic_step`: either a
 targeted hypothesis test, a reference benchmark comparison, monitoring, or a
-data-quality improvement step. Block 4 and Launchpad must not call these
-investment recommendations.
+data-quality improvement step. Block 4, Launchpad, and Builder prefill must not
+call these investment recommendations. Decision Verdict is the only downstream
+product layer that decides whether action is justified after current-vs-candidate
+comparison evidence exists.
 
 ## Public artifacts
 
@@ -126,6 +132,21 @@ When an actionable primary diagnosis exists, the first card must remain the
 targeted hypothesis for that diagnosis. Equal Weight / Risk Parity reference
 tests may appear only as secondary reference tests and must not displace the
 targeted card.
+
+## Portfolio Alternatives Builder handoff
+
+Launchpad v3 cards are valid Builder prefill sources. The Builder handoff keeps
+the diagnostic context visible by preserving `source_diagnosis_id`,
+`hypothesis_to_test`, `success_criteria`, `tradeoff_to_watch`, `when_to_skip`,
+`decision_boundary`, and `is_rebalance_recommendation: false`.
+
+For actionable diagnoses, Builder opens `builder_mode: guided_from_diagnosis`
+with a targeted candidate setup. For mixed or acceptable evidence, Builder opens
+an Equal Weight / Risk Parity reference benchmark setup. For data-quality
+blockers or monitor-only outcomes, Builder opens a blocked or monitor setup with
+`candidate_generation_allowed: false`. In all cases,
+`candidate_generation_allowed: true` only means the UI may show an explicit
+generate-candidate action; it never means automatic candidate generation.
 
 ## Success criteria examples
 
