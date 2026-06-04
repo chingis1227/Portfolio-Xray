@@ -60,19 +60,33 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-06-04-001
+Title: Block 4 v3 diagnosis-first contract replaces score-heavy v2 product path
+
+- Status: accepted (implemented)
+- Date: 2026-06-04
+- Decision: Use `problem_classification_v3` and `candidate_launchpad_v3` as the current Block 4 product contracts on the same filenames. Block 4 must present one clear investment diagnosis/outcome with root cause, supporting symptoms, max-five key evidence, why-not-other-problems, confidence/materiality/actionability, and launchpad success criteria.
+- Context: User review found the prior Block 4 contract too score-heavy and product-risky when mixed evidence could become the primary verdict.
+- Rationale: Portfolio MRI should read as a professional current-portfolio diagnosis, not as a scoring dashboard. Root-cause triage gives a clearer investment thesis and prevents symptoms such as volatility or drawdown from becoming shallow primary conclusions when stress evidence identifies a deeper issue.
+- Alternatives considered: Keep v2 schema and add more score weights (rejected — increases opacity); keep conflict as a normal primary verdict (rejected — sounds like the system failed); preserve v2 as a current legacy product path (rejected — current product contract should be unambiguous).
+- Assumptions: Blocks 1-3 evidence and formulas remain unchanged; scoring remains useful as backend audit metadata but should not dominate user-facing output.
+- Consequences: Current validators are `check_problem_classification_v3`, `check_candidate_launchpad_v3`, and `check_block_4_v3_diagnosis_handoff`; `mixed_evidence_no_action` replaces the old conflict-as-primary behavior; Launchpad cards require success criteria.
+- Related documents: [block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md), [Block 4 v3 Investment Diagnosis Plan](docs/exec_plans/2026-06-04_block_4_v3_investment_diagnosis_plan.md).
+- Review trigger: Revisit only on a future breaking schema bump or validated historical model replacing the expert-rule triage.
+
 Decision ID: DEC-2026-05-29-013
 Title: Block 4 v2 additive migration with transitional V1 compatibility shim
 
 - Status: accepted (implemented — Session 14 closure 2026-05-29)
 - Date: 2026-05-29
-- Decision: Upgrade Block 4 entry from thin `problem_classification_v1` to structured `problem_classification_v2` (evidence extraction → scoring → severity/confidence → prioritization → actions → launchpad) via additive schema bump on the same filenames (`analysis_subject/problem_classification.json`, `candidate_launchpad.json`). During Sessions 10–13, dual validation ran; compatibility shim (`problems[]` mirror, severity `medium` → `moderate`) retained. **Session 14:** V1 product validators removed; v2 is canonical for live E2E and decision-entry tests; legacy V1 builders remain for unit tests only. Block 4 remains read-only over Blocks 2–3.
+- Decision: Upgrade Block 4 entry from thin `problem_classification_v1` to structured `Block 4 v2 problem-classification schema` (evidence extraction → scoring → severity/confidence → prioritization → actions → launchpad) via additive schema bump on the same filenames (`analysis_subject/problem_classification.json`, `candidate_launchpad.json`). During Sessions 10–13, dual validation ran; compatibility shim (`problems[]` mirror, severity `medium` → `moderate`) retained. **Session 14:** V1 product validators removed; that contract was canonical for live E2E and decision-entry tests until DEC-2026-06-04-001 superseded it; legacy V1 builders remain for unit tests only. Block 4 remains read-only over Blocks 2–3.
 - Context: [Block 4 v2 Session 00 gap audit](docs/audits/2026-05-29_block_4_v2_session_00_gap_audit.md); V1 accepted Session 09 but uses legacy `sections.*` readers, severity-only prioritization, and 9 problem IDs vs 15-target taxonomy.
 - Rationale: Institutional diagnosis requires auditable evidence_refs and honest no-trade outcomes without breaking operators mid-migration.
 - Alternatives considered: In-place V1 rewrite without schema_version bump (rejected — silent contract drift); separate bundle files (rejected — six-file product bundle unchanged); big-bang cutover without shim (rejected — breaks Session 09 E2E gates).
 - Assumptions: Blocks 2.1–2.6 and 3.3–3.4 product blocks remain stable evidence sources; core-only hygiene continues to omit Block 4 artifacts.
 - Consequences: ExecPlan [Block 4 v2 Evidence-to-Problem](docs/exec_plans/2026-05-29_block_4_v2_evidence_to_problem_plan.md) **Completed**; `src/block_4/` package; `config/block_4_thresholds.yml`; [Session 14 closure audit](docs/audits/2026-05-29_block_4_v2_session_14_institutional_closure.md).
 - Related documents: DEC-2026-05-29-011, [problem_classification_spec.md](docs/specs/problem_classification_spec.md), [candidate_launchpad_spec.md](docs/specs/candidate_launchpad_spec.md).
-- Review trigger: Closed Session 14 — v2 is canonical; revisit only on breaking schema bump.
+- Review trigger: Closed Session 14 — superseded by DEC-2026-06-04-001.
 
 Decision ID: DEC-2026-05-29-012
 Title: Block 5 compare/verdict validated via product contracts and live E2E (Session 10)

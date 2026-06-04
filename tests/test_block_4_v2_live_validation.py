@@ -1,4 +1,4 @@
-"""Block 4 v2 Session 12 — live validation script and E2E v2 gate."""
+"""Block 4 v3 Session 12 — live validation script and E2E v2 gate."""
 
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ import sys
 from pathlib import Path
 
 from scripts.core_mvp_validation_contract import (
-    check_block_4_v2_diagnosis_handoff,
-    check_candidate_launchpad_v2,
-    check_problem_classification_v2,
+    check_block_4_v3_diagnosis_handoff,
+    check_candidate_launchpad_v3,
+    check_problem_classification_v3,
 )
 from scripts.validate_block_4_live import validate_block_4_live
 from src.config_schema import validate_config
@@ -39,11 +39,11 @@ def test_validate_block_4_live_accepts_v2_seed_bundle(tmp_path: Path) -> None:
     assert result["ok"] is True
     pc = json.loads((subject / "problem_classification.json").read_text(encoding="utf-8"))
     lp = json.loads((subject / "candidate_launchpad.json").read_text(encoding="utf-8"))
-    assert pc["schema_version"] == "problem_classification_v2"
-    assert lp["schema_version"] == "candidate_launchpad_v2"
-    assert check_problem_classification_v2(pc)["product_contract_ok"] is True
-    assert check_candidate_launchpad_v2(lp)["product_contract_ok"] is True
-    assert check_block_4_v2_diagnosis_handoff(pc, lp)["handoff_ok"] is True
+    assert pc["schema_version"] == "problem_classification_v3"
+    assert lp["schema_version"] == "candidate_launchpad_v3"
+    assert check_problem_classification_v3(pc)["product_contract_ok"] is True
+    assert check_candidate_launchpad_v3(lp)["product_contract_ok"] is True
+    assert check_block_4_v3_diagnosis_handoff(pc, lp)["handoff_ok"] is True
 
 
 def test_validate_block_4_live_cli_refresh_diagnosis(tmp_path: Path) -> None:
@@ -73,7 +73,7 @@ def test_validate_block_4_live_cli_refresh_diagnosis(tmp_path: Path) -> None:
     assert (subject / "candidate_launchpad.json").is_file()
 
 
-def test_live_e2e_diagnosis_only_uses_block_4_v2_contract(tmp_path: Path) -> None:
+def test_live_e2e_diagnosis_only_uses_block_4_v3_contract(tmp_path: Path) -> None:
     cfg = validate_config(five_ticker_mvp_config_dict())
     main = tmp_path / cfg.output_dir_final
     subject = main / "analysis_subject"
@@ -88,6 +88,6 @@ def test_live_e2e_diagnosis_only_uses_block_4_v2_contract(tmp_path: Path) -> Non
     assert detect_live_core_e2e_profile(main) == LIVE_CORE_E2E_PROFILE_DIAGNOSIS_ONLY
     result = validate_live_core_artifacts(main)
     assert result.ok, "\n".join(result.messages())
-    assert result.evidence.get("block_4_schema_version") == "problem_classification_v2"
+    assert result.evidence.get("block_4_schema_version") == "problem_classification_v3"
     assert result.evidence.get("block_4_primary_problem_id")
     assert result.evidence.get("block_4_n_cards", 0) >= 0

@@ -1,7 +1,7 @@
 """Problem Classification artifact for diagnosis-first Portfolio MRI.
 
 Legacy V1 builder (``problem_classification_v1``). Production pipeline uses
-``src/block_4/diagnosis_builder.py`` (``problem_classification_v2``) since Block 4 v2
+``src/block_4/diagnosis_builder.py`` (``problem_classification_v3``) since Block 4 v3
 Session 10. Retained for unit tests and migration reference only.
 """
 

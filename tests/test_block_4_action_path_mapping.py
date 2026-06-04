@@ -1,4 +1,4 @@
-"""Tests for Block 4 v2 suggested action path mapping (Session 07)."""
+"""Tests for Block 4 v3 suggested action path mapping (Session 07)."""
 
 from __future__ import annotations
 
@@ -133,4 +133,4 @@ def test_secondary_problem_action_paths_follow_primary_in_priority() -> None:
 
 
 def test_action_path_mapping_ruleset_version_constant() -> None:
-    assert ACTION_PATH_MAPPING_RULESET_VERSION.startswith("block_4_v2_")
+    assert ACTION_PATH_MAPPING_RULESET_VERSION.startswith("block_4_v3_")

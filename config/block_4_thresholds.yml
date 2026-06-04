@@ -1,8 +1,8 @@
-# Block 4 v2 — evidence-to-problem scoring thresholds (Session 05).
+# Block 4 v3 — backend evidence scoring thresholds for diagnosis triage.
 # Bump version when changing activation, materiality, severity, or confidence rules.
 
 version: block_4_thresholds_v1
-ruleset_version: block_4_v2_2026_06
+ruleset_version: block_4_v3_2026_06
 
 activation:
   raw_score_min: 0.35

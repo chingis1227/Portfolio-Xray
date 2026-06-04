@@ -1,4 +1,4 @@
-"""Block 4 v2 controlled problem and action-path taxonomy.
+"""Block 4 v3 controlled diagnosis and action-path taxonomy.
 
 Single source of truth for problem ids, action paths, Launchpad goal labels,
 and candidate method hints. Scoring and evidence extraction consume this registry;
@@ -161,11 +161,11 @@ ACTION_PATH_REGISTRY: dict[str, ActionPathDefinition] = {
     ),
     "evidence_insufficient_do_not_act_yet": ActionPathDefinition(
         action_path_id="evidence_insufficient_do_not_act_yet",
-        label_en="Do not act yet — resolve evidence first",
-        goal_label="Review data quality",
+        label_en="Do not act yet — evidence does not justify action",
+        goal_label="Do not act yet",
         candidate_method_ids=(),
         launchpad_description_en=(
-            "Resolve evidence-quality or conflicting-signal gaps before relying on candidate comparisons."
+            "Do not rebalance from this diagnosis alone; resolve bad data or monitor mixed evidence first."
         ),
     ),
 }
@@ -200,6 +200,8 @@ class ProblemDefinition:
     downstream_comparison_focus_en: str
     eligible_as_primary: bool = True
     suppress_launchpad_methods: bool = False
+    diagnosis_role: str = "root_cause"
+    diagnosis_subtypes: tuple[str, ...] = ()
 
 
 def _methods_for(*action_ids: str) -> tuple[str, ...]:
@@ -250,6 +252,7 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
         common_false_positive_en="Short-window vol spike after a single risk-on month.",
         common_false_negative_en="Vol masked by cash sleeve or stale monthly window.",
         downstream_comparison_focus_en="Compare vol, max drawdown, and turnover vs current.",
+        diagnosis_role="symptom",
     ),
     "high_drawdown": ProblemDefinition(
         problem_id="high_drawdown",
@@ -288,6 +291,7 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
         common_false_positive_en="Young ETF history with one short crash window.",
         common_false_negative_en="Drawdown diluted by recent rally without fixing tail structure.",
         downstream_comparison_focus_en="Compare max drawdown, recovery time, and stress replay loss.",
+        diagnosis_role="symptom",
     ),
     "high_equity_beta": ProblemDefinition(
         problem_id="high_equity_beta",
@@ -322,6 +326,7 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
         common_false_positive_en="Beta high due to mixed asset labels but correlated equity proxies.",
         common_false_negative_en="Low beta with hidden equity-like drawdown correlation.",
         downstream_comparison_focus_en="Compare beta, stress equity shock loss, and crisis scenarios.",
+        diagnosis_role="symptom",
     ),
     "high_concentration": ProblemDefinition(
         problem_id="high_concentration",
@@ -354,6 +359,14 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
         common_false_positive_en="Many small lines that sum to one dominant factor exposure.",
         common_false_negative_en="Low weights but risk-parity imbalance in RC top share.",
         downstream_comparison_focus_en="Compare top weights, RC top3 share, and stress loss contributors.",
+        diagnosis_subtypes=(
+            "capital_concentration",
+            "risk_contribution_concentration",
+            "factor_concentration",
+            "regional_concentration",
+            "currency_concentration",
+            "duplicate_exposure_concentration",
+        ),
     ),
     "poor_diversification": ProblemDefinition(
         problem_id="poor_diversification",
@@ -458,6 +471,7 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
         common_false_positive_en="Short rate shock with immaterial portfolio loss.",
         common_false_negative_en="Rates risk hidden inside balanced fund proxies.",
         downstream_comparison_focus_en="Compare rates shock scenario loss and factor rates beta.",
+        diagnosis_role="symptom",
     ),
     "weak_crisis_resilience": ProblemDefinition(
         problem_id="weak_crisis_resilience",
@@ -527,6 +541,7 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
         common_false_positive_en="ES spike from one outlier month.",
         common_false_negative_en="Normal vol masking fat tails in mixed book.",
         downstream_comparison_focus_en="Compare ES/VaR and worst stress scenarios.",
+        diagnosis_role="symptom",
     ),
     "credit_liquidity_fragility": ProblemDefinition(
         problem_id="credit_liquidity_fragility",
@@ -628,6 +643,7 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
         common_false_positive_en="Short window Sharpe after one bad month.",
         common_false_negative_en="High return from concentrated bet masking poor risk-adjusted profile.",
         downstream_comparison_focus_en="Compare Sharpe, vol, and return vs benchmark candidates.",
+        diagnosis_role="symptom",
     ),
     "current_portfolio_acceptable": ProblemDefinition(
         problem_id="current_portfolio_acceptable",
@@ -659,6 +675,7 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
         common_false_negative_en="Over-triggering on cosmetic metric breaches.",
         downstream_comparison_focus_en="Optional benchmark compare only if user requests.",
         suppress_launchpad_methods=True,
+        diagnosis_role="outcome",
     ),
     "evidence_insufficient_data_quality": ProblemDefinition(
         problem_id="evidence_insufficient_data_quality",
@@ -692,49 +709,52 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
         common_false_negative_en="Silent stale cache treated as OK.",
         downstream_comparison_focus_en="Defer comparison until data_quality_warnings cleared.",
         suppress_launchpad_methods=True,
+        diagnosis_role="outcome",
     ),
-    "evidence_insufficient_conflicting_signals": ProblemDefinition(
-        problem_id="evidence_insufficient_conflicting_signals",
-        label_en="Conflicting evidence — do not act yet",
+    "mixed_evidence_no_action": ProblemDefinition(
+        problem_id="mixed_evidence_no_action",
+        label_en="Mixed evidence — no action justified yet",
         problem_id_legacy=None,
         technical_definition_en=(
-            "Scoring detects material contradictions (e.g., low vol + severe stress loss + strong offset) "
-            "without resolvable primary narrative."
+            "Usable diagnostic evidence contains tensions, but no dominant actionable root-cause diagnosis "
+            "is confirmed strongly enough to justify a rebalance."
         ),
         portfolio_manager_interpretation_en=(
-            "Signals disagree. Forcing a single problem headline would mislead the investor."
+            "The current evidence does not justify forcing a trade. The right conclusion is to avoid a "
+            "rebalance for now, monitor the tension, and optionally test a simple benchmark reference."
         ),
         required_evidence_signals=("conflicting_signal_bundle",),
         supporting_evidence_signals=(),
         negative_evidence_signals=(),
         primary_action_path_id="evidence_insufficient_do_not_act_yet",
-        secondary_action_path_ids=("test_another_candidate",),
+        secondary_action_path_ids=("compare_against_simple_benchmark", "keep_current_portfolio_and_monitor"),
         default_candidate_method_ids=(),
-        launchpad_card_title_en="Resolve Conflicting Evidence",
+        launchpad_card_title_en="No Dominant Actionable Problem",
         launchpad_what_this_tests_en=(
-            "Re-run diagnostics or review assumptions before choosing a hypothesis."
+            "Monitor the mixed evidence and, only if useful, compare against a transparent benchmark reference."
         ),
-        launchpad_tradeoff_en="Patience vs action bias.",
-        launchpad_skip_when_en="N/A — do not launch candidates until resolved.",
+        launchpad_tradeoff_en="Avoiding unnecessary turnover vs opportunity cost of not exploring alternatives.",
+        launchpad_skip_when_en="Skip portfolio-generating methods unless a material root-cause diagnosis appears.",
         do_not_overreact_reason_en=(
-            "Conflicts often clear after updated data or explicit stress confirmation bridges."
+            "Mixed evidence is a warning, not proof that the portfolio is broken."
         ),
         when_not_to_select_as_primary_en=(
-            "When one signal family dominates after prioritization rules."
+            "When one root-cause signal family dominates after prioritization rules."
         ),
-        common_false_positive_en="Mild tension between pre-stress and stress paths.",
-        common_false_negative_en="Treating contradictions as multi-problem without flagging conflict.",
-        downstream_comparison_focus_en="No compare until conflict resolved.",
+        common_false_positive_en="Mild tension between pre-stress and stress paths treated as a major conflict.",
+        common_false_negative_en="Treating mixed evidence as multiple separate action problems.",
+        downstream_comparison_focus_en="Optional benchmark reference only; do not imply a rebalance.",
         suppress_launchpad_methods=True,
+        diagnosis_role="outcome",
     ),
 }
 
 
 # ---------------------------------------------------------------------------
-# Block 2.6 → problem mapping (v2 ids)
+# Block 2.6 → problem mapping (v3 ids)
 # ---------------------------------------------------------------------------
 
-BLOCK_2_6_RISK_TYPE_TO_PROBLEM_IDS_V2: dict[str, tuple[str, ...]] = {
+BLOCK_2_6_RISK_TYPE_TO_PROBLEM_IDS_V3: dict[str, tuple[str, ...]] = {
     "equity_shock": ("high_equity_beta", "weak_crisis_resilience"),
     "credit_shock": ("weak_crisis_resilience", "credit_liquidity_fragility"),
     "rates_shock": ("poor_rates_up_behavior", "duration_rates_vulnerability", "high_drawdown"),
@@ -805,6 +825,42 @@ ROOT_CAUSE_ELEVATION_RULES: tuple[dict[str, Any], ...] = (
 
 def all_problem_ids() -> tuple[str, ...]:
     return tuple(PROBLEM_REGISTRY.keys())
+
+
+def problem_ids_by_role(role: str) -> tuple[str, ...]:
+    """Return canonical problem ids for a diagnosis role."""
+    return tuple(
+        pid
+        for pid, defn in PROBLEM_REGISTRY.items()
+        if defn.diagnosis_role == role
+    )
+
+
+def root_cause_problem_ids() -> tuple[str, ...]:
+    return problem_ids_by_role("root_cause")
+
+
+def symptom_problem_ids() -> tuple[str, ...]:
+    return problem_ids_by_role("symptom")
+
+
+def outcome_problem_ids() -> tuple[str, ...]:
+    return problem_ids_by_role("outcome")
+
+
+def is_root_cause_problem(problem_id: str) -> bool:
+    defn = PROBLEM_REGISTRY.get(problem_id)
+    return defn is not None and defn.diagnosis_role == "root_cause"
+
+
+def is_symptom_problem(problem_id: str) -> bool:
+    defn = PROBLEM_REGISTRY.get(problem_id)
+    return defn is not None and defn.diagnosis_role == "symptom"
+
+
+def is_outcome_problem(problem_id: str) -> bool:
+    defn = PROBLEM_REGISTRY.get(problem_id)
+    return defn is not None and defn.diagnosis_role == "outcome"
 
 
 def all_action_path_ids() -> tuple[str, ...]:

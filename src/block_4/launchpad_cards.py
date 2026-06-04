@@ -1,6 +1,6 @@
-"""Block 4 v2 Candidate Launchpad card generation (Session 08).
+"""Block 4 v3 Candidate Launchpad card generation.
 
-Builds v2 launchpad cards from mapped action paths and problem rows.
+Builds v3 launchpad cards from mapped action paths and diagnosis rows.
 Cards are hypotheses to test — no weights, no builder execution.
 """
 
@@ -17,14 +17,79 @@ from src.block_4.problem_scoring import ProblemScoringResult
 from src.block_4.problem_taxonomy import get_action_path, get_problem_definition
 from src.block_4.thresholds import get_block_4_thresholds
 
-LAUNCHPAD_BUILD_RULESET_VERSION = "block_4_v2_launchpad_cards_v1"
-CANDIDATE_LAUNCHPAD_V2_VERSION = "candidate_launchpad_v2"
-MAX_LAUNCHPAD_CARDS = 4
+LAUNCHPAD_BUILD_RULESET_VERSION = "block_4_v3_launchpad_cards_v1"
+CANDIDATE_LAUNCHPAD_V3_VERSION = "candidate_launchpad_v3"
+MAX_LAUNCHPAD_CARDS = 3
 MAX_SUPPRESSED_CARDS = 2
 
-LAUNCHPAD_V2_DISCLAIMER_EN = (
+LAUNCHPAD_V3_DISCLAIMER_EN = (
     "This card suggests a hypothesis to test, not a buy or sell instruction."
 )
+
+_SUCCESS_CRITERIA_BY_ACTION_PATH: dict[str, tuple[str, ...]] = {
+    "reduce_volatility": (
+        "Lower annualized volatility without materially worsening CAGR or stress loss.",
+        "Keep turnover and concentration changes explainable.",
+    ),
+    "reduce_drawdown_risk": (
+        "Lower max drawdown versus the current portfolio.",
+        "Improve recovery profile or time-under-water without creating a larger stress tail.",
+    ),
+    "improve_diversification": (
+        "Lower top-3 risk contribution share.",
+        "Lower average correlation or duplicate-exposure pressure.",
+        "Avoid replacing one hidden overlap with another.",
+    ),
+    "reduce_concentration": (
+        "Lower the relevant concentration subtype: capital, risk contribution, factor, region, currency, or duplicate exposure.",
+        "Check that top-1/top-3 risk contribution falls, not only capital weight.",
+    ),
+    "improve_crisis_resilience": (
+        "Lower worst synthetic or historical stress loss versus the current portfolio.",
+        "Improve offset coverage in the main hedge-gap scenario.",
+        "Reduce top stress-loss concentration without excessive turnover.",
+    ),
+    "reduce_equity_beta": (
+        "Lower equity beta and equity-shock loss versus the current portfolio.",
+        "Avoid materially worsening crisis stress losses.",
+    ),
+    "reduce_duration_rates_sensitivity": (
+        "Lower rates-shock loss and beta_rr exposure.",
+        "Keep the duration/yield trade-off explicit.",
+    ),
+    "improve_hedge_behavior": (
+        "Improve offset coverage ratio in the main hedge-gap scenario.",
+        "Increase the reliability of helped assets during stress.",
+    ),
+    "reduce_tail_risk": (
+        "Improve ES/CVaR or tail drawdown metrics.",
+        "Reduce severe drawdown frequency without hiding risk in concentration.",
+    ),
+    "reduce_credit_liquidity_risk": (
+        "Lower credit or liquidity shock loss.",
+        "Reduce fragile carry exposure without over-penalizing intentional income sleeves.",
+    ),
+    "improve_return_risk_balance": (
+        "Improve Sharpe/Sortino-like efficiency versus current.",
+        "Do not worsen stress resilience enough to offset the efficiency gain.",
+    ),
+    "compare_against_simple_benchmark": (
+        "Create a transparent reference point, not an action recommendation.",
+        "Use the comparison to clarify whether the current diagnosis is material.",
+    ),
+    "keep_current_portfolio_and_monitor": (
+        "No material deterioration in monitored risks.",
+        "Re-open candidate testing only if a root-cause diagnosis becomes material.",
+    ),
+    "evidence_insufficient_do_not_act_yet": (
+        "Resolve data-quality blockers or monitor mixed evidence before any rebalance test.",
+        "Confirm that a root-cause diagnosis is material before launching candidates.",
+    ),
+    "test_another_candidate": (
+        "Define a specific hypothesis before generating a candidate.",
+        "Do not treat exploration as an allocation recommendation.",
+    ),
+}
 
 _MONITOR_ACTION_PATH_IDS = frozenset(
     {
@@ -86,7 +151,7 @@ def build_launchpad_cards(
     launchpad_outcome: str | None = None,
     launchpad_suppressed: bool | None = None,
 ) -> LaunchpadCardsResult:
-    """Build v2 launchpad cards from action-path mapping output."""
+    """Build v3 launchpad cards from action-path mapping output."""
     primary_id = str(mapping.primary_problem["problem_id"])
     gate = no_trade_gate or gate_from_primary_problem_id(primary_id)
     suppressed = (
@@ -129,7 +194,7 @@ def build_launchpad_cards(
     )
 
 
-def build_candidate_launchpad_v2_document(
+def build_candidate_launchpad_v3_document(
     mapping: ActionPathMappingResult,
     *,
     analysis_end: str | None = None,
@@ -141,7 +206,7 @@ def build_candidate_launchpad_v2_document(
     launchpad_suppressed: bool | None = None,
     ruleset_version: str | None = None,
 ) -> dict[str, Any]:
-    """Assemble top-level ``candidate_launchpad_v2`` document (Session 10 wiring uses this)."""
+    """Assemble top-level ``candidate_launchpad_v3`` document."""
     from src.block_4.no_trade_gate import evaluate_no_trade_gate
 
     cfg = get_block_4_thresholds()
@@ -158,7 +223,7 @@ def build_candidate_launchpad_v2_document(
     summary = cards_result.to_summary_dict(launchpad_outcome=outcome)
 
     return {
-        "schema_version": CANDIDATE_LAUNCHPAD_V2_VERSION,
+        "schema_version": CANDIDATE_LAUNCHPAD_V3_VERSION,
         "diagnostic_only": True,
         "ruleset_version": ruleset_version or cfg.ruleset_version,
         "generated_at": generated_at or _utc_now_iso(),
@@ -220,10 +285,13 @@ def _build_card(
         "title": title,
         "goal": action_path.goal_label,
         "description": action_path.launchpad_description_en,
+        "source_diagnosis_id": source_problem_id,
         "source_problem_id": source_problem_id,
         "source_problem_label": (problem_row or {}).get("label_en"),
         "rationale": _card_rationale(problem_row),
+        "hypothesis_to_test": _hypothesis_to_test(action_path.label_en, problem_row),
         "suggested_methods": suggested_methods,
+        "success_criteria": list(_success_criteria(action.action_path_id)),
         "generates_portfolio": False,
         "requires_user_action": action.action_path_id not in _NO_USER_ACTION_PATH_IDS,
         "why_this_path_en": _why_this_path_en(problem_row, action_path.label_en),
@@ -236,8 +304,14 @@ def _build_card(
         "expected_tradeoff_to_check_en": (
             defn.launchpad_tradeoff_en if defn is not None else _default_tradeoff(action.action_path_id)
         ),
-        "not_a_recommendation_disclaimer_en": LAUNCHPAD_V2_DISCLAIMER_EN,
+        "tradeoff_to_watch": (
+            defn.launchpad_tradeoff_en if defn is not None else _default_tradeoff(action.action_path_id)
+        ),
+        "not_a_recommendation_disclaimer_en": LAUNCHPAD_V3_DISCLAIMER_EN,
         "when_to_skip_this_test_en": (
+            defn.launchpad_skip_when_en if defn is not None else "Skip when the diagnosis no longer applies."
+        ),
+        "when_to_skip": (
             defn.launchpad_skip_when_en if defn is not None else "Skip when the diagnosis no longer applies."
         ),
         "priority_rank": priority_rank,
@@ -262,11 +336,8 @@ def _method_ids_for_card(
     problem_row: dict[str, Any] | None,
     launchpad_suppressed: bool,
 ) -> tuple[str, ...]:
-    if launchpad_suppressed and action_path_id == "compare_against_simple_benchmark":
-        path = get_action_path(action_path_id)
-        if path is None:
-            return ()
-        return tuple(mid for mid in path.candidate_method_ids if mid in _KNOWN_METHOD_IDS)
+    if launchpad_suppressed:
+        return ()
 
     if action_path_id in _NO_USER_ACTION_PATH_IDS:
         return ()
@@ -307,6 +378,28 @@ def _why_this_path_en(problem_row: dict[str, Any] | None, action_label: str) -> 
     return f"The diagnosis supports testing whether {action_label.lower()} improves the portfolio profile."
 
 
+def _hypothesis_to_test(action_label: str, problem_row: dict[str, Any] | None) -> str:
+    label = str((problem_row or {}).get("label_en") or "the current diagnosis").lower()
+    return (
+        f"Test whether {action_label.lower()} improves {label} enough to beat the current portfolio "
+        "on the stated success criteria."
+    )
+
+
+def _success_criteria(action_path_id: str) -> tuple[str, ...]:
+    return success_criteria_for_action_path(action_path_id)
+
+
+def success_criteria_for_action_path(action_path_id: str) -> tuple[str, ...]:
+    return _SUCCESS_CRITERIA_BY_ACTION_PATH.get(
+        action_path_id,
+        (
+            "Improve the diagnosed risk without creating a larger unaddressed risk.",
+            "Keep implementation trade-offs explicit.",
+        ),
+    )
+
+
 def _simple_constraints(action_path_id: str, problem_row: dict[str, Any] | None) -> list[str]:
     if action_path_id in _NO_USER_ACTION_PATH_IDS:
         return []
@@ -344,10 +437,13 @@ def _fallback_monitor_card(
             if action_path
             else "Track diagnostics over time without generating a candidate portfolio."
         ),
+        "source_diagnosis_id": primary_problem_id,
         "source_problem_id": primary_problem_id,
         "source_problem_label": primary_row.get("label_en"),
         "rationale": _card_rationale(primary_row),
+        "hypothesis_to_test": _hypothesis_to_test("keeping the current portfolio and monitoring", primary_row),
         "suggested_methods": [],
+        "success_criteria": list(_success_criteria("keep_current_portfolio_and_monitor")),
         "generates_portfolio": False,
         "requires_user_action": False,
         "why_this_path_en": _why_this_path_en(primary_row, "keeping the current portfolio and monitoring"),
@@ -358,9 +454,13 @@ def _fallback_monitor_card(
         ),
         "simple_constraints": [],
         "expected_tradeoff_to_check_en": _default_tradeoff("keep_current_portfolio_and_monitor"),
-        "not_a_recommendation_disclaimer_en": LAUNCHPAD_V2_DISCLAIMER_EN,
+        "tradeoff_to_watch": _default_tradeoff("keep_current_portfolio_and_monitor"),
+        "not_a_recommendation_disclaimer_en": LAUNCHPAD_V3_DISCLAIMER_EN,
         "when_to_skip_this_test_en": (
-            defn.launchpad_skip_when_en if defn else "N/A — this is the monitor path."
+            defn.launchpad_skip_when_en if defn else "N/A - this is the monitor path."
+        ),
+        "when_to_skip": (
+            defn.launchpad_skip_when_en if defn else "N/A - this is the monitor path."
         ),
         "priority_rank": 1,
     }
@@ -372,3 +472,5 @@ def _card_id(action_path_id: str, rank: int) -> str:
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+

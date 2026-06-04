@@ -441,8 +441,11 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Generated CSV/JSON/HTML/TXT/PDF-style reports | Implemented |
 | Full interactive UI | Target/TBD |
 | Diagnosis-only product state as formal UX/workflow state | Target/TBD; current generated artifacts may support diagnosis review, but a formal product state requires code/spec verification |
-| Problem Classification | **Implemented (v2)** — `problem_classification_v2` via [src/block_4/diagnosis_builder.py](src/block_4/diagnosis_builder.py); evidence-to-problem translation from Blocks 2–3 product blocks; `problems[]` shim for legacy readers. Spec: [block_4_diagnosis_v2_spec.md](docs/specs/block_4_diagnosis_v2_spec.md). Legacy V1 builder: [src/problem_classification.py](src/problem_classification.py) (unit tests only). |
-| Candidate Launchpad | **Implemented (v2)** — `candidate_launchpad_v2` via [src/block_4/launchpad_cards.py](src/block_4/launchpad_cards.py). Legacy V1: [src/candidate_launchpad.py](src/candidate_launchpad.py) (unit tests only) |
+| Problem Classification | **Implemented (v3)** — `problem_classification_v3` via [src/block_4/diagnosis_builder.py](src/block_4/diagnosis_builder.py); evidence-to-diagnosis translation from Blocks 2–3 product blocks; `problems[]` shim for legacy readers. Spec: [block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md). Legacy V1 builder: [src/problem_classification.py](src/problem_classification.py) (unit tests only). |
+| Candidate Launchpad | **Implemented (v3)** — `candidate_launchpad_v3` via [src/block_4/launchpad_cards.py](src/block_4/launchpad_cards.py). Legacy V1: [src/candidate_launchpad.py](src/candidate_launchpad.py) (unit tests only) |
+
+
+Block 4 v3 is diagnosis-first: user-facing output must lead with `primary_diagnosis`, root cause, evidence, confidence, actionability, and success criteria; scoring remains backend audit metadata.
 | Portfolio Alternatives Builder as user-triggered candidate UX | Backend wrapper implemented (`PortfolioAlternativeBuildPlan` via [src/portfolio_alternatives_builder.py](src/portfolio_alternatives_builder.py)); returns one-candidate factory delegation plans, while full UX remains Target/TBD and batch factory remains backend/advanced/research |
 | Current-vs-selected-candidate as primary interactive UX | Adapter artifact implemented (`current_vs_candidate.json` via [src/current_vs_candidate.py](src/current_vs_candidate.py)); interactive UX remains Target/TBD, canonical comparison remains unchanged |
 | Decision Verdict product language | Implemented additive mapping artifact (`decision_verdict.json` via [src/decision_verdict.py](src/decision_verdict.py)); current technical contract remains Selection Engine / No-Trade |

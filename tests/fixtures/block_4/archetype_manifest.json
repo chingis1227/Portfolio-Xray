@@ -1,7 +1,7 @@
 {
   "version": "block_4_archetype_manifest_v1",
   "ruleset_version": "block_4_v2_2026_06",
-  "description": "Ten portfolio archetype fixtures for Block 4 v2 end-to-end diagnosis regression (Session 11).",
+  "description": "Ten portfolio archetype fixtures for Block 4 v3 end-to-end diagnosis regression (Session 11).",
   "archetypes": [
     {
       "archetype_id": "concentrated_equity",
@@ -62,7 +62,7 @@
     {
       "archetype_id": "conflicting_signals",
       "label_en": "High vol vs mild stress tension",
-      "expected_primary_ids": ["evidence_insufficient_conflicting_signals"],
+      "expected_primary_ids": ["mixed_evidence_no_action"],
       "expected_outcomes": ["do_not_act_yet"],
       "launchpad_may_proceed": false
     },

@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.block_2_6_portfolio_weakness_map import RISK_TYPES
+from src.block_4.problem_taxonomy import get_problem_definition
 
 BLOCK_2_1 = "block_2_1_asset_allocation"
 BLOCK_2_2 = "block_2_2_portfolio_metrics"
@@ -98,6 +99,78 @@ class EvidenceExtractionResult:
 
     def get_signals(self, name: str) -> list[EvidenceSignal]:
         return list(self.signals.get(name, ()))
+
+
+@dataclass(frozen=True)
+class DiagnosisEvidenceBundle:
+    """Structured v3 triage view over already-extracted evidence.
+
+    This layer does not add a new model score. It separates root-cause evidence,
+    symptom evidence, negative evidence, mixed-evidence notes, and data-quality
+    notes so the narrative builder can avoid confusing symptoms with the
+    primary diagnosis.
+    """
+
+    root_cause_evidence: dict[str, list[dict[str, Any]]]
+    symptom_evidence: dict[str, list[dict[str, Any]]]
+    negative_evidence: dict[str, list[dict[str, Any]]]
+    mixed_evidence_notes: list[dict[str, Any]]
+    data_quality_notes: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "root_cause_evidence": self.root_cause_evidence,
+            "symptom_evidence": self.symptom_evidence,
+            "negative_evidence": self.negative_evidence,
+            "mixed_evidence_notes": self.mixed_evidence_notes,
+            "data_quality_notes": self.data_quality_notes,
+        }
+
+
+def build_diagnosis_evidence_bundle(
+    evidence: EvidenceExtractionResult,
+    scoring: Any,
+) -> DiagnosisEvidenceBundle:
+    """Build the Block 4 v3 evidence triage bundle from existing score rows."""
+    root: dict[str, list[dict[str, Any]]] = {}
+    symptoms: dict[str, list[dict[str, Any]]] = {}
+    negative: dict[str, list[dict[str, Any]]] = {}
+
+    rows = getattr(scoring, "rows", {}) if scoring is not None else {}
+    if isinstance(rows, dict):
+        for problem_id, row in rows.items():
+            defn = get_problem_definition(str(problem_id))
+            if defn is None:
+                continue
+            refs = [dict(ref) for ref in getattr(row, "evidence_refs", [])]
+            neg_refs = [dict(ref) for ref in getattr(row, "negative_evidence_refs", [])]
+            if refs:
+                if defn.diagnosis_role == "symptom":
+                    symptoms[str(problem_id)] = refs
+                elif defn.diagnosis_role == "root_cause":
+                    root[str(problem_id)] = refs
+            if neg_refs:
+                negative[str(problem_id)] = neg_refs
+
+    mixed_notes: list[dict[str, Any]] = []
+    if bool(getattr(scoring, "conflicting_signal_bundle", False)):
+        mixed_notes.append(
+            {
+                "note_id": "mixed_evidence_note_01",
+                "severity": "warning",
+                "interpretation_en": (
+                    "Some evidence families are in tension; this is a warning unless no root-cause diagnosis dominates."
+                ),
+            }
+        )
+
+    return DiagnosisEvidenceBundle(
+        root_cause_evidence=root,
+        symptom_evidence=symptoms,
+        negative_evidence=negative,
+        mixed_evidence_notes=mixed_notes,
+        data_quality_notes=list(evidence.data_quality_warnings),
+    )
 
 
 def extract_evidence_signals(

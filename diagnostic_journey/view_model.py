@@ -505,6 +505,44 @@ def _bridge_diagnosis_from_problem(problem: dict[str, Any] | None) -> dict[str, 
     if not isinstance(problem, dict):
         return {}
     schema = str(problem.get("schema_version") or "")
+    if schema == "problem_classification_v3":
+        primary_diagnosis = (
+            problem.get("primary_diagnosis")
+            if isinstance(problem.get("primary_diagnosis"), dict)
+            else {}
+        )
+        no_trade = (
+            problem.get("no_trade_or_monitoring_view")
+            if isinstance(problem.get("no_trade_or_monitoring_view"), dict)
+            else {}
+        )
+        root = (
+            primary_diagnosis.get("root_cause")
+            if isinstance(primary_diagnosis.get("root_cause"), dict)
+            else {}
+        )
+        actionability = (
+            primary_diagnosis.get("actionability")
+            if isinstance(primary_diagnosis.get("actionability"), dict)
+            else {}
+        )
+        return {
+            "schema_version": schema,
+            "primary_problem_id": primary_diagnosis.get("diagnosis_id") or root.get("problem_id"),
+            "primary_headline": (
+                primary_diagnosis.get("thesis_en")
+                or primary_diagnosis.get("label_en")
+                or root.get("label_en")
+            ),
+            "why_it_matters": primary_diagnosis.get("why_this_matters"),
+            "confidence": primary_diagnosis.get("confidence"),
+            "confidence_explanation": primary_diagnosis.get("confidence_explanation"),
+            "no_trade_outcome": no_trade.get("outcome") or actionability.get("outcome"),
+            "no_trade_headline": no_trade.get("headline_en") or actionability.get("headline_en"),
+            "recommended_next_step": (
+                no_trade.get("recommended_next_step") or actionability.get("recommended_next_step")
+            ),
+        }
     if schema == "problem_classification_v2":
         primary = problem.get("primary_problem") if isinstance(problem.get("primary_problem"), dict) else {}
         no_trade = (

@@ -4,6 +4,12 @@ This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.
 
+Date: 2026-06-04
+
+Category: Changed
+
+- **Block 4 v3 diagnosis-first contract implemented:** replaced the current Block 4 product contract with `problem_classification_v3` and `candidate_launchpad_v3`; root-cause diagnoses now outrank symptoms, `mixed_evidence_no_action` replaces the old conflict-as-primary behavior, user-facing output leads with `primary_diagnosis`, `key_evidence`, `why_not_other_problems`, confidence/materiality/actionability, and Launchpad cards include `success_criteria`.
+
 Date: 2026-05-29
 
 Category: Added

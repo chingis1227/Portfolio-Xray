@@ -25,6 +25,8 @@ governed by `SPEC.md`, `OUTPUTS.md`, detailed specs, and code.
 
 ## Current Pointer
 
+**Completed:** [Block 4 v3 Investment Diagnosis Plan](2026-06-04_block_4_v3_investment_diagnosis_plan.md) ? implemented diagnosis-first v3 (`problem_classification_v3`, `candidate_launchpad_v3`), root-cause over symptoms, mixed evidence as no-action/note rather than normal primary verdict, and launchpad cards with success criteria. Closed 2026-06-04.
+
 **Completed:** [Block 4 v2 Evidence-to-Problem Translation](2026-05-29_block_4_v2_evidence_to_problem_plan.md) — Sessions 00–14 closed 2026-05-29. Evidence: [Session 14 institutional closure](../audits/2026-05-29_block_4_v2_session_14_institutional_closure.md); pytest **109 passed** (closure bundle); decision `DEC-2026-05-29-013`.
 
 **Previous (Phase A closed):** [Blocks 1–3 Post-Audit Development Plan](2026-05-29_blocks_1_3_post_audit_development_plan.md) — Phase A **closed** 2026-05-29 (Session 06); optional 07–08; Phase D Sessions 09–10 closed. Closure: [foundation closure audit](../audits/2026-05-29_blocks_1_3_foundation_closure_audit.md) (`READY_FOR_DECISION_WORKFLOW`). Operator contract: [runtime_artifact_contract.md](../runtime_artifact_contract.md).

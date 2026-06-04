@@ -1,21 +1,21 @@
-"""Tests for Block 4 v2 Candidate Launchpad card generation (Session 08)."""
+"""Tests for Block 4 v3 Candidate Launchpad card generation (Session 08)."""
 
 from __future__ import annotations
 
 from scripts.core_mvp_validation_contract import (
-    BLOCK_4_V2_RULESET_VERSION,
-    CANDIDATE_LAUNCHPAD_V2_VERSION,
-    PROBLEM_CLASSIFICATION_V2_VERSION,
-    block_4_v2_diagnosis_handoff_violations,
-    candidate_launchpad_v2_product_contract_violations,
-    check_candidate_launchpad_v2,
+    BLOCK_4_V3_RULESET_VERSION,
+    CANDIDATE_LAUNCHPAD_V3_VERSION,
+    PROBLEM_CLASSIFICATION_V3_VERSION,
+    block_4_v3_diagnosis_handoff_violations,
+    candidate_launchpad_v3_product_contract_violations,
+    check_candidate_launchpad_v3,
 )
 from src.block_4.action_path_mapping import map_action_paths
 from src.block_4.evidence_extraction import extract_evidence_signals
 from src.block_4.launchpad_cards import (
     LAUNCHPAD_BUILD_RULESET_VERSION,
     MAX_LAUNCHPAD_CARDS,
-    build_candidate_launchpad_v2_document,
+    build_candidate_launchpad_v3_document,
     build_launchpad_cards,
 )
 from src.block_4.problem_prioritization import prioritize_problems
@@ -34,10 +34,10 @@ def _pipeline(xray: dict, stress: dict):
 
 def _minimal_pc_from_mapping(mapping, *, launchpad_outcome: str = "proceed_to_launchpad") -> dict:
     return {
-        "schema_version": PROBLEM_CLASSIFICATION_V2_VERSION,
+        "schema_version": PROBLEM_CLASSIFICATION_V3_VERSION,
         "diagnostic_only": True,
         "diagnosis_mode": "current_portfolio_problem_classification",
-        "ruleset_version": BLOCK_4_V2_RULESET_VERSION,
+        "ruleset_version": BLOCK_4_V3_RULESET_VERSION,
         "status": "ok",
         "generated_at": "2026-05-29T12:00:00Z",
         "analysis_end": "2026-04-30",
@@ -81,7 +81,7 @@ def test_golden_fixture_builds_contract_valid_launchpad() -> None:
     evidence = extract_evidence_signals(xray, stress)
     scoring = score_problems(evidence)
     _, _, _, mapping = _pipeline(xray, stress)
-    launchpad = build_candidate_launchpad_v2_document(
+    launchpad = build_candidate_launchpad_v3_document(
         mapping,
         scoring=scoring,
         evidence=evidence,
@@ -89,7 +89,7 @@ def test_golden_fixture_builds_contract_valid_launchpad() -> None:
         generated_at="2026-05-29T12:00:00Z",
     )
 
-    assert launchpad["schema_version"] == CANDIDATE_LAUNCHPAD_V2_VERSION
+    assert launchpad["schema_version"] == CANDIDATE_LAUNCHPAD_V3_VERSION
     assert launchpad["launchpad_outcome"] == "proceed_to_launchpad"
     assert launchpad["cards"]
     assert len(launchpad["cards"]) <= MAX_LAUNCHPAD_CARDS
@@ -99,8 +99,8 @@ def test_golden_fixture_builds_contract_valid_launchpad() -> None:
     assert launchpad["cards"][0]["generates_portfolio"] is False
     assert launchpad["summary"]["primary_card_id"] == launchpad["cards"][0]["card_id"]
 
-    assert not candidate_launchpad_v2_product_contract_violations(launchpad)
-    checks = check_candidate_launchpad_v2(launchpad)
+    assert not candidate_launchpad_v3_product_contract_violations(launchpad)
+    checks = check_candidate_launchpad_v3(launchpad)
     assert checks["product_contract_ok"] is True
 
 
@@ -110,7 +110,7 @@ def test_golden_fixture_handoff_with_problem_classification_stub() -> None:
     evidence = extract_evidence_signals(xray, stress)
     scoring = score_problems(evidence)
     _, _, _, mapping = _pipeline(xray, stress)
-    launchpad = build_candidate_launchpad_v2_document(
+    launchpad = build_candidate_launchpad_v3_document(
         mapping,
         scoring=scoring,
         evidence=evidence,
@@ -118,7 +118,7 @@ def test_golden_fixture_handoff_with_problem_classification_stub() -> None:
         generated_at="2026-05-29T12:00:00Z",
     )
     pc = _minimal_pc_from_mapping(mapping, launchpad_outcome=launchpad["launchpad_outcome"])
-    assert not block_4_v2_diagnosis_handoff_violations(pc, launchpad)
+    assert not block_4_v3_diagnosis_handoff_violations(pc, launchpad)
 
 
 def test_acceptable_portfolio_suppresses_builder_methods() -> None:
@@ -172,12 +172,12 @@ def test_acceptable_portfolio_suppresses_builder_methods() -> None:
 def test_data_quality_primary_emits_do_not_act_outcome() -> None:
     xray = {"sections": {f"section_{i}": {"status": "partial"} for i in range(4)}}
     _, _, _, mapping = _pipeline(xray, {})
-    launchpad = build_candidate_launchpad_v2_document(mapping, analysis_end="2026-04-30")
+    launchpad = build_candidate_launchpad_v3_document(mapping, analysis_end="2026-04-30")
 
     assert launchpad["launchpad_outcome"] == "do_not_act_yet"
     assert launchpad["cards"]
     assert all(not card["suggested_methods"] for card in launchpad["cards"])
-    assert not candidate_launchpad_v2_product_contract_violations(launchpad)
+    assert not candidate_launchpad_v3_product_contract_violations(launchpad)
 
 
 def test_cards_include_v2_narrative_fields() -> None:
@@ -201,4 +201,4 @@ def test_cards_include_v2_narrative_fields() -> None:
 
 
 def test_launchpad_build_ruleset_version_constant() -> None:
-    assert LAUNCHPAD_BUILD_RULESET_VERSION.startswith("block_4_v2_")
+    assert LAUNCHPAD_BUILD_RULESET_VERSION.startswith("block_4_v3_")

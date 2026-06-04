@@ -1,4 +1,4 @@
-"""Tests for Block 4 v2 severity/confidence classifiers and thresholds (Session 05)."""
+"""Tests for Block 4 v3 severity/confidence classifiers and thresholds (Session 05)."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from block_4_fixtures import load_golden_xray as _load_golden_xray
 def test_load_block_4_thresholds_from_repo_config() -> None:
     cfg = load_block_4_thresholds(DEFAULT_THRESHOLDS_PATH)
     assert cfg.version == THRESHOLDS_VERSION
-    assert cfg.ruleset_version == "block_4_v2_2026_06"
+    assert cfg.ruleset_version == "block_4_v3_2026_06"
     assert cfg.activation.raw_score_min == 0.35
     assert cfg.severity.high_decision_score_min == 0.60
     assert cfg.stress_confirmation_multipliers["confirmed"] == 1.12

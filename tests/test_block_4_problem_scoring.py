@@ -1,4 +1,4 @@
-"""Tests for Block 4 v2 evidence-to-problem scoring (Session 04)."""
+"""Tests for Block 4 v3 evidence-to-problem scoring (Session 04)."""
 
 from __future__ import annotations
 
@@ -122,7 +122,7 @@ def test_conflicting_signals_activate_conflict_problem() -> None:
     result = score_problems(evidence2)
 
     assert result.conflicting_signal_bundle
-    conflict = result.get_row("evidence_insufficient_conflicting_signals")
+    conflict = result.get_row("mixed_evidence_no_action")
     assert conflict is not None
     assert conflict.activated
 

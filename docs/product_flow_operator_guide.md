@@ -107,8 +107,8 @@ Paths are relative to `{output_dir_final}` (typically `Main portfolio/`).
 
 | # | Artifact | Default path | When present | Schema (offline gate) | Primary reader question |
 | --- | --- | --- | --- | --- | --- |
-| 1 | `problem_classification.json` | `analysis_subject/problem_classification.json` | After default diagnosis / materialize | `problem_classification_v2` | What is wrong with the current portfolio? |
-| 2 | `candidate_launchpad.json` | `analysis_subject/candidate_launchpad.json` | After default diagnosis / materialize | `candidate_launchpad_v2` | What hypotheses should we test next? |
+| 1 | `problem_classification.json` | `analysis_subject/problem_classification.json` | After default diagnosis / materialize | `problem_classification_v3` | What is wrong with the current portfolio? |
+| 2 | `candidate_launchpad.json` | `analysis_subject/candidate_launchpad.json` | After default diagnosis / materialize | `candidate_launchpad_v3` | What hypotheses should we test next? |
 | 3 | `current_vs_candidate.json` | `current_vs_candidate.json` | After `--candidates`, `--with-candidates`, or `--mode full` (compare stage) | `current_vs_candidate_v1` | How does current compare to the candidate? |
 | 4 | `decision_verdict.json` | `decision_verdict.json` | Same as #3 | `decision_verdict_v1` | What is the recommended decision posture? |
 | 5 | `ai_commentary_context.json` | `ai_commentary_context.json` | Same as #3 | `ai_commentary_context_v1` | Grounding only (`purpose=grounded_ai_commentary_context`; no LLM in V1) |
@@ -242,22 +242,24 @@ Unknown methods raise `PortfolioAlternativesBuilderError: unsupported_candidate_
 
 ---
 
-## Block 4 v2 diagnosis (Problem Classification + Launchpad)
+## Block 4 v3 diagnosis (Problem Classification + Launchpad)
 
 Shipped writer: `src/block_4/diagnosis_builder.py` → `write_block_4_diagnosis_outputs()` (called from `run_report.py` when not `core_blocks_only`).
 
 | Step | Command | Pass criteria |
 | --- | --- | --- |
-| Refresh Block 4 on existing subject | `python scripts/validate_block_4_live.py --refresh-diagnosis` | `Block 4 v2 live validation: OK` |
-| Contract bundle (offline) | `python -m pytest tests/test_block_4_v2_*.py tests/test_block_4_decision_entry_contract.py -q` | All pass |
-| Diagnosis-only live gate (Block 4 evidence) | `python scripts/verify_live_core_e2e.py --profile diagnosis_only` | `block_4_schema_version=problem_classification_v2` in evidence (full gate may fail if compare tombstones missing) |
+| Refresh Block 4 on existing subject | `python scripts/validate_block_4_live.py --refresh-diagnosis` | `Block 4 v3 live validation: OK` |
+| Contract bundle (offline) | `python -m pytest <all tests/test_block_4_*.py files> -q` | All pass |
+| Diagnosis-only live gate (Block 4 evidence) | `python scripts/verify_live_core_e2e.py --profile diagnosis_only` | `block_4_schema_version=problem_classification_v3` in evidence (full gate may fail if compare tombstones missing) |
 
 Read order after diagnosis:
 
-1. `analysis_subject/problem_classification.json` — `primary_problem`, `secondary_problems`, `rejected_problems`, `no_trade_or_monitoring_view`
-2. `analysis_subject/candidate_launchpad.json` — `launchpad_outcome`, hypothesis cards (`suggested_methods`, `default_method`, disclaimer)
+1. `analysis_subject/problem_classification.json` -> `primary_diagnosis`: diagnosis thesis, root cause, confidence, materiality, actionability.
+2. Same file -> `key_evidence` (maximum five): what proves or supports the diagnosis.
+3. Same file -> `why_not_other_problems`: why similar labels were not selected as primary.
+4. `analysis_subject/candidate_launchpad.json` -> cards with `hypothesis_to_test`, `success_criteria`, `tradeoff_to_watch`, and `when_to_skip`.
 
-V1 shim: flat `problems[]` remains for legacy readers (severity `medium` → `moderate`). V1 product validators removed Session 14. Spec: [block_4_diagnosis_v2_spec.md](specs/block_4_diagnosis_v2_spec.md).
+Scoring rows are backend audit metadata, not the product answer. Spec: [block_4_diagnosis_v3_spec.md](specs/block_4_diagnosis_v3_spec.md).
 | Doc link integrity | `python scripts/verify_docs.py` |
 
 ---

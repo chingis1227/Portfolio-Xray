@@ -1,7 +1,7 @@
 """Candidate Launchpad data layer for diagnosis-first Portfolio MRI.
 
 Legacy V1 builder (``candidate_launchpad_v1``). Production pipeline uses
-``src/block_4/launchpad_cards.py`` (``candidate_launchpad_v2``) since Block 4 v2
+``src/block_4/launchpad_cards.py`` (``candidate_launchpad_v3``) since Block 4 v3
 Session 10. Retained for unit tests and migration reference only.
 """
 

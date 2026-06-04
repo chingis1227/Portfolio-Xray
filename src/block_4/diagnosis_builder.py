@@ -1,7 +1,7 @@
-"""Block 4 v2 diagnosis facade and JSON writers (Session 10).
+"""Block 4 v3 diagnosis facade and JSON writers.
 
 Orchestrates evidence extraction through launchpad card generation and writes
-``problem_classification.json`` + ``candidate_launchpad.json`` (v2 schema).
+``problem_classification.json`` + ``candidate_launchpad.json`` (v3 schema).
 """
 
 from __future__ import annotations
@@ -13,8 +13,15 @@ from pathlib import Path
 from typing import Any
 
 from src.block_4.action_path_mapping import ActionPathMappingResult, map_action_paths
-from src.block_4.evidence_extraction import EvidenceExtractionResult, extract_evidence_signals
-from src.block_4.launchpad_cards import build_candidate_launchpad_v2_document
+from src.block_4.evidence_extraction import (
+    EvidenceExtractionResult,
+    build_diagnosis_evidence_bundle,
+    extract_evidence_signals,
+)
+from src.block_4.launchpad_cards import (
+    build_candidate_launchpad_v3_document,
+    success_criteria_for_action_path,
+)
 from src.block_4.no_trade_gate import (
     NoTradeGateResult,
     build_diagnosis_summary,
@@ -22,12 +29,13 @@ from src.block_4.no_trade_gate import (
 )
 from src.block_4.problem_prioritization import ProblemPrioritizationResult, prioritize_problems
 from src.block_4.problem_scoring import ProblemScoringResult, score_problems
+from src.block_4.problem_taxonomy import get_problem_definition, is_symptom_problem
 from src.block_4.thresholds import get_block_4_thresholds
 from src.candidate_launchpad import CANDIDATE_LAUNCHPAD_FILENAME
 from src.problem_classification import PROBLEM_CLASSIFICATION_FILENAME
 
-PROBLEM_CLASSIFICATION_V2_VERSION = "problem_classification_v2"
-BLOCK_4_DIAGNOSIS_FACADE_VERSION = "build_block_4_diagnosis_v1"
+PROBLEM_CLASSIFICATION_V3_VERSION = "problem_classification_v3"
+BLOCK_4_DIAGNOSIS_FACADE_VERSION = "build_block_4_diagnosis_v3"
 
 HEDGE_GAP_SOURCE_V1 = "hedge_gap_analysis_v1"
 HEDGE_GAP_SOURCE_LEGACY = "stress_conclusions.hedge_gap_status"
@@ -66,12 +74,13 @@ def build_block_4_diagnosis(
     analysis_end: str | None = None,
     generated_at: str | None = None,
 ) -> Block4DiagnosisResult:
-    """Run the Block 4 v2 evidence-to-problem pipeline and return both JSON documents."""
+    """Run the Block 4 v3 evidence-to-diagnosis pipeline and return both JSON documents."""
     xray = portfolio_xray if isinstance(portfolio_xray, dict) else {}
     stress = stress_report if isinstance(stress_report, dict) else {}
 
     evidence = extract_evidence_signals(xray, stress)
     scoring = score_problems(evidence)
+    evidence_bundle = build_diagnosis_evidence_bundle(evidence, scoring)
     prioritization = prioritize_problems(scoring, evidence)
     mapping = map_action_paths(prioritization, scoring)
     gate = evaluate_no_trade_gate(mapping, scoring, evidence, prioritization=prioritization)
@@ -82,10 +91,16 @@ def build_block_4_diagnosis(
 
     rejected_rows = [row.to_dict() for row in prioritization.rejected_problems]
     problems_shim = [_mirror_problem_row_for_v1_shim(row) for row in mapping.problem_rows]
+    primary_diagnosis = _build_primary_diagnosis(
+        mapping=mapping,
+        scoring=scoring,
+        prioritization=prioritization,
+        gate=gate,
+    )
 
     cfg = get_block_4_thresholds()
     problem_classification: dict[str, Any] = {
-        "schema_version": PROBLEM_CLASSIFICATION_V2_VERSION,
+        "schema_version": PROBLEM_CLASSIFICATION_V3_VERSION,
         "diagnostic_only": True,
         "diagnosis_mode": "current_portfolio_problem_classification",
         "ruleset_version": cfg.ruleset_version,
@@ -95,6 +110,25 @@ def build_block_4_diagnosis(
         "source_artifacts": {
             "portfolio_xray": "portfolio_xray.json" if xray else None,
             "stress_report": "stress_report.json" if stress else None,
+        },
+        "primary_diagnosis": primary_diagnosis,
+        "root_cause": primary_diagnosis.get("root_cause"),
+        "supporting_symptoms": primary_diagnosis.get("supporting_symptoms", []),
+        "key_evidence": primary_diagnosis.get("key_evidence", []),
+        "why_this_matters": primary_diagnosis.get("why_this_matters"),
+        "why_not_other_problems": primary_diagnosis.get("why_not_other_problems", []),
+        "confidence": primary_diagnosis.get("confidence"),
+        "confidence_explanation": primary_diagnosis.get("confidence_explanation"),
+        "materiality": primary_diagnosis.get("materiality"),
+        "actionability": primary_diagnosis.get("actionability"),
+        "suggested_hypothesis": primary_diagnosis.get("suggested_hypothesis"),
+        "success_criteria": primary_diagnosis.get("success_criteria", []),
+        "backend_audit": {
+            "primary_problem": mapping.primary_problem,
+            "secondary_problems": list(mapping.secondary_problems),
+            "suggested_actions": [row.to_dict() for row in mapping.suggested_actions],
+            "evidence_bundle": evidence_bundle.to_dict(),
+            "scoring_is_backend_audit_metadata": True,
         },
         "primary_problem": mapping.primary_problem,
         "secondary_problems": list(mapping.secondary_problems),
@@ -125,7 +159,7 @@ def build_block_4_diagnosis(
     if isinstance(xray.get(WEAKNESS_MAP_SOURCE_BLOCK), dict):
         problem_classification["weakness_map_source"] = WEAKNESS_MAP_SOURCE_BLOCK
 
-    candidate_launchpad = build_candidate_launchpad_v2_document(
+    candidate_launchpad = build_candidate_launchpad_v3_document(
         mapping,
         analysis_end=analysis_end,
         generated_at=problem_classification["generated_at"],
@@ -154,7 +188,7 @@ def write_block_4_diagnosis_outputs(
     stress_report: dict[str, Any] | None,
     analysis_end: str | None = None,
 ) -> Block4DiagnosisWriteResult:
-    """Write v2 ``problem_classification.json`` and ``candidate_launchpad.json``."""
+    """Write v3 ``problem_classification.json`` and ``candidate_launchpad.json``."""
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -183,15 +217,15 @@ def block_4_manifest_extra(
     problem_classification: dict[str, Any] | None,
     candidate_launchpad: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Manifest ``extra`` block for Block 4 v2 wiring."""
+    """Manifest ``extra`` block for Block 4 v3 wiring."""
     if not isinstance(problem_classification, dict):
         return {}
-    if problem_classification.get("schema_version") != PROBLEM_CLASSIFICATION_V2_VERSION:
+    if problem_classification.get("schema_version") != PROBLEM_CLASSIFICATION_V3_VERSION:
         return {}
     summary = problem_classification.get("summary") if isinstance(problem_classification.get("summary"), dict) else {}
     return {
         "block_4_diagnosis": {
-            "schema_version": PROBLEM_CLASSIFICATION_V2_VERSION,
+            "schema_version": PROBLEM_CLASSIFICATION_V3_VERSION,
             "launchpad_schema_version": (
                 candidate_launchpad.get("schema_version")
                 if isinstance(candidate_launchpad, dict)
@@ -203,6 +237,214 @@ def block_4_manifest_extra(
             "no_trade_outcome": summary.get("no_trade_outcome"),
             "facade_version": BLOCK_4_DIAGNOSIS_FACADE_VERSION,
         }
+    }
+
+
+def _build_primary_diagnosis(
+    *,
+    mapping: ActionPathMappingResult,
+    scoring: ProblemScoringResult,
+    prioritization: ProblemPrioritizationResult,
+    gate: NoTradeGateResult,
+) -> dict[str, Any]:
+    primary = mapping.primary_problem
+    primary_id = str(primary.get("problem_id") or prioritization.primary_problem_id)
+    defn = get_problem_definition(primary_id)
+    scoring_block = primary.get("scoring") if isinstance(primary.get("scoring"), dict) else {}
+    action_path_id = str(primary.get("suggested_action_path_id") or "")
+    key_evidence = _collect_key_evidence(primary, scoring, limit=5)
+    supporting_symptoms = _supporting_symptoms(scoring, exclude_id=primary_id, limit=5)
+    why_not = _why_not_other_problems(prioritization, limit=5)
+
+    root_cause = {
+        "problem_id": primary_id,
+        "label_en": primary.get("label_en") or (defn.label_en if defn else primary_id),
+        "diagnosis_role": primary.get("diagnosis_role") or (defn.diagnosis_role if defn else "unknown"),
+    }
+    if defn is not None and defn.diagnosis_subtypes:
+        root_cause["diagnosis_subtypes"] = list(defn.diagnosis_subtypes)
+
+    return {
+        "diagnosis_id": primary_id,
+        "label_en": primary.get("label_en") or root_cause["label_en"],
+        "thesis_en": _diagnosis_thesis(primary, gate),
+        "root_cause": root_cause,
+        "supporting_symptoms": supporting_symptoms,
+        "key_evidence": key_evidence,
+        "why_this_matters": primary.get("why_it_matters_en"),
+        "why_not_other_problems": why_not,
+        "confidence": primary.get("confidence"),
+        "confidence_explanation": _confidence_explanation(primary, scoring, gate),
+        "materiality": scoring_block.get("materiality"),
+        "actionability": _actionability(gate),
+        "suggested_hypothesis": _suggested_hypothesis(primary, gate),
+        "success_criteria": list(success_criteria_for_action_path(action_path_id)),
+        "secondary_diagnoses": list(mapping.secondary_problems)[:2],
+        "mixed_evidence_note": _mixed_evidence_note(scoring, primary_id),
+        "audit_scoring": scoring_block,
+    }
+
+
+def _diagnosis_thesis(primary: dict[str, Any], gate: NoTradeGateResult) -> str:
+    primary_id = str(primary.get("problem_id") or "")
+    label = str(primary.get("label_en") or primary_id.replace("_", " ")).strip()
+    short = str(primary.get("short_diagnosis_en") or "").strip()
+    if primary_id == "current_portfolio_acceptable":
+        return (
+            "Current portfolio is acceptable under current evidence. "
+            "No material rebalance is justified; monitor the key risks."
+        )
+    if primary_id == "mixed_evidence_no_action":
+        return (
+            "No dominant actionable problem is confirmed. "
+            "The evidence is usable but mixed, so a rebalance is not justified yet."
+        )
+    if primary_id == "evidence_insufficient_data_quality":
+        return (
+            "Evidence quality is not reliable enough for an investment diagnosis. "
+            "Resolve data gaps before testing candidates."
+        )
+    if short:
+        return f"{label}: {short}"
+    return f"{label} is the primary diagnosis under current evidence."
+
+
+def _collect_key_evidence(
+    primary: dict[str, Any],
+    scoring: ProblemScoringResult,
+    *,
+    limit: int,
+) -> list[dict[str, Any]]:
+    refs: list[dict[str, Any]] = [
+        ref for ref in primary.get("evidence_refs") or [] if isinstance(ref, dict)
+    ]
+    if len(refs) < limit:
+        for row in sorted(
+            scoring.rows.values(),
+            key=lambda r: r.scoring.decision_score,
+            reverse=True,
+        ):
+            for ref in row.evidence_refs:
+                if len(refs) >= limit:
+                    break
+                if ref not in refs:
+                    refs.append(ref)
+            if len(refs) >= limit:
+                break
+
+    compact: list[dict[str, Any]] = []
+    for ref in refs[:limit]:
+        compact.append(_compact_evidence_ref(ref))
+    return compact
+
+
+def _supporting_symptoms(
+    scoring: ProblemScoringResult,
+    *,
+    exclude_id: str,
+    limit: int,
+) -> list[dict[str, Any]]:
+    rows = [
+        row
+        for row in scoring.rows.values()
+        if row.problem_id != exclude_id and row.activated and is_symptom_problem(row.problem_id)
+    ]
+    rows.sort(key=lambda row: row.scoring.decision_score, reverse=True)
+    symptoms: list[dict[str, Any]] = []
+    for row in rows[:limit]:
+        defn = get_problem_definition(row.problem_id)
+        symptoms.append(
+            {
+                "problem_id": row.problem_id,
+                "label_en": defn.label_en if defn else row.problem_id,
+                "severity": row.severity,
+                "confidence": row.confidence,
+                "why_it_supports_primary_en": (
+                    f"{defn.label_en if defn else row.problem_id} is treated as supporting evidence, "
+                    "not as the primary diagnosis, because root-cause triage takes priority."
+                ),
+                "top_evidence": [
+                    _compact_evidence_ref(ref)
+                    for ref in row.evidence_refs[:2]
+                    if isinstance(ref, dict)
+                ],
+            }
+        )
+    return symptoms
+
+
+def _why_not_other_problems(
+    prioritization: ProblemPrioritizationResult,
+    *,
+    limit: int,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for rejected in prioritization.rejected_problems[:limit]:
+        defn = get_problem_definition(rejected.problem_id)
+        rows.append(
+            {
+                "problem_id": rejected.problem_id,
+                "label_en": defn.label_en if defn else rejected.problem_id,
+                "reason_code": rejected.reject_reason_code,
+                "reason_en": rejected.reject_reason_en,
+            }
+        )
+    return rows
+
+
+def _confidence_explanation(
+    primary: dict[str, Any],
+    scoring: ProblemScoringResult,
+    gate: NoTradeGateResult,
+) -> str:
+    confidence = str(primary.get("confidence") or "low")
+    scoring_block = primary.get("scoring") if isinstance(primary.get("scoring"), dict) else {}
+    stress_confirmation = str(scoring_block.get("stress_confirmation") or "unavailable")
+    if primary.get("problem_id") == "evidence_insufficient_data_quality":
+        return "Confidence is capped because upstream data quality is not reliable enough."
+    if primary.get("problem_id") == "mixed_evidence_no_action":
+        return "Confidence is cautious: evidence is usable, but no root-cause diagnosis dominates."
+    if stress_confirmation == "confirmed":
+        return f"Confidence is {confidence} because stress evidence supports the diagnosis."
+    if scoring.conflicting_signal_bundle:
+        return f"Confidence is {confidence} because some evidence is mixed and should be monitored."
+    return f"Confidence is {confidence}; stress confirmation is {stress_confirmation}."
+
+
+def _actionability(gate: NoTradeGateResult) -> dict[str, Any]:
+    return {
+        "outcome": gate.outcome,
+        "headline_en": gate.headline_en,
+        "recommended_next_step": gate.recommended_next_step,
+        "launchpad_suppressed": gate.launchpad_suppressed,
+        "reasons": list(gate.reasons),
+    }
+
+
+def _suggested_hypothesis(primary: dict[str, Any], gate: NoTradeGateResult) -> str:
+    label = str(primary.get("label_en") or primary.get("problem_id") or "the diagnosis").lower()
+    action = str(primary.get("suggested_action_path_id") or "").replace("_", " ")
+    if gate.launchpad_suppressed:
+        return (
+            "Do not launch a portfolio-changing candidate yet. "
+            "Monitor the evidence or use a simple benchmark only as a reference point."
+        )
+    return f"Test whether {action} improves {label} versus the current portfolio."
+
+
+def _mixed_evidence_note(scoring: ProblemScoringResult, primary_id: str) -> dict[str, Any] | None:
+    if not scoring.conflicting_signal_bundle:
+        return None
+    if primary_id == "mixed_evidence_no_action":
+        return {
+            "status": "primary_outcome",
+            "message_en": "Mixed evidence is the reason action is not justified yet.",
+        }
+    return {
+        "status": "warning_only",
+        "message_en": (
+            "Some diagnostic signals are mixed, but a stronger root-cause diagnosis dominates."
+        ),
     }
 
 

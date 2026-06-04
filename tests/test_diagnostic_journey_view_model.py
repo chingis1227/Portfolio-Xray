@@ -45,7 +45,7 @@ def test_bridge_card_from_launchpad_uses_v2_copy_fields() -> None:
     assert bridge["goal"]
 
 
-def test_build_view_model_reads_block_4_v2_diagnosis(tmp_path: Path) -> None:
+def test_build_view_model_reads_block_4_v3_diagnosis(tmp_path: Path) -> None:
     cfg = validate_config(
         {
             "investor_currency": "USD",
@@ -60,11 +60,11 @@ def test_build_view_model_reads_block_4_v2_diagnosis(tmp_path: Path) -> None:
     seed_analysis_subject_diagnosis_bundle(subject)
 
     pc = json.loads((subject / "problem_classification.json").read_text(encoding="utf-8"))
-    assert pc["schema_version"] == "problem_classification_v2"
+    assert pc["schema_version"] == "problem_classification_v3"
 
     vm = build_diagnostic_journey_view_model(subject, project_root=tmp_path)
     diagnosis = vm["bridge"]["diagnosis"]
-    assert diagnosis["schema_version"] == "problem_classification_v2"
+    assert diagnosis["schema_version"] == "problem_classification_v3"
     assert diagnosis.get("primary_headline")
     assert diagnosis.get("no_trade_outcome")
     if vm["bridge"]["cards"]:
@@ -85,8 +85,8 @@ def test_build_view_model_from_live_subject_bundle():
     assert "real_rates" not in vm["block2_exec"]["main_diagnosis"].lower()
     if (SUBJECT / "problem_classification.json").is_file():
         pc = json.loads((SUBJECT / "problem_classification.json").read_text(encoding="utf-8"))
-        if pc.get("schema_version") == "problem_classification_v2":
-            assert vm["bridge"]["diagnosis"].get("schema_version") == "problem_classification_v2"
+        if pc.get("schema_version") == "problem_classification_v3":
+            assert vm["bridge"]["diagnosis"].get("schema_version") == "problem_classification_v3"
             assert vm["bridge"]["diagnosis"].get("primary_headline")
 
 

@@ -1,4 +1,4 @@
-"""Tests for Block 4 v2 problem prioritization (Session 06)."""
+"""Tests for Block 4 v3 problem prioritization (Session 06)."""
 
 from __future__ import annotations
 
@@ -199,5 +199,5 @@ def test_conflicting_signals_primary_blocks_secondaries() -> None:
     assert scoring.conflicting_signal_bundle
     result = prioritize_problems(scoring, evidence)
 
-    assert result.primary_problem_id == "evidence_insufficient_conflicting_signals"
+    assert result.primary_problem_id == "mixed_evidence_no_action"
     assert result.secondary_problem_ids == ()

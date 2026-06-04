@@ -463,7 +463,7 @@ def seed_blocks_1_5_mvp_smoke_workspace(root: Path, cfg: Any) -> dict[str, Any]:
 
 
 def seed_analysis_subject_diagnosis_bundle(subject_dir: Path) -> None:
-    """Write Portfolio X-Ray, stress, Block 4 v2 diagnosis under analysis_subject/."""
+    """Write Portfolio X-Ray, stress, Block 4 v3 diagnosis under analysis_subject/."""
     from src.block_4.diagnosis_builder import write_block_4_diagnosis_outputs
 
     subject_dir.mkdir(parents=True, exist_ok=True)
@@ -809,8 +809,8 @@ def seed_cash5pct_block_2_2_subject_dir(
 
 # (relative path under output_dir_final, expected schema_version)
 PRODUCT_BUNDLE_ARTIFACTS: tuple[tuple[str, str], ...] = (
-    ("analysis_subject/problem_classification.json", "problem_classification_v2"),
-    ("analysis_subject/candidate_launchpad.json", "candidate_launchpad_v2"),
+    ("analysis_subject/problem_classification.json", "problem_classification_v3"),
+    ("analysis_subject/candidate_launchpad.json", "candidate_launchpad_v3"),
     ("current_vs_candidate.json", "current_vs_candidate_v1"),
     ("decision_verdict.json", "decision_verdict_v1"),
     ("ai_commentary_context.json", "ai_commentary_context_v1"),

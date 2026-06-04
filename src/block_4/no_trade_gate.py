@@ -1,4 +1,4 @@
-"""Block 4 v2 no-trade / monitor gate (Session 09).
+"""Block 4 v3 no-trade / monitor gate.
 
 Evaluates whether the diagnosis supports proceeding to Launchpad,
 monitoring only, or deferring action until evidence improves.
@@ -15,7 +15,7 @@ from src.block_4.problem_prioritization import ProblemPrioritizationResult
 from src.block_4.problem_scoring import ProblemScoringResult
 from src.block_4.problem_taxonomy import get_problem_definition
 
-NO_TRADE_GATE_RULESET_VERSION = "block_4_v2_no_trade_gate_v1"
+NO_TRADE_GATE_RULESET_VERSION = "block_4_v3_no_trade_gate_v1"
 
 OUTCOME_PROCEED = "proceed_to_launchpad"
 OUTCOME_MONITOR = "monitor"
@@ -29,7 +29,7 @@ STEP_RESOLVE_DATA = "resolve_data"
 _EVIDENCE_INSUFFICIENT_IDS = frozenset(
     {
         "evidence_insufficient_data_quality",
-        "evidence_insufficient_conflicting_signals",
+        "mixed_evidence_no_action",
     }
 )
 
@@ -66,8 +66,8 @@ def evaluate_no_trade_gate(
 
     if primary_id == "evidence_insufficient_data_quality":
         return _gate_data_quality(evidence)
-    if primary_id == "evidence_insufficient_conflicting_signals":
-        return _gate_conflicting_signals(scoring, prioritization)
+    if primary_id == "mixed_evidence_no_action":
+        return _gate_mixed_evidence(scoring, prioritization)
     if primary_id == "current_portfolio_acceptable":
         return _gate_acceptable(primary)
 
@@ -158,7 +158,7 @@ def build_diagnosis_summary(
     *,
     n_rejected: int = 0,
 ) -> dict[str, Any]:
-    """Build ``summary`` block for problem_classification_v2."""
+    """Build ``summary`` block for problem_classification_v3."""
     primary_id = str(mapping.primary_problem["problem_id"])
     return {
         "primary_problem_id": primary_id,
@@ -180,12 +180,12 @@ def gate_from_primary_problem_id(primary_problem_id: str) -> NoTradeGateResult:
             recommended_next_step=STEP_RESOLVE_DATA,
             launchpad_suppressed=True,
         )
-    if primary_problem_id == "evidence_insufficient_conflicting_signals":
+    if primary_problem_id == "mixed_evidence_no_action":
         return NoTradeGateResult(
             outcome=OUTCOME_DO_NOT_ACT,
-            headline_en="Conflicting evidence — do not act on a single hypothesis yet.",
-            reasons=("Material contradictions detected across diagnostic signals.",),
-            recommended_next_step=STEP_RERUN,
+            headline_en="No dominant actionable problem is confirmed; no rebalance is justified yet.",
+            reasons=("Usable evidence is mixed, but no root-cause diagnosis is strong enough to act on.",),
+            recommended_next_step=STEP_MONITOR,
             launchpad_suppressed=True,
         )
     if primary_problem_id == "current_portfolio_acceptable":
@@ -224,20 +224,22 @@ def _gate_data_quality(evidence: EvidenceExtractionResult) -> NoTradeGateResult:
     )
 
 
-def _gate_conflicting_signals(
+def _gate_mixed_evidence(
     scoring: ProblemScoringResult,
     prioritization: ProblemPrioritizationResult | None,
 ) -> NoTradeGateResult:
-    reasons = ["Material contradictions detected across pre-stress and stress evidence"]
+    reasons = [
+        "Usable evidence is mixed, but no dominant root-cause diagnosis is confirmed strongly enough to act on"
+    ]
     if scoring.conflicting_signal_bundle:
-        reasons.append("Conflicting signal bundle activated during problem scoring")
+        reasons.append("Mixed-evidence note activated during problem scoring")
     if prioritization is not None and prioritization.rejected_problems:
-        reasons.append("Multiple problem hypotheses were rejected due to inconsistent evidence")
+        reasons.append("Several hypotheses were not selected because the evidence did not dominate")
     return NoTradeGateResult(
         outcome=OUTCOME_DO_NOT_ACT,
-        headline_en="Conflicting evidence — do not act on a single hypothesis yet.",
+        headline_en="No dominant actionable problem is confirmed; no rebalance is justified yet.",
         reasons=tuple(reasons),
-        recommended_next_step=STEP_RERUN,
+        recommended_next_step=STEP_MONITOR,
         launchpad_suppressed=True,
     )
 

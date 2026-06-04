@@ -1,4 +1,4 @@
-"""Shared Block 4 v2 test fixtures and ten portfolio archetypes (Session 11)."""
+"""Shared Block 4 v3 test fixtures and ten portfolio archetypes (Session 11)."""
 
 from __future__ import annotations
 
@@ -473,7 +473,7 @@ def archetype_conflicting_signals() -> Block4ArchetypeCase:
                 "by_risk_type": [],
             },
         ),
-        expected_primary_ids=("evidence_insufficient_conflicting_signals",),
+        expected_primary_ids=("mixed_evidence_no_action",),
         expected_outcomes=("do_not_act_yet",),
         launchpad_may_proceed=False,
     )

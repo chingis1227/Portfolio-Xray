@@ -682,9 +682,9 @@ def core_mvp_block3_fixture_status(
 
 
 # ---------------------------------------------------------------------------
-# Block 4 v2 — Problem Classification + Candidate Launchpad (Decision entry)
-# Spec: docs/specs/block_4_diagnosis_v2_spec.md
-# V1 product validators removed Session 14 (DEC-2026-05-29-013). Legacy builders
+# Block 4 v3 — Problem Classification + Candidate Launchpad (Decision entry)
+# Spec: docs/specs/block_4_diagnosis_v3_spec.md
+# V2 product validators replaced by v3 contract (DEC-2026-05-29-013). Legacy builders
 # src/problem_classification.py and src/candidate_launchpad.py remain for unit tests.
 # ---------------------------------------------------------------------------
 
@@ -715,14 +715,15 @@ LAUNCHPAD_KNOWN_GOALS = frozenset(
         "Compare against simple benchmark",
         "Keep current portfolio and monitor",
         "Review data quality",
+        "Do not act yet",
     }
 )
 
-PROBLEM_CLASSIFICATION_V2_VERSION = "problem_classification_v2"
-CANDIDATE_LAUNCHPAD_V2_VERSION = "candidate_launchpad_v2"
-BLOCK_4_V2_RULESET_VERSION = "block_4_v2_2026_06"
+PROBLEM_CLASSIFICATION_V3_VERSION = "problem_classification_v3"
+CANDIDATE_LAUNCHPAD_V3_VERSION = "candidate_launchpad_v3"
+BLOCK_4_V3_RULESET_VERSION = "block_4_v3_2026_06"
 
-PROBLEM_CLASSIFICATION_V2_IDS = frozenset(
+PROBLEM_CLASSIFICATION_V3_IDS = frozenset(
     {
         "high_volatility",
         "high_drawdown",
@@ -738,12 +739,12 @@ PROBLEM_CLASSIFICATION_V2_IDS = frozenset(
         "low_return_risk_efficiency",
         "current_portfolio_acceptable",
         "evidence_insufficient_data_quality",
-        "evidence_insufficient_conflicting_signals",
+        "mixed_evidence_no_action",
     }
 )
 
-PROBLEM_CLASSIFICATION_V2_SEVERITY = frozenset({"low", "medium", "high", "unavailable"})
-PROBLEM_CLASSIFICATION_V2_STATUS = frozenset({"ok", "partial", "unavailable"})
+PROBLEM_CLASSIFICATION_V3_SEVERITY = frozenset({"low", "medium", "high", "unavailable"})
+PROBLEM_CLASSIFICATION_V3_STATUS = frozenset({"ok", "partial", "unavailable"})
 NO_TRADE_OUTCOMES = frozenset({"proceed_to_launchpad", "monitor", "do_not_act_yet"})
 RECOMMENDED_NEXT_STEPS = frozenset(
     {
@@ -754,7 +755,7 @@ RECOMMENDED_NEXT_STEPS = frozenset(
     }
 )
 
-BLOCK_4_V2_ACTION_PATH_IDS = frozenset(
+BLOCK_4_V3_ACTION_PATH_IDS = frozenset(
     {
         "reduce_volatility",
         "reduce_drawdown_risk",
@@ -780,7 +781,7 @@ STRESS_CONFIRMATION_VALUES = frozenset(
 MATERIALITY_VALUES = frozenset({"high", "medium", "low", "none"})
 EVIDENCE_PATH_VALUES = frozenset({"primary", "legacy_fallback", "pre_stress_only"})
 
-LAUNCHPAD_V2_DISCLAIMER_PREFIX = "This card suggests a hypothesis to test, not a buy or sell instruction."
+LAUNCHPAD_V3_DISCLAIMER_PREFIX = "This card suggests a hypothesis to test, not a buy or sell instruction."
 
 
 def _validate_evidence_ref(row: Any, prefix: str) -> list[str]:
@@ -804,17 +805,17 @@ def _validate_evidence_ref(row: Any, prefix: str) -> list[str]:
     return violations
 
 
-def _validate_problem_row_v2(row: Any, prefix: str) -> list[str]:
+def _validate_problem_row_v3(row: Any, prefix: str) -> list[str]:
     violations: list[str] = []
     if not isinstance(row, dict):
         return [f"{prefix}: must be an object"]
     pid = str(row.get("problem_id") or "").strip()
     if not pid:
         violations.append(f"{prefix}: missing problem_id")
-    elif pid not in PROBLEM_CLASSIFICATION_V2_IDS:
+    elif pid not in PROBLEM_CLASSIFICATION_V3_IDS:
         violations.append(f"{prefix}: unknown problem_id {pid!r}")
     severity = str(row.get("severity") or "").strip().lower()
-    if severity not in PROBLEM_CLASSIFICATION_V2_SEVERITY:
+    if severity not in PROBLEM_CLASSIFICATION_V3_SEVERITY:
         violations.append(f"{prefix}: invalid severity {row.get('severity')!r}")
     confidence = str(row.get("confidence") or "").strip().lower()
     if confidence not in PROBLEM_CLASSIFICATION_CONFIDENCE:
@@ -825,7 +826,7 @@ def _validate_problem_row_v2(row: Any, prefix: str) -> list[str]:
     action_id = str(row.get("suggested_action_path_id") or "").strip()
     if not action_id:
         violations.append(f"{prefix}: missing suggested_action_path_id")
-    elif action_id not in BLOCK_4_V2_ACTION_PATH_IDS:
+    elif action_id not in BLOCK_4_V3_ACTION_PATH_IDS:
         violations.append(f"{prefix}: unknown suggested_action_path_id {action_id!r}")
     evidence_refs = row.get("evidence_refs")
     if not isinstance(evidence_refs, list) or not evidence_refs:
@@ -852,36 +853,120 @@ def _validate_problem_row_v2(row: Any, prefix: str) -> list[str]:
     return violations
 
 
-def problem_classification_v2_product_contract_violations(
+def _validate_primary_diagnosis_v3(row: Any, primary_problem: Any, prefix: str) -> list[str]:
+    violations: list[str] = []
+    if not isinstance(row, dict):
+        return [f"{prefix}: primary_diagnosis must be an object"]
+
+    diagnosis_id = str(row.get("diagnosis_id") or "").strip()
+    if not diagnosis_id:
+        violations.append(f"{prefix}: missing diagnosis_id")
+    elif diagnosis_id not in PROBLEM_CLASSIFICATION_V3_IDS:
+        violations.append(f"{prefix}: unknown diagnosis_id {diagnosis_id!r}")
+
+    if isinstance(primary_problem, dict):
+        primary_id = str(primary_problem.get("problem_id") or "").strip()
+        if diagnosis_id and primary_id and diagnosis_id != primary_id:
+            violations.append(f"{prefix}: diagnosis_id must match primary_problem.problem_id")
+
+    root = row.get("root_cause")
+    if not isinstance(root, dict):
+        violations.append(f"{prefix}: root_cause must be an object")
+    else:
+        role = str(root.get("diagnosis_role") or "")
+        if role not in {"root_cause", "symptom", "outcome"}:
+            violations.append(f"{prefix}: invalid root_cause.diagnosis_role {role!r}")
+
+    for text_key in (
+        "thesis_en",
+        "why_this_matters",
+        "confidence_explanation",
+        "suggested_hypothesis",
+    ):
+        if not str(row.get(text_key) or "").strip():
+            violations.append(f"{prefix}: missing {text_key}")
+
+    evidence = row.get("key_evidence")
+    if not isinstance(evidence, list) or not evidence:
+        violations.append(f"{prefix}: key_evidence must be a non-empty list")
+    elif len(evidence) > 5:
+        violations.append(f"{prefix}: key_evidence at most 5 rows")
+
+    symptoms = row.get("supporting_symptoms")
+    if symptoms is not None and not isinstance(symptoms, list):
+        violations.append(f"{prefix}: supporting_symptoms must be a list")
+
+    why_not = row.get("why_not_other_problems")
+    if not isinstance(why_not, list):
+        violations.append(f"{prefix}: why_not_other_problems must be a list")
+
+    actionability = row.get("actionability")
+    if not isinstance(actionability, dict):
+        violations.append(f"{prefix}: actionability must be an object")
+    else:
+        outcome = str(actionability.get("outcome") or "")
+        if outcome not in NO_TRADE_OUTCOMES:
+            violations.append(f"{prefix}: invalid actionability.outcome {outcome!r}")
+
+    success = row.get("success_criteria")
+    if not isinstance(success, list) or not success:
+        violations.append(f"{prefix}: success_criteria must be a non-empty list")
+
+    return violations
+
+
+def problem_classification_v3_product_contract_violations(
     doc: dict[str, Any] | None,
 ) -> list[str]:
-    """Return Problem Classification v2 product-contract violations (empty = pass)."""
+    """Return Problem Classification v3 product-contract violations (empty = pass)."""
     if not isinstance(doc, dict):
-        return [f"{PROBLEM_CLASSIFICATION_V2_VERSION}: document is missing or not an object"]
+        return [f"{PROBLEM_CLASSIFICATION_V3_VERSION}: document is missing or not an object"]
 
-    prefix = PROBLEM_CLASSIFICATION_V2_VERSION
+    prefix = PROBLEM_CLASSIFICATION_V3_VERSION
     violations: list[str] = []
 
-    if doc.get("schema_version") != PROBLEM_CLASSIFICATION_V2_VERSION:
+    if doc.get("schema_version") != PROBLEM_CLASSIFICATION_V3_VERSION:
         violations.append(
-            f"{prefix}: schema_version expected {PROBLEM_CLASSIFICATION_V2_VERSION!r}, "
+            f"{prefix}: schema_version expected {PROBLEM_CLASSIFICATION_V3_VERSION!r}, "
             f"got {doc.get('schema_version')!r}"
         )
     if doc.get("diagnostic_only") is not True:
         violations.append(f"{prefix}: diagnostic_only must be true")
     if doc.get("diagnosis_mode") != "current_portfolio_problem_classification":
         violations.append(f"{prefix}: invalid diagnosis_mode")
-    if doc.get("ruleset_version") != BLOCK_4_V2_RULESET_VERSION:
+    if doc.get("ruleset_version") != BLOCK_4_V3_RULESET_VERSION:
         violations.append(
-            f"{prefix}: ruleset_version expected {BLOCK_4_V2_RULESET_VERSION!r}, "
+            f"{prefix}: ruleset_version expected {BLOCK_4_V3_RULESET_VERSION!r}, "
             f"got {doc.get('ruleset_version')!r}"
         )
     status = str(doc.get("status") or "")
-    if status not in PROBLEM_CLASSIFICATION_V2_STATUS:
+    if status not in PROBLEM_CLASSIFICATION_V3_STATUS:
         violations.append(f"{prefix}: invalid status {doc.get('status')!r}")
 
     primary = doc.get("primary_problem")
-    violations.extend(_validate_problem_row_v2(primary, f"{prefix}.primary_problem"))
+    violations.extend(_validate_problem_row_v3(primary, f"{prefix}.primary_problem"))
+
+    primary_diagnosis = doc.get("primary_diagnosis")
+    violations.extend(
+        _validate_primary_diagnosis_v3(
+            primary_diagnosis,
+            primary,
+            f"{prefix}.primary_diagnosis",
+        )
+    )
+
+    for key in (
+        "root_cause",
+        "supporting_symptoms",
+        "key_evidence",
+        "why_not_other_problems",
+        "confidence_explanation",
+        "actionability",
+        "suggested_hypothesis",
+        "success_criteria",
+    ):
+        if key not in doc:
+            violations.append(f"{prefix}: missing top-level {key}")
 
     secondary = doc.get("secondary_problems")
     if not isinstance(secondary, list):
@@ -891,7 +976,7 @@ def problem_classification_v2_product_contract_violations(
         violations.append(f"{prefix}: at most 2 secondary_problems allowed")
     else:
         for idx, row in enumerate(secondary):
-            violations.extend(_validate_problem_row_v2(row, f"{prefix}.secondary_problems[{idx}]"))
+            violations.extend(_validate_problem_row_v3(row, f"{prefix}.secondary_problems[{idx}]"))
 
     rejected = doc.get("rejected_problems")
     if not isinstance(rejected, list):
@@ -950,26 +1035,26 @@ def problem_classification_v2_product_contract_violations(
     return violations
 
 
-def candidate_launchpad_v2_product_contract_violations(
+def candidate_launchpad_v3_product_contract_violations(
     doc: dict[str, Any] | None,
 ) -> list[str]:
-    """Return Candidate Launchpad v2 product-contract violations (empty = pass)."""
+    """Return Candidate Launchpad v3 product-contract violations (empty = pass)."""
     if not isinstance(doc, dict):
-        return [f"{CANDIDATE_LAUNCHPAD_V2_VERSION}: document is missing or not an object"]
+        return [f"{CANDIDATE_LAUNCHPAD_V3_VERSION}: document is missing or not an object"]
 
-    prefix = CANDIDATE_LAUNCHPAD_V2_VERSION
+    prefix = CANDIDATE_LAUNCHPAD_V3_VERSION
     violations: list[str] = []
 
-    if doc.get("schema_version") != CANDIDATE_LAUNCHPAD_V2_VERSION:
+    if doc.get("schema_version") != CANDIDATE_LAUNCHPAD_V3_VERSION:
         violations.append(
-            f"{prefix}: schema_version expected {CANDIDATE_LAUNCHPAD_V2_VERSION!r}, "
+            f"{prefix}: schema_version expected {CANDIDATE_LAUNCHPAD_V3_VERSION!r}, "
             f"got {doc.get('schema_version')!r}"
         )
     if doc.get("diagnostic_only") is not True:
         violations.append(f"{prefix}: diagnostic_only must be true")
-    if doc.get("ruleset_version") != BLOCK_4_V2_RULESET_VERSION:
+    if doc.get("ruleset_version") != BLOCK_4_V3_RULESET_VERSION:
         violations.append(
-            f"{prefix}: ruleset_version expected {BLOCK_4_V2_RULESET_VERSION!r}, "
+            f"{prefix}: ruleset_version expected {BLOCK_4_V3_RULESET_VERSION!r}, "
             f"got {doc.get('ruleset_version')!r}"
         )
     outcome = str(doc.get("launchpad_outcome") or "")
@@ -980,8 +1065,8 @@ def candidate_launchpad_v2_product_contract_violations(
     if not isinstance(cards, list):
         violations.append(f"{prefix}: cards must be a list")
         return violations
-    if len(cards) > 4:
-        violations.append(f"{prefix}: at most 4 cards allowed")
+    if len(cards) > 3:
+        violations.append(f"{prefix}: at most 3 cards allowed")
     if not cards and outcome != "do_not_act_yet":
         violations.append(f"{prefix}: cards must be non-empty unless do_not_act_yet")
 
@@ -1004,11 +1089,18 @@ def candidate_launchpad_v2_product_contract_violations(
             "what_this_tests_en",
             "expected_tradeoff_to_check_en",
             "when_to_skip_this_test_en",
+            "source_diagnosis_id",
+            "hypothesis_to_test",
+            "tradeoff_to_watch",
+            "when_to_skip",
         ):
             if not str(card.get(key) or "").strip():
                 violations.append(f"{cp}: missing {key}")
+        success = card.get("success_criteria")
+        if not isinstance(success, list) or not success:
+            violations.append(f"{cp}: success_criteria must be a non-empty list")
         disclaimer = str(card.get("not_a_recommendation_disclaimer_en") or "")
-        if not disclaimer.startswith(LAUNCHPAD_V2_DISCLAIMER_PREFIX):
+        if not disclaimer.startswith(LAUNCHPAD_V3_DISCLAIMER_PREFIX):
             violations.append(f"{cp}: invalid not_a_recommendation_disclaimer_en")
         if card.get("generates_portfolio") is not False:
             violations.append(f"{cp}: generates_portfolio must be false")
@@ -1056,21 +1148,21 @@ def candidate_launchpad_v2_product_contract_violations(
     return violations
 
 
-def block_4_v2_diagnosis_handoff_violations(
+def block_4_v3_diagnosis_handoff_violations(
     problem_classification: dict[str, Any] | None,
     candidate_launchpad: dict[str, Any] | None,
 ) -> list[str]:
-    """Cross-artifact Block 4 v2 handoff."""
+    """Cross-artifact Block 4 v3 handoff."""
     if not isinstance(problem_classification, dict) or not isinstance(candidate_launchpad, dict):
-        return ["block_4_v2_handoff: both artifacts required"]
+        return ["block_4_v3_handoff: both artifacts required"]
 
     violations: list[str] = []
-    prefix = "block_4_v2_handoff"
+    prefix = "block_4_v3_handoff"
 
-    if problem_classification.get("schema_version") != PROBLEM_CLASSIFICATION_V2_VERSION:
-        violations.append(f"{prefix}: problem_classification must be v2")
-    if candidate_launchpad.get("schema_version") != CANDIDATE_LAUNCHPAD_V2_VERSION:
-        violations.append(f"{prefix}: candidate_launchpad must be v2")
+    if problem_classification.get("schema_version") != PROBLEM_CLASSIFICATION_V3_VERSION:
+        violations.append(f"{prefix}: problem_classification must be v3")
+    if candidate_launchpad.get("schema_version") != CANDIDATE_LAUNCHPAD_V3_VERSION:
+        violations.append(f"{prefix}: candidate_launchpad must be v3")
 
     pc_end = problem_classification.get("analysis_end")
     lp_end = candidate_launchpad.get("analysis_end")
@@ -1096,7 +1188,7 @@ def block_4_v2_diagnosis_handoff_violations(
     for idx, card in enumerate(candidate_launchpad.get("cards") or []):
         if not isinstance(card, dict):
             continue
-        source_id = card.get("source_problem_id")
+        source_id = card.get("source_diagnosis_id") or card.get("source_problem_id")
         if source_id is None:
             continue
         if str(source_id) not in allowed_ids:
@@ -1107,8 +1199,8 @@ def block_4_v2_diagnosis_handoff_violations(
     return violations
 
 
-def check_problem_classification_v2(doc: dict[str, Any] | None) -> dict[str, Any]:
-    violations = problem_classification_v2_product_contract_violations(doc)
+def check_problem_classification_v3(doc: dict[str, Any] | None) -> dict[str, Any]:
+    violations = problem_classification_v3_product_contract_violations(doc)
     summary = (doc or {}).get("summary") if isinstance(doc, dict) else {}
     summary = summary if isinstance(summary, dict) else {}
     primary = (doc or {}).get("primary_problem") if isinstance(doc, dict) else {}
@@ -1123,8 +1215,8 @@ def check_problem_classification_v2(doc: dict[str, Any] | None) -> dict[str, Any
     }
 
 
-def check_candidate_launchpad_v2(doc: dict[str, Any] | None) -> dict[str, Any]:
-    violations = candidate_launchpad_v2_product_contract_violations(doc)
+def check_candidate_launchpad_v3(doc: dict[str, Any] | None) -> dict[str, Any]:
+    violations = candidate_launchpad_v3_product_contract_violations(doc)
     cards = (doc or {}).get("cards") if isinstance(doc, dict) else []
     cards = cards if isinstance(cards, list) else []
     summary = (doc or {}).get("summary") if isinstance(doc, dict) else {}
@@ -1138,11 +1230,11 @@ def check_candidate_launchpad_v2(doc: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def check_block_4_v2_diagnosis_handoff(
+def check_block_4_v3_diagnosis_handoff(
     problem_classification: dict[str, Any] | None,
     candidate_launchpad: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    violations = block_4_v2_diagnosis_handoff_violations(
+    violations = block_4_v3_diagnosis_handoff_violations(
         problem_classification, candidate_launchpad
     )
     return {

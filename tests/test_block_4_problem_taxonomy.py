@@ -1,15 +1,15 @@
-"""Tests for Block 4 v2 problem taxonomy registry (Session 02)."""
+"""Tests for Block 4 v3 problem taxonomy registry (Session 02)."""
 
 from __future__ import annotations
 
 from scripts.core_mvp_validation_contract import (
-    BLOCK_4_V2_ACTION_PATH_IDS,
-    PROBLEM_CLASSIFICATION_V2_IDS,
+    BLOCK_4_V3_ACTION_PATH_IDS,
+    PROBLEM_CLASSIFICATION_V3_IDS,
 )
 from src.block_2_6_portfolio_weakness_map import RISK_TYPES
 from src.block_4.problem_taxonomy import (
     ACTION_PATH_REGISTRY,
-    BLOCK_2_6_RISK_TYPE_TO_PROBLEM_IDS_V2,
+    BLOCK_2_6_RISK_TYPE_TO_PROBLEM_IDS_V3,
     PROBLEM_ID_V1_TO_V2,
     PROBLEM_REGISTRY,
     ROOT_CAUSE_ELEVATION_RULES,
@@ -25,11 +25,11 @@ from src.block_4.problem_taxonomy import (
 
 def test_registry_has_fifteen_problems() -> None:
     assert len(PROBLEM_REGISTRY) == 15
-    assert set(all_problem_ids()) == PROBLEM_CLASSIFICATION_V2_IDS
+    assert set(all_problem_ids()) == PROBLEM_CLASSIFICATION_V3_IDS
 
 
 def test_action_paths_match_contract() -> None:
-    assert set(all_action_path_ids()) == BLOCK_4_V2_ACTION_PATH_IDS
+    assert set(all_action_path_ids()) == BLOCK_4_V3_ACTION_PATH_IDS
 
 
 def test_every_problem_has_primary_action_path() -> None:
@@ -77,8 +77,8 @@ def test_v1_legacy_mapping() -> None:
 
 
 def test_block_2_6_mapping_covers_all_risk_types() -> None:
-    assert set(BLOCK_2_6_RISK_TYPE_TO_PROBLEM_IDS_V2) == set(RISK_TYPES)
-    for risk_type, problem_ids in BLOCK_2_6_RISK_TYPE_TO_PROBLEM_IDS_V2.items():
+    assert set(BLOCK_2_6_RISK_TYPE_TO_PROBLEM_IDS_V3) == set(RISK_TYPES)
+    for risk_type, problem_ids in BLOCK_2_6_RISK_TYPE_TO_PROBLEM_IDS_V3.items():
         for pid in problem_ids:
             assert pid in PROBLEM_REGISTRY, f"{risk_type} -> {pid}"
 

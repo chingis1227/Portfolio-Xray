@@ -14,14 +14,14 @@ from typing import Any, Literal
 
 from scripts.core_mvp_validation_contract import (
     check_block_2_4_hidden_exposure,
-    check_block_4_v2_diagnosis_handoff,
+    check_block_4_v3_diagnosis_handoff,
     check_block_5_compare_handoff,
-    check_candidate_launchpad_v2,
+    check_candidate_launchpad_v3,
     check_current_portfolio_stress_scorecard_v1,
     check_current_vs_candidate_v1,
     check_decision_verdict_v1,
     check_hedge_gap_analysis_v1,
-    check_problem_classification_v2,
+    check_problem_classification_v3,
 )
 from src.candidate_comparison import product_candidate_ids_from_factory_run
 from src.portfolio_xray import XRAY_SECTION_KEYS
@@ -397,7 +397,7 @@ def _validate_block_4_subject_bundle(
     result: LiveCoreE2EValidation,
     subject_dir: Path,
 ) -> None:
-    """Validate Problem Classification + Candidate Launchpad v2 product contracts (Block 4 entry)."""
+    """Validate Problem Classification + Candidate Launchpad v3 product contracts (Block 4 entry)."""
     pc_path = subject_dir / PROBLEM_CLASSIFICATION_FILENAME
     lp_path = subject_dir / CANDIDATE_LAUNCHPAD_FILENAME
     pc = _load_json_if_exists(pc_path)
@@ -405,7 +405,7 @@ def _validate_block_4_subject_bundle(
     if pc is None or lp is None:
         return
 
-    pc_checks = check_problem_classification_v2(pc)
+    pc_checks = check_problem_classification_v3(pc)
     result.evidence["block_4_schema_version"] = (pc or {}).get("schema_version")
     result.evidence["block_4_n_problems"] = len((pc or {}).get("problems") or [])
     result.evidence["block_4_primary_problem_id"] = pc_checks.get("primary_problem_id")
@@ -419,11 +419,11 @@ def _validate_block_4_subject_bundle(
         preview = "; ".join(str(row) for row in violations[:3])
         suffix = "..." if len(violations) > 3 else ""
         result.errors.append(
-            "problem_classification_v2 product contract violated: " f"{preview}{suffix}"
+            "problem_classification_v3 product contract violated: " f"{preview}{suffix}"
         )
         result.ok = False
 
-    lp_checks = check_candidate_launchpad_v2(lp)
+    lp_checks = check_candidate_launchpad_v3(lp)
     result.evidence["block_4_n_cards"] = lp_checks.get("n_cards")
     result.evidence["block_4_primary_card_id"] = lp_checks.get("primary_card_id")
     result.evidence["block_4_launchpad_outcome"] = lp_checks.get("launchpad_outcome")
@@ -432,16 +432,16 @@ def _validate_block_4_subject_bundle(
         preview = "; ".join(str(row) for row in violations[:3])
         suffix = "..." if len(violations) > 3 else ""
         result.errors.append(
-            "candidate_launchpad_v2 product contract violated: " f"{preview}{suffix}"
+            "candidate_launchpad_v3 product contract violated: " f"{preview}{suffix}"
         )
         result.ok = False
 
-    handoff = check_block_4_v2_diagnosis_handoff(pc, lp)
+    handoff = check_block_4_v3_diagnosis_handoff(pc, lp)
     if not handoff.get("handoff_ok"):
         violations = handoff.get("contract_violations") or []
         preview = "; ".join(str(row) for row in violations[:3])
         suffix = "..." if len(violations) > 3 else ""
-        result.errors.append(f"block_4_v2 diagnosis handoff violated: {preview}{suffix}")
+        result.errors.append(f"block_4_v3 diagnosis handoff violated: {preview}{suffix}")
         result.ok = False
 
 

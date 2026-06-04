@@ -33,8 +33,8 @@ Top-level documents stay compact:
 | --- | --- |
 | Portfolio-first review workflow, `analysis_subject` baseline, and `run_portfolio_review.py` orchestration | [portfolio_review_workflow_spec.md](portfolio_review_workflow_spec.md) |
 | Diagnosis-first workflow state classification (`diagnosis_only`, `one_candidate`, `multiple_candidates`) | [workflow_state_spec.md](workflow_state_spec.md) |
-| Problem Classification diagnostic artifact and evidence-to-problem mapping | [problem_classification_spec.md](problem_classification_spec.md) (V1); [block_4_diagnosis_v2_spec.md](block_4_diagnosis_v2_spec.md) (V2 target) |
-| Candidate Launchpad data artifact and problem-to-hypothesis card mapping | [candidate_launchpad_spec.md](candidate_launchpad_spec.md) (V1); [block_4_diagnosis_v2_spec.md](block_4_diagnosis_v2_spec.md) §5 (V2 target) |
+| Problem Classification diagnostic artifact and evidence-to-diagnosis mapping | [problem_classification_spec.md](problem_classification_spec.md) (V1); [block_4_diagnosis_v3_spec.md](block_4_diagnosis_v3_spec.md) (V3 current) |
+| Candidate Launchpad data artifact and problem-to-hypothesis card mapping | [candidate_launchpad_spec.md](candidate_launchpad_spec.md) (V1); [block_4_diagnosis_v3_spec.md](block_4_diagnosis_v3_spec.md) §5 (V3 current) |
 | Portfolio Alternatives Builder one-candidate wrapper over existing candidate builders | [portfolio_alternatives_builder_spec.md](portfolio_alternatives_builder_spec.md) |
 | Portfolio X-Ray diagnostics, seven-section current-portfolio diagnostic layer, and `portfolio_xray.json` contract | [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) |
 | Block 2.4 Hidden Exposure UI Pareto cards (presentation layer over `block_2_4_hidden_exposure`) | [block_2_4_hidden_exposure_ui_pareto_spec.md](block_2_4_hidden_exposure_ui_pareto_spec.md) |

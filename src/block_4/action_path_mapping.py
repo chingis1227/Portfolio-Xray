@@ -1,4 +1,4 @@
-"""Block 4 v2 suggested action path mapping (Session 07).
+"""Block 4 v3 suggested action path mapping.
 
 Builds per-problem action-path fields and the deduped top-level
 ``suggested_actions[]`` list from prioritization output.
@@ -19,7 +19,7 @@ from src.block_4.problem_taxonomy import (
     reasonable_paths_for_problem,
 )
 
-ACTION_PATH_MAPPING_RULESET_VERSION = "block_4_v2_action_path_mapping_v1"
+ACTION_PATH_MAPPING_RULESET_VERSION = "block_4_v3_action_path_mapping_v1"
 
 
 @dataclass(frozen=True)
@@ -112,6 +112,8 @@ def build_problem_row(
     row: dict[str, Any] = {
         "problem_id": problem_id,
         "label_en": defn.label_en,
+        "diagnosis_role": defn.diagnosis_role,
+        "diagnosis_subtypes": list(defn.diagnosis_subtypes),
         "severity": score_row.severity,
         "confidence": score_row.confidence,
         "short_diagnosis_en": _short_diagnosis_en(defn, score_row),

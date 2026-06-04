@@ -1,4 +1,4 @@
-"""Load Block 4 v2 scoring thresholds from ``config/block_4_thresholds.yml``."""
+"""Load Block 4 v3 scoring thresholds from ``config/block_4_thresholds.yml``."""
 
 from __future__ import annotations
 
@@ -93,7 +93,7 @@ class ConfidenceThresholds:
 @dataclass(frozen=True)
 class Block4Thresholds:
     version: str = THRESHOLDS_VERSION
-    ruleset_version: str = "block_4_v2_2026_06"
+    ruleset_version: str = "block_4_v3_2026_06"
     activation: ActivationThresholds = field(default_factory=ActivationThresholds)
     scoring_weights: ScoringWeights = field(default_factory=ScoringWeights)
     materiality_bands: MaterialityBands = field(default_factory=MaterialityBands)

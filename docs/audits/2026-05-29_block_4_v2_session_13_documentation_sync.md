@@ -29,8 +29,8 @@ Prerequisite: [Session 12 live product validation](2026-05-29_block_4_v2_session
 | Runtime artifact contract | `docs/runtime_artifact_contract.md` (Session 12) |
 | Module specs (V2 shipped pointers) | `docs/specs/problem_classification_spec.md`, `candidate_launchpad_spec.md`, `block_4_diagnosis_v2_spec.md` |
 | Diagnostic journey UX | `docs/specs/diagnostic_journey_ux_draft.md` |
-| View model + template | `diagnostic_journey/view_model.py`, `diagnostic_journey/templates/journey.html` |
-| Tests | `tests/test_diagnostic_journey_view_model.py` (+3 v2 bridge tests) |
+| View model + template | `../../diagnostic_journey/view_model.py`, `../../diagnostic_journey/templates/journey.html` |
+| Tests | `../../tests/test_diagnostic_journey_view_model.py` (+3 v2 bridge tests) |
 
 ---
 
@@ -95,5 +95,5 @@ python -m pytest tests/test_block_4_diagnosis_builder.py \
 | Category | Detail |
 | --- | --- |
 | Docs | SPEC, OUTPUTS, TESTING, operator guide, module specs |
-| UI bridge | `diagnostic_journey/view_model.py`, `journey.html` |
-| Tests | `tests/test_diagnostic_journey_view_model.py` |
+| UI bridge | `../../diagnostic_journey/view_model.py`, `journey.html` |
+| Tests | `../../tests/test_diagnostic_journey_view_model.py` |

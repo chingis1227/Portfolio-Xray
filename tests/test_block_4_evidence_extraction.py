@@ -1,4 +1,4 @@
-"""Tests for Block 4 v2 evidence extraction layer (Session 03)."""
+"""Tests for Block 4 v3 evidence extraction layer (Session 03)."""
 
 from __future__ import annotations
 

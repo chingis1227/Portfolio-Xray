@@ -1,4 +1,4 @@
-"""Block 4 v2 severity and confidence classifiers (Session 05)."""
+"""Block 4 v3 severity and confidence classifiers."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ _CONFIDENCE_RANK = {"low": 0, "medium": 1, "high": 2}
 _SPECIAL_SEVERITY: dict[str, str] = {
     "current_portfolio_acceptable": "monitor_band",
     "evidence_insufficient_data_quality": "evidence_quality_band",
-    "evidence_insufficient_conflicting_signals": "conflict_band",
+    "mixed_evidence_no_action": "conflict_band",
 }
 
 

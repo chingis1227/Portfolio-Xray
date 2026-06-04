@@ -1,19 +1,19 @@
-"""Block 4 v2 — ten portfolio archetype end-to-end fixtures (Session 11)."""
+"""Block 4 v3 — ten portfolio archetype end-to-end fixtures (Session 11)."""
 
 from __future__ import annotations
 
 import pytest
 
 from scripts.core_mvp_validation_contract import (
-    block_4_v2_diagnosis_handoff_violations,
-    candidate_launchpad_v2_product_contract_violations,
-    check_block_4_v2_diagnosis_handoff,
-    check_candidate_launchpad_v2,
-    check_problem_classification_v2,
-    problem_classification_v2_product_contract_violations,
+    block_4_v3_diagnosis_handoff_violations,
+    candidate_launchpad_v3_product_contract_violations,
+    check_block_4_v3_diagnosis_handoff,
+    check_candidate_launchpad_v3,
+    check_problem_classification_v3,
+    problem_classification_v3_product_contract_violations,
 )
 from src.block_4.diagnosis_builder import (
-    PROBLEM_CLASSIFICATION_V2_VERSION,
+    PROBLEM_CLASSIFICATION_V3_VERSION,
     build_block_4_diagnosis,
 )
 from src.block_4.no_trade_gate import OUTCOME_DO_NOT_ACT, OUTCOME_MONITOR, OUTCOME_PROCEED
@@ -24,7 +24,7 @@ from block_4_fixtures import (
     load_archetype_manifest,
 )
 
-pytestmark = pytest.mark.block_4_v2
+pytestmark = pytest.mark.block_4_v3
 
 
 def _assert_archetype(case: Block4ArchetypeCase) -> None:
@@ -37,7 +37,7 @@ def _assert_archetype(case: Block4ArchetypeCase) -> None:
     pc = result.problem_classification
     lp = result.candidate_launchpad
 
-    assert pc["schema_version"] == PROBLEM_CLASSIFICATION_V2_VERSION
+    assert pc["schema_version"] == PROBLEM_CLASSIFICATION_V3_VERSION
     assert result.primary_problem_id in case.expected_primary_ids, (
         f"{case.archetype_id}: expected primary in {case.expected_primary_ids}, "
         f"got {result.primary_problem_id}"
@@ -58,12 +58,12 @@ def _assert_archetype(case: Block4ArchetypeCase) -> None:
         assert ref.get("source_artifact") in {"portfolio_xray.json", "stress_report.json"}
         assert ref.get("evidence_path") in {"primary", "legacy_fallback", "pre_stress_only"}
 
-    assert not problem_classification_v2_product_contract_violations(pc)
-    assert not candidate_launchpad_v2_product_contract_violations(lp)
-    assert not block_4_v2_diagnosis_handoff_violations(pc, lp)
-    assert check_problem_classification_v2(pc)["product_contract_ok"] is True
-    assert check_candidate_launchpad_v2(lp)["product_contract_ok"] is True
-    assert check_block_4_v2_diagnosis_handoff(pc, lp)["handoff_ok"] is True
+    assert not problem_classification_v3_product_contract_violations(pc)
+    assert not candidate_launchpad_v3_product_contract_violations(lp)
+    assert not block_4_v3_diagnosis_handoff_violations(pc, lp)
+    assert check_problem_classification_v3(pc)["product_contract_ok"] is True
+    assert check_candidate_launchpad_v3(lp)["product_contract_ok"] is True
+    assert check_block_4_v3_diagnosis_handoff(pc, lp)["handoff_ok"] is True
 
     assert pc["summary"]["no_trade_outcome"] == result.gate.outcome
     assert lp["launchpad_outcome"] == result.gate.outcome

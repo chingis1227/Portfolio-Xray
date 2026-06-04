@@ -113,11 +113,11 @@ python scripts/validate_block_2_4_live.py --refresh-xray
 
 Evidence: [Session 13 audit](docs/audits/2026-05-29_block_2_4_session_13_institutional_closure.md).
 
-## Block 4 v2 Evidence-to-Problem Translation (ExecPlan Sessions 00–13)
+## Block 4 v3 Diagnosis-First Contract
 
-Primary contract: [block_4_diagnosis_v2_spec.md](docs/specs/block_4_diagnosis_v2_spec.md). Decision: `DEC-2026-05-29-013`.
+Primary contract: [block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md). Block 4 should be tested as investment diagnosis, not as a scoring dashboard.
 
-Regression bundle (migration through Session 13):
+Regression bundle:
 
 ```bash
 python -m pytest tests/test_block_4_diagnosis_builder.py \
@@ -142,8 +142,8 @@ Live product validation (Session 12+):
 python scripts/validate_block_4_live.py --refresh-diagnosis
 ```
 
-Diagnostic journey bridge (Session 13): `tests/test_diagnostic_journey_view_model.py` asserts v2
-`primary_problem` / Launchpad `suggested_methods` mapping in `diagnostic_journey/view_model.py`.
+Diagnostic journey bridge: `tests/test_diagnostic_journey_view_model.py` asserts v3
+`primary_diagnosis`, no-trade outcome, and Launchpad card mapping in `diagnostic_journey/view_model.py`.
 
 Evidence: [Session 12 live validation](docs/audits/2026-05-29_block_4_v2_session_12_live_product_validation.md),
 [Session 13 documentation sync](docs/audits/2026-05-29_block_4_v2_session_13_documentation_sync.md),

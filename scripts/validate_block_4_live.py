@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Block 4 v2 diagnosis on materialized ``analysis_subject/`` artifacts.
+"""Validate Block 4 v3 diagnosis on materialized ``analysis_subject/`` artifacts.
 
 Session 12 operator helper: inspect live ``problem_classification.json`` and
 ``candidate_launchpad.json`` after ``run_portfolio_review.py`` or
@@ -18,9 +18,9 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.core_mvp_validation_contract import (  # noqa: E402
-    check_block_4_v2_diagnosis_handoff,
-    check_candidate_launchpad_v2,
-    check_problem_classification_v2,
+    check_block_4_v3_diagnosis_handoff,
+    check_candidate_launchpad_v3,
+    check_problem_classification_v3,
 )
 from src.block_4.diagnosis_builder import write_block_4_diagnosis_outputs  # noqa: E402
 from src.candidate_launchpad import CANDIDATE_LAUNCHPAD_FILENAME  # noqa: E402
@@ -79,7 +79,7 @@ def _refresh_block_4_diagnosis(subject_dir: Path) -> None:
         raise FileNotFoundError(f"missing stress_report.json: {stress_path}")
 
     analysis_end = _resolve_analysis_end(subject_dir)
-    print(f"Writing Block 4 v2 diagnosis to {subject_dir} (analysis_end={analysis_end!r}) ...")
+    print(f"Writing Block 4 v3 diagnosis to {subject_dir} (analysis_end={analysis_end!r}) ...")
     write_block_4_diagnosis_outputs(
         output_dir=subject_dir,
         portfolio_xray=portfolio_xray,
@@ -98,9 +98,9 @@ def validate_block_4_live(subject_dir: Path) -> dict[str, Any]:
     if lp is None:
         raise FileNotFoundError(f"missing {CANDIDATE_LAUNCHPAD_FILENAME}: {lp_path}")
 
-    pc_checks = check_problem_classification_v2(pc)
-    lp_checks = check_candidate_launchpad_v2(lp)
-    handoff = check_block_4_v2_diagnosis_handoff(pc, lp)
+    pc_checks = check_problem_classification_v3(pc)
+    lp_checks = check_candidate_launchpad_v3(lp)
+    handoff = check_block_4_v3_diagnosis_handoff(pc, lp)
     ok = (
         bool(pc_checks.get("product_contract_ok"))
         and bool(lp_checks.get("product_contract_ok"))
@@ -117,7 +117,7 @@ def validate_block_4_live(subject_dir: Path) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Validate Block 4 v2 Problem Classification + Launchpad on analysis_subject/."
+        description="Validate Block 4 v3 Problem Classification + Launchpad on analysis_subject/."
     )
     parser.add_argument(
         "--subject-dir",
@@ -168,7 +168,7 @@ def main() -> int:
     print(f"product_contract_ok={pc.get('product_contract_ok') and lp.get('product_contract_ok')}")
     print(f"handoff_ok={handoff.get('handoff_ok')}")
 
-    for label, checks in (("problem_classification_v2", pc), ("candidate_launchpad_v2", lp)):
+    for label, checks in (("problem_classification_v3", pc), ("candidate_launchpad_v3", lp)):
         violations = checks.get("contract_violations") or []
         if violations:
             print(f"{label} contract_violations:")
@@ -177,15 +177,15 @@ def main() -> int:
 
     handoff_violations = handoff.get("contract_violations") or []
     if handoff_violations:
-        print("block_4_v2_handoff violations:")
+        print("block_4_v3_handoff violations:")
         for row in handoff_violations:
             print(f"  - {row}")
 
     if result["ok"]:
-        print("Block 4 v2 live validation: OK")
+        print("Block 4 v3 live validation: OK")
         return 0
 
-    print("Block 4 v2 live validation: FAILED", file=sys.stderr)
+    print("Block 4 v3 live validation: FAILED", file=sys.stderr)
     return 1
 
 

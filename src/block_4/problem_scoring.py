@@ -12,10 +12,16 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.block_4.evidence_extraction import EvidenceExtractionResult, EvidenceSignal
-from src.block_4.problem_taxonomy import PROBLEM_REGISTRY, ProblemDefinition, all_problem_ids
+from src.block_4.problem_taxonomy import (
+    PROBLEM_REGISTRY,
+    ProblemDefinition,
+    all_problem_ids,
+    is_root_cause_problem,
+    outcome_problem_ids,
+)
 from src.block_4.thresholds import Block4Thresholds, get_block_4_thresholds
 
-SCORING_RULESET_VERSION = "block_4_v2_scoring_heuristic_v1"
+SCORING_RULESET_VERSION = "block_4_v3_scoring_heuristic_v1"
 ACTIVATION_RAW_THRESHOLD = 0.35  # re-export default; runtime uses config
 
 # Problems where required_evidence_signals are OR-groups (at least one group fully satisfied).
@@ -89,13 +95,7 @@ _STRESS_SIGNALS = frozenset(
     }
 )
 
-_SPECIAL_PROBLEM_IDS = frozenset(
-    {
-        "current_portfolio_acceptable",
-        "evidence_insufficient_data_quality",
-        "evidence_insufficient_conflicting_signals",
-    }
-)
+_SPECIAL_PROBLEM_IDS = frozenset(outcome_problem_ids())
 
 _ACTIONABLE_PROBLEM_IDS = frozenset(
     pid for pid in all_problem_ids() if pid not in _SPECIAL_PROBLEM_IDS
@@ -178,7 +178,7 @@ def score_problems(
         defn = PROBLEM_REGISTRY[problem_id]
         if problem_id == "evidence_insufficient_data_quality":
             rows[problem_id] = _score_data_quality_problem(evidence, defn, cfg)
-        elif problem_id == "evidence_insufficient_conflicting_signals":
+        elif problem_id == "mixed_evidence_no_action":
             rows[problem_id] = _score_conflicting_problem(evidence, defn, conflicting, cfg)
         elif problem_id == "current_portfolio_acceptable":
             continue
@@ -194,7 +194,14 @@ def score_problems(
         sorted(actionable_activated, key=lambda pid: (-rows[pid].scoring.decision_score, pid))
     )
 
-    no_material = len(actionable_activated) == 0 and not evidence.has_signal("data_trust_failure")
+    root_cause_activated = tuple(
+        pid for pid in actionable_activated if is_root_cause_problem(pid)
+    )
+    no_material = (
+        len(actionable_activated) == 0
+        and not evidence.has_signal("data_trust_failure")
+        and not conflicting
+    )
     rows["current_portfolio_acceptable"] = _score_acceptable_problem(
         evidence,
         PROBLEM_REGISTRY["current_portfolio_acceptable"],
@@ -205,8 +212,8 @@ def score_problems(
     activated: list[str] = []
     if rows["evidence_insufficient_data_quality"].activated:
         activated.append("evidence_insufficient_data_quality")
-    elif rows["evidence_insufficient_conflicting_signals"].activated:
-        activated.append("evidence_insufficient_conflicting_signals")
+    elif conflicting and not root_cause_activated:
+        activated.append("mixed_evidence_no_action")
     else:
         activated.extend(actionable_activated)
         if no_material and rows["current_portfolio_acceptable"].activated:

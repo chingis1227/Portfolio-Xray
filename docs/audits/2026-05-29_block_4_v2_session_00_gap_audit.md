@@ -293,7 +293,7 @@ Rationale: Session 09 acceptance of V1 must not block V2 depth; operators and E2
 | Gap | Owner session | Notes |
 | --- | --- | --- |
 | Launchpad card → `portfolio_alternatives_builder` in review workflow | Post–v2 freeze | `scripts/run_one_candidate_from_method.py --run` exists |
-| `diagnostic_journey/view_model.py` field mismatch | Session 13 | Reads `candidate_methods` vs `suggested_methods` |
+| `../../diagnostic_journey/view_model.py` field mismatch | Session 13 | Reads `candidate_methods` vs `suggested_methods` |
 | No persisted `selected_card_id` artifact | Future UX | Between Launchpad and Factory |
 | `Improve return/risk balance` goal orphan | Session 07 | In Launchpad but not PC paths |
 

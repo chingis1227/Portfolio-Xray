@@ -26,7 +26,7 @@ Portfolio Setup (Block 1)
 | 1 Portfolio Setup | `#setup` | `run_metadata.json`, `input_assumptions` (via run_metadata), weights from `analysis_setup` | CTA: Run Portfolio X-Ray |
 | 2 Portfolio X-Ray | `#xray` | `portfolio_xray.json` (`block_2_1` … `block_2_6`) | CTA: Run Stress Test Lab |
 | 3 Stress Test Lab | `#stress` | `stress_report.json` (`stress_results_v1`, `hedge_gap_analysis_v1`, `current_portfolio_stress_scorecard_v1`) | CTA: View suggested improvement paths |
-| 4 Problem bridge | `#bridge` | `problem_classification.json` (`problem_classification_v2`), `candidate_launchpad.json` (`candidate_launchpad_v2`); else deterministic fallback from stress/X-Ray | CTA: Open Candidate Launchpad (disabled until wired) |
+| 4 Problem bridge | `#bridge` | `problem_classification.json` (`problem_classification_v3`), `candidate_launchpad.json` (`candidate_launchpad_v3`); else deterministic fallback from stress/X-Ray | CTA: Open Candidate Launchpad (disabled until wired) |
 
 ## Block 2 information hierarchy
 

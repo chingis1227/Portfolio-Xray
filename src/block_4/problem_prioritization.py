@@ -1,4 +1,4 @@
-"""Block 4 v2 problem prioritization (Session 06).
+"""Block 4 v3 diagnosis prioritization.
 
 Selects one primary problem, up to two secondary problems, and explicit
 rejected hypotheses from scored rows using decision_score, severity,
@@ -16,9 +16,10 @@ from src.block_4.problem_taxonomy import (
     PROBLEM_REGISTRY,
     ROOT_CAUSE_ELEVATION_RULES,
     get_problem_definition,
+    is_root_cause_problem,
 )
 
-PRIORITIZATION_RULESET_VERSION = "block_4_v2_prioritization_heuristic_v1"
+PRIORITIZATION_RULESET_VERSION = "block_4_v3_prioritization_heuristic_v1"
 MAX_SECONDARY_PROBLEMS = 2
 
 _SEVERITY_RANK = {"high": 3, "medium": 2, "low": 1, "unavailable": 0}
@@ -27,7 +28,7 @@ _MATERIALITY_RANK = {"high": 3, "medium": 2, "low": 1, "none": 0}
 
 _SPECIAL_PRIMARY_ORDER = (
     "evidence_insufficient_data_quality",
-    "evidence_insufficient_conflicting_signals",
+    "mixed_evidence_no_action",
     "current_portfolio_acceptable",
 )
 
@@ -135,7 +136,17 @@ def prioritize_problems(
     primary_row = scoring.get_row(primary_id)
 
     demoted_for_rejection = _demoted_after_primary(primary_id, demoted_ids, applied_rules)
-    remaining = [pid for pid in ranked if pid != primary_id and pid not in demoted_for_rejection]
+    remaining = [
+        pid
+        for pid in ranked
+        if pid != primary_id
+        and pid not in demoted_for_rejection
+        and (
+            is_root_cause_problem(pid)
+            if is_root_cause_problem(primary_id)
+            else True
+        )
+    ]
     secondary_ids = tuple(remaining[:MAX_SECONDARY_PROBLEMS])
     secondary_rows = tuple(scoring.rows[pid] for pid in secondary_ids if pid in scoring.rows)
 
@@ -233,6 +244,9 @@ def _select_primary_id(
         for pid in ranked
         if pid not in demoted_ids and not _blocked_as_primary(scoring.rows[pid])
     ]
+    root_eligible = [pid for pid in eligible if is_root_cause_problem(pid)]
+    if root_eligible:
+        return root_eligible[0]
     if eligible:
         return eligible[0]
     fallback = [pid for pid in ranked if not _blocked_as_primary(scoring.rows[pid])]

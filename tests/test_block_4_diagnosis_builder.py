@@ -1,4 +1,4 @@
-"""Tests for Block 4 v2 diagnosis facade and JSON writers (Session 10)."""
+"""Tests for Block 4 v3 diagnosis facade and JSON writers (Session 10)."""
 
 from __future__ import annotations
 
@@ -6,16 +6,16 @@ import json
 from pathlib import Path
 
 from scripts.core_mvp_validation_contract import (
-    block_4_v2_diagnosis_handoff_violations,
-    candidate_launchpad_v2_product_contract_violations,
-    check_block_4_v2_diagnosis_handoff,
-    check_candidate_launchpad_v2,
-    check_problem_classification_v2,
-    problem_classification_v2_product_contract_violations,
+    block_4_v3_diagnosis_handoff_violations,
+    candidate_launchpad_v3_product_contract_violations,
+    check_block_4_v3_diagnosis_handoff,
+    check_candidate_launchpad_v3,
+    check_problem_classification_v3,
+    problem_classification_v3_product_contract_violations,
 )
 from src.block_4.diagnosis_builder import (
     BLOCK_4_DIAGNOSIS_FACADE_VERSION,
-    PROBLEM_CLASSIFICATION_V2_VERSION,
+    PROBLEM_CLASSIFICATION_V3_VERSION,
     block_4_manifest_extra,
     build_block_4_diagnosis,
     write_block_4_diagnosis_outputs,
@@ -40,7 +40,7 @@ def test_build_block_4_diagnosis_golden_contract() -> None:
     pc = result.problem_classification
     lp = result.candidate_launchpad
 
-    assert pc["schema_version"] == PROBLEM_CLASSIFICATION_V2_VERSION
+    assert pc["schema_version"] == PROBLEM_CLASSIFICATION_V3_VERSION
     assert pc["status"] == "ok"
     assert pc["primary_problem"]["problem_id"] == "weak_crisis_resilience"
     assert pc["problems"]
@@ -48,13 +48,13 @@ def test_build_block_4_diagnosis_golden_contract() -> None:
     assert pc["summary"]["no_trade_outcome"] == pc["no_trade_or_monitoring_view"]["outcome"]
     assert pc["diagnostics_meta"]["block_4_facade_version"] == BLOCK_4_DIAGNOSIS_FACADE_VERSION
 
-    assert not problem_classification_v2_product_contract_violations(pc)
-    assert not candidate_launchpad_v2_product_contract_violations(lp)
-    assert not block_4_v2_diagnosis_handoff_violations(pc, lp)
+    assert not problem_classification_v3_product_contract_violations(pc)
+    assert not candidate_launchpad_v3_product_contract_violations(lp)
+    assert not block_4_v3_diagnosis_handoff_violations(pc, lp)
 
-    checks = check_problem_classification_v2(pc)
+    checks = check_problem_classification_v3(pc)
     assert checks["product_contract_ok"] is True
-    handoff = check_block_4_v2_diagnosis_handoff(pc, lp)
+    handoff = check_block_4_v3_diagnosis_handoff(pc, lp)
     assert handoff["handoff_ok"] is True
 
 
@@ -71,7 +71,7 @@ def test_write_block_4_diagnosis_outputs_writes_both_files(tmp_path: Path) -> No
 
     pc = json.loads(write_result.problem_classification_path.read_text(encoding="utf-8"))
     lp = json.loads(write_result.candidate_launchpad_path.read_text(encoding="utf-8"))
-    assert pc["schema_version"] == PROBLEM_CLASSIFICATION_V2_VERSION
+    assert pc["schema_version"] == PROBLEM_CLASSIFICATION_V3_VERSION
     assert lp["launchpad_outcome"] == pc["summary"]["no_trade_outcome"]
 
     manifest_paths = product_bundle_generated_paths_for_manifest(tmp_path)
@@ -89,7 +89,7 @@ def test_block_4_manifest_extra_includes_primary_and_outcome() -> None:
     )
     extra = block_4_manifest_extra(result.problem_classification, result.candidate_launchpad)
 
-    assert extra["block_4_diagnosis"]["schema_version"] == PROBLEM_CLASSIFICATION_V2_VERSION
+    assert extra["block_4_diagnosis"]["schema_version"] == PROBLEM_CLASSIFICATION_V3_VERSION
     assert extra["block_4_diagnosis"]["primary_problem_id"] == "weak_crisis_resilience"
     assert extra["block_4_diagnosis"]["no_trade_outcome"] == "proceed_to_launchpad"
     assert extra["block_4_diagnosis"]["facade_version"] == BLOCK_4_DIAGNOSIS_FACADE_VERSION
@@ -119,4 +119,4 @@ def test_data_quality_diagnosis_status_partial_or_unavailable() -> None:
     assert result.problem_classification["primary_problem"]["problem_id"] == "evidence_insufficient_data_quality"
     assert result.problem_classification["status"] in {"partial", "unavailable", "ok"}
     assert result.gate.outcome == "do_not_act_yet"
-    assert check_candidate_launchpad_v2(result.candidate_launchpad)["product_contract_ok"] is True
+    assert check_candidate_launchpad_v3(result.candidate_launchpad)["product_contract_ok"] is True
