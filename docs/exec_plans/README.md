@@ -25,6 +25,8 @@ governed by `SPEC.md`, `OUTPUTS.md`, detailed specs, and code.
 
 ## Current Pointer
 
+**Active:** [Blocks 3-5 Integration Readiness Audit Plan](2026-06-04_blocks_3_5_integration_readiness_audit_plan.md) - Session 04 post-repair fresh-refresh recheck closed 2026-06-04; `.venv` remains aligned (`pandas 2.1.4`, `pandas_datareader 0.10.0`, `FredReader import ok`), but direct FRED `DTB3` and canonical `run_portfolio_review.py --candidates equal_weight` still time out before fresh subject materialization; existing `product_one_candidate` bundle remains validator-clean.
+
 **Completed:** [Block 4 v3 Investment Diagnosis Plan](2026-06-04_block_4_v3_investment_diagnosis_plan.md) ? implemented diagnosis-first v3 (`problem_classification_v3`, `candidate_launchpad_v3`), root-cause over symptoms, mixed evidence as no-action/note rather than normal primary verdict, and launchpad cards with success criteria. Closed 2026-06-04.
 
 **Completed:** [Block 4 v2 Evidence-to-Problem Translation](2026-05-29_block_4_v2_evidence_to_problem_plan.md) — Sessions 00–14 closed 2026-05-29. Evidence: [Session 14 institutional closure](../audits/2026-05-29_block_4_v2_session_14_institutional_closure.md); pytest **109 passed** (closure bundle); decision `DEC-2026-05-29-013`.

@@ -8,6 +8,16 @@ Date: 2026-06-04
 
 Category: Changed
 
+- **Blocks 3-5 integration readiness Session 04:** rechecked the fresh one-candidate refresh after environment repair. Dependency alignment persisted and `FredReader import ok`, but direct FRED `DTB3` loading and canonical `run_portfolio_review.py --candidates equal_weight` still timed out before fresh subject materialization; existing `product_one_candidate` validator still passed. No implementation behavior changed.
+
+- **Blocks 3-5 integration readiness Session 03.1:** repaired local `.venv` dependency drift (`pandas 2.1.4`, `numpy 1.26.4`, `pandas_datareader 0.10.0`) so the FRED loader no longer hits the pandas-datareader import compatibility error; canonical one-candidate refresh was retried and still timed out on live FRED `DTB3`; existing `product_one_candidate` validator still passed. No implementation behavior changed.
+
+- **Blocks 3-5 integration readiness Session 03:** rechecked the fresh one-candidate refresh blocker. Direct FRED `DTB3` loading and canonical `run_portfolio_review.py --candidates equal_weight` still timed out before fresh subject materialization; existing `product_one_candidate` live validator still passed. No implementation behavior changed.
+
+- **Blocks 3-5 integration readiness Session 02:** ran controlled live validation. Canonical `run_portfolio_review.py --candidates equal_weight` was blocked by FRED risk-free loading; direct `run_candidate_factory.py --candidates equal_weight --then-compare` reused the existing `equal_weight` snapshot and refreshed root compare/verdict/context JSON; `product_one_candidate` live validator passed.
+
+- **Blocks 3-5 integration readiness Session 01:** added read-only ExecPlan and audit for the Stress Lab to Block 4 diagnosis/launchpad to Block 5 compare/verdict chain. Focused contract bundle **51 passed**; one-candidate dry-run shows flow through Decision Verdict. No live generated outputs were refreshed.
+
 - **Launchpad to Portfolio Alternatives Builder handoff documented:** synchronized canonical docs around the current boundary: Block 4 identifies the diagnosis and next diagnostic step, Candidate Launchpad exposes testable cards, Builder pre-fills setup from a selected card without recommending a rebalance, candidate generation requires explicit user action, and Decision Verdict remains the action-justification layer.
 
 - **Block 4 v3 next diagnostic step:** added `next_diagnostic_step` to `problem_classification_v3`; mixed/acceptable outcomes now expose Equal Weight and Risk Parity as `reference_benchmark_test` Launchpad cards with `decision_boundary`, `method_role: reference_benchmark`, and `is_rebalance_recommendation: false`; data-quality blockers do not emit unreliable EW/RP comparisons.
