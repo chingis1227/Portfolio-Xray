@@ -15,6 +15,7 @@ from src.block_4.no_trade_gate import (
     OUTCOME_DO_NOT_ACT,
     OUTCOME_MONITOR,
     OUTCOME_PROCEED,
+    STEP_COMPARE_REFERENCE,
     STEP_MONITOR,
     STEP_RESOLVE_DATA,
     STEP_SELECT_LAUNCHPAD,
@@ -97,8 +98,9 @@ def test_acceptable_portfolio_monitors() -> None:
     _, _, _, mapping, gate = _pipeline(xray, stress)
 
     assert gate.outcome == OUTCOME_MONITOR
-    assert gate.recommended_next_step == STEP_MONITOR
+    assert gate.recommended_next_step == STEP_COMPARE_REFERENCE
     assert gate.launchpad_suppressed is True
+    assert "no action" not in gate.headline_en.lower()
 
     summary = build_diagnosis_summary(mapping, gate)
     assert summary["current_portfolio_acceptable"] is True
@@ -140,8 +142,9 @@ def test_conflicting_signals_block_action() -> None:
     _, _, _, _, gate = _pipeline(xray, stress)
 
     assert gate.outcome == OUTCOME_DO_NOT_ACT
-    assert gate.recommended_next_step == STEP_MONITOR
-    assert "No dominant actionable problem" in gate.headline_en
+    assert gate.recommended_next_step == STEP_COMPARE_REFERENCE
+    assert "No immediate rebalance" in gate.headline_en
+    assert "no action" not in gate.headline_en.lower()
 
 
 def test_no_trade_view_passes_problem_classification_contract_stub() -> None:

@@ -7,6 +7,12 @@ Block 4 is an investment diagnosis handoff, not a scoring dashboard. Blocks 1-3
 produce evidence; Block 4 converts that evidence into one clear current-portfolio
 diagnosis and a small set of hypotheses to test next.
 
+Block 4 must never end with an empty path. It may conclude that no immediate
+rebalance is justified, but it still emits a `next_diagnostic_step`: either a
+targeted hypothesis test, a reference benchmark comparison, monitoring, or a
+data-quality improvement step. Block 4 and Launchpad must not call these
+investment recommendations.
+
 ## Public artifacts
 
 Filenames stay unchanged:
@@ -69,11 +75,20 @@ Outcome/status diagnoses:
 - `materiality`
 - `actionability`
 - `suggested_hypothesis`
+- `next_diagnostic_step`
 - `success_criteria`
 - `backend_audit`
 
 `backend_audit` may contain scoring rows and evidence bundles, but those fields
 must not dominate the product surface.
+
+`next_diagnostic_step` is required and must contain `type`, `label`, `reason`,
+and `decision_boundary`. For `mixed_evidence_no_action` and
+`current_portfolio_acceptable`, the step type is `reference_comparison` and the
+default methods are `equal_weight` and `risk_parity`. For
+`evidence_insufficient_data_quality`, the step is data improvement and must not
+emit Equal Weight / Risk Parity reference tests while comparison evidence is
+unreliable.
 
 ## Primary selection order
 
@@ -89,14 +104,28 @@ Each card must include:
 
 - `source_diagnosis_id`
 - `hypothesis_to_test`
+- `card_type`
+- `launch_status`
+- `why_this_test`
 - `suggested_methods`
 - `success_criteria`
 - `tradeoff_to_watch`
 - `when_to_skip`
+- `is_rebalance_recommendation`
+- `decision_boundary`
 - `not_a_recommendation_disclaimer_en`
 
-Cards are hypotheses to test, not trades. Monitor/no-action outcomes must not
-generate misleading portfolio methods.
+Cards are hypotheses or reference tests, not trades. Reference cards use
+`card_type: "reference_benchmark_test"`, `launch_status: "reference_test"`,
+`is_rebalance_recommendation: false`, and a `decision_boundary` stating that the
+actual rebalance decision is made only after Current vs Candidate Comparison and
+Decision Verdict. Equal Weight is the simple concentration benchmark; Risk
+Parity is the risk-distribution benchmark.
+
+When an actionable primary diagnosis exists, the first card must remain the
+targeted hypothesis for that diagnosis. Equal Weight / Risk Parity reference
+tests may appear only as secondary reference tests and must not displace the
+targeted card.
 
 ## Success criteria examples
 
@@ -116,4 +145,3 @@ Current product validators live in `scripts/core_mvp_validation_contract.py`:
 - `check_problem_classification_v3`
 - `check_candidate_launchpad_v3`
 - `check_block_4_v3_diagnosis_handoff`
-

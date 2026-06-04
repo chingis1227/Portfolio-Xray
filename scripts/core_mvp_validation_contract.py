@@ -752,6 +752,7 @@ RECOMMENDED_NEXT_STEPS = frozenset(
         "monitor_quarterly",
         "rerun_diagnostics",
         "resolve_data",
+        "compare_reference_benchmarks",
     }
 )
 
@@ -963,10 +964,21 @@ def problem_classification_v3_product_contract_violations(
         "confidence_explanation",
         "actionability",
         "suggested_hypothesis",
+        "next_diagnostic_step",
         "success_criteria",
     ):
         if key not in doc:
             violations.append(f"{prefix}: missing top-level {key}")
+
+    next_step = doc.get("next_diagnostic_step")
+    if not isinstance(next_step, dict):
+        violations.append(f"{prefix}: next_diagnostic_step must be an object")
+    else:
+        for key in ("type", "label", "reason", "decision_boundary"):
+            if not str(next_step.get(key) or "").strip():
+                violations.append(f"{prefix}: next_diagnostic_step missing {key}")
+        if "rebalance recommendation" not in str(next_step.get("decision_boundary") or "").lower():
+            violations.append(f"{prefix}: next_diagnostic_step decision_boundary must block rebalance interpretation")
 
     secondary = doc.get("secondary_problems")
     if not isinstance(secondary, list):
@@ -1091,11 +1103,19 @@ def candidate_launchpad_v3_product_contract_violations(
             "when_to_skip_this_test_en",
             "source_diagnosis_id",
             "hypothesis_to_test",
+            "card_type",
+            "launch_status",
+            "why_this_test",
             "tradeoff_to_watch",
             "when_to_skip",
+            "decision_boundary",
         ):
             if not str(card.get(key) or "").strip():
                 violations.append(f"{cp}: missing {key}")
+        if card.get("is_rebalance_recommendation") is not False:
+            violations.append(f"{cp}: is_rebalance_recommendation must be false")
+        if "rebalance recommendation" not in str(card.get("decision_boundary") or "").lower():
+            violations.append(f"{cp}: decision_boundary must block rebalance interpretation")
         success = card.get("success_criteria")
         if not isinstance(success, list) or not success:
             violations.append(f"{cp}: success_criteria must be a non-empty list")
@@ -1124,6 +1144,11 @@ def candidate_launchpad_v3_product_contract_violations(
                     violations.append(f"{cp}: unknown candidate_method_id {method_id!r}")
                 else:
                     method_ids.append(method_id)
+                method_role = str(method.get("method_role") or "").strip()
+                if not method_role:
+                    violations.append(f"{cp}.suggested_methods[{midx}] missing method_role")
+                elif method_id in {"equal_weight", "risk_parity"} and card.get("card_type") == "reference_benchmark_test" and method_role != "reference_benchmark":
+                    violations.append(f"{cp}.suggested_methods[{midx}] EW/RP reference methods must use method_role reference_benchmark")
             default_method = card.get("default_method")
             if method_ids and not default_method:
                 violations.append(f"{cp}: default_method required when suggested_methods non-empty")

@@ -117,6 +117,13 @@ Evidence: [Session 13 audit](docs/audits/2026-05-29_block_2_4_session_13_institu
 
 Primary contract: [block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md). Block 4 should be tested as investment diagnosis, not as a scoring dashboard.
 
+Session 02 next-step regression focus:
+
+- `problem_classification_v3.next_diagnostic_step` is always present and keeps the rebalance decision boundary explicit.
+- Mixed/acceptable outcomes expose Equal Weight / Risk Parity only as `reference_benchmark_test` Launchpad cards.
+- Data-quality blockers do not emit unreliable Equal Weight / Risk Parity reference comparisons.
+- Actionable diagnoses keep the targeted hypothesis card before any reference benchmark tests.
+
 Regression bundle:
 
 ```bash

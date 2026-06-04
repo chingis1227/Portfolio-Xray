@@ -2,7 +2,7 @@
 
 This document owns the V1 deterministic Problem Classification artifact for the diagnosis-first Portfolio MRI migration.
 
-**Current contract (V3):** [block_4_diagnosis_v3_spec.md](block_4_diagnosis_v3_spec.md) - primary schema `problem_classification_v3`; writer `src/block_4/diagnosis_builder.py`.
+**Current contract (V3):** [block_4_diagnosis_v3_spec.md](block_4_diagnosis_v3_spec.md) - primary schema `problem_classification_v3`; writer `src/block_4/diagnosis_builder.py`. V3 requires `next_diagnostic_step` so Block 4 always hands off a next test, monitoring/data-improvement step, or reference benchmark comparison without making a rebalance recommendation.
 
 Implementation: `src/block_4/diagnosis_builder.py` (V3 canonical); `src/problem_classification.py` (legacy unit tests).
 
@@ -139,6 +139,12 @@ Problem Classification is diagnostic-only. It translates evidence into improveme
 
 Reasonable paths such as "Reduce volatility" or "Improve diversification" are hypotheses to test, not recommendations or portfolios.
 
+Current V3 `next_diagnostic_step` keeps this boundary explicit:
+
+- actionable diagnoses use a targeted hypothesis test;
+- mixed or acceptable outcomes use Equal Weight and Risk Parity only as reference benchmark tests;
+- data-quality outcomes use a data-improvement step and do not emit unreliable benchmark comparisons.
+
 ## Workflow Integration
 
 `run_report.py` writes `problem_classification.json` after `portfolio_xray.json` and `stress_report.json` are available. This applies to normal report outputs, `analysis_subject` materialization, and candidate report folders because all use the same report backend.
@@ -153,7 +159,7 @@ Focused tests:
 python -m pytest tests/test_problem_classification.py tests/test_block_4_decision_entry_contract.py
 ```
 
-Product contract (Session 14 / v2 freeze): `problem_classification_v3_product_contract_violations` / `check_problem_classification_v3` in `scripts/core_mvp_validation_contract.py`; enforced on live diagnosis runs via `validate_live_core_artifacts` (`diagnosis_only`, `product_one_candidate`). V1 validators removed Session 14.
+Product contract (current v3): `problem_classification_v3_product_contract_violations` / `check_problem_classification_v3` in `scripts/core_mvp_validation_contract.py`; enforced on live diagnosis runs via `validate_live_core_artifacts` (`diagnosis_only`, `product_one_candidate`). V1 validators removed Session 14; current v3 also requires `next_diagnostic_step`.
 
 Recommended adjacent regression checks:
 

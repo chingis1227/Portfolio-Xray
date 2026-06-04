@@ -8,6 +8,8 @@ Date: 2026-06-04
 
 Category: Changed
 
+- **Block 4 v3 next diagnostic step:** added `next_diagnostic_step` to `problem_classification_v3`; mixed/acceptable outcomes now expose Equal Weight and Risk Parity as `reference_benchmark_test` Launchpad cards with `decision_boundary`, `method_role: reference_benchmark`, and `is_rebalance_recommendation: false`; data-quality blockers do not emit unreliable EW/RP comparisons.
+
 - **Block 4 v3 diagnosis-first contract implemented:** replaced the current Block 4 product contract with `problem_classification_v3` and `candidate_launchpad_v3`; root-cause diagnoses now outrank symptoms, `mixed_evidence_no_action` replaces the old conflict-as-primary behavior, user-facing output leads with `primary_diagnosis`, `key_evidence`, `why_not_other_problems`, confidence/materiality/actionability, and Launchpad cards include `success_criteria`.
 
 Date: 2026-05-29

@@ -179,7 +179,11 @@ from src.portfolio_alternatives_builder import (
 card = {
     "card_id": "launchpad_demo_equal_weight",
     "goal": "Simple diversification baseline",
-    "suggested_methods": [{"candidate_method_id": "equal_weight"}],
+    "card_type": "reference_benchmark_test",
+    "is_rebalance_recommendation": False,
+    "suggested_methods": [
+        {"candidate_method_id": "equal_weight", "method_role": "reference_benchmark"}
+    ],
 }
 request = request_from_launchpad_card(card, method_index=0)
 plan = build_portfolio_alternative_plan(request, project_root=Path("."))
@@ -256,8 +260,11 @@ Read order after diagnosis:
 
 1. `analysis_subject/problem_classification.json` -> `primary_diagnosis`: diagnosis thesis, root cause, confidence, materiality, actionability.
 2. Same file -> `key_evidence` (maximum five): what proves or supports the diagnosis.
-3. Same file -> `why_not_other_problems`: why similar labels were not selected as primary.
-4. `analysis_subject/candidate_launchpad.json` -> cards with `hypothesis_to_test`, `success_criteria`, `tradeoff_to_watch`, and `when_to_skip`.
+3. Same file -> `next_diagnostic_step`: what to test or fix next before any downstream verdict.
+4. Same file -> `why_not_other_problems`: why similar labels were not selected as primary.
+5. `analysis_subject/candidate_launchpad.json` -> cards with `hypothesis_to_test`, `card_type`, `launch_status`, `why_this_test`, `success_criteria`, `tradeoff_to_watch`, `when_to_skip`, and `decision_boundary`.
+
+For `mixed_evidence_no_action` and `current_portfolio_acceptable`, Block 4 can say that no immediate rebalance is justified while still offering a reference comparison against Equal Weight and Risk Parity. These cards are `reference_benchmark_test` cards, not rebalance recommendations. If an actionable primary diagnosis exists, read the targeted card first; reference benchmark tests must not displace the targeted hypothesis.
 
 Scoring rows are backend audit metadata, not the product answer. Spec: [block_4_diagnosis_v3_spec.md](specs/block_4_diagnosis_v3_spec.md).
 | Doc link integrity | `python scripts/verify_docs.py` |

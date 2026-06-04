@@ -2,7 +2,12 @@
 
 This document owns the V1 Candidate Launchpad data artifact for the diagnosis-first Portfolio MRI migration.
 
-**Current contract (V3):** [block_4_diagnosis_v3_spec.md](block_4_diagnosis_v3_spec.md) ?5 - diagnosis-linked card fields (`source_diagnosis_id`, `hypothesis_to_test`, `success_criteria`, trade-offs, skip rules, disclaimer).
+**Current contract (V3):** [block_4_diagnosis_v3_spec.md](block_4_diagnosis_v3_spec.md) - diagnosis-linked card fields (`source_diagnosis_id`, `hypothesis_to_test`, `success_criteria`, trade-offs, skip rules, disclaimer).
+
+Current V3 cards may be targeted hypothesis tests or reference benchmark tests.
+Reference benchmark tests use Equal Weight and Risk Parity only to compare the
+current allocation against simple alternatives; they are not rebalance
+recommendations.
 
 Implementation: `src/block_4/launchpad_cards.py` (V3 canonical); `src/candidate_launchpad.py` (legacy unit tests).
 
@@ -68,12 +73,23 @@ Each `cards[]` row contains:
 | `source_problem_label` | Human-readable problem label. |
 | `rationale` | Severity, confidence, and evidence copied from the source problem. |
 | `suggested_methods` | Candidate method ids that a later Portfolio Alternatives Builder may use. |
+| `card_type` | `targeted_hypothesis_test`, `reference_benchmark_test`, or monitor/data step. |
+| `launch_status` | Whether the card is a targeted hypothesis, reference test, or monitor/data step. |
+| `why_this_test` | Plain-English reason this test follows from the diagnosis. |
+| `is_rebalance_recommendation` | Always `false`; actual rebalance decisions are made downstream. |
+| `decision_boundary` | States that rebalance decisions are made only after Current vs Candidate Comparison and Decision Verdict. |
 | `generates_portfolio` | Always `false` in V1. |
 | `requires_user_action` | Whether the card expects the user to choose a test rather than simply monitor/review. |
 
 ## Card Boundary
 
 Cards are not portfolios. They may suggest method ids such as `minimum_variance`, `risk_parity`, or `equal_weight`, but they do not create weights or artifacts. The Portfolio Alternatives Builder owns later candidate creation.
+
+For reference benchmark cards, `suggested_methods[]` rows include
+`method_role: reference_benchmark`. Equal Weight is used as a simple
+concentration benchmark; Risk Parity is used as a risk-distribution benchmark.
+If the primary diagnosis is actionable, the first card remains the targeted
+hypothesis and reference benchmarks must not displace it.
 
 ## Goal Mapping
 
@@ -108,7 +124,7 @@ Focused tests:
 python -m pytest tests/test_candidate_launchpad.py tests/test_block_4_decision_entry_contract.py
 ```
 
-Product contract (Session 14 / v2 freeze): `candidate_launchpad_v3_product_contract_violations` / `check_candidate_launchpad_v3` and `block_4_v3_diagnosis_handoff_violations` in `scripts/core_mvp_validation_contract.py`; live E2E via `validate_live_core_artifacts`.
+Product contract (current v3): `candidate_launchpad_v3_product_contract_violations` / `check_candidate_launchpad_v3` and `block_4_v3_diagnosis_handoff_violations` in `scripts/core_mvp_validation_contract.py`; live E2E via `validate_live_core_artifacts`.
 
 Recommended adjacent checks:
 

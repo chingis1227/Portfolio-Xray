@@ -25,6 +25,10 @@ MAX_SUPPRESSED_CARDS = 2
 LAUNCHPAD_V3_DISCLAIMER_EN = (
     "This card suggests a hypothesis to test, not a buy or sell instruction."
 )
+DECISION_BOUNDARY_EN = (
+    "This is not a rebalance recommendation. Actual rebalance decision is made only after "
+    "Current vs Candidate Comparison and Decision Verdict."
+)
 
 _SUCCESS_CRITERIA_BY_ACTION_PATH: dict[str, tuple[str, ...]] = {
     "reduce_volatility": (
@@ -274,7 +278,9 @@ def _build_card(
     defn = get_problem_definition(source_problem_id) if source_problem_id else None
 
     method_ids = _method_ids_for_card(action.action_path_id, problem_row, launchpad_suppressed)
-    suggested_methods = [{"candidate_method_id": mid} for mid in method_ids]
+    suggested_methods = [
+        _suggested_method_row(mid, action.action_path_id) for mid in method_ids
+    ]
 
     title = action_path.label_en
     if defn is not None and action.action_path_id == problem_row.get("suggested_action_path_id"):
@@ -290,6 +296,10 @@ def _build_card(
         "source_problem_label": (problem_row or {}).get("label_en"),
         "rationale": _card_rationale(problem_row),
         "hypothesis_to_test": _hypothesis_to_test(action_path.label_en, problem_row),
+        "card_type": _card_type(action.action_path_id),
+        "launch_status": _launch_status(action.action_path_id),
+        "is_rebalance_recommendation": False,
+        "why_this_test": _why_this_test(action.action_path_id, problem_row),
         "suggested_methods": suggested_methods,
         "success_criteria": list(_success_criteria(action.action_path_id)),
         "generates_portfolio": False,
@@ -308,6 +318,7 @@ def _build_card(
             defn.launchpad_tradeoff_en if defn is not None else _default_tradeoff(action.action_path_id)
         ),
         "not_a_recommendation_disclaimer_en": LAUNCHPAD_V3_DISCLAIMER_EN,
+        "decision_boundary": DECISION_BOUNDARY_EN,
         "when_to_skip_this_test_en": (
             defn.launchpad_skip_when_en if defn is not None else "Skip when the diagnosis no longer applies."
         ),
@@ -336,7 +347,7 @@ def _method_ids_for_card(
     problem_row: dict[str, Any] | None,
     launchpad_suppressed: bool,
 ) -> tuple[str, ...]:
-    if launchpad_suppressed:
+    if launchpad_suppressed and action_path_id != "compare_against_simple_benchmark":
         return ()
 
     if action_path_id in _NO_USER_ACTION_PATH_IDS:
@@ -357,6 +368,53 @@ def _method_ids_for_card(
             return tuple(from_problem)
 
     return tuple(allowed_path_methods)
+
+
+def _suggested_method_row(method_id: str, action_path_id: str) -> dict[str, str]:
+    role = (
+        "reference_benchmark"
+        if action_path_id == "compare_against_simple_benchmark"
+        else "targeted_hypothesis"
+    )
+    row = {"candidate_method_id": method_id, "method_role": role}
+    if action_path_id == "compare_against_simple_benchmark":
+        row["why_this_method"] = _why_reference_method(method_id)
+    return row
+
+
+def _why_reference_method(method_id: str) -> str:
+    if method_id == "equal_weight":
+        return "Equal Weight is used as a simple concentration benchmark."
+    if method_id == "risk_parity":
+        return "Risk Parity is used as a risk-distribution benchmark."
+    return "This method is used as a transparent reference benchmark."
+
+
+def _card_type(action_path_id: str) -> str:
+    if action_path_id == "compare_against_simple_benchmark":
+        return "reference_benchmark_test"
+    if action_path_id in _NO_USER_ACTION_PATH_IDS:
+        return "monitor_or_data_step"
+    return "targeted_hypothesis_test"
+
+
+def _launch_status(action_path_id: str) -> str:
+    if action_path_id == "compare_against_simple_benchmark":
+        return "reference_test"
+    if action_path_id in _NO_USER_ACTION_PATH_IDS:
+        return "monitor_or_resolve_data"
+    return "hypothesis_test"
+
+
+def _why_this_test(action_path_id: str, problem_row: dict[str, Any] | None) -> str:
+    if action_path_id == "compare_against_simple_benchmark":
+        return (
+            "Immediate rebalance is not justified by current evidence. However, a reference "
+            "comparison against Equal Weight and Risk Parity can test whether the current "
+            "allocation is materially better than simple alternatives."
+        )
+    label = str((problem_row or {}).get("label_en") or "the primary diagnosis")
+    return f"This test is linked to the current diagnosis: {label}."
 
 
 def _card_rationale(problem_row: dict[str, Any] | None) -> dict[str, Any]:
@@ -442,6 +500,10 @@ def _fallback_monitor_card(
         "source_problem_label": primary_row.get("label_en"),
         "rationale": _card_rationale(primary_row),
         "hypothesis_to_test": _hypothesis_to_test("keeping the current portfolio and monitoring", primary_row),
+        "card_type": "monitor_or_data_step",
+        "launch_status": "monitor_or_resolve_data",
+        "is_rebalance_recommendation": False,
+        "why_this_test": "Monitoring is appropriate until evidence justifies a specific diagnostic test.",
         "suggested_methods": [],
         "success_criteria": list(_success_criteria("keep_current_portfolio_and_monitor")),
         "generates_portfolio": False,
@@ -456,6 +518,7 @@ def _fallback_monitor_card(
         "expected_tradeoff_to_check_en": _default_tradeoff("keep_current_portfolio_and_monitor"),
         "tradeoff_to_watch": _default_tradeoff("keep_current_portfolio_and_monitor"),
         "not_a_recommendation_disclaimer_en": LAUNCHPAD_V3_DISCLAIMER_EN,
+        "decision_boundary": DECISION_BOUNDARY_EN,
         "when_to_skip_this_test_en": (
             defn.launchpad_skip_when_en if defn else "N/A - this is the monitor path."
         ),
