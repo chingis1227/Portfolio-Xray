@@ -1323,7 +1323,7 @@ def _append_hedge_gap_exec_summary_lines(exec_para: list[str], st: dict[str, Any
     hg_status = hedge_gap.get("status", _MDASH)
     if hg_status == "not_applicable":
         reason_en = hedge_gap.get("status_reason_en") or hedge_gap.get("status_reason", _MDASH)
-        gap_line = f"Hedge gap (legacy): not applicable — {reason_en}"
+        gap_line = f"Hedge gap: not applicable — {reason_en}"
     elif hg_status == "insufficient_data":
         reason_en = hedge_gap.get("status_reason_en") or hedge_gap.get("status_reason", _MDASH)
         gap_line = (

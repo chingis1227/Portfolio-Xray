@@ -144,6 +144,74 @@ def test_diagnosis_only_materialize_writes_root_tombstones(
     assert verdict.get("selected_candidate_id") is None
 
 
+def test_diagnosis_only_materialize_writes_tombstones_before_shared_context_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cfg = validate_mvp_fixture("minimal_usd_no_cash.yml")
+    cfg.output_dir_final = str(tmp_path / "Main portfolio")
+    variant_root = tmp_path / "Main portfolio"
+    variant_root.mkdir(parents=True, exist_ok=True)
+    (variant_root / "candidate_factory_run.json").write_text(
+        json.dumps({"factory_profile_id": "explicit_list"}),
+        encoding="utf-8",
+    )
+    (variant_root / "candidate_comparison_registry.json").write_text(
+        json.dumps({"candidates": ["equal_weight"]}),
+        encoding="utf-8",
+    )
+    (variant_root / "candidate_comparison.json").write_text(
+        json.dumps({"candidates": [{"candidate_id": "equal_weight"}]}),
+        encoding="utf-8",
+    )
+    (variant_root / "current_vs_candidate.json").write_text(
+        json.dumps({"selected_candidate_ids": ["equal_weight"]}),
+        encoding="utf-8",
+    )
+    (variant_root / "decision_verdict.json").write_text(
+        json.dumps({"selected_candidate_id": "equal_weight"}),
+        encoding="utf-8",
+    )
+
+    def fail_prepare_review_run_context(*_args, **_kwargs):
+        raise TimeoutError("simulated risk-free timeout")
+
+    def fail_if_report_runs(*_args, **_kwargs):
+        raise AssertionError("report should not run after shared context failure")
+
+    monkeypatch.setattr(
+        run_report,
+        "prepare_review_run_context",
+        fail_prepare_review_run_context,
+    )
+    monkeypatch.setattr(
+        run_report,
+        "run_portfolio_report_for_weights",
+        fail_if_report_runs,
+    )
+
+    with pytest.raises(TimeoutError, match="simulated risk-free timeout"):
+        run_report.run_materialize_analysis_subject_report(
+            cfg,
+            run_timestamp="2026-05-29T12:00:00",
+            backtest_mode="dynamic_nan_safe",
+            no_cache=True,
+            review_mode="core",
+            output_profile=OUTPUT_PROFILE_SITE_API,
+            project_root=tmp_path,
+            use_review_run_context=True,
+        )
+
+    assert not (variant_root / "candidate_factory_run.json").exists()
+    assert not (variant_root / "candidate_comparison_registry.json").exists()
+    for name in POST_COMPARE_ROOT_ARTIFACTS:
+        path = variant_root / name
+        assert path.is_file(), f"expected early tombstone artifact {name}"
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        assert doc.get("tombstone") == NO_CANDIDATE_TOMBSTONE, name
+        assert doc.get("artifact_status") == "not_authoritative", name
+
+
 def test_apply_core_blocks_prune_removes_stale_subject_and_root(tmp_path: Path) -> None:
     out = tmp_path / "Main portfolio"
     subject = out / "analysis_subject"

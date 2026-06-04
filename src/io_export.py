@@ -264,6 +264,8 @@ def export_data_policy(
     inner_join_months_used: int | None = None,
     n_months_redistributed: int | None = None,
     n_months_cash_fallback: int | None = None,
+    risk_free_metadata: dict[str, Any] | None = None,
+    risk_free_warnings: list[str] | tuple[str, ...] | None = None,
 ) -> Path:
     """
     Export data policy / backtest mode section for reports.
@@ -276,6 +278,12 @@ def export_data_policy(
         "inner_join_months_used_for_risk": inner_join_months_used,
         "n_months_redistributed": n_months_redistributed,
         "n_months_cash_fallback": n_months_cash_fallback,
+        "risk_free_fallback_used": bool(
+            (risk_free_metadata or {}).get("risk_free_fallback_used", False)
+        ),
+        "risk_free_fallback_reason": (risk_free_metadata or {}).get("risk_free_fallback_reason"),
+        "risk_free_data_provenance": dict(risk_free_metadata or {}),
+        "warnings": list(risk_free_warnings or []),
     }
     path = output_dir / "data_policy.json"
     with open(path, "w", encoding="utf-8") as f:

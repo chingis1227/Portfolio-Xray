@@ -216,6 +216,24 @@ def test_default_plan_materializes_subject_before_candidates(tmp_path: Path) -> 
     assert "--review-mode" in plan.steps[0].argv
     assert "core" in plan.steps[0].argv
     assert "--use-review-run-context" in plan.steps[0].argv
+    assert "--no-review-run-context" not in plan.steps[0].argv
+
+
+def test_core_skip_candidates_plan_disables_review_run_context(tmp_path: Path) -> None:
+    plan = build_portfolio_review_plan(
+        _cfg(),
+        project_root=tmp_path,
+        review_mode="core",
+        skip_candidates=True,
+        skip_compare=True,
+        skip_pdf=True,
+    )
+
+    subject_argv = plan.steps[0].argv
+    assert [step.stage for step in plan.steps] == ["diagnosis"]
+    assert "--materialize-analysis-subject" in subject_argv
+    assert "--no-review-run-context" in subject_argv
+    assert "--use-review-run-context" not in subject_argv
 
 
 def test_full_mode_plan_materializes_subject_with_full_review_mode(tmp_path: Path) -> None:
@@ -262,6 +280,8 @@ def test_skip_candidates_and_skip_compare_is_product_diagnosis_only(tmp_path: Pa
     )
 
     assert [step.stage for step in plan.steps] == ["diagnosis"]
+    assert "--no-review-run-context" in plan.steps[0].argv
+    assert "--use-review-run-context" not in plan.steps[0].argv
     assert plan.workflow_state.state == WORKFLOW_STATE_DIAGNOSIS_ONLY
     assert plan.runtime_mode == RUNTIME_MODE_PRODUCT_DIAGNOSIS_ONLY
 

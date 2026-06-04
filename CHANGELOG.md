@@ -4,6 +4,12 @@ This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.
 
+Date: 2026-06-05
+
+Category: Fixed
+
+- **Blocks 3-5 handoff remediation Session 03:** diagnosis-only `analysis_subject` materialization can recover from temporary FRED `DTB3` risk-free timeouts by using an approved cached risk-free series. The fallback is cache-only, source/currency/frequency/coverage-gated, disabled by `--no-cache`, and disclosed through `risk_free_fallback_used`, `risk_free_fallback_reason: fred_timeout_cached_rf`, provenance, warnings, and cache metadata. Focused tests: `tests/test_data_cache_key.py tests/test_product_bundle_integration.py` (**8 passed**).
+
 Date: 2026-06-04
 
 Category: Changed

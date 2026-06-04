@@ -146,8 +146,15 @@ def test_resolve_analysis_subject_report_profile_by_review_mode() -> None:
 
 
 def test_should_use_review_run_context_for_subject_defaults() -> None:
-    assert run_report.should_use_review_run_context_for_subject(review_mode="core") is True
+    assert run_report.should_use_review_run_context_for_subject(review_mode="core") is False
     assert run_report.should_use_review_run_context_for_subject(review_mode="full") is False
+    assert (
+        run_report.should_use_review_run_context_for_subject(
+            review_mode="core",
+            use_review_run_context=True,
+        )
+        is True
+    )
     assert (
         run_report.should_use_review_run_context_for_subject(
             review_mode="core",
@@ -157,7 +164,7 @@ def test_should_use_review_run_context_for_subject_defaults() -> None:
     )
 
 
-def test_run_materialize_analysis_subject_core_passes_lightweight_and_context(
+def test_run_materialize_analysis_subject_core_can_opt_into_lightweight_context(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     cfg = validate_config(
@@ -213,6 +220,7 @@ def test_run_materialize_analysis_subject_core_passes_lightweight_and_context(
         no_cache=True,
         review_mode="core",
         project_root=tmp_path,
+        use_review_run_context=True,
     )
 
     assert returned is review_ctx
@@ -223,6 +231,62 @@ def test_run_materialize_analysis_subject_core_passes_lightweight_and_context(
     sidecar = tmp_path / "Main portfolio" / "analysis_subject"
     assert sidecar_meets_minimum(sidecar, expected_portfolio_role="user_current_portfolio")
     assert analysis_subject_meets_minimum(tmp_path / "Main portfolio") is True
+
+
+def test_run_materialize_analysis_subject_core_can_skip_review_context(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cfg = validate_config(
+        {
+            "investor_currency": "USD",
+            "tickers": ["VOO", "BND"],
+            "output_dir_final": str(tmp_path / "Main portfolio"),
+            "analysis_subject": {
+                "type": "current_portfolio",
+                "weights": {"VOO": 0.55, "BND": 0.45},
+            },
+        }
+    )
+    calls: list[dict] = []
+
+    def fail_if_prepare_review_run_context(*args, **kwargs):
+        raise AssertionError("prepare_review_run_context must not run")
+
+    def fake_run_portfolio_report_for_weights(*args, **kwargs):
+        calls.append(kwargs)
+        out = kwargs["output_dir_final"]
+        (out / "run_metadata.json").write_text(
+            json.dumps({"analysis_setup": {"analysis_subject": {"type": "current_portfolio"}}}),
+            encoding="utf-8",
+        )
+        return {}, {"portfolio_valid": True}
+
+    monkeypatch.setattr(
+        run_report,
+        "prepare_review_run_context",
+        fail_if_prepare_review_run_context,
+    )
+    monkeypatch.setattr(
+        run_report,
+        "run_portfolio_report_for_weights",
+        fake_run_portfolio_report_for_weights,
+    )
+
+    returned = run_report.run_materialize_analysis_subject_report(
+        cfg,
+        run_timestamp="2026-05-18T10:00:00",
+        backtest_mode="dynamic_nan_safe",
+        no_cache=True,
+        review_mode="core",
+        project_root=tmp_path,
+        use_review_run_context=False,
+    )
+
+    assert returned is None
+    assert len(calls) == 1
+    assert calls[0]["report_profile"] == REPORT_PROFILE_LIGHTWEIGHT
+    assert calls[0]["run_context"] is None
+    assert calls[0]["enable_report_timing"] is False
 
 
 def test_analysis_subject_lightweight_profile_still_allows_kalman_path() -> None:

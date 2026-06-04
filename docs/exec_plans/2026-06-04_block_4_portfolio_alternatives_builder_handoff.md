@@ -1,4 +1,6 @@
-﻿# Block 4 to Portfolio Alternatives Builder Handoff
+# Block 4 to Portfolio Alternatives Builder Handoff
+
+> Supersession note, 2026-06-04: This focused handoff plan is retained as supporting evidence for the single active ExecPlan `docs/exec_plans/2026-06-04_blocks_3_5_integration_readiness_audit_plan.md`. Do not treat this file as a separate active plan unless the user explicitly reopens it. Its completed Sessions 04-07 are imported into the canonical Blocks 3-5 product handoff audit as evidence for Launchpad -> Builder prefill and live diagnosis-only proof.
 
 This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 

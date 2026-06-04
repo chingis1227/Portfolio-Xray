@@ -94,6 +94,12 @@ Provider selection:
 - yfinance's own SQLite metadata/cache files are pinned under `cache/yfinance/` by `src/data_yf.py`
   so Yahoo factor proxies do not fail because the operating-system default cache directory is
   unavailable.
+- Diagnosis-only `analysis_subject` materialization may use an approved cached risk-free series
+  when fresh FRED `DTB3` times out. This fallback is allowed only when cache is enabled and the
+  cached series metadata matches the requested risk-free source, investor currency, return
+  frequency, and covers the analysis-effective end date. It is never silent: `run_metadata.json`,
+  `data_policy.json`, cache metadata, and logs expose `risk_free_fallback_used: true`,
+  `risk_free_fallback_reason: fred_timeout_cached_rf`, and an operator warning.
 
 ## Core Data Rules
 
@@ -123,6 +129,9 @@ Missing data must be handled explicitly:
 - Young ETFs must not truncate the entire portfolio history to the youngest inception date.
 - Insufficient data should produce clear errors, warnings, fallback metadata, or quality flags.
 - Failed data source calls should not silently produce misleading complete outputs.
+- For diagnosis-only FRED `DTB3` timeouts, the approved cached risk-free fallback may keep the run
+  operational only when the cache criteria above pass. If no approved cached series exists, or
+  `--no-cache` is used, the command must fail clearly instead of fabricating a risk-free series.
 - If investor-currency risk-free data is required and neither an explicit source nor a supported
   currency default exists, the pipeline must fail fast rather than guess.
 
@@ -148,6 +157,9 @@ Risk-free:
 - Supported built-in risk-free defaults are USD -> FRED `DTB3` and EUR -> ECB `€STR`, where
   configured by the metrics spec.
 - Risk-free series must be converted/resampled to the relevant metric frequency.
+- FRED `DTB3` timeout fallback is cache-only, diagnosis-only, and provenance-visible. The fallback
+  reuses a previously cached risk-free series; it does not synthesize rates, change formulas, or
+  make candidate generation automatic.
 - If investor currency is not covered by a built-in default and no explicit risk-free source exists,
   the pipeline must not guess.
 

@@ -265,21 +265,21 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "Portfolio review mode for --materialize-analysis-subject: core uses "
-            "lightweight_comparison + shared ReviewRunContext; full uses full report profile."
+            "lightweight_comparison; full uses full report profile."
         ),
     )
     parser.add_argument(
         "--use-review-run-context",
         action="store_true",
         help=(
-            "Preload ReviewRunContext (shared monthly/macro/PCA) before analysis_subject report. "
-            "Default when --review-mode core."
+            "Opt in to preloading ReviewRunContext (shared monthly/macro/PCA) before "
+            "analysis_subject report."
         ),
     )
     parser.add_argument(
         "--no-review-run-context",
         action="store_true",
-        help="Disable shared ReviewRunContext even when --review-mode core.",
+        help="Explicitly disable shared ReviewRunContext for analysis_subject materialization.",
     )
     parser.add_argument(
         "--core-diagnostics-only",
@@ -302,6 +302,8 @@ def build_derived_assumptions(
     *,
     returns_frequency: str | None = None,
     periods_per_year: int = 12,
+    risk_free_metadata: dict | None = None,
+    risk_free_warnings: list[str] | tuple[str, ...] | None = None,
 ) -> dict:
     """
     Build dictionary of derived assumptions used in the run.
@@ -329,6 +331,12 @@ def build_derived_assumptions(
         "main_metrics_returns_frequency_forced": freq_res.forced_to_monthly,
         "periods_per_year": periods_per_year,
         "analysis_end_rule": analysis_end_rule_description(rf_mode),
+        "risk_free_fallback_used": bool(
+            (risk_free_metadata or {}).get("risk_free_fallback_used", False)
+        ),
+        "risk_free_fallback_reason": (risk_free_metadata or {}).get("risk_free_fallback_reason"),
+        "risk_free_data_provenance": dict(risk_free_metadata or {}),
+        "risk_free_warnings": list(risk_free_warnings or []),
     }
     return derived
 
@@ -357,6 +365,7 @@ def run_portfolio_report_for_weights(
     product_bundle_scope: str | None = None,
     run_context: CandidateRunContext | ReviewRunContext | None = None,
     enable_report_timing: bool | None = None,
+    allow_risk_free_cached_fallback: bool = False,
 ) -> tuple[dict | None, dict]:
     """
     Core metrics/stress/report pipeline, parameterized by explicit weights and output dirs.
@@ -452,6 +461,7 @@ def run_portfolio_report_for_weights(
             local_benchmark_map=local_benchmark_map,
             returns_frequency=freq_res.configured,
             data_provider=getattr(cfg, "market_data_provider", None),
+            allow_risk_free_cached_fallback=allow_risk_free_cached_fallback,
         )
     monthly_prices = data.monthly_prices
     monthly_returns = data.monthly_returns
@@ -471,6 +481,10 @@ def run_portfolio_report_for_weights(
     cash_returns = truncate_to_analysis_end(cash_returns, analysis_end)
     daily_cache_key = data.daily_cache_key
     monthly_cache_key = data.monthly_cache_key
+    risk_free_metadata = dict(data.risk_free_metadata or {})
+    risk_free_warnings = list(data.risk_free_warnings or [])
+    for warning in risk_free_warnings:
+        logger.warning("Risk-free data warning: %s", warning)
     returns_frequency = normalize_returns_frequency(data.returns_frequency)
     configured_returns_frequency = normalize_returns_frequency(data.configured_returns_frequency)
     freq_res = resolve_returns_frequencies(configured_returns_frequency)
@@ -579,6 +593,8 @@ def run_portfolio_report_for_weights(
             inner_join_months_used=inner_join_months_used,
             n_months_redistributed=backtest_diagnostics.get("n_months_redistributed") if backtest_diagnostics else None,
             n_months_cash_fallback=backtest_diagnostics.get("n_months_cash_fallback") if backtest_diagnostics else None,
+            risk_free_metadata=risk_free_metadata,
+            risk_free_warnings=risk_free_warnings,
         )
 
         # Log data availability summary
@@ -2298,6 +2314,8 @@ def run_portfolio_report_for_weights(
         windows_months,
         returns_frequency=returns_frequency,
         periods_per_year=ppy,
+        risk_free_metadata=risk_free_metadata,
+        risk_free_warnings=risk_free_warnings,
     )
     resolved_weights_source = weights_source or getattr(cfg, "weights_source", None)
     analysis_setup = build_analysis_setup(
@@ -2744,8 +2762,7 @@ def should_use_review_run_context_for_subject(
 ) -> bool:
     if use_review_run_context is not None:
         return use_review_run_context
-    mode = (review_mode or "core").strip().lower()
-    return mode == "core"
+    return False
 
 
 def should_skip_kalman_for_lightweight_run(
@@ -2789,6 +2806,32 @@ def run_materialize_analysis_subject_report(
     subject_csv = subject_final / "results_csv"
     subject = materialization["subject"]
 
+    if core_diagnostics_only:
+        from src.product_bundle_hygiene import apply_core_blocks_product_bundle_hygiene
+
+        early_prune = apply_core_blocks_product_bundle_hygiene(
+            output_dir_final,
+            subject_dir=subject_final,
+        )
+        logger.info(
+            "Early Core Blocks 1–3 product bundle hygiene (removed subject=%d, root=%d stale files).",
+            len(early_prune.get("removed_subject_block4") or []),
+            len(early_prune.get("removed_root_post_compare") or []),
+        )
+    else:
+        from src.product_bundle_hygiene import apply_diagnosis_only_product_bundle_hygiene
+
+        early_hygiene = apply_diagnosis_only_product_bundle_hygiene(
+            output_dir_final,
+            analysis_end=None,
+            investor_currency=str(getattr(cfg, "investor_currency", "USD")),
+        )
+        logger.info(
+            "Early diagnosis-only product bundle hygiene (tombstone=%s, removed=%d stale files).",
+            early_hygiene.get("tombstone"),
+            len(early_hygiene.get("removed_stale") or []),
+        )
+
     resolved_profile = resolve_analysis_subject_report_profile(
         review_mode=review_mode,
         report_profile=report_profile,
@@ -2805,6 +2848,7 @@ def run_materialize_analysis_subject_report(
             cfg,
             project_root=root,
             no_cache=no_cache,
+            allow_risk_free_cached_fallback=True,
         )
 
     logger.info(
@@ -2838,6 +2882,7 @@ def run_materialize_analysis_subject_report(
         product_bundle_scope=bundle_scope,
         run_context=shared_context if want_shared_context else None,
         enable_report_timing=want_shared_context,
+        allow_risk_free_cached_fallback=True,
     )
     if core_diagnostics_only:
         from src.product_bundle_hygiene import apply_core_blocks_product_bundle_hygiene

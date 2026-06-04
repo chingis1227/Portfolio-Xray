@@ -481,6 +481,7 @@ def prepare_candidate_run_context(
     no_cache: bool = False,
     preload_factor_stress: bool = True,
     preload_invariant_metrics: bool = True,
+    allow_risk_free_cached_fallback: bool = False,
 ) -> CandidateRunContext:
     """
     Load monthly panel once and optionally build invariant factor/scenario inputs.
@@ -504,6 +505,7 @@ def prepare_candidate_run_context(
         local_benchmark_map=local_benchmark_map,
         returns_frequency=getattr(cfg, "returns_frequency", None),
         data_provider=getattr(cfg, "market_data_provider", None),
+        allow_risk_free_cached_fallback=allow_risk_free_cached_fallback,
     )
     primary_window = cfg.windows_months[-1] if cfg.windows_months else 120
     lam, lam_src = resolve_robust_mv_lambda_for_baseline(
@@ -604,6 +606,7 @@ def prepare_review_run_context(
     *,
     project_root: Path,
     no_cache: bool = False,
+    allow_risk_free_cached_fallback: bool = False,
 ) -> ReviewRunContext:
     """
     Load shared monthly/daily panels, weekly factor frames, and macro indicator panel
@@ -615,6 +618,7 @@ def prepare_review_run_context(
         no_cache=no_cache,
         preload_factor_stress=True,
         preload_invariant_metrics=True,
+        allow_risk_free_cached_fallback=allow_risk_free_cached_fallback,
     )
     macro_panel: pd.DataFrame | None = None
     macro_panel_meta: dict[str, Any] | None = None

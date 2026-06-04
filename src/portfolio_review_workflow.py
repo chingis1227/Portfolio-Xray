@@ -170,8 +170,11 @@ def build_portfolio_review_plan(
         resolved_mode,
         *cache_flags,
     ]
-    if resolved_mode == "core":
+    use_shared_review_context = resolved_mode == "core" and not skip_candidates
+    if use_shared_review_context:
         subject_argv.append("--use-review-run-context")
+    elif resolved_mode == "core":
+        subject_argv.append("--no-review-run-context")
     add(
         "diagnosis",
         f"Materialize {subject_type} diagnostics",

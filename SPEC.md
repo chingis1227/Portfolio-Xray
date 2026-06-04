@@ -276,6 +276,12 @@ The data-layer map is [DATA.md](DATA.md). Keep it aligned when data sources, exp
 injects `analysis_subject.type = current_portfolio` and
 `analysis_mode = analyze_current_weights`. For USD/EUR Core MVP, `risk_free_source`,
 `cash_proxy_ticker`, and `base_benchmark_ticker` resolve via `src/config.py` when omitted.
+During diagnosis-only `analysis_subject` materialization, a temporary FRED `DTB3` timeout may use an
+approved cached risk-free series only when cache is enabled, the cached metadata matches the
+requested risk-free source, investor currency, and return frequency, and cached observations cover
+the analysis-effective end date. That fallback is provenance-visible through
+`risk_free_fallback_used: true`, `risk_free_fallback_reason: fred_timeout_cached_rf`, and operator
+warnings in `run_metadata.json` / `data_policy.json`; absent approved cache still fails clearly.
 `client_profile`, liquidity floors, `portfolio_value`, and mandate caps are **not** required for
 the diagnosis path; they remain `legacy_advanced` tiers for `run_optimization.py` and full mandate
 runs.
@@ -372,6 +378,9 @@ weights, or mandate gates.
 - Use adjusted close prices and convert FX before returns.
 - Compute `analysis_end` as the last completed effective period before today according to the metrics spec.
 - Align series using the rules in the relevant metric, beta, covariance, correlation, RC_vol, stress, or data spec.
+- Risk-free cache fallback must be explicit: it may be used only for approved cached FRED `DTB3`
+  timeout recovery on diagnosis-only materialization, and must disclose machine-readable fallback
+  metadata plus operator warnings.
 - Preserve full precision internally and round only at final export/report stage.
 - Do not invent formulas, scenarios, estimators, constraints, or statuses when a canonical spec exists.
 - In the portfolio-first workflow, diagnose `analysis_subject` before generating candidates or
