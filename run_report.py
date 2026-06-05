@@ -304,6 +304,8 @@ def build_derived_assumptions(
     periods_per_year: int = 12,
     risk_free_metadata: dict | None = None,
     risk_free_warnings: list[str] | tuple[str, ...] | None = None,
+    factor_data_metadata: dict | None = None,
+    factor_data_warnings: list[str] | tuple[str, ...] | None = None,
 ) -> dict:
     """
     Build dictionary of derived assumptions used in the run.
@@ -337,8 +339,61 @@ def build_derived_assumptions(
         "risk_free_fallback_reason": (risk_free_metadata or {}).get("risk_free_fallback_reason"),
         "risk_free_data_provenance": dict(risk_free_metadata or {}),
         "risk_free_warnings": list(risk_free_warnings or []),
+        "factor_data_fallback_used": bool(
+            (factor_data_metadata or {}).get("factor_data_fallback_used", False)
+        ),
+        "factor_data_fallback_reason": (factor_data_metadata or {}).get("factor_data_fallback_reason"),
+        "factor_data_provenance": dict(factor_data_metadata or {}),
+        "factor_data_warnings": list(factor_data_warnings or []),
     }
     return derived
+
+
+def _factor_data_metadata_from_diagnostics(
+    factor_diagnostics_meta: dict[str, Any] | None,
+) -> tuple[dict[str, Any], list[str]]:
+    """Extract cached factor-data fallback metadata for data policy and run metadata."""
+    if not isinstance(factor_diagnostics_meta, dict):
+        return {}, []
+    load_diag = factor_diagnostics_meta.get("factor_load_diagnostics")
+    if not isinstance(load_diag, dict) or not load_diag.get("factor_data_fallback_used"):
+        return {}, []
+    warnings = [str(x) for x in load_diag.get("warnings") or []]
+    metadata = {
+        "factor_data_fallback_used": True,
+        "factor_data_fallback_reason": load_diag.get("factor_data_fallback_reason"),
+        "factor_data_source_used": load_diag.get("factor_data_source_used"),
+        "factor_data_provenance": load_diag.get("factor_data_provenance") or {},
+        "cache_validity_policy": load_diag.get("cache_validity_policy") or {},
+    }
+    return metadata, warnings
+
+
+def _merge_factor_data_policy_metadata(
+    output_dir: Path,
+    *,
+    factor_data_metadata: dict[str, Any],
+    factor_data_warnings: list[str],
+) -> None:
+    """Append factor cache fallback disclosures to an already-written data_policy.json."""
+    if not factor_data_metadata.get("factor_data_fallback_used"):
+        return
+    path = output_dir / "data_policy.json"
+    if not path.is_file():
+        return
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return
+    data["factor_data_fallback_used"] = True
+    data["factor_data_fallback_reason"] = factor_data_metadata.get("factor_data_fallback_reason")
+    data["factor_data_provenance"] = dict(factor_data_metadata)
+    warnings = list(data.get("warnings") or [])
+    for warning in factor_data_warnings:
+        if warning not in warnings:
+            warnings.append(warning)
+    data["warnings"] = warnings
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def regime_mar_daily_from_annual(mar_annual: float | None) -> float | None:
@@ -2305,6 +2360,15 @@ def run_portfolio_report_for_weights(
     # STEP 10: Export run metadata
     # =========================================================================
 
+    factor_data_metadata, factor_data_warnings = _factor_data_metadata_from_diagnostics(
+        factor_diagnostics_meta
+    )
+    _merge_factor_data_policy_metadata(
+        output_dir_final,
+        factor_data_metadata=factor_data_metadata,
+        factor_data_warnings=factor_data_warnings,
+    )
+
     derived_assumptions = build_derived_assumptions(
         cfg,
         cash_proxy_ticker,
@@ -2316,6 +2380,8 @@ def run_portfolio_report_for_weights(
         periods_per_year=ppy,
         risk_free_metadata=risk_free_metadata,
         risk_free_warnings=risk_free_warnings,
+        factor_data_metadata=factor_data_metadata,
+        factor_data_warnings=factor_data_warnings,
     )
     resolved_weights_source = weights_source or getattr(cfg, "weights_source", None)
     analysis_setup = build_analysis_setup(

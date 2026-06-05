@@ -9,13 +9,16 @@ USD (DTWEXBGS), commodities (DBC/PDBC).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import json
 import logging
 from pathlib import Path
+import re
 from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
+from src.cache import CACHE_DIR, load_cache_meta, save_cache_meta
 from scipy import stats
 
 from src.data_fred import fetch_fred_series
@@ -147,6 +150,34 @@ FRED_VIX = "VIXCLS"
 FRED_US_GROWTH = "WEI"
 FRED_WTI_OIL = "DCOILWTICO"
 
+FRED_FACTOR_SERIES_IDS: tuple[str, ...] = (
+    FRED_EQUITY_LEVEL,
+    FRED_REAL_10Y,
+    FRED_BREAKEVEN_10Y,
+    FRED_HY_SPREAD,
+    FRED_CREDIT_SPREAD_FALLBACK,
+    FRED_DXY,
+    FRED_VIX,
+    FRED_US_GROWTH,
+    FRED_WTI_OIL,
+)
+FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA = "fred_timeout_cached_factor_data"
+FACTOR_DATA_FALLBACK_WARNING_CODE = (
+    f"factor_data_fallback_used:{FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA}"
+)
+FACTOR_DATA_FALLBACK_WARNING = "FRED factor source timed out; using approved cached factor data."
+FACTOR_CACHE_MAX_AGE_DAYS = 7
+FACTOR_CACHE_SCHEMA_VERSION = "fred_factor_series_cache_v1"
+FACTOR_CACHE_FREQUENCIES = ("daily_raw", "weekly_w_fri", "monthly_end")
+
+
+class FactorDataUnavailableError(RuntimeError):
+    """Raised when full factor data cannot be fetched or approved from cache."""
+
+
+class FactorCacheValidationError(RuntimeError):
+    """Raised when a cached factor series exists but fails approval checks."""
+
 # ETF proxies (preferred for equity/commodity when available)
 ETF_EQUITY = "SPY"
 ETF_COMMODITY = "DBC"
@@ -168,6 +199,213 @@ def _empty_factor_series(reason: str) -> pd.Series:
     cleaned_reason = str(reason).encode("ascii", errors="ignore").decode("ascii").strip()
     series.attrs["load_error"] = cleaned_reason or "factor_loader_failed"
     return series
+
+
+def _exception_looks_like_timeout(exc: BaseException) -> bool:
+    stack: list[BaseException] = [exc]
+    seen: set[int] = set()
+    while stack:
+        cur = stack.pop()
+        ident = id(cur)
+        if ident in seen:
+            continue
+        seen.add(ident)
+        if isinstance(cur, TimeoutError):
+            return True
+        msg = str(cur).lower()
+        if "timed out" in msg or "timeout" in msg:
+            return True
+        cause = getattr(cur, "__cause__", None)
+        context = getattr(cur, "__context__", None)
+        if isinstance(cause, BaseException):
+            stack.append(cause)
+        if isinstance(context, BaseException):
+            stack.append(context)
+    return False
+
+
+def _factor_cache_root() -> Path:
+    return CACHE_DIR / "factors"
+
+
+def _safe_factor_cache_name(series_id: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]+", "_", str(series_id)).strip("_") or "unknown"
+
+
+def _factor_cache_path(series_id: str) -> Path:
+    return _factor_cache_root() / f"v_{_safe_factor_cache_name(series_id)}"
+
+
+def _coerce_factor_series(series: pd.Series) -> pd.Series:
+    out = series.copy()
+    out.index = pd.to_datetime(out.index).tz_localize(None)
+    return out.astype(float).sort_index().dropna()
+
+
+def _series_date_str(series: pd.Series, attr: str) -> str | None:
+    if series.empty:
+        return None
+    value = getattr(series.index, attr)()
+    return pd.Timestamp(value).strftime("%Y-%m-%d")
+
+
+def _save_fred_factor_series_cache(series_id: str, series: pd.Series) -> None:
+    """Persist raw FRED factor data separately from risk-free/monthly panel cache."""
+    if series is None or series.empty:
+        return
+    cache_path = _factor_cache_path(series_id)
+    cleaned = _coerce_factor_series(series)
+    if cleaned.empty:
+        return
+    cache_path.mkdir(parents=True, exist_ok=True)
+    cleaned.to_frame("value").to_parquet(cache_path / "series.parquet")
+    save_cache_meta(
+        cache_path,
+        {
+            "schema_version": FACTOR_CACHE_SCHEMA_VERSION,
+            "series_id": str(series_id),
+            "source": f"FRED:{series_id}",
+            "observation_start": _series_date_str(cleaned, "min"),
+            "observation_end": _series_date_str(cleaned, "max"),
+            "observations": int(cleaned.shape[0]),
+            "max_cache_age_days": FACTOR_CACHE_MAX_AGE_DAYS,
+            "supported_frequency_alignment": list(FACTOR_CACHE_FREQUENCIES),
+        },
+    )
+
+
+def _load_approved_cached_fred_factor_series(
+    series_id: str,
+    start: str,
+    end: str,
+) -> pd.Series:
+    """
+    Load a cached raw FRED series only when it satisfies the full factor policy.
+
+    Approval requires a recent cache, matching source, raw observations covering
+    the requested start/end date range, and enough data to rebuild the canonical
+    daily/weekly/monthly factor transforms. Partial cache is not approved here:
+    callers may use this cached series only for the specific timed-out series;
+    every other required series must be fetched live or independently approved.
+    """
+    cache_path = _factor_cache_path(series_id)
+    cache_key = _safe_factor_cache_name(series_id)
+    if not cache_path.is_dir():
+        raise FactorDataUnavailableError(
+            f"FRED factor fetch timed out for {series_id}; no approved cached factor data "
+            f"found at {cache_path}."
+        )
+    meta = load_cache_meta(cache_path) or {}
+    cfg = meta.get("config") if isinstance(meta.get("config"), dict) else {}
+    now = datetime.now(timezone.utc)
+    created_raw = meta.get("created_at")
+    try:
+        created_at = pd.Timestamp(created_raw) if created_raw else None
+        if created_at is not None:
+            created_at = created_at.tz_localize("UTC") if created_at.tzinfo is None else created_at.tz_convert("UTC")
+    except Exception:
+        created_at = None
+    if created_at is None:
+        raise FactorCacheValidationError(f"cached factor data for {series_id} has no valid created_at")
+    age_days = (pd.Timestamp(now) - created_at).total_seconds() / 86400.0
+    if age_days > FACTOR_CACHE_MAX_AGE_DAYS:
+        raise FactorCacheValidationError(
+            f"cached factor data for {series_id} is expired: age_days={age_days:.2f}, "
+            f"max_cache_age_days={FACTOR_CACHE_MAX_AGE_DAYS}"
+        )
+    if cfg.get("schema_version") != FACTOR_CACHE_SCHEMA_VERSION:
+        raise FactorCacheValidationError(f"cached factor data for {series_id} has invalid schema")
+    if str(cfg.get("series_id")) != str(series_id):
+        raise FactorCacheValidationError(f"cached factor data series mismatch for {series_id}")
+    freqs = set(cfg.get("supported_frequency_alignment") or [])
+    if not set(FACTOR_CACHE_FREQUENCIES).issubset(freqs):
+        raise FactorCacheValidationError(f"cached factor data for {series_id} lacks required frequency alignment metadata")
+    series_path = cache_path / "series.parquet"
+    if not series_path.is_file():
+        raise FactorDataUnavailableError(f"cached factor data for {series_id} is missing series.parquet")
+    frame = pd.read_parquet(series_path)
+    if "value" not in frame.columns:
+        raise FactorCacheValidationError(f"cached factor data for {series_id} is missing value column")
+    series = _coerce_factor_series(frame["value"])
+    if series.empty or len(series) < 2:
+        raise FactorCacheValidationError(f"cached factor data for {series_id} has too few observations")
+    start_ts = pd.Timestamp(start).normalize()
+    end_ts = pd.Timestamp(end).normalize()
+    cached_start = pd.Timestamp(series.index.min()).normalize()
+    cached_end = pd.Timestamp(series.index.max()).normalize()
+    if cached_start > start_ts or cached_end < end_ts:
+        raise FactorCacheValidationError(
+            f"cached factor data for {series_id} does not cover requested range "
+            f"{start_ts.date()}..{end_ts.date()} (cached {cached_start.date()}..{cached_end.date()})"
+        )
+    out = series.loc[(series.index >= start_ts) & (series.index <= end_ts)].copy()
+    out.attrs.update(
+        {
+            "factor_source": f"FRED:{series_id}",
+            "fallback_used": True,
+            "fallback_reason": FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA,
+            "factor_data_fallback_used": True,
+            "factor_data_fallback_reason": FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA,
+            "factor_data_source_used": "approved_cached_factor_series",
+            "factor_data_cache_key": cache_key,
+            "factor_data_cache_path": str(cache_path),
+            "factor_data_cache_created_at": created_raw,
+            "factor_data_cached_observation_start": _series_date_str(series, "min"),
+            "factor_data_cached_observation_end": _series_date_str(series, "max"),
+            "factor_data_warning": FACTOR_DATA_FALLBACK_WARNING,
+        }
+    )
+    return out
+
+
+def _fetch_fred_factor_series(series_id: str, start: str, end: str) -> pd.Series:
+    """Fetch raw FRED factor data, or use approved cache only for timeout failures."""
+    try:
+        series = fetch_fred_series(series_id, start, end)
+        if series is not None and not series.empty:
+            _save_fred_factor_series_cache(series_id, series)
+        return series
+    except Exception as exc:
+        if not _exception_looks_like_timeout(exc):
+            raise
+        try:
+            return _load_approved_cached_fred_factor_series(series_id, start, end)
+        except Exception as cache_exc:
+            raise FactorDataUnavailableError(
+                f"FRED factor fetch timed out for FRED:{series_id}; no valid approved factor cache "
+                "was available. Approval requires max_cache_age_days="
+                f"{FACTOR_CACHE_MAX_AGE_DAYS}, requested date coverage, supported daily/weekly/monthly "
+                "frequency alignment metadata, and matching series provenance."
+            ) from cache_exc
+
+
+def factor_cache_validity_policy() -> dict[str, Any]:
+    """Return the approved full factor cache policy for metadata and tests."""
+    return {
+        "max_cache_age_days": FACTOR_CACHE_MAX_AGE_DAYS,
+        "required_series_coverage": (
+            "Each required FRED-backed full-matrix series must be fetched live or have an "
+            "approved cache entry. Credit may use FRED:BAA10Y only under the existing "
+            "HY OAS insufficient-coverage fallback rule."
+        ),
+        "min_date_range": "Cached raw observations must cover the requested start and end dates.",
+        "required_frequency_alignment": list(FACTOR_CACHE_FREQUENCIES),
+        "partial_cache_behavior": (
+            "A partial cache is not a successful full calculation by itself: missing series must "
+            "fetch live successfully or the run fails with the missing/timed-out series named."
+        ),
+    }
+
+
+def _apply_raw_factor_attrs(transformed: pd.Series, raw: pd.Series, *, source: str) -> pd.Series:
+    out = transformed.copy()
+    raw_attrs = dict(getattr(raw, "attrs", {}) or {})
+    out.attrs.update(raw_attrs)
+    out.attrs.setdefault("factor_source", source)
+    if raw_attrs.get("factor_data_fallback_used"):
+        out.attrs["fallback_used"] = True
+        out.attrs["fallback_reason"] = FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA
+    return out
 
 
 def _with_empty_factor_reason(series: pd.Series, reason: str) -> pd.Series:
@@ -217,22 +455,28 @@ def _business_daily_last(series: pd.Series) -> pd.Series:
 
 def _fred_daily_pct_change(series_id: str, start: str, end: str) -> pd.Series:
     try:
-        s = fetch_fred_series(series_id, start, end)
+        s = _fetch_fred_factor_series(series_id, start, end)
         if s.empty or len(s) < 2:
             return _empty_factor_series(f"FRED:{series_id}:empty_or_too_short")
         d = _business_daily_last(s)
-        return _with_empty_factor_reason(d.pct_change().dropna(), f"FRED:{series_id}:no_daily_pct_changes")
+        out = _with_empty_factor_reason(d.pct_change().dropna(), f"FRED:{series_id}:no_daily_pct_changes")
+        return _apply_raw_factor_attrs(out, s, source=f"FRED:{series_id}")
+    except FactorDataUnavailableError:
+        raise
     except Exception as exc:
         return _empty_factor_series(f"FRED:{series_id}:{type(exc).__name__}:{exc}")
 
 
 def _fred_daily_decimal_diff(series_id: str, start: str, end: str) -> pd.Series:
     try:
-        s = fetch_fred_series(series_id, start, end)
+        s = _fetch_fred_factor_series(series_id, start, end)
         if s.empty or len(s) < 2:
             return _empty_factor_series(f"FRED:{series_id}:empty_or_too_short")
         d = _business_daily_last(s)
-        return _with_empty_factor_reason((d / 100.0).diff().dropna(), f"FRED:{series_id}:no_daily_diffs")
+        out = _with_empty_factor_reason((d / 100.0).diff().dropna(), f"FRED:{series_id}:no_daily_diffs")
+        return _apply_raw_factor_attrs(out, s, source=f"FRED:{series_id}")
+    except FactorDataUnavailableError:
+        raise
     except Exception as exc:
         return _empty_factor_series(f"FRED:{series_id}:{type(exc).__name__}:{exc}")
 
@@ -250,30 +494,39 @@ def _yahoo_daily_return(ticker: str, start: str, end: str) -> pd.Series:
 
 def _fred_weekly_pct_change(series_id: str, start: str, end: str) -> pd.Series:
     try:
-        s = fetch_fred_series(series_id, start, end)
+        s = _fetch_fred_factor_series(series_id, start, end)
         if s.empty or len(s) < 2:
             return _empty_factor_series(f"FRED:{series_id}:empty_or_too_short")
-        return _with_empty_factor_reason(_week_end(s).pct_change().dropna(), f"FRED:{series_id}:no_weekly_pct_changes")
+        out = _with_empty_factor_reason(_week_end(s).pct_change().dropna(), f"FRED:{series_id}:no_weekly_pct_changes")
+        return _apply_raw_factor_attrs(out, s, source=f"FRED:{series_id}")
+    except FactorDataUnavailableError:
+        raise
     except Exception as exc:
         return _empty_factor_series(f"FRED:{series_id}:{type(exc).__name__}:{exc}")
 
 
 def _fred_monthly_pct_change(series_id: str, start: str, end: str) -> pd.Series:
     try:
-        s = fetch_fred_series(series_id, start, end)
+        s = _fetch_fred_factor_series(series_id, start, end)
         if s.empty or len(s) < 2:
             return _empty_factor_series(f"FRED:{series_id}:empty_or_too_short")
-        return _with_empty_factor_reason(_month_end(s).pct_change().dropna(), f"FRED:{series_id}:no_monthly_pct_changes")
+        out = _with_empty_factor_reason(_month_end(s).pct_change().dropna(), f"FRED:{series_id}:no_monthly_pct_changes")
+        return _apply_raw_factor_attrs(out, s, source=f"FRED:{series_id}")
+    except FactorDataUnavailableError:
+        raise
     except Exception as exc:
         return _empty_factor_series(f"FRED:{series_id}:{type(exc).__name__}:{exc}")
 
 
 def _fred_weekly_decimal_diff(series_id: str, start: str, end: str) -> pd.Series:
     try:
-        s = fetch_fred_series(series_id, start, end)
+        s = _fetch_fred_factor_series(series_id, start, end)
         if s.empty or len(s) < 2:
             return _empty_factor_series(f"FRED:{series_id}:empty_or_too_short")
-        return _with_empty_factor_reason((_week_end(s) / 100.0).diff().dropna(), f"FRED:{series_id}:no_weekly_diffs")
+        out = _with_empty_factor_reason((_week_end(s) / 100.0).diff().dropna(), f"FRED:{series_id}:no_weekly_diffs")
+        return _apply_raw_factor_attrs(out, s, source=f"FRED:{series_id}")
+    except FactorDataUnavailableError:
+        raise
     except Exception as exc:
         return _empty_factor_series(f"FRED:{series_id}:{type(exc).__name__}:{exc}")
 
@@ -290,7 +543,7 @@ def _series_with_factor_source(
     out = series.copy()
     out.attrs.update(getattr(series, "attrs", {}) or {})
     out.attrs["factor_source"] = source
-    out.attrs["fallback_used"] = bool(fallback_used)
+    out.attrs["fallback_used"] = bool(fallback_used or out.attrs.get("fallback_used") or False)
     if fallback_reason:
         out.attrs["fallback_reason"] = str(fallback_reason)
     if primary_source:
@@ -300,10 +553,13 @@ def _series_with_factor_source(
 
 def _fred_monthly_decimal_diff(series_id: str, start: str, end: str) -> pd.Series:
     try:
-        s = fetch_fred_series(series_id, start, end)
+        s = _fetch_fred_factor_series(series_id, start, end)
         if s.empty or len(s) < 2:
             return _empty_factor_series(f"FRED:{series_id}:empty_or_too_short")
-        return _with_empty_factor_reason((_month_end(s) / 100.0).diff().dropna(), f"FRED:{series_id}:no_monthly_diffs")
+        out = _with_empty_factor_reason((_month_end(s) / 100.0).diff().dropna(), f"FRED:{series_id}:no_monthly_diffs")
+        return _apply_raw_factor_attrs(out, s, source=f"FRED:{series_id}")
+    except FactorDataUnavailableError:
+        raise
     except Exception as exc:
         return _empty_factor_series(f"FRED:{series_id}:{type(exc).__name__}:{exc}")
 
@@ -334,9 +590,11 @@ def fetch_equity_weekly(start: str, end: str) -> pd.Series:
     if not out.empty:
         return out
     try:
-        s = fetch_fred_series(FRED_EQUITY_LEVEL, start, end)
+        s = _fetch_fred_factor_series(FRED_EQUITY_LEVEL, start, end)
         if not s.empty:
-            return _weekly_return(s)
+            return _apply_raw_factor_attrs(_weekly_return(s), s, source=f"FRED:{FRED_EQUITY_LEVEL}")
+    except FactorDataUnavailableError:
+        raise
     except Exception:
         pass
     return _empty_factor_series(f"equity_sources_empty:Yahoo:{ETF_EQUITY};FRED:{FRED_EQUITY_LEVEL}")
@@ -348,9 +606,11 @@ def fetch_equity_monthly(start: str, end: str) -> pd.Series:
     if not out.empty:
         return out
     try:
-        s = fetch_fred_series(FRED_EQUITY_LEVEL, start, end)
+        s = _fetch_fred_factor_series(FRED_EQUITY_LEVEL, start, end)
         if not s.empty:
-            return _monthly_return(s)
+            return _apply_raw_factor_attrs(_monthly_return(s), s, source=f"FRED:{FRED_EQUITY_LEVEL}")
+    except FactorDataUnavailableError:
+        raise
     except Exception:
         pass
     return _empty_factor_series(f"equity_sources_empty:Yahoo:{ETF_EQUITY};FRED:{FRED_EQUITY_LEVEL}")
@@ -466,26 +726,32 @@ def fetch_us_growth_weekly(start: str, end: str) -> pd.Series:
     with the rest of the weekly factor matrix.
     """
     try:
-        s = fetch_fred_series(FRED_US_GROWTH, start, end)
+        s = _fetch_fred_factor_series(FRED_US_GROWTH, start, end)
         if s.empty or len(s) < 2:
             return _empty_factor_series(f"FRED:{FRED_US_GROWTH}:empty_or_too_short")
-        return _with_empty_factor_reason(
+        out = _with_empty_factor_reason(
             _shift_index_days(s, -1).diff().dropna(),
             f"FRED:{FRED_US_GROWTH}:no_weekly_diffs",
         )
+        return _apply_raw_factor_attrs(out, s, source=f"FRED:{FRED_US_GROWTH}")
+    except FactorDataUnavailableError:
+        raise
     except Exception as exc:
         return _empty_factor_series(f"FRED:{FRED_US_GROWTH}:{type(exc).__name__}:{exc}")
 
 
 def fetch_us_growth_monthly(start: str, end: str) -> pd.Series:
     try:
-        s = fetch_fred_series(FRED_US_GROWTH, start, end)
+        s = _fetch_fred_factor_series(FRED_US_GROWTH, start, end)
         if s.empty or len(s) < 2:
             return _empty_factor_series(f"FRED:{FRED_US_GROWTH}:empty_or_too_short")
-        return _with_empty_factor_reason(
+        out = _with_empty_factor_reason(
             _month_end(_shift_index_days(s, -1)).diff().dropna(),
             f"FRED:{FRED_US_GROWTH}:no_monthly_diffs",
         )
+        return _apply_raw_factor_attrs(out, s, source=f"FRED:{FRED_US_GROWTH}")
+    except FactorDataUnavailableError:
+        raise
     except Exception as exc:
         return _empty_factor_series(f"FRED:{FRED_US_GROWTH}:{type(exc).__name__}:{exc}")
 
@@ -504,10 +770,12 @@ def fetch_equity_daily(start: str, end: str) -> pd.Series:
     if not out.empty:
         return out
     try:
-        s = fetch_fred_series(FRED_EQUITY_LEVEL, start, end)
+        s = _fetch_fred_factor_series(FRED_EQUITY_LEVEL, start, end)
         if not s.empty:
             d = _business_daily_last(s)
-            return d.pct_change().dropna()
+            return _apply_raw_factor_attrs(d.pct_change().dropna(), s, source=f"FRED:{FRED_EQUITY_LEVEL}")
+    except FactorDataUnavailableError:
+        raise
     except Exception:
         pass
     return pd.Series(dtype=float)
@@ -541,11 +809,14 @@ def fetch_us_growth_daily(start: str, end: str) -> pd.Series:
     """Daily diffs of FRED WEI forward-filled to business days (Wed release shifted to Fri in weekly path)."""
 
     try:
-        s = fetch_fred_series(FRED_US_GROWTH, start, end)
+        s = _fetch_fred_factor_series(FRED_US_GROWTH, start, end)
         if s.empty or len(s) < 2:
             return _empty_factor_series(f"FRED:{FRED_US_GROWTH}:empty_or_too_short")
         d = _business_daily_last(_shift_index_days(s, -1))
-        return _with_empty_factor_reason(d.diff().dropna(), f"FRED:{FRED_US_GROWTH}:no_daily_diffs")
+        out = _with_empty_factor_reason(d.diff().dropna(), f"FRED:{FRED_US_GROWTH}:no_daily_diffs")
+        return _apply_raw_factor_attrs(out, s, source=f"FRED:{FRED_US_GROWTH}")
+    except FactorDataUnavailableError:
+        raise
     except Exception as exc:
         return _empty_factor_series(f"FRED:{FRED_US_GROWTH}:{type(exc).__name__}:{exc}")
 
@@ -665,12 +936,16 @@ def _build_factor_frame(
 ) -> pd.DataFrame:
     data: dict[str, pd.Series] = {}
     load_rows: dict[str, dict[str, Any]] = {}
+    factor_data_warnings: list[str] = []
+    factor_data_provenance: dict[str, Any] = {}
     for spec in FACTOR_DEFINITIONS:
         loader = spec.monthly_loader if monthly else spec.weekly_loader
         try:
             series = loader(start, end)
             if series is None:
                 series = _empty_factor_series("loader_returned_none")
+        except FactorDataUnavailableError:
+            raise
         except Exception as exc:
             series = _empty_factor_series(f"{type(exc).__name__}:{exc}")
         cleaned = series.dropna() if isinstance(series, pd.Series) else pd.Series(dtype=float)
@@ -686,12 +961,30 @@ def _build_factor_frame(
             "primary_source": getattr(series, "attrs", {}).get("primary_source"),
             "fallback_used": bool(getattr(series, "attrs", {}).get("fallback_used") or False),
             "fallback_reason": getattr(series, "attrs", {}).get("fallback_reason"),
+            "factor_data_fallback_used": bool(
+                getattr(series, "attrs", {}).get("factor_data_fallback_used") or False
+            ),
+            "factor_data_fallback_reason": getattr(series, "attrs", {}).get("factor_data_fallback_reason"),
+            "factor_data_source_used": getattr(series, "attrs", {}).get("factor_data_source_used"),
+            "factor_data_cache_key": getattr(series, "attrs", {}).get("factor_data_cache_key"),
+            "factor_data_cache_created_at": getattr(series, "attrs", {}).get("factor_data_cache_created_at"),
             "status": status,
             "reason": reason,
             "observations_loaded": int(len(cleaned)),
             "first_observation": str(pd.Timestamp(cleaned.index.min()).date()) if not cleaned.empty else None,
             "last_observation": str(pd.Timestamp(cleaned.index.max()).date()) if not cleaned.empty else None,
         }
+        if getattr(series, "attrs", {}).get("factor_data_fallback_used"):
+            factor_data_warnings.append(FACTOR_DATA_FALLBACK_WARNING_CODE)
+            factor_data_warnings.append(FACTOR_DATA_FALLBACK_WARNING)
+            factor_data_provenance[spec.column] = {
+                "source": str(getattr(series, "attrs", {}).get("factor_source") or spec.source_label),
+                "factor_data_cache_key": getattr(series, "attrs", {}).get("factor_data_cache_key"),
+                "factor_data_cache_path": getattr(series, "attrs", {}).get("factor_data_cache_path"),
+                "factor_data_cache_created_at": getattr(series, "attrs", {}).get("factor_data_cache_created_at"),
+                "factor_data_cached_observation_start": getattr(series, "attrs", {}).get("factor_data_cached_observation_start"),
+                "factor_data_cached_observation_end": getattr(series, "attrs", {}).get("factor_data_cached_observation_end"),
+            }
         data[spec.column] = series if series is not None else pd.Series(dtype=float)
 
     ordered_cols = [spec.column for spec in FACTOR_DEFINITIONS]
@@ -710,6 +1003,18 @@ def _build_factor_frame(
             "rows_before_complete_case": 0,
             "rows_after_complete_case": 0,
             "by_factor": load_rows,
+            "factor_data_fallback_used": bool(factor_data_provenance),
+            "factor_data_fallback_reason": (
+                FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA
+                if factor_data_provenance
+                else None
+            ),
+            "factor_data_source_used": (
+                "approved_cached_factor_series" if factor_data_provenance else None
+            ),
+            "factor_data_provenance": factor_data_provenance,
+            "warnings": sorted(set(factor_data_warnings)),
+            "cache_validity_policy": factor_cache_validity_policy(),
         }
         return df
     if not monthly:
@@ -745,6 +1050,18 @@ def _build_factor_frame(
         "rows_before_complete_case": rows_before_complete_case,
         "rows_after_complete_case": rows_after_complete_case,
         "by_factor": load_rows,
+        "factor_data_fallback_used": bool(factor_data_provenance),
+        "factor_data_fallback_reason": (
+            FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA
+            if factor_data_provenance
+            else None
+        ),
+        "factor_data_source_used": (
+            "approved_cached_factor_series" if factor_data_provenance else None
+        ),
+        "factor_data_provenance": factor_data_provenance,
+        "warnings": sorted(set(factor_data_warnings)),
+        "cache_validity_policy": factor_cache_validity_policy(),
     }
     return df
 

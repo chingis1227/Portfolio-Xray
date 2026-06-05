@@ -1,13 +1,22 @@
 """Factor matrix construction and dynamic analytics output tests."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+import json
 import shutil
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from src import stress_factors as sf
+from src import data_fred
+from run_report import (
+    _factor_data_metadata_from_diagnostics,
+    _merge_factor_data_policy_metadata,
+    build_derived_assumptions,
+)
 
 
 def _test_output_dir(name: str) -> Path:
@@ -102,6 +111,198 @@ def test_credit_factor_falls_back_to_baa10y_when_hy_oas_history_is_short(monkeyp
     assert diag["primary_source"] == f"FRED:{sf.FRED_HY_SPREAD}"
     assert diag["fallback_used"] is True
     assert "insufficient coverage" in diag["fallback_reason"]
+
+
+def _factor_cache_test_maps(start: str = "2024-01-01", end: str = "2024-01-31"):
+    daily_idx = pd.date_range(start, end, freq="B")
+    saturday_idx = pd.date_range("2024-01-06", "2024-01-27", freq="W-SAT")
+    daily_close_map = {
+        "SPY": pd.Series(np.linspace(100.0, 115.0, len(daily_idx)), index=daily_idx),
+        "DBC": pd.Series(np.linspace(20.0, 25.0, len(daily_idx)), index=daily_idx),
+    }
+    fred_map = {
+        sf.FRED_REAL_10Y: pd.Series(np.linspace(1.00, 1.30, len(daily_idx)), index=daily_idx),
+        sf.FRED_BREAKEVEN_10Y: pd.Series(np.linspace(2.00, 2.15, len(daily_idx)), index=daily_idx),
+        sf.FRED_HY_SPREAD: pd.Series(np.linspace(4.00, 4.10, len(daily_idx)), index=daily_idx),
+        sf.FRED_CREDIT_SPREAD_FALLBACK: pd.Series(np.linspace(1.50, 1.70, len(daily_idx)), index=daily_idx),
+        sf.FRED_DXY: pd.Series(np.linspace(100.0, 102.0, len(daily_idx)), index=daily_idx),
+        sf.FRED_VIX: pd.Series(np.linspace(14.0, 18.0, len(daily_idx)), index=daily_idx),
+        sf.FRED_WTI_OIL: pd.Series(np.linspace(70.0, 76.0, len(daily_idx)), index=daily_idx),
+        sf.FRED_US_GROWTH: pd.Series(np.linspace(1.0, 1.4, len(saturday_idx)), index=saturday_idx),
+    }
+    return daily_close_map, fred_map
+
+
+def test_fred_real_rates_timeout_with_valid_factor_cache_succeeds_with_warning(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(sf, "CACHE_DIR", tmp_path / "cache")
+    daily_close_map, fred_map = _factor_cache_test_maps()
+    sf._save_fred_factor_series_cache(sf.FRED_REAL_10Y, fred_map[sf.FRED_REAL_10Y])
+
+    monkeypatch.setattr(
+        sf,
+        "fetch_daily",
+        lambda ticker, *_args, **_kwargs: pd.DataFrame({"Close": daily_close_map[ticker]}),
+    )
+
+    def fake_fred(series_id, *_args, **_kwargs):
+        if series_id == sf.FRED_REAL_10Y:
+            raise TimeoutError("simulated DFII10 timeout")
+        return fred_map[series_id].copy()
+
+    monkeypatch.setattr(sf, "fetch_fred_series", fake_fred)
+
+    out = sf.build_factor_matrix("2024-01-01", "2024-01-31")
+    diag = out.attrs["factor_load_diagnostics"]
+    real_rates = diag["by_factor"]["real_rates"]
+
+    assert not out.empty
+    assert "real_rates" in out.columns
+    assert "equity" in out.columns
+    assert real_rates["factor_data_fallback_used"] is True
+    assert real_rates["factor_data_fallback_reason"] == sf.FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA
+    assert real_rates["factor_data_cache_key"] == sf.FRED_REAL_10Y
+    assert diag["factor_data_source_used"] == "approved_cached_factor_series"
+    assert sf.FACTOR_DATA_FALLBACK_WARNING_CODE in diag["warnings"]
+
+
+def test_fred_timeout_without_valid_factor_cache_fails_clearly(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(sf, "CACHE_DIR", tmp_path / "cache")
+    daily_close_map, fred_map = _factor_cache_test_maps()
+    monkeypatch.setattr(
+        sf,
+        "fetch_daily",
+        lambda ticker, *_args, **_kwargs: pd.DataFrame({"Close": daily_close_map[ticker]}),
+    )
+
+    def fake_fred(series_id, *_args, **_kwargs):
+        if series_id == sf.FRED_REAL_10Y:
+            raise TimeoutError("simulated DFII10 timeout")
+        return fred_map[series_id].copy()
+
+    monkeypatch.setattr(sf, "fetch_fred_series", fake_fred)
+
+    with pytest.raises(sf.FactorDataUnavailableError, match="DFII10.*no valid approved factor cache"):
+        sf.build_factor_matrix("2024-01-01", "2024-01-31")
+
+
+def test_factor_cache_validity_rejects_expired_short_bad_frequency_and_partial_cache(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setattr(sf, "CACHE_DIR", tmp_path / "cache")
+    _daily_close_map, fred_map = _factor_cache_test_maps()
+
+    sf._save_fred_factor_series_cache(sf.FRED_REAL_10Y, fred_map[sf.FRED_REAL_10Y])
+    cache_path = sf._factor_cache_path(sf.FRED_REAL_10Y)
+    meta_path = cache_path / "meta.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    meta["created_at"] = (datetime.now() - timedelta(days=sf.FACTOR_CACHE_MAX_AGE_DAYS + 2)).isoformat()
+    meta_path.write_text(json.dumps(meta), encoding="utf-8")
+    with pytest.raises(sf.FactorCacheValidationError, match="expired"):
+        sf._load_approved_cached_fred_factor_series(sf.FRED_REAL_10Y, "2024-01-01", "2024-01-31")
+
+    sf._save_fred_factor_series_cache(sf.FRED_REAL_10Y, fred_map[sf.FRED_REAL_10Y].loc["2024-01-10":])
+    with pytest.raises(sf.FactorCacheValidationError, match="does not cover requested range"):
+        sf._load_approved_cached_fred_factor_series(sf.FRED_REAL_10Y, "2024-01-01", "2024-01-31")
+
+    sf._save_fred_factor_series_cache(sf.FRED_REAL_10Y, fred_map[sf.FRED_REAL_10Y])
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    meta["config"]["supported_frequency_alignment"] = ["daily_raw"]
+    meta_path.write_text(json.dumps(meta), encoding="utf-8")
+    with pytest.raises(sf.FactorCacheValidationError, match="frequency alignment"):
+        sf._load_approved_cached_fred_factor_series(sf.FRED_REAL_10Y, "2024-01-01", "2024-01-31")
+
+    # Partial cache is not fake success: DFII10 is cached, but a second timed-out
+    # required FRED factor without cache still fails and names that missing series.
+    sf._save_fred_factor_series_cache(sf.FRED_REAL_10Y, fred_map[sf.FRED_REAL_10Y])
+    daily_close_map, fred_map = _factor_cache_test_maps()
+    monkeypatch.setattr(
+        sf,
+        "fetch_daily",
+        lambda ticker, *_args, **_kwargs: pd.DataFrame({"Close": daily_close_map[ticker]}),
+    )
+
+    def fake_fred(series_id, *_args, **_kwargs):
+        if series_id in {sf.FRED_REAL_10Y, sf.FRED_BREAKEVEN_10Y}:
+            raise TimeoutError(f"simulated {series_id} timeout")
+        return fred_map[series_id].copy()
+
+    monkeypatch.setattr(sf, "fetch_fred_series", fake_fred)
+    with pytest.raises(sf.FactorDataUnavailableError, match=sf.FRED_BREAKEVEN_10Y):
+        sf.build_factor_matrix("2024-01-01", "2024-01-31")
+
+
+def test_fred_fetch_timeout_retry_is_bounded(monkeypatch) -> None:
+    calls = {"urlopen": 0, "sleep": 0}
+
+    def fake_urlopen(*_args, **_kwargs):
+        calls["urlopen"] += 1
+        raise TimeoutError("simulated urlopen timeout")
+
+    def fake_sleep(_seconds):
+        calls["sleep"] += 1
+
+    monkeypatch.setattr(data_fred, "urlopen", fake_urlopen)
+    monkeypatch.setattr(data_fred.time, "sleep", fake_sleep)
+
+    with pytest.raises(RuntimeError, match="timed out"):
+        data_fred.fetch_fred_series(
+            "DFII10",
+            "2024-01-01",
+            "2024-01-31",
+            timeout=0.01,
+            retries=2,
+            retry_sleep=0.0,
+        )
+    assert calls == {"urlopen": 3, "sleep": 2}
+
+
+def test_cached_factor_data_provenance_is_written_to_metadata_and_data_policy(tmp_path) -> None:
+    factor_diag = {
+        "factor_load_diagnostics": {
+            "factor_data_fallback_used": True,
+            "factor_data_fallback_reason": sf.FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA,
+            "factor_data_source_used": "approved_cached_factor_series",
+            "factor_data_provenance": {
+                "real_rates": {"factor_data_cache_key": sf.FRED_REAL_10Y}
+            },
+            "cache_validity_policy": sf.factor_cache_validity_policy(),
+            "warnings": [sf.FACTOR_DATA_FALLBACK_WARNING_CODE, sf.FACTOR_DATA_FALLBACK_WARNING],
+        }
+    }
+    metadata, warnings = _factor_data_metadata_from_diagnostics(factor_diag)
+
+    class _Cfg:
+        weights = {"AAA": 1.0}
+        min_acceptable_return = None
+        liquidity_need_months = 0
+        monthly_expenses = 0
+
+    derived = build_derived_assumptions(
+        _Cfg(),
+        "BIL",
+        "FRED:DTB3",
+        {},
+        "2024-01-31",
+        [120],
+        factor_data_metadata=metadata,
+        factor_data_warnings=warnings,
+    )
+    assert derived["factor_data_fallback_used"] is True
+    assert derived["factor_data_fallback_reason"] == sf.FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA
+    assert derived["factor_data_provenance"]["factor_data_provenance"]["real_rates"]["factor_data_cache_key"] == sf.FRED_REAL_10Y
+
+    policy_path = tmp_path / "data_policy.json"
+    policy_path.write_text(json.dumps({"warnings": []}), encoding="utf-8")
+    _merge_factor_data_policy_metadata(
+        tmp_path,
+        factor_data_metadata=metadata,
+        factor_data_warnings=warnings,
+    )
+    policy = json.loads(policy_path.read_text(encoding="utf-8"))
+    assert policy["factor_data_fallback_used"] is True
+    assert policy["factor_data_provenance"]["factor_data_source_used"] == "approved_cached_factor_series"
+    assert sf.FACTOR_DATA_FALLBACK_WARNING_CODE in policy["warnings"]
 
 
 def test_base_factor_contract_excludes_oil_but_extended_registry_keeps_it() -> None:

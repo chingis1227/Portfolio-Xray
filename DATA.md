@@ -187,6 +187,14 @@ such as FRED rates, credit, inflation, USD, VIX, WEI, oil, or Yahoo commodity da
 `stress_report.json.factor_diagnostics_meta` records the available factors, missing factors, and
 per-factor reason. If only the cached benchmark/equity proxy is available, the run is disclosed as
 `factor_attribution_scope: equity_only` instead of being presented as a full multi-factor model.
+Full factor-matrix FRED dependencies use a separate approved raw-series cache under
+`cache/factors/v_<series_id>/`; this is not the monthly risk-free cache. A timed-out FRED factor
+fetch may use cached factor data only when cache age is within 7 calendar days, metadata matches the
+FRED series, raw observations cover the requested date range, and metadata declares daily raw,
+weekly `W-FRI`, and month-end reconstruction support. Partial factor cache is not a full success by
+itself: every missing series must fetch live or fail clearly with the series named. Cached factor
+use is disclosed through `factor_load_diagnostics` with `factor_data_fallback_used`,
+`factor_data_fallback_reason: fred_timeout_cached_factor_data`, cache provenance, and warnings.
 
 Macro data supports:
 

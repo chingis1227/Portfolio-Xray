@@ -8,6 +8,12 @@ Date: 2026-06-05
 
 Category: Fixed
 
+- **Full factor matrix FRED dependency stabilization:** added bounded FRED CSV timeout/retry behavior
+  and a separate approved raw FRED factor-series cache for full Block 2.3 / Stress Lab factor
+  matrices. Cached factor fallback preserves the full factor contract, writes provenance and
+  warnings, and fails clearly when cache is absent, expired, misaligned, or partial without live
+  fetch recovery.
+
 - **Blocks 3-5 handoff remediation Session 03:** diagnosis-only `analysis_subject` materialization can recover from temporary FRED `DTB3` risk-free timeouts by using an approved cached risk-free series. The fallback is cache-only, source/currency/frequency/coverage-gated, disabled by `--no-cache`, and disclosed through `risk_free_fallback_used`, `risk_free_fallback_reason: fred_timeout_cached_rf`, provenance, warnings, and cache metadata. Focused tests: `tests/test_data_cache_key.py tests/test_product_bundle_integration.py` (**8 passed**).
 
 Date: 2026-06-04
