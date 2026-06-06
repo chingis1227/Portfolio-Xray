@@ -1,0 +1,17 @@
+﻿# Demo fixture: equity-heavy and concentrated portfolio for the vertical MVP acceptance path.
+investor_currency: USD
+
+tickers: [SPY, QQQ, VOO, SCHD, GLD, BND]
+
+current_weights:
+  SPY: 0.32
+  QQQ: 0.30
+  VOO: 0.18
+  SCHD: 0.08
+  GLD: 0.07
+  BND: 0.05
+
+output_dir: output/demo_portfolios/equity_heavy/csv
+output_dir_final: output/demo_portfolios/equity_heavy/final
+returns_frequency: monthly
+market_data_provider: ibkr_yfinance_fallback

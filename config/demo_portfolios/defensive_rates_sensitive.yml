@@ -1,0 +1,19 @@
+﻿# Demo fixture: defensive, bond-heavy, rates-sensitive portfolio for the vertical MVP acceptance path.
+investor_currency: USD
+
+tickers: [BND, IEF, TLT, TIP, SHY, GLD, SCHD, SPY]
+
+current_weights:
+  BND: 0.32
+  IEF: 0.16
+  TLT: 0.10
+  TIP: 0.14
+  SHY: 0.08
+  GLD: 0.08
+  SCHD: 0.06
+  SPY: 0.06
+
+output_dir: output/demo_portfolios/defensive_rates_sensitive/csv
+output_dir_final: output/demo_portfolios/defensive_rates_sensitive/final
+returns_frequency: monthly
+market_data_provider: ibkr_yfinance_fallback

@@ -56,19 +56,19 @@ def test_weak_crisis_resilience_opens_targeted_crisis_resilience_setup() -> None
             diagnosis_id="weak_crisis_resilience",
             goal="Improve crisis resilience",
             methods=[
-                _method("minimum_cvar_constrained"),
-                _method("robust_mv_constrained"),
-                _method("robust_scenario"),
+                _method("minimum_cvar"),
+                _method("maximum_diversification"),
+                _method("minimum_variance"),
             ],
         )
     )
 
     assert prefill["builder_mode"] == "guided_from_diagnosis"
     assert prefill["source_diagnosis_id"] == "weak_crisis_resilience"
-    assert prefill["suggested_method"] == "minimum_cvar_constrained"
+    assert prefill["suggested_method"] == "minimum_cvar"
     assert set(prefill["alternative_methods"]) == {
-        "robust_mv_constrained",
-        "robust_scenario",
+        "maximum_diversification",
+        "minimum_variance",
     }
     assert prefill["method_role"] == "targeted_candidate_method"
     assert prefill["candidate_generation_allowed"] is True
@@ -82,7 +82,7 @@ def test_poor_diversification_opens_diversification_setup() -> None:
             diagnosis_id="poor_diversification",
             goal="Improve diversification",
             methods=[
-                _method("equal_weight_by_asset_class"),
+                _method("risk_parity"),
                 _method("maximum_diversification"),
                 _method("risk_parity"),
             ],
@@ -92,7 +92,7 @@ def test_poor_diversification_opens_diversification_setup() -> None:
     candidate_methods = {prefill["suggested_method"], *prefill["alternative_methods"]}
     assert prefill["source_diagnosis_id"] == "poor_diversification"
     assert prefill["builder_mode"] == "guided_from_diagnosis"
-    assert candidate_methods & {"equal_weight_by_asset_class", "risk_parity"}
+    assert candidate_methods & {"risk_parity", "risk_parity"}
     assert prefill["method_role"] == "targeted_candidate_method"
     assert prefill["candidate_generation_allowed"] is True
 
@@ -104,8 +104,8 @@ def test_high_concentration_exposes_concentration_constraints() -> None:
             goal="Reduce concentration",
             methods=[
                 _method("equal_weight"),
-                _method("equal_weight_by_asset_class"),
-                _method("risk_budget_by_asset"),
+                _method("risk_parity"),
+                _method("maximum_diversification"),
             ],
             constraint_preset="concentration_cap",
             max_asset_weight=0.15,

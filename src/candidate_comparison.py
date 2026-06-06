@@ -11,7 +11,7 @@ import math
 import copy
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from src.candidate_robust_disclosure import (
     build_robust_paths_disclosure,
@@ -254,6 +254,12 @@ _REGISTRY_ROWS: list[dict[str, str]] = [
 ]
 
 LEGACY_VARIANT_IDS = ("policy", "equal_weight", "risk_parity", "robust_scenario")
+BLOCK8_ONLY_DOWNSTREAM_ARTIFACTS = (
+    "decision_verdict.json",
+    "action_plan.json",
+    "decision_journal.json",
+    "ai_commentary_context.json",
+)
 
 
 def candidate_registry_ids() -> list[str]:
@@ -2127,6 +2133,180 @@ def product_support_selection_decision(
     }
 
 
+def _candidate_ids_from_candidate_generation(
+    candidate_generation: dict[str, Any] | None,
+) -> tuple[str, ...]:
+    if not isinstance(candidate_generation, dict):
+        return ()
+    if candidate_generation.get("tombstone") or candidate_generation.get("artifact_status") == "not_authoritative":
+        raise ValueError("candidate_generation_not_authoritative")
+    product_run = candidate_generation.get("product_run")
+    if isinstance(product_run, Mapping) and product_run.get("active") is False:
+        raise ValueError("candidate_generation_not_active")
+    handoff = candidate_generation.get("handoff_to_comparison")
+    if isinstance(handoff, dict) and handoff.get("can_compare") is False:
+        raise ValueError(
+            "candidate_generation_not_comparable:"
+            f"{handoff.get('blocked_reason') or candidate_generation.get('generation_status')}"
+        )
+    candidate = candidate_generation.get("candidate")
+    if not isinstance(candidate, dict):
+        return ()
+    candidate_id = str(candidate.get("candidate_id") or "").strip()
+    return (candidate_id,) if candidate_id else ()
+
+
+def _block8_only_candidate_ids(
+    *,
+    explicit_candidate_ids: Sequence[str] | None,
+    candidate_generation: dict[str, Any] | None,
+    factory_run: dict[str, Any] | None,
+) -> tuple[str, ...]:
+    explicit = tuple(
+        str(candidate_id).strip()
+        for candidate_id in (explicit_candidate_ids or ())
+        if str(candidate_id).strip()
+    )
+    if explicit:
+        return explicit
+    from_generation = _candidate_ids_from_candidate_generation(candidate_generation)
+    if from_generation:
+        return from_generation
+    from_factory = product_candidate_ids_from_factory_run(factory_run)
+    if from_factory:
+        return from_factory
+    raise ValueError("block8_only_requires_selected_candidate_id")
+
+
+def _existing_block8_downstream_artifacts(out_dir: Path) -> list[str]:
+    return [
+        artifact
+        for artifact in BLOCK8_ONLY_DOWNSTREAM_ARTIFACTS
+        if (out_dir / artifact).exists()
+    ]
+
+
+def _add_block8_boundary(
+    doc: dict[str, Any],
+    *,
+    ignored_downstream_artifacts: Sequence[str],
+    candidate_ids: Sequence[str],
+) -> dict[str, Any]:
+    enriched = copy.deepcopy(doc)
+    ignored = [str(item) for item in ignored_downstream_artifacts]
+    warnings = list(enriched.get("warnings") or [])
+    for artifact in ignored:
+        warning = f"stale_downstream_artifact_ignored:{artifact}"
+        if warning not in warnings:
+            warnings.append(warning)
+    enriched["warnings"] = warnings
+    source_artifacts = dict(enriched.get("source_artifacts") or {})
+    source_artifacts.setdefault("selection_decision", None)
+    source_artifacts["decision_verdict"] = None
+    source_artifacts["action_plan"] = None
+    source_artifacts["decision_journal"] = None
+    source_artifacts["ai_commentary_context"] = None
+    enriched["source_artifacts"] = source_artifacts
+    enriched["block_boundary"] = {
+        "block": "block_8_current_vs_candidate",
+        "mode": "comparison_without_verdict",
+        "selected_candidate_ids": list(candidate_ids),
+        "writes_candidate_comparison": True,
+        "writes_current_vs_candidate": True,
+        "writes_decision_verdict": False,
+        "writes_action_plan": False,
+        "writes_decision_journal": False,
+        "writes_ai_commentary_context": False,
+        "ignored_downstream_artifacts": ignored,
+        "stale_downstream_artifacts_are_not_current": True,
+    }
+    return enriched
+
+
+def write_block8_current_vs_candidate_only_outputs(
+    cfg: PortfolioConfig,
+    *,
+    project_root: Path | None = None,
+    candidate_ids: Sequence[str] | None = None,
+    candidate_generation: dict[str, Any] | None = None,
+    factory_run: dict[str, Any] | None = None,
+    comparison_rebuild_source: str = COMPARISON_REBUILD_STANDALONE,
+) -> dict[str, Path]:
+    """Write the vertical-product Block 8 comparison boundary only.
+
+    This path builds the canonical comparison evidence, scopes
+    ``candidate_comparison.json`` to the selected candidate, and writes
+    ``current_vs_candidate.json``. It deliberately does not create or refresh
+    Decision Verdict, Action Plan, Decision Journal, or AI Commentary context
+    artifacts. If those downstream files already exist, they are recorded as
+    ignored stale artifacts in ``current_vs_candidate.json`` rather than being
+    loaded as current evidence.
+    """
+
+    project_root = project_root or Path.cwd()
+    out_dir = project_root / str(getattr(cfg, "output_dir_final", "Main portfolio"))
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if factory_run is None:
+        factory_run = _load_factory_run(out_dir)
+    if candidate_generation is None:
+        candidate_generation = _load_json(out_dir / "candidate_generation.json")
+    selected_candidate_ids = _block8_only_candidate_ids(
+        explicit_candidate_ids=candidate_ids,
+        candidate_generation=candidate_generation,
+        factory_run=factory_run,
+    )
+
+    comparison = build_candidate_comparison(
+        cfg,
+        project_root=project_root,
+        factory_run=factory_run,
+        comparison_rebuild_source=comparison_rebuild_source,
+    )
+    product_doc = scoped_product_comparison(comparison, selected_candidate_ids)
+    scope_source = (
+        "explicit_candidate_ids"
+        if candidate_ids
+        else "candidate_generation.json"
+        if isinstance(candidate_generation, dict)
+        else "candidate_factory_run.json"
+    )
+    product_doc["block_8_vertical_scope"] = {
+        "scope_type": "selected_candidate_only",
+        "candidate_ids": list(selected_candidate_ids),
+        "source": scope_source,
+        "writes_verdict": False,
+    }
+
+    paths: dict[str, Path] = {}
+    comparison_path = out_dir / "candidate_comparison.json"
+    with open(comparison_path, "w", encoding="utf-8") as f:
+        json.dump(product_doc, f, indent=2, ensure_ascii=False, default=str)
+    paths["candidate_comparison_json"] = comparison_path
+
+    from src.current_vs_candidate import (
+        CURRENT_VS_CANDIDATE_FILENAME,
+        build_current_vs_candidate,
+    )
+
+    current_vs_candidate = build_current_vs_candidate(
+        product_doc,
+        selection=None,
+        candidate_ids=selected_candidate_ids,
+        candidate_generation=candidate_generation,
+    )
+    current_vs_candidate = _add_block8_boundary(
+        current_vs_candidate,
+        ignored_downstream_artifacts=_existing_block8_downstream_artifacts(out_dir),
+        candidate_ids=selected_candidate_ids,
+    )
+    current_vs_path = out_dir / CURRENT_VS_CANDIDATE_FILENAME
+    with open(current_vs_path, "w", encoding="utf-8") as f:
+        json.dump(current_vs_candidate, f, indent=2, ensure_ascii=False, default=str)
+    paths["current_vs_candidate_json"] = current_vs_path
+    return paths
+
+
 def build_candidate_menu(
     candidates: list[dict[str, Any]],
     *,
@@ -2854,8 +3034,10 @@ def write_candidate_comparison_outputs(
     diagnosis_bundle = load_diagnosis_bundle_docs(out_dir)
     problem_classification_doc = diagnosis_bundle.get("problem_classification")
     candidate_launchpad_doc = diagnosis_bundle.get("candidate_launchpad")
+    portfolio_alternatives_builder_doc = diagnosis_bundle.get("portfolio_alternatives_builder")
     portfolio_xray_doc = diagnosis_bundle.get("portfolio_xray")
     stress_report_doc = diagnosis_bundle.get("stress_report")
+    candidate_generation_doc = _load_json(out_dir / "candidate_generation.json")
 
     paths.update(
         write_ai_commentary_context_outputs(
@@ -2867,6 +3049,8 @@ def write_candidate_comparison_outputs(
             action=action_doc,
             problem_classification=problem_classification_doc,
             candidate_launchpad=candidate_launchpad_doc,
+            portfolio_alternatives_builder=portfolio_alternatives_builder_doc,
+            candidate_generation=candidate_generation_doc,
             portfolio_xray=portfolio_xray_doc,
             stress_report=stress_report_doc,
         )
@@ -3006,6 +3190,7 @@ __all__ = [
     "resolve_current_artifact_folder",
     "scoped_product_comparison",
     "sidecar_meets_minimum",
+    "write_block8_current_vs_candidate_only_outputs",
     "write_candidate_comparison_outputs",
     "write_candidate_comparison_txt",
 ]

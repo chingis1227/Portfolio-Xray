@@ -5,8 +5,12 @@ This directory contains the detailed source-of-truth documents for module-specif
 These specs describe current implementation contracts. Product-facing Portfolio MRI language in `PRODUCT.md` or `ARCHITECTURE.md` may map these contracts into target UX concepts, but it does not rename schemas, output files, formulas, fields, statuses, or generated artifact contracts.
 
 Output category boundary: the product-facing diagnosis-first bundle is
-`problem_classification.json`, `candidate_launchpad.json`, `current_vs_candidate.json`,
-`decision_verdict.json`, `ai_commentary_context.json`, and `what_changed_summary.json`.
+`problem_classification.json`, `candidate_launchpad.json`, `portfolio_alternatives_builder.json`,
+`candidate_generation.json`, `current_vs_candidate.json`, `decision_verdict.json`,
+`ai_commentary_context.json`, and `what_changed_summary.json`. Builder setup is not a candidate;
+Candidate Generation is not a recommendation; reference tests are diagnostic comparisons; Decision
+Verdict is where action/no-action is evaluated, including valid no-trade and evidence-insufficient
+outcomes.
 `candidate_comparison.json`, `selection_decision.json`, factory manifests, and `output_manifest.json`
 remain technical contracts. Health, robustness, assumption sensitivity, Pareto/dominance, regret,
 trade-off, and model-risk artifacts are advanced/research evidence unless a later approved spec
@@ -35,7 +39,8 @@ Top-level documents stay compact:
 | Diagnosis-first workflow state classification (`diagnosis_only`, `one_candidate`, `multiple_candidates`) | [workflow_state_spec.md](workflow_state_spec.md) |
 | Problem Classification diagnostic artifact and evidence-to-diagnosis mapping | [problem_classification_spec.md](problem_classification_spec.md) (V1); [block_4_diagnosis_v3_spec.md](block_4_diagnosis_v3_spec.md) (V3 current) |
 | Candidate Launchpad data artifact and problem-to-hypothesis card mapping | [candidate_launchpad_spec.md](candidate_launchpad_spec.md) (V1); [block_4_diagnosis_v3_spec.md](block_4_diagnosis_v3_spec.md) §5 (V3 current) |
-| Portfolio Alternatives Builder one-candidate wrapper over existing candidate builders | [portfolio_alternatives_builder_spec.md](portfolio_alternatives_builder_spec.md) |
+| Portfolio Alternatives Builder setup, validation, and explicit Block 6 / Block 7 boundary | [portfolio_alternatives_builder_spec.md](portfolio_alternatives_builder_spec.md), [builder_prefill_spec.md](builder_prefill_spec.md), [candidate_setup_spec.md](candidate_setup_spec.md) |
+| Candidate Generation one-attempt artifact from validated Builder setup | [candidate_generation_spec.md](candidate_generation_spec.md) |
 | Portfolio X-Ray diagnostics, seven-section current-portfolio diagnostic layer, and `portfolio_xray.json` contract | [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) |
 | Block 2.4 Hidden Exposure UI Pareto cards (presentation layer over `block_2_4_hidden_exposure`) | [block_2_4_hidden_exposure_ui_pareto_spec.md](block_2_4_hidden_exposure_ui_pareto_spec.md) |
 | Block 2.6 Portfolio Weakness Map UI Pareto cards (presentation layer over `block_2_6_portfolio_weakness_map`) | [block_2_6_weakness_map_ui_pareto_spec.md](block_2_6_weakness_map_ui_pareto_spec.md) |
@@ -77,7 +82,7 @@ Top-level documents stay compact:
 | Robustness Scorecard (diagnostic resilience scoring) | [robustness_scorecard_spec.md](robustness_scorecard_spec.md) |
 | Portfolio Health Score (diagnostic holistic quality scoring) | [portfolio_health_score_spec.md](portfolio_health_score_spec.md) |
 | Selection Engine and No-Trade Recommendation (formal decision contract) | [selection_engine_spec.md](selection_engine_spec.md) |
-| Product-facing Decision Verdict mapping over Selection/No-Trade evidence | [decision_verdict_spec.md](decision_verdict_spec.md) |
+| Product-facing Decision Verdict over Selection/No-Trade evidence or direct Block 7/8 evidence | [decision_verdict_spec.md](decision_verdict_spec.md) |
 | AI Commentary grounding context (current contract; not LLM prose) | [ai_commentary_grounding_spec.md](ai_commentary_grounding_spec.md) |
 | Trade-off Explanation and Model Risk Diagnostics | [tradeoff_and_model_risk_spec.md](tradeoff_and_model_risk_spec.md) |
 | Assumption Sensitivity (selection stability under perturbations) | [assumption_sensitivity_spec.md](assumption_sensitivity_spec.md) |

@@ -41,8 +41,9 @@ def _warn_standalone_full_menu_default(profile_id: str, explicit_candidates: lis
     logger.warning(
         "Standalone factory default profile is default_v1 (full research menu, 16 builders). "
         "This is not the Core MVP product entry. Prefer: "
-        "python run_portfolio_review.py --candidates <id> "
-        "or run_portfolio_review.py --with-candidates for core_fast batch."
+        "python scripts/run_blocks_5_to_9_vertical_flow.py --method <id> "
+        "for the product demo, or run_portfolio_review.py --with-candidates "
+        "for core_fast backend batch."
     )
 
 
@@ -52,11 +53,11 @@ def main(argv: list[str] | None = None) -> int:
         description=(
             "Run candidate portfolio builders in a controlled factory profile. "
             "Backend/research CLI — not the default Core MVP diagnosis path "
-            "(use run_portfolio_review.py for portfolio-first review)."
+            "(use scripts/run_blocks_5_to_9_vertical_flow.py for the product demo)."
         ),
         epilog=(
             "Default --profile default_v1 runs the full research menu (~16 builders). "
-            "For product demo, use run_portfolio_review.py --candidates <id> instead."
+            "For product demo, use scripts/run_blocks_5_to_9_vertical_flow.py --method <id>."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -66,7 +67,7 @@ def main(argv: list[str] | None = None) -> int:
         default="default_v1",
         help=(
             "Factory profile id (default: default_v1 = full research menu). "
-            "Not the Core MVP default; use run_portfolio_review.py for diagnosis-first flow."
+            "Not the Core MVP default; use the vertical Blocks 5-9 script for demos."
         ),
     )
     parser.add_argument(

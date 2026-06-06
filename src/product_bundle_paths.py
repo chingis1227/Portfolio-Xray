@@ -24,6 +24,7 @@ from src.block_2_4_hidden_exposure import BLOCK_2_4_ID
 from src.block_2_5_risk_budget_view import BLOCK_2_5_ID
 from src.block_2_6_portfolio_weakness_map import BLOCK_2_6_ID
 from src.candidate_launchpad import CANDIDATE_LAUNCHPAD_FILENAME
+from src.portfolio_alternatives_builder import PORTFOLIO_ALTERNATIVES_BUILDER_FILENAME
 from src.problem_classification import PROBLEM_CLASSIFICATION_FILENAME
 
 PORTFOLIO_XRAY_BLOCK_2_1_KEY = "block_2_1_asset_allocation"
@@ -63,6 +64,13 @@ def resolve_candidate_launchpad_path(output_dir_final: Path) -> Path | None:
     return path
 
 
+def resolve_portfolio_alternatives_builder_path(output_dir_final: Path) -> Path | None:
+    path, _ = _resolve_artifact_path(
+        output_dir_final, PORTFOLIO_ALTERNATIVES_BUILDER_FILENAME
+    )
+    return path
+
+
 def _load_json(path: Path | None) -> dict[str, Any] | None:
     if path is None or not path.is_file():
         return None
@@ -74,6 +82,7 @@ def _load_json(path: Path | None) -> dict[str, Any] | None:
 PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS: tuple[str, ...] = (
     "problem_classification_json",
     "candidate_launchpad_json",
+    "portfolio_alternatives_builder_json",
 )
 
 PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS: tuple[str, ...] = (
@@ -177,6 +186,10 @@ def product_bundle_generated_paths_for_manifest(output_dir_final: Path) -> dict[
     launchpad_path = resolve_candidate_launchpad_path(base)
     if launchpad_path is not None and launchpad_path.is_file():
         out["candidate_launchpad_json"] = _normalize_manifest_path(launchpad_path)
+
+    builder_path = resolve_portfolio_alternatives_builder_path(base)
+    if builder_path is not None and builder_path.is_file():
+        out["portfolio_alternatives_builder_json"] = _normalize_manifest_path(builder_path)
 
     for key, filename in (
         ("current_vs_candidate_json", "current_vs_candidate.json"),
@@ -473,19 +486,25 @@ def load_diagnosis_bundle_docs(output_dir_final: Path) -> dict[str, Any]:
     launchpad_path, launchpad_resolution = _resolve_artifact_path(
         output_dir_final, CANDIDATE_LAUNCHPAD_FILENAME
     )
+    builder_path, builder_resolution = _resolve_artifact_path(
+        output_dir_final, PORTFOLIO_ALTERNATIVES_BUILDER_FILENAME
+    )
     xray_path, xray_resolution = _resolve_artifact_path(output_dir_final, "portfolio_xray.json")
     stress_path, stress_resolution = _resolve_artifact_path(output_dir_final, "stress_report.json")
     return {
         "problem_classification": _load_json(problem_path),
         "candidate_launchpad": _load_json(launchpad_path),
+        "portfolio_alternatives_builder": _load_json(builder_path),
         "portfolio_xray": _load_json(xray_path),
         "stress_report": _load_json(stress_path),
         "problem_classification_path": problem_path,
         "candidate_launchpad_path": launchpad_path,
+        "portfolio_alternatives_builder_path": builder_path,
         "portfolio_xray_path": xray_path,
         "stress_report_path": stress_path,
         "problem_classification_resolution": problem_resolution,
         "candidate_launchpad_resolution": launchpad_resolution,
+        "portfolio_alternatives_builder_resolution": builder_resolution,
         "portfolio_xray_resolution": xray_resolution,
         "stress_report_resolution": stress_resolution,
     }
@@ -527,6 +546,7 @@ __all__ = [
     "product_bundle_generated_paths_for_manifest",
     "product_bundle_manifest_extra",
     "resolve_candidate_launchpad_path",
+    "resolve_portfolio_alternatives_builder_path",
     "subject_diagnostics_manifest_note",
     "resolve_problem_classification_path",
 ]

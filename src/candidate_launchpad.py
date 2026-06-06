@@ -17,19 +17,19 @@ CANDIDATE_LAUNCHPAD_FILENAME = "candidate_launchpad.json"
 
 GOAL_TO_METHODS: dict[str, tuple[str, ...]] = {
     "Reduce volatility": ("minimum_variance", "risk_parity", "equal_weight"),
-    "Reduce drawdown": ("minimum_variance", "minimum_cvar_constrained", "risk_parity"),
+    "Reduce drawdown": ("minimum_cvar", "minimum_variance", "risk_parity"),
     "Improve diversification": (
         "equal_weight",
-        "equal_weight_by_asset_class",
+        "risk_parity",
         "maximum_diversification",
     ),
-    "Reduce concentration": ("equal_weight", "equal_weight_by_asset_class", "risk_budget_by_asset"),
+    "Reduce concentration": ("equal_weight", "risk_parity", "maximum_diversification"),
     "Improve crisis resilience": (
-        "minimum_cvar_constrained",
-        "robust_mv_constrained",
-        "robust_scenario",
+        "minimum_cvar",
+        "maximum_diversification",
+        "minimum_variance",
     ),
-    "Improve return/risk balance": ("maximum_diversification", "robust_mv_constrained"),
+    "Improve return/risk balance": ("maximum_diversification", "risk_parity", "minimum_variance"),
     "Compare against simple benchmark": ("equal_weight", "risk_parity"),
     "Keep current portfolio and monitor": (),
     "Review data quality": (),

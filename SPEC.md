@@ -75,7 +75,7 @@ Current Core MVP product layer:
 - Stress Test Lab evidence
 - Problem Classification
 - Candidate Launchpad
-- Portfolio Alternatives Builder Launchpad-card prefill and backend delegation plan
+- Portfolio Alternatives Builder Launchpad-card prefill, validation, and `CandidateSetup` handoff
 - explicit user-triggered Candidate Generation
 - Current-vs-Candidate adapter
 - Decision Verdict mapping
@@ -98,8 +98,7 @@ Target product areas that remain TBD until separately specified and implemented:
 
 - full interactive UI and saved analysis workspaces
 - formal diagnosis-only product state beyond current generated artifacts and workflow-state metadata
-- full Candidate Launchpad / Portfolio Alternatives Builder UI and user-triggered candidate
-  generation as the default product behavior
+- full Candidate Launchpad / Portfolio Alternatives Builder UI beyond the current JSON setup artifact, and user-triggered candidate generation as the default product behavior
 - current-vs-selected-candidate UX as the primary interactive comparison mode beyond the current
   additive JSON adapter
 - Decision Verdict replacing or renaming current Selection Engine terminology
@@ -224,6 +223,9 @@ Main report artifacts
 | Factor diagnostics and factor-risk outputs | [docs/specs/factor_diagnostics_spec.md](docs/specs/factor_diagnostics_spec.md) |
 | Macro regime diagnostics | [docs/specs/macro_regime_spec.md](docs/specs/macro_regime_spec.md) |
 | Scenario Library and normalized scenario view | [docs/specs/scenario_library_spec.md](docs/specs/scenario_library_spec.md) |
+| Problem Classification and Candidate Launchpad current v3 contracts | [docs/specs/block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md), [docs/specs/problem_classification_spec.md](docs/specs/problem_classification_spec.md), [docs/specs/candidate_launchpad_spec.md](docs/specs/candidate_launchpad_spec.md) |
+| Portfolio Alternatives Builder setup, validation, and explicit Block 6 / Block 7 boundary | [docs/specs/portfolio_alternatives_builder_spec.md](docs/specs/portfolio_alternatives_builder_spec.md), [docs/specs/builder_prefill_spec.md](docs/specs/builder_prefill_spec.md), [docs/specs/candidate_setup_spec.md](docs/specs/candidate_setup_spec.md) |
+| Candidate Generation one-attempt artifact | [docs/specs/candidate_generation_spec.md](docs/specs/candidate_generation_spec.md) |
 | Candidate and benchmark portfolios | [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md) |
 | Candidate portfolio factory orchestration | [docs/specs/candidate_factory_spec.md](docs/specs/candidate_factory_spec.md) |
 | Candidate Factory layer mapping (Block 4.1–4.9) | [docs/specs/candidate_factory_layer_spec.md](docs/specs/candidate_factory_layer_spec.md) |
@@ -282,6 +284,16 @@ requested risk-free source, investor currency, and return frequency, and cached 
 the analysis-effective end date. That fallback is provenance-visible through
 `risk_free_fallback_used: true`, `risk_free_fallback_reason: fred_timeout_cached_rf`, and operator
 warnings in `run_metadata.json` / `data_policy.json`; absent approved cache still fails clearly.
+
+Full factor-matrix FRED data uses a separate raw factor cache (`cache/factors/v_<series_id>/`) and
+is cache-first for product/demo analysis. If the cache is valid, complete, fresh, and covers the
+requested date range, the product run must not call live FRED for those factor series. Cache
+warm/update uses `FRED_API_KEY` from the environment as the primary FRED source; the public FRED CSV
+endpoint is a disclosed fallback only when the key is absent or the API request fails. Diagnostics
+must expose `source_used`, `cache_status`, `missing_series`, warnings,
+`full_factor_matrix_available`, and `demo_safe`. Partial or expired cache is not full success and
+must not be hidden behind equity-only or synthetic factor data.
+
 `client_profile`, liquidity floors, `portfolio_value`, and mandate caps are **not** required for
 the diagnosis path; they remain `legacy_advanced` tiers for `run_optimization.py` and full mandate
 runs.
@@ -458,10 +470,11 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 
 
 Block 4 v3 is diagnosis-first: user-facing output must lead with `primary_diagnosis`, root cause, evidence, confidence, actionability, `next_diagnostic_step`, and success criteria; scoring remains backend audit metadata. Mixed or acceptable outcomes say no immediate rebalance is justified but still expose Equal Weight / Risk Parity as reference benchmark tests, not recommendations; Launchpad cards can pre-fill Portfolio Alternatives Builder setup, but candidate generation is explicit and Decision Verdict remains the downstream layer that decides whether an actual rebalance is justified.
-| Portfolio Alternatives Builder as user-triggered candidate UX | Builder prefill and backend wrapper implemented (`build_builder_prefill_from_launchpad_card` and `PortfolioAlternativeBuildPlan` via [src/portfolio_alternatives_builder.py](src/portfolio_alternatives_builder.py)); consumes Launchpad v3 cards, preserves the decision boundary and `is_rebalance_recommendation: false`, and returns one-candidate factory delegation plans only when explicitly requested; full UI remains Target/TBD and batch factory remains backend/advanced/research |
+| Portfolio Alternatives Builder as user-triggered candidate UX | Block 6 setup implemented via [src/portfolio_alternatives_builder.py](src/portfolio_alternatives_builder.py): `BuilderPrefill`, guided strategy selection, Simple Mode parameters, validation, `CandidateSetup`, and `portfolio_alternatives_builder.json` runtime writing after Launchpad. It consumes Launchpad v3 cards, preserves success criteria / decision boundary / `is_rebalance_recommendation: false`, blocks data-quality cards, and does not create candidates, weights, comparison, or verdict artifacts. One-candidate factory delegation remains explicit Block 7/backend behavior only; full UI remains Target/TBD and batch factory remains backend/advanced/research |
+| Candidate Generation as explicit one-attempt Block 7 | Implemented additive contract via [src/candidate_generation.py](src/candidate_generation.py): `candidate_generation_v1` consumes one validated `CandidateSetup`, maps the guided method/mode to one backend variant, preserves hypothesis/success/tradeoff/decision boundary, writes one candidate attempt, and keeps `is_rebalance_recommendation: false`; runtime adapter [scripts/generate_candidate_from_builder_setup.py](scripts/generate_candidate_from_builder_setup.py) and one-command vertical demo [scripts/run_blocks_5_to_9_vertical_flow.py](scripts/run_blocks_5_to_9_vertical_flow.py) keep the path one-candidate scoped |
 | Current-vs-selected-candidate as primary interactive UX | Adapter artifact implemented (`current_vs_candidate.json` via [src/current_vs_candidate.py](src/current_vs_candidate.py)); interactive UX remains Target/TBD, canonical comparison remains unchanged |
-| Decision Verdict product language | Implemented additive mapping artifact (`decision_verdict.json` via [src/decision_verdict.py](src/decision_verdict.py)); current technical contract remains Selection Engine / No-Trade |
-| AI Commentary formal explanation layer | Grounding context only (`ai_commentary_context.json` via [src/ai_commentary_context.py](src/ai_commentary_context.py); no LLM). Deterministic `commentary.txt` / stress commentary are separate report exports. Generated natural-language AI commentary remains Target/TBD (`RM-ARCH-010` in [docs/ROADMAP.md](docs/ROADMAP.md)) |
+| Decision Verdict product language | Implemented additive artifact (`decision_verdict.json` via [src/decision_verdict.py](src/decision_verdict.py)); legacy/backend callers can map Selection Engine / No-Trade evidence, and the Blocks 5-9 vertical loop can build a verdict directly from `candidate_generation.json` + `current_vs_candidate.json`; current technical Selection Engine contract remains preserved |
+| AI Commentary formal explanation layer | Grounding context only (`ai_commentary_context.json` via [src/ai_commentary_context.py](src/ai_commentary_context.py); no LLM). It can ground the vertical loop from `candidate_generation.json`, `current_vs_candidate.json`, and `decision_verdict.json` without creating a verdict or trade instruction. Deterministic `commentary.txt` / stress commentary are separate report exports. Generated natural-language AI commentary remains Target/TBD (`RM-ARCH-010` in [docs/ROADMAP.md](docs/ROADMAP.md)) |
 | Formal Selection Engine and No-Trade | Implemented (`selection_decision.json` via [src/selection_engine.py](src/selection_engine.py)); portfolio-first baseline is `analysis_subject`, with legacy fallback to `current` |
 | Trade-off Explanation and Model Risk Diagnostics | Implemented ([src/tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py); [tradeoff_and_model_risk_spec.md](docs/specs/tradeoff_and_model_risk_spec.md)) |
 | Assumption Sensitivity | Implemented ([src/assumption_sensitivity.py](src/assumption_sensitivity.py); [assumption_sensitivity_spec.md](docs/specs/assumption_sensitivity_spec.md)) |

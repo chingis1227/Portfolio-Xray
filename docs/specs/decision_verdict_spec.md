@@ -6,16 +6,16 @@ Implementation: `src/decision_verdict.py`.
 
 Canonical artifact: `decision_verdict.json`.
 
-Status: implemented as an additive mapping in code migration Session 08. It does not replace the current Selection Engine contract.
+Status: implemented as an additive mapping in code migration Session 08 and expanded in Blocks 5-9 vertical loop Session 06 with a direct Block 7/8 evidence builder. It does not replace the current Selection Engine contract.
 
 ## Scope
 
-Decision Verdict translates existing Selection Engine / No-Trade evidence into product-facing action language.
+Decision Verdict translates either existing Selection Engine / No-Trade evidence or the direct vertical product-loop evidence into product-facing action language.
 
 It reads:
 
-- `selection_decision.json`;
-- optional `current_vs_candidate.json`;
+- either `selection_decision.json` or `candidate_generation.json`;
+- `current_vs_candidate.json`;
 - optional `action_plan.json`.
 
 It writes:
@@ -32,6 +32,8 @@ It does not:
 - execute trades;
 - modify candidate comparison;
 - optimize weights.
+- claim that a candidate is the "best portfolio";
+- hide trade-offs that appear in `current_vs_candidate.json`.
 
 ## Artifact Contract
 
@@ -48,11 +50,14 @@ Top-level shape:
   "selection_decision_status": "no_material_rebalance",
   "baseline_candidate_id": "analysis_subject",
   "selected_candidate_id": "risk_parity",
+  "reviewed_candidate_id": "risk_parity",
+  "verdict_reason_id": "no_material_rebalance",
   "no_trade": {},
   "recommended_action": "...",
   "confidence": "medium",
   "confidence_limitations": [],
   "rationale_summary": "...",
+  "evidence_summary": {},
   "source_artifacts": {},
   "guardrails": {}
 }
@@ -69,6 +74,31 @@ Top-level shape:
 | `mandate_risk_reduction` | `risk_reduction_required` |
 
 Unknown technical statuses map to `evidence_insufficient`.
+
+## Direct Block 7/8 Builder
+
+`build_decision_verdict_from_block7_8()` is the Block 9 builder for the vertical product loop. It consumes one `candidate_generation_v1` attempt plus the Block 8 `current_vs_candidate_v1` comparison for the same selected candidate. It keeps the existing `decision_verdict_v1` status vocabulary for compatibility, but adds product-specific evidence fields:
+
+- `reviewed_candidate_id` records the generated candidate under review even when the final verdict is no-trade or evidence insufficient.
+- `verdict_reason_id` explains the direct Block 9 reason, such as `candidate_generation_failed`, `candidate_generation_infeasible`, `insufficient_data_quality`, `insufficient_optimizer_or_method_quality`, `no_material_rebalance`, `keep_current_portfolio`, `rebalance_when_material`, `test_another_candidate`, or `risk_improved_but_turnover_too_high`.
+- `evidence_summary` mirrors the Block 7 generation status, method availability, materiality review, success-criteria result, risk reduced/added, improvements, deteriorations, and practicality/turnover evidence used by the verdict.
+
+Direct outcome mapping:
+
+| Direct evidence condition | `selection_decision_status` | `verdict_id` |
+| --- | --- | --- |
+| Candidate generation missing, failed, infeasible, or not comparable | `data_review_required` | `evidence_insufficient` |
+| Current-vs-candidate evidence missing, degraded, or materially incomplete | `data_review_required` | `evidence_insufficient` |
+| Method availability or optimizer/construction disclosure is degraded enough to block trust | `data_review_required` | `evidence_insufficient` |
+| Materiality is insufficient and the hypothesis is not worth action | `no_material_rebalance` | `no_material_rebalance_recommended` |
+| Candidate misses stated success criteria | `no_material_rebalance` | `no_material_rebalance_recommended` |
+| Risk improves but turnover or estimated cost is too high | `no_material_rebalance` | `no_material_rebalance_recommended` |
+| Evidence is mixed or the criterion cannot be evaluated clearly enough | `inconclusive` | `test_another_candidate_or_review_evidence` |
+| Candidate shows material improvement, success criteria are not failed, and practicality does not block review | `selected_candidate` | `rebalance_to_selected_candidate` |
+
+The direct builder uses simple practicality thresholds as Block 9 guardrails: turnover half-sum at or above 50% or estimated transaction cost at or above 0.5% blocks a rebalance verdict and produces a no-trade reason when risk improved. These thresholds are presentation-layer decision guardrails only; they do not change optimizer formulas or candidate weights.
+
+No-trade is valid. Evidence insufficient is valid. A rebalance verdict means "material enough for rebalance review", not automatic trade execution.
 
 ### `verdict_family` (UI filtering)
 
@@ -94,7 +124,7 @@ Product contract (Session 10): `check_decision_verdict_v1`, `check_block_5_compa
 Focused tests:
 
 ```text
-python -m pytest tests/test_block_5_decision_compare_contract.py tests/test_decision_verdict.py -q
+python -m pytest tests/test_block_5_decision_compare_contract.py tests/test_decision_verdict.py tests/test_decision_verdict_contract.py tests/test_decision_verdict_no_trade.py tests/test_decision_verdict_rebalance_when_material.py tests/test_decision_verdict_evidence_insufficient.py tests/test_decision_verdict_failed_candidate.py -q
 ```
 
 Recommended adjacent checks:

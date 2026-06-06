@@ -8,6 +8,7 @@ import os
 import socket
 import time
 from urllib.error import URLError
+from urllib.parse import urlencode
 from urllib.request import urlopen
 
 import pandas as pd
@@ -18,6 +19,71 @@ from src.pandas_compat import MONTH_END_FREQ
 DEFAULT_FRED_TIMEOUT_SECONDS = 10.0
 DEFAULT_FRED_RETRIES = 2
 DEFAULT_FRED_RETRY_SLEEP_SECONDS = 0.5
+FRED_API_OBSERVATIONS_URL = "https://api.stlouisfed.org/fred/series/observations"
+FRED_CSV_GRAPH_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
+
+
+def _fred_api_key(api_key: str | None = None) -> str | None:
+    key = (api_key or os.environ.get("FRED_API_KEY") or "").strip()
+    return key or None
+
+
+def _read_url(url: str, *, timeout: float) -> bytes:
+    try:
+        with urlopen(url, timeout=float(timeout)) as resp:
+            return resp.read()
+    except (URLError, TimeoutError, socket.timeout) as ex:
+        raise RuntimeError(f"FRED download failed: {ex}") from ex
+
+
+def _parse_fred_values_frame(df: pd.DataFrame, series_id: str) -> pd.Series:
+    if df.empty:
+        return pd.Series(dtype=float)
+    date_col = "observation_date" if "observation_date" in df.columns else "date" if "date" in df.columns else df.columns[0]
+    col = series_id if series_id in df.columns else "value" if "value" in df.columns else df.columns[-1]
+    values = pd.to_numeric(df[col].replace(".", pd.NA), errors="coerce")
+    dates = pd.DatetimeIndex(pd.to_datetime(df[date_col])).tz_localize(None)
+    s = pd.Series(values.to_numpy(), index=dates, name=series_id)
+    return s.dropna().astype(float)
+
+
+def _attach_source_attrs(series: pd.Series, *, source_used: str, warnings: list[str] | None = None) -> pd.Series:
+    out = series.copy()
+    out.attrs["source_used"] = source_used
+    out.attrs["fred_source_used"] = source_used
+    if warnings:
+        out.attrs["warnings"] = list(warnings)
+        out.attrs["fred_warnings"] = list(warnings)
+    return out
+
+
+def _fetch_fred_series_api(
+    series_id: str,
+    start: str,
+    end: str,
+    *,
+    api_key: str,
+    timeout: float = DEFAULT_FRED_TIMEOUT_SECONDS,
+) -> pd.Series:
+    """Fetch FRED observations through the official API endpoint."""
+    query = {
+        "series_id": str(series_id),
+        "api_key": str(api_key),
+        "file_type": "json",
+    }
+    if start:
+        query["observation_start"] = str(pd.Timestamp(start).date())
+    if end:
+        query["observation_end"] = str(pd.Timestamp(end).date())
+    url = FRED_API_OBSERVATIONS_URL + "?" + urlencode(query)
+    raw = _read_url(url, timeout=timeout)
+    import json
+
+    parsed = json.loads(raw.decode("utf-8"))
+    if "error_message" in parsed:
+        raise RuntimeError(f"FRED API failed for {series_id}: {parsed['error_message']}")
+    df = pd.DataFrame(parsed.get("observations", []))
+    return _parse_fred_values_frame(df, series_id)
 
 
 def _fetch_fred_series_csv(
@@ -28,20 +94,18 @@ def _fetch_fred_series_csv(
     timeout: float = DEFAULT_FRED_TIMEOUT_SECONDS,
 ) -> pd.Series:
     """Fetch FRED series via the public graph CSV endpoint (no pandas_datareader)."""
-    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
+    query = {"id": str(series_id)}
+    if start:
+        query["cosd"] = str(pd.Timestamp(start).date())
+    if end:
+        query["coed"] = str(pd.Timestamp(end).date())
+    url = FRED_CSV_GRAPH_URL + "?" + urlencode(query)
     try:
-        with urlopen(url, timeout=float(timeout)) as resp:
-            raw = resp.read()
-    except (URLError, TimeoutError, socket.timeout) as ex:
+        raw = _read_url(url, timeout=timeout)
+    except Exception as ex:
         raise RuntimeError(f"FRED CSV download failed for {series_id}: {ex}") from ex
     df = pd.read_csv(io.BytesIO(raw))
-    if df.empty:
-        return pd.Series(dtype=float)
-    date_col = "observation_date" if "observation_date" in df.columns else df.columns[0]
-    col = series_id if series_id in df.columns else df.columns[-1]
-    s = df.set_index(date_col)[col].astype(float)
-    s.index = pd.to_datetime(s.index).tz_localize(None)
-    s = s.dropna()
+    s = _parse_fred_values_frame(df, series_id)
     if start:
         s = s.loc[s.index >= pd.Timestamp(start)]
     if end:
@@ -62,51 +126,53 @@ def fetch_fred_series(
     """
     Fetch FRED series with bounded network waits and a small retry budget.
 
-    The project uses the public FRED CSV endpoint first because it accepts a
-    direct socket timeout. ``pandas_datareader`` remains as a compatibility
-    fallback for non-timeout CSV failures, but all normal live fetches are now
-    bounded by ``timeout`` and ``retries`` instead of waiting indefinitely.
+    Policy: when ``FRED_API_KEY`` is available, the official FRED API is the
+    primary source. The public graph CSV endpoint is only an explicit fallback
+    when no API key is configured or when the API request fails. The returned
+    Series carries ``source_used``/``fred_source_used`` attrs:
+    ``fred_api`` or ``fred_csv_fallback``.
     Returns Series with DatetimeIndex and annual percent (e.g. DTB3).
     """
     attempts = max(1, int(retries) + 1)
     last_exc: Exception | None = None
+    key = _fred_api_key(api_key)
+    warnings: list[str] = []
+
+    if key:
+        for attempt in range(attempts):
+            try:
+                return _attach_source_attrs(
+                    _fetch_fred_series_api(series_id, start, end, api_key=key, timeout=timeout),
+                    source_used="fred_api",
+                )
+            except Exception as exc:
+                last_exc = exc
+                if attempt < attempts - 1:
+                    time.sleep(max(0.0, float(retry_sleep)))
+        warnings.append(f"fred_api_failed_csv_fallback:{type(last_exc).__name__}:{last_exc}")
+    else:
+        warnings.append("fred_api_key_missing_csv_fallback")
+
     for attempt in range(attempts):
         try:
-            return _fetch_fred_series_csv(series_id, start, end, timeout=timeout)
+            return _attach_source_attrs(
+                _fetch_fred_series_csv(series_id, start, end, timeout=timeout),
+                source_used="fred_csv_fallback",
+                warnings=warnings,
+            )
         except Exception as exc:
             last_exc = exc
             if attempt < attempts - 1:
                 time.sleep(max(0.0, float(retry_sleep)))
 
-    # Compatibility fallback for callers that rely on pandas_datareader/FRED_API_KEY.
-    # It is deliberately skipped for timeout-shaped CSV failures so a broken
-    # network cannot hang the run after the bounded CSV attempts already failed.
     msg = str(last_exc or "").lower()
     if "timed out" in msg or "timeout" in msg:
         raise RuntimeError(
             f"FRED fetch timed out for {series_id} after {attempts} attempts "
-            f"with timeout={float(timeout)}s"
+            f"with timeout={float(timeout)}s; source_used=fred_csv_fallback"
         ) from last_exc
 
-    try:
-        from pandas_datareader import get_data_fred
-
-        key = api_key or os.environ.get("FRED_API_KEY")
-        if key:
-            os.environ["FRED_API_KEY"] = key
-        df = get_data_fred(series_id, start=start, end=end)
-        if df is None or df.empty:
-            return pd.Series(dtype=float)
-        if isinstance(df, pd.DataFrame):
-            col = df.columns[0]
-            s = df[col]
-        else:
-            s = df
-        s = s.dropna()
-        s.index = pd.to_datetime(s.index).tz_localize(None)
-        return s.astype(float)
-    except Exception as exc:
-        raise RuntimeError(f"FRED download failed for {series_id}: {exc}") from exc
+    raise RuntimeError(f"FRED download failed for {series_id}; source_used=fred_csv_fallback: {last_exc}") from last_exc
 
 
 def annual_percent_to_monthly_effective(annual_pct: pd.Series) -> pd.Series:

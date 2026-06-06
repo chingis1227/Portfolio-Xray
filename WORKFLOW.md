@@ -77,7 +77,7 @@ Factory recovery and reason codes: [operational runbook §8](docs/operational_ru
 | Step | Check | Why |
 | --- | --- | --- |
 | 1 | Command / mode used | Default is **core** (`core_fast`, six candidates). Product demo uses `--candidates <id>` (`one_candidate`). Full menu is `--mode full` (`default_v1`). |
-| 2 | Open `{output_dir_final}/analysis_subject/` first | Subject X-Ray, stress, and `run_metadata.json` for the **reviewed** portfolio. |
+| 2 | Open `{output_dir_final}/analysis_subject/` first | Subject X-Ray, stress, `run_metadata.json`, Problem Classification, Launchpad, and Block 6 Builder setup for the **reviewed** portfolio. |
 | 3 | Do **not** use root `run_result.json`, `portfolio_weights.yml`, or root `stress_report.json` / `portfolio_xray.json` as the subject | Those are **legacy policy** artifacts when present — often different weights than `analysis_subject/`. |
 | 4 | `candidate_factory_run.json` → `factory_profile_id` | Must match the mode you intended (`core_v1` vs `default_v1`). |
 | 5 | Same file → `steps[]` statuses | Many `skipped_existing` rows mean **reused snapshots**, not a fresh rebuild of that candidate. |

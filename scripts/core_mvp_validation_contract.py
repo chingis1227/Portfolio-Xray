@@ -695,12 +695,9 @@ LAUNCHPAD_KNOWN_METHOD_IDS = frozenset(
         "minimum_variance",
         "risk_parity",
         "equal_weight",
-        "minimum_cvar_constrained",
-        "equal_weight_by_asset_class",
+        "hierarchical_risk_parity",
+        "minimum_cvar",
         "maximum_diversification",
-        "risk_budget_by_asset",
-        "robust_mv_constrained",
-        "robust_scenario",
     }
 )
 
@@ -801,11 +798,31 @@ BUILDER_PREFILL_ALLOWED_METHOD_ROLES = frozenset(
     }
 )
 
+BUILDER_PREFILL_ALLOWED_STATUSES = frozenset(
+    {
+        "ready_for_user_confirmation",
+        "blocked",
+        "monitor_only",
+        "custom_draft",
+    }
+)
+
+BUILDER_PREFILL_PROHIBITED_FIELDS = frozenset(
+    {
+        "candidate_id",
+        "weights",
+        "candidate_status",
+        "comparison_status",
+    }
+)
+
 BUILDER_PREFILL_REQUIRED_FIELDS = frozenset(
     {
+        "builder_prefill_id",
         "builder_mode",
         "source",
         "source_diagnosis_id",
+        "source_problem_id",
         "source_card_id",
         "goal",
         "hypothesis_to_test",
@@ -817,6 +834,8 @@ BUILDER_PREFILL_REQUIRED_FIELDS = frozenset(
         "max_asset_weight",
         "min_asset_weight",
         "volatility_target",
+        "rebalancing_frequency",
+        "transaction_cost_bps",
         "success_criteria",
         "tradeoff_to_watch",
         "when_to_skip",
@@ -826,6 +845,9 @@ BUILDER_PREFILL_REQUIRED_FIELDS = frozenset(
         "is_rebalance_recommendation",
         "decision_boundary",
         "candidate_generation_allowed",
+        "created_from",
+        "status",
+        "warnings",
     }
 )
 
@@ -1276,6 +1298,17 @@ def builder_prefill_product_contract_violations(
     if missing:
         violations.append(f"{prefix}: missing fields: {', '.join(missing)}")
 
+    forbidden = sorted(BUILDER_PREFILL_PROHIBITED_FIELDS & set(prefill))
+    if forbidden:
+        violations.append(f"{prefix}: prohibited fields present: {', '.join(forbidden)}")
+
+    status = str(prefill.get("status") or "").strip()
+    if status not in BUILDER_PREFILL_ALLOWED_STATUSES:
+        violations.append(f"{prefix}: invalid status {prefill.get('status')!r}")
+
+    if not isinstance(prefill.get("warnings"), list):
+        violations.append(f"{prefix}: warnings must be a list")
+
     mode = str(prefill.get("builder_mode") or "").strip()
     if mode not in BUILDER_PREFILL_ALLOWED_MODES:
         violations.append(f"{prefix}: invalid builder_mode {prefill.get('builder_mode')!r}")
@@ -1286,6 +1319,7 @@ def builder_prefill_product_contract_violations(
 
     for key in (
         "source_diagnosis_id",
+        "source_problem_id",
         "source_card_id",
         "goal",
         "hypothesis_to_test",

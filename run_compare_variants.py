@@ -10,7 +10,10 @@ See docs/specs/candidate_comparison_spec.md.
 from pathlib import Path
 import argparse
 
-from src.candidate_comparison import write_candidate_comparison_outputs
+from src.candidate_comparison import (
+    write_block8_current_vs_candidate_only_outputs,
+    write_candidate_comparison_outputs,
+)
 from src.config import load_validated_config
 from src.output_policy import OUTPUT_PROFILE_VALUES
 from src.utils import setup_logging, logger
@@ -19,7 +22,11 @@ from src.utils import setup_logging, logger
 def main() -> None:
     setup_logging()
     parser = argparse.ArgumentParser(
-        description="Write candidate comparison and decision JSON contracts."
+        description=(
+            "Write candidate comparison and decision JSON contracts. Technical boundary: "
+            "use --block8-only --candidate <id> from the vertical product loop; default mode "
+            "writes advanced/backend support artifacts and is not the Core MVP demo entry."
+        )
     )
     parser.add_argument(
         "--output-profile",
@@ -27,14 +34,45 @@ def main() -> None:
         default="site_api",
         help="Output policy (default: site_api JSON-only; use full_report for TXT/legacy exports).",
     )
-    args = parser.parse_args()
-    cfg = load_validated_config()
-    project_root = Path(__file__).resolve().parent
-    paths = write_candidate_comparison_outputs(
-        cfg,
-        project_root=project_root,
-        output_profile=args.output_profile,
+    parser.add_argument(
+        "--block8-only",
+        action="store_true",
+        help=(
+            "Vertical product mode: write scoped candidate_comparison.json and "
+            "current_vs_candidate.json only; do not write verdict/action/journal/AI context."
+        ),
     )
+    parser.add_argument(
+        "--candidate",
+        dest="candidate_ids",
+        action="append",
+        default=None,
+        help=(
+            "Selected candidate id for --block8-only. Can be repeated. If omitted, "
+            "candidate_generation.json or explicit-list candidate_factory_run.json is used."
+        ),
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to config.yml (default: project root config.yml).",
+    )
+    args = parser.parse_args()
+    cfg = load_validated_config(args.config)
+    project_root = Path(__file__).resolve().parent
+    if args.block8_only:
+        paths = write_block8_current_vs_candidate_only_outputs(
+            cfg,
+            project_root=project_root,
+            candidate_ids=args.candidate_ids,
+        )
+    else:
+        paths = write_candidate_comparison_outputs(
+            cfg,
+            project_root=project_root,
+            output_profile=args.output_profile,
+        )
     logger.info(
         "Comparison written: %s (legacy: %s; scorecard: %s)",
         paths.get("candidate_comparison_json"),

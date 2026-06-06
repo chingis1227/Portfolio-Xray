@@ -11,6 +11,7 @@ Input portfolio
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
+-> Candidate Generation
 -> Current vs Candidate Comparison
 -> Decision Verdict
 -> AI Commentary / grounding
@@ -29,16 +30,28 @@ explicit export/report profile is selected. Default `run_portfolio_review.py` / 
 **not** refresh `pdf files/` — use `--with-pdf`, `--legacy-full-pdf`, or an explicit export profile
 when client PDFs must match the latest JSON.
 
-Runtime note: default `run_portfolio_review.py` is now diagnosis-only. Candidate factory and compare
-are explicit: use `--candidates <id>` for one-hypothesis/shortlist product runs, `--with-candidates`
-for backend core batch (`core_fast`), and `--mode full` for advanced/research full menu (`default_v1`).
+### Runtime command taxonomy
+
+- Diagnosis-only: `python run_core_diagnostics.py` for Blocks 1-3, or `python run_portfolio_review.py` for the full diagnosis materialization path.
+- Generate one selected candidate: `python scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight` after diagnosis/Launchpad/Builder setup.
+- Compare and verdict: the vertical script continues into Block 8/9; use `run_compare_variants.py --block8-only --candidate <id>` only as a technical compare boundary.
+- Full demo: `python scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight`.
+- Compatibility: `python run_portfolio_review.py --candidates <id>` when the backend factory id is already known; this is not the visible Builder-to-Block-7 handoff and its banner says so.
+- Advanced/research: `--with-candidates`, `--mode full`, and standalone factory batch commands; their banners classify them as not the Core MVP demo story.
+
+Runtime note: default `run_portfolio_review.py` is diagnosis-only. The canonical Blocks 5-9 product demo is
+`scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight`: it selects one Launchpad hypothesis,
+validates Builder setup, generates one candidate attempt, compares it, writes Decision Verdict, and grounds AI Commentary. Use `run_portfolio_review.py --candidates <id>` only when you already want the older explicit factory-id compatibility path; use `--with-candidates` for backend core batch (`core_fast`) and `--mode full` for advanced/research full menu (`default_v1`).
 See [OUTPUTS.md](OUTPUTS.md) for the full command matrix and [docs/runtime_entrypoints.md](docs/runtime_entrypoints.md) for active vs legacy CLI entrypoints.
+For a practical operator package with the three demo fixtures, expected outputs, and verdict
+interpretation, see [docs/demo/full_demo_mvp.md](docs/demo/full_demo_mvp.md).
 
 | Use case (primary product runtime) | Command | Factory profile |
 | --- | --- | --- |
 | **Core diagnostics only** (Blocks 1-3: Input, X-Ray, Stress) | `python run_core_diagnostics.py` | none |
 | Portfolio diagnosis / site/API backend run | `python run_portfolio_review.py` | none (diagnosis-only) |
-| **Canonical product demo** (one selected hypothesis) | `python run_portfolio_review.py --candidates equal_weight` | explicit candidate id |
+| **Canonical product demo** (one selected hypothesis) | `python scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight` | one selected Launchpad card + one Block 7 attempt |
+| One explicit backend candidate compatibility path | `python run_portfolio_review.py --candidates equal_weight` | explicit candidate id; skips the Builder/Block 7 artifact loop |
 | Core backend candidate batch (advanced/research) | `python run_portfolio_review.py --with-candidates` | `core_fast` |
 | Full advanced/research review (16 builders) | `python run_portfolio_review.py --mode full` | `default_v1` |
 | Full menu factory + compare (standalone advanced/research) | `python run_candidate_factory.py --profile default_v1 --then-compare` | `default_v1` |
@@ -57,6 +70,10 @@ Legacy compatibility runtime (not Core MVP default):
 | Legacy policy workflow wrapper | `python run_mvp_workflow.py --workflow policy-only` |
 | Full legacy PDF suite | `python run_portfolio_review.py --legacy-full-pdf` or `python rebuild_pdf_reports.py` |
 
+Root legacy runner wrappers print a warning before delegating to `legacy/runners/`. Treat that
+warning literally: those commands are preserved for compatibility and research/debug evidence, not
+for the current Core MVP demo path.
+
 Each site/API run writes `output_manifest.json` under `output_dir_final` (machine-readable index of
 JSON paths, disabled presentation classes, and per-type artifact counts). Cache under `cache/` is
 internal; CSV/TXT/HTML/PNG/PDF/Markdown/CSS are export-only unless an explicit profile or PDF flag
@@ -69,7 +86,7 @@ Current Core MVP product layer:
 - Canonical portfolio-first workflow contract through `analysis_subject`; runtime transition is active
   and governed by [portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md).
 - Portfolio-first CLI orchestration through `run_portfolio_review.py`.
-- Additive diagnosis-first product-bundle artifacts and adapters: Problem Classification (`problem_classification.json`), Candidate Launchpad (`candidate_launchpad.json`), Current-vs-Candidate (`current_vs_candidate.json`), Decision Verdict (`decision_verdict.json`), AI Commentary grounding context (`ai_commentary_context.json`), and light What Changed summary (`what_changed_summary.json`). These are the current “ДИАГНОСТИКА 2” product-facing files where implemented.
+- Additive diagnosis-first product-bundle artifacts and adapters: Problem Classification (`problem_classification.json`), Candidate Launchpad (`candidate_launchpad.json`), Portfolio Alternatives Builder setup (`portfolio_alternatives_builder.json`), one-attempt Candidate Generation (`candidate_generation.json`), Current-vs-Candidate (`current_vs_candidate.json`), Decision Verdict (`decision_verdict.json`), AI Commentary grounding context (`ai_commentary_context.json`), and light What Changed summary (`what_changed_summary.json`). These are the current product-facing files where implemented: Builder setup is not a candidate, a candidate is not a recommendation, and Decision Verdict is where action/no-action is evaluated.
 - JSON generated artifacts by default; CSV, HTML, TXT, PNG, and PDF-style artifacts remain explicit export/report outputs.
 
 Implemented backend / advanced / legacy support:
@@ -118,7 +135,7 @@ current portfolio / analysis_subject
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
--> one selected candidate or generated shortlist
+-> Candidate Generation (one selected candidate attempt by default)
 -> Current vs Candidate Comparison
 -> Decision Verdict
 -> AI Commentary grounding
@@ -136,8 +153,9 @@ python run_portfolio_review.py --dry-run
 python run_portfolio_review.py --mode full
 python run_portfolio_review.py --mode full --resume-candidates
 python run_portfolio_review.py --skip-candidates
-python run_portfolio_review.py --candidate-profile core_benchmarks
-python run_portfolio_review.py --candidates equal_weight,risk_parity
+python run_portfolio_review.py --candidate-profile core_benchmarks  # advanced/research profile override
+python run_portfolio_review.py --candidates equal_weight,risk_parity  # explicit factory-id compatibility path
+python scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight  # canonical one-hypothesis demo
 ```
 
 | Review mode | Factory profile | Typical use |
@@ -151,6 +169,23 @@ python run_portfolio_review.py --candidates equal_weight,risk_parity
 `run_portfolio_review.py` materializes `{output_dir_final}/analysis_subject/` first, then runs
 the non-policy candidate factory and comparison path. It does not call `run_optimization.py` in the
 default path. Inspect subject diagnostics before interpreting candidate or decision artifacts.
+
+### FRED factor cache before a live demo
+
+Factor Exposure / Stress Lab should run from approved local factor cache during demos. To refresh
+that cache, set the FRED key only in the environment (do not put secrets in `config.yml`):
+
+```powershell
+$env:FRED_API_KEY="your_key_here"
+python scripts/warm_factor_cache.py --start 2007-01-01 --end 2026-06-05
+python scripts/warm_factor_cache.py --check-only --start 2007-01-01 --end 2026-06-05
+```
+
+`--check-only` must report `cache_status: valid`, no `missing_series`,
+`full_factor_matrix_available: true`, and `demo_safe: true`. If FRED is unavailable and cache is
+missing/partial/expired, treat it as a blocker/warning rather than running an equity-only or fake
+factor matrix. Without `FRED_API_KEY`, the project may use the public FRED CSV endpoint only as a
+diagnosed fallback (`source_used: fred_csv_fallback`).
 
 ### Blocks 1-5 MVP core (first five product blocks)
 
@@ -340,7 +375,14 @@ Common artifacts:
 - `run_metadata.json`
 - `stress_report.json`
 - `portfolio_xray.json`
+- `problem_classification.json`
+- `candidate_launchpad.json`
+- `portfolio_alternatives_builder.json`
+- `candidate_generation.json`
 - `candidate_comparison.json`
+- `current_vs_candidate.json`
+- `decision_verdict.json`
+- `ai_commentary_context.json`
 - `robustness_scorecard.json`
 - `portfolio_health_score.json`
 - `selection_decision.json`
@@ -437,6 +479,7 @@ Start with [RULES.md](RULES.md), then use [SPEC.md](SPEC.md) as the implementati
 | Documentation migration records | [DOCUMENTATION_MIGRATION_PLAN.md](DOCUMENTATION_MIGRATION_PLAN.md), [DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md](DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md), and archived legacy docs |
 | Planning protocol | [PLANS.md](PLANS.md) |
 | Design rules | [DESIGN.md](DESIGN.md) |
+| Full Demo MVP guide | [docs/demo/full_demo_mvp.md](docs/demo/full_demo_mvp.md) |
 
 ## Contributor Rules
 

@@ -226,6 +226,12 @@ def parse_args() -> argparse.Namespace:
         help="Clear all cached data before running",
     )
     parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to config.yml (default: project root config.yml).",
+    )
+    parser.add_argument(
         "--backtest-mode",
         type=str,
         choices=("dynamic_nan_safe", "simple"),
@@ -2678,6 +2684,7 @@ def run_portfolio_report_for_weights(
     }:
         blocked_manifest_keys = (
             "candidate_launchpad_json",
+            "portfolio_alternatives_builder_json",
             "candidate_comparison_json",
             "current_vs_candidate_json",
             "decision_verdict_json",
@@ -2999,7 +3006,7 @@ def main() -> None:
         clear_all_cache()
 
     try:
-        cfg = load_validated_config()
+        cfg = load_validated_config(args.config)
     except ConfigValidationError as e:
         logger.error(f"Configuration validation error: {e}")
         raise SystemExit(1)

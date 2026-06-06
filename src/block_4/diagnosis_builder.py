@@ -33,6 +33,7 @@ from src.block_4.problem_scoring import ProblemScoringResult, score_problems
 from src.block_4.problem_taxonomy import get_problem_definition, is_symptom_problem
 from src.block_4.thresholds import get_block_4_thresholds
 from src.candidate_launchpad import CANDIDATE_LAUNCHPAD_FILENAME
+from src.portfolio_alternatives_builder import write_portfolio_alternatives_builder_outputs
 from src.problem_classification import PROBLEM_CLASSIFICATION_FILENAME
 
 PROBLEM_CLASSIFICATION_V3_VERSION = "problem_classification_v3"
@@ -208,6 +209,11 @@ def write_block_4_diagnosis_outputs(
         json.dump(diagnosis.problem_classification, handle, indent=2, ensure_ascii=False, default=str)
     with lp_path.open("w", encoding="utf-8") as handle:
         json.dump(diagnosis.candidate_launchpad, handle, indent=2, ensure_ascii=False, default=str)
+    write_portfolio_alternatives_builder_outputs(
+        out,
+        candidate_launchpad=diagnosis.candidate_launchpad,
+        problem_classification=diagnosis.problem_classification,
+    )
 
     return Block4DiagnosisWriteResult(
         problem_classification_path=pc_path,

@@ -587,6 +587,15 @@ This wiring does not change the comparison artifact boundary. `candidate_compari
 implementation-plan surface lives only in `action_plan.json`, temporal change evidence lives in
 `monitoring_diff.json`, and the run-level process record lives in `decision_journal.json`.
 
+### Block 8-only vertical product boundary
+
+`write_block8_current_vs_candidate_only_outputs` is the narrow product-loop path for comparison
+without verdict. It builds the comparison, writes `candidate_comparison.json` scoped to the selected
+candidate, then writes `current_vs_candidate.json`. It must not write or refresh
+`decision_verdict.json`, `action_plan.json`, `decision_journal.json`, or
+`ai_commentary_context.json`. Existing downstream files are treated as stale downstream artifacts and
+are disclosed in `current_vs_candidate.json` instead of being loaded as current evidence.
+
 ## Legacy Artifacts
 
 | File | Producer | V1 status |

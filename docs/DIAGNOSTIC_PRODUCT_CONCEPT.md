@@ -27,6 +27,7 @@ Input portfolio
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
+-> Candidate Generation
 -> Current vs Candidate Comparison
 -> Decision Verdict
 -> AI Commentary / grounding
@@ -134,6 +135,7 @@ Input portfolio
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
+-> Candidate Generation
 -> Current vs Candidate Comparison
 -> Decision Verdict
 -> AI Commentary
@@ -300,7 +302,7 @@ Target direction unless verified against code/specs.
 
 Purpose:
 
-Generate one selected candidate portfolio from a chosen goal and method.
+Prepare and validate the setup for one selected candidate hypothesis before Candidate Generation.
 
 Target simple-mode fields:
 
@@ -312,7 +314,7 @@ Target simple-mode fields:
 - Optional volatility target.
 - Rebalancing frequency.
 - Transaction cost assumption.
-- Generate candidate.
+- Generate candidate (explicit action after validation).
 
 Potential methods:
 
@@ -332,9 +334,7 @@ point of the product.
 
 Implementation status:
 
-User-triggered on-demand candidate generation is target direction unless verified against current
-code/specs. Existing automatic/batch capabilities should be preserved as current infrastructure,
-advanced mode, research mode, or legacy as appropriate.
+Block 6 setup is verified in current code/specs: selected Launchpad cards can become `BuilderPrefill`, Simple Mode parameters, validation output, and a validated `CandidateSetup` inside `portfolio_alternatives_builder.json`. This is setup only. Actual candidate generation is Block 7 and still requires an explicit Generate Candidate action. Existing automatic/batch capabilities should be preserved as current infrastructure, advanced mode, research mode, or legacy as appropriate.
 
 ### 5.7 Current vs Candidate Comparison
 
@@ -641,7 +641,7 @@ Current additive artifacts verified by current specs/code include:
 
 - Problem Classification artifact (`problem_classification.json`).
 - Candidate Launchpad artifact (`candidate_launchpad.json`).
-- Portfolio Alternatives Builder backend delegation plan.
+- Portfolio Alternatives Builder setup artifact (`portfolio_alternatives_builder.json`) and explicit backend delegation only for Block 7.
 - Current-vs-Candidate adapter (`current_vs_candidate.json`).
 - Decision Verdict additive mapping (`decision_verdict.json`).
 - AI Commentary grounding context (`ai_commentary_context.json`).

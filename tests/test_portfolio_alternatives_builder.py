@@ -38,11 +38,11 @@ def _contract_valid_launchpad_card(**overrides: object) -> dict[str, object]:
         "hypothesis_to_test": "Test whether stress loss improves.",
         "suggested_methods": [
             {
-                "candidate_method_id": "minimum_cvar_constrained",
+                "candidate_method_id": "minimum_cvar",
                 "method_role": "targeted_hypothesis",
             }
         ],
-        "default_method": "minimum_cvar_constrained",
+        "default_method": "minimum_cvar",
         "simple_constraints": [],
         "generates_portfolio": False,
         "requires_user_action": True,
@@ -82,8 +82,8 @@ def test_supported_candidate_methods_include_launchpad_methods() -> None:
     assert "equal_weight" in methods
     assert "risk_parity" in methods
     assert "minimum_variance" in methods
-    assert "minimum_cvar_constrained" in methods
-    assert "robust_mv_constrained" in methods
+    assert "minimum_cvar" in methods
+    assert "maximum_diversification" in methods
 
 
 def test_request_from_launchpad_card_selects_method() -> None:
@@ -124,14 +124,14 @@ def test_build_builder_prefill_from_targeted_launchpad_card_preserves_handoff_fi
             "goal": "Improve crisis resilience",
             "source_diagnosis_id": "weak_crisis_resilience",
             "hypothesis_to_test": "Test whether crisis resilience improves.",
-            "default_method": "minimum_cvar_constrained",
+            "default_method": "minimum_cvar",
             "suggested_methods": [
                 {
-                    "candidate_method_id": "minimum_cvar_constrained",
+                    "candidate_method_id": "minimum_cvar",
                     "method_role": "targeted_hypothesis",
                 },
                 {
-                    "candidate_method_id": "robust_mv_constrained",
+                    "candidate_method_id": "maximum_diversification",
                     "method_role": "targeted_hypothesis",
                 },
             ],
@@ -153,8 +153,8 @@ def test_build_builder_prefill_from_targeted_launchpad_card_preserves_handoff_fi
     assert prefill["goal"] == "Improve crisis resilience"
     assert prefill["hypothesis_to_test"] == "Test whether crisis resilience improves."
     assert prefill["next_diagnostic_step"] == next_step
-    assert prefill["suggested_method"] == "minimum_cvar_constrained"
-    assert prefill["alternative_methods"] == ["robust_mv_constrained"]
+    assert prefill["suggested_method"] == "minimum_cvar"
+    assert prefill["alternative_methods"] == ["maximum_diversification"]
     assert prefill["method_role"] == "targeted_candidate_method"
     assert prefill["success_criteria"] == ["Lower stress loss."]
     assert prefill["tradeoff_to_watch"] == "Risk improvement vs turnover."
@@ -379,7 +379,7 @@ def test_run_portfolio_alternative_plan_dry_run_does_not_execute(tmp_path: Path)
 def test_equal_weight_launchpad_method_maps_to_documented_product_commands(
     tmp_path: Path,
 ) -> None:
-    """Session 05: equal_weight from Launchpad → factory plan and review --candidates only.
+    """Session 05: equal_weight from Launchpad в†’ factory plan and review --candidates only.
 
     Documented in docs/product_flow_operator_guide.md; no new run_portfolio_review flags.
     """

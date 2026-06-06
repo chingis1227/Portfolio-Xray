@@ -1,4 +1,4 @@
-"""Block 4 v3 contract shape tests (Session 01 — spec-only, no builder yet)."""
+"""Block 4 v3 contract shape tests (Session 01 вЂ” spec-only, no builder yet)."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def _problem_row(*, problem_id: str = "weak_crisis_resilience") -> dict:
         "secondary_action_path_ids": ["reduce_drawdown_risk"],
         "candidate_method_suggestions": [
             {
-                "candidate_method_id": "minimum_cvar_constrained",
+                "candidate_method_id": "minimum_cvar",
                 "rationale_en": "Tests tail-loss reduction.",
             }
         ],
@@ -194,7 +194,7 @@ def _minimal_launchpad_v2(*, source_problem_id: str = "weak_crisis_resilience") 
                 "why_this_test": "This test is linked to the current diagnosis: Weak crisis resilience.",
                 "suggested_methods": [
                     {
-                        "candidate_method_id": "minimum_cvar_constrained",
+                        "candidate_method_id": "minimum_cvar",
                         "method_role": "targeted_hypothesis",
                     }
                 ],
@@ -206,7 +206,7 @@ def _minimal_launchpad_v2(*, source_problem_id: str = "weak_crisis_resilience") 
                 "requires_user_action": True,
                 "why_this_path_en": "Stress losses are material and hedge offset is weak.",
                 "what_this_tests_en": "Whether tail losses can be reduced in severe scenarios.",
-                "default_method": "minimum_cvar_constrained",
+                "default_method": "minimum_cvar",
                 "simple_constraints": [],
                 "expected_tradeoff_to_check_en": "Lower tail loss vs lower expected return.",
                 "tradeoff_to_watch": "Lower tail loss vs lower expected return.",

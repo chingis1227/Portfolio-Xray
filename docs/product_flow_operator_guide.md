@@ -5,7 +5,7 @@ Use this file before interpreting generated JSON or starting a new chat on produ
 
 **Input Layer (frozen 2026-05-26):** [Input Layer MVP Migration](exec_plans/2026-05-26_input_layer_mvp_migration.md) closed; contract frozen — [audit](audits/2026-05-26_input_layer_mvp_acceptance_audit.md), `DEC-2026-05-26-001`. Do not reopen input redesign unless Block 1 regresses.
 
-**Active product focus:** downstream of input — Portfolio X-Ray (Block 2), Stress Lab (Block 3), Problem Classification / Candidate Launchpad (Block 4), compare and verdict adapters (Blocks 4–5). Use this guide’s read order and six-file bundle; not more first-screen fields.
+**Active product focus:** downstream of input - Portfolio X-Ray (Block 2), Stress Lab (Block 3), Problem Classification / Candidate Launchpad (Block 4), Portfolio Alternatives Builder (Block 6), one-attempt Candidate Generation (Block 7), Current vs Candidate (Block 8), Decision Verdict (Block 9), and AI Commentary grounding. Use this guide's read order and product-bundle chain; not more first-screen fields.
 **Product-flow backend (closed):** [Product Flow MVP Backend ExecPlan](exec_plans/2026-05-25_product_flow_mvp_backend_plan.md).
 **Origin audit:** [Product-Flow Validation Audit](audits/2026-05-25_product_flow_validation_audit.md).
 
@@ -49,12 +49,14 @@ Read in this order after a portfolio-first run (new chat, demo prep, or code rev
 | 3 | `analysis_subject/stress_report.json` | Block 3 stress scenarios and factor context |
 | 4 | `analysis_subject/problem_classification.json` | Top problems and test paths (product bundle #1) |
 | 5 | `analysis_subject/candidate_launchpad.json` | Suggested hypotheses / methods (product bundle #2) |
-| 6 | `current_vs_candidate.json` | Current vs selected or shortlist (product bundle #3) — **after compare only** |
-| 7 | `decision_verdict.json` | Primary product answer: hold / adjust / no-trade framing (bundle #4) — **after compare only** |
-| 8 | `ai_commentary_context.json` | Grounding for future LLM prose — **not** client-facing copy (bundle #5) — **after compare only** |
-| 9 | `what_changed_summary.json` | Monitoring delta vs prior snapshot when available (bundle #6) — **after compare only** (may be absent if no prior snapshot) |
-| 10 | `output_manifest.json` → `generated_paths` / `artifact_categories` | Resolved paths; confirms sidecar vs legacy root |
-| 11 (drill-down only) | `candidate_comparison.json`, `selection_decision.json`, health/robustness/Pareto | Technical comparison and advanced evidence — not the default UI story |
+| 6 | `analysis_subject/portfolio_alternatives_builder.json` | Builder setup from one selected card; setup only, not weights or recommendation |
+| 7 | `candidate_generation.json` | One Block 7 candidate attempt after explicit generation; candidate is not a recommendation |
+| 8 | `current_vs_candidate.json` | Current vs selected candidate (Block 8) - **after compare only** |
+| 9 | `decision_verdict.json` | Primary product answer: action / no-action / no-trade / evidence-insufficient framing (Block 9) - **after compare only** |
+| 10 | `ai_commentary_context.json` | Grounding for future LLM prose - **not** client-facing copy - **after compare only** |
+| 11 | `what_changed_summary.json` | Monitoring delta vs prior snapshot when available - **after compare only** (may be absent if no prior snapshot) |
+| 12 | `output_manifest.json` -> `generated_paths` / `artifact_categories` | Resolved paths; confirms sidecar vs legacy root |
+| 13 (drill-down only) | `candidate_comparison.json`, `selection_decision.json`, health/robustness/Pareto | Technical comparison and advanced evidence - not the default UI story |
 
 Do **not** start from root `portfolio_xray.json` / `stress_report.json` unless the task is **legacy policy**
 (`run_optimization.py`). Portfolio-first truth lives under `analysis_subject/`.
@@ -67,8 +69,9 @@ Do **not** start from root `portfolio_xray.json` / `stress_report.json` unless t
 
 | Goal | Command | Notes |
 | --- | --- | --- |
-| **Product demo (one hypothesis)** | `python run_portfolio_review.py --candidates equal_weight` | Official MVP path; workflow `one_candidate`. Swap id per Launchpad. |
-| Dry-run demo plan | `python run_portfolio_review.py --candidates equal_weight --dry-run` | No builders; verify factory argv + `--then-compare` |
+| **Product demo (one hypothesis)** | `python scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight` | Official Blocks 5-9 vertical path: selected Launchpad card -> Builder setup -> one candidate attempt -> compare -> verdict -> AI grounding. |
+| Explicit backend candidate compatibility path | `python run_portfolio_review.py --candidates equal_weight` | Use only when you already know the factory id; this does not prove the Builder/Block 7 vertical artifact loop. |
+| Dry-run compatibility plan | `python run_portfolio_review.py --candidates equal_weight --dry-run` | No builders; verify factory argv + `--then-compare` |
 | Routine diagnosis-first review | `python run_portfolio_review.py` | Default product runtime; diagnosis-only (`analysis_subject/`), no factory, no compare |
 | Explicit diagnosis only | `python run_portfolio_review.py --skip-candidates` | Same diagnosis-only behavior as default; explicit flag for clarity in scripts |
 | Backend candidate batch (advanced/research) | `python run_portfolio_review.py --with-candidates` | Runs candidate factory batch with resolved profile (`core_fast`) and compare |
@@ -82,6 +85,21 @@ Do **not** start from root `portfolio_xray.json` / `stress_report.json` unless t
 
 Replace `equal_weight` with any supported factory id (`risk_parity`, `minimum_variance`, …).
 Method allowlist: `supported_candidate_methods()` in `src/portfolio_alternatives_builder.py`.
+
+
+### Four operator commands for the staged journey
+
+| Stage | Command | Read next |
+| --- | --- | --- |
+| Diagnose current portfolio | `python run_portfolio_review.py` | `analysis_subject/problem_classification.json`, then Launchpad and Builder setup |
+| Generate one selected candidate | `python scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight` | `candidate_generation.json` |
+| Compare / verdict from the same vertical run | Same vertical command, or technical Block 8 boundary `python run_compare_variants.py --block8-only --candidate equal_weight` after candidate evidence exists | `current_vs_candidate.json`, then `decision_verdict.json` |
+| Full demo / regression path | `python scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight` | Full product bundle chain in the read order above |
+
+`python run_portfolio_review.py --candidates equal_weight` remains a useful explicit factory-id
+compatibility path, but it is not the canonical visible Builder-to-Block-7 handoff for demos. Its
+runtime banner and dry-run summary intentionally say `Path classification: explicit factory-id
+compatibility path`.
 
 ### Runtime labels (`--dry-run`)
 
@@ -102,27 +120,31 @@ Full decision tree and transcript examples:
 
 ## Product bundle path map
 
-Six JSON files form the **Core MVP product bundle**. There is **no** merged `product_bundle.json`.
+The Core MVP product-bundle chain is a set of separate JSON files, not one merged `product_bundle.json`. The vertical loop uses diagnosis artifacts, Builder setup, one candidate attempt, comparison, verdict, and grounding.
 Paths are relative to `{output_dir_final}` (typically `Main portfolio/`).
 
 | # | Artifact | Default path | When present | Schema (offline gate) | Primary reader question |
 | --- | --- | --- | --- | --- | --- |
 | 1 | `problem_classification.json` | `analysis_subject/problem_classification.json` | After default diagnosis / materialize | `problem_classification_v3` | What is wrong with the current portfolio? |
 | 2 | `candidate_launchpad.json` | `analysis_subject/candidate_launchpad.json` | After default diagnosis / materialize | `candidate_launchpad_v3` | What hypotheses should we test next? |
-| 3 | `current_vs_candidate.json` | `current_vs_candidate.json` | After `--candidates`, `--with-candidates`, or `--mode full` (compare stage) | `current_vs_candidate_v1` | How does current compare to the candidate? |
-| 4 | `decision_verdict.json` | `decision_verdict.json` | Same as #3 | `decision_verdict_v1` | What is the recommended decision posture? |
-| 5 | `ai_commentary_context.json` | `ai_commentary_context.json` | Same as #3 | `ai_commentary_context_v1` | Grounding only (`purpose=grounded_ai_commentary_context`; no LLM in V1) |
-| 6 | `what_changed_summary.json` | `what_changed_summary.json` | Same as #3; file optional if no prior snapshot | `what_changed_summary_v1` | What changed since the last review? |
+| 3 | `portfolio_alternatives_builder.json` | `analysis_subject/portfolio_alternatives_builder.json` | After Launchpad when a primary card can be mapped | `portfolio_alternatives_builder_v1` | What setup would be tested if the user explicitly generates a candidate? |
+| 4 | `candidate_generation.json` | `candidate_generation.json` | After explicit Generate Candidate / vertical demo | `candidate_generation_v1` | What one candidate attempt was created or why did it fail? |
+| 5 | `current_vs_candidate.json` | `current_vs_candidate.json` | After Block 8 compare | `current_vs_candidate_v1` | How does current compare to the candidate? |
+| 6 | `decision_verdict.json` | `decision_verdict.json` | After Block 9 verdict | `decision_verdict_v1` | Is action justified, or is no-trade / evidence-insufficient the right answer? |
+| 7 | `ai_commentary_context.json` | `ai_commentary_context.json` | After verdict | `ai_commentary_context_v1` | Grounding only (`purpose=grounded_ai_commentary_context`; no LLM in V1) |
+| 8 | `what_changed_summary.json` | `what_changed_summary.json` | After compare/monitoring; optional if no prior snapshot | `what_changed_summary_v1` | What changed since the last review? |
 
 **RM-ARCH-011 sidecar rule:** diagnosis files **prefer** `analysis_subject/`; compare, AI commentary,
 and What Changed resolve via `src/product_bundle_paths.py` (legacy root copies still work).
 
 **Manifest keys:** `problem_classification_json` … `what_changed_summary_json` in
 `output_manifest.json` → `generated_paths` / `product_discovery.product_bundle_paths`.
-`product_discovery.product_bundle_phase` is `diagnosis_only` after default review (#1–2 only),
-`complete` after compare (all six), or `post_compare_partial` when some post-compare files exist.
+`product_discovery.product_bundle_phase` is `diagnosis_only` after default review (diagnosis, Launchpad, and Builder setup where available),
+`complete` after compare/verdict/grounding, or `post_compare_partial` when some post-compare files exist.
 `product_bundle_complete` is true only when phase is `complete`. `artifact_categories.product_bundle`
-lists all six key names; resolved paths appear only for files on disk.
+lists the product-bundle key names; resolved paths appear only for files on disk.
+
+**Boundary wording for operators:** Builder setup is not a candidate; a generated candidate is not a recommendation; Equal Weight / Risk Parity reference tests are diagnostic comparisons, not rebalance recommendations; Decision Verdict is where action/no-action is evaluated. `no-trade` and `evidence_insufficient` are valid outcomes, not failures.
 
 **Technical comparison** (same run, not bundle): `candidate_comparison.json`, `selection_decision.json`,
 `portfolio_health_score.json`, `robustness_scorecard.json`, Pareto/regret, action plan, journal — see
@@ -136,7 +158,8 @@ lists all six key names; resolved paths appear only for files on disk.
 | --- | --- |
 | Use **Portfolio Health Score** or **robustness scorecard** as the main product answer | Lead with `decision_verdict.json` + `current_vs_candidate.json`; treat scores as supporting evidence |
 | Start a Core MVP demo from `run_optimization.py`, `run_report.py`, or `run_mvp_workflow.py` | Start from `python run_portfolio_review.py` and read `analysis_subject/` first |
-| Run `--with-candidates` or `--mode full` for a **one-hypothesis demo** | `python run_portfolio_review.py --candidates <id>` |
+| Run `--with-candidates`, `--mode full`, or the factory-id compatibility path as the **canonical one-hypothesis demo** | `python scripts/run_blocks_5_to_9_vertical_flow.py --method <id>` for the staged Builder -> Block 7 -> compare -> verdict loop |
+| Ignore a runtime banner that says compatibility, advanced/research, or legacy | Treat that path as support infrastructure; switch to the vertical Blocks 5-9 script for demo proof |
 | Add `--candidate-method` on `run_portfolio_review.py` | `--candidates <factory_id>` only |
 | Treat `ai_commentary_context.json` as finished client prose | Grounding stub; LLM is `RM-ARCH-010` / deferred |
 | Read root policy `stress_report.json` / `portfolio_xray.json` after portfolio-first review | Open `analysis_subject/` copies first |
@@ -221,8 +244,9 @@ Use **either** path; both end at one factory id and compare.
 
 | Path | Command |
 | --- | --- |
-| **Full portfolio-first review** (recommended for demo) | `python run_portfolio_review.py --candidates equal_weight` |
-| **Factory + compare only** (after diagnosis artifacts exist) | `python run_candidate_factory.py --candidates equal_weight --execution-mode standard --then-compare` |
+| **Blocks 5-9 vertical demo** (recommended for product demo) | `python scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight` |
+| **Factory-id compatibility path** (after diagnosis artifacts exist) | `python run_portfolio_review.py --candidates equal_weight` |
+| **Factory + compare only** (technical, after diagnosis artifacts exist) | `python run_candidate_factory.py --candidates equal_weight --execution-mode standard --then-compare` |
 
 The builder’s default plan also passes `--output-profile site_api` (JSON-first artifacts). That
 matches routine portfolio-first output; it is safe to omit on manual factory runs only when you

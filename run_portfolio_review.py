@@ -79,6 +79,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Pass --no-cache to analysis_subject materialization.",
     )
     parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to config.yml (default: project root config.yml).",
+    )
+    parser.add_argument(
         "--skip-candidates",
         action="store_true",
         help="Skip candidate factory. In the default product path this is already true.",
@@ -88,7 +94,8 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=(
             "Run the backend candidate factory using the resolved profile. "
-            "Use --candidates for the canonical one-candidate product path."
+            "Advanced/research path; use the vertical demo script for the "
+            "canonical Builder-to-Block-7 product handoff."
         ),
     )
     parser.add_argument(
@@ -106,14 +113,17 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help=(
             "Override factory profile (e.g. core_v1 for sequential regression, "
-            "default_v1). When omitted, profile follows --mode (core → core_fast)."
+            "default_v1). When omitted, profile follows --mode (core -> core_fast)."
         ),
     )
     parser.add_argument(
         "--candidates",
         type=str,
         default=None,
-        help="Comma-separated candidate ids; overrides --candidate-profile.",
+        help=(
+            "Comma-separated explicit backend candidate ids; compatibility path "
+            "when the factory id is already known. Overrides --candidate-profile."
+        ),
     )
     parser.add_argument(
         "--no-skip-existing",
@@ -144,7 +154,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         choices=sorted(EXECUTION_MODES),
         help=(
-            "Factory execution mode (default when omitted: standard — in-process weights "
+            "Factory execution mode (default when omitted: standard - in-process weights "
             "plus lightweight_comparison report, no per-candidate PDF). Use legacy_full "
             "for subprocess run_*.py parity/debug."
         ),
@@ -196,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
     project_root = Path(__file__).resolve().parent
 
     try:
-        cfg = load_validated_config()
+        cfg = load_validated_config(args.config)
     except ConfigValidationError as exc:
         logger.error("Config validation failed: %s", exc)
         return 1
@@ -241,6 +251,7 @@ def main(argv: list[str] | None = None) -> int:
     plan = build_portfolio_review_plan(
         cfg,
         project_root=project_root,
+        config_path=Path(args.config) if args.config else None,
         no_cache=args.no_cache,
         skip_candidates=effective_skip_candidates,
         review_mode=review_mode,

@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 AI_COMMENTARY_CONTEXT_VERSION = "ai_commentary_context_v1"
 AI_COMMENTARY_CONTEXT_FILENAME = "ai_commentary_context.json"
@@ -35,6 +35,8 @@ ALLOWED_SOURCE_ARTIFACTS: tuple[str, ...] = (
     "stress_report.json",
     "problem_classification.json",
     "candidate_launchpad.json",
+    "portfolio_alternatives_builder.json",
+    "candidate_generation.json",
     "candidate_comparison.json",
     "current_vs_candidate.json",
     "selection_decision.json",
@@ -132,6 +134,176 @@ def _launchpad_refs(candidate_launchpad: dict[str, Any] | None) -> list[dict[str
     return refs
 
 
+def _builder_refs(
+    portfolio_alternatives_builder: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    refs: list[dict[str, Any]] = []
+    if not isinstance(portfolio_alternatives_builder, dict):
+        return refs
+    _append_reference(
+        refs,
+        artifact="portfolio_alternatives_builder.json",
+        field_path="status",
+        value=portfolio_alternatives_builder.get("status"),
+    )
+    _append_reference(
+        refs,
+        artifact="portfolio_alternatives_builder.json",
+        field_path="can_generate_candidate",
+        value=portfolio_alternatives_builder.get("can_generate_candidate"),
+    )
+    reason = portfolio_alternatives_builder.get("reason")
+    if reason is not None:
+        _append_reference(
+            refs,
+            artifact="portfolio_alternatives_builder.json",
+            field_path="reason",
+            value=reason,
+        )
+    validation = portfolio_alternatives_builder.get("validation")
+    if isinstance(validation, dict):
+        _append_reference(
+            refs,
+            artifact="portfolio_alternatives_builder.json",
+            field_path="validation",
+            value={
+                "validation_status": validation.get("validation_status"),
+                "can_generate_candidate": validation.get("can_generate_candidate"),
+                "validation_errors": validation.get("validation_errors"),
+                "validation_warnings": validation.get("validation_warnings"),
+            },
+        )
+    prefill = portfolio_alternatives_builder.get("builder_prefill")
+    if isinstance(prefill, dict):
+        _append_reference(
+            refs,
+            artifact="portfolio_alternatives_builder.json",
+            field_path="builder_prefill",
+            value={
+                "source_card_id": prefill.get("source_card_id"),
+                "source_diagnosis_id": prefill.get("source_diagnosis_id"),
+                "goal": prefill.get("goal"),
+                "hypothesis_to_test": prefill.get("hypothesis_to_test"),
+                "selected_method": prefill.get("selected_method"),
+                "success_criteria": (prefill.get("success_criteria") or [])[:5]
+                if isinstance(prefill.get("success_criteria"), list)
+                else prefill.get("success_criteria"),
+                "tradeoff_to_watch": prefill.get("tradeoff_to_watch"),
+            },
+        )
+    return refs
+
+
+def _candidate_generation_refs(
+    candidate_generation: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    refs: list[dict[str, Any]] = []
+    if not isinstance(candidate_generation, dict):
+        return refs
+
+    _append_reference(
+        refs,
+        artifact="candidate_generation.json",
+        field_path="generation_status",
+        value=candidate_generation.get("generation_status"),
+    )
+    method_availability = candidate_generation.get("method_availability")
+    if isinstance(method_availability, dict):
+        _append_reference(
+            refs,
+            artifact="candidate_generation.json",
+            field_path="method_availability",
+            value={
+                "method": method_availability.get("method"),
+                "method_variant": method_availability.get("method_variant"),
+                "mode": method_availability.get("mode"),
+                "available": method_availability.get("available"),
+                "availability_status": method_availability.get("availability_status"),
+            },
+        )
+    source_setup = candidate_generation.get("source_builder_setup")
+    if isinstance(source_setup, dict):
+        _append_reference(
+            refs,
+            artifact="candidate_generation.json",
+            field_path="source_builder_setup",
+            value={
+                "candidate_setup_id": source_setup.get("candidate_setup_id"),
+                "builder_prefill_id": source_setup.get("builder_prefill_id"),
+                "source_card_id": source_setup.get("source_card_id"),
+                "source_diagnosis_id": source_setup.get("source_diagnosis_id"),
+                "validation_status": source_setup.get("validation_status"),
+                "can_generate_candidate": source_setup.get("can_generate_candidate"),
+            },
+        )
+
+    candidate = candidate_generation.get("candidate")
+    if isinstance(candidate, dict):
+        for field in (
+            "candidate_id",
+            "candidate_name",
+            "source_card_id",
+            "source_diagnosis_id",
+            "source_launchpad_card_type",
+            "goal",
+            "hypothesis_to_test",
+            "method",
+            "method_variant",
+            "status",
+            "failure_reason",
+            "infeasibility_reason",
+        ):
+            if field in candidate and candidate.get(field) is not None:
+                _append_reference(
+                    refs,
+                    artifact="candidate_generation.json",
+                    field_path=f"candidate.{field}",
+                    value=candidate.get(field),
+                )
+        _append_reference(
+            refs,
+            artifact="candidate_generation.json",
+            field_path="candidate.constraints",
+            value={
+                "capped": candidate.get("capped"),
+                "uncapped": candidate.get("uncapped"),
+                "min_asset_weight": candidate.get("min_asset_weight"),
+                "max_asset_weight": candidate.get("max_asset_weight"),
+                "constraint_preset": candidate.get("constraint_preset"),
+            },
+        )
+        success_criteria = candidate.get("success_criteria")
+        if isinstance(success_criteria, list):
+            _append_reference(
+                refs,
+                artifact="candidate_generation.json",
+                field_path="candidate.success_criteria",
+                value=success_criteria[:5],
+            )
+        for field in ("tradeoff_to_watch", "decision_boundary"):
+            if candidate.get(field) is not None:
+                _append_reference(
+                    refs,
+                    artifact="candidate_generation.json",
+                    field_path=f"candidate.{field}",
+                    value=candidate.get(field),
+                )
+
+    handoff = candidate_generation.get("handoff_to_comparison")
+    if isinstance(handoff, dict):
+        _append_reference(
+            refs,
+            artifact="candidate_generation.json",
+            field_path="handoff_to_comparison",
+            value={
+                "can_compare": handoff.get("can_compare"),
+                "blocked_reason": handoff.get("blocked_reason"),
+                "candidate_id": handoff.get("candidate_id"),
+            },
+        )
+    return refs
+
+
 def _comparison_refs(
     comparison: dict[str, Any] | None,
     current_vs_candidate: dict[str, Any] | None,
@@ -170,8 +342,47 @@ def _comparison_refs(
                     "candidate_id": row.get("candidate_id"),
                     "status": row.get("status"),
                     "dimension_count": len(row.get("dimensions") or []),
+                    "materiality_status": (
+                        row.get("materiality_for_decision_review") or {}
+                    ).get("status")
+                    if isinstance(row.get("materiality_for_decision_review"), dict)
+                    else None,
                 },
             )
+            for field in (
+                "what_improved",
+                "what_worsened",
+                "what_stayed_similar",
+                "risk_reduced",
+                "risk_added",
+                "success_criteria_result",
+                "materiality_for_decision_review",
+                "tradeoff_summary",
+            ):
+                if field in row:
+                    _append_reference(
+                        refs,
+                        artifact="current_vs_candidate.json",
+                        field_path=f"comparisons[{idx}].{field}",
+                        value=row.get(field),
+                    )
+            practicality = row.get("practicality")
+            if isinstance(practicality, dict):
+                _append_reference(
+                    refs,
+                    artifact="current_vs_candidate.json",
+                    field_path=f"comparisons[{idx}].practicality",
+                    value={
+                        "turnover_required": practicality.get("turnover_required"),
+                        "transaction_cost_bps": practicality.get("transaction_cost_bps"),
+                        "transaction_cost_source": practicality.get(
+                            "transaction_cost_source"
+                        ),
+                        "estimated_transaction_cost_pct": practicality.get(
+                            "estimated_transaction_cost_pct"
+                        ),
+                    },
+                )
     return refs
 
 
@@ -213,12 +424,47 @@ def _decision_refs(
             field_path="verdict_id",
             value=decision_verdict.get("verdict_id"),
         )
+        for field in (
+            "selection_decision_status",
+            "verdict_reason_id",
+            "reviewed_candidate_id",
+            "selected_candidate_id",
+        ):
+            if field in decision_verdict:
+                _append_reference(
+                    refs,
+                    artifact="decision_verdict.json",
+                    field_path=field,
+                    value=decision_verdict.get(field),
+                )
         _append_reference(
             refs,
             artifact="decision_verdict.json",
             field_path="confidence",
             value=decision_verdict.get("confidence"),
         )
+        no_trade = decision_verdict.get("no_trade")
+        if isinstance(no_trade, dict):
+            source = no_trade.get("source")
+            _append_reference(
+                refs,
+                artifact="decision_verdict.json",
+                field_path="no_trade",
+                value={
+                    "evaluated": no_trade.get("evaluated"),
+                    "applies": no_trade.get("applies"),
+                    "reason_id": source.get("reason_id") if isinstance(source, dict) else None,
+                },
+            )
+        rationale = decision_verdict.get("rationale_summary")
+        if isinstance(rationale, str) and rationale.strip():
+            _append_reference(
+                refs,
+                artifact="decision_verdict.json",
+                field_path="rationale_summary",
+                value=rationale.strip()[:240],
+                summary=rationale.strip()[:240],
+            )
     if isinstance(action, dict):
         _append_reference(
             refs,
@@ -706,16 +952,56 @@ def _stress_refs(
 
 def _is_post_compare_context(
     *,
+    candidate_generation: dict[str, Any] | None,
     comparison: dict[str, Any] | None,
     current_vs_candidate: dict[str, Any] | None,
     selection: dict[str, Any] | None,
     decision_verdict: dict[str, Any] | None,
 ) -> bool:
-    return all(
-        isinstance(doc, dict)
-        for doc in (comparison, current_vs_candidate, selection, decision_verdict)
+    return (
+        isinstance(current_vs_candidate, dict)
+        and isinstance(decision_verdict, dict)
+        and (
+            isinstance(selection, dict)
+            or isinstance(candidate_generation, dict)
+        )
     )
 
+
+
+def _product_run_id(document: Mapping[str, Any] | None) -> str | None:
+    product_run = document.get("product_run") if isinstance(document, Mapping) else None
+    if not isinstance(product_run, Mapping):
+        return None
+    text = str(product_run.get("run_id") or "").strip()
+    return text or None
+
+
+def _drop_mismatched_product_run_sources(
+    *,
+    candidate_generation: dict[str, Any] | None,
+    current_vs_candidate: dict[str, Any] | None,
+    decision_verdict: dict[str, Any] | None,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None, list[str]]:
+    """Ignore downstream artifacts whose explicit product-run id does not match.
+
+    Artifacts without product_run metadata remain compatible with older tests and
+    legacy paths.  When both sides have run ids, mismatch means the downstream
+    artifact is stale for this evidence bundle and must not be used as current
+    AI Commentary grounding.
+    """
+
+    warnings: list[str] = []
+    current_run = _product_run_id(current_vs_candidate)
+    candidate_run = _product_run_id(candidate_generation)
+    verdict_run = _product_run_id(decision_verdict)
+    if candidate_run and current_run and candidate_run != current_run:
+        warnings.append("artifact_lineage_mismatch:candidate_generation.json")
+        candidate_generation = None
+    if verdict_run and current_run and verdict_run != current_run:
+        warnings.append("artifact_lineage_mismatch:decision_verdict.json")
+        decision_verdict = None
+    return candidate_generation, decision_verdict, warnings
 
 def _monitoring_refs(monitoring_diff: dict[str, Any] | None) -> list[dict[str, Any]]:
     refs: list[dict[str, Any]] = []
@@ -732,6 +1018,7 @@ def _monitoring_refs(monitoring_diff: dict[str, Any] | None) -> list[dict[str, A
 
 def _warnings(
     *,
+    candidate_generation: dict[str, Any] | None,
     comparison: dict[str, Any] | None,
     current_vs_candidate: dict[str, Any] | None,
     selection: dict[str, Any] | None,
@@ -756,15 +1043,19 @@ def _warnings(
             warnings.append("stress_scorecard_legacy_fallback:stress_scorecard_v1")
         return warnings
     required = {
-        "candidate_comparison.json": comparison,
         "current_vs_candidate.json": current_vs_candidate,
-        "selection_decision.json": selection,
         "decision_verdict.json": decision_verdict,
     }
+    if isinstance(candidate_generation, dict):
+        required["candidate_generation.json"] = candidate_generation
+    elif isinstance(selection, dict):
+        required["candidate_comparison.json"] = comparison
+        required["selection_decision.json"] = selection
     for name, doc in required.items():
         if not isinstance(doc, dict):
             warnings.append(f"missing_required_source:{name}")
     for source_name, doc in (
+        ("candidate_generation.json", candidate_generation),
         ("current_vs_candidate.json", current_vs_candidate),
         ("selection_decision.json", selection),
         ("decision_verdict.json", decision_verdict),
@@ -775,7 +1066,622 @@ def _warnings(
         limits = doc.get("confidence_limitations") if isinstance(doc, dict) else None
         if isinstance(limits, list):
             warnings.extend(f"{source_name}:confidence_limit:{limit}" for limit in limits)
+    contradiction = _candidate_comparison_contradiction(
+        candidate_generation,
+        current_vs_candidate,
+    )
+    if contradiction:
+        warnings.append(f"pipeline_inconsistency:{contradiction}")
     return warnings
+
+
+def _candidate_comparison_contradiction(
+    candidate_generation: dict[str, Any] | None,
+    current_vs_candidate: dict[str, Any] | None,
+) -> str | None:
+    if not isinstance(candidate_generation, dict) or not isinstance(current_vs_candidate, dict):
+        return None
+    generation_status = str(candidate_generation.get("generation_status") or "")
+    comparison_status = str(current_vs_candidate.get("comparison_status") or "")
+    has_rows = bool(current_vs_candidate.get("comparisons"))
+    if generation_status in {"failed", "infeasible"} and (
+        comparison_status in {"available", "ok"} or has_rows
+    ):
+        return "candidate_failed_but_comparison_available"
+    if generation_status == "generated" and comparison_status == "blocked_by_candidate_generation":
+        return "candidate_generated_but_comparison_blocked"
+    return None
+
+
+def _safe_text(value: Any, *, limit: int = 280) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = " ".join(value.strip().split())
+    if not text:
+        return None
+    return text[:limit]
+
+
+def _first_mapping(rows: Any) -> Mapping[str, Any] | None:
+    if not isinstance(rows, list):
+        return None
+    for row in rows:
+        if isinstance(row, Mapping):
+            return row
+    return None
+
+
+def _first_comparison(current_vs_candidate: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
+    if not isinstance(current_vs_candidate, Mapping):
+        return None
+    return _first_mapping(current_vs_candidate.get("comparisons"))
+
+
+def _brief_ref(
+    *,
+    artifact: str,
+    field_path: str,
+    value: Any = None,
+) -> dict[str, Any]:
+    ref: dict[str, Any] = {"artifact": artifact, "field_path": field_path}
+    if value is not None:
+        ref["value"] = value
+    return ref
+
+
+def _sentence(
+    topic: str,
+    text: str,
+    refs: list[dict[str, Any]],
+    *,
+    evidence_status: str = "grounded",
+) -> dict[str, Any]:
+    return {
+        "topic": topic,
+        "evidence_status": evidence_status,
+        "text": text,
+        "references": refs,
+    }
+
+
+def _primary_diagnosis_sentence(
+    problem_classification: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    if isinstance(problem_classification, Mapping):
+        primary = problem_classification.get("primary_diagnosis")
+        if isinstance(primary, Mapping):
+            text = _safe_text(primary.get("thesis_en")) or _safe_text(primary.get("label_en"))
+            if text:
+                return _sentence(
+                    "portfolio_diagnosis",
+                    text,
+                    [
+                        _brief_ref(
+                            artifact="problem_classification.json",
+                            field_path="primary_diagnosis.thesis_en",
+                            value=text,
+                        )
+                    ],
+                )
+    return _sentence(
+        "portfolio_diagnosis",
+        "Portfolio diagnosis evidence is not available in the provided context.",
+        [],
+        evidence_status="missing",
+    )
+
+
+def _stress_sentence(stress_report: Mapping[str, Any] | None) -> dict[str, Any]:
+    if isinstance(stress_report, Mapping):
+        scorecard = _scorecard_v1_block(dict(stress_report))
+        if scorecard is not None:
+            diagnosis = scorecard.get("stress_diagnosis")
+            if isinstance(diagnosis, Mapping):
+                headline = _safe_text(diagnosis.get("headline"))
+                if headline:
+                    return _sentence(
+                        "stress_behavior",
+                        headline,
+                        [
+                            _brief_ref(
+                                artifact="stress_report.json",
+                                field_path=f"{SCORECARD_V1_BLOCK}.stress_diagnosis.headline",
+                                value=headline,
+                            )
+                        ],
+                    )
+        worst = stress_report.get("worst_scenario_loss_pct")
+        if worst is not None:
+            return _sentence(
+                "stress_behavior",
+                f"Stress evidence reports worst scenario loss as {worst}.",
+                [
+                    _brief_ref(
+                        artifact="stress_report.json",
+                        field_path="worst_scenario_loss_pct",
+                        value=worst,
+                    )
+                ],
+            )
+    return _sentence(
+        "stress_behavior",
+        "Stress behavior evidence is not available in the provided context.",
+        [],
+        evidence_status="missing",
+    )
+
+
+def _hypothesis_sentence(
+    candidate_generation: Mapping[str, Any] | None,
+    candidate_launchpad: Mapping[str, Any] | None,
+    portfolio_alternatives_builder: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    candidate = (
+        candidate_generation.get("candidate")
+        if isinstance(candidate_generation, Mapping)
+        else None
+    )
+    if isinstance(candidate, Mapping):
+        text = (
+            _safe_text(candidate.get("hypothesis_to_test"))
+            or _safe_text(candidate.get("goal"))
+            or _safe_text(candidate.get("candidate_name"))
+        )
+        if text:
+            return _sentence(
+                "suggested_hypothesis",
+                text,
+                [
+                    _brief_ref(
+                        artifact="candidate_generation.json",
+                        field_path="candidate.hypothesis_to_test",
+                        value=text,
+                    )
+                ],
+            )
+    prefill = (
+        portfolio_alternatives_builder.get("builder_prefill")
+        if isinstance(portfolio_alternatives_builder, Mapping)
+        else None
+    )
+    if isinstance(prefill, Mapping):
+        text = _safe_text(prefill.get("hypothesis_to_test")) or _safe_text(prefill.get("goal"))
+        if text:
+            return _sentence(
+                "suggested_hypothesis",
+                text,
+                [
+                    _brief_ref(
+                        artifact="portfolio_alternatives_builder.json",
+                        field_path="builder_prefill.hypothesis_to_test",
+                        value=text,
+                    )
+                ],
+            )
+    card = _first_mapping(candidate_launchpad.get("cards")) if isinstance(candidate_launchpad, Mapping) else None
+    if isinstance(card, Mapping):
+        text = _safe_text(card.get("hypothesis_to_test")) or _safe_text(card.get("goal"))
+        if text:
+            return _sentence(
+                "suggested_hypothesis",
+                text,
+                [
+                    _brief_ref(
+                        artifact="candidate_launchpad.json",
+                        field_path="cards[0].hypothesis_to_test",
+                        value=text,
+                    )
+                ],
+            )
+    return _sentence(
+        "suggested_hypothesis",
+        "No grounded hypothesis evidence is available.",
+        [],
+        evidence_status="missing",
+    )
+
+
+def _candidate_logic_sentence(
+    candidate_generation: Mapping[str, Any] | None,
+    portfolio_alternatives_builder: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    candidate = (
+        candidate_generation.get("candidate")
+        if isinstance(candidate_generation, Mapping)
+        else None
+    )
+    if isinstance(candidate, Mapping):
+        candidate_id = candidate.get("candidate_id")
+        method = candidate.get("method") or candidate.get("method_variant")
+        status = candidate.get("status") or candidate_generation.get("generation_status")
+        return _sentence(
+            "selected_candidate_logic",
+            (
+                f"Candidate {candidate_id} was generated with method {method}; "
+                f"status is {status}. It is not a rebalance recommendation."
+            ),
+            [
+                _brief_ref(
+                    artifact="candidate_generation.json",
+                    field_path="candidate",
+                    value={
+                        "candidate_id": candidate_id,
+                        "method": method,
+                        "status": status,
+                    },
+                )
+            ],
+        )
+    if isinstance(portfolio_alternatives_builder, Mapping):
+        can_generate = portfolio_alternatives_builder.get("can_generate_candidate")
+        status = portfolio_alternatives_builder.get("status")
+        reason = portfolio_alternatives_builder.get("reason")
+        return _sentence(
+            "selected_candidate_logic",
+            (
+                f"Builder status is {status}; candidate generation allowed is {can_generate}; "
+                f"reason is {reason}."
+            ),
+            [
+                _brief_ref(
+                    artifact="portfolio_alternatives_builder.json",
+                    field_path="status",
+                    value=status,
+                ),
+                _brief_ref(
+                    artifact="portfolio_alternatives_builder.json",
+                    field_path="can_generate_candidate",
+                    value=can_generate,
+                ),
+                _brief_ref(
+                    artifact="portfolio_alternatives_builder.json",
+                    field_path="reason",
+                    value=reason,
+                ),
+            ],
+            evidence_status="blocked" if can_generate is False else "grounded",
+        )
+    return _sentence(
+        "selected_candidate_logic",
+        "No generated candidate or Builder status is available.",
+        [],
+        evidence_status="missing",
+    )
+
+
+def _comparison_sentence(
+    current_vs_candidate: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    row = _first_comparison(current_vs_candidate)
+    if isinstance(row, Mapping):
+        status = row.get("status")
+        candidate_id = row.get("candidate_id")
+        dimension_count = len(row.get("dimensions") or [])
+        return _sentence(
+            "current_vs_candidate_comparison",
+            (
+                f"Current-vs-candidate comparison for {candidate_id} has status {status} "
+                f"across {dimension_count} dimension(s)."
+            ),
+            [
+                _brief_ref(
+                    artifact="current_vs_candidate.json",
+                    field_path="comparisons[0]",
+                    value={
+                        "candidate_id": candidate_id,
+                        "status": status,
+                        "dimension_count": dimension_count,
+                    },
+                )
+            ],
+            evidence_status="grounded" if status == "available" else "limited",
+        )
+    return _sentence(
+        "current_vs_candidate_comparison",
+        "Current-vs-candidate comparison evidence is not available.",
+        [],
+        evidence_status="missing",
+    )
+
+
+def _change_sentence(
+    current_vs_candidate: Mapping[str, Any] | None,
+    *,
+    topic: str,
+    field: str,
+    fallback: str,
+) -> dict[str, Any]:
+    row = _first_comparison(current_vs_candidate)
+    if isinstance(row, Mapping):
+        values = row.get(field)
+        if isinstance(values, list) and values:
+            return _sentence(
+                topic,
+                f"{topic.replace('_', ' ').capitalize()} are available in Block 8.",
+                [
+                    _brief_ref(
+                        artifact="current_vs_candidate.json",
+                        field_path=f"comparisons[0].{field}",
+                        value=values[:5],
+                    )
+                ],
+            )
+        status = row.get("status")
+        return _sentence(
+            topic,
+            fallback,
+            [
+                _brief_ref(
+                    artifact="current_vs_candidate.json",
+                    field_path=f"comparisons[0].{field}",
+                    value=values,
+                ),
+                _brief_ref(
+                    artifact="current_vs_candidate.json",
+                    field_path="comparisons[0].status",
+                    value=status,
+                ),
+            ],
+            evidence_status="unavailable",
+        )
+    return _sentence(topic, fallback, [], evidence_status="missing")
+
+
+def _practicality_sentence(current_vs_candidate: Mapping[str, Any] | None) -> dict[str, Any]:
+    row = _first_comparison(current_vs_candidate)
+    practicality = row.get("practicality") if isinstance(row, Mapping) else None
+    if isinstance(practicality, Mapping):
+        return _sentence(
+            "turnover_transaction_cost",
+            "Turnover and transaction-cost impact must be read from Block 8 practicality fields only.",
+            [
+                _brief_ref(
+                    artifact="current_vs_candidate.json",
+                    field_path="comparisons[0].practicality",
+                    value={
+                        "turnover_required": practicality.get("turnover_required"),
+                        "transaction_cost_bps": practicality.get("transaction_cost_bps"),
+                        "estimated_transaction_cost_pct": practicality.get(
+                            "estimated_transaction_cost_pct"
+                        ),
+                    },
+                )
+            ],
+            evidence_status=(
+                "grounded"
+                if practicality.get("turnover_required") is not None
+                or practicality.get("transaction_cost_bps") is not None
+                else "unavailable"
+            ),
+        )
+    return _sentence(
+        "turnover_transaction_cost",
+        "Turnover and transaction-cost evidence is not available.",
+        [],
+        evidence_status="missing",
+    )
+
+
+def _verdict_sentence(decision_verdict: Mapping[str, Any] | None) -> dict[str, Any]:
+    if isinstance(decision_verdict, Mapping):
+        verdict_id = decision_verdict.get("verdict_id")
+        rationale = _safe_text(decision_verdict.get("rationale_summary"))
+        text = f"Decision Verdict is {verdict_id}."
+        if rationale:
+            text = f"{text} {rationale}"
+        return _sentence(
+            "decision_verdict",
+            text,
+            [
+                _brief_ref(
+                    artifact="decision_verdict.json",
+                    field_path="verdict_id",
+                    value=verdict_id,
+                ),
+                _brief_ref(
+                    artifact="decision_verdict.json",
+                    field_path="rationale_summary",
+                    value=rationale,
+                ),
+            ],
+        )
+    return _sentence(
+        "decision_verdict",
+        "Decision Verdict evidence is not available.",
+        [],
+        evidence_status="missing",
+    )
+
+
+def _next_review_sentence(
+    monitoring_diff: Mapping[str, Any] | None,
+    candidate_launchpad: Mapping[str, Any] | None,
+    portfolio_alternatives_builder: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    if isinstance(monitoring_diff, Mapping):
+        status = monitoring_diff.get("change_status")
+        return _sentence(
+            "next_review_trigger",
+            f"Monitoring change status is {status}.",
+            [
+                _brief_ref(
+                    artifact="monitoring_diff.json",
+                    field_path="change_status",
+                    value=status,
+                )
+            ],
+        )
+    prefill = (
+        portfolio_alternatives_builder.get("builder_prefill")
+        if isinstance(portfolio_alternatives_builder, Mapping)
+        else None
+    )
+    if isinstance(prefill, Mapping):
+        when_to_skip = _safe_text(prefill.get("when_to_skip"))
+        criteria = prefill.get("success_criteria")
+        if when_to_skip or criteria:
+            return _sentence(
+                "next_review_trigger",
+                "No monitoring artifact was provided; use Builder success criteria / skip condition as the review boundary.",
+                [
+                    _brief_ref(
+                        artifact="portfolio_alternatives_builder.json",
+                        field_path="builder_prefill.success_criteria",
+                        value=criteria,
+                    ),
+                    _brief_ref(
+                        artifact="portfolio_alternatives_builder.json",
+                        field_path="builder_prefill.when_to_skip",
+                        value=when_to_skip,
+                    ),
+                ],
+                evidence_status="limited",
+            )
+    card = _first_mapping(candidate_launchpad.get("cards")) if isinstance(candidate_launchpad, Mapping) else None
+    if isinstance(card, Mapping):
+        criteria = card.get("success_criteria")
+        if criteria:
+            return _sentence(
+                "next_review_trigger",
+                "No monitoring artifact was provided; Launchpad success criteria are available as review context.",
+                [
+                    _brief_ref(
+                        artifact="candidate_launchpad.json",
+                        field_path="cards[0].success_criteria",
+                        value=criteria,
+                    )
+                ],
+                evidence_status="limited",
+            )
+    return _sentence(
+        "next_review_trigger",
+        "No monitoring trigger evidence is available.",
+        [],
+        evidence_status="missing",
+    )
+
+
+def _build_client_explanation_draft(
+    *,
+    problem_classification: Mapping[str, Any] | None,
+    candidate_launchpad: Mapping[str, Any] | None,
+    portfolio_alternatives_builder: Mapping[str, Any] | None,
+    candidate_generation: Mapping[str, Any] | None,
+    current_vs_candidate: Mapping[str, Any] | None,
+    decision_verdict: Mapping[str, Any] | None,
+    monitoring_diff: Mapping[str, Any] | None,
+    stress_report: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    sentences = [
+        _primary_diagnosis_sentence(problem_classification),
+        _stress_sentence(stress_report),
+        _hypothesis_sentence(
+            candidate_generation,
+            candidate_launchpad,
+            portfolio_alternatives_builder,
+        ),
+        _candidate_logic_sentence(candidate_generation, portfolio_alternatives_builder),
+        _comparison_sentence(current_vs_candidate),
+        _change_sentence(
+            current_vs_candidate,
+            topic="what_improved",
+            field="what_improved",
+            fallback="Block 8 does not provide grounded improvement evidence for this candidate.",
+        ),
+        _change_sentence(
+            current_vs_candidate,
+            topic="what_worsened",
+            field="what_worsened",
+            fallback="Block 8 does not provide grounded deterioration evidence for this candidate.",
+        ),
+        _practicality_sentence(current_vs_candidate),
+        _verdict_sentence(decision_verdict),
+        _next_review_sentence(
+            monitoring_diff,
+            candidate_launchpad,
+            portfolio_alternatives_builder,
+        ),
+    ]
+    return {
+        "version": "client_explanation_draft_v1",
+        "purpose": "deterministic_plain_language_preview",
+        "does_not_call_llm": True,
+        "does_not_create_new_metrics": True,
+        "sentences": sentences,
+    }
+
+
+def _build_light_decision_journal(
+    *,
+    generated_at: str,
+    candidate_launchpad: Mapping[str, Any] | None,
+    portfolio_alternatives_builder: Mapping[str, Any] | None,
+    candidate_generation: Mapping[str, Any] | None,
+    current_vs_candidate: Mapping[str, Any] | None,
+    decision_verdict: Mapping[str, Any] | None,
+    warnings: list[str],
+) -> dict[str, Any]:
+    cards = candidate_launchpad.get("cards") if isinstance(candidate_launchpad, Mapping) else []
+    card_rows = [card for card in cards if isinstance(card, Mapping)] if isinstance(cards, list) else []
+    selected_card_id = None
+    if isinstance(portfolio_alternatives_builder, Mapping):
+        selected_card_id = portfolio_alternatives_builder.get("selected_card_id")
+    if selected_card_id is None and isinstance(candidate_generation, Mapping):
+        candidate = candidate_generation.get("candidate")
+        if isinstance(candidate, Mapping):
+            selected_card_id = candidate.get("source_card_id")
+
+    candidate = (
+        candidate_generation.get("candidate")
+        if isinstance(candidate_generation, Mapping)
+        else None
+    )
+    comparison = _first_comparison(current_vs_candidate)
+    verdict_id = decision_verdict.get("verdict_id") if isinstance(decision_verdict, Mapping) else None
+    tradeoff_summary = (
+        comparison.get("tradeoff_summary")
+        if isinstance(comparison, Mapping)
+        else None
+    )
+    untested = []
+    for card in card_rows:
+        cid = card.get("card_id")
+        if cid != selected_card_id:
+            untested.append(
+                {
+                    "card_id": cid,
+                    "goal": card.get("goal"),
+                    "launch_status": card.get("launch_status"),
+                }
+            )
+
+    return {
+        "version": "light_decision_journal_v1",
+        "date": generated_at,
+        "current_portfolio": {
+            "artifact": "analysis_subject",
+            "field_path": "analysis_subject/*",
+        },
+        "selected_candidate": {
+            "candidate_id": candidate.get("candidate_id") if isinstance(candidate, Mapping) else None,
+            "source_card_id": selected_card_id,
+            "builder_status": (
+                portfolio_alternatives_builder.get("status")
+                if isinstance(portfolio_alternatives_builder, Mapping)
+                else None
+            ),
+            "can_generate_candidate": (
+                portfolio_alternatives_builder.get("can_generate_candidate")
+                if isinstance(portfolio_alternatives_builder, Mapping)
+                else None
+            ),
+        },
+        "untested_or_rejected_alternatives": untested[:5],
+        "key_assumptions_and_limits": warnings[:10],
+        "decision_verdict": verdict_id,
+        "accepted_tradeoffs": tradeoff_summary,
+        "next_review_trigger": "Use monitoring_diff.json when present; otherwise use Launchpad/Builder success criteria.",
+    }
 
 
 def build_ai_commentary_context(
@@ -787,13 +1693,21 @@ def build_ai_commentary_context(
     action: dict[str, Any] | None = None,
     problem_classification: dict[str, Any] | None = None,
     candidate_launchpad: dict[str, Any] | None = None,
+    portfolio_alternatives_builder: dict[str, Any] | None = None,
+    candidate_generation: dict[str, Any] | None = None,
     monitoring_diff: dict[str, Any] | None = None,
     portfolio_xray: dict[str, Any] | None = None,
     stress_report: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the deterministic evidence contract for future AI Commentary."""
 
+    candidate_generation, decision_verdict, lineage_warnings = _drop_mismatched_product_run_sources(
+        candidate_generation=candidate_generation,
+        current_vs_candidate=current_vs_candidate,
+        decision_verdict=decision_verdict,
+    )
     post_compare = _is_post_compare_context(
+        candidate_generation=candidate_generation,
         comparison=comparison,
         current_vs_candidate=current_vs_candidate,
         selection=selection,
@@ -810,6 +1724,8 @@ def build_ai_commentary_context(
     evidence_references.extend(_hedge_gap_refs(stress_report, hedge_gap_context, comparison))
     evidence_references.extend(_problem_refs(problem_classification))
     evidence_references.extend(_launchpad_refs(candidate_launchpad))
+    evidence_references.extend(_builder_refs(portfolio_alternatives_builder))
+    evidence_references.extend(_candidate_generation_refs(candidate_generation))
     if post_compare:
         evidence_references.extend(_comparison_refs(comparison, current_vs_candidate))
         evidence_references.extend(_decision_refs(selection, decision_verdict, action))
@@ -821,12 +1737,31 @@ def build_ai_commentary_context(
         else PURPOSE_GROUNDED_DECISION_CONTEXT
     )
 
+    generated_at = _utc_now_iso()
+    warnings = lineage_warnings + _warnings(
+        candidate_generation=candidate_generation,
+        comparison=comparison,
+        current_vs_candidate=current_vs_candidate,
+        selection=selection,
+        decision_verdict=decision_verdict,
+        portfolio_xray=portfolio_xray,
+        stress_report=stress_report,
+        scorecard_context=scorecard_context,
+        diagnosis_only=diagnosis_only,
+    )
+    pipeline_inconsistency = [
+        warning for warning in warnings if str(warning).startswith("pipeline_inconsistency:")
+    ]
+
     return {
         "schema_version": AI_COMMENTARY_CONTEXT_VERSION,
         "diagnostic_only": True,
-        "generated_at": _utc_now_iso(),
+        "generated_at": generated_at,
         "purpose": purpose,
         "grounding_phase": "diagnosis_only" if diagnosis_only else "post_compare",
+        "pipeline_inconsistency": pipeline_inconsistency[0].split(":", 1)[1]
+        if pipeline_inconsistency
+        else None,
         "allowed_source_artifacts": list(ALLOWED_SOURCE_ARTIFACTS),
         "forbidden_claim_categories": list(FORBIDDEN_CLAIM_CATEGORIES),
         "required_grounding_rules": list(REQUIRED_GROUNDING_RULES),
@@ -847,12 +1782,82 @@ def build_ai_commentary_context(
                 "Do not cite stress_scorecard_v1.overall_status or other mandate-style legacy fields "
                 "when Block 3.4 is available; use stress_diagnosis.headline and diagnosis_confidence instead."
             ),
+            "key_problems": (
+                "Use problem_classification.json primary_diagnosis, supporting symptoms, and key_evidence. "
+                "Do not promote secondary observations into the main diagnosis."
+            ),
+            "hidden_exposures": (
+                "Use Portfolio X-Ray weakness-map / hidden-exposure fields and stress hedge-gap context only. "
+                "Do not invent exposure labels."
+            ),
+            "diagnosis": (
+                "Use Portfolio X-Ray, Stress Test Lab, Problem Classification, and "
+                "Candidate Launchpad only as source evidence for the diagnosed current-portfolio problem."
+            ),
+            "hypothesis_tested": (
+                "Use candidate_generation.json candidate.goal, candidate.hypothesis_to_test, "
+                "source diagnosis/card ids, and success criteria. Do not invent a hypothesis."
+            ),
+            "candidate_generated": (
+                "Use candidate_generation.json generation_status, method_availability, "
+                "candidate method/variant, constraints, warnings, and handoff_to_comparison. "
+                "A generated candidate is still not a rebalance recommendation."
+            ),
             "candidate_logic": "Use Candidate Launchpad and current-vs-candidate evidence; do not invent weights.",
             "current_vs_candidate": "Explain only projected dimensions present in current_vs_candidate.json.",
-            "decision_verdict": "Use decision_verdict.json as product language and selection_decision.json as technical source.",
-            "no_trade": "If no-trade applies, cite selection_decision.json.no_trade and decision_verdict.json.",
+            "improvements": (
+                "Use current_vs_candidate.json comparisons[].what_improved and comparisons[].risk_reduced only."
+            ),
+            "deteriorations": (
+                "Use current_vs_candidate.json comparisons[].what_worsened and comparisons[].risk_added only."
+            ),
+            "turnover_cost": (
+                "Use current_vs_candidate.json comparisons[].practicality turnover and cost fields only; "
+                "do not create execution instructions."
+            ),
+            "success_criteria_result": (
+                "Use current_vs_candidate.json comparisons[].success_criteria_result and cite unavailable "
+                "or not_evaluated criteria instead of treating them as passes."
+            ),
+            "decision_verdict": (
+                "Use decision_verdict.json as product language. Use selection_decision.json when present, "
+                "or candidate_generation.json plus current_vs_candidate.json for the direct Block 7/8 verdict path."
+            ),
+            "no_trade": "If no-trade applies, cite selection_decision.json.no_trade or decision_verdict.json.no_trade.",
+            "no_trade_rationale": (
+                "Use decision_verdict.json verdict_reason_id, no_trade, rationale_summary, and "
+                "confidence_limitations. Do not turn no-trade into an error or a hidden recommendation."
+            ),
             "monitoring_next": "Use monitoring_diff.json only when available; otherwise state that monitoring context is absent.",
+            "monitoring_trigger": (
+                "Use monitoring_diff.json change_status and related fields only when available; otherwise state "
+                "that no monitoring trigger evidence was provided."
+            ),
+            "light_decision_journal": (
+                "Use light_decision_journal for a compact record of date, current portfolio, selected candidate "
+                "or blocked Builder status, untested alternatives, key limits, verdict, accepted trade-offs, "
+                "and next review trigger."
+            ),
         },
+        "client_explanation_draft": _build_client_explanation_draft(
+            problem_classification=problem_classification,
+            candidate_launchpad=candidate_launchpad,
+            portfolio_alternatives_builder=portfolio_alternatives_builder,
+            candidate_generation=candidate_generation,
+            current_vs_candidate=current_vs_candidate,
+            decision_verdict=decision_verdict,
+            monitoring_diff=monitoring_diff,
+            stress_report=stress_report,
+        ),
+        "light_decision_journal": _build_light_decision_journal(
+            generated_at=generated_at,
+            candidate_launchpad=candidate_launchpad,
+            portfolio_alternatives_builder=portfolio_alternatives_builder,
+            candidate_generation=candidate_generation,
+            current_vs_candidate=current_vs_candidate,
+            decision_verdict=decision_verdict,
+            warnings=warnings,
+        ),
         "evidence_references": evidence_references,
         "hedge_gap_context": hedge_gap_context,
         "current_portfolio_stress_scorecard_context": scorecard_context,
@@ -861,6 +1866,11 @@ def build_ai_commentary_context(
             "stress_report": _source_name("stress_report.json", stress_report),
             "problem_classification": _source_name("problem_classification.json", problem_classification),
             "candidate_launchpad": _source_name("candidate_launchpad.json", candidate_launchpad),
+            "portfolio_alternatives_builder": _source_name(
+                "portfolio_alternatives_builder.json",
+                portfolio_alternatives_builder,
+            ),
+            "candidate_generation": _source_name("candidate_generation.json", candidate_generation),
             "candidate_comparison": _source_name("candidate_comparison.json", comparison),
             "current_vs_candidate": _source_name("current_vs_candidate.json", current_vs_candidate),
             "selection_decision": _source_name("selection_decision.json", selection),
@@ -874,16 +1884,7 @@ def build_ai_commentary_context(
             "does_not_change_selection_or_verdict": True,
             "does_not_execute_trades": True,
         },
-        "warnings": _warnings(
-            comparison=comparison,
-            current_vs_candidate=current_vs_candidate,
-            selection=selection,
-            decision_verdict=decision_verdict,
-            portfolio_xray=portfolio_xray,
-            stress_report=stress_report,
-            scorecard_context=scorecard_context,
-            diagnosis_only=diagnosis_only,
-        ),
+        "warnings": warnings,
     }
 
 
@@ -897,6 +1898,8 @@ def write_ai_commentary_context_outputs(
     action: dict[str, Any] | None = None,
     problem_classification: dict[str, Any] | None = None,
     candidate_launchpad: dict[str, Any] | None = None,
+    portfolio_alternatives_builder: dict[str, Any] | None = None,
+    candidate_generation: dict[str, Any] | None = None,
     monitoring_diff: dict[str, Any] | None = None,
     portfolio_xray: dict[str, Any] | None = None,
     stress_report: dict[str, Any] | None = None,
@@ -911,6 +1914,8 @@ def write_ai_commentary_context_outputs(
         action=action,
         problem_classification=problem_classification,
         candidate_launchpad=candidate_launchpad,
+        portfolio_alternatives_builder=portfolio_alternatives_builder,
+        candidate_generation=candidate_generation,
         monitoring_diff=monitoring_diff,
         portfolio_xray=portfolio_xray,
         stress_report=stress_report,

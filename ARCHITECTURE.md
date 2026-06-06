@@ -80,6 +80,7 @@ Input portfolio
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
+-> Candidate Generation
 -> Current vs Candidate Comparison
 -> Decision Verdict
 -> AI Commentary / grounding
@@ -191,8 +192,9 @@ Architecture boundary:
 
 Target responsibility:
 
-- Generate one selected candidate from a goal, method, constraints, and parameters.
-- Preserve candidate as a hypothesis with evidence and provenance.
+- Turn one selected Launchpad card into editable Builder setup.
+- Validate goal, method, simple constraints, reference boundaries, data-quality blockers, and diagnosis context before candidate generation.
+- Hand a clean `CandidateSetup` to Candidate Generation only after an explicit Generate Candidate action.
 
 Potential backend reuse:
 
@@ -207,14 +209,12 @@ Potential backend reuse:
 
 Current implementation mapping:
 
-- Existing candidate builders and factory are current capabilities. A backend one-candidate wrapper
-  exists in `src/portfolio_alternatives_builder.py` and returns a delegated factory command plan.
-  Full on-demand user-triggered builder UI/service remains target product work.
+- Block 6 setup exists in `src/portfolio_alternatives_builder.py`: `BuilderPrefill`, guided strategy selection, Simple Mode parameters, validation, `CandidateSetup`, and runtime writing of `portfolio_alternatives_builder.json` after Launchpad. Existing candidate builders and factory remain current capabilities, but they belong to explicit Candidate Generation / backend paths.
 
 Architecture boundary:
 
-- Builder creates candidate hypotheses.
-- It should not be framed as automatically finding the perfect portfolio.
+- Builder prepares setup; it does not create candidate weights, comparison artifacts, or verdicts.
+- A candidate remains a hypothesis, not the automatically perfect portfolio.
 - Batch generation can remain advanced/research or backend automation.
 
 ### 4.7 Current vs Candidate Comparison Layer
@@ -239,8 +239,7 @@ Target evidence:
 Current implementation mapping:
 
 - Existing candidate comparison specs and artifacts provide reusable evidence. An additive
-  `current_vs_candidate.json` adapter exists via `src/current_vs_candidate.py`; full interactive
-  current-vs-selected-candidate UI remains target product work.
+  `current_vs_candidate.json` adapter exists via `src/current_vs_candidate.py`; the Blocks 5-9 vertical path scopes it to one generated candidate before verdict. Full interactive current-vs-selected-candidate UI remains target product work.
 
 Architecture boundary:
 
@@ -266,13 +265,13 @@ Target verdicts:
 Current implementation mapping:
 
 - Implemented as an additive mapping artifact (`decision_verdict.json`) via
-  `src/decision_verdict.py`. Existing Selection Engine / No-Trade specs and generated artifacts feed
-  this layer. Do not rename current schemas or fields without a migration plan.
+  `src/decision_verdict.py`. Existing Selection Engine / No-Trade specs and generated artifacts can feed this layer, and the Blocks 5-9 vertical path can build it directly from `candidate_generation.json` plus `current_vs_candidate.json`. Do not rename current schemas or fields without a migration plan.
 
 Architecture boundary:
 
 - Verdict answers "should the user act?"
 - It does not always pick a winner.
+- No-trade and evidence-insufficient are valid outcomes.
 - It should disclose data/model limits.
 
 ### 4.9 AI Commentary Layer
@@ -483,7 +482,8 @@ Current additive artifacts verified by current specs/code:
 
 - Problem Classification as `problem_classification.json`.
 - Candidate Launchpad as `candidate_launchpad.json`.
-- Portfolio Alternatives Builder backend delegation plan.
+- Portfolio Alternatives Builder setup artifact (`portfolio_alternatives_builder.json`) for Block 6 setup only.
+- Candidate Generation one-attempt artifact (`candidate_generation.json`) for explicit Block 7 generation; a candidate is not a recommendation.
 - Current-vs-Candidate adapter as `current_vs_candidate.json`.
 - Decision Verdict additive mapping as `decision_verdict.json`.
 - AI Commentary grounding context as `ai_commentary_context.json`.
@@ -507,7 +507,7 @@ Potential future architecture work, not part of this documentation draft:
 
 - Build full product UI/workspace flows around the current workflow-state metadata and generated
   artifacts.
-- Promote the Portfolio Alternatives Builder backend plan into a user-facing UI/service if approved.
+- Promote the Portfolio Alternatives Builder setup artifact into a user-facing UI/service if approved.
 - Add current-vs-selected-candidate presentation as the primary product surface while preserving the
   canonical comparison contract.
 - Add generated natural-language AI Commentary only after a separate grounding/prompt/output spec.

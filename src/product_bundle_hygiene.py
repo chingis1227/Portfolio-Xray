@@ -6,10 +6,11 @@
 
 from __future__ import annotations
 
+import copy
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from src.ai_commentary_context import AI_COMMENTARY_CONTEXT_FILENAME
 from src.candidate_comparison import SCHEMA_VERSION as CANDIDATE_COMPARISON_SCHEMA_VERSION
@@ -19,6 +20,7 @@ from src.current_vs_candidate import (
     CURRENT_VS_CANDIDATE_VERSION,
 )
 from src.decision_verdict import DECISION_VERDICT_FILENAME, DECISION_VERDICT_VERSION
+from src.portfolio_alternatives_builder import PORTFOLIO_ALTERNATIVES_BUILDER_FILENAME
 from src.problem_classification import PROBLEM_CLASSIFICATION_FILENAME
 from src.product_bundle_scope import PRODUCT_BUNDLE_SCOPE_CORE_BLOCKS_1_3
 
@@ -62,6 +64,7 @@ STALE_POST_COMPARE_REMOVE_FILENAMES: tuple[str, ...] = (
 CORE_BLOCKS_SUBJECT_BLOCK4_FILENAMES: tuple[str, ...] = (
     PROBLEM_CLASSIFICATION_FILENAME,
     CANDIDATE_LAUNCHPAD_FILENAME,
+    PORTFOLIO_ALTERNATIVES_BUILDER_FILENAME,
     AI_COMMENTARY_CONTEXT_FILENAME,
 )
 
@@ -103,6 +106,12 @@ def build_no_candidate_current_vs_candidate(
             "selection_decision": None,
         },
         "output_dir_final": output_dir_final,
+        "product_run": build_product_run_metadata(
+            run_id=f"diagnosis_only:{analysis_end or 'unknown'}:{output_dir_final or 'unknown'}",
+            artifact_role=CURRENT_VS_CANDIDATE_FILENAME,
+            workflow_state=WORKFLOW_STATE_DIAGNOSIS_ONLY,
+            active=False,
+        ),
         "warnings": ["no_candidate_selected", "product_bundle_hygiene"],
     }
 
@@ -146,6 +155,13 @@ def build_no_candidate_decision_verdict(
             "does_not_change_selection_formulas": True,
             "does_not_execute_trades": True,
         },
+        "product_run": build_product_run_metadata(
+            run_id=f"diagnosis_only:{analysis_end or 'unknown'}:{output_dir_final or 'unknown'}",
+            artifact_role=DECISION_VERDICT_FILENAME,
+            workflow_state=WORKFLOW_STATE_DIAGNOSIS_ONLY,
+            upstream_run_ids={"current_vs_candidate": f"diagnosis_only:{analysis_end or 'unknown'}:{output_dir_final or 'unknown'}"},
+            active=False,
+        ),
     }
 
 
@@ -173,8 +189,73 @@ def build_no_candidate_comparison_tombstone(
             "factory_evidence_status": "not_applicable",
         },
         "product_candidate_scope": None,
+        "product_run": build_product_run_metadata(
+            run_id=f"diagnosis_only:{analysis_end or 'unknown'}:{output_dir_final or 'unknown'}",
+            artifact_role="candidate_comparison.json",
+            workflow_state=WORKFLOW_STATE_DIAGNOSIS_ONLY,
+            active=False,
+        ),
         "warnings": ["no_candidate_selected", "product_bundle_hygiene"],
     }
+
+
+
+def build_product_run_metadata(
+    *,
+    run_id: str,
+    artifact_role: str,
+    workflow_state: str,
+    upstream_run_ids: Mapping[str, str | None] | None = None,
+    active: bool = True,
+) -> dict[str, Any]:
+    """Return compact freshness metadata for product-bundle artifacts.
+
+    The metadata is intentionally generic so historical files can remain on disk
+    while readers can tell whether candidate, comparison, verdict, and AI context
+    belong to the same vertical product run.
+    """
+
+    return {
+        "run_id": str(run_id),
+        "artifact_role": str(artifact_role),
+        "workflow_state": str(workflow_state),
+        "active": bool(active),
+        "generated_at": _utc_now_iso(),
+        "upstream_run_ids": dict(upstream_run_ids or {}),
+    }
+
+
+def attach_product_run_metadata(
+    document: Mapping[str, Any],
+    *,
+    run_id: str,
+    artifact_role: str,
+    workflow_state: str,
+    upstream_run_ids: Mapping[str, str | None] | None = None,
+    active: bool = True,
+) -> dict[str, Any]:
+    """Return a copy of ``document`` with product-run freshness metadata."""
+
+    enriched = copy.deepcopy(dict(document))
+    enriched["product_run"] = build_product_run_metadata(
+        run_id=run_id,
+        artifact_role=artifact_role,
+        workflow_state=workflow_state,
+        upstream_run_ids=upstream_run_ids,
+        active=active,
+    )
+    return enriched
+
+
+def product_run_id(document: Mapping[str, Any] | None) -> str | None:
+    """Extract a product-run id from an artifact, if present."""
+
+    product_run = document.get("product_run") if isinstance(document, Mapping) else None
+    if not isinstance(product_run, Mapping):
+        return None
+    value = product_run.get("run_id")
+    text = str(value or "").strip()
+    return text or None
 
 
 def _write_json(path: Path, doc: dict[str, Any]) -> None:
@@ -266,6 +347,9 @@ __all__ = [
     "CORE_BLOCKS_ROOT_REMOVE_FILENAMES",
     "CORE_BLOCKS_SUBJECT_BLOCK4_FILENAMES",
     "TOMBSTONE_COMPARE_FILENAMES",
+    "attach_product_run_metadata",
+    "build_product_run_metadata",
+    "product_run_id",
     "apply_core_blocks_product_bundle_hygiene",
     "apply_diagnosis_only_product_bundle_hygiene",
     "build_no_candidate_comparison_tombstone",

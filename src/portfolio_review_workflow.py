@@ -116,6 +116,7 @@ def build_portfolio_review_plan(
     cfg: PortfolioConfig,
     *,
     project_root: Path,
+    config_path: Path | None = None,
     no_cache: bool = False,
     skip_candidates: bool = False,
     review_mode: str = DEFAULT_REVIEW_MODE,
@@ -151,6 +152,7 @@ def build_portfolio_review_plan(
         skip_pdf = False
     py = _python(project_root)
     cache_flags: list[str] = ["--no-cache"] if no_cache else []
+    config_flags: list[str] = ["--config", str(config_path)] if config_path is not None else []
     steps: list[PortfolioReviewStep] = []
 
     def add(stage: str, label: str, argv: Sequence[str]) -> None:
@@ -168,6 +170,7 @@ def build_portfolio_review_plan(
         output_profile,
         "--review-mode",
         resolved_mode,
+        *config_flags,
         *cache_flags,
     ]
     use_shared_review_context = resolved_mode == "core" and not skip_candidates
@@ -186,6 +189,7 @@ def build_portfolio_review_plan(
         factory_argv = [
             py,
             str(project_root / "run_candidate_factory.py"),
+            *config_flags,
         ]
         if candidate_ids:
             factory_argv.extend(["--candidates", candidate_ids])
@@ -218,7 +222,13 @@ def build_portfolio_review_plan(
         add(
             "comparison",
             "Candidate comparison and decision package",
-            [py, str(project_root / "run_compare_variants.py"), "--output-profile", output_profile],
+            [
+                py,
+                str(project_root / "run_compare_variants.py"),
+                *config_flags,
+                "--output-profile",
+                output_profile,
+            ],
         )
 
     if not skip_pdf:
@@ -290,6 +300,17 @@ def summarize_plan(
         ),
         "Stages: input -> " + " -> ".join(step.stage for step in plan.steps),
     ]
+    if plan.runtime_mode == RUNTIME_MODE_PRODUCT_ONE_CANDIDATE:
+        lines.append(
+            "Path classification: explicit factory-id compatibility path; "
+            "canonical Blocks 5-9 demo uses "
+            "scripts/run_blocks_5_to_9_vertical_flow.py --method <id>."
+        )
+    elif plan.runtime_mode in {RUNTIME_MODE_PRODUCT_SHORTLIST, RUNTIME_MODE_RESEARCH_BATCH}:
+        lines.append(
+            "Path classification: advanced/research candidate factory path; "
+            "not the Core MVP demo story."
+        )
     for step in plan.steps:
         lines.append(f"  - [{step.stage}] {step.label}")
     return "\n".join(lines)

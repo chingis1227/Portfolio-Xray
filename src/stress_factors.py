@@ -166,9 +166,27 @@ FACTOR_DATA_FALLBACK_WARNING_CODE = (
     f"factor_data_fallback_used:{FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA}"
 )
 FACTOR_DATA_FALLBACK_WARNING = "FRED factor source timed out; using approved cached factor data."
+FACTOR_DATA_CSV_FALLBACK_WARNING_CODE = "factor_data_source_used:fred_csv_fallback"
+FACTOR_DATA_CSV_FALLBACK_WARNING = (
+    "FRED API was not used for at least one factor series; public CSV fallback was used."
+)
 FACTOR_CACHE_MAX_AGE_DAYS = 7
+FACTOR_CACHE_START_TOLERANCE_DAYS = 7
+FACTOR_CACHE_END_TOLERANCE_DAYS = 10
 FACTOR_CACHE_SCHEMA_VERSION = "fred_factor_series_cache_v1"
 FACTOR_CACHE_FREQUENCIES = ("daily_raw", "weekly_w_fri", "monthly_end")
+FRED_FACTOR_FETCH_TIMEOUT_SECONDS = 3.0
+FRED_FACTOR_FETCH_RETRIES = 1
+FRED_FACTOR_FETCH_RETRY_SLEEP_SECONDS = 0.25
+FRED_FACTOR_DEMO_CACHE_START = "2007-01-01"
+FRED_FACTOR_KNOWN_OBSERVATION_STARTS: dict[str, str] = {
+    # Some canonical FRED inputs do not have 2007-era raw history. The factor
+    # matrix remains valid from the first official observation; HY OAS may also
+    # fall back to BAA10Y under the existing credit coverage rule.
+    FRED_EQUITY_LEVEL: "2016-06-06",
+    FRED_HY_SPREAD: "2023-06-06",
+    FRED_US_GROWTH: "2008-01-05",
+}
 
 
 class FactorDataUnavailableError(RuntimeError):
@@ -258,6 +276,19 @@ def _save_fred_factor_series_cache(series_id: str, series: pd.Series) -> None:
     if cleaned.empty:
         return
     cache_path.mkdir(parents=True, exist_ok=True)
+    existing_path = cache_path / "series.parquet"
+    if existing_path.is_file():
+        try:
+            existing_frame = pd.read_parquet(existing_path)
+            if "value" in existing_frame.columns:
+                existing = _coerce_factor_series(existing_frame["value"])
+                if not existing.empty:
+                    cleaned = _coerce_factor_series(pd.concat([existing, cleaned]).sort_index())
+                    cleaned = cleaned[~cleaned.index.duplicated(keep="last")]
+        except Exception:
+            # A corrupt old cache should not prevent writing the freshly fetched
+            # series; validation will still gate future reads.
+            pass
     cleaned.to_frame("value").to_parquet(cache_path / "series.parquet")
     save_cache_meta(
         cache_path,
@@ -265,6 +296,7 @@ def _save_fred_factor_series_cache(series_id: str, series: pd.Series) -> None:
             "schema_version": FACTOR_CACHE_SCHEMA_VERSION,
             "series_id": str(series_id),
             "source": f"FRED:{series_id}",
+            "source_used": str(getattr(series, "attrs", {}).get("source_used") or "unknown"),
             "observation_start": _series_date_str(cleaned, "min"),
             "observation_end": _series_date_str(cleaned, "max"),
             "observations": int(cleaned.shape[0]),
@@ -333,20 +365,26 @@ def _load_approved_cached_fred_factor_series(
     end_ts = pd.Timestamp(end).normalize()
     cached_start = pd.Timestamp(series.index.min()).normalize()
     cached_end = pd.Timestamp(series.index.max()).normalize()
-    if cached_start > start_ts or cached_end < end_ts:
+    known_start_raw = FRED_FACTOR_KNOWN_OBSERVATION_STARTS.get(str(series_id))
+    effective_start_ts = max(start_ts, pd.Timestamp(known_start_raw).normalize()) if known_start_raw else start_ts
+    start_deadline = effective_start_ts + pd.Timedelta(days=FACTOR_CACHE_START_TOLERANCE_DAYS)
+    end_deadline = end_ts - pd.Timedelta(days=FACTOR_CACHE_END_TOLERANCE_DAYS)
+    if cached_start > start_deadline or cached_end < end_deadline:
         raise FactorCacheValidationError(
             f"cached factor data for {series_id} does not cover requested range "
-            f"{start_ts.date()}..{end_ts.date()} (cached {cached_start.date()}..{cached_end.date()})"
+            f"{start_ts.date()}..{end_ts.date()} (effective_start {effective_start_ts.date()}, "
+            f"end_tolerance_days={FACTOR_CACHE_END_TOLERANCE_DAYS}; "
+            f"cached {cached_start.date()}..{cached_end.date()})"
         )
     out = series.loc[(series.index >= start_ts) & (series.index <= end_ts)].copy()
     out.attrs.update(
         {
             "factor_source": f"FRED:{series_id}",
-            "fallback_used": True,
-            "fallback_reason": FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA,
-            "factor_data_fallback_used": True,
-            "factor_data_fallback_reason": FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA,
-            "factor_data_source_used": "approved_cached_factor_series",
+            "fallback_used": False,
+            "factor_data_fallback_used": False,
+            "factor_data_source_used": "cache_hit",
+            "source_used": "cache_hit",
+            "cache_status": "valid",
             "factor_data_cache_key": cache_key,
             "factor_data_cache_path": str(cache_path),
             "factor_data_cache_created_at": created_raw,
@@ -358,16 +396,80 @@ def _load_approved_cached_fred_factor_series(
     return out
 
 
-def _fetch_fred_factor_series(series_id: str, start: str, end: str) -> pd.Series:
-    """Fetch raw FRED factor data, or use approved cache only for timeout failures."""
+def factor_cache_status(series_id: str, start: str, end: str) -> dict[str, Any]:
+    """Return operator-facing cache status without hiding partial/missing cache."""
     try:
-        series = fetch_fred_series(series_id, start, end)
+        series = _load_approved_cached_fred_factor_series(series_id, start, end)
+        return {
+            "series_id": series_id,
+            "cache_status": "valid",
+            "source_used": "cache_hit",
+            "observations": int(series.dropna().shape[0]),
+            "first_observation": _series_date_str(series, "min"),
+            "last_observation": _series_date_str(series, "max"),
+            "cache_path": str(_factor_cache_path(series_id)),
+        }
+    except FactorCacheValidationError as exc:
+        return {
+            "series_id": series_id,
+            "cache_status": "expired" if "expired" in str(exc).lower() else "partial",
+            "source_used": "cache_invalid",
+            "message": str(exc),
+            "cache_path": str(_factor_cache_path(series_id)),
+        }
+    except Exception as exc:
+        return {
+            "series_id": series_id,
+            "cache_status": "missing",
+            "source_used": "cache_miss",
+            "message": str(exc),
+            "cache_path": str(_factor_cache_path(series_id)),
+        }
+
+
+def _fetch_fred_factor_series(
+    series_id: str,
+    start: str,
+    end: str,
+    *,
+    force_refresh: bool = False,
+) -> pd.Series:
+    """Load raw FRED factor data cache-first; use live FRED only to refresh missing/invalid cache."""
+    cache_info = factor_cache_status(series_id, start, end)
+    if not force_refresh and cache_info.get("cache_status") == "valid":
+        return _load_approved_cached_fred_factor_series(series_id, start, end)
+
+    try:
+        series = fetch_fred_series(
+            series_id,
+            start,
+            end,
+            timeout=FRED_FACTOR_FETCH_TIMEOUT_SECONDS,
+            retries=FRED_FACTOR_FETCH_RETRIES,
+            retry_sleep=FRED_FACTOR_FETCH_RETRY_SLEEP_SECONDS,
+        )
         if series is not None and not series.empty:
             _save_fred_factor_series_cache(series_id, series)
+            source_used = str(getattr(series, "attrs", {}).get("source_used") or "unknown")
+            series.attrs["factor_data_source_used"] = source_used
+            series.attrs["source_used"] = source_used
+            series.attrs["cache_status"] = str(cache_info.get("cache_status") or "missing")
+            series.attrs["factor_data_cache_refresh"] = True
+            if source_used == "fred_csv_fallback":
+                series.attrs["factor_data_warning"] = FACTOR_DATA_CSV_FALLBACK_WARNING
+                series.attrs["factor_data_warnings"] = list(
+                    dict.fromkeys(
+                        [FACTOR_DATA_CSV_FALLBACK_WARNING_CODE, FACTOR_DATA_CSV_FALLBACK_WARNING]
+                        + list(getattr(series, "attrs", {}).get("warnings") or [])
+                    )
+                )
         return series
     except Exception as exc:
         if not _exception_looks_like_timeout(exc):
-            raise
+            raise FactorDataUnavailableError(
+                f"FRED factor fetch failed for FRED:{series_id}; cache_status="
+                f"{cache_info.get('cache_status')}; source_used=cache_invalid/live_failed; {exc}"
+            ) from exc
         try:
             return _load_approved_cached_fred_factor_series(series_id, start, end)
         except Exception as cache_exc:
@@ -394,6 +496,20 @@ def factor_cache_validity_policy() -> dict[str, Any]:
             "A partial cache is not a successful full calculation by itself: missing series must "
             "fetch live successfully or the run fails with the missing/timed-out series named."
         ),
+        "bounded_live_fetch": {
+            "timeout_seconds": FRED_FACTOR_FETCH_TIMEOUT_SECONDS,
+            "retries": FRED_FACTOR_FETCH_RETRIES,
+            "retry_sleep_seconds": FRED_FACTOR_FETCH_RETRY_SLEEP_SECONDS,
+        },
+        "date_coverage_tolerance": {
+            "start_tolerance_days": FACTOR_CACHE_START_TOLERANCE_DAYS,
+            "end_tolerance_days": FACTOR_CACHE_END_TOLERANCE_DAYS,
+            "known_observation_starts": dict(FRED_FACTOR_KNOWN_OBSERVATION_STARTS),
+        },
+        "source_policy": (
+            "Product/demo analysis is cache-first. Cache warm/update uses FRED API when "
+            "FRED_API_KEY is set; public CSV is only a disclosed fallback."
+        ),
     }
 
 
@@ -402,6 +518,14 @@ def _apply_raw_factor_attrs(transformed: pd.Series, raw: pd.Series, *, source: s
     raw_attrs = dict(getattr(raw, "attrs", {}) or {})
     out.attrs.update(raw_attrs)
     out.attrs.setdefault("factor_source", source)
+    if raw_attrs.get("source_used"):
+        out.attrs["source_used"] = raw_attrs.get("source_used")
+    if raw_attrs.get("cache_status"):
+        out.attrs["cache_status"] = raw_attrs.get("cache_status")
+    if raw_attrs.get("factor_data_warning"):
+        out.attrs["factor_data_warning"] = raw_attrs.get("factor_data_warning")
+    if raw_attrs.get("factor_data_warnings"):
+        out.attrs["factor_data_warnings"] = raw_attrs.get("factor_data_warnings")
     if raw_attrs.get("factor_data_fallback_used"):
         out.attrs["fallback_used"] = True
         out.attrs["fallback_reason"] = FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA
@@ -938,6 +1062,8 @@ def _build_factor_frame(
     load_rows: dict[str, dict[str, Any]] = {}
     factor_data_warnings: list[str] = []
     factor_data_provenance: dict[str, Any] = {}
+    source_used_values: set[str] = set()
+    cache_status_values: set[str] = set()
     for spec in FACTOR_DEFINITIONS:
         loader = spec.monthly_loader if monthly else spec.weekly_loader
         try:
@@ -966,6 +1092,9 @@ def _build_factor_frame(
             ),
             "factor_data_fallback_reason": getattr(series, "attrs", {}).get("factor_data_fallback_reason"),
             "factor_data_source_used": getattr(series, "attrs", {}).get("factor_data_source_used"),
+            "source_used": getattr(series, "attrs", {}).get("source_used")
+            or getattr(series, "attrs", {}).get("factor_data_source_used"),
+            "cache_status": getattr(series, "attrs", {}).get("cache_status"),
             "factor_data_cache_key": getattr(series, "attrs", {}).get("factor_data_cache_key"),
             "factor_data_cache_created_at": getattr(series, "attrs", {}).get("factor_data_cache_created_at"),
             "status": status,
@@ -974,6 +1103,16 @@ def _build_factor_frame(
             "first_observation": str(pd.Timestamp(cleaned.index.min()).date()) if not cleaned.empty else None,
             "last_observation": str(pd.Timestamp(cleaned.index.max()).date()) if not cleaned.empty else None,
         }
+        row_source = load_rows[spec.column].get("source_used")
+        row_cache_status = load_rows[spec.column].get("cache_status")
+        if row_source:
+            source_used_values.add(str(row_source))
+        if row_cache_status:
+            cache_status_values.add(str(row_cache_status))
+        for warning in getattr(series, "attrs", {}).get("factor_data_warnings") or []:
+            factor_data_warnings.append(str(warning))
+        if getattr(series, "attrs", {}).get("factor_data_warning"):
+            factor_data_warnings.append(str(getattr(series, "attrs", {}).get("factor_data_warning")))
         if getattr(series, "attrs", {}).get("factor_data_fallback_used"):
             factor_data_warnings.append(FACTOR_DATA_FALLBACK_WARNING_CODE)
             factor_data_warnings.append(FACTOR_DATA_FALLBACK_WARNING)
@@ -1014,6 +1153,13 @@ def _build_factor_frame(
             ),
             "factor_data_provenance": factor_data_provenance,
             "warnings": sorted(set(factor_data_warnings)),
+            "source_used": "cache_hit" if source_used_values == {"cache_hit"} else (
+                "cache_miss" if not source_used_values else sorted(source_used_values)
+            ),
+            "cache_status": "missing",
+            "missing_series": ordered_cols,
+            "full_factor_matrix_available": False,
+            "demo_safe": False,
             "cache_validity_policy": factor_cache_validity_policy(),
         }
         return df
@@ -1039,6 +1185,18 @@ def _build_factor_frame(
         rows_after_complete_case = int(len(df))
     available = [c for c in ordered_cols if c in df.columns and df[c].notna().sum() > 0]
     missing = [c for c in ordered_cols if c not in available]
+    full_available = not missing and rows_after_complete_case > 0
+    cache_status = (
+        "valid"
+        if cache_status_values == {"valid"} and not missing
+        else "missing"
+        if not cache_status_values
+        else "partial"
+        if ("partial" in cache_status_values or "missing" in cache_status_values or missing)
+        else "expired"
+        if "expired" in cache_status_values
+        else "valid"
+    )
     df.attrs["factor_load_diagnostics"] = {
         "frequency": "monthly" if monthly else "weekly",
         "require_complete_rows": bool(require_complete_rows),
@@ -1061,6 +1219,13 @@ def _build_factor_frame(
         ),
         "factor_data_provenance": factor_data_provenance,
         "warnings": sorted(set(factor_data_warnings)),
+        "source_used": "cache_hit" if source_used_values == {"cache_hit"} else (
+            sorted(source_used_values) if source_used_values else None
+        ),
+        "cache_status": cache_status,
+        "missing_series": missing,
+        "full_factor_matrix_available": bool(full_available),
+        "demo_safe": bool(full_available and source_used_values == {"cache_hit"} and cache_status == "valid"),
         "cache_validity_policy": factor_cache_validity_policy(),
     }
     return df
@@ -2989,7 +3154,26 @@ def factor_oos_beta_shock_explainability(
                 "error": "missing_episode_start_end",
             })
             continue
-        fac = build_factor_matrix(str(start), str(end))
+        if pd.Timestamp(start) < pd.Timestamp(FRED_FACTOR_DEMO_CACHE_START):
+            out["episodes"].append({
+                "episode": ep,
+                "episode_start": start,
+                "episode_end": end,
+                "error": "episode_before_demo_factor_cache_policy_start",
+                "factor_cache_policy_start": FRED_FACTOR_DEMO_CACHE_START,
+            })
+            continue
+        try:
+            fac = build_factor_matrix(str(start), str(end))
+        except FactorDataUnavailableError as exc:
+            out["episodes"].append({
+                "episode": ep,
+                "episode_start": start,
+                "episode_end": end,
+                "error": "factor_data_unavailable",
+                "message": str(exc),
+            })
+            continue
         if fac.empty:
             out["episodes"].append({
                 "episode": ep,

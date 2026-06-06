@@ -314,10 +314,11 @@ def test_candidate_options_are_forwarded_without_policy_step(tmp_path: Path) -> 
     assert plan.runtime_mode == RUNTIME_MODE_PRODUCT_SHORTLIST
 
 
-def test_official_one_candidate_product_path_equal_weight(tmp_path: Path) -> None:
-    """Canonical product demo: ``run_portfolio_review.py --candidates equal_weight``.
+def test_explicit_candidate_compatibility_path_equal_weight(tmp_path: Path) -> None:
+    """Compatibility path: ``run_portfolio_review.py --candidates equal_weight``.
 
-    Session 04 contract: one factory id, ``--then-compare``, workflow state ``one_candidate``.
+    Session 08 contract: one factory id, ``--then-compare``, workflow state ``one_candidate``;
+    the canonical visible demo is the Blocks 5-9 vertical script.
     """
     plan = build_portfolio_review_plan(
         _cfg(),
@@ -349,6 +350,23 @@ def test_summarize_plan_discloses_runtime_mode(tmp_path: Path) -> None:
     summary = summarize_plan(plan, review_mode="core", factory_profile="explicit_list")
 
     assert "Runtime mode: product_one_candidate" in summary
+    assert "Path classification: explicit factory-id compatibility path" in summary
+    assert "scripts/run_blocks_5_to_9_vertical_flow.py --method <id>" in summary
+
+
+def test_summarize_plan_discloses_research_batch_classification(tmp_path: Path) -> None:
+    plan = build_portfolio_review_plan(
+        _cfg(),
+        project_root=tmp_path,
+        review_mode="full",
+        skip_pdf=True,
+    )
+
+    summary = summarize_plan(plan, review_mode="full", factory_profile="default_v1")
+
+    assert "Runtime mode: research_batch" in summary
+    assert "Path classification: advanced/research candidate factory path" in summary
+    assert "not the Core MVP demo story" in summary
 
 
 def test_full_mode_resume_candidates_forwards_factory_resume(tmp_path: Path) -> None:

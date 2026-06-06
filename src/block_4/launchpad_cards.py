@@ -114,14 +114,11 @@ _NO_USER_ACTION_PATH_IDS = frozenset(
 _KNOWN_METHOD_IDS = frozenset(
     {
         "equal_weight",
-        "equal_weight_by_asset_class",
+        "hierarchical_risk_parity",
         "maximum_diversification",
-        "minimum_cvar_constrained",
+        "minimum_cvar",
         "minimum_variance",
-        "risk_budget_by_asset",
         "risk_parity",
-        "robust_mv_constrained",
-        "robust_scenario",
     }
 )
 

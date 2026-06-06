@@ -4,7 +4,89 @@ This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.
 
+Date: 2026-06-06
+
+Category: Fixed
+
+- **Block 7-8-9 handoff consistency:** fixed the config-isolated factory-run ingestion bug where
+  Block 7 read `candidate_factory_run.json` from legacy `Main portfolio/` after the factory wrote
+  the successful demo run under the config-specific output folder. `candidate_generation.json` now
+  records generated candidates with weights when the fresh factory step succeeds; Block 8 blocks
+  normal comparison if Block 7 is failed/infeasible or missing weights; Decision Verdict no longer
+  reports `candidate_generation_failed` for successful fresh comparisons; AI Commentary flags future
+  candidate/comparison contradictions. Three standard demo fixtures now pass with consistent
+  Block 7/8/9/AI artifacts, and the follow-up audit records `FULL_DEMO_MVP_READY`.
+
+Category: Changed
+
+- **Three-portfolio vertical demo rerun after FRED fix:** reran the canonical Blocks 5-9 vertical
+  flow on balanced, equity-heavy, and defensive/rates-sensitive demo fixtures and recorded
+  `DEMO_READY_WITH_LIMITATIONS` in
+  `docs/audits/2026-06-06_three_portfolio_vertical_demo_rerun_after_fred_fix.md`. FRED/factor cache
+  is now demo-safe and Block 8 produces meaningful improvements/worsening under `standard` mode,
+  but `FULL_DEMO_MVP_READY` remains blocked because Block 7 marks candidate generation failed while
+  Block 8 has comparison evidence, causing Block 9 and AI grounding to contradict the comparison.
+
 Date: 2026-06-05
+
+Category: Changed
+
+- **Full Demo MVP readiness Session 10:** completed the final readiness gate and recorded
+  `DEMO_READY_WITH_LIMITATIONS` in
+  `docs/audits/2026-06-06_full_demo_mvp_readiness_gate_session_10.md`; focused tests passed, but
+  `FULL_DEMO_MVP_READY` remains blocked by unavailable grounded improvement/worsening evidence and
+  full-range FRED/factor cache readiness.
+
+- **Full Demo MVP readiness Session 09:** added a practical demo operator guide at
+  `docs/demo/full_demo_mvp.md` covering the three demo fixtures, canonical vertical commands,
+  expected product-bundle outputs, known limitations, and verdict interpretation without
+  overclaiming unavailable comparison evidence.
+
+- **Full Demo MVP readiness Session 08:** clarified legacy/compatibility runtime paths with
+  warnings and docs labels: explicit `run_portfolio_review.py --candidates <id>` is a factory-id
+  compatibility path, research batches are not the Core MVP demo story, and root legacy runner
+  wrappers warn before delegating to `legacy/runners/`.
+
+- **Full Demo MVP readiness Session 07:** expanded `ai_commentary_context.json` with a
+  deterministic client explanation draft and Light Decision Journal scaffold, including grounded
+  Builder-blocked cases, without calling an LLM or inventing missing comparison metrics.
+
+- **Full Demo MVP readiness Session 05:** bounded the full factor-matrix FRED live-fetch budget in
+  `src/stress_factors.py`, pushed requested date ranges into FRED CSV URLs, and added
+  `scripts/warm_factor_cache.py` so operators can warm or validate approved raw factor cache before
+  demos without running the whole portfolio workflow.
+
+- **Full Demo MVP readiness Session 04:** added `product_run` freshness metadata to the Blocks 5-9 vertical artifact chain and guards so stale/inactive `candidate_generation.json` cannot drive Block 8, and mismatched `decision_verdict.json` is ignored by AI Commentary grounding.
+
+- **Blocks 5-9 vertical loop Session 09:** synchronized product wording across README, runtime entrypoints, operator guide, product/architecture docs, specs index, output contract docs, decisions, and ExecPlan registers so Builder setup is not a candidate, a candidate is not a recommendation, reference tests are diagnostic comparisons, and Decision Verdict owns action/no-action, no-trade, and evidence-insufficient outcomes.
+
+- **Blocks 5-9 vertical loop Session 01:** normalized guided Block 6 methods to the MVP scope (`equal_weight`, `risk_parity`, `hierarchical_risk_parity`, `minimum_variance`, `minimum_cvar`, `maximum_diversification`), added capped/uncapped preset handling and the uncapped concentration warning, and kept advanced/legacy optimizer families hidden from guided Builder validation.
+
+Category: Added
+
+- **Blocks 5-9 vertical loop Session 08:** added `scripts/run_blocks_5_to_9_vertical_flow.py`, a one-command diagnosis-first demo that selects one Launchpad hypothesis, rebuilds one Builder setup, generates one candidate attempt, scopes Block 8 comparison to that candidate, writes direct Decision Verdict, and writes AI Commentary grounding while clearing stale vertical-loop root artifacts first.
+
+- **Blocks 5-9 vertical loop Session 07:** expanded `ai_commentary_context.json` grounding so `candidate_generation.json` is an allowed source and the context cites diagnosis, tested hypothesis, generated candidate, improvements/deteriorations, turnover/cost, success criteria, Decision Verdict, no-trade rationale, and monitoring-trigger evidence without calling an LLM.
+
+- **Blocks 5-9 vertical loop Session 06:** added direct Block 9 Decision Verdict building from `candidate_generation.json` and `current_vs_candidate.json`, covering failed/infeasible candidates, evidence-insufficient gates, no-trade/keep-current outcomes, material rebalance review, test-another-candidate, and risk-improved-but-turnover-too-high cases.
+
+- **Blocks 5-9 vertical loop Session 04:** added a Block 8-only comparison path that scopes `candidate_comparison.json` to one selected candidate and writes `current_vs_candidate.json` without refreshing verdict, action plan, decision journal, or AI commentary context artifacts.
+
+- **Blocks 5-9 vertical loop Session 03:** added `scripts/generate_candidate_from_builder_setup.py` to turn one validated Builder setup into runtime `candidate_generation.json`, delegate only one backend candidate through the factory without comparison/verdict, and preserve failed/infeasible attempts without stale-weight fallback or rebalance recommendation status.
+
+- **Blocks 5-9 vertical loop Session 02:** added Block 7 `candidate_generation_v1` contract via `src/candidate_generation.py`, one-attempt generation output writing, guided method/mode mapping, non-recommendation guardrails, and focused tests for Builder setup preservation, mapping, and recommendation boundary.
+
+- **Block 6 Builder Sessions 08-09:** synchronized product, architecture, output, workflow, runtime-entrypoint, and detailed spec docs around the Block 6 setup / Block 7 generation boundary; added dedicated `builder_prefill_spec.md` and `candidate_setup_spec.md`; live validation covers targeted, reference-benchmark, and data-quality Builder outcomes without automatic candidate generation.
+
+- **Block 6 Builder Sessions 06-07:** added validated `CandidateSetup` handoff and runtime `portfolio_alternatives_builder.json` writing after Launchpad, with product-bundle discovery via `portfolio_alternatives_builder_json`. Data-quality cards are blocked and do not expose `CandidateSetup`; Block 6 still does not generate candidates, weights, comparison, or verdict artifacts.
+
+- **Block 6 Builder Sessions 04-05:** added Simple Mode parameter setup via `build_simple_builder_parameters()` and pre-Block-7 validation via `validate_builder_setup()`. Simple Mode exposes only goal/method/basic constraint fields, rejects advanced optimizer settings, preserves reference/targeted boundaries, and blocks data-quality, unsupported-method, missing-field, invalid-constraint, feasibility-risk, and reference-boundary failures without generating candidates.
+
+- **Block 6 Strategy Selector Session 03:** added `select_builder_strategy()` to map Builder goals to guided method defaults, preserve `original_suggested_method` / `selected_method` / `method_changed_by_user`, add concentration max-weight hints, and keep reference benchmarks non-recommendational without generating candidates.
+
+- **Block 6 BuilderPrefill Session 02:** added the public `launchpad_card_to_builder_prefill()` mapper with focused handoff tests for targeted, reference-benchmark, and data-quality Launchpad cards. The mapper preserves diagnosis/card context and prohibited candidate-output boundaries without invoking candidate generation.
+
+- **Block 6 BuilderPrefill Session 01:** added the strict Launchpad-derived `BuilderPrefill` setup contract with stable ids, source problem traceability, simple-mode placeholder fields, status/warnings, and prohibited candidate-output fields. Focused tests: `tests/test_block_6_builder_prefill_contract.py tests/test_portfolio_alternatives_builder.py tests/test_candidate_launchpad_builder_handoff.py` (**27 passed**).
 
 Category: Fixed
 

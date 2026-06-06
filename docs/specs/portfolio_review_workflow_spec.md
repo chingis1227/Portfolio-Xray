@@ -128,7 +128,7 @@ runs print it in `summarize_plan()`.
 | `runtime_mode` | Typical command | Factory runs? | Compare runs? |
 | --- | --- | --- | --- |
 | `product_diagnosis_only` | `python run_portfolio_review.py` (default) | No | No |
-| `product_one_candidate` | `python run_portfolio_review.py --candidates <id>` | Yes (explicit list) | Yes (`--then-compare`) |
+| `product_one_candidate` | `python run_portfolio_review.py --candidates <id>` | Yes (explicit list) | Yes (`--then-compare`); explicit factory-id compatibility path, not the canonical visible Blocks 5-9 demo |
 | `product_shortlist` | `python run_portfolio_review.py --candidates id1,id2,...` | Yes | Yes |
 | `research_batch` | `--with-candidates`, `--mode full`, `--candidate-profile ...`, resume/force flags | Yes (profile-driven menu) | Yes |
 | `legacy_policy` | `run_optimization.py` / legacy wrappers (not portfolio-first default) | Policy path | Separate contract |
@@ -151,7 +151,9 @@ requests them.
 | `--candidate-profile <name>` | Factory with named profile (implies candidates run) |
 
 **Important:** `--mode core` alone does **not** invoke `core_fast`. Use `--with-candidates` for the
-backend six-candidate batch, or `--candidates <id>` for the canonical one-hypothesis product path.
+backend six-candidate batch, or `--candidates <id>` only for the explicit factory-id compatibility
+path. The canonical one-hypothesis demo is
+`python scripts/run_blocks_5_to_9_vertical_flow.py --method <id>`.
 
 When candidates run, profile resolution follows `resolve_review_candidate_profile()`:
 
@@ -165,9 +167,13 @@ Need current-portfolio diagnosis only?
   └─ yes → python run_portfolio_review.py
            (runtime_mode=product_diagnosis_only, workflow_state=diagnosis_only)
 
-Need one Launchpad hypothesis vs current?
+Need one visible Launchpad -> Builder -> Block 7 -> compare -> verdict demo?
+  └─ yes → python scripts/run_blocks_5_to_9_vertical_flow.py --method <factory_id>
+
+Already know the backend factory id and only need compatibility factory + compare?
   └─ yes → python run_portfolio_review.py --candidates <factory_id>
-           (runtime_mode=product_one_candidate, workflow_state=one_candidate)
+           (runtime_mode=product_one_candidate, workflow_state=one_candidate,
+            path classification=explicit factory-id compatibility)
 
 Need backend six-candidate batch + compare (research / Blocks 1–5 regression)?
   └─ yes → python run_portfolio_review.py --with-candidates
@@ -192,6 +198,7 @@ python run_portfolio_review.py --candidates equal_weight --dry-run
   Runtime mode: product_one_candidate
   Workflow state: one_candidate (candidate_count=1, source=candidate_ids)
   Stages: input -> diagnosis -> candidates
+  Path classification: explicit factory-id compatibility path
 
 python run_portfolio_review.py --with-candidates --dry-run
   Review mode: core (factory profile: core_fast)

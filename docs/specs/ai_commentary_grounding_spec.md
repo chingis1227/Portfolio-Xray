@@ -5,7 +5,8 @@ AI Commentary layer.
 
 The implemented artifact is `ai_commentary_context.json`, written by
 `src/ai_commentary_context.py` after `decision_verdict.json` is produced in the
-candidate comparison / decision-package pipeline.
+candidate comparison / decision-package pipeline or the one-candidate vertical
+product loop.
 
 ## Status
 
@@ -40,6 +41,8 @@ AI Commentary may use only evidence from allowed deterministic artifacts:
 - `stress_report.json`
 - `problem_classification.json`
 - `candidate_launchpad.json`
+- `portfolio_alternatives_builder.json`
+- `candidate_generation.json`
 - `candidate_comparison.json`
 - `current_vs_candidate.json`
 - `selection_decision.json`
@@ -47,9 +50,13 @@ AI Commentary may use only evidence from allowed deterministic artifacts:
 - `action_plan.json`
 - `monitoring_diff.json`
 
-The current writer always receives downstream decision artifacts available in
-the comparison flow. Earlier diagnosis artifacts and monitoring may be absent in
-some runs; absent sources must be treated as evidence gaps, not inferred.
+The current writer may receive either the legacy comparison-flow downstream
+bundle (`candidate_comparison.json`, `selection_decision.json`,
+`current_vs_candidate.json`, and `decision_verdict.json`) or the direct vertical
+loop bundle (`candidate_generation.json`, `current_vs_candidate.json`, and
+`decision_verdict.json`). Earlier diagnosis artifacts and monitoring may be
+absent in some runs; absent sources must be treated as evidence gaps, not
+inferred.
 
 ## Forbidden claim categories
 
@@ -91,6 +98,8 @@ Top-level fields:
 - `forbidden_claim_categories`: list of forbidden claim types
 - `required_grounding_rules`: list of rules for any future commentary generator
 - `commentary_topics`: topic-to-grounding guidance map
+- `client_explanation_draft`: deterministic 5-10 sentence plain-language preview over grounded fields only
+- `light_decision_journal`: compact decision-record scaffold over grounded fields only
 - `evidence_references`: material source references with artifact and field path
 - `hedge_gap_context`: optional Block 3.3 hedge-gap grounding slice (see below)
 - `current_portfolio_stress_scorecard_context`: optional Block 3.4 stress scorecard grounding slice (see below)
@@ -98,6 +107,47 @@ Top-level fields:
 - `guardrails`: booleans proving this layer does not call an LLM, calculate
   metrics, alter selection/verdict, or execute trades
 - `warnings`: missing-source and upstream-warning list
+
+The topic map explicitly covers diagnosis, key problems, hidden exposures,
+hypothesis tested, candidate generated or Builder-blocked status, current vs
+candidate comparison, improvements, deteriorations, turnover/cost,
+success-criteria result, Decision Verdict, no-trade rationale,
+evidence-insufficient rationale, monitoring trigger grounding, and the Light
+Decision Journal.
+
+### `client_explanation_draft`
+
+`client_explanation_draft` is a deterministic preview, not an LLM result. It
+contains:
+
+- `version`: `client_explanation_draft_v1`
+- `purpose`: `deterministic_plain_language_preview`
+- `does_not_call_llm`: `true`
+- `does_not_create_new_metrics`: `true`
+- `sentences`: ordered 5-10 topic rows, each with `topic`,
+  `evidence_status`, `text`, and source `references`
+
+The draft may say that evidence is missing, unavailable, limited, or blocked.
+That is intentional. It must not turn missing Block 8 metrics into invented
+improvements/worsening, and it must not turn a generated candidate into a
+recommendation.
+
+### `light_decision_journal`
+
+`light_decision_journal` is a compact deterministic decision-record scaffold:
+
+- `version`: `light_decision_journal_v1`
+- `date`
+- `current_portfolio`
+- `selected_candidate` or blocked Builder status
+- `untested_or_rejected_alternatives`
+- `key_assumptions_and_limits`
+- `decision_verdict`
+- `accepted_tradeoffs`
+- `next_review_trigger`
+
+It is populated only from context inputs and warnings. It does not create a
+full Decision Journal product and does not issue trade instructions.
 
 ## Evidence references
 
@@ -111,6 +161,47 @@ Each `evidence_references` row contains:
 The context may include compact excerpts such as candidate IDs, statuses,
 dimension counts, verdict IDs, and no-trade metadata. It must not create new
 calculated metrics.
+
+### Candidate Generation artifacts
+
+When `candidate_generation.json` is available, the writer emits compact Block 7
+references for:
+
+- `generation_status`
+- `method_availability`
+- `source_builder_setup`
+- candidate identity, source diagnosis/card ids, method, variant, capped/uncapped
+  constraint summary, and status
+- `hypothesis_to_test`, `success_criteria`, `tradeoff_to_watch`, and
+  `decision_boundary`
+- `handoff_to_comparison`
+
+The writer does not treat the generated candidate as a rebalance
+recommendation. It does not calculate weights, compare metrics, issue a
+verdict, or turn failed/infeasible candidate generation into hidden fallback
+evidence.
+
+### Portfolio Alternatives Builder artifacts
+
+When `portfolio_alternatives_builder.json` is available, the writer emits
+compact Block 6 references for Builder `status`, `can_generate_candidate`,
+`reason`, `validation`, and `builder_prefill`. This lets AI Commentary explain
+monitor-only or data-quality-blocked cases without pretending a candidate was
+generated.
+
+### Current-vs-candidate and verdict references
+
+When `current_vs_candidate.json` is available in a post-compare context, the
+writer includes references for the selected comparison row's improvements,
+deteriorations, risks reduced/added, practicality turnover/cost evidence,
+success-criteria result, materiality review gate, and trade-off summary. These
+are citations to the Block 8 artifact only; they are not new calculations.
+
+When `decision_verdict.json` is available, the writer includes verdict id,
+Selection-compatible status, vertical-loop `verdict_reason_id` when present,
+reviewed/selected candidate ids, confidence, no-trade metadata, and rationale
+summary. This lets a future AI Commentary layer explain no-trade and
+evidence-insufficient outcomes without inventing a recommendation.
 
 ### Diagnosis artifacts (summary fields only)
 
@@ -166,7 +257,7 @@ missing or `block_status = unavailable`. For candidate peer context, cite
 | Phase | When | `purpose` | Compare-source warnings |
 | --- | --- | --- | --- |
 | Diagnosis-only | After materialize / before compare | `diagnosis_grounding_only` | No `missing_required_source:*` for compare bundle |
-| Post-compare | After `decision_verdict.json` | `grounded_ai_commentary_context` | Warn when comparison / current-vs-candidate / selection / verdict missing |
+| Post-compare | After `decision_verdict.json` plus `current_vs_candidate.json`, with either Selection evidence or `candidate_generation.json` | `grounded_ai_commentary_context` | Warn when required sources for the active path are missing; ignore explicitly mismatched `product_run` verdict evidence |
 
 Diagnosis-only `ai_commentary_context.json` may be written under `analysis_subject/` during
 `run_report.py --materialize-analysis-subject`. The post-compare file at variant root replaces
@@ -184,6 +275,18 @@ problem classification and launchpad are produced.
 2. `selection_decision.json`
 3. `action_plan.json`
 4. `decision_verdict.json`
+
+When a `candidate_generation.json` artifact is present beside the comparison
+bundle, `write_candidate_comparison_outputs()` passes it into the AI grounding
+writer as additional Block 7 evidence.
+
+The Blocks 5-9 vertical product loop may write `ai_commentary_context.json`
+after Block 9 using `candidate_generation.json`, `current_vs_candidate.json`,
+and `decision_verdict.json` without requiring `selection_decision.json`. When these artifacts carry
+explicit `product_run.run_id` metadata, the AI grounding builder treats mismatched downstream
+artifacts as stale: for example, a `decision_verdict.json` from another run is ignored,
+`source_artifacts.decision_verdict` becomes `null`, and the context warns with
+`artifact_lineage_mismatch:decision_verdict.json` rather than citing the stale verdict.
 
 Monitoring is integrated later in the product flow. If `monitoring_diff.json`
 is not available at context build time, future commentary must state monitoring

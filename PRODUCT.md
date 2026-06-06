@@ -1,10 +1,10 @@
-# Product
+﻿# Product
 
 This document is part of the active project documentation after the documentation migration. It describes the current canonical product direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
 
 ## 1. Product Summary
 
-Portfolio MRI / Portfolio X-Ray is a portfolio diagnostics and investment decision-support product. The **canonical current product truth is “ДИАГНОСТИКА 2”**.
+Portfolio MRI / Portfolio X-Ray is a portfolio diagnostics and investment decision-support product. The **canonical current product truth is вЂњР”РРђР“РќРћРЎРўРРљРђ 2вЂќ**.
 
 The user does not start by choosing an optimizer. The user starts by submitting a current portfolio.
 The product diagnoses what is inside that portfolio, where risk is hidden, how it behaves under
@@ -20,6 +20,7 @@ Input portfolio
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
+-> Candidate Generation
 -> Current vs Candidate Comparison
 -> Decision Verdict
 -> AI Commentary / grounding
@@ -31,7 +32,7 @@ additive backend/file artifacts, while full product UI and saved-workspace behav
 scope. Current implementation status is owned by `SPEC.md`, `OUTPUTS.md`, `docs/specs/*.md`, and
 code.
 
-“ДИАГНОСТИКА 2 НА ПОТОМ” is backlog / advanced / later. The following must not be described as the
+вЂњР”РРђР“РќРћРЎРўРРљРђ 2 РќРђ РџРћРўРћРњвЂќ is backlog / advanced / later. The following must not be described as the
 current Core MVP product flow even if code or generated artifacts exist: Portfolio Health Score,
 Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena,
 Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Model Risk Diagnostics, full Action
@@ -116,7 +117,7 @@ Target MVP inputs:
 
 **Core MVP boundary:** client profile, mandate targets (return, vol, max drawdown), horizon,
 liquidity needs, suitability limits, and constraint comparison are **not** required and must not
-drive Block 1–3 product-facing conclusions. Those fields remain in config / Advanced settings for
+drive Block 1вЂ“3 product-facing conclusions. Those fields remain in config / Advanced settings for
 legacy optimization and future Client-Fit Check only.
 
 System-level inputs and defaults:
@@ -199,7 +200,7 @@ Product rule:
 
 Stress Test Lab should show vulnerability and evidence quality. It should not fabricate historical
 evidence when data is insufficient. **Core MVP:** stress reports diagnostic facts only
-(`loss_gate_mode="diagnostic"`) — no client mandate pass/fail on scenario rows. Legacy mandate
+(`loss_gate_mode="diagnostic"`) вЂ” no client mandate pass/fail on scenario rows. Legacy mandate
 comparison (`loss_gate_mode="mandate"`, DIAG_* statuses) applies only to legacy/advanced report paths.
 
 #### 4.3.1 Scenario Library (Block 3.1)
@@ -207,14 +208,14 @@ comparison (`loss_gate_mode="mandate"`, DIAG_* statuses) applies only to legacy/
 Scenario Library is the unified set of test scenarios for portfolio stress evaluation. It includes
 historical and synthetic scenarios and allows consistent stress-testing conditions.
 
-**Historical scenarios (fixed):** `dotcom`, `2008`, `2020`, `2022`, `banking_2023` — real crisis
+**Historical scenarios (fixed):** `dotcom`, `2008`, `2020`, `2022`, `banking_2023` вЂ” real crisis
 periods; realized portfolio behavior where data supports it.
 
 **Synthetic scenarios (fixed):** `equity_shock`, `credit_shock`, `rates_shock`,
-`inflation_stagflation`, `liquidity_shock`, `usd_shock`, `commodity_shock`, `recession_severe` —
+`inflation_stagflation`, `liquidity_shock`, `usd_shock`, `commodity_shock`, `recession_severe` вЂ”
 predefined factor shocks.
 
-Canonical spec: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.1.
+Canonical spec: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) В§3.1.
 Do not add or rename scenarios without spec and `DECISIONS.md`. Other Block 3 sections (stress
 results, hedge gap analysis, scorecard) are separate from 3.1.
 
@@ -236,14 +237,14 @@ Product boundary:
 - `stress_conclusions` remains a compatibility worst-case rollup for snapshot/comparison/commentary
   consumers and does not replace `stress_results_v1`.
 
-Canonical specs: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.2,
-[docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.1.
+Canonical specs: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) В§3.2,
+[docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) В§12.1.
 
 #### 4.3.4 Current Portfolio Stress Scorecard (Block 3.4)
 
 Block 3.4 is the product-facing **current-portfolio** stress scorecard on `stress_report.json`:
 `current_portfolio_stress_scorecard_v1` (ruleset `current_portfolio_stress_scorecard_rules_v1_1`).
-It summarizes Blocks 3.1–3.3 into executive stress diagnosis: worst synthetic/historical selectors,
+It summarizes Blocks 3.1вЂ“3.3 into executive stress diagnosis: worst synthetic/historical selectors,
 `stress_diagnosis` (headline, confidence, resilience lists), loss/risk summaries, factor drivers,
 `hedge_gap_summary`, optional pre-stress confirmation from Blocks 2.4/2.6, and compact downstream
 signals for Problem Classification, Candidate Comparison, and AI Commentary.
@@ -262,7 +263,7 @@ Hedge Gap Analysis is the product-facing Block 3.3 contract on `stress_report.js
 
 It answers, for each key market risk type mapped to a synthetic stress scenario: whether assets that
 helped offset losses from assets that hurt, where protection is weakest, and what the main hedge
-gap is — using signed per-asset scenario contributions only (no pre-labeling holdings as hedges).
+gap is вЂ” using signed per-asset scenario contributions only (no pre-labeling holdings as hedges).
 
 Product boundary:
 
@@ -272,13 +273,13 @@ Product boundary:
 - Eight product protection areas map 1:1 to eight synthetic scenarios (includes `recession_severe_protection`)
   from Block 3.3 v1 rows.
 - Core MVP diagnostic mode (`loss_gate_mode="diagnostic"`) reports offset facts and English
-  interpretation only — no client mandate pass/fail on Block 3.3 rows.
+  interpretation only вЂ” no client mandate pass/fail on Block 3.3 rows.
 - Legacy `hedge_gap_analysis` (`stress_scenario_hedge_evidence_v2`, taxonomy hedge labels) remains
   for backward compatibility; Core MVP operators read `hedge_gap_analysis_v1`.
 
-Canonical specs: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.3,
+Canonical specs: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) В§3.3,
 [docs/specs/hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md),
-[docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.2.2.
+[docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) В§12.2.2.
 
 ### 4.4 Problem Classification
 
@@ -346,7 +347,7 @@ weights, and do not execute builders.
 
 User goal:
 
-Generate a selected candidate portfolio from a chosen hypothesis.
+Open a selected Launchpad hypothesis as an editable Builder setup, validate it, and only then allow an explicit Generate Candidate action.
 
 Target simple-mode fields:
 
@@ -355,21 +356,20 @@ Target simple-mode fields:
 - Constraint preset.
 - Max asset weight.
 - Optional min asset weight.
-- Optional volatility target.
-- Rebalancing frequency.
-- Transaction cost assumption.
-- Generate candidate.
+- Generate candidate (explicit action after validation).
 
-Candidate construction methods may include:
+Fields such as volatility target, rebalancing frequency, transaction-cost assumptions, estimator selection, and custom risk budgets are advanced/later unless an owning spec promotes them into the MVP Builder setup.
+
+Guided MVP candidate methods are:
 
 - Equal Weight.
-- Equal Weight by Asset Class.
 - Risk Parity.
 - Hierarchical Risk Parity.
 - Minimum Variance.
 - Minimum CVaR.
 - Maximum Diversification.
-- Robust Mean Variance.
+
+Equal Weight / Risk Parity reference tests are diagnostic comparisons, not rebalance recommendations. Equal Weight by Asset Class, Robust Mean Variance, and other advanced families remain backend/research unless separately promoted.
 
 Product language rule:
 
@@ -390,12 +390,7 @@ Advanced settings to keep out of core MVP unless separately approved:
 
 Implementation status:
 
-The backend wrapper is implemented as a one-candidate delegation plan in
-`src/portfolio_alternatives_builder.py`. It maps selected Launchpad methods to existing candidate
-factory commands without changing formulas. Full user-facing builder UI/service and default
-user-triggered generation remain target product work. Existing automatic or batch candidate
-capabilities should be preserved and classified as current capability, advanced mode, research mode,
-or legacy as appropriate.
+Block 6 backend setup is implemented in `src/portfolio_alternatives_builder.py`. It maps one selected Launchpad card into `BuilderPrefill`, exposes guided Simple Mode fields, validates the setup, and writes `portfolio_alternatives_builder.json` under `analysis_subject/` after Launchpad. Valid setups expose a `CandidateSetup` handoff with `can_generate_candidate: true`; data-quality blockers expose `status: blocked` and no `CandidateSetup`. Block 6 does not create candidate weights, comparison output, or a Decision Verdict. Existing one-candidate delegation and batch factory capabilities remain explicit Block 7 / backend / research paths and must be requested separately.
 
 ### 4.7 Candidate Shortlist / Comparison Arena
 
@@ -417,8 +412,7 @@ force the user into a full 16-candidate research table by default.
 Implementation status:
 
 Current-vs-candidate projection is implemented as `current_vs_candidate.json`, built from the
-canonical comparison and optional Selection evidence. A full interactive shortlist arena remains
-target product work; the canonical multi-candidate comparison contract remains unchanged.
+canonical comparison and optional Selection or Block 7 evidence. The Blocks 5-9 vertical loop compares one generated candidate first. A full interactive shortlist arena remains target product work; the canonical multi-candidate comparison contract remains unchanged.
 
 ### 4.8 Current vs Candidate Comparison
 
@@ -486,9 +480,7 @@ Decision Verdict is not simply "pick the best portfolio." It answers whether the
 
 Implementation status:
 
-Decision Verdict is implemented as an additive product-facing mapping artifact
-(`decision_verdict.json`) over the current Selection Engine / No-Trade evidence. It does not replace
-or rename `selection_decision.json`, Selection Engine statuses, or existing schemas.
+Decision Verdict is implemented as an additive product-facing artifact (`decision_verdict.json`). It can map current Selection Engine / No-Trade evidence or build directly from the Blocks 7-8 vertical-loop artifacts. It does not replace or rename `selection_decision.json`, Selection Engine statuses, or existing schemas. No-trade and evidence-insufficient are valid outcomes, and a rebalance verdict means material enough for review, not trade execution.
 
 ### 4.10 AI Commentary
 
@@ -624,8 +616,8 @@ These items are not Core MVP requirements. Do not describe them as implemented u
   Examples: Equity Growth Portfolio, Balanced 60/40-like, Credit Carry Portfolio, Duration-heavy
   Defensive, Inflation-sensitive, Pseudo-diversified Portfolio. Legacy
   `sections.portfolio_archetype` may still be emitted on full X-Ray report builds for compatibility;
-  product-facing diagnosis uses Portfolio X-Ray Blocks 2.1–2.6 (including Weakness Map as Block 2.6).
-  Do not add `block_2_5_portfolio_archetype` or promote archetype in the six-file bundle without
+  product-facing diagnosis uses Portfolio X-Ray Blocks 2.1вЂ“2.6 (including Weakness Map as Block 2.6).
+  Do not add `block_2_5_portfolio_archetype` or promote archetype in the product-bundle chain without
   explicit product migration.
 
 Advanced/later does not mean delete. Preserve existing capabilities and reclassify them carefully.
@@ -725,7 +717,7 @@ Current implementation must be verified through:
 - current code
 
 Current additive artifacts verified by current specs/code include Problem Classification, Candidate
-Launchpad, the Portfolio Alternatives Builder backend delegation plan, Current-vs-Candidate adapter,
+Launchpad, the Portfolio Alternatives Builder setup artifact (`portfolio_alternatives_builder.json`), Candidate Generation one-attempt artifact (`candidate_generation.json`), Current-vs-Candidate adapter,
 Decision Verdict mapping, AI Commentary grounding context, and the light What Changed summary.
 
 Do not overstate these as current product capabilities:

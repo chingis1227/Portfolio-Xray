@@ -188,13 +188,29 @@ such as FRED rates, credit, inflation, USD, VIX, WEI, oil, or Yahoo commodity da
 per-factor reason. If only the cached benchmark/equity proxy is available, the run is disclosed as
 `factor_attribution_scope: equity_only` instead of being presented as a full multi-factor model.
 Full factor-matrix FRED dependencies use a separate approved raw-series cache under
-`cache/factors/v_<series_id>/`; this is not the monthly risk-free cache. A timed-out FRED factor
-fetch may use cached factor data only when cache age is within 7 calendar days, metadata matches the
-FRED series, raw observations cover the requested date range, and metadata declares daily raw,
-weekly `W-FRI`, and month-end reconstruction support. Partial factor cache is not a full success by
-itself: every missing series must fetch live or fail clearly with the series named. Cached factor
-use is disclosed through `factor_load_diagnostics` with `factor_data_fallback_used`,
-`factor_data_fallback_reason: fred_timeout_cached_factor_data`, cache provenance, and warnings.
+`cache/factors/v_<series_id>/`; this is not the monthly risk-free cache. Product/demo analysis is
+cache-first: if the approved cache is complete, fresh, and covers the requested date range, the
+factor path must not call live FRED. A cache entry is approved only when cache age is within
+7 calendar days, metadata matches the FRED series, raw observations cover the requested date range,
+and metadata declares daily raw, weekly `W-FRI`, and month-end reconstruction support.
+
+Cache warm/update is API-first. `src.data_fred.fetch_fred_series` reads `FRED_API_KEY` from the
+environment and uses the official FRED API when the key is present. Do not store the API key in
+`config.yml` or checked-in files. In PowerShell:
+
+```powershell
+$env:FRED_API_KEY="your_key_here"
+python scripts/warm_factor_cache.py --start 2007-01-01 --end 2026-06-05
+python scripts/warm_factor_cache.py --check-only --start 2007-01-01 --end 2026-06-05
+```
+
+The public `fredgraph.csv` endpoint is allowed only as a disclosed fallback when no API key is set
+or the API request fails. Diagnostics expose `source_used` (`fred_api`, `fred_csv_fallback`,
+`cache_hit`, `cache_miss`, `cache_invalid`), `cache_status` (`valid`, `missing`, `partial`,
+`expired`), `missing_series`, warnings, `full_factor_matrix_available`, and `demo_safe`.
+Partial factor cache is not a full success by itself: every missing required series must refresh
+successfully or fail clearly with the series named. The system must not present equity-only data,
+fake values, or hidden missing factor series as a full factor matrix.
 
 Macro data supports:
 

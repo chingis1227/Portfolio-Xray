@@ -207,6 +207,210 @@ def test_ai_commentary_context_includes_verdict_and_no_trade_evidence() -> None:
     assert doc["commentary_topics"]["no_trade"]
 
 
+def test_ai_commentary_context_grounds_direct_block7_8_vertical_loop() -> None:
+    candidate_generation = {
+        "schema_version": "candidate_generation_v1",
+        "generation_status": "generated",
+        "candidate": {
+            "candidate_id": "equal_weight",
+            "candidate_name": "Equal Weight",
+            "source_card_id": "card_1",
+            "source_diagnosis_id": "concentration_risk",
+            "source_launchpad_card_type": "targeted_hypothesis",
+            "goal": "Test whether diversification reduces concentration risk.",
+            "hypothesis_to_test": "Equal weighting should reduce single-name concentration.",
+            "method": "equal_weight",
+            "method_variant": "equal_weight",
+            "capped": True,
+            "uncapped": False,
+            "min_asset_weight": 0.0,
+            "max_asset_weight": 0.2,
+            "constraint_preset": "balanced",
+            "status": "generated",
+            "success_criteria": ["Reduce max drawdown without adding high turnover"],
+            "tradeoff_to_watch": "May reduce expected return.",
+            "decision_boundary": "No action if turnover is too high.",
+            "is_rebalance_recommendation": False,
+        },
+        "source_builder_setup": {
+            "candidate_setup_id": "setup_1",
+            "builder_prefill_id": "prefill_1",
+            "source_card_id": "card_1",
+            "source_diagnosis_id": "concentration_risk",
+            "validation_status": "valid",
+            "can_generate_candidate": True,
+        },
+        "method_availability": {
+            "method": "equal_weight",
+            "method_variant": "equal_weight",
+            "mode": "capped",
+            "available": True,
+            "availability_status": "available",
+        },
+        "handoff_to_comparison": {
+            "can_compare": True,
+            "blocked_reason": None,
+            "candidate_id": "equal_weight",
+        },
+        "warnings": ["diagnostic_candidate_not_recommendation"],
+    }
+    current_vs_candidate = {
+        "view_mode": "one_candidate",
+        "selected_candidate_ids": ["equal_weight"],
+        "comparisons": [
+            {
+                "candidate_id": "equal_weight",
+                "status": "available",
+                "dimensions": [{"status": "available"}],
+                "what_improved": [{"metric": "max_drawdown", "direction": "improved"}],
+                "what_worsened": [{"metric": "cagr", "direction": "worsened"}],
+                "what_stayed_similar": [],
+                "risk_reduced": [{"metric": "concentration", "direction": "reduced"}],
+                "risk_added": [{"metric": "return", "direction": "lower"}],
+                "practicality": {
+                    "turnover_required": {
+                        "status": "available",
+                        "turnover_half_sum_pct": 0.18,
+                    },
+                    "transaction_cost_bps": 10,
+                    "transaction_cost_source": "action_engine_default",
+                    "estimated_transaction_cost_pct": 0.018,
+                },
+                "success_criteria_result": {"overall_status": "met"},
+                "materiality_for_decision_review": {
+                    "status": "review_candidate",
+                    "is_material_enough": True,
+                },
+                "tradeoff_summary": "Improves concentration but may lower return.",
+            }
+        ],
+        "warnings": [],
+    }
+    decision_verdict = {
+        "verdict_id": "no_material_rebalance_recommended",
+        "selection_decision_status": "no_material_rebalance",
+        "verdict_reason_id": "risk_improved_but_turnover_too_high",
+        "reviewed_candidate_id": "equal_weight",
+        "selected_candidate_id": None,
+        "confidence": "medium",
+        "no_trade": {
+            "evaluated": True,
+            "applies": True,
+            "source": {"reason_id": "risk_improved_but_turnover_too_high"},
+        },
+        "rationale_summary": "Risk improved, but practicality blocks a rebalance verdict.",
+        "confidence_limitations": [],
+    }
+
+    doc = build_ai_commentary_context(
+        comparison=None,
+        current_vs_candidate=current_vs_candidate,
+        selection=None,
+        decision_verdict=decision_verdict,
+        candidate_generation=candidate_generation,
+    )
+
+    assert "candidate_generation.json" in doc["allowed_source_artifacts"]
+    assert doc["source_artifacts"]["candidate_generation"] == "candidate_generation.json"
+    assert doc["source_artifacts"]["portfolio_alternatives_builder"] is None
+    assert doc["source_artifacts"]["selection_decision"] is None
+    assert doc["grounding_phase"] == "post_compare"
+    assert doc["purpose"] == PURPOSE_GROUNDED_DECISION_CONTEXT
+    assert doc["client_explanation_draft"]["does_not_call_llm"] is True
+    assert len(doc["client_explanation_draft"]["sentences"]) == 10
+    assert doc["light_decision_journal"]["decision_verdict"] == "no_material_rebalance_recommended"
+    assert "candidate_generation.json:diagnostic_candidate_not_recommendation" in doc["warnings"]
+    assert not any("selection_decision.json" in warning for warning in doc["warnings"])
+    assert not any("candidate_comparison.json" in warning for warning in doc["warnings"])
+
+    paths = {(ref["artifact"], ref["field_path"]) for ref in doc["evidence_references"]}
+    assert ("candidate_generation.json", "generation_status") in paths
+    assert ("candidate_generation.json", "candidate.hypothesis_to_test") in paths
+    assert ("candidate_generation.json", "candidate.success_criteria") in paths
+    assert ("current_vs_candidate.json", "comparisons[0].what_improved") in paths
+    assert ("current_vs_candidate.json", "comparisons[0].what_worsened") in paths
+    assert ("current_vs_candidate.json", "comparisons[0].practicality") in paths
+    assert ("current_vs_candidate.json", "comparisons[0].success_criteria_result") in paths
+    assert ("decision_verdict.json", "verdict_reason_id") in paths
+    assert ("decision_verdict.json", "no_trade") in paths
+    for topic in (
+        "diagnosis",
+        "hypothesis_tested",
+        "candidate_generated",
+        "improvements",
+        "deteriorations",
+        "turnover_cost",
+        "success_criteria_result",
+        "decision_verdict",
+        "no_trade_rationale",
+        "monitoring_trigger",
+        "light_decision_journal",
+    ):
+        assert topic in doc["commentary_topics"]
+
+
+def test_ai_commentary_context_supports_blocked_builder_client_explanation() -> None:
+    builder = {
+        "status": "blocked",
+        "reason": "data_quality_blocker",
+        "can_generate_candidate": False,
+        "selected_card_id": "launchpad_01_keep_current_portfolio_and_monitor",
+        "validation": {
+            "validation_status": "blocked_by_data_quality",
+            "can_generate_candidate": False,
+            "validation_errors": ["data_quality_blocker"],
+        },
+        "builder_prefill": {
+            "source_card_id": "launchpad_01_keep_current_portfolio_and_monitor",
+            "source_diagnosis_id": "weak_crisis_resilience",
+            "goal": "Keep current portfolio and monitor",
+            "hypothesis_to_test": "Do not generate a candidate yet; monitor stress evidence.",
+            "success_criteria": ["No material deterioration in monitored risks."],
+            "when_to_skip": "Skip if worst stress loss is no longer material.",
+        },
+    }
+    doc = build_ai_commentary_context(
+        comparison=None,
+        current_vs_candidate=None,
+        selection=None,
+        decision_verdict=None,
+        problem_classification={
+            "primary_diagnosis": {
+                "diagnosis_id": "weak_crisis_resilience",
+                "thesis_en": "Weak crisis resilience: worst synthetic stress loss is material.",
+            }
+        },
+        candidate_launchpad={
+            "cards": [
+                {
+                    "card_id": "launchpad_01_keep_current_portfolio_and_monitor",
+                    "goal": "Keep current portfolio and monitor",
+                    "launch_status": "monitor_or_resolve_data",
+                    "success_criteria": ["No material deterioration in monitored risks."],
+                }
+            ]
+        },
+        portfolio_alternatives_builder=builder,
+        stress_report={"status": "ok", "loss_gate_mode": "diagnostic", "worst_scenario_loss_pct": -0.4},
+    )
+
+    assert doc["grounding_phase"] == "diagnosis_only"
+    assert doc["source_artifacts"]["portfolio_alternatives_builder"] == "portfolio_alternatives_builder.json"
+    paths = {(ref["artifact"], ref["field_path"]) for ref in doc["evidence_references"]}
+    assert ("portfolio_alternatives_builder.json", "status") in paths
+    assert ("portfolio_alternatives_builder.json", "builder_prefill") in paths
+
+    draft = doc["client_explanation_draft"]
+    assert draft["does_not_call_llm"] is True
+    assert len(draft["sentences"]) == 10
+    candidate_logic = next(row for row in draft["sentences"] if row["topic"] == "selected_candidate_logic")
+    assert candidate_logic["evidence_status"] == "blocked"
+    assert "data_quality_blocker" in candidate_logic["text"]
+    journal = doc["light_decision_journal"]
+    assert journal["selected_candidate"]["builder_status"] == "blocked"
+    assert journal["selected_candidate"]["can_generate_candidate"] is False
+
+
 def test_ai_commentary_context_warns_on_missing_required_sources() -> None:
     doc = build_ai_commentary_context(
         comparison=None,

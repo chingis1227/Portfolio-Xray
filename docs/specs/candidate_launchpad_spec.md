@@ -122,13 +122,13 @@ factory trigger, not a rebalance instruction, and not a Decision Verdict.
 
 ## Goal Mapping
 
-V1 maps goals to backend method ids only as suggestions:
+V1 maps goals to guided Builder method ids only as suggestions. The full backend candidate factory menu remains advanced/legacy infrastructure and is not the Launchpad guided path.
 
 - `Reduce volatility` -> `minimum_variance`, `risk_parity`, `equal_weight`
-- `Reduce drawdown` -> `minimum_variance`, `minimum_cvar_constrained`, `risk_parity`
-- `Improve diversification` -> `equal_weight`, `equal_weight_by_asset_class`, `maximum_diversification`
-- `Reduce concentration` -> `equal_weight`, `equal_weight_by_asset_class`, `risk_budget_by_asset`
-- `Improve crisis resilience` -> `minimum_cvar_constrained`, `robust_mv_constrained`, `robust_scenario`
+- `Reduce drawdown` -> `minimum_cvar`, `minimum_variance`, `risk_parity`
+- `Improve diversification` -> `equal_weight`, `risk_parity`, `maximum_diversification`
+- `Reduce concentration` -> `equal_weight`, `risk_parity`, `maximum_diversification`
+- `Improve crisis resilience` -> `minimum_cvar`, `maximum_diversification`, `minimum_variance`
 - `Compare against simple benchmark` -> `equal_weight`, `risk_parity`
 - `Keep current portfolio and monitor` -> no builder method
 - `Review data quality` -> no builder method

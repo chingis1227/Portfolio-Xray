@@ -38,7 +38,7 @@ ACTION_PATH_REGISTRY: dict[str, ActionPathDefinition] = {
         action_path_id="reduce_drawdown_risk",
         label_en="Reduce drawdown",
         goal_label="Reduce drawdown",
-        candidate_method_ids=("minimum_variance", "minimum_cvar_constrained", "risk_parity"),
+        candidate_method_ids=("minimum_cvar", "minimum_variance", "risk_parity"),
         launchpad_description_en=(
             "Test whether downside-risk-focused candidates reduce drawdown exposure."
         ),
@@ -49,7 +49,7 @@ ACTION_PATH_REGISTRY: dict[str, ActionPathDefinition] = {
         goal_label="Improve diversification",
         candidate_method_ids=(
             "equal_weight",
-            "equal_weight_by_asset_class",
+            "risk_parity",
             "maximum_diversification",
         ),
         launchpad_description_en=(
@@ -60,7 +60,7 @@ ACTION_PATH_REGISTRY: dict[str, ActionPathDefinition] = {
         action_path_id="reduce_concentration",
         label_en="Reduce concentration",
         goal_label="Reduce concentration",
-        candidate_method_ids=("equal_weight", "equal_weight_by_asset_class", "risk_budget_by_asset"),
+        candidate_method_ids=("equal_weight", "risk_parity", "maximum_diversification"),
         launchpad_description_en=(
             "Test whether caps or equalized exposures reduce dominant holdings."
         ),
@@ -70,9 +70,9 @@ ACTION_PATH_REGISTRY: dict[str, ActionPathDefinition] = {
         label_en="Improve crisis resilience",
         goal_label="Improve crisis resilience",
         candidate_method_ids=(
-            "minimum_cvar_constrained",
-            "robust_mv_constrained",
-            "robust_scenario",
+            "minimum_cvar",
+            "maximum_diversification",
+            "minimum_variance",
         ),
         launchpad_description_en=(
             "Test whether stress-aware candidates improve weak crisis or hedge behavior."
@@ -82,7 +82,7 @@ ACTION_PATH_REGISTRY: dict[str, ActionPathDefinition] = {
         action_path_id="reduce_equity_beta",
         label_en="Reduce equity beta",
         goal_label="Reduce equity beta",
-        candidate_method_ids=("minimum_variance", "risk_parity", "robust_mv_constrained"),
+        candidate_method_ids=("minimum_variance", "risk_parity", "minimum_cvar"),
         launchpad_description_en=(
             "Test whether lower market-beta constructions reduce equity shock sensitivity."
         ),
@@ -91,7 +91,7 @@ ACTION_PATH_REGISTRY: dict[str, ActionPathDefinition] = {
         action_path_id="reduce_duration_rates_sensitivity",
         label_en="Reduce duration / rates sensitivity",
         goal_label="Reduce duration / rates sensitivity",
-        candidate_method_ids=("robust_mv_constrained", "minimum_cvar_constrained"),
+        candidate_method_ids=("minimum_cvar", "minimum_variance", "risk_parity"),
         launchpad_description_en=(
             "Test whether duration-aware or defensive candidates improve rates-up behavior."
         ),
@@ -100,7 +100,7 @@ ACTION_PATH_REGISTRY: dict[str, ActionPathDefinition] = {
         action_path_id="improve_hedge_behavior",
         label_en="Improve hedge behavior",
         goal_label="Improve hedge behavior",
-        candidate_method_ids=("minimum_cvar_constrained", "robust_mv_constrained"),
+        candidate_method_ids=("minimum_cvar", "maximum_diversification", "risk_parity"),
         launchpad_description_en=(
             "Test whether internal offset improves when stress losses occur."
         ),
@@ -109,7 +109,7 @@ ACTION_PATH_REGISTRY: dict[str, ActionPathDefinition] = {
         action_path_id="reduce_tail_risk",
         label_en="Reduce tail risk",
         goal_label="Reduce tail risk",
-        candidate_method_ids=("minimum_cvar_constrained", "robust_mv_constrained"),
+        candidate_method_ids=("minimum_cvar", "minimum_variance", "maximum_diversification"),
         launchpad_description_en=(
             "Test whether tail-risk-aware candidates reduce VaR/ES-style downside."
         ),
@@ -118,7 +118,7 @@ ACTION_PATH_REGISTRY: dict[str, ActionPathDefinition] = {
         action_path_id="reduce_credit_liquidity_risk",
         label_en="Reduce credit / liquidity risk",
         goal_label="Reduce credit / liquidity risk",
-        candidate_method_ids=("minimum_cvar_constrained", "robust_mv_constrained"),
+        candidate_method_ids=("minimum_cvar", "minimum_variance", "risk_parity"),
         launchpad_description_en=(
             "Test whether defensive candidates reduce credit and liquidity fragility."
         ),
@@ -127,7 +127,7 @@ ACTION_PATH_REGISTRY: dict[str, ActionPathDefinition] = {
         action_path_id="improve_return_risk_balance",
         label_en="Improve return / risk balance",
         goal_label="Improve return/risk balance",
-        candidate_method_ids=("maximum_diversification", "robust_mv_constrained"),
+        candidate_method_ids=("maximum_diversification", "risk_parity", "minimum_variance"),
         launchpad_description_en=(
             "Test whether diversified return/risk methods improve efficiency."
         ),

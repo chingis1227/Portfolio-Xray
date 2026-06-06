@@ -1,0 +1,19 @@
+﻿# Demo fixture: balanced diversified portfolio for the vertical MVP acceptance path.
+investor_currency: USD
+
+tickers: [SPY, QQQ, SCHD, BND, IEF, TLT, TIP, GLD]
+
+current_weights:
+  SPY: 0.24
+  QQQ: 0.10
+  SCHD: 0.12
+  BND: 0.22
+  IEF: 0.10
+  TLT: 0.06
+  TIP: 0.08
+  GLD: 0.08
+
+output_dir: output/demo_portfolios/balanced/csv
+output_dir_final: output/demo_portfolios/balanced/final
+returns_frequency: monthly
+market_data_provider: ibkr_yfinance_fallback

@@ -44,6 +44,12 @@ ALLOW_MISSING_PATHS: frozenset[str] = frozenset(
         "src/hedge_gap_analysis_block.py",
         "tests/test_hedge_gap_analysis_v1_contract.py",
         "docs/audits/2026-05-27_block_3_3_hedge_gap_acceptance_audit.md",
+        # Block 6 Portfolio Alternatives Builder (ExecPlan 2026-06-05; future sessions)
+        "tests/test_block_6_strategy_selector.py",
+        "tests/test_block_6_parameter_builder_simple_mode.py",
+        "tests/test_block_6_builder_validation.py",
+        "tests/test_block_6_candidate_setup_contract.py",
+        "tests/test_block_6_product_runtime_wiring.py",
     }
 )
 

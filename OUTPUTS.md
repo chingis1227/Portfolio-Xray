@@ -28,7 +28,7 @@ Input portfolio
 -> Monitoring / What Changed
 ```
 
-Only the six-file product bundle listed below is the current Core MVP product-facing output layer. Portfolio Alternatives Builder prefill is a derived in-memory/API setup object from a selected Launchpad card, not a default generated output file. Older/generated artifacts such as Health Score, Robustness Scorecard, Selection Engine outputs, Action Plan, Decision Journal, macro dashboards, full candidate arenas, sensitivity/Pareto/regret, and PDF/report packages may exist, but they are advanced/backend/legacy/generated support unless a task explicitly targets them.
+Only the diagnosis-first decision bundle listed below, the Block 6 Builder setup artifact, and the explicit Block 7 `candidate_generation.json` attempt artifact are the current Core MVP product-facing output layer. Portfolio Alternatives Builder writes `portfolio_alternatives_builder.json` under `analysis_subject/` after Launchpad; it is setup state, not a generated portfolio. Candidate Generation writes one candidate attempt only and is not a rebalance recommendation. Older/generated artifacts such as Health Score, Robustness Scorecard, Selection Engine outputs, Action Plan, Decision Journal, macro dashboards, full candidate arenas, sensitivity/Pareto/regret, and PDF/report packages may exist, but they are advanced/backend/legacy/generated support unless a task explicitly targets them.
 
 Documentation migration records such as `DOCUMENTATION_MIGRATION_PLAN.md`, `DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md`, and archived legacy Markdown files are source/planning documents, not generated run outputs. They do not define output contracts.
 
@@ -74,7 +74,8 @@ advanced/research menu.
 | Use case | Command | Factory profile |
 | --- | --- | --- |
 | Portfolio diagnosis / site/API backend run | `python run_portfolio_review.py` | none (diagnosis-only) |
-| **Canonical product demo** (one candidate -> compare -> verdict) | `python run_portfolio_review.py --candidates equal_weight` (or another factory id) | explicit id only; not `core_fast` menu |
+| **Canonical product demo** (one candidate -> compare -> verdict) | `python scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight` | one selected Launchpad card and one candidate attempt; not `core_fast` menu |
+| One explicit backend candidate compatibility path | `python run_portfolio_review.py --candidates equal_weight` (or another factory id) | explicit id only; not `core_fast` menu |
 | Core backend candidate batch (advanced/research) | `python run_portfolio_review.py --with-candidates` | `core_fast` |
 | Full advanced/research review (16 builders + compare) | `python run_portfolio_review.py --mode full` | `default_v1` |
 | Compare / technical decision package only (no subject/factory) | `python run_compare_variants.py` | ? |
@@ -136,7 +137,8 @@ Portfolio-first output flow contract:
 analysis_subject
 -> subject diagnostics
 -> problem classification / candidate launchpad
--> selected candidate or generated shortlist
+-> portfolio alternatives builder setup
+-> explicit candidate generation attempt
 -> current-vs-candidate / decision verdict / AI grounding / what changed
 ```
 
@@ -214,9 +216,11 @@ Builder prefill preserves diagnosis, hypothesis, success criteria, tradeoff, ski
 decision boundary. It is not a generated portfolio, not a rebalance recommendation, and not a
 Decision Verdict.
 
+Candidate Generation then writes one diagnostic candidate attempt. That candidate is not a recommendation; reference methods such as Equal Weight and Risk Parity remain diagnostic comparisons. Action/no-action is evaluated only in `decision_verdict.json`, where no-trade and evidence-insufficient are valid outcomes.
+
 | Category | Artifacts | Product rule |
 | --- | --- | --- |
-| **Core MVP product bundle** | `problem_classification.json`, `candidate_launchpad.json`, `current_vs_candidate.json`, `decision_verdict.json`, `ai_commentary_context.json`, `what_changed_summary.json` | Product-facing diagnosis-first flow: explain the current problem, possible hypotheses, current-vs-candidate trade-offs, verdict, commentary grounding, and light change summary. `ai_commentary_context.json` is grounding-only (no LLM). `commentary.txt`, `stress_commentary.txt`, and PDF exports remain deterministic report-pipeline prose, not generated AI Commentary. These are adapters/mappings over deterministic evidence; they do not rename lower-level contracts. |
+| **Core MVP product bundle** | `problem_classification.json`, `candidate_launchpad.json`, `portfolio_alternatives_builder.json`, `candidate_generation.json`, `current_vs_candidate.json`, `decision_verdict.json`, `ai_commentary_context.json`, `what_changed_summary.json` | Product-facing diagnosis-first flow: explain the current problem, possible hypotheses, validated Builder setup, one explicit candidate attempt, current-vs-candidate trade-offs, verdict, commentary grounding, and light change summary. `portfolio_alternatives_builder.json` is setup-only: valid cards expose `CandidateSetup`; data-quality cards are blocked; no weights/comparison/verdict are produced by Block 6. `candidate_generation.json` is one attempt from that setup, not a recommendation and not a comparison. `ai_commentary_context.json` is grounding-only (no LLM). `commentary.txt`, `stress_commentary.txt`, and PDF exports remain deterministic report-pipeline prose, not generated AI Commentary. These are adapters/mappings over deterministic evidence; they do not rename lower-level contracts. |
 | **Technical comparison / decision contracts** | `candidate_comparison.json`, `selection_decision.json`, `candidate_factory_run.json`, `candidate_factory_manifest.json`, per-candidate `candidate_manifest.json`, `output_manifest.json` | Machine-readable evidence and orchestration contracts. UI/API code may depend on them, but client-facing language should translate them into the product bundle where possible. |
 | **Advanced / research evidence** | `portfolio_health_score.json`, `robustness_scorecard.json`, `assumption_sensitivity.json`, `pareto_dominance.json`, `regret_analysis.json`, `tradeoff_explanation.json`, `model_risk_diagnostics.json` | Useful diagnostics for drill-down, research, review, and confidence checks. Do not frame these as the main Portfolio MRI answer or as automatic recommendations. |
 | **Action / monitoring / journal evidence** | `action_plan.json`, `monitoring_diff.json`, `decision_journal.json`, `decision_package_summary.json` | Current generated evidence for implementation review, change tracking, and reporting. Product-facing summaries should route through `decision_verdict.json` and `what_changed_summary.json` where available. |
@@ -236,25 +240,30 @@ required; each bundle artifact has its own writer and schema.
 | --- | --- | --- | --- |
 | `problem_classification.json` | `write_block_4_diagnosis_outputs` in `run_report.py` (`src/block_4/diagnosis_builder.py`) | `{output_dir_final}/analysis_subject/problem_classification.json` | After default diagnosis / materialize (#1); schema `problem_classification_v3` |
 | `candidate_launchpad.json` | `write_block_4_diagnosis_outputs` in `run_report.py` | `{output_dir_final}/analysis_subject/candidate_launchpad.json` | After default diagnosis / materialize (#2); schema `candidate_launchpad_v3` |
-| `current_vs_candidate.json` | `write_current_vs_candidate_outputs` in compare chain | `{output_dir_final}/current_vs_candidate.json` | After compare only (#3) |
-| `decision_verdict.json` | `write_decision_verdict_outputs` | `{output_dir_final}/decision_verdict.json` | After compare only (#4) |
-| `ai_commentary_context.json` | `write_ai_commentary_context_outputs` | `{output_dir_final}/ai_commentary_context.json` | After compare only (#5) |
-| `what_changed_summary.json` | `write_what_changed_summary_outputs` | `{output_dir_final}/what_changed_summary.json` | After compare only (#6); optional if no prior snapshot |
+| `portfolio_alternatives_builder.json` | `write_portfolio_alternatives_builder_outputs` called by `write_block_4_diagnosis_outputs` | `{output_dir_final}/analysis_subject/portfolio_alternatives_builder.json` | After Launchpad when a primary card exists; schema `portfolio_alternatives_builder_v1`; setup only (#2.5) |
+| `candidate_generation.json` | `write_candidate_generation_outputs` in `src/candidate_generation.py`; runtime adapter `scripts/generate_candidate_from_builder_setup.py`; one-command wrapper `scripts/run_blocks_5_to_9_vertical_flow.py` | `{output_dir_final}/candidate_generation.json` | After explicit Generate Candidate action or the Blocks 5-9 vertical demo; schema `candidate_generation_v1`; one attempt only (#3) |
+| `current_vs_candidate.json` | `write_current_vs_candidate_outputs` in compare chain, or Block 8-only `write_block8_current_vs_candidate_only_outputs` | `{output_dir_final}/current_vs_candidate.json` | After compare only (#4); Block 8-only mode does not write verdict/action/journal/AI context |
+| `decision_verdict.json` | `write_decision_verdict_outputs` | `{output_dir_final}/decision_verdict.json` | After compare only (#5) |
+| `ai_commentary_context.json` | `write_ai_commentary_context_outputs` | `{output_dir_final}/ai_commentary_context.json` | After compare only (#6) |
+| `what_changed_summary.json` | `write_what_changed_summary_outputs` | `{output_dir_final}/what_changed_summary.json` | After compare only (#7); optional if no prior snapshot |
 
 Compare (`write_candidate_comparison_outputs`) still writes technical and advanced contracts
 (`candidate_comparison.json`, `selection_decision.json`, health/robustness/Pareto/regret, action,
-monitoring, journal, decision-package projections). Default `site_api` runs omit CSV/TXT/PDF unless
+monitoring, journal, decision-package projections). The Block 8-only helper
+(`write_block8_current_vs_candidate_only_outputs`) is narrower: it scopes `candidate_comparison.json`
+to the selected candidate and writes `current_vs_candidate.json` without refreshing downstream
+verdict/action/journal/AI-context artifacts. Default `site_api` runs omit CSV/TXT/PDF unless
 export flags are set. `output_manifest.json` lists generated paths for orchestration; it is not the
 product-facing answer—filter with the bundle table above. After compare (and report when diagnosis
-artifacts exist), `generated_paths` includes resolved keys for all six bundle JSON files
-(`problem_classification_json` through `what_changed_summary_json`; diagnosis paths prefer
+artifacts exist), `generated_paths` includes resolved keys for the product bundle JSON files
+(`problem_classification_json` through `what_changed_summary_json`, plus `portfolio_alternatives_builder_json` when Block 6 setup exists; diagnosis paths prefer
 `analysis_subject/`). `artifact_categories` groups keys by surface (`product_bundle`, `technical_comparison`,
 `subject_diagnostics`, `advanced_evidence`, `orchestration`, `legacy_compatibility`,
 `generated_export`). `generated_paths_by_category` lists resolved paths per category;
 `product_discovery.product_bundle_paths` lists resolved Core MVP files on disk;
-`product_bundle_phase` is `diagnosis_only` (bundle #1–2), `post_compare_partial`, or `complete`
-(all six). `product_bundle_complete` is true only when `product_bundle_phase` is `complete`.
-`artifact_categories.product_bundle` lists all six manifest key names (schema catalog); resolved
+`product_bundle_phase` is `diagnosis_only` (diagnosis, Launchpad, and Builder setup where available), `post_compare_partial`, or `complete`
+(decision bundle complete). `product_bundle_complete` is true only when `product_bundle_phase` is `complete`.
+`artifact_categories.product_bundle` lists the product-bundle manifest key names, including `portfolio_alternatives_builder_json`; resolved
 paths appear in `generated_paths_by_category.product_bundle` only for files that exist.
 
 ## Output Formats
@@ -314,7 +323,9 @@ Common project artifacts include:
 - `{output_dir_final}/analysis_subject/` (portfolio-first subject diagnostics from `run_report.py --materialize-analysis-subject`; see [portfolio review workflow spec](docs/specs/portfolio_review_workflow_spec.md))
 - `candidate_factory_run.json`, optional `candidate_factory_run.txt`, and `candidate_factory_manifest.json` (under `output_dir_final`; backend/advanced/research factory orchestration from `run_candidate_factory.py`; `--resume` reads the manifest; top-level `run_status` and `execution_summary` disclose partial failure vs full success; `execution_action` per step; contract in [candidate factory spec](docs/specs/candidate_factory_spec.md); methodology map [§4](docs/audits/2026-05-20_candidate_factory_methodology_map.md))
 - `problem_classification.json` (under each report output folder where `portfolio_xray.json` and `stress_report.json` are available; **v3 current** schema `problem_classification_v3` via `src/block_4/diagnosis_builder.py`; one primary diagnosis/outcome, root cause, supporting symptoms, max-five key evidence, why-not-other-problems, confidence/materiality/actionability, `next_diagnostic_step`, success criteria, and backend audit metadata; contracts in [block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md) and [problem classification spec](docs/specs/problem_classification_spec.md))
-- `candidate_launchpad.json` (under each report output folder where Block 4 diagnosis is written; **v3 current** schema `candidate_launchpad_v3`; hypothesis/reference cards with `source_diagnosis_id`, `hypothesis_to_test`, `card_type`, `launch_status`, `why_this_test`, `suggested_methods`, `success_criteria`, trade-off/skip copy, `decision_boundary`, disclaimer; no weights; Equal Weight / Risk Parity reference cards are benchmark tests, not rebalance recommendations; selected cards can derive Builder prefill but do not generate candidates automatically; contracts in [block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md), [candidate launchpad spec](docs/specs/candidate_launchpad_spec.md), and [portfolio alternatives builder spec](docs/specs/portfolio_alternatives_builder_spec.md))
+- `candidate_launchpad.json` (under each report output folder where Block 4 diagnosis is written; **v3 current** schema `candidate_launchpad_v3`; hypothesis/reference cards with `source_diagnosis_id`, `hypothesis_to_test`, `card_type`, `launch_status`, `why_this_test`, `suggested_methods`, `success_criteria`, trade-off/skip copy, `decision_boundary`, disclaimer; no weights; Equal Weight / Risk Parity reference cards are benchmark tests, not rebalance recommendations; selected cards can derive Builder setup but do not generate candidates automatically; contracts in [block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md), [candidate launchpad spec](docs/specs/candidate_launchpad_spec.md), and [portfolio alternatives builder spec](docs/specs/portfolio_alternatives_builder_spec.md))
+- `portfolio_alternatives_builder.json` (under each `analysis_subject/` folder where Block 4 diagnosis writes a primary Launchpad card; **v1 current** schema `portfolio_alternatives_builder_v1`; contains `builder_prefill`, validation, and `candidate_setup` only when valid; data-quality blockers write `status: blocked`, `can_generate_candidate: false`, `reason: data_quality_blocker`, and `candidate_setup: null`; no candidate ids, weights, comparison, or verdict; contracts in [portfolio alternatives builder spec](docs/specs/portfolio_alternatives_builder_spec.md), [builder prefill spec](docs/specs/builder_prefill_spec.md), and [candidate setup spec](docs/specs/candidate_setup_spec.md))
+- `candidate_generation.json` (under `output_dir_final`; **v1 current** schema `candidate_generation_v1`; one explicit candidate attempt from validated `CandidateSetup`; preserves diagnosis, hypothesis, method variant, constraints, weights when supplied, failure/infeasibility reason when supplied, success criteria, tradeoff, decision boundary, and `is_rebalance_recommendation: false`; does not write comparison or verdict; contract in [candidate generation spec](docs/specs/candidate_generation_spec.md))
 - `candidate_factory_run.json.parallel_lightweight_report_summary` (optional; present when `--parallel-lightweight-reports` is requested or effective; records requested/effective status, fallback reasons, worker count, menu-ordered submitted/registered candidate ids, and optional wall-clock seconds for Phase 2 lightweight report generation)
 - `{artifact_root}/candidate_manifest.json` per script-backed candidate folder (`candidate_manifest_v1`; factory-written readiness: comparison gates, artifact presence, optional `partial_failure` when weights succeeded but report/snapshot did not; see [candidate factory spec](docs/specs/candidate_factory_spec.md) Session 5)
 - `candidate_comparison.json` (under `output_dir_final`; **product-scoped** for `explicit_list` factory runs — baseline + `product_candidate_scope.candidate_ids` only; **full registry** for batch/research compare; includes the portfolio-first `analysis_subject` baseline row when materialized; optional `full_comparison_registry_artifact` pointer when scoped; optional top-level `hedge_gap_comparison` (`hedge_gap_comparison_v1`) when baseline and peers expose `hedge_gap_analysis_v1`; optional top-level `stress_scorecard_comparison` (`stress_scorecard_comparison_v1`) when baseline and peers expose Block 3.4; per-row `stress.hedge_gap_analysis_v1` compact slice and `stress.current_portfolio_stress_scorecard_v1` when present; `candidate_menu` reports `factory_evidence_status`, `factory_steps_used`, `factory_evidence_warnings`, and `factory_execution_summary` for `candidate_factory_run.json` freshness and rebuild/reuse disclosure; per-row `construction_disclosure` passthrough including `optimizer_methodology`, `optimizer_quality`, and `optimization_readiness` (`fair_comparison_ready` checklist) for optimizer-backed rows when artifacts exist; optimizer-backed rows with missing methodology/quality or `unknown` quality degrade instead of ordinary `available` evidence; see [candidate comparison spec](docs/specs/candidate_comparison_spec.md))
@@ -324,7 +335,7 @@ Common project artifacts include:
 - `portfolio_health_score.json` and optional `portfolio_health_score.txt` (under `output_dir_final`; Session 13; see [portfolio health score spec](docs/specs/portfolio_health_score_spec.md))
 - `selection_decision.json` and optional `selection_decision.txt` (under `output_dir_final`; contract in [selection engine spec](docs/specs/selection_engine_spec.md))
 - `decision_verdict.json` (under `output_dir_final`; product-facing mapping over `selection_decision.json`, optional `current_vs_candidate.json`, and `action_plan.json`; does not rename or replace Selection Engine contracts; see [decision verdict spec](docs/specs/decision_verdict_spec.md))
-- `ai_commentary_context.json` (under `output_dir_final`; deterministic grounding contract for future AI Commentary, written after Decision Verdict; includes `hedge_gap_context` (`hedge_gap_context_v1`, v1-primary with legacy fallback) and `current_portfolio_stress_scorecard_context` (`current_portfolio_stress_scorecard_context_v1`, v1-primary with legacy fallback) plus evidence refs for Block 3.4 / `stress_scorecard_comparison` when present; does not call an LLM or calculate metrics; see [AI commentary grounding spec](docs/specs/ai_commentary_grounding_spec.md))
+- `ai_commentary_context.json` (under `output_dir_final`; deterministic grounding contract for future AI Commentary, written after Decision Verdict; may cite `candidate_generation.json` for the tested hypothesis/candidate attempt, `current_vs_candidate.json` for improvements, deteriorations, turnover/cost, and success-criteria results, and `decision_verdict.json` for verdict/no-trade rationale only when the explicit `product_run` lineage matches if present; also includes `hedge_gap_context` (`hedge_gap_context_v1`, v1-primary with legacy fallback) and `current_portfolio_stress_scorecard_context` (`current_portfolio_stress_scorecard_context_v1`, v1-primary with legacy fallback) plus evidence refs for Block 3.4 / `stress_scorecard_comparison` when present; does not call an LLM or calculate metrics; see [AI commentary grounding spec](docs/specs/ai_commentary_grounding_spec.md))
 - `tradeoff_explanation.json` and optional `tradeoff_explanation.txt` (under `output_dir_final`; [src/tradeoff_and_model_risk.py](src/tradeoff_and_model_risk.py); [trade-off and model risk spec](docs/specs/tradeoff_and_model_risk_spec.md))
 - `model_risk_diagnostics.json` and optional `model_risk_diagnostics.txt` (under `output_dir_final`; same module and spec)
 - `assumption_sensitivity.json` and `assumption_sensitivity.txt` (under `output_dir_final` after compare; [assumption sensitivity spec](docs/specs/assumption_sensitivity_spec.md))
@@ -418,7 +429,8 @@ After any approved refresh:
 
 1. Run `git status --short` and classify generated diffs separately from source/docs/config/code.
 2. Confirm the product-facing bundle expected for the workflow state:
-   `problem_classification.json`, `candidate_launchpad.json`, `current_vs_candidate.json`,
+   `problem_classification.json`, `candidate_launchpad.json`, `portfolio_alternatives_builder.json`,
+   `candidate_generation.json` when a candidate was explicitly generated, `current_vs_candidate.json`,
    `decision_verdict.json`, `ai_commentary_context.json`, and `what_changed_summary.json`.
 3. Confirm technical manifests and comparison evidence:
    `output_manifest.json`, `candidate_comparison.json`, `selection_decision.json`, and
@@ -443,6 +455,7 @@ After any approved refresh:
 | Candidate Factory layer handoff (Block 4.1–4.9) | [docs/specs/candidate_factory_layer_spec.md](docs/specs/candidate_factory_layer_spec.md) |
 | Block 4 methodology map and governance gaps G1–G10 | [docs/audits/2026-05-20_candidate_factory_methodology_map.md](docs/audits/2026-05-20_candidate_factory_methodology_map.md) |
 | Canonical candidate comparison JSON | [docs/specs/candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md) |
+| Candidate Generation JSON | [docs/specs/candidate_generation_spec.md](docs/specs/candidate_generation_spec.md) |
 | Current-vs-candidate JSON | [docs/specs/current_vs_candidate_spec.md](docs/specs/current_vs_candidate_spec.md) |
 | Robustness Scorecard JSON | [docs/specs/robustness_scorecard_spec.md](docs/specs/robustness_scorecard_spec.md) |
 | Portfolio Health Score JSON | [docs/specs/portfolio_health_score_spec.md](docs/specs/portfolio_health_score_spec.md) |

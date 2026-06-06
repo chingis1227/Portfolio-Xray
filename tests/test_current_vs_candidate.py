@@ -86,7 +86,26 @@ def test_build_current_vs_candidate_warns_for_missing_candidate() -> None:
     doc = build_current_vs_candidate(_comparison(), candidate_ids=["missing"])
 
     assert doc["view_mode"] == "diagnosis_only"
+    assert doc["requested_candidate_ids"] == ["missing"]
+    assert doc["selected_candidate_ids"] == []
     assert "candidate_unavailable:missing" in doc["warnings"]
+
+
+def test_build_current_vs_candidate_blocks_when_candidate_generation_failed() -> None:
+    doc = build_current_vs_candidate(
+        _comparison(),
+        candidate_ids=["equal_weight"],
+        candidate_generation={
+            "generation_status": "failed",
+            "candidate": {"candidate_id": "equal_weight", "status": "failed", "weights": None},
+            "handoff_to_comparison": {"can_compare": False, "blocked_reason": "candidate_generation_failed"},
+        },
+    )
+
+    assert doc["comparison_status"] == "blocked_by_candidate_generation"
+    assert doc["reason"] == "candidate_generation_failed"
+    assert doc["selected_candidate_ids"] == []
+    assert doc["comparisons"] == []
 
 
 def test_write_current_vs_candidate_outputs(tmp_path: Path) -> None:

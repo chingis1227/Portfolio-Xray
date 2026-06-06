@@ -271,9 +271,10 @@ def test_build_product_first_generated_paths_keeps_bundle_first(tmp_path: Path) 
     )
 
     keys = list(paths)
-    assert keys[:4] == [
+    assert keys[:5] == [
         "problem_classification_json",
         "candidate_launchpad_json",
+        "portfolio_alternatives_builder_json",
         "current_vs_candidate_json",
         "decision_verdict_json",
     ]

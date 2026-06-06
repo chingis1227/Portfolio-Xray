@@ -12,6 +12,7 @@ import pytest
 
 from src import stress_factors as sf
 from src import data_fred
+from scripts.warm_factor_cache import warm_factor_cache
 from run_report import (
     _factor_data_metadata_from_diagnostics,
     _merge_factor_data_policy_metadata,
@@ -26,7 +27,8 @@ def _test_output_dir(name: str) -> Path:
     return root
 
 
-def test_build_factor_matrix_includes_vix_us_growth_oil_and_shifts_wei_to_friday(monkeypatch) -> None:
+def test_build_factor_matrix_includes_vix_us_growth_oil_and_shifts_wei_to_friday(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(sf, "CACHE_DIR", tmp_path / "cache")
     daily_idx = pd.date_range("2024-01-01", "2024-01-19", freq="B")
     saturday_idx = pd.to_datetime(["2024-01-06", "2024-01-13", "2024-01-20"])
 
@@ -38,6 +40,7 @@ def test_build_factor_matrix_includes_vix_us_growth_oil_and_shifts_wei_to_friday
         sf.FRED_REAL_10Y: pd.Series(np.linspace(1.00, 1.18, len(daily_idx)), index=daily_idx),
         sf.FRED_BREAKEVEN_10Y: pd.Series(np.linspace(2.00, 2.09, len(daily_idx)), index=daily_idx),
         sf.FRED_HY_SPREAD: pd.Series(np.linspace(4.00, 4.18, len(daily_idx)), index=daily_idx),
+        sf.FRED_CREDIT_SPREAD_FALLBACK: pd.Series(np.linspace(1.50, 1.68, len(daily_idx)), index=daily_idx),
         sf.FRED_DXY: pd.Series(np.linspace(100.0, 101.8, len(daily_idx)), index=daily_idx),
         sf.FRED_VIX: pd.Series(np.linspace(14.0, 17.6, len(daily_idx)), index=daily_idx),
         sf.FRED_WTI_OIL: pd.Series(np.linspace(70.0, 75.4, len(daily_idx)), index=daily_idx),
@@ -73,7 +76,8 @@ def test_build_factor_matrix_includes_vix_us_growth_oil_and_shifts_wei_to_friday
     assert np.isclose(out.loc[pd.Timestamp("2024-01-12"), "oil"], expected_oil.loc[pd.Timestamp("2024-01-12")])
 
 
-def test_credit_factor_falls_back_to_baa10y_when_hy_oas_history_is_short(monkeypatch) -> None:
+def test_credit_factor_falls_back_to_baa10y_when_hy_oas_history_is_short(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(sf, "CACHE_DIR", tmp_path / "cache")
     daily_idx = pd.date_range("2020-01-01", "2024-12-31", freq="B")
     short_credit_idx = pd.date_range("2024-01-01", "2024-12-31", freq="B")
 
@@ -158,11 +162,11 @@ def test_fred_real_rates_timeout_with_valid_factor_cache_succeeds_with_warning(m
     assert not out.empty
     assert "real_rates" in out.columns
     assert "equity" in out.columns
-    assert real_rates["factor_data_fallback_used"] is True
-    assert real_rates["factor_data_fallback_reason"] == sf.FACTOR_DATA_FALLBACK_REASON_FRED_TIMEOUT_CACHED_FACTOR_DATA
+    assert real_rates["source_used"] == "cache_hit"
+    assert real_rates["cache_status"] == "valid"
+    assert real_rates["factor_data_fallback_used"] is False
     assert real_rates["factor_data_cache_key"] == sf.FRED_REAL_10Y
-    assert diag["factor_data_source_used"] == "approved_cached_factor_series"
-    assert sf.FACTOR_DATA_FALLBACK_WARNING_CODE in diag["warnings"]
+    assert "cache_hit" in diag["source_used"]
 
 
 def test_fred_timeout_without_valid_factor_cache_fails_clearly(monkeypatch, tmp_path) -> None:
@@ -201,6 +205,7 @@ def test_factor_cache_validity_rejects_expired_short_bad_frequency_and_partial_c
     with pytest.raises(sf.FactorCacheValidationError, match="expired"):
         sf._load_approved_cached_fred_factor_series(sf.FRED_REAL_10Y, "2024-01-01", "2024-01-31")
 
+    shutil.rmtree(cache_path, ignore_errors=True)
     sf._save_fred_factor_series_cache(sf.FRED_REAL_10Y, fred_map[sf.FRED_REAL_10Y].loc["2024-01-10":])
     with pytest.raises(sf.FactorCacheValidationError, match="does not cover requested range"):
         sf._load_approved_cached_fred_factor_series(sf.FRED_REAL_10Y, "2024-01-01", "2024-01-31")
@@ -233,6 +238,7 @@ def test_factor_cache_validity_rejects_expired_short_bad_frequency_and_partial_c
 
 
 def test_fred_fetch_timeout_retry_is_bounded(monkeypatch) -> None:
+    monkeypatch.delenv("FRED_API_KEY", raising=False)
     calls = {"urlopen": 0, "sleep": 0}
 
     def fake_urlopen(*_args, **_kwargs):
@@ -255,6 +261,194 @@ def test_fred_fetch_timeout_retry_is_bounded(monkeypatch) -> None:
             retry_sleep=0.0,
         )
     assert calls == {"urlopen": 3, "sleep": 2}
+
+
+def test_fred_api_key_is_primary_when_configured(monkeypatch) -> None:
+    captured: dict[str, str] = {}
+    monkeypatch.setenv("FRED_API_KEY", "unit-test-key")
+
+    class _Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return (
+                b'{"observations":[{"date":"2024-01-05","value":"1.25"},'
+                b'{"date":"2024-01-08","value":"1.30"}]}'
+            )
+
+    def fake_urlopen(url, **_kwargs):
+        captured["url"] = str(url)
+        return _Response()
+
+    monkeypatch.setattr(data_fred, "urlopen", fake_urlopen)
+
+    out = data_fred.fetch_fred_series("DFII10", "2024-01-01", "2024-01-31", retries=0)
+
+    assert not out.empty
+    assert data_fred.FRED_API_OBSERVATIONS_URL in captured["url"]
+    assert "api_key=unit-test-key" in captured["url"]
+    assert "observation_start=2024-01-01" in captured["url"]
+    assert out.attrs["source_used"] == "fred_api"
+
+
+def test_fred_csv_fallback_is_disclosed_when_api_key_missing(monkeypatch) -> None:
+    captured: dict[str, str] = {}
+    monkeypatch.delenv("FRED_API_KEY", raising=False)
+
+    class _Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b"observation_date,DFII10\n2024-01-05,1.25\n"
+
+    def fake_urlopen(url, **_kwargs):
+        captured["url"] = str(url)
+        return _Response()
+
+    monkeypatch.setattr(data_fred, "urlopen", fake_urlopen)
+
+    out = data_fred.fetch_fred_series("DFII10", "2024-01-01", "2024-01-31", retries=0)
+
+    assert not out.empty
+    assert data_fred.FRED_CSV_GRAPH_URL in captured["url"]
+    assert out.attrs["source_used"] == "fred_csv_fallback"
+    assert "fred_api_key_missing_csv_fallback" in out.attrs["warnings"]
+
+
+def test_fred_csv_fallback_is_disclosed_when_api_fails(monkeypatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setenv("FRED_API_KEY", "unit-test-key")
+
+    class _CsvResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b"observation_date,DFII10\n2024-01-05,1.25\n"
+
+    def fake_urlopen(url, **_kwargs):
+        url = str(url)
+        calls.append(url)
+        if data_fred.FRED_API_OBSERVATIONS_URL in url:
+            raise TimeoutError("simulated api timeout")
+        return _CsvResponse()
+
+    monkeypatch.setattr(data_fred, "urlopen", fake_urlopen)
+    monkeypatch.setattr(data_fred.time, "sleep", lambda _seconds: None)
+
+    out = data_fred.fetch_fred_series("DFII10", "2024-01-01", "2024-01-31", retries=0)
+
+    assert len(calls) == 2
+    assert data_fred.FRED_API_OBSERVATIONS_URL in calls[0]
+    assert data_fred.FRED_CSV_GRAPH_URL in calls[1]
+    assert out.attrs["source_used"] == "fred_csv_fallback"
+    assert any(w.startswith("fred_api_failed_csv_fallback:") for w in out.attrs["warnings"])
+
+
+def test_factor_cache_hit_does_not_call_live_fred(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(sf, "CACHE_DIR", tmp_path / "cache")
+    _daily_close_map, fred_map = _factor_cache_test_maps()
+    sf._save_fred_factor_series_cache(sf.FRED_REAL_10Y, fred_map[sf.FRED_REAL_10Y])
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("live FRED should not be called on approved cache hit")
+
+    monkeypatch.setattr(sf, "fetch_fred_series", boom)
+
+    out = sf._fetch_fred_factor_series(sf.FRED_REAL_10Y, "2024-01-01", "2024-01-31")
+
+    assert not out.empty
+    assert out.attrs["source_used"] == "cache_hit"
+    assert out.attrs["cache_status"] == "valid"
+
+
+def test_factor_series_live_fetch_uses_demo_safe_bounded_fred_budget(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(sf, "CACHE_DIR", tmp_path / "cache")
+    captured: dict[str, object] = {}
+
+    def fake_fetch(series_id, start, end, **kwargs):
+        captured.update(
+            {
+                "series_id": series_id,
+                "start": start,
+                "end": end,
+                **kwargs,
+            }
+        )
+        raise TimeoutError("simulated bounded factor timeout")
+
+    monkeypatch.setattr(sf, "fetch_fred_series", fake_fetch)
+
+    with pytest.raises(sf.FactorDataUnavailableError, match="DFII10.*no valid approved factor cache"):
+        sf._fetch_fred_factor_series(sf.FRED_REAL_10Y, "2024-01-01", "2024-01-31")
+
+    assert captured["timeout"] == sf.FRED_FACTOR_FETCH_TIMEOUT_SECONDS
+    assert captured["retries"] == sf.FRED_FACTOR_FETCH_RETRIES
+    assert captured["retry_sleep"] == sf.FRED_FACTOR_FETCH_RETRY_SLEEP_SECONDS
+
+
+def test_fred_csv_fetch_pushes_requested_date_range_into_url(monkeypatch) -> None:
+    captured: dict[str, str] = {}
+    monkeypatch.delenv("FRED_API_KEY", raising=False)
+
+    class _Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b"observation_date,DFII10\n2024-01-05,1.25\n"
+
+    def fake_urlopen(url, **_kwargs):
+        captured["url"] = str(url)
+        return _Response()
+
+    monkeypatch.setattr(data_fred, "urlopen", fake_urlopen)
+
+    out = data_fred.fetch_fred_series(
+        "DFII10",
+        "2024-01-01",
+        "2024-01-31",
+        timeout=0.01,
+        retries=0,
+    )
+
+    assert not out.empty
+    assert "id=DFII10" in captured["url"]
+    assert "cosd=2024-01-01" in captured["url"]
+    assert "coed=2024-01-31" in captured["url"]
+
+
+def test_warm_factor_cache_check_only_reports_not_ready_for_partial_cache(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(sf, "CACHE_DIR", tmp_path / "cache")
+    _daily_close_map, fred_map = _factor_cache_test_maps()
+    sf._save_fred_factor_series_cache(sf.FRED_REAL_10Y, fred_map[sf.FRED_REAL_10Y])
+
+    summary = warm_factor_cache(
+        start="2024-01-01",
+        end="2024-01-31",
+        series_ids=[sf.FRED_REAL_10Y, sf.FRED_BREAKEVEN_10Y],
+        check_only=True,
+    )
+
+    assert summary["status"] == "failed"
+    assert summary["cache_status"] == "partial"
+    assert summary["full_factor_matrix_available"] is False
+    assert summary["demo_safe"] is False
+    assert summary["missing_series"] == [sf.FRED_BREAKEVEN_10Y]
 
 
 def test_cached_factor_data_provenance_is_written_to_metadata_and_data_policy(tmp_path) -> None:
