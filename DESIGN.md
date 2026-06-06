@@ -6,6 +6,8 @@ This file governs visual/UI/report-surface styling for web interfaces, dashboard
 
 Use [WORKFLOW.md](WORKFLOW.md) for the task process, [OUTPUTS.md](OUTPUTS.md) for generated report/output ownership, and [TESTING.md](TESTING.md) for verification expectations after UI, dashboard, HTML, or visual report changes.
 
+**Portfolio MRI UI routing:** for new Portfolio MRI / Portfolio X-Ray / ДИАГНОСТИКА 2 product UI work, use the canonical design direction in [docs/design/portfolio_mri_design_system.md](docs/design/portfolio_mri_design_system.md). The rest of this legacy Revolut-inspired file is retained as historical visual reference only and should not override the Portfolio MRI design canon.
+
 ## 1. Visual Theme & Atmosphere
 
 Revolut's website is fintech confidence distilled into pixels — a design system that communicates "your money is in capable hands" through massive typography, generous whitespace, and a disciplined neutral palette. The visual language is built on Aeonik Pro, a geometric grotesque that creates billboard-scale headlines at 136px with weight 500 and aggressive negative tracking (-2.72px). This isn't subtle branding; it's fintech at stadium scale.
