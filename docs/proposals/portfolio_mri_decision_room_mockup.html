@@ -1,0 +1,541 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portfolio MRI - Investment Decision Room MVP Mockup</title>
+  <style>
+    :root{
+      --bg:#07111F;
+      --surface:#0D1B2A;
+      --card:#12263A;
+      --card-2:#102134;
+      --line:#334155;
+      --line-soft:rgba(148,163,184,.18);
+      --text:#F8FAFC;
+      --sub:#CBD5E1;
+      --muted:#94A3B8;
+      --blue:#3B82F6;
+      --blue-2:#60A5FA;
+      --green:#10B981;
+      --amber:#F59E0B;
+      --red:#EF4444;
+      --gold:#D4AF37;
+      --shadow:0 24px 80px rgba(0,0,0,.28);
+      --radius:22px;
+      --font: Geist, Inter, "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      color:var(--text);
+      font-family:var(--font);
+      background:
+        radial-gradient(circle at 76% -12%, rgba(59,130,246,.22), transparent 34%),
+        radial-gradient(circle at 18% 8%, rgba(16,185,129,.08), transparent 28%),
+        linear-gradient(180deg, #07111F 0%, #081421 56%, #050B14 100%);
+      min-height:100vh;
+    }
+    .app{display:grid; grid-template-columns:248px 1fr; min-height:100vh;}
+    .sidebar{
+      position:sticky; top:0; height:100vh;
+      background:linear-gradient(180deg, rgba(13,27,42,.96), rgba(7,17,31,.94));
+      border-right:1px solid var(--line-soft);
+      padding:24px 18px;
+    }
+    .brand{display:flex; align-items:center; gap:12px; margin-bottom:30px;}
+    .mark{
+      width:38px;height:38px;border-radius:13px;
+      background:linear-gradient(135deg, var(--blue), #1D4ED8 62%, rgba(212,175,55,.9));
+      display:grid; place-items:center; font-weight:800; letter-spacing:-.04em;
+      box-shadow:0 0 0 1px rgba(248,250,252,.12) inset;
+    }
+    .brand strong{display:block;font-size:15px;letter-spacing:.01em}
+    .brand span{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+    .nav{display:flex; flex-direction:column; gap:6px;}
+    .nav button{
+      border:0; width:100%; cursor:pointer; text-align:left;
+      border-radius:14px; padding:12px 12px; color:var(--sub);
+      background:transparent; display:flex; align-items:center; justify-content:space-between;
+      font:600 13px/1 var(--font);
+    }
+    .nav button:hover{background:rgba(96,165,250,.08)}
+    .nav button.active{background:rgba(59,130,246,.16); color:var(--text); box-shadow:0 0 0 1px rgba(96,165,250,.22) inset;}
+    .nav small{color:var(--muted); font-size:11px; font-weight:700;}
+    .sidebar-note{
+      position:absolute; left:18px; right:18px; bottom:18px;
+      padding:14px; border:1px solid var(--line-soft); border-radius:18px;
+      background:rgba(18,38,58,.62); color:var(--muted); font-size:12px; line-height:1.45;
+    }
+    .shell{min-width:0;}
+    .journey{
+      position:sticky; top:0; z-index:5; height:72px; display:flex; align-items:center; justify-content:space-between;
+      padding:0 32px; border-bottom:1px solid var(--line-soft);
+      background:rgba(7,17,31,.84); backdrop-filter:blur(18px);
+    }
+    .journey-left{display:flex; gap:10px; align-items:center;}
+    .step{
+      display:flex; align-items:center; gap:8px; color:var(--muted); font-size:12px; font-weight:700;
+      padding:8px 9px; border-radius:999px; border:1px solid transparent;
+    }
+    .dot{width:9px;height:9px;border-radius:50%;background:var(--line);}
+    .step.complete .dot{background:var(--green)}
+    .step.active{color:var(--text);background:rgba(59,130,246,.12);border-color:rgba(96,165,250,.26)}
+    .step.active .dot{background:var(--blue-2);box-shadow:0 0 0 4px rgba(59,130,246,.16)}
+    .step.locked{opacity:.48}
+    .step.blocked .dot{background:var(--amber)}
+    .status-pill{
+      border:1px solid rgba(212,175,55,.38); color:#FDE68A; background:rgba(212,175,55,.08);
+      padding:8px 11px; border-radius:999px; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+    }
+    main{padding:32px; max-width:1500px;}
+    .screen{display:none; animation:rise .28s ease both;}
+    .screen.active{display:block;}
+    @keyframes rise{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none}}
+    .page-head{display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin-bottom:22px;}
+    .eyebrow{font-size:12px; text-transform:uppercase; letter-spacing:.13em; color:var(--blue-2); font-weight:800;}
+    h1{margin:8px 0 8px; font-size:36px; line-height:1.04; letter-spacing:-.04em;}
+    .subtitle{color:var(--sub); max-width:760px; line-height:1.55; margin:0; font-size:15px;}
+    .grid-2{display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:22px; align-items:start;}
+    .grid-3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px;}
+    .grid-4{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px;}
+    .card{
+      background:linear-gradient(180deg, rgba(18,38,58,.98), rgba(13,27,42,.92));
+      border:1px solid var(--line-soft); border-radius:var(--radius); padding:20px;
+      box-shadow:var(--shadow);
+    }
+    .flat{box-shadow:none;}
+    .hero{
+      padding:28px; overflow:hidden; position:relative;
+      background:
+        linear-gradient(135deg, rgba(59,130,246,.20), transparent 42%),
+        linear-gradient(180deg, rgba(18,38,58,.98), rgba(13,27,42,.98));
+    }
+    .hero:after{
+      content:""; position:absolute; right:-90px; top:-90px; width:240px; height:240px; border-radius:50%;
+      background:radial-gradient(circle, rgba(96,165,250,.18), transparent 65%);
+    }
+    .hero h2{font-size:27px; line-height:1.15; margin:8px 0 16px; letter-spacing:-.03em; max-width:870px;}
+    .hero-grid{display:grid; grid-template-columns:1.25fr .75fr; gap:18px; position:relative; z-index:1;}
+    .label{color:var(--muted); text-transform:uppercase; letter-spacing:.11em; font-size:11px; font-weight:800;}
+    .metric{font-size:28px; font-weight:760; letter-spacing:-.04em; margin:5px 0;}
+    .small{font-size:12px;color:var(--muted);line-height:1.45}
+    .badge{display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 9px; font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; border:1px solid var(--line-soft);}
+    .badge.blue{color:#BFDBFE;background:rgba(59,130,246,.13);border-color:rgba(96,165,250,.26)}
+    .badge.green{color:#A7F3D0;background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.24)}
+    .badge.amber{color:#FDE68A;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.28)}
+    .badge.red{color:#FECACA;background:rgba(239,68,68,.11);border-color:rgba(239,68,68,.25)}
+    .badge.gold{color:#FDE68A;background:rgba(212,175,55,.1);border-color:rgba(212,175,55,.28)}
+    .btn-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:18px;}
+    .btn{
+      border:0; border-radius:999px; padding:12px 16px; cursor:pointer;
+      font:800 13px/1 var(--font); color:var(--text); background:rgba(148,163,184,.13);
+      box-shadow:0 0 0 1px var(--line-soft) inset;
+    }
+    .btn.primary{background:linear-gradient(135deg, var(--blue), #2563EB); box-shadow:none;}
+    .btn.ghost{background:transparent; color:var(--sub);}
+    .panel-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+    .panel-title h3{margin:0;font-size:15px;letter-spacing:-.01em}
+    .list{display:flex; flex-direction:column; gap:10px; margin:0; padding:0; list-style:none;}
+    .list li{display:flex; gap:10px; color:var(--sub); font-size:13px; line-height:1.45;}
+    .check{width:17px;height:17px;border-radius:50%;background:rgba(16,185,129,.15);color:#A7F3D0;display:inline-grid;place-items:center;flex:0 0 17px;font-size:11px;font-weight:900}
+    table{width:100%;border-collapse:separate;border-spacing:0 8px;}
+    th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.10em;text-align:left;padding:0 12px;}
+    td{background:rgba(15,31,49,.82);padding:13px 12px;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);font-size:13px;color:var(--sub);}
+    td:first-child{border-left:1px solid var(--line-soft);border-radius:14px 0 0 14px;color:var(--text);font-weight:700}
+    td:last-child{border-right:1px solid var(--line-soft);border-radius:0 14px 14px 0}
+    input, select, textarea{
+      width:100%; border:1px solid var(--line-soft); background:rgba(7,17,31,.56); color:var(--text);
+      border-radius:13px; padding:12px 12px; font:600 13px/1.2 var(--font);
+    }
+    textarea{min-height:92px; line-height:1.45;}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .field label{display:block; color:var(--muted); font-size:11px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; margin:0 0 7px}
+    .example-strip{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+    .chip{padding:8px 10px;border-radius:999px;background:rgba(96,165,250,.08);border:1px solid var(--line-soft);font-size:12px;color:var(--sub);font-weight:700}
+    .decision-panel{position:sticky; top:94px;}
+    .divider{height:1px;background:var(--line-soft);margin:16px 0}
+    .mini-chart{display:flex; flex-direction:column; gap:9px; margin-top:12px}
+    .bar-row{display:grid; grid-template-columns:82px 1fr 48px; gap:10px; align-items:center; font-size:12px; color:var(--sub)}
+    .bar-track{height:9px;border-radius:999px;background:rgba(148,163,184,.12);overflow:hidden}
+    .bar{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--blue-2),var(--blue));}
+    .bar.red{background:linear-gradient(90deg,#FB7185,var(--red))}
+    .bar.green{background:linear-gradient(90deg,#34D399,var(--green))}
+    .gauge{height:10px;border-radius:999px;background:linear-gradient(90deg,var(--red),var(--amber),var(--green));position:relative;margin:18px 0 8px}
+    .needle{position:absolute;top:-5px;width:3px;height:20px;border-radius:999px;background:var(--text);box-shadow:0 0 0 4px rgba(248,250,252,.10)}
+    .test-card{cursor:pointer; transition:.16s ease; box-shadow:none;}
+    .test-card:hover,.test-card.selected{border-color:rgba(96,165,250,.45); transform:translateY(-2px); background:linear-gradient(180deg, rgba(22,49,76,.98), rgba(13,27,42,.94));}
+    .comparison-top{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+    .kpi{background:rgba(13,27,42,.66);border:1px solid var(--line-soft);border-radius:17px;padding:14px}
+    .report-paper{
+      background:linear-gradient(180deg,#F8FAFC,#E2E8F0);
+      color:#0F172A; border-radius:26px; padding:34px; box-shadow:var(--shadow);
+    }
+    .report-paper h2{font-size:30px;margin:0 0 16px;letter-spacing:-.035em}
+    .report-section{border-top:1px solid #CBD5E1;padding:16px 0}
+    .report-section h3{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#334155;margin:0 0 8px}
+    .report-section p{font-size:14px;line-height:1.58;color:#1E293B;margin:0}
+    .blocked{border-color:rgba(245,158,11,.38); background:linear-gradient(180deg, rgba(245,158,11,.10), rgba(18,38,58,.92));}
+    @media (max-width:1100px){
+      .app{grid-template-columns:1fr}
+      .sidebar{position:relative;height:auto}
+      .sidebar-note{position:static;margin-top:18px}
+      .grid-2,.hero-grid{grid-template-columns:1fr}
+      .grid-3,.grid-4,.comparison-top{grid-template-columns:1fr 1fr}
+      .journey{height:auto;align-items:flex-start;gap:12px;flex-direction:column;padding:16px}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="mark">MRI</div>
+        <div><strong>Portfolio MRI</strong><span>Investment Decision Room</span></div>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <button class="active" data-screen="input">Portfolio <small>01</small></button>
+        <button data-screen="summary">Diagnosis <small>02</small></button>
+        <button data-screen="evidence">Evidence <small>03</small></button>
+        <button data-screen="hypothesis">Hypothesis <small>04</small></button>
+        <button data-screen="comparison">Comparison <small>05</small></button>
+        <button data-screen="verdict">Verdict <small>06</small></button>
+        <button data-screen="report">Report <small>07</small></button>
+      </nav>
+      <div class="sidebar-note">
+        <strong style="color:#F8FAFC">Boundary:</strong><br>
+        Candidate portfolios are hypothesis tests. The final verdict is decision-support, not a trading instruction.
+      </div>
+    </aside>
+
+    <div class="shell">
+      <header class="journey">
+        <div class="journey-left" id="journey">
+          <span class="step active" data-step="input"><span class="dot"></span>Input</span>
+          <span class="step locked" data-step="diagnosis"><span class="dot"></span>Diagnosis</span>
+          <span class="step locked" data-step="hypothesis"><span class="dot"></span>Hypothesis</span>
+          <span class="step locked" data-step="candidate"><span class="dot"></span>Candidate</span>
+          <span class="step locked" data-step="comparison"><span class="dot"></span>Comparison</span>
+          <span class="step locked" data-step="verdict"><span class="dot"></span>Verdict</span>
+        </div>
+        <div class="status-pill" id="workflowPill">Diagnosis-first mode</div>
+      </header>
+
+      <main>
+        <section class="screen active" id="input">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Portfolio MRI</div>
+              <h1>Upload current portfolio</h1>
+              <p class="subtitle">Start with tickers, weights, and investor currency. The system diagnoses the portfolio before suggesting any action.</p>
+            </div>
+            <span class="badge blue">Input active</span>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="panel-title"><h3>Current portfolio</h3><span class="badge gold">No candidate generated</span></div>
+              <table>
+                <thead><tr><th>Ticker / Instrument</th><th>Weight %</th><th>Currency</th></tr></thead>
+                <tbody>
+                  <tr><td>SPY</td><td><input value="40" aria-label="SPY weight"></td><td><select><option>USD</option></select></td></tr>
+                  <tr><td>QQQ</td><td><input value="20" aria-label="QQQ weight"></td><td><select><option>USD</option></select></td></tr>
+                  <tr><td>BND</td><td><input value="20" aria-label="BND weight"></td><td><select><option>USD</option></select></td></tr>
+                  <tr><td>GLD</td><td><input value="10" aria-label="GLD weight"></td><td><select><option>USD</option></select></td></tr>
+                  <tr><td>Cash</td><td><input value="10" aria-label="Cash weight"></td><td><select><option>USD</option></select></td></tr>
+                </tbody>
+              </table>
+              <div class="btn-row">
+                <button class="btn ghost">+ Add position</button>
+                <button class="btn">Upload CSV</button>
+                <button class="btn primary" data-go="summary">Analyze portfolio</button>
+              </div>
+              <div class="example-strip" aria-label="Example portfolio">
+                <span class="chip">Example: SPY 40%</span><span class="chip">QQQ 20%</span><span class="chip">BND 20%</span><span class="chip">GLD 10%</span><span class="chip">Cash 10%</span>
+              </div>
+            </div>
+            <aside class="card decision-panel">
+              <div class="label">Trust message</div>
+              <h3 style="margin:8px 0 8px">Current portfolio first</h3>
+              <p class="subtitle" style="font-size:13px">Portfolio MRI analyzes the current portfolio first. No candidate is generated automatically.</p>
+              <div class="divider"></div>
+              <ul class="list">
+                <li><span class="check">OK</span>Only tickers, weights, and currency are needed for MVP input.</li>
+                <li><span class="check">OK</span>No target return, tax profile, or optimizer setup on this screen.</li>
+                <li><span class="check">OK</span>Candidate generation remains explicit later in the journey.</li>
+              </ul>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen" id="summary">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Decision Summary</div>
+              <h1>Portfolio MRI Summary</h1>
+              <p class="subtitle">Executive-level diagnosis before any candidate is tested. Example values below are illustrative placeholders.</p>
+            </div>
+            <span class="badge amber">Diagnosis complete -- no candidate tested</span>
+          </div>
+          <div class="grid-2">
+            <div>
+              <div class="card hero">
+                <div class="hero-grid">
+                  <div>
+                    <div class="label">Main diagnosis</div>
+                    <h2>Risk appears concentrated in a small number of equity growth drivers, while stress protection is limited.</h2>
+                    <ul class="list">
+                      <li><span class="check">1</span>Top holdings dominate portfolio behavior in normal and stress conditions.</li>
+                      <li><span class="check">2</span>Offset coverage appears limited in the worst example stress scenarios.</li>
+                      <li><span class="check">3</span>Bond and gold exposure help, but may not fully offset equity-led losses.</li>
+                    </ul>
+                  </div>
+                  <div class="card flat" style="background:rgba(7,17,31,.36)">
+                    <div class="label">Suggested next step</div>
+                    <p style="font-size:18px;line-height:1.35;margin:8px 0 0">Test a simple diversification reference before considering any action.</p>
+                    <div class="divider"></div>
+                    <span class="badge amber">Verdict pending</span>
+                  </div>
+                </div>
+              </div>
+              <div class="grid-4" style="margin-top:16px">
+                <div class="card flat"><div class="label">What you own</div><div class="metric">5</div><div class="small">Holdings -- dominant asset class: equity -- dominant currency: USD -- top 3: SPY, QQQ, BND</div></div>
+                <div class="card flat"><div class="label">Where the risk is</div><div class="metric">Equity growth</div><div class="small">Top contributor: QQQ example. Hidden exposure: broad US equity overlap.</div></div>
+                <div class="card flat"><div class="label">What breaks</div><div class="metric">Equity shock</div><div class="small">Worst synthetic scenario: growth drawdown example. Main hedge gap: limited offset.</div></div>
+                <div class="card flat"><div class="label">What to test</div><div class="metric">Equal Weight</div><div class="small">Decision boundary: hypothesis test, not a rebalance recommendation.</div></div>
+              </div>
+              <div class="btn-row">
+                <button class="btn primary" data-go="hypothesis">Choose hypothesis</button>
+                <button class="btn" data-go="evidence">View evidence</button>
+              </div>
+            </div>
+            <aside class="card decision-panel">
+              <div class="label">Workflow status</div>
+              <h3 style="margin:8px 0">Diagnosis-only state</h3>
+              <p class="small">Comparison and verdict are locked until one candidate or reference benchmark is explicitly generated and tested.</p>
+              <div class="divider"></div>
+              <span class="badge blue">Needs action: choose hypothesis</span>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen" id="evidence">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Evidence Center</div>
+              <h1>X-Ray + Stress Evidence</h1>
+              <p class="subtitle">When the portfolio loses money, what actually helps Evidence is grouped by decision question, not by backend artifact.</p>
+            </div>
+            <span class="badge blue">Evidence available</span>
+          </div>
+          <div class="card hero" style="margin-bottom:16px">
+            <div class="label">Portfolio X-Ray message</div>
+            <h2>You may own many tickers, but risk is concentrated in 2-3 drivers.</h2>
+          </div>
+          <div class="grid-3">
+            <div class="card flat"><div class="panel-title"><h3>Capital allocation</h3><span class="badge blue">Medium</span></div><p class="small">Equity allocation is the dominant capital bucket in this example portfolio.</p><div class="mini-chart"><div class="bar-row"><span>Equity</span><div class="bar-track"><div class="bar" style="width:60%"></div></div><span>60%</span></div><div class="bar-row"><span>Bonds</span><div class="bar-track"><div class="bar" style="width:20%"></div></div><span>20%</span></div><div class="bar-row"><span>Hedges</span><div class="bar-track"><div class="bar green" style="width:10%"></div></div><span>10%</span></div></div></div>
+            <div class="card flat"><div class="panel-title"><h3>Risk contribution</h3><span class="badge amber">Elevated</span></div><p class="small">Risk contribution is more concentrated than capital allocation suggests.</p><div class="mini-chart"><div class="bar-row"><span>QQQ</span><div class="bar-track"><div class="bar red" style="width:72%"></div></div><span>Ex.</span></div><div class="bar-row"><span>SPY</span><div class="bar-track"><div class="bar red" style="width:56%"></div></div><span>Ex.</span></div><div class="bar-row"><span>BND</span><div class="bar-track"><div class="bar" style="width:18%"></div></div><span>Ex.</span></div></div></div>
+            <div class="card flat"><div class="panel-title"><h3>Factor exposure</h3><span class="badge amber">Watch</span></div><p class="small">Growth and US equity beta appear to be the dominant drivers. Raw factor details stay in drill-down.</p><a class="small" href="#">View details ---</a></div>
+            <div class="card flat"><div class="panel-title"><h3>Hidden risk alerts</h3><span class="badge amber">2 alerts</span></div><p class="small">Multiple tickers may still express similar equity-growth exposure.</p><a class="small" href="#">View details ---</a></div>
+            <div class="card flat"><div class="panel-title"><h3>Weakness map</h3><span class="badge red">Stress-sensitive</span></div><p class="small">Pre-stress weakness is visible, but not treated as confirmed stress failure.</p><a class="small" href="#">View details ---</a></div>
+            <div class="card flat"><div class="panel-title"><h3>Offset coverage ratio</h3><span class="badge amber">Limited</span></div><p class="small">Example gauge shows partial offset behavior in loss scenarios.</p><div class="gauge"><span class="needle" style="left:38%"></span></div><div class="small">Low offset - example position - stronger offset</div></div>
+          </div>
+          <div class="grid-3" style="margin-top:16px">
+            <div class="card flat"><div class="panel-title"><h3>Worst synthetic scenario</h3><span class="badge red">Example loss</span></div><p class="small">Growth shock is the largest illustrative synthetic stress loss.</p></div>
+            <div class="card flat"><div class="panel-title"><h3>Worst historical scenario</h3><span class="badge red">Example loss</span></div><p class="small">A broad equity selloff is the largest illustrative historical episode.</p></div>
+            <div class="card flat"><div class="panel-title"><h3>Assets hurt / helped</h3><span class="badge blue">Stress view</span></div><div class="mini-chart"><div class="bar-row"><span>QQQ hurt</span><div class="bar-track"><div class="bar red" style="width:78%"></div></div><span>Ex.</span></div><div class="bar-row"><span>SPY hurt</span><div class="bar-track"><div class="bar red" style="width:64%"></div></div><span>Ex.</span></div><div class="bar-row"><span>GLD helped</span><div class="bar-track"><div class="bar green" style="width:30%"></div></div><span>Ex.</span></div></div></div>
+          </div>
+        </section>
+
+        <section class="screen" id="hypothesis">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Hypothesis Launchpad</div>
+              <h1>Test a hypothesis</h1>
+              <p class="subtitle">Choose one diagnostic test. The builder records success criteria and a decision boundary before any candidate is generated.</p>
+            </div>
+            <span class="badge amber">Candidate setup ready</span>
+          </div>
+          <div class="grid-2" style="grid-template-columns:1fr 430px">
+            <div class="grid-2" style="grid-template-columns:1fr 1fr">
+              <div class="card test-card selected"><div class="panel-title"><h3>Compare against Equal Weight</h3><span class="badge blue">Reference</span></div><p class="small"><strong>Why:</strong> Checks whether simple diversification changes the risk picture.</p><p class="small"><strong>Method:</strong> Equal Weight</p><p class="small"><strong>Success:</strong> Lower concentration without unacceptable trade-off.</p><div class="divider"></div><p class="small">Boundary: hypothesis test, not a rebalance recommendation.</p></div>
+              <div class="card test-card"><div class="panel-title"><h3>Compare against Risk Parity</h3><span class="badge blue">Reference</span></div><p class="small"><strong>Why:</strong> Tests whether risk-balanced exposure improves stress behavior.</p><p class="small"><strong>Method:</strong> Risk Parity</p><p class="small"><strong>Success:</strong> Better risk distribution and offset coverage.</p><div class="divider"></div><p class="small">Boundary: diagnostic comparison only.</p></div>
+              <div class="card test-card"><div class="panel-title"><h3>Improve diversification</h3><span class="badge green">Targeted</span></div><p class="small"><strong>Why:</strong> Current evidence suggests concentration in a few drivers.</p><p class="small"><strong>Method:</strong> Maximum Diversification</p><p class="small"><strong>Success:</strong> Reduce risk concentration.</p><div class="divider"></div><p class="small">Boundary: candidate must prove trade-off.</p></div>
+              <div class="card test-card"><div class="panel-title"><h3>Improve crisis resilience</h3><span class="badge amber">Targeted</span></div><p class="small"><strong>Why:</strong> Stress results show weak offset coverage and concentrated stress losses.</p><p class="small"><strong>Method:</strong> Minimum CVaR</p><p class="small"><strong>Success:</strong> Lower worst stress loss; improve offset coverage; reduce stress loss concentration.</p><div class="divider"></div><p class="small">Boundary: not an automatic rebalance recommendation.</p></div>
+              <div class="card test-card"><div class="panel-title"><h3>Reduce concentration</h3><span class="badge amber">Targeted</span></div><p class="small"><strong>Why:</strong> Risk contribution may be dominated by top holdings.</p><p class="small"><strong>Method:</strong> Minimum Variance</p><p class="small"><strong>Success:</strong> Lower concentration without excessive turnover.</p><div class="divider"></div><p class="small">Boundary: action waits for verdict.</p></div>
+            </div>
+            <aside class="card decision-panel">
+              <div class="label">Hypothesis Builder</div>
+              <div class="form-grid" style="margin-top:14px">
+                <div class="field" style="grid-column:1/-1"><label>Goal</label><input value="Test whether simpler diversification improves risk behavior"></div>
+                <div class="field"><label>Method</label><select><option>Equal Weight</option><option>Risk Parity</option><option>Hierarchical Risk Parity</option><option>Minimum Variance</option><option>Minimum CVaR</option><option>Maximum Diversification</option></select></div>
+                <div class="field"><label>Constraint preset</label><select><option>Basic reference</option><option>Conservative</option><option>Balanced</option><option>Aggressive</option><option>Custom</option><option>Uncapped</option></select></div>
+                <div class="field"><label>Capped / Uncapped</label><select><option>Capped</option><option>Uncapped</option></select></div>
+                <div class="field"><label>Min asset weight</label><input value="0%"></div>
+                <div class="field"><label>Max asset weight</label><input value="25%"></div>
+                <div class="field" style="grid-column:1/-1"><label>Success criteria</label><textarea>Lower risk concentration; improve offset coverage; avoid excessive turnover.</textarea></div>
+                <div class="field" style="grid-column:1/-1"><label>Decision boundary</label><textarea>This is a hypothesis test, not a rebalance recommendation.</textarea></div>
+              </div>
+              <div class="card blocked flat" style="margin-top:12px;padding:14px"><p class="small" style="margin:0">Uncapped mode may create concentrated portfolios. Use only for diagnostic comparison, not as an automatic rebalance recommendation.</p></div>
+              <div class="btn-row"><button class="btn primary" data-go="comparison">Run candidate test</button><button class="btn" data-go="summary">Back to diagnosis</button></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen" id="comparison">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Current vs Candidate</div>
+              <h1>Current vs candidate trade-off</h1>
+              <p class="subtitle">The candidate is a test result. The screen explains trade-offs; it does not present an instruction to act.</p>
+            </div>
+            <span class="badge gold">Not a recommendation</span>
+          </div>
+          <div class="comparison-top">
+            <div class="kpi"><div class="label">Candidate tested</div><strong>Equal Weight</strong></div>
+            <div class="kpi"><div class="label">Hypothesis</div><strong>Diversification reference</strong></div>
+            <div class="kpi"><div class="label">Method</div><strong>Equal Weight</strong></div>
+            <div class="kpi"><div class="label">Preset</div><strong>Basic reference</strong></div>
+            <div class="kpi"><div class="label">Status</div><strong>Generated</strong></div>
+          </div>
+          <div class="card">
+            <table>
+              <thead><tr><th>Metric</th><th>Current</th><th>Candidate</th><th>Change</th><th>Interpretation</th></tr></thead>
+              <tbody>
+                <tr><td>Volatility</td><td>Example current</td><td>Example candidate</td><td><span class="badge green">Improves</span></td><td>Risk may improve, but action depends on materiality and cost.</td></tr>
+                <tr><td>Max drawdown</td><td>Example current</td><td>Example candidate</td><td><span class="badge green">Improves</span></td><td>Drawdown improvement appears modest in example.</td></tr>
+                <tr><td>Worst stress loss</td><td>Example current</td><td>Example candidate</td><td><span class="badge green">Improves</span></td><td>Stress loss may improve; verdict checks whether the improvement is material.</td></tr>
+                <tr><td>Offset coverage</td><td>Example current</td><td>Example candidate</td><td><span class="badge green">Improves</span></td><td>Offset behavior appears broader in this test result.</td></tr>
+                <tr><td>Risk concentration</td><td>Example current</td><td>Example candidate</td><td><span class="badge green">Improves</span></td><td>Risk appears less dependent on the largest holdings.</td></tr>
+                <tr><td>Expected turnover</td><td>Example current</td><td>Example candidate</td><td><span class="badge amber">Worsens</span></td><td>Turnover may outweigh the practical benefit.</td></tr>
+                <tr><td>Transaction cost</td><td>Example current</td><td>Example candidate</td><td><span class="badge amber">Worsens</span></td><td>Implementation cost reduces the net benefit.</td></tr>
+                <tr><td>Return trade-off</td><td>Example current</td><td>Example candidate</td><td><span class="badge amber">Mixed</span></td><td>Risk improves in the test, while return profile may weaken.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="grid-3" style="margin-top:16px">
+            <div class="card flat"><div class="panel-title"><h3>What improved</h3><span class="badge green">Evidence</span></div><ul class="list"><li><span class="check">OK</span>Lower worst stress loss.</li><li><span class="check">OK</span>Better risk distribution.</li><li><span class="check">OK</span>Improved offset coverage.</li></ul></div>
+            <div class="card flat"><div class="panel-title"><h3>What worsened</h3><span class="badge amber">Trade-off</span></div><ul class="list"><li><span class="check">!</span>Higher turnover.</li><li><span class="check">!</span>Possible lower return profile.</li><li><span class="check">!</span>More implementation friction.</li></ul></div>
+            <div class="card flat"><div class="panel-title"><h3>What is unclear</h3><span class="badge blue">Review</span></div><ul class="list"><li><span class="check">?</span>Materiality after costs.</li><li><span class="check">?</span>Data-quality confidence.</li><li><span class="check">?</span>Whether another hypothesis should be tested.</li></ul></div>
+          </div>
+          <div class="btn-row"><button class="btn primary" data-go="verdict">Review verdict</button></div>
+        </section>
+
+        <section class="screen" id="verdict">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Decision Verdict</div>
+              <h1>Is action justified</h1>
+              <p class="subtitle">The verdict explains action logic and accepted trade-offs. It does not issue a trading instruction.</p>
+            </div>
+            <span class="badge green">Verdict ready</span>
+          </div>
+          <div class="grid-2">
+            <div>
+              <div class="card hero">
+                <div class="label">Verdict</div>
+                <h2>No material rebalance recommended</h2>
+                <p class="subtitle">Candidate reduces drawdown slightly in the example comparison, but the improvement is not material enough after turnover and transaction cost.</p>
+                <div class="grid-3" style="margin-top:18px">
+                  <div class="kpi"><div class="label">Evidence quality</div><strong>Moderate</strong></div>
+                  <div class="kpi"><div class="label">Action logic</div><strong>Keep + monitor</strong></div>
+                  <div class="kpi"><div class="label">Next trigger</div><strong>Risk drift</strong></div>
+                </div>
+              </div>
+              <div class="card" style="margin-top:16px">
+                <div class="panel-title"><h3>AI Commentary - client-ready explanation</h3><span class="badge gold">Explains -- does not decide</span></div>
+                <p style="font-size:16px;line-height:1.65;color:var(--sub)">Your portfolio's main weakness is concentrated exposure to a small number of equity-growth drivers. We tested an Equal Weight reference candidate to see whether simpler diversification would improve the risk picture. The candidate improved stress behavior and risk distribution in the example comparison. However, the improvement does not appear large enough to justify the turnover and implementation cost. Therefore, the defensible decision is to keep the current portfolio and monitor for risk drift, worsening stress loss, or a change in the top risk contributor.</p>
+                <div class="divider"></div>
+                <span class="badge amber">This is decision-support, not a trading instruction.</span>
+              </div>
+            </div>
+            <aside class="card decision-panel">
+              <div class="panel-title"><h3>Light Decision Journal</h3><span class="badge blue">MVP</span></div>
+              <ul class="list">
+                <li><span class="check">OK</span>Date: current review session</li>
+                <li><span class="check">OK</span>Current portfolio: SPY / QQQ / BND / GLD / Cash example</li>
+                <li><span class="check">OK</span>Selected candidate: Equal Weight reference</li>
+                <li><span class="check">OK</span>Accepted trade-off: monitoring instead of turnover</li>
+                <li><span class="check">OK</span>Rejected trade-off: turnover without material gain</li>
+                <li><span class="check">OK</span>Verdict: no material rebalance recommended</li>
+                <li><span class="check">OK</span>Next review trigger: risk contributor changes or stress loss worsens</li>
+              </ul>
+              <div class="btn-row"><button class="btn primary" data-go="report">Prepare report</button><button class="btn">Test another candidate</button></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen" id="report">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">Client-ready Explanation</div>
+              <h1>Review summary</h1>
+              <p class="subtitle">A clean professional summary an advisor can copy. Full PDF design is intentionally outside MVP scope.</p>
+            </div>
+            <button class="btn primary">Copy summary</button>
+          </div>
+          <div class="grid-2">
+            <article class="report-paper">
+              <h2>Portfolio MRI Review Summary</h2>
+              <div class="report-section"><h3>1. Portfolio diagnosis</h3><p>The portfolio appears exposed to concentrated equity-growth risk. Diversification exists by ticker count, but the main behavior is still driven by a smaller set of risk drivers.</p></div>
+              <div class="report-section"><h3>2. Key risks</h3><p>The main concern is risk concentration, not simply the number of holdings. The top contributors may dominate portfolio behavior in both normal and stressed environments.</p></div>
+              <div class="report-section"><h3>3. Stress behavior</h3><p>Stress evidence suggests that defensive positions help partially, but offset coverage may be limited in the worst example scenarios.</p></div>
+              <div class="report-section"><h3>4. Hypothesis tested</h3><p>An Equal Weight reference was tested as a diagnostic comparison. It was not treated as an allocation instruction.</p></div>
+              <div class="report-section"><h3>5. Candidate comparison</h3><p>The candidate improved selected risk and stress indicators in the example comparison, while worsening turnover and implementation friction.</p></div>
+              <div class="report-section"><h3>6. Trade-offs</h3><p>The improvement did not appear material enough to justify the practical cost of changing the portfolio.</p></div>
+              <div class="report-section"><h3>7. Verdict</h3><p>No material rebalance is recommended based on this tested candidate. Keeping the current portfolio and monitoring is a defensible decision.</p></div>
+              <div class="report-section"><h3>8. Monitoring triggers</h3><p>Re-test if the top risk contributor changes, stress loss worsens, offset coverage deteriorates, or portfolio weights drift materially.</p></div>
+            </article>
+            <aside class="card decision-panel">
+              <div class="label">MVP report boundary</div>
+              <h3 style="margin:8px 0">Copy first. Export later.</h3>
+              <p class="small">This screen is client-ready explanation, not a raw backend report. It avoids JSON names, full metric dumps, and PDF designer scope.</p>
+              <div class="divider"></div>
+              <button class="btn" disabled style="opacity:.55;cursor:not-allowed">PDF export planned later</button>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const buttons = Array.from(document.querySelectorAll('[data-screen]'));
+    const screens = Array.from(document.querySelectorAll('.screen'));
+    const goButtons = Array.from(document.querySelectorAll('[data-go]'));
+    const pill = document.getElementById('workflowPill');
+    const stepMap = {
+      input: ['active','locked','locked','locked','locked','locked'],
+      summary: ['complete','active','locked','locked','locked','locked'],
+      evidence: ['complete','active','locked','locked','locked','locked'],
+      hypothesis: ['complete','complete','active','locked','locked','locked'],
+      comparison: ['complete','complete','complete','complete','active','locked'],
+      verdict: ['complete','complete','complete','complete','complete','active'],
+      report: ['complete','complete','complete','complete','complete','complete']
+    };
+    const pillText = {
+      input:'Diagnosis-first mode',
+      summary:'Diagnosis complete -- needs hypothesis',
+      evidence:'Evidence center -- drill-down available',
+      hypothesis:'Candidate setup ready',
+      comparison:'Candidate tested - action not decided',
+      verdict:'Verdict ready - decision support',
+      report:'Client-ready summary'
+    };
+    const journeySteps = Array.from(document.querySelectorAll('.step'));
+    function show(id){
+      screens.forEach(s => s.classList.toggle('active', s.id === id));
+      buttons.forEach(b => b.classList.toggle('active', b.dataset.screen === id));
+      (stepMap[id] || stepMap.input).forEach((state, i) => {
+        journeySteps[i].className = 'step ' + state;
+      });
+      pill.textContent = pillText[id] || pillText.input;
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+    buttons.forEach(b => b.addEventListener('click', () => show(b.dataset.screen)));
+    goButtons.forEach(b => b.addEventListener('click', () => show(b.dataset.go)));
+  </script>
+</body>
+</html>
+
+
+
