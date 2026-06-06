@@ -6,6 +6,15 @@ It records what was added, changed, removed, fixed, or deprecated at a project l
 
 Date: 2026-06-06
 
+Category: Added
+
+- **Full Demo MVP packaging docs:** added a clean demo runbook, sample output walkthrough,
+  client-ready explanation example, five-minute product story, and demo docs index so a new
+  operator can understand and run the current Core MVP without oral developer context. The package
+  keeps candidate/reference/verdict boundaries explicit: candidate is a hypothesis, reference
+  benchmark is not a recommendation, and Decision Verdict is decision-support rather than a
+  standalone trading instruction.
+
 Category: Fixed
 
 - **Block 7-8-9 handoff consistency:** fixed the config-isolated factory-run ingestion bug where

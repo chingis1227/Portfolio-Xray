@@ -43,8 +43,11 @@ Runtime note: default `run_portfolio_review.py` is diagnosis-only. The canonical
 `scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight`: it selects one Launchpad hypothesis,
 validates Builder setup, generates one candidate attempt, compares it, writes Decision Verdict, and grounds AI Commentary. Use `run_portfolio_review.py --candidates <id>` only when you already want the older explicit factory-id compatibility path; use `--with-candidates` for backend core batch (`core_fast`) and `--mode full` for advanced/research full menu (`default_v1`).
 See [OUTPUTS.md](OUTPUTS.md) for the full command matrix and [docs/runtime_entrypoints.md](docs/runtime_entrypoints.md) for active vs legacy CLI entrypoints.
-For a practical operator package with the three demo fixtures, expected outputs, and verdict
-interpretation, see [docs/demo/full_demo_mvp.md](docs/demo/full_demo_mvp.md).
+For the demo documentation package, start with [docs/demo/README.md](docs/demo/README.md). The
+clean operator runbook is [docs/demo/full_demo_mvp_runbook.md](docs/demo/full_demo_mvp_runbook.md);
+the concrete sample walkthrough uses the `defensive_rates_sensitive` demo output in
+[docs/demo/sample_output_walkthrough.md](docs/demo/sample_output_walkthrough.md). The older
+practical operator guide remains at [docs/demo/full_demo_mvp.md](docs/demo/full_demo_mvp.md).
 
 | Use case (primary product runtime) | Command | Factory profile |
 | --- | --- | --- |
