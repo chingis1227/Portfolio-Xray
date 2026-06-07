@@ -18,6 +18,26 @@ commentary_*/
 stress_commentary_*/
 factor_png_*/
 
+# Frontend dependencies / build artifacts
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+dist/
+build/
+out/
+**/dist/
+**/build/
+**/out/
+.turbo/
+**/.turbo/
+*.tsbuildinfo
+*.log
+*.pid
+
+# Temporary Stitch imports
+imported/stitch/
+
 # IDE
 .idea/
 .vscode/

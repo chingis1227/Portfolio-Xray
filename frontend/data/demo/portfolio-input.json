@@ -1,0 +1,10 @@
+﻿{
+  "investorCurrency": "USD",
+  "holdings": [
+    { "ticker": "SPY", "instrument": "SPDR S&P 500 ETF", "weight": 40 },
+    { "ticker": "QQQ", "instrument": "Invesco QQQ Trust", "weight": 20 },
+    { "ticker": "BND", "instrument": "Vanguard Total Bond Market ETF", "weight": 20 },
+    { "ticker": "GLD", "instrument": "SPDR Gold Shares", "weight": 10 },
+    { "ticker": "CASH_USD", "instrument": "Cash USD", "weight": 10 }
+  ]
+}

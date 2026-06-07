@@ -1,0 +1,45 @@
+﻿{
+  "headline": "X-Ray and Stress evidence point to concentrated growth-equity sensitivity with partial defensive ballast.",
+  "quality": "Evidence usable, not conclusive",
+  "boundaryNote": "Stress scenarios are diagnostic tests, not forecasts.",
+  "items": [
+    {
+      "type": "X-Ray",
+      "title": "Largest risk driver",
+      "status": "Concentration detected",
+      "summary": "SPY and QQQ create overlapping US equity and growth-factor exposure.",
+      "source": "Portfolio X-Ray review",
+      "tone": "amber"
+    },
+    {
+      "type": "Stress",
+      "title": "Rates up shock",
+      "status": "Mixed protection",
+      "summary": "Bond sleeve absorbs some equity drawdown, but total portfolio remains exposed.",
+      "source": "Stress Test Lab",
+      "tone": "amber"
+    },
+    {
+      "type": "Classification",
+      "title": "Primary problem class",
+      "status": "Risk concentration",
+      "summary": "The issue is not missing return; it is dependence on a narrow equity growth path.",
+      "source": "Problem classification",
+      "tone": "gold"
+    },
+    {
+      "type": "Input Quality",
+      "title": "Input completeness",
+      "status": "Sufficient for review",
+      "summary": "All sample holdings include ticker, label, and allocation weight.",
+      "source": "Portfolio input review",
+      "tone": "green"
+    }
+  ],
+  "metrics": [
+    { "label": "Top exposure", "value": "US equity", "detail": "60% direct sleeve", "tone": "amber" },
+    { "label": "Defensive ballast", "value": "30%", "detail": "BND + GLD + Cash", "tone": "blue" },
+    { "label": "Evidence quality", "value": "Usable", "detail": "Not conclusive", "tone": "amber" }
+  ]
+}
+

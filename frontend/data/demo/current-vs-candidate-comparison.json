@@ -1,0 +1,24 @@
+﻿{
+  "candidateName": "Equal Weight diagnostic benchmark",
+  "candidateBoundary": "Equal Weight is a diagnostic benchmark, not a recommendation.",
+  "evidenceQuality": "Usable for review; not conclusive",
+  "summary": "The candidate reduces single-name allocation concentration but introduces trade-offs in equity participation and defensive balance.",
+  "metrics": [
+    { "metric": "Largest holding weight", "current": "40%", "candidate": "20%", "direction": "Improves concentration", "tradeoff": "Less direct SPY exposure", "tone": "green" },
+    { "metric": "Equity sleeve", "current": "60%", "candidate": "40%", "direction": "Reduces equity concentration", "tradeoff": "Lower upside participation", "tone": "green" },
+    { "metric": "Bond sleeve", "current": "20%", "candidate": "20%", "direction": "Unchanged", "tradeoff": "No added rates hedge", "tone": "slate" },
+    { "metric": "Gold sleeve", "current": "10%", "candidate": "20%", "direction": "Changes defensive mix", "tradeoff": "Higher commodity/real-asset sensitivity", "tone": "amber" },
+    { "metric": "Cash sleeve", "current": "10%", "candidate": "20%", "direction": "Improves liquidity", "tradeoff": "Higher cash drag risk", "tone": "amber" }
+  ],
+  "improved": [
+    "Largest allocation falls from 40% to 20%.",
+    "US equity concentration becomes less dominant.",
+    "Liquidity sleeve is more visible for stress optionality."
+  ],
+  "worsened": [
+    "Equity participation is lower in normal upside regimes.",
+    "Gold and cash weights become larger than the original intent.",
+    "Diagnostic benchmark does not prove suitability or readiness for action."
+  ]
+}
+

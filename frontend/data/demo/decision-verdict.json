@@ -1,0 +1,19 @@
+﻿{
+  "state": "Evidence supports no-trade for now",
+  "headline": "No material rebalance is justified by the current evidence set.",
+  "explanation": "The Equal Weight diagnostic benchmark improves concentration, but the trade-offs are not strong enough to justify action without stronger evidence and client-specific constraints.",
+  "evidenceQuality": "Usable, not conclusive",
+  "boundaryNote": "Verdict is decision-support only. It is not a trading instruction.",
+  "keyEvidence": [
+    "Concentration improves under the diagnostic benchmark.",
+    "Trade-offs appear in equity participation, gold weight, and cash drag.",
+    "Client-specific mandate and suitability evidence would be needed before any action decision."
+  ],
+  "monitoringTrigger": "Revisit if concentration rises above 65%, evidence quality improves, or client mandate changes.",
+  "metrics": [
+    { "label": "Verdict state", "value": "No-trade", "detail": "Valid outcome", "tone": "gold" },
+    { "label": "Evidence quality", "value": "Medium", "detail": "Review evidence", "tone": "amber" },
+    { "label": "Action status", "value": "Do not trade", "detail": "Decision-support only", "tone": "blue" }
+  ]
+}
+

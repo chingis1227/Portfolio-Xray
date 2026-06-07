@@ -1,0 +1,41 @@
+﻿{
+  "selectedMethod": "equal_weight_reference_test",
+  "builderStatus": "Ready to test one candidate hypothesis",
+  "boundaryNote": "Candidates are hypothesis tests, not recommended portfolios.",
+  "hypotheses": [
+    {
+      "id": "equal-weight",
+      "title": "Equal Weight diagnostic benchmark",
+      "targetProblem": "Checks whether concentration risk falls when each holding has the same allocation.",
+      "expectedTradeoff": "May reduce single-driver dependence, but can dilute intentional exposure and change bond/cash balance.",
+      "methodId": "equal_weight",
+      "evidenceSource": "Diagnosis: concentration detected",
+      "status": "Diagnostic benchmark"
+    },
+    {
+      "id": "risk-parity",
+      "title": "Risk Parity diagnostic benchmark",
+      "targetProblem": "Checks whether risk contribution can be distributed more evenly across sleeves.",
+      "expectedTradeoff": "May reduce stress concentration while creating less intuitive allocation weights.",
+      "methodId": "risk_parity",
+      "evidenceSource": "Stress: mixed protection",
+      "status": "Diagnostic benchmark"
+    },
+    {
+      "id": "defensive-balance",
+      "title": "Defensive balance hypothesis",
+      "targetProblem": "Tests whether a modest defensive sleeve increase improves stress resilience.",
+      "expectedTradeoff": "May improve drawdown behavior but reduce participation in equity upside.",
+      "methodId": "manual_demo_candidate",
+      "evidenceSource": "Evidence Center: rates-up and equity shock findings",
+      "status": "Concept only"
+    }
+  ],
+  "constraints": [
+    "Use the current holdings to keep the comparison focused.",
+    "Keep investor currency as USD.",
+    "Do not frame candidate as a recommendation.",
+    "Show trade-offs before verdict."
+  ]
+}
+

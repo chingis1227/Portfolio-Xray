@@ -1,0 +1,18 @@
+﻿{
+  "status": "Diagnosis ready",
+  "headline": "Concentration and equity factor exposure dominate the current portfolio risk story.",
+  "evidenceQuality": "Medium-high review evidence",
+  "nextStep": "Open Evidence Center before testing any candidate hypothesis.",
+  "boundaryNote": "Diagnosis explains observed portfolio structure; it is not a suitability review or trading instruction.",
+  "drivers": [
+    "US large-cap equity concentration remains the largest risk driver.",
+    "Growth/technology sensitivity is elevated through overlapping SPY and QQQ exposure.",
+    "Bonds and gold provide partial shock absorbers, but not enough to remove stress fragility."
+  ],
+  "metrics": [
+    { "label": "Equity sleeve", "value": "60%", "detail": "SPY + QQQ", "tone": "amber" },
+    { "label": "Liquidity sleeve", "value": "10%", "detail": "Cash included", "tone": "blue" },
+    { "label": "Evidence quality", "value": "Medium-high", "detail": "Review evidence", "tone": "gold" }
+  ]
+}
+

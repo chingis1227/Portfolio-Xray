@@ -1,0 +1,29 @@
+﻿{
+  "title": "Portfolio MRI decision-support summary",
+  "subtitle": "Sample portfolio review for stakeholder discussion",
+  "sections": [
+    {
+      "title": "Current decision view",
+      "body": "The current portfolio is understandable, but its main risk story is concentrated US equity and growth-factor exposure. Bonds, gold, and cash provide some ballast, but do not remove the concentration issue. Current evidence supports a no-trade stance for now rather than an immediate material rebalance."
+    },
+    {
+      "title": "Evidence",
+      "body": "The X-Ray and Stress evidence is suitable for a sample review discussion. It should not be treated as conclusive advice or as a substitute for client-specific suitability review."
+    },
+    {
+      "title": "Candidate hypothesis",
+      "body": "Equal Weight was tested as a diagnostic benchmark. It is not a recommendation. It helps show what changes when concentration is mechanically reduced."
+    },
+    {
+      "title": "Comparison",
+      "body": "The candidate lowers the largest holding and equity concentration, but it also changes the intended exposure mix and increases cash/gold weight. The trade-off is not one-sided."
+    },
+    {
+      "title": "Verdict boundary",
+      "body": "The current verdict supports no-trade for now. This means the evidence does not justify a material rebalance in this sample review, not that the current portfolio is perfect."
+    }
+  ],
+  "monitoring": "Monitor concentration, evidence quality, and mandate changes before reopening the decision.",
+  "boundaryNote": "This report explains decision-support evidence. It is not advice, suitability review, or a trading instruction."
+}
+

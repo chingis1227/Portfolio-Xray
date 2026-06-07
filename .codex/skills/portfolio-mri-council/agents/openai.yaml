@@ -1,0 +1,4 @@
+interface:
+  display_name: "Portfolio MRI Council"
+  short_description: "Council for MRI decisions"
+  default_prompt: "Use portfolio-mri-council to review this Portfolio MRI decision and give a chairman verdict."
