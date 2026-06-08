@@ -1,10 +1,13 @@
 ﻿export type StatusTone = "blue" | "gold" | "green" | "amber" | "red" | "slate";
 
+export type JourneyStepStatus = "locked" | "available" | "active" | "completed";
+
 export type JourneyStep = {
   id: string;
   label: string;
   href: string;
   shortLabel: string;
+  lockReason: string;
 };
 
 export type Metric = {

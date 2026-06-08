@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import "../styles/globals.css";
 import { AppShell } from "@/components/layout/AppShell";
+import { ReviewStateProvider } from "@/lib/reviewState";
 
 export const metadata: Metadata = {
   title: "Portfolio MRI Decision Room",
@@ -12,7 +13,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <AppShell>{children}</AppShell>
+        <ReviewStateProvider>
+          <AppShell>{children}</AppShell>
+        </ReviewStateProvider>
       </body>
     </html>
   );

@@ -4,6 +4,28 @@ This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.
 
+Date: 2026-06-08
+
+
+Category: Added
+
+- **Frontend/backend vertical demo runbook:** added `docs/demo/frontend_backend_vertical_runbook.md` and linked it from README/frontend docs. The runbook explains verification commands, the manual Input-to-Report demo path, run-local `runs/frontend_review_*` artifact strategy, stale artifact recovery, compact browser state boundaries, and product wording that keeps candidates as diagnostic tests rather than recommendations.
+
+Category: Added
+
+- **Frontend Portfolio Input diagnosis API:** added the first live Next.js route,
+  `POST /api/portfolio/diagnose`, connecting Portfolio Input to the existing Python bridge and
+  storing the returned `review_result.json` in frontend review state for the Diagnosis page.
+
+Date: 2026-06-07
+
+Category: Added
+
+- **Frontend review payload bridge:** added `scripts/run_review_from_payload.py` to validate a
+  frontend JSON portfolio payload, write an isolated `runs/frontend_review_*` config, run
+  `run_report.py --materialize-analysis-subject --core-diagnostics-only` without changing root
+  `config.yml`, and aggregate the core `analysis_subject` JSON outputs into `review_result.json`.
+
 Date: 2026-06-06
 
 Category: Added

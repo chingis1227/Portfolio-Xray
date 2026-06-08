@@ -1,8 +1,12 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import type { Holding } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { instrumentByTicker, instrumentUniverse, type Instrument } from "@/data/instrumentUniverse";
+import { useReviewState, type ReviewHolding, type ReviewResult } from "@/lib/reviewState";
 
 type PortfolioInputTableProps = {
   investorCurrency: string;
@@ -14,28 +18,38 @@ type EditableHolding = Holding & {
   weightInput: string;
 };
 
-type Instrument = {
-  ticker: string;
-  instrument: string;
-  kind: "fund" | "cash";
+type ValidationSummary = {
+  title: string;
+  text: string;
+  tone: "green" | "amber" | "red";
 };
 
 const currencies = ["USD", "EUR", "GBP", "CHF", "CAD", "AUD"];
 const WEIGHT_TOLERANCE = 0.01;
 
-const instrumentUniverse: Instrument[] = [
-  { ticker: "SPY", instrument: "SPDR S&P 500 ETF", kind: "fund" },
-  { ticker: "QQQ", instrument: "Invesco QQQ Trust", kind: "fund" },
-  { ticker: "BND", instrument: "Vanguard Total Bond Market ETF", kind: "fund" },
-  { ticker: "TLT", instrument: "iShares 20+ Year Treasury Bond ETF", kind: "fund" },
-  { ticker: "GLD", instrument: "SPDR Gold Shares", kind: "fund" },
-  { ticker: "VOO", instrument: "Vanguard S&P 500 ETF", kind: "fund" },
-  { ticker: "VTI", instrument: "Vanguard Total Stock Market ETF", kind: "fund" },
-  { ticker: "CASH_USD", instrument: "Cash USD", kind: "cash" },
-  { ticker: "CASH_EUR", instrument: "Cash EUR", kind: "cash" }
-];
+function normalizeTicker(value: string) {
+  return value.trim().toUpperCase();
+}
 
-const instrumentByTicker = new Map(instrumentUniverse.map((item) => [item.ticker, item]));
+function isCashTicker(ticker: string) {
+  return instrumentByTicker.get(normalizeTicker(ticker))?.kind === "cash";
+}
+
+
+function displayTicker(row: Pick<EditableHolding, "ticker">) {
+  return isCashTicker(row.ticker) ? "Cash" : row.ticker;
+}
+
+function displayInstrument(row: Pick<EditableHolding, "ticker" | "instrument">) {
+  const ticker = normalizeTicker(row.ticker);
+  const knownInstrument = instrumentByTicker.get(ticker);
+
+  if (knownInstrument?.kind === "cash") {
+    return `${knownInstrument.currency ?? "USD"} liquidity position`;
+  }
+
+  return knownInstrument?.instrument ?? row.instrument;
+}
 
 function toEditableHolding(holding: Holding, index: number): EditableHolding {
   const ticker = normalizeTicker(holding.ticker);
@@ -50,18 +64,43 @@ function toEditableHolding(holding: Holding, index: number): EditableHolding {
   };
 }
 
-function normalizeTicker(value: string) {
-  return value.trim().toUpperCase();
+function reviewHoldingToEditable(holding: ReviewHolding, index: number): EditableHolding {
+  return {
+    id: holding.id || `${holding.ticker || "row"}-${index}-${Date.now()}`,
+    ticker: normalizeTicker(holding.ticker),
+    instrument: holding.instrument,
+    weight: holding.weight,
+    weightInput: String(holding.weight)
+  };
 }
 
 function parseWeightInput(value: string) {
-  if (value.trim() === "") return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+
+  const parsed = Number(trimmed.replace(",", "."));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function cleanWeightInput(value: string) {
+  let cleaned = value.replace(/[^\d.,]/g, "");
+  const firstSeparator = cleaned.search(/[.,]/);
+
+  if (firstSeparator >= 0) {
+    const before = cleaned.slice(0, firstSeparator + 1);
+    const after = cleaned.slice(firstSeparator + 1).replace(/[.,]/g, "");
+    cleaned = `${before}${after}`;
+  }
+
+  return cleaned;
 }
 
 function formatWeight(value: number) {
   return Number.isFinite(value) ? value.toFixed(2).replace(/\.?0+$/, "") : "0";
+}
+
+function formatTotalWeight(value: number) {
+  return Math.abs(value - 100) <= WEIGHT_TOLERANCE ? "100" : formatWeight(value);
 }
 
 function isKnownInstrument(row: EditableHolding) {
@@ -78,19 +117,43 @@ function parsedWeightOrZero(row: EditableHolding) {
   return parsed !== null && parsed > 0 ? parsed : 0;
 }
 
-function formatDelta(value: number) {
-  return formatWeight(Math.max(0, value));
+function rowToReviewHolding(row: EditableHolding): ReviewHolding | null {
+  const ticker = normalizeTicker(row.ticker);
+  const parsedWeight = parseWeightInput(row.weightInput);
+  const instrument = instrumentByTicker.get(ticker);
+
+  if (!ticker || parsedWeight === null || !Number.isFinite(parsedWeight)) return null;
+
+  return {
+    id: row.id,
+    label: instrument?.kind === "cash" ? "Cash" : ticker,
+    ticker,
+    instrument: displayInstrument(row),
+    weight: parsedWeight,
+    type: instrument?.kind === "cash" ? "cash" : "instrument",
+    currency: instrument?.kind === "cash" ? instrument.currency : undefined
+  };
 }
 
-function isCashRow(row: EditableHolding) {
-  return instrumentByTicker.get(normalizeTicker(row.ticker))?.kind === "cash";
+function reviewHoldingToPayload(holding: ReviewHolding) {
+  if (holding.type === "cash") {
+    return {
+      type: "cash",
+      currency: holding.currency || "USD",
+      weight: holding.weight
+    };
+  }
+
+  return {
+    type: "instrument",
+    ticker: normalizeTicker(holding.ticker),
+    weight: holding.weight
+  };
 }
 
-function cashRulePasses(rows: EditableHolding[]) {
-  return rows.every((row) => {
-    const instrumentMentionsCash = row.instrument.trim().toLowerCase().includes("cash");
-    return !instrumentMentionsCash || isCashRow(row);
-  });
+function getCashTicker(currency: string) {
+  const ticker = `CASH_${currency || "USD"}`;
+  return instrumentByTicker.has(ticker) ? ticker : "CASH_USD";
 }
 
 function duplicateTickers(rows: EditableHolding[]) {
@@ -105,8 +168,13 @@ function duplicateTickers(rows: EditableHolding[]) {
   return new Set(Array.from(counts.entries()).filter(([, count]) => count > 1).map(([ticker]) => ticker));
 }
 
-function getCashTicker(currency: string) {
-  return currency === "EUR" ? "CASH_EUR" : "CASH_USD";
+function matchesInstrument(item: Instrument, query: string) {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return true;
+
+  return [item.ticker, item.instrument, item.currency, ...(item.searchTerms ?? [])]
+    .filter(Boolean)
+    .some((value) => String(value).toLowerCase().includes(normalizedQuery));
 }
 
 function SimilarExposureWarning({ rows }: { rows: EditableHolding[] }) {
@@ -122,9 +190,190 @@ function SimilarExposureWarning({ rows }: { rows: EditableHolding[] }) {
   );
 }
 
+function InstrumentCombobox({
+  row,
+  duplicateTicker,
+  onSelect,
+  onClearSelection
+}: {
+  row: EditableHolding;
+  duplicateTicker: boolean;
+  onSelect: (instrument: Instrument) => void;
+  onClearSelection: () => void;
+}) {
+  const [query, setQuery] = useState(displayTicker(row));
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<{ left: number; top: number; width: number } | null>(null);
+
+  useEffect(() => {
+    if (row.ticker) setQuery(displayTicker(row));
+  }, [row.ticker]);
+
+  const effectiveQuery = open && query === displayTicker(row) ? "" : query;
+
+  const matches = useMemo(() => {
+    return instrumentUniverse.filter((item) => matchesInstrument(item, effectiveQuery)).slice(0, 8);
+  }, [effectiveQuery]);
+
+  const updateDropdownPosition = () => {
+    const rect = inputRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    setDropdownStyle({
+      left: rect.left,
+      top: rect.bottom + 8,
+      width: rect.width
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+
+    updateDropdownPosition();
+    window.addEventListener("scroll", updateDropdownPosition, true);
+    window.addEventListener("resize", updateDropdownPosition);
+
+    return () => {
+      window.removeEventListener("scroll", updateDropdownPosition, true);
+      window.removeEventListener("resize", updateDropdownPosition);
+    };
+  }, [open, query]);
+
+  const selectInstrument = (item: Instrument) => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    onSelect(item);
+    setQuery(item.kind === "cash" ? "Cash" : item.ticker);
+    setOpen(false);
+    setActiveIndex(0);
+  };
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    setOpen(true);
+    setActiveIndex(0);
+
+    const exactTicker = instrumentByTicker.get(normalizeTicker(value));
+    if (exactTicker) {
+      onSelect(exactTicker);
+    } else {
+      onClearSelection();
+    }
+  };
+
+  const instrumentMissing = !isKnownInstrument(row);
+
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        className={`pmri-focus w-full rounded-lg border bg-pmri-secondary px-3 py-2 font-semibold text-pmri-text placeholder:text-pmri-muted/70 ${instrumentMissing ? "border-pmri-risk/70" : duplicateTicker ? "border-pmri-amber/70" : "border-pmri-border"}`}
+        value={query}
+        placeholder="Search ticker or name"
+        onChange={(event) => handleQueryChange(event.target.value)}
+        onFocus={() => {
+          setOpen(true);
+          updateDropdownPosition();
+          window.setTimeout(() => inputRef.current?.select(), 0);
+        }}
+        onBlur={() => {
+          closeTimer.current = setTimeout(() => setOpen(false), 120);
+        }}
+        onKeyDown={(event) => {
+          if (!open && ["ArrowDown", "ArrowUp"].includes(event.key)) {
+            setOpen(true);
+            return;
+          }
+
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            setActiveIndex((current) => Math.min(current + 1, Math.max(0, matches.length - 1)));
+          }
+
+          if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setActiveIndex((current) => Math.max(current - 1, 0));
+          }
+
+          if (event.key === "Enter" && open && matches[activeIndex]) {
+            event.preventDefault();
+            selectInstrument(matches[activeIndex]);
+          }
+
+          if (event.key === "Escape") {
+            setOpen(false);
+          }
+        }}
+        role="combobox"
+        aria-expanded={open}
+        aria-autocomplete="list"
+        aria-invalid={instrumentMissing}
+      />
+
+      {open && dropdownStyle ? createPortal((
+        <div
+          className="fixed z-50 max-h-72 overflow-y-auto rounded-xl border border-pmri-border bg-pmri-secondary shadow-2xl shadow-black/40"
+          style={{ left: dropdownStyle.left, top: dropdownStyle.top, width: dropdownStyle.width }}
+        >
+          {matches.length > 0 ? matches.map((item, index) => (
+            <button
+              key={item.ticker}
+              type="button"
+              className={`pmri-focus flex w-full items-start justify-between gap-3 px-3 py-3 text-left text-sm transition ${index === activeIndex ? "bg-pmri-blue/15" : "hover:bg-white/[0.06]"}`}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => selectInstrument(item)}
+            >
+              <span>
+                <span className="block font-semibold text-pmri-text">{item.kind === "cash" ? "Cash" : item.ticker}</span>
+                <span className="mt-0.5 block text-xs leading-5 text-pmri-muted">
+                  {item.kind === "cash" ? `${item.currency ?? "USD"} liquidity position` : item.instrument}
+                </span>
+              </span>
+              <span className="rounded-full border border-pmri-border px-2 py-0.5 text-[11px] uppercase tracking-[0.12em] text-pmri-muted">
+                {item.kind === "cash" ? item.currency : "ETF"}
+              </span>
+            </button>
+          )) : (
+            <div className="px-3 py-3 text-sm text-pmri-muted">No matching instruments</div>
+          )}
+        </div>
+      ), document.body) : null}
+    </div>
+  );
+}
+
 export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInputTableProps) {
+  const router = useRouter();
+  const { activeReview, hydrated, savePortfolioInput, submitPortfolioInput, recordReviewError } = useReviewState();
   const [currency, setCurrency] = useState(investorCurrency || "");
   const [rows, setRows] = useState<EditableHolding[]>(() => holdings.map(toEditableHolding));
+  const [isRunningDiagnosis, setIsRunningDiagnosis] = useState(false);
+  const [diagnosisError, setDiagnosisError] = useState<string | null>(null);
+  const inputInitialized = useRef(false);
+  const inputEdited = useRef(false);
+
+  useEffect(() => {
+    if (!hydrated || inputInitialized.current) return;
+
+    if (activeReview?.holdings.length) {
+      setCurrency(activeReview.investorCurrency);
+      setRows(activeReview.holdings.map(reviewHoldingToEditable));
+    }
+    inputInitialized.current = true;
+  }, [activeReview, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated || !inputEdited.current) return;
+
+    savePortfolioInput({
+      investorCurrency: currency || "USD",
+      holdings: rows
+        .map(rowToReviewHolding)
+        .filter((holding): holding is ReviewHolding => Boolean(holding))
+    });
+  }, [currency, hydrated, rows, savePortfolioInput]);
 
   const totalWeight = useMemo(
     () => rows.reduce((sum, row) => sum + parsedWeightOrZero(row), 0),
@@ -133,74 +382,76 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
 
   const duplicateTickerSet = useMemo(() => duplicateTickers(rows), [rows]);
   const hasDuplicateTickers = duplicateTickerSet.size > 0;
+  const instrumentsComplete = rows.length > 0 && rows.every(isKnownInstrument);
+  const weightsComplete = rows.length > 0 && rows.every(isValidWeight);
+  const weightsAddTo100 = Math.abs(totalWeight - 100) <= WEIGHT_TOLERANCE;
 
-  const validation = useMemo(() => {
-    const currencySelected = currency.trim().length > 0;
-    const validRows = rows.filter((row) => isKnownInstrument(row) && isValidWeight(row));
-    const enoughHoldings = validRows.length >= 2;
-    const weightsAddTo100 = Math.abs(totalWeight - 100) <= WEIGHT_TOLERANCE;
-    const cashSeparate = cashRulePasses(rows);
-    const instrumentsComplete = rows.every(isKnownInstrument);
-    const weightsComplete = rows.every(isValidWeight);
-    const allocationStatus = totalWeight < 100 - WEIGHT_TOLERANCE
-      ? {
-          title: "Incomplete allocation",
-          message: `You still need to allocate ${formatDelta(100 - totalWeight)}%.`
-        }
-      : totalWeight > 100 + WEIGHT_TOLERANCE
-        ? {
-            title: "Allocation exceeds 100%",
-            message: `Reduce total weight by ${formatDelta(totalWeight - 100)}%.`
-          }
-        : {
-            title: "Ready for diagnosis",
-            message: "Portfolio weights add up to 100%."
-          };
+  const validationSummary: ValidationSummary = useMemo(() => {
+    if (!instrumentsComplete) {
+      return {
+        title: "Select an instrument",
+        text: "Choose a ticker or cash position before running diagnosis.",
+        tone: "amber"
+      };
+    }
 
-    const blockingReasons = [
-      !currencySelected ? "Select an investor currency." : null,
-      rows.length < 2 ? "Add at least 2 portfolio rows." : null,
-      !enoughHoldings ? "Portfolio must have at least 2 valid rows with selected instruments and weights above 0." : null,
-      !instrumentsComplete ? "Select an instrument for every row." : null,
-      !weightsComplete ? "Enter a weight greater than 0 for every row." : null,
-      !weightsAddTo100 ? allocationStatus.message : null,
-      !cashSeparate ? "Cash must be selected as a dedicated cash instrument." : null
-    ].filter((reason): reason is string => Boolean(reason));
+    if (!weightsComplete) {
+      return {
+        title: "Check weights",
+        text: "Each position needs a weight greater than 0.",
+        tone: "red"
+      };
+    }
+
+    if (totalWeight < 100 - WEIGHT_TOLERANCE) {
+      return {
+        title: "Incomplete allocation",
+        text: `You still need to allocate ${formatWeight(100 - totalWeight)}%.`,
+        tone: "amber"
+      };
+    }
+
+    if (totalWeight > 100 + WEIGHT_TOLERANCE) {
+      return {
+        title: "Allocation exceeds 100%",
+        text: `Reduce allocation by ${formatWeight(totalWeight - 100)}%.`,
+        tone: "red"
+      };
+    }
 
     return {
-      currencySelected,
-      enoughHoldings,
-      weightsAddTo100,
-      cashSeparate,
-      instrumentsComplete,
-      weightsComplete,
-      allocationStatus,
-      blockingReasons,
-      ready: currencySelected && enoughHoldings && weightsAddTo100 && cashSeparate && instrumentsComplete && weightsComplete
+      title: "Ready for diagnosis",
+      text: `${rows.length} holdings В· 100% allocated`,
+      tone: "green"
     };
-  }, [currency, rows, totalWeight]);
+  }, [instrumentsComplete, rows.length, totalWeight, weightsComplete]);
 
-  const updateTicker = (id: string, value: string) => {
-    const ticker = normalizeTicker(value);
-    const selectedInstrument = instrumentByTicker.get(ticker);
+  const ready = instrumentsComplete && weightsComplete && weightsAddTo100;
 
+  const updateInstrument = (id: string, instrument: Instrument | null) => {
+    inputEdited.current = true;
     setRows((currentRows) => currentRows.map((row) => {
       if (row.id !== id) return row;
       return {
         ...row,
-        ticker,
-        instrument: selectedInstrument?.instrument ?? ""
+        ticker: instrument?.ticker ?? "",
+        instrument: instrument?.instrument ?? ""
       };
     }));
   };
 
   const updateWeight = (id: string, value: string) => {
+    inputEdited.current = true;
+    const cleanedValue = cleanWeightInput(value);
+    const parsed = parseWeightInput(cleanedValue);
+
     setRows((currentRows) => currentRows.map((row) => (
-      row.id === id ? { ...row, weightInput: value, weight: parseWeightInput(value) ?? Number.NaN } : row
+      row.id === id ? { ...row, weightInput: cleanedValue, weight: parsed ?? Number.NaN } : row
     )));
   };
 
   const addHolding = () => {
+    inputEdited.current = true;
     setRows((currentRows) => [
       ...currentRows,
       { id: `holding-${Date.now()}`, ticker: "", instrument: "", weight: Number.NaN, weightInput: "" }
@@ -208,6 +459,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
   };
 
   const addCashPosition = () => {
+    inputEdited.current = true;
     const ticker = getCashTicker(currency);
     const cashInstrument = instrumentByTicker.get(ticker);
 
@@ -216,7 +468,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
       {
         id: `cash-${Date.now()}`,
         ticker,
-        instrument: cashInstrument?.instrument ?? "Cash position",
+        instrument: cashInstrument?.instrument ?? `${currency || "USD"} liquidity position`,
         weight: Number.NaN,
         weightInput: ""
       }
@@ -224,17 +476,70 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
   };
 
   const removeRow = (id: string) => {
+    inputEdited.current = true;
     setRows((currentRows) => currentRows.filter((row) => row.id !== id));
   };
 
-  const checklist = [
-    { label: "Investor currency selected", passed: validation.currencySelected },
-    { label: "Portfolio has at least 2 valid rows", passed: validation.enoughHoldings },
-    { label: "Every row has a selected instrument", passed: validation.instrumentsComplete },
-    { label: "Every row has a weight greater than 0", passed: validation.weightsComplete },
-    { label: "Weights add up to 100%", passed: validation.weightsAddTo100 },
-    { label: "Cash is entered as a separate position, if used", passed: validation.cashSeparate }
-  ];
+  const runPortfolioDiagnosis = async () => {
+    if (!ready || isRunningDiagnosis) return;
+
+    const reviewHoldings = rows
+      .map(rowToReviewHolding)
+      .filter((holding): holding is ReviewHolding => Boolean(holding));
+
+    setDiagnosisError(null);
+    setIsRunningDiagnosis(true);
+
+    try {
+      const response = await fetch("/api/portfolio/diagnose", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          investor_currency: currency || "USD",
+          holdings: reviewHoldings.map(reviewHoldingToPayload)
+        })
+      });
+
+      const result = await response.json() as ReviewResult & { error?: string; details?: unknown };
+
+      if (!response.ok || result.status !== "completed") {
+        const detailText = Array.isArray(result.details)
+          ? result.details.filter((item) => typeof item === "string").join(" ")
+          : typeof result.details === "string"
+            ? result.details
+            : "";
+        const message = [result.error || "Portfolio diagnosis failed.", detailText].filter(Boolean).join(" ");
+        recordReviewError({
+          investorCurrency: currency || "USD",
+          holdings: reviewHoldings,
+          message,
+          details: detailText
+        });
+        throw new Error(message);
+      }
+
+      submitPortfolioInput({
+        investorCurrency: currency || "USD",
+        holdings: reviewHoldings,
+        reviewResult: result
+      });
+      router.push("/diagnosis");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Portfolio diagnosis failed.";
+      setDiagnosisError(message);
+      if (reviewHoldings.length) {
+        recordReviewError({
+          investorCurrency: currency || "USD",
+          holdings: reviewHoldings,
+          message
+        });
+      }
+    } finally {
+      setIsRunningDiagnosis(false);
+    }
+  };
 
   return (
     <section className="pmri-card overflow-hidden rounded-2xl">
@@ -243,7 +548,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
           <div className="max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-pmri-gold">Current allocation only</p>
             <p className="mt-2 text-sm leading-6 text-pmri-text2">
-              These weights are the subject of diagnosis, not a recommendation or target portfolio.
+              Enter the portfolio you hold today. The diagnosis checks this allocation before any alternatives are compared.
             </p>
           </div>
 
@@ -252,15 +557,14 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
             <select
               className="pmri-focus mt-2 w-full rounded-lg border border-pmri-border bg-pmri-secondary px-3 py-2 text-sm font-semibold text-pmri-text"
               value={currency}
-              onChange={(event) => setCurrency(event.target.value)}
-              title="Used for reporting, benchmark defaults, and cash treatment."
+              onChange={(event) => {
+                inputEdited.current = true;
+                setCurrency(event.target.value);
+              }}
             >
               <option value="">Select currency</option>
               {currencies.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
-            <span className="mt-1 block text-xs leading-5 text-pmri-muted">
-              Used for reporting, benchmark defaults, and cash treatment.
-            </span>
           </label>
         </div>
       </div>
@@ -282,7 +586,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
             <button
               type="button"
               onClick={addCashPosition}
-              title="Cash is treated as a real portfolio position. It is not replaced by a proxy asset."
+              title="Cash is treated as a portfolio position."
               className="pmri-focus rounded-full border border-pmri-gold/40 bg-pmri-gold/10 px-4 py-2 text-sm font-semibold text-pmri-gold transition hover:bg-pmri-gold/15"
             >
               Add cash position
@@ -290,9 +594,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
           </div>
         </div>
 
-        <p className="mt-3 text-xs leading-5 text-pmri-muted">
-          Cash is treated as a real portfolio position. It is not replaced by a proxy asset.
-        </p>
+        <p className="mt-3 text-xs leading-5 text-pmri-muted">Cash is treated as a portfolio position.</p>
 
         <div className="mt-5 overflow-x-auto rounded-xl border border-pmri-border">
           <table className="w-full min-w-[760px] border-collapse text-left text-sm">
@@ -310,24 +612,16 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                 const tickerMissing = ticker.length === 0;
                 const instrumentMissing = !isKnownInstrument(row);
                 const duplicateTicker = ticker.length > 0 && duplicateTickerSet.has(ticker);
-                const inputId = `instrument-${row.id}`;
 
                 return (
                   <tr key={row.id} className="bg-white/[0.015] transition hover:bg-white/[0.04]">
                     <td className="px-4 py-4 align-top">
-                      <input
-                        className={`pmri-focus w-full rounded-lg border bg-pmri-secondary px-3 py-2 font-semibold uppercase text-pmri-text placeholder:text-pmri-muted/70 ${instrumentMissing ? "border-pmri-risk/70" : duplicateTicker ? "border-pmri-amber/70" : "border-pmri-border"}`}
-                        value={row.ticker}
-                        list={inputId}
-                        placeholder="Search ticker or name"
-                        onChange={(event) => updateTicker(row.id, event.target.value)}
-                        aria-invalid={instrumentMissing}
+                      <InstrumentCombobox
+                        row={row}
+                        duplicateTicker={duplicateTicker}
+                        onSelect={(instrument) => updateInstrument(row.id, instrument)}
+                        onClearSelection={() => updateInstrument(row.id, null)}
                       />
-                      <datalist id={inputId}>
-                        {instrumentUniverse.map((item) => (
-                          <option key={item.ticker} value={item.ticker}>{item.instrument}</option>
-                        ))}
-                      </datalist>
                       {instrumentMissing ? (
                         <p className="mt-2 text-xs leading-5 text-pmri-risk">
                           {tickerMissing ? "Select a ticker or cash position." : "Select an instrument from the list."}
@@ -339,23 +633,21 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                     </td>
                     <td className="px-4 py-4 align-top">
                       <div className="rounded-lg border border-pmri-border bg-white/[0.025] px-3 py-2 text-pmri-text2">
-                        {row.instrument || "Choose an instrument from the list"}
+                        {displayInstrument(row) || "Choose an instrument from the list"}
                       </div>
                     </td>
                     <td className="px-4 py-4 text-right align-top">
                       <input
-                        className="pmri-focus data-figure ml-auto w-28 rounded-lg border border-pmri-border bg-pmri-secondary px-3 py-2 text-right font-semibold text-pmri-text"
-                        type="number"
+                        className="pmri-focus data-figure ml-auto w-28 rounded-lg border border-pmri-border bg-pmri-secondary px-3 py-2 text-right font-semibold text-pmri-text placeholder:text-pmri-muted/70"
+                        type="text"
                         inputMode="decimal"
-                        min="0.01"
-                        max="100"
-                        step="0.1"
+                        placeholder="0"
                         value={row.weightInput}
                         onChange={(event) => updateWeight(row.id, event.target.value)}
                         aria-invalid={!isValidWeight(row)}
                       />
                       {!isValidWeight(row) ? (
-                        <p className="mt-2 text-xs leading-5 text-pmri-risk">Enter a valid weight greater than 0.</p>
+                        <p className="mt-2 text-xs leading-5 text-pmri-risk">Enter a weight greater than 0.</p>
                       ) : null}
                     </td>
                     <td className="px-4 py-4 text-right align-top">
@@ -385,49 +677,44 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
           <section className="rounded-2xl border border-pmri-border bg-white/[0.025] p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-pmri-text">Before diagnosis</h3>
-                <p className="mt-1 text-sm leading-6 text-pmri-muted">{validation.allocationStatus.message}</p>
+                <h3 className="text-lg font-semibold text-pmri-text">{validationSummary.title}</h3>
+                <p className="mt-1 text-sm leading-6 text-pmri-muted">{validationSummary.text}</p>
               </div>
               <div className="flex items-center gap-3">
-                <StatusBadge tone={validation.ready ? "green" : "amber"}>
-                  {validation.allocationStatus.title}
-                </StatusBadge>
-                <span className={`data-figure text-xl font-semibold ${validation.weightsAddTo100 ? "text-pmri-positive" : "text-pmri-amber"}`}>
-                  {formatWeight(totalWeight)}%
+                <StatusBadge tone={validationSummary.tone}>{validationSummary.title}</StatusBadge>
+                <span className={`data-figure text-xl font-semibold ${weightsAddTo100 ? "text-pmri-positive" : totalWeight > 100 ? "text-pmri-risk" : "text-pmri-amber"}`}>
+                  {formatTotalWeight(totalWeight)}%
                 </span>
               </div>
             </div>
-
-            {!validation.ready && validation.blockingReasons.length > 0 ? (
-              <ul className="mt-4 list-disc space-y-1 pl-5 text-sm leading-6 text-pmri-text2">
-                {validation.blockingReasons.map((reason) => (
-                  <li key={reason}>{reason}</li>
-                ))}
-              </ul>
-            ) : null}
-
-            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-              {checklist.map((item) => (
-                <li key={item.label} className="flex items-center gap-3 text-sm text-pmri-text2">
-                  <span className={`flex h-6 w-6 items-center justify-center rounded-full border text-xs font-bold ${item.passed ? "border-pmri-positive/40 bg-pmri-positive/10 text-pmri-positive" : "border-pmri-amber/40 bg-pmri-amber/10 text-pmri-amber"}`}>
-                    {item.passed ? "✓" : "•"}
-                  </span>
-                  {item.label}
-                </li>
-              ))}
-            </ul>
           </section>
 
           <div className="lg:max-w-xs">
             <button
               type="button"
-              disabled={!validation.ready}
-              className="pmri-focus w-full rounded-full border border-pmri-blue/50 bg-pmri-blue px-6 py-3 text-sm font-semibold text-white shadow-decision transition hover:bg-pmri-blueSoft disabled:cursor-not-allowed disabled:border-pmri-border disabled:bg-white/[0.05] disabled:text-pmri-muted disabled:shadow-none"
+              disabled={!ready || isRunningDiagnosis}
+              onClick={runPortfolioDiagnosis}
+              className="pmri-focus pmri-primary-action flex w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold shadow-decision transition disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-pmri-muted disabled:shadow-none"
             >
-              Run portfolio diagnosis
+              {isRunningDiagnosis ? (
+                <>
+                  <span className="pmri-spinner" aria-hidden="true" />
+                  Building evidence pack...
+                </>
+              ) : "Run portfolio diagnosis"}
             </button>
+            {diagnosisError ? (
+              <p className="mt-3 rounded-xl border border-pmri-risk/35 bg-pmri-risk/10 px-4 py-3 text-sm leading-6 text-pmri-risk">
+                {diagnosisError}
+              </p>
+            ) : null}
+            {isRunningDiagnosis ? (
+              <p className="mt-3 rounded-xl border border-pmri-blue/25 bg-pmri-blue/10 px-4 py-3 text-xs leading-5 text-pmri-blueSoft">
+                Preparing X-Ray, Stress, Problem Classification, and Launchpad evidence. No candidate or trade action is created here.
+              </p>
+            ) : null}
             <p className="mt-3 text-sm leading-6 text-pmri-muted">
-              Next: Portfolio X-Ray will analyze allocation, concentration, factor exposure, risk contribution, and stress vulnerabilities.
+              Next: Portfolio X-Ray will review allocation, concentration, and stress vulnerabilities.
             </p>
           </div>
         </div>
@@ -435,3 +722,4 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
     </section>
   );
 }
+

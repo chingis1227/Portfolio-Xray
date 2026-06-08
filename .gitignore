@@ -10,6 +10,7 @@ env/
 
 # Cache
 cache/
+runs/
 pdf_latex/pandoc_doc_meta.tex
 .pytest_tmp*/
 tmp/
@@ -51,6 +52,9 @@ Thumbs.db
 # Generated results (weights, snapshots, CSV)
 output/
 results_csv/
+builder_runtime_timing.json
+candidate_manifest.json
+candidate_weights_build.json
 результаты/
 ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ/
 Main portfolio/
