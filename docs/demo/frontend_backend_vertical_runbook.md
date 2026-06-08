@@ -34,9 +34,10 @@ The product boundary is strict:
 ## What the demo proves
 
 The demo proves that a user can enter a portfolio in the frontend, run the real Python
-diagnostics bridge, select one Launchpad hypothesis, generate exactly one candidate,
-compare the current portfolio with that candidate, request a Decision Verdict, and read a
-client-ready explanation grounded in the produced backend artifacts.
+diagnostics bridge, select one Launchpad hypothesis, prepare a matching run-local Builder
+setup for that exact card, generate exactly one diagnostic candidate, compare the current
+portfolio with that candidate, request a Decision Verdict, and read a client-ready
+explanation grounded in the produced backend artifacts.
 
 The demo does not prove that the product is a trading system, a multi-candidate optimizer
 arena, a polished PDF product, or a personal recommendation engine.
@@ -130,19 +131,30 @@ Then demo the flow:
 1. On Portfolio Input, enter investor currency `USD` and the holdings above.
 2. Run diagnosis. The frontend calls `POST /api/portfolio/diagnose`.
 3. On Diagnosis / Evidence, explain the current portfolio first. Do not discuss candidates yet.
-4. On Hypothesis, select one Launchpad card. Generate Builder setup first.
-5. Click Generate Candidate only after Builder setup is ready. The frontend calls
-   `POST /api/portfolio/candidate/generate`.
-6. Move to Comparison and generate Current vs Candidate evidence. The frontend calls
+4. On Hypothesis, select one backend Candidate Launchpad card. The right-hand Builder
+   panel shows the selected hypothesis and says setup has not been prepared yet.
+5. Click **Prepare Builder setup**. The frontend calls
+   `POST /api/portfolio/builder/prepare` with the active `review_id` and
+   `selected_card_id`. This writes `builder_setup_result.json` in the same
+   `runs/frontend_review_*` directory and stores only the compact active Builder summary
+   in browser state.
+6. Confirm the panel now says **Builder setup prepared** and shows backend Builder fields
+   such as Builder goal, suggested method, validation status, and whether candidate
+   generation is allowed. If you select a different Launchpad card, prepare Builder setup
+   again for that exact card before generating.
+7. Click **Generate one diagnostic candidate** only after Builder setup is prepared for the
+   selected card. The frontend calls `POST /api/portfolio/candidate/generate`.
+8. Move to Comparison and generate Current vs Candidate evidence. The frontend calls
    `POST /api/portfolio/comparison/generate`.
-7. Move to Verdict and generate the non-binding Decision Verdict. The frontend calls
+9. Move to Verdict and generate the non-binding Decision Verdict. The frontend calls
    `POST /api/portfolio/verdict/generate`.
-8. Move to Report and generate grounded commentary. The frontend calls
-   `POST /api/portfolio/report/generate`.
+10. Move to Report and generate grounded commentary. The frontend calls
+    `POST /api/portfolio/report/generate`.
 
 Safe narration:
 
 - "The system diagnosed the current portfolio first."
+- "The selected Launchpad card first becomes a Builder setup; only then can the UI generate one diagnostic candidate."
 - "This candidate is one tested hypothesis selected from the Launchpad."
 - "The comparison shows trade-offs, including what improved and what worsened."
 - "The verdict can say no-trade or evidence-insufficient; it is not forced to recommend action."
@@ -151,7 +163,8 @@ Safe narration:
 ## Backend bridge commands for operators
 
 The UI normally runs these steps through API routes. Operators can inspect or replay a stage from
-PowerShell when debugging a specific `reviewId`.
+PowerShell when debugging a specific `reviewId`. The frontend API sequence for a live run is
+`/diagnose -> /builder/prepare -> /candidate/generate -> /comparison/generate -> /verdict/generate -> /report/generate`.
 
 Diagnosis from a frontend payload:
 
@@ -183,7 +196,9 @@ Do not use these as proof of the active frontend demo:
 - Candidate folders such as `minimum cvar constrained portfolio/`; candidate factory side effects
   can exist from previous QA runs.
 - Browser raw `pmri.reviewResult.*` keys from older sessions; current hydration cleans them and
-  uses compact `pmri.activeReview.v2` state plus `reviewId`.
+  uses compact `pmri.activeReview.v2` state plus `reviewId`. The active Builder setup summary is
+  compact state only and must match the currently selected Launchpad card before candidate
+  generation is enabled.
 - PDFs under `pdf files/`; the frontend vertical flow is JSON/API-first and does not refresh PDFs.
 
 Trust the active `runs/frontend_review_*` directory and the compact frontend state for the current
@@ -196,6 +211,8 @@ Run these checks before presenting the completed vertical flow:
 
 ```powershell
 cd frontend
+npm.cmd run test:api
+npm.cmd run test:smoke
 npm.cmd run typecheck
 npm.cmd run build
 ```
@@ -206,6 +223,8 @@ Then from the repository root:
 .\.venv\Scripts\python.exe -m pytest tests\test_frontend_review_bridge.py -q --basetemp='tmp\pytest_frontend_bridge_session15'
 ```
 
-Passing verification means the frontend compiles/builds and the Python bridge contract tests pass.
-It does not replace a live browser click-through, which should be performed separately when the demo
-environment is available.
+Passing verification means the frontend compiles/builds and the Python bridge contract tests pass,
+including the selected-card Builder prepare lineage guard. `npm.cmd run test:smoke` starts a local
+Next dev server on an isolated port and checks that the journey pages render; it does not run the
+Python backend stages or replace a live browser click-through, which should be performed separately
+when the demo environment is available.

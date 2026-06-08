@@ -6,6 +6,33 @@ It records what was added, changed, removed, fixed, or deprecated at a project l
 
 Date: 2026-06-08
 
+Category: Added
+
+- **Frontend local journey smoke:** added `npm.cmd run test:smoke`, a dependency-free local Next.js
+  smoke check that starts the frontend on an isolated port and verifies the main journey pages
+  render without running backend candidate factories or mutating root config.
+
+- **Frontend review recovery by review ID:** added read-only `GET|POST /api/portfolio/review/recover`
+  and a Portfolio Input recovery control so operators can reload a completed `frontend_review_*`
+  run from run-local `review_result.json` without permanently storing raw backend JSON in
+  localStorage. Recovery restores diagnosis/evidence/Launchpad/Builder setup only; candidate,
+  comparison, verdict, and report artifacts remain inactive until explicitly regenerated.
+
+- **Frontend Builder prepare API route tests:** added direct Node route-handler tests for
+  `POST /api/portfolio/builder/prepare`, covering invalid JSON, validation failures, backend
+  failure/missing-result behavior, successful pass-through, and client-safe traceback/path
+  scrubbing without running live candidate factories.
+
+Category: Changed
+
+- **Frontend API Python bridge resolution:** centralized Python executable selection for the
+  Python-backed portfolio API routes. The frontend now prefers repo `.venv\Scripts\python.exe`
+  when present and falls back only if the project virtualenv executable is missing.
+
+- **Frontend Builder prepare runbook sync:** updated the frontend/backend vertical demo runbook,
+  frontend README, and demo index for the implemented `POST /api/portfolio/builder/prepare`
+  flow. Operators now have the documented UI path: select Launchpad card -> prepare matching
+  Builder setup -> generate one diagnostic candidate -> compare -> verdict -> grounded report.
 
 Category: Added
 

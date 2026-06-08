@@ -2,6 +2,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { resolvePythonExecutable } from "@/lib/server/pythonBridge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,7 +65,7 @@ function validateRequest(body: CandidateRequest) {
 
 function runBridge(reviewId: string, selectedCardId: string, root: string) {
   return new Promise<{ code: number | null; stdout: string; stderr: string; timedOut: boolean }>((resolve, reject) => {
-    const pythonPath = path.join(root, ".venv", "Scripts", "python.exe");
+    const pythonPath = resolvePythonExecutable(root);
     const scriptPath = path.join(root, "scripts", "run_review_from_payload.py");
     const child = spawn(
       pythonPath,

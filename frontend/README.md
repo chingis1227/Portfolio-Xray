@@ -6,9 +6,11 @@ Clean Next.js/React prototype for Portfolio MRI as an institutional Investment D
 
 - No Python analytics engine changes.
 - No backend logic changes.
-- Live API routes are available for diagnosis, candidate generation, comparison, verdict, and
-  grounded report commentary:
+- Live API routes are available for diagnosis, Builder setup prepare, candidate generation,
+  comparison, verdict, grounded report commentary, and read-only review recovery:
   - `POST /api/portfolio/diagnose`
+  - `GET|POST /api/portfolio/review/recover`
+  - `POST /api/portfolio/builder/prepare`
   - `POST /api/portfolio/candidate/generate`
   - `POST /api/portfolio/comparison/generate`
   - `POST /api/portfolio/verdict/generate`
@@ -23,7 +25,8 @@ Clean Next.js/React prototype for Portfolio MRI as an institutional Investment D
 
 - `app/` contains seven route screens plus root redirect.
 - `app/api/portfolio/*` routes write/consume run-local frontend review artifacts through
-  `scripts/run_review_from_payload.py`; they do not modify root `config.yml`.
+  `scripts/run_review_from_payload.py`; they do not modify root `config.yml`. The Builder prepare
+  route calls the bridge `--prepare-builder` action before candidate generation.
 - `components/layout/` contains the application shell, sidebar, top journey progress, and page header.
 - `components/ui/` contains reusable card, metric, badge, and hero primitives.
 - `components/portfolio/`, `diagnosis/`, `evidence/`, `hypothesis/`, `comparison/`, `verdict/`, and `report/` contain product-stage components.
@@ -43,10 +46,14 @@ Clean Next.js/React prototype for Portfolio MRI as an institutional Investment D
 
 ## Review state and storage
 
-- The real flow is Portfolio Input -> Diagnosis -> Evidence -> Hypothesis / Builder ->
+- The real flow is Portfolio Input -> Diagnosis -> Evidence -> Hypothesis / Builder prepare ->
   Candidate Generation -> Current vs Candidate -> Decision Verdict -> Report / AI Commentary.
-- The UI stores compact state in `pmri.activeReview.v2`: `reviewId`, portfolio input, diagnosis/evidence/launchpad/builder summaries, selected card/candidate, and stage summaries.
+- The UI stores compact state in `pmri.activeReview.v2`: `reviewId`, portfolio input, diagnosis/evidence/launchpad/builder summaries, selected card/candidate, and stage summaries. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card and says generation is allowed.
 - The complete `review_result.json` is not persisted in browser storage. During the current tab session it may remain in memory for immediate rendering; after hydration the UI relies on compact summaries and `reviewId`.
+- Portfolio Input includes a read-only recovery control for `frontend_review_*` IDs. It calls
+  `/api/portfolio/review/recover`, reads only run-local diagnosis/launchpad/builder artifacts, and
+  restores candidate/comparison/verdict/report readiness as false so stale downstream artifacts are
+  not silently trusted as active state.
 - Legacy raw keys matching `pmri.reviewResult.*` are removed on hydration/write. Future raw access should go through backend artifacts addressed by `reviewId`, not permanent localStorage copies.
 - Real backend failures are persisted as `runStatus: "failed"` with a visible error state; static demo data remains clearly separate from `runMode: "real_run"`.
 
@@ -54,7 +61,8 @@ Clean Next.js/React prototype for Portfolio MRI as an institutional Investment D
 
 - Every real frontend diagnosis creates `runs/frontend_review_<timestamp>_<id>/`.
 - Later stages must use the same `reviewId`; lineage guards reject mismatched Builder, candidate,
-  comparison, verdict, or report artifacts.
+  comparison, verdict, or report artifacts. Selecting another Launchpad card clears downstream
+  candidate/comparison/verdict/report readiness until Builder setup is prepared for that card.
 - Trust the active `runs/frontend_review_*` folder for a live demo. Do not use root
   `run_result.json`, root `portfolio_weights.yml`, `Main portfolio/` root verdict/comparison files,
   candidate portfolio folders, or PDFs as proof of the active frontend review.
@@ -73,6 +81,8 @@ Open `http://localhost:3000`.
 Optional checks:
 
 ```bash
+npm run test:api
+npm run test:smoke
 npm run typecheck
 npm run build
 ```
@@ -84,7 +94,7 @@ Use [../docs/demo/frontend_backend_vertical_runbook.md](../docs/demo/frontend_ba
 
 - commands for Python bridge tests and frontend typecheck/build;
 - how to start the Next.js frontend;
-- the manual Input -> Diagnosis -> Evidence -> Hypothesis -> Candidate -> Comparison -> Verdict -> Report click path;
+- the manual Input -> Diagnosis -> Evidence -> Hypothesis -> Builder prepare -> Candidate -> Comparison -> Verdict -> Report click path;
 - run directory strategy under `runs/frontend_review_*`;
 - stale artifact risks and recovery;
 - product language boundaries: candidate is a diagnostic test, Builder setup is not a rebalance instruction, and Verdict/Report are decision-support only.
@@ -93,6 +103,8 @@ Quick verification from a fresh terminal:
 
 ```powershell
 cd frontend
+npm.cmd run test:api
+npm.cmd run test:smoke
 npm.cmd run typecheck
 npm.cmd run build
 cd ..

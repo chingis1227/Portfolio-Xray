@@ -48,7 +48,7 @@ A candidate is a portfolio hypothesis to test, not a recommendation. A verdict i
 
 ## Plan of Work
 
-Create `frontend/package.json`, Next.js configuration, TypeScript configuration, Tailwind configuration, and global styles. Add local JSON files for the seven screens. Add typed data helpers in `frontend/lib/`. Add layout components for the sidebar, top journey progress, and page header. Add requested reusable content components. Add one route per screen. Add `frontend/README.md` documenting architecture, data usage, Stitch usage boundary, and run commands.
+Create `frontend/package.json`, Next.js configuration, TypeScript configuration, Tailwind configuration, and global styles. Add local JSON files for the seven screens. Add typed data helpers in `frontend/lib/`. Add layout components for the sidebar, top journey progress, and page header. Add requested reusable content components. Add one route per screen. Add `../../frontend/README.md` documenting architecture, data usage, Stitch usage boundary, and run commands.
 
 ## Concrete Steps
 

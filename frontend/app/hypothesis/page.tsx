@@ -169,16 +169,22 @@ function BuilderSetupPanel({
   builderDocument,
   reviewId,
   candidateGeneration,
+  isPreparing,
   isGenerating,
+  prepareError,
   generationError,
+  onPrepare,
   onGenerate
 }: {
   selectedCard?: JsonRecord;
   builderDocument?: JsonRecord;
   reviewId?: string;
   candidateGeneration?: CandidateGenerationSummary;
+  isPreparing: boolean;
   isGenerating: boolean;
+  prepareError?: string;
   generationError?: string;
+  onPrepare: () => void;
   onGenerate: () => void;
 }) {
   if (!selectedCard) {
@@ -199,6 +205,7 @@ function BuilderSetupPanel({
   const candidateSetup = builderMatches && isRecord(builderDocument?.candidate_setup) ? builderDocument.candidate_setup : undefined;
   const generatesPortfolio = booleanValue(selectedCard.generates_portfolio, false);
   const isRebalanceRecommendation = booleanValue(selectedCard.is_rebalance_recommendation, false);
+  const canPrepareBuilder = Boolean(reviewId && selectedCardId);
   const canGenerateCandidate = builderMatches
     && reviewId
     && booleanValue(builderDocument?.can_generate_candidate, booleanValue(candidateSetup?.can_generate_candidate, false));
@@ -252,27 +259,48 @@ function BuilderSetupPanel({
         </div>
       ) : (
         <p className="mt-6 rounded-xl border border-pmri-amber/35 bg-pmri-amber/10 p-3 text-sm leading-6 text-pmri-amber">
-          Builder preview derived from Launchpad card. Backend candidate setup will be created before generation.
+          Builder setup has not been prepared for this selected card yet. Prepare it first; setup is still not a portfolio and not a recommendation.
         </p>
       )}
 
-      <div className="mt-6">
+      <div className="mt-6 space-y-3">
         <button
           type="button"
-          disabled={!canGenerateCandidate || isGenerating}
+          disabled={!canPrepareBuilder || builderMatches || isPreparing || isGenerating}
+          onClick={onPrepare}
+          className={`w-full rounded-full border px-5 py-3 text-sm font-semibold transition ${
+            canPrepareBuilder && !builderMatches && !isPreparing && !isGenerating
+              ? "pmri-focus border-pmri-gold/50 bg-pmri-gold text-pmri-bg shadow-decision hover:bg-pmri-gold/90"
+              : "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
+          }`}
+        >
+          {isPreparing ? "Preparing Builder setup..." : builderMatches ? "Builder setup prepared" : "Prepare Builder setup"}
+        </button>
+        <p className="text-xs leading-5 text-pmri-muted">
+          This only prepares a run-local Builder setup for the selected hypothesis. It does not create a portfolio, recommendation, comparison, or verdict.
+        </p>
+        {prepareError ? (
+          <p className="rounded-xl border border-pmri-red/35 bg-pmri-red/10 p-3 text-xs leading-5 text-pmri-red">
+            {prepareError}
+          </p>
+        ) : null}
+
+        <button
+          type="button"
+          disabled={!canGenerateCandidate || isGenerating || isPreparing}
           onClick={onGenerate}
           className={`w-full rounded-full border px-5 py-3 text-sm font-semibold transition ${
-            canGenerateCandidate && !isGenerating
+            canGenerateCandidate && !isGenerating && !isPreparing
               ? "pmri-focus border-pmri-blue/50 bg-pmri-blue text-white shadow-decision hover:bg-pmri-blueSoft"
               : "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
           }`}
         >
-          {isGenerating ? "Generating candidate..." : "Generate candidate"}
+          {isGenerating ? "Generating candidate..." : "Generate one diagnostic candidate"}
         </button>
         <p className="mt-3 text-xs leading-5 text-pmri-muted">
           {canGenerateCandidate
             ? "This creates one diagnostic candidate only. It will not compare portfolios or create a verdict."
-            : "Generation is enabled only when the backend Builder setup matches this card and says it can generate a candidate."}
+            : "Generation is enabled only after Builder setup is prepared for this exact selected card and says it can generate a candidate."}
         </p>
         {generationError ? (
           <p className="mt-3 rounded-xl border border-pmri-red/35 bg-pmri-red/10 p-3 text-xs leading-5 text-pmri-red">
@@ -313,10 +341,12 @@ function BuilderSetupPanel({
 }
 
 export default function HypothesisPage() {
-  const { activeReview, hydrated, recordCandidateGeneration } = useReviewState();
+  const { activeReview, hydrated, recordBuilderSetup, recordCandidateGeneration } = useReviewState();
   const [sampleMode, setSampleMode] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [isPreparingBuilder, setIsPreparingBuilder] = useState(false);
   const [isGeneratingCandidate, setIsGeneratingCandidate] = useState(false);
+  const [prepareError, setPrepareError] = useState<string | undefined>();
   const [generationError, setGenerationError] = useState<string | undefined>();
 
   useEffect(() => {
@@ -331,8 +361,8 @@ export default function HypothesisPage() {
       ? { cards: compactLaunchpadCards }
       : undefined;
   const builderOutput = activeReview?.reviewResult?.outputs?.portfolio_alternatives_builder;
-  const compactBuilderOutput = activeReview?.reviewSummary?.builderSetup;
-  const builderRecord = isRecord(builderOutput) ? builderOutput : isRecord(compactBuilderOutput) ? compactBuilderOutput : undefined;
+  const compactBuilderOutput = activeReview?.builderSetup ?? activeReview?.reviewSummary?.builderSetup;
+  const builderRecord = isRecord(compactBuilderOutput) ? compactBuilderOutput : isRecord(builderOutput) ? builderOutput : undefined;
   const rawLaunchpadCards = useMemo(() => getArray(launchpadRecord?.cards).filter(isRecord), [launchpadRecord]);
   const realCards = useMemo(() => rawLaunchpadCards.map(launchpadCardToHypothesis), [rawLaunchpadCards]);
   const completedRealReview = activeReview?.runMode === "real_run" && activeReview.runStatus === "completed";
@@ -347,8 +377,38 @@ export default function HypothesisPage() {
   const reviewId = activeReview?.reviewId ?? activeReview?.reviewSummary?.reviewId ?? activeReview?.reviewResult?.review_id;
 
   useEffect(() => {
+    setPrepareError(undefined);
     setGenerationError(undefined);
   }, [selectedCardId, reviewId]);
+
+
+  async function handlePrepareBuilder() {
+    if (!reviewId || !selectedCardId) return;
+    setIsPreparingBuilder(true);
+    setPrepareError(undefined);
+    setGenerationError(undefined);
+
+    try {
+      const response = await fetch("/api/portfolio/builder/prepare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          review_id: reviewId,
+          selected_card_id: selectedCardId
+        })
+      });
+      const result = await response.json() as unknown;
+      if (!response.ok || !isRecord(result) || result.status !== "completed") {
+        setPrepareError(errorTextFromResponse(result));
+        return;
+      }
+      recordBuilderSetup(result);
+    } catch {
+      setPrepareError("Builder setup prepare failed. No candidate, comparison, or verdict was created.");
+    } finally {
+      setIsPreparingBuilder(false);
+    }
+  }
 
   async function handleGenerateCandidate() {
     if (!reviewId || !selectedCardId) return;
@@ -471,8 +531,11 @@ export default function HypothesisPage() {
           builderDocument={builderRecord}
           reviewId={reviewId}
           candidateGeneration={activeReview?.candidateGeneration}
+          isPreparing={isPreparingBuilder}
           isGenerating={isGeneratingCandidate}
+          prepareError={prepareError}
           generationError={generationError}
+          onPrepare={handlePrepareBuilder}
           onGenerate={handleGenerateCandidate}
         />
       </div>

@@ -151,6 +151,58 @@ function reviewHoldingToPayload(holding: ReviewHolding) {
   };
 }
 
+function recoveredHoldingToReviewHolding(value: unknown, index: number): ReviewHolding | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const weight = typeof row.weight === "number" && Number.isFinite(row.weight) ? row.weight : Number.NaN;
+  if (!(weight > 0)) return null;
+
+  if (row.type === "cash") {
+    const currency = typeof row.currency === "string" && row.currency.trim() ? row.currency.trim().toUpperCase() : "USD";
+    const ticker = getCashTicker(currency);
+    const instrument = instrumentByTicker.get(ticker);
+    return {
+      id: `${ticker}-${index}`,
+      label: "Cash",
+      ticker,
+      instrument: instrument?.instrument ?? `${currency} liquidity position`,
+      weight,
+      type: "cash",
+      currency
+    };
+  }
+
+  const ticker = typeof row.ticker === "string" ? normalizeTicker(row.ticker) : "";
+  if (!ticker) return null;
+  const instrument = instrumentByTicker.get(ticker);
+
+  return {
+    id: `${ticker}-${index}`,
+    label: ticker,
+    ticker,
+    instrument: instrument?.instrument ?? ticker,
+    weight,
+    type: "instrument"
+  };
+}
+
+function holdingsFromRecoveredReview(result: ReviewResult): ReviewHolding[] {
+  const portfolioInput = result.portfolio_input;
+  if (!portfolioInput || typeof portfolioInput !== "object" || Array.isArray(portfolioInput)) return [];
+  const holdings = (portfolioInput as Record<string, unknown>).holdings;
+  if (!Array.isArray(holdings)) return [];
+  return holdings
+    .map(recoveredHoldingToReviewHolding)
+    .filter((holding): holding is ReviewHolding => Boolean(holding));
+}
+
+function currencyFromRecoveredReview(result: ReviewResult) {
+  const portfolioInput = result.portfolio_input;
+  if (!portfolioInput || typeof portfolioInput !== "object" || Array.isArray(portfolioInput)) return "USD";
+  const currency = (portfolioInput as Record<string, unknown>).investor_currency;
+  return typeof currency === "string" && currency.trim() ? currency.trim().toUpperCase() : "USD";
+}
+
 function getCashTicker(currency: string) {
   const ticker = `CASH_${currency || "USD"}`;
   return instrumentByTicker.has(ticker) ? ticker : "CASH_USD";
@@ -351,6 +403,9 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
   const [rows, setRows] = useState<EditableHolding[]>(() => holdings.map(toEditableHolding));
   const [isRunningDiagnosis, setIsRunningDiagnosis] = useState(false);
   const [diagnosisError, setDiagnosisError] = useState<string | null>(null);
+  const [recoverReviewId, setRecoverReviewId] = useState("");
+  const [isRecoveringReview, setIsRecoveringReview] = useState(false);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const inputInitialized = useRef(false);
   const inputEdited = useRef(false);
 
@@ -541,7 +596,56 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
     }
   };
 
+  const recoverActiveReview = async () => {
+    const reviewId = recoverReviewId.trim();
+    if (!reviewId || isRecoveringReview) return;
+
+    setRecoveryError(null);
+    setIsRecoveringReview(true);
+
+    try {
+      const response = await fetch("/api/portfolio/review/recover", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ review_id: reviewId })
+      });
+      const result = await response.json() as { review_result?: ReviewResult; error?: string; details?: unknown };
+
+      if (!response.ok || result.review_result?.status !== "completed") {
+        const detailText = Array.isArray(result.details)
+          ? result.details.filter((item) => typeof item === "string").join(" ")
+          : typeof result.details === "string"
+            ? result.details
+            : "";
+        throw new Error([result.error || "Review recovery failed.", detailText].filter(Boolean).join(" "));
+      }
+
+      const recoveredHoldings = holdingsFromRecoveredReview(result.review_result);
+      if (!recoveredHoldings.length) {
+        throw new Error("Review recovery found the run, but portfolio_input.holdings could not be restored.");
+      }
+
+      const recoveredCurrency = currencyFromRecoveredReview(result.review_result);
+      inputEdited.current = false;
+      setCurrency(recoveredCurrency);
+      setRows(recoveredHoldings.map(reviewHoldingToEditable));
+      submitPortfolioInput({
+        investorCurrency: recoveredCurrency,
+        holdings: recoveredHoldings,
+        reviewResult: result.review_result
+      });
+      router.push("/diagnosis");
+    } catch (error) {
+      setRecoveryError(error instanceof Error ? error.message : "Review recovery failed.");
+    } finally {
+      setIsRecoveringReview(false);
+    }
+  };
+
   return (
+    <div className="space-y-5">
     <section className="pmri-card overflow-hidden rounded-2xl">
       <div className="border-b border-pmri-border/80 p-5 md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -720,6 +824,51 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         </div>
       </div>
     </section>
+    <section className="pmri-card rounded-2xl p-5 md:p-6">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-pmri-gold">Recover run-local review</p>
+          <h2 className="mt-2 text-lg font-semibold text-pmri-text">Reload an existing frontend review by ID</h2>
+          <p className="mt-2 text-sm leading-6 text-pmri-muted">
+            Use this after a page refresh or browser restart. Recovery reads only the run-local diagnosis artifacts for that review ID.
+            Candidate, comparison, verdict, and report artifacts are not restored as active state; those steps must be triggered again.
+          </p>
+          <p className="mt-2 text-xs leading-5 text-pmri-muted">
+            Browser storage still keeps only compact summary state, not the full raw backend JSON.
+          </p>
+        </div>
+        <div>
+          <label>
+            <span className="block text-xs font-medium text-pmri-muted">Review ID</span>
+            <input
+              className="pmri-focus mt-2 w-full rounded-lg border border-pmri-border bg-pmri-secondary px-3 py-2 text-sm font-semibold text-pmri-text placeholder:text-pmri-muted/70"
+              value={recoverReviewId}
+              placeholder="frontend_review_..."
+              onChange={(event) => setRecoverReviewId(event.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            disabled={!recoverReviewId.trim() || isRecoveringReview}
+            onClick={recoverActiveReview}
+            className="pmri-focus mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-3 text-sm font-semibold text-white shadow-decision transition hover:bg-pmri-blueSoft disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-pmri-muted disabled:shadow-none"
+          >
+            {isRecoveringReview ? (
+              <>
+                <span className="pmri-spinner" aria-hidden="true" />
+                Recovering review...
+              </>
+            ) : "Recover active review"}
+          </button>
+          {recoveryError ? (
+            <p className="mt-3 rounded-xl border border-pmri-risk/35 bg-pmri-risk/10 px-4 py-3 text-sm leading-6 text-pmri-risk">
+              {recoveryError}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </section>
+    </div>
   );
 }
 

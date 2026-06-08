@@ -8,7 +8,9 @@
                     "build":  "next build",
                     "start":  "next start",
                     "lint":  "next lint",
-                    "typecheck":  "tsc --noEmit"
+                    "typecheck":  "tsc --noEmit",
+                    "test:api":  "node --test tests/api-route-tests.cjs",
+                    "test:smoke":  "node --test tests/frontend-smoke-tests.cjs"
                 },
     "dependencies":  {
                          "next":  "^14.2.4",

@@ -550,6 +550,63 @@ def test_generate_selected_candidate_rejects_mismatched_builder_lineage(tmp_path
         )
 
 
+def test_mismatched_builder_blocks_generation_until_prepare_rebuilds_selected_card(
+    tmp_path: Path,
+) -> None:
+    review_id, run_dir = _review_dir_with_launchpad(
+        tmp_path,
+        {
+            "schema_version": "candidate_launchpad_v3",
+            "cards": [
+                _launchpad_card("card_a", methods=[_method("minimum_variance")]),
+                _launchpad_card("card_b", methods=[_method("risk_parity")]),
+            ],
+        },
+    )
+    (run_dir / "input.yml").write_text("output_dir_final: ignored\n", encoding="utf-8")
+    bridge.prepare_selected_builder_setup(
+        review_id=review_id,
+        selected_card_id="card_a",
+        base_dir=tmp_path,
+    )
+
+    with pytest.raises(bridge.BuilderSelectionError, match="does not match"):
+        bridge.generate_selected_candidate(
+            review_id=review_id,
+            selected_card_id="card_b",
+            base_dir=tmp_path,
+            generator=lambda **kwargs: _candidate_generation_document(card_id="card_b", candidate_id="risk_parity"),
+        )
+
+    prepare_result = bridge.prepare_selected_builder_setup(
+        review_id=review_id,
+        selected_card_id="card_b",
+        base_dir=tmp_path,
+    )
+    assert prepare_result["status"] == "completed"
+    assert prepare_result["selected_card_id"] == "card_b"
+
+    def fake_generator(**kwargs):
+        document = _candidate_generation_document(card_id="card_b", candidate_id="risk_parity")
+        kwargs["output_path"].write_text(json.dumps(document), encoding="utf-8")
+        _write_json(
+            run_dir / "candidate_factory_run.json",
+            {"steps": [{"candidate_id": "risk_parity", "status": "succeeded"}]},
+        )
+        return document
+
+    generation_result = bridge.generate_selected_candidate(
+        review_id=review_id,
+        selected_card_id="card_b",
+        base_dir=tmp_path,
+        generator=fake_generator,
+    )
+
+    assert generation_result["status"] == "completed"
+    assert generation_result["candidate_id"] == "risk_parity"
+    assert generation_result["can_compare"] is True
+
+
 def test_generate_selected_candidate_rejects_mismatched_candidate_generation_lineage(
     tmp_path: Path,
 ) -> None:

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { resolvePythonExecutable } from "@/lib/server/pythonBridge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -137,7 +138,7 @@ function scrubForClient(value: string, root: string) {
 
 function runBridge(payloadPath: string, root: string) {
   return new Promise<{ code: number | null; stdout: string; stderr: string; timedOut: boolean }>((resolve, reject) => {
-    const pythonPath = path.join(root, ".venv", "Scripts", "python.exe");
+    const pythonPath = resolvePythonExecutable(root);
     const scriptPath = path.join(root, "scripts", "run_review_from_payload.py");
     const child = spawn(
       pythonPath,

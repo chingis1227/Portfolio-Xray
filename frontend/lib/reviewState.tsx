@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { ComparisonMetric, EvidenceItem, Metric, StatusTone } from "@/lib/types";
@@ -180,6 +180,7 @@ export type ActiveReviewState = {
   reviewId?: string;
   reviewResult?: ReviewResult;
   reviewSummary?: ReviewSummary;
+  builderSetup?: BuilderSetupSummary;
   candidateGeneration?: CandidateGenerationSummary;
   comparisonResult?: ComparisonResultSummary;
   verdictResult?: VerdictResultSummary;
@@ -212,6 +213,7 @@ type ReviewStateContextValue = {
   savePortfolioInput: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings">) => void;
   submitPortfolioInput: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings" | "reviewResult">) => void;
   recordReviewError: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings"> & { message: string; details?: string }) => void;
+  recordBuilderSetup: (result: unknown) => void;
   recordCandidateGeneration: (result: unknown) => void;
   recordComparisonResult: (result: unknown) => void;
   recordVerdictResult: (result: unknown) => void;
@@ -370,7 +372,13 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
   const reviewResult = cleanReviewResult(value.reviewResult);
   const reviewSummary = cleanReviewSummary(value.reviewSummary);
   const runStatus: ReviewRunStatus = value.runStatus === "failed" ? "failed" : isCompletedReviewResult(reviewResult) || reviewSummary?.status === "completed" ? "completed" : "draft";
-  const candidateGeneration = cleanCandidateGenerationSummary(value.candidateGeneration);
+  const builderSetup = compactBuilderSetup(value.builderSetup) ?? reviewSummary?.builderSetup;
+  const candidateGenerationRaw = cleanCandidateGenerationSummary(value.candidateGeneration);
+  const candidateMatchesBuilder = Boolean(
+    candidateGenerationRaw
+    && (!builderSetup || candidateGenerationRaw.selectedCardId === builderSetup.selected_card_id)
+  );
+  const candidateGeneration = candidateMatchesBuilder ? candidateGenerationRaw : undefined;
   const comparisonResult = cleanComparisonResultSummary(value.comparisonResult);
   const verdictResult = cleanVerdictResultSummary(value.verdictResult);
   const comparisonMatchesCandidate = Boolean(
@@ -406,6 +414,7 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
     reviewId: typeof value.reviewId === "string" ? value.reviewId : reviewSummary?.reviewId ?? reviewResult?.review_id,
     reviewResult,
     reviewSummary,
+    builderSetup,
     candidateGeneration,
     comparisonResult: comparisonMatchesCandidate ? comparisonResult : undefined,
     verdictResult: verdictMatchesCandidate ? verdictResult : undefined,
@@ -415,7 +424,7 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
     diagnosisReady: Boolean(value.diagnosisReady && hasCompletedReviewResult),
     evidenceReady: Boolean((value.evidenceReady ?? value.diagnosisReady) && hasCompletedReviewResult),
     improvementPathsReady: Boolean((value.improvementPathsReady ?? value.diagnosisReady) && hasCompletedReviewResult),
-    candidateReady: Boolean(value.candidateReady),
+    candidateReady: Boolean(value.candidateReady && candidateGeneration),
     comparisonReady: Boolean(value.comparisonReady && comparisonMatchesCandidate),
     verdictReady: Boolean(value.verdictReady && verdictMatchesCandidate),
     updatedAt: value.updatedAt || nowIso()
@@ -492,6 +501,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       reviewId: undefined,
       reviewResult: undefined,
       reviewSummary: undefined,
+      builderSetup: undefined,
       candidateGeneration: undefined,
       comparisonResult: undefined,
       verdictResult: undefined,
@@ -515,18 +525,21 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const failedReviewResult = reviewResult as ReviewResult | undefined;
     const reviewId = reviewResult?.review_id;
 
+    const reviewSummary = hasCompletedReviewResult
+      ? buildCompactReviewSummary({
+        investorCurrency: input.investorCurrency || "USD",
+        holdings: input.holdings,
+        reviewResult
+      })
+      : undefined;
+
     setActiveReview({
       investorCurrency: input.investorCurrency || "USD",
       holdings: input.holdings,
       reviewId,
       reviewResult,
-      reviewSummary: hasCompletedReviewResult
-        ? buildCompactReviewSummary({
-          investorCurrency: input.investorCurrency || "USD",
-          holdings: input.holdings,
-          reviewResult
-        })
-        : undefined,
+      reviewSummary,
+      builderSetup: reviewSummary?.builderSetup,
       candidateGeneration: undefined,
       comparisonResult: undefined,
       verdictResult: undefined,
@@ -555,6 +568,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       reviewId: undefined,
       reviewResult: undefined,
       reviewSummary: undefined,
+      builderSetup: undefined,
       candidateGeneration: undefined,
       comparisonResult: undefined,
       verdictResult: undefined,
@@ -574,6 +588,45 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       verdictReady: false,
       updatedAt: nowIso()
     });
+  }, []);
+
+
+  const recordBuilderSetup = useCallback((result: unknown) => {
+    const resultRecord = getRecord(result);
+    const setup = compactBuilderSetup(resultRecord.portfolio_alternatives_builder);
+    const selectedCardId = textValue(resultRecord.selected_card_id, setup?.selected_card_id ?? "");
+    const summary = setup
+      ? {
+        ...setup,
+        selected_card_id: selectedCardId || setup.selected_card_id,
+        can_generate_candidate: resultRecord.can_generate_candidate === true || setup.can_generate_candidate
+      }
+      : undefined;
+
+    if (!summary) return;
+
+    setActiveReview((current) => current ? {
+      ...current,
+      builderSetup: summary,
+      reviewSummary: current.reviewSummary ? {
+        ...current.reviewSummary,
+        builderSetup: summary
+      } : current.reviewSummary,
+      reviewResult: current.reviewResult && isRecord(current.reviewResult.outputs) ? {
+        ...current.reviewResult,
+        outputs: {
+          ...current.reviewResult.outputs,
+          portfolio_alternatives_builder: resultRecord.portfolio_alternatives_builder as JsonValue
+        }
+      } : current.reviewResult,
+      candidateGeneration: undefined,
+      comparisonResult: undefined,
+      verdictResult: undefined,
+      candidateReady: false,
+      comparisonReady: false,
+      verdictReady: false,
+      updatedAt: nowIso()
+    } : current);
   }, []);
 
   const markCandidateReady = useCallback(() => {
@@ -778,6 +831,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     savePortfolioInput,
     submitPortfolioInput,
     recordReviewError,
+    recordBuilderSetup,
     recordCandidateGeneration,
     recordComparisonResult,
     recordVerdictResult,
@@ -786,7 +840,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     markVerdictReady,
     clearActiveReview,
     journeyFlags
-  }), [activeReview, clearActiveReview, hydrated, journeyFlags, markCandidateReady, markComparisonReady, markVerdictReady, recordCandidateGeneration, recordComparisonResult, recordReviewError, recordVerdictResult, savePortfolioInput, submitPortfolioInput]);
+  }), [activeReview, clearActiveReview, hydrated, journeyFlags, markCandidateReady, markComparisonReady, markVerdictReady, recordBuilderSetup, recordCandidateGeneration, recordComparisonResult, recordReviewError, recordVerdictResult, savePortfolioInput, submitPortfolioInput]);
 
   return <ReviewStateContext.Provider value={value}>{children}</ReviewStateContext.Provider>;
 }

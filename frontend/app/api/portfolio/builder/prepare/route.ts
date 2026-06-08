@@ -1,4 +1,4 @@
-﻿import { spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 const BRIDGE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_LOG_CHARS = 4000;
 
-type ReportRequest = {
+type BuilderPrepareRequest = {
   review_id?: unknown;
   selected_card_id?: unknown;
 };
@@ -39,6 +39,7 @@ function scrubForClient(value: string, root: string) {
   return tail(value)
     .replaceAll(root, "[project]")
     .replaceAll(root.replaceAll("\\", "/"), "[project]")
+    .replace(/\[project\][\\/][^\s'")<>]+/g, "[path]")
     .replace(/Traceback \(most recent call last\):[\s\S]*/g, "Backend failure details were captured safely.")
     .replace(/File "[^"]+", line \d+(?:, in [^\r\n]+)?/g, "Backend file reference hidden.")
     .replace(/[A-Za-z]:[\\/][^\s'")<>]+/g, "[path]")
@@ -46,7 +47,7 @@ function scrubForClient(value: string, root: string) {
     .trim();
 }
 
-function validateRequest(body: ReportRequest) {
+function validateRequest(body: BuilderPrepareRequest) {
   const reviewId = typeof body.review_id === "string" ? body.review_id.trim() : "";
   const selectedCardId = typeof body.selected_card_id === "string" ? body.selected_card_id.trim() : "";
   const errors: string[] = [];
@@ -71,7 +72,7 @@ function runBridge(reviewId: string, selectedCardId: string, root: string) {
       pythonPath,
       [
         scriptPath,
-        "--run-report-context",
+        "--prepare-builder",
         "--review-id",
         reviewId,
         "--selected-card-id",
@@ -142,27 +143,27 @@ function parseBridgeJson(raw: string) {
 export async function POST(request: Request) {
   const root = projectRoot();
 
-  let body: ReportRequest;
+  let body: BuilderPrepareRequest;
   try {
-    body = await request.json() as ReportRequest;
+    body = await request.json() as BuilderPrepareRequest;
   } catch {
     return jsonError("Request body must be valid JSON.");
   }
 
   const { reviewId, selectedCardId, errors } = validateRequest(body);
   if (errors.length) {
-    return jsonError("Report commentary request validation failed.", 400, errors);
+    return jsonError("Builder setup prepare request validation failed.", 400, errors);
   }
 
   let bridgeResult: Awaited<ReturnType<typeof runBridge>>;
   try {
     bridgeResult = await runBridge(reviewId, selectedCardId, root);
   } catch (error) {
-    console.error("Failed to start Report commentary bridge.", error);
-    return jsonError("Could not start Report commentary.", 500);
+    console.error("Failed to start Builder setup prepare bridge.", error);
+    return jsonError("Could not start Builder setup prepare.", 500);
   }
 
-  console.info("Report commentary bridge finished.", {
+  console.info("Builder setup prepare bridge finished.", {
     code: bridgeResult.code,
     timedOut: bridgeResult.timedOut,
     stdoutTail: tail(bridgeResult.stdout),
@@ -171,7 +172,7 @@ export async function POST(request: Request) {
 
   const resultPath = resultPathFromStdout(bridgeResult.stdout, root);
   if (!resultPath) {
-    return jsonError("Report commentary did not return a result path.", 500, [
+    return jsonError("Builder setup prepare did not return a result path.", 500, [
       scrubForClient(bridgeResult.stderr || bridgeResult.stdout, root)
     ]);
   }
@@ -180,8 +181,8 @@ export async function POST(request: Request) {
   try {
     result = parseBridgeJson(await readFile(resultPath, "utf8"));
   } catch (error) {
-    console.error("Failed to read report_commentary_result.json.", error);
-    return jsonError("Report commentary finished but the result could not be read.", 500, [
+    console.error("Failed to read builder_setup_result.json.", error);
+    return jsonError("Builder setup prepare finished but the result could not be read.", 500, [
       scrubForClient(bridgeResult.stderr || bridgeResult.stdout, root)
     ]);
   }
@@ -191,10 +192,10 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         status: "failed",
-        stage: "report_commentary",
+        stage: "builder_setup",
         review_id: reviewId,
         selected_card_id: selectedCardId,
-        error: typeof resultObject.error === "string" ? scrubForClient(resultObject.error, root) : "Report commentary failed.",
+        error: typeof resultObject.error === "string" ? scrubForClient(resultObject.error, root) : "Builder setup prepare failed.",
         details: typeof resultObject.details === "string"
           ? scrubForClient(resultObject.details, root)
           : scrubForClient(bridgeResult.stderr || bridgeResult.stdout, root)
