@@ -1,0 +1,508 @@
+﻿{
+  "headerStatusLabel": "Sample review",
+  "selectedScenarioId": "severe-recession",
+  "scorecard": [
+    {
+      "label": "Worst synthetic scenario",
+      "value": "Severe recession",
+      "detail": "Estimated portfolio loss: -30.9%",
+      "tone": "red"
+    },
+    {
+      "label": "Worst historical episode",
+      "value": "2022-like drawdown",
+      "detail": "Max drawdown: -20.1%",
+      "tone": "red"
+    },
+    {
+      "label": "Main loss drivers",
+      "value": "SPY, QQQ, BND",
+      "detail": "These positions drive most of the selected stress loss.",
+      "tone": "red"
+    },
+    {
+      "label": "Assets that helped",
+      "value": "GLD, Cash",
+      "detail": "Only positive stress contributions are counted as helped.",
+      "tone": "green"
+    },
+    {
+      "label": "Main hedge gap",
+      "value": "Severe recession protection",
+      "detail": "Offset coverage: 2.4%",
+      "tone": "red"
+    },
+    {
+      "label": "Data coverage",
+      "value": "Limited evidence",
+      "detail": "8/8 synthetic scenarios and 3/5 historical episodes available.",
+      "tone": "amber"
+    }
+  ],
+  "syntheticScenarios": [
+    {
+      "id": "equity-selloff",
+      "displayName": "Equity sell-off",
+      "groupLabel": "Synthetic shock",
+      "kind": "synthetic",
+      "portfolioLossPct": -0.251,
+      "drawdownPct": null,
+      "availability": "available",
+      "severityLabel": "Material loss",
+      "severityTone": "red",
+      "evidenceQualityLabel": "Strong evidence",
+      "evidenceTone": "green",
+      "isWorst": false,
+      "lossContributions": [
+        { "ticker": "SPY", "value": -0.142, "status": "Hurt" },
+        { "ticker": "QQQ", "value": -0.095, "status": "Hurt" },
+        { "ticker": "BND", "value": -0.018, "status": "Hurt" },
+        { "ticker": "Cash", "value": 0.004, "status": "Helped" }
+      ],
+      "assetsHurt": [
+        { "ticker": "SPY", "value": -0.142, "status": "Hurt" },
+        { "ticker": "QQQ", "value": -0.095, "status": "Hurt" },
+        { "ticker": "BND", "value": -0.018, "status": "Hurt" }
+      ],
+      "assetsHelped": [
+        { "ticker": "Cash", "value": 0.004, "status": "Helped" }
+      ],
+      "factorAttribution": [
+        { "factor": "Equity", "value": -0.224, "status": "Loss driver" },
+        { "factor": "Credit", "value": -0.026, "status": "Loss driver" }
+      ],
+      "interpretation": "Equity sell-off shows -25.1% stress impact for the current portfolio. SPY, QQQ, and BND drove the largest losses. Cash helped offset part of the loss."
+    },
+    {
+      "id": "credit-shock",
+      "displayName": "Credit shock",
+      "groupLabel": "Synthetic shock",
+      "kind": "synthetic",
+      "portfolioLossPct": -0.072,
+      "drawdownPct": null,
+      "availability": "available",
+      "severityLabel": "Moderate loss",
+      "severityTone": "amber",
+      "evidenceQualityLabel": "Strong evidence",
+      "evidenceTone": "green",
+      "isWorst": false,
+      "lossContributions": [
+        { "ticker": "BND", "value": -0.031, "status": "Hurt" },
+        { "ticker": "SPY", "value": -0.026, "status": "Hurt" },
+        { "ticker": "Cash", "value": 0.002, "status": "Helped" }
+      ],
+      "assetsHurt": [
+        { "ticker": "BND", "value": -0.031, "status": "Hurt" },
+        { "ticker": "SPY", "value": -0.026, "status": "Hurt" }
+      ],
+      "assetsHelped": [
+        { "ticker": "Cash", "value": 0.002, "status": "Helped" }
+      ],
+      "factorAttribution": [
+        { "factor": "Credit", "value": -0.041, "status": "Loss driver" },
+        { "factor": "Equity", "value": -0.024, "status": "Loss driver" }
+      ],
+      "interpretation": "Credit shock shows -7.2% stress impact for the current portfolio. BND and SPY drove the largest losses. Cash helped offset a small part of the loss."
+    },
+    {
+      "id": "interest-rate-shock",
+      "displayName": "Interest-rate shock",
+      "groupLabel": "Synthetic shock",
+      "kind": "synthetic",
+      "portfolioLossPct": -0.061,
+      "drawdownPct": null,
+      "availability": "available",
+      "severityLabel": "Moderate loss",
+      "severityTone": "amber",
+      "evidenceQualityLabel": "Strong evidence",
+      "evidenceTone": "green",
+      "isWorst": false,
+      "lossContributions": [
+        { "ticker": "BND", "value": -0.037, "status": "Hurt" },
+        { "ticker": "QQQ", "value": -0.018, "status": "Hurt" },
+        { "ticker": "Cash", "value": 0.001, "status": "Helped" }
+      ],
+      "assetsHurt": [
+        { "ticker": "BND", "value": -0.037, "status": "Hurt" },
+        { "ticker": "QQQ", "value": -0.018, "status": "Hurt" }
+      ],
+      "assetsHelped": [
+        { "ticker": "Cash", "value": 0.001, "status": "Helped" }
+      ],
+      "factorAttribution": [
+        { "factor": "Interest-rate sensitivity", "value": -0.047, "status": "Loss driver" },
+        { "factor": "Equity", "value": -0.012, "status": "Loss driver" }
+      ],
+      "interpretation": "Interest-rate shock shows -6.1% stress impact for the current portfolio. BND and QQQ drove the largest losses. Cash helped offset a small part of the loss."
+    },
+    {
+      "id": "inflation-stagflation",
+      "displayName": "Inflation / stagflation",
+      "groupLabel": "Synthetic shock",
+      "kind": "synthetic",
+      "portfolioLossPct": -0.118,
+      "drawdownPct": null,
+      "availability": "available",
+      "severityLabel": "Material loss",
+      "severityTone": "red",
+      "evidenceQualityLabel": "Strong evidence",
+      "evidenceTone": "green",
+      "isWorst": false,
+      "lossContributions": [
+        { "ticker": "QQQ", "value": -0.062, "status": "Hurt" },
+        { "ticker": "BND", "value": -0.044, "status": "Hurt" },
+        { "ticker": "GLD", "value": 0.012, "status": "Helped" }
+      ],
+      "assetsHurt": [
+        { "ticker": "QQQ", "value": -0.062, "status": "Hurt" },
+        { "ticker": "BND", "value": -0.044, "status": "Hurt" }
+      ],
+      "assetsHelped": [
+        { "ticker": "GLD", "value": 0.012, "status": "Helped" }
+      ],
+      "factorAttribution": [
+        { "factor": "Equity", "value": -0.083, "status": "Loss driver" },
+        { "factor": "Inflation", "value": -0.031, "status": "Loss driver" },
+        { "factor": "Commodity", "value": 0.013, "status": "Offset" }
+      ],
+      "interpretation": "Inflation / stagflation shows -11.8% stress impact for the current portfolio. QQQ and BND drove the largest losses. GLD helped offset part of the loss."
+    },
+    {
+      "id": "liquidity-shock",
+      "displayName": "Liquidity shock",
+      "groupLabel": "Synthetic shock",
+      "kind": "synthetic",
+      "portfolioLossPct": -0.136,
+      "drawdownPct": null,
+      "availability": "available",
+      "severityLabel": "Material loss",
+      "severityTone": "red",
+      "evidenceQualityLabel": "Strong evidence",
+      "evidenceTone": "green",
+      "isWorst": false,
+      "lossContributions": [
+        { "ticker": "SPY", "value": -0.071, "status": "Hurt" },
+        { "ticker": "QQQ", "value": -0.052, "status": "Hurt" },
+        { "ticker": "Cash", "value": 0.006, "status": "Helped" }
+      ],
+      "assetsHurt": [
+        { "ticker": "SPY", "value": -0.071, "status": "Hurt" },
+        { "ticker": "QQQ", "value": -0.052, "status": "Hurt" }
+      ],
+      "assetsHelped": [
+        { "ticker": "Cash", "value": 0.006, "status": "Helped" }
+      ],
+      "factorAttribution": [
+        { "factor": "Equity", "value": -0.091, "status": "Loss driver" },
+        { "factor": "Credit", "value": -0.038, "status": "Loss driver" }
+      ],
+      "interpretation": "Liquidity shock shows -13.6% stress impact for the current portfolio. SPY and QQQ drove the largest losses. Cash helped offset a small part of the loss."
+    },
+    {
+      "id": "usd-shock",
+      "displayName": "USD shock",
+      "groupLabel": "Synthetic shock",
+      "kind": "synthetic",
+      "portfolioLossPct": -0.041,
+      "drawdownPct": null,
+      "availability": "available",
+      "severityLabel": "Moderate loss",
+      "severityTone": "amber",
+      "evidenceQualityLabel": "Strong evidence",
+      "evidenceTone": "green",
+      "isWorst": false,
+      "lossContributions": [
+        { "ticker": "SPY", "value": -0.025, "status": "Hurt" },
+        { "ticker": "GLD", "value": -0.011, "status": "Hurt" },
+        { "ticker": "Cash", "value": 0.002, "status": "Helped" }
+      ],
+      "assetsHurt": [
+        { "ticker": "SPY", "value": -0.025, "status": "Hurt" },
+        { "ticker": "GLD", "value": -0.011, "status": "Hurt" }
+      ],
+      "assetsHelped": [
+        { "ticker": "Cash", "value": 0.002, "status": "Helped" }
+      ],
+      "factorAttribution": [
+        { "factor": "USD", "value": -0.032, "status": "Loss driver" },
+        { "factor": "Equity", "value": -0.009, "status": "Loss driver" }
+      ],
+      "interpretation": "USD shock shows -4.1% stress impact for the current portfolio. SPY and GLD drove the largest losses. Cash helped offset a small part of the loss."
+    },
+    {
+      "id": "commodity-shock",
+      "displayName": "Commodity shock",
+      "groupLabel": "Synthetic shock",
+      "kind": "synthetic",
+      "portfolioLossPct": -0.019,
+      "drawdownPct": null,
+      "availability": "available",
+      "severityLabel": "Less damaging",
+      "severityTone": "slate",
+      "evidenceQualityLabel": "Strong evidence",
+      "evidenceTone": "green",
+      "isWorst": false,
+      "lossContributions": [
+        { "ticker": "QQQ", "value": -0.024, "status": "Hurt" },
+        { "ticker": "GLD", "value": 0.017, "status": "Helped" }
+      ],
+      "assetsHurt": [
+        { "ticker": "QQQ", "value": -0.024, "status": "Hurt" }
+      ],
+      "assetsHelped": [
+        { "ticker": "GLD", "value": 0.017, "status": "Helped" }
+      ],
+      "factorAttribution": [
+        { "factor": "Commodity", "value": 0.021, "status": "Offset" },
+        { "factor": "Equity", "value": -0.036, "status": "Loss driver" }
+      ],
+      "interpretation": "Commodity shock is less damaging than the severe recession scenario. GLD helped offset part of the equity-linked loss."
+    },
+    {
+      "id": "severe-recession",
+      "displayName": "Severe recession",
+      "groupLabel": "Synthetic shock",
+      "kind": "synthetic",
+      "portfolioLossPct": -0.3086,
+      "drawdownPct": null,
+      "availability": "available",
+      "severityLabel": "Most damaging",
+      "severityTone": "red",
+      "evidenceQualityLabel": "Strong evidence",
+      "evidenceTone": "green",
+      "isWorst": true,
+      "lossContributions": [
+        { "ticker": "SPY", "value": -0.182, "status": "Hurt" },
+        { "ticker": "QQQ", "value": -0.094, "status": "Hurt" },
+        { "ticker": "BND", "value": -0.04, "status": "Hurt" },
+        { "ticker": "GLD", "value": 0.0048, "status": "Helped" },
+        { "ticker": "Cash", "value": 0.0028, "status": "Helped" }
+      ],
+      "assetsHurt": [
+        { "ticker": "SPY", "value": -0.182, "status": "Hurt" },
+        { "ticker": "QQQ", "value": -0.094, "status": "Hurt" },
+        { "ticker": "BND", "value": -0.04, "status": "Hurt" }
+      ],
+      "assetsHelped": [
+        { "ticker": "GLD", "value": 0.0048, "status": "Helped" },
+        { "ticker": "Cash", "value": 0.0028, "status": "Helped" }
+      ],
+      "factorAttribution": [
+        { "factor": "Equity", "value": -0.224, "status": "Loss driver" },
+        { "factor": "Credit", "value": -0.041, "status": "Loss driver" },
+        { "factor": "Interest-rate sensitivity", "value": -0.026, "status": "Loss driver" },
+        { "factor": "USD", "value": 0.003, "status": "Offset" },
+        { "factor": "Commodity", "value": 0.002, "status": "Offset" }
+      ],
+      "interpretation": "Severe recession shows -30.9% stress impact for the current portfolio. SPY, QQQ, and BND drove the largest losses. GLD and Cash helped offset only a small part of the loss."
+    }
+  ],
+  "historicalScenarios": [
+    {
+      "id": "dot-com",
+      "displayName": "Dot-com",
+      "groupLabel": "Historical episode",
+      "kind": "historical",
+      "portfolioLossPct": null,
+      "drawdownPct": null,
+      "availability": "unavailable",
+      "severityLabel": "Unavailable",
+      "severityTone": "slate",
+      "evidenceQualityLabel": "Insufficient data",
+      "evidenceTone": "slate",
+      "isWorst": false,
+      "dataNote": "Replay limited",
+      "lossContributions": [],
+      "assetsHurt": [],
+      "assetsHelped": [],
+      "factorAttribution": [],
+      "interpretation": "Dot-com replay is limited because older holdings do not have enough usable direct history.",
+      "limitation": "Older holding history is incomplete for this episode."
+    },
+    {
+      "id": "2008",
+      "displayName": "2008",
+      "groupLabel": "Historical episode",
+      "kind": "historical",
+      "portfolioLossPct": null,
+      "drawdownPct": null,
+      "availability": "unavailable",
+      "severityLabel": "Unavailable",
+      "severityTone": "slate",
+      "evidenceQualityLabel": "Insufficient data",
+      "evidenceTone": "slate",
+      "isWorst": false,
+      "dataNote": "Replay limited",
+      "lossContributions": [],
+      "assetsHurt": [],
+      "assetsHelped": [],
+      "factorAttribution": [],
+      "interpretation": "2008 replay is limited because older holdings do not have enough usable direct history.",
+      "limitation": "Older holding history is incomplete for this episode."
+    },
+    {
+      "id": "2020",
+      "displayName": "2020",
+      "groupLabel": "Historical episode",
+      "kind": "historical",
+      "portfolioLossPct": -0.071,
+      "drawdownPct": -0.112,
+      "availability": "available",
+      "severityLabel": "Moderate loss",
+      "severityTone": "amber",
+      "evidenceQualityLabel": "Moderate evidence",
+      "evidenceTone": "slate",
+      "isWorst": false,
+      "lossContributions": [
+        { "ticker": "SPY", "value": -0.051, "status": "Hurt" },
+        { "ticker": "QQQ", "value": -0.028, "status": "Hurt" },
+        { "ticker": "GLD", "value": 0.011, "status": "Helped" }
+      ],
+      "assetsHurt": [
+        { "ticker": "SPY", "value": -0.051, "status": "Hurt" },
+        { "ticker": "QQQ", "value": -0.028, "status": "Hurt" }
+      ],
+      "assetsHelped": [
+        { "ticker": "GLD", "value": 0.011, "status": "Helped" }
+      ],
+      "factorAttribution": [],
+      "interpretation": "2020 shows -11.2% historical drawdown for the current portfolio. SPY and QQQ drove the largest losses. GLD helped offset part of the decline."
+    },
+    {
+      "id": "2022",
+      "displayName": "2022-like drawdown",
+      "groupLabel": "Historical episode",
+      "kind": "historical",
+      "portfolioLossPct": -0.171,
+      "drawdownPct": -0.201,
+      "availability": "available",
+      "severityLabel": "Most damaging",
+      "severityTone": "red",
+      "evidenceQualityLabel": "Moderate evidence",
+      "evidenceTone": "slate",
+      "isWorst": true,
+      "lossContributions": [
+        { "ticker": "QQQ", "value": -0.082, "status": "Hurt" },
+        { "ticker": "BND", "value": -0.063, "status": "Hurt" },
+        { "ticker": "SPY", "value": -0.041, "status": "Hurt" },
+        { "ticker": "Cash", "value": 0.002, "status": "Helped" }
+      ],
+      "assetsHurt": [
+        { "ticker": "QQQ", "value": -0.082, "status": "Hurt" },
+        { "ticker": "BND", "value": -0.063, "status": "Hurt" },
+        { "ticker": "SPY", "value": -0.041, "status": "Hurt" }
+      ],
+      "assetsHelped": [
+        { "ticker": "Cash", "value": 0.002, "status": "Helped" }
+      ],
+      "factorAttribution": [],
+      "interpretation": "2022-like drawdown shows -20.1% historical drawdown for the current portfolio. QQQ, BND, and SPY drove the largest losses."
+    },
+    {
+      "id": "banking-2023",
+      "displayName": "Banking 2023",
+      "groupLabel": "Historical episode",
+      "kind": "historical",
+      "portfolioLossPct": -0.016,
+      "drawdownPct": -0.031,
+      "availability": "available",
+      "severityLabel": "Less damaging",
+      "severityTone": "slate",
+      "evidenceQualityLabel": "Moderate evidence",
+      "evidenceTone": "slate",
+      "isWorst": false,
+      "lossContributions": [
+        { "ticker": "BND", "value": -0.015, "status": "Hurt" },
+        { "ticker": "Cash", "value": 0.001, "status": "Helped" }
+      ],
+      "assetsHurt": [
+        { "ticker": "BND", "value": -0.015, "status": "Hurt" }
+      ],
+      "assetsHelped": [
+        { "ticker": "Cash", "value": 0.001, "status": "Helped" }
+      ],
+      "factorAttribution": [],
+      "interpretation": "Banking 2023 was less damaging than the main stress scenarios in this sample review."
+    }
+  ],
+  "hedgeGap": {
+    "displayName": "Severe recession protection",
+    "scenarioDisplayName": "Severe recession",
+    "grossLossFromHurt": 0.316,
+    "positiveContributionFromHelped": 0.0076,
+    "offsetCoverageRatio": 0.024,
+    "statusLabel": "Weak offset",
+    "statusTone": "red",
+    "interpretation": "Only 2.4% of losses from hurt assets were offset by assets that helped in Severe recession. Hurt assets contributed -31.6%; helped assets contributed +0.8%.",
+    "assetsHurt": [
+      { "ticker": "SPY", "value": -0.182, "status": "Hurt" },
+      { "ticker": "QQQ", "value": -0.094, "status": "Hurt" },
+      { "ticker": "BND", "value": -0.04, "status": "Hurt" }
+    ],
+    "assetsHelped": [
+      { "ticker": "GLD", "value": 0.0048, "status": "Helped" },
+      { "ticker": "Cash", "value": 0.0028, "status": "Helped" }
+    ]
+  },
+  "xrayConfirmation": {
+    "confirmed": [
+      {
+        "label": "Equity sell-off risk",
+        "detail": "Equity sell-off stress shows weak offset with 0.0% offset coverage and -25.1% portfolio stress impact.",
+        "tone": "amber"
+      },
+      {
+        "label": "Weak hedge behavior",
+        "detail": "Severe recession stress shows weak offset with 2.4% offset coverage and -30.9% portfolio stress impact.",
+        "tone": "amber"
+      },
+      {
+        "label": "Tail risk",
+        "detail": "Liquidity and severe recession stresses both show material loss with limited helped assets.",
+        "tone": "amber"
+      }
+    ],
+    "lessMaterial": [
+      {
+        "label": "Commodity shock",
+        "detail": "Commodity shock was less damaging in this review because GLD provided positive contribution.",
+        "tone": "slate"
+      },
+      {
+        "label": "USD shock",
+        "detail": "USD shock was moderate compared with severe recession and equity sell-off.",
+        "tone": "slate"
+      }
+    ],
+    "insufficientData": [
+      {
+        "label": "Dot-com",
+        "detail": "Historical replay is limited because older holding history is incomplete.",
+        "tone": "amber"
+      },
+      {
+        "label": "2008",
+        "detail": "Historical replay is limited because older holding history is incomplete.",
+        "tone": "amber"
+      }
+    ],
+    "note": "Stress confirmation is based on available scenario results. Some X-Ray weaknesses still require more evidence before a candidate test."
+  },
+  "limitations": {
+    "headline": "Historical replay is limited because some holdings do not have enough usable history for older episodes.",
+    "evidenceQualityLabel": "Limited evidence",
+    "evidenceTone": "amber",
+    "whatLimited": [
+      "Older historical episodes have incomplete asset-level coverage: Dot-com, 2008."
+    ],
+    "whyItMatters": [
+      "The portfolio-level stress view may be unavailable for those older episodes, and asset-level contribution may be less reliable."
+    ],
+    "stillUsable": [
+      "8/8 synthetic stress scenarios remain available.",
+      "Current Portfolio X-Ray diagnostics remain available as pre-stress context.",
+      "Use these results as supporting evidence before testing any candidate hypothesis."
+    ]
+  }
+}
+

@@ -108,7 +108,7 @@ test("frontend static journey pages respond on a local Next server", { timeout: 
     const pages = [
       ["/portfolio-input", /Portfolio Input|Run diagnosis/i],
       ["/diagnosis", /Diagnosis|Portfolio/i],
-      ["/evidence", /Evidence|X-Ray/i],
+      ["/evidence", /Stress Test Lab|X-Ray/i],
       ["/hypothesis", /Hypothesis|Builder/i],
       ["/comparison", /Comparison|Current/i],
       ["/verdict", /Verdict|Decision/i],
