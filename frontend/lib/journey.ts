@@ -17,17 +17,17 @@ export const journeySteps: JourneyStep[] = [
   },
   {
     id: "evidence",
-    label: "Evidence",
-    shortLabel: "Evidence",
+    label: "Stress Lab",
+    shortLabel: "Stress",
     href: "/evidence",
-    lockReason: "Run portfolio diagnosis first to generate Evidence."
+    lockReason: "Run portfolio diagnosis first to generate Stress Test Lab evidence."
   },
   {
     id: "hypothesis",
     label: "Hypothesis",
     shortLabel: "Hypothesis",
     href: "/hypothesis",
-    lockReason: "Review generated diagnosis and evidence before testing a hypothesis."
+    lockReason: "Review generated diagnosis and stress evidence before testing a hypothesis."
   },
   {
     id: "comparison",

@@ -3,18 +3,27 @@
 @tailwind utilities;
 
 :root {
-  --pmri-bg-primary: #07111f;
-  --pmri-bg-secondary: #0d1b2a;
-  --pmri-surface-card: #12263a;
-  --pmri-text-primary: #f8fafc;
-  --pmri-text-secondary: #cbd5e1;
-  --pmri-text-muted: #94a3b8;
-  --pmri-border: #334155;
+  --pmri-bg-primary: #090a0c;
+  --pmri-bg-secondary: #101114;
+  --pmri-surface-card: #17181b;
+  --pmri-surface-raised: #1d1f23;
+  --pmri-text-primary: #eceff3;
+  --pmri-text-secondary: #c4c9d1;
+  --pmri-text-muted: #949ba6;
+  --pmri-border: #25282e;
   --pmri-action-blue: #3b82f6;
-  --pmri-positive: #10b981;
-  --pmri-warning: #f59e0b;
-  --pmri-risk: #ef4444;
-  --pmri-premium-accent: #d4af37;
+  --pmri-positive: #6fbf9b;
+  --pmri-warning: #c9a66b;
+  --pmri-risk: #d77a7a;
+  --pmri-premium-accent: #b6c0cb;
+  --pmri-font-sans: var(--font-pmri-sans, Inter, Manrope, "Helvetica Neue", Arial, sans-serif);
+  --pmri-font-mono: var(--font-pmri-mono, "SF Mono", "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  --pmri-heading-weight: 500;
+  --pmri-section-heading-weight: 600;
+  --pmri-body-weight: 400;
+  --pmri-title-tracking: -0.04em;
+  --pmri-heading-tracking: -0.035em;
+  --pmri-body-leading: 1.56;
 }
 
 * {
@@ -30,13 +39,18 @@ body {
   min-height: 100%;
   margin: 0;
   background:
-    linear-gradient(120deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 100%),
-    radial-gradient(circle at 88% 8%, rgba(59, 130, 246, 0.13), transparent 28%),
-    radial-gradient(circle at 18% -10%, rgba(212, 175, 55, 0.11), transparent 24%),
-    linear-gradient(135deg, #07111f 0%, #0a1424 48%, #07111f 100%);
-  background-size: 34px 34px, auto, auto, auto;
+    radial-gradient(circle at 82% 8%, rgba(143, 177, 216, 0.08), transparent 30%),
+    radial-gradient(circle at 16% -8%, rgba(255, 255, 255, 0.045), transparent 28%),
+    linear-gradient(180deg, #0b0c0e 0%, #090a0c 52%, #07080a 100%);
   color: var(--pmri-text-primary);
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--pmri-font-sans);
+  font-size: 15px;
+  font-weight: var(--pmri-body-weight);
+  line-height: var(--pmri-body-leading);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-synthesis-weight: none;
 }
 
 a {
@@ -50,39 +64,59 @@ select {
   font: inherit;
 }
 
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p,
+li {
+  text-wrap: pretty;
+}
+
 ::selection {
-  background: rgba(59, 130, 246, 0.38);
+  background: rgba(143, 177, 216, 0.28);
 }
 
 .pmri-card {
-  border: 1px solid rgba(51, 65, 85, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.045);
   background:
-    linear-gradient(135deg, rgba(212, 175, 55, 0.07), transparent 34%),
-    linear-gradient(180deg, rgba(18, 38, 58, 0.94), rgba(13, 27, 42, 0.9));
-  box-shadow: 0 18px 64px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.01)),
+    rgba(23, 24, 27, 0.94);
+  box-shadow: 0 22px 58px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .pmri-state-panel {
-  border: 1px solid rgba(51, 65, 85, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.055);
   background:
-    linear-gradient(180deg, rgba(248, 250, 252, 0.045), rgba(248, 250, 252, 0.018)),
-    rgba(13, 27, 42, 0.72);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
+    rgba(16, 17, 20, 0.82);
 }
 
 .pmri-boundary-note {
-  border: 1px solid rgba(212, 175, 55, 0.28);
-  background: rgba(212, 175, 55, 0.085);
+  border: 1px solid rgba(201, 166, 107, 0.22);
+  background: rgba(201, 166, 107, 0.07);
   color: var(--pmri-text-secondary);
 }
 
 .pmri-primary-action {
-  border: 1px solid rgba(59, 130, 246, 0.55);
-  background: linear-gradient(180deg, #3b82f6, #2563eb);
-  color: #ffffff;
+  border: 1px solid rgba(96, 165, 250, 0.58);
+  background: linear-gradient(180deg, #60a5fa, #3b82f6);
+  color: #f8fafc;
+  box-shadow: 0 14px 32px rgba(59, 130, 246, 0.24), 0 12px 28px rgba(0, 0, 0, 0.2);
 }
 
 .pmri-primary-action:hover {
-  background: linear-gradient(180deg, #60a5fa, #3b82f6);
+  background: linear-gradient(180deg, #7db7ff, #4f8ff7);
+}
+
+.pmri-primary-action:disabled,
+.pmri-primary-action[aria-disabled="true"] {
+  border-color: rgba(248, 250, 252, 0.1);
+  background: rgba(248, 250, 252, 0.08);
+  color: var(--pmri-text-muted);
+  box-shadow: none;
 }
 
 .pmri-disabled-action {
@@ -109,25 +143,349 @@ select {
 
 .pmri-focus:focus-visible {
   outline-color: var(--pmri-action-blue);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18);
+  box-shadow: 0 0 0 4px rgba(143, 177, 216, 0.16);
+}
+
+.pmri-interactive-card,
+.pmri-hover-panel,
+.pmri-linked-chart-row,
+.pmri-interactive-bar-row,
+.pmri-chart-legend-row,
+.pmri-evidence-chip {
+  transition:
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 220ms ease-out,
+    background-color 220ms ease-out,
+    box-shadow 220ms ease-out,
+    color 180ms ease-out,
+    opacity 180ms ease-out,
+    filter 180ms ease-out;
+}
+
+.pmri-interactive-card,
+.pmri-hover-panel,
+.pmri-interactive-bar-row,
+.pmri-chart-legend-row {
+  position: relative;
+}
+
+.pmri-interactive-card:hover,
+.pmri-interactive-card:focus-within,
+.pmri-hover-panel:hover,
+.pmri-hover-panel:focus-within {
+  transform: translateY(-2px);
+  border-color: rgba(182, 192, 203, 0.2);
+  background-color: rgba(255, 255, 255, 0.035);
+  box-shadow:
+    0 24px 58px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.018);
+}
+
+.pmri-interactive-card:focus-within,
+.pmri-hover-panel:focus-within,
+.pmri-linked-chart-row:focus-visible,
+.pmri-interactive-bar-row:focus-visible,
+.pmri-chart-legend-row:focus-visible {
+  outline: 2px solid rgba(143, 177, 216, 0.78);
+  outline-offset: 3px;
+}
+
+.pmri-animated-border-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.pmri-animated-border-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(236, 239, 243, 0.035);
+  box-shadow:
+    inset 0 1px 0 rgba(236, 239, 243, 0.05),
+    inset 0 -1px 0 rgba(182, 192, 203, 0.015);
+  opacity: 0.86;
+  pointer-events: none;
+}
+
+.pmri-animated-border-panel::after {
+  content: "";
+  position: absolute;
+  left: -34%;
+  top: 0;
+  z-index: 0;
+  width: 32%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(236, 239, 243, 0.2), transparent);
+  opacity: 0.46;
+  pointer-events: none;
+  animation: pmri-edge-drift 12s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+.pmri-linked-group:has(.pmri-linked-chart-row:hover) .pmri-linked-chart-row:not(:hover),
+.pmri-linked-group:has(.pmri-linked-chart-row:focus-visible) .pmri-linked-chart-row:not(:focus-visible),
+.pmri-bar-group:has(.pmri-interactive-bar-row:hover) .pmri-interactive-bar-row:not(:hover),
+.pmri-bar-group:has(.pmri-interactive-bar-row:focus-visible) .pmri-interactive-bar-row:not(:focus-visible),
+.pmri-weakness-grid:has(.pmri-weakness-tile:hover) .pmri-weakness-tile:not(:hover),
+.pmri-weakness-grid:has(.pmri-weakness-tile:focus-within) .pmri-weakness-tile:not(:focus-within) {
+  opacity: 0.58;
+}
+
+.pmri-linked-chart-row:hover,
+.pmri-linked-chart-row:focus-visible,
+.pmri-interactive-bar-row:hover,
+.pmri-interactive-bar-row:focus-visible,
+.pmri-chart-legend-row:hover,
+.pmri-chart-legend-row:focus-visible {
+  border-color: rgba(182, 192, 203, 0.22);
+  background-color: rgba(255, 255, 255, 0.045);
+}
+
+.pmri-chart-legend-row[data-active="true"],
+.pmri-linked-chart-row[data-active="true"],
+.pmri-interactive-bar-row[data-active="true"] {
+  opacity: 1;
+  border-color: rgba(236, 239, 243, 0.22);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.pmri-bar-fill,
+.pmri-donut-segment {
+  transition:
+    opacity 220ms ease-out,
+    filter 220ms ease-out,
+    stroke-width 220ms ease-out,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 220ms ease-out;
+}
+
+.pmri-interactive-bar-row:hover .pmri-bar-fill,
+.pmri-interactive-bar-row:focus-visible .pmri-bar-fill,
+.pmri-interactive-bar-row[data-active="true"] .pmri-bar-fill,
+.pmri-linked-chart-row:hover .pmri-bar-fill,
+.pmri-linked-chart-row:focus-visible .pmri-bar-fill,
+.pmri-linked-chart-row[data-active="true"] .pmri-bar-fill {
+  filter: brightness(1.18) saturate(1.06);
+}
+
+.pmri-risk-overweight:hover .pmri-risk-bar-fill,
+.pmri-risk-overweight:focus-visible .pmri-risk-bar-fill,
+.pmri-risk-overweight[data-active="true"] .pmri-risk-bar-fill {
+  filter: brightness(1.24) saturate(1.08);
+}
+
+.pmri-gap-pill {
+  transition:
+    border-color 180ms ease-out,
+    background-color 180ms ease-out,
+    filter 180ms ease-out;
+}
+
+.pmri-interactive-bar-row:hover .pmri-gap-pill,
+.pmri-interactive-bar-row:focus-visible .pmri-gap-pill,
+.pmri-interactive-bar-row[data-active="true"] .pmri-gap-pill {
+  filter: brightness(1.08);
+}
+
+.pmri-hover-evidence {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(3px);
+  transition:
+    max-height 220ms ease-out,
+    opacity 180ms ease-out,
+    transform 220ms ease-out;
+}
+
+.pmri-interactive-card:hover .pmri-hover-evidence,
+.pmri-interactive-card:focus-within .pmri-hover-evidence {
+  max-height: 8rem;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pmri-evidence-chip:hover,
+.pmri-evidence-chip:focus-visible {
+  border-color: rgba(182, 192, 203, 0.25);
+  background-color: rgba(255, 255, 255, 0.055);
+  color: var(--pmri-text-primary);
+}
+
+.pmri-info-hint {
+  position: relative;
+}
+
+.pmri-info-hint::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.55rem);
+  width: max-content;
+  max-width: 14rem;
+  transform: translate(-50%, 4px);
+  border: 1px solid rgba(182, 192, 203, 0.18);
+  border-radius: 0.75rem;
+  background: rgba(16, 17, 20, 0.96);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.38);
+  color: var(--pmri-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 400;
+  line-height: 1.45;
+  opacity: 0;
+  padding: 0.55rem 0.65rem;
+  pointer-events: none;
+  text-align: left;
+  transition: opacity 160ms ease-out, transform 180ms ease-out;
+  white-space: normal;
+  z-index: 50;
+}
+
+.pmri-info-hint:hover::after,
+.pmri-info-hint:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.pmri-section-reveal {
+  animation: pmri-section-reveal 460ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--pmri-reveal-delay, 0ms);
+}
+
+.pmri-section-nav-link {
+  transition:
+    background-color 180ms ease-out,
+    border-color 180ms ease-out,
+    color 180ms ease-out;
+}
+
+.pmri-section-nav-link[aria-current="true"] {
+  border-color: rgba(182, 192, 203, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--pmri-text-primary);
 }
 
 .data-figure {
+  font-family: var(--pmri-font-sans);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "ss01" 1;
+  letter-spacing: -0.018em;
+}
+
+.pmri-heading-hero {
+  font-size: clamp(2.65rem, 4.9vw, 5.55rem);
+  font-weight: var(--pmri-heading-weight);
+  letter-spacing: var(--pmri-title-tracking);
+  line-height: 0.98;
+}
+
+.pmri-heading-display {
+  font-size: clamp(2rem, 3.4vw, 3.8rem);
+  font-weight: var(--pmri-heading-weight);
+  letter-spacing: var(--pmri-heading-tracking);
+  line-height: 1.02;
+}
+
+.pmri-heading-section {
+  font-weight: var(--pmri-section-heading-weight);
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+
+.pmri-body-copy {
+  color: var(--pmri-text-secondary);
+  font-size: 1rem;
+  font-weight: var(--pmri-body-weight);
+  line-height: var(--pmri-body-leading);
+}
+
+.pmri-microcopy {
+  color: var(--pmri-text-muted);
+  font-size: 0.82rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.55;
+}
+
+.pmri-label {
+  color: var(--pmri-text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  line-height: 1.5;
+}
+
+.pmri-nav-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+}
+
+.font-mono {
+  font-family: var(--pmri-font-mono);
 }
 
 .pmri-glass-rail {
   background:
-    linear-gradient(90deg, rgba(212, 175, 55, 0.12), transparent 24%),
-    linear-gradient(180deg, rgba(7, 17, 31, 0.92), rgba(7, 17, 31, 0.72));
+    linear-gradient(180deg, rgba(14, 15, 18, 0.95), rgba(11, 12, 14, 0.9));
 }
 
 .pmri-kicker-rule {
-  background: linear-gradient(90deg, rgba(212, 175, 55, 0.85), rgba(59, 130, 246, 0.55), transparent);
+  background: linear-gradient(90deg, rgba(143, 177, 216, 0.72), rgba(255, 255, 255, 0.18), transparent);
 }
 
 @keyframes pmri-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes pmri-edge-drift {
+  to {
+    transform: translateX(420%);
+  }
+}
+
+@keyframes pmri-section-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .pmri-interactive-card:hover,
+  .pmri-interactive-card:focus-within,
+  .pmri-hover-panel:hover,
+  .pmri-hover-panel:focus-within {
+    transform: none;
+  }
+
+  .pmri-animated-border-panel::before {
+    opacity: 0.22;
+  }
+
+  .pmri-animated-border-panel::after {
+    animation: none;
+    opacity: 0;
+  }
+
+  .pmri-hover-evidence {
+    transform: none;
   }
 }

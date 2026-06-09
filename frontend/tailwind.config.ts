@@ -10,33 +10,34 @@ const config: Config = {
     extend: {
       colors: {
         pmri: {
-          bg: "#07111F",
-          secondary: "#0D1B2A",
-          surface: "#12263A",
-          surface2: "#172B42",
-          panel: "#1c1f29",
-          border: "#334155",
-          borderSoft: "#434655",
-          text: "#F8FAFC",
-          text2: "#CBD5E1",
-          muted: "#94A3B8",
+          bg: "#090A0C",
+          secondary: "#101114",
+          surface: "#17181B",
+          surface2: "#1D1F23",
+          panel: "#202329",
+          border: "#2A2D33",
+          borderSoft: "#3A3E46",
+          text: "#ECEFF3",
+          text2: "#C4C9D1",
+          muted: "#949BA6",
           blue: "#3B82F6",
           blueSoft: "#60A5FA",
-          positive: "#10B981",
-          amber: "#F59E0B",
-          risk: "#EF4444",
-          gold: "#D4AF37"
+          positive: "#6FBF9B",
+          amber: "#C9A66B",
+          risk: "#D77A7A",
+          gold: "#AAB7C6",
+          red: "#D77A7A"
         }
       },
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-        mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"]
+        sans: ["var(--font-pmri-sans)", "Inter", "Manrope", "\"Helvetica Neue\"", "Arial", "sans-serif"],
+        mono: ["var(--font-pmri-mono)", "SF Mono", "Roboto Mono", "ui-monospace", "SFMono-Regular", "monospace"]
       },
       boxShadow: {
-        decision: "0 24px 80px rgba(0, 0, 0, 0.26)"
+        decision: "0 20px 54px rgba(0, 0, 0, 0.26)"
       },
       backgroundImage: {
-        "decision-radial": "radial-gradient(circle at 80% 12%, rgba(59, 130, 246, 0.14), transparent 32%), radial-gradient(circle at 12% 0%, rgba(212, 175, 55, 0.10), transparent 22%)"
+        "decision-radial": "radial-gradient(circle at 80% 12%, rgba(143, 177, 216, 0.08), transparent 32%), radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.04), transparent 22%)"
       }
     }
   },

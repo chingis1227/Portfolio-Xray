@@ -3,22 +3,22 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 
 export function CandidateComparisonPanel({ candidateName, candidateBoundary, evidenceQuality, summary, metrics }: { candidateName: string; candidateBoundary: string; evidenceQuality: string; summary: string; metrics: ComparisonMetric[] }) {
   return (
-    <section className="rounded-2xl border border-pmri-border/80 bg-pmri-secondary/45 p-5">
-      <div className="flex flex-col gap-4 border-b border-pmri-border/70 pb-5 md:flex-row md:items-start md:justify-between">
+    <section className="rounded-2xl border border-pmri-border/45 bg-pmri-secondary/35 p-5 shadow-decision">
+      <div className="flex flex-col gap-4 border-b border-pmri-border/40 pb-5 md:flex-row md:items-start md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-pmri-muted">Detailed comparison</p>
-          <h2 className="mt-2 text-xl font-semibold text-pmri-text">{candidateName}</h2>
+          <p className="pmri-label">Detailed comparison</p>
+          <h2 className="pmri-heading-section mt-2 text-xl text-pmri-text">{candidateName}</h2>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-pmri-text2">{summary}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <StatusBadge tone="amber">{evidenceQuality}</StatusBadge>
-          <StatusBadge tone="gold">Diagnostic benchmark</StatusBadge>
+          <StatusBadge tone="slate">Diagnostic candidate</StatusBadge>
         </div>
       </div>
-      <p className="mt-4 rounded-xl border border-pmri-gold/30 bg-pmri-gold/10 p-3 text-sm leading-6 text-pmri-gold">{candidateBoundary}</p>
-      <div className="mt-5 overflow-hidden rounded-xl border border-pmri-border/80">
-        <table className="w-full border-collapse text-left text-sm">
-          <thead className="bg-pmri-secondary/70 text-xs uppercase tracking-[0.12em] text-pmri-muted">
+      <p className="mt-4 rounded-xl border border-pmri-border/45 bg-white/[0.026] p-3 text-sm leading-6 text-pmri-text2">{candidateBoundary}</p>
+      <div className="mt-5 overflow-hidden rounded-xl border border-pmri-border/45">
+        <table className="w-full border-separate border-spacing-0 text-left text-sm">
+          <thead className="bg-white/[0.018] text-xs font-medium tracking-[-0.005em] text-pmri-muted">
             <tr>
               <th scope="col" className="px-4 py-3">Metric</th>
               <th scope="col" className="px-4 py-3">Current</th>
@@ -27,9 +27,9 @@ export function CandidateComparisonPanel({ candidateName, candidateBoundary, evi
               <th scope="col" className="px-4 py-3">Trade-off</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-pmri-border/70">
+          <tbody className="[&_tr+tr_td]:border-t [&_tr+tr_td]:border-pmri-border/35">
             {metrics.map((row) => (
-              <tr key={row.metric} className="bg-white/[0.01]">
+              <tr key={row.metric} className="bg-white/[0.008] transition hover:bg-white/[0.026]">
                 <td className="px-4 py-4 font-medium text-pmri-text">{row.metric}</td>
                 <td className="data-figure px-4 py-4 text-pmri-text2">{row.current}</td>
                 <td className="data-figure px-4 py-4 text-pmri-text2">{row.candidate}</td>

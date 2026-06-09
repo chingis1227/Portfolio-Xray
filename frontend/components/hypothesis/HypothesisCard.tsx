@@ -1,4 +1,4 @@
-import type { Hypothesis } from "@/lib/types";
+﻿import type { Hypothesis } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
 const testApproachLabels: Record<string, string> = {
@@ -22,37 +22,37 @@ export function HypothesisCard({
     isSelected
       ? "border-pmri-blue/70 bg-pmri-blue/10 shadow-decision"
       : isPrimary
-        ? "border-pmri-gold/55 bg-[linear-gradient(180deg,rgba(18,38,58,0.96),rgba(13,27,42,0.9))]"
+        ? "border-pmri-blue/28 bg-white/[0.035]"
         : "hover:border-pmri-blue/45"
   }`;
   const content = (
     <>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-pmri-muted">Hypothesis test</p>
-          <h3 className="mt-2 text-xl font-semibold text-pmri-text">{hypothesis.title}</h3>
+          <p className="pmri-label">Hypothesis test</p>
+          <h3 className="pmri-heading-section mt-2 text-xl text-pmri-text">{hypothesis.title}</h3>
         </div>
         <div className="flex flex-col items-end gap-2">
           {isSelected ? <StatusBadge tone="blue">Selected</StatusBadge> : null}
-          {isPrimary ? <StatusBadge tone="gold">First test to review</StatusBadge> : null}
+          {isPrimary ? <StatusBadge tone="slate">First test to review</StatusBadge> : null}
           <StatusBadge tone={hypothesis.status === "Concept only" ? "slate" : "blue"}>{hypothesis.status}</StatusBadge>
         </div>
       </div>
       <dl className="mt-6 space-y-5 text-sm">
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-pmri-muted">Test approach</dt>
+          <dt className="pmri-label">Test approach</dt>
           <dd className="mt-1 leading-6 text-pmri-text2">{testApproachLabels[hypothesis.methodId] ?? hypothesis.title}</dd>
         </div>
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-pmri-muted">Target problem</dt>
+          <dt className="pmri-label">Target problem</dt>
           <dd className="mt-1 leading-6 text-pmri-text2">{hypothesis.targetProblem}</dd>
         </div>
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-pmri-muted">Expected trade-off</dt>
+          <dt className="pmri-label">Expected trade-off</dt>
           <dd className="mt-1 leading-6 text-pmri-text2">{hypothesis.expectedTradeoff}</dd>
         </div>
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-pmri-muted">Evidence source</dt>
+          <dt className="pmri-label">Evidence basis</dt>
           <dd className="mt-1 leading-6 text-pmri-text2">{hypothesis.evidenceSource}</dd>
         </div>
       </dl>

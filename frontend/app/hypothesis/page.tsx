@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
@@ -107,11 +107,11 @@ function launchpadCardToHypothesis(card: JsonRecord): Hypothesis {
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
     <section className="pmri-card rounded-3xl p-6">
-      <p className="text-lg font-semibold text-pmri-text">{title}</p>
+      <p className="text-lg font-medium text-pmri-text">{title}</p>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-pmri-muted">{description}</p>
       <Link
         href="/portfolio-input"
-        className="pmri-focus mt-5 inline-flex rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-semibold text-white shadow-decision transition hover:bg-pmri-blueSoft"
+        className="pmri-focus mt-5 inline-flex rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
       >
         Go to Portfolio Input
       </Link>
@@ -122,7 +122,7 @@ function EmptyState({ title, description }: { title: string; description: string
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-pmri-muted">{label}</dt>
+      <dt className="pmri-label">{label}</dt>
       <dd className="mt-1 text-sm leading-6 text-pmri-text2">{children}</dd>
     </div>
   );
@@ -154,8 +154,8 @@ function SuggestedMethods({ value }: { value: unknown }) {
         const why = optionalText(method.why_this_method);
         return (
           <li key={`${methodId}-${index}`} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-            <p className="font-semibold text-pmri-text">{methodLabel(methodId)}</p>
-            {role ? <p className="mt-1 text-xs uppercase tracking-[0.1em] text-pmri-muted">{role.replaceAll("_", " ")}</p> : null}
+            <p className="font-medium text-pmri-text">{methodLabel(methodId)}</p>
+            {role ? <p className="pmri-microcopy mt-1">{role.replaceAll("_", " ")}</p> : null}
             {why ? <p className="mt-2 text-xs leading-5 text-pmri-muted">{why}</p> : null}
           </li>
         );
@@ -190,8 +190,8 @@ function BuilderSetupPanel({
   if (!selectedCard) {
     return (
       <aside className="pmri-card rounded-2xl p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-pmri-gold">Builder Setup</p>
-        <h3 className="mt-2 text-lg font-semibold text-pmri-text">Select a Hypothesis card</h3>
+        <p className="pmri-label">Builder setup</p>
+        <h3 className="pmri-heading-section mt-2 text-lg text-pmri-text">Select a Hypothesis card</h3>
         <p className="mt-4 text-sm leading-6 text-pmri-muted">
           Click a real Candidate Launchpad card to preview the Builder setup. No candidate will be generated on this page.
         </p>
@@ -215,13 +215,13 @@ function BuilderSetupPanel({
     <aside className="pmri-card rounded-2xl p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-pmri-gold">Builder Setup</p>
-          <h3 className="mt-2 text-lg font-semibold text-pmri-text">{textValue(selectedCard.title, "Selected Hypothesis card")}</h3>
+          <p className="pmri-label">Builder setup</p>
+          <h3 className="pmri-heading-section mt-2 text-lg text-pmri-text">{textValue(selectedCard.title, "Selected Hypothesis card")}</h3>
         </div>
         <StatusBadge tone="blue">Setup only</StatusBadge>
       </div>
 
-      <p className="mt-4 rounded-xl border border-pmri-gold/30 bg-pmri-gold/10 p-3 text-sm leading-6 text-pmri-gold">
+      <p className="mt-4 rounded-xl border border-pmri-border/70 bg-white/[0.035] p-3 text-sm leading-6 text-pmri-text2">
         No candidate has been generated yet. This is a setup preview, not a recommendation.
       </p>
 
@@ -246,7 +246,7 @@ function BuilderSetupPanel({
 
       {builderMatches ? (
         <div className="mt-6 rounded-2xl border border-pmri-blue/25 bg-pmri-blue/10 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-pmri-blueSoft">Backend Builder setup</p>
+          <p className="pmri-label text-pmri-blueSoft">Candidate builder setup</p>
           <dl className="mt-4 space-y-4">
             <FieldRow label="Builder goal">{displayValue(builderPrefill?.goal)}</FieldRow>
             <FieldRow label="Suggested method">{displayValue(builderPrefill?.suggested_method)}</FieldRow>
@@ -268,13 +268,13 @@ function BuilderSetupPanel({
           type="button"
           disabled={!canPrepareBuilder || builderMatches || isPreparing || isGenerating}
           onClick={onPrepare}
-          className={`w-full rounded-full border px-5 py-3 text-sm font-semibold transition ${
+          className={`w-full rounded-full border px-5 py-3 text-sm font-medium transition ${
             canPrepareBuilder && !builderMatches && !isPreparing && !isGenerating
-              ? "pmri-focus border-pmri-gold/50 bg-pmri-gold text-pmri-bg shadow-decision hover:bg-pmri-gold/90"
+              ? "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
               : "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
           }`}
         >
-          {isPreparing ? "Preparing Builder setup..." : builderMatches ? "Builder setup prepared" : "Prepare Builder setup"}
+          {isPreparing ? "Preparing test setup..." : builderMatches ? "Test setup prepared" : "Prepare test setup"}
         </button>
         <p className="text-xs leading-5 text-pmri-muted">
           This only prepares a run-local Builder setup for the selected hypothesis. It does not create a portfolio, recommendation, comparison, or verdict.
@@ -289,13 +289,13 @@ function BuilderSetupPanel({
           type="button"
           disabled={!canGenerateCandidate || isGenerating || isPreparing}
           onClick={onGenerate}
-          className={`w-full rounded-full border px-5 py-3 text-sm font-semibold transition ${
+          className={`w-full rounded-full border px-5 py-3 text-sm font-medium transition ${
             canGenerateCandidate && !isGenerating && !isPreparing
-              ? "pmri-focus border-pmri-blue/50 bg-pmri-blue text-white shadow-decision hover:bg-pmri-blueSoft"
+              ? "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
               : "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
           }`}
         >
-          {isGenerating ? "Generating candidate..." : "Generate one diagnostic candidate"}
+          {isGenerating ? "Testing hypothesis..." : "Test hypothesis"}
         </button>
         <p className="mt-3 text-xs leading-5 text-pmri-muted">
           {canGenerateCandidate
@@ -311,8 +311,8 @@ function BuilderSetupPanel({
           <div className="mt-4 rounded-2xl border border-pmri-green/30 bg-pmri-green/10 p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-pmri-green">Candidate generated</p>
-                <p className="mt-1 text-sm font-semibold text-pmri-text">{candidateForSelectedCard.candidateId || "candidate"}</p>
+                <p className="pmri-label text-pmri-positive">Candidate generated</p>
+                <p className="mt-1 text-sm font-medium text-pmri-text">{candidateForSelectedCard.candidateId || "candidate"}</p>
               </div>
               <StatusBadge tone={candidateForSelectedCard.status === "completed" ? "green" : "amber"}>
                 {candidateForSelectedCard.generationStatus}
@@ -443,7 +443,7 @@ export default function HypothesisPage() {
         <PageHeader
           kicker="Step 04 / Hypothesis"
           title="Sample hypothesis launchpad"
-          description="Explicit demo mode is enabled by ?sample=1. This is not a real backend review."
+          description="Explicit sample mode is enabled by ?sample=1. This is not the active portfolio review."
         >
           <StatusBadge tone="slate">Demo sample</StatusBadge>
         </PageHeader>
@@ -478,7 +478,7 @@ export default function HypothesisPage() {
         </PageHeader>
         <EmptyState
           title="Complete Portfolio Input first to unlock Hypothesis."
-          description="Demo JSON is not used here unless you explicitly open /hypothesis?sample=1."
+          description="Sample mode is not used here unless you explicitly open /hypothesis?sample=1."
         />
       </div>
     );
@@ -507,11 +507,11 @@ export default function HypothesisPage() {
       <PageHeader
         kicker="Step 04 / Hypothesis"
         title="Real Candidate Launchpad"
-        description="These are hypothesis tests from the backend Candidate Launchpad. They are not recommendations and do not generate a candidate by themselves."
+        description="These are hypothesis tests from Candidate Launchpad. They are not recommendations and do not generate a candidate by themselves."
       >
-        <StatusBadge tone="gold">Not a recommendation</StatusBadge>
+        <StatusBadge tone="slate">Not a recommendation</StatusBadge>
       </PageHeader>
-      <div className="mb-5 rounded-2xl border border-pmri-gold/35 bg-pmri-gold/10 p-4 text-sm leading-6 text-pmri-gold">
+      <div className="mb-5 rounded-2xl border border-pmri-border/70 bg-white/[0.035] p-4 text-sm leading-6 text-pmri-text2">
         Candidate is not a recommendation. Launchpad card is not a portfolio. Builder setup is not a rebalance instruction. Equal Weight / Risk Parity are reference tests if present.
       </div>
       <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">

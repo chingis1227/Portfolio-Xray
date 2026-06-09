@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -90,13 +90,13 @@ function reportFromResult(result: unknown): GroundedReport | null {
 
   return {
     title: "Grounded client-ready report summary",
-    subtitle: `Active review report for ${candidateId}. It is grounded in ${sourceCount} run-local artifact type(s) and ends with ${verdictId.replaceAll("_", " ")}.`,
+    subtitle: `Active review report for ${candidateId}. It is grounded in ${sourceCount} evidence package type(s) and ends with ${verdictId.replaceAll("_", " ")}.`,
     sections: sections.length
       ? sections
       : [
         {
           title: "Executive summary",
-          body: "The backend returned an AI Commentary context, but no plain-language sentences were available."
+          body: "The AI Commentary context was available, but no plain-language sentences were returned."
         }
       ],
     monitoring: textValue(
@@ -113,13 +113,13 @@ function reportFromResult(result: unknown): GroundedReport | null {
 function EmptyState() {
   return (
     <section className="pmri-card rounded-3xl p-6">
-      <p className="text-lg font-semibold text-pmri-text">Complete the active verdict first.</p>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-pmri-muted">
-        The Report page uses the active review artifacts. It needs one generated candidate and a matching decision verdict before it can build grounded commentary.
+      <p className="pmri-heading-section text-lg text-pmri-text">Complete the active verdict first.</p>
+      <p className="mt-2 max-w-2xl text-sm leading-7 text-pmri-muted">
+        The Report page uses the active review evidence package. It needs one generated candidate and a matching decision verdict before it can build grounded commentary.
       </p>
       <Link
         href="/verdict"
-        className="pmri-focus mt-5 inline-flex rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-semibold text-white shadow-decision transition hover:bg-pmri-blueSoft"
+        className="pmri-focus mt-5 inline-flex rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
       >
         Back to Verdict
       </Link>
@@ -205,7 +205,7 @@ export default function ReportPage() {
         <PageHeader
           kicker="Step 07 / Report"
           title="Client-ready report preview"
-          description="A concise narrative grounded in the active review artifacts: diagnosis, candidate test, comparison, verdict, limitations, and next observation points."
+          description="A concise narrative grounded in the active review: diagnosis, candidate test, comparison, verdict, limitations, and next observation points."
         >
           <StatusBadge tone={statusTone}>
             {report ? "Grounded report" : canGenerateReport ? "Ready to generate" : "Verdict required"}
@@ -218,10 +218,10 @@ export default function ReportPage() {
           <section className="pmri-card rounded-3xl p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-pmri-gold">Grounded commentary</p>
-                <h2 className="mt-2 text-xl font-semibold text-pmri-text">Generate report summary from active artifacts</h2>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-pmri-muted">
-                  This reads the run-local AI Commentary context for candidate <span className="font-semibold text-pmri-text2">{candidateId}</span>. It does not call an LLM, regenerate PDFs, or create a trading instruction.
+                <p className="pmri-label">Grounded commentary</p>
+                <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">Generate report summary from active evidence</h2>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
+                  This reads the AI Commentary context for candidate <span className="font-medium text-pmri-text2">{candidateId}</span>. It does not regenerate PDFs or create an implementation order.
                 </p>
               </div>
               <StatusBadge tone="blue">No PDF generation</StatusBadge>
@@ -230,13 +230,13 @@ export default function ReportPage() {
               type="button"
               disabled={isGeneratingReport}
               onClick={handleGenerateReport}
-              className={`mt-6 rounded-full border px-5 py-3 text-sm font-semibold transition ${
+              className={`mt-6 rounded-full border px-5 py-3 text-sm font-medium transition ${
                 isGeneratingReport
                   ? "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
-                  : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-white shadow-decision hover:bg-pmri-blueSoft"
+                  : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
               }`}
             >
-              {isGeneratingReport ? "Generating report summary..." : "Generate grounded report summary"}
+              {isGeneratingReport ? "Opening report..." : "Open report"}
             </button>
             {reportError ? (
               <p className="mt-4 rounded-xl border border-pmri-red/35 bg-pmri-red/10 p-3 text-sm leading-6 text-pmri-red">
@@ -250,17 +250,17 @@ export default function ReportPage() {
           <div className="space-y-5">
             <ClientReadyReportPreview {...report} />
             <section className="grid gap-4 lg:grid-cols-3">
-              <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
-                <StatusBadge tone="slate">Grounding file</StatusBadge>
-                <p className="mt-3 break-words text-sm leading-6 text-pmri-muted">{report.path ?? "ai_commentary_context.json"}</p>
+              <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
+                <StatusBadge tone="slate">Evidence grounding</StatusBadge>
+                <p className="mt-3 text-sm leading-7 text-pmri-muted">Grounded in the active review context.</p>
               </article>
-              <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
+              <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
                 <StatusBadge tone="blue">Generated at</StatusBadge>
-                <p className="mt-3 text-sm leading-6 text-pmri-muted">{report.generatedAt ?? "Timestamp unavailable"}</p>
+                <p className="mt-3 text-sm leading-7 text-pmri-muted">{report.generatedAt ?? "Timestamp unavailable"}</p>
               </article>
-              <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
+              <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
                 <StatusBadge tone={report.warnings.length ? "amber" : "green"}>Limitations</StatusBadge>
-                <ul className="mt-3 space-y-2 text-sm leading-6 text-pmri-muted">
+                <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-muted">
                   {(report.warnings.length ? report.warnings.slice(0, 3) : ["No AI Commentary context warnings were returned."]).map((item) => (
                     <li key={item}>• {item}</li>
                   ))}

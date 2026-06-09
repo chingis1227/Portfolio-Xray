@@ -47,11 +47,11 @@ function EmptyState({
 }) {
   return (
     <section className="pmri-card rounded-3xl p-6">
-      <p className="text-lg font-semibold text-pmri-text">{title}</p>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-pmri-muted">{description}</p>
+      <p className="pmri-heading-section text-lg text-pmri-text">{title}</p>
+      <p className="mt-2 max-w-2xl text-sm leading-7 text-pmri-muted">{description}</p>
       <Link
         href={href}
-        className="pmri-focus mt-5 inline-flex rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-semibold text-white shadow-decision transition hover:bg-pmri-blueSoft"
+        className="pmri-focus mt-5 inline-flex rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
       >
         {action}
       </Link>
@@ -93,7 +93,7 @@ export default function VerdictPage() {
 
   const limitationRows = useMemo(() => {
     if (!verdictMatchesCandidate || !verdict) return [];
-    return verdict.limitations.length ? verdict.limitations : ["No backend confidence limitations were returned."];
+    return verdict.limitations.length ? verdict.limitations : ["No confidence limitations were returned."];
   }, [verdict, verdictMatchesCandidate]);
 
   async function handleRunVerdict() {
@@ -141,7 +141,7 @@ export default function VerdictPage() {
         {!canRunVerdict && !verdictMatchesCandidate ? (
           <EmptyState
             title="Complete an active comparison first."
-            description="The Verdict page no longer reads demo JSON in the normal flow. It needs one active review, one generated candidate, and one matching current-vs-candidate comparison."
+            description="The Verdict page uses the active review in the normal flow. It needs one active review, one generated candidate, and one matching current-vs-candidate comparison."
           />
         ) : null}
 
@@ -149,22 +149,22 @@ export default function VerdictPage() {
           <section className="pmri-card rounded-3xl p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-pmri-gold">Ready for Block 9</p>
-                <h2 className="mt-2 text-xl font-semibold text-pmri-text">Generate decision-support verdict</h2>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-pmri-muted">
-                  Candidate <span className="font-semibold text-pmri-text2">{candidateId}</span> has active comparison evidence. This step writes verdict evidence only; it does not create a trading instruction or implementation order.
+                <p className="pmri-label">Ready for verdict</p>
+                <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">Generate decision-support verdict</h2>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
+                  Candidate <span className="font-medium text-pmri-text2">{candidateId}</span> has active comparison evidence. This step creates verdict evidence only; it does not create an implementation order.
                 </p>
               </div>
-              <StatusBadge tone="gold">Decision-support only</StatusBadge>
+              <StatusBadge tone="slate">Decision-support only</StatusBadge>
             </div>
             <button
               type="button"
               disabled={isRunningVerdict}
               onClick={handleRunVerdict}
-              className={`mt-6 rounded-full border px-5 py-3 text-sm font-semibold transition ${
+              className={`mt-6 rounded-full border px-5 py-3 text-sm font-medium transition ${
                 isRunningVerdict
                   ? "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
-                  : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-white shadow-decision hover:bg-pmri-blueSoft"
+                  : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
               }`}
             >
               {isRunningVerdict ? "Generating verdict..." : "Generate verdict"}
@@ -191,17 +191,17 @@ export default function VerdictPage() {
             />
             <section className="grid gap-4 lg:grid-cols-3">
               <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
-                <StatusBadge tone="gold">Action framing</StatusBadge>
-                <p className="mt-3 text-sm leading-6 text-pmri-text2">{verdict.actionFraming}</p>
+                <StatusBadge tone="slate">Action framing</StatusBadge>
+                <p className="mt-3 text-sm leading-7 text-pmri-text2">{verdict.actionFraming}</p>
               </article>
               <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
                 <StatusBadge tone={verdict.confidence === "low" ? "amber" : "blue"}>Evidence quality</StatusBadge>
-                <p className="mt-3 text-sm leading-6 text-pmri-text2">Confidence: {verdict.confidence}</p>
-                <p className="mt-2 text-sm leading-6 text-pmri-muted">Decision status: {verdict.decisionStatus.replaceAll("_", " ")}</p>
+                <p className="mt-3 text-sm leading-7 text-pmri-text2">Confidence: {verdict.confidence}</p>
+                <p className="mt-2 text-sm leading-7 text-pmri-muted">Decision status: {verdict.decisionStatus.replaceAll("_", " ")}</p>
               </article>
               <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
                 <StatusBadge tone="slate">What would change it</StatusBadge>
-                <ul className="mt-3 space-y-2 text-sm leading-6 text-pmri-muted">
+                <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-muted">
                   {limitationRows.map((item) => (
                     <li key={item}>• {item}</li>
                   ))}
@@ -209,18 +209,18 @@ export default function VerdictPage() {
               </article>
             </section>
             <div className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
-              <p className="mb-3 text-sm leading-6 text-pmri-muted">
+              <p className="mb-3 text-sm leading-7 text-pmri-muted">
                 Continue to Report only after reviewing the verdict framing. The next page should summarize the evidence; this is still not a trade order.
               </p>
               <button
                 type="button"
-                className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-semibold text-white shadow-decision transition hover:bg-pmri-blueSoft"
+                className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
                 onClick={() => {
                   markVerdictReady();
                   router.push("/report");
                 }}
               >
-                Open report summary
+                Open report
               </button>
             </div>
           </div>

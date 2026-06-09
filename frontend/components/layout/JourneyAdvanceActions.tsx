@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import { useReviewState } from "@/lib/reviewState";
@@ -10,13 +10,13 @@ export function CandidateReadyAction() {
   return (
     <button
       type="button"
-      className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-semibold text-white shadow-decision transition hover:bg-pmri-blueSoft"
+      className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
       onClick={() => {
         markCandidateReady();
         router.push("/comparison");
       }}
     >
-      Generate candidate and compare
+      Compare candidate
     </button>
   );
 }
@@ -28,13 +28,13 @@ export function ComparisonReadyAction() {
   return (
     <button
       type="button"
-      className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-semibold text-white shadow-decision transition hover:bg-pmri-blueSoft"
+      className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
       onClick={() => {
         markComparisonReady();
         router.push("/verdict");
       }}
     >
-      Complete comparison and view verdict
+      Generate verdict
     </button>
   );
 }
@@ -46,13 +46,13 @@ export function VerdictReadyAction() {
   return (
     <button
       type="button"
-      className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-semibold text-white shadow-decision transition hover:bg-pmri-blueSoft"
+      className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
       onClick={() => {
         markVerdictReady();
         router.push("/report");
       }}
     >
-      Complete verdict and open report
+      Open report
     </button>
   );
 }

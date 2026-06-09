@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -34,15 +34,15 @@ export function JourneyGate({ stepId, children }: JourneyGateProps) {
       <section className="pmri-card rounded-3xl p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-pmri-muted">Required first</p>
-            <p className="mt-2 text-lg font-semibold text-pmri-text">{step.lockReason}</p>
+            <p className="pmri-label">Required first</p>
+            <p className="pmri-heading-section mt-2 text-lg text-pmri-text">{step.lockReason}</p>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-pmri-muted">
               Locked stages are intentionally muted and do not show downstream demo content before the workflow has enough state.
             </p>
           </div>
           <Link
             href="/portfolio-input"
-            className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-semibold text-white shadow-decision transition hover:bg-pmri-blueSoft"
+            className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
           >
             Go to Portfolio Input
           </Link>

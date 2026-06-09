@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -48,11 +48,11 @@ function EmptyState({
 }) {
   return (
     <section className="pmri-card rounded-3xl p-6">
-      <p className="text-lg font-semibold text-pmri-text">{title}</p>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-pmri-muted">{description}</p>
+      <p className="pmri-heading-section text-lg text-pmri-text">{title}</p>
+      <p className="mt-2 max-w-2xl text-sm leading-7 text-pmri-muted">{description}</p>
       <Link
         href={href}
-        className="pmri-focus mt-5 inline-flex rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-semibold text-white shadow-decision transition hover:bg-pmri-blueSoft"
+        className="pmri-focus mt-5 inline-flex rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
       >
         {action}
       </Link>
@@ -144,7 +144,7 @@ export default function ComparisonPage() {
         {!canRunComparison && !comparisonMatchesCandidate ? (
           <EmptyState
             title="Generate one compare-ready candidate first."
-            description="Comparison is available only after the Hypothesis page creates one backend candidate with a matching active review id. Demo comparison JSON is not shown here."
+            description="Comparison is available only after the Hypothesis page creates one candidate with a matching active review id. Sample comparison data is not shown in the normal flow."
           />
         ) : null}
 
@@ -152,25 +152,25 @@ export default function ComparisonPage() {
           <section className="pmri-card rounded-3xl p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-pmri-gold">Ready for Block 8</p>
-                <h2 className="mt-2 text-xl font-semibold text-pmri-text">Run current-vs-candidate comparison</h2>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-pmri-muted">
-                  Candidate <span className="font-semibold text-pmri-text2">{candidateId}</span> is compare-ready. This step writes comparison evidence only; it does not create a verdict, recommendation, or trade instruction.
+                <p className="pmri-label">Ready for comparison</p>
+                <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">Run current-vs-candidate comparison</h2>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
+                  Candidate <span className="font-medium text-pmri-text2">{candidateId}</span> is compare-ready. This step creates comparison evidence only; it does not create a verdict, recommendation, or implementation order.
                 </p>
               </div>
-              <StatusBadge tone="gold">Diagnostic comparison</StatusBadge>
+              <StatusBadge tone="slate">Diagnostic comparison</StatusBadge>
             </div>
             <button
               type="button"
               disabled={isComparing}
               onClick={handleRunComparison}
-              className={`mt-6 rounded-full border px-5 py-3 text-sm font-semibold transition ${
+              className={`mt-6 rounded-full border px-5 py-3 text-sm font-medium transition ${
                 isComparing
                   ? "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
-                  : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-white shadow-decision hover:bg-pmri-blueSoft"
+                  : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
               }`}
             >
-              {isComparing ? "Running comparison..." : "Run comparison"}
+              {isComparing ? "Comparing candidate..." : "Compare candidate"}
             </button>
             {comparisonError ? (
               <p className="mt-4 rounded-xl border border-pmri-red/35 bg-pmri-red/10 p-3 text-sm leading-6 text-pmri-red">
@@ -193,29 +193,29 @@ export default function ComparisonPage() {
             <section className="grid gap-4 lg:grid-cols-3">
               <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
                 <StatusBadge tone="blue">Turnover / cost</StatusBadge>
-                <p className="mt-3 text-sm leading-6 text-pmri-text2">{comparison.turnover}</p>
-                <p className="mt-2 text-sm leading-6 text-pmri-muted">{comparison.estimatedCost}</p>
+                <p className="mt-3 text-sm leading-7 text-pmri-text2">{comparison.turnover}</p>
+                <p className="mt-2 text-sm leading-7 text-pmri-muted">{comparison.estimatedCost}</p>
               </article>
               <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
                 <StatusBadge tone="amber">Decision review gate</StatusBadge>
-                <p className="mt-3 text-sm leading-6 text-pmri-text2">{comparison.materiality}</p>
+                <p className="mt-3 text-sm leading-7 text-pmri-text2">{comparison.materiality}</p>
               </article>
               <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
                 <StatusBadge tone="slate">Warnings</StatusBadge>
-                <ul className="mt-3 space-y-2 text-sm leading-6 text-pmri-muted">
-                  {(comparison.warnings.length ? comparison.warnings : ["No backend warnings were returned."]).map((item) => (
+                <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-muted">
+                  {(comparison.warnings.length ? comparison.warnings : ["No review warnings were returned."]).map((item) => (
                     <li key={item}>• {item}</li>
                   ))}
                 </ul>
               </article>
             </section>
             <div className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
-              <p className="mb-3 text-sm leading-6 text-pmri-muted">
+              <p className="mb-3 text-sm leading-7 text-pmri-muted">
                 Continue only after reviewing the trade-offs. The next step evaluates action/no-action; this page does not choose a winner.
               </p>
               <button
                 type="button"
-                className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-semibold text-white shadow-decision transition hover:bg-pmri-blueSoft"
+                className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
                 onClick={() => {
                   markComparisonReady();
                   router.push("/verdict");
