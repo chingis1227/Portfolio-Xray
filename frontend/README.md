@@ -31,12 +31,16 @@ Clean Next.js/React prototype for Portfolio MRI as an institutional Investment D
 - `components/ui/` contains reusable card, metric, badge, and hero primitives.
 - `components/portfolio/`, `diagnosis/`, `evidence/`, `hypothesis/`, `comparison/`, `verdict/`, and `report/` contain product-stage components.
 - `data/demo/` contains local static JSON used by pages during prototype phase.
+- `data/instrumentUniverse.ts` is generated from the canonical `../config/etf_universe.yml`
+  and `../config/stock_universe.yml` taxonomies. Regenerate it from the repo root with
+  `.\.venv\Scripts\python.exe scripts\generate_frontend_instrument_universe.py` after
+  taxonomy changes.
 - `lib/` contains shared journey metadata and TypeScript types.
 - `styles/` contains global Tailwind and Portfolio MRI CSS variables.
 
 ## Portfolio Input validation
 
-- Investor currency is required.
+- Investor currency is required and currently limited in the UI to USD or EUR.
 - Every visible portfolio row must use a selected instrument from the local instrument list and a weight greater than 0.
 - At least 2 valid rows are required before diagnosis.
 - Portfolio weights must add up to 100%, with a 0.01 tolerance for rounding.
@@ -46,9 +50,9 @@ Clean Next.js/React prototype for Portfolio MRI as an institutional Investment D
 
 ## Review state and storage
 
-- The real flow is Portfolio Input -> Diagnosis -> Evidence -> Hypothesis / Builder prepare ->
+- The real flow is Portfolio Input -> Diagnosis -> Stress Test Lab -> Hypothesis / Builder prepare ->
   Candidate Generation -> Current vs Candidate -> Decision Verdict -> Report / AI Commentary.
-- The UI stores compact state in `pmri.activeReview.v2`: `reviewId`, portfolio input, diagnosis/evidence/launchpad/builder summaries, selected card/candidate, and stage summaries. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card and says generation is allowed.
+- The UI stores compact state in `pmri.activeReview.v2`: `reviewId`, portfolio input, diagnosis/stress evidence/launchpad/builder summaries, selected card/candidate, and stage summaries. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card and says generation is allowed.
 - The complete `review_result.json` is not persisted in browser storage. During the current tab session it may remain in memory for immediate rendering; after hydration the UI relies on compact summaries and `reviewId`.
 - Portfolio Input includes a read-only recovery control for `frontend_review_*` IDs. It calls
   `/api/portfolio/review/recover`, reads only run-local diagnosis/launchpad/builder artifacts, and
@@ -94,7 +98,7 @@ Use [../docs/demo/frontend_backend_vertical_runbook.md](../docs/demo/frontend_ba
 
 - commands for Python bridge tests and frontend typecheck/build;
 - how to start the Next.js frontend;
-- the manual Input -> Diagnosis -> Evidence -> Hypothesis -> Builder prepare -> Candidate -> Comparison -> Verdict -> Report click path;
+- the manual Input -> Diagnosis -> Stress Test Lab -> Hypothesis -> Builder prepare -> Candidate -> Comparison -> Verdict -> Report click path;
 - run directory strategy under `runs/frontend_review_*`;
 - stale artifact risks and recovery;
 - product language boundaries: candidate is a diagnostic test, Builder setup is not a rebalance instruction, and Verdict/Report are decision-support only.

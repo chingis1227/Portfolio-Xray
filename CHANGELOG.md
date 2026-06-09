@@ -4,6 +4,22 @@ This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.
 
+Date: 2026-06-09
+
+Category: Changed
+
+- **Diagnosis Portfolio X-Ray Summary:** expanded the frontend Diagnosis page from a compact
+  summary into a Block 2.1-2.6 Portfolio X-Ray presentation layer. The page now surfaces
+  allocation composition, risk profile, factor sensitivity, hidden risk alerts, risk budget,
+  and pre-stress weakness map from the existing review state, with unavailable states when
+  evidence is missing and no changes to calculations or backend contracts.
+
+- **Diagnosis client-ready polish:** redesigned the Diagnosis presentation layer into a premium
+  Portfolio X-Ray Summary with sticky section navigation, allocation donut, stacked exposure bars,
+  factor cards, hidden-risk alert tiles, paired weight-vs-risk contribution bars, and a stress
+  weakness map. User-facing technical labels are sanitized at display time; backend/API contracts,
+  calculations, and product flow are unchanged.
+
 Date: 2026-06-08
 
 Category: Added
