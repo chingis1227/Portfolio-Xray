@@ -15,8 +15,7 @@ The interactive flow is a diagnosis-first decision-support workflow:
 Portfolio Input
 -> Diagnosis
 -> Evidence
--> Hypothesis / Builder
--> Candidate Generation
+-> Hypothesis / Builder prepare and Candidate Generation
 -> Current vs Candidate Comparison
 -> Decision Verdict
 -> Report / AI Commentary grounding
@@ -34,7 +33,7 @@ The product boundary is strict:
 ## What the demo proves
 
 The demo proves that a user can enter a portfolio in the frontend, run the real Python
-diagnostics bridge, select one Launchpad hypothesis, prepare a matching run-local Builder
+diagnostics bridge, select one Launchpad test path, prepare a matching run-local Builder
 setup for that exact card, generate exactly one diagnostic candidate, compare the current
 portfolio with that candidate, request a Decision Verdict, and read a client-ready
 explanation grounded in the produced backend artifacts.
@@ -50,7 +49,7 @@ Every real frontend review creates an isolated run directory:
 runs/frontend_review_<UTC timestamp>_<short id>/
 ```
 
-The frontend stores the compact `reviewId` and stage summaries. The full raw backend JSON is
+The frontend stores the compact active review id and stage summaries. The full raw backend JSON is
 kept in the run directory, not permanently in browser `localStorage`.
 
 Expected run-local artifacts appear in this order:
@@ -131,17 +130,16 @@ Then demo the flow:
 1. On Portfolio Input, enter investor currency `USD` and the holdings above.
 2. Run diagnosis. The frontend calls `POST /api/portfolio/diagnose`.
 3. On Diagnosis / Evidence, explain the current portfolio first. Do not discuss candidates yet.
-4. On Hypothesis, select one backend Candidate Launchpad card. The right-hand Builder
-   panel shows the selected hypothesis and says setup has not been prepared yet.
+4. On Hypothesis, select one Launchpad test path. The right-hand Builder panel shows
+   the selected test setup and says setup has not been prepared yet.
 5. Click **Prepare Builder setup**. The frontend calls
    `POST /api/portfolio/builder/prepare` with the active `review_id` and
    `selected_card_id`. This writes `builder_setup_result.json` in the same
    `runs/frontend_review_*` directory and stores only the compact active Builder summary
    in browser state.
-6. Confirm the panel now says **Builder setup prepared** and shows backend Builder fields
-   such as Builder goal, suggested method, validation status, and whether candidate
-   generation is allowed. If you select a different Launchpad card, prepare Builder setup
-   again for that exact card before generating.
+6. Confirm the panel now says **Builder setup prepared** and shows the plain-language
+   test goal, suggested method, setup status, and whether candidate generation is allowed. If you select a different Launchpad card,
+   prepare Builder setup again for that exact card before generating.
 7. Click **Generate one diagnostic candidate** only after Builder setup is prepared for the
    selected card. The frontend calls `POST /api/portfolio/candidate/generate`.
 8. Move to Comparison and generate Current vs Candidate evidence. The frontend calls
@@ -155,7 +153,7 @@ Safe narration:
 
 - "The system diagnosed the current portfolio first."
 - "The selected Launchpad card first becomes a Builder setup; only then can the UI generate one diagnostic candidate."
-- "This candidate is one tested hypothesis selected from the Launchpad."
+- "This candidate is one diagnostic test selected from the Launchpad."
 - "The comparison shows trade-offs, including what improved and what worsened."
 - "The verdict can say no-trade or evidence-insufficient; it is not forced to recommend action."
 - "The report text is grounded in the run-local JSON artifacts."
@@ -228,3 +226,24 @@ including the selected-card Builder prepare lineage guard. `npm.cmd run test:smo
 Next dev server on an isolated port and checks that the journey pages render; it does not run the
 Python backend stages or replace a live browser click-through, which should be performed separately
 when the demo environment is available.
+
+## Browser / Playwright QA hygiene
+
+Use this checklist before trusting a screen observation:
+
+1. Use one active dev server and one known URL/port for the check. If the port is already occupied,
+   either stop the old server or start a fresh server on another explicit port and record it.
+2. Do not run `next build`, `next dev`, typecheck generation, or other `.next` writers at the same
+   time against the same `frontend/.next` directory.
+3. Check the dev-server terminal/log before judging the UI. If the server shows missing `.next`
+   chunks, React Client Manifest errors, or compile failures, restart/fix the server first.
+4. Reset or intentionally recover browser state. Do not trust old `localStorage`, old screenshots,
+   or old `runs/frontend_review_*` folders as evidence for the active run.
+5. In Playwright, take a fresh snapshot before using element refs and re-snapshot after navigation,
+   modal/menu changes, route changes, or any substantial UI update.
+6. For a real vertical demo, record the active `reviewId` and verify that
+   `builder_setup_result.json`, `candidate_generation_result.json`,
+   `current_vs_candidate_result.json`, `decision_verdict_result.json`, and
+   `report_commentary_result.json` belong to that same run directory.
+7. Report visual QA with URL/port, route, active `reviewId` if relevant, state reset/recovery notes,
+   screenshots captured, and any area that was not verified.

@@ -38,6 +38,10 @@ from src.ai_commentary_context import (  # noqa: E402
     AI_COMMENTARY_CONTEXT_FILENAME,
     write_ai_commentary_context_outputs,
 )
+from src.site_explanation_bundle import (  # noqa: E402
+    SITE_EXPLANATION_BUNDLE_FILENAME,
+    write_site_explanation_bundle_outputs,
+)
 from scripts.generate_candidate_from_builder_setup import (  # noqa: E402
     generate_candidate_from_builder_setup,
 )
@@ -504,6 +508,7 @@ def compare_selected_candidate(
         raise ComparisonBridgeError(
             "current_vs_candidate.selected_candidate_ids does not match the selected generated candidate."
         )
+    site_bundle_path, site_bundle = write_run_site_explanation_bundle(run_dir, review_id=review_id)
 
     return {
         "review_id": review_id,
@@ -516,9 +521,11 @@ def compare_selected_candidate(
         "paths": {
             "candidate_comparison": display_path(Path(comparison_path)),
             "current_vs_candidate": display_path(Path(current_vs_path)),
+            "site_explanation_bundle": display_path(site_bundle_path),
         },
         "candidate_comparison": comparison,
         "current_vs_candidate": current_vs_candidate,
+        "site_explanation_bundle": site_bundle,
     }
 
 
@@ -594,6 +601,7 @@ def write_selected_candidate_verdict(
         )
     if verdict.get("guardrails", {}).get("does_not_execute_trades") is not True:
         raise VerdictBridgeError("decision_verdict must preserve the does_not_execute_trades guardrail.")
+    site_bundle_path, site_bundle = write_run_site_explanation_bundle(run_dir, review_id=review_id)
 
     result = {
         "review_id": review_id,
@@ -606,12 +614,40 @@ def write_selected_candidate_verdict(
         "confidence": verdict.get("confidence"),
         "path": display_path(Path(verdict_path)),
         "decision_verdict": verdict,
+        "site_explanation_bundle_path": display_path(site_bundle_path),
+        "site_explanation_bundle": site_bundle,
     }
     return result
 
 
 def _read_optional_json(path: Path) -> dict[str, Any] | None:
     return _read_json(path) if path.is_file() else None
+
+
+def write_run_site_explanation_bundle(run_dir: Path, *, review_id: str) -> tuple[Path, dict[str, Any]]:
+    """Refresh the run-local screen-copy hierarchy from deterministic review artifacts."""
+
+    analysis_subject = run_dir / "analysis_subject"
+    paths = write_site_explanation_bundle_outputs(
+        output_dir=run_dir,
+        review_id=review_id,
+        portfolio_xray=_read_optional_json(analysis_subject / "portfolio_xray.json"),
+        stress_report=_read_optional_json(analysis_subject / "stress_report.json"),
+        problem_classification=_read_optional_json(analysis_subject / "problem_classification.json"),
+        candidate_launchpad=_read_optional_json(analysis_subject / "candidate_launchpad.json"),
+        portfolio_alternatives_builder=_read_optional_json(
+            analysis_subject / PORTFOLIO_ALTERNATIVES_BUILDER_FILENAME
+        ),
+        candidate_generation=_read_optional_json(run_dir / "candidate_generation.json"),
+        candidate_comparison=_read_optional_json(run_dir / "candidate_comparison.json"),
+        current_vs_candidate=_read_optional_json(run_dir / CURRENT_VS_CANDIDATE_FILENAME),
+        decision_verdict=_read_optional_json(run_dir / DECISION_VERDICT_FILENAME),
+        ai_commentary_context=_read_optional_json(run_dir / AI_COMMENTARY_CONTEXT_FILENAME),
+        what_changed_summary=_read_optional_json(run_dir / "what_changed_summary.json"),
+        monitoring_diff=_read_optional_json(run_dir / "monitoring_diff.json"),
+    )
+    bundle_path = paths["site_explanation_bundle_json"]
+    return bundle_path, _read_json(bundle_path)
 
 
 def _assert_current_vs_candidate_scope(
@@ -734,6 +770,7 @@ def write_selected_report_context(
         raise ReportBridgeError("ai_commentary_context must preserve the does_not_execute_trades guardrail.")
     if ai_context.get("grounding_phase") != "post_compare":
         raise ReportBridgeError("ai_commentary_context must be a post-compare grounded report context.")
+    site_bundle_path, site_bundle = write_run_site_explanation_bundle(run_dir, review_id=review_id)
 
     return {
         "review_id": review_id,
@@ -743,6 +780,8 @@ def write_selected_report_context(
         "candidate_id": candidate_id,
         "path": display_path(Path(ai_context_path)),
         "ai_commentary_context": ai_context,
+        "site_explanation_bundle_path": display_path(site_bundle_path),
+        "site_explanation_bundle": site_bundle,
     }
 
 
@@ -825,6 +864,7 @@ def expected_output_paths(run_dir: Path, *, mode: str) -> dict[str, Path]:
         "stress_report": analysis_subject / "stress_report.json",
         "run_metadata": analysis_subject / "run_metadata.json",
         "output_manifest": analysis_subject / "output_manifest.json",
+        "site_explanation_bundle": analysis_subject / SITE_EXPLANATION_BUNDLE_FILENAME,
     }
     if mode == MODE_DIAGNOSIS_PLUS_PROBLEM:
         paths.update(
@@ -841,7 +881,13 @@ def expected_output_paths(run_dir: Path, *, mode: str) -> dict[str, Path]:
 
 def read_outputs(paths: dict[str, Path], *, mode: str) -> dict[str, Any]:
     outputs: dict[str, Any] = {}
-    required_keys = ["portfolio_xray", "stress_report", "run_metadata", "output_manifest"]
+    required_keys = [
+        "portfolio_xray",
+        "stress_report",
+        "run_metadata",
+        "output_manifest",
+        "site_explanation_bundle",
+    ]
     if mode == MODE_DIAGNOSIS_PLUS_PROBLEM:
         required_keys.extend(
             ["problem_classification", "candidate_launchpad", "portfolio_alternatives_builder"]

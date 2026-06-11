@@ -4,35 +4,35 @@ export const journeySteps: JourneyStep[] = [
   {
     id: "portfolio-input",
     label: "Portfolio Input",
-    shortLabel: "Input",
+    shortLabel: "Portfolio",
     href: "/portfolio-input",
     lockReason: "Portfolio Input is always available."
   },
   {
     id: "diagnosis",
-    label: "Diagnosis",
-    shortLabel: "Diagnosis",
+    label: "Portfolio X-Ray",
+    shortLabel: "X-ray",
     href: "/diagnosis",
     lockReason: "Complete Portfolio Input first to unlock Diagnosis."
   },
   {
     id: "evidence",
-    label: "Evidence",
-    shortLabel: "Evidence",
+    label: "Stress Lab",
+    shortLabel: "Stress Lab",
     href: "/evidence",
-    lockReason: "Run portfolio diagnosis first to generate Evidence."
+    lockReason: "Run portfolio diagnosis first to generate Stress Test Lab evidence."
   },
   {
     id: "hypothesis",
     label: "Hypothesis",
     shortLabel: "Hypothesis",
     href: "/hypothesis",
-    lockReason: "Review generated diagnosis and evidence before testing a hypothesis."
+    lockReason: "Review generated diagnosis and stress evidence before testing a hypothesis."
   },
   {
     id: "comparison",
     label: "Comparison",
-    shortLabel: "Compare",
+    shortLabel: "Comparison",
     href: "/comparison",
     lockReason: "Generate a candidate before comparing portfolios."
   },

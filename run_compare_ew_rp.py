@@ -11,6 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from legacy.runners.run_compare_ew_rp import _read_var_es_metrics_csv
+
 def main() -> int:
     root = Path(__file__).resolve().parent
     target = root / "legacy" / "runners" / "run_compare_ew_rp.py"

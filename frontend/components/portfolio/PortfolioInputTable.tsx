@@ -24,7 +24,7 @@ type ValidationSummary = {
   tone: "green" | "amber" | "red";
 };
 
-const currencies = ["USD", "EUR", "GBP", "CHF", "CAD", "AUD"];
+const currencies = ["USD", "EUR"];
 const WEIGHT_TOLERANCE = 0.01;
 
 function normalizeTicker(value: string) {
@@ -229,6 +229,26 @@ function matchesInstrument(item: Instrument, query: string) {
     .some((value) => String(value).toLowerCase().includes(normalizedQuery));
 }
 
+function instrumentMatchRank(item: Instrument, query: string) {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return item.kind === "cash" ? 0 : item.kind === "fund" ? 1 : 2;
+
+  const ticker = item.ticker.toLowerCase();
+  const instrument = item.instrument.toLowerCase();
+  if (ticker === normalizedQuery) return 0;
+  if (ticker.startsWith(normalizedQuery)) return 1;
+  if (instrument.startsWith(normalizedQuery)) return 2;
+  if (ticker.includes(normalizedQuery)) return 3;
+  if (instrument.includes(normalizedQuery)) return 4;
+  return 5;
+}
+
+function instrumentKindLabel(item: Instrument) {
+  if (item.kind === "cash") return item.currency ?? "Cash";
+  if (item.kind === "stock") return "Stock";
+  return "ETF";
+}
+
 function SimilarExposureWarning({ rows }: { rows: EditableHolding[] }) {
   const tickers = new Set(rows.map((row) => normalizeTicker(row.ticker)));
   const hasSpyAndVoo = tickers.has("SPY") && tickers.has("VOO");
@@ -256,6 +276,7 @@ function InstrumentCombobox({
   const [query, setQuery] = useState(displayTicker(row));
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [queryEditedSinceOpen, setQueryEditedSinceOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [dropdownStyle, setDropdownStyle] = useState<{ left: number; top: number; width: number } | null>(null);
@@ -264,10 +285,16 @@ function InstrumentCombobox({
     if (row.ticker) setQuery(displayTicker(row));
   }, [row.ticker]);
 
-  const effectiveQuery = open && query === displayTicker(row) ? "" : query;
+  const effectiveQuery = open && !queryEditedSinceOpen && query === displayTicker(row) ? "" : query;
 
   const matches = useMemo(() => {
-    return instrumentUniverse.filter((item) => matchesInstrument(item, effectiveQuery)).slice(0, 8);
+    return instrumentUniverse
+      .filter((item) => matchesInstrument(item, effectiveQuery))
+      .sort((a, b) => {
+        const rankDelta = instrumentMatchRank(a, effectiveQuery) - instrumentMatchRank(b, effectiveQuery);
+        if (rankDelta !== 0) return rankDelta;
+        return a.ticker.localeCompare(b.ticker);
+      });
   }, [effectiveQuery]);
 
   const updateDropdownPosition = () => {
@@ -298,6 +325,7 @@ function InstrumentCombobox({
     if (closeTimer.current) clearTimeout(closeTimer.current);
     onSelect(item);
     setQuery(item.kind === "cash" ? "Cash" : item.ticker);
+    setQueryEditedSinceOpen(false);
     setOpen(false);
     setActiveIndex(0);
   };
@@ -305,6 +333,7 @@ function InstrumentCombobox({
   const handleQueryChange = (value: string) => {
     setQuery(value);
     setOpen(true);
+    setQueryEditedSinceOpen(true);
     setActiveIndex(0);
 
     const exactTicker = instrumentByTicker.get(normalizeTicker(value));
@@ -321,12 +350,13 @@ function InstrumentCombobox({
     <div className="relative">
       <input
         ref={inputRef}
-        className={`pmri-focus w-full rounded-lg border bg-pmri-secondary px-3 py-2 font-semibold text-pmri-text placeholder:text-pmri-muted/70 ${instrumentMissing ? "border-pmri-risk/70" : duplicateTicker ? "border-pmri-amber/70" : "border-pmri-border"}`}
+        className={`pmri-focus w-full rounded-xl border bg-pmri-secondary/80 px-3 py-2.5 text-sm font-medium text-pmri-text placeholder:text-pmri-muted/70 ${instrumentMissing ? "border-pmri-risk/55" : duplicateTicker ? "border-pmri-amber/55" : "border-pmri-border/55"}`}
         value={query}
         placeholder="Search ticker or name"
         onChange={(event) => handleQueryChange(event.target.value)}
         onFocus={() => {
           setOpen(true);
+          setQueryEditedSinceOpen(false);
           updateDropdownPosition();
           window.setTimeout(() => inputRef.current?.select(), 0);
         }}
@@ -366,25 +396,28 @@ function InstrumentCombobox({
 
       {open && dropdownStyle ? createPortal((
         <div
-          className="fixed z-50 max-h-72 overflow-y-auto rounded-xl border border-pmri-border bg-pmri-secondary shadow-2xl shadow-black/40"
+          className="fixed z-50 max-h-80 overflow-y-auto rounded-xl border border-pmri-border/55 bg-pmri-secondary shadow-2xl shadow-black/35"
           style={{ left: dropdownStyle.left, top: dropdownStyle.top, width: dropdownStyle.width }}
         >
+          <div className="sticky top-0 z-10 border-b border-pmri-border/50 bg-pmri-secondary/95 px-3 py-2 text-xs text-pmri-text2 backdrop-blur">
+            {matches.length} instruments available
+          </div>
           {matches.length > 0 ? matches.map((item, index) => (
             <button
               key={item.ticker}
               type="button"
-              className={`pmri-focus flex w-full items-start justify-between gap-3 px-3 py-3 text-left text-sm transition ${index === activeIndex ? "bg-pmri-blue/15" : "hover:bg-white/[0.06]"}`}
+              className={`pmri-focus flex w-full items-start justify-between gap-3 px-3 py-3 text-left text-sm transition ${index === activeIndex ? "bg-pmri-blue/10" : "hover:bg-white/[0.045]"}`}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => selectInstrument(item)}
             >
               <span>
-                <span className="block font-semibold text-pmri-text">{item.kind === "cash" ? "Cash" : item.ticker}</span>
+                <span className="block font-medium text-pmri-text">{item.kind === "cash" ? "Cash" : item.ticker}</span>
                 <span className="mt-0.5 block text-xs leading-5 text-pmri-muted">
                   {item.kind === "cash" ? `${item.currency ?? "USD"} liquidity position` : item.instrument}
                 </span>
               </span>
-              <span className="rounded-full border border-pmri-border px-2 py-0.5 text-[11px] uppercase tracking-[0.12em] text-pmri-muted">
-                {item.kind === "cash" ? item.currency : "ETF"}
+              <span className="shrink-0 rounded-full border border-pmri-border/55 px-2 py-0.5 text-xs font-medium tracking-[-0.005em] text-pmri-text2">
+                {instrumentKindLabel(item)}
               </span>
             </button>
           )) : (
@@ -476,7 +509,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
 
     return {
       title: "Ready for diagnosis",
-      text: `${rows.length} holdings В· 100% allocated`,
+        text: `${rows.length} holdings · 100% allocated`,
       tone: "green"
     };
   }, [instrumentsComplete, rows.length, totalWeight, weightsComplete]);
@@ -647,19 +680,19 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
   return (
     <div className="space-y-5">
     <section className="pmri-card overflow-hidden rounded-2xl">
-      <div className="border-b border-pmri-border/80 p-5 md:p-6">
+      <div className="border-b border-pmri-border/45 p-5 md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-pmri-gold">Current allocation only</p>
+            <p className="pmri-label">Current allocation only</p>
             <p className="mt-2 text-sm leading-6 text-pmri-text2">
               Enter the portfolio you hold today. The diagnosis checks this allocation before any alternatives are compared.
             </p>
           </div>
 
           <label className="min-w-[240px]">
-            <span className="block text-xs font-medium text-pmri-muted">Investor currency</span>
+            <span className="pmri-label block">Investor currency</span>
             <select
-              className="pmri-focus mt-2 w-full rounded-lg border border-pmri-border bg-pmri-secondary px-3 py-2 text-sm font-semibold text-pmri-text"
+              className="pmri-focus mt-2 w-full rounded-xl border border-pmri-border/55 bg-pmri-secondary/80 px-3 py-2.5 text-sm font-medium text-pmri-text"
               value={currency}
               onChange={(event) => {
                 inputEdited.current = true;
@@ -676,14 +709,14 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
       <div className="p-5 md:p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-pmri-text">Holdings and weights</h2>
+            <h2 className="pmri-heading-section text-xl text-pmri-text">Holdings and weights</h2>
             <p className="mt-1 text-sm text-pmri-muted">What portfolio are we diagnosing?</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={addHolding}
-              className="pmri-focus rounded-full border border-pmri-blue/40 bg-pmri-blue/10 px-4 py-2 text-sm font-semibold text-pmri-blueSoft transition hover:bg-pmri-blue/15"
+              className="pmri-focus rounded-full border border-pmri-blue/22 bg-pmri-blue/[0.055] px-3.5 py-2 text-sm font-medium text-pmri-blueSoft transition hover:bg-pmri-blue/[0.085]"
             >
               Add holding
             </button>
@@ -691,7 +724,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
               type="button"
               onClick={addCashPosition}
               title="Cash is treated as a portfolio position."
-              className="pmri-focus rounded-full border border-pmri-gold/40 bg-pmri-gold/10 px-4 py-2 text-sm font-semibold text-pmri-gold transition hover:bg-pmri-gold/15"
+              className="pmri-focus rounded-full border border-pmri-border/50 bg-white/[0.025] px-3.5 py-2 text-sm font-medium text-pmri-text2 transition hover:border-pmri-blue/25 hover:bg-white/[0.04]"
             >
               Add cash position
             </button>
@@ -700,9 +733,9 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
 
         <p className="mt-3 text-xs leading-5 text-pmri-muted">Cash is treated as a portfolio position.</p>
 
-        <div className="mt-5 overflow-x-auto rounded-xl border border-pmri-border">
-          <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-            <thead className="bg-pmri-secondary/80 text-xs uppercase tracking-[0.12em] text-pmri-muted">
+        <div className="mt-5 overflow-x-auto rounded-2xl border border-pmri-border/45 bg-pmri-secondary/35">
+          <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
+            <thead className="bg-white/[0.018] text-xs font-medium tracking-[-0.005em] text-pmri-muted">
               <tr>
                 <th scope="col" className="px-4 py-3">Ticker / Cash</th>
                 <th scope="col" className="px-4 py-3">Instrument</th>
@@ -710,7 +743,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                 <th scope="col" className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-pmri-border/80">
+            <tbody className="[&_tr+tr_td]:border-t [&_tr+tr_td]:border-pmri-border/35">
               {rows.map((row) => {
                 const ticker = normalizeTicker(row.ticker);
                 const tickerMissing = ticker.length === 0;
@@ -718,7 +751,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                 const duplicateTicker = ticker.length > 0 && duplicateTickerSet.has(ticker);
 
                 return (
-                  <tr key={row.id} className="bg-white/[0.015] transition hover:bg-white/[0.04]">
+                  <tr key={row.id} className="transition hover:bg-white/[0.026]">
                     <td className="px-4 py-4 align-top">
                       <InstrumentCombobox
                         row={row}
@@ -736,13 +769,13 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                       ) : null}
                     </td>
                     <td className="px-4 py-4 align-top">
-                      <div className="rounded-lg border border-pmri-border bg-white/[0.025] px-3 py-2 text-pmri-text2">
+                      <div className="rounded-xl border border-pmri-border/45 bg-white/[0.02] px-3 py-2.5 text-sm leading-6 text-pmri-text2">
                         {displayInstrument(row) || "Choose an instrument from the list"}
                       </div>
                     </td>
                     <td className="px-4 py-4 text-right align-top">
                       <input
-                        className="pmri-focus data-figure ml-auto w-28 rounded-lg border border-pmri-border bg-pmri-secondary px-3 py-2 text-right font-semibold text-pmri-text placeholder:text-pmri-muted/70"
+                        className="pmri-focus data-figure ml-auto w-28 rounded-xl border border-pmri-border/55 bg-pmri-secondary/80 px-3 py-2.5 text-right text-sm font-medium text-pmri-text placeholder:text-pmri-muted/70"
                         type="text"
                         inputMode="decimal"
                         placeholder="0"
@@ -758,7 +791,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                       <button
                         type="button"
                         onClick={() => removeRow(row.id)}
-                        className="pmri-focus rounded-full border border-pmri-border bg-white/[0.03] px-3 py-2 text-xs font-semibold text-pmri-text2 transition hover:border-pmri-risk/50 hover:text-pmri-risk"
+                        className="pmri-focus rounded-full border border-transparent bg-transparent px-2.5 py-2 text-sm font-medium text-pmri-muted transition hover:bg-pmri-risk/[0.045] hover:text-pmri-risk"
                       >
                         Remove row
                       </button>
@@ -778,15 +811,15 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         <SimilarExposureWarning rows={rows} />
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
-          <section className="rounded-2xl border border-pmri-border bg-white/[0.025] p-5">
+          <section className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-pmri-text">{validationSummary.title}</h3>
+                <h3 className="pmri-heading-section text-lg text-pmri-text">{validationSummary.title}</h3>
                 <p className="mt-1 text-sm leading-6 text-pmri-muted">{validationSummary.text}</p>
               </div>
               <div className="flex items-center gap-3">
                 <StatusBadge tone={validationSummary.tone}>{validationSummary.title}</StatusBadge>
-                <span className={`data-figure text-xl font-semibold ${weightsAddTo100 ? "text-pmri-positive" : totalWeight > 100 ? "text-pmri-risk" : "text-pmri-amber"}`}>
+                <span className={`data-figure text-xl font-medium ${weightsAddTo100 ? "text-pmri-positive" : totalWeight > 100 ? "text-pmri-risk" : "text-pmri-amber"}`}>
                   {formatTotalWeight(totalWeight)}%
                 </span>
               </div>
@@ -798,14 +831,14 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
               type="button"
               disabled={!ready || isRunningDiagnosis}
               onClick={runPortfolioDiagnosis}
-              className="pmri-focus pmri-primary-action flex w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold shadow-decision transition disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-pmri-muted disabled:shadow-none"
+              className="pmri-focus pmri-primary-action flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold shadow-decision transition disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-pmri-muted disabled:shadow-none"
             >
               {isRunningDiagnosis ? (
                 <>
                   <span className="pmri-spinner" aria-hidden="true" />
-                  Building evidence pack...
+                  Analyzing current portfolio...
                 </>
-              ) : "Run portfolio diagnosis"}
+              ) : "Run diagnosis"}
             </button>
             {diagnosisError ? (
               <p className="mt-3 rounded-xl border border-pmri-risk/35 bg-pmri-risk/10 px-4 py-3 text-sm leading-6 text-pmri-risk">
@@ -814,7 +847,10 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
             ) : null}
             {isRunningDiagnosis ? (
               <p className="mt-3 rounded-xl border border-pmri-blue/25 bg-pmri-blue/10 px-4 py-3 text-xs leading-5 text-pmri-blueSoft">
-                Preparing X-Ray, Stress, Problem Classification, and Launchpad evidence. No candidate or trade action is created here.
+                Portfolio MRI is reviewing allocation, concentration, risk drivers, and stress vulnerabilities.
+                <br />
+                <br />
+                No candidate or rebalance verdict is created at this step.
               </p>
             ) : null}
             <p className="mt-3 text-sm leading-6 text-pmri-muted">
@@ -824,24 +860,27 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         </div>
       </div>
     </section>
-    <section className="pmri-card rounded-2xl p-5 md:p-6">
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+    <details className="hidden">
+      <summary className="pmri-focus cursor-pointer list-none text-sm font-medium text-pmri-text2 transition hover:text-pmri-text">
+        Advanced: recover an existing review
+      </summary>
+      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-pmri-gold">Recover run-local review</p>
-          <h2 className="mt-2 text-lg font-semibold text-pmri-text">Reload an existing frontend review by ID</h2>
+          <p className="pmri-label">Optional recovery</p>
+          <h2 className="pmri-heading-section mt-2 text-lg text-pmri-text">Reload an existing review by ID</h2>
           <p className="mt-2 text-sm leading-6 text-pmri-muted">
-            Use this after a page refresh or browser restart. Recovery reads only the run-local diagnosis artifacts for that review ID.
-            Candidate, comparison, verdict, and report artifacts are not restored as active state; those steps must be triggered again.
+            Use this after a page refresh or browser restart. Recovery restores the current portfolio diagnosis for that review ID.
+            Candidate, comparison, verdict, and report steps must be reviewed again.
           </p>
           <p className="mt-2 text-xs leading-5 text-pmri-muted">
-            Browser storage still keeps only compact summary state, not the full raw backend JSON.
+            Saved browser state keeps only a compact summary, not the full evidence package.
           </p>
         </div>
         <div>
           <label>
-            <span className="block text-xs font-medium text-pmri-muted">Review ID</span>
+            <span className="pmri-label block">Review ID</span>
             <input
-              className="pmri-focus mt-2 w-full rounded-lg border border-pmri-border bg-pmri-secondary px-3 py-2 text-sm font-semibold text-pmri-text placeholder:text-pmri-muted/70"
+              className="pmri-focus mt-2 w-full rounded-xl border border-pmri-border/55 bg-pmri-secondary/80 px-3 py-2.5 text-sm font-medium text-pmri-text placeholder:text-pmri-muted/70"
               value={recoverReviewId}
               placeholder="frontend_review_..."
               onChange={(event) => setRecoverReviewId(event.target.value)}
@@ -851,7 +890,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
             type="button"
             disabled={!recoverReviewId.trim() || isRecoveringReview}
             onClick={recoverActiveReview}
-            className="pmri-focus mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-3 text-sm font-semibold text-white shadow-decision transition hover:bg-pmri-blueSoft disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-pmri-muted disabled:shadow-none"
+            className="pmri-focus mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-pmri-blue/35 bg-pmri-blue px-5 py-3 text-sm font-semibold text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-pmri-muted disabled:shadow-none"
           >
             {isRecoveringReview ? (
               <>
@@ -867,8 +906,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
           ) : null}
         </div>
       </div>
-    </section>
+    </details>
     </div>
   );
 }
-

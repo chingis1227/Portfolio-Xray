@@ -1,12 +1,12 @@
 ﻿import type { ReactNode } from "react";
 
 const toneClasses = {
-  blue: "border-pmri-blue/30 bg-pmri-blue/10 text-pmri-blueSoft",
-  gold: "border-pmri-gold/38 bg-pmri-gold/10 text-pmri-gold",
-  green: "border-pmri-positive/30 bg-pmri-positive/10 text-pmri-positive",
-  amber: "border-pmri-amber/35 bg-pmri-amber/10 text-pmri-amber",
-  red: "border-pmri-risk/35 bg-pmri-risk/10 text-pmri-risk",
-  slate: "border-pmri-border/80 bg-white/[0.04] text-pmri-text2"
+  blue: "border-pmri-blue/24 bg-pmri-blue/[0.045] text-pmri-blueSoft",
+  gold: "border-pmri-borderSoft/45 bg-white/[0.026] text-pmri-text2",
+  green: "border-pmri-positive/24 bg-pmri-positive/[0.052] text-[#8fd1b2]",
+  amber: "border-pmri-amber/26 bg-pmri-amber/[0.06] text-[#d5bb88]",
+  red: "border-pmri-risk/26 bg-pmri-risk/[0.06] text-[#e09595]",
+  slate: "border-pmri-border/58 bg-white/[0.028] text-pmri-text2"
 };
 
 type StatusBadgeProps = {
@@ -17,7 +17,7 @@ type StatusBadgeProps = {
 
 export function StatusBadge({ children, tone = "slate", className = "" }: StatusBadgeProps) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold leading-none tracking-[0.01em] ${toneClasses[tone]} ${className}`}>
+    <span className={`inline-flex max-w-full items-center whitespace-nowrap rounded-full border px-2.5 py-1.5 text-xs font-medium leading-none tracking-[-0.005em] ${toneClasses[tone]} ${className}`}>
       {children}
     </span>
   );

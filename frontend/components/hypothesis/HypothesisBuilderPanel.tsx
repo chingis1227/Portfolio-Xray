@@ -9,18 +9,18 @@ export function HypothesisBuilderPanel({ selectedMethod, builderStatus, boundary
     <aside className="pmri-card rounded-2xl p-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-pmri-gold">Guided test setup</p>
-          <h3 className="mt-2 text-lg font-semibold text-pmri-text">Choose one hypothesis to review</h3>
+          <p className="pmri-label">Guided test setup</p>
+          <h3 className="pmri-heading-section mt-2 text-lg text-pmri-text">Choose one hypothesis to review</h3>
         </div>
         <StatusBadge tone="blue">{builderStatus}</StatusBadge>
       </div>
       <div className="mt-6 rounded-2xl border border-pmri-blue/25 bg-pmri-blue/10 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-pmri-blueSoft">Hypothesis test used</p>
+        <p className="pmri-label text-pmri-blueSoft">Hypothesis test used</p>
         <p className="mt-2 text-sm leading-6 text-pmri-text2">{methodLabels[selectedMethod] ?? "Diagnostic benchmark selected for review"}</p>
       </div>
-      <p className="mt-4 rounded-xl border border-pmri-gold/30 bg-pmri-gold/10 p-3 text-sm leading-6 text-pmri-gold">{boundaryNote}</p>
+      <p className="mt-4 rounded-xl border border-pmri-border/70 bg-white/[0.035] p-3 text-sm leading-6 text-pmri-text2">{boundaryNote}</p>
       <div className="mt-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-pmri-muted">Guardrails before comparison</p>
+        <p className="pmri-label">Guardrails before comparison</p>
         <ul className="mt-4 space-y-3 text-sm leading-6 text-pmri-text2">
           {constraints.map((constraint) => (
             <li key={constraint} className="flex gap-3">
@@ -33,4 +33,3 @@ export function HypothesisBuilderPanel({ selectedMethod, builderStatus, boundary
     </aside>
   );
 }
-

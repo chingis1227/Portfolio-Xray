@@ -2567,6 +2567,7 @@ def run_portfolio_report_for_weights(
         xray_summary = _xray_summary_from_output_dir(output_dir_final)
     problem_classification_doc = None
     candidate_launchpad_doc = None
+    ai_commentary_context_doc = None
     if not core_blocks_only:
         try:
             block_4_write = write_block_4_diagnosis_outputs(
@@ -2603,6 +2604,12 @@ def run_portfolio_report_for_weights(
                 "ai_commentary_context.json (diagnosis grounding): %s",
                 ai_paths.get("ai_commentary_context_json"),
             )
+            ai_path = ai_paths.get("ai_commentary_context_json")
+            if ai_path:
+                with open(ai_path, encoding="utf-8") as f:
+                    loaded_ai = json.load(f)
+                if isinstance(loaded_ai, dict):
+                    ai_commentary_context_doc = loaded_ai
         except Exception as e:
             logger.warning("ai_commentary_context.json generation failed: %s", e)
     else:
@@ -2611,6 +2618,25 @@ def run_portfolio_report_for_weights(
             "ai_commentary_context); product_bundle_scope=%s",
             bundle_scope,
         )
+    site_explanation_paths = {}
+    try:
+        from src.site_explanation_bundle import write_site_explanation_bundle_outputs
+
+        site_explanation_paths = write_site_explanation_bundle_outputs(
+            output_dir=output_dir_final,
+            review_id=analysis_end_str,
+            portfolio_xray=xray_summary,
+            stress_report=stress_report,
+            problem_classification=problem_classification_doc,
+            candidate_launchpad=candidate_launchpad_doc,
+            ai_commentary_context=ai_commentary_context_doc,
+        )
+        logger.info(
+            "site_explanation_bundle.json: %s",
+            site_explanation_paths.get("site_explanation_bundle_json"),
+        )
+    except Exception as e:
+        logger.warning("site_explanation_bundle.json generation failed: %s", e)
     report_timing.end_block("snapshots")
 
     if output_policy.write_txt or output_policy.write_html:
@@ -2672,6 +2698,7 @@ def run_portfolio_report_for_weights(
             "stress_report": output_dir_final / "stress_report.json",
             "snapshot_10y": output_dir_final / "snapshot_10y.json",
             "snapshot_index": output_dir_final / "snapshot_index.json",
+            **site_explanation_paths,
         },
     )
     # Core MVP Blocks 1-3 diagnosis-only manifest surface:

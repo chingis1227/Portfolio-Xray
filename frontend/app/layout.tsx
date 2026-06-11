@@ -1,8 +1,22 @@
 ﻿import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Inter, Roboto_Mono } from "next/font/google";
 import "../styles/globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { ReviewStateProvider } from "@/lib/reviewState";
+
+const interSans = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-pmri-sans"
+});
+
+const robotoMono = Roboto_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-pmri-mono"
+});
 
 export const metadata: Metadata = {
   title: "Portfolio MRI Decision Room",
@@ -11,7 +25,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${interSans.variable} ${robotoMono.variable}`}>
       <body>
         <ReviewStateProvider>
           <AppShell>{children}</AppShell>
@@ -20,3 +34,4 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     </html>
   );
 }
+

@@ -8,8 +8,6 @@ Uses config.yml; client_profile fills target_vol / max_drawdown / return / liqui
 Legacy compatibility command from project root:
 python run_optimization.py [--no-cache] [--write-config] [--config PATH] [--profile NAME] [--no-report]
 """
-from legacy.runners._paths import REPO_ROOT
-
 from __future__ import annotations
 
 import argparse
@@ -22,6 +20,7 @@ from typing import Any
 import pandas as pd
 import yaml
 
+from legacy.runners._paths import REPO_ROOT
 from src.config import (
     WEIGHTS_FILENAME,
     apply_profile_override,

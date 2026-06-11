@@ -1,4 +1,4 @@
-# Vertical Integration Full Project Audit ó 2026-06-08
+# Vertical Integration Full Project Audit ‚Äî 2026-06-08
 
 ## 1. Executive verdict
 
@@ -32,7 +32,7 @@ No Python calculation logic, root `config.yml`, generated run folders, staging, 
 | Error handling | OK | Bridge and API scrub tracebacks and absolute paths before client responses. | `scrub_failure_text()` and API `scrubForClient()`; focused tests passed. | Add route-level tests for API scrub wrappers. |
 | localStorage/state | OK | Browser persists compact `pmri.activeReview.v2`; raw legacy keys are cleaned; downstream summaries are invalidated on new runs. | `frontend/lib/reviewState.tsx`. | Later: backend fetch-by-reviewId for full reload restoration. |
 | Generated artifacts ignored | OK | `runs/`, `.next/`, `tmp/`, `Main portfolio/`, candidate folders, `portfolio_weights.yml` are ignored. | `.gitignore`; `git status --ignored` shows ignored generated paths. | Good current behavior. |
-| Docs alignment | Warning | Main docs broadly match product truth, but runbook says ìGenerate Builder setup firstî in UI path although no frontend prepare-builder step exists. | `docs/demo/frontend_backend_vertical_runbook.md` line 133; no frontend prepare-builder route. | P1 docs/UI sync. |
+| Docs alignment | Warning | Main docs broadly match product truth, but runbook says ‚ÄúGenerate Builder setup first‚Äù in UI path although no frontend prepare-builder step exists. | `docs/demo/frontend_backend_vertical_runbook.md` line 133; no frontend prepare-builder route. | P1 docs/UI sync. |
 | Tests | Needs follow-up | Focused Python bridge/backend tests are strong; no direct Next.js API route tests or browser click-through were run here. | `33 passed` frontend bridge; `27 passed` relevant backend tests. | Add API route and Playwright/manual browser checklist. |
 
 ## 3. Flow-by-flow audit
@@ -88,7 +88,7 @@ Product language is correct: Launchpad cards are hypothesis tests, not recommend
 
 ### Builder
 
-The backend bridge has a good Builder safety path: `prepare_selected_builder_setup()` rebuilds a run-local Builder artifact for one selected card and validates lineage. However, the live frontend does not currently call this path. The runbookís phrase ìGenerate Builder setup firstî is therefore operator-accurate only for CLI replay, not for the visible UI.
+The backend bridge has a good Builder safety path: `prepare_selected_builder_setup()` rebuilds a run-local Builder artifact for one selected card and validates lineage. However, the live frontend does not currently call this path. The runbook‚Äôs phrase ‚ÄúGenerate Builder setup first‚Äù is therefore operator-accurate only for CLI replay, not for the visible UI.
 
 ### Candidate Generation
 
@@ -142,7 +142,7 @@ Remaining gap: no direct Next.js API route tests assert scrub behavior at the ro
 
 Docs mostly align with the current product truth: diagnosis-first, one selected hypothesis, candidate not recommendation, comparison not winner, verdict not trading instruction, generated artifacts not source.
 
-Main mismatch: the runbook and ExecPlan describe a Builder-prepare capability that exists in the Python bridge, but the normal frontend path does not expose it. The runbook should either specify ìselect the prebuilt matching Builder cardî or the UI/API should add a prepare-builder step.
+Main mismatch: the runbook and ExecPlan describe a Builder-prepare capability that exists in the Python bridge, but the normal frontend path does not expose it. The runbook should either specify ‚Äúselect the prebuilt matching Builder card‚Äù or the UI/API should add a prepare-builder step.
 
 ## 4. Critical issues
 
@@ -168,7 +168,7 @@ Potential demo-breaking issue if the operator behaves naturally:
 
 | File | Section / text | Mismatch | Suggested correction |
 | --- | --- | --- | --- |
-| `docs/demo/frontend_backend_vertical_runbook.md` | Manual click-through step 4: ìGenerate Builder setup first.î | There is no frontend prepare-builder API/button in the visible UI. The Python CLI has `--prepare-builder`, but frontend candidate route calls `--generate-candidate` directly. | Either add a frontend prepare-builder step or change runbook to say candidate generation is available only for the card whose Builder setup is already active. |
+| `docs/demo/frontend_backend_vertical_runbook.md` | Manual click-through step 4: ‚ÄúGenerate Builder setup first.‚Äù | There is no frontend prepare-builder API/button in the visible UI. The Python CLI has `--prepare-builder`, but frontend candidate route calls `--generate-candidate` directly. | Either add a frontend prepare-builder step or change runbook to say candidate generation is available only for the card whose Builder setup is already active. |
 | `../../frontend/README.md` | `data/demo/` used by pages during prototype phase. | Could be read as silent demo fallback, though later screens mostly avoid silent fallback. | Clarify: demo data is used for initial Portfolio Input defaults and explicit `?sample=1`, not normal post-run stages. |
 | `docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md` | Session 02/04 narrative. | The plan correctly records both backend prepare-builder and frontend generation gating, but final operator outcome can sound like any selected hypothesis works from UI. | Add a final note: current UI generation depends on a matching Builder setup unless/until prepare-builder is wired to frontend. |
 | User-facing audit command | `..\.venv\Scripts\python.exe` from repo root. | Actual project venv is `.\.venv\Scripts\python.exe`. | Use project-local `.venv` in docs/commands. |
@@ -193,13 +193,13 @@ Not yet covered or not run here:
 
 ## 8. Recommended fix plan
 
-### P0 ó must fix before demo
+### P0 ‚Äî must fix before demo
 
 No unconditional P0 found for a scripted local demo using the matching Builder card.
 
 If the demo will be unscripted and the presenter may select any Launchpad card, promote the Builder handoff issue to P0.
 
-### P1 ó should fix soon
+### P1 ‚Äî should fix soon
 
 1. **Wire frontend prepare-builder step or tighten UX/docs.**
    - Option A: add `POST /api/portfolio/builder/prepare` calling `--prepare-builder`, then let any valid selected Launchpad card prepare Builder setup before candidate generation.
@@ -208,14 +208,14 @@ If the demo will be unscripted and the presenter may select any Launchpad card, 
 3. **Add a small route-level API test strategy or route-handler tests for scrubbed failures.**
 4. **Add manual browser demo checklist result after a real click-through.**
 
-### P2 ó can wait
+### P2 ‚Äî can wait
 
 1. Add Playwright smoke test for the local vertical journey.
 2. Add backend fetch-by-`reviewId` endpoint so full raw artifacts can be reloaded after page refresh without relying only on compact summaries.
 3. Make Python executable resolution configurable instead of hard-coded to Windows `.venv`.
 4. Add user-facing explanation when candidate generation is blocked because Builder setup does not match the selected card.
 
-### P3 ó backlog
+### P3 ‚Äî backlog
 
 1. Production deployment packaging.
 2. Server-side run database / durable user workspaces.

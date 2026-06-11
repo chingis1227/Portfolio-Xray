@@ -84,6 +84,7 @@ Top-level documents stay compact:
 | Selection Engine and No-Trade Recommendation (formal decision contract) | [selection_engine_spec.md](selection_engine_spec.md) |
 | Product-facing Decision Verdict over Selection/No-Trade evidence or direct Block 7/8 evidence | [decision_verdict_spec.md](decision_verdict_spec.md) |
 | AI Commentary grounding context (current contract; not LLM prose) | [ai_commentary_grounding_spec.md](ai_commentary_grounding_spec.md) |
+| Site-facing copy hierarchy bundle for executive/evidence/technical text | [site_explanation_bundle_spec.md](site_explanation_bundle_spec.md) |
 | Trade-off Explanation and Model Risk Diagnostics | [tradeoff_and_model_risk_spec.md](tradeoff_and_model_risk_spec.md) |
 | Assumption Sensitivity (selection stability under perturbations) | [assumption_sensitivity_spec.md](assumption_sensitivity_spec.md) |
 | Pareto / Dominance Check (multi-criteria candidate pruning) | [pareto_dominance_spec.md](pareto_dominance_spec.md) |

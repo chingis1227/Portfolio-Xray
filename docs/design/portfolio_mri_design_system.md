@@ -223,7 +223,7 @@ Sidebar rules:
 Use the journey progress bar:
 
 ```text
-Input -> Diagnosis -> Hypothesis -> Candidate -> Comparison -> Verdict
+Input -> Diagnosis -> Evidence -> Hypothesis -> Comparison -> Verdict -> Report
 ```
 
 Progress rules:
@@ -252,9 +252,9 @@ Use a right panel for:
 - AI Commentary;
 - evidence quality;
 - decision boundary notes;
-- source artifact references;
+- evidence-source references in user-facing language;
 - next-step explanation;
-- monitoring trigger.
+- monitoring or follow-up context when grounded and available.
 
 Do not use the right panel for dense raw tables.
 
@@ -455,7 +455,7 @@ Is the evidence strong enough to support a decision?
 - no-trade / proceed / evidence-insufficient framing;
 - key evidence;
 - key trade-off;
-- monitoring trigger.
+- monitoring or follow-up context when grounded and available.
 
 **Primary CTA:**  
 Create report preview
@@ -489,7 +489,7 @@ Can this result be explained clearly to a client or stakeholder?
 - candidate hypothesis;
 - comparison;
 - verdict boundary;
-- monitoring trigger.
+- monitoring or follow-up context when grounded and available.
 
 **Primary CTA:**  
 Export or copy explanation
@@ -590,7 +590,7 @@ Content:
 - expected trade-off;
 - method id if relevant;
 - evidence source;
-- CTA: Test candidate.
+- CTA: Generate test candidate when setup is ready.
 
 Required language:
 
@@ -600,13 +600,13 @@ Required language:
 
 ### Builder Panel
 
-Purpose: show how the selected hypothesis becomes a candidate.
+Purpose: show how the selected test path becomes one diagnostic candidate attempt.
 
 Rules:
 
 - Show constraints at a human level.
 - Keep technical builder details expandable.
-- Show candidate generation status.
+- Show setup and candidate generation status separately.
 - Do not make the builder feel like an optimizer cockpit.
 
 ### Comparison Table
@@ -649,16 +649,17 @@ Rules:
 - Include “not a trading instruction.”
 - Include evidence quality and monitoring trigger.
 
-### AI Commentary Card
+### Grounded Explanation Card
 
 Purpose: explain, not decide.
 
 Rules:
 
-- Ground commentary in source artifacts.
+- Ground commentary in available evidence.
 - Use short paragraphs.
 - State limitations.
 - Do not add new investment claims not present in evidence.
+- Do not imply an LLM or AI system made the verdict.
 
 ### Light Decision Journal
 
@@ -768,7 +769,7 @@ These boundaries must be visible in UI behavior and copy:
 | `candidate_generation.json` | Candidate state | Candidate attempt status, generation readiness, failure or success state. |
 | `current_vs_candidate.json` | Current vs Candidate Comparison | What improved, what worsened, trade-offs, comparison table. |
 | `decision_verdict.json` | Verdict Card, Decision Status Card | Decision-support result, no-trade / proceed / insufficient evidence state. |
-| `ai_commentary_context.json` | AI Commentary Card, Report Preview | Grounded explanation and report narrative context. |
+| `ai_commentary_context.json` | Grounded Explanation Card, Report Preview | Grounded explanation and report narrative context. |
 
 ### Mapping Rules
 
@@ -823,7 +824,7 @@ When building UI from this design system:
 1. Start from the journey stage, not from available charts.
 2. Build summary cards before detailed tables.
 3. Use dark institutional surfaces and restrained semantic color.
-4. Keep source artifact references available in drill-down.
+4. Keep evidence-source references available in drill-down without exposing raw filenames as primary copy.
 5. Use explicit boundary copy wherever an action could be inferred.
 6. Prefer one primary CTA per screen.
 7. Treat AI Commentary as grounded explanation only.

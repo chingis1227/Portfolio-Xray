@@ -27,8 +27,10 @@ Input portfolio
 -> Monitoring / What Changed
 ```
 
-This flow is the product truth agents should use when explaining the project. Several steps now have
-additive backend/file artifacts, while full product UI and saved-workspace behavior remain future
+This flow is the product truth agents should use when explaining the project. The current frontend
+MVP route surface now covers Portfolio Input through Report / grounding, with Candidate Generation
+merged into Hypothesis and Monitoring / What Changed still deferred as a separate UI layer. Full
+hosted workspace behavior, polished export packaging, and advanced product modules remain future
 scope. Current implementation status is owned by `SPEC.md`, `OUTPUTS.md`, `docs/specs/*.md`, and
 code.
 
@@ -138,7 +140,8 @@ assumptions/disclosure area.
 
 Current implementation notes:
 
-- Requires code/spec verification before claiming exact current UI behavior.
+- The frontend Portfolio Input route supports the current MVP intake path for holdings, weights,
+  and reporting currency, with validation before diagnosis.
 - Existing CLI/config fields and `analysis_subject` behavior are governed by current specs and code.
 
 ### 4.2 Portfolio X-Ray
