@@ -78,7 +78,8 @@ function sanitizeRecoveredReviewResult(value: unknown, reviewId: string) {
       "problem_classification",
       "candidate_launchpad",
       "portfolio_alternatives_builder",
-      "ai_commentary_context"
+      "ai_commentary_context",
+      "site_explanation_bundle"
     ].includes(key))
   );
 
@@ -95,7 +96,8 @@ function sanitizeRecoveredReviewResult(value: unknown, reviewId: string) {
         "problem_classification",
         "candidate_launchpad",
         "portfolio_alternatives_builder",
-        "ai_commentary_context"
+        "ai_commentary_context",
+        "site_explanation_bundle"
       ].includes(key)
     ))
   );

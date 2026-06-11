@@ -13,7 +13,7 @@ export type ContributionRow = {
 export type FactorContributionRow = {
   factor: string;
   value: number;
-  status: "Loss driver" | "Offset";
+  status: "Loss driver" | "Offset" | "Neutral";
 };
 
 export type StressScenarioTile = {

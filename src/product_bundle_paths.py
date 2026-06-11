@@ -92,6 +92,10 @@ PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS: tuple[str, ...] = (
     "what_changed_summary_json",
 )
 
+OPTIONAL_PRODUCT_BUNDLE_MANIFEST_KEYS: tuple[str, ...] = (
+    "site_explanation_bundle_json",
+)
+
 PRODUCT_BUNDLE_MANIFEST_KEYS: tuple[str, ...] = (
     *PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS,
     *PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS,
@@ -196,6 +200,7 @@ def product_bundle_generated_paths_for_manifest(output_dir_final: Path) -> dict[
         ("decision_verdict_json", "decision_verdict.json"),
         ("ai_commentary_context_json", "ai_commentary_context.json"),
         ("what_changed_summary_json", "what_changed_summary.json"),
+        ("site_explanation_bundle_json", "site_explanation_bundle.json"),
     ):
         path = base / filename
         if path.is_file():
@@ -227,6 +232,8 @@ def _is_generated_export_manifest_key(key: str) -> bool:
 def manifest_key_category(key: str) -> str:
     """Classify a manifest ``generated_paths`` key for UI/API discovery."""
     normalized = str(key)
+    if normalized in OPTIONAL_PRODUCT_BUNDLE_MANIFEST_KEYS:
+        return "product_bundle"
     if normalized in PRODUCT_BUNDLE_MANIFEST_KEYS:
         return "product_bundle"
     if normalized in TECHNICAL_COMPARISON_MANIFEST_KEYS:
@@ -248,6 +255,7 @@ def product_bundle_artifact_categories() -> dict[str, list[str]]:
     """Manifest artifact categories: product first, old package separated."""
     return {
         "product_bundle": list(PRODUCT_BUNDLE_MANIFEST_KEYS),
+        "optional_product_bundle": list(OPTIONAL_PRODUCT_BUNDLE_MANIFEST_KEYS),
         "technical_comparison": list(TECHNICAL_COMPARISON_MANIFEST_KEYS),
         "subject_diagnostics": list(SUBJECT_DIAGNOSTICS_MANIFEST_KEYS),
         "advanced_evidence": list(ADVANCED_EVIDENCE_MANIFEST_KEYS),
@@ -523,6 +531,7 @@ __all__ = [
     "GENERATED_EXPORT_MANIFEST_SUFFIXES",
     "LEGACY_COMPATIBILITY_MANIFEST_KEYS",
     "ORCHESTRATION_MANIFEST_KEYS",
+    "OPTIONAL_PRODUCT_BUNDLE_MANIFEST_KEYS",
     "PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS",
     "PRODUCT_BUNDLE_MANIFEST_KEYS",
     "PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS",

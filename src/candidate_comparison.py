@@ -2304,6 +2304,25 @@ def write_block8_current_vs_candidate_only_outputs(
     with open(current_vs_path, "w", encoding="utf-8") as f:
         json.dump(current_vs_candidate, f, indent=2, ensure_ascii=False, default=str)
     paths["current_vs_candidate_json"] = current_vs_path
+
+    from src.product_bundle_paths import load_diagnosis_bundle_docs
+    from src.site_explanation_bundle import write_site_explanation_bundle_outputs
+
+    diagnosis_bundle = load_diagnosis_bundle_docs(out_dir)
+    paths.update(
+        write_site_explanation_bundle_outputs(
+            output_dir=out_dir,
+            review_id=str(product_doc.get("config_fingerprint") or product_doc.get("analysis_end") or ""),
+            portfolio_xray=diagnosis_bundle.get("portfolio_xray"),
+            stress_report=diagnosis_bundle.get("stress_report"),
+            problem_classification=diagnosis_bundle.get("problem_classification"),
+            candidate_launchpad=diagnosis_bundle.get("candidate_launchpad"),
+            portfolio_alternatives_builder=diagnosis_bundle.get("portfolio_alternatives_builder"),
+            candidate_generation=candidate_generation,
+            candidate_comparison=product_doc,
+            current_vs_candidate=current_vs_candidate,
+        )
+    )
     return paths
 
 
@@ -3083,6 +3102,33 @@ def write_candidate_comparison_outputs(
             decision_verdict=decision_verdict_doc,
             problem_classification=problem_classification_doc,
             current_vs_candidate=current_vs_candidate_doc,
+        )
+    )
+    what_changed_summary_doc = _load_json(
+        paths.get("what_changed_summary_json") or out_dir / "what_changed_summary.json"
+    )
+
+    from src.site_explanation_bundle import write_site_explanation_bundle_outputs
+
+    paths.update(
+        write_site_explanation_bundle_outputs(
+            output_dir=out_dir,
+            review_id=str(comparison.get("config_fingerprint") or comparison.get("analysis_end") or ""),
+            portfolio_xray=portfolio_xray_doc,
+            stress_report=stress_report_doc,
+            problem_classification=problem_classification_doc,
+            candidate_launchpad=candidate_launchpad_doc,
+            portfolio_alternatives_builder=portfolio_alternatives_builder_doc,
+            candidate_generation=candidate_generation_doc,
+            candidate_comparison=product_comparison,
+            current_vs_candidate=current_vs_candidate_doc,
+            selection_decision=selection_doc,
+            decision_verdict=decision_verdict_doc,
+            ai_commentary_context=_load_json(
+                paths.get("ai_commentary_context_json") or out_dir / "ai_commentary_context.json"
+            ),
+            what_changed_summary=what_changed_summary_doc,
+            monitoring_diff=monitoring_doc,
         )
     )
 

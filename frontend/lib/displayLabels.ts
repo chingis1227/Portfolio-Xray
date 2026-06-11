@@ -1,6 +1,28 @@
 import type { StatusTone } from "@/lib/types";
 
 const DISPLAY_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/\breal\s+candidate\s+launchpad\b/gi, "Hypothesis Builder"],
+  [/\bcandidate\s+launchpad\b/gi, "Hypothesis Builder"],
+  [/\blaunchpad\s+card\b/gi, "hypothesis test"],
+  [/\bcard\s+type\b/gi, "test type"],
+  [/\bdefault\s+method\b/gi, "suggested method"],
+  [/\bsource\s+(?:problem|card)\b/gi, "diagnosis source"],
+  [/\bbuilder\s+setup\b/gi, "Test setup"],
+  [/\bsetup[_\s-]*only\b/gi, "Setup only"],
+  [/\bmonitor[_\s-]*or[_\s-]*resolve[_\s-]*data\b/gi, "Monitor or improve data quality"],
+  [/\bcandidate[_\s-]*generation\b/gi, "Candidate generation"],
+  [/\bfactory\b/gi, "candidate builder"],
+  [/\bimplementation\s+order\b/gi, "rebalance instruction"],
+  [/\btrade\s+execution\b/gi, "rebalance instruction"],
+  [/\bdecision[_\s-]*verdict\.json\b/gi, "decision-support verdict"],
+  [/\bcurrent[_\s-]*vs[_\s-]*candidate(?:\.json)?\b/gi, "Current vs Candidate Comparison"],
+  [/\bmostly[_\s-]*weak[_\s-]*protection\b/gi, "Limited stress offset"],
+  [/\bweak[_\s-]*protection\b/gi, "Weak hedge protection"],
+  [/\bno[_\s-]*protection\b/gi, "Limited stress offset"],
+  [/\bbaseline[_\s-]*or[_\s-]*candidate[_\s-]*metric[_\s-]*missing\b/gi, "Candidate metric unavailable"],
+  [/\bno[_\s-]*available[_\s-]*comparison[_\s-]*metrics\b/gi, "Comparison metrics unavailable"],
+  [/\bstale[_\s-]*downstream[_\s-]*artifact[_\s-]*ignored\b/gi, "Previous result ignored because it is outdated"],
+  [/\bartifacts?\b/gi, "supporting evidence"],
   [/\bdiagnostic sections?\s*2(?:\.\d+)?(?:\s*[–-]\s*2(?:\.\d+)?)?\b/gi, "portfolio behavior and factor evidence"],
   [/\bblocks?\s*2(?:\.\d+)?(?:\s*[–-]\s*2(?:\.\d+)?)?\b/gi, "portfolio behavior and factor evidence"],
   [/\bRC_vol\b/g, "risk contribution"],
@@ -47,6 +69,10 @@ const EXACT_LABELS: Record<string, string> = {
   usd: "USD",
   cash_usd: "Cash USD",
   "CASH USD": "Cash USD",
+  "true": "Available",
+  "false": "Not available",
+  "n/a": "Not available yet",
+  na: "Not available yet",
   us: "US",
   global: "Global",
   equity_shock: "Equity sell-off",
@@ -57,12 +83,47 @@ const EXACT_LABELS: Record<string, string> = {
   usd_shock: "USD shock",
   commodity_shock: "Commodity shock",
   recession_severe: "Severe recession",
+  weak_protection: "Weak hedge protection",
+  no_protection: "Limited stress offset",
+  mostly_weak_protection: "Limited stress offset",
   real_rates: "Interest-rate sensitivity",
   us_growth: "Growth / risk assets",
   risk_on: "Growth / risk assets",
   risk_on_weight: "Risk-on holdings",
   equity_weight: "Equity-linked holdings",
-  VIX_volatility: "VIX volatility"
+  VIX_volatility: "VIX volatility",
+  equal_weight: "Equal Weight",
+  risk_parity: "Risk Parity",
+  minimum_variance: "Minimum Variance",
+  minimum_cvar: "Minimum CVaR",
+  hrp: "Hierarchical Risk Parity",
+  maximum_diversification: "Maximum Diversification",
+  monitor_or_resolve_data: "Monitor or improve data quality",
+  setup_only: "Setup only",
+  reference_benchmark_test: "Reference benchmark test",
+  targeted_hypothesis_test: "Targeted hypothesis test",
+  mixed_evidence_no_action: "Mixed evidence / no immediate rebalance justified",
+  evidence_insufficient_data_quality: "Evidence insufficient due to data quality",
+  current_portfolio_acceptable: "Current portfolio acceptable with monitoring",
+  weak_crisis_resilience: "Weak crisis resilience",
+  poor_diversification: "Poor diversification",
+  high_concentration: "High concentration",
+  weak_hedge_behavior: "Weak hedge behavior",
+  duration_rates_vulnerability: "Duration / rates vulnerability",
+  credit_liquidity_fragility: "Credit / liquidity fragility",
+  baseline_or_candidate_metric_missing: "Candidate metric unavailable",
+  no_available_comparison_metrics: "Comparison metrics unavailable",
+  stale_downstream_artifact_ignored: "Previous result ignored because it is outdated",
+  no_material_rebalance_recommended: "No material rebalance recommended",
+  evidence_insufficient: "Evidence insufficient",
+  candidate_failed_or_infeasible: "Candidate failed or infeasible",
+  test_another_candidate_or_review_evidence: "Test another candidate",
+  selected_candidate: "Rebalance review",
+  keep_current_portfolio: "Keep current portfolio",
+  low: "Low",
+  medium: "Medium",
+  moderate: "Moderate",
+  high: "High"
 };
 
 function titleCaseLoose(value: string) {
@@ -101,12 +162,28 @@ export function normalizeDisplayLabel(value?: unknown, fallback = "Unavailable")
   output = output
     .replace(/\bportfolio behavior and factor evidence,?\s*(?:\d(?:\.\d+)?(?:\s*,\s*|\s+and\s+|,\s*and\s*)?)+/gi, "portfolio behavior and factor evidence")
     .replace(/\b(?:sections?\s*)?2\.\d+(?:\s*,\s*(?:and\s*)?2\.\d+)+\b/gi, "portfolio behavior and factor evidence")
+    .replace(/\b(Current vs Candidate Comparison)(?:\s+Comparison)+\b/gi, "$1")
     .replace(/_/g, " ")
     .replace(/\s+/g, " ")
     .replace(/\s+([.,;:])/g, "$1")
     .trim();
 
   return preserveAcronyms(sentenceCase(output || fallback));
+}
+
+function looksLikeArtifactFilename(value: string) {
+  return /(?:^|[\\/])[\w.-]+\.json$/i.test(value) || /(?:^|[\\/])(?:output|cache|runs|results_csv)[\\/]/i.test(value);
+}
+
+export function formatUnknownValue(value?: unknown, fallback = "Not available yet") {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === "boolean") return value ? "Available" : "Not available";
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : fallback;
+  const raw = String(value).trim();
+  if (!raw) return fallback;
+  if (/^(?:n\/a|na|null|undefined)$/i.test(raw)) return fallback;
+  if (looksLikeArtifactFilename(raw)) return fallback;
+  return normalizeDisplayLabel(raw, fallback);
 }
 
 export function normalizeDisplaySentence(value?: unknown, fallback = "Supporting evidence is unavailable.") {

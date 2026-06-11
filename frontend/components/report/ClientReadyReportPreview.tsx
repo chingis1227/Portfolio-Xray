@@ -3,7 +3,7 @@
   body: string;
 };
 
-export function ClientReadyReportPreview({ title, subtitle, sections, monitoring, boundaryNote }: { title: string; subtitle: string; sections: ReportSection[]; monitoring: string; boundaryNote: string }) {
+export function ClientReadyReportPreview({ title, subtitle, sections, nextObservation, boundaryNote }: { title: string; subtitle: string; sections: ReportSection[]; nextObservation: string; boundaryNote: string }) {
   const [executiveSummary, ...supportingSections] = sections;
 
   return (
@@ -32,8 +32,8 @@ export function ClientReadyReportPreview({ title, subtitle, sections, monitoring
       </div>
       <div className="mt-7 grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
         <article className="rounded-2xl border border-pmri-blue/22 bg-pmri-blue/[0.055] p-5">
-          <h3 className="font-medium text-pmri-blueSoft">Monitoring</h3>
-          <p className="mt-2 text-sm leading-7 text-pmri-text2">{monitoring}</p>
+          <h3 className="font-medium text-pmri-blueSoft">What to watch next</h3>
+          <p className="mt-2 text-sm leading-7 text-pmri-text2">{nextObservation}</p>
         </article>
         <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-5">
           <h3 className="font-medium text-pmri-text2">Decision boundary</h3>

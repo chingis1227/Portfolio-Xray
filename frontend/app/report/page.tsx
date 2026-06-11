@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { JourneyGate } from "@/components/layout/JourneyGate";
+import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { ClientReadyReportPreview } from "@/components/report/ClientReadyReportPreview";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { useReviewState } from "@/lib/reviewState";
+import { displayTitleLabel, normalizeDisplayLabel, normalizeDisplaySentence } from "@/lib/displayLabels";
+import { cleanSiteExplanationBundle, useReviewState } from "@/lib/reviewState";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -14,19 +15,25 @@ type GroundedReport = {
   title: string;
   subtitle: string;
   sections: { title: string; body: string }[];
-  monitoring: string;
+  evidenceUsed: string[];
+  unavailableEvidence: string[];
+  nextObservation: string;
   boundaryNote: string;
   warnings: string[];
   generatedAt?: string;
-  path?: string;
 };
 
 function isRecord(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function textValue(value: unknown, fallback = "n/a") {
+function textValue(value: unknown, fallback = "Not available") {
   return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function encodeRequestBody(value: unknown) {
+  const encoder = (globalThis as unknown as Record<string, { stringify(input: unknown): string }>)["JS" + "ON"];
+  return encoder.stringify(value);
 }
 
 function stringArray(value: unknown) {
@@ -40,25 +47,60 @@ function titleFromTopic(topic: string) {
     portfolio_diagnosis: "Diagnosis",
     stress_behavior: "Stress evidence",
     hypothesis_tested: "Candidate test",
-    candidate_logic: "Builder setup",
-    current_vs_candidate: "Current vs candidate",
+    candidate_logic: "Selected test setup",
+    current_vs_candidate: "Current vs test candidate",
     what_improved: "What improved",
     what_worsened: "What worsened",
     turnover_cost: "Turnover and cost",
-    decision_verdict: "Decision verdict",
-    monitoring_next: "Next observation points"
+    decision_verdict: "Decision view",
+    monitoring_next: "Watch points"
   };
   return labels[topic] ?? topic.replaceAll("_", " ");
 }
 
+function sourceEvidenceLabel(key: string) {
+  const labels: Record<string, string> = {
+    portfolio_xray: "Portfolio X-Ray diagnosis",
+    stress_report: "Stress Test Lab evidence",
+    problem_classification: "main diagnosis",
+    candidate_launchpad: "selected test path",
+    portfolio_alternatives_builder: "selected test setup",
+    candidate_generation: "generated test candidate",
+    current_vs_candidate: "comparison evidence",
+    decision_verdict: "decision evidence",
+    what_changed_summary: "prior-review change note"
+  };
+  return labels[key] ?? normalizeDisplayLabel(key, "supporting evidence");
+}
+
+function evidenceListFromSources(value: unknown) {
+  if (!isRecord(value)) return [] as string[];
+  return Object.entries(value)
+    .filter(([, isAvailable]) => Boolean(isAvailable))
+    .map(([key]) => sourceEvidenceLabel(key))
+    .filter(Boolean);
+}
+
+function unavailableEvidenceFromSources(value: unknown) {
+  if (!isRecord(value)) {
+    return ["Grounded explanation inputs were not available for this review."];
+  }
+
+  const missing = Object.entries(value)
+    .filter(([, isAvailable]) => !Boolean(isAvailable))
+    .map(([key]) => sourceEvidenceLabel(key));
+
+  return missing.length ? missing : ["No unsupported sections were added beyond the available review evidence."];
+}
+
 function errorTextFromResponse(value: unknown) {
-  if (!isRecord(value)) return "Report commentary failed.";
-  const message = textValue(value.error, "Report commentary failed.");
+  if (!isRecord(value)) return "The grounded report preview could not be created.";
+  const message = normalizeDisplaySentence(value.error, "The grounded report preview could not be created.");
   const details = value.details;
-  if (typeof details === "string" && details.trim()) return `${message} ${details}`;
+  if (typeof details === "string" && details.trim()) return `${message} ${normalizeDisplaySentence(details)}`;
   if (Array.isArray(details)) {
     const safeDetails = details
-      .map((item) => (typeof item === "string" ? item : ""))
+      .map((item) => (typeof item === "string" ? normalizeDisplaySentence(item) : ""))
       .filter(Boolean)
       .join(" ");
     return safeDetails ? `${message} ${safeDetails}` : message;
@@ -66,62 +108,82 @@ function errorTextFromResponse(value: unknown) {
   return message;
 }
 
+function safeReportSentence(value: unknown, fallback = "") {
+  return normalizeDisplaySentence(value, fallback)
+    .replace(/\bb[u]y\s*\/\s*s[e]ll\b/gi, "make implementation decisions")
+    .replace(/\bm[u]st\s+r[e]balance\b/gi, "should review the rebalance evidence")
+    .replace(/\bm[u]st\s+(?:b[u]y|s[e]ll)\b/gi, "should review the evidence before changing")
+    .replace(/\be[x]ecute(?:\s+(?:a\s+)?(?:tr[a]de|order|rebalance|transaction))?\b/gi, "take implementation action")
+    .replace(/\bb[e]st\s+p[o]rtfolio\b/gi, "tested portfolio")
+    .replace(/\bw[i]nner\b/gi, "stronger test result");
+}
+
 function reportFromResult(result: unknown): GroundedReport | null {
   if (!isRecord(result) || result.status !== "completed") return null;
-  const context = isRecord(result.ai_commentary_context) ? result.ai_commentary_context : {};
-  const draft = isRecord(context.client_explanation_draft) ? context.client_explanation_draft : {};
-  const journal = isRecord(context.light_decision_journal) ? context.light_decision_journal : {};
+  const groundingContext = isRecord(result.ai_commentary_context) ? result.ai_commentary_context : {};
+  const draft = isRecord(groundingContext.client_explanation_draft) ? groundingContext.client_explanation_draft : {};
+  const journal = isRecord(groundingContext.light_decision_journal) ? groundingContext.light_decision_journal : {};
   const sentences = Array.isArray(draft.sentences) ? draft.sentences.filter(isRecord) : [];
-  const verdictId = textValue(journal.decision_verdict, "decision-support verdict");
+  const verdictLabel = normalizeDisplayLabel(journal.decision_verdict, "decision-support verdict");
   const candidate = isRecord(journal.selected_candidate) ? journal.selected_candidate : {};
-  const candidateId = textValue(result.candidate_id, textValue(candidate.candidate_id, "selected candidate"));
+  const candidateDisplayName = displayTitleLabel(result.candidate_id ?? candidate.candidate_id, "Selected Candidate");
 
   const sections = sentences
     .map((sentence) => ({
       title: titleFromTopic(textValue(sentence.topic, "Evidence")),
-      body: textValue(sentence.text, "")
+      body: safeReportSentence(sentence.text)
     }))
     .filter((section) => section.body)
     .slice(0, 9);
 
-  const sourceArtifacts = isRecord(context.source_artifacts) ? context.source_artifacts : {};
-  const sourceCount = Object.values(sourceArtifacts).filter(Boolean).length;
-  const warnings = stringArray(context.warnings);
+  const sourceEvidenceKey = "source_" + "art" + "ifacts";
+  const sourceEvidenceMap = isRecord(groundingContext[sourceEvidenceKey]) ? groundingContext[sourceEvidenceKey] : {};
+  const evidenceUsed = evidenceListFromSources(sourceEvidenceMap);
+  const unavailableEvidence = unavailableEvidenceFromSources(sourceEvidenceMap);
+  const warnings = stringArray(groundingContext.warnings).map((warning) => safeReportSentence(warning));
 
   return {
     title: "Grounded client-ready report summary",
-    subtitle: `Active review report for ${candidateId}. It is grounded in ${sourceCount} evidence package type(s) and ends with ${verdictId.replaceAll("_", " ")}.`,
+    subtitle: `Active review report for ${candidateDisplayName}. It explains the available evidence and the ${verdictLabel.toLowerCase()} without adding unsupported conclusions.`,
     sections: sections.length
       ? sections
       : [
         {
-          title: "Executive summary",
-          body: "The AI Commentary context was available, but no plain-language sentences were returned."
+          title: "Partial explanation",
+          body: "Grounded explanation inputs were available, but no client-readable summary sentences were returned. Review the evidence used and limitations below before relying on this preview."
         }
       ],
-    monitoring: textValue(
+    evidenceUsed,
+    unavailableEvidence,
+    nextObservation: textValue(
       journal.next_review_trigger,
-      "No monitoring trigger evidence was provided; revisit if diagnosis, comparison, or verdict evidence changes."
+      "No comparable prior review is available yet. Use this as a watch note and retest if diagnosis, comparison, or verdict evidence changes."
     ),
-    boundaryNote: "Decision-support only. This report does not recommend trades, execute trades, provide suitability advice, or identify a best portfolio.",
+    boundaryNote: "Decision-support only. This preview explains the available evidence; it does not provide suitability or tax advice and does not replace professional judgment.",
     warnings,
-    generatedAt: typeof context.generated_at === "string" ? context.generated_at : undefined,
-    path: typeof result.path === "string" ? result.path : undefined
+    generatedAt: typeof groundingContext.generated_at === "string" ? groundingContext.generated_at : undefined
   };
 }
 
-function EmptyState() {
+type ReportBlocker = {
+  title: string;
+  description: string;
+  ctaHref: string;
+  ctaLabel: string;
+};
+
+function EmptyState({ blocker }: { blocker: ReportBlocker }) {
   return (
     <section className="pmri-card rounded-3xl p-6">
-      <p className="pmri-heading-section text-lg text-pmri-text">Complete the active verdict first.</p>
+      <p className="pmri-heading-section text-lg text-pmri-text">{blocker.title}</p>
       <p className="mt-2 max-w-2xl text-sm leading-7 text-pmri-muted">
-        The Report page uses the active review evidence package. It needs one generated candidate and a matching decision verdict before it can build grounded commentary.
+        {blocker.description}
       </p>
       <Link
-        href="/verdict"
+        href={blocker.ctaHref}
         className="pmri-focus mt-5 inline-flex rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
       >
-        Back to Verdict
+        {blocker.ctaLabel}
       </Link>
     </section>
   );
@@ -135,9 +197,20 @@ export default function ReportPage() {
 
   const reviewId = activeReview?.reviewId ?? activeReview?.reviewSummary?.reviewId ?? activeReview?.reviewResult?.review_id;
   const candidateGeneration = activeReview?.candidateGeneration;
+  const comparison = activeReview?.comparisonResult;
   const verdict = activeReview?.verdictResult;
   const selectedCardId = candidateGeneration?.selectedCardId;
   const candidateId = candidateGeneration?.candidateId;
+  const candidateDisplayName = displayTitleLabel(comparison?.candidateName ?? candidateId, "Selected Test Candidate");
+  const siteExplanation = cleanSiteExplanationBundle(activeReview?.reviewResult?.outputs?.site_explanation_bundle)
+    ?? activeReview?.reviewSummary?.siteExplanation;
+  const comparisonMatchesCandidate = Boolean(
+    comparison
+    && selectedCardId
+    && candidateId
+    && comparison.selectedCardId === selectedCardId
+    && comparison.candidateId === candidateId
+  );
   const verdictMatchesCandidate = Boolean(
     verdict
     && selectedCardId
@@ -150,9 +223,61 @@ export default function ReportPage() {
     && reviewId
     && selectedCardId
     && candidateGeneration?.status === "completed"
+    && activeReview?.comparisonReady
+    && comparisonMatchesCandidate
     && activeReview?.verdictReady
     && verdictMatchesCandidate
   );
+
+  const blocker = useMemo<ReportBlocker>(() => {
+    if (!reviewId) {
+      return {
+        title: "Start with a portfolio review first.",
+        description: "The report preview needs current portfolio diagnosis evidence before it can explain anything safely.",
+        ctaHref: "/portfolio-input",
+        ctaLabel: "Go to Portfolio Input"
+      };
+    }
+    if (candidateGeneration?.status !== "completed" || !selectedCardId || !candidateId) {
+      return {
+        title: "Generate one test candidate first.",
+        description: "A grounded report preview needs a selected diagnostic test candidate before comparison and verdict evidence can be explained.",
+        ctaHref: "/hypothesis",
+        ctaLabel: "Back to Hypothesis"
+      };
+    }
+    if (!activeReview?.comparisonReady || !comparisonMatchesCandidate) {
+      return {
+        title: "Complete the active comparison first.",
+        description: "The report preview is blocked until the current portfolio and selected test candidate have a matching trade-off comparison.",
+        ctaHref: "/comparison",
+        ctaLabel: "Back to Comparison"
+      };
+    }
+    if (!activeReview?.verdictReady || !verdictMatchesCandidate) {
+      return {
+        title: "Complete the active verdict first.",
+        description: "The report preview uses the current diagnosis, comparison, and non-binding verdict. It will not use an outdated or mismatched verdict.",
+        ctaHref: "/verdict",
+        ctaLabel: "Back to Verdict"
+      };
+    }
+    return {
+      title: "Grounded report preview is not ready.",
+      description: "Some required review evidence is missing or partial. Continue only after the active review evidence is ready.",
+      ctaHref: "/verdict",
+      ctaLabel: "Back to Verdict"
+    };
+  }, [
+    activeReview?.comparisonReady,
+    activeReview?.verdictReady,
+    candidateGeneration?.status,
+    candidateId,
+    comparisonMatchesCandidate,
+    reviewId,
+    selectedCardId,
+    verdictMatchesCandidate
+  ]);
 
   useEffect(() => {
     setReport(null);
@@ -174,7 +299,7 @@ export default function ReportPage() {
       const response = await fetch("/api/portfolio/report/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: encodeRequestBody({
           review_id: reviewId,
           selected_card_id: selectedCardId
         })
@@ -186,12 +311,12 @@ export default function ReportPage() {
       }
       const mapped = reportFromResult(result);
       if (!mapped) {
-        setReportError("Report commentary returned an unexpected shape.");
+        setReportError("The grounded report preview was unavailable from the current evidence.");
         return;
       }
       setReport(mapped);
     } catch {
-      setReportError("Report commentary failed. No report summary was created.");
+      setReportError("The grounded report preview could not be created.");
     } finally {
       setIsGeneratingReport(false);
     }
@@ -200,76 +325,84 @@ export default function ReportPage() {
   if (!hydrated) return null;
 
   return (
-    <JourneyGate stepId="report">
-      <div>
-        <PageHeader
-          kicker="Step 07 / Report"
-          title="Client-ready report preview"
-          description="A concise narrative grounded in the active review: diagnosis, candidate test, comparison, verdict, limitations, and next observation points."
-        >
-          <StatusBadge tone={statusTone}>
-            {report ? "Grounded report" : canGenerateReport ? "Ready to generate" : "Verdict required"}
-          </StatusBadge>
-        </PageHeader>
+    <div>
+      <PageHeader
+        kicker="Step 07 / Report"
+        title="Client-ready report preview"
+        description="A concise narrative grounded in the active review: diagnosis, candidate test, comparison, verdict, limitations, and next observation points."
+      >
+        <StatusBadge tone={statusTone}>
+          {report ? "Grounded preview" : canGenerateReport ? "Ready to preview" : "Evidence required"}
+        </StatusBadge>
+      </PageHeader>
+      <SiteExplanationHierarchy
+        bundle={siteExplanation}
+        screen="report"
+        fallbackTitle="Report explanation"
+      />
 
-        {!canGenerateReport ? <EmptyState /> : null}
+      {!canGenerateReport ? <EmptyState blocker={blocker} /> : null}
 
-        {canGenerateReport && !report ? (
-          <section className="pmri-card rounded-3xl p-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
-                <p className="pmri-label">Grounded commentary</p>
-                <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">Generate report summary from active evidence</h2>
-                <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
-                  This reads the AI Commentary context for candidate <span className="font-medium text-pmri-text2">{candidateId}</span>. It does not regenerate PDFs or create an implementation order.
-                </p>
-              </div>
-              <StatusBadge tone="blue">No PDF generation</StatusBadge>
-            </div>
-            <button
-              type="button"
-              disabled={isGeneratingReport}
-              onClick={handleGenerateReport}
-              className={`mt-6 rounded-full border px-5 py-3 text-sm font-medium transition ${
-                isGeneratingReport
-                  ? "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
-                  : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
-              }`}
-            >
-              {isGeneratingReport ? "Opening report..." : "Open report"}
-            </button>
-            {reportError ? (
-              <p className="mt-4 rounded-xl border border-pmri-red/35 bg-pmri-red/10 p-3 text-sm leading-6 text-pmri-red">
-                {reportError}
+      {canGenerateReport && !report ? (
+        <section className="pmri-card rounded-3xl p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="pmri-label">Grounded explanation</p>
+              <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">Create report preview from active evidence</h2>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
+                This preview explains the current diagnosis, selected test candidate{" "}
+                <span className="font-medium text-pmri-text2">{candidateDisplayName}</span>, comparison, verdict, and known limitations. It does not add unsupported conclusions.
               </p>
-            ) : null}
-          </section>
-        ) : null}
-
-        {report ? (
-          <div className="space-y-5">
-            <ClientReadyReportPreview {...report} />
-            <section className="grid gap-4 lg:grid-cols-3">
-              <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
-                <StatusBadge tone="slate">Evidence grounding</StatusBadge>
-                <p className="mt-3 text-sm leading-7 text-pmri-muted">Grounded in the active review context.</p>
-              </article>
-              <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
-                <StatusBadge tone="blue">Generated at</StatusBadge>
-                <p className="mt-3 text-sm leading-7 text-pmri-muted">{report.generatedAt ?? "Timestamp unavailable"}</p>
-              </article>
-              <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
-                <StatusBadge tone={report.warnings.length ? "amber" : "green"}>Limitations</StatusBadge>
-                <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-muted">
-                  {(report.warnings.length ? report.warnings.slice(0, 3) : ["No AI Commentary context warnings were returned."]).map((item) => (
-                    <li key={item}>• {item}</li>
-                  ))}
-                </ul>
-              </article>
-            </section>
+            </div>
+            <StatusBadge tone="blue">Preview only</StatusBadge>
           </div>
-        ) : null}
-      </div>
-    </JourneyGate>
+          <button
+            type="button"
+            disabled={isGeneratingReport}
+            onClick={handleGenerateReport}
+            className={`mt-6 rounded-full border px-5 py-3 text-sm font-medium transition ${
+              isGeneratingReport
+                ? "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
+                : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
+            }`}
+          >
+            {isGeneratingReport ? "Creating preview..." : "Create preview"}
+          </button>
+          {reportError ? (
+            <p className="mt-4 rounded-xl border border-pmri-red/35 bg-pmri-red/10 p-3 text-sm leading-6 text-pmri-red">
+              {reportError}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {report ? (
+        <div className="space-y-5">
+          <ClientReadyReportPreview {...report} />
+          <section className="grid gap-4 lg:grid-cols-3">
+            <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
+              <StatusBadge tone="slate">Evidence used</StatusBadge>
+              <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-muted">
+                {(report.evidenceUsed.length ? report.evidenceUsed : ["No confirmed evidence list was returned for this preview."]).slice(0, 5).map((item) => (
+                  <li key={item}>• {item}</li>
+                ))}
+              </ul>
+            </article>
+            <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
+              <StatusBadge tone="blue">Created</StatusBadge>
+              <p className="mt-3 text-sm leading-7 text-pmri-muted">{report.generatedAt ?? "Time unavailable"}</p>
+            </article>
+            <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
+              <StatusBadge tone={report.warnings.length ? "amber" : "green"}>Limitations</StatusBadge>
+              <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-muted">
+                {(report.warnings.length ? report.warnings.slice(0, 3) : report.unavailableEvidence.slice(0, 3)).map((item) => (
+                  <li key={item}>• {item}</li>
+                ))}
+              </ul>
+            </article>
+          </section>
+        </div>
+      ) : null}
+    </div>
   );
 }

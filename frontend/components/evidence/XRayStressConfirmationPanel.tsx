@@ -1,59 +1,54 @@
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { StressLabModel, XRayConfirmationRow } from "./stressLabTypes";
-import { EmptyPanel, StressSectionHeader } from "./stressLabUi";
+import { StressSectionHeader } from "./stressLabUi";
 
-function ConfirmationList({ rows, emptyMessage }: { rows: XRayConfirmationRow[]; emptyMessage: string }) {
-  if (!rows.length) return <EmptyPanel>{emptyMessage}</EmptyPanel>;
+type ConfirmationDisplayRow = XRayConfirmationRow & {
+  status: "Confirmed" | "Less material" | "Data-limited";
+};
 
-  return (
-    <div className="space-y-3">
-      {rows.map((row) => (
-        <article key={`${row.label}-${row.detail}`} className="rounded-2xl border border-pmri-border/50 bg-white/[0.02] p-4">
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="text-sm font-semibold text-pmri-text">{row.label}</h3>
-            <StatusBadge tone={row.tone}>{row.tone === "amber" ? "Confirmed" : "Review"}</StatusBadge>
-          </div>
-          <p className="mt-2 text-sm leading-6 text-pmri-text2">{row.detail}</p>
-        </article>
-      ))}
-    </div>
-  );
+function statusTone(status: ConfirmationDisplayRow["status"]) {
+  if (status === "Confirmed") return "amber" as const;
+  if (status === "Less material") return "slate" as const;
+  return "amber" as const;
 }
 
 export function XRayStressConfirmationPanel({ confirmation }: { confirmation: StressLabModel["xrayConfirmation"] }) {
+  const rows: ConfirmationDisplayRow[] = [
+    ...confirmation.confirmed.map((row) => ({ ...row, status: "Confirmed" as const })),
+    ...confirmation.lessMaterial.map((row) => ({ ...row, status: "Less material" as const })),
+    ...confirmation.insufficientData.map((row) => ({ ...row, status: "Data-limited" as const }))
+  ];
+
   return (
     <section id="xray-confirmation" className="pmri-card rounded-3xl p-5 md:p-7">
       <StressSectionHeader
         eyebrow="Why this follows Diagnosis"
-        title="Which X-Ray weaknesses were confirmed by stress tests?"
-        body="Diagnosis creates pre-stress hypotheses. Stress Test Lab checks which of those weaknesses show up under scenario evidence."
-        badge="X-Ray bridge"
-        badgeTone="blue"
+        title="Diagnosis confirmation"
+        body="Diagnosis creates pre-stress hypotheses. Stress Lab checks whether those weaknesses appear under scenario evidence."
       />
       <div className="mt-5 rounded-2xl border border-pmri-border/55 bg-black/10 p-4 text-sm leading-6 text-pmri-text2">
         {confirmation.note}
       </div>
-      <div className="mt-6 grid gap-4 xl:grid-cols-3">
-        <div>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-pmri-text">Confirmed by stress evidence</h3>
-            <StatusBadge tone="amber">{confirmation.confirmed.length || "None"}</StatusBadge>
-          </div>
-          <ConfirmationList rows={confirmation.confirmed} emptyMessage="No X-Ray weakness confirmation was returned for this stress run." />
+      <div className="mt-6 overflow-hidden rounded-2xl border border-pmri-border/55">
+        <div className="grid grid-cols-[0.9fr_1.4fr_0.55fr] gap-3 border-b border-pmri-border/55 bg-white/[0.035] px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-pmri-muted">
+          <span>X-Ray weakness</span>
+          <span>Stress evidence</span>
+          <span>Confirmation status</span>
         </div>
-        <div>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-pmri-text">Less material in stress review</h3>
-            <StatusBadge tone="slate">{confirmation.lessMaterial.length || "None"}</StatusBadge>
-          </div>
-          <ConfirmationList rows={confirmation.lessMaterial} emptyMessage="No less-material stress findings were returned." />
-        </div>
-        <div>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-pmri-text">Insufficient data</h3>
-            <StatusBadge tone="amber">{confirmation.insufficientData.length || "None"}</StatusBadge>
-          </div>
-          <ConfirmationList rows={confirmation.insufficientData} emptyMessage="No historical replay limitation was surfaced in this review." />
+        <div className="divide-y divide-pmri-border/45">
+          {rows.length ? rows.map((row) => (
+            <article key={`${row.status}-${row.label}-${row.detail}`} className="grid gap-3 px-4 py-4 text-sm md:grid-cols-[0.9fr_1.4fr_0.55fr] md:items-start">
+              <h3 className="font-semibold text-pmri-text">{row.label}</h3>
+              <p className="leading-6 text-pmri-text2">{row.detail}</p>
+              <div>
+                <StatusBadge tone={statusTone(row.status)}>{row.status}</StatusBadge>
+              </div>
+            </article>
+          )) : (
+            <p className="p-4 text-sm leading-6 text-pmri-muted">
+              No diagnosis confirmation mapping was returned for this stress run.
+            </p>
+          )}
         </div>
       </div>
     </section>

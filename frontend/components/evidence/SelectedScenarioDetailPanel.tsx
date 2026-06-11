@@ -5,9 +5,15 @@ import { ContributionBars } from "./ContributionBars";
 import { HelpHint, StressSectionHeader } from "./stressLabUi";
 
 export function SelectedScenarioDetailPanel({
-  scenario
+  scenario,
+  worstScenario,
+  selectedIsWorst,
+  onViewWorstScenario
 }: {
   scenario: StressScenarioDetail;
+  worstScenario: StressScenarioDetail;
+  selectedIsWorst: boolean;
+  onViewWorstScenario: () => void;
 }) {
   const metricLabel = scenario.kind === "historical" ? "Historical drawdown" : "Portfolio loss";
   const metricValue = scenario.kind === "historical"
@@ -30,12 +36,28 @@ export function SelectedScenarioDetailPanel({
   return (
     <section id="selected-scenario" className="pmri-card rounded-3xl p-5 md:p-7">
       <StressSectionHeader
-        eyebrow="Block 3.2"
-        title={`Selected scenario: ${scenario.displayName}`}
-        body="The selected scenario shows actual stress loss contribution, not normal risk contribution."
+        eyebrow="Selected stress scenario"
+        title={`Selected stress scenario: ${scenario.displayName}`}
+        body="This section shows actual stress loss contribution for the selected scenario, not normal portfolio risk contribution."
         badge={scenario.severityLabel}
         badgeTone={scenario.severityTone}
       />
+      {!selectedIsWorst ? (
+        <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-pmri-amber/25 bg-pmri-amber/[0.055] p-4 text-sm leading-6 text-pmri-text2 md:flex-row md:items-center md:justify-between">
+          <p>
+            Selected scenario is not the worst scenario. Worst scenario:{" "}
+            <span className="font-semibold text-pmri-text">{worstScenario.displayName}</span>,{" "}
+            {formatStressPercent(worstScenario.portfolioLossPct)}.
+          </p>
+          <button
+            type="button"
+            onClick={onViewWorstScenario}
+            className="pmri-focus inline-flex w-fit rounded-full border border-pmri-amber/35 px-3 py-1.5 text-xs font-medium text-pmri-text transition hover:border-pmri-amber/70"
+          >
+            View worst scenario
+          </button>
+        </div>
+      ) : null}
       <div className="mt-6 grid gap-4 xl:grid-cols-[0.9fr_1.2fr_0.9fr]">
         <article className="rounded-2xl border border-pmri-border/55 bg-white/[0.024] p-5">
           <div className="flex items-center gap-2">
@@ -48,8 +70,10 @@ export function SelectedScenarioDetailPanel({
           <p className="data-figure mt-4 text-4xl font-medium text-pmri-text">{metricValue}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <StatusBadge tone={scenario.evidenceTone}>{scenario.evidenceQualityLabel}</StatusBadge>
-            <StatusBadge tone="slate">{scenario.groupLabel}</StatusBadge>
           </div>
+          <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-pmri-muted">
+            Scenario type: {scenario.groupLabel}
+          </p>
           <p className="mt-5 text-sm leading-6 text-pmri-text2">{scenario.interpretation}</p>
           {scenario.limitation ? (
             <p className="mt-4 rounded-2xl border border-pmri-amber/20 bg-pmri-amber/[0.055] p-3 text-xs leading-5 text-pmri-text2">
@@ -62,7 +86,7 @@ export function SelectedScenarioDetailPanel({
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="pmri-label">Asset contribution</p>
-              <h3 className="mt-1 text-base font-semibold text-pmri-text">What actually lost or helped</h3>
+              <h3 className="mt-1 text-base font-semibold text-pmri-text">Assets that hurt or helped in selected scenario</h3>
             </div>
             <HelpHint label="Loss contribution" text="Loss contribution answers which assets lost money in this stress scenario." />
           </div>
@@ -78,7 +102,7 @@ export function SelectedScenarioDetailPanel({
         <article className="rounded-2xl border border-pmri-border/55 bg-white/[0.024] p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="pmri-label">Hedge / offset summary</p>
+              <p className="pmri-label">Offset summary</p>
               <h3 className="mt-1 text-base font-semibold text-pmri-text">Selected scenario offset</h3>
             </div>
             <StatusBadge tone={offsetTone}>{offsetStatus}</StatusBadge>
@@ -90,7 +114,7 @@ export function SelectedScenarioDetailPanel({
           <p className="mt-5 text-sm leading-6 text-pmri-text2">
             {offsetCoverage === null
               ? "Offset coverage is unavailable because asset-level helped and hurt contribution is incomplete for this scenario."
-              : `Assets that helped contributed ${formatStressPercent(helped, { signed: true })} against ${formatStressPercent(-grossLoss)} from assets that hurt.`}
+              : `Assets that helped in selected scenario contributed ${formatStressPercent(helped, { signed: true })} against ${formatStressPercent(-grossLoss)} from assets that hurt in selected scenario.`}
           </p>
         </article>
       </div>

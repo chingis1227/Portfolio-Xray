@@ -6,12 +6,10 @@ export function FactorStressAttributionPanel({ scenario }: { scenario: StressSce
   if (!scenario.factorAttribution.length) {
     return (
       <section id="factor-attribution" className="pmri-card rounded-3xl p-5 md:p-7">
-        <StressSectionHeader
-          eyebrow="Factor view"
+      <StressSectionHeader
+          eyebrow="Selected scenario"
           title="Factor stress attribution"
           body="Factor attribution unavailable for this stress run."
-          badge="Unavailable"
-          badgeTone="slate"
         />
       </section>
     );
@@ -20,11 +18,9 @@ export function FactorStressAttributionPanel({ scenario }: { scenario: StressSce
   return (
     <section id="factor-attribution" className="pmri-card rounded-3xl p-5 md:p-7">
       <StressSectionHeader
-        eyebrow="Factor view"
+        eyebrow="Selected scenario"
         title="Factor stress attribution"
-        body="This shows which macro and risk factors explain the selected stress loss."
-        badge={scenario.displayName}
-        badgeTone={scenario.severityTone}
+        body={`Which macro and risk factors explain the selected stress loss in ${scenario.displayName}.`}
       />
       <div className="mt-6">
         <ContributionBars

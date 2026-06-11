@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DiagnosisSummaryPanel } from "@/components/diagnosis/DiagnosisSummaryPanel";
+import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { buildDiagnosisFromReview, useReviewState } from "@/lib/reviewState";
+import { buildDiagnosisFromReview, cleanSiteExplanationBundle, useReviewState } from "@/lib/reviewState";
 
 function FailedDiagnosisState({ message, details }: { message: string; details?: string }) {
   return (
@@ -58,6 +59,8 @@ export default function DiagnosisPage() {
   const failedRealRun = Boolean(activeReview?.runMode === "real_run" && activeReview.runStatus === "failed");
   const diagnosis = diagnosisReady && activeReview ? buildDiagnosisFromReview(activeReview) : null;
   const xraySummary = diagnosisReady ? activeReview?.reviewSummary?.xraySummary : undefined;
+  const siteExplanation = cleanSiteExplanationBundle(activeReview?.reviewResult?.outputs?.site_explanation_bundle)
+    ?? activeReview?.reviewSummary?.siteExplanation;
 
   return (
     <div>
@@ -65,6 +68,11 @@ export default function DiagnosisPage() {
         kicker="Investment Decision Room"
         title="Portfolio X-Ray Diagnosis"
         description="Current-portfolio review before any candidate test."
+      />
+      <SiteExplanationHierarchy
+        bundle={siteExplanation}
+        screen="diagnosis"
+        fallbackTitle="Diagnosis explanation"
       />
       {!hydrated ? null : failedRealRun && activeReview?.reviewError ? (
         <FailedDiagnosisState message={activeReview.reviewError.message} details={activeReview.reviewError.details} />

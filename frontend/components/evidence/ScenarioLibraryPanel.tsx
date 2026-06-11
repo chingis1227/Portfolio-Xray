@@ -19,6 +19,7 @@ function ScenarioTile({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const unavailable = scenario.availability !== "available";
   const metric = scenario.kind === "historical"
     ? scenario.drawdownPct !== null
       ? `Drawdown: ${formatStressPercent(scenario.drawdownPct)}`
@@ -46,12 +47,66 @@ function ScenarioTile({
         <StatusBadge tone={scenario.severityTone}>{scenario.severityLabel}</StatusBadge>
       </div>
       <p className="data-figure mt-5 text-lg font-medium text-pmri-text2">{metric}</p>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <StatusBadge tone={scenario.evidenceTone}>{scenario.evidenceQualityLabel}</StatusBadge>
-        {selected ? <StatusBadge tone="blue">Selected</StatusBadge> : null}
+      <div className="mt-4 min-h-5">
+        {selected ? <span className="text-xs font-medium text-pmri-blueSoft">Selected</span> : null}
+        {!selected && unavailable ? <StatusBadge tone={scenario.evidenceTone}>{scenario.evidenceQualityLabel}</StatusBadge> : null}
       </div>
-      {scenario.dataNote ? <p className="mt-3 text-xs leading-5 text-pmri-muted">{scenario.dataNote}</p> : null}
+      {unavailable ? (
+        <p className="mt-3 text-xs leading-5 text-pmri-muted">
+          Replay limited. No positions have usable direct history for this stress period.
+        </p>
+      ) : scenario.dataNote ? (
+        <p className="mt-3 text-xs leading-5 text-pmri-muted">{scenario.dataNote}</p>
+      ) : null}
     </button>
+  );
+}
+
+function impactValue(scenario: StressScenarioDetail) {
+  return scenario.kind === "historical" ? scenario.drawdownPct ?? scenario.portfolioLossPct : scenario.portfolioLossPct;
+}
+
+function rankByDamage(a: StressScenarioDetail, b: StressScenarioDetail) {
+  const aValue = impactValue(a);
+  const bValue = impactValue(b);
+  if (aValue === null && bValue === null) return a.displayName.localeCompare(b.displayName);
+  if (aValue === null) return 1;
+  if (bValue === null) return -1;
+  return aValue - bValue || a.displayName.localeCompare(b.displayName);
+}
+
+function ScenarioGroup({
+  title,
+  description,
+  scenarios,
+  selectedScenarioId,
+  onSelectScenario
+}: {
+  title: string;
+  description: string;
+  scenarios: StressScenarioDetail[];
+  selectedScenarioId: string;
+  onSelectScenario: (scenarioId: string) => void;
+}) {
+  if (!scenarios.length) return null;
+
+  return (
+    <div>
+      <div className="mb-3">
+        <h3 className="text-sm font-semibold text-pmri-text">{title}</h3>
+        <p className="mt-1 text-xs leading-5 text-pmri-muted">{description}</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {scenarios.map((scenario) => (
+          <ScenarioTile
+            key={scenario.id}
+            scenario={scenario}
+            selected={scenario.id === selectedScenarioId}
+            onSelect={() => onSelectScenario(scenario.id)}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -61,48 +116,53 @@ export function ScenarioLibraryPanel({
   selectedScenarioId,
   onSelectScenario
 }: ScenarioLibraryPanelProps) {
+  const allScenarios = [...syntheticScenarios, ...historicalScenarios];
+  const worstSynthetic = syntheticScenarios.find((scenario) => scenario.isWorst)
+    ?? [...syntheticScenarios].sort(rankByDamage)[0];
+  const worstHistorical = historicalScenarios.find((scenario) => scenario.isWorst && scenario.availability === "available")
+    ?? historicalScenarios.filter((scenario) => scenario.availability === "available").sort(rankByDamage)[0];
+  const mostDamagingIds = new Set([worstSynthetic?.id, worstHistorical?.id].filter(Boolean));
+  const mostDamaging = allScenarios.filter((scenario) => mostDamagingIds.has(scenario.id)).sort(rankByDamage);
+  const material = allScenarios
+    .filter((scenario) => !mostDamagingIds.has(scenario.id) && scenario.availability === "available")
+    .filter((scenario) => Math.abs(impactValue(scenario) ?? 0) >= 0.03)
+    .sort(rankByDamage);
+  const lessOrUnavailable = allScenarios
+    .filter((scenario) => !mostDamagingIds.has(scenario.id) && !material.some((item) => item.id === scenario.id))
+    .sort((a, b) => {
+      if (a.availability !== b.availability) return a.availability === "available" ? -1 : 1;
+      return rankByDamage(a, b);
+    });
+
   return (
     <section id="scenario-library" className="pmri-card rounded-3xl p-5 md:p-7">
       <StressSectionHeader
-        eyebrow="Block 3.1"
-        title="Scenario Library"
-        body="Synthetic shocks and historical episodes are shown together so the stress coverage is visible before interpretation."
-        badge="Supporting evidence"
-        badgeTone="slate"
+        eyebrow="Scenario coverage"
+        title="Scenario library"
+        body="Scenarios are ranked by damage first, while synthetic shock versus historical episode remains visible on each card."
       />
       <div className="mt-6 space-y-6">
-        <div>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-pmri-text">Synthetic shocks</h3>
-            <p className="text-xs text-pmri-muted">{syntheticScenarios.length} scenarios</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {syntheticScenarios.map((scenario) => (
-              <ScenarioTile
-                key={scenario.id}
-                scenario={scenario}
-                selected={scenario.id === selectedScenarioId}
-                onSelect={() => onSelectScenario(scenario.id)}
-              />
-            ))}
-          </div>
-        </div>
-        <div>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-pmri-text">Historical episodes</h3>
-            <p className="text-xs text-pmri-muted">{historicalScenarios.length} episodes</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            {historicalScenarios.map((scenario) => (
-              <ScenarioTile
-                key={scenario.id}
-                scenario={scenario}
-                selected={scenario.id === selectedScenarioId}
-                onSelect={() => onSelectScenario(scenario.id)}
-              />
-            ))}
-          </div>
-        </div>
+        <ScenarioGroup
+          title="Most damaging scenarios"
+          description="Start here: these scenarios produce the largest available synthetic loss or historical drawdown."
+          scenarios={mostDamaging}
+          selectedScenarioId={selectedScenarioId}
+          onSelectScenario={onSelectScenario}
+        />
+        <ScenarioGroup
+          title="Material stress areas"
+          description="Meaningful losses that support the diagnosis but are not the single worst case."
+          scenarios={material}
+          selectedScenarioId={selectedScenarioId}
+          onSelectScenario={onSelectScenario}
+        />
+        <ScenarioGroup
+          title="Less damaging / unavailable"
+          description="Lower-impact scenarios and historical episodes where replay is limited by direct holding history."
+          scenarios={lessOrUnavailable}
+          selectedScenarioId={selectedScenarioId}
+          onSelectScenario={onSelectScenario}
+        />
       </div>
     </section>
   );

@@ -169,6 +169,31 @@ After meaningful changes:
 - run the narrowest reliable verification first and broaden when risk warrants it;
 - report any unverified area with the reason and blocker.
 
+## Browser / Playwright QA
+
+For frontend visual QA or browser click-throughs, avoid the recurring false-read failures from
+stale dev servers, stale browser state, and stale Playwright element references.
+
+- Start from a clean, active local target: use a fresh localhost port when possible, confirm the
+  exact URL, and do not assume an already-open tab or old server is the current build.
+- Check the dev-server terminal/logs before judging the screen. If Next reports missing `.next`
+  chunks, React Client Manifest errors, or a failed compile, fix/restart the server before making
+  product/UI conclusions from the browser.
+- Do not run `next build`, `next dev`, typecheck generation, or other `.next` writers concurrently
+  against the same `frontend/.next` directory during visual QA.
+- Treat browser `localStorage`, old `runs/frontend_review_*` folders, screenshots, and generated
+  artifacts as stale unless they are explicitly created or recovered for the active run being tested.
+- In Playwright, take a fresh snapshot before using element refs and re-snapshot after navigation,
+  modal/menu changes, route changes, or major UI updates. If a ref fails or behavior looks odd,
+  re-snapshot before diagnosing the UI.
+- For Portfolio MRI vertical demos, follow
+  [docs/demo/frontend_backend_vertical_runbook.md](docs/demo/frontend_backend_vertical_runbook.md):
+  verify the active `reviewId`, selected Launchpad card, Builder setup, candidate, comparison,
+  verdict, and report all belong to the same run-local artifact chain.
+- When reporting visual QA, include: URL/port, route, active `reviewId` if relevant, whether sample
+  mode was used, what browser state was reset or recovered, screenshots captured, and any unverified
+  area.
+
 ## ExecPlans
 
 For new complex tasks, large changes, or refactors, follow [PLANS.md](PLANS.md) before implementation.

@@ -11,6 +11,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+from legacy.runners.run_optimization import (
+    _build_legacy_policy_optimizer_run_metadata,
+    parse_args,
+)
+
 def main() -> int:
     root = Path(__file__).resolve().parent
     target = root / "legacy" / "runners" / "run_optimization.py"

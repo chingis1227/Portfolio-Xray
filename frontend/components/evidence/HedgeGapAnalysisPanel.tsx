@@ -14,9 +14,9 @@ export function HedgeGapAnalysisPanel({ hedgeGap }: { hedgeGap: HedgeGapSummary 
   return (
     <section id="hedge-gap" className="pmri-card rounded-3xl p-5 md:p-7">
       <StressSectionHeader
-        eyebrow="Block 3.3"
-        title="Hedge Gap Analysis"
-        body="This section checks whether assets that helped offset losses from assets that hurt during stress."
+        eyebrow="Main hedge gap scenario"
+        title="Hedge protection"
+        body="This checks whether assets that helped actually offset losses from assets that hurt during stress."
         badge={hedgeGap.statusLabel}
         badgeTone={hedgeGap.statusTone}
       />
@@ -32,11 +32,11 @@ export function HedgeGapAnalysisPanel({ hedgeGap }: { hedgeGap: HedgeGapSummary 
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-pmri-risk/18 bg-pmri-risk/[0.035] p-4">
-              <p className="pmri-label">Assets hurt</p>
+              <p className="pmri-label">Assets that hurt in main hedge gap scenario</p>
               <p className="data-figure mt-2 text-2xl text-pmri-text">{grossLossDisplay}</p>
             </div>
             <div className="rounded-2xl border border-pmri-positive/18 bg-pmri-positive/[0.035] p-4">
-              <p className="pmri-label">Assets helped</p>
+              <p className="pmri-label">Assets that helped in main hedge gap scenario</p>
               <p className="data-figure mt-2 text-2xl text-pmri-text">{positiveDisplay}</p>
             </div>
             <div className="rounded-2xl border border-pmri-border/55 bg-black/10 p-4">
@@ -48,9 +48,9 @@ export function HedgeGapAnalysisPanel({ hedgeGap }: { hedgeGap: HedgeGapSummary 
             </div>
           </div>
           <div className="mt-5 rounded-2xl border border-pmri-border/55 bg-black/10 p-4">
-            <p className="text-sm font-medium text-pmri-text">Formula</p>
+            <p className="text-sm font-medium text-pmri-text">Compact formula</p>
             <p className="mt-2 text-sm leading-6 text-pmri-text2">
-              Offset coverage = positive contribution from assets helped / absolute gross loss from assets hurt.
+              Offset coverage = positive contribution from assets that helped / absolute gross loss from assets that hurt.
             </p>
             <p className="mt-2 text-sm leading-6 text-pmri-text2">
               In this review: {positiveDisplay} / {grossLossDisplay.replace("-", "")} = {coverageDisplay}.
@@ -62,11 +62,11 @@ export function HedgeGapAnalysisPanel({ hedgeGap }: { hedgeGap: HedgeGapSummary 
         <article className="rounded-2xl border border-pmri-border/55 bg-white/[0.024] p-5">
           <div className="grid gap-5 lg:grid-cols-2">
             <div>
-              <h3 className="mb-4 text-base font-semibold text-pmri-text">Assets hurt</h3>
+              <h3 className="mb-4 text-base font-semibold text-pmri-text">Assets that hurt in main hedge gap scenario</h3>
               <ContributionBars rows={hedgeGap.assetsHurt} emptyMessage="Hurt assets unavailable for the main hedge gap." />
             </div>
             <div>
-              <h3 className="mb-4 text-base font-semibold text-pmri-text">Assets helped</h3>
+              <h3 className="mb-4 text-base font-semibold text-pmri-text">Assets that helped in main hedge gap scenario</h3>
               <ContributionBars rows={hedgeGap.assetsHelped} emptyMessage="No meaningful helped assets detected for the main hedge gap." />
             </div>
           </div>

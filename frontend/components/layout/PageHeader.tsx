@@ -8,7 +8,7 @@ type PageHeaderProps = {
   children?: ReactNode;
 };
 
-export function PageHeader({ kicker, title, description, boundaryNote = "Evidence first · one hypothesis at a time · no trade execution", children }: PageHeaderProps) {
+export function PageHeader({ kicker, title, description, boundaryNote = "Evidence first · one hypothesis at a time · no candidate or rebalance verdict is created here", children }: PageHeaderProps) {
   return (
     <header className="relative mb-7 overflow-hidden rounded-[1.75rem] border border-pmri-border/45 bg-pmri-secondary/55 p-5 shadow-decision backdrop-blur md:p-6">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_16%,rgba(168,189,211,0.055),transparent_30%)]" />

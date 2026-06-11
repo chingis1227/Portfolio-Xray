@@ -1,50 +1,56 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { StressLabModel } from "./stressLabTypes";
 import { DataLimitationsPanel } from "./DataLimitationsPanel";
 import { FactorStressAttributionPanel } from "./FactorStressAttributionPanel";
 import { HedgeGapAnalysisPanel } from "./HedgeGapAnalysisPanel";
-import { HelpedHurtPanel } from "./HelpedHurtPanel";
 import { LossContributionPanel } from "./LossContributionPanel";
+import { MainStressDiagnosisPanel } from "./MainStressDiagnosisPanel";
 import { ScenarioLibraryPanel } from "./ScenarioLibraryPanel";
 import { SelectedScenarioDetailPanel } from "./SelectedScenarioDetailPanel";
 import { StressScorecardPanel } from "./StressScorecardPanel";
 import { XRayStressConfirmationPanel } from "./XRayStressConfirmationPanel";
 
 const sectionLinks = [
-  ["stress-scorecard", "Scorecard"],
+  ["stress-diagnosis", "Overview"],
   ["scenario-library", "Scenarios"],
-  ["selected-scenario", "Selected detail"],
+  ["selected-scenario", "Scenario detail"],
   ["loss-contribution", "Loss contribution"],
-  ["hedge-gap", "Hedge gap"],
-  ["xray-confirmation", "X-Ray bridge"],
-  ["data-limitations", "Data limits"]
+  ["hedge-gap", "Hedge protection"],
+  ["xray-confirmation", "Diagnosis confirmation"],
+  ["data-quality", "Data quality"]
 ] as const;
 
 export function StressTestLab({ model }: { model: StressLabModel }) {
-  const [selectedScenarioId, setSelectedScenarioId] = useState(model.selectedScenarioId);
+  const [manualScenarioId, setManualScenarioId] = useState<string | null>(null);
   const allScenarios = useMemo(
     () => [...model.syntheticScenarios, ...model.historicalScenarios],
     [model.historicalScenarios, model.syntheticScenarios]
   );
+  const worstSyntheticScenario = useMemo(() => {
+    const available = model.syntheticScenarios.filter((scenario) => scenario.availability === "available");
+    return available.find((scenario) => scenario.isWorst)
+      ?? [...available].sort((a, b) => (a.portfolioLossPct ?? 0) - (b.portfolioLossPct ?? 0))[0]
+      ?? model.syntheticScenarios.find((scenario) => scenario.isWorst)
+      ?? model.syntheticScenarios[0]
+      ?? allScenarios[0];
+  }, [allScenarios, model.syntheticScenarios]);
+  const selectedScenarioId = manualScenarioId ?? worstSyntheticScenario.id;
   const selectedScenario = allScenarios.find((scenario) => scenario.id === selectedScenarioId)
-    ?? allScenarios.find((scenario) => scenario.id === model.selectedScenarioId)
+    ?? worstSyntheticScenario
     ?? allScenarios[0];
+  const selectedIsWorst = selectedScenario.id === worstSyntheticScenario.id;
+  const viewWorstScenario = () => setManualScenarioId(null);
 
   return (
     <div className="space-y-6">
       <section className="pmri-state-panel rounded-3xl p-4 md:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="flex flex-wrap gap-2">
-              <StatusBadge tone="blue">{model.headerStatusLabel}</StatusBadge>
-              <StatusBadge tone="slate">Candidate not tested</StatusBadge>
-              <StatusBadge tone="slate">No trade execution</StatusBadge>
-            </div>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-pmri-text2">
-              Stress Test Lab exists after Diagnosis to test whether pre-stress weaknesses actually show up under market stress.
+            <p className="pmri-label">Stress review path</p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-pmri-text2">
+              Stress Test Lab checks whether Diagnosis weaknesses show up under scenario evidence, then passes evidence into Hypothesis.
             </p>
           </div>
           <nav className="flex flex-wrap gap-2" aria-label="Stress Test Lab sections">
@@ -61,20 +67,35 @@ export function StressTestLab({ model }: { model: StressLabModel }) {
         </div>
       </section>
 
+      <MainStressDiagnosisPanel
+        worstScenario={worstSyntheticScenario}
+        hedgeGap={model.hedgeGap}
+        syntheticScenarios={model.syntheticScenarios}
+        historicalScenarios={model.historicalScenarios}
+        limitations={model.limitations}
+      />
       <StressScorecardPanel items={model.scorecard} />
       <ScenarioLibraryPanel
         syntheticScenarios={model.syntheticScenarios}
         historicalScenarios={model.historicalScenarios}
         selectedScenarioId={selectedScenario.id}
-        onSelectScenario={setSelectedScenarioId}
+        onSelectScenario={setManualScenarioId}
       />
-      <SelectedScenarioDetailPanel scenario={selectedScenario} />
+      <SelectedScenarioDetailPanel
+        scenario={selectedScenario}
+        worstScenario={worstSyntheticScenario}
+        selectedIsWorst={selectedIsWorst}
+        onViewWorstScenario={viewWorstScenario}
+      />
       <LossContributionPanel scenario={selectedScenario} />
-      <HelpedHurtPanel scenario={selectedScenario} />
       <FactorStressAttributionPanel scenario={selectedScenario} />
       <HedgeGapAnalysisPanel hedgeGap={model.hedgeGap} />
       <XRayStressConfirmationPanel confirmation={model.xrayConfirmation} />
-      <DataLimitationsPanel limitations={model.limitations} />
+      <DataLimitationsPanel
+        limitations={model.limitations}
+        syntheticScenarios={model.syntheticScenarios}
+        historicalScenarios={model.historicalScenarios}
+      />
     </div>
   );
 }

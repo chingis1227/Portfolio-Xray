@@ -12,7 +12,7 @@ by this plan.
 
 ## Purpose / Big Picture
 
-Portfolio MRI / Portfolio X-Ray / ÄÈÀÃÍÎÑÒÈÊÀ 2 is a diagnosis-first investment
+Portfolio MRI / Portfolio X-Ray / Ã„ÃˆÃ€ÃƒÃÃÃ‘Ã’ÃˆÃŠÃ€ 2 is a diagnosis-first investment
 decision-support product. It is not a dashboard and it is not an optimizer cockpit.
 After this plan is implemented, a user can enter a portfolio in the Next.js frontend,
 run the real Python diagnostics pipeline, choose one diagnostic hypothesis to test,
@@ -33,9 +33,9 @@ The end-to-end behavior to demonstrate is:
     -> Decision Verdict
     -> Client-ready Report / AI Commentary
 
-Candidate means “a diagnostic portfolio test,” not a recommendation. Builder setup
-means “parameters for the test,” not rebalance instructions. Verdict means
-“decision-support interpretation,” not trading instruction. No-trade and evidence
+Candidate means â€œa diagnostic portfolio test,â€ not a recommendation. Builder setup
+means â€œparameters for the test,â€ not rebalance instructions. Verdict means
+â€œdecision-support interpretation,â€ not trading instruction. No-trade and evidence
 insufficient are valid outcomes.
 
 ## Progress
@@ -345,7 +345,7 @@ if needed.
 
 ## Context and Orientation
 
-The repository root is `D:\Ğàáî÷èé ñòîë\ÊÓĞÑÎĞ ÒÓËÀ ÄÈÀÃÍÎÑÒÈÊÀ`. The frontend lives
+The repository root is `D:\ÃÃ Ã¡Ã®Ã·Ã¨Ã© Ã±Ã²Ã®Ã«\ÃŠÃ“ÃÃ‘ÃÃ Ã’Ã“Ã‹Ã€ Ã„ÃˆÃ€ÃƒÃÃÃ‘Ã’ÃˆÃŠÃ€`. The frontend lives
 under `frontend/` and is a Next.js/React application. The confirmed frontend API route
 is `frontend/app/api/portfolio/diagnose/route.ts`, which posts portfolio input to a
 Python bridge. The bridge is `scripts/run_review_from_payload.py`. It creates an
@@ -529,13 +529,13 @@ reject or ignore stale artifacts that do not match the current review/candidate 
 
 Baseline frontend checks:
 
-    cd D:\Ğàáî÷èé ñòîë\ÊÓĞÑÎĞ ÒÓËÀ ÄÈÀÃÍÎÑÒÈÊÀ\frontend
+    cd D:\ÃÃ Ã¡Ã®Ã·Ã¨Ã© Ã±Ã²Ã®Ã«\ÃŠÃ“ÃÃ‘ÃÃ Ã’Ã“Ã‹Ã€ Ã„ÃˆÃ€ÃƒÃÃÃ‘Ã’ÃˆÃŠÃ€\frontend
     npm.cmd run typecheck
     npm.cmd run build
 
 Baseline backend bridge check:
 
-    cd D:\Ğàáî÷èé ñòîë\ÊÓĞÑÎĞ ÒÓËÀ ÄÈÀÃÍÎÑÒÈÊÀ
+    cd D:\ÃÃ Ã¡Ã®Ã·Ã¨Ã© Ã±Ã²Ã®Ã«\ÃŠÃ“ÃÃ‘ÃÃ Ã’Ã“Ã‹Ã€ Ã„ÃˆÃ€ÃƒÃÃÃ‘Ã’ÃˆÃŠÃ€
     .\.venv\Scripts\python.exe -m pytest tests\test_frontend_review_bridge.py
 
 If `.venv` is missing, follow the Codex Windows Python rule: check `py -3 --version`,
@@ -565,7 +565,7 @@ Evidence insufficient is a valid outcome. No-trade is a valid outcome.
 
 ## Session-by-Session Implementation Plan
 
-### Session 00 — Baseline audit and lock current state
+### Session 00 â€” Baseline audit and lock current state
 
 Goal: Audit the current working state without implementing anything.
 
@@ -606,7 +606,7 @@ edits, no candidate generation, no dependency upgrades, no commits.
 
 Suggested commit message: not applicable because Session 00 is audit-only.
 
-### Session 01 — Candidate generation discovery hardening
+### Session 01 â€” Candidate generation discovery hardening
 
 Goal: Inspect existing candidate generation behavior and document how a selected
 Launchpad card should become a safe Builder setup for one candidate.
@@ -641,7 +641,7 @@ edits.
 Suggested commit message: not applicable unless documentation notes are intentionally
 committed later.
 
-### Session 02 — Selected card to backend Builder setup
+### Session 02 â€” Selected card to backend Builder setup
 
 Goal: Implement a safe backend path that produces a matching
 `portfolio_alternatives_builder.json` for the selected `selected_card_id` when the
@@ -678,7 +678,7 @@ recommendation language.
 
 Suggested commit message: `Add run-local selected-card builder setup guard`.
 
-### Session 03 — Candidate generation bridge
+### Session 03 â€” Candidate generation bridge
 
 Goal: Create or extend a bridge/API for generating exactly one selected candidate from
 the active review and Builder setup.
@@ -715,7 +715,7 @@ fallback.
 
 Suggested commit message: `Connect one-candidate generation bridge`.
 
-### Session 04 — Frontend Generate Candidate button
+### Session 04 â€” Frontend Generate Candidate button
 
 Goal: Enable the Generate Candidate button and connect it to the candidate generation
 API.
@@ -752,7 +752,7 @@ traces shown to the user.
 
 Suggested commit message: `Enable frontend one-candidate generation flow`.
 
-### Session 05 — Current vs Candidate discovery
+### Session 05 â€” Current vs Candidate discovery
 
 Goal: Inspect existing comparison commands and required inputs from
 `candidate_generation`.
@@ -782,7 +782,7 @@ What must not happen: no comparison generation, no verdict generation, no code e
 
 Suggested commit message: not applicable unless documentation notes are committed.
 
-### Session 06 — Current vs Candidate backend connection
+### Session 06 â€” Current vs Candidate backend connection
 
 Goal: Connect backend comparison for the selected generated candidate only.
 
@@ -817,7 +817,7 @@ as part of this session unless unavoidable.
 
 Suggested commit message: `Connect scoped current-vs-candidate backend flow`.
 
-### Session 07 — Comparison frontend connection
+### Session 07 â€” Comparison frontend connection
 
 Goal: Render real `current_vs_candidate` on the Comparison page.
 
@@ -940,7 +940,7 @@ generation was executed. Root `config.yml` and Python calculation logic were not
 
 Suggested commit message: `Render real current-vs-candidate comparison`.
 
-### Session 08 — Decision Verdict backend connection
+### Session 08 â€” Decision Verdict backend connection
 
 Goal: Generate real `decision_verdict.json` for the selected candidate only.
 
@@ -1057,7 +1057,7 @@ frontend verdict UI were not modified.
 
 Suggested commit message: `Connect scoped decision verdict backend flow`.
 
-### Session 09 — Verdict frontend connection
+### Session 09 â€” Verdict frontend connection
 
 Goal: Render real `decision_verdict` on the Verdict page.
 
@@ -1170,7 +1170,7 @@ logic, root `config.yml`, report UI, dependency manifests, or backend formulas w
 
 Suggested commit message: `Render real decision verdict in frontend`.
 
-### Session 10 — Report / AI Commentary connection
+### Session 10 â€” Report / AI Commentary connection
 
 Goal: Connect the Report page to `ai_commentary_context` or a report-ready summary.
 
@@ -1203,7 +1203,7 @@ verdict in AI context.
 
 Suggested commit message: `Connect grounded report commentary flow`.
 
-### Session 11 — End-to-end vertical QA
+### Session 11 â€” End-to-end vertical QA
 
 Goal: Run the complete vertical flow from Input to Report across representative
 portfolios.
@@ -1239,7 +1239,7 @@ recommendations.
 
 Suggested commit message: `Validate frontend backend vertical flow`.
 
-### Session 12 — Error handling and failure states
+### Session 12 â€” Error handling and failure states
 
 Goal: Harden user-facing failure states without exposing backend internals.
 
@@ -1270,7 +1270,7 @@ What must not happen: no silent fallback to demo JSON; no path leakage.
 
 Suggested commit message: `Harden vertical flow error states`.
 
-### Session 13 — Storage and state cleanup
+### Session 13 â€” Storage and state cleanup
 
 Goal: Reduce frontend state risk by storing compact summaries and a `review_id` instead
 of large raw JSON forever.
@@ -1306,7 +1306,7 @@ What must not happen: no DB implementation; no stale frontend result.
 
 Suggested commit message: `Compact frontend review state for vertical flow`.
 
-### Session 14 — Visual/product polish pass
+### Session 14 â€” Visual/product polish pass
 
 Goal: Polish the real flow after all backend connections work.
 
@@ -1338,7 +1338,7 @@ What must not happen: no new features; no fake data; no recommendation language.
 
 Suggested commit message: `Polish vertical decision-room frontend`.
 
-### Session 15 — Documentation and demo runbook
+### Session 15 â€” Documentation and demo runbook
 
 Goal: Update docs so a human can run and demo the completed vertical flow.
 

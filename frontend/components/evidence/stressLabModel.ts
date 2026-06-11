@@ -55,9 +55,9 @@ const FACTOR_LABELS: Record<string, string> = {
   eq: "Equity",
   equity: "Equity",
   beta_eq: "Equity",
-  rr: "Interest-rate sensitivity",
-  real_rates: "Interest-rate sensitivity",
-  beta_rr: "Interest-rate sensitivity",
+  rr: "Interest rates",
+  real_rates: "Interest rates",
+  beta_rr: "Interest rates",
   inf: "Inflation",
   inflation: "Inflation",
   beta_inf: "Inflation",
@@ -204,11 +204,11 @@ function factorRowsFromMap(value: unknown): FactorContributionRow[] {
   return Object.entries(record(value))
     .map(([factor, raw]) => {
       const parsed = number(raw);
-      if (parsed === null || parsed === 0) return null;
+      if (parsed === null) return null;
       return {
         factor: factorLabel(factor),
         value: parsed,
-        status: parsed < 0 ? "Loss driver" : "Offset"
+        status: parsed < 0 ? "Loss driver" : parsed > 0 ? "Offset" : "Neutral"
       } satisfies FactorContributionRow;
     })
     .filter((item): item is FactorContributionRow => Boolean(item))
@@ -220,11 +220,11 @@ function factorRowsFromLists(driverRows: unknown, helpedRows: unknown): FactorCo
     .map(record)
     .map((item) => {
       const parsed = number(item.pnl_pct);
-      if (parsed === null || parsed === 0) return null;
+      if (parsed === null) return null;
       return {
         factor: factorLabel(item.factor_short ?? item.beta_key ?? item.factor, "Factor"),
         value: parsed,
-        status: parsed < 0 ? "Loss driver" : "Offset"
+        status: parsed < 0 ? "Loss driver" : parsed > 0 ? "Offset" : "Neutral"
       } satisfies FactorContributionRow;
     })
     .filter((item): item is FactorContributionRow => Boolean(item))
@@ -357,7 +357,7 @@ function buildScenarioInterpretation({
   if (portfolioLossPct === null) {
     return kind === "historical"
       ? `${displayName} replay is limited because the current holdings do not have enough usable history for this period.`
-      : `${displayName} is in the Scenario Library, but the portfolio result is unavailable for this run.`;
+      : `${displayName} is in the scenario set, but the portfolio result is unavailable for this run.`;
   }
   const hurt = assetsHurt.slice(0, 3).map((item) => item.ticker).join(", ");
   const helped = assetsHelped.slice(0, 3).map((item) => item.ticker).join(", ");
@@ -420,7 +420,7 @@ function unavailableScenario(id: string, kind: "synthetic" | "historical", isWor
     factorAttribution: [],
     interpretation: kind === "historical"
       ? `${scenarioLabel(id)} replay is limited for the current portfolio.`
-      : `${scenarioLabel(id)} is in the Scenario Library, but this run did not return a usable result.`,
+      : `${scenarioLabel(id)} is in the scenario set, but this run did not return a usable result.`,
     limitation: kind === "historical"
       ? "Historical replay is limited because asset-level history is incomplete."
       : "Synthetic stress result is unavailable for this run."
@@ -536,11 +536,11 @@ function buildScorecard({
       tone: selectedScenario.assetsHurt.length ? "red" : "slate"
     },
     {
-      label: "Assets that helped",
+      label: "Assets that helped in worst scenario",
       value: joinTickers(selectedScenario.assetsHelped, "No meaningful offset detected"),
       detail: selectedScenario.assetsHelped.length
-        ? "Only positive stress contributions are counted as helped."
-        : "No assets had positive contribution in the selected scenario.",
+        ? `Only positive contribution in ${selectedScenario.displayName} is counted as helped.`
+        : `No assets had positive contribution in ${selectedScenario.displayName}.`,
       tone: selectedScenario.assetsHelped.length ? "green" : "amber"
     },
     {
@@ -550,7 +550,7 @@ function buildScorecard({
       tone: hedgeGap.statusTone
     },
     {
-      label: "Data coverage",
+      label: "Data confidence",
       value: quality,
       detail: `${syntheticAvailable}/${syntheticTotal} synthetic scenarios and ${historicalAvailable}/${historicalTotal} historical episodes available.`,
       tone: evidenceTone(quality)
@@ -606,7 +606,7 @@ function buildXRayConfirmation(stress: Record<string, unknown>, historical: Stre
     insufficientData,
     note: rows.length
       ? "Stress confirmation is based on available scenario results. Some X-Ray weaknesses still require more evidence before a candidate test."
-      : "Stress confirmation mapping was not returned for this run. Review scenario results before treating pre-stress weaknesses as confirmed."
+      : "Stress confirmation mapping was not returned for this run. Inspect scenario results before treating pre-stress weaknesses as confirmed."
   };
 }
 
@@ -658,7 +658,7 @@ export function buildStressLabModelFromOutputs(outputs: unknown): StressLabModel
   });
 
   return {
-    headerStatusLabel: "Current portfolio review",
+    headerStatusLabel: "Stress review ready",
     scorecard,
     syntheticScenarios,
     historicalScenarios,

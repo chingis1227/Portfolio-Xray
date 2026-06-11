@@ -836,7 +836,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
               {isRunningDiagnosis ? (
                 <>
                   <span className="pmri-spinner" aria-hidden="true" />
-                  Building evidence pack...
+                  Analyzing current portfolio...
                 </>
               ) : "Run diagnosis"}
             </button>
@@ -847,7 +847,10 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
             ) : null}
             {isRunningDiagnosis ? (
               <p className="mt-3 rounded-xl border border-pmri-blue/25 bg-pmri-blue/10 px-4 py-3 text-xs leading-5 text-pmri-blueSoft">
-                Building the portfolio evidence pack. No candidate or trade action is created at this step.
+                Portfolio MRI is reviewing allocation, concentration, risk drivers, and stress vulnerabilities.
+                <br />
+                <br />
+                No candidate or rebalance verdict is created at this step.
               </p>
             ) : null}
             <p className="mt-3 text-sm leading-6 text-pmri-muted">

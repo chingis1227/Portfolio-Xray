@@ -1,11 +1,13 @@
-﻿# Portfolio MRI Frontend Prototype
+﻿# Portfolio MRI Frontend
 
-Clean Next.js/React prototype for Portfolio MRI as an institutional Investment Decision Room.
+Next.js/React Core MVP surface for Portfolio MRI as an institutional Investment Decision Room.
+The current implemented journey is still a local/frontend vertical flow, not a polished hosted
+product or trading system.
 
 ## Scope boundaries
 
 - No Python analytics engine changes.
-- No backend logic changes.
+- No Python analytics or backend calculation changes live in this frontend package.
 - Live API routes are available for diagnosis, Builder setup prepare, candidate generation,
   comparison, verdict, grounded report commentary, and read-only review recovery:
   - `POST /api/portfolio/diagnose`
@@ -15,11 +17,11 @@ Clean Next.js/React prototype for Portfolio MRI as an institutional Investment D
   - `POST /api/portfolio/comparison/generate`
   - `POST /api/portfolio/verdict/generate`
   - `POST /api/portfolio/report/generate`
-- The flow is one selected hypothesis at a time; it is not a multi-candidate optimizer arena.
+- The flow is one selected test path at a time; it is not a multi-candidate optimizer arena.
 - A candidate is a diagnostic test, not a recommendation. Decision Verdict is non-binding
   decision support, and no-trade / evidence-insufficient are valid outcomes.
 - Raw Stitch HTML/CSS/JS is not integrated.
-- Imported Stitch screenshots and design tokens are used only as visual reference.
+- Imported Stitch screenshots and design tokens are visual references only.
 
 ## Architecture
 
@@ -30,7 +32,7 @@ Clean Next.js/React prototype for Portfolio MRI as an institutional Investment D
 - `components/layout/` contains the application shell, sidebar, top journey progress, and page header.
 - `components/ui/` contains reusable card, metric, badge, and hero primitives.
 - `components/portfolio/`, `diagnosis/`, `evidence/`, `hypothesis/`, `comparison/`, `verdict/`, and `report/` contain product-stage components.
-- `data/demo/` contains local static JSON used by pages during prototype phase.
+- `data/demo/` contains local static JSON used by sample/demo page states.
 - `data/instrumentUniverse.ts` is generated from the canonical `../config/etf_universe.yml`
   and `../config/stock_universe.yml` taxonomies. Regenerate it from the repo root with
   `.\.venv\Scripts\python.exe scripts\generate_frontend_instrument_universe.py` after
@@ -50,8 +52,9 @@ Clean Next.js/React prototype for Portfolio MRI as an institutional Investment D
 
 ## Review state and storage
 
-- The real flow is Portfolio Input -> Diagnosis -> Stress Test Lab -> Hypothesis / Builder prepare ->
-  Candidate Generation -> Current vs Candidate -> Decision Verdict -> Report / AI Commentary.
+- The real flow is Portfolio Input -> Diagnosis -> Stress Test Lab -> Hypothesis / Builder prepare
+  and Candidate Generation -> Current vs Candidate -> Decision Verdict -> Report / grounded
+  explanation preview.
 - The UI stores compact state in `pmri.activeReview.v2`: `reviewId`, portfolio input, diagnosis/stress evidence/launchpad/builder summaries, selected card/candidate, and stage summaries. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card and says generation is allowed.
 - The complete `review_result.json` is not persisted in browser storage. During the current tab session it may remain in memory for immediate rendering; after hydration the UI relies on compact summaries and `reviewId`.
 - Portfolio Input includes a read-only recovery control for `frontend_review_*` IDs. It calls
@@ -98,7 +101,7 @@ Use [../docs/demo/frontend_backend_vertical_runbook.md](../docs/demo/frontend_ba
 
 - commands for Python bridge tests and frontend typecheck/build;
 - how to start the Next.js frontend;
-- the manual Input -> Diagnosis -> Stress Test Lab -> Hypothesis -> Builder prepare -> Candidate -> Comparison -> Verdict -> Report click path;
+- the manual Input -> Diagnosis -> Stress Test Lab -> Hypothesis / Builder prepare and Candidate Generation -> Comparison -> Verdict -> Report click path;
 - run directory strategy under `runs/frontend_review_*`;
 - stale artifact risks and recovery;
 - product language boundaries: candidate is a diagnostic test, Builder setup is not a rebalance instruction, and Verdict/Report are decision-support only.

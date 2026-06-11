@@ -26,7 +26,7 @@ export function JourneyGate({ stepId, children }: JourneyGateProps) {
     <div>
       <PageHeader
         kicker={`Step 0${step.index + 1} / Locked`}
-        title={`${step.shortLabel} is not available yet`}
+        title={`${step.shortLabel} is locked`}
         description="Portfolio MRI opens each stage only after the previous investment evidence has been created."
       >
         <StatusBadge tone="amber">Locked workflow stage</StatusBadge>
@@ -37,7 +37,7 @@ export function JourneyGate({ stepId, children }: JourneyGateProps) {
             <p className="pmri-label">Required first</p>
             <p className="pmri-heading-section mt-2 text-lg text-pmri-text">{step.lockReason}</p>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-pmri-muted">
-              Locked stages are intentionally muted and do not show downstream demo content before the workflow has enough state.
+              Locked stages stay quiet until the workflow has enough state for the next investment decision.
             </p>
           </div>
           <Link

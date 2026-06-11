@@ -27,6 +27,31 @@ export type EvidenceItem = {
   tone: StatusTone;
 };
 
+export type SiteExplanationLevel = "executive" | "evidence" | "technical";
+
+export type SiteExplanationTextItem = {
+  id: string;
+  level: SiteExplanationLevel;
+  text: string;
+  tone: "neutral" | "caution" | "risk" | "positive";
+  evidence_status: "available" | "limited" | "missing" | "preliminary";
+  claim_type: "material_claim" | "boundary_note" | "empty_state";
+  source_refs: Array<{ artifact: string; field_path: string }>;
+};
+
+export type SiteExplanationScreen = {
+  executive: SiteExplanationTextItem[];
+  evidence: SiteExplanationTextItem[];
+  technical: SiteExplanationTextItem[];
+};
+
+export type SiteExplanationBundle = {
+  schema_version: "site_explanation_bundle_v1";
+  review_id?: string;
+  screens: Record<string, SiteExplanationScreen>;
+  warnings?: string[];
+};
+
 export type Holding = {
   ticker: string;
   instrument: string;
@@ -41,6 +66,10 @@ export type Hypothesis = {
   methodId: string;
   evidenceSource: string;
   status: string;
+  testType?: string;
+  suggestedMethods?: string[];
+  successCriteria?: string[];
+  decisionBoundary?: string;
 };
 
 export type ComparisonMetric = {

@@ -21,7 +21,7 @@
       "tone": "red"
     },
     {
-      "label": "Assets that helped",
+      "label": "Assets that helped in worst scenario",
       "value": "GLD, Cash",
       "detail": "Only positive stress contributions are counted as helped.",
       "tone": "green"
@@ -33,7 +33,7 @@
       "tone": "red"
     },
     {
-      "label": "Data coverage",
+      "label": "Data confidence",
       "value": "Limited evidence",
       "detail": "8/8 synthetic scenarios and 3/5 historical episodes available.",
       "tone": "amber"

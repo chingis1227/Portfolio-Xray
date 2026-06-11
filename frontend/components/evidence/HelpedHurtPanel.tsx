@@ -28,7 +28,7 @@ export function HelpedHurtPanel({ scenario }: { scenario: StressScenarioDetail }
     <section id="helped-hurt" className="pmri-card rounded-3xl p-5 md:p-7">
       <StressSectionHeader
         eyebrow="Internal compensators"
-        title="Assets helped / hurt"
+        title="Assets that helped or hurt in selected scenario"
         body="An asset is counted as helped only when it had positive contribution in the selected stress scenario."
         badge={scenario.displayName}
         badgeTone="slate"
@@ -36,14 +36,14 @@ export function HelpedHurtPanel({ scenario }: { scenario: StressScenarioDetail }
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <article className="rounded-2xl border border-pmri-risk/18 bg-pmri-risk/[0.035] p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h3 className="text-base font-semibold text-pmri-text">Assets hurt</h3>
+            <h3 className="text-base font-semibold text-pmri-text">Assets that hurt in selected scenario</h3>
             <StatusBadge tone="red">{scenario.assetsHurt.length ? `${scenario.assetsHurt.length} hurt` : "Unavailable"}</StatusBadge>
           </div>
           <AssetList rows={scenario.assetsHurt} emptyMessage="No hurt assets are available for this scenario." />
         </article>
         <article className="rounded-2xl border border-pmri-positive/18 bg-pmri-positive/[0.035] p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h3 className="text-base font-semibold text-pmri-text">Assets helped</h3>
+            <h3 className="text-base font-semibold text-pmri-text">Assets that helped in selected scenario</h3>
             <StatusBadge tone={scenario.assetsHelped.length ? "green" : "amber"}>
               {scenario.assetsHelped.length ? `${scenario.assetsHelped.length} helped` : "No offset"}
             </StatusBadge>

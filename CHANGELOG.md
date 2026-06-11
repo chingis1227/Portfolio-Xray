@@ -4,6 +4,92 @@ This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.
 
+Date: 2026-06-11
+
+Category: Added
+
+- **Site explanation QA closure:** completed live CLI and frontend bridge QA for
+  `site_explanation_bundle.json`, including diagnosis sidecar output, run-local comparison/verdict
+  bundle output, and browser DOM verification of hierarchy rendering. Fixed candidate-copy
+  sanitization so negated phrases such as "not a recommendation" do not trip the candidate
+  recommendation guardrail or appear in candidate hierarchy text.
+
+- **Site explanation runtime and frontend hierarchy:** integrated `site_explanation_bundle.json`
+  into `run_report.py`, `src/candidate_comparison.py`, and the local frontend bridge, and added
+  frontend rendering that shows executive text first, supporting evidence second, and technical
+  details inside disclosure UI. The bundle is optional product-surface explanation and does not
+  change the six-file product-bundle completeness gate.
+
+- **Site explanation candidate/comparison/verdict copy rules:** populated deterministic
+  `site_explanation_bundle.json` hierarchy text for Block 7 candidate generation, Block 8
+  current-vs-candidate comparison, and Block 9 decision verdict evidence. Verdict outcome copy now
+  requires active comparison evidence and maps backend verdict IDs to bounded decision-support
+  wording. Added focused candidate/comparison/verdict hierarchy tests.
+
+- **Site explanation diagnosis/stress copy rules:** populated deterministic `site_explanation_bundle.json`
+  hierarchy text for Block 4 / X-Ray diagnosis and Stress Test Lab evidence, keeping material claims
+  sourced and stress copy under the existing `evidence` screen until runtime integration lands.
+  Added focused diagnosis/stress hierarchy tests.
+
+- **Site explanation copy guardrails:** added centralized guardrails for generated
+  `site_explanation_bundle.json` text items, blocking advice-like forbidden phrases, constraining
+  `optimal portfolio` to technical method context, and preventing candidate copy from becoming a
+  recommendation. Added focused guardrail tests alongside the existing bundle shape tests.
+
+Date: 2026-06-10
+
+Category: Changed
+
+- **Product-code-design synchronization closure:** added the final closure report for the synchronization pass, summarizing aligned contracts, Step 04-07 frontend alignment, full-journey QA proof, remaining P1/P2 follow-ups, and the accepted-for-current-scope verdict. No runtime code, generated outputs, backend calculations, schemas, routes, or frontend behavior changed in this closure session.
+
+- **Product-code-design documentation reconciliation:** synchronized the frontend README, vertical demo runbook, PRODUCT overview, and Portfolio MRI design source after the Step 04-07 implementation and full-journey QA sessions. The docs now describe the implemented seven-route MVP frontend chain, the merged Hypothesis / Builder / Candidate Generation stage, the grounded Report preview boundary, and deferred Monitoring / What Changed UI without changing runtime code or generated outputs.
+
+- **Step 04 Hypothesis Builder contract application:** aligned the Hypothesis screen with the
+  diagnosis-to-test flow: Current Diagnosis, Recommended Test, Available Test Paths, Selected Test
+  Setup, Generate Test Candidate, Test Candidate Generated, and Continue to Comparison. The UI now
+  keeps monitoring/data-quality as secondary, shows only contextual MVP test approaches, hides
+  disabled/unsupported backend method cards from the main product path, and keeps generated
+  candidates framed as diagnostic tests rather than recommendations. Backend calculations, schemas,
+  candidate generation logic, comparison/verdict logic, and runtime output generation are unchanged.
+
+- **Step 05 Current vs Candidate Comparison contract application:** aligned the Comparison screen
+  with the trade-off evidence contract. The UI now separates no generated test candidate,
+  generated-but-not-comparable, metrics unavailable, ready-to-compare, and valid comparison states;
+  hides metric tables until usable current/candidate metrics exist; and keeps copy away from final
+  decision, advice, or candidate-better framing. Backend comparison calculations, candidate
+  generation, verdict logic, schemas, and generated outputs are unchanged.
+
+- **Step 06 Decision Verdict contract application:** aligned the Verdict screen with the
+  non-binding decision-support contract. The UI now distinguishes missing current comparison,
+  stale or mismatched comparison/verdict evidence, evidence-insufficient, failed/infeasible
+  candidate, and active evidence-supported verdict states; removes trade/execution wording from
+  verdict presentation; and maps selected-candidate style backend statuses to bounded rebalance
+  review language. Backend verdict calculations, schemas, artifacts, and generated outputs are
+  unchanged.
+
+- **Step 07 Report / grounded explanation contract application:** aligned the Report screen with
+  the grounded preview boundary. The UI now waits for same-run candidate, comparison, and verdict
+  readiness; frames the output as a client-ready evidence explanation preview; shows evidence used
+  and unavailable evidence without exposing internal artifact mechanics; and sanitizes report
+  sentences away from trade instruction, winner, or best-portfolio language. LLM generation,
+  backend grounding schema, PDF generation, artifacts, and generated outputs are unchanged.
+
+- **Post-Stress presentation labels:** centralized frontend display labels for Step 4-6 decision-flow
+  values, including candidate methods, problem classifications, comparison/verdict unavailable
+  reason codes, boolean-like values, and `n/a`-style missing values. Normal UI now uses shared
+  formatting helpers instead of exposing raw backend enums or artifact-like values.
+
+- **Post-Stress Hypothesis flow:** rebuilt Step 4 hypothesis cards and Test setup presentation so
+  the page shows test type, rationale, suggested methods, success criteria, trade-offs, decision
+  boundary, and candidate generation readiness without exposing normal user-facing backend setup
+  fields or raw booleans. Backend artifacts, API contracts, routes, and candidate logic are
+  unchanged.
+
+- **Post-Stress Comparison flow:** fixed Step 5 readiness states so the UI shows clear
+  candidate-missing and metrics-unavailable messages instead of rendering fake comparison tables
+  when no usable candidate comparison exists. Valid comparisons keep trade-offs, success criteria,
+  detailed metrics, turnover/cost, and the verdict handoff in order.
+
 Date: 2026-06-09
 
 Category: Changed

@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { StressTestLab } from "@/components/evidence/StressTestLab";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import sampleStressLabData from "@/data/demo/stress-lab.json";
 import { buildStressLabModelFromOutputs, ensureStressLabModel } from "@/components/evidence/stressLabModel";
-import { useReviewState } from "@/lib/reviewState";
+import { cleanSiteExplanationBundle, useReviewState } from "@/lib/reviewState";
 
 function LockedStressLabState() {
   return (
@@ -63,8 +64,10 @@ function EvidencePageContent() {
     ? buildStressLabModelFromOutputs(activeReview?.reviewResult?.outputs)
     : null;
   const model = realStressLab ?? (sampleMode ? ensureStressLabModel(sampleStressLabData) : null);
-  const stateLabel = realStressLab ? "Current portfolio review" : sampleMode ? "Sample review" : "Stress review locked";
+  const stateLabel = realStressLab ? "Stress review ready" : sampleMode ? "Sample review" : "Stress review locked";
   const stateTone = realStressLab ? "green" : sampleMode ? "amber" : "slate";
+  const siteExplanation = cleanSiteExplanationBundle(activeReview?.reviewResult?.outputs?.site_explanation_bundle)
+    ?? activeReview?.reviewSummary?.siteExplanation;
 
   return (
     <div>
@@ -72,10 +75,15 @@ function EvidencePageContent() {
         kicker="Step 03 / Stress Test Lab"
         title="Stress Test Lab"
         description="How the current portfolio behaves under historical and synthetic market stress."
-        boundaryNote="Current portfolio only · no candidate test · no trade execution"
+        boundaryNote="Current portfolio only. No candidate or rebalance verdict is created in Stress Test Lab."
       >
         <StatusBadge tone={stateTone}>{stateLabel}</StatusBadge>
       </PageHeader>
+      <SiteExplanationHierarchy
+        bundle={siteExplanation}
+        screen="evidence"
+        fallbackTitle="Stress evidence explanation"
+      />
       {!hydrated ? null : model ? (
         <StressTestLab model={model} />
       ) : completedRealReview ? (

@@ -1,9 +1,9 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { ComparisonMetric, EvidenceItem, Metric, StatusTone } from "@/lib/types";
+import type { ComparisonMetric, EvidenceItem, Metric, SiteExplanationBundle, SiteExplanationScreen, SiteExplanationTextItem, StatusTone } from "@/lib/types";
 import type { JourneyFlags } from "@/lib/journey";
-import { evidenceQualityLabel, normalizeDisplayLabel } from "@/lib/displayLabels";
+import { evidenceQualityLabel, formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
 import { instrumentByTicker } from "@/data/instrumentUniverse";
 
 export type ReviewHolding = {
@@ -266,6 +266,7 @@ export type ReviewSummary = {
   diagnosis: DiagnosisState;
   xraySummary?: XRaySummary;
   evidence?: EvidenceSummary;
+  siteExplanation?: SiteExplanationBundle;
   primaryProblem?: string;
   problemSeverity?: string;
   problemConfidence?: string;
@@ -350,6 +351,49 @@ function isJsonValue(value: unknown): value is JsonValue {
   return false;
 }
 
+function cleanSiteExplanationScreen(value: unknown): SiteExplanationScreen | undefined {
+  if (!isRecord(value)) return undefined;
+  const normalizeItems = (items: unknown, level: "executive" | "evidence" | "technical"): SiteExplanationTextItem[] => (
+    Array.isArray(items)
+      ? items.filter(isRecord).map((item) => ({
+        id: textValue(item.id, `${level}.item`),
+        level,
+        text: normalizeDisplaySentence(item.text, ""),
+        tone: (["neutral", "caution", "risk", "positive"].includes(String(item.tone)) ? item.tone : "neutral") as SiteExplanationTextItem["tone"],
+        evidence_status: (["available", "limited", "missing", "preliminary"].includes(String(item.evidence_status)) ? item.evidence_status : "limited") as SiteExplanationTextItem["evidence_status"],
+        claim_type: (["material_claim", "boundary_note", "empty_state"].includes(String(item.claim_type)) ? item.claim_type : "boundary_note") as SiteExplanationTextItem["claim_type"],
+        source_refs: Array.isArray(item.source_refs)
+          ? item.source_refs.filter(isRecord).map((ref) => ({
+            artifact: textValue(ref.artifact, ""),
+            field_path: textValue(ref.field_path, "")
+          })).filter((ref) => ref.artifact && ref.field_path)
+          : []
+      })).filter((item) => item.text)
+      : []
+  );
+  return {
+    executive: normalizeItems(value.executive, "executive"),
+    evidence: normalizeItems(value.evidence, "evidence"),
+    technical: normalizeItems(value.technical, "technical")
+  };
+}
+
+export function cleanSiteExplanationBundle(value: unknown): SiteExplanationBundle | undefined {
+  if (!isRecord(value) || value.schema_version !== "site_explanation_bundle_v1") return undefined;
+  const screensRaw = getRecord(value.screens);
+  const screens = Object.fromEntries(
+    Object.entries(screensRaw)
+      .map(([screen, screenValue]) => [screen, cleanSiteExplanationScreen(screenValue)])
+      .filter((entry): entry is [string, SiteExplanationScreen] => Boolean(entry[1]))
+  );
+  return {
+    schema_version: "site_explanation_bundle_v1",
+    review_id: typeof value.review_id === "string" ? value.review_id : undefined,
+    screens,
+    warnings: stringArray(value.warnings)
+  };
+}
+
 function cleanReviewResult(value: unknown): ReviewResult | undefined {
   if (!isRecord(value) || !isJsonValue(value)) return undefined;
   return value as ReviewResult;
@@ -406,10 +450,10 @@ function cleanComparisonResultSummary(value: unknown): ComparisonResultSummary |
   const metrics = Array.isArray(value.metrics)
     ? value.metrics.filter(isRecord).map((item) => ({
       metric: textValue(item.metric, "Metric"),
-      current: textValue(item.current, "n/a"),
-      candidate: textValue(item.candidate, "n/a"),
-      direction: textValue(item.direction, "unclear"),
-      tradeoff: textValue(item.tradeoff, "Evidence only; no action implied."),
+      current: formatUnknownValue(item.current),
+      candidate: formatUnknownValue(item.candidate),
+      direction: formatUnknownValue(item.direction, "Unclear"),
+      tradeoff: normalizeDisplaySentence(item.tradeoff, "Evidence only; no action implied."),
       tone: statusToneValue(item.tone)
     }))
     : [];
@@ -418,21 +462,21 @@ function cleanComparisonResultSummary(value: unknown): ComparisonResultSummary |
     stage: "current_vs_candidate",
     selectedCardId: textValue(value.selectedCardId, ""),
     candidateId: textValue(value.candidateId, ""),
-    comparisonStatus: textValue(value.comparisonStatus, "unknown"),
-    viewMode: textValue(value.viewMode, "unknown"),
-    candidateName: textValue(value.candidateName, "Generated diagnostic candidate"),
-    candidateBoundary: textValue(value.candidateBoundary, "Diagnostic comparison only. This is not a recommendation or implementation order."),
-    evidenceQuality: textValue(value.evidenceQuality, "Evidence status unavailable"),
-    summary: textValue(value.summary, "Current and candidate portfolios were compared for this review."),
+    comparisonStatus: formatUnknownValue(value.comparisonStatus, "Unknown"),
+    viewMode: formatUnknownValue(value.viewMode, "Unknown"),
+    candidateName: formatUnknownValue(value.candidateName, "Generated diagnostic candidate"),
+    candidateBoundary: normalizeDisplaySentence(value.candidateBoundary, "Diagnostic comparison only. It does not decide whether to change the portfolio or create a rebalance instruction."),
+    evidenceQuality: formatUnknownValue(value.evidenceQuality, "Evidence status unavailable"),
+    summary: normalizeDisplaySentence(value.summary, "Current and candidate portfolios were compared for this review."),
     metrics,
     improved: stringArray(value.improved),
     worsened: stringArray(value.worsened),
     neutral: stringArray(value.neutral),
     unclear: stringArray(value.unclear),
-    turnover: textValue(value.turnover, "Turnover unavailable"),
-    estimatedCost: textValue(value.estimatedCost, "Estimated cost unavailable"),
-    materiality: textValue(value.materiality, "Materiality not evaluated"),
-    warnings: stringArray(value.warnings),
+    turnover: formatUnknownValue(value.turnover, "Turnover unavailable"),
+    estimatedCost: formatUnknownValue(value.estimatedCost, "Estimated cost unavailable"),
+    materiality: formatUnknownValue(value.materiality, "Materiality not evaluated"),
+    warnings: stringArray(value.warnings).map((item) => normalizeDisplaySentence(item)),
     path: typeof value.path === "string" ? value.path : undefined,
     generatedAt: textValue(value.generatedAt, nowIso())
   };
@@ -444,8 +488,8 @@ function cleanVerdictResultSummary(value: unknown): VerdictResultSummary | undef
   const metrics = Array.isArray(value.metrics)
     ? value.metrics.filter(isRecord).map((item) => ({
       label: textValue(item.label, "Metric"),
-      value: textValue(item.value, "n/a"),
-      detail: typeof item.detail === "string" ? item.detail : undefined,
+      value: formatUnknownValue(item.value),
+      detail: typeof item.detail === "string" ? normalizeDisplaySentence(item.detail) : undefined,
       tone: statusToneValue(item.tone),
       delta: typeof item.delta === "string" ? item.delta : undefined
     }))
@@ -456,21 +500,40 @@ function cleanVerdictResultSummary(value: unknown): VerdictResultSummary | undef
     selectedCardId: textValue(value.selectedCardId, ""),
     candidateId: textValue(value.candidateId, ""),
     verdictId: textValue(value.verdictId, "unknown"),
-    decisionStatus: textValue(value.decisionStatus, "unknown"),
-    confidence: textValue(value.confidence, "unknown"),
-    state: textValue(value.state, "Decision-support verdict"),
-    headline: textValue(value.headline, "Decision verdict generated."),
-    explanation: textValue(value.explanation, "The active review produced a decision-support verdict."),
-    evidenceQuality: textValue(value.evidenceQuality, "Evidence status unavailable"),
-    boundaryNote: textValue(value.boundaryNote, "Decision-support only. This is not a recommendation or implementation order."),
-    keyEvidence: stringArray(value.keyEvidence),
-    monitoringTrigger: textValue(value.monitoringTrigger, "Monitor changes in comparison evidence before revisiting the verdict."),
+    decisionStatus: formatUnknownValue(value.decisionStatus, "Unknown"),
+    confidence: formatUnknownValue(value.confidence, "Unknown"),
+    state: formatUnknownValue(value.state, "Decision-support verdict"),
+    headline: normalizeDisplaySentence(value.headline, "Decision verdict generated."),
+    explanation: normalizeDisplaySentence(value.explanation, "The active review produced a decision-support verdict."),
+    evidenceQuality: formatUnknownValue(value.evidenceQuality, "Evidence status unavailable"),
+    boundaryNote: normalizeDisplaySentence(value.boundaryNote, "Decision-support only. This is not a trade instruction or rebalance recommendation."),
+    keyEvidence: stringArray(value.keyEvidence).map((item) => normalizeDisplaySentence(item)),
+    monitoringTrigger: normalizeDisplaySentence(value.monitoringTrigger, "Monitor changes in comparison evidence before revisiting the verdict."),
     metrics,
-    actionFraming: textValue(value.actionFraming, "Review the verdict as decision-support evidence only."),
-    limitations: stringArray(value.limitations),
+    actionFraming: normalizeDisplaySentence(value.actionFraming, "Review the verdict as decision-support evidence only."),
+    limitations: stringArray(value.limitations).map((item) => normalizeDisplaySentence(item)),
     path: typeof value.path === "string" ? value.path : undefined,
     generatedAt: textValue(value.generatedAt, nowIso())
   };
+}
+
+function comparisonResultHasUsableMetrics(value: ComparisonResultSummary | undefined) {
+  if (!value) return false;
+  const status = value.comparisonStatus.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  if (status !== "available") return false;
+  if (value.status.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_") !== "completed") return false;
+  return value.metrics.some((metric) => {
+    const current = metric.current.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+    const candidate = metric.candidate.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+    const direction = metric.direction.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+    return current !== "not_available_yet"
+      && candidate !== "not_available_yet"
+      && current !== "not_available"
+      && candidate !== "not_available"
+      && current !== "evidence_unavailable"
+      && candidate !== "evidence_unavailable"
+      && direction !== "unclear";
+  });
 }
 
 function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
@@ -530,7 +593,7 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
     evidenceReady: Boolean((value.evidenceReady ?? value.diagnosisReady) && hasCompletedReviewResult),
     improvementPathsReady: Boolean((value.improvementPathsReady ?? value.diagnosisReady) && hasCompletedReviewResult),
     candidateReady: Boolean(value.candidateReady && candidateGeneration),
-    comparisonReady: Boolean(value.comparisonReady && comparisonMatchesCandidate),
+    comparisonReady: Boolean(value.comparisonReady && comparisonMatchesCandidate && comparisonResultHasUsableMetrics(comparisonResult)),
     verdictReady: Boolean(value.verdictReady && verdictMatchesCandidate),
     updatedAt: value.updatedAt || nowIso()
   };
@@ -797,30 +860,39 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       selectedCardId: textValue(resultRecord.selected_card_id, ""),
       candidateId: textValue(resultRecord.candidate_id, textValue(row.candidate_id, "")),
       comparisonStatus,
-      viewMode: textValue(resultRecord.view_mode, textValue(currentVsCandidate.view_mode, "unknown")),
-      candidateName: textValue(row.display_name, textValue(row.candidate_id, "Generated diagnostic candidate")),
-      candidateBoundary: "Diagnostic comparison only. This is not a recommendation, winner selection, or implementation order.",
-      evidenceQuality: comparisonStatus === "available" ? "Active comparison evidence" : comparisonStatus.replaceAll("_", " "),
+      viewMode: formatUnknownValue(resultRecord.view_mode ?? currentVsCandidate.view_mode, "Unknown"),
+      candidateName: formatUnknownValue(row.display_name ?? row.candidate_id, "Generated diagnostic candidate"),
+      candidateBoundary: "Diagnostic comparison only. It does not decide whether to change the portfolio or create a rebalance instruction.",
+      evidenceQuality: comparisonStatus === "available" ? "Active comparison evidence" : formatUnknownValue(comparisonStatus, "Evidence status unavailable"),
       summary: comparisonSummaryText({ row, materiality, successCriteria }),
       metrics: dimensionsToMetrics(dimensions),
-      improved: compactDimensionList(row.what_improved, "No clear improvement was found in available comparison metrics."),
-      worsened: compactDimensionList(row.what_worsened, "No clear worsening was found in available comparison metrics."),
+      improved: compactDimensionList(row.what_improved, "No available comparison metric showed a clear improvement."),
+      worsened: compactDimensionList(row.what_worsened, "No available comparison metric showed a clear worsening."),
       neutral: compactDimensionList(row.what_stayed_similar, "No neutral metrics were reported."),
       unclear: unclearList(row, currentVsCandidate),
       turnover: turnoverText(turnoverRequired),
       estimatedCost: estimatedCostText(practicality, transactionCost),
       materiality: materialityText(materiality),
-      warnings: stringArray(currentVsCandidate.warnings),
+      warnings: stringArray(currentVsCandidate.warnings).map((item) => normalizeDisplaySentence(item)),
       path: typeof paths.current_vs_candidate === "string" ? paths.current_vs_candidate : undefined,
       generatedAt: nowIso()
     };
 
     setActiveReview((current) => current ? {
       ...current,
+      reviewResult: current.reviewResult && isRecord(current.reviewResult.outputs) ? {
+        ...current.reviewResult,
+        outputs: {
+          ...current.reviewResult.outputs,
+          candidate_comparison: resultRecord.candidate_comparison as JsonValue,
+          current_vs_candidate: resultRecord.current_vs_candidate as JsonValue,
+          site_explanation_bundle: resultRecord.site_explanation_bundle as JsonValue
+        }
+      } : current.reviewResult,
       comparisonResult: summary,
       verdictResult: undefined,
       candidateReady: true,
-      comparisonReady: status === "completed" && comparisonStatus === "available",
+      comparisonReady: status === "completed" && comparisonResultHasUsableMetrics(summary),
       verdictReady: false,
       updatedAt: nowIso()
     } : current);
@@ -851,7 +923,6 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const verdict = getRecord(resultRecord.decision_verdict);
     const evidence = getRecord(verdict.evidence_summary);
     const noTrade = getRecord(verdict.no_trade);
-    const source = getRecord(noTrade.source);
     const materiality = getRecord(evidence.materiality_for_decision_review);
     const success = getRecord(evidence.success_criteria_result);
     const practicality = getRecord(evidence.practicality);
@@ -867,15 +938,14 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       selectedCardId: textValue(resultRecord.selected_card_id, ""),
       candidateId,
       verdictId,
-      decisionStatus,
-      confidence,
+      decisionStatus: formatUnknownValue(decisionStatus, "Unknown"),
+      confidence: formatUnknownValue(confidence, "Unknown"),
       state: safeVerdictState(verdictId, decisionStatus),
-      headline: safeVerdictHeadline(verdictId, candidateId),
+      headline: safeVerdictHeadline(verdictId),
       explanation: safeVerdictExplanation(verdictId, textValue(verdict.rationale_summary, "")),
-      evidenceQuality: `Verdict evidence · ${confidence} confidence`,
-      boundaryNote: "Decision-support only. This page does not recommend trades, execute trades, or identify a best portfolio.",
+      evidenceQuality: `Verdict evidence - ${formatUnknownValue(confidence, "Unknown")} confidence`,
+      boundaryNote: "Decision-support only. This is not a trade instruction or rebalance recommendation.",
       keyEvidence: verdictEvidenceList({
-        evidence,
         materiality,
         success,
         noTrade,
@@ -886,33 +956,41 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         {
           label: "Verdict status",
           value: safeVerdictState(verdictId, decisionStatus),
-          detail: decisionStatus.replaceAll("_", " "),
+          detail: formatUnknownValue(decisionStatus, "Unknown"),
           tone: verdictTone(verdictId)
         },
         {
           label: "No-trade",
           value: noTrade.applies === true ? "Applies" : noTrade.evaluated === true ? "Evaluated" : "Not evaluated",
-          detail: textValue(getRecord(source).reason_id, "Verdict evidence"),
+          detail: "Decision-support evidence",
           tone: noTrade.applies === true ? "green" : noTrade.evaluated === true ? "blue" : "slate"
         },
         {
           label: "Confidence",
-          value: confidence,
+          value: formatUnknownValue(confidence, "Unknown"),
           detail: `${stringArray(verdict.confidence_limitations).length} limitation(s)`,
           tone: confidence === "low" ? "amber" : "blue"
         }
       ],
-      actionFraming: safeActionFraming(verdictId, candidateId),
-      limitations: stringArray(verdict.confidence_limitations),
+      actionFraming: safeActionFraming(verdictId),
+      limitations: stringArray(verdict.confidence_limitations).map((item) => normalizeDisplaySentence(item)),
       path: typeof resultRecord.path === "string" ? resultRecord.path : undefined,
       generatedAt: nowIso()
     };
 
     setActiveReview((current) => current ? {
       ...current,
+      reviewResult: current.reviewResult && isRecord(current.reviewResult.outputs) ? {
+        ...current.reviewResult,
+        outputs: {
+          ...current.reviewResult.outputs,
+          decision_verdict: resultRecord.decision_verdict as JsonValue,
+          site_explanation_bundle: resultRecord.site_explanation_bundle as JsonValue
+        }
+      } : current.reviewResult,
       verdictResult: summary,
       candidateReady: true,
-      comparisonReady: true,
+      comparisonReady: Boolean(current.comparisonReady),
       verdictReady: status === "completed",
       updatedAt: nowIso()
     } : current);
@@ -1033,7 +1111,15 @@ function toneForSeverity(value: unknown): StatusTone {
 }
 
 function displayLabel(value: unknown, fallback = "Unavailable") {
-  return normalizeDisplayLabel(textValue(value, fallback), fallback);
+  return formatUnknownValue(value, fallback);
+}
+
+function statusKey(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
 
 function dominantExposureNameForHeadline(dominantRiskFactor: Record<string, unknown>, dominantAssetClass: Record<string, unknown>) {
@@ -1041,89 +1127,92 @@ function dominantExposureNameForHeadline(dominantRiskFactor: Record<string, unkn
 }
 
 function verdictTone(verdictId: string): StatusTone {
-  if (verdictId === "no_material_rebalance_recommended") return "green";
+  const key = statusKey(verdictId);
+  if (key === "keep_current" || key.includes("no_trade") || key === "no_material_rebalance_recommended") return "green";
   if (verdictId === "evidence_insufficient" || verdictId === "candidate_failed_or_infeasible") return "amber";
   if (verdictId === "test_another_candidate_or_review_evidence") return "blue";
   return "gold";
 }
 
 function safeVerdictState(verdictId: string, decisionStatus: string) {
-  if (verdictId === "no_material_rebalance_recommended") return "No-trade is supported by current evidence";
-  if (verdictId === "evidence_insufficient") return "Evidence insufficient";
-  if (verdictId === "candidate_failed_or_infeasible") return "Candidate failed or infeasible";
-  if (verdictId === "test_another_candidate_or_review_evidence") return "Test another hypothesis or review evidence";
-  if (decisionStatus === "selected_candidate") return "Candidate is material enough for decision review";
-  return decisionStatus.replaceAll("_", " ");
+  const verdictKey = statusKey(verdictId);
+  const decisionKey = statusKey(decisionStatus);
+  if (verdictKey === "keep_current" || verdictKey.includes("no_trade")) return "Keep current";
+  if (verdictKey === "no_material_rebalance_recommended") return "No material rebalance";
+  if (verdictKey === "evidence_insufficient" || decisionKey === "evidence_insufficient") return "Evidence insufficient";
+  if (verdictKey === "candidate_failed_or_infeasible") return "Candidate failed or infeasible";
+  if (verdictKey === "test_another_candidate_or_review_evidence") return "Test another hypothesis";
+  if (decisionKey === "selected_candidate" || verdictKey.includes("rebalance")) return "Rebalance review";
+  return "Evidence insufficient";
 }
 
-function safeVerdictHeadline(verdictId: string, candidateId: string) {
-  const candidate = candidateId || "selected candidate";
-  if (verdictId === "no_material_rebalance_recommended") return "Keep the current portfolio under review.";
-  if (verdictId === "evidence_insufficient") return "Do not make a decision from this evidence yet.";
-  if (verdictId === "candidate_failed_or_infeasible") return "The candidate test did not produce actionable comparison evidence.";
-  if (verdictId === "test_another_candidate_or_review_evidence") return "The evidence is mixed; test another diagnostic hypothesis.";
-  return `${candidate} passed the materiality review gate.`;
+function safeVerdictHeadline(verdictId: string) {
+  const verdictKey = statusKey(verdictId);
+  if (verdictKey === "keep_current" || verdictKey.includes("no_trade") || verdictKey === "no_material_rebalance_recommended") return "Keep the current portfolio under review.";
+  if (verdictKey === "evidence_insufficient") return "Do not make a decision from this evidence yet.";
+  if (verdictKey === "candidate_failed_or_infeasible") return "The candidate test did not produce usable comparison evidence.";
+  if (verdictKey === "test_another_candidate_or_review_evidence") return "The evidence is mixed; test another diagnostic hypothesis.";
+  return "Rebalance review is supported by material evidence.";
 }
 
 function safeVerdictExplanation(verdictId: string, rationale: string) {
   const suffix = rationale ? ` Rationale: ${rationale}` : "";
-  if (verdictId === "no_material_rebalance_recommended") {
+  const verdictKey = statusKey(verdictId);
+  if (verdictKey === "keep_current" || verdictKey.includes("no_trade") || verdictKey === "no_material_rebalance_recommended") {
     return `The current evidence supports no material change. Continue monitoring instead of treating the candidate as an instruction.${suffix}`;
   }
-  if (verdictId === "evidence_insufficient") {
-    return `The review found missing or degraded evidence, so the verdict stays evidence-insufficient.${suffix}`;
+  if (verdictKey === "evidence_insufficient") {
+    return `Do not make a portfolio decision from this evidence yet. The candidate comparison is incomplete or degraded, so Portfolio MRI cannot determine whether the candidate improves the diagnosed weakness.${suffix}`;
   }
-  if (verdictId === "candidate_failed_or_infeasible") {
-    return `The generated candidate failed or was infeasible, so it cannot become an action verdict.${suffix}`;
+  if (verdictKey === "candidate_failed_or_infeasible") {
+    return `The generated candidate failed or was infeasible, so it cannot support a portfolio action review.${suffix}`;
   }
-  if (verdictId === "test_another_candidate_or_review_evidence") {
-    return `The comparison does not support a clear action/no-action decision. Review evidence or test another candidate.${suffix}`;
+  if (verdictKey === "test_another_candidate_or_review_evidence") {
+    return `The comparison does not support a clear action/no-action decision. Review evidence or test another diagnostic hypothesis.${suffix}`;
   }
-  return `The selected candidate is material enough for human decision review, but this UI does not create a trade or implementation instruction.${suffix}`;
+  return `The selected candidate is material enough for human decision review, but this UI does not create a trade instruction or rebalance recommendation.${suffix}`;
 }
 
-function safeActionFraming(verdictId: string, candidateId: string) {
-  if (verdictId === "no_material_rebalance_recommended") return "Action framing: no material change; keep monitoring the current portfolio.";
-  if (verdictId === "evidence_insufficient") return "Action framing: collect or repair evidence before making a decision.";
-  if (verdictId === "candidate_failed_or_infeasible") return "Action framing: discard this failed test and choose another diagnostic hypothesis if needed.";
-  if (verdictId === "test_another_candidate_or_review_evidence") return "Action framing: review trade-offs or test another candidate; no action is implied.";
-  return `Action framing: review ${candidateId || "the selected candidate"} with its documented trade-offs; no implementation order is created.`;
+function safeActionFraming(verdictId: string) {
+  const verdictKey = statusKey(verdictId);
+  if (verdictKey === "keep_current" || verdictKey.includes("no_trade") || verdictKey === "no_material_rebalance_recommended") return "Action framing: no material change; keep monitoring the current portfolio.";
+  if (verdictKey === "evidence_insufficient") return "Action framing: generate a valid candidate, test another hypothesis, or keep the current portfolio under monitoring.";
+  if (verdictKey === "candidate_failed_or_infeasible") return "Action framing: discard this failed test and choose another diagnostic hypothesis if needed.";
+  if (verdictKey === "test_another_candidate_or_review_evidence") return "Action framing: review trade-offs or test another diagnostic hypothesis; no action is implied.";
+  return "Action framing: review the rebalance option with its documented trade-offs; no trade instruction is created.";
 }
 
 function verdictEvidenceList({
-  evidence,
   materiality,
   success,
   noTrade,
   limitations
 }: {
-  evidence: Record<string, unknown>;
   materiality: Record<string, unknown>;
   success: Record<string, unknown>;
   noTrade: Record<string, unknown>;
   limitations: unknown;
 }) {
   const rows = [
-    `Generation status: ${textValue(evidence.generation_status, "unknown").replaceAll("_", " ")}.`,
-    `Decision materiality: ${textValue(materiality.status, "not evaluated").replaceAll("_", " ")} (${textValue(materiality.reason, "no reason supplied")}).`,
-    `Success criteria: ${textValue(success.overall_status, "not evaluated").replaceAll("_", " ")}.`,
+    `Decision materiality: ${formatUnknownValue(materiality.status, "Not evaluated")} (${normalizeDisplaySentence(materiality.reason, "No reason supplied")}).`,
+    `Success criteria: ${formatUnknownValue(success.overall_status, "Not evaluated")}.`,
     `No-trade gate: ${noTrade.applies === true ? "applies" : noTrade.evaluated === true ? "evaluated" : "not evaluated"}.`
   ];
   const firstLimit = stringArray(limitations)[0];
-  if (firstLimit) rows.push(`Main confidence limitation: ${firstLimit}.`);
+  if (firstLimit) rows.push(`Main confidence limitation: ${normalizeDisplaySentence(firstLimit)}.`);
   return rows;
 }
 
 function verdictMonitoringTrigger(verdictId: string, limitations: unknown) {
   const firstLimit = stringArray(limitations)[0];
-  if (verdictId === "evidence_insufficient") return firstLimit ? `Re-run the verdict after resolving: ${firstLimit}.` : "Re-run after missing evidence is available.";
+  if (verdictId === "evidence_insufficient") return firstLimit ? `Re-run the verdict after resolving: ${normalizeDisplaySentence(firstLimit)}.` : "Re-run after missing evidence is available.";
   if (verdictId === "candidate_failed_or_infeasible") return "Re-run only after selecting a different feasible diagnostic candidate.";
   if (verdictId === "no_material_rebalance_recommended") return "Revisit if comparison materiality, turnover, or stress evidence changes materially.";
   return "Revisit before any implementation decision if trade-offs, costs, or risk evidence changes.";
 }
 
 function formatSignedDelta(value: unknown, field?: string) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "Delta n/a";
+  if (typeof value !== "number" || !Number.isFinite(value)) return "Delta unavailable";
   const sign = value > 0 ? "+" : "";
   if (field && percentLikeField(field)) return `${sign}${formatDecimalPercent(value)}`;
   return `${sign}${value.toFixed(3).replace(/\.?0+$/, "")}`;
@@ -1141,7 +1230,7 @@ function percentLikeField(field: string) {
 }
 
 function formatComparisonValue(value: unknown, field?: string) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "n/a";
+  if (typeof value !== "number" || !Number.isFinite(value)) return "Evidence unavailable";
   if (field && percentLikeField(field)) return formatDecimalPercent(value);
   return value.toFixed(3).replace(/\.?0+$/, "");
 }
@@ -1166,13 +1255,13 @@ function dimensionsToMetrics(dimensions: Record<string, unknown>[]): ComparisonM
     const direction = textValue(dimension.direction, "unknown");
     const status = textValue(dimension.status, "unavailable");
     return {
-      metric: textValue(dimension.label, field || "Metric"),
+      metric: formatUnknownValue(dimension.label ?? field, "Metric"),
       current: formatComparisonValue(dimension.baseline_value, field),
       candidate: formatComparisonValue(dimension.candidate_value, field),
       direction: status === "available" ? directionLabel(direction) : "Unclear",
       tradeoff: status === "available"
         ? formatSignedDelta(dimension.delta, field)
-        : textValue(dimension.unavailable_reason, "Metric unavailable"),
+        : formatUnknownValue(dimension.unavailable_reason, "Metric unavailable"),
       tone: status === "available" ? toneFromDirection(direction) : "slate"
     };
   });
@@ -1182,7 +1271,7 @@ function compactDimensionList(value: unknown, fallback: string) {
   const rows = getArray(value)
     .map(getRecord)
     .map((item) => {
-      const label = textValue(item.label, textValue(item.field, ""));
+      const label = formatUnknownValue(item.label ?? item.field, "");
       const direction = textValue(item.direction, "changed");
       const delta = formatSignedDelta(item.delta, textValue(item.field, ""));
       return label ? `${label}: ${directionLabel(direction).toLowerCase()} (${delta}).` : "";
@@ -1194,8 +1283,8 @@ function compactDimensionList(value: unknown, fallback: string) {
 function unclearList(row: Record<string, unknown>, currentVsCandidate: Record<string, unknown>) {
   const unavailable = getArray(getRecord(row.tradeoff_summary).unavailable_metrics)
     .map(getRecord)
-    .map((item) => `${textValue(item.label, textValue(item.field, "Metric"))}: ${textValue(item.unavailable_reason, "unavailable")}.`);
-  const warnings = stringArray(currentVsCandidate.warnings).map((item) => `Warning: ${item}.`);
+    .map((item) => `${formatUnknownValue(item.label ?? item.field, "Metric")}: ${formatUnknownValue(item.unavailable_reason, "Unavailable")}.`);
+  const warnings = stringArray(currentVsCandidate.warnings).map((item) => `Warning: ${normalizeDisplaySentence(item)}.`);
   const result = [...unavailable, ...warnings].filter(Boolean).slice(0, 4);
   return result.length ? result : ["Suitability and mandate fit remain outside this comparison step."];
 }
@@ -1206,7 +1295,7 @@ function turnoverText(turnoverRequired: Record<string, unknown>) {
   if (status === "available" && typeof turnover === "number" && Number.isFinite(turnover)) {
     return `${formatDecimalPercent(turnover)} half-sum turnover required.`;
   }
-  return `Turnover ${status.replaceAll("_", " ")}.`;
+  return `Turnover evidence ${formatUnknownValue(status, "Unavailable")}.`;
 }
 
 function estimatedCostText(practicality: Record<string, unknown>, transactionCost: Record<string, unknown>) {
@@ -1216,11 +1305,11 @@ function estimatedCostText(practicality: Record<string, unknown>, transactionCos
     const assumption = typeof bps === "number" && Number.isFinite(bps) ? ` using ${bps} bps assumption` : "";
     return `${formatDecimalPercent(estimated)} estimated transaction cost${assumption}.`;
   }
-  return "Estimated transaction cost unavailable.";
+  return "Estimated transaction cost evidence unavailable.";
 }
 
 function materialityText(materiality: Record<string, unknown>) {
-  return `${textValue(materiality.status, "not evaluated").replaceAll("_", " ")}: ${textValue(materiality.reason, "no reason supplied")}.`;
+  return `${formatUnknownValue(materiality.status, "Not evaluated")}: ${normalizeDisplaySentence(materiality.reason, "No reason supplied")}.`;
 }
 
 function comparisonSummaryText({
@@ -1237,8 +1326,8 @@ function comparisonSummaryText({
   const neutralCount = getArray(row.what_stayed_similar).length;
   return [
     `Comparison found ${improvedCount} improved, ${worsenedCount} worsened, and ${neutralCount} neutral metric groups.`,
-    `Success criteria: ${textValue(successCriteria.overall_status, "not evaluated").replaceAll("_", " ")}.`,
-    `Decision review materiality: ${textValue(materiality.status, "not evaluated").replaceAll("_", " ")}.`
+    `Success criteria: ${formatUnknownValue(successCriteria.overall_status, "Not evaluated")}.`,
+    `Decision review materiality: ${formatUnknownValue(materiality.status, "Not evaluated")}.`
   ].join(" ");
 }
 
@@ -1335,25 +1424,26 @@ function compactProblemFields(problemClassification: unknown) {
   const suggestedActions = getArray(problem.suggested_actions)
     .map(getRecord)
     .map((action) => firstText(action.label_en, action.action_path_id))
+    .map((item) => item ? formatUnknownValue(item) : item)
     .filter((item): item is string => Boolean(item))
     .slice(0, 3);
 
   return {
-    primaryProblem: firstText(
+    primaryProblem: formatUnknownValue(firstText(
       primaryProblem.label_en,
       primaryProblem.problem_id,
       primaryDiagnosis.label_en,
       rootCause.label_en,
       rootCause.problem_id
-    ),
-    problemSeverity: firstText(primaryProblem.severity, problem.materiality),
-    problemConfidence: firstText(primaryProblem.confidence, primaryDiagnosis.confidence, problem.confidence),
+    ), ""),
+    problemSeverity: formatUnknownValue(firstText(primaryProblem.severity, problem.materiality), ""),
+    problemConfidence: formatUnknownValue(firstText(primaryProblem.confidence, primaryDiagnosis.confidence, problem.confidence), ""),
     suggestedActionPaths: suggestedActions.length
       ? suggestedActions
       : [
         firstText(primaryProblem.suggested_action_path_id),
         ...getArray(primaryProblem.secondary_action_path_ids).filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
-      ].filter((item): item is string => Boolean(item)).slice(0, 3)
+      ].filter((item): item is string => Boolean(item)).map((item) => formatUnknownValue(item)).slice(0, 3)
   };
 }
 
@@ -1367,33 +1457,33 @@ function compactLaunchpadFields(candidateLaunchpad: unknown) {
   return {
     launchpadCardsCount: cards.length,
     launchpadCards: cards.slice(0, 8).map(compactLaunchpadCard),
-    recommendedFirstTest: firstText(
+    recommendedFirstTest: formatUnknownValue(firstText(
       firstCard.title,
       firstCard.goal,
       defaultMethod,
       launchpad.launchpad_outcome
-    )
+    ), "")
   };
 }
 
 function compactLaunchpadCard(card: Record<string, unknown>): LaunchpadCardSummary {
   return {
     card_id: textValue(card.card_id, textValue(card.title, "launchpad_card")),
-    title: textValue(card.title, "Candidate Launchpad card"),
-    goal: firstText(card.goal),
-    hypothesis_to_test: firstText(card.hypothesis_to_test, card.what_this_tests_en),
-    card_type: firstText(card.card_type),
-    source_problem_label: firstText(card.source_problem_label),
+    title: formatUnknownValue(card.title, "Hypothesis test"),
+    goal: firstText(card.goal) ? normalizeDisplaySentence(firstText(card.goal)) : undefined,
+    hypothesis_to_test: firstText(card.hypothesis_to_test, card.what_this_tests_en) ? normalizeDisplaySentence(firstText(card.hypothesis_to_test, card.what_this_tests_en)) : undefined,
+    card_type: firstText(card.card_type) ? formatUnknownValue(firstText(card.card_type)) : undefined,
+    source_problem_label: firstText(card.source_problem_label) ? formatUnknownValue(firstText(card.source_problem_label)) : undefined,
     suggested_methods: getArray(card.suggested_methods).map(getRecord).slice(0, 4).map((method, index) => ({
-      candidate_method_id: textValue(method.candidate_method_id, `method_${index + 1}`),
-      method_role: firstText(method.method_role),
-      why_this_method: firstText(method.why_this_method)
+      candidate_method_id: formatUnknownValue(method.candidate_method_id, `Method ${index + 1}`),
+      method_role: firstText(method.method_role) ? formatUnknownValue(firstText(method.method_role)) : undefined,
+      why_this_method: firstText(method.why_this_method) ? normalizeDisplaySentence(firstText(method.why_this_method)) : undefined
     })),
-    default_method: firstText(card.default_method),
-    success_criteria: stringArray(card.success_criteria).slice(0, 6),
-    tradeoff_to_watch: firstText(card.tradeoff_to_watch, card.expected_tradeoff_to_check_en),
-    when_to_skip: firstText(card.when_to_skip),
-    decision_boundary: firstText(card.decision_boundary),
+    default_method: firstText(card.default_method) ? formatUnknownValue(firstText(card.default_method)) : undefined,
+    success_criteria: stringArray(card.success_criteria).slice(0, 6).map((item) => normalizeDisplaySentence(item)),
+    tradeoff_to_watch: firstText(card.tradeoff_to_watch, card.expected_tradeoff_to_check_en) ? normalizeDisplaySentence(firstText(card.tradeoff_to_watch, card.expected_tradeoff_to_check_en)) : undefined,
+    when_to_skip: firstText(card.when_to_skip) ? normalizeDisplaySentence(firstText(card.when_to_skip)) : undefined,
+    decision_boundary: firstText(card.decision_boundary) ? normalizeDisplaySentence(firstText(card.decision_boundary)) : undefined,
     is_rebalance_recommendation: card.is_rebalance_recommendation === true,
     generates_portfolio: card.generates_portfolio === true
   };
@@ -1410,13 +1500,13 @@ function compactBuilderSetup(value: unknown): BuilderSetupSummary | undefined {
     can_generate_candidate: builder.can_generate_candidate === true || candidateSetup.can_generate_candidate === true,
     builder_prefill: {
       goal: firstText(builderPrefill.goal),
-      suggested_method: firstText(builderPrefill.suggested_method),
-      constraint_preset: firstText(builderPrefill.constraint_preset),
+      suggested_method: firstText(builderPrefill.suggested_method) ? formatUnknownValue(firstText(builderPrefill.suggested_method)) : undefined,
+      constraint_preset: firstText(builderPrefill.constraint_preset) ? formatUnknownValue(firstText(builderPrefill.constraint_preset)) : undefined,
       max_asset_weight: typeof builderPrefill.max_asset_weight === "number" || typeof builderPrefill.max_asset_weight === "string" ? builderPrefill.max_asset_weight : undefined,
       min_asset_weight: typeof builderPrefill.min_asset_weight === "number" || typeof builderPrefill.min_asset_weight === "string" ? builderPrefill.min_asset_weight : undefined
     },
     candidate_setup: {
-      validation_status: firstText(candidateSetup.validation_status),
+      validation_status: firstText(candidateSetup.validation_status) ? formatUnknownValue(firstText(candidateSetup.validation_status)) : undefined,
       can_generate_candidate: candidateSetup.can_generate_candidate === true
     }
   };
@@ -2155,6 +2245,7 @@ export function buildCompactReviewSummary({
   const problemClassification = outputs.problem_classification;
   const candidateLaunchpad = outputs.candidate_launchpad;
   const portfolioAlternativesBuilder = outputs.portfolio_alternatives_builder;
+  const siteExplanation = cleanSiteExplanationBundle(outputs.site_explanation_bundle);
   const compactProblem = compactProblemFields(problemClassification);
   const compactLaunchpad = compactLaunchpadFields(candidateLaunchpad);
   const rawBytes = estimateJsonBytes(reviewResult);
@@ -2198,6 +2289,7 @@ export function buildCompactReviewSummary({
     diagnosis,
     xraySummary,
     evidence,
+    siteExplanation,
     primaryProblem: compactProblem.primaryProblem,
     problemSeverity: compactProblem.problemSeverity,
     problemConfidence: compactProblem.problemConfidence,

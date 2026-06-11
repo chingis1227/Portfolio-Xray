@@ -246,6 +246,7 @@ required; each bundle artifact has its own writer and schema.
 | `decision_verdict.json` | `write_decision_verdict_outputs` | `{output_dir_final}/decision_verdict.json` | After compare only (#5) |
 | `ai_commentary_context.json` | `write_ai_commentary_context_outputs` | `{output_dir_final}/ai_commentary_context.json` | After compare only (#6) |
 | `what_changed_summary.json` | `write_what_changed_summary_outputs` | `{output_dir_final}/what_changed_summary.json` | After compare only (#7); optional if no prior snapshot |
+| `site_explanation_bundle.json` | `write_site_explanation_bundle_outputs` in `src/site_explanation_bundle.py` | `{output_dir_final}/analysis_subject/site_explanation_bundle.json` after diagnosis and `{output_dir_final}/site_explanation_bundle.json` after comparison/verdict | Additive site-copy hierarchy over deterministic artifacts; optional product-surface path, not part of the six-file bundle completeness gate |
 
 Compare (`write_candidate_comparison_outputs`) still writes technical and advanced contracts
 (`candidate_comparison.json`, `selection_decision.json`, health/robustness/Pareto/regret, action,
@@ -257,7 +258,9 @@ export flags are set. `output_manifest.json` lists generated paths for orchestra
 product-facing answer—filter with the bundle table above. After compare (and report when diagnosis
 artifacts exist), `generated_paths` includes resolved keys for the product bundle JSON files
 (`problem_classification_json` through `what_changed_summary_json`, plus `portfolio_alternatives_builder_json` when Block 6 setup exists; diagnosis paths prefer
-`analysis_subject/`). `artifact_categories` groups keys by surface (`product_bundle`, `technical_comparison`,
+`analysis_subject/`). `site_explanation_bundle_json` may also appear as an optional product-bundle
+path when the screen-copy hierarchy has been written, but it does not change the six-file
+`product_bundle_complete` gate. `artifact_categories` groups keys by surface (`product_bundle`, `technical_comparison`,
 `subject_diagnostics`, `advanced_evidence`, `orchestration`, `legacy_compatibility`,
 `generated_export`). `generated_paths_by_category` lists resolved paths per category;
 `product_discovery.product_bundle_paths` lists resolved Core MVP files on disk;
