@@ -19,6 +19,7 @@ ApiStage = Literal["health", "diagnosis", "recovery", "builder", "candidate", "c
 ApiStatus = Literal["ok", "partial", "blocked", "failed"]
 DataQuality = Literal["ok", "partial", "blocked", "unknown"]
 Confidence = Literal["high", "medium", "low", "unknown"]
+ClientFitTone = Literal["green", "amber", "red"]
 SafeErrorCode = Literal[
     "invalid_portfolio_input",
     "review_not_found",
@@ -155,6 +156,65 @@ class PortfolioInput(StrictModel):
     holdings: list[HoldingInput] = Field(min_length=1)
 
 
+class ClientFitRangeInput(StrictModel):
+    min: float = Field(ge=0, le=1, examples=[0.05])
+    max: float = Field(ge=0, le=1, examples=[0.07])
+
+    @model_validator(mode="after")
+    def validate_range_order(self) -> "ClientFitRangeInput":
+        if self.min >= self.max:
+            raise ValueError("range min must be below max")
+        return self
+
+
+class ClientFitInput(StrictModel):
+    """Client Fit V1 request object.
+
+    This is an input contract only. It records the user's stated profile for
+    future Client Fit checks; it does not approve suitability or change
+    diagnosis behavior by itself.
+    """
+
+    preset_id: (
+        Literal["ultra_conservative", "conservative", "balanced", "growth", "aggressive"] | None
+    ) = None
+    source: Literal["questionnaire", "preset_override", "manual_override", "imported", "missing"]
+    source_quality: Literal["high", "medium", "low", "missing"]
+    source_quality_reason: str | None = Field(default=None, max_length=240)
+    horizon_years: float | None = Field(default=None, gt=0, examples=[7.0])
+    target_return_range: ClientFitRangeInput | None = None
+    target_vol_range: ClientFitRangeInput | None = None
+    target_max_drawdown_pct: float | None = Field(default=None, ge=-1, le=0, examples=[-0.2])
+
+    @model_validator(mode="after")
+    def validate_missing_profile_boundary(self) -> "ClientFitInput":
+        if self.source == "missing" or self.source_quality == "missing":
+            if self.source != "missing" or self.source_quality != "missing":
+                raise ValueError(
+                    "missing Client Fit profile requires source='missing' and source_quality='missing'"
+                )
+            if any(
+                value is not None
+                for value in (
+                    self.preset_id,
+                    self.horizon_years,
+                    self.target_return_range,
+                    self.target_vol_range,
+                    self.target_max_drawdown_pct,
+                )
+            ):
+                raise ValueError("missing Client Fit profile must not include target fields")
+            return self
+        if not self.preset_id and not (
+            self.horizon_years
+            and self.target_return_range
+            and self.target_vol_range
+            and self.target_max_drawdown_pct is not None
+        ):
+            raise ValueError("Client Fit profile requires a preset_id or complete manual targets")
+        return self
+
+
 class CreateReviewOptions(StrictModel):
     mode: Literal["diagnosis_only"] = "diagnosis_only"
     output_profile: Literal["site_api"] = "site_api"
@@ -163,6 +223,7 @@ class CreateReviewOptions(StrictModel):
 
 class CreateReviewRequest(StrictModel):
     portfolio: PortfolioInput
+    client_fit: ClientFitInput | None = None
     options: CreateReviewOptions = Field(default_factory=CreateReviewOptions)
 
 
@@ -188,6 +249,29 @@ class DiagnosisSummary(StrictModel):
     rejected_alternatives: list["DiagnosisRejectedAlternative"] = Field(default_factory=list)
     professional_rationale_refs: list["DiagnosisRationaleRef"] = Field(default_factory=list)
     recommendation_boundary: str | None = None
+
+
+class ClientFitTargetDisplayRow(StrictModel):
+    dimension_label: str
+    portfolio_value_label: str | None = None
+    target_or_limit_label: str | None = None
+    status_label: str
+    status_tone: ClientFitTone
+    explanation: str | None = None
+
+
+class ClientFitDisplaySummary(StrictModel):
+    status_label: str = "Client Fit not provided"
+    status_tone: ClientFitTone = "amber"
+    profile_label: str | None = None
+    source_quality_label: str | None = None
+    target_rows: list[ClientFitTargetDisplayRow] = Field(default_factory=list)
+    main_explanation: str | None = None
+    decision_boundary: str = (
+        "Client Fit is non-binding decision support. It does not approve suitability, "
+        "execute trades, or clear unresolved diagnostics by itself."
+    )
+    next_best_test: str | None = None
 
 
 class DiagnosisEvidenceItem(StrictModel):
@@ -259,6 +343,7 @@ class LaunchpadCardSummary(StrictModel):
 class ReviewCreatedData(StrictModel):
     review_summary: ReviewSummary = Field(default_factory=ReviewSummary)
     diagnosis: DiagnosisSummary = Field(default_factory=DiagnosisSummary)
+    client_fit: ClientFitDisplaySummary = Field(default_factory=ClientFitDisplaySummary)
     launchpad: list[LaunchpadCardSummary] = Field(default_factory=list)
     next_allowed_actions: list[NextAction] = Field(default_factory=list)
     artifact_refs: list[ArtifactRef] = Field(default_factory=list)
@@ -368,6 +453,7 @@ class ComparisonSummary(StrictModel):
 class ComparisonData(StrictModel):
     comparison: ComparisonSummary = Field(default_factory=ComparisonSummary)
     evidence_chain_context: DownstreamEvidenceChainContext = Field(default_factory=DownstreamEvidenceChainContext)
+    client_fit: ClientFitDisplaySummary = Field(default_factory=ClientFitDisplaySummary)
     next_allowed_actions: list[NextAction] = Field(default_factory=list)
 
 
@@ -397,6 +483,7 @@ class VerdictSummary(StrictModel):
 class VerdictData(StrictModel):
     verdict: VerdictSummary = Field(default_factory=VerdictSummary)
     evidence_chain_context: DownstreamEvidenceChainContext = Field(default_factory=DownstreamEvidenceChainContext)
+    client_fit: ClientFitDisplaySummary = Field(default_factory=ClientFitDisplaySummary)
     next_allowed_actions: list[NextAction] = Field(default_factory=list)
 
 
@@ -425,6 +512,7 @@ class ReportData(StrictModel):
     report_preview: ReportPreview = Field(default_factory=ReportPreview)
     grounding: ReportGrounding = Field(default_factory=ReportGrounding)
     evidence_chain_context: DownstreamEvidenceChainContext = Field(default_factory=DownstreamEvidenceChainContext)
+    client_fit: ClientFitDisplaySummary = Field(default_factory=ClientFitDisplaySummary)
     llm_generated: Literal[False] = False
 
 

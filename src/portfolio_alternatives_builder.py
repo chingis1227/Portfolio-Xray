@@ -179,6 +179,12 @@ UNCAPPED_MODE_CONCENTRATION_WARNING = (
     "comparison, not as an automatic rebalance recommendation."
 )
 
+CLIENT_FIT_OPTIMIZER_BOUNDARY_EN = (
+    "Client Fit targets are shown only as hypothesis-test and display criteria. "
+    "They do not change optimizer objectives, constraints, mandate gates, analysis "
+    "windows, candidate weights, or factory commands in Client Fit V1."
+)
+
 CONSTRAINT_PRESETS: dict[str, dict[str, Any]] = {
     "conservative": {
         "min_asset_weight": 0.0,
@@ -415,6 +421,7 @@ def launchpad_card_to_builder_prefill(
     card: Mapping[str, Any],
     *,
     next_diagnostic_step: Mapping[str, Any] | None = None,
+    client_fit_check: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Map one Launchpad v3 card to a UI-safe Builder prefill object.
 
@@ -460,8 +467,16 @@ def launchpad_card_to_builder_prefill(
     candidate_generation_allowed = (
         suggested_method is not None and builder_mode == "guided_from_diagnosis"
     )
+    client_fit_test_criteria = _client_fit_test_criteria(client_fit_check)
+    success_criteria = list(card.get("success_criteria") or [])
+    if client_fit_test_criteria:
+        success_criteria.extend(
+            row["criterion_en"]
+            for row in client_fit_test_criteria["target_rows"]
+            if row.get("criterion_en")
+        )
 
-    return {
+    prefill = {
         "builder_prefill_id": _builder_prefill_id(source_card_id, source_diagnosis_id),
         "builder_mode": builder_mode,
         "source": "candidate_launchpad_v3",
@@ -492,7 +507,7 @@ def launchpad_card_to_builder_prefill(
         "transaction_cost_bps": card.get("transaction_cost_bps")
         if card.get("transaction_cost_bps") is not None
         else card.get("transaction_cost_assumption"),
-        "success_criteria": list(card.get("success_criteria") or []),
+        "success_criteria": success_criteria,
         "tradeoff_to_watch": _optional_string(
             card.get("tradeoff_to_watch") or card.get("expected_tradeoff_to_check_en")
         ),
@@ -509,6 +524,14 @@ def launchpad_card_to_builder_prefill(
         "status": _builder_prefill_status(builder_mode),
         "warnings": [],
     }
+    if isinstance(card.get("client_fit_context"), Mapping):
+        prefill["client_fit_context"] = dict(card["client_fit_context"])
+    if _optional_string(card.get("client_fit_relevance_en")):
+        prefill["client_fit_relevance_en"] = _optional_string(card.get("client_fit_relevance_en"))
+    if client_fit_test_criteria:
+        prefill["client_fit_test_criteria"] = client_fit_test_criteria
+        prefill["client_fit_optimizer_boundary"] = CLIENT_FIT_OPTIMIZER_BOUNDARY_EN
+    return prefill
 
 
 def select_builder_strategy(
@@ -583,13 +606,110 @@ def build_builder_prefill_from_launchpad_card(
     card: Mapping[str, Any],
     *,
     next_diagnostic_step: Mapping[str, Any] | None = None,
+    client_fit_check: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Backward-compatible name for :func:`launchpad_card_to_builder_prefill`."""
 
     return launchpad_card_to_builder_prefill(
         card,
         next_diagnostic_step=next_diagnostic_step,
+        client_fit_check=client_fit_check,
     )
+
+
+def _client_fit_test_criteria(
+    client_fit_check: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Return display-only Client Fit criteria for Builder and CandidateSetup.
+
+    These rows are deliberately not mapped into ``parameters`` or ``constraints``.
+    They are success criteria for the later comparison screen, not optimizer inputs.
+    """
+
+    if not isinstance(client_fit_check, Mapping):
+        return None
+    profile = client_fit_check.get("profile")
+    if not isinstance(profile, Mapping):
+        return None
+    status = _optional_string(client_fit_check.get("client_fit_status")) or "not_provided"
+    if status == "not_provided":
+        return None
+
+    rows: list[dict[str, Any]] = []
+    target_return_range = profile.get("target_return_range")
+    if isinstance(target_return_range, Mapping):
+        rows.append(
+            {
+                "dimension": "return",
+                "metric_field": "cagr",
+                "criterion_en": "Compare return against the stated Client Fit target range.",
+                "target_range": dict(target_return_range),
+                "usage": "display_test_criterion",
+            }
+        )
+    target_vol_range = profile.get("target_vol_range")
+    if isinstance(target_vol_range, Mapping):
+        rows.append(
+            {
+                "dimension": "volatility",
+                "metric_field": "vol_annual",
+                "criterion_en": "Compare volatility against the stated Client Fit comfort range.",
+                "target_range": dict(target_vol_range),
+                "usage": "display_test_criterion",
+            }
+        )
+    target_max_drawdown = profile.get("target_max_drawdown_pct")
+    if target_max_drawdown is not None:
+        rows.extend(
+            [
+                {
+                    "dimension": "historical_drawdown",
+                    "metric_field": "max_drawdown",
+                    "criterion_en": (
+                        "Compare historical drawdown against the stated maximum temporary loss."
+                    ),
+                    "target_limit": target_max_drawdown,
+                    "usage": "display_test_criterion",
+                },
+                {
+                    "dimension": "stress_loss",
+                    "metric_field": "worst_stress_loss",
+                    "criterion_en": (
+                        "Compare worst stress loss against the stated maximum temporary loss."
+                    ),
+                    "target_limit": target_max_drawdown,
+                    "usage": "display_test_criterion",
+                },
+            ]
+        )
+    horizon = profile.get("horizon_years")
+    if horizon is not None:
+        rows.append(
+            {
+                "dimension": "horizon",
+                "metric_field": None,
+                "criterion_en": (
+                    "Keep the stated horizon visible as interpretation context; do not change "
+                    "the analysis window."
+                ),
+                "horizon_years": horizon,
+                "usage": "display_context_only",
+            }
+        )
+    if not rows:
+        return None
+    return {
+        "schema_version": "builder_client_fit_test_criteria_v1",
+        "source_artifact": "client_fit_check.json",
+        "client_fit_status": status,
+        "profile": {
+            "preset_id": profile.get("preset_id"),
+            "source_quality": profile.get("source_quality"),
+            "horizon_years": horizon,
+        },
+        "target_rows": rows,
+        "optimizer_boundary_en": CLIENT_FIT_OPTIMIZER_BOUNDARY_EN,
+    }
 
 
 def build_simple_builder_parameters(
@@ -710,6 +830,18 @@ def build_simple_builder_parameters(
         ),
         "hypothesis_to_test": prefill.get("hypothesis_to_test"),
         "success_criteria": list(prefill.get("success_criteria") or []),
+        "client_fit_context": (
+            dict(prefill["client_fit_context"])
+            if isinstance(prefill.get("client_fit_context"), Mapping)
+            else None
+        ),
+        "client_fit_relevance_en": prefill.get("client_fit_relevance_en"),
+        "client_fit_test_criteria": (
+            dict(prefill["client_fit_test_criteria"])
+            if isinstance(prefill.get("client_fit_test_criteria"), Mapping)
+            else None
+        ),
+        "client_fit_optimizer_boundary": prefill.get("client_fit_optimizer_boundary"),
         "tradeoff_to_watch": prefill.get("tradeoff_to_watch"),
         "when_to_skip": prefill.get("when_to_skip"),
         "decision_boundary": prefill.get("decision_boundary"),
@@ -915,6 +1047,12 @@ def build_portfolio_alternatives_builder_document(
         "source_artifacts": {
             "candidate_launchpad": "candidate_launchpad.json",
             "problem_classification": "problem_classification.json",
+            "client_fit_check": "client_fit_check.json"
+            if (
+                isinstance(builder_prefill.get("client_fit_test_criteria"), Mapping)
+                or isinstance(builder_prefill.get("client_fit_context"), Mapping)
+            )
+            else None,
         },
         "selected_card_id": builder_prefill.get("source_card_id"),
         "builder_prefill": dict(builder_prefill),
@@ -925,6 +1063,7 @@ def build_portfolio_alternatives_builder_document(
             "does_not_write_weights": True,
             "does_not_write_comparison_or_verdict": True,
             "is_rebalance_recommendation": False,
+            "client_fit_targets_are_not_optimizer_mandates": True,
         },
     }
     if is_data_quality:
@@ -937,6 +1076,7 @@ def write_portfolio_alternatives_builder_outputs(
     *,
     candidate_launchpad: Mapping[str, Any] | None,
     problem_classification: Mapping[str, Any] | None = None,
+    client_fit_check: Mapping[str, Any] | None = None,
 ) -> dict[str, Path]:
     """Write ``portfolio_alternatives_builder.json`` beside Launchpad output.
 
@@ -962,6 +1102,7 @@ def write_portfolio_alternatives_builder_outputs(
     prefill = launchpad_card_to_builder_prefill(
         primary_card,
         next_diagnostic_step=next_step,
+        client_fit_check=client_fit_check,
     )
     setup, validation = _build_setup_and_validation(prefill)
     candidate_setup = (
@@ -1412,6 +1553,18 @@ def _candidate_setup_from_validated_setup(
         "parameters": dict(setup.get("parameters") or {}),
         "constraints": dict(setup.get("constraints") or {}),
         "success_criteria": list(setup.get("success_criteria") or []),
+        "client_fit_context": (
+            dict(setup["client_fit_context"])
+            if isinstance(setup.get("client_fit_context"), Mapping)
+            else None
+        ),
+        "client_fit_relevance_en": setup.get("client_fit_relevance_en"),
+        "client_fit_test_criteria": (
+            dict(setup["client_fit_test_criteria"])
+            if isinstance(setup.get("client_fit_test_criteria"), Mapping)
+            else None
+        ),
+        "client_fit_optimizer_boundary": setup.get("client_fit_optimizer_boundary"),
         "tradeoff_to_watch": setup.get("tradeoff_to_watch"),
         "when_to_skip": setup.get("when_to_skip"),
         "decision_boundary": setup.get("decision_boundary"),

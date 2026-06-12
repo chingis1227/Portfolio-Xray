@@ -176,6 +176,16 @@ Request model:
           {"type": "cash", "currency": "USD", "weight_pct": 5.0}
         ]
       },
+      "client_fit": {
+        "preset_id": "balanced",
+        "source": "questionnaire",
+        "source_quality": "medium",
+        "source_quality_reason": "Based on the short Client Fit questionnaire and user confirmation.",
+        "horizon_years": 7,
+        "target_return_range": {"min": 0.05, "max": 0.07},
+        "target_vol_range": {"min": 0.07, "max": 0.10},
+        "target_max_drawdown_pct": -0.20
+      },
       "options": {
         "mode": "diagnosis_only",
         "output_profile": "site_api",
@@ -203,6 +213,7 @@ Response data should include:
   the legacy compact fields (`primary_diagnosis`, `headline`, `confidence`, `evidence_chain`, and
   `next_diagnostic_step`) only.
 - `launchpad`: compact `candidate_launchpad.json` card summaries.
+- `client_fit`: bounded display summary over Client Fit status/profile/target rows when available.
 - `next_allowed_actions`: normally `prepare_builder`, `recover_review`, or `resolve_data_quality`.
 - `artifact_refs`: public references to allowed run-local artifacts, not absolute paths.
 
@@ -210,6 +221,20 @@ Boundary: this endpoint diagnoses the current portfolio and writes/reads run-loc
 not auto-generate a candidate, compare alternatives, produce a verdict, refresh PDFs, or modify root
 `config.yml`. The Session 07 request contract accepts both instrument holdings and real cash rows so
 the FastAPI path preserves the existing Portfolio Input behavior.
+
+Client Fit V1 request boundary: `client_fit` is optional for backend/CLI compatibility. When
+provided, FastAPI validates the V1 profile fields (`preset_id`, source/source quality, horizon,
+return range, volatility range, and target max drawdown), passes the full object into the run-local
+input config, and maps compatible fields to legacy target keys for disclosure continuity. The
+portfolio review runtime may generate `client_fit_check.json`; Block 4 may use Client Fit
+dimension signals as supporting/contrary evidence and may select `goal_risk_conflict` as the
+objective-review exception. This still does not approve suitability or issue trade instructions.
+
+Client Fit response boundary: public envelopes expose a bounded `client_fit` display summary when
+available. It contains display-ready fields such as status label/tone, profile label,
+source-quality label, compact target rows, a decision boundary, and next-test language. Public
+responses must not expose raw `client_fit_check.json`, raw `client_fit_context`, schema versions,
+source-artifact maps, local paths, or backend field paths as primary UI data.
 
 ### `GET /api/v1/reviews/{review_id}`
 
@@ -304,6 +329,7 @@ Response data should include:
 - `comparison`: current label, candidate label, success-criteria result, what improved, what worsened,
   what stayed similar, unavailable metrics, turnover/cost practicality when available, and materiality
   for decision review.
+- `client_fit`: bounded display summary for Client Fit target/status context when available.
 - `evidence_chain_context`: bounded display context tying the comparison back to the selected
   diagnosis, tested hypothesis, success criteria, trade-off to watch, candidate boundary,
   recommendation boundary, and source artifact roles.
@@ -337,6 +363,8 @@ Response data should include:
 - `rationale`: concise evidence used, improvements, worsening, confidence, limitations, and what would
   change the verdict. The public `verdict` summary includes bounded `evidence_used` and
   `what_would_change_verdict` lists when available.
+- `client_fit`: bounded display summary that keeps Client Fit Status separate from Diagnostic
+  Quality Status and Decision Action.
 - `evidence_chain_context`: the same selected diagnosis, hypothesis, success criteria, candidate
   boundary, and recommendation-boundary context used by the comparison stage.
 - `decision_support_only`: true.
@@ -368,6 +396,7 @@ Response data should include:
   hypothesis, candidate boundary, comparison trade-offs, verdict explanation, evidence limitations,
   and optional monitoring note.
 - `grounding`: compact source references and unavailable sections.
+- `client_fit`: the same bounded Client Fit display summary where available.
 - `evidence_chain_context`: bounded diagnosis-to-hypothesis-to-verdict context for primary report
   copy and provenance without exposing raw artifact trees.
 - `llm_generated`: false until a later approved AI Commentary implementation exists.

@@ -105,3 +105,32 @@ def test_candidate_setup_is_not_exposed_for_data_quality_blocker() -> None:
     setup = builder_prefill_to_candidate_setup(prefill)
 
     assert setup is None
+
+
+def test_candidate_setup_preserves_client_fit_criteria_outside_parameters_and_constraints() -> None:
+    prefill = launchpad_card_to_builder_prefill(
+        _launchpad_card(),
+        client_fit_check={
+            "schema_version": "client_fit_check_v1",
+            "client_fit_status": "breach",
+            "profile": {
+                "preset_id": "conservative",
+                "source_quality": "high",
+                "horizon_years": 5,
+                "target_return_range": {"min": 0.03, "max": 0.05},
+                "target_vol_range": {"min": 0.04, "max": 0.08},
+                "target_max_drawdown_pct": -0.12,
+            },
+        },
+    )
+
+    setup = builder_prefill_to_candidate_setup(prefill)
+
+    assert setup is not None
+    assert setup["client_fit_test_criteria"]["client_fit_status"] == "breach"
+    assert "Compare worst stress loss against the stated maximum temporary loss." in setup["success_criteria"]
+    assert "client_fit_test_criteria" not in setup["parameters"]
+    assert "client_fit_test_criteria" not in setup["constraints"]
+    assert "target_vol_range" not in setup["constraints"]
+    assert setup["client_fit_optimizer_boundary"]
+    assert not candidate_setup_contract_violations(setup)

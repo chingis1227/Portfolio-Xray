@@ -2565,6 +2565,25 @@ def run_portfolio_report_for_weights(
             json.dump(xray_summary, f, indent=2, ensure_ascii=False, default=str)
     except Exception:
         xray_summary = _xray_summary_from_output_dir(output_dir_final)
+    client_fit_check_doc = None
+    if portfolio_role_override == "analysis_subject":
+        try:
+            from src.client_fit import write_client_fit_check_outputs
+
+            client_fit_check_doc = write_client_fit_check_outputs(
+                output_dir=output_dir_final,
+                client_fit=getattr(cfg, "client_fit", {}) or {},
+                portfolio_xray=xray_summary,
+                stress_report=stress_report,
+                analysis_end=analysis_end_str,
+            )
+            logger.info(
+                "client_fit_check.json: %s (status=%s)",
+                output_dir_final / "client_fit_check.json",
+                client_fit_check_doc.get("client_fit_status"),
+            )
+        except Exception as e:
+            logger.warning("client_fit_check.json generation failed: %s", e)
     problem_classification_doc = None
     candidate_launchpad_doc = None
     ai_commentary_context_doc = None
@@ -2574,6 +2593,7 @@ def run_portfolio_report_for_weights(
                 output_dir=output_dir_final,
                 portfolio_xray=xray_summary,
                 stress_report=stress_report,
+                client_fit_check=client_fit_check_doc,
                 analysis_end=analysis_end_str,
             )
             problem_classification_doc = block_4_write.diagnosis.problem_classification
@@ -2597,6 +2617,7 @@ def run_portfolio_report_for_weights(
                 decision_verdict=None,
                 problem_classification=problem_classification_doc,
                 candidate_launchpad=candidate_launchpad_doc,
+                client_fit_check=client_fit_check_doc,
                 portfolio_xray=xray_summary,
                 stress_report=stress_report,
             )
@@ -2627,6 +2648,7 @@ def run_portfolio_report_for_weights(
             review_id=analysis_end_str,
             portfolio_xray=xray_summary,
             stress_report=stress_report,
+            client_fit_check=client_fit_check_doc,
             problem_classification=problem_classification_doc,
             candidate_launchpad=candidate_launchpad_doc,
             ai_commentary_context=ai_commentary_context_doc,

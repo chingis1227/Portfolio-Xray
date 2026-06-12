@@ -19,6 +19,8 @@ def _all_text_items(doc: dict) -> list[dict]:
     [
         "buy",
         "sell",
+        "suitable",
+        "approved",
         "must rebalance",
         "best portfolio",
         "guaranteed",
@@ -82,6 +84,8 @@ def test_site_explanation_generated_skeleton_copy_has_no_forbidden_language() ->
     forbidden_fragments = (
         "buy",
         "sell",
+        "suitable",
+        "approved",
         "must rebalance",
         "best portfolio",
         "guaranteed",
@@ -92,3 +96,53 @@ def test_site_explanation_generated_skeleton_copy_has_no_forbidden_language() ->
         assert not any(fragment in text for fragment in forbidden_fragments)
         if item["id"].startswith("candidate."):
             assert "recommend" not in text
+
+
+def test_site_explanation_client_fit_report_hierarchy_separates_fit_from_diagnosis() -> None:
+    doc = build_site_explanation_bundle(
+        client_fit_check={
+            "schema_version": "client_fit_check_v1",
+            "client_fit_status": "fit",
+            "profile": {"source_quality": "medium"},
+            "checks": [
+                {
+                    "dimension": "volatility_vs_target",
+                    "status": "fit",
+                    "interpretation": "Volatility is within the stated range.",
+                },
+                {
+                    "dimension": "worst_stress_loss_vs_limit",
+                    "status": "fit",
+                    "interpretation": "Worst stress loss is within the stated drawdown limit.",
+                },
+            ],
+        },
+        problem_classification={
+            "client_fit_status": "fit",
+            "diagnostic_quality_status": "material_issue",
+            "client_fit_context": {
+                "diagnosis_selection_boundary_en": (
+                    "Client Fit status is interpreted separately from diagnostic quality; only an explicit "
+                    "goal-risk conflict can become the selected Problem Classification outcome."
+                )
+            },
+        },
+    )
+
+    client_fit = doc["screens"]["client_fit"]
+    report = doc["screens"]["report"]
+    assert any(
+        item["id"] == "client_fit.executive.status_boundary"
+        and "Client Fit status is fit" in item["text"]
+        and "diagnostic quality status is material issue" in item["text"]
+        for item in client_fit["executive"]
+    )
+    assert any(item["id"].startswith("client_fit.evidence.portfolio_vs_limits") for item in client_fit["evidence"])
+    assert any(
+        item["id"] == "report.evidence.client_fit_hierarchy"
+        and "does not turn either field into a final action" in item["text"]
+        for item in report["evidence"]
+    )
+    forbidden_fragments = ("suitable", "approved", "buy", "sell", "must rebalance", "best portfolio")
+    for item in _all_text_items(doc):
+        assert not any(fragment in item["text"].lower() for fragment in forbidden_fragments)

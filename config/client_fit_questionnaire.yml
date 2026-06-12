@@ -1,0 +1,162 @@
+schema_version: client_fit_questionnaire_v1
+liquidity_in_scope: false
+profile_order:
+  - ultra_conservative
+  - conservative
+  - balanced
+  - growth
+  - aggressive
+source_quality:
+  questionnaire_confirmed: medium
+  preset_override: medium
+  manual_override_complete: high
+  missing: missing
+questions:
+  - id: main_objective
+    label_en: Main objective
+    options:
+      - id: preserve_capital
+        label_en: Preserve capital
+        profile_scores: { ultra_conservative: 4, conservative: 2 }
+      - id: moderate_growth
+        label_en: Moderate growth
+        profile_scores: { conservative: 3, balanced: 1 }
+      - id: balanced_growth_and_risk
+        label_en: Balanced growth and risk
+        profile_scores: { balanced: 4 }
+      - id: high_growth
+        label_en: High growth
+        profile_scores: { growth: 4, aggressive: 1 }
+      - id: maximum_growth
+        label_en: Maximum growth
+        profile_scores: { aggressive: 4, growth: 1 }
+  - id: target_return_expectation
+    label_en: Target annual return expectation
+    options:
+      - id: return_2_4
+        label_en: 2-4%
+        target_return_range: { min: 0.02, max: 0.04 }
+        profile_scores: { ultra_conservative: 4 }
+      - id: return_3_6
+        label_en: 3-6%
+        target_return_range: { min: 0.03, max: 0.06 }
+        profile_scores: { conservative: 4 }
+      - id: return_5_7
+        label_en: 5-7%
+        target_return_range: { min: 0.05, max: 0.07 }
+        profile_scores: { balanced: 4 }
+      - id: return_7_10
+        label_en: 7-10%
+        target_return_range: { min: 0.07, max: 0.10 }
+        profile_scores: { growth: 4 }
+      - id: return_10_plus
+        label_en: 10%+
+        target_return_range: { min: 0.10, max: 0.20 }
+        profile_scores: { aggressive: 4 }
+  - id: investment_horizon
+    label_en: Investment horizon
+    options:
+      - id: less_than_3_years
+        label_en: Less than 3 years
+        horizon_years: 2
+        profile_scores: { ultra_conservative: 4, conservative: 1 }
+      - id: years_3_5
+        label_en: 3-5 years
+        horizon_years: 4
+        profile_scores: { conservative: 3, balanced: 1 }
+      - id: years_6_10
+        label_en: 6-10 years
+        horizon_years: 7
+        profile_scores: { balanced: 3, growth: 1 }
+      - id: more_than_10_years
+        label_en: More than 10 years
+        horizon_years: 12
+        profile_scores: { growth: 2, aggressive: 2 }
+  - id: max_temporary_loss
+    label_en: Maximum temporary portfolio loss you can accept
+    options:
+      - id: loss_10
+        label_en: Up to -10%
+        target_max_drawdown_pct: -0.10
+        profile_scores: { ultra_conservative: 4 }
+      - id: loss_15
+        label_en: Up to -15%
+        target_max_drawdown_pct: -0.15
+        profile_scores: { conservative: 4 }
+      - id: loss_20
+        label_en: Up to -20%
+        target_max_drawdown_pct: -0.20
+        profile_scores: { balanced: 4 }
+      - id: loss_30
+        label_en: Up to -30%
+        target_max_drawdown_pct: -0.30
+        profile_scores: { growth: 3, aggressive: 1 }
+      - id: loss_more_than_30
+        label_en: More than -30%
+        target_max_drawdown_pct: -0.35
+        profile_scores: { aggressive: 4 }
+  - id: reaction_to_20_decline
+    label_en: Reaction to a -20% decline
+    options:
+      - id: sell_most
+        label_en: Sell most / reduce risk strongly
+        profile_scores: { ultra_conservative: 4 }
+      - id: reduce_some
+        label_en: Reduce some risk
+        profile_scores: { conservative: 3, balanced: 1 }
+      - id: hold
+        label_en: Hold
+        profile_scores: { balanced: 3, growth: 1 }
+      - id: add_more
+        label_en: Add more
+        profile_scores: { growth: 2, aggressive: 2 }
+  - id: comfortable_yearly_fluctuation
+    label_en: Comfortable normal yearly fluctuation
+    options:
+      - id: fluctuation_0_5
+        label_en: "Very low: 0-5%"
+        target_vol_range: { min: 0.00, max: 0.05 }
+        profile_scores: { ultra_conservative: 4 }
+      - id: fluctuation_5_8
+        label_en: "Low/moderate: 5-8%"
+        target_vol_range: { min: 0.05, max: 0.08 }
+        profile_scores: { conservative: 4 }
+      - id: fluctuation_8_12
+        label_en: "Moderate: 8-12%"
+        target_vol_range: { min: 0.08, max: 0.12 }
+        profile_scores: { balanced: 4 }
+      - id: fluctuation_12_18
+        label_en: "High: 12-18%"
+        target_vol_range: { min: 0.12, max: 0.18 }
+        profile_scores: { growth: 3, aggressive: 1 }
+      - id: fluctuation_18_plus
+        label_en: "Very high: 18%+"
+        target_vol_range: { min: 0.18, max: 0.25 }
+        profile_scores: { aggressive: 4 }
+  - id: investment_experience
+    label_en: Investment experience
+    options:
+      - id: beginner
+        label_en: Beginner
+        profile_scores: { conservative: 2, ultra_conservative: 1 }
+      - id: some_experience
+        label_en: Some experience
+        profile_scores: { balanced: 2 }
+      - id: experienced
+        label_en: Experienced
+        profile_scores: { growth: 2 }
+      - id: professional_advanced
+        label_en: Professional / advanced
+        profile_scores: { aggressive: 2, growth: 1 }
+  - id: profile_confirmation
+    label_en: Profile confirmation
+    options:
+      - id: use_suggested_profile
+        label_en: Use suggested profile
+        source: questionnaire
+      - id: choose_different_preset
+        label_en: Choose a different preset
+        source: preset_override
+      - id: customize_targets_manually
+        label_en: Customize targets manually
+        source: manual_override

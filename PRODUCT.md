@@ -118,9 +118,10 @@ Target MVP inputs:
 - Investor currency.
 
 **Core MVP boundary:** client profile, mandate targets (return, vol, max drawdown), horizon,
-liquidity needs, suitability limits, and constraint comparison are **not** required and must not
-drive Block 1вЂ“3 product-facing conclusions. Those fields remain in config / Advanced settings for
-legacy optimization and future Client-Fit Check only.
+liquidity needs, suitability limits, and constraint comparison are **not** required by Blocks 1-3
+and must not drive their product-facing conclusions. The web journey now collects Client Fit before
+diagnosis and evaluates it after Stress Lab; legacy mandate fields remain in config / Advanced
+settings for legacy optimization and compatibility.
 
 System-level inputs and defaults:
 

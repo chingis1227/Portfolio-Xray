@@ -118,6 +118,30 @@ Term heading
 - Area: optimizer
 - Canonical source: [docs/specs/portfolio_construction_policy.md](docs/specs/portfolio_construction_policy.md)
 
+### Client Fit
+
+- Definition: Implemented V1 interpretation layer that compares deterministic portfolio evidence with a provided client profile: target return, target volatility, maximum drawdown, and investment horizon. It is decision support only, not suitability approval or trade advice.
+- Area: product
+- Canonical source: [docs/specs/client_fit_check_spec.md](docs/specs/client_fit_check_spec.md)
+
+### Client Fit status
+
+- Definition: Implemented V1 status for whether portfolio evidence fits the provided client profile: `fit`, `watch`, `breach`, `conflict`, `not_provided`, or `evidence_insufficient`.
+- Area: product
+- Canonical source: [docs/specs/client_fit_check_spec.md](docs/specs/client_fit_check_spec.md)
+
+### Diagnostic quality status
+
+- Definition: Implemented V1 status that stays separate from Client Fit and describes whether the portfolio diagnosis has no issue, a watch item, an issue, a material issue, or insufficient evidence.
+- Area: product
+- Canonical source: [docs/specs/client_fit_check_spec.md](docs/specs/client_fit_check_spec.md)
+
+### Goal-risk conflict
+
+- Definition: Implemented V1 Client Fit condition where the stated return objective appears inconsistent with the stated volatility, maximum drawdown, or horizon.
+- Area: product
+- Canonical source: [docs/specs/client_fit_check_spec.md](docs/specs/client_fit_check_spec.md)
+
 ### Analysis mode
 
 - Definition: Config setting that defines whether the run builds policy weights from a ticker universe or diagnoses an existing fixed-weight portfolio.
@@ -168,7 +192,7 @@ Term heading
 
 ### Field tiers
 
-- Definition: Export-only classification in `input_assumptions` (`core_mvp`, `system_default`, `legacy_advanced`, `client_fit_later`, etc.) that documents which config keys are required, injected, or deferred for the diagnosis path.
+- Definition: Export-only classification in `input_assumptions` (`core_mvp`, `system_default`, `legacy_advanced`, `client_fit_v1`, etc.) that documents which config keys are required, injected, or deferred for the diagnosis path.
 - Area: input and assumptions
 - Canonical source: [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md)
 

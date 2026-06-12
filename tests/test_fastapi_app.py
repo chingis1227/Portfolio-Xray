@@ -81,6 +81,10 @@ def test_openapi_includes_session_03_typed_mvp_surface() -> None:
     schemas = schema["components"]["schemas"]
     for schema_name in [
         "CreateReviewRequest",
+        "ClientFitInput",
+        "ClientFitRangeInput",
+        "ClientFitDisplaySummary",
+        "ClientFitTargetDisplayRow",
         "CreateReviewResponse",
         "ReviewRecoveryResponse",
         "BuilderRequest",
@@ -102,6 +106,9 @@ def test_openapi_includes_session_03_typed_mvp_surface() -> None:
     create_review = schema["paths"]["/api/v1/reviews"]["post"]
     request_ref = create_review["requestBody"]["content"]["application/json"]["schema"]["$ref"]
     assert request_ref.endswith("/CreateReviewRequest")
+    create_request_schema = schemas["CreateReviewRequest"]
+    assert "client_fit" in create_request_schema["properties"]
+    assert create_request_schema["properties"]["client_fit"]["anyOf"][0]["$ref"].endswith("/ClientFitInput")
     response_ref = create_review["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
     assert response_ref.endswith("/CreateReviewResponse")
 
@@ -132,6 +139,7 @@ def _fake_review_result(review_id: str = "frontend_review_fastapi_unit") -> dict
             "problem_classification": f"runs/{review_id}/analysis_subject/problem_classification.json",
             "candidate_launchpad": f"runs/{review_id}/analysis_subject/candidate_launchpad.json",
             "portfolio_alternatives_builder": f"runs/{review_id}/analysis_subject/portfolio_alternatives_builder.json",
+            "client_fit_check": f"runs/{review_id}/analysis_subject/client_fit_check.json",
             "ai_commentary_context": f"runs/{review_id}/analysis_subject/ai_commentary_context.json",
         },
         "outputs": {
@@ -139,6 +147,21 @@ def _fake_review_result(review_id: str = "frontend_review_fastapi_unit") -> dict
             "portfolio_xray": {"schema_version": "portfolio_xray_v2"},
             "stress_report": {"schema_version": "stress_report_v1"},
             "output_manifest": {"schema_version": "output_manifest_v1"},
+            "client_fit_check": {
+                "schema_version": "client_fit_check_v1",
+                "client_fit_status": "watch",
+                "profile": {"preset_id": "balanced", "source_quality": "medium"},
+                "checks": [
+                    {
+                        "dimension": "volatility_vs_target",
+                        "portfolio_value": 0.115,
+                        "client_range": {"min": 0.07, "max": 0.10},
+                        "status": "watch",
+                        "interpretation": "Volatility is slightly outside the stated comfort range.",
+                    }
+                ],
+                "recommendation_boundary": "Client Fit is non-binding decision support.",
+            },
             "problem_classification": {
                 "analysis_end": "2026-05-31",
                 "primary_diagnosis": {
@@ -264,6 +287,16 @@ def test_create_review_runs_diagnosis_adapter_and_returns_public_envelope(
             {"type": "instrument", "ticker": "BND", "weight": 30.0},
             {"type": "cash", "currency": "USD", "weight": 10.0},
         ]
+        assert payload["client_fit"] == {
+            "preset_id": "balanced",
+            "source": "questionnaire",
+            "source_quality": "medium",
+            "source_quality_reason": "Based on the short questionnaire.",
+            "horizon_years": 7.0,
+            "target_return_range": {"min": 0.05, "max": 0.07},
+            "target_vol_range": {"min": 0.07, "max": 0.1},
+            "target_max_drawdown_pct": -0.2,
+        }
         assert mode == review_service.MODE_DIAGNOSIS_PLUS_PROBLEM
         assert timeout_seconds == review_service.DEFAULT_TIMEOUT_SECONDS
         result_path.write_text(json.dumps(_fake_review_result()), encoding="utf-8")
@@ -283,7 +316,17 @@ def test_create_review_runs_diagnosis_adapter_and_returns_public_envelope(
                     {"type": "instrument", "ticker": "BND", "weight_pct": 30.0},
                     {"type": "cash", "currency": "USD", "weight_pct": 10.0},
                 ],
-            }
+            },
+            "client_fit": {
+                "preset_id": "balanced",
+                "source": "questionnaire",
+                "source_quality": "medium",
+                "source_quality_reason": "Based on the short questionnaire.",
+                "horizon_years": 7,
+                "target_return_range": {"min": 0.05, "max": 0.07},
+                "target_vol_range": {"min": 0.07, "max": 0.10},
+                "target_max_drawdown_pct": -0.20,
+            },
         },
     )
 
@@ -319,6 +362,13 @@ def test_create_review_runs_diagnosis_adapter_and_returns_public_envelope(
     assert body["data"]["diagnosis"]["rejected_alternatives"][0]["problem_id"] == "high_volatility"
     assert body["data"]["diagnosis"]["professional_rationale_refs"][0]["ref_id"] == "block_4_diagnosis_contract"
     assert body["data"]["diagnosis"]["recommendation_boundary"] == "Decision Verdict decides after comparison."
+    assert body["data"]["client_fit"]["status_label"] == "Client Fit watch"
+    assert body["data"]["client_fit"]["status_tone"] == "amber"
+    assert body["data"]["client_fit"]["profile_label"] == "balanced"
+    assert body["data"]["client_fit"]["target_rows"][0]["dimension_label"] == "Volatility comfort range"
+    assert body["data"]["client_fit"]["target_rows"][0]["target_or_limit_label"] == "7.0% to 10.0%"
+    assert "schema_version" not in body["data"]["client_fit"]
+    assert "source_artifacts" not in body["data"]["client_fit"]
     assert body["data"]["launchpad"][0]["generation_allowed"] is True
     assert body["data"]["launchpad"][0]["is_rebalance_recommendation"] is False
     assert body["data"]["next_allowed_actions"] == ["prepare_builder", "recover_review"]
@@ -327,11 +377,36 @@ def test_create_review_runs_diagnosis_adapter_and_returns_public_envelope(
         "stress_report",
         "problem_classification",
         "candidate_launchpad",
+        "client_fit_check",
     }
     assert body["evidence"]["source_artifacts"] == body["data"]["artifact_refs"]
     serialized = json.dumps(body)
     assert "Traceback" not in serialized
     assert not re.search(r"[A-Z]:[\\/]", serialized)
+
+
+def test_create_review_rejects_client_fit_liquidity_field() -> None:
+    response = _request(
+        "POST",
+        "/api/v1/reviews",
+        json_body={
+            "portfolio": {
+                "investor_currency": "USD",
+                "holdings": [
+                    {"type": "instrument", "ticker": "VOO", "weight_pct": 60.0},
+                    {"type": "instrument", "ticker": "BND", "weight_pct": 40.0},
+                ],
+            },
+            "client_fit": {
+                "preset_id": "balanced",
+                "source": "questionnaire",
+                "source_quality": "medium",
+                "liquidity_need_months": 6,
+            },
+        },
+    )
+
+    assert response.status_code == 422
 
 
 def test_recover_review_restores_only_diagnosis_stages(
@@ -549,6 +624,31 @@ def _write_candidate_generation(run_dir: Path) -> None:
     )
 
 
+def _write_client_fit_check(run_dir: Path, *, status: str = "fit") -> None:
+    analysis_subject = run_dir / "analysis_subject"
+    analysis_subject.mkdir(exist_ok=True)
+    (analysis_subject / "client_fit_check.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "client_fit_check_v1",
+                "client_fit_status": status,
+                "profile": {"preset_id": "balanced", "source_quality": "medium"},
+                "checks": [
+                    {
+                        "dimension": "worst_stress_loss_vs_limit",
+                        "portfolio_value": -0.18,
+                        "client_limit": -0.20,
+                        "status": status,
+                        "interpretation": "Worst stress loss is within the stated drawdown limit.",
+                    }
+                ],
+                "recommendation_boundary": "Client Fit is non-binding decision support.",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def _current_vs_candidate_doc() -> dict:
     return {
         "schema_version": "current_vs_candidate_v1",
@@ -579,6 +679,7 @@ def test_run_comparison_runs_adapter_and_returns_public_envelope(
     run_dir = tmp_path / review_id
     run_dir.mkdir()
     _write_candidate_generation(run_dir)
+    _write_client_fit_check(run_dir)
 
     def fake_compare_selected_candidate(**kwargs):
         assert kwargs["review_id"] == review_id
@@ -625,6 +726,9 @@ def test_run_comparison_runs_adapter_and_returns_public_envelope(
     assert body["data"]["evidence_chain_context"]["success_criteria"] == [
         "Reduce top holding concentration."
     ]
+    assert body["data"]["client_fit"]["status_label"] == "Within stated Client Fit profile"
+    assert body["data"]["client_fit"]["target_rows"][0]["dimension_label"] == "Worst stress loss limit"
+    assert "client_fit_check.json" not in json.dumps(body["data"]["client_fit"])
     assert body["data"]["next_allowed_actions"] == ["generate_verdict"]
     assert {item["kind"] for item in body["evidence"]["source_artifacts"]} >= {
         "candidate_generation",
@@ -641,6 +745,7 @@ def test_generate_verdict_runs_adapter_and_returns_public_envelope(
     run_dir = tmp_path / review_id
     run_dir.mkdir()
     _write_candidate_generation(run_dir)
+    _write_client_fit_check(run_dir)
     (run_dir / "current_vs_candidate.json").write_text(
         json.dumps(_current_vs_candidate_doc()),
         encoding="utf-8",
@@ -664,6 +769,19 @@ def test_generate_verdict_runs_adapter_and_returns_public_envelope(
                 "rationale_summary": "The candidate materially improves the diagnosed risk.",
                 "recommended_action": "Review the candidate as decision support only.",
                 "confidence_limitations": ["Costs are estimated."],
+                "evidence_summary": {
+                    "client_fit_decision_context": {
+                        "client_fit_status": "fit",
+                        "diagnostic_quality_status": "issue",
+                        "decision_action": "rebalance_review",
+                        "status_label": "Within stated Client Fit profile",
+                        "status_tone": "green",
+                        "profile_label": "balanced",
+                        "source_quality_label": "medium",
+                        "boundary_en": "Client Fit is bounded display context only.",
+                        "next_best_test_en": "Read the verdict next to the objective diagnosis.",
+                    }
+                },
                 "guardrails": {"does_not_execute_trades": True},
             },
             "site_explanation_bundle_path": f"runs/{review_id}/site_explanation_bundle.json",
@@ -697,6 +815,9 @@ def test_generate_verdict_runs_adapter_and_returns_public_envelope(
     ]
     assert body["data"]["evidence_chain_context"]["selected_diagnosis_id"] == "high_concentration"
     assert body["data"]["verdict"]["decision_support_only"] is True
+    assert body["data"]["client_fit"]["status_label"] == "Within stated Client Fit profile"
+    assert body["data"]["client_fit"]["next_best_test"] == "Read the verdict next to the objective diagnosis."
+    assert "schema_version" not in body["data"]["client_fit"]
     assert body["data"]["next_allowed_actions"] == ["generate_report"]
     assert "Traceback" not in json.dumps(body)
 
@@ -708,12 +829,24 @@ def test_generate_report_runs_adapter_and_returns_grounded_preview(
     run_dir = tmp_path / review_id
     run_dir.mkdir()
     _write_candidate_generation(run_dir)
+    _write_client_fit_check(run_dir)
     (run_dir / "decision_verdict.json").write_text(
         json.dumps(
             {
                 "schema_version": "decision_verdict_v1",
                 "verdict_id": "no_material_rebalance_recommended",
                 "reviewed_candidate_id": "equal_weight",
+                "evidence_summary": {
+                    "client_fit_decision_context": {
+                        "client_fit_status": "fit",
+                        "diagnostic_quality_status": "clean",
+                        "decision_action": "keep_current",
+                        "status_label": "Within stated Client Fit profile",
+                        "status_tone": "green",
+                        "profile_label": "balanced",
+                        "source_quality_label": "medium",
+                    }
+                },
                 "guardrails": {"does_not_execute_trades": True},
             }
         ),
@@ -787,6 +920,7 @@ def test_generate_report_runs_adapter_and_returns_grounded_preview(
         "decision_verdict",
         "monitoring_diff",
     ]
+    assert body["data"]["client_fit"]["status_label"] == "Within stated Client Fit profile"
     assert body["data"]["grounding"]["unavailable_sections"] == ["monitoring_diff"]
     assert {item["kind"] for item in body["data"]["grounding"]["source_refs"]} >= {
         "decision_verdict",

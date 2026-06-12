@@ -2,11 +2,18 @@ import type { JourneyStep, JourneyStepStatus } from "./types";
 
 export const journeySteps: JourneyStep[] = [
   {
+    id: "client-profile",
+    label: "Client Profile",
+    shortLabel: "Profile",
+    href: "/client-profile",
+    lockReason: "Client Profile is always available."
+  },
+  {
     id: "portfolio-input",
     label: "Portfolio Input",
     shortLabel: "Portfolio",
     href: "/portfolio-input",
-    lockReason: "Portfolio Input is always available."
+    lockReason: "Complete Client Profile first so the web journey can test the portfolio against stated limits."
   },
   {
     id: "diagnosis",
@@ -23,11 +30,18 @@ export const journeySteps: JourneyStep[] = [
     lockReason: "Run portfolio diagnosis first to generate Stress Test Lab evidence."
   },
   {
+    id: "client-fit",
+    label: "Client Fit",
+    shortLabel: "Client Fit",
+    href: "/client-fit",
+    lockReason: "Run portfolio diagnosis and Stress Test Lab first to evaluate Client Fit."
+  },
+  {
     id: "hypothesis",
     label: "Hypothesis",
     shortLabel: "Hypothesis",
     href: "/hypothesis",
-    lockReason: "Review generated diagnosis and stress evidence before testing a hypothesis."
+    lockReason: "Review the Client Fit screen before testing a hypothesis."
   },
   {
     id: "comparison",
@@ -53,9 +67,11 @@ export const journeySteps: JourneyStep[] = [
 ];
 
 export type JourneyFlags = {
+  clientProfileCompleted: boolean;
   inputCompleted: boolean;
   diagnosisGenerated: boolean;
   evidenceGenerated: boolean;
+  clientFitReady: boolean;
   improvementPathsAvailable: boolean;
   candidateReady: boolean;
   comparisonReady: boolean;
@@ -68,9 +84,11 @@ export type JourneyStepWithStatus = JourneyStep & {
 };
 
 export const emptyJourneyFlags: JourneyFlags = {
+  clientProfileCompleted: false,
   inputCompleted: false,
   diagnosisGenerated: false,
   evidenceGenerated: false,
+  clientFitReady: false,
   improvementPathsAvailable: false,
   candidateReady: false,
   comparisonReady: false,
@@ -88,14 +106,18 @@ export function getStepById(stepId: string) {
 
 export function isStepUnlocked(stepId: string, flags: JourneyFlags): boolean {
   switch (stepId) {
-    case "portfolio-input":
+    case "client-profile":
       return true;
+    case "portfolio-input":
+      return flags.clientProfileCompleted;
     case "diagnosis":
       return flags.inputCompleted;
     case "evidence":
       return flags.diagnosisGenerated;
+    case "client-fit":
+      return flags.clientProfileCompleted && flags.diagnosisGenerated && flags.evidenceGenerated;
     case "hypothesis":
-      return flags.diagnosisGenerated && flags.evidenceGenerated && flags.improvementPathsAvailable;
+      return flags.diagnosisGenerated && flags.evidenceGenerated && flags.clientFitReady && flags.improvementPathsAvailable;
     case "comparison":
       return flags.candidateReady;
     case "verdict":

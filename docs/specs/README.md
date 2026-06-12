@@ -37,6 +37,7 @@ Top-level documents stay compact:
 | --- | --- |
 | Portfolio-first review workflow, `analysis_subject` baseline, and `run_portfolio_review.py` orchestration | [portfolio_review_workflow_spec.md](portfolio_review_workflow_spec.md) |
 | Diagnosis-first workflow state classification (`diagnosis_only`, `one_candidate`, `multiple_candidates`) | [workflow_state_spec.md](workflow_state_spec.md) |
+| Client Fit V1 check, questionnaire, source quality, Block 4 evidence boundary, and no-advice boundary | [client_fit_check_spec.md](client_fit_check_spec.md), [client_fit_questionnaire_spec.md](client_fit_questionnaire_spec.md) |
 | Problem Classification diagnostic artifact and evidence-to-diagnosis mapping | [problem_classification_spec.md](problem_classification_spec.md) (V1); [block_4_diagnosis_v3_spec.md](block_4_diagnosis_v3_spec.md) (V3 current) |
 | Candidate Launchpad data artifact and problem-to-hypothesis card mapping | [candidate_launchpad_spec.md](candidate_launchpad_spec.md) (V1); [block_4_diagnosis_v3_spec.md](block_4_diagnosis_v3_spec.md) §5 (V3 current) |
 | Portfolio Alternatives Builder setup, validation, and explicit Block 6 / Block 7 boundary | [portfolio_alternatives_builder_spec.md](portfolio_alternatives_builder_spec.md), [builder_prefill_spec.md](builder_prefill_spec.md), [candidate_setup_spec.md](candidate_setup_spec.md) |

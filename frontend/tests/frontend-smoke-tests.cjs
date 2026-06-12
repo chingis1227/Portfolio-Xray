@@ -106,9 +106,11 @@ test("frontend static journey pages respond on a local Next server", { timeout: 
     await waitForServer(`${baseUrl}/portfolio-input`, child, outputLines);
 
     const pages = [
+      ["/client-profile", /Client Profile|Who is this portfolio for/i],
       ["/portfolio-input", /Portfolio Input|Run diagnosis/i],
       ["/diagnosis", /Diagnosis|Portfolio/i],
       ["/evidence", /Stress Test Lab|X-Ray/i],
+      ["/client-fit", /Client Fit|provided profile/i],
       ["/hypothesis", /Hypothesis|Builder/i],
       ["/comparison", /Comparison|Current/i],
       ["/verdict", /Verdict|Decision/i],

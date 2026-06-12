@@ -19,6 +19,14 @@ call these investment recommendations. Decision Verdict is the only downstream
 product layer that decides whether action is justified after current-vs-candidate
 comparison evidence exists.
 
+Client Fit V1 is accepted as optional backend evidence context via
+`client_fit_check.json`. Evidence extraction may emit `client_fit_status`,
+`goal_risk_conflict`, `client_fit_within_profile`, and `client_fit_<dimension>` signals from that
+artifact. The rulebook may use dimension-level Client Fit signals as supporting or contrary
+evidence for existing diagnoses, but a generic Client Fit breach is not a universal primary
+diagnosis. The only Client Fit primary exception in Block 4 is `goal_risk_conflict`, which is an
+objective-profile consistency outcome and routes to objective review before candidate testing.
+
 ## Public artifacts
 
 Filenames stay unchanged:
@@ -27,6 +35,12 @@ Filenames stay unchanged:
 | --- | --- | --- |
 | Problem Classification | `{output_dir_final}/analysis_subject/problem_classification.json` | `problem_classification_v3` |
 | Candidate Launchpad | `{output_dir_final}/analysis_subject/candidate_launchpad.json` | `candidate_launchpad_v3` |
+
+Optional upstream context:
+
+| Artifact | Path | Schema |
+| --- | --- | --- |
+| Client Fit Check | `{output_dir_final}/analysis_subject/client_fit_check.json` | `client_fit_check_v1` |
 
 ## Product principles
 
@@ -65,6 +79,7 @@ Symptoms:
 Outcome/status diagnoses:
 
 - `current_portfolio_acceptable`
+- `goal_risk_conflict`
 - `mixed_evidence_no_action`
 - `evidence_insufficient_data_quality`
 
@@ -89,6 +104,9 @@ Outcome/status diagnoses:
 - `metric_to_diagnosis_trace`
 - `professional_rationale_refs`
 - `backend_audit`
+- `client_fit_status`
+- `diagnostic_quality_status`
+- `client_fit_context`
 
 `backend_audit` may contain scoring rows and evidence bundles, but those fields
 must not dominate the product surface.
@@ -113,6 +131,14 @@ objects inside `interpretation_chain` for display adapters that should not parse
 backend scoring rows. These fields are source-backed explanation fields, not a
 new formula source and not a rebalance recommendation.
 
+`client_fit_status` and `diagnostic_quality_status` are separate fields. `client_fit_status`
+summarizes the provided profile fit (`fit`, `watch`, `breach`, `conflict`, `not_provided`, or
+`evidence_insufficient`). `diagnostic_quality_status` summarizes portfolio diagnostic quality
+(`clean`, `watch`, `issue`, `material_issue`, or `evidence_insufficient`) from objective Block 4
+evidence. A portfolio can have `client_fit_status = breach` and
+`diagnostic_quality_status = clean`, or `client_fit_status = fit` and
+`diagnostic_quality_status = material_issue`; neither field may overwrite the other.
+
 `next_diagnostic_step` is required and must contain `type`, `label`, `reason`,
 and `decision_boundary`. For `mixed_evidence_no_action` and
 `current_portfolio_acceptable`, the step type is `reference_comparison` and the
@@ -120,6 +146,10 @@ default methods are `equal_weight` and `risk_parity`. For
 `evidence_insufficient_data_quality`, the step is data improvement and must not
 emit Equal Weight / Risk Parity reference tests while comparison evidence is
 unreliable.
+
+For `goal_risk_conflict`, the step type is `client_objective_review`; it asks the user to clarify
+return, volatility, drawdown, and horizon trade-offs before interpreting candidate tests. This is
+not a promise that an optimizer can satisfy inconsistent goals.
 
 ## Confidence and data-quality gates
 
@@ -173,6 +203,8 @@ Each card must include:
 - `is_rebalance_recommendation`
 - `decision_boundary`
 - `not_a_recommendation_disclaimer_en`
+- optional `client_fit_context`
+- optional `client_fit_relevance_en`
 
 Cards are hypotheses or reference tests, not trades. Reference cards use
 `card_type: "reference_benchmark_test"`, `launch_status: "reference_test"`,
@@ -180,6 +212,13 @@ Cards are hypotheses or reference tests, not trades. Reference cards use
 actual rebalance decision is made only after Current vs Candidate Comparison and
 Decision Verdict. Equal Weight is the simple concentration benchmark; Risk
 Parity is the risk-distribution benchmark.
+
+When `client_fit_check.json` is available, Candidate Launchpad may include a compact
+`client_fit_context` and card-level `client_fit_relevance_en`. These fields explain how the
+provided-profile status relates to the test path, but they must not change the objective diagnosis,
+issue trade instructions, or suppress material structural issues. In particular,
+`client_fit_status = fit` plus `diagnostic_quality_status = material_issue` must still leave the
+material diagnosis eligible for a review/test card rather than automatically routing to no-action.
 
 When an actionable primary diagnosis exists, the first card must remain the
 targeted hypothesis for that diagnosis. Equal Weight / Risk Parity reference

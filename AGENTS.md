@@ -19,6 +19,7 @@ Canonical current product flow:
 Input portfolio
 -> Portfolio X-Ray
 -> Stress Test Lab
+-> Client Fit Check
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
@@ -30,7 +31,15 @@ Input portfolio
 
 The current implementation is still CLI/file-driven and partly carries older optimizer/report/scorecard-heavy infrastructure. Treat that older infrastructure as support code unless a task explicitly targets it.
 
-Do **not** describe these as the current Core MVP product flow: Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto/Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If simulator UI, Client-Fit Check, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, full custom constraints UI, multi-client workspace, or polished PDF report product.
+Client Fit V1 is implemented as a non-binding profile-fit layer with active frontend onboarding.
+The web journey starts at `/client-profile`, requires a valid Client Fit profile before diagnosis,
+and shows `/client-fit` after Stress Lab and before Hypothesis. Backend/CLI compatibility remains:
+missing Client Fit writes a `not_provided` compatibility state rather than failing the run. It writes
+`analysis_subject/client_fit_check.json` and can inform Block 4, Launchpad, Builder setup, Current
+vs Candidate display/test criteria, and Verdict context. Treat it as diagnostic context, not
+suitability approval, optimizer mandate, trade advice, or proof that no action is needed.
+
+Do **not** describe these as the current Core MVP product flow: Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto/Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If simulator UI, Client Fit suitability approval, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, full custom constraints UI, multi-client workspace, or polished PDF report product.
 
 If those capabilities exist in code or generated outputs, classify them as `Advanced`, `Backend evidence`, `Technical artifact`, `Legacy`, `Generated support artifact`, or `Future/backlog`; do not treat existence in code as current product truth.
 

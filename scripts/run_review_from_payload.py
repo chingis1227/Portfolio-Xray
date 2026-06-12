@@ -51,6 +51,15 @@ WEIGHT_TOLERANCE = 0.01
 MODE_CORE_ONLY = "core_only"
 MODE_DIAGNOSIS_PLUS_PROBLEM = "diagnosis_plus_problem"
 SUPPORTED_MODES = (MODE_CORE_ONLY, MODE_DIAGNOSIS_PLUS_PROBLEM)
+CLIENT_FIT_PROFILE_IDS = {
+    "ultra_conservative",
+    "conservative",
+    "balanced",
+    "growth",
+    "aggressive",
+}
+CLIENT_FIT_SOURCES = {"questionnaire", "preset_override", "manual_override", "imported", "missing"}
+CLIENT_FIT_SOURCE_QUALITIES = {"high", "medium", "low", "missing"}
 
 
 class PayloadValidationError(ValueError):
@@ -94,6 +103,117 @@ def _positive_weight(value: Any, *, row_number: int) -> float:
     if weight <= 0:
         raise PayloadValidationError(f"holding[{row_number}].weight must be greater than 0.")
     return weight
+
+
+def _client_fit_range(value: Any, *, field_name: str) -> dict[str, float] | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise PayloadValidationError(f"client_fit.{field_name} must be an object.")
+    low = value.get("min")
+    high = value.get("max")
+    if (
+        isinstance(low, bool)
+        or isinstance(high, bool)
+        or not isinstance(low, (int, float))
+        or not isinstance(high, (int, float))
+    ):
+        raise PayloadValidationError(f"client_fit.{field_name}.min and max must be numbers.")
+    low_f = float(low)
+    high_f = float(high)
+    if not (0 <= low_f < high_f <= 1):
+        raise PayloadValidationError(f"client_fit.{field_name} must satisfy 0 <= min < max <= 1.")
+    return {"min": low_f, "max": high_f}
+
+
+def normalize_client_fit(raw: Any) -> dict[str, Any] | None:
+    """Validate and normalize optional Client Fit V1 request context.
+
+    This preserves the full profile for future Client Fit artifacts and maps a
+    few compatible fields into the run config. It does not run Client Fit checks
+    or change diagnosis behavior.
+    """
+
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise PayloadValidationError("client_fit must be an object when provided.")
+
+    source = str(raw.get("source") or "").strip().lower()
+    source_quality = str(raw.get("source_quality") or "").strip().lower()
+    if source not in CLIENT_FIT_SOURCES:
+        raise PayloadValidationError("client_fit.source is invalid.")
+    if source_quality not in CLIENT_FIT_SOURCE_QUALITIES:
+        raise PayloadValidationError("client_fit.source_quality is invalid.")
+
+    normalized: dict[str, Any] = {
+        "source": source,
+        "source_quality": source_quality,
+    }
+    reason = raw.get("source_quality_reason")
+    if reason is not None:
+        if not isinstance(reason, str):
+            raise PayloadValidationError("client_fit.source_quality_reason must be a string.")
+        normalized["source_quality_reason"] = reason.strip()[:240]
+
+    if source == "missing" or source_quality == "missing":
+        if source != "missing" or source_quality != "missing":
+            raise PayloadValidationError(
+                "missing Client Fit profile requires source and source_quality to both be missing."
+            )
+        blocked_fields = (
+            "preset_id",
+            "horizon_years",
+            "target_return_range",
+            "target_vol_range",
+            "target_max_drawdown_pct",
+        )
+        if any(raw.get(field) is not None for field in blocked_fields):
+            raise PayloadValidationError("missing Client Fit profile must not include target fields.")
+        return normalized
+
+    preset_id = raw.get("preset_id")
+    if preset_id is not None:
+        if not isinstance(preset_id, str) or preset_id.strip() not in CLIENT_FIT_PROFILE_IDS:
+            raise PayloadValidationError("client_fit.preset_id is invalid.")
+        normalized["preset_id"] = preset_id.strip()
+
+    horizon_years = raw.get("horizon_years")
+    if horizon_years is not None:
+        if (
+            isinstance(horizon_years, bool)
+            or not isinstance(horizon_years, (int, float))
+            or float(horizon_years) <= 0
+        ):
+            raise PayloadValidationError("client_fit.horizon_years must be a positive number.")
+        normalized["horizon_years"] = float(horizon_years)
+
+    return_range = _client_fit_range(raw.get("target_return_range"), field_name="target_return_range")
+    if return_range is not None:
+        normalized["target_return_range"] = return_range
+    vol_range = _client_fit_range(raw.get("target_vol_range"), field_name="target_vol_range")
+    if vol_range is not None:
+        normalized["target_vol_range"] = vol_range
+
+    max_drawdown = raw.get("target_max_drawdown_pct")
+    if max_drawdown is not None:
+        if (
+            isinstance(max_drawdown, bool)
+            or not isinstance(max_drawdown, (int, float))
+            or not (-1 <= float(max_drawdown) <= 0)
+        ):
+            raise PayloadValidationError(
+                "client_fit.target_max_drawdown_pct must be a decimal from -1 to 0."
+            )
+        normalized["target_max_drawdown_pct"] = float(max_drawdown)
+
+    has_complete_targets = all(
+        key in normalized
+        for key in ("horizon_years", "target_return_range", "target_vol_range", "target_max_drawdown_pct")
+    )
+    if "preset_id" not in normalized and not has_complete_targets:
+        raise PayloadValidationError("client_fit requires preset_id or complete manual targets.")
+    return normalized
 
 
 def normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -166,13 +286,31 @@ def normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
             f"Total weights must equal 100 within {WEIGHT_TOLERANCE} tolerance; got {total_weight}."
         )
 
+    normalized_client_fit = normalize_client_fit(payload.get("client_fit"))
+
     return {
         "investor_currency": investor_currency,
         "holdings": normalized_holdings,
         "tickers": tickers,
         "current_weights": current_weights,
         "total_weight": total_weight,
+        "client_fit": normalized_client_fit,
     }
+
+
+def _range_midpoint(range_value: Any) -> float | None:
+    if not isinstance(range_value, dict):
+        return None
+    low = range_value.get("min")
+    high = range_value.get("max")
+    if (
+        isinstance(low, (int, float))
+        and not isinstance(low, bool)
+        and isinstance(high, (int, float))
+        and not isinstance(high, bool)
+    ):
+        return (float(low) + float(high)) / 2.0
+    return None
 
 
 def build_input_config(normalized: dict[str, Any], run_dir: Path) -> dict[str, Any]:
@@ -180,7 +318,7 @@ def build_input_config(normalized: dict[str, Any], run_dir: Path) -> dict[str, A
         run_dir_for_config = run_dir.relative_to(PROJECT_ROOT).as_posix()
     except ValueError:
         run_dir_for_config = str(run_dir)
-    return {
+    config = {
         "investor_currency": normalized["investor_currency"],
         "tickers": normalized["tickers"],
         "current_weights": normalized["current_weights"],
@@ -189,6 +327,22 @@ def build_input_config(normalized: dict[str, Any], run_dir: Path) -> dict[str, A
         "returns_frequency": "monthly",
         "market_data_provider": "ibkr_yfinance_fallback",
     }
+    client_fit = normalized.get("client_fit")
+    if isinstance(client_fit, dict):
+        config["client_fit"] = dict(client_fit)
+        if client_fit.get("preset_id"):
+            config["client_profile"] = client_fit["preset_id"]
+        if client_fit.get("horizon_years") is not None:
+            config["horizon_years"] = client_fit["horizon_years"]
+        return_midpoint = _range_midpoint(client_fit.get("target_return_range"))
+        if return_midpoint is not None:
+            config["target_nominal_return_annual"] = return_midpoint
+        vol_midpoint = _range_midpoint(client_fit.get("target_vol_range"))
+        if vol_midpoint is not None:
+            config["target_vol_annual"] = vol_midpoint
+        if client_fit.get("target_max_drawdown_pct") is not None:
+            config["target_max_drawdown_pct"] = client_fit["target_max_drawdown_pct"]
+    return config
 
 
 def create_run_dir(base_dir: Path = PROJECT_ROOT / "runs") -> tuple[str, Path]:
@@ -545,6 +699,7 @@ def write_selected_candidate_verdict(
     candidate_generation_path = run_dir / "candidate_generation.json"
     current_vs_path = run_dir / CURRENT_VS_CANDIDATE_FILENAME
     factory_run_path = run_dir / "candidate_factory_run.json"
+    analysis_subject = run_dir / "analysis_subject"
 
     if not candidate_generation_path.is_file():
         raise VerdictBridgeError("candidate_generation.json was not found for this review.")
@@ -588,6 +743,8 @@ def write_selected_candidate_verdict(
         selection=None,
         candidate_generation=candidate_generation,
         current_vs_candidate=current_vs_candidate,
+        client_fit_check=_read_optional_json(analysis_subject / "client_fit_check.json"),
+        problem_classification=_read_optional_json(analysis_subject / "problem_classification.json"),
     )
     verdict_path = paths.get("decision_verdict_json")
     if verdict_path is None or not Path(verdict_path).is_file():
@@ -633,6 +790,7 @@ def write_run_site_explanation_bundle(run_dir: Path, *, review_id: str) -> tuple
         review_id=review_id,
         portfolio_xray=_read_optional_json(analysis_subject / "portfolio_xray.json"),
         stress_report=_read_optional_json(analysis_subject / "stress_report.json"),
+        client_fit_check=_read_optional_json(analysis_subject / "client_fit_check.json"),
         problem_classification=_read_optional_json(analysis_subject / "problem_classification.json"),
         candidate_launchpad=_read_optional_json(analysis_subject / "candidate_launchpad.json"),
         portfolio_alternatives_builder=_read_optional_json(
@@ -760,6 +918,7 @@ def write_selected_report_context(
         monitoring_diff=_read_optional_json(run_dir / "monitoring_diff.json"),
         portfolio_xray=_read_optional_json(analysis_subject / "portfolio_xray.json"),
         stress_report=_read_optional_json(analysis_subject / "stress_report.json"),
+        client_fit_check=_read_optional_json(analysis_subject / "client_fit_check.json"),
     )
 
     ai_context_path = paths.get("ai_commentary_context_json")
@@ -809,16 +968,22 @@ def prepare_selected_builder_setup(
     analysis_subject = run_dir / "analysis_subject"
     launchpad_path = analysis_subject / "candidate_launchpad.json"
     problem_path = analysis_subject / "problem_classification.json"
+    client_fit_path = analysis_subject / "client_fit_check.json"
     if not launchpad_path.is_file():
         raise BuilderSelectionError("candidate_launchpad.json was not found for this review.")
 
     launchpad = _read_json(launchpad_path)
     problem = _read_json(problem_path) if problem_path.is_file() else {}
+    client_fit_check = _read_json(client_fit_path) if client_fit_path.is_file() else None
     card = _selected_card_from_launchpad(launchpad, selected_card_id)
     next_step = problem.get("next_diagnostic_step") if isinstance(problem, dict) else None
     next_step = next_step if isinstance(next_step, dict) else None
 
-    prefill = launchpad_card_to_builder_prefill(card, next_diagnostic_step=next_step)
+    prefill = launchpad_card_to_builder_prefill(
+        card,
+        next_diagnostic_step=next_step,
+        client_fit_check=client_fit_check,
+    )
     overrides: dict[str, Any] = {}
     if method is not None:
         overrides["method"] = method

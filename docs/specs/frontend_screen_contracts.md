@@ -38,10 +38,10 @@ Input
 -> Monitoring / What Changed
 ```
 
-Current MVP frontend route reality is seven visible screens:
+Current MVP frontend route reality includes Client Fit onboarding and display screens:
 
 ```text
-/portfolio-input -> /diagnosis -> /evidence -> /hypothesis -> /comparison -> /verdict -> /report
+/client-profile -> /portfolio-input -> /diagnosis -> /evidence -> /client-fit -> /hypothesis -> /comparison -> /verdict -> /report
 ```
 
 There is no separate `/candidate` route in the current MVP frontend. Candidate / Builder is intentionally documented as merged into `/hypothesis` for MVP until a later UI split is approved.
@@ -402,10 +402,12 @@ Candidate route policy:
 Required sections while merged:
 
 - Selected hypothesis recap.
+- Bounded Client Fit overlay that stays separate from the structural diagnosis and setup constraints.
 - Candidate setup summary: goal, method label, constraints, success criteria, trade-off, skip rule.
 - Generate candidate CTA, visible only when setup is ready.
 - Candidate result summary: candidate name, generated/failed/infeasible status, weights when available, and readiness to compare.
 - Candidate boundary note: this is one diagnostic test, not a recommendation and not a ranking arena.
+- Client Fit pass boundary: a fit result does not hide concentration, stress, drawdown, or other material diagnosis issues.
 
 Core fields / evidence required:
 
@@ -450,6 +452,7 @@ Status/badge taxonomy:
 Required sections:
 
 - Comparison hero: current portfolio vs selected candidate and comparison availability.
+- Bounded Client Fit overlay and target-reference context when available.
 - Success criteria result: met, not met, not evaluated, or unavailable.
 - What improved.
 - What worsened.
@@ -516,6 +519,7 @@ Required sections:
 - Evidence-insufficient explanation when applicable.
 - What would change the verdict.
 - Guardrails: decision support only, no trade execution.
+- Client Fit context as one verdict input, with explicit copy that a fit result does not clear material diagnosis.
 - Next step CTA: generate report, test another hypothesis, return to comparison, or monitor.
 
 Core fields / evidence required:

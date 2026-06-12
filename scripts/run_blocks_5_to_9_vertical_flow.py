@@ -169,6 +169,12 @@ def run_blocks_5_to_9_vertical_flow(
         output_dir=output_dir,
         candidate_generation=candidate_generation,
         current_vs_candidate=current_vs_candidate,
+        client_fit_check=diagnosis_docs.get("client_fit_check")
+        if isinstance(diagnosis_docs.get("client_fit_check"), Mapping)
+        else None,
+        problem_classification=diagnosis_docs.get("problem_classification")
+        if isinstance(diagnosis_docs.get("problem_classification"), Mapping)
+        else None,
     )
     decision_verdict = _read_json_object(verdict_paths["decision_verdict_json"])
     decision_verdict = attach_product_run_metadata(
@@ -251,9 +257,15 @@ def build_selected_builder_document(
     card = select_demo_launchpad_card(launchpad, preferred_method=method, card_id=card_id)
     next_step = problem.get("next_diagnostic_step") if isinstance(problem, Mapping) else None
     next_step = next_step if isinstance(next_step, Mapping) else None
+    client_fit_check = diagnosis_docs.get("client_fit_check")
+    client_fit_check = client_fit_check if isinstance(client_fit_check, Mapping) else None
 
     if isinstance(card, Mapping):
-        prefill = launchpad_card_to_builder_prefill(card, next_diagnostic_step=next_step)
+        prefill = launchpad_card_to_builder_prefill(
+            card,
+            next_diagnostic_step=next_step,
+            client_fit_check=client_fit_check,
+        )
     elif isinstance(existing_builder, Mapping) and isinstance(
         existing_builder.get("builder_prefill"), Mapping
     ):

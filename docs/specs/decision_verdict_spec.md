@@ -16,6 +16,8 @@ It reads:
 
 - either `selection_decision.json` or `candidate_generation.json`;
 - `current_vs_candidate.json`;
+- optional `analysis_subject/client_fit_check.json`;
+- optional `analysis_subject/problem_classification.json`;
 - optional `action_plan.json`.
 
 It writes:
@@ -52,6 +54,7 @@ Top-level shape:
   "selected_candidate_id": "risk_parity",
   "reviewed_candidate_id": "risk_parity",
   "verdict_reason_id": "no_material_rebalance",
+  "decision_action": "keep_current",
   "no_trade": {},
   "recommended_action": "...",
   "confidence": "medium",
@@ -77,11 +80,13 @@ Unknown technical statuses map to `evidence_insufficient`.
 
 ## Direct Block 7/8 Builder
 
-`build_decision_verdict_from_block7_8()` is the Block 9 builder for the vertical product loop. It consumes one `candidate_generation_v1` attempt plus the Block 8 `current_vs_candidate_v1` comparison for the same selected candidate. It keeps the existing `decision_verdict_v1` status vocabulary for compatibility, but adds product-specific evidence fields:
+`build_decision_verdict_from_block7_8()` is the Block 9 builder for the vertical product loop. It consumes one `candidate_generation_v1` attempt plus the Block 8 `current_vs_candidate_v1` comparison for the same selected candidate. It may also consume `client_fit_check.json` and `problem_classification.json` as bounded decision context. It keeps the existing `decision_verdict_v1` status vocabulary for compatibility, but adds product-specific evidence fields:
 
 - `reviewed_candidate_id` records the generated candidate under review even when the final verdict is no-trade or evidence insufficient.
 - `verdict_reason_id` explains the direct Block 9 reason, such as `candidate_generation_failed`, `candidate_generation_infeasible`, `insufficient_data_quality`, `insufficient_optimizer_or_method_quality`, `no_material_rebalance`, `keep_current_portfolio`, `rebalance_when_material`, `test_another_candidate`, or `risk_improved_but_turnover_too_high`.
+- `decision_action` records the non-binding action family (`keep_current`, `test_another_candidate`, `rebalance_review`, `revise_objectives`, or `evidence_insufficient`).
 - `evidence_summary` mirrors the Block 7 generation status, method availability, materiality review, success-criteria result, risk reduced/added, improvements, deteriorations, and practicality/turnover evidence used by the verdict.
+- `evidence_summary.client_fit_decision_context` carries display-ready Client Fit context. It is not raw `client_fit_check.json` and must not be used to treat Client Fit as suitability approval.
 
 Direct outcome mapping:
 
@@ -95,10 +100,18 @@ Direct outcome mapping:
 | Risk improves but turnover or estimated cost is too high | `no_material_rebalance` | `no_material_rebalance_recommended` |
 | Evidence is mixed or the criterion cannot be evaluated clearly enough | `inconclusive` | `test_another_candidate_or_review_evidence` |
 | Candidate shows material improvement, success criteria are not failed, and practicality does not block review | `selected_candidate` | `rebalance_to_selected_candidate` |
+| `client_fit_status = fit` but `diagnostic_quality_status` is `issue` or `material_issue` and the candidate evidence would otherwise produce no-trade | `inconclusive` | `test_another_candidate_or_review_evidence` |
+| `goal_risk_conflict` is present in Client Fit or Problem Classification evidence | `revise_objectives` | `revise_objectives` |
 
 The direct builder uses simple practicality thresholds as Block 9 guardrails: turnover half-sum at or above 50% or estimated transaction cost at or above 0.5% blocks a rebalance verdict and produces a no-trade reason when risk improved. These thresholds are presentation-layer decision guardrails only; they do not change optimizer formulas or candidate weights.
 
 No-trade is valid. Evidence insufficient is valid. A rebalance verdict means "material enough for rebalance review", not automatic trade execution.
+
+Client Fit boundary:
+
+- a Client Fit pass alone cannot produce keep-current/no-trade when the objective diagnosis still has an unresolved issue;
+- a goal-risk conflict routes to objective-review / revise-objectives language before candidate interpretation;
+- Client Fit context is displayed separately from diagnostic quality and decision action.
 
 ### `verdict_family` (UI filtering)
 

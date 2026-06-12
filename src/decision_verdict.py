@@ -40,6 +40,10 @@ STATUS_TO_VERDICT: dict[str, tuple[str, str]] = {
         "risk_reduction_required",
         "Risk reduction required before allocation change",
     ),
+    "revise_objectives": (
+        "revise_objectives",
+        "Revise stated objectives",
+    ),
 }
 
 # UI filtering: Core MVP compare outcomes vs legacy policy mandate semantics.
@@ -49,6 +53,7 @@ STATUS_TO_VERDICT_FAMILY: dict[str, str] = {
     "inconclusive": "core_compare",
     "data_review_required": "core_compare",
     "mandate_risk_reduction": "policy_mandate",
+    "revise_objectives": "core_compare",
 }
 
 HIGH_TURNOVER_HALF_SUM_THRESHOLD = 0.50
@@ -102,6 +107,8 @@ def _recommended_action(
     selection: dict[str, Any] | None,
     action: dict[str, Any] | None,
 ) -> str:
+    if verdict_id == "revise_objectives":
+        return "Review the stated return, risk, drawdown, and horizon objectives before interpreting candidate tests."
     if verdict_id == "no_material_rebalance_recommended":
         return "Keep current portfolio and monitor; no material rebalance is indicated by current thresholds."
     if verdict_id == "evidence_insufficient":
@@ -255,6 +262,17 @@ def _direct_recommended_action(
             f"Candidate {candidate} is material enough for rebalance review; "
             "confirm the documented trade-offs before any implementation."
         )
+    if verdict_id == "revise_objectives":
+        return (
+            "Review the stated return, risk, drawdown, and horizon objectives before interpreting "
+            "candidate tests; do not assume an optimizer can satisfy inconsistent goals."
+        )
+    if reason_id == "client_fit_pass_does_not_clear_material_diagnosis":
+        return (
+            "Client Fit is within the stated profile, but the objective diagnosis still has an "
+            "unresolved issue; review the diagnosis or test another candidate instead of treating "
+            "the fit result as enough to keep the portfolio unchanged."
+        )
     if reason_id == "risk_improved_but_turnover_too_high":
         return (
             "Keep current portfolio for now: risk evidence improved, but the "
@@ -285,6 +303,10 @@ def _direct_rationale(
         return "The comparison or method evidence is degraded or incomplete, so the verdict is evidence insufficient."
     if reason_id == "risk_improved_but_turnover_too_high":
         return "Risk evidence improved, but practicality evidence blocks a rebalance verdict."
+    if reason_id == "goal_risk_conflict":
+        return "The stated objectives contain a goal-risk conflict, so the verdict must review objectives before interpreting candidate evidence."
+    if reason_id == "client_fit_pass_does_not_clear_material_diagnosis":
+        return "Client Fit is a profile overlay only; it cannot clear an unresolved objective diagnosis by itself."
     if reason_id == "rebalance_when_material":
         return "The selected candidate shows material improvement against the available comparison evidence."
     if reason_id == "keep_current_portfolio":
@@ -301,10 +323,135 @@ def _direct_rationale(
     )
 
 
+def _client_fit_status(client_fit_check: dict[str, Any] | None) -> str:
+    if not isinstance(client_fit_check, dict):
+        return "not_provided"
+    return str(client_fit_check.get("client_fit_status") or "not_provided")
+
+
+def _diagnostic_quality_status(problem_classification: dict[str, Any] | None) -> str:
+    if not isinstance(problem_classification, dict):
+        return "unknown"
+    status = problem_classification.get("diagnostic_quality_status")
+    if isinstance(status, str) and status.strip():
+        return status.strip()
+    chain = problem_classification.get("interpretation_chain")
+    if isinstance(chain, dict) and isinstance(chain.get("diagnostic_quality_status"), str):
+        return str(chain["diagnostic_quality_status"]).strip()
+    return "unknown"
+
+
+def _has_goal_risk_conflict(
+    *,
+    client_fit_status: str,
+    client_fit_check: dict[str, Any] | None,
+    problem_classification: dict[str, Any] | None,
+) -> bool:
+    if client_fit_status == "conflict":
+        return True
+    if isinstance(client_fit_check, dict):
+        conflict = client_fit_check.get("goal_risk_conflict")
+        if isinstance(conflict, dict) and conflict.get("status") == "conflict":
+            return True
+    if isinstance(problem_classification, dict):
+        primary = problem_classification.get("primary_problem") or problem_classification.get("primary_diagnosis")
+        if isinstance(primary, dict) and primary.get("problem_id") == "goal_risk_conflict":
+            return True
+    return False
+
+
+def _decision_action_for_status(status: str, reason_id: str) -> str:
+    if status == "revise_objectives" or reason_id == "goal_risk_conflict":
+        return "revise_objectives"
+    if status in {"data_review_required", "candidate_failed_or_infeasible"}:
+        return "evidence_insufficient"
+    if status == "selected_candidate":
+        return "rebalance_review"
+    if status == "inconclusive":
+        return "test_another_candidate"
+    if status == "no_material_rebalance":
+        return "keep_current"
+    return "evidence_insufficient"
+
+
+def _client_fit_decision_context(
+    *,
+    client_fit_check: dict[str, Any] | None,
+    problem_classification: dict[str, Any] | None,
+    decision_action: str,
+    reason_id: str,
+) -> dict[str, Any]:
+    client_fit_status = _client_fit_status(client_fit_check)
+    diagnostic_quality_status = _diagnostic_quality_status(problem_classification)
+    profile = client_fit_check.get("profile") if isinstance(client_fit_check, dict) else None
+    profile = profile if isinstance(profile, dict) else {}
+    if decision_action == "revise_objectives":
+        tone = "red"
+        next_test = "Review objectives before testing another candidate."
+        status_label = "Goal-risk conflict"
+    elif client_fit_status == "fit":
+        tone = "green"
+        next_test = "Use diagnosis and comparison evidence before deciding whether to monitor or test another candidate."
+        status_label = "Within stated Client Fit profile"
+    elif client_fit_status in {"watch", "breach"}:
+        tone = "amber" if client_fit_status == "watch" else "red"
+        next_test = "Review profile-risk evidence and test a candidate only as a diagnostic hypothesis."
+        status_label = "Client Fit review needed"
+    elif client_fit_status == "evidence_insufficient":
+        tone = "amber"
+        next_test = "Complete missing Client Fit evidence before making a profile-fit conclusion."
+        status_label = "Client Fit evidence insufficient"
+    else:
+        tone = "amber"
+        next_test = "No Client Fit conclusion is available for this backend-compatible run."
+        status_label = "Client Fit not provided"
+    return {
+        "client_fit_status": client_fit_status,
+        "diagnostic_quality_status": diagnostic_quality_status,
+        "decision_action": decision_action,
+        "status_label": status_label,
+        "status_tone": tone,
+        "profile_label": profile.get("preset_id"),
+        "source_quality_label": profile.get("source_quality"),
+        "reason_id": reason_id,
+        "boundary_en": (
+            "Client Fit is a non-binding diagnostic overlay. It cannot by itself approve keeping "
+            "the current portfolio, trigger a rebalance, or clear unresolved objective diagnosis."
+        ),
+        "next_best_test_en": next_test,
+    }
+
+
+def _apply_client_fit_verdict_boundary(
+    *,
+    status: str,
+    reason_id: str,
+    client_fit_check: dict[str, Any] | None,
+    problem_classification: dict[str, Any] | None,
+) -> tuple[str, str]:
+    client_fit_status = _client_fit_status(client_fit_check)
+    diagnostic_quality_status = _diagnostic_quality_status(problem_classification)
+    if _has_goal_risk_conflict(
+        client_fit_status=client_fit_status,
+        client_fit_check=client_fit_check,
+        problem_classification=problem_classification,
+    ):
+        return "revise_objectives", "goal_risk_conflict"
+    if (
+        client_fit_status == "fit"
+        and diagnostic_quality_status in {"issue", "material_issue"}
+        and status == "no_material_rebalance"
+    ):
+        return "inconclusive", "client_fit_pass_does_not_clear_material_diagnosis"
+    return status, reason_id
+
+
 def build_decision_verdict_from_block7_8(
     *,
     candidate_generation: dict[str, Any] | None,
     current_vs_candidate: dict[str, Any] | None,
+    client_fit_check: dict[str, Any] | None = None,
+    problem_classification: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build Block 9 directly from Block 7 and Block 8 evidence.
 
@@ -411,14 +558,22 @@ def build_decision_verdict_from_block7_8(
         status = "no_material_rebalance"
         reason_id = "no_material_rebalance"
 
+    status, reason_id = _apply_client_fit_verdict_boundary(
+        status=status,
+        reason_id=reason_id,
+        client_fit_check=client_fit_check,
+        problem_classification=problem_classification,
+    )
+
     verdict_id, verdict_label = STATUS_TO_VERDICT.get(
         status,
         ("evidence_insufficient", "Evidence insufficient"),
     )
     verdict_family = STATUS_TO_VERDICT_FAMILY.get(status, "core_compare")
     confidence = "low" if status in {"data_review_required", "inconclusive", "candidate_failed_or_infeasible"} else "medium"
+    decision_action = _decision_action_for_status(status, reason_id)
     no_trade_applies = status == "no_material_rebalance"
-    no_trade_evaluated = status not in {"data_review_required", "candidate_failed_or_infeasible"}
+    no_trade_evaluated = status not in {"data_review_required", "candidate_failed_or_infeasible", "revise_objectives"}
     no_trade_source = {
         "source": "block_7_8_direct_evidence",
         "reason_id": reason_id,
@@ -439,6 +594,7 @@ def build_decision_verdict_from_block7_8(
         "selected_candidate_id": selected_candidate_id if status == "selected_candidate" else None,
         "reviewed_candidate_id": selected_candidate_id,
         "verdict_reason_id": reason_id,
+        "decision_action": decision_action,
         "no_trade": {
             "evaluated": no_trade_evaluated,
             "applies": no_trade_applies,
@@ -467,6 +623,12 @@ def build_decision_verdict_from_block7_8(
             ),
             "materiality_for_decision_review": materiality or None,
             "success_criteria_result": success or None,
+            "client_fit_decision_context": _client_fit_decision_context(
+                client_fit_check=client_fit_check,
+                problem_classification=problem_classification,
+                decision_action=decision_action,
+                reason_id=reason_id,
+            ),
             "risk_reduced": row.get("risk_reduced") if isinstance(row, dict) else [],
             "risk_added": row.get("risk_added") if isinstance(row, dict) else [],
             "what_improved": row.get("what_improved") if isinstance(row, dict) else [],
@@ -481,6 +643,12 @@ def build_decision_verdict_from_block7_8(
             "current_vs_candidate": "current_vs_candidate.json"
             if isinstance(current_vs_candidate, dict)
             else None,
+            "client_fit_check": "client_fit_check.json"
+            if isinstance(client_fit_check, dict)
+            else None,
+            "problem_classification": "problem_classification.json"
+            if isinstance(problem_classification, dict)
+            else None,
             "action_plan": None,
         },
         "guardrails": {
@@ -489,6 +657,8 @@ def build_decision_verdict_from_block7_8(
             "does_not_execute_trades": True,
             "does_not_claim_best_portfolio": True,
             "does_not_hide_tradeoffs": True,
+            "client_fit_pass_does_not_clear_material_diagnosis": True,
+            "goal_risk_conflict_routes_to_objective_review": True,
         },
     }
 
@@ -498,10 +668,18 @@ def build_decision_verdict(
     selection: dict[str, Any] | None,
     current_vs_candidate: dict[str, Any] | None = None,
     action: dict[str, Any] | None = None,
+    client_fit_check: dict[str, Any] | None = None,
+    problem_classification: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build product-facing verdict from existing technical artifacts."""
 
     status = _selection_status(selection)
+    status, reason_id = _apply_client_fit_verdict_boundary(
+        status=status,
+        reason_id=str((selection or {}).get("verdict_reason_id") or status),
+        client_fit_check=client_fit_check,
+        problem_classification=problem_classification,
+    )
     verdict_id, verdict_label = STATUS_TO_VERDICT.get(
         status,
         ("evidence_insufficient", "Evidence insufficient"),
@@ -516,6 +694,7 @@ def build_decision_verdict(
     rationale_summary = rationale.get("summary") if isinstance(rationale, dict) else None
 
     verdict_family = STATUS_TO_VERDICT_FAMILY.get(status, "core_compare")
+    decision_action = _decision_action_for_status(status, reason_id)
 
     return {
         "schema_version": DECISION_VERDICT_VERSION,
@@ -525,6 +704,7 @@ def build_decision_verdict(
         "verdict_label": verdict_label,
         "verdict_family": verdict_family,
         "selection_decision_status": status,
+        "decision_action": decision_action,
         "baseline_candidate_id": baseline_id,
         "selected_candidate_id": favored_id,
         "no_trade": {
@@ -544,6 +724,14 @@ def build_decision_verdict(
             current_vs_candidate=current_vs_candidate,
         ),
         "rationale_summary": rationale_summary,
+        "evidence_summary": {
+            "client_fit_decision_context": _client_fit_decision_context(
+                client_fit_check=client_fit_check,
+                problem_classification=problem_classification,
+                decision_action=decision_action,
+                reason_id=reason_id,
+            ),
+        },
         "source_artifacts": {
             "selection_decision": (
                 selection.get("source_artifact", "selection_decision.json")
@@ -553,12 +741,20 @@ def build_decision_verdict(
             "current_vs_candidate": "current_vs_candidate.json"
             if isinstance(current_vs_candidate, dict)
             else None,
+            "client_fit_check": "client_fit_check.json"
+            if isinstance(client_fit_check, dict)
+            else None,
+            "problem_classification": "problem_classification.json"
+            if isinstance(problem_classification, dict)
+            else None,
             "action_plan": "action_plan.json" if isinstance(action, dict) else None,
         },
         "guardrails": {
             "does_not_rename_selection_engine_contract": True,
             "does_not_change_selection_formulas": True,
             "does_not_execute_trades": True,
+            "client_fit_pass_does_not_clear_material_diagnosis": True,
+            "goal_risk_conflict_routes_to_objective_review": True,
         },
     }
 
@@ -570,6 +766,8 @@ def write_decision_verdict_outputs(
     current_vs_candidate: dict[str, Any] | None = None,
     action: dict[str, Any] | None = None,
     candidate_generation: dict[str, Any] | None = None,
+    client_fit_check: dict[str, Any] | None = None,
+    problem_classification: dict[str, Any] | None = None,
 ) -> dict[str, Path]:
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -579,12 +777,16 @@ def write_decision_verdict_outputs(
         doc = build_decision_verdict_from_block7_8(
             candidate_generation=candidate_generation,
             current_vs_candidate=current_vs_candidate,
+            client_fit_check=client_fit_check,
+            problem_classification=problem_classification,
         )
     else:
         doc = build_decision_verdict(
             selection=selection,
             current_vs_candidate=current_vs_candidate,
             action=action,
+            client_fit_check=client_fit_check,
+            problem_classification=problem_classification,
         )
     path = out / DECISION_VERDICT_FILENAME
     with open(path, "w", encoding="utf-8") as f:

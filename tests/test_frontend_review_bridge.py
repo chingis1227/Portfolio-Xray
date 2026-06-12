@@ -87,6 +87,45 @@ def test_normalize_payload_maps_frontend_percent_and_preserves_real_cash() -> No
     }
     assert normalized["holdings"][-1]["type"] == "cash"
     assert normalized["holdings"][-1]["ticker"] == "Cash USD"
+    assert normalized["client_fit"] is None
+
+
+def test_client_fit_payload_is_preserved_and_mapped_to_input_config(tmp_path: Path) -> None:
+    payload = sample_payload()
+    payload["client_fit"] = {
+        "preset_id": "growth",
+        "source": "manual_override",
+        "source_quality": "high",
+        "source_quality_reason": "User supplied complete manual targets.",
+        "horizon_years": 8,
+        "target_return_range": {"min": 0.07, "max": 0.10},
+        "target_vol_range": {"min": 0.10, "max": 0.14},
+        "target_max_drawdown_pct": -0.275,
+    }
+
+    normalized = bridge.normalize_payload(payload)
+    config = bridge.build_input_config(normalized, bridge.PROJECT_ROOT / "runs" / "frontend_review_client_fit")
+
+    assert normalized["client_fit"] == payload["client_fit"]
+    assert config["client_fit"] == payload["client_fit"]
+    assert config["client_profile"] == "growth"
+    assert config["horizon_years"] == 8.0
+    assert config["target_nominal_return_annual"] == pytest.approx(0.085)
+    assert config["target_vol_annual"] == pytest.approx(0.12)
+    assert config["target_max_drawdown_pct"] == -0.275
+
+
+def test_client_fit_payload_rejects_invalid_range() -> None:
+    payload = sample_payload()
+    payload["client_fit"] = {
+        "preset_id": "balanced",
+        "source": "questionnaire",
+        "source_quality": "medium",
+        "target_return_range": {"min": 0.08, "max": 0.05},
+    }
+
+    with pytest.raises(bridge.PayloadValidationError, match="target_return_range"):
+        bridge.normalize_payload(payload)
 
 
 def test_create_run_dir_creates_unique_frontend_review_dirs_for_100_users(tmp_path: Path) -> None:

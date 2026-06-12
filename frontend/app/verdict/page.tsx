@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
+import { ClientFitContextCard } from "@/components/client-fit/ClientFitContextCard";
 import { VerdictPanel } from "@/components/verdict/VerdictPanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
@@ -174,6 +175,7 @@ export default function VerdictPage() {
   const staleComparisonIgnored = Boolean(comparison && selectedCardId && candidateId && !comparisonMatchesCandidate);
   const generationFailed = isFailedCandidateGeneration(candidateGeneration?.status);
   const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
+  const clientFitForStage = verdict?.clientFit ?? comparison?.clientFit ?? activeReview?.reviewSummary?.clientFit;
 
   useEffect(() => {
     setVerdictError(undefined);
@@ -366,6 +368,12 @@ export default function VerdictPage() {
               keyEvidence={verdict.keyEvidence}
               monitoringTrigger={verdict.monitoringTrigger}
               metrics={verdict.metrics}
+            />
+            <ClientFitContextCard
+              clientFit={clientFitForStage}
+              title="Client Fit is one input to the verdict"
+              description="The verdict combines Client Fit, objective diagnosis, comparison evidence, and confidence limitations without letting any single green profile result override a material issue."
+              structuralIssueNote="Client Fit pass plus a material diagnosis issue should still lead to monitor, review, or test-candidate framing rather than an automatic no-action conclusion."
             />
             <section className="grid gap-4 lg:grid-cols-3">
               <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">

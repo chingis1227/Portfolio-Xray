@@ -2251,6 +2251,7 @@ def write_block8_current_vs_candidate_only_outputs(
         factory_run = _load_factory_run(out_dir)
     if candidate_generation is None:
         candidate_generation = _load_json(out_dir / "candidate_generation.json")
+    client_fit_check = _load_json(out_dir / ANALYSIS_SUBJECT_SIDECAR_SUBDIR / "client_fit_check.json")
     selected_candidate_ids = _block8_only_candidate_ids(
         explicit_candidate_ids=candidate_ids,
         candidate_generation=candidate_generation,
@@ -2294,6 +2295,7 @@ def write_block8_current_vs_candidate_only_outputs(
         selection=None,
         candidate_ids=selected_candidate_ids,
         candidate_generation=candidate_generation,
+        client_fit_check=client_fit_check,
     )
     current_vs_candidate = _add_block8_boundary(
         current_vs_candidate,
@@ -2315,6 +2317,7 @@ def write_block8_current_vs_candidate_only_outputs(
             review_id=str(product_doc.get("config_fingerprint") or product_doc.get("analysis_end") or ""),
             portfolio_xray=diagnosis_bundle.get("portfolio_xray"),
             stress_report=diagnosis_bundle.get("stress_report"),
+            client_fit_check=diagnosis_bundle.get("client_fit_check"),
             problem_classification=diagnosis_bundle.get("problem_classification"),
             candidate_launchpad=diagnosis_bundle.get("candidate_launchpad"),
             portfolio_alternatives_builder=diagnosis_bundle.get("portfolio_alternatives_builder"),
@@ -2918,12 +2921,16 @@ def write_candidate_comparison_outputs(
 
     from src.current_vs_candidate import write_current_vs_candidate_outputs
 
+    client_fit_check_doc = _load_json(
+        out_dir / ANALYSIS_SUBJECT_SIDECAR_SUBDIR / "client_fit_check.json"
+    )
     paths.update(
         write_current_vs_candidate_outputs(
             output_dir=out_dir,
             comparison=product_comparison,
             selection=selection_doc,
             candidate_ids=product_candidate_ids or None,
+            client_fit_check=client_fit_check_doc,
         )
     )
     current_vs_candidate_doc = _load_json(
@@ -3030,20 +3037,6 @@ def write_candidate_comparison_outputs(
         action_doc = _load_json(paths.get("action_plan_json") or out_dir / "action_plan.json")
 
     from src.decision_verdict import write_decision_verdict_outputs
-
-    paths.update(
-        write_decision_verdict_outputs(
-            output_dir=out_dir,
-            selection=selection_doc,
-            current_vs_candidate=current_vs_candidate_doc,
-            action=action_doc,
-        )
-    )
-    decision_verdict_doc = _load_json(
-        paths.get("decision_verdict_json") or out_dir / "decision_verdict.json"
-    )
-
-    from src.ai_commentary_context import write_ai_commentary_context_outputs
     from src.product_bundle_paths import (
         build_output_manifest_discovery_extra,
         build_product_first_generated_paths,
@@ -3056,6 +3049,23 @@ def write_candidate_comparison_outputs(
     portfolio_alternatives_builder_doc = diagnosis_bundle.get("portfolio_alternatives_builder")
     portfolio_xray_doc = diagnosis_bundle.get("portfolio_xray")
     stress_report_doc = diagnosis_bundle.get("stress_report")
+    client_fit_check_doc = diagnosis_bundle.get("client_fit_check") or client_fit_check_doc
+
+    paths.update(
+        write_decision_verdict_outputs(
+            output_dir=out_dir,
+            selection=selection_doc,
+            current_vs_candidate=current_vs_candidate_doc,
+            action=action_doc,
+            client_fit_check=client_fit_check_doc,
+            problem_classification=problem_classification_doc,
+        )
+    )
+    decision_verdict_doc = _load_json(
+        paths.get("decision_verdict_json") or out_dir / "decision_verdict.json"
+    )
+
+    from src.ai_commentary_context import write_ai_commentary_context_outputs
     candidate_generation_doc = _load_json(out_dir / "candidate_generation.json")
 
     paths.update(
@@ -3072,6 +3082,7 @@ def write_candidate_comparison_outputs(
             candidate_generation=candidate_generation_doc,
             portfolio_xray=portfolio_xray_doc,
             stress_report=stress_report_doc,
+            client_fit_check=client_fit_check_doc,
         )
     )
 
@@ -3116,6 +3127,7 @@ def write_candidate_comparison_outputs(
             review_id=str(comparison.get("config_fingerprint") or comparison.get("analysis_end") or ""),
             portfolio_xray=portfolio_xray_doc,
             stress_report=stress_report_doc,
+            client_fit_check=client_fit_check_doc,
             problem_classification=problem_classification_doc,
             candidate_launchpad=candidate_launchpad_doc,
             portfolio_alternatives_builder=portfolio_alternatives_builder_doc,

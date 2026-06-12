@@ -49,6 +49,8 @@ from src.api.models import (
     CandidateIdRequest,
     CandidateResponse,
     CandidateSummary,
+    ClientFitDisplaySummary,
+    ClientFitTargetDisplayRow,
     ComparisonData,
     ComparisonIdRequest,
     ComparisonResponse,
@@ -128,6 +130,119 @@ def _string_list(value: Any) -> list[str]:
     return [str(item).strip() for item in _list(value) if item is not None and str(item).strip()]
 
 
+def _format_api_percent(value: Any) -> str | None:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    return f"{float(value) * 100:.1f}%"
+
+
+def _client_fit_tone(status: Any) -> str:
+    normalized = str(status or "").strip().lower()
+    if normalized == "fit":
+        return "green"
+    if normalized in {"breach", "conflict"}:
+        return "red"
+    return "amber"
+
+
+def _client_fit_status_label(status: Any) -> str:
+    normalized = str(status or "").strip().lower()
+    labels = {
+        "fit": "Within stated Client Fit profile",
+        "watch": "Client Fit watch",
+        "breach": "Outside stated Client Fit limits",
+        "conflict": "Goal-risk conflict",
+        "evidence_insufficient": "Client Fit evidence insufficient",
+        "not_provided": "Client Fit not provided",
+    }
+    return labels.get(normalized, "Client Fit not provided")
+
+
+def _client_fit_dimension_label(dimension: Any) -> str:
+    key = str(dimension or "").strip()
+    labels = {
+        "return_target_gap": "Return target",
+        "volatility_vs_target": "Volatility comfort range",
+        "historical_max_drawdown_vs_limit": "Historical drawdown limit",
+        "worst_stress_loss_vs_limit": "Worst stress loss limit",
+        "horizon_risk_mismatch": "Investment horizon",
+        "goal_risk_conflict": "Goal-risk consistency",
+    }
+    return labels.get(key, key.replace("_", " ").title() if key else "Client Fit check")
+
+
+def _client_fit_target_label(row: dict[str, Any]) -> str | None:
+    client_range = _record(row.get("client_range"))
+    if client_range:
+        lo = _format_api_percent(client_range.get("min"))
+        hi = _format_api_percent(client_range.get("max"))
+        if lo and hi:
+            return f"{lo} to {hi}"
+    limit = _format_api_percent(row.get("client_limit"))
+    if limit:
+        return f"Limit: {limit}"
+    if row.get("client_limit") is None and row.get("dimension") == "horizon_risk_mismatch":
+        horizon = row.get("portfolio_value")
+        if isinstance(horizon, (int, float)) and not isinstance(horizon, bool):
+            return f"{float(horizon):.0f} years"
+    return None
+
+
+def _client_fit_rows_for_api(client_fit_check: dict[str, Any]) -> list[ClientFitTargetDisplayRow]:
+    rows: list[ClientFitTargetDisplayRow] = []
+    for raw_row in _list(client_fit_check.get("checks")):
+        row = _record(raw_row)
+        if not row:
+            continue
+        rows.append(
+            ClientFitTargetDisplayRow(
+                dimension_label=_client_fit_dimension_label(row.get("dimension")),
+                portfolio_value_label=_format_api_percent(row.get("portfolio_value"))
+                or (str(row.get("portfolio_value")) if row.get("portfolio_value") is not None else None),
+                target_or_limit_label=_client_fit_target_label(row),
+                status_label=_client_fit_status_label(row.get("status")),
+                status_tone=_client_fit_tone(row.get("status")),  # type: ignore[arg-type]
+                explanation=_text(row.get("interpretation")),
+            )
+        )
+    return rows[:6]
+
+
+def _client_fit_display_summary(
+    client_fit_check: dict[str, Any] | None = None,
+    *,
+    decision_context: dict[str, Any] | None = None,
+) -> ClientFitDisplaySummary:
+    context = _record(decision_context)
+    check = _record(client_fit_check)
+    status = _text(context.get("client_fit_status"), check.get("client_fit_status"), "not_provided")
+    profile = _record(check.get("profile"))
+    checks = [_record(item) for item in _list(check.get("checks"))]
+    first_non_fit = next(
+        (
+            row
+            for row in checks
+            if _text(row.get("status")) not in {None, "", "fit"}
+        ),
+        {},
+    )
+    return ClientFitDisplaySummary(
+        status_label=_text(context.get("status_label")) or _client_fit_status_label(status),
+        status_tone=_text(context.get("status_tone")) or _client_fit_tone(status),  # type: ignore[arg-type]
+        profile_label=_text(context.get("profile_label"), profile.get("preset_id")),
+        source_quality_label=_text(context.get("source_quality_label"), profile.get("source_quality")),
+        target_rows=_client_fit_rows_for_api(check),
+        main_explanation=_text(
+            context.get("next_best_test_en"),
+            first_non_fit.get("interpretation"),
+            check.get("recommendation_boundary"),
+        ),
+        decision_boundary=_text(context.get("boundary_en"), check.get("recommendation_boundary"))
+        or ClientFitDisplaySummary().decision_boundary,
+        next_best_test=_text(context.get("next_best_test_en")),
+    )
+
+
 def _safe_ref(value: Any, *, fallback: str) -> str:
     if not isinstance(value, str) or not value.strip():
         return fallback
@@ -146,6 +261,7 @@ def _artifact_refs(paths: dict[str, Any]) -> list[ArtifactRef]:
         "problem_classification",
         "candidate_launchpad",
         "portfolio_alternatives_builder",
+        "client_fit_check",
         "ai_commentary_context",
         "site_explanation_bundle",
     }
@@ -205,10 +321,13 @@ def _request_to_bridge_payload(request: CreateReviewRequest) -> dict[str, Any]:
             }
         )
 
-    return {
+    payload: dict[str, Any] = {
         "investor_currency": request.portfolio.investor_currency,
         "holdings": holdings,
     }
+    if request.client_fit is not None:
+        payload["client_fit"] = request.client_fit.model_dump(mode="json", exclude_none=True)
+    return payload
 
 
 def _review_summary(review_result: dict[str, Any], outputs: dict[str, Any]) -> ReviewSummary:
@@ -456,12 +575,19 @@ def _warnings_from_outputs(outputs: dict[str, Any]) -> list[str]:
 def _created_data(review_result: dict[str, Any]) -> ReviewCreatedData:
     outputs = _record(review_result.get("outputs"))
     paths = _record(review_result.get("paths"))
+    review_id = _text(review_result.get("review_id"))
+    client_fit_check = _record(outputs.get("client_fit_check"))
+    if not client_fit_check and review_id:
+        client_fit_check = _read_run_local_json_or_empty(review_id, "analysis_subject/client_fit_check.json")
+        if client_fit_check and "client_fit_check" not in paths:
+            paths = {**paths, "client_fit_check": f"runs/{review_id}/analysis_subject/client_fit_check.json"}
     launchpad = _launchpad_summary(outputs)
     has_generatable_card = any(card.generation_allowed for card in launchpad)
     next_allowed = ["prepare_builder" if has_generatable_card else "resolve_data_quality", "recover_review"]
     return ReviewCreatedData(
         review_summary=_review_summary(review_result, outputs),
         diagnosis=_diagnosis_summary(outputs),
+        client_fit=_client_fit_display_summary(client_fit_check),
         launchpad=launchpad,
         next_allowed_actions=next_allowed,  # type: ignore[arg-type]
         artifact_refs=_artifact_refs(paths),
@@ -507,7 +633,7 @@ def _error_code_for_stage_exception(exc: BaseException, *, stage: str) -> tuple[
         return (
             409,
             "candidate_generation_blocked" if stage == "candidate" else "data_quality_blocker",
-            "select_another_card",
+            "return_to_hypothesis",
             False,
         )
     return 500, "backend_failed", "retry", True
@@ -1258,6 +1384,7 @@ def _comparison_data(
     current_vs_candidate: dict[str, Any],
     candidate_id: str | None,
     candidate_generation: dict[str, Any] | None = None,
+    client_fit_check: dict[str, Any] | None = None,
 ) -> ComparisonData:
     row = _first_comparison_row(current_vs_candidate, candidate_id)
     comparison_id = _comparison_id_for_candidate(_text(row.get("candidate_id"), candidate_id))
@@ -1279,6 +1406,7 @@ def _comparison_data(
             materiality=_materiality(row.get("materiality_for_decision_review")),  # type: ignore[arg-type]
         ),
         evidence_chain_context=evidence_chain_context,
+        client_fit=_client_fit_display_summary(client_fit_check),
         next_allowed_actions=["generate_verdict"] if has_row else ["test_another_hypothesis"],  # type: ignore[list-item]
     )
 
@@ -1324,10 +1452,12 @@ def run_current_vs_candidate(
 
     current_vs_candidate = _record(result.get("current_vs_candidate"))
     candidate_generation = _read_run_local_json_or_empty(review_id, "candidate_generation.json")
+    client_fit_check = _read_run_local_json_or_empty(review_id, "analysis_subject/client_fit_check.json")
     data = _comparison_data(
         current_vs_candidate,
         _text(result.get("candidate_id"), request.candidate_id),
         candidate_generation,
+        client_fit_check,
     )
     candidate_id = _text(result.get("candidate_id"), request.candidate_id)
     comparison_id = data.comparison.comparison_id
@@ -1395,6 +1525,7 @@ def _verdict_data(
     candidate_generation: dict[str, Any] | None = None,
     current_vs_candidate: dict[str, Any] | None = None,
     candidate_id: str | None = None,
+    client_fit_check: dict[str, Any] | None = None,
 ) -> VerdictData:
     verdict_id = _text(verdict.get("verdict_id"))
     comparison_row = _first_comparison_row(_record(current_vs_candidate), candidate_id)
@@ -1430,6 +1561,7 @@ def _verdict_data(
         comparison_row=comparison_row,
         verdict=verdict,
     )
+    client_fit_context = _record(evidence_summary.get("client_fit_decision_context"))
     next_allowed: list[str] = ["generate_report"]
     if verdict_id in {"test_another_candidate_or_review_evidence", "evidence_insufficient"}:
         next_allowed.append("test_another_hypothesis")
@@ -1445,6 +1577,7 @@ def _verdict_data(
             decision_support_only=True,
         ),
         evidence_chain_context=evidence_chain_context,
+        client_fit=_client_fit_display_summary(client_fit_check, decision_context=client_fit_context),
         next_allowed_actions=next_allowed,  # type: ignore[arg-type]
     )
 
@@ -1498,7 +1631,8 @@ def generate_decision_verdict(
     verdict = _record(result.get("decision_verdict"))
     candidate_generation = _read_run_local_json_or_empty(review_id, "candidate_generation.json")
     current_vs_candidate = _read_run_local_json_or_empty(review_id, "current_vs_candidate.json")
-    data = _verdict_data(verdict, candidate_generation, current_vs_candidate, candidate_id)
+    client_fit_check = _read_run_local_json_or_empty(review_id, "analysis_subject/client_fit_check.json")
+    data = _verdict_data(verdict, candidate_generation, current_vs_candidate, candidate_id, client_fit_check)
     verdict_id = data.verdict.verdict_id
     refs = [
         _stage_artifact_ref("candidate_generation", f"runs/{review_id}/candidate_generation.json"),
@@ -1544,6 +1678,7 @@ def _report_data(
     current_vs_candidate: dict[str, Any] | None = None,
     verdict: dict[str, Any] | None = None,
     candidate_id: str | None = None,
+    client_fit_check: dict[str, Any] | None = None,
 ) -> ReportData:
     draft = _record(ai_context.get("client_explanation_draft"))
     sentences = [_record(item) for item in _list(draft.get("sentences"))]
@@ -1583,6 +1718,7 @@ def _report_data(
         verdict=_record(verdict),
         ai_context=ai_context,
     )
+    client_fit_context = _record(_record(_record(verdict).get("evidence_summary")).get("client_fit_decision_context"))
     return ReportData(
         report_preview=ReportPreview(
             executive_summary=all_text[0] if all_text else None,
@@ -1618,6 +1754,7 @@ def _report_data(
             unavailable_sections=unavailable_sections,
         ),
         evidence_chain_context=evidence_chain_context,
+        client_fit=_client_fit_display_summary(client_fit_check, decision_context=client_fit_context),
         llm_generated=False,
     )
 
@@ -1675,7 +1812,8 @@ def generate_report_grounding(
     candidate_generation = _read_run_local_json_or_empty(review_id, "candidate_generation.json")
     current_vs_candidate = _read_run_local_json_or_empty(review_id, "current_vs_candidate.json")
     verdict = _read_run_local_json_or_empty(review_id, "decision_verdict.json")
-    data = _report_data(ai_context, candidate_generation, current_vs_candidate, verdict, candidate_id)
+    client_fit_check = _read_run_local_json_or_empty(review_id, "analysis_subject/client_fit_check.json")
+    data = _report_data(ai_context, candidate_generation, current_vs_candidate, verdict, candidate_id, client_fit_check)
     refs = [
         _stage_artifact_ref("candidate_generation", f"runs/{review_id}/candidate_generation.json"),
         _stage_artifact_ref("current_vs_candidate", f"runs/{review_id}/current_vs_candidate.json"),

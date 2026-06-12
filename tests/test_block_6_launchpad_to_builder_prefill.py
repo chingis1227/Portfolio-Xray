@@ -159,3 +159,33 @@ def test_launchpad_card_to_builder_prefill_blocks_data_quality_without_candidate
     assert BUILDER_PREFILL_PROHIBITED_FIELDS.isdisjoint(prefill)
     assert not builder_prefill_contract_violations(prefill)
     assert not builder_prefill_product_contract_violations(prefill)
+
+
+def test_client_fit_targets_are_builder_success_criteria_not_optimizer_mandates() -> None:
+    client_fit_check = {
+        "schema_version": "client_fit_check_v1",
+        "client_fit_status": "watch",
+        "profile": {
+            "preset_id": "balanced",
+            "source_quality": "high",
+            "horizon_years": 7,
+            "target_return_range": {"min": 0.05, "max": 0.07},
+            "target_vol_range": {"min": 0.07, "max": 0.10},
+            "target_max_drawdown_pct": -0.20,
+        },
+    }
+
+    prefill = launchpad_card_to_builder_prefill(
+        _launchpad_card(),
+        client_fit_check=client_fit_check,
+    )
+
+    assert "Compare return against the stated Client Fit target range." in prefill["success_criteria"]
+    assert "Compare volatility against the stated Client Fit comfort range." in prefill["success_criteria"]
+    assert prefill["client_fit_test_criteria"]["client_fit_status"] == "watch"
+    assert {
+        row["usage"] for row in prefill["client_fit_test_criteria"]["target_rows"]
+    } <= {"display_test_criterion", "display_context_only"}
+    assert "client_fit" not in prefill["parameters"] if "parameters" in prefill else True
+    assert "optimizer objectives" in prefill["client_fit_optimizer_boundary"]
+    assert not builder_prefill_product_contract_violations(prefill)

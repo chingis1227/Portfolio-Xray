@@ -19,6 +19,7 @@ SITE_EXPLANATION_BUNDLE_FILENAME = "site_explanation_bundle.json"
 SCREEN_KEYS: tuple[str, ...] = (
     "diagnosis",
     "evidence",
+    "client_fit",
     "hypothesis",
     "candidate",
     "comparison",
@@ -32,6 +33,7 @@ HIERARCHY_LEVELS: tuple[str, ...] = ("executive", "evidence", "technical")
 ALLOWED_SOURCE_ARTIFACTS: tuple[str, ...] = (
     "portfolio_xray.json",
     "stress_report.json",
+    "client_fit_check.json",
     "problem_classification.json",
     "candidate_launchpad.json",
     "portfolio_alternatives_builder.json",
@@ -50,9 +52,13 @@ REQUIRED_GUARDRAILS: dict[str, bool] = {
     "does_not_create_new_metrics": True,
     "does_not_issue_trade_instruction": True,
     "candidate_is_not_recommendation": True,
+    "client_fit_is_not_suitability_approval": True,
 }
 
 FORBIDDEN_COPY_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("suitable", re.compile(r"\bsuitable\b", re.IGNORECASE)),
+    ("suitability approved", re.compile(r"\bsuitability\s+approved\b", re.IGNORECASE)),
+    ("approved", re.compile(r"\bapproved\b", re.IGNORECASE)),
     ("buy", re.compile(r"\bbuy\b", re.IGNORECASE)),
     ("sell", re.compile(r"\bsell\b", re.IGNORECASE)),
     ("must rebalance", re.compile(r"\bmust\s+rebalance\b", re.IGNORECASE)),
@@ -83,6 +89,7 @@ _SEVERITY_TONE: dict[str, str] = {
 _ARTIFACT_PARAM_NAMES: dict[str, str] = {
     "portfolio_xray": "portfolio_xray.json",
     "stress_report": "stress_report.json",
+    "client_fit_check": "client_fit_check.json",
     "problem_classification": "problem_classification.json",
     "candidate_launchpad": "candidate_launchpad.json",
     "portfolio_alternatives_builder": "portfolio_alternatives_builder.json",
@@ -107,6 +114,10 @@ _SCREEN_SOURCE_GROUPS: dict[str, tuple[str, ...]] = {
         "stress_report.json",
         "ai_commentary_context.json",
     ),
+    "client_fit": (
+        "client_fit_check.json",
+        "problem_classification.json",
+    ),
     "hypothesis": (
         "candidate_launchpad.json",
         "portfolio_alternatives_builder.json",
@@ -125,6 +136,7 @@ _SCREEN_SOURCE_GROUPS: dict[str, tuple[str, ...]] = {
 _PRIMARY_MISSING_SOURCE_BY_SCREEN: dict[str, str] = {
     "diagnosis": "portfolio_xray.json",
     "evidence": "portfolio_xray.json",
+    "client_fit": "client_fit_check.json",
     "hypothesis": "candidate_launchpad.json",
     "candidate": "candidate_generation.json",
     "comparison": "current_vs_candidate.json",
@@ -223,6 +235,14 @@ def _format_pct(value: Any, *, decimal_input: bool | None = None) -> str | None:
 def _format_status(value: Any) -> str | None:
     text = _clean_text(value)
     return text.replace("_", " ") if text else None
+
+
+def _client_fit_status_tone(status: str | None) -> str:
+    if status == "fit":
+        return "positive"
+    if status in {"breach", "conflict"}:
+        return "risk"
+    return "caution"
 
 
 def _comparison_row(current_vs_candidate: Mapping[str, Any]) -> tuple[int, Mapping[str, Any]] | None:
@@ -661,6 +681,112 @@ def _append_stress_copy_rules(
                 evidence_status="available",
                 claim_type="material_claim",
                 source_refs=_source_ref("stress_report.json", "stress_scorecard_v1"),
+            )
+        )
+
+
+def _append_client_fit_copy_rules(
+    screens: dict[str, dict[str, list[dict[str, Any]]]],
+    *,
+    client_fit_check: Mapping[str, Any],
+    problem_classification: Mapping[str, Any],
+) -> None:
+    """Populate Client Fit and report hierarchy copy from bounded display fields."""
+
+    status = _format_status(
+        client_fit_check.get("client_fit_status")
+        or problem_classification.get("client_fit_status")
+    )
+    diagnostic_quality = _format_status(problem_classification.get("diagnostic_quality_status"))
+    profile = _as_mapping(client_fit_check.get("profile"))
+    source_quality = _format_status(profile.get("source_quality"))
+    source_refs = []
+    if client_fit_check:
+        source_refs.append({"artifact": "client_fit_check.json", "field_path": "client_fit_status"})
+    elif problem_classification.get("client_fit_status") is not None:
+        source_refs.append({"artifact": "problem_classification.json", "field_path": "client_fit_status"})
+    if diagnostic_quality:
+        source_refs.append(
+            {"artifact": "problem_classification.json", "field_path": "diagnostic_quality_status"}
+        )
+
+    if status:
+        parts = [f"Client Fit status is {status}"]
+        if diagnostic_quality:
+            parts.append(f"diagnostic quality status is {diagnostic_quality}")
+        if source_quality:
+            parts.append(f"profile source quality is {source_quality}")
+        text = (
+            "; ".join(parts)
+            + ". These rows are provided-profile context and stay separate from the portfolio diagnosis."
+        )
+        screens["client_fit"]["executive"].append(
+            _text_item(
+                item_id="client_fit.executive.status_boundary",
+                level="executive",
+                text=text,
+                tone=_client_fit_status_tone(str(client_fit_check.get("client_fit_status") or "")),
+                evidence_status="available",
+                claim_type="material_claim",
+                source_refs=source_refs or _source_ref("client_fit_check.json", "client_fit_status"),
+            )
+        )
+
+    for index, check in enumerate(_as_list(client_fit_check.get("checks"))[:4], start=1):
+        row = _as_mapping(check)
+        dimension = _format_status(row.get("dimension"))
+        row_status = _format_status(row.get("status"))
+        interpretation = _clean_text(row.get("interpretation"))
+        if not (dimension and row_status):
+            continue
+        text = f"{dimension}: portfolio evidence is {row_status} against the stated target or limit."
+        if interpretation:
+            text = f"{text} {interpretation}"
+        screens["client_fit"]["evidence"].append(
+            _text_item(
+                item_id=f"client_fit.evidence.portfolio_vs_limits_{index}",
+                level="evidence",
+                text=text,
+                tone=_client_fit_status_tone(str(row.get("status") or "")),
+                evidence_status="available",
+                claim_type="material_claim",
+                source_refs=_source_ref("client_fit_check.json", f"checks[{index - 1}]"),
+            )
+        )
+
+    boundary = _clean_text(
+        _as_mapping(problem_classification.get("client_fit_context")).get(
+            "diagnosis_selection_boundary_en"
+        )
+    )
+    if boundary:
+        screens["client_fit"]["technical"].append(
+            _text_item(
+                item_id="client_fit.technical.diagnosis_boundary",
+                level="technical",
+                text=boundary,
+                tone="neutral",
+                evidence_status="available",
+                claim_type="material_claim",
+                source_refs=_source_ref("problem_classification.json", "client_fit_context"),
+            )
+        )
+
+    if status:
+        report_text = (
+            f"Report hierarchy includes Client Fit status {status}"
+            + (f" next to diagnostic quality status {diagnostic_quality}" if diagnostic_quality else "")
+            + "; it does not turn either field into a final action."
+        )
+        screens["report"]["evidence"].append(
+            _text_item(
+                item_id="report.evidence.client_fit_hierarchy",
+                level="evidence",
+                text=report_text,
+                tone=_client_fit_status_tone(str(client_fit_check.get("client_fit_status") or "")),
+                evidence_status="available",
+                claim_type="material_claim",
+                source_refs=source_refs or _source_ref("client_fit_check.json", "client_fit_status"),
             )
         )
 
@@ -1106,6 +1232,7 @@ def build_site_explanation_bundle(
     review_id: str | None = None,
     portfolio_xray: dict[str, Any] | None = None,
     stress_report: dict[str, Any] | None = None,
+    client_fit_check: dict[str, Any] | None = None,
     problem_classification: dict[str, Any] | None = None,
     candidate_launchpad: dict[str, Any] | None = None,
     portfolio_alternatives_builder: dict[str, Any] | None = None,
@@ -1123,6 +1250,7 @@ def build_site_explanation_bundle(
     artifacts_by_param: dict[str, Any] = {
         "portfolio_xray": portfolio_xray,
         "stress_report": stress_report,
+        "client_fit_check": client_fit_check,
         "problem_classification": problem_classification,
         "candidate_launchpad": candidate_launchpad,
         "portfolio_alternatives_builder": portfolio_alternatives_builder,
@@ -1147,6 +1275,12 @@ def build_site_explanation_bundle(
         )
     if _is_artifact_available(stress_report):
         _append_stress_copy_rules(screens, stress_report=_as_mapping(stress_report))
+    if _is_artifact_available(client_fit_check) or _is_artifact_available(problem_classification):
+        _append_client_fit_copy_rules(
+            screens,
+            client_fit_check=_as_mapping(client_fit_check),
+            problem_classification=_as_mapping(problem_classification),
+        )
     if _is_artifact_available(candidate_generation):
         _append_candidate_copy_rules(
             screens,
@@ -1183,6 +1317,7 @@ def write_site_explanation_bundle_outputs(
     review_id: str | None = None,
     portfolio_xray: dict[str, Any] | None = None,
     stress_report: dict[str, Any] | None = None,
+    client_fit_check: dict[str, Any] | None = None,
     problem_classification: dict[str, Any] | None = None,
     candidate_launchpad: dict[str, Any] | None = None,
     portfolio_alternatives_builder: dict[str, Any] | None = None,
@@ -1203,6 +1338,7 @@ def write_site_explanation_bundle_outputs(
         review_id=review_id,
         portfolio_xray=portfolio_xray,
         stress_report=stress_report,
+        client_fit_check=client_fit_check,
         problem_classification=problem_classification,
         candidate_launchpad=candidate_launchpad,
         portfolio_alternatives_builder=portfolio_alternatives_builder,

@@ -175,8 +175,8 @@ def test_field_tiers_marks_deferred_client_fit_when_profile_set() -> None:
     setup = build_analysis_setup(cfg, cash_proxy_ticker="BIL", rf_source="FRED:DTB3")
     tiers = build_field_tiers(setup)
 
-    assert "client_fit_later" in tiers["run_disclosure"]["deferred_tiers_with_values"]
-    assert "client_profile" in tiers["run_disclosure"]["populated_by_tier"]["client_fit_later"]
+    assert "client_fit_v1" in tiers["run_disclosure"]["deferred_tiers_with_values"]
+    assert "client_profile" in tiers["run_disclosure"]["populated_by_tier"]["client_fit_v1"]
     assert "horizon_years" in tiers["run_disclosure"]["user_configured_fields"]
 
 

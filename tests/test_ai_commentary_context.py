@@ -317,7 +317,7 @@ def test_ai_commentary_context_grounds_direct_block7_8_vertical_loop() -> None:
     assert doc["grounding_phase"] == "post_compare"
     assert doc["purpose"] == PURPOSE_GROUNDED_DECISION_CONTEXT
     assert doc["client_explanation_draft"]["does_not_call_llm"] is True
-    assert len(doc["client_explanation_draft"]["sentences"]) == 10
+    assert len(doc["client_explanation_draft"]["sentences"]) == 11
     assert doc["light_decision_journal"]["decision_verdict"] == "no_material_rebalance_recommended"
     assert "candidate_generation.json:diagnostic_candidate_not_recommendation" in doc["warnings"]
     assert not any("selection_decision.json" in warning for warning in doc["warnings"])
@@ -402,7 +402,7 @@ def test_ai_commentary_context_supports_blocked_builder_client_explanation() -> 
 
     draft = doc["client_explanation_draft"]
     assert draft["does_not_call_llm"] is True
-    assert len(draft["sentences"]) == 10
+    assert len(draft["sentences"]) == 11
     candidate_logic = next(row for row in draft["sentences"] if row["topic"] == "selected_candidate_logic")
     assert candidate_logic["evidence_status"] == "blocked"
     assert "data_quality_blocker" in candidate_logic["text"]

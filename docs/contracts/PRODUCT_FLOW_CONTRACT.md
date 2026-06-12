@@ -20,6 +20,7 @@ Use this document for the cross-step product flow. Use the following documents f
 - `docs/specs/input_assumptions_spec.md` for Core MVP input assumptions.
 - `docs/specs/portfolio_xray_diagnostics_spec.md` and `docs/specs/portfolio_xray_layer_spec.md` for Portfolio X-Ray.
 - `docs/specs/stress_lab_layer_spec.md`, `docs/specs/stress_testing_spec.md`, `docs/specs/hedge_gap_analysis_spec.md`, and `docs/specs/current_portfolio_stress_scorecard_spec.md` for Stress Test Lab.
+- `docs/specs/client_fit_check_spec.md` and `docs/specs/client_fit_questionnaire_spec.md` for Client Fit V1.
 - `docs/specs/block_4_diagnosis_v3_spec.md`, `docs/specs/problem_classification_spec.md`, and `docs/specs/candidate_launchpad_spec.md` for Problem Classification and Candidate Launchpad.
 - `docs/specs/portfolio_alternatives_builder_spec.md`, `docs/specs/builder_prefill_spec.md`, `docs/specs/candidate_setup_spec.md`, and `docs/specs/candidate_generation_spec.md` for Builder and Candidate Generation.
 - `docs/specs/current_vs_candidate_spec.md` for Current vs Candidate Comparison.
@@ -42,6 +43,7 @@ The canonical current product flow is:
 Input Portfolio
 -> Portfolio X-Ray
 -> Stress Test Lab
+-> Client Fit Check
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
@@ -55,16 +57,30 @@ Input Portfolio
 Current MVP frontend route reality may merge or defer some steps. As of this contract, the visible frontend path is:
 
 ```text
-/portfolio-input
+/client-profile
+-> /portfolio-input
 -> /diagnosis
 -> /evidence
+-> /client-fit
 -> /hypothesis
 -> /comparison
 -> /verdict
 -> /report
 ```
 
-The `/hypothesis` route may contain both Candidate Launchpad and Builder setup for the current MVP. There is no separate current Monitoring route; Monitoring / What Changed is a light product artifact and may be surfaced later or in report/summary context. Route merges do not change the product step order or boundaries.
+The `/client-profile` route captures the mandatory web Client Fit profile before diagnosis. The
+`/client-fit` route displays the bounded fit interpretation after Stress Lab and before Hypothesis.
+The `/hypothesis` route may contain both Candidate Launchpad and Builder setup for the current MVP.
+There is no separate current Monitoring route; Monitoring / What Changed is a light product artifact
+and may be surfaced later or in report/summary context. Route merges do not change the product step
+order or boundaries.
+
+Client Fit V1 status after Sessions 15-16: active web onboarding and display route, plus backend
+compatibility for missing profiles. Backend/CLI runs may write `analysis_subject/client_fit_check.json`
+after Stress Lab and before Problem Classification, including `not_provided` when no profile exists.
+The normal frontend journey requires `/client-profile` before diagnosis and shows `/client-fit`
+before Hypothesis. Block 4, Launchpad, Builder, Current vs Candidate, Verdict, and Report may use
+bounded Client Fit context as display or hypothesis-test evidence only.
 
 ## Global product boundaries
 
@@ -73,15 +89,16 @@ The following rules apply to every screen, adapter, report surface, and operator
 1. Diagnosis happens before action. X-Ray and Stress evidence must exist before candidate testing is presented as current product flow.
 2. The current portfolio, represented by `analysis_subject`, is the baseline for interpretation and comparison.
 3. Problem Classification translates existing evidence into problems and test paths. It does not calculate new metrics, build candidates, or decide action.
-4. Candidate Launchpad cards are hypotheses, not portfolios. They contain no weights and do not execute builders.
-5. Builder setup is setup only. It validates a selected hypothesis and may prepare a candidate handoff, but it does not create weights, comparison output, or a verdict.
-6. Candidate Generation is an explicit user-triggered diagnostic attempt. A generated candidate is not a recommendation, not a trade order, and not automatically better than the current portfolio.
-7. Current vs Candidate Comparison is evidence-first and trade-off-first. It must show what improved, worsened, stayed similar, or could not be evaluated.
-8. Decision Verdict is non-binding decision support. `keep current`, `no material rebalance`, `rebalance review`, `test another candidate`, `candidate failed/infeasible`, and `evidence insufficient` are valid outcomes.
-9. A rebalance verdict means evidence is material enough for rebalance review. It does not mean execute a trade.
-10. AI Commentary is grounded explanation. It may explain deterministic evidence and gaps, but it must not invent calculations, statuses, scenarios, metrics, recommendations, or verdict evidence.
-11. Monitoring / What Changed is non-executing. It compares run evidence over time and may suggest retest triggers, but it does not write weights, trade, or override the verdict.
-12. Missing, partial, stale, or insufficient evidence is a valid product state. It must not be hidden or replaced with fabricated values.
+4. Client Fit compares current-portfolio evidence against the provided profile as a non-binding overlay. It must remain separate from diagnostic quality, must not approve suitability, and must not become an optimizer mandate.
+5. Candidate Launchpad cards are hypotheses, not portfolios. They contain no weights and do not execute builders.
+6. Builder setup is setup only. It validates a selected hypothesis and may prepare a candidate handoff, but it does not create weights, comparison output, or a verdict.
+7. Candidate Generation is an explicit user-triggered diagnostic attempt. A generated candidate is not a recommendation, not a trade order, and not automatically better than the current portfolio.
+8. Current vs Candidate Comparison is evidence-first and trade-off-first. It must show what improved, worsened, stayed similar, could not be evaluated, and how current/candidate values compare with Client Fit targets when available.
+9. Decision Verdict is non-binding decision support. `keep current`, `no material rebalance`, `rebalance review`, `test another candidate`, `candidate failed/infeasible`, and `evidence insufficient` are valid outcomes.
+10. A rebalance verdict means evidence is material enough for rebalance review. It does not mean execute a trade.
+11. AI Commentary is grounded explanation. It may explain deterministic evidence and gaps, but it must not invent calculations, statuses, scenarios, metrics, recommendations, or verdict evidence.
+12. Monitoring / What Changed is non-executing. It compares run evidence over time and may suggest retest triggers, but it does not write weights, trade, or override the verdict.
+13. Missing, partial, stale, or insufficient evidence is a valid product state. It must not be hidden or replaced with fabricated values.
 
 ## Step contract
 
@@ -90,11 +107,12 @@ The following rules apply to every screen, adapter, report surface, and operator
 | 1. Input Portfolio | Capture the factual current portfolio to diagnose. | What portfolio am I asking Portfolio MRI to diagnose? | User input; resolved `analysis_setup`; `analysis_subject/run_metadata.json` after diagnosis. | Ask for instruments, current weights, and investor currency; disclose system defaults and assumptions. | Do not require optimizer targets, client suitability, mandate caps, tax settings, or advanced constraints for Blocks 1-3. Do not treat generated policy weights as manual input. | Valid input can run diagnosis and proceed to X-Ray. Invalid input stays on input with clear user-facing validation. |
 | 2. Portfolio X-Ray | Explain what the current portfolio owns and where risk lives. | What do I actually own, and what looks risky or weak? | `analysis_subject/portfolio_xray.json`; X-Ray product blocks and trusted legacy sections where required by the owning spec. | Show allocation, risk/return behavior, factor exposure, hidden exposure, concentration, weakness map, and data-trust signals. | Do not recommend a rebalance by itself. Do not create Portfolio Health Score as the main product answer. Do not parse root policy artifacts as subject truth. | If X-Ray evidence exists, proceed to Stress Test Lab. If partial, show limitations and proceed only with disclosed evidence quality. |
 | 3. Stress Test Lab | Test how the current portfolio behaves in adverse markets. | Where can this portfolio break, and what evidence supports that view? | `analysis_subject/stress_report.json`; `stress_results_v1`; `hedge_gap_analysis_v1`; `current_portfolio_stress_scorecard_v1`; scenario library evidence. | Show synthetic and supported historical stress facts, worst scenarios, loss contributors, helped/hurt assets, hedge gaps, and data quality. | Do not fabricate historical evidence. Do not show Core MVP mandate pass/fail, `DIAG_*`, `pass`, or `loss_ok` semantics from legacy mandate mode. Do not add or rename scenarios without owning spec and decision record. | If stress evidence exists or is explicitly limited, proceed to Problem Classification. If unavailable, classify the evidence gap as a blocker or limitation. |
+| 3.5 Client Fit Check | Compare current-portfolio evidence with the provided return, volatility, drawdown, and horizon profile. | Does this risk fit the provided profile? | `analysis_subject/client_fit_check.json` when available; profile source quality; target/limit rows. | Show fit/watch/breach/conflict/not-provided/evidence-insufficient context as non-binding interpretation. Preserve the separation between Client Fit status and diagnostic quality. | Do not call it suitability approval, hide material portfolio issues after a fit result, create buy/sell/rebalance instructions, or convert target return/vol/drawdown/horizon into optimizer mandates. | Proceed to Problem Classification with Client Fit as bounded context. If no profile exists, backend/CLI remains compatible and no Client Fit conclusion may be claimed. |
 | 4. Problem Classification | Turn X-Ray and Stress evidence into a small set of understandable problems. | What is the main problem in the current portfolio? | `analysis_subject/problem_classification.json`; Block 4 v3 diagnosis evidence. | Summarize top problems, supporting evidence, and reasonable paths to test; allow current portfolio acceptable / monitor outcome. | Do not build candidates, choose an optimizer, issue a verdict, or state that a rebalance is required. | If there are testable paths, proceed to Candidate Launchpad. If only monitor/data-quality paths exist, route to monitor/report language or explain why candidate generation is blocked. |
 | 5. Candidate Launchpad | Offer diagnosis-linked hypotheses to test. | Which improvement hypothesis should I test next? | `analysis_subject/candidate_launchpad.json`; launchpad cards linked to Problem Classification. | Show cards with goal, evidence, trade-off to watch, suggested method, and decision boundary. | Do not show cards as portfolios, weights, recommendations, or executed factory runs. Do not expose the full optimizer zoo as the Core MVP default. | Selecting a card opens Builder setup. Monitor-only or data-quality cards must not auto-generate candidates. |
-| 6. Portfolio Alternatives Builder | Validate the selected hypothesis as a candidate test setup. | What exactly will be tested if I generate a candidate? | `analysis_subject/portfolio_alternatives_builder.json`; Builder prefill; CandidateSetup handoff when valid. | Show goal, method, simple constraints, success criteria, trade-off, skip rule, and setup validation. | Do not create weights, compare portfolios, write a verdict, or expose advanced settings such as tax-aware optimization, turnover-aware objective, robust lambda, custom risk budgets, leverage, shorting, or full constraints UI in Core MVP. | If setup is valid and generation is allowed, show explicit Generate Candidate action. If blocked, explain the blocker and keep comparison/verdict unavailable. |
+| 6. Portfolio Alternatives Builder | Validate the selected hypothesis as a candidate test setup. | What exactly will be tested if I generate a candidate? | `analysis_subject/portfolio_alternatives_builder.json`; Builder prefill; CandidateSetup handoff when valid. | Show goal, method, simple constraints, success criteria, trade-off, skip rule, setup validation, and Client Fit target criteria when available. | Do not create weights, compare portfolios, write a verdict, expose advanced settings such as tax-aware optimization, turnover-aware objective, robust lambda, custom risk budgets, leverage, shorting, or full constraints UI in Core MVP, or silently convert Client Fit targets into optimizer mandates. | If setup is valid and generation is allowed, show explicit Generate Candidate action. If blocked, explain the blocker and keep comparison/verdict unavailable. |
 | 7. Candidate Generation | Create one explicit diagnostic candidate attempt from the validated setup. | Was one usable test candidate created, or why did the attempt fail? | Root-level `candidate_generation.json` for the active vertical loop; optional candidate weights and freshness metadata. | Record generation status, method availability, candidate identity, weights when produced, warnings, and source links. | Do not auto-generate after Launchpad. Do not compare or decide. Do not treat stale, tombstoned, inactive, failed, or infeasible candidate artifacts as current evidence. | A live usable candidate can proceed to Current vs Candidate Comparison. Failed/infeasible/missing candidate routes to safe blocked state and then verdict/report as evidence insufficient when applicable. |
-| 8. Current vs Candidate Comparison | Compare the diagnosed current portfolio with the selected candidate. | What improves, what worsens, and is the trade-off material enough to review? | `current_vs_candidate.json`; scoped `candidate_comparison.json`; optional `candidate_generation.json` context. | Show deltas, improved/worsened/similar/unavailable areas, risk reduced/added, turnover/cost practicality, success criteria, and materiality for decision review. | Do not build candidates, optimize weights, issue Decision Verdict, crown a winner, or fill missing metrics with fake `n/a` conclusions. Do not trust stale downstream verdict artifacts. | If comparison is live and materiality is evaluable, proceed to Decision Verdict. If comparison is unavailable/degraded, route to evidence-insufficient or test-another outcome. |
+| 8. Current vs Candidate Comparison | Compare the diagnosed current portfolio with the selected candidate. | What improves, what worsens, and is the trade-off material enough to review? | `current_vs_candidate.json`; scoped `candidate_comparison.json`; optional `candidate_generation.json` and `client_fit_check.json` context. | Show deltas, improved/worsened/similar/unavailable areas, risk reduced/added, turnover/cost practicality, success criteria, Client Fit target comparisons when available, and materiality for decision review. | Do not build candidates, optimize weights, issue Decision Verdict, crown a winner, infer suitability, or fill missing metrics with fake `n/a` conclusions. Do not trust stale downstream verdict artifacts. | If comparison is live and materiality is evaluable, proceed to Decision Verdict. If comparison is unavailable/degraded, route to evidence-insufficient or test-another outcome. |
 | 9. Decision Verdict | Translate comparison evidence into non-binding action/no-action decision support. | Is action justified now, or should I keep current, test another hypothesis, or stop due to insufficient evidence? | `decision_verdict.json`; `current_vs_candidate.json`; `candidate_generation.json` or `selection_decision.json`; optional `action_plan.json` context. | Present keep-current/no-trade, no material rebalance, rebalance review, test another, candidate failed/infeasible, risk-reduction-required where legacy semantics apply, or evidence-insufficient outcomes with confidence limitations. | Do not say "best portfolio", "must rebalance", "trade now", or imply suitability/tax approval. Do not hide trade-offs from comparison. Do not rename Selection Engine schemas or formulas. | Proceed to AI Commentary/report explanation. If verdict is absent because comparison is not ready, report evidence insufficiency rather than inventing a decision. |
 | 10. AI Commentary / grounding | Provide grounded explanation inputs and safe narrative preview. | How should I explain the diagnosis, test, trade-offs, and verdict without inventing anything? | `ai_commentary_context.json`; allowed deterministic source artifacts named by the grounding spec. | Explain only grounded facts, warnings, evidence gaps, no-trade rationale, and monitoring context. | Do not call an LLM in the current grounding artifact, calculate new metrics, create unsupported recommendations, or give trade/tax advice. Do not treat `commentary.txt` / `stress_commentary.txt` legacy exports as Core MVP AI Commentary. | If grounding exists, use it in report/explanation. If source artifacts are missing, disclose gaps. |
 | 11. Monitoring / What Changed | Summarize what changed since the prior review when monitoring evidence exists. | What changed, and should I retest or review anything? | `what_changed_summary.json`; `monitoring_diff.json`; monitoring snapshots; optional verdict/problem/comparison context. | Show changed risk contributor, stress behavior, market context, decision/action status, warnings, and retest triggers. | Do not create scheduler behavior, multi-client workspace semantics, broker alerts, new formulas, or automatic trades. Do not make advanced monitoring the Core MVP endpoint. | If present, show as light follow-up or report context. If absent, state that there is no prior snapshot or monitoring evidence rather than treating the run as failed. |
@@ -124,7 +142,7 @@ These capabilities must not be presented as the current Core MVP product flow me
 - Full Decision Journal.
 - Advanced monitoring, full portfolio-health monitoring, macro-regime monitoring, and multi-client monitoring workspace.
 - Crisis Replay UI and What Happens If simulator UI.
-- Client-Fit Check, suitability approval, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, Max Sharpe, full custom constraints UI, and Asset X-Ray.
+- Client Fit suitability approval, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, Max Sharpe, full custom constraints UI, and Asset X-Ray.
 - Polished PDF report product as the default output path.
 
 When these appear in code or generated outputs, classify them as `Advanced`, `Backend evidence`, `Technical artifact`, `Legacy`, `Generated support artifact`, or `Future/backlog` unless an owning spec and implementation explicitly promote them.

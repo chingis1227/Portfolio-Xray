@@ -66,6 +66,8 @@ product or trading system.
 
 ## Portfolio Input validation
 
+- The normal web journey starts with Client Profile. Portfolio Input and Run diagnosis stay gated
+  until a valid Client Fit profile is saved.
 - Investor currency is required and currently limited in the UI to USD or EUR.
 - Every visible portfolio row must use a selected instrument from the local instrument list and a weight greater than 0.
 - At least 2 valid rows are required before diagnosis.
@@ -76,12 +78,12 @@ product or trading system.
 
 ## Review state and storage
 
-- The real flow is Portfolio Input -> Diagnosis -> Stress Test Lab -> Hypothesis / Builder prepare
-  and Candidate Generation -> Current vs Candidate -> Decision Verdict -> Report / grounded
+- The real flow is Client Profile -> Portfolio Input -> Diagnosis -> Stress Test Lab -> Client Fit
+  -> Hypothesis / Builder prepare and Candidate Generation -> Current vs Candidate -> Decision Verdict -> Report / grounded
   explanation preview. If comparison evidence is current but metrics are unavailable, the UI may still
   continue to Verdict so the system can show an evidence-insufficient decision-support outcome
   instead of silently blocking the journey.
-- The UI stores compact display state in `pmri.activeReview.v2`: `reviewId`, portfolio input, diagnosis/stress evidence/launchpad/builder summaries, selected card/candidate, and stage summaries. Core screens consume these display models, not raw backend artifact trees. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card and says generation is allowed.
+- The UI stores compact display state in `pmri.activeReview.v2`: the Client Fit profile, `reviewId`, portfolio input, diagnosis/stress/Client Fit evidence, launchpad/builder summaries, selected card/candidate, and stage summaries. Core screens consume these display models, not raw backend artifact trees. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card and says generation is allowed.
 - When Supabase is enabled and the user is signed in, the active review may also keep a compact
   link to the selected cloud portfolio so diagnosis-history rows can point back to the saved
   portfolio input without uploading generated evidence.

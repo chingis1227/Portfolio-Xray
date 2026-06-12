@@ -12,28 +12,25 @@ const host = '127.0.0.1';
 const startupTimeoutMs = Number(process.env.PMRI_QA_STARTUP_TIMEOUT_MS || 120000);
 const requestTimeoutMs = Number(process.env.PMRI_QA_REQUEST_TIMEOUT_MS || 15 * 60 * 1000);
 const scenarioLimitArgIndex = process.argv.indexOf('--scenario-limit');
-const scenarioLimit = scenarioLimitArgIndex >= 0 ? Number(process.argv[scenarioLimitArgIndex + 1]) : 3;
+const scenarioLimit = scenarioLimitArgIndex >= 0 ? Number(process.argv[scenarioLimitArgIndex + 1]) : 5;
 const headless = !process.argv.includes('--headed');
 const keepServers = process.argv.includes('--keep-servers');
 
 const scenarios = [
   {
-    id: 'concentrated_growth_cash',
+    id: 'fit_material_issue',
     expectedDifferent: true,
     portfolio: {
       investor_currency: 'USD',
-      holdings: [
-        { type: 'instrument', ticker: 'QQQ', weight: 70 },
-        { type: 'instrument', ticker: 'VOO', weight: 20 },
-        { type: 'cash', currency: 'USD', weight: 10 }
-      ]
-    }
-  },
-  {
-    id: 'weak_crisis_resilience_live',
-    expectedDifferent: true,
-    portfolio: {
-      investor_currency: 'USD',
+      client_fit: {
+        preset_id: 'aggressive',
+        target_return_range: { min: 0.04, max: 0.20 },
+        target_vol_range: { min: 0.05, max: 0.35 },
+        target_max_drawdown_pct: -0.60,
+        horizon_years: 10,
+        source: 'questionnaire',
+        source_quality: 'high'
+      },
       holdings: [
         { type: 'instrument', ticker: 'MTUM', weight: 25 },
         { type: 'instrument', ticker: 'COPX', weight: 15 },
@@ -47,18 +44,85 @@ const scenarios = [
     }
   },
   {
-    id: 'balanced_reference',
+    id: 'breach',
+    expectedDifferent: true,
+    portfolio: {
+      investor_currency: 'USD',
+      client_fit: {
+        preset_id: 'conservative',
+        target_return_range: { min: 0.02, max: 0.05 },
+        target_vol_range: { min: 0.01, max: 0.06 },
+        target_max_drawdown_pct: -0.08,
+        horizon_years: 3,
+        source: 'questionnaire',
+        source_quality: 'high'
+      },
+      holdings: [
+        { type: 'instrument', ticker: 'MTUM', weight: 25 },
+        { type: 'instrument', ticker: 'COPX', weight: 15 },
+        { type: 'instrument', ticker: 'ETHA', weight: 10 },
+        { type: 'instrument', ticker: 'GLD', weight: 10 },
+        { type: 'cash', currency: 'USD', weight: 10 },
+        { type: 'instrument', ticker: 'USO', weight: 8 },
+        { type: 'instrument', ticker: 'META', weight: 14 },
+        { type: 'instrument', ticker: 'IDEV', weight: 8 }
+      ]
+    }
+  },
+  {
+    id: 'fit_clean',
+    expectedDifferent: true,
+    portfolio: {
+      investor_currency: 'USD',
+      client_fit: {
+        preset_id: 'balanced',
+        target_return_range: { min: 0.00, max: 0.25 },
+        target_vol_range: { min: 0.02, max: 0.30 },
+        target_max_drawdown_pct: -0.60,
+        horizon_years: 7,
+        source: 'questionnaire',
+        source_quality: 'high'
+      },
+      holdings: [
+        { type: 'instrument', ticker: 'QQQ', weight: 45 },
+        { type: 'instrument', ticker: 'VOO', weight: 45 },
+        { type: 'cash', currency: 'USD', weight: 10 }
+      ]
+    }
+  },
+  {
+    id: 'conflict',
+    expectedDifferent: true,
+    portfolio: {
+      investor_currency: 'USD',
+      client_fit: {
+        target_return_range: { min: 0.20, max: 0.30 },
+        target_vol_range: { min: 0.01, max: 0.04 },
+        target_max_drawdown_pct: -0.05,
+        horizon_years: 2,
+        source: 'manual_override',
+        source_quality: 'high'
+      },
+      holdings: [
+        { type: 'instrument', ticker: 'QQQ', weight: 60 },
+        { type: 'instrument', ticker: 'VOO', weight: 30 },
+        { type: 'cash', currency: 'USD', weight: 10 }
+      ]
+    }
+  },
+  {
+    id: 'missing_blocked_client_fit',
     expectedDifferent: true,
     portfolio: {
       investor_currency: 'USD',
       holdings: [
-        { type: 'instrument', ticker: 'VOO', weight: 50 },
-        { type: 'instrument', ticker: 'BND', weight: 30 },
-        { type: 'instrument', ticker: 'GLD', weight: 20 }
+        { type: 'instrument', ticker: 'QQQ', weight: 45 },
+        { type: 'instrument', ticker: 'VOO', weight: 45 },
+        { type: 'cash', currency: 'USD', weight: 10 }
       ]
     }
   }
-].slice(0, Number.isFinite(scenarioLimit) && scenarioLimit > 0 ? scenarioLimit : 3);
+].slice(0, Number.isFinite(scenarioLimit) && scenarioLimit > 0 ? scenarioLimit : 5);
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -242,6 +306,14 @@ function chooseCard(cards) {
   }) || cards[0];
 }
 
+function cardGeneratesPortfolio(card) {
+  const setup = record(card.candidate_setup);
+  return card.generates_portfolio === true
+    || card.candidate_generation_allowed === true
+    || setup.candidate_generation_allowed === true
+    || Boolean(text(card.default_method) || text(setup.selected_method));
+}
+
 function envelope(body) {
   return record(body.fastapi_envelope || body);
 }
@@ -250,10 +322,286 @@ function lineage(body) {
   return record(envelope(body).lineage);
 }
 
+function assertLineage(body, expected, label) {
+  const actual = lineage(body);
+  for (const [key, value] of Object.entries(expected)) {
+    if (!value) continue;
+    assert.equal(text(actual[key]), value, `${label} lineage ${key} mismatch.`);
+  }
+}
+
 function sourceArtifacts(body) {
   const evidence = record(envelope(body).evidence);
   const refs = Array.isArray(evidence.source_artifacts) ? evidence.source_artifacts : [];
   return refs.map((ref) => text(record(ref).kind)).filter(Boolean);
+}
+
+function dataRecord(body) {
+  return record(envelope(body).data);
+}
+
+function apiClientFit(body) {
+  return record(dataRecord(body).client_fit);
+}
+
+function assertBoundedClientFit(body, label) {
+  const clientFit = apiClientFit(body);
+  assert.ok(text(clientFit.status_label), `${label} missing display client_fit.status_label.`);
+  assert.ok(['green', 'amber', 'red'].includes(text(clientFit.status_tone)), `${label} client_fit.status_tone is not green/amber/red.`);
+  const raw = JSON.stringify(clientFit);
+  assert.equal(/schema_version|source_artifacts|client_fit_check\.json/i.test(raw), false, `${label} leaked raw Client Fit artifact fields.`);
+}
+
+function holdingsForState(portfolio) {
+  return (Array.isArray(portfolio.holdings) ? portfolio.holdings : []).map((holding, index) => ({
+    id: `${holding.type || 'instrument'}-${holding.ticker || holding.currency || index}`,
+    label: holding.type === 'cash' ? `${holding.currency || 'USD'} cash` : holding.ticker,
+    ticker: holding.type === 'cash' ? (holding.currency || 'USD') : holding.ticker,
+    instrument: holding.type === 'cash' ? 'Cash' : holding.ticker,
+    weight: Number(holding.weight) || 0,
+    type: holding.type === 'cash' ? 'cash' : 'instrument',
+    currency: holding.currency
+  }));
+}
+
+function minimalDiagnosis(data) {
+  const diagnosis = record(data.diagnosis);
+  return {
+    status: text(diagnosis.status) || 'Diagnosis ready',
+    headline: text(diagnosis.headline, diagnosis.primary_diagnosis) || 'Portfolio diagnosis completed.',
+    evidenceQuality: text(diagnosis.evidence_quality) || 'Evidence available',
+    nextStep: text(diagnosis.next_step) || 'Review the next diagnostic test.',
+    boundaryNote: text(diagnosis.boundary_note) || 'Diagnostic evidence only; decision action is separate.',
+    drivers: Array.isArray(diagnosis.drivers) ? diagnosis.drivers.filter((item) => typeof item === 'string') : ['Portfolio evidence was generated for this review.'],
+    metrics: Array.isArray(diagnosis.metrics) ? diagnosis.metrics : [],
+    selectedDiagnosisRole: text(diagnosis.selected_diagnosis_role) || undefined,
+    sourceArtifacts: sourceArtifacts({ fastapi_envelope: { evidence: envelope({ fastapi_envelope: { data } }).evidence } }),
+    rejectedAlternatives: [],
+    rationaleRefs: []
+  };
+}
+
+function buildStoredState({ scenario, reviewId, selectedCardId, candidateId, comparisonId, verdictId, diagnosis, comparison, verdict, report }) {
+  const diagnosisData = dataRecord(diagnosis.body);
+  const comparisonData = dataRecord(comparison.body);
+  const verdictData = dataRecord(verdict.body);
+  const reportData = dataRecord(report.body);
+  const holdings = holdingsForState(scenario.portfolio);
+  const clientFit = apiClientFit(report.body);
+  const now = new Date().toISOString();
+  return {
+    investorCurrency: scenario.portfolio.investor_currency || 'USD',
+    holdings,
+    clientFitProfile: scenario.portfolio.client_fit,
+    reviewId,
+    reviewResult: {
+      status: 'completed',
+      review_id: reviewId,
+      outputs: {}
+    },
+    reviewSummary: {
+      version: 1,
+      source: 'real_run',
+      status: 'completed',
+      reviewId,
+      generatedAt: now,
+      investorCurrency: scenario.portfolio.investor_currency || 'USD',
+      holdingsCount: holdings.length,
+      totalWeight: holdings.reduce((sum, holding) => sum + holding.weight, 0),
+      cashWeight: holdings.filter((holding) => holding.type === 'cash').reduce((sum, holding) => sum + holding.weight, 0),
+      rawOutputKeys: [],
+      outputPaths: {},
+      diagnosis: minimalDiagnosis(diagnosisData),
+      clientFit,
+      launchpadCardsCount: 1,
+      launchpadCards: [{
+        card_id: selectedCardId,
+        title: 'Selected diagnostic test',
+        suggested_methods: [{ candidate_method_id: 'equal_weight', method_role: 'reference_benchmark' }],
+        default_method: 'equal_weight',
+        success_criteria: ['Compare the candidate against current evidence and Client Fit context.'],
+        is_rebalance_recommendation: false,
+        generates_portfolio: true
+      }],
+      suggestedActionPaths: [],
+      candidateLaunchpadAvailable: true,
+      problemClassificationAvailable: true,
+      storage: {
+        summaryBytes: 0,
+        rawBytes: 0,
+        rawPersisted: false,
+        rawAccessStrategy: 'Browser QA compact state only.'
+      }
+    },
+    builderSetup: {
+      selected_card_id: selectedCardId,
+      can_generate_candidate: true,
+      builder_prefill: {
+        goal: 'Reference comparison',
+        suggested_method: 'equal_weight'
+      },
+      candidate_setup: {
+        validation_status: 'valid',
+        can_generate_candidate: true
+      }
+    },
+    candidateGeneration: {
+      status: 'completed',
+      stage: 'candidate_generation',
+      selectedCardId,
+      candidateId,
+      generationStatus: 'generated',
+      canCompare: true,
+      weights: [],
+      generatedAt: now
+    },
+    comparisonResult: {
+      status: 'completed',
+      stage: 'current_vs_candidate',
+      selectedCardId,
+      candidateId,
+      comparisonStatus: 'available',
+      viewMode: text(comparisonData.view_mode) || 'current_vs_candidate',
+      candidateName: text(comparisonData.candidate_name) || candidateId,
+      candidateBoundary: text(comparisonData.candidate_boundary) || 'Comparison is evidence, not an instruction.',
+      evidenceQuality: text(comparisonData.evidence_quality) || 'Evidence available',
+      summary: text(comparisonData.summary) || `Comparison ${comparisonId} is available.`,
+      metrics: Array.isArray(comparisonData.metrics) ? comparisonData.metrics : [],
+      improved: Array.isArray(comparisonData.improved) ? comparisonData.improved : [],
+      worsened: Array.isArray(comparisonData.worsened) ? comparisonData.worsened : [],
+      neutral: Array.isArray(comparisonData.neutral) ? comparisonData.neutral : [],
+      unclear: Array.isArray(comparisonData.unclear) ? comparisonData.unclear : [],
+      turnover: text(comparisonData.turnover) || 'n/a',
+      estimatedCost: text(comparisonData.estimated_cost) || 'n/a',
+      materiality: text(comparisonData.materiality) || 'Evidence review',
+      warnings: Array.isArray(comparisonData.warnings) ? comparisonData.warnings : [],
+      clientFit,
+      generatedAt: now
+    },
+    verdictResult: {
+      status: 'completed',
+      stage: 'decision_verdict',
+      selectedCardId,
+      candidateId,
+      verdictId,
+      decisionStatus: text(verdictData.decision_status) || 'review',
+      confidence: text(verdictData.confidence) || 'Evidence available',
+      state: text(verdictData.state) || 'Decision support',
+      headline: text(verdictData.headline) || 'Verdict evidence is available.',
+      explanation: text(verdictData.explanation) || 'Read this as non-binding decision support.',
+      evidenceQuality: text(verdictData.evidence_quality) || 'Evidence available',
+      boundaryNote: text(verdictData.boundary_note) || 'Not a trade instruction.',
+      keyEvidence: Array.isArray(verdictData.key_evidence) ? verdictData.key_evidence : [],
+      monitoringTrigger: text(verdictData.monitoring_trigger) || 'Retest if evidence changes.',
+      metrics: Array.isArray(verdictData.metrics) ? verdictData.metrics : [],
+      actionFraming: text(verdictData.action_framing) || 'Decision-support framing only.',
+      limitations: Array.isArray(verdictData.limitations) ? verdictData.limitations : [],
+      evidenceUsed: Array.isArray(verdictData.evidence_used) ? verdictData.evidence_used : [],
+      whatWouldChangeVerdict: Array.isArray(verdictData.what_would_change_verdict) ? verdictData.what_would_change_verdict : [],
+      clientFit,
+      generatedAt: now
+    },
+    reportResult: {
+      status: 'completed',
+      stage: 'report',
+      selectedCardId,
+      candidateId,
+      title: text(reportData.title) || 'Grounded client-ready report summary',
+      subtitle: text(reportData.subtitle) || 'Evidence-backed report preview.',
+      sections: Array.isArray(reportData.sections) ? reportData.sections : [],
+      evidenceUsed: Array.isArray(reportData.evidence_used) ? reportData.evidence_used : [],
+      unavailableEvidence: Array.isArray(reportData.unavailable_evidence) ? reportData.unavailable_evidence : [],
+      nextObservation: text(reportData.next_observation) || 'Retest if evidence changes.',
+      boundaryNote: text(reportData.boundary_note) || 'Decision-support only.',
+      warnings: Array.isArray(reportData.warnings) ? reportData.warnings : [],
+      clientFit,
+      generatedAt: now
+    },
+    runMode: 'real_run',
+    runStatus: 'completed',
+    submitted: true,
+    diagnosisReady: true,
+    evidenceReady: true,
+    improvementPathsReady: true,
+    candidateReady: true,
+    comparisonReady: true,
+    verdictReady: true,
+    updatedAt: now
+  };
+}
+
+function buildDiagnosisOnlyStoredState({ scenario, reviewId, selectedCardId, diagnosis }) {
+  const diagnosisData = dataRecord(diagnosis.body);
+  const holdings = holdingsForState(scenario.portfolio);
+  const clientFit = apiClientFit(diagnosis.body);
+  const now = new Date().toISOString();
+  return {
+    investorCurrency: scenario.portfolio.investor_currency || 'USD',
+    holdings,
+    clientFitProfile: scenario.portfolio.client_fit,
+    reviewId,
+    reviewResult: {
+      status: 'completed',
+      review_id: reviewId,
+      outputs: {}
+    },
+    reviewSummary: {
+      version: 1,
+      source: 'real_run',
+      status: 'completed',
+      reviewId,
+      generatedAt: now,
+      investorCurrency: scenario.portfolio.investor_currency || 'USD',
+      holdingsCount: holdings.length,
+      totalWeight: holdings.reduce((sum, holding) => sum + holding.weight, 0),
+      cashWeight: holdings.filter((holding) => holding.type === 'cash').reduce((sum, holding) => sum + holding.weight, 0),
+      rawOutputKeys: [],
+      outputPaths: {},
+      diagnosis: minimalDiagnosis(diagnosisData),
+      clientFit,
+      launchpadCardsCount: 1,
+      launchpadCards: [{
+        card_id: selectedCardId,
+        title: 'Review objectives before candidate testing',
+        card_type: 'monitor_or_data_step',
+        suggested_methods: [],
+        success_criteria: ['Clarify the Client Fit profile before candidate testing.'],
+        is_rebalance_recommendation: false,
+        generates_portfolio: false
+      }],
+      suggestedActionPaths: [],
+      candidateLaunchpadAvailable: true,
+      problemClassificationAvailable: true,
+      storage: {
+        summaryBytes: 0,
+        rawBytes: 0,
+        rawPersisted: false,
+        rawAccessStrategy: 'Browser QA compact state only.'
+      }
+    },
+    runMode: 'real_run',
+    runStatus: 'completed',
+    submitted: true,
+    diagnosisReady: true,
+    evidenceReady: true,
+    improvementPathsReady: true,
+    candidateReady: false,
+    comparisonReady: false,
+    verdictReady: false,
+    updatedAt: now
+  };
+}
+
+function sanitizedForAdviceScan(bodyText) {
+  return bodyText
+    .replace(/Equity sell-off/gi, 'Equity stress event')
+    .replace(/not a trade instruction/gi, 'not an instruction')
+    .replace(/not .*?profile sign-off/gi, 'not a profile sign off');
+}
+
+function assertNoForbiddenAdvice(bodyText, label) {
+  const sanitized = sanitizedForAdviceScan(bodyText);
+  assert.equal(/\bsuitable\b|\bsuitability approved\b|\bapproved\b|\bbuy\b|\bsell\b|\bmust rebalance\b|\bbest portfolio\b/i.test(sanitized), false, `${label} contains forbidden advice/suitability copy.`);
 }
 
 async function capturePageArtifact(page, artifactBase) {
@@ -309,12 +657,61 @@ async function runScenario(page, baseUrl, scenario, index) {
   const selectedCard = chooseCard(cards);
   const selectedCardId = text(selectedCard.card_id || selectedCard.id);
   assert.ok(selectedCardId, `${scenario.id} selected card has no id.`);
+  const selectedCardGeneratesPortfolio = cardGeneratesPortfolio(selectedCard);
+
+  if (!selectedCardGeneratesPortfolio) {
+    assertBoundedClientFit(diagnosis.body, `${scenario.id} diagnosis`);
+    const storedState = buildDiagnosisOnlyStoredState({ scenario, reviewId, selectedCardId, diagnosis });
+    await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+    await page.evaluate((state) => {
+      localStorage.clear();
+      sessionStorage.clear();
+      localStorage.setItem('pmri.activeReview.v2', JSON.stringify(state));
+    }, storedState);
+
+    const routes = ['client-profile', 'diagnosis', 'evidence', 'client-fit', 'hypothesis'];
+    const routeChecks = [];
+    for (const route of routes) {
+      const routeNavigationAttempt = await gotoWithRetry(page, `${baseUrl}/${route}`, { waitUntil: 'domcontentloaded' });
+      const bodyText = await page.locator('body').innerText({ timeout: 10000 });
+      assertNoForbiddenAdvice(bodyText, `${scenario.id} ${route}`);
+      routeChecks.push({ route, navigationAttempt: routeNavigationAttempt, hasReviewText: bodyText.includes('Portfolio') || bodyText.includes('Diagnosis') || bodyText.includes('Client Fit') });
+      await capturePageArtifact(page, `${index}-${scenario.id}-${route}`);
+    }
+
+    const diagnosisEnvelope = envelope(diagnosis.body);
+    const diagnosisData = record(diagnosisEnvelope.data);
+    const diagnosisSummary = record(diagnosisData.diagnosis);
+    return {
+      scenario_id: scenario.id,
+      review_id: reviewId,
+      selected_card_id: selectedCardId,
+      candidate_id: null,
+      comparison_id: null,
+      verdict_id: null,
+      downstream_status: 'skipped_non_candidate_card',
+      diagnosis_primary: text(diagnosisSummary.primary_diagnosis),
+      diagnosis_headline: text(diagnosisSummary.headline),
+      diagnosis_evidence_count: Array.isArray(diagnosisSummary.diagnosis_evidence_items) ? diagnosisSummary.diagnosis_evidence_items.length : 0,
+      diagnosis_attempt: diagnosis.attempt || 1,
+      client_fit_status_label: text(apiClientFit(diagnosis.body).status_label),
+      client_fit_status_tone: text(apiClientFit(diagnosis.body).status_tone),
+      diagnosis_sources: sourceArtifacts(diagnosis.body),
+      comparison_sources: [],
+      verdict_sources: [],
+      report_sources: [],
+      report_has_evidence_chain_context: false,
+      stale_probe_status: null,
+      route_checks: routeChecks
+    };
+  }
 
   const builder = await browserJson(page, 'POST', `${baseUrl}/api/portfolio/builder/prepare`, {
     review_id: reviewId,
     selected_card_id: selectedCardId
   });
   assertOk(builder, `${scenario.id} builder`);
+  assertLineage(builder.body, { review_id: reviewId, selected_card_id: selectedCardId }, `${scenario.id} builder`);
 
   const candidate = await browserJson(page, 'POST', `${baseUrl}/api/portfolio/candidate/generate`, {
     review_id: reviewId,
@@ -323,6 +720,7 @@ async function runScenario(page, baseUrl, scenario, index) {
   assertOk(candidate, `${scenario.id} candidate`);
   const candidateId = text(candidate.body.candidate_id) || text(lineage(candidate.body).candidate_id);
   assert.ok(candidateId, `${scenario.id} returned no candidate id.`);
+  assertLineage(candidate.body, { review_id: reviewId, selected_card_id: selectedCardId, candidate_id: candidateId }, `${scenario.id} candidate`);
 
   const comparison = await browserJson(page, 'POST', `${baseUrl}/api/portfolio/comparison/generate`, {
     review_id: reviewId,
@@ -330,6 +728,7 @@ async function runScenario(page, baseUrl, scenario, index) {
   });
   assertOk(comparison, `${scenario.id} comparison`);
   const comparisonId = text(lineage(comparison.body).comparison_id) || `current_vs_candidate:${candidateId}`;
+  assertLineage(comparison.body, { review_id: reviewId, selected_card_id: selectedCardId, candidate_id: candidateId, comparison_id: comparisonId }, `${scenario.id} comparison`);
 
   const verdict = await browserJson(page, 'POST', `${baseUrl}/api/portfolio/verdict/generate`, {
     review_id: reviewId,
@@ -338,19 +737,39 @@ async function runScenario(page, baseUrl, scenario, index) {
   assertOk(verdict, `${scenario.id} verdict`);
   const verdictId = text(verdict.body.verdict_id) || text(lineage(verdict.body).verdict_id);
   assert.ok(verdictId, `${scenario.id} returned no verdict id.`);
+  assertLineage(verdict.body, { review_id: reviewId, selected_card_id: selectedCardId, candidate_id: candidateId, comparison_id: comparisonId, verdict_id: verdictId }, `${scenario.id} verdict`);
 
   const report = await browserJson(page, 'POST', `${baseUrl}/api/portfolio/report/generate`, {
     review_id: reviewId,
     selected_card_id: selectedCardId
   });
   assertOk(report, `${scenario.id} report`);
+  assertLineage(report.body, { review_id: reviewId, selected_card_id: selectedCardId, candidate_id: candidateId, comparison_id: comparisonId, verdict_id: verdictId }, `${scenario.id} report`);
 
-  const routes = ['diagnosis', 'evidence', 'hypothesis', 'comparison', 'verdict', 'report'];
+  for (const [label, body] of [
+    ['diagnosis', diagnosis.body],
+    ['comparison', comparison.body],
+    ['verdict', verdict.body],
+    ['report', report.body]
+  ]) {
+    assertBoundedClientFit(body, `${scenario.id} ${label}`);
+  }
+
+  const storedState = buildStoredState({ scenario, reviewId, selectedCardId, candidateId, comparisonId, verdictId, diagnosis, comparison, verdict, report });
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+  await page.evaluate((state) => {
+    localStorage.clear();
+    sessionStorage.clear();
+    localStorage.setItem('pmri.activeReview.v2', JSON.stringify(state));
+  }, storedState);
+
+  const routes = ['client-profile', 'diagnosis', 'evidence', 'client-fit', 'hypothesis', 'comparison', 'verdict', 'report'];
   const routeChecks = [];
   for (const route of routes) {
     const routeNavigationAttempt = await gotoWithRetry(page, `${baseUrl}/${route}`, { waitUntil: 'domcontentloaded' });
     const bodyText = await page.locator('body').innerText({ timeout: 10000 });
-    routeChecks.push({ route, navigationAttempt: routeNavigationAttempt, hasReviewText: bodyText.includes('Portfolio') || bodyText.includes('Diagnosis') || bodyText.includes('Report') });
+    assertNoForbiddenAdvice(bodyText, `${scenario.id} ${route}`);
+    routeChecks.push({ route, navigationAttempt: routeNavigationAttempt, hasReviewText: bodyText.includes('Portfolio') || bodyText.includes('Diagnosis') || bodyText.includes('Report') || bodyText.includes('Client Fit') });
     await capturePageArtifact(page, `${index}-${scenario.id}-${route}`);
   }
 
@@ -378,6 +797,8 @@ async function runScenario(page, baseUrl, scenario, index) {
     diagnosis_headline: text(diagnosisSummary.headline),
     diagnosis_evidence_count: Array.isArray(diagnosisSummary.diagnosis_evidence_items) ? diagnosisSummary.diagnosis_evidence_items.length : 0,
     diagnosis_attempt: diagnosis.attempt || 1,
+    client_fit_status_label: text(apiClientFit(report.body).status_label),
+    client_fit_status_tone: text(apiClientFit(report.body).status_tone),
     diagnosis_sources: sourceArtifacts(diagnosis.body),
     comparison_sources: sourceArtifacts(comparison.body),
     verdict_sources: sourceArtifacts(verdict.body),

@@ -29,6 +29,7 @@ _MATERIALITY_RANK = {"high": 3, "medium": 2, "low": 1, "none": 0}
 
 _SPECIAL_PRIMARY_ORDER = (
     "evidence_insufficient_data_quality",
+    "goal_risk_conflict",
     "mixed_evidence_no_action",
     "current_portfolio_acceptable",
 )

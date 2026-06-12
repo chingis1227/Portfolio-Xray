@@ -8,6 +8,43 @@ Date: 2026-06-12
 
 Category: Added
 
+- **Client Fit V1 Session 21 documentation closure:** synchronized active source-of-truth wording
+  so Client Fit is no longer described as future-only or as absent from the web journey, replaced
+  stale `client_fit_later` input-tier wording with `client_fit_v1`, and added the final acceptance
+  audit. Focused Client Fit/docs/FastAPI/frontend checks pass; the full backend suite still has
+  unrelated broad-regression failures recorded in the audit.
+
+- **Client Fit V1 Sessions 12-14 Verdict/API/Supabase foundation:** added Client Fit-aware
+  Decision Verdict boundaries, bounded FastAPI `client_fit` display summaries plus regenerated
+  frontend API types, and compact-only Supabase save/recovery for Client Fit display state. A Client
+  Fit pass cannot clear unresolved objective diagnoses by itself, goal-risk conflict routes to
+  revise-objectives language, and Supabase stores compact labels/target rows rather than raw
+  generated artifacts.
+
+- **Client Fit V1 Sessions 09A-11 Builder and Comparison foundation:** reconciled Client Fit
+  source-of-truth language at the post-Launchpad stabilization checkpoint, added Builder Client Fit
+  target rows as hypothesis-test criteria, and extended Current vs Candidate with
+  Current vs Candidate vs Client Target evidence. Client Fit targets remain display/test references,
+  not optimizer mandates or verdicts.
+
+- **Client Fit V1 Sessions 08-09 site/report and Launchpad integration:** added safe
+  site/report explanation hierarchy rows for Client Fit, extended forbidden-copy guardrails for
+  suitability/approval language, and added compact Client Fit context to Candidate Launchpad cards.
+  A Client Fit pass plus a material diagnostic issue still routes to review/test paths.
+
+- **Client Fit V1 Sessions 06-07 Block 4 interpretation:** wired Client Fit evidence into the
+  Block 4 diagnosis rulebook as supporting/contrary context, added the `goal_risk_conflict`
+  objective-review outcome, and exposed separate `client_fit_status`, `diagnostic_quality_status`,
+  and `client_fit_context` fields in Problem Classification / interpretation chain. A Client Fit
+  breach alone does not replace portfolio diagnosis, and a Client Fit pass does not suppress
+  material structural issues.
+
+- **Client Fit V1 Sessions 04-05 foundation:** added `client_fit_check_v1` artifact generation for
+  the portfolio-first `analysis_subject` path after Stress Lab / X-Ray and before Block 4, plus
+  optional Block 4 evidence extraction for `client_fit_status`, `goal_risk_conflict`, and
+  per-dimension Client Fit checks. This is context-only for now; it does not change the diagnosis
+  rulebook, candidate behavior, frontend routes, Supabase storage, or suitability/advice boundary.
+
 - **Diagnosis interpretation Session 16 closure:** closed the Dynamic Diagnosis Interpretation
   Foundation plan after documentation synchronization, added the closure audit, updated the ExecPlan
   register, and recorded the final accepted evidence-chain boundary. This is documentation-only and

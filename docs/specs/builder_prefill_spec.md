@@ -18,7 +18,7 @@ Candidate Launchpad
 
 Block 5 ends at `candidate_launchpad.json`. Block 6 starts when a selected Launchpad card is copied into Builder setup state. Block 7 starts only after an explicit Generate Candidate action consumes a valid `CandidateSetup`.
 
-`BuilderPrefill` must preserve the card's diagnosis context, hypothesis, success criteria, tradeoff, skip rule, method role, and decision boundary. It must keep `is_rebalance_recommendation: false`.
+`BuilderPrefill` must preserve the card's diagnosis context, hypothesis, success criteria, optional Client Fit display/test criteria, tradeoff, skip rule, method role, and decision boundary. It must keep `is_rebalance_recommendation: false`.
 
 ## Public Helpers
 
@@ -29,6 +29,11 @@ launchpad_card_to_builder_prefill(card, *, next_diagnostic_step=None) -> dict
 ```
 
 `build_builder_prefill_from_launchpad_card(card, *, next_diagnostic_step=None)` remains as a backward-compatible wrapper.
+
+Both helpers also accept optional `client_fit_check=None`. When supplied, Client Fit target return,
+volatility, maximum drawdown, and horizon are copied only into display/test criteria and must not
+alter Builder parameters, constraints, optimizer objectives, factory commands, analysis windows, or
+weights.
 
 The strict validator is:
 
@@ -68,6 +73,10 @@ A valid `BuilderPrefill` contains:
 - `warnings`
 
 Compatibility helper fields such as `builder_mode`, `source`, `suggested_methods`, `strategy_selector`, `selected_method`, `original_suggested_method`, `method_changed_by_user`, and `candidate_generation_allowed` may also be present. `candidate_generation_allowed` means only that the Builder may show an explicit generate action later; it never means automatic candidate generation.
+
+Optional Client Fit helper fields are `client_fit_context`, `client_fit_relevance_en`,
+`client_fit_test_criteria`, and `client_fit_optimizer_boundary`. These are allowed only as
+hypothesis-test/display context.
 
 ## Prohibited Fields
 

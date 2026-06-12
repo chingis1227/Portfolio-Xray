@@ -1,4 +1,4 @@
-schema_version: diagnosis_rulebook_schema_v1
+﻿schema_version: diagnosis_rulebook_schema_v1
 ruleset_version: block_4_v3_2026_06
 status: parity
 threshold_source: config/block_4_thresholds.yml
@@ -198,6 +198,17 @@ action_paths:
     source_refs:
     - src/block_4/problem_taxonomy.py
     - docs/specs/block_4_diagnosis_v3_spec.md
+  revise_objectives:
+    label_en: Review objectives and risk limits
+    goal_label: Review objectives and risk limits
+    candidate_method_ids: []
+    launchpad_description_en: Review the stated return, drawdown, volatility, and horizon trade-offs before candidate testing.
+    decision_boundary_en: This path defines a diagnostic objective-review step; it is not a rebalance recommendation and must
+      be evaluated through comparison and Decision Verdict evidence.
+    source_refs:
+    - src/block_4/problem_taxonomy.py
+    - docs/specs/client_fit_check_spec.md
+    - docs/specs/block_4_diagnosis_v3_spec.md
 problems:
   high_volatility:
     label_en: High volatility
@@ -208,10 +219,10 @@ problems:
     technical_definition_en: Annualized portfolio volatility exceeds the materiality band on Block 2.2 and is not fully explained
       by a stress-confirmed crisis narrative alone.
     portfolio_manager_interpretation_en: The portfolio swings more than the investor's risk budget may tolerate in normal
-      periods. Volatility alone does not prove a bad portfolio — it must be weighed against return and stress behavior.
+      periods. Volatility alone does not prove a bad portfolio ? it must be weighed against return and stress behavior.
     professional_rationale_en: This diagnosis matters because it can explain downstream risk outcomes through the controlled
       Block 4 evidence chain rather than through unsourced narrative copy. The portfolio swings more than the investor's risk
-      budget may tolerate in normal periods. Volatility alone does not prove a bad portfolio — it must be weighed against
+      budget may tolerate in normal periods. Volatility alone does not prove a bad portfolio ? it must be weighed against
       return and stress behavior.
     evidence:
       required_signals:
@@ -219,11 +230,14 @@ problems:
       supporting_signals:
       - rolling_volatility
       - block_2_6_equity_shock
+      - client_fit_volatility_vs_target
       contrary_signals:
       - low_stress_loss_with_high_vol
+      - client_fit_within_profile
       missing_evidence_policy_en: If required evidence is unavailable, keep the diagnosis lower confidence or unavailable
         instead of filling the gap with narrative inference.
       source_artifacts:
+      - client_fit_check.json
       - portfolio_xray.json
       - stress_report.json
     threshold_refs:
@@ -286,8 +300,8 @@ problems:
       - vol_annual
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: high_volatility_criterion_2_rolling_volatility
@@ -296,8 +310,8 @@ problems:
       - rolling_volatility
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Compare vol, max drawdown, and turnover vs current.
@@ -311,7 +325,7 @@ problems:
         persuasion.
     source_refs: &id001
     - docs/specs/block_4_diagnosis_v3_spec.md
-    - docs/specs/diagnosis_interpretation_methodology_spec.md
+    - docs/specs/client_fit_check_spec.md
     - docs/specs/diagnosis_rulebook_schema_spec.md
     - src/block_4/problem_taxonomy.py
     - src/block_4/evidence_extraction.py
@@ -336,11 +350,15 @@ problems:
       - worst_historical_scenario
       - time_underwater
       - block_2_6_recession_severe
+      - client_fit_historical_max_drawdown_vs_limit
+      - client_fit_worst_stress_loss_vs_limit
       contrary_signals:
       - drawdown_recovered_quickly
+      - client_fit_within_profile
       missing_evidence_policy_en: If required evidence is unavailable, keep the diagnosis lower confidence or unavailable
         instead of filling the gap with narrative inference.
       source_artifacts:
+      - client_fit_check.json
       - portfolio_xray.json
       - stress_report.json
     threshold_refs:
@@ -383,8 +401,8 @@ problems:
     do_not_overreact_en: A recovered drawdown with improved diversification may not require action.
     hypothesis_tests:
     - test_id: high_drawdown_reduce_drawdown_risk_diagnostic_test
-      hypothesis_to_test_en: Test whether the reduce drawdown path improves the evidence signals behind High drawdown without
-        unacceptable deterioration elsewhere.
+      hypothesis_to_test_en: Test whether the reduce drawdown risk path improves the evidence signals behind High drawdown
+        without unacceptable deterioration elsewhere.
       preferred_action_path_id: reduce_drawdown_risk
       suggested_method_ids:
       - minimum_cvar
@@ -404,8 +422,8 @@ problems:
       - max_drawdown
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: high_drawdown_criterion_2_worst_historical_scenario
@@ -414,8 +432,8 @@ problems:
       - worst_historical_scenario
       direction: lower_is_better
       source_artifacts:
-      - stress_report.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Compare max drawdown, recovery time, and stress replay loss.
@@ -518,8 +536,8 @@ problems:
       - beta_portfolio
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: high_equity_beta_criterion_2_beta_eq
@@ -528,8 +546,8 @@ problems:
       - beta_eq
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: high_equity_beta_criterion_3_hidden_equity_beta
@@ -538,8 +556,8 @@ problems:
       - hidden_equity_beta
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Compare beta, stress equity shock loss, and crisis scenarios.
@@ -551,7 +569,12 @@ problems:
       contrary_evidence_template_en: This was not selected as primary when contrary or stronger root-cause evidence dominated.
       confidence_template_en: Confidence reflects evidence quality, stress confirmation, and missing-data limits rather than
         persuasion.
-    source_refs: *id001
+    source_refs: &id002
+    - docs/specs/block_4_diagnosis_v3_spec.md
+    - docs/specs/diagnosis_interpretation_methodology_spec.md
+    - docs/specs/diagnosis_rulebook_schema_spec.md
+    - src/block_4/problem_taxonomy.py
+    - src/block_4/evidence_extraction.py
   high_concentration:
     label_en: High concentration
     legacy_ids: []
@@ -577,6 +600,7 @@ problems:
         instead of filling the gap with narrative inference.
       source_artifacts:
       - portfolio_xray.json
+      - stress_report.json
     threshold_refs:
     - activation.raw_score_min
     - activation.min_required_signal_strength
@@ -638,8 +662,8 @@ problems:
       - top1_weight_pct
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: high_concentration_criterion_2_top3_weight_pct
@@ -648,8 +672,8 @@ problems:
       - top3_weight_pct
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: high_concentration_criterion_3_rc_top1_share
@@ -658,8 +682,8 @@ problems:
       - rc_top1_share
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Compare top weights, RC top3 share, and stress loss contributors.
@@ -671,7 +695,7 @@ problems:
       contrary_evidence_template_en: This was not selected as primary when contrary or stronger root-cause evidence dominated.
       confidence_template_en: Confidence reflects evidence quality, stress confirmation, and missing-data limits rather than
         persuasion.
-    source_refs: *id001
+    source_refs: *id002
     subtypes:
     - capital_concentration
     - risk_contribution_concentration
@@ -705,6 +729,7 @@ problems:
         instead of filling the gap with narrative inference.
       source_artifacts:
       - portfolio_xray.json
+      - stress_report.json
     threshold_refs:
     - activation.raw_score_min
     - activation.min_required_signal_strength
@@ -764,8 +789,8 @@ problems:
       - duplicate_exposure
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: poor_diversification_criterion_2_correlation_concentration
@@ -774,8 +799,8 @@ problems:
       - correlation_concentration
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: poor_diversification_criterion_3_avg_pairwise_correlation
@@ -784,8 +809,8 @@ problems:
       - avg_pairwise_correlation
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Compare correlation matrix, RC breadth, and stress attribution.
@@ -797,7 +822,7 @@ problems:
       contrary_evidence_template_en: This was not selected as primary when contrary or stronger root-cause evidence dominated.
       confidence_template_en: Confidence reflects evidence quality, stress confirmation, and missing-data limits rather than
         persuasion.
-    source_refs: *id001
+    source_refs: *id002
   weak_hedge_behavior:
     label_en: Weak hedge behavior
     legacy_ids: []
@@ -882,10 +907,10 @@ problems:
       label_en: Watch offset coverage ratio
       metric_or_signal_refs:
       - offset_coverage_ratio
-      direction: higher_is_better
+      direction: lower_is_better
       source_artifacts:
-      - stress_report.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: weak_hedge_behavior_criterion_2_protection_status
@@ -894,8 +919,8 @@ problems:
       - protection_status
       direction: lower_is_better
       source_artifacts:
-      - stress_report.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: weak_hedge_behavior_criterion_3_weak_hedge_behavior_alert
@@ -904,8 +929,8 @@ problems:
       - weak_hedge_behavior_alert
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Compare offset coverage and assets helped/hurt in stress replay.
@@ -917,7 +942,7 @@ problems:
       contrary_evidence_template_en: This was not selected as primary when contrary or stronger root-cause evidence dominated.
       confidence_template_en: Confidence reflects evidence quality, stress confirmation, and missing-data limits rather than
         persuasion.
-    source_refs: *id001
+    source_refs: *id002
   poor_rates_up_behavior:
     label_en: Poor rates-up behavior
     legacy_ids: []
@@ -982,7 +1007,7 @@ problems:
     do_not_overreact_en: Moderate duration in a balanced book may be intentional liability matching.
     hypothesis_tests:
     - test_id: poor_rates_up_behavior_reduce_duration_rates_sensitivity_diagnostic_test
-      hypothesis_to_test_en: Test whether the reduce duration / rates sensitivity path improves the evidence signals behind
+      hypothesis_to_test_en: Test whether the reduce duration rates sensitivity path improves the evidence signals behind
         Poor rates-up behavior without unacceptable deterioration elsewhere.
       preferred_action_path_id: reduce_duration_rates_sensitivity
       suggested_method_ids:
@@ -1004,8 +1029,8 @@ problems:
       - block_2_6_rates_shock
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: poor_rates_up_behavior_criterion_2_rates_scenario_loss
@@ -1014,8 +1039,8 @@ problems:
       - rates_scenario_loss
       direction: lower_is_better
       source_artifacts:
-      - stress_report.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: poor_rates_up_behavior_criterion_3_beta_rr
@@ -1024,8 +1049,8 @@ problems:
       - beta_rr
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Compare rates shock scenario loss and factor rates beta.
@@ -1037,7 +1062,7 @@ problems:
       contrary_evidence_template_en: This was not selected as primary when contrary or stronger root-cause evidence dominated.
       confidence_template_en: Confidence reflects evidence quality, stress confirmation, and missing-data limits rather than
         persuasion.
-    source_refs: *id001
+    source_refs: *id002
   weak_crisis_resilience:
     label_en: Weak crisis resilience
     legacy_ids: []
@@ -1059,11 +1084,14 @@ problems:
       - offset_coverage_ratio
       - block_2_6_recession_severe
       - stress_diagnosis
+      - client_fit_worst_stress_loss_vs_limit
       contrary_signals:
       - immaterial_stress_loss
+      - client_fit_within_profile
       missing_evidence_policy_en: If required evidence is unavailable, keep the diagnosis lower confidence or unavailable
         instead of filling the gap with narrative inference.
       source_artifacts:
+      - client_fit_check.json
       - portfolio_xray.json
       - stress_report.json
     threshold_refs:
@@ -1124,8 +1152,8 @@ problems:
       - worst_synthetic_scenario
       direction: lower_is_better
       source_artifacts:
-      - stress_report.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: weak_crisis_resilience_criterion_2_worst_historical_scenario
@@ -1134,18 +1162,18 @@ problems:
       - worst_historical_scenario
       direction: lower_is_better
       source_artifacts:
-      - stress_report.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: weak_crisis_resilience_criterion_3_offset_coverage_ratio
       label_en: Watch offset coverage ratio
       metric_or_signal_refs:
       - offset_coverage_ratio
-      direction: higher_is_better
+      direction: lower_is_better
       source_artifacts:
-      - stress_report.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Compare worst synthetic/historical loss and crisis scenario set.
@@ -1246,8 +1274,8 @@ problems:
       - es_95
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: high_tail_risk_criterion_2_tail_risk_alert
@@ -1256,8 +1284,8 @@ problems:
       - tail_risk_alert
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: high_tail_risk_criterion_3_var_95
@@ -1266,8 +1294,8 @@ problems:
       - var_95
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Compare ES/VaR and worst stress scenarios.
@@ -1279,7 +1307,7 @@ problems:
       contrary_evidence_template_en: This was not selected as primary when contrary or stronger root-cause evidence dominated.
       confidence_template_en: Confidence reflects evidence quality, stress confirmation, and missing-data limits rather than
         persuasion.
-    source_refs: *id001
+    source_refs: *id002
   credit_liquidity_fragility:
     label_en: Credit / liquidity fragility
     legacy_ids: []
@@ -1288,11 +1316,10 @@ problems:
     suppress_launchpad_methods: false
     technical_definition_en: Block 2.4 credit/liquidity alert or Block 2.6 credit/liquidity shock hypothesis elevated; credit
       stress loss may confirm.
-    portfolio_manager_interpretation_en: Carry and credit-like exposures may fail in spread or liquidity stress. Illiquidity
-      amplifies drawdowns when investors need to sell.
+    portfolio_manager_interpretation_en: Carry and credit-like exposures may fail in spread or liquidity stress. Illiquidity amplifies drawdowns when investors need liquidity.
     professional_rationale_en: This diagnosis matters because it can explain downstream risk outcomes through the controlled
       Block 4 evidence chain rather than through unsourced narrative copy. Carry and credit-like exposures may fail in spread
-      or liquidity stress. Illiquidity amplifies drawdowns when investors need to sell.
+      or liquidity stress. Illiquidity amplifies drawdowns when investors need liquidity.
     evidence:
       required_signals:
       - credit_liquidity_risk_alert
@@ -1344,7 +1371,7 @@ problems:
     do_not_overreact_en: Investment-grade aggregate exposure may be acceptable with strong liquidity profile.
     hypothesis_tests:
     - test_id: credit_liquidity_fragility_reduce_credit_liquidity_risk_diagnostic_test
-      hypothesis_to_test_en: Test whether the reduce credit / liquidity risk path improves the evidence signals behind Credit
+      hypothesis_to_test_en: Test whether the reduce credit liquidity risk path improves the evidence signals behind Credit
         / liquidity fragility without unacceptable deterioration elsewhere.
       preferred_action_path_id: reduce_credit_liquidity_risk
       suggested_method_ids:
@@ -1366,8 +1393,8 @@ problems:
       - credit_liquidity_risk_alert
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: credit_liquidity_fragility_criterion_2_block_2_6_credit_shock
@@ -1376,8 +1403,8 @@ problems:
       - block_2_6_credit_shock
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: credit_liquidity_fragility_criterion_3_beta_credit
@@ -1386,8 +1413,8 @@ problems:
       - beta_credit
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Compare credit shock and liquidity shock scenario losses.
@@ -1399,7 +1426,7 @@ problems:
       contrary_evidence_template_en: This was not selected as primary when contrary or stronger root-cause evidence dominated.
       confidence_template_en: Confidence reflects evidence quality, stress confirmation, and missing-data limits rather than
         persuasion.
-    source_refs: *id001
+    source_refs: *id002
   duration_rates_vulnerability:
     label_en: Duration / rates vulnerability
     legacy_ids: []
@@ -1425,6 +1452,7 @@ problems:
         instead of filling the gap with narrative inference.
       source_artifacts:
       - portfolio_xray.json
+      - stress_report.json
     threshold_refs:
     - activation.raw_score_min
     - activation.min_required_signal_strength
@@ -1462,7 +1490,7 @@ problems:
     do_not_overreact_en: Long Treasuries may be deliberate hedges even when duration alert is elevated.
     hypothesis_tests:
     - test_id: duration_rates_vulnerability_reduce_duration_rates_sensitivity_diagnostic_test
-      hypothesis_to_test_en: Test whether the reduce duration / rates sensitivity path improves the evidence signals behind
+      hypothesis_to_test_en: Test whether the reduce duration rates sensitivity path improves the evidence signals behind
         Duration / rates vulnerability without unacceptable deterioration elsewhere.
       preferred_action_path_id: reduce_duration_rates_sensitivity
       suggested_method_ids:
@@ -1484,8 +1512,8 @@ problems:
       - duration_concentration_alert
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: duration_rates_vulnerability_criterion_2_fixed_income_weight
@@ -1494,8 +1522,8 @@ problems:
       - fixed_income_weight
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: duration_rates_vulnerability_criterion_3_beta_rr
@@ -1504,8 +1532,8 @@ problems:
       - beta_rr
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Compare rates shock loss and duration-related factor betas.
@@ -1517,7 +1545,7 @@ problems:
       contrary_evidence_template_en: This was not selected as primary when contrary or stronger root-cause evidence dominated.
       confidence_template_en: Confidence reflects evidence quality, stress confirmation, and missing-data limits rather than
         persuasion.
-    source_refs: *id001
+    source_refs: *id002
   low_return_risk_efficiency:
     label_en: Low return / risk efficiency
     legacy_ids: []
@@ -1538,11 +1566,13 @@ problems:
       supporting_signals:
       - vol_annual
       - cagr
+      - client_fit_return_target_gap
       contrary_signals:
       - high_stress_resilience_with_low_sharpe
       missing_evidence_policy_en: If required evidence is unavailable, keep the diagnosis lower confidence or unavailable
         instead of filling the gap with narrative inference.
       source_artifacts:
+      - client_fit_check.json
       - portfolio_xray.json
       - stress_report.json
     threshold_refs:
@@ -1583,7 +1613,7 @@ problems:
     do_not_overreact_en: Low Sharpe in a defensive post-crisis window may reflect regime, not construction flaw.
     hypothesis_tests:
     - test_id: low_return_risk_efficiency_improve_return_risk_balance_diagnostic_test
-      hypothesis_to_test_en: Test whether the improve return/risk balance path improves the evidence signals behind Low return
+      hypothesis_to_test_en: Test whether the improve return risk balance path improves the evidence signals behind Low return
         / risk efficiency without unacceptable deterioration elsewhere.
       preferred_action_path_id: improve_return_risk_balance
       suggested_method_ids:
@@ -1603,20 +1633,20 @@ problems:
       label_en: Watch sharpe
       metric_or_signal_refs:
       - sharpe
-      direction: higher_is_better
+      direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: low_return_risk_efficiency_criterion_2_sortino
       label_en: Watch sortino
       metric_or_signal_refs:
       - sortino
-      direction: higher_is_better
+      direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: low_return_risk_efficiency_criterion_3_vol_annual
@@ -1625,8 +1655,8 @@ problems:
       - vol_annual
       direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Compare Sharpe, vol, and return vs benchmark candidates.
@@ -1707,10 +1737,10 @@ problems:
       label_en: Watch no material problem
       metric_or_signal_refs:
       - no_material_problem
-      direction: non_deterioration
+      direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Reference comparison only; do not imply a rebalance.
@@ -1722,7 +1752,7 @@ problems:
       contrary_evidence_template_en: This was not selected as primary when contrary or stronger root-cause evidence dominated.
       confidence_template_en: Confidence reflects evidence quality, stress confirmation, and missing-data limits rather than
         persuasion.
-    source_refs: *id001
+    source_refs: *id002
   evidence_insufficient_data_quality:
     label_en: Evidence quality requires review
     legacy_ids:
@@ -1778,8 +1808,8 @@ problems:
     do_not_overreact_en: Incomplete ETF history is common; do not infer problems from missing windows.
     hypothesis_tests:
     - test_id: evidence_insufficient_data_quality_evidence_insufficient_do_not_act_yet_diagnostic_test
-      hypothesis_to_test_en: Test whether the do not act yet path improves the evidence signals behind Evidence quality requires
-        review without unacceptable deterioration elsewhere.
+      hypothesis_to_test_en: Test whether the evidence insufficient do not act yet path improves the evidence signals behind
+        Evidence quality requires review without unacceptable deterioration elsewhere.
       preferred_action_path_id: evidence_insufficient_do_not_act_yet
       suggested_method_ids: []
       success_criteria_refs:
@@ -1797,8 +1827,8 @@ problems:
       - data_trust_failure
       direction: resolved
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: evidence_insufficient_data_quality_criterion_2_partial_sections
@@ -1807,8 +1837,8 @@ problems:
       - partial_sections
       direction: resolved
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     - criterion_id: evidence_insufficient_data_quality_criterion_3_stress_block_unavailable
@@ -1817,8 +1847,8 @@ problems:
       - stress_block_unavailable
       direction: resolved
       source_artifacts:
-      - stress_report.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Defer comparison until data_quality_warnings cleared.
@@ -1830,7 +1860,7 @@ problems:
       contrary_evidence_template_en: This was not selected as primary when contrary or stronger root-cause evidence dominated.
       confidence_template_en: Confidence reflects evidence quality, stress confirmation, and missing-data limits rather than
         persuasion.
-    source_refs: *id001
+    source_refs: *id002
   mixed_evidence_no_action:
     label_en: Mixed evidence - reference test available
     legacy_ids: []
@@ -1853,6 +1883,7 @@ problems:
         instead of filling the gap with narrative inference.
       source_artifacts:
       - portfolio_xray.json
+      - stress_report.json
     threshold_refs:
     - activation.raw_score_min
     - activation.min_required_signal_strength
@@ -1900,15 +1931,114 @@ problems:
       label_en: Watch conflicting signal bundle
       metric_or_signal_refs:
       - conflicting_signal_bundle
-      direction: non_deterioration
+      direction: lower_is_better
       source_artifacts:
-      - portfolio_xray.json
       - current_vs_candidate.json
+      - portfolio_xray.json
       explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
         automatically justified.
     downstream_comparison_focus_en: Reference comparison only; do not imply a rebalance.
     narrative_templates:
       headline_en: 'Primary diagnostic frame: Mixed evidence - reference test available.'
+      root_cause_narrative_en: Use only populated evidence signals and source artifacts when rendering this diagnosis.
+      evidence_sentence_templates_en:
+      - '{signal_label} is {observed_value} in {source_block} from {source_artifact}.'
+      contrary_evidence_template_en: This was not selected as primary when contrary or stronger root-cause evidence dominated.
+      confidence_template_en: Confidence reflects evidence quality, stress confirmation, and missing-data limits rather than
+        persuasion.
+    source_refs: *id002
+  goal_risk_conflict:
+    evidence:
+      required_signals:
+      - goal_risk_conflict
+      supporting_signals:
+      - client_fit_horizon_risk_mismatch
+      - client_fit_status
+      contrary_signals: []
+      missing_evidence_policy_en: If required evidence is unavailable, keep the diagnosis lower confidence or unavailable
+        instead of filling the gap with narrative inference.
+      source_artifacts:
+      - client_fit_check.json
+    label_en: Goal-risk conflict
+    legacy_ids: []
+    role: outcome
+    eligible_as_primary: true
+    suppress_launchpad_methods: true
+    technical_definition_en: Client Fit V1 indicates that the provided return objective, volatility range, drawdown limit,
+      or horizon are internally inconsistent before portfolio action is evaluated.
+    portfolio_manager_interpretation_en: The client's stated goals and risk limits should be clarified before treating portfolio
+      changes as the answer. This is an objective-profile consistency issue, not a portfolio optimizer promise.
+    professional_rationale_en: This diagnosis matters because it can explain downstream risk outcomes through the controlled
+      Block 4 evidence chain rather than through unsourced narrative copy. The client's stated goals and risk limits should
+      be clarified before treating portfolio changes as the answer. This is an objective-profile consistency issue, not a
+      portfolio optimizer promise.
+    threshold_refs:
+    - activation.raw_score_min
+    - activation.min_required_signal_strength
+    - materiality_bands.high_min
+    - materiality_bands.medium_min
+    - materiality_bands.low_min
+    - stress_confirmation_multipliers.confirmed
+    - stress_confirmation_multipliers.pre_stress_only
+    - stress_confirmation_multipliers.contradicted
+    - stress_confirmation_multipliers.unavailable
+    - confidence.partial_data_cap
+    - confidence.data_trust_cap
+    - severity.high_decision_score_min
+    - severity.medium_decision_score_min
+    action_paths:
+      primary_action_path_id: revise_objectives
+      secondary_action_path_ids:
+      - keep_current_portfolio_and_monitor
+    launchpad:
+      card_title_en: Review Objectives Before Candidate Testing
+      what_this_tests_en: Whether the stated return target, risk limits, and horizon describe a feasible diagnostic frame.
+      tradeoff_en: Clarifying objectives before testing candidates vs delaying portfolio comparison.
+      skip_when_en: Skip only after the Client Fit profile is corrected or the conflict is resolved.
+      default_candidate_method_ids: []
+    false_positive_notes_en:
+    - Temporary questionnaire mismatch that is corrected by updating the profile.
+    false_negative_notes_en:
+    - Legacy target fields supplied without a Client Fit V1 profile.
+    when_not_primary_en: When no Client Fit profile was provided, when the profile is internally clear, or when a data-quality
+      blocker prevents reliable diagnosis.
+    do_not_overreact_en: A goal-risk conflict does not prove the current portfolio is broken; it shows that the stated objectives
+      need review before interpreting fit.
+    hypothesis_tests:
+    - test_id: goal_risk_conflict_revise_objectives_diagnostic_test
+      hypothesis_to_test_en: Test whether the revise objectives path improves the evidence signals behind Goal-risk conflict
+        without unacceptable deterioration elsewhere.
+      preferred_action_path_id: revise_objectives
+      suggested_method_ids: []
+      success_criteria_refs:
+      - goal_risk_conflict_criterion_1_goal_risk_conflict
+      - goal_risk_conflict_criterion_2_client_fit_horizon_risk_mismatch
+      tradeoff_to_watch_en: Clarifying objectives before testing candidates vs delaying portfolio comparison.
+      when_to_skip_en: Skip only after the Client Fit profile is corrected or the conflict is resolved.
+      decision_boundary_en: Candidate comparison and Decision Verdict decide whether any action is justified; this hypothesis
+        is diagnostic only.
+    success_criteria:
+    - criterion_id: goal_risk_conflict_criterion_1_goal_risk_conflict
+      label_en: Watch goal risk conflict
+      metric_or_signal_refs:
+      - goal_risk_conflict
+      direction: resolved
+      source_artifacts:
+      - client_fit_check.json
+      explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
+        automatically justified.
+    - criterion_id: goal_risk_conflict_criterion_2_client_fit_horizon_risk_mismatch
+      label_en: Watch client fit horizon risk mismatch
+      metric_or_signal_refs:
+      - client_fit_horizon_risk_mismatch
+      direction: resolved
+      source_artifacts:
+      - client_fit_check.json
+      explanation_en: Use this signal to judge whether the diagnostic hypothesis improved without claiming that a trade is
+        automatically justified.
+    downstream_comparison_focus_en: Clarify target return, volatility, drawdown, and horizon before comparing candidates.
+    narrative_templates:
+      headline_en: 'Primary diagnostic frame: Goal-risk conflict.'
       root_cause_narrative_en: Use only populated evidence signals and source artifacts when rendering this diagnosis.
       evidence_sentence_templates_en:
       - '{signal_label} is {observed_value} in {source_block} from {source_artifact}.'
@@ -1984,6 +2114,7 @@ governance:
   - current_vs_candidate.json
   - problem_classification.json
   - candidate_launchpad.json
+  - client_fit_check.json
   required_validation_checks:
   - problem_ids_match_python_registry
   - action_paths_match_python_registry

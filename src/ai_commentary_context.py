@@ -33,6 +33,7 @@ _WEAK_PROTECTION_STATUSES = frozenset({"weak_protection", "no_protection"})
 ALLOWED_SOURCE_ARTIFACTS: tuple[str, ...] = (
     "portfolio_xray.json",
     "stress_report.json",
+    "client_fit_check.json",
     "problem_classification.json",
     "candidate_launchpad.json",
     "portfolio_alternatives_builder.json",
@@ -129,6 +130,46 @@ def _launchpad_refs(candidate_launchpad: dict[str, Any] | None) -> list[dict[str
                     "card_id": card.get("card_id"),
                     "goal": card.get("goal"),
                     "method_id": card.get("method_id"),
+                },
+            )
+    return refs
+
+
+def _client_fit_refs(client_fit_check: dict[str, Any] | None) -> list[dict[str, Any]]:
+    refs: list[dict[str, Any]] = []
+    if not isinstance(client_fit_check, dict):
+        return refs
+    _append_reference(
+        refs,
+        artifact="client_fit_check.json",
+        field_path="client_fit_status",
+        value=client_fit_check.get("client_fit_status"),
+    )
+    profile = client_fit_check.get("profile")
+    if isinstance(profile, dict):
+        _append_reference(
+            refs,
+            artifact="client_fit_check.json",
+            field_path="profile",
+            value={
+                "preset_id": profile.get("preset_id"),
+                "source": profile.get("source"),
+                "source_quality": profile.get("source_quality"),
+                "horizon_years": profile.get("horizon_years"),
+            },
+        )
+    checks = client_fit_check.get("checks")
+    if isinstance(checks, list):
+        for idx, check in enumerate(checks[:6]):
+            if not isinstance(check, dict):
+                continue
+            _append_reference(
+                refs,
+                artifact="client_fit_check.json",
+                field_path=f"checks[{idx}]",
+                value={
+                    "dimension": check.get("dimension"),
+                    "status": check.get("status"),
                 },
             )
     return refs
@@ -1171,6 +1212,40 @@ def _primary_diagnosis_sentence(
     )
 
 
+def _client_fit_sentence(client_fit_check: Mapping[str, Any] | None) -> dict[str, Any]:
+    if isinstance(client_fit_check, Mapping):
+        status = _safe_text(client_fit_check.get("client_fit_status")) or "unknown"
+        profile = client_fit_check.get("profile")
+        source_quality = None
+        if isinstance(profile, Mapping):
+            source_quality = _safe_text(profile.get("source_quality"))
+        text = f"Client Fit status is {status}; it is provided-profile context, not a final action."
+        if source_quality:
+            text = f"{text} Profile source quality is {source_quality}."
+        return _sentence(
+            "client_fit",
+            text,
+            [
+                _brief_ref(
+                    artifact="client_fit_check.json",
+                    field_path="client_fit_status",
+                    value=status,
+                ),
+                _brief_ref(
+                    artifact="client_fit_check.json",
+                    field_path="profile.source_quality",
+                    value=source_quality,
+                ),
+            ],
+        )
+    return _sentence(
+        "client_fit",
+        "Client Fit evidence is not available for this report context.",
+        [],
+        evidence_status="missing",
+    )
+
+
 def _stress_sentence(stress_report: Mapping[str, Any] | None) -> dict[str, Any]:
     if isinstance(stress_report, Mapping):
         scorecard = _scorecard_v1_block(dict(stress_report))
@@ -1571,10 +1646,12 @@ def _build_client_explanation_draft(
     decision_verdict: Mapping[str, Any] | None,
     monitoring_diff: Mapping[str, Any] | None,
     stress_report: Mapping[str, Any] | None,
+    client_fit_check: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
     sentences = [
         _primary_diagnosis_sentence(problem_classification),
         _stress_sentence(stress_report),
+        _client_fit_sentence(client_fit_check),
         _hypothesis_sentence(
             candidate_generation,
             candidate_launchpad,
@@ -1698,6 +1775,7 @@ def build_ai_commentary_context(
     monitoring_diff: dict[str, Any] | None = None,
     portfolio_xray: dict[str, Any] | None = None,
     stress_report: dict[str, Any] | None = None,
+    client_fit_check: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the deterministic evidence contract for future AI Commentary."""
 
@@ -1722,6 +1800,7 @@ def build_ai_commentary_context(
     evidence_references.extend(_xray_refs(portfolio_xray))
     evidence_references.extend(_stress_refs(stress_report, scorecard_context))
     evidence_references.extend(_hedge_gap_refs(stress_report, hedge_gap_context, comparison))
+    evidence_references.extend(_client_fit_refs(client_fit_check))
     evidence_references.extend(_problem_refs(problem_classification))
     evidence_references.extend(_launchpad_refs(candidate_launchpad))
     evidence_references.extend(_builder_refs(portfolio_alternatives_builder))
@@ -1794,6 +1873,10 @@ def build_ai_commentary_context(
                 "Use Portfolio X-Ray, Stress Test Lab, Problem Classification, and "
                 "Candidate Launchpad only as source evidence for the diagnosed current-portfolio problem."
             ),
+            "client_fit": (
+                "Use client_fit_check.json only as provided-profile context. Keep Client Fit status "
+                "separate from diagnostic quality and downstream Decision Verdict."
+            ),
             "hypothesis_tested": (
                 "Use candidate_generation.json candidate.goal, candidate.hypothesis_to_test, "
                 "source diagnosis/card ids, and success criteria. Do not invent a hypothesis."
@@ -1848,6 +1931,7 @@ def build_ai_commentary_context(
             decision_verdict=decision_verdict,
             monitoring_diff=monitoring_diff,
             stress_report=stress_report,
+            client_fit_check=client_fit_check,
         ),
         "light_decision_journal": _build_light_decision_journal(
             generated_at=generated_at,
@@ -1864,6 +1948,7 @@ def build_ai_commentary_context(
         "source_artifacts": {
             "portfolio_xray": _source_name("portfolio_xray.json", portfolio_xray),
             "stress_report": _source_name("stress_report.json", stress_report),
+            "client_fit_check": _source_name("client_fit_check.json", client_fit_check),
             "problem_classification": _source_name("problem_classification.json", problem_classification),
             "candidate_launchpad": _source_name("candidate_launchpad.json", candidate_launchpad),
             "portfolio_alternatives_builder": _source_name(
@@ -1903,6 +1988,7 @@ def write_ai_commentary_context_outputs(
     monitoring_diff: dict[str, Any] | None = None,
     portfolio_xray: dict[str, Any] | None = None,
     stress_report: dict[str, Any] | None = None,
+    client_fit_check: dict[str, Any] | None = None,
 ) -> dict[str, Path]:
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -1919,6 +2005,7 @@ def write_ai_commentary_context_outputs(
         monitoring_diff=monitoring_diff,
         portfolio_xray=portfolio_xray,
         stress_report=stress_report,
+        client_fit_check=client_fit_check,
     )
     path = out / AI_COMMENTARY_CONTEXT_FILENAME
     with open(path, "w", encoding="utf-8") as f:

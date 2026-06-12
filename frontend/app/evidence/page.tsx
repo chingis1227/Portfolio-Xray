@@ -84,7 +84,23 @@ function EvidencePageContent() {
         fallbackTitle="Stress evidence explanation"
       />
       {!hydrated ? null : model ? (
-        <StressTestLab model={model} />
+        <>
+          <StressTestLab model={model} />
+          <section className="pmri-card mt-6 rounded-3xl p-5 md:p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="pmri-label">Next step</p>
+                <h2 className="pmri-heading-section mt-2 text-2xl text-pmri-text">Review Client Fit before testing a hypothesis</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-pmri-muted">
+                  Stress Test Lab is objective portfolio evidence. The next screen separately checks whether this risk fits the stated profile.
+                </p>
+              </div>
+              <Link href="/client-fit" className="pmri-focus pmri-primary-action rounded-full px-5 py-2.5 text-sm font-medium transition">
+                Continue to Client Fit
+              </Link>
+            </div>
+          </section>
+        </>
       ) : completedRealReview ? (
         <MissingStressLabState />
       ) : (

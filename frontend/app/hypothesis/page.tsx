@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
+import { ClientFitContextCard } from "@/components/client-fit/ClientFitContextCard";
 import { HypothesisCard } from "@/components/hypothesis/HypothesisCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatUnknownValue, normalizeDisplayLabel, normalizeDisplaySentence } from "@/lib/displayLabels";
@@ -864,23 +865,23 @@ function BuilderSetupPanel({
   );
 }
 
-function EmptyState({ title, description }: { title: string; description: string }) {
+function EmptyState({ title, description, href = "/portfolio-input", cta = "Go to Portfolio Input" }: { title: string; description: string; href?: string; cta?: string }) {
   return (
     <section className="pmri-card rounded-3xl p-6">
       <p className="text-lg font-medium text-pmri-text">{title}</p>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-pmri-muted">{description}</p>
       <Link
-        href="/portfolio-input"
+        href={href}
         className="pmri-focus mt-5 inline-flex rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
       >
-        Go to Portfolio Input
+        {cta}
       </Link>
     </section>
   );
 }
 
 export default function HypothesisPage() {
-  const { activeReview, hydrated, recordBuilderSetup, recordCandidateGeneration } = useReviewState();
+  const { activeReview, hydrated, journeyFlags, recordBuilderSetup, recordCandidateGeneration } = useReviewState();
   const [sampleMode, setSampleMode] = useState(false);
   const [sampleGenerated, setSampleGenerated] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
@@ -1024,7 +1025,7 @@ export default function HypothesisPage() {
     return (
       <div>
         <PageHeader
-          kicker="Step 04 / Hypothesis"
+          kicker="Step 06 / Hypothesis"
           title="Hypothesis Builder"
           description="Turn the current diagnosis into one clear candidate test before comparison."
           boundaryNote="Candidates are test portfolios for comparison. They are not recommendations."
@@ -1063,7 +1064,7 @@ export default function HypothesisPage() {
     return (
       <div>
         <PageHeader
-          kicker="Step 04 / Hypothesis"
+          kicker="Step 06 / Hypothesis"
           title="Hypothesis is locked"
           description="Complete Portfolio Input first to unlock Hypothesis."
           boundaryNote="Candidates are test portfolios for comparison. They are not recommendations."
@@ -1078,11 +1079,32 @@ export default function HypothesisPage() {
     );
   }
 
+  if (!journeyFlags.clientFitReady) {
+    return (
+      <div>
+        <PageHeader
+          kicker="Step 06 / Hypothesis"
+          title="Hypothesis is locked"
+          description="Review Client Fit before testing a candidate hypothesis."
+          boundaryNote="A Client Fit pass cannot hide structural diagnosis issues, and a Client Fit concern is not trade advice."
+        >
+          <StatusBadge tone="amber">Client Fit required</StatusBadge>
+        </PageHeader>
+        <EmptyState
+          title="Open Client Fit first."
+          description="The web journey separates what the portfolio owns, how it behaves under stress, and whether that evidence fits the stated profile."
+          href="/client-fit"
+          cta="Open Client Fit"
+        />
+      </div>
+    );
+  }
+
   if (!launchpadRecord || rawLaunchpadCards.length === 0) {
     return (
       <div>
         <PageHeader
-          kicker="Step 04 / Hypothesis"
+          kicker="Step 06 / Hypothesis"
           title="Hypothesis Builder"
           description="Turn the portfolio diagnosis into a testable investment hypothesis."
           boundaryNote="Candidates are test portfolios for comparison. They are not recommendations."
@@ -1105,11 +1127,12 @@ export default function HypothesisPage() {
 
   const selectedRawCard = candidateRawCards.find((card) => textValue(card.card_id, "") === selectedCardId);
   const reviewId = activeReview?.reviewId ?? activeReview?.reviewSummary?.reviewId ?? activeReview?.reviewResult?.review_id;
+  const clientFit = activeReview?.reviewSummary?.clientFit;
 
   return (
     <div>
       <PageHeader
-        kicker="Step 04 / Hypothesis"
+        kicker="Step 06 / Hypothesis"
         title="Hypothesis Builder"
         description="Turn the current diagnosis into one clear candidate test before comparison."
         boundaryNote="Candidates are test portfolios for comparison. They are not recommendations."
@@ -1123,6 +1146,15 @@ export default function HypothesisPage() {
       />
       <WorkflowRail />
       <CurrentDiagnosisSection view={problemClassificationView} />
+      <div className="mb-7">
+        <ClientFitContextCard
+          clientFit={clientFit}
+          title="Client Fit informs the test, but does not choose the answer"
+          description="Hypothesis Builder keeps the selected diagnosis and the stated profile visible as two separate inputs."
+          structuralIssueNote="If the portfolio fits the stated profile but still has a concentration or stress issue, the issue remains visible and still needs a test path."
+          compact
+        />
+      </div>
       <RecommendedTestSection view={problemClassificationView} />
       <DecisionBoundaryBlock />
       <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_400px]">

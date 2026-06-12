@@ -14,7 +14,7 @@ def test_golden_fixture_activates_stress_and_concentration_problems() -> None:
     evidence = extract_evidence_signals(_load_golden_xray(), _hedge_gap_stress())
     result = score_problems(evidence)
 
-    assert result.problems_evaluated == 15
+    assert result.problems_evaluated == 16
     assert "weak_crisis_resilience" in result.actionable_activated_ids
     assert "weak_hedge_behavior" in result.actionable_activated_ids
     assert "high_concentration" in result.actionable_activated_ids

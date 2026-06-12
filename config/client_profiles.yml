@@ -1,9 +1,25 @@
-# Client risk profiles - target return, volatility, max drawdown, liquidity floor.
-# When client_profile is set in config, midpoints are applied via src/client_profiles.py.
+# Client Fit / legacy policy risk profiles.
+#
+# Client Fit V1 reuses these ranges as planning presets for target return, volatility,
+# and maximum drawdown. Liquidity fields remain for legacy/advanced policy compatibility
+# only and are not part of Client Fit V1 fit checks.
+#
+# When legacy client_profile is set in config, midpoints are still applied via
+# src/client_profiles.py to preserve existing optimizer/report compatibility.
+
+client_fit_v1:
+  enabled: true
+  liquidity_in_scope: false
+  source_quality_defaults:
+    questionnaire_confirmed: medium
+    preset_only: medium
+    manual_override_complete: high
+    missing: missing
 
 profiles:
   ultra_conservative:
     name: Ultra Conservative
+    client_fit_label: Ultra Conservative
     max_drawdown_pct: ~10%
     target_return_annual: { min_pct: 2, max_pct: 4, midpoint: 0.03 }
     target_vol_annual: { min_pct: 2, max_pct: 5, midpoint: 0.035 }
@@ -13,6 +29,7 @@ profiles:
 
   conservative:
     name: Conservative
+    client_fit_label: Conservative
     max_drawdown_pct: ~15%
     target_return_annual: { min_pct: 3, max_pct: 6, midpoint: 0.045 }
     target_vol_annual: { min_pct: 4, max_pct: 7, midpoint: 0.055 }
@@ -22,6 +39,7 @@ profiles:
 
   balanced:
     name: Balanced
+    client_fit_label: Balanced
     max_drawdown_pct: ~20%
     target_return_annual: { min_pct: 5, max_pct: 7, midpoint: 0.06 }
     target_vol_annual: { min_pct: 7, max_pct: 10, midpoint: 0.085 }
@@ -31,6 +49,7 @@ profiles:
 
   growth:
     name: Growth
+    client_fit_label: Growth
     max_drawdown_pct: ~25-30%
     target_return_annual: { min_pct: 7, max_pct: 10, midpoint: 0.085 }
     target_vol_annual: { min_pct: 10, max_pct: 14, midpoint: 0.12 }
@@ -41,6 +60,7 @@ profiles:
 
   aggressive:
     name: Aggressive
+    client_fit_label: Aggressive
     max_drawdown_pct: ">30%"
     target_return_annual: { min_pct: 10, max_pct: 20, midpoint: 0.12 }
     target_vol_annual: { min_pct: 14, max_pct: 20, midpoint: 0.17 }

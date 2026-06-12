@@ -23,6 +23,7 @@ BLOCK_3_4 = "block_3_4_current_portfolio_stress_scorecard"
 
 ARTIFACT_XRAY = "portfolio_xray.json"
 ARTIFACT_STRESS = "stress_report.json"
+ARTIFACT_CLIENT_FIT = "client_fit_check.json"
 
 HEDGE_GAP_V1_KEY = "hedge_gap_analysis_v1"
 HEDGE_GAP_V1_VERSION = "hedge_gap_analysis_v1"
@@ -176,10 +177,12 @@ def build_diagnosis_evidence_bundle(
 def extract_evidence_signals(
     portfolio_xray: dict[str, Any] | None,
     stress_report: dict[str, Any] | None,
+    client_fit_check: dict[str, Any] | None = None,
 ) -> EvidenceExtractionResult:
-    """Extract taxonomy signal names from Blocks 2.1–2.6 and 3.3–3.4."""
+    """Extract taxonomy signal names from Blocks 2.1-2.6, 3.3-3.4, and Client Fit V1."""
     xray = portfolio_xray if isinstance(portfolio_xray, dict) else {}
     stress = stress_report if isinstance(stress_report, dict) else {}
+    client_fit = client_fit_check if isinstance(client_fit_check, dict) else {}
     bucket: dict[str, list[EvidenceSignal]] = {}
     warnings: list[str] = []
     legacy_used = False
@@ -196,6 +199,7 @@ def extract_evidence_signals(
     _extract_block_2_5(bucket, xray, evidence_path_pre)
     _extract_block_2_6(bucket, xray, evidence_path_pre)
     provenance = _extract_stress_blocks(bucket, stress, warnings)
+    _extract_client_fit(bucket, client_fit, warnings)
     _extract_data_quality(bucket, xray, stress, warnings)
 
     if legacy_used:
@@ -209,6 +213,94 @@ def extract_evidence_signals(
         data_quality_warnings=warnings,
         source_provenance=provenance,
     )
+
+def _extract_client_fit(
+    bucket: dict[str, list[EvidenceSignal]],
+    client_fit: dict[str, Any],
+    warnings: list[str],
+) -> None:
+    if not isinstance(client_fit, dict) or not client_fit:
+        return
+    if client_fit.get("schema_version") != "client_fit_check_v1":
+        warnings.append("Client Fit artifact has unsupported or missing schema_version.")
+        return
+
+    status = str(client_fit.get("client_fit_status") or "evidence_insufficient")
+    _emit(
+        bucket,
+        EvidenceSignal(
+            signal="client_fit_status",
+            value=status,
+            source_block="client_fit_check_v1",
+            source_artifact=ARTIFACT_CLIENT_FIT,
+            evidence_path="client_fit_context",
+            interpretation_en=f"Client Fit status is {status.replace('_', ' ')}.",
+            severity="high" if status in {"breach", "conflict"} else "medium" if status == "watch" else "low",
+            raw_field_path="client_fit_status",
+        ),
+    )
+    if status == "fit":
+        _emit(
+            bucket,
+            EvidenceSignal(
+                signal="client_fit_within_profile",
+                value={"status": "fit"},
+                source_block="client_fit_check_v1",
+                source_artifact=ARTIFACT_CLIENT_FIT,
+                evidence_path="client_fit_context",
+                interpretation_en=(
+                    "Client Fit status is fit; the provided profile does not add a personal-risk breach."
+                ),
+                severity="low",
+                raw_field_path="client_fit_status",
+            ),
+        )
+
+    conflict = client_fit.get("goal_risk_conflict")
+    if isinstance(conflict, dict) and str(conflict.get("status") or "") == "conflict":
+        _emit(
+            bucket,
+            EvidenceSignal(
+                signal="goal_risk_conflict",
+                value={"status": "conflict", "reasons": list(conflict.get("reasons") or [])},
+                source_block="client_fit_check_v1",
+                source_artifact=ARTIFACT_CLIENT_FIT,
+                evidence_path="client_fit_context",
+                interpretation_en=str(
+                    conflict.get("interpretation")
+                    or "Client objectives show an internal goal-risk conflict."
+                ),
+                severity="high",
+                raw_field_path="goal_risk_conflict",
+            ),
+        )
+
+    for row in client_fit.get("checks") or []:
+        if not isinstance(row, dict):
+            continue
+        check_status = str(row.get("status") or "")
+        dimension = str(row.get("dimension") or "")
+        if check_status not in {"watch", "breach", "conflict", "evidence_insufficient"}:
+            continue
+        signal_name = f"client_fit_{dimension}" if dimension else "client_fit_check"
+        _emit(
+            bucket,
+            EvidenceSignal(
+                signal=signal_name,
+                value={
+                    "status": check_status,
+                    "portfolio_value": row.get("portfolio_value"),
+                    "client_limit": row.get("client_limit"),
+                    "client_range": row.get("client_range"),
+                },
+                source_block="client_fit_check_v1",
+                source_artifact=ARTIFACT_CLIENT_FIT,
+                evidence_path="client_fit_context",
+                interpretation_en=str(row.get("interpretation") or f"Client Fit check {dimension} is {check_status}."),
+                severity="high" if check_status in {"breach", "conflict"} else "medium",
+                raw_field_path=f"checks[{dimension}]",
+            ),
+        )
 
 
 def _stress_blocks_available(stress: dict[str, Any]) -> bool:

@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function redirectWithStatus(request: NextRequest, status: "success" | "disabled" | "error", message?: string) {
   const url = request.nextUrl.clone();
-  url.pathname = "/portfolio-input";
+  url.pathname = "/client-profile";
   url.searchParams.set("auth", status);
   if (message) url.searchParams.set("auth_message", message);
   return NextResponse.redirect(url);

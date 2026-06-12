@@ -60,7 +60,15 @@ A valid `CandidateSetup` contains:
 - `validation_warnings`
 - `created_at`
 
-`source_launchpad_card_type`, `hypothesis_to_test`, `success_criteria`, `tradeoff_to_watch`, and `decision_boundary` preserve the Launchpad-to-Builder product context so Block 7 can generate a traceable candidate attempt without inventing rationale. `parameters` and `constraints` are the simple Builder setup fields selected or confirmed by the user: `goal`, `method`, `mode`, `constraint_preset`, `min_asset_weight`, and `max_asset_weight`. The only user-adjustable optimization fields in the MVP are `min_asset_weight` and `max_asset_weight`. Preset labels are visible setup labels; Block 6 does not translate them into hidden optimizer formulas.
+`source_launchpad_card_type`, `hypothesis_to_test`, `success_criteria`, optional Client Fit test
+criteria, `tradeoff_to_watch`, and `decision_boundary` preserve the Launchpad-to-Builder product
+context so Block 7 can generate a traceable candidate attempt without inventing rationale.
+`parameters` and `constraints` are the simple Builder setup fields selected or confirmed by the user:
+`goal`, `method`, `mode`, `constraint_preset`, `min_asset_weight`, and `max_asset_weight`. The only
+user-adjustable optimization fields in the MVP are `min_asset_weight` and `max_asset_weight`. Preset
+labels are visible setup labels; Block 6 does not translate them into hidden optimizer formulas.
+Client Fit target return, volatility, drawdown, and horizon values must stay outside `parameters` and
+`constraints`; they are display/test references for comparison, not optimizer mandates.
 
 Guided Block 6 methods are limited to `equal_weight`, `risk_parity`, `hierarchical_risk_parity`, `minimum_variance`, `minimum_cvar`, and `maximum_diversification`. Capped mode maps Minimum Variance, Minimum CVaR, and Maximum Diversification to the current constrained candidate engines; uncapped mode maps them to the uncapped engines. Uncapped setup must keep `min_asset_weight: 0.0`, `max_asset_weight: null`, `capped: false`, and the concentration warning defined in the Portfolio Alternatives Builder spec.
 

@@ -85,6 +85,8 @@ Each `cards[]` row contains:
 | `decision_boundary` | States that rebalance decisions are made only after Current vs Candidate Comparison and Decision Verdict. |
 | `generates_portfolio` | Always `false` in V1. |
 | `requires_user_action` | Whether the card expects the user to choose a test rather than simply monitor/review. |
+| `client_fit_context` | Optional compact Client Fit status context when `client_fit_check.json` exists. |
+| `client_fit_relevance_en` | Optional plain-English boundary explaining that Client Fit informs the test path without suppressing the diagnosis or creating trade advice. |
 
 ## Card Boundary
 
@@ -95,6 +97,11 @@ For reference benchmark cards, `suggested_methods[]` rows include
 concentration benchmark; Risk Parity is used as a risk-distribution benchmark.
 If the primary diagnosis is actionable, the first card remains the targeted
 hypothesis and reference benchmarks must not displace it.
+
+Client Fit V1 integration is contextual only. A Client Fit pass does not automatically remove
+targeted Launchpad cards when objective Block 4 evidence still shows a material diagnostic issue.
+A Client Fit breach or watch status may explain why a test matters, but the card remains a
+hypothesis test and not a trade instruction.
 
 ## Builder Handoff Boundary
 

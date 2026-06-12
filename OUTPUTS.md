@@ -18,6 +18,7 @@ The canonical current product truth is **ДИАГНОСТИКА 2**. Output inte
 Input portfolio
 -> Portfolio X-Ray
 -> Stress Test Lab
+-> Client Fit Check
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
@@ -238,11 +239,12 @@ required; each bundle artifact has its own writer and schema.
 
 | Bundle artifact | Writer (code) | Default path | When present |
 | --- | --- | --- | --- |
+| `client_fit_check.json` | `write_client_fit_check_outputs` in `run_report.py` (`src/client_fit.py`) | `{output_dir_final}/analysis_subject/client_fit_check.json` | After Stress Lab / X-Ray and before Block 4; schema `client_fit_check_v1`; writes `not_provided` when no Client Fit profile exists |
 | `problem_classification.json` | `write_block_4_diagnosis_outputs` in `run_report.py` (`src/block_4/diagnosis_builder.py`) | `{output_dir_final}/analysis_subject/problem_classification.json` | After default diagnosis / materialize (#1); schema `problem_classification_v3` |
 | `candidate_launchpad.json` | `write_block_4_diagnosis_outputs` in `run_report.py` | `{output_dir_final}/analysis_subject/candidate_launchpad.json` | After default diagnosis / materialize (#2); schema `candidate_launchpad_v3` |
-| `portfolio_alternatives_builder.json` | `write_portfolio_alternatives_builder_outputs` called by `write_block_4_diagnosis_outputs` | `{output_dir_final}/analysis_subject/portfolio_alternatives_builder.json` | After Launchpad when a primary card exists; schema `portfolio_alternatives_builder_v1`; setup only (#2.5) |
+| `portfolio_alternatives_builder.json` | `write_portfolio_alternatives_builder_outputs` called by `write_block_4_diagnosis_outputs` | `{output_dir_final}/analysis_subject/portfolio_alternatives_builder.json` | After Launchpad when a primary card exists; schema `portfolio_alternatives_builder_v1`; setup only (#2.5); may include Client Fit target rows as display/test criteria only |
 | `candidate_generation.json` | `write_candidate_generation_outputs` in `src/candidate_generation.py`; runtime adapter `scripts/generate_candidate_from_builder_setup.py`; one-command wrapper `scripts/run_blocks_5_to_9_vertical_flow.py` | `{output_dir_final}/candidate_generation.json` | After explicit Generate Candidate action or the Blocks 5-9 vertical demo; schema `candidate_generation_v1`; one attempt only (#3) |
-| `current_vs_candidate.json` | `write_current_vs_candidate_outputs` in compare chain, or Block 8-only `write_block8_current_vs_candidate_only_outputs` | `{output_dir_final}/current_vs_candidate.json` | After compare only (#4); Block 8-only mode does not write verdict/action/journal/AI context |
+| `current_vs_candidate.json` | `write_current_vs_candidate_outputs` in compare chain, or Block 8-only `write_block8_current_vs_candidate_only_outputs` | `{output_dir_final}/current_vs_candidate.json` | After compare only (#4); Block 8-only mode does not write verdict/action/journal/AI context; may show Current vs Candidate vs Client Target evidence when `client_fit_check.json` exists |
 | `decision_verdict.json` | `write_decision_verdict_outputs` | `{output_dir_final}/decision_verdict.json` | After compare only (#5) |
 | `ai_commentary_context.json` | `write_ai_commentary_context_outputs` | `{output_dir_final}/ai_commentary_context.json` | After compare only (#6) |
 | `what_changed_summary.json` | `write_what_changed_summary_outputs` | `{output_dir_final}/what_changed_summary.json` | After compare only (#7); optional if no prior snapshot |
@@ -311,6 +313,11 @@ Common project artifacts include:
 - `stress_report.json.historical_episode_paths` (path-level crisis replay block)
 - `stress_report.json.data_trust_summary` (`stress_data_trust_summary_v1`; episode quality, young-ETF and taxonomy warnings for user-readable surfaces; RM-1016)
 - `portfolio_xray.json`
+- `client_fit_check.json` (`client_fit_check_v1`; generated after Stress Lab/X-Ray and before
+  Problem Classification; compares return, volatility, drawdown, worst stress loss, horizon, and
+  goal-risk conflict against the provided Client Fit profile; no liquidity check and no suitability
+  approval; downstream Builder/Comparison consumers may use target return, volatility, maximum
+  drawdown, and horizon only as display/test references, never optimizer mandates)
 - `portfolio_xray.json.data_trust_signals` and `input_assumptions.data_trust_signals` (`input_data_trust_signals_v1`; rolled section warnings plus stress trust; RM-1016)
 - `scenario_library.json`
 - `scenario_library_normalized.json`
@@ -392,6 +399,7 @@ When validating the first-five-block MVP core (offline smoke or a representative
 | 1 Input | `run_metadata.json` with `analysis_setup` and `input_assumptions` | Explicit current/model weights sum to at most `1.0`; partial sums disclose cash remainder; `analysis_setup.core_mvp_input_surface` and `input_assumptions.core_mvp_input_contract` expose the minimal Core MVP product input contract; `input_assumptions.input_surface` / `field_tiers` disclose deferred/legacy keys; real-cash labels in `analysis_setup.cash_handling.real_cash_holdings` when used (not substituted by `cash_proxy_ticker`) |
 | 2 X-Ray | `portfolio_xray.json` (seven sections + product blocks `block_2_1_asset_allocation` … `block_2_6_portfolio_weakness_map`) | `data_trust_signals.user_summary_lines` when data-quality warnings exist; prefer product blocks for UI/API: capital structure (§2.1.1), portfolio behavior (§2.2.1), factor sensitivity (§2.3.1), hidden exposure (§2.4.1), risk budget (§2.5.1), weakness map (§2.6.1, `heuristic_v2`, eight canonical Stress Lab `risk_type` ids — [acceptance audit](docs/audits/2026-05-29_block_2_6_weakness_map_heuristic_v2_acceptance_audit.md)); Blocks 2.3–2.6 are read-only adapters over upstream evidence; legacy `sections.*` remain for formatters until migration |
 | 3 Stress | `stress_report.json` with `scenario_library_meta` plus sidecar `scenario_library.json`, `stress_results_v1`, `historical_stress_replay_v1` (portfolio-first diagnostic), `hedge_gap_analysis_v1`, `current_portfolio_stress_scorecard_v1`, historical methodology, and legacy compatibility rollups | `data_trust_summary.user_summary_lines` for episode/taxonomy/young-ETF warnings and partial historical replay (`historical_stress_replay_v1`); Block 3.2 historical `portfolio_loss_pct` / `drawdown_pct` only when `portfolio_level_result_available`; Block 3.3 eight protection rows with `ruleset_version`, `summary.protection_profile`, and optional 2.4/2.6 bridge arrays after X-Ray build; Block 3.4 when `block_status` ∈ `{ok, partial}`: non-empty `stress_diagnosis.headline`, `diagnosis_confidence`, explicit `legacy_fallback_used`, non-empty `next_decision_uses`, `hedge_gap_summary.main_hedge_gap_scenario_id` when hedge gap v1 available, no mandate pass/fail or forbidden “passes normally” phrasing inside Block 3.4; Core MVP diagnostic mode must not expose row-level mandate `pass` / `loss_ok` / `diagnostic_code(s)` in product rows or raw evidence arrays |
+| 3.5 Client Fit | `client_fit_check.json` | Optional profile context becomes `fit`, `watch`, `breach`, `conflict`, `not_provided`, or `evidence_insufficient`; Block 4 can use dimension-level Client Fit signals as supporting/contrary evidence and can select `goal_risk_conflict` as the objective-review exception |
 | 4 Factory | `candidate_factory_run.json` at review root | Comparison `candidate_menu.factory_evidence_status` must be `current` or explicitly not authoritative |
 | 4–5 Bundle | `candidate_comparison.json` → `review_bundle_context` | `review_bundle_fingerprint` and `mode_subject_consistency` link subject/factory/comparison; read `user_summary_lines` when `analysis_mode` label differs from `analysis_subject.type` |
 | 5 Optimizers | Candidate folders + comparison rows | Optimizer-backed rows are `available` only when readiness-critical evidence is complete; otherwise `degraded` with warning codes |

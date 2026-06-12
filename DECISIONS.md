@@ -60,6 +60,59 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-06-12-003
+Title: Keep Client Fit API and Supabase surfaces display-ready and compact
+
+- Status: accepted
+- Date: 2026-06-12
+- Decision: Public FastAPI envelopes and optional Supabase persistence expose Client Fit only as
+  bounded display summaries: status label/tone, profile/source-quality labels, compact target rows,
+  decision boundary, and next-test text.
+- Context: Sessions 12-14 carried Client Fit into Verdict, API envelopes, generated frontend API
+  types, and optional cloud persistence.
+- Rationale: Raw `client_fit_check.json`, backend ids, schema versions, local paths, source-artifact
+  maps, and field paths are implementation evidence. Primary UI and cloud history need compact
+  reader-facing state, not generated artifacts.
+- Alternatives considered: Persist raw `client_fit_check.json` in Supabase or expose it directly in
+  primary API data (rejected because it violates the compact-storage and display-model boundaries).
+- Assumptions: Dedicated `/client-profile` and `/client-fit` routes are now active in the web
+  journey; later UI iterations may add richer presentation without changing this raw-artifact
+  boundary.
+- Consequences: API/frontend/Supabase contract changes must keep `client_fit` display-ready and must
+  not store generated artifacts or raw evidence JSON in Supabase.
+- Related documents: `docs/exec_plans/2026-06-12_client_fit_v1_foundation_plan.md`,
+  `docs/contracts/FASTAPI_V1_API_CONTRACT.md`, `docs/supabase/README.md`,
+  `docs/specs/decision_verdict_spec.md`.
+- Review trigger: Revisit only if an accepted frontend/API/Supabase spec intentionally promotes a
+  raw artifact/debug view outside primary UI and compact cloud history.
+
+Decision ID: DEC-2026-06-12-002
+Title: Treat Client Fit targets as display/test criteria, not optimizer mandates
+
+- Status: accepted
+- Date: 2026-06-12
+- Decision: Client Fit V1 target return, volatility, maximum drawdown, and horizon may be surfaced
+  in Builder and Current vs Candidate as hypothesis-test and comparison-reference criteria only.
+  They must not change optimizer objectives, constraints, mandate gates, analysis windows, factory
+  method selection, candidate weights, or verdict action.
+- Context: Client Fit V1 adds personal-fit interpretation after Stress Lab and before Problem
+  Classification, then carries that context into downstream Builder and Comparison layers.
+- Rationale: Portfolio MRI must remain diagnosis-first and decision-support-first. Treating Client
+  Fit targets as hidden optimizer mandates would blur personal fit, objective diagnostics, and
+  portfolio construction policy.
+- Alternatives considered: Use Client Fit targets as hard optimizer constraints in V1 (rejected
+  because no optimizer/spec migration exists); omit Client Fit from Builder/Comparison until UI work
+  (rejected because backend evidence can already be shown safely as display/test context).
+- Assumptions: A future optimizer-specific spec could intentionally promote a Client Fit field, but
+  only with updated formulas, tests, docs, and decision records.
+- Consequences: Builder and Comparison may show Client Fit target rows, but Decision Verdict remains
+  the first layer that can choose a non-binding action/no-action outcome.
+- Related documents: [Client Fit V1 Foundation](docs/exec_plans/2026-06-12_client_fit_v1_foundation_plan.md),
+  [Portfolio Alternatives Builder spec](docs/specs/portfolio_alternatives_builder_spec.md),
+  [Current vs Candidate spec](docs/specs/current_vs_candidate_spec.md).
+- Review trigger: Revisit before any optimizer, factory, mandate, API display-envelope, or Verdict
+  session attempts to make Client Fit targets binding.
+
 Decision ID: DEC-2026-06-12-001
 Title: Close deterministic diagnosis interpretation foundation after live QA acceptance
 

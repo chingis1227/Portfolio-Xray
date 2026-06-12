@@ -12,7 +12,7 @@ export default function PortfolioInputPage() {
   return (
     <div>
       <PageHeader
-        kicker="Step 01 / Portfolio to diagnose"
+        kicker="Step 02 / Portfolio to diagnose"
         title="Define the current portfolio"
         description="Enter the portfolio as it stands today. Portfolio MRI will diagnose this allocation before testing any alternative."
       />

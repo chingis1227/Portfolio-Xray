@@ -39,6 +39,7 @@ AI Commentary may use only evidence from allowed deterministic artifacts:
 
 - `portfolio_xray.json`
 - `stress_report.json`
+- `client_fit_check.json`
 - `problem_classification.json`
 - `candidate_launchpad.json`
 - `portfolio_alternatives_builder.json`
@@ -98,7 +99,7 @@ Top-level fields:
 - `forbidden_claim_categories`: list of forbidden claim types
 - `required_grounding_rules`: list of rules for any future commentary generator
 - `commentary_topics`: topic-to-grounding guidance map
-- `client_explanation_draft`: deterministic 5-10 sentence plain-language preview over grounded fields only
+- `client_explanation_draft`: deterministic 5-11 sentence plain-language preview over grounded fields only
 - `light_decision_journal`: compact decision-record scaffold over grounded fields only
 - `evidence_references`: material source references with artifact and field path
 - `hedge_gap_context`: optional Block 3.3 hedge-gap grounding slice (see below)
@@ -108,7 +109,7 @@ Top-level fields:
   metrics, alter selection/verdict, or execute trades
 - `warnings`: missing-source and upstream-warning list
 
-The topic map explicitly covers diagnosis, key problems, hidden exposures,
+The topic map explicitly covers diagnosis, Client Fit context, key problems, hidden exposures,
 hypothesis tested, candidate generated or Builder-blocked status, current vs
 candidate comparison, improvements, deteriorations, turnover/cost,
 success-criteria result, Decision Verdict, no-trade rationale,
@@ -124,7 +125,7 @@ contains:
 - `purpose`: `deterministic_plain_language_preview`
 - `does_not_call_llm`: `true`
 - `does_not_create_new_metrics`: `true`
-- `sentences`: ordered 5-10 topic rows, each with `topic`,
+- `sentences`: ordered 5-11 topic rows, each with `topic`,
   `evidence_status`, `text`, and source `references`
 
 The draft may say that evidence is missing, unavailable, limited, or blocked.

@@ -9,6 +9,7 @@ const WEIGHT_TOLERANCE = 0.01;
 export type PortfolioPayload = {
   investor_currency?: unknown;
   holdings?: unknown;
+  client_fit?: unknown;
   mode?: unknown;
 };
 
@@ -19,6 +20,7 @@ type ValidatedHolding =
 type ValidatedPayload = {
   investor_currency: string;
   holdings: ValidatedHolding[];
+  client_fit?: Record<string, unknown>;
 };
 
 export type StageRequest = {
@@ -113,6 +115,79 @@ function legacyErrorFromFastApi(body: unknown, fallback: string) {
     status: "failed",
     error: scrubForClient(message || fallback),
     details
+  };
+}
+
+function numberValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function validateClientFitRange(value: unknown, fieldName: string, errors: string[]) {
+  if (!isRecord(value)) {
+    errors.push(`client_fit.${fieldName} must be an object.`);
+    return undefined;
+  }
+  const min = numberValue(value.min);
+  const max = numberValue(value.max);
+  if (min === null || max === null || min < 0 || max > 1 || min >= max) {
+    errors.push(`client_fit.${fieldName} must satisfy 0 <= min < max <= 1.`);
+    return undefined;
+  }
+  return { min, max };
+}
+
+function validateClientFitPayload(value: unknown): { clientFit?: Record<string, unknown>; clientFitErrors: string[] } {
+  if (value === undefined || value === null) return { clientFitErrors: [] };
+  const clientFitErrors: string[] = [];
+  if (!isRecord(value)) return { clientFitErrors: ["client_fit must be an object."] };
+
+  const source = textValue(value.source);
+  const sourceQuality = textValue(value.source_quality);
+  if (!["questionnaire", "preset_override", "manual_override", "imported", "missing"].includes(source)) {
+    clientFitErrors.push("client_fit.source is invalid.");
+  }
+  if (!["high", "medium", "low", "missing"].includes(sourceQuality)) {
+    clientFitErrors.push("client_fit.source_quality is invalid.");
+  }
+  if (source === "missing" || sourceQuality === "missing") {
+    clientFitErrors.push("The web diagnosis requires a completed Client Fit profile.");
+  }
+
+  const presetId = textValue(value.preset_id);
+  if (presetId && !["ultra_conservative", "conservative", "balanced", "growth", "aggressive"].includes(presetId)) {
+    clientFitErrors.push("client_fit.preset_id is invalid.");
+  }
+  const horizonYears = numberValue(value.horizon_years);
+  if (value.horizon_years !== undefined && value.horizon_years !== null && (horizonYears === null || horizonYears <= 0)) {
+    clientFitErrors.push("client_fit.horizon_years must be a positive number.");
+  }
+  const targetReturnRange = value.target_return_range === undefined || value.target_return_range === null
+    ? undefined
+    : validateClientFitRange(value.target_return_range, "target_return_range", clientFitErrors);
+  const targetVolRange = value.target_vol_range === undefined || value.target_vol_range === null
+    ? undefined
+    : validateClientFitRange(value.target_vol_range, "target_vol_range", clientFitErrors);
+  const drawdown = numberValue(value.target_max_drawdown_pct);
+  if (value.target_max_drawdown_pct !== undefined && value.target_max_drawdown_pct !== null && (drawdown === null || drawdown < -1 || drawdown > 0)) {
+    clientFitErrors.push("client_fit.target_max_drawdown_pct must be a decimal from -1 to 0.");
+  }
+  if (!presetId && (!targetReturnRange || !targetVolRange || drawdown === null || horizonYears === null || horizonYears <= 0)) {
+    clientFitErrors.push("client_fit requires preset_id or complete manual targets.");
+  }
+  if (clientFitErrors.length) return { clientFitErrors };
+
+  return {
+    clientFit: {
+      preset_id: presetId || null,
+      source,
+      source_quality: sourceQuality,
+      source_quality_reason: textValue(value.source_quality_reason) || null,
+      horizon_years: horizonYears,
+      target_return_range: targetReturnRange ?? null,
+      target_vol_range: targetVolRange ?? null,
+      target_max_drawdown_pct: drawdown
+    },
+    clientFitErrors
   };
 }
 
@@ -214,11 +289,14 @@ function validatePortfolioPayload(body: PortfolioPayload): { payload?: Validated
   }
 
   if (errors.length) return { errors };
-  return { payload: { investor_currency: investorCurrency, holdings }, errors };
+  const { clientFit, clientFitErrors } = validateClientFitPayload(body.client_fit);
+  errors.push(...clientFitErrors);
+  if (errors.length) return { errors };
+  return { payload: { investor_currency: investorCurrency, holdings, client_fit: clientFit }, errors };
 }
 
 function fastApiCreateReviewBody(payload: ValidatedPayload) {
-  return {
+  const body: Record<string, unknown> = {
     portfolio: {
       investor_currency: payload.investor_currency,
       holdings: payload.holdings.map((holding) => holding.type === "cash"
@@ -231,6 +309,8 @@ function fastApiCreateReviewBody(payload: ValidatedPayload) {
       sample_mode: false
     }
   };
+  if (payload.client_fit) body.client_fit = payload.client_fit;
+  return body;
 }
 
 export function validateStageRequest(body: StageRequest) {
@@ -416,6 +496,7 @@ function reportDisplayModelFromFastApi(envelope: ReportResponse | Record<string,
     nextObservation: textValue(preview.monitoring_note, "Retest if diagnosis, comparison, or verdict evidence changes."),
     boundaryNote: textValue(evidenceChainContext.recommendation_boundary, "Decision-support only. This preview explains available evidence and does not provide suitability, tax, or trade advice."),
     warnings: stringArray(envelope.warnings).concat(stringArray(preview.evidence_limitations)),
+    clientFit: isRecord(data.client_fit) ? data.client_fit : undefined,
     generatedAt: new Date().toISOString()
   };
 }

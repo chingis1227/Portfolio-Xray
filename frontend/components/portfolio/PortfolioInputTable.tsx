@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Holding } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -103,6 +104,20 @@ function formatWeight(value: number) {
 
 function formatTotalWeight(value: number) {
   return Math.abs(value - 100) <= WEIGHT_TOLERANCE ? "100" : formatWeight(value);
+}
+
+function pctRangeLabel(range: { min: number; max: number } | null | undefined) {
+  if (!range) return "Not set";
+  return `${formatWeight(range.min * 100)}-${formatWeight(range.max * 100)}%`;
+}
+
+function drawdownLabel(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? `${formatWeight(value * 100)}%` : "Not set";
+}
+
+function profileLabel(value: string | null | undefined) {
+  if (!value) return "Custom profile";
+  return value.split("_").map((part) => part ? `${part[0].toUpperCase()}${part.slice(1)}` : part).join(" ");
 }
 
 function isKnownInstrument(row: EditableHolding) {
@@ -493,8 +508,17 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
   const instrumentsComplete = rows.length > 0 && rows.every(isKnownInstrument);
   const weightsComplete = rows.length > 0 && rows.every(isValidWeight);
   const weightsAddTo100 = Math.abs(totalWeight - 100) <= WEIGHT_TOLERANCE;
+  const clientProfileReady = Boolean(activeReview?.clientFitProfile);
 
   const validationSummary: ValidationSummary = useMemo(() => {
+    if (!clientProfileReady) {
+      return {
+        title: "Profile required",
+        text: "Complete Client Profile before running the web diagnosis.",
+        tone: "amber"
+      };
+    }
+
     if (!instrumentsComplete) {
       return {
         title: "Select an instrument",
@@ -532,9 +556,9 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         text: `${rows.length} holdings · 100% allocated`,
       tone: "green"
     };
-  }, [instrumentsComplete, rows.length, totalWeight, weightsComplete]);
+  }, [clientProfileReady, instrumentsComplete, rows.length, totalWeight, weightsComplete]);
 
-  const ready = instrumentsComplete && weightsComplete && weightsAddTo100;
+  const ready = instrumentsComplete && weightsComplete && weightsAddTo100 && clientProfileReady;
   const cloudReady = cloudEnabled && authStatus === "signed_in";
 
   const updateInstrument = (id: string, instrument: Instrument | null) => {
@@ -607,7 +631,8 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         },
         body: JSON.stringify({
           investor_currency: currency || "USD",
-          holdings: reviewHoldings.map(reviewHoldingToPayload)
+          holdings: reviewHoldings.map(reviewHoldingToPayload),
+          client_fit: activeReview?.clientFitProfile
         })
       });
 
@@ -765,6 +790,38 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
 
   return (
     <div className="space-y-5">
+    <section className="pmri-card rounded-2xl p-5 md:p-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="pmri-label">Client Fit profile</p>
+          <h2 className="pmri-heading-section mt-2 text-lg text-pmri-text">
+            {clientProfileReady ? profileLabel(activeReview?.clientFitProfile?.preset_id) : "Complete Client Profile before diagnosis"}
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-pmri-muted">
+            The web journey runs diagnosis only after the planning profile is captured. These limits are used as display and hypothesis-test context, not optimizer instructions.
+          </p>
+          {activeReview?.clientFitProfile ? (
+            <div className="mt-4 flex flex-wrap gap-2 text-xs text-pmri-text2">
+              <span className="rounded-full border border-pmri-border/55 bg-white/[0.025] px-3 py-1.5">Return {pctRangeLabel(activeReview.clientFitProfile.target_return_range)}</span>
+              <span className="rounded-full border border-pmri-border/55 bg-white/[0.025] px-3 py-1.5">Volatility {pctRangeLabel(activeReview.clientFitProfile.target_vol_range)}</span>
+              <span className="rounded-full border border-pmri-border/55 bg-white/[0.025] px-3 py-1.5">Temporary loss {drawdownLabel(activeReview.clientFitProfile.target_max_drawdown_pct)}</span>
+              <span className="rounded-full border border-pmri-border/55 bg-white/[0.025] px-3 py-1.5">Horizon {activeReview.clientFitProfile.horizon_years ?? "not set"} years</span>
+            </div>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <StatusBadge tone={clientProfileReady ? "green" : "amber"}>
+            {clientProfileReady ? "Profile ready" : "Profile required"}
+          </StatusBadge>
+          <Link
+            href="/client-profile"
+            className="pmri-focus rounded-full border border-pmri-border/60 bg-white/[0.025] px-4 py-2 text-sm font-medium text-pmri-text2 transition hover:border-pmri-blue/35 hover:text-pmri-text"
+          >
+            {clientProfileReady ? "Edit profile" : "Create profile"}
+          </Link>
+        </div>
+      </div>
+    </section>
     <section className="pmri-card overflow-hidden rounded-2xl">
       <div className="border-b border-pmri-border/45 p-5 md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -926,6 +983,11 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                 </>
               ) : "Run diagnosis"}
             </button>
+            {!clientProfileReady ? (
+              <p className="mt-3 rounded-xl border border-pmri-amber/35 bg-pmri-amber/10 px-4 py-3 text-sm leading-6 text-pmri-amber">
+                Complete Client Profile first. The backend and CLI remain compatible with missing profile data, but this web journey requires it before diagnosis.
+              </p>
+            ) : null}
             {diagnosisError ? (
               <p className="mt-3 rounded-xl border border-pmri-risk/35 bg-pmri-risk/10 px-4 py-3 text-sm leading-6 text-pmri-risk">
                 {diagnosisError}

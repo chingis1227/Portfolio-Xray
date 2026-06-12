@@ -93,8 +93,8 @@ in which currency results are shown.
 | --- | --- | --- |
 | `analysis_subject` (`type`, `id`, `display_name`) | `system_default` / internal | Injected for Core MVP when weights supplied |
 | `analysis_mode` | `system_default` / internal | `analyze_current_weights` for Core MVP |
-| `portfolio_value` | `client_fit_later` | Liquidity / action / rebalancing |
-| `initial_investable_amount` | `client_fit_later` | Same |
+| `portfolio_value` | `risk_guardrail_later` | Liquidity / action / rebalancing |
+| `initial_investable_amount` | `risk_guardrail_later` | Same |
 | `beta_local_mapping` | `assumption_testing` | Asset-level diagnostic override |
 
 **Example (Core MVP):** VOO 45%, QQQ 20%, TLT 15%, GLD 10%, Cash USD 10%, `investor_currency: USD`.
@@ -133,34 +133,49 @@ reports after the user chooses `investor_currency`.
 Resolution is implemented in `src/config.py` (`resolve_cash_and_rf`, benchmark defaults by currency).
 Unsupported currencies must still set cash proxy and risk-free explicitly.
 
-### 1.3 Liquidity and Cash Context (later — not Core MVP input)
+### 1.3 Liquidity and Cash Context (later / Advanced Mandate ? not Client Fit V1)
 
-**Purpose (future):** Cash adequacy and practical suitability — life floor, expense coverage,
+**Purpose (future):** Cash adequacy and practical suitability ? life floor, expense coverage,
 whether a candidate violates liquidity needs.
 
 **Fields (optional / later layers):** `liquidity_need` (legacy derived flag), `liquidity_need_months`,
 `monthly_expenses`, `cash_policy`.
 
-**Core MVP:** not required. If the user already holds cash in the portfolio (§1.1 Real Cash), that
+**Core MVP:** not required. If the user already holds cash in the portfolio (?1.1 Real Cash), that
 position is diagnosed as-is. `cash_policy` (vol scaling via cash, required floor, prohibited) applies
 to **Candidate Builder / optimization** later, not to mandatory first-screen input.
 
-**Future placement:** optional Risk Guardrail / Client-Fit Check before or after Candidate Builder.
+**Future placement:** optional Risk Guardrail / Advanced Mandate before or after Candidate Builder.
+Liquidity is explicitly excluded from Client Fit V1.
 
-### 1.4 Client Profile and Objectives (later — not Core MVP input)
+### 1.4 Client Profile and Objectives (Client Fit V1 and backend-compatible optional input)
 
-**Purpose (future):** Compare realized portfolio behavior to stated goals (drawdown tolerance,
-vol target, return objective) — interpretive, not auto-trading.
+**Purpose:** Compare deterministic portfolio evidence to stated goals (drawdown tolerance, volatility
+target, return objective, and horizon) through Client Fit V1 ? interpretive, not auto-trading.
 
 **Fields:** `client_profile`, `target_nominal_return_annual`, `target_vol_annual`,
-`target_max_drawdown_pct`, `min_acceptable_return`, `horizon_years`.
+`target_max_drawdown_pct`, `min_acceptable_return`, `horizon_years`, and the optional structured
+`client_fit` request object.
 
-**Core MVP:** not required for `run_portfolio_review` diagnosis. Must not gate or label Blocks 1–3
-product outputs. `horizon_years` remains report/context only in V1 (does not change optimizer or
-stress gates in Core MVP).
+**Blocks 1?3 boundary:** not required for backend/CLI `run_portfolio_review` diagnosis and must not
+gate or label Blocks 1?3 product outputs. The web journey now requires a saved Client Fit profile
+before diagnosis, but the profile is evaluated after Stress Lab. `horizon_years` remains
+report/context only in V1 (does not change optimizer or stress gates in Core MVP).
 
-**Future placement:** Client-Fit Check / Client Sheet / Advanced Mandate layer after core diagnosis;
-may prefill Candidate Builder constraints.
+**Client Fit V1 input contract:** FastAPI `CreateReviewRequest` may include a backend-compatible
+`client_fit` object with `preset_id`, `source`, `source_quality`, `source_quality_reason`,
+`horizon_years`, `target_return_range`, `target_vol_range`, and `target_max_drawdown_pct`.
+Backend/CLI paths remain compatible when this object is omitted. When present in run-local input
+config, `client_fit` preserves the full V1 profile for `client_fit_check_v1` generation and may
+mirror compatible values into legacy disclosure fields (`client_profile`,
+`target_nominal_return_annual`, `target_vol_annual`, `target_max_drawdown_pct`, `horizon_years`).
+This input object by itself must not change Portfolio X-Ray, Stress Lab, optimizer behavior,
+candidate generation, or suitability copy. It may feed the post-Stress `client_fit_check_v1`
+artifact and bounded downstream display/context.
+
+**Current placement:** Client Fit Check runs after X-Ray/Stress and before Problem Classification in
+the portfolio-first product chain. Client Fit target rows may prefill Builder success criteria as
+display/test context only, not optimizer constraints.
 
 ### 1.5 Mandate / Constraints (later — Candidate Builder; Core MVP defaults only)
 
@@ -173,7 +188,7 @@ may prefill Candidate Builder constraints.
 Current portfolio is diagnosed **as-is**; concentration is an X-Ray finding, not a first-input block.
 Mandate targets and constraint comparison must not appear in Core MVP X-Ray or Stress Lab outputs.
 
-**Future placement:** Portfolio Alternatives Builder parameters; Advanced Mandate / Client-Fit Check.
+**Future placement:** Portfolio Alternatives Builder parameters; Advanced Mandate. Client Fit V1 may display target rows as success criteria, but does not turn mandate fields into optimizer constraints.
 
 ### 1.6 Technical Assumptions (backend / config defaults)
 
@@ -196,7 +211,7 @@ panel per [metrics_specification.md](metrics_specification.md).
 | --- | --- | --- |
 | `core_mvp` | Required user input for portfolio-first Core MVP | `tickers`, weights, `investor_currency` |
 | `system_default` | Resolved from currency/config; may be injected | `analysis_subject`, `analysis_mode`, RF, benchmark, cash proxy |
-| `client_fit_later` | Client-Fit Check / Client Sheet | `client_profile`, targets, `horizon_years`, `portfolio_value` |
+| `client_fit_v1` | Implemented Client Fit Check display/context | `client_profile`, structured `client_fit`, target ranges, `horizon_years` |
 | `risk_guardrail_later` | Liquidity suitability after diagnosis | `liquidity_need_months`, `monthly_expenses` |
 | `candidate_builder` | Alternative portfolio construction | `max_single_security_weight_pct`, `cash_policy` for scaling |
 | `assumption_testing` | Sensitivity / advanced | `beta_local_mapping`, window overrides |
@@ -271,7 +286,7 @@ surface.
 
 | Field | Description |
 | --- | --- |
-| `tier_definitions` | Short meaning of each tier (`core_mvp`, `system_default`, `client_fit_later`, …). |
+| `tier_definitions` | Short meaning of each tier (`core_mvp`, `system_default`, `client_fit_v1`, …). |
 | `registry` | Config field → tier map (canonical classification; not a second source of truth for logic). |
 | `run_disclosure.core_mvp` | Which first-screen groups were user-supplied and whether requirements are met. |
 | `run_disclosure.populated_by_tier` | Fields with values on this run, grouped by tier. |
@@ -415,10 +430,10 @@ indexes all config keys historically grouped as “user inputs”; tier labels r
 | `weights`, `current_weights`, `analysis_subject.weights` | `core_mvp` |
 | `investor_currency` | `core_mvp` |
 | `analysis_mode`, `analysis_subject` | `system_default` (may be injected) |
-| `initial_investable_amount`, `portfolio_value` | `client_fit_later` |
+| `initial_investable_amount`, `portfolio_value` | `risk_guardrail_later` |
 | `liquidity_need_months`, `monthly_expenses`, `liquidity_need` | `risk_guardrail_later` |
 | `cash_policy` | `candidate_builder` |
-| `client_profile`, target overrides, `horizon_years` | `client_fit_later` |
+| `client_fit`, `client_profile`, target overrides, `horizon_years` | `client_fit_v1` |
 | `allow_leverage`, `allow_short_selling`, position caps/floors | `candidate_builder` / defaults |
 | `risk_free_source`, `cash_proxy_ticker`, `base_benchmark_ticker` | `system_default` |
 | `windows_months`, `returns_frequency`, … | `assumption_testing` / backend defaults |
