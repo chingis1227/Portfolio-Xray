@@ -6,6 +6,15 @@ It records what was added, changed, removed, fixed, or deprecated at a project l
 
 Date: 2026-06-12
 
+Category: Fixed
+
+- **Full backend pytest stabilization after Client Fit V1:** fixed pandas `QE` compatibility,
+  explicit-empty factor covariance handling, current-vs-policy materialization lineage/status,
+  MVP policy-current planning, and the Block 8-only output boundary. Re-baselined intentional Block
+  4 low-confidence behavior under partial X-Ray evidence, expanded ETF/stock universe tests/specs,
+  and Portfolio X-Ray tail-risk golden metadata. Full backend suite now passes: **1911 passed, 3
+  skipped**.
+
 Category: Added
 
 - **Client Fit V1 Session 21 documentation closure:** synchronized active source-of-truth wording

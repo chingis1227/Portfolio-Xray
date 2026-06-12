@@ -1702,8 +1702,6 @@ def _apply_policy_current_gating(
             sidecar = current_sidecar_dir(output_dir_final)
             if folder.resolve() == sidecar.resolve() and status in ("available", "degraded"):
                 return status, None, warnings
-            if main_role == "user_current_portfolio" and status in ("available", "degraded"):
-                return status, None, warnings
             if positive_current_weights(cfg):
                 return "unavailable", "missing_current_report", warnings
             if status in ("available", "degraded"):
@@ -2307,25 +2305,6 @@ def write_block8_current_vs_candidate_only_outputs(
         json.dump(current_vs_candidate, f, indent=2, ensure_ascii=False, default=str)
     paths["current_vs_candidate_json"] = current_vs_path
 
-    from src.product_bundle_paths import load_diagnosis_bundle_docs
-    from src.site_explanation_bundle import write_site_explanation_bundle_outputs
-
-    diagnosis_bundle = load_diagnosis_bundle_docs(out_dir)
-    paths.update(
-        write_site_explanation_bundle_outputs(
-            output_dir=out_dir,
-            review_id=str(product_doc.get("config_fingerprint") or product_doc.get("analysis_end") or ""),
-            portfolio_xray=diagnosis_bundle.get("portfolio_xray"),
-            stress_report=diagnosis_bundle.get("stress_report"),
-            client_fit_check=diagnosis_bundle.get("client_fit_check"),
-            problem_classification=diagnosis_bundle.get("problem_classification"),
-            candidate_launchpad=diagnosis_bundle.get("candidate_launchpad"),
-            portfolio_alternatives_builder=diagnosis_bundle.get("portfolio_alternatives_builder"),
-            candidate_generation=candidate_generation,
-            candidate_comparison=product_doc,
-            current_vs_candidate=current_vs_candidate,
-        )
-    )
     return paths
 
 
@@ -2483,6 +2462,12 @@ def build_candidate_comparison(
     analysis_mode = str(getattr(cfg, "analysis_mode", "optimize_from_universe"))
     main_meta = _load_json(main_dir / "run_metadata.json")
     main_role = _main_portfolio_role(main_dir)
+    if (
+        analysis_mode == "analyze_current_weights"
+        and positive_current_weights(cfg)
+        and main_role == "generated_policy_portfolio"
+    ):
+        analysis_mode = "optimize_from_universe"
 
     run_warnings: list[str] = []
     legacy: dict[str, str | None] = {

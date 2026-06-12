@@ -190,7 +190,10 @@ def test_seed_universe_validates_and_has_target_size() -> None:
     records = load_etf_universe(ROOT / "config" / "etf_universe.yml")
     diag = validate_etf_universe(records)
     assert diag["status"] == STATUS_PASS
-    assert 150 <= len(records) <= 250
+    assert len(records) >= 1000
+    assert any(r.get("data_source") == ["public_listing_ingestion"] for r in records)
+    asset_classes = {r.get("asset_class") for r in records}
+    assert {"equity", "fixed_income", "commodity", "cash", "alternative", "crypto"} <= asset_classes
 
 
 def test_export_universe_csv_and_json() -> None:

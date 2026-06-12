@@ -24,6 +24,8 @@ def _compat_date_range(*args, **kwargs):
         kwargs["freq"] = "M"
     elif freq == "M" and not _supports_freq("M"):
         kwargs["freq"] = "ME"
+    elif freq == "QE" and not _supports_freq("QE"):
+        kwargs["freq"] = "Q"
     return _DATE_RANGE(*args, **kwargs)
 
 

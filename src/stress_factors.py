@@ -6227,7 +6227,7 @@ def factor_covariance_analytics(
 ) -> dict[str, Any]:
     """Build explicit base / stress_empirical / stress_overlay factor covariance analytics."""
     end_ts = pd.Timestamp(analysis_end_str)
-    if factor_returns is None or factor_returns.empty:
+    if factor_returns is None:
         start = (end_ts - pd.DateOffset(years=20)).strftime("%Y-%m-%d")
         factors_raw = build_factor_matrix(start, (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d"))
     else:

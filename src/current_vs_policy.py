@@ -127,6 +127,15 @@ def build_current_vs_policy_status(
     current_row = _candidate_by_id(comparison, "current") or {}
     current_reason = current_row.get("unavailable_reason")
     portfolio_first = _has_portfolio_first_subject(comparison)
+    setup_summary = comparison.get("analysis_setup_summary") or {}
+    source_analysis_mode = setup_summary.get("source_analysis_mode")
+    if (
+        analysis_mode == "analyze_current_weights"
+        and source_analysis_mode == "optimize_from_universe"
+        and positive_current_weights(cfg)
+        and policy_status in ELIGIBLE_ROW_STATUSES
+    ):
+        analysis_mode = "optimize_from_universe"
 
     combined_complete = (
         policy_status in ELIGIBLE_ROW_STATUSES and current_status in ELIGIBLE_ROW_STATUSES

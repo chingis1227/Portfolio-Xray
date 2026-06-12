@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from collections import Counter
 
 import yaml
 
@@ -114,7 +115,10 @@ def test_seed_universe_validates_and_has_expected_size() -> None:
     records = load_stock_universe(ROOT / "config" / "stock_universe.yml")
     diag = validate_stock_universe(records)
     assert diag["status"] == STATUS_PASS
-    assert len(records) == 503
+    assert len(records) >= 850
+    memberships = Counter(tuple(r.get("index_membership") or []) for r in records)
+    assert memberships[("SP500",)] >= 500
+    assert memberships[("R1000",)] >= 300
 
 
 def test_seed_header_contains_snapshot_date() -> None:

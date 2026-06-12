@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`config/stock_universe.yml` is the curated source of truth for current S&P 500 stock classification. It annotates common-stock exposure for analytics and config validation while staying separate from ETF taxonomy.
+`config/stock_universe.yml` is the curated source of truth for current US stock classification. It annotates common-stock exposure for analytics and config validation while staying separate from ETF taxonomy.
 
 V1 is validation and annotation only. It does not change `config.yml`, does not select the optimizer universe, and does not alter optimized weights.
 
@@ -14,7 +14,9 @@ The source-of-truth YAML file must start with a comment header that pins the sna
 - `snapshot_source: current public S&P 500 constituents list`
 - `verification_note: V1 seed pinned to this snapshot date; later refreshes must update the header comment intentionally`
 
-This header is required source-history metadata, not optional documentation.
+This header is required source-history metadata, not optional documentation. The original header
+still identifies the S&P 500 seed baseline; controlled batch ingestion may add additional index
+membership rows such as `R1000` while preserving the same snapshot-date lineage.
 
 ## Record Schema
 
@@ -49,11 +51,16 @@ Forbidden fields:
 - `main_risk_factor` must use the same production factor enum as ETF taxonomy and must equal `equity` in V1.
 - `secondary_risk_factors` must use the same factor enum as ETF taxonomy, with optional `tag:*` values.
 - `index_membership` must be a non-empty list with exactly one primary tag: `SP500`, `R1000`, or `R3000`.
-- V1 seed records use `SP500`. Stock Batch 1 expansion may add `R1000` / `R3000` via the controlled batch pipeline.
+- V1 seed records include the original `SP500` baseline. Controlled stock-batch expansion may add
+  `R1000` / `R3000` records via the controlled batch pipeline.
 
 ## V1 Seed Defaults
 
-The V1 seed uses the current public S&P 500 constituents table and stores 503 rows.
+The current checked-in universe is an expanded, validation-only stock taxonomy. It includes the
+original S&P 500 seed plus controlled Russell-style batch additions; as of the 2026-06-12
+stabilization pass it stores 855 rows, with at least 500 `SP500` records and at least 300 `R1000`
+records. Tests should validate structural quality and index-membership coverage rather than
+re-impose the old 503-row seed size.
 
 Source-derived fields:
 
@@ -71,7 +78,8 @@ Curated V1 defaults:
 - `main_risk_factor: equity`
 - `secondary_risk_factors: [us_growth]`
 - `risk_role: [risk_on]`
-- `index_membership: [SP500]`
+- `index_membership: [SP500]` for the original seed; batch-expanded rows may use `[R1000]` or
+  `[R3000]`
 
 ## Diagnostics Status
 

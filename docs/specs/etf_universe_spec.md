@@ -6,6 +6,13 @@
 
 V1 is validation and annotation only. It does not change `config.yml`, does not select the optimizer universe, and does not alter optimized weights.
 
+The current checked-in universe is expanded beyond the original hand-curated seed. As of the
+2026-06-12 stabilization pass, `config/etf_universe.yml` contains 1105 structurally valid ETF rows,
+including manual seed records and public-listing-ingestion records across equity, fixed income,
+commodity, cash, alternative, and crypto asset classes. Tests should validate schema quality,
+canonical references, source metadata, and broad asset-class coverage rather than re-impose the old
+150-250 row seed-size expectation.
+
 ## Record Schema
 
 Each ETF record is a YAML mapping with these required fields:
