@@ -8,7 +8,7 @@ import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanati
 import { VerdictPanel } from "@/components/verdict/VerdictPanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
-import { cleanSiteExplanationBundle, useReviewState } from "@/lib/reviewState";
+import { useReviewState } from "@/lib/reviewState";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -173,8 +173,7 @@ export default function VerdictPage() {
   const staleVerdictIgnored = Boolean(verdict && selectedCardId && candidateId && !verdictMatchesCandidate);
   const staleComparisonIgnored = Boolean(comparison && selectedCardId && candidateId && !comparisonMatchesCandidate);
   const generationFailed = isFailedCandidateGeneration(candidateGeneration?.status);
-  const siteExplanation = cleanSiteExplanationBundle(activeReview?.reviewResult?.outputs?.site_explanation_bundle)
-    ?? activeReview?.reviewSummary?.siteExplanation;
+  const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
 
   useEffect(() => {
     setVerdictError(undefined);

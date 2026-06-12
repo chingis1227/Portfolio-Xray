@@ -173,13 +173,22 @@ The bundle must never silently emit a material claim without source references.
 The current backend implementation populates deterministic copy rules for diagnosis, stress,
 candidate, comparison, and verdict evidence:
 
-- `screens.diagnosis` prefers `problem_classification.json.primary_diagnosis` when Block 4 v3 is
-  available.
-- Diagnosis executive text states the primary diagnosis label, materiality, and confidence without
-  turning the diagnosis into an instruction.
-- Diagnosis evidence text may include `why_this_matters` and up to three Block 4 key evidence
-  interpretations, sourced to `problem_classification.json`.
-- Diagnosis technical text may include `next_diagnostic_step` as a disclosure/handoff detail.
+- `screens.diagnosis` prefers the Block 4 v3 interpretation-chain fields when they are available:
+  `root_cause_narrative`, `diagnosis_evidence_items`, `metric_to_diagnosis_trace`, and
+  `interpretation_chain.next_step_link`.
+- Diagnosis executive text uses `root_cause_narrative.statement_en` before falling back to the
+  older primary-diagnosis label sentence. It may append materiality and confidence, but it must not
+  turn the diagnosis into an instruction.
+- Diagnosis evidence text uses `root_cause_narrative.portfolio_manager_interpretation_en` and up to
+  three `diagnosis_evidence_items` before falling back to `why_this_matters` and Block 4 key
+  evidence.
+- Diagnosis interpretation-chain evidence items may source their material claim directly to the
+  underlying deterministic artifact named by the evidence item (`portfolio_xray.json` or
+  `stress_report.json`) when a supported field path is present; otherwise they source to
+  `problem_classification.json`.
+- Diagnosis technical text may include the root-cause-over-symptom boundary,
+  metric-to-diagnosis trace count, and `interpretation_chain.next_step_link` as disclosure/handoff
+  details. If the interpretation chain is absent, it falls back to `next_diagnostic_step`.
 - When Block 4 is absent but `portfolio_xray.json.block_2_6_portfolio_weakness_map` exists, the
   diagnosis screen falls back to the weakness-map summary and the top scored risk-type diagnoses.
 - Stress Test Lab copy is currently emitted under `screens.evidence` because the v1 screen-key

@@ -343,8 +343,13 @@ def _score_data_quality_problem(
     trust_signals = _collect_signals(evidence, defn.required_evidence_signals)
     support_signals = _collect_signals(evidence, defn.supporting_evidence_signals)
     all_signals = trust_signals + support_signals
-    required_met = evidence.has_signal("data_trust_failure")
-    raw = 0.95 if required_met else 0.0
+    hard_trust_failure = evidence.has_signal("data_trust_failure")
+    partial_with_missing_stress = (
+        evidence.has_signal("partial_sections")
+        and evidence.has_signal("stress_block_unavailable")
+    )
+    required_met = hard_trust_failure or partial_with_missing_stress
+    raw = 0.95 if hard_trust_failure else 0.75 if partial_with_missing_stress else 0.0
     activated = required_met
     refs = _build_evidence_refs(all_signals, defn.problem_id, role="supporting", thresholds=thresholds)
     return ProblemScoreRow(
@@ -688,6 +693,8 @@ def _build_evidence_refs(
             ref["linked_assets"] = list(sig.linked_assets)
         if sig.limitation_en is not None:
             ref["limitation_en"] = sig.limitation_en
+        if sig.raw_field_path is not None:
+            ref["raw_field_path"] = sig.raw_field_path
         refs.append(ref)
     return refs
 

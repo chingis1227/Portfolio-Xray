@@ -34,6 +34,17 @@ A session is not complete until it reports:
 4. unverified areas or blockers;
 5. whether a commit was made. No commit should be made unless the user explicitly requests it.
 
+## Fast local QA shortcuts
+
+Use these repository-root PowerShell shortcuts when the goal is fast, repeatable local QA without the heavy full-suite/runtime checks:
+
+| Gate | Command | Purpose |
+| --- | --- | --- |
+| Fast daily QA | `.\scripts\qa_fast.ps1` (`.\scripts\qa_fast.cmd` if PowerShell policy blocks scripts) | Canonical quick gate: docs verification, core offline workflow smoke, product-bundle adapter checks, frontend typecheck, and frontend API route tests. It intentionally skips full pytest, live E2E, frontend build, frontend smoke, and browser visual QA. |
+| Contract QA | `.\scripts\qa_contracts.ps1` (`.\scripts\qa_contracts.cmd` if PowerShell policy blocks scripts) | Candidate factory/comparison contract and golden-fixture gate. It intentionally skips networked/live checks, full pytest, and the still-open KI-2026-05-26-001 drift test. |
+
+Full `python -m pytest` remains a manual/nightly or risk-based check. Live core/full E2E remains operator proof for demos, releases, or explicit requests, not the default daily gate.
+
 ## Standard frontend checks
 
 The actual scripts in `frontend/package.json` are:
@@ -44,6 +55,7 @@ The actual scripts in `frontend/package.json` are:
 | `build` | `npm.cmd run build` | Next.js production build contract: `next build`. |
 | `test:api` | `npm.cmd run test:api` | Node API-route tests: `node --test tests/api-route-tests.cjs`. |
 | `test:smoke` | `npm.cmd run test:smoke` | Frontend smoke tests: `node --test tests/frontend-smoke-tests.cjs`. |
+| `qa:vertical` | `npm.cmd run qa:vertical` | Live FastAPI + Next.js + Playwright vertical QA helper. It starts fresh local FastAPI/Next servers on free ports, clears browser storage, runs multiple portfolio scenarios through the frontend compatibility API routes, probes stale selected-card rejection, captures screenshots or DOM fallbacks, and writes `output/playwright/**/qa-report.json`. |
 | `dev` | `npm.cmd run dev` | Manual/browser QA local server: `next dev`. |
 | `start` | `npm.cmd run start` | Serve a built app: `next start`. |
 | `lint` | `npm.cmd run lint` | Optional lint script currently declared as `next lint`; run when lint or style rules are touched, or when requested. |
@@ -121,6 +133,27 @@ Visual QA reports must include:
 - dev-server health or relevant log status;
 - unverified areas.
 
+## Live vertical Browser/Playwright QA helper
+
+Use this helper for explicit live FastAPI/frontend acceptance, not as a default fast gate:
+
+```powershell
+cd frontend
+npm.cmd run qa:vertical -- --scenario-limit 3
+```
+
+The helper is intentionally defensive:
+
+1. starts FastAPI and Next.js on fresh available `127.0.0.1` ports;
+2. passes `PMRI_FASTAPI_BASE_URL` to Next.js so route handlers use the active FastAPI process;
+3. uses a fresh Playwright browser context and clears `localStorage` / `sessionStorage` before each scenario;
+4. checks server readiness and scans Next logs for compile, `.next`, module, and React Client Manifest failures before trusting product observations;
+5. captures screenshots when possible and writes HTML/text DOM fallbacks when Playwright screenshot capture fails;
+6. verifies diagnosis, Builder, Candidate, Comparison, Verdict, and Report lineage through the frontend API routes;
+7. rejects a stale selected-card probe with HTTP 409 before marking the run passed.
+
+If the helper fails because the live market-data provider cannot return prices, report it as a live-data blocker with the QA report path; do not describe it as a frontend, browser-state, stale-artifact, or product-copy failure unless the report/log evidence shows that.
+
 ## Forbidden-term scan policy
 
 Run forbidden-term scans whenever UI copy, report copy, display labels, frontend adapters, screen components, or product language changes. These scans are evidence-gathering checks: inspect matches manually and distinguish primary user-facing copy from developer-only code, API validation, tests, docs, and contract evidence.
@@ -189,6 +222,7 @@ Note: this working tree may contain pre-existing dirty files from earlier sessio
 | UI copy, display labels, report wording, or forbidden terms | Forbidden-term scans; standard frontend checks if code changed; visual QA if primary copy changed; review `PRESENTATION_LANGUAGE_RULES.md`; git gates. |
 | Design tokens, color semantics, badges, cards, CTA styling, or layout | Standard frontend checks; visual QA with screenshots; review `DESIGN_SYSTEM_CONTRACT.md`; forbidden visual direction checklist; git gates. |
 | API route, frontend bridge, or active `reviewId` lineage | Standard frontend checks; `tests\test_frontend_review_bridge.py` or narrower relevant pytest; visual/smoke route check; git gates. |
+| FastAPI public contract, generated API types, or FastAPI-to-screen mapping | `.\.venv\Scripts\python.exe scripts\verify_fastapi_contract_governance.py`; `.\.venv\Scripts\python.exe -m pytest tests\test_fastapi_app.py tests\test_fastapi_contract_governance.py -q`; `cd frontend && npm.cmd run typecheck`; git gates. |
 | Backend formulas, stress logic, optimizer behavior, data alignment, or metric contracts | Focused pytest first; adjacent or full pytest by risk; CLI smoke/artifact inspection if outputs changed; docs sync; git gates. |
 | Runtime commands or documented CLI examples | Verify command exists; targeted docs `rg`; focused CLI/workflow tests if behavior claim changed; `git diff --check`; `git status --short`. |
 | Documentation-only source-of-truth update | Verify links/commands touched; optional `python scripts/verify_docs.py` or `python -m pytest tests/test_docs_links.py -q` when links or source maps changed; git gates. |
@@ -236,3 +270,8 @@ Required evidence checks for Session 6:
     rg -n "frontend|typecheck|test:api|test:smoke|git diff --check|docs-only|Documentation-only|visual|Playwright|\.next|forbidden" TESTING.md docs\demo\frontend_backend_vertical_runbook.md AGENTS.md docs\exec_plans\2026-06-10_product_code_design_synchronization_plan.md
 
 This session does not require running frontend builds, frontend tests, backend pytest, or visual QA because it creates a docs-only QA contract and does not change implementation code.
+
+
+## Session 09 display-adapter QA
+
+Confirm Core MVP screens consume display models instead of raw artifacts; use targeted `rg` checks for direct `reviewResult.outputs.*` use in screen files plus `npm.cmd run test:api` and `npm.cmd run typecheck`.

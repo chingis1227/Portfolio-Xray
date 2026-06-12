@@ -17,6 +17,8 @@ Use this document for screen-level product responsibilities. Use these documents
 - `OUTPUTS.md` for generated output folders, artifact names, output profiles, and generated-vs-source boundaries.
 - `docs/contracts/PRODUCT_FLOW_CONTRACT.md` for canonical product step order and global product boundaries.
 - `docs/contracts/ARTIFACT_TO_SCREEN_MAP.md` for artifact producer, location, consumer screen, adapter, lineage, and stale-data policy.
+- `docs/contracts/FASTAPI_SCREEN_MAPPING.json` for the machine-readable FastAPI operation,
+  response-field, and screen-route governance map.
 - `docs/product_flow_operator_guide.md` and `docs/runtime_entrypoints.md` for runtime interpretation and demo-vs-core command boundaries.
 - `docs/specs/input_assumptions_spec.md` for portfolio input assumptions.
 - `docs/specs/portfolio_xray_diagnostics_spec.md` and `docs/specs/portfolio_xray_layer_spec.md` for Portfolio X-Ray evidence.
@@ -57,7 +59,8 @@ There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-aren
 7. Monitoring / What Changed can be mentioned as deferred or light report context, but it must not become a scheduler, alerting, or trading system.
 8. Missing, partial, stale, blocked, and evidence-insufficient states must be visible and distinct.
 9. Raw artifact filenames, JSON keys, schema names, booleans, backend IDs, run folder paths, and operator terms are implementer vocabulary, not primary UI copy.
-10. Advanced, backend, generated support, and legacy capabilities must not be promoted into Core MVP navigation unless `PRODUCT_FLOW_CONTRACT.md`, `ARTIFACT_TO_SCREEN_MAP.md`, this contract, and owning specs are updated together.
+10. Screen components consume display models (`reviewSummary`, stage summaries, and FastAPI public-envelope display models). Raw generated artifacts may be parsed only inside adapters, compatibility proxies, tests, or explicit operator/debug views.
+11. Advanced, backend, generated support, and legacy capabilities must not be promoted into Core MVP navigation unless `PRODUCT_FLOW_CONTRACT.md`, `ARTIFACT_TO_SCREEN_MAP.md`, this contract, and owning specs are updated together.
 
 ## Shared forbidden primary UI language
 
@@ -171,7 +174,7 @@ Screens must translate backend statuses into user-facing status families.
 | Primary adapter / owner | `frontend/app/comparison/page.tsx`; `frontend/components/comparison/CandidateComparisonPanel.tsx`; `frontend/components/comparison/TradeoffSummary.tsx`; `frontend/lib/reviewState.tsx`; comparison API route. |
 | Must show | Current portfolio label; selected candidate label; comparison availability; success-criteria result; what improved; what worsened; what stayed similar; risks reduced/added; turnover/cost practicality when available; materiality for decision review; unavailable metrics; candidate-not-recommendation boundary. |
 | Must not show | Candidate generation controls; final verdict; "winner" language; multi-candidate arena; batch rankings; fake `n/a` conclusions; stale comparison from another candidate; Selection Engine statuses. |
-| Primary CTA | Run diagnostic comparison when ready; Continue to Verdict only when comparison is current and usable. |
+| Primary CTA | Run diagnostic comparison when ready; Continue to Verdict when comparison is current and either has usable trade-off metrics or can safely produce an evidence-insufficient verdict. |
 | Next step | `/verdict` when same-run comparison is complete or when the system can safely produce an evidence-insufficient / candidate-failed verdict. |
 | Empty / blocked state | No candidate returns to Hypothesis; candidate not comparable explains why; diagnosis-only tombstones say no active candidate comparison for this review; missing metrics are shown per metric, not as fabricated conclusions; failed comparison offers retry or setup review. |
 | Forbidden terms | `current_vs_candidate.json`, `candidate_comparison.json`, `selection_decision.json`, `view_mode`, `diagnosis_only`, `one_candidate`, `shortlist`, `selected_candidate_ids`, `requested_candidate_ids`, `dimensions[]`, `materiality_for_decision_review`, `not_evaluated`, `unavailable_reason`, raw candidate IDs when labels exist. |
@@ -259,6 +262,9 @@ Screens must translate backend statuses into user-facing status families.
 - [ ] Missing, partial, blocked, stale, and evidence-insufficient states are visually and textually distinct.
 - [ ] No raw artifact names, JSON keys, schema names, booleans, backend IDs, raw scenario IDs, or operator path strings appear in primary UI.
 - [ ] Same-review, same-selected-card, same-candidate, and same-stage-order lineage is preserved before unlocking downstream screens.
+- [ ] Public FastAPI response fields used by the screen are present in
+  `docs/contracts/FASTAPI_SCREEN_MAPPING.json` and generated frontend API types are current.
+- [ ] Screen code consumes display-ready models instead of parsing raw `reviewResult.outputs.*` or stage artifact internals directly.
 - [ ] Documentation impact was checked against the dynamic doc-sync matrix in the active ExecPlan and `docs/contracts/DOC_SYNC_CONTRACT.md`.
 
 ## Validation for this contract

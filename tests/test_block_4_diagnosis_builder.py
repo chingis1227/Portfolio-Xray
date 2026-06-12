@@ -41,7 +41,7 @@ def test_build_block_4_diagnosis_golden_contract() -> None:
     lp = result.candidate_launchpad
 
     assert pc["schema_version"] == PROBLEM_CLASSIFICATION_V3_VERSION
-    assert pc["status"] == "ok"
+    assert pc["status"] == "partial"
     assert pc["primary_problem"]["problem_id"] == "weak_crisis_resilience"
     assert pc["problems"]
     assert pc["problems"][0]["label"] == pc["problems"][0]["label_en"]
@@ -49,6 +49,20 @@ def test_build_block_4_diagnosis_golden_contract() -> None:
     assert pc["next_diagnostic_step"]["type"] == "targeted_hypothesis_test"
     assert "Decision Verdict" in pc["next_diagnostic_step"]["decision_boundary"]
     assert pc["diagnostics_meta"]["block_4_facade_version"] == BLOCK_4_DIAGNOSIS_FACADE_VERSION
+    assert pc["interpretation_chain"]["schema_version"] == "diagnosis_interpretation_chain_v1"
+    assert pc["interpretation_chain"]["selected_diagnosis_id"] == pc["primary_problem"]["problem_id"]
+    assert pc["diagnosis_evidence_items"] == pc["interpretation_chain"]["diagnosis_evidence_items"]
+    assert pc["root_cause_narrative"] == pc["interpretation_chain"]["root_cause_narrative"]
+    assert pc["metric_to_diagnosis_trace"] == pc["interpretation_chain"]["metric_to_diagnosis_trace"]
+    assert pc["professional_rationale_refs"] == pc["interpretation_chain"]["professional_rationale_refs"]
+    assert pc["diagnosis_evidence_items"]
+    assert pc["metric_to_diagnosis_trace"]
+    assert pc["root_cause_narrative"]["diagnosis_id"] == "weak_crisis_resilience"
+    assert "root-cause" in pc["root_cause_narrative"]["root_cause_over_symptom_en"].lower()
+    assert any(
+        ref["source"] == "docs/specs/diagnosis_interpretation_methodology_spec.md"
+        for ref in pc["professional_rationale_refs"]
+    )
 
     assert not problem_classification_v3_product_contract_violations(pc)
     assert not candidate_launchpad_v3_product_contract_violations(lp)
@@ -95,6 +109,28 @@ def test_block_4_manifest_extra_includes_primary_and_outcome() -> None:
     assert extra["block_4_diagnosis"]["primary_problem_id"] == "weak_crisis_resilience"
     assert extra["block_4_diagnosis"]["no_trade_outcome"] == "proceed_to_launchpad"
     assert extra["block_4_diagnosis"]["facade_version"] == BLOCK_4_DIAGNOSIS_FACADE_VERSION
+
+
+def test_interpretation_chain_traces_evidence_to_selected_diagnosis() -> None:
+    result = build_block_4_diagnosis(
+        portfolio_xray=_load_golden_xray(),
+        stress_report=_hedge_gap_stress(),
+        analysis_end="2026-04-30",
+    )
+    pc = result.problem_classification
+    primary_id = pc["primary_problem"]["problem_id"]
+
+    evidence_ids = {item["evidence_item_id"] for item in pc["diagnosis_evidence_items"]}
+    assert evidence_ids
+    assert all(item["source_artifact"] for item in pc["diagnosis_evidence_items"])
+    assert all(item["source_block"] for item in pc["diagnosis_evidence_items"])
+    assert all(item["signal"] for item in pc["diagnosis_evidence_items"])
+    assert all(item["evidence_item_id"] in evidence_ids for item in pc["metric_to_diagnosis_trace"])
+    assert all(
+        item["contributes_to_selected_diagnosis_id"] == primary_id
+        for item in pc["metric_to_diagnosis_trace"]
+    )
+    assert pc["interpretation_chain"]["recommendation_boundary_en"] == pc["next_diagnostic_step"]["decision_boundary"]
 
 
 def test_v1_shim_mirrors_medium_severity_to_moderate() -> None:

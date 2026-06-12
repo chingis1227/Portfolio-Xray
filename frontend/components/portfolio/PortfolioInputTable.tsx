@@ -7,6 +7,8 @@ import type { Holding } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { instrumentByTicker, instrumentUniverse, type Instrument } from "@/data/instrumentUniverse";
 import { useReviewState, type ReviewHolding, type ReviewResult } from "@/lib/reviewState";
+import { useSupabaseAuth } from "@/lib/supabase/auth";
+import { useSupabasePersistence } from "@/lib/supabase/persistence";
 
 type PortfolioInputTableProps = {
   investorCurrency: string;
@@ -431,7 +433,9 @@ function InstrumentCombobox({
 
 export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInputTableProps) {
   const router = useRouter();
-  const { activeReview, hydrated, savePortfolioInput, submitPortfolioInput, recordReviewError } = useReviewState();
+  const { activeReview, hydrated, savePortfolioInput, submitPortfolioInput, recordReviewError, linkCloudPortfolio, loadCloudPortfolioInput } = useReviewState();
+  const { enabled: cloudEnabled, status: authStatus } = useSupabaseAuth();
+  const { savedPortfolios, portfoliosLoading, savePortfolio, deletePortfolio } = useSupabasePersistence();
   const [currency, setCurrency] = useState(investorCurrency || "");
   const [rows, setRows] = useState<EditableHolding[]>(() => holdings.map(toEditableHolding));
   const [isRunningDiagnosis, setIsRunningDiagnosis] = useState(false);
@@ -439,6 +443,11 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
   const [recoverReviewId, setRecoverReviewId] = useState("");
   const [isRecoveringReview, setIsRecoveringReview] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [cloudPortfolioName, setCloudPortfolioName] = useState("");
+  const [cloudPortfolioDescription, setCloudPortfolioDescription] = useState("");
+  const [isSavingPortfolio, setIsSavingPortfolio] = useState(false);
+  const [activeCloudLoadId, setActiveCloudLoadId] = useState<string | null>(null);
+  const [activeCloudDeleteId, setActiveCloudDeleteId] = useState<string | null>(null);
   const inputInitialized = useRef(false);
   const inputEdited = useRef(false);
 
@@ -451,6 +460,17 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
     }
     inputInitialized.current = true;
   }, [activeReview, hydrated]);
+
+  useEffect(() => {
+    if (activeReview?.cloudPortfolio?.name) {
+      setCloudPortfolioName(activeReview.cloudPortfolio.name);
+      return;
+    }
+    if (!cloudPortfolioName.trim()) {
+      const dateLabel = new Date().toISOString().slice(0, 10);
+      setCloudPortfolioName(`Portfolio ${dateLabel}`);
+    }
+  }, [activeReview?.cloudPortfolio?.name, cloudPortfolioName]);
 
   useEffect(() => {
     if (!hydrated || !inputEdited.current) return;
@@ -515,6 +535,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
   }, [instrumentsComplete, rows.length, totalWeight, weightsComplete]);
 
   const ready = instrumentsComplete && weightsComplete && weightsAddTo100;
+  const cloudReady = cloudEnabled && authStatus === "signed_in";
 
   const updateInstrument = (id: string, instrument: Instrument | null) => {
     inputEdited.current = true;
@@ -626,6 +647,71 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
       }
     } finally {
       setIsRunningDiagnosis(false);
+    }
+  };
+
+  const saveCurrentPortfolioToCloud = async () => {
+    if (!cloudReady || isSavingPortfolio) return;
+    const reviewHoldings = rows
+      .map(rowToReviewHolding)
+      .filter((holding): holding is ReviewHolding => Boolean(holding));
+
+    if (!reviewHoldings.length) return;
+
+    setIsSavingPortfolio(true);
+    try {
+      const saved = await savePortfolio({
+        portfolioId: activeReview?.cloudPortfolio?.id,
+        name: cloudPortfolioName.trim(),
+        description: cloudPortfolioDescription.trim(),
+        investorCurrency: currency || "USD",
+        holdings: reviewHoldings
+      });
+
+      if (saved) {
+        linkCloudPortfolio({ id: saved.id, name: saved.name });
+      }
+    } finally {
+      setIsSavingPortfolio(false);
+    }
+  };
+
+  const loadSavedPortfolio = async (portfolioId: string) => {
+    const saved = savedPortfolios.find((item) => item.id === portfolioId);
+    if (!saved) return;
+    setActiveCloudLoadId(portfolioId);
+    try {
+      inputEdited.current = false;
+      setCurrency(saved.baseCurrency || "USD");
+      setRows(saved.holdings.map(reviewHoldingToEditable));
+      setDiagnosisError(null);
+      setRecoveryError(null);
+      loadCloudPortfolioInput({
+        portfolioId: saved.id,
+        name: saved.name,
+        investorCurrency: saved.baseCurrency || "USD",
+        holdings: saved.holdings
+      });
+      setCloudPortfolioName(saved.name);
+      setCloudPortfolioDescription(saved.description ?? "");
+    } finally {
+      setActiveCloudLoadId(null);
+    }
+  };
+
+  const deleteSavedPortfolioFromCloud = async (portfolioId: string) => {
+    const saved = savedPortfolios.find((item) => item.id === portfolioId);
+    if (!saved) return;
+    if (typeof window !== "undefined" && !window.confirm(`Delete "${saved.name}" from optional cloud storage?`)) return;
+
+    setActiveCloudDeleteId(portfolioId);
+    try {
+      const deleted = await deletePortfolio(portfolioId);
+      if (deleted && activeReview?.cloudPortfolio?.id === portfolioId) {
+        linkCloudPortfolio(undefined);
+      }
+    } finally {
+      setActiveCloudDeleteId(null);
     }
   };
 
@@ -860,6 +946,126 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         </div>
       </div>
     </section>
+    {cloudEnabled ? (
+      <section className="pmri-card rounded-2xl p-5 md:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="pmri-label">Optional cloud portfolios</p>
+            <h2 className="pmri-heading-section mt-2 text-lg text-pmri-text">Save and reuse current portfolio inputs</h2>
+            <p className="mt-2 text-sm leading-6 text-pmri-muted">
+              Cloud save is optional. It stores only the current portfolio input and compact metadata, not generated analytics files.
+            </p>
+          </div>
+          <StatusBadge tone={cloudReady ? "green" : "amber"}>
+            {cloudReady ? "Signed in" : "Sign in required"}
+          </StatusBadge>
+        </div>
+
+        {cloudReady ? (
+          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
+            <div className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label>
+                  <span className="pmri-label block">Portfolio name</span>
+                  <input
+                    className="pmri-focus mt-2 w-full rounded-xl border border-pmri-border/55 bg-pmri-secondary/80 px-3 py-2.5 text-sm font-medium text-pmri-text placeholder:text-pmri-muted/70"
+                    value={cloudPortfolioName}
+                    onChange={(event) => setCloudPortfolioName(event.target.value)}
+                    placeholder="Balanced portfolio"
+                  />
+                </label>
+                <label>
+                  <span className="pmri-label block">Description (optional)</span>
+                  <input
+                    className="pmri-focus mt-2 w-full rounded-xl border border-pmri-border/55 bg-pmri-secondary/80 px-3 py-2.5 text-sm font-medium text-pmri-text placeholder:text-pmri-muted/70"
+                    value={cloudPortfolioDescription}
+                    onChange={(event) => setCloudPortfolioDescription(event.target.value)}
+                    placeholder="Client sleeve or review note"
+                  />
+                </label>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  disabled={!rows.length || isSavingPortfolio || !cloudPortfolioName.trim()}
+                  onClick={saveCurrentPortfolioToCloud}
+                  className="pmri-focus rounded-full border border-pmri-blue/30 bg-pmri-blue px-4 py-2.5 text-sm font-semibold text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-pmri-muted disabled:shadow-none"
+                >
+                  {isSavingPortfolio ? "Saving..." : activeReview?.cloudPortfolio?.id ? "Update saved portfolio" : "Save current portfolio"}
+                </button>
+                {activeReview?.cloudPortfolio?.name ? (
+                  <p className="text-xs leading-5 text-pmri-muted">
+                    Active cloud portfolio: <span className="font-medium text-pmri-text2">{activeReview.cloudPortfolio.name}</span>
+                  </p>
+                ) : (
+                  <p className="text-xs leading-5 text-pmri-muted">Save this input if you want to reload it across browser sessions.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="pmri-label">Saved portfolios</p>
+                  <p className="mt-1 text-xs leading-5 text-pmri-muted">Load, reuse, or delete previously saved portfolio inputs.</p>
+                </div>
+                <StatusBadge tone="blue">{savedPortfolios.length} saved</StatusBadge>
+              </div>
+
+              {portfoliosLoading ? (
+                <p className="mt-4 text-sm text-pmri-muted">Loading saved portfolios...</p>
+              ) : savedPortfolios.length ? (
+                <div className="mt-4 space-y-3">
+                  {savedPortfolios.map((portfolio) => (
+                    <article key={portfolio.id} className="rounded-2xl border border-pmri-border/40 bg-pmri-secondary/35 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="truncate text-sm font-semibold text-pmri-text">{portfolio.name}</h3>
+                          <p className="mt-1 text-xs leading-5 text-pmri-muted">
+                            {portfolio.holdings.length} holdings · {portfolio.baseCurrency} base currency
+                          </p>
+                          {portfolio.description ? (
+                            <p className="mt-1 text-xs leading-5 text-pmri-muted">{portfolio.description}</p>
+                          ) : null}
+                        </div>
+                        {activeReview?.cloudPortfolio?.id === portfolio.id ? <StatusBadge tone="green">Active</StatusBadge> : null}
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={activeCloudLoadId === portfolio.id}
+                          onClick={() => void loadSavedPortfolio(portfolio.id)}
+                          className="pmri-focus rounded-full border border-pmri-border/55 px-3.5 py-2 text-xs font-semibold text-pmri-text2 transition hover:border-pmri-border hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {activeCloudLoadId === portfolio.id ? "Loading..." : "Load into input"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={activeCloudDeleteId === portfolio.id}
+                          onClick={() => void deleteSavedPortfolioFromCloud(portfolio.id)}
+                          className="pmri-focus rounded-full border border-pmri-risk/30 px-3.5 py-2 text-xs font-semibold text-pmri-risk transition hover:bg-pmri-risk/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {activeCloudDeleteId === portfolio.id ? "Deleting..." : "Delete"}
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm leading-6 text-pmri-muted">
+                  No cloud portfolios saved yet. Save the current input once you want reusable browser-independent storage.
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-5 rounded-2xl border border-pmri-amber/30 bg-pmri-amber/10 px-4 py-4 text-sm leading-6 text-pmri-text2">
+            Sign in with Email OTP from the sidebar to enable optional cloud save/load/delete for portfolio inputs.
+            Without sign-in, the normal local browser flow still works.
+          </div>
+        )}
+      </section>
+    ) : null}
     <details className="hidden">
       <summary className="pmri-focus cursor-pointer list-none text-sm font-medium text-pmri-text2 transition hover:text-pmri-text">
         Advanced: recover an existing review

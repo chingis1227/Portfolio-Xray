@@ -25,9 +25,13 @@ governed by `SPEC.md`, `OUTPUTS.md`, detailed specs, and code.
 
 ## Current Pointer
 
-**Active:** [Vertical Integration Post-Audit Hardening Plan](2026-06-08_vertical_integration_post_audit_hardening_plan.md) - current frontend/backend vertical hardening plan after the 2026-06-08 full project audit. Sessions 00-06 are complete; the next chat should begin with Session 07 (decide whether a lightweight browser smoke is justified).
+**Active:** [FastAPI Foundation and Contract-First Frontend Migration](2026-06-11_fastapi_foundation_plan.md) - current project-level plan for replacing the local Next.js-to-Python bridge with a FastAPI/OpenAPI/Pydantic/TypeScript contract foundation. Sessions 00-09 are complete; the next chat should begin with Session 10 (final acceptance, browser QA, and handoff).
 
-**Previous Active:** [Full Demo MVP Readiness Audit and Hardening](2026-06-05_full_demo_mvp_readiness_audit_and_hardening_plan.md) - prior readiness hardening plan. Keep as historical/current-readiness context, but resume post-audit frontend/backend hardening from the Active plan above.
+**Completed:** [Dynamic Diagnosis Interpretation Foundation](2026-06-11_diagnosis_interpretation_foundation_plan.md) - Sessions 00-16 closed 2026-06-12. Final acceptance evidence is the live FastAPI + frontend vertical QA report `output/playwright/vertical-qa-2026-06-12T08-12-35-071Z/qa-report.json`, proving three distinct evidence-backed diagnosis flows, source-artifact-backed public claims, and stale selected-card rejection.
+
+**Previous Active:** [Vertical Integration Post-Audit Hardening Plan](2026-06-08_vertical_integration_post_audit_hardening_plan.md) - prior frontend/backend vertical hardening plan after the 2026-06-08 full project audit. Keep as current-readiness context while the FastAPI foundation plan becomes the active architectural migration.
+
+**Previous Active:** [Full Demo MVP Readiness Audit and Hardening](2026-06-05_full_demo_mvp_readiness_audit_and_hardening_plan.md) - prior readiness hardening plan. Keep as historical/current-readiness context.
 
 **Completed:** [Blocks 5-9 Vertical Product Loop](2026-06-05_blocks_5_9_vertical_product_loop_plan.md) - Sessions 00-10 closed 2026-06-05. Live acceptance produced the required chain: `problem_classification.json`, `candidate_launchpad.json`, `portfolio_alternatives_builder.json`, `candidate_generation.json`, `current_vs_candidate.json`, `decision_verdict.json`, and `ai_commentary_context.json`. Final status: `BLOCK_6_READY BLOCK_7_READY BLOCK_8_READY BLOCK_9_READY READY_FOR_PRODUCT_DEMO`.
 
@@ -146,6 +150,7 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-06-11 | [Dynamic Diagnosis Interpretation Foundation](2026-06-11_diagnosis_interpretation_foundation_plan.md) | **Completed** | [Session 00 diagnosis interpretation baseline audit](../audits/2026-06-11_diagnosis_interpretation_session00_audit.md) | Sessions 00-16 closed 2026-06-12: deterministic evidence-to-diagnosis rulebook foundation, additive Block 4 interpretation chain, site/FastAPI/frontend display envelopes, source/provenance governance, multi-user lineage rejection, fixture matrix, and live vertical QA acceptance. Closure: [Session 16 closure](../audits/2026-06-12_diagnosis_interpretation_session16_closure.md). |
 | 2026-06-08 | [Vertical Integration Post-Audit Hardening Plan](2026-06-08_vertical_integration_post_audit_hardening_plan.md) | **Active** | [2026-06-08 vertical integration full project audit](../audits/2026-06-08_vertical_integration_full_project_audit.md) | Sessions 00-02 complete: plan registered, Builder prepare frontend/API handoff implemented, and operator docs synced. Next: Session 03 route-level API tests. |
 | 2026-06-05 | [Full Demo MVP Readiness Audit and Hardening](2026-06-05_full_demo_mvp_readiness_audit_and_hardening_plan.md) | Previous Active | User-requested full demo MVP readiness audit and hardening plan after Blocks 5-9 vertical loop validation | Session 00 complete: plan created and registered; baseline dirty tree, existing vertical output chain, and FRED/factor runtime risk recorded. Next: Session 01 product-critical test inventory and smoke baseline. |
 | 2026-06-05 | [Blocks 5-9 Vertical Product Loop](2026-06-05_blocks_5_9_vertical_product_loop_plan.md) | **Completed** | Product-loop implementation plan for `Diagnosis -> Hypothesis -> Candidate -> Comparison -> Verdict` | Sessions 00-10 closed 2026-06-05: one selected hypothesis/candidate path, Block 7 `candidate_generation_v1`, Block 8 scoped comparison, direct Block 9 verdict, AI grounding, live vertical demo PASS; final status `READY_FOR_PRODUCT_DEMO`. |

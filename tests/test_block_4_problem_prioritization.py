@@ -7,7 +7,12 @@ from src.block_4.problem_prioritization import (
     MAX_SECONDARY_PROBLEMS,
     prioritize_problems,
 )
-from src.block_4.problem_scoring import score_problems
+from src.block_4.problem_scoring import (
+    ProblemScoreRow,
+    ProblemScoringBlock,
+    ProblemScoringResult,
+    score_problems,
+)
 from block_4_fixtures import hedge_gap_stress as _hedge_gap_stress
 from block_4_fixtures import load_golden_xray as _load_golden_xray
 
@@ -201,3 +206,100 @@ def test_conflicting_signals_primary_blocks_secondaries() -> None:
 
     assert result.primary_problem_id == "mixed_evidence_no_action"
     assert result.secondary_problem_ids == ()
+
+
+def test_root_cause_must_have_enough_support_before_outranking_symptom() -> None:
+    scoring = ProblemScoringResult(
+        rows={
+            "weak_crisis_resilience": ProblemScoreRow(
+                problem_id="weak_crisis_resilience",
+                scoring=ProblemScoringBlock(
+                    raw_score=0.36,
+                    decision_score=0.36,
+                    stress_confirmation="unavailable",
+                    materiality="low",
+                ),
+                required_met=True,
+                activated=True,
+                severity="low",
+                confidence="low",
+            ),
+            "high_volatility": ProblemScoreRow(
+                problem_id="high_volatility",
+                scoring=ProblemScoringBlock(
+                    raw_score=0.78,
+                    decision_score=0.78,
+                    stress_confirmation="pre_stress_only",
+                    materiality="high",
+                ),
+                required_met=True,
+                activated=True,
+                severity="high",
+                confidence="medium",
+            ),
+        },
+        activated_problem_ids=("weak_crisis_resilience", "high_volatility"),
+        actionable_activated_ids=("high_volatility", "weak_crisis_resilience"),
+        problems_evaluated=2,
+    )
+
+    result = prioritize_problems(scoring)
+
+    assert result.primary_problem_id == "high_volatility"
+
+
+def test_activated_symptom_rejection_explains_selected_root_cause() -> None:
+    scoring = ProblemScoringResult(
+        rows={
+            "poor_diversification": ProblemScoreRow(
+                problem_id="poor_diversification",
+                scoring=ProblemScoringBlock(
+                    raw_score=0.72,
+                    decision_score=0.72,
+                    stress_confirmation="pre_stress_only",
+                    materiality="high",
+                ),
+                evidence_refs=[
+                    {
+                        "evidence_id": "ev_poor_diversification_supporting_01_duplicate_exposure",
+                        "signal": "duplicate_exposure",
+                    }
+                ],
+                required_met=True,
+                activated=True,
+                severity="high",
+                confidence="medium",
+            ),
+            "high_volatility": ProblemScoreRow(
+                problem_id="high_volatility",
+                scoring=ProblemScoringBlock(
+                    raw_score=0.92,
+                    decision_score=0.92,
+                    stress_confirmation="pre_stress_only",
+                    materiality="high",
+                ),
+                evidence_refs=[
+                    {
+                        "evidence_id": "ev_high_volatility_supporting_01_vol_annual",
+                        "signal": "vol_annual",
+                    }
+                ],
+                required_met=True,
+                activated=True,
+                severity="high",
+                confidence="medium",
+            ),
+        },
+        activated_problem_ids=("poor_diversification", "high_volatility"),
+        actionable_activated_ids=("high_volatility", "poor_diversification"),
+        problems_evaluated=2,
+    )
+
+    result = prioritize_problems(scoring)
+
+    assert result.primary_problem_id == "poor_diversification"
+    assert result.secondary_problem_ids == ()
+    vol_reject = next(row for row in result.rejected_problems if row.problem_id == "high_volatility")
+    assert vol_reject.reject_reason_code == "symptom_supports_selected_root_cause"
+    assert "Poor diversification" in vol_reject.reject_reason_en
+    assert vol_reject.top_evidence_refs

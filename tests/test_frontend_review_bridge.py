@@ -89,6 +89,19 @@ def test_normalize_payload_maps_frontend_percent_and_preserves_real_cash() -> No
     assert normalized["holdings"][-1]["ticker"] == "Cash USD"
 
 
+def test_create_run_dir_creates_unique_frontend_review_dirs_for_100_users(tmp_path: Path) -> None:
+    created = [bridge.create_run_dir(base_dir=tmp_path) for _ in range(100)]
+
+    review_ids = [review_id for review_id, _run_dir in created]
+    run_dirs = [run_dir for _review_id, run_dir in created]
+
+    assert len(set(review_ids)) == 100
+    assert len(set(run_dirs)) == 100
+    assert all(review_id.startswith("frontend_review_") for review_id in review_ids)
+    assert all(run_dir.parent == tmp_path for run_dir in run_dirs)
+    assert all(run_dir.is_dir() for run_dir in run_dirs)
+
+
 def test_normalize_payload_rejects_duplicate_tickers() -> None:
     payload = sample_payload()
     payload["holdings"] = [

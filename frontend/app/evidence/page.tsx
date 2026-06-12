@@ -8,8 +8,8 @@ import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanati
 import { StressTestLab } from "@/components/evidence/StressTestLab";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import sampleStressLabData from "@/data/demo/stress-lab.json";
-import { buildStressLabModelFromOutputs, ensureStressLabModel } from "@/components/evidence/stressLabModel";
-import { cleanSiteExplanationBundle, useReviewState } from "@/lib/reviewState";
+import { ensureStressLabModel } from "@/components/evidence/stressLabModel";
+import { useReviewState } from "@/lib/reviewState";
 
 function LockedStressLabState() {
   return (
@@ -61,13 +61,12 @@ function EvidencePageContent() {
     && activeReview.runStatus === "completed"
   );
   const realStressLab = completedRealReview
-    ? buildStressLabModelFromOutputs(activeReview?.reviewResult?.outputs)
+    ? activeReview?.reviewSummary?.stressLabModel ?? null
     : null;
   const model = realStressLab ?? (sampleMode ? ensureStressLabModel(sampleStressLabData) : null);
   const stateLabel = realStressLab ? "Stress review ready" : sampleMode ? "Sample review" : "Stress review locked";
   const stateTone = realStressLab ? "green" : sampleMode ? "amber" : "slate";
-  const siteExplanation = cleanSiteExplanationBundle(activeReview?.reviewResult?.outputs?.site_explanation_bundle)
-    ?? activeReview?.reviewSummary?.siteExplanation;
+  const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
 
   return (
     <div>

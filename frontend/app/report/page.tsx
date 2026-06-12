@@ -6,8 +6,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { ClientReadyReportPreview } from "@/components/report/ClientReadyReportPreview";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { displayTitleLabel, normalizeDisplayLabel, normalizeDisplaySentence } from "@/lib/displayLabels";
-import { cleanSiteExplanationBundle, useReviewState } from "@/lib/reviewState";
+import { displayTitleLabel, normalizeDisplaySentence } from "@/lib/displayLabels";
+import { useReviewState } from "@/lib/reviewState";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -42,57 +42,6 @@ function stringArray(value: unknown) {
     : [];
 }
 
-function titleFromTopic(topic: string) {
-  const labels: Record<string, string> = {
-    portfolio_diagnosis: "Diagnosis",
-    stress_behavior: "Stress evidence",
-    hypothesis_tested: "Candidate test",
-    candidate_logic: "Selected test setup",
-    current_vs_candidate: "Current vs test candidate",
-    what_improved: "What improved",
-    what_worsened: "What worsened",
-    turnover_cost: "Turnover and cost",
-    decision_verdict: "Decision view",
-    monitoring_next: "Watch points"
-  };
-  return labels[topic] ?? topic.replaceAll("_", " ");
-}
-
-function sourceEvidenceLabel(key: string) {
-  const labels: Record<string, string> = {
-    portfolio_xray: "Portfolio X-Ray diagnosis",
-    stress_report: "Stress Test Lab evidence",
-    problem_classification: "main diagnosis",
-    candidate_launchpad: "selected test path",
-    portfolio_alternatives_builder: "selected test setup",
-    candidate_generation: "generated test candidate",
-    current_vs_candidate: "comparison evidence",
-    decision_verdict: "decision evidence",
-    what_changed_summary: "prior-review change note"
-  };
-  return labels[key] ?? normalizeDisplayLabel(key, "supporting evidence");
-}
-
-function evidenceListFromSources(value: unknown) {
-  if (!isRecord(value)) return [] as string[];
-  return Object.entries(value)
-    .filter(([, isAvailable]) => Boolean(isAvailable))
-    .map(([key]) => sourceEvidenceLabel(key))
-    .filter(Boolean);
-}
-
-function unavailableEvidenceFromSources(value: unknown) {
-  if (!isRecord(value)) {
-    return ["Grounded explanation inputs were not available for this review."];
-  }
-
-  const missing = Object.entries(value)
-    .filter(([, isAvailable]) => !Boolean(isAvailable))
-    .map(([key]) => sourceEvidenceLabel(key));
-
-  return missing.length ? missing : ["No unsupported sections were added beyond the available review evidence."];
-}
-
 function errorTextFromResponse(value: unknown) {
   if (!isRecord(value)) return "The grounded report preview could not be created.";
   const message = normalizeDisplaySentence(value.error, "The grounded report preview could not be created.");
@@ -120,49 +69,27 @@ function safeReportSentence(value: unknown, fallback = "") {
 
 function reportFromResult(result: unknown): GroundedReport | null {
   if (!isRecord(result) || result.status !== "completed") return null;
-  const groundingContext = isRecord(result.ai_commentary_context) ? result.ai_commentary_context : {};
-  const draft = isRecord(groundingContext.client_explanation_draft) ? groundingContext.client_explanation_draft : {};
-  const journal = isRecord(groundingContext.light_decision_journal) ? groundingContext.light_decision_journal : {};
-  const sentences = Array.isArray(draft.sentences) ? draft.sentences.filter(isRecord) : [];
-  const verdictLabel = normalizeDisplayLabel(journal.decision_verdict, "decision-support verdict");
-  const candidate = isRecord(journal.selected_candidate) ? journal.selected_candidate : {};
-  const candidateDisplayName = displayTitleLabel(result.candidate_id ?? candidate.candidate_id, "Selected Candidate");
-
-  const sections = sentences
-    .map((sentence) => ({
-      title: titleFromTopic(textValue(sentence.topic, "Evidence")),
-      body: safeReportSentence(sentence.text)
-    }))
-    .filter((section) => section.body)
-    .slice(0, 9);
-
-  const sourceEvidenceKey = "source_" + "art" + "ifacts";
-  const sourceEvidenceMap = isRecord(groundingContext[sourceEvidenceKey]) ? groundingContext[sourceEvidenceKey] : {};
-  const evidenceUsed = evidenceListFromSources(sourceEvidenceMap);
-  const unavailableEvidence = unavailableEvidenceFromSources(sourceEvidenceMap);
-  const warnings = stringArray(groundingContext.warnings).map((warning) => safeReportSentence(warning));
-
-  return {
-    title: "Grounded client-ready report summary",
-    subtitle: `Active review report for ${candidateDisplayName}. It explains the available evidence and the ${verdictLabel.toLowerCase()} without adding unsupported conclusions.`,
-    sections: sections.length
-      ? sections
-      : [
-        {
-          title: "Partial explanation",
-          body: "Grounded explanation inputs were available, but no client-readable summary sentences were returned. Review the evidence used and limitations below before relying on this preview."
-        }
-      ],
-    evidenceUsed,
-    unavailableEvidence,
-    nextObservation: textValue(
-      journal.next_review_trigger,
-      "No comparable prior review is available yet. Use this as a watch note and retest if diagnosis, comparison, or verdict evidence changes."
-    ),
-    boundaryNote: "Decision-support only. This preview explains the available evidence; it does not provide suitability or tax advice and does not replace professional judgment.",
-    warnings,
-    generatedAt: typeof groundingContext.generated_at === "string" ? groundingContext.generated_at : undefined
-  };
+  if (isRecord(result.report_display_model)) {
+    const display = result.report_display_model;
+    const sections = Array.isArray(display.sections)
+      ? display.sections.filter(isRecord).map((section) => ({
+        title: textValue(section.title, "Evidence"),
+        body: safeReportSentence(section.body)
+      })).filter((section) => section.body)
+      : [];
+    return {
+      title: textValue(display.title, "Grounded client-ready report summary"),
+      subtitle: safeReportSentence(display.subtitle, "Active review report preview grounded in available evidence."),
+      sections,
+      evidenceUsed: stringArray(display.evidenceUsed).map((item) => safeReportSentence(item)),
+      unavailableEvidence: stringArray(display.unavailableEvidence).map((item) => safeReportSentence(item)),
+      nextObservation: safeReportSentence(display.nextObservation, "Retest if diagnosis, comparison, or verdict evidence changes."),
+      boundaryNote: safeReportSentence(display.boundaryNote, "Decision-support only."),
+      warnings: stringArray(display.warnings).map((warning) => safeReportSentence(warning)),
+      generatedAt: typeof display.generatedAt === "string" ? display.generatedAt : undefined
+    };
+  }
+  return null;
 }
 
 type ReportBlocker = {
@@ -190,7 +117,7 @@ function EmptyState({ blocker }: { blocker: ReportBlocker }) {
 }
 
 export default function ReportPage() {
-  const { activeReview, hydrated } = useReviewState();
+  const { activeReview, hydrated, recordReportResult } = useReviewState();
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [reportError, setReportError] = useState<string | undefined>();
   const [report, setReport] = useState<GroundedReport | null>(null);
@@ -202,8 +129,7 @@ export default function ReportPage() {
   const selectedCardId = candidateGeneration?.selectedCardId;
   const candidateId = candidateGeneration?.candidateId;
   const candidateDisplayName = displayTitleLabel(comparison?.candidateName ?? candidateId, "Selected Test Candidate");
-  const siteExplanation = cleanSiteExplanationBundle(activeReview?.reviewResult?.outputs?.site_explanation_bundle)
-    ?? activeReview?.reviewSummary?.siteExplanation;
+  const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
   const comparisonMatchesCandidate = Boolean(
     comparison
     && selectedCardId
@@ -280,9 +206,9 @@ export default function ReportPage() {
   ]);
 
   useEffect(() => {
-    setReport(null);
+    setReport(activeReview?.reportResult ?? null);
     setReportError(undefined);
-  }, [reviewId, selectedCardId, candidateId, verdict?.generatedAt]);
+  }, [activeReview?.reportResult, reviewId, selectedCardId, candidateId, verdict?.generatedAt]);
 
   const statusTone = useMemo<"green" | "gold" | "amber">(() => {
     if (report) return "green";
@@ -315,6 +241,7 @@ export default function ReportPage() {
         return;
       }
       setReport(mapped);
+      recordReportResult(result);
     } catch {
       setReportError("The grounded report preview could not be created.");
     } finally {

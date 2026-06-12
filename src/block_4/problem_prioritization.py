@@ -17,6 +17,7 @@ from src.block_4.problem_taxonomy import (
     ROOT_CAUSE_ELEVATION_RULES,
     get_problem_definition,
     is_root_cause_problem,
+    is_symptom_problem,
 )
 
 PRIORITIZATION_RULESET_VERSION = "block_4_v3_prioritization_heuristic_v1"
@@ -244,7 +245,12 @@ def _select_primary_id(
         for pid in ranked
         if pid not in demoted_ids and not _blocked_as_primary(scoring.rows[pid])
     ]
-    root_eligible = [pid for pid in eligible if is_root_cause_problem(pid)]
+    root_eligible = [
+        pid
+        for pid in eligible
+        if is_root_cause_problem(pid)
+        and _has_sufficient_root_cause_primary_support(scoring.rows[pid])
+    ]
     if root_eligible:
         return root_eligible[0]
     if eligible:
@@ -262,6 +268,21 @@ def _blocked_as_primary(row: ProblemScoreRow) -> bool:
             and row.confidence == "low"
         )
     return False
+
+
+def _has_sufficient_root_cause_primary_support(row: ProblemScoreRow) -> bool:
+    """Return whether a root cause has enough support to outrank symptoms as primary.
+
+    Root-cause-over-symptom priority is a product rule, but it is not an excuse to promote a weak
+    structural label when the available evidence is only low-confidence and low-materiality. In
+    that case the ordinary ranked evidence order remains the safer diagnosis.
+    """
+
+    if not row.activated:
+        return False
+    if row.confidence in {"medium", "high"}:
+        return True
+    return row.scoring.materiality in {"medium", "high"}
 
 
 def _demoted_after_primary(
@@ -289,6 +310,7 @@ def _build_rejected_problems(
     elevation_rules_applied: tuple[str, ...],
 ) -> tuple[RejectedProblemRow, ...]:
     selected_set = set(selected_ids)
+    primary_id = selected_ids[0] if selected_ids else ""
     rejected: list[RejectedProblemRow] = []
 
     for problem_id, row in sorted(scoring.rows.items()):
@@ -300,6 +322,7 @@ def _build_rejected_problems(
             demoted_ids=demoted_ids,
             elevation_rules_applied=elevation_rules_applied,
             selected_ids=selected_set,
+            primary_id=primary_id,
         )
         if reason_code is None:
             continue
@@ -322,9 +345,12 @@ def _resolve_reject_reason(
     demoted_ids: set[str],
     elevation_rules_applied: tuple[str, ...],
     selected_ids: set[str],
+    primary_id: str,
 ) -> tuple[str, str] | tuple[None, None]:
     defn = get_problem_definition(row.problem_id)
     label = defn.label_en if defn is not None else row.problem_id
+    primary_defn = get_problem_definition(primary_id)
+    primary_label = primary_defn.label_en if primary_defn is not None else primary_id
 
     if row.problem_id in demoted_ids and elevation_rules_applied:
         prefer_labels = _prefer_primary_labels(elevation_rules_applied, demoted_ids, row.problem_id)
@@ -332,6 +358,21 @@ def _resolve_reject_reason(
         return (
             "superseded_by_root_cause_diagnosis",
             f"{label} is secondary to {prefer_text}; stress-confirmed root cause drives the diagnosis.",
+        )
+
+    if (
+        row.activated
+        and row.problem_id not in selected_ids
+        and primary_id
+        and is_root_cause_problem(primary_id)
+        and is_symptom_problem(row.problem_id)
+    ):
+        return (
+            "symptom_supports_selected_root_cause",
+            (
+                f"{label} is treated as a supporting symptom, not the primary diagnosis, "
+                f"because {primary_label} is the selected root cause under current evidence."
+            ),
         )
 
     if row.activated and row.problem_id not in selected_ids:

@@ -171,6 +171,20 @@ def _source_ref(artifact: str, field_path: str) -> list[dict[str, str]]:
     return [{"artifact": artifact, "field_path": field_path}]
 
 
+def _first_supported_source_ref(
+    value: Mapping[str, Any],
+    *,
+    fallback_field_path: str,
+) -> list[dict[str, str]]:
+    artifact = _clean_text(value.get("source_artifact"))
+    field_path = _clean_text(value.get("source_field_path")) or _clean_text(
+        value.get("evidence_path")
+    )
+    if artifact in ALLOWED_SOURCE_ARTIFACTS and field_path:
+        return _source_ref(artifact, field_path)
+    return _source_ref("problem_classification.json", fallback_field_path)
+
+
 def _as_mapping(value: Any) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
 
@@ -279,9 +293,44 @@ def _append_diagnosis_copy_rules(
 
     primary = _as_mapping(problem_classification.get("primary_diagnosis"))
     if primary:
+        chain = _as_mapping(problem_classification.get("interpretation_chain"))
+        top_level_root_narrative = _as_mapping(
+            problem_classification.get("root_cause_narrative")
+        )
+        root_narrative = top_level_root_narrative or _as_mapping(
+            chain.get("root_cause_narrative")
+        )
+        root_narrative_path = (
+            "root_cause_narrative"
+            if top_level_root_narrative
+            else "interpretation_chain.root_cause_narrative"
+        )
+        top_level_evidence_items = _as_list(
+            problem_classification.get("diagnosis_evidence_items")
+        )
+        chain_evidence_items = top_level_evidence_items or _as_list(
+            chain.get("diagnosis_evidence_items")
+        )
+        evidence_items_path = (
+            "diagnosis_evidence_items"
+            if top_level_evidence_items
+            else "interpretation_chain.diagnosis_evidence_items"
+        )
+        top_level_metric_trace = _as_list(
+            problem_classification.get("metric_to_diagnosis_trace")
+        )
+        metric_trace = top_level_metric_trace or _as_list(
+            chain.get("metric_to_diagnosis_trace")
+        )
+        metric_trace_path = (
+            "metric_to_diagnosis_trace"
+            if top_level_metric_trace
+            else "interpretation_chain.metric_to_diagnosis_trace"
+        )
+        chain_next_step = _as_mapping(chain.get("next_step_link"))
         label = _label_from_mapping(primary) or _label_from_mapping(
             _as_mapping(primary.get("root_cause"))
-        )
+        ) or _clean_text(root_narrative.get("label_en"))
         confidence = _clean_text(primary.get("confidence"))
         materiality = _clean_text(primary.get("materiality"))
         if label:
@@ -291,21 +340,32 @@ def _append_diagnosis_copy_rules(
             if confidence:
                 qualifiers.append(f"{confidence} confidence")
             qualifier_text = f" ({', '.join(qualifiers)})" if qualifiers else ""
+            narrative_statement = _clean_text(root_narrative.get("statement_en"))
+            executive_text = (
+                f"{narrative_statement}{qualifier_text}"
+                if narrative_statement
+                else f"The current portfolio diagnosis is {label}{qualifier_text}."
+            )
             screens["diagnosis"]["executive"].append(
                 _text_item(
                     item_id="diagnosis.executive.primary_problem",
                     level="executive",
-                    text=f"The current portfolio diagnosis is {label}{qualifier_text}.",
+                    text=executive_text,
                     tone=_severity_to_tone(materiality, "caution"),
                     evidence_status="available",
                     claim_type="material_claim",
                     source_refs=_source_ref(
-                        "problem_classification.json", "primary_diagnosis"
+                        "problem_classification.json",
+                        f"{root_narrative_path}.statement_en"
+                        if narrative_statement
+                        else "primary_diagnosis",
                     ),
                 )
             )
 
-        why_this_matters = _clean_text(primary.get("why_this_matters"))
+        why_this_matters = _clean_text(
+            root_narrative.get("portfolio_manager_interpretation_en")
+        ) or _clean_text(primary.get("why_this_matters"))
         if why_this_matters:
             screens["diagnosis"]["evidence"].append(
                 _text_item(
@@ -317,40 +377,98 @@ def _append_diagnosis_copy_rules(
                     claim_type="material_claim",
                     source_refs=_source_ref(
                         "problem_classification.json",
-                        "primary_diagnosis.why_this_matters",
+                        f"{root_narrative_path}.portfolio_manager_interpretation_en"
+                        if root_narrative.get("portfolio_manager_interpretation_en")
+                        else "primary_diagnosis.why_this_matters",
                     ),
                 )
             )
 
-        for index, evidence in enumerate(_as_list(primary.get("key_evidence"))[:3], start=1):
+        evidence_source = (
+            chain_evidence_items
+            if chain_evidence_items
+            else _as_list(primary.get("key_evidence"))
+        )
+        for index, evidence in enumerate(evidence_source[:3], start=1):
             evidence_map = _as_mapping(evidence)
             text = _clean_text(evidence_map.get("interpretation_en"))
             if not text:
                 continue
+            item_id = (
+                f"diagnosis.evidence.interpretation_chain_evidence_{index}"
+                if chain_evidence_items
+                else f"diagnosis.evidence.key_evidence_{index}"
+            )
+            source_refs = (
+                _first_supported_source_ref(
+                    evidence_map,
+                    fallback_field_path=f"{evidence_items_path}[{index - 1}]",
+                )
+                if chain_evidence_items
+                else _source_ref(
+                    "problem_classification.json",
+                    f"primary_diagnosis.key_evidence[{index - 1}]",
+                )
+            )
             screens["diagnosis"]["evidence"].append(
                 _text_item(
-                    item_id=f"diagnosis.evidence.key_evidence_{index}",
+                    item_id=item_id,
                     level="evidence",
                     text=text,
                     tone="neutral",
                     evidence_status="available",
                     claim_type="material_claim",
+                    source_refs=source_refs,
+                )
+            )
+
+        root_cause_boundary = _clean_text(root_narrative.get("root_cause_over_symptom_en"))
+        if root_cause_boundary:
+            screens["diagnosis"]["technical"].append(
+                _text_item(
+                    item_id="diagnosis.technical.root_cause_boundary",
+                    level="technical",
+                    text=root_cause_boundary,
+                    tone="neutral",
+                    evidence_status="available",
+                    claim_type="material_claim",
                     source_refs=_source_ref(
                         "problem_classification.json",
-                        f"primary_diagnosis.key_evidence[{index - 1}]",
+                        f"{root_narrative_path}.root_cause_over_symptom_en",
+                    ),
+                )
+            )
+
+        if metric_trace:
+            screens["diagnosis"]["technical"].append(
+                _text_item(
+                    item_id="diagnosis.technical.metric_trace",
+                    level="technical",
+                    text=f"Metric-to-diagnosis trace contains {len(metric_trace)} sourced signal(s) for this diagnosis.",
+                    tone="neutral",
+                    evidence_status="available",
+                    claim_type="material_claim",
+                    source_refs=_source_ref(
+                        "problem_classification.json",
+                        metric_trace_path,
                     ),
                 )
             )
 
         next_step = _as_mapping(problem_classification.get("next_diagnostic_step"))
-        step_label = _clean_text(next_step.get("label"))
+        step_label = _clean_text(chain_next_step.get("label")) or _clean_text(
+            next_step.get("label")
+        )
         step_reason = _clean_text(next_step.get("reason"))
+        step_boundary = _clean_text(chain_next_step.get("decision_boundary"))
         if step_label or step_reason:
             step_text = step_label or step_reason or ""
             if step_reason and step_label:
                 step_text = f"Next diagnostic step: {step_label}. {step_reason}"
             else:
                 step_text = f"Next diagnostic step: {step_text}"
+            if step_boundary:
+                step_text = f"{step_text} Boundary: {step_boundary}"
             screens["diagnosis"]["technical"].append(
                 _text_item(
                     item_id="diagnosis.technical.next_diagnostic_step",
@@ -360,7 +478,10 @@ def _append_diagnosis_copy_rules(
                     evidence_status="available",
                     claim_type="material_claim",
                     source_refs=_source_ref(
-                        "problem_classification.json", "next_diagnostic_step"
+                        "problem_classification.json",
+                        "interpretation_chain.next_step_link"
+                        if chain_next_step
+                        else "next_diagnostic_step",
                     ),
                 )
             )

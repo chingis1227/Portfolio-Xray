@@ -60,6 +60,256 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-06-12-001
+Title: Close deterministic diagnosis interpretation foundation after live QA acceptance
+
+- Status: accepted
+- Date: 2026-06-12
+- Decision: The Dynamic Diagnosis Interpretation Foundation plan is complete after Session 16
+  documentation synchronization; future work should continue through the active FastAPI/frontend
+  plans or new scoped product plans.
+- Context: Sessions 00-15 delivered the rulebook foundation, Block 4 interpretation chain,
+  site/FastAPI/frontend display envelopes, lineage guards, governance checks, fixture matrix, and
+  accepted live vertical QA report.
+- Rationale: Extending the foundation plan further would blur ownership with FastAPI migration and
+  frontend productization. The accepted live QA report already proves the plan's deterministic
+  evidence-backed explanation and stale-artifact rejection gates.
+- Alternatives considered: Keep the plan active for more UI/product work (rejected because that work
+  belongs in downstream plans); rerun live QA during Session 16 (rejected because Session 15 already
+  produced accepted multi-scenario evidence and Session 16 is docs-only).
+- Assumptions: The accepted QA report remains available as generated evidence under
+  `output/playwright/vertical-qa-2026-06-12T08-12-35-071Z/qa-report.json`.
+- Consequences: The diagnosis interpretation plan is historical/complete, while the active FastAPI
+  plan remains the project-level route for contract/frontend migration.
+- Related documents:
+  [Diagnosis Interpretation Foundation Plan](docs/exec_plans/2026-06-11_diagnosis_interpretation_foundation_plan.md),
+  [Session 16 Closure Audit](docs/audits/2026-06-12_diagnosis_interpretation_session16_closure.md),
+  [ExecPlan Register](docs/exec_plans/README.md).
+- Review trigger: Reopen only if a future plan changes diagnosis source-of-truth ownership, allows
+  LLM-authored unsourced diagnosis claims, or changes the recommendation/advice boundary.
+
+Decision ID: DEC-2026-06-11-008
+Title: Supabase Free optional compact persistence layer
+
+- Status: accepted
+- Date: 2026-06-11
+- Decision: Portfolio MRI will use Supabase Free only as an optional compact app-data layer for Auth,
+  profiles, portfolios, holdings, review summaries, stage summaries, and verdict summaries. Supabase
+  is disabled unless `NEXT_PUBLIC_PMRI_SUPABASE_ENABLED=true` and both public Supabase environment
+  keys are present.
+- Context: The project needs cloud persistence and Auth for the Next.js decision-room prototype while
+  preserving the current localStorage fallback and file-driven FastAPI analytics pipeline.
+- Rationale: Supabase Free is suitable for lightweight user/app state, but not for generated evidence
+  storage. Making it optional protects the current local demo workflow and avoids requiring cloud
+  setup for development.
+- Alternatives considered: Make Supabase required immediately (rejected because it would break local
+  demo setup and increase operational risk); store full generated artifacts in Supabase (rejected
+  because Free storage is limited and generated outputs remain local evidence); use frontend
+  service-role credentials (rejected because it is unsafe and violates the RLS security model).
+- Assumptions: The first version uses Email OTP Auth, no Supabase service role or secret key in the
+  frontend, mandatory RLS on all app tables, and a 55 KB soft limit for `review_stage_summaries.summary`.
+- Consequences: Full JSON artifacts, PDFs, price history, cache, parquet, `runs/`, `Main portfolio/`,
+  and generated candidate folders must not be uploaded to Supabase. Failed or oversized cloud writes
+  must remain non-blocking and keep the localStorage flow working.
+- Related documents: [Supabase Free Optional Persistence and Auth Plan](docs/exec_plans/2026-06-11_supabase_free_optional_persistence_plan.md).
+- Review trigger: Revisit if Portfolio MRI needs paid Supabase features, durable artifact storage,
+  multi-user team workspaces, or production-grade backup/retention guarantees.
+Decision ID: DEC-2026-06-11-007
+Title: Diagnosis rulebook remains read-only parity evidence
+
+- Status: accepted
+- Date: 2026-06-11
+- Decision: `config/diagnosis_rulebook.yml` and `src/block_4/diagnosis_rulebook.py` are read-only
+  parity artifacts for Session 03; Block 4 runtime diagnosis continues to use the existing Python
+  registries, evidence extraction, scoring, prioritization, and Launchpad generation.
+- Context: Diagnosis Interpretation Foundation Session 03 added the first YAML rulebook and
+  validator after Session 02 defined the schema contract.
+- Rationale: The product needs an auditable rulebook before behavior migration, but activating it
+  immediately would risk unreviewed drift in Problem Classification. Keeping it read-only lets tests
+  prove parity while later sessions add additive interpretation-chain fields in a controlled order.
+- Alternatives considered: Make the YAML the active registry immediately (rejected because parity
+  must be proven first); keep only Python metadata (rejected because the interpretation layer needs
+  a human-readable governed rulebook).
+- Assumptions: Later sessions will explicitly promote any YAML-backed runtime behavior only after
+  updating specs, tests, generated artifact contracts, and downstream API/frontend adapters.
+- Consequences: Session 03 validation may fail on future taxonomy drift until the YAML is updated;
+  this is intentional governance. Runtime Block 4 behavior must not import the YAML as an active
+  source until a later accepted change says so.
+- Related documents: [Diagnosis Rulebook Schema Spec](docs/specs/diagnosis_rulebook_schema_spec.md),
+  [Diagnosis Interpretation Foundation Plan](docs/exec_plans/2026-06-11_diagnosis_interpretation_foundation_plan.md),
+  [Block 4 taxonomy](src/block_4/problem_taxonomy.py), [Diagnosis rulebook validator](src/block_4/diagnosis_rulebook.py).
+- Review trigger: Revisit when a later session proposes using the YAML to populate
+  `problem_classification_v3` or site/FastAPI/frontend display fields at runtime.
+
+Decision ID: DEC-2026-06-11-006
+Title: Diagnosis rulebook references thresholds instead of duplicating them
+
+- Status: accepted
+- Date: 2026-06-11
+- Decision: The planned `diagnosis_rulebook.yml` file under `config/` will own human-readable
+  diagnosis interpretation metadata and will reference numeric thresholds by symbolic path into
+  `config/block_4_thresholds.yml` rather than copying threshold values into the rulebook.
+- Context: Diagnosis Interpretation Foundation Session 02 introduced the formal rulebook schema
+  before the YAML and loader/validator are implemented.
+- Rationale: The rulebook must be editable and auditable, but duplicated numeric constants would
+  create a second formula source and make behavior drift hard to detect. Symbolic threshold
+  references preserve one numeric source while still letting diagnosis entries explain which
+  threshold families matter.
+- Alternatives considered: Put all thresholds directly in the rulebook (rejected because it splits
+  formula ownership); keep all interpretation copy only in Python (rejected because it prevents a
+  readable governed rulebook); make the YAML active immediately (rejected because Session 03 must
+  prove parity first).
+- Assumptions: `src/block_4/problem_taxonomy.py` and `config/block_4_thresholds.yml` remain the
+  authoritative runtime sources until a later accepted session promotes the YAML to active runtime
+  use.
+- Consequences: Session 03 must validate YAML parity against the Python registries and verify every
+  `threshold_refs` path exists in `config/block_4_thresholds.yml`; future diagnosis copy should not
+  add numeric activation constants outside the threshold source.
+- Related documents: [Diagnosis Rulebook Schema Spec](docs/specs/diagnosis_rulebook_schema_spec.md),
+  [Diagnosis Interpretation Methodology Spec](docs/specs/diagnosis_interpretation_methodology_spec.md),
+  [Block 4 v3 Diagnosis-First Contract](docs/specs/block_4_diagnosis_v3_spec.md).
+- Review trigger: Revisit only if a later accepted spec intentionally migrates threshold ownership
+  into a unified rulebook and updates validators, tests, and source-of-truth docs in the same change.
+
+Decision ID: DEC-2026-06-11-005
+Title: Core MVP frontend screens consume display models, not raw artifacts
+
+- Status: accepted
+- Date: 2026-06-11
+- Decision: Keep raw generated JSON artifacts behind frontend/FastAPI adapters and make the Core MVP
+  screens consume compact display models from `frontend/lib/reviewState.tsx` plus FastAPI public
+  envelopes. The Next.js compatibility proxy may retain raw same-run fields as fallback/debug
+  evidence during migration, but screens should not parse `reviewResult.outputs.*` or raw stage
+  artifacts directly.
+- Context: FastAPI foundation Session 09, after Session 07 routed the normal frontend path through
+  FastAPI and Session 08 added OpenAPI/type/screen-mapping governance.
+- Rationale: Screens are product surfaces, not artifact explorers. Moving raw JSON parsing into
+  adapters makes UI copy safer, reduces stale-artifact coupling, and lets FastAPI response contracts
+  become the stable frontend boundary.
+- Alternatives considered: Continue legacy artifact-shaped screen consumption until a full API v2
+  rewrite (rejected because raw keys keep leaking into product code); remove all raw compatibility
+  fields immediately (rejected because current tests and recovery/debug paths still need a staged
+  migration).
+- Consequences: Diagnosis, Evidence, Hypothesis, Comparison, Verdict, and Report pages read display
+  state; Stress Test Lab display data is compacted into review summary; Report uses a
+  `report_display_model` derived from FastAPI `ReportResponse`. Future screen fields must go through
+  generated API types, `FASTAPI_SCREEN_MAPPING.json`, and a display adapter.
+- Related documents: [FastAPI v1 API Contract](docs/contracts/FASTAPI_V1_API_CONTRACT.md),
+  [Screen Contracts](docs/contracts/SCREEN_CONTRACTS.md), [Artifact-to-Screen Map](docs/contracts/ARTIFACT_TO_SCREEN_MAP.md),
+  [frontend README](frontend/README.md), [FastAPI foundation plan](docs/exec_plans/2026-06-11_fastapi_foundation_plan.md).
+- Review trigger: Revisit when the Next.js `/api/portfolio/*` compatibility payloads are retired or
+  when FastAPI adds richer display contracts for Stress Lab / Comparison metrics.
+
+Decision ID: DEC-2026-06-11-004
+Title: FastAPI public schema changes require generated types and explicit screen mapping
+
+- Status: accepted
+- Date: 2026-06-11
+- Decision: Govern the local FastAPI v1 public contract with both generated TypeScript API types and
+  a machine-readable screen map at `docs/contracts/FASTAPI_SCREEN_MAPPING.json`. Public OpenAPI
+  operation changes or top-level response `data` field changes must update the mapping and
+  regenerate `frontend/lib/generated/api-types.ts` before fields are surfaced in Core MVP screens.
+- Context: FastAPI foundation Session 08, after the normal Next.js portfolio API path became a
+  FastAPI compatibility proxy in Session 07.
+- Rationale: Generated types catch backend/frontend shape drift, but generated types alone can make
+  new fields appear safe to use without product-screen approval. A separate screen map forces an
+  explicit route, adapter, and contract decision before UI promotion.
+- Alternatives considered: Rely only on TypeScript generation (rejected because it does not encode
+  product ownership); rely only on Markdown contracts (rejected because schema drift would not fail
+  tests); introduce a full external OpenAPI codegen package (rejected as unnecessary for the current
+  local MVP surface).
+- Consequences: `scripts/verify_fastapi_contract_governance.py` and
+  `tests/test_fastapi_contract_governance.py` now guard OpenAPI, generated types, and screen mapping.
+  Backend schema changes must keep `FASTAPI_SCREEN_MAPPING.json`, FastAPI contract docs, and
+  frontend types aligned.
+- Related documents: [FASTAPI v1 API Contract](docs/contracts/FASTAPI_V1_API_CONTRACT.md),
+  [Artifact-to-Screen Map](docs/contracts/ARTIFACT_TO_SCREEN_MAP.md),
+  [Screen Contracts](docs/contracts/SCREEN_CONTRACTS.md), [TESTING.md](TESTING.md).
+- Review trigger: Revisit when Session 09 moves screens from compatibility payloads to display
+  models or when FastAPI v2 is introduced.
+
+Decision ID: DEC-2026-06-11-003
+Title: Retire direct Next.js Python spawning through FastAPI compatibility proxies
+
+- Status: accepted
+- Date: 2026-06-11
+- Decision: Keep the existing Next.js `/api/portfolio/*` URLs for current screens, but make them
+  proxy to FastAPI v1 instead of spawning `scripts/run_review_from_payload.py` directly.
+- Context: FastAPI now implements the one-candidate MVP backend chain, while current screens still
+  consume legacy artifact-shaped payloads.
+- Rationale: This retires the brittle script bridge from the normal frontend path without combining
+  route switching with a broad screen-adapter rewrite.
+- Alternatives considered: Delete the Next.js routes and call FastAPI directly from browser code
+  (rejected because it would require immediate CORS/runtime and screen-adapter changes); keep the
+  script bridge until Session 09 (rejected because it delays the FastAPI foundation milestone).
+- Assumptions: Session 09 will simplify screens to consume display models and generated API types
+  more directly.
+- Consequences: `scripts/run_review_from_payload.py` remains legacy/debug and an internal helper
+  reused by FastAPI, but normal frontend route tests should target the FastAPI proxy layer.
+- Related documents: [FastAPI contract](docs/contracts/FASTAPI_V1_API_CONTRACT.md),
+  [FastAPI foundation plan](docs/exec_plans/2026-06-11_fastapi_foundation_plan.md),
+  [frontend README](frontend/README.md).
+- Review trigger: Revisit when Session 09 removes legacy-shaped screen payloads or when the browser
+  calls FastAPI directly.
+
+Decision ID: DEC-2026-06-11-002
+Title: FastAPI v1 returns product envelopes, not raw artifact dumps
+
+- Status: accepted
+- Date: 2026-06-11
+- Decision: The planned FastAPI v1 backend will expose typed product-stage envelopes with lineage,
+  stage status, evidence quality, safe errors, and compact display summaries instead of returning raw
+  generated artifact trees as the normal frontend API.
+- Context: FastAPI foundation Session 01 designed the endpoint contract before adding runtime code.
+  The existing bridge already writes useful artifacts, but the long-term frontend contract needs a
+  stable HTTP/Pydantic/OpenAPI boundary.
+- Rationale: Raw artifacts are generated implementation evidence and can include legacy, advanced,
+  stale, debug, or path-like data. Product envelopes keep screens aligned to diagnosis-first product
+  meaning and make stale-data and lineage failures explicit.
+- Alternatives considered: Return raw artifact JSON directly (rejected because it exposes internal
+  schemas and stale artifacts too easily); let the frontend infer all stage status from files
+  (rejected because the backend should own canonical validation); switch routes before contracts
+  exist (rejected as migration risk).
+- Assumptions: Existing product-bundle artifacts remain deterministic sources; frontend TypeScript
+  types are generated from OpenAPI beginning in Session 03; existing Next.js bridge remains normal
+  runtime until replacement endpoints are implemented and tested.
+- Consequences: Session 02 could add a minimal FastAPI skeleton without changing product behavior,
+  and Session 03 could publish typed OpenAPI placeholders without switching runtime paths. Later
+  sessions must wrap artifacts into response models and preserve same-review, same-card,
+  same-candidate lineage.
+- Related documents: [FastAPI v1 API Contract](docs/contracts/FASTAPI_V1_API_CONTRACT.md),
+  [FastAPI Foundation ExecPlan](docs/exec_plans/2026-06-11_fastapi_foundation_plan.md).
+- Review trigger: Revisit if a later API version intentionally exposes raw artifact downloads as a
+  separate debug endpoint or if public schema versioning changes.
+
+Decision ID: DEC-2026-06-11-001
+Title: Diagnosis interpretation is an evidence chain, not direct metric-to-advice mapping
+
+- Status: accepted
+- Date: 2026-06-11
+- Decision: Portfolio MRI diagnosis interpretation should be governed as a chain:
+  metric signal -> evidence item -> problem hypothesis -> root-cause diagnosis -> suggested test ->
+  candidate setup -> comparison success criteria -> Decision Verdict.
+- Context: The user asked what professional rules should translate X-Ray and Stress Lab metrics into
+  Problem Classification and suggested actions, and how to make that reliable for a future website.
+- Rationale: Professional portfolio analytics separates measurement from judgment. Metrics can be
+  noisy or symptomatic; a robust system must classify evidence, prioritize root causes over symptoms,
+  record confidence/materiality/contrary evidence, and keep suggested actions as diagnostic tests
+  until comparison and verdict evidence exists.
+- Alternatives considered: Let an LLM interpret raw metrics directly (rejected because it would be
+  hard to audit and may hallucinate); treat high metric severity as automatic recommendation
+  (rejected because metrics can be symptoms and no-trade/evidence-insufficient are valid outcomes);
+  expose only a score dashboard (rejected because it weakens cause-and-effect explanation).
+- Assumptions: Current Block 4 v3 taxonomy and builders remain the canonical implementation base;
+  future work may add a formal diagnosis-rule registry spec and matrix tests.
+- Consequences: Future API/frontend work should expose evidence, diagnosis, hypothesis, success
+  criteria, and verdict as separate stages. Suggested actions should stay framed as tests, not trade
+  advice.
+- Related documents: [Diagnosis Interpretation Framework Research](docs/audits/2026-06-11_diagnosis_interpretation_framework_research.md),
+  [Block 4 v3 Diagnosis-First Contract](docs/specs/block_4_diagnosis_v3_spec.md).
+- Review trigger: Revisit when a formal diagnosis-rule registry spec is introduced or if the product
+  intentionally changes from decision-support to advice/execution, which is currently out of scope.
+
 ### DEC-2026-06-05-008 - Full factor FRED waits are bounded before demo fallback
 
 - Decision: The full factor-matrix path uses a separate bounded live FRED fetch budget for raw

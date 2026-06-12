@@ -793,6 +793,8 @@ def prepare_selected_builder_setup(
     method: str | None = None,
     constraint_preset: str | None = None,
     mode: str | None = None,
+    min_asset_weight: float | None = None,
+    max_asset_weight: float | None = None,
 ) -> dict[str, Any]:
     """Build a run-local Builder artifact for exactly one selected Launchpad card.
 
@@ -824,6 +826,10 @@ def prepare_selected_builder_setup(
         overrides["constraint_preset"] = constraint_preset
     if mode is not None:
         overrides["mode"] = mode
+    if min_asset_weight is not None:
+        overrides["min_asset_weight"] = min_asset_weight
+    if max_asset_weight is not None:
+        overrides["max_asset_weight"] = max_asset_weight
 
     setup = build_simple_builder_parameters(prefill, overrides=overrides or None)
     validation = validate_builder_setup(setup)

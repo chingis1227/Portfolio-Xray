@@ -234,6 +234,7 @@ REPO_RELATIVE_PREFIXES: tuple[str, ...] = (
     "tests/",
     "config/",
     "config_ui/",
+    "frontend/",
     "scripts/",
     "policy_math/",
     ".cursor/",

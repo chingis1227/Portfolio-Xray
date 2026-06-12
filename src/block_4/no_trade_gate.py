@@ -131,6 +131,27 @@ def evaluate_no_trade_gate(
             launchpad_suppressed=False,
         )
 
+    if (
+        stress_confirmation == "confirmed"
+        and materiality in {"high", "medium"}
+        and confidence == "low"
+        and _partial_xray_only_confidence_cap(evidence)
+    ):
+        return NoTradeGateResult(
+            outcome=OUTCOME_PROCEED,
+            headline_en=_proceed_headline(label, primary),
+            reasons=_actionable_reasons(
+                primary,
+                evidence,
+                extra=[
+                    "Primary confidence is low because one or more X-Ray blocks are partial",
+                    "Stress evidence is still available for the primary diagnosis",
+                ],
+            ),
+            recommended_next_step=STEP_SELECT_LAUNCHPAD,
+            launchpad_suppressed=False,
+        )
+
     if stress_confirmation == "pre_stress_only" or confidence == "low":
         return NoTradeGateResult(
             outcome=OUTCOME_MONITOR,
@@ -303,3 +324,11 @@ def _actionable_reasons(
         reasons.extend(extra)
 
     return tuple(dict.fromkeys(reason for reason in reasons if reason))
+
+
+def _partial_xray_only_confidence_cap(evidence: EvidenceExtractionResult) -> bool:
+    return (
+        evidence.has_signal("partial_sections")
+        and not evidence.has_signal("stress_block_unavailable")
+        and not evidence.has_signal("data_trust_failure")
+    )

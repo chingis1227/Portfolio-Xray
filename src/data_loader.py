@@ -394,18 +394,23 @@ def load_monthly_data_shared(
             )
             daily_raw = provider_result.prices
             daily = {t: df for t, df in daily_raw.items() if not df.empty and "Close" in df.columns}
-            save_cache_meta(
-                daily_cache_path,
-                {
-                    "tickers": all_tickers,
-                    "start": start_str,
-                    "end": end_str,
-                    "data_date": current_date,
-                    "data_provider": resolved_data_provider,
-                    "provider_by_ticker": provider_result.provider_by_ticker,
-                },
-            )
-            save_daily_prices(daily_cache_path, daily)
+            if not daily:
+                logger.warning(
+                    "Daily price cache not saved because market data produced no usable prices."
+                )
+            else:
+                save_cache_meta(
+                    daily_cache_path,
+                    {
+                        "tickers": all_tickers,
+                        "start": start_str,
+                        "end": end_str,
+                        "data_date": current_date,
+                        "data_provider": resolved_data_provider,
+                        "provider_by_ticker": provider_result.provider_by_ticker,
+                    },
+                )
+                save_daily_prices(daily_cache_path, daily)
 
         prices_daily = {t: df["Close"] for t, df in daily.items()}
         prices_daily_sub = {t: prices_daily[t] for t in all_tickers if t in prices_daily}
@@ -502,35 +507,40 @@ def load_monthly_data_shared(
         else:
             cash_returns = cash_returns.dropna()
 
-        save_cache_meta(
-            monthly_cache_path,
-            {
-                "tickers": tickers,
-                "investor_currency": investor_currency,
-                "benchmark": benchmark_base_ticker,
-                "cash_proxy": cash_proxy_ticker,
-                "rf_source": rf_source,
-                "windows_months": windows_months,
-                "data_month": data_month,
-                "asset_metadata_fingerprint": asset_metadata_fingerprint,
-                "asset_currency_by_ticker": currency_by_ticker,
-                "returns_frequency": rf_mode,
-                "data_provider": resolved_data_provider,
-                "risk_free_fallback_used": risk_free_metadata.get("risk_free_fallback_used", False),
-                "risk_free_fallback_reason": risk_free_metadata.get("risk_free_fallback_reason"),
-                "risk_free_source_used": risk_free_metadata.get("risk_free_source_used", rf_source),
-            },
-        )
-        save_monthly_data(
-            monthly_cache_path,
-            monthly_prices,
-            monthly_returns,
-            monthly_log_returns,
-            rf_monthly,
-            benchmark_returns,
-            cash_returns,
-            fx_series_used,
-        )
+        if monthly_prices.empty or monthly_returns.empty:
+            logger.warning(
+                "Return panel cache not saved because market data produced an empty panel."
+            )
+        else:
+            save_cache_meta(
+                monthly_cache_path,
+                {
+                    "tickers": tickers,
+                    "investor_currency": investor_currency,
+                    "benchmark": benchmark_base_ticker,
+                    "cash_proxy": cash_proxy_ticker,
+                    "rf_source": rf_source,
+                    "windows_months": windows_months,
+                    "data_month": data_month,
+                    "asset_metadata_fingerprint": asset_metadata_fingerprint,
+                    "asset_currency_by_ticker": currency_by_ticker,
+                    "returns_frequency": rf_mode,
+                    "data_provider": resolved_data_provider,
+                    "risk_free_fallback_used": risk_free_metadata.get("risk_free_fallback_used", False),
+                    "risk_free_fallback_reason": risk_free_metadata.get("risk_free_fallback_reason"),
+                    "risk_free_source_used": risk_free_metadata.get("risk_free_source_used", rf_source),
+                },
+            )
+            save_monthly_data(
+                monthly_cache_path,
+                monthly_prices,
+                monthly_returns,
+                monthly_log_returns,
+                rf_monthly,
+                benchmark_returns,
+                cash_returns,
+                fx_series_used,
+            )
 
     today_ts = pd.Timestamp(datetime.now().date())
     analysis_end = get_analysis_end(monthly_prices.index, today_ts)

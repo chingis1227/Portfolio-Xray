@@ -33,6 +33,8 @@ Use the narrowest reliable check first. Broaden only when the change touches sha
 | Blocks 8–10 package truthfulness (offline) | Partial menu + degraded optimizer disclosure in selection/action/decision package | `python -m pytest tests/test_blocks_8_10_downstream_integration.py tests/test_package_truthfulness.py tests/test_decision_package_reporting.py -q` |
 | Blocks 1-5 data trust signals | Stress/input/X-Ray trust summaries for episode quality, taxonomy warnings, and young-ETF policy disclosure | `python -m pytest tests/test_data_trust_signals.py -q` |
 | Core diagnostics entrypoint (Blocks 1-3) | `run_core_diagnostics.py`, `--core-diagnostics-only`, or `product_bundle_scope` | `python -m pytest tests/test_core_diagnostics_entrypoint.py -q` |
+| FastAPI foundation contracts | Local FastAPI app, health endpoint, diagnosis/recovery/Builder/Candidate/runtime adapters, Pydantic API models, OpenAPI surface, generated frontend API types, FastAPI screen-mapping governance, sourced-claim/advice-language governance, frontend display-model adapters, Next.js FastAPI compatibility proxy routes, or active-review lineage/isolation behavior | `python -m pytest tests/test_fastapi_app.py tests/test_fastapi_contract_governance.py -q`; after schema/type/screen-map changes also run `python scripts/verify_fastapi_contract_governance.py` and `cd frontend && npm.cmd run typecheck`; when Next.js proxy routes are touched also run `cd frontend && npm.cmd run test:api`; when legacy/debug script helpers or run-local review isolation are touched also run `python -m pytest tests/test_frontend_review_bridge.py -q` |
+| Live FastAPI + frontend vertical QA | Explicit operator proof that fresh FastAPI, fresh Next.js, clean Playwright browser state, frontend compatibility routes, run-local lineage, and stale-card rejection work together across multiple portfolio scenarios | `cd frontend && npm.cmd run qa:vertical -- --scenario-limit 3`; inspect `output/playwright/**/qa-report.json`, screenshots, DOM fallbacks, `next.log`, and `fastapi.log`. This is a live/network-sensitive acceptance check, not a default fast gate. |
 | Portfolio-first workflow orchestration | `run_portfolio_review.py` plan building or step ordering | `python -m pytest tests/test_portfolio_review_workflow.py -q` |
 | One-candidate product demo (Session 07) | After `run_portfolio_review.py --candidates equal_weight` or runtime-truth scoping changes | `python -m pytest tests/test_one_candidate_demo_validation.py -q`; live disk gate: `python scripts/validate_one_candidate_demo.py` |
 | Runtime truth product vs research boundaries (Session 08) | Runtime mode routing, `advanced_package` gating, or compare/verdict scoping changes | `python -m pytest tests/test_runtime_mode_regression_boundaries.py tests/test_portfolio_review_workflow.py tests/test_candidate_comparison.py tests/test_one_candidate_demo_validation.py -q` |
@@ -41,23 +43,31 @@ Use the narrowest reliable check first. Broaden only when the change touches sha
 
 `pytest.ini` limits test discovery to `tests/`, so `python -m pytest` is the repository-level test command.
 
+## Fast QA gates
+
+Use these PowerShell shortcuts for routine local verification when a full test suite would be too slow for the active task:
+
+| Gate | Command | Use when | Excludes |
+| --- | --- | --- | --- |
+| Fast daily QA | `.\scripts\qa_fast.ps1` (`.\scripts\qa_fast.cmd` if PowerShell policy blocks scripts) | Default local gate for docs consistency, core offline workflow smoke, product-bundle adapters, frontend typecheck, and frontend API routes. Target runtime is roughly 3 minutes on the Windows desktop setup. | Full `python -m pytest`, live E2E, frontend build, frontend smoke, Playwright/browser visual QA. |
+| Contract QA | `.\scripts\qa_contracts.ps1` (`.\scripts\qa_contracts.cmd` if PowerShell policy blocks scripts) | Runtime contract, candidate factory, comparison JSON, or golden fixture changes. It runs the candidate factory/comparison suites while excluding the still-open KI-2026-05-26-001 drift test. | Networked/live checks and full `python -m pytest`. |
+
+Keep full `python -m pytest` as a manual/nightly or risk-based check, not the everyday fast gate. Run live core/full E2E only for demo, release, or explicit operator proof.
+
 ### Known full-suite failures (contract drift, not Block 2.4)
 
-As of **2026-05-26**, `python -m pytest` may report **6 failures** while **1037+** tests pass. These are
-tracked as separate tech debt in [KNOWN_ISSUES.md](KNOWN_ISSUES.md) (index **Full pytest suite contract
-drift**, IDs **KI-2026-05-26-001** … **006**). They are unrelated to Block 2.4 Hidden Exposure.
+As of **2026-05-26**, `python -m pytest` reported **6 failures** while **1037+** tests passed. One candidate factory golden drift row was resolved on **2026-06-12**; remaining rows are tracked as separate tech debt in [KNOWN_ISSUES.md](KNOWN_ISSUES.md) (index **Full pytest suite contract drift**). They are unrelated to Block 2.4 Hidden Exposure.
 
 | Test | Issue ID |
 | --- | --- |
 | `tests/test_candidate_comparison.py::test_current_unavailable_in_optimize_mode` | KI-2026-05-26-001 |
-| `tests/test_candidate_factory_contract.py::test_live_factory_build_matches_golden_document` | KI-2026-05-26-002 |
+| `tests/test_candidate_factory_contract.py::test_live_factory_build_matches_golden_document` | KI-2026-05-26-002 (**resolved 2026-06-12**) |
 | `tests/test_current_vs_policy_workflow.py::test_combined_context_both_available` | KI-2026-05-26-003 |
 | `tests/test_current_vs_policy_workflow.py::test_current_weights_without_sidecar` | KI-2026-05-26-004 |
 | `tests/test_factor_covariance.py::test_factor_covariance_empty_factor_frame_returns_explicit_skip_reason` | KI-2026-05-26-005 |
 | `tests/test_mvp_workflow.py::test_policy_current_adds_materialize_when_weights_set` | KI-2026-05-26-006 |
 
-Until closed: use focused pytest for the changed layer; treat full-suite green as **not** a release gate
-without reconciling or re-accepting the six rows above.
+Until the remaining rows are closed: use focused pytest for the changed layer and the fast QA gates above; treat full-suite green as **not** a release gate without reconciling or re-accepting the remaining rows above.
 
 ### Block 2.4 Hidden Exposure institutional upgrade (Sessions 01–13, **closed**)
 
@@ -145,6 +155,16 @@ python -m pytest tests/test_block_4_diagnosis_builder.py \
   tests/test_block_4_decision_entry_contract.py \
   tests/test_diagnostic_journey_view_model.py -q
 ```
+
+Dynamic interpretation-chain matrix (Diagnosis Interpretation Foundation Session 11):
+
+```bash
+python -m pytest tests/test_diagnosis_interpretation_fixture_matrix.py tests/test_block_4_v2_archetype_fixtures.py -q
+```
+
+This matrix uses ten deterministic portfolio archetypes and checks that different source evidence
+produces different primary diagnoses, root-cause narratives, leading evidence signals, and FastAPI
+diagnosis summaries without refreshing generated review artifacts.
 
 Live product validation (Session 12+):
 

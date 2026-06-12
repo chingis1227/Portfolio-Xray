@@ -7,7 +7,7 @@ import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanati
 import { HypothesisCard } from "@/components/hypothesis/HypothesisCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatUnknownValue, normalizeDisplayLabel, normalizeDisplaySentence } from "@/lib/displayLabels";
-import { cleanSiteExplanationBundle, useReviewState, type CandidateGenerationSummary } from "@/lib/reviewState";
+import { useReviewState, type CandidateGenerationSummary } from "@/lib/reviewState";
 import type { Hypothesis } from "@/lib/types";
 
 type JsonRecord = Record<string, unknown>;
@@ -893,22 +893,17 @@ export default function HypothesisPage() {
     setSampleGenerated(params.get("generated") === "1");
   }, []);
 
-  const problemClassification = activeReview?.reviewResult?.outputs?.problem_classification;
-  const candidateLaunchpad = activeReview?.reviewResult?.outputs?.candidate_launchpad;
   const compactLaunchpadCards = activeReview?.reviewSummary?.launchpadCards;
-  const launchpadRecord = isRecord(candidateLaunchpad)
-    ? candidateLaunchpad
-    : Array.isArray(compactLaunchpadCards)
+  const launchpadRecord = Array.isArray(compactLaunchpadCards)
       ? { cards: compactLaunchpadCards }
       : undefined;
-  const builderOutput = activeReview?.reviewResult?.outputs?.portfolio_alternatives_builder;
   const compactBuilderOutput = activeReview?.builderSetup ?? activeReview?.reviewSummary?.builderSetup;
-  const builderRecord = isRecord(compactBuilderOutput) ? compactBuilderOutput : isRecord(builderOutput) ? builderOutput : undefined;
+  const builderRecord = isRecord(compactBuilderOutput) ? compactBuilderOutput : undefined;
   const rawLaunchpadCards = useMemo(() => getArray(launchpadRecord?.cards).filter(isRecord), [launchpadRecord]);
   const allCandidateRawCards = useMemo(() => rawLaunchpadCards.filter((card) => !isMonitoringCard(card) && !isDataQualityCard(card)), [rawLaunchpadCards]);
   const monitoringRawCards = useMemo(() => rawLaunchpadCards.filter((card) => isMonitoringCard(card) || isDataQualityCard(card)), [rawLaunchpadCards]);
   const problemClassificationView = useMemo(() => buildProblemClassificationView({
-    problemClassification,
+    problemClassification: undefined,
     primaryProblem: activeReview?.reviewSummary?.primaryProblem,
     problemSeverity: activeReview?.reviewSummary?.problemSeverity,
     problemConfidence: activeReview?.reviewSummary?.problemConfidence,
@@ -920,7 +915,6 @@ export default function HypothesisPage() {
     activeReview?.reviewSummary?.problemConfidence,
     activeReview?.reviewSummary?.suggestedActionPaths,
     activeReview?.reviewSummary?.recommendedFirstTest,
-    problemClassification
   ]);
   const diagnosisText = `${problemClassificationView.headline} ${problemClassificationView.rootCause ?? ""} ${problemClassificationView.nextStep}`;
   const candidateRawCards = useMemo(
@@ -930,8 +924,7 @@ export default function HypothesisPage() {
   const realCards = useMemo(() => candidateRawCards.map((card) => launchpadCardToHypothesis(card, diagnosisText)), [candidateRawCards, diagnosisText]);
   const monitoringCards = useMemo(() => monitoringRawCards.map((card) => launchpadCardToHypothesis(card, diagnosisText)), [monitoringRawCards, diagnosisText]);
   const completedRealReview = activeReview?.runMode === "real_run" && activeReview.runStatus === "completed";
-  const siteExplanation = cleanSiteExplanationBundle(activeReview?.reviewResult?.outputs?.site_explanation_bundle)
-    ?? activeReview?.reviewSummary?.siteExplanation;
+  const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
 
   const launchpadRecordView = launchpadRecord as JsonRecord | undefined;
   const launchpadSummary = isRecord(launchpadRecordView?.summary) ? launchpadRecordView.summary : undefined;

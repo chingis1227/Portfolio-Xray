@@ -9,7 +9,7 @@ import { CandidateComparisonPanel } from "@/components/comparison/CandidateCompa
 import { TradeoffSummary } from "@/components/comparison/TradeoffSummary";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
-import { cleanSiteExplanationBundle, useReviewState } from "@/lib/reviewState";
+import { useReviewState } from "@/lib/reviewState";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -68,6 +68,14 @@ function comparisonIsAvailable(comparison: NonNullable<ReturnType<typeof useRevi
     && statusKey(comparison.status) === "completed"
     && statusKey(comparison.comparisonStatus) === "available"
     && comparison.metrics.some(isDisplayableMetric)
+  );
+}
+
+function comparisonCanGenerateVerdict(comparison: NonNullable<ReturnType<typeof useReviewState>["activeReview"]>["comparisonResult"] | undefined) {
+  return Boolean(
+    comparison
+    && statusKey(comparison.status) === "completed"
+    && statusKey(comparison.comparisonStatus) === "available"
   );
 }
 
@@ -162,6 +170,7 @@ export default function ComparisonPage() {
     && candidateGeneration.canCompare
   );
   const validComparisonAvailable = comparisonMatchesCandidate && comparisonIsAvailable(comparison);
+  const canGenerateEvidenceVerdict = comparisonMatchesCandidate && comparisonCanGenerateVerdict(comparison);
   const displayableMetrics = useMemo(
     () => comparison?.metrics.filter(isDisplayableMetric) ?? [],
     [comparison]
@@ -169,8 +178,7 @@ export default function ComparisonPage() {
   const comparisonForDisplay = comparison && displayableMetrics.length
     ? { ...comparison, metrics: displayableMetrics }
     : comparison;
-  const siteExplanation = cleanSiteExplanationBundle(activeReview?.reviewResult?.outputs?.site_explanation_bundle)
-    ?? activeReview?.reviewSummary?.siteExplanation;
+  const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
 
   useEffect(() => {
     setComparisonError(undefined);
@@ -261,12 +269,42 @@ export default function ComparisonPage() {
         ) : null}
 
         {showMetricsUnavailableState ? (
-          <EmptyState
-            title={comparisonAvailabilityTitle}
-            description={comparisonAvailabilityDescription}
-            missing={comparisonMissingReasons({ comparison, comparisonError, candidateNotComparable: showCandidateNotComparableState })}
-            nextStep="Regenerate candidate, adjust setup, or resolve data quality."
-          />
+          <section className="pmri-card rounded-3xl p-6">
+            <p className="pmri-heading-section text-lg text-pmri-text">{comparisonAvailabilityTitle}</p>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-pmri-muted">{comparisonAvailabilityDescription}</p>
+            <div className="mt-5 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
+              <p className="pmri-label">What is missing</p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-pmri-text2">
+                {comparisonMissingReasons({ comparison, comparisonError, candidateNotComparable: showCandidateNotComparableState }).map((item) => <li key={item}>• {item}</li>)}
+              </ul>
+            </div>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-pmri-text2">
+              <span className="font-medium text-pmri-text">Next step:</span>{" "}
+              {canGenerateEvidenceVerdict
+                ? "Generate an evidence-insufficient verdict, or return to Hypothesis Builder to test another setup."
+                : "Regenerate candidate, adjust setup, or resolve data quality."}
+            </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              {canGenerateEvidenceVerdict ? (
+                <button
+                  type="button"
+                  className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
+                  onClick={() => {
+                    markComparisonReady();
+                    router.push("/verdict");
+                  }}
+                >
+                  Continue to verdict
+                </button>
+              ) : null}
+              <Link
+                href="/hypothesis"
+                className="pmri-focus inline-flex rounded-full border border-pmri-border bg-white/[0.035] px-5 py-2.5 text-sm font-medium text-pmri-text transition hover:border-pmri-blue/60"
+              >
+                Return to Hypothesis Builder
+              </Link>
+            </div>
+          </section>
         ) : null}
 
         {showReadyToCompareState ? (

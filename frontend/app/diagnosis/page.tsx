@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { DiagnosisSummaryPanel } from "@/components/diagnosis/DiagnosisSummaryPanel";
 import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { buildDiagnosisFromReview, cleanSiteExplanationBundle, useReviewState } from "@/lib/reviewState";
+import { buildDiagnosisFromReview, useReviewState } from "@/lib/reviewState";
 
 function FailedDiagnosisState({ message, details }: { message: string; details?: string }) {
   return (
@@ -59,8 +59,7 @@ export default function DiagnosisPage() {
   const failedRealRun = Boolean(activeReview?.runMode === "real_run" && activeReview.runStatus === "failed");
   const diagnosis = diagnosisReady && activeReview ? buildDiagnosisFromReview(activeReview) : null;
   const xraySummary = diagnosisReady ? activeReview?.reviewSummary?.xraySummary : undefined;
-  const siteExplanation = cleanSiteExplanationBundle(activeReview?.reviewResult?.outputs?.site_explanation_bundle)
-    ?? activeReview?.reviewSummary?.siteExplanation;
+  const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
 
   return (
     <div>

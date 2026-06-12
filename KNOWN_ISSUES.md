@@ -66,7 +66,7 @@ until these rows are closed or explicitly re-accepted.
 | ID | Failing test | Drift summary | Owning area |
 | --- | --- | --- | --- |
 | KI-2026-05-26-001 | `tests/test_candidate_comparison.py::test_current_unavailable_in_optimize_mode` | `current` row `status` is `degraded`; test expects `unavailable` + `missing_current_report` | candidate comparison |
-| KI-2026-05-26-002 | `tests/test_candidate_factory_contract.py::test_live_factory_build_matches_golden_document` | `factory_contract_fingerprint` `options_keys` mismatch (live vs golden fixture) | candidate factory |
+| KI-2026-05-26-002 | `tests/test_candidate_factory_contract.py::test_live_factory_build_matches_golden_document` | **Resolved 2026-06-12** by refreshing `candidate_factory_run_golden_v1.json` for the accepted factory options surface (`output_profile`, lightweight/parallel report fields). | candidate factory |
 | KI-2026-05-26-003 | `tests/test_current_vs_policy_workflow.py::test_combined_context_both_available` | `current.artifact_root` does not end with `current_portfolio`; combined-context path contract drift | current vs policy |
 | KI-2026-05-26-004 | `tests/test_current_vs_policy_workflow.py::test_current_weights_without_sidecar` | Same as KI-001: `degraded` vs `unavailable` when sidecar missing | current vs policy |
 | KI-2026-05-26-005 | `tests/test_factor_covariance.py::test_factor_covariance_empty_factor_frame_returns_explicit_skip_reason` | Empty factor frame returns `status: available`; test expects `unavailable` | factor / macro |
@@ -283,15 +283,15 @@ Title: Current row in optimize mode reported as degraded instead of unavailable
 Issue ID: KI-2026-05-26-002
 Title: Candidate factory live build golden fingerprint drift (options_keys)
 
-- Status: open
+- Status: resolved 2026-06-12
 - Severity: low
 - Area: testing
 - Risk: Factory contract regressions can slip through if golden `options_keys` are stale; CI/full suite noise hides real breaks.
-- Evidence: `python -m pytest tests/test_candidate_factory_contract.py::test_live_factory_build_matches_golden_document` fails (2026-05-26 full suite); `options_keys` differ between live `normalize_factory_run(build_golden_factory_run())` and golden fixture (e.g. `lightweight_report_workers` vs `pdf_mode`).
-- Current mitigation: Run `tests/test_candidate_factory.py` and factory-focused contract tests; regenerate golden via `tests/candidate_factory_golden_inputs.py` when options surface is intentionally changed.
-- Next action: Regenerate golden fixture and/or narrow fingerprint to stable contract fields; document new factory CLI options in spec.
+- Evidence: `python -m pytest tests/test_candidate_factory_contract.py::test_live_factory_build_matches_golden_document` failed in the 2026-05-26 full-suite audit; the targeted contract test passed after the 2026-06-12 golden refresh.
+- Current mitigation: Use `.\scripts\qa_contracts.ps1` for factory/comparison contract changes and regenerate golden fixtures via `tests/candidate_factory_golden_inputs.py` when the options surface intentionally changes.
+- Next action: Keep the refreshed options surface documented; remove this resolved entry during the next full-suite drift-index compaction.
 - Source links: [tests/test_candidate_factory_contract.py](tests/test_candidate_factory_contract.py), [docs/exec_plans/2026-05-25_code_migration_to_diagnosis_first_portfolio_mri.md](docs/exec_plans/2026-05-25_code_migration_to_diagnosis_first_portfolio_mri.md) (Session 12 noted same drift).
-- Remove when: `test_live_factory_build_matches_golden_document` passes after intentional golden refresh.
+- Remove when: the next full-suite drift audit compacts resolved entries out of this index.
 
 Issue ID: KI-2026-05-26-003
 Title: Combined current vs policy artifact_root path convention drift

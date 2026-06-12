@@ -6,6 +6,9 @@ import { useState } from "react";
 import { buildJourneySteps } from "@/lib/journey";
 import { useReviewState } from "@/lib/reviewState";
 import type { JourneyStepStatus } from "@/lib/types";
+import { AuthPanel } from "./AuthPanel";
+import { PersistenceStatus } from "./PersistenceStatus";
+import { SavedReviewsPanel } from "./SavedReviewsPanel";
 
 function statusClasses(status: JourneyStepStatus) {
   switch (status) {
@@ -48,6 +51,9 @@ export function Sidebar() {
           <p className="pmri-label text-pmri-text2">Decision-safe workspace</p>
           <p className="mt-2 text-sm leading-6 text-pmri-muted">Current portfolio first. Candidate tests are diagnostic, not orders.</p>
         </div>
+        <PersistenceStatus />
+        <AuthPanel />
+        <SavedReviewsPanel />
       </div>
 
       {lockMessage ? (

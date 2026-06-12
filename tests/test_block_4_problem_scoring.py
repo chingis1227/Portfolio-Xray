@@ -89,6 +89,46 @@ def test_data_trust_failure_activates_evidence_quality_problem() -> None:
     assert result.activated_problem_ids == ("evidence_insufficient_data_quality",)
 
 
+def test_product_block_partial_plus_missing_stress_activates_evidence_quality_problem() -> None:
+    xray = {
+        "block_2_2_portfolio_metrics": {
+            "status": "partial",
+            "return_risk_metrics": {"vol_annual": 0.22},
+        },
+    }
+    evidence = extract_evidence_signals(xray, {})
+    result = score_problems(evidence)
+
+    assert evidence.has_signal("partial_sections")
+    assert evidence.has_signal("stress_block_unavailable")
+    dq = result.get_row("evidence_insufficient_data_quality")
+    assert dq is not None
+    assert dq.activated
+    assert dq.scoring.materiality == "high"
+    assert result.activated_problem_ids == ("evidence_insufficient_data_quality",)
+
+
+def test_product_block_partial_caps_actionable_problem_confidence_without_data_blocker() -> None:
+    xray = {
+        "block_2_2_portfolio_metrics": {
+            "status": "partial",
+            "return_risk_metrics": {"vol_annual": 0.22},
+        },
+    }
+    evidence = extract_evidence_signals(xray, _hedge_gap_stress())
+    result = score_problems(evidence)
+
+    assert evidence.has_signal("partial_sections")
+    assert not evidence.has_signal("stress_block_unavailable")
+    dq = result.get_row("evidence_insufficient_data_quality")
+    assert dq is not None
+    assert not dq.activated
+    volatility = result.get_row("high_volatility")
+    assert volatility is not None
+    assert volatility.activated
+    assert volatility.confidence == "low"
+
+
 def test_conflicting_signals_activate_conflict_problem() -> None:
     xray = {
         "block_2_2_portfolio_metrics": {

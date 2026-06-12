@@ -1,0 +1,202 @@
+{
+  "schema_version": "fastapi_screen_mapping_v1",
+  "purpose": "Machine-readable governance map that binds the FastAPI v1 OpenAPI surface to generated frontend types and explicit Core MVP screen ownership.",
+  "type_generation": {
+    "generator": "scripts/generate_fastapi_api_types.py",
+    "generated_types": "frontend/lib/generated/api-types.ts"
+  },
+  "contract_docs": [
+    "docs/contracts/FASTAPI_V1_API_CONTRACT.md",
+    "docs/contracts/ARTIFACT_TO_SCREEN_MAP.md",
+    "docs/contracts/SCREEN_CONTRACTS.md",
+    "frontend/README.md"
+  ],
+  "allowed_screen_routes": [
+    "/portfolio-input",
+    "/diagnosis",
+    "/evidence",
+    "/hypothesis",
+    "/comparison",
+    "/verdict",
+    "/report"
+  ],
+  "operations": [
+    {
+      "operation_id": "getHealth",
+      "method": "GET",
+      "path": "/api/v1/health",
+      "request_schema": null,
+      "success_status": "200",
+      "response_schema": "HealthResponse",
+      "data_schema": "HealthData",
+      "public_data_fields": [
+        "api_version",
+        "openapi_available",
+        "service",
+        "status"
+      ],
+      "screen_routes": [],
+      "screen_mapping_status": "operator",
+      "screen_contract_section": "Run locally / API readiness",
+      "mapping_note": "Health is an operator/API readiness endpoint and is not surfaced as a Core MVP screen."
+    },
+    {
+      "operation_id": "createReview",
+      "method": "POST",
+      "path": "/api/v1/reviews",
+      "request_schema": "CreateReviewRequest",
+      "success_status": "200",
+      "response_schema": "CreateReviewResponse",
+      "data_schema": "ReviewCreatedData",
+      "public_data_fields": [
+        "artifact_refs",
+        "diagnosis",
+        "launchpad",
+        "next_allowed_actions",
+        "review_summary"
+      ],
+      "screen_routes": [
+        "/portfolio-input",
+        "/diagnosis",
+        "/evidence",
+        "/hypothesis"
+      ],
+      "screen_mapping_status": "current",
+      "screen_contract_section": "Portfolio Input -> Portfolio X-Ray / Diagnosis -> Stress Test Lab -> Hypothesis Builder",
+      "mapping_note": "Creates diagnosis-first review state. Fields may unlock only diagnosis, evidence, and hypothesis setup; no candidate/comparison/verdict/report state is active."
+    },
+    {
+      "operation_id": "recoverReview",
+      "method": "GET",
+      "path": "/api/v1/reviews/{review_id}",
+      "request_schema": null,
+      "success_status": "200",
+      "response_schema": "ReviewRecoveryResponse",
+      "data_schema": "ReviewRecoveryData",
+      "public_data_fields": [
+        "artifact_refs",
+        "diagnosis",
+        "downstream_artifacts_restored_as_active",
+        "launchpad",
+        "next_allowed_actions",
+        "restored_active_stages",
+        "review_summary"
+      ],
+      "screen_routes": [
+        "/portfolio-input",
+        "/diagnosis",
+        "/evidence",
+        "/hypothesis"
+      ],
+      "screen_mapping_status": "current",
+      "screen_contract_section": "Portfolio Input recovery and conservative downstream reset",
+      "mapping_note": "Recovery restores diagnosis/evidence/hypothesis setup only and must keep downstream candidate/comparison/verdict/report inactive unless regenerated."
+    },
+    {
+      "operation_id": "prepareBuilder",
+      "method": "POST",
+      "path": "/api/v1/reviews/{review_id}/builder",
+      "request_schema": "BuilderRequest",
+      "success_status": "200",
+      "response_schema": "BuilderResponse",
+      "data_schema": "BuilderData",
+      "public_data_fields": [
+        "builder_setup",
+        "candidate_generation_allowed",
+        "next_allowed_actions"
+      ],
+      "screen_routes": [
+        "/hypothesis"
+      ],
+      "screen_mapping_status": "current",
+      "screen_contract_section": "Hypothesis Builder",
+      "mapping_note": "Builder setup is setup-only. It may enable Generate candidate but must not display weights, comparison, or a verdict."
+    },
+    {
+      "operation_id": "generateCandidate",
+      "method": "POST",
+      "path": "/api/v1/reviews/{review_id}/candidate",
+      "request_schema": "BuilderSetupIdRequest",
+      "success_status": "200",
+      "response_schema": "CandidateResponse",
+      "data_schema": "CandidateData",
+      "public_data_fields": [
+        "candidate",
+        "hypothesis",
+        "is_rebalance_recommendation",
+        "next_allowed_actions"
+      ],
+      "screen_routes": [
+        "/hypothesis",
+        "/comparison"
+      ],
+      "screen_mapping_status": "current",
+      "screen_contract_section": "Hypothesis Builder and Current vs Candidate Comparison gate",
+      "mapping_note": "One diagnostic candidate attempt only. Candidate data may unlock comparison when same-run lineage is current; it is not a recommendation."
+    },
+    {
+      "operation_id": "runComparison",
+      "method": "POST",
+      "path": "/api/v1/reviews/{review_id}/comparison",
+      "request_schema": "CandidateIdRequest",
+      "success_status": "200",
+      "response_schema": "ComparisonResponse",
+      "data_schema": "ComparisonData",
+      "public_data_fields": [
+        "comparison",
+        "evidence_chain_context",
+        "next_allowed_actions"
+      ],
+      "screen_routes": [
+        "/comparison",
+        "/verdict",
+        "/report"
+      ],
+      "screen_mapping_status": "current",
+      "screen_contract_section": "Current vs Candidate Comparison",
+      "mapping_note": "Comparison is trade-off evidence and may unlock Verdict; it carries bounded diagnosis-to-hypothesis context, but must not crown a winner or issue action advice."
+    },
+    {
+      "operation_id": "generateVerdict",
+      "method": "POST",
+      "path": "/api/v1/reviews/{review_id}/verdict",
+      "request_schema": "ComparisonIdRequest",
+      "success_status": "200",
+      "response_schema": "VerdictResponse",
+      "data_schema": "VerdictData",
+      "public_data_fields": [
+        "next_allowed_actions",
+        "evidence_chain_context",
+        "verdict"
+      ],
+      "screen_routes": [
+        "/verdict",
+        "/report"
+      ],
+      "screen_mapping_status": "current",
+      "screen_contract_section": "Decision Verdict",
+      "mapping_note": "Verdict is non-binding decision support over same-run evidence-chain context. No-trade, test-another, failed/infeasible, and evidence-insufficient remain valid outcomes."
+    },
+    {
+      "operation_id": "generateReport",
+      "method": "POST",
+      "path": "/api/v1/reviews/{review_id}/report",
+      "request_schema": "VerdictIdRequest",
+      "success_status": "200",
+      "response_schema": "ReportResponse",
+      "data_schema": "ReportData",
+      "public_data_fields": [
+        "evidence_chain_context",
+        "grounding",
+        "llm_generated",
+        "report_preview"
+      ],
+      "screen_routes": [
+        "/report"
+      ],
+      "screen_mapping_status": "current",
+      "screen_contract_section": "Report / AI Commentary Grounding",
+      "mapping_note": "Report is a grounded deterministic preview over diagnosis, hypothesis, comparison, and verdict context. It must not imply LLM generation, PDF generation, or unsupported conclusions."
+    }
+  ]
+}

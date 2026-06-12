@@ -6,6 +6,26 @@ Scope: maps backend/runtime artifacts to frontend routes, presentation adapters,
 
 This contract exists to prevent product-code-design drift. Future changes that add, rename, remove, reinterpret, or newly surface an artifact in Core MVP UI must update this file and the owning source-of-truth documents in the same change.
 
+
+## Session 10 adapter boundary
+
+Core MVP screens consume display models produced by frontend/FastAPI adapters, not raw generated
+artifacts directly. Diagnosis interpretation Session 10 makes the active frontend state adapters
+prefer FastAPI public display envelopes (`DiagnosisSummary`, candidate/hypothesis summaries,
+downstream `evidence_chain_context`, verdict evidence lists, and report preview context) before
+falling back to same-run artifacts. This map still defines which artifacts may feed each adapter, but
+parsing raw `reviewResult.outputs.*` belongs in adapter code, compatibility proxies, tests, or
+operator/debug views only.
+
+## Session 12 review isolation boundary
+
+Diagnosis interpretation Session 12 adds a public-envelope lineage check at the frontend FastAPI
+bridge boundary. Recovery, Builder, Candidate, Comparison, Verdict, and Report compatibility routes
+must reject a FastAPI response when its `lineage` or top-level identifiers point to a different
+`review_id`, selected Launchpad card, candidate, comparison, or verdict than the active frontend
+request. A matching local file under `runs/frontend_review_*` is not enough after a mismatch; the
+route must fail before trusting downstream artifacts.
+
 ## Source-of-truth order
 
 Use this document for artifact-to-screen routing and UI interpretation. Use lower-level sources for behavior details:
@@ -16,6 +36,8 @@ Use this document for artifact-to-screen routing and UI interpretation. Use lowe
 - `docs/runtime_artifact_contract.md` for which artifacts are required, tombstoned, absent, optional, or stale by runtime mode.
 - `docs/product_flow_operator_guide.md` for operator read order and product-bundle path rules.
 - `../../frontend/README.md` for run-local frontend review folders and active browser state rules.
+- `docs/contracts/FASTAPI_SCREEN_MAPPING.json` for the machine-readable FastAPI operation,
+  response-field, and screen-route governance map.
 - `docs/specs/portfolio_review_workflow_spec.md` for diagnosis-first workflow and `analysis_subject` boundaries.
 - `docs/specs/input_assumptions_spec.md` for input and `analysis_setup` semantics.
 - `docs/specs/portfolio_xray_diagnostics_spec.md` and `docs/specs/portfolio_xray_layer_spec.md` for Portfolio X-Ray artifacts.
@@ -118,7 +140,7 @@ There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-aren
 ## Lineage and stale-data rules
 
 1. **Same current portfolio first.** Diagnosis artifacts must belong to the submitted current portfolio under `analysis_subject/` or the active `runs/frontend_review_*` folder.
-2. **Same `reviewId` in frontend.** Builder prepare, candidate generation, comparison, verdict, and report API calls must use the active review folder and must reject mismatched review IDs.
+2. **Same `reviewId` in frontend.** Recovery, Builder prepare, candidate generation, comparison, verdict, and report API calls must use the active review folder and must reject mismatched FastAPI response lineage before reading or trusting downstream run-local artifacts.
 3. **Same selected hypothesis.** Builder setup must link to the selected Launchpad card. Selecting a different card clears downstream candidate, comparison, verdict, and report readiness.
 4. **Same generated candidate.** Comparison must scope `selected_candidate_ids` / comparison rows to the generated candidate for the active setup. Verdict must review that same candidate or valid no-candidate/evidence-insufficient state.
 5. **Tombstones are states, not failures.** Diagnosis-only `no_candidate_v1` comparison/verdict tombstones mean no active candidate exists; they must not be shown as broken output.
@@ -142,6 +164,8 @@ There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-aren
 ## Acceptance checklist for future changes
 
 - [ ] Every newly surfaced artifact has a producer, path, consumer screen, adapter, user-facing meaning, and lifecycle state in this contract.
+- [ ] Every newly surfaced FastAPI operation or public response `data` field is listed in
+  `docs/contracts/FASTAPI_SCREEN_MAPPING.json`, and generated frontend API types are current.
 - [ ] The change preserves `analysis_subject/` as the portfolio-first current-subject source.
 - [ ] Frontend routes consume artifacts through adapters, not raw JSON copy.
 - [ ] Same-review, same-selected-card, same-candidate, and same-stage-order lineage is enforced before unlocking downstream screens.

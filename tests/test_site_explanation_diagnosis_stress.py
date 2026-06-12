@@ -52,6 +52,97 @@ def test_site_explanation_populates_block_4_diagnosis_hierarchy() -> None:
                 assert item["source_refs"]
 
 
+def test_site_explanation_prefers_interpretation_chain_for_diagnosis_copy() -> None:
+    doc = build_site_explanation_bundle(
+        problem_classification={
+            "schema_version": "problem_classification_v3",
+            "primary_diagnosis": {
+                "label_en": "Weak crisis resilience",
+                "confidence": "medium",
+                "materiality": "high",
+                "why_this_matters": "Legacy why-this-matters copy.",
+                "key_evidence": [
+                    {
+                        "interpretation_en": "Legacy key evidence copy.",
+                    }
+                ],
+            },
+            "interpretation_chain": {
+                "schema_version": "diagnosis_interpretation_chain_v1",
+                "root_cause_narrative": {
+                    "label_en": "Weak crisis resilience",
+                    "statement_en": "Chain narrative explains why weak crisis resilience is the selected root cause.",
+                    "portfolio_manager_interpretation_en": "Chain portfolio-manager interpretation.",
+                    "root_cause_over_symptom_en": "Root-cause diagnoses outrank symptoms only when evidence support is sufficient.",
+                },
+                "diagnosis_evidence_items": [
+                    {
+                        "evidence_item_id": "ev_1",
+                        "source_artifact": "stress_report.json",
+                        "source_field_path": "stress_scorecard_v1.worst_synthetic",
+                        "interpretation_en": "Chain stress evidence copy.",
+                    }
+                ],
+                "metric_to_diagnosis_trace": [
+                    {
+                        "trace_id": "trace_01",
+                        "source_artifact": "stress_report.json",
+                    }
+                ],
+                "next_step_link": {
+                    "label": "Test a lower drawdown candidate",
+                    "decision_boundary": "Diagnostic test only; not an implementation instruction.",
+                },
+            },
+            "next_diagnostic_step": {
+                "label": "Legacy next step",
+                "reason": "Legacy reason.",
+            },
+        }
+    )
+
+    diagnosis = doc["screens"]["diagnosis"]
+    executive_text = next(
+        item["text"]
+        for item in diagnosis["executive"]
+        if item["id"] == "diagnosis.executive.primary_problem"
+    )
+    assert "Chain narrative explains" in executive_text
+    assert "Legacy why-this-matters copy" not in executive_text
+
+    evidence_item = next(
+        item
+        for item in diagnosis["evidence"]
+        if item["id"] == "diagnosis.evidence.interpretation_chain_evidence_1"
+    )
+    assert evidence_item["text"] == "Chain stress evidence copy."
+    assert evidence_item["source_refs"] == [
+        {
+            "artifact": "stress_report.json",
+            "field_path": "stress_scorecard_v1.worst_synthetic",
+        }
+    ]
+    assert not any(
+        item["id"] == "diagnosis.evidence.key_evidence_1"
+        for item in diagnosis["evidence"]
+    )
+    assert any(
+        item["id"] == "diagnosis.technical.root_cause_boundary"
+        for item in diagnosis["technical"]
+    )
+    assert any(
+        item["id"] == "diagnosis.technical.metric_trace"
+        and "1 sourced signal" in item["text"]
+        for item in diagnosis["technical"]
+    )
+    assert any(
+        item["id"] == "diagnosis.technical.next_diagnostic_step"
+        and "Test a lower drawdown candidate" in item["text"]
+        and "Legacy next step" not in item["text"]
+        for item in diagnosis["technical"]
+    )
+
+
 def test_site_explanation_populates_xray_diagnosis_when_block_4_absent() -> None:
     doc = build_site_explanation_bundle(
         portfolio_xray={

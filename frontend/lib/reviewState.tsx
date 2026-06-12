@@ -1,10 +1,22 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ComparisonMetric, EvidenceItem, Metric, SiteExplanationBundle, SiteExplanationScreen, SiteExplanationTextItem, StatusTone } from "@/lib/types";
 import type { JourneyFlags } from "@/lib/journey";
+import type {
+  CandidateResponse,
+  ComparisonResponse,
+  CreateReviewResponse,
+  DiagnosisSummary as FastApiDiagnosisSummary,
+  DownstreamEvidenceChainContext,
+  VerdictResponse
+} from "@/lib/generated/api-types";
 import { evidenceQualityLabel, formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
 import { instrumentByTicker } from "@/data/instrumentUniverse";
+import { buildStressLabModelFromOutputs } from "@/components/evidence/stressLabModel";
+import type { StressLabModel } from "@/components/evidence/stressLabTypes";
+import { useSupabaseAuth } from "@/lib/supabase/auth";
+import { persistCompactStageSummariesForReview, persistDiagnosisSummaryForReview, useSupabasePersistence, type SavedReviewRecord } from "@/lib/supabase/persistence";
 
 export type ReviewHolding = {
   id: string;
@@ -43,11 +55,29 @@ export type CandidateGenerationSummary = {
   stage: "candidate_generation";
   selectedCardId: string;
   candidateId: string;
+  methodLabel?: string;
+  hypothesis?: string;
+  successCriteria?: string[];
+  tradeoffToWatch?: string;
+  decisionBoundary?: string;
   generationStatus: string;
   canCompare: boolean;
   path?: string;
   weights: Array<{ ticker: string; weight: number }>;
   generatedAt: string;
+};
+
+export type EvidenceChainContextSummary = {
+  selectedDiagnosisId?: string;
+  selectedDiagnosisLabel?: string;
+  selectedDiagnosisRole?: string;
+  diagnosisStatement?: string;
+  testedHypothesis?: string;
+  successCriteria: string[];
+  tradeoffToWatch?: string;
+  candidateBoundary?: string;
+  recommendationBoundary?: string;
+  sourceArtifacts: string[];
 };
 
 export type ComparisonResultSummary = {
@@ -70,6 +100,7 @@ export type ComparisonResultSummary = {
   estimatedCost: string;
   materiality: string;
   warnings: string[];
+  evidenceChainContext?: EvidenceChainContextSummary;
   path?: string;
   generatedAt: string;
 };
@@ -92,7 +123,26 @@ export type VerdictResultSummary = {
   metrics: Metric[];
   actionFraming: string;
   limitations: string[];
+  evidenceUsed: string[];
+  whatWouldChangeVerdict: string[];
+  evidenceChainContext?: EvidenceChainContextSummary;
   path?: string;
+  generatedAt: string;
+};
+
+export type ReportResultSummary = {
+  status: string;
+  stage: "report";
+  selectedCardId: string;
+  candidateId: string;
+  title: string;
+  subtitle: string;
+  sections: { title: string; body: string }[];
+  evidenceUsed: string[];
+  unavailableEvidence: string[];
+  nextObservation: string;
+  boundaryNote: string;
+  warnings: string[];
   generatedAt: string;
 };
 
@@ -266,6 +316,7 @@ export type ReviewSummary = {
   diagnosis: DiagnosisState;
   xraySummary?: XRaySummary;
   evidence?: EvidenceSummary;
+  stressLabModel?: StressLabModel;
   siteExplanation?: SiteExplanationBundle;
   primaryProblem?: string;
   problemSeverity?: string;
@@ -283,6 +334,10 @@ export type ReviewSummary = {
 export type ActiveReviewState = {
   investorCurrency: string;
   holdings: ReviewHolding[];
+  cloudPortfolio?: {
+    id: string;
+    name: string;
+  };
   reviewId?: string;
   reviewResult?: ReviewResult;
   reviewSummary?: ReviewSummary;
@@ -290,6 +345,7 @@ export type ActiveReviewState = {
   candidateGeneration?: CandidateGenerationSummary;
   comparisonResult?: ComparisonResultSummary;
   verdictResult?: VerdictResultSummary;
+  reportResult?: ReportResultSummary;
   runMode: ReviewRunMode;
   runStatus: ReviewRunStatus;
   reviewError?: ReviewErrorState;
@@ -311,6 +367,10 @@ export type DiagnosisState = {
   boundaryNote: string;
   drivers: string[];
   metrics: Metric[];
+  selectedDiagnosisRole?: string;
+  sourceArtifacts: string[];
+  rejectedAlternatives: string[];
+  rationaleRefs: string[];
 };
 
 type ReviewStateContextValue = {
@@ -319,10 +379,14 @@ type ReviewStateContextValue = {
   savePortfolioInput: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings">) => void;
   submitPortfolioInput: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings" | "reviewResult">) => void;
   recordReviewError: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings"> & { message: string; details?: string }) => void;
+  linkCloudPortfolio: (portfolio: ActiveReviewState["cloudPortfolio"]) => void;
+  loadCloudPortfolioInput: (input: { portfolioId: string; name: string; investorCurrency: string; holdings: ReviewHolding[] }) => void;
   recordBuilderSetup: (result: unknown) => void;
   recordCandidateGeneration: (result: unknown) => void;
   recordComparisonResult: (result: unknown) => void;
   recordVerdictResult: (result: unknown) => void;
+  recordReportResult: (result: unknown) => void;
+  hydrateCloudReview: (savedReview: SavedReviewRecord) => void;
   markCandidateReady: () => void;
   markComparisonReady: () => void;
   markVerdictReady: () => void;
@@ -436,12 +500,40 @@ function cleanCandidateGenerationSummary(value: unknown): CandidateGenerationSum
     stage: "candidate_generation",
     selectedCardId: typeof value.selectedCardId === "string" ? value.selectedCardId : "",
     candidateId: typeof value.candidateId === "string" ? value.candidateId : "",
+    methodLabel: typeof value.methodLabel === "string" ? value.methodLabel : undefined,
+    hypothesis: typeof value.hypothesis === "string" ? value.hypothesis : undefined,
+    successCriteria: stringArray(value.successCriteria).map((item) => normalizeDisplaySentence(item)),
+    tradeoffToWatch: typeof value.tradeoffToWatch === "string" ? normalizeDisplaySentence(value.tradeoffToWatch) : undefined,
+    decisionBoundary: typeof value.decisionBoundary === "string" ? normalizeDisplaySentence(value.decisionBoundary) : undefined,
     generationStatus: typeof value.generationStatus === "string" ? value.generationStatus : "unknown",
     canCompare: Boolean(value.canCompare),
     path: typeof value.path === "string" ? value.path : undefined,
     weights,
     generatedAt: typeof value.generatedAt === "string" ? value.generatedAt : nowIso()
   };
+}
+
+function cleanEvidenceChainContextSummary(value: unknown): EvidenceChainContextSummary | undefined {
+  if (!isRecord(value)) return undefined;
+  const sourceArtifacts = stringArray(value.sourceArtifacts ?? value.source_artifacts)
+    .map((item) => formatUnknownValue(item))
+    .filter(Boolean);
+  const successCriteria = stringArray(value.successCriteria ?? value.success_criteria)
+    .map((item) => normalizeDisplaySentence(item))
+    .filter(Boolean);
+  const summary: EvidenceChainContextSummary = {
+    selectedDiagnosisId: firstText(value.selectedDiagnosisId, value.selected_diagnosis_id),
+    selectedDiagnosisLabel: firstText(value.selectedDiagnosisLabel, value.selected_diagnosis_label) ? formatUnknownValue(firstText(value.selectedDiagnosisLabel, value.selected_diagnosis_label)) : undefined,
+    selectedDiagnosisRole: firstText(value.selectedDiagnosisRole, value.selected_diagnosis_role) ? formatUnknownValue(firstText(value.selectedDiagnosisRole, value.selected_diagnosis_role)) : undefined,
+    diagnosisStatement: firstText(value.diagnosisStatement, value.diagnosis_statement) ? normalizeDisplaySentence(firstText(value.diagnosisStatement, value.diagnosis_statement)) : undefined,
+    testedHypothesis: firstText(value.testedHypothesis, value.tested_hypothesis) ? normalizeDisplaySentence(firstText(value.testedHypothesis, value.tested_hypothesis)) : undefined,
+    successCriteria,
+    tradeoffToWatch: firstText(value.tradeoffToWatch, value.tradeoff_to_watch) ? normalizeDisplaySentence(firstText(value.tradeoffToWatch, value.tradeoff_to_watch)) : undefined,
+    candidateBoundary: firstText(value.candidateBoundary, value.candidate_boundary) ? normalizeDisplaySentence(firstText(value.candidateBoundary, value.candidate_boundary)) : undefined,
+    recommendationBoundary: firstText(value.recommendationBoundary, value.recommendation_boundary) ? normalizeDisplaySentence(firstText(value.recommendationBoundary, value.recommendation_boundary)) : undefined,
+    sourceArtifacts
+  };
+  return Object.values(summary).some((item) => Array.isArray(item) ? item.length : Boolean(item)) ? summary : undefined;
 }
 
 function cleanComparisonResultSummary(value: unknown): ComparisonResultSummary | undefined {
@@ -477,6 +569,7 @@ function cleanComparisonResultSummary(value: unknown): ComparisonResultSummary |
     estimatedCost: formatUnknownValue(value.estimatedCost, "Estimated cost unavailable"),
     materiality: formatUnknownValue(value.materiality, "Materiality not evaluated"),
     warnings: stringArray(value.warnings).map((item) => normalizeDisplaySentence(item)),
+    evidenceChainContext: cleanEvidenceChainContextSummary(value.evidenceChainContext),
     path: typeof value.path === "string" ? value.path : undefined,
     generatedAt: textValue(value.generatedAt, nowIso())
   };
@@ -512,28 +605,45 @@ function cleanVerdictResultSummary(value: unknown): VerdictResultSummary | undef
     metrics,
     actionFraming: normalizeDisplaySentence(value.actionFraming, "Review the verdict as decision-support evidence only."),
     limitations: stringArray(value.limitations).map((item) => normalizeDisplaySentence(item)),
+    evidenceUsed: stringArray(value.evidenceUsed).map((item) => normalizeDisplaySentence(item)),
+    whatWouldChangeVerdict: stringArray(value.whatWouldChangeVerdict).map((item) => normalizeDisplaySentence(item)),
+    evidenceChainContext: cleanEvidenceChainContextSummary(value.evidenceChainContext),
     path: typeof value.path === "string" ? value.path : undefined,
     generatedAt: textValue(value.generatedAt, nowIso())
   };
 }
 
-function comparisonResultHasUsableMetrics(value: ComparisonResultSummary | undefined) {
+function cleanReportResultSummary(value: unknown): ReportResultSummary | undefined {
+  if (!isRecord(value)) return undefined;
+  if (value.stage !== "report") return undefined;
+  const sections = Array.isArray(value.sections)
+    ? value.sections.filter(isRecord).map((section) => ({
+      title: textValue(section.title, "Evidence"),
+      body: normalizeDisplaySentence(section.body, "")
+    })).filter((section) => section.body)
+    : [];
+  return {
+    status: textValue(value.status, "unknown"),
+    stage: "report",
+    selectedCardId: textValue(value.selectedCardId, ""),
+    candidateId: textValue(value.candidateId, ""),
+    title: textValue(value.title, "Grounded client-ready report summary"),
+    subtitle: normalizeDisplaySentence(value.subtitle, "Active review report preview grounded in available evidence."),
+    sections,
+    evidenceUsed: stringArray(value.evidenceUsed).map((item) => normalizeDisplaySentence(item)),
+    unavailableEvidence: stringArray(value.unavailableEvidence).map((item) => normalizeDisplaySentence(item)),
+    nextObservation: normalizeDisplaySentence(value.nextObservation, "Retest if diagnosis, comparison, or verdict evidence changes."),
+    boundaryNote: normalizeDisplaySentence(value.boundaryNote, "Decision-support only."),
+    warnings: stringArray(value.warnings).map((item) => normalizeDisplaySentence(item)),
+    generatedAt: textValue(value.generatedAt, nowIso())
+  };
+}
+
+function comparisonResultCanGenerateVerdict(value: ComparisonResultSummary | undefined) {
   if (!value) return false;
   const status = value.comparisonStatus.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
   if (status !== "available") return false;
-  if (value.status.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_") !== "completed") return false;
-  return value.metrics.some((metric) => {
-    const current = metric.current.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
-    const candidate = metric.candidate.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
-    const direction = metric.direction.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
-    return current !== "not_available_yet"
-      && candidate !== "not_available_yet"
-      && current !== "not_available"
-      && candidate !== "not_available"
-      && current !== "evidence_unavailable"
-      && candidate !== "evidence_unavailable"
-      && direction !== "unclear";
-  });
+  return value.status.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_") === "completed";
 }
 
 function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
@@ -549,6 +659,7 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
   const candidateGeneration = candidateMatchesBuilder ? candidateGenerationRaw : undefined;
   const comparisonResult = cleanComparisonResultSummary(value.comparisonResult);
   const verdictResult = cleanVerdictResultSummary(value.verdictResult);
+  const reportResult = cleanReportResultSummary(value.reportResult);
   const comparisonMatchesCandidate = Boolean(
     comparisonResult
     && candidateGeneration
@@ -560,6 +671,12 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
     && candidateGeneration
     && verdictResult.selectedCardId === candidateGeneration.selectedCardId
     && verdictResult.candidateId === candidateGeneration.candidateId
+  );
+  const reportMatchesCandidate = Boolean(
+    reportResult
+    && candidateGeneration
+    && reportResult.selectedCardId === candidateGeneration.selectedCardId
+    && reportResult.candidateId === candidateGeneration.candidateId
   );
   const hasCompletedReviewResult = runStatus === "completed" && Boolean(reviewResult || reviewSummary);
 
@@ -578,6 +695,12 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
           currency: holding.currency
         }))
       : [],
+    cloudPortfolio: value.cloudPortfolio?.id && value.cloudPortfolio?.name
+      ? {
+        id: value.cloudPortfolio.id,
+        name: value.cloudPortfolio.name
+      }
+      : undefined,
     submitted: Boolean(value.submitted),
     reviewId: typeof value.reviewId === "string" ? value.reviewId : reviewSummary?.reviewId ?? reviewResult?.review_id,
     reviewResult,
@@ -586,6 +709,7 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
     candidateGeneration,
     comparisonResult: comparisonMatchesCandidate ? comparisonResult : undefined,
     verdictResult: verdictMatchesCandidate ? verdictResult : undefined,
+    reportResult: reportMatchesCandidate ? reportResult : undefined,
     runMode: value.runMode === "real_run" ? "real_run" : "sample_demo",
     runStatus,
     reviewError: value.reviewError?.message ? value.reviewError : undefined,
@@ -593,7 +717,7 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
     evidenceReady: Boolean((value.evidenceReady ?? value.diagnosisReady) && hasCompletedReviewResult),
     improvementPathsReady: Boolean((value.improvementPathsReady ?? value.diagnosisReady) && hasCompletedReviewResult),
     candidateReady: Boolean(value.candidateReady && candidateGeneration),
-    comparisonReady: Boolean(value.comparisonReady && comparisonMatchesCandidate && comparisonResultHasUsableMetrics(comparisonResult)),
+    comparisonReady: Boolean(value.comparisonReady && comparisonMatchesCandidate && comparisonResultCanGenerateVerdict(comparisonResult)),
     verdictReady: Boolean(value.verdictReady && verdictMatchesCandidate),
     updatedAt: value.updatedAt || nowIso()
   };
@@ -651,6 +775,9 @@ function writeStoredReview(value: ActiveReviewState | null) {
 export function ReviewStateProvider({ children }: { children: ReactNode }) {
   const [activeReview, setActiveReview] = useState<ActiveReviewState | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const { enabled: cloudEnabled, status: authStatus, user } = useSupabaseAuth();
+  const { setNotice: setCloudNotice } = useSupabasePersistence();
+  const lastPersistedDiagnosisKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     setActiveReview(readStoredReview());
@@ -666,6 +793,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     setActiveReview((current) => ({
       investorCurrency: input.investorCurrency || "USD",
       holdings: input.holdings,
+      cloudPortfolio: undefined,
       reviewId: undefined,
       reviewResult: undefined,
       reviewSummary: undefined,
@@ -673,6 +801,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       candidateGeneration: undefined,
       comparisonResult: undefined,
       verdictResult: undefined,
+      reportResult: undefined,
       runMode: "sample_demo",
       runStatus: "draft",
       reviewError: undefined,
@@ -701,9 +830,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       })
       : undefined;
 
-    setActiveReview({
+    setActiveReview((current) => ({
       investorCurrency: input.investorCurrency || "USD",
       holdings: input.holdings,
+      cloudPortfolio: current?.cloudPortfolio,
       reviewId,
       reviewResult,
       reviewSummary,
@@ -711,6 +841,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       candidateGeneration: undefined,
       comparisonResult: undefined,
       verdictResult: undefined,
+      reportResult: undefined,
       runMode: "real_run",
       runStatus: hasCompletedReviewResult ? "completed" : "failed",
       reviewError: hasCompletedReviewResult ? undefined : {
@@ -726,13 +857,14 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       comparisonReady: false,
       verdictReady: false,
       updatedAt: nowIso()
-    });
+    }));
   }, []);
 
   const recordReviewError = useCallback((input: Pick<ActiveReviewState, "investorCurrency" | "holdings"> & { message: string; details?: string }) => {
-    setActiveReview({
+    setActiveReview((current) => ({
       investorCurrency: input.investorCurrency || "USD",
       holdings: input.holdings,
+      cloudPortfolio: current?.cloudPortfolio,
       reviewId: undefined,
       reviewResult: undefined,
       reviewSummary: undefined,
@@ -740,6 +872,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       candidateGeneration: undefined,
       comparisonResult: undefined,
       verdictResult: undefined,
+      reportResult: undefined,
       runMode: "real_run",
       runStatus: "failed",
       reviewError: {
@@ -755,7 +888,138 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       comparisonReady: false,
       verdictReady: false,
       updatedAt: nowIso()
+    }));
+  }, []);
+
+  const linkCloudPortfolio = useCallback((portfolio: ActiveReviewState["cloudPortfolio"]) => {
+    setActiveReview((current) => current ? {
+      ...current,
+      cloudPortfolio: portfolio ?? undefined,
+      updatedAt: nowIso()
+    } : current);
+  }, []);
+
+  const loadCloudPortfolioInput = useCallback((input: { portfolioId: string; name: string; investorCurrency: string; holdings: ReviewHolding[] }) => {
+    setActiveReview({
+      investorCurrency: input.investorCurrency || "USD",
+      holdings: input.holdings,
+      cloudPortfolio: {
+        id: input.portfolioId,
+        name: input.name
+      },
+      reviewId: undefined,
+      reviewResult: undefined,
+      reviewSummary: undefined,
+      builderSetup: undefined,
+      candidateGeneration: undefined,
+      comparisonResult: undefined,
+      verdictResult: undefined,
+      reportResult: undefined,
+      runMode: "sample_demo",
+      runStatus: "draft",
+      reviewError: undefined,
+      submitted: false,
+      diagnosisReady: false,
+      evidenceReady: false,
+      improvementPathsReady: false,
+      candidateReady: false,
+      comparisonReady: false,
+      verdictReady: false,
+      updatedAt: nowIso()
     });
+  }, []);
+
+
+  const hydrateCloudReview = useCallback((savedReview: SavedReviewRecord) => {
+    const diagnosisStage = getRecord(savedReview.stages.diagnosis);
+    const builderStage = getRecord(savedReview.stages.builder);
+    const candidateStage = getRecord(savedReview.stages.candidate);
+    const comparisonStage = getRecord(savedReview.stages.comparison);
+    const verdictStage = getRecord(savedReview.stages.verdict);
+    const reportStage = getRecord(savedReview.stages.report);
+    const portfolio = savedReview.portfolioSnapshot;
+    const compact = savedReview.compactSummary;
+    const diagnosis = getRecord(diagnosisStage.diagnosis);
+    const summaryGeneratedAt = typeof compact.generatedAt === "string" ? compact.generatedAt : savedReview.completedAt ?? savedReview.updatedAt ?? nowIso();
+    const reviewSummary: ReviewSummary = {
+      version: 1,
+      source: savedReview.mode === "real_run" ? "real_run" : "real_run",
+      status: savedReview.status === "failed" ? "failed" : "completed",
+      reviewId: savedReview.reviewId,
+      generatedAt: summaryGeneratedAt,
+      investorCurrency: portfolio.investorCurrency ?? (typeof compact.investorCurrency === "string" ? compact.investorCurrency : "USD"),
+      holdingsCount: typeof compact.holdingsCount === "number" ? compact.holdingsCount : portfolio.holdings?.length ?? 0,
+      totalWeight: typeof compact.totalWeight === "number" ? compact.totalWeight : (portfolio.holdings ?? []).reduce((sum, holding) => sum + holding.weight, 0),
+      cashWeight: typeof compact.cashWeight === "number" ? compact.cashWeight : (portfolio.holdings ?? []).filter((holding) => holding.type === "cash").reduce((sum, holding) => sum + holding.weight, 0),
+      rawOutputKeys: stringArray(diagnosisStage.artifactRefs),
+      outputPaths: {},
+      diagnosis: {
+        status: textValue(diagnosis.status, textValue(compact.diagnosisStatus, "Diagnosis saved")),
+        headline: normalizeDisplaySentence(diagnosis.headline, textValue(compact.diagnosisHeadline, "Saved diagnosis summary recovered from cloud.")),
+        evidenceQuality: formatUnknownValue(diagnosis.evidenceQuality, textValue(compact.evidenceQuality, "Evidence status unavailable")),
+        nextStep: normalizeDisplaySentence(diagnosis.nextStep, "Continue from the saved compact review state."),
+        boundaryNote: normalizeDisplaySentence(diagnosis.boundaryNote, "Recovered cloud state is compact app data, not full generated evidence."),
+        drivers: stringArray(diagnosis.drivers),
+        metrics: Array.isArray(diagnosis.metrics) ? diagnosis.metrics.filter(isRecord).map((metric) => ({
+          label: textValue(metric.label, "Metric"),
+          value: formatUnknownValue(metric.value),
+          detail: typeof metric.detail === "string" ? metric.detail : undefined,
+          tone: statusToneValue(metric.tone)
+        })) : [],
+        selectedDiagnosisRole: typeof diagnosis.selectedDiagnosisRole === "string" ? diagnosis.selectedDiagnosisRole : undefined,
+        sourceArtifacts: stringArray(diagnosis.sourceArtifacts),
+        rejectedAlternatives: stringArray(diagnosis.rejectedAlternatives),
+        rationaleRefs: stringArray(diagnosis.rationaleRefs)
+      },
+      evidence: undefined,
+      primaryProblem: typeof compact.primaryProblem === "string" ? compact.primaryProblem : undefined,
+      problemSeverity: typeof compact.problemSeverity === "string" ? compact.problemSeverity : undefined,
+      problemConfidence: typeof compact.problemConfidence === "string" ? compact.problemConfidence : undefined,
+      suggestedActionPaths: stringArray(compact.suggestedActionPaths),
+      launchpadCardsCount: typeof compact.launchpadCardsCount === "number" ? compact.launchpadCardsCount : 0,
+      launchpadCards: [],
+      builderSetup: compactBuilderSetup(getRecord(builderStage.builderSetup)),
+      recommendedFirstTest: typeof compact.recommendedFirstTest === "string" ? compact.recommendedFirstTest : undefined,
+      candidateLaunchpadAvailable: Boolean(compact.candidateLaunchpadAvailable),
+      problemClassificationAvailable: Boolean(compact.problemClassificationAvailable),
+      storage: {
+        summaryBytes: estimateJsonBytes(compact),
+        rawBytes: 0,
+        rawPersisted: false,
+        rawAccessStrategy: "Recovered from compact Supabase app-data summaries; full generated artifacts remain local/run-scoped."
+      }
+    };
+    const candidateGeneration = cleanCandidateGenerationSummary(getRecord(candidateStage.candidate));
+    const comparisonResult = cleanComparisonResultSummary(getRecord(comparisonStage.comparison));
+    const verdictResult = cleanVerdictResultSummary(getRecord(verdictStage.verdict));
+    const reportResult = cleanReportResultSummary(getRecord(reportStage.report));
+    setActiveReview(cleanReviewState({
+      investorCurrency: reviewSummary.investorCurrency,
+      holdings: portfolio.holdings ?? [],
+      cloudPortfolio: savedReview.portfolioId && typeof compact.activeCloudPortfolioName === "string" ? {
+        id: savedReview.portfolioId,
+        name: compact.activeCloudPortfolioName
+      } : undefined,
+      reviewId: savedReview.reviewId,
+      reviewResult: undefined,
+      reviewSummary,
+      builderSetup: reviewSummary.builderSetup,
+      candidateGeneration,
+      comparisonResult,
+      verdictResult,
+      reportResult,
+      runMode: "real_run",
+      runStatus: reviewSummary.status,
+      reviewError: undefined,
+      submitted: true,
+      diagnosisReady: true,
+      evidenceReady: true,
+      improvementPathsReady: true,
+      candidateReady: Boolean(candidateGeneration),
+      comparisonReady: Boolean(comparisonResult),
+      verdictReady: Boolean(verdictResult),
+      updatedAt: savedReview.updatedAt ?? nowIso()
+    }));
   }, []);
 
 
@@ -790,6 +1054,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       candidateGeneration: undefined,
       comparisonResult: undefined,
       verdictResult: undefined,
+      reportResult: undefined,
       candidateReady: false,
       comparisonReady: false,
       verdictReady: false,
@@ -809,20 +1074,31 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
 
   const recordCandidateGeneration = useCallback((result: unknown) => {
     const resultRecord = getRecord(result);
+    const apiEnvelope = fastApiEnvelopeRecord(resultRecord) as CandidateResponse | Record<string, unknown>;
+    const apiData = getRecord(apiEnvelope.data);
+    const apiCandidate = getRecord(apiData.candidate);
+    const apiHypothesis = getRecord(apiData.hypothesis);
     const candidateGeneration = getRecord(resultRecord.candidate_generation);
     const candidate = getRecord(candidateGeneration.candidate);
-    const weightsRecord = getRecord(candidate.weights);
+    const weightsRecord = getRecord(apiCandidate.weight_summary ?? candidate.weights);
     const weights = Object.entries(weightsRecord)
       .filter((entry): entry is [string, number] => typeof entry[1] === "number" && Number.isFinite(entry[1]))
       .map(([ticker, weight]) => ({ ticker, weight }));
     const status = textValue(resultRecord.status, "unknown");
+    const nextAllowedActions = stringArray(apiData.next_allowed_actions);
+    const generationStatus = textValue(apiCandidate.generation_status, textValue(resultRecord.generation_status, textValue(candidateGeneration.generation_status, "unknown")));
     const summary: CandidateGenerationSummary = {
       status,
       stage: "candidate_generation",
       selectedCardId: textValue(resultRecord.selected_card_id, ""),
-      candidateId: textValue(resultRecord.candidate_id, textValue(candidate.candidate_id, "")),
-      generationStatus: textValue(resultRecord.generation_status, textValue(candidateGeneration.generation_status, "unknown")),
-      canCompare: Boolean(resultRecord.can_compare),
+      candidateId: textValue(apiCandidate.candidate_id, textValue(resultRecord.candidate_id, textValue(candidate.candidate_id, ""))),
+      methodLabel: firstText(apiCandidate.method_label) ? formatUnknownValue(firstText(apiCandidate.method_label)) : undefined,
+      hypothesis: firstText(apiHypothesis.hypothesis) ? normalizeDisplaySentence(firstText(apiHypothesis.hypothesis)) : undefined,
+      successCriteria: stringArray(apiHypothesis.success_criteria).map((item) => normalizeDisplaySentence(item)),
+      tradeoffToWatch: firstText(apiHypothesis.tradeoff_to_watch) ? normalizeDisplaySentence(firstText(apiHypothesis.tradeoff_to_watch)) : undefined,
+      decisionBoundary: firstText(apiHypothesis.decision_boundary) ? normalizeDisplaySentence(firstText(apiHypothesis.decision_boundary)) : undefined,
+      generationStatus,
+      canCompare: nextAllowedActions.includes("run_comparison") || Boolean(resultRecord.can_compare),
       path: typeof resultRecord.path === "string" ? resultRecord.path : undefined,
       weights,
       generatedAt: nowIso()
@@ -834,6 +1110,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       candidateReady: status === "completed",
       comparisonResult: undefined,
       verdictResult: undefined,
+      reportResult: undefined,
       comparisonReady: false,
       verdictReady: false,
       updatedAt: nowIso()
@@ -842,6 +1119,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
 
   const recordComparisonResult = useCallback((result: unknown) => {
     const resultRecord = getRecord(result);
+    const apiEnvelope = fastApiEnvelopeRecord(resultRecord) as ComparisonResponse | Record<string, unknown>;
+    const apiData = getRecord(apiEnvelope.data);
+    const apiComparison = getRecord(apiData.comparison);
+    const evidenceContext = fastApiEvidenceChainContext(resultRecord);
     const currentVsCandidate = getRecord(resultRecord.current_vs_candidate);
     const comparisons = getArray(currentVsCandidate.comparisons).map(getRecord);
     const row = comparisons[0] ?? {};
@@ -854,26 +1135,35 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const paths = getRecord(resultRecord.paths);
     const status = textValue(resultRecord.status, "unknown");
     const comparisonStatus = textValue(resultRecord.comparison_status, textValue(currentVsCandidate.comparison_status, "unknown"));
+    const siteExplanation = cleanSiteExplanationBundle(resultRecord.site_explanation_bundle);
+    const successCriteriaStatus = formatUnknownValue(apiComparison.success_criteria_result, "Unknown");
+    const materialityStatus = formatUnknownValue(apiComparison.materiality, "Unknown");
     const summary: ComparisonResultSummary = {
       status,
       stage: "current_vs_candidate",
       selectedCardId: textValue(resultRecord.selected_card_id, ""),
-      candidateId: textValue(resultRecord.candidate_id, textValue(row.candidate_id, "")),
-      comparisonStatus,
+      candidateId: textValue(resultRecord.candidate_id, textValue(row.candidate_id, textValue(apiComparison.comparison_id, "").replace(/^current_vs_candidate:/, ""))),
+      comparisonStatus: Object.keys(apiComparison).length ? "available" : comparisonStatus,
       viewMode: formatUnknownValue(resultRecord.view_mode ?? currentVsCandidate.view_mode, "Unknown"),
-      candidateName: formatUnknownValue(row.display_name ?? row.candidate_id, "Generated diagnostic candidate"),
-      candidateBoundary: "Diagnostic comparison only. It does not decide whether to change the portfolio or create a rebalance instruction.",
-      evidenceQuality: comparisonStatus === "available" ? "Active comparison evidence" : formatUnknownValue(comparisonStatus, "Evidence status unavailable"),
-      summary: comparisonSummaryText({ row, materiality, successCriteria }),
+      candidateName: formatUnknownValue(apiComparison.candidate_label ?? row.display_name ?? row.candidate_id, "Generated diagnostic candidate"),
+      candidateBoundary: normalizeDisplaySentence(evidenceContext?.candidateBoundary, "Diagnostic comparison only. It does not decide whether to change the portfolio or create a rebalance instruction."),
+      evidenceQuality: Object.keys(apiComparison).length ? "FastAPI display comparison evidence" : comparisonStatus === "available" ? "Active comparison evidence" : formatUnknownValue(comparisonStatus, "Evidence status unavailable"),
+      summary: evidenceContext?.testedHypothesis
+        ? `Tested hypothesis: ${evidenceContext.testedHypothesis} Success criteria: ${successCriteriaStatus}. Materiality: ${materialityStatus}.`
+        : comparisonSummaryText({ row, materiality, successCriteria }),
       metrics: dimensionsToMetrics(dimensions),
-      improved: compactDimensionList(row.what_improved, "No available comparison metric showed a clear improvement."),
-      worsened: compactDimensionList(row.what_worsened, "No available comparison metric showed a clear worsening."),
-      neutral: compactDimensionList(row.what_stayed_similar, "No neutral metrics were reported."),
-      unclear: unclearList(row, currentVsCandidate),
+      improved: compactDimensionList(apiComparison.what_improved ?? row.what_improved, "No available comparison metric showed a clear improvement."),
+      worsened: compactDimensionList(apiComparison.what_worsened ?? row.what_worsened, "No available comparison metric showed a clear worsening."),
+      neutral: compactDimensionList(apiComparison.what_stayed_similar ?? row.what_stayed_similar, "No neutral metrics were reported."),
+      unclear: stringArray(apiComparison.unavailable_metrics).length ? stringArray(apiComparison.unavailable_metrics).map((item) => normalizeDisplaySentence(item)) : unclearList(row, currentVsCandidate),
       turnover: turnoverText(turnoverRequired),
       estimatedCost: estimatedCostText(practicality, transactionCost),
-      materiality: materialityText(materiality),
-      warnings: stringArray(currentVsCandidate.warnings).map((item) => normalizeDisplaySentence(item)),
+      materiality: Object.keys(apiComparison).length ? `Decision review materiality: ${materialityStatus}.` : materialityText(materiality),
+      warnings: [
+        ...fastApiWarnings(resultRecord),
+        ...stringArray(currentVsCandidate.warnings).map((item) => normalizeDisplaySentence(item))
+      ],
+      evidenceChainContext: evidenceContext,
       path: typeof paths.current_vs_candidate === "string" ? paths.current_vs_candidate : undefined,
       generatedAt: nowIso()
     };
@@ -889,10 +1179,15 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
           site_explanation_bundle: resultRecord.site_explanation_bundle as JsonValue
         }
       } : current.reviewResult,
+      reviewSummary: current.reviewSummary && siteExplanation ? {
+        ...current.reviewSummary,
+        siteExplanation
+      } : current.reviewSummary,
       comparisonResult: summary,
       verdictResult: undefined,
+      reportResult: undefined,
       candidateReady: true,
-      comparisonReady: status === "completed" && comparisonResultHasUsableMetrics(summary),
+      comparisonReady: status === "completed" && comparisonResultCanGenerateVerdict(summary),
       verdictReady: false,
       updatedAt: nowIso()
     } : current);
@@ -920,6 +1215,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
 
   const recordVerdictResult = useCallback((result: unknown) => {
     const resultRecord = getRecord(result);
+    const apiEnvelope = fastApiEnvelopeRecord(resultRecord) as VerdictResponse | Record<string, unknown>;
+    const apiData = getRecord(apiEnvelope.data);
+    const apiVerdict = getRecord(apiData.verdict);
+    const evidenceContext = fastApiEvidenceChainContext(resultRecord);
     const verdict = getRecord(resultRecord.decision_verdict);
     const evidence = getRecord(verdict.evidence_summary);
     const noTrade = getRecord(verdict.no_trade);
@@ -927,10 +1226,15 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const success = getRecord(evidence.success_criteria_result);
     const practicality = getRecord(evidence.practicality);
     const status = textValue(resultRecord.status, "unknown");
-    const verdictId = textValue(resultRecord.verdict_id, textValue(verdict.verdict_id, "unknown"));
-    const decisionStatus = textValue(resultRecord.selection_decision_status, textValue(verdict.selection_decision_status, "unknown"));
-    const confidence = textValue(resultRecord.confidence, textValue(verdict.confidence, "unknown"));
+    const verdictId = textValue(apiVerdict.verdict_id, textValue(resultRecord.verdict_id, textValue(verdict.verdict_id, "unknown")));
+    const decisionStatus = textValue(apiVerdict.verdict, textValue(resultRecord.selection_decision_status, textValue(verdict.selection_decision_status, "unknown")));
+    const confidence = textValue(apiVerdict.confidence, textValue(resultRecord.confidence, textValue(verdict.confidence, "unknown")));
     const candidateId = textValue(resultRecord.candidate_id, textValue(verdict.reviewed_candidate_id, textValue(verdict.selected_candidate_id, "")));
+    const siteExplanation = cleanSiteExplanationBundle(resultRecord.site_explanation_bundle);
+    const apiRationale = stringArray(apiVerdict.rationale).map((item) => normalizeDisplaySentence(item));
+    const apiEvidenceUsed = stringArray(apiVerdict.evidence_used).map((item) => normalizeDisplaySentence(item));
+    const apiLimitations = stringArray(apiVerdict.limitations).map((item) => normalizeDisplaySentence(item));
+    const whatWouldChange = stringArray(apiVerdict.what_would_change_verdict).map((item) => normalizeDisplaySentence(item));
 
     const summary: VerdictResultSummary = {
       status,
@@ -942,10 +1246,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       confidence: formatUnknownValue(confidence, "Unknown"),
       state: safeVerdictState(verdictId, decisionStatus),
       headline: safeVerdictHeadline(verdictId),
-      explanation: safeVerdictExplanation(verdictId, textValue(verdict.rationale_summary, "")),
+      explanation: safeVerdictExplanation(verdictId, apiRationale[0] ?? textValue(verdict.rationale_summary, "")),
       evidenceQuality: `Verdict evidence - ${formatUnknownValue(confidence, "Unknown")} confidence`,
-      boundaryNote: "Decision-support only. This is not a trade instruction or rebalance recommendation.",
-      keyEvidence: verdictEvidenceList({
+      boundaryNote: normalizeDisplaySentence(evidenceContext?.recommendationBoundary, "Decision-support only. This is not a trade instruction or rebalance recommendation."),
+      keyEvidence: apiEvidenceUsed.length ? apiEvidenceUsed : verdictEvidenceList({
         materiality,
         success,
         noTrade,
@@ -973,7 +1277,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         }
       ],
       actionFraming: safeActionFraming(verdictId),
-      limitations: stringArray(verdict.confidence_limitations).map((item) => normalizeDisplaySentence(item)),
+      limitations: apiLimitations.length ? apiLimitations : stringArray(verdict.confidence_limitations).map((item) => normalizeDisplaySentence(item)),
+      evidenceUsed: apiEvidenceUsed,
+      whatWouldChangeVerdict: whatWouldChange,
+      evidenceChainContext: evidenceContext,
       path: typeof resultRecord.path === "string" ? resultRecord.path : undefined,
       generatedAt: nowIso()
     };
@@ -988,7 +1295,12 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
           site_explanation_bundle: resultRecord.site_explanation_bundle as JsonValue
         }
       } : current.reviewResult,
+      reviewSummary: current.reviewSummary && siteExplanation ? {
+        ...current.reviewSummary,
+        siteExplanation
+      } : current.reviewSummary,
       verdictResult: summary,
+      reportResult: undefined,
       candidateReady: true,
       comparisonReady: Boolean(current.comparisonReady),
       verdictReady: status === "completed",
@@ -996,7 +1308,104 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     } : current);
   }, []);
 
+  const recordReportResult = useCallback((result: unknown) => {
+    const resultRecord = getRecord(result);
+    const display = getRecord(resultRecord.report_display_model);
+    const currentReview = activeReview;
+    const selectedCardId = currentReview?.candidateGeneration?.selectedCardId ?? textValue(resultRecord.selected_card_id, "");
+    const candidateId = currentReview?.candidateGeneration?.candidateId ?? textValue(resultRecord.candidate_id, "");
+    const summary = cleanReportResultSummary({
+      status: textValue(resultRecord.status, "unknown"),
+      stage: "report",
+      selectedCardId,
+      candidateId,
+      title: display.title,
+      subtitle: display.subtitle,
+      sections: display.sections,
+      evidenceUsed: display.evidenceUsed,
+      unavailableEvidence: display.unavailableEvidence,
+      nextObservation: display.nextObservation,
+      boundaryNote: display.boundaryNote,
+      warnings: display.warnings,
+      generatedAt: display.generatedAt ?? nowIso()
+    });
+    if (!summary) return;
+    setActiveReview((current) => current ? {
+      ...current,
+      reportResult: summary,
+      updatedAt: nowIso()
+    } : current);
+  }, [activeReview]);
+
   const clearActiveReview = useCallback(() => setActiveReview(null), []);
+
+  useEffect(() => {
+    if (!hydrated || !cloudEnabled || authStatus !== "signed_in" || !user?.id) return;
+    if (!activeReview?.reviewId || !activeReview.reviewSummary || !activeReview.diagnosisReady) return;
+
+    const persistenceKey = `${user.id}:${activeReview.reviewId}:${activeReview.reviewSummary.generatedAt}:${activeReview.cloudPortfolio?.id ?? "no_portfolio"}`;
+    if (lastPersistedDiagnosisKeyRef.current === persistenceKey) return;
+    lastPersistedDiagnosisKeyRef.current = persistenceKey;
+    let cancelled = false;
+    void (async () => {
+      try {
+        await persistDiagnosisSummaryForReview(user.id, activeReview);
+        if (!cancelled) {
+          setCloudNotice("info", `Diagnosis summary for ${activeReview.reviewId} was saved to optional cloud history.`);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          lastPersistedDiagnosisKeyRef.current = null;
+          const message = error instanceof Error ? error.message : "Unknown cloud persistence error.";
+          setCloudNotice("warning", `Diagnosis stayed local, but cloud review sync failed. ${message}`);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeReview, authStatus, cloudEnabled, hydrated, setCloudNotice, user?.id]);
+
+  const lastPersistedStagesKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!hydrated || !cloudEnabled || authStatus !== "signed_in" || !user?.id) return;
+    if (!activeReview?.reviewId || !activeReview.reviewSummary || !activeReview.diagnosisReady) return;
+    const stageKey = [
+      user.id,
+      activeReview.reviewId,
+      activeReview.builderSetup?.selected_card_id ?? "no_builder",
+      activeReview.candidateGeneration?.generatedAt ?? "no_candidate",
+      activeReview.comparisonResult?.generatedAt ?? "no_comparison",
+      activeReview.verdictResult?.generatedAt ?? "no_verdict",
+      activeReview.reportResult?.generatedAt ?? "no_report"
+    ].join(":");
+    if (lastPersistedStagesKeyRef.current === stageKey) return;
+    if (!activeReview.builderSetup && !activeReview.candidateGeneration && !activeReview.comparisonResult && !activeReview.verdictResult && !activeReview.reportResult) return;
+    lastPersistedStagesKeyRef.current = stageKey;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await persistCompactStageSummariesForReview(user.id, activeReview);
+        if (!cancelled && result.persisted.length) {
+          setCloudNotice("info", `Saved compact cloud stage summaries: ${result.persisted.join(", ")}.`);
+        }
+        if (!cancelled && result.skipped.length) {
+          setCloudNotice("warning", `Skipped oversized cloud stage summary: ${result.skipped.map((item) => `${item.stage} (${item.summarySizeBytes} bytes)`).join(", ")}. Local state is unchanged.`);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          lastPersistedStagesKeyRef.current = null;
+          const message = error instanceof Error ? error.message : "Unknown cloud persistence error.";
+          setCloudNotice("warning", `Cloud stage sync failed, but the local review stayed usable. ${message}`);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeReview, authStatus, cloudEnabled, hydrated, setCloudNotice, user?.id]);
 
   const journeyFlags = useMemo<JourneyFlags>(() => ({
     inputCompleted: Boolean(activeReview?.submitted),
@@ -1014,16 +1423,20 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     savePortfolioInput,
     submitPortfolioInput,
     recordReviewError,
+    linkCloudPortfolio,
+    loadCloudPortfolioInput,
     recordBuilderSetup,
     recordCandidateGeneration,
     recordComparisonResult,
     recordVerdictResult,
+    recordReportResult,
+    hydrateCloudReview,
     markCandidateReady,
     markComparisonReady,
     markVerdictReady,
     clearActiveReview,
     journeyFlags
-  }), [activeReview, clearActiveReview, hydrated, journeyFlags, markCandidateReady, markComparisonReady, markVerdictReady, recordBuilderSetup, recordCandidateGeneration, recordComparisonResult, recordReviewError, recordVerdictResult, savePortfolioInput, submitPortfolioInput]);
+  }), [activeReview, clearActiveReview, hydrated, journeyFlags, linkCloudPortfolio, loadCloudPortfolioInput, markCandidateReady, markComparisonReady, markVerdictReady, recordBuilderSetup, recordCandidateGeneration, recordComparisonResult, recordReportResult, recordReviewError, recordVerdictResult, savePortfolioInput, submitPortfolioInput]);
 
   return <ReviewStateContext.Provider value={value}>{children}</ReviewStateContext.Provider>;
 }
@@ -1331,7 +1744,104 @@ function comparisonSummaryText({
   ].join(" ");
 }
 
+function fastApiEnvelopeRecord(value: unknown): Record<string, unknown> {
+  return getRecord(getRecord(value).fastapi_envelope);
+}
+
+function fastApiDataRecord(value: unknown): Record<string, unknown> {
+  return getRecord(fastApiEnvelopeRecord(value).data);
+}
+
+function fastApiStatus(value: unknown, fallback = "completed") {
+  return textValue(fastApiEnvelopeRecord(value).status, fallback);
+}
+
+function fastApiWarnings(value: unknown) {
+  return stringArray(fastApiEnvelopeRecord(value).warnings).map((item) => normalizeDisplaySentence(item));
+}
+
+function fastApiEvidenceChainContext(value: unknown): EvidenceChainContextSummary | undefined {
+  const context = getRecord(fastApiDataRecord(value).evidence_chain_context) as DownstreamEvidenceChainContext | Record<string, unknown>;
+  return cleanEvidenceChainContextSummary(context);
+}
+
+function diagnosisFromFastApiEnvelope(envelope: CreateReviewResponse | Record<string, unknown> | unknown): DiagnosisState | null {
+  const data = getRecord(getRecord(envelope).data);
+  const diagnosis = getRecord(data.diagnosis) as FastApiDiagnosisSummary | Record<string, unknown>;
+  if (!Object.keys(diagnosis).length) return null;
+
+  const rootCause = getRecord(diagnosis.root_cause_narrative);
+  const evidenceItems = getArray(diagnosis.diagnosis_evidence_items).map(getRecord);
+  const traces = getArray(diagnosis.metric_to_diagnosis_trace).map(getRecord);
+  const rejected = getArray(diagnosis.rejected_alternatives).map(getRecord);
+  const rationale = getArray(diagnosis.professional_rationale_refs).map(getRecord);
+  const evidenceChain = stringArray(diagnosis.evidence_chain);
+  const headline = firstText(rootCause.statement, diagnosis.headline, rootCause.label, diagnosis.primary_diagnosis);
+  const drivers = [
+    ...evidenceItems.map((item) => firstText(item.interpretation, item.why_relevant, item.signal)),
+    ...evidenceChain,
+    ...traces.map((trace) => firstText(trace.interpretation, trace.contribution, trace.metric_or_signal))
+  ]
+    .filter((item): item is string => Boolean(item))
+    .map((item) => normalizeDisplaySentence(item))
+    .slice(0, 5);
+  const rejectedAlternatives = rejected
+    .map((item) => {
+      const label = firstText(item.label, item.problem_id, "Alternative diagnosis");
+      const reason = firstText(item.reason, item.reason_code);
+      return reason ? `${formatUnknownValue(label)}: ${normalizeDisplaySentence(reason)}` : formatUnknownValue(label);
+    })
+    .filter(Boolean)
+    .slice(0, 5);
+  const rationaleRefs = rationale
+    .map((item) => firstText(item.rationale, item.reason, item.source, item.ref_id))
+    .filter((item): item is string => Boolean(item))
+    .map((item) => normalizeDisplaySentence(item))
+    .slice(0, 5);
+
+  return {
+    status: "Diagnosis ready",
+    headline: normalizeDisplaySentence(headline, "Portfolio diagnosis completed for the submitted current portfolio."),
+    evidenceQuality: evidenceQualityLabel(diagnosis.confidence ?? "unknown"),
+    nextStep: normalizeDisplaySentence(diagnosis.next_diagnostic_step, "Review supporting evidence before testing one candidate hypothesis."),
+    boundaryNote: normalizeDisplaySentence(diagnosis.recommendation_boundary, "Diagnosis is decision-support evidence only. It is not a rebalance recommendation or trade instruction."),
+    drivers: drivers.length ? drivers : ["FastAPI returned a bounded diagnosis display summary for the active review."],
+    metrics: [
+      {
+        label: "Selected diagnosis",
+        value: formatUnknownValue(rootCause.label ?? diagnosis.primary_diagnosis, "Current portfolio diagnosis"),
+        detail: formatUnknownValue(diagnosis.selected_diagnosis_role ?? rootCause.diagnosis_role, "Diagnostic role"),
+        tone: "blue"
+      },
+      {
+        label: "Evidence items",
+        value: String(evidenceItems.length || evidenceChain.length),
+        detail: "Bounded diagnosis display evidence",
+        tone: evidenceItems.length || evidenceChain.length ? "blue" : "slate"
+      },
+      {
+        label: "Rejected alternatives",
+        value: String(rejected.length),
+        detail: "Alternative diagnoses considered",
+        tone: rejected.length ? "amber" : "slate"
+      }
+    ],
+    selectedDiagnosisRole: firstText(diagnosis.selected_diagnosis_role, rootCause.diagnosis_role) ? formatUnknownValue(firstText(diagnosis.selected_diagnosis_role, rootCause.diagnosis_role)) : undefined,
+    sourceArtifacts: stringArray(diagnosis.source_artifacts).map((item) => formatUnknownValue(item)),
+    rejectedAlternatives,
+    rationaleRefs
+  };
+}
+
 function buildDiagnosisFromRealResult(review: ActiveReviewState): DiagnosisState | null {
+  if (isCompletedReviewResult(review.reviewResult)) {
+    const fastApiDiagnosis = diagnosisFromFastApiEnvelope(fastApiEnvelopeRecord(review.reviewResult));
+    if (fastApiDiagnosis) return fastApiDiagnosis;
+  }
+  return buildDiagnosisFromRawArtifacts(review);
+}
+
+function buildDiagnosisFromRawArtifacts(review: ActiveReviewState): DiagnosisState | null {
   if (!isCompletedReviewResult(review.reviewResult)) return null;
 
   const outputs = getRecord(review.reviewResult.outputs);
@@ -1398,7 +1908,10 @@ function buildDiagnosisFromRealResult(review: ActiveReviewState): DiagnosisState
         detail: primaryRiskScore !== null ? `Score ${primaryRiskScore}/100` : "Pre-stress signal unavailable",
         tone: toneForSeverity(primaryRisk?.severity)
       }
-    ]
+    ],
+    sourceArtifacts: ["portfolio_xray.json", "stress_report.json"],
+    rejectedAlternatives: [],
+    rationaleRefs: []
   };
 }
 
@@ -1444,6 +1957,26 @@ function compactProblemFields(problemClassification: unknown) {
         firstText(primaryProblem.suggested_action_path_id),
         ...getArray(primaryProblem.secondary_action_path_ids).filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
       ].filter((item): item is string => Boolean(item)).map((item) => formatUnknownValue(item)).slice(0, 3)
+  };
+}
+
+function compactProblemFieldsFromFastApi(diagnosisValue: unknown) {
+  const diagnosis = getRecord(diagnosisValue);
+  if (!Object.keys(diagnosis).length) return undefined;
+  const rootCause = getRecord(diagnosis.root_cause_narrative);
+  const suggestedAction = firstText(diagnosis.next_diagnostic_step, diagnosis.recommendation_boundary);
+  return {
+    primaryProblem: formatUnknownValue(firstText(
+      rootCause.label,
+      diagnosis.headline,
+      diagnosis.primary_diagnosis
+    ), ""),
+    problemSeverity: formatUnknownValue(firstText(rootCause.diagnosis_role, diagnosis.selected_diagnosis_role), ""),
+    problemConfidence: formatUnknownValue(firstText(diagnosis.confidence), ""),
+    suggestedActionPaths: [suggestedAction]
+      .filter((item): item is string => Boolean(item))
+      .map((item) => normalizeDisplaySentence(item))
+      .slice(0, 3)
   };
 }
 
@@ -2238,15 +2771,19 @@ export function buildCompactReviewSummary({
     nextStep: "Review supporting evidence before testing one candidate hypothesis.",
     boundaryNote: "Compact summary is available; the full evidence package is not stored in browser storage.",
     drivers: ["Review completed for the submitted portfolio."],
-    metrics: []
+    metrics: [],
+    sourceArtifacts: [],
+    rejectedAlternatives: [],
+    rationaleRefs: []
   };
 
   const outputs = getRecord(reviewResult.outputs);
+  const fastApiData = fastApiDataRecord(reviewResult);
   const problemClassification = outputs.problem_classification;
   const candidateLaunchpad = outputs.candidate_launchpad;
   const portfolioAlternativesBuilder = outputs.portfolio_alternatives_builder;
   const siteExplanation = cleanSiteExplanationBundle(outputs.site_explanation_bundle);
-  const compactProblem = compactProblemFields(problemClassification);
+  const compactProblem = compactProblemFieldsFromFastApi(fastApiData.diagnosis) ?? compactProblemFields(problemClassification);
   const compactLaunchpad = compactLaunchpadFields(candidateLaunchpad);
   const rawBytes = estimateJsonBytes(reviewResult);
   const activeReviewForCompaction: ActiveReviewState = {
@@ -2274,6 +2811,7 @@ export function buildCompactReviewSummary({
     activeReview: activeReviewForCompaction,
     outputs
   });
+  const stressLabModel = buildStressLabModelFromOutputs(outputs);
   const summaryWithoutStorage = {
     version: 1 as const,
     source: "real_run" as const,
@@ -2289,6 +2827,7 @@ export function buildCompactReviewSummary({
     diagnosis,
     xraySummary,
     evidence,
+    stressLabModel: stressLabModel ?? undefined,
     siteExplanation,
     primaryProblem: compactProblem.primaryProblem,
     problemSeverity: compactProblem.problemSeverity,
@@ -2381,6 +2920,9 @@ export function buildDiagnosisFromReview(review: ActiveReviewState): DiagnosisSt
       { label: "Equity sleeve", value: formatPercent(equityWeight), detail: equityLabels.length ? equityLabels.join(" + ") : "No equity sleeve", tone: metricTone(equityWeight, 50) },
       { label: "Fixed income", value: formatPercent(fixedIncomeWeight), detail: fixedIncomeLabels.length ? fixedIncomeLabels.join(" + ") : "No bond sleeve", tone: metricTone(fixedIncomeWeight, 35) },
       { label: "Liquidity sleeve", value: formatPercent(cashWeight), detail: cashDetail, tone: cashWeight > 0 ? "blue" : "slate" }
-    ]
+    ],
+    sourceArtifacts: [],
+    rejectedAlternatives: [],
+    rationaleRefs: []
   };
 }

@@ -17,8 +17,13 @@
     "then_compare": false,
     "pdf_mode": "none",
     "execution_mode": "legacy_full",
+    "output_profile": "site_api",
+    "parallel_lightweight_reports": false,
+    "parallel_lightweight_reports_profile_default": false,
+    "parallel_lightweight_reports_effective": false,
+    "lightweight_report_workers": 2,
     "full_candidate_reports": false,
-    "selected_candidates_for_full_report": []
+    "selected_candidates_for_full_report": null
   },
   "manifest": {
     "path": "/golden/candidate_factory_project/Main portfolio/candidate_factory_manifest.json",
@@ -45,11 +50,11 @@
       "freshness_status": "fresh",
       "expected_config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5",
       "snapshot_config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5",
-      "total_seconds": 0.001,
+      "total_seconds": 0.011,
       "builder_core_seconds": null,
       "report_seconds": null,
       "pdf_seconds": null,
-      "candidate_manifest_path": "equal-weight portfolio\\candidate_manifest.json"
+      "candidate_manifest_path": "equal-weight portfolio/candidate_manifest.json"
     },
     {
       "candidate_id": "risk_parity",
@@ -70,11 +75,11 @@
       "freshness_status": "fresh",
       "expected_config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5",
       "snapshot_config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5",
-      "total_seconds": 0.005,
+      "total_seconds": 0.01,
       "builder_core_seconds": null,
       "report_seconds": null,
       "pdf_seconds": null,
-      "candidate_manifest_path": "risk parity portfolio\\candidate_manifest.json"
+      "candidate_manifest_path": "risk parity portfolio/candidate_manifest.json"
     }
   ],
   "summary": {
@@ -90,10 +95,16 @@
   "warnings": [],
   "next_recommended_command": "python run_compare_variants.py",
   "execution_summary": {
+    "build_steps_executed": 2,
+    "build_steps_succeeded": 2,
+    "build_steps_failed": 0,
+    "in_process_build_steps": 0,
     "builder_invoked": 2,
     "builder_invoked_succeeded": 2,
     "builder_invoked_failed": 0,
+    "reused_existing": 0,
     "reused_existing_snapshot": 0,
+    "reused_existing_weights": 0,
     "resumed_from_manifest": 0,
     "skipped_dependency": 0,
     "rebuilt_candidate_ids": [
@@ -112,6 +123,6 @@
     "builder_core_seconds": 0.0,
     "report_seconds": 0.0,
     "pdf_seconds": 0.0,
-    "total_seconds": 0.006
+    "total_seconds": 0.021
   }
 }

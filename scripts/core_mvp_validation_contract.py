@@ -1000,6 +1000,84 @@ def _validate_primary_diagnosis_v3(row: Any, primary_problem: Any, prefix: str) 
     return violations
 
 
+def _validate_interpretation_chain_v1(
+    row: Any,
+    *,
+    selected_diagnosis_id: str,
+    prefix: str,
+) -> list[str]:
+    violations: list[str] = []
+    if not isinstance(row, dict):
+        return [f"{prefix}: interpretation_chain must be an object"]
+    if row.get("schema_version") != "diagnosis_interpretation_chain_v1":
+        violations.append(f"{prefix}: invalid schema_version")
+    if row.get("diagnostic_only") is not True:
+        violations.append(f"{prefix}: diagnostic_only must be true")
+    if str(row.get("selected_diagnosis_id") or "") != selected_diagnosis_id:
+        violations.append(f"{prefix}: selected_diagnosis_id must match primary diagnosis")
+    if str(row.get("selected_diagnosis_role") or "") not in {"root_cause", "symptom", "outcome"}:
+        violations.append(f"{prefix}: invalid selected_diagnosis_role")
+
+    evidence = row.get("diagnosis_evidence_items")
+    if not isinstance(evidence, list) or not evidence:
+        violations.append(f"{prefix}: diagnosis_evidence_items must be a non-empty list")
+    else:
+        for idx, item in enumerate(evidence):
+            item_prefix = f"{prefix}.diagnosis_evidence_items[{idx}]"
+            if not isinstance(item, dict):
+                violations.append(f"{item_prefix}: must be an object")
+                continue
+            for key in (
+                "evidence_item_id",
+                "linked_problem_id",
+                "evidence_role",
+                "signal",
+                "source_artifact",
+                "source_block",
+                "interpretation_en",
+            ):
+                if not str(item.get(key) or "").strip():
+                    violations.append(f"{item_prefix}: missing {key}")
+
+    narrative = row.get("root_cause_narrative")
+    if not isinstance(narrative, dict):
+        violations.append(f"{prefix}: root_cause_narrative must be an object")
+    else:
+        if str(narrative.get("diagnosis_id") or "") != selected_diagnosis_id:
+            violations.append(f"{prefix}.root_cause_narrative: diagnosis_id must match primary diagnosis")
+        if not str(narrative.get("statement_en") or "").strip():
+            violations.append(f"{prefix}.root_cause_narrative: missing statement_en")
+
+    trace = row.get("metric_to_diagnosis_trace")
+    if not isinstance(trace, list) or not trace:
+        violations.append(f"{prefix}: metric_to_diagnosis_trace must be a non-empty list")
+    else:
+        for idx, item in enumerate(trace):
+            item_prefix = f"{prefix}.metric_to_diagnosis_trace[{idx}]"
+            if not isinstance(item, dict):
+                violations.append(f"{item_prefix}: must be an object")
+                continue
+            if str(item.get("contributes_to_selected_diagnosis_id") or "") != selected_diagnosis_id:
+                violations.append(f"{item_prefix}: contributes_to_selected_diagnosis_id must match primary diagnosis")
+            for key in ("trace_id", "metric_or_signal", "evidence_item_id", "interpretation_en"):
+                if not str(item.get(key) or "").strip():
+                    violations.append(f"{item_prefix}: missing {key}")
+
+    refs = row.get("professional_rationale_refs")
+    if not isinstance(refs, list) or not refs:
+        violations.append(f"{prefix}: professional_rationale_refs must be a non-empty list")
+    else:
+        for idx, item in enumerate(refs):
+            item_prefix = f"{prefix}.professional_rationale_refs[{idx}]"
+            if not isinstance(item, dict):
+                violations.append(f"{item_prefix}: must be an object")
+                continue
+            for key in ("ref_id", "source", "reason_en"):
+                if not str(item.get(key) or "").strip():
+                    violations.append(f"{item_prefix}: missing {key}")
+    return violations
+
+
 def problem_classification_v3_product_contract_violations(
     doc: dict[str, Any] | None,
 ) -> list[str]:
@@ -1039,6 +1117,19 @@ def problem_classification_v3_product_contract_violations(
             f"{prefix}.primary_diagnosis",
         )
     )
+    selected_diagnosis_id = (
+        str(primary_diagnosis.get("diagnosis_id") or "")
+        if isinstance(primary_diagnosis, dict)
+        else ""
+    )
+    if "interpretation_chain" in doc:
+        violations.extend(
+            _validate_interpretation_chain_v1(
+                doc.get("interpretation_chain"),
+                selected_diagnosis_id=selected_diagnosis_id,
+                prefix=f"{prefix}.interpretation_chain",
+            )
+        )
 
     for key in (
         "root_cause",
@@ -1053,6 +1144,17 @@ def problem_classification_v3_product_contract_violations(
     ):
         if key not in doc:
             violations.append(f"{prefix}: missing top-level {key}")
+
+    if isinstance(doc.get("interpretation_chain"), dict):
+        chain = doc["interpretation_chain"]
+        for key in (
+            "diagnosis_evidence_items",
+            "root_cause_narrative",
+            "metric_to_diagnosis_trace",
+            "professional_rationale_refs",
+        ):
+            if key in doc and doc.get(key) != chain.get(key):
+                violations.append(f"{prefix}: top-level {key} must mirror interpretation_chain.{key}")
 
     next_step = doc.get("next_diagnostic_step")
     if not isinstance(next_step, dict):

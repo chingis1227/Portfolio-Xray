@@ -1376,6 +1376,8 @@
     }
   ],
   "candidate_menu": {
+    "full_menu_baseline_profile_id": "default_v1",
+    "full_menu_baseline_semantics": "advanced_research_full_batch",
     "product_menu_profile_id": "default_v1",
     "product_menu_size": 16,
     "intended_menu_profile_id": "default_v1",
@@ -1406,10 +1408,16 @@
     "refresh_command_full": "python run_portfolio_review.py --mode full --no-skip-existing",
     "factory_run_generated_at": "2026-05-20T12:00:00+00:00",
     "factory_execution_summary": {
+      "build_steps_executed": 2,
+      "build_steps_succeeded": 2,
+      "build_steps_failed": 0,
+      "in_process_build_steps": 0,
       "builder_invoked": 2,
       "builder_invoked_succeeded": 2,
       "builder_invoked_failed": 0,
+      "reused_existing": 0,
       "reused_existing_snapshot": 0,
+      "reused_existing_weights": 0,
       "resumed_from_manifest": 0,
       "skipped_dependency": 0,
       "rebuilt_candidate_ids": [
@@ -1428,6 +1436,15 @@
     "factory_evidence_warnings": [],
     "factory_run_analysis_end": "2026-04-30",
     "factory_run_config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5"
+  },
+  "product_candidate_scope": {
+    "scope_type": "explicit_candidates",
+    "candidate_ids": [
+      "equal_weight",
+      "risk_parity"
+    ],
+    "baseline_candidate_id": "analysis_subject",
+    "excludes_unselected_candidates": true
   },
   "review_bundle_context": {
     "version": "review_bundle_context_v1",
@@ -1449,7 +1466,7 @@
         "factory_evidence_status": "current"
       },
       "comparison": {
-        "generated_at": "2026-05-22T16:34:23.418562+00:00",
+        "generated_at": "2026-06-11T22:35:40.656573+00:00",
         "config_fingerprint": "e3bf5dcd1fad8d1096848df436527bff868b195acffa41f8b6e5b88339def4b5",
         "comparison_rebuild_source": "standalone",
         "review_mode": "full",
@@ -1482,5 +1499,25 @@
   },
   "warnings": [
     "Intended menu 'default_v1' is incomplete: 2/16 candidates scored (available or degraded). See unavailable_reasons_summary in candidate_menu."
-  ]
+  ],
+  "hedge_gap_comparison": {
+    "version": "hedge_gap_comparison_v1",
+    "status": "unavailable",
+    "baseline_candidate_id": "analysis_subject",
+    "hedge_gap_source": "hedge_gap_analysis_v1",
+    "reason_code": "baseline_hedge_gap_v1_missing",
+    "comparison_candidate_ids": [],
+    "candidates": {},
+    "pairwise": []
+  },
+  "stress_scorecard_comparison": {
+    "version": "stress_scorecard_comparison_v1",
+    "status": "unavailable",
+    "baseline_candidate_id": "analysis_subject",
+    "stress_scorecard_source": "current_portfolio_stress_scorecard_v1",
+    "reason_code": "baseline_stress_scorecard_v1_missing",
+    "comparison_candidate_ids": [],
+    "candidates": {},
+    "pairwise": []
+  }
 }

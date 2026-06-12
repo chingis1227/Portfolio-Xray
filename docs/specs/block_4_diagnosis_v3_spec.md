@@ -83,10 +83,35 @@ Outcome/status diagnoses:
 - `suggested_hypothesis`
 - `next_diagnostic_step`
 - `success_criteria`
+- `interpretation_chain`
+- `diagnosis_evidence_items`
+- `root_cause_narrative`
+- `metric_to_diagnosis_trace`
+- `professional_rationale_refs`
 - `backend_audit`
 
 `backend_audit` may contain scoring rows and evidence bundles, but those fields
 must not dominate the product surface.
+
+`interpretation_chain` is an additive Session 04 field emitted by the Block 4
+builder. It must be deterministic and diagnostic-only. It does not rescore or
+reprioritize problems; it exposes the already-selected diagnosis as a sourced
+chain:
+
+```text
+source artifact field
+-> evidence signal / evidence item
+-> selected diagnosis
+-> root-cause narrative
+-> rejected alternatives
+-> next diagnostic step
+```
+
+The top-level `diagnosis_evidence_items`, `root_cause_narrative`,
+`metric_to_diagnosis_trace`, and `professional_rationale_refs` mirror the same
+objects inside `interpretation_chain` for display adapters that should not parse
+backend scoring rows. These fields are source-backed explanation fields, not a
+new formula source and not a rebalance recommendation.
 
 `next_diagnostic_step` is required and must contain `type`, `label`, `reason`,
 and `decision_boundary`. For `mixed_evidence_no_action` and
@@ -96,6 +121,28 @@ default methods are `equal_weight` and `risk_parity`. For
 emit Equal Weight / Risk Parity reference tests while comparison evidence is
 unreliable.
 
+## Confidence and data-quality gates
+
+Confidence is evidence quality, not severity. A high-severity problem can still
+be low confidence when source evidence is partial, stress coverage is missing,
+or the diagnosis relies on fallback artifacts.
+
+The runtime emits `partial_sections` for both legacy `sections.*.status` and
+Core MVP product blocks `block_2_1_*` through `block_2_6_*` when any relevant
+status is `partial` or `unavailable`. It emits `stress_block_unavailable` when
+the stress handoff is unavailable. Actionable diagnoses are confidence-capped
+when `partial_sections` is present, even if they still activate.
+
+`evidence_insufficient_data_quality` becomes the primary blocker when either:
+
+- the hard `data_trust_failure` signal is present; or
+- partial X-Ray evidence and missing Stress Lab evidence appear together.
+
+Partial X-Ray evidence alone does not automatically block diagnosis or suppress
+Launchpad when Stress Lab still confirms a material primary diagnosis; it lowers
+confidence and marks the artifact `partial` unless paired with missing stress
+evidence or a hard trust failure.
+
 ## Primary selection order
 
 1. Data-quality blocker.
@@ -103,6 +150,12 @@ unreliable.
 3. Structural root-cause with sufficient evidence.
 4. Mixed evidence / no dominant actionable issue.
 5. Current portfolio acceptable / monitor.
+
+`sufficient evidence` means the activated root-cause row has at least medium confidence or at least
+medium materiality. A low-confidence and low-materiality root-cause label must not automatically
+outrank a better-supported symptom. When a supported root cause is selected, activated symptom rows
+that are not selected as secondary diagnoses are rejected with a symptom-over-root-cause explanation
+rather than a generic lower-priority note.
 
 ## Launchpad v3 card contract
 
@@ -165,4 +218,19 @@ Current product validators live in `scripts/core_mvp_validation_contract.py`:
 
 - `check_problem_classification_v3`
 - `check_candidate_launchpad_v3`
+
+## Dynamic fixture matrix
+
+The diagnosis interpretation chain is regression-tested against ten deterministic portfolio
+archetypes in `tests/block_4_fixtures.py` and
+`tests/test_diagnosis_interpretation_fixture_matrix.py`. The matrix covers concentrated equity,
+balanced, duration-heavy, credit-carry, pseudo-diversified equity, cash-heavy, weak-hedge,
+insufficient-data, conflicting-signal, and acceptable/no-action cases. These fixtures are not
+generated portfolio-review outputs; they are compact source-backed inputs for the Block 4 builder.
+
+The matrix must prove that different portfolio evidence produces different selected diagnosis IDs,
+root-cause narratives, leading evidence signals, Launchpad outcomes, and FastAPI diagnosis summaries.
+It must also preserve the diagnostic-only boundary: evidence items and traces cite deterministic
+source artifacts, and no fixture can turn Problem Classification or Launchpad into a rebalance
+recommendation.
 - `check_block_4_v3_diagnosis_handoff`

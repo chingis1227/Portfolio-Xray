@@ -4,6 +4,160 @@ This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.
 
+Date: 2026-06-12
+
+Category: Added
+
+- **Diagnosis interpretation Session 16 closure:** closed the Dynamic Diagnosis Interpretation
+  Foundation plan after documentation synchronization, added the closure audit, updated the ExecPlan
+  register, and recorded the final accepted evidence-chain boundary. This is documentation-only and
+  does not change portfolio calculations, generated review artifacts, FastAPI schemas, frontend
+  route behavior, root `config.yml`, PDFs, or generated outputs.
+
+- **Diagnosis interpretation Session 15 live vertical QA acceptance:** completed the live FastAPI
+  plus frontend QA helper across three portfolio scenarios through Diagnosis, Builder, Candidate,
+  Comparison, Verdict, and Report. The accepted report
+  `output/playwright/vertical-qa-2026-06-12T08-12-35-071Z/qa-report.json` records fresh server
+  readiness, clean browser state, source-artifact evidence, stale selected-card HTTP 409 rejection,
+  and distinct diagnosis summaries.
+
+- **Diagnosis interpretation Session 14 vertical QA helper:** added the defensive
+  `scripts/qa_browser_vertical.cjs` helper and `qa:vertical` frontend command so operators can start
+  fresh local FastAPI/Next.js servers, clear browser state, verify same-run lineage, capture
+  screenshots or DOM fallbacks, and probe stale selected-card rejection in one repeatable workflow.
+
+- **Diagnosis interpretation Session 13 governance validators:** expanded
+  `scripts/verify_fastapi_contract_governance.py` so FastAPI/frontend contract checks now also
+  require provenance fields for public diagnosis/comparison/verdict/report claim schemas, enforce
+  screen-mapping boundary notes, and scan governed frontend/API copy for unqualified advice-like
+  language. Added focused regression tests without changing portfolio calculations, public FastAPI
+  schemas, generated review artifacts, route URLs, root `config.yml`, PDFs, or browser state.
+
+- **Diagnosis interpretation Session 12 review isolation:** hardened the frontend FastAPI bridge so
+  recovery, Builder, Candidate, Comparison, Verdict, and Report routes reject FastAPI envelopes whose
+  `review_id` / selected-card / candidate / comparison / verdict lineage does not match the active
+  frontend run before trusting downstream run-local artifacts. Added regression coverage for
+  cross-review mismatch rejection and 100 unique frontend review run directories.
+
+- **Diagnosis interpretation Session 11 dynamic fixture matrix:** added
+  `tests/test_diagnosis_interpretation_fixture_matrix.py` to run the Block 4 interpretation chain
+  across ten deterministic portfolio archetypes and verify that distinct source evidence produces
+  distinct diagnoses, root-cause narratives, leading evidence signals, and FastAPI diagnosis
+  summaries without refreshing generated review artifacts.
+
+- **Diagnosis interpretation Session 10 frontend display adapters:** refactored the active frontend
+  `reviewState` and report display adapters to prefer FastAPI public display envelopes
+  (`DiagnosisSummary`, candidate/hypothesis summaries, downstream `evidence_chain_context`, verdict
+  `evidence_used`, and report context) before falling back to same-run raw artifacts. This keeps
+  screen state display-ready without changing portfolio calculations, FastAPI schemas, generated
+  review artifacts, root `config.yml`, PDFs, or visible route order.
+
+- **Diagnosis interpretation Session 09 downstream FastAPI evidence-chain envelopes:** expanded
+  `ComparisonData`, `VerdictData`, and `ReportData` with bounded `evidence_chain_context` display
+  fields, added verdict `evidence_used` / `what_would_change_verdict` lists, updated governance
+  mapping, and regenerated `frontend/lib/generated/api-types.ts`. Portfolio calculations, generated
+  review artifact schemas, root `config.yml`, Next.js route handlers, frontend screens, and PDF
+  behavior are unchanged.
+
+- **Diagnosis interpretation Session 08 FastAPI diagnosis display envelope:** expanded the FastAPI
+  `DiagnosisSummary` response model to expose Block 4 interpretation-chain display fields
+  (`diagnosis_evidence_items`, `root_cause_narrative`, `metric_to_diagnosis_trace`,
+  `rejected_alternatives`, `professional_rationale_refs`, and `recommendation_boundary`) and
+  regenerated `frontend/lib/generated/api-types.ts`. Legacy compact diagnosis fallback fields remain
+  available for older artifacts.
+
+- **Diagnosis interpretation Session 07 site explanation chain preference:** changed
+  `site_explanation_bundle.json` diagnosis copy to prefer Block 4 interpretation-chain fields
+  (`root_cause_narrative`, `diagnosis_evidence_items`, `metric_to_diagnosis_trace`, and
+  `interpretation_chain.next_step_link`) while preserving legacy primary-diagnosis and X-Ray
+  fallback behavior. This is a deterministic copy-selection change only; Block 4 scoring,
+  thresholds, FastAPI behavior, frontend behavior, and generated artifacts are unchanged.
+
+- **Diagnosis interpretation Session 06 confidence/data-quality gates:** hardened Block 4 evidence
+  extraction and scoring so partial Core MVP X-Ray product blocks emit `partial_sections`,
+  actionable diagnoses are confidence-capped under partial evidence, and partial X-Ray plus missing
+  Stress Lab evidence activates `evidence_insufficient_data_quality`. Stress-confirmed material
+  diagnoses remain Launchpad-eligible when partial X-Ray is the only limitation; numeric thresholds,
+  FastAPI behavior, frontend behavior, and generated artifacts are unchanged.
+
+- **Diagnosis interpretation Session 03 rulebook parity:** added `config/diagnosis_rulebook.yml`,
+  the read-only loader/validator `src/block_4/diagnosis_rulebook.py`, and
+  `tests/test_diagnosis_rulebook.py` to prove parity with the current Block 4 problem taxonomy,
+  action paths, root-cause elevation rules, and threshold references without changing runtime
+  diagnosis behavior or generated artifacts.
+
+- **Diagnosis interpretation Session 02 rulebook schema:** added
+  `docs/specs/diagnosis_rulebook_schema_spec.md` defining the planned `diagnosis_rulebook.yml`
+  contract under `config/`, parity requirements against the current Block 4 Python
+  registry, threshold-reference boundary, evidence/rationale/hypothesis/success-criteria fields,
+  and governance checks. Linked it from the spec index and `SPEC.md` without changing runtime
+  behavior or generated artifacts.
+
+- **FastAPI foundation Session 10 acceptance:** completed final contract/test/browser QA handoff for
+  the FastAPI-backed frontend path and fixed the Comparison-to-Verdict gate so current comparisons
+  with unavailable metrics can proceed to a valid evidence-insufficient Decision Verdict and grounded
+  Report preview instead of blocking the journey.
+
+- **FastAPI foundation Session 09 frontend display adapters:** simplified the frontend stage
+  adapters so Core MVP screens read compact display models from `reviewState` and FastAPI public
+  envelopes instead of parsing raw backend artifact payloads directly. The compatibility proxy still
+  keeps raw same-run fields as fallback/debug evidence, but Diagnosis, Stress Test Lab, Hypothesis,
+  Comparison, Verdict, and Report now use display-ready state; Report consumes a
+  `report_display_model` derived from the FastAPI `ReportResponse` envelope.
+
+- **FastAPI foundation Session 08 contract governance:** added a machine-readable FastAPI-to-screen
+  mapping contract at `docs/contracts/FASTAPI_SCREEN_MAPPING.json`, a verification script, and a
+  pytest guard so backend OpenAPI/schema changes require regenerated frontend types and explicit
+  Core MVP screen mapping before UI promotion.
+
+- **FastAPI foundation Session 07 frontend route switch:** changed the normal Next.js
+  `/api/portfolio/*` route handlers into FastAPI v1 compatibility proxies, so the frontend path no
+  longer spawns `scripts/run_review_from_payload.py` directly. The proxy preserves the current
+  screen-facing payload shape until adapter cleanup, and FastAPI review creation now accepts real
+  cash holdings to preserve Portfolio Input parity.
+
+- **FastAPI foundation Session 06 Comparison/Verdict/Report runtime:** implemented live FastAPI
+  Current-vs-Candidate Comparison, Decision Verdict, and grounded Report context via
+  `POST /api/v1/reviews/{review_id}/comparison`, `/verdict`, and `/report`. The adapters reuse the
+  existing one-candidate vertical-loop helpers, preserve same-review/same-card/same-candidate
+  lineage, regenerate frontend OpenAPI TypeScript types, and leave the visible Next.js bridge path
+  unchanged until the route-switch session.
+
+- **FastAPI foundation Session 05 Builder/Candidate runtime:** implemented live FastAPI Builder
+  setup and Candidate Generation via `POST /api/v1/reviews/{review_id}/builder` and
+  `POST /api/v1/reviews/{review_id}/candidate`. The adapters reuse the existing run-local Builder
+  and one-candidate generation helpers, preserve same-review/same-card lineage, regenerate frontend
+  OpenAPI TypeScript types, and leave the visible Next.js bridge path plus comparison/verdict/report
+  placeholders unchanged.
+
+- **FastAPI foundation Session 04 diagnosis runtime:** implemented live FastAPI diagnosis review
+  creation and safe review recovery via `POST /api/v1/reviews` and
+  `GET /api/v1/reviews/{review_id}`. The adapter reuses the existing deterministic diagnosis runner
+  and returns typed public envelopes without changing portfolio calculations, generated artifact
+  schemas, root `config.yml`, frontend routes, or later Builder/Candidate/Comparison/Verdict/Report
+  placeholders.
+
+- **FastAPI foundation Session 03 typed contract:** added Pydantic request/response models for the
+  planned MVP API, registered the review/Builder/candidate/comparison/verdict/report route surface
+  as safe OpenAPI placeholders, generated frontend API types at
+  `frontend/lib/generated/api-types.ts`, and added a schema-to-TypeScript generator. The frontend
+  remains on the existing bridge; portfolio calculations and generated review artifacts are
+  unchanged.
+
+- **FastAPI foundation Session 02 skeleton:** added `src/api/app.py` with the local FastAPI app,
+  `GET /api/v1/health`, OpenAPI metadata, runtime/test dependencies, and focused tests proving the
+  health envelope and Session 02-only API surface. The frontend remains on the existing bridge.
+
+- **FastAPI foundation Session 01 contract:** added `docs/contracts/FASTAPI_V1_API_CONTRACT.md`
+  defining the planned local FastAPI v1 endpoint list, typed response envelopes, safe error model,
+  lineage rules, and public-vs-internal artifact boundaries before any runtime code is added.
+
+- **Diagnosis interpretation research baseline:** added
+  `docs/audits/2026-06-11_diagnosis_interpretation_framework_research.md`, summarizing professional
+  portfolio-risk research and mapping it to a Portfolio MRI evidence-to-diagnosis framework:
+  metric signal -> evidence item -> root-cause diagnosis -> suggested test -> comparison criteria ->
+  Decision Verdict.
+
 Date: 2026-06-11
 
 Category: Added

@@ -1292,17 +1292,21 @@ def _extract_data_quality(
         if isinstance(xray.get(key), dict)
         and str(xray[key].get("status") or "ok").lower() in {"partial", "unavailable"}
     ]
-    if partial:
+    if partial or product_partial:
         _emit(
             bucket,
             EvidenceSignal(
                 signal="partial_sections",
                 value={"legacy_sections": partial, "product_blocks": product_partial},
-                source_block="sections",
+                source_block="portfolio_xray",
                 source_artifact=ARTIFACT_XRAY,
                 evidence_path="primary",
-                interpretation_en=f"{len(partial)} legacy section(s) are partial or unavailable.",
-                raw_field_path="sections.*.status",
+                interpretation_en=(
+                    f"{len(partial)} legacy section(s) and {len(product_partial)} product block(s) "
+                    "are partial or unavailable."
+                ),
+                severity="medium" if product_partial else None,
+                raw_field_path="sections.*.status;block_2_*.*.status",
             ),
         )
     if len(partial) >= 3 or len(product_partial) >= 3:

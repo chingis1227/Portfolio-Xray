@@ -1,4 +1,4 @@
-﻿# Portfolio MRI Frontend
+# Portfolio MRI Frontend
 
 Next.js/React Core MVP surface for Portfolio MRI as an institutional Investment Decision Room.
 The current implemented journey is still a local/frontend vertical flow, not a polished hosted
@@ -9,14 +9,16 @@ product or trading system.
 - No Python analytics engine changes.
 - No Python analytics or backend calculation changes live in this frontend package.
 - Live API routes are available for diagnosis, Builder setup prepare, candidate generation,
-  comparison, verdict, grounded report commentary, and read-only review recovery:
-  - `POST /api/portfolio/diagnose`
-  - `GET|POST /api/portfolio/review/recover`
-  - `POST /api/portfolio/builder/prepare`
-  - `POST /api/portfolio/candidate/generate`
-  - `POST /api/portfolio/comparison/generate`
-  - `POST /api/portfolio/verdict/generate`
-  - `POST /api/portfolio/report/generate`
+  comparison, verdict, grounded report commentary, and read-only review recovery. The normal
+  frontend path keeps the existing Next.js route URLs for compatibility, but those handlers proxy
+  to the local FastAPI backend instead of launching Python scripts directly:
+  - `POST /api/portfolio/diagnose` -> `POST /api/v1/reviews`
+  - `GET|POST /api/portfolio/review/recover` -> `GET /api/v1/reviews/{review_id}`
+  - `POST /api/portfolio/builder/prepare` -> `POST /api/v1/reviews/{review_id}/builder`
+  - `POST /api/portfolio/candidate/generate` -> `POST /api/v1/reviews/{review_id}/candidate`
+  - `POST /api/portfolio/comparison/generate` -> `POST /api/v1/reviews/{review_id}/comparison`
+  - `POST /api/portfolio/verdict/generate` -> `POST /api/v1/reviews/{review_id}/verdict`
+  - `POST /api/portfolio/report/generate` -> `POST /api/v1/reviews/{review_id}/report`
 - The flow is one selected test path at a time; it is not a multi-candidate optimizer arena.
 - A candidate is a diagnostic test, not a recommendation. Decision Verdict is non-binding
   decision support, and no-trade / evidence-insufficient are valid outcomes.
@@ -26,9 +28,12 @@ product or trading system.
 ## Architecture
 
 - `app/` contains seven route screens plus root redirect.
-- `app/api/portfolio/*` routes write/consume run-local frontend review artifacts through
-  `scripts/run_review_from_payload.py`; they do not modify root `config.yml`. The Builder prepare
-  route calls the bridge `--prepare-builder` action before candidate generation.
+- `app/api/portfolio/*` routes are compatibility proxies over the local FastAPI v1 API. They keep
+  the current screen-facing response shape while FastAPI runs the Python review stages and enforces
+  typed request/response contracts. The proxy layer may read same-run artifacts for lineage and
+  fallback/debug evidence, but screens consume display models from `reviewState` and FastAPI public
+  envelopes rather than raw artifact internals. The proxy no longer spawns
+  `scripts/run_review_from_payload.py`.
 - `components/layout/` contains the application shell, sidebar, top journey progress, and page header.
 - `components/ui/` contains reusable card, metric, badge, and hero primitives.
 - `components/portfolio/`, `diagnosis/`, `evidence/`, `hypothesis/`, `comparison/`, `verdict/`, and `report/` contain product-stage components.
@@ -38,6 +43,25 @@ product or trading system.
   `.\.venv\Scripts\python.exe scripts\generate_frontend_instrument_universe.py` after
   taxonomy changes.
 - `lib/` contains shared journey metadata and TypeScript types.
+- `lib/generated/api-types.ts` is generated from the local FastAPI OpenAPI contract. It is a
+  contract safety net for the staged migration. As of Session 07, FastAPI can create and recover
+  diagnosis reviews and can run Builder setup, Candidate Generation, Current-vs-Candidate
+  Comparison, Decision Verdict, and grounded Report context through
+  `POST /api/v1/reviews`, `GET /api/v1/reviews/{review_id}`,
+  `POST /api/v1/reviews/{review_id}/builder`, `POST /api/v1/reviews/{review_id}/candidate`,
+  `POST /api/v1/reviews/{review_id}/comparison`,
+  `POST /api/v1/reviews/{review_id}/verdict`, and
+  `POST /api/v1/reviews/{review_id}/report`. The existing Next.js `/api/portfolio/*` URLs now
+  proxy to those FastAPI endpoints for the normal frontend path. Diagnosis interpretation
+  Session 08 adds generated types for the expanded `DiagnosisSummary` interpretation-chain display
+  fields (`diagnosis_evidence_items`, `root_cause_narrative`, `metric_to_diagnosis_trace`,
+  `rejected_alternatives`, `professional_rationale_refs`, and `recommendation_boundary`).
+  Session 10 updates the frontend adapters so diagnosis, candidate, comparison, verdict, and report
+  summaries prefer these FastAPI public display fields, including downstream
+  `evidence_chain_context`, before falling back to same-run raw artifacts.
+- `../docs/contracts/FASTAPI_SCREEN_MAPPING.json` is the governance map between FastAPI operations,
+  generated response `data` fields, and approved Core MVP screen routes. Backend schema changes must
+  regenerate `lib/generated/api-types.ts` and update this mapping before fields are surfaced in UI.
 - `styles/` contains global Tailwind and Portfolio MRI CSS variables.
 
 ## Portfolio Input validation
@@ -47,16 +71,21 @@ product or trading system.
 - At least 2 valid rows are required before diagnosis.
 - Portfolio weights must add up to 100%, with a 0.01 tolerance for rounding.
 - Weights are never auto-normalized or silently corrected; the diagnosis CTA remains disabled until blocking validation passes.
-- The API route repeats lightweight validation before running `scripts/run_review_from_payload.py`.
+- The Next.js compatibility route repeats lightweight validation before calling FastAPI.
 
 
 ## Review state and storage
 
 - The real flow is Portfolio Input -> Diagnosis -> Stress Test Lab -> Hypothesis / Builder prepare
   and Candidate Generation -> Current vs Candidate -> Decision Verdict -> Report / grounded
-  explanation preview.
-- The UI stores compact state in `pmri.activeReview.v2`: `reviewId`, portfolio input, diagnosis/stress evidence/launchpad/builder summaries, selected card/candidate, and stage summaries. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card and says generation is allowed.
-- The complete `review_result.json` is not persisted in browser storage. During the current tab session it may remain in memory for immediate rendering; after hydration the UI relies on compact summaries and `reviewId`.
+  explanation preview. If comparison evidence is current but metrics are unavailable, the UI may still
+  continue to Verdict so the system can show an evidence-insufficient decision-support outcome
+  instead of silently blocking the journey.
+- The UI stores compact display state in `pmri.activeReview.v2`: `reviewId`, portfolio input, diagnosis/stress evidence/launchpad/builder summaries, selected card/candidate, and stage summaries. Core screens consume these display models, not raw backend artifact trees. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card and says generation is allowed.
+- When Supabase is enabled and the user is signed in, the active review may also keep a compact
+  link to the selected cloud portfolio so diagnosis-history rows can point back to the saved
+  portfolio input without uploading generated evidence.
+- The complete `review_result.json` is not persisted in browser storage. During the current tab session compatibility routes may keep raw same-run fields as fallback/debug evidence, but screen rendering relies on compact display summaries, FastAPI public envelopes, and `reviewId`.
 - Portfolio Input includes a read-only recovery control for `frontend_review_*` IDs. It calls
   `/api/portfolio/review/recover`, reads only run-local diagnosis/launchpad/builder artifacts, and
   restores candidate/comparison/verdict/report readiness as false so stale downstream artifacts are
@@ -77,13 +106,76 @@ product or trading system.
 
 ## Run locally
 
+Supabase persistence is optional. With the default `.env.example` values, the app stays in local
+demo mode, does not ask for login, and stores the active compact review in browser `localStorage`.
+To enable Supabase-backed auth for later cloud persistence sessions, set only public browser-safe
+values:
+
+```powershell
+NEXT_PUBLIC_PMRI_SUPABASE_ENABLED=true
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-public-publishable-key
+```
+
+If the flag is not exactly `true`, or either public value is blank, the Supabase gate remains
+disabled and no Supabase browser client is created.
+
+When Supabase is enabled, the sidebar shows an Email OTP sign-in panel. Configure Supabase Auth
+Email OTP in the Supabase dashboard and allow the local callback URL:
+
+```text
+http://localhost:3000/auth/callback
+```
+
+The callback exchanges the public magic-link auth code for a browser session. The same panel also
+accepts an email OTP code. No service-role key, secret key, database password, Supabase Storage,
+Realtime channel, or Edge Function is used by the frontend.
+
+Current Supabase-backed behavior:
+
+- signed-in users can save, list, load, update, and delete compact portfolio inputs from the
+  Portfolio Input screen;
+- successful local diagnosis automatically attempts a compact cloud upsert into `reviews` and a
+  compact `diagnosis` row in `review_stage_summaries`;
+- later successful local stages can save compact `builder`, `candidate`, `comparison`, `verdict`,
+  and `report` rows in `review_stage_summaries`; before each stage write the app measures the
+  serialized JSON payload and skips the cloud write with a warning when it exceeds the 55 KB soft
+  limit;
+- signed-in users can use the sidebar Saved cloud reviews panel to list recent compact reviews and
+  recover the current browser state from Supabase summaries; run-local recovery by `reviewId` on
+  Portfolio Input remains the advanced fallback for local generated artifacts;
+- cloud failures stay non-blocking: the local browser journey and local diagnosis/stage completion
+  still succeed, while the sidebar shows a warning notice;
+- Supabase remains an app-data layer only. The frontend does **not** upload `runs/`,
+  `Main portfolio/`, `cache/`, PDFs, generated candidate folders, full `portfolio_xray.json`,
+  full `stress_report.json`, price history, parquet, CSV exports, or raw generated artifact bundles.
+
 ```bash
+# terminal 1, from repository root
+.\.venv\Scripts\python.exe -m uvicorn src.api.app:app --host 127.0.0.1 --port 8000
+
+# terminal 2
 cd frontend
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Live vertical QA helper:
+
+```powershell
+cd frontend
+npm.cmd run qa:vertical -- --scenario-limit 3
+```
+
+This starts fresh FastAPI and Next.js servers on free localhost ports, opens a clean Playwright
+browser context, clears browser storage before each scenario, runs diagnosis through report via the
+frontend compatibility API routes, probes stale selected-card rejection, and writes screenshots or
+DOM fallbacks plus `qa-report.json` under `../output/playwright/`. If live market data is
+unavailable, treat the failure as a data-provider blocker and inspect the report/logs before making
+frontend or product conclusions.
+
+Open `http://localhost:3000`. Override the FastAPI URL for the Next.js proxy with
+`PMRI_FASTAPI_BASE_URL` when using a non-default host or port.
 
 Optional checks:
 
@@ -93,6 +185,17 @@ npm run test:smoke
 npm run typecheck
 npm run build
 ```
+
+Regenerate FastAPI contract types from the repository root after intentional FastAPI schema changes:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\generate_fastapi_api_types.py
+.\.venv\Scripts\python.exe scripts\verify_fastapi_contract_governance.py
+```
+
+`verify_fastapi_contract_governance.py` also checks that public diagnosis/comparison/verdict/report
+claim fields keep source/provenance companions and that governed frontend/API copy does not introduce
+unqualified advice-like language.
 
 
 ## Vertical demo runbook
@@ -109,11 +212,13 @@ Use [../docs/demo/frontend_backend_vertical_runbook.md](../docs/demo/frontend_ba
 Quick verification from a fresh terminal:
 
 ```powershell
+.\.venv\Scripts\python.exe -m pytest tests\test_fastapi_app.py -q
 cd frontend
 npm.cmd run test:api
 npm.cmd run test:smoke
 npm.cmd run typecheck
 npm.cmd run build
-cd ..
-.\.venv\Scripts\python.exe -m pytest tests\test_frontend_review_bridge.py -q --basetemp='tmp\pytest_frontend_bridge_session15'
 ```
+
+`tests/test_frontend_review_bridge.py` remains available for the legacy/debug script helper, but it
+is no longer the normal frontend route-path gate.

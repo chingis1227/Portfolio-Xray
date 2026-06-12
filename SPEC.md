@@ -74,6 +74,13 @@ Current Core MVP product layer:
 - Portfolio X-Ray diagnostics (**Block 2.1–2.6** product contracts on `portfolio_xray.json`; legacy X-Ray section 2.7 (archetype) is not Core MVP)
 - Stress Test Lab evidence
 - Problem Classification
+- additive Problem Classification interpretation-chain fields
+  (`interpretation_chain`, `diagnosis_evidence_items`, `root_cause_narrative`,
+  `metric_to_diagnosis_trace`, and `professional_rationale_refs`) for deterministic diagnosis
+  explanation
+- FastAPI diagnosis, comparison, verdict, and report display envelopes, plus frontend display
+  adapters, that expose the same interpretation-chain evidence through typed response fields,
+  generated frontend API types, and compact screen state instead of raw artifact trees
 - Candidate Launchpad
 - Portfolio Alternatives Builder Launchpad-card prefill, validation, and `CandidateSetup` handoff
 - explicit user-triggered Candidate Generation
@@ -223,6 +230,8 @@ Main report artifacts
 | Factor diagnostics and factor-risk outputs | [docs/specs/factor_diagnostics_spec.md](docs/specs/factor_diagnostics_spec.md) |
 | Macro regime diagnostics | [docs/specs/macro_regime_spec.md](docs/specs/macro_regime_spec.md) |
 | Scenario Library and normalized scenario view | [docs/specs/scenario_library_spec.md](docs/specs/scenario_library_spec.md) |
+| Evidence-to-diagnosis interpretation methodology and root-cause-over-symptom boundary | [docs/specs/diagnosis_interpretation_methodology_spec.md](docs/specs/diagnosis_interpretation_methodology_spec.md) |
+| Diagnosis rulebook YAML contract, read-only parity validator, and schema | [docs/specs/diagnosis_rulebook_schema_spec.md](docs/specs/diagnosis_rulebook_schema_spec.md) |
 | Problem Classification and Candidate Launchpad current v3 contracts | [docs/specs/block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md), [docs/specs/problem_classification_spec.md](docs/specs/problem_classification_spec.md), [docs/specs/candidate_launchpad_spec.md](docs/specs/candidate_launchpad_spec.md) |
 | Portfolio Alternatives Builder setup, validation, and explicit Block 6 / Block 7 boundary | [docs/specs/portfolio_alternatives_builder_spec.md](docs/specs/portfolio_alternatives_builder_spec.md), [docs/specs/builder_prefill_spec.md](docs/specs/builder_prefill_spec.md), [docs/specs/candidate_setup_spec.md](docs/specs/candidate_setup_spec.md) |
 | Candidate Generation one-attempt artifact | [docs/specs/candidate_generation_spec.md](docs/specs/candidate_generation_spec.md) |

@@ -38,6 +38,7 @@ from src.problem_classification import PROBLEM_CLASSIFICATION_FILENAME
 
 PROBLEM_CLASSIFICATION_V3_VERSION = "problem_classification_v3"
 BLOCK_4_DIAGNOSIS_FACADE_VERSION = "build_block_4_diagnosis_v3"
+DIAGNOSIS_INTERPRETATION_CHAIN_VERSION = "diagnosis_interpretation_chain_v1"
 
 HEDGE_GAP_SOURCE_V1 = "hedge_gap_analysis_v1"
 HEDGE_GAP_SOURCE_LEGACY = "stress_conclusions.hedge_gap_status"
@@ -100,6 +101,13 @@ def build_block_4_diagnosis(
         gate=gate,
     )
     next_diagnostic_step = _next_diagnostic_step(mapping.primary_problem, gate)
+    interpretation_chain = _build_interpretation_chain(
+        primary_diagnosis=primary_diagnosis,
+        mapping=mapping,
+        scoring=scoring,
+        prioritization=prioritization,
+        next_diagnostic_step=next_diagnostic_step,
+    )
 
     cfg = get_block_4_thresholds()
     problem_classification: dict[str, Any] = {
@@ -127,6 +135,11 @@ def build_block_4_diagnosis(
         "suggested_hypothesis": primary_diagnosis.get("suggested_hypothesis"),
         "next_diagnostic_step": next_diagnostic_step,
         "success_criteria": primary_diagnosis.get("success_criteria", []),
+        "interpretation_chain": interpretation_chain,
+        "diagnosis_evidence_items": interpretation_chain["diagnosis_evidence_items"],
+        "root_cause_narrative": interpretation_chain["root_cause_narrative"],
+        "metric_to_diagnosis_trace": interpretation_chain["metric_to_diagnosis_trace"],
+        "professional_rationale_refs": interpretation_chain["professional_rationale_refs"],
         "backend_audit": {
             "primary_problem": mapping.primary_problem,
             "secondary_problems": list(mapping.secondary_problems),
@@ -420,6 +433,269 @@ def _confidence_explanation(
     return f"Confidence is {confidence}; stress confirmation is {stress_confirmation}."
 
 
+def _build_interpretation_chain(
+    *,
+    primary_diagnosis: dict[str, Any],
+    mapping: ActionPathMappingResult,
+    scoring: ProblemScoringResult,
+    prioritization: ProblemPrioritizationResult,
+    next_diagnostic_step: dict[str, Any],
+) -> dict[str, Any]:
+    """Build additive source-backed interpretation fields for ``problem_classification_v3``.
+
+    The chain is intentionally read-only over current Block 4 runtime results. It does not rescore,
+    reprioritize, or read the Session 03 YAML as an active runtime registry.
+    """
+
+    primary = mapping.primary_problem
+    primary_id = str(primary_diagnosis.get("diagnosis_id") or primary.get("problem_id") or "")
+    evidence_items = _diagnosis_evidence_items(primary, scoring, limit=10)
+    metric_trace = _metric_to_diagnosis_trace(evidence_items, primary_id)
+    root_cause_narrative = _root_cause_narrative(
+        primary=primary,
+        primary_diagnosis=primary_diagnosis,
+        scoring=scoring,
+        prioritization=prioritization,
+        evidence_items=evidence_items,
+    )
+    rationale_refs = _professional_rationale_refs(primary_id)
+    rejected_alternatives = _rejected_alternative_items(prioritization, limit=5)
+
+    return {
+        "schema_version": DIAGNOSIS_INTERPRETATION_CHAIN_VERSION,
+        "diagnostic_only": True,
+        "selected_diagnosis_id": primary_id,
+        "selected_diagnosis_role": primary.get("diagnosis_role"),
+        "source_artifacts": sorted(
+            {
+                str(item.get("source_artifact"))
+                for item in evidence_items
+                if item.get("source_artifact")
+            }
+        ),
+        "diagnosis_evidence_items": evidence_items,
+        "root_cause_narrative": root_cause_narrative,
+        "metric_to_diagnosis_trace": metric_trace,
+        "rejected_alternatives": rejected_alternatives,
+        "professional_rationale_refs": rationale_refs,
+        "next_step_link": {
+            "step_type": next_diagnostic_step.get("type"),
+            "label": next_diagnostic_step.get("label"),
+            "decision_boundary": next_diagnostic_step.get("decision_boundary"),
+        },
+        "recommendation_boundary_en": DECISION_BOUNDARY_EN,
+    }
+
+
+def _diagnosis_evidence_items(
+    primary: dict[str, Any],
+    scoring: ProblemScoringResult,
+    *,
+    limit: int,
+) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+
+    def _append(ref: dict[str, Any], *, evidence_role: str, linked_problem_id: str) -> None:
+        if not isinstance(ref, dict) or len(items) >= limit:
+            return
+        signal = str(ref.get("signal") or "")
+        evidence_id = str(ref.get("evidence_id") or f"ev_{linked_problem_id}_{signal}_{len(items) + 1}")
+        key = (evidence_id, signal, linked_problem_id)
+        if key in seen:
+            return
+        seen.add(key)
+
+        item: dict[str, Any] = {
+            "evidence_item_id": evidence_id,
+            "linked_problem_id": linked_problem_id,
+            "evidence_role": evidence_role,
+            "signal": signal,
+            "source_artifact": ref.get("source_artifact"),
+            "source_block": ref.get("source_block"),
+            "source_field_path": ref.get("raw_field_path") or ref.get("evidence_path"),
+            "observed_value": ref.get("value"),
+            "interpretation_en": ref.get("interpretation_en"),
+            "why_relevant_to_diagnosis_en": ref.get("why_relevant_to_problem_en"),
+            "evidence_path": ref.get("evidence_path"),
+        }
+        if ref.get("normalized_score") is not None:
+            item["normalized_score"] = ref.get("normalized_score")
+        if ref.get("severity") is not None:
+            item["severity"] = ref.get("severity")
+        if ref.get("confidence") is not None:
+            item["confidence"] = ref.get("confidence")
+        if ref.get("linked_assets"):
+            item["linked_assets"] = ref.get("linked_assets")
+        if ref.get("limitation_en"):
+            item["limitation_en"] = ref.get("limitation_en")
+        items.append(item)
+
+    primary_id = str(primary.get("problem_id") or "")
+    for ref in primary.get("evidence_refs") or []:
+        _append(ref, evidence_role="supports_selected_diagnosis", linked_problem_id=primary_id)
+    for ref in primary.get("negative_evidence_refs") or []:
+        _append(ref, evidence_role="contrary_to_selected_diagnosis", linked_problem_id=primary_id)
+
+    symptom_rows = [
+        row
+        for row in scoring.rows.values()
+        if row.problem_id != primary_id and row.activated and is_symptom_problem(row.problem_id)
+    ]
+    symptom_rows.sort(key=lambda row: row.scoring.decision_score, reverse=True)
+    for row in symptom_rows:
+        for ref in row.evidence_refs[:2]:
+            _append(ref, evidence_role="supporting_symptom", linked_problem_id=row.problem_id)
+            if len(items) >= limit:
+                break
+        if len(items) >= limit:
+            break
+
+    return items
+
+
+def _metric_to_diagnosis_trace(
+    evidence_items: list[dict[str, Any]],
+    primary_id: str,
+) -> list[dict[str, Any]]:
+    trace: list[dict[str, Any]] = []
+    for idx, item in enumerate(evidence_items, start=1):
+        trace.append(
+            {
+                "trace_id": f"trace_{idx:02d}_{item.get('signal') or 'signal'}",
+                "source_artifact": item.get("source_artifact"),
+                "source_block": item.get("source_block"),
+                "source_field_path": item.get("source_field_path"),
+                "metric_or_signal": item.get("signal"),
+                "evidence_item_id": item.get("evidence_item_id"),
+                "linked_problem_id": item.get("linked_problem_id"),
+                "contributes_to_selected_diagnosis_id": primary_id,
+                "contribution": item.get("evidence_role"),
+                "interpretation_en": item.get("interpretation_en"),
+            }
+        )
+    return trace
+
+
+def _root_cause_narrative(
+    *,
+    primary: dict[str, Any],
+    primary_diagnosis: dict[str, Any],
+    scoring: ProblemScoringResult,
+    prioritization: ProblemPrioritizationResult,
+    evidence_items: list[dict[str, Any]],
+) -> dict[str, Any]:
+    primary_id = str(primary_diagnosis.get("diagnosis_id") or primary.get("problem_id") or "")
+    label = str(primary_diagnosis.get("label_en") or primary.get("label_en") or primary_id)
+    role = str(primary.get("diagnosis_role") or "")
+    thesis = str(primary_diagnosis.get("thesis_en") or "").strip()
+    defn = get_problem_definition(primary_id)
+    top_signal = next(
+        (str(item.get("interpretation_en") or "").strip() for item in evidence_items if item.get("interpretation_en")),
+        "",
+    )
+
+    if primary_id == "evidence_insufficient_data_quality":
+        statement = (
+            "Data quality is the selected outcome because the available source artifacts do not "
+            "support a reliable investment diagnosis yet."
+        )
+    elif primary_id in {"mixed_evidence_no_action", "current_portfolio_acceptable"}:
+        statement = thesis or f"{label} is selected as the current portfolio outcome."
+    elif role == "root_cause":
+        evidence_phrase = f" The leading source-backed signal is: {top_signal}" if top_signal else ""
+        statement = (
+            f"{label} is selected as the primary root-cause diagnosis because the strongest "
+            f"evidence points to a portfolio structure, not just an outcome metric.{evidence_phrase}"
+        )
+    else:
+        statement = (
+            f"{label} is selected as the primary diagnosis because no stronger governed root-cause "
+            "diagnosis was confirmed with the available evidence."
+        )
+
+    return {
+        "diagnosis_id": primary_id,
+        "label_en": label,
+        "diagnosis_role": role,
+        "n_supporting_evidence_items": len(
+            [item for item in evidence_items if item.get("evidence_role") != "contrary_to_selected_diagnosis"]
+        ),
+        "n_rejected_alternatives": len(prioritization.rejected_problems),
+        "elevation_rules_applied": list(prioritization.elevation_rules_applied),
+        "statement_en": statement,
+        "root_cause_over_symptom_en": (
+            "Root-cause diagnoses outrank symptom diagnoses when they explain the same evidence "
+            "with sufficient confidence and materiality."
+        ),
+        "portfolio_manager_interpretation_en": (
+            defn.portfolio_manager_interpretation_en if defn is not None else None
+        ),
+        "confidence_context_en": primary_diagnosis.get("confidence_explanation"),
+        "source_refs": [
+            "docs/specs/diagnosis_interpretation_methodology_spec.md#layer-4-root-cause-over-symptom",
+            "docs/specs/block_4_diagnosis_v3_spec.md#primary-selection-order",
+            "src/block_4/problem_taxonomy.py::PROBLEM_REGISTRY",
+        ],
+    }
+
+
+def _professional_rationale_refs(primary_id: str) -> list[dict[str, Any]]:
+    defn = get_problem_definition(primary_id)
+    refs: list[dict[str, Any]] = [
+        {
+            "ref_id": "diagnosis_interpretation_methodology",
+            "source": "docs/specs/diagnosis_interpretation_methodology_spec.md",
+            "reason_en": "Defines the evidence-to-diagnosis chain and root-cause-over-symptom boundary.",
+        },
+        {
+            "ref_id": "block_4_diagnosis_contract",
+            "source": "docs/specs/block_4_diagnosis_v3_spec.md",
+            "reason_en": "Defines the current Problem Classification v3 product contract and primary selection order.",
+        },
+        {
+            "ref_id": "block_4_threshold_source",
+            "source": "config/block_4_thresholds.yml",
+            "reason_en": "Governs numeric activation, materiality, severity, and confidence settings.",
+        },
+    ]
+    if defn is not None:
+        refs.append(
+            {
+                "ref_id": f"problem_taxonomy.{primary_id}",
+                "source": "src/block_4/problem_taxonomy.py::PROBLEM_REGISTRY",
+                "problem_id": primary_id,
+                "reason_en": "Provides controlled diagnosis metadata used by the runtime taxonomy.",
+                "rationale_en": defn.portfolio_manager_interpretation_en,
+            }
+        )
+    return refs
+
+
+def _rejected_alternative_items(
+    prioritization: ProblemPrioritizationResult,
+    *,
+    limit: int,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for rejected in prioritization.rejected_problems[:limit]:
+        defn = get_problem_definition(rejected.problem_id)
+        rows.append(
+            {
+                "problem_id": rejected.problem_id,
+                "label_en": defn.label_en if defn else rejected.problem_id,
+                "reason_code": rejected.reject_reason_code,
+                "reason_en": rejected.reject_reason_en,
+                "top_evidence_item_ids": [
+                    str(ref.get("evidence_id"))
+                    for ref in rejected.top_evidence_refs
+                    if isinstance(ref, dict) and ref.get("evidence_id")
+                ],
+            }
+        )
+    return rows
+
+
 def _actionability(gate: NoTradeGateResult) -> dict[str, Any]:
     return {
         "outcome": gate.outcome,
@@ -515,6 +791,8 @@ def _compact_evidence_ref(ref: dict[str, Any]) -> dict[str, Any]:
         compact["linked_assets"] = ref.get("linked_assets")
     if ref.get("limitation_en"):
         compact["limitation_en"] = ref.get("limitation_en")
+    if ref.get("raw_field_path"):
+        compact["raw_field_path"] = ref.get("raw_field_path")
     return compact
 
 

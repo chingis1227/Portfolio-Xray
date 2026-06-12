@@ -4,6 +4,8 @@ import { Inter, Roboto_Mono } from "next/font/google";
 import "../styles/globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { ReviewStateProvider } from "@/lib/reviewState";
+import { SupabaseAuthProvider } from "@/lib/supabase/auth";
+import { SupabasePersistenceProvider } from "@/lib/supabase/persistence";
 
 const interSans = Inter({
   subsets: ["latin"],
@@ -27,9 +29,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${interSans.variable} ${robotoMono.variable}`}>
       <body>
-        <ReviewStateProvider>
-          <AppShell>{children}</AppShell>
-        </ReviewStateProvider>
+        <SupabaseAuthProvider>
+          <SupabasePersistenceProvider>
+            <ReviewStateProvider>
+              <AppShell>{children}</AppShell>
+            </ReviewStateProvider>
+          </SupabasePersistenceProvider>
+        </SupabaseAuthProvider>
       </body>
     </html>
   );

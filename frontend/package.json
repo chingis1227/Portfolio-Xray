@@ -10,9 +10,12 @@
                     "lint":  "next lint",
                     "typecheck":  "tsc --noEmit",
                     "test:api":  "node --test tests/api-route-tests.cjs",
-                    "test:smoke":  "node --test tests/frontend-smoke-tests.cjs"
+                    "test:smoke":  "node --test tests/frontend-smoke-tests.cjs",
+                    "qa:vertical":  "node ../scripts/qa_browser_vertical.cjs"
                 },
     "dependencies":  {
+                         "@supabase/ssr":  "^0.12.0",
+                         "@supabase/supabase-js":  "^2.108.1",
                          "next":  "^14.2.4",
                          "react":  "^18.3.1",
                          "react-dom":  "^18.3.1"
@@ -22,6 +25,7 @@
                             "@types/react":  "^18.3.3",
                             "@types/react-dom":  "^18.3.0",
                             "autoprefixer":  "^10.4.19",
+                            "playwright":  "^1.60.0",
                             "postcss":  "^8.4.39",
                             "tailwindcss":  "^3.4.4",
                             "typescript":  "^5.5.3"
