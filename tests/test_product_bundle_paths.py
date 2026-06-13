@@ -13,6 +13,7 @@ from src.block_2_6_portfolio_weakness_map import BLOCK_2_6_ID
 from src.product_bundle_paths import (
     ADVANCED_EVIDENCE_MANIFEST_KEYS,
     LEGACY_COMPATIBILITY_MANIFEST_KEYS,
+    PRODUCT_BUNDLE_CANDIDATE_GENERATION_MANIFEST_KEYS,
     PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS,
     PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS,
     PORTFOLIO_XRAY_BLOCK_2_2_KEY,
@@ -109,14 +110,18 @@ def test_load_diagnosis_bundle_docs_sidecar_only(tmp_path: Path) -> None:
 def test_product_bundle_generated_paths_for_manifest_sidecar(tmp_path: Path) -> None:
     subject = tmp_path / "analysis_subject"
     seed_analysis_subject_diagnosis_bundle(subject)
+    (tmp_path / "candidate_generation.json").write_text("{}", encoding="utf-8")
     (tmp_path / "current_vs_candidate.json").write_text("{}", encoding="utf-8")
 
     paths = product_bundle_generated_paths_for_manifest(tmp_path)
     assert set(paths.keys()) >= {
+        "client_fit_check_json",
         "problem_classification_json",
         "candidate_launchpad_json",
+        "candidate_generation_json",
         "current_vs_candidate_json",
     }
+    assert "analysis_subject/client_fit_check.json" in paths["client_fit_check_json"]
     assert "analysis_subject/problem_classification.json" in paths[
         "problem_classification_json"
     ]
@@ -135,6 +140,8 @@ def test_product_bundle_artifact_categories_lists_bundle_keys() -> None:
 
 
 def test_manifest_key_category_classifies_exports_and_legacy() -> None:
+    assert manifest_key_category("client_fit_check_json") == "product_bundle"
+    assert manifest_key_category("candidate_generation_json") == "product_bundle"
     assert manifest_key_category("decision_verdict_json") == "product_bundle"
     assert manifest_key_category("candidate_comparison_json") == "technical_comparison"
     assert manifest_key_category("portfolio_health_score_json") == "advanced_evidence"
@@ -145,7 +152,9 @@ def test_manifest_key_category_classifies_exports_and_legacy() -> None:
 
 def test_build_generated_paths_by_category_buckets_paths() -> None:
     generated = {
+        "client_fit_check_json": "Main portfolio/analysis_subject/client_fit_check.json",
         "problem_classification_json": "Main portfolio/analysis_subject/problem_classification.json",
+        "candidate_generation_json": "Main portfolio/candidate_generation.json",
         "candidate_comparison_json": "Main portfolio/candidate_comparison.json",
         "portfolio_health_score_json": "Main portfolio/portfolio_health_score.json",
         "portfolio_comparison_json": "Main portfolio/portfolio_comparison.json",
@@ -153,7 +162,11 @@ def test_build_generated_paths_by_category_buckets_paths() -> None:
         "run_metadata": "Main portfolio/run_metadata.json",
     }
     by_category = build_generated_paths_by_category(generated)
-    assert set(by_category["product_bundle"]) == {"problem_classification_json"}
+    assert set(by_category["product_bundle"]) == {
+        "client_fit_check_json",
+        "problem_classification_json",
+        "candidate_generation_json",
+    }
     assert "candidate_comparison_json" in by_category["technical_comparison"]
     assert "portfolio_health_score_json" in by_category["advanced_evidence"]
     assert "portfolio_comparison_json" in by_category["legacy_compatibility"]
@@ -163,7 +176,9 @@ def test_build_generated_paths_by_category_buckets_paths() -> None:
 
 def test_build_output_manifest_discovery_extra_includes_product_discovery() -> None:
     generated = {
+        "client_fit_check_json": "Main portfolio/analysis_subject/client_fit_check.json",
         "problem_classification_json": "Main portfolio/analysis_subject/problem_classification.json",
+        "candidate_generation_json": "Main portfolio/candidate_generation.json",
         "current_vs_candidate_json": "Main portfolio/current_vs_candidate.json",
         "candidate_comparison_json": "Main portfolio/candidate_comparison.json",
     }
@@ -173,6 +188,7 @@ def test_build_output_manifest_discovery_extra_includes_product_discovery() -> N
     assert discovery["product_bundle_complete"] is False
     assert discovery["product_bundle_phase"] == "post_compare_partial"
     assert discovery["diagnosis_bundle_complete"] is False
+    assert discovery["candidate_generation_complete"] is True
     assert discovery["post_compare_bundle_complete"] is False
     assert discovery["product_bundle_paths"]["current_vs_candidate_json"].endswith(
         "current_vs_candidate.json"
@@ -194,12 +210,14 @@ def test_build_product_discovery_diagnosis_only_phase(tmp_path: Path) -> None:
     assert discovery["post_compare_bundle_complete"] is False
     assert discovery["product_bundle_complete"] is False
     assert set(discovery["diagnosis_bundle_paths"]) == set(PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS)
+    assert discovery["candidate_generation_paths"] == {}
     assert discovery["post_compare_bundle_paths"] == {}
 
 
 def test_build_product_discovery_complete_phase(tmp_path: Path) -> None:
     subject = tmp_path / "analysis_subject"
     seed_analysis_subject_diagnosis_bundle(subject)
+    (tmp_path / "candidate_generation.json").write_text("{}", encoding="utf-8")
     for name in ("current_vs_candidate.json", "decision_verdict.json", "ai_commentary_context.json", "what_changed_summary.json"):
         (tmp_path / name).write_text("{}", encoding="utf-8")
     from src.product_bundle_paths import build_product_discovery_block
@@ -209,6 +227,9 @@ def test_build_product_discovery_complete_phase(tmp_path: Path) -> None:
     )
     assert discovery["product_bundle_phase"] == "complete"
     assert discovery["product_bundle_complete"] is True
+    assert set(discovery["candidate_generation_paths"]) == set(
+        PRODUCT_BUNDLE_CANDIDATE_GENERATION_MANIFEST_KEYS
+    )
     assert set(discovery["post_compare_bundle_paths"]) == set(
         PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS
     )
@@ -218,6 +239,9 @@ def test_product_bundle_manifest_extra_declares_diagnosis_vs_post_compare() -> N
     extra = product_bundle_manifest_extra()
     contract = extra["product_bundle_contract"]
     assert contract["diagnosis_artifact_keys"] == list(PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS)
+    assert contract["candidate_generation_artifact_keys"] == list(
+        PRODUCT_BUNDLE_CANDIDATE_GENERATION_MANIFEST_KEYS
+    )
     assert contract["post_compare_artifact_keys"] == list(
         PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS
     )
@@ -259,6 +283,7 @@ def test_discover_paths_by_category_rebuilds_from_generated_paths() -> None:
 def test_build_product_first_generated_paths_keeps_bundle_first(tmp_path: Path) -> None:
     subject = tmp_path / "analysis_subject"
     seed_analysis_subject_diagnosis_bundle(subject)
+    (tmp_path / "candidate_generation.json").write_text("{}", encoding="utf-8")
     (tmp_path / "current_vs_candidate.json").write_text("{}", encoding="utf-8")
     (tmp_path / "decision_verdict.json").write_text("{}", encoding="utf-8")
 
@@ -271,10 +296,12 @@ def test_build_product_first_generated_paths_keeps_bundle_first(tmp_path: Path) 
     )
 
     keys = list(paths)
-    assert keys[:5] == [
+    assert keys[:7] == [
+        "client_fit_check_json",
         "problem_classification_json",
         "candidate_launchpad_json",
         "portfolio_alternatives_builder_json",
+        "candidate_generation_json",
         "current_vs_candidate_json",
         "decision_verdict_json",
     ]

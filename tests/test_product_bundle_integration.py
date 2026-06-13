@@ -50,7 +50,7 @@ def _load(path: Path) -> dict[str, Any]:
         return json.load(f)
 
 
-def test_product_bundle_offline_after_compare_writes_six_artifacts(
+def test_product_bundle_offline_after_compare_writes_current_product_artifacts(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -90,6 +90,14 @@ def test_product_bundle_offline_after_compare_writes_six_artifacts(
     problem = _load(main_dir / "analysis_subject/problem_classification.json")
     assert problem["diagnostic_only"] is True
     assert problem.get("problems")
+
+    client_fit = _load(main_dir / "analysis_subject/client_fit_check.json")
+    assert client_fit["schema_version"] == "client_fit_check_v1"
+    assert client_fit["client_fit_status"] == "not_provided"
+
+    candidate_generation = _load(main_dir / "candidate_generation.json")
+    assert candidate_generation["schema_version"] == "candidate_generation_v1"
+    assert candidate_generation["candidate"]["is_rebalance_recommendation"] is False
 
     ai_ctx = _load(main_dir / "ai_commentary_context.json")
     assert ai_ctx.get("purpose") == "grounded_ai_commentary_context"
@@ -137,6 +145,10 @@ def test_product_bundle_offline_after_compare_writes_six_artifacts(
     assert "analysis_subject/candidate_launchpad.json" in generated[
         "candidate_launchpad_json"
     ]
+    assert "analysis_subject/client_fit_check.json" in generated[
+        "client_fit_check_json"
+    ]
+    assert generated["candidate_generation_json"].endswith("candidate_generation.json")
     categories = manifest.get("artifact_categories") or {}
     assert categories.get("product_bundle") == list(PRODUCT_BUNDLE_MANIFEST_KEYS)
     assert "candidate_comparison_json" in (categories.get("technical_comparison") or [])

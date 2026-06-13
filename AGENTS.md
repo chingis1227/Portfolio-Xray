@@ -5,73 +5,60 @@ alwaysApply: true
 
 # AGENTS.md
 
-This file defines agent operating rules for this repository. It is intentionally compact: detailed workflow, implementation contracts, verification matrices, output contracts, issue logs, decision logs, terminology, and module-specific specs live in the linked source-of-truth documents.
+This file is the compact operating guide for agents working in this repository. Detailed behavior lives in the linked source-of-truth documents; do not duplicate long specs here.
 
-Update this file only when agent-specific operating instructions, source-of-truth routing, generated-output policy, or editing guidance changes.
+Update this file only when agent operating rules, source-of-truth routing, generated-output policy, Browser/Playwright hygiene, or editing guidance changes.
 
-## Project Summary
+## Current Product Truth
 
-Portfolio MRI / Portfolio X-Ray is aligned around the **“Diagnosis 2” canonical product truth**. The current product is a Python portfolio diagnostics and investment decision-support system that is diagnosis-first, current-portfolio-first, and not optimizer-first.
+Portfolio MRI / Portfolio X-Ray is a diagnosis-first, current-portfolio-first investment decision-support system. It is not optimizer-first.
 
 Canonical current product flow:
 
 ```text
-Input portfolio
+Input Portfolio
 -> Portfolio X-Ray
 -> Stress Test Lab
 -> Client Fit Check
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
+-> Candidate Generation
 -> Current vs Candidate Comparison
 -> Decision Verdict
 -> AI Commentary / grounding
 -> Monitoring / What Changed
 ```
 
-The current implementation is still CLI/file-driven and partly carries older optimizer/report/scorecard-heavy infrastructure. Treat that older infrastructure as support code unless a task explicitly targets it.
+Current frontend route chain:
 
-Client Fit V1 is implemented as a non-binding profile-fit layer with active frontend onboarding.
-The web journey starts at the public landing page, enters required email sign-in, runs onboarding to create Client Fit context before diagnosis,
-and shows `/client-fit` after Stress Lab and before Hypothesis. `/client-profile` is an advanced/manual editor, not the primary entry step. Backend/CLI compatibility remains:
-missing Client Fit writes a `not_provided` compatibility state rather than failing the run. It writes
-`analysis_subject/client_fit_check.json` and can inform Block 4, Launchpad, Builder setup, Current
-vs Candidate display/test criteria, and Verdict context. Treat it as diagnostic context, not
-suitability approval, optimizer mandate, trade advice, or proof that no action is needed.
-
-Do **not** describe these as the current Core MVP product flow: Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto/Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If simulator UI, Client Fit suitability approval, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, full custom constraints UI, multi-client workspace, or polished PDF report product.
-
-If those capabilities exist in code or generated outputs, classify them as `Advanced`, `Backend evidence`, `Technical artifact`, `Legacy`, `Generated support artifact`, or `Future/backlog`; do not treat existence in code as current product truth.
-
-Main portfolio-first flow:
-
-1. `python run_core_diagnostics.py` for Blocks 1-3 only (Input, X-Ray, Stress; no candidates or Blocks 4+).
-2. `python run_portfolio_review.py` for current portfolio diagnosis / full product-bundle generation.
-3. inspect `{output_dir_final}/analysis_subject/` before interpreting candidate or decision artifacts
-4. for the current product demo path, prefer an explicit one-hypothesis run such as `python run_portfolio_review.py --candidates equal_weight`
-
-Runtime entrypoint matrix: [docs/runtime_entrypoints.md](docs/runtime_entrypoints.md). Legacy optimizer/policy scripts live under `legacy/runners/` with root wrappers.
-
-Product-flow operator map (read order, six-file bundle paths, demo vs core commands, anti-patterns):
-[docs/product_flow_operator_guide.md](docs/product_flow_operator_guide.md).
-
-Legacy policy compatibility flow:
-
-1. `python run_optimization.py`
-2. `python run_report.py`
-
-Optional legacy MVP orchestration (thin wrapper; same policy entrypoints):
-
-```bash
-python run_mvp_workflow.py [--workflow policy-only|policy-current|full-decision|diagnosis-only]
+```text
+/
+-> /onboarding/sign-in
+-> /onboarding/name
+-> /onboarding/investor-type
+-> /onboarding/loading
+-> /portfolio-input
+-> /diagnosis
+-> /evidence
+-> /client-fit
+-> /hypothesis
+-> /comparison
+-> /verdict
+-> /report
 ```
 
-Legacy policy weights are optimizer outputs, not manual user inputs. User-supplied
-`analysis_subject` weights are allowed for `current_portfolio` and `model_portfolio` diagnostics.
-Manual post-optimization tilt is allowed only through View After Optimization.
+`/client-profile` is an advanced/manual Client Fit editor, not the normal onboarding entry step.
 
-Product concept documents guide direction but do not override `SPEC.md`, canonical formulas, stress scenarios, policy logic, data rules, output contracts, or current code behavior. The current canonical product direction is “Diagnosis 2”; “Diagnosis 2 Later” features are backlog/advanced/later unless explicitly promoted by specs and implementation.
-Documentation migration records and archived legacy docs are retained for traceability only. They do not override current implementation contracts, canonical specs, or code.
+The implementation remains partly CLI/file-driven and still contains older optimizer/report/scorecard-heavy infrastructure. Treat that older infrastructure as support code unless a task explicitly targets it.
+
+## Client Fit V1 Boundary
+
+Client Fit V1 is current, active, and non-binding diagnostic context.
+
+It is part of the current web journey through onboarding plus `/client-fit` after Stress Lab and before Hypothesis. Backend/CLI compatibility remains: missing Client Fit context writes a `not_provided` compatibility state instead of failing the run. The backend may write `analysis_subject/client_fit_check.json` and downstream screens may use bounded Client Fit context.
+
+Client Fit must not be described as suitability approval, trade advice, an optimizer mandate, proof that no action is needed, or a reason to hide material portfolio issues.
 
 ## Main Commands
 
@@ -93,85 +80,102 @@ Run core diagnostics (Blocks 1-3 only):
 python run_core_diagnostics.py [--no-cache] [--dry-run]
 ```
 
-Run portfolio-first review:
+Run the default portfolio-first diagnosis review:
 
 ```bash
-python run_portfolio_review.py [--mode core|full] [--dry-run] [--skip-candidates] [--candidate-profile PROFILE] [--candidates ID,ID,...] [--no-parallel-lightweight-reports] [--with-pdf] [--legacy-full-pdf]
+python run_portfolio_review.py [--dry-run] [--skip-candidates] [--with-pdf] [--legacy-full-pdf]
 ```
 
-Default output profile is `site_api` (JSON/cache only); a routine review **does not** refresh
-`pdf files/`. Use `--with-pdf` for portfolio-first decision PDFs (`analysis_subject` + decision
-package). Use `--legacy-full-pdf` to regenerate the full legacy variant PDF suite.
+Default `run_portfolio_review.py` is diagnosis-only and uses the `site_api` output profile unless an explicit export/PDF option is selected.
 
-Run legacy policy optimization:
+Run the canonical one-candidate vertical demo:
 
 ```bash
-python run_optimization.py [--no-cache] [--write-config] [--config PATH] [--profile NAME] [--no-report]
+python scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight
 ```
 
-Run report:
+Run the explicit backend factory-id compatibility path:
 
 ```bash
-python run_report.py [--no-cache] [--clear-cache] [--backtest-mode dynamic_nan_safe]
+python run_portfolio_review.py --candidates equal_weight
 ```
 
-Run post-optimization tilt:
+Use this only when the backend factory id is already known; it is not the canonical visible Builder-to-Block-7 proof.
+
+Run advanced/research candidate batches:
 
 ```bash
-python run_view_after_optimization.py --asset VOO --delta 2
+python run_portfolio_review.py --with-candidates
+python run_portfolio_review.py --mode full
 ```
 
-Run candidate factory (orchestrate benchmark/optimizer builders before compare):
+Run legacy policy compatibility flows only when explicitly needed:
 
 ```bash
-python run_candidate_factory.py [--profile default_v1] [--candidates ID,ID,...] [--force] [--fail-fast] [--then-compare]
+python run_optimization.py
+python run_report.py
+python run_mvp_workflow.py [--workflow policy-only|policy-current|full-decision|diagnosis-only]
 ```
 
-Candidate and robust portfolio commands are indexed in [docs/specs/candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md), [docs/specs/candidate_factory_spec.md](docs/specs/candidate_factory_spec.md), [docs/specs/robust_mv_spec.md](docs/specs/robust_mv_spec.md), and [docs/specs/robust_scenario_optimization_spec.md](docs/specs/robust_scenario_optimization_spec.md).
+Candidate and robust portfolio commands are indexed in `docs/specs/candidate_portfolios_spec.md`, `docs/specs/candidate_factory_spec.md`, `docs/specs/robust_mv_spec.md`, and `docs/specs/robust_scenario_optimization_spec.md`.
 
-## Source Of Truth
+## Source of Truth Routing
 
-Before changing behavior, follow [WORKFLOW.md](WORKFLOW.md) and start from [RULES.md](RULES.md).
+Before changing behavior, follow `WORKFLOW.md` and start from `RULES.md`.
 
-Key sources:
+Use this current source-of-truth hierarchy:
 
-- [SPEC.md](SPEC.md) for the current implementation contract.
-- [DATA.md](DATA.md) for data sources, pipeline, structures, and quality rules.
-- [OUTPUTS.md](OUTPUTS.md) for generated outputs, folders, formats, and generated-vs-source boundaries.
-- [TESTING.md](TESTING.md) for verification strategy and test selection.
-- [GLOSSARY.md](GLOSSARY.md) for shared terminology.
-- [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for active issues and technical debt.
-- [DECISIONS.md](DECISIONS.md) for key decisions and rationale.
-- [CHANGELOG.md](CHANGELOG.md) for concise completed-change history.
-- [docs/audits/README.md](docs/audits/README.md) for the audit register and audit-to-plan links.
-- [docs/exec_plans/README.md](docs/exec_plans/README.md) for the plan register and current active-plan pointer.
-- [docs/specs/](docs/specs/README.md) for detailed module-specific behavior.
-- [PLANS.md](PLANS.md) for ExecPlan requirements on large or risky work.
-- [DESIGN.md](DESIGN.md) for UI, dashboard, generated HTML, and visual-interface work.
-- [DOCUMENTATION_MIGRATION_PLAN.md](DOCUMENTATION_MIGRATION_PLAN.md), [DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md](DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md), and `docs/archive/documentation_migration_2026_05_25/` for documentation migration traceability only; verify current-implementation claims against `SPEC.md`, detailed specs, and code before treating them as implemented.
+1. Agent operating rules: `AGENTS.md`.
+2. Task workflow and documentation sync: `WORKFLOW.md`, `docs/contracts/DOC_SYNC_CONTRACT.md`.
+3. Current implementation contract: `SPEC.md`.
+4. Product flow and boundaries: `docs/contracts/PRODUCT_FLOW_CONTRACT.md`, `PRODUCT.md`.
+5. Screen flow and route responsibilities: `docs/contracts/SCREEN_CONTRACTS.md`, `docs/specs/frontend_screen_contracts.md`, `frontend/README.md`.
+6. Artifact-to-screen routing and same-run lineage: `docs/contracts/ARTIFACT_TO_SCREEN_MAP.md`.
+7. Runtime entrypoints: `docs/runtime_entrypoints.md`, `docs/specs/portfolio_review_workflow_spec.md`, `OUTPUTS.md`.
+8. Data rules: `DATA.md` and owning `docs/specs/*.md` files.
+9. Testing and QA: `TESTING.md`, `docs/contracts/QA_CONTRACT.md`, `KNOWN_ISSUES.md`.
+10. Design: `DESIGN.md`, `docs/design/current_website_structure.md`, `docs/design/portfolio_mri_design_system.md`.
+11. Decisions and history: `DECISIONS.md`, `CHANGELOG.md`, `docs/audits/README.md`, `docs/exec_plans/README.md`.
+12. ExecPlan rules for large/risky work: `PLANS.md`.
 
-Do not invent formulas, estimators, scenarios, constraints, statuses, or data rules when a canonical spec exists.
+Product concept documents, historical audits, completed ExecPlans, and archived legacy docs are traceability only. They do not override current specs, contracts, code, frontend routes, formulas, output contracts, or runtime behavior.
+
+## Do Not Treat As Current Core MVP
+
+Do not describe these as the current Core MVP product flow unless a current spec explicitly promotes them:
+
+- Portfolio Health Score as the main product answer.
+- Robustness Scorecard as the main product answer.
+- Macro Dashboard / Macro Overlay.
+- Full multi-candidate ranking / optimizer arena.
+- Assumption Sensitivity, Pareto / Dominance, Regret Analysis, and Model Risk Diagnostics as primary screens.
+- Full Action Plan / Rebalancing Advisor.
+- Full Decision Journal.
+- Advanced monitoring UI or multi-client monitoring workspace.
+- Crisis Replay UI and What Happens If simulator UI.
+- Client Fit suitability approval.
+- Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, full custom constraints UI, or multi-client workspace.
+- Polished PDF report product as the default output path.
+
+If these capabilities exist in code or generated outputs, classify them as `Advanced`, `Backend evidence`, `Technical artifact`, `Legacy`, `Generated support artifact`, or `Future/backlog`; do not promote them into current product truth merely because files exist.
 
 ## Core Agent Rules
 
-- In chat with the user, communicate in Russian by default and as with a non-professional developer: explain ongoing work in simple terms, point out misunderstandings or risky assumptions clearly and respectfully, and ask necessary project questions in plain language without unexplained technical jargon. This applies to assistant-user communication only.
-- Repository language policy is strict: all in-project artifacts must be created, edited, named, and documented in English regardless of the language used in chat, voice dictation, source prompts, or user phrasing. This includes source code prose, comments, tests, docs, Cursor rules, commands, generated report text, product copy, UI labels, file names, directory names, descriptions, examples, fixtures, logs committed as source, and generated artifacts when they are intentionally refreshed or checked in.
-- Do not introduce Russian, mixed-language prose, non-English file names, or mojibake into repository files. If legacy Russian text or broken encoding is found while touching a file, normalize it to clear English or remove/replace the legacy text with an English-only note when exact translation is not required for current behavior.
+- In chat with the user, communicate in Russian by default and as with a non-professional developer: explain ongoing work simply, point out misunderstandings or risky assumptions respectfully, and ask necessary project questions in plain language.
+- Repository language policy is strict: all in-project artifacts must be created, edited, named, and documented in English regardless of the language used in chat, voice dictation, source prompts, or user phrasing.
+- Do not introduce Russian, mixed-language prose, non-English file names, or mojibake into repository files. If legacy Russian text or broken encoding is found while touching a file, normalize it to clear English or remove/replace it when exact translation is not required for current behavior.
 - Keep changes scoped to the requested behavior and owning files.
 - Prefer existing helpers and repo patterns over new parallel implementations.
 - Treat diagnostics as non-binding unless a canonical spec says otherwise.
 - Do not manually require final weights in `config.yml`; optimization writes `portfolio_weights.yml` and `run_result.json`.
 - ETF and stock taxonomy are annotation-only in V1 unless a canonical spec changes that boundary.
-- Round only at final export/report stage when governed by metric specs.
-- Preserve full precision during calculations.
-- Do not treat generated outputs as source unless the task explicitly targets generated artifacts; use [OUTPUTS.md](OUTPUTS.md) for output boundaries.
-- Do not demote or delete existing implementation capabilities only because they are absent from a
-  product concept draft; classify them as `Preserve`, `Advanced`, `Legacy`, or `Requires Review`
-  unless a canonical spec or explicit task says otherwise.
+- Preserve full precision during calculations; round only at final export/report stage when governed by metric specs.
+- Do not invent formulas, estimators, scenarios, constraints, statuses, or data rules when a canonical spec exists.
+- Do not demote or delete implementation capabilities only because older concept docs omitted them; classify them as `Preserve`, `Advanced`, `Legacy`, or `Requires Review` unless a canonical spec or explicit task says otherwise.
 
-## Documentation And Verification
+## Documentation and Verification
 
-Documentation sync is required for meaningful code changes. Use [WORKFLOW.md](WORKFLOW.md) to decide which documents to update and [TESTING.md](TESTING.md) to decide which checks to run.
+Documentation sync is required for meaningful code, behavior, workflow, output, interface, QA, or source-of-truth changes. Use `WORKFLOW.md` and `docs/contracts/DOC_SYNC_CONTRACT.md` to decide which documents to update. Use `TESTING.md` and `docs/contracts/QA_CONTRACT.md` to decide which checks to run.
 
 After meaningful changes:
 
@@ -180,36 +184,25 @@ After meaningful changes:
 - run the narrowest reliable verification first and broaden when risk warrants it;
 - report any unverified area with the reason and blocker.
 
+A task is done only when the requested change is implemented, relevant docs are updated or explicitly waived, verification is run or explicitly waived, unrelated files are not changed, and unverified areas are reported.
+
 ## Browser / Playwright QA
 
-For frontend visual QA or browser click-throughs, avoid the recurring false-read failures from
-stale dev servers, stale browser state, and stale Playwright element references.
+For frontend visual QA or browser click-throughs, avoid stale dev servers, stale browser state, and stale Playwright element references.
 
-- Start from a clean, active local target: use a fresh localhost port when possible, confirm the
-  exact URL, and do not assume an already-open tab or old server is the current build.
-- Check the dev-server terminal/logs before judging the screen. If Next reports missing `.next`
-  chunks, React Client Manifest errors, or a failed compile, fix/restart the server before making
-  product/UI conclusions from the browser.
-- Do not run `next build`, `next dev`, typecheck generation, or other `.next` writers concurrently
-  against the same `frontend/.next` directory during visual QA.
-- Treat browser `localStorage`, old `runs/frontend_review_*` folders, screenshots, and generated
-  artifacts as stale unless they are explicitly created or recovered for the active run being tested.
-- In Playwright, take a fresh snapshot before using element refs and re-snapshot after navigation,
-  modal/menu changes, route changes, or major UI updates. If a ref fails or behavior looks odd,
-  re-snapshot before diagnosing the UI.
-- For Portfolio MRI vertical demos, follow
-  [docs/demo/frontend_backend_vertical_runbook.md](docs/demo/frontend_backend_vertical_runbook.md):
-  verify the active `reviewId`, selected Launchpad card, Builder setup, candidate, comparison,
-  verdict, and report all belong to the same run-local artifact chain.
-- When reporting visual QA, include: URL/port, route, active `reviewId` if relevant, whether sample
-  mode was used, what browser state was reset or recovered, screenshots captured, and any unverified
-  area.
+- Start from a clean, active local target: use a fresh localhost port when possible, confirm the exact URL, and do not assume an already-open tab or old server is the current build.
+- Check dev-server terminal/logs before judging the screen. If Next reports missing `.next` chunks, React Client Manifest errors, or a failed compile, fix/restart the server before making product/UI conclusions from the browser.
+- Do not run `next build`, `next dev`, typecheck generation, or other `.next` writers concurrently against the same `frontend/.next` directory during visual QA.
+- Treat browser `localStorage`, old `runs/frontend_review_*` folders, screenshots, and generated artifacts as stale unless explicitly created or recovered for the active run being tested.
+- In Playwright, take a fresh snapshot before using element refs and re-snapshot after navigation, modal/menu changes, route changes, or major UI updates.
+- For Portfolio MRI vertical demos, follow `docs/demo/frontend_backend_vertical_runbook.md` and verify the active `reviewId`, selected Launchpad card, Builder setup, candidate, comparison, verdict, and report all belong to the same run-local artifact chain.
+- When reporting visual QA, include URL/port, route, active `reviewId` if relevant, sample mode status, browser state reset/recovery, screenshots captured, and any unverified area.
 
 ## ExecPlans
 
-For new complex tasks, large changes, or refactors, follow [PLANS.md](PLANS.md) before implementation.
+For new complex tasks, large changes, or refactors, follow `PLANS.md` before implementation.
 
-- Read [PLANS.md](PLANS.md) fully before authoring or changing an ExecPlan.
+- Read `PLANS.md` fully before authoring or changing an ExecPlan.
 - Create or update checked-in ExecPlans under `docs/exec_plans/`.
 - Keep ExecPlans as living documents: update `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` as work proceeds.
 - Small, localized fixes do not need a separate ExecPlan unless the user asks for one.
@@ -225,16 +218,19 @@ Common generated paths include:
 - `results_csv/`
 - `Main portfolio/`
 - portfolio variant output folders
+- `runs/frontend_review_*`
 - `portfolio_weights.yml`
 - `__pycache__/`
 - `.pytest_cache/`
-- generated PDFs and generated markdown report sources
+- `pdf files/`
+- `pdf_md_sources/`
+- generated CSV/TXT/HTML/PNG/PDF/Markdown/CSS sidecars
 
 ## Specialized agents (routing)
 
 | Task | Agent |
 | --- | --- |
-| New ticker / ETF or stock universe / stress block EQ–CA onboarding | `.cursor/agents/asset-taxonomy-stress-classification-agent.md` |
+| New ticker / ETF or stock universe / stress block EQ-CA onboarding | `.cursor/agents/asset-taxonomy-stress-classification-agent.md` |
 
 ## Editing Guidance
 

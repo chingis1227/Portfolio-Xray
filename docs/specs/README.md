@@ -5,12 +5,13 @@ This directory contains the detailed source-of-truth documents for module-specif
 These specs describe current implementation contracts. Product-facing Portfolio MRI language in `PRODUCT.md` or `ARCHITECTURE.md` may map these contracts into target UX concepts, but it does not rename schemas, output files, formulas, fields, statuses, or generated artifact contracts.
 
 Output category boundary: the product-facing diagnosis-first bundle is
-`problem_classification.json`, `candidate_launchpad.json`, `portfolio_alternatives_builder.json`,
-`candidate_generation.json`, `current_vs_candidate.json`, `decision_verdict.json`,
+`client_fit_check.json`, `problem_classification.json`, `candidate_launchpad.json`,
+`portfolio_alternatives_builder.json`, `candidate_generation.json`,
+`current_vs_candidate.json`, `decision_verdict.json`,
 `ai_commentary_context.json`, and `what_changed_summary.json`. Builder setup is not a candidate;
-Candidate Generation is not a recommendation; reference tests are diagnostic comparisons; Decision
-Verdict is where action/no-action is evaluated, including valid no-trade and evidence-insufficient
-outcomes.
+Client Fit is non-binding context; Candidate Generation is not a recommendation; reference tests are
+diagnostic comparisons; Decision Verdict is where action/no-action is evaluated, including valid
+no-trade and evidence-insufficient outcomes.
 `candidate_comparison.json`, `selection_decision.json`, factory manifests, and `output_manifest.json`
 remain technical contracts. Health, robustness, assumption sensitivity, Pareto/dominance, regret,
 trade-off, and model-risk artifacts are advanced/research evidence unless a later approved spec
@@ -39,7 +40,7 @@ Top-level documents stay compact:
 | Diagnosis-first workflow state classification (`diagnosis_only`, `one_candidate`, `multiple_candidates`) | [workflow_state_spec.md](workflow_state_spec.md) |
 | Client Fit V1 check, questionnaire, source quality, Block 4 evidence boundary, and no-advice boundary | [client_fit_check_spec.md](client_fit_check_spec.md), [client_fit_questionnaire_spec.md](client_fit_questionnaire_spec.md) |
 | Problem Classification diagnostic artifact and evidence-to-diagnosis mapping | [problem_classification_spec.md](problem_classification_spec.md) (V1); [block_4_diagnosis_v3_spec.md](block_4_diagnosis_v3_spec.md) (V3 current) |
-| Candidate Launchpad data artifact and problem-to-hypothesis card mapping | [candidate_launchpad_spec.md](candidate_launchpad_spec.md) (V1); [block_4_diagnosis_v3_spec.md](block_4_diagnosis_v3_spec.md) §5 (V3 current) |
+| Candidate Launchpad data artifact and problem-to-hypothesis card mapping | [candidate_launchpad_spec.md](candidate_launchpad_spec.md) (V1); [block_4_diagnosis_v3_spec.md](block_4_diagnosis_v3_spec.md) Section5 (V3 current) |
 | Portfolio Alternatives Builder setup, validation, and explicit Block 6 / Block 7 boundary | [portfolio_alternatives_builder_spec.md](portfolio_alternatives_builder_spec.md), [builder_prefill_spec.md](builder_prefill_spec.md), [candidate_setup_spec.md](candidate_setup_spec.md) |
 | Candidate Generation one-attempt artifact from validated Builder setup | [candidate_generation_spec.md](candidate_generation_spec.md) |
 | Portfolio X-Ray diagnostics, seven-section current-portfolio diagnostic layer, and `portfolio_xray.json` contract | [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) |
@@ -75,13 +76,13 @@ Top-level documents stay compact:
 | Crisis replay path contract | [crisis_replay_spec.md](crisis_replay_spec.md) |
 | Candidate and benchmark portfolios | [candidate_portfolios_spec.md](candidate_portfolios_spec.md) |
 | Candidate portfolio factory orchestration | [candidate_factory_spec.md](candidate_factory_spec.md) |
-| Candidate Factory layer mapping (Block 4.1–4.9) | [candidate_factory_layer_spec.md](candidate_factory_layer_spec.md) |
+| Candidate Factory layer mapping (Block 4.1-4.9) | [candidate_factory_layer_spec.md](candidate_factory_layer_spec.md) |
 | Optimization Engine methodology map (Block 5 audit baseline) | [../audits/2026-05-20_optimization_engine_methodology_map.md](../audits/2026-05-20_optimization_engine_methodology_map.md) |
 | Optimization Engine layer (Block 5.1-5.11), roles, objective/estimator/constraint/status/output matrices | [optimization_engine_layer_spec.md](optimization_engine_layer_spec.md) |
 | Optimization Engine post-audit roadmap (Phase 15) | [../exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md](../exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md) |
 | Canonical multi-candidate comparison artifact | [candidate_comparison_spec.md](candidate_comparison_spec.md) |
 | Current-vs-candidate product comparison adapter | [current_vs_candidate_spec.md](current_vs_candidate_spec.md) |
-| Downstream decision readiness (Blocks 6–7 handoff, eligibility guards) | [downstream_decision_readiness_spec.md](downstream_decision_readiness_spec.md) |
+| Downstream decision readiness (Blocks 6-7 handoff, eligibility guards) | [downstream_decision_readiness_spec.md](downstream_decision_readiness_spec.md) |
 | Robustness Scorecard (diagnostic resilience scoring) | [robustness_scorecard_spec.md](robustness_scorecard_spec.md) |
 | Portfolio Health Score (diagnostic holistic quality scoring) | [portfolio_health_score_spec.md](portfolio_health_score_spec.md) |
 | Selection Engine and No-Trade Recommendation (formal decision contract) | [selection_engine_spec.md](selection_engine_spec.md) |
@@ -103,7 +104,7 @@ Top-level documents stay compact:
 | Decision package report/PDF summary | [decision_package_reporting_spec.md](decision_package_reporting_spec.md) |
 | ETF and stock taxonomy | [taxonomy_spec.md](taxonomy_spec.md) |
 | Asset taxonomy onboarding (new tickers, stress blocks, report CLI) | [asset_taxonomy_onboarding_spec.md](asset_taxonomy_onboarding_spec.md) |
-| US universe ingestion (public listings → draft taxonomy) | [universe_ingestion_spec.md](universe_ingestion_spec.md) |
+| US universe ingestion (public listings -> draft taxonomy) | [universe_ingestion_spec.md](universe_ingestion_spec.md) |
 | ETF taxonomy schema | [etf_universe_spec.md](etf_universe_spec.md) |
 | Stock taxonomy schema | [stock_universe_spec.md](stock_universe_spec.md) |
 | View After Optimization | [view_after_optimization_spec.md](view_after_optimization_spec.md) |

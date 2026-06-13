@@ -1,37 +1,31 @@
 # Business Vision
 
-This document is part of the active project documentation after the documentation migration. It describes the current canonical business direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
+This document describes the current business direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
 
 ## 1. Business Positioning
 
-Portfolio MRI / Portfolio X-Ray is a portfolio diagnostics and investment decision-support system. The **canonical current product truth is “Diagnosis 2”**.
+Portfolio MRI / Portfolio X-Ray is a diagnosis-first, current-portfolio-first investment decision-support system.
 
-It helps advisors and sophisticated investors understand what is really inside a portfolio, where
-risk is concentrated, how the portfolio may behave under stress, which alternative allocation
-hypothesis is worth testing, and whether a rebalance is justified.
+It helps advisors and sophisticated investors understand what is really inside a portfolio, where risk is concentrated, how the portfolio may behave under stress, how that evidence compares with non-binding Client Fit context, which alternative allocation hypothesis is worth testing, and whether a rebalance review is justified.
 
-The product is not positioned as a black-box optimizer. Optimizers and candidate builders may exist
-inside the system, but the business value is the disciplined decision workflow:
+The product is not positioned as a black-box optimizer. Optimizers and candidate builders may exist inside the system, but the business value is the disciplined decision workflow:
 
 ```text
-Input portfolio
+Input Portfolio
 -> Portfolio X-Ray
 -> Stress Test Lab
+-> Client Fit Check
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
+-> Candidate Generation
 -> Current vs Candidate Comparison
 -> Decision Verdict
 -> AI Commentary / grounding
 -> Monitoring / What Changed
 ```
 
-“Diagnosis 2 Later” is backlog / advanced / later. Health Score, Robustness Scorecard, macro
-dashboards, full multi-candidate arenas, full Action Plan / Rebalancing Advisor, full Decision
-Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client-Fit Check, Asset X-Ray,
-Max Sharpe, tax-aware optimization, turnover-aware optimizer objectives, tactical tilt, full custom
-constraints UI, multi-client workspace, and polished PDF report product are not the current Core MVP
-business promise unless explicitly promoted by canonical specs.
+Advanced/later capabilities are not the current Core MVP business promise unless explicitly promoted by canonical specs. This includes Health Score, Robustness Scorecard, macro dashboards, full multi-candidate arenas, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client Fit suitability approval, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objectives, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product.
 
 ## 2. One-Sentence Positioning
 
@@ -311,7 +305,6 @@ them as implemented unless verified in `SPEC.md`, `docs/specs/*.md`, or code.
 - Full PDF report design.
 - Advanced Parameter Builder settings.
 - Asset X-Ray / Asset Diagnostics.
-- Client-Fit Check / questionnaire.
 - Portfolio Archetype Classification is an optional later diagnostic layer that can classify the
   portfolio by behavior, such as Equity Growth Portfolio, Balanced 60/40-like, Credit Carry
   Portfolio, Duration-heavy Defensive, Inflation-sensitive, or Pseudo-diversified Portfolio. It

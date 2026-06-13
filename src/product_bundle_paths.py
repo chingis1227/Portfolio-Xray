@@ -1,14 +1,21 @@
-"""Resolve Core MVP product bundle paths for portfolio-first consumers (RM-ARCH-011).
+"""Resolve Core MVP product-bundle paths for portfolio-first consumers.
 
-Bundle phases (six JSON files, no merged ``product_bundle.json``):
+The product bundle is a set of separate JSON files, not one merged
+``product_bundle.json``. Discovery intentionally mirrors the current product
+flow:
 
-- **After diagnosis / materialize (#1–2):** ``problem_classification.json``,
-  ``candidate_launchpad.json`` under ``{output_dir_final}/analysis_subject/``.
-- **After compare only (#3–6):** ``current_vs_candidate.json``, ``decision_verdict.json``,
-  ``ai_commentary_context.json``, ``what_changed_summary.json`` at variant root.
+- diagnosis/context artifacts under ``analysis_subject/`` where possible:
+  ``client_fit_check.json``, ``problem_classification.json``,
+  ``candidate_launchpad.json``, and ``portfolio_alternatives_builder.json``;
+- explicit candidate-attempt artifact at the run root:
+  ``candidate_generation.json``;
+- post-compare artifacts at the run root: ``current_vs_candidate.json``,
+  ``decision_verdict.json``, ``ai_commentary_context.json``, and
+  ``what_changed_summary.json``.
 
-``output_manifest.json`` → ``product_discovery`` exposes which keys exist on disk;
-``product_bundle_complete`` is true only when all six are present.
+``output_manifest.json`` -> ``product_discovery`` exposes which screen-critical
+keys exist on disk. The manifest helps discovery only; consumers must still
+enforce same-run and same-candidate lineage before trusting a downstream file.
 """
 
 from __future__ import annotations
@@ -23,7 +30,9 @@ from src.block_2_3_factor_exposure import BLOCK_2_3_ID
 from src.block_2_4_hidden_exposure import BLOCK_2_4_ID
 from src.block_2_5_risk_budget_view import BLOCK_2_5_ID
 from src.block_2_6_portfolio_weakness_map import BLOCK_2_6_ID
+from src.candidate_generation import CANDIDATE_GENERATION_FILENAME
 from src.candidate_launchpad import CANDIDATE_LAUNCHPAD_FILENAME
+from src.client_fit import CLIENT_FIT_CHECK_FILENAME
 from src.portfolio_alternatives_builder import PORTFOLIO_ALTERNATIVES_BUILDER_FILENAME
 from src.problem_classification import PROBLEM_CLASSIFICATION_FILENAME
 
@@ -80,9 +89,14 @@ def _load_json(path: Path | None) -> dict[str, Any] | None:
 
 
 PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS: tuple[str, ...] = (
+    "client_fit_check_json",
     "problem_classification_json",
     "candidate_launchpad_json",
     "portfolio_alternatives_builder_json",
+)
+
+PRODUCT_BUNDLE_CANDIDATE_GENERATION_MANIFEST_KEYS: tuple[str, ...] = (
+    "candidate_generation_json",
 )
 
 PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS: tuple[str, ...] = (
@@ -98,6 +112,7 @@ OPTIONAL_PRODUCT_BUNDLE_MANIFEST_KEYS: tuple[str, ...] = (
 
 PRODUCT_BUNDLE_MANIFEST_KEYS: tuple[str, ...] = (
     *PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS,
+    *PRODUCT_BUNDLE_CANDIDATE_GENERATION_MANIFEST_KEYS,
     *PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS,
 )
 
@@ -183,6 +198,10 @@ def product_bundle_generated_paths_for_manifest(output_dir_final: Path) -> dict[
     base = Path(output_dir_final)
     out: dict[str, str] = {}
 
+    client_fit_path, _ = _resolve_artifact_path(base, CLIENT_FIT_CHECK_FILENAME)
+    if client_fit_path is not None and client_fit_path.is_file():
+        out["client_fit_check_json"] = _normalize_manifest_path(client_fit_path)
+
     problem_path = resolve_problem_classification_path(base)
     if problem_path is not None and problem_path.is_file():
         out["problem_classification_json"] = _normalize_manifest_path(problem_path)
@@ -196,6 +215,7 @@ def product_bundle_generated_paths_for_manifest(output_dir_final: Path) -> dict[
         out["portfolio_alternatives_builder_json"] = _normalize_manifest_path(builder_path)
 
     for key, filename in (
+        ("candidate_generation_json", CANDIDATE_GENERATION_FILENAME),
         ("current_vs_candidate_json", "current_vs_candidate.json"),
         ("decision_verdict_json", "decision_verdict.json"),
         ("ai_commentary_context_json", "ai_commentary_context.json"),
@@ -295,15 +315,22 @@ def build_generated_paths_by_category(
 
 def _product_bundle_phase(
     diagnosis_paths: dict[str, str],
+    candidate_generation_paths: dict[str, str],
     post_compare_paths: dict[str, str],
 ) -> str:
     diagnosis_complete = len(diagnosis_paths) == len(PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS)
+    candidate_generation_complete = len(candidate_generation_paths) == len(
+        PRODUCT_BUNDLE_CANDIDATE_GENERATION_MANIFEST_KEYS
+    )
+    post_compare_complete = len(post_compare_paths) == len(PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS)
     post_compare_count = len(post_compare_paths)
-    if diagnosis_complete and post_compare_count == len(PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS):
+    if diagnosis_complete and candidate_generation_complete and post_compare_complete:
         return "complete"
-    if diagnosis_complete and post_compare_count == 0:
+    if diagnosis_complete and candidate_generation_complete and post_compare_count == 0:
+        return "candidate_generated"
+    if diagnosis_complete and not candidate_generation_paths and post_compare_count == 0:
         return "diagnosis_only"
-    if diagnosis_complete or post_compare_count:
+    if diagnosis_complete or candidate_generation_paths or post_compare_count:
         return "post_compare_partial"
     return "absent"
 
@@ -321,26 +348,45 @@ def build_product_discovery_block(
         for key in PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS
         if key in clean
     }
+    candidate_generation_paths = {
+        key: clean[key]
+        for key in PRODUCT_BUNDLE_CANDIDATE_GENERATION_MANIFEST_KEYS
+        if key in clean
+    }
     post_compare_paths = {
         key: clean[key]
         for key in PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS
         if key in clean
     }
     diagnosis_complete = len(diagnosis_paths) == len(PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS)
+    candidate_generation_complete = len(candidate_generation_paths) == len(
+        PRODUCT_BUNDLE_CANDIDATE_GENERATION_MANIFEST_KEYS
+    )
     post_compare_complete = len(post_compare_paths) == len(
         PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS
     )
     return {
         "primary_output_surface": "product_bundle",
         "product_bundle_paths": product_paths,
-        "product_bundle_complete": diagnosis_complete and post_compare_complete,
+        "product_bundle_complete": (
+            diagnosis_complete and candidate_generation_complete and post_compare_complete
+        ),
         "diagnosis_bundle_paths": diagnosis_paths,
         "diagnosis_bundle_complete": diagnosis_complete,
+        "candidate_generation_paths": candidate_generation_paths,
+        "candidate_generation_complete": candidate_generation_complete,
         "post_compare_bundle_paths": post_compare_paths,
         "post_compare_bundle_complete": post_compare_complete,
-        "product_bundle_phase": _product_bundle_phase(diagnosis_paths, post_compare_paths),
+        "product_bundle_phase": _product_bundle_phase(
+            diagnosis_paths,
+            candidate_generation_paths,
+            post_compare_paths,
+        ),
         "read_order": list(PRODUCT_BUNDLE_MANIFEST_KEYS),
         "diagnosis_read_order": list(PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS),
+        "candidate_generation_read_order": list(
+            PRODUCT_BUNDLE_CANDIDATE_GENERATION_MANIFEST_KEYS
+        ),
         "post_compare_read_order": list(PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS),
     }
 
@@ -457,8 +503,17 @@ def product_bundle_manifest_extra() -> dict[str, Any]:
         "product_bundle_contract": {
             "artifact_count": len(PRODUCT_BUNDLE_MANIFEST_KEYS),
             "diagnosis_artifact_keys": list(PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS),
+            "candidate_generation_artifact_keys": list(
+                PRODUCT_BUNDLE_CANDIDATE_GENERATION_MANIFEST_KEYS
+            ),
             "post_compare_artifact_keys": list(PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS),
-            "diagnosis_present_after": "portfolio_review diagnosis or run_report materialize",
+            "diagnosis_present_after": (
+                "portfolio_review diagnosis or run_report materialize; client_fit_check may "
+                "be not_provided for backend/CLI compatibility"
+            ),
+            "candidate_generation_present_after": (
+                "explicit Generate Candidate action or Blocks 5-9 vertical demo"
+            ),
             "post_compare_present_after": (
                 "candidate factory + compare (--candidates, --with-candidates, --mode full)"
             ),
@@ -538,6 +593,7 @@ __all__ = [
     "LEGACY_COMPATIBILITY_MANIFEST_KEYS",
     "ORCHESTRATION_MANIFEST_KEYS",
     "OPTIONAL_PRODUCT_BUNDLE_MANIFEST_KEYS",
+    "PRODUCT_BUNDLE_CANDIDATE_GENERATION_MANIFEST_KEYS",
     "PRODUCT_BUNDLE_DIAGNOSIS_MANIFEST_KEYS",
     "PRODUCT_BUNDLE_MANIFEST_KEYS",
     "PRODUCT_BUNDLE_POST_COMPARE_MANIFEST_KEYS",

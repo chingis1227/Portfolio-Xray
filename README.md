@@ -1,13 +1,14 @@
 # Portfolio MRI / Portfolio X-Ray
 
-Portfolio MRI / Portfolio X-Ray is a Python portfolio diagnostics and investment decision-support system. The **canonical current product truth is “Diagnosis 2”**: diagnosis-first, current-portfolio-first, decision-support oriented, and not optimizer-first.
+Portfolio MRI / Portfolio X-Ray is a diagnosis-first, current-portfolio-first investment decision-support system. It is not optimizer-first.
 
 Canonical current product flow:
 
 ```text
-Input portfolio
+Input Portfolio
 -> Portfolio X-Ray
 -> Stress Test Lab
+-> Client Fit Check
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
@@ -18,11 +19,11 @@ Input portfolio
 -> Monitoring / What Changed
 ```
 
-Its purpose is diagnosis before action, not black-box allocation. The system helps a user understand the current portfolio first, identify problems, test a selected candidate hypothesis when useful, compare trade-offs, and reach a defensible verdict.
+Its purpose is diagnosis before action, not black-box allocation. The system helps a user understand the current portfolio first, compare the evidence with non-binding Client Fit context, identify problems, test one selected candidate hypothesis when useful, compare trade-offs, and reach a defensible verdict.
 
-The implementation remains CLI/file-driven and still contains older optimizer/report/scorecard-heavy infrastructure. That infrastructure is support code unless explicitly promoted by current specs. In particular, Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client-Fit Check, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objectives, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product are **advanced / backend / legacy / future-backlog**, not the current Core MVP product flow.
+The implementation remains CLI/file-driven and still contains older optimizer/report/scorecard-heavy infrastructure. That infrastructure is support code unless explicitly promoted by current specs. In particular, Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client Fit suitability approval, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objectives, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product are **advanced / backend / legacy / future-backlog**, not the current Core MVP product flow.
 
-Product concept documents describe target direction only. Current behavior is governed by [SPEC.md](SPEC.md), [RULES.md](RULES.md), [DATA.md](DATA.md), [OUTPUTS.md](OUTPUTS.md), and detailed specs under [docs/specs/](docs/specs/README.md). Documentation migration records and archived legacy copies are retained for traceability; active behavior remains governed by the canonical specs and code.
+Product concept documents describe target direction only. Current behavior is governed by [SPEC.md](SPEC.md), [RULES.md](RULES.md), [DATA.md](DATA.md), [OUTPUTS.md](OUTPUTS.md), and detailed specs under [docs/specs/](docs/specs/README.md). Historical audits, completed plans, and archived legacy copies are retained for traceability only; active behavior remains governed by current specs, contracts, and code.
 
 Default execution is site/API-first: JSON contracts and cache are written for backend/UI
 consumption, while CSV/TXT/HTML/PNG/PDF/Markdown/CSS presentation artifacts are disabled unless an
@@ -90,6 +91,8 @@ Current Core MVP product layer:
 - Canonical portfolio-first workflow contract through `analysis_subject`; runtime transition is active
   and governed by [portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md).
 - Portfolio-first CLI orchestration through `run_portfolio_review.py`.
+- Client Fit V1 as non-binding diagnostic context after Stress Lab and before Hypothesis.
+- Client Fit V1 as non-binding diagnostic context after Stress Lab and before Hypothesis.
 - Additive diagnosis-first product-bundle artifacts and adapters: Problem Classification (`problem_classification.json`), Candidate Launchpad (`candidate_launchpad.json`), Portfolio Alternatives Builder setup (`portfolio_alternatives_builder.json`), one-attempt Candidate Generation (`candidate_generation.json`), Current-vs-Candidate (`current_vs_candidate.json`), Decision Verdict (`decision_verdict.json`), AI Commentary grounding context (`ai_commentary_context.json`), and light What Changed summary (`what_changed_summary.json`). These are the current product-facing files where implemented: Builder setup is not a candidate, a candidate is not a recommendation, and Decision Verdict is where action/no-action is evaluated.
 - JSON generated artifacts by default; CSV, HTML, TXT, PNG, and PDF-style artifacts remain explicit export/report outputs.
 
@@ -130,12 +133,13 @@ Target/TBD areas:
 
 ## Main Pipeline
 
-“Diagnosis 2” is the binding product workflow contract:
+The current product workflow contract is:
 
 ```text
 current portfolio / analysis_subject
 -> Portfolio X-Ray diagnostics
 -> Stress Test Lab
+-> Client Fit Check
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
@@ -428,7 +432,6 @@ Detailed report/output behavior lives in [docs/specs/reporting_outputs_spec.md](
 | `CHANGELOG.md` | Concise history of meaningful project changes. |
 | `ARCHITECTURE.md` | Architecture map, module layers, flows, inputs, outputs, and boundaries. |
 | `PRODUCT.md` | Target product flow, UX behavior, screens, and product modules. |
-| `DOCUMENTATION_MIGRATION_PLAN.md` | Documentation migration plan and session roadmap; draft/planning only. |
 | `docs/archive/documentation_migration_2026_05_25/` | Archived pre-migration versions of replaced documentation. |
 | `docs/ROADMAP.md` | Ordered development roadmap, backlog phases, prerequisites, and audit-to-session mapping. |
 | `BUSINESS_VISION.md` | Business vision, users, value proposition, and long-term direction. |
@@ -480,7 +483,7 @@ Start with [RULES.md](RULES.md), then use [SPEC.md](SPEC.md) as the implementati
 | Roadmap and backlog | [docs/ROADMAP.md](docs/ROADMAP.md) |
 | Input and assumptions | [docs/specs/input_assumptions_spec.md](docs/specs/input_assumptions_spec.md) |
 | Product direction | [PRODUCT.md](PRODUCT.md), [BUSINESS_VISION.md](BUSINESS_VISION.md), [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) |
-| Documentation migration records | [DOCUMENTATION_MIGRATION_PLAN.md](DOCUMENTATION_MIGRATION_PLAN.md), [DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md](DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md), and archived legacy docs |
+| Archived legacy documentation | `docs/archive/documentation_migration_2026_05_25/` |
 | Planning protocol | [PLANS.md](PLANS.md) |
 | Design rules | [DESIGN.md](DESIGN.md) |
 | Full Demo MVP guide | [docs/demo/full_demo_mvp.md](docs/demo/full_demo_mvp.md) |

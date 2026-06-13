@@ -1,8 +1,10 @@
 # Client Fit Check Specification
 
-This document owns the Client Fit V1 product and artifact contract. The V1 foundation currently
-writes the backend artifact and exposes it to Block 4 evidence extraction; later sessions will wire
-that evidence into diagnosis rules, UI routes, comparison, verdict, and compact persistence.
+This document owns the Client Fit V1 product and artifact contract. Client Fit V1 is current,
+active, and non-binding diagnostic context. The backend writes the artifact for portfolio-first
+diagnosis runs, Block 4 can use it as bounded evidence, the frontend journey shows `/client-fit`
+after Stress Lab and before Hypothesis, and downstream Builder, Comparison, Verdict, report, API,
+and compact persistence surfaces may consume bounded Client Fit summaries.
 
 ## Purpose
 
@@ -52,6 +54,9 @@ Client Fit V1 includes:
 
 Client Fit V1 excludes liquidity. Existing liquidity fields remain legacy/advanced or future
 backlog and must not drive V1 Client Fit status, Launchpad logic, comparison, or verdict.
+
+`/client-profile` is an advanced/manual Client Fit editor. It is not the normal onboarding entry
+step and must not be documented as a required route before Portfolio Input.
 
 ## Status Taxonomy
 
@@ -188,7 +193,8 @@ structural issue. A generic `breach` status is not a primary diagnosis by itself
 Classification outcome. It means the stated objectives need review before candidate testing; it is
 not a trade instruction and not an optimizer promise. Problem Classification also exposes
 `client_fit_status`, `diagnostic_quality_status`, and `client_fit_context` separately so that a
-fit/breach result does not overwrite objective diagnostic quality. Candidate Launchpad may later
-use Client Fit to choose or explain a hypothesis test. Current vs Candidate may compare current and
-candidate portfolios against client targets. Decision Verdict must combine Client Fit status,
-diagnostic quality status, and candidate evidence.
+fit/breach result does not overwrite objective diagnostic quality. Candidate Launchpad and Builder
+may carry bounded Client Fit context as hypothesis-test criteria. Current vs Candidate may compare
+current and candidate portfolios against client targets. Decision Verdict must combine Client Fit
+status, diagnostic quality status, and candidate evidence without turning Client Fit into suitability
+approval, trade advice, or optimizer constraints.

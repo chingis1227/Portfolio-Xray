@@ -29,14 +29,14 @@ Use the narrowest reliable check first. Broaden only when the change touches sha
 | Blocks 1-5 live core E2E (networked) | Operator or CI proof that `run_portfolio_review.py --with-candidates` materializes subject + `core_fast` factory + comparison with `candidate_menu.review_mode == core` | Run orchestrator, then `python scripts/verify_live_core_e2e.py` or `python -m pytest tests/test_blocks_1_5_live_core_e2e.py --live-core -q` |
 | Blocks 1-5 live full + resume E2E (networked) | Operator proof that `--mode full` (and optional `--resume-candidates`) completes `default_v1` factory + comparison | `python scripts/verify_live_full_e2e.py --run` or `--run --resume-candidates`; then `pytest tests/test_blocks_1_5_live_full_e2e.py --live-full -q` |
 | FRED factor cache smoke (networked) | Before live demos or after changing full factor-matrix FRED/cache behavior | Set API key in the shell, not config: `$env:FRED_API_KEY="your_key_here"`. Check readiness without network: `python scripts/warm_factor_cache.py --check-only --start 2007-01-01 --end YYYY-MM-DD`. If cache is missing/partial/expired, refresh API-first: `python scripts/warm_factor_cache.py --start 2007-01-01 --end YYYY-MM-DD`, then repeat `--check-only`. Focused regression: `python -m pytest tests/test_factor_matrix_builders.py tests/test_data_cache_key.py tests/test_factor_diagnostics_wiring.py tests/test_product_bundle_integration.py -q`. Pass requires `cache_status=valid`, empty `missing_series`, `full_factor_matrix_available=true`, and `demo_safe=true` on check-only. |
-| Blocks 6–7 downstream integration (offline) | Guarded backtest/stress handoff from `candidate_comparison.json` (degraded optimizer stress embed-only) | `python -m pytest tests/test_blocks_6_7_downstream_integration.py tests/test_downstream_decision_readiness.py -q` |
-| Blocks 8–10 package truthfulness (offline) | Partial menu + degraded optimizer disclosure in selection/action/decision package | `python -m pytest tests/test_blocks_8_10_downstream_integration.py tests/test_package_truthfulness.py tests/test_decision_package_reporting.py -q` |
+| Blocks 6-7 downstream integration (offline) | Guarded backtest/stress handoff from `candidate_comparison.json` (degraded optimizer stress embed-only) | `python -m pytest tests/test_blocks_6_7_downstream_integration.py tests/test_downstream_decision_readiness.py -q` |
+| Blocks 8-10 package truthfulness (offline) | Partial menu + degraded optimizer disclosure in selection/action/decision package | `python -m pytest tests/test_blocks_8_10_downstream_integration.py tests/test_package_truthfulness.py tests/test_decision_package_reporting.py -q` |
 | Blocks 1-5 data trust signals | Stress/input/X-Ray trust summaries for episode quality, taxonomy warnings, and young-ETF policy disclosure | `python -m pytest tests/test_data_trust_signals.py -q` |
 | Core diagnostics entrypoint (Blocks 1-3) | `run_core_diagnostics.py`, `--core-diagnostics-only`, or `product_bundle_scope` | `python -m pytest tests/test_core_diagnostics_entrypoint.py -q` |
 | FastAPI foundation contracts | Local FastAPI app, health endpoint, diagnosis/recovery/Builder/Candidate/runtime adapters, Pydantic API models, OpenAPI surface, generated frontend API types, FastAPI screen-mapping governance, sourced-claim/advice-language governance, frontend display-model adapters, Next.js FastAPI compatibility proxy routes, or active-review lineage/isolation behavior | `python -m pytest tests/test_fastapi_app.py tests/test_fastapi_contract_governance.py -q`; after schema/type/screen-map changes also run `python scripts/verify_fastapi_contract_governance.py` and `cd frontend && npm.cmd run typecheck`; when Next.js proxy routes are touched also run `cd frontend && npm.cmd run test:api`; when legacy/debug script helpers or run-local review isolation are touched also run `python -m pytest tests/test_frontend_review_bridge.py -q` |
 | Live FastAPI + frontend vertical QA | Explicit operator proof that fresh FastAPI, fresh Next.js, clean Playwright browser state, frontend compatibility routes, run-local lineage, and stale-card rejection work together across multiple portfolio scenarios | `cd frontend && npm.cmd run qa:vertical -- --scenario-limit 3`; inspect `output/playwright/**/qa-report.json`, screenshots, DOM fallbacks, `next.log`, and `fastapi.log`. This is a live/network-sensitive acceptance check, not a default fast gate. |
 | Portfolio-first workflow orchestration | `run_portfolio_review.py` plan building or step ordering | `python -m pytest tests/test_portfolio_review_workflow.py -q` |
-| One-candidate product demo (Session 07) | After `run_portfolio_review.py --candidates equal_weight` or runtime-truth scoping changes | `python -m pytest tests/test_one_candidate_demo_validation.py -q`; live disk gate: `python scripts/validate_one_candidate_demo.py` |
+| One-candidate product demo | After `scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight` or runtime-truth scoping changes | `python -m pytest tests/test_one_candidate_demo_validation.py -q`; live disk gate: `python scripts/validate_one_candidate_demo.py` |
 | Runtime truth product vs research boundaries (Session 08) | Runtime mode routing, `advanced_package` gating, or compare/verdict scoping changes | `python -m pytest tests/test_runtime_mode_regression_boundaries.py tests/test_portfolio_review_workflow.py tests/test_candidate_comparison.py tests/test_one_candidate_demo_validation.py -q` |
 | Architecture consistency guards (Session 06) | Default diagnosis-only CLI, dry-run stage contracts, `site_api` TXT boundary, runbook batch-default doc drift | `python -m pytest tests/test_architecture_consistency.py tests/test_runtime_mode_regression_boundaries.py tests/test_docs_links.py -q`; `python scripts/verify_docs.py` |
 | MVP workflow orchestration | `run_mvp_workflow.py` plan building or step ordering | `python -m pytest tests/test_mvp_workflow.py -q` |
@@ -54,22 +54,19 @@ Use these PowerShell shortcuts for routine local verification when a full test s
 
 Keep full `python -m pytest` as a manual/nightly or risk-based check, not the everyday fast gate. Run live core/full E2E only for demo, release, or explicit operator proof.
 
-### Known full-suite failures (contract drift, not Block 2.4)
+### Known full-suite status
 
-As of **2026-05-26**, `python -m pytest` reported **6 failures** while **1037+** tests passed. One candidate factory golden drift row was resolved on **2026-06-12**; remaining rows are tracked as separate tech debt in [KNOWN_ISSUES.md](KNOWN_ISSUES.md) (index **Full pytest suite contract drift**). They are unrelated to Block 2.4 Hidden Exposure.
+As of the latest recorded full-suite audit on **2026-06-12**, `python -m pytest` reported
+**13 failed, 1898 passed, 3 skipped**. Treat this as the current full-suite status until a newer
+full run is recorded. Details and failing rows are tracked in
+[docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md](docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md)
+and summarized in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
-| Test | Issue ID |
-| --- | --- |
-| `tests/test_candidate_comparison.py::test_current_unavailable_in_optimize_mode` | KI-2026-05-26-001 |
-| `tests/test_candidate_factory_contract.py::test_live_factory_build_matches_golden_document` | KI-2026-05-26-002 (**resolved 2026-06-12**) |
-| `tests/test_current_vs_policy_workflow.py::test_combined_context_both_available` | KI-2026-05-26-003 |
-| `tests/test_current_vs_policy_workflow.py::test_current_weights_without_sidecar` | KI-2026-05-26-004 |
-| `tests/test_factor_covariance.py::test_factor_covariance_empty_factor_frame_returns_explicit_skip_reason` | KI-2026-05-26-005 |
-| `tests/test_mvp_workflow.py::test_policy_current_adds_materialize_when_weights_set` | KI-2026-05-26-006 |
+Until the remaining rows are closed: use focused pytest for the changed layer and the fast QA gates
+above; do not claim full-suite green or make it a release gate without rerunning and reconciling the
+full suite.
 
-Until the remaining rows are closed: use focused pytest for the changed layer and the fast QA gates above; treat full-suite green as **not** a release gate without reconciling or re-accepting the remaining rows above.
-
-### Block 2.4 Hidden Exposure institutional upgrade (Sessions 01–13, **closed**)
+### Block 2.4 Hidden Exposure institutional upgrade (Sessions 01-13, **closed**)
 
 After Block 2.4 contract, scoring, enrichment, or golden changes:
 
@@ -85,7 +82,7 @@ python -m pytest tests/test_portfolio_xray_contract.py -q
 ```
 
 Session 10 closure (2026-05-29): **129 passed** in the bundle above; matrix coverage in
-`tests/test_block_2_4_matrix_coverage.py` maps implementable ✅ v2 rows from the Session 00
+`tests/test_block_2_4_matrix_coverage.py` maps implementable implemented v2 rows from the Session 00
 completion matrix. Evidence: [Session 10 audit](docs/audits/2026-05-29_block_2_4_session_10_tests_golden.md).
 
 After Session 11 Core MVP contract wiring, also run:
@@ -112,7 +109,7 @@ from existing `snapshot_10y.json` / `stress_report.json` / `run_metadata.json` v
 `build_portfolio_xray_v2` (same builder as materialization). Evidence:
 [Session 12 audit](docs/audits/2026-05-29_block_2_4_session_12_live_demo_regression.md).
 
-Session 13 closure (2026-05-29): institutional upgrade **complete** — matrix v2 sign-off
+Session 13 closure (2026-05-29): institutional upgrade **complete** - matrix v2 sign-off
 ([completion matrix](docs/audits/2026-05-29_block_2_4_completion_matrix_v2_signoff.md)),
 ExecPlan [2026-05-29_block_2_4_institutional_upgrade_plan.md](docs/exec_plans/2026-05-29_block_2_4_institutional_upgrade_plan.md)
 (**Completed**). Canonical closure bundle:
@@ -215,16 +212,17 @@ refreshing generated outputs unless the session explicitly targets generated art
 | Decision Verdict / `decision_verdict.json` | `python -m pytest tests/test_decision_verdict.py -q` | Add `tests/test_selection_engine.py` and action tests if Selection/No-Trade or action-plan evidence changes |
 | AI Commentary grounding / `ai_commentary_context.json` | `python -m pytest tests/test_ai_commentary_context.py tests/test_no_stale_verdict_in_ai_context.py -q` | Add Decision Verdict and Current-vs-Candidate tests if grounding inputs change |
 | Light Monitoring / `what_changed_summary.json` | `python -m pytest tests/test_light_monitoring_summary.py -q` | Add monitoring tests if `monitoring_diff.json` snapshots/diff logic changes |
-| Product bundle integration after compare | `python -m pytest tests/test_product_bundle_paths.py tests/test_product_bundle_integration.py tests/test_ai_commentary_context.py tests/test_light_monitoring_summary.py tests/test_portfolio_review_workflow.py tests/test_portfolio_alternatives_builder.py -q` (offline gate + RM-ARCH-011 path tests + workflow; 46 tests as of 2026-05-26 Session 08) | Extend when compare ordering, sidecar paths, or bundle schemas change; also run adapter unit bundle below |
+| Product bundle integration after compare | `python -m pytest tests/test_product_bundle_paths.py tests/test_product_bundle_integration.py tests/test_runtime_entrypoint_labels.py tests/test_product_bundle_hygiene.py -q` | Extend when manifest keys, sidecar paths, hygiene, compare ordering, or bundle schemas change; add adapter unit tests below when artifact payloads change |
 | Product bundle adapter unit tests | `python -m pytest tests/test_problem_classification.py tests/test_candidate_launchpad.py tests/test_portfolio_alternatives_builder.py tests/test_current_vs_candidate.py tests/test_decision_verdict.py tests/test_ai_commentary_context.py tests/test_light_monitoring_summary.py -q` | Add offline portfolio-first E2E if runtime flow or generated artifact ordering changes |
 
 ### Output-bundle acceptance checks
 
 For a generated-output refresh session only, inspect the refreshed `output_dir_final` and confirm:
 
-- product-facing bundle: `problem_classification.json`, `candidate_launchpad.json`,
-  `current_vs_candidate.json`, `decision_verdict.json`, `ai_commentary_context.json`,
-  `what_changed_summary.json`;
+- product-facing bundle: `client_fit_check.json`, `problem_classification.json`,
+  `candidate_launchpad.json`, `portfolio_alternatives_builder.json`, `candidate_generation.json`
+  when explicitly generated, `current_vs_candidate.json`, `decision_verdict.json`,
+  `ai_commentary_context.json`, and `what_changed_summary.json`;
 - technical contracts: `candidate_comparison.json`, `selection_decision.json`,
   `candidate_factory_run.json` when candidates ran, and `output_manifest.json`;
 - product surfaces do not present `portfolio_health_score.json`, `robustness_scorecard.json`,
@@ -372,7 +370,7 @@ python scripts/verify_live_core_e2e.py --run
 | Stress blocks | `stress_results_v1`, `hedge_gap_analysis_v1`, `current_portfolio_stress_scorecard_v1`, `stress_scorecard_v1`, `stress_conclusions`, `historical_methodology`, legacy `hedge_gap_analysis` |
 | Comparison | `{output_dir_final}/candidate_comparison.json` present |
 | Core menu | `candidate_menu.review_mode == "core"` |
-| Factory profile | `candidate_factory_run.json` → `factory_profile_id == "core_fast"` |
+| Factory profile | `candidate_factory_run.json` -> `factory_profile_id == "core_fast"` |
 
 `factory_evidence_status: current` is expected after `run_portfolio_review.py` or
 `run_candidate_factory.py --then-compare` (RM-1025). Validator warnings surface non-`current`
@@ -392,7 +390,7 @@ Implementation: `src/live_core_e2e.py`, `scripts/verify_live_core_e2e.py`.
 ## Blocks 1-5 Live Full + Resume E2E (Phase 17, RM-1029)
 
 Governed by [Post-Deep-Audit Foundation Plan](docs/exec_plans/2026-05-21_post_deep_audit_foundation_plan.md)
-Session 10. Networked; not part of default `python -m pytest`. Use after Sessions 02–09 gates pass.
+Session 10. Networked; not part of default `python -m pytest`. Use after Sessions 02-09 gates pass.
 
 **Operator sequence (full menu):**
 
@@ -422,11 +420,11 @@ python scripts/verify_live_full_e2e.py --run --resume-candidates
 | Subject diagnosis | Same as live core table above |
 | Comparison | `candidate_comparison.json` present |
 | Full menu | `candidate_menu.review_mode == "full"` |
-| Factory profile | `candidate_factory_run.json` → `factory_profile_id == "default_v1"` |
+| Factory profile | `candidate_factory_run.json` -> `factory_profile_id == "default_v1"` |
 | Full menu scope | Factory `steps` length should match `default_v1` menu (16); warnings if partial |
 | Resume (when flagged) | `candidate_factory_manifest.json` present; factory summary may show `resumed_from_manifest` |
 
-`is_partial_menu: true` is a **warning**, not a hard failure — decision package must disclose scope
+`is_partial_menu: true` is a **warning**, not a hard failure - decision package must disclose scope
 (`package_truthfulness`, RM-1028).
 
 **Pytest marker (after a live run):**
@@ -442,8 +440,8 @@ Implementation: `src/live_full_e2e.py`, `scripts/verify_live_full_e2e.py`.
 
 ## Phase 17 Post-Deep-Audit Closure Bundle (RM-1029)
 
-Run when closing Session 10 / Phase 17 without prior chat context. Combines Blocks 1–5 smoke,
-portfolio-first offline E2E, downstream 6–10 guards, and doc verification.
+Run when closing Session 10 / Phase 17 without prior chat context. Combines Blocks 1-5 smoke,
+portfolio-first offline E2E, downstream 6-10 guards, and doc verification.
 
 ```bash
 python -m pytest tests/test_blocks_1_5_mvp_smoke.py tests/test_live_core_e2e_validation.py tests/test_live_full_e2e_validation.py -q --basetemp='tmp\pytest_phase17_blocks_1_5'
@@ -464,7 +462,7 @@ Live proof (operator, not CI default): `python scripts/verify_live_core_e2e.py -
 | Data layer | Wrong prices, FX timing, return frequency, NaN alignment, young ETF behavior, benchmark/risk-free gaps | `tests/test_backtest_nan_safe.py`, `tests/test_returns_frequency.py`, `tests/test_young_etfs_dual_cov.py`; add `tests/test_historical_stress_fallback.py` when historical fallback changes | Run `python run_report.py --backtest-mode dynamic_nan_safe` if data flow or generated report inputs change |
 | Portfolio metrics | Formula drift, wrong annualization, bad windows, rounding too early, beta/covariance alignment errors | Relevant focused tests around affected outputs, commonly `tests/test_metrics_drawdown.py`, `tests/test_returns_frequency.py`, `tests/test_backtest_nan_safe.py`, `tests/test_regime_portfolio_metrics.py`, `tests/test_portfolio_pca.py`, `tests/test_portfolio_commentary.py` | Run full pytest when shared metric helpers, windows, covariance, risk-free, FX, or report metric exports change |
 | Optimizer / constraints | Infeasible weights, wrong bounds, broken mandate gate, changed release semantics, baseline drift | `tests/test_optimization_fallback.py`, `tests/test_config_weights_sync.py`, `tests/test_resampled_optimization_helpers.py`, `tests/test_young_etfs_dual_cov.py`; add affected baseline tests such as `tests/test_minimum_variance_baseline.py`, `tests/test_maximum_diversification_baseline.py`, `tests/test_minimum_cvar_baseline.py`, `tests/test_risk_parity_baseline.py`, `tests/test_risk_budgeting.py`, `tests/test_hrp_weights.py`, `tests/test_robust_mean_variance.py`, or `tests/test_robust_mv_calibration.py` | Run `python run_optimization.py` when main policy optimization, release status, or output files change |
-| Stress scenarios | Scenario PnL drift, mandate/stress boundary confusion, missing historical fields, bad covariance taxonomy, changed diagnostic-only behavior | Stress Lab wave bundle (see above): `tests/test_stress_mandate_pass.py`, `tests/test_stress_historical_fields.py`, `tests/test_stress_covariance_taxonomy.py`, `tests/test_stress_scenario_analytics.py`, plus scorecard/hedge-gap/coverage/synthetic/simulator/artifacts/commentary contract tests; Core MVP historical replay: `tests/test_core_mvp_historical_stress_replay_config.py` (Session 1+), `tests/test_core_mvp_historical_stress_replay.py` (Sessions 2–4), `tests/test_core_mvp_historical_stress_replay_contract.py` (Session 5 cases A–D + Block 3.2), `tests/test_stress_results_historical_replay_contract.py` (Sessions 3–5). Normative contract: [core_mvp_historical_stress_replay_spec.md](docs/specs/core_mvp_historical_stress_replay_spec.md); decision DEC-2026-05-28-001; layer map [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.1.1/§3.2; live gate after subject refresh: `python scripts/verify_core_mvp_historical_stress_replay.py` ([acceptance audit](docs/audits/2026-05-28_core_mvp_historical_stress_replay_acceptance_audit.md)) | Run `python run_portfolio_review.py --skip-candidates` (or `run_report.py --materialize-analysis-subject`) if `stress_report.json` changes; closure bundle: `python -m pytest tests/test_core_mvp_historical_stress_replay_config.py tests/test_core_mvp_historical_stress_replay.py tests/test_core_mvp_historical_stress_replay_contract.py tests/test_stress_results_historical_replay_contract.py -q` |
+| Stress scenarios | Scenario PnL drift, mandate/stress boundary confusion, missing historical fields, bad covariance taxonomy, changed diagnostic-only behavior | Stress Lab wave bundle (see above): `tests/test_stress_mandate_pass.py`, `tests/test_stress_historical_fields.py`, `tests/test_stress_covariance_taxonomy.py`, `tests/test_stress_scenario_analytics.py`, plus scorecard/hedge-gap/coverage/synthetic/simulator/artifacts/commentary contract tests; Core MVP historical replay: `tests/test_core_mvp_historical_stress_replay_config.py` (Session 1+), `tests/test_core_mvp_historical_stress_replay.py` (Sessions 2-4), `tests/test_core_mvp_historical_stress_replay_contract.py` (Session 5 cases A-D + Block 3.2), `tests/test_stress_results_historical_replay_contract.py` (Sessions 3-5). Normative contract: [core_mvp_historical_stress_replay_spec.md](docs/specs/core_mvp_historical_stress_replay_spec.md); decision DEC-2026-05-28-001; layer map [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) Section3.1.1/Section3.2; live gate after subject refresh: `python scripts/verify_core_mvp_historical_stress_replay.py` ([acceptance audit](docs/audits/2026-05-28_core_mvp_historical_stress_replay_acceptance_audit.md)) | Run `python run_portfolio_review.py --skip-candidates` (or `run_report.py --materialize-analysis-subject`) if `stress_report.json` changes; closure bundle: `python -m pytest tests/test_core_mvp_historical_stress_replay_config.py tests/test_core_mvp_historical_stress_replay.py tests/test_core_mvp_historical_stress_replay_contract.py tests/test_stress_results_historical_replay_contract.py -q` |
 | Factor / macro analytics | Factor matrix drift, regression diagnostics broken, macro regime label instability, publication-lag mistakes, diagnostic blocks affecting policy | Factor tests: `tests/test_factor_matrix_builders.py`, `tests/test_factor_beta_stability.py`, `tests/test_factor_beta_adjusted_overlay.py`, `tests/test_factor_beta_kalman.py`, `tests/test_factor_covariance.py`, `tests/test_factor_oos_explainability.py`, `tests/test_factor_regression_hac.py`, `tests/test_factor_regression_heteroskedasticity.py`, `tests/test_factor_regression_serial.py`, `tests/test_factor_variance_decomposition.py`; macro tests: `tests/test_macro_regimes.py`, `tests/test_macro_primary_regime.py`, `tests/test_macro_indicators.py`, `tests/test_macro_scoring_modes.py`, `tests/test_macro_source_resolver.py`, `tests/test_macro_regime_label_quality.py`, `tests/test_macro_neutral_band_sensitivity.py`; regime tests: `tests/test_regime_factor_analytics.py`, `tests/test_regime_portfolio_metrics.py` | Run full pytest and `python run_report.py` when exported `stress_report.json` blocks or CSV artifacts change |
 | Reports / outputs | Broken JSON/CSV schema, missing commentary, bad report rendering, stale generated files, changed user-facing artifacts | Portfolio X-Ray wave bundle (see below) when `portfolio_xray.json` or X-Ray report surfaces change; otherwise `tests/test_portfolio_commentary.py` plus affected output tests such as `tests/test_scenario_library.py`, `tests/test_scenario_library_normalized.py`, `tests/test_stress_scenario_analytics.py`, `tests/test_regime_portfolio_metrics.py`, `tests/test_portfolio_pca.py` | Run `python run_report.py`; run `python rebuild_pdf_reports.py` only when PDF rebuild behavior or PDF-style artifacts are the target |
 | Diagnosis-first product adapters | Broken product-bundle JSON, stale mapping from deterministic evidence, AI/commentary accidentally treated as calculator, technical artifacts promoted as product answer | Use the Post-Architecture Alignment adapter map above: focused tests for Problem Classification, Candidate Launchpad, Alternatives Builder, Current-vs-Candidate, Decision Verdict, AI grounding, and Light Monitoring | Add candidate comparison, selection, monitoring, or offline E2E tests when adapter inputs or runtime ordering change |
@@ -532,7 +530,7 @@ live in [docs/audits/2026-05-20_stress_lab_baseline_snapshot.md](docs/audits/202
 
 ## Stress Lab Governance Wave Bundle (Phase 13)
 
-Governance wave (Phase 13, Sessions 01–11) **closed** 2026-05-20 per
+Governance wave (Phase 13, Sessions 01-11) **closed** 2026-05-20 per
 [Stress Lab Methodology Governance Plan](docs/exec_plans/2026-05-20_stress_lab_methodology_governance_plan.md).
 Methodology baseline (historical):
 [docs/audits/2026-05-20_stress_lab_methodology_map.md](docs/audits/2026-05-20_stress_lab_methodology_map.md).
@@ -546,7 +544,7 @@ python scripts/verify_docs.py
 ## Block 3.4 Current Portfolio Stress Scorecard regression bundle
 
 Governed by [Block 3.4 MVP](docs/exec_plans/2026-05-27_block_3_4_current_portfolio_stress_scorecard_plan.md) (**Completed**)
-and [Block 3.4 Institutional Upgrade](docs/exec_plans/2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md) (Sessions 02–11 implementation; Session 12 docs).
+and [Block 3.4 Institutional Upgrade](docs/exec_plans/2026-05-29_block_3_4_current_portfolio_stress_scorecard_institutional_upgrade_plan.md) (Sessions 02-11 implementation; Session 12 docs).
 
 Re-run after `current_portfolio_stress_scorecard_v1` builder, pre-stress bridges, snapshot mirror, Core MVP validator (`check_current_portfolio_stress_scorecard_v1`), or downstream consumers (`problem_classification`, `candidate_comparison`, `ai_commentary_context`, `portfolio_commentary` stress commentary) change.
 
@@ -555,7 +553,7 @@ python -m pytest tests/test_current_portfolio_stress_scorecard_v1_contract.py te
 python scripts/verify_docs.py
 ```
 
-Closure bundle (matches ExecPlan Sessions 10–13 verification):
+Closure bundle (matches ExecPlan Sessions 10-13 verification):
 
 ```bash
 python -m pytest tests/test_current_portfolio_stress_scorecard_v1_contract.py tests/test_problem_classification.py tests/test_ai_commentary_context.py tests/test_stress_downstream_integration.py tests/test_live_core_e2e_validation.py -q
@@ -576,7 +574,7 @@ python scripts/verify_docs.py
 ## Block 3.3 Hedge Gap Analysis regression bundle
 
 Governed by [Block 3.3 Hedge Gap Analysis MVP](docs/exec_plans/2026-05-27_block_3_3_hedge_gap_analysis_plan.md) (**Completed**)
-and [Block 3.3 Institutional Upgrade](docs/exec_plans/2026-05-29_block_3_3_hedge_gap_institutional_upgrade_plan.md) (Sessions 02–10 implementation; Session 11 docs).
+and [Block 3.3 Institutional Upgrade](docs/exec_plans/2026-05-29_block_3_3_hedge_gap_institutional_upgrade_plan.md) (Sessions 02-10 implementation; Session 11 docs).
 
 Re-run after `hedge_gap_analysis_v1` builder, scoring/bridge logic, snapshot or scorecard mirrors, Core MVP validator, or downstream consumers (`problem_classification`, `candidate_comparison`, `ai_commentary_context`) change.
 
@@ -597,7 +595,7 @@ python run_stress_variant.py --variant main
 
 Use this focused bundle after Portfolio X-Ray contract changes (seven-section JSON, risk budget RC
 loading, factor/Kalman mapping, hidden-risk V2, weakness map V2, archetype scorecard, or structured
-X-Ray report/commentary surfaces). Post-audit Sessions 09–10 (`RM-949`, `RM-950`) add golden JSON
+X-Ray report/commentary surfaces). Post-audit Sessions 09-10 (`RM-949`, `RM-950`) add golden JSON
 contract tests and the baseline artifact checklist in
 [docs/audits/2026-05-20_portfolio_xray_baseline_snapshot.md](docs/audits/2026-05-20_portfolio_xray_baseline_snapshot.md).
 
@@ -608,7 +606,7 @@ python scripts/verify_docs.py
 
 ## Candidate Factory Governance Wave Bundle (Phase 14)
 
-Governance wave (Phase 14, Sessions 00–11) **closed** 2026-05-20 per
+Governance wave (Phase 14, Sessions 00-11) **closed** 2026-05-20 per
 [Candidate Portfolio Factory Post-Audit Roadmap](docs/exec_plans/2026-05-20_candidate_factory_post_audit_roadmap.md).
 Methodology baseline:
 [docs/audits/2026-05-20_candidate_factory_methodology_map.md](docs/audits/2026-05-20_candidate_factory_methodology_map.md).
@@ -664,7 +662,7 @@ python -m pytest tests/test_candidate_factory.py tests/test_candidate_manifest.p
 ```
 
 Session 11 wave closure (2026-05-20): governance bundle **77 passed**; family spot-check **19 passed**;
-`verify_docs` OK. Phase 14 (`RM-970`–`RM-981`) complete.
+`verify_docs` OK. Phase 14 (`RM-970`-`RM-981`) complete.
 
 When `candidate_factory_run.json` or `candidate_comparison.json` change intentionally on a live
 run, refresh baseline fingerprints per
@@ -699,7 +697,7 @@ python -m pytest tests/test_optimization_readiness.py tests/test_optimizer_fair_
 python scripts/verify_docs.py
 ```
 
-Phase 17 Session 04 (`RM-1023`) — full-menu optimizer fair-comparison offline gate (builder metadata +
+Phase 17 Session 04 (`RM-1023`) - full-menu optimizer fair-comparison offline gate (builder metadata +
 snapshot `candidate_config_fingerprint`; expects ≥3 `fair_comparison_ready` optimizer rows):
 
 ```bash
@@ -770,7 +768,7 @@ Session 11 golden contracts and governance bundle closure (2026-05-21): Block 5 
 **159 passed** (`test_optimization_engine_contract.py` 9 tests included in comparison/factory line);
 `verify_docs` OK. Regenerate optimizer golden JSON only after intentional disclosure contract changes.
 
-Session 12 wave closure (2026-05-21): Phase 15 **Done** (`RM-990`–`RM-1002`); baseline snapshot,
+Session 12 wave closure (2026-05-21): Phase 15 **Done** (`RM-990`-`RM-1002`); baseline snapshot,
 ROADMAP, ExecPlan register, `KNOWN_ISSUES` Block 5 gap index, `CHANGELOG`; governance bundle
 **159 passed**; `verify_docs` OK.
 

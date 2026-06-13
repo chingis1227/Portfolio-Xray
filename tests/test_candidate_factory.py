@@ -785,9 +785,11 @@ def test_write_outputs_preserves_product_manifest_after_then_compare(tmp_path: P
     out = tmp_path / "Main portfolio"
     (out / "analysis_subject").mkdir(parents=True)
     for rel in (
+        "analysis_subject/client_fit_check.json",
         "analysis_subject/problem_classification.json",
         "analysis_subject/candidate_launchpad.json",
         "analysis_subject/portfolio_alternatives_builder.json",
+        "candidate_generation.json",
         "current_vs_candidate.json",
         "decision_verdict.json",
         "ai_commentary_context.json",

@@ -1,34 +1,23 @@
 # Architecture
 
-This document is part of the active project documentation after the documentation migration. It describes the current canonical product architecture direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
+This document describes the current product architecture direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
 
 ## 1. Architecture Status
 
-Portfolio MRI currently has a Python, CLI/file-driven, site/API-first backend architecture. The
-canonical current product architecture is **“Diagnosis 2”**: a diagnosis-first, current-portfolio-first decision-support workflow.
+Portfolio MRI currently has a Python, CLI/file-driven, site/API-first backend architecture for a diagnosis-first, current-portfolio-first decision-support workflow.
 
 This document uses four labels:
 
-- **Current implementation:** supported by current specs/code and safe to describe as implemented
-  only after verification.
+- **Current implementation:** supported by current specs/code and safe to describe as implemented only after verification.
 - **Target architecture:** desired product architecture that may require future implementation.
 - **Advanced / research:** useful capabilities that should not be the core MVP user journey.
-- **Legacy / compatibility:** older or compatibility flows that remain operationally useful but are
-  not the target product front door.
+- **Legacy / compatibility:** older or compatibility flows that remain operationally useful but are not the target product front door.
 
-Architecture truth reset: older optimizer/report/scorecard-heavy capabilities may remain in code,
-but they are not the current Core MVP architecture. Portfolio Health Score, Robustness Scorecard,
-Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity,
-Pareto/Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor,
-full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client-Fit Check,
-Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt,
-full custom constraints UI, multi-client workspace, and polished PDF report product are
-advanced/backend/legacy/future unless explicitly promoted.
+Architecture truth reset: older optimizer/report/scorecard-heavy capabilities may remain in code, but they are not the current Core MVP architecture. Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto/Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client Fit suitability approval, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product are advanced/backend/legacy/future unless explicitly promoted.
 
 ## 2. Current Runtime Architecture
 
-Current runtime truth must be verified against `SPEC.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`,
-`docs/specs/*.md`, and code.
+Current runtime truth must be verified against `SPEC.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, and code.
 
 High-level current runtime:
 
@@ -38,7 +27,8 @@ config / analysis_subject
 -> data loading, FX, risk-free, benchmark, return panels
 -> current portfolio diagnostics / analysis_subject materialization
 -> stress, factor, scenario, macro/regime diagnostics where enabled
--> candidate builders / candidate factory
+-> Client Fit context where available
+-> candidate builders / candidate factory when explicitly requested
 -> candidate diagnostics and comparison
 -> generated decision artifacts where implemented
 -> JSON/cache default outputs and optional export/report artifacts
@@ -48,10 +38,8 @@ Current implementation characteristics:
 
 - CLI and file driven.
 - JSON/cache are the normal site/API-first contract.
-- CSV/TXT/HTML/PNG/PDF/Markdown/CSS outputs are explicit export/report artifacts, not the default
-  source of truth.
-- `analysis_subject/` should be inspected before interpreting candidate or decision artifacts in
-  portfolio-first review runs.
+- CSV/TXT/HTML/PNG/PDF/Markdown/CSS outputs are explicit export/report artifacts, not the default source of truth.
+- `analysis_subject/` should be inspected before interpreting candidate or decision artifacts in portfolio-first review runs.
 - Legacy policy optimization remains callable as compatibility infrastructure.
 - Detailed module contracts live under `docs/specs/*.md`.
 
@@ -59,24 +47,25 @@ Current main entrypoints:
 
 | Entrypoint | Current role | Architecture label |
 | --- | --- | --- |
-| `run_portfolio_review.py` | Portfolio-first review orchestration. | Current implementation |
-| `run_candidate_factory.py` | Candidate factory orchestration and optional comparison. | Current implementation / may become advanced or research UX in target |
+| `run_portfolio_review.py` | Portfolio-first diagnosis orchestration by default; candidate paths are explicit. | Current implementation |
+| `scripts/run_blocks_5_to_9_vertical_flow.py` | Canonical one-candidate vertical product demo. | Current implementation |
+| `run_candidate_factory.py` | Candidate factory orchestration and optional comparison. | Current implementation / advanced or research UX |
 | `run_compare_variants.py` | Compare variants and write downstream decision artifacts. | Current implementation |
 | `run_report.py` | Report and diagnostics pipeline. | Current implementation |
 | `run_optimization.py` | Legacy policy optimization compatibility. | Legacy / compatibility |
 | `run_view_after_optimization.py` | Approved post-optimization tilt view. | Legacy / specialized compatibility |
 
-Do not rename, remove, or demote these operational entrypoints without a separate approved
-migration plan.
+Do not rename, remove, or demote these operational entrypoints without a separate approved migration plan.
 
 ## 3. Canonical Product Architecture
 
-Canonical “Diagnosis 2” product architecture:
+Canonical current product architecture:
 
 ```text
-Input portfolio
+Input Portfolio
 -> Portfolio X-Ray
 -> Stress Test Lab
+-> Client Fit Check
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
@@ -87,9 +76,7 @@ Input portfolio
 -> Monitoring / What Changed
 ```
 
-This architecture changes the user-facing product shape, not automatically the existing
-backend capabilities. Existing backend modules may be reused, wrapped, reclassified, or preserved as
-advanced/legacy infrastructure.
+This architecture changes the user-facing product shape, not automatically the existing backend capabilities. Existing backend modules may be reused, wrapped, reclassified, or preserved as advanced/legacy infrastructure.
 
 ## 4. Target Architecture Layers
 
@@ -364,7 +351,6 @@ implemented unless verified in `SPEC.md`, `docs/specs/*.md`, or code.
 - Full PDF report design.
 - Advanced Parameter Builder settings.
 - Asset X-Ray / Asset Diagnostics.
-- Client-Fit Check / questionnaire.
 - Portfolio Archetype Classification is an optional later diagnostic layer that can classify the
   portfolio by behavior, such as Equity Growth Portfolio, Balanced 60/40-like, Credit Carry
   Portfolio, Duration-heavy Defensive, Inflation-sensitive, or Pseudo-diversified Portfolio. It

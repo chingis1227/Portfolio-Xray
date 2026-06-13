@@ -115,7 +115,7 @@ Acceptance evidence is verdict mapping tests, commentary grounding tests, monito
 
 Objective: freeze a verified architecture inventory and add no behavioral changes.
 
-Files likely affected: `CODE_MIGRATION_PLAN.md`, this ExecPlan progress section, and possibly a new docs-only audit if approved.
+Files likely affected: `removed root code-migration record`, this ExecPlan progress section, and possibly a new docs-only audit if approved.
 
 Files not to touch: all `src/*.py`, root `run_*.py`, `config.yml`, generated output folders.
 

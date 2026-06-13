@@ -2723,17 +2723,16 @@ def run_portfolio_report_for_weights(
             **site_explanation_paths,
         },
     )
-    # Core MVP Blocks 1-3 diagnosis-only manifest surface:
-    # keep subject diagnostics only; do not publish candidate/comparison/decision keys
-    # as active product-facing paths in analysis_subject site_api/core_json outputs.
+    # Analysis-subject manifests should expose current screen-critical diagnosis artifacts
+    # (Client Fit, Problem Classification, Launchpad, Builder setup, and diagnosis AI
+    # grounding) but must not publish post-candidate root artifacts as active paths.
     if str(portfolio_role_override or "") == "analysis_subject" and output_policy.profile in {
         "site_api",
         "core_json",
         "lightweight_comparison",
     }:
         blocked_manifest_keys = (
-            "candidate_launchpad_json",
-            "portfolio_alternatives_builder_json",
+            "candidate_generation_json",
             "candidate_comparison_json",
             "current_vs_candidate_json",
             "decision_verdict_json",
@@ -2745,7 +2744,10 @@ def run_portfolio_report_for_weights(
         if core_blocks_only:
             blocked_manifest_keys = (
                 *blocked_manifest_keys,
+                "client_fit_check_json",
                 "problem_classification_json",
+                "candidate_launchpad_json",
+                "portfolio_alternatives_builder_json",
                 "ai_commentary_context_json",
             )
         for blocked_key in blocked_manifest_keys:

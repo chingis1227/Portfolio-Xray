@@ -3,14 +3,14 @@
 **Single entry map** for operators and agents working the diagnosis-first product path.
 Use this file before interpreting generated JSON or starting a new chat on product-flow work.
 
-**Input Layer (frozen 2026-05-26):** [Input Layer MVP Migration](exec_plans/2026-05-26_input_layer_mvp_migration.md) closed; contract frozen — [audit](audits/2026-05-26_input_layer_mvp_acceptance_audit.md), `DEC-2026-05-26-001`. Do not reopen input redesign unless Block 1 regresses.
+**Input Layer (frozen 2026-05-26):** [Input Layer MVP Migration](exec_plans/2026-05-26_input_layer_mvp_migration.md) closed; contract frozen - [audit](audits/2026-05-26_input_layer_mvp_acceptance_audit.md), `DEC-2026-05-26-001`. Do not reopen input redesign unless Block 1 regresses.
 
-**Active product focus:** downstream of input - Portfolio X-Ray (Block 2), Stress Lab (Block 3), Problem Classification / Candidate Launchpad (Block 4), Portfolio Alternatives Builder (Block 6), one-attempt Candidate Generation (Block 7), Current vs Candidate (Block 8), Decision Verdict (Block 9), and AI Commentary grounding. Use this guide's read order and product-bundle chain; not more first-screen fields.
+**Active product focus:** downstream of input - Portfolio X-Ray (Block 2), Stress Lab (Block 3), Client Fit Check, Problem Classification / Candidate Launchpad (Block 4), Portfolio Alternatives Builder (Block 6), one-attempt Candidate Generation (Block 7), Current vs Candidate (Block 8), Decision Verdict (Block 9), and AI Commentary grounding. Use this guide's read order and product-bundle chain; not more first-screen fields.
 **Product-flow backend (closed):** [Product Flow MVP Backend ExecPlan](exec_plans/2026-05-25_product_flow_mvp_backend_plan.md).
 **Origin audit:** [Product-Flow Validation Audit](audits/2026-05-25_product_flow_validation_audit.md).
 
-Canonical contracts: [SPEC.md](../SPEC.md), [OUTPUTS.md](../OUTPUTS.md) (§ Runtime product flow),
-[input_assumptions_spec.md](specs/input_assumptions_spec.md) (§ Core MVP Input Surface),
+Canonical contracts: [SPEC.md](../SPEC.md), [OUTPUTS.md](../OUTPUTS.md) (Section Runtime product flow),
+[input_assumptions_spec.md](specs/input_assumptions_spec.md) (Section Core MVP Input Surface),
 [portfolio_review_workflow_spec.md](specs/portfolio_review_workflow_spec.md).
 Runbook: [operational_runbook.md](operational_runbook.md#product-demo-one-candidate).
 
@@ -23,14 +23,14 @@ Portfolio-first runs need only three user-facing groups in root `config.yml`:
 | Group | Keys | Notes |
 | --- | --- | --- |
 | Instruments | `tickers` | ETFs/stocks; add `Cash USD` (or equivalent) for explicit bank cash |
-| Allocation | `current_weights` (preferred) or `weights` | Positive map; sum ≤ 1.0; partial sum = cash remainder diagnostic |
+| Allocation | `current_weights` (preferred) or `weights` | Positive map; sum <= 1.0; partial sum = cash remainder diagnostic |
 | Currency | `investor_currency` | `USD` / `EUR` get RF, cash proxy, benchmark defaults when omitted |
 
 Copy from `config.yml.example` Section 1 or fixtures under `tests/fixtures/mvp_portfolios/`.
 `client_profile`, liquidity, `portfolio_value`, and mandate caps are **not** required for
 `run_portfolio_review.py`. Optional web editor: `python config_ui/app.py` (three fields + Advanced).
 
-After validation, open `analysis_subject/run_metadata.json` → `analysis_setup.core_mvp_input_surface`
+After validation, open `analysis_subject/run_metadata.json` -> `analysis_setup.core_mvp_input_surface`
 and `input_assumptions.core_mvp_input_contract` for the minimal Core MVP product input contract.
 Use `input_assumptions.input_surface` and `field_tiers` only as disclosure of system-resolved,
 deferred, and legacy/advanced fields. Real cash must appear in
@@ -45,18 +45,19 @@ Read in this order after a portfolio-first run (new chat, demo prep, or code rev
 | Step | What to open | Why |
 | --- | --- | --- |
 | 1 | `{output_dir_final}/analysis_subject/run_metadata.json` | Subject type, weights source, `analysis_setup.core_mvp_input_surface` / `input_assumptions.core_mvp_input_contract`, analysis window |
-| 2 | `analysis_subject/portfolio_xray.json` | Blocks 1–2 diagnostics; prefer product blocks `block_2_1_asset_allocation` through `block_2_6_portfolio_weakness_map` when present (§2.1.1–§2.6.1 in [portfolio_xray_diagnostics_spec.md](specs/portfolio_xray_diagnostics_spec.md)); legacy seven sections remain for full X-Ray formatters |
+| 2 | `analysis_subject/portfolio_xray.json` | Blocks 1-2 diagnostics; prefer product blocks `block_2_1_asset_allocation` through `block_2_6_portfolio_weakness_map` when present (Section2.1.1-Section2.6.1 in [portfolio_xray_diagnostics_spec.md](specs/portfolio_xray_diagnostics_spec.md)); legacy seven sections remain for full X-Ray formatters |
 | 3 | `analysis_subject/stress_report.json` | Block 3 stress scenarios and factor context |
-| 4 | `analysis_subject/problem_classification.json` | Top problems and test paths (product bundle #1) |
-| 5 | `analysis_subject/candidate_launchpad.json` | Suggested hypotheses / methods (product bundle #2) |
-| 6 | `analysis_subject/portfolio_alternatives_builder.json` | Builder setup from one selected card; setup only, not weights or recommendation |
-| 7 | `candidate_generation.json` | One Block 7 candidate attempt after explicit generation; candidate is not a recommendation |
-| 8 | `current_vs_candidate.json` | Current vs selected candidate (Block 8) - **after compare only** |
-| 9 | `decision_verdict.json` | Primary product answer: action / no-action / no-trade / evidence-insufficient framing (Block 9) - **after compare only** |
-| 10 | `ai_commentary_context.json` | Grounding for future LLM prose - **not** client-facing copy - **after compare only** |
-| 11 | `what_changed_summary.json` | Monitoring delta vs prior snapshot when available - **after compare only** (may be absent if no prior snapshot) |
-| 12 | `output_manifest.json` -> `generated_paths` / `artifact_categories` | Resolved paths; confirms sidecar vs legacy root |
-| 13 (drill-down only) | `candidate_comparison.json`, `selection_decision.json`, health/robustness/Pareto | Technical comparison and advanced evidence - not the default UI story |
+| 4 | `analysis_subject/client_fit_check.json` | Non-binding Client Fit context; `not_provided` is valid for backend/CLI compatibility |
+| 5 | `analysis_subject/problem_classification.json` | Top problems and test paths |
+| 6 | `analysis_subject/candidate_launchpad.json` | Suggested hypotheses / methods |
+| 7 | `analysis_subject/portfolio_alternatives_builder.json` | Builder setup from one selected card; setup only, not weights or recommendation |
+| 8 | `candidate_generation.json` | One Block 7 candidate attempt after explicit generation; candidate is not a recommendation |
+| 9 | `current_vs_candidate.json` | Current vs selected candidate (Block 8) - **after compare only** |
+| 10 | `decision_verdict.json` | Primary product answer: action / no-action / no-trade / evidence-insufficient framing (Block 9) - **after compare only** |
+| 11 | `ai_commentary_context.json` | Grounding for future LLM prose - **not** client-facing copy - **after compare only** |
+| 12 | `what_changed_summary.json` | Monitoring delta vs prior snapshot when available - **after compare only** (may be absent if no prior snapshot) |
+| 13 | `output_manifest.json` -> `generated_paths` / `artifact_categories` / `product_discovery` | Resolved paths; confirms sidecar vs legacy root but does not bypass lineage checks |
+| 14 (drill-down only) | `candidate_comparison.json`, `selection_decision.json`, health/robustness/Pareto | Technical comparison and advanced evidence - not the default UI story |
 
 Do **not** start from root `portfolio_xray.json` / `stress_report.json` unless the task is **legacy policy**
 (`run_optimization.py`). Portfolio-first truth lives under `analysis_subject/`.
@@ -78,12 +79,12 @@ Do **not** start from root `portfolio_xray.json` / `stress_report.json` unless t
 | Full candidate menu (advanced/research) | `python run_portfolio_review.py --mode full` | Runs `default_v1` full menu and compare |
 | Legacy policy runtime (compatibility-only) | `python run_optimization.py`, `python run_report.py`, or `python run_mvp_workflow.py --workflow ...` | Keep callable for historical/policy workflows; not Core MVP default product runtime |
 | Factory + compare (subject already on disk) | `python run_candidate_factory.py --candidates equal_weight --execution-mode standard --then-compare` | Same factory id as review `--candidates` |
-| Launchpad method → command (print) | `python scripts/run_one_candidate_from_method.py --method equal_weight` | Optional; `--run` executes factory only |
+| Launchpad method -> command (print) | `python scripts/run_one_candidate_from_method.py --method equal_weight` | Optional; `--run` executes factory only |
 | Offline regression (no network) | `python -m pytest tests/test_product_bundle_integration.py tests/test_product_bundle_paths.py -q --basetemp=tmp/pytest_product_bundle` | See [TESTING.md](../TESTING.md) |
 | One-candidate demo gate (after live run) | `python scripts/validate_one_candidate_demo.py` | Session 07; see [runtime truth Session 07 audit](audits/2026-05-26_runtime_truth_session07_one_candidate_validation.md) |
-| Runtime truth closure (Sessions 01–09) | `python scripts/verify_docs.py`; `pytest tests/test_runtime_mode_regression_boundaries.py -q` | [Final runtime truth audit](audits/2026-05-26_runtime_truth_final_audit.md) |
+| Runtime truth closure (Sessions 01-09) | `python scripts/verify_docs.py`; `pytest tests/test_runtime_mode_regression_boundaries.py -q` | [Final runtime truth audit](audits/2026-05-26_runtime_truth_final_audit.md) |
 
-Replace `equal_weight` with any supported factory id (`risk_parity`, `minimum_variance`, …).
+Replace `equal_weight` with any supported factory id (`risk_parity`, `minimum_variance`, ...).
 Method allowlist: `supported_candidate_methods()` in `src/portfolio_alternatives_builder.py`.
 
 
@@ -125,30 +126,33 @@ Paths are relative to `{output_dir_final}` (typically `Main portfolio/`).
 
 | # | Artifact | Default path | When present | Schema (offline gate) | Primary reader question |
 | --- | --- | --- | --- | --- | --- |
-| 1 | `problem_classification.json` | `analysis_subject/problem_classification.json` | After default diagnosis / materialize | `problem_classification_v3` | What is wrong with the current portfolio... |
-| 2 | `candidate_launchpad.json` | `analysis_subject/candidate_launchpad.json` | After default diagnosis / materialize | `candidate_launchpad_v3` | What hypotheses should we test next... |
-| 3 | `portfolio_alternatives_builder.json` | `analysis_subject/portfolio_alternatives_builder.json` | After Launchpad when a primary card can be mapped | `portfolio_alternatives_builder_v1` | What setup would be tested if the user explicitly generates a candidate... |
-| 4 | `candidate_generation.json` | `candidate_generation.json` | After explicit Generate Candidate / vertical demo | `candidate_generation_v1` | What one candidate attempt was created or why did it fail... |
-| 5 | `current_vs_candidate.json` | `current_vs_candidate.json` | After Block 8 compare | `current_vs_candidate_v1` | How does current compare to the candidate... |
-| 6 | `decision_verdict.json` | `decision_verdict.json` | After Block 9 verdict | `decision_verdict_v1` | Is action justified, or is no-trade / evidence-insufficient the right answer... |
-| 7 | `ai_commentary_context.json` | `ai_commentary_context.json` | After verdict | `ai_commentary_context_v1` | Grounding only (`purpose=grounded_ai_commentary_context`; no LLM in V1) |
-| 8 | `what_changed_summary.json` | `what_changed_summary.json` | After compare/monitoring; optional if no prior snapshot | `what_changed_summary_v1` | What changed since the last review... |
+| 1 | `client_fit_check.json` | `analysis_subject/client_fit_check.json` | After X-Ray/Stress in product diagnosis; `not_provided` is valid for backend/CLI compatibility | `client_fit_check_v1` | Does current risk fit the provided profile as non-binding context... |
+| 2 | `problem_classification.json` | `analysis_subject/problem_classification.json` | After default diagnosis / materialize | `problem_classification_v3` | What is wrong with the current portfolio... |
+| 3 | `candidate_launchpad.json` | `analysis_subject/candidate_launchpad.json` | After default diagnosis / materialize | `candidate_launchpad_v3` | What hypotheses should we test next... |
+| 4 | `portfolio_alternatives_builder.json` | `analysis_subject/portfolio_alternatives_builder.json` | After Launchpad when a primary card can be mapped | `portfolio_alternatives_builder_v1` | What setup would be tested if the user explicitly generates a candidate... |
+| 5 | `candidate_generation.json` | `candidate_generation.json` | After explicit Generate Candidate / vertical demo | `candidate_generation_v1` | What one candidate attempt was created or why did it fail... |
+| 6 | `current_vs_candidate.json` | `current_vs_candidate.json` | After Block 8 compare | `current_vs_candidate_v1` | How does current compare to the candidate... |
+| 7 | `decision_verdict.json` | `decision_verdict.json` | After Block 9 verdict | `decision_verdict_v1` | Is action justified, or is no-trade / evidence-insufficient the right answer... |
+| 8 | `ai_commentary_context.json` | `ai_commentary_context.json` | After verdict | `ai_commentary_context_v1` | Grounding only (`purpose=grounded_ai_commentary_context`; no LLM in V1) |
+| 9 | `what_changed_summary.json` | `what_changed_summary.json` | After compare/monitoring; optional if no prior snapshot | `what_changed_summary_v1` | What changed since the last review... |
 
 **RM-ARCH-011 sidecar rule:** diagnosis files **prefer** `analysis_subject/`; compare, AI commentary,
 and What Changed resolve via `src/product_bundle_paths.py` (legacy root copies still work).
 
-**Manifest keys:** `problem_classification_json` … `what_changed_summary_json` in
-`output_manifest.json` → `generated_paths` / `product_discovery.product_bundle_paths`.
-`product_discovery.product_bundle_phase` is `diagnosis_only` after default review (diagnosis, Launchpad, and Builder setup where available),
-`complete` after compare/verdict/grounding, or `post_compare_partial` when some post-compare files exist.
+**Manifest keys:** `client_fit_check_json` through `what_changed_summary_json` in
+`output_manifest.json` -> `generated_paths` / `product_discovery.product_bundle_paths`.
+`product_discovery.product_bundle_phase` is `diagnosis_only` after default review (Client Fit,
+diagnosis, Launchpad, and Builder setup where available), `candidate_generated` after an explicit
+candidate attempt but before compare, `complete` after candidate generation plus compare/verdict/
+grounding, or `post_compare_partial` when only some downstream files exist.
 `product_bundle_complete` is true only when phase is `complete`. `artifact_categories.product_bundle`
 lists the product-bundle key names; resolved paths appear only for files on disk.
 
 **Boundary wording for operators:** Builder setup is not a candidate; a generated candidate is not a recommendation; Equal Weight / Risk Parity reference tests are diagnostic comparisons, not rebalance recommendations; Decision Verdict is where action/no-action is evaluated. `no-trade` and `evidence_insufficient` are valid outcomes, not failures.
 
 **Technical comparison** (same run, not bundle): `candidate_comparison.json`, `selection_decision.json`,
-`portfolio_health_score.json`, `robustness_scorecard.json`, Pareto/regret, action plan, journal — see
-[OUTPUTS.md](../OUTPUTS.md) § Runtime product flow.
+`portfolio_health_score.json`, `robustness_scorecard.json`, Pareto/regret, action plan, journal - see
+[OUTPUTS.md](../OUTPUTS.md) Runtime product flow.
 
 ---
 
@@ -170,7 +174,7 @@ lists the product-bundle key names; resolved paths appear only for files on disk
 
 ---
 
-## Launchpad method → one candidate (Alternatives Builder)
+## Launchpad method -> one candidate (Alternatives Builder)
 
 Candidate Launchpad cards suggest a diagnostic test or reference comparison. **Portfolio Alternatives
 Builder** first consumes a selected card as Builder prefill: it copies the diagnosis, hypothesis,
@@ -209,7 +213,7 @@ recommended allocation.
 | `candidate_id` | Factory registry id (usually identical in V1) |
 | `command` | argv tuple for `run_candidate_factory.py` (plan only until executed) |
 | `artifact_contract` | Expected JSON after run (`candidate_factory_run.json`, `candidate_comparison.json` when `--then-compare`) |
-| `provenance` | Delegation metadata (`delegates_to`, `does_not_change_formulas`, …) |
+| `provenance` | Delegation metadata (`delegates_to`, `does_not_change_formulas`, ...) |
 | `warnings` | e.g. `request_parameters_recorded_not_applied_v1` when optional request fields are not applied in V1 |
 
 ### Example: `equal_weight` from Launchpad
@@ -235,7 +239,7 @@ card = {
 request = request_from_launchpad_card(card, method_index=0)
 plan = build_portfolio_alternative_plan(request, project_root=Path("."))
 # plan.candidate_id == "equal_weight"
-# plan.command → run_candidate_factory.py --candidates equal_weight ...
+# plan.command -> run_candidate_factory.py --candidates equal_weight ...
 ```
 
 ### Equivalent manual commands (no new review CLI flags)
@@ -248,7 +252,7 @@ Use **either** path; both end at one factory id and compare.
 | **Factory-id compatibility path** (after diagnosis artifacts exist) | `python run_portfolio_review.py --candidates equal_weight` |
 | **Factory + compare only** (technical, after diagnosis artifacts exist) | `python run_candidate_factory.py --candidates equal_weight --execution-mode standard --then-compare` |
 
-The builder’s default plan also passes `--output-profile site_api` (JSON-first artifacts). That
+The builder's default plan also passes `--output-profile site_api` (JSON-first artifacts). That
 matches routine portfolio-first output; it is safe to omit on manual factory runs only when you
 accept factory defaults.
 
@@ -270,7 +274,7 @@ python scripts/run_one_candidate_from_method.py --method equal_weight
 python scripts/run_one_candidate_from_method.py --method equal_weight --run
 ```
 
-`--run` executes the builder’s factory command (network + disk). Default is print-only.
+`--run` executes the builder's factory command (network + disk). Default is print-only.
 
 ### Method allowlist
 
@@ -290,13 +294,13 @@ Unknown methods raise `PortfolioAlternativesBuilderError: unsupported_candidate_
 | Bundle offline gate | `python -m pytest tests/test_product_bundle_integration.py -q --basetemp=tmp/pytest_product_bundle` |
 | Sidecar path resolvers | `python -m pytest tests/test_product_bundle_paths.py -q` |
 | One-candidate workflow wiring | `python -m pytest tests/test_portfolio_review_workflow.py -q -k one_candidate` |
-| Launchpad → documented commands | `python -m pytest tests/test_portfolio_alternatives_builder.py -q -k launchpad_method` |
+| Launchpad -> documented commands | `python -m pytest tests/test_portfolio_alternatives_builder.py -q -k launchpad_method` |
 
 ---
 
 ## Block 4 v3 diagnosis (Problem Classification + Launchpad)
 
-Shipped writer: `src/block_4/diagnosis_builder.py` → `write_block_4_diagnosis_outputs()` (called from `run_report.py` when not `core_blocks_only`).
+Shipped writer: `src/block_4/diagnosis_builder.py` -> `write_block_4_diagnosis_outputs()` (called from `run_report.py` when not `core_blocks_only`).
 
 | Step | Command | Pass criteria |
 | --- | --- | --- |
@@ -323,4 +327,4 @@ Scoring rows are backend audit metadata, not the product answer. Spec: [block_4_
 
 - ExecPlans: [docs/exec_plans/README.md](exec_plans/README.md)
 - Audits: [docs/audits/README.md](audits/README.md)
-- Backlog: `RM-ARCH-011` **Done** (2026-05-26, sidecar wiring + manifest keys); `RM-ARCH-010` (LLM commentary — deferred, ExecPlan Session 09)
+- Backlog: `RM-ARCH-011` **Done** (2026-05-26, sidecar wiring + manifest keys); `RM-ARCH-010` (LLM commentary - deferred, ExecPlan Session 09)

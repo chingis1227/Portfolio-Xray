@@ -1,7 +1,7 @@
-"""Product bundle hygiene for diagnosis-only and core Blocks 1–3 runtime modes.
+"""Product bundle hygiene for diagnosis-only and core Blocks 1-3 runtime modes.
 
 - Diagnosis-only: tombstone stale post-compare root JSON (`no_candidate_v1`).
-- Core Blocks 1–3 only: remove Block 4+ subject JSON and all root compare/decision files.
+- Core Blocks 1-3 only: remove Block 4+ subject JSON and all root compare/decision files.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from typing import Any, Mapping
 
 from src.ai_commentary_context import AI_COMMENTARY_CONTEXT_FILENAME
 from src.candidate_comparison import SCHEMA_VERSION as CANDIDATE_COMPARISON_SCHEMA_VERSION
+from src.candidate_generation import CANDIDATE_GENERATION_FILENAME
 from src.candidate_launchpad import CANDIDATE_LAUNCHPAD_FILENAME
 from src.current_vs_candidate import (
     CURRENT_VS_CANDIDATE_FILENAME,
@@ -35,6 +36,9 @@ TOMBSTONE_COMPARE_FILENAMES: tuple[str, ...] = (
 )
 
 STALE_POST_COMPARE_REMOVE_FILENAMES: tuple[str, ...] = (
+    CANDIDATE_GENERATION_FILENAME,
+    AI_COMMENTARY_CONTEXT_FILENAME,
+    "site_explanation_bundle.json",
     "candidate_comparison_registry.json",
     "candidate_comparison.txt",
     "candidate_factory_run.json",

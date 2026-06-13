@@ -54,6 +54,10 @@ def test_apply_hygiene_replaces_stale_compare_and_verdict(tmp_path: Path) -> Non
         json.dump({"decision_status": "selected_candidate"}, f)
     with open(out / "candidate_comparison_registry.json", "w", encoding="utf-8") as f:
         json.dump({"candidates": []}, f)
+    with open(out / "candidate_generation.json", "w", encoding="utf-8") as f:
+        json.dump({"schema_version": "candidate_generation_v1"}, f)
+    with open(out / "ai_commentary_context.json", "w", encoding="utf-8") as f:
+        json.dump({"schema_version": "ai_commentary_context_v1"}, f)
 
     result = apply_diagnosis_only_product_bundle_hygiene(
         out,
@@ -64,6 +68,8 @@ def test_apply_hygiene_replaces_stale_compare_and_verdict(tmp_path: Path) -> Non
     assert result["tombstone"] == NO_CANDIDATE_TOMBSTONE
     assert "selection_decision.json" in result["removed_stale"]
     assert "candidate_comparison_registry.json" in result["removed_stale"]
+    assert "candidate_generation.json" in result["removed_stale"]
+    assert "ai_commentary_context.json" in result["removed_stale"]
 
     with open(out / "current_vs_candidate.json", encoding="utf-8") as f:
         current_vs = json.load(f)
@@ -78,6 +84,8 @@ def test_apply_hygiene_replaces_stale_compare_and_verdict(tmp_path: Path) -> Non
     assert len(comparison.get("candidates") or []) == 0
     assert not (out / "selection_decision.json").exists()
     assert not (out / "candidate_comparison_registry.json").exists()
+    assert not (out / "candidate_generation.json").exists()
+    assert not (out / "ai_commentary_context.json").exists()
 
 
 def test_diagnosis_only_materialize_writes_root_tombstones(

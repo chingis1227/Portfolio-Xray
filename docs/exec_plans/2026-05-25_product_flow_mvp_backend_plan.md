@@ -6,7 +6,7 @@ This document must be maintained in accordance with [PLANS.md](../../PLANS.md) a
 
 Origin audit: [docs/audits/2026-05-25_product_flow_validation_audit.md](../audits/2026-05-25_product_flow_validation_audit.md). Prior alignment closed: [2026-05-25_post_architecture_alignment_roadmap.md](2026-05-25_post_architecture_alignment_roadmap.md). Backlog: `RM-ARCH-011` / `RM-ARCH-010` in [docs/ROADMAP.md](../ROADMAP.md).
 
-**Session rule:** one chat = one session below. Update `Progress` at the end of each session and stop. Do not mix source/docs commits, generated `Main portfolio/`, and provider/IBKR work ([DIRTY_TREE_CLEANUP_PLAN.md](../../DIRTY_TREE_CLEANUP_PLAN.md)).
+**Session rule:** one chat = one session below. Update `Progress` at the end of each session and stop. Do not mix source/docs commits, generated `Main portfolio/`, and provider/IBKR work (removed root dirty-tree cleanup record).
 
 ---
 
@@ -79,7 +79,7 @@ flowchart LR
 
 **Goal:** commit alignment docs so later sessions are not lost in ~347 dirty entries.
 
-**Tasks:** allowlisted commit per [DIRTY_TREE_CLEANUP_PLAN.md](../../DIRTY_TREE_CLEANUP_PLAN.md) §1A–1B; **do not** stage `Main portfolio/`, PDFs, provider config.
+**Tasks:** allowlisted commit per removed root dirty-tree cleanup record §1A–1B; **do not** stage `Main portfolio/`, PDFs, provider config.
 
 **Done when:** user explicitly requested commit; otherwise **skip** and proceed to Session 01.
 

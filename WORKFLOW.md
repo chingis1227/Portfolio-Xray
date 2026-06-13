@@ -54,7 +54,7 @@ Before changing behavior, check the owning source of truth:
 
 Do not invent formulas, estimators, scenarios, constraints, statuses, or data rules when a spec exists.
 
-Documentation migration records such as `DOCUMENTATION_MIGRATION_PLAN.md`, `DOCUMENTATION_MIGRATION_SESSION09_AUDIT.md`, and archived legacy docs are planning and traceability inputs only. Verify every current-implementation claim against `SPEC.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, and code before changing source docs.
+Historical audits, completed plans, and archived legacy docs are traceability inputs only. Verify every current-implementation claim against `SPEC.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, and code before changing source docs.
 
 ## Portfolio-First Operator Checklist
 
@@ -67,16 +67,16 @@ Factory recovery and reason codes: [operational runbook §8](docs/operational_ru
 | Step | Action |
 | --- | --- |
 | 1 | **Core MVP config:** confirm `tickers`, `current_weights` or `weights`, and `investor_currency` in `config.yml` (copy from `config.yml.example` Section 1 or `tests/fixtures/mvp_portfolios/`). Explicit `analysis_subject` is optional — weights alone inject `current_portfolio` + `analyze_current_weights`. For `model_portfolio` / `universe_baseline`, set `analysis_subject` explicitly. Real cash (`Cash USD`) is a separate holding from `cash_proxy_ticker`. See [input_assumptions_spec.md](docs/specs/input_assumptions_spec.md). |
-| 2 | Choose path: **routine core** (default, six candidates, `core_fast`) vs **full** (`default_v1`, 16 builders) vs **product demo** (one candidate). See [portfolio review workflow spec](docs/specs/portfolio_review_workflow_spec.md). |
-| 3 | Product demo only: `python run_portfolio_review.py --candidates equal_weight` (or another factory id). From Launchpad `candidate_method_id`, use the same factory id via Alternatives Builder delegation ([operator guide](docs/product_flow_operator_guide.md#launchpad-method--one-candidate-alternatives-builder) or `python scripts/run_one_candidate_from_method.py --method equal_weight`). Routine `run_portfolio_review.py` / `--mode core` stays six-candidate for regression — do not substitute for the demo path. Runbook: [Product demo (one candidate)](docs/operational_runbook.md#product-demo-one-candidate). |
+| 2 | Choose path: **routine diagnosis** (default), **canonical vertical demo** (one selected hypothesis), **compatibility candidate id**, or **advanced/research batch**. See [portfolio review workflow spec](docs/specs/portfolio_review_workflow_spec.md). |
+| 3 | Product demo only: use `python scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight` (or another supported method). Use `python run_portfolio_review.py --candidates <id>` only as the explicit backend factory-id compatibility path. |
 | 4 | Optional: `python run_portfolio_review.py --dry-run` (add `--candidates <id>` when validating the one-candidate plan). |
-| 5 | Run: `python run_portfolio_review.py` or `--mode full` for research batch; use step 3 command for product demo. Add `--no-cache` on first data load if needed. Default is JSON-only (`site_api`); PDFs require `--with-pdf` or `--legacy-full-pdf`. |
+| 5 | Run: `python run_portfolio_review.py` for routine diagnosis, `python run_portfolio_review.py --with-candidates` for advanced core batch, or `python run_portfolio_review.py --mode full` for full research menu. Add `--no-cache` on first data load if needed. Default is JSON-only (`site_api`); PDFs require `--with-pdf` or `--legacy-full-pdf`. |
 
 **After the run — before trusting comparison or decision JSON**
 
 | Step | Check | Why |
 | --- | --- | --- |
-| 1 | Command / mode used | Default is **core** (`core_fast`, six candidates). Product demo uses `--candidates <id>` (`one_candidate`). Full menu is `--mode full` (`default_v1`). |
+| 1 | Command / mode used | Default is **diagnosis-only**. Canonical product demo uses the vertical script. `--candidates <id>` is a compatibility one-candidate path. `--with-candidates` and `--mode full` are advanced/research paths. |
 | 2 | Open `{output_dir_final}/analysis_subject/` first | Subject X-Ray, stress, `run_metadata.json`, Problem Classification, Launchpad, and Block 6 Builder setup for the **reviewed** portfolio. |
 | 3 | Do **not** use root `run_result.json`, `portfolio_weights.yml`, or root `stress_report.json` / `portfolio_xray.json` as the subject | Those are **legacy policy** artifacts when present — often different weights than `analysis_subject/`. |
 | 4 | `candidate_factory_run.json` → `factory_profile_id` | Must match the mode you intended (`core_v1` vs `default_v1`). |

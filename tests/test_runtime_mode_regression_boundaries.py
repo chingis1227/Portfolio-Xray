@@ -18,6 +18,7 @@ from mvp_offline_fixtures import (
 )
 from run_portfolio_review import resolve_candidate_execution_flags
 from src.candidate_comparison import write_candidate_comparison_outputs
+from src.candidate_generation import write_candidate_generation_outputs
 from src.config_schema import validate_config
 from src.portfolio_review_workflow import (
     RUNTIME_MODE_PRODUCT_DIAGNOSIS_ONLY,
@@ -103,6 +104,30 @@ def _seed_compare_workspace(
         candidate_dir.mkdir(parents=True, exist_ok=True)
         with open(candidate_dir / "snapshot_10y.json", "w", encoding="utf-8") as handle:
             json.dump(_snapshot_10y(metrics), handle)
+
+    write_candidate_generation_outputs(
+        main,
+        candidate_setup={
+            "validation_status": "valid",
+            "can_generate_candidate": True,
+            "is_rebalance_recommendation": False,
+            "selected_method": "equal_weight",
+            "source_card_id": "runtime_mode_fixture_card",
+            "source_diagnosis_id": "runtime_mode_fixture_diagnosis",
+            "source_launchpad_card_type": "reference_benchmark_test",
+            "builder_prefill_id": "runtime_mode_fixture_builder",
+            "candidate_setup_id": "runtime_mode_fixture_candidate_setup",
+            "goal": "Test Equal Weight as a diagnostic benchmark.",
+            "hypothesis_to_test": "Equal Weight improves diversification.",
+            "success_criteria": ["Lower concentration."],
+            "tradeoff_to_watch": "Turnover and risk changes.",
+            "decision_boundary": "Compare first, then read Decision Verdict.",
+            "parameters": {"method": "equal_weight", "mode": "capped"},
+            "constraints": {"method": "equal_weight", "mode": "capped", "capped": True},
+            "validation_warnings": [],
+        },
+        weights={"VOO": 1.0},
+    )
 
     cfg = validate_config(
         {

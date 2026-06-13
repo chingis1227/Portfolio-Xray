@@ -23,8 +23,13 @@ def print_portfolio_review_banner(
             "scripts/run_blocks_5_to_9_vertical_flow.py --method <id>."
         )
         print(
-            "Flow: Input -> X-Ray -> Stress -> Problem Classification -> "
-            "Candidate Launchpad -> Current vs Candidate -> Decision Verdict"
+            "Flow: Input -> X-Ray -> Stress -> Client Fit -> Problem Classification -> "
+            "Candidate Launchpad -> known factory-id candidate -> Current vs Candidate -> "
+            "Decision Verdict"
+        )
+        print(
+            "Builder/Candidate Generation proof: bypassed; use the vertical demo for that "
+            "visible product loop."
         )
         return
     if runtime_mode in {"product_shortlist", "research_batch"}:
@@ -34,13 +39,13 @@ def print_portfolio_review_banner(
             "not the Core MVP demo story."
         )
         print(
-            "Flow: Input -> X-Ray -> Stress -> Problem Classification -> "
+            "Flow: Input -> X-Ray -> Stress -> Client Fit -> Problem Classification -> "
             "Candidate Launchpad -> backend candidate factory -> comparison"
         )
         return
     print("Mode: product_diagnosis_workflow")
     print(
-        "Flow: Input -> X-Ray -> Stress -> Problem Classification -> "
-        "Candidate Launchpad -> AI Commentary / Monitoring"
+        "Flow: Input -> X-Ray -> Stress -> Client Fit -> Problem Classification -> "
+        "Candidate Launchpad -> Portfolio Alternatives Builder -> diagnosis grounding"
     )
     print("Candidates: disabled by default")

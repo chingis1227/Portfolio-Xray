@@ -68,19 +68,25 @@ under a documented selection rule.
 
 ## Required Workflow Order
 
-The portfolio-first order is:
+The current product order is:
 
 ```text
-analysis_subject
+analysis_subject / Input Portfolio
 -> validation and resolved assumptions
--> diagnostics / Portfolio X-Ray
--> stress / factor / macro / scenario diagnostics
--> allowed candidate generation
--> candidate diagnostics
--> comparison: analysis_subject versus candidates
--> decision: keep / rebalance / review / no-trade / data review
--> action plan, monitoring, journal, and report package
+-> Portfolio X-Ray
+-> Stress Test Lab
+-> Client Fit Check
+-> Problem Classification
+-> Candidate Launchpad
+-> Portfolio Alternatives Builder setup
+-> explicit Candidate Generation
+-> Current vs Candidate Comparison
+-> Decision Verdict
+-> AI Commentary grounding / Monitoring / Report
 ```
+
+Technical action, journal, health, robustness, and full candidate-ranking outputs may still be
+written by advanced or compatibility paths, but they are not the primary current product answer.
 
 The current file-first orchestration entrypoint is:
 
@@ -88,8 +94,9 @@ The current file-first orchestration entrypoint is:
 python run_portfolio_review.py
 ```
 
-It materializes `analysis_subject` diagnostics before invoking the non-policy candidate factory and
-comparison path. Its default plan must not include `run_optimization.py`.
+By default it materializes `analysis_subject` diagnosis/context artifacts only. Candidate factory,
+Candidate Generation, comparison, and verdict steps are opt-in through explicit downstream commands
+or the Blocks 5-9 vertical demo. Its default plan must not include `run_optimization.py`.
 
 The invariant is simple: candidate generation, candidate comparison, and decision artifacts must not
 be presented as the main review outcome until `analysis_subject` diagnostics are available or the run
@@ -143,10 +150,11 @@ requests them.
 
 | Flag / argument | Effect on candidates |
 | --- | --- |
-| (none) | Diagnosis-only — no factory, no compare |
+| (none) | Diagnosis-only - no factory, no Candidate Generation, no compare |
 | `--skip-candidates` | Same as default (explicit) |
-| `--candidates <id>` or comma list | Factory for listed ids + compare |
-| `--with-candidates` | Factory with profile from `--mode` (`core` → `core_fast`, six builders) |
+| `--candidates <id>` or comma list | Compatibility factory path for listed ids + compare; bypasses visible Builder/Candidate Generation proof |
+| `scripts/run_blocks_5_to_9_vertical_flow.py --method <id>` | Canonical visible Builder -> Candidate Generation -> compare -> verdict demo |
+| `--with-candidates` | Factory with profile from `--mode` (`core` -> `core_fast`, six builders) |
 | `--mode full` | Factory with `default_v1` (16 builders) |
 | `--candidate-profile <name>` | Factory with named profile (implies candidates run) |
 
@@ -157,30 +165,30 @@ path. The canonical one-hypothesis demo is
 
 When candidates run, profile resolution follows `resolve_review_candidate_profile()`:
 
-- `--mode core` (default) → `core_fast` unless `--candidate-profile` overrides (e.g. `core_v1`).
-- `--mode full` → `default_v1`.
+- `--mode core` (default) -> `core_fast` unless `--candidate-profile` overrides (e.g. `core_v1`).
+- `--mode full` -> `default_v1`.
 
 ### Command decision tree (operator)
 
 ```text
 Need current-portfolio diagnosis only...
-  └─ yes → python run_portfolio_review.py
+  └─ yes -> python run_portfolio_review.py
            (runtime_mode=product_diagnosis_only, workflow_state=diagnosis_only)
 
 Need one visible Launchpad -> Builder -> Block 7 -> compare -> verdict demo...
-  └─ yes → python scripts/run_blocks_5_to_9_vertical_flow.py --method <factory_id>
+  └─ yes -> python scripts/run_blocks_5_to_9_vertical_flow.py --method <factory_id>
 
 Already know the backend factory id and only need compatibility factory + compare...
-  └─ yes → python run_portfolio_review.py --candidates <factory_id>
+  └─ yes -> python run_portfolio_review.py --candidates <factory_id>
            (runtime_mode=product_one_candidate, workflow_state=one_candidate,
             path classification=explicit factory-id compatibility)
 
-Need backend six-candidate batch + compare (research / Blocks 1–5 regression)...
-  └─ yes → python run_portfolio_review.py --with-candidates
+Need backend six-candidate batch + compare (research / Blocks 1-5 regression)...
+  └─ yes -> python run_portfolio_review.py --with-candidates
            (runtime_mode=research_batch, workflow_state=multiple_candidates, profile core_fast)
 
 Need full 16-builder menu...
-  └─ yes → python run_portfolio_review.py --mode full
+  └─ yes -> python run_portfolio_review.py --mode full
            (runtime_mode=research_batch, workflow_state=multiple_candidates, profile default_v1)
 ```
 
@@ -323,9 +331,9 @@ Deleting the policy engine is not part of this transition.
 After comparison and decision artifacts are written, the default portfolio-first orchestrator
 rebuilds a **narrow** PDF subset only:
 
-- `{output_dir_final}/decision_package_summary.txt` → `Main portfolio_decision_package.pdf`
+- `{output_dir_final}/decision_package_summary.txt` -> `Main portfolio_decision_package.pdf`
 - `{output_dir_final}/analysis_subject/` commentary, stress commentary, and weights (when present)
-  → `analysis_subject_*` PDFs under `pdf files/`
+  -> `analysis_subject_*` PDFs under `pdf files/`
 
 It calls `rebuild_pdf_reports.py --portfolio-first` and does **not** refresh legacy Equal-Weight,
 Risk-Parity, policy Main, or optimizer baseline variant PDFs on every review run.
@@ -394,7 +402,7 @@ python scripts/verify_docs.py
 and a stale wording search for policy-first defaults when source-of-truth maps or user-facing command
 sections are edited.
 
-## Operational Model (Session 09 — RM-939)
+## Operational Model (Session 09 - RM-939)
 
 The portfolio-first **workflow order** is implemented. The default CLI is diagnosis-only.
 
@@ -402,7 +410,9 @@ The portfolio-first **workflow order** is implemented. The default CLI is diagno
 
 | Use case | Command |
 | --- | --- |
-| Default site/API review | `python run_portfolio_review.py` |
+| Default site/API diagnosis review | `python run_portfolio_review.py` |
+| Canonical one-hypothesis vertical demo | `python scripts/run_blocks_5_to_9_vertical_flow.py --method <id>` |
+| Explicit backend factory-id compatibility | `python run_portfolio_review.py --candidates <id>` |
 | Core backend candidate batch (six candidates) | `python run_portfolio_review.py --with-candidates` |
 | Full menu (16 candidates) | `python run_portfolio_review.py --mode full` |
 | Resume interrupted full factory | `python run_portfolio_review.py --mode full --resume-candidates` |
@@ -416,12 +426,13 @@ artifact map: [OUTPUTS.md](../../OUTPUTS.md).
 
 | Topic | Behavior |
 | --- | --- |
-| End-to-end command | `run_portfolio_review.py` chains subject → factory → compare in `site_api` JSON/cache mode |
-| **Default run** | diagnosis-only; materialize `analysis_subject` in `site_api` mode; no factory, no compare, no PDF by default |
-| **Core-run** (advanced backend batch, Wave 2 `core_fast`) | `--with-candidates` → factory profile `core_fast`; factory `--execution-mode standard` (phased weights + lightweight_comparison, parallel Phase 2 by default); shared `ReviewRunContext` is for explicit candidate/core_fast orchestration, while diagnosis-only core materialization uses `--no-review-run-context`; no PDF by default. Disable parallel: `--no-parallel-lightweight-reports`. Regression sequential menu: `--candidate-profile core_v1`. **Acceptance: E2E ≤ 300 s warm cache** ([ExecPlan](../exec_plans/2026-05-24_blocks_1_5_performance_wave2_plan.md)). |
-| **Core-fast-run** (standalone factory) | `python run_candidate_factory.py --profile core_fast` — same six ids as `core_v1`; parallel lightweight reports by default unless `--no-parallel-lightweight-reports`. |
-| **Full-run** | `--mode full` → factory profile `default_v1`; factory `--execution-mode standard` by default |
-| **Full-run (legacy builders)** | `--mode full --execution-mode legacy_full` → subprocess `run_*.py` per candidate (parity/debug) |
+| Default command | `run_portfolio_review.py` materializes diagnosis/context artifacts in `site_api` JSON/cache mode; no factory, no compare, no PDF by default |
+| Canonical vertical demo | `scripts/run_blocks_5_to_9_vertical_flow.py --method <id>` proves Builder setup, Candidate Generation, compare, verdict, and grounding in one artifact chain |
+| Explicit compatibility path | `run_portfolio_review.py --candidates <id>` runs a known factory id + compare without proving the visible Builder/Block 7 handoff |
+| **Core-run** (advanced backend batch, Wave 2 `core_fast`) | `--with-candidates` -> factory profile `core_fast`; factory `--execution-mode standard` (phased weights + lightweight_comparison, parallel Phase 2 by default); shared `ReviewRunContext` is for explicit candidate/core_fast orchestration, while diagnosis-only core materialization uses `--no-review-run-context`; no PDF by default. Disable parallel: `--no-parallel-lightweight-reports`. Regression sequential menu: `--candidate-profile core_v1`. **Acceptance: E2E <= 300 s warm cache** ([ExecPlan](../exec_plans/2026-05-24_blocks_1_5_performance_wave2_plan.md)). |
+| **Core-fast-run** (standalone factory) | `python run_candidate_factory.py --profile core_fast` - same six ids as `core_v1`; parallel lightweight reports by default unless `--no-parallel-lightweight-reports`. |
+| **Full-run** | `--mode full` -> factory profile `default_v1`; factory `--execution-mode standard` by default |
+| **Full-run (legacy builders)** | `--mode full --execution-mode legacy_full` -> subprocess `run_*.py` per candidate (parity/debug) |
 | **Full-run recovery** | `--mode full --resume-candidates` passes factory `--resume` through the portfolio-first orchestrator |
 | **Portfolio-first PDF export** | `--with-pdf` explicitly enables the narrow portfolio-first PDF rebuild after export-capable artifacts are written |
 | Stale snapshots | Comparison marks non-matching `analysis_end` as `unavailable` |
@@ -441,18 +452,18 @@ See
 
 ## Scope boundaries and cross-links (operator)
 
-The same `run_portfolio_review.py` command produces JSON for Blocks 1–5 diagnostics **and** the V1
-decision package. Audits titled “Blocks 1–5” describe the diagnostic/candidate-prep path only;
+The same orchestrator family can produce JSON for Blocks 1-5 diagnostics **and**, when explicit candidate/comparison steps run, the V1
+decision package. Audits titled "Blocks 1-5" describe the diagnostic/candidate-prep path only;
 `selection_decision.json`, `action_plan.json`, and related files are **downstream** of that audit
 scope even when written in the same run.
 
 | Topic | Where to read |
 | --- | --- |
-| Blocks 1–5 vs decision package (audit vs CLI) | [GLOSSARY.md](../../GLOSSARY.md) — **Blocks 1–5 deliverable**, **Decision package** |
-| Last factory scope vs comparison row set | [candidate_comparison_spec.md](candidate_comparison_spec.md) — factory run vs comparison scope; [GLOSSARY.md](../../GLOSSARY.md) — factory/comparison evidence terms |
-| Subject vs legacy policy artifacts at `Main portfolio/` | [OUTPUTS.md](../../OUTPUTS.md) — Read this first; [operational_runbook.md](../operational_runbook.md) §0.1 |
-| Core path walkthrough (code-accurate) | [2026-05-23 Blocks 1–5 actual algorithm walkthrough](../audits/2026-05-23_blocks_1_5_actual_algorithm_walkthrough.md) |
-| Manual step-by-step walkthrough | [2026-05-23 Blocks 1–5 manual algorithm walkthrough](../audits/2026-05-23_blocks_1_5_manual_algorithm_walkthrough.md) |
+| Blocks 1-5 vs decision package (audit vs CLI) | [GLOSSARY.md](../../GLOSSARY.md) - **Blocks 1-5 deliverable**, **Decision package** |
+| Last factory scope vs comparison row set | [candidate_comparison_spec.md](candidate_comparison_spec.md) - factory run vs comparison scope; [GLOSSARY.md](../../GLOSSARY.md) - factory/comparison evidence terms |
+| Subject vs legacy policy artifacts at `Main portfolio/` | [OUTPUTS.md](../../OUTPUTS.md) - Read this first; [operational_runbook.md](../operational_runbook.md) Section0.1 |
+| Core path walkthrough (code-accurate) | [2026-05-23 Blocks 1-5 actual algorithm walkthrough](../audits/2026-05-23_blocks_1_5_actual_algorithm_walkthrough.md) |
+| Manual step-by-step walkthrough | [2026-05-23 Blocks 1-5 manual algorithm walkthrough](../audits/2026-05-23_blocks_1_5_manual_algorithm_walkthrough.md) |
 | Artifact confusion register | [2026-05-23 core/full artifact confusion audit](../audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md) |
 
 ## Detailed Ownership

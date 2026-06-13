@@ -1,7 +1,7 @@
 """Input Layer MVP regression gate (ExecPlan Session 08).
 
 Cross-cutting acceptance for Core MVP input: three-field config, USD system defaults,
-real cash, disclosure export, portfolio-review runtime modes, and six-file product bundle
+real cash, disclosure export, portfolio-review runtime modes, and current product bundle
 after one-candidate compare. Offline only; no live market data.
 """
 
@@ -260,7 +260,7 @@ def test_mvp_product_bundle_one_candidate_compare_regression(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """Eight-ticker MVP fixture + explicit equal_weight -> six product bundle JSON files."""
+    """Eight-ticker MVP fixture + explicit equal_weight -> product bundle JSON files."""
     _block_network(monkeypatch)
     raw = dict(load_mvp_fixture_yaml("minimal_usd_no_cash.yml"))
     raw["output_dir_final"] = str(tmp_path / "Main portfolio")

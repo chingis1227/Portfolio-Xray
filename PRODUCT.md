@@ -1,22 +1,20 @@
-﻿# Product
+# Product
 
-This document is part of the active project documentation after the documentation migration. It describes the current canonical product direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
+This document describes the current product direction and operating context, but it does not override `SPEC.md`, `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, `docs/specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
 
 ## 1. Product Summary
 
-Portfolio MRI / Portfolio X-Ray is a portfolio diagnostics and investment decision-support product. The **canonical current product truth is “Diagnosis 2”**.
+Portfolio MRI / Portfolio X-Ray is a diagnosis-first, current-portfolio-first investment decision-support product.
 
-The user does not start by choosing an optimizer. The user starts by submitting a current portfolio.
-The product diagnoses what is inside that portfolio, where risk is hidden, how it behaves under
-stress, what problem should be tested, which candidate hypothesis is reasonable, and whether the
-trade-off justifies action.
+The user does not start by choosing an optimizer. The user starts by submitting a current portfolio. The product diagnoses what is inside that portfolio, where risk is hidden, how it behaves under stress, how that evidence compares with non-binding Client Fit context, what problem should be tested, which candidate hypothesis is reasonable, and whether the trade-off justifies action.
 
 Current Core MVP product flow:
 
 ```text
-Input portfolio
+Input Portfolio
 -> Portfolio X-Ray
 -> Stress Test Lab
+-> Client Fit Check
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
@@ -27,22 +25,9 @@ Input portfolio
 -> Monitoring / What Changed
 ```
 
-This flow is the product truth agents should use when explaining the project. The current frontend
-MVP route surface now covers Portfolio Input through Report / grounding, with Candidate Generation
-merged into Hypothesis and Monitoring / What Changed still deferred as a separate UI layer. Full
-hosted workspace behavior, polished export packaging, and advanced product modules remain future
-scope. Current implementation status is owned by `SPEC.md`, `OUTPUTS.md`, `docs/specs/*.md`, and
-code.
+This flow is the product truth agents should use when explaining the project. The current frontend MVP route surface covers Portfolio Input through Report / grounding, with Candidate Generation merged into Hypothesis and Monitoring / What Changed still deferred as a separate UI layer. Full hosted workspace behavior, polished export packaging, and advanced product modules remain future scope. Current implementation status is owned by `SPEC.md`, `OUTPUTS.md`, `docs/specs/*.md`, and code.
 
-“Diagnosis 2 Later” is backlog / advanced / later. The following must not be described as the
-current Core MVP product flow even if code or generated artifacts exist: Portfolio Health Score,
-Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena,
-Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Model Risk Diagnostics, full Action
-Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What
-Happens If UI, Client-Fit Check, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware
-optimizer objective, tactical tilt, full custom constraints UI, multi-client workspace, and polished
-PDF report product. Existing implementations of these belong to advanced/backend/legacy/generated
-support unless explicitly promoted by a canonical spec.
+Advanced/later capabilities must not be described as the current Core MVP product flow even if code or generated artifacts exist: Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client Fit suitability approval, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product. Existing implementations of these belong to advanced/backend/legacy/generated support unless explicitly promoted by a canonical spec.
 
 ## 2. Product Principles
 
@@ -615,7 +600,6 @@ These items are not Core MVP requirements. Do not describe them as implemented u
 - Full PDF report design.
 - Advanced Parameter Builder settings.
 - Asset X-Ray / Asset Diagnostics.
-- Client-Fit Check / questionnaire.
 - Portfolio Archetype Classification is an optional later / advanced diagnostic layer (not Core MVP).
   Examples: Equity Growth Portfolio, Balanced 60/40-like, Credit Carry Portfolio, Duration-heavy
   Defensive, Inflation-sensitive, Pseudo-diversified Portfolio. Legacy

@@ -8,7 +8,7 @@ Related evidence:
 
 - Origin audit: [2026-05-25 Full Project Architecture Alignment Audit](2026-05-25_full_project_architecture_alignment_audit.md)
 - ExecPlan: [Post-Audit Portfolio MRI Architecture Alignment Roadmap](../exec_plans/2026-05-25_post_architecture_alignment_roadmap.md)
-- Dirty-tree guidance: [DIRTY_TREE_CLASSIFICATION.md](../../DIRTY_TREE_CLASSIFICATION.md)
+- Dirty-tree guidance: removed root dirty-tree classification record
 
 ---
 
@@ -24,7 +24,7 @@ Active source-of-truth docs, command matrices, output-bundle policy, verificatio
 
 | Original finding | Severity | Session(s) | Final status | Notes |
 | --- | --- | --- | --- | --- |
-| Unsafe dirty working tree | Critical | 01, 07, 12 | **Deferred — human review required** | `git status --short` reported **346** entries at Session 12 closure. Use `DIRTY_TREE_CLASSIFICATION.md` before staging. Do not mix generated artifacts, config/provider changes, or migration code in one commit. |
+| Unsafe dirty working tree | Critical | 01, 07, 12 | **Deferred — human review required** | `git status --short` reported **346** entries at Session 12 closure. Use `removed root dirty-tree classification record` before staging. Do not mix generated artifacts, config/provider changes, or migration code in one commit. |
 | Docs disagree on implemented vs target status | Critical | 02 | **Resolved** | Active docs now distinguish implemented additive backend artifacts from Target/TBD UI, schema replacement, and LLM prose. `SPEC.md` status matrix is consistent with `PRODUCT.md`, `ARCHITECTURE.md`, and `docs/DIAGNOSTIC_PRODUCT_CONCEPT.md`. |
 | Command matrix drift (`core_v1` vs `core_fast`) | High | 03 | **Resolved** | `README.md`, `OUTPUTS.md`, `docs/specs/candidate_factory_spec.md`, and `docs/operational_runbook.md` document default `--mode core` → `core_fast`; `core_v1` is sequential regression only. Historical audits/plans may still mention `core_v1` as past default — preserve as history. |
 | Candidate Factory framed as Core MVP UX | High | 04 | **Resolved** | `Standard product comparison arena` wording removed from active specs. `default_v1` is advanced/research full menu; standalone factory CLI default remains backend tooling. |
@@ -35,7 +35,7 @@ Active source-of-truth docs, command matrices, output-bundle policy, verificatio
 | Active register mismatch | Medium / High | 08, 12 | **Resolved** | Registers updated at closure; audit marked historical; ExecPlan marked completed. |
 | Compare pipeline emits full technical/advanced package | Medium | 11 | **Accepted** | By design for traceability. Product surfaces must filter to the six-file bundle and not promote health/robustness/selection as the main answer. |
 | Runtime wiring gaps (sidecar paths, ai_commentary inputs) | Medium | 11 | **Deferred — RM-ARCH-011** | Requires separate implementation ExecPlan; does not block documentation alignment closure. |
-| Mixed config / IBKR / data-provider dirty changes | Medium | — | **Deferred — human review** | Out of scope for this roadmap; see `DIRTY_TREE_CLASSIFICATION.md`. |
+| Mixed config / IBKR / data-provider dirty changes | Medium | — | **Deferred — human review** | Out of scope for this roadmap; see `removed root dirty-tree classification record`. |
 
 ---
 
@@ -74,7 +74,7 @@ Active source-of-truth docs, command matrices, output-bundle policy, verificatio
 
 ## Remaining risks and deferred work
 
-1. **Dirty tree (346 entries):** No stable committed baseline until migration-related source is reviewed and committed in allowlisted batches per `DIRTY_TREE_CLASSIFICATION.md`.
+1. **Dirty tree (346 entries):** No stable committed baseline until migration-related source is reviewed and committed in allowlisted batches per `removed root dirty-tree classification record`.
 2. **Stale generated outputs:** Run a separate approved refresh session when fresh bundle JSON on disk is required; do not refresh inside docs-only work.
 3. **`RM-ARCH-011`:** Optional runtime wiring ( `analysis_subject/` sidecar resolution, ai_commentary inputs, optional manifest categories ) — separate implementation ExecPlan.
 4. **`RM-ARCH-010`:** Future natural-language AI Commentary spec — do not add LLM calls until approved.
@@ -84,7 +84,7 @@ Active source-of-truth docs, command matrices, output-bundle policy, verificatio
 
 ## Recommended next steps
 
-1. Human review and allowlisted commit of migration-related source/docs (not generated outputs) using `DIRTY_TREE_CLASSIFICATION.md`.
+1. Human review and allowlisted commit of migration-related source/docs (not generated outputs) using `removed root dirty-tree classification record`.
 2. Optional: approved generated-output refresh to materialize the six-file product bundle on disk and update manifests.
 3. Optional: new ExecPlan for `RM-ARCH-011` runtime wiring if portfolio-first consumers need sidecar-aware compare without manual path resolution.
 4. Optional: new spec/workstream for `RM-ARCH-010` if natural-language AI Commentary is product-approved.

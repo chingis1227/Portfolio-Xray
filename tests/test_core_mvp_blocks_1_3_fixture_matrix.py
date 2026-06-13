@@ -59,7 +59,7 @@ FORBIDDEN_EXACT_KEYS = {
     "target_max_drawdown",
 }
 FORBIDDEN_EXACT_ARTIFACT_KEYS = {
-    "candidate_launchpad_json",
+    "candidate_generation_json",
     "candidate_comparison_json",
     "current_vs_candidate_json",
     "decision_verdict_json",

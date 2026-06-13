@@ -30,7 +30,7 @@ Related evidence:
 
 - **C1 (audit):** No bundle JSON in git — by design (`Main portfolio/` gitignored). Live proof is the Session 07 snapshot, not the repo tree.
 - **C2 (audit):** Default core still runs six candidates — **accepted**; product demo uses explicit `--candidates`.
-- **C3 (audit):** Dirty tree — still deferred ([DIRTY_TREE_CLEANUP_PLAN.md](../../DIRTY_TREE_CLEANUP_PLAN.md)).
+- **C3 (audit):** Dirty tree — still deferred (removed root dirty-tree cleanup record).
 - **Demo C1 (snapshot):** One-candidate factory run may still compare against **stale** on-disk variant snapshots; `favored_candidate_id` may not match the requested id — operator must prune or use fresh `output_dir_final` for a clean story.
 - **Demo C2 (snapshot):** After factory `--then-compare`, root `output_manifest.json` may list factory paths only, not Session 03 `product_bundle_*` keys — compare manifest intent vs factory writer; consumers resolve bundle paths via [OUTPUTS.md](../../OUTPUTS.md) / operator guide.
 
@@ -498,4 +498,4 @@ python run_candidate_factory.py --candidates equal_weight --execution-mode stand
 | Runtime verification (original) | **Not executed** (per guardrails: no broad generated-output refresh) |
 | Closure (Session 08) | 2026-05-26; ExecPlan Sessions 01–08 complete; pytest bundle 46 passed; live bundle [demo baseline snapshot](2026-05-25_product_flow_demo_baseline_snapshot.md) |
 | Register status | **Historical** (superseded by closure); active operator entry: [product flow operator guide](../product_flow_operator_guide.md) |
-| Recommended next work | Session 09 / `RM-ARCH-010` only if product approves LLM; UI consumer mapping; optional dirty-tree commit per DIRTY_TREE_CLEANUP_PLAN |
+| Recommended next work | Session 09 / `RM-ARCH-010` only if product approves LLM; UI consumer mapping; optional dirty-tree commit per removed root dirty-tree cleanup record |

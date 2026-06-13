@@ -56,23 +56,28 @@ Title: Short title
 
 ## Active Issues
 
-### Full pytest suite contract drift index (2026-05-26)
+### Full pytest suite contract drift index (current audit: 2026-06-12)
 
-Recorded after `python -m pytest` on the Block 2.4 closure path: **1037 passed**, **6 failed**, **2 skipped**
-(live E2E markers). Failures are **pre-existing contract drift / tech debt**, not regressions from
-`src/block_2_4_hidden_exposure.py`. Do not treat a green Block 2.4 focused run as proof of full-suite green
-until these rows are closed or explicitly re-accepted.
+Latest recorded full-suite audit: `python -m pytest -q` on **2026-06-12** reported
+**13 failed, 1898 passed, 3 skipped**. Treat this as the current full-suite status until a newer full
+run supersedes it. Source:
+[docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md](docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md).
 
-| ID | Failing test | Drift summary | Owning area |
+These failures are tracked as broad contract/fixture/test-harness debt, not as blockers for focused
+product-bundle or Client Fit checks unless the touched area overlaps one of the rows below.
+
+| Group | Failing tests | Drift summary | Next action |
 | --- | --- | --- | --- |
-| KI-2026-05-26-001 | `tests/test_candidate_comparison.py::test_current_unavailable_in_optimize_mode` | `current` row `status` is `degraded`; test expects `unavailable` + `missing_current_report` | candidate comparison |
-| KI-2026-05-26-002 | `tests/test_candidate_factory_contract.py::test_live_factory_build_matches_golden_document` | **Resolved 2026-06-12** by refreshing `candidate_factory_run_golden_v1.json` for the accepted factory options surface (`output_profile`, lightweight/parallel report fields). | candidate factory |
-| KI-2026-05-26-003 | `tests/test_current_vs_policy_workflow.py::test_combined_context_both_available` | `current.artifact_root` does not end with `current_portfolio`; combined-context path contract drift | current vs policy |
-| KI-2026-05-26-004 | `tests/test_current_vs_policy_workflow.py::test_current_weights_without_sidecar` | Same as KI-001: `degraded` vs `unavailable` when sidecar missing | current vs policy |
-| KI-2026-05-26-005 | `tests/test_factor_covariance.py::test_factor_covariance_empty_factor_frame_returns_explicit_skip_reason` | Empty factor frame returns `status: available`; test expects `unavailable` | factor / macro |
-| KI-2026-05-26-006 | `tests/test_mvp_workflow.py::test_policy_current_adds_materialize_when_weights_set` | MVP plan argv lacks `--materialize-current` for policy+current workflow | MVP workflow |
+| Block 8-only boundary | `tests/test_block8_current_vs_candidate_boundary.py::test_block8_only_writes_comparison_without_refreshing_stale_verdict` | Block 8-only helper also returns `site_explanation_bundle_json` | Decide whether optional site explanation belongs in Block 8-only output or re-baseline the test/spec |
+| Block 4 confidence/golden drift | `tests/test_block_4_no_trade_gate.py::test_golden_fixture_proceeds_to_launchpad`; `tests/test_block_4_severity_confidence.py::test_golden_fixture_assigns_severity_and_confidence` | Golden expects higher confidence than current partial X-Ray evidence produces | Product/spec decision before code or fixture change |
+| Current-vs-policy / comparison lineage | `tests/test_candidate_comparison.py::test_current_unavailable_in_optimize_mode`; `tests/test_current_vs_policy_workflow.py::test_combined_context_both_available`; `tests/test_current_vs_policy_workflow.py::test_current_weights_without_sidecar` | Current row status and sidecar lineage drift | Fix or intentionally re-accept status/root contract together |
+| Universe seed sizes | `tests/test_etf_universe.py::test_seed_universe_validates_and_has_target_size`; `tests/test_stock_universe.py::test_seed_universe_validates_and_has_expected_size` | Seed universe sizes exceed old expectations | Decide whether expansion is intentional; update data/tests/docs or restore seeds |
+| Factor/macro compatibility | `tests/test_factor_covariance.py::test_factor_covariance_empty_factor_frame_returns_explicit_skip_reason`; two `tests/test_macro_indicators.py` QE frequency tests | Empty factor frame and pandas quarterly alias handling | Add focused compatibility/guard fixes |
+| MVP workflow materialization | `tests/test_mvp_workflow.py::test_policy_current_adds_materialize_when_weights_set` | Policy-current planning misses expected materialization behavior | Inspect config normalization/wrapper path behavior |
+| Portfolio X-Ray golden drift | `tests/test_portfolio_xray_contract.py::test_live_build_matches_golden_document` | Live X-Ray differs from checked golden | Run targeted JSON diff before choosing fix vs fixture refresh |
 
-Issue entries: KI-2026-05-26-001 through KI-2026-05-26-006 (below).
+The older 2026-05-26 six-row index below remains as historical detail for overlapping known rows,
+but the 2026-06-12 audit above is the current full-suite status.
 
 ---
 
@@ -91,75 +96,75 @@ required every closure session.
 ### Phase 17 post-deep-audit gap index (closed)
 
 Wave **closed** 2026-05-22 (Session 10 / `RM-1029`). Source:
-[Blocks 1–5 Deep Audit Snapshot](docs/audits/2026-05-21_blocks_1_5_deep_audit_snapshot.md).
+[Blocks 1-5 Deep Audit Snapshot](docs/audits/2026-05-21_blocks_1_5_deep_audit_snapshot.md).
 Plan: [Post-Deep-Audit Foundation Plan](docs/exec_plans/2026-05-21_post_deep_audit_foundation_plan.md).
 
 | Gap | Summary | Roadmap | Target session |
 | --- | --- | --- | --- |
 | P17-G1 | ~~Selection/health rank `degraded` rows~~ | RM-1022 | **closed** Session 03 (favoring requires `available`; optimizers require `fair_comparison_ready`) |
 | P17-G2 | ~~Core vs full menu misinterpretation~~ | RM-1022, RM-1028 | **closed** Session 03 + 09 (selection warnings + decision package review-scope banner) |
-| P17-G3 | ~~Most optimizer rows not fair-comparison-ready on disk~~ | RM-1023 | **closed** Session 04 (offline full-menu gate; rebuild per runbook §8.6) |
+| P17-G3 | ~~Most optimizer rows not fair-comparison-ready on disk~~ | RM-1023 | **closed** Session 04 (offline full-menu gate; rebuild per runbook Section8.6) |
 | P17-G4 | ~~No live core E2E in automated closure~~ | RM-1021 | **closed** Session 02 (operator/`--live-core` gate; offline smoke remains default CI) |
 | P17-G5 | ~~Invalid ticker not blocked at Block 1~~ | RM-1024 | **closed** Session 05 (explicit `analysis_subject` hard-rejects unknown tickers in `validate_config`) |
 | P17-G6 | ~~False stale factory vs comparison timing~~ | RM-1025 | **closed** Session 06 (`factory_then_compare` context + write-before-compare ordering) |
 | P17-G7 | ~~`analysis_mode` vs subject type confusion~~ | RM-1026 | **closed** Session 07 (`review_bundle_context` + `input_assumptions` trust lines) |
 | P17-G8 | ~~No single review bundle fingerprint~~ | RM-1026 | **closed** Session 07 (`review_bundle_fingerprint` in comparison) |
-| P17-G9 | ~~Blocks 6–7 lack guarded handoff spec~~ | RM-1027 | **closed** Session 08 (`downstream_decision_readiness_spec.md`, `src/downstream_decision_readiness.py`, health/robustness stress guards) |
+| P17-G9 | ~~Blocks 6-7 lack guarded handoff spec~~ | RM-1027 | **closed** Session 08 (`downstream_decision_readiness_spec.md`, `src/downstream_decision_readiness.py`, health/robustness stress guards) |
 | P17-G10 | ~~Decision package vs partial/degraded~~ | RM-1028 | **closed** Session 09 (`package_truthfulness`, review-scope banner, action context warning) |
-| P17-G11 | Full factory heavy | — | accepted (runbook) |
-| P17-G12 | X-Ray G7 deferred displays | — | Phase 12 accepted |
+| P17-G11 | Full factory heavy | - | accepted (runbook) |
+| P17-G12 | X-Ray G7 deferred displays | - | Phase 12 accepted |
 | P17-G13 | X-Ray optional in comparison readiness | KI-2026-05-21-001 | accepted |
 | P17-G14 | `robust_scenario` Main stress dependency | RM-977 docs | accepted |
 
-Remediation sessions 02–10 closed P17-G1–G10; G11–G14 remain **accepted** per ExecPlan closure.
+Remediation sessions 02-10 closed P17-G1-G10; G11-G14 remain **accepted** per ExecPlan closure.
 Live full + resume E2E is documented (`scripts/verify_live_full_e2e.py`); operator-run, not default CI.
 
 ---
 ### Block 5 governance gap index (Phase 15)
 
-Audit gaps **G1–G10** are defined in
-[Optimization Engine Methodology Map](docs/audits/2026-05-20_optimization_engine_methodology_map.md) §4.
-Phase 15 sessions **RM-991**–**RM-1002** close them per
+Audit gaps **G1-G10** are defined in
+[Optimization Engine Methodology Map](docs/audits/2026-05-20_optimization_engine_methodology_map.md) Section4.
+Phase 15 sessions **RM-991**-**RM-1002** close them per
 [Optimization Engine Post-Audit Roadmap](docs/exec_plans/2026-05-20_optimization_engine_post_audit_roadmap.md).
 Wave closed Session 12 (`RM-1002`), 2026-05-21.
 
 | Gap | Summary | Roadmap | Session |
 | --- | --- | --- | --- |
-| G1 | ~~No single Block 5 optimization-engine spec~~ | RM-991 | 01 — **closed** |
-| G2 | ~~Legacy policy disclosure weaker than candidate metadata~~ | RM-993 | 03 — **closed** |
-| G3 | ~~Comparison does not surface optimizer methodology~~ | RM-995 | 05 — **closed** |
-| G4 | ~~Fallback/approximate paths look like clean success~~ | RM-996 | 06 — **closed** |
-| G5 | ~~Freshness lacks config/universe/estimator fingerprint~~ | RM-998 | 08 — **closed** |
-| G6 | ~~Robust scenario lacks formal solver status~~ | RM-997 | 07 — **closed** |
-| G7 | ~~Young ETF / covariance methodology not in summaries~~ | RM-999 | 09 — **closed** |
-| G8 | ~~Target-only objectives (Max Sharpe, drawdown, macro, tax)~~ | RM-992 | 02 — **closed** (`DEC-2026-05-21-001`) |
-| G9 | Stress `FAIL_*` labels vs mandate/release semantics | — | **accepted** (Stress Lab / policy specs; not Block 5 optimizer scope) |
-| G10 | ~~X-Ray not a formal comparison-readiness gate~~ | RM-1000 | 10 — **closed** for required optimizer checks; optional `portfolio_xray` only (`KI-2026-05-21-001`) |
-| — | ~~No Block 5 golden disclosure fixtures~~ | RM-1001 | 11 — **closed** |
+| G1 | ~~No single Block 5 optimization-engine spec~~ | RM-991 | 01 - **closed** |
+| G2 | ~~Legacy policy disclosure weaker than candidate metadata~~ | RM-993 | 03 - **closed** |
+| G3 | ~~Comparison does not surface optimizer methodology~~ | RM-995 | 05 - **closed** |
+| G4 | ~~Fallback/approximate paths look like clean success~~ | RM-996 | 06 - **closed** |
+| G5 | ~~Freshness lacks config/universe/estimator fingerprint~~ | RM-998 | 08 - **closed** |
+| G6 | ~~Robust scenario lacks formal solver status~~ | RM-997 | 07 - **closed** |
+| G7 | ~~Young ETF / covariance methodology not in summaries~~ | RM-999 | 09 - **closed** |
+| G8 | ~~Target-only objectives (Max Sharpe, drawdown, macro, tax)~~ | RM-992 | 02 - **closed** (`DEC-2026-05-21-001`) |
+| G9 | Stress `FAIL_*` labels vs mandate/release semantics | - | **accepted** (Stress Lab / policy specs; not Block 5 optimizer scope) |
+| G10 | ~~X-Ray not a formal comparison-readiness gate~~ | RM-1000 | 10 - **closed** for required optimizer checks; optional `portfolio_xray` only (`KI-2026-05-21-001`) |
+| - | ~~No Block 5 golden disclosure fixtures~~ | RM-1001 | 11 - **closed** |
 
 ---
 
 ### Block 4 governance gap index (Phase 14)
 
-Audit gaps **G1–G10** are defined in
-[Candidate Factory Methodology Map](docs/audits/2026-05-20_candidate_factory_methodology_map.md) §4.
-Phase 14 sessions **RM-972**–**RM-981** close them per
+Audit gaps **G1-G10** are defined in
+[Candidate Factory Methodology Map](docs/audits/2026-05-20_candidate_factory_methodology_map.md) Section4.
+Phase 14 sessions **RM-972**-**RM-981** close them per
 [Candidate Portfolio Factory Post-Audit Roadmap](docs/exec_plans/2026-05-20_candidate_factory_post_audit_roadmap.md).
 Registered in Session 01 (`RM-971`).
 
 | Gap | Summary | Roadmap | Session |
 | --- | --- | --- | --- |
-| G1 | ~~Builder `FAIL_*` collapses to generic factory reason~~ | RM-972 | 02 — **closed** |
-| G2 | ~~Freshness is `analysis_end` only; no config fingerprint~~ | RM-976 Done | — |
-| G3 | ~~`freshness_status: unchecked` can skip without review date~~ | RM-973 | 03 — **closed** |
-| G4 | Full `default_v1` run is operationally heavy | RM-920 (mitigated); `execution-mode standard` + optional Phase 3 full reports (`RM-1022` Session 8); `--resume` (`RM-979`); runbook §8 | 08 |
-| G5 | ~~No resumable factory checkpoint~~ | RM-979 Done (closes RM-921 resumable scope) | — |
-| G6 | ~~No `construction_disclosure` on comparison rows~~ | RM-974 Done | — |
-| G7 | Per-candidate `portfolio_xray.json` not in comparison contract | — | No Phase 14 code session |
-| G8 | ~~Robust MV λ calibration path outside factory menu~~ | RM-977 Done | — |
-| G9 | ~~Product concept lists candidates not in registry~~ | RM-981 Done | — |
-| G10 | ~~`robust_scenario` uses Main stress/scenario artifacts~~ | RM-977 Done | — |
-| — | No golden `candidate_comparison` fixture bundle | RM-978 | 08 |
+| G1 | ~~Builder `FAIL_*` collapses to generic factory reason~~ | RM-972 | 02 - **closed** |
+| G2 | ~~Freshness is `analysis_end` only; no config fingerprint~~ | RM-976 Done | - |
+| G3 | ~~`freshness_status: unchecked` can skip without review date~~ | RM-973 | 03 - **closed** |
+| G4 | Full `default_v1` run is operationally heavy | RM-920 (mitigated); `execution-mode standard` + optional Phase 3 full reports (`RM-1022` Session 8); `--resume` (`RM-979`); runbook Section8 | 08 |
+| G5 | ~~No resumable factory checkpoint~~ | RM-979 Done (closes RM-921 resumable scope) | - |
+| G6 | ~~No `construction_disclosure` on comparison rows~~ | RM-974 Done | - |
+| G7 | Per-candidate `portfolio_xray.json` not in comparison contract | - | No Phase 14 code session |
+| G8 | ~~Robust MV λ calibration path outside factory menu~~ | RM-977 Done | - |
+| G9 | ~~Product concept lists candidates not in registry~~ | RM-981 Done | - |
+| G10 | ~~`robust_scenario` uses Main stress/scenario artifacts~~ | RM-977 Done | - |
+| - | No golden `candidate_comparison` fixture bundle | RM-978 | 08 |
 
 ---
 
@@ -170,7 +175,7 @@ Title: Factory run JSON does not propagate builder FAIL_* reasons (G1)
 - Severity: medium (was)
 - Area: architecture
 - Resolution: `src/candidate_factory.py` reads `{artifact_root}/summary.json` after failed builds and maps `FAIL_*` to `builder_*` factory `reason_code` values; optional `builder_status` / `builder_reason` on steps; tests in `tests/test_candidate_factory.py`.
-- Source links: [methodology map §4 G1](docs/audits/2026-05-20_candidate_factory_methodology_map.md), [candidate factory spec](docs/specs/candidate_factory_spec.md).
+- Source links: [methodology map Section4 G1](docs/audits/2026-05-20_candidate_factory_methodology_map.md), [candidate factory spec](docs/specs/candidate_factory_spec.md).
 
 Issue ID: KI-2026-05-20-002
 Title: Candidate freshness ignores config/universe fingerprint (G2)
@@ -223,8 +228,8 @@ Title: Product concept candidate families not in registry (G9)
 - Status: **resolved** (2026-05-20, Session 11 / `RM-981`)
 - Severity: low (was)
 - Area: docs
-- Resolution: **DEC-2026-05-20-003** and [candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md) § Concept candidates not in registry — explicit **declined** / **deferred** / **covered_by_existing** per concept id; registry remains implementation truth.
-- Source links: [methodology map G9](docs/audits/2026-05-20_candidate_factory_methodology_map.md), [DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) §4–5.
+- Resolution: **DEC-2026-05-20-003** and [candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md) Section Concept candidates not in registry - explicit **declined** / **deferred** / **covered_by_existing** per concept id; registry remains implementation truth.
+- Source links: [methodology map G9](docs/audits/2026-05-20_candidate_factory_methodology_map.md), [DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) Section4-5.
 
 Issue ID: KI-2026-05-20-008
 Title: portfolio_xray.json not part of candidate comparison readiness (G7)

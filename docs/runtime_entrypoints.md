@@ -26,7 +26,7 @@ CLI help text must stay readable in a default Windows PowerShell / CP1251 consol
 python run_core_diagnostics.py
 ```
 
-**Purpose:** Input Layer → Portfolio X-Ray → Stress Test Lab.
+**Purpose:** Input Layer -> Portfolio X-Ray -> Stress Test Lab.
 
 **Writes (under `{output_dir_final}/analysis_subject/`):** input/setup JSON, `portfolio_xray.json`,
 `stress_report.json`, snapshots, `output_manifest.json`, and related Block 1-3 contracts.
@@ -42,10 +42,12 @@ Decision Verdict, AI Commentary, monitoring, optimizers, PDF/CSV/HTML exports (d
 python run_portfolio_review.py
 ```
 
-**Purpose:** Input → X-Ray → Stress → Problem Classification → Candidate Launchpad → AI Commentary /
-Monitoring context. **Candidates disabled by default** (no optimizer zoo).
+**Purpose:** Input -> X-Ray -> Stress -> Client Fit -> Problem Classification -> Candidate
+Launchpad -> Portfolio Alternatives Builder -> diagnosis grounding. **Candidates disabled by
+default** (no optimizer zoo).
 
-**Console label:** `Mode: product_diagnosis_workflow`, `Candidates: disabled by default`
+**Console label:** `Mode: product_diagnosis_workflow`, `Candidates: disabled by default`; the flow
+line includes Client Fit and Builder setup.
 
 ### C. Full workflow + one explicit backend candidate (compatibility path)
 
@@ -53,7 +55,9 @@ Monitoring context. **Candidates disabled by default** (no optimizer zoo).
 python run_portfolio_review.py --candidates equal_weight
 ```
 
-**Purpose:** Full diagnosis path plus one explicit factory candidate id -> Current vs Candidate -> Decision Verdict. Use this when you already know the backend id; it is not the canonical Builder setup -> Candidate Generation demo path.
+**Purpose:** Full diagnosis path plus one explicit factory candidate id -> Current vs Candidate ->
+Decision Verdict. Use this when you already know the backend id; it is not the canonical Builder
+setup -> Candidate Generation demo path and does not prove the visible Block 6/7 loop.
 
 **Console label:** `Mode: product_one_candidate`, `Selected candidate: equal_weight`, plus
 `Path classification: explicit factory-id compatibility path`. This warning is intentional: this
@@ -61,7 +65,7 @@ path remains useful for known backend ids, but it is not the canonical visible B
 demo handoff.
 
 Optional flags: `--dry-run`, `--no-cache`, `--with-pdf` (explicit PDF only), `--with-candidates`
-(backend research batch — **not** Core MVP default).
+(backend research batch - **not** Core MVP default).
 
 ### D. Blocks 5-9 vertical demo (one selected hypothesis)
 

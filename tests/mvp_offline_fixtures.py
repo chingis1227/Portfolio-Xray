@@ -465,12 +465,20 @@ def seed_blocks_1_5_mvp_smoke_workspace(root: Path, cfg: Any) -> dict[str, Any]:
 def seed_analysis_subject_diagnosis_bundle(subject_dir: Path) -> None:
     """Write Portfolio X-Ray, stress, Block 4 v3 diagnosis under analysis_subject/."""
     from src.block_4.diagnosis_builder import write_block_4_diagnosis_outputs
+    from src.client_fit import write_client_fit_check_outputs
 
     subject_dir.mkdir(parents=True, exist_ok=True)
     if not (subject_dir / "stress_report.json").is_file():
         write_json(subject_dir / "stress_report.json", minimal_blocks_1_5_stress_report())
     stress = json.loads((subject_dir / "stress_report.json").read_text(encoding="utf-8"))
     xray = refresh_analysis_subject_portfolio_xray(subject_dir)
+    write_client_fit_check_outputs(
+        output_dir=subject_dir,
+        client_fit=None,
+        portfolio_xray=xray,
+        stress_report=stress,
+        analysis_end=DEFAULT_ANALYSIS_END,
+    )
     write_block_4_diagnosis_outputs(
         output_dir=subject_dir,
         portfolio_xray=xray,
@@ -482,6 +490,7 @@ def seed_analysis_subject_diagnosis_bundle(subject_dir: Path) -> None:
 def seed_product_bundle_offline_workspace(root: Path, cfg: Any) -> dict[str, Any]:
     """Offline workspace: materialized analysis_subject + diagnosis bundle + one candidate."""
     from src.candidate_factory import registry_row
+    from src.candidate_generation import write_candidate_generation_outputs
 
     output_dir_final = str(getattr(cfg, "output_dir_final", "Main portfolio"))
     main = root / output_dir_final
@@ -522,6 +531,31 @@ def seed_product_bundle_offline_workspace(root: Path, cfg: Any) -> dict[str, Any
         metrics={"cagr": 0.075, "vol_annual": 0.105, "max_drawdown": -0.16, "sharpe": 0.55},
         weights=weights,
         config_fingerprint=config_fingerprint,
+    )
+    write_candidate_generation_outputs(
+        main,
+        candidate_setup={
+            "validation_status": "valid",
+            "can_generate_candidate": True,
+            "is_rebalance_recommendation": False,
+            "selected_method": candidate_id,
+            "source_card_id": "offline_fixture_equal_weight_card",
+            "source_diagnosis_id": "offline_fixture_diagnosis",
+            "source_launchpad_card_type": "reference_benchmark_test",
+            "builder_prefill_id": "offline_fixture_builder_prefill",
+            "candidate_setup_id": "offline_fixture_candidate_setup",
+            "goal": "Test a simple diversification benchmark.",
+            "hypothesis_to_test": "Equal Weight improves diversification without hiding tradeoffs.",
+            "success_criteria": ["Lower concentration without worse stress loss."],
+            "tradeoff_to_watch": "Turnover and risk changes versus the current portfolio.",
+            "decision_boundary": (
+                "This is not a rebalance recommendation. Compare first, then read Decision Verdict."
+            ),
+            "parameters": {"method": candidate_id, "mode": "capped"},
+            "constraints": {"method": candidate_id, "mode": "capped", "capped": True},
+            "validation_warnings": [],
+        },
+        weights=weights,
     )
     return {
         "main_dir": main,
@@ -809,8 +843,11 @@ def seed_cash5pct_block_2_2_subject_dir(
 
 # (relative path under output_dir_final, expected schema_version)
 PRODUCT_BUNDLE_ARTIFACTS: tuple[tuple[str, str], ...] = (
+    ("analysis_subject/client_fit_check.json", "client_fit_check_v1"),
     ("analysis_subject/problem_classification.json", "problem_classification_v3"),
     ("analysis_subject/candidate_launchpad.json", "candidate_launchpad_v3"),
+    ("analysis_subject/portfolio_alternatives_builder.json", "portfolio_alternatives_builder_v1"),
+    ("candidate_generation.json", "candidate_generation_v1"),
     ("current_vs_candidate.json", "current_vs_candidate_v1"),
     ("decision_verdict.json", "decision_verdict_v1"),
     ("ai_commentary_context.json", "ai_commentary_context_v1"),

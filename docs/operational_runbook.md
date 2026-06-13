@@ -9,20 +9,20 @@ Phase 17 live E2E gates:
 
 ## 0. Portfolio-First Review Workflow
 
-### 0.1 Read this first — Main portfolio layout
+### 0.1 Read this first - Main portfolio layout
 
 Before opening stress, weights, or comparison JSON under `Main portfolio/`, confirm **which portfolio**
 you are looking at. The folder often holds **two unrelated trees** from different workflows.
 
 | Path | Workflow | Trust for portfolio-first review |
 | --- | --- | --- |
-| `{output_dir_final}/analysis_subject/` | `run_portfolio_review.py` subject materialization | **Yes** — starting portfolio, Blocks 1–3 diagnostics |
-| `{output_dir_final}/run_result.json`, `portfolio_weights.yml` | `run_optimization.py` legacy policy optimizer | **No** — policy weights and release metadata only |
-| Root `portfolio_xray.json`, `stress_report.json`, `run_metadata.json` | Legacy policy report path (`run_optimization.py --with-report` or standalone `run_report.py` on policy weights) | **No** — do not substitute for `analysis_subject/` files |
+| `{output_dir_final}/analysis_subject/` | `run_portfolio_review.py` subject materialization | **Yes** - starting portfolio, Blocks 1-3 diagnostics |
+| `{output_dir_final}/run_result.json`, `portfolio_weights.yml` | `run_optimization.py` legacy policy optimizer | **No** - policy weights and release metadata only |
+| Root `portfolio_xray.json`, `stress_report.json`, `run_metadata.json` | Legacy policy report path (`run_optimization.py --with-report` or standalone `run_report.py` on policy weights) | **No** - do not substitute for `analysis_subject/` files |
 
 **Do not mix:** subject weights in `analysis_subject/run_metadata.json` vs policy weights in root
 `run_result.json` / `portfolio_weights.yml` are frequently **different portfolios** (different SPY
-allocations, cash, and stress context). Treating root policy artifacts as “the reviewed portfolio”
+allocations, cash, and stress context). Treating root policy artifacts as "the reviewed portfolio"
 is the most common operator error after a routine `python run_portfolio_review.py`.
 
 **Stale exports:** default review uses `site_api` (JSON + cache). TXT, HTML, PNG, and CSV under
@@ -30,12 +30,12 @@ is the most common operator error after a routine `python run_portfolio_review.p
 `full_report` / `legacy_export` run. Absence of a fresh PDF does **not** mean the JSON review failed;
 presence of a PDF does **not** prove it matches the latest JSON.
 
-**Factory vs comparison scope:** `candidate_factory_run.json` → `factory_profile_id` and step status
+**Factory vs comparison scope:** `candidate_factory_run.json` -> `factory_profile_id` and step status
 describe the **last factory run** (e.g. `core_fast`, six steps, `skipped_existing`). `candidate_comparison.json`
 may score **more rows** (optimizers, legacy `policy`, reused snapshots). Always read `candidate_menu`
 (`is_partial_menu`, `intended_menu_size`, `factory_execution_summary`) before interpreting rankings.
 
-Full output map: [OUTPUTS.md § Read this first](../OUTPUTS.md#read-this-first). Audit:
+Full output map: [OUTPUTS.md Section Read this first](../OUTPUTS.md#read-this-first). Audit:
 [Core / Full Artifact and Documentation Confusion Audit](audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md).
 
 The portfolio-first path starts with the resolved `analysis_subject`, writes its diagnostics first,
@@ -55,7 +55,7 @@ python run_portfolio_review.py --candidates equal_weight
 | --- | --- | --- | --- | --- |
 | **Diagnosis-only** (default) | `python run_portfolio_review.py` | none | no factory stage | Routine current-portfolio diagnosis and product Block 1-3 refresh; `runtime_mode=product_diagnosis_only`, `workflow_state=diagnosis_only` |
 | **Core batch** (advanced/research) | `python run_portfolio_review.py --with-candidates` | `core_fast` | `standard` (phased; parallel lightweight reports by default; no per-candidate PDF) | Backend batch refresh; `runtime_mode=research_batch`, `workflow_state=multiple_candidates` (6). `--mode core` alone does **not** run the factory |
-| **Core (sequential regression)** | `... --candidate-profile core_v1` | `core_v1` | `standard` (sequential Phase 2) | Parity/debug vs pre–Wave 2 core menu |
+| **Core (sequential regression)** | `... --candidate-profile core_v1` | `core_v1` | `standard` (sequential Phase 2) | Parity/debug vs pre-Wave 2 core menu |
 | **Full** | `python run_portfolio_review.py --mode full` | `default_v1` | `standard` | Full menu refresh (compare-ready snapshots; much faster than legacy subprocess chain) |
 | **Full resume** | `python run_portfolio_review.py --mode full --resume-candidates` | `default_v1` | `standard` + `--resume` | Recovery after an interrupted full factory run |
 | **Full (legacy builders)** | `... --mode full --execution-mode legacy_full` | `default_v1` | `legacy_full` | Parity/debug with subprocess `run_*.py` and full per-candidate reports |
@@ -80,8 +80,14 @@ running subprocess builders. Use it to confirm the plan before a long networked 
 
 Decision tree and binding spec:
 [portfolio_review_workflow_spec.md](specs/portfolio_review_workflow_spec.md) (Runtime mode and command decision tree).
-Product bundle files #3–6 exist only after a run that reaches compare (see
-[product_flow_operator_guide.md](product_flow_operator_guide.md) — Product bundle path map).
+Diagnosis/context product-bundle files are written by the default review; `candidate_generation.json`
+and post-compare bundle files exist only after explicit candidate generation and compare (see
+[product_flow_operator_guide.md](product_flow_operator_guide.md) - Product bundle path map).
+
+Packaging commands are explicit export paths, not the default diagnosis review:
+
+| Package mode | Purpose | Command | Key artifacts |
+| --- | --- | --- | --- |
 | **Package** | Refresh portfolio-first PDFs | `rebuild_pdf_reports.py --portfolio-first` via `run_portfolio_review.py` unless `--skip-pdf` is set | `Main portfolio_decision_package.pdf`, `analysis_subject_*` PDFs when sidecar outputs exist |
 | **Package (legacy)** | Full EW/RP/policy/baseline PDF suite | `run_portfolio_review.py --legacy-full-pdf` or `rebuild_pdf_reports.py` without `--portfolio-first` | All PDFs under `pdf files/` |
 
@@ -90,41 +96,41 @@ below remains available for compatibility and historical policy runs.
 
 ### Product demo (one candidate)
 
-**Official one-candidate product path** (no extra CLI flags — use existing `--candidates`):
+**Official one-candidate product path:** use the Blocks 5-9 vertical script so the proof includes
+Launchpad card selection, Builder setup, explicit Candidate Generation, compare, verdict, and AI
+grounding in one run-local artifact chain.
 
 ```bash
-python run_portfolio_review.py --candidates equal_weight
+python scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight
 ```
 
-Replace `equal_weight` with any supported candidate id from the factory registry (for example
-`risk_parity`, `minimum_variance`) when testing another hypothesis from Candidate Launchpad.
+Replace `equal_weight` with another supported method id when testing a different Launchpad hypothesis
+(for example `risk_parity` or `minimum_variance`).
 
-| Path | Command | Factory behavior | Workflow state |
+| Path | Command | Behavior | Workflow state |
 | --- | --- | --- | --- |
-| **Routine diagnosis-first review** | `python run_portfolio_review.py` | no candidate factory | `diagnosis_only` |
-| **Routine research / Blocks 1–5 regression** | `python run_portfolio_review.py --with-candidates` | Profile **`core_fast`** — **six** candidates | `multiple_candidates` |
-| **Product demo (one hypothesis)** | `python run_portfolio_review.py --candidates <id>` | Single builder + `--then-compare` | `one_candidate` |
+| **Routine diagnosis-first review** | `python run_portfolio_review.py` | no candidate factory; writes diagnosis/context artifacts | `diagnosis_only` |
+| **Product demo (one hypothesis)** | `python scripts/run_blocks_5_to_9_vertical_flow.py --method <id>` | Builder setup -> one candidate attempt -> compare -> verdict | vertical product loop |
+| **Explicit backend factory-id compatibility** | `python run_portfolio_review.py --candidates <id>` | skips visible Builder/Candidate Generation proof; runs known factory id + compare | `one_candidate` |
+| **Routine research / Blocks 1-5 regression** | `python run_portfolio_review.py --with-candidates` | Profile **`core_fast`** - **six** candidates | `multiple_candidates` |
 
-Do **not** use core batch mode when the goal is a product demo of diagnose → one alternative →
-compare → verdict. Explicit `--candidates` is required.
+Do **not** use core batch mode or the compatibility factory-id path as the canonical product demo of
+diagnose -> one selected alternative -> candidate generation -> compare -> verdict.
 
-Dry-run check (no subprocess builders):
+Dry-run check for the compatibility path only (no subprocess builders):
 
 ```bash
 python run_portfolio_review.py --candidates equal_weight --dry-run
 ```
 
-Pass criteria: plan includes subject materialization, one factory step with
-`run_candidate_factory.py --candidates equal_weight ... --then-compare`, and resolved workflow
-state **`one_candidate`**.
+Pass criteria: dry-run reports `runtime_mode=product_one_candidate`, `workflow_state=one_candidate`,
+and `Path classification: explicit factory-id compatibility path`. Use the vertical script above for
+current demo proof.
 
-Live demo (network + disk): same command without `--dry-run`; see
-[Product Flow MVP Backend Plan](exec_plans/2026-05-25_product_flow_mvp_backend_plan.md) Session 07.
-
-**From Candidate Launchpad method id:** map `candidate_method_id` → `--candidates <factory_id>` via
-Portfolio Alternatives Builder (no extra review flags). Full table, `PortfolioAlternativeBuildPlan`
-example, and optional helper:
-[Product flow operator guide — Launchpad method → one candidate](product_flow_operator_guide.md#launchpad-method--one-candidate-alternatives-builder).
+**From Candidate Launchpad method id:** map `candidate_method_id` -> a supported method through
+Portfolio Alternatives Builder. Full table, `PortfolioAlternativeBuildPlan` example, and optional
+helper:
+[Product flow operator guide - Launchpad method -> one candidate](product_flow_operator_guide.md#launchpad-method--one-candidate-alternatives-builder).
 
 ```bash
 python scripts/run_one_candidate_from_method.py --method equal_weight
@@ -140,8 +146,8 @@ Use this checklist when validating the first-five product blocks without prior c
 | 2 | Run routine diagnosis | `python run_portfolio_review.py` completes subject materialization (`analysis_subject`) in diagnosis-only mode |
 | 3 | Open subject folder first | `{output_dir_final}/analysis_subject/` contains `run_metadata.json`, `portfolio_xray.json`, `stress_report.json` |
 | 4 | Read trust summaries | `data_trust_summary` / `data_trust_signals` and commentary `user_summary_lines` surface data-quality and young-ETF warnings when present |
-| 5 | Confirm factory evidence | `candidate_comparison.json` → `candidate_menu.factory_evidence_status` is `current`, or warnings explain stale/missing factory evidence |
-| 6 | Scan optimizer rows | Optimizer-backed rows are fair-comparison-ready or visibly `degraded` with readiness warning codes — not silent ordinary `available` evidence |
+| 5 | Confirm factory evidence | `candidate_comparison.json` -> `candidate_menu.factory_evidence_status` is `current`, or warnings explain stale/missing factory evidence |
+| 6 | Scan optimizer rows | Optimizer-backed rows are fair-comparison-ready or visibly `degraded` with readiness warning codes - not silent ordinary `available` evidence |
 
 Offline regression gate (no network):
 
@@ -208,9 +214,9 @@ Phase 17 offline closure bundle: [TESTING.md](../TESTING.md) Phase 17 Post-Deep-
 | Core backend batch requested | Core mode builds six lightweight candidates; compare + decision package can finish in one session when snapshots are fresh | `python run_portfolio_review.py --with-candidates` |
 | Snapshots already match review `analysis_end` | Factory mostly `skipped_existing`; core path is fast | Default core command |
 | Need all optimizers / robust suite | Full mode runs all 16 `default_v1` builders; can take hours when stale | `python run_portfolio_review.py --mode full --no-skip-existing` |
-| Session/agent timeout | Subject may refresh; factory may not finish; compare may run on incomplete intended menu | Rerun `python run_portfolio_review.py --mode full --resume-candidates`; then read `candidate_factory_run.json`, `candidate_comparison.json` → `candidate_menu`, and row `unavailable_reason` |
+| Session/agent timeout | Subject may refresh; factory may not finish; compare may run on incomplete intended menu | Rerun `python run_portfolio_review.py --mode full --resume-candidates`; then read `candidate_factory_run.json`, `candidate_comparison.json` -> `candidate_menu`, and row `unavailable_reason` |
 
-**Trust rule:** stale candidates are marked `unavailable` in comparison — they are not silently scored.
+**Trust rule:** stale candidates are marked `unavailable` in comparison - they are not silently scored.
 **Interpretation rule:** `candidate_menu.is_partial_menu` and decision-package summary text disclose when selection used a **reduced** menu (core vs product `default_v1`) or when intended candidates are missing. Rankings apply only to scored rows in the intended menu.
 
 **Resume after interrupt:** when a portfolio-first full factory run stops mid-menu, prefer the
@@ -233,7 +239,7 @@ menu, `analysis_end`, `config_fingerprint`). Failed steps are retried. Use `--fo
 manifest skips. Parallel candidate builders remain deferred; current opt-in parallelism is limited
 to Phase 2 lightweight report generation in factory `standard` mode.
 
-### Robust suite prerequisites (Block 4 — `robust_suite` profile)
+### Robust suite prerequisites (Block 4 - `robust_suite` profile)
 
 The factory **does not** run λ calibration. Robust MV builders (`robust_mv_constrained`, `robust_mv_uncapped`) read λ from:
 
@@ -257,7 +263,7 @@ If either file is missing, the factory step is `skipped_dependency` (whole facto
 2. `python run_robust_mv_lambda_calibration.py` when robust MV candidates are in scope.
 3. Run factory (`run_portfolio_review.py --mode full` or `run_candidate_factory.py --profile default_v1`).
 
-Inspect `candidate_factory_run.json` → `steps[]` → `robust_paths_disclosure` and `candidate_comparison.json` → `construction_disclosure.robust_paths` when λ source or Main prerequisites are unclear.
+Inspect `candidate_factory_run.json` -> `steps[]` -> `robust_paths_disclosure` and `candidate_comparison.json` -> `construction_disclosure.robust_paths` when λ source or Main prerequisites are unclear.
 
 **Operator playbook (reason codes, exit codes, recovery):** see [section 8](#8-candidate-portfolio-factory-operator-playbook) below (after the [portfolio-first operator checklist](../../WORKFLOW.md#portfolio-first-operator-checklist)).
 
@@ -384,7 +390,7 @@ factory CLI exit code.
 
 **Portfolio-first order (do this first):** complete the
 [WORKFLOW.md portfolio-first operator checklist](../../WORKFLOW.md#portfolio-first-operator-checklist),
-then [§0.1 Read this first](#01-read-this-first-main-portfolio-layout) (subject vs legacy policy root,
+then [Section0.1 Read this first](#01-read-this-first-main-portfolio-layout) (subject vs legacy policy root,
 stale exports, factory vs comparison scope). Only after `factory_profile_id` and `candidate_menu`
 match your intended review mode, use the CLI tables and playbooks below.
 
@@ -439,7 +445,7 @@ full report exports.
 | Code | Meaning | Operator action |
 | --- | --- | --- |
 | **0** | No `failed` steps (skips and `skipped_dependency` are OK). | Run comparison if not already done (`--then-compare` or `run_compare_variants.py`). |
-| **1** | One or more steps `failed`, or `--fail-fast` stopped the run. | Open `candidate_factory_run.txt` → failed `reason_code` rows; follow playbooks in §8.5; rerun with `--resume` after fix. |
+| **1** | One or more steps `failed`, or `--fail-fast` stopped the run. | Open `candidate_factory_run.txt` -> failed `reason_code` rows; follow playbooks in Section8.5; rerun with `--resume` after fix. |
 | **2** | Config/registry validation before any builder (bad profile, unknown id, missing `config.yml`). | Fix `config.yml` or CLI args; no manifest update for failed builders. |
 
 `candidate_factory_run.txt` repeats the factory-only exit hint (`0` or `1`). Comparison failures with
@@ -460,20 +466,20 @@ builders succeeded.
 
 | Code | Typical cause | Recovery |
 | --- | --- | --- |
-| `skipped_existing` | Fresh snapshot on disk | None — intentional skip. |
-| `skipped_dependency` | Main `stress_report.json` / `scenario_library_normalized.json` or λ file missing | §8.5 playbook **Robust / dependency skip**; factory continues unless `--fail-fast`. |
+| `skipped_existing` | Fresh snapshot on disk | None - intentional skip. |
+| `skipped_dependency` | Main `stress_report.json` / `scenario_library_normalized.json` or λ file missing | Section8.5 playbook **Robust / dependency skip**; factory continues unless `--fail-fast`. |
 | `subprocess_failed` | Builder exited non-zero; no `FAIL_*` in `summary.json` | Inspect builder logs; open `{artifact_root}/summary.json` if present; fix data/config; `--resume`. |
 | `missing_snapshot_after_build` | Exit 0 but no `snapshot_10y.json` | Inspect builder output folder; rerun builder or `--force` for that id. |
 | `stale_snapshot_after_build` | Snapshot `analysis_end` still wrong after build | Confirm `analysis_subject` refreshed; `--no-skip-existing` for that candidate. |
-| `stale_config_fingerprint_after_build` | Snapshot missing/wrong `candidate_config_fingerprint` | Universe/bounds/currency changed — `--no-skip-existing` or `--force`. |
+| `stale_config_fingerprint_after_build` | Snapshot missing/wrong `candidate_config_fingerprint` | Universe/bounds/currency changed - `--no-skip-existing` or `--force`. |
 | `unknown_candidate_id` | Typo in `--candidates` | Fix id against [candidate_factory_spec.md](specs/candidate_factory_spec.md) registry table. |
 | `builder_fail_config` | Builder `FAIL_CONFIG` | Fix `config.yml` / profile per builder `reason` in `summary.json`. |
 | `builder_fail_data` | Builder `FAIL_DATA` | Data download/cache; young ETF / NaN policy per [data_policy_spec.md](specs/data_policy_spec.md). |
 | `builder_infeasible_universe` | `FAIL_INFEASIBLE_UNIVERSE` | Universe too small or illiquid for that optimizer family. |
-| `builder_infeasible_targets` | `FAIL_INFEASIBLE_TARGETS` | Soft targets infeasible — review policy targets (diagnostic). |
-| `builder_infeasible_bounds` | `FAIL_INFEASIBLE_BOUNDS` | Weight bounds conflict — review min/max per asset. |
+| `builder_infeasible_targets` | `FAIL_INFEASIBLE_TARGETS` | Soft targets infeasible - review policy targets (diagnostic). |
+| `builder_infeasible_bounds` | `FAIL_INFEASIBLE_BOUNDS` | Weight bounds conflict - review min/max per asset. |
 | `builder_infeasible_vol_target` | `FAIL_INFEASIBLE_VOL_TARGET` | Vol target not achievable. |
-| `builder_fail_numerical` | `FAIL_NUMERICAL` | Solver/numerical issue — retry; check cov/returns panel. |
+| `builder_fail_numerical` | `FAIL_NUMERICAL` | Solver/numerical issue - retry; check cov/returns panel. |
 | `builder_fail_no_assets` | `FAIL_NO_ASSETS` | No eligible assets after filters. |
 | `builder_failed` | Other builder `FAIL_*` | Read `builder_status` / `builder_reason` on the step. |
 
@@ -487,7 +493,7 @@ diagnostic; factory `reason_code` is the stable machine label for comparison and
 1. Confirm `analysis_subject` exists and `analysis_end` is current.
 2. Prefer `python run_portfolio_review.py --mode full --resume-candidates` to rematerialize the subject and pass factory `--resume` through the orchestrator.
 3. For factory-only recovery, run `python run_candidate_factory.py --profile default_v1 --resume` with the same profile and menu as the interrupted run.
-4. If warning `resume_manifest_stale:run_checksum_mismatch_full_execution`, config or menu changed — use `--no-skip-existing` without `--resume` or delete `candidate_factory_manifest.json` and rerun.
+4. If warning `resume_manifest_stale:run_checksum_mismatch_full_execution`, config or menu changed - use `--no-skip-existing` without `--resume` or delete `candidate_factory_manifest.json` and rerun.
 
 **Config or universe change (G2)**
 
@@ -509,15 +515,15 @@ diagnostic; factory `reason_code` is the stable machine label for comparison and
 
 **Partial menu / core vs full (G4, RM-920)**
 
-1. Read `candidate_comparison.json` → `candidate_menu` (`is_partial_menu`, `intended_candidate_ids`, `available_candidate_ids`, `factory_execution_summary`).
+1. Read `candidate_comparison.json` -> `candidate_menu` (`is_partial_menu`, `intended_candidate_ids`, `available_candidate_ids`, `factory_execution_summary`).
 2. Do not treat rankings as covering `default_v1` when only `core_fast` or regression `core_v1` ran.
 3. For full menu: `python run_portfolio_review.py --mode full`.
-4. Checklist cross-ref: [WORKFLOW.md § Portfolio-First Operator Checklist](../../WORKFLOW.md#portfolio-first-operator-checklist) steps 4–7.
+4. Checklist cross-ref: [WORKFLOW.md Section Portfolio-First Operator Checklist](../../WORKFLOW.md#portfolio-first-operator-checklist) steps 4-7.
 
 **Comparison not updated**
 
-1. Factory exit 0 but no `candidate_comparison.json` — run `python run_compare_variants.py` or factory `--then-compare`.
-2. Warning `comparison_failed:` — read nested message; fix comparison inputs; rerun compare only.
+1. Factory exit 0 but no `candidate_comparison.json` - run `python run_compare_variants.py` or factory `--then-compare`.
+2. Warning `comparison_failed:` - read nested message; fix comparison inputs; rerun compare only.
 
 ### 8.6 Optimizer fair comparison readiness (P17-G3 / RM-1023)
 
@@ -542,7 +548,7 @@ python run_candidate_factory.py --profile default_v1 --no-skip-existing --then-c
 **Trust rule:** Selection favoring (Phase 17 Session 03) uses
 `construction_disclosure.optimization_readiness.fair_comparison_ready`. Rows stay `degraded` when
 optimizer metadata, clean solver quality, snapshot/config freshness, or diversification blocks are
-missing — not eligible for favoring even if metrics exist.
+missing - not eligible for favoring even if metrics exist.
 
 **Offline gate (≥3 fair-ready optimizers on synthetic full-menu seed):**
 
@@ -557,9 +563,9 @@ python -m pytest tests/test_optimizer_fair_comparison_full_menu.py -q
 | Which step failed and why... | `candidate_factory_run.txt` (summary + reason codes) or `steps[]` in JSON |
 | Resume state... | `candidate_factory_manifest.json` (`completed_steps`, `run_checksum`) |
 | Parallel report mode... | `candidate_factory_run.json` -> `parallel_lightweight_report_summary`; human line in `candidate_factory_run.txt` |
-| Fair comparison ready... | `candidate_comparison.json` → `construction_disclosure.optimization_readiness.fair_comparison_ready` |
+| Fair comparison ready... | `candidate_comparison.json` -> `construction_disclosure.optimization_readiness.fair_comparison_ready` |
 | Construction hypothesis... | Row `construction_disclosure` (not recomputed in factory) |
-| Robust λ / Main deps... | Step `robust_paths_disclosure` or §0 robust suite table |
+| Robust λ / Main deps... | Step `robust_paths_disclosure` or Section0 robust suite table |
 
 `next_recommended_command` in the factory run JSON is contextual: failed runs suggest `--resume`;
 stale manifest suggests full rebuild; success suggests `run_compare_variants.py`.

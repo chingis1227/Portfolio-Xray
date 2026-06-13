@@ -2,6 +2,13 @@
 
 ## 2026-06-13
 
+- Completed source-of-truth reconciliation Sessions 02-03: runtime labels, manifest discovery,
+  product-bundle hygiene, docs/runbooks/specs, and focused regression tests now align around the
+  current flow with Client Fit, Builder setup, Candidate Generation, vertical demo, and compatibility
+  path boundaries.
+- Updated current full-suite testing status to the 2026-06-12 audit baseline:
+  **13 failed, 1898 passed, 3 skipped**. Focused product-bundle/runtime checks pass, but full pytest
+  was not rerun in this reconciliation session.
 - Synchronized current Portfolio MRI frontend design documentation with the implemented landing, onboarding, 8-step platform route structure, graphite token palette, required sign-in path, and local dev bypass boundary. Removed active outdated external/prototype design authority and corrected frontend step labels.
 
 
@@ -500,47 +507,47 @@ Category: Added
 
 Category: Added
 
-- **Block 4 v2 Session 12:** Live product validation — `scripts/validate_block_4_live.py`, live E2E v2 gates in `src/live_core_e2e.py`; evidence: [Session 12 audit](docs/audits/2026-05-29_block_4_v2_session_12_live_product_validation.md).
+- **Block 4 v2 Session 12:** Live product validation - `scripts/validate_block_4_live.py`, live E2E v2 gates in `src/live_core_e2e.py`; evidence: [Session 12 audit](docs/audits/2026-05-29_block_4_v2_session_12_live_product_validation.md).
 
 Category: Added
 
-- **Blocks 1–3 diagnostic journey UX draft:** Flask prototype `diagnostic_journey/` (port 5006) — guided Setup → X-Ray → Stress Lab → problem bridge; `diagnostic_journey/presentation.py` translates JSON into advisor-ready copy (human labels, formatted %, no raw backend keys at top level); spec [diagnostic_journey_ux_draft.md](docs/specs/diagnostic_journey_ux_draft.md). Tests: `tests/test_diagnostic_journey_view_model.py`.
+- **Blocks 1-3 diagnostic journey UX draft:** Flask prototype `diagnostic_journey/` (port 5006) - guided Setup -> X-Ray -> Stress Lab -> problem bridge; `diagnostic_journey/presentation.py` translates JSON into advisor-ready copy (human labels, formatted %, no raw backend keys at top level); spec [diagnostic_journey_ux_draft.md](docs/specs/diagnostic_journey_ux_draft.md). Tests: `tests/test_diagnostic_journey_view_model.py`.
 
 Category: Fixed
 
-- **Core MVP X-Ray tail-risk wiring:** `run_report.py` now passes per-window snapshot analytics (`snapshot_10y` → `5y` → `3y`) into `build_portfolio_xray_v2` via `resolve_xray_snapshot_inputs` in `src/snapshot.py`, so `analytics.tail_risk` reaches Block 2.2 `tail_risk_diagnostics` and Block 2.4 `tail_risk` alert evidence. Block 2.2 product contract adds `metric_available`, method/frequency/window metadata. Tests: `tests/test_xray_tail_risk_wiring.py`.
+- **Core MVP X-Ray tail-risk wiring:** `run_report.py` now passes per-window snapshot analytics (`snapshot_10y` -> `5y` -> `3y`) into `build_portfolio_xray_v2` via `resolve_xray_snapshot_inputs` in `src/snapshot.py`, so `analytics.tail_risk` reaches Block 2.2 `tail_risk_diagnostics` and Block 2.4 `tail_risk` alert evidence. Block 2.2 product contract adds `metric_available`, method/frequency/window metadata. Tests: `tests/test_xray_tail_risk_wiring.py`.
 
 Category: Added
 
-- **Blocks 1–3 post-audit plan (Session 10 / Phase D):** Block 5 compare/verdict — product contracts for `current_vs_candidate_v1` and `decision_verdict_v1` in `scripts/core_mvp_validation_contract.py`; live E2E Block 5 gates in `src/live_core_e2e.py` (`product_one_candidate`); `tests/test_block_5_decision_compare_contract.py`. Decision [DEC-2026-05-29-012](DECISIONS.md). Evidence: [Session 10 audit](docs/audits/2026-05-29_block_5_session_10_current_vs_candidate_decision_verdict.md).
+- **Blocks 1-3 post-audit plan (Session 10 / Phase D):** Block 5 compare/verdict - product contracts for `current_vs_candidate_v1` and `decision_verdict_v1` in `scripts/core_mvp_validation_contract.py`; live E2E Block 5 gates in `src/live_core_e2e.py` (`product_one_candidate`); `tests/test_block_5_decision_compare_contract.py`. Decision [DEC-2026-05-29-012](DECISIONS.md). Evidence: [Session 10 audit](docs/audits/2026-05-29_block_5_session_10_current_vs_candidate_decision_verdict.md).
 
 Category: Added
 
-- **Blocks 1–3 post-audit plan (Session 09 / Phase D):** Block 4 decision entry — product contracts for `problem_classification_v1` and `candidate_launchpad_v1` in `scripts/core_mvp_validation_contract.py`; live E2E Block 4 gates in `src/live_core_e2e.py`; `tests/test_block_4_decision_entry_contract.py`. Decision [DEC-2026-05-29-011](DECISIONS.md). Evidence: [Session 09 audit](docs/audits/2026-05-29_block_4_session_09_problem_classification_launchpad.md).
+- **Blocks 1-3 post-audit plan (Session 09 / Phase D):** Block 4 decision entry - product contracts for `problem_classification_v1` and `candidate_launchpad_v1` in `scripts/core_mvp_validation_contract.py`; live E2E Block 4 gates in `src/live_core_e2e.py`; `tests/test_block_4_decision_entry_contract.py`. Decision [DEC-2026-05-29-011](DECISIONS.md). Evidence: [Session 09 audit](docs/audits/2026-05-29_block_4_session_09_problem_classification_launchpad.md).
 
 Category: Added
 
-- **Blocks 1–3 post-audit plan (Session 06):** Phase A closure — live re-run of three canonical CLIs; `validate_live_core_artifacts` OK for `core_blocks_1_3`, `diagnosis_only`, `product_one_candidate`; verdict **`READY_FOR_DECISION_WORKFLOW`**. Evidence: [foundation closure audit](docs/audits/2026-05-29_blocks_1_3_foundation_closure_audit.md). Decision [DEC-2026-05-29-010](DECISIONS.md). Pytest bundle **261 passed**, 1 skipped.
+- **Blocks 1-3 post-audit plan (Session 06):** Phase A closure - live re-run of three canonical CLIs; `validate_live_core_artifacts` OK for `core_blocks_1_3`, `diagnosis_only`, `product_one_candidate`; verdict **`READY_FOR_DECISION_WORKFLOW`**. Evidence: [foundation closure audit](docs/audits/2026-05-29_blocks_1_3_foundation_closure_audit.md). Decision [DEC-2026-05-29-010](DECISIONS.md). Pytest bundle **261 passed**, 1 skipped.
 
 Category: Fixed
 
-- **Blocks 1–3 post-audit plan (Session 05):** Live core E2E validator profiles — `detect_live_core_e2e_profile` and profile-specific checks in `src/live_core_e2e.py` (`core_blocks_1_3`, `diagnosis_only`, `product_one_candidate`, `research_batch_core_fast`); `scripts/verify_live_core_e2e.py` prints detected profile and accepts `--profile`. Decision [DEC-2026-05-29-009](DECISIONS.md).
+- **Blocks 1-3 post-audit plan (Session 05):** Live core E2E validator profiles - `detect_live_core_e2e_profile` and profile-specific checks in `src/live_core_e2e.py` (`core_blocks_1_3`, `diagnosis_only`, `product_one_candidate`, `research_batch_core_fast`); `scripts/verify_live_core_e2e.py` prints detected profile and accepts `--profile`. Decision [DEC-2026-05-29-009](DECISIONS.md).
 
 Category: Fixed
 
-- **Blocks 1–3 post-audit plan (Session 04):** Core-only materialize runs `apply_core_blocks_product_bundle_hygiene` — removes stale Block 4+ JSON under `analysis_subject/` (`problem_classification`, `candidate_launchpad`, `ai_commentary_context`) and deletes root post-compare/decision files. Decision [DEC-2026-05-29-008](DECISIONS.md).
+- **Blocks 1-3 post-audit plan (Session 04):** Core-only materialize runs `apply_core_blocks_product_bundle_hygiene` - removes stale Block 4+ JSON under `analysis_subject/` (`problem_classification`, `candidate_launchpad`, `ai_commentary_context`) and deletes root post-compare/decision files. Decision [DEC-2026-05-29-008](DECISIONS.md).
 
 Category: Fixed
 
-- **Blocks 1–3 post-audit plan (Session 03):** Diagnosis-only materialize runs `apply_diagnosis_only_product_bundle_hygiene` — root `current_vs_candidate.json`, `decision_verdict.json`, and `candidate_comparison.json` get explicit `no_candidate_v1` tombstones; stale advanced compare files removed. Decision [DEC-2026-05-29-007](DECISIONS.md).
+- **Blocks 1-3 post-audit plan (Session 03):** Diagnosis-only materialize runs `apply_diagnosis_only_product_bundle_hygiene` - root `current_vs_candidate.json`, `decision_verdict.json`, and `candidate_comparison.json` get explicit `no_candidate_v1` tombstones; stale advanced compare files removed. Decision [DEC-2026-05-29-007](DECISIONS.md).
 
 Category: Fixed
 
-- **Blocks 1–3 post-audit plan (Session 02):** For `explicit_list` factory runs, product `candidate_comparison.json` now writes scoped baseline + selected candidate rows only; full on-disk registry scan moves to optional `candidate_comparison_registry.json`. Decision [DEC-2026-05-29-006](DECISIONS.md).
+- **Blocks 1-3 post-audit plan (Session 02):** For `explicit_list` factory runs, product `candidate_comparison.json` now writes scoped baseline + selected candidate rows only; full on-disk registry scan moves to optional `candidate_comparison_registry.json`. Decision [DEC-2026-05-29-006](DECISIONS.md).
 
 Category: Added
 
-- **Blocks 1–3 post-audit plan (Session 00–01):** Active ExecPlan [2026-05-29_blocks_1_3_post_audit_development_plan.md](docs/exec_plans/2026-05-29_blocks_1_3_post_audit_development_plan.md); operator [runtime_artifact_contract.md](docs/runtime_artifact_contract.md); Session 01 regression `test_run_report_timing_blocks_registered_in_module` (timing block keys parity with `run_report.py`).
+- **Blocks 1-3 post-audit plan (Session 00-01):** Active ExecPlan [2026-05-29_blocks_1_3_post_audit_development_plan.md](docs/exec_plans/2026-05-29_blocks_1_3_post_audit_development_plan.md); operator [runtime_artifact_contract.md](docs/runtime_artifact_contract.md); Session 01 regression `test_run_report_timing_blocks_registered_in_module` (timing block keys parity with `run_report.py`).
 
 Category: Added
 
@@ -548,38 +555,38 @@ Category: Added
 
 Category: Added
 
-- **Block 3.4 institutional upgrade Session 13 (closure):** Acceptance audit — gap matrix G1–G15 closed; fixture matrix **7/7**; pytest **142 passed** (extended bundle); ExecPlan **Completed**; evidence: [acceptance audit](docs/audits/2026-05-29_block_3_4_institutional_upgrade_acceptance_audit.md).
-- **Block 3.4 institutional upgrade Session 12:** Documentation sync — SPEC/OUTPUTS/TESTING/CHANGELOG/DECISIONS (`DEC-2026-05-29-005`); Block 3.4 regression bundle; [Session 12 audit](docs/audits/2026-05-29_block_3_4_session_12_documentation_sync.md); pytest **71 passed** (doc-sync bundle).
-- **Block 3.4 institutional upgrade Session 11:** Materialization — snapshot `stress_suite_results.current_portfolio_stress_scorecard_v1` mirror, `check_current_portfolio_stress_scorecard_v1` in Core MVP validator, live E2E gate; [Session 11 audit](docs/audits/2026-05-29_block_3_4_session_11_materialization.md); pytest **71 passed**.
-- **Block 3.4 institutional upgrade Session 10:** AI Commentary — `current_portfolio_stress_scorecard_context` on `ai_commentary_context.json`; v1-primary stress commentary; [Session 10 audit](docs/audits/2026-05-29_block_3_4_session_10_ai_commentary.md); pytest **67 passed**.
+- **Block 3.4 institutional upgrade Session 13 (closure):** Acceptance audit - gap matrix G1-G15 closed; fixture matrix **7/7**; pytest **142 passed** (extended bundle); ExecPlan **Completed**; evidence: [acceptance audit](docs/audits/2026-05-29_block_3_4_institutional_upgrade_acceptance_audit.md).
+- **Block 3.4 institutional upgrade Session 12:** Documentation sync - SPEC/OUTPUTS/TESTING/CHANGELOG/DECISIONS (`DEC-2026-05-29-005`); Block 3.4 regression bundle; [Session 12 audit](docs/audits/2026-05-29_block_3_4_session_12_documentation_sync.md); pytest **71 passed** (doc-sync bundle).
+- **Block 3.4 institutional upgrade Session 11:** Materialization - snapshot `stress_suite_results.current_portfolio_stress_scorecard_v1` mirror, `check_current_portfolio_stress_scorecard_v1` in Core MVP validator, live E2E gate; [Session 11 audit](docs/audits/2026-05-29_block_3_4_session_11_materialization.md); pytest **71 passed**.
+- **Block 3.4 institutional upgrade Session 10:** AI Commentary - `current_portfolio_stress_scorecard_context` on `ai_commentary_context.json`; v1-primary stress commentary; [Session 10 audit](docs/audits/2026-05-29_block_3_4_session_10_ai_commentary.md); pytest **67 passed**.
 - **Block 3.4 institutional upgrade Session 09:** `candidate_comparison_targets` on Block 3.4; Candidate Comparison `stress.current_portfolio_stress_scorecard_v1` v1-primary + top-level `stress_scorecard_comparison`; [Session 09 audit](docs/audits/2026-05-29_block_3_4_session_09_candidate_comparison.md); pytest **47 passed**.
 - **Block 3.4 institutional upgrade Session 08:** `problem_classification_signals` on `current_portfolio_stress_scorecard_v1`; Problem Classification v1-primary worst-scenario path with `stress_scorecard_source`; [Session 08 audit](docs/audits/2026-05-29_block_3_4_session_08_problem_classification.md); pytest **46 passed**.
-- **Block 3.4 institutional upgrade Sessions 02–07:** v1.1 product metadata, worst selectors + `stress_coverage`, loss/risk summaries, `hedge_gap_summary`, `stress_diagnosis` + `next_decision_uses[]`, `pre_stress_confirmation_summary` (optional 2.4/2.6 bridges); audits under `docs/audits/2026-05-29_block_3_4_session_0[2-7]_*.md`; contract tests **34 passed** after Session 07.
-- **Block 3.4 institutional upgrade Session 01:** Frozen v1.1 contract in [current_portfolio_stress_scorecard_spec.md](docs/specs/current_portfolio_stress_scorecard_spec.md) (`current_portfolio_stress_scorecard_rules_v1_1`, `diagnosis_confidence`, `next_decision_uses[]`, mandate boundary, 2.4/2.6 degradation, product language); [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) §3.4 linked; [Session 01 audit](docs/audits/2026-05-29_block_3_4_session_01_contract_v1_1.md); no code changes; pytest **4 passed**.
+- **Block 3.4 institutional upgrade Sessions 02-07:** v1.1 product metadata, worst selectors + `stress_coverage`, loss/risk summaries, `hedge_gap_summary`, `stress_diagnosis` + `next_decision_uses[]`, `pre_stress_confirmation_summary` (optional 2.4/2.6 bridges); audits under `docs/audits/2026-05-29_block_3_4_session_0[2-7]_*.md`; contract tests **34 passed** after Session 07.
+- **Block 3.4 institutional upgrade Session 01:** Frozen v1.1 contract in [current_portfolio_stress_scorecard_spec.md](docs/specs/current_portfolio_stress_scorecard_spec.md) (`current_portfolio_stress_scorecard_rules_v1_1`, `diagnosis_confidence`, `next_decision_uses[]`, mandate boundary, 2.4/2.6 degradation, product language); [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) Section3.4 linked; [Session 01 audit](docs/audits/2026-05-29_block_3_4_session_01_contract_v1_1.md); no code changes; pytest **4 passed**.
 - **Block 2.4 UI Pareto presenter:** `src/block_2_4_hidden_exposure_ui.py` (`build_hidden_risk_cards_pareto`); `tests/test_block_2_4_hidden_exposure_ui.py`; fixes `verify_docs.py` link check for [block_2_4_hidden_exposure_ui_pareto_spec.md](docs/specs/block_2_4_hidden_exposure_ui_pareto_spec.md).
-- **Block 3.3 institutional upgrade Session 12 (closure):** Acceptance audit — gap matrix G1–G10 closed; fixture matrix 7/7; pytest **106 passed** (extended bundle); ExecPlan **Completed**; evidence: [acceptance audit](docs/audits/2026-05-29_block_3_3_institutional_upgrade_acceptance_audit.md).
-- **Block 3.3 institutional upgrade Session 11:** Documentation sync — SPEC/OUTPUTS/TESTING/CHANGELOG/DECISIONS (`DEC-2026-05-29-003`); expanded Block 3.3 regression bundle; Session 11 audit.
-- **Block 3.3 institutional upgrade Session 10:** Materialization — snapshot `stress_suite_results.hedge_gap_analysis_v1` mirror, scorecard `hedge_gap_*` linkage, `check_hedge_gap_analysis_v1` in Core MVP validator, live E2E gate; [Session 10 audit](docs/audits/2026-05-29_block_3_3_session_10_materialization.md).
-- **Block 3.3 institutional upgrade Session 09:** AI Commentary — `hedge_gap_context` on `ai_commentary_context.json`; v1-primary stress commentary executive summary; [Session 09 audit](docs/audits/2026-05-29_block_3_3_session_09_ai_commentary.md).
+- **Block 3.3 institutional upgrade Session 12 (closure):** Acceptance audit - gap matrix G1-G10 closed; fixture matrix 7/7; pytest **106 passed** (extended bundle); ExecPlan **Completed**; evidence: [acceptance audit](docs/audits/2026-05-29_block_3_3_institutional_upgrade_acceptance_audit.md).
+- **Block 3.3 institutional upgrade Session 11:** Documentation sync - SPEC/OUTPUTS/TESTING/CHANGELOG/DECISIONS (`DEC-2026-05-29-003`); expanded Block 3.3 regression bundle; Session 11 audit.
+- **Block 3.3 institutional upgrade Session 10:** Materialization - snapshot `stress_suite_results.hedge_gap_analysis_v1` mirror, scorecard `hedge_gap_*` linkage, `check_hedge_gap_analysis_v1` in Core MVP validator, live E2E gate; [Session 10 audit](docs/audits/2026-05-29_block_3_3_session_10_materialization.md).
+- **Block 3.3 institutional upgrade Session 09:** AI Commentary - `hedge_gap_context` on `ai_commentary_context.json`; v1-primary stress commentary executive summary; [Session 09 audit](docs/audits/2026-05-29_block_3_3_session_09_ai_commentary.md).
 - **Block 3.3 institutional upgrade Session 08:** Candidate Comparison adds `hedge_gap_comparison` and per-candidate `stress.hedge_gap_analysis_v1` when v1 stress blocks exist on baseline and peers.
 - **Block 3.3 institutional upgrade Session 07:** Problem Classification uses `hedge_gap_analysis_v1` as primary hedge-gap path; legacy `hedge_gap_status` fallback only; `hedge_gap_source` on `problem_classification.json`.
-- **Block 3.3 institutional upgrade Session 06:** Block 2.6 bridge — `weakness_map_confirmation[]` on `hedge_gap_analysis_v1`, optional `attach_hedge_gap_analysis_v1(..., block_2_6_portfolio_weakness_map=...)`, wired from `build_portfolio_xray_v2` (read-only on 2.6); dual-bridge clears pre-stress limitation flags.
-- **Block 3.3 institutional upgrade Session 05:** Block 2.4 bridge — `hidden_exposure_confirmation[]` on `hedge_gap_analysis_v1`, per-row `confirmation_status`, `weak_hedge_behavior.hedge_gap_bridge`, wired from `build_portfolio_xray_v2`; Block 2.4 adds `partially_confirmed` / `not_confirmed`; contract tests **66+** passed.
-- **Block 3.3 institutional upgrade Session 04:** Main hedge gap selection v2 — weighted `main_gap_score` (offset deficit × loss severity × concentration boost), `selection_reason_code` / `selection_reason_en`, ruleset bump to `hedge_gap_rules_v1_2`; [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md) §summary updated; contract tests **63 passed**.
-- **Block 3.3 institutional upgrade Session 03:** Calculation hardening — finite PnL parsing, safe offset ratio, deterministic hurt/helped split, parametrized `protection_status` tests; contract tests **60 passed**.
+- **Block 3.3 institutional upgrade Session 06:** Block 2.6 bridge - `weakness_map_confirmation[]` on `hedge_gap_analysis_v1`, optional `attach_hedge_gap_analysis_v1(..., block_2_6_portfolio_weakness_map=...)`, wired from `build_portfolio_xray_v2` (read-only on 2.6); dual-bridge clears pre-stress limitation flags.
+- **Block 3.3 institutional upgrade Session 05:** Block 2.4 bridge - `hidden_exposure_confirmation[]` on `hedge_gap_analysis_v1`, per-row `confirmation_status`, `weak_hedge_behavior.hedge_gap_bridge`, wired from `build_portfolio_xray_v2`; Block 2.4 adds `partially_confirmed` / `not_confirmed`; contract tests **66+** passed.
+- **Block 3.3 institutional upgrade Session 04:** Main hedge gap selection v2 - weighted `main_gap_score` (offset deficit × loss severity × concentration boost), `selection_reason_code` / `selection_reason_en`, ruleset bump to `hedge_gap_rules_v1_2`; [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md) Sectionsummary updated; contract tests **63 passed**.
+- **Block 3.3 institutional upgrade Session 03:** Calculation hardening - finite PnL parsing, safe offset ratio, deterministic hurt/helped split, parametrized `protection_status` tests; contract tests **60 passed**.
 - **Block 3.3 institutional upgrade Session 02:** Product contract v1.1 on `hedge_gap_analysis_v1` (`ruleset_version`, `block_status`, `scenario_coverage`, row aliases, `protection_status`, `client_diagnosis_en`, enriched `summary`); [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md) updated; contract tests **47 passed**.
 
 Category: Added
 
-- **Block 2.6 heuristic_v2 closure (Sessions 00–09):** Product `block_2_6_portfolio_weakness_map` uses eight canonical Stress Lab `risk_type` ids, `heuristic_v2` rule tables, Block 2.4 v2 evidence, narrative fields (`short_diagnosis`, `why_status`, `key_evidence`, `linked_assets`), stress-boundary tests, Problem Classification / AI grounding SSOT, and legacy `sections.weakness_map` tagged non-product. Evidence: [heuristic_v2 acceptance audit](docs/audits/2026-05-29_block_2_6_weakness_map_heuristic_v2_acceptance_audit.md), [UI Pareto spec](docs/specs/block_2_6_weakness_map_ui_pareto_spec.md), `DEC-2026-05-29-001`; closure pytest **68 passed**.
+- **Block 2.6 heuristic_v2 closure (Sessions 00-09):** Product `block_2_6_portfolio_weakness_map` uses eight canonical Stress Lab `risk_type` ids, `heuristic_v2` rule tables, Block 2.4 v2 evidence, narrative fields (`short_diagnosis`, `why_status`, `key_evidence`, `linked_assets`), stress-boundary tests, Problem Classification / AI grounding SSOT, and legacy `sections.weakness_map` tagged non-product. Evidence: [heuristic_v2 acceptance audit](docs/audits/2026-05-29_block_2_6_weakness_map_heuristic_v2_acceptance_audit.md), [UI Pareto spec](docs/specs/block_2_6_weakness_map_ui_pareto_spec.md), `DEC-2026-05-29-001`; closure pytest **68 passed**.
 
 Category: Added
 
-- **Block 2.4 UI Pareto layer spec:** [block_2_4_hidden_exposure_ui_pareto_spec.md](docs/specs/block_2_4_hidden_exposure_ui_pareto_spec.md) — Hidden Risk Cards contract (6 alerts), backend→UI mapping, prioritization, mocks, acceptance criteria; presentation-only (no backend change).
+- **Block 2.4 UI Pareto layer spec:** [block_2_4_hidden_exposure_ui_pareto_spec.md](docs/specs/block_2_4_hidden_exposure_ui_pareto_spec.md) - Hidden Risk Cards contract (6 alerts), backend->UI mapping, prioritization, mocks, acceptance criteria; presentation-only (no backend change).
 
 Category: Added
 
-- **Block 2.4 Session 13 (institutional upgrade closure):** Matrix v2 sign-off ([completion matrix](docs/audits/2026-05-29_block_2_4_completion_matrix_v2_signoff.md)); institutional upgrade ExecPlan **Completed**; Sessions 01–13 closed. Evidence: [Session 13 audit](docs/audits/2026-05-29_block_2_4_session_13_institutional_closure.md).
+- **Block 2.4 Session 13 (institutional upgrade closure):** Matrix v2 sign-off ([completion matrix](docs/audits/2026-05-29_block_2_4_completion_matrix_v2_signoff.md)); institutional upgrade ExecPlan **Completed**; Sessions 01-13 closed. Evidence: [Session 13 audit](docs/audits/2026-05-29_block_2_4_session_13_institutional_closure.md).
 
 Category: Added
 
@@ -591,47 +598,47 @@ Category: Added
 
 Category: Added
 
-- **Block 2.4 Session 10 (institutional upgrade):** Matrix row coverage tests (`tests/test_block_2_4_matrix_coverage.py`, 69 parametrized ✅ v2 rows + deferred registry/limitation checks); `assert_block_2_4_product_contract` and golden Block 2.4 v2 surface test in `tests/test_portfolio_xray_contract.py`; expanded `contract_fingerprint` Block 2.4 fields; golden fixture regenerated.
+- **Block 2.4 Session 10 (institutional upgrade):** Matrix row coverage tests (`tests/test_block_2_4_matrix_coverage.py`, 69 parametrized implemented v2 rows + deferred registry/limitation checks); `assert_block_2_4_product_contract` and golden Block 2.4 v2 surface test in `tests/test_portfolio_xray_contract.py`; expanded `contract_fingerprint` Block 2.4 fields; golden fixture regenerated.
 
 Category: Added
 
-- **Block 2.4 Session 09 (institutional upgrade):** Legacy PCA wire-time cross-ref on `correlation_concentration` via `build_block_2_4_legacy_enrichment` (`portfolio_pca` PC1 raw/residual, factor residual share); limitations point to `sections.hidden_risk_detector`; scores unchanged under `heuristic_v2`. Tests, spec §2.4.1, OUTPUTS note, and golden fixture updated.
+- **Block 2.4 Session 09 (institutional upgrade):** Legacy PCA wire-time cross-ref on `correlation_concentration` via `build_block_2_4_legacy_enrichment` (`portfolio_pca` PC1 raw/residual, factor residual share); limitations point to `sections.hidden_risk_detector`; scores unchanged under `heuristic_v2`. Tests, spec Section2.4.1, OUTPUTS note, and golden fixture updated.
 
 Category: Added
 
-- **Block 2.4 Session 08 (institutional upgrade):** Block 3 wire-time stress enrichment for `weak_hedge_behavior` (`confirmation_status`, `hedge_gap_analysis_v1` summary, worst-scenario hedge offset check, `factor_oos_mae_5y` evidence) and `duration_concentration` stagflation/commodity cross-ref; `build_block_2_4_stress_enrichment` wired from `build_portfolio_xray_v2`. Scores unchanged under `heuristic_v2`. Tests and spec §2.4.1 updated; golden fixture regenerated.
+- **Block 2.4 Session 08 (institutional upgrade):** Block 3 wire-time stress enrichment for `weak_hedge_behavior` (`confirmation_status`, `hedge_gap_analysis_v1` summary, worst-scenario hedge offset check, `factor_oos_mae_5y` evidence) and `duration_concentration` stagflation/commodity cross-ref; `build_block_2_4_stress_enrichment` wired from `build_portfolio_xray_v2`. Scores unchanged under `heuristic_v2`. Tests and spec Section2.4.1 updated; golden fixture regenerated.
 
 Category: Added
 
-- **Block 2.4 Session 07 (institutional upgrade):** `tail_risk` scored signals from Block 2.2 — `var_95/99`, `downside_deviation`, `max_drawdown`, underwater persistence (`pct_time_underwater`, `longest_underwater_months`, `unrecovered_drawdown`), `count_drawdowns_gt_5`; vol instability evidence (`vol_of_vol`, `rel_vol_of_vol`, `rolling_volatility_12m_latest`). Tests and spec §2.4.1 updated; golden fixture regenerated.
+- **Block 2.4 Session 07 (institutional upgrade):** `tail_risk` scored signals from Block 2.2 - `var_95/99`, `downside_deviation`, `max_drawdown`, underwater persistence (`pct_time_underwater`, `longest_underwater_months`, `unrecovered_drawdown`), `count_drawdowns_gt_5`; vol instability evidence (`vol_of_vol`, `rel_vol_of_vol`, `rolling_volatility_12m_latest`). Tests and spec Section2.4.1 updated; golden fixture regenerated.
 
 Category: Added
 
-- **Block 2.4 Session 06 (institutional upgrade):** `heuristic_v2` ruleset with confidence model v2 (factor penalties, cross-signal agreement, Block 2.2 warning propagation); High status capped to Medium when confidence is low; `weak_hedge_behavior` preliminary confidence cap. Tests and spec §2.4.1 updated; golden fixture regenerated.
+- **Block 2.4 Session 06 (institutional upgrade):** `heuristic_v2` ruleset with confidence model v2 (factor penalties, cross-signal agreement, Block 2.2 warning propagation); High status capped to Medium when confidence is low; `weak_hedge_behavior` preliminary confidence cap. Tests and spec Section2.4.1 updated; golden fixture regenerated.
 
 Category: Added
 
-- **Block 2.4 Session 05 (institutional upgrade):** Factor concentration sub-signals from Block 2.3 (`factor_variance_contribution`, `factor_risk_ranking`, `production_factor_confidence`, `production_factor_betas_5y`, `factor_beta_stability`, `kalman_current_betas`, supplemental `beta_inf`/`beta_usd`/`beta_cmd`/`beta_vix`/`beta_rr`/`beta_us_growth`) distributed across alerts; evidence-only under `heuristic_v1`. Tests and spec §2.4.1 updated.
+- **Block 2.4 Session 05 (institutional upgrade):** Factor concentration sub-signals from Block 2.3 (`factor_variance_contribution`, `factor_risk_ranking`, `production_factor_confidence`, `production_factor_betas_5y`, `factor_beta_stability`, `kalman_current_betas`, supplemental `beta_inf`/`beta_usd`/`beta_cmd`/`beta_vix`/`beta_rr`/`beta_us_growth`) distributed across alerts; evidence-only under `heuristic_v1`. Tests and spec Section2.4.1 updated.
 
 Category: Added
 
-- **Block 2.4 Session 04 (institutional upgrade):** Block 2.2 exports `correlation_breakdown.avg_pairwise_correlation`; Block 2.4 wires lowest-pair / average / `lack_of_diversifying_pairs` evidence on `correlation_concentration` and `equity_like_high_correlation_pairs` on `hidden_equity_beta` (evidence-only, `heuristic_v1` scores unchanged). Removed `avg_pairwise_correlation` from blocked-upstream registry. Tests and spec §2.2.1 / §2.4.1 updated.
+- **Block 2.4 Session 04 (institutional upgrade):** Block 2.2 exports `correlation_breakdown.avg_pairwise_correlation`; Block 2.4 wires lowest-pair / average / `lack_of_diversifying_pairs` evidence on `correlation_concentration` and `equity_like_high_correlation_pairs` on `hidden_equity_beta` (evidence-only, `heuristic_v1` scores unchanged). Removed `avg_pairwise_correlation` from blocked-upstream registry. Tests and spec Section2.2.1 / Section2.4.1 updated.
 
 Category: Added
 
-- **Block 2.4 Session 03 (institutional upgrade):** Mandatory `contributing_assets[]` (max 3) per alert from Block 2.1 `by_asset` + wire-time `taxonomy_rows`; `portfolio_xray.py` passes taxonomy into `build_block_2_4_hidden_exposure`. Tests and spec §2.4.1 updated.
+- **Block 2.4 Session 03 (institutional upgrade):** Mandatory `contributing_assets[]` (max 3) per alert from Block 2.1 `by_asset` + wire-time `taxonomy_rows`; `portfolio_xray.py` passes taxonomy into `build_block_2_4_hidden_exposure`. Tests and spec Section2.4.1 updated.
 
 Category: Added
 
-- **Block 2.4 Session 02 (institutional upgrade):** Taxonomy/currency sub-signals from Block 2.1 `concentration_flags` and `by_currency`; `investor_currency_mismatch` evidence on `correlation_concentration`; equity/risk-on evidence on `hidden_equity_beta`. Tests extended; spec §2.4.1 updated.
+- **Block 2.4 Session 02 (institutional upgrade):** Taxonomy/currency sub-signals from Block 2.1 `concentration_flags` and `by_currency`; `investor_currency_mismatch` evidence on `correlation_concentration`; equity/risk-on evidence on `hidden_equity_beta`. Tests extended; spec Section2.4.1 updated.
 
 Category: Fixed
 
-- **Block 2.4 Session 01 (institutional upgrade):** `correlation_concentration.duplicate_exposure_weight` now reads Block 2.1 `combined_weight` / `combined_weight_pct`; per-alert `limitations[]` and `confidence_reason`; `diagnostics_meta.blocked_upstream_fields` scaffold; duplicate group evidence rows. Tests in `tests/test_block_2_4_hidden_exposure.py`; spec §2.4.1 updated.
+- **Block 2.4 Session 01 (institutional upgrade):** `correlation_concentration.duplicate_exposure_weight` now reads Block 2.1 `combined_weight` / `combined_weight_pct`; per-alert `limitations[]` and `confidence_reason`; `diagnostics_meta.blocked_upstream_fields` scaffold; duplicate group evidence rows. Tests in `tests/test_block_2_4_hidden_exposure.py`; spec Section2.4.1 updated.
 
 Category: Added
 
-- **Stock Batch 1 pipeline:** Index-based controlled US stock expansion — `src/stock_batch_ingestion.py`, `scripts/build_stock_batch1.py`, merge path `--stock-batch-dir` on `scripts/merge_draft_universe.py`; production `index_membership` extended to `SP500` / `R1000` / `R3000`; tests `tests/test_stock_batch_ingestion.py`; spec updates in `universe_ingestion_spec.md` and `stock_universe_spec.md`.
+- **Stock Batch 1 pipeline:** Index-based controlled US stock expansion - `src/stock_batch_ingestion.py`, `scripts/build_stock_batch1.py`, merge path `--stock-batch-dir` on `scripts/merge_draft_universe.py`; production `index_membership` extended to `SP500` / `R1000` / `R3000`; tests `tests/test_stock_batch_ingestion.py`; spec updates in `universe_ingestion_spec.md` and `stock_universe_spec.md`.
 
 Date: 2026-05-28
 
@@ -647,10 +654,10 @@ Category: Added
   `stress_report.json`; [acceptance audit](docs/audits/2026-05-28_core_mvp_historical_stress_replay_acceptance_audit.md);
   gate `scripts/verify_core_mvp_historical_stress_replay.py`; ExecPlan closed.
 
-- **Core MVP historical stress replay (Session 6):** Documentation sync — `DEC-2026-05-28-001`,
-  `stress_lab_layer_spec.md`, `stress_testing_spec.md` §9.4, `OUTPUTS.md`, `TESTING.md`.
+- **Core MVP historical stress replay (Session 6):** Documentation sync - `DEC-2026-05-28-001`,
+  `stress_lab_layer_spec.md`, `stress_testing_spec.md` Section9.4, `OUTPUTS.md`, `TESTING.md`.
 
-- **Core MVP historical stress replay (Session 5):** Contract tests cases A–D on replay and Block
+- **Core MVP historical stress replay (Session 5):** Contract tests cases A-D on replay and Block
   3.2 merge (`tests/test_core_mvp_historical_stress_replay_contract.py`); Block 3.2 copies
   `episode_start` / `episode_end` from replay.
 
@@ -678,13 +685,13 @@ Date: 2026-05-27
 
 Category: Changed
 
-- **Block 2.3 Core MVP upgrade (Sessions 2–7, product surface):** Extended
-  `block_2_3_factor_exposure` with `factor_betas_3y`, `factor_signal_confidence` (HAC→OLS fallback,
+- **Block 2.3 Core MVP upgrade (Sessions 2-7, product surface):** Extended
+  `block_2_3_factor_exposure` with `factor_betas_3y`, `factor_signal_confidence` (HAC->OLS fallback,
   no raw p/t in product JSON), `factor_kalman_uncertainty`, `factor_beta_stability` (3Y/5Y/10Y point
   betas only), and narrative `factor_exposure_summary` (`factor_highlights`, `main_caveat`). Upstream
   `factor_betas_3y` / `factor_regression_3y` in `run_report.py` and `run_optimization.py`. Fixture-matrix
   Block 2.3 validator and golden `portfolio_xray_golden_v2.json` updated. Full regression package remains
-  in `stress_report.json` only ([portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.3.1).
+  in `stress_report.json` only ([portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) Section2.3.1).
 
 - **Kalman weekly path + real cash:** `_portfolio_factor_weekly_ols_rows` no longer downloads
   real-cash labels (e.g. `Cash USD`) via yfinance; cash receives zero weekly returns in-panel.
@@ -692,7 +699,7 @@ Category: Changed
   `factor_betas_kalman_error` to precise unavailable reasons. Fixture-matrix validators use
   `scripts/core_mvp_validation_contract.py` (Core MVP rollup vs optional diagnostics).
 
-- **Block 3.3 Hedge Gap — eighth protection area:** Added `recession_severe_protection` →
+- **Block 3.3 Hedge Gap - eighth protection area:** Added `recession_severe_protection` ->
   `recession_severe` to `BLOCK_3_3_RISK_SCENARIO_MAP` (`src/hedge_gap_analysis_block.py`) so
   `hedge_gap_analysis_v1.by_risk_type` emits offset coverage and hurt/helped fields for severe
   recession alongside the existing seven mappings. Scorecard `main_hedge_gap` / offset summary
@@ -718,7 +725,7 @@ Category: Changed
   spread proxy. Factor diagnostics now expose `fallback_used`, `primary_source`, and
   `fallback_reason`; future data work should review a better long-history HY/OAS source.
 
-- **Core MVP Runtime Integration and Entrypoint Audit (Sessions 1–7, closed):** Locked
+- **Core MVP Runtime Integration and Entrypoint Audit (Sessions 1-7, closed):** Locked
   portfolio-first runtime contract (`run_portfolio_review.py` default = diagnosis-only;
   `--candidates` = one-candidate product path; batch/full = research/advanced). Added ExecPlan
   [core_mvp_runtime_integration_and_entrypoint_audit_plan.md](docs/exec_plans/core_mvp_runtime_integration_and_entrypoint_audit_plan.md),
@@ -760,7 +767,7 @@ Category: Changed
 
 - **Block 3.4 Current Portfolio Stress Scorecard MVP:** Added a new Core MVP diagnostic-only product key
   `current_portfolio_stress_scorecard_v1` on `stress_report.json`, built as an adapter over Blocks
-  3.1–3.3 (`stress_results_v1` + `hedge_gap_analysis_v1`). Wired it in `src/stress.py`, `run_report.py`,
+  3.1-3.3 (`stress_results_v1` + `hedge_gap_analysis_v1`). Wired it in `src/stress.py`, `run_report.py`,
   and `run_optimization.py`; added contract tests (`tests/test_current_portfolio_stress_scorecard_v1_contract.py`).
   Decision recorded as `DEC-2026-05-27-003`.
 
@@ -781,49 +788,49 @@ Category: Changed
   3.4 Scorecard; simulator and crisis replay marked deferred/advanced. Docs:
   [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md),
   [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md),
-  [stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.2.2,
-  [PRODUCT.md](PRODUCT.md) §4.3.3; `DEC-2026-05-27-002`. No runtime code yet.
+  [stress_testing_spec.md](docs/specs/stress_testing_spec.md) Section12.2.2,
+  [PRODUCT.md](PRODUCT.md) Section4.3.3; `DEC-2026-05-27-002`. No runtime code yet.
 
 - **Block 3.2 Stress Results MVP (Session 08, closure):** Live portfolio-first proof on root
-  `config.yml` — `Main portfolio/analysis_subject/stress_report.json` ships `stress_results_v1`
+  `config.yml` - `Main portfolio/analysis_subject/stress_report.json` ships `stress_results_v1`
   (8 synthetic + 5 historical rows, `loss_gate_mode: diagnostic`, envelope worst synthetic
   `recession_severe` / worst historical `2022` aligned with `stress_conclusions`). Acceptance:
   [docs/audits/2026-05-27_block_3_2_stress_results_acceptance_audit.md](docs/audits/2026-05-27_block_3_2_stress_results_acceptance_audit.md);
   ExecPlan **Completed**; Block 3.2 pytest bundle **75 passed**.
 
 - **Block 3.2 Stress Results MVP (Session 07, tests):** Contract and regression closure for
-  `stress_results_v1` on `stress_report.json` — builder contract tests
+  `stress_results_v1` on `stress_report.json` - builder contract tests
   (`tests/test_stress_results_block_contract.py`), diagnostic-mode Block 3.2 gates
   (`tests/test_stress_diagnostic_mode.py`), scenario-library alignment
   (`tests/test_stress_scenario_coverage_contract.py`), Stress Lab governance bundle + dedicated
   Block 3.2 bundle in [TESTING.md](TESTING.md); live core E2E requires `stress_results_v1`.
-  Implementation Sessions 02–06 delivered builder, wiring, and downstream mirror.
+  Implementation Sessions 02-06 delivered builder, wiring, and downstream mirror.
 
 Date: 2026-05-26
 
 Category: Changed
 
-- **Core MVP mandate boundary**: portfolio-first Block 1–3 no longer use client mandate/profile
+- **Core MVP mandate boundary**: portfolio-first Block 1-3 no longer use client mandate/profile
   targets for product-facing pass/fail. Stress Lab adds `loss_gate_mode=diagnostic` for
   `analyze_current_weights` (status ok/warning/insufficient_data; no row pass/loss_ok vs MaxDD).
   Legacy `loss_gate_mode=mandate` + DIAG_* preserved for optimization reports. Docs: `PRODUCT.md`,
-  `input_assumptions_spec.md`, `stress_testing_spec.md` §0, `stress_lab_layer_spec.md`, `SPEC.md`.
+  `input_assumptions_spec.md`, `stress_testing_spec.md` Section0, `stress_lab_layer_spec.md`, `SPEC.md`.
 
 Category: Changed
 
-- **Block 3.1 Scenario Library — official product definition**: fixed active historical
+- **Block 3.1 Scenario Library - official product definition**: fixed active historical
   (`dotcom`, `2008`, `2020`, `2022`, `banking_2023`) and synthetic (eight `*_shock` +
   `recession_severe`) sets documented in [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md)
-  §3.1, [scenario_library_spec.md](docs/specs/scenario_library_spec.md), `PRODUCT.md` §4.3.1,
+  Section3.1, [scenario_library_spec.md](docs/specs/scenario_library_spec.md), `PRODUCT.md` Section4.3.1,
   `GLOSSARY.md`, `SPEC.md`; cross-ref in [stress_testing_spec.md](docs/specs/stress_testing_spec.md)
-  §2; ID registry comments in `src/scenario_library.py`. No new scenarios; IDs unchanged in code.
+  Section2; ID registry comments in `src/scenario_library.py`. No new scenarios; IDs unchanged in code.
 
 Category: Changed
 
-- **Block 2.6 Portfolio Weakness Map MVP closed** (ExecPlan Sessions 00–08,
+- **Block 2.6 Portfolio Weakness Map MVP closed** (ExecPlan Sessions 00-08,
   `DEC-2026-05-26-006`): product-facing `block_2_6_portfolio_weakness_map` on
-  `portfolio_xray.json` aggregates Blocks 2.1–2.5 into nine pre-stress risk hypotheses
-  (0–100 score, severity, evidence, `next_tests`); excludes stress PnL/attribution;
+  `portfolio_xray.json` aggregates Blocks 2.1-2.5 into nine pre-stress risk hypotheses
+  (0-100 score, severity, evidence, `next_tests`); excludes stress PnL/attribution;
   legacy `sections.weakness_map` preserved. Evidence:
   [acceptance audit](docs/audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md);
   live demo rates_up **65** Medium, equity_crash **36** Low; pytest **35 passed**;
@@ -833,7 +840,7 @@ Date: 2026-05-26
 
 Category: Changed
 
-- **Block 2.5 Risk Budget View MVP closed** (ExecPlan Sessions 00–08,
+- **Block 2.5 Risk Budget View MVP closed** (ExecPlan Sessions 00-08,
   `DEC-2026-05-26-005`): product-facing `block_2_5_risk_budget_view` on
   `portfolio_xray.json` compares capital weights to RC_vol, top1/top3 RC, risk
   overweight/underweight lists, and taxonomy bucket RC; excludes stress PnL;
@@ -847,18 +854,18 @@ Date: 2026-05-26
 Category: Changed
 
 - **Block 2.5 Risk Budget View product contract (Session 01, docs):** Core MVP extended to Blocks
-  2.1–2.5; normative §2.5.1 `block_2_5_risk_budget_view` in
+  2.1-2.5; normative Section2.5.1 `block_2_5_risk_budget_view` in
   [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md); archetype
-  renumbered to §2.6 (legacy only). Updated [portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md),
+  renumbered to Section2.6 (legacy only). Updated [portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md),
   [SPEC.md](SPEC.md), [OUTPUTS.md](OUTPUTS.md), [DECISIONS.md](DECISIONS.md) (DEC-2026-05-26-005),
-  [GLOSSARY.md](GLOSSARY.md). Implementation Sessions 02–05 pending.
+  [GLOSSARY.md](GLOSSARY.md). Implementation Sessions 02-05 pending.
 
 Date: 2026-05-26
 
 Category: Changed
 
-- **Full pytest suite contract drift registered (6 failures):** post–Block 2.4 full run
-  (1037 passed / 6 failed) failures tracked as separate tech debt **KI-2026-05-26-001** … **006** in
+- **Full pytest suite contract drift registered (6 failures):** post-Block 2.4 full run
+  (1037 passed / 6 failed) failures tracked as separate tech debt **KI-2026-05-26-001** ... **006** in
   [KNOWN_ISSUES.md](KNOWN_ISSUES.md) and [TESTING.md](TESTING.md); not Block 2.4 regressions.
 
 Date: 2026-05-26
@@ -875,8 +882,8 @@ Date: 2026-05-26
 Category: Changed
 
 - **Portfolio Archetype Classification (Block 2.5) demoted from Core MVP docs:** product diagnosis
-  remains Blocks 1 + 2.1–2.4 only; `sections.portfolio_archetype` stays on full X-Ray builds for
-  legacy/formatters; no `block_2_5_*` module. Specs: [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.5,
+  remains Blocks 1 + 2.1-2.4 only; `sections.portfolio_archetype` stays on full X-Ray builds for
+  legacy/formatters; no `block_2_5_*` module. Specs: [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) Section2.5,
   [portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md), [SPEC.md](SPEC.md).
 
 Date: 2026-05-26
@@ -912,7 +919,7 @@ Date: 2026-05-26
 
 Category: Changed
 
-- **Block 2.2 Portfolio Metrics / Risk Diagnostics MVP closed** (ExecPlan Sessions 01–08,
+- **Block 2.2 Portfolio Metrics / Risk Diagnostics MVP closed** (ExecPlan Sessions 01-08,
   `DEC-2026-05-26-003`): product-facing `block_2_2_portfolio_metrics` on
   `analysis_subject/portfolio_xray.json` for diagnosis and one-candidate runs; live demo
   (`config.yml` 10Y: CAGR 9.9%, vol 9.6%, Sharpe 0.799, MDD -19.8%, beta 0.513); real-cash
@@ -924,7 +931,7 @@ Date: 2026-05-26
 
 Category: Changed
 
-- **Block 2.1 Asset Allocation MVP closed** (ExecPlan Sessions 01–08, `DEC-2026-05-26-002`):
+- **Block 2.1 Asset Allocation MVP closed** (ExecPlan Sessions 01-08, `DEC-2026-05-26-002`):
   product-facing `block_2_1_asset_allocation` on `analysis_subject/portfolio_xray.json` for diagnosis
   and one-candidate runs; live demo (`config.yml`: SCHD top1 17.0%, top3 46.0%); real-cash fixture
   proof (5% `Cash USD`, SCHD 16.15%, top3 43.7%). Evidence:
@@ -961,7 +968,7 @@ Date: 2026-05-26
 Category: Changed
 
 - **Block 2.1 Asset Allocation product contract specified** (`DEC-2026-05-26-002`): Added
-  `portfolio_xray_diagnostics_spec.md` §2.1.1 (`block_2_1_asset_allocation` JSON contract) and §2.1.2
+  `portfolio_xray_diagnostics_spec.md` Section2.1.1 (`block_2_1_asset_allocation` JSON contract) and Section2.1.2
   (`ALLOCATION_CONCENTRATION_THRESHOLDS`). Implementation in `src/block_2_1_asset_allocation.py` follows
   ExecPlan Session 03+. Docs: layer spec, OUTPUTS Block 2 row.
 
@@ -970,18 +977,18 @@ Date: 2026-05-26
 Category: Changed
 
 - **Input Layer MVP Migration closed and frozen** (`DEC-2026-05-26-001`): Core MVP three-field
-  input, real cash, `input_surface` / `field_tiers` export; ExecPlan Sessions 01–10 complete.
+  input, real cash, `input_surface` / `field_tiers` export; ExecPlan Sessions 01-10 complete.
   Live verification: `run_portfolio_review.py --candidates equal_weight` + `validate_one_candidate_demo.py`
   PASS. Contract freeze in [input_assumptions_spec.md](docs/specs/input_assumptions_spec.md);
-  evidence [acceptance audit](docs/audits/2026-05-26_input_layer_mvp_acceptance_audit.md) §5.
-  Active product focus moves to downstream Blocks 2–5 / product bundle layers (not more input redesign).
+  evidence [acceptance audit](docs/audits/2026-05-26_input_layer_mvp_acceptance_audit.md) Section5.
+  Active product focus moves to downstream Blocks 2-5 / product bundle layers (not more input redesign).
 
 Date: 2026-05-24
 
 Category: Changed
 
 - Performance Wave 2 **closed** Session 8 (`RM-983`): `core_fast_parallel` E2E **210.7 s** warm cache
-  (target ≤ 300 s; baseline `core_v1` 542.5 s). Extended
+  (target <= 300 s; baseline `core_v1` 542.5 s). Extended
   `scripts/blocks_1_5_e2e_timing_audit.py` with `core_fast_parallel` scenario and acceptance gate;
   post-wave table in [E2E timing audit](docs/audits/2026-05-24_blocks_1_5_e2e_timing_audit.md).
   Parity bundle **138 passed**; `verify_docs.py` OK.
@@ -1061,7 +1068,7 @@ Category: Added
   [candidate_factory_spec.md](docs/specs/candidate_factory_spec.md) and
   [portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md); register updates in
   [exec_plans/README.md](docs/exec_plans/README.md) and [ROADMAP.md](docs/ROADMAP.md). No runtime code
-  changes (Sessions 1–8 pending).
+  changes (Sessions 1-8 pending).
 
 Date: 2026-05-24
 
@@ -1072,17 +1079,17 @@ Category: Added
   ExecPlan
   [2026-05-23_core_full_artifact_documentation_confusion_plan.md](docs/exec_plans/2026-05-23_core_full_artifact_documentation_confusion_plan.md)
   marked **Completed**; [exec_plans/README.md](docs/exec_plans/README.md) Active pointer cleared;
-  [audits/README.md](docs/audits/README.md) confusion audit row → Historical.
+  [audits/README.md](docs/audits/README.md) confusion audit row -> Historical.
 
 Date: 2026-05-24
 
 Category: Added
 
-- Core/full artifact confusion remediation Session 05 (`RM-1105`): [GLOSSARY.md](GLOSSARY.md) Blocks 1–5
+- Core/full artifact confusion remediation Session 05 (`RM-1105`): [GLOSSARY.md](GLOSSARY.md) Blocks 1-5
   vs decision package and factory/comparison evidence terms; factory vs comparison scope note in
   [candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md); cross-links in
   [portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md); walkthrough notes
-  in both Blocks 1–5 walkthrough audits; [SPEC.md](SPEC.md) artifact-boundary pointer.
+  in both Blocks 1-5 walkthrough audits; [SPEC.md](SPEC.md) artifact-boundary pointer.
 
 Date: 2026-05-24
 
@@ -1098,25 +1105,25 @@ Date: 2026-05-24
 Category: Added
 
 - Core/full artifact confusion remediation Session 03 (`RM-1103`): command matrix split in
-  [OUTPUTS.md](OUTPUTS.md) (core `core_v1` review vs standalone/full `default_v1` factory); §20 disk
-  caveat in [Blocks 1–5 verification report](docs/audits/2026-05-22_blocks_1_5_verification_report.md);
+  [OUTPUTS.md](OUTPUTS.md) (core `core_v1` review vs standalone/full `default_v1` factory); Section20 disk
+  caveat in [Blocks 1-5 verification report](docs/audits/2026-05-22_blocks_1_5_verification_report.md);
   [README.md](README.md) PDF one-liner and aligned summary table; [audits/README.md](docs/audits/README.md)
-  Blocks 1–5 row updated.
+  Blocks 1-5 row updated.
 
 Date: 2026-05-24
 
 Category: Added
 
 - Core/full artifact confusion remediation Session 02 (`RM-1102`): portfolio-first operator checklist
-  in [WORKFLOW.md](WORKFLOW.md); [operational_runbook.md](docs/operational_runbook.md) §8 cross-links
-  to checklist and §0.1; [OUTPUTS.md](OUTPUTS.md) Read this first links to WORKFLOW + §8.
+  in [WORKFLOW.md](WORKFLOW.md); [operational_runbook.md](docs/operational_runbook.md) Section8 cross-links
+  to checklist and Section0.1; [OUTPUTS.md](OUTPUTS.md) Read this first links to WORKFLOW + Section8.
 
 Date: 2026-05-23
 
 Category: Added
 
 - Core/full artifact and documentation confusion remediation Session 01 (`RM-1101`): P0 Read this first
-  in [OUTPUTS.md](OUTPUTS.md) and runbook §0.1.
+  in [OUTPUTS.md](OUTPUTS.md) and runbook Section0.1.
 
 Category: Added
 
@@ -1124,11 +1131,11 @@ Category: Added
   [2026-05-23_core_full_artifact_documentation_confusion_plan.md](docs/exec_plans/2026-05-23_core_full_artifact_documentation_confusion_plan.md)
   from audit
   [2026-05-23_core_full_artifact_documentation_confusion_audit.md](docs/audits/2026-05-23_core_full_artifact_documentation_confusion_audit.md);
-  docs-only Sessions 03–06 pending (command matrix, ARCHITECTURE, glossary, closure).
+  docs-only Sessions 03-06 pending (command matrix, ARCHITECTURE, glossary, closure).
 
 Category: Added
 
-- Site/API Default Output Refactor Sessions 0–7: `src/output_policy.py` with `site_api` default;
+- Site/API Default Output Refactor Sessions 0-7: `src/output_policy.py` with `site_api` default;
   `output_manifest.json`; presentation exports gated; entrypoint defaults on report, review, factory,
   optimization; Session 07 closure
   (`docs/audits/2026-05-23_site_api_default_output_session07_closure_report.md`); verification bundle
@@ -1136,7 +1143,7 @@ Category: Added
 
 Category: Added
 
-- Candidate Factory Shared Evidence Sessions 1–5 (RM-982): factory `CandidateRunContext` v2–v5
+- Candidate Factory Shared Evidence Sessions 1-5 (RM-982): factory `CandidateRunContext` v2-v5
   (invariant asset metrics/corr/cov, extended betas, weekly factor frames, prepared synthetic stress);
   optional `report_timing` blocks and factory aggregate; Session 6 closure audit
   (`docs/audits/2026-05-23_candidate_factory_shared_evidence_session06_timing_audit.md`);
@@ -1158,7 +1165,7 @@ Category: Added
   and `parallel_lightweight_report_summary` in factory run outputs.
 
 - Candidate Factory Session 9: timing baseline audit
-  `docs/audits/2026-05-22_candidate_factory_timing_baseline.md`; ExecPlan Sessions 0–9 marked
+  `docs/audits/2026-05-22_candidate_factory_timing_baseline.md`; ExecPlan Sessions 0-9 marked
   Completed; verification bundle **102 passed** (factory/comparison/report_profile/run_context/manifest/compare_ew_rp/review).
 
 Category: Added
@@ -1251,36 +1258,36 @@ Omit empty categories.
 - Interactive Brokers market data provider path: `src/data_ibkr.py`, `src/data_provider.py`,
   `market_data_provider`, provider-aware cache keys, `run_ibkr_market_data.py`, docs, and tests.
 
-- Phase 17 Session 09 (`RM-1028`): Blocks 8–10 package truthfulness —
+- Phase 17 Session 09 (`RM-1028`): Blocks 8-10 package truthfulness -
   `src/package_truthfulness.py`; decision package **Review scope (read first)** banner and JSON
   `package_truthfulness`; action plan `partial_candidate_menu_action_context` warning;
   `tests/test_package_truthfulness.py`, `tests/test_blocks_8_10_downstream_integration.py`.
-- Phase 17 Session 08 (`RM-1027`): Blocks 6–7 downstream readiness —
+- Phase 17 Session 08 (`RM-1027`): Blocks 6-7 downstream readiness -
   `docs/specs/downstream_decision_readiness_spec.md`, `src/downstream_decision_readiness.py`;
   guarded stress artifact load in `portfolio_health_score.py` and `robustness_scorecard.py`;
   `tests/test_downstream_decision_readiness.py`, `tests/test_blocks_6_7_downstream_integration.py`.
-- Phase 17 Session 07 (`RM-1026`): review bundle disclosure — `src/review_bundle_context.py`;
-  `candidate_comparison.json` → `review_bundle_context` (`review_bundle_fingerprint`, alignment,
-  `mode_subject_consistency`, `user_summary_lines`); `input_assumptions` → `review_bundle_disclosure`
+- Phase 17 Session 07 (`RM-1026`): review bundle disclosure - `src/review_bundle_context.py`;
+  `candidate_comparison.json` -> `review_bundle_context` (`review_bundle_fingerprint`, alignment,
+  `mode_subject_consistency`, `user_summary_lines`); `input_assumptions` -> `review_bundle_disclosure`
   and merged `data_trust_signals.user_summary_lines`; specs and `test_review_bundle_context.py`.
-- Phase 17 Session 06 (`RM-1025`): factory vs comparison timestamp semantics —
+- Phase 17 Session 06 (`RM-1025`): factory vs comparison timestamp semantics -
   `comparison_rebuild_source` (`factory_then_compare` / `standalone`), in-memory factory handoff,
   factory JSON written before `--then-compare`, 120s standalone timing-skew tolerance when
   `analysis_end` and `config_fingerprint` match; tests and `candidate_comparison_spec.md` update.
-- Phase 17 Session 05 (`RM-1024`): Block 1 ticker preflight — explicit `analysis_subject`
+- Phase 17 Session 05 (`RM-1024`): Block 1 ticker preflight - explicit `analysis_subject`
   tickers must exist in ETF or stock taxonomy (`preflight_explicit_analysis_subject_tickers`);
   config validation fails before report; legacy paths remain warn-only via
   `etf_universe_validation.json`.
-- Phase 17 Session 04 (`RM-1023`): offline full-menu optimizer fair-comparison gate —
+- Phase 17 Session 04 (`RM-1023`): offline full-menu optimizer fair-comparison gate -
   `tests/optimizer_fair_comparison_fixtures.py`, `tests/test_optimizer_fair_comparison_full_menu.py`,
-  golden `tests/fixtures/optimization_comparison_full_menu_fair_ready_golden_v1.json`; runbook §8.6
+  golden `tests/fixtures/optimization_comparison_full_menu_fair_ready_golden_v1.json`; runbook Section8.6
   rebuild guidance for on-disk optimizer artifacts.
-- Phase 17 Session 03 (`RM-1022`): selection favoring guards —
+- Phase 17 Session 03 (`RM-1022`): selection favoring guards -
   `candidate_eligible_for_favoring` in `src/optimization_readiness.py`; degraded rows and
   non-fair-ready optimizers excluded from `favored_candidate_id`; `partial_candidate_menu`
   warnings in selection, health score, and decision-package summary labels; specs and focused
   pytest coverage.
-- Phase 17 Session 02 (`RM-1021`): live core E2E gate — `src/live_core_e2e.py`,
+- Phase 17 Session 02 (`RM-1021`): live core E2E gate - `src/live_core_e2e.py`,
   `scripts/verify_live_core_e2e.py`, pytest marker `tests/test_blocks_1_5_live_core_e2e.py`
   (`--live-core` / `PORTFOLIO_LIVE_CORE_E2E=1`), offline validator
   `tests/test_live_core_e2e_validation.py`; documented in `TESTING.md` and
@@ -1289,7 +1296,7 @@ Omit empty categories.
 
 ### Changed
 
-- Closed P17-G9 in `KNOWN_ISSUES.md` (Blocks 6–7 guarded handoff spec and implementation).
+- Closed P17-G9 in `KNOWN_ISSUES.md` (Blocks 6-7 guarded handoff spec and implementation).
 - Closed P17-G7 and P17-G8 in `KNOWN_ISSUES.md` (mode/subject interpretation and review bundle
   fingerprint via `review_bundle_context` / input trust lines).
 - Closed P17-G6 in `KNOWN_ISSUES.md` (false `factory_evidence_status: stale` on same-run review).
@@ -1306,13 +1313,13 @@ Omit empty categories.
 
 ### Added
 
-- Phase 17 Session 10 (`RM-1029`): live full + resume E2E gate — `src/live_full_e2e.py`,
+- Phase 17 Session 10 (`RM-1029`): live full + resume E2E gate - `src/live_full_e2e.py`,
   `scripts/verify_live_full_e2e.py`, pytest marker `--live-full`, offline validators; Phase 17
-  closure bundle in `TESTING.md`; runbook § live full.
+  closure bundle in `TESTING.md`; runbook Section live full.
 
 ### Changed
 
-- Phase 17 Session 10 (`RM-1029`): Phase 17 wave **closed** — live full orchestrator proof
+- Phase 17 Session 10 (`RM-1029`): Phase 17 wave **closed** - live full orchestrator proof
   (`review_mode: full`, 16 `default_v1` steps, `factory_evidence_status: current`); resume proof
   (`resumed_from_manifest: 16`); offline closure bundle **72 passed**; `verify_docs` OK; ExecPlan
   register Active cleared; `KNOWN_ISSUES.md` Phase 17 index marked closed.
@@ -1321,11 +1328,11 @@ Omit empty categories.
 
 ### Added
 
-- Phase 17 Session 01 (`RM-1020`): post-deep-audit project memory — [Post-Deep-Audit Foundation Plan](docs/exec_plans/2026-05-21_post_deep_audit_foundation_plan.md), [Blocks 1–5 Deep Audit Snapshot](docs/audits/2026-05-21_blocks_1_5_deep_audit_snapshot.md), Phase 17 roadmap rows `RM-1021`–`RM-1029`, ExecPlan register Active pointer, Phase 17 gap index in `KNOWN_ISSUES.md`; documentation-only.
+- Phase 17 Session 01 (`RM-1020`): post-deep-audit project memory - [Post-Deep-Audit Foundation Plan](docs/exec_plans/2026-05-21_post_deep_audit_foundation_plan.md), [Blocks 1-5 Deep Audit Snapshot](docs/audits/2026-05-21_blocks_1_5_deep_audit_snapshot.md), Phase 17 roadmap rows `RM-1021`-`RM-1029`, ExecPlan register Active pointer, Phase 17 gap index in `KNOWN_ISSUES.md`; documentation-only.
 
 ### Changed
 
-- Blocks 1-5 MVP core reliability Session 09 (`RM-1018`): Phase 16 wave **closed** — offline
+- Blocks 1-5 MVP core reliability Session 09 (`RM-1018`): Phase 16 wave **closed** - offline
   acceptance bundle **125 passed**, `verify_docs` OK, dry-run core/full resume OK, live core
   subject materialization smoke refreshed `Main portfolio/analysis_subject/`; ExecPlan register
   and ROADMAP mark Phase 16 Done.
@@ -1336,7 +1343,7 @@ Omit empty categories.
   `mvp_offline_fixtures` imports so offline MVP smoke tests are not broken by a third-party
   `tests` package in site-packages.
 
-- Blocks 1-5 MVP core reliability Session 08 (`RM-1017`): documentation handoff — `README.md`,
+- Blocks 1-5 MVP core reliability Session 08 (`RM-1017`): documentation handoff - `README.md`,
   `SPEC.md`, `OUTPUTS.md`, `TESTING.md`, and `docs/operational_runbook.md` now describe Blocks 1-5
   MVP core, portfolio-first core/full/resume commands, trust-signal outputs, factory-evidence
   boundaries, and offline acceptance without chat context; documentation-only.
@@ -1365,8 +1372,8 @@ Omit empty categories.
   (`RM-1010`-`RM-1018`), ExecPlan register pointer, and active known issues for input validation,
   factory freshness, resumable full review, and optimizer readiness gaps; documentation-only.
 
-- Block 5 governance Session 12 (`RM-1002`): Phase 15 wave closure — baseline snapshot closure
-  section, ROADMAP Phase 15 **Done** (`RM-990`–`RM-1002`), ExecPlan and registers marked complete;
+- Block 5 governance Session 12 (`RM-1002`): Phase 15 wave closure - baseline snapshot closure
+  section, ROADMAP Phase 15 **Done** (`RM-990`-`RM-1002`), ExecPlan and registers marked complete;
   Block 5 gap index in `KNOWN_ISSUES.md`; governance bundle **159 passed**, `verify_docs` OK.
 
 - Block 5 governance Session 11 (`RM-1001`): golden contract fixtures
@@ -1376,7 +1383,7 @@ Omit empty categories.
   `tests/test_optimization_engine_contract.py`; `TESTING.md` Block 5 bundle finalized.
 
 - Block 5 governance Session 01 (`RM-991`): canonical
-  [optimization_engine_layer_spec.md](docs/specs/optimization_engine_layer_spec.md) for Block 5.1–5.11
+  [optimization_engine_layer_spec.md](docs/specs/optimization_engine_layer_spec.md) for Block 5.1-5.11
   roles, matrices, and boundaries (documentation only).
 
 - Block 5 governance Session 10 (`RM-1000`): `candidate_comparison.json` rows for optimizer-backed
@@ -1429,55 +1436,55 @@ Omit empty categories.
 ### Added
 
 - Block 4 governance Session 11 (`RM-981`): **DEC-2026-05-20-003** concept registry boundary;
-  [candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md) § Concept candidates not in registry;
+  [candidate_portfolios_spec.md](docs/specs/candidate_portfolios_spec.md) Section Concept candidates not in registry;
   Phase 14 wave closure (baseline snapshot, methodology map verdict, registers); G9 / `KI-2026-05-20-007` closed.
 
-- Block 4 governance Session 10 (`RM-980`): [operational_runbook.md](docs/operational_runbook.md) §8
+- Block 4 governance Session 10 (`RM-980`): [operational_runbook.md](docs/operational_runbook.md) Section8
   (factory exit codes, reason-code table, scenario playbooks); contextual `next_recommended_command` and
   richer `candidate_factory_run.txt` in [candidate_factory.py](src/candidate_factory.py); G4 operator
   playbook documented.
 
-- Block 4 governance Session 09 (`RM-979`): resumable candidate factory — `candidate_factory_manifest.json`,
+- Block 4 governance Session 09 (`RM-979`): resumable candidate factory - `candidate_factory_manifest.json`,
   `--resume` on `run_candidate_factory.py`, incremental manifest persistence per step, `resumed_from_manifest`
   summary field; closes RM-921 resumable scope and G5; [candidate_factory_spec.md](docs/specs/candidate_factory_spec.md).
 
 - Block 4 governance Session 00 (`RM-970`): [Candidate Factory Methodology Map](docs/audits/2026-05-20_candidate_factory_methodology_map.md),
   [Candidate Factory Baseline Snapshot](docs/audits/2026-05-20_candidate_factory_baseline_snapshot.md), active
   [Candidate Portfolio Factory Post-Audit Roadmap](docs/exec_plans/2026-05-20_candidate_factory_post_audit_roadmap.md),
-  ROADMAP Phase 14 (`RM-970`–`RM-981`), TESTING.md governance bundle stub.
+  ROADMAP Phase 14 (`RM-970`-`RM-981`), TESTING.md governance bundle stub.
 
-- Block 4 governance Session 01 (`RM-971`): documentation sync — G1–G10 gap index and eight active
-  `KNOWN_ISSUES` entries mapped to Phase 14 `RM-972`–`RM-981`; [SPEC.md](SPEC.md) and [OUTPUTS.md](OUTPUTS.md)
+- Block 4 governance Session 01 (`RM-971`): documentation sync - G1-G10 gap index and eight active
+  `KNOWN_ISSUES` entries mapped to Phase 14 `RM-972`-`RM-981`; [SPEC.md](SPEC.md) and [OUTPUTS.md](OUTPUTS.md)
   link methodology map, layer spec scaffold, and governance ExecPlan; `KI-2026-05-19-005` cross-ref G4/G5.
 
-- Block 4 governance Session 08 (`RM-978`): golden contract tests —
+- Block 4 governance Session 08 (`RM-978`): golden contract tests -
   `tests/fixtures/candidate_factory_run_golden_v1.json`,
   `tests/fixtures/candidate_comparison_golden_v1.json`,
   `tests/candidate_factory_golden_inputs.py`,
   `tests/test_candidate_factory_contract.py`,
   `tests/test_candidate_comparison_contract.py`; Phase 14 governance bundle finalized in [TESTING.md](TESTING.md).
 
-- Block 4 governance Session 07 (`RM-977`): robust paths disclosure — `src/candidate_robust_disclosure.py`,
+- Block 4 governance Session 07 (`RM-977`): robust paths disclosure - `src/candidate_robust_disclosure.py`,
   factory `robust_paths_disclosure` on robust suite steps, comparison `construction_disclosure.robust_paths`,
   operational runbook robust prerequisites; G8 / G10 and `KI-2026-05-20-005` / `006` closed.
 
-- Block 4 governance Session 06 (`RM-976`): config fingerprint freshness — `candidate_config_fingerprint`
+- Block 4 governance Session 06 (`RM-976`): config fingerprint freshness - `candidate_config_fingerprint`
   on window snapshots, factory `config_fingerprint` / `stale_config` gating, comparison
   `stale_config_fingerprint` unavailable reason; G2 / `KI-2026-05-20-002` closed.
 
 - Block 4 governance Session 05 (`RM-975`): [candidate_factory_layer_spec.md](docs/specs/candidate_factory_layer_spec.md)
-  active handoff for Block 4.1–4.9 (workflow, artifacts, sub-block map, Phase 14 gap table); G7 closed.
+  active handoff for Block 4.1-4.9 (workflow, artifacts, sub-block map, Phase 14 gap table); G7 closed.
 
 - Block 4 governance Session 04 (`RM-974`): `construction_disclosure` on every
-  `candidate_comparison.json` row — passthrough from `baseline_weights_metadata.json`, builder
+  `candidate_comparison.json` row - passthrough from `baseline_weights_metadata.json`, builder
   `summary.json`, policy/subject excerpts, and optional factory step; [candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md) v1.3.
 
-- Block 3 governance Session 11 (`RM-961` closure): Phase 13 wave closed — governance pytest bundle
-  **90 passed**, `verify_docs` OK; baseline snapshot Session 11 section and G1–G10 table;
+- Block 3 governance Session 11 (`RM-961` closure): Phase 13 wave closed - governance pytest bundle
+  **90 passed**, `verify_docs` OK; baseline snapshot Session 11 section and G1-G10 table;
   [Stress Lab Methodology Governance Plan](docs/exec_plans/2026-05-20_stress_lab_methodology_governance_plan.md)
   marked Completed; ROADMAP Phase 13 Done.
 
-- Block 3 governance Session 10 (`RM-961` part 1): downstream integration — `crisis_replay_summary`
+- Block 3 governance Session 10 (`RM-961` part 1): downstream integration - `crisis_replay_summary`
   on `snapshot_10y.stress_suite_results` and `candidate_comparison` `stress` blocks;
   `historical_methodology` mirror; commentary lines for methodology, crisis replay v2, hedge
   `by_risk_type`, and per-episode `return_method`; `tests/test_stress_downstream_integration.py`;
@@ -1485,54 +1492,54 @@ Omit empty categories.
 
 - Block 3 governance Session 09 (`RM-960`): optional `custom_shock_runs.json` audit trail
   (`custom_shock_runs_v1`) via `record_custom_shock_run` in [src/stress.py](src/stress.py); opt-in
-  only (not written by `run_stress`); [stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.3;
+  only (not written by `run_stress`); [stress_testing_spec.md](docs/specs/stress_testing_spec.md) Section12.3;
   [OUTPUTS.md](OUTPUTS.md); G9 closed.
 
 - Block 3 governance Session 08 (`RM-959`): crypto/vol synthetic stress **proposal** and
   [docs/proposals/README.md](docs/proposals/README.md); [DEC-2026-05-20-002](DECISIONS.md) defers
   `crypto_shock` / `volatility_shock` in `run_stress` (no `SCENARIOS` changes);
-  [stress_testing_spec.md](docs/specs/stress_testing_spec.md) §2.3; methodology map G8 closed.
+  [stress_testing_spec.md](docs/specs/stress_testing_spec.md) Section2.3; methodology map G8 closed.
 
 - Block 3 governance Session 07 (`RM-958`): handoff-grade
-  [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) — provenance per sub-block 3.1–3.6,
+  [stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) - provenance per sub-block 3.1-3.6,
   JSON contract index, Phase 13 session table; indexed in [SPEC.md](SPEC.md) and
   [docs/specs/README.md](docs/specs/README.md); methodology map G7 closed.
 
-- Block 3 governance Session 06 (`RM-957`): crisis replay v2 — `time_to_recovery_months`,
+- Block 3 governance Session 06 (`RM-957`): crisis replay v2 - `time_to_recovery_months`,
   `recovered`, `asset_pnl_contrib_episode`, `top_loss_assets_episode` on `historical_episode_paths`;
   `crisis_replay_{episode}_asset_contrib.csv` export; [crisis_replay_spec.md](docs/specs/crisis_replay_spec.md);
   G6 closed.
 
-- Block 3 governance Session 05 (`RM-956`): hedge gap v2 — `by_risk_type[]` per weakness bucket
+- Block 3 governance Session 05 (`RM-956`): hedge gap v2 - `by_risk_type[]` per weakness bucket
   via `HEDGE_GAP_SCENARIO_BY_RISK` (aligned with X-Ray `WEAKNESS_SCENARIO_MAP`); method
   `stress_scenario_hedge_evidence_v2`; [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md);
   extended `tests/test_stress_hedge_gap_contract.py`; G5 closed.
 
-- Block 3 governance Session 04 (`RM-955`): factor drivers in `stress_conclusions` —
+- Block 3 governance Session 04 (`RM-955`): factor drivers in `stress_conclusions` -
   `top_factor_drivers_worst_scenario` and `helped_factors_worst_scenario` from worst synthetic
-  `pnl_by_factor_pct`; [stress_testing_spec.md](docs/specs/stress_testing_spec.md) §12.1;
+  `pnl_by_factor_pct`; [stress_testing_spec.md](docs/specs/stress_testing_spec.md) Section12.1;
   stress commentary factor driver lines; G4 closed.
 
-- Block 3 governance Session 03 (`RM-954`): hedge gap N/A transparency —
+- Block 3 governance Session 03 (`RM-954`): hedge gap N/A transparency -
   `not_applicable` + `status_reason` / `status_reason_en` on `hedge_gap_analysis` when no hedge
   `risk_role` labels; [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md) taxonomy;
   stress commentary plain-English N/A line; G3 closed.
 
-- Block 3 governance Session 02 (`RM-953`): primary historical stress disclosure —
+- Block 3 governance Session 02 (`RM-953`): primary historical stress disclosure -
   `historical_methodology` on `stress_report.json`, `return_method` / `proxy_used` on
   `historical_results`, enhanced `stress_conclusions.data_quality_warnings`; DEC-2026-05-20-001;
-  [stress_testing_spec.md](docs/specs/stress_testing_spec.md) §9.3.
+  [stress_testing_spec.md](docs/specs/stress_testing_spec.md) Section9.3.
 
 - Block 2 post-audit Session 10 (`RM-950`): [Portfolio X-Ray Baseline Snapshot](docs/audits/2026-05-20_portfolio_xray_baseline_snapshot.md)
-  — artifact checklist, golden contract reference, compare template; Phase 12 (`RM-940`–`RM-950`) closed;
+  - artifact checklist, golden contract reference, compare template; Phase 12 (`RM-940`-`RM-950`) closed;
   post-audit ExecPlan marked Completed.
 
-- Block 2 post-audit Session 09 (`RM-949`): golden `portfolio_xray.json` contract tests —
+- Block 2 post-audit Session 09 (`RM-949`): golden `portfolio_xray.json` contract tests -
   `tests/fixtures/portfolio_xray_golden_v2.json`, `tests/test_portfolio_xray_contract.py`,
   `tests/portfolio_xray_golden_inputs.py`; Portfolio X-Ray wave bundle in [TESTING.md](TESTING.md).
 
 - Block 2 post-audit Session 08 (`RM-948`): `volatility_spike` weakness row documented and implemented
-  as **factor-only (Option B)** — `beta_vix` + historical `es_95`; `scenario_coverage.evidence_mode`
+  as **factor-only (Option B)** - `beta_vix` + historical `es_95`; `scenario_coverage.evidence_mode`
   and `WEAKNESS_FACTOR_ONLY_RISKS`; test `test_volatility_spike_weakness_factor_only_methodology`.
 
 - Block 2 post-audit Session 07 (`RM-947`): Portfolio X-Ray `weight_concentration` item in
@@ -1540,7 +1547,7 @@ Omit empty categories.
   legacy summary mirrors fields; test `test_portfolio_xray_weight_concentration_in_asset_allocation`.
 
 - Block 2 post-audit Session 06 (`RM-946`): [portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md)
-  — Block 2.1–2.7 layer map (code, upstream inputs, tests, Phase 12 follow-ups); indexed in
+  - Block 2.1-2.7 layer map (code, upstream inputs, tests, Phase 12 follow-ups); indexed in
   [SPEC.md](SPEC.md) and [docs/specs/README.md](docs/specs/README.md).
 
 - Block 2 post-audit Session 05 (`RM-945`): Portfolio X-Ray `multi_window_metrics` panel (3Y/5Y/10Y
@@ -1559,12 +1566,12 @@ Omit empty categories.
   test `test_portfolio_xray_section_provenance_metadata`.
 
 - Block 2 post-audit Session 02 (`RM-942`): canonical `XRAY_THRESHOLDS` registry in
-  [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §8 and drift
+  [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) Section8 and drift
   tests in [tests/test_portfolio_xray_threshold_registry.py](tests/test_portfolio_xray_threshold_registry.py).
 
 - Block 2 post-audit governance Session 00: [Portfolio X-Ray Methodology Map](docs/audits/2026-05-20_portfolio_xray_methodology_map.md),
   active ExecPlan [2026-05-20_portfolio_xray_post_audit_roadmap.md](docs/exec_plans/2026-05-20_portfolio_xray_post_audit_roadmap.md),
-  and ROADMAP Phase 12 (`RM-940`–`RM-950`) for audit-grade X-Ray transparency.
+  and ROADMAP Phase 12 (`RM-940`-`RM-950`) for audit-grade X-Ray transparency.
 
 - Stress Lab Sessions 01-10 (post-audit wave): hardened `stress_scorecard_v1` / `stress_conclusions`,
   `historical_episode_paths` crisis replay CSVs, `hedge_gap_analysis`, expanded synthetic scenario
@@ -1598,12 +1605,12 @@ Omit empty categories.
   `analysis_end` unknown; closes G3 / `KI-2026-05-20-003`; factory + comparison specs updated.
 
 - Block 4 governance Session 02 (`RM-972`): factory propagates builder `summary.json` `FAIL_*` into
-  `candidate_factory_run.json` `reason_code` (`builder_fail_config`, `builder_infeasible_universe`, …)
+  `candidate_factory_run.json` `reason_code` (`builder_fail_config`, `builder_infeasible_universe`, ...)
   with optional `builder_status` / `builder_reason`; closes G1 / `KI-2026-05-20-001`;
   [candidate_factory_spec.md](docs/specs/candidate_factory_spec.md) reason-code table updated.
 
 - Block 2 post-audit governance Session 01 / `RM-941`: documentation registers aligned with the
-  deepening wave — `RM-932` marked Done in ROADMAP Phase 11; resolved RC/Kalman known issues removed
+  deepening wave - `RM-932` marked Done in ROADMAP Phase 11; resolved RC/Kalman known issues removed
   from active KNOWN_ISSUES; Portfolio X-Ray regression bundle stub added to [TESTING.md](TESTING.md)
   (golden contract tests shipped in post-audit Session 09 / `RM-949`).
 
@@ -1653,7 +1660,7 @@ Omit empty categories.
 ### Changed
 
 - Documented deferred operational follow-up after Phase 9: heavy full candidate refresh vs practical
-  one-shot runs (`RM-920`–`RM-922`, `KI-2026-05-19-005`; ROADMAP Phase 10, ExecPlan post-closure,
+  one-shot runs (`RM-920`-`RM-922`, `KI-2026-05-19-005`; ROADMAP Phase 10, ExecPlan post-closure,
   runbook and factory/review specs).
 
 - Closed RM-911 / Phase 9 post-portfolio-first stabilization: representative review verified subject
@@ -1692,7 +1699,7 @@ Omit empty categories.
   and roadmap Phase 9 (`RM-900`-`RM-911`) to stabilize subject metadata, candidate freshness,
   decision reliability, methodology consistency, monitoring, and report/PDF output before UI work.
 - [Post-Portfolio-First State Audit](docs/audits/2026-05-19_post_portfolio_first_state_audit.md):
-  documents system state after transition closure, latest `run_portfolio_review.py` evidence, P0–P2
+  documents system state after transition closure, latest `run_portfolio_review.py` evidence, P0-P2
   stabilization backlog, and register entry in [docs/audits/README.md](docs/audits/README.md).
 
 ## 2026-05-18
@@ -1715,7 +1722,7 @@ Omit empty categories.
 - Added canonical [portfolio review workflow spec](docs/specs/portfolio_review_workflow_spec.md) for the `analysis_subject`-first contract and linked it from top-level source-of-truth docs (Portfolio-first Session 02).
 - Added active [Portfolio-First Transition Plan](docs/exec_plans/2026-05-18_portfolio_first_transition_plan.md) and roadmap Phase 8 (`RM-800`-`RM-808`) to move the main workflow from policy-first to `analysis_subject`-first while preserving the old policy engine as legacy infrastructure.
 
-- Closed [post-audit MVP stabilization plan](docs/exec_plans/2026-05-17_post_audit_mvp_stabilization_plan.md) Session 11: Phase 7 (`RM-700`–`RM-710`) complete; broad verification (`462` pytest passes, docs verify, generated-output QA scan).
+- Closed [post-audit MVP stabilization plan](docs/exec_plans/2026-05-17_post_audit_mvp_stabilization_plan.md) Session 11: Phase 7 (`RM-700`-`RM-710`) complete; broad verification (`462` pytest passes, docs verify, generated-output QA scan).
 - Added file-first MVP workflow orchestration ([run_mvp_workflow.py](run_mvp_workflow.py), [src/mvp_workflow.py](src/mvp_workflow.py), [tests/test_mvp_workflow.py](tests/test_mvp_workflow.py)): thin wrapper for `input -> diagnosis -> comparison -> action`; documented in [docs/operational_runbook.md](docs/operational_runbook.md) (MVP stabilization Session 10).
 - Added offline MVP pipeline smoke test ([tests/test_mvp_pipeline_offline.py](tests/test_mvp_pipeline_offline.py), [tests/mvp_offline_fixtures.py](tests/mvp_offline_fixtures.py)): synthetic snapshots, network guards, and decision-package JSON chain verification; documented in [TESTING.md](TESTING.md) (MVP stabilization Session 09).
 

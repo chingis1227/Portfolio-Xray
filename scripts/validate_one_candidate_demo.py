@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Session 07 validator: one-candidate product demo (--candidates equal_weight).
+"""Session 07 validator: one-candidate product artifact chain.
 
 Reads on-disk artifacts under output_dir_final and checks product scoping contracts.
 Exit 0 when all checks pass; exit 1 with a human-readable report otherwise.
@@ -120,7 +120,7 @@ def validate_one_candidate_demo(
         if missing:
             fail(f"output_manifest missing product bundle keys: {missing}")
         else:
-            pass_("output_manifest product_discovery lists six bundle paths")
+            pass_("output_manifest product_discovery lists product bundle paths")
         if manifest.get("primary_output_surface") != "product_bundle":
             fail(
                 "output_manifest.primary_output_surface != product_bundle "

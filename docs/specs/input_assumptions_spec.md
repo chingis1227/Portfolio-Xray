@@ -52,7 +52,7 @@ one-candidate compare) requires **only** these user-supplied inputs:
 | Reporting currency | `investor_currency` | Yes |
 
 Everything else in this document is either **system-resolved**, **legacy/advanced config**, or a
-**later product layer** (Client-Fit Check, Risk Guardrail, Candidate Builder, Assumption Testing).
+**post-diagnosis product layer** (Client Fit Check, Risk Guardrail, Candidate Builder, Assumption Testing).
 Core MVP must not fail config validation when optional later-layer fields are omitted.
 
 **Config UI (`config_ui/`):** the web form exposes the three Core MVP groups on the first screen
@@ -558,7 +558,7 @@ The following remain open relative to this spec and the
 - transaction cost / rebalance cost model
 - investment horizon effects on optimizer policy
 - formal assumption sensitivity module ([assumption_sensitivity_spec.md](assumption_sensitivity_spec.md))
-- Client-Fit Check and Risk Guardrail product surfaces (§1.3–1.4)
+- Client Fit Check and Risk Guardrail product surfaces (§1.3–1.4)
 - formal selection engine or no-trade logic beyond existing product adapters
 
 These items require implementation work in their owning sessions before they become fully binding in code.

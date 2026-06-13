@@ -10,11 +10,9 @@ Update this file when the general implementation contract, workflows, inputs/out
 
 `SPEC.md` is the canonical implementation entry point. It has higher authority than product concept documents such as [BUSINESS_VISION.md](BUSINESS_VISION.md), [PRODUCT.md](PRODUCT.md), and [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) when the question is current implementation behavior.
 
-The current canonical product truth is **Diagnosis 2**. Product concept documents can describe target direction, but the active product interpretation must follow this distinction:
+The current product is a diagnosis-first, current-portfolio-first investment decision-support system. Product concept documents can describe target direction, but active product interpretation must follow current specs, contracts, code, and frontend routes.
 
-- current Core MVP = diagnosis-first/current-portfolio-first Diagnosis 2 flow;
-- Diagnosis 2 Later = backlog / advanced / later;
-- older optimizer/report/scorecard-heavy modules may remain implemented as backend evidence, technical artifacts, generated support, legacy compatibility, or advanced research, but they are not the current Core MVP product flow unless explicitly promoted by specs and code.
+Older optimizer/report/scorecard-heavy modules may remain implemented as backend evidence, technical artifacts, generated support, legacy compatibility, or advanced research, but they are not the current Core MVP product flow unless explicitly promoted by specs and code.
 
 They do not change formulas, scenarios, optimizer policy, data rules, output contracts, or code behavior until this spec and the relevant detailed specs are updated.
 
@@ -41,15 +39,14 @@ Input portfolio
 -> Monitoring / What Changed
 ```
 
-This is the Diagnosis 2 product truth. The implementation is still CLI/file-driven and partially report-first, but current product surfaces must be interpreted through this flow, not through the older optimization/scorecard/report package.
+This is the current product contract. The implementation is still CLI/file-driven and partially report-first, but current product surfaces must be interpreted through this flow, not through the older optimization/scorecard/report package.
 
 ## Implementation Scope
 
 The canonical portfolio-first workflow contract is [Portfolio Review Workflow
 Specification](docs/specs/portfolio_review_workflow_spec.md): resolve `analysis_subject`, diagnose
 that portfolio first, then generate and compare alternatives. `run_portfolio_review.py` is the
-portfolio-first orchestration entrypoint (`--mode core` default, `--mode full`,
-`--resume-candidates` for interrupted full factory runs). Legacy policy-first entrypoints remain
+portfolio-first orchestration entrypoint. Its default path is diagnosis-only; candidate execution is explicit through `--candidates`, `--with-candidates`, `--mode full`, or the vertical demo script. Use `--resume-candidates` for interrupted full factory runs. Legacy policy-first entrypoints remain
 callable as compatibility infrastructure only; they are not the default starting path.
 
 Blocks 1-5 MVP core reliability (input validation, factory freshness, resumability, optimizer
@@ -74,6 +71,7 @@ Current Core MVP product layer:
 - portfolio-first `analysis_subject` diagnosis
 - Portfolio X-Ray diagnostics (**Block 2.1–2.6** product contracts on `portfolio_xray.json`; legacy X-Ray section 2.7 (archetype) is not Core MVP)
 - Stress Test Lab evidence
+- Client Fit V1 as non-binding diagnostic context
 - Problem Classification
 - additive Problem Classification interpretation-chain fields
   (`interpretation_chain`, `diagnosis_evidence_items`, `root_cause_narrative`,
@@ -127,13 +125,14 @@ code, generated artifacts, and owning specs verify that status.
 
 ## Main Workflows
 
-Portfolio-first review workflow (binding transition contract, interpreted through Diagnosis 2):
+Portfolio-first review workflow (binding current product contract):
 
 ```text
 analysis_subject / current portfolio
 -> resolved assumptions and validation
 -> Portfolio X-Ray
 -> Stress Test Lab
+-> Client Fit Check
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
@@ -456,7 +455,7 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Blocks 1-5 MVP core reliability (Phase 16) | **Done** (Sessions 01-09, `RM-1010`-`RM-1018`); offline acceptance bundle and operator runbook govern routine verification |
 | Main CLI optimization and report pipeline | Implemented |
 | Input and Assumptions Layer | Implemented CLI/file-driven V1; Core MVP three-field surface, MVP defaults injection, real-cash holdings, `core_mvp_input_surface` / `core_mvp_input_contract` product contract plus `input_surface` / `field_tiers` disclosure ([input_assumptions_spec.md](docs/specs/input_assumptions_spec.md); [Input Layer MVP Migration](docs/exec_plans/2026-05-26_input_layer_mvp_migration.md) Sessions 01–09) |
-| Client Fit V1 | Implemented on `codex/client-fit-v1` as a non-binding profile-fit layer with active web onboarding/display routes and backend/CLI missing-profile compatibility. The web journey uses `/client-profile` before Portfolio Input and `/client-fit` after Stress Lab and before Hypothesis. Backend writes `client_fit_check.json` (`client_fit_check_v1`), Block 4 can use dimension-level Client Fit signals as supporting/contrary evidence, `goal_risk_conflict` can become the objective-review primary outcome, site/report explanation bundles expose safe Client Fit hierarchy copy, Candidate Launchpad carries compact Client Fit context without suppressing material diagnoses, Builder carries Client Fit target rows as hypothesis-test criteria, Current vs Candidate can show Current vs Candidate vs Client Target evidence without issuing a verdict, and Verdict/API/Supabase/frontend surfaces consume bounded display models. V1 scope is return, volatility, maximum drawdown, horizon, source quality, and goal-risk conflict; liquidity is explicitly excluded from V1. It is not suitability approval, trade advice, or an optimizer mandate ([client_fit_check_spec.md](docs/specs/client_fit_check_spec.md), [client_fit_questionnaire_spec.md](docs/specs/client_fit_questionnaire_spec.md)). |
+| Client Fit V1 | Implemented as a non-binding profile-fit layer with active web onboarding/display routes and backend/CLI missing-profile compatibility. The normal web journey collects Client Fit context through onboarding before Portfolio Input and shows `/client-fit` after Stress Lab and before Hypothesis; `/client-profile` remains an advanced/manual editor. Backend writes `client_fit_check.json` (`client_fit_check_v1`), Block 4 can use dimension-level Client Fit signals as supporting/contrary evidence, `goal_risk_conflict` can become the objective-review primary outcome, site/report explanation bundles expose safe Client Fit hierarchy copy, Candidate Launchpad carries compact Client Fit context without suppressing material diagnoses, Builder carries Client Fit target rows as hypothesis-test criteria, Current vs Candidate can show Current vs Candidate vs Client Target evidence without issuing a verdict, and Verdict/API/Supabase/frontend surfaces consume bounded display models. V1 scope is return, volatility, maximum drawdown, horizon, source quality, and goal-risk conflict; liquidity is explicitly excluded from V1. It is not suitability approval, trade advice, or an optimizer mandate ([client_fit_check_spec.md](docs/specs/client_fit_check_spec.md), [client_fit_questionnaire_spec.md](docs/specs/client_fit_questionnaire_spec.md)). |
 | Portfolio X-Ray Core MVP (Blocks 2.1–2.6) | Blocks 2.1–2.6 **implemented** on `portfolio_xray.json`; **no client mandate / profile target comparison** in product blocks ([portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md)) |
 | Risk Budget View (Block 2.5) | Product block `block_2_5_risk_budget_view` **implemented** (Sessions 00–08, 2026-05-26); legacy `sections.risk_budget_view` preserved ([portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.5.1) |
 | Portfolio Weakness Map (Block 2.6) | Product block `block_2_6_portfolio_weakness_map` **implemented** — `heuristic_v2`, eight canonical Stress Lab `risk_type` ids (2026-05-29); pre-stress over Blocks 2.1–2.5; legacy `sections.weakness_map` preserved for formatters ([portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.6.1, [v2 acceptance audit](docs/audits/2026-05-29_block_2_6_weakness_map_heuristic_v2_acceptance_audit.md), `DEC-2026-05-29-001`) |
